@@ -188,7 +188,7 @@ extern struct cudaArray* gpgpu_ptx_sim_accessArrayofTexture(struct textureRefere
 extern void gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref);
 extern struct textureReference* gpgpu_ptx_sim_accessTextureofName(char* name);
 extern char* gpgpu_ptx_sim_findNamefromTexture(const struct textureReference* texref);
-extern void   gpgpu_ptx_sim_add_ptxstring( const char * );
+extern void   gpgpu_ptx_sim_add_ptxstring( const char *ptx, const char *source_fname );
 
 extern int g_ptx_sim_mode;
 
@@ -1038,8 +1038,24 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 {
 #if (CUDART_VERSION >= 2010)
    __cudaFatCudaBinary *info =   (__cudaFatCudaBinary *)fatCubin;
-   if (info->ptx->ptx)
-      gpgpu_ptx_sim_add_ptxstring( info->ptx->ptx );
+   assert( info->version == 4 );
+   unsigned num_ptx_versions=0;
+   unsigned max_capability=0;
+   unsigned selected_capability_offset=(unsigned)-1;
+   while( info->ptx[num_ptx_versions].gpuProfileName != NULL ) {
+      unsigned capability=0;
+      sscanf(info->ptx[num_ptx_versions].gpuProfileName,"compute_%u",&capability);
+      if( capability > max_capability ) {
+         max_capability = capability;
+         selected_capability_offset=num_ptx_versions;
+      }
+      num_ptx_versions++;
+   }
+   if ( selected_capability_offset != (unsigned)-1 ) {
+      printf("GPGPU-Sim PTX: __cudaRegisterFatBinary found %u PTX versions for '%s', ", num_ptx_versions, info->ident);
+      printf("selected = %s\n", info->ptx[selected_capability_offset].gpuProfileName );
+      gpgpu_ptx_sim_add_ptxstring( info->ptx[selected_capability_offset].ptx, info->ident );
+   }
 #endif
    return 0;
 }

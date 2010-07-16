@@ -1617,6 +1617,7 @@ static FILE *open_ptxinfo (const char* ptx_filename)
 
 struct ptx_info_t {
     char *str;
+    char *fname;
     ptx_info_t *next;
 };
 
@@ -1624,11 +1625,12 @@ ptx_info_t *g_ptx_source_array = NULL;
 unsigned g_used_embedded_ptx_files;
 extern double g_ptx_version;
 
-void gpgpu_ptx_sim_add_ptxstring( const char *ptx_string )
+void gpgpu_ptx_sim_add_ptxstring( const char *ptx_string, const char *sourcefname )
 {
     ptx_info_t *t = new ptx_info_t;
     t->next = NULL;
     t->str = strdup(ptx_string);
+    t->fname = strdup(sourcefname);
 
     // put ptx source into a fifo
     if (g_ptx_source_array == NULL) {
@@ -1732,7 +1734,13 @@ void gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num )
     char tempfile_ptxinfo[1024];
     snprintf(tempfile_ptxinfo,1024,"%sinfo",fname);
     char commandline[1024];
-    snprintf(commandline,1024,"ptxas -v %s --output-file /dev/null 2> %s", fname2, tempfile_ptxinfo);
+    char extra_flags[1024];
+    extra_flags[0]=0;
+#if CUDART_VERSION >= 3000
+    snprintf(extra_flags,1024,"--gpu-name=sm_20");
+#endif
+    snprintf(commandline,1024,"ptxas %s -v %s --output-file /dev/null 2> %s", 
+             extra_flags, fname2, tempfile_ptxinfo);
     printf("GPGPU-Sim PTX: generating ptxinfo using \"%s\"\n", commandline);
     result = system(commandline);
     if( result != 0 ) {

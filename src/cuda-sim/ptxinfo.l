@@ -67,9 +67,13 @@
 #include "ptxinfo.tab.h"
 #include <string.h>
 
-char ptxinfo_linebuf[1024];
+#define LINEBUF_SIZE 1024
+char ptxinfo_linebuf[LINEBUF_SIZE];
 unsigned ptxinfo_col = 0;
-#define TC ptxinfo_col+=strlen(ptxinfo_text); 
+#define TC if( (ptxinfo_lineno == 1) && ((ptxinfo_col + strlen(ptxinfo_text)) < LINEBUF_SIZE) ) { \
+		strncpy(ptxinfo_linebuf+ptxinfo_col,ptxinfo_text,strlen(ptxinfo_text)); \
+	   } \
+	   ptxinfo_col+=strlen(ptxinfo_text); 
 %}
 
 %%
@@ -85,6 +89,7 @@ unsigned ptxinfo_col = 0;
 "smem"		TC; return SMEM;
 "cmem"		TC; return CMEM;
 "line"		TC; return LINE;
+"for"		TC; return FOR;
 
 [_A-Za-z$%][_0-9A-Za-z$]*  TC; ptxinfo_lval.string_value = strdup(yytext); return IDENTIFIER;
 [-]{0,1}[0-9]+	 TC; ptxinfo_lval.int_value =  atoi(yytext); return INT_OPERAND;
@@ -112,8 +117,9 @@ int ptxinfo_error( const char *s )
 	int i;
 	g_ptxinfo_error_detected = 1;
 	fflush(stdout);
+	printf("GPGPU-Sim: ERROR while parsing output of ptxas (used to capture resource usage information)\n");
 	if( s != NULL )
-		printf("ptxas -v %s (%s:%u) Syntax error:\n\n", g_filename, g_ptxinfo_filename, ptxinfo_lineno );
+		printf("GPGPU-Sim:     %s (%s:%u) Syntax error:\n\n", g_filename, g_ptxinfo_filename, ptxinfo_lineno );
 	printf("   %s\n", ptxinfo_linebuf );
 	printf("   ");
 	for( i=0; i < ptxinfo_col-1; i++ ) {

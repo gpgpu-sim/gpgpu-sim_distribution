@@ -95,6 +95,7 @@ lib/libcudart.so: $(LIBS) cudalib
 			./src/*.o -lm -lz -lGL \
 			-o lib/libcudart.so
 	if [ ! -f lib/libcudart.so.2 ]; then ln -s libcudart.so lib/libcudart.so.2; fi
+	if [ ! -f lib/libcudart.so.3 ]; then ln -s libcudart.so lib/libcudart.so.3; fi
 
 lib/libcudart.dylib: $(LIBS) cudalib
 	if [ ! -d lib ]; then mkdir lib; fi;

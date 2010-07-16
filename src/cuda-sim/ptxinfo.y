@@ -86,6 +86,7 @@
 %token QUOTE
 %token LINE
 %token WARNING
+%token FOR
 
 %{
 	#include <stdlib.h>
@@ -118,6 +119,7 @@ line_info: function_name
 	;
 
 function_name: FUNC QUOTE IDENTIFIER QUOTE { ptxinfo_function($3); }
+	|  FUNC QUOTE IDENTIFIER QUOTE FOR QUOTE IDENTIFIER QUOTE { ptxinfo_function($3); }
 
 function_info: info
 	| function_info COMMA info

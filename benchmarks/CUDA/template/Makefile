@@ -49,4 +49,6 @@ CCFILES		:= \
 ################################################################################
 # Rules and targets
 
-include ../../../common/common.mk
+ROOTDIR=$(NVIDIA_CUDA_SDK_LOCATION)/src
+BINDIR=.
+include $(NVIDIA_CUDA_SDK_LOCATION)/common/common.mk
