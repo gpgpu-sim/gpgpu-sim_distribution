@@ -112,16 +112,16 @@ ptxinfo.tab.o: ptxinfo.tab.c
 lex.ptxinfo_.o: lex.ptxinfo_.c
 	$(CC) -c $(OPT) lex.ptxinfo_.c
 
-ptx.tab.c:
+ptx.tab.c: ptx.y
 	bison --name-prefix=ptx_ -v -d ptx.y
 
-ptxinfo.tab.c:
+ptxinfo.tab.c: ptxinfo.y
 	bison --name-prefix=ptxinfo_ -v -d ptxinfo.y
 
-lex.ptx_.c:
+lex.ptx_.c: ptx.l
 	flex ptx.l
 
-lex.ptxinfo_.c:
+lex.ptxinfo_.c: ptxinfo.l
 	flex ptxinfo.l
 
 clean:
