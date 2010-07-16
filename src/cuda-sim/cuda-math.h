@@ -47,6 +47,7 @@ namespace cuda_math {
 #define __attribute__(a) // to remove warnings inside math_functions.h
 #undef INT_MAX
 
+#if CUDART_VERSION < 3000
 // DEVICE_BUILTIN
    struct int4 {
       int x, y, z, w;
@@ -69,13 +70,29 @@ namespace cuda_math {
    typedef struct float2 float2;
 
 extern float rsqrtf(float); // CUDA 2.3 beta
+#else
+#define UINT_MAX ((unsigned int)-1)
+#endif
 
 #define CUDA_FLOAT_MATH_FUNCTIONS
 #include <device_types.h>
 #define __CUDA_INTERNAL_COMPILATION__
+#if CUDART_VERSION >= 3000
+#define __CUDACC__
+#include <device_functions.h>
+#else
 #include <math_functions.h>
+#endif
 #undef __CUDA_INTERNAL_COMPILATION__
 #undef __attribute__
+
+#if CUDART_VERSION >= 3000
+#define __internal_float2int float2int
+#define __internal_float2uint float2uint
+#include <math.h>
+#define __internal_accurate_fdividef fdividef
+#endif
+
 }
 
 #endif

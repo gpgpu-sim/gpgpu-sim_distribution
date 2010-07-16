@@ -1042,7 +1042,11 @@ ptx_reg_t f2f( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
       y.f32 = truncf(x.f32); 
       break;          
    case RNI_OPTION: 
+#if CUDART_VERSION >= 3000
+      y.f32 = nearbyintf(x.f32); 
+#else
       y.f32 = cuda_math::__internal_nearbyintf(x.f32); 
+#endif
       break;          
    case RMI_OPTION: 
       if ((x.u32 & 0x7f800000) == 0) {
@@ -1066,7 +1070,12 @@ ptx_reg_t f2f( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
       }
       break; 
    }
-   if (cuda_math::__cuda___isnanf(y.f32)) {
+#if CUDART_VERSION >= 3000
+   if (isnanf(y.f32)) 
+#else
+   if (cuda_math::__cuda___isnanf(y.f32)) 
+#endif
+   {
       y.u32 = 0x7fffffff;
    } else if (saturation_mode) {
       y.f32 = cuda_math::__saturatef(y.f32);
@@ -1083,7 +1092,11 @@ ptx_reg_t d2d( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
       y.f64 = trunc(x.f64); 
       break;          
    case RNI_OPTION: 
-      y.f64 = cuda_math::__internal_nearbyintf(x.f64); 
+#if CUDART_VERSION >= 3000
+      y.f64 = nearbyint(x.f32); 
+#else
+      y.f64 = cuda_math::__internal_nearbyint(x.f64); 
+#endif
       break;          
    case RMI_OPTION: 
       y.f64 = floor(x.f64); 
@@ -1184,7 +1197,13 @@ void ptx_round(ptx_reg_t& data, int rounding_mode, int type)
       case U64_TYPE:
          printf("Trying to round an integer??\n"); assert(0); break;
       case F16_TYPE: assert(0); break;
-      case F32_TYPE: data.f32 = cuda_math::__cuda_nearbyintf(data.f32); break;          
+      case F32_TYPE: 
+#if CUDART_VERSION >= 3000
+         data.f32 = nearbyintf(data.f32); 
+#else
+         data.f32 = cuda_math::__cuda_nearbyintf(data.f32); 
+#endif
+         break;          
       case F64_TYPE: data.f64 = round(data.f64); break; 
       default: assert(0); break;
       }
@@ -1229,7 +1248,12 @@ void ptx_round(ptx_reg_t& data, int rounding_mode, int type)
    }
 
    if (type == F32_TYPE) {
-      if (cuda_math::__cuda___isnanf(data.f32)) {
+#if CUDART_VERSION >= 3000
+      if (isnanf(data.f32)) 
+#else
+      if (cuda_math::__cuda___isnanf(data.f32)) 
+#endif
+      {
          data.u32 = 0x7fffffff;
       }
    }

@@ -906,9 +906,12 @@ timer_event_t *g_timer_events = NULL;
 __host__ cudaError_t CUDARTAPI cudaEventCreate(cudaEvent_t *event)
 {
    timer_event_t *t = (timer_event_t*) calloc(1,sizeof(timer_event_t));
-
    t->m_uid = ++g_next_event_uid;
+#if CUDART_VERSION >= 3000
+   cuda_not_implemented(__my_func__,__LINE__);
+#else
    *event = t->m_uid;
+#endif
    t->m_next = g_timer_events;
    g_timer_events = t;
 
@@ -919,6 +922,9 @@ __host__ cudaError_t CUDARTAPI cudaEventCreate(cudaEvent_t *event)
 
 __host__ cudaError_t CUDARTAPI cudaEventRecord(cudaEvent_t event, cudaStream_t stream)
 {
+#if CUDART_VERSION >= 3000
+   cuda_not_implemented(__my_func__,__LINE__);
+#else
    timer_event_t *t = g_timer_events;
    while( t && t->m_uid != event ) 
       t = t->m_next;
@@ -928,6 +934,7 @@ __host__ cudaError_t CUDARTAPI cudaEventRecord(cudaEvent_t event, cudaStream_t s
    t->m_updates++;
    t->m_gpu_tot_sim_cycle = gpu_tot_sim_cycle;
    t->m_wallclock = time((time_t *)NULL);
+#endif
    return g_last_cudaError = cudaSuccess;
 }
 
@@ -945,6 +952,10 @@ __host__ cudaError_t CUDARTAPI cudaEventSynchronize(cudaEvent_t event)
 
 __host__ cudaError_t CUDARTAPI cudaEventDestroy(cudaEvent_t event)
 {
+#if CUDART_VERSION >= 3000
+   cuda_not_implemented(__my_func__,__LINE__);
+   return g_last_cudaError = cudaErrorUnknown;
+#else
    timer_event_t *l = NULL;
    timer_event_t *t = g_timer_events;
    while( t && t->m_uid != event )  {
@@ -964,11 +975,16 @@ __host__ cudaError_t CUDARTAPI cudaEventDestroy(cudaEvent_t event)
       free(l);
       return g_last_cudaError = cudaSuccess;
    }
+#endif
 }
 
 
 __host__ cudaError_t CUDARTAPI cudaEventElapsedTime(float *ms, cudaEvent_t start, cudaEvent_t end)
 {
+#if CUDART_VERSION >= 3000
+   cuda_not_implemented(__my_func__,__LINE__);
+   return g_last_cudaError = cudaErrorUnknown;
+#else
    time_t elapsed_time;
    timer_event_t *s, *e;
    s = e = g_timer_events;
@@ -980,6 +996,7 @@ __host__ cudaError_t CUDARTAPI cudaEventElapsedTime(float *ms, cudaEvent_t start
    elapsed_time = e->m_wallclock - s->m_wallclock;
    *ms = 1000*elapsed_time; 
    return g_last_cudaError = cudaSuccess;
+#endif
 }
 
 
