@@ -1386,6 +1386,13 @@ void exit_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->set_done();
 }
 
+void mad_def( const ptx_instruction *pI, ptx_thread_info *thread );
+
+void fma_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
+{
+   mad_def(pI,thread);
+}
+
 void ld_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 
    const operand_info &dst = pI->dst();
@@ -1502,6 +1509,11 @@ void mad24_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 }
 
 void mad_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
+{
+   mad_def(pI,thread);
+}
+
+void mad_def( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 
    const operand_info &dst  = pI->dst();
    const operand_info &src1 = pI->src1();

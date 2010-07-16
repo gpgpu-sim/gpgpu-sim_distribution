@@ -129,6 +129,7 @@ membar  TC; ptx_lval.int_value = MEMBAR_OP; return OPCODE;
 red     TC; ptx_lval.int_value = RED_OP; return OPCODE;
 brkpt   TC; ptx_lval.int_value = BRKPT_OP; return OPCODE;
 addc    TC; ptx_lval.int_value = ADDC_OP; return OPCODE;
+fma     TC; ptx_lval.int_value = FMA_OP; return OPCODE;
 
 <INITIAL,NOT_OPCODE>{
 
