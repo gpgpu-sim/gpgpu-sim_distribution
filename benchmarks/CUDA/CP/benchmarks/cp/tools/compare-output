@@ -1,0 +1,48 @@
+#!/usr/bin/env python
+
+# (c) Copyright 2007 The Board of Trustees of the University of Illinois.
+
+import sys
+import itertools
+
+import filecompare as fc
+import textfilecompare as tfc
+
+def compare_checksums(ref_list, cmp_list):
+	# Checksum should have one floating-point number
+	if len(ref_list) != 1 or len(cmp_list) != 1: return False
+
+	diff = abs(ref_list[0] - cmp_list[0])
+	if diff > 0.005 * abs(ref_list[0]):
+		# Checksum does not match
+		return False
+
+	# Checksum matches within tolerance
+	return True
+
+def compare_floats(ref_list, cmp_list):
+
+	# Lists should be the same length
+	if len(ref_list) != len(cmp_list): return False
+
+	# Numbers should be equal with a tolerance of 0.5%
+	# or 0.005, whichever is greater.
+	for (r, c) in zip(ref_list, cmp_list):
+		diff = abs(r - c)
+		if not (diff < 0.005 or diff < 0.005 * abs(r)):
+			# Floats mismatch
+			return False
+
+	# All numbers are within tolerance
+	return True
+
+charge_err = "Computed charge distribution does not match the expected values\n"
+checksum_err = "Checksums do not match\n"
+
+comparison = fc.Sequence_([
+	fc.Compare(tfc.verbatim),
+	fc.Compare(tfc.floats, equal=compare_checksums, message=checksum_err),
+	fc.Sequence_(itertools.repeat(fc.Compare(tfc.floats, equal=compare_floats, message=charge_err), 17))
+	])
+
+fc.default_main(comparison)

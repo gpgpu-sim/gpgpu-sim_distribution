@@ -1,0 +1,20 @@
+// Topology
+
+topology  = single;
+in_ports  = 8;
+out_ports = 8;
+
+// Routing
+
+routing_function = single;
+
+// Flow control
+
+vc_allocator = islip;
+sw_allocator = islip;
+alloc_iters  = 2;
+
+num_vcs     = 8;
+vc_buf_size = 1000;
+
+wait_for_tail_credit = 0;

@@ -1,0 +1,9 @@
+This is ParMetis version 3.1. You can find the manual describing the
+various routines in the directory 'Manual'. Also, the file called 
+INSTALL contains instructions on how to build and test ParMetis.
+
+
+Please let me know of any problems that you have found with it.
+
+George Karypis
+karypis@cs.umn.edu

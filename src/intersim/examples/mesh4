@@ -1,0 +1,41 @@
+// Topology
+
+topology = mesh;
+k = 2;
+n = 1;
+
+// Routing
+
+routing_function = dim_order;
+
+// Flow control
+
+num_vcs     = 1;
+vc_buf_size = 1;
+
+wait_for_tail_credit = 1;
+
+// Router architecture
+
+vc_allocator = islip;
+sw_allocator = islip;
+alloc_iters  = 1;
+
+credit_delay   = 1;
+routing_delay  = 1;
+vc_alloc_delay = 1;
+
+input_speedup     = 1;
+output_speedup    = 1;
+internal_speedup  = 1.0;
+
+// Traffic
+
+traffic                = gpgpusim; 
+const_flits_per_packet = 3;
+
+injection_process = gpgpu_injector;
+// Simulation
+
+sim_type       = latency;
+injection_rate = 0.1;

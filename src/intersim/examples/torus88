@@ -1,0 +1,14 @@
+// Topology
+topology = torus;
+k        = 8;
+n        = 2;
+
+// Routing
+routing_function = dim_order;
+
+// Flow control
+num_vcs = 2;
+
+// Traffic
+traffic        = uniform;
+injection_rate = 0.15;

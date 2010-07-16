@@ -1,0 +1,6 @@
+A benchmark for computing the coulombic potential at each grid point over one plane in a 3D grid in which point charges have been randomly distributed. This benchmark was adapted from the 'cionize' benchmark in VMD.
+
+See also:
+  http://www.ks.uiuc.edu/
+
+  J. E. Stone, J. C. Phillips, P. L. Freddolino, D. J. Hardy, L. G.  Trabuco, and K. Schulten. "Accelerating Molecular Modeling Applications with Graphics Processors." Journal of Computational Chemistry 28:2618-2640, 2007.

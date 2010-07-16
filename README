@@ -1,0 +1,112 @@
+GPGPU-Sim Simulator version 2.1.1b (beta)
+
+See doc/GPGPU-Sim_Manual.html for more documentation.
+
+Please see the copyright notice in the file COPYRIGHT distributed with this
+release in the same directory as this file.  This version of GPGPU-Sim is
+for non-commercial use only.
+
+If you use this simulator in your research please cite:
+
+Ali Bakhoda, George Yuan, Wilson W. L. Fung, Henry Wong, Tor M. Aamodt,
+Analyzing CUDA Workloads Using a Detailed GPU Simulator, in IEEE International
+Symposium on Performance Analysis of Systems and Software (ISPASS), Boston, MA,
+April 19-21, 2009.
+
+Please sign up for the google groups page for Q&A (see gpgpu-sim.org).
+
+See Section 2 "INSTALLING, BUILDING and RUNNING GPGPU-Sim" below to get started.
+
+1. CONTRIBUTIONS and HISTORY
+
+GPGPU-Sim was created at the University of British Columbia by Tor M. Aamodt,
+Wilson W.  L. Fung, Ali Bakhoda, George Yuan along with contributions by Ivan
+Sham, Henry Wong, Henry Tran, and others.  
+
+GPGPU-Sim models the features of a modern graphics processor that are relevant
+to non-graphics applications.  The first version of GPGPU-Sim was used in a
+MICRO'07 paper and follow-on ACM TACO paper on dynamic warp formation. That
+version of GPGPU-Sim used the SimpleScalar PISA instruction set for functional
+simulation, and various configuration files to provide a programming model
+close to CUDA.  Creating benchmarks for the original GPGPU-Sim simulator was a
+very time consuming process.  This motivated the development an interface for
+directly running CUDA applications to leverage the growing number of
+applications being developed to use CUDA.
+
+The interconnection network is simulated using the booksim simulator developed
+by Bill Dally's research group at Stanford.
+
+The current version of GPGPU-Sim still uses a few portions of SimpleScalar
+functional simulation code: support for memory spaces and command line option
+processing (but not for any timing model purposes).  SimpleScalar code has very
+strict restrictions on non-academic use (these portions may be removed in a
+future version of GPGPU-Sim).
+
+To produce output that is compatible with the output from running the same CUDA
+program on the GPU, we have implemented several PTX instructions using the CUDA
+Math library (part of the CUDA toolkit). Code to interface with the CUDA Math
+library is contained in cuda-math.h, which also includes several structures
+derived from vector_types.h (one of the CUDA header files).
+
+See file CHANGES for updates in this and earlier versions.
+
+2. INSTALLING, BUILDING and RUNNING GPGPU-Sim
+
+GPGPU-Sim was developed on Linux SuSe (this release was tested with SuSe
+version 11.1) and has been used on several other Linux platforms.  
+
+Step 1: Ensure you have gcc, g++, make, makedepend, zlib, bison and flex 
+installed on your system.  For CUDA 2.x we used gcc version 4.3.2, for CUDA 1.1 
+we used gcc/g++ version 4.1.3.  We used bison version 2.3, and flex version 2.5.33.  
+
+Step 2: Download and install the CUDA Toolkit and CUDA SDK code samples from
+NVIDIA's website: <http://www.nvidia.com/cuda>.  If you want to run OpenCL on
+the simulator, download and install NVIDIA's OpenCL driver from
+<http://developer.nvidia.com/object/opencl-download.html>. Update your PATH and
+LD_LIBRARY_PATH as indicated by the install scripts.
+
+Step 3: Build libcutil.a. The install script for the CUDA SDK does not do this
+step automatically. If you installed the CUDA Toolkit in a nonstandard location
+you will first need to set CUDA_INSTALL_PATH to the location you installed the
+CUDA toolkit (including the trailing "/cuda").  Then, change to the C/common
+subdirectory of your CUDA SDK installation (or common subdirectory on older
+CUDA SDK versions) and type "make".
+
+Step 4: Set environment variables (e.g., your .bashrc file if you use bash as
+your shell). 
+ 
+    (a) Set GPGPUSIM_ROOT to point to the directory containing this README file. 
+    (b) Set CUDAHOME to point to your CUDA installation directory
+    (c) Set NVIDIA_CUDA_SDK_LOCATION to point to the location of the CUDA SDK
+    (d) Add $CUDAHOME/bin and $GPGPUSIM_ROOT/bin to your PATH 
+    (e) Add $GPGPUSIM_ROOT/lib/ to your LD_LIBRARY_PATH and remove $CUDAHOME/lib
+        or $CUDAHOME/lib64 from LD_LIBRARY_PATH
+    (f) If using OpenCL, set NVOPENCL_LIBDIR to the installation directory of 
+        libOpenCL.so distributed with the NVIDIA OpenCL driver.
+        On SuSe 11.1 64-bit NVIDIA's libOpenCL.so is installed in /usr/lib64/.  
+
+Step 5: Type "make" in this directory. This will build the simulator with
+optimizations enabled so the simulator runs faster. If you want to run the
+simulator in gdb to debug it, then build it using "make DEBUG=1" instead.
+
+Step 6: Run a CUDA built with a recent version of CUDA (or an OpenCL
+application) and the device code should now run on the simulator instead of
+your graphics card.  To be able to run the application on your graphics card
+again, remove $GPGPUSIM_ROOT/lib from your LD_LIBRARY_PATH.  There is also a
+"static" build setup used for some of the examples in the benchmarks directory
+(more information on this is available in doc/GPGPU-Sim_Manual.html)
+
+By default, this version of GPGPU-Sim uses the ptx source embedded within the
+binary. To use the .ptx files in the current directory, type:
+
+   export PTX_SIM_USE_PTX_FILE=1
+
+Note that for OpenCL applications the NVIDIA driver is required to convert
+OpenCL ".cl" files to PTX.  The resulting PTX can be saved to disk by adding
+-save_embedded_ptx to your gpgpusim.config file (embedded PTX files with be
+saved as _0.ptx, _1.ptx, etc...).
+
+3. USING THE SIMULATOR
+
+For guidelines on using and configuring the simulator, please see
+doc/GPGPU-Sim_Manual.html

@@ -1,0 +1,62 @@
+WSM5 (WRF microphysics) test driver for host CPU and GPU, complete with test data sets.
+
+To compile:
+	Edit makefile for your system.  
+           (Variables XXX and YYY control number of threads per block. See settings
+            in makefile for settings for different GPUs)
+	make
+	(make clean also works)
+
+	Makes 2 execs: wsm5_driver_vanilla (host cpu) and wsm5_driver_chocolate (gpu)
+
+To run:
+	CD to run and type runit
+
+Contents:
+
+This directory:
+  Source & Build:
+    makefile		Builds CUDA and Original versions (also CUDA Emulated)
+    module_mp_wsm5.F	Contains standalone driver and orig WSM5 source
+    wsm5.cu		WSM5 CUDA code, Host side
+    wsm5_gpu.cu		WSM5 CUDA code, GPU side
+    libmassv.F		MASS compatibility lib
+    SAMPLE_SESSION	Commands and their output for build and run for GTX 5600 GPU 
+                        using intel compilers on qp.ncsa.uiuc.edu 
+
+  Includes:
+    wsm5_constants.h	Constants (give good output agreement Intel/Gfortran)
+    s2d.h		Copy file prec. to code prec. (might be same)
+    d2s.h		Copy from code prec. to driver prec. (ditto)
+    debug.m4		M4 macros for debug out from the GPU code if enabled
+    spt.h		Header (supports my directives)
+
+  Utilities:
+    compare_snaps.F	Comp CUDA v HOST output and gen difference plot data
+    microclock.c	Microsecond timer
+    spt.pl		Perl script
+
+Subdirectory: run
+  match.c		Compare 2 floats and report # of places of agreement.
+  runit			Script to run codes and compare 	
+  wsm5_in_001		Ten gracious sets of input and output
+  wsm5_in_002
+  wsm5_in_003
+  wsm5_in_004
+  wsm5_in_005
+  wsm5_in_006
+  wsm5_in_007
+  wsm5_in_008
+  wsm5_in_009
+  wsm5_in_010
+  wsm5_out_001
+  wsm5_out_002
+  wsm5_out_003
+  wsm5_out_004
+  wsm5_out_005
+  wsm5_out_006
+  wsm5_out_007
+  wsm5_out_008
+  wsm5_out_009
+  wsm5_out_010
+

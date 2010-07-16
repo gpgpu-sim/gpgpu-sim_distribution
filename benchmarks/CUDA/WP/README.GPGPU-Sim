@@ -1,0 +1,4 @@
+ensure GPGPUSIM_ROOT/lib is in LD_LIBRARY_PATH
+
+make
+echo "10 ./data/" | ./gpgpu_ptx_sim__wsm5_standalone

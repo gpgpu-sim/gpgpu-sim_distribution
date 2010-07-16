@@ -1,0 +1,68 @@
+The directories AES, BFS, CP, LPS, LIB, MUM, NN, NQU, RAY, STO, and WP (see the
+CUDA directory) contain benchmarks used in the ISPASS 2009 paper on GPGPU-Sim.
+Their original sources are listed below.  For details on how to build and run
+each benchmark, follow the instructions in the README.GPGPU-Sim file in each
+subdirectory. Assuming all dependencies are satisifed, you can build all the
+benchmarks by typing "make" in this directory.
+
+AES
+
+S. A. Manavski. CUDA compatible GPU as an efﬁcient hardware
+accelerator for AES cryptography. In ICSPC 2007: Proc. of IEEE Int’l
+Conf. on Signal Processing and Communication, pages 65–68, 2007.
+
+BFS:
+
+P. Harish and P. J. Narayanan. Accelerating Large Graph Algorithms
+on the GPU Using CUDA. In HiPC, pages 197–208, 2007.
+
+CP:
+
+http://www.crhc.uiuc.edu/IMPACT/parboil.php. 
+
+DG:
+T. C. Warburton. Mini Discontinuous Galerkin Solvers. 
+http://www.caam.rice.edu/˜timwar/RMMC/MIDG.html.
+
+LPS:
+
+M. Giles. Jacobi iteration for a Laplace discretisation on a 3D structured
+grid. http://people.maths.ox.ac.uk/˜gilesm/hpc/NVIDIA/laplace3d.pdf
+
+LIB:
+
+M. Giles and S. Xiaoke. Notes on using the NVIDIA 8800 GTX graphics
+card. http://people.maths.ox.ac.uk/˜gilesm/hpc/
+
+MUM:
+
+M. Schatz, C. Trapnell, A. Delcher, and A. Varshney. High-throughput
+sequence alignment using Graphics Processing Units. BMC Bioinformatics,
+ 8(1):474, 2007.
+
+NN:
+
+Billconan and Kavinguy. A Neural Network on GPU.
+http://www.codeproject.com/KB/graphics/GPUNN.aspx. 
+
+NQU:
+
+Pcchen. N-Queens Solver. 
+http://forums.nvidia.com/index.php?showtopic=76893
+
+RAY:
+
+Maxime. Ray tracing. http://www.nvidia.com/cuda.
+
+STO:
+
+S. Al-Kiswany, A. Gharaibeh, E. Santos-Neto, G. Yuan, and M. Ripeanu.
+StoreGPU: exploiting graphics processing units to accelerate distributed
+storage systems. In Proc. 17th Int’l Symp. on High Performance
+Distributed Computing, pages 165–174, 2008. 
+
+WP:
+
+J. Michalakes and M. Vachharajani. GPU acceleration of numerical 
+weather prediction. IPDPS 2008: IEEE Int’l Symp. on Parallel and
+Distributed Processing, pages 1–7, April 2008.

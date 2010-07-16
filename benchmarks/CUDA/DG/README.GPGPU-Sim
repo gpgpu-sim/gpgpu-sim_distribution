@@ -1,0 +1,14 @@
+dependencies:
+
+Open MPI
+
+To build:
+
+cd 3rdParty/ParMetis-3.1
+make
+cd -
+make
+
+To run:
+
+./gpgpu_ptx_sim__gpuDG3d ./data/cubeK268.neu

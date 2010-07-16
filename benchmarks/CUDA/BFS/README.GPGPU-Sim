@@ -1,0 +1,4 @@
+To build and run:
+
+make
+./gpgpu_ptx_sim__bfs ./data/graph65536.txt

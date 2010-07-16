@@ -1,0 +1,45 @@
+CHANGE LOG:
+
+Version 2.1.1b versus 2.1.0b:
+- Added support for OpenCL (requires OpenCL driver from NVIDIA)
+- Added performance visualizer tool
+- Added manual documenting usage of the simulator (see doc directory)
+- Added configuration file for Quadro FX5800 (see configs directory)
+- Simultaneous release of benchmarks from ISPASS 2009 paper (separate download)
+- Improved shared memory bank conflict modeling
+- Improved default mapping of local memory accesses to global address space 
+- Added interconnect concentration modeling (to approximate effect of a TPC)
+- Added support for GPU-to-GPU memory copies (same GPU), timing not modeled
+- SimpleScalar code (for command line parsing and functional simulation of 
+  memory) removed.
+- PTX support for vector operands in mov instruction
+- Bug fixes
+   - stack overwrite bug fix (with thanks to Jake Adriaens)
+   - interconnect clock domain crossing "bottleneck" bug (was not removing
+     traffic quickly enough going from memory to shader cores)
+   - immediate post dominator detection (affected eigenvalues SDK benchmark)
+   - CTA/core calculation error with PTX containing calls and returns
+   - global symbol lookup error when building with multiple .cu files
+- Other general improvements and bugfixes
+
+Version 2.1.0b versus 2.0b:
+- Added support for parsing and functionally simulating up to CUDA 2.2 
+  generated PTX
+- Added dynamic warp formation timing model (see MICRO'07, ACM TACO'09 papers)
+- Updated gpgpusim.config and mesh in benchmark subdirectories to be similar to
+  ISPASS 2009 paper baseline configurations
+- Added OpenGL interoperability support
+- Added support for parsing embedded PTX files without requiring recompilation 
+  (suggested by Gregory Diamos)
+- Improved support for texture filtering (linear mode for 2D, closer agreement
+  to hardware for 2D point sampling where sample points are close to texel
+  boundaries)
+- Benchmark examples updated to version from CUDA 2.2 SDK (NOTE: these will not 
+  compile with earlier CUDA installations. However, GPGPU-Sim should still work 
+  with applications written for older versions of CUDA.)
+- Fixed splash screen: was reporting incorrect version
+- Fixed bug comparing strings in basic block formation code
+- Fixed bug with additional basic block (which lead to incorrect postdominator 
+  analysis on some benchmarks with recent versions of CUDA)
+- Fixed "warning: "/*" within comment" when building.
+- "Other general improvements"

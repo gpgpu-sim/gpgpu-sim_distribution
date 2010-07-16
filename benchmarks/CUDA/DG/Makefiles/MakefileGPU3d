@@ -1,0 +1,54 @@
+# define variables
+VPATH   = ./
+HDRDIR  = ./include
+LIBDIR	= ./lib
+# adjust this for your system
+CUDADIR=/usr/local/cuda/
+
+# set options for this machine
+# specify which compilers to use for c, fortran and linking
+CC	= mpicc
+LD	= mpicc
+NVCC	= nvcc
+
+# compiler flags to be used (set to compile with debugging on)
+CFLAGS = -Dp_N=$(N) -DNDG3d -DCUDA -I/opt/local/include -I/usr/include/malloc -I$(HDRDIR) -O3 -I$(CUDADIR)/include
+
+# link flags to be used 
+LDFLAGS	= -I$(HDRDIR) -L. -L./$(LIBDIR) -O3 -L$(CUDADIR)/lib
+
+# libraries to be linked in
+LIBS	=  -lparmetis -lmetis  -lm -lcuda -lcudart
+
+# types of files we are going to construct rules for
+.SUFFIXES: .c .f .cu
+
+# rule for .c files
+.c.o:
+	$(CC) $(CFLAGS) -o $*.o -c $*.c
+.cu.o: 
+	$(NVCC) -o $*.o -c $*.cu --compiler-options -O3 --use_fast_math  $(CFLAGS) 
+
+# list of objects to be compiled
+OBJS    = \
+	src/Mesh3d.o\
+	src/Utils.o\
+	src/LoadBalance3d.o\
+	src/FacePair3d.o\
+	src/ParallelPairs.o\
+	src/BuildMaps3d.o\
+	src/StartUp3d.o\
+	src/MaxwellsRun3d.o\
+	src/MaxwellsMPI3d.o\
+	src/MaxwellsKernel3d.o\
+	src/MaxwellsDriver3d.o
+
+MaxwellsGPU3d:$(OBJS) 
+	$(LD)  $(LDFLAGS)  -o MaxwellsGPU3d $(OBJS) $(LIBS)
+	rm -r $(OBJS)
+
+# what to do if user types "make clean"
+clean :
+	rm -r $(OBJS)
+
+

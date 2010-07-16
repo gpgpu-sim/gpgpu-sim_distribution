@@ -1,0 +1,687 @@
+\documentclass[11pt]{article}
+\usepackage{fancyhdr}
+\usepackage[dvips]{graphicx} 
+\usepackage{amsmath,amssymb} 
+\usepackage{epsfig}
+\usepackage{calc}
+
+\newcommand{\simname}{BookSim~}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Setup the margin sizes.
+
+\evensidemargin = 0in
+\oddsidemargin = 0in
+\textwidth = 6.5in
+
+\topmargin = -0.5in
+\textheight = 9in
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\author{Brian Towles and William J. Dally}
+\title{\simname 1.0 User's Guide}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\pagestyle{fancy}
+%\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection\ #1}}
+\fancyhf{} % delete current setting for header and footer
+\fancyhead[LE,RO]{\bfseries\thepage}
+\fancyhead[LO]{\bfseries\rightmark}
+\fancyhead[RE]{\bfseries\leftmark}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0.5pt}
+\addtolength{\headheight}{0.5pt} % make space for the rule
+\cfoot{\small\today}
+\fancypagestyle{plain}{%
+    \fancyhf{} % get rid of headers on plain pages
+    \renewcommand{\headrulewidth}{0pt} % and the line
+    \renewcommand{\footrulewidth}{0pt} % and the line
+} 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newenvironment{opt_list}[1]{\begin{list}{}{\renewcommand{\makelabel}[1]%
+{\texttt{##1}\hfil}\settowidth{\labelwidth}{\texttt{#1}}\setlength{\leftmargin}%
+{\labelwidth+\labelsep}}}{\end{list}}
+
+\section{Introduction}
+
+This document describes the use of the \simname interconnection
+network simulator.  The simulator is designed as a companion to the
+textbook ``Principles and Practices of Interconnection Networks''
+(PPIN) published by Morgan Kaufmann (ISBN: 0122007514) and it is
+assumed that is reader is familiar with the material covered in that
+text.
+
+This user guide is fairly brief as, with most simulators, the best way
+to learn and {\it understand} the simulator is to study the code.
+Most of the simulator's components are designed to be modular so tasks
+such as adding a new routing algorithm, topology, or router
+microarchitecture should not require a complete redesign of the code.
+Once you have downloaded the code, compiled it, and run a simple
+example (Section~\ref{sec:get_started}), the more detailed examples of
+Section~\ref{sec:examples} give a good overview of the capabilities of
+the simulator.  A list of configuration options is provided in
+Section~\ref{sec:config_params} for reference.
+
+\section{Getting started}
+\label{sec:get_started}
+
+\subsection{Downloading and building the simulator}
+\label{sec:download}
+
+The latest version of the simulator is available from
+\texttt{http://cva.stanford.edu} as a compressed tar archive.  UNIX/Linux
+users can extract this archive using the tar utility
+\begin{verbatim}
+  tar xvfz booksim-1.0.tar.gz  
+\end{verbatim}
+Windows users can use a compression program such as WinZip to extract
+the archive.
+
+The simulator itself is written in C++ and has been specifically
+tested with GNU's G++ compiler (version $\ge3$).  In addition, both a
+LEX and YACC tool (also known as FLEX and BISON) are needed to create
+the configuration parser.  These are standard tools in any UNIX/Linux
+development environment.  It is suggested that Windows users download
+the CYGWIN versions (\texttt{http://www.cygwin.com}) of these UNIX
+development tools to simplify their compilation process.  The
+\texttt{Makefile} should be edited so that the first lines give the
+paths to the tools.  At Stanford, for example, the compiler, YACC, and
+LEX are stored in the \texttt{/usr/pubsw/bin} directory.  The
+\texttt{Makefile} reflects this:
+\begin{verbatim}
+CPP    = /usr/pubsw/bin/g++
+YACC   = /usr/pubsw/bin/byacc -d
+LEX    = /usr/pubsw/bin/flex
+\end{verbatim}
+Then, the simulator can be compiled by running \texttt{make} in the
+directory that contains the \texttt{Makefile}.
+
+\subsection{Running a simulation}
+\label{sec:run_example}
+
+The syntax of the simulator is simply
+\begin{verbatim}
+  booksim [configfile]
+\end{verbatim}
+The optional parameter \texttt{configfile} is a file that contains
+configuration information for the simulator.  So, for example, to
+simulate the performance of a simple $8 \times 8$ torus (8-ary 2-cube)
+network on uniform traffic, a configuration such as the one shown in
+Figure~\ref{fig:config_example} could be used.  This particular
+configuration is stored in \texttt{examples/torus88}.
+
+\begin{figure}
+\begin{verbatim}
+  // Topology
+  topology = torus;
+  k        = 8;
+  n        = 2;
+
+  // Routing
+  routing_function = dim_order;
+
+  // Flow control
+  num_vcs = 2;
+
+  // Traffic
+  traffic        = uniform;
+  injection_rate = 0.15;
+\end{verbatim}
+\caption{Example configuration file for simulating a 8-ary 2-cube
+network.}
+\label{fig:config_example}
+\end{figure}
+
+In addition to specifying the topology, the configuration file also
+contains basic information about the routing algorithm, flow control,
+and traffic.  This simple example uses dimension-order routing and, to
+ensure deadlock-freedom of this routing function in the torus, two
+virtual channels are required.  The \texttt{injection\_rate} parameter
+is added to tell the simulator to inject 0.15 flits per simulation
+cycle per node.  Because the simulator operates at the flit level,
+most parameters are specified in units of flits as is the case with
+the \texttt{injection\_rate}.  Also, any line of the configuration
+that begins with \texttt{//} is treated as a comment and ignored by
+the simulator.  A detailed list of configuration parameters is given in
+Section~\ref{sec:config_params}.
+
+\subsection{Simulation output}
+
+Continuing our example, running the torus simulation produces the
+output shown in Figure~\ref{fig:sim_output}.  Each simulation has
+three basic phases: warm up, measurement, and drain.  The length of
+the warm up and measurement phases is a multiple of a basic sample
+period (defined by \texttt{sample\_period} in the configuration).  As
+shown in the figure, the current latency and throughput (rate of
+accepted packets) for the simulation is printed after each sample
+period.  The overall throughput is determined by the lowest throughput
+of all the destination in the network, but the average throughput is
+also displayed.
+
+\begin{figure}
+\begin{verbatim}
+%=================================
+% Average latency = 6.02008
+% Accepted packets = 0.11 at node 52 (avg = 0.147094)
+% latency change    = 1
+% throughput change = 1
+
+...
+
+% Warmed up ...
+%=================================
+% Average latency = 6.0796
+% Accepted packets = 0.119 at node 5 (avg = 0.148266)
+% latency change    = 0.00562457
+% throughput change = 0.00379387
+
+...
+
+% Draining all recorded packets ...
+% Draining remaining packets ...
+====== Traffic class 0 ======
+Overall average latency = 6.09083 (1 samples)
+Overall average accepted rate = 0.149475 (1 samples)
+Overall min accepted rate = 0.138551 (1 samples)
+\end{verbatim}
+\caption{Simulator output from running the \texttt{examples/torus88}
+configuration file.}
+\label{fig:sim_output}
+\end{figure}
+
+After the warm up periods have passed, the simulator prints the
+``\texttt{Warmed up}'' message and resets all the simulation statistics.
+Then, the measurement phase begins and statistics continue to be
+reported after each sample period.  Once the measurement periods have
+passed, all the measurement packets are drained from the network
+before final latency and throughput numbers are reported.  Details of
+the configuration parameters used to control the length of the
+simulation phases are covered in Section~\ref{sec:sim_params}.
+
+\section{Examples}
+\label{sec:examples}
+
+One of the most basic performance measures of any interconnection
+network is its latency versus offered load.
+Figure~\ref{fig:lat_vs_load} shows a simple configuration file for
+making this measurement in a 8-ary 2-mesh network under the transpose
+traffic pattern.  This configuration was used to generate Figure 25.2
+in PPIN.  The particular configuration accounts for some small delays
+and pipelining of the input-queued router and also introduces a small
+input speedup to account for any inefficiencies in allocation.  By
+running simulations for many increments of \texttt{injection\_rate},
+the average latency curve can be found.  Then, to compare the
+performance of dimension-order routing against several other routing
+algorithms, for example, the \texttt{routing\_function} option can be
+changed.
+
+\begin{figure}
+\begin{verbatim}
+// Topology
+
+topology = mesh;
+k = 8;
+n = 2;
+
+// Routing
+
+routing_function = dim_order;
+
+// Flow control
+
+num_vcs     = 8;
+vc_buf_size = 8;
+
+wait_for_tail_credit = 1;
+
+// Router architecture
+
+vc_allocator = islip;
+sw_allocator = islip;
+alloc_iters  = 1;
+
+credit_delay   = 2;
+routing_delay  = 1;
+vc_alloc_delay = 1;
+
+input_speedup     = 2;
+output_speedup    = 1;
+internal_speedup  = 1.0;
+
+// Traffic
+
+traffic                = transpose;
+const_flits_per_packet = 20;
+
+// Simulation
+
+sim_type       = latency;
+injection_rate = 0.1;
+\end{verbatim}
+\caption{A typical configuration file (\texttt{examples/mesh88\_lat})
+for creating a latency versus offered load curve for a 8-ary 2-mesh
+network.}
+\label{fig:lat_vs_load}
+\end{figure}
+
+Figure~\ref{fig:fly_dist} shows a configuration file that can be used
+to determine the distribution of packet latencies in a 2-ary 6-fly
+network that uses age-based arbitration.  Note the use of the
+\texttt{priority} configuration parameter along with the
+\texttt{select} allocators that account for packet priorities.  The
+simulator does not output latency distributions by default, but by
+editing \texttt{trafficmanager.cpp}, setting the configuration
+variable \texttt{DISPLAY\_LAT\_DIST} to true, and recompiling, the
+distribution will be displayed at the end of the simulation.  This
+technique was used to produced the distribution shown in Figure 25.12
+of PPIN.
+
+\begin{figure}
+\begin{verbatim}
+// Topology
+
+topology = fly;
+k = 2;
+n = 6;
+
+// Routing
+
+routing_function = dest_tag;
+
+// Flow control
+
+num_vcs     = 8;
+vc_buf_size = 8;
+
+wait_for_tail_credit = 1;
+
+// Router architecture
+
+vc_allocator = select;
+sw_allocator = select;
+alloc_iters  = 1;
+
+credit_delay   = 2;
+routing_delay  = 1;
+vc_alloc_delay = 1;
+
+input_speedup     = 2;
+output_speedup    = 1;
+internal_speedup  = 1.0;
+
+// Traffic
+
+traffic                = uniform;
+const_flits_per_packet = 20;
+priority               = age;
+
+// Simulation
+
+sim_type       = latency;
+injection_rate = 0.1;
+\end{verbatim}
+\caption{A configuration file (\texttt{examples/fly26\_age}) for
+finding the distribution of packet latencies using age-based
+arbitration.}
+\label{fig:fly_dist}
+\end{figure}
+
+As a final example, Figure~\ref{fig:single} shows the use of the
+special single-node topology to test the performance of a switch
+allocator --- in this case, the iSLIP allocator.  The
+\texttt{in\_ports} and \texttt{out\_ports} options set up a simulation
+of an $8\times 8$ crossbar.
+
+\begin{figure}
+\begin{verbatim}
+// Topology
+
+topology  = single;
+in_ports  = 8;
+out_ports = 8;
+
+// Routing
+
+routing_function = single;
+
+// Flow control
+
+vc_allocator = islip;
+sw_allocator = islip;
+alloc_iters  = 2;
+
+num_vcs     = 8;
+vc_buf_size = 1000;
+
+wait_for_tail_credit = 0;
+
+// Simulation
+
+sim_type       = latency;
+injection_rate = 0.1;
+\end{verbatim}
+\caption{A single-node configuration file (\texttt{examples/single})
+for testing the performance of a switch allocator.}
+\label{fig:single}
+\end{figure}
+
+\section{Configuration parameters}
+\label{sec:config_params}
+
+All information used to configure a simulation is passed through a
+configuration file as illustrated by the example in
+Section~\ref{sec:run_example}.  This section lists the existing
+configuration parameters --- a user can incorporate additional options
+by changing the \texttt{booksim\_config.cpp} file.
+
+\subsection{Topologies}
+\label{sec:topos}
+
+The \texttt{topology} parameter determines the underlying topology of the
+network and the simulator supports four basic topologies:
+\begin{opt_list}{single}
+\item[fly] A $k$-ary $n$-fly (butterfly) topology. The \texttt{k}
+parameter determines the network's radix and the \texttt{n} parameter
+determines the network's dimension.
+
+\item[mesh] A $k$-ary $n$-mesh (mesh) topology. The \texttt{k}
+parameter determines the network's radix and the \texttt{n} parameter determines
+the network's dimension.
+
+\item[single] A network with a single node, used for testing single
+router performance.  The number of input and output ports for the node
+is determined by the \texttt{in\_ports} and \texttt{out\_ports} parameters,
+respectively.
+
+\item[torus] A $k$-ary $n$-cube (torus) topology.  The \texttt{k}
+parameter determines the network's radix and the \texttt{n} parameter determines
+the network's dimension.
+\end{opt_list}
+
+Both the \texttt{mesh} and \texttt{torus} topologies support the
+addition of random link failures with the \texttt{link\_failures}
+parameter.  The value of \texttt{link\_failures} determines the number
+of channels that are randomly removed from the topology and are thus
+no longer available for forwarding packets.  Moreover, the
+randomization for failed channels is controlled by selecting an
+integer value for the \texttt{fail\_seed} parameter --- a fixed seed
+gives a fixed set of failed channels, independent of other
+randomization in the simulation.  Also, note that only certain routing
+functions support this feature (see Section~\ref{sec:routing_algs}).
+
+\subsection{Routing algorithms}
+\label{sec:routing_algs}
+
+The \texttt{routing\_function} parameter selects a routing algorithm
+for the topology.  Many routing algorithms need multiple virtual
+channels for deadlock freedom (VCDF).
+
+\begin{opt_list}{dim\_order\_bal}
+
+\item[dim\_order] Dimension-order routing.  Works for the
+\texttt{mesh} topology (1 VCDF) and for the \texttt{torus} topology (2
+VCDF).
+
+\item[dim\_order\_bal] Dimension-order routing for the
+\texttt{torus} topology with a more balanced use of VCs to
+avoid deadlock (2 VCDF).
+
+\item[dim\_order\_ni] A non-interfering version of
+dimension-order routing.  Works on the \texttt{torus} or \texttt{mesh}
+topology and requires one VC per network terminal.
+
+\item[min\_adapt] A minimal adaptive routing algorithm for
+the \texttt{mesh} topology (2 VCDF) and for the \texttt{torus}
+topology (3 VCDF).
+
+\item[planar\_adapt] Planar-adaptive routing for the
+\texttt{mesh} topology (2 VCDF).  Supports routing around failed channels.
+
+\item[romm] ROMM routing for the \texttt{mesh} (2 VCDF).
+Load is balanced by routing in two phases: one from the source to a
+random intermediate node in the minimal quadrant and a second from the
+intermediate to the destination.
+
+\item[romm\_ni] A non-interfering version of ROMM routing for
+the \texttt{mesh} that requires one VC per network terminal.
+
+\item[single] A dummy routing function used for the
+\texttt{single} topology.
+
+\item[valiant] Valiant's randomized routing algorithm for the
+\texttt{mesh} (2 VCDF) and \texttt{torus} (4 VCDF) topology.
+
+\item[valiant\_ni] A non-interfering version of Valiant's algorithm
+for the \texttt{torus} that requires 4 VCs per network terminal.
+
+\end{opt_list}
+
+Also, the simulator code is structured so that additional routing
+algorithms can be added with minimal changes to the overall simulator
+(see the \texttt{routefunc.cpp} file in the simulator's source code).
+
+\subsection{Flow control}
+
+The simulator supports basic virtual-channel flow control with
+credit-based backpressure.  
+
+\begin{opt_list}{wait\_for\_tail\_credit}
+
+\item[num\_vcs] The number of virtual channels per physical channel.
+
+\item[vc\_buf\_size] The depth of each virtual in flits.
+
+\item[voq] If non-zero, use virtual-output queuing.  With virtual
+output queuing, a separate virtual channel is assigned to each
+destination in the network.  This option is most useful when used with
+a non-interfering routing algorithm (Section~\ref{sec:routing_algs}).
+  
+\item[wait\_for\_tail\_credit] If non-zero, do not reallocate a virtual
+channel until the tail flit has left that virtual channel.  This
+conservative approach prevents a dependency from being formed between
+two packets sharing the same virtual channel in succession.
+\end{opt_list}
+
+\subsection{Router organizations}
+
+The simulator also supports two different router microarchitectures.
+The input-queued router follows the general organization described in
+PPIN while the event-driven router is modeled after the router used in
+the Avici TSR and described in U.S. Patent 6,370,145.  The
+microarchitecture is selected using the \texttt{router} option.  Also,
+both routers share a small set of options.
+
+\begin{opt_list}{internal\_speedup}
+\item[credit\_delay] The processing delay (in cycles) for a credit.
+Does not include the wire delay for transmitting the credit.
+
+\item[internal\_speedup] An arbitrary speedup of the internals of the
+routers over the channel transmission rate.  For example, a speedup
+1.5 means that, on average, 1.5 flits can be forwarded by the router
+in the time required for a single flit to be transmitted across a
+channel.  Also, the configuration parser expects a floating point
+number for this field, so integer speedups should also include a
+decimal point (e.g. ``2.0'').
+
+\item[output\_delay] The processing delay incurred in the output queue
+of a router.
+\end{opt_list}
+
+\subsubsection{The input-queued router}
+\label{sec:iq_router}
+
+The input-queued router (\texttt{router = iq}) follows the pipeline
+described in PPIN of route computation, virtual-channel allocation,
+switch allocation, and switch traversal.  There are several options
+specific to the input-queued router.
+
+\begin{opt_list}{st\_prepare\_delay}
+
+\item[input\_speedup] An integer speedup of the input ports in space.
+A speedup of 2, for example, gives each input two input ports into the
+crossbar.  Access to these ports is statically allocated based on the
+virtual channel number: virtual channel $v$ at input $i$ is connected
+to port $i \cdot s + (v \mod s)$ for an input speedup of $s$.
+
+\item[output\_speedup] An integer speedup of the output ports in
+space.  Similar to \texttt{input\_speedup}
+
+\item[routing\_delay] The delay (in cycles) of route computation.
+
+\item[sw\_allocator] The type of allocator used for switch allocation.
+See Section~\ref{sec:alloc} for a list of the possible allocators.
+
+\item[sw\_alloc\_delay] The delay (in cycles) of switch allocation.
+
+\item[vc\_allocator] The type of allocator used for virtual-channel
+allocation.  See Section~\ref{sec:alloc} for a list of the possible
+allocators.
+
+\item[vc\_alloc\_delay] The delay (in cycles) of virtual-channel
+allocation.
+
+\end{opt_list}
+
+\subsubsection{The event-driven router}
+\label{sec:event_router}
+
+The event-driven router (\texttt{router = event}) is a
+microarchitecture designed specifically to support a large number of
+virtual channels (VCs) efficiently.  Instead of continuously polling
+the state of the virtual channels, as in the input-queued router, only
+changes in VC state are tracked.  The efficiency then comes from the
+fact that the number of state changes per cycle is constant and
+independent of the number of VCs.
+
+\subsection{Allocators}
+\label{sec:alloc}
+
+Many of the allocators used in the simulator are configurable (see
+the input-queued router in Section~\ref{sec:iq_router}) and several
+allocation algorithms are available.
+\begin{opt_list}{wavefront}
+
+\item[max\_size] Maximum-size matching. 
+\item[islip] iSLIP separable allocator.
+\item[pim] Parallel iterative matching separable allocator.
+\item[loa] Lonely output allocator.
+\item[wavefront] Wavefront matching.
+\item[select] Priority-based allocator.  Allocation is performed as in
+iSLIP, but with preference towards higher priority packets (see
+\texttt{priority} option in Section~\ref{sec:traffic}).
+
+\end{opt_list}
+
+Allocation can also be improved by performing multiple iterations of
+the algorithm and the number of iterations is controlled by the
+\texttt{alloc\_iters} parameter.
+
+\subsection{Traffic}
+\label{sec:traffic}
+
+The rate at which flits are injected into the simulator is set using
+the \texttt{injection\_rate} option.  The simulator's cycle time is a
+flit cycle, the time it takes a single flit to be injected at a
+source, and the injection rate is specified in flits per flit cycle.
+For example, setting \texttt{injection\_rate = 0.25} means that each
+source injects a new flit one of every four simulator cycles.  The
+injection process can also be specified as either Bernoulli
+(\texttt{injection\_process = bernoulli}) or an on-off process
+(\texttt{injection\_process = on\_off}).  The burstiness of the latter
+injection process is controlled via the \texttt{burst\_alpha} and
+\texttt{burst\_beta} parameter.  See PPIN Section 24.2.2 for a
+description of the on-off process and its parameters.
+
+The unit of injection is packets, which may be comprised of many
+flits.  The number of flits per packet is set using the
+\texttt{const\_flits\_per\_packet} option.  Each packet may also have an
+associated priority, either age-based (\texttt{age}) or none
+(\texttt{none}), as specified by the \texttt{priority} option.
+
+The simulator also supports several different traffic patterns that
+are specified using the \texttt{traffic} option.  To describe these
+patterns, we use the same notation of PPIN Section 3.2: $s_i$ ($d_i$)
+denotes the $i^\textrm{th}$ bit of the source (destination) address
+whereas $s_x$ ($d_x$) denotes the $x^\textrm{th}$ radix-$k$ digit of
+the source (destination) address.  The bit length of an address is $b
+= \log_2 N$, where $N$ is the number of nodes in the network.
+
+\begin{opt_list}{transpose}
+\item[uniform] Each source sends an equal amount of traffic to each
+destination (\texttt{traffic = uniform}).
+\item[bitcomp] Bit complement. $d_i = \neg s_i$.
+\item[bitrev] Bit reverse. $d_i = s_{b-i-1}$.
+\item[shuffle] $d_i = s_{i-1 \mod b}$.
+\item[transpose] $d_i = s_{i+b/2 \mod b}$.
+\item[tornado] $d_x = s_x + \lceil k/2 \rceil - 1 \mod k$.
+\item[neighbor] $d_x = s_x + 1 \mod k$.
+\item[randperm] Random permutation.  A fixed permutation traffic
+pattern is chosen uniformly at random from the set of all
+permutations.  The seed used to generate this permutation is set by
+the \texttt{perm\_seed} option.  So, randomly selecting values for
+\texttt{perm\_seed} gives a random sampling of permutation while a
+fixed value of \texttt{perm\_seed} allows the same permutation to be
+used for several experiments.
+\end{opt_list}
+
+\subsection{Simulation parameters}
+\label{sec:sim_params}
+
+The duration and other aspects of a simulation are controlled using
+the set of simulation parameters.
+
+\begin{opt_list}{warmup\_periods}
+
+\item[sim\_type] A simulation can either focus on
+\texttt{throughput} or \texttt{latency}.  The key difference between
+these two types is that a \texttt{latency} simulation will wait for
+all measurement packets to drain before ending the simulation to
+ensure an accurate latency measurement.  In \texttt{throughput}
+simulations, this final drain step is eliminated to allow simulation
+of networks operating beyond their saturation point.
+
+\item[sample\_period] The sample period is expressed in simulator
+cycles and is used as a multiplier when specifying the warm-up length
+of a simulation and the maximum number of samples.  Also, intermediate
+statistics are displayed once every \texttt{sample\_period} cycles.
+
+\item[warmup\_periods] The length of the simulator warm up expressed
+as a multiple of the \texttt{sample\_period}.  After warming up, all
+statistics counters are reset.
+
+\item[max\_samples] The total length of simulation expressed as a
+multiple of the \texttt{sample\_period}.
+
+\item[latency\_thres] If the sampled latency of the current simulation
+exceeds \texttt{latency\_thres}, the simulation is immediately ended.
+
+\item[sim\_count] The number of back-to-back simulations to run for the
+given configuration.  Useful for creating ensemble averages of
+particular statistics.
+
+\item[seed] A random seed for the simulation.
+
+\item[reorder] A non-zero value indicates that packet order should be
+maintained and reordering time is accounted for in the overall latency.
+
+\end{opt_list}
+
+\appendix
+
+\section{Random number generation}
+
+The simulator uses Knuth's integer and floating point pseudorandom
+number generators.  These algorithms and their explanations appear in
+``The Art of Computer Programming: Seminumerical Algorithms''.
+
+\end{document}

@@ -1,0 +1,24 @@
+vanilla: Call to WSM5 on host for step           10  is      1266066 microseconds
+chocolate:Call to wsm5_gpu (not including data xfer): 117187 microseconds
+chocolate:Call to wsm5_gpu (including data xfer): 128778 microseconds
+vanilla: Call to WSM5 on host for step           10  is      1265687 microseconds
+chocolate:Call to wsm5_gpu (not including data xfer): 117192 microseconds
+chocolate:Call to wsm5_gpu (including data xfer): 128576 microseconds
+chocolate: Call to WSM5 on host for step           10  is       146600 microseconds
+vanilla: Call to WSM5 on host for step           10  is      1265479 microseconds
+chocolate:Call to wsm5_gpu (not including data xfer): 117198 microseconds
+chocolate:Call to wsm5_gpu (including data xfer): 128639 microseconds
+chocolate: Call to WSM5 on host for step           10  is       146507 microseconds
+vanilla: Call to WSM5 on host for step           10  is      1261755 microseconds
+chocolate:Call to wsm5_gpu (not including data xfer): 117124 microseconds
+chocolate:Call to wsm5_gpu (including data xfer): 128550 microseconds
+chocolate: Call to WSM5 on host for step           10  is       146404 microseconds
+vanilla: Call to WSM5 on host for step           10  is      1266827 microseconds
+chocolate:Call to wsm5_gpu (not including data xfer): 117189 microseconds
+chocolate:Call to wsm5_gpu (including data xfer): 128725 microseconds
+chocolate: Call to WSM5 on host for step           10  is       146660 microseconds
+vanilla: Call to WSM5 on host for step           10  is      1260294 microseconds
+chocolate:Call to wsm5_gpu (not including data xfer): 124672 microseconds
+chocolate:Call to wsm5_gpu (including data xfer): 146497 microseconds
+chocolate: Call to WSM5 on host for step           10  is       164375 microseconds
+

@@ -1,0 +1,1350 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<meta name="keywords" content="GPGPU-Sim Manual" />
+<link rel="shortcut icon" href="/favicon.ico" />
+<link rel="search" type="application/opensearchdescription+xml" href="/wiki/opensearch_desc.php" title="UBC Computer Architecture Group Wiki (English)" />
+		<title>GPGPU-Sim Manual, Version 1.0</title>
+		<style type="text/css" media="screen,projection">/*<![CDATA[*/ @import "/wiki/skins/monobook/main.css?42b"; /*]]>*/</style>
+		<link rel="stylesheet" type="text/css"  href="/wiki/skins/common/commonPrint.css?42b" />
+		<link rel="stylesheet" type="text/css" media="handheld" href="/wiki/skins/monobook/handheld.css?42b" />
+		<!--[if lt IE 5.5000]><style type="text/css">@import "/wiki/skins/monobook/IE50Fixes.css?42b";</style><![endif]-->
+		<!--[if IE 5.5000]><style type="text/css">@import "/wiki/skins/monobook/IE55Fixes.css?42b";</style><![endif]-->
+		<!--[if IE 6]><style type="text/css">@import "/wiki/skins/monobook/IE60Fixes.css?42b";</style><![endif]-->
+		<!--[if IE 7]><style type="text/css">@import "/wiki/skins/monobook/IE70Fixes.css?42b";</style><![endif]-->
+		<!--[if lt IE 7]><script type="text/javascript" src="/wiki/skins/common/IEFixes.js?42b"></script>
+		<meta http-equiv="imagetoolbar" content="no" /><![endif]-->
+		
+		<script type= "text/javascript">/*<![CDATA[*/
+var skin = "monobook";
+var stylepath = "/wiki/skins";
+var wgArticlePath = "/wiki/index.php/$1";
+var wgScriptPath = "/wiki";
+var wgServer = "http://aamodt-pc3.ece.ubc.ca";
+var wgCanonicalNamespace = "";
+var wgCanonicalSpecialPageName = false;
+var wgNamespaceNumber = 0;
+var wgPageName = "GPGPU-Sim_Manual";
+var wgTitle = "GPGPU-Sim Manual";
+var wgArticleId = "74";
+var wgIsArticle = true;
+var wgUserName = "Aamodt";
+var wgUserLanguage = "en";
+var wgContentLanguage = "en";
+var wgBreakFrames = false;
+var wgCurRevisionId = "1426";
+/*]]>*/</script>
+                
+		<script type="text/javascript" src="/wiki/skins/common/wikibits.js?42b"><!-- wikibits js --></script>
+		<script type="text/javascript" src="/wiki/index.php?title=-&amp;action=raw&amp;smaxage=0&amp;gen=js"><!-- site js --></script>
+		<style type="text/css">/*<![CDATA[*/
+@import "/wiki/index.php?title=MediaWiki:Common.css&usemsgcache=yes&action=raw&ctype=text/css&smaxage=18000";
+@import "/wiki/index.php?title=MediaWiki:Monobook.css&usemsgcache=yes&action=raw&ctype=text/css&smaxage=18000";
+@import "/wiki/index.php?title=-&action=raw&gen=css&maxage=18000&smaxage=0";
+/*]]>*/</style>
+		<!-- Head Scripts -->
+		<script type="text/javascript" src="/wiki/skins/common/ajax.js?42b"></script>
+	</head>
+<body  class="mediawiki ns-0 ltr page-GPGPU-Sim_Manual">
+	<div id="globalWrapper">
+		<div id="column-content">
+	<div id="content">
+		<a name="top" id="top"></a>
+				<h1 class="firstHeading">GPGPU-Sim Manual, Version 1.0</h1>
+		<div id="bodyContent">
+			<div id="contentSub"></div>
+			<table id="toc" class="toc" summary="Contents"><tr><td><div id="toctitle"><h2>Contents</h2></div>
+<ul>
+<li class="toclevel-1"><a href="#Authors_and_Version"><span class="tocnumber">1</span> <span class="toctext">Authors and Version</span></a></li>
+<li class="toclevel-1"><a href="#Introduction"><span class="tocnumber">2</span> <span class="toctext">Introduction</span></a>
+<ul>
+<li class="toclevel-2"><a href="#Copyright_and_Citations"><span class="tocnumber">2.1</span> <span class="toctext">Copyright and Citations</span></a></li>
+<li class="toclevel-2"><a href="#Contributions_and_History"><span class="tocnumber">2.2</span> <span class="toctext">Contributions and History</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#System_Requirement"><span class="tocnumber">3</span> <span class="toctext">System Requirement</span></a></li>
+<li class="toclevel-1"><a href="#Features_and_CUDA_Version_Support"><span class="tocnumber">4</span> <span class="toctext">Features and CUDA Version Support</span></a>
+<ul>
+<li class="toclevel-2"><a href="#AerialVision_Performance_Visualizer"><span class="tocnumber">4.1</span> <span class="toctext">AerialVision Performance Visualizer</span></a></li>
+<li class="toclevel-2"><a href="#Memory_Copy"><span class="tocnumber">4.2</span> <span class="toctext">Memory Copy</span></a></li>
+<li class="toclevel-2"><a href="#Multi-GPU_Simulation"><span class="tocnumber">4.3</span> <span class="toctext">Multi-GPU Simulation</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#Building_GPGPU-Sim"><span class="tocnumber">5</span> <span class="toctext">Building GPGPU-Sim</span></a>
+<ul>
+<li class="toclevel-2"><a href="#Software_Dependencies"><span class="tocnumber">5.1</span> <span class="toctext">Software Dependencies</span></a></li>
+<li class="toclevel-2"><a href="#Supported_OS"><span class="tocnumber">5.2</span> <span class="toctext">Supported OS</span></a></li>
+<li class="toclevel-2"><a href="#Compiling_GPGPU-Sim"><span class="tocnumber">5.3</span> <span class="toctext">Compiling GPGPU-Sim</span></a></li>
+<li class="toclevel-2"><a href="#Porting_a_CUDA.2FOpenCL_application_to_run_on_GPGPU-Sim"><span class="tocnumber">5.4</span> <span class="toctext">Porting a CUDA/OpenCL application to run on GPGPU-Sim</span></a>
+<ul>
+<li class="toclevel-3"><a href="#Dynamically_Linking_with_GPGPU-Sim"><span class="tocnumber">5.4.1</span> <span class="toctext">Dynamically Linking with GPGPU-Sim</span></a></li>
+<li class="toclevel-3"><a href="#Statically_.28Compile_Time.29_Linking_GPGPU-Sim"><span class="tocnumber">5.4.2</span> <span class="toctext">Statically (Compile Time) Linking GPGPU-Sim</span></a>
+<ul>
+<li class="toclevel-4"><a href="#Using_commom.2Fcommon.mk_provided_by_GPGPU-Sim"><span class="tocnumber">5.4.2.1</span> <span class="toctext">Using commom/common.mk provided by GPGPU-Sim</span></a></li>
+<li class="toclevel-4"><a href="#Modify_your_existing_compilation_flow"><span class="tocnumber">5.4.2.2</span> <span class="toctext">Modify your existing compilation flow</span></a></li>
+</ul>
+</li>
+<li class="toclevel-3"><a href="#Porting_OpenCL_applications"><span class="tocnumber">5.4.3</span> <span class="toctext">Porting OpenCL applications</span></a></li>
+</ul>
+</li>
+<li class="toclevel-2"><a href="#Common_causes_of_compilation_error"><span class="tocnumber">5.5</span> <span class="toctext">Common causes of compilation error</span></a>
+<ul>
+<li class="toclevel-3"><a href="#Missing_.27cuda.27_at_the_end_of_CUDAHOME"><span class="tocnumber">5.5.1</span> <span class="toctext">Missing 'cuda' at the end of CUDAHOME</span></a></li>
+<li class="toclevel-3"><a href="#Forgot_to_compile_CUTIL_.28CUDA_Utility_Library.29"><span class="tocnumber">5.5.2</span> <span class="toctext">Forgot to compile CUTIL (CUDA Utility Library)</span></a></li>
+<li class="toclevel-3"><a href="#Error_with_OpenCL_application"><span class="tocnumber">5.5.3</span> <span class="toctext">Error with OpenCL application</span></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#Running_GPGPU-Sim"><span class="tocnumber">6</span> <span class="toctext">Running GPGPU-Sim</span></a></li>
+<li class="toclevel-1"><a href="#Microarchitecture_Model"><span class="tocnumber">7</span> <span class="toctext">Microarchitecture Model</span></a></li>
+<li class="toclevel-1"><a href="#Configuration_Options"><span class="tocnumber">8</span> <span class="toctext">Configuration Options</span></a>
+<ul>
+<li class="toclevel-2"><a href="#List_of_Options"><span class="tocnumber">8.1</span> <span class="toctext">List of Options</span></a></li>
+<li class="toclevel-2"><a href="#Topology_Configuration"><span class="tocnumber">8.2</span> <span class="toctext">Topology Configuration</span></a></li>
+<li class="toclevel-2"><a href="#Clock_Domain_Configuration"><span class="tocnumber">8.3</span> <span class="toctext">Clock Domain Configuration</span></a></li>
+<li class="toclevel-2"><a href="#Shared_Memory_Bank_Conflict"><span class="tocnumber">8.4</span> <span class="toctext">Shared Memory Bank Conflict</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#Understanding_Simulation_Output"><span class="tocnumber">9</span> <span class="toctext">Understanding Simulation Output</span></a>
+<ul>
+<li class="toclevel-2"><a href="#General_Simulation_Statistics"><span class="tocnumber">9.1</span> <span class="toctext">General Simulation Statistics</span></a></li>
+<li class="toclevel-2"><a href="#Simple_Bottleneck_Analysis"><span class="tocnumber">9.2</span> <span class="toctext">Simple Bottleneck Analysis</span></a></li>
+<li class="toclevel-2"><a href="#Memory_Access_Statistics"><span class="tocnumber">9.3</span> <span class="toctext">Memory Access Statistics</span></a></li>
+<li class="toclevel-2"><a href="#Memory_Sub-System_Statistics"><span class="tocnumber">9.4</span> <span class="toctext">Memory Sub-System Statistics</span></a></li>
+<li class="toclevel-2"><a href="#Control-Flow_Statistics"><span class="tocnumber">9.5</span> <span class="toctext">Control-Flow Statistics</span></a></li>
+<li class="toclevel-2"><a href="#DRAM_Statistics"><span class="tocnumber">9.6</span> <span class="toctext">DRAM Statistics</span></a></li>
+<li class="toclevel-2"><a href="#Cache_Statistics"><span class="tocnumber">9.7</span> <span class="toctext">Cache Statistics</span></a></li>
+<li class="toclevel-2"><a href="#Interconnect_Statistics"><span class="tocnumber">9.8</span> <span class="toctext">Interconnect Statistics</span></a></li>
+<li class="toclevel-2"><a href="#Frequently_Asked_Questions"><span class="tocnumber">9.9</span> <span class="toctext">Frequently Asked Questions</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#Extension.2FHacking_Guideline"><span class="tocnumber">10</span> <span class="toctext">Extension/Hacking Guideline</span></a>
+<ul>
+<li class="toclevel-2"><a href="#Modules_Overview"><span class="tocnumber">10.1</span> <span class="toctext">Modules Overview</span></a></li>
+<li class="toclevel-2"><a href="#Utilities"><span class="tocnumber">10.2</span> <span class="toctext">Utilities</span></a>
+<ul>
+<li class="toclevel-3"><a href="#How_to_add_new_command-line_options_to_GPGPU-Sim"><span class="tocnumber">10.2.1</span> <span class="toctext">How to add new command-line options to GPGPU-Sim</span></a></li>
+</ul>
+</li>
+<li class="toclevel-2"><a href="#libCUDA_.2F_libOpenCL"><span class="tocnumber">10.3</span> <span class="toctext">libCUDA / libOpenCL</span></a>
+<ul>
+<li class="toclevel-3"><a href="#src.2Fcuda-sim_.28Functional_Simulation_Engine.29"><span class="tocnumber">10.3.1</span> <span class="toctext">src/cuda-sim (Functional Simulation Engine)</span></a></li>
+<li class="toclevel-3"><a href="#src.2Fgpgpu-sim_.28Timing_Model.29"><span class="tocnumber">10.3.2</span> <span class="toctext">src/gpgpu-sim (Timing Model)</span></a></li>
+</ul>
+</li>
+<li class="toclevel-2"><a href="#InterSim"><span class="tocnumber">10.4</span> <span class="toctext">InterSim</span></a>
+<ul>
+<li class="toclevel-3"><a href="#How_does_it_interface_with_GPGPU-Sim"><span class="tocnumber">10.4.1</span> <span class="toctext">How does it interface with GPGPU-Sim</span></a></li>
+<li class="toclevel-3"><a href="#Clock_domain_crossing_for_intersim"><span class="tocnumber">10.4.2</span> <span class="toctext">Clock domain crossing for intersim</span></a></li>
+<li class="toclevel-3"><a href="#Booksim_Options_Ignored_in_Intersim"><span class="tocnumber">10.4.3</span> <span class="toctext">Booksim Options Ignored in Intersim</span></a></li>
+<li class="toclevel-3"><a href="#Options_Added_in_Intersim"><span class="tocnumber">10.4.4</span> <span class="toctext">Options Added in Intersim</span></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</td></tr></table><script type="text/javascript"> if (window.showTocToggle) { var tocShowText = "show"; var tocHideText = "hide"; showTocToggle(); } </script>
+<a name="Authors_and_Version"></a><h2> <span class="mw-headline"> Authors and Version </span></h2>
+<p>Authors: Wilson W. L. Fung, Ali Bakhoda and Tor M. Aamodt.
+</p><p>This is version 1.0 of the GPGPU-Sim Manual.  It corresponds to GPGPU-Sim version 2.1.1 b.
+</p>
+<a name="Introduction"></a><h2> <span class="mw-headline"> Introduction </span></h2>
+<p>This document describes GPGPU-Sim, a cycle-accurate performance simulator for many-core accelerators (such as Graphics Processor Unit) architectures.  It is intended to guide users through the steps to setup and run CUDA/OpenCL applications on GPGPU-Sim.  It is also provides documentation on how to use and extend GPGPU-Sim, including:
+</p>
+<ul><li> Explanations of various simulation configuration options
+</li><li> Description of the performance statistics GPGPU-Sim reports 
+</li><li> Overview of the software architecture of GPGPU-Sim as a starting point for the user to extend GPGPU-Sim 
+</li></ul>
+<p>This is by no means an exhaustive and comprehensive reference for GPGPU-Sim. If your questions are not clearly explained by this document, please sign up for the google groups page for Q&amp;A (see gpgpu-sim.org).
+</p><p>See <a href="#Building_GPGPU-Sim" title="">Building GPGPU-Sim</a> and <a href="#Running_GPGPU-Sim" title="">Running GPGPU-Sim</a> below to get started.
+</p>
+<a name="Copyright_and_Citations"></a><h3> <span class="mw-headline"> Copyright and Citations </span></h3>
+<p>Please see the copyright notice in the file COPYRIGHT distributed with this
+release.  This version of GPGPU-Sim is
+for non-commercial use only.
+</p><p>If you use this simulator in your research please cite:
+</p><p><i>Ali Bakhoda, George Yuan, Wilson W. L. Fung, Henry Wong, Tor M. Aamodt, Analyzing CUDA Workloads Using a Detailed GPU Simulator, in IEEE International Symposium on Performance Analysis of Systems and Software (ISPASS), Boston, MA, April 19-21, 2009.</i>
+</p>
+<a name="Contributions_and_History"></a><h3> <span class="mw-headline"> Contributions and History </span></h3>
+<p>GPGPU-Sim was created at the University of British Columbia by Tor M. Aamodt,
+Wilson W.  L. Fung, Ali Bakhoda, George Yuan along with contributions by Ivan
+Sham, Henry Wong, Henry Tran, and others.  The GPGPU-Sim visualization tool (AerialVison)
+distributed with GPGPU-Sim version 2.1.1b was developed primarily by Aaron Ariel along
+with contributions from  Wilson Fung, Andrew Turner, and Tor Aamodt. 
+</p><p>GPGPU-Sim models the features of a modern graphics processor that are relevant
+to non-graphics applications.  The first version of GPGPU-Sim was used in a
+MICRO'07 paper and follow-on ACM TACO paper on dynamic warp formation. That
+version of GPGPU-Sim used the SimpleScalar PISA instruction set for functional
+simulation (only), and various auxiliary configuration files specifying kernel locations to provide a programming model
+close to CUDA.  Creating benchmarks for the original GPGPU-Sim simulator was a
+very time consuming process.  This motivated the development of an interface for
+directly running CUDA applications to leverage the growing number of
+applications being developed to use CUDA.  The 2.1.1b release of GPGPU-Sim also
+support OpenCL.
+</p><p>The interconnection network is simulated using the booksim simulator developed
+by Bill Dally's research group at Stanford.
+</p><p>The previous versions of GPGPU-Sim (as of version 2.1.0b) used a few portions of SimpleScalar functional simulation code: support for memory spaces and command line option processing.  This code has been entirely replaced in the 2.1.1b release of GPGPU-Sim.
+</p><p>To produce output that is compatible with the output from running the same CUDA 
+program on the GPU, we have implemented several PTX instructions using the CUDA
+Math library (part of the CUDA toolkit). Code to inferface with the CUDA Math
+library is contained in cuda-math.h, which also includes several structures
+derived from vector_types.h (one of the CUDA header files).
+</p>
+<a name="System_Requirement"></a><h2> <span class="mw-headline"> System Requirement </span></h2>
+<p>The GPGPU-Sim simulator itself does not require a physical GPU. It does require the CUDA toolkit.  Currently using OpenCL requires the NVIDIA OpenCL driver, which in turn appears to require a physical GPU.
+</p>
+<a name="Features_and_CUDA_Version_Support"></a><h2> <span class="mw-headline"> Features and CUDA Version Support </span></h2>
+<p>CUDA version and features supported:
+</p>
+<ul><li> GPGPU-Sim Version 2.1.1b
+<ul><li>CUDA version 2.3 (or older) or PTX version 1.4
+</li><li> Added support for OpenCL (requires OpenCL driver from NVIDIA)
+</li><li> Added performance visualizer tool
+</li><li> Added manual documenting usage of the simulator (see doc directory)
+</li><li> Added configuration file for Quadro FX5800 (see configs directory)
+</li><li> Simultaneous release of benchmarks from ISPASS 2009 paper (separate download)
+</li><li> Improved shared memory bank conflict modeling
+</li><li> Improved default mapping of local memory accesses to global address space 
+</li><li> Added interconnect concentration modeling (to approximate effect of a TPC)
+</li><li> Added support for GPU-to-GPU memory copies (same GPU), timing not modeled
+</li><li> SimpleScalar code removed.
+</li><li> PTX support for vector operands in mov instruction
+</li><li> Bug fixes (see CHANGES)
+</li></ul>
+</li><li> GPGPU-Sim Version 2.1.0b 
+<ul><li> CUDA version 2.2 (or older) or PTX version 1.4
+</li><li> Added support for parsing and functionally simulating up to CUDA 2.2 generated PTX
+</li><li> Dynamically linking with precompiled CUDA/OpenCL program (require CUDA version 2.1 or newer)
+</li><li> Added dynamic warp formation timing model (see MICRO'07, ACM TACO'09 papers)
+</li><li> Updated gpgpusim.config and mesh in benchmark subdirectories to be similar to ISPASS 2009 paper baseline configurations
+</li><li> Added OpenGL interoperability support
+</li><li> Added support for parsing embedded PTX files without requiring recompilation (suggested by Gregory Diamos)
+</li><li> Improved support for texture filtering (linear mode for 2D, closer agreement to hardware for 2D point sampling where sample points are close to texel boundaries)
+</li><li> Benchmark examples updated to version from CUDA 2.2 SDK (NOTE: these will not compile with earlier CUDA installations. However, GPGPU-Sim should still work with applications written for older verions of CUDA.)
+</li><li> Bug fixes (see CHANGES)
+</li></ul>
+</li><li> GPGPU-Sim Version 2.0 
+<ul><li> CUDA version 1.1 (or older) or PTX version 1.1 </li></ul>
+</li><li> Pending support for features in CUDA version 2.2 and 2.3:
+<ul><li> membar (block until all outstanding memory operations have finished)
+</li><li> pmevent (trigger performance counter event)
+</li><li> fma (fused multiply-add, with infinite intermediate precision)
+</li><li> CUDARTAPI calls not supported: 
+</li></ul>
+</li></ul>
+<pre> extern __host__ cudaError_t CUDARTAPI cudaHostAlloc(void **pHost, size_t bytes, unsigned int flags);
+ extern __host__ cudaError_t CUDARTAPI cudaHostGetDevicePointer(void **pDevice, void *pHost, unsigned int flags);
+ extern __host__ cudaError_t CUDARTAPI cudaSetValidDevices(int *device_arr, int len);
+ extern __host__ cudaError_t CUDARTAPI cudaSetDeviceFlags( int flags );
+ extern __host__ cudaError_t CUDARTAPI cudaFuncGetAttributes(struct cudaFuncAttributes *attr, const char *func);
+ extern __host__ cudaError_t CUDARTAPI cudaEventCreateWithFlags(cudaEvent_t *event, int flags);
+ extern __host__ cudaError_t CUDARTAPI cudaDriverGetVersion(int *driverVersion);
+ extern __host__ cudaError_t CUDARTAPI cudaRuntimeGetVersion(int *runtimeVersion);
+</pre>
+<a name="AerialVision_Performance_Visualizer"></a><h3> <span class="mw-headline"> AerialVision Performance Visualizer </span></h3>
+<p>As of GPGPU-Sim version 2.1.1b, a python based performance visualizer is distributed with GPGPU-Sim.  This tool makes it much easier to identify performance bottlenecks at the hardware and software level.   The visualizer is in the "visualizer" subdirectory.  Please consult the documentation for the visualizer in the doc directory for more details.
+</p>
+<a name="Memory_Copy"></a><h3> <span class="mw-headline"> Memory Copy </span></h3>
+<p>We functionally support Host-to-Device, Device-to-Host, and Device-to-Device memory copy via <tt>cudaMemcpy()</tt>, but we do not simulate the latency of these operations. 
+</p>
+<a name="Multi-GPU_Simulation"></a><h3> <span class="mw-headline"> Multi-GPU Simulation </span></h3>
+<p>Currently, we do not support simulating more than one GPU at a time.
+</p>
+<a name="Building_GPGPU-Sim"></a><h2> <span class="mw-headline"> Building GPGPU-Sim </span></h2>
+<p>GPGPU-Sim was developed on Linux SuSe (this release was tested with SuSe version 11.1) and has been used on several other Linux platforms (both 32-bit and 64-bit systems).  In principle, GPGPU-Sim should work with any linux distro as long as the following software dependencies are satisfied. 
+</p>
+<a name="Software_Dependencies"></a><h3> <span class="mw-headline"> Software Dependencies </span></h3>
+<p>GPGPU-Sim requires the following software modules:
+</p>
+<ul><li> An installation of CUDA which you need to download from <a href="http://www.nvidia.com/cuda" class="external text" title="http://www.nvidia.com/cuda" rel="nofollow">NVIDIA's website</a>. 
+</li><li> To use OpenCL: An installation of NVIDIA OpenCL drivers from <a href="http://developer.nvidia.com/object/get-opencl.html" class="external text" title="http://developer.nvidia.com/object/get-opencl.html" rel="nofollow">NVIDIA's OpenCL Page</a>. 
+</li><li> GNU Compiler Collection (i.e. gcc) 4.0 or newer 
+<ul><li> gcc 4.3 recommended for CUDA 2.x 
+</li><li> gcc 4.1 recommended for CUDA 1.1
+</li></ul>
+</li><li> bison (version 2.3 recommended)
+</li><li> flex (version 2.5.33 recommended)
+</li><li> zlib
+</li><li> The benchmarks from the ISPASS 2009 paper (distributed separately) have additional dependencies.
+</li></ul>
+<a name="Supported_OS"></a><h3> <span class="mw-headline"> Supported OS </span></h3>
+<p>GPGPU-Sim Version 2.1.0b has been tested (by our active user community) on the following OS:
+</p>
+<ul><li> SUSE Linux 10.2 (32-bit and 64-bit)
+</li><li> Fedora Core 5
+</li><li> Ubuntu 8.04 LTS
+</li><li> Ubuntu 8.10
+<ul><li> 'make bench' can generate the this error: "Multiple targets found in ../../commom/common.mk"
+</li></ul>
+</li><li> Ubuntu 9.04
+<ul><li> GPGPU-Sim 2.1.1b has received some limited testing on this platform.
+</li></ul>
+</li></ul>
+<p>OS tried by our users and currently not working:
+</p>
+<ul><li> MAC OSX:
+<ul><li> One may want to play with the PATH and DYLD_LIBRARY_PATH environment variables to get the CUDA toolkit working. 
+</li></ul>
+</li><li> Cygwin:
+<ul><li> CUDA on Windows uses Microsoft C Compiler as their backend compiler, whereas GPGPU-Sim on Cygwin will be using gcc. To get GPGPU-Sim working on Cygwin, one may need to get CUDA to use gcc instead.
+</li></ul>
+</li></ul>
+<a name="Compiling_GPGPU-Sim"></a><h3><span class="mw-headline"> Compiling GPGPU-Sim </span></h3>
+<ul><li> Step 1: Ensure you have gcc, make, zlib, bison and flex installed on your system.  For CUDA 2.x we used gcc version 4.3.2, for CUDA 1.1 we used gcc version 4.1.3.  We used bison version 2.3, and flex version 2.5.33.  
+</li><li> Step 2: Download and install the CUDA Toolkit and CUDA SDK code samples from NVIDIA's website: <a href="http://www.nvidia.com/cuda" class="external free" title="http://www.nvidia.com/cuda" rel="nofollow">http://www.nvidia.com/cuda</a>.  If you want to run OpenCL on the simulator, download and install NVIDIA's OpenCL driver from <a href="http://developer.nvidia.com/object/opencl-download.html" class="external free" title="http://developer.nvidia.com/object/opencl-download.html" rel="nofollow">http://developer.nvidia.com/object/opencl-download.html</a>. Update your PATH and LD_LIBRARY_PATH as indicated by the install scripts.
+</li><li> Step 3: Build libcutil.a. The install script for the CUDA SDK does not do this step automatically. If you installed the CUDA Toolkit in a nonstandard location you will first need to set CUDA_INSTALL_PATH to the location you installed the CUDA toolkit (including the trailing "/cuda").  Then, change to the C/common subdirectory of your CUDA SDK installation (or common subdirectory on older CUDA SDK versions) and type "make".
+</li><li>Step 4: Set environment variables (e.g., your .bashrc file if you use bash as your shell). 
+<ul><li> (a) Set GPGPUSIM_ROOT to point to the directory containing this README file. 
+</li><li> (b) Set CUDAHOME to point to your CUDA installation directory
+</li><li> (c) Set NVIDIA_CUDA_SDK_LOCATION to point to the location of the CUDA SDK
+</li><li>  (d) Add $CUDAHOME/bin and $GPGPUSIM_ROOT/bin to your PATH 
+</li><li> (e) Add $GPGPUSIM_ROOT/lib/ to your LD_LIBRARY_PATH and remove $CUDAHOME/lib or $CUDAHOME/lib64 from LD_LIBRARY_PATH
+</li><li>  (f) If using OpenCL, set NVOPENCL_LIBDIR to the installation directory of   libOpenCL.so distributed with the NVIDIA OpenCL driver. On SuSe 11.1 64-bit NVIDIA's libOpenCL.so is installed in /usr/lib64/.  
+</li></ul>
+</li><li> Step 5: Type "make" in this directory. This will build the simulator with optimizations enabled so the simulator runs faster. If you want to run the simulator in gdb to debug it, then build it using "make DEBUG=1" instead.
+</li><li>Run a CUDA built with a recent version of CUDA (or an OpenCL 
+application) and the device code should now run on the simulator instead of 
+your graphics card.  To be able to run the application on your graphics card
+again, remove $GPGPUSIM_ROOT/lib from your LD_LIBRARY_PATH.  See also <a href="#Statically_.28Compile_Time.29_Linking_GPGPU-Sim" title="">Statically (Compile Time) Linking GPGPU-Sim</a>.
+</li><li> NOTES:  Step 5 will build the libraries that contain GPGPU-Sim. These libraries can be linked to a CUDA application dynamically or at compile time, creating an executable that runs the CUDA application on GPGPU-Sim rather than a GPU. 
+<ul><li> The following shared libraries are used with prebuilt CUDA/OpenCL applications generated with a recent version of CUDA (2.1 or newer). See <a href="#Dynamically_Linking_with_GPGPU-Sim" title="">Dynamically Linking with GPGPU-Sim</a> for more details.
+<ul><li> lib/libcudart.so - For prebuilt CUDA applications
+</li><li> lib/libOpenCL.so - For prebuild OpenCL applications
+</li></ul>
+</li><li> The following files are created to be used when building an application with statically linked libraries. See <a href="#Statically_.28Compile_Time.29_Linking_GPGPU-Sim" title="">Statically (Compile Time) Linking GPGPU-Sim</a> for more details.
+<ul><li> src/libgpgpusim.a - Performance simulator module of GPGPU-Sim
+</li><li> src/cuda-sim/libgpgpu_ptx_sim.a - Functional simulator module of GPGPU-Sim
+</li><li> src/intersim/libintersim.a - Interconnection simulator module of GPGPU-Sim (derived from Book-Sim)
+</li><li> lib/libcuda.a - CUDA API stub library that interface GPGPU-Sim with a CUDA application
+</li></ul>
+</li></ul>
+</li></ul>
+<a name="Porting_a_CUDA.2FOpenCL_application_to_run_on_GPGPU-Sim"></a><h3> <span class="mw-headline"> Porting a CUDA/OpenCL application to run on GPGPU-Sim </span></h3>
+<p>GPGPU-Sim compiles itself into a stub library that emulates the CUDA API. It can be statically linked to the CUDA application as <tt>libcuda.a</tt>, or it can be dynamically linked as <tt>libcudart.so</tt>. Similarly, GPGPU-Sim interfaces with OpenCL benchmarks via <tt>libOpenCL.so</tt> (and dynamic linking). 
+</p><p>For both cases, you will need a GPGPU-Sim configuration file (gpgpusim.config) and a interconnection configuration file in the current directory for GPGPU-Sim to run.
+</p>
+<a name="Dynamically_Linking_with_GPGPU-Sim"></a><h4> <span class="mw-headline"> Dynamically Linking with GPGPU-Sim </span></h4>
+<p>This approach works with prebuilt applications generated with CUDA 2.1 or newer.  Note that some applications make references to external CUDA libraries and these may not provide embedded PTX source (in which case the application will not be able to run on GPGPU-Sim).
+</p>
+<ul><li> Compile GPGPU-Sim following steps in <a href="#Compiling_GPGPU-Sim" title="">Compiling GPGPU-Sim</a>
+</li><li> Add &lt;GPGPU-Sim Top Level Directory&gt;/lib to LD_LIBRARY_PATH:
+</li></ul>
+<pre> export LD_LIBRARY_PATH=&lt;GPGPU-Sim Top Level Directory&gt;/lib:$LD_LIBRARY_PATH
+</pre>
+<ul><li> GPGPU-Sim Top Level Directory is the directory where you have GPGPU-Sim installed on your system
+</li><li> Now execute your CUDA application, and GPGPU-Sim should be evoked in place of the Hardware GPU. You can double check by using ldd:
+</li></ul>
+<pre> ldd &lt;your CUDA application executable&gt;
+</pre>
+<a name="Statically_.28Compile_Time.29_Linking_GPGPU-Sim"></a><h4> <span class="mw-headline"> Statically (Compile Time) Linking GPGPU-Sim </span></h4>
+<p>The <b>preferred</b> approach to porting new applications is to preface LD_LIBRARY_PATH to GPGPUSIM_ROOT/lib GPGPU-Sim which avoids the need for recompilation of your CUDA application.  See <a href="#Dynamically_Linking_with_GPGPU-Sim" title="">Dynamically Linking with GPGPU-Sim</a> if you want to use this method (recommended).
+</p>
+<a name="Using_commom.2Fcommon.mk_provided_by_GPGPU-Sim"></a><h5> <span class="mw-headline"> Using commom/common.mk provided by GPGPU-Sim </span></h5>
+<p>For compatibility with earlier releases we still provide a makefile (common/common.mk) that works similarly to the common.mk in CUDA SDK.  If your CUDA application is using the same compiling infrastructure as the benchmarks in CUDA SDK, here are the steps to get it running on GPGPU-Sim:
+</p>
+<ul><li> Copy directory containing the benchmark into the 'benchmark' directory in GPGPU-Sim
+</li><li> In the Makefile of the benchmark directory, change '../../common/common.mk' to '../common/common.mk' 
+</li><li> Type "make" as usual in your application directory
+</li></ul>
+<p>You can also use the commom/common.mk without copying your benchmark into the 'benchmark' directory  as long as you set GPGPUSIM_ROOT to point to where GPGPU-Sim is located.
+</p>
+<a name="Modify_your_existing_compilation_flow"></a><h5> <span class="mw-headline"> Modify your existing compilation flow </span></h5>
+<ul><li> Add the following compiling flag to the existing ones for nvcc for compiling CUDA files:
+</li></ul>
+<pre> --keep --compiler-options -fno-strict-aliasing 
+</pre>
+<ul><li> Use the following linker flag and use g++ for linking ($(GPGPUSIM_ROOT) is where GPGPU-Sim is installed):
+</li></ul>
+<pre> -L$(GPGPUSIM_ROOT)/libcuda/ -lcuda \
+ -L$(LIBDIR) -lcutil \
+ -L$(GPGPUSIM_ROOT)/src/ -lgpgpusim \
+ -L$(GPGPUSIM_ROOT)/src/intersim -lintersim \
+ -L$(GPGPUSIM_ROOT)/src/cuda-sim/ -lgpgpu_ptx_sim \
+ -lm -lz -lGL
+</pre>
+<ul><li> Run <tt>gen_ptxinfo</tt> in the scripts directory (not required for GPGPU-Sim V2.1.0b with CUDA 2.1 or newer)
+</li></ul>
+<a name="Porting_OpenCL_applications"></a><h4> <span class="mw-headline"> Porting OpenCL applications </span></h4>
+<p>To run an OpenCL application, you will need to do the following: 
+</p>
+<ul><li> Set NVOPENCL_LIBDIR to the installation directory of libOpenCL.so distributed with the NVIDIA OpenCL driver before building GPGPU-Sim.  On SuSe 11.1 64-bit this is /usr/lib64/.
+</li><li> Compile GPGPU-Sim following steps in <a href="#Compiling_GPGPU-Sim" title="">Compiling GPGPU-Sim</a>
+</li><li> Add &lt;GPGPU-Sim Top Level Directory&gt;/libopencl to LD_LIBRARY_PATH
+</li></ul>
+<a name="Common_causes_of_compilation_error"></a><h3> <span class="mw-headline"> Common causes of compilation error </span></h3>
+<a name="Missing_.27cuda.27_at_the_end_of_CUDAHOME"></a><h4> <span class="mw-headline"> Missing 'cuda' at the end of CUDAHOME </span></h4>
+<p>CUDA toolkit installation appends 'cuda' to the install location.  You may want to double check if CUDAHOME actually contains directories like 'bin' and 'include' instead of just 'cuda' (and the required directories are inside this 'cuda' directory). E.g. If you specify CUDA toolkit to be installed at '/home/usrname/cuda', CUDAHOME needs to be specified as '/home/usrname/cuda/cuda'.
+</p>
+<a name="Forgot_to_compile_CUTIL_.28CUDA_Utility_Library.29"></a><h4> <span class="mw-headline"> Forgot to compile CUTIL (CUDA Utility Library) </span></h4>
+<p>If you see this error: 
+</p>
+<pre> /usr/bin/ld: cannot find -lcutil  
+</pre>
+<p>You may want to first check if NVIDIA_CUDA_SDK_LOCATION is set to the correct location. Notice that CUDA SDK 2.0 and onwards have moved the common libraries from $NVIDIA_CUDA_SDK_LOCATION/common/lib to $NVIDIA_CUDA_SDK_LOCATION/C/common/lib.  So you may want to change the common.mk that comes with GPGPU-Sim to make sure it matches with your CUDA SDK version.  If that path is properly set and you are still getting the error.  Chances are you have not compile libcutil.a.  You can do that by running make at $NVIDIA_CUDA_SDK_LOCATION/C/common.
+</p>
+<a name="Error_with_OpenCL_application"></a><h4> <span class="mw-headline"> Error with OpenCL application </span></h4>
+<p>If you are using OpenCL with GPGPU-Sim, it is important that you set the following environment variables:
+</p>
+<ul><li> GPGPUSIM_ROOT - path to your GPGPU-Sim installation
+</li><li> NVOPENCL_LIBDIR - path to libOpenCL.so provided by NVIDIA (usually just /usr/lib or /usr/lib64) &lt;-- <b>Do NOT set this to the libOpenCL.so built by GPGPU-Sim, otherwise you will see an recursion error.</b>
+</li></ul>
+<a name="Running_GPGPU-Sim"></a><h2> <span class="mw-headline"> Running GPGPU-Sim </span></h2>
+<p>If a CUDA application is sucessfully ported to GPGPU-Sim (See <a href="#Porting_a_CUDA.2FOpenCL_application_to_run_on_GPGPU-Sim" title="">this</a> for instructions),  running the generated executable file will invoke GPGPU-Sim instead of the CUDA driver. 
+</p><p>Or, if your application is generated with CUDA 2.1 or newer, follow <a href="#Dynamically_Linking_with_GPGPU-Sim" title="">these instructions</a> to get it dynamically linked with GPGPU-Sim. Once LD_LIBRARY_PATH is properly configured, the unmodified executable file in your application will invoke GPGPU-Sim instead of the CUDA driver. A similar procedure applies to OpenCL applications. 
+</p><p>By default, this version of GPGPU-Sim uses the PTX source embedded within the binary. To use the .ptx files in the current directory, type:
+</p>
+<pre> export PTX_SIM_USE_PTX_FILE=1
+</pre>
+<p>This will inform GPGPU-Sim to look inside the PTX source (<tt>.ptx</tt>) files in the current directory for the kernel code.  This code can be extracted from the binary using the "-save_embedded_ptx" option.  When using OpenCL, the PTX files must be named <tt>_</tt><i>n</i><tt>.ptx</tt>, where <i>n</i> is the order of calls to clBuildProgram in the OpenCL application.  The simplest way to achieve this is to first run GPGPU-Sim with "-save_embedded_ptx" which will create these PTX files. For CUDA applications, the PTX source files should be generated automatically if you build with the static link option (i.e., using common/common.mk) during CUDA application compilation.  Alternatively, they can be generated by running the following command for each CUDA source file: 
+</p>
+<pre> nvcc --keep &lt;.cu file&gt;
+</pre>
+<p>If you create the PTX files directly using nvcc, you should run <tt>scripts/gen_ptxinfo</tt> on each PTX source file to generate an info file (<tt>.ptxinfo</tt>) that communicates hardware resource requirements of each kernel to GPGPU-Sim (e.g., number of registers used, etc...) which is important for correctly modeling the number of threads that can run concurrently. 
+</p><p>When GPGPU-Sim invoked, it will automatically look for the configuration files (gpgpusim.config) used for specifying the microarchitecture configuration in the current directory. See <a href="#Simulation_Configurations" title="">Simulation Configurations</a> for more detail.
+</p>
+<a name="Microarchitecture_Model"></a><h2> <span class="mw-headline"> Microarchitecture Model </span></h2>
+<p>The microarchitecture modeled by GPGPU-Sim is described in the <a href="http://www.ece.ubc.ca/~aamodt/papers/gpgpusim.ispass09.pdf" class="external text" title="http://www.ece.ubc.ca/~aamodt/papers/gpgpusim.ispass09.pdf" rel="nofollow">paper presented in ISPASS-2009</a>. Please refer to the paper while we prepare more detailed documentation. 
+</p><p>Version 2.1.1b adds the following features to the microarchitecture model to better model NVIDIA GPUs:
+</p>
+<ul><li> GPU Concentration - Share a single port into the interconnection among multiple shader cores. This models some aspects of the TPC. 
+</li><li> Shared memory bank conflict checking at 16 threads granularity (See -gpgpu_shmem_pipe_speedup).
+</li></ul>
+<a name="Configuration_Options"></a><h2> <span class="mw-headline"> Configuration Options </span></h2>
+<p>Configuration options are passed into GPGPU-Sim with <tt>gpgpusim.config</tt> and an interconnection configuration file (specified with option <tt>-inter_config_file</tt> inside gpgpusim.config).  In the 2.1.1b release, we provide configuration files for modeling the following GPUs:
+</p>
+<ul><li> Quadro FX 5800 
+</li></ul>
+<p>Here is a list of the configuration options, vaguely classified into different categories:
+</p>
+<a name="List_of_Options"></a><h3> <span class="mw-headline"> List of Options </span></h3>
+<table border="1" cellpadding="3" cellspacing="0" class="wikitable" style="text-align:left">
+<tr>
+<th colspan="2"> <br />Simulation Run Configuration
+</th></tr>
+<tr>
+<td> -gpgpu_max_cycle &lt;# cycles&gt;
+</td><td>  Terminate GPU simulation early after a maximum number of cycle is reached
+</td></tr>
+<tr>
+<td> -gpgpu_max_insn &lt;# insns&gt;
+</td><td>  Terminate GPU simulation early after a maximum number of instructions
+</td></tr>
+<tr>
+<td> -gpgpu_ptx_sim_mode &lt;0=performance (default), 1=functional&gt;
+</td><td>  Select between performance or functional simulation (note that functional simulation may incorrectly simulate some PTX code that requires each element of a warp to execute in lock-step)
+</td></tr>
+<tr>
+<td> -gpgpu_deadlock_detect &lt;0=off, 1=on (default)&gt;
+</td><td>  Stop the simulation at deadlock
+</td></tr>
+
+<tr>
+<th colspan="2"> <br />Statistics Collection Options
+</th></tr>
+<tr>
+<td> -gpgpu_ptx_instruction_classification &lt;0=off, 1=on (default)&gt;
+</td><td>  Enable instruction classification
+</td></tr>
+<tr>
+<td> -gpgpu_runtime_stat &lt;frequency&gt;:&lt;flag&gt;
+</td><td>  Display runtime statistics
+</td></tr>
+<tr>
+<td> -gpgpu_memlatency_stat &lt;0=off, 1=on&gt;
+</td><td>  Collect memory latency statistics
+</td></tr>
+<tr>
+<td> -visualizer_enabled &lt;0=off, 1=on (default)&gt;
+</td><td>  Turn on visualizer output (use <a href="#AerialVision_Performance_Visualizer" title="">AerialVision</a> visualizer tool to plot data saved in log)
+</td></tr>
+<tr>
+<td> -visualizer_outputfile &lt;filename&gt;
+</td><td>  Specfies the output log file for visualizer. Set to NULL for automatically generated filename (Done by default).
+</td></tr>
+<tr>
+<td> -visualizer_zlevel &lt;compression level&gt;
+</td><td>  Compression level of the visualizer output log (0=no compression, 9=max compression)
+</td></tr>
+<tr>
+<td> -enable_ptx_file_line_stats &lt;0=off, 1=on (default)&gt;
+</td><td>  Turn on PTX source line statistic profliing
+</td></tr>
+<tr>
+<td> -ptx_line_stats_filename &lt;output file name&gt;
+</td><td>  Output file for PTX source line statistics.
+</td></tr>
+
+<tr>
+<th colspan="2"> <br />High-Level Architecture Configuration (See ISPASS paper for more details on what is being modeled)
+</th></tr>
+<tr>
+<td> -gpgpu_n_shader &lt;# shader cores&gt;
+</td><td>  Number of shader cores in this configuration. Read <a href="#Topology_Configuration" title="">#Topology Configuration</a> before modifying this option.
+</td></tr>
+<tr>
+<td> -gpgpu_n_mem &lt;# memory controller&gt;
+</td><td>  Number of memory controllers (DRAM channels) in this configuration. Read <a href="#Topology_Configuration" title="">#Topology Configuration</a> before modifying this option.
+</td></tr>
+<tr>
+<td> -gpgpu_clock_domains &lt;Core Clock&gt;:&lt;Interconnect Clock&gt;:&lt;L2 Clock&gt;:&lt;DRAM Clock&gt;
+</td><td>  Clock domain frequencies in MhZ (See <a href="#Clock_Domain_Configuration" title="">#Clock Domain Configuration</a>)
+</td></tr>
+
+<tr>
+<th colspan="2"> <br />Shader Core Pipeline Configuration
+</th></tr>
+<tr>
+<td> -gpgpu_shader_core_pipeline &lt;# thread/shader core&gt;:&lt;warp size&gt;:&lt;pipeline simd width&gt;
+</td><td>  Shader core pipeline config
+</td></tr>
+<tr>
+<td> -gpgpu_shader_registers &lt;# registers/shader core, default=8192&gt;
+</td><td>  Number of registers per shader core. Limits number of concurrent CTAs.
+</td></tr>
+<tr>
+<td> -gpgpu_shader_cta &lt;# CTA/shader core, default=8&gt;
+</td><td>  Maximum number of concurrent CTAs in shader
+</td></tr>
+<tr>
+<td> -gpgpu_simd_model &lt;0=no reconvergence, 1=immediate post-dominator, 2=MIMD, 3=dynamic warp formation&gt;
+</td><td>  SIMD Branch divergence handling policy
+</td></tr>
+<tr>
+<td> -gpgpu_pre_mem_stages &lt;# stages between execution and memory stage&gt;
+</td><td>  Additional stages before memory stage to model memory access latency
+</td></tr>
+
+<tr>
+<th colspan="2"> <br />Memory Sub-System Configuration
+</th></tr>
+<tr>
+<td> -gpgpu_perfect_mem &lt;0=off (default), 1=on&gt;
+</td><td>  Enable perfect memory mode (zero memory latency)
+</td></tr>
+<tr>
+<td> -gpgpu_no_dl1 &lt;0=off (default), 1=on&gt;
+</td><td>  No L1 Data Cache
+</td></tr>
+<tr>
+<td> -gpgpu_tex_cache:l1 &lt;# Sets&gt;:&lt;Bytes/Block&gt;:&lt;# Ways&gt;:&lt;Evict Policy&gt;
+</td><td>  Texture cache (Read-Only) config. Evict policy: L = LRU, F = FIFO, R = Random
+</td></tr>
+<tr>
+<td> -gpgpu_const_cache:l1 &lt;# Sets&gt;:&lt;Bytes/Block&gt;:&lt;# Ways&gt;:&lt;Evict Policy&gt;
+</td><td>  Constant cache (Read-Only) config. Evict policy: L = LRU, F = FIFO, R = Random
+</td></tr>
+<tr>
+<td> -gpgpu_cache:dl1 &lt;# Sets&gt;:&lt;Bytes/Block&gt;:&lt;# Ways&gt;:&lt;Evict Policy&gt;
+</td><td>  L1 data cache (for global and local memory) config. Evict policy: L = LRU, F = FIFO, R = Random
+</td></tr>
+<tr>
+<td> -gpgpu_shmem_size &lt;shared memory size, default=16kB&gt;
+</td><td>  Size of shared memory per shader core
+</td></tr>
+<tr>
+<td> -gpgpu_shmem_bkconflict &lt;0=off (default), 1=on&gt;
+</td><td>  Model bank conflict for shared memory
+</td></tr>
+<tr>
+<td> -gpgpu_shmem_pipe_speedup &lt;# groups&gt;
+</td><td>  Number of groups that a warp splits into for shared memory bank conflict checking. It is called "shmem pipe speedup" in the sense that this splitting is only possible in HW design when the shared memory banks are running at a higher frequency. Default = 2, so that a warp with 32 threads is splitted into 2 groups of 16 threads for bank conflict checking.
+</td></tr>
+<tr>
+<td> -gpgpu_cache_bkconflict &lt;0=off (default), 1=on&gt;
+</td><td>  Model bank conflict for L1 cache access
+</td></tr>
+<tr>
+<td> -gpgpu_n_cache_bank &lt;# banks in L1 cache&gt;
+</td><td>  Number of banks in L1 cache
+</td></tr>
+<tr>
+<td> -gpgpu_shmem_port_per_bank &lt;# port/bank/cycle, default=2&gt;
+</td><td>  Number of access processed by a shared memory bank per cycle
+</td></tr>
+<tr>
+<td> -gpgpu_cache_port_per_bank &lt;# port/bank/cycle, default=2&gt;
+</td><td>  Number of access processed by a data cache bank per cycle
+</td></tr>
+<tr>
+<td> -gpgpu_const_port_per_bank &lt;# port/bank/cycle, default=2&gt;
+</td><td>  Number of access processed by a constant cache bank per cycle
+</td></tr>
+<tr>
+<td> -gpgpu_mshr_per_thread &lt;# MSHR/thread&gt;
+</td><td>  Number of MSHRs per thread
+</td></tr>
+<tr>
+<td> -gpgpu_interwarp_mshr_merge &lt;0=off (default), 1=on&gt;
+</td><td>  Turn on interwarp coalescing
+</td></tr>
+<tr>
+<td> -gpgpu_flush_cache &lt;0=off (default), 1=on&gt;
+</td><td>  Flush cache at the end of each kernel call
+</td></tr>
+<tr>
+<td> -gpgpu_cache:dl2 &lt;# Sets&gt;:&lt;Bytes/Block&gt;:&lt;# Ways&gt;:&lt;Evict Policy&gt;
+</td><td>  L2 data cache config. Evict policy: L = LRU, F = FIFO, R = Random
+</td></tr>
+<tr>
+<td> -gpgpu_L2_queue &lt;ICNT to L2 Queue Length&gt;:&lt;ICNT to L2 Write Queue Length&gt;:&lt;L2 to DRAM Queue Length&gt;:&lt;DRAM to L2 Queue Length&gt;:&lt;DRAM to L2 Write Queue Length&gt;:&lt;L2 to ICNT Queue Length&gt;:&lt;L2 to ICNT Minimum Latency&gt;:&lt;L2 to DRAM Minimum Latency&gt;
+</td><td>  L2 data cache queue length and latency config
+</td></tr>
+<tr>
+<td> -gpgpu_l2_readoverwrite &lt;0=off (default), 1=on&gt;
+</td><td>  Prioritize read over write requests for L2
+</td></tr>
+
+<tr>
+<th colspan="2"> <br />DRAM/Memory Controller Configuration
+</th></tr>
+<tr>
+<td> -gpgpu_dram_scheduler &lt;0 = fifo, 1 = fr-fcfs&gt;
+</td><td>  DRAM scheduler type
+</td></tr>
+<tr>
+<td> -gpgpu_dram_sched_queue_size &lt;# entries&gt;
+</td><td>  DRAM scheduler queue size
+</td></tr>
+<tr>
+<td> -gpgpu_dram_buswidth &lt;# bytes/DRAM bus cycle, default=4 bytes, i.e. 8 bytes/command cycle at DDR&gt;
+</td><td>  DRAM bus bandwidth at command bus frequency
+</td></tr>
+<tr>
+<td> -gpgpu_dram_burst_length &lt;# burst per DRAM request&gt;
+</td><td>  Burst length of each DRAM request (default = 4 DDR cycle)
+</td></tr>
+<tr>
+<td> -gpgpu_dram_timing_opt &lt;nbk:tCCD:tRRD:tRCD:tRAS:tRP:tRC:CL:WL:tWTR&gt;
+</td><td>  DRAM timing parameters:
+<ul><li> nbk = number of banks
+</li><li> tCCD = CAS to CAS command delay (always = half of burst length)
+</li><li> tRRD = Row active to row active delay
+</li><li> tRCD = RAW to CAS delay
+</li><li> tRAS = Row active time
+</li><li> tRP = Row precharge time
+</li><li> tRC = Row cycle time
+</li><li> CL = CAS latency
+</li><li> WL = Write latency
+</li><li> tWTR = Write to read delay
+</li></ul>
+</td></tr>
+<tr>
+<td> -gpgpu_mem_address_mask &lt;address decoding scheme&gt;
+</td><td>  <b>Obsolete</b>: Select different address decoding scheme to spread memory access accross different memory banks.
+</td></tr>
+<tr>
+<td> -gpgpu_mem_addr_mapping dramid@&lt;start bit&gt;;&lt;memory address map&gt;
+</td><td>  Mapping memory address to DRAM model:
+<ul><li> &lt;start bit&gt; = where the bits used to specify the DRAM channel ID starts. (This means the next Log2(#DRAM channel) bits will be used as the DRAM channel ID, and the whole address map will be shifted depending on how many bits are used.) <br />
+</li><li> &lt;memory address map&gt; = a 64-character string specify how each bit in a memory address is decoded into row (R), column (C), bank (B) addresses. Part of the addres that will be inside a single DRAM burst should be specified with (S). <br />
+</li></ul>
+<p>See configuration file for Quadro FX 5800 for example. 
+</p>
+</td></tr>
+<tr>
+<td> -gpgpu_partial_write_mask &lt;0 = off, 1 = partial write mask, 2 = extra read generated for each partial write&gt;
+</td><td>  Use partial write mask to filter memory requests
+</td></tr>
+<tr>
+<td> -gpgpu_n_mem_per_ctrlr &lt;# DRAM chips/memory controller&gt;
+</td><td>  Number of DRAM chip per memory controller (aka DRAM channel)
+</td></tr>
+
+<tr>
+<th colspan="2"> <br />Interconnection Configuration
+</th></tr>
+<tr>
+<td> -inter_config_file &lt;Path to Interconnection Config file&gt;
+</td><td>  The file containing Interconnection Network simulator's options. For more details about interconnection configurations see Manual provided with the original code at <a href="http://cva.stanford.edu/books/ppin/" class="external autonumber" title="http://cva.stanford.edu/books/ppin/" rel="nofollow">[1]</a>.  NOTE that options under "4.6 Traffic" and "4.7 Simulation parameters" should not be used in our simulator. Also see <a href="#Topology_Configuration" title="">#Topology Configuration</a>.
+</td></tr>
+<tr>
+<td> -gpu_concentration &lt;# shader cores&gt;
+</td><td>  Number of shader cores sharing an interconnection port (default = 1). This can be used to model TPCs in NVIDIA GPUs.
+</td></tr>
+</table>
+<a name="Topology_Configuration"></a><h3> <span class="mw-headline"> Topology Configuration </span></h3>
+<p><b>Question:</b> 
+How can I tune the number of shader cores freely? The given mesh configuration restrict the configuration to have 28 cores with 8 dram channels, and increasing the number of cores crashes GPGPU-Sim.
+</p><p><b>Answer:</b>
+The fixed core/memory configuration is due to the use of a mesh network which required a predefined mapping. By default, the interconnection configuration creates a 6x6 mesh (k=6, n=2), with 28+8 = 36 nodes in total. There are a few approaches to deal with this:
+</p>
+<ol><li> Choose a different mesh network size with predefined mapping, with use_map=1:
+<ul><li> a 4x4 network (k=4, n=2)&nbsp;: 8 shader cores + 8 dram channels 
+</li><li> a 8x8 network (k=8, n=2)&nbsp;: 56 shader cores + 8 dram channels
+</li><li> a 11x11 network (k=11, n=2)&nbsp;: 110 shader cores + 11 dram channels
+</li></ul>
+</li><li> Create your own mapping by modifying <tt>create_node_map()</tt> in interconnect_interface.cpp (and set use_map=1)
+</li><li> Set use_map=0, the simulator will start assigning the shader cores to the top-left corner node of the mesh until all shader cores are assigned, then it will assign the memory controller to the rest of the nodes (this creates an uneven distribution, not recommended).
+</li><li> Use a crossbar network instead of a mesh (and you do not need to worry about mappings):
+<ul><li> Put the following into the interconnection network config file (total number of network nodes = # shader cores + # DRAM channels):
+</li></ul>
+</li></ol>
+<pre> topology = fly;
+ k = &lt;total number of network nodes&gt;;
+ n = 1;
+ routing_function = dest_tag;
+</pre>
+<a name="Clock_Domain_Configuration"></a><h3> <span class="mw-headline"> Clock Domain Configuration </span></h3>
+<p>Details regarding the <tt>-gpgpu_clock_domains</tt> option:
+</p>
+<ul><li> DRAM clock domain = frequency of the real clock (command clock) and not the effective clock (i.e. 2x of real clock)
+</li><li> Core clock domain = frequency of the pipeline stages in a core clock (i.e. the rate at which <tt>shader_cycle</tt> is called)
+</li><li> Icnt clock domain = frequency of the interconnection network (usually this can be regarded as the <i>core</i> clock in NVIDIA GPU specs)
+</li><li> L2 clock domain = frequency of the L2 cache (a globally shared cache on the memory size)
+</li></ul>
+<p><b>Question:</b> 
+How to convert the shader clock given in NVIDIA's GPU HW spec to Core clock frequency?
+</p><p><b>Answer:</b> 
+We model the superpipelined stages in NVIDIA's SM running at the fast clock rate (1GHz+) with a single-slower pipeline stage running at 1/4 the frequency. So a 1.3GHz shader clock corresponds to a 325MHz core clock in GPGPU-Sim. 
+</p><p><b>Long Answer:</b>
+The width of the pipeline is 32 in the gpgpusim.config files in the benchmark subdirectory, whereas for NVIDIA GPUs it is 8 (in both cases  
+a warp is 32 threads).  We set the width 4 times larger to keep the same read after write delay as specified in the CUDA manual (192  
+threads required to hide register read after write delays in any thread) with our short (6 stage) pipeline.   To compensate, we  
+decreased the core clock frequency by a factor of 32/8 = 4.  
+</p><p>An alternative (without modifying the simulator to actually superpipeline each stage) 
+would be to increase the number of pre-memory stages to keep the read after  
+write, set the pipeline to be 8 wide (while leaving warp width as 32) and increase the shader clock by a factor of 4 (to 2GHz).  However,  
+then bank conflicts would not be detected between shared memory accesses from threads 0 to 7 and threads 8 to 15 or threads 16 to 23  
+and threads 24 to 31 in any given warp (also, our memory coalescing behavior may not be correct then).  
+</p><p>In the future, we plan to implement superpipelining at each pipeline stage.
+</p>
+<a name="Shared_Memory_Bank_Conflict"></a><h3> <span class="mw-headline"> Shared Memory Bank Conflict </span></h3>
+<ul><li> Shared memory modeling in previous GPGPU-Sim versions checks for bank conflicts across all 32 threads in a warp. 
+</li><li> The 2.1.1b version of GPGPU-Sim models shared memory bank conflicts in two groups of 16 threads in each warp (i.e. as described for G80/GT200 in the performance tuning section of the CUDA manual).
+</li></ul>
+<a name="Understanding_Simulation_Output"></a><h2> <span class="mw-headline"> Understanding Simulation Output </span></h2>
+<p>At the end of each CUDA grid launch, GPGPU-Sim prints out the performance statistics to the console (<tt>stdout</tt>).  These performance statistics provide insights into how the CUDA application performs with the simulated GPU architecture.  
+</p><p>Here is a brief list of the important performance statistics:
+</p>
+<a name="General_Simulation_Statistics"></a><h3> <span class="mw-headline"> General Simulation Statistics </span></h3>
+<table border="1" cellpadding="3" cellspacing="0">
+<tr>
+<td>gpu_sim_cycle </td><td> Number of cycles (in Core clock) required to execute this kernel.
+</td></tr>
+<tr>
+<td>gpu_sim_insn  </td><td> Number of instructions executed in this kernel.
+</td></tr>
+<tr>
+<td>gpu_ipc       </td><td> gpu_sim_cycle / gpu_sim_insn
+</td></tr>
+<tr>
+<td>gpu_completed_thread  </td><td> Number of threads executed in this kernel.
+</td></tr>
+<tr>
+<td>gpu_tot_sim_cycle  </td><td> Total number of cycles (in Core clock) simulated for all the kernels launched so far.
+</td></tr>
+<tr>
+<td>gpu_tot_sim_insn   </td><td> Total number of instructions executed for all the kernels launched so far.
+</td></tr>
+<tr>
+<td>gpu_tot_ipc        </td><td> tot_gpu_sim_cycle / tot_gpu_sim_insn
+</td></tr>
+<tr>
+<td>gpu_tot_completed_thread  </td><td> Number of threads executed for all the kernels launched so far.
+</td></tr>
+<tr>
+<td>gpgpu_n_sent_writes      </td><td> Number of DRAM write requests generated by the shader cores.
+</td></tr>
+<tr>
+<td>gpgpu_n_processed_writes </td><td> Number of DRAM write requests processed by the memory sub-system. Compared with gpgpu_n_sent_writes to determine if the GPU simulation ends in the way it is expected:
+<ul><li> Wait until the memory sub-system has finished process all the pending memory write requests to account for full kernel launch timing overhead.
+</li><li> Or, finish simulation once the last instruction in the kernel has been executed (useful for extrapolating performance behaviour of an application with larger working set). 
+</li></ul>
+</td></tr>
+</table>
+<a name="Simple_Bottleneck_Analysis"></a><h3> <span class="mw-headline"> Simple Bottleneck Analysis </span></h3>
+<p>These performance counters track stall events at different high-level parts of the GPU.  In combination, they give a broad sense of how where the bottleneck is in the GPU for an application. The following diagram illustrates a simplified flow of memory requests through the memory sub-system in GPGPU-Sim, 
+</p><p><a href="images/Memreqflow.png" class="image" title="The memory request flow diagram"><img src="images/Memreqflow.png" alt="The memory request flow diagram" width="559" height="186" longdesc="image/Memreqflow.png" /></a> 
+</p><p>Here are the description for each counter: 
+</p>
+<table border="1" cellpadding="3" cellspacing="0">
+<tr>
+<td>gpu_stall_by_MSHRwb </td><td> Number of pipeline stall cycles caused by register write back contention.
+</td></tr>
+<tr>
+<td>gpu_stall_shd_mem   </td><td> Number of pipeline stall cycles at the memory stage caused by one of the following reasons:
+<ul><li> shared memory bank conflict 
+</li><li> non-coalesced memory access 
+</li><li> serialized constant memory access 
+</li></ul>
+</td></tr>
+<tr>
+<td>gpu_stall_wr_back   </td><td> Number of cycles that the interconnect outputs to shader cores is stalled.
+</td></tr>
+<tr>
+<td>gpu_stall_dramfull  </td><td> Number of cycles that the interconnect outputs to dram channel is stalled.
+</td></tr>
+<tr>
+<td>gpu_stall_icnt2sh   </td><td> Number of cycles that the dram channels are stalled due to the interconnect congestion.
+</td></tr>
+<tr>
+<td>gpu_stall_sh2icnt   </td><td> Number of cycles that the shader cores are stalled at memory stage due to the interconnect congestion.
+</td></tr>
+</table>
+<a name="Memory_Access_Statistics"></a><h3> <span class="mw-headline"> Memory Access Statistics </span></h3>
+<table border="1" cellpadding="3" cellspacing="0">
+<tr>
+<td>gpgpu_n_load_insn   </td><td> Number of global/local load instructions executed.
+</td></tr>
+<tr>
+<td>gpgpu_n_store_insn  </td><td> Number of global/local store instructions executed.
+</td></tr>
+<tr>
+<td>gpgpu_n_shmem_insn  </td><td> Number of shared memory instructions executed.
+</td></tr>
+<tr>
+<td>gpgpu_n_tex_insn    </td><td> Number of texture memory instructions executed.
+</td></tr>
+<tr>
+<td>gpgpu_n_const_mem_insn  </td><td> Number of constant memory instructions executed.
+</td></tr>
+<tr>
+<td>gpgpu_n_param_mem_insn  </td><td> Number of parameter read instructions executed.
+</td></tr>
+<tr>
+<td>gpgpu_n_shmem_bkconflict </td><td> Number of shared memory bank conflicts.
+</td></tr>
+<tr>
+<td>gpgpu_n_cache_bkconflict </td><td> Number of cache bank conflicts (basically number of non-coalesced global memory access).
+</td></tr>
+<tr>
+<td>gpgpu_n_intrawarp_mshr_merge </td><td> Number of memory accesses that can be merged.
+</td></tr>
+<tr>
+<td>gpgpu_n_cmem_portconflict  </td><td> Number of constant memory bank conflict.
+</td></tr>
+<tr>
+<td>gpgpu_n_writeback_l1_miss  </td><td> Number of writebacks caused by a L1 cache miss.
+</td></tr>
+<tr>
+<td>gpgpu_n_partial_writes  </td><td> Number of memory writes to DRAM that requires a byte mask.
+</td></tr>
+<tr>
+<td>maxmrqlatency  </td><td> Maximum memory queue latency (amount of time a memory request spent in the DRAM memory queue)
+</td></tr>
+<tr>
+<td>maxdqlatency   </td><td> Maximum dram latency (round trip latency of a memory request through the DRAM memory pipeline)
+</td></tr>
+<tr>
+<td>maxmflatency   </td><td> Maximum memory fetch latency (round trip latency from shader core to DRAM and back)
+</td></tr>
+<tr>
+<td>averagemflatency </td><td> Average memory fetch latency
+</td></tr>
+<tr>
+<td>max_icnt2mem_latency </td><td> Maximum latency for a memory request to traverse from a shader core to the destinated DRAM channel
+</td></tr>
+<tr>
+<td>max_icnt2sh_latency  </td><td> Maximum latency for a memory request to traverse from a DRAM channel back to the specified shader core
+</td></tr>
+</table>
+<a name="Memory_Sub-System_Statistics"></a><h3> <span class="mw-headline"> Memory Sub-System Statistics </span></h3>
+<table border="1" cellpadding="3" cellspacing="0">
+<tr>
+<td> merge misses        </td><td> Number of cache misses/uncached accesses that can be merged into another inflight memory request.
+</td></tr>
+<tr>
+<td> L1 read misses      </td><td> Number of global/local memory reads missing the L1 cache (or all the global/local memory reads if L1 cache is turned off).
+</td></tr>
+<tr>
+<td> L1 write misses     </td><td> Number of global/local memory writes missing the L1 cache (or all the global/local memory reads if L1 cache is turned off).
+</td></tr>
+<tr>
+<td> L1 texture misses   </td><td> Number of L1 texture cache misses.
+</td></tr>
+<tr>
+<td> L1 const misses     </td><td> Number of L1 constant cache misses.
+</td></tr>
+<tr>
+<td> L2_write_miss       </td><td> Number of L2 cache write misses.
+</td></tr>
+<tr>
+<td> L2_write_hit        </td><td> Number of L2 cache write hits.
+</td></tr>
+<tr>
+<td> L2_read_miss        </td><td> Number of L2 cache read misses.
+</td></tr>
+<tr>
+<td> L2_read_hit         </td><td> Number of L2 cache read hits.
+</td></tr>
+<tr>
+<td> made_read_mfs       </td><td> Number of memory read request generated.
+</td></tr>
+<tr>
+<td> made_write_mfs      </td><td> Number of memory write request generated.
+</td></tr>
+<tr>
+<td> freed_read_mfs      </td><td> Number of memory read request freed (after it is processed).
+</td></tr>
+<tr>
+<td> freed_L1write_mfs   </td><td> Number of memory write request freed that are generated by the L1 caches/shader cores.
+</td></tr>
+<tr>
+<td> freed_L2write_mfs   </td><td> Number of memory write request freed that are generated by the L2 cache.
+</td></tr>
+<tr>
+<td> freed_dummy_read_mfs</td><td> Number of memory read request freed (only used for DRAM reads generated by partial write request with a DRAM model that does not support write mask).
+</td></tr>
+<tr>
+<td> gpgpu_n_mem_read_local   </td><td> Number of local memory reads.
+</td></tr>
+<tr>
+<td> gpgpu_n_mem_write_local  </td><td> Number of local memory writes.
+</td></tr>
+<tr>
+<td> gpgpu_n_mem_read_global  </td><td> Number of global memory reads.
+</td></tr>
+<tr>
+<td> gpgpu_n_mem_write_global </td><td> Number of global memory writes.
+</td></tr>
+<tr>
+<td> gpgpu_n_mem_texture      </td><td> Number of texture memory reads.
+</td></tr>
+<tr>
+<td> gpgpu_n_mem_const        </td><td> Number of constant memory reads.
+</td></tr>
+<tr>
+<td> max_n_mshr_used </td><td> Maximum number of MSHR allocated by each shader core.
+</td></tr>
+</table>
+<a name="Control-Flow_Statistics"></a><h3> <span class="mw-headline"> Control-Flow Statistics </span></h3>
+<p>GPGPU-Sim reports the warp occupancy distribution which measures performance penalty due to branch divergence in the CUDA application. The distribution is display in format: <tt>&lt;bin&gt;:&lt;cycle count&gt;</tt>. Here is the meaning to each bin:
+</p>
+<table border="1" cellspacing="0" cellpadding="3">
+
+<tr>
+<td> Stall </td><td> The number of cycles when the shader core pipeline is stalled and cannot issue any instructions.
+</td></tr>
+<tr>
+<td> W0_Idle </td><td> The number of cycles when all available warps are issued to the pipeline and are not ready to execute the next instruction.
+</td></tr>
+<tr>
+<td> W0_Mem  </td><td> The number of cycles when all available warps are waiting for data from memory.
+</td></tr>
+<tr>
+<td> W<i>X</i> (where <i>X</i> = 1 to 32) </td><td> The number of cycles when a warp with <i>X</i> active threads is scheduled into the pipeline.
+</td></tr></table>
+<p>See <a href="http://doi.acm.org/10.1145/1543753.1543756" class="external text" title="http://doi.acm.org/10.1145/1543753.1543756" rel="nofollow">Dynamic Warp Formation: Efficient MIMD Control Flow on SIMD Graphics Hardware</a> for more detail.
+</p>
+<a name="DRAM_Statistics"></a><h3> <span class="mw-headline"> DRAM Statistics </span></h3>
+<p>By default, GPGPU-Sim reports the following statistics for each DRAM channel:
+</p>
+<table border="1" cellspacing="0" cellpadding="3">
+
+<tr>
+<td>n_cmd </td><td> Total number of command cycles the memory controller in a DRAM channel has elapsed.  The controller can issue a single command per command cycle.
+</td></tr>
+<tr>
+<td>n_nop </td><td> Total number of NOP commands issued by the memory controller.
+</td></tr>
+<tr>
+<td>n_act </td><td> Total number of Row Activation commands issued by the memory controller.
+</td></tr>
+<tr>
+<td>n_pre </td><td> Total number of Precharge commands issued by the memory controller.
+</td></tr>
+<tr>
+<td>n_req </td><td> Total number of memory requests processed by the DRAM channel.
+</td></tr>
+<tr>
+<td>n_rd  </td><td> Total number of read commands issued by the memory controller.
+</td></tr>
+<tr>
+<td>n_write </td><td> Total number of write commands issued by the memory controller.
+</td></tr>
+<tr>
+<td>bw_util </td><td> DRAM bandwidth utilization = 2 * (n_rd + n_write) / n_cmd
+</td></tr>
+<tr>
+<td>n_activity </td><td> Total number of active cycles, or command cycles when the memory controller has a pending request at its queue.
+</td></tr>
+<tr>
+<td>dram_eff </td><td> DRAM efficiency = 2 * (n_rd + n_write) / n_activity  (i.e. DRAM bandwidth utilization when there is a pending request waiting to be processed)
+</td></tr>
+<tr>
+<td>mrqq:max </td><td> Maximum memory request queue occupancy. (i.e. Maximum number of pending entries in the queue)
+</td></tr>
+<tr>
+<td>mrqq:avg </td><td> Average memory request queue occupancy. (i.e. Average number of pending entries in the queue)
+</td></tr></table>
+<a name="Cache_Statistics"></a><h3> <span class="mw-headline"> Cache Statistics </span></h3>
+<p>For each cache (normal data cache, constant cache, texture cache alike), GPGPU-Sim reports the following statistics:
+</p>
+<ul><li> Access = Total number of access to the cache
+</li><li> Miss = Total number of misses to the cache. The number in parenthesis is the cache miss rate. 
+</li><li> -MgHts = Total number of misses in the cache when disregarding misses that can be merged into an inflight memory accesses (or coalesced with another access in the same cycle) so that it is not inducing memory traffic. The number in parenthesis is the cache miss rate taking that into account. 
+</li></ul>
+<p>It also calculate the total miss rate for all instances of caches of the same type:
+</p>
+<ul><li> L1 Const Cache Total Miss Rate 
+</li><li> L1 Texture Cache Total Miss Rate
+</li><li> L1 Data Cache Total Miss Rate 
+</li></ul>
+<p>Notice that data for L1 Total Miss Rate should be ignored when option <tt>-gpgpu_no_dl1</tt> is turned on.
+</p>
+<a name="Interconnect_Statistics"></a><h3> <span class="mw-headline"> Interconnect Statistics </span></h3>
+<p>In GPGPU-Sim, the user can configure whether to run all traffic on a single interconnection network, or on two separate physical networks (one relaying data from the shader cores to the DRAM channels and the other relaying the data back).  (The motivation for using two separate networks, besides increasing bandwidth, is often to avoid "protocol deadlock" which otherwise requires additional dedicated virtual channels.)   GPGPU-Sim reports the following statistics for each individual interconnection network:
+</p>
+<table border="1" cellpadding="3" cellspacing="0">
+<tr>
+<td> average latency </td><td> Average latency for a single flit to traverse from a source node to a destination node.
+</td></tr>
+<tr>
+<td> average accepted rate </td><td> Measured average throughput of the network relative to its total input channel throughput. Notice that when using two separate networks for traffics in different directions, some nodes will never inject data into the network (i.e. the output only nodes such as DRAM channels on the cores-to-dram network). To get the real ratio, total input channel throughput from these nodes should be ignored. That means one should multiply this rate with the ratio (total # nodes / # input nodes in this network) to get the real average accepted rate. Note that by default we use two separate networks which is set by network_count option in interconnection network config file. The two networks serve to break circular dependancies that might cause deadlocks.
+</td></tr>
+<tr>
+<td> min accepted rate </td><td> Always 0, as there are nodes that do not inject flits into the network due to the fact that we simulate two separate networks for traffic in different directions.
+</td></tr>
+<tr>
+<td> latency_stat_0_freq </td><td> A histogram showing the distribution of latency of flits traversed in the network.
+</td></tr></table>
+<p>Note: Accepted traffic or throughput of a network is the amount of traffic delivered to the destination terminals of the network. If the network is below saturation all the offered traffic is accepted by the network and offered traffic would be equal to throughput of the network. The interconnect simulator calculates the accepted rate of each node by dividing the total number of packets received at a node by the total network cycles.
+</p>
+<a name="Frequently_Asked_Questions"></a><h3> <span class="mw-headline"> Frequently Asked Questions </span></h3>
+<p><b>Question:</b> 
+Is it normal to get 'NaN' in the simulator output? 
+</p><p><b>Answer:</b> 
+You may get it with the cache miss rates when the cache module has never been accessed.
+</p><p><br />
+<b>Question:</b> 
+Why do all CTAs finishes at cycle X, while gpu_sim_cycle says (X + Y)? (i.e. Why is GPGPU-Sim still simulating after all the CTAs/shader cores are done?)
+</p><p><b>Answer:</b> 
+The difference from when a CTA is considered finished by GPGPU-Sim to when GPGPU-Sim thinks the simulation is done can be due to global  
+memory write traffic.   Basically, it takes some time from issuing a write command until that command is processed by the memory system. 
+</p><p><br />
+<b>Question:</b>
+How to calculate the Peak off-chip DRAM bandwidth given a GPGPU-Sim configuration?
+</p><p><b>Answer:</b>
+Peak off-chip DRAM bandwidth = gpgpu_n_mem * gpgpu_n_mem_per_ctrlr * gpgpu_dram_buswidth * DRAM Clock * 2 (for DDR)
+</p>
+<ul><li> gpgpu_n_mem = Number of memory channels in the GPU (each memory channel has an independent controller for DRAM command scheduling)
+</li><li> gpgpu_n_mem_per_ctrlr = Number of DRAM chips attached to a memory channel (default = 2, for 64-bit memory channel)
+</li><li> gpgpu_dram_buswidth = Bus width of each DRAM chip (default = 32-bit = 4 bytes)
+</li><li> DRAM Clock = the real clock of the DRAM chip (as opposed to the effective clock used in marketing - See <a href="#Clock_Domain_Configuration" title="">#Clock Domain Configuration</a>)
+</li></ul>
+<p><br />
+<b>Question:</b>
+How to get the DRAM utilization?
+</p><p><b>Answer:</b>
+Each memory controller prints out some statistics at the end of the simulation using "dram_print()".  DRAM utilization is "bw_util".  Take the average of this number across all the memory controllers (the number for each controller can differ if each DRAM channel gets a different amount of memory traffic).
+</p><p>Inside the simulator's code, 'bwutil' is incremented by 2 for every read or write operation because it takes two DRAM command cycles to service a single read or write operation (given burst length = 4).
+</p><p><br />
+<b>Question:</b>
+Why isn't DRAM utilization improving with more shader cores (with the same number of DRAM channels) for a memory-limited application?
+</p><p><b>Answer:</b>
+DRAM utilization may not improve with having more inflight threads for many reasons. One reason could the DRAM precharge/activate overheads.
+(See e.g., <a href="http://www.ece.ubc.ca/~aamodt/papers/gyuan.mobs2009.pdf" class="external text" title="http://www.ece.ubc.ca/~aamodt/papers/gyuan.mobs2009.pdf" rel="nofollow">Complexity Effective Memory Access Scheduling for Many-Core Accelerator Architectures</a>)
+</p><p><br />
+<b>Question:</b>
+How to get the interconnect utilization?
+</p><p><b>Answer:</b>
+The definition of the interconnect's untilization highly depends on the topology of the interconnection network itself, so it is quite difficult to give a single "utilization" metric that is consistent across all types of topology.  If you are looking into wheither the interconnection is the bottleneck of an application, you may want to look at <tt>gpu_stall_icnt2sh</tt> and <tt>gpu_stall_sh2icnt</tt> instead.   
+</p><p>The throughput (accepted rate) is also a good indicator for the utilization of each network. Note that by default we use two separate networks for traffics from shader core to DRAM channels and the traffics heading back; therefore you will see two accepted rate numbers reported at the end of simulation (one for each network). See <a href="#Interconnect_Statistics" title="">#Interconnect Statistics</a> for more detail.
+</p><p><br />
+<b>Question:</b>
+Why this simulator is claimed to be timing accurate/cycle accurate? How can I verify this fact?
+</p><p><b>Answer:</b>
+A cycle-accurate simulator reports the timing behavior of the simulated architecture - it is possible for the user to stop the simulator at cycle boundaries and observe the states (we currently do this with gdb). All the hardware behavior within a cycle is approximated with C/C++ (as opposed to implementing them in HDLs) to speed up the simulation time. It is also common for architectural simulator to simplify some detailed implementations covering corner cases of a hardware design to emphasize what dictates the overall performance of a system - this is what we try to achieve with GPGPU-Sim. 
+</p><p>So, like all other cycle-accurate simulators used for architectural research/development, we do not guarantee 100% matching with real GPUs. 
+The normal way to verify a simulator would involve comparing reported timing result of an application running on the simulator against measured runtime of the same application running on the actual hardware simulation target.  With PTX-ISA, this is a little tricky, because PTX-ISA is recompiled by the GPU driver into native GPU ISA for execution on the actual GPU, whereas GPGPU-Sim execute PTX-ISA directly.  Also, the limited amount of publicly available information on the actual NVIDIA GPU microarchitecture has posed a big challenge on implementing the exact matching behavior in the simulator. 
+(i.e. We do not know what is actually implemented inside a GPU. We just implement our best guess in the simulator!)
+</p><p>Nevertheless, we have been continually trying to improve the accuracy of our architecture model.  In our ISPASS paper in 2009, we have compared simulated timing performance of various benchmarks against their hardware runtime on a GeForce 8600GT.  The correlation coefficient was calculated to be 0.899.  We welcome feedbacks from the user regarding the accuracy of GPGPU-Sim.
+</p>
+<a name="Extension.2FHacking_Guideline"></a><h2> <span class="mw-headline"> Extension/Hacking Guideline </span></h2>
+<p>The following documentation is intended to provide a starting point for the user to extend GPGPU-Sim.  
+</p>
+<a name="Modules_Overview"></a><h3> <span class="mw-headline"> Modules Overview </span></h3>
+<p>GPGPU-Sim consists of three major modules (each located in its own directory):
+</p>
+<ul><li> <b>cuda-sim</b> - The functional simulator that executes PTX kernels generated by NVCC or OpenCL compiler
+</li><li> <b>gpgpu-sim</b> - The performance simulator that simulates the timing behavior of a GPU (or other many core accelerator architectures)
+</li><li> <b>intersim</b> - The interconnection network simulator adopted from Bill Dally's <a href="http://cva.stanford.edu/books/ppin/" class="external text" title="http://cva.stanford.edu/books/ppin/" rel="nofollow">BookSim</a>
+</li></ul>
+<p>Here are the files in each module:
+</p><p><b>Overall/Utilities</b>
+</p>
+<table border="1" cellspacing="0" cellpadding="3">
+
+<tr>
+<td> Makefile  </td><td> Makefile that builds gpgpu-sim and calls other the Makefile in cuda-sim and intersim.
+</td></tr>
+<tr>
+<td> gpgpusim_entrypoint.c  </td><td> Contains functions that interface with the CUDA/OpenCL API stub libraries.
+</td></tr>
+<tr>
+<td> option_parser.h <br />option_parser.cc  </td><td> Implements the command-line option parser.
+</td></tr>
+<tr>
+<td> util.h </td><td> Contains declarations that are used by all modules in GPGPU-Sim
+</td></tr></table>
+<p><b>cuda-sim</b>
+</p>
+<table border="1" cellspacing="0" cellpadding="3">
+<tr>
+<td> cuda-math.h      </td><td> Contains interfaces to CUDA Math header files.
+</td></tr>
+<tr>
+<td> cuda-sim.cc      </td><td> Implements the interface between gpgpu-sim and cuda-sim.  It also contains a standalone simulator for functional simulation.
+</td></tr>
+<tr>
+<td> dram_callback.h  </td><td> Callback interface for modeling the timing sensitive behaviour of Atomic instructions.
+</td></tr>
+<tr>
+<td> instructions.cc  </td><td> This is where the emulation code of all PTX instructions is implemented.
+</td></tr>
+<tr>
+<td> Makefile         </td><td> Makefile for cuda-sim. Called by Makefile one level up.
+</td></tr>
+<tr>
+<td> memory.h <br /> memory.cc  </td><td> Functional memory space emulation.
+</td></tr>
+<tr>
+<td> opcodes.def      </td><td> DEF file that links between various information of each instruction (eg. string name, implementation, internal opcode...)
+</td></tr>
+<tr>
+<td> opcodes.h        </td><td> Defines enum for each PTX instruction.
+</td></tr>
+<tr>
+<td> ptxinfo.l <br /> ptxinfo.y </td><td> Lex and yacc files for parsing ptxinfo file. (To obtain kernel resource requirement)
+</td></tr>
+<tr>
+<td> ptx_ir.h <br /> ptx_ir.cc  </td><td> Static structures in CUDA - kernels, functions, symbols... etc. Also contain code to perform static analysis for extracting immediate-post-dominators from kernels at load time.
+</td></tr>
+<tr>
+<td> ptx.l <br /> ptx.y         </td><td> Lex and yacc files for parsing .ptx files and embedded cubin structure to obtain PTX code of the CUDA kernels
+</td></tr>
+<tr>
+<td> ptx_sim.h <br /> ptx_sim.cc</td><td> Dynamic structures in CUDA - Grids, CTA, threads
+</td></tr>
+<tr>
+<td> ptx-stats.h <br />ptx-stats.cc </td><td> PTX source line profiler
+</td></tr></table>
+<p><b>gpgpu-sim</b>
+</p>
+<table border="1" cellspacing="0" cellpadding="3">
+<tr>
+<td> addrdec.h <br /> addrdec.c         </td><td> Address decoder - Maps a given address to a specific row, bank, column, in a DRAM channel.
+</td></tr>
+<tr>
+<td> delayqueue.h <br /> delayqueue.c   </td><td> An implementation of a flexible pipelined queue.
+</td></tr>
+<tr>
+<td> dram.h <br /> dram.c               </td><td> DRAM timing model + interface to other parts of gpgpu-sim.
+</td></tr>
+<tr>
+<td> dram_sched.h <br /> dram_sched.cc  </td><td> FR-FCFS DRAM request scheduler.
+</td></tr>
+<tr>
+<td> dwf.h <br /> dwf.cc                </td><td> Dynamic warp formation timing model.
+</td></tr>
+<tr>
+<td> gpu-cache.h <br /> gpu-cache.c     </td><td> Cache model for GPGPU-Sim
+</td></tr>
+<tr>
+<td> gpu-sim.h <br /> gpu-sim.c         </td><td> Gluing different timing models in GPGPU-Sim into one.  It also implements the CTA dispatcher and L2 cache (i.e. structures that are shared by other units in a GPU).
+</td></tr>
+<tr>
+<td> mem_fetch.h         </td><td> Defines the <tt>memory_fetch_t</tt> a communication structure that models a memory request.
+</td></tr>
+<tr>
+<td> mem_latency_stat.h  </td><td> Contains various code for memory system statistic collection.
+</td></tr>
+<tr>
+<td> icnt_wrapper.h <br /> icnt_wrapper.c  </td><td> Interconnection network interface for gpgpu-sim. It provides a completely decoupled interface allows intersim to work as a interconnection network timing simulator for gpgpu-sim.
+</td></tr>
+<tr>
+<td> shader.h <br /> shader.c              </td><td> Shader core timing model. It calls cudu-sim for functional simulation of a particular thread and cuda-sim would return with performance-sensitive information for the thread.
+</td></tr>
+<tr>
+<td> stack.h <br /> stack.c                </td><td> Simple stack used by immediate post-dominator thread scheduler.
+</td></tr>
+<tr>
+<td> warp_tracker.h <br /> warp_tracker.cc </td><td> Warp status manager that keep tracks of status of dynamic warps in the pipeline.
+</td></tr>
+<tr>
+<td> gpu-misc.h <br /> gpu-misc.c       </td><td> Contains misc. functionality that is needed by parts of gpgpu-sim
+</td></tr>
+<tr>
+<td> cflogger.h     </td><td> Contains interface for gpgpu-sim to various performance statistics, including the PC-Histogram (known as cflog in the code).
+</td></tr>
+<tr>
+<td> histogram.h    </td><td> Defines several classes that implement different kinds of histograms.
+</td></tr>
+<tr>
+<td> stat-tool.cc   </td><td> Implements the interfaces and classes defined in cflogger.h and histogram.h
+</td></tr>
+<tr>
+<td> visualizer.cc  </td><td> Output dynamic statistics for the visualizer
+</td></tr></table>
+<p><b>intersim</b>
+</p>
+<table border="1" cellspacing="0" cellpadding="3">
+<tr>
+<td> booksim_config.cpp </td><td> intersim's configuration options are defined here and given a default value.
+</td></tr>
+<tr>
+<td> flit.hpp </td><td> Modified to add capability of carrying data to the flits. Flits also know which network they belong to.
+</td></tr>
+<tr>
+<td> interconnect_interface.cpp <br /> interconnect_interface.h </td><td> The interface between GPGPU-Sim and intersim is implemented here.
+</td></tr>
+<tr>
+<td> iq_router.cpp <br /> iq_router.hpp </td><td> Modified to add support for output_extra_latency (Used to create Figure 10 of ISPASS paper).
+</td></tr>
+<tr>
+<td> islip.cpp </td><td> Some minor edits to fix an out of array bound error.
+</td></tr>
+<tr>
+<td> Makefile </td><td> Modified to create a library instead of the standalone network simulator.
+</td></tr>
+<tr>
+<td> stats.cpp <br />  stats.hpp </td><td> Stat collection functions are in this file. We have made some minor tweaks. E.g. a new function called NeverUsed is added that tell if that particular stat is ever updated or not.
+</td></tr>
+<tr>
+<td> statwraper.cpp <br />  statwraper.h </td><td> A wrapper that enables using the stat collection capabilities implemented in Stat class in stats.cpp in C files.
+</td></tr>
+<tr>
+<td> trafficmanager.cpp <br /> trafficmanager.hpp </td><td> Heavily modified from original booksim. Many high level operations are done here.
+</td></tr></table>
+<a name="Utilities"></a><h3> <span class="mw-headline"> Utilities </span></h3>
+<a name="How_to_add_new_command-line_options_to_GPGPU-Sim"></a><h4> <span class="mw-headline"> How to add new command-line options to GPGPU-Sim </span></h4>
+<p>GPGPU-Sim, like SimpleScalar, provides a generic command-line option parser that allows different modules to register their options through a simple interface:
+</p>
+<pre> void option_parser_register(option_parser_t opp, 
+                             const char *name, 
+                             enum option_dtype type, 
+                             void *variable, 
+                             const char *desc,  
+                             const char *defaultvalue);
+</pre>
+<p>Here is the description for each parameter:
+</p>
+<ul><li> <tt>option_parser_t opp</tt> - The option parser identifier. 
+</li><li> <tt>const char *name</tt> - The string the identify the command-line option. 
+</li><li> <tt>enum option_dtype type</tt> - Data type of the option. It can be one of the following:
+<ul><li> int
+</li><li> unsigned int
+</li><li> long long
+</li><li> unsigned long long
+</li><li> bool (as int in C)
+</li><li> float 
+</li><li> double
+</li><li> c-string (a.k.a. char*)
+</li></ul>
+</li><li> <tt>void *variable</tt> - Pointer to the variable.
+</li><li> <tt>const char *desc</tt> - Description of the option as displayed
+</li><li> <tt>const char *defaultvalue</tt> - Default value of the option (the string value will be automatically parser). You can set this to NULL for this c-string variables. 
+</li></ul>
+<p>Look inside <tt>gpgpu-sim/gpu-sim.c</tt> for more examples.
+</p>
+<a name="libCUDA_.2F_libOpenCL"></a><h3> <span class="mw-headline"> libCUDA / libOpenCL </span></h3>
+<p>The CUDA / OpenCL API stubs are used to implement CUDA and OpenCL calls respectively.  The host code runs directly on your CPU, and only device code is simulated by GPGPU-Sim.
+</p><p>The library contains two key components split across two directories:
+</p>
+<ul><li> A PTX functional execution engine in the <tt>src/cuda-sim</tt> subdirectory (by functional simulation, we mean emulating the program to get the correct result)
+</li><li> A detailed timing simulator in the <tt>src/gpgpu-sim</tt> subdirectory (by timing simulation, we mean estimating how many clock cycles it takes to run the code)
+</li></ul>
+<p>These two portions cooperate to simulate the device portion of a CUDA or OpenCL application.  Certain aspects such as instructions and threads have separate implementations in both halves since they have aspects related to both functional and timing simulation.  Both halves are described briefly below (more detail will be provided in future versions of this manual).
+</p>
+<a name="src.2Fcuda-sim_.28Functional_Simulation_Engine.29"></a><h4> <span class="mw-headline"> src/cuda-sim (Functional Simulation Engine) </span></h4>
+<ul><li> The <tt>src/cuda-sim</tt> subdirectory contains the PTX functional simulation engine for GPGPU-Sim
+</li><li> The interface to CUDA is contained in the <tt>libcuda</tt> subdirectory.
+</li><li> The interface to GPGPU-Sim (timing model) is managed through void pointers and call back functions that invoke the functional simulator when an instruction reaches the decode stage of the timing model pipeline.
+</li><li> Overview of what happens when a CUDA/OpenCL application runs (sequence of action + the functions involved)
+<ol><li> After parsing, instructions used for functional execution are represented as a <tt>ptx_instruction</tt> object contained within a <tt>function_info</tt> object (see cuda-sim/ptx_ir.{h,cc}).  Each <b>scalar</b> thread is represented by a <tt>ptx_thread_info</tt> object.  Executing an instruction (functionally) is accomplished by calling the function_info::ptx_exec_inst().
+</li><li> Instructions are "decoded" by calling <tt>ptx_decode_inst()</tt> with a pointer to the appropriate ptx_thread_info object. This routine provides basic information to the timing model about the next instruction a thread will execute.
+</li><li> The timing model executes an instruction by passing a pointer to the appropriate ptx_thread_info object to the global function <tt>ptx_exec_inst()</tt>. GPGPU-Sim models simple lower power non-speculative cores.  Hence, there is no need to pass in a program counter from the timing model the functional engine or to keep maintain "speculative mode" or "off path" state.  On the other hand, the timing model needs to know something about the results of functional execution to model timing. For example, for memory operations the memory space (global, local, constant, texture) and address are returned to the timing model.  Similarly, if a branch is execute this fact must be communicated to the timing model (branch divergence is detected by the timing model, not the functional simulation model).
+</li></ol>
+</li></ul>
+<a name="src.2Fgpgpu-sim_.28Timing_Model.29"></a><h4> <span class="mw-headline"> src/gpgpu-sim (Timing Model) </span></h4>
+<ul><li> Overview of what happens at a CUDA kernel launch (walkthrough sequence of action + the functions involved)
+<ol><li> Option Parsing
+</li><li> Initialization
+</li><li> Grid Setup
+</li><li> Simulation Loop
+<ul><li> The main simulation loop is <tt>gpu_sim_loop()</tt> in gpu-sim.c, which simulates the three clock domains (core, interconnect, memory controller).  Each core cycle is simulated by calling <tt>shader_cycle()</tt>for the appropriate shader core number (a shader core pipeline is advanced one cycle, before going to the next shader core).
+</li><li> As CTAs complete, new CTAs are issued to a shader core using <tt>issue_block2core()</tt>.
+</li><li> Clock domain system: The next clock domain to simulate is determined by a simple discrete event engine contained in <tt>next_clock_domain()</tt>.
+</li></ul>
+</li><li> Statistics Display
+</li></ol>
+</li><li> Life-to-Death walkthrough of an instruction (sequence of action + the functions involved)
+<ol><li> Currently we do not model instruction caches, but expect to in a future release (as CUDA/OpenCL applications become larger with increasing developer experience, it will become important to model the instruction cache).
+</li><li> The fetch stage manages the SIMT stack and or DWF model used to handle branch divergence (see <a href="http://doi.acm.org/10.1145/1543753.1543756" class="external text" title="http://doi.acm.org/10.1145/1543753.1543756" rel="nofollow">Dynamic Warp Formation: Efficient MIMD Control Flow on SIMD Graphics Hardware</a>)
+</li><li> When a warp reaches the decode stage of the pipeline, the active threads in it are invoked for functional execution by passing the appropriate ptx_thread_info object to ptx_decode_inst() and ptx_execute_inst().
+</li><li> When a warp reaches the memory stage of the pipeline, bank conflicts for shared memory are modeled. Similarly, global, const and texture memory accesses are simulated.  A stall in a later stage of the pipeline will stall earlier pipeline stages. If a thread generates a memory request the entire warp is prevented from beginning execution with the default PDOM (stack based) SIMT execution model (DWF is generally more flexible in this respect). When a memory request returns it competes with instructions entering the writeback stage for register file bandwidth.
+</li></ol>
+</li></ul>
+<ul><li> Life-to-Death walkthrough of a memory request (sequence of action + the functions involved) Should be something like this:
+<ol><li> fq_push() - creation
+</li><li> icnt_push() - into interconnect to memory controller 
+</li><li> icnt_top() + icnt_pop() - out of interconnect
+</li><li> mem_ctrl_push() - into memory controller + memory write request destruction
+</li><li> mem_ctrl_top() + mem_ctrl_pop() - out of memory controller 
+</li><li> icnt_push() - into interconnect to shader core
+</li><li> icnt_top() + icnt_pop() - out of interconnect
+</li><li> fq_pop() - memory read request destruction
+</li></ol>
+</li></ul>
+<a name="InterSim"></a><h3> <span class="mw-headline"> InterSim </span></h3>
+<p>We have interfaced the "booksim" simulator to GPGPU-Sim. Original booksim is a stand alone network simulator that can be found here <a href="http://cva.stanford.edu/books/ppin/" class="external free" title="http://cva.stanford.edu/books/ppin/" rel="nofollow">http://cva.stanford.edu/books/ppin/</a> . We call our modified version of the booksim intersim. Intersim has it own clock domain. The original booksim only supports a single interconnection network. We have made some changes to be able to simulate two interconnection networks: one for traffic from shader cores to memory controllers and one for traffic from memory controllers back to shader cores. This is one way of avoiding circular dependencies that might cause deadlocks in the system.
+</p>
+<a name="How_does_it_interface_with_GPGPU-Sim"></a><h4> <span class="mw-headline"> How does it interface with GPGPU-Sim </span></h4>
+<ul><li> The interconnection network interface has a few functions as follows. These function are implemented in the interconnect_interface.cpp. These function are wrapped in icnt_wrapper.cpp.
+<ul><li> init_interconnect(): Initialize the network simulator. Its inputs are the interconnection network's configuration file and the number of shader and memory nodes. 
+</li><li> interconnect_push(): which specifies a source node, a destination node, a pointer to the packet to be transmitted and the packet size (in bytes).
+</li><li> interconnect_pop(): gets an node number as input and it returns a pointer to the packet that was waiting to be ejected at that node. If there is not packet it returns NULL.
+</li><li> interconnect_has_buffer(): gets an node number and the packet size to be sent as input and returns one(true) if the input buffer of the source node has enough space.
+</li><li> advance_interconnect(): Should be called every interconnection clock cycle. As name says it perform all the internal steps of the network for one cycle.
+</li><li> interconnect_busy(): Returns one if there is a packet in flight inside the network.
+</li><li> interconnect_stats(): Prints network statistics.
+</li></ul>
+</li></ul>
+<a name="Clock_domain_crossing_for_intersim"></a><h4> <span class="mw-headline"> Clock domain crossing for intersim </span></h4>
+<p><b> Ejecting a packet from network to the outside world </b>
+</p><p>We effectively have a two stage buffer per virtual channel at the output, the first stage contains a buffer per virtual channel that has
+the same space as the buffers internal to the network, the next stage buffer per virtual channel is where we cross from one clock domain to the other--we push flits into the second stage buffer in the interconnect clock domain, and remove whole packets from the second stage buffer in the shader/dram clock domain.  We return a credit only when we are able to move a flit from the first stage buffer to the second stage buffer (and this occurs at the interconnect clock frequency).
+</p><p><b>How the ejection interface works in more detail</b> 
+</p><p>Here is a more detailed explanation of the clock boundary implementation:
+At the ejection port of each router we have as many buffers as the number of Virtual Channels. Size of each buffers is exactly equal to VC buffer size. These are the first stage of buffers mentioned above. Let's call the second stage of buffers (again as many as VCs)  boundary buffers. This buffers are sized to hold 16-flits each by default (this is a configurable option called boudry_buf_size).
+When a router tries to eject a flit, the flit is put in the corresponding first stage buffers based on the VC its coming from. ( No credit is sent back yet).
+Then the boundary buffers are checked to see if they have space; a flit is popped from the corresponding ejection buffer and pushed to the boundary buffer is it has space (this is done for all buffers in the same cycle). At this point the flit is also pushed to a credit return queue. Router can pop 1 flit per network cycle from this credit return queue and generate its corresponding credit.
+The shader (or DRAM) side pops the boundary buffer every shader or (DRAM cycle) and gets a full "Packet". i.e. If the packet is 4 flits it frees up 4 slots in the boundary buffer;if it's 1 flit it only frees up 1 flit. Since boundary buffers are as many as VCs shader (or DRAM) pops them in round robin. (It can only get 1 packet per cycle)
+In this design the first stage buffer always has space for the flits coming from router and as boundary buffers get full the flow of credits backwards will stop.
+</p><p><b> Injecting a packet from the outside world to network </b>
+</p><p>Each node of the network has an input buffer. This input buffer size is configurable via input_buffer_size option in the interconnect config file. In order to inject a packet into the interconnect first the input buffer capacity is checked by calling interconnect_has_buffer(). If there is enough space the packet will be pushed to interconnect by calling interconnect_push(). These steps are done in the shader clock domain (in the memory stage) and in the interconnect clock domain for memory nodes. 
+</p><p>Every-time advance_interconnect() function is called (in the interconnect clock domain) flits are taken out of the input buffer on each node and actually start traveling in the network (if possible).    
+</p>
+<a name="Booksim_Options_Ignored_in_Intersim"></a><h4> <span class="mw-headline"> Booksim Options Ignored in Intersim </span></h4>
+<p>Please note the following options that are part of original booksim are either ignored or should not be changed from default in intersim.
+</p>
+<ul><li> Traffic Options (section 4.6 of booksim manual):
+<ul><li> injection_rate, injection_process, burst_alpha, burst_beta, "const_flit_per_packet", traffic
+</li></ul>
+</li><li> Simulation parameters (section 4.7 of booksim manual):
+<ul><li> sim_type, sample_period, warmup_periods, max_samples, latency_thres, sim_count, reorder 
+</li></ul>
+</li></ul>
+<a name="Options_Added_in_Intersim"></a><h4> <span class="mw-headline">Options Added in Intersim</span></h4>
+<ul><li> These four options where set using #define in original booksim but we have made them configurable via intersim's config file:
+<ul><li> MATLAP_OUTPUT (generates Matlab friendly outputs), DISPLAY_LAT_DIST (shows a distribution of packet latencies), DISPLAY_HOP_DIST (shows a distribution of hop counts), DISPLAY_PAIR_LATENCY (shows average latency for each source destination pair)
+</li></ul>
+</li><li> These options are specific to GPGPU-Sim and not part of the original booksim:
+<ul><li> perfect_icnt: if set the interconnect is not simulated all packets that are injected to the network will appear at their destination after one cycle. This is true even when multiple sources send packets to one destination.
+</li><li> fixed_lat_per_hop: similar to perfect_icnt above except that the packet appears in destination after "Manhattan distance hop count times fixed_lat_per_hop" cycles. 
+</li><li> use_map: changes the way memory and shader cores are placed. See Topology Configuration.
+</li><li> flit_size: specifies the flit_size in bytes. This is used to identify the number of flits per packet based on the size of packet as passed to icnt_push() functions.
+</li><li> network_count: Number of independent interconnection networks. Should be set to 2 unless you know what you are doing. 
+</li><li> output_extra_latency: Adds extra cycles to each router. Used to create Figure 10 of ISPASS paper.
+</li><li> enable_link_stats: prints extra statistics for each link
+</li><li> input_buf_size: Input buffer size of each node in flits. If left zero the simulator will set it automatically. See "Injecting a packet from the outside world to network"
+</li><li> ejection_buffer_size: ejection buffer size. If left zero the simulator will set it automatically. See "Ejecting a packet from network to the outside world" 
+</li><li> boundary_buffer_size: boundary buffer size. If left zero the simulator will set it automatically. See "Ejecting a packet from network to the outside world"
+</li></ul>
+</li></ul>
+
+	
+</div>
+<!-- Served by aamodt-pc3.ece.ubc.ca in 0.189 secs. --></body></html>

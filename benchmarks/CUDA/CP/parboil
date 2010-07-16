@@ -1,0 +1,13 @@
+#! /usr/bin/env python
+
+# (c) 2007 The Board of Trustees of the University of Illinois.
+
+import sys
+
+try:
+	import driver
+except ImportError:
+	sys.stderr.write("Cannot run driver.  Are you running it from the parboil root directory?")
+	sys.exit(-1)
+
+driver.run()

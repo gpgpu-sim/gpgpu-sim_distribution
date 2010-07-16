@@ -1,0 +1,73 @@
+# ------------------------------------------------------------------------
+# see the copyright information for MIDG in license.midg
+# MIDG: a MIni Discontinuous Galerkin solver for CPUs or GPUS with MPI parallelism
+# Copyright (c) 2008, Tim Warburton
+# http://www.nudg.org
+# ------------------------------------------------------------------------
+
+# The following simulation codes all run in parallel
+# using ParMetis for mesh partitioning and MPI for
+# parallel computation.
+
+# First compile the ParMetis library
+cd 3rdParty/ParMetis-3.1/
+make
+
+# you may need to adjust the paths for the MPI compilers in the Makefiles
+
+# ------------------------------------------------------------------------
+
+# To compile the CPU/MPI only codes:
+
+# CPU+MPI+2d time-domain Maxwells (TM mode) with N=6 
+make -f MakefileCPU2d N=6 clean
+make -f MakefileCPU2d N=6
+
+# CPU+MPI+3d timw-domain Maxwells with N=6 
+make -f MakefileCPU3d N=6 clean
+make -f MakefileCPU3d N=6
+
+# ------------------------------------------------------------------------
+
+# To compile the GPU/MPI only codes:
+
+# NOTE FOR GPU CODES: 
+# 1. you may wish to change the device assignment made 
+# near the start of the main function in MaxwellsDriver#d.m
+# 2. you will need to have nvidia's cuda framework installed
+#    and may need to adjust the path that the Makefiles use
+#    to search for the nvcc compiler, libraries and include 
+#    files
+
+# GPU+MPI+2d time-domain Maxwells (TM mode) with N=6 
+make -f MakefileGPU2d N=6 clean
+make -f MakefileGPU2d N=6
+
+# GPU+MPI+3d timw-domain Maxwells with N=6 
+make -f MakefileGPU3d N=6 clean
+make -f MakefileGPU3d N=6
+
+
+# ------------------------------------------------------------------------
+
+# To run the various configurations (in serial) with sample meshes:
+
+./MaxwellsCPU2d Meshes/block2.neu
+./MaxwellsCPU3d Meshes/cubeK268.neu
+./MaxwellsGPU2d Meshes/block2.neu
+./MaxwellsGPU3d Meshes/cubeK268.neu
+
+# ------------------------------------------------------------------------
+
+# To run the various configurations (in parallel using MPI) with sample meshes:
+
+mpirun -np 2 ./MaxwellsCPU2d Meshes/block2.neu
+mpirun -np 2 ./MaxwellsCPU3d Meshes/cubeK268.neu
+
+mpirun -np 2 ./MaxwellsGPU2d Meshes/block2.neu
+mpirun -np 2 ./MaxwellsGPU3d Meshes/cubeK268.neu
+
+# When running with multiple GPUs you may wish to adjust the device 
+# used by each cpu.
+
+# ------------------------------------------------------------------------

@@ -1,0 +1,20 @@
+<entry>
+    <name>Template</name>
+    <owner></owner>
+    <group>CUDA</group>
+    <description><![CDATA[A trivial template project that can be used as a starting point to create new CUDA projects.]]></description>
+    <project_path>projects\template</project_path>
+    <screenshot_sm>doc/black_1x1.gif</screenshot_sm>
+    <screenshot_md>doc/black_1x1.gif</screenshot_md>
+    <screenshot_lg>doc/black_1x1.gif</screenshot_lg>
+    <userguide></userguide>
+    <video></video>
+    <whitepaper></whitepaper>
+    <executable>Bin\template.exe</executable>
+    <minspec>GeForce 8</minspec>
+    <keywords>CUDA, GPGPU</keywords>
+    <scope>GPGPU</scope>
+    <featured_date>070301</featured_date>
+    <files>
+    </files>
+</entry>

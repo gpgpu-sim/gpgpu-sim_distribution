@@ -1,0 +1,144 @@
+
+Changes in version 3.1
+- The mesh partitioning and dual creation routines have changed to support mixed
+  element meshes.
+
+- The parmetis.h header file has been restructured and is now C++ friendly.
+
+- Fortran bindings/renamings for various routines have been added.
+
+- A number of bugs have been fixed.
+  - tpwgts are now respected for small graphs.
+  - fixed various divide by zero errors.
+  - removed dependency on the old drand48() routines.
+  - fixed some memory leaks.
+
+
+
+Changes in version 3.0
+
+- The names and calling sequence of all the routines have changed due to expanded
+  functionality that has been provided in this release. However, the 2.0 API calls 
+  have been mapped to the new routines. However, the expanded functionality provided 
+  with this release is only available by using the new calling sequences.
+
+- The four adaptive repartitioning routines: 
+    ParMETIS_RepartLDiffusion, 
+    ParMETIS_RepartGDiffusion,
+    ParMETIS_RepartRemap, and
+    ParMETIS_RepartMLRemap,
+  have been replaced by a single routine called ParMETIS_V3_AdpativeRepart that 
+  implements a unified repartitioning algorithm which combines the best features 
+  of the previous routines.
+
+- Multiple vertex weights/balance constraints are supported for most of the
+  routines. This allows ParMETIS to be used to partition graphs for multi-phase
+  and multi-physics simulations.
+
+- In order to optimize partitionings for specific heterogeneous computing 
+  architectures, it is now possible to specify the target sub-domain weights 
+  for each of the sub-domains and for each balance constraint. This feature, 
+  for example, allows the user to compute a partitioning in which one of the 
+  sub-domains is twice the size of all of the others.
+
+- The number of sub-domains has been de-coupled from the number of processors
+  in both the static and the adaptive partitioning schemes. Hence, it is now
+  possible to use the parallel partitioning and repartitioning algorithms
+  to compute a k-way partitioning independent of the number of processors
+  that are used. Note that Version 2.0 provided this functionality for the 
+  static partitioning schemes only.
+
+- Routines are provided for both directly partitioning a finite element mesh, 
+  and for constructing the dual graph of a mesh in parallel.
+
+
+
+Changes in version 2.0
+
+- Changed the names and calling sequences of all the routines to make it 
+  easier to use ParMETIS with Fortran. 
+
+- Improved the performance of the diffusive adaptive repartitioning 
+  algorithms.
+
+- Added a new set of adaptive repartitioning routines that are based on the
+  remapping paradigm. These routines are called ParMETIS_RepartRemap and
+  ParMETIS_RepartMLRemap
+
+- The number of partitions has been de-coupled from the number of processors.
+  You can now use the parallel partitioning algorithms to compute a k-way
+  partitioning independent of the number of processors that you use.
+
+- The partitioning and ordering algorithms in ParMETIS now utilize various
+  portions of the serial METIS library. As a result of this, the quality
+  of the produced partitionings and orderings have been improved. 
+  Remember to link your code with both libmetis.a and libparmetis.a
+
+
+Changes in version 1.0
+
+- Added partitioning routines that take advantage of coordinate information.
+  These routines are based on space-filling curves and they are used to 
+  quickly compute a initial distribution for PARKMETIS.
+  A total of three routines have been added called PARGKMETIS, PARGRMETIS,
+  and PARGMETIS
+
+- Added a fill-reducing ordering routine that is based on multilevel nested 
+  dissection. This is similar to the ordering routine in the serial Metis 
+  with the difference that is directly computes and refines vertex 
+  separators. The new routine is called PAROMETIS and returns the new ordering
+  of the local nodes plus a vector describing the sizes of the various
+  separators that form the elimination tree.  
+
+- Changed the calling sequence again! I found it awkward to require that
+  communicators and other scalar quantities being passed by reference.
+
+- Fixed a number of memory leaks.
+
+
+
+Changes in version 0.3
+
+- Incorporated parallel multilevel diffusion algorithms for repartitioning
+  adaptively refined meshes. Two routines have been added for this purpose:
+  PARUAMETIS that performs undirected multilevel diffusion
+  PARDAMETIS that performs directed multilevel diffusion
+
+- Changed the names and calling sequences of the parallel partitioning
+  and refinement algorithms. Now they are called PARKMETIS for the
+  k-way partitioning and PARRMETIS for the k-way refinement.
+  Also the calling sequence has been changed slightly to make ParMETIS
+  Fortran callable.
+
+- Added an additional option for selecting the algorithm for initial
+  partitioning at the coarsest graph. Now you have the choice of selecting
+  either a serial or a parallel algorithm. The parallel initial partitioning
+  speeds up the algorithm especially for large number of processors.
+  NOTE that the parallel initial partitioning works only for partitions that
+  are power of two. If you want partitions that are not power of two you must
+  use the old serial initial partitioning option.
+
+- Fixed some bugs in the initial partitioning code.
+
+- Made parallel k-way refinement more robust by randomly ordering the
+  processors at each phase
+
+
+Changes in version 0.2
+
+- A complete reworking of the primary algorithms. The performance
+  of the code has improved considerably. Over 30% on 128 processor
+  Cray T3D. Improvement should be higher on machines with high
+  latencies.
+
+  Here are some performance numbers on T3D using Cray's MPI
+  for 2 graphs, mdual (0.25M vertices) and mdual2 (1.0M vertices)
+
+	       16PEs 	32PEs	64PEs	128PEs
+  mdual		4.07	2.97	2.82	
+  mdual2       15.02	8.89	6.12	5.75
+
+- The quality of the produced partitions has been improved.
+- Added options[2] to specify C or Fortran style numbering.
+
+

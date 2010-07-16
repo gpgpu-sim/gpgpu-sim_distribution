@@ -1,0 +1,186 @@
+adrivers.c:  ubavg   = savg(graph->ncon, ctrl->ubvec);
+adrivers.c:  ctrl->redist_factor = ctrl->redist_base * ((gtewgt/gtvsize)/ ctrl->edge_size_ratio);
+adrivers.c:  IFSET(ctrl->dbglvl, DBG_PROGRESS, rprintf(ctrl, "[%6d %8d %5d %5d][%d]\n", 
+adrivers.c:        graph->gnvtxs, GlobalSESum(ctrl, graph->nedges), GlobalSEMin(ctrl, graph->nvtxs), GlobalSEMax(ctrl, graph->nvtxs), ctrl->CoarsenTo));
+adrivers.c:  if (graph->gnvtxs < 1.3*ctrl->CoarsenTo ||
+adrivers.c:    if (lbavg > ubavg + 0.035 && ctrl->partType != REFINE_PARTITION)
+adrivers.c:    if (ctrl->dbglvl&DBG_PROGRESS) {
+adrivers.c:    switch (ctrl->ps_relation) {
+adrivers.c:    if (ctrl->dbglvl&DBG_PROGRESS) {
+akwayfm.c:  int npes = ctrl->npes, mype = ctrl->mype, nparts = ctrl->nparts;
+akwayfm.c:  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->KWayTmr));
+akwayfm.c:  ubvec = ctrl->ubvec;
+akwayfm.c:  tpwgts = ctrl->tpwgts;
+akwayfm.c:  ipc_factor = ctrl->ipc_factor;
+akwayfm.c:  redist_factor = ctrl->redist_factor;
+akwayfm.c:    MPI_Bcast((void *)pperm, nparts, IDX_DATATYPE, 0, ctrl->comm);
+akwayfm.c:          switch (ctrl->ps_relation) {
+akwayfm.c:              switch (ctrl->ps_relation) {
+akwayfm.c:      MPI_Allreduce((void *)lnpwgts, (void *)pgnpwgts, nparts*ncon, MPI_FLOAT, MPI_SUM, ctrl->comm);
+akwayfm.c:      IFSET(ctrl->dbglvl, DBG_RMOVEINFO, rprintf(ctrl, "\t[%d %d], [%.4f],  [%d %d %d]\n",
+akwayfm.c:        MPI_Irecv((void *)(rupdate+sendptr[i]), sendptr[i+1]-sendptr[i], IDX_DATATYPE, peind[i], 1, ctrl->comm, ctrl->rreq+i);
+akwayfm.c:        MPI_Isend((void *)(supdate+j), k-j, IDX_DATATYPE, peind[i], 1, ctrl->comm, ctrl->sreq+i);
+akwayfm.c:      MPI_Waitall(nnbrs, ctrl->rreq, ctrl->statuses);
+akwayfm.c:        MPI_Get_count(ctrl->statuses+i, IDX_DATATYPE, nupds_pe+i);
+akwayfm.c:      MPI_Waitall(nnbrs, ctrl->sreq, ctrl->statuses);
+akwayfm.c:      MPI_Allreduce((void *)lnpwgts, (void *)gnpwgts, nparts*ncon, MPI_FLOAT, MPI_SUM, ctrl->comm);
+akwayfm.c:  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->KWayTmr));
+balancemylink.c:  ipc_factor = ctrl->ipc_factor;
+balancemylink.c:  redist_factor = ctrl->redist_factor;
+coarsen.c:  int npes=ctrl->npes, mype=ctrl->mype;
+coarsen.c:  MPI_Allgather((void *)(cvtxdist+npes), 1, IDX_DATATYPE, (void *)cvtxdist, 1, IDX_DATATYPE, ctrl->comm);
+coarsen.c:      MPI_Irecv((void *)(rsizes+i), 1, IDX_DATATYPE, peind[i], 1, ctrl->comm, ctrl->rreq+i);
+coarsen.c:      MPI_Isend((void *)(ssizes+i), 1, IDX_DATATYPE, peind[i], 1, ctrl->comm, ctrl->sreq+i);
+coarsen.c:      MPI_Wait(ctrl->rreq+i, &ctrl->status);
+coarsen.c:      MPI_Wait(ctrl->sreq+i, &ctrl->status);
+coarsen.c:      MPI_Irecv((void *)(rgraph+l), (4+ncon)*(rlens[i+1]-rlens[i])+2*rsizes[i], IDX_DATATYPE, peind[i], 1, ctrl->comm, ctrl->rreq+i);
+coarsen.c:        sgraph[ll++] = (ctrl->partType == STATIC_PARTITION) ? -1 : vsize[ii];
+coarsen.c:        sgraph[ll++] = (ctrl->partType == STATIC_PARTITION) ? -1 : home[ii];
+coarsen.c:      MPI_Isend((void *)(sgraph+l), ll-l, IDX_DATATYPE, peind[i], 1, ctrl->comm, ctrl->sreq+i);
+coarsen.c:      MPI_Wait(ctrl->rreq+i, &ctrl->status);
+coarsen.c:      MPI_Wait(ctrl->sreq+i, &ctrl->status);
+coarsen.c:  if (ctrl->partType == ADAPTIVE_PARTITION || ctrl->partType == REFINE_PARTITION) {
+coarsen.c:      if (ctrl->partType == ADAPTIVE_PARTITION || ctrl->partType == REFINE_PARTITION) {
+coarsen.c:          if (ctrl->partType == ADAPTIVE_PARTITION || ctrl->partType == REFINE_PARTITION) {
+coarsen.c:            if (ctrl->partType == ADAPTIVE_PARTITION || ctrl->partType == REFINE_PARTITION) {
+coarsen.c:      cgraph->nvwgt[j*ncon+h] = (float)(cvwgt[j*ncon+h])/(float)(ctrl->tvwgts[h]);
+comm.c:  firstvtx = graph->vtxdist[ctrl->mype];
+comm.c:              peind[i], 1, ctrl->comm, ctrl->rreq+i);
+comm.c:              peind[i], 1, ctrl->comm, ctrl->sreq+i); 
+comm.c:  MPI_Waitall(nnbrs, ctrl->rreq, ctrl->statuses); 
+comm.c:  MPI_Waitall(nnbrs, ctrl->sreq, ctrl->statuses); 
+comm.c:  firstvtx = graph->vtxdist[ctrl->mype];
+comm.c:              peind[i], 1, ctrl->comm, ctrl->rreq+i);
+comm.c:    idxcopy(ctrl->npes, sendptr, psendptr);
+comm.c:                peind[i], 1, ctrl->comm, ctrl->sreq+i);
+comm.c:      MPI_Isend((void *)(sendpairs), 0, IDX_DATATYPE, peind[i], 1, ctrl->comm, ctrl->sreq+i);
+comm.c:    MPI_Wait(ctrl->rreq+i, &(ctrl->status));
+comm.c:    MPI_Get_count(&ctrl->status, IDX_DATATYPE, &n);
+comm.c:  MPI_Waitall(nnbrs, ctrl->sreq, ctrl->statuses);
+comm.c:  MPI_Allreduce((void *)&value, (void *)&max, 1, MPI_INT, MPI_MAX, ctrl->comm);
+comm.c:  MPI_Allreduce((void *)&value, (void *)&max, 1, MPI_DOUBLE, MPI_MAX, ctrl->comm);
+comm.c:  MPI_Allreduce((void *)&value, (void *)&min, 1, MPI_INT, MPI_MIN, ctrl->comm);
+comm.c:  MPI_Allreduce((void *)&value, (void *)&sum, 1, MPI_INT, MPI_SUM, ctrl->comm);
+comm.c:  MPI_Allreduce((void *)&value, (void *)&max, 1, MPI_FLOAT, MPI_MAX, ctrl->comm);
+comm.c:  MPI_Allreduce((void *)&value, (void *)&min, 1, MPI_FLOAT, MPI_MIN, ctrl->comm);
+comm.c:  MPI_Allreduce((void *)&value, (void *)&sum, 1, MPI_FLOAT, MPI_SUM, ctrl->comm);
+debug.c:  for (penum=0; penum<ctrl->npes; penum++) {
+debug.c:    if (ctrl->mype == penum) {
+debug.c:      if (ctrl->mype == 0)
+debug.c:      printf("\t%3d. ", ctrl->mype);
+debug.c:    MPI_Barrier(ctrl->comm);
+debug.c:  for (penum=0; penum<ctrl->npes; penum++) {
+debug.c:    if (ctrl->mype == penum) {
+debug.c:      if (ctrl->mype == 0)
+debug.c:      printf("\t%3d. ", ctrl->mype);
+debug.c:    MPI_Barrier(ctrl->comm);
+debug.c:  for (penum=0; penum<ctrl->npes; penum++) {
+debug.c:    if (ctrl->mype == penum) {
+debug.c:      if (ctrl->mype == 0)
+debug.c:      printf("\t%3d. ", ctrl->mype);
+debug.c:    MPI_Barrier(ctrl->comm);
+debug.c:  MPI_Barrier(ctrl->comm);
+debug.c:  firstvtx = graph->vtxdist[ctrl->mype];
+debug.c:  for (penum=0; penum<ctrl->npes; penum++) {
+debug.c:    if (ctrl->mype == penum) {
+debug.c:    MPI_Barrier(ctrl->comm);
+debug.c:  MPI_Barrier(ctrl->comm);
+debug.c:  firstvtx = graph->vtxdist[ctrl->mype];
+debug.c:  for (penum=0; penum<ctrl->npes; penum++) {
+debug.c:    if (ctrl->mype == penum) {
+debug.c:    MPI_Barrier(ctrl->comm);
+debug.c:  MPI_Barrier(ctrl->comm);
+debug.c:  for (penum=0; penum<ctrl->npes; penum++) {
+debug.c:    if (ctrl->mype == penum) {
+debug.c:      printf("PE: %d, nnbrs: %d\n", ctrl->mype, graph->nnbrs);
+debug.c:    MPI_Barrier(ctrl->comm);
+debug.c:  MPI_Barrier(ctrl->comm);
+debug.c:  for (penum=0; penum<ctrl->npes; penum++) {
+debug.c:    if (ctrl->mype == penum) {
+debug.c:      printf("PE: %d, nnbrs: %d", ctrl->mype, nnbrs);
+debug.c:    MPI_Barrier(ctrl->comm);
+diffutil.c:  nparts = ctrl->nparts;
+diffutil.c:    myhome = (ctrl->ps_relation == COUPLED) ? ctrl->mype : graph->home[i];
+diffutil.c:  /* PrintVector(ctrl, ctrl->npes, 0, lend, "Lend: "); */
+diffutil.c:  MPI_Allreduce((void *)lstart, (void *)gstart, nparts, IDX_DATATYPE, MPI_SUM, ctrl->comm);
+diffutil.c:  MPI_Allreduce((void *)lleft, (void *)gleft, nparts, IDX_DATATYPE, MPI_SUM, ctrl->comm);
+diffutil.c:  MPI_Allreduce((void *)lend, (void *)gend, nparts, IDX_DATATYPE, MPI_SUM, ctrl->comm);
+grsetup.c:  graph->gnvtxs  = vtxdist[ctrl->npes];
+grsetup.c:  graph->nvtxs   = vtxdist[ctrl->mype+1]-vtxdist[ctrl->mype];
+grsetup.c:    ctrl->tvwgts[j] = GlobalSESum(ctrl, ltvwgts[j]);
+grsetup.c:    if (ctrl->tvwgts[i] == 0) {
+grsetup.c:      graph->nvwgt[i*ncon+j] = (float)(graph->vwgt[i*ncon+j]) / (float)(ctrl->tvwgts[j]);
+grsetup.c:  srand(ctrl->seed);
+grsetup.c:  MPI_Comm_dup(comm, &(ctrl->gcomm));
+grsetup.c:  MPI_Comm_rank(ctrl->gcomm, &ctrl->mype);
+grsetup.c:  MPI_Comm_size(ctrl->gcomm, &ctrl->npes);
+grsetup.c:  ctrl->dbglvl  = dbglvl;
+grsetup.c:  ctrl->nparts  = nparts;    /* Set the # of partitions is de-coupled from the # of domains */
+grsetup.c:  ctrl->comm    = ctrl->gcomm;
+grsetup.c:  ctrl->xyztype = XYZ_SPFILL;
+grsetup.c:  srand(ctrl->mype);
+grsetup.c:  lpvtxs = idxsmalloc(ctrl->nparts, 0, "ComputeMoveStatistics: lpvtxs");
+grsetup.c:  gpvtxs = idxsmalloc(ctrl->nparts, 0, "ComputeMoveStatistics: gpvtxs");
+grsetup.c:    if (where[i] != ctrl->mype)
+grsetup.c:  /* PrintVector(ctrl, ctrl->npes, 0, lpvtxs, "Lpvtxs: "); */
+grsetup.c:  MPI_Allreduce((void *)lpvtxs, (void *)gpvtxs, ctrl->nparts, IDX_DATATYPE, MPI_SUM, ctrl->comm);
+grsetup.c:  *maxin = GlobalSEMax(ctrl, gpvtxs[ctrl->mype]-(nvtxs-j));
+initbalance.c:  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->InitPartTmr));
+initbalance.c:  mytpwgts = fsmalloc(ctrl->nparts, 0.0, "mytpwgts");
+initbalance.c:  for (i=0; i<ctrl->nparts; i++)
+initbalance.c:      mytpwgts[i] += ctrl->tpwgts[i*ncon+j];
+initbalance.c:  for (i=0; i<ctrl->nparts; i++)
+initbalance.c:  if (ctrl->ps_relation == DISCOUPLED) {
+initbalance.c:    rcounts = imalloc(ctrl->npes, "rcounts");
+initbalance.c:    rdispls = imalloc(ctrl->npes+1, "rdispls");
+initbalance.c:    for (i=0; i<ctrl->npes; i++) {
+initbalance.c:    MAKECSR(i, ctrl->npes, rdispls);
+initbalance.c:    (void *)part, rcounts, rdispls, IDX_DATATYPE, ctrl->comm);
+initbalance.c:    for (i=0; i<ctrl->npes; i++)
+initbalance.c:    if (part[i] >= ctrl->nparts)
+initbalance.c:      part[i] = home[i] = part[i] % ctrl->nparts;
+initbalance.c:      part[i] = home[i] = (-1*part[i]) % ctrl->nparts;
+initbalance.c:  IFSET(ctrl->dbglvl, DBG_REFINEINFO, Moc_ComputeSerialBalance(ctrl, agraph, agraph->where, lbvec));
+initbalance.c:  IFSET(ctrl->dbglvl, DBG_REFINEINFO, rprintf(ctrl, "input cut: %d, balance: ", ComputeSerialEdgeCut(agraph)));
+initbalance.c:    IFSET(ctrl->dbglvl, DBG_REFINEINFO, rprintf(ctrl, "%.3f ", lbvec[i]));
+initbalance.c:  IFSET(ctrl->dbglvl, DBG_REFINEINFO, rprintf(ctrl, "\n"));
+initbalance.c:  sr = (ctrl->mype % 2 == 0) ? 1 : 0;
+initbalance.c:  gd = (ctrl->mype % 2 == 1) ? 1 : 0;
+initbalance.c:  if (graph->ncon > MAX_NCON_FOR_DIFFUSION || ctrl->npes == 1) {
+initbalance.c:  MPI_Comm_split(ctrl->gcomm, sr, 0, &ipcomm);
+initbalance.c:  myctrl.sync = ctrl->sync;
+initbalance.c:  myctrl.seed = ctrl->seed;
+initbalance.c:  myctrl.nparts = ctrl->nparts;
+initbalance.c:  myctrl.ipc_factor = ctrl->ipc_factor;
+initbalance.c:  myctrl.redist_factor = ctrl->redist_base;
+initbalance.c:  myctrl.tpwgts = ctrl->tpwgts;
+initbalance.c:  icopy(ncon, ctrl->tvwgts, myctrl.tvwgts);
+initbalance.c:  icopy(ncon, ctrl->ubvec, myctrl.ubvec);
+initbalance.c:    moptions[7] = ctrl->sync + (mype % ngroups) + 1;
+initbalance.c:    lnparts = ctrl->nparts;
+initbalance.c:    lpecost.rank = ctrl->mype;
+initbalance.c:    if (ctrl->mype == gpecost.rank && ctrl->mype != sr_pe) {
+initbalance.c:      MPI_Send((void *)part, nvtxs, IDX_DATATYPE, sr_pe, 1, ctrl->comm);
+initbalance.c:    if (ctrl->mype != gpecost.rank && ctrl->mype == sr_pe) {
+initbalance.c:      MPI_Recv((void *)part, nvtxs, IDX_DATATYPE, gpecost.rank, 1, ctrl->comm, &status);
+initbalance.c:    if (ctrl->mype == sr_pe) {
+initbalance.c:      SerialRemap(&cgraph, ctrl->nparts, home, lwhere, part, ctrl->tpwgts);
+initbalance.c:      lpecost.rank = ctrl->mype;
+initbalance.c:      if (ctrl->mype == gpecost.rank && ctrl->mype != gd_pe)
+initbalance.c:        MPI_Send((void *)part, nvtxs, IDX_DATATYPE, gd_pe, 1, ctrl->comm);
+initbalance.c:      if (ctrl->mype != gpecost.rank && ctrl->mype == gd_pe)
+initbalance.c:        MPI_Recv((void *)part, nvtxs, IDX_DATATYPE, gpecost.rank, 1, ctrl->comm, &status);
+initbalance.c:      if (ctrl->mype == gd_pe) {
+initbalance.c:        SerialRemap(&cgraph, ctrl->nparts, home, lwhere, part, ctrl->tpwgts);
+initbalance.c:    if (ctrl->mype == sr_pe  || ctrl->mype == gd_pe) {
+initbalance.c:      my_cost = ctrl->ipc_factor * my_cut + REDIST_WGT * ctrl->redist_base * my_totalv;
+initbalance.c:      IFSET(ctrl->dbglvl, DBG_REFINEINFO, printf("%s initial cut: %.1f, totalv: %.1f, balance: %.3f\n",
+initbalance.c:      (ctrl->mype == sr_pe ? "scratch-remap" : "diffusion"), my_cut, my_totalv, my_balance));
+initbalance.c:      if (ctrl->mype == gd_pe) {
+initbalance.c:        MPI_Send((void *)buffer, 2, MPI_FLOAT, sr_pe, 1, ctrl->comm);
+initbalance.c:        MPI_Recv((void *)buffer, 2, MPI_FLOAT, gd_pe, 1, ctrl->comm, &status);
+initbalance.c:    if (ctrl->mype == sr_pe) {
+initbalance.c:    MPI_Bcast((void *)&who_wins, 1, MPI_INT, sr_pe, ctrl->comm);
+initbalance.c:  MPI_Bcast((void *)part, nvtxs, IDX_DATATYPE, who_wins, ctrl->comm);
+initbalance.c:  idxcopy(graph->nvtxs, part+vtxdist[ctrl->mype], graph->where);
+initbalance.c:  IFSET(ctrl->dbglvl, DBG_TIME, stoptim

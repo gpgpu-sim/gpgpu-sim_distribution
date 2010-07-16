@@ -1,0 +1,1961 @@
+
+INSTALLATION
+------------
+
+    To build ParMetis you need to edit the Makefile.in and set the appropriate
+    parameters for 'CC'. The default is to use mpicc from MPICH.
+    After that just type 'make' to build the libraries (libmetis.a and 
+    libparmetis.a).
+
+    The header file parmetis.h can be used to provided the prototypes for
+    the various routines in ParMetis.
+
+
+TESTING THE LIBRARY
+-------------------
+
+    To test the library go to the directory Graphs and execute the program
+    'ptest' that is in that directory. You can test the direct mesh partitioning 
+    routines by using the program 'meshtest'. 
+    Sample output of these two tests have been appended in this file.
+
+    NOTE-1: You must have at least 256MB per node in order for the test
+            to go through.
+
+    NOTE-2: The results on your machine will most likely look different 
+            because of differences in the random number generators. 
+            Look if the test programs reports any 'incorrect' results. 
+            If the test goes through correctly, then you have compiled
+            ParMetis successfully!
+
+
+
+
+-------------------------------------------------------------------------
+-------------------------------------------------------------------------
+-------------------------------------------------------------------------
+-------------------------------------------------------------------------
+% mpirun -np 4 ptest rotor.graph
+
+
+Testing ParMETIS_V3_PartKway with options[1-2] = {3 1}, Ncon: 1, Nparts: 8
+      Setup: Max:   0.291, Sum:   0.789, Balance:   1.477
+   Matching: Max:   0.618, Sum:   2.386, Balance:   1.035
+Contraction: Max:   0.522, Sum:   2.037, Balance:   1.026
+   InitPart: Max:   0.044, Sum:   0.142, Balance:   1.248
+    Project: Max:   0.024, Sum:   0.026, Balance:   3.641
+ Initialize: Max:   0.212, Sum:   0.664, Balance:   1.275
+      K-way: Max:   0.838, Sum:   3.210, Balance:   1.044
+      Remap: Max:   0.000, Sum:  -0.016, Balance:  -0.021
+      Total: Max:   2.476, Sum:   9.885, Balance:   1.002
+Final 8-way CUT:  14620 	Balance: 1.049   avg: 1.049
+ParMETIS_V3_PartKway reported a cut of 14620
+
+Testing ParMETIS_V3_PartKway with options[1-2] = {3 2}, Ncon: 1, Nparts: 8
+      Setup: Max:   0.244, Sum:   0.737, Balance:   1.325
+   Matching: Max:   0.565, Sum:   2.201, Balance:   1.028
+Contraction: Max:   0.494, Sum:   1.967, Balance:   1.004
+   InitPart: Max:   0.024, Sum:   0.089, Balance:   1.095
+    Project: Max:   0.050, Sum:   0.127, Balance:   1.579
+ Initialize: Max:   0.204, Sum:   0.708, Balance:   1.152
+      K-way: Max:   0.783, Sum:   3.089, Balance:   1.014
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.213
+      Total: Max:   2.361, Sum:   9.427, Balance:   1.002
+Final 8-way CUT:  15371 	Balance: 1.046   avg: 1.046
+ParMETIS_V3_PartKway reported a cut of 15371
+
+Testing ParMETIS_V3_PartKway with options[1-2] = {3 1}, Ncon: 3, Nparts: 8
+      Setup: Max:   0.216, Sum:   0.713, Balance:   1.212
+   Matching: Max:   0.523, Sum:   2.042, Balance:   1.024
+Contraction: Max:   0.485, Sum:   1.909, Balance:   1.017
+   InitPart: Max:   0.227, Sum:   0.902, Balance:   1.006
+    Project: Max:   0.053, Sum:   0.141, Balance:   1.506
+ Initialize: Max:   0.292, Sum:   1.058, Balance:   1.105
+      K-way: Max:   0.858, Sum:   3.224, Balance:   1.065
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.016
+      Total: Max:   2.601, Sum:  10.395, Balance:   1.001
+Final 8-way CUT:  24400 	Balance: 1.047 1.044 1.046   avg: 1.046
+ParMETIS_V3_PartKway reported a cut of 24400
+
+Testing ParMETIS_V3_PartKway with options[1-2] = {3 2}, Ncon: 3, Nparts: 8
+      Setup: Max:   0.224, Sum:   0.725, Balance:   1.234
+   Matching: Max:   0.761, Sum:   3.014, Balance:   1.009
+Contraction: Max:   0.440, Sum:   1.732, Balance:   1.017
+   InitPart: Max:   0.213, Sum:   0.847, Balance:   1.008
+    Project: Max:   0.045, Sum:   0.072, Balance:   2.515
+ Initialize: Max:   0.215, Sum:   0.673, Balance:   1.278
+      K-way: Max:   0.857, Sum:   3.289, Balance:   1.042
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.010
+      Total: Max:   2.696, Sum:  10.771, Balance:   1.001
+Final 8-way CUT:  23755 	Balance: 1.050 1.047 1.048   avg: 1.048
+ParMETIS_V3_PartKway reported a cut of 23755
+
+Testing ParMETIS_V3_PartKway with options[1-2] = {3 1}, Ncon: 5, Nparts: 8
+      Setup: Max:   0.258, Sum:   0.708, Balance:   1.455
+   Matching: Max:   0.459, Sum:   1.797, Balance:   1.023
+Contraction: Max:   0.478, Sum:   1.841, Balance:   1.038
+   InitPart: Max:   0.451, Sum:   1.800, Balance:   1.003
+    Project: Max:   0.046, Sum:   0.123, Balance:   1.487
+ Initialize: Max:   0.199, Sum:   0.699, Balance:   1.138
+      K-way: Max:   0.854, Sum:   3.387, Balance:   1.009
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.039
+      Total: Max:   2.725, Sum:  10.881, Balance:   1.002
+Final 8-way CUT:  25897 	Balance: 1.049 1.050 1.044 1.047 1.049   avg: 1.048
+ParMETIS_V3_PartKway reported a cut of 25897
+
+Testing ParMETIS_V3_PartKway with options[1-2] = {3 2}, Ncon: 5, Nparts: 8
+      Setup: Max:   0.225, Sum:   0.718, Balance:   1.255
+   Matching: Max:   0.601, Sum:   2.350, Balance:   1.022
+Contraction: Max:   0.480, Sum:   1.885, Balance:   1.019
+   InitPart: Max:   0.493, Sum:   1.967, Balance:   1.004
+    Project: Max:   0.045, Sum:   0.150, Balance:   1.211
+ Initialize: Max:   0.194, Sum:   0.648, Balance:   1.198
+      K-way: Max:   0.857, Sum:   3.333, Balance:   1.029
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.016
+      Total: Max:   2.869, Sum:  11.443, Balance:   1.003
+Final 8-way CUT:  26340 	Balance: 1.049 1.043 1.044 1.050 1.050   avg: 1.047
+ParMETIS_V3_PartKway reported a cut of 26340
+
+Testing ParMETIS_V3_PartKway with options[1-2] = {3 1}, Ncon: 1, Nparts: 4
+      Setup: Max:   0.284, Sum:   0.947, Balance:   1.198
+   Matching: Max:   0.660, Sum:   2.609, Balance:   1.012
+Contraction: Max:   0.471, Sum:   1.824, Balance:   1.033
+   InitPart: Max:   0.014, Sum:   0.054, Balance:   1.064
+    Project: Max:   0.074, Sum:   0.183, Balance:   1.609
+ Initialize: Max:   0.144, Sum:   0.491, Balance:   1.175
+      K-way: Max:   0.785, Sum:   3.094, Balance:   1.014
+      Remap: Max:   0.014, Sum:   0.050, Balance:   1.082
+      Total: Max:   2.488, Sum:   9.937, Balance:   1.001
+Final 4-way CUT:   7782 	Balance: 1.050   avg: 1.050
+ParMETIS_V3_PartKway reported a cut of 7782
+
+Testing ParMETIS_V3_PartKway with options[1-2] = {3 2}, Ncon: 1, Nparts: 4
+      Setup: Max:   0.264, Sum:   0.883, Balance:   1.194
+   Matching: Max:   0.574, Sum:   2.170, Balance:   1.057
+Contraction: Max:   0.459, Sum:   1.829, Balance:   1.004
+   InitPart: Max:   0.016, Sum:   0.062, Balance:   1.060
+    Project: Max:   0.048, Sum:   0.103, Balance:   1.884
+ Initialize: Max:   0.148, Sum:   0.537, Balance:   1.106
+      K-way: Max:   0.821, Sum:   3.186, Balance:   1.030
+      Remap: Max:   0.010, Sum:   0.036, Balance:   1.138
+      Total: Max:   2.348, Sum:   9.364, Balance:   1.003
+Final 4-way CUT:   8448 	Balance: 1.034   avg: 1.034
+ParMETIS_V3_PartKway reported a cut of 8448
+
+Testing ParMETIS_V3_PartKway with options[1-2] = {3 1}, Ncon: 3, Nparts: 4
+      Setup: Max:   0.278, Sum:   0.875, Balance:   1.269
+   Matching: Max:   0.946, Sum:   3.670, Balance:   1.031
+Contraction: Max:   0.897, Sum:   3.577, Balance:   1.003
+   InitPart: Max:   0.198, Sum:   0.790, Balance:   1.003
+    Project: Max:   0.051, Sum:   0.174, Balance:   1.167
+ Initialize: Max:   0.289, Sum:   1.127, Balance:   1.024
+      K-way: Max:   1.475, Sum:   5.855, Balance:   1.008
+      Remap: Max:   0.001, Sum:   0.001, Balance:   3.525
+      Total: Max:   4.194, Sum:  16.766, Balance:   1.001
+Final 4-way CUT:  12108 	Balance: 1.033 1.047 1.031   avg: 1.037
+ParMETIS_V3_PartKway reported a cut of 12108
+
+Testing ParMETIS_V3_PartKway with options[1-2] = {3 2}, Ncon: 3, Nparts: 4
+      Setup: Max:   0.251, Sum:   0.797, Balance:   1.258
+   Matching: Max:   0.669, Sum:   2.493, Balance:   1.074
+Contraction: Max:   0.601, Sum:   2.346, Balance:   1.025
+   InitPart: Max:   0.102, Sum:   0.407, Balance:   1.003
+    Project: Max:   0.082, Sum:   0.220, Balance:   1.499
+ Initialize: Max:   0.194, Sum:   0.729, Balance:   1.067
+      K-way: Max:   0.869, Sum:   3.317, Balance:   1.048
+      Remap: Max:   0.012, Sum:   0.043, Balance:   1.093
+      Total: Max:   2.719, Sum:  10.868, Balance:   1.001
+Final 4-way CUT:  13048 	Balance: 1.049 1.048 1.035   avg: 1.044
+ParMETIS_V3_PartKway reported a cut of 13048
+
+Testing ParMETIS_V3_PartKway with options[1-2] = {3 1}, Ncon: 5, Nparts: 4
+      Setup: Max:   0.251, Sum:   0.724, Balance:   1.388
+   Matching: Max:   0.628, Sum:   2.416, Balance:   1.040
+Contraction: Max:   0.474, Sum:   1.887, Balance:   1.005
+   InitPart: Max:   0.161, Sum:   0.637, Balance:   1.009
+    Project: Max:   0.081, Sum:   0.236, Balance:   1.376
+ Initialize: Max:   0.241, Sum:   0.789, Balance:   1.223
+      K-way: Max:   1.024, Sum:   3.929, Balance:   1.043
+      Remap: Max:   0.012, Sum:   0.044, Balance:   1.079
+      Total: Max:   2.794, Sum:  11.162, Balance:   1.001
+Final 4-way CUT:  14978 	Balance: 1.043 1.037 1.042 1.025 1.030   avg: 1.035
+ParMETIS_V3_PartKway reported a cut of 14978
+
+Testing ParMETIS_V3_PartKway with options[1-2] = {3 2}, Ncon: 5, Nparts: 4
+      Setup: Max:   0.298, Sum:   0.779, Balance:   1.529
+   Matching: Max:   0.652, Sum:   2.570, Balance:   1.015
+Contraction: Max:   0.699, Sum:   2.778, Balance:   1.007
+   InitPart: Max:   0.164, Sum:   0.652, Balance:   1.005
+    Project: Max:   0.056, Sum:   0.133, Balance:   1.682
+ Initialize: Max:   0.202, Sum:   0.704, Balance:   1.145
+      K-way: Max:   0.820, Sum:   3.143, Balance:   1.043
+      Remap: Max:   0.012, Sum:   0.044, Balance:   1.063
+      Total: Max:   2.855, Sum:  11.407, Balance:   1.001
+Final 4-way CUT:  14768 	Balance: 1.017 1.028 1.018 1.027 1.035   avg: 1.025
+ParMETIS_V3_PartKway reported a cut of 14768
+
+Testing ParMETIS_V3_PartKway with options[1-2] = {3 1}, Ncon: 1, Nparts: 2
+      Setup: Max:   0.251, Sum:   0.813, Balance:   1.237
+   Matching: Max:   0.631, Sum:   2.385, Balance:   1.059
+Contraction: Max:   0.443, Sum:   1.757, Balance:   1.008
+   InitPart: Max:   0.023, Sum:   0.086, Balance:   1.051
+    Project: Max:   0.061, Sum:   0.190, Balance:   1.287
+ Initialize: Max:   0.140, Sum:   0.483, Balance:   1.162
+      K-way: Max:   0.618, Sum:   2.374, Balance:   1.042
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.022
+      Total: Max:   2.195, Sum:   8.766, Balance:   1.001
+Final 2-way CUT:   2314 	Balance: 1.048   avg: 1.048
+ParMETIS_V3_PartKway reported a cut of 2314
+
+Testing ParMETIS_V3_PartKway with options[1-2] = {3 2}, Ncon: 1, Nparts: 2
+      Setup: Max:   0.247, Sum:   0.727, Balance:   1.362
+   Matching: Max:   0.573, Sum:   2.272, Balance:   1.008
+Contraction: Max:   0.502, Sum:   1.982, Balance:   1.012
+   InitPart: Max:   0.010, Sum:   0.037, Balance:   1.077
+    Project: Max:   0.040, Sum:   0.149, Balance:   1.062
+ Initialize: Max:   0.141, Sum:   0.527, Balance:   1.067
+      K-way: Max:   0.612, Sum:   2.410, Balance:   1.015
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.078
+      Total: Max:   2.150, Sum:   8.572, Balance:   1.003
+Final 2-way CUT:   2068 	Balance: 1.047   avg: 1.047
+ParMETIS_V3_PartKway reported a cut of 2068
+
+Testing ParMETIS_V3_PartKway with options[1-2] = {3 1}, Ncon: 3, Nparts: 2
+      Setup: Max:   0.268, Sum:   0.889, Balance:   1.204
+   Matching: Max:   0.548, Sum:   2.108, Balance:   1.039
+Contraction: Max:   0.446, Sum:   1.775, Balance:   1.004
+   InitPart: Max:   0.062, Sum:   0.243, Balance:   1.013
+    Project: Max:   0.054, Sum:   0.156, Balance:   1.392
+ Initialize: Max:   0.168, Sum:   0.574, Balance:   1.174
+      K-way: Max:   0.791, Sum:   3.038, Balance:   1.042
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.032
+      Total: Max:   2.358, Sum:   9.416, Balance:   1.002
+Final 2-way CUT:   6503 	Balance: 1.028 1.035 1.041   avg: 1.035
+ParMETIS_V3_PartKway reported a cut of 6503
+
+Testing ParMETIS_V3_PartKway with options[1-2] = {3 2}, Ncon: 3, Nparts: 2
+      Setup: Max:   0.200, Sum:   0.636, Balance:   1.258
+   Matching: Max:   0.664, Sum:   2.539, Balance:   1.047
+Contraction: Max:   0.452, Sum:   1.783, Balance:   1.015
+   InitPart: Max:   0.046, Sum:   0.182, Balance:   1.005
+    Project: Max:   0.044, Sum:   0.129, Balance:   1.345
+ Initialize: Max:   0.166, Sum:   0.558, Balance:   1.191
+      K-way: Max:   0.704, Sum:   2.778, Balance:   1.014
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.013
+      Total: Max:   2.317, Sum:   9.258, Balance:   1.001
+Final 2-way CUT:   5999 	Balance: 1.013 1.018 1.044   avg: 1.025
+ParMETIS_V3_PartKway reported a cut of 5999
+
+Testing ParMETIS_V3_PartKway with options[1-2] = {3 1}, Ncon: 5, Nparts: 2
+      Setup: Max:   0.209, Sum:   0.701, Balance:   1.190
+   Matching: Max:   0.503, Sum:   1.942, Balance:   1.037
+Contraction: Max:   0.567, Sum:   2.220, Balance:   1.022
+   InitPart: Max:   0.066, Sum:   0.262, Balance:   1.005
+    Project: Max:   0.095, Sum:   0.257, Balance:   1.473
+ Initialize: Max:   0.150, Sum:   0.501, Balance:   1.201
+      K-way: Max:   0.652, Sum:   2.539, Balance:   1.027
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.084
+      Total: Max:   2.220, Sum:   8.872, Balance:   1.001
+Final 2-way CUT:   2482 	Balance: 1.020 1.021 1.018 1.020 1.022   avg: 1.020
+ParMETIS_V3_PartKway reported a cut of 2482
+
+Testing ParMETIS_V3_PartKway with options[1-2] = {3 2}, Ncon: 5, Nparts: 2
+      Setup: Max:   0.286, Sum:   0.807, Balance:   1.416
+   Matching: Max:   0.518, Sum:   1.977, Balance:   1.049
+Contraction: Max:   0.507, Sum:   1.978, Balance:   1.026
+   InitPart: Max:   0.065, Sum:   0.254, Balance:   1.029
+    Project: Max:   0.051, Sum:   0.112, Balance:   1.832
+ Initialize: Max:   0.175, Sum:   0.502, Balance:   1.390
+      K-way: Max:   0.721, Sum:   2.753, Balance:   1.048
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.022
+      Total: Max:   2.233, Sum:   8.916, Balance:   1.002
+Final 2-way CUT:   2539 	Balance: 1.005 1.005 1.006 1.006 1.005   avg: 1.005
+ParMETIS_V3_PartKway reported a cut of 2539
+
+Testing ParMETIS_V3_PartGeomKway with options[1-2] = {3 1}, Ncon: 1, Nparts: 8
+      Setup: Max:   0.190, Sum:   0.460, Balance:   1.651
+      Total: Max:   3.549, Sum:  14.190, Balance:   1.000
+XYZ Cut: 417088 	Balance:  1.000 [24905 99617 4]
+      Setup: Max:   4.012, Sum:  15.364, Balance:   1.044
+   Matching: Max:   1.522, Sum:   6.034, Balance:   1.009
+Contraction: Max:   2.588, Sum:  10.293, Balance:   1.006
+   InitPart: Max:   0.016, Sum:   0.063, Balance:   1.047
+    Project: Max:   0.943, Sum:   1.055, Balance:   3.578
+ Initialize: Max:   1.195, Sum:   3.759, Balance:   1.272
+      K-way: Max:   0.857, Sum:   3.297, Balance:   1.040
+       Move: Max:   2.255, Sum:   8.985, Balance:   1.004
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.058
+      Total: Max:  13.646, Sum:  54.574, Balance:   1.000
+Final 8-way CUT:  15378 	Balance: 1.049   avg: 1.049
+ParMETIS_V3_PartGeomKway reported a cut of 15378
+
+Testing ParMETIS_V3_PartGeomKway with options[1-2] = {3 2}, Ncon: 1, Nparts: 8
+      Setup: Max:   0.107, Sum:   0.336, Balance:   1.273
+      Total: Max:   0.316, Sum:   1.259, Balance:   1.003
+XYZ Cut: 419906 	Balance:  1.000 [24905 99617 4]
+      Setup: Max:   0.957, Sum:   3.774, Balance:   1.014
+   Matching: Max:   1.233, Sum:   4.857, Balance:   1.015
+Contraction: Max:   2.783, Sum:  11.127, Balance:   1.000
+   InitPart: Max:   0.018, Sum:   0.069, Balance:   1.033
+    Project: Max:   0.170, Sum:   0.235, Balance:   2.883
+ Initialize: Max:   0.443, Sum:   1.365, Balance:   1.297
+      K-way: Max:   0.818, Sum:   3.127, Balance:   1.047
+       Move: Max:   9.035, Sum:  36.117, Balance:   1.001
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.030
+      Total: Max:   6.582, Sum:  26.301, Balance:   1.001
+Final 8-way CUT:  14413 	Balance: 1.046   avg: 1.046
+ParMETIS_V3_PartGeomKway reported a cut of 14413
+
+Testing ParMETIS_V3_PartGeomKway with options[1-2] = {3 1}, Ncon: 3, Nparts: 8
+      Setup: Max:   0.147, Sum:   0.488, Balance:   1.205
+      Total: Max:   0.299, Sum:   1.192, Balance:   1.005
+XYZ Cut: 418507 	Balance:  1.000 [24905 99617 4]
+      Setup: Max:   0.936, Sum:   3.241, Balance:   1.155
+   Matching: Max:   0.680, Sum:   2.642, Balance:   1.030
+Contraction: Max:   1.163, Sum:   4.652, Balance:   1.000
+   InitPart: Max:   0.234, Sum:   0.935, Balance:   1.002
+    Project: Max:   0.079, Sum:   0.169, Balance:   1.874
+ Initialize: Max:   0.270, Sum:   0.983, Balance:   1.100
+      K-way: Max:   0.868, Sum:   3.287, Balance:   1.056
+       Move: Max:   3.337, Sum:  13.333, Balance:   1.001
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.022
+      Total: Max:   4.428, Sum:  17.694, Balance:   1.001
+Final 8-way CUT:  23489 	Balance: 1.046 1.047 1.050   avg: 1.048
+ParMETIS_V3_PartGeomKway reported a cut of 23489
+
+Testing ParMETIS_V3_PartGeomKway with options[1-2] = {3 2}, Ncon: 3, Nparts: 8
+      Setup: Max:   0.215, Sum:   0.671, Balance:   1.282
+      Total: Max:   0.355, Sum:   1.418, Balance:   1.002
+XYZ Cut: 418507 	Balance:  1.000 [24905 99617 4]
+      Setup: Max:   0.834, Sum:   2.604, Balance:   1.282
+   Matching: Max:   0.780, Sum:   3.046, Balance:   1.025
+Contraction: Max:   1.036, Sum:   4.131, Balance:   1.003
+   InitPart: Max:   0.221, Sum:   0.884, Balance:   1.002
+    Project: Max:   0.078, Sum:   0.204, Balance:   1.523
+ Initialize: Max:   0.355, Sum:   1.265, Balance:   1.123
+      K-way: Max:   0.870, Sum:   3.364, Balance:   1.035
+       Move: Max:   1.618, Sum:   6.456, Balance:   1.002
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.043
+      Total: Max:   4.332, Sum:  17.312, Balance:   1.001
+Final 8-way CUT:  23546 	Balance: 1.048 1.045 1.043   avg: 1.045
+ParMETIS_V3_PartGeomKway reported a cut of 23546
+
+Testing ParMETIS_V3_PartGeomKway with options[1-2] = {3 1}, Ncon: 5, Nparts: 8
+      Setup: Max:   0.168, Sum:   0.486, Balance:   1.382
+      Total: Max:   0.298, Sum:   1.187, Balance:   1.003
+XYZ Cut: 418507 	Balance:  1.000 [24905 99617 4]
+      Setup: Max:   0.704, Sum:   2.160, Balance:   1.303
+   Matching: Max:   0.569, Sum:   2.209, Balance:   1.031
+Contraction: Max:   1.035, Sum:   4.134, Balance:   1.001
+   InitPart: Max:   0.335, Sum:   1.338, Balance:   1.002
+    Project: Max:   0.073, Sum:   0.195, Balance:   1.506
+ Initialize: Max:   0.303, Sum:   1.071, Balance:   1.131
+      K-way: Max:   0.933, Sum:   3.528, Balance:   1.058
+       Move: Max:   1.039, Sum:   4.124, Balance:   1.008
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.049
+      Total: Max:   4.035, Sum:  16.114, Balance:   1.002
+Final 8-way CUT:  28349 	Balance: 1.048 1.041 1.046 1.050 1.047   avg: 1.046
+ParMETIS_V3_PartGeomKway reported a cut of 28349
+
+Testing ParMETIS_V3_PartGeomKway with options[1-2] = {3 2}, Ncon: 5, Nparts: 8
+      Setup: Max:   0.102, Sum:   0.312, Balance:   1.309
+      Total: Max:   0.193, Sum:   0.770, Balance:   1.005
+XYZ Cut: 418507 	Balance:  1.000 [24905 99617 4]
+      Setup: Max:   0.574, Sum:   1.851, Balance:   1.241
+   Matching: Max:   0.500, Sum:   1.935, Balance:   1.034
+Contraction: Max:   0.658, Sum:   2.614, Balance:   1.007
+   InitPart: Max:   0.326, Sum:   1.300, Balance:   1.001
+    Project: Max:   0.048, Sum:   0.157, Balance:   1.209
+ Initialize: Max:   0.266, Sum:   0.931, Balance:   1.144
+      K-way: Max:   0.903, Sum:   3.442, Balance:   1.049
+       Move: Max:   0.580, Sum:   2.295, Balance:   1.011
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.028
+      Total: Max:   3.401, Sum:  13.572, Balance:   1.002
+Final 8-way CUT:  27483 	Balance: 1.044 1.050 1.037 1.045 1.045   avg: 1.044
+ParMETIS_V3_PartGeomKway reported a cut of 27483
+
+Testing ParMETIS_V3_PartGeomKway with options[1-2] = {3 1}, Ncon: 1, Nparts: 4
+      Setup: Max:   0.100, Sum:   0.298, Balance:   1.343
+      Total: Max:   0.194, Sum:   0.738, Balance:   1.051
+XYZ Cut: 418507 	Balance:  1.000 [24905 99617 4]
+      Setup: Max:   0.596, Sum:   1.766, Balance:   1.350
+   Matching: Max:   0.555, Sum:   2.169, Balance:   1.023
+Contraction: Max:   0.641, Sum:   2.517, Balance:   1.018
+   InitPart: Max:   0.014, Sum:   0.054, Balance:   1.036
+    Project: Max:   0.080, Sum:   0.181, Balance:   1.775
+ Initialize: Max:   0.236, Sum:   0.704, Balance:   1.339
+      K-way: Max:   0.766, Sum:   2.940, Balance:   1.042
+       Move: Max:   0.262, Sum:   1.031, Balance:   1.018
+      Remap: Max:  -0.006, Sum:  -0.027, Balance:   0.973
+      Total: Max:   2.949, Sum:  11.769, Balance:   1.002
+Final 4-way CUT:   8815 	Balance: 1.028   avg: 1.028
+ParMETIS_V3_PartGeomKway reported a cut of 8815
+
+Testing ParMETIS_V3_PartGeomKway with options[1-2] = {3 2}, Ncon: 1, Nparts: 4
+      Setup: Max:   0.181, Sum:   0.472, Balance:   1.531
+      Total: Max:   0.283, Sum:   1.133, Balance:   1.001
+XYZ Cut: 418507 	Balance:  1.000 [24905 99617 4]
+      Setup: Max:   0.655, Sum:   1.957, Balance:   1.338
+   Matching: Max:   0.629, Sum:   2.387, Balance:   1.054
+Contraction: Max:   0.618, Sum:   2.438, Balance:   1.013
+   InitPart: Max:   0.026, Sum:   0.102, Balance:   1.019
+    Project: Max:   0.074, Sum:   0.198, Balance:   1.500
+ Initialize: Max:   0.205, Sum:   0.733, Balance:   1.117
+      K-way: Max:   0.839, Sum:   3.283, Balance:   1.022
+       Move: Max:   1.827, Sum:   7.270, Balance:   1.005
+      Remap: Max:   0.012, Sum:   0.048, Balance:   1.034
+      Total: Max:   3.226, Sum:  12.876, Balance:   1.002
+Final 4-way CUT:   8442 	Balance: 1.046   avg: 1.046
+ParMETIS_V3_PartGeomKway reported a cut of 8442
+
+Testing ParMETIS_V3_PartGeomKway with options[1-2] = {3 1}, Ncon: 3, Nparts: 4
+      Setup: Max:   0.160, Sum:   0.513, Balance:   1.247
+      Total: Max:   0.299, Sum:   1.194, Balance:   1.001
+XYZ Cut: 418507 	Balance:  1.000 [24905 99617 4]
+      Setup: Max:   0.648, Sum:   2.097, Balance:   1.235
+   Matching: Max:   0.507, Sum:   2.008, Balance:   1.010
+Contraction: Max:   0.647, Sum:   2.541, Balance:   1.019
+   InitPart: Max:   0.104, Sum:   0.416, Balance:   1.004
+    Project: Max:   0.047, Sum:   0.033, Balance:   5.662
+ Initialize: Max:   0.268, Sum:   0.862, Balance:   1.244
+      K-way: Max:   0.851, Sum:   3.172, Balance:   1.074
+       Move: Max:   0.940, Sum:   3.739, Balance:   1.005
+      Remap: Max:  -0.002, Sum:  -0.008, Balance:   0.964
+      Total: Max:   3.187, Sum:  12.722, Balance:   1.002
+Final 4-way CUT:  12726 	Balance: 1.035 1.019 1.039   avg: 1.031
+ParMETIS_V3_PartGeomKway reported a cut of 12726
+
+Testing ParMETIS_V3_PartGeomKway with options[1-2] = {3 2}, Ncon: 3, Nparts: 4
+      Setup: Max:   0.105, Sum:   0.288, Balance:   1.451
+      Total: Max:   0.184, Sum:   0.733, Balance:   1.003
+XYZ Cut: 418507 	Balance:  1.000 [24905 99617 4]
+      Setup: Max:   0.574, Sum:   1.709, Balance:   1.345
+   Matching: Max:   0.565, Sum:   2.180, Balance:   1.037
+Contraction: Max:   0.765, Sum:   3.044, Balance:   1.005
+   InitPart: Max:   0.105, Sum:   0.417, Balance:   1.005
+    Project: Max:   0.086, Sum:   0.217, Balance:   1.593
+ Initialize: Max:   0.288, Sum:   0.906, Balance:   1.271
+      K-way: Max:   0.798, Sum:   3.034, Balance:   1.052
+       Move: Max:   0.767, Sum:   3.042, Balance:   1.009
+      Remap: Max:   0.010, Sum:   0.040, Balance:   1.016
+      Total: Max:   3.240, Sum:  12.933, Balance:   1.002
+Final 4-way CUT:  14695 	Balance: 1.034 1.012 1.018   avg: 1.021
+ParMETIS_V3_PartGeomKway reported a cut of 14695
+
+Testing ParMETIS_V3_PartGeomKway with options[1-2] = {3 1}, Ncon: 5, Nparts: 4
+      Setup: Max:   0.113, Sum:   0.268, Balance:   1.688
+      Total: Max:   0.188, Sum:   0.749, Balance:   1.002
+XYZ Cut: 418507 	Balance:  1.000 [24905 99617 4]
+      Setup: Max:   0.703, Sum:   1.983, Balance:   1.418
+   Matching: Max:   0.620, Sum:   2.423, Balance:   1.023
+Contraction: Max:   0.669, Sum:   2.631, Balance:   1.017
+   InitPart: Max:   0.169, Sum:   0.675, Balance:   1.004
+    Project: Max:   0.057, Sum:   0.129, Balance:   1.770
+ Initialize: Max:   0.251, Sum:   0.842, Balance:   1.190
+      K-way: Max:   0.867, Sum:   3.321, Balance:   1.044
+       Move: Max:   0.330, Sum:   1.303, Balance:   1.015
+      Remap: Max:  -0.004, Sum:  -0.017, Balance:   0.879
+      Total: Max:   3.364, Sum:  13.428, Balance:   1.002
+Final 4-way CUT:  14470 	Balance: 1.045 1.031 1.032 1.041 1.034   avg: 1.037
+ParMETIS_V3_PartGeomKway reported a cut of 14470
+
+Testing ParMETIS_V3_PartGeomKway with options[1-2] = {3 2}, Ncon: 5, Nparts: 4
+      Setup: Max:   0.159, Sum:   0.354, Balance:   1.803
+      Total: Max:   0.254, Sum:   1.015, Balance:   1.002
+XYZ Cut: 418507 	Balance:  1.000 [24905 99617 4]
+      Setup: Max:   0.722, Sum:   2.256, Balance:   1.280
+   Matching: Max:   0.640, Sum:   2.453, Balance:   1.043
+Contraction: Max:   0.803, Sum:   3.153, Balance:   1.019
+   InitPart: Max:   0.147, Sum:   0.586, Balance:   1.003
+    Project: Max:   0.065, Sum:   0.111, Balance:   2.346
+ Initialize: Max:   0.231, Sum:   0.822, Balance:   1.125
+      K-way: Max:   0.888, Sum:   3.417, Balance:   1.039
+       Move: Max:   1.576, Sum:   6.284, Balance:   1.003
+      Remap: Max:   0.013, Sum:   0.052, Balance:   1.011
+      Total: Max:   3.636, Sum:  14.520, Balance:   1.002
+Final 4-way CUT:  13886 	Balance: 1.039 1.044 1.030 1.040 1.013   avg: 1.033
+ParMETIS_V3_PartGeomKway reported a cut of 13886
+
+Testing ParMETIS_V3_PartGeomKway with options[1-2] = {3 1}, Ncon: 1, Nparts: 2
+      Setup: Max:   0.140, Sum:   0.409, Balance:   1.370
+      Total: Max:   0.225, Sum:   0.894, Balance:   1.008
+XYZ Cut: 418507 	Balance:  1.000 [24905 99617 4]
+      Setup: Max:   0.634, Sum:   1.852, Balance:   1.369
+   Matching: Max:   0.560, Sum:   2.169, Balance:   1.033
+Contraction: Max:   0.652, Sum:   2.573, Balance:   1.014
+   InitPart: Max:   0.016, Sum:   0.061, Balance:   1.027
+    Project: Max:   0.049, Sum:   0.150, Balance:   1.301
+ Initialize: Max:   0.205, Sum:   0.693, Balance:   1.183
+      K-way: Max:   0.627, Sum:   2.386, Balance:   1.051
+       Move: Max:   0.755, Sum:   3.006, Balance:   1.004
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.018
+      Total: Max:   2.863, Sum:  11.433, Balance:   1.001
+Final 2-way CUT:   2511 	Balance: 1.019   avg: 1.019
+ParMETIS_V3_PartGeomKway reported a cut of 2511
+
+Testing ParMETIS_V3_PartGeomKway with options[1-2] = {3 2}, Ncon: 1, Nparts: 2
+      Setup: Max:   0.271, Sum:   0.682, Balance:   1.588
+      Total: Max:   0.340, Sum:   1.358, Balance:   1.001
+XYZ Cut: 418507 	Balance:  1.000 [24905 99617 4]
+      Setup: Max:   0.745, Sum:   2.226, Balance:   1.339
+   Matching: Max:   0.625, Sum:   2.355, Balance:   1.062
+Contraction: Max:   0.701, Sum:   2.619, Balance:   1.071
+   InitPart: Max:   0.018, Sum:   0.071, Balance:   1.030
+    Project: Max:   0.134, Sum:   0.313, Balance:   1.713
+ Initialize: Max:   0.264, Sum:   0.893, Balance:   1.184
+      K-way: Max:   1.009, Sum:   3.929, Balance:   1.028
+       Move: Max:   2.843, Sum:  11.330, Balance:   1.004
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.019
+      Total: Max:   3.507, Sum:  13.989, Balance:   1.003
+Final 2-way CUT:   2964 	Balance: 1.000   avg: 1.000
+ParMETIS_V3_PartGeomKway reported a cut of 2964
+
+Testing ParMETIS_V3_PartGeomKway with options[1-2] = {3 1}, Ncon: 3, Nparts: 2
+      Setup: Max:   0.113, Sum:   0.373, Balance:   1.213
+      Total: Max:   0.209, Sum:   0.835, Balance:   1.002
+XYZ Cut: 418507 	Balance:  1.000 [24905 99617 4]
+      Setup: Max:   0.706, Sum:   2.162, Balance:   1.305
+   Matching: Max:   0.603, Sum:   2.342, Balance:   1.030
+Contraction: Max:   0.645, Sum:   2.574, Balance:   1.003
+   InitPart: Max:   0.053, Sum:   0.209, Balance:   1.012
+    Project: Max:   0.056, Sum:   0.056, Balance:   4.037
+ Initialize: Max:   0.229, Sum:   0.770, Balance:   1.192
+      K-way: Max:   0.828, Sum:   3.080, Balance:   1.075
+       Move: Max:   0.656, Sum:   2.568, Balance:   1.022
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.009
+      Total: Max:   3.174, Sum:  12.646, Balance:   1.004
+Final 2-way CUT:   6395 	Balance: 1.038 1.036 1.035   avg: 1.036
+ParMETIS_V3_PartGeomKway reported a cut of 6395
+
+Testing ParMETIS_V3_PartGeomKway with options[1-2] = {3 2}, Ncon: 3, Nparts: 2
+      Setup: Max:   0.214, Sum:   0.509, Balance:   1.683
+      Total: Max:   0.324, Sum:   1.294, Balance:   1.001
+XYZ Cut: 418507 	Balance:  1.000 [24905 99617 4]
+      Setup: Max:   0.682, Sum:   2.004, Balance:   1.362
+   Matching: Max:   0.591, Sum:   2.258, Balance:   1.046
+Contraction: Max:   0.938, Sum:   3.709, Balance:   1.012
+   InitPart: Max:   0.045, Sum:   0.178, Balance:   1.009
+    Project: Max:   0.067, Sum:   0.183, Balance:   1.473
+ Initialize: Max:   0.221, Sum:   0.762, Balance:   1.158
+      K-way: Max:   0.764, Sum:   2.969, Balance:   1.030
+       Move: Max:   0.710, Sum:   2.799, Balance:   1.015
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.018
+      Total: Max:   3.443, Sum:  13.742, Balance:   1.002
+Final 2-way CUT:   6299 	Balance: 1.003 1.003 1.004   avg: 1.003
+ParMETIS_V3_PartGeomKway reported a cut of 6299
+
+Testing ParMETIS_V3_PartGeomKway with options[1-2] = {3 1}, Ncon: 5, Nparts: 2
+      Setup: Max:   0.134, Sum:   0.348, Balance:   1.539
+      Total: Max:   0.221, Sum:   0.849, Balance:   1.039
+XYZ Cut: 418507 	Balance:  1.000 [24905 99617 4]
+      Setup: Max:   0.600, Sum:   1.930, Balance:   1.243
+   Matching: Max:   0.551, Sum:   2.096, Balance:   1.052
+Contraction: Max:   0.655, Sum:   2.576, Balance:   1.017
+   InitPart: Max:   0.067, Sum:   0.268, Balance:   1.006
+    Project: Max:   0.041, Sum:   0.048, Balance:   3.451
+ Initialize: Max:   0.216, Sum:   0.684, Balance:   1.264
+      K-way: Max:   0.702, Sum:   2.757, Balance:   1.018
+       Move: Max:   0.803, Sum:   3.178, Balance:   1.010
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.024
+      Total: Max:   2.977, Sum:  11.877, Balance:   1.003
+Final 2-way CUT:   2626 	Balance: 1.022 1.029 1.029 1.030 1.038   avg: 1.029
+ParMETIS_V3_PartGeomKway reported a cut of 2626
+
+Testing ParMETIS_V3_PartGeomKway with options[1-2] = {3 2}, Ncon: 5, Nparts: 2
+      Setup: Max:   0.107, Sum:   0.263, Balance:   1.623
+      Total: Max:   0.181, Sum:   0.723, Balance:   1.002
+XYZ Cut: 418507 	Balance:  1.000 [24905 99617 4]
+      Setup: Max:   0.629, Sum:   1.818, Balance:   1.383
+   Matching: Max:   0.567, Sum:   2.172, Balance:   1.044
+Contraction: Max:   0.663, Sum:   2.543, Balance:   1.043
+   InitPart: Max:   0.066, Sum:   0.261, Balance:   1.006
+    Project: Max:   0.051, Sum:   0.152, Balance:   1.341
+ Initialize: Max:   0.166, Sum:   0.585, Balance:   1.137
+      K-way: Max:   0.742, Sum:   2.856, Balance:   1.039
+       Move: Max:   0.909, Sum:   3.611, Balance:   1.006
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.034
+      Total: Max:   2.963, Sum:  11.818, Balance:   1.003
+Final 2-way CUT:   2423 	Balance: 1.031 1.020 1.020 1.019 1.008   avg: 1.020
+ParMETIS_V3_PartGeomKway reported a cut of 2423
+
+Testing ParMETIS_V3_PartGeom
+ParMETIS_V3_PartGeom partition complete
+
+Testing ParMETIS_V3_RefineKway with default options (before move)
+      Setup: Max:   0.329, Sum:   0.914, Balance:   1.441
+   Matching: Max:   0.247, Sum:   0.760, Balance:   1.301
+Contraction: Max:   0.345, Sum:   0.997, Balance:   1.383
+    Project: Max:   0.011, Sum:   0.036, Balance:   1.200
+ Initialize: Max:   0.302, Sum:   1.016, Balance:   1.189
+      K-way: Max:   0.867, Sum:   3.290, Balance:   1.055
+      Remap: Max:   0.010, Sum:   0.037, Balance:   1.112
+      Total: Max:   2.032, Sum:   8.123, Balance:   1.001
+Final   4-way Cut:  20449 	Balance: 1.050 
+NMoved: 32025 11910 11068 22978
+ParMETIS_V3_RefineKway reported a cut of 20449
+
+Testing ParMETIS_V3_RefineKway with options[1-3] = {3 1 1}, Ncon: 1, Nparts: 4
+      Setup: Max:   0.075, Sum:   0.233, Balance:   1.288
+   Matching: Max:   0.163, Sum:   0.622, Balance:   1.048
+Contraction: Max:   0.274, Sum:   0.767, Balance:   1.427
+    Project: Max:   0.007, Sum:  -0.015, Balance:  -1.810
+ Initialize: Max:   0.201, Sum:   0.667, Balance:   1.204
+      K-way: Max:   0.435, Sum:   1.594, Balance:   1.093
+      Remap: Max:  -0.001, Sum:  -0.011, Balance:   0.255
+      Total: Max:   1.135, Sum:   4.536, Balance:   1.001
+Final   4-way Cut:   9124 	Balance: 1.046 
+NMoved: 140 77 91 168
+ParMETIS_V3_RefineKway reported a cut of 9124
+
+Testing ParMETIS_V3_RefineKway with options[1-3] = {3 2 1}, Ncon: 1, Nparts: 4
+      Setup: Max:   0.086, Sum:   0.274, Balance:   1.259
+   Matching: Max:   0.089, Sum:   0.339, Balance:   1.048
+Contraction: Max:   0.338, Sum:   0.929, Balance:   1.456
+    Project: Max:   0.007, Sum:   0.017, Balance:   1.758
+ Initialize: Max:   0.191, Sum:   0.705, Balance:   1.083
+      K-way: Max:   0.431, Sum:   1.635, Balance:   1.055
+      Remap: Max:   0.010, Sum:   0.036, Balance:   1.156
+      Total: Max:   1.167, Sum:   4.652, Balance:   1.003
+Final   4-way Cut:   9106 	Balance: 1.045 
+NMoved: 172 123 93 216
+ParMETIS_V3_RefineKway reported a cut of 9106
+
+Testing ParMETIS_V3_RefineKway with options[1-3] = {3 1 1}, Ncon: 3, Nparts: 4
+      Setup: Max:   0.120, Sum:   0.315, Balance:   1.526
+   Matching: Max:   0.179, Sum:   0.666, Balance:   1.074
+Contraction: Max:   0.260, Sum:   0.769, Balance:   1.353
+    Project: Max:   0.010, Sum:   0.033, Balance:   1.255
+ Initialize: Max:   0.137, Sum:   0.487, Balance:   1.123
+      K-way: Max:   0.518, Sum:   1.964, Balance:   1.056
+      Remap: Max:   0.013, Sum:   0.031, Balance:   1.670
+      Total: Max:   1.273, Sum:   5.088, Balance:   1.001
+Final   4-way Cut:   9018 	Balance: 1.043 1.043 1.043 
+NMoved: 260 135 100 235
+ParMETIS_V3_RefineKway reported a cut of 9018
+
+Testing ParMETIS_V3_RefineKway with options[1-3] = {3 2 1}, Ncon: 3, Nparts: 4
+      Setup: Max:   0.105, Sum:   0.347, Balance:   1.210
+   Matching: Max:   0.213, Sum:   0.805, Balance:   1.058
+Contraction: Max:   0.310, Sum:   0.825, Balance:   1.504
+    Project: Max:   0.009, Sum:  -0.003, Balance: -12.691
+ Initialize: Max:   0.135, Sum:   0.470, Balance:   1.150
+      K-way: Max:   0.488, Sum:   1.774, Balance:   1.100
+      Remap: Max:   0.011, Sum:   0.040, Balance:   1.107
+      Total: Max:   1.304, Sum:   5.210, Balance:   1.001
+Final   4-way Cut:   9024 	Balance: 1.043 1.043 1.043 
+NMoved: 267 135 118 253
+ParMETIS_V3_RefineKway reported a cut of 9024
+
+Testing ParMETIS_V3_RefineKway with options[1-3] = {3 1 1}, Ncon: 5, Nparts: 4
+      Setup: Max:   0.113, Sum:   0.333, Balance:   1.364
+   Matching: Max:   0.252, Sum:   0.916, Balance:   1.102
+Contraction: Max:   0.328, Sum:   0.814, Balance:   1.614
+    Project: Max:   0.009, Sum:   0.002, Balance:  21.632
+ Initialize: Max:   0.142, Sum:   0.500, Balance:   1.140
+      K-way: Max:   0.557, Sum:   2.030, Balance:   1.097
+      Remap: Max:   0.010, Sum:   0.035, Balance:   1.098
+      Total: Max:   1.365, Sum:   5.454, Balance:   1.001
+Final   4-way Cut:   9081 	Balance: 1.046 1.046 1.046 1.046 1.046 
+NMoved: 192 135 100 235
+ParMETIS_V3_RefineKway reported a cut of 9081
+
+Testing ParMETIS_V3_RefineKway with options[1-3] = {3 2 1}, Ncon: 5, Nparts: 4
+      Setup: Max:   0.148, Sum:   0.373, Balance:   1.583
+   Matching: Max:   0.226, Sum:   0.836, Balance:   1.084
+Contraction: Max:   0.330, Sum:   0.852, Balance:   1.549
+    Project: Max:   0.011, Sum:   0.019, Balance:   2.309
+ Initialize: Max:   0.134, Sum:   0.472, Balance:   1.137
+      K-way: Max:   0.555, Sum:   2.154, Balance:   1.031
+      Remap: Max:  -0.006, Sum:  -0.028, Balance:   0.854
+      Total: Max:   1.408, Sum:   5.630, Balance:   1.001
+Final   4-way Cut:   9090 	Balance: 1.045 1.045 1.045 1.045 1.045 
+NMoved: 200 138 121 259
+ParMETIS_V3_RefineKway reported a cut of 9090
+Initial Load Imbalance: 1.3148, [26344 47967 145931] for afactor: 4
+Initial Load Imbalance: 1.6407, [35080 135843 331187] for afactor: 4
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 1 1}, ipc2redist: 1000.000, Ncon: 1, Nparts: 8
+[ 99617  1324862 23436 26023][400]
+[ 51520   769504 12144 13427][400]
+[ 26858   411494  6350  6981][400]
+[ 14060   218252  3344  3633][400]
+[  7404   115538  1780  1896][400]
+[  3912    60528   960   993][400]
+[  2101    31812   521   530][400]
+[  1146    16602   283   291][400]
+[   641     8632   157   167][400]
+[   365     4570    88    96][400]
+nvtxs:        365, balance: 1.019 
+nvtxs:        641, cut:    23753, balance: 1.050 
+nvtxs:       1146, cut:    23103, balance: 1.052 
+nvtxs:       2101, cut:    22312, balance: 1.049 
+nvtxs:       3912, cut:    21159, balance: 1.050 
+nvtxs:       7404, cut:    20171, balance: 1.050 
+nvtxs:      14060, cut:    19304, balance: 1.050 
+nvtxs:      26858, cut:    18461, balance: 1.050 
+nvtxs:      51520, cut:    17456, balance: 1.050 
+nvtxs:      99617, cut:    16161, balance: 1.050 
+      Setup: Max:   0.097, Sum:   0.252, Balance:   1.544
+   Matching: Max:   0.281, Sum:   1.081, Balance:   1.040
+Contraction: Max:   0.457, Sum:   1.793, Balance:   1.020
+   InitPart: Max:   0.032, Sum:   0.124, Balance:   1.049
+    Project: Max:   0.022, Sum:   0.044, Balance:   2.022
+ Initialize: Max:   0.177, Sum:   0.590, Balance:   1.200
+      K-way: Max:   0.743, Sum:   2.885, Balance:   1.031
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.292
+      Total: Max:   1.964, Sum:   7.851, Balance:   1.001
+Final   8-way Cut:  16161 	Balance: 1.050 
+NMoved: 27541 7332 7369 14701
+ParMETIS_V3_AdaptiveRepart reported a cut of 16161
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 2 1}, ipc2redist: 1000.000, Ncon: 1, Nparts: 8
+[ 99617  1324862 23436 26023][400]
+[ 51526   769238 12122 13433][400]
+[ 26833   410954  6315  6981][400]
+[ 14029   218176  3309  3638][400]
+[  7393   115482  1741  1919][400]
+[  3925    60784   921  1014][400]
+[  2098    31932   494   538][400]
+[  1137    16642   269   292][400]
+[   627     8640   149   161][400]
+[   355     4468    85    90][400]
+nvtxs:        355, balance: 1.017 
+nvtxs:        627, cut:    24572, balance: 1.048 
+nvtxs:       1137, cut:    23125, balance: 1.046 
+nvtxs:       2098, cut:    22008, balance: 1.049 
+nvtxs:       3925, cut:    21385, balance: 1.051 
+nvtxs:       7393, cut:    20507, balance: 1.050 
+nvtxs:      14029, cut:    19749, balance: 1.050 
+nvtxs:      26833, cut:    18945, balance: 1.050 
+nvtxs:      51526, cut:    18010, balance: 1.050 
+nvtxs:      99617, cut:    16894, balance: 1.050 
+      Setup: Max:   0.068, Sum:   0.124, Balance:   2.194
+   Matching: Max:   0.281, Sum:   1.063, Balance:   1.058
+Contraction: Max:   0.383, Sum:   1.522, Balance:   1.007
+   InitPart: Max:   0.031, Sum:   0.092, Balance:   1.359
+    Project: Max:   0.029, Sum:   0.092, Balance:   1.252
+ Initialize: Max:   0.186, Sum:   0.633, Balance:   1.174
+      K-way: Max:   0.743, Sum:   2.884, Balance:   1.031
+      Remap: Max:   0.000, Sum:   0.001, Balance:   2.075
+      Total: Max:   1.876, Sum:   7.499, Balance:   1.001
+Final   8-way Cut:  16894 	Balance: 1.050 
+NMoved: 20370 6382 6395 12777
+ParMETIS_V3_AdaptiveRepart reported a cut of 16894
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 1 1}, ipc2redist: 1.000, Ncon: 1, Nparts: 8
+[ 99617  1324862 23436 26023][400]
+[ 51520   769504 12144 13427][400]
+[ 26858   411494  6350  6981][400]
+[ 14060   218252  3344  3633][400]
+[  7404   115538  1780  1896][400]
+[  3912    60528   960   993][400]
+[  2101    31812   521   530][400]
+[  1146    16602   283   291][400]
+[   641     8632   157   167][400]
+[   365     4570    88    96][400]
+nvtxs:        365, balance: 1.055 
+nvtxs:        641, cut:    28724, balance: 1.049 
+nvtxs:       1146, cut:    26926, balance: 1.050 
+nvtxs:       2101, cut:    25830, balance: 1.050 
+nvtxs:       3912, cut:    25333, balance: 1.050 
+nvtxs:       7404, cut:    24637, balance: 1.051 
+nvtxs:      14060, cut:    23627, balance: 1.050 
+nvtxs:      26858, cut:    22880, balance: 1.050 
+nvtxs:      51520, cut:    21888, balance: 1.050 
+nvtxs:      99617, cut:    20532, balance: 1.050 
+      Setup: Max:   0.115, Sum:   0.290, Balance:   1.579
+   Matching: Max:   0.268, Sum:   0.987, Balance:   1.084
+Contraction: Max:   0.369, Sum:   1.441, Balance:   1.025
+   InitPart: Max:   0.034, Sum:   0.116, Balance:   1.177
+    Project: Max:   0.023, Sum:   0.026, Balance:   3.561
+ Initialize: Max:   0.210, Sum:   0.651, Balance:   1.289
+      K-way: Max:   0.801, Sum:   2.982, Balance:   1.074
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.261
+      Total: Max:   1.905, Sum:   7.612, Balance:   1.001
+Final   8-way Cut:  20532 	Balance: 1.050 
+NMoved: 12975 5875 4424 10299
+ParMETIS_V3_AdaptiveRepart reported a cut of 20532
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 2 1}, ipc2redist: 1.000, Ncon: 1, Nparts: 8
+[ 99617  1324862 23436 26023][400]
+[ 51526   769238 12122 13433][400]
+[ 26833   410954  6315  6981][400]
+[ 14029   218176  3309  3638][400]
+[  7393   115482  1741  1919][400]
+[  3925    60784   921  1014][400]
+[  2098    31932   494   538][400]
+[  1137    16642   269   292][400]
+[   627     8640   149   161][400]
+[   355     4468    85    90][400]
+nvtxs:        355, balance: 1.078 
+nvtxs:        627, cut:    26717, balance: 1.049 
+nvtxs:       1137, cut:    25875, balance: 1.048 
+nvtxs:       2098, cut:    23702, balance: 1.050 
+nvtxs:       3925, cut:    22721, balance: 1.050 
+nvtxs:       7393, cut:    21980, balance: 1.050 
+nvtxs:      14029, cut:    20698, balance: 1.050 
+nvtxs:      26833, cut:    19922, balance: 1.050 
+nvtxs:      51526, cut:    19108, balance: 1.050 
+nvtxs:      99617, cut:    18235, balance: 1.050 
+      Setup: Max:   0.124, Sum:   0.324, Balance:   1.526
+   Matching: Max:   0.260, Sum:   0.971, Balance:   1.072
+Contraction: Max:   0.365, Sum:   1.433, Balance:   1.020
+   InitPart: Max:   0.029, Sum:   0.073, Balance:   1.566
+    Project: Max:   0.033, Sum:   0.060, Balance:   2.183
+ Initialize: Max:   0.207, Sum:   0.664, Balance:   1.248
+      K-way: Max:   0.717, Sum:   2.756, Balance:   1.040
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.367
+      Total: Max:   1.862, Sum:   7.442, Balance:   1.001
+Final   8-way Cut:  18235 	Balance: 1.050 
+NMoved: 13188 5310 3945 9255
+ParMETIS_V3_AdaptiveRepart reported a cut of 18235
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 1 1}, ipc2redist: 0.001, Ncon: 1, Nparts: 8
+[ 99617  1324862 23436 26023][400]
+[ 51520   769504 12144 13427][400]
+[ 26858   411494  6350  6981][400]
+[ 14060   218252  3344  3633][400]
+[  7404   115538  1780  1896][400]
+[  3912    60528   960   993][400]
+[  2101    31812   521   530][400]
+[  1146    16602   283   291][400]
+[   641     8632   157   167][400]
+[   365     4570    88    96][400]
+nvtxs:        365, balance: 1.055 
+nvtxs:        641, cut:    35651, balance: 1.056 
+nvtxs:       1146, cut:    35763, balance: 1.056 
+nvtxs:       2101, cut:    35878, balance: 1.056 
+nvtxs:       3912, cut:    35801, balance: 1.056 
+nvtxs:       7404, cut:    35770, balance: 1.056 
+nvtxs:      14060, cut:    35796, balance: 1.056 
+nvtxs:      26858, cut:    35784, balance: 1.056 
+nvtxs:      51520, cut:    35777, balance: 1.056 
+nvtxs:      99617, cut:    35750, balance: 1.056 
+      Setup: Max:   0.096, Sum:   0.223, Balance:   1.714
+   Matching: Max:   0.299, Sum:   1.111, Balance:   1.076
+Contraction: Max:   0.379, Sum:   1.483, Balance:   1.022
+   InitPart: Max:   0.039, Sum:   0.150, Balance:   1.035
+    Project: Max:   0.046, Sum:   0.091, Balance:   2.028
+ Initialize: Max:   0.255, Sum:   0.704, Balance:   1.450
+      K-way: Max:   0.694, Sum:   2.595, Balance:   1.070
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.424
+      Total: Max:   1.841, Sum:   7.359, Balance:   1.000
+Final   8-way Cut:  35750 	Balance: 1.056 
+NMoved: 11612 4910 4255 9165
+ParMETIS_V3_AdaptiveRepart reported a cut of 35750
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 2 1}, ipc2redist: 0.001, Ncon: 1, Nparts: 8
+[ 99617  1324862 23436 26023][400]
+[ 51526   769238 12122 13433][400]
+[ 26833   410954  6315  6981][400]
+[ 14029   218176  3309  3638][400]
+[  7393   115482  1741  1919][400]
+[  3925    60784   921  1014][400]
+[  2098    31932   494   538][400]
+[  1137    16642   269   292][400]
+[   627     8640   149   161][400]
+[   355     4468    85    90][400]
+nvtxs:        355, balance: 1.078 
+nvtxs:        627, cut:    36167, balance: 1.077 
+nvtxs:       1137, cut:    35876, balance: 1.077 
+nvtxs:       2098, cut:    36252, balance: 1.071 
+nvtxs:       3925, cut:    36197, balance: 1.071 
+nvtxs:       7393, cut:    36104, balance: 1.071 
+nvtxs:      14029, cut:    36147, balance: 1.071 
+nvtxs:      26833, cut:    36042, balance: 1.070 
+nvtxs:      51526, cut:    36100, balance: 1.070 
+nvtxs:      99617, cut:    36211, balance: 1.069 
+      Setup: Max:   0.090, Sum:   0.285, Balance:   1.256
+   Matching: Max:   0.284, Sum:   1.100, Balance:   1.031
+Contraction: Max:   0.366, Sum:   1.422, Balance:   1.030
+   InitPart: Max:   0.035, Sum:   0.133, Balance:   1.044
+    Project: Max:   0.032, Sum:   0.063, Balance:   2.018
+ Initialize: Max:   0.244, Sum:   0.798, Balance:   1.225
+      K-way: Max:   0.679, Sum:   2.596, Balance:   1.046
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.452
+      Total: Max:   1.852, Sum:   7.379, Balance:   1.004
+Final   8-way Cut:  36211 	Balance: 1.069 
+NMoved: 11045 4330 3954 8284
+ParMETIS_V3_AdaptiveRepart reported a cut of 36211
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 1 1}, ipc2redist: 1000.000, Ncon: 3, Nparts: 8
+[ 99617  1324862 23436 26023][1200]
+[ 51520   769504 12144 13427][1200]
+[ 26792   410272  6326  6969][1200]
+[ 13981   216770  3319  3623][1200]
+[  7338   114436  1750  1897][1200]
+[  3870    60218   928   995][1200]
+[  2066    31410   500   530][1200]
+[  1120    16380   274   285][1200]
+nvtxs:       1120, balance: 1.008 1.010 1.010 
+nvtxs:       2066, cut:    36476, balance: 1.047 1.048 1.036 
+nvtxs:       3870, cut:    34085, balance: 1.049 1.047 1.044 
+nvtxs:       7338, cut:    31995, balance: 1.051 1.048 1.037 
+nvtxs:      13981, cut:    30120, balance: 1.041 1.050 1.036 
+nvtxs:      26792, cut:    28468, balance: 1.045 1.045 1.037 
+nvtxs:      51520, cut:    26657, balance: 1.043 1.040 1.041 
+nvtxs:      99617, cut:    24463, balance: 1.043 1.047 1.050 
+      Setup: Max:   0.096, Sum:   0.243, Balance:   1.577
+   Matching: Max:   0.302, Sum:   1.147, Balance:   1.053
+Contraction: Max:   0.334, Sum:   1.315, Balance:   1.017
+   InitPart: Max:   0.350, Sum:   1.393, Balance:   1.004
+    Project: Max:   0.030, Sum:  -0.007, Balance: -17.571
+ Initialize: Max:   0.141, Sum:   0.503, Balance:   1.124
+      K-way: Max:   0.824, Sum:   3.109, Balance:   1.060
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.408
+      Total: Max:   2.216, Sum:   8.858, Balance:   1.001
+Final   8-way Cut:  24463 	Balance: 1.043 1.047 1.050 
+NMoved: 59087 8982 9669 18651
+ParMETIS_V3_AdaptiveRepart reported a cut of 24463
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 2 1}, ipc2redist: 1000.000, Ncon: 3, Nparts: 8
+[ 99617  1324862 23436 26023][1200]
+[ 51526   769238 12122 13433][1200]
+[ 26780   409760  6306  6964][1200]
+[ 13964   216890  3300  3618][1200]
+[  7324   114522  1749  1892][1200]
+[  3861    60152   931   996][1200]
+[  2067    31478   501   532][1200]
+[  1121    16376   274   285][1200]
+nvtxs:       1121, balance: 1.007 1.008 1.014 
+nvtxs:       2067, cut:    35458, balance: 1.049 1.045 1.038 
+nvtxs:       3861, cut:    33140, balance: 1.049 1.046 1.030 
+nvtxs:       7324, cut:    31642, balance: 1.050 1.044 1.037 
+nvtxs:      13964, cut:    29859, balance: 1.049 1.045 1.041 
+nvtxs:      26780, cut:    28382, balance: 1.050 1.044 1.039 
+nvtxs:      51526, cut:    26891, balance: 1.046 1.050 1.037 
+nvtxs:      99617, cut:    24686, balance: 1.046 1.049 1.045 
+      Setup: Max:   0.048, Sum:   0.148, Balance:   1.289
+   Matching: Max:   0.323, Sum:   1.243, Balance:   1.038
+Contraction: Max:   0.350, Sum:   1.381, Balance:   1.015
+   InitPart: Max:   0.321, Sum:   1.279, Balance:   1.004
+    Project: Max:   0.022, Sum:   0.033, Balance:   2.685
+ Initialize: Max:   0.144, Sum:   0.506, Balance:   1.141
+      K-way: Max:   0.789, Sum:   2.986, Balance:   1.057
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.451
+      Total: Max:   2.180, Sum:   8.712, Balance:   1.001
+Final   8-way Cut:  24686 	Balance: 1.046 1.049 1.045 
+NMoved: 61678 11392 11729 23121
+ParMETIS_V3_AdaptiveRepart reported a cut of 24686
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 1 1}, ipc2redist: 1.000, Ncon: 3, Nparts: 8
+[ 99617  1324862 23436 26023][1200]
+[ 51520   769504 12144 13427][1200]
+[ 26792   410272  6326  6969][1200]
+[ 13981   216770  3319  3623][1200]
+[  7338   114436  1750  1897][1200]
+[  3870    60218   928   995][1200]
+[  2066    31410   500   530][1200]
+[  1120    16380   274   285][1200]
+nvtxs:       1120, balance: 1.008 1.010 1.010 
+nvtxs:       2066, cut:    36252, balance: 1.049 1.040 1.042 
+nvtxs:       3870, cut:    34229, balance: 1.050 1.035 1.049 
+nvtxs:       7338, cut:    31989, balance: 1.045 1.041 1.050 
+nvtxs:      13981, cut:    30260, balance: 1.040 1.050 1.050 
+nvtxs:      26792, cut:    28645, balance: 1.045 1.045 1.050 
+nvtxs:      51520, cut:    26769, balance: 1.042 1.049 1.050 
+nvtxs:      99617, cut:    24759, balance: 1.043 1.050 1.050 
+      Setup: Max:   0.053, Sum:   0.154, Balance:   1.370
+   Matching: Max:   0.266, Sum:   1.039, Balance:   1.023
+Contraction: Max:   0.373, Sum:   1.491, Balance:   1.002
+   InitPart: Max:   0.328, Sum:   1.310, Balance:   1.003
+    Project: Max:   0.024, Sum:   0.059, Balance:   1.611
+ Initialize: Max:   0.129, Sum:   0.453, Balance:   1.138
+      K-way: Max:   0.819, Sum:   3.081, Balance:   1.063
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.367
+      Total: Max:   2.226, Sum:   8.896, Balance:   1.001
+Final   8-way Cut:  24759 	Balance: 1.043 1.050 1.050 
+NMoved: 57772 8347 9197 17544
+ParMETIS_V3_AdaptiveRepart reported a cut of 24759
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 2 1}, ipc2redist: 1.000, Ncon: 3, Nparts: 8
+[ 99617  1324862 23436 26023][1200]
+[ 51526   769238 12122 13433][1200]
+[ 26780   409760  6306  6964][1200]
+[ 13964   216890  3300  3618][1200]
+[  7324   114522  1749  1892][1200]
+[  3861    60152   931   996][1200]
+[  2067    31478   501   532][1200]
+[  1121    16376   274   285][1200]
+nvtxs:       1121, balance: 1.007 1.008 1.014 
+nvtxs:       2067, cut:    35452, balance: 1.029 1.025 1.048 
+nvtxs:       3861, cut:    33287, balance: 1.041 1.032 1.049 
+nvtxs:       7324, cut:    31629, balance: 1.049 1.042 1.050 
+nvtxs:      13964, cut:    30125, balance: 1.044 1.040 1.050 
+nvtxs:      26780, cut:    28710, balance: 1.044 1.039 1.050 
+nvtxs:      51526, cut:    27075, balance: 1.043 1.050 1.050 
+nvtxs:      99617, cut:    24948, balance: 1.043 1.050 1.050 
+      Setup: Max:   0.070, Sum:   0.147, Balance:   1.917
+   Matching: Max:   0.302, Sum:   1.192, Balance:   1.013
+Contraction: Max:   0.329, Sum:   1.282, Balance:   1.026
+   InitPart: Max:   0.331, Sum:   1.320, Balance:   1.004
+    Project: Max:   0.032, Sum:   0.064, Balance:   1.990
+ Initialize: Max:   0.146, Sum:   0.565, Balance:   1.030
+      K-way: Max:   0.806, Sum:   3.051, Balance:   1.056
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.454
+      Total: Max:   2.217, Sum:   8.851, Balance:   1.002
+Final   8-way Cut:  24948 	Balance: 1.043 1.050 1.050 
+NMoved: 60554 11264 11726 22990
+ParMETIS_V3_AdaptiveRepart reported a cut of 24948
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 1 1}, ipc2redist: 0.001, Ncon: 3, Nparts: 8
+[ 99617  1324862 23436 26023][1200]
+[ 51520   769504 12144 13427][1200]
+[ 26792   410272  6326  6969][1200]
+[ 13981   216770  3319  3623][1200]
+[  7338   114436  1750  1897][1200]
+[  3870    60218   928   995][1200]
+[  2066    31410   500   530][1200]
+[  1120    16380   274   285][1200]
+nvtxs:       1120, balance: 1.008 1.010 1.010 
+nvtxs:       2066, cut:    52145, balance: 1.051 1.043 1.053 
+nvtxs:       3870, cut:    52590, balance: 1.049 1.050 1.053 
+nvtxs:       7338, cut:    52697, balance: 1.050 1.049 1.051 
+nvtxs:      13981, cut:    52701, balance: 1.051 1.050 1.050 
+nvtxs:      26792, cut:    52816, balance: 1.050 1.050 1.050 
+nvtxs:      51520, cut:    52771, balance: 1.050 1.050 1.050 
+nvtxs:      99617, cut:    52766, balance: 1.050 1.050 1.050 
+      Setup: Max:   0.086, Sum:   0.229, Balance:   1.496
+   Matching: Max:   0.400, Sum:   1.565, Balance:   1.022
+Contraction: Max:   0.411, Sum:   1.639, Balance:   1.002
+   InitPart: Max:   0.330, Sum:   1.315, Balance:   1.004
+    Project: Max:   0.048, Sum:   0.098, Balance:   1.977
+ Initialize: Max:   0.144, Sum:   0.565, Balance:   1.022
+      K-way: Max:   0.711, Sum:   2.689, Balance:   1.058
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.404
+      Total: Max:   2.369, Sum:   9.472, Balance:   1.001
+Final   8-way Cut:  52766 	Balance: 1.050 1.050 1.050 
+NMoved: 55215 8044 8937 16981
+ParMETIS_V3_AdaptiveRepart reported a cut of 52766
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 2 1}, ipc2redist: 0.001, Ncon: 3, Nparts: 8
+[ 99617  1324862 23436 26023][1200]
+[ 51526   769238 12122 13433][1200]
+[ 26780   409760  6306  6964][1200]
+[ 13964   216890  3300  3618][1200]
+[  7324   114522  1749  1892][1200]
+[  3861    60152   931   996][1200]
+[  2067    31478   501   532][1200]
+[  1121    16376   274   285][1200]
+nvtxs:       1121, balance: 1.007 1.008 1.014 
+nvtxs:       2067, cut:    54557, balance: 1.051 1.050 1.049 
+nvtxs:       3861, cut:    54729, balance: 1.050 1.050 1.050 
+nvtxs:       7324, cut:    54778, balance: 1.050 1.050 1.050 
+nvtxs:      13964, cut:    54927, balance: 1.050 1.050 1.050 
+nvtxs:      26780, cut:    54850, balance: 1.050 1.050 1.051 
+nvtxs:      51526, cut:    54904, balance: 1.050 1.050 1.050 
+nvtxs:      99617, cut:    54771, balance: 1.050 1.050 1.050 
+      Setup: Max:   0.084, Sum:   0.241, Balance:   1.399
+   Matching: Max:   0.284, Sum:   1.075, Balance:   1.056
+Contraction: Max:   0.404, Sum:   1.607, Balance:   1.005
+   InitPart: Max:   0.342, Sum:   1.357, Balance:   1.009
+    Project: Max:   0.028, Sum:   0.051, Balance:   2.211
+ Initialize: Max:   0.133, Sum:   0.511, Balance:   1.038
+      K-way: Max:   0.838, Sum:   3.176, Balance:   1.056
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.446
+      Total: Max:   2.343, Sum:   9.356, Balance:   1.002
+Final   8-way Cut:  54771 	Balance: 1.050 1.050 1.050 
+NMoved: 57592 10695 10795 21490
+ParMETIS_V3_AdaptiveRepart reported a cut of 54771
+Initial Load Imbalance: 1.5768, [214985 574403 1457095] for afactor: 4
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 1 1}, ipc2redist: 1000.000, Ncon: 1, Nparts: 4
+[ 99617  1324862 23436 26023][200]
+[ 51494   769096 12134 13452][200]
+[ 26776   410992  6313  7001][200]
+[ 14000   218130  3303  3662][200]
+[  7354   114978  1737  1927][200]
+[  3887    60418   920  1018][200]
+[  2072    31328   495   543][200]
+[  1117    16208   267   293][200]
+[   615     8340   146   162][200]
+[   349     4308    81    94][200]
+[   203     2244    46    55][200]
+nvtxs:        203, balance: 1.001 
+nvtxs:        349, cut:    16162, balance: 1.037 
+nvtxs:        615, cut:    15156, balance: 1.046 
+nvtxs:       1117, cut:    14700, balance: 1.046 
+nvtxs:       2072, cut:    13210, balance: 1.034 
+nvtxs:       3887, cut:    12774, balance: 1.034 
+nvtxs:       7354, cut:    12299, balance: 1.033 
+nvtxs:      14000, cut:    11602, balance: 1.034 
+nvtxs:      26776, cut:    10987, balance: 1.031 
+nvtxs:      51494, cut:    10376, balance: 1.031 
+nvtxs:      99617, cut:     9458, balance: 1.031 
+      Setup: Max:   0.133, Sum:   0.346, Balance:   1.543
+   Matching: Max:   0.169, Sum:   0.604, Balance:   1.118
+Contraction: Max:   0.246, Sum:   0.665, Balance:   1.476
+   InitPart: Max:   0.023, Sum:   0.046, Balance:   2.026
+    Project: Max:   0.009, Sum:   0.016, Balance:   2.205
+ Initialize: Max:   0.198, Sum:   0.567, Balance:   1.395
+      K-way: Max:   0.732, Sum:   2.741, Balance:   1.068
+      Remap: Max:   0.013, Sum:   0.047, Balance:   1.109
+      Total: Max:   1.636, Sum:   6.517, Balance:   1.004
+Final   4-way Cut:   9458 	Balance: 1.031 
+NMoved: 47151 21129 25998 47127
+ParMETIS_V3_AdaptiveRepart reported a cut of 9458
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 2 1}, ipc2redist: 1000.000, Ncon: 1, Nparts: 4
+[ 99617  1324862 23436 26023][200]
+[ 51513   768928 12122 13449][200]
+[ 26792   410712  6304  7002][200]
+[ 14015   218024  3307  3669][200]
+[  7368   115250  1741  1938][200]
+[  3896    60636   924  1032][200]
+[  2074    31366   497   549][200]
+[  1114    16162   268   296][200]
+[   614     8372   146   163][200]
+[   347     4332    82    94][200]
+[   202     2208    46    55][200]
+nvtxs:        202, balance: 1.014 
+nvtxs:        347, cut:    13219, balance: 1.049 
+nvtxs:        614, cut:    12390, balance: 1.022 
+nvtxs:       1114, cut:    11556, balance: 1.035 
+nvtxs:       2074, cut:    10991, balance: 1.035 
+nvtxs:       3896, cut:    10310, balance: 1.033 
+nvtxs:       7368, cut:     9863, balance: 1.035 
+nvtxs:      14015, cut:     9431, balance: 1.032 
+nvtxs:      26792, cut:     8958, balance: 1.032 
+nvtxs:      51513, cut:     8530, balance: 1.034 
+nvtxs:      99617, cut:     7736, balance: 1.035 
+      Setup: Max:   0.057, Sum:   0.125, Balance:   1.814
+   Matching: Max:   0.154, Sum:   0.568, Balance:   1.085
+Contraction: Max:   0.371, Sum:   0.986, Balance:   1.504
+   InitPart: Max:   0.027, Sum:   0.058, Balance:   1.831
+    Project: Max:   0.009, Sum:   0.018, Balance:   2.114
+ Initialize: Max:   0.213, Sum:   0.593, Balance:   1.440
+      K-way: Max:   0.677, Sum:   2.526, Balance:   1.071
+      Remap: Max:   0.011, Sum:   0.016, Balance:   2.948
+      Total: Max:   1.670, Sum:   6.673, Balance:   1.001
+Final   4-way Cut:   7736 	Balance: 1.035 
+NMoved: 39521 17820 13718 31538
+ParMETIS_V3_AdaptiveRepart reported a cut of 7736
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 1 1}, ipc2redist: 1.000, Ncon: 1, Nparts: 4
+[ 99617  1324862 23436 26023][200]
+[ 51494   769096 12134 13452][200]
+[ 26776   410992  6313  7001][200]
+[ 14000   218130  3303  3662][200]
+[  7354   114978  1737  1927][200]
+[  3887    60418   920  1018][200]
+[  2072    31328   495   543][200]
+[  1117    16208   267   293][200]
+[   615     8340   146   162][200]
+[   349     4308    81    94][200]
+[   203     2244    46    55][200]
+nvtxs:        203, balance: 1.032 
+nvtxs:        349, cut:    13934, balance: 1.051 
+nvtxs:        615, cut:    13934, balance: 1.051 
+nvtxs:       1117, cut:    13715, balance: 1.051 
+nvtxs:       2072, cut:    13400, balance: 1.049 
+nvtxs:       3887, cut:    13266, balance: 1.049 
+nvtxs:       7354, cut:    12976, balance: 1.050 
+nvtxs:      14000, cut:    12434, balance: 1.050 
+nvtxs:      26776, cut:    12019, balance: 1.050 
+nvtxs:      51494, cut:    11264, balance: 1.050 
+nvtxs:      99617, cut:    10545, balance: 1.050 
+      Setup: Max:   0.124, Sum:   0.281, Balance:   1.765
+   Matching: Max:   0.102, Sum:   0.381, Balance:   1.066
+Contraction: Max:   0.314, Sum:   0.823, Balance:   1.527
+   InitPart: Max:   0.014, Sum:   0.047, Balance:   1.188
+    Project: Max:   0.008, Sum:  -0.017, Balance:  -1.841
+ Initialize: Max:   0.186, Sum:   0.597, Balance:   1.245
+      K-way: Max:   0.726, Sum:   2.809, Balance:   1.033
+      Remap: Max:  -0.005, Sum:  -0.026, Balance:   0.810
+      Total: Max:   1.631, Sum:   6.494, Balance:   1.004
+Final   4-way Cut:  10545 	Balance: 1.050 
+NMoved: 8690 5183 7307 12490
+ParMETIS_V3_AdaptiveRepart reported a cut of 10545
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 2 1}, ipc2redist: 1.000, Ncon: 1, Nparts: 4
+[ 99617  1324862 23436 26023][200]
+[ 51513   768928 12122 13449][200]
+[ 26792   410712  6304  7002][200]
+[ 14015   218024  3307  3669][200]
+[  7368   115250  1741  1938][200]
+[  3896    60636   924  1032][200]
+[  2074    31366   497   549][200]
+[  1114    16162   268   296][200]
+[   614     8372   146   163][200]
+[   347     4332    82    94][200]
+[   202     2208    46    55][200]
+nvtxs:        202, balance: 1.017 
+nvtxs:        347, cut:    13505, balance: 1.047 
+nvtxs:        614, cut:    12827, balance: 1.047 
+nvtxs:       1114, cut:    11908, balance: 1.042 
+nvtxs:       2074, cut:    11715, balance: 1.046 
+nvtxs:       3896, cut:    11564, balance: 1.050 
+nvtxs:       7368, cut:    11290, balance: 1.050 
+nvtxs:      14015, cut:    11030, balance: 1.050 
+nvtxs:      26792, cut:    10753, balance: 1.049 
+nvtxs:      51513, cut:    10438, balance: 1.048 
+nvtxs:      99617, cut:    10032, balance: 1.048 
+      Setup: Max:   0.082, Sum:   0.292, Balance:   1.128
+   Matching: Max:   0.224, Sum:   0.862, Balance:   1.042
+Contraction: Max:   0.306, Sum:   0.802, Balance:   1.526
+   InitPart: Max:   0.015, Sum:   0.052, Balance:   1.127
+    Project: Max:   0.008, Sum:   0.019, Balance:   1.739
+ Initialize: Max:   0.194, Sum:   0.579, Balance:   1.342
+      K-way: Max:   0.675, Sum:   2.516, Balance:   1.074
+      Remap: Max:   0.010, Sum:   0.010, Balance:   3.895
+      Total: Max:   1.690, Sum:   6.748, Balance:   1.002
+Final   4-way Cut:  10032 	Balance: 1.048 
+NMoved: 8390 5353 8135 13488
+ParMETIS_V3_AdaptiveRepart reported a cut of 10032
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 1 1}, ipc2redist: 0.001, Ncon: 1, Nparts: 4
+[ 99617  1324862 23436 26023][200]
+[ 51494   769096 12134 13452][200]
+[ 26776   410992  6313  7001][200]
+[ 14000   218130  3303  3662][200]
+[  7354   114978  1737  1927][200]
+[  3887    60418   920  1018][200]
+[  2072    31328   495   543][200]
+[  1117    16208   267   293][200]
+[   615     8340   146   162][200]
+[   349     4308    81    94][200]
+[   203     2244    46    55][200]
+nvtxs:        203, balance: 1.032 
+nvtxs:        349, cut:    19274, balance: 1.044 
+nvtxs:        615, cut:    19350, balance: 1.050 
+nvtxs:       1117, cut:    19350, balance: 1.050 
+nvtxs:       2072, cut:    19144, balance: 1.050 
+nvtxs:       3887, cut:    19154, balance: 1.050 
+nvtxs:       7354, cut:    19142, balance: 1.050 
+nvtxs:      14000, cut:    19108, balance: 1.050 
+nvtxs:      26776, cut:    19115, balance: 1.050 
+nvtxs:      51494, cut:    19026, balance: 1.050 
+nvtxs:      99617, cut:    18963, balance: 1.050 
+      Setup: Max:   0.141, Sum:   0.389, Balance:   1.450
+   Matching: Max:   0.186, Sum:   0.697, Balance:   1.068
+Contraction: Max:   0.258, Sum:   0.667, Balance:   1.545
+   InitPart: Max:   0.008, Sum:   0.027, Balance:   1.182
+    Project: Max:   0.009, Sum:   0.017, Balance:   2.101
+ Initialize: Max:   0.196, Sum:   0.678, Balance:   1.157
+      K-way: Max:   0.546, Sum:   2.157, Balance:   1.012
+      Remap: Max:   0.010, Sum:   0.007, Balance:   5.760
+      Total: Max:   1.593, Sum:   6.366, Balance:   1.001
+Final   4-way Cut:  18963 	Balance: 1.050 
+NMoved: 7733 4841 7630 12471
+ParMETIS_V3_AdaptiveRepart reported a cut of 18963
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 2 1}, ipc2redist: 0.001, Ncon: 1, Nparts: 4
+[ 99617  1324862 23436 26023][200]
+[ 51513   768928 12122 13449][200]
+[ 26792   410712  6304  7002][200]
+[ 14015   218024  3307  3669][200]
+[  7368   115250  1741  1938][200]
+[  3896    60636   924  1032][200]
+[  2074    31366   497   549][200]
+[  1114    16162   268   296][200]
+[   614     8372   146   163][200]
+[   347     4332    82    94][200]
+[   202     2208    46    55][200]
+nvtxs:        202, balance: 1.017 
+nvtxs:        347, cut:    18114, balance: 1.048 
+nvtxs:        614, cut:    16822, balance: 1.049 
+nvtxs:       1114, cut:    16946, balance: 1.050 
+nvtxs:       2074, cut:    16967, balance: 1.050 
+nvtxs:       3896, cut:    16894, balance: 1.050 
+nvtxs:       7368, cut:    16703, balance: 1.050 
+nvtxs:      14015, cut:    16489, balance: 1.050 
+nvtxs:      26792, cut:    16439, balance: 1.050 
+nvtxs:      51513, cut:    16380, balance: 1.050 
+nvtxs:      99617, cut:    16260, balance: 1.050 
+      Setup: Max:   0.092, Sum:   0.276, Balance:   1.335
+   Matching: Max:   0.132, Sum:   0.445, Balance:   1.186
+Contraction: Max:   0.293, Sum:   0.744, Balance:   1.575
+   InitPart: Max:   0.015, Sum:   0.057, Balance:   1.085
+    Project: Max:   0.009, Sum:   0.017, Balance:   2.047
+ Initialize: Max:   0.230, Sum:   0.729, Balance:   1.264
+      K-way: Max:   0.591, Sum:   2.221, Balance:   1.064
+      Remap: Max:   0.012, Sum:   0.042, Balance:   1.174
+      Total: Max:   1.496, Sum:   5.981, Balance:   1.001
+Final   4-way Cut:  16260 	Balance: 1.050 
+NMoved: 7277 4459 7277 11736
+ParMETIS_V3_AdaptiveRepart reported a cut of 16260
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 1 1}, ipc2redist: 1000.000, Ncon: 3, Nparts: 4
+[ 99617  1324862 23436 26023][600]
+[ 51499   769386 12144 13447][600]
+[ 26728   409462  6315  6969][600]
+[ 13941   216690  3313  3637][600]
+[  7302   114216  1747  1907][600]
+[  3855    59716   927  1007][600]
+[  2051    31140   496   537][600]
+[  1104    16236   267   290][600]
+[   600     8228   145   158][600]
+nvtxs:        600, balance: 1.011 1.014 1.009 
+nvtxs:       1104, cut:    20053, balance: 1.046 1.033 1.045 
+nvtxs:       2051, cut:    18748, balance: 1.047 1.034 1.043 
+nvtxs:       3855, cut:    17630, balance: 1.050 1.044 1.044 
+nvtxs:       7302, cut:    16458, balance: 1.049 1.033 1.050 
+nvtxs:      13941, cut:    15557, balance: 1.050 1.034 1.046 
+nvtxs:      26728, cut:    14382, balance: 1.050 1.034 1.049 
+nvtxs:      51499, cut:    13462, balance: 1.050 1.035 1.049 
+nvtxs:      99617, cut:    12123, balance: 1.050 1.035 1.050 
+      Setup: Max:   0.081, Sum:   0.220, Balance:   1.466
+   Matching: Max:   0.227, Sum:   0.858, Balance:   1.058
+Contraction: Max:   0.296, Sum:   0.770, Balance:   1.539
+   InitPart: Max:   0.145, Sum:   0.576, Balance:   1.009
+    Project: Max:   0.009, Sum:   0.018, Balance:   1.977
+ Initialize: Max:   0.167, Sum:   0.615, Balance:   1.084
+      K-way: Max:   0.768, Sum:   2.848, Balance:   1.078
+      Remap: Max:   0.014, Sum:   0.050, Balance:   1.150
+      Total: Max:   1.855, Sum:   7.409, Balance:   1.001
+Final   4-way Cut:  12123 	Balance: 1.050 1.035 1.050 
+NMoved: 55390 16752 20755 37507
+ParMETIS_V3_AdaptiveRepart reported a cut of 12123
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 2 1}, ipc2redist: 1000.000, Ncon: 3, Nparts: 4
+[ 99617  1324862 23436 26023][600]
+[ 51520   769370 12126 13457][600]
+[ 26721   409750  6303  6989][600]
+[ 13940   216498  3302  3643][600]
+[  7302   113832  1728  1911][600]
+[  3846    59572   911  1007][600]
+[  2043    30980   486   534][600]
+[  1091    15974   265   282][600]
+[   599     8310   146   153][600]
+nvtxs:        599, balance: 1.008 1.011 1.010 
+nvtxs:       1091, cut:    21500, balance: 1.032 1.029 1.045 
+nvtxs:       2043, cut:    19508, balance: 1.042 1.031 1.037 
+nvtxs:       3846, cut:    18434, balance: 1.049 1.035 1.038 
+nvtxs:       7302, cut:    17511, balance: 1.050 1.035 1.039 
+nvtxs:      13940, cut:    16472, balance: 1.047 1.034 1.041 
+nvtxs:      26721, cut:    15399, balance: 1.045 1.034 1.037 
+nvtxs:      51520, cut:    14437, balance: 1.046 1.035 1.036 
+nvtxs:      99617, cut:    13001, balance: 1.039 1.033 1.037 
+      Setup: Max:   0.089, Sum:   0.257, Balance:   1.389
+   Matching: Max:   0.167, Sum:   0.634, Balance:   1.057
+Contraction: Max:   0.307, Sum:   0.795, Balance:   1.544
+   InitPart: Max:   0.142, Sum:   0.532, Balance:   1.067
+    Project: Max:   0.010, Sum:   0.004, Balance:  10.812
+ Initialize: Max:   0.132, Sum:   0.470, Balance:   1.124
+      K-way: Max:   0.756, Sum:   2.847, Balance:   1.062
+      Remap: Max:   0.014, Sum:   0.048, Balance:   1.144
+      Total: Max:   1.876, Sum:   7.478, Balance:   1.004
+Final   4-way Cut:  13001 	Balance: 1.039 1.033 1.037 
+NMoved: 54017 15326 19382 34708
+ParMETIS_V3_AdaptiveRepart reported a cut of 13001
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 1 1}, ipc2redist: 1.000, Ncon: 3, Nparts: 4
+[ 99617  1324862 23436 26023][600]
+[ 51499   769386 12144 13447][600]
+[ 26728   409462  6315  6969][600]
+[ 13941   216690  3313  3637][600]
+[  7302   114216  1747  1907][600]
+[  3855    59716   927  1007][600]
+[  2051    31140   496   537][600]
+[  1104    16236   267   290][600]
+[   600     8228   145   158][600]
+nvtxs:        600, balance: 1.011 1.014 1.009 
+nvtxs:       1104, cut:    19801, balance: 1.046 1.037 1.042 
+nvtxs:       2051, cut:    18711, balance: 1.049 1.037 1.045 
+nvtxs:       3855, cut:    17700, balance: 1.050 1.037 1.049 
+nvtxs:       7302, cut:    16476, balance: 1.047 1.035 1.049 
+nvtxs:      13941, cut:    15574, balance: 1.050 1.036 1.049 
+nvtxs:      26728, cut:    14417, balance: 1.049 1.036 1.050 
+nvtxs:      51499, cut:    13531, balance: 1.050 1.037 1.050 
+nvtxs:      99617, cut:    12140, balance: 1.049 1.037 1.050 
+      Setup: Max:   0.155, Sum:   0.433, Balance:   1.436
+   Matching: Max:   0.241, Sum:   0.911, Balance:   1.059
+Contraction: Max:   0.276, Sum:   0.778, Balance:   1.421
+   InitPart: Max:   0.145, Sum:   0.576, Balance:   1.006
+    Project: Max:   0.009, Sum:   0.021, Balance:   1.713
+ Initialize: Max:   0.127, Sum:   0.491, Balance:   1.037
+      K-way: Max:   0.747, Sum:   2.793, Balance:   1.070
+      Remap: Max:   0.007, Sum:   0.020, Balance:   1.294
+      Total: Max:   1.947, Sum:   7.785, Balance:   1.000
+Final   4-way Cut:  12140 	Balance: 1.049 1.037 1.050 
+NMoved: 54484 16279 20241 36520
+ParMETIS_V3_AdaptiveRepart reported a cut of 12140
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 2 1}, ipc2redist: 1.000, Ncon: 3, Nparts: 4
+[ 99617  1324862 23436 26023][600]
+[ 51520   769370 12126 13457][600]
+[ 26721   409750  6303  6989][600]
+[ 13940   216498  3302  3643][600]
+[  7302   113832  1728  1911][600]
+[  3846    59572   911  1007][600]
+[  2043    30980   486   534][600]
+[  1091    15974   265   282][600]
+[   599     8310   146   153][600]
+nvtxs:        599, balance: 1.008 1.011 1.010 
+nvtxs:       1091, cut:    20920, balance: 1.039 1.030 1.049 
+nvtxs:       2043, cut:    19258, balance: 1.030 1.030 1.049 
+nvtxs:       3846, cut:    18393, balance: 1.035 1.032 1.050 
+nvtxs:       7302, cut:    17607, balance: 1.039 1.034 1.049 
+nvtxs:      13940, cut:    16660, balance: 1.028 1.031 1.050 
+nvtxs:      26721, cut:    15771, balance: 1.027 1.032 1.050 
+nvtxs:      51520, cut:    14727, balance: 1.032 1.033 1.050 
+nvtxs:      99617, cut:    13389, balance: 1.022 1.031 1.050 
+      Setup: Max:   0.102, Sum:   0.219, Balance:   1.857
+   Matching: Max:   0.235, Sum:   0.860, Balance:   1.092
+Contraction: Max:   0.283, Sum:   0.749, Balance:   1.510
+   InitPart: Max:   0.137, Sum:   0.540, Balance:   1.017
+    Project: Max:   0.009, Sum:   0.002, Balance:  17.060
+ Initialize: Max:   0.174, Sum:   0.575, Balance:   1.214
+      K-way: Max:   0.828, Sum:   3.095, Balance:   1.070
+      Remap: Max:  -0.002, Sum:  -0.015, Balance:   0.665
+      Total: Max:   1.992, Sum:   7.938, Balance:   1.004
+Final   4-way Cut:  13389 	Balance: 1.022 1.031 1.050 
+NMoved: 52163 14831 18484 33315
+ParMETIS_V3_AdaptiveRepart reported a cut of 13389
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 1 1}, ipc2redist: 0.001, Ncon: 3, Nparts: 4
+[ 99617  1324862 23436 26023][600]
+[ 51499   769386 12144 13447][600]
+[ 26728   409462  6315  6969][600]
+[ 13941   216690  3313  3637][600]
+[  7302   114216  1747  1907][600]
+[  3855    59716   927  1007][600]
+[  2051    31140   496   537][600]
+[  1104    16236   267   290][600]
+[   600     8228   145   158][600]
+nvtxs:        600, balance: 1.011 1.014 1.009 
+nvtxs:       1104, cut:    45769, balance: 1.034 1.050 1.045 
+nvtxs:       2051, cut:    46714, balance: 1.048 1.050 1.048 
+nvtxs:       3855, cut:    47003, balance: 1.050 1.050 1.050 
+nvtxs:       7302, cut:    47459, balance: 1.050 1.050 1.049 
+nvtxs:      13941, cut:    47929, balance: 1.050 1.050 1.049 
+nvtxs:      26728, cut:    47864, balance: 1.050 1.050 1.049 
+nvtxs:      51499, cut:    48068, balance: 1.049 1.050 1.050 
+nvtxs:      99617, cut:    47806, balance: 1.049 1.050 1.050 
+      Setup: Max:   0.126, Sum:   0.371, Balance:   1.362
+   Matching: Max:   0.266, Sum:   0.965, Balance:   1.101
+Contraction: Max:   0.290, Sum:   0.696, Balance:   1.667
+   InitPart: Max:   0.154, Sum:   0.578, Balance:   1.064
+    Project: Max:   0.009, Sum:   0.020, Balance:   1.872
+ Initialize: Max:   0.142, Sum:   0.522, Balance:   1.088
+      K-way: Max:   0.830, Sum:   3.124, Balance:   1.063
+      Remap: Max:  -0.004, Sum:  -0.021, Balance:   0.788
+      Total: Max:   2.030, Sum:   8.117, Balance:   1.001
+Final   4-way Cut:  47806 	Balance: 1.049 1.050 1.050 
+NMoved: 44285 12496 14914 27410
+ParMETIS_V3_AdaptiveRepart reported a cut of 47806
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 2 1}, ipc2redist: 0.001, Ncon: 3, Nparts: 4
+[ 99617  1324862 23436 26023][600]
+[ 51520   769370 12126 13457][600]
+[ 26721   409750  6303  6989][600]
+[ 13940   216498  3302  3643][600]
+[  7302   113832  1728  1911][600]
+[  3846    59572   911  1007][600]
+[  2043    30980   486   534][600]
+[  1091    15974   265   282][600]
+[   599     8310   146   153][600]
+nvtxs:        599, balance: 1.008 1.011 1.010 
+nvtxs:       1091, cut:    37579, balance: 1.049 1.047 1.050 
+nvtxs:       2043, cut:    38920, balance: 1.042 1.050 1.050 
+nvtxs:       3846, cut:    40489, balance: 1.044 1.051 1.050 
+nvtxs:       7302, cut:    41381, balance: 1.049 1.050 1.050 
+nvtxs:      13940, cut:    41381, balance: 1.048 1.050 1.050 
+nvtxs:      26721, cut:    41946, balance: 1.050 1.050 1.049 
+nvtxs:      51520, cut:    42014, balance: 1.049 1.050 1.050 
+nvtxs:      99617, cut:    41808, balance: 1.050 1.050 1.050 
+      Setup: Max:   0.129, Sum:   0.333, Balance:   1.543
+   Matching: Max:   0.243, Sum:   0.935, Balance:   1.039
+Contraction: Max:   0.338, Sum:   0.892, Balance:   1.516
+   InitPart: Max:   0.138, Sum:   0.552, Balance:   1.003
+    Project: Max:   0.010, Sum:   0.037, Balance:   1.070
+ Initialize: Max:   0.172, Sum:   0.604, Balance:   1.136
+      K-way: Max:   0.806, Sum:   2.998, Balance:   1.075
+      Remap: Max:  -0.003, Sum:  -0.015, Balance:   0.718
+      Total: Max:   2.041, Sum:   8.160, Balance:   1.001
+Final   4-way Cut:  41808 	Balance: 1.050 1.050 1.050 
+NMoved: 46032 13318 16812 30130
+ParMETIS_V3_AdaptiveRepart reported a cut of 41808
+Initial Load Imbalance: 1.1933, [173610 310283 1040090] for afactor: 4
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 1 1}, ipc2redist: 1000.000, Ncon: 1, Nparts: 2
+[ 99617  1324862 23436 26023][200]
+[ 51474   768976 12144 13415][200]
+[ 26794   410198  6335  6975][200]
+[ 13996   217118  3315  3639][200]
+[  7354   114922  1754  1922][200]
+[  3881    60458   933  1013][200]
+[  2070    31578   509   540][200]
+[  1118    16218   268   293][200]
+[   615     8424   146   161][200]
+[   344     4400    82    92][200]
+[   196     2260    44    55][200]
+nvtxs:        196, balance: 1.030 
+nvtxs:        344, cut:     2281, balance: 1.030 
+nvtxs:        615, cut:     2281, balance: 1.030 
+nvtxs:       1118, cut:     2281, balance: 1.030 
+nvtxs:       2070, cut:     2281, balance: 1.030 
+nvtxs:       3881, cut:     2281, balance: 1.030 
+nvtxs:       7354, cut:     2281, balance: 1.030 
+nvtxs:      13996, cut:     2281, balance: 1.030 
+nvtxs:      26794, cut:     2281, balance: 1.030 
+nvtxs:      51474, cut:     2276, balance: 1.030 
+nvtxs:      99617, cut:     2276, balance: 1.030 
+      Setup: Max:   0.069, Sum:   0.229, Balance:   1.213
+   Matching: Max:   0.277, Sum:   1.043, Balance:   1.063
+Contraction: Max:   0.382, Sum:   1.494, Balance:   1.022
+    Project: Max:   0.051, Sum:   0.103, Balance:   1.986
+ Initialize: Max:   0.143, Sum:   0.503, Balance:   1.140
+      K-way: Max:   0.250, Sum:   0.782, Balance:   1.279
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.298
+      Total: Max:   1.315, Sum:   5.253, Balance:   1.001
+Final   2-way Cut:   2276 	Balance: 1.030 
+NMoved: 6 4 4 8
+ParMETIS_V3_AdaptiveRepart reported a cut of 2276
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 2 1}, ipc2redist: 1000.000, Ncon: 1, Nparts: 2
+[ 99617  1324862 23436 26023][200]
+[ 51467   768770 12119 13407][200]
+[ 26758   410182  6309  6966][200]
+[ 13973   217278  3305  3631][200]
+[  7332   114684  1742  1901][200]
+[  3869    60258   930   995][200]
+[  2064    31426   502   526][200]
+[  1117    16294   274   285][200]
+[   611     8534   151   155][200]
+[   344     4442    83    87][200]
+[   197     2300    47    51][200]
+nvtxs:        197, balance: 1.030 
+nvtxs:        344, cut:     2281, balance: 1.030 
+nvtxs:        611, cut:     2281, balance: 1.030 
+nvtxs:       1117, cut:     2281, balance: 1.030 
+nvtxs:       2064, cut:     2281, balance: 1.030 
+nvtxs:       3869, cut:     2281, balance: 1.030 
+nvtxs:       7332, cut:     2281, balance: 1.030 
+nvtxs:      13973, cut:     2281, balance: 1.030 
+nvtxs:      26758, cut:     2281, balance: 1.030 
+nvtxs:      51467, cut:     2280, balance: 1.030 
+nvtxs:      99617, cut:     2280, balance: 1.030 
+      Setup: Max:   0.119, Sum:   0.377, Balance:   1.264
+   Matching: Max:   0.378, Sum:   1.397, Balance:   1.083
+Contraction: Max:   0.498, Sum:   1.903, Balance:   1.046
+    Project: Max:   0.015, Sum:   0.007, Balance:   8.124
+ Initialize: Max:   0.141, Sum:   0.525, Balance:   1.073
+      K-way: Max:   0.244, Sum:   0.859, Balance:   1.136
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.426
+      Total: Max:   1.574, Sum:   6.254, Balance:   1.007
+Final   2-way Cut:   2280 	Balance: 1.030 
+NMoved: 2 2 2 4
+ParMETIS_V3_AdaptiveRepart reported a cut of 2280
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 1 1}, ipc2redist: 1.000, Ncon: 1, Nparts: 2
+[ 99617  1324862 23436 26023][200]
+[ 51474   768976 12144 13415][200]
+[ 26794   410198  6335  6975][200]
+[ 13996   217118  3315  3639][200]
+[  7354   114922  1754  1922][200]
+[  3881    60458   933  1013][200]
+[  2070    31578   509   540][200]
+[  1118    16218   268   293][200]
+[   615     8424   146   161][200]
+[   344     4400    82    92][200]
+[   196     2260    44    55][200]
+nvtxs:        196, balance: 1.030 
+nvtxs:        344, cut:     2281, balance: 1.030 
+nvtxs:        615, cut:     2281, balance: 1.030 
+nvtxs:       1118, cut:     2281, balance: 1.030 
+nvtxs:       2070, cut:     2281, balance: 1.030 
+nvtxs:       3881, cut:     2281, balance: 1.030 
+nvtxs:       7354, cut:     2281, balance: 1.030 
+nvtxs:      13996, cut:     2281, balance: 1.030 
+nvtxs:      26794, cut:     2281, balance: 1.030 
+nvtxs:      51474, cut:     2276, balance: 1.030 
+nvtxs:      99617, cut:     2276, balance: 1.030 
+      Setup: Max:   0.132, Sum:   0.304, Balance:   1.735
+   Matching: Max:   0.301, Sum:   1.161, Balance:   1.036
+Contraction: Max:   0.348, Sum:   1.370, Balance:   1.015
+    Project: Max:   0.029, Sum:   0.095, Balance:   1.210
+ Initialize: Max:   0.129, Sum:   0.471, Balance:   1.097
+      K-way: Max:   0.212, Sum:   0.824, Balance:   1.030
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.428
+      Total: Max:   1.359, Sum:   5.405, Balance:   1.006
+Final   2-way Cut:   2276 	Balance: 1.030 
+NMoved: 6 4 4 8
+ParMETIS_V3_AdaptiveRepart reported a cut of 2276
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 2 1}, ipc2redist: 1.000, Ncon: 1, Nparts: 2
+[ 99617  1324862 23436 26023][200]
+[ 51467   768770 12119 13407][200]
+[ 26758   410182  6309  6966][200]
+[ 13973   217278  3305  3631][200]
+[  7332   114684  1742  1901][200]
+[  3869    60258   930   995][200]
+[  2064    31426   502   526][200]
+[  1117    16294   274   285][200]
+[   611     8534   151   155][200]
+[   344     4442    83    87][200]
+[   197     2300    47    51][200]
+nvtxs:        197, balance: 1.030 
+nvtxs:        344, cut:     2281, balance: 1.030 
+nvtxs:        611, cut:     2281, balance: 1.030 
+nvtxs:       1117, cut:     2281, balance: 1.030 
+nvtxs:       2064, cut:     2281, balance: 1.030 
+nvtxs:       3869, cut:     2281, balance: 1.030 
+nvtxs:       7332, cut:     2281, balance: 1.030 
+nvtxs:      13973, cut:     2281, balance: 1.030 
+nvtxs:      26758, cut:     2281, balance: 1.030 
+nvtxs:      51467, cut:     2280, balance: 1.030 
+nvtxs:      99617, cut:     2280, balance: 1.030 
+      Setup: Max:   0.101, Sum:   0.252, Balance:   1.601
+   Matching: Max:   0.311, Sum:   1.127, Balance:   1.103
+Contraction: Max:   0.390, Sum:   1.511, Balance:   1.032
+    Project: Max:   0.017, Sum:   0.011, Balance:   5.845
+ Initialize: Max:   0.134, Sum:   0.463, Balance:   1.154
+      K-way: Max:   0.256, Sum:   0.924, Balance:   1.109
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.312
+      Total: Max:   1.349, Sum:   5.365, Balance:   1.006
+Final   2-way Cut:   2280 	Balance: 1.030 
+NMoved: 2 2 2 4
+ParMETIS_V3_AdaptiveRepart reported a cut of 2280
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 1 1}, ipc2redist: 0.001, Ncon: 1, Nparts: 2
+[ 99617  1324862 23436 26023][200]
+[ 51474   768976 12144 13415][200]
+[ 26794   410198  6335  6975][200]
+[ 13996   217118  3315  3639][200]
+[  7354   114922  1754  1922][200]
+[  3881    60458   933  1013][200]
+[  2070    31578   509   540][200]
+[  1118    16218   268   293][200]
+[   615     8424   146   161][200]
+[   344     4400    82    92][200]
+[   196     2260    44    55][200]
+nvtxs:        196, balance: 1.030 
+nvtxs:        344, cut:     2281, balance: 1.030 
+nvtxs:        615, cut:     2281, balance: 1.030 
+nvtxs:       1118, cut:     2281, balance: 1.030 
+nvtxs:       2070, cut:     2281, balance: 1.030 
+nvtxs:       3881, cut:     2281, balance: 1.030 
+nvtxs:       7354, cut:     2281, balance: 1.030 
+nvtxs:      13996, cut:     2281, balance: 1.030 
+nvtxs:      26794, cut:     2281, balance: 1.030 
+nvtxs:      51474, cut:     2281, balance: 1.030 
+nvtxs:      99617, cut:     2281, balance: 1.030 
+      Setup: Max:   0.136, Sum:   0.367, Balance:   1.482
+   Matching: Max:   0.277, Sum:   1.068, Balance:   1.039
+Contraction: Max:   0.388, Sum:   1.512, Balance:   1.026
+    Project: Max:   0.023, Sum:   0.028, Balance:   3.275
+ Initialize: Max:   0.164, Sum:   0.500, Balance:   1.312
+      K-way: Max:   0.178, Sum:   0.652, Balance:   1.092
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.391
+      Total: Max:   1.332, Sum:   5.320, Balance:   1.001
+Final   2-way Cut:   2281 	Balance: 1.030 
+NMoved: 0 0 0 0
+ParMETIS_V3_AdaptiveRepart reported a cut of 2281
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 2 1}, ipc2redist: 0.001, Ncon: 1, Nparts: 2
+[ 99617  1324862 23436 26023][200]
+[ 51467   768770 12119 13407][200]
+[ 26758   410182  6309  6966][200]
+[ 13973   217278  3305  3631][200]
+[  7332   114684  1742  1901][200]
+[  3869    60258   930   995][200]
+[  2064    31426   502   526][200]
+[  1117    16294   274   285][200]
+[   611     8534   151   155][200]
+[   344     4442    83    87][200]
+[   197     2300    47    51][200]
+nvtxs:        197, balance: 1.030 
+nvtxs:        344, cut:     2281, balance: 1.030 
+nvtxs:        611, cut:     2281, balance: 1.030 
+nvtxs:       1117, cut:     2281, balance: 1.030 
+nvtxs:       2064, cut:     2281, balance: 1.030 
+nvtxs:       3869, cut:     2281, balance: 1.030 
+nvtxs:       7332, cut:     2281, balance: 1.030 
+nvtxs:      13973, cut:     2281, balance: 1.030 
+nvtxs:      26758, cut:     2281, balance: 1.030 
+nvtxs:      51467, cut:     2281, balance: 1.030 
+nvtxs:      99617, cut:     2281, balance: 1.030 
+      Setup: Max:   0.112, Sum:   0.355, Balance:   1.263
+   Matching: Max:   0.359, Sum:   1.391, Balance:   1.031
+Contraction: Max:   0.488, Sum:   1.901, Balance:   1.027
+    Project: Max:   0.037, Sum:   0.074, Balance:   2.016
+ Initialize: Max:   0.113, Sum:   0.446, Balance:   1.016
+      K-way: Max:   0.201, Sum:   0.758, Balance:   1.062
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.434
+      Total: Max:   1.555, Sum:   6.212, Balance:   1.001
+Final   2-way Cut:   2281 	Balance: 1.030 
+NMoved: 0 0 0 0
+ParMETIS_V3_AdaptiveRepart reported a cut of 2281
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 1 1}, ipc2redist: 1000.000, Ncon: 3, Nparts: 2
+[ 99617  1324862 23436 26023][600]
+[ 51474   768976 12144 13415][600]
+[ 26735   408876  6324  6959][600]
+[ 13939   216334  3300  3611][600]
+[  7300   114028  1745  1893][600]
+[  3859    59852   936   999][600]
+[  2064    31208   510   527][600]
+[  1120    16180   274   288][600]
+[   615     8346   148   157][600]
+nvtxs:        615, balance: 1.002 1.002 1.004 
+nvtxs:       1120, cut:     9950, balance: 1.013 1.013 1.008 
+nvtxs:       2064, cut:     9377, balance: 1.014 1.014 1.012 
+nvtxs:       3859, cut:     8764, balance: 1.018 1.018 1.010 
+nvtxs:       7300, cut:     8176, balance: 1.019 1.019 1.010 
+nvtxs:      13939, cut:     7710, balance: 1.021 1.021 1.012 
+nvtxs:      26735, cut:     7238, balance: 1.022 1.022 1.016 
+nvtxs:      51474, cut:     6729, balance: 1.022 1.022 1.016 
+nvtxs:      99617, cut:     6113, balance: 1.013 1.013 1.014 
+      Setup: Max:   0.096, Sum:   0.268, Balance:   1.435
+   Matching: Max:   0.320, Sum:   1.241, Balance:   1.033
+Contraction: Max:   0.346, Sum:   1.380, Balance:   1.002
+   InitPart: Max:   0.085, Sum:   0.299, Balance:   1.130
+    Project: Max:   0.048, Sum:   0.138, Balance:   1.389
+ Initialize: Max:   0.138, Sum:   0.517, Balance:   1.072
+      K-way: Max:   0.666, Sum:   2.562, Balance:   1.040
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.516
+      Total: Max:   1.883, Sum:   7.527, Balance:   1.001
+Final   2-way Cut:   6113 	Balance: 1.013 1.013 1.014 
+NMoved: 49732 24996 24996 49992
+ParMETIS_V3_AdaptiveRepart reported a cut of 6113
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 2 1}, ipc2redist: 1000.000, Ncon: 3, Nparts: 2
+[ 99617  1324862 23436 26023][600]
+[ 51467   768770 12119 13407][600]
+[ 26704   408982  6292  6955][600]
+[ 13898   215874  3282  3616][600]
+[  7275   113570  1724  1890][600]
+[  3830    59564   910   983][600]
+[  2024    30990   484   522][600]
+[  1083    16046   263   279][600]
+[   586     8180   143   154][600]
+nvtxs:        586, balance: 1.006 1.006 1.004 
+nvtxs:       1083, cut:     9178, balance: 1.015 1.015 1.003 
+nvtxs:       2024, cut:     8626, balance: 1.026 1.026 1.012 
+nvtxs:       3830, cut:     8358, balance: 1.030 1.030 1.015 
+nvtxs:       7275, cut:     7886, balance: 1.033 1.033 1.018 
+nvtxs:      13898, cut:     7312, balance: 1.039 1.039 1.023 
+nvtxs:      26704, cut:     6956, balance: 1.039 1.039 1.022 
+nvtxs:      51467, cut:     6583, balance: 1.043 1.043 1.023 
+nvtxs:      99617, cut:     5980, balance: 1.050 1.050 1.026 
+      Setup: Max:   0.098, Sum:   0.277, Balance:   1.419
+   Matching: Max:   0.304, Sum:   1.170, Balance:   1.039
+Contraction: Max:   0.364, Sum:   1.440, Balance:   1.012
+   InitPart: Max:   0.075, Sum:   0.295, Balance:   1.013
+    Project: Max:   0.028, Sum:   0.062, Balance:   1.797
+ Initialize: Max:   0.141, Sum:   0.464, Balance:   1.218
+      K-way: Max:   0.671, Sum:   2.585, Balance:   1.039
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.232
+      Total: Max:   1.830, Sum:   7.293, Balance:   1.004
+Final   2-way Cut:   5980 	Balance: 1.050 1.050 1.026 
+NMoved: 48535 25319 25319 50638
+ParMETIS_V3_AdaptiveRepart reported a cut of 5980
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 1 1}, ipc2redist: 1.000, Ncon: 3, Nparts: 2
+[ 99617  1324862 23436 26023][600]
+[ 51474   768976 12144 13415][600]
+[ 26735   408876  6324  6959][600]
+[ 13939   216334  3300  3611][600]
+[  7300   114028  1745  1893][600]
+[  3859    59852   936   999][600]
+[  2064    31208   510   527][600]
+[  1120    16180   274   288][600]
+[   615     8346   148   157][600]
+nvtxs:        615, balance: 1.002 1.002 1.004 
+nvtxs:       1120, cut:    10122, balance: 1.003 1.003 1.002 
+nvtxs:       2064, cut:     9523, balance: 1.012 1.012 1.008 
+nvtxs:       3859, cut:     8934, balance: 1.007 1.007 1.010 
+nvtxs:       7300, cut:     8137, balance: 1.005 1.005 1.015 
+nvtxs:      13939, cut:     7757, balance: 1.006 1.006 1.015 
+nvtxs:      26735, cut:     7257, balance: 1.008 1.008 1.015 
+nvtxs:      51474, cut:     6833, balance: 1.009 1.009 1.015 
+nvtxs:      99617, cut:     6214, balance: 1.025 1.025 1.010 
+      Setup: Max:   0.092, Sum:   0.280, Balance:   1.319
+   Matching: Max:   0.315, Sum:   1.201, Balance:   1.048
+Contraction: Max:   0.358, Sum:   1.396, Balance:   1.026
+   InitPart: Max:   0.068, Sum:   0.269, Balance:   1.011
+    Project: Max:   0.052, Sum:   0.156, Balance:   1.337
+ Initialize: Max:   0.076, Sum:   0.244, Balance:   1.238
+      K-way: Max:   0.694, Sum:   2.643, Balance:   1.051
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.429
+      Total: Max:   1.855, Sum:   7.412, Balance:   1.001
+Final   2-way Cut:   6214 	Balance: 1.025 1.025 1.010 
+NMoved: 47999 24270 24270 48540
+ParMETIS_V3_AdaptiveRepart reported a cut of 6214
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 2 1}, ipc2redist: 1.000, Ncon: 3, Nparts: 2
+[ 99617  1324862 23436 26023][600]
+[ 51467   768770 12119 13407][600]
+[ 26704   408982  6292  6955][600]
+[ 13898   215874  3282  3616][600]
+[  7275   113570  1724  1890][600]
+[  3830    59564   910   983][600]
+[  2024    30990   484   522][600]
+[  1083    16046   263   279][600]
+[   586     8180   143   154][600]
+nvtxs:        586, balance: 1.006 1.006 1.004 
+nvtxs:       1083, cut:     9230, balance: 1.013 1.013 1.002 
+nvtxs:       2024, cut:     8706, balance: 1.034 1.034 1.010 
+nvtxs:       3830, cut:     8425, balance: 1.034 1.034 1.011 
+nvtxs:       7275, cut:     7826, balance: 1.048 1.048 1.019 
+nvtxs:      13898, cut:     7364, balance: 1.050 1.050 1.019 
+nvtxs:      26704, cut:     7000, balance: 1.050 1.050 1.019 
+nvtxs:      51467, cut:     6669, balance: 1.050 1.050 1.019 
+nvtxs:      99617, cut:     6215, balance: 1.050 1.050 1.016 
+      Setup: Max:   0.132, Sum:   0.431, Balance:   1.225
+   Matching: Max:   0.412, Sum:   1.572, Balance:   1.049
+Contraction: Max:   0.471, Sum:   1.861, Balance:   1.012
+   InitPart: Max:   0.074, Sum:   0.291, Balance:   1.015
+    Project: Max:   0.022, Sum:  -0.000, Balance: -200.449
+ Initialize: Max:   0.150, Sum:   0.499, Balance:   1.200
+      K-way: Max:   0.656, Sum:   2.512, Balance:   1.045
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.305
+      Total: Max:   2.187, Sum:   8.744, Balance:   1.001
+Final   2-way Cut:   6215 	Balance: 1.050 1.050 1.016 
+NMoved: 48036 24919 24919 49838
+ParMETIS_V3_AdaptiveRepart reported a cut of 6215
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 1 1}, ipc2redist: 0.001, Ncon: 3, Nparts: 2
+[ 99617  1324862 23436 26023][600]
+[ 51474   768976 12144 13415][600]
+[ 26735   408876  6324  6959][600]
+[ 13939   216334  3300  3611][600]
+[  7300   114028  1745  1893][600]
+[  3859    59852   936   999][600]
+[  2064    31208   510   527][600]
+[  1120    16180   274   288][600]
+[   615     8346   148   157][600]
+nvtxs:        615, balance: 1.002 1.002 1.004 
+nvtxs:       1120, cut:    24586, balance: 1.046 1.046 1.048 
+nvtxs:       2064, cut:    24844, balance: 1.049 1.049 1.048 
+nvtxs:       3859, cut:    25224, balance: 1.049 1.049 1.050 
+nvtxs:       7300, cut:    25329, balance: 1.050 1.050 1.050 
+nvtxs:      13939, cut:    25408, balance: 1.050 1.050 1.050 
+nvtxs:      26735, cut:    25425, balance: 1.050 1.050 1.050 
+nvtxs:      51474, cut:    25425, balance: 1.050 1.050 1.050 
+nvtxs:      99617, cut:    25425, balance: 1.050 1.050 1.050 
+      Setup: Max:   0.073, Sum:   0.170, Balance:   1.719
+   Matching: Max:   0.299, Sum:   1.169, Balance:   1.025
+Contraction: Max:   0.373, Sum:   1.487, Balance:   1.002
+   InitPart: Max:   0.079, Sum:   0.311, Balance:   1.012
+    Project: Max:   0.040, Sum:   0.110, Balance:   1.444
+ Initialize: Max:   0.131, Sum:   0.443, Balance:   1.177
+      K-way: Max:   0.455, Sum:   1.631, Balance:   1.116
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.358
+      Total: Max:   1.629, Sum:   6.511, Balance:   1.001
+Final   2-way Cut:  25425 	Balance: 1.050 1.050 1.050 
+NMoved: 44489 22400 22400 44800
+ParMETIS_V3_AdaptiveRepart reported a cut of 25425
+
+Testing ParMETIS_V3_AdaptiveRepart with options[1-3] = {7 2 1}, ipc2redist: 0.001, Ncon: 3, Nparts: 2
+[ 99617  1324862 23436 26023][600]
+[ 51467   768770 12119 13407][600]
+[ 26704   408982  6292  6955][600]
+[ 13898   215874  3282  3616][600]
+[  7275   113570  1724  1890][600]
+[  3830    59564   910   983][600]
+[  2024    30990   484   522][600]
+[  1083    16046   263   279][600]
+[   586     8180   143   154][600]
+nvtxs:        586, balance: 1.006 1.006 1.004 
+nvtxs:       1083, cut:    24560, balance: 1.050 1.050 1.049 
+nvtxs:       2024, cut:    24558, balance: 1.050 1.050 1.049 
+nvtxs:       3830, cut:    24663, balance: 1.050 1.050 1.050 
+nvtxs:       7275, cut:    24699, balance: 1.050 1.050 1.050 
+nvtxs:      13898, cut:    24719, balance: 1.050 1.050 1.050 
+nvtxs:      26704, cut:    24773, balance: 1.050 1.050 1.050 
+nvtxs:      51467, cut:    24773, balance: 1.050 1.050 1.050 
+nvtxs:      99617, cut:    24773, balance: 1.050 1.050 1.050 
+      Setup: Max:   0.120, Sum:   0.304, Balance:   1.585
+   Matching: Max:   0.304, Sum:   1.145, Balance:   1.062
+Contraction: Max:   0.368, Sum:   1.393, Balance:   1.058
+   InitPart: Max:   0.062, Sum:   0.244, Balance:   1.017
+    Project: Max:   0.045, Sum:   0.093, Balance:   1.937
+ Initialize: Max:   0.170, Sum:   0.606, Balance:   1.122
+      K-way: Max:   0.420, Sum:   1.629, Balance:   1.030
+      Remap: Max:   0.000, Sum:   0.000, Balance:   1.448
+      Total: Max:   1.703, Sum:   6.803, Balance:   1.001
+Final   2-way Cut:  24773 	Balance: 1.050 1.050 1.050 
+NMoved: 44478 22395 22395 44790
+ParMETIS_V3_AdaptiveRepart reported a cut of 24773
+
+Testing ParMETIS_V3_NodeND with options[1-3] = {3 1 1}
+      Setup: Max:   0.242, Sum:   0.818, Balance:   1.182
+   Matching: Max:   0.485, Sum:   1.839, Balance:   1.055
+Contraction: Max:   0.499, Sum:   1.954, Balance:   1.022
+   InitPart: Max:   0.018, Sum:   0.069, Balance:   1.018
+    Project: Max:   0.039, Sum:   0.066, Balance:   2.352
+ Initialize: Max:   0.244, Sum:   0.676, Balance:   1.443
+      K-way: Max:   0.831, Sum:   3.129, Balance:   1.062
+      Total: Max:   2.236, Sum:   8.943, Balance:   1.000
+SepSizes:  511 [47236 51870]
+SepSizes:  901 [23636 22699] 570 [26836 24464]
+      Setup: Max:   0.450, Sum:   1.348, Balance:   1.334
+   Matching: Max:   0.666, Sum:   2.290, Balance:   1.164
+Contraction: Max:   1.009, Sum:   3.461, Balance:   1.167
+   InitPart: Max:   0.102, Sum:   0.395, Balance:   1.034
+    Project: Max:   0.057, Sum:   0.108, Balance:   2.107
+ Initialize: Max:   0.252, Sum:   0.799, Balance:   1.261
+      K-way: Max:   1.304, Sum:   5.084, Balance:   1.026
+       Move: Max:   4.609, Sum:  12.909, Balance:   1.428
+      Total: Max:   6.972, Sum:  27.820, Balance:   1.002
+
+Testing ParMETIS_V3_NodeND with options[1-3] = {3 1 2}
+      Setup: Max:   0.268, Sum:   0.820, Balance:   1.308
+   Matching: Max:   0.440, Sum:   1.704, Balance:   1.032
+Contraction: Max:   0.560, Sum:   2.205, Balance:   1.016
+   InitPart: Max:   0.012, Sum:   0.047, Balance:   1.024
+    Project: Max:   0.066, Sum:   0.185, Balance:   1.435
+ Initialize: Max:   0.187, Sum:   0.670, Balance:   1.114
+      K-way: Max:   0.765, Sum:   3.004, Balance:   1.019
+      Total: Max:   2.302, Sum:   9.206, Balance:   1.000
+SepSizes:  511 [47236 51870]
+SepSizes:  901 [23636 22699] 570 [26836 24464]
+      Setup: Max:   0.394, Sum:   1.187, Balance:   1.328
+   Matching: Max:   0.634, Sum:   2.294, Balance:   1.106
+Contraction: Max:   1.103, Sum:   3.570, Balance:   1.236
+   InitPart: Max:   0.092, Sum:   0.313, Balance:   1.181
+    Project: Max:   0.066, Sum:   0.191, Balance:   1.374
+ Initialize: Max:   0.256, Sum:   0.867, Balance:   1.182
+      K-way: Max:   1.234, Sum:   4.827, Balance:   1.023
+       Move: Max:   2.786, Sum:   6.572, Balance:   1.696
+      Total: Max:   6.896, Sum:  27.577, Balance:   1.000
+
+-------------------------------------------------------------------------
+-------------------------------------------------------------------------
+-------------------------------------------------------------------------
+-------------------------------------------------------------------------
+% mpirun -np 4 mtest bricks.hex3d 2
+
+Nelements: 117649, Nnodes: 125000, EType: 3
+MGCNUM: 2
+Completed Dual Graph -- Nvtxs: 117649, Nedges: 2046222 
+[117649  2046222 29412 29413] [100] [ 0.000] [ 0.000]
+[ 60230  1195682 15032 15075] [100] [ 0.000] [ 0.000]
+[ 30905   630126  7712  7738] [100] [ 0.000] [ 0.000]
+[ 15878   308518  3958  3976] [100] [ 0.000] [ 0.000]
+[  8188   150574  2039  2055] [100] [ 0.000] [ 0.000]
+[  4240    74750  1057  1063] [100] [ 0.000] [ 0.000]
+[  2208    37340   547   555] [100] [ 0.000] [ 0.001]
+[  1155    18804   285   291] [100] [ 0.000] [ 0.001]
+[   606     9272   149   154] [100] [ 0.000] [ 0.002]
+[   321     4636    79    82] [100] [ 0.000] [ 0.004]
+[   175     2312    43    46] [100] [ 0.000] [ 0.008]
+[    96     1166    23    25] [100] [ 0.000] [ 0.016]
+nvtxs:         96, balance: 1.029 
+nvtxs:        175, cut:    52846, balance: 1.034 
+nvtxs:        321, cut:    49105, balance: 1.044 
+nvtxs:        606, cut:    46830, balance: 1.049 
+nvtxs:       1155, cut:    44937, balance: 1.007 
+nvtxs:       2208, cut:    42026, balance: 1.010 
+nvtxs:       4240, cut:    39423, balance: 1.004 
+nvtxs:       8188, cut:    36607, balance: 1.003 
+nvtxs:      15878, cut:    34521, balance: 1.004 
+nvtxs:      30905, cut:    32557, balance: 1.003 
+nvtxs:      60230, cut:    30095, balance: 1.003 
+nvtxs:     117649, cut:    27431, balance: 1.003 
+      Setup: Max:   0.085, Sum:   0.288, Balance:   1.179
+   Matching: Max:   0.328, Sum:   1.220, Balance:   1.073
+Contraction: Max:   0.424, Sum:   1.680, Balance:   1.010
+   InitPart: Max:   0.035, Sum:   0.130, Balance:   1.060
+    Project: Max:   0.065, Sum:   0.150, Balance:   1.731
+ Initialize: Max:   0.188, Sum:   0.646, Balance:   1.164
+      K-way: Max:   0.668, Sum:   2.591, Balance:   1.031
+      Remap: Max:   0.015, Sum:   0.057, Balance:   1.066
+      Total: Max:   2.030, Sum:   8.085, Balance:   1.004
+Final 4-way CUT:  27431 	Balance: 1.003   avg: 1.003
+   Mesh2Dual: Max:   0.899, Sum:   3.592, Balance:   1.001
+    ParMETIS: Max:   2.192, Sum:   8.754, Balance:   1.002
+       Total: Max:   3.091, Sum:  12.347, Balance:   1.001
+

@@ -1,0 +1,20 @@
+To run benchmarks on GPGPU-Sim, you first need to place a copy or link to the
+configuration files (gpgpusim.config and the interconnect configuration file)
+in the simulation run directory.  You can do this using the script
+"setup_config.sh" in this directory, which creates symbolic links. For example:
+
+	./setup_config.sh QuadroFX5800
+
+To change the configuration, you need to first run
+
+	./setup_config.sh --cleanup
+
+The configuration string to use is a directory name in $GPGPUSIM_ROOT/configs
+
+NOTE ** As of GPGPU-Sim 2.1.0b, GPGPU-Sim works with applications without
+recompiling by using the PTX source embedded during the normal CUDA compilation
+flow.
+
+Preface your LD_LIBRARY_PATH environment variable with the locaton
+$GPGPUSIM_ROOT/lib
+

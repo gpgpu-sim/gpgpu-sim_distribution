@@ -1,0 +1,6 @@
+Requires "boost" to be installed.
+
+To build and run:
+
+make
+./gpgpu_ptx_sim__aescuda  e 128 ./data/output.bmp ./data/key128.txt

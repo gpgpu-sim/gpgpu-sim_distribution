@@ -1,0 +1,4 @@
+To build and run
+
+make
+./gpgpu_ptx_sim__mummergpu ./data/NC_003997.20k.fna ./data/NC_003997_q25bp.50k.fna

@@ -1,0 +1,192 @@
+Script started on Mon 01 Sep 2008 02:10:27 PM CDT
+$ tcsh
+$ setenv XXX 8
+$ setenv YYY 8
+$ make clean
+\rm -f *.o *.cu.c x.cu y.cu wsm5_driver_* *.mod *.f90 x.ptx
+rm: No match.
+make: *** [clean] Error 1
+$ make
+/lib/cpp -C -P libmassv.F > libmassv.f90
+ifort  -c -O3 -align all -FR -convert big_endian -fno-alias -fno-fnalias libmassv.f90
+icc -c -w -O3 -ip  -c -DMKX=28 microclock.c
+/lib/cpp -C -P   -DDEBUG_I=59 -DDEBUG_J=45 -DDEBUG_K=1  -DRWORDSIZE=4 module_mp_wsm5.F > module_mp_wsm5.f90
+ifort  -c -O3 -align all -FR -convert big_endian -fno-alias -fno-fnalias module_mp_wsm5.f90
+fortcom: Info: module_mp_wsm5.f90, line 382: This statement function has not been used.   [CONDEN]
+            viscos, xka, venfac, conden, diffac, &
+---------------------------------^
+ifort  -o wsm5_driver_vanilla  module_mp_wsm5.o libmassv.o microclock.o /usr/local/cuda/lib/libcublasemu.so
+m4 wsm5.cu | sed "s/float/float/g" > y.cu
+nvcc -DCUDA -ccbin /usr/bin  -cuda    -DDEBUG_I=59 -DDEBUG_J=45 -DDEBUG_K=1  -DXXX=8 -DYYY=8 -DMKX=28 --host-compilation 'C++' --use_fast_math y.cu
+"y.cu", line 146: warning: variable "m" was declared but never referenced
+     int i, dc, m ;
+                ^
+
+"y.cu", line 324: warning: variable "k" was declared but never referenced
+  { int k ;
+        ^
+
+"y.cu", line 216: warning: variable "i" was declared but never referenced
+        int i, j, k ;
+            ^
+
+"y.cu", line 216: warning: variable "j" was declared but never referenced
+        int i, j, k ;
+               ^
+
+"y.cu", line 216: warning: variable "k" was declared but never referenced
+        int i, j, k ;
+                  ^
+
+"y.cu", line 217: warning: variable "bigbuf" was set but never used
+        float *bigbuf ;
+               ^
+
+"y.cu", line 218: warning: variable "s1" was declared but never referenced
+        int s, e, s1, e1, s2, e2 ;
+                  ^
+
+"y.cu", line 218: warning: variable "e1" was declared but never referenced
+        int s, e, s1, e1, s2, e2 ;
+                      ^
+
+"y.cu", line 473: warning: missing return statement at end of non-void
+          function "get_wsm5_gpu_levels_"
+  }
+  ^
+
+"y.cu", line 146: warning: variable "m" was declared but never referenced
+     int i, dc, m ;
+                ^
+
+"y.cu", line 324: warning: variable "k" was declared but never referenced
+  { int k ;
+        ^
+
+"y.cu", line 216: warning: variable "i" was declared but never referenced
+        int i, j, k ;
+            ^
+
+"y.cu", line 216: warning: variable "j" was declared but never referenced
+        int i, j, k ;
+               ^
+
+"y.cu", line 216: warning: variable "k" was declared but never referenced
+        int i, j, k ;
+                  ^
+
+"y.cu", line 217: warning: variable "bigbuf" was set but never used
+        float *bigbuf ;
+               ^
+
+"y.cu", line 218: warning: variable "s1" was declared but never referenced
+        int s, e, s1, e1, s2, e2 ;
+                  ^
+
+"y.cu", line 218: warning: variable "e1" was declared but never referenced
+        int s, e, s1, e1, s2, e2 ;
+                      ^
+
+"y.cu", line 473: warning: missing return statement at end of non-void
+          function "get_wsm5_gpu_levels_"
+  }
+  ^
+
+/bin/mv y.cu.cpp wsm5.cu.cpp
+icc -w -O3 -ip  -c -c wsm5.cu.cpp
+m4 wsm5_gpu.cu | spt.pl | sed "s/float/float/g" > x.cu
+nvcc -DCUDA -ccbin /usr/bin  -cuda    -DDEBUG_I=59 -DDEBUG_J=45 -DDEBUG_K=1  -DXXX=8 -DYYY=8 -DMKX=28 --host-compilation 'C++' --use_fast_math x.cu
+"x.cu", line 364: warning: variable "fall1_kp1" was set but never used
+       float den_k, falk1_k, falk1_kp1, fall1_k, fall1_kp1, delz_k, delz_kp1 ;
+                                                 ^
+
+"x.cu", line 365: warning: variable "fall2_kp1" was set but never used
+       float falk2_k, falk2_kp1, fall2_k, fall2_kp1 ;
+                                          ^
+
+"x.cu", line 57: warning: variable "xni_k" was declared but never referenced
+     float t_k, q_k, qr_k, qc_k, qs_k, qi_k, qs1_k, qs2_k, cpm_k, xl_k, xni_k, w1_k, w2_k, w3_k ;
+                                                                        ^
+
+"util.h", line 111: warning: type qualifier on return type is meaningless
+  extern __attribute__((__device__)) const struct Float4 _Zplf6Float4(const float, const struct Float4);
+                                     ^
+
+"util.h", line 120: warning: type qualifier on return type is meaningless
+  extern __attribute__((__device__)) const struct Float4 _Zmlf6Float4(const float, const struct Float4);
+                                     ^
+
+"util.h", line 129: warning: type qualifier on return type is meaningless
+  extern __attribute__((__device__)) const struct Float4 _Zdvf6Float4(const float, const struct Float4);
+                                     ^
+
+"util.h", line 138: warning: type qualifier on return type is meaningless
+  extern __attribute__((__device__)) const struct Float4 _Zmif6Float4(const float, const struct Float4);
+                                     ^
+
+"util.h", line 111: warning: type qualifier on return type is meaningless
+   __attribute__((__device__)) const struct Float4 _Zplf6Float4(
+                               ^
+
+"util.h", line 120: warning: type qualifier on return type is meaningless
+   __attribute__((__device__)) const struct Float4 _Zmlf6Float4(
+                               ^
+
+"util.h", line 129: warning: type qualifier on return type is meaningless
+   __attribute__((__device__)) const struct Float4 _Zdvf6Float4(
+                               ^
+
+"util.h", line 138: warning: type qualifier on return type is meaningless
+   __attribute__((__device__)) const struct Float4 _Zmif6Float4(
+                               ^
+
+"x.cu", line 364: warning: variable "fall1_kp1" was set but never used
+       float den_k, falk1_k, falk1_kp1, fall1_k, fall1_kp1, delz_k, delz_kp1 ;
+                                                 ^
+
+"x.cu", line 365: warning: variable "fall2_kp1" was set but never used
+       float falk2_k, falk2_kp1, fall2_k, fall2_kp1 ;
+                                          ^
+
+"x.cu", line 57: warning: variable "xni_k" was declared but never referenced
+     float t_k, q_k, qr_k, qc_k, qs_k, qi_k, qs1_k, qs2_k, cpm_k, xl_k, xni_k, w1_k, w2_k, w3_k ;
+                                                                        ^
+
+/bin/mv x.cu.cpp wsm5_gpu.cu.cpp
+icc -w -O3 -ip  -c -c wsm5_gpu.cu.cpp
+/lib/cpp -C -P   -DDEBUG_I=59 -DDEBUG_J=45 -DDEBUG_K=1  -DRUN_ON_GPU -DRWORDSIZE=4 module_mp_wsm5.F > module_mp_wsm5.f90
+ifort  -c -O3 -align all -FR -convert big_endian -fno-alias -fno-fnalias module_mp_wsm5.f90
+fortcom: Info: module_mp_wsm5.f90, line 364: This statement function has not been used.   [CONDEN]
+            viscos, xka, venfac, conden, diffac, &
+---------------------------------^
+ifort  -o wsm5_driver_chocolate  module_mp_wsm5.o wsm5.cu.o wsm5_gpu.cu.o libmassv.o microclock.o /usr/local/cuda/lib/libcublas.so 
+$ cd run
+$ runit
+vanilla
+chocolate
+vanilla: Call to WSM5 on host for step           10  is       195998 microseconds
+chocolate:Call to wsm5_gpu (not including data xfer): 12083 microseconds
+chocolate:Call to wsm5_gpu (including data xfer): 22516 microseconds
+chocolate: Call to WSM5 on host for step           10  is        35985 microseconds
+running compare_snaps
+           1          74           1          61           1          28
+          -3          78          -3          65           1          28
+           2          72           2          59           1          27
+           1          74           1          61           1          28
+          -3          78          -3          65           1          28
+           2          72           2          59           1          27
+fort.88 fort.98 differ: byte 376, line 23
+$ paste fort.88 fort.98 | head
+          71          58  th	          71          58  th
+   286.2785    	   286.2785    
+   286.2001    	   286.2001    
+   286.0901    	   286.0901    
+   285.9821    	   285.9821    
+   285.9263    	   285.9263    
+   285.9068    	   285.9068    
+   285.8943    	   285.8943    
+   285.9103    	   285.9103    
+   285.9970    	   285.9970    
+$ exit
+
+Script done on Mon 01 Sep 2008 02:16:58 PM CDT

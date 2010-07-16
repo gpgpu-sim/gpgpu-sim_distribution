@@ -1,0 +1,51 @@
+# define variables
+VPATH   = ./
+HDRDIR  = ./include
+LIBDIR	= ./lib
+# adjust this for your system
+
+# set options for this machine
+# specify which compilers to use for c, fortran and linking
+CC	= mpicc
+LD	= mpicc
+
+# compiler flags to be used (set to compile with debugging on)
+CFLAGS = -Dp_N=$(N) -DNDG3d -I/opt/local/include -I/usr/include/malloc -I$(HDRDIR) -O3 
+
+# link flags to be used 
+LDFLAGS	= -I$(HDRDIR) -L. -L./$(LIBDIR) -O3
+
+# libraries to be linked in
+LIBS	=  -lparmetis -lmetis  -lm 
+
+# types of files we are going to construct rules for
+.SUFFIXES: .c .f .cu
+
+# rule for .c files
+.c.o:
+	$(CC) $(CFLAGS) -o $*.o -c $*.c
+
+# list of objects to be compiled
+OBJS    = \
+	src/Mesh3d.o\
+	src/Utils.o\
+	src/LoadBalance3d.o\
+	src/FacePair3d.o\
+	src/ParallelPairs.o\
+	src/BuildMaps3d.o\
+	src/StartUp3d.o\
+	src/MaxwellsRun3d.o\
+	src/MaxwellsRHS3d.o\
+	src/MaxwellsMPI3d.o\
+	src/MaxwellsDriver3d.o\
+	src/InitCPU3d.o
+
+MaxwellsCPU3d:$(OBJS)
+	$(LD)  $(LDFLAGS)  -o MaxwellsCPU3d $(OBJS) $(LIBS)
+#	rm -r $(OBJS)
+
+# what to do if user types "make clean"
+clean :
+	rm -r $(OBJS)
+
+

@@ -1,0 +1,11 @@
+To build and run:
+
+Add GPGPUSIM_ROOT/lib to LD_LIBRARY_PATH, then run the commands:
+
+export PARBOIL_ROOT=`pwd`
+cd common/src
+make 
+cd -
+./parboil compile cp cuda_short
+cd benchmarks/cp/build/cuda_short/
+./cp
