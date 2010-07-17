@@ -670,6 +670,10 @@ void bar_sync_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    assert( b.u32 == 0 ); // not clear what should happen if this is not zero
 }
 
+void bfe_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void bfi_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void bfind_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+
 void bra_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 {
    const operand_info &target  = pI->dst();
@@ -679,6 +683,7 @@ void bra_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->set_npc(target_pc);
 }
 
+void brev_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 void brkpt_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 
 extern int gpgpu_simd_model;
@@ -755,6 +760,8 @@ void call_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    thread->set_npc(target_func);
 }
+
+void clz_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 
 void cnot_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 
@@ -1319,6 +1326,8 @@ void cvt_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->set_operand_value(dst,data);
 }
 
+void cvta_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+
 void div_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 
    ptx_reg_t data;
@@ -1393,6 +1402,8 @@ void fma_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    mad_def(pI,thread);
 }
 
+void isspacep_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+
 void ld_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 
    const operand_info &dst = pI->dst();
@@ -1443,6 +1454,8 @@ void ld_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->m_last_effective_address = src1_data.u32;
    thread->m_last_memory_space = space; 
 }
+
+void ldu_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 
 void lg2_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 
@@ -1648,10 +1661,7 @@ void max_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->set_operand_value(dst,d);
 }
 
-void membar_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
-{
-   /* TODO: add timing model support */
-}
+void membar_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 
 void min_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 
@@ -1954,6 +1964,12 @@ void or_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    thread->set_operand_value(dst,data);
 }
+
+void pmevent_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void popc_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void prefetch_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void prefetchu_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void prmt_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 
 void rcp_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 
@@ -2632,6 +2648,12 @@ void sub_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->set_operand_value(dst,data);
 }
 
+void subc_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void suld_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void sured_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void sust_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void suq_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+
 ptx_reg_t* ptx_tex_regs = NULL;
 
 union intfloat {
@@ -2867,7 +2889,18 @@ void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->m_last_memory_space = TEX_DIRECTIVE; 
    thread->set_vector_operand_values(dst,data1,data2,data3,data4,4);
 }
+
+void txq_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 void trap_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void vabsdiff_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void vadd_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void vmad_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void vmax_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void vmin_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void vset_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void vshl_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void vshr_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void vsub_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 
 extern unsigned g_warp_active_mask;
 
