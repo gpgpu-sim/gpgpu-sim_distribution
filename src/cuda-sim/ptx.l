@@ -71,6 +71,11 @@
 char linebuf[1024];
 unsigned col = 0;
 #define TC col+=strlen(ptx_text); 
+#define CHECK_UNSIGNED \
+	if( yytext[strlen(yytext)-1]=='U' ) { \
+		printf("GPGPU-Sim: ERROR ** U modifier not implemented\n"); \
+		abort(); \
+	}
 int ptx_error( const char *s );
 %}
 
@@ -165,7 +170,7 @@ xor     TC; ptx_lval.int_value = XOR_OP; return OPCODE;
 \.byte	TC; return BYTE_DIRECTIVE; /* not in PTX 2.1 */
 \.callprototype TC; return CALLPROTOTYPE_DIRECTIVE;
 \.calltargets TC; return CALLTARGETS_DIRECTIVE;
-\.const\[[0-9]+\] TC; return CONST_DIRECTIVE;
+\.const\[[0-9]+\] TC; /*fixme: should use const offset value*/ abort(); return CONST_DIRECTIVE;
 \.const TC; return CONST_DIRECTIVE;
 \.entry TC; return ENTRY_DIRECTIVE;
 \.extern TC; return EXTERN_DIRECTIVE;
@@ -194,18 +199,37 @@ xor     TC; ptx_lval.int_value = XOR_OP; return OPCODE;
 \.visible TC; return VISIBLE_DIRECTIVE;
 
 
-"%clock" TC; ptx_lval.int_value = CLOCK_ID; return SPECIAL_REGISTER;
-"%ctaid" TC; ptx_lval.int_value = CTA_ID; return SPECIAL_REGISTER;
-"%ntid"  TC; ptx_lval.int_value = NTID_ID; return SPECIAL_REGISTER;
-"%gridid" TC; ptx_lval.int_value = GRIDID_ID; return SPECIAL_REGISTER;
-"%nctaid" TC; ptx_lval.int_value = NCTAID_ID; return SPECIAL_REGISTER;
-"%tid"  TC; ptx_lval.int_value = TID_ID; return SPECIAL_REGISTER;
+"%clock" TC; ptx_lval.int_value = CLOCK_REG; return SPECIAL_REGISTER;
+"%clock64" TC; ptx_lval.int_value = CLOCK64_REG; return SPECIAL_REGISTER;
+"%ctaid" TC; ptx_lval.int_value = CTAID_REG; return SPECIAL_REGISTER;
+"%envreg"[0-9]+ TC; sscanf(yytext+7,"%u",&ptx_lval.int_value); ptx_lval.int_value<<=16; ptx_lval.int_value += ENVREG_REG; return SPECIAL_REGISTER;
+"%gridid" TC; ptx_lval.int_value = GRIDID_REG; return SPECIAL_REGISTER;
+"%laneid"  TC; ptx_lval.int_value = LANEID_REG; return SPECIAL_REGISTER;
+"%lanemask_eq"  TC; ptx_lval.int_value = LANEMASK_EQ_REG; return SPECIAL_REGISTER;
+"%lanemask_le"  TC; ptx_lval.int_value = LANEMASK_LE_REG; return SPECIAL_REGISTER;
+"%lanemask_lt"  TC; ptx_lval.int_value = LANEMASK_LT_REG; return SPECIAL_REGISTER;
+"%lanemask_ge"  TC; ptx_lval.int_value = LANEMASK_GE_REG; return SPECIAL_REGISTER;
+"%lanemask_gt"  TC; ptx_lval.int_value = LANEMASK_GT_REG; return SPECIAL_REGISTER;
+"%nctaid" TC; ptx_lval.int_value = NCTAID_REG; return SPECIAL_REGISTER;
+"%ntid"  TC; ptx_lval.int_value = NTID_REG; return SPECIAL_REGISTER;
+"%nsmid"  TC; ptx_lval.int_value = NSMID_REG; return SPECIAL_REGISTER;
+"%nwarpid"  TC; ptx_lval.int_value = NWARPID_REG; return SPECIAL_REGISTER;
+"%pm"[0-3]  TC; sscanf(yytext+3,"%u",&ptx_lval.int_value); ptx_lval.int_value<<=16; ptx_lval.int_value += PM_REG; return SPECIAL_REGISTER;
+"%smid"  TC; ptx_lval.int_value = SMID_REG; return SPECIAL_REGISTER;
+"%tid"  TC; ptx_lval.int_value = TID_REG; return SPECIAL_REGISTER;
+"%warpid"  TC; ptx_lval.int_value = WARPID_REG; return SPECIAL_REGISTER;
+"WARP_SZ"  TC; ptx_lval.int_value = WARPSZ_REG; return SPECIAL_REGISTER;
 
-[_A-Za-z$%][_0-9A-Za-z$]*  TC; ptx_lval.string_value = strdup(yytext); /*printf("\n<<identifier=\"%s\">>\n", yytext); fflush(stdout);*/ return IDENTIFIER;
+[a-zA-Z][a-zA-Z0-9_$]*  TC; ptx_lval.string_value = strdup(yytext); return IDENTIFIER;
+[_$%][a-zA-Z0-9_$]+  TC; ptx_lval.string_value = strdup(yytext); return IDENTIFIER;
 
 [0-9]+\.[0-9]+ 	 TC; sscanf(yytext,"%lf", &ptx_lval.double_value); return DOUBLE_OPERAND;
-[-]{0,1}[0-9]+		 TC; ptx_lval.int_value =  atoi(yytext); return INT_OPERAND;
-0[xX][0-9]+	 TC;  sscanf(yytext,"%x", &ptx_lval.int_value); return INT_OPERAND;
+	
+0[xX][0-9]+U?   TC; CHECK_UNSIGNED; sscanf(yytext,"%x", &ptx_lval.int_value); return INT_OPERAND;
+0[0-7]+U?   	TC; printf("GPGPU-Sim: ERROR ** parsing octal not (yet) implemented\n"); abort(); return INT_OPERAND;
+0[bB][01]+U?  	TC; printf("GPGPU-Sim: ERROR ** parsing binary not (yet) implemented\n"); abort(); return INT_OPERAND;
+[-]?[0-9]+U?    TC; CHECK_UNSIGNED; ptx_lval.int_value =  atoi(yytext); return INT_OPERAND;
+
 0[fF][0-9a-fA-F]{8}  TC; sscanf(yytext+2,"%x", (unsigned*)(void*)&ptx_lval.float_value); return FLOAT_OPERAND;
 0[dD][0-9a-fA-F]{16}  TC; sscanf(yytext+2,"%Lx", (unsigned long long*)(void*)&ptx_lval.double_value); return DOUBLE_OPERAND;
 

@@ -71,12 +71,26 @@ enum opcode_t {
 };
 
 enum special_regs {
-   CLOCK_ID,
-   CTA_ID,
-   NTID_ID,
-   GRIDID_ID,
-   NCTAID_ID,
-   TID_ID
+   CLOCK_REG,
+   CLOCK64_REG,
+   CTAID_REG,
+   ENVREG_REG,
+   GRIDID_REG,
+   LANEID_REG,
+   LANEMASK_EQ_REG,
+   LANEMASK_LE_REG,
+   LANEMASK_LT_REG,
+   LANEMASK_GE_REG,
+   LANEMASK_GT_REG,
+   NCTAID_REG,
+   NTID_REG,
+   NSMID_REG,
+   NWARPID_REG,
+   PM_REG,
+   SMID_REG,
+   TID_REG,
+   WARPID_REG,
+   WARPSZ_REG
 };
 
 #endif

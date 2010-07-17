@@ -2977,7 +2977,7 @@ void xor_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
 void inst_not_implemented( const ptx_instruction * pI ) 
 {
-   printf("Execution error (%s:%u): instruction \"%s\" not (yet) implemented\n",
+   printf("GPGPU-Sim PTX: ERROR (%s:%u) instruction \"%s\" not (yet) implemented\n",
           pI->source_file(), 
           pI->source_line(), 
           pI->get_opcode_cstr() );

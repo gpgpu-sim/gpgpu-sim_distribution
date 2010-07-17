@@ -65,6 +65,8 @@
 #include <string>
 #include "ptx_ir.h"
 
+void feature_not_implemented( const char *f );
+
 std::set<unsigned long long> g_ptx_cta_info_sm_idx_used;
 unsigned long long g_ptx_cta_info_uid = 1;
 extern int gpgpu_option_spread_blocks_across_cores;
@@ -256,23 +258,37 @@ extern signed long long gpu_tot_sim_cycle;
 unsigned ptx_thread_info::get_builtin( int builtin_id, unsigned dim_mod ) 
 {
    assert( m_valid );
-   switch (builtin_id) {
-   case NTID_ID:
-      assert( dim_mod < 3 );
-      return m_ntid[dim_mod];
-   case CLOCK_ID:
+   switch ((builtin_id&0xFFFF)) {
+   case CLOCK_REG:
+      return (unsigned)(gpu_sim_cycle + gpu_tot_sim_cycle);
+   case CLOCK64_REG:
+      abort(); // change return value to unsigned long long?
       return gpu_sim_cycle + gpu_tot_sim_cycle;
-   case CTA_ID:
+   case CTAID_REG:
       assert( dim_mod < 3 );
       return m_ctaid[dim_mod];
-   case GRIDID_ID:
+   case ENVREG_REG: feature_not_implemented( "%envreg" ); return 0;
+   case GRIDID_REG:
       return m_gridid;
-   case NCTAID_ID:
+   case LANEID_REG: feature_not_implemented( "%laneid" ); return 0;
+   case LANEMASK_EQ_REG: feature_not_implemented( "%lanemask_eq" ); return 0;
+   case LANEMASK_LE_REG: feature_not_implemented( "%lanemask_le" ); return 0;
+   case LANEMASK_LT_REG: feature_not_implemented( "%lanemask_lt" ); return 0;
+   case LANEMASK_GE_REG: feature_not_implemented( "%lanemask_ge" ); return 0;
+   case LANEMASK_GT_REG: feature_not_implemented( "%lanemask_gt" ); return 0;
+   case NCTAID_REG:
       assert( dim_mod < 3 );
       return m_nctaid[dim_mod];
-   case TID_ID:
+   case NTID_REG:
+      assert( dim_mod < 3 );
+      return m_ntid[dim_mod];
+   case NWARPID_REG: feature_not_implemented( "%nwarpid" ); return 0;
+   case PM_REG: feature_not_implemented( "%pm" ); return 0;
+   case SMID_REG: feature_not_implemented( "%smid" ); return 0;
+   case TID_REG:
       assert( dim_mod < 3 );
       return m_tid[dim_mod];
+   case WARPSZ_REG: feature_not_implemented( "WARP_SZ" ); return 0;
    default:
       assert(0);
    }
@@ -429,4 +445,10 @@ void ptx_thread_info::set_npc( const function_info *f )
    m_NPC = f->get_start_PC();
    m_func_info = const_cast<function_info*>( f );
    m_symbol_table = m_func_info->get_symtab();
+}
+
+void feature_not_implemented( const char *f ) 
+{
+   printf("GPGPU-Sim: feature '%s' not supported\n", f );
+   abort();
 }
