@@ -126,6 +126,7 @@
 
 #include "host_defines.h"
 #include "builtin_types.h"
+#include "driver_types.h"
 #include "__cudaFatFormat.h"
 
 /*DEVICE_BUILTIN*/
@@ -290,7 +291,9 @@ struct cudaDeviceProp **gpgpu_cuda_devices;
 static dim3 g_cudaGridDim;
 static dim3 g_cudaBlockDim;
 
+#if CUDART_VERSION < 3000
 static cudaStream_t g_stream_id = 0;
+#endif
 
 /*******************************************************************************
 *                                                                              *
@@ -860,20 +863,28 @@ __host__ cudaError_t CUDARTAPI cudaLaunch(const char *symbol )
 
 __host__ cudaError_t CUDARTAPI cudaStreamCreate(cudaStream_t *stream)
 {
+#if CUDART_VERSION >= 3000
+   cuda_not_implemented(__my_func__,__LINE__);
+#else
    printf("GPGPU-Sim PTX: WARNING: This stub implementation of %s can only support a single stream! \n", __my_func__);
    assert(stream != NULL);
    *stream = g_stream_id;
    assert(g_stream_id == 0);
    g_stream_id += 1;
+#endif
    return g_last_cudaError = cudaSuccess;
 }
 
 __host__ cudaError_t CUDARTAPI cudaStreamDestroy(cudaStream_t stream)
 {
+#if CUDART_VERSION >= 3000
+   cuda_not_implemented(__my_func__,__LINE__);
+#else
    printf("GPGPU-Sim PTX: WARNING: This stub implementation of %s can only support a single stream! \n", __my_func__);
    assert(stream == 0);
    g_stream_id -= 1;
    assert(g_stream_id == 0);
+#endif
    return g_last_cudaError = cudaSuccess;
 }
 
