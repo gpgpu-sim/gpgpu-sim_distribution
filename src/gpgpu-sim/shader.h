@@ -121,7 +121,7 @@ typedef struct {
    address_type pc;
 
    op_type op;
-   int space;
+   memory_space_t space;
 
    unsigned long long int memreqaddr;
    //Each instruction keeps track of which hardware thread it came from

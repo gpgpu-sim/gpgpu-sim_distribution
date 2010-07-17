@@ -380,7 +380,7 @@ void atom_callback( void* ptx_inst, void* thd )
    ptx_instruction *pI = (ptx_instruction*)ptx_inst;
 
    // Check state space
-   assert( pI->get_space()==GLOBAL_DIRECTIVE );
+   assert( pI->get_space()==global_space );
 
    // "Decode" the output type
    unsigned to_type = pI->get_type();
@@ -640,13 +640,13 @@ void atom_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    // atom.space.operation.type d, a, b[, c]; (now read in callback)
 
    // Check state space
-   assert( pI->get_space()==GLOBAL_DIRECTIVE );
+   assert( pI->get_space()== global_space );
 
    // get the memory address
    const operand_info &src1 = pI->src1();
    ptx_reg_t src1_data = thread->get_operand_value(src1);
 
-   unsigned space = pI->get_space();
+   memory_space_t space = pI->get_space();
 
    thread->m_last_effective_address = src1_data.u32;
    thread->m_last_memory_space = space;
@@ -1323,7 +1323,7 @@ void cvta_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    const operand_info &dst  = pI->dst();
    const operand_info &src1 = pI->src1();
-   unsigned space = pI->get_space();
+   memory_space_t space = pI->get_space();
    bool to_non_generic = pI->is_to();
 
    ptx_reg_t from_addr = thread->get_operand_value(src1);
@@ -1334,16 +1334,16 @@ void cvta_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    if( to_non_generic ) {
       switch( space ) {
-      case SHARED_DIRECTIVE: to_addr_hw = generic_to_shared( smid, from_addr_hw ); break;
-      case LOCAL_DIRECTIVE:  to_addr_hw = generic_to_local( smid, hwtid, from_addr_hw ); break;
-      case GLOBAL_DIRECTIVE: to_addr_hw = generic_to_global(from_addr_hw ); break;
+      case shared_space: to_addr_hw = generic_to_shared( smid, from_addr_hw ); break;
+      case local_space:  to_addr_hw = generic_to_local( smid, hwtid, from_addr_hw ); break;
+      case global_space: to_addr_hw = generic_to_global(from_addr_hw ); break;
       default: abort();
       }
    } else {
       switch( space ) {
-      case SHARED_DIRECTIVE: to_addr_hw = shared_to_generic( smid, from_addr_hw ); break;
-      case LOCAL_DIRECTIVE:  to_addr_hw =  local_to_generic( smid, hwtid, from_addr_hw ); break;
-      case GLOBAL_DIRECTIVE: to_addr_hw = global_to_generic( from_addr_hw ); break;
+      case shared_space: to_addr_hw = shared_to_generic( smid, from_addr_hw ); break;
+      case local_space:  to_addr_hw =  local_to_generic( smid, hwtid, from_addr_hw ); break;
+      case global_space: to_addr_hw = global_to_generic( from_addr_hw ); break;
       default: abort();
       }
    }
@@ -1434,7 +1434,7 @@ void isspacep_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    const operand_info &dst  = pI->dst();
    const operand_info &src1 = pI->src1();
-   unsigned space = pI->get_space();
+   memory_space_t space = pI->get_space();
 
    a = thread->get_operand_value(src1);
    addr_t addr = (addr_t)a.u64;
@@ -1442,9 +1442,9 @@ void isspacep_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    unsigned hwtid = thread->get_hw_tid();
 
    switch( space ) {
-   case SHARED_DIRECTIVE: t = isspace_shared( smid, addr );
-   case LOCAL_DIRECTIVE: t = isspace_local( smid, hwtid, addr );
-   case GLOBAL_DIRECTIVE: t = isspace_global( addr );
+   case shared_space: t = isspace_shared( smid, addr );
+   case local_space:  t = isspace_local( smid, hwtid, addr );
+   case global_space: t = isspace_global( addr );
    default: abort();
    }
 
@@ -1454,26 +1454,30 @@ void isspacep_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->set_operand_value(dst,p);
 }
 
-void decode_space( unsigned &space, ptx_thread_info *thread, memory_space *&mem, addr_t &addr)
+void decode_space( memory_space_t &space, ptx_thread_info *thread, memory_space *&mem, addr_t &addr)
 {
    unsigned smid = thread->get_hw_sid();
    unsigned hwtid = thread->get_hw_tid();
    switch ( space ) {
-   case GLOBAL_DIRECTIVE: mem = g_global_mem; break;
-   case LOCAL_DIRECTIVE:  mem = thread->m_local_mem; break; 
-   case TEX_DIRECTIVE:    mem = g_tex_mem; break; 
-   case SURF_DIRECTIVE:   mem = g_surf_mem; break; 
-   case PARAM_DIRECTIVE:  mem = g_param_mem; break; 
-   case SHARED_DIRECTIVE:  mem = thread->m_shared_mem; break; 
-   case CONST_DIRECTIVE:  mem = g_global_mem; break;
+   case global_space: mem = g_global_mem; break;
+   case local_space:  mem = thread->m_local_mem; break; 
+   case tex_space:    mem = g_tex_mem; break; 
+   case surf_space:   mem = g_surf_mem; break; 
+   case param_space_local_r:  
+      abort(); // finish this
+   case param_space_local_w:  
+      abort(); // finish this
+   case param_space_kernel:  mem = g_param_mem; break;
+   case shared_space:  mem = thread->m_shared_mem; break; 
+   case const_space:  mem = g_global_mem; break;
    default:
       if( thread->get_ptx_version().ver() >= 2.0 ) {
          // convert generic address to memory space address
          space = whichspace(addr);
          switch ( space ) {
-         case GLOBAL_DIRECTIVE: mem = g_global_mem; addr = generic_to_global(addr); break;
-         case LOCAL_DIRECTIVE:  mem = thread->m_local_mem; addr = generic_to_local(smid,hwtid,addr); break; 
-         case SHARED_DIRECTIVE: mem = thread->m_shared_mem; addr = generic_to_shared(smid,addr); break; 
+         case global_space: mem = g_global_mem; addr = generic_to_global(addr); break;
+         case local_space:  mem = thread->m_local_mem; addr = generic_to_local(smid,hwtid,addr); break; 
+         case shared_space: mem = thread->m_shared_mem; addr = generic_to_shared(smid,addr); break; 
          default: abort();
          }
       } else {
@@ -1489,7 +1493,7 @@ void ld_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    const operand_info &src1 = pI->src1();
    ptx_reg_t src1_data = thread->get_operand_value(src1);
    ptx_reg_t data;
-   unsigned space = pI->get_space();
+   memory_space_t space = pI->get_space();
    unsigned vector_spec = pI->get_vector();
    unsigned type = pI->get_type();
    memory_space *mem = NULL;
@@ -2626,7 +2630,7 @@ void st_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    const operand_info &src1 = pI->src1(); //may be scalar or vector of regs
    ptx_reg_t addr_reg = thread->get_operand_value(dst);
    ptx_reg_t data;
-   unsigned space = pI->get_space();
+   memory_space_t space = pI->get_space();
    unsigned vector_spec = pI->get_vector();
    unsigned type = pI->get_type();
    memory_space *mem = NULL;
@@ -3007,7 +3011,7 @@ void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    default:
       assert(0);
    }
-   thread->m_last_memory_space = TEX_DIRECTIVE; 
+   thread->m_last_memory_space = tex_space; 
    thread->set_vector_operand_values(dst,data1,data2,data3,data4,4);
 }
 

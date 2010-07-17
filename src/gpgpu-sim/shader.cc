@@ -221,8 +221,7 @@ extern unsigned long long  gpu_tot_sim_cycle;
 
 extern unsigned g_max_regs_per_thread;
 void ptx_decode_inst( void *thd, unsigned *op, int *i1, int *i2, int *i3, int *i4, int *o1, int *o2, int *o3, int *o4, int *vectorin, int *vectorout, int *arch_reg  );
-unsigned ptx_get_inst_op( void *thd);
-void ptx_exec_inst( void *thd, address_type *addr, unsigned *space, unsigned *data_size, dram_callback_t* callback, unsigned warp_active_mask);
+void ptx_exec_inst( void *thd, address_type *addr, memory_space_t *space, unsigned *data_size, dram_callback_t* callback, unsigned warp_active_mask);
 void ptx_sim_free_sm( void** thread_info );
 unsigned ptx_sim_init_thread( void** thread_info, int sid, unsigned tid,unsigned threads_left,unsigned num_threads, core_t *core, unsigned hw_cta_id, unsigned hw_warp_id);
 unsigned ptx_sim_cta_size();
@@ -1651,24 +1650,25 @@ inline int is_store ( op_type op ) {
    return op == STORE_OP;
 }
 
-inline int is_tex ( int space ) {
-   return((space) == TEX_DIRECTIVE);
+inline int is_tex ( memory_space_t space ) {
+   return((space) == tex_space);
 }
 
-inline int is_const ( int space ) {
-   return((space) == CONST_DIRECTIVE || (space) == PARAM_DIRECTIVE);
+inline int is_const ( memory_space_t space ) {
+   return((space == const_space) || (space == param_space_kernel));
 }
 
-inline int is_local ( int space ) {
-   return((space) == LOCAL_DIRECTIVE);
+inline int is_local ( memory_space_t space ) {
+   assert( space != param_space_local_r && space != param_space_local_w ); // todo: map local param memory to linear address space
+   return((space) == local_space);
 }
 
-inline int is_param ( int space ) {
-   return((space) == PARAM_DIRECTIVE);
+inline int is_param ( memory_space_t space ) {
+   return (space == param_space_kernel);
 }
 
-inline int is_shared ( int space ) {
-   return((space) == SHARED_DIRECTIVE);
+inline int is_shared ( memory_space_t space ) {
+   return((space) == shared_space);
 }
 
 inline int shmem_bank ( address_type addr ) {
@@ -1754,7 +1754,8 @@ void shader_decode( shader_core_ctx_t *shader,
    int i;
    int touched_priority=0;
    int warp_tid=0;
-   unsigned space, data_size;
+   unsigned data_size;
+   memory_space_t space;
    int vectorin, vectorout;
    int arch_reg[MAX_REG_OPERANDS] = { -1 };
    address_type regs_regs_PC = 0xDEADBEEF;
@@ -2143,7 +2144,7 @@ static unsigned next_access_uid = 0;
 
 class mem_access_t{
 public:
-   mem_access_t(): uid(next_access_uid++),addr(0),req_size(0),order(0),_quarter_count_all(0),warp_indices(),space(0),path(NO_MEM_PATH),isatomic(false),cache_hit(false),cache_checked(false),recheck_cache(false),iswrite(false),need_wb(false),wb_addr(0),reserved_mshr(NULL){};
+   mem_access_t(): uid(next_access_uid++),addr(0),req_size(0),order(0),_quarter_count_all(0),warp_indices(),space(undefined_space),path(NO_MEM_PATH),isatomic(false),cache_hit(false),cache_checked(false),recheck_cache(false),iswrite(false),need_wb(false),wb_addr(0),reserved_mshr(NULL){};
    bool operator<(const mem_access_t &other) const {return (order > other.order);}//this is reverse
    unsigned uid;
    address_type addr; //address of the segment to load.
@@ -2154,7 +2155,7 @@ public:
    char quarter_count[4]; //access counts to each quarter of segment, for compaction;
    };
    std::vector<unsigned> warp_indices; //warp indicies for this request.
-   unsigned space;
+   memory_space_t space;
    memory_path path;
    bool isatomic;
    bool cache_hit;
@@ -2231,7 +2232,7 @@ void check_accessq(  shader_core_ctx_t *shader, std::vector<mem_access_t> &acces
    for (unsigned i = 0; i < accessq.size(); i++) {
       if (shader) {
          std::cout << shader->sid << ":" << i << " space " << accessq[i].space << " " << gpu_sim_cycle <<  std::endl;
-         assert(accessq[i].space == (unsigned) shader->pipeline_reg[EX_MM][accessq[i].warp_indices[0]].space);
+         assert(accessq[i].space == shader->pipeline_reg[EX_MM][accessq[i].warp_indices[0]].space);
       }
       for (unsigned j = 0; j < accessq[i].warp_indices.size(); j++) {
          if (check[accessq[i].warp_indices[j]]) {
@@ -2466,22 +2467,26 @@ mem_stage_stall_type send_mem_request(shader_core_ctx_t *shader, mem_access_t &a
    unsigned code;
    mem_access_type  access_type;
    switch(access.space) {
-   case CONST_DIRECTIVE:
-   case PARAM_DIRECTIVE:
+   case const_space:
+   case param_space_kernel:
       code = CONSTC;
       access_type = CONST_ACC_R;   
       break;
-   case TEX_DIRECTIVE:
+   case tex_space:
       code = TEXTC;
       access_type = TEXTURE_ACC_R;   
       break;
-   case GLOBAL_DIRECTIVE:
+   case global_space:
       code = DCACHE;
       access_type = (access.iswrite)? GLOBAL_ACC_W: GLOBAL_ACC_R;   
       break;
-   case LOCAL_DIRECTIVE:
+   case local_space:
       code = DCACHE;
       access_type = (access.iswrite)? LOCAL_ACC_W: LOCAL_ACC_R;   
+      break;
+   case param_space_local_r:
+   case param_space_local_w:
+      abort(); // todo: define mapping of local param space to linear memory ?
       break;
    default:
       assert(0); // NOT A MEM SPACE;
@@ -2763,20 +2768,25 @@ inline void mem_instruction_stats(inst_t* warp){
          //this breaks some encapsulation: the is_[space] functions, if you change those, change this.
       bool store = is_store(warp[i].op);
       switch (warp[i].space) {
-      case SHARED_DIRECTIVE:
+      case undefined_space:
+      case reg_space:
+         break;
+      case shared_space:
          gpgpu_n_shmem_insn++;
          break;
-      case CONST_DIRECTIVE:
+      case const_space:
          gpgpu_n_const_insn++;
          break;
-      case PARAM_DIRECTIVE:
+      case param_space_kernel:
+      case param_space_local_r:
+      case param_space_local_w:
          gpgpu_n_param_insn++;
          break;
-      case TEX_DIRECTIVE:
+      case tex_space:
          gpgpu_n_tex_insn++;
          break;
-      case GLOBAL_DIRECTIVE:
-      case LOCAL_DIRECTIVE:
+      case global_space:
+      case local_space:
          if (store){ 
             gpgpu_n_store_insn++;
          } else {
@@ -2784,8 +2794,7 @@ inline void mem_instruction_stats(inst_t* warp){
          }
          break;
       default:
-         //assert(0); //unknown mem space.
-         break; //not a mem instruction
+         abort();
       }
    }
 }
@@ -2815,27 +2824,28 @@ void shader_memory_queue(shader_core_ctx_t *shader, shader_queues_t *accessqs)
          if (shader->pipeline_reg[EX_MM][i].hw_thread_id == -1) continue; //bubble 
          //this breaks some encapsulation: the is_[space] functions; if you change those, change this.
          switch (shader->pipeline_reg[EX_MM][i].space) {
-         case SHARED_DIRECTIVE:
+         case shared_space:
             path[i] = SHARED_MEM_PATH;
             type_counts[SHARED_MEM_PATH]++;
             break;
-         case CONST_DIRECTIVE:
-         case PARAM_DIRECTIVE:
+         case const_space:
+         case param_space_kernel:
             path[i] = CONSTANT_MEM_PATH;
             type_counts[CONSTANT_MEM_PATH]++;   
             break;
-         case TEX_DIRECTIVE:
+         case tex_space:
             path[i] = TEXTURE_MEM_PATH;
             type_counts[TEXTURE_MEM_PATH]++;
             break;
-         case GLOBAL_DIRECTIVE:
-         case LOCAL_DIRECTIVE:
+         case global_space:
+         case local_space:
             path[i] = GLOBAL_MEM_PATH;
             type_counts[GLOBAL_MEM_PATH]++;
             break;
+         case param_space_local_r:
+         case param_space_local_w:
          default:
-            //path[i] = NO_MEM_PATH;
-            break; //not a mem instruction
+            abort();
          }
       }
 

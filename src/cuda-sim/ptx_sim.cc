@@ -223,7 +223,7 @@ ptx_thread_info::ptx_thread_info()
    m_PC=0;
    m_icount = 0;
    m_last_effective_address = 0;
-   m_last_memory_space = 0; 
+   m_last_memory_space = undefined_space; 
    m_branch_taken = 0;
    m_shared_mem = NULL;
    m_cta_info = NULL;

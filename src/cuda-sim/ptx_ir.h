@@ -65,6 +65,8 @@
 #ifndef ptx_ir_INCLUDED
 #define ptx_ir_INCLUDED
 
+#include "../abstract_hardware_model.h"
+
 #ifdef __cplusplus
 
    #include <cstdlib>
@@ -78,27 +80,8 @@
    #include "ptx.tab.h"
    #include "ptx_sim.h"
    #include "dram_callback.h"
-   #include "../abstract_hardware_model.h"
 
    #include "memory.h"
-
-enum space_type {
-   undefined, inst_space
-};
-
-
-class addr { /* need this because there are many distinct address spaces (global, local, param, tex, surf, shared) */
-public:
-
-   addr() { m_space=undefined; m_addr = 0;}
-   void set_space( enum space_type space );
-   operator unsigned() { return m_addr;}
-
-private:
-   enum space_type m_space;
-   unsigned m_addr;
-};
-
 
 class type_info_key {
 public:
@@ -106,7 +89,7 @@ public:
    {
       m_init = false;
    }
-   type_info_key( int space_spec, int scalar_type_spec, int vector_spec, int alignment_spec, int extern_spec, int array_dim )
+   type_info_key( memory_space_t space_spec, int scalar_type_spec, int vector_spec, int alignment_spec, int extern_spec, int array_dim )
    {
       m_init = true;
       m_space_spec = space_spec; 
@@ -116,12 +99,12 @@ public:
       m_extern_spec = extern_spec;
       m_array_dim = array_dim;
       m_is_function = 0;
-   }
+   } 
    void set_is_func()
    { 
       assert(!m_init);
       m_init = true;
-      m_space_spec = 0; 
+      m_space_spec = undefined_space; 
       m_scalar_type_spec = 0;
       m_vector_spec = 0;
       m_alignment_spec = 0;
@@ -135,18 +118,18 @@ public:
       m_array_dim = array_dim;
    }
 
-   bool is_reg() const { return m_space_spec == REG_DIRECTIVE;} 
-   bool is_param() const { return m_space_spec == PARAM_DIRECTIVE;}
-   bool is_global() const { return m_space_spec == GLOBAL_DIRECTIVE;}
-   bool is_local() const { return m_space_spec == LOCAL_DIRECTIVE;}
-   bool is_shared() const { return m_space_spec == SHARED_DIRECTIVE;}
-   bool is_const() const { return m_space_spec == CONST_DIRECTIVE;}
-   bool is_tex() const { return m_space_spec == TEX_DIRECTIVE;}
+   bool is_reg() const { return m_space_spec == reg_space;} 
+   bool is_param() const { abort(); /*this make sense?*/ return m_space_spec == param_space_kernel;}
+   bool is_global() const { return m_space_spec == global_space;}
+   bool is_local() const { return m_space_spec == local_space;}
+   bool is_shared() const { return m_space_spec == shared_space;}
+   bool is_const() const { return m_space_spec == const_space;}
+   bool is_tex() const { return m_space_spec == tex_space;}
    bool is_func_addr() const { return m_is_function?true:false; }
    int  scalar_type() const { return m_scalar_type_spec;}
 private:
    bool m_init;
-   int m_space_spec; 
+   memory_space_t m_space_spec; 
    int m_scalar_type_spec;
    int m_vector_spec;
    int m_alignment_spec;
@@ -325,7 +308,7 @@ public:
    symbol *add_variable( const char *identifier, const type_info *type, const char *filename, unsigned line );
    void add_function( function_info *func );
    bool add_function_decl( const char *name, int entry_point, function_info **func_info, symbol_table **symbol_table );
-   type_info *add_type( int space_spec, int scalar_type_spec, int vector_spec, int alignment_spec, int extern_spec );
+   type_info *add_type( memory_space_t space_spec, int scalar_type_spec, int vector_spec, int alignment_spec, int extern_spec );
    type_info *add_type( function_info *func );
    type_info *get_array_type( type_info *base_type, unsigned array_dim ); 
    void set_label_address( const symbol *label, unsigned addr );
@@ -687,7 +670,7 @@ public:
                     const operand_info &return_var,
                     const std::list<int> &options, 
                     const std::list<int> &scalar_type,
-                    int space_spec,
+                    memory_space_t space_spec,
                     const char *file, 
                     unsigned line,
                     const char *source );
@@ -774,7 +757,7 @@ public:
       return m_return_var.is_valid();
    }
 
-   unsigned get_space() const { return m_space_spec;}
+   memory_space_t get_space() const { return m_space_spec;}
    unsigned get_vector() const { return m_vector_spec;}
    unsigned get_atomic() const { return m_atomic_spec;}
 
@@ -853,7 +836,7 @@ private:
    unsigned            m_saturation_mode;
 
    std::list<int>          m_scalar_type;
-   int m_space_spec;
+   memory_space_t m_space_spec;
    int m_geom_spec;
    int m_vector_spec;
    int m_atomic_spec;
@@ -958,8 +941,7 @@ public:
                          int *vectorin,
                          int *vectorout,
                          int *arch_reg );
-   unsigned ptx_get_inst_op( ptx_thread_info *thread );
-   void ptx_exec_inst( ptx_thread_info *thd, addr_t *addr, unsigned *space, unsigned *data_size, dram_callback_t* callback, unsigned warp_active_mask  );
+   void ptx_exec_inst( ptx_thread_info *thd, addr_t *addr, memory_space_t *space, unsigned *data_size, dram_callback_t* callback, unsigned warp_active_mask  );
    void add_param( const char *name, struct param_t value )
    {
       m_params[ name ] = value;
@@ -1157,7 +1139,7 @@ extern "C" {
    void add_address_operand( const char *identifier, int offset );
    void add_label( const char *idenfiier );
    void add_vector_spec(int spec );
-   void add_space_spec(int spec );
+   void add_space_spec( memory_space_t spec );
    void add_extern_spec();
    void add_instruction();
    void set_return();

@@ -310,7 +310,7 @@ public:
    unsigned get_icount() const { return m_icount;}
    void set_valid() { m_valid = true;}
    addr_t last_eaddr() const { return m_last_effective_address;}
-   unsigned last_space() const { return m_last_memory_space;}
+   memory_space_t last_space() const { return m_last_memory_space;}
    dram_callback_t last_callback() const { return m_last_dram_callback;}
    void set_at_barrier( int barrier_num ) 
    { 
@@ -427,7 +427,7 @@ public:
 public:
    addr_t         m_last_effective_address;
    bool        m_branch_taken;
-   unsigned       m_last_memory_space;
+   memory_space_t m_last_memory_space;
    dram_callback_t   m_last_dram_callback; 
    memory_space   *m_shared_mem;
    memory_space   *m_local_mem;
@@ -484,7 +484,7 @@ addr_t global_to_generic( addr_t addr );
 bool isspace_local( unsigned smid, unsigned hwtid, addr_t addr );
 bool isspace_shared( unsigned smid, addr_t addr );
 bool isspace_global( addr_t addr );
-unsigned whichspace( addr_t addr );
+memory_space_t whichspace( addr_t addr );
 
 #endif
 

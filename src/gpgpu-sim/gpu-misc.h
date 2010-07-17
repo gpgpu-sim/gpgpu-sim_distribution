@@ -79,14 +79,6 @@
 #define ispowerof2(x)   ((((x) - 1) & (x)) == 0)
 #define powerof2(x)  (1 << (x))
 
-
-enum mem_space {  //used for cudasim
-   SHARED_SPACE, 
-   CONST_SPACE, 
-   GLOBAL_SPACE,
-   LOCAL_SPACE,
-   TEX_SPACE
-};
 //enables a verbose printout of all L1 cache misses and all MSHR status changes 
 //good for a single shader configuration
 #define DEBUGL1MISS 0

@@ -274,7 +274,7 @@ ptx_instruction::ptx_instruction( int opcode,
                                   const operand_info &return_var,
                                   const std::list<int> &options, 
                                   const std::list<int> &scalar_type,
-                                  int space_spec,
+                                  memory_space_t space_spec,
                                   const char *file, 
                                   unsigned line,
                                   const char *source ) 
@@ -678,14 +678,14 @@ bool isspace_global( addr_t addr )
    return (addr > GLOBAL_HEAP_START) || (addr < STATIC_ALLOC_LIMIT);
 }
 
-unsigned whichspace( addr_t addr )
+memory_space_t whichspace( addr_t addr )
 {
    if( (addr > GLOBAL_HEAP_START) || (addr < STATIC_ALLOC_LIMIT) ) {
-      return GLOBAL_DIRECTIVE;
+      return global_space;
    } else if( addr > SHARED_GENERIC_START ) {
-      return SHARED_DIRECTIVE;
+      return shared_space;
    } else {
-      return LOCAL_DIRECTIVE;
+      return local_space;
    }
 }
 
@@ -971,29 +971,6 @@ void function_info::ptx_decode_inst( ptx_thread_info *thread,
    }
 }
 
-unsigned function_info::ptx_get_inst_op( ptx_thread_info *thread )
-{
-   addr_t pc = thread->get_pc();
-   unsigned index = pc - m_start_PC;
-   assert( index < m_instr_mem_size );
-   ptx_instruction *pI = m_instr_mem[index]; //get instruction from m_instr_mem[PC]
-
-   int opcode = pI->get_opcode(); //determine the opcode
-
-   if ( opcode == LD_OP ) {
-      if (  pI->get_space() != SHARED_DIRECTIVE ) //treat shared memory access as generic instruction (e.g. no bank conflicts)
-         return LOAD_OP;
-   } else if ( opcode == ST_OP ) {
-      if (  pI->get_space() != SHARED_DIRECTIVE )
-         return STORE_OP;
-   } else if ( opcode == BRA_OP ) {
-      return BRANCH_OP;
-   } else if ( opcode == TEX_OP ) {
-      return LOAD_OP;
-   }
-   return ALU_OP;
-}
-
 void function_info::add_param_name_type_size( unsigned index, std::string name, int type, size_t size )
 {
    unsigned parsed_index;
@@ -1142,7 +1119,7 @@ unsigned g_warp_active_mask;
 
 void function_info::ptx_exec_inst( ptx_thread_info *thread, 
                                    addr_t *addr, 
-                                   unsigned *space, 
+                                   memory_space_t *space, 
                                    unsigned *data_size, 
                                    dram_callback_t* callback, 
                                    unsigned warp_active_mask  )
@@ -1195,7 +1172,7 @@ void function_info::ptx_exec_inst( ptx_thread_info *thread,
    }
 
    addr_t insn_memaddr = 0xFEEBDAED;
-   unsigned insn_space = -1;
+   memory_space_t insn_space = undefined_space;
    unsigned insn_data_size = 0;
    if ( pI->get_opcode() == LD_OP || pI->get_opcode() == ST_OP || pI->get_opcode() == TEX_OP ) {
       insn_memaddr = thread->last_eaddr();
@@ -1231,21 +1208,24 @@ void function_info::ptx_exec_inst( ptx_thread_info *thread,
    g_ptx_sim_num_insn++;
    ptx_file_line_stats_add_exec_count(pI);
    if ( gpgpu_ptx_instruction_classification ) {
-      unsigned space = pI->get_space();
-      switch ( space ) {
-      case GLOBAL_DIRECTIVE: space = 10; break;
-      case LOCAL_DIRECTIVE:  space = 11; break; 
-      case TEX_DIRECTIVE:    space = 12; break; 
-      case SURF_DIRECTIVE:   space = 13; break; 
-      case PARAM_DIRECTIVE:  space = 14; break; 
-      case SHARED_DIRECTIVE:  space = 15; break; 
-      case CONST_DIRECTIVE:  space = 16; break;
+      unsigned space_type=0;
+      switch ( pI->get_space() ) {
+      case global_space: space_type = 10; break;
+      case local_space:  space_type = 11; break; 
+      case tex_space:    space_type = 12; break; 
+      case surf_space:   space_type = 13; break; 
+      case param_space_kernel:
+      case param_space_local_r:
+      case param_space_local_w:
+                         space_type = 14; break; 
+      case shared_space: space_type = 15; break; 
+      case const_space:  space_type = 16; break;
       default: 
-         space = 0 ;
+         space_type = 0 ;
          break;
       }
       StatAddSample( g_inst_classification_stat[g_ptx_kernel_count],  op_classification);
-      if (space) StatAddSample( g_inst_classification_stat[g_ptx_kernel_count], ( int )space);
+      if (space_type) StatAddSample( g_inst_classification_stat[g_ptx_kernel_count], ( int )space_type);
       StatAddSample( g_inst_op_classification_stat[g_ptx_kernel_count], (int)  pI->get_opcode() );
    }
    if ( (g_ptx_sim_num_insn % 100000) == 0 ) {
@@ -1623,14 +1603,14 @@ void gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t co
 {
    printf("GPGPU-Sim PTX: starting gpgpu_ptx_sim_memcpy_symbol with hostVar 0x%p\n", hostVar);
    bool found_sym = false;
-   int  mem_region = 0;
+   memory_space_t mem_region = undefined_space;
    std::string sym_name;
 
    std::map<const void*,std::string>::iterator c=g_const_name_lookup.find(hostVar);
    if ( c!=g_const_name_lookup.end() ) {
       found_sym = true;
       sym_name = c->second;
-      mem_region = CONST_DIRECTIVE;
+      mem_region = const_space;
    }
    std::map<const void*,std::string>::iterator g=g_global_name_lookup.find(hostVar);
    if ( g!=g_global_name_lookup.end() ) {
@@ -1641,17 +1621,17 @@ void gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t co
       }
       found_sym = true;
       sym_name = g->second;
-      mem_region = GLOBAL_DIRECTIVE;
+      mem_region = global_space;
    }
    if( g_globals.find(hostVar) != g_globals.end() ) {
       found_sym = true;
       sym_name = hostVar;
-      mem_region = GLOBAL_DIRECTIVE;
+      mem_region = global_space;
    }
    if( g_constants.find(hostVar) != g_constants.end() ) {
       found_sym = true;
       sym_name = hostVar;
-      mem_region = CONST_DIRECTIVE;
+      mem_region = const_space;
    }
 
    if ( !found_sym ) {
@@ -1670,11 +1650,11 @@ void gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t co
    assert(sym);
    unsigned dst = sym->get_address() + offset; 
    switch (mem_region) {
-   case CONST_DIRECTIVE:
+   case const_space:
       mem = g_global_mem;
       mem_name = "global";
       break;
-   case GLOBAL_DIRECTIVE:
+   case global_space:
       mem = g_global_mem;
       mem_name = "global";
       break;
@@ -2117,7 +2097,7 @@ void gpgpu_ptx_sim_main_func( const char *kernel_key, dim3 gridDim, dim3 blockDi
 
                   unsigned op_type;
                   addr_t addr;
-                  unsigned space;
+                  memory_space_t space;
                   int arch_reg[MAX_REG_OPERANDS] = { -1 };
                   unsigned data_size;
                   dram_callback_t callback;
@@ -2174,16 +2154,7 @@ void ptx_decode_inst( void *thd, unsigned *op, int *i1, int *i2, int *i3, int *i
    g_func_info->ptx_decode_inst(thread,op,i1,i2,i3,i4,o1,o2,o3,o4,vectorin,vectorout,arch_reg);
 }
 
-unsigned ptx_get_inst_op( void *thd)
-{
-   if ( thd == NULL )
-      return NO_OP;
-
-   ptx_thread_info *thread = (ptx_thread_info *) thd;
-   return(thread->func_info())->ptx_get_inst_op(thread);
-}
-
-void ptx_exec_inst( void *thd, address_type *addr, unsigned *space, unsigned *data_size, dram_callback_t* callback, unsigned warp_active_mask )
+void ptx_exec_inst( void *thd, address_type *addr, memory_space_t *space, unsigned *data_size, dram_callback_t* callback, unsigned warp_active_mask )
 {
    if ( thd == NULL )
       return;

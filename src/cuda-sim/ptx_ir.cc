@@ -90,7 +90,7 @@ std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
 int g_error_detected = 0;
 
 // type specifier stuff:
-int g_space_spec = -1;
+memory_space_t g_space_spec = undefined_space;
 int g_scalar_type_spec = -1;
 int g_vector_spec = -1;
 int g_alignment_spec = -1;
@@ -144,7 +144,7 @@ void init_parser()
 void init_directive_state()
 {
    DPRINTF("init_directive_state");
-   g_space_spec=-1;
+   g_space_spec=undefined_space;
    g_scalar_type_spec=-1;
    g_vector_spec=-1;
    g_opcode=-1;
@@ -400,7 +400,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
    }
    g_last_symbol = g_current_symbol_table->add_variable(identifier,type,g_filename,ptx_lineno);
    switch ( g_space_spec ) {
-   case REG_DIRECTIVE: {
+   case reg_space: {
       regnum = g_current_symbol_table->next_reg_num();
       int arch_regnum = -1;
       for (int d = 0; d < strlen(identifier); d++) {
@@ -414,7 +414,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       }
       g_last_symbol->set_regno(regnum, arch_regnum);
       } break;
-   case SHARED_DIRECTIVE:
+   case shared_space:
       printf("GPGPU-Sim PTX: allocating shared region for \"%s\" from 0x%x to 0x%lx (shared memory space)\n",
              identifier,
              g_current_symbol_table->get_shared_next(),
@@ -426,7 +426,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       g_last_symbol->set_address( addr+addr_pad );
       g_current_symbol_table->alloc_shared( num_bits/8 + addr_pad );
       break;
-   case CONST_DIRECTIVE:
+   case const_space:
       if( array_ident == ARRAY_IDENTIFIER_NO_DIM ) {
          printf("GPGPU-Sim PTX: deferring allocation of constant region for \"%s\" (need size information)\n", identifier );
       } else {
@@ -448,7 +448,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       assert( g_current_symbol_table != NULL );
       g_sym_name_to_symbol_table[ identifier ] = g_current_symbol_table;
       break;
-   case GLOBAL_DIRECTIVE:
+   case global_space:
       printf("GPGPU-Sim PTX: allocating global region for \"%s\" from 0x%x to 0x%lx (global memory space)\n",
              identifier,
              g_current_symbol_table->get_global_next(),
@@ -463,7 +463,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       assert( g_current_symbol_table != NULL );
       g_sym_name_to_symbol_table[ identifier ] = g_current_symbol_table;
       break;
-   case LOCAL_DIRECTIVE:
+   case local_space:
       printf("GPGPU-Sim PTX: allocating local region for \"%s\" from 0x%x to 0x%lx (local memory space)\n",
              identifier,
              g_current_symbol_table->get_local_next(),
@@ -473,7 +473,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       g_last_symbol->set_address( g_current_symbol_table->get_local_next() );
       g_current_symbol_table->alloc_local( num_bits/8 );
       break;
-   case TEX_DIRECTIVE:
+   case tex_space:
       printf("GPGPU-Sim PTX: encountered texture directive %s.\n", identifier);
       break;
    default:
@@ -510,11 +510,20 @@ void add_alignment_spec( int spec )
    g_alignment_spec = spec;
 }
 
-void add_space_spec( int spec ) 
+void add_space_spec( memory_space_t spec ) 
 {
    DPRINTF("add_space_spec \"%s\"", g_ptx_token_decode[spec].c_str() );
-   parse_assert( g_space_spec == -1, "multiple space specifiers not allowed." );
-   g_space_spec = spec;
+   parse_assert( g_space_spec == undefined_space, "multiple space specifiers not allowed." );
+   if( g_space_spec == param_space_unclassified ) {
+      if( g_func_decl && !g_in_function_definition ) {
+         if( g_entry_point == 1) 
+            g_space_spec = param_space_kernel;
+         else
+            g_space_spec = param_space_local_r;
+      } else 
+         g_space_spec = param_space_local_w;
+   } else 
+      g_space_spec = spec;
 }
 
 void add_vector_spec(int spec ) 
@@ -820,7 +829,7 @@ bool symbol_table::add_function_decl( const char *name, int entry_point, functio
    return prior_decl;
 }
 
-type_info *symbol_table::add_type( int space_spec, int scalar_type_spec, int vector_spec, int alignment_spec, int extern_spec )
+type_info *symbol_table::add_type( memory_space_t space_spec, int scalar_type_spec, int vector_spec, int alignment_spec, int extern_spec )
 {
    type_info_key t(space_spec,scalar_type_spec,vector_spec,alignment_spec,extern_spec,0);
    type_info *pt;
