@@ -75,7 +75,7 @@
 #include "host_defines.h"
 #include "builtin_types.h"
 #include "__cudaFatFormat.h"
-#include "../src/util.h"
+#include "../src/abstract_hardware_model.h"
 
 struct gpgpu_ptx_sim_arg {
    const void *m_start;

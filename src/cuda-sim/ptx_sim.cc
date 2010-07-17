@@ -243,6 +243,11 @@ ptx_thread_info::ptx_thread_info()
    m_last_was_call = false;
 }
 
+const ptx_version &ptx_thread_info::get_ptx_version() const 
+{ 
+   return m_func_info->get_ptx_version(); 
+}
+
 extern unsigned long long  gpu_sim_cycle;
 
 void ptx_thread_info::set_done() 

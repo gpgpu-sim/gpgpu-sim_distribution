@@ -731,6 +731,18 @@ void symbol_table::set_name( const char *name )
    m_scope_name = std::string(name);
 }
 
+const ptx_version &symbol_table::get_ptx_version() const 
+{ 
+   if( m_parent == NULL ) return m_ptx_version;
+   else return m_parent->get_ptx_version(); 
+}
+
+void symbol_table::set_ptx_version( float ver, unsigned ext ) 
+{ 
+   m_ptx_version = ptx_version(ver,ext); 
+   assert( m_ptx_version.ver() < 3 );
+}
+
 symbol *symbol_table::lookup( const char *identifier ) 
 {
    std::string key(identifier);
@@ -1240,6 +1252,12 @@ void function_info::print_basic_block_dot()
    }
    printf("}\n");
 }
+
+extern "C" void add_version_info( float ver )
+{
+   g_global_symbol_table->set_ptx_version(ver,0);
+}
+
 
 extern "C" void add_file( unsigned num, const char *filename )
 {

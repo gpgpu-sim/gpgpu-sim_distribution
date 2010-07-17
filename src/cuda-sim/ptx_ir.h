@@ -313,12 +313,13 @@ private:
    static unsigned sm_next_uid;
 };
 
-
 class symbol_table {
 public:
    symbol_table();
    symbol_table( const char *scope_name, unsigned entry_point, symbol_table *parent );
    void set_name( const char *name );
+   const ptx_version &get_ptx_version() const;
+   void set_ptx_version( float ver, unsigned ext );
    symbol* lookup( const char *identifier );
    std::string get_scope_name() const { return m_scope_name; }
    symbol *add_variable( const char *identifier, const type_info *type, const char *filename, unsigned line );
@@ -359,6 +360,7 @@ private:
    unsigned m_tex_next;
 
    symbol_table *m_parent;
+   ptx_version m_ptx_version;
    std::string m_scope_name;
    std::map<std::string, symbol *> m_symbols; //map from name of register to pointers to the registers
    std::map<type_info_key,type_info*,type_info_key_compare>  m_types;
@@ -682,7 +684,6 @@ public:
                     const char *file, 
                     unsigned line,
                     const char *source );
-
    void print_insn() const;
    void print_insn( FILE *fp ) const;
    unsigned uid() const { return m_uid;}
@@ -808,6 +809,7 @@ public:
    bool is_wide() const { return m_wide;}
    bool is_uni() const { return m_uni;}
    bool is_to() const { return m_to_option; }
+   unsigned cache_option() const { return m_cache_option; }
    unsigned rounding_mode() const { return m_rounding_mode;}
    unsigned saturation_mode() const { return m_saturation_mode;}
    unsigned dimension() const { return m_geom_spec;}
@@ -838,6 +840,7 @@ private:
    bool                m_lo;
    bool           m_uni; //if branch instruction, this evaluates to true for uniform branches (ie jumps)
    bool                m_to_option;
+   unsigned            m_cache_option;
    unsigned            m_rounding_mode;
    unsigned            m_compare_op;
    unsigned            m_saturation_mode;
@@ -882,6 +885,7 @@ private:
 class function_info {
 public:
    function_info(int entry_point );
+   const ptx_version &get_ptx_version() const { return m_symtab->get_ptx_version(); }
    bool is_extern() const { return m_extern; }
    void set_name(const char *name)
    {
@@ -1204,6 +1208,7 @@ extern "C" {
    void add_alignment_spec( int spec );
    void add_array_initializer();
    void add_file( unsigned num, const char *filename );
+   void add_version_info( float ver );
    void *reset_symtab();
    void set_symtab(void*);
    void add_pragma( const char *str );

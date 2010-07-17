@@ -196,6 +196,12 @@
 %token  GLOBAL_OPTION
 %token  CTA_OPTION
 %token  TO_OPTION
+%token  CA_OPTION;
+%token  CG_OPTION;
+%token  CS_OPTION;
+%token  LU_OPTION;
+%token  CV_OPTION;
+
 %type <int_value> function_decl_header
 %type <ptr_value> function_decl
 
@@ -252,7 +258,7 @@ statement_list: directive_statement { add_directive(); }
 	;
 
 directive_statement: variable_declaration SEMI_COLON
-	| VERSION_DIRECTIVE DOUBLE_OPERAND 
+	| VERSION_DIRECTIVE DOUBLE_OPERAND { add_version_info($2); }
 	| TARGET_DIRECTIVE IDENTIFIER COMMA IDENTIFIER 
 	| TARGET_DIRECTIVE IDENTIFIER 
 	| FILE_DIRECTIVE INT_OPERAND STRING { add_file($2,$3); } 

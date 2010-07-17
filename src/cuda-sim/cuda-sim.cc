@@ -294,6 +294,7 @@ ptx_instruction::ptx_instruction( int opcode,
    m_lo = false;
    m_uni = false;
    m_to_option = false;
+   m_cache_option = 0;
    m_rounding_mode = RN_OPTION;
    m_compare_op = -1;
    m_saturation_mode = 0;
@@ -404,6 +405,9 @@ ptx_instruction::ptx_instruction( int opcode,
          break;
       case TO_OPTION:
          m_to_option = true;
+         break;
+      case CA_OPTION: case CG_OPTION: case CS_OPTION: case LU_OPTION: case CV_OPTION:
+         m_cache_option = last_ptx_inst_option;
          break;
 
       default:
@@ -655,6 +659,11 @@ addr_t shared_to_generic( unsigned smid, addr_t addr )
    return SHARED_GENERIC_START + smid*SHARED_MEM_SIZE_MAX + addr;
 }
 
+addr_t global_to_generic( addr_t addr )
+{
+   return addr;
+}
+
 bool isspace_shared( unsigned smid, addr_t addr )
 {
    addr_t start = SHARED_GENERIC_START + smid*SHARED_MEM_SIZE_MAX;
@@ -667,6 +676,17 @@ bool isspace_shared( unsigned smid, addr_t addr )
 bool isspace_global( addr_t addr )
 {
    return (addr > GLOBAL_HEAP_START) || (addr < STATIC_ALLOC_LIMIT);
+}
+
+unsigned whichspace( addr_t addr )
+{
+   if( (addr > GLOBAL_HEAP_START) || (addr < STATIC_ALLOC_LIMIT) ) {
+      return GLOBAL_DIRECTIVE;
+   } else if( addr > SHARED_GENERIC_START ) {
+      return SHARED_DIRECTIVE;
+   } else {
+      return LOCAL_DIRECTIVE;
+   }
 }
 
 addr_t generic_to_shared( unsigned smid, addr_t addr )
@@ -694,6 +714,11 @@ addr_t generic_to_local( unsigned smid, unsigned hwtid, addr_t addr )
 {
    assert(isspace_local(smid,hwtid,addr));
    return addr - (LOCAL_GENERIC_START + (TOTAL_LOCAL_MEM_PER_SM * smid) + (LOCAL_MEM_SIZE_MAX * hwtid));
+}
+
+addr_t generic_to_global( addr_t addr )
+{
+   return addr;
 }
 
 

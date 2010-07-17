@@ -231,11 +231,34 @@ struct stack_entry {
    unsigned       m_call_uid;
 };
 
+class ptx_version {
+public:
+      ptx_version()
+      {
+         m_valid = false;
+         m_ptx_version = 0;
+         m_ptx_extensions = 0;
+      }
+      ptx_version(float ver, unsigned extensions)
+      {
+         m_valid = true;
+         m_ptx_version = ver;
+         m_ptx_extensions = extensions;
+      }
+      float ver() const { assert(m_valid); return m_ptx_version; }
+      float extensions() const { assert(m_valid); return m_ptx_extensions; }
+private:
+      bool     m_valid;
+      float    m_ptx_version;
+      unsigned m_ptx_extensions;
+};
+
 class ptx_thread_info {
 public:
    ~ptx_thread_info();
    ptx_thread_info();
 
+   const ptx_version &get_ptx_version() const;
    ptx_reg_t get_operand_value( const symbol *reg );
    ptx_reg_t get_operand_value( const operand_info &op );
    void set_operand_value( const operand_info &dst, const ptx_reg_t &data );
@@ -450,11 +473,14 @@ unsigned type_decode( unsigned type, size_t &size, int &t );
 
 addr_t generic_to_local( unsigned smid, unsigned hwtid, addr_t addr );
 addr_t generic_to_shared( unsigned smid, addr_t addr );
+addr_t generic_to_global( addr_t addr );
 addr_t local_to_generic( unsigned smid, unsigned hwtid, addr_t addr );
 addr_t shared_to_generic( unsigned smid, addr_t addr );
+addr_t global_to_generic( addr_t addr );
 bool isspace_local( unsigned smid, unsigned hwtid, addr_t addr );
 bool isspace_shared( unsigned smid, addr_t addr );
 bool isspace_global( addr_t addr );
+unsigned whichspace( addr_t addr );
 
 #endif
 

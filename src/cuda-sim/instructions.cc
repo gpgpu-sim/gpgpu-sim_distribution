@@ -1345,14 +1345,14 @@ void cvta_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       switch( space ) {
       case SHARED_DIRECTIVE: to_addr_hw = generic_to_shared( smid, from_addr_hw ); break;
       case LOCAL_DIRECTIVE:  to_addr_hw = generic_to_local( smid, hwtid, from_addr_hw ); break;
-      case GLOBAL_DIRECTIVE: to_addr_hw = from_addr_hw; break;
+      case GLOBAL_DIRECTIVE: to_addr_hw = generic_to_global(from_addr_hw ); break;
       default: abort();
       }
    } else {
       switch( space ) {
       case SHARED_DIRECTIVE: to_addr_hw = shared_to_generic( smid, from_addr_hw ); break;
-      case LOCAL_DIRECTIVE:  to_addr_hw = local_to_generic( smid, hwtid, from_addr_hw ); break;
-      case GLOBAL_DIRECTIVE: to_addr_hw = from_addr_hw; break;
+      case LOCAL_DIRECTIVE:  to_addr_hw =  local_to_generic( smid, hwtid, from_addr_hw ); break;
+      case GLOBAL_DIRECTIVE: to_addr_hw = global_to_generic( from_addr_hw ); break;
       default: abort();
       }
    }
@@ -1463,6 +1463,34 @@ void isspacep_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->set_operand_value(dst,p);
 }
 
+void decode_space( unsigned &space, ptx_thread_info *thread, memory_space *&mem, addr_t &addr)
+{
+   unsigned smid = thread->get_hw_sid();
+   unsigned hwtid = thread->get_hw_tid();
+   switch ( space ) {
+   case GLOBAL_DIRECTIVE: mem = g_global_mem; break;
+   case LOCAL_DIRECTIVE:  mem = thread->m_local_mem; break; 
+   case TEX_DIRECTIVE:    mem = g_tex_mem; break; 
+   case SURF_DIRECTIVE:   mem = g_surf_mem; break; 
+   case PARAM_DIRECTIVE:  mem = g_param_mem; break; 
+   case SHARED_DIRECTIVE:  mem = thread->m_shared_mem; break; 
+   case CONST_DIRECTIVE:  mem = g_global_mem; break;
+   default:
+      if( thread->get_ptx_version().ver() >= 2.0 ) {
+         // convert generic address to memory space address
+         space = whichspace(addr);
+         switch ( space ) {
+         case GLOBAL_DIRECTIVE: mem = g_global_mem; addr = generic_to_global(addr); break;
+         case LOCAL_DIRECTIVE:  mem = thread->m_local_mem; addr = generic_to_local(smid,hwtid,addr); break; 
+         case SHARED_DIRECTIVE: mem = thread->m_shared_mem; addr = generic_to_shared(smid,addr); break; 
+         default: abort();
+         }
+      } else {
+         abort();
+      }
+      break;
+   }
+}
 
 void ld_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 
@@ -1474,44 +1502,34 @@ void ld_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    unsigned vector_spec = pI->get_vector();
    unsigned type = pI->get_type();
    memory_space *mem = NULL;
+   addr_t addr = src1_data.u32;
 
-   switch ( space ) {
-   case GLOBAL_DIRECTIVE: mem = g_global_mem; break;
-   case LOCAL_DIRECTIVE:  mem = thread->m_local_mem; break; 
-   case TEX_DIRECTIVE:    mem = g_tex_mem; break; 
-   case SURF_DIRECTIVE:   mem = g_surf_mem; break; 
-   case PARAM_DIRECTIVE:  mem = g_param_mem; break; 
-   case SHARED_DIRECTIVE:  mem = thread->m_shared_mem; break; 
-   case CONST_DIRECTIVE:  mem = g_global_mem; break;
-   default: 
-      assert(0);
-      break;
-   }
+   decode_space(space,thread,mem,addr);
 
    size_t size;
    int t;
    data.u64=0;
    type_decode(type,size,t);
    if (!vector_spec) {
-      mem->read(src1_data.u32,size/8,&data.s64);
+      mem->read(addr,size/8,&data.s64);
       if( type == S16_TYPE || type == S32_TYPE ) 
          sign_extend(data,size,dst);
       thread->set_operand_value(dst,data);
    } else {
       ptx_reg_t data1, data2, data3, data4;
-      mem->read(src1_data.u32,size/8,&data1.s64);
-      mem->read(src1_data.u32+size/8,size/8,&data2.s64);
+      mem->read(addr,size/8,&data1.s64);
+      mem->read(addr+size/8,size/8,&data2.s64);
       if (vector_spec != V2_TYPE) { //either V3 or V4
-         mem->read(src1_data.u32+2*size/8,size/8,&data3.s64);
+         mem->read(addr+2*size/8,size/8,&data3.s64);
          if (vector_spec != V3_TYPE) { //v4
-            mem->read(src1_data.u32+3*size/8,size/8,&data4.s64);
+            mem->read(addr+3*size/8,size/8,&data4.s64);
             thread->set_vector_operand_values(dst,data1,data2,data3,data4, 4);
          } else //v3
             thread->set_vector_operand_values(dst,data1,data2,data3,data3,3);
       } else //v2
          thread->set_vector_operand_values(dst,data1,data2,data2,data2,2);
    }
-   thread->m_last_effective_address = src1_data.u32;
+   thread->m_last_effective_address = addr;
    thread->m_last_memory_space = space; 
 }
 
@@ -2615,24 +2633,15 @@ void st_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 {
    const operand_info &dst = pI->dst();
    const operand_info &src1 = pI->src1(); //may be scalar or vector of regs
-   ptx_reg_t addr = thread->get_operand_value(dst);
+   ptx_reg_t addr_reg = thread->get_operand_value(dst);
    ptx_reg_t data;
    unsigned space = pI->get_space();
    unsigned vector_spec = pI->get_vector();
    unsigned type = pI->get_type();
    memory_space *mem = NULL;
+   addr_t addr = addr_reg.u32;
 
-   switch ( space ) {
-   case GLOBAL_DIRECTIVE: mem = g_global_mem; break;
-   case LOCAL_DIRECTIVE:  mem = thread->m_local_mem; break; 
-   case TEX_DIRECTIVE:    mem = g_tex_mem; break;
-   case SURF_DIRECTIVE:   mem = g_surf_mem; break;
-   case PARAM_DIRECTIVE:  mem = g_param_mem; break;
-   case SHARED_DIRECTIVE:  mem = thread->m_shared_mem; break;
-   default: 
-      assert(0);
-      break;
-   }
+   decode_space(space,thread,mem,addr);
 
    size_t size;
    int t;
@@ -2640,34 +2649,34 @@ void st_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    if (!vector_spec) {
       data = thread->get_operand_value(src1);
-      mem->write(addr.u32,size/8,&data.s64);
+      mem->write(addr,size/8,&data.s64);
    } else {
       if (vector_spec == V2_TYPE) {
          ptx_reg_t* ptx_regs = new ptx_reg_t[2]; 
          thread->get_vector_operand_values(src1, ptx_regs, 2); 
-         mem->write(addr.u32,size/8,&ptx_regs[0].s64);
-         mem->write(addr.u32+size/8,size/8,&ptx_regs[1].s64);
+         mem->write(addr,size/8,&ptx_regs[0].s64);
+         mem->write(addr+size/8,size/8,&ptx_regs[1].s64);
          free(ptx_regs);
       }
       if (vector_spec == V3_TYPE) {
          ptx_reg_t* ptx_regs = new ptx_reg_t[3]; 
          thread->get_vector_operand_values(src1, ptx_regs, 3); 
-         mem->write(addr.u32,size/8,&ptx_regs[0].s64);
-         mem->write(addr.u32+size/8,size/8,&ptx_regs[1].s64);
-         mem->write(addr.u32+2*size/8,size/8,&ptx_regs[2].s64);
+         mem->write(addr,size/8,&ptx_regs[0].s64);
+         mem->write(addr+size/8,size/8,&ptx_regs[1].s64);
+         mem->write(addr+2*size/8,size/8,&ptx_regs[2].s64);
          free(ptx_regs);
       }
       if (vector_spec == V4_TYPE) {
          ptx_reg_t* ptx_regs = new ptx_reg_t[4]; 
          thread->get_vector_operand_values(src1, ptx_regs, 4); 
-         mem->write(addr.u32,size/8,&ptx_regs[0].s64);
-         mem->write(addr.u32+size/8,size/8,&ptx_regs[1].s64);
-         mem->write(addr.u32+2*size/8,size/8,&ptx_regs[2].s64);
-         mem->write(addr.u32+3*size/8,size/8,&ptx_regs[3].s64);
+         mem->write(addr,size/8,&ptx_regs[0].s64);
+         mem->write(addr+size/8,size/8,&ptx_regs[1].s64);
+         mem->write(addr+2*size/8,size/8,&ptx_regs[2].s64);
+         mem->write(addr+3*size/8,size/8,&ptx_regs[3].s64);
          free(ptx_regs);
       }
    }
-   thread->m_last_effective_address = addr.u32;
+   thread->m_last_effective_address = addr;
    thread->m_last_memory_space = space; 
 }
 
