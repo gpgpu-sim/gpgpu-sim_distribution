@@ -225,7 +225,7 @@ xor     TC; ptx_lval.int_value = XOR_OP; return OPCODE;
 
 [0-9]+\.[0-9]+ 	 TC; sscanf(yytext,"%lf", &ptx_lval.double_value); return DOUBLE_OPERAND;
 	
-0[xX][0-9]+U?   TC; CHECK_UNSIGNED; sscanf(yytext,"%x", &ptx_lval.int_value); return INT_OPERAND;
+0[xX][0-9a-fA-F]+U? TC; CHECK_UNSIGNED; sscanf(yytext,"%x", &ptx_lval.int_value); return INT_OPERAND;
 0[0-7]+U?   	TC; printf("GPGPU-Sim: ERROR ** parsing octal not (yet) implemented\n"); abort(); return INT_OPERAND;
 0[bB][01]+U?  	TC; printf("GPGPU-Sim: ERROR ** parsing binary not (yet) implemented\n"); abort(); return INT_OPERAND;
 [-]?[0-9]+U?    TC; CHECK_UNSIGNED; ptx_lval.int_value =  atoi(yytext); return INT_OPERAND;

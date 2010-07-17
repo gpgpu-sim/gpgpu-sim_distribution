@@ -195,7 +195,7 @@ int g_add_identifier_cached__array_ident;
 
 void add_function_name( const char *name ) 
 {
-   DPRINTF("add_function_name %s %s", name,  ((g_entry_point)?"(entrypoint)":""));
+   DPRINTF("add_function_name %s %s", name,  ((g_entry_point==1)?"(entrypoint)":((g_entry_point==2)?"(extern)":"")));
    bool prior_decl = g_global_symbol_table->add_function_decl( name, g_entry_point, &g_func_info, &g_current_symbol_table );
    if( g_entry_point ) {
       g_entrypoint_func_info = g_func_info;

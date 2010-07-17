@@ -47,6 +47,7 @@ testKernel( float* g_idata, float* g_odata)
   // emulation
   SDATA(tid) = g_idata[tid];
   __syncthreads();
+  printf("thread tid=%u reads %f from g_idata[]\n", tid, sdata[tid]);
 
   // perform some computations
   SDATA(tid) = (float) num_threads * SDATA( tid);

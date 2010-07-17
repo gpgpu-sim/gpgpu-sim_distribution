@@ -436,6 +436,23 @@ unsigned g_assemble_code_next_pc=1;
 std::map<unsigned,function_info*> g_pc_to_finfo;
 std::vector<ptx_instruction*> function_info::s_g_pc_to_insn;
 
+unsigned function_info::sm_next_uid = 1;
+
+function_info::function_info(int entry_point ) 
+{
+   m_uid = sm_next_uid++;
+   m_entry_point = (entry_point==1)?true:false;
+   m_extern = (entry_point==2)?true:false;
+   num_reconvergence_pairs = 0;
+   m_symtab = NULL;
+   m_assembled = false;
+   m_return_var_sym = NULL; 
+   m_kernel_info.cmem = 0;
+   m_kernel_info.lmem = 0;
+   m_kernel_info.regs = 0;
+   m_kernel_info.smem = 0;
+}
+
 void function_info::print_insn( unsigned pc, FILE * fp ) const
 {
    unsigned index = pc - m_start_PC;
@@ -1765,6 +1782,10 @@ void gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num )
 void gpgpu_ptx_assemble( std::string kname, void *kinfo )
 {
     function_info *func_info = (function_info *)kinfo;
+    if( func_info->is_extern() ) {
+       printf("GPGPU-Sim: skipping assembly for extern declared function \'%s\'", func_info->get_name().c_str() );
+       return;
+    }
     g_func_info = func_info;
     g_current_symbol_table = g_kernel_name_to_symtab_lookup[ kname ];
     if( g_current_symbol_table == NULL ) {

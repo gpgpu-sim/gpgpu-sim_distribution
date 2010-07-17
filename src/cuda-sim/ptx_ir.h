@@ -879,18 +879,8 @@ private:
 
 class function_info {
 public:
-   function_info(int entry_point ) 
-   {
-      m_entry_point = entry_point?true:false;
-      num_reconvergence_pairs = 0;
-      m_symtab = NULL;
-      m_assembled = false;
-      m_return_var_sym = NULL; 
-      m_kernel_info.cmem = 0;
-      m_kernel_info.lmem = 0;
-      m_kernel_info.regs = 0;
-      m_kernel_info.smem = 0;
-   }
+   function_info(int entry_point );
+   bool is_extern() const { return m_extern; }
    void set_name(const char *name)
    {
       m_name = name;
@@ -1079,7 +1069,9 @@ public:
    }
 
 private:
+   unsigned m_uid;
    bool m_entry_point;
+   bool m_extern;
    bool m_assembled;
    std::string m_name;
    ptx_instruction **m_instr_mem;
@@ -1101,6 +1093,7 @@ private:
    symbol_table *m_symtab;
 
    static std::vector<ptx_instruction*> s_g_pc_to_insn; // a direct mapping from PC to instruction
+   static unsigned sm_next_uid;
 };
 
 /*******************************/
