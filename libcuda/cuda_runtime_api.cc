@@ -290,6 +290,8 @@ struct cudaDeviceProp **gpgpu_cuda_devices;
 static dim3 g_cudaGridDim;
 static dim3 g_cudaBlockDim;
 
+static cudaStream_t g_stream_id = 0;
+
 /*******************************************************************************
 *                                                                              *
 *                                                                              *
@@ -858,26 +860,33 @@ __host__ cudaError_t CUDARTAPI cudaLaunch(const char *symbol )
 
 __host__ cudaError_t CUDARTAPI cudaStreamCreate(cudaStream_t *stream)
 {
-   cuda_not_implemented(__my_func__,__LINE__);
-   return g_last_cudaError = cudaErrorUnknown;
+   printf("GPGPU-Sim PTX: WARNING: This stub implementation of %s can only support a single stream! \n", __my_func__);
+   assert(stream != NULL);
+   *stream = g_stream_id;
+   assert(g_stream_id == 0);
+   g_stream_id += 1;
+   return g_last_cudaError = cudaSuccess;
 }
 
 __host__ cudaError_t CUDARTAPI cudaStreamDestroy(cudaStream_t stream)
 {
-   cuda_not_implemented(__my_func__,__LINE__);
-   return g_last_cudaError = cudaErrorUnknown;
+   printf("GPGPU-Sim PTX: WARNING: This stub implementation of %s can only support a single stream! \n", __my_func__);
+   assert(stream == 0);
+   g_stream_id -= 1;
+   assert(g_stream_id == 0);
+   return g_last_cudaError = cudaSuccess;
 }
 
 __host__ cudaError_t CUDARTAPI cudaStreamSynchronize(cudaStream_t stream)
 {
-   cuda_not_implemented(__my_func__,__LINE__);
-   return g_last_cudaError = cudaErrorUnknown;
+   printf("GPGPU-Sim PTX: WARNING: This implementation of %s can only a stub! \n", __my_func__);
+   return g_last_cudaError = cudaSuccess; // it is stub because all cuda calls are synchronous
 }
 
 __host__ cudaError_t CUDARTAPI cudaStreamQuery(cudaStream_t stream)
 {
-   cuda_not_implemented(__my_func__,__LINE__);
-   return g_last_cudaError = cudaErrorUnknown;
+   printf("GPGPU-Sim PTX: WARNING: This implementation of %s can only a stub! \n", __my_func__);
+   return g_last_cudaError = cudaSuccess; // it is always success because all cuda calls are synchronous
 }
 
 /*******************************************************************************

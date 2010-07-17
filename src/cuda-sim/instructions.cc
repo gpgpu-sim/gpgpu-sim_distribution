@@ -2721,7 +2721,33 @@ void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    switch (dimension) {
    case GEOM_MODIFIER_1D:
-      x = ptx_tex_regs[0].u64;
+      width = cuArray->width;
+      height = cuArray->height;
+      if (texref->normalized) {
+         x_f32 = ptx_tex_regs[0].f32;
+         if (texref->addressMode[0] == cudaAddressModeClamp) {
+            x_f32 = (x_f32 > 1.0)? 1.0 : x_f32;
+            x_f32 = (x_f32 < 0.0)? 0.0 : x_f32;
+         } else if (texref->addressMode[0] == cudaAddressModeWrap) {
+            x_f32 = x_f32 - floor(x_f32);
+         }
+
+         if( texref->filterMode == cudaFilterModeLinear ) {
+            float xb = x_f32 * width - 0.5;
+            alpha = xb - floor(xb);
+            alpha = reduce_precision(alpha,9);
+            beta = 0.0;
+
+            x = (int)floor(xb);
+            y = 0;
+         } else {
+            x = (int) floor(x_f32 * width);
+            y = 0;
+         }
+      } else {
+         x = ptx_tex_regs[0].u64;
+      }
+      width *= (cuArray->desc.w+cuArray->desc.x+cuArray->desc.y+cuArray->desc.z)/8;
       x *= (cuArray->desc.w+cuArray->desc.x+cuArray->desc.y+cuArray->desc.z)/8;
       tex_array_index = tex_array_base + x;
 

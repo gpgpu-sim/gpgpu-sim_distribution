@@ -316,6 +316,10 @@ static void print_reg( std::string name, ptx_reg_t value )
       return;
    }
    const type_info *t = sym->type();
+   if( t == NULL ) {
+      printf("<unknown type> 0x%llx\n", (unsigned long long ) value.u64 );
+      return;
+   }
    type_info_key ti = t->get_key();
 
    switch ( ti.scalar_type() ) {

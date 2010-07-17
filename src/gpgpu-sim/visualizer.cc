@@ -129,14 +129,12 @@ void visualizer_options(option_parser_t opp)
 
 void visualizer_printstat()
 {
-   static unsigned int *last_shader_cycle_distro = NULL;
    gzFile visualizer_file = NULL; // gzFile is basically a pointer to a struct, so it is fine to initialize it as NULL
    unsigned i;
    if ( !g_visualizer_enabled )
       return;
-   if (!last_shader_cycle_distro)
-      last_shader_cycle_distro = (unsigned int*) calloc(warp_size + 3, sizeof(unsigned int));
 
+   // initialize file name if it is not set 
    if ( g_visualizer_filename == NULL ) {
       time_t curr_time;
       time(&curr_time);
@@ -149,21 +147,18 @@ void visualizer_printstat()
       }
       char buf[1024];
       snprintf(buf,1024,"gpgpusim_visualizer__%s.log.gz",date);
-      visualizer_file = gzopen(buf, "w");
-      if (visualizer_file == NULL) {
-         printf("error - could not open visualizer trace file.\n");
-         exit(1);
-      }
-      gzsetparams(visualizer_file, g_visualizer_zlevel, Z_DEFAULT_STRATEGY);
       g_visualizer_filename = strdup(buf);
-   } else {
-      visualizer_file = gzopen(g_visualizer_filename,"a");
-      if (visualizer_file == NULL) {
-         printf("error - could not open visualizer trace file.\n");
-         exit(1);
-      }
-      gzsetparams(visualizer_file, g_visualizer_zlevel, Z_DEFAULT_STRATEGY);
    }
+
+   // clean the content of the visualizer log if it is the first time, otherwise attach at the end
+   static bool visualizer_first_printstat = true;
+   visualizer_file = gzopen(g_visualizer_filename, (visualizer_first_printstat)? "w" : "a");
+   if (visualizer_file == NULL) {
+      printf("error - could not open visualizer trace file.\n");
+      exit(1);
+   }
+   gzsetparams(visualizer_file, g_visualizer_zlevel, Z_DEFAULT_STRATEGY);
+   visualizer_first_printstat = false;
 
    // instruction count per shader core
    gzprintf(visualizer_file, "shaderinsncount:  ");
@@ -299,6 +294,9 @@ void visualizer_printstat()
    gzprintf(visualizer_file, "gpu_stall_by_MSHRwb: %d\n", gpu_stall_by_MSHRwb);   
 
    // warp divergence breakdown
+   static unsigned int *last_shader_cycle_distro = NULL;
+   if (!last_shader_cycle_distro)
+      last_shader_cycle_distro = (unsigned int*) calloc(warp_size + 3, sizeof(unsigned int));
    time_vector_print_interval2gzfile(visualizer_file);
    gzprintf(visualizer_file, "WarpDivergenceBreakdown:");
    unsigned int total=0;
