@@ -190,7 +190,7 @@ xor     TC; ptx_lval.int_value = XOR_OP; return OPCODE;
 \.section TC; return SECTION_DIRECTIVE;
 \.shared  TC; return SHARED_DIRECTIVE;
 \.sreg   TC; return SREG_DIRECTIVE;
-\.struct TC; return STRUCT_DIRECTIVE; /* not in PTX 2.1 */
+\.struct TC; return STRUCT_DIRECTIVE;
 \.surf   TC; return SURF_DIRECTIVE;   /* not in PTX 2.1 */
 \.target  TC; return TARGET_DIRECTIVE;
 \.tex   TC; BEGIN(NOT_OPCODE); return TEX_DIRECTIVE;
@@ -249,6 +249,10 @@ xor     TC; ptx_lval.int_value = XOR_OP; return OPCODE;
 \.b32  TC;  return B32_TYPE;
 \.b64  TC;  return B64_TYPE;
 \.pred TC;  return PRED_TYPE;
+
+\.texref TC;  return TEXREF_TYPE;
+\.samplerref TC;  return SAMPLERREF_TYPE;
+\.surfref TC;  return SURFREF_TYPE;
 
 \.v2	TC; return V2_TYPE;
 \.v3	TC; return V3_TYPE;

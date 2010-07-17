@@ -122,6 +122,9 @@
 %token  B32_TYPE
 %token  B64_TYPE
 %token  PRED_TYPE
+%token  TEXREF_TYPE
+%token  SAMPLERREF_TYPE
+%token  SURFREF_TYPE
 %token  V2_TYPE
 %token  V3_TYPE
 %token  V4_TYPE
@@ -331,6 +334,9 @@ scalar_type: S8_TYPE { add_scalar_type_spec( S8_TYPE );  }
 	| B32_TYPE   { add_scalar_type_spec( B32_TYPE ); }
 	| B64_TYPE   { add_scalar_type_spec( B64_TYPE ); }
 	| PRED_TYPE  { add_scalar_type_spec( PRED_TYPE ); }
+	| TEXREF_TYPE  { add_scalar_type_spec( TEXREF_TYPE ); }
+	| SAMPLERREF_TYPE  { add_scalar_type_spec( SAMPLERREF_TYPE ); }
+	| SURFREF_TYPE  { add_scalar_type_spec( SURFREF_TYPE ); }
 	;
 
 initializer_list: LEFT_BRACE literal_list RIGHT_BRACE { add_array_initializer(); } 
