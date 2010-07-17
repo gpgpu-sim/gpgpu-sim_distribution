@@ -217,7 +217,7 @@ input:	/* empty */
 	| input function_decl
 	;
 
-function_defn: function_decl { set_symtab($1); } LEFT_BRACE statement_list RIGHT_BRACE { end_function(); }
+function_defn: function_decl { set_symtab($1); start_function_definition(); } LEFT_BRACE statement_list RIGHT_BRACE { end_function(); }
 	| function_decl { set_symtab($1); } block_spec LEFT_BRACE statement_list RIGHT_BRACE { end_function(); }
 	;
 
@@ -255,6 +255,7 @@ directive_statement: variable_declaration SEMI_COLON
 	| TARGET_DIRECTIVE IDENTIFIER 
 	| FILE_DIRECTIVE INT_OPERAND STRING { add_file($2,$3); } 
 	| LOC_DIRECTIVE INT_OPERAND INT_OPERAND INT_OPERAND 
+	| PRAGMA_DIRECTIVE STRING SEMI_COLON { add_pragma($2); }
 	;
 
 variable_declaration: variable_spec identifier_list { add_variables(); }

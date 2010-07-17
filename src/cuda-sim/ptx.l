@@ -174,8 +174,8 @@ xor     TC; ptx_lval.int_value = XOR_OP; return OPCODE;
 \.const TC; return CONST_DIRECTIVE;
 \.entry TC; return ENTRY_DIRECTIVE;
 \.extern TC; return EXTERN_DIRECTIVE;
-\.file	 TC; return FILE_DIRECTIVE;
-\.func   TC; return FUNC_DIRECTIVE;
+\.file	 TC; BEGIN(INITIAL); return FILE_DIRECTIVE;
+\.func   TC; BEGIN(NOT_OPCODE); return FUNC_DIRECTIVE;
 \.global TC; return GLOBAL_DIRECTIVE;
 \.local  TC; return LOCAL_DIRECTIVE;
 \.loc    TC; return LOC_DIRECTIVE;
@@ -220,8 +220,8 @@ xor     TC; ptx_lval.int_value = XOR_OP; return OPCODE;
 "%warpid"  TC; ptx_lval.int_value = WARPID_REG; return SPECIAL_REGISTER;
 "WARP_SZ"  TC; ptx_lval.int_value = WARPSZ_REG; return SPECIAL_REGISTER;
 
-[a-zA-Z][a-zA-Z0-9_$]*  TC; ptx_lval.string_value = strdup(yytext); return IDENTIFIER;
-[_$%][a-zA-Z0-9_$]+  TC; ptx_lval.string_value = strdup(yytext); return IDENTIFIER;
+[a-zA-Z_][a-zA-Z0-9_$]*  TC; ptx_lval.string_value = strdup(yytext); return IDENTIFIER;
+[$%][a-zA-Z0-9_$]+  TC; ptx_lval.string_value = strdup(yytext); return IDENTIFIER;
 
 [0-9]+\.[0-9]+ 	 TC; sscanf(yytext,"%lf", &ptx_lval.double_value); return DOUBLE_OPERAND;
 	
@@ -340,7 +340,7 @@ xor     TC; ptx_lval.int_value = XOR_OP; return OPCODE;
 ";"	TC; BEGIN(INITIAL); return SEMI_COLON;
 "!"	TC; return EXCLAMATION;
 "=" 	TC; return EQUALS;
-"{"	TC; return LEFT_BRACE;
+"{"	TC; BEGIN(INITIAL); return LEFT_BRACE;
 "}"	TC; return RIGHT_BRACE;
 \.	TC; return PERIOD;
 

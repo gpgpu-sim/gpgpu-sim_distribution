@@ -1176,6 +1176,7 @@ extern "C" {
 #endif 
 
    void start_function( int entry_point );
+   void start_function_definition();
    void add_function_name( const char *fname );
    void init_directive_state();
    void add_directive(); 
@@ -1210,6 +1211,7 @@ extern "C" {
    void add_file( unsigned num, const char *filename );
    void *reset_symtab();
    void set_symtab(void*);
+   void add_pragma( const char *str );
 
 
 #define NON_ARRAY_IDENTIFIER 1

@@ -181,6 +181,14 @@ void start_function( int entry_point )
    g_entry_func_param_index=0;
 }
 
+static bool g_in_function_definition = false;
+
+void start_function_definition()
+{
+   DPRINTF("start_function_definition");
+   g_in_function_definition = true;
+}
+
 char *g_add_identifier_cached__identifier = NULL;
 int g_add_identifier_cached__array_dim;
 int g_add_identifier_cached__array_ident;
@@ -222,12 +230,14 @@ void end_function()
 {
    DPRINTF("end_function");
 
+   g_in_function_definition = false;
    init_directive_state();
    init_instruction_state();
    g_max_regs_per_thread = mymax( g_max_regs_per_thread, (g_current_symbol_table->next_reg_num()-1)); 
    g_func_info->add_inst( g_instructions );
    g_instructions.clear();
    gpgpu_ptx_assemble( g_func_info->get_name(), g_func_info );
+   g_current_symbol_table = g_global_symbol_table;
 
    DPRINTF("function %s, PC = %d\n", g_func_info->get_name().c_str(), g_func_info->get_start_PC());
 }
@@ -472,8 +482,10 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
 
 
    if ( ti.is_param() ) {
-      g_func_info->add_param_name_and_type(g_entry_func_param_index,identifier, ti.scalar_type() );
-      g_entry_func_param_index++;
+      if( !g_in_function_definition ) {
+         g_func_info->add_param_name_and_type(g_entry_func_param_index,identifier, ti.scalar_type() );
+         g_entry_func_param_index++;
+      }
    }
 }
 
@@ -1266,6 +1278,11 @@ extern "C" void *reset_symtab()
 extern "C" void set_symtab(void*symtab)
 {
    g_current_symbol_table = (symbol_table*)symtab;
+}
+
+extern "C" void add_pragma( const char *str )
+{
+   printf("GPGPU-Sim: Warning -- ignoring pragma '%s'\n", str );
 }
 
 unsigned ptx_kernel_shmem_size( void *kernel_impl )
