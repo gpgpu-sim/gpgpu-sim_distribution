@@ -67,7 +67,7 @@
 #include "dram_sched.h"
 #include "gpu-misc.h"
 #include "gpu-sim.h"
-#include "../util.h"
+#include "../abstract_hardware_model.h"
 
 extern unsigned long long  gpu_sim_cycle;
 extern signed long long gpu_tot_sim_cycle;

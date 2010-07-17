@@ -66,7 +66,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "../util.h"
+#include "../abstract_hardware_model.h"
 
 #ifndef GPU_CACHE_H
 #define GPU_CACHE_H

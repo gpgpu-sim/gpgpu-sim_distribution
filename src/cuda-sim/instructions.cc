@@ -1326,7 +1326,41 @@ void cvt_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->set_operand_value(dst,data);
 }
 
-void cvta_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void cvta_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
+{ 
+   ptx_reg_t data;
+
+   const operand_info &dst  = pI->dst();
+   const operand_info &src1 = pI->src1();
+   unsigned space = pI->get_space();
+   bool to_non_generic = pI->is_to();
+
+   ptx_reg_t from_addr = thread->get_operand_value(src1);
+   addr_t from_addr_hw = (addr_t)from_addr.u64;
+   addr_t to_addr_hw = 0;
+   unsigned smid = thread->get_hw_sid();
+   unsigned hwtid = thread->get_hw_tid();
+
+   if( to_non_generic ) {
+      switch( space ) {
+      case SHARED_DIRECTIVE: to_addr_hw = generic_to_shared( smid, from_addr_hw ); break;
+      case LOCAL_DIRECTIVE:  to_addr_hw = generic_to_local( smid, hwtid, from_addr_hw ); break;
+      case GLOBAL_DIRECTIVE: to_addr_hw = from_addr_hw; break;
+      default: abort();
+      }
+   } else {
+      switch( space ) {
+      case SHARED_DIRECTIVE: to_addr_hw = shared_to_generic( smid, from_addr_hw ); break;
+      case LOCAL_DIRECTIVE:  to_addr_hw = local_to_generic( smid, hwtid, from_addr_hw ); break;
+      case GLOBAL_DIRECTIVE: to_addr_hw = from_addr_hw; break;
+      default: abort();
+      }
+   }
+   
+   ptx_reg_t to_addr;
+   to_addr.u64 = to_addr_hw;
+   thread->set_operand_value(dst,to_addr);
+}
 
 void div_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 
@@ -1402,7 +1436,33 @@ void fma_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    mad_def(pI,thread);
 }
 
-void isspacep_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void isspacep_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
+{ 
+   ptx_reg_t a;
+   bool t=false;
+
+   const operand_info &dst  = pI->dst();
+   const operand_info &src1 = pI->src1();
+   unsigned space = pI->get_space();
+
+   a = thread->get_operand_value(src1);
+   addr_t addr = (addr_t)a.u64;
+   unsigned smid = thread->get_hw_sid();
+   unsigned hwtid = thread->get_hw_tid();
+
+   switch( space ) {
+   case SHARED_DIRECTIVE: t = isspace_shared( smid, addr );
+   case LOCAL_DIRECTIVE: t = isspace_local( smid, hwtid, addr );
+   case GLOBAL_DIRECTIVE: t = isspace_global( addr );
+   default: abort();
+   }
+
+   ptx_reg_t p;
+   p.pred = t?1:0;
+
+   thread->set_operand_value(dst,p);
+}
+
 
 void ld_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 

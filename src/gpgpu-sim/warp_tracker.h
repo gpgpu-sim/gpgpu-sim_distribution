@@ -79,7 +79,7 @@
 
 #endif
 
-#include "../util.h"
+#include "../abstract_hardware_model.h"
 #include "shader.h"
 
 void init_warp_tracker( ); 

@@ -305,6 +305,8 @@ xor     TC; ptx_lval.int_value = XOR_OP; return OPCODE;
 \.gl    TC; return GLOBAL_OPTION;
 \.cta   TC; return CTA_OPTION;
 
+\.to	TC; return TO_OPTION;
+
 \.and	TC; return ATOMIC_AND;
 \.or	TC; return ATOMIC_OR;
 \.xor	TC; return ATOMIC_XOR;

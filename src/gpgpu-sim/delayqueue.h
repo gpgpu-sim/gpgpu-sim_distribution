@@ -70,8 +70,6 @@
 #ifndef DELAYQUEUE_H
 #define DELAYQUEUE_H
 
-#include "../util.h"
-
 typedef struct delay_data_t delay_data;
 struct delay_data_t {
    void *data;

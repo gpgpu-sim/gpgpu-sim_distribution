@@ -78,7 +78,7 @@
 
 #endif
 
-#include "../util.h"
+#include "../abstract_hardware_model.h"
 
 extern unsigned *acc_dyn_pcs;
 

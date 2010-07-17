@@ -69,6 +69,7 @@
 
 #include "shader.h"
 #include "addrdec.h"
+#include "../abstract_hardware_model.h"
 
 enum mf_type {
    RD_REQ = 0,

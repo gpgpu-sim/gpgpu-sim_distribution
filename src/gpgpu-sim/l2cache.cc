@@ -13,6 +13,7 @@
 #include "histogram.h"
 #include "l2cache.h"
 #include "../intersim/statwraper.h"
+#include "../abstract_hardware_model.h"
 
 class L2c_mshr;
 class L2c_miss_tracker;

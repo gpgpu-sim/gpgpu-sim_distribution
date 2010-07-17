@@ -69,7 +69,7 @@
 #ifndef _MY_STACK_
 #define _MY_STACK_
 
-#include "../util.h"
+#include "../abstract_hardware_model.h"
 
 typedef struct {
    address_type *v;

@@ -88,6 +88,7 @@
 #endif
 
 #include "histogram.h"
+#include "../abstract_hardware_model.h"
 
 binned_histogram::binned_histogram (std::string name, int nbins, int* bins) 
    : m_name(name), m_nbins(nbins), m_bins(NULL), m_bin_cnts(new int[m_nbins]), m_maximum(0)
@@ -178,7 +179,6 @@ void linear_histogram::add2bin (int sample) {
 #include <map>
 #include <algorithm>
 #include <string>
-#include "../util.h"
 
 #include "cflogger.h"
 

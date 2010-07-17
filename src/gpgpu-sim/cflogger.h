@@ -66,6 +66,8 @@
 #ifndef CFLOGGER_H
 #define CFLOGGER_H
 
+#include "../abstract_hardware_model.h"
+
 void try_snap_shot (unsigned long long  current_cycle);
 void set_spill_interval (unsigned long long  interval);
 void spill_log_to_file (FILE *fout, int final, unsigned long long  current_cycle);

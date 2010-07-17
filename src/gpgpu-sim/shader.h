@@ -139,7 +139,7 @@ typedef struct {
    int reg_bank_access_pending;
    int reg_bank_conflict_stall_checked; // flag to turn off register bank conflict checker to avoid double stalling
 
-   unsigned char inst_type;
+   unsigned inst_type;
 
    unsigned priority;
 

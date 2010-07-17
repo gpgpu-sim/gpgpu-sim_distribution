@@ -223,7 +223,6 @@ extern unsigned g_max_regs_per_thread;
 void ptx_decode_inst( void *thd, unsigned *op, int *i1, int *i2, int *i3, int *i4, int *o1, int *o2, int *o3, int *o4, int *vectorin, int *vectorout, int *arch_reg  );
 unsigned ptx_get_inst_op( void *thd);
 void ptx_exec_inst( void *thd, address_type *addr, unsigned *space, unsigned *data_size, dram_callback_t* callback, unsigned warp_active_mask);
-int  ptx_branch_taken( void *thd );
 void ptx_sim_free_sm( void** thread_info );
 unsigned ptx_sim_init_thread( void** thread_info, int sid, unsigned tid,unsigned threads_left,unsigned num_threads, core_t *core, unsigned hw_cta_id, unsigned hw_warp_id);
 unsigned ptx_sim_cta_size();
@@ -1750,7 +1749,6 @@ void shader_decode( shader_core_ctx_t *shader,
    address_type addr;
    dram_callback_t callback;
    op_type op = NO_OP;
-   register int is_write;
    int tid;
    int i1, i2, i3, i4, o1, o2, o3, o4; //4 outputs needed for texture fetches in cuda-sim
    int i;
@@ -1949,16 +1947,6 @@ void shader_decode( shader_core_ctx_t *shader,
       shader->pipeline_reg[IF_ID][i].out[1] = o2;
       shader->pipeline_reg[IF_ID][i].out[2] = o3;
       shader->pipeline_reg[IF_ID][i].out[3] = o4;
-
-      if ( op == STORE_OP ) {
-         is_write = TRUE;
-      }
-
-      if ( op == BRANCH_OP ) {
-         int taken=0;
-         assert( gpgpu_cuda_sim );
-         taken = ptx_branch_taken(shader->thread[tid].ptx_thd_info);
-      }
 
       // go to the next instruction 
       // - done implicitly in ptx_exec_inst()

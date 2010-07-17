@@ -78,7 +78,7 @@
    #include "ptx.tab.h"
    #include "ptx_sim.h"
    #include "dram_callback.h"
-   #include "../util.h"
+   #include "../abstract_hardware_model.h"
 
    #include "memory.h"
 
@@ -807,6 +807,7 @@ public:
    bool is_lo() const { return m_lo;}
    bool is_wide() const { return m_wide;}
    bool is_uni() const { return m_uni;}
+   bool is_to() const { return m_to_option; }
    unsigned rounding_mode() const { return m_rounding_mode;}
    unsigned saturation_mode() const { return m_saturation_mode;}
    unsigned dimension() const { return m_geom_spec;}
@@ -836,6 +837,7 @@ private:
    bool                m_hi;
    bool                m_lo;
    bool           m_uni; //if branch instruction, this evaluates to true for uniform branches (ie jumps)
+   bool                m_to_option;
    unsigned            m_rounding_mode;
    unsigned            m_compare_op;
    unsigned            m_saturation_mode;

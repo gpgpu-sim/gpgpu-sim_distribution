@@ -73,7 +73,7 @@
 #include "dram_callback.h"
 #include <set>
 #include <map>
-#include "../util.h"
+#include "../abstract_hardware_model.h"
 #include "memory.h"
 #include "ptx-stats.h"
 
@@ -293,6 +293,7 @@ ptx_instruction::ptx_instruction( int opcode,
    m_hi = false;
    m_lo = false;
    m_uni = false;
+   m_to_option = false;
    m_rounding_mode = RN_OPTION;
    m_compare_op = -1;
    m_saturation_mode = 0;
@@ -400,6 +401,9 @@ ptx_instruction::ptx_instruction( int opcode,
          m_membar_level = CTA_OPTION;
          break;
       case FTZ_OPTION:
+         break;
+      case TO_OPTION:
+         m_to_option = true;
          break;
 
       default:
@@ -587,7 +591,7 @@ int load_static_globals( symbol_table *symtab, unsigned min_gaddr, unsigned max_
    return ng_bytes;
 }
 
-int load_constants( symbol_table *symtab ) 
+int load_constants( symbol_table *symtab, addr_t min_gaddr ) 
 {
    printf( "GPGPU-Sim PTX: loading constants with explicit initializers... " );
    fflush(stdout);
@@ -617,6 +621,7 @@ int load_constants( symbol_table *symtab )
                abort();
             }
             unsigned addr=constant->get_address() + nbytes_written;
+            assert( addr+nbytes < min_gaddr );
 
             g_global_mem->write(addr,nbytes,&value); // assume little endian (so u8 is the first byte in u32)
             nc_bytes+=nbytes;
@@ -629,7 +634,70 @@ int load_constants( symbol_table *symtab )
    return nc_bytes;
 }
 
-unsigned long long g_dev_malloc=0x10000000; // start allocating from this address (lower values used for allocating globals in .ptx file)
+#define GLOBAL_HEAP_START 0x10000000
+   // start allocating from this address (lower values used for allocating globals in .ptx file)
+
+#define SHARED_MEM_SIZE_MAX (64*1024)
+#define LOCAL_MEM_SIZE_MAX 1024
+#define MAX_STREAMING_MULTIPROCESSORS 64
+#define MAX_THREAD_PER_SM 1024
+#define TOTAL_LOCAL_MEM_PER_SM (MAX_THREAD_PER_SM*LOCAL_MEM_SIZE_MAX)
+#define TOTAL_SHARED_MEM (MAX_STREAMING_MULTIPROCESSORS*SHARED_MEM_SIZE_MAX)
+#define TOTAL_LOCAL_MEM (MAX_STREAMING_MULTIPROCESSORS*MAX_THREAD_PER_SM*LOCAL_MEM_SIZE_MAX)
+#define SHARED_GENERIC_START (GLOBAL_HEAP_START-TOTAL_SHARED_MEM)
+#define LOCAL_GENERIC_START (SHARED_GENERIC_START-TOTAL_LOCAL_MEM)
+
+#define STATIC_ALLOC_LIMIT (GLOBAL_HEAP_START - (TOTAL_LOCAL_MEM+TOTAL_SHARED_MEM))
+
+addr_t shared_to_generic( unsigned smid, addr_t addr )
+{
+   assert( addr < SHARED_MEM_SIZE_MAX );
+   return SHARED_GENERIC_START + smid*SHARED_MEM_SIZE_MAX + addr;
+}
+
+bool isspace_shared( unsigned smid, addr_t addr )
+{
+   addr_t start = SHARED_GENERIC_START + smid*SHARED_MEM_SIZE_MAX;
+   addr_t end = SHARED_GENERIC_START + (smid+1)*SHARED_MEM_SIZE_MAX;
+   if( (addr >= end) || (addr < start) ) 
+      return false;
+   return true;
+}
+
+bool isspace_global( addr_t addr )
+{
+   return (addr > GLOBAL_HEAP_START) || (addr < STATIC_ALLOC_LIMIT);
+}
+
+addr_t generic_to_shared( unsigned smid, addr_t addr )
+{
+   assert(isspace_shared(smid,addr));
+   return addr - (SHARED_GENERIC_START + smid*SHARED_MEM_SIZE_MAX);
+}
+
+addr_t local_to_generic( unsigned smid, unsigned hwtid, addr_t addr )
+{
+   assert(addr < LOCAL_MEM_SIZE_MAX); 
+   return LOCAL_GENERIC_START + (TOTAL_LOCAL_MEM_PER_SM * smid) + (LOCAL_MEM_SIZE_MAX * hwtid) + addr;
+}
+
+bool isspace_local( unsigned smid, unsigned hwtid, addr_t addr )
+{
+   addr_t start = LOCAL_GENERIC_START + (TOTAL_LOCAL_MEM_PER_SM * smid) + (LOCAL_MEM_SIZE_MAX * hwtid);
+   addr_t end   = LOCAL_GENERIC_START + (TOTAL_LOCAL_MEM_PER_SM * smid) + (LOCAL_MEM_SIZE_MAX * (hwtid+1));
+   if( (addr >= end) || (addr < start) ) 
+      return false;
+   return true;
+}
+
+addr_t generic_to_local( unsigned smid, unsigned hwtid, addr_t addr )
+{
+   assert(isspace_local(smid,hwtid,addr));
+   return addr - (LOCAL_GENERIC_START + (TOTAL_LOCAL_MEM_PER_SM * smid) + (LOCAL_MEM_SIZE_MAX * hwtid));
+}
+
+
+unsigned long long g_dev_malloc=GLOBAL_HEAP_START; 
 
 void* gpgpu_ptx_sim_malloc( size_t size )
 {
@@ -952,12 +1020,6 @@ void function_info::add_param_data( unsigned argn, struct gpgpu_ptx_sim_arg *arg
    } else {
       // This should only happen for OpenCL, but doesn't cause problems
    }
-}
-
-int ptx_branch_taken( void *thd )
-{
-   ptx_thread_info *thread = (ptx_thread_info *) thd;
-   return (thread != NULL) && thread->branch_taken();
 }
 
 template<int activate_level> 
@@ -1810,8 +1872,8 @@ void gpgpu_ptx_sim_load_gpu_kernels()
         ptx_parse();
         ptxinfo_in = open_ptxinfo(g_filename);
         ptxinfo_parse();
-        load_static_globals(g_global_symbol_table,0x10000000,0xFFFFFFFF);
-        load_constants(g_global_symbol_table);
+        load_static_globals(g_global_symbol_table,STATIC_ALLOC_LIMIT,0xFFFFFFFF);
+        load_constants(g_global_symbol_table,STATIC_ALLOC_LIMIT);
     } else {
         if (!g_override_embedded_ptx) {
             g_used_embedded_ptx_files=1;
@@ -1819,8 +1881,8 @@ void gpgpu_ptx_sim_load_gpu_kernels()
             ptx_info_t *s;
             for ( s=g_ptx_source_array; s!=NULL; s=s->next ) {
                  gpgpu_ptx_sim_load_ptx_from_string(s->str, ++source_num);
-                 load_static_globals(g_global_symbol_table,0x10000000,0xFFFFFFFF);
-                 load_constants(g_global_symbol_table);
+                 load_static_globals(g_global_symbol_table,STATIC_ALLOC_LIMIT,0xFFFFFFFF);
+                 load_constants(g_global_symbol_table,STATIC_ALLOC_LIMIT);
             }
         } else {
             g_filename = NULL;
@@ -1845,8 +1907,8 @@ void gpgpu_ptx_sim_load_gpu_kernels()
                     ptxinfo_in = open_ptxinfo(g_filename);
                     ptxinfo_parse();
                     g_filename = NULL;
-                    load_static_globals(g_global_symbol_table,0x10000000,0xFFFFFFFF);
-                    load_constants(g_global_symbol_table);
+                    load_static_globals(g_global_symbol_table,STATIC_ALLOC_LIMIT,0xFFFFFFFF);
+                    load_constants(g_global_symbol_table,STATIC_ALLOC_LIMIT);
                 }
                 free(namelist);
             }

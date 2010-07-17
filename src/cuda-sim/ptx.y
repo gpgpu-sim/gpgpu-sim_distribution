@@ -195,6 +195,7 @@
 %token  ALL_OPTION
 %token  GLOBAL_OPTION
 %token  CTA_OPTION
+%token  TO_OPTION
 %type <int_value> function_decl_header
 %type <ptr_value> function_decl
 
@@ -384,7 +385,9 @@ option: type_spec
  	| FTZ_OPTION { add_option(FTZ_OPTION); } 
 	| APPROX_OPTION { add_option(APPROX_OPTION); }
 	| FULL_OPTION { add_option(FULL_OPTION); }
-	| atomic_operation_spec ;
+	| atomic_operation_spec 
+	| TO_OPTION { add_option(TO_OPTION); }
+	;
 
 atomic_operation_spec: ATOMIC_AND { add_option(ATOMIC_AND); } 
 	| ATOMIC_OR { add_option(ATOMIC_OR); } 

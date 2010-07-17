@@ -168,7 +168,7 @@ char *gpgpu_cache_dl2_opt;
 extern int gpgpu_l2_readoverwrite;
 int gpgpu_partial_write_mask = 0;
 
-int gpgpu_perfect_mem = FALSE;
+bool gpgpu_perfect_mem = false;
 char *gpgpu_shader_core_pipeline_opt;
 extern unsigned int *requests_by_warp;
 unsigned int gpgpu_dram_buswidth = 4;
@@ -258,7 +258,7 @@ extern unsigned int warp_size;
 extern int pipe_simd_width;
 extern unsigned int gpgpu_dwf_heuristic;
 extern unsigned int gpgpu_dwf_regbk;
-int gpgpu_reg_bankconflict = FALSE;
+bool gpgpu_reg_bankconflict = false;
 extern int gpgpu_shmem_port_per_bank;
 extern int gpgpu_cache_port_per_bank;
 extern int gpgpu_const_port_per_bank;

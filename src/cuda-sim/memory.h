@@ -84,7 +84,7 @@
 #include <assert.h>
 #include <string.h>
 #include <string>
-#include "../util.h"
+#include "../abstract_hardware_model.h"
 
 typedef address_type mem_addr_t;
 

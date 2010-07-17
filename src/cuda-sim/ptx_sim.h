@@ -68,10 +68,8 @@
 #include <stdlib.h>
 
 #include "dram_callback.h"
-#include "../util.h"
 #include "../abstract_hardware_model.h"
 
-typedef address_type addr_t;
 
 struct dim3 {
    unsigned int x, y, z;
@@ -449,6 +447,14 @@ private:
 };
 
 unsigned type_decode( unsigned type, size_t &size, int &t );
+
+addr_t generic_to_local( unsigned smid, unsigned hwtid, addr_t addr );
+addr_t generic_to_shared( unsigned smid, addr_t addr );
+addr_t local_to_generic( unsigned smid, unsigned hwtid, addr_t addr );
+addr_t shared_to_generic( unsigned smid, addr_t addr );
+bool isspace_local( unsigned smid, unsigned hwtid, addr_t addr );
+bool isspace_shared( unsigned smid, addr_t addr );
+bool isspace_global( addr_t addr );
 
 #endif
 

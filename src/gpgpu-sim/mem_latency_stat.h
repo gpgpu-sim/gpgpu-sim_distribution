@@ -80,7 +80,7 @@ extern unsigned int gpu_mem_n_bk;
    #define EXTERN_DEF extern
 #endif
 
-EXTERN_DEF int gpgpu_memlatency_stat = FALSE;
+EXTERN_DEF bool gpgpu_memlatency_stat = false;
 
 EXTERN_DEF unsigned max_mrq_latency;
 EXTERN_DEF unsigned max_dq_latency;
