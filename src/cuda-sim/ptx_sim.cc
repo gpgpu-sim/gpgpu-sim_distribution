@@ -235,12 +235,12 @@ ptx_thread_info::ptx_thread_info()
    m_hw_sid = -1;
    m_last_dram_callback.function = NULL;
    m_last_dram_callback.instruction = NULL;
-   m_regs.push_back( std::map<std::string,ptx_reg_t>() );
-   m_debug_trace_regs_modified.push_back( std::map<std::string,ptx_reg_t>() );
+   m_regs.push_back( reg_map_t() );
    m_callstack.push_back( stack_entry() );
    m_RPC = -1;
    m_RPC_updated = false;
    m_last_was_call = false;
+   m_enable_debug_trace = false;
 }
 
 const ptx_version &ptx_thread_info::get_ptx_version() const 
@@ -356,8 +356,7 @@ void ptx_thread_info::callstack_push( unsigned pc, unsigned rpc, const symbol *r
    m_RPC_updated = true;
    m_last_was_call = true;
    m_callstack.push_back( stack_entry(m_symbol_table,m_func_info,pc,rpc,return_var_src,return_var_dst,call_uid) );
-   m_regs.push_back( std::map<std::string,ptx_reg_t>() );
-   m_debug_trace_regs_modified.push_back( std::map<std::string,ptx_reg_t>() );
+   m_regs.push_back( reg_map_t() );
 }
 
 #define POST_DOMINATOR 1 /* must match definition in shader.h */
@@ -382,7 +381,6 @@ bool ptx_thread_info::callstack_pop()
       rval = get_operand_value(rv_src);
    m_callstack.pop_back();
    m_regs.pop_back();
-   m_debug_trace_regs_modified.pop_back();
    if( rv_dst != NULL ) 
       set_operand_value(rv_dst,rval);
    return m_callstack.empty();
@@ -391,13 +389,13 @@ bool ptx_thread_info::callstack_pop()
 void ptx_thread_info::dump_callstack() const
 {
    std::list<stack_entry>::const_iterator c=m_callstack.begin();
-   std::list<std::map<std::string,ptx_reg_t> >::const_iterator r=m_regs.begin();
+   std::list<reg_map_t>::const_iterator r=m_regs.begin();
 
    printf("\n\n");
    printf("Call stack for thread uid = %u (sc=%u, hwtid=%u)\n", m_uid, m_hw_sid, m_hw_tid );
    while( c != m_callstack.end() && r != m_regs.end() ) {
       const stack_entry &c_e = *c;
-      const std::map<std::string,ptx_reg_t> &regs = *r;
+      const reg_map_t &regs = *r;
       if( !c_e.m_valid ) {
          printf("  <entry>                              #regs = %zu\n", regs.size() );
       } else {
@@ -427,9 +425,9 @@ std::string ptx_thread_info::get_location() const
 void ptx_thread_info::dump_regs()
 {
    printf("Register File Contents:\n");
-   std::map<std::string,ptx_reg_t>::const_iterator r;
+   reg_map_t::const_iterator r;
    for ( r=m_regs.back().begin(); r != m_regs.back().end(); ++r ) {
-      std::string name = r->first;
+      std::string name = r->first->name();
       ptx_reg_t value = r->second;
       print_reg(name,value);
 
@@ -441,9 +439,9 @@ void ptx_thread_info::dump_modifiedregs()
    if( m_debug_trace_regs_modified.empty() ) 
       return;
    printf("Modified Registers:\n");
-   std::map<std::string,ptx_reg_t>::const_iterator r;
-   for ( r=m_debug_trace_regs_modified.back().begin(); r != m_debug_trace_regs_modified.back().end(); ++r ) {
-      std::string name = r->first;
+   reg_map_t::const_iterator r;
+   for ( r=m_debug_trace_regs_modified.begin(); r != m_debug_trace_regs_modified.end(); ++r ) {
+      std::string name = r->first->name();
       ptx_reg_t value = r->second;
       print_reg(name,value);
    }

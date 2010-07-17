@@ -78,6 +78,7 @@ protected:
    int *m_bins;        // bin boundaries
    int *m_bin_cnts;    // counters
    int m_maximum;      // the maximum sample
+   signed long long int m_sum; // for calculating the average
 
 public:
 

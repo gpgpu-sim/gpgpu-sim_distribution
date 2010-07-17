@@ -94,24 +94,22 @@ struct gpgpu_ptx_sim_kernel_info {
 #include <assert.h>
 #include "opcodes.h"
 
-struct param_t {
-   union {
-      float float_value;
-      int int_value;
-      double double_value;
-      unsigned long long ptr_value;
-   } data;
-   int type;
-};
-
 #ifdef __cplusplus
 
    #include <string>
    #include <map>
    #include <set>
    #include <list>
+   #include <unordered_map>
 
 #include "memory.h"
+
+struct param_t {
+   const void *pdata;
+   int type;
+   size_t size;
+   size_t offset;
+};
 
 union ptx_reg_t {
    ptx_reg_t() {
@@ -421,8 +419,10 @@ public:
    }
    void dump_regs();
    void dump_modifiedregs();
-   void clear_modifiedregs() { m_debug_trace_regs_modified.back().clear();}
+   void clear_modifiedregs() { m_debug_trace_regs_modified.clear();}
    function_info *get_finfo() { return m_func_info;   }
+
+   void enable_debug_trace() { m_enable_debug_trace = true; }
 
 public:
    addr_t         m_last_effective_address;
@@ -465,8 +465,12 @@ private:
 
    std::list<stack_entry> m_callstack;
 
-   std::list<std::map<std::string,ptx_reg_t> > m_regs;
-   std::list<std::map<std::string,ptx_reg_t> > m_debug_trace_regs_modified;
+   // typedef std::unordered_map<std::string,ptx_reg_t> reg_map_t;
+   typedef std::unordered_map<const symbol*,ptx_reg_t> reg_map_t;
+   std::list<reg_map_t> m_regs;
+
+   bool m_enable_debug_trace;
+   reg_map_t m_debug_trace_regs_modified; // track the modified register for each executed insn
 };
 
 unsigned type_decode( unsigned type, size_t &size, int &t );

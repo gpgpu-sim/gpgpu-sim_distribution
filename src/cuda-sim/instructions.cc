@@ -99,10 +99,11 @@ unsigned unfound_register_warned = 0;
 
 ptx_reg_t ptx_thread_info::get_operand_value( const symbol *reg )
 {
-   assert( reg->type()->get_key().is_reg() );
-   const std::string &name = reg->name();
-   std::map<std::string,ptx_reg_t>::iterator regs_iter = m_regs.back().find(name);
+   // assume that the given symbol is a register and try to find it in the register hash map
+   reg_map_t::iterator regs_iter = m_regs.back().find(reg);
    if (regs_iter == m_regs.back().end()) {
+      assert( reg->type()->get_key().is_reg() );
+      const std::string &name = reg->name();
       unsigned call_uid = m_callstack.back().m_call_uid;
       ptx_reg_t uninit_reg;
       uninit_reg.u32 = 0xDEADBEEF;
@@ -113,14 +114,14 @@ ptx_reg_t ptx_thread_info::get_operand_value( const symbol *reg )
                  file_loc.c_str(), name.c_str(), call_uid );
           unfound_register_warned = 1;
       }
-      regs_iter = m_regs.back().insert(std::make_pair(name, uninit_reg)).first;
+      regs_iter = m_regs.back().find(reg);
    }
    return regs_iter->second;
 }
 
 ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op )
 {
-   ptx_reg_t result, tmp;
+   ptx_reg_t result;
    const char *name = NULL;
    if ( op.is_reg() ) {
       result = get_operand_value( op.get_symbol() );
@@ -134,10 +135,10 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op )
 
       if ( info.is_reg() ) {
          name = op.name().c_str();
-         std::map<std::string,ptx_reg_t>::iterator regs_iter = m_regs.back().find(name);
+         reg_map_t::iterator regs_iter = m_regs.back().find(sym);
          assert( regs_iter != m_regs.back().end() );
-         tmp = regs_iter->second;
-         result.u64 = tmp.u64 + op.get_addr_offset(); 
+         ptx_reg_t baseaddr = regs_iter->second;
+         result.u64 = baseaddr.u64 + op.get_addr_offset(); 
       } else if ( info.is_param() ) {
          result = sym->get_address() + op.get_addr_offset();
       } else if ( info.is_global() ) {
@@ -207,26 +208,15 @@ unsigned get_operand_nbits( const operand_info &op )
 
 void ptx_thread_info::get_vector_operand_values( const operand_info &op, ptx_reg_t* ptx_regs, unsigned num_elements )
 {
-   const char *name1, *name2, *name3, *name4 = NULL;
-   if ( op.is_vector() ) {
-      if (num_elements > 3) {
-         name4 = op.vec_name4().c_str();
-         assert( m_regs.back().find(name4) != m_regs.back().end() );
-         ptx_regs[3] = m_regs.back()[ name4 ];
-      }
-      if (num_elements > 2) {
-         name3 = op.vec_name3().c_str();
-         assert( m_regs.back().find(name3) != m_regs.back().end() );
-         ptx_regs[2] = m_regs.back()[ name3 ];
-      }
-      name1 = op.vec_name1().c_str();
-      name2 = op.vec_name2().c_str();
-      assert( m_regs.back().find(name1) != m_regs.back().end() );
-      assert( m_regs.back().find(name2) != m_regs.back().end() );
-      ptx_regs[0] = m_regs.back()[ name1 ];
-      ptx_regs[1] = m_regs.back()[ name2 ];
-   } else {
-      assert(0);
+   assert( op.is_vector() );
+   assert( num_elements <= 4 ); // max 4 elements in a vector
+
+   for (int idx = num_elements - 1; idx >= 0; --idx) {
+      const symbol *sym = NULL;
+      sym = op.vec_symbol(idx);
+      reg_map_t::iterator reg_iter = m_regs.back().find(sym);
+      assert( reg_iter != m_regs.back().end() );
+      ptx_regs[idx] = reg_iter->second;
    }
 }
 
@@ -254,15 +244,19 @@ void sign_extend( ptx_reg_t &data, unsigned src_size, const operand_info &dst )
 
 void ptx_thread_info::set_operand_value( const operand_info &dst, const ptx_reg_t &data )
 {
-   m_regs.back()[ dst.name() ] = data;
-   m_debug_trace_regs_modified.back()[ dst.name() ] = data;
+   m_regs.back()[ dst.get_symbol() ] = data;
+   if (m_enable_debug_trace ) {
+      m_debug_trace_regs_modified[ dst.get_symbol() ] = data;
+   }
    m_last_set_operand_value = data;
 }
 
 void ptx_thread_info::set_operand_value( const symbol *dst, const ptx_reg_t &data )
 {
-   m_regs.back()[ dst->name() ] = data;
-   m_debug_trace_regs_modified.back()[ dst->name() ] = data;
+   m_regs.back()[ dst ] = data;
+   if (m_enable_debug_trace ) {
+      m_debug_trace_regs_modified[ dst ] = data;
+   }
    m_last_set_operand_value = data;
 }
 
@@ -273,18 +267,15 @@ void ptx_thread_info::set_vector_operand_values( const operand_info &dst,
                                                  const ptx_reg_t &data4, 
                                                  unsigned num_elements )
 {
-   m_regs.back()[ dst.vec_name1() ] = data1;
-   m_debug_trace_regs_modified.back()[ dst.vec_name1() ] = data1;
-   m_regs.back()[ dst.vec_name2() ] = data2;
-   m_debug_trace_regs_modified.back()[ dst.vec_name2() ] = data2;
+   set_operand_value(dst.vec_symbol(0), data1);
+   set_operand_value(dst.vec_symbol(1), data2);
    if (num_elements > 2) {
-      m_regs.back()[ dst.vec_name3() ] = data3;
-      m_debug_trace_regs_modified.back()[ dst.vec_name3() ] = data3;
+      set_operand_value(dst.vec_symbol(2), data3);
       if (num_elements > 3) {
-         m_regs.back()[ dst.vec_name4() ] = data4;
-         m_debug_trace_regs_modified.back()[ dst.vec_name4() ] = data4;
+         set_operand_value(dst.vec_symbol(3), data4);
       }
    }
+
    m_last_set_operand_value = data1;
 }
 
@@ -2743,11 +2734,42 @@ float reduce_precision( float x, unsigned bits )
    return result;
 }
 
-unsigned wrap( unsigned x, unsigned y, unsigned mx, unsigned my )
+unsigned wrap( unsigned x, unsigned y, unsigned mx, unsigned my, size_t elem_size )
 {
    unsigned nx = (mx+x)%mx;
    unsigned ny = (my+y)%my;
    return nx + mx*ny;
+}
+
+unsigned clamp( unsigned x, unsigned y, unsigned mx, unsigned my, size_t elem_size )
+{
+   unsigned nx = x;
+   while (nx >= mx) nx -= elem_size;
+   unsigned ny = (y >= my)? my - 1 : y;
+   return nx + mx*ny;
+}
+
+typedef unsigned (*texAddr_t) (unsigned x, unsigned y, unsigned mx, unsigned my, size_t elem_size);
+float tex_linf_sampling(memory_space* mem, unsigned tex_array_base, 
+                        int x, int y, unsigned int width, unsigned int height, size_t elem_size,
+                        float alpha, float beta, texAddr_t b_lim)
+{
+   float Tij;
+   float Ti1j;
+   float Tij1;
+   float Ti1j1;
+
+   mem->read(tex_array_base + b_lim(x,y,width,height,elem_size), 4, &Tij);
+   mem->read(tex_array_base + b_lim(x+elem_size,y,width,height,elem_size), 4, &Ti1j);
+   mem->read(tex_array_base + b_lim(x,y+1,width,height,elem_size), 4, &Tij1);
+   mem->read(tex_array_base + b_lim(x+elem_size,y+1,width,height,elem_size), 4, &Ti1j1);
+
+   float sample = (1-alpha)*(1-beta)*Tij + 
+                   alpha*(1-beta)*Ti1j +
+                   (1-alpha)*beta*Tij1 +
+                   alpha*beta*Ti1j1;
+   
+   return sample;
 }
 
 void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
@@ -2919,21 +2941,25 @@ void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    case F16_TYPE: assert(0); break;
    case F32_TYPE:  {
       if( texref->filterMode == cudaFilterModeLinear ) {
-         float Tij;
-         float Ti1j;
-         float Tij1;
-         float Ti1j1;
+         texAddr_t b_lim = wrap;
+         if ( texref->addressMode[0] == cudaAddressModeClamp ) {
+            b_lim = clamp;
+         }
+         size_t elem_size = (cuArray->desc.x + cuArray->desc.y + cuArray->desc.z + cuArray->desc.w) / 8;
+         size_t elem_ofst = 0;
 
-         mem->read(tex_array_base + wrap(x,y,width,height), 4, &Tij);
-         mem->read(tex_array_base + wrap(x+4,y,width,height), 4, &Ti1j);
-         mem->read(tex_array_base + wrap(x,y+1,width,height), 4, &Tij1);
-         mem->read(tex_array_base + wrap(x+4,y+1,width,height), 4, &Ti1j1);
-
-         data1.f32 = (1-alpha)*(1-beta)*Tij + 
-                     alpha*(1-beta)*Ti1j +
-                     (1-alpha)*beta*Tij1 +
-                     alpha*beta*Ti1j1;
-         
+         data1.f32 = tex_linf_sampling(mem, tex_array_base, x + elem_ofst, y, width, height, elem_size, alpha, beta, b_lim);
+         elem_ofst += cuArray->desc.x / 8; 
+         if (cuArray->desc.y) {
+            data2.f32 = tex_linf_sampling(mem, tex_array_base, x + elem_ofst, y, width, height, elem_size, alpha, beta, b_lim);
+            elem_ofst += cuArray->desc.y / 8; 
+            if (cuArray->desc.z) {
+               data3.f32 = tex_linf_sampling(mem, tex_array_base, x + elem_ofst, y, width, height, elem_size, alpha, beta, b_lim);
+               elem_ofst += cuArray->desc.z / 8; 
+               if (cuArray->desc.w) 
+                  data4.f32 = tex_linf_sampling(mem, tex_array_base, x + elem_ofst, y, width, height, elem_size, alpha, beta, b_lim);
+            }
+         }
       } else {
          mem->read( tex_array_index, cuArray->desc.x/8, &data1.f32);
          if (cuArray->desc.y) {

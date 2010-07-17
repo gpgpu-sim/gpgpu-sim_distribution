@@ -483,7 +483,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
 
    if ( ti.is_param() ) {
       if( !g_in_function_definition ) {
-         g_func_info->add_param_name_and_type(g_entry_func_param_index,identifier, ti.scalar_type() );
+         g_func_info->add_param_name_type_size(g_entry_func_param_index,identifier, ti.scalar_type(), num_bits );
          g_entry_func_param_index++;
       }
    }

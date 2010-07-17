@@ -994,7 +994,7 @@ unsigned function_info::ptx_get_inst_op( ptx_thread_info *thread )
    return ALU_OP;
 }
 
-void function_info::add_param_name_and_type( unsigned index, std::string name, int type )
+void function_info::add_param_name_type_size( unsigned index, std::string name, int type, size_t size )
 {
    unsigned parsed_index;
    char buffer[2048];
@@ -1002,10 +1002,10 @@ void function_info::add_param_name_and_type( unsigned index, std::string name, i
    int ntokens = sscanf(name.c_str(),buffer,&parsed_index);
    if( ntokens == 1 ) {
       assert( m_ptx_param_info.find(parsed_index) == m_ptx_param_info.end() );
-      m_ptx_param_info[parsed_index] = param_info(parsed_index,name,type);
+      m_ptx_param_info[parsed_index] = param_info(parsed_index, name, type, size);
    } else {
       assert( m_ptx_param_info.find(index) == m_ptx_param_info.end() );
-      m_ptx_param_info[index] = param_info(index,name,type);
+      m_ptx_param_info[index] = param_info(index, name, type, size);
    }
 }
 
@@ -1015,7 +1015,9 @@ void function_info::add_param_data( unsigned argn, struct gpgpu_ptx_sim_arg *arg
    param_t tmp;
 
    if( data ) {
-      memcpy(&tmp.data,data,args->m_nbytes);
+      tmp.pdata = args->m_start;
+      tmp.size = args->m_nbytes;
+      tmp.offset = args->m_offset;
       std::map<unsigned,param_info>::iterator i=m_ptx_param_info.find(argn);
       if( i != m_ptx_param_info.end()) {
          i->second.add_data(tmp);
@@ -1045,6 +1047,48 @@ void function_info::add_param_data( unsigned argn, struct gpgpu_ptx_sim_arg *arg
    } else {
       // This should only happen for OpenCL, but doesn't cause problems
    }
+}
+
+void function_info::finalize( memory_space *param_mem, symbol_table *symtab  ) 
+{
+   unsigned param_address = 0;
+   for( std::map<unsigned,param_info>::iterator i=m_ptx_param_info.begin(); i!=m_ptx_param_info.end(); i++ ) {
+      param_info &p = i->second;
+      std::string name = p.get_name();
+      int type = p.get_type();
+      param_t param_value = p.get_value();
+      param_value.type = type;
+      symbol *param = symtab->lookup(name.c_str());
+      unsigned xtype = param->type()->get_key().scalar_type();
+      assert(xtype==(unsigned)type);
+      size_t size;
+      size = param_value.size; // size of param in bytes
+      assert(param_value.offset == param_address);
+      assert(size == p.get_size() / 8);
+      // copy the parameter over word-by-word so that parameter that crosses a memory page can be copied over
+      const size_t word_size = 4; 
+      for (size_t idx = 0; idx < size; idx += word_size) {
+         const char *pdata = reinterpret_cast<const char*>(param_value.pdata) + idx; // cast to char * for ptr arithmetic
+         param_mem->write(param_address + idx, word_size, pdata); 
+      }
+      param->set_address(param_address);
+      param_address += size; 
+   }
+}
+
+void function_info::list_param( FILE *fout ) const
+{
+   symbol_table *symtab = g_current_symbol_table;
+   for( std::map<unsigned,param_info>::const_iterator i=m_ptx_param_info.begin(); i!=m_ptx_param_info.end(); i++ ) {
+      const param_info &p = i->second;
+      std::string name = p.get_name();
+      symbol *param = symtab->lookup(name.c_str());
+
+      addr_t param_addr = param->get_address();
+
+      fprintf(fout, "%s: %#08x\n", name.c_str(), param_addr);
+   }
+   fflush(fout);
 }
 
 template<int activate_level> 
@@ -1112,10 +1156,13 @@ void function_info::ptx_exec_inst( ptx_thread_info *thread,
    g_current_symbol_table = thread->get_finfo()->get_symtab();
    thread->clearRPC();
    thread->m_last_set_operand_value.u64 = 0;
-   *space = -1;
-   *addr = 0xFEEBDAED;
 
-   thread->clear_modifiedregs();
+   if ( g_debug_execution >= 6 ) {
+      if ( (g_debug_thread_uid==0) || (thread->get_uid() == (unsigned)g_debug_thread_uid) ) {
+         thread->clear_modifiedregs();
+         thread->enable_debug_trace();
+      }
+   }
    if( pI->has_pred() ) {
       const operand_info &pred = pI->get_pred();
       ptx_reg_t pred_value = thread->get_operand_value(pred);
@@ -1147,36 +1194,30 @@ void function_info::ptx_exec_inst( ptx_thread_info *thread,
       fflush(stdout);
    }
 
-   *data_size = 0;
-   if ( (pI->get_opcode() == LD_OP  || pI->get_opcode() == ST_OP) ) {
-      *addr = thread->last_eaddr();
-      *space = thread->last_space();
+   addr_t insn_memaddr = 0xFEEBDAED;
+   unsigned insn_space = -1;
+   unsigned insn_data_size = 0;
+   if ( pI->get_opcode() == LD_OP || pI->get_opcode() == ST_OP || pI->get_opcode() == TEX_OP ) {
+      insn_memaddr = thread->last_eaddr();
+      insn_space = thread->last_space();
 
       unsigned to_type = pI->get_type();
-      *data_size = datatype2size(to_type);
+      insn_data_size = datatype2size(to_type);
    }
 
    if ( pI->get_opcode() == ATOM_OP ) {
-      *addr = thread->last_eaddr();
-      *space = thread->last_space();
+      insn_memaddr = thread->last_eaddr();
+      insn_space = thread->last_space();
       callback->function = thread->last_callback().function;
       callback->instruction = thread->last_callback().instruction;
       callback->thread = thread;
 
       unsigned to_type = pI->get_type();
-      *data_size = datatype2size(to_type);
+      insn_data_size = datatype2size(to_type);
    } else {
       // make sure that the callback isn't set
       callback->function = NULL;
       callback->instruction = NULL;
-   }
-
-   if (pI->get_opcode() == TEX_OP) {
-      *addr = thread->last_eaddr();
-      *space = thread->last_space();
-
-      unsigned to_type = pI->get_type();
-      *data_size = datatype2size(to_type);
    }
 
    if ( g_debug_execution >= 6 ) {
@@ -1214,6 +1255,11 @@ void function_info::ptx_exec_inst( ptx_thread_info *thread,
              g_ptx_sim_num_insn, ctaid.x,ctaid.y,ctaid.z,tid.x,tid.y,tid.z );
       fflush(stdout);
    }
+
+   // "Return values"
+   *space = insn_space;
+   *addr = insn_memaddr;
+   *data_size = insn_data_size;
 }
 
 unsigned g_gx, g_gy, g_gz;
@@ -1458,6 +1504,12 @@ void gpgpu_ptx_sim_init_grid( const char *kernel_key, struct gpgpu_ptx_sim_arg* 
    if ( g_host_to_kernel_entrypoint_name_lookup->find(kernel_key) ==
         g_host_to_kernel_entrypoint_name_lookup->end() ) {
       printf("GPGPU-Sim PTX: ERROR ** cannot locate PTX entry point\n" );
+      printf("GPGPU-Sim PTX: existing entry points: \n");
+      std::map<const void*,std::string>::iterator i_eptr = g_host_to_kernel_entrypoint_name_lookup->begin();
+      for (; i_eptr != g_host_to_kernel_entrypoint_name_lookup->end(); ++i_eptr) {
+         printf("GPGPU-Sim PTX: (%p,%s)\n", i_eptr->first, i_eptr->second.c_str());
+      }
+      printf("\n");
       abort();
    } else {
       std::string kname = (*g_host_to_kernel_entrypoint_name_lookup)[kernel_key];

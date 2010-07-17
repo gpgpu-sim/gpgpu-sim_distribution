@@ -104,11 +104,24 @@ template<unsigned BSIZE> void memory_space_impl<BSIZE>::read( mem_addr_t addr, s
    }
 }
 
+template<unsigned BSIZE> void memory_space_impl<BSIZE>::print( const char *format, FILE *fout ) const
+{
+   typename map_t::const_iterator i_page;
+   for (i_page = m_data.begin(); i_page != m_data.end(); ++i_page) {
+      fprintf(fout, "%s - %#x:", m_name.c_str(), i_page->first);
+      i_page->second.print(format, fout);
+   }
+}
+
 template class memory_space_impl<32>;
 template class memory_space_impl<64>;
 template class memory_space_impl<8192>;
 template class memory_space_impl<16*1024>;
 
+void g_print_memory_space(memory_space *mem, const char *format = "%08x", FILE *fout = stdout) 
+{
+    mem->print(format,fout);
+}
 
 #ifdef UNIT_TEST
 

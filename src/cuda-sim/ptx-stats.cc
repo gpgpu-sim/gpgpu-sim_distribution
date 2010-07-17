@@ -65,6 +65,7 @@
 #include "../option_parser.h"
 #include <stdio.h>
 #include <map>
+#include <unordered_map>
 
 // external dependencies
 extern function_info *g_func_info;
@@ -89,7 +90,7 @@ void ptx_file_line_stats_options(option_parser_t opp)
 class ptx_file_line 
 {
 public:
-    ptx_file_line(const char* s, int l){
+    ptx_file_line(const char* s, int l) {
         if( s == NULL ) 
             st = "NULL_NAME";
         else 
@@ -109,11 +110,19 @@ public:
     }
 
     bool operator==(const ptx_file_line &other) const {
-        return (st==other.st) and (line==other.line);
+        return (line==other.line) && (st==other.st);
     }
 
     std::string st;
     unsigned line;
+};
+
+struct hash_ptx_file_line
+{
+    std::size_t operator()(const ptx_file_line & pfline) const {
+        std::hash<unsigned> hash_line;
+        return hash_line(pfline.line);
+    }
 };
 
 // holds all statistics collected for a singe PTX source line
@@ -138,7 +147,8 @@ public:
     unsigned long long warp_divergence; // number of warp divergence occured at this instruction
 };
 
-static std::map<ptx_file_line, ptx_file_line_stats> ptx_file_line_stats_tracker;
+typedef std::unordered_map<ptx_file_line, ptx_file_line_stats, hash_ptx_file_line> ptx_file_line_stats_map_t;
+static ptx_file_line_stats_map_t ptx_file_line_stats_tracker;
 
 // output statistics to a file
 void ptx_file_line_stats_write_file()
@@ -146,7 +156,7 @@ void ptx_file_line_stats_write_file()
     // check if stat collection is turned on
     if (enable_ptx_file_line_stats == 0) return;
 
-    std::map<ptx_file_line, ptx_file_line_stats>::iterator it;
+    ptx_file_line_stats_map_t::iterator it;
     FILE * pfile;
 
     pfile = fopen(ptx_line_stats_filename, "w");

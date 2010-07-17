@@ -83,6 +83,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
 #include <string>
 #include "../abstract_hardware_model.h"
 
@@ -118,6 +119,20 @@ public:
       memcpy(data,m_data+offset,length);
    }
 
+   void print( const char *format, FILE *fout ) const
+   {
+      unsigned int *i_data = (unsigned int*)m_data;
+      for (int d = 0; d < (BSIZE / sizeof(unsigned int)); d++) {
+         if (d % 8 == 0) {
+            fprintf(fout, "\n");
+         }
+         fprintf(fout, format, i_data[d]);
+         fprintf(fout, " ");
+      }
+      fprintf(fout, "\n");
+      fflush(fout);
+   }
+
 private:
    unsigned m_nbytes;
    unsigned char *m_data;
@@ -128,7 +143,8 @@ class memory_space
 public:
    virtual ~memory_space() {}
    virtual void write( mem_addr_t addr, size_t length, const void *data ) = 0;
-   virtual void read( mem_addr_t addr, size_t length, void *data ) const = 0;;
+   virtual void read( mem_addr_t addr, size_t length, void *data ) const = 0;
+   virtual void print( const char *format, FILE *fout ) const = 0;
 };
 
 template<unsigned BSIZE> class memory_space_impl : public memory_space {
@@ -137,6 +153,7 @@ public:
 
    virtual void write( mem_addr_t addr, size_t length, const void *data );
    virtual void read( mem_addr_t addr, size_t length, void *data ) const;
+   virtual void print( const char *format, FILE *fout ) const;
 
 private:
    std::string m_name;

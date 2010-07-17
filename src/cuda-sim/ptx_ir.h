@@ -505,6 +505,13 @@ public:
       if( !m_value.m_vector_symbolic[3] ) return 3;
       return 4;
    }
+
+   const symbol* vec_symbol(int idx) const 
+   {
+      assert(idx < 4);
+      return m_value.m_vector_symbolic[idx];
+   }
+
    const std::string &vec_name1() const
    {
       assert( m_type == vector_t);
@@ -858,13 +865,14 @@ private:
 class param_info {
 public:
    param_info() { m_valid = false; m_value_set=false;}
-   param_info( unsigned index, std::string name, int type ) 
+   param_info( unsigned index, std::string name, int type, size_t size ) 
    {
       m_valid = true;
       m_value_set = false;
       m_index = index;
       m_name = name;
       m_type = type;
+      m_size = size;
    }
    void add_data( param_t v ) { 
       m_value_set = true;
@@ -873,11 +881,13 @@ public:
    std::string get_name() const { return m_name; }
    int get_type() const { return m_type; }
    param_t get_value() const { assert(m_value_set); return m_value; }
+   size_t get_size() const { return m_size; }
 private:
    bool m_valid;
    unsigned m_index;
    std::string m_name;
    int m_type;
+   size_t m_size;
    bool m_value_set;
    param_t m_value;
 };
@@ -954,7 +964,7 @@ public:
    {
       m_params[ name ] = value;
    }
-   void add_param_name_and_type( unsigned index, std::string name, int type );
+   void add_param_name_type_size( unsigned index, std::string name, int type, size_t size );
    void add_param_data( unsigned argn, struct gpgpu_ptx_sim_arg *args );
    void add_return_var( const symbol *rv )
    {
@@ -998,62 +1008,8 @@ public:
        return m_start_PC;
    }
 
-   void finalize( memory_space *param_mem, symbol_table *symtab  ) 
-   {
-      unsigned param_address = 0;
-      for( std::map<unsigned,param_info>::iterator i=m_ptx_param_info.begin(); i!=m_ptx_param_info.end(); i++ ) {
-         param_info &p = i->second;
-         std::string name = p.get_name();
-         int type = p.get_type();
-         param_t value = p.get_value();
-         value.type = type;
-         symbol *param = symtab->lookup(name.c_str());
-         unsigned xtype = param->type()->get_key().scalar_type();
-         assert(xtype==(unsigned)type);
-         int tmp;
-         size_t size;
-         type_decode(xtype,size,tmp);
-         param_mem->write(param_address,size/8,&value); 
-         param->set_address(param_address);
-         param_address += 8;//align to 64 bits so mem_access doesn't complain (before was size/8);
-      }
-   }
-   ptx_reg_t get_param( const std::string &name ) const
-   {
-      std::map<std::string,param_t>::const_iterator i = m_params.find(name);
-      if ( i == m_params.end() ) {
-         printf("Loader error: parameter \"%s\" value not defined in configuration\n", name.c_str() );  
-         abort();
-      } else {
-         param_t x = i->second;
-         ptx_reg_t y;
-         switch ( x.type ) {
-         case S8_TYPE: 
-         case S16_TYPE:
-         case S32_TYPE:
-         case S64_TYPE:
-         case B8_TYPE:
-         case B16_TYPE:
-         case B32_TYPE:
-         case B64_TYPE:
-         case U8_TYPE:
-         case U16_TYPE:
-         case U32_TYPE:
-         case U64_TYPE:
-            y.u64 = x.data.int_value;
-            break;
-         case F16_TYPE:
-            assert(0);
-         case F32_TYPE:
-            y.f32 = x.data.float_value;
-            break;
-         case F64_TYPE:
-            y.f64 = x.data.double_value;
-            break;
-         }
-         return y;
-      }
-   }
+   void finalize( memory_space *param_mem, symbol_table *symtab );
+   void list_param( FILE *fout ) const;
 
    const struct gpgpu_ptx_sim_kernel_info* get_kernel_info () {
       return &m_kernel_info;
