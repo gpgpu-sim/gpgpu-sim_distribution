@@ -459,6 +459,7 @@ function_info::function_info(int entry_point )
    m_kernel_info.lmem = 0;
    m_kernel_info.regs = 0;
    m_kernel_info.smem = 0;
+   m_local_mem_framesize = (unsigned)-1;
 }
 
 void function_info::print_insn( unsigned pc, FILE * fp ) const
@@ -986,11 +987,6 @@ void function_info::add_param_name_type_size( unsigned index, std::string name, 
    }
 }
 
-void function_info::add_local_param_name_type_size( std::string name, int type, size_t size )
-{
-   m_ptx_local_params[name] = param_info(name, type, size);
-}
-
 void function_info::add_param_data( unsigned argn, struct gpgpu_ptx_sim_arg *args )
 {
    const void *data = args->m_start;
@@ -1345,10 +1341,8 @@ unsigned ptx_sim_init_thread( ptx_thread_info** thread_info,int sid,unsigned tid
    unsigned max_cta_per_sm = num_threads/cta_size; // e.g., 256 / 48 = 5 
    assert( max_cta_per_sm > 0 );
 
-   //following sm_idx calculation assumes shaders being filled up depth-first?
-   unsigned sm_idx = sid*max_cta_per_sm + sm_offset; /* Is this assuming non-even block distribution? */
+   unsigned sm_idx = sid*max_cta_per_sm + sm_offset;
    sm_idx = max_cta_per_sm*sid + tid/cta_size;
-
 
    if (!gpgpu_option_spread_blocks_across_cores) {
       // update offset...
@@ -1905,7 +1899,7 @@ void gpgpu_ptx_assemble( std::string kname, void *kinfo )
 {
     function_info *func_info = (function_info *)kinfo;
     if( func_info->is_extern() ) {
-       printf("GPGPU-Sim: skipping assembly for extern declared function \'%s\'", func_info->get_name().c_str() );
+       printf("GPGPU-Sim PTX: skipping assembly for extern declared function \'%s\'\n", func_info->get_name().c_str() );
        return;
     }
     g_func_info = func_info;

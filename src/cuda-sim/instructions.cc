@@ -141,6 +141,8 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op )
          result.u64 = baseaddr.u64 + op.get_addr_offset(); 
       } else if ( info.is_param_kernel() ) {
          result = sym->get_address() + op.get_addr_offset();
+      } else if ( info.is_param_local() ) {
+         result = sym->get_address() + op.get_addr_offset();
       } else if ( info.is_global() ) {
          assert( op.get_addr_offset() == 0 );
          result = sym->get_address();
@@ -151,7 +153,9 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op )
       } else if ( op.is_shared() ) {
          result = op.get_symbol()->get_address() + op.get_addr_offset();
       } else {
-         assert(0);
+         name = op.name().c_str();
+         printf("GPGPU-Sim PTX: ERROR ** get_operand_value : unknown memory operand type for %s\n", name );
+         abort();
       }
 
    } else if ( op.is_literal() ) {
@@ -168,7 +172,7 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op )
       result = op.get_symbol()->get_address();
    } else {
       name = op.name().c_str();
-      printf("ERROR! %s is neither local, global, const, shared, label, literal, memory operand, builtin, or register!\n",name);
+      printf("GPGPU-Sim PTX: ERROR ** get_operand_value : unknown operand type for %s\n", name );
       assert(0);
    }
 
@@ -1460,11 +1464,13 @@ void decode_space( memory_space_t &space, ptx_thread_info *thread, memory_space 
    unsigned hwtid = thread->get_hw_tid();
    switch ( space ) {
    case global_space: mem = g_global_mem; break;
-   case local_space:  mem = thread->m_local_mem; break; 
+   case param_space_local:
+   case local_space:
+      mem = thread->m_local_mem; 
+      addr += thread->get_local_mem_stack_pointer();
+      break; 
    case tex_space:    mem = g_tex_mem; break; 
    case surf_space:   mem = g_surf_mem; break; 
-   case param_space_local:  
-      abort(); // finish this
    case param_space_kernel:  mem = g_param_mem; break;
    case shared_space:  mem = thread->m_shared_mem; break; 
    case const_space:  mem = g_global_mem; break;

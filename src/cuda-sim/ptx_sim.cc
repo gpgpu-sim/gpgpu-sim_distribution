@@ -241,6 +241,7 @@ ptx_thread_info::ptx_thread_info()
    m_RPC_updated = false;
    m_last_was_call = false;
    m_enable_debug_trace = false;
+   m_local_mem_stack_pointer = 0;
 }
 
 const ptx_version &ptx_thread_info::get_ptx_version() const 
@@ -445,6 +446,16 @@ void ptx_thread_info::dump_modifiedregs()
       ptx_reg_t value = r->second;
       print_reg(name,value);
    }
+}
+
+void ptx_thread_info::push_local_mem_stack() 
+{ 
+   m_local_mem_stack_pointer += m_func_info->local_mem_framesize(); 
+}
+
+void ptx_thread_info::pop_local_mem_stack() 
+{ 
+   m_local_mem_stack_pointer -= m_func_info->local_mem_framesize(); 
 }
 
 void ptx_thread_info::set_npc( const function_info *f )

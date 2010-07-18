@@ -196,6 +196,7 @@ public:
       m_is_const = false;
       m_is_global = false;
       m_is_local = false;
+      m_is_param_local = false;
       m_is_tex = false;
       m_is_func_addr = false;
       m_reg_num_valid = false;
@@ -204,6 +205,7 @@ public:
       if ( type ) m_is_const = type->get_key().is_const();
       if ( type ) m_is_global = type->get_key().is_global();
       if ( type ) m_is_local = type->get_key().is_local();
+      if ( type ) m_is_param_local = type->get_key().is_param_local();
       if ( type ) m_is_tex = type->get_key().is_tex();
       if ( type ) m_is_func_addr = type->get_key().is_func_addr();
    }
@@ -249,6 +251,7 @@ public:
    bool is_const() const { return m_is_const;}
    bool is_global() const { return m_is_global;}
    bool is_local() const { return m_is_local;}
+   bool is_param_local() const { return m_is_param_local; }
    bool is_tex() const { return m_is_tex;}
    bool is_func_addr() const { return m_is_func_addr; }
 
@@ -289,6 +292,7 @@ private:
    bool m_is_const;
    bool m_is_global;
    bool m_is_local;
+   bool m_is_param_local;
    bool m_is_tex;
    bool m_is_func_addr;
    unsigned m_reg_num; 
@@ -373,6 +377,8 @@ public:
       } else if ( addr->is_global() ) {
          m_type = symbolic_t;
       } else if ( addr->is_local() ) {
+         m_type = symbolic_t;
+      } else if ( addr->is_param_local() ) {
          m_type = symbolic_t;
       } else if ( addr->is_tex() ) {
          m_type = symbolic_t;
@@ -944,7 +950,6 @@ public:
       m_kernel_params[ name ] = value;
    }
    void add_param_name_type_size( unsigned index, std::string name, int type, size_t size );
-   void add_local_param_name_type_size( std::string name, int type, size_t size );
    void add_param_data( unsigned argn, struct gpgpu_ptx_sim_arg *args );
    void add_return_var( const symbol *rv )
    {
@@ -1009,9 +1014,15 @@ public:
       assert(pc <= s_g_pc_to_insn.size());
       return s_g_pc_to_insn[pc - 1];
    }
+   unsigned local_mem_framesize() const 
+   { 
+      assert( m_local_mem_framesize != (unsigned) -1 ); 
+      return m_local_mem_framesize; 
+   }
 
 private:
    unsigned m_uid;
+   unsigned m_local_mem_framesize;
    bool m_entry_point;
    bool m_extern;
    bool m_assembled;
@@ -1021,7 +1032,6 @@ private:
    unsigned m_instr_mem_size;
    std::map<std::string,param_t> m_kernel_params;
    std::map<unsigned,param_info> m_ptx_kernel_param_info;
-   std::map<std::string,param_info> m_ptx_local_params;
    const symbol *m_return_var_sym;
    std::vector<const symbol*> m_args;
    std::list<ptx_instruction*> m_instructions;

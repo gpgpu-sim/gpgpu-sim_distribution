@@ -455,7 +455,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       g_sym_name_to_symbol_table[ identifier ] = g_current_symbol_table;
       break;
    case local_space:
-      printf("GPGPU-Sim PTX: allocating local region for \"%s\" from 0x%x to 0x%lx (local memory space)\n",
+      printf("GPGPU-Sim PTX: allocating stack frame region for .local \"%s\" from 0x%x to 0x%lx\n",
              identifier,
              g_current_symbol_table->get_local_next(),
              g_current_symbol_table->get_local_next() + num_bits/8 );
@@ -468,6 +468,15 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       printf("GPGPU-Sim PTX: encountered texture directive %s.\n", identifier);
       break;
    case param_space_local:
+      printf("GPGPU-Sim PTX: allocating stack frame region for .param \"%s\" from 0x%x to 0x%lx\n",
+             identifier,
+             g_current_symbol_table->get_local_next(),
+             g_current_symbol_table->get_local_next() + num_bits/8 );
+      fflush(stdout);
+      assert( (num_bits%8) == 0  );
+      g_last_symbol->set_address( g_current_symbol_table->get_local_next() );
+      g_current_symbol_table->alloc_local( num_bits/8 );
+      break;
    case param_space_kernel:
       break;
    default:
@@ -475,12 +484,20 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       break;
    }
 
-
+   assert( !ti.is_param_unclassified() );
    if ( ti.is_param_kernel() ) {
       g_func_info->add_param_name_type_size(g_entry_func_param_index,identifier, ti.scalar_type(), num_bits );
       g_entry_func_param_index++;
-   } else if ( ti.is_param_local() || ti.is_param_unclassified() ) {
-      g_func_info->add_local_param_name_type_size( identifier, ti.scalar_type(), num_bits );
+   } else if ( ti.is_param_local() ) {
+      printf("GPGPU-Sim PTX: allocating stack frame region for input/output .param \"%s\" from 0x%x to 0x%lx\n",
+             identifier,
+             g_current_symbol_table->get_local_next(),
+             g_current_symbol_table->get_local_next() + num_bits/8 );
+      fflush(stdout);
+      assert( (num_bits%8) == 0  );
+      addr_t addr = g_current_symbol_table->get_local_next();
+      g_last_symbol->set_address( addr );
+      g_current_symbol_table->alloc_local( num_bits/8 );
    }
 }
 

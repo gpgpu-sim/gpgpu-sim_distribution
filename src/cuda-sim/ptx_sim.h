@@ -424,6 +424,10 @@ public:
 
    void enable_debug_trace() { m_enable_debug_trace = true; }
 
+   unsigned get_local_mem_stack_pointer() const { return m_local_mem_stack_pointer; }
+   void push_local_mem_stack();
+   void pop_local_mem_stack();
+
 public:
    addr_t         m_last_effective_address;
    bool        m_branch_taken;
@@ -464,8 +468,8 @@ private:
    function_info *m_func_info;
 
    std::list<stack_entry> m_callstack;
+   unsigned m_local_mem_stack_pointer;
 
-   // typedef std::unordered_map<std::string,ptx_reg_t> reg_map_t;
    typedef std::unordered_map<const symbol*,ptx_reg_t> reg_map_t;
    std::list<reg_map_t> m_regs;
 
