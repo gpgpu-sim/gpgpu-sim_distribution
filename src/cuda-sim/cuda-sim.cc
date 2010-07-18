@@ -1384,23 +1384,20 @@ unsigned ptx_sim_init_thread( void** thread_info,int sid,unsigned tid,unsigned t
    }
 
    std::map<unsigned,memory_space*> &local_mem_lookup = g_local_memory_lookup[sid];
-   unsigned new_tid;
    for ( unsigned tz=0; tz < g_cudaBlockDim.z; tz++ ) {
       for ( unsigned ty=0; ty < g_cudaBlockDim.y; ty++ ) {
          for ( unsigned tx=0; tx < g_cudaBlockDim.x; tx++ ) {
-            new_tid = tx + g_cudaBlockDim.x*ty + g_cudaBlockDim.x*g_cudaBlockDim.y*tz; //unique id but only to a BLOCK
-            new_tid += tid; 
             ptx_thread_info *thd = new ptx_thread_info();
 
             memory_space *local_mem = NULL;
-            std::map<unsigned,memory_space*>::iterator l = local_mem_lookup.find(new_tid);
+            std::map<unsigned,memory_space*>::iterator l = local_mem_lookup.find(tid);
             if ( l != local_mem_lookup.end() ) {
                local_mem = l->second;
             } else {
                char buf[512];
-               snprintf(buf,512,"local_%u_%u", sid, new_tid);
+               snprintf(buf,512,"local_%u_%u", sid, tid);
                local_mem = new memory_space_impl<32>(buf,32);
-               local_mem_lookup[new_tid] = local_mem;
+               local_mem_lookup[tid] = local_mem;
             }
             thd->set_info(g_entrypoint_symbol_table,g_entrypoint_func_info);
             thd->set_nctaid(g_cudaGridDim.x,g_cudaGridDim.y,g_cudaGridDim.z);
