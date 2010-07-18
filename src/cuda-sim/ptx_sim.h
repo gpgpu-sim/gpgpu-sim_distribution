@@ -421,6 +421,7 @@ public:
    void dump_modifiedregs();
    void clear_modifiedregs() { m_debug_trace_regs_modified.clear();}
    function_info *get_finfo() { return m_func_info;   }
+   const function_info *get_finfo() const { return m_func_info;   }
 
    void enable_debug_trace() { m_enable_debug_trace = true; }
    unsigned get_local_mem_stack_pointer() const { return m_local_mem_stack_pointer; }
