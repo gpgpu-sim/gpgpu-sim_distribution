@@ -74,6 +74,7 @@
 
 #include "cuda-math.h"
 #include "../abstract_hardware_model.h"
+#include <stdarg.h>
 
 unsigned g_num_ptx_inst_uid=0;
 unsigned cudasim_n_tex_insn=0;
@@ -390,7 +391,7 @@ void atom_callback( void* ptx_inst, void* thd )
    unsigned to_type = pI->get_type();
    size_t size;
    int t;
-   type_decode(to_type, size, t);
+   type_info_key::type_decode(to_type, size, t);
 
    // Set up operand variables
    ptx_reg_t data,      // d
@@ -684,6 +685,45 @@ void brkpt_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not
 extern int gpgpu_simd_model;
 #define POST_DOMINATOR 1 /* must match enum value in shader.h */
 void get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *npc, unsigned *rpc );
+void decode_space( memory_space_t &space, ptx_thread_info *thread, const operand_info &op, memory_space *&mem, addr_t &addr);
+
+void my_cuda_printf(const char *fmtstr,const char *arg_list)
+{
+   FILE *fp = stdout;
+   unsigned i=0,j=0;
+   unsigned arg_offset=0;
+   char buf[64];
+   bool in_fmt=false;
+   while( fmtstr[i] ) {
+      char c = fmtstr[i++];
+      if( !in_fmt ) {
+         if( c != '%' ) {
+            fprintf(fp,"%c",c);
+         } else {
+            in_fmt=true;
+            buf[0] = c;
+            j=1;
+         }
+      } else {
+         if(!( c == 'u' || c == 'f' || c == 'd' )) {
+            printf("GPGPU-Sim PTX: ERROR ** printf parsing support is limited to %%u, %%f, %%d at present");
+            abort();
+         }
+         buf[j] = c;
+         buf[j+1] = 0;
+         unsigned long long value = ((unsigned long long*)arg_list)[arg_offset];
+         if( c == 'u' || c == 'd' ) {
+            fprintf(fp,buf,value);
+         } else if( c == 'f' ) {
+            double tmp = *(double*)(void*)&value;
+            fprintf(fp,buf,tmp);
+         }
+         arg_offset++;
+         in_fmt=false;
+      }
+   }
+}
+
 
 void call_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 {
@@ -709,51 +749,114 @@ void call_impl( const ptx_instruction *pI, ptx_thread_info *thread )
              "               call instruction and function declaration\n");
       abort(); 
    }
-
    // read source arguements into register specified in declaration of function
    std::list< std::pair<const symbol*, ptx_reg_t> > arg_values;
    for( unsigned arg=0; arg < n_args; arg ++ ) {
-      const operand_info &op_info = pI->operand_lookup(n_return+1+arg);
-      if( !op_info.is_reg() ) {
-         printf("GPGPU-Sim PTX: Execution error - no support for non-register opernands for call/return\n"); 
-         abort();
-      } 
-      const symbol *dst_reg = target_func->get_arg(arg);
-
-      ptx_reg_t src_value = thread->get_operand_value(op_info);
-      arg_values.push_back( std::make_pair(dst_reg,src_value) );
+      const operand_info &actual_param_op = pI->operand_lookup(n_return+1+arg);
+      const symbol *formal_param = target_func->get_arg(arg);
+      unsigned size=formal_param->get_size_in_bytes();
+      if( formal_param->is_reg() ) {
+         ptx_reg_t value;
+         if( actual_param_op.is_reg() ) 
+            value = thread->get_operand_value(actual_param_op);
+         else {
+            assert( actual_param_op.is_param_local() );
+            const symbol *actual_param = actual_param_op.get_symbol();
+            addr_t from_addr = thread->get_local_mem_stack_pointer() + actual_param->get_address();
+            assert(size<=sizeof(value.u64));
+            thread->m_local_mem->read(from_addr,size,&value.u64);
+         }
+         arg_values.push_back( std::make_pair(formal_param,value) );
+      } else {
+         assert( formal_param->is_param_local() );
+         // copy values to location in callee frame
+         addr_t to_addr = thread->get_local_mem_stack_pointer() + 
+                          thread->func_info()->local_mem_framesize() + 
+                          formal_param->get_address();
+         if( actual_param_op.is_reg() )  {
+            ptx_reg_t value = thread->get_operand_value(actual_param_op);
+            thread->m_local_mem->write(to_addr,size,&value.u64);
+         } else {
+            addr_t from_addr = actual_param_op.get_symbol()->get_address();
+            char buffer[1024];
+            assert(size<1024); 
+            thread->m_local_mem->read(from_addr,size,buffer);
+            thread->m_local_mem->write(to_addr,size,buffer);
+         }
+      }
    }
-
-   // note register for corresponding return instruction to place result into
-   const symbol *return_var_src = NULL;
-   const symbol *return_var_dst = NULL;
-   if( target_func->has_return() ) {
-      if( !pI->dst().is_reg() ) {
-         printf("GPGPU-Sim PTX: Execution error - no support for non-register dst reg for call\n"); 
-         abort();
-      } 
-      return_var_dst = pI->dst().get_symbol();
-      return_var_src = target_func->get_return_var();
-   }
-
-   unsigned sid = thread->get_hw_sid();
-   unsigned tid = thread->get_hw_tid();
-   unsigned callee_pc=0, callee_rpc=0;
-   if( gpgpu_simd_model == POST_DOMINATOR ) {
-      get_pdom_stack_top_info(sid,tid,&callee_pc,&callee_rpc);
-      assert( callee_pc == thread->get_pc() );
-   }
-
-   thread->callstack_push(callee_pc+1,callee_rpc,return_var_src,return_var_dst,call_uid_next++);
 
    std::list< std::pair<const symbol*, ptx_reg_t> >::iterator a;
-   for( a=arg_values.begin(); a != arg_values.end(); a++ ) {
-      const symbol *dst_reg = a->first;
-      ptx_reg_t value = a->second;
-      thread->set_operand_value(dst_reg,value);
+   std::string fname = target_func->get_name();
+   if( fname == "vprintf" ) {
+      char *fmtstr = NULL;
+      char *arg_list = NULL;
+      assert( n_args == 2 );
+      for( unsigned arg=0; arg < n_args; arg ++ ) {
+         const operand_info &actual_param_op = pI->operand_lookup(n_return+1+arg);
+         const symbol *formal_param = target_func->get_arg(arg);
+         unsigned size=formal_param->get_size_in_bytes();
+         assert( formal_param->is_param_local() );
+         assert( actual_param_op.is_param_local() );
+         addr_t from_addr = actual_param_op.get_symbol()->get_address();
+         char buffer[1024];
+         assert(size<1024); 
+         thread->m_local_mem->read(from_addr,size,buffer);
+         addr_t addr = (addr_t)*(unsigned long long*)((void*)buffer); // should be pointer to generic memory location
+         memory_space *mem=NULL;
+         memory_space_t space = generic_space;
+         decode_space(space,thread,actual_param_op,mem,addr); // figure out which space
+         if( arg == 0 ) {
+            unsigned len = 0;
+            char b = 0;
+            do { // figure out length
+               mem->read(addr+len,1,&b);
+               len++;
+            } while(b);
+            fmtstr = (char*)malloc(len+64);
+            for( int i=0; i < len; i++ ) 
+               mem->read(addr+i,1,fmtstr+i);
+            //mem->read(addr,len,fmtstr);
+         } else {
+            unsigned len = thread->get_finfo()->local_mem_framesize();
+            arg_list = (char*)malloc(len+64);
+            for( int i=0; i < len; i++ ) 
+               mem->read(addr+i,1,arg_list+i);
+            //mem->read(addr,len,arg_list);
+         }
+      }
+      my_cuda_printf(fmtstr,arg_list);
+      free(fmtstr);
+      free(arg_list);
+   } else {
+      // note register for corresponding return instruction to place result into
+      const symbol *return_var_src = NULL;
+      const symbol *return_var_dst = NULL;
+      if( target_func->has_return() ) {
+         if( pI->dst().is_reg() ) {
+            return_var_dst = pI->dst().get_symbol();
+            return_var_src = target_func->get_return_var();
+         }
+      }
+   
+      unsigned sid = thread->get_hw_sid();
+      unsigned tid = thread->get_hw_tid();
+      unsigned callee_pc=0, callee_rpc=0;
+      if( gpgpu_simd_model == POST_DOMINATOR ) {
+         get_pdom_stack_top_info(sid,tid,&callee_pc,&callee_rpc);
+         assert( callee_pc == thread->get_pc() );
+      }
+   
+      thread->callstack_push(callee_pc+1,callee_rpc,return_var_src,return_var_dst,call_uid_next++);
+   
+      for( a=arg_values.begin(); a != arg_values.end(); a++ ) {
+         const symbol *dst_reg = a->first;
+         ptx_reg_t value = a->second;
+         thread->set_operand_value(dst_reg,value);
+      }
+   
+      thread->set_npc(target_func);
    }
-
-   thread->set_npc(target_func);
 }
 
 void clz_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
@@ -1133,32 +1236,6 @@ ptx_reg_t (*g_cvt_fn[11][11])( ptx_reg_t x, unsigned from_width, unsigned to_wid
    { d2x , d2x , d2x , d2x , d2x , d2x , d2x , d2x , d2x, d2x, d2d} 
 };
 
-unsigned type_decode( unsigned type, size_t &size, int &basic_type )
-{
-   switch ( type ) {
-   case S8_TYPE:  size=8;  basic_type=1; return 0;
-   case S16_TYPE: size=16; basic_type=1; return 1;
-   case S32_TYPE: size=32; basic_type=1; return 2;
-   case S64_TYPE: size=64; basic_type=1; return 3;
-   case U8_TYPE:  size=8;  basic_type=0; return 4;
-   case U16_TYPE: size=16; basic_type=0; return 5;
-   case U32_TYPE: size=32; basic_type=0; return 6;
-   case U64_TYPE: size=64; basic_type=0; return 7;
-   case F16_TYPE: size=16; basic_type=-1; return 8;
-   case F32_TYPE: size=32; basic_type=-1; return 9;
-   case F64_TYPE: size=64; basic_type=-1; return 10;
-   case PRED_TYPE: size=1; basic_type=2; return 11;
-   case B8_TYPE:  size=8;  basic_type=0; return 12;
-   case B16_TYPE: size=16; basic_type=0; return 13;
-   case B32_TYPE: size=32; basic_type=0; return 14;
-   case B64_TYPE: size=64; basic_type=0; return 15;
-   default: 
-      printf("ERROR ** type_decode() does not know about \"%s\"\n", g_ptx_token_decode[type].c_str() ); 
-      assert(0); 
-      return 0xDEADBEEF;
-   }
-}
-
 void ptx_round(ptx_reg_t& data, int rounding_mode, int type)
 {
    if (rounding_mode == RN_OPTION) {
@@ -1309,8 +1386,8 @@ void cvt_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    int to_sign, from_sign;
    size_t from_width, to_width;
-   unsigned src_fmt = type_decode(from_type, from_width, from_sign);
-   unsigned dst_fmt = type_decode(to_type, to_width, to_sign);
+   unsigned src_fmt = type_info_key::type_decode(from_type, from_width, from_sign);
+   unsigned dst_fmt = type_info_key::type_decode(to_type, to_width, to_sign);
 
    ptx_reg_t data = thread->get_operand_value(src1);
    if ( g_cvt_fn[src_fmt][dst_fmt] != NULL ) {
@@ -1458,10 +1535,25 @@ void isspacep_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->set_operand_value(dst,p);
 }
 
-void decode_space( memory_space_t &space, ptx_thread_info *thread, memory_space *&mem, addr_t &addr)
+void decode_space( memory_space_t &space, ptx_thread_info *thread, const operand_info &op, memory_space *&mem, addr_t &addr)
 {
    unsigned smid = thread->get_hw_sid();
    unsigned hwtid = thread->get_hw_tid();
+
+   if( space == param_space_unclassified ) {
+      // need to op to determine whether it refers to a kernel param or local param
+      const symbol *s = op.get_symbol();
+      const type_info *t = s->type();
+      type_info_key ti = t->get_key();
+      if( ti.is_param_kernel() )
+         space = param_space_kernel;
+      else if( ti.is_param_local() ) {
+         space = param_space_local;
+      } else {
+         printf("GPGPU-Sim PTX: ERROR ** cannot resolve .param space for '%s'\n", s->name().c_str() );
+         abort(); 
+      }
+   }
    switch ( space ) {
    case global_space: mem = g_global_mem; break;
    case param_space_local:
@@ -1474,7 +1566,7 @@ void decode_space( memory_space_t &space, ptx_thread_info *thread, memory_space 
    case param_space_kernel:  mem = g_param_mem; break;
    case shared_space:  mem = thread->m_shared_mem; break; 
    case const_space:  mem = g_global_mem; break;
-   default:
+   case generic_space:
       if( thread->get_ptx_version().ver() >= 2.0 ) {
          // convert generic address to memory space address
          space = whichspace(addr);
@@ -1488,6 +1580,10 @@ void decode_space( memory_space_t &space, ptx_thread_info *thread, memory_space 
          abort();
       }
       break;
+   case param_space_unclassified:
+   case undefined_space:
+   default:
+      abort();
    }
 }
 
@@ -1503,12 +1599,12 @@ void ld_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    memory_space *mem = NULL;
    addr_t addr = src1_data.u32;
 
-   decode_space(space,thread,mem,addr);
+   decode_space(space,thread,src1,mem,addr);
 
    size_t size;
    int t;
    data.u64=0;
-   type_decode(type,size,t);
+   type_info_key::type_decode(type,size,t);
    if (!vector_spec) {
       mem->read(addr,size/8,&data.s64);
       if( type == S16_TYPE || type == S32_TYPE ) 
@@ -2640,11 +2736,11 @@ void st_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    memory_space *mem = NULL;
    addr_t addr = addr_reg.u32;
 
-   decode_space(space,thread,mem,addr);
+   decode_space(space,thread,dst,mem,addr);
 
    size_t size;
    int t;
-   type_decode(type,size,t);
+   type_info_key::type_decode(type,size,t);
 
    if (!vector_spec) {
       data = thread->get_operand_value(src1);
@@ -2815,7 +2911,7 @@ void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    unsigned tex_array_index;
    float alpha=0, beta=0;
 
-   type_decode(to_type,size,t);
+   type_info_key::type_decode(to_type,size,t);
    tex_array_base = cuArray->devPtr32;
 
    switch (dimension) {

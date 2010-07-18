@@ -423,10 +423,7 @@ public:
    function_info *get_finfo() { return m_func_info;   }
 
    void enable_debug_trace() { m_enable_debug_trace = true; }
-
    unsigned get_local_mem_stack_pointer() const { return m_local_mem_stack_pointer; }
-   void push_local_mem_stack();
-   void pop_local_mem_stack();
 
 public:
    addr_t         m_last_effective_address;
@@ -476,8 +473,6 @@ private:
    bool m_enable_debug_trace;
    reg_map_t m_debug_trace_regs_modified; // track the modified register for each executed insn
 };
-
-unsigned type_decode( unsigned type, size_t &size, int &t );
 
 addr_t generic_to_local( unsigned smid, unsigned hwtid, addr_t addr );
 addr_t generic_to_shared( unsigned smid, addr_t addr );

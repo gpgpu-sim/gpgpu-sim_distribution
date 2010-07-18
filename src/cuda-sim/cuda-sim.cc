@@ -417,6 +417,9 @@ ptx_instruction::ptx_instruction( int opcode,
    }
    m_scalar_type = scalar_type;
    m_space_spec = space_spec;
+   if( ( opcode == ST_OP || opcode == LD_OP ) && (space_spec == undefined_space) ) {
+      m_space_spec = generic_space;
+   }
    m_source_file = file?file:"<unknown>";
    m_source_line = line;
    m_source = source;
@@ -459,7 +462,7 @@ function_info::function_info(int entry_point )
    m_kernel_info.lmem = 0;
    m_kernel_info.regs = 0;
    m_kernel_info.smem = 0;
-   m_local_mem_framesize = (unsigned)-1;
+   m_local_mem_framesize = 0;
 }
 
 void function_info::print_insn( unsigned pc, FILE * fp ) const
@@ -531,14 +534,14 @@ void function_info::ptx_assemble()
 
    create_basic_blocks();
    connect_basic_blocks();
-   if ( g_debug_execution>=2 ) {
+   if ( g_debug_execution>=50 ) {
       print_basic_blocks();
       print_basic_block_links();
       print_basic_block_dot();
    }
    find_postdominators();
    find_ipostdominators();
-   if ( g_debug_execution>=2 ) {
+   if ( g_debug_execution>=50 ) {
       print_postdominators();
       print_ipostdominators();
    }
@@ -561,37 +564,36 @@ void gpgpu_ptx_sim_init_memory()
 
 int load_static_globals( symbol_table *symtab, unsigned min_gaddr, unsigned max_gaddr) 
 {
-   printf( "GPGPU-Sim PTX: loading global with explicit initializers... " );
+   printf( "GPGPU-Sim PTX: loading globals with explicit initializers... \n" );
    fflush(stdout);
    int ng_bytes=0;
    symbol_table::iterator g=symtab->global_iterator_begin();
-   bool below_image=true;
 
    for ( ; g!=symtab->global_iterator_end(); g++) {
       symbol *global = *g;
       if ( global->has_initializer() ) {
+         printf( "GPGPU-Sim PTX:     initializing '%s' ... ", global->name().c_str() ); 
+         unsigned addr=global->get_address();
+         const type_info *type = global->type();
+         type_info_key ti=type->get_key();
+         size_t size;
+         int t;
+         ti.type_decode(size,t);
+         int nbytes = size/8;
+         int offset=0;
          std::list<operand_info> init_list = global->get_initializer();
          for ( std::list<operand_info>::iterator i=init_list.begin(); i!=init_list.end(); i++ ) {
             operand_info op = *i;
             ptx_reg_t value = op.get_literal_value();
-            int nbytes = 0;
-            switch ( op.get_type() ) {
-            case int_t: nbytes = 4; break;
-            case float_op_t: nbytes = 4; break;
-            case double_op_t: nbytes = 8; break;
-            default:
-               abort();
-            }
-            unsigned addr=global->get_address();
-
-            assert( below_image && addr+nbytes < min_gaddr ); // min_gaddr is start of "heap" for cudaMalloc
-
-            g_global_mem->write(addr,nbytes,&value);
+            assert( (addr+offset+nbytes) < min_gaddr ); // min_gaddr is start of "heap" for cudaMalloc
+            g_global_mem->write(addr+offset,nbytes,&value); // assuming little endian here
+            offset+=nbytes;
             ng_bytes+=nbytes;
          }
+         printf(" wrote %u bytes\n", offset ); 
       }
    }
-   printf( " done.\n");
+   printf( "GPGPU-Sim PTX: finished loading globals (%u bytes total).\n", ng_bytes );
    fflush(stdout);
    return ng_bytes;
 }
@@ -610,7 +612,7 @@ int load_constants( symbol_table *symtab, addr_t min_gaddr )
          // get the constant element data size
          int basic_type;
          size_t num_bits;
-         type_decode(constant->type()->get_key().scalar_type(),num_bits,basic_type); 
+         constant->type()->get_key().type_decode(num_bits,basic_type); 
 
          std::list<operand_info> init_list = constant->get_initializer();
          int nbytes_written = 0;
@@ -1378,20 +1380,23 @@ unsigned ptx_sim_init_thread( ptx_thread_info** thread_info,int sid,unsigned tid
    }
 
    std::map<unsigned,memory_space*> &local_mem_lookup = g_local_memory_lookup[sid];
+   unsigned new_tid;
    for ( unsigned tz=0; tz < g_cudaBlockDim.z; tz++ ) {
       for ( unsigned ty=0; ty < g_cudaBlockDim.y; ty++ ) {
          for ( unsigned tx=0; tx < g_cudaBlockDim.x; tx++ ) {
+            new_tid = tx + g_cudaBlockDim.x*ty + g_cudaBlockDim.x*g_cudaBlockDim.y*tz;
+            new_tid += tid;
             ptx_thread_info *thd = new ptx_thread_info();
 
             memory_space *local_mem = NULL;
-            std::map<unsigned,memory_space*>::iterator l = local_mem_lookup.find(tid);
+            std::map<unsigned,memory_space*>::iterator l = local_mem_lookup.find(new_tid);
             if ( l != local_mem_lookup.end() ) {
                local_mem = l->second;
             } else {
                char buf[512];
-               snprintf(buf,512,"local_%u_%u", sid, tid);
+               snprintf(buf,512,"local_%u_%u", sid, new_tid);
                local_mem = new memory_space_impl<32>(buf,32);
-               local_mem_lookup[tid] = local_mem;
+               local_mem_lookup[new_tid] = local_mem;
             }
             thd->set_info(g_entrypoint_symbol_table,g_entrypoint_func_info);
             thd->set_nctaid(g_cudaGridDim.x,g_cudaGridDim.y,g_cudaGridDim.z);
@@ -1835,7 +1840,7 @@ void gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num )
         exit(40);
     }
 
-    if ( g_debug_execution >= 1 ) 
+    if ( g_debug_execution >= 100 ) 
        print_ptx_file(p,source_num,g_filename);
 
     printf("GPGPU-Sim PTX: finished parsing EMBEDDED .ptx file %s\n",g_filename);

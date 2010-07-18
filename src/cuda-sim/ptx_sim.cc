@@ -358,6 +358,7 @@ void ptx_thread_info::callstack_push( unsigned pc, unsigned rpc, const symbol *r
    m_last_was_call = true;
    m_callstack.push_back( stack_entry(m_symbol_table,m_func_info,pc,rpc,return_var_src,return_var_dst,call_uid) );
    m_regs.push_back( reg_map_t() );
+   m_local_mem_stack_pointer += m_func_info->local_mem_framesize(); 
 }
 
 #define POST_DOMINATOR 1 /* must match definition in shader.h */
@@ -368,7 +369,9 @@ extern void set_operand_value( const symbol *dst, const ptx_reg_t &data );
 bool ptx_thread_info::callstack_pop()
 {
    assert( !m_callstack.empty() );
+   assert( m_local_mem_stack_pointer >= m_func_info->local_mem_framesize() );
    m_func_info = m_callstack.back().m_func_info;
+   m_local_mem_stack_pointer -= m_func_info->local_mem_framesize(); 
    m_symbol_table = m_callstack.back().m_symbol_table;
    m_NPC = m_callstack.back().m_PC;
    m_RPC_updated = true;
@@ -446,16 +449,6 @@ void ptx_thread_info::dump_modifiedregs()
       ptx_reg_t value = r->second;
       print_reg(name,value);
    }
-}
-
-void ptx_thread_info::push_local_mem_stack() 
-{ 
-   m_local_mem_stack_pointer += m_func_info->local_mem_framesize(); 
-}
-
-void ptx_thread_info::pop_local_mem_stack() 
-{ 
-   m_local_mem_stack_pointer -= m_func_info->local_mem_framesize(); 
 }
 
 void ptx_thread_info::set_npc( const function_info *f )

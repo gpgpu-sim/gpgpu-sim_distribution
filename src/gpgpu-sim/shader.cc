@@ -1659,8 +1659,7 @@ inline int is_const ( memory_space_t space ) {
 }
 
 inline int is_local ( memory_space_t space ) {
-   assert( space != param_space_local ); // todo: map local param memory to linear address space
-   return((space) == local_space);
+   return (space == local_space) || (space == param_space_local);
 }
 
 inline int is_param ( memory_space_t space ) {
@@ -2481,11 +2480,9 @@ mem_stage_stall_type send_mem_request(shader_core_ctx_t *shader, mem_access_t &a
       access_type = (access.iswrite)? GLOBAL_ACC_W: GLOBAL_ACC_R;   
       break;
    case local_space:
+   case param_space_local:
       code = DCACHE;
       access_type = (access.iswrite)? LOCAL_ACC_W: LOCAL_ACC_R;   
-      break;
-   case param_space_local:
-      abort(); // todo: define mapping of local param space to linear memory ?
       break;
    default:
       assert(0); // NOT A MEM SPACE;
@@ -2837,10 +2834,10 @@ void shader_memory_queue(shader_core_ctx_t *shader, shader_queues_t *accessqs)
             break;
          case global_space:
          case local_space:
+         case param_space_local:
             path[i] = GLOBAL_MEM_PATH;
             type_counts[GLOBAL_MEM_PATH]++;
             break;
-         case param_space_local:
          case param_space_unclassified:
             abort(); // todo: define access details
             break;

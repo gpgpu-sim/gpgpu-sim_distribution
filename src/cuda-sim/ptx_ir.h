@@ -113,10 +113,8 @@ public:
       m_is_function = 1;
    }
 
-   void set_array_dim( int array_dim )
-   {
-      m_array_dim = array_dim;
-   }
+   void set_array_dim( int array_dim ) { m_array_dim = array_dim; }
+   int get_array_dim() const { assert(m_init); return m_array_dim; }
 
    bool is_reg() const { return m_space_spec == reg_space;} 
    bool is_param_kernel() const { return m_space_spec == param_space_kernel;}
@@ -129,6 +127,8 @@ public:
    bool is_tex() const { return m_space_spec == tex_space;}
    bool is_func_addr() const { return m_is_function?true:false; }
    int  scalar_type() const { return m_scalar_type_spec;}
+   unsigned type_decode( size_t &size, int &t ) const;
+   static unsigned type_decode( int type, size_t &size, int &t );
    memory_space_t get_memory_space() const { return m_space_spec; }
 private:
    bool m_init;
@@ -184,12 +184,13 @@ class operand_info;
 
 class symbol {
 public:
-   symbol( const char *name, const type_info *type, const char *location ) 
+   symbol( const char *name, const type_info *type, const char *location, unsigned size ) 
    {
       m_uid = get_uid();
       m_name = name;
       m_decl_location = location;
       m_type = type;
+      m_size = size;
       m_address_valid = false;
       m_is_label = false;
       m_is_shared = false;
@@ -208,6 +209,10 @@ public:
       if ( type ) m_is_param_local = type->get_key().is_param_local();
       if ( type ) m_is_tex = type->get_key().is_tex();
       if ( type ) m_is_func_addr = type->get_key().is_func_addr();
+   }
+   unsigned get_size_in_bytes() const
+   {
+      return m_size;
    }
    const std::string &name() const { return m_name;}
    const std::string &decl_location() const { return m_decl_location;} 
@@ -254,6 +259,11 @@ public:
    bool is_param_local() const { return m_is_param_local; }
    bool is_tex() const { return m_is_tex;}
    bool is_func_addr() const { return m_is_func_addr; }
+   bool is_reg() const {
+      if( m_type == NULL ) 
+         return false;
+      return m_type->get_key().is_reg(); 
+   }
 
    void add_initializer( const std::list<operand_info> &init );
    bool has_initializer() const 
@@ -280,6 +290,7 @@ private:
    unsigned get_uid();
    unsigned m_uid;
    const type_info *m_type;
+   unsigned m_size; // in bytes
    std::string m_name;
    std::string m_decl_location;
 
@@ -312,7 +323,7 @@ public:
    void set_ptx_version( float ver, unsigned ext );
    symbol* lookup( const char *identifier );
    std::string get_scope_name() const { return m_scope_name; }
-   symbol *add_variable( const char *identifier, const type_info *type, const char *filename, unsigned line );
+   symbol *add_variable( const char *identifier, const type_info *type, unsigned size, const char *filename, unsigned line );
    void add_function( function_info *func );
    bool add_function_decl( const char *name, int entry_point, function_info **func_info, symbol_table **symbol_table );
    type_info *add_type( memory_space_t space_spec, int scalar_type_spec, int vector_spec, int alignment_spec, int extern_spec );
@@ -533,6 +544,12 @@ public:
          return false;
       }
       return m_value.m_symbolic->type()->get_key().is_reg();
+   }
+   bool is_param_local() const
+   {
+      if ( m_type != symbolic_t ) 
+         return false;
+      return m_value.m_symbolic->type()->get_key().is_param_local();
    }
 
    bool is_vector() const
@@ -891,7 +908,7 @@ public:
    {
       m_symtab = symtab;
    }
-   std::string get_name()
+   std::string get_name() const
    {
       return m_name;
    }
@@ -1016,9 +1033,13 @@ public:
    }
    unsigned local_mem_framesize() const 
    { 
-      assert( m_local_mem_framesize != (unsigned) -1 ); 
       return m_local_mem_framesize; 
    }
+   void set_framesize( unsigned sz )
+   {
+      m_local_mem_framesize = sz;
+   }
+   bool is_entry_point() const { return m_entry_point; }
 
 private:
    unsigned m_uid;

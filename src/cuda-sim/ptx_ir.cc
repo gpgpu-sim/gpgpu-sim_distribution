@@ -364,7 +364,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
    int regnum;
    size_t num_bits;
    unsigned addr, addr_pad;
-   type_decode(ti.scalar_type(),num_bits,basic_type);
+   ti.type_decode(num_bits,basic_type);
 
    bool duplicates = check_for_duplicates( identifier );
    if( duplicates ) {
@@ -389,7 +389,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
    default:
       break;
    }
-   g_last_symbol = g_current_symbol_table->add_variable(identifier,type,g_filename,ptx_lineno);
+   g_last_symbol = g_current_symbol_table->add_variable(identifier,type,num_bits/8,g_filename,ptx_lineno);
    switch ( ti.get_memory_space() ) {
    case reg_space: {
       regnum = g_current_symbol_table->next_reg_num();
@@ -463,6 +463,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       assert( (num_bits%8) == 0  );
       g_last_symbol->set_address( g_current_symbol_table->get_local_next() );
       g_current_symbol_table->alloc_local( num_bits/8 );
+      g_func_info->set_framesize( g_current_symbol_table->get_local_next() );
       break;
    case tex_space:
       printf("GPGPU-Sim PTX: encountered texture directive %s.\n", identifier);
@@ -476,6 +477,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       assert( (num_bits%8) == 0  );
       g_last_symbol->set_address( g_current_symbol_table->get_local_next() );
       g_current_symbol_table->alloc_local( num_bits/8 );
+      g_func_info->set_framesize( g_current_symbol_table->get_local_next() );
       break;
    case param_space_kernel:
       break;
@@ -488,16 +490,6 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
    if ( ti.is_param_kernel() ) {
       g_func_info->add_param_name_type_size(g_entry_func_param_index,identifier, ti.scalar_type(), num_bits );
       g_entry_func_param_index++;
-   } else if ( ti.is_param_local() ) {
-      printf("GPGPU-Sim PTX: allocating stack frame region for input/output .param \"%s\" from 0x%x to 0x%lx\n",
-             identifier,
-             g_current_symbol_table->get_local_next(),
-             g_current_symbol_table->get_local_next() + num_bits/8 );
-      fflush(stdout);
-      assert( (num_bits%8) == 0  );
-      addr_t addr = g_current_symbol_table->get_local_next();
-      g_last_symbol->set_address( addr );
-      g_current_symbol_table->alloc_local( num_bits/8 );
    }
 }
 
@@ -564,7 +556,7 @@ void add_label( const char *identifier )
    if ( s != NULL ) {
       g_label = s;
    } else {
-      g_label = g_current_symbol_table->add_variable(identifier,NULL,g_filename,ptx_lineno);
+      g_label = g_current_symbol_table->add_variable(identifier,NULL,0,g_filename,ptx_lineno);
    }
 }
 
@@ -659,7 +651,7 @@ void add_scalar_operand( const char *identifier )
    if ( s == NULL ) {
       if ( g_opcode == BRA_OP ) {
          // forward branch target...
-         s = g_current_symbol_table->add_variable(identifier,NULL,g_filename,ptx_lineno);
+         s = g_current_symbol_table->add_variable(identifier,NULL,0,g_filename,ptx_lineno);
       } else {
          std::string msg = std::string("operand \"") + identifier + "\" has no declaration.";
          parse_error( msg.c_str() );
@@ -673,7 +665,7 @@ void add_neg_pred_operand( const char *identifier )
    DPRINTF("add_neg_pred_operand");
    const symbol *s = g_current_symbol_table->lookup(identifier);
    if ( s == NULL ) {
-       s = g_current_symbol_table->add_variable(identifier,NULL,g_filename,ptx_lineno);
+       s = g_current_symbol_table->add_variable(identifier,NULL,1,g_filename,ptx_lineno);
    }
    operand_info op(s);
    op.set_neg_pred();
@@ -777,13 +769,13 @@ symbol *symbol_table::lookup( const char *identifier )
    return NULL;
 }
 
-symbol *symbol_table::add_variable( const char *identifier, const type_info *type, const char *filename, unsigned line )
+symbol *symbol_table::add_variable( const char *identifier, const type_info *type, unsigned size, const char *filename, unsigned line )
 {
    char buf[1024];
    std::string key(identifier);
    assert( m_symbols.find(key) == m_symbols.end() );
    snprintf(buf,1024,"%s:%u",filename,line);
-   symbol *s = new symbol(identifier,type,buf);
+   symbol *s = new symbol(identifier,type,buf,size);
    m_symbols[ key ] = s;
 
    if ( type != NULL && type->get_key().is_global()  ) {
@@ -804,7 +796,7 @@ void symbol_table::add_function( function_info *func )
    char buf[1024];
    snprintf(buf,1024,"%s:%u",g_filename,ptx_lineno);
    type_info *type = add_type( func );
-   symbol *s = new symbol(func->get_name().c_str(),type,buf);
+   symbol *s = new symbol(func->get_name().c_str(),type,buf,0);
    s->set_function(func);
    m_symbols[ func->get_name() ] = s;
 }
@@ -828,7 +820,7 @@ bool symbol_table::add_function_decl( const char *name, int entry_point, functio
    } else {
       assert( !prior_decl );
       *sym_table = new symbol_table( "", entry_point, g_global_symbol_table );
-      symbol *null_reg = (*sym_table)->add_variable("_",NULL,"",0); 
+      symbol *null_reg = (*sym_table)->add_variable("_",NULL,0,"",0); 
       null_reg->set_regno(0, 0);
       (*sym_table)->set_name(name);
       (*func_info)->set_symtab(*sym_table);
@@ -1335,4 +1327,36 @@ unsigned ptx_kernel_nregs( void *kernel_impl )
    function_info *f = (function_info*)kernel_impl;
    const struct gpgpu_ptx_sim_kernel_info *kernel_info = f->get_kernel_info();
    return kernel_info->regs;
+}
+
+unsigned type_info_key::type_decode( size_t &size, int &basic_type ) const
+{
+   int type = scalar_type();
+   return type_decode(type,size,basic_type);
+}
+
+unsigned type_info_key::type_decode( int type, size_t &size, int &basic_type )
+{
+   switch ( type ) {
+   case S8_TYPE:  size=8;  basic_type=1; return 0;
+   case S16_TYPE: size=16; basic_type=1; return 1;
+   case S32_TYPE: size=32; basic_type=1; return 2;
+   case S64_TYPE: size=64; basic_type=1; return 3;
+   case U8_TYPE:  size=8;  basic_type=0; return 4;
+   case U16_TYPE: size=16; basic_type=0; return 5;
+   case U32_TYPE: size=32; basic_type=0; return 6;
+   case U64_TYPE: size=64; basic_type=0; return 7;
+   case F16_TYPE: size=16; basic_type=-1; return 8;
+   case F32_TYPE: size=32; basic_type=-1; return 9;
+   case F64_TYPE: size=64; basic_type=-1; return 10;
+   case PRED_TYPE: size=1; basic_type=2; return 11;
+   case B8_TYPE:  size=8;  basic_type=0; return 12;
+   case B16_TYPE: size=16; basic_type=0; return 13;
+   case B32_TYPE: size=32; basic_type=0; return 14;
+   case B64_TYPE: size=64; basic_type=0; return 15;
+   default: 
+      printf("ERROR ** type_decode() does not know about \"%s\"\n", g_ptx_token_decode[type].c_str() ); 
+      assert(0); 
+      return 0xDEADBEEF;
+   }
 }
