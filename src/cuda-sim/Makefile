@@ -91,7 +91,7 @@ ifeq ($(GNUC_CPP0X),1)
 endif
 endif
 
-OBJS	:= instructions.o cuda-sim.o ptx_ir.o ptx_sim.o memory.o ptx-stats.o ptx.tab.o lex.ptx_.o ptxinfo.tab.o lex.ptxinfo_.o
+OBJS	:= cuda_device_printf.o instructions.o cuda-sim.o ptx_ir.o ptx_sim.o memory.o ptx-stats.o ptx.tab.o lex.ptx_.o ptxinfo.tab.o lex.ptxinfo_.o
 
 CUDART_VERSION:=$(shell nvcc --version | awk '/release/ {print $$5;}' | sed 's/,//' | sed 's/\./ /' | awk '{printf("%02u%02u", 10*int($$1), 10*$$2);}')
 
@@ -164,6 +164,7 @@ depend:
 	makedepend *.cc *.c 2> /dev/null
 
 instructions.o: instructions.h ptx.tab.c
+cuda_device_printf.o: ptx.tab.c
 ptx_ir.o: ptx.tab.c ptx_parser_decode.def
 
 # DO NOT DELETE
