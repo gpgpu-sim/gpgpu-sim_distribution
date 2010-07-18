@@ -685,27 +685,69 @@ void brkpt_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not
 extern int gpgpu_simd_model;
 #define POST_DOMINATOR 1 /* must match enum value in shader.h */
 void get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *npc, unsigned *rpc );
-void gpgpusim_cuda_vprintf(const ptx_instruction * pI, const ptx_thread_info * thread, const function_info * target_func, unsigned n_return, unsigned n_args ); 
+void gpgpusim_cuda_vprintf(const ptx_instruction * pI, const ptx_thread_info * thread, const function_info * target_func ); 
 
 
 class arg_buffer_t {
 public:
-   arg_buffer_t( const symbol *dst_sym, ptx_reg_t source_value ) : m_reg_value(source_value)
+   arg_buffer_t( const symbol *dst_sym, const operand_info &src_op, ptx_reg_t source_value ) : m_src_op(src_op)
    {
-      m_is_reg = true;
       m_dst = dst_sym;
+      if( dst_sym->is_reg() ) {
+         m_is_reg = true;
+         m_is_param = false;
+         assert( src_op.is_reg() );
+         m_reg_value = source_value;
+      } else {
+         m_is_param = true;
+         m_is_reg = false;
+         m_param_value = new ptx_reg_t(source_value);
+         m_param_bytes = sizeof(ptx_reg_t);
+      }
    }
-   arg_buffer_t( const symbol *dst_sym, void *source_param_value_array, unsigned array_size )
+   arg_buffer_t( const symbol *dst_sym, const operand_info &src_op, void *source_param_value_array, unsigned array_size ) : m_src_op(src_op)
    {
-      m_is_param = true;
-      m_param_value = source_param_value_array;
-      m_param_bytes = array_size;
       m_dst = dst_sym;
+      if( dst_sym->is_reg() ) {
+         m_is_reg = true;
+         m_is_param = false;
+         assert( src_op.is_param_local() );
+         assert( dst_sym->get_size_in_bytes() == array_size );
+         switch( array_size ) {
+         case 1: m_reg_value.u8 = *(unsigned char*)source_param_value_array; break;
+         case 2: m_reg_value.u16 = *(unsigned short*)source_param_value_array; break;
+         case 4: m_reg_value.u32 = *(unsigned int*)source_param_value_array; break;
+         case 8: m_reg_value.u64 = *(unsigned long long*)source_param_value_array; break;
+         default:
+            printf("GPGPU-Sim PTX: ERROR ** source param size does not match known register sizes\n");
+            break;
+         }
+      } else {
+         // param
+         m_is_param = true;
+         m_is_reg = false;
+         m_param_value = new char[array_size];
+         m_param_bytes = array_size;
+         memcpy(m_param_value,source_param_value_array,array_size);
+      }
    }
+
+   bool is_reg() const { return m_is_reg; }
    ptx_reg_t get_reg() const 
    { 
       assert(m_is_reg); 
       return m_reg_value; 
+   }
+
+   void *get_param_buffer() 
+   {
+      assert(m_is_param);
+      return m_param_value;
+   }
+   size_t get_param_buffer_size() const
+   {
+      assert(m_is_param);
+      return m_param_bytes;
    }
 
    const symbol *get_dst() const { return m_dst; }
@@ -713,6 +755,9 @@ public:
 private:
    // destination of copy
    const symbol *m_dst;
+
+   // source operand
+   operand_info m_src_op;
 
    // source information
    bool m_is_reg;
@@ -728,51 +773,52 @@ private:
 
 typedef std::list< arg_buffer_t > arg_buffer_list_t;
 
-void copy_arg(ptx_thread_info * thread, arg_buffer_list_t &arg_values, const operand_info &actual_param_op, const symbol * formal_param, unsigned size)
+void copy_arg_to_buffer(ptx_thread_info * thread, arg_buffer_list_t &arg_values, const operand_info &actual_param_op, const symbol * formal_param)
 {
-      if( formal_param->is_reg() ) {
-         ptx_reg_t value;
-         if( actual_param_op.is_reg() ) 
-            value = thread->get_operand_value(actual_param_op);
-         else {
-            assert( actual_param_op.is_param_local() );
-            const symbol *actual_param = actual_param_op.get_symbol();
-            addr_t from_addr = thread->get_local_mem_stack_pointer() + actual_param->get_address();
-            assert(size<=sizeof(value.u64));
-            thread->m_local_mem->read(from_addr,size,&value.u64);
-         }
-         arg_values.push_back( arg_buffer_t(formal_param,value) );
-      } else {
-         assert( formal_param->is_param_local() );
-         // copy values to location in callee frame
-         addr_t to_addr = thread->get_local_mem_stack_pointer() + 
-                          thread->func_info()->local_mem_framesize() + 
-                          formal_param->get_address();
-         if( actual_param_op.is_reg() )  {
-            ptx_reg_t value = thread->get_operand_value(actual_param_op);
-            thread->m_local_mem->write(to_addr,size,&value.u64);
-         } else {
-            addr_t from_addr = actual_param_op.get_symbol()->get_address();
-            char buffer[1024];
-            assert(size<1024); 
-            thread->m_local_mem->read(from_addr,size,buffer);
-            thread->m_local_mem->write(to_addr,size,buffer);
-         }
-      }
+   if( actual_param_op.is_reg() )  {
+      ptx_reg_t value = thread->get_operand_value(actual_param_op);
+      arg_values.push_back( arg_buffer_t(formal_param,actual_param_op,value) );
+   } else {
+      assert( actual_param_op.is_param_local() ); 
+      unsigned size=formal_param->get_size_in_bytes();
+      addr_t from_addr = actual_param_op.get_symbol()->get_address();
+      char buffer[1024];
+      assert(size<1024); 
+      thread->m_local_mem->read(from_addr,size,buffer);
+      arg_values.push_back( arg_buffer_t(formal_param,actual_param_op,buffer,size) );
+   }
 }
 
-void copy_args_into_callee_frame(const ptx_instruction * pI, 
+void copy_args_into_buffer_list( const ptx_instruction * pI, 
                                  ptx_thread_info * thread, 
-                                 const function_info * &target_func, 
-                                 unsigned n_return, 
-                                 unsigned n_args,
+                                 const function_info * target_func, 
                                  arg_buffer_list_t &arg_values ) 
 {
+   unsigned n_return = target_func->has_return();
+   unsigned n_args = target_func->num_args();
    for( unsigned arg=0; arg < n_args; arg ++ ) {
       const operand_info &actual_param_op = pI->operand_lookup(n_return+1+arg);
       const symbol *formal_param = target_func->get_arg(arg);
-      unsigned size=formal_param->get_size_in_bytes();
-      copy_arg(thread, arg_values, actual_param_op, formal_param, size);
+      copy_arg_to_buffer(thread, arg_values, actual_param_op, formal_param);
+   }
+}
+
+void copy_buffer_list_into_frame(ptx_thread_info * thread, arg_buffer_list_t &arg_values) 
+{
+   arg_buffer_list_t::iterator a;
+   for( a=arg_values.begin(); a != arg_values.end(); a++ ) {
+      if( a->is_reg() ) {
+         ptx_reg_t value = a->get_reg();
+         operand_info dst_reg = operand_info(a->get_dst()); 
+         thread->set_operand_value(dst_reg,value);
+      } else {  
+         void *buffer = a->get_param_buffer();
+         size_t size = a->get_param_buffer_size();
+         const symbol *dst = a->get_dst();
+         addr_t frame_offset = dst->get_address();
+         addr_t to_addr = thread->get_local_mem_stack_pointer() + frame_offset;
+         thread->m_local_mem->write(to_addr,size,buffer);
+      }
    }
 }
 
@@ -804,15 +850,15 @@ void call_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    // handle intrinsic functions
    std::string fname = target_func->get_name();
    if( fname == "vprintf" ) {
-      gpgpusim_cuda_vprintf(pI, thread, target_func, n_return, n_args);
+      gpgpusim_cuda_vprintf(pI, thread, target_func);
       return;
    } 
 
    // read source arguements into register specified in declaration of function
    arg_buffer_list_t arg_values;
-   copy_args_into_callee_frame(pI, thread, target_func, n_return, n_args, arg_values);
+   copy_args_into_buffer_list(pI, thread, target_func, arg_values);
 
-   // note register for corresponding return instruction to place result into
+   // record local for return value (we only support a single return value)
    const symbol *return_var_src = NULL;
    const symbol *return_var_dst = NULL;
    if( target_func->has_return() ) {
@@ -830,12 +876,7 @@ void call_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    thread->callstack_push(callee_pc+1,callee_rpc,return_var_src,return_var_dst,call_uid_next++);
 
-   arg_buffer_list_t::iterator a;
-   for( a=arg_values.begin(); a != arg_values.end(); a++ ) {
-      const symbol *dst_reg = a->get_dst();
-      ptx_reg_t value = a->get_reg();
-      thread->set_operand_value(dst_reg,value);
-   }
+   copy_buffer_list_into_frame(thread, arg_values);
 
    thread->set_npc(target_func);
 }

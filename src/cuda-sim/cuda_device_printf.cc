@@ -103,10 +103,12 @@ void my_cuda_printf(const char *fmtstr,const char *arg_list)
    }
 }
 
-void gpgpusim_cuda_vprintf(const ptx_instruction * pI, const ptx_thread_info * thread, const function_info * target_func, unsigned n_return, unsigned n_args ) 
+void gpgpusim_cuda_vprintf(const ptx_instruction * pI, const ptx_thread_info * thread, const function_info * target_func ) 
 {
       char *fmtstr = NULL;
       char *arg_list = NULL;
+      unsigned n_return = target_func->has_return();
+      unsigned n_args = target_func->num_args();
       assert( n_args == 2 );
       for( unsigned arg=0; arg < n_args; arg ++ ) {
          const operand_info &actual_param_op = pI->operand_lookup(n_return+1+arg);
