@@ -687,32 +687,13 @@ extern int gpgpu_simd_model;
 void get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *npc, unsigned *rpc );
 void gpgpusim_cuda_vprintf(const ptx_instruction * pI, const ptx_thread_info * thread, const function_info * target_func, unsigned n_return, unsigned n_args ); 
 
-void call_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
+void copy_args_into_callee_frame(const ptx_instruction * pI, 
+                                 ptx_thread_info * thread, 
+                                 const function_info * &target_func, 
+                                 unsigned n_return, 
+                                 unsigned n_args, 
+                                 std::list<std::pair<const symbol *,ptx_reg_t>> &arg_values) 
 {
-   static unsigned call_uid_next = 1;
-    
-   const operand_info &target  = pI->func_addr();
-   assert( target.is_function_address() );
-   const symbol *func_addr = target.get_symbol();
-   const function_info *target_func = func_addr->get_pc();
-
-   // check that number of args and return match function requirements
-   if( pI->has_return() ^ target_func->has_return() ) {
-      printf("GPGPU-Sim PTX: Execution error - mismatch in number of return values between\n"
-             "               call instruction and function declaration\n");
-      abort(); 
-   }
-   unsigned n_return = target_func->has_return();
-   unsigned n_args = target_func->num_args();
-   unsigned n_operands = pI->get_num_operands();
-
-   if( n_operands != (n_return+1+n_args) ) {
-      printf("GPGPU-Sim PTX: Execution error - mismatch in number of arguements between\n"
-             "               call instruction and function declaration\n");
-      abort(); 
-   }
-   // read source arguements into register specified in declaration of function
-   std::list< std::pair<const symbol*, ptx_reg_t> > arg_values;
    for( unsigned arg=0; arg < n_args; arg ++ ) {
       const operand_info &actual_param_op = pI->operand_lookup(n_return+1+arg);
       const symbol *formal_param = target_func->get_arg(arg);
@@ -747,40 +728,70 @@ void call_impl( const ptx_instruction *pI, ptx_thread_info *thread )
          }
       }
    }
+}
 
-   std::list< std::pair<const symbol*, ptx_reg_t> >::iterator a;
+void call_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
+{
+   static unsigned call_uid_next = 1;
+    
+   const operand_info &target  = pI->func_addr();
+   assert( target.is_function_address() );
+   const symbol *func_addr = target.get_symbol();
+   const function_info *target_func = func_addr->get_pc();
+
+   // check that number of args and return match function requirements
+   if( pI->has_return() ^ target_func->has_return() ) {
+      printf("GPGPU-Sim PTX: Execution error - mismatch in number of return values between\n"
+             "               call instruction and function declaration\n");
+      abort(); 
+   }
+   unsigned n_return = target_func->has_return();
+   unsigned n_args = target_func->num_args();
+   unsigned n_operands = pI->get_num_operands();
+
+   if( n_operands != (n_return+1+n_args) ) {
+      printf("GPGPU-Sim PTX: Execution error - mismatch in number of arguements between\n"
+             "               call instruction and function declaration\n");
+      abort(); 
+   }
+
+   // handle intrinsic functions
    std::string fname = target_func->get_name();
    if( fname == "vprintf" ) {
       gpgpusim_cuda_vprintf(pI, thread, target_func, n_return, n_args);
-   } else {
-      // note register for corresponding return instruction to place result into
-      const symbol *return_var_src = NULL;
-      const symbol *return_var_dst = NULL;
-      if( target_func->has_return() ) {
-         if( pI->dst().is_reg() ) {
-            return_var_dst = pI->dst().get_symbol();
-            return_var_src = target_func->get_return_var();
-         }
-      }
-   
-      unsigned sid = thread->get_hw_sid();
-      unsigned tid = thread->get_hw_tid();
-      unsigned callee_pc=0, callee_rpc=0;
-      if( gpgpu_simd_model == POST_DOMINATOR ) {
-         get_pdom_stack_top_info(sid,tid,&callee_pc,&callee_rpc);
-         assert( callee_pc == thread->get_pc() );
-      }
-   
-      thread->callstack_push(callee_pc+1,callee_rpc,return_var_src,return_var_dst,call_uid_next++);
-   
-      for( a=arg_values.begin(); a != arg_values.end(); a++ ) {
-         const symbol *dst_reg = a->first;
-         ptx_reg_t value = a->second;
-         thread->set_operand_value(dst_reg,value);
-      }
-   
-      thread->set_npc(target_func);
+      return;
+   } 
+
+   // read source arguements into register specified in declaration of function
+   std::list< std::pair<const symbol*, ptx_reg_t> > arg_values;
+   copy_args_into_callee_frame(pI, thread, target_func, n_return, n_args, arg_values);
+
+   // note register for corresponding return instruction to place result into
+   const symbol *return_var_src = NULL;
+   const symbol *return_var_dst = NULL;
+   if( target_func->has_return() ) {
+      return_var_dst = pI->dst().get_symbol();
+      return_var_src = target_func->get_return_var();
    }
+
+   unsigned sid = thread->get_hw_sid();
+   unsigned tid = thread->get_hw_tid();
+   unsigned callee_pc=0, callee_rpc=0;
+   if( gpgpu_simd_model == POST_DOMINATOR ) {
+      get_pdom_stack_top_info(sid,tid,&callee_pc,&callee_rpc);
+      assert( callee_pc == thread->get_pc() );
+   }
+
+   thread->callstack_push(callee_pc+1,callee_rpc,return_var_src,return_var_dst,call_uid_next++);
+
+   std::list< std::pair<const symbol*, ptx_reg_t> >::iterator a;
+   for( a=arg_values.begin(); a != arg_values.end(); a++ ) {
+      const symbol *dst_reg = a->first;
+      ptx_reg_t value = a->second;
+      thread->set_operand_value(dst_reg,value);
+   }
+
+   thread->set_npc(target_func);
 }
 
 void clz_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
