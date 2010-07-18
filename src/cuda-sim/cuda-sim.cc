@@ -1285,26 +1285,26 @@ const struct gpgpu_ptx_sim_kernel_info* ptx_sim_kernel_info() {
    return g_entrypoint_func_info->get_kernel_info();
 }
 
-void ptx_sim_free_sm( void** thread_info )
+void ptx_sim_free_sm( ptx_thread_info** thread_info )
 {
 }
 
-unsigned ptx_sim_init_thread( void** thread_info,int sid,unsigned tid,unsigned threads_left,unsigned num_threads, core_t *core, unsigned hw_cta_id, unsigned hw_warp_id )
+unsigned ptx_sim_init_thread( ptx_thread_info** thread_info,int sid,unsigned tid,unsigned threads_left,unsigned num_threads, core_t *core, unsigned hw_cta_id, unsigned hw_warp_id )
 {
    if ( *thread_info != NULL ) {
-      ptx_thread_info *thd = *((ptx_thread_info**)thread_info);
+      ptx_thread_info *thd = *thread_info;
       assert( thd->is_done() );
       if ( g_debug_execution==-1 ) {
          dim3 ctaid = thd->get_ctaid();
          dim3 tid = thd->get_tid();
-         printf("GPGPU-Sim PTX simulator:  thread exiting ctaid=(%u,%u,%u) tid=(%u,%u,%u) @ 0x%Lx\n",
-                ctaid.x,ctaid.y,ctaid.z,tid.x,tid.y,tid.z, (unsigned long long)*((void**)thread_info) );
+         printf("GPGPU-Sim PTX simulator:  thread exiting ctaid=(%u,%u,%u) tid=(%u,%u,%u) uid=%u\n",
+                ctaid.x,ctaid.y,ctaid.z,tid.x,tid.y,tid.z, thd->get_uid() );
          fflush(stdout);
       }
       thd->m_cta_info->assert_barrier_empty();
       thd->m_cta_info->register_deleted_thread(thd);
       delete thd;
-      *((ptx_thread_info**)thread_info) = NULL;
+      *thread_info = NULL;
    }
 
    if ( !g_active_threads.empty() ) { //if g_active_threads not empty...
@@ -1314,7 +1314,7 @@ unsigned ptx_sim_init_thread( void** thread_info,int sid,unsigned tid,unsigned t
       assert( g_cta_launch_sid == (unsigned)sid );
       ptx_thread_info *thd = g_active_threads.front(); 
       g_active_threads.pop_front();
-      *((ptx_thread_info**)thread_info) = thd;
+      *thread_info = thd;
       thd->set_hw_tid(tid);
       thd->set_hw_wid(hw_warp_id);
       thd->set_hw_ctaid(hw_cta_id);
@@ -1443,12 +1443,12 @@ unsigned ptx_sim_init_thread( void** thread_info,int sid,unsigned tid,unsigned t
    assert( g_active_threads.size() <= threads_left );
 
    g_cta_launch_sid = sid;
-   *((ptx_thread_info**)thread_info) = g_active_threads.front();
-   (*((ptx_thread_info**)thread_info) )->set_hw_tid(tid);
-   (*((ptx_thread_info**)thread_info) )->set_hw_wid(hw_warp_id);
-   (*((ptx_thread_info**)thread_info) )->set_hw_ctaid(hw_cta_id);
-   (*((ptx_thread_info**)thread_info) )->set_core(core);
-   (*((ptx_thread_info**)thread_info) )->set_hw_sid(sid);
+   *thread_info = g_active_threads.front();
+   (*thread_info)->set_hw_tid(tid);
+   (*thread_info)->set_hw_wid(hw_warp_id);
+   (*thread_info)->set_hw_ctaid(hw_cta_id);
+   (*thread_info)->set_core(core);
+   (*thread_info)->set_hw_sid(sid);
    g_active_threads.pop_front();
 
    return 1;

@@ -325,7 +325,7 @@ void icnt_init_grid();
 void interconnect_stats();
 void icnt_overal_stat();
 unsigned ptx_sim_cta_size();
-unsigned ptx_sim_init_thread( void** thread_info, int sid, unsigned tid,unsigned threads_left,unsigned num_threads, core_t *core, unsigned hw_cta_id, unsigned hw_warp_id );
+unsigned ptx_sim_init_thread( ptx_thread_info** thread_info, int sid, unsigned tid,unsigned threads_left,unsigned num_threads, core_t *core, unsigned hw_cta_id, unsigned hw_warp_id );
 
 void gpu_sim_loop( int grid_num );
 

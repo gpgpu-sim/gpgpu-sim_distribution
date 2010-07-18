@@ -158,7 +158,7 @@ typedef struct {
 
 typedef struct {
 
-   void *ptx_thd_info; // pointer to the functional state of the thread in cuda-sim
+   class ptx_thread_info *ptx_thd_info; // pointer to the functional state of the thread in cuda-sim
 
    int avail4fetch; // 1 if its instrucion can be fetch into the pipeline, 0 otherwise 
    int warp_priority;
