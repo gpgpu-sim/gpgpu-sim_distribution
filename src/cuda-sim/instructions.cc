@@ -687,17 +687,49 @@ extern int gpgpu_simd_model;
 void get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *npc, unsigned *rpc );
 void gpgpusim_cuda_vprintf(const ptx_instruction * pI, const ptx_thread_info * thread, const function_info * target_func, unsigned n_return, unsigned n_args ); 
 
-void copy_args_into_callee_frame(const ptx_instruction * pI, 
-                                 ptx_thread_info * thread, 
-                                 const function_info * &target_func, 
-                                 unsigned n_return, 
-                                 unsigned n_args, 
-                                 std::list<std::pair<const symbol *,ptx_reg_t>> &arg_values) 
+
+class arg_buffer_t {
+public:
+   arg_buffer_t( const symbol *dst_sym, ptx_reg_t source_value ) : m_reg_value(source_value)
+   {
+      m_is_reg = true;
+      m_dst = dst_sym;
+   }
+   arg_buffer_t( const symbol *dst_sym, void *source_param_value_array, unsigned array_size )
+   {
+      m_is_param = true;
+      m_param_value = source_param_value_array;
+      m_param_bytes = array_size;
+      m_dst = dst_sym;
+   }
+   ptx_reg_t get_reg() const 
+   { 
+      assert(m_is_reg); 
+      return m_reg_value; 
+   }
+
+   const symbol *get_dst() const { return m_dst; }
+
+private:
+   // destination of copy
+   const symbol *m_dst;
+
+   // source information
+   bool m_is_reg;
+   bool m_is_param;
+
+   // source is register
+   ptx_reg_t m_reg_value;
+
+   // source is param
+   void     *m_param_value;
+   unsigned  m_param_bytes;
+};
+
+typedef std::list< arg_buffer_t > arg_buffer_list_t;
+
+void copy_arg(ptx_thread_info * thread, arg_buffer_list_t &arg_values, const operand_info &actual_param_op, const symbol * formal_param, unsigned size)
 {
-   for( unsigned arg=0; arg < n_args; arg ++ ) {
-      const operand_info &actual_param_op = pI->operand_lookup(n_return+1+arg);
-      const symbol *formal_param = target_func->get_arg(arg);
-      unsigned size=formal_param->get_size_in_bytes();
       if( formal_param->is_reg() ) {
          ptx_reg_t value;
          if( actual_param_op.is_reg() ) 
@@ -709,7 +741,7 @@ void copy_args_into_callee_frame(const ptx_instruction * pI,
             assert(size<=sizeof(value.u64));
             thread->m_local_mem->read(from_addr,size,&value.u64);
          }
-         arg_values.push_back( std::make_pair(formal_param,value) );
+         arg_values.push_back( arg_buffer_t(formal_param,value) );
       } else {
          assert( formal_param->is_param_local() );
          // copy values to location in callee frame
@@ -727,6 +759,20 @@ void copy_args_into_callee_frame(const ptx_instruction * pI,
             thread->m_local_mem->write(to_addr,size,buffer);
          }
       }
+}
+
+void copy_args_into_callee_frame(const ptx_instruction * pI, 
+                                 ptx_thread_info * thread, 
+                                 const function_info * &target_func, 
+                                 unsigned n_return, 
+                                 unsigned n_args,
+                                 arg_buffer_list_t &arg_values ) 
+{
+   for( unsigned arg=0; arg < n_args; arg ++ ) {
+      const operand_info &actual_param_op = pI->operand_lookup(n_return+1+arg);
+      const symbol *formal_param = target_func->get_arg(arg);
+      unsigned size=formal_param->get_size_in_bytes();
+      copy_arg(thread, arg_values, actual_param_op, formal_param, size);
    }
 }
 
@@ -763,7 +809,7 @@ void call_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    } 
 
    // read source arguements into register specified in declaration of function
-   std::list< std::pair<const symbol*, ptx_reg_t> > arg_values;
+   arg_buffer_list_t arg_values;
    copy_args_into_callee_frame(pI, thread, target_func, n_return, n_args, arg_values);
 
    // note register for corresponding return instruction to place result into
@@ -784,10 +830,10 @@ void call_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    thread->callstack_push(callee_pc+1,callee_rpc,return_var_src,return_var_dst,call_uid_next++);
 
-   std::list< std::pair<const symbol*, ptx_reg_t> >::iterator a;
+   arg_buffer_list_t::iterator a;
    for( a=arg_values.begin(); a != arg_values.end(); a++ ) {
-      const symbol *dst_reg = a->first;
-      ptx_reg_t value = a->second;
+      const symbol *dst_reg = a->get_dst();
+      ptx_reg_t value = a->get_reg();
       thread->set_operand_value(dst_reg,value);
    }
 

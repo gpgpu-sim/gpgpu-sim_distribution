@@ -242,6 +242,7 @@ function_ident_param: IDENTIFIER { add_function_name($1); } LEFT_PAREN param_lis
 
 function_decl_header: ENTRY_DIRECTIVE { $$ = 1; g_func_decl=1; }
 	| FUNC_DIRECTIVE { $$ = 0; g_func_decl=1; }
+	| VISIBLE_DIRECTIVE FUNC_DIRECTIVE { $$ = 0; g_func_decl=1; }
 	| EXTERN_DIRECTIVE FUNC_DIRECTIVE { $$ = 2; g_func_decl=1; }
 	;
 
