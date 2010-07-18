@@ -30,9 +30,8 @@ typedef enum _memory_space_t {
    local_space,
    shared_space,
    param_space_unclassified,
-   param_space_kernel,  /* input parameters on kernel entry points */
-   param_space_local_r, /* device functions can read this : input parameters on device functions  */
-   param_space_local_w, /* device functions can write this : used for return values and locally declared param memory */
+   param_space_kernel,  /* global to all threads in a kernel : read-only */
+   param_space_local,   /* local to a thread : read-writable */
    const_space,
    tex_space,
    surf_space,

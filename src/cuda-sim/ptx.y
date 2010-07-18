@@ -224,7 +224,7 @@ input:	/* empty */
 	| input function_decl
 	;
 
-function_defn: function_decl { set_symtab($1); start_function_definition(); } LEFT_BRACE statement_list RIGHT_BRACE { end_function(); }
+function_defn: function_decl { set_symtab($1); } LEFT_BRACE statement_list RIGHT_BRACE { end_function(); }
 	| function_decl { set_symtab($1); } block_spec LEFT_BRACE statement_list RIGHT_BRACE { end_function(); }
 	;
 
@@ -304,8 +304,8 @@ var_spec: space_spec
 
 align_spec: ALIGN_DIRECTIVE INT_OPERAND { add_alignment_spec($2); }
 
-space_spec: REG_DIRECTIVE {  add_space_spec(REG_DIRECTIVE); }
-	| SREG_DIRECTIVE  {  add_space_spec(SREG_DIRECTIVE); }
+space_spec: REG_DIRECTIVE {  add_space_spec(reg_space); }
+	| SREG_DIRECTIVE  {  add_space_spec(reg_space); }
 	| addressable_spec
 	;
 

@@ -139,7 +139,7 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op )
          assert( regs_iter != m_regs.back().end() );
          ptx_reg_t baseaddr = regs_iter->second;
          result.u64 = baseaddr.u64 + op.get_addr_offset(); 
-      } else if ( info.is_param() ) {
+      } else if ( info.is_param_kernel() ) {
          result = sym->get_address() + op.get_addr_offset();
       } else if ( info.is_global() ) {
          assert( op.get_addr_offset() == 0 );
@@ -1463,9 +1463,7 @@ void decode_space( memory_space_t &space, ptx_thread_info *thread, memory_space 
    case local_space:  mem = thread->m_local_mem; break; 
    case tex_space:    mem = g_tex_mem; break; 
    case surf_space:   mem = g_surf_mem; break; 
-   case param_space_local_r:  
-      abort(); // finish this
-   case param_space_local_w:  
+   case param_space_local:  
       abort(); // finish this
    case param_space_kernel:  mem = g_param_mem; break;
    case shared_space:  mem = thread->m_shared_mem; break; 

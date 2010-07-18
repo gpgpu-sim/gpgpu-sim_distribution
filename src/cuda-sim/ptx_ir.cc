@@ -181,14 +181,6 @@ void start_function( int entry_point )
    g_entry_func_param_index=0;
 }
 
-static bool g_in_function_definition = false;
-
-void start_function_definition()
-{
-   DPRINTF("start_function_definition");
-   g_in_function_definition = true;
-}
-
 char *g_add_identifier_cached__identifier = NULL;
 int g_add_identifier_cached__array_dim;
 int g_add_identifier_cached__array_ident;
@@ -230,7 +222,6 @@ void end_function()
 {
    DPRINTF("end_function");
 
-   g_in_function_definition = false;
    init_directive_state();
    init_instruction_state();
    g_max_regs_per_thread = mymax( g_max_regs_per_thread, (g_current_symbol_table->next_reg_num()-1)); 
@@ -333,7 +324,7 @@ void set_variable_type()
    DPRINTF("set_variable_type space_spec=%s scalar_type_spec=%s", 
            g_ptx_token_decode[g_space_spec].c_str(), 
            g_ptx_token_decode[g_scalar_type_spec].c_str() );
-   parse_assert( g_space_spec != -1, "variable has no space specification" );
+   parse_assert( g_space_spec != undefined_space, "variable has no space specification" );
    parse_assert( g_scalar_type_spec != -1, "variable has no type information" ); // need to extend for structs?
    g_var_type = g_current_symbol_table->add_type( g_space_spec, 
                                                   g_scalar_type_spec, 
@@ -399,7 +390,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       break;
    }
    g_last_symbol = g_current_symbol_table->add_variable(identifier,type,g_filename,ptx_lineno);
-   switch ( g_space_spec ) {
+   switch ( ti.get_memory_space() ) {
    case reg_space: {
       regnum = g_current_symbol_table->next_reg_num();
       int arch_regnum = -1;
@@ -476,16 +467,20 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
    case tex_space:
       printf("GPGPU-Sim PTX: encountered texture directive %s.\n", identifier);
       break;
+   case param_space_local:
+   case param_space_kernel:
+      break;
    default:
+      abort();
       break;
    }
 
 
-   if ( ti.is_param() ) {
-      if( !g_in_function_definition ) {
-         g_func_info->add_param_name_type_size(g_entry_func_param_index,identifier, ti.scalar_type(), num_bits );
-         g_entry_func_param_index++;
-      }
+   if ( ti.is_param_kernel() ) {
+      g_func_info->add_param_name_type_size(g_entry_func_param_index,identifier, ti.scalar_type(), num_bits );
+      g_entry_func_param_index++;
+   } else if ( ti.is_param_local() || ti.is_param_unclassified() ) {
+      g_func_info->add_local_param_name_type_size( identifier, ti.scalar_type(), num_bits );
    }
 }
 
@@ -514,14 +509,14 @@ void add_space_spec( memory_space_t spec )
 {
    DPRINTF("add_space_spec \"%s\"", g_ptx_token_decode[spec].c_str() );
    parse_assert( g_space_spec == undefined_space, "multiple space specifiers not allowed." );
-   if( g_space_spec == param_space_unclassified ) {
-      if( g_func_decl && !g_in_function_definition ) {
+   if( spec == param_space_unclassified ) {
+      if( g_func_decl ) {
          if( g_entry_point == 1) 
             g_space_spec = param_space_kernel;
-         else
-            g_space_spec = param_space_local_r;
-      } else 
-         g_space_spec = param_space_local_w;
+         else 
+            g_space_spec = param_space_local;
+      } else
+         g_space_spec = param_space_unclassified;
    } else 
       g_space_spec = spec;
 }
@@ -774,9 +769,6 @@ symbol *symbol_table::add_variable( const char *identifier, const type_info *typ
    symbol *s = new symbol(identifier,type,buf);
    m_symbols[ key ] = s;
 
-   if ( type != NULL && type->get_key().is_param()  ) {
-      m_params.push_back(s);
-   }
    if ( type != NULL && type->get_key().is_global()  ) {
       m_globals.push_back(s);
    }
@@ -831,6 +823,8 @@ bool symbol_table::add_function_decl( const char *name, int entry_point, functio
 
 type_info *symbol_table::add_type( memory_space_t space_spec, int scalar_type_spec, int vector_spec, int alignment_spec, int extern_spec )
 {
+   if( space_spec == param_space_unclassified ) 
+      space_spec = param_space_local;
    type_info_key t(space_spec,scalar_type_spec,vector_spec,alignment_spec,extern_spec,0);
    type_info *pt;
    pt = new type_info(this,t);

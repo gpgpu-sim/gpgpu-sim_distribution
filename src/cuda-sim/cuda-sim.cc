@@ -978,12 +978,17 @@ void function_info::add_param_name_type_size( unsigned index, std::string name, 
    snprintf(buffer,2048,"%s_param_%%u", m_name.c_str() );
    int ntokens = sscanf(name.c_str(),buffer,&parsed_index);
    if( ntokens == 1 ) {
-      assert( m_ptx_param_info.find(parsed_index) == m_ptx_param_info.end() );
-      m_ptx_param_info[parsed_index] = param_info(parsed_index, name, type, size);
+      assert( m_ptx_kernel_param_info.find(parsed_index) == m_ptx_kernel_param_info.end() );
+      m_ptx_kernel_param_info[parsed_index] = param_info(name, type, size);
    } else {
-      assert( m_ptx_param_info.find(index) == m_ptx_param_info.end() );
-      m_ptx_param_info[index] = param_info(index, name, type, size);
+      assert( m_ptx_kernel_param_info.find(index) == m_ptx_kernel_param_info.end() );
+      m_ptx_kernel_param_info[index] = param_info(name, type, size);
    }
+}
+
+void function_info::add_local_param_name_type_size( std::string name, int type, size_t size )
+{
+   m_ptx_local_params[name] = param_info(name, type, size);
 }
 
 void function_info::add_param_data( unsigned argn, struct gpgpu_ptx_sim_arg *args )
@@ -995,8 +1000,8 @@ void function_info::add_param_data( unsigned argn, struct gpgpu_ptx_sim_arg *arg
       tmp.pdata = args->m_start;
       tmp.size = args->m_nbytes;
       tmp.offset = args->m_offset;
-      std::map<unsigned,param_info>::iterator i=m_ptx_param_info.find(argn);
-      if( i != m_ptx_param_info.end()) {
+      std::map<unsigned,param_info>::iterator i=m_ptx_kernel_param_info.find(argn);
+      if( i != m_ptx_kernel_param_info.end()) {
          i->second.add_data(tmp);
       } else {
          // This should only happen for OpenCL:
@@ -1017,8 +1022,10 @@ void function_info::add_param_data( unsigned argn, struct gpgpu_ptx_sim_arg *arg
          snprintf(buffer,2048,"%s_param_%u",m_name.c_str(),argn);
          
          symbol *p = m_symtab->lookup(buffer);
-         if( p == NULL ) 
+         if( p == NULL ) {
             printf("GPGPU-Sim PTX: ERROR ** could not locate symbol for \'%s\' : cannot bind buffer\n", buffer);
+            abort();
+         }
          p->set_address((addr_t)*(size_t*)data);
       } 
    } else {
@@ -1029,7 +1036,7 @@ void function_info::add_param_data( unsigned argn, struct gpgpu_ptx_sim_arg *arg
 void function_info::finalize( memory_space *param_mem, symbol_table *symtab  ) 
 {
    unsigned param_address = 0;
-   for( std::map<unsigned,param_info>::iterator i=m_ptx_param_info.begin(); i!=m_ptx_param_info.end(); i++ ) {
+   for( std::map<unsigned,param_info>::iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
       param_info &p = i->second;
       std::string name = p.get_name();
       int type = p.get_type();
@@ -1056,7 +1063,7 @@ void function_info::finalize( memory_space *param_mem, symbol_table *symtab  )
 void function_info::list_param( FILE *fout ) const
 {
    symbol_table *symtab = g_current_symbol_table;
-   for( std::map<unsigned,param_info>::const_iterator i=m_ptx_param_info.begin(); i!=m_ptx_param_info.end(); i++ ) {
+   for( std::map<unsigned,param_info>::const_iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
       const param_info &p = i->second;
       std::string name = p.get_name();
       symbol *param = symtab->lookup(name.c_str());
@@ -1215,8 +1222,7 @@ void function_info::ptx_exec_inst( ptx_thread_info *thread,
       case tex_space:    space_type = 12; break; 
       case surf_space:   space_type = 13; break; 
       case param_space_kernel:
-      case param_space_local_r:
-      case param_space_local_w:
+      case param_space_local:
                          space_type = 14; break; 
       case shared_space: space_type = 15; break; 
       case const_space:  space_type = 16; break;

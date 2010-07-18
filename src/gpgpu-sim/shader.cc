@@ -1659,7 +1659,7 @@ inline int is_const ( memory_space_t space ) {
 }
 
 inline int is_local ( memory_space_t space ) {
-   assert( space != param_space_local_r && space != param_space_local_w ); // todo: map local param memory to linear address space
+   assert( space != param_space_local ); // todo: map local param memory to linear address space
    return((space) == local_space);
 }
 
@@ -2484,8 +2484,7 @@ mem_stage_stall_type send_mem_request(shader_core_ctx_t *shader, mem_access_t &a
       code = DCACHE;
       access_type = (access.iswrite)? LOCAL_ACC_W: LOCAL_ACC_R;   
       break;
-   case param_space_local_r:
-   case param_space_local_w:
+   case param_space_local:
       abort(); // todo: define mapping of local param space to linear memory ?
       break;
    default:
@@ -2778,8 +2777,7 @@ inline void mem_instruction_stats(inst_t* warp){
          gpgpu_n_const_insn++;
          break;
       case param_space_kernel:
-      case param_space_local_r:
-      case param_space_local_w:
+      case param_space_local:
          gpgpu_n_param_insn++;
          break;
       case tex_space:
@@ -2842,10 +2840,12 @@ void shader_memory_queue(shader_core_ctx_t *shader, shader_queues_t *accessqs)
             path[i] = GLOBAL_MEM_PATH;
             type_counts[GLOBAL_MEM_PATH]++;
             break;
-         case param_space_local_r:
-         case param_space_local_w:
+         case param_space_local:
+         case param_space_unclassified:
+            abort(); // todo: define access details
+            break;
          default:
-            abort();
+            break;
          }
       }
 

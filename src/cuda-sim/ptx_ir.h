@@ -119,7 +119,9 @@ public:
    }
 
    bool is_reg() const { return m_space_spec == reg_space;} 
-   bool is_param() const { abort(); /*this make sense?*/ return m_space_spec == param_space_kernel;}
+   bool is_param_kernel() const { return m_space_spec == param_space_kernel;}
+   bool is_param_local() const { return m_space_spec == param_space_local; }
+   bool is_param_unclassified() const { return m_space_spec == param_space_unclassified; }
    bool is_global() const { return m_space_spec == global_space;}
    bool is_local() const { return m_space_spec == local_space;}
    bool is_shared() const { return m_space_spec == shared_space;}
@@ -127,6 +129,7 @@ public:
    bool is_tex() const { return m_space_spec == tex_space;}
    bool is_func_addr() const { return m_is_function?true:false; }
    int  scalar_type() const { return m_scalar_type_spec;}
+   memory_space_t get_memory_space() const { return m_space_spec; }
 private:
    bool m_init;
    memory_space_t m_space_spec; 
@@ -324,9 +327,6 @@ public:
 
    typedef std::list<symbol*>::iterator iterator;
 
-   iterator param_iterator_begin() { return m_params.begin();}
-   iterator param_iterator_end() { return m_params.end();}
-
    iterator global_iterator_begin() { return m_globals.begin();}
    iterator global_iterator_end() { return m_globals.end();}
 
@@ -347,7 +347,6 @@ private:
    std::string m_scope_name;
    std::map<std::string, symbol *> m_symbols; //map from name of register to pointers to the registers
    std::map<type_info_key,type_info*,type_info_key_compare>  m_types;
-   std::list<symbol*> m_params;
    std::list<symbol*> m_globals;
    std::list<symbol*> m_consts;
    std::map<std::string,function_info*> m_function_info_lookup;
@@ -848,11 +847,10 @@ private:
 class param_info {
 public:
    param_info() { m_valid = false; m_value_set=false;}
-   param_info( unsigned index, std::string name, int type, size_t size ) 
+   param_info( std::string name, int type, size_t size ) 
    {
       m_valid = true;
       m_value_set = false;
-      m_index = index;
       m_name = name;
       m_type = type;
       m_size = size;
@@ -867,7 +865,6 @@ public:
    size_t get_size() const { return m_size; }
 private:
    bool m_valid;
-   unsigned m_index;
    std::string m_name;
    int m_type;
    size_t m_size;
@@ -944,9 +941,10 @@ public:
    void ptx_exec_inst( ptx_thread_info *thd, addr_t *addr, memory_space_t *space, unsigned *data_size, dram_callback_t* callback, unsigned warp_active_mask  );
    void add_param( const char *name, struct param_t value )
    {
-      m_params[ name ] = value;
+      m_kernel_params[ name ] = value;
    }
    void add_param_name_type_size( unsigned index, std::string name, int type, size_t size );
+   void add_local_param_name_type_size( std::string name, int type, size_t size );
    void add_param_data( unsigned argn, struct gpgpu_ptx_sim_arg *args );
    void add_return_var( const symbol *rv )
    {
@@ -1021,8 +1019,9 @@ private:
    ptx_instruction **m_instr_mem;
    unsigned m_start_PC;
    unsigned m_instr_mem_size;
-   std::map<std::string,param_t> m_params;
-   std::map<unsigned,param_info> m_ptx_param_info;
+   std::map<std::string,param_t> m_kernel_params;
+   std::map<unsigned,param_info> m_ptx_kernel_param_info;
+   std::map<std::string,param_info> m_ptx_local_params;
    const symbol *m_return_var_sym;
    std::vector<const symbol*> m_args;
    std::list<ptx_instruction*> m_instructions;
@@ -1113,7 +1112,6 @@ extern "C" {
 #endif 
 
    void start_function( int entry_point );
-   void start_function_definition();
    void add_function_name( const char *fname );
    void init_directive_state();
    void add_directive(); 
