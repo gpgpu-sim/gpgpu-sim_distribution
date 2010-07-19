@@ -923,12 +923,25 @@ typedef struct timer_event timer_event_t;
 int g_next_event_uid;
 timer_event_t *g_timer_events = NULL;
 
+#if CUDART_VERSION >= 3000
+struct CUevent_st {
+public:
+   CUevent_st( int uid )
+   {
+      m_uid = uid;
+   }
+   int get_uid() const { return m_uid; }
+private:
+   int m_uid;
+};
+#endif
+
 __host__ cudaError_t CUDARTAPI cudaEventCreate(cudaEvent_t *event)
 {
    timer_event_t *t = (timer_event_t*) calloc(1,sizeof(timer_event_t));
    t->m_uid = ++g_next_event_uid;
 #if CUDART_VERSION >= 3000
-   cuda_not_implemented(__my_func__,__LINE__);
+   (*event) = new CUevent_st(t->m_uid);
 #else
    *event = t->m_uid;
 #endif
@@ -942,11 +955,12 @@ __host__ cudaError_t CUDARTAPI cudaEventCreate(cudaEvent_t *event)
 
 __host__ cudaError_t CUDARTAPI cudaEventRecord(cudaEvent_t event, cudaStream_t stream)
 {
-#if CUDART_VERSION >= 3000
-   cuda_not_implemented(__my_func__,__LINE__);
-#else
    timer_event_t *t = g_timer_events;
+#if CUDART_VERSION >= 3000
+   while( t && t->m_uid != event->get_uid() ) 
+#else
    while( t && t->m_uid != event ) 
+#endif
       t = t->m_next;
    if( t == NULL ) 
       return cudaErrorUnknown;
@@ -954,7 +968,6 @@ __host__ cudaError_t CUDARTAPI cudaEventRecord(cudaEvent_t event, cudaStream_t s
    t->m_updates++;
    t->m_gpu_tot_sim_cycle = gpu_tot_sim_cycle;
    t->m_wallclock = time((time_t *)NULL);
-#endif
    return g_last_cudaError = cudaSuccess;
 }
 
@@ -972,13 +985,13 @@ __host__ cudaError_t CUDARTAPI cudaEventSynchronize(cudaEvent_t event)
 
 __host__ cudaError_t CUDARTAPI cudaEventDestroy(cudaEvent_t event)
 {
-#if CUDART_VERSION >= 3000
-   cuda_not_implemented(__my_func__,__LINE__);
-   return g_last_cudaError = cudaErrorUnknown;
-#else
    timer_event_t *l = NULL;
    timer_event_t *t = g_timer_events;
+#if CUDART_VERSION >= 3000
+   while( t && t->m_uid != event->get_uid() )  {
+#else
    while( t && t->m_uid != event )  {
+#endif
       l = t;
       t = t->m_next;
    }
@@ -989,34 +1002,37 @@ __host__ cudaError_t CUDARTAPI cudaEventDestroy(cudaEvent_t event)
       free(t);
       return g_last_cudaError = cudaSuccess;
    } else {
+#if CUDART_VERSION >= 3000
+      assert( g_timer_events->m_uid == event->get_uid() );
+#else
       assert( g_timer_events->m_uid == event );
+#endif
       l = g_timer_events;
       g_timer_events = g_timer_events->m_next;
       free(l);
       return g_last_cudaError = cudaSuccess;
    }
-#endif
 }
 
 
 __host__ cudaError_t CUDARTAPI cudaEventElapsedTime(float *ms, cudaEvent_t start, cudaEvent_t end)
 {
-#if CUDART_VERSION >= 3000
-   cuda_not_implemented(__my_func__,__LINE__);
-   return g_last_cudaError = cudaErrorUnknown;
-#else
    time_t elapsed_time;
    timer_event_t *s, *e;
    s = e = g_timer_events;
+#if CUDART_VERSION >= 3000
+   while( s && s->m_uid != start->get_uid() ) s = s->m_next;
+   while( e && e->m_uid != end->get_uid() ) e = e->m_next;
+#else
    while( s && s->m_uid != start ) s = s->m_next;
    while( e && e->m_uid != end ) e = e->m_next;
+#endif
    if( s==NULL || e==NULL ) {
       return g_last_cudaError = cudaErrorUnknown;
    }
    elapsed_time = e->m_wallclock - s->m_wallclock;
    *ms = 1000*elapsed_time; 
    return g_last_cudaError = cudaSuccess;
-#endif
 }
 
 
