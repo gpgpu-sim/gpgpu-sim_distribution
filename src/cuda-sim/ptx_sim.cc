@@ -369,29 +369,29 @@ extern void set_operand_value( const symbol *dst, const ptx_reg_t &data );
 bool ptx_thread_info::callstack_pop()
 {
    assert( !m_callstack.empty() );
-   assert( m_local_mem_stack_pointer >= m_func_info->local_mem_framesize() );
+   assert( m_local_mem_stack_pointer >= m_callstack.back().m_func_info->local_mem_framesize() );
+   const symbol *rv_src = m_callstack.back().m_return_var_src;
+   const symbol *rv_dst = m_callstack.back().m_return_var_dst;
+   assert( !((rv_src != NULL) ^ (rv_dst != NULL)) ); // ensure caller and callee agree on whether there is a return value
+
+   // read return value from callee frame
+   arg_buffer_t buffer;
+   if( rv_src != NULL ) 
+      buffer = copy_arg_to_buffer(this, operand_info(rv_src), rv_dst );
+
    m_symbol_table = m_callstack.back().m_symbol_table;
    m_NPC = m_callstack.back().m_PC;
    m_RPC_updated = true;
    m_last_was_call = false;
    m_RPC = m_callstack.back().m_RPC;
-   const symbol *rv_src = m_callstack.back().m_return_var_src;
-   const symbol *rv_dst = m_callstack.back().m_return_var_dst;
-   assert( !((rv_src != NULL) ^ (rv_dst != NULL)) ); 
-
-   // TODO: read param local memory source
-   ptx_reg_t rval;
-   if( rv_src != NULL ) 
-      rval = get_operand_value(rv_src);
-
    m_func_info = m_callstack.back().m_func_info;
    m_local_mem_stack_pointer -= m_func_info->local_mem_framesize(); 
    m_callstack.pop_back();
    m_regs.pop_back();
 
-   // TODO: write param local memory destination
+   // write return value into caller frame
    if( rv_dst != NULL ) 
-      set_operand_value(rv_dst,rval);
+      copy_buffer_to_frame(this, buffer);
 
    return m_callstack.empty();
 }

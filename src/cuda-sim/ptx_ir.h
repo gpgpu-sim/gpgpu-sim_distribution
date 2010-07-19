@@ -1070,6 +1070,132 @@ private:
    static unsigned sm_next_uid;
 };
 
+class arg_buffer_t {
+public:
+   arg_buffer_t()
+   {
+      m_is_reg=false;
+      m_is_param=false;
+      m_param_value=NULL;
+   }
+   arg_buffer_t( const arg_buffer_t &another )
+   {
+      make_copy(another);
+   }
+   void make_copy( const arg_buffer_t &another )
+   {
+      m_dst = another.m_dst;
+      m_src_op = another.m_src_op;
+      m_is_reg = another.m_is_reg;
+      m_is_param = another.m_is_param;
+      m_reg_value = another.m_reg_value;
+      m_param_bytes = another.m_param_bytes;
+      if( m_is_param ) {
+         m_param_value = malloc(m_param_bytes);
+         memcpy(m_param_value,another.m_param_value,m_param_bytes);
+      }
+   }
+   void operator=( const arg_buffer_t &another )
+   {
+      make_copy(another);
+   }
+   ~arg_buffer_t()
+   {
+      if( m_is_param ) 
+         free(m_param_value);
+   }
+   arg_buffer_t( const symbol *dst_sym, const operand_info &src_op, ptx_reg_t source_value ) : m_src_op(src_op)
+   {
+      m_dst = dst_sym;
+      if( dst_sym->is_reg() ) {
+         m_is_reg = true;
+         m_is_param = false;
+         assert( src_op.is_reg() );
+         m_reg_value = source_value;
+      } else {
+         m_is_param = true;
+         m_is_reg = false;
+         m_param_value = calloc(sizeof(ptx_reg_t),1);
+         //new (m_param_value) ptx_reg_t(source_value);
+         memcpy(m_param_value,&source_value,sizeof(ptx_reg_t));
+         m_param_bytes = sizeof(ptx_reg_t);
+      }
+   }
+   arg_buffer_t( const symbol *dst_sym, const operand_info &src_op, void *source_param_value_array, unsigned array_size ) : m_src_op(src_op)
+   {
+      m_dst = dst_sym;
+      if( dst_sym->is_reg() ) {
+         m_is_reg = true;
+         m_is_param = false;
+         assert( src_op.is_param_local() );
+         assert( dst_sym->get_size_in_bytes() == array_size );
+         switch( array_size ) {
+         case 1: m_reg_value.u8 = *(unsigned char*)source_param_value_array; break;
+         case 2: m_reg_value.u16 = *(unsigned short*)source_param_value_array; break;
+         case 4: m_reg_value.u32 = *(unsigned int*)source_param_value_array; break;
+         case 8: m_reg_value.u64 = *(unsigned long long*)source_param_value_array; break;
+         default:
+            printf("GPGPU-Sim PTX: ERROR ** source param size does not match known register sizes\n");
+            break;
+         }
+      } else {
+         // param
+         m_is_param = true;
+         m_is_reg = false;
+         m_param_value = calloc(array_size,1);
+         m_param_bytes = array_size;
+         memcpy(m_param_value,source_param_value_array,array_size);
+      }
+   }
+
+   bool is_reg() const { return m_is_reg; }
+   ptx_reg_t get_reg() const 
+   { 
+      assert(m_is_reg); 
+      return m_reg_value; 
+   }
+
+   const void *get_param_buffer() const
+   {
+      assert(m_is_param);
+      return m_param_value;
+   }
+   size_t get_param_buffer_size() const
+   {
+      assert(m_is_param);
+      return m_param_bytes;
+   }
+
+   const symbol *get_dst() const { return m_dst; }
+
+private:
+   // destination of copy
+   const symbol *m_dst;
+
+   // source operand
+   operand_info m_src_op;
+
+   // source information
+   bool m_is_reg;
+   bool m_is_param;
+
+   // source is register
+   ptx_reg_t m_reg_value;
+
+   // source is param
+   void     *m_param_value;
+   unsigned  m_param_bytes;
+};
+
+typedef std::list< arg_buffer_t > arg_buffer_list_t;
+arg_buffer_t copy_arg_to_buffer(ptx_thread_info * thread, operand_info actual_param_op, const symbol * formal_param);
+void copy_args_into_buffer_list( const ptx_instruction * pI, 
+                                 ptx_thread_info * thread, 
+                                 const function_info * target_func, 
+                                 arg_buffer_list_t &arg_values ); 
+void copy_buffer_list_into_frame(ptx_thread_info * thread, arg_buffer_list_t &arg_values);
+void copy_buffer_to_frame(ptx_thread_info * thread, const arg_buffer_t &a);
+
 /*******************************/
 // These declarations should be identical to those in ./../../cuda-sim-dev/libcuda/texture_types.h
 enum cudaChannelFormatKind {

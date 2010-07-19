@@ -1360,3 +1360,61 @@ unsigned type_info_key::type_decode( int type, size_t &size, int &basic_type )
       return 0xDEADBEEF;
    }
 }
+
+arg_buffer_t copy_arg_to_buffer(ptx_thread_info * thread, operand_info actual_param_op, const symbol * formal_param)
+{
+   if( actual_param_op.is_reg() )  {
+      ptx_reg_t value = thread->get_operand_value(actual_param_op);
+      return arg_buffer_t(formal_param,actual_param_op,value);
+   } else if ( actual_param_op.is_param_local() ) {
+      unsigned size=formal_param->get_size_in_bytes();
+      addr_t frame_offset = actual_param_op.get_symbol()->get_address();
+      addr_t from_addr = thread->get_local_mem_stack_pointer() + frame_offset;
+      char buffer[1024];
+      assert(size<1024); 
+      thread->m_local_mem->read(from_addr,size,buffer);
+      return arg_buffer_t(formal_param,actual_param_op,buffer,size);
+   } else {
+      printf("GPGPU-Sim PTX: ERROR ** need to add support for this operand type in call/return\n");
+      abort();
+   }
+}
+
+void copy_args_into_buffer_list( const ptx_instruction * pI, 
+                                 ptx_thread_info * thread, 
+                                 const function_info * target_func, 
+                                 arg_buffer_list_t &arg_values ) 
+{
+   unsigned n_return = target_func->has_return();
+   unsigned n_args = target_func->num_args();
+   for( unsigned arg=0; arg < n_args; arg ++ ) {
+      const operand_info &actual_param_op = pI->operand_lookup(n_return+1+arg);
+      const symbol *formal_param = target_func->get_arg(arg);
+      arg_values.push_back( copy_arg_to_buffer(thread, actual_param_op, formal_param) );
+   }
+}
+
+void copy_buffer_to_frame(ptx_thread_info * thread, const arg_buffer_t &a) 
+{
+   if( a.is_reg() ) {
+      ptx_reg_t value = a.get_reg();
+      operand_info dst_reg = operand_info(a.get_dst()); 
+      thread->set_operand_value(dst_reg,value);
+   } else {  
+      const void *buffer = a.get_param_buffer();
+      size_t size = a.get_param_buffer_size();
+      const symbol *dst = a.get_dst();
+      addr_t frame_offset = dst->get_address();
+      addr_t to_addr = thread->get_local_mem_stack_pointer() + frame_offset;
+      thread->m_local_mem->write(to_addr,size,buffer);
+   }
+}
+
+void copy_buffer_list_into_frame(ptx_thread_info * thread, arg_buffer_list_t &arg_values) 
+{
+   arg_buffer_list_t::iterator a;
+   for( a=arg_values.begin(); a != arg_values.end(); a++ ) {
+      copy_buffer_to_frame(thread, *a);
+   }
+}
+

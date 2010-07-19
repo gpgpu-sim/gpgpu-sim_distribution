@@ -33,7 +33,7 @@
 
 __device__ float foo( float bar )
 {
-	return 2.0f*bar;
+	return bar+1.0f;
 }
 
 __global__ void
@@ -51,7 +51,7 @@ testKernel( float* g_idata, float* g_odata)
   // read in input data from global memory
   // use the bank checker macro to check for bank conflicts during host
   // emulation
-  SDATA(tid) = foo(g_idata[tid])/2.0;
+  SDATA(tid) = foo(g_idata[tid])-1.0f;
   __syncthreads();
   printf("thread tid=%u reads %f from g_idata[]\n", tid, sdata[tid]);
 
