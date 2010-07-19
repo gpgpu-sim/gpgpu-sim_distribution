@@ -515,6 +515,8 @@ void _cl_program::Build(const char *options)
          if( result != 0 ) {
             printf("GPGPU-Sim OpenCL API: ERROR ** while calling NVIDIA driver to convert OpenCL to PTX (%u)\n",
                    result );
+            printf("GPGPU-Sim OpenCL API: LD_LIBRARY_PATH was \'%s\'\n", nvopencl_libdir);
+            printf("GPGPU-Sim OpenCL API: command line was \'%s\'\n", commandline);
             exit(1);
          }
          // clean up files...
@@ -652,6 +654,25 @@ clCreateContextFromType(cl_context_properties * properties,
       printf("GPGPU-Sim OpenCL API: unsupported device type %lx\n", device_type );
       exit(1);
    }
+   if( properties != NULL ) {
+      printf("GPGPU-Sim OpenCL API: do not know how to use properties in %s\n", __my_func__ );
+      exit(1);
+   }
+   if( errcode_ret ) 
+      *errcode_ret = CL_SUCCESS;
+   cl_context ctx = new _cl_context;
+   return ctx;
+}
+
+extern CL_API_ENTRY cl_context CL_API_CALL
+clCreateContext(  const cl_context_properties * properties,
+                  cl_uint num_devices,
+                  const cl_device_id *devices,
+                  void (*pfn_notify)(const char *, const void *, size_t, void *),
+                  void *                  user_data,
+                  cl_int *                errcode_ret) CL_API_SUFFIX__VERSION_1_0
+{
+   GPGPUSIM_INIT 
    if( properties != NULL ) {
       printf("GPGPU-Sim OpenCL API: do not know how to use properties in %s\n", __my_func__ );
       exit(1);
