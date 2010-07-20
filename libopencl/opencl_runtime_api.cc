@@ -1064,6 +1064,7 @@ clGetDeviceInfo(cl_device_id    device,
    case CL_DEVICE_PREFERRED_VECTOR_WIDTH_LONG: CL_INT_CASE(1); break;
    case CL_DEVICE_PREFERRED_VECTOR_WIDTH_FLOAT: CL_INT_CASE(1); break;
    case CL_DEVICE_PREFERRED_VECTOR_WIDTH_DOUBLE: CL_INT_CASE(0); break;
+   case CL_DEVICE_SINGLE_FP_CONFIG: CL_INT_CASE(0); break;
    default:
       opencl_not_implemented(__my_func__,__LINE__);
    }

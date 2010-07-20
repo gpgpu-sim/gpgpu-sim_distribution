@@ -1239,7 +1239,7 @@ void function_info::ptx_exec_inst( ptx_thread_info *thread,
    if ( (g_ptx_sim_num_insn % 100000) == 0 ) {
       dim3 ctaid = thread->get_ctaid();
       dim3 tid = thread->get_tid();
-      printf("%u instructions simulated : ctaid=(%u,%u,%u) tid=(%u,%u,%u)\n",
+      printf("GPGPU-Sim PTX: %u instructions simulated : ctaid=(%u,%u,%u) tid=(%u,%u,%u)\n",
              g_ptx_sim_num_insn, ctaid.x,ctaid.y,ctaid.z,tid.x,tid.y,tid.z );
       fflush(stdout);
    }

@@ -356,6 +356,7 @@ void ptx_thread_info::callstack_push( unsigned pc, unsigned rpc, const symbol *r
    m_RPC = -1;
    m_RPC_updated = true;
    m_last_was_call = true;
+   assert( m_func_info != NULL );
    m_callstack.push_back( stack_entry(m_symbol_table,m_func_info,pc,rpc,return_var_src,return_var_dst,call_uid) );
    m_regs.push_back( reg_map_t() );
    m_local_mem_stack_pointer += m_func_info->local_mem_framesize(); 
@@ -368,8 +369,6 @@ extern void set_operand_value( const symbol *dst, const ptx_reg_t &data );
 
 bool ptx_thread_info::callstack_pop()
 {
-   assert( !m_callstack.empty() );
-   assert( m_local_mem_stack_pointer >= m_callstack.back().m_func_info->local_mem_framesize() );
    const symbol *rv_src = m_callstack.back().m_return_var_src;
    const symbol *rv_dst = m_callstack.back().m_return_var_dst;
    assert( !((rv_src != NULL) ^ (rv_dst != NULL)) ); // ensure caller and callee agree on whether there is a return value
@@ -384,8 +383,11 @@ bool ptx_thread_info::callstack_pop()
    m_RPC_updated = true;
    m_last_was_call = false;
    m_RPC = m_callstack.back().m_RPC;
+   if( m_callstack.back().m_func_info ) {
+      assert( m_local_mem_stack_pointer >= m_callstack.back().m_func_info->local_mem_framesize() );
+      m_local_mem_stack_pointer -= m_func_info->local_mem_framesize(); 
+   }
    m_func_info = m_callstack.back().m_func_info;
-   m_local_mem_stack_pointer -= m_func_info->local_mem_framesize(); 
    m_callstack.pop_back();
    m_regs.pop_back();
 

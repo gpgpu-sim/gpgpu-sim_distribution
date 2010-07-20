@@ -570,7 +570,8 @@ shader_core_ctx_t* shader_create( const char *name, int sid,
       }
    }
 
-   sc = new shader_core_ctx_t( gpu_n_warp_per_shader, gpgpu_shader_cta );
+   sc = (shader_core_ctx_t*)calloc(sizeof(shader_core_ctx_t),1);
+   sc = new (sc) shader_core_ctx_t( gpu_n_warp_per_shader, gpgpu_shader_cta );
 
    sc->name = name;
    sc->sid = sid;

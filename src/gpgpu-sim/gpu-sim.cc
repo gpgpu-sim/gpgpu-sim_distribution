@@ -855,7 +855,7 @@ unsigned int run_gpu_sim(int grid_num)
 #define DEADLOCK 0
    if (gpu_deadlock_detect && gpu_deadlock) {
       fflush(stdout);
-      printf("ERROR ** deadlock detected: last writeback @ gpu_sim_cycle %u (+ gpu_tot_sim_cycle %u) (%u cycles ago)\n", 
+      printf("GPGPU-Sim uArch: ERROR ** deadlock detected: last writeback @ gpu_sim_cycle %u (+ gpu_tot_sim_cycle %u) (%u cycles ago)\n", 
              (unsigned) gpu_sim_insn_last_update, (unsigned) (gpu_tot_sim_cycle-gpu_sim_cycle),
              (unsigned) (gpu_sim_cycle - gpu_sim_insn_last_update )); 
       fflush(stdout);
@@ -1252,7 +1252,7 @@ int issue_block2core( shader_core_ctx_t *shdr, int grid_num  )
    if (gpgpu_spread_blocks_across_cores) {
       nthreads_2beissued += start_thread;
    }
-   printf("Shader %d initializing CTA #%d with hw tids from %d to %d @(%lld,%lld)", 
+   printf("GPGPU-Sim uArch: Shader %d initializing CTA #%d with hw tids from %d to %d @(%lld,%lld)", 
           shdr->sid, cta_id, start_thread, nthreads_2beissued, gpu_sim_cycle, gpu_tot_sim_cycle );
    printf(" shdr->not_completed = %d\n", shdr->not_completed);
 
@@ -1593,7 +1593,7 @@ void gpu_sim_loop( int grid_num )
          hrs     = elapsed_time/3600 - 24*days;
          minutes = elapsed_time/60 - 60*(hrs + 24*days);
          sec = elapsed_time - 60*(minutes + 60*(hrs + 24*days));
-         printf("cycles: %lld  inst.: %lld (ipc=%4.1f) sim_rate=%u (inst/sec) elapsed = %u:%u:%02u:%02u / %s", 
+         printf("GPGPU-Sim uArch: cycles simulated: %lld  inst.: %lld (ipc=%4.1f) sim_rate=%u (inst/sec) elapsed = %u:%u:%02u:%02u / %s", 
                 gpu_tot_sim_cycle + gpu_sim_cycle, gpu_tot_sim_insn + gpu_sim_insn, 
                 (double)gpu_sim_insn/(double)gpu_sim_cycle,
                 (unsigned)((gpu_tot_sim_insn+gpu_sim_insn) / elapsed_time),

@@ -446,8 +446,6 @@ typedef struct shader_core_ctx : public core_t
    unsigned int n_registers;   //registers available in the shader core 
    unsigned int n_cta;      //Limit on number of concurrent CTAs in shader core
 
-   //void *req_hist; //not used anywhere
-
    mshr_shader_unit *mshr_unit;
 } shader_core_ctx_t;
 
