@@ -170,8 +170,8 @@ xor     TC; ptx_lval.int_value = XOR_OP; return OPCODE;
 \.byte	TC; return BYTE_DIRECTIVE; /* not in PTX 2.1 */
 \.callprototype TC; return CALLPROTOTYPE_DIRECTIVE;
 \.calltargets TC; return CALLTARGETS_DIRECTIVE;
-\.const\[[0-9]+\] TC; /*fixme: should use const offset value*/ abort(); return CONST_DIRECTIVE;
-\.const TC; return CONST_DIRECTIVE;
+\.const\[[0-9]+\] TC; ptx_lval.int_value = atoi(yytext+7); return CONST_DIRECTIVE;
+\.const TC; ptx_lval.int_value = 0; return CONST_DIRECTIVE;
 \.entry TC; return ENTRY_DIRECTIVE;
 \.extern TC; return EXTERN_DIRECTIVE;
 \.file	 TC; BEGIN(INITIAL); return FILE_DIRECTIVE;

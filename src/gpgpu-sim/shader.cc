@@ -1655,7 +1655,7 @@ inline int is_tex ( memory_space_t space ) {
 }
 
 inline int is_const ( memory_space_t space ) {
-   return((space == const_space) || (space == param_space_kernel));
+   return((space.get_type() == const_space) || (space == param_space_kernel));
 }
 
 inline int is_local ( memory_space_t space ) {
@@ -2230,7 +2230,7 @@ void check_accessq(  shader_core_ctx_t *shader, std::vector<mem_access_t> &acces
    std::bitset<32> check = 0;
    for (unsigned i = 0; i < accessq.size(); i++) {
       if (shader) {
-         std::cout << shader->sid << ":" << i << " space " << accessq[i].space << " " << gpu_sim_cycle <<  std::endl;
+         std::cout << shader->sid << ":" << i << " space " << accessq[i].space.get_type() << " " << gpu_sim_cycle <<  std::endl;
          assert(accessq[i].space == shader->pipeline_reg[EX_MM][accessq[i].warp_indices[0]].space);
       }
       for (unsigned j = 0; j < accessq[i].warp_indices.size(); j++) {
@@ -2465,8 +2465,9 @@ mem_stage_stall_type send_mem_request(shader_core_ctx_t *shader, mem_access_t &a
    //this decoding here might belong elsewhere
    unsigned code;
    mem_access_type  access_type;
-   switch(access.space) {
+   switch(access.space.get_type()) {
    case const_space:
+      assert(access.space.get_bank()==0);
    case param_space_kernel:
       code = CONSTC;
       access_type = CONST_ACC_R;   
@@ -2763,7 +2764,7 @@ inline void mem_instruction_stats(inst_t* warp){
       if (warp[i].hw_thread_id == -1) continue; //bubble 
          //this breaks some encapsulation: the is_[space] functions, if you change those, change this.
       bool store = is_store(warp[i].op);
-      switch (warp[i].space) {
+      switch (warp[i].space.get_type()) {
       case undefined_space:
       case reg_space:
          break;
@@ -2818,12 +2819,13 @@ void shader_memory_queue(shader_core_ctx_t *shader, shader_queues_t *accessqs)
       for (unsigned i=0; i< (unsigned) pipe_simd_width; i++) {
          if (shader->pipeline_reg[EX_MM][i].hw_thread_id == -1) continue; //bubble 
          //this breaks some encapsulation: the is_[space] functions; if you change those, change this.
-         switch (shader->pipeline_reg[EX_MM][i].space) {
+         switch (shader->pipeline_reg[EX_MM][i].space.get_type()) {
          case shared_space:
             path[i] = SHARED_MEM_PATH;
             type_counts[SHARED_MEM_PATH]++;
             break;
          case const_space:
+            assert(shader->pipeline_reg[EX_MM][i].space.get_bank()==0);
          case param_space_kernel:
             path[i] = CONSTANT_MEM_PATH;
             type_counts[CONSTANT_MEM_PATH]++;   
@@ -3540,7 +3542,7 @@ unsigned int max_cta_per_shader( shader_core_ctx_t *shader)
    static const struct gpgpu_ptx_sim_kernel_info* last_kinfo = NULL;
    if (last_kinfo != kernel_info) {   //Only print out stats if kernel_info struct changes
       last_kinfo = kernel_info;
-      printf ("CTA/core = %u, limited by:", result);
+      printf ("GPGPU-Sim uArch: CTA/core = %u, limited by:", result);
       if (result == result_thread) printf (" threads");
       if (result == result_shmem) printf (" shmem");
       if (result == result_regs) printf (" regs");

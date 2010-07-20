@@ -1301,14 +1301,14 @@ void cvta_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    unsigned hwtid = thread->get_hw_tid();
 
    if( to_non_generic ) {
-      switch( space ) {
+      switch( space.get_type() ) {
       case shared_space: to_addr_hw = generic_to_shared( smid, from_addr_hw ); break;
       case local_space:  to_addr_hw = generic_to_local( smid, hwtid, from_addr_hw ); break;
       case global_space: to_addr_hw = generic_to_global(from_addr_hw ); break;
       default: abort();
       }
    } else {
-      switch( space ) {
+      switch( space.get_type() ) {
       case shared_space: to_addr_hw = shared_to_generic( smid, from_addr_hw ); break;
       case local_space:  to_addr_hw =  local_to_generic( smid, hwtid, from_addr_hw ); break;
       case global_space: to_addr_hw = global_to_generic( from_addr_hw ); break;
@@ -1409,7 +1409,7 @@ void isspacep_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    unsigned smid = thread->get_hw_sid();
    unsigned hwtid = thread->get_hw_tid();
 
-   switch( space ) {
+   switch( space.get_type() ) {
    case shared_space: t = isspace_shared( smid, addr );
    case local_space:  t = isspace_local( smid, hwtid, addr );
    case global_space: t = isspace_global( addr );
@@ -1441,7 +1441,7 @@ void decode_space( memory_space_t &space, const ptx_thread_info *thread, const o
          abort(); 
       }
    }
-   switch ( space ) {
+   switch ( space.get_type() ) {
    case global_space: mem = g_global_mem; break;
    case param_space_local:
    case local_space:
@@ -1452,12 +1452,12 @@ void decode_space( memory_space_t &space, const ptx_thread_info *thread, const o
    case surf_space:   mem = g_surf_mem; break; 
    case param_space_kernel:  mem = g_param_mem; break;
    case shared_space:  mem = thread->m_shared_mem; break; 
-   case const_space:  mem = g_global_mem; break;
+   case const_space:  assert(space.get_bank()==0); mem = g_global_mem; break;
    case generic_space:
       if( thread->get_ptx_version().ver() >= 2.0 ) {
          // convert generic address to memory space address
          space = whichspace(addr);
-         switch ( space ) {
+         switch ( space.get_type() ) {
          case global_space: mem = g_global_mem; addr = generic_to_global(addr); break;
          case local_space:  mem = thread->m_local_mem; addr = generic_to_local(smid,hwtid,addr); break; 
          case shared_space: mem = thread->m_shared_mem; addr = generic_to_shared(smid,addr); break; 

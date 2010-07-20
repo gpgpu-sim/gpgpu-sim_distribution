@@ -76,7 +76,7 @@
 %token  BYTE_DIRECTIVE
 %token  CALLPROTOTYPE_DIRECTIVE
 %token  CALLTARGETS_DIRECTIVE
-%token  CONST_DIRECTIVE
+%token  <int_value> CONST_DIRECTIVE
 %token  ENTRY_DIRECTIVE
 %token  EXTERN_DIRECTIVE
 %token  FILE_DIRECTIVE
@@ -224,8 +224,8 @@ input:	/* empty */
 	| input function_decl
 	;
 
-function_defn: function_decl { set_symtab($1); } LEFT_BRACE statement_list RIGHT_BRACE { end_function(); }
-	| function_decl { set_symtab($1); } block_spec LEFT_BRACE statement_list RIGHT_BRACE { end_function(); }
+function_defn: function_decl { set_symtab($1); } statement_block { end_function(); }
+	| function_decl { set_symtab($1); } block_spec statement_block { end_function(); }
 	;
 
 block_spec: MAXNTID_DIRECTIVE INT_OPERAND COMMA INT_OPERAND COMMA INT_OPERAND
@@ -249,13 +249,17 @@ function_decl_header: ENTRY_DIRECTIVE { $$ = 1; g_func_decl=1; }
 param_list: param_entry { add_directive(); }
 	| param_list COMMA param_entry { add_directive(); }
 
-param_entry: PARAM_DIRECTIVE { add_space_spec(param_space_unclassified); } variable_spec identifier_spec { add_function_arg(); }
-	| REG_DIRECTIVE { add_space_spec(reg_space); } variable_spec identifier_spec { add_function_arg(); }
+param_entry: PARAM_DIRECTIVE { add_space_spec(param_space_unclassified,0); } variable_spec identifier_spec { add_function_arg(); }
+	| REG_DIRECTIVE { add_space_spec(reg_space,0); } variable_spec identifier_spec { add_function_arg(); }
+
+statement_block: LEFT_BRACE statement_list RIGHT_BRACE 
 
 statement_list: directive_statement { add_directive(); }
 	| instruction_statement { add_instruction(); }
 	| statement_list directive_statement { add_directive(); }
-	| statement_list instruction_statement { add_instruction(); } 
+	| statement_list instruction_statement { add_instruction(); }
+	| statement_list statement_block
+	| statement_block
 	;
 
 directive_statement: variable_declaration SEMI_COLON
@@ -305,18 +309,18 @@ var_spec: space_spec
 
 align_spec: ALIGN_DIRECTIVE INT_OPERAND { add_alignment_spec($2); }
 
-space_spec: REG_DIRECTIVE {  add_space_spec(reg_space); }
-	| SREG_DIRECTIVE  {  add_space_spec(reg_space); }
+space_spec: REG_DIRECTIVE {  add_space_spec(reg_space,0); }
+	| SREG_DIRECTIVE  {  add_space_spec(reg_space,0); }
 	| addressable_spec
 	;
 
-addressable_spec: CONST_DIRECTIVE {  add_space_spec(const_space); }
-	| GLOBAL_DIRECTIVE 	  {  add_space_spec(global_space); }
-	| LOCAL_DIRECTIVE 	  {  add_space_spec(local_space); }
-	| PARAM_DIRECTIVE 	  {  add_space_spec(param_space_unclassified); }
-	| SHARED_DIRECTIVE 	  {  add_space_spec(shared_space); }
-	| SURF_DIRECTIVE 	  {  add_space_spec(surf_space); }
-	| TEX_DIRECTIVE 	  {  add_space_spec(tex_space); }
+addressable_spec: CONST_DIRECTIVE {  add_space_spec(const_space,$1); }
+	| GLOBAL_DIRECTIVE 	  {  add_space_spec(global_space,0); }
+	| LOCAL_DIRECTIVE 	  {  add_space_spec(local_space,0); }
+	| PARAM_DIRECTIVE 	  {  add_space_spec(param_space_unclassified,0); }
+	| SHARED_DIRECTIVE 	  {  add_space_spec(shared_space,0); }
+	| SURF_DIRECTIVE 	  {  add_space_spec(surf_space,0); }
+	| TEX_DIRECTIVE 	  {  add_space_spec(tex_space,0); }
 	;
 
 type_spec: scalar_type 

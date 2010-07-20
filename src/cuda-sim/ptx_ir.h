@@ -123,7 +123,7 @@ public:
    bool is_global() const { return m_space_spec == global_space;}
    bool is_local() const { return m_space_spec == local_space;}
    bool is_shared() const { return m_space_spec == shared_space;}
-   bool is_const() const { return m_space_spec == const_space;}
+   bool is_const() const { return m_space_spec.get_type() == const_space;}
    bool is_tex() const { return m_space_spec == tex_space;}
    bool is_func_addr() const { return m_is_function?true:false; }
    int  scalar_type() const { return m_scalar_type_spec;}
@@ -869,7 +869,7 @@ private:
 
 class param_info {
 public:
-   param_info() { m_valid = false; m_value_set=false;}
+   param_info() { m_valid = false; m_value_set=false; m_size = 0; }
    param_info( std::string name, int type, size_t size ) 
    {
       m_valid = true;
@@ -882,10 +882,10 @@ public:
       m_value_set = true;
       m_value = v;
    }
-   std::string get_name() const { return m_name; }
-   int get_type() const { return m_type; }
+   std::string get_name() const { assert(m_valid); return m_name; }
+   int get_type() const { assert(m_valid);  return m_type; }
    param_t get_value() const { assert(m_value_set); return m_value; }
-   size_t get_size() const { return m_size; }
+   size_t get_size() const { assert(m_valid); return m_size; }
 private:
    bool m_valid;
    std::string m_name;
@@ -1294,7 +1294,7 @@ extern "C" {
    void add_address_operand( const char *identifier, int offset );
    void add_label( const char *idenfiier );
    void add_vector_spec(int spec );
-   void add_space_spec( memory_space_t spec );
+   void add_space_spec( enum _memory_space_t spec, int value );
    void add_extern_spec();
    void add_instruction();
    void set_return();

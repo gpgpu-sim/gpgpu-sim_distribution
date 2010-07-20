@@ -322,7 +322,7 @@ void add_variables()
 void set_variable_type()
 {
    DPRINTF("set_variable_type space_spec=%s scalar_type_spec=%s", 
-           g_ptx_token_decode[g_space_spec].c_str(), 
+           g_ptx_token_decode[g_space_spec.get_type()].c_str(), 
            g_ptx_token_decode[g_scalar_type_spec].c_str() );
    parse_assert( g_space_spec != undefined_space, "variable has no space specification" );
    parse_assert( g_scalar_type_spec != -1, "variable has no type information" ); // need to extend for structs?
@@ -372,8 +372,9 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       g_last_symbol = s;
       if( g_func_decl ) 
          return;
-      std::string msg = std::string(identifier) + " was delcared previous at " + s->decl_location(); 
-      parse_error(msg.c_str());
+      std::string msg = std::string(identifier) + " was delcared previous at " + s->decl_location() + " skipping new declaration"; 
+      printf("GPGPU-Sim PTX: Warning %s\n", msg.c_str());
+      return;
    }
 
    assert( g_var_type != NULL );
@@ -390,7 +391,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       break;
    }
    g_last_symbol = g_current_symbol_table->add_variable(identifier,type,num_bits/8,g_filename,ptx_lineno);
-   switch ( ti.get_memory_space() ) {
+   switch ( ti.get_memory_space().get_type() ) {
    case reg_space: {
       regnum = g_current_symbol_table->next_reg_num();
       int arch_regnum = -1;
@@ -418,6 +419,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       g_current_symbol_table->alloc_shared( num_bits/8 + addr_pad );
       break;
    case const_space:
+      assert(ti.get_memory_space().get_bank()==0);
       if( array_ident == ARRAY_IDENTIFIER_NO_DIM ) {
          printf("GPGPU-Sim PTX: deferring allocation of constant region for \"%s\" (need size information)\n", identifier );
       } else {
@@ -455,6 +457,10 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       g_sym_name_to_symbol_table[ identifier ] = g_current_symbol_table;
       break;
    case local_space:
+      if( g_func_info == NULL ) {
+         printf("GPGPU-Sim PTX: not allocating .local \"%s\" declared at global scope\n", identifier);
+         break;
+      }
       printf("GPGPU-Sim PTX: allocating stack frame region for .local \"%s\" from 0x%x to 0x%lx\n",
              identifier,
              g_current_symbol_table->get_local_next(),
@@ -514,7 +520,7 @@ void add_alignment_spec( int spec )
    g_alignment_spec = spec;
 }
 
-void add_space_spec( memory_space_t spec ) 
+void add_space_spec( enum _memory_space_t spec, int value ) 
 {
    DPRINTF("add_space_spec \"%s\"", g_ptx_token_decode[spec].c_str() );
    parse_assert( g_space_spec == undefined_space, "multiple space specifiers not allowed." );
@@ -526,8 +532,11 @@ void add_space_spec( memory_space_t spec )
             g_space_spec = param_space_local;
       } else
          g_space_spec = param_space_unclassified;
-   } else 
+   } else {
       g_space_spec = spec;
+      if( g_space_spec == const_space )
+         g_space_spec.set_bank((unsigned)value);
+   }
 }
 
 void add_vector_spec(int spec ) 
@@ -1312,7 +1321,7 @@ extern "C" void set_symtab(void*symtab)
 
 extern "C" void add_pragma( const char *str )
 {
-   printf("GPGPU-Sim: Warning -- ignoring pragma '%s'\n", str );
+   printf("GPGPU-Sim PTX: Warning -- ignoring pragma '%s'\n", str );
 }
 
 unsigned ptx_kernel_shmem_size( void *kernel_impl )

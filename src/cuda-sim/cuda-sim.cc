@@ -1045,8 +1045,12 @@ void function_info::finalize( memory_space *param_mem, symbol_table *symtab  )
       assert(xtype==(unsigned)type);
       size_t size;
       size = param_value.size; // size of param in bytes
-      assert(param_value.offset == param_address);
-      assert(size == p.get_size() / 8);
+      //assert(param_value.offset == param_address);
+      if( size != p.get_size() / 8) {
+         printf("GPGPU-Sim PTX: WARNING actual kernel paramter size = %zu bytes vs. formal size = %zu (using smaller of two)\n",
+                size, p.get_size()/8);
+         size = (size<(p.get_size()/8))?size:(p.get_size()/8);
+      } 
       // copy the parameter over word-by-word so that parameter that crosses a memory page can be copied over
       const size_t word_size = 4; 
       for (size_t idx = 0; idx < size; idx += word_size) {
@@ -1214,7 +1218,7 @@ void function_info::ptx_exec_inst( ptx_thread_info *thread,
    ptx_file_line_stats_add_exec_count(pI);
    if ( gpgpu_ptx_instruction_classification ) {
       unsigned space_type=0;
-      switch ( pI->get_space() ) {
+      switch ( pI->get_space().get_type() ) {
       case global_space: space_type = 10; break;
       case local_space:  space_type = 11; break; 
       case tex_space:    space_type = 12; break; 
@@ -1651,7 +1655,7 @@ void gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t co
    symbol *sym = g_current_symbol_table->lookup(sym_name.c_str());
    assert(sym);
    unsigned dst = sym->get_address() + offset; 
-   switch (mem_region) {
+   switch (mem_region.get_type()) {
    case const_space:
       mem = g_global_mem;
       mem_name = "global";
@@ -2271,9 +2275,9 @@ struct rec_pts find_reconvergence_points( function_info *finfo )
       
       gpgpu_recon_t *kernel_recon_points = (struct gpgpu_recon_t*) calloc(num_recon, sizeof(struct gpgpu_recon_t));
       finfo->get_reconvergence_pairs(kernel_recon_points);
-      printf("Reconvergence Pairs for %s\n", finfo->get_name().c_str() );
+      printf("GPGPU-Sim PTX: Reconvergence Pairs for %s\n", finfo->get_name().c_str() );
       for (int i=0;i<num_recon;i++) 
-         printf("%d\t%d\n", kernel_recon_points[i].source_pc, kernel_recon_points[i].target_pc); 
+         printf("GPGPU-Sim PTX:   branch pc = %d\ttarget pc = %d\n", kernel_recon_points[i].source_pc, kernel_recon_points[i].target_pc); 
       tmp.s_kernel_recon_points = kernel_recon_points;
       tmp.s_num_recon = num_recon;
       g_rpts[finfo] = tmp;
