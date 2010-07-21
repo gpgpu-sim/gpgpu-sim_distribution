@@ -94,7 +94,13 @@ template<unsigned BSIZE> void memory_space_impl<BSIZE>::read( mem_addr_t addr, s
    unsigned offset = addr & (BSIZE-1);
    unsigned nbytes = length;
    typename map_t::const_iterator i = m_data.find(index);
-   assert( (addr+length) <= (index+1)*BSIZE );
+   if( (addr+length) > (index+1)*BSIZE ) {
+      printf("GPGPU-Sim PTX: ERROR * access to memory \'%s\' is unaligned : addr=0x%x, length=%zu\n",
+             m_name.c_str(), addr, length);
+      printf("GPGPU-Sim PTX: (addr+length)=0x%lx > 0x%x=(index+1)*BSIZE, index=0x%x, BSIZE=0x%x\n",
+             (addr+length),(index+1)*BSIZE, index, BSIZE);
+      throw 1;
+   }
    if( i == m_data.end() ) {
       for( size_t n=0; n < length; n++ ) 
          ((unsigned char*)data)[n] = (unsigned char) 0;

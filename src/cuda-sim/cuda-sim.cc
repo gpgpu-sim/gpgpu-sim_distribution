@@ -555,7 +555,7 @@ void gpgpu_ptx_sim_init_memory()
    static bool initialized = false;
    if ( !initialized ) {
       g_global_mem = new memory_space_impl<8192>("global",64*1024);
-      g_param_mem = new memory_space_impl<64>("param",64*1024);
+      g_param_mem = new memory_space_impl<8192>("param",64*1024);
       g_tex_mem = new memory_space_impl<8192>("tex",64*1024);
       g_surf_mem = new memory_space_impl<8192>("surf",64*1024);
       initialized = true;
@@ -992,12 +992,14 @@ void function_info::add_param_name_type_size( unsigned index, std::string name, 
 void function_info::add_param_data( unsigned argn, struct gpgpu_ptx_sim_arg *args )
 {
    const void *data = args->m_start;
-   param_t tmp;
 
    if( data ) {
+      param_t tmp;
+
       tmp.pdata = args->m_start;
       tmp.size = args->m_nbytes;
       tmp.offset = args->m_offset;
+      tmp.type = 0;
       std::map<unsigned,param_info>::iterator i=m_ptx_kernel_param_info.find(argn);
       if( i != m_ptx_kernel_param_info.end()) {
          i->second.add_data(tmp);
@@ -1139,6 +1141,8 @@ void function_info::ptx_exec_inst( ptx_thread_info *thread,
    unsigned index = pc - m_start_PC;
    assert( index < m_instr_mem_size );
    ptx_instruction *pI = m_instr_mem[index];
+   try {
+
    g_current_symbol_table = thread->get_finfo()->get_symtab();
    thread->clearRPC();
    thread->m_last_set_operand_value.u64 = 0;
@@ -1248,6 +1252,12 @@ void function_info::ptx_exec_inst( ptx_thread_info *thread,
    *space = insn_space;
    *addr = insn_memaddr;
    *data_size = insn_data_size;
+
+   } catch ( int x  ) {
+      printf("GPGPU-Sim PTX: ERROR (%d) executing intruction (%s:%u)\n", x, pI->source_file(), pI->source_line() );
+      printf("GPGPU-Sim PTX:       '%s'\n", pI->get_source() );
+      abort();
+   }
 }
 
 unsigned g_gx, g_gy, g_gz;

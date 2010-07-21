@@ -109,6 +109,7 @@ fma     TC; ptx_lval.int_value = FMA_OP; return OPCODE;
 isspacep TC; ptx_lval.int_value = ISSPACEP_OP; return OPCODE;
 ld      TC; ptx_lval.int_value = LD_OP; return OPCODE;
 ld.volatile TC; ptx_lval.int_value = LD_OP; return OPCODE;
+ldu     TC; ptx_lval.int_value = LDU_OP; return OPCODE;
 lg2	TC; ptx_lval.int_value = LG2_OP; return OPCODE;
 mad24   TC; ptx_lval.int_value = MAD24_OP; return OPCODE;
 mad     TC; ptx_lval.int_value = MAD_OP; return OPCODE;

@@ -134,8 +134,9 @@ extern const char *g_gpgpusim_version_string;
       g_gpgpusim_init = 1; \
    }
 
+//#   define __my_func__    __PRETTY_FUNCTION__
 # if defined __cplusplus ? __GNUC_PREREQ (2, 6) : __GNUC_PREREQ (2, 4)
-#   define __my_func__    __PRETTY_FUNCTION__
+#   define __my_func__    __func__
 # else
 #  if defined __STDC_VERSION__ && __STDC_VERSION__ >= 199901L
 #   define __my_func__    __my_func__

@@ -2468,7 +2468,6 @@ mem_stage_stall_type send_mem_request(shader_core_ctx_t *shader, mem_access_t &a
    mem_access_type  access_type;
    switch(access.space.get_type()) {
    case const_space:
-      assert(access.space.get_bank()==0);
    case param_space_kernel:
       code = CONSTC;
       access_type = CONST_ACC_R;   
@@ -2826,7 +2825,6 @@ void shader_memory_queue(shader_core_ctx_t *shader, shader_queues_t *accessqs)
             type_counts[SHARED_MEM_PATH]++;
             break;
          case const_space:
-            assert(shader->pipeline_reg[EX_MM][i].space.get_bank()==0);
          case param_space_kernel:
             path[i] = CONSTANT_MEM_PATH;
             type_counts[CONSTANT_MEM_PATH]++;   
@@ -2948,7 +2946,7 @@ void register_cta_thread_exit(shader_core_ctx_t *shader, int tid )
          shader->n_active_cta--;
          shader->deallocate_barrier(cta_num);
          shader_CTA_count_unlog(shader->sid, 1);
-         printf("Shader %d finished CTA #%d (%lld,%lld)\n", shader->sid, cta_num, gpu_sim_cycle, gpu_tot_sim_cycle );
+         printf("GPGPU-Sim uArch: Shader %d finished CTA #%d (%lld,%lld)\n", shader->sid, cta_num, gpu_sim_cycle, gpu_tot_sim_cycle );
       }
    }
 }

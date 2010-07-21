@@ -419,7 +419,6 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       g_current_symbol_table->alloc_shared( num_bits/8 + addr_pad );
       break;
    case const_space:
-      assert(ti.get_memory_space().get_bank()==0);
       if( array_ident == ARRAY_IDENTIFIER_NO_DIM ) {
          printf("GPGPU-Sim PTX: deferring allocation of constant region for \"%s\" (need size information)\n", identifier );
       } else {
@@ -1363,6 +1362,8 @@ unsigned type_info_key::type_decode( int type, size_t &size, int &basic_type )
    case B16_TYPE: size=16; basic_type=0; return 13;
    case B32_TYPE: size=32; basic_type=0; return 14;
    case B64_TYPE: size=64; basic_type=0; return 15;
+   case TEXREF_TYPE: case SAMPLERREF_TYPE: case SURFREF_TYPE:
+      size=32; basic_type=3; return 16;
    default: 
       printf("ERROR ** type_decode() does not know about \"%s\"\n", g_ptx_token_decode[type].c_str() ); 
       assert(0); 
