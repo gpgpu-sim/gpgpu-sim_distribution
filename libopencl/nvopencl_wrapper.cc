@@ -70,9 +70,9 @@ void vmyexit(int code, const char *str,va_list ap)
    char buffer[1024];
    snprintf(buffer,1024,"GPGPU-Sim API: nvopencl_wrapper ERROR ** %s\n", str);
    vprintf(buffer,ap);
-   if( code ) {
+   fflush(stdout);
+   if( code ) 
       exit(code);
-   }
 }
 void myexit(int code, const char *str, ... )
 {
@@ -88,14 +88,28 @@ int main(int argc, const char **argv)
    cl_int errcode;
    cl_uint num_devices;
 
+   bool debug=false;
+
+   if( !strncmp(argv[1],"-d",2) ) {
+      printf("nvopencl_wrapper started\n");
+      fflush(stdout);
+      debug=true;
+      argv = argv+1;
+      argc--; 
+   }
+
    FILE *fp = fopen(argv[1],"r");
-   if ( fp == NULL ) exit(1);
+   if ( fp == NULL ) myexit(1,"Could not open file \'%s\'",argv[1]);
+   if ( debug ) { printf("opened \'%s\'\n", argv[1]); fflush(stdout); }
    fseek(fp,0,SEEK_END);
    size_t source_length = ftell(fp);
    if ( source_length == 0 ) myexit(2,"OpenCL file is empty");
+   if ( debug ) { printf("file \'%s\' has length %zu bytes\n", argv[1], source_length); fflush(stdout); }
    char *source = (char*)calloc(source_length+1,1);
+   if ( source == 0 ) myexit(2,"Memory allocation failed"); 
    fseek(fp,0,SEEK_SET);
    fread(source,1,source_length,fp);
+   if ( debug ) { printf( "read in file \'%s\'\n", argv[1] ); fflush(stdout); }
 
    char buffer[1024];
    cl_uint num_platforms;
@@ -118,7 +132,7 @@ int main(int argc, const char **argv)
    context = clCreateContext(0, num_devices, devices, NULL, NULL, &errcode);
    if ( errcode != CL_SUCCESS ) myexit(6,"clCreateContext returned %d",errcode);
    pgm = clCreateProgramWithSource(context, 1, (const char **)&source, &source_length, &errcode);
-   if ( errcode != CL_SUCCESS ) myexit(7,"clCreateProgramWithSource returned %d",errcode);
+   if( errcode != CL_SUCCESS ) myexit(7,"clCreateProgramWithSource returned %d",errcode);
 
    char options[4096];
    unsigned n=0;

@@ -1684,7 +1684,7 @@ void shader_dump_istream_state(shader_core_ctx_t *shader, FILE *fout )
    for (unsigned t=0; t < gpu_n_thread_per_shader/warp_size; t++ ) {
       int tid = t*warp_size;
       if ( shader->warp[t].n_completed < warp_size ) {
-         fprintf( fout, "  %u:%3u fetch state = c:%u a4f:%u bw:%u (completed: ", shader->sid, tid, 
+         fprintf( fout, "  %u:%3u (w%02u) fetch state = c:%u a4f:%u bw:%u (completed: ", shader->sid, tid, t,
                 shader->warp[t].n_completed,
                 shader->warp[t].n_avail4fetch,
                 shader->warp[t].n_waiting_at_barrier  );
