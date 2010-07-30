@@ -264,11 +264,10 @@ extern int gpgpu_cache_port_per_bank;
 extern int gpgpu_const_port_per_bank;
 extern int gpgpu_shmem_pipe_speedup;  
 extern int gpgpu_reg_bank_conflict_model;
-extern unsigned int gpgpu_num_reg_banks;
 extern int gpgpu_reg_bank_use_warp_id;
 extern int gpgpu_operand_collector;
 extern int gpgpu_operand_collector_num_units;
-extern int gpgpu_num_reg_banks;
+extern unsigned int gpgpu_num_reg_banks;
 
 extern unsigned int gpu_max_cta_per_shader;
 extern unsigned int gpu_padded_cta_size;

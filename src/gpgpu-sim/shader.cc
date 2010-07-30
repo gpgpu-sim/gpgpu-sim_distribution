@@ -125,6 +125,7 @@ extern int gpgpu_cflog_interval;
 extern unsigned int gpu_stall_by_MSHRwb;
 extern unsigned int gpu_stall_shd_mem;
 extern unsigned int gpu_stall_sh2icnt;
+extern int gpgpu_operand_collector;
 
 enum mem_stage_access_type {
    C_MEM,
@@ -520,7 +521,7 @@ inst_t create_nop_inst() // just because C++ does not have designated initialize
    nop_inst.id_cycle = 0;
    nop_inst.ex_cycle = 0;
    nop_inst.mm_cycle = 0;
-   nop_inst.space = 0;
+   nop_inst.space = memory_space_t();
    return nop_inst;
 }
 
@@ -634,7 +635,6 @@ shader_core_ctx_t* shader_create( const char *name, int sid,
          }
       }
    }
-   sc->last_cta_finished = 0;
    sc->n_threads = n_threads;
    sc->thread = (thread_ctx_t*) calloc(sizeof(thread_ctx_t), n_threads);
    sc->not_completed = 0;

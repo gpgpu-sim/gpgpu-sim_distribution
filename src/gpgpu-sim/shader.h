@@ -885,7 +885,7 @@ void shader_print_l1_miss_stat( FILE *fout );
 //based on on the current kernel's CTA size and is 1 if mutiple CTA per block is not supported
 unsigned int max_cta_per_shader( shader_core_ctx_t *shader);
 
-#define N_PIPELINE_STAGES 7
+#define N_PIPELINE_STAGES (gpgpu_operand_collector ? 8 : 7)
 #define TS_IF 0
 #define IF_ID 1
 #define ID_RR 2
@@ -894,6 +894,7 @@ unsigned int max_cta_per_shader( shader_core_ctx_t *shader);
 #define EX_MM 4
 #define MM_WB 5
 #define WB_RT 6
+#define ID_OC 7
 
 
 #endif /* SHADER_H */
