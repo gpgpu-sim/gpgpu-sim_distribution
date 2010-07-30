@@ -383,11 +383,11 @@ bool ptx_thread_info::callstack_pop()
    m_RPC_updated = true;
    m_last_was_call = false;
    m_RPC = m_callstack.back().m_RPC;
-   if( m_callstack.back().m_func_info ) {
-      assert( m_local_mem_stack_pointer >= m_callstack.back().m_func_info->local_mem_framesize() );
+   m_func_info = m_callstack.back().m_func_info;
+   if( m_func_info ) {
+      assert( m_local_mem_stack_pointer >= m_func_info->local_mem_framesize() );
       m_local_mem_stack_pointer -= m_func_info->local_mem_framesize(); 
    }
-   m_func_info = m_callstack.back().m_func_info;
    m_callstack.pop_back();
    m_regs.pop_back();
 
