@@ -488,6 +488,4 @@ memory_space_t whichspace( addr_t addr );
 
 #endif
 
-#define MAX_REG_OPERANDS 8
-
 #endif

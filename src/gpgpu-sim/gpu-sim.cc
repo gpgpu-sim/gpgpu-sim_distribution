@@ -264,6 +264,10 @@ extern int gpgpu_cache_port_per_bank;
 extern int gpgpu_const_port_per_bank;
 extern int gpgpu_shmem_pipe_speedup;  
 extern int gpgpu_reg_bank_conflict_model;
+extern unsigned int gpgpu_num_reg_banks;
+extern int gpgpu_reg_bank_use_warp_id;
+extern int gpgpu_operand_collector;
+extern int gpgpu_operand_collector_num_units;
 extern int gpgpu_num_reg_banks;
 
 extern unsigned int gpu_max_cta_per_shader;
@@ -566,7 +570,13 @@ void gpu_reg_options(option_parser_t opp)
    option_parser_register(opp, "-gpgpu_num_reg_banks", OPT_INT32, &gpgpu_num_reg_banks, 
                "Number of register banks (default = 8)", 
                "8");
-    option_parser_register(opp, "-gpgpu_coalesce_arch", OPT_INT32, &gpgpu_coalesce_arch, 
+   option_parser_register(opp, "-gpgpu_operand_collector", OPT_BOOL, &gpgpu_operand_collector,
+               "Enable operand collector model (default = off)",
+               "0");
+   option_parser_register(opp, "-gpgpu_operand_collector_num_units", OPT_INT32, &gpgpu_operand_collector_num_units,
+               "number of collecture units (default = 4)", 
+               "4");
+   option_parser_register(opp, "-gpgpu_coalesce_arch", OPT_INT32, &gpgpu_coalesce_arch, 
                            "Coalescing arch (default = 13, anything else is off for now)", 
                            "13");
    addrdec_setoption(opp);

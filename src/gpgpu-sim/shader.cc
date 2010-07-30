@@ -213,6 +213,8 @@ unsigned int gpu_padded_cta_size = 32;
 int gpgpu_local_mem_map = 1;
 
 
+int gpgpu_operand_collector_num_units = 4;
+
 extern int pdom_sched_type;
 extern int n_pdom_sc_orig_stat;
 extern int n_pdom_sc_single_stat;
@@ -518,10 +520,45 @@ inst_t create_nop_inst() // just because C++ does not have designated initialize
    nop_inst.id_cycle = 0;
    nop_inst.ex_cycle = 0;
    nop_inst.mm_cycle = 0;
+   nop_inst.space = 0;
    return nop_inst;
 }
 
 static inst_t nop_inst = create_nop_inst();
+
+inst_t *first_valid_thread( inst_t *warp )
+{
+   for(unsigned t=0; t < ::warp_size; t++ ) 
+      if( warp[t].hw_thread_id != -1 ) 
+         return warp+t;
+   return NULL;
+}
+
+void move_warp( inst_t *dst, inst_t *src )
+{
+   memcpy(dst,src,::warp_size * sizeof(inst_t)); 
+   for( unsigned t=0; t < ::warp_size; t++) 
+      src[t] = nop_inst;
+}
+
+bool pipeline_regster_empty( inst_t *reg )
+{
+   return first_valid_thread(reg) == NULL;
+}
+
+std::list<unsigned> get_regs_written( inst_t *warp )
+{
+   std::list<unsigned> result;
+   inst_t *fvi = first_valid_thread(warp);
+   if( fvi == NULL ) 
+      return result;
+   for( unsigned op=0; op < 4; op++ ) {
+      int reg_num = fvi->arch_reg[op]; // this math needs to match that used in function_info::ptx_decode_inst
+      if( reg_num >= 0 ) // valid register
+         result.push_back(reg_num);
+   }
+   return result;
+}
 
 int log2i(int n) {
    int lg;
@@ -597,6 +634,7 @@ shader_core_ctx_t* shader_create( const char *name, int sid,
          }
       }
    }
+   sc->last_cta_finished = 0;
    sc->n_threads = n_threads;
    sc->thread = (thread_ctx_t*) calloc(sizeof(thread_ctx_t), n_threads);
    sc->not_completed = 0;
@@ -1740,6 +1778,19 @@ reg_bank_access g_reg_bank_access[MAX_REG_BANKS];
 static const struct reg_bank_access empty_reg_bank_access;
 
 unsigned int gpu_reg_bank_conflict_stalls = 0;
+
+void shader_opnd_collect_read(shader_core_ctx_t* shader)
+{
+   const int prevstage = ID_OC;
+   const int nextstage = shader->using_rrstage ? ID_RR : ID_EX;
+   shader->m_opndcoll_new.step(shader->pipeline_reg[prevstage],shader->pipeline_reg[nextstage]);
+}
+
+void shader_opnd_collect_write(shader_core_ctx_t* shader)
+{
+   shader->m_opndcoll_new.writeback(shader->pipeline_reg[WB_RT]);
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////
 
 void shader_decode( shader_core_ctx_t *shader, 
@@ -3283,30 +3334,28 @@ void shader_print_l1_miss_stat( FILE *fout ) {
 
 }
 
-void shader_print_stage(shader_core_ctx_t *shader, unsigned int stage, 
-                        FILE *fout, int stage_width, int print_mem, int mask ) 
+void shader_print_warp( const shader_core_ctx_t *shader, inst_t *warp, FILE *fout, int stage_width, int print_mem, int mask ) 
 {
    int i, j, warp_id = -1;
-
    for (i=0; i<stage_width; i++) {
-      if (shader->pipeline_reg[stage][i].hw_thread_id > -1) {
-         warp_id = shader->pipeline_reg[stage][i].hw_thread_id / warp_size;
+      if (warp[i].hw_thread_id > -1) {
+         warp_id = warp[i].hw_thread_id / warp_size;
          break;
       }
    }
    i = (i>=stage_width)? 0 : i;
 
-   fprintf(fout,"0x%04x ", shader->pipeline_reg[stage][i].pc );
+   fprintf(fout,"0x%04x ", warp[i].pc );
 
    if( mask & 2 ) {
       fprintf(fout, "(" );
       for (j=0; j<stage_width; j++)
-         fprintf(fout, "%03d ", shader->pipeline_reg[stage][j].hw_thread_id);
+         fprintf(fout, "%03d ", warp[j].hw_thread_id);
       fprintf(fout, "): ");
    } else {
       fprintf(fout, "w%02d[", warp_id);
       for (j=0; j<stage_width; j++) 
-         fprintf(fout, "%c", ((shader->pipeline_reg[stage][j].hw_thread_id != -1)?'1':'0') );
+         fprintf(fout, "%c", ((warp[j].hw_thread_id != -1)?'1':'0') );
       fprintf(fout, "]: ");
    }
 
@@ -3319,14 +3368,21 @@ void shader_print_stage(shader_core_ctx_t *shader, unsigned int stage,
       }
    }
 
-   ptx_print_insn( shader->pipeline_reg[stage][i].pc, fout );
+   ptx_print_insn( warp[i].pc, fout );
 
    if( mask & 0x10 ) {
-      if ( (shader->pipeline_reg[stage][i].op == STORE_OP ||
-            shader->pipeline_reg[stage][i].op == LOAD_OP) && print_mem )
-         fprintf(fout, "  mem: 0x%016llx", shader->pipeline_reg[stage][i].memreqaddr);
+      if ( (warp[i].op == STORE_OP ||
+            warp[i].op == LOAD_OP) && print_mem )
+         fprintf(fout, "  mem: 0x%016llx", warp[i].memreqaddr);
    }
    fprintf(fout, "\n");
+}
+
+void shader_print_stage(shader_core_ctx_t *shader, unsigned int stage, 
+                        FILE *fout, int stage_width, int print_mem, int mask ) 
+{
+   inst_t *warp = shader->pipeline_reg[stage];
+   shader_print_warp(shader,warp,fout,stage_width,print_mem,mask);
 }
 
 void shader_print_pre_mem_stages(shader_core_ctx_t *shader, FILE *fout, int print_mem, int mask ) 
@@ -3451,6 +3507,9 @@ void shader_display_pipeline(shader_core_ctx_t *shader, FILE *fout, int print_me
    fprintf(fout, "IF/ID = ");
    shader_print_stage(shader, IF_ID, fout, pipe_simd_width, print_mem, mask );
 
+   if (gpgpu_operand_collector)
+       shader->m_opndcoll_new.dump(fout);
+
    if (shader->using_rrstage) {
       fprintf(fout, "ID/RR = ");
       shader_print_stage(shader, ID_RR, fout, pipe_simd_width, print_mem, mask);
@@ -3561,6 +3620,9 @@ void shader_cycle( shader_core_ctx_t *shader,
                    int grid_num ) 
 {
 
+   if (gpgpu_operand_collector) 
+      shader_opnd_collect_write(shader);
+
    // last pipeline stage
    shader_writeback(shader, shader_number, grid_num);
 
@@ -3579,6 +3641,9 @@ void shader_cycle( shader_core_ctx_t *shader,
       // (see Fung et al. MICRO'07 paper or ACM TACO paper)
       shader_preexecute (shader, shader_number);
    }
+
+   if (gpgpu_operand_collector) 
+      shader_opnd_collect_read(shader);
 
    shader_decode   (shader, shader_number, grid_num);
 
@@ -3671,6 +3736,109 @@ void shader_cache_flush(shader_core_ctx_t* sc)
       }
    }
 }
+
+static int *_inmatch;
+static int *_outmatch;
+static int **_request;
+
+// modifiers
+std::list<opndcoll_rfu_t::op_t> opndcoll_rfu_t::arbiter_t::allocate_reads() 
+{
+   std::list<op_t> result;  // a list of registers that (a) are in different register banks, (b) do not go to the same operand collector
+
+   int input;
+   int output;
+   int _inputs = m_num_banks;
+   int _outputs = m_num_collectors;
+   int _square = ( _inputs > _outputs ) ? _inputs : _outputs;
+   int _pri = (int)m_last_cu;
+
+   if( _inmatch == NULL ) {
+      _inmatch = new int[ _inputs ];
+      _outmatch = new int[ _outputs ];
+      _request = new int*[ _inputs ];
+      for(int i=0; i<_outputs;i++) 
+         _request[i] = new int[_outputs];
+   }
+
+   // Clear matching
+   for ( int i = 0; i < _inputs; ++i ) 
+      _inmatch[i] = -1;
+   for ( int j = 0; j < _outputs; ++j ) 
+      _outmatch[j] = -1;
+
+   for( unsigned i=0; i<m_num_banks; i++) {
+      for( unsigned j=0; j<m_num_collectors; j++) 
+         _request[i][j] = 0;
+      if( !m_queue[i].empty() ) {
+         const op_t &op = m_queue[i].front();
+         int oc_id = op.get_oc_id();
+         _request[i][oc_id] = 1;
+      }
+      if( m_allocated_bank[i].is_write() ) 
+         _inmatch[i] = 0; // write gets priority
+   }
+
+   ///// wavefront allocator from booksim... --->
+   
+   // Loop through diagonals of request matrix
+
+   for ( int p = 0; p < _square; ++p ) {
+      output = ( _pri + p ) % _square;
+
+      // Step through the current diagonal
+      for ( input = 0; input < _inputs; ++input ) {
+         if ( ( output < _outputs ) && 
+              ( _inmatch[input] == -1 ) && 
+              ( _outmatch[output] == -1 ) &&
+              ( _request[input][output]/*.label != -1*/ ) ) {
+            // Grant!
+            _inmatch[input] = output;
+            _outmatch[output] = input;
+         }
+
+         output = ( output + 1 ) % _square;
+      }
+   }
+
+   // Round-robin the priority diagonal
+   _pri = ( _pri + 1 ) % _square;
+
+   /// <--- end code from booksim
+
+   m_last_cu = _pri;
+   for( unsigned i=0; i < m_num_banks; i++ ) {
+      if( _inmatch[i] != -1 ) {
+         if( !m_allocated_bank[i].is_write() ) {
+            unsigned bank = (unsigned)i;
+            op_t &op = m_queue[bank].front();
+            result.push_back(op);
+            m_queue[bank].pop_front();
+         }
+      }
+   }
+
+
+/*
+   for( unsigned c=0; c < m_num_collectors; c++ ) {
+      unsigned cu = (m_last_cu+c+1)%m_num_collectors;
+      for( unsigned b=0; b < m_num_banks; b++ ) {
+         unsigned bank = (m_allocator_rr_head[cu]+b+1)%m_num_banks;
+         if( (!m_queue[bank].empty()) && m_allocated_bank[bank].is_free() ) {
+            op_t &op = m_queue[bank].front();
+            result.push_back(op);
+            m_allocated_bank[bank].alloc_read(op);
+            m_queue[bank].pop_front();
+            m_allocator_rr_head[cu] = bank;
+            m_last_cu = cu;
+            break; // skip to next collector unit
+         }
+      }
+   }
+*/
+   return result;
+}
+
 
 barrier_set_t::barrier_set_t( unsigned max_warps_per_core, unsigned max_cta_per_core )
 {
@@ -3777,7 +3945,7 @@ void barrier_set_t::dump() const
 }
 
 shader_core_ctx::shader_core_ctx( unsigned max_warps_per_cta, unsigned max_cta_per_core )
-   : m_barriers( max_warps_per_cta, max_cta_per_core )
+   : m_barriers( max_warps_per_cta, max_cta_per_core ), m_opndcoll_new( gpgpu_operand_collector_num_units, gpgpu_num_reg_banks, this )
 {
 }
 

@@ -11,6 +11,8 @@ public:
    virtual bool warp_waiting_at_barrier( unsigned warp_id ) = 0;
 };
 
+#define MAX_REG_OPERANDS 8
+extern unsigned int warp_size; 
 #endif
 
 typedef unsigned address_type;
