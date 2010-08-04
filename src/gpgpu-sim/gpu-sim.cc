@@ -87,6 +87,8 @@
 #include <string.h>
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
+bool g_interactive_debugger_enabled=false;
+
 extern unsigned L2_write_miss;
 extern unsigned L2_write_hit;
 extern unsigned L2_read_hit;
@@ -204,6 +206,7 @@ void check_time_vector_update(unsigned int uid,int slot ,long int latency,int ty
 void node_req_hist_clear(void *p);
 void node_req_hist_dump(void *p);
 void node_req_hist_update(void * p,int node, long long cycle);
+static void gpgpu_debug();
 
 /* functionally simulated memory */
 extern struct mem_t *mem;
@@ -1549,6 +1552,8 @@ void gpu_sim_loop( int grid_num )
          sc[i]->gpu_cycle++;
       }
       gpu_sim_cycle++;
+      if( g_interactive_debugger_enabled ) 
+         gpgpu_debug();
 
       for (unsigned i=0;i<gpu_n_shader && more_thread;i++) {
          if (gpgpu_spread_blocks_across_cores) {
@@ -1758,4 +1763,113 @@ void dump_pipeline_impl( int mask, int s, int m )
 void dump_pipeline()
 {
    dump_pipeline_impl(0,-1,-1);
+}
+
+/// interactive debugger 
+
+static void gpgpu_debug()
+{
+   bool done=true;
+
+   static bool single_step=true;
+   static unsigned next_brkpt=1;
+   static std::map<unsigned,brk_pt> breakpoints;
+
+   /// if single stepping, go to interactive debugger
+
+   if( single_step ) 
+      done=false;
+
+   /// check if we've reached a breakpoint
+
+   for( std::map<unsigned,brk_pt>::iterator i=breakpoints.begin(); i!=breakpoints.end(); i++) {
+      unsigned num=i->first;
+      brk_pt &b=i->second;
+      if( b.is_watchpoint() ) {
+         unsigned addr = b.get_addr();
+         unsigned new_value = read_location(addr);
+         if( new_value != b.get_value() ) {
+            printf( "GPGPU-Sim DBG: watch point %u triggered (old value=%x, new value=%x)\n",
+                     num,b.get_value(),new_value );
+            b.set_value(new_value);
+            done = false; 
+         }
+      } else {
+         for( unsigned sid=0; sid < gpu_n_shader; sid++ ) { 
+            inst_t *fvi = first_valid_thread(sc[sid]->pipeline_reg[IF_ID]);
+            if( !fvi ) continue;
+            if( thread_at_brkpt(fvi->ptx_thd_info, b) ) {
+               done = false;
+               printf("GPGPU-Sim DBG: reached breakpoint %u at %s (sm=%u, hwtid=%u)\n", 
+                      num, b.location().c_str(), sid, fvi->hw_thread_id );
+            }
+         }
+      }
+   }
+
+   /// enter interactive debugger loop
+
+   while (!done) {
+      printf("(gpgpu-sim dbg) ");
+      fflush(stdout);
+      
+      char line[1024];
+      fgets(line,1024,stdin);
+
+      char *tok = strtok(line," \t\n");
+      if( !strcmp(tok,"dp") ) {
+         int shader_num = 0;
+         tok = strtok(NULL," \t\n");
+         sscanf(tok,"%d",&shader_num);
+         dump_pipeline_impl((0x40|0x4|0x1),shader_num,0);
+         printf("\n");
+         fflush(stdout);
+      } else if( !strcmp(tok,"q") || !strcmp(tok,"quit") ) {
+         printf("\nreally quit GPGPU-Sim (y/n)?\n");
+         fgets(line,1024,stdin);
+         tok = strtok(NULL," \t\n");
+         if( !strcmp(tok,"y") ) {
+            exit(0);
+         } else {
+            printf("not quiting.\n");
+         }
+      } else if( !strcmp(tok,"b") ) {
+         tok = strtok(NULL," \t\n");
+         char brkpt[1024];
+         sscanf(tok,"%s",brkpt);
+         tok = strtok(NULL," \t\n");
+         unsigned uid;
+         sscanf(tok,"%u",&uid);
+         breakpoints[next_brkpt++] = brk_pt(brkpt,uid);
+      } else if( !strcmp(tok,"d") ) {
+         tok = strtok(NULL," \t\n");
+         unsigned uid;
+         sscanf(tok,"%u",&uid);
+         breakpoints.erase(uid);
+      } else if( !strcmp(tok,"s") ) {
+         done = true;
+      } else if( !strcmp(tok,"c") ) {
+         single_step=false;
+         done = true;
+      } else if( !strcmp(tok,"w") ) {
+         tok = strtok(NULL," \t\n");
+         unsigned addr;
+         sscanf(tok,"%x",&addr);
+         unsigned value = read_location(addr);
+         breakpoints[next_brkpt++] = brk_pt(addr,value);
+      } else if( !strcmp(tok,"h") ) {
+         printf("commands:\n");
+         printf("  q                           - quit GPGPU-Sim\n");
+         printf("  b <file>:<line> <thead uid> - set breakpoint\n");
+         printf("  w <global address>          - set watchpoint\n");
+         printf("  del <n>                     - delete breakpoint\n");
+         printf("  s                           - single step one shader cycle (all cores)\n");
+         printf("  c                           - continue simulation without single stepping\n");
+         printf("  dp <n>                      - display pipeline contents on SM <n>\n");
+         printf("  h                           - print this message\n");
+      } else {
+         printf("\ncommand not understood.\n");
+      }
+      fflush(stdout);
+   }
 }

@@ -77,6 +77,7 @@
 #include "memory.h"
 #include "ptx-stats.h"
 
+extern bool g_interactive_debugger_enabled;
 
 int gpgpu_ptx_instruction_classification=0;
 void ** g_inst_classification_stat = NULL;
@@ -1708,6 +1709,7 @@ void read_environment_variables()
    ptx_debug = 0;
    g_debug_execution = 0;
    g_debug_ir_generation = false;
+   g_interactive_debugger_enabled = false;
 
    char *mode = getenv("PTX_SIM_MODE_FUNC");
    if ( mode )
@@ -1715,6 +1717,12 @@ void read_environment_variables()
    printf("GPGPU-Sim PTX: simulation mode %d (can change with PTX_SIM_MODE_FUNC environment variable:\n", g_ptx_sim_mode);
    printf("               1=functional simulation only, 0=detailed performance simulator)\n");
    g_filename = getenv("PTX_SIM_KERNELFILE"); 
+   char *dbg_inter = getenv("GPGPUSIM_DEBUG");
+   if ( dbg_inter && strlen(dbg_inter) ) {
+      printf("GPGPU-Sim PTX: enabling interactive debugger\n");
+      fflush(stdout);
+      g_interactive_debugger_enabled = true;
+   }
    char *dbg_level = getenv("PTX_SIM_DEBUG");
    if ( dbg_level && strlen(dbg_level) ) {
       printf("GPGPU-Sim PTX: setting debug level to %s\n", dbg_level );
@@ -2347,4 +2355,17 @@ void *gpgpusim_opencl_getkernel_Object( const char *kernel_name )
       return NULL;
    }
    return i->second;
+}
+
+bool thread_at_brkpt( void *thd, const struct brk_pt &b )
+{
+   ptx_thread_info *thread = (ptx_thread_info *) thd;
+   return b.is_equal(thread->get_location(),thread->get_uid());
+}
+
+unsigned read_location( addr_t addr )
+{
+   unsigned result=0;
+   g_global_mem->read(addr,4,&result);
+   return result;
 }
