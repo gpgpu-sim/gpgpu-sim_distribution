@@ -587,7 +587,7 @@ int load_static_globals( symbol_table *symtab, unsigned min_gaddr, unsigned max_
             operand_info op = *i;
             ptx_reg_t value = op.get_literal_value();
             assert( (addr+offset+nbytes) < min_gaddr ); // min_gaddr is start of "heap" for cudaMalloc
-            g_global_mem->write(addr+offset,nbytes,&value); // assuming little endian here
+            g_global_mem->write(addr+offset,nbytes,&value,NULL,NULL); // assuming little endian here
             offset+=nbytes;
             ng_bytes+=nbytes;
          }
@@ -631,7 +631,7 @@ int load_constants( symbol_table *symtab, addr_t min_gaddr )
             unsigned addr=constant->get_address() + nbytes_written;
             assert( addr+nbytes < min_gaddr );
 
-            g_global_mem->write(addr,nbytes,&value); // assume little endian (so u8 is the first byte in u32)
+            g_global_mem->write(addr,nbytes,&value,NULL,NULL); // assume little endian (so u8 is the first byte in u32)
             nc_bytes+=nbytes;
             nbytes_written += nbytes;
          }
@@ -755,7 +755,7 @@ void gpgpu_ptx_sim_memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t
    fflush(stdout);
    char *src_data = (char*)src;
    for (unsigned n=0; n < count; n ++ ) 
-      g_global_mem->write(dst_start_addr+n,1, src_data+n);
+      g_global_mem->write(dst_start_addr+n,1, src_data+n,NULL,NULL);
    printf( " done.\n");
    fflush(stdout);
 }
@@ -779,7 +779,7 @@ void gpgpu_ptx_sim_memcpy_gpu_to_gpu( size_t dst, size_t src, size_t count )
    for (unsigned n=0; n < count; n ++ ) {
       unsigned char tmp;
       g_global_mem->read(src+n,1,&tmp); 
-      g_global_mem->write(dst+n,1, &tmp);
+      g_global_mem->write(dst+n,1, &tmp,NULL,NULL);
    }
    printf( " done.\n");
    fflush(stdout);
@@ -792,7 +792,7 @@ void gpgpu_ptx_sim_memset( size_t dst_start_addr, int c, size_t count )
    fflush(stdout);
    unsigned char c_value = (unsigned char)c;
    for (unsigned n=0; n < count; n ++ ) 
-      g_global_mem->write(dst_start_addr+n,1,&c_value);
+      g_global_mem->write(dst_start_addr+n,1,&c_value,NULL,NULL);
    printf( " done.\n");
    fflush(stdout);
 }
@@ -1058,7 +1058,7 @@ void function_info::finalize( memory_space *param_mem, symbol_table *symtab  )
       const size_t word_size = 4; 
       for (size_t idx = 0; idx < size; idx += word_size) {
          const char *pdata = reinterpret_cast<const char*>(param_value.pdata) + idx; // cast to char * for ptr arithmetic
-         param_mem->write(param_address + idx, word_size, pdata); 
+         param_mem->write(param_address + idx, word_size, pdata,NULL,NULL); 
       }
       param->set_address(param_address);
       param_address += size; 
@@ -1681,7 +1681,7 @@ void gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t co
    printf("GPGPU-Sim PTX: gpgpu_ptx_sim_memcpy_symbol: copying %zu bytes %s symbol %s+%zu @0x%x ...\n", 
           count, (to?" to ":"from"), sym_name.c_str(), offset, dst );
    for ( unsigned n=0; n < count; n++ ) {
-      if( to ) mem->write(dst+n,1,((char*)src)+n); 
+      if( to ) mem->write(dst+n,1,((char*)src)+n,NULL,NULL); 
       else mem->read(dst+n,1,((char*)src)+n); 
    }
    fflush(stdout);
@@ -2357,15 +2357,3 @@ void *gpgpusim_opencl_getkernel_Object( const char *kernel_name )
    return i->second;
 }
 
-bool thread_at_brkpt( void *thd, const struct brk_pt &b )
-{
-   ptx_thread_info *thread = (ptx_thread_info *) thd;
-   return b.is_equal(thread->get_location(),thread->get_uid());
-}
-
-unsigned read_location( addr_t addr )
-{
-   unsigned result=0;
-   g_global_mem->read(addr,4,&result);
-   return result;
-}

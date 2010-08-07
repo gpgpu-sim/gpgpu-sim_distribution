@@ -112,5 +112,6 @@ void gpu_print_stat();
 int mem_ctrl_full( int mc_id );
 
 void dramqueue_latency_log_dump();
+void dump_pipeline_impl( int mask, int s, int m );
 
 #endif

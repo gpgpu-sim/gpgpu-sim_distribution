@@ -62,6 +62,8 @@
 #ifndef memory_h_INCLUDED
 #define memory_h_INCLUDED
 
+#include "../abstract_hardware_model.h"
+
 #ifdef __GNUC__
 #if __GNUC__ >= 4 && __GNUC_MINOR__ >= 3
    #include <unordered_map>
@@ -85,7 +87,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <string>
-#include "../abstract_hardware_model.h"
+#include <map>
+#include <stdlib.h>
 
 typedef address_type mem_addr_t;
 
@@ -95,16 +98,16 @@ template<unsigned BSIZE> class mem_storage {
 public:
    mem_storage( const mem_storage &another )
    {
-      m_data = new unsigned char[ BSIZE ];
+      m_data = (unsigned char*)calloc(1,BSIZE);
       memcpy(m_data,another.m_data,BSIZE);
    }
    mem_storage()
    {
-      m_data = new unsigned char[ BSIZE ];
+      m_data = (unsigned char*)calloc(1,BSIZE);
    }
    ~mem_storage()
    {
-      delete[] m_data;
+      free(m_data);
    }
 
    void write( unsigned offset, size_t length, const unsigned char *data )
@@ -138,28 +141,34 @@ private:
    unsigned char *m_data;
 };
 
+class ptx_thread_info;
+class ptx_instruction;
+
 class memory_space
 {
 public:
    virtual ~memory_space() {}
-   virtual void write( mem_addr_t addr, size_t length, const void *data ) = 0;
+   virtual void write( mem_addr_t addr, size_t length, const void *data, ptx_thread_info *thd, const ptx_instruction *pI ) = 0;
    virtual void read( mem_addr_t addr, size_t length, void *data ) const = 0;
    virtual void print( const char *format, FILE *fout ) const = 0;
+   virtual void set_watch( addr_t addr, unsigned watchpoint ) = 0;
 };
 
 template<unsigned BSIZE> class memory_space_impl : public memory_space {
 public:
    memory_space_impl( std::string name, unsigned hash_size );
 
-   virtual void write( mem_addr_t addr, size_t length, const void *data );
+   virtual void write( mem_addr_t addr, size_t length, const void *data, ptx_thread_info *thd, const ptx_instruction *pI );
    virtual void read( mem_addr_t addr, size_t length, void *data ) const;
    virtual void print( const char *format, FILE *fout ) const;
+   virtual void set_watch( addr_t addr, unsigned watchpoint ); 
 
 private:
    std::string m_name;
    unsigned m_log2_block_size;
    typedef mem_map<mem_addr_t,mem_storage<BSIZE> > map_t;
    map_t m_data;
+   std::map<unsigned,mem_addr_t> m_watchpoints;
 };
 
 #endif

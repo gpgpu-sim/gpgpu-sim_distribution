@@ -635,7 +635,7 @@ void atom_callback( void* ptx_inst, void* thd )
 
    // Write operation result into global memory
    // (i.e. copy src1_data to dst)
-   g_global_mem->write(src1_data.u32,size/8,&op_result.s64);
+   g_global_mem->write(src1_data.u32,size/8,&op_result.s64,thread,pI);
 }
 
 // atom_impl will now result in a callback being called in mem_ctrl_pop (gpu-sim.c)
@@ -2638,30 +2638,30 @@ void st_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    if (!vector_spec) {
       data = thread->get_operand_value(src1);
-      mem->write(addr,size/8,&data.s64);
+      mem->write(addr,size/8,&data.s64,thread,pI);
    } else {
       if (vector_spec == V2_TYPE) {
          ptx_reg_t* ptx_regs = new ptx_reg_t[2]; 
          thread->get_vector_operand_values(src1, ptx_regs, 2); 
-         mem->write(addr,size/8,&ptx_regs[0].s64);
-         mem->write(addr+size/8,size/8,&ptx_regs[1].s64);
+         mem->write(addr,size/8,&ptx_regs[0].s64,thread,pI);
+         mem->write(addr+size/8,size/8,&ptx_regs[1].s64,thread,pI);
          free(ptx_regs);
       }
       if (vector_spec == V3_TYPE) {
          ptx_reg_t* ptx_regs = new ptx_reg_t[3]; 
          thread->get_vector_operand_values(src1, ptx_regs, 3); 
-         mem->write(addr,size/8,&ptx_regs[0].s64);
-         mem->write(addr+size/8,size/8,&ptx_regs[1].s64);
-         mem->write(addr+2*size/8,size/8,&ptx_regs[2].s64);
+         mem->write(addr,size/8,&ptx_regs[0].s64,thread,pI);
+         mem->write(addr+size/8,size/8,&ptx_regs[1].s64,thread,pI);
+         mem->write(addr+2*size/8,size/8,&ptx_regs[2].s64,thread,pI);
          free(ptx_regs);
       }
       if (vector_spec == V4_TYPE) {
          ptx_reg_t* ptx_regs = new ptx_reg_t[4]; 
          thread->get_vector_operand_values(src1, ptx_regs, 4); 
-         mem->write(addr,size/8,&ptx_regs[0].s64);
-         mem->write(addr+size/8,size/8,&ptx_regs[1].s64);
-         mem->write(addr+2*size/8,size/8,&ptx_regs[2].s64);
-         mem->write(addr+3*size/8,size/8,&ptx_regs[3].s64);
+         mem->write(addr,size/8,&ptx_regs[0].s64,thread,pI);
+         mem->write(addr+size/8,size/8,&ptx_regs[1].s64,thread,pI);
+         mem->write(addr+2*size/8,size/8,&ptx_regs[2].s64,thread,pI);
+         mem->write(addr+3*size/8,size/8,&ptx_regs[3].s64,thread,pI);
          free(ptx_regs);
       }
    }

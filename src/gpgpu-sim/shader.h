@@ -896,5 +896,7 @@ unsigned int max_cta_per_shader( shader_core_ctx_t *shader);
 #define WB_RT 6
 #define ID_OC 7
 
+extern unsigned int gpu_n_shader;
+extern shader_core_ctx_t **sc;
 
 #endif /* SHADER_H */

@@ -63,6 +63,7 @@
 
 #include "memory.h"
 #include <stdlib.h>
+#include "../debug.h"
 
 template<unsigned BSIZE> memory_space_impl<BSIZE>::memory_space_impl( std::string name, unsigned hash_size )
 {
@@ -79,13 +80,21 @@ template<unsigned BSIZE> memory_space_impl<BSIZE>::memory_space_impl( std::strin
    assert( m_log2_block_size != (unsigned)-1 );
 }
 
-template<unsigned BSIZE> void memory_space_impl<BSIZE>::write( mem_addr_t addr, size_t length, const void *data )
+template<unsigned BSIZE> void memory_space_impl<BSIZE>::write( mem_addr_t addr, size_t length, const void *data, class ptx_thread_info *thd, const ptx_instruction *pI)
 {
    mem_addr_t index = addr >> m_log2_block_size;
    unsigned offset = addr & (BSIZE-1);
    unsigned nbytes = length;
    assert( (addr+length) <= (index+1)*BSIZE );
    m_data[index].write(offset,nbytes,(const unsigned char*)data);
+   if( !m_watchpoints.empty() ) {
+      std::map<unsigned,mem_addr_t>::iterator i;
+      for( i=m_watchpoints.begin(); i!=m_watchpoints.end(); i++ ) {
+         mem_addr_t wa = i->second;
+         if( ((addr<=wa) && ((addr+length)>wa)) || ((addr>wa) && (addr < (wa+4))) ) 
+            hit_watchpoint(i->first,thd,pI);
+      }
+   }
 }
 
 template<unsigned BSIZE> void memory_space_impl<BSIZE>::read( mem_addr_t addr, size_t length, void *data ) const
@@ -119,6 +128,11 @@ template<unsigned BSIZE> void memory_space_impl<BSIZE>::print( const char *forma
    }
 }
 
+template<unsigned BSIZE> void memory_space_impl<BSIZE>::set_watch( addr_t addr, unsigned watchpoint ) 
+{
+   m_watchpoints[watchpoint]=addr;
+}
+
 template class memory_space_impl<32>;
 template class memory_space_impl<64>;
 template class memory_space_impl<8192>;
@@ -137,7 +151,7 @@ int main(int argc, char *argv[] )
    memory_space *mem = new memory_space_impl<32>("test",4);
    // write address to [address]
    for( mem_addr_t addr=0; addr < 16*1024; addr+=4) 
-      mem->write(addr,4,&addr);
+      mem->write(addr,4,&addr,NULL,NULL);
 
    for( mem_addr_t addr=0; addr < 16*1024; addr+=4) {
       unsigned tmp=0;
@@ -150,7 +164,7 @@ int main(int argc, char *argv[] )
 
    for( mem_addr_t addr=0; addr < 16*1024; addr+=1) {
       unsigned char val = (addr + 128) % 256;
-      mem->write(addr,1,&val);
+      mem->write(addr,1,&val,NULL,NULL);
    }
 
    for( mem_addr_t addr=0; addr < 16*1024; addr+=1) {

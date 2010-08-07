@@ -1416,7 +1416,7 @@ void copy_buffer_to_frame(ptx_thread_info * thread, const arg_buffer_t &a)
       const symbol *dst = a.get_dst();
       addr_t frame_offset = dst->get_address();
       addr_t to_addr = thread->get_local_mem_stack_pointer() + frame_offset;
-      thread->m_local_mem->write(to_addr,size,buffer);
+      thread->m_local_mem->write(to_addr,size,buffer,NULL,NULL);
    }
 }
 
