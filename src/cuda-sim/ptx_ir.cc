@@ -78,7 +78,7 @@ extern "C" int ptx_error( const char *s );
 
 // the program intermediate representation...
 symbol_table *g_global_symbol_table = NULL;
-symbol_table *g_current_symbol_table = NULL;
+static symbol_table *g_current_symbol_table = NULL;
 std::list<ptx_instruction*> g_instructions;
 symbol *g_last_symbol = NULL;
 std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
@@ -1421,6 +1421,262 @@ void copy_buffer_list_into_frame(ptx_thread_info * thread, arg_buffer_list_t &ar
    arg_buffer_list_t::iterator a;
    for( a=arg_values.begin(); a != arg_values.end(); a++ ) {
       copy_buffer_to_frame(thread, *a);
+   }
+}
+
+
+
+static std::list<operand_info> check_operands( int opcode,
+                                        const std::list<int> &scalar_type,
+                                        const std::list<operand_info> &operands )
+{
+   static int g_warn_literal_operands_two_type_inst;
+    if( (opcode == CVT_OP) || (opcode == SET_OP) || (opcode == SLCT_OP) || (opcode == TEX_OP) ) {
+        // just make sure these do not have have const operands... 
+        if( !g_warn_literal_operands_two_type_inst ) {
+            std::list<operand_info>::const_iterator o;
+            for( o = operands.begin(); o != operands.end(); o++ ) {
+                const operand_info &op = *o;
+                if( op.is_literal() ) {
+                    printf("GPGPU-Sim PTX: PTX uses two scalar type intruction with literal operand.\n");
+                    g_warn_literal_operands_two_type_inst = 1;
+                }
+            }
+        }
+    } else {
+        assert( scalar_type.size() < 2 );
+        if( scalar_type.size() == 1 ) {
+            std::list<operand_info> result;
+            int inst_type = scalar_type.front();
+            std::list<operand_info>::const_iterator o;
+            for( o = operands.begin(); o != operands.end(); o++ ) {
+                const operand_info &op = *o;
+                if( op.is_literal() ) {
+                    if( (op.get_type() == double_op_t) && (inst_type == F32_TYPE) ) {
+                        ptx_reg_t v = op.get_literal_value();
+                        float u = (float)v.f64;
+                        operand_info n(u);
+                        result.push_back(n);
+                    } else {
+                        result.push_back(op);
+                    }
+                } else {
+                        result.push_back(op);
+                }
+            }
+            return result;
+        } 
+    }
+    return operands;
+}
+
+
+ptx_instruction::ptx_instruction( int opcode, 
+                                  const symbol *pred, 
+                                  int neg_pred, 
+                                  symbol *label,
+                                  const std::list<operand_info> &operands, 
+                                  const operand_info &return_var,
+                                  const std::list<int> &options, 
+                                  const std::list<int> &scalar_type,
+                                  memory_space_t space_spec,
+                                  const char *file, 
+                                  unsigned line,
+                                  const char *source ) 
+{
+   m_uid = ++g_num_ptx_inst_uid;
+   m_PC = 0;
+   m_opcode = opcode;
+   m_pred = pred;
+   m_neg_pred = neg_pred;
+   m_label = label;
+   const std::list<operand_info> checked_operands = check_operands(opcode,scalar_type,operands);
+   m_operands.insert(m_operands.begin(), checked_operands.begin(), checked_operands.end() );
+   m_return_var = return_var;
+   m_options = options;
+   m_wide = false;
+   m_hi = false;
+   m_lo = false;
+   m_uni = false;
+   m_to_option = false;
+   m_cache_option = 0;
+   m_rounding_mode = RN_OPTION;
+   m_compare_op = -1;
+   m_saturation_mode = 0;
+   m_geom_spec = 0;
+   m_vector_spec = 0;
+   m_atomic_spec = 0;
+   m_warp_size = ::warp_size;
+   m_membar_level = 0;
+
+   std::list<int>::const_iterator i;
+   unsigned n=1;
+   for ( i=options.begin(); i!= options.end(); i++, n++ ) {
+      int last_ptx_inst_option = *i;
+      switch ( last_ptx_inst_option ) {
+      case EQU_OPTION:
+      case NEU_OPTION:
+      case LTU_OPTION:
+      case LEU_OPTION:
+      case GTU_OPTION:
+      case GEU_OPTION:
+      case EQ_OPTION:
+      case NE_OPTION:
+      case LT_OPTION:
+      case LE_OPTION:
+      case GT_OPTION:
+      case GE_OPTION:
+      case LS_OPTION:
+      case HS_OPTION:
+         m_compare_op = last_ptx_inst_option;
+         break;
+      case NUM_OPTION:
+      case NAN_OPTION:
+    	  m_compare_op = last_ptx_inst_option;
+        // assert(0); // finish this
+         break;
+      case SAT_OPTION:
+         m_saturation_mode = 1;
+         break;
+      case RNI_OPTION:
+      case RZI_OPTION:
+      case RMI_OPTION:
+      case RPI_OPTION:
+      case RN_OPTION:
+      case RZ_OPTION:
+      case RM_OPTION:
+      case RP_OPTION:
+         m_rounding_mode = last_ptx_inst_option;
+         break;
+      case HI_OPTION:
+         m_compare_op = last_ptx_inst_option;
+         m_hi = true;
+         assert( !m_lo ); 
+         assert( !m_wide );
+         break;
+      case LO_OPTION:
+         m_compare_op = last_ptx_inst_option;
+         m_lo = true;
+         assert( !m_hi );
+         assert( !m_wide );
+         break;
+      case WIDE_OPTION:
+         m_wide = true;
+         assert( !m_lo ); 
+         assert( !m_hi ); 
+         break;
+      case UNI_OPTION:
+         m_uni = true; // don't care... < now we DO care when constructing flowgraph>
+         break;
+      case GEOM_MODIFIER_1D:
+      case GEOM_MODIFIER_2D:
+      case GEOM_MODIFIER_3D:
+         m_geom_spec = last_ptx_inst_option;
+         break;
+      case V2_TYPE:
+      case V3_TYPE:
+      case V4_TYPE:
+         m_vector_spec = last_ptx_inst_option;
+         break;
+      case ATOMIC_AND:
+      case ATOMIC_OR:
+      case ATOMIC_XOR:
+      case ATOMIC_CAS:
+      case ATOMIC_EXCH:
+      case ATOMIC_ADD:
+      case ATOMIC_INC:
+      case ATOMIC_DEC:
+      case ATOMIC_MIN:
+      case ATOMIC_MAX:
+         m_atomic_spec = last_ptx_inst_option;
+         break;
+      case APPROX_OPTION:
+         break;
+      case FULL_OPTION:
+         break;
+      case ANY_OPTION:
+         m_vote_mode = vote_any;
+         break;
+      case ALL_OPTION:
+         m_vote_mode = vote_all;
+         break;
+      case GLOBAL_OPTION:
+         m_membar_level = GLOBAL_OPTION;
+         break;
+      case CTA_OPTION:
+         m_membar_level = CTA_OPTION;
+         break;
+      case FTZ_OPTION:
+         break;
+      case TO_OPTION:
+         m_to_option = true;
+         break;
+      case CA_OPTION: case CG_OPTION: case CS_OPTION: case LU_OPTION: case CV_OPTION:
+         m_cache_option = last_ptx_inst_option;
+         break;
+
+      default:
+         assert(0);
+         break;
+      }
+   }
+   m_scalar_type = scalar_type;
+   m_space_spec = space_spec;
+   if( ( opcode == ST_OP || opcode == LD_OP ) && (space_spec == undefined_space) ) {
+      m_space_spec = generic_space;
+   }
+   m_source_file = file?file:"<unknown>";
+   m_source_line = line;
+   m_source = source;
+}
+
+void ptx_instruction::print_insn() const
+{
+   print_insn(stdout);
+   fflush(stdout);
+}
+
+void ptx_instruction::print_insn( FILE *fp ) const
+{
+   char buf[1024], *p;
+   snprintf(buf,1024,"%s", m_source.c_str());
+   p = strtok(buf,";");
+   if( !is_label() ) 
+      fprintf(fp,"PC=%3u [idx=%3u] ", m_PC, m_instr_mem_index );
+   else
+      fprintf(fp,"                " );
+   fprintf(fp,"(%s:%u) %s", m_source_file.c_str(), m_source_line, p );
+}
+
+unsigned function_info::sm_next_uid = 1;
+
+function_info::function_info(int entry_point ) 
+{
+   m_uid = sm_next_uid++;
+   m_entry_point = (entry_point==1)?true:false;
+   m_extern = (entry_point==2)?true:false;
+   num_reconvergence_pairs = 0;
+   m_symtab = NULL;
+   m_assembled = false;
+   m_return_var_sym = NULL; 
+   m_kernel_info.cmem = 0;
+   m_kernel_info.lmem = 0;
+   m_kernel_info.regs = 0;
+   m_kernel_info.smem = 0;
+   m_local_mem_framesize = 0;
+}
+
+void function_info::print_insn( unsigned pc, FILE * fp ) const
+{
+   unsigned index = pc - m_start_PC;
+   fprintf(fp,"FUNC[%s]",m_name.c_str() );
+   if ( index >= m_instr_mem_size ) {
+      fprintf(fp, "<past last instruction (max pc=%u)>", m_start_PC + m_instr_mem_size - 1 );
+   } else {
+      if ( m_instr_mem[index] != NULL )
+         m_instr_mem[index]->print_insn(fp);
+      else
+         fprintf(fp, "<no instruction at pc = %u>", pc );
    }
 }
 

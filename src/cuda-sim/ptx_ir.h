@@ -1010,7 +1010,7 @@ public:
        return m_start_PC;
    }
 
-   void finalize( memory_space *param_mem, symbol_table *symtab );
+   void finalize( memory_space *param_mem );
    void list_param( FILE *fout ) const;
 
    const struct gpgpu_ptx_sim_kernel_info* get_kernel_info () {
@@ -1259,7 +1259,6 @@ extern function_info *g_func_info;
 extern int g_error_detected;
 extern bool g_debug_ir_generation;
 extern std::list<ptx_instruction*> g_instructions;
-extern symbol_table *g_current_symbol_table;
 extern symbol_table *g_entrypoint_symbol_table;
 extern function_info *g_entrypoint_func_info;
 extern symbol_table *g_global_symbol_table;

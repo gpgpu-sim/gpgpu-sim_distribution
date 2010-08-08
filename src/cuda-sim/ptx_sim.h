@@ -270,7 +270,7 @@ public:
       return m_func_info; 
    }
    void print_insn( unsigned pc, FILE * fp ) const;
-   void set_info( symbol_table *symtab, function_info *func );
+   void set_info( function_info *func );
    unsigned get_uid() const
    {
       return m_uid;

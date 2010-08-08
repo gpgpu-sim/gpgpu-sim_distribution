@@ -301,9 +301,9 @@ unsigned ptx_thread_info::get_builtin( int builtin_id, unsigned dim_mod )
    return 0;
 }
 
-void ptx_thread_info::set_info( symbol_table *symtab, function_info *func ) 
+void ptx_thread_info::set_info( function_info *func ) 
 {
-  m_symbol_table = symtab;
+  m_symbol_table = func->get_symtab();
   m_func_info = func;
   m_PC = func->get_start_PC();
 }
@@ -313,9 +313,9 @@ void ptx_thread_info::print_insn( unsigned pc, FILE * fp ) const
    m_func_info->print_insn(pc,fp);
 }
 
-static void print_reg( std::string name, ptx_reg_t value )
+static void print_reg( std::string name, ptx_reg_t value, symbol_table *symtab )
 {
-   const symbol *sym = g_current_symbol_table->lookup(name.c_str());
+   const symbol *sym = symtab->lookup(name.c_str());
    printf("  %8s   ", name.c_str() );
    if( sym == NULL ) {
       printf("<unknown type> 0x%llx\n", (unsigned long long ) value.u64 );
@@ -451,8 +451,7 @@ void ptx_thread_info::dump_regs()
    for ( r=m_regs.back().begin(); r != m_regs.back().end(); ++r ) {
       std::string name = r->first->name();
       ptx_reg_t value = r->second;
-      print_reg(name,value);
-
+      print_reg(name,value,m_symbol_table);
    }
 }
 
@@ -465,7 +464,7 @@ void ptx_thread_info::dump_modifiedregs()
    for ( r=m_debug_trace_regs_modified.begin(); r != m_debug_trace_regs_modified.end(); ++r ) {
       std::string name = r->first->name();
       ptx_reg_t value = r->second;
-      print_reg(name,value);
+      print_reg(name,value,m_symbol_table);
    }
 }
 
