@@ -434,6 +434,16 @@ std::string ptx_thread_info::get_location() const
    return std::string(buf);
 }
 
+const ptx_instruction *ptx_thread_info::get_inst() const
+{
+   return m_func_info->get_instruction(m_PC);
+}
+
+const ptx_instruction *ptx_thread_info::get_inst( addr_t pc ) const
+{
+   return m_func_info->get_instruction(pc);
+}
+
 void ptx_thread_info::dump_regs()
 {
    printf("Register File Contents:\n");

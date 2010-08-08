@@ -51,6 +51,8 @@ void gpgpu_debug()
       done=false;
 
    /// check if we've reached a breakpoint
+   const ptx_thread_info *brk_thd = NULL;
+   const ptx_instruction *brk_inst = NULL;
 
    for( std::map<unsigned,brk_pt>::iterator i=breakpoints.begin(); i!=breakpoints.end(); i++) {
       unsigned num=i->first;
@@ -59,19 +61,19 @@ void gpgpu_debug()
          unsigned addr = b.get_addr();
          unsigned new_value = read_location(addr);
          if( new_value != b.get_value() ) {
-            printf( "GPGPU-Sim DBG: watch point %u triggered (old value=%x, new value=%x)\n",
+            printf( "GPGPU-Sim PTX DBG: watch point %u triggered (old value=%x, new value=%x)\n",
                      num,b.get_value(),new_value );
             std::map<unsigned,watchpoint_event>::iterator w=g_watchpoint_hits.find(num);
             if( w==g_watchpoint_hits.end() ) 
-               printf( "GPGPU-Sim DBG: memory transfer modified value\n");
+               printf( "GPGPU-Sim PTX DBG: memory transfer modified value\n");
             else {
                watchpoint_event wa = w->second;
-               const ptx_thread_info *thd = wa.thread();
-               const ptx_instruction *pI = wa.inst();
-               printf( "GPGPU-Sim DBG: modified by thread uid=%u, sid=%u, hwtid=%u\n",
-                       thd->get_uid(),thd->get_hw_sid(), thd->get_hw_tid() );
-               printf( "GPGPU-Sim DBG: ");
-               pI->print_insn(stdout);
+               brk_thd = wa.thread();
+               brk_inst = wa.inst();
+               printf( "GPGPU-Sim PTX DBG: modified by thread uid=%u, sid=%u, hwtid=%u\n",
+                       brk_thd->get_uid(),brk_thd->get_hw_sid(), brk_thd->get_hw_tid() );
+               printf( "GPGPU-Sim PTX DBG: ");
+               brk_inst->print_insn(stdout);
                printf( "\n" );
                g_watchpoint_hits.erase(w);
             }
@@ -84,8 +86,15 @@ void gpgpu_debug()
             if( !fvi ) continue;
             if( thread_at_brkpt(fvi->ptx_thd_info, b) ) {
                done = false;
-               printf("GPGPU-Sim DBG: reached breakpoint %u at %s (sm=%u, hwtid=%u)\n", 
+               printf("GPGPU-Sim PTX DBG: reached breakpoint %u at %s (sm=%u, hwtid=%u)\n", 
                       num, b.location().c_str(), sid, fvi->hw_thread_id );
+               brk_thd = (ptx_thread_info*)fvi->ptx_thd_info;
+               brk_inst = brk_thd->get_inst();
+               printf( "GPGPU-Sim PTX DBG: reached by thread uid=%u, sid=%u, hwtid=%u\n",
+                       brk_thd->get_uid(),brk_thd->get_hw_sid(), brk_thd->get_hw_tid() );
+               printf( "GPGPU-Sim PTX DBG: ");
+               brk_inst->print_insn(stdout);
+               printf( "\n" );
             }
          }
       }
@@ -97,7 +106,7 @@ void gpgpu_debug()
    /// enter interactive debugger loop
 
    while (!done) {
-      printf("(gpgpu-sim dbg) ");
+      printf("(ptx debugger) ");
       fflush(stdout);
       
       char line[1024];
@@ -145,6 +154,22 @@ void gpgpu_debug()
          unsigned value = read_location(addr);
          g_global_mem->set_watch(addr,next_brkpt); 
          breakpoints[next_brkpt++] = brk_pt(addr,value);
+      } else if( !strcmp(tok,"l") ) {
+         if( brk_thd == NULL  ) 
+            printf("no thread selected");
+         addr_t pc = brk_thd->get_pc();
+         addr_t start_pc = (pc<5)?0:(pc-5);
+         for( addr_t p=start_pc;  p <= pc+5; p++ ) {
+            const ptx_instruction *i = brk_thd->get_inst(p);
+            if( i ) {
+               if( p != pc )
+                  printf( "    " );
+               else
+                  printf( "==> " );
+                   i->print_insn(stdout);
+               printf( "\n" );
+            }
+         }
       } else if( !strcmp(tok,"h") ) {
          printf("commands:\n");
          printf("  q                           - quit GPGPU-Sim\n");
@@ -153,6 +178,7 @@ void gpgpu_debug()
          printf("  del <n>                     - delete breakpoint\n");
          printf("  s                           - single step one shader cycle (all cores)\n");
          printf("  c                           - continue simulation without single stepping\n");
+         printf("  l                           - list PTX around current breakpoint\n");
          printf("  dp <n>                      - display pipeline contents on SM <n>\n");
          printf("  h                           - print this message\n");
       } else {

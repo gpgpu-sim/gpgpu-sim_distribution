@@ -65,10 +65,12 @@
 #include <string.h>
 #include <stdarg.h>
 
+#define PREAMBLE "GPGPU-Sim nvopencl_wrapper"
+
 void vmyexit(int code, const char *str,va_list ap)
 {
    char buffer[1024];
-   snprintf(buffer,1024,"GPGPU-Sim API: nvopencl_wrapper ERROR ** %s\n", str);
+   snprintf(buffer,1024,"%s: ERROR ** %s\n", PREAMBLE, str);
    vprintf(buffer,ap);
    fflush(stdout);
    if( code ) 
@@ -123,9 +125,12 @@ int main(int argc, const char **argv)
    if ( errcode != CL_SUCCESS ) myexit(3,"clGetPlatformIDs returned %d",errcode);
    errcode = clGetPlatformInfo(platforms[0], CL_PLATFORM_NAME, 1024, &buffer, NULL);
    if ( errcode != CL_SUCCESS ) myexit(3,"clGetPlatformInfo returned %d",errcode);
-   printf("GPGPU-Sim OpenCL API: Generating PTX using OpenCL platform \'%s\'\n",buffer);
+   printf("%s: Generating PTX using OpenCL platform \'%s\'\n",PREAMBLE,buffer);
+
    errcode = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_GPU, 0, NULL, &num_devices);
    if ( errcode != CL_SUCCESS ) myexit(4,"clGetDeviceIDs returned %d",errcode);
+   printf("%s: found %u native OpenCL devices\n",PREAMBLE,num_devices);
+
    cl_device_id *devices = (cl_device_id *)malloc(num_devices * sizeof(cl_device_id) );
    errcode = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_GPU, num_devices, devices, NULL);
    if ( errcode != CL_SUCCESS ) myexit(5,"clGetDeviceIDs returned %d",errcode);
@@ -143,7 +148,19 @@ int main(int argc, const char **argv)
       n+= 2;
    }
    errcode = clBuildProgram(pgm, 0, NULL, options, NULL, NULL);
-   if ( errcode != CL_SUCCESS ) myexit(8,"clBuildProgram returned %d",errcode);
+   if ( errcode != CL_SUCCESS ) {
+      printf("%s: clBuildProgram returned %d (error) -- build log:\n\n",PREAMBLE,errcode);
+      size_t build_log_length=0;
+      errcode = clGetProgramBuildInfo(pgm,devices[0],CL_PROGRAM_BUILD_LOG,0,NULL,&build_log_length);
+      if( errcode != CL_SUCCESS ) myexit(8,"clGetProgramBuildInfo returned %d",errcode);
+      char *build_log = (char*)calloc(1,build_log_length);
+      errcode = clGetProgramBuildInfo(pgm,devices[0],CL_PROGRAM_BUILD_LOG,build_log_length,
+                                      build_log,&build_log_length);
+      printf("%s",build_log);
+      printf("\n\n%s: end of build log\n", PREAMBLE);
+      printf("%s: exiting early because the OpenCL code had errors (see above).\n", PREAMBLE);
+      exit(8);
+   }
 
    size_t nbytes1=0;
    errcode = clGetProgramInfo(pgm,CL_PROGRAM_NUM_DEVICES,sizeof(cl_uint),&num_devices,&nbytes1);

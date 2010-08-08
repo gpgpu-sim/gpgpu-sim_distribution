@@ -400,6 +400,8 @@ public:
    bool callstack_pop();
    void dump_callstack() const;
    std::string get_location() const;
+   const ptx_instruction *get_inst() const;
+   const ptx_instruction *get_inst( addr_t pc ) const;
    bool rpc_updated() const { return m_RPC_updated; }
    bool last_was_call() const { return m_last_was_call; }
    unsigned get_rpc() const { return m_RPC; }
