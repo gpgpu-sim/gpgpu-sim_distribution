@@ -155,19 +155,21 @@ void gpgpu_debug()
          g_global_mem->set_watch(addr,next_brkpt); 
          breakpoints[next_brkpt++] = brk_pt(addr,value);
       } else if( !strcmp(tok,"l") ) {
-         if( brk_thd == NULL  ) 
-            printf("no thread selected");
-         addr_t pc = brk_thd->get_pc();
-         addr_t start_pc = (pc<5)?0:(pc-5);
-         for( addr_t p=start_pc;  p <= pc+5; p++ ) {
-            const ptx_instruction *i = brk_thd->get_inst(p);
-            if( i ) {
-               if( p != pc )
-                  printf( "    " );
-               else
-                  printf( "==> " );
-                   i->print_insn(stdout);
-               printf( "\n" );
+         if( brk_thd == NULL  ) {
+            printf("no thread selected\n");
+         } else {
+            addr_t pc = brk_thd->get_pc();
+            addr_t start_pc = (pc<5)?0:(pc-5);
+            for( addr_t p=start_pc;  p <= pc+5; p++ ) {
+               const ptx_instruction *i = brk_thd->get_inst(p);
+               if( i ) {
+                  if( p != pc )
+                     printf( "    " );
+                  else
+                     printf( "==> " );
+                      i->print_insn(stdout);
+                  printf( "\n" );
+               }
             }
          }
       } else if( !strcmp(tok,"h") ) {
