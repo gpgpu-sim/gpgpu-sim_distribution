@@ -167,31 +167,8 @@ struct gpgpu_ptx_sim_arg {
 struct gpgpu_ptx_sim_arg *g_ptx_sim_params;
 cudaError_t g_last_cudaError;
 
-extern void   gpgpu_ptx_sim_init_perf();
-extern void   gpgpu_ptx_sim_main_func( const char *kernel_key, dim3 gridDim, dim3 blockDim, struct gpgpu_ptx_sim_arg *);
-extern void   gpgpu_ptx_sim_main_perf( const char *kernel_key, 
-                                       struct dim3 gridDim, 
-                                       struct dim3 blockDIm, struct gpgpu_ptx_sim_arg *grid_params );
-extern void*  gpgpu_ptx_sim_malloc( size_t count );
-extern void*  gpgpu_ptx_sim_mallocarray( size_t count );
-extern void   gpgpu_ptx_sim_memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t count );
-extern void   gpgpu_ptx_sim_memcpy_from_gpu( void *dst, size_t src_start_addr, size_t count );
-extern void   gpgpu_ptx_sim_memcpy_gpu_to_gpu( size_t dst, size_t src, size_t count );
-extern void   gpgpu_ptx_sim_memset( size_t dst_start_addr, int c, size_t count );
-extern void   gpgpu_ptx_sim_init_memory();
-extern void   gpgpu_ptx_sim_load_gpu_kernels();
-extern void   gpgpu_ptx_sim_register_kernel(const char *hostFun, const char *deviceFun);
-extern void   gpgpu_ptx_sim_register_const_variable(void*, const char *deviceName, size_t size );
-extern void   gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size );
-extern void   gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t count, size_t offset, int to );
-extern void   gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, const struct cudaArray* array);
-extern struct cudaArray* gpgpu_ptx_sim_accessArrayofTexture(struct textureReference* texref);
-extern void gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref);
-extern struct textureReference* gpgpu_ptx_sim_accessTextureofName(char* name);
-extern char* gpgpu_ptx_sim_findNamefromTexture(const struct textureReference* texref);
-extern void   gpgpu_ptx_sim_add_ptxstring( const char *ptx, const char *source_fname );
-
-extern int g_ptx_sim_mode;
+#include "../src/cuda-sim/cuda-sim.h"
+#include "../src/gpgpusim_entrypoint.h"
 
 #if defined __APPLE__
 #   define __my_func__    __PRETTY_FUNCTION__
@@ -207,8 +184,7 @@ extern int g_ptx_sim_mode;
 # endif
 #endif
 
-int g_gpgpusim_init = 0;
-extern const char *g_gpgpusim_version_string;
+static int g_gpgpusim_init = 0;
 
 #define GPGPUSIM_INIT \
    if( gpgpu_cuda_devices == NULL ) { \
@@ -627,8 +603,6 @@ __host__ cudaError_t CUDARTAPI cudaMemset(void *mem, int c, size_t count)
 extern unsigned int gpu_n_shader;
 #endif
    
-extern unsigned int warp_size;   
- 
  __host__ cudaError_t CUDARTAPI cudaGetDeviceProperties(struct cudaDeviceProp *prop, int device)
 {
    GPGPUSIM_INIT

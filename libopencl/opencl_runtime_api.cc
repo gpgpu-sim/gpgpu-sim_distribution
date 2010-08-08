@@ -76,6 +76,8 @@
 #include "builtin_types.h"
 #include "__cudaFatFormat.h"
 #include "../src/abstract_hardware_model.h"
+#include "../src/cuda-sim/cuda-sim.h"
+#include "../src/gpgpusim_entrypoint.h"
 
 struct gpgpu_ptx_sim_arg {
    const void *m_start;
@@ -83,26 +85,10 @@ struct gpgpu_ptx_sim_arg {
    size_t m_offset;
    struct gpgpu_ptx_sim_arg *m_next;
 };
-extern void   gpgpu_ptx_sim_init_memory();
-extern void*  gpgpu_ptx_sim_malloc( size_t count );
-extern void   gpgpu_ptx_sim_memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t count );
-extern void   gpgpu_ptx_sim_memcpy_from_gpu( void *dst, size_t src_start_addr, size_t count );
-extern void   gpgpu_ptx_sim_memcpy_gpu_to_gpu( size_t dst, size_t src, size_t count );
-extern void   gpgpu_ptx_sim_register_kernel(const char *hostFun, const char *deviceFun);
-extern void   gpgpu_ptx_sim_init_perf();
-extern void   gpgpu_ptx_sim_main_func( const char *kernel_key, 
-                                       dim3 gridDim, 
-                                       dim3 blockDim, struct gpgpu_ptx_sim_arg *);
-extern void   gpgpu_ptx_sim_main_perf( const char *kernel_key, 
-                                       struct dim3 gridDim, 
-                                       struct dim3 blockDIm, 
-                                       struct gpgpu_ptx_sim_arg *grid_params );
-extern void   gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t count, size_t offset, int to );
-extern int g_ptx_sim_mode;
 
-struct cudaDeviceProp the_cuda_device;
-struct cudaDeviceProp **gpgpu_cuda_devices;
-int g_gpgpusim_init = 0;
+static struct cudaDeviceProp the_cuda_device;
+static struct cudaDeviceProp **gpgpu_cuda_devices;
+static int g_gpgpusim_init = 0;
 
 extern const char *g_gpgpusim_version_string;
 
@@ -148,7 +134,7 @@ extern const char *g_gpgpusim_version_string;
 // global kernel parameters...  
 static dim3 g_cudaGridDim;
 static dim3 g_cudaBlockDim;
-struct gpgpu_ptx_sim_arg *g_ptx_sim_params;
+static struct gpgpu_ptx_sim_arg *g_ptx_sim_params;
 
 #include <CL/cl.h>
 

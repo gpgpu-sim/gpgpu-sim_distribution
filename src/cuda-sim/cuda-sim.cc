@@ -62,6 +62,8 @@
  * Vancouver, BC V6T 1Z4
  */
 
+#include "cuda-sim.h"
+
 #include "instructions.h"
 #include "ptx_ir.h"
 #include "ptx_sim.h"

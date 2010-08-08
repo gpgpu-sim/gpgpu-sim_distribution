@@ -71,10 +71,6 @@
 #include "../abstract_hardware_model.h"
 
 
-struct dim3 {
-   unsigned int x, y, z;
-};
-
 struct gpgpu_ptx_sim_arg {
    const void *m_start;
    size_t m_nbytes;

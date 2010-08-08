@@ -3,6 +3,12 @@
 
 #ifdef __cplusplus
 
+#if !defined(__VECTOR_TYPES_H__)
+struct dim3 {
+   unsigned int x, y, z;
+};
+#endif
+
 class core_t {
 public:
    virtual ~core_t() {}

@@ -71,14 +71,10 @@
 #include <algorithm>
 #include <stdarg.h>
 
+#include "cuda-sim.h"
+
 extern unsigned g_max_regs_per_thread;
 extern "C" int ptx_error( const char *s );
-void gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, struct cudaArray* array); //texture functions
-struct cudaArray* gpgpu_ptx_sim_accessArrayofTexture(struct textureReference* texref);
-void gpgpu_ptx_sim_bindNameToTexture(const char* name, struct textureReference* texref);
-struct textureReference* gpgpu_ptx_sim_accessTextureofName(const char* name);
-const char* gpgpu_ptx_sim_findNamefromTexture(const struct textureReference* texref);
-int gpgpu_ptx_sim_sizeofTexture(const char* name);
 
 // the program intermediate representation...
 symbol_table *g_global_symbol_table = NULL;
