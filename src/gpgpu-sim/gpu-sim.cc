@@ -161,7 +161,6 @@ int gpu_deadlock_detect = 0;
 int gpu_deadlock = 0;
 static unsigned long long  last_gpu_sim_insn = 0;
 int gpgpu_dram_scheduler = DRAM_FIFO;
-int g_save_embedded_ptx = 0;
 int gpgpu_simd_model = 0;
 int gpgpu_no_dl1 = 0;
 char *gpgpu_cache_texl1_opt;
@@ -353,9 +352,6 @@ void dram_log(int task);
 void visualizer_options(option_parser_t opp);
 void gpu_reg_options(option_parser_t opp)
 {
-   option_parser_register(opp, "-save_embedded_ptx", OPT_BOOL, &g_save_embedded_ptx, 
-                "saves ptx files embedded in binary as <n>.ptx",
-                "0");
    option_parser_register(opp, "-gpgpu_simd_model", OPT_INT32, &gpgpu_simd_model, 
                "0 = no recombination, 1 = post-dominator, 2 = MIMD, 3 = dynamic warp formation", "0");
    option_parser_register(opp, "-gpgpu_dram_scheduler", OPT_INT32, &gpgpu_dram_scheduler, 

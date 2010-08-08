@@ -74,6 +74,8 @@
 
 #include "cuda-math.h"
 #include "../abstract_hardware_model.h"
+#include "ptx_loader.h"
+
 #include <stdarg.h>
 
 unsigned g_num_ptx_inst_uid=0;
@@ -89,11 +91,6 @@ extern std::map<unsigned,std::string> g_ptx_token_decode;
 extern std::map<struct textureReference*,struct cudaArray*> TextureToArrayMap; // texture bindings
 extern std::map<struct textureReference*,struct textureInfo*> TextureToInfoMap; // texture bindings
 extern std::map<std::string, struct textureReference*> NameToTextureMap;
-
-memory_space *g_global_mem;
-memory_space *g_tex_mem;
-memory_space *g_surf_mem;
-memory_space *g_param_mem;
 
 void inst_not_implemented( const ptx_instruction * pI ) ;
 unsigned unfound_register_warned = 0;
