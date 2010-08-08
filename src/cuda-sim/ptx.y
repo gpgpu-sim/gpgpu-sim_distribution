@@ -206,7 +206,7 @@
 %type <ptr_value> function_decl
 
 %{
-  	#include "ptx_ir.h"
+  	#include "ptx_parser.h"
 	#include <stdlib.h>
 	#include <string.h>
 	#include <math.h>

@@ -67,21 +67,19 @@
 
 #include "../abstract_hardware_model.h"
 
-#ifdef __cplusplus
+#include <cstdlib>
+#include <cstring>
+#include <string>
+#include <list>
+#include <map>
+#include <vector>
+#include <assert.h>
 
-   #include <cstdlib>
-   #include <cstring>
-   #include <string>
-   #include <list>
-   #include <map>
-   #include <vector>
-   #include <assert.h>
+#include "ptx.tab.h"
+#include "ptx_sim.h"
+#include "dram_callback.h"
 
-   #include "ptx.tab.h"
-   #include "ptx_sim.h"
-   #include "dram_callback.h"
-
-   #include "memory.h"
+#include "memory.h"
 
 class type_info_key {
 public:
@@ -324,7 +322,7 @@ public:
    symbol* lookup( const char *identifier );
    std::string get_scope_name() const { return m_scope_name; }
    symbol *add_variable( const char *identifier, const type_info *type, unsigned size, const char *filename, unsigned line );
-   void add_function( function_info *func );
+   void add_function( function_info *func, const char *filename, unsigned linenumber );
    bool add_function_decl( const char *name, int entry_point, function_info **func_info, symbol_table **symbol_table );
    type_info *add_type( memory_space_t space_spec, int scalar_type_spec, int vector_spec, int alignment_spec, int extern_spec );
    type_info *add_type( function_info *func );
@@ -1261,7 +1259,6 @@ extern symbol_table *g_entrypoint_symbol_table;
 extern function_info *g_entrypoint_func_info;
 extern symbol_table *g_global_symbol_table;
 extern std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
-void init_parser();
 #define GLOBAL_HEAP_START 0x10000000
    // start allocating from this address (lower values used for allocating globals in .ptx file)
 
@@ -1281,56 +1278,5 @@ void gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num );
 void gpgpu_ptx_assemble( std::string kname, void *kinfo );
 #include "../option_parser.h"
 void ptx_reg_options(option_parser_t opp);
-
-
-extern "C" {
-#endif 
-
-   void start_function( int entry_point );
-   void add_function_name( const char *fname );
-   void init_directive_state();
-   void add_directive(); 
-   void end_function();
-   void add_identifier( const char *s, int array_dim, unsigned array_ident );
-   void add_function_arg();
-   void add_scalar_type_spec( int type_spec );
-   void add_scalar_operand( const char *identifier );
-   void add_neg_pred_operand( const char *identifier );
-   void add_variables();
-   void set_variable_type();
-   void add_opcode( int opcode );
-   void add_pred( const char *identifier, int negate );
-   void add_2vector_operand( const char *d1, const char *d2 );
-   void add_3vector_operand( const char *d1, const char *d2, const char *d3 );
-   void add_4vector_operand( const char *d1, const char *d2, const char *d3, const char *d4 );
-   void add_option(int option );
-   void add_builtin_operand( int builtin, int dim_modifier );
-   void add_memory_operand( );
-   void add_literal_int( int value );
-   void add_literal_float( float value );
-   void add_literal_double( double value );
-   void add_address_operand( const char *identifier, int offset );
-   void add_label( const char *idenfiier );
-   void add_vector_spec(int spec );
-   void add_space_spec( enum _memory_space_t spec, int value );
-   void add_extern_spec();
-   void add_instruction();
-   void set_return();
-   void add_alignment_spec( int spec );
-   void add_array_initializer();
-   void add_file( unsigned num, const char *filename );
-   void add_version_info( float ver );
-   void *reset_symtab();
-   void set_symtab(void*);
-   void add_pragma( const char *str );
-
-
-#define NON_ARRAY_IDENTIFIER 1
-#define ARRAY_IDENTIFIER_NO_DIM 2
-#define ARRAY_IDENTIFIER 3
-
-#ifdef __cplusplus
-}
-#endif 
 
 #endif

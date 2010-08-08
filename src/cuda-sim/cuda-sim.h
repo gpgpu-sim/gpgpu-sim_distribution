@@ -15,9 +15,6 @@ extern int g_ptx_sim_mode;
 extern memory_space *g_global_mem;
 extern int g_debug_execution;
 extern int g_debug_thread_uid;
-extern unsigned g_max_regs_per_thread;
-extern bool g_debug_ir_generation;
-extern const char *g_filename;
 extern std::map<std::string,function_info*> *g_kernel_name_to_function_lookup;
 extern std::map<std::string,symbol_table*> g_kernel_name_to_symtab_lookup;
 
@@ -42,5 +39,6 @@ extern int    gpgpu_ptx_sim_sizeofTexture(const char* name);
 extern const char* gpgpu_ptx_sim_findNamefromTexture(const struct textureReference* texref);
 extern const struct textureReference* gpgpu_ptx_sim_accessTextureofName(const char* name); 
 extern void read_sim_environment_variables();
+extern void register_ptx_function( const char *name, function_info *impl, symbol_table *symtab );
 
 #endif

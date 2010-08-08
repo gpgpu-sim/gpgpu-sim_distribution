@@ -222,7 +222,6 @@ extern int n_pdom_sc_single_stat;
 extern int gpgpu_cuda_sim;
 extern unsigned long long  gpu_tot_sim_cycle;
 
-extern unsigned g_max_regs_per_thread;
 void ptx_decode_inst( void *thd, unsigned *op, int *i1, int *i2, int *i3, int *i4, int *o1, int *o2, int *o3, int *o4, int *vectorin, int *vectorout, int *arch_reg  );
 void ptx_exec_inst( void *thd, address_type *addr, memory_space_t *space, unsigned *data_size, dram_callback_t* callback, unsigned warp_active_mask);
 void ptx_sim_free_sm( class ptx_thread_info** thread_info );

@@ -1,0 +1,742 @@
+/* 
+ * Copyright (c) 2009 by Tor M. Aamodt, Wilson W. L. Fung, Ali Bakhoda, 
+ * George L. Yuan and the University of British Columbia
+ * Vancouver, BC  V6T 1Z4
+ * All Rights Reserved.
+ *
+ * THIS IS A LEGAL DOCUMENT BY DOWNLOADING GPGPU-SIM, YOU ARE AGREEING TO THESE
+ * TERMS AND CONDITIONS.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNERS OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ * 
+ * NOTE: The files libcuda/cuda_runtime_api.c and src/cuda-sim/cuda-math.h
+ * are derived from the CUDA Toolset available from http://www.nvidia.com/cuda
+ * (property of NVIDIA).  The files benchmarks/BlackScholes/ and 
+ * benchmarks/template/ are derived from the CUDA SDK available from 
+ * http://www.nvidia.com/cuda (also property of NVIDIA).  The files from 
+ * src/intersim/ are derived from Booksim (a simulator provided with the 
+ * textbook "Principles and Practices of Interconnection Networks" available 
+ * from http://cva.stanford.edu/books/ppin/). As such, those files are bound by 
+ * the corresponding legal terms and conditions set forth separately (original 
+ * copyright notices are left in files from these sources and where we have 
+ * modified a file our copyright notice appears before the original copyright 
+ * notice).  
+ * 
+ * Using this version of GPGPU-Sim requires a complete installation of CUDA 
+ * which is distributed seperately by NVIDIA under separate terms and 
+ * conditions.  To use this version of GPGPU-Sim with OpenCL requires a
+ * recent version of NVIDIA's drivers which support OpenCL.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ * 
+ * 3. Neither the name of the University of British Columbia nor the names of
+ * its contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ * 
+ * 4. This version of GPGPU-SIM is distributed freely for non-commercial use only.  
+ *  
+ * 5. No nonprofit user may place any restrictions on the use of this software,
+ * including as modified by the user, by any other authorized user.
+ * 
+ * 6. GPGPU-SIM was developed primarily by Tor M. Aamodt, Wilson W. L. Fung, 
+ * Ali Bakhoda, George L. Yuan, at the University of British Columbia, 
+ * Vancouver, BC V6T 1Z4
+ */
+
+#include "ptx_parser.h"
+#include "ptx_ir.h"
+#include <stdarg.h>
+
+extern "C" int ptx_error( const char *s );
+extern int ptx_lineno;
+
+static bool g_debug_ir_generation=false;
+const char *g_filename;
+unsigned g_max_regs_per_thread = 0;
+
+// the program intermediate representation...
+symbol_table *g_global_symbol_table = NULL;
+std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
+static symbol_table *g_current_symbol_table = NULL;
+static std::list<ptx_instruction*> g_instructions;
+static symbol *g_last_symbol = NULL;
+
+int g_error_detected = 0;
+
+// type specifier stuff:
+memory_space_t g_space_spec = undefined_space;
+int g_scalar_type_spec = -1;
+int g_vector_spec = -1;
+int g_alignment_spec = -1;
+int g_extern_spec = 0;
+
+// variable declaration stuff:
+type_info *g_var_type = NULL;
+
+// instruction definition stuff:
+const symbol *g_pred;
+int g_neg_pred;
+symbol *g_label;
+int g_opcode = -1;
+std::list<operand_info> g_operands;
+std::list<int> g_options;
+std::list<int> g_scalar_type;
+
+#define DPRINTF(...) \
+   if( g_debug_ir_generation ) { \
+      printf(" %s:%u => ",g_filename,ptx_lineno); \
+      printf("   (%s:%u) ", __FILE__, __LINE__); \
+      printf(__VA_ARGS__); \
+      printf("\n"); \
+      fflush(stdout); \
+   }
+
+unsigned g_entry_func_param_index=0;
+function_info *g_func_info = NULL;
+function_info *g_entrypoint_func_info = NULL;
+symbol_table *g_entrypoint_symbol_table = NULL;
+std::map<unsigned,std::string> g_ptx_token_decode;
+operand_info g_return_var;
+
+const char *decode_token( int type )
+{
+   return g_ptx_token_decode[type].c_str();
+}
+
+void read_parser_environment_variables() 
+{
+   g_filename = getenv("PTX_SIM_KERNELFILE"); 
+   char *dbg_level = getenv("PTX_SIM_DEBUG");
+   if ( dbg_level && strlen(dbg_level) ) {
+      int debug_execution=0;
+      sscanf(dbg_level,"%d", &debug_execution);
+      if ( debug_execution >= 30 ) 
+         g_debug_ir_generation=true;
+   }
+}
+
+void init_parser( const char *ptx_filename )
+{
+   g_filename = strdup(ptx_filename);
+   g_global_symbol_table = g_current_symbol_table = new symbol_table("global",0,NULL);
+   ptx_lineno = 1;
+
+#define DEF(X,Y) g_ptx_token_decode[X] = Y;
+#include "ptx_parser_decode.def"
+#undef DEF
+}
+
+void init_directive_state()
+{
+   DPRINTF("init_directive_state");
+   g_space_spec=undefined_space;
+   g_scalar_type_spec=-1;
+   g_vector_spec=-1;
+   g_opcode=-1;
+   g_alignment_spec = -1;
+   g_extern_spec = 0;
+   g_scalar_type.clear();
+   g_operands.clear();
+   g_last_symbol = NULL;
+}
+
+void init_instruction_state()
+{
+   DPRINTF("init_instruction_state");
+   g_pred = NULL;
+   g_neg_pred = 0;
+   g_label = NULL;
+   g_opcode = -1;
+   g_options.clear();
+   g_return_var = operand_info();
+   init_directive_state();
+}
+
+static int g_entry_point;
+
+void start_function( int entry_point ) 
+{
+   DPRINTF("start_function");
+   init_directive_state();
+   init_instruction_state();
+   g_entry_point = entry_point;
+   g_func_info = NULL;
+   g_entry_func_param_index=0;
+}
+
+char *g_add_identifier_cached__identifier = NULL;
+int g_add_identifier_cached__array_dim;
+int g_add_identifier_cached__array_ident;
+
+void add_function_name( const char *name ) 
+{
+   DPRINTF("add_function_name %s %s", name,  ((g_entry_point==1)?"(entrypoint)":((g_entry_point==2)?"(extern)":"")));
+   bool prior_decl = g_global_symbol_table->add_function_decl( name, g_entry_point, &g_func_info, &g_current_symbol_table );
+   if( g_entry_point ) {
+      g_entrypoint_func_info = g_func_info;
+      g_entrypoint_symbol_table = g_current_symbol_table;
+   }
+   if( g_add_identifier_cached__identifier ) {
+      add_identifier( g_add_identifier_cached__identifier,
+                      g_add_identifier_cached__array_dim,
+                      g_add_identifier_cached__array_ident );
+      free( g_add_identifier_cached__identifier );
+      g_add_identifier_cached__identifier = NULL;
+      g_func_info->add_return_var( g_last_symbol );
+      init_directive_state();
+   }
+   if( prior_decl ) {
+      g_func_info->remove_args();
+   }
+   g_global_symbol_table->add_function( g_func_info, g_filename, ptx_lineno );
+}
+
+void add_directive() 
+{
+   DPRINTF("add_directive");
+   init_directive_state();
+}
+
+#define mymax(a,b) ((a)>(b)?(a):(b))
+
+void end_function() 
+{
+   DPRINTF("end_function");
+
+   init_directive_state();
+   init_instruction_state();
+   g_max_regs_per_thread = mymax( g_max_regs_per_thread, (g_current_symbol_table->next_reg_num()-1)); 
+   g_func_info->add_inst( g_instructions );
+   g_instructions.clear();
+   gpgpu_ptx_assemble( g_func_info->get_name(), g_func_info );
+   g_current_symbol_table = g_global_symbol_table;
+
+   DPRINTF("function %s, PC = %d\n", g_func_info->get_name().c_str(), g_func_info->get_start_PC());
+}
+
+#define parse_error(msg, ...) parse_error_impl(__FILE__,__LINE__, msg, ##__VA_ARGS__)
+#define parse_assert(cond,msg, ...) parse_assert_impl((cond),__FILE__,__LINE__, msg, ##__VA_ARGS__)
+
+void parse_error_impl( const char *file, unsigned line, const char *msg, ... )
+{
+   va_list ap;
+   char buf[1024];
+   va_start(ap,msg);
+   vsnprintf(buf,1024,msg,ap);
+   va_end(ap);
+
+   g_error_detected = 1;
+   printf("%s:%u: Parse error: %s (%s:%u)\n\n", g_filename, ptx_lineno, buf, file, line);
+   ptx_error(NULL);
+   abort();
+   exit(1);
+}
+
+void parse_assert_impl( int test_value, const char *file, unsigned line, const char *msg, ... )
+{
+   va_list ap;
+   char buf[1024];
+   va_start(ap,msg);
+   vsnprintf(buf,1024,msg,ap);
+   va_end(ap);
+
+   if ( test_value == 0 )
+      parse_error_impl(file,line, msg);
+}
+
+extern "C" char linebuf[1024];
+
+
+void set_return()
+{
+   parse_assert( (g_opcode == CALL_OP), "only call can have return value");
+   g_operands.front().set_return();
+   g_return_var = g_operands.front();
+}
+
+std::map<std::string,std::map<unsigned,const ptx_instruction*> > g_inst_lookup;
+
+const ptx_instruction *ptx_instruction_lookup( const char *filename, unsigned linenumber )
+{
+   std::map<std::string,std::map<unsigned,const ptx_instruction*> >::iterator f=g_inst_lookup.find(filename);
+   if( f == g_inst_lookup.end() ) 
+      return NULL;
+   std::map<unsigned,const ptx_instruction*>::iterator l=f->second.find(linenumber);
+   if( l == f->second.end() ) 
+      return NULL;
+   return l->second; 
+}
+
+void add_instruction() 
+{
+   DPRINTF("add_instruction: %s", ((g_opcode>0)?g_opcode_string[g_opcode]:"<label>") );
+   ptx_instruction *i = new ptx_instruction( g_opcode, 
+                                             g_pred, 
+                                             g_neg_pred, 
+                                             g_label, 
+                                             g_operands,
+                                             g_return_var,
+                                             g_options, 
+                                             g_scalar_type,
+                                             g_space_spec,
+                                             g_filename,
+                                             ptx_lineno,
+                                             linebuf );
+   g_instructions.push_back(i);
+   g_inst_lookup[g_filename][ptx_lineno] = i;
+   init_instruction_state();
+}
+
+void add_variables() 
+{
+   DPRINTF("add_variables");
+   if ( !g_operands.empty() ) {
+      assert( g_last_symbol != NULL ); 
+      g_last_symbol->add_initializer(g_operands);
+   }
+   init_directive_state();
+}
+
+void set_variable_type()
+{
+   DPRINTF("set_variable_type space_spec=%s scalar_type_spec=%s", 
+           g_ptx_token_decode[g_space_spec.get_type()].c_str(), 
+           g_ptx_token_decode[g_scalar_type_spec].c_str() );
+   parse_assert( g_space_spec != undefined_space, "variable has no space specification" );
+   parse_assert( g_scalar_type_spec != -1, "variable has no type information" ); // need to extend for structs?
+   g_var_type = g_current_symbol_table->add_type( g_space_spec, 
+                                                  g_scalar_type_spec, 
+                                                  g_vector_spec, 
+                                                  g_alignment_spec, 
+                                                  g_extern_spec );
+}
+
+bool check_for_duplicates( const char *identifier )
+{
+   const symbol *s = g_current_symbol_table->lookup(identifier);
+   return ( s != NULL );
+}
+
+extern std::set<std::string>   g_globals;
+extern std::set<std::string>   g_constants;
+
+int g_func_decl = 0;
+int g_ident_add_uid = 0;
+unsigned g_const_alloc = 1;
+
+void add_identifier( const char *identifier, int array_dim, unsigned array_ident ) 
+{
+   if( g_func_decl && (g_func_info == NULL) ) {
+      // return variable decl...
+      assert( g_add_identifier_cached__identifier == NULL );
+      g_add_identifier_cached__identifier = strdup(identifier);
+      g_add_identifier_cached__array_dim = array_dim;
+      g_add_identifier_cached__array_ident = array_ident;
+      return;
+   }
+   DPRINTF("add_identifier \"%s\" (%u)", identifier, g_ident_add_uid);
+   g_ident_add_uid++;
+   type_info *type = g_var_type;
+   type_info_key ti = type->get_key();
+   int basic_type;
+   int regnum;
+   size_t num_bits;
+   unsigned addr, addr_pad;
+   ti.type_decode(num_bits,basic_type);
+
+   bool duplicates = check_for_duplicates( identifier );
+   if( duplicates ) {
+      symbol *s = g_current_symbol_table->lookup(identifier);
+      g_last_symbol = s;
+      if( g_func_decl ) 
+         return;
+      std::string msg = std::string(identifier) + " was delcared previous at " + s->decl_location() + " skipping new declaration"; 
+      printf("GPGPU-Sim PTX: Warning %s\n", msg.c_str());
+      return;
+   }
+
+   assert( g_var_type != NULL );
+   switch ( array_ident ) {
+   case ARRAY_IDENTIFIER:
+      type = g_current_symbol_table->get_array_type(type,array_dim);
+      num_bits = array_dim * num_bits;
+      break;
+   case ARRAY_IDENTIFIER_NO_DIM:
+      type = g_current_symbol_table->get_array_type(type,(unsigned)-1);
+      num_bits = 0;
+      break;
+   default:
+      break;
+   }
+   g_last_symbol = g_current_symbol_table->add_variable(identifier,type,num_bits/8,g_filename,ptx_lineno);
+   switch ( ti.get_memory_space().get_type() ) {
+   case reg_space: {
+      regnum = g_current_symbol_table->next_reg_num();
+      int arch_regnum = -1;
+      for (int d = 0; d < strlen(identifier); d++) {
+         if (isdigit(identifier[d])) {
+            sscanf(identifier + d, "%d", &arch_regnum);
+            break;
+         }
+      }
+      if (strcmp(identifier, "%sp") == 0) {
+         arch_regnum = 0;
+      }
+      g_last_symbol->set_regno(regnum, arch_regnum);
+      } break;
+   case shared_space:
+      printf("GPGPU-Sim PTX: allocating shared region for \"%s\" from 0x%x to 0x%lx (shared memory space)\n",
+             identifier,
+             g_current_symbol_table->get_shared_next(),
+             g_current_symbol_table->get_shared_next() + num_bits/8 );
+      fflush(stdout);
+      assert( (num_bits%8) == 0  );
+      addr = g_current_symbol_table->get_shared_next();
+      addr_pad = num_bits ? (((num_bits/8) - (addr % (num_bits/8))) % (num_bits/8)) : 0;
+      g_last_symbol->set_address( addr+addr_pad );
+      g_current_symbol_table->alloc_shared( num_bits/8 + addr_pad );
+      break;
+   case const_space:
+      if( array_ident == ARRAY_IDENTIFIER_NO_DIM ) {
+         printf("GPGPU-Sim PTX: deferring allocation of constant region for \"%s\" (need size information)\n", identifier );
+      } else {
+         printf("GPGPU-Sim PTX: allocating constant region for \"%s\" from 0x%x to 0x%lx (global memory space) %u\n",
+                identifier,
+                g_current_symbol_table->get_global_next(),
+                g_current_symbol_table->get_global_next() + num_bits/8,
+                g_const_alloc++ );
+         fflush(stdout);
+         assert( (num_bits%8) == 0  ); 
+         addr = g_current_symbol_table->get_global_next();
+         addr_pad = num_bits ? (((num_bits/8) - (addr % (num_bits/8))) % (num_bits/8)) : 0;
+         g_last_symbol->set_address( addr + addr_pad );
+         g_current_symbol_table->alloc_global( num_bits/8 + addr_pad ); 
+      }
+      if( g_current_symbol_table == g_global_symbol_table ) { 
+         g_constants.insert( identifier ); 
+      }
+      assert( g_current_symbol_table != NULL );
+      g_sym_name_to_symbol_table[ identifier ] = g_current_symbol_table;
+      break;
+   case global_space:
+      printf("GPGPU-Sim PTX: allocating global region for \"%s\" from 0x%x to 0x%lx (global memory space)\n",
+             identifier,
+             g_current_symbol_table->get_global_next(),
+             g_current_symbol_table->get_global_next() + num_bits/8 );
+      fflush(stdout);
+      assert( (num_bits%8) == 0  );
+      addr = g_current_symbol_table->get_global_next();
+      addr_pad = num_bits ? (((num_bits/8) - (addr % (num_bits/8))) % (num_bits/8)) : 0;
+      g_last_symbol->set_address( addr+addr_pad );
+      g_current_symbol_table->alloc_global( num_bits/8 + addr_pad );
+      g_globals.insert( identifier );
+      assert( g_current_symbol_table != NULL );
+      g_sym_name_to_symbol_table[ identifier ] = g_current_symbol_table;
+      break;
+   case local_space:
+      if( g_func_info == NULL ) {
+         printf("GPGPU-Sim PTX: not allocating .local \"%s\" declared at global scope\n", identifier);
+         break;
+      }
+      printf("GPGPU-Sim PTX: allocating stack frame region for .local \"%s\" from 0x%x to 0x%lx\n",
+             identifier,
+             g_current_symbol_table->get_local_next(),
+             g_current_symbol_table->get_local_next() + num_bits/8 );
+      fflush(stdout);
+      assert( (num_bits%8) == 0  );
+      g_last_symbol->set_address( g_current_symbol_table->get_local_next() );
+      g_current_symbol_table->alloc_local( num_bits/8 );
+      g_func_info->set_framesize( g_current_symbol_table->get_local_next() );
+      break;
+   case tex_space:
+      printf("GPGPU-Sim PTX: encountered texture directive %s.\n", identifier);
+      break;
+   case param_space_local:
+      printf("GPGPU-Sim PTX: allocating stack frame region for .param \"%s\" from 0x%x to 0x%lx\n",
+             identifier,
+             g_current_symbol_table->get_local_next(),
+             g_current_symbol_table->get_local_next() + num_bits/8 );
+      fflush(stdout);
+      assert( (num_bits%8) == 0  );
+      g_last_symbol->set_address( g_current_symbol_table->get_local_next() );
+      g_current_symbol_table->alloc_local( num_bits/8 );
+      g_func_info->set_framesize( g_current_symbol_table->get_local_next() );
+      break;
+   case param_space_kernel:
+      break;
+   default:
+      abort();
+      break;
+   }
+
+   assert( !ti.is_param_unclassified() );
+   if ( ti.is_param_kernel() ) {
+      g_func_info->add_param_name_type_size(g_entry_func_param_index,identifier, ti.scalar_type(), num_bits );
+      g_entry_func_param_index++;
+   }
+}
+
+void add_function_arg()
+{
+   if( g_func_info ) {
+      DPRINTF("add_function_arg \"%s\"", g_last_symbol->name().c_str() );
+      g_func_info->add_arg(g_last_symbol);
+   }
+}
+
+void add_extern_spec() 
+{
+   DPRINTF("add_extern_spec");
+   g_extern_spec = 1;
+}
+
+void add_alignment_spec( int spec )
+{
+   DPRINTF("add_alignment_spec");
+   parse_assert( g_alignment_spec == -1, "multiple .align specifiers per variable declaration not allowed." );
+   g_alignment_spec = spec;
+}
+
+void add_space_spec( enum _memory_space_t spec, int value ) 
+{
+   DPRINTF("add_space_spec \"%s\"", g_ptx_token_decode[spec].c_str() );
+   parse_assert( g_space_spec == undefined_space, "multiple space specifiers not allowed." );
+   if( spec == param_space_unclassified ) {
+      if( g_func_decl ) {
+         if( g_entry_point == 1) 
+            g_space_spec = param_space_kernel;
+         else 
+            g_space_spec = param_space_local;
+      } else
+         g_space_spec = param_space_unclassified;
+   } else {
+      g_space_spec = spec;
+      if( g_space_spec == const_space )
+         g_space_spec.set_bank((unsigned)value);
+   }
+}
+
+void add_vector_spec(int spec ) 
+{
+   DPRINTF("add_vector_spec");
+   parse_assert( g_vector_spec == -1, "multiple vector specifiers not allowed." );
+   g_vector_spec = spec;
+}
+
+void add_scalar_type_spec( int type_spec ) 
+{
+   DPRINTF("add_scalar_type_spec \"%s\"", g_ptx_token_decode[type_spec].c_str());
+   g_scalar_type.push_back( type_spec );
+   if ( g_scalar_type.size() > 1 ) {
+      parse_assert( (g_opcode == -1) || (g_opcode == CVT_OP) || (g_opcode == SET_OP) || (g_opcode == SLCT_OP)
+                    || (g_opcode == TEX_OP), 
+                    "only cvt, set, slct, and tex can have more than one type specifier.");
+   }
+   g_scalar_type_spec = type_spec;
+}
+
+void add_label( const char *identifier ) 
+{
+   DPRINTF("add_label");
+   symbol *s = g_current_symbol_table->lookup(identifier);
+   if ( s != NULL ) {
+      g_label = s;
+   } else {
+      g_label = g_current_symbol_table->add_variable(identifier,NULL,0,g_filename,ptx_lineno);
+   }
+}
+
+void add_opcode( int opcode ) 
+{
+   g_opcode = opcode;
+}
+
+void add_pred( const char *identifier, int neg ) 
+{
+   DPRINTF("add_pred");
+   const symbol *s = g_current_symbol_table->lookup(identifier);
+   if ( s == NULL ) {
+      std::string msg = std::string("predicate \"") + identifier + "\" has no declaration.";
+      parse_error( msg.c_str() );
+   }
+   g_pred = s;
+   g_neg_pred = neg;
+}
+
+void add_option( int option ) 
+{
+   DPRINTF("add_option");
+   g_options.push_back( option );
+}
+
+void add_2vector_operand( const char *d1, const char *d2 ) 
+{
+   DPRINTF("add_2vector_operand");
+   const symbol *s1 = g_current_symbol_table->lookup(d1);
+   const symbol *s2 = g_current_symbol_table->lookup(d2);
+   parse_assert( s1 != NULL && s2 != NULL, "v2 component(s) missing declarations.");
+   g_operands.push_back( operand_info(s1,s2,NULL,NULL) );
+}
+
+void add_3vector_operand( const char *d1, const char *d2, const char *d3 ) 
+{
+   DPRINTF("add_3vector_operand");
+   const symbol *s1 = g_current_symbol_table->lookup(d1);
+   const symbol *s2 = g_current_symbol_table->lookup(d2);
+   const symbol *s3 = g_current_symbol_table->lookup(d3);
+   parse_assert( s1 != NULL && s2 != NULL && s3 != NULL, "v3 component(s) missing declarations.");
+   g_operands.push_back( operand_info(s1,s2,s3,NULL) );
+}
+
+void add_4vector_operand( const char *d1, const char *d2, const char *d3, const char *d4 ) 
+{
+   DPRINTF("add_4vector_operand");
+   const symbol *s1 = g_current_symbol_table->lookup(d1);
+   const symbol *s2 = g_current_symbol_table->lookup(d2);
+   const symbol *s3 = g_current_symbol_table->lookup(d3);
+   const symbol *s4 = g_current_symbol_table->lookup(d4);
+   parse_assert( s1 != NULL && s2 != NULL && s3 != NULL && s4 != NULL, "v4 component(s) missing declarations.");
+   g_operands.push_back( operand_info(s1,s2,s3,s4) );
+}
+
+void add_builtin_operand( int builtin, int dim_modifier ) 
+{
+   DPRINTF("add_builtin_operand");
+   g_operands.push_back( operand_info(builtin,dim_modifier) );
+}
+
+void add_memory_operand() 
+{
+   DPRINTF("add_memory_operand");
+   assert( !g_operands.empty() );
+   g_operands.back().make_memory_operand();
+}
+
+void add_literal_int( int value ) 
+{
+   DPRINTF("add_literal_int");
+   g_operands.push_back( operand_info(value) );
+}
+
+void add_literal_float( float value ) 
+{
+   DPRINTF("add_literal_float");
+   g_operands.push_back( operand_info(value) );
+}
+
+void add_literal_double( double value ) 
+{
+   DPRINTF("add_literal_double");
+   g_operands.push_back( operand_info(value) );
+}
+
+void add_scalar_operand( const char *identifier ) 
+{
+   DPRINTF("add_scalar_operand");
+   const symbol *s = g_current_symbol_table->lookup(identifier);
+   if ( s == NULL ) {
+      if ( g_opcode == BRA_OP ) {
+         // forward branch target...
+         s = g_current_symbol_table->add_variable(identifier,NULL,0,g_filename,ptx_lineno);
+      } else {
+         std::string msg = std::string("operand \"") + identifier + "\" has no declaration.";
+         parse_error( msg.c_str() );
+      }
+   }
+   g_operands.push_back( operand_info(s) );
+}
+
+void add_neg_pred_operand( const char *identifier ) 
+{
+   DPRINTF("add_neg_pred_operand");
+   const symbol *s = g_current_symbol_table->lookup(identifier);
+   if ( s == NULL ) {
+       s = g_current_symbol_table->add_variable(identifier,NULL,1,g_filename,ptx_lineno);
+   }
+   operand_info op(s);
+   op.set_neg_pred();
+   g_operands.push_back( op );
+}
+
+void add_address_operand( const char *identifier, int offset ) 
+{
+   DPRINTF("add_address_operand");
+   const symbol *s = g_current_symbol_table->lookup(identifier);
+   if ( s == NULL ) {
+      std::string msg = std::string("operand \"") + identifier + "\" has no declaration.";
+      parse_error( msg.c_str() );
+   }
+   g_operands.push_back( operand_info(s,offset) );
+}
+
+void add_array_initializer()
+{
+   g_last_symbol->add_initializer(g_operands);
+}
+
+void add_version_info( float ver )
+{
+   g_global_symbol_table->set_ptx_version(ver,0);
+}
+
+void add_file( unsigned num, const char *filename )
+{
+   if( g_filename == NULL ) {
+      char *b = strdup(filename);
+      char *l=b;
+      char *n=b;
+      while( *n != '\0' ) {
+          if( *n == '/' ) 
+              l = n+1;
+          n++;
+      }
+
+      char *p = strtok(l,".");
+      char buf[1024];
+      snprintf(buf,1024,"%s.ptx",p);
+
+      char *q = strtok(NULL,".");
+      if( q && !strcmp(q,"cu") ) {
+          g_filename = strdup(buf);
+      }
+
+      free( b );
+   }
+
+   g_current_symbol_table = g_global_symbol_table;
+}
+
+void *reset_symtab()
+{
+   void *result = g_current_symbol_table;
+   g_current_symbol_table = g_global_symbol_table;
+   return result;
+}
+
+void set_symtab(void*symtab)
+{
+   g_current_symbol_table = (symbol_table*)symtab;
+}
+
+void add_pragma( const char *str )
+{
+   printf("GPGPU-Sim PTX: Warning -- ignoring pragma '%s'\n", str );
+}

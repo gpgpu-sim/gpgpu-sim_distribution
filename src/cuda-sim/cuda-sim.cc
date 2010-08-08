@@ -78,6 +78,7 @@
 #include "memory.h"
 #include "ptx-stats.h"
 #include "ptx_loader.h"
+#include "ptx_parser.h"
 
 extern bool g_interactive_debugger_enabled;
 
@@ -90,8 +91,6 @@ int g_debug_execution = 0;
 int g_debug_thread_uid = 0;
 addr_t g_debug_pc = 0xBEEF1518;
 
-const char *g_filename;
-bool g_debug_ir_generation = false;
 unsigned g_ptx_sim_num_insn = 0;
 
 std::map<const struct textureReference*,const struct cudaArray*> TextureToArrayMap; // texture bindings
@@ -1113,7 +1112,6 @@ void init_inst_classification_stat() {
    g_inst_op_classification_stat[g_ptx_kernel_count] = StatCreate(kernelname,1,100);
 }
 
-unsigned g_max_regs_per_thread = 0;
 
 std::map<std::string,function_info*> *g_kernel_name_to_function_lookup=NULL;
 std::map<std::string,symbol_table*> g_kernel_name_to_symtab_lookup;
@@ -1210,8 +1208,6 @@ void gpgpu_ptx_sim_register_kernel(const char *hostFun, const char *deviceFun)
 
    printf("GPGPU-Sim PTX: __cudaRegisterFunction %s : 0x%Lx\n", deviceFun, (unsigned long long)hostFun);
 }
-
-extern int ptx_lineno;
 
 void register_ptx_function( const char *name, function_info *impl, symbol_table *symtab )
 {
@@ -1328,7 +1324,6 @@ void read_sim_environment_variables()
 {
    ptx_debug = 0;
    g_debug_execution = 0;
-   g_debug_ir_generation = false;
    g_interactive_debugger_enabled = false;
 
    char *mode = getenv("PTX_SIM_MODE_FUNC");
@@ -1336,7 +1331,6 @@ void read_sim_environment_variables()
       sscanf(mode,"%u", &g_ptx_sim_mode);
    printf("GPGPU-Sim PTX: simulation mode %d (can change with PTX_SIM_MODE_FUNC environment variable:\n", g_ptx_sim_mode);
    printf("               1=functional simulation only, 0=detailed performance simulator)\n");
-   g_filename = getenv("PTX_SIM_KERNELFILE"); 
    char *dbg_inter = getenv("GPGPUSIM_DEBUG");
    if ( dbg_inter && strlen(dbg_inter) ) {
       printf("GPGPU-Sim PTX: enabling interactive debugger\n");
@@ -1376,9 +1370,6 @@ void read_sim_environment_variables()
 
    if ( g_debug_execution >= 40 ) {
       ptx_debug = 1;
-   }
-   if ( g_debug_execution >= 30 ) {
-      g_debug_ir_generation = true;
    }
 }
 

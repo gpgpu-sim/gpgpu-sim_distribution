@@ -1,9 +1,9 @@
-/*
- * gpgpusim_entrypoint.c
- *
- * Copyright © 2009 by Tor M. Aamodt, Wilson W. L. Fung, Ali Bakhoda, 
- * George L. Yuan and the University of British Columbia, Vancouver, 
- * BC V6T 1Z4, All Rights Reserved.
+/* 
+ * Copyright (c) 2009 by Tor M. Aamodt, Wilson W. L. Fung, Ali Bakhoda, 
+ * George L. Yuan, Dan O'Connor, Joey Ting, Henry Wong and the 
+ * University of British Columbia
+ * Vancouver, BC  V6T 1Z4
+ * All Rights Reserved.
  * 
  * THIS IS A LEGAL DOCUMENT BY DOWNLOADING GPGPU-SIM, YOU ARE AGREEING TO THESE
  * TERMS AND CONDITIONS.
@@ -62,83 +62,61 @@
  * Vancouver, BC V6T 1Z4
  */
 
-#include "gpgpusim_entrypoint.h"
-#include <stdio.h>
-#include <time.h>
+#ifndef ptx_parser_INCLUDED
+#define ptx_parser_INCLUDED
 
-#include "option_parser.h"
-#include "cuda-sim/cuda-sim.h"
-#include "cuda-sim/ptx_ir.h"
-#include "cuda-sim/ptx_parser.h"
+#include "../abstract_hardware_model.h"
 
-#define MAX(a,b) (((a)>(b))?(a):(b))
-
-struct gpgpu_ptx_sim_arg *grid_params;
-int g_grid_num=0;
-int g_argc = 3;
-const char *g_argv[] = {"", "-config","gpgpusim.config"};
-
-unsigned int run_gpu_sim(int grid_num);
-void gpgpu_ptx_sim_init_grid(const char *kernel_key,struct gpgpu_ptx_sim_arg *args, struct dim3 gridDim, struct dim3 blockDim );
-
-int   g_network_mode = 0;
-char* g_network_config_filename;
-option_parser_t opp;
-extern void print_splash();
-
-extern void gpu_reg_options(option_parser_t opp);
-extern void init_gpu();
-
-time_t simulation_starttime;
-
-void gpgpu_ptx_sim_init_perf()
-{
-   print_splash();
-   read_sim_environment_variables();
-   read_parser_environment_variables();
-   opp = option_parser_create();
-   option_parser_register(opp, "-network_mode", OPT_INT32, &g_network_mode, "Interconnection network mode", "1");
-   option_parser_register(opp, "-inter_config_file", OPT_CSTR, &g_network_config_filename, "Interconnection network config file", "mesh");
-   gpu_reg_options(opp); // register GPU microrachitecture options
-   ptx_reg_options(opp);
-   option_parser_cmdline(opp, g_argc, g_argv); // parse configuration options
-
-   srand(1); 
-
-   fprintf(stdout, "GPGPU-Sim: Configuration options:\n\n");
-   option_parser_print(opp, stdout);
-   init_gpu(); // initialize the GPU microarchitecture model
-   fprintf(stdout, "GPU performance model initialization complete.\n");
-
-   simulation_starttime = time((time_t *)NULL);
+extern const char *g_filename;
+#ifdef __cplusplus 
+extern "C" {
+#endif
+const char *decode_token( int type );
+void read_parser_environment_variables();
+void init_parser(const char*);
+void start_function( int entry_point );
+void add_function_name( const char *fname );
+void init_directive_state();
+void add_directive(); 
+void end_function();
+void add_identifier( const char *s, int array_dim, unsigned array_ident );
+void add_function_arg();
+void add_scalar_type_spec( int type_spec );
+void add_scalar_operand( const char *identifier );
+void add_neg_pred_operand( const char *identifier );
+void add_variables();
+void set_variable_type();
+void add_opcode( int opcode );
+void add_pred( const char *identifier, int negate );
+void add_2vector_operand( const char *d1, const char *d2 );
+void add_3vector_operand( const char *d1, const char *d2, const char *d3 );
+void add_4vector_operand( const char *d1, const char *d2, const char *d3, const char *d4 );
+void add_option(int option );
+void add_builtin_operand( int builtin, int dim_modifier );
+void add_memory_operand( );
+void add_literal_int( int value );
+void add_literal_float( float value );
+void add_literal_double( double value );
+void add_address_operand( const char *identifier, int offset );
+void add_label( const char *idenfiier );
+void add_vector_spec(int spec );
+void add_space_spec( enum _memory_space_t spec, int value );
+void add_extern_spec();
+void add_instruction();
+void set_return();
+void add_alignment_spec( int spec );
+void add_array_initializer();
+void add_file( unsigned num, const char *filename );
+void add_version_info( float ver );
+void *reset_symtab();
+void set_symtab(void*);
+void add_pragma( const char *str );
+#ifdef __cplusplus 
 }
+#endif
 
-extern unsigned long long  gpu_tot_sim_insn;
-extern unsigned long long  gpu_tot_sim_cycle;
+#define NON_ARRAY_IDENTIFIER 1
+#define ARRAY_IDENTIFIER_NO_DIM 2
+#define ARRAY_IDENTIFIER 3
 
-int gpgpu_ptx_sim_main_perf( const char *kernel_key, struct dim3 gridDim, struct dim3 blockDim, struct gpgpu_ptx_sim_arg *grid_params )
-{
-   time_t current_time, difference, d, h, m, s;
-   gpgpu_ptx_sim_init_grid(kernel_key,grid_params,gridDim,blockDim);
-
-   run_gpu_sim(g_grid_num); // run a CUDA grid on the GPU microarchitecture simulator
-
-   g_grid_num++;
-
-   current_time = time((time_t *)NULL);
-   difference = MAX(current_time - simulation_starttime, 1);
-
-   d = difference/(3600*24);
-   h = difference/3600 - 24*d;
-   m = difference/60 - 60*(h + 24*d);
-   s = difference - 60*(m + 60*(h + 24*d));
-
-   fflush(stderr);
-   printf("\n\ngpgpu_simulation_time = %u days, %u hrs, %u min, %u sec (%u sec)\n",
-          (unsigned)d, (unsigned)h, (unsigned)m, (unsigned)s, (unsigned)difference );
-   printf("gpgpu_simulation_rate = %u (inst/sec)\n", (unsigned)(gpu_tot_sim_insn / difference) );
-   printf("gpgpu_simulation_rate = %u (cycle/sec)\n", (unsigned)(gpu_tot_sim_cycle / difference) );
-   fflush(stdout);
-
-   return 0;
-}
+#endif

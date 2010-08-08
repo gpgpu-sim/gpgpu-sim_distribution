@@ -65,6 +65,7 @@
 #include "ptx_loader.h"
 #include "ptx_ir.h"
 #include "cuda-sim.h"
+#include "ptx_parser.h"
 #include <dirent.h>
 
 /// globals
@@ -211,7 +212,7 @@ void gpgpu_ptx_sim_load_gpu_kernels()
         ptx_in = fopen( g_filename, "r" );
     gpgpu_ptx_sim_init_memory();
     if (ptx_in) {
-        init_parser();
+        init_parser(g_filename);
         ptx_parse();
         ptxinfo_in = open_ptxinfo(g_filename);
         ptxinfo_parse();
@@ -227,28 +228,25 @@ void gpgpu_ptx_sim_load_gpu_kernels()
                  load_constants(g_global_symbol_table,STATIC_ALLOC_LIMIT);
             }
         } else {
-            g_filename = NULL;
+            const char *filename = NULL;
             struct dirent **namelist;
-            int n;
-
-            n = scandir(".", &namelist, ptx_file_filter, alphasort);
+            int n = scandir(".", &namelist, ptx_file_filter, alphasort);
             if (n < 0)
-                perror("scandir");
+                perror("GPGPU-Sim PTX: no PTX files returned by scandir");
             else {
                 while (n--) {
-                    if ( g_filename != NULL ) {
+                    if ( filename != NULL ) {
                         printf("Loader error: support for multiple .ptx files not yet enabled\n");
                         abort();
                     }
-                    g_filename = strdup(namelist[n]->d_name);
-                    printf("Parsing %s..\n", g_filename);
-                    ptx_in = fopen( g_filename, "r" );
+                    filename = namelist[n]->d_name;
+                    printf("Parsing %s..\n", filename);
+                    ptx_in = fopen( filename, "r" );
                     free(namelist[n]);
-                    init_parser();
+                    init_parser(filename);
                     ptx_parse ();
-                    ptxinfo_in = open_ptxinfo(g_filename);
+                    ptxinfo_in = open_ptxinfo(filename);
                     ptxinfo_parse();
-                    g_filename = NULL;
                     load_static_globals(g_global_symbol_table,STATIC_ALLOC_LIMIT,0xFFFFFFFF);
                     load_constants(g_global_symbol_table,STATIC_ALLOC_LIMIT);
                 }
@@ -267,11 +265,10 @@ void gpgpu_ptx_sim_load_gpu_kernels()
    }
 
    if ( g_error_detected ) {
-      printf( "GPGPU-Sim PTX: Program parsing completed: Errors detected.\n" );
+      printf( "GPGPU-Sim PTX: PTX parsing errors detected -- exiting.\n" );
       exit(1);
-   } else {
-      printf( "GPGPU-Sim PTX: Program parsing completed (max %u registers used per thread).\n", g_max_regs_per_thread );
    }
+   printf( "GPGPU-Sim PTX: Program parsing completed\n" );
 
    if ( g_kernel_name_to_function_lookup ) {
       for ( std::map<std::string,function_info*>::iterator f=g_kernel_name_to_function_lookup->begin();

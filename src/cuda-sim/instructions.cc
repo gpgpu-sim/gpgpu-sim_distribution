@@ -87,7 +87,6 @@ const char *g_opcode_string[NUM_OPCODES] = {
 #undef OP_DEF
 };
 
-extern std::map<unsigned,std::string> g_ptx_token_decode;
 extern std::map<struct textureReference*,struct cudaArray*> TextureToArrayMap; // texture bindings
 extern std::map<struct textureReference*,struct textureInfo*> TextureToInfoMap; // texture bindings
 extern std::map<std::string, struct textureReference*> NameToTextureMap;
