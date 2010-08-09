@@ -65,11 +65,10 @@
 
 #include <string.h>
 #include "addrdec.h"
-//#include "gpu-sim.h"
+#include "gpu-sim.h"
 #include "../option_parser.h"
 
 int ADDR_CHIP_S = 10;
-extern int gpgpu_mem_address_mask;
 
 long int powli( long int x, long int y ) // compute x to the y
 {

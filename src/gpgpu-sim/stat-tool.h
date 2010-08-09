@@ -1,5 +1,5 @@
 /* 
- * cflogger.h 
+ * stat-tool.h 
  *
  * Copyright (c) 2009 by Tor M. Aamodt, Wilson W. L. Fung, and the 
  * University of British Columbia
@@ -63,10 +63,11 @@
  * Vancouver, BC V6T 1Z4
  */
 
-#ifndef CFLOGGER_H
-#define CFLOGGER_H
+#ifndef STAT_TOOL_H
+#define STAT_TOOL_H
 
 #include "../abstract_hardware_model.h"
+#include <stdio.h>
 
 void try_snap_shot (unsigned long long  current_cycle);
 void set_spill_interval (unsigned long long  interval);

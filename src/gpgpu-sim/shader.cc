@@ -71,7 +71,7 @@
 #include "dram.h"
 #include "dwf.h"
 #include "warp_tracker.h"
-#include "cflogger.h"
+#include "stat-tool.h"
 #include "gpu-misc.h"
 #include "../cuda-sim/ptx_sim.h"
 #include "../cuda-sim/ptx-stats.h"

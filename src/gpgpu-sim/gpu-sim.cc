@@ -86,7 +86,7 @@
 #include "addrdec.h"
 #include "dwf.h"
 #include "warp_tracker.h"
-#include "cflogger.h"
+#include "stat-tool.h"
 #include "l2cache.h"
 
 #include "../cuda-sim/ptx-stats.h"
@@ -209,7 +209,6 @@ void visualizer_printstat();
 void time_vector_create(int ld_size,int st_size);
 void time_vector_print(void);
 void time_vector_update(unsigned int uid,int slot ,long int cycle,int type);
-void check_time_vector_update(unsigned int uid,int slot ,long int latency,int type);
 void node_req_hist_clear(void *p);
 void node_req_hist_dump(void *p);
 void node_req_hist_update(void * p,int node, long long cycle);

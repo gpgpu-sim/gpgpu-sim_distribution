@@ -68,11 +68,7 @@
 #include "gpu-misc.h"
 #include "gpu-sim.h"
 #include "../abstract_hardware_model.h"
-
-extern unsigned max_mrq_latency;
-extern unsigned mrq_lat_table[24];
-extern int gpgpu_memlatency_stat;
-extern unsigned int **concurrent_row_access; //concurrent_row_access[dram chip id][bank id]
+#include "mem_latency_stat.h"
 
 ideal_dram_scheduler::ideal_dram_scheduler( dram_t *dm )
 {

@@ -80,20 +80,17 @@
 #include "ptx_loader.h"
 #include "ptx_parser.h"
 #include "../gpgpu-sim/gpu-sim.h"
-
-extern bool g_interactive_debugger_enabled;
+#include "ptx_sim.h"
+#include "../gpgpusim_entrypoint.h"
 
 int gpgpu_ptx_instruction_classification=0;
 void ** g_inst_classification_stat = NULL;
 void ** g_inst_op_classification_stat= NULL;
 int g_ptx_kernel_count = -1; // used for classification stat collection purposes 
-
 int g_debug_execution = 0;
 int g_debug_thread_uid = 0;
 addr_t g_debug_pc = 0xBEEF1518;
-
 unsigned g_ptx_sim_num_insn = 0;
-
 std::map<const struct textureReference*,const struct cudaArray*> TextureToArrayMap; // texture bindings
 std::map<const struct textureReference*, const struct textureInfo*> TextureToInfoMap;
 std::map<std::string, const struct textureReference*> NameToTextureMap;
@@ -1115,7 +1112,6 @@ void init_inst_classification_stat() {
 
 std::map<std::string,function_info*> *g_kernel_name_to_function_lookup=NULL;
 std::map<const void*,std::string> *g_host_to_kernel_entrypoint_name_lookup=NULL;
-extern unsigned g_ptx_thread_info_uid_next;
 
 void gpgpu_cuda_ptx_sim_init_grid( const char *kernel_key, struct gpgpu_ptx_sim_arg* args,
                                          struct dim3 gridDim, struct dim3 blockDim ) 
@@ -1387,13 +1383,6 @@ void read_sim_environment_variables()
       ptx_debug = 1;
    }
 }
-
-
-
-
-
-
-extern time_t g_simulation_starttime;
 
 ptx_cta_info *g_func_cta_info = NULL;
 

@@ -65,6 +65,9 @@
 #include "l2cache.h"
 #include "shader.h"
 #include "../option_parser.h"
+#include "mem_latency_stat.h"
+#include "stat-tool.h"
+
 #include <time.h>
 #include <string.h>
 #include <zlib.h>
@@ -78,18 +81,14 @@ extern unsigned int gpgpu_n_processed_writes;
 extern unsigned int gpgpu_n_cache_bkconflict;
 extern unsigned int gpgpu_n_shmem_bkconflict;
 extern unsigned int *max_return_queue_length;
-extern unsigned max_mrq_latency;
-extern unsigned max_dq_latency;
-extern unsigned max_mf_latency;
-extern unsigned max_icnt2mem_latency;
-extern unsigned max_icnt2sh_latency;
 extern int gpgpu_warpdistro_shader;
 extern unsigned ***mem_access_type_stats;
 
 extern unsigned int warp_size; 
 extern unsigned int *shader_cycle_distro;
-void time_vector_print_interval2file(FILE *outfile);
-void time_vector_print_interval2gzfile(gzFile outfile);
+
+static void time_vector_print_interval2file(FILE *outfile);
+static void time_vector_print_interval2gzfile(gzFile outfile);
 void cflog_visualizer_gzprint(gzFile fout);
 void shader_CTA_count_visualizer_gzprint(gzFile fout);
 float shd_cache_windowed_cache_miss_rate(shd_cache_t*, int);

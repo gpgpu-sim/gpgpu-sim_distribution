@@ -66,15 +66,8 @@
 
 #include "gpu-sim.h"
 #include "gpu-misc.h"
-//#include "shader.h"
 #include "dram.h"
 #include "mem_latency_stat.h"
-
-extern unsigned max_dq_latency;
-extern unsigned max_dq_latency;
-unsigned int gpu_n_warps;
-extern unsigned int gpu_n_mem_per_ctrlr;
-extern unsigned int recent_dram_util;
 
 #ifdef DRAM_VERIFY
 int PRINT_CYCLE = 0;

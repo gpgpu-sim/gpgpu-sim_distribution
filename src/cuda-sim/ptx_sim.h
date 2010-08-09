@@ -90,13 +90,11 @@ struct gpgpu_ptx_sim_kernel_info {
 #include <assert.h>
 #include "opcodes.h"
 
-#ifdef __cplusplus
-
-   #include <string>
-   #include <map>
-   #include <set>
-   #include <list>
-   #include <unordered_map>
+#include <string>
+#include <map>
+#include <set>
+#include <list>
+#include <unordered_map>
 
 #include "memory.h"
 
@@ -484,6 +482,6 @@ bool isspace_shared( unsigned smid, addr_t addr );
 bool isspace_global( addr_t addr );
 memory_space_t whichspace( addr_t addr );
 
-#endif
+extern unsigned g_ptx_thread_info_uid_next;
 
 #endif

@@ -69,8 +69,6 @@ void visualizer_options(class OptionParser *opp);
 void visualizer_printstat();
 void time_vector_create(int ld_size,int st_size);
 void time_vector_print(void);
-void time_vector_print_interval2file(FILE *outfile);
-void time_vector_print_interval2gzfile(gzFile outfile);
 void time_vector_update(unsigned int uid,int slot ,long int cycle,int type);
 void check_time_vector_update(unsigned int uid,int slot ,long int latency,int type); 
 

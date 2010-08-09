@@ -70,8 +70,10 @@
 #include "gpu-misc.h"
 #include "shader.h"
 #include "mem_fetch.h"
-#include "cflogger.h"
+#include "stat-tool.h"
 #include "../cuda-sim/ptx-stats.h"
+#include "visualizer.h"
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

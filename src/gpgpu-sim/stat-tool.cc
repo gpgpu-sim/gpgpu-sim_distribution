@@ -62,6 +62,8 @@
  * Vancouver, BC V6T 1Z4
  */
 
+#include "stat-tool.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -189,8 +191,6 @@ void linear_histogram::add2bin (int sample) {
 #include <map>
 #include <algorithm>
 #include <string>
-
-#include "cflogger.h"
 
 /////////////////////////////////////////////////////////////////////////////////////
 // logger snapshot trigger: 

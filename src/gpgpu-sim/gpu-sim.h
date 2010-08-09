@@ -72,10 +72,6 @@
 #define NUM_SHADERS 8
 #define STREAMS_PER_FILE 128
 
-//unsigned int run_gpu_sim(int grid_num);
-
-unsigned int get_converge_point(unsigned int pc, void *thd);
-
 #define GPU_RSTAT_SHD_INFO 0x1
 #define GPU_RSTAT_BW_STAT  0x2
 #define GPU_RSTAT_WARP_DIS 0x4
@@ -95,17 +91,16 @@ unsigned int get_converge_point(unsigned int pc, void *thd);
 #define GPU_MEMLATSTAT_MC 0x2
 #define GPU_MEMLATSTAT_QUEUELOGS 0x4
 
-//void gpu_reg_options(option_parser_t opp);
-//void init_gpu();
-void gpu_print_stat();
+#define MhZ *1000000
 
-int mem_ctrl_full( int mc_id );
-
-void dramqueue_latency_log_dump();
-void dump_pipeline_impl( int mask, int s, int m );
-unsigned int run_gpu_sim(int grid_num);
-extern void gpu_reg_options(class OptionParser * opp);
-extern void init_gpu();
+extern void         init_gpu();
+extern void         gpu_reg_options(class OptionParser * opp);
+extern unsigned int run_gpu_sim(int grid_num);
+extern unsigned int get_converge_point(unsigned int pc, void *thd);
+extern void         gpu_print_stat();
+extern int          mem_ctrl_full( int mc_id );
+extern void         dramqueue_latency_log_dump();
+extern void         dump_pipeline_impl( int mask, int s, int m );
 
 extern unsigned int L1_write_miss;
 extern unsigned int L1_read_miss;
@@ -167,11 +162,11 @@ extern int pdom_sched_type;
 extern int n_pdom_sc_orig_stat;
 extern int n_pdom_sc_single_stat;
 extern int gpgpu_cuda_sim;
-
-#ifndef MhZ
-   #define MhZ *1000000
-#endif
-
-extern void check_time_vector_update(unsigned int uid,int slot ,long int latency,int type);
+extern int gpgpu_mem_address_mask;
+extern bool g_interactive_debugger_enabled;
+extern unsigned int gpu_n_mem_per_ctrlr;
+extern unsigned int recent_dram_util;
+extern unsigned int **concurrent_row_access; //concurrent_row_access[dram chip id][bank id]
+extern unsigned long long  gpu_tot_sim_insn;
 
 #endif

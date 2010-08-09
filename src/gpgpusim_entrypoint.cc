@@ -102,7 +102,6 @@ void gpgpu_ptx_sim_init_perf()
    g_simulation_starttime = time((time_t *)NULL);
 }
 
-extern unsigned long long  gpu_tot_sim_insn;
 
 static void print_simulation_time()
 {
