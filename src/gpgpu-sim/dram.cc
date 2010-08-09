@@ -64,18 +64,14 @@
  * Vancouver, BC V6T 1Z4
  */
 
-//#include "gpu-sim.h"
+#include "gpu-sim.h"
 #include "gpu-misc.h"
 //#include "shader.h"
 #include "dram.h"
+#include "mem_latency_stat.h"
 
-extern unsigned long long  gpu_sim_cycle;
-extern signed long long gpu_tot_sim_cycle;
-extern int gpgpu_memlatency_stat;
 extern unsigned max_dq_latency;
-extern unsigned dq_lat_table[24];
 extern unsigned max_dq_latency;
-extern unsigned dq_lat_table[24];
 unsigned int gpu_n_warps;
 extern unsigned int gpu_n_mem_per_ctrlr;
 extern unsigned int recent_dram_util;

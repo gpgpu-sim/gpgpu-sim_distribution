@@ -47,9 +47,7 @@ struct L2cacheblk
 
 // external dependencies
 extern unsigned long long int addrdec_mask[5];
-extern dram_t **dram;
 extern int gpgpu_dram_sched_queue_size; 
-extern unsigned long long gpu_sim_cycle;
 extern unsigned made_write_mfs;
 extern unsigned freed_L1write_mfs;
 extern unsigned freed_L2write_mfs;

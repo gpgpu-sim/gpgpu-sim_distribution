@@ -94,6 +94,7 @@
 #include "../abstract_hardware_model.h"
 #include "../debug.h"
 #include "../gpgpusim_entrypoint.h"
+#include "../cuda-sim/cuda-sim.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -229,7 +230,6 @@ double icnt_time=0;
 double dram_time=0;
 double l2_time=0;
 
-#define MhZ *1000000
 double core_freq=2 MhZ;
 double icnt_freq=2 MhZ;
 double dram_freq=2 MhZ;
@@ -327,14 +327,11 @@ unsigned char single_check_icnt_has_buffer(int chip, int sid, unsigned char is_w
 unsigned char fq_pop(int tpc_id);
 void fill_shd_L1_with_new_line(shader_core_ctx_t * sc, mem_fetch_t * mf);
 
-void set_option_gpgpu_spread_blocks_across_cores(int option);
 void set_param_gpgpu_num_shaders(int num_shaders);
 unsigned ptx_sim_grid_size();
 void icnt_init_grid();
 void interconnect_stats();
 void icnt_overal_stat();
-unsigned ptx_sim_cta_size();
-unsigned ptx_sim_init_thread( ptx_thread_info** thread_info, int sid, unsigned tid,unsigned threads_left,unsigned num_threads, core_t *core, unsigned hw_cta_id, unsigned hw_warp_id );
 
 void gpu_sim_loop( int grid_num );
 
@@ -1689,8 +1686,6 @@ void dump_regs(unsigned sid, unsigned tid)
 
    ptx_dump_regs( s->thread[tid].ptx_thd_info );
 }
-
-int ptx_thread_done( void *thr );
 
 void shader_dump_istream_state(shader_core_ctx_t *shader, FILE *fout )
 {

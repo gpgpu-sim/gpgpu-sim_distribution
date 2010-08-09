@@ -1,11 +1,6 @@
 /* 
- * mem_latency_stat.h
- *
- * Copyright (c) 2009 by Tor M. Aamodt, Wilson W. L. Fung, Ali Bakhoda, 
- * George L. Yuan and the 
- * University of British Columbia
- * Vancouver, BC  V6T 1Z4
- * All Rights Reserved.
+ * Copyright © 2009 by Tor M. Aamodt, Wilson W. L. Fung and the University of 
+ * British Columbia, Vancouver, BC V6T 1Z4, All Rights Reserved.
  * 
  * THIS IS A LEGAL DOCUMENT BY DOWNLOADING GPGPU-SIM, YOU ARE AGREEING TO THESE
  * TERMS AND CONDITIONS.
@@ -64,56 +59,19 @@
  * Vancouver, BC V6T 1Z4
  */
 
+#ifndef VISUALIZER_H_INCLUDED
+#define VISUALIZER_H_INCLUDED
 
-#ifndef MEM_LATENCY_STAT_H
-#define MEM_LATENCY_STAT_H
+#include <stdio.h>
+#include <zlib.h>
 
-extern int gpgpu_dram_scheduler;
-extern unsigned int gpu_mem_n_bk;
-extern bool gpgpu_memlatency_stat;
+void visualizer_options(class OptionParser *opp);
+void visualizer_printstat();
+void time_vector_create(int ld_size,int st_size);
+void time_vector_print(void);
+void time_vector_print_interval2file(FILE *outfile);
+void time_vector_print_interval2gzfile(gzFile outfile);
+void time_vector_update(unsigned int uid,int slot ,long int cycle,int type);
+void check_time_vector_update(unsigned int uid,int slot ,long int latency,int type); 
 
-extern unsigned max_mrq_latency;
-extern unsigned max_dq_latency;
-extern unsigned max_mf_latency;
-extern unsigned max_icnt2mem_latency;
-extern unsigned max_icnt2sh_latency;
-extern unsigned mrq_lat_table[32];
-extern unsigned dq_lat_table[32];
-extern unsigned mf_lat_table[32];
-extern unsigned icnt2mem_lat_table[24];
-extern unsigned icnt2sh_lat_table[24];
-extern unsigned mf_lat_pw_table[32]; //table storing values of mf latency Per Window
-extern unsigned mf_num_lat_pw;
-extern unsigned mf_tot_lat_pw; //total latency summed up per window. divide by mf_num_lat_pw to obtain average latency Per Window
-extern unsigned long long int mf_total_lat;
-extern unsigned long long int ** mf_total_lat_table; //mf latency sums[dram chip id][bank id]
-extern unsigned ** mf_max_lat_table; //mf latency sums[dram chip id][bank id]
-extern unsigned num_mfs;
-extern unsigned int ***bankwrites; //bankwrites[shader id][dram chip id][bank id]
-extern unsigned int ***bankreads; //bankreads[shader id][dram chip id][bank id]
-extern unsigned int **totalbankwrites; //bankwrites[dram chip id][bank id]
-extern unsigned int **totalbankreads; //bankreads[dram chip id][bank id]
-extern unsigned int **totalbankaccesses; //bankaccesses[dram chip id][bank id]
-extern unsigned int *requests_by_warp;
-extern unsigned int *MCB_accesses; //upon cache miss, tracks which memory controllers accessed by a warp
-extern unsigned int *num_MCBs_accessed; //tracks how many memory controllers are accessed whenever any thread in a warp misses in cache
-extern unsigned int *position_of_mrq_chosen; //position of mrq in m_queue chosen 
-extern unsigned *mf_num_lat_pw_perwarp;
-extern unsigned *mf_tot_lat_pw_perwarp; //total latency summed up per window per warp. divide by mf_num_lat_pw_perwarp to obtain average latency Per Window
-extern unsigned long long int *mf_total_lat_perwarp;
-extern unsigned *num_mfs_perwarp;
-extern unsigned *acc_mrq_length;
-
-extern unsigned ***mem_access_type_stats; // dram access type classification
-
-void memlatstat_init();
-void memlatstat_start(struct mem_fetch *mf);
-unsigned memlatstat_done(struct mem_fetch *mf);
-void memlatstat_icnt2sh_push(struct mem_fetch *mf);
-void memlatstat_read_done(struct mem_fetch *mf);
-void memlatstat_dram_access(struct mem_fetch *mf, unsigned dram_id, unsigned bank);
-void memlatstat_icnt2mem_pop(struct mem_fetch *mf);
-void memlatstat_lat_pw();
-void memlatstat_print();
-
-#endif /*MEM_LATENCY_STAT_H*/
+#endif

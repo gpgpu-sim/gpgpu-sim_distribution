@@ -79,35 +79,12 @@
 #include "../cuda-sim/cuda-sim.h"
 #include "gpu-sim.h"
 #include "mem_fetch.h"
+#include "mem_latency_stat.h"
+#include "visualizer.h"
 #include <string.h>
 
 #define PRIORITIZE_MSHR_OVER_WB 1
 #define MAX(a,b) (((a)>(b))?(a):(b))
-
-extern int gpgpu_memlatency_stat;
-extern dram_t **dram;
-extern int *num_warps_issuable;
-extern int *num_warps_issuable_pershader;
-
-extern unsigned long long  gpu_sim_insn;
-extern unsigned long long  gpu_sim_insn_no_ld_const;
-extern unsigned long long  gpu_sim_insn_last_update;
-extern unsigned long long  gpu_completed_thread;
-extern unsigned long long  gpu_sim_cycle;
-extern shader_core_ctx_t **sc;
-extern unsigned int gpgpu_pre_mem_stages;
-extern int gpgpu_no_divg_load;
-extern unsigned int gpgpu_thread_swizzling;
-extern unsigned int gpgpu_strict_simd_wrbk;
-extern unsigned int warp_conflict_at_writeback;
-extern unsigned int gpgpu_commit_pc_beyond_two;
-extern int gpgpu_spread_blocks_across_cores;
-extern int gpgpu_cflog_interval;
-
-extern unsigned int gpu_stall_by_MSHRwb;
-extern unsigned int gpu_stall_shd_mem;
-extern unsigned int gpu_stall_sh2icnt;
-extern int gpgpu_operand_collector;
 
 enum mem_stage_access_type {
    C_MEM,
@@ -130,23 +107,15 @@ enum mem_stage_stall_type {
    WB_CACHE_RSRV_FAIL,
    N_MEM_STAGE_STALL_TYPE
 };
-unsigned int gpu_stall_shd_mem_breakdown[N_MEM_STAGE_ACCESS_TYPE][N_MEM_STAGE_STALL_TYPE] = { {0} };
 
+unsigned int gpu_stall_shd_mem_breakdown[N_MEM_STAGE_ACCESS_TYPE][N_MEM_STAGE_STALL_TYPE] = { {0} };
 unsigned warp_size = 4; 
 int pipe_simd_width;
-extern unsigned int **totalbankaccesses; //bankaccesses[shader id][dram chip id][bank id]
-extern unsigned int *MCB_accesses; //upon cache miss, tracks which memory controllers accessed by a warp
-extern unsigned int *num_MCBs_accessed; //tracks how many memory controllers are accessed whenever any thread in a warp misses in cache
-extern unsigned int *max_return_queue_length;
-
 unsigned int *shader_cycle_distro;
-
 unsigned int g_waiting_at_barrier = 0;
-
 unsigned int gpgpu_shmem_size = 16384;
 unsigned int gpgpu_shader_registers = 8192;
 unsigned int gpgpu_shader_cta = 8;
-
 unsigned int gpgpu_n_load_insn = 0;
 unsigned int gpgpu_n_store_insn = 0;
 unsigned int gpgpu_n_shmem_insn = 0;
@@ -154,77 +123,25 @@ unsigned int gpgpu_n_tex_insn = 0;
 unsigned int gpgpu_n_const_insn = 0;
 unsigned int gpgpu_n_param_insn = 0;
 unsigned int gpgpu_multi_unq_fetches = 0;
-
-extern int gpgpu_cache_wt_through;
-
-int gpgpu_shmem_bkconflict = 0;
+int          gpgpu_shmem_bkconflict = 0;
 unsigned int gpgpu_n_shmem_bkconflict = 0;
-int gpgpu_n_shmem_bank = 16;
-
-int gpgpu_cache_bkconflict = 0;
+int          gpgpu_n_shmem_bank = 16;
+int          gpgpu_cache_bkconflict = 0;
 unsigned int gpgpu_n_cache_bkconflict = 0;
 unsigned int gpgpu_n_cmem_portconflict = 0;
-int gpgpu_n_cache_bank = 16;
-
-extern int gpu_runtime_stat_flag;
-int gpgpu_warpdistro_shader = -1;
-
-int gpgpu_interwarp_mshr_merge = 0;
-int gpgpu_n_intrawarp_mshr_merge = 0;
-
-extern int gpgpu_partial_write_mask;
-int gpgpu_n_partial_writes = 0;
-
-extern int gpgpu_n_mem_write_local;
-extern int gpgpu_n_mem_write_global;
-
-#ifndef MhZ
-   #define MhZ *1000000
-#endif
-extern double core_freq;
-extern double icnt_freq;
-extern double dram_freq;
-extern double l2_freq;
-
-int gpgpu_shmem_port_per_bank = 4;
-int gpgpu_cache_port_per_bank = 4;
-int gpgpu_const_port_per_bank = 4;
-int gpgpu_shmem_pipe_speedup = 2;
-
+int          gpgpu_n_cache_bank = 16;
+int          gpgpu_warpdistro_shader = -1;
+int          gpgpu_interwarp_mshr_merge = 0;
+int          gpgpu_n_intrawarp_mshr_merge = 0;
+int          gpgpu_n_partial_writes = 0;
+int          gpgpu_shmem_port_per_bank = 4;
+int          gpgpu_cache_port_per_bank = 4;
+int          gpgpu_const_port_per_bank = 4;
+int          gpgpu_shmem_pipe_speedup = 2;
 unsigned int gpu_max_cta_per_shader = 8;
 unsigned int gpu_padded_cta_size = 32;
-int gpgpu_local_mem_map = 1;
-
-
-int gpgpu_operand_collector_num_units = 4;
-
-extern int pdom_sched_type;
-extern int n_pdom_sc_orig_stat;
-extern int n_pdom_sc_single_stat;
-extern int gpgpu_cuda_sim;
-extern unsigned long long  gpu_tot_sim_cycle;
-
-void ptx_decode_inst( void *thd, unsigned *op, int *i1, int *i2, int *i3, int *i4, int *o1, int *o2, int *o3, int *o4, int *vectorin, int *vectorout, int *arch_reg  );
-void ptx_exec_inst( void *thd, address_type *addr, memory_space_t *space, unsigned *data_size, dram_callback_t* callback, unsigned warp_active_mask);
-void ptx_sim_free_sm( class ptx_thread_info** thread_info );
-unsigned ptx_sim_init_thread( class ptx_thread_info** thread_info, int sid, unsigned tid,unsigned threads_left,unsigned num_threads, core_t *core, unsigned hw_cta_id, unsigned hw_warp_id);
-unsigned ptx_sim_cta_size();
-const struct gpgpu_ptx_sim_kernel_info* ptx_sim_kernel_info();
-void set_option_gpgpu_spread_blocks_across_cores(int option);
-int ptx_thread_done( void *thr );
-unsigned ptx_thread_donecycle( void *thr );
-int ptx_thread_get_next_pc( void *thd );
-void* ptx_thread_get_next_finfo( void *thd );
-int ptx_thread_at_barrier( void *thd );
-int ptx_thread_all_at_barrier( void *thd );
-unsigned long long ptx_thread_get_cta_uid( void *thd );
-void ptx_thread_reset_barrier( void *thd );
-void ptx_thread_release_barrier( void *thd );
-void ptx_print_insn( address_type pc, FILE *fp );
-int ptx_set_tex_cache_linesize( unsigned linesize);
-void time_vector_update(unsigned int uid,int slot ,long int cycle,int type);
-
-
+int          gpgpu_local_mem_map = 1;
+int          gpgpu_operand_collector_num_units = 4;
 
 /////////////////////////////////////////////////////////////////////////////
 /*-------------------------------------------------------------------------*/

@@ -126,12 +126,51 @@ extern unsigned int gpu_n_shader;
 extern unsigned int gpu_n_mem;
 extern bool gpgpu_reg_bankconflict;
 extern int gpgpu_dram_sched_queue_size;
+extern unsigned long long  gpu_sim_cycle;
 extern unsigned long long  gpu_tot_sim_cycle;
+extern unsigned long long  gpu_sim_insn;
 extern unsigned int gpu_n_warp_per_shader;
 extern unsigned int **max_conc_access2samerow;
 extern unsigned int **max_servicetime2samerow;
 extern unsigned int **row_access;
 extern unsigned int **num_activates;
+extern struct dram_timing **dram;
+extern int *num_warps_issuable;
+extern int *num_warps_issuable_pershader;
+extern unsigned long long  gpu_sim_insn_no_ld_const;
+extern unsigned long long  gpu_sim_insn_last_update;
+extern unsigned long long  gpu_completed_thread;
+extern class shader_core_ctx **sc;
+extern unsigned int gpgpu_pre_mem_stages;
+extern unsigned int gpgpu_no_divg_load;
+extern unsigned int gpgpu_thread_swizzling;
+extern unsigned int gpgpu_strict_simd_wrbk;
+extern unsigned int warp_conflict_at_writeback;
+extern unsigned int gpgpu_commit_pc_beyond_two;
+extern int gpgpu_spread_blocks_across_cores;
+extern int gpgpu_cflog_interval;
+extern unsigned int gpu_stall_by_MSHRwb;
+extern unsigned int gpu_stall_shd_mem;
+extern unsigned int gpu_stall_sh2icnt;
+extern int gpgpu_operand_collector;
+extern int gpu_runtime_stat_flag;
+extern unsigned int *max_return_queue_length;
+extern int gpgpu_partial_write_mask;
+extern int gpgpu_n_mem_write_local;
+extern int gpgpu_n_mem_write_global;
+extern int gpgpu_cache_wt_through;
+extern double core_freq;
+extern double icnt_freq;
+extern double dram_freq;
+extern double l2_freq;
+extern int pdom_sched_type;
+extern int n_pdom_sc_orig_stat;
+extern int n_pdom_sc_single_stat;
+extern int gpgpu_cuda_sim;
+
+#ifndef MhZ
+   #define MhZ *1000000
+#endif
 
 extern void check_time_vector_update(unsigned int uid,int slot ,long int latency,int type);
 

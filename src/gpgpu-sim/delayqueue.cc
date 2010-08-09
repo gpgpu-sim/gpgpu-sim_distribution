@@ -65,9 +65,8 @@
 
 #include "delayqueue.h"
 #include "gpu-misc.h"
+#include "gpu-sim.h"
 #include "../intersim/statwraper.h"
-
-extern unsigned long long  gpu_sim_cycle; //for stat collection
 
 unsigned char dq_full( delay_queue* dq ) 
 {

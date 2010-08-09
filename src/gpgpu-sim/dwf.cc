@@ -2323,7 +2323,6 @@ void g_print_max_heap(int sid) {
    #include "stat-tool.cc"
 
 unsigned gpgpu_thread_swizzling = 0;
-unsigned long long  gpu_sim_cycle = 0;
 
 int regfile_hash(signed istream_number, unsigned simd_size, unsigned n_banks) {
    if (gpgpu_thread_swizzling) {

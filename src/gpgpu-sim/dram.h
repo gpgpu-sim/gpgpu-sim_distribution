@@ -126,7 +126,7 @@ typedef struct {
    unsigned int n_idle;
 } bank_t;
 
-typedef struct {
+typedef struct dram_timing {
    unsigned int id;
 
    unsigned int tCCD;   //column to column delay

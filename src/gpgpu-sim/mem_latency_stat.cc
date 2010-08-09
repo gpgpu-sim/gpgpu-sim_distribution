@@ -76,7 +76,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-extern unsigned long long  gpu_sim_cycle;
 extern unsigned int gpu_n_mem;
 extern unsigned int gpu_n_shader;
 extern int gpgpu_dram_sched_queue_size;

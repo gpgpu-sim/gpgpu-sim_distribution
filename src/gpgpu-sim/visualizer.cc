@@ -59,6 +59,8 @@
  * Vancouver, BC V6T 1Z4
  */
 
+#include "visualizer.h"
+
 #include "gpu-sim.h"
 #include "l2cache.h"
 #include "shader.h"
@@ -68,19 +70,13 @@
 #include <zlib.h>
 
 extern unsigned int gpu_mem_n_bk;
-extern shader_core_ctx_t **sc;
-extern dram_t **dram;
 extern unsigned long long int mf_total_lat;
 extern unsigned num_mfs;
-extern unsigned long long  gpu_sim_cycle;
-extern unsigned long long  gpu_sim_insn;
 extern unsigned long long  gpu_tot_sim_insn;
-extern unsigned long long  gpu_completed_thread;
 extern unsigned int gpgpu_n_sent_writes;
 extern unsigned int gpgpu_n_processed_writes;
 extern unsigned int gpgpu_n_cache_bkconflict;
 extern unsigned int gpgpu_n_shmem_bkconflict;
-extern unsigned int gpu_stall_by_MSHRwb;
 extern unsigned int *max_return_queue_length;
 extern unsigned max_mrq_latency;
 extern unsigned max_dq_latency;

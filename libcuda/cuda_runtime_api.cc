@@ -888,8 +888,6 @@ __host__ cudaError_t CUDARTAPI cudaStreamQuery(cudaStream_t stream)
 *                                                                              *
 *******************************************************************************/
 
-extern signed long long gpu_tot_sim_cycle;
-
 struct timer_event
 {
    int m_uid;

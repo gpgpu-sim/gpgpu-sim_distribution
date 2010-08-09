@@ -64,6 +64,7 @@
 #include "ptx_sim.h"
 #include <string>
 #include "ptx_ir.h"
+#include "../gpgpu-sim/gpu-sim.h"
 
 void feature_not_implemented( const char *f );
 
@@ -249,17 +250,12 @@ const ptx_version &ptx_thread_info::get_ptx_version() const
    return m_func_info->get_ptx_version(); 
 }
 
-extern unsigned long long  gpu_sim_cycle;
-
 void ptx_thread_info::set_done() 
 {
    assert( !m_at_barrier );
    m_thread_done = true;
    m_cycle_done = gpu_sim_cycle; 
 }
-
-extern unsigned long long  gpu_sim_cycle;
-extern signed long long gpu_tot_sim_cycle;
 
 unsigned ptx_thread_info::get_builtin( int builtin_id, unsigned dim_mod ) 
 {

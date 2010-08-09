@@ -79,6 +79,7 @@
 #include "ptx-stats.h"
 #include "ptx_loader.h"
 #include "ptx_parser.h"
+#include "../gpgpu-sim/gpu-sim.h"
 
 extern bool g_interactive_debugger_enabled;
 
@@ -759,7 +760,6 @@ unsigned datatype2size( unsigned data_type )
    return data_size; 
 }
 
-extern unsigned long long  gpu_sim_cycle;
 unsigned g_warp_active_mask;
 
 void function_info::ptx_exec_inst( ptx_thread_info *thread, 

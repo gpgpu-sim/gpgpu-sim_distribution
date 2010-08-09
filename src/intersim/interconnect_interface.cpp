@@ -20,7 +20,6 @@
 #include "../gpgpu-sim/gpu-sim.h"
 #include <string.h>
 
-extern unsigned long long gpu_sim_cycle;
 int _flit_size ;
 extern unsigned int warp_size;
 
@@ -558,7 +557,6 @@ void transfer2boundary_buf(int output) {
 }
 
 void time_vector_update(unsigned int uid, int slot , long int cycle, int type);
-extern unsigned long long gpu_tot_sim_cycle;
 void time_vector_update_icnt_injected(void* data, int input) {
     mem_fetch_t* mf = (mem_fetch_t*) data;
     unsigned int uid = mf->write? mf->request_uid : mf->mshr->insts[0].uid;

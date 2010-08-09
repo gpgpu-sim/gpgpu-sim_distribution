@@ -2,6 +2,7 @@
 #define CUDASIM_H_INCLUDED
 
 #include "../abstract_hardware_model.h"
+#include "dram_callback.h"
 #include <stdlib.h>
 #include <map>
 #include <string>
@@ -17,10 +18,16 @@ extern int g_debug_execution;
 extern int g_debug_thread_uid;
 extern std::map<std::string,function_info*> *g_kernel_name_to_function_lookup;
 
-extern void   gpgpu_cuda_ptx_sim_init_grid(const char *kernel_key,struct gpgpu_ptx_sim_arg *args, struct dim3 gridDim, struct dim3 blockDim );
-extern void   gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,struct gpgpu_ptx_sim_arg *args, struct dim3 gridDim, struct dim3 blockDim );
+extern void   gpgpu_cuda_ptx_sim_init_grid( const char *kernel_key,
+                                            struct gpgpu_ptx_sim_arg *args, 
+                                            struct dim3 gridDim, 
+                                            struct dim3 blockDim );
+extern void   gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
+                                            struct gpgpu_ptx_sim_arg *args, 
+                                            struct dim3 gridDim, 
+                                            struct dim3 blockDim );
 extern void   gpgpu_cuda_ptx_sim_main_func( const char *kernel_key, dim3 gridDim, dim3 blockDim, struct gpgpu_ptx_sim_arg *);
-extern void print_splash();
+extern void   print_splash();
 extern void*  gpgpu_ptx_sim_malloc( size_t count );
 extern void*  gpgpu_ptx_sim_mallocarray( size_t count );
 extern void   gpgpu_ptx_sim_memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t count );
@@ -43,5 +50,47 @@ extern void read_sim_environment_variables();
 extern void register_function_implementation( const char *name, function_info *impl );
 extern void ptxinfo_cuda_addinfo();
 extern void ptxinfo_opencl_addinfo( std::map<std::string,function_info*> &kernels );
+extern void ptx_sim_free_sm( class ptx_thread_info** thread_info );
+unsigned ptx_sim_init_thread( class ptx_thread_info** thread_info,
+                              int sid,
+                              unsigned tid,
+                              unsigned threads_left,
+                              unsigned num_threads, 
+                              class core_t *core, 
+                              unsigned hw_cta_id, 
+                              unsigned hw_warp_id );
+unsigned ptx_sim_cta_size();
+const struct gpgpu_ptx_sim_kernel_info* ptx_sim_kernel_info();
+void set_option_gpgpu_spread_blocks_across_cores(int option);
+int ptx_thread_done( void *thd );
+unsigned ptx_thread_donecycle( void *thr );
+int ptx_thread_get_next_pc( void *thd );
+void* ptx_thread_get_next_finfo( void *thd );
+int ptx_thread_at_barrier( void *thd );
+int ptx_thread_all_at_barrier( void *thd );
+unsigned long long ptx_thread_get_cta_uid( void *thd );
+void ptx_thread_reset_barrier( void *thd );
+void ptx_thread_release_barrier( void *thd );
+void ptx_print_insn( address_type pc, FILE *fp );
+unsigned int ptx_set_tex_cache_linesize( unsigned linesize);
+void ptx_decode_inst( void *thd, 
+                      unsigned *op, 
+                      int *i1, 
+                      int *i2, 
+                      int *i3, 
+                      int *i4, 
+                      int *o1, 
+                      int *o2, 
+                      int *o3, 
+                      int *o4, 
+                      int *vectorin, 
+                      int *vectorout, 
+                      int *arch_reg );
+void ptx_exec_inst( void *thd, 
+                    address_type *addr, 
+                    memory_space_t *space, 
+                    unsigned *data_size, 
+                    dram_callback_t* callback, 
+                    unsigned warp_active_mask );
 
 #endif

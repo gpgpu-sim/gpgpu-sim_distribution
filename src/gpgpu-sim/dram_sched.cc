@@ -69,7 +69,6 @@
 #include "gpu-sim.h"
 #include "../abstract_hardware_model.h"
 
-extern unsigned long long  gpu_sim_cycle;
 extern unsigned max_mrq_latency;
 extern unsigned mrq_lat_table[24];
 extern int gpgpu_memlatency_stat;
