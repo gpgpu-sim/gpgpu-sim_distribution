@@ -123,6 +123,10 @@ extern char *gpgpu_cache_dl1_opt;
 extern unsigned int gpu_n_thread_per_shader;
 extern unsigned int gpu_n_mshr_per_shader;
 extern unsigned int gpu_n_shader;
-
+extern unsigned int gpu_n_mem;
+extern bool gpgpu_reg_bankconflict;
+extern int gpgpu_dram_sched_queue_size;
+extern unsigned long long  gpu_tot_sim_cycle;
+extern unsigned int gpu_n_warp_per_shader;
 
 #endif

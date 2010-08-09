@@ -14,6 +14,7 @@
 #include "l2cache.h"
 #include "../intersim/statwraper.h"
 #include "../abstract_hardware_model.h"
+#include "gpu-sim.h"
 
 class L2c_mshr;
 class L2c_miss_tracker;
@@ -48,8 +49,6 @@ struct L2cacheblk
 extern unsigned long long int addrdec_mask[5];
 extern dram_t **dram;
 extern int gpgpu_dram_sched_queue_size; 
-extern unsigned int gpu_n_shader;
-extern unsigned int gpu_n_mem;
 extern unsigned long long gpu_sim_cycle;
 extern unsigned made_write_mfs;
 extern unsigned freed_L1write_mfs;

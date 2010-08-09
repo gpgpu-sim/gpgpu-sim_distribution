@@ -84,9 +84,6 @@
 #define PRIORITIZE_MSHR_OVER_WB 1
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
-extern unsigned int gpu_n_mem;
-extern int gpgpu_reg_bankconflict;
-extern int gpgpu_dram_sched_queue_size;
 extern int gpgpu_memlatency_stat;
 extern dram_t **dram;
 extern int *num_warps_issuable;

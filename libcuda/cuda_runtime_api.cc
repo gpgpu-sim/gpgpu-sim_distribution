@@ -128,6 +128,7 @@
 #include "builtin_types.h"
 #include "driver_types.h"
 #include "__cudaFatFormat.h"
+#include "../src/gpgpu-sim/gpu-sim.h"
 
 /*DEVICE_BUILTIN*/
 struct cudaArray
@@ -610,10 +611,6 @@ __host__ cudaError_t CUDARTAPI cudaMemset(void *mem, int c, size_t count)
    return g_last_cudaError = cudaSuccess;
 }
 
-#if (CUDART_VERSION >= 2010)
-extern unsigned int gpu_n_shader;
-#endif
-   
  __host__ cudaError_t CUDARTAPI cudaGetDeviceProperties(struct cudaDeviceProp *prop, int device)
 {
    GPGPUSIM_INIT

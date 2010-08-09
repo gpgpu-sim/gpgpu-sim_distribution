@@ -1034,7 +1034,6 @@ clGetDeviceIDs(cl_platform_id   platform,
    return CL_SUCCESS;
 }
 
-extern unsigned int gpu_n_shader;
 extern double core_freq;
 
 extern CL_API_ENTRY cl_int CL_API_CALL

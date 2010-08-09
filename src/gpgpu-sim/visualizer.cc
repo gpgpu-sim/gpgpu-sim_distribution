@@ -67,8 +67,6 @@
 #include <string.h>
 #include <zlib.h>
 
-extern unsigned int gpu_n_shader;
-extern unsigned int gpu_n_mem;
 extern unsigned int gpu_mem_n_bk;
 extern shader_core_ctx_t **sc;
 extern dram_t **dram;
