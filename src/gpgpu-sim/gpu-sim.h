@@ -128,5 +128,11 @@ extern bool gpgpu_reg_bankconflict;
 extern int gpgpu_dram_sched_queue_size;
 extern unsigned long long  gpu_tot_sim_cycle;
 extern unsigned int gpu_n_warp_per_shader;
+extern unsigned int **max_conc_access2samerow;
+extern unsigned int **max_servicetime2samerow;
+extern unsigned int **row_access;
+extern unsigned int **num_activates;
+
+extern void check_time_vector_update(unsigned int uid,int slot ,long int latency,int type);
 
 #endif

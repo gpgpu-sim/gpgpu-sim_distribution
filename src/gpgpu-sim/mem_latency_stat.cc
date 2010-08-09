@@ -64,11 +64,14 @@
  * Vancouver, BC V6T 1Z4
  */
 
+#include "../abstract_hardware_model.h"
 #include "mem_latency_stat.h"
 #include "gpu-sim.h"
+#include "gpu-misc.h"
 #include "shader.h"
 #include "mem_fetch.h"
-#include "../abstract_hardware_model.h"
+#include "cflogger.h"
+#include "../cuda-sim/ptx-stats.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

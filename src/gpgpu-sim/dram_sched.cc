@@ -74,10 +74,6 @@ extern unsigned max_mrq_latency;
 extern unsigned mrq_lat_table[24];
 extern int gpgpu_memlatency_stat;
 extern unsigned int **concurrent_row_access; //concurrent_row_access[dram chip id][bank id]
-extern unsigned int **row_access; //concurrent_row_access[dram chip id][bank id]
-extern unsigned int **num_activates; //num_activates[dram chip id][bank id]
-extern unsigned int **max_conc_access2samerow; //max_conc_access2samerow[dram chip id][bank id]
-extern unsigned int **max_servicetime2samerow;
 
 ideal_dram_scheduler::ideal_dram_scheduler( dram_t *dm )
 {

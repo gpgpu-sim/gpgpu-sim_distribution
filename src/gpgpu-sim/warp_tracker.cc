@@ -207,7 +207,6 @@ void init_warp_tracker( )
    printf("%zd\n", free_wpt.size());
 }
 
-extern signed long long gpu_tot_sim_cycle;
 extern signed long long gpu_sim_cycle;
 
 void wpt_register_warp( int *tid_in, shader_core_ctx_t *shd ) 
