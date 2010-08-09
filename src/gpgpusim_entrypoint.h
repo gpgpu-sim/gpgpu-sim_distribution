@@ -67,7 +67,23 @@
 
 #include "abstract_hardware_model.h"
 
-void gpgpu_ptx_sim_init_perf();
-int gpgpu_ptx_sim_main_perf( const char *kernel_key, struct dim3 gridDim, struct dim3 blockDim, struct gpgpu_ptx_sim_arg *grid_params );
+#include <time.h>
+extern time_t g_simulation_starttime;
 
+void gpgpu_ptx_sim_init_perf();
+
+int  gpgpu_cuda_ptx_sim_main_perf( const char *kernel_key, 
+                                   struct dim3 gridDim, 
+                                   struct dim3 blockDim, 
+                                   struct gpgpu_ptx_sim_arg *grid_params );
+
+int gpgpu_opencl_ptx_sim_main_perf( class function_info *entry, 
+                                  struct dim3 gridDim, 
+                                  struct dim3 blockDim, 
+                                  struct gpgpu_ptx_sim_arg *grid_params );
+
+int gpgpu_opencl_ptx_sim_main_func( class function_info *entry, 
+                                  struct dim3 gridDim, 
+                                  struct dim3 blockDim, 
+                                  struct gpgpu_ptx_sim_arg *grid_params );
 #endif

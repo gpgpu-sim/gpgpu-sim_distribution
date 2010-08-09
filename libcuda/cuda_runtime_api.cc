@@ -167,8 +167,19 @@ struct gpgpu_ptx_sim_arg {
 struct gpgpu_ptx_sim_arg *g_ptx_sim_params;
 cudaError_t g_last_cudaError;
 
+#include "../src/cuda-sim/ptx_loader.h"
 #include "../src/cuda-sim/cuda-sim.h"
 #include "../src/gpgpusim_entrypoint.h"
+
+void register_ptx_function( const char *name, function_info *impl )
+{
+   register_function_implementation( name, impl );
+}
+
+extern "C" void ptxinfo_addinfo()
+{
+   ptxinfo_cuda_addinfo();
+}
 
 #if defined __APPLE__
 #   define __my_func__    __PRETTY_FUNCTION__
@@ -822,9 +833,9 @@ __host__ cudaError_t CUDARTAPI cudaLaunch(const char *symbol )
    printf("GPGPU-Sim PTX: cudaLaunch for %p (mode=%s)\n", symbol,
           g_ptx_sim_mode?"functional simulation":"performance simulation");
    if( g_ptx_sim_mode )
-      gpgpu_ptx_sim_main_func( symbol, g_cudaGridDim, g_cudaBlockDim, g_ptx_sim_params );
+      gpgpu_cuda_ptx_sim_main_func( symbol, g_cudaGridDim, g_cudaBlockDim, g_ptx_sim_params );
    else
-      gpgpu_ptx_sim_main_perf( symbol, g_cudaGridDim, g_cudaBlockDim, g_ptx_sim_params );
+      gpgpu_cuda_ptx_sim_main_perf( symbol, g_cudaGridDim, g_cudaBlockDim, g_ptx_sim_params );
    g_ptx_sim_params=NULL;
    return g_last_cudaError = cudaSuccess;
 }

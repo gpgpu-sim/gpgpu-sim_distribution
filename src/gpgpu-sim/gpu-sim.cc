@@ -66,6 +66,16 @@
 
 #include "gpu-sim.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include "zlib.h"
+
+#include "../option_parser.h"
+#include "shader.h"
+#include "dram.h"
+#include "mem_fetch.h"
+
 #include <time.h>
 #include "gpu-cache.h"
 #include "gpu-misc.h"
@@ -83,6 +93,7 @@
 #include "../intersim/statwraper.h"
 #include "../abstract_hardware_model.h"
 #include "../debug.h"
+#include "../gpgpusim_entrypoint.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -299,9 +310,7 @@ unsigned int more_thread = 1;
 extern unsigned int n_regconflict_stall;
 unsigned int warp_conflict_at_writeback = 0;
 unsigned int gpgpu_commit_pc_beyond_two = 0;
-extern int g_network_mode;
 int gpgpu_cache_wt_through = 0;
-
 
 //memory access classification
 int gpgpu_n_mem_read_local = 0;
@@ -595,6 +604,7 @@ inline int mem2device(int memid) {
 /* Allocate memory for uArch structures */
 void init_gpu () 
 { 
+   // initialize the GPU microarchitecture model
    int i;
 
    gpu_max_cycle = gpu_max_cycle_opt;
@@ -724,6 +734,7 @@ void init_once(void ) {
 // return the number of cycle required to run all the trace on the gpu 
 unsigned int run_gpu_sim(int grid_num) 
 {
+   // run a CUDA grid on the GPU microarchitecture simulator
 
    int not_completed;
    int mem_busy;
@@ -1432,7 +1443,6 @@ inline int next_clock_domain(void)
    return mask;
 }
 
-extern time_t simulation_starttime;
 void gpu_sim_loop( int grid_num ) 
 {
    int clock_mask = next_clock_domain();
@@ -1598,7 +1608,7 @@ void gpu_sim_loop( int grid_num )
          time_t days, hrs, minutes, sec;
          time_t curr_time;
          time(&curr_time);
-         unsigned long long  elapsed_time = MAX(curr_time - simulation_starttime, 1);
+         unsigned long long  elapsed_time = MAX(curr_time - g_simulation_starttime, 1);
          days    = elapsed_time/(3600*24);
          hrs     = elapsed_time/3600 - 24*days;
          minutes = elapsed_time/60 - 60*(hrs + 24*days);

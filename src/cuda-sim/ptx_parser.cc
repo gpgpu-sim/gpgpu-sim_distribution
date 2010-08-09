@@ -73,7 +73,7 @@ const char *g_filename;
 unsigned g_max_regs_per_thread = 0;
 
 // the program intermediate representation...
-symbol_table *g_global_symbol_table = NULL;
+static symbol_table *g_global_symbol_table = NULL;
 std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
 static symbol_table *g_current_symbol_table = NULL;
 static std::list<ptx_instruction*> g_instructions;
@@ -133,7 +133,7 @@ void read_parser_environment_variables()
    }
 }
 
-void init_parser( const char *ptx_filename )
+symbol_table *init_parser( const char *ptx_filename )
 {
    g_filename = strdup(ptx_filename);
    g_global_symbol_table = g_current_symbol_table = new symbol_table("global",0,NULL);
@@ -142,6 +142,8 @@ void init_parser( const char *ptx_filename )
 #define DEF(X,Y) g_ptx_token_decode[X] = Y;
 #include "ptx_parser_decode.def"
 #undef DEF
+
+   return g_global_symbol_table;
 }
 
 void init_directive_state()
@@ -192,7 +194,6 @@ void add_function_name( const char *name )
    bool prior_decl = g_global_symbol_table->add_function_decl( name, g_entry_point, &g_func_info, &g_current_symbol_table );
    if( g_entry_point ) {
       g_entrypoint_func_info = g_func_info;
-      g_entrypoint_symbol_table = g_current_symbol_table;
    }
    if( g_add_identifier_cached__identifier ) {
       add_identifier( g_add_identifier_cached__identifier,

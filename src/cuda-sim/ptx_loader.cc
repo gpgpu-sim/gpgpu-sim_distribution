@@ -212,20 +212,20 @@ void gpgpu_ptx_sim_load_gpu_kernels()
         ptx_in = fopen( g_filename, "r" );
     gpgpu_ptx_sim_init_memory();
     if (ptx_in) {
-        init_parser(g_filename);
+        symbol_table *symtab=init_parser(g_filename);
         ptx_parse();
         ptxinfo_in = open_ptxinfo(g_filename);
         ptxinfo_parse();
-        load_static_globals(g_global_symbol_table,STATIC_ALLOC_LIMIT,0xFFFFFFFF);
-        load_constants(g_global_symbol_table,STATIC_ALLOC_LIMIT);
+        load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF);
+        load_constants(symtab,STATIC_ALLOC_LIMIT);
     } else {
         if (!g_override_embedded_ptx) {
             printf("GPGPU-Sim PTX: USING EMBEDDED .ptx files...\n"); 
             ptx_info_t *s;
             for ( s=g_ptx_source_array; s!=NULL; s=s->next ) {
-                 gpgpu_ptx_sim_load_ptx_from_string(s->str, ++source_num);
-                 load_static_globals(g_global_symbol_table,STATIC_ALLOC_LIMIT,0xFFFFFFFF);
-                 load_constants(g_global_symbol_table,STATIC_ALLOC_LIMIT);
+                 symbol_table *symtab=gpgpu_ptx_sim_load_ptx_from_string(s->str, ++source_num);
+                 load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF);
+                 load_constants(symtab,STATIC_ALLOC_LIMIT);
             }
         } else {
             const char *filename = NULL;
@@ -243,12 +243,12 @@ void gpgpu_ptx_sim_load_gpu_kernels()
                     printf("Parsing %s..\n", filename);
                     ptx_in = fopen( filename, "r" );
                     free(namelist[n]);
-                    init_parser(filename);
+                    symbol_table *symtab=init_parser(filename);
                     ptx_parse ();
                     ptxinfo_in = open_ptxinfo(filename);
                     ptxinfo_parse();
-                    load_static_globals(g_global_symbol_table,STATIC_ALLOC_LIMIT,0xFFFFFFFF);
-                    load_constants(g_global_symbol_table,STATIC_ALLOC_LIMIT);
+                    load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF);
+                    load_constants(symtab,STATIC_ALLOC_LIMIT);
                 }
                 free(namelist);
             }
@@ -298,3 +298,124 @@ void gpgpu_ptx_sim_add_ptxstring( const char *ptx_string, const char *sourcefnam
         l_ptx_source->next = t;
     }
 }
+
+static int g_save_embedded_ptx = 0;
+
+void ptx_reg_options(option_parser_t opp)
+{
+   option_parser_register(opp, "-save_embedded_ptx", OPT_BOOL, &g_save_embedded_ptx, 
+                "saves ptx files embedded in binary as <n>.ptx",
+                "0");
+}
+
+void print_ptx_file( const char *p, unsigned source_num, const char *filename )
+{
+   printf("\nGPGPU-Sim PTX: file _%u.ptx contents:\n\n", source_num );
+   char *s = strdup(p);
+   char *t = s;
+   unsigned n=1;
+   while ( *t != '\0'  ) {
+      char *u = t;
+      while ( (*u != '\n') && (*u != '\0') ) u++;
+      unsigned last = (*u == '\0');
+      *u = '\0';
+      const ptx_instruction *pI = ptx_instruction_lookup(filename,n);
+      char pc[64];
+      if( pI && pI->get_PC() )
+         snprintf(pc,64,"%4u", pI->get_PC() );
+      else 
+         snprintf(pc,64,"    ");
+      printf("    _%u.ptx  %4u (pc=%s):  %s\n", source_num, n, pc, t );
+      if ( last ) break;
+      t = u+1;
+      n++;
+   }
+   free(s);
+   fflush(stdout);
+}
+
+symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num ) 
+{
+    char buf[1024];
+    snprintf(buf,1024,"_%u.ptx", source_num );
+    if( g_save_embedded_ptx ) {
+       FILE *fp = fopen(buf,"w");
+       fprintf(fp,"%s",p);
+       fclose(fp);
+    }
+    symbol_table *symtab=init_parser(buf);
+    ptx__scan_string(p);
+    int errors = ptx_parse ();
+    if ( errors ) {
+        char fname[1024];
+        snprintf(fname,1024,"_ptx_XXXXXX");
+        int fd=mkstemp(fname); 
+        close(fd);
+        printf("GPGPU-Sim PTX: parser error detected, exiting... but first extracting .ptx to \"%s\"\n", fname);
+        FILE *ptxfile = fopen(fname,"w");
+        fprintf(ptxfile,"%s", p );
+        fclose(ptxfile);
+        abort();
+        exit(40);
+    }
+
+    if ( g_debug_execution >= 100 ) 
+       print_ptx_file(p,source_num,buf);
+
+    printf("GPGPU-Sim PTX: finished parsing EMBEDDED .ptx file %s\n",buf);
+
+    char fname[1024];
+    snprintf(fname,1024,"_ptx_XXXXXX");
+    int fd=mkstemp(fname); 
+    close(fd);
+
+    printf("GPGPU-Sim PTX: extracting embedded .ptx to temporary file \"%s\"\n", fname);
+    FILE *ptxfile = fopen(fname,"w");
+    fprintf(ptxfile,"%s",p);
+    fclose(ptxfile);
+
+    char fname2[1024];
+    snprintf(fname2,1024,"_ptx2_XXXXXX");
+    fd=mkstemp(fname2); 
+    close(fd);
+    char commandline2[4096];
+    snprintf(commandline2,4096,"cat %s | sed 's/.version 1.5/.version 1.4/' | sed 's/, texmode_independent//' | sed 's/\\(\\.extern \\.const\\[1\\] .b8 \\w\\+\\)\\[\\]/\\1\\[1\\]/' | sed 's/const\\[.\\]/const\\[0\\]/g' > %s", fname, fname2);
+    int result = system(commandline2);
+    if( result != 0 ) {
+       printf("GPGPU-Sim PTX: ERROR ** while loading PTX (a) %d\n", result);
+       printf("               Ensure you have write access to simulation directory\n");
+       printf("               and have \'cat\' and \'sed\' in your path.\n");
+       exit(1);
+    }
+
+    char tempfile_ptxinfo[1024];
+    snprintf(tempfile_ptxinfo,1024,"%sinfo",fname);
+    char commandline[1024];
+    char extra_flags[1024];
+    extra_flags[0]=0;
+#if CUDART_VERSION >= 3000
+    snprintf(extra_flags,1024,"--gpu-name=sm_20");
+#endif
+    snprintf(commandline,1024,"ptxas %s -v %s --output-file /dev/null 2> %s", 
+             extra_flags, fname2, tempfile_ptxinfo);
+    printf("GPGPU-Sim PTX: generating ptxinfo using \"%s\"\n", commandline);
+    result = system(commandline);
+    if( result != 0 ) {
+       printf("GPGPU-Sim PTX: ERROR ** while loading PTX (b) %d\n", result);
+       printf("               Ensure ptxas is in your path.\n");
+       exit(1);
+    }
+
+    ptxinfo_in = fopen(tempfile_ptxinfo,"r");
+    g_ptxinfo_filename = tempfile_ptxinfo;
+    ptxinfo_parse();
+    snprintf(commandline,1024,"rm -f %s %s %s", fname, fname2, tempfile_ptxinfo);
+    printf("GPGPU-Sim PTX: removing ptxinfo using \"%s\"\n", commandline);
+    result = system(commandline);
+    if( result != 0 ) {
+       printf("GPGPU-Sim PTX: ERROR ** while loading PTX (c) %d\n", result);
+       exit(1);
+    }
+    return symtab;
+}
+

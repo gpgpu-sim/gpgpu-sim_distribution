@@ -66,16 +66,6 @@
  * Vancouver, BC V6T 1Z4
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include "zlib.h"
-
-#include "../option_parser.h"
-#include "shader.h"
-#include "dram.h"
-#include "mem_fetch.h"
-
 #ifndef GPU_SIM_H
 #define GPU_SIM_H
 
@@ -113,5 +103,8 @@ int mem_ctrl_full( int mc_id );
 
 void dramqueue_latency_log_dump();
 void dump_pipeline_impl( int mask, int s, int m );
+unsigned int run_gpu_sim(int grid_num);
+extern void gpu_reg_options(class OptionParser * opp);
+extern void init_gpu();
 
 #endif

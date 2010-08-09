@@ -1114,11 +1114,10 @@ void init_inst_classification_stat() {
 
 
 std::map<std::string,function_info*> *g_kernel_name_to_function_lookup=NULL;
-std::map<std::string,symbol_table*> g_kernel_name_to_symtab_lookup;
 std::map<const void*,std::string> *g_host_to_kernel_entrypoint_name_lookup=NULL;
 extern unsigned g_ptx_thread_info_uid_next;
 
-void gpgpu_ptx_sim_init_grid( const char *kernel_key, struct gpgpu_ptx_sim_arg* args,
+void gpgpu_cuda_ptx_sim_init_grid( const char *kernel_key, struct gpgpu_ptx_sim_arg* args,
                                          struct dim3 gridDim, struct dim3 blockDim ) 
 {
    g_gx=0;
@@ -1152,7 +1151,39 @@ void gpgpu_ptx_sim_init_grid( const char *kernel_key, struct gpgpu_ptx_sim_arg* 
       abort();
    }
    g_entrypoint_func_info = g_func_info = (*g_kernel_name_to_function_lookup)[kname];
-   g_entrypoint_symbol_table = g_kernel_name_to_symtab_lookup[kname];
+
+   unsigned argcount=0;
+   struct gpgpu_ptx_sim_arg *tmparg = args;
+   while (tmparg) {
+      tmparg = tmparg->m_next;
+      argcount++;
+   }
+
+   unsigned argn=1;
+   while (args) {
+      g_func_info->add_param_data(argcount-argn,args);
+      args = args->m_next;
+      argn++;
+   }
+   g_func_info->finalize(g_param_mem);
+   g_ptx_kernel_count++; 
+   if ( gpgpu_ptx_instruction_classification ) {
+      init_inst_classification_stat();
+   }
+   fflush(stdout);
+}
+
+void gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,struct gpgpu_ptx_sim_arg *args, struct dim3 gridDim, struct dim3 blockDim )
+{
+   g_gx=0;
+   g_gy=0;
+   g_gz=0;
+   g_cudaGridDim = gridDim;
+   g_cudaBlockDim = blockDim;
+   g_sm_idx_offset_next.clear();
+   g_sm_next_index = 0;  
+
+   g_entrypoint_func_info = g_func_info = entry;
 
    unsigned argcount=0;
    struct gpgpu_ptx_sim_arg *tmparg = args;
@@ -1207,20 +1238,6 @@ void gpgpu_ptx_sim_register_kernel(const char *hostFun, const char *deviceFun)
    }
 
    printf("GPGPU-Sim PTX: __cudaRegisterFunction %s : 0x%Lx\n", deviceFun, (unsigned long long)hostFun);
-}
-
-void register_ptx_function( const char *name, function_info *impl, symbol_table *symtab )
-{
-   printf("GPGPU-Sim PTX: parsing function %s\n", name );
-   if( g_kernel_name_to_function_lookup == NULL )
-      g_kernel_name_to_function_lookup = new std::map<std::string,function_info*>;
-
-   std::map<std::string,function_info*>::iterator i_kernel = g_kernel_name_to_function_lookup->find(name);
-   if (i_kernel != g_kernel_name_to_function_lookup->end() && i_kernel->second != NULL) {
-      printf("GPGPU-Sim PTX: WARNING: Function already parsed once. Overwriting.\n");
-   }
-   (*g_kernel_name_to_function_lookup)[name] = impl;
-   g_kernel_name_to_symtab_lookup[name] = symtab;
 }
 
 std::map<const void*,std::string>   g_const_name_lookup; // indexed by hostVar
@@ -1314,9 +1331,7 @@ void gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t co
    fflush(stdout);
 }
 
-int g_ptx_sim_mode=0; 
-// used by libcuda.a if non-zer cudaLaunch() will call gpgpu_ptx_sim_main_func()
-// if zero it calls gpgpu_ptx_sim_main_perf()
+int g_ptx_sim_mode=0; // if non-zero run functional simulation only (i.e., no notion of a clock cycle)
 
 extern "C" int ptx_debug;
 
@@ -1378,13 +1393,13 @@ void read_sim_environment_variables()
 
 
 
-extern time_t simulation_starttime;
+extern time_t g_simulation_starttime;
 
 ptx_cta_info *g_func_cta_info = NULL;
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
-void gpgpu_ptx_sim_main_func( const char *kernel_key, dim3 gridDim, dim3 blockDim, struct gpgpu_ptx_sim_arg *args)
+void gpgpu_cuda_ptx_sim_main_func( const char *kernel_key, dim3 gridDim, dim3 blockDim, struct gpgpu_ptx_sim_arg *args)
 {
    printf("GPGPU-Sim: Performing Functional Simulation...\n");
 
@@ -1396,7 +1411,7 @@ void gpgpu_ptx_sim_main_func( const char *kernel_key, dim3 gridDim, dim3 blockDi
    int i1, i2, i3, i4, o1, o2, o3, o4;
    int vectorin, vectorout;
 
-   gpgpu_ptx_sim_init_grid(kernel_key, args,gridDim,blockDim);
+   gpgpu_cuda_ptx_sim_init_grid(kernel_key, args,gridDim,blockDim);
 
    memory_space *shared_mem = new memory_space_impl<16*1024>("shared",4);
 
@@ -1499,7 +1514,7 @@ void gpgpu_ptx_sim_main_func( const char *kernel_key, dim3 gridDim, dim3 blockDi
       StatDisp ( g_inst_op_classification_stat[g_ptx_kernel_count]);
    }
    end_time = time((time_t *)NULL);
-   elapsed_time = MAX(end_time - simulation_starttime, 1);
+   elapsed_time = MAX(end_time - g_simulation_starttime, 1);
 
    days    = elapsed_time/(3600*24);
    hrs     = elapsed_time/3600 - 24*days;
@@ -1609,21 +1624,8 @@ extern "C" void ptxinfo_cmem( unsigned nbytes, unsigned bank )
     g_ptxinfo_kinfo.cmem+=nbytes;
 }
 
-extern "C" void ptxinfo_addinfo()
+void clear_ptxinfo()
 {
-    if ( g_kernel_name_to_function_lookup ) {
-        std::map<std::string,function_info*>::iterator i=g_kernel_name_to_function_lookup->find(g_ptxinfo_kname);
-        if ( (g_kernel_name_to_function_lookup == NULL) || (i == g_kernel_name_to_function_lookup->end()) ) {
-           printf ("GPGPU-Sim PTX: Kernel '%s' in %s not found. Ignoring.\n", g_ptxinfo_kname, g_filename);
-        } else {
-           printf ("GPGPU-Sim PTX: Kernel %s\n", g_ptxinfo_kname);
-           function_info *fi = i->second;
-           fi->set_kernel_info(&g_ptxinfo_kinfo);
-        }
-    } else {
-        printf ("GPGPU-Sim PTX: Kernel '%s' in %s not found (no kernels registered).\n", g_ptxinfo_kname, g_filename);
-    }
-
     free(g_ptxinfo_kname);
     g_ptxinfo_kname=NULL;
     g_ptxinfo_kinfo.regs=0;
@@ -1631,6 +1633,62 @@ extern "C" void ptxinfo_addinfo()
     g_ptxinfo_kinfo.smem=0;
     g_ptxinfo_kinfo.cmem=0;
 }
+
+void ptxinfo_opencl_addinfo( std::map<std::string,function_info*> &kernels )
+{
+   if( !strcmp("__cuda_dummy_entry__",g_ptxinfo_kname) ) {
+      // this string produced by ptxas for empty ptx files (e.g., bandwidth test)
+      clear_ptxinfo();
+      return;
+   }
+   std::map<std::string,function_info*>::iterator k=kernels.find(g_ptxinfo_kname);
+   if( k==kernels.end() ) {
+      printf ("GPGPU-Sim PTX: ERROR ** implementation for '%s' not found.\n", g_ptxinfo_kname );
+      abort();
+   } else {
+      printf ("GPGPU-Sim PTX: Kernel \'%s\' : regs=%u, lmem=%u, smem=%u, cmem=%u\n", 
+              g_ptxinfo_kname,
+              g_ptxinfo_kinfo.regs,
+              g_ptxinfo_kinfo.lmem,
+              g_ptxinfo_kinfo.smem,
+              g_ptxinfo_kinfo.cmem );
+      function_info *finfo = k->second;
+      assert(finfo!=NULL);
+      finfo->set_kernel_info( g_ptxinfo_kinfo );
+   }
+   clear_ptxinfo();
+}
+
+void ptxinfo_cuda_addinfo()
+{
+   if( !strcmp("__cuda_dummy_entry__",g_ptxinfo_kname) ) {
+      // this string produced by ptxas for empty ptx files (e.g., bandwidth test)
+      clear_ptxinfo();
+      return;
+   }
+   if ( g_kernel_name_to_function_lookup ) {
+      std::map<std::string,function_info*>::iterator i=g_kernel_name_to_function_lookup->find(g_ptxinfo_kname);
+      if ( (g_kernel_name_to_function_lookup == NULL) || (i == g_kernel_name_to_function_lookup->end()) ) {
+        printf ("GPGPU-Sim PTX: ERROR ** implementation for '%s' not found.\n", g_ptxinfo_kname );
+        abort();
+      } else {
+        printf ("GPGPU-Sim PTX: Kernel \'%s\' : regs=%u, lmem=%u, smem=%u, cmem=%u\n", 
+                g_ptxinfo_kname,
+                g_ptxinfo_kinfo.regs,
+                g_ptxinfo_kinfo.lmem,
+                g_ptxinfo_kinfo.smem,
+                g_ptxinfo_kinfo.cmem );
+        function_info *fi = i->second;
+        assert(fi!=NULL);
+        fi->set_kernel_info(g_ptxinfo_kinfo);
+      }
+   } else {
+      printf ("GPGPU-Sim PTX: ERROR ** Kernel '%s' not found (no kernels registered).\n", g_ptxinfo_kname );
+      abort();
+   }
+   clear_ptxinfo();
+}
+
 
 void dwf_insert_reconv_pt(address_type pc); 
 
@@ -1702,6 +1760,19 @@ void dwf_process_reconv_pts()
    for (int i = 0; i < tmp.s_num_recon; ++i) {
       dwf_insert_reconv_pt(tmp.s_kernel_recon_points[i].target_pc);
    }
+}
+
+void register_function_implementation( const char *name, function_info *impl )
+{
+   printf("GPGPU-Sim PTX: parsing function %s\n", name );
+   if( g_kernel_name_to_function_lookup == NULL )
+      g_kernel_name_to_function_lookup = new std::map<std::string,function_info*>;
+
+   std::map<std::string,function_info*>::iterator i_kernel = g_kernel_name_to_function_lookup->find(name);
+   if (i_kernel != g_kernel_name_to_function_lookup->end() && i_kernel->second != NULL) {
+      printf("GPGPU-Sim PTX: WARNING: Function already parsed once. Overwriting.\n");
+   }
+   (*g_kernel_name_to_function_lookup)[name] = impl;
 }
 
 void *gpgpusim_opencl_getkernel_Object( const char *kernel_name )

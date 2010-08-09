@@ -67,7 +67,7 @@
 #include <stdlib.h>
 
 // pointer to C++ class
-typedef void* option_parser_t;
+typedef class OptionParser *option_parser_t;
 
 // data type of the option
 enum option_dtype {

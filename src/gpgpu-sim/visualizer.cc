@@ -60,6 +60,7 @@
  */
 
 #include "gpu-sim.h"
+#include "shader.h"
 #include "../option_parser.h"
 #include <time.h>
 #include <string.h>

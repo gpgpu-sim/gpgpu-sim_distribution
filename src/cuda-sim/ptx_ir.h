@@ -1015,8 +1015,8 @@ public:
       return &m_kernel_info;
    }
 
-   const void set_kernel_info (const struct gpgpu_ptx_sim_kernel_info *info) {
-      m_kernel_info = *info;
+   const void set_kernel_info (const struct gpgpu_ptx_sim_kernel_info &info) {
+      m_kernel_info = info;
    }
    symbol_table *get_symtab()
    {
@@ -1254,14 +1254,11 @@ struct textureInfo {
 
 extern function_info *g_func_info;
 
-extern int g_error_detected;
-extern symbol_table *g_entrypoint_symbol_table;
 extern function_info *g_entrypoint_func_info;
-extern symbol_table *g_global_symbol_table;
 extern std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
+
 #define GLOBAL_HEAP_START 0x10000000
    // start allocating from this address (lower values used for allocating globals in .ptx file)
-
 #define SHARED_MEM_SIZE_MAX (64*1024)
 #define LOCAL_MEM_SIZE_MAX 1024
 #define MAX_STREAMING_MULTIPROCESSORS 64
@@ -1274,7 +1271,6 @@ extern std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
 
 #define STATIC_ALLOC_LIMIT (GLOBAL_HEAP_START - (TOTAL_LOCAL_MEM+TOTAL_SHARED_MEM))
 
-void gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num );
 void gpgpu_ptx_assemble( std::string kname, void *kinfo );
 #include "../option_parser.h"
 void ptx_reg_options(option_parser_t opp);

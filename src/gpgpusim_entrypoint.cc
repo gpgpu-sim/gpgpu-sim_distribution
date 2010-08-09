@@ -64,69 +64,52 @@
 
 #include "gpgpusim_entrypoint.h"
 #include <stdio.h>
-#include <time.h>
 
 #include "option_parser.h"
 #include "cuda-sim/cuda-sim.h"
 #include "cuda-sim/ptx_ir.h"
 #include "cuda-sim/ptx_parser.h"
+#include "gpgpu-sim/gpu-sim.h"
+#include "gpgpu-sim/icnt_wrapper.h"
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
 struct gpgpu_ptx_sim_arg *grid_params;
-int g_grid_num=0;
-int g_argc = 3;
-const char *g_argv[] = {"", "-config","gpgpusim.config"};
+static int sg_grid_num=0;
+static int sg_argc = 3;
+static const char *sg_argv[] = {"", "-config","gpgpusim.config"};
 
-unsigned int run_gpu_sim(int grid_num);
-void gpgpu_ptx_sim_init_grid(const char *kernel_key,struct gpgpu_ptx_sim_arg *args, struct dim3 gridDim, struct dim3 blockDim );
-
-int   g_network_mode = 0;
-char* g_network_config_filename;
-option_parser_t opp;
-extern void print_splash();
-
-extern void gpu_reg_options(option_parser_t opp);
-extern void init_gpu();
-
-time_t simulation_starttime;
+time_t g_simulation_starttime;
 
 void gpgpu_ptx_sim_init_perf()
 {
    print_splash();
    read_sim_environment_variables();
    read_parser_environment_variables();
-   opp = option_parser_create();
-   option_parser_register(opp, "-network_mode", OPT_INT32, &g_network_mode, "Interconnection network mode", "1");
-   option_parser_register(opp, "-inter_config_file", OPT_CSTR, &g_network_config_filename, "Interconnection network config file", "mesh");
+   option_parser_t opp = option_parser_create();
+   icnt_reg_options(opp);
    gpu_reg_options(opp); // register GPU microrachitecture options
    ptx_reg_options(opp);
-   option_parser_cmdline(opp, g_argc, g_argv); // parse configuration options
+   option_parser_cmdline(opp, sg_argc, sg_argv); // parse configuration options
 
    srand(1); 
 
    fprintf(stdout, "GPGPU-Sim: Configuration options:\n\n");
    option_parser_print(opp, stdout);
-   init_gpu(); // initialize the GPU microarchitecture model
+   init_gpu();
    fprintf(stdout, "GPU performance model initialization complete.\n");
 
-   simulation_starttime = time((time_t *)NULL);
+   g_simulation_starttime = time((time_t *)NULL);
 }
 
 extern unsigned long long  gpu_tot_sim_insn;
 extern unsigned long long  gpu_tot_sim_cycle;
 
-int gpgpu_ptx_sim_main_perf( const char *kernel_key, struct dim3 gridDim, struct dim3 blockDim, struct gpgpu_ptx_sim_arg *grid_params )
+static void print_simulation_time()
 {
    time_t current_time, difference, d, h, m, s;
-   gpgpu_ptx_sim_init_grid(kernel_key,grid_params,gridDim,blockDim);
-
-   run_gpu_sim(g_grid_num); // run a CUDA grid on the GPU microarchitecture simulator
-
-   g_grid_num++;
-
    current_time = time((time_t *)NULL);
-   difference = MAX(current_time - simulation_starttime, 1);
+   difference = MAX(current_time - g_simulation_starttime, 1);
 
    d = difference/(3600*24);
    h = difference/3600 - 24*d;
@@ -139,6 +122,35 @@ int gpgpu_ptx_sim_main_perf( const char *kernel_key, struct dim3 gridDim, struct
    printf("gpgpu_simulation_rate = %u (inst/sec)\n", (unsigned)(gpu_tot_sim_insn / difference) );
    printf("gpgpu_simulation_rate = %u (cycle/sec)\n", (unsigned)(gpu_tot_sim_cycle / difference) );
    fflush(stdout);
+}
 
+int gpgpu_cuda_ptx_sim_main_perf( const char *kernel_key, 
+                                  struct dim3 gridDim, 
+                                  struct dim3 blockDim, 
+                                  struct gpgpu_ptx_sim_arg *grid_params )
+{
+   gpgpu_cuda_ptx_sim_init_grid(kernel_key,grid_params,gridDim,blockDim);
+   run_gpu_sim(sg_grid_num++);
+   print_simulation_time();
    return 0;
+}
+
+int gpgpu_opencl_ptx_sim_main_perf( class function_info *entry, 
+                                  struct dim3 gridDim, 
+                                  struct dim3 blockDim, 
+                                  struct gpgpu_ptx_sim_arg *grid_params )
+{
+   gpgpu_opencl_ptx_sim_init_grid(entry,grid_params,gridDim,blockDim);
+   run_gpu_sim(sg_grid_num++);
+   print_simulation_time();
+   return 0;
+}
+
+int gpgpu_opencl_ptx_sim_main_func( class function_info *entry, 
+                                  struct dim3 gridDim, 
+                                  struct dim3 blockDim, 
+                                  struct gpgpu_ptx_sim_arg *grid_params )
+{
+   printf("GPGPU-Sim PTX API: OpenCL functional-only simulation not yet implemented (use performance simulation)\n");
+   exit(1);
 }

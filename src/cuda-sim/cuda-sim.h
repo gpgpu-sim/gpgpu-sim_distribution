@@ -16,10 +16,11 @@ extern memory_space *g_global_mem;
 extern int g_debug_execution;
 extern int g_debug_thread_uid;
 extern std::map<std::string,function_info*> *g_kernel_name_to_function_lookup;
-extern std::map<std::string,symbol_table*> g_kernel_name_to_symtab_lookup;
 
-extern void   gpgpu_ptx_sim_add_ptxstring( const char *ptx, const char *source_fname );
-extern void   gpgpu_ptx_sim_main_func( const char *kernel_key, dim3 gridDim, dim3 blockDim, struct gpgpu_ptx_sim_arg *);
+extern void   gpgpu_cuda_ptx_sim_init_grid(const char *kernel_key,struct gpgpu_ptx_sim_arg *args, struct dim3 gridDim, struct dim3 blockDim );
+extern void   gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,struct gpgpu_ptx_sim_arg *args, struct dim3 gridDim, struct dim3 blockDim );
+extern void   gpgpu_cuda_ptx_sim_main_func( const char *kernel_key, dim3 gridDim, dim3 blockDim, struct gpgpu_ptx_sim_arg *);
+extern void print_splash();
 extern void*  gpgpu_ptx_sim_malloc( size_t count );
 extern void*  gpgpu_ptx_sim_mallocarray( size_t count );
 extern void   gpgpu_ptx_sim_memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t count );
@@ -39,6 +40,8 @@ extern int    gpgpu_ptx_sim_sizeofTexture(const char* name);
 extern const char* gpgpu_ptx_sim_findNamefromTexture(const struct textureReference* texref);
 extern const struct textureReference* gpgpu_ptx_sim_accessTextureofName(const char* name); 
 extern void read_sim_environment_variables();
-extern void register_ptx_function( const char *name, function_info *impl, symbol_table *symtab );
+extern void register_function_implementation( const char *name, function_info *impl );
+extern void ptxinfo_cuda_addinfo();
+extern void ptxinfo_opencl_addinfo( std::map<std::string,function_info*> &kernels );
 
 #endif

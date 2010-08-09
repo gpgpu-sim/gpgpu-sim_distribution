@@ -74,8 +74,16 @@ icnt_pop_p        icnt_pop;
 icnt_transfer_p   icnt_transfer;
 icnt_busy_p       icnt_busy;
 
-extern int   g_network_mode;
-extern char* g_network_config_filename;
+int   g_network_mode;
+char* g_network_config_filename;
+
+#include "../option_parser.h"
+
+void icnt_reg_options( class OptionParser * opp )
+{
+   option_parser_register(opp, "-network_mode", OPT_INT32, &g_network_mode, "Interconnection network mode", "1");
+   option_parser_register(opp, "-inter_config_file", OPT_CSTR, &g_network_config_filename, "Interconnection network config file", "mesh");
+}
 
 void icnt_init( unsigned int n_shader, unsigned int n_mem )
 {

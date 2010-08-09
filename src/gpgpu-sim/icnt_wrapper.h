@@ -75,26 +75,20 @@ typedef void (*icnt_transfer_p)( );
 typedef unsigned (*icnt_busy_p)( );
 typedef void (*icnt_drain_p)( );
 
-
 extern icnt_has_buffer_p icnt_has_buffer;
 extern icnt_push_p       icnt_push;
 extern icnt_pop_p        icnt_pop;
 extern icnt_transfer_p   icnt_transfer;
 extern icnt_busy_p       icnt_busy;
 extern icnt_drain_p      icnt_drain;
+extern int g_network_mode;
 
-/*
-// definition of valid gpu network mode.
-extern enum {
-   INTERSIM = 1,
-   N_NETWORK_MODE
-} gpu_network_mode;
-*/
 enum network_mode {
    INTERSIM = 1,
    N_NETWORK_MODE
 };
 
 void icnt_init( unsigned int n_shader, unsigned int n_mem );
+void icnt_reg_options( class OptionParser * opp );
 
 #endif

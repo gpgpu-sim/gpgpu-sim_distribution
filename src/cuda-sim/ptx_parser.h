@@ -66,14 +66,17 @@
 #define ptx_parser_INCLUDED
 
 #include "../abstract_hardware_model.h"
-
 extern const char *g_filename;
+extern int g_error_detected;
+
 #ifdef __cplusplus 
+class symbol_table* init_parser(const char*);
+const class ptx_instruction *ptx_instruction_lookup( const char *filename, unsigned linenumber );
 extern "C" {
 #endif
+
 const char *decode_token( int type );
 void read_parser_environment_variables();
-void init_parser(const char*);
 void start_function( int entry_point );
 void add_function_name( const char *fname );
 void init_directive_state();
