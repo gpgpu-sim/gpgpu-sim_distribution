@@ -384,6 +384,7 @@ _cl_mem::_cl_mem(
    m_device_ptr = (size_t) gpgpu_ptx_sim_malloc(size);
    if( host_ptr )
       gpgpu_ptx_sim_memcpy_to_gpu( m_device_ptr, host_ptr, size );
+   *errcode_ret = CL_SUCCESS;
 }
 
 cl_mem _cl_context::CreateBuffer(
