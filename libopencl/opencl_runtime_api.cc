@@ -327,18 +327,11 @@ extern unsigned int gpu_n_thread_per_shader;
 
 size_t _cl_kernel::get_workgroup_size()
 {
-   unsigned smem = ptx_kernel_shmem_size( m_kernel_impl );
    unsigned nregs = ptx_kernel_nregs( m_kernel_impl );
-   unsigned result_shmem = (unsigned)-1;
    unsigned result_regs = (unsigned)-1;
-
-   if( smem > 0 )
-      result_shmem = gpgpu_shmem_size / smem;
    if( nregs > 0 )
       result_regs = gpgpu_shader_registers / ((nregs+3)&~3);
-
    unsigned result = gpu_n_thread_per_shader;
-   result = min(result, result_shmem);
    result = min(result, result_regs);
    return (size_t)result;
 }
