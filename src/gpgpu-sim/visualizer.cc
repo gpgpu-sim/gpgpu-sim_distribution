@@ -60,6 +60,7 @@
  */
 
 #include "gpu-sim.h"
+#include "l2cache.h"
 #include "shader.h"
 #include "../option_parser.h"
 #include <time.h>
@@ -71,14 +72,6 @@ extern unsigned int gpu_n_mem;
 extern unsigned int gpu_mem_n_bk;
 extern shader_core_ctx_t **sc;
 extern dram_t **dram;
-extern unsigned int L1_read_miss;
-extern unsigned int L1_write_miss;
-extern unsigned int L1_texture_miss;
-extern unsigned int L1_const_miss;
-extern unsigned L2_write_miss;
-extern unsigned L2_write_hit;
-extern unsigned L2_read_hit;
-extern unsigned L2_read_miss;
 extern unsigned long long int mf_total_lat;
 extern unsigned num_mfs;
 extern unsigned long long  gpu_sim_cycle;

@@ -80,7 +80,7 @@ enum mf_type {
    N_MF_TYPE
 };
 
-typedef struct {
+typedef struct mem_fetch {
    unsigned request_uid;
    unsigned long long int addr;
    int nbytes_L1;

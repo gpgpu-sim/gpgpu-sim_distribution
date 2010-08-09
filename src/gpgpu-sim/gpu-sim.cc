@@ -101,10 +101,6 @@
 
 bool g_interactive_debugger_enabled=false;
 
-extern unsigned L2_write_miss;
-extern unsigned L2_write_hit;
-extern unsigned L2_read_hit;
-extern unsigned L2_read_miss;
 unsigned made_read_mfs = 0;
 unsigned made_write_mfs = 0;
 unsigned freed_read_mfs = 0;
@@ -128,7 +124,6 @@ unsigned int **num_activates; //num_activates[dram chip id][bank id]
 unsigned int **row_access; //row_access[dram chip id][bank id]
 unsigned int **max_conc_access2samerow; //max_conc_access2samerow[dram chip id][bank id]
 unsigned int **max_servicetime2samerow; //max_servicetime2samerow[dram chip id][bank id]
-unsigned int mergemiss = 0;
 unsigned int L1_read_miss = 0;
 unsigned int L1_write_miss = 0;
 unsigned int L1_write_hit_on_miss = 0;
@@ -924,7 +919,6 @@ void gpu_print_stat()
    }
    printf("\n");
    // merge misses
-   printf("merge misses = %d\n", mergemiss);
    printf("L1 read misses = %d\n", L1_read_miss);
    printf("L1 write misses = %d\n", L1_write_miss);
    printf("L1 write hit on misses = %d\n", L1_write_hit_on_miss);

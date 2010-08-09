@@ -32,9 +32,9 @@ unsigned L2c_get_linesize( dram_t *dram_p );
 
 // probe L2 cache for fullness 
 int L2c_full( dram_t *dram_p );
-void L2c_push( dram_t *dram_p, mem_fetch_t *mf );
-mem_fetch_t* L2c_pop( dram_t *dram_p );
-mem_fetch_t* L2c_top( dram_t *dram_p );
+void L2c_push( dram_t *dram_p, struct mem_fetch *mf );
+struct mem_fetch* L2c_pop( dram_t *dram_p );
+struct mem_fetch* L2c_top( dram_t *dram_p );
 
 void L2c_init_stat();
 void L2c_update_stat( dram_t* dram_p);
@@ -44,5 +44,9 @@ void L2c_print_debug();
 void L2c_log(int task);
 void L2c_latency_log_dump();
 
-void L2c_options(option_parser_t opp);
+void L2c_options(class OptionParser *opp);
 
+extern unsigned L2_write_miss;
+extern unsigned L2_write_hit;
+extern unsigned L2_read_hit;
+extern unsigned L2_read_miss;

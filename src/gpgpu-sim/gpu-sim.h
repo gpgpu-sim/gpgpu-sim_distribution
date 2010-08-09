@@ -107,4 +107,22 @@ unsigned int run_gpu_sim(int grid_num);
 extern void gpu_reg_options(class OptionParser * opp);
 extern void init_gpu();
 
+extern unsigned int L1_write_miss;
+extern unsigned int L1_read_miss;
+extern unsigned int L1_texture_miss;
+extern unsigned int L1_const_miss;
+extern unsigned int L1_write_hit_on_miss;
+extern unsigned int L1_writeback;
+extern unsigned int L1_const_miss;
+extern unsigned int finished_trace;
+extern bool gpgpu_perfect_mem;
+extern int gpgpu_no_dl1;
+extern char *gpgpu_cache_texl1_opt;
+extern char *gpgpu_cache_constl1_opt;
+extern char *gpgpu_cache_dl1_opt;
+extern unsigned int gpu_n_thread_per_shader;
+extern unsigned int gpu_n_mshr_per_shader;
+extern unsigned int gpu_n_shader;
+
+
 #endif

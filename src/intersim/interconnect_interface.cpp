@@ -17,6 +17,7 @@
 #include "injection.hpp"
 #include "interconnect_interface.h"
 #include "../gpgpu-sim/mem_fetch.h"
+#include "../gpgpu-sim/gpu-sim.h"
 #include <string.h>
 
 extern unsigned long long gpu_sim_cycle;
@@ -383,9 +384,6 @@ extern int MATLAB_OUTPUT        ;
 extern int DISPLAY_LAT_DIST     ; 
 extern int DISPLAY_HOP_DIST     ; 
 extern int DISPLAY_PAIR_LATENCY ; 
-extern unsigned int gpu_n_thread_per_shader;
-extern char *gpgpu_cache_dl1_opt;
-extern int gpgpu_no_dl1;
 
 
 void init_interconnect (char* config_file,

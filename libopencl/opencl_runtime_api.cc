@@ -79,6 +79,7 @@
 #include "../src/cuda-sim/cuda-sim.h"
 #include "../src/gpgpusim_entrypoint.h"
 #include "../src/cuda-sim/ptx_loader.h"
+#include "../src/gpgpu-sim/gpu-sim.h"
 
 struct gpgpu_ptx_sim_arg {
    const void *m_start;
@@ -321,7 +322,6 @@ unsigned ptx_kernel_shmem_size( void *kernel_impl );
 unsigned ptx_kernel_nregs( void *kernel_impl );
 extern unsigned int gpgpu_shmem_size;
 extern unsigned int gpgpu_shader_registers;
-extern unsigned int gpu_n_thread_per_shader;
 
 #define min(a,b) ((a<b)?(a):(b))
 

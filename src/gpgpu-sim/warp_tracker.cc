@@ -64,12 +64,12 @@
  */
 
 #include "warp_tracker.h"
+#include "gpu-sim.h"
 
 using namespace std;
 
 extern unsigned int warp_size;
 extern unsigned int gpu_n_shader;
-extern unsigned int gpu_n_thread_per_shader;
 
 #include <set>
 
