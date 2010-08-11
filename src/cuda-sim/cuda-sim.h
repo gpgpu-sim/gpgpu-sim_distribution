@@ -17,6 +17,10 @@ extern memory_space *g_global_mem;
 extern int g_debug_execution;
 extern int g_debug_thread_uid;
 extern std::map<std::string,function_info*> *g_kernel_name_to_function_lookup;
+extern void ** g_inst_classification_stat;
+extern void ** g_inst_op_classification_stat;
+extern int g_ptx_kernel_count; // used for classification stat collection purposes 
+
 
 extern void   gpgpu_cuda_ptx_sim_init_grid( const char *kernel_key,
                                             struct gpgpu_ptx_sim_arg *args, 

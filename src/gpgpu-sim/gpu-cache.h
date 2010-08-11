@@ -186,6 +186,7 @@ unsigned long long int L2_shd_cache_fill( shd_cache_t *cp,
                                           unsigned int sim_cycle );
 
 void shd_cache_print( shd_cache_t *cp,  FILE *stream);
-
+float shd_cache_windowed_cache_miss_rate(shd_cache_t*, int);
+void shd_cache_new_window(shd_cache_t*);
 
 #endif

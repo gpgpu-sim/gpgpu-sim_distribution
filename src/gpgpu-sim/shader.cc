@@ -141,7 +141,6 @@ int          gpgpu_shmem_pipe_speedup = 2;
 unsigned int gpu_max_cta_per_shader = 8;
 unsigned int gpu_padded_cta_size = 32;
 int          gpgpu_local_mem_map = 1;
-int          gpgpu_operand_collector_num_units = 4;
 
 /////////////////////////////////////////////////////////////////////////////
 /*-------------------------------------------------------------------------*/
@@ -467,8 +466,6 @@ int log2i(int n) {
    }
    return lg;
 }
-
-extern unsigned int gpu_n_warp_per_shader;
 
 shader_core_ctx_t* shader_create( const char *name, int sid,
                                   unsigned int n_threads,

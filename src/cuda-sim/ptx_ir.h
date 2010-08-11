@@ -1194,6 +1194,7 @@ void copy_args_into_buffer_list( const ptx_instruction * pI,
 void copy_buffer_list_into_frame(ptx_thread_info * thread, arg_buffer_list_t &arg_values);
 void copy_buffer_to_frame(ptx_thread_info * thread, const arg_buffer_t &a);
 
+#if !defined(__CUDA_RUNTIME_API_H__)
 /*******************************/
 // These declarations should be identical to those in ./../../cuda-sim-dev/libcuda/texture_types.h
 enum cudaChannelFormatKind {
@@ -1241,8 +1242,8 @@ struct textureReference {
    enum cudaTextureAddressMode   addressMode[2];
    struct cudaChannelFormatDesc  channelDesc;
 };
-
 /**********************************/
+#endif
 
 struct textureInfo {
    unsigned int texel_size; //size in bytes, e.g. (channelDesc.x+y+z+w)/8
@@ -1274,5 +1275,7 @@ extern std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
 void gpgpu_ptx_assemble( std::string kname, void *kinfo );
 #include "../option_parser.h"
 void ptx_reg_options(option_parser_t opp);
+unsigned ptx_kernel_shmem_size( void *kernel_impl );
+unsigned ptx_kernel_nregs( void *kernel_impl );
 
 #endif

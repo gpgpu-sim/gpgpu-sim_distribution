@@ -67,6 +67,8 @@
 #include "gpu-cache.h"
 #include "gpu-misc.h"
 #include "addrdec.h"
+#include "stat-tool.h"
+#include "gpu-sim.h"
 #include <assert.h>
 #include <string.h>
 
@@ -141,18 +143,11 @@ void shd_cache_destroy( shd_cache_t* cp ) {
    free(cp);
 }
 
-extern void shader_cache_miss_log( int logger_id, int type );
 // hook up with shader core logger
 void shd_cache_bind_logger(shd_cache_t* cp, int core_id, int type_id) {
    cp->core_id = core_id; 
    cp->type_id = type_id;
 }
-
-extern unsigned long long int addrdec_packbits(unsigned long long int mask, 
-                                               unsigned long long int val,
-                                               unsigned char high, unsigned char low);
-extern void shader_cache_access_log( int logger_id, int type, int miss);
-extern void shader_cache_access_unlog( int logger_id, int type, int miss);
 
 shd_cache_line_t* shd_cache_access_internal( shd_cache_t *cp, 
                                              unsigned long long int addr, 
@@ -211,7 +206,6 @@ shd_cache_line_t* shd_cache_access( shd_cache_t *cp,
    return shd_cache_access_internal(cp,addr,nbytes,write,sim_cycle,1/*this is a real access*/);
 }
 
-extern int gpgpu_cache_wt_through;
 shd_cache_t *test = NULL;
 enum cache_request_status shd_cache_access_wb( shd_cache_t *cp, 
                                     unsigned long long int addr, 

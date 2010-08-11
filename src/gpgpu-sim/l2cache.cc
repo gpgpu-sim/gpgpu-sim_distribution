@@ -51,8 +51,6 @@ extern int gpgpu_dram_sched_queue_size;
 extern unsigned made_write_mfs;
 extern unsigned freed_L1write_mfs;
 extern unsigned freed_L2write_mfs;
-extern unsigned int gpgpu_n_sent_writes;
-extern unsigned int gpgpu_n_processed_writes;
 extern unsigned g_next_request_uid;
 
 void memlatstat_icnt2sh_push(mem_fetch_t *mf);

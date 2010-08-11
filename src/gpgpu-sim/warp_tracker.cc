@@ -65,11 +65,9 @@
 
 #include "warp_tracker.h"
 #include "gpu-sim.h"
+#include "shader.h"
 
 using namespace std;
-
-extern unsigned int warp_size;
-extern unsigned int gpu_n_shader;
 
 #include <set>
 
@@ -414,9 +412,6 @@ void free_commit_warp( int *commit_warp )
 {
    free_commit_warp_q.push(commit_warp);
 }
-
-
-extern int pipe_simd_width;
 
 // uncomment to enable checking for warp consistency
 // #define CHECK_WARP_CONSISTENCY

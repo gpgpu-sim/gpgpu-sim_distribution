@@ -96,6 +96,8 @@
 #include "../gpgpusim_entrypoint.h"
 #include "../cuda-sim/cuda-sim.h"
 
+#include "mem_latency_stat.h"
+
 #include <stdio.h>
 #include <string.h>
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -146,17 +148,9 @@ unsigned int gpu_stall_by_MSHRwb = 0;
 //Note: it is accumulative for all shaders and is never reset
 //so it might increase 8 times in a cycle if we have 8 shaders
 unsigned int gpu_stall_sh2icnt = 0;        
-// performance counters to account for instruction distribution
-extern unsigned int gpgpu_n_load_insn;
-extern unsigned int gpgpu_n_store_insn;
-extern unsigned int gpgpu_n_shmem_insn;
-extern unsigned int gpgpu_n_tex_insn;
-extern unsigned int gpgpu_n_const_insn;
-extern unsigned int gpgpu_multi_unq_fetches;
 char *gpgpu_runtime_stat;
 int gpu_stat_sample_freq = 10000;
 int gpu_runtime_stat_flag = 0;
-extern int gpgpu_warpdistro_shader;
 
 // GPGPU options
 unsigned long long  gpu_max_cycle = 0;
@@ -174,12 +168,10 @@ char *gpgpu_cache_texl1_opt;
 char *gpgpu_cache_constl1_opt;
 char *gpgpu_cache_dl1_opt;
 char *gpgpu_cache_dl2_opt;
-extern int gpgpu_l2_readoverwrite;
 int gpgpu_partial_write_mask = 0;
 
 bool gpgpu_perfect_mem = false;
 char *gpgpu_shader_core_pipeline_opt;
-extern unsigned int *requests_by_warp;
 unsigned int gpgpu_dram_buswidth = 4;
 unsigned int gpgpu_dram_burst_length = 4;
 int gpgpu_dram_sched_queue_size = 0; 
@@ -187,23 +179,14 @@ char * gpgpu_dram_timing_opt;
 int gpgpu_flush_cache = 0;
 int gpgpu_mem_address_mask = 0;
 unsigned int recent_dram_util = 0;
-
 int gpgpu_cflog_interval = 0;
-
 unsigned int finished_trace = 0;
-
 unsigned g_next_request_uid = 1;
-
-extern struct regs_t regs;
-
-extern long int gpu_reads;
-
-void ptx_dump_regs( void *thd );
-
 int g_nthreads_issued;
 int g_total_cta_left;
 
 
+void ptx_dump_regs( void *thd );
 unsigned ptx_kernel_program_size();
 void visualizer_printstat();
 void time_vector_create(int ld_size,int st_size);
@@ -212,9 +195,6 @@ void time_vector_update(unsigned int uid,int slot ,long int cycle,int type);
 void node_req_hist_clear(void *p);
 void node_req_hist_dump(void *p);
 void node_req_hist_update(void * p,int node, long long cycle);
-
-/* functionally simulated memory */
-extern struct mem_t *mem;
 
 /* Defining Clock Domains
 basically just the ratio is important */
@@ -252,56 +232,25 @@ unsigned int gpu_n_mshr_per_shader;
 unsigned int gpu_n_thread_per_shader = 128;
 unsigned int gpu_n_warp_per_shader;
 unsigned int gpu_n_mshr_per_thread = 1;
-
-extern int gpgpu_interwarp_mshr_merge ;
-
-extern unsigned int gpgpu_shmem_size;
-extern unsigned int gpgpu_shader_registers;
-extern unsigned int gpgpu_shader_cta;
-extern int gpgpu_shmem_bkconflict;
-extern int gpgpu_cache_bkconflict;
-extern int gpgpu_n_cache_bank;
-extern unsigned int warp_size; 
-extern int pipe_simd_width;
-extern unsigned int gpgpu_dwf_heuristic;
-extern unsigned int gpgpu_dwf_regbk;
 bool gpgpu_reg_bankconflict = false;
-extern int gpgpu_shmem_port_per_bank;
-extern int gpgpu_cache_port_per_bank;
-extern int gpgpu_const_port_per_bank;
-extern int gpgpu_shmem_pipe_speedup;  
-extern int gpgpu_reg_bank_conflict_model;
-extern int gpgpu_reg_bank_use_warp_id;
 int gpgpu_operand_collector;
-extern int gpgpu_operand_collector_num_units;
-extern unsigned int gpgpu_num_reg_banks;
-
-extern unsigned int gpu_max_cta_per_shader;
-extern unsigned int gpu_padded_cta_size;
-extern int gpgpu_local_mem_map;
-
+int gpgpu_operand_collector_num_units = 4;
 unsigned int gpgpu_pre_mem_stages = 0;
 unsigned int gpgpu_no_divg_load = 0;
 char *gpgpu_dwf_hw_opt;
 unsigned int gpgpu_thread_swizzling = 0;
 unsigned int gpgpu_strict_simd_wrbk = 0;
-
 int pdom_sched_type = 0;
 int n_pdom_sc_orig_stat = 0; //the selected pdom schedular is used 
 int n_pdom_sc_single_stat = 0; //only a single warp is ready to go in that cycle.  
 int *num_warps_issuable;
 int *num_warps_issuable_pershader;
-
-// Thread Dispatching Unit option 
 int gpgpu_cuda_sim = 1;
 int gpgpu_spread_blocks_across_cores = 1;
-
-/* GPU uArch structures */
 shader_core_ctx_t **sc;
 dram_t **dram;
 unsigned int common_clock = 0;
 unsigned int more_thread = 1;
-extern unsigned int n_regconflict_stall;
 unsigned int warp_conflict_at_writeback = 0;
 unsigned int gpgpu_commit_pc_beyond_two = 0;
 int gpgpu_cache_wt_through = 0;
@@ -331,17 +280,10 @@ unsigned ptx_sim_grid_size();
 void icnt_init_grid();
 void interconnect_stats();
 void icnt_overal_stat();
-
 void gpu_sim_loop( int grid_num );
-
 void print_shader_cycle_distro( FILE *fout ) ;
 void find_reconvergence_points();
 void dwf_process_reconv_pts();
-
-extern int gpgpu_ptx_instruction_classification ;
-extern int g_ptx_sim_mode;
-
-extern int gpgpu_coalesce_arch;
 
 #define CREATELOG 111
 #define SAMPLELOG 222
@@ -874,12 +816,6 @@ unsigned int run_gpu_sim(int grid_num)
    return gpu_sim_cycle;
 }
 
-extern void ** g_inst_classification_stat;
-extern void ** g_inst_op_classification_stat;
-extern int g_ptx_kernel_count; // used for classification stat collection purposes 
-
-extern unsigned get_max_mshr_used(shader_core_ctx_t* shader);
-
 void gpu_print_stat()
 {  
    unsigned i;
@@ -1159,8 +1095,6 @@ int issue_mf_from_fq(mem_fetch_t *mf){
 
    return 0;
 }
-
-extern void mshr_return_from_mem(shader_core_ctx_t * shader, mshr_entry_t* mshr);
 
 inline void fill_shd_L1_with_new_line(shader_core_ctx_t * sc, mem_fetch_t * mf) {
    unsigned long long int repl_addr = -1;

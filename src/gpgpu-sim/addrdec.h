@@ -92,5 +92,7 @@ void addrdec_tlx(unsigned long long int addr, addrdec_t *tlx);
 void addrdec_setnchip(unsigned int nchips);
 void addrdec_setoption(option_parser_t opp);
 void addrdec_parseoption(const char *option);
-
+extern unsigned long long int addrdec_packbits(unsigned long long int mask, 
+                                               unsigned long long int val,
+                                               unsigned char high, unsigned char low);
 #endif

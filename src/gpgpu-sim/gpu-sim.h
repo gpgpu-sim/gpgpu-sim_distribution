@@ -148,6 +148,7 @@ extern unsigned int gpu_stall_by_MSHRwb;
 extern unsigned int gpu_stall_shd_mem;
 extern unsigned int gpu_stall_sh2icnt;
 extern int gpgpu_operand_collector;
+extern int gpgpu_operand_collector_num_units;
 extern int gpu_runtime_stat_flag;
 extern unsigned int *max_return_queue_length;
 extern int gpgpu_partial_write_mask;
@@ -168,5 +169,7 @@ extern unsigned int gpu_n_mem_per_ctrlr;
 extern unsigned int recent_dram_util;
 extern unsigned int **concurrent_row_access; //concurrent_row_access[dram chip id][bank id]
 extern unsigned long long  gpu_tot_sim_insn;
+extern unsigned int gpgpu_n_sent_writes;
+extern unsigned int gpgpu_n_processed_writes;
 
 #endif

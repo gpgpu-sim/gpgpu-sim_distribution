@@ -18,10 +18,10 @@
 #include "interconnect_interface.h"
 #include "../gpgpu-sim/mem_fetch.h"
 #include "../gpgpu-sim/gpu-sim.h"
+#include "../gpgpu-sim/shader.h"
 #include <string.h>
 
 int _flit_size ;
-extern unsigned int warp_size;
 
 bool doub_net = false; //double networks disabled by default
 

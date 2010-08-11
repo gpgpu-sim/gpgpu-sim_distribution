@@ -77,22 +77,15 @@
 #include "__cudaFatFormat.h"
 #include "../src/abstract_hardware_model.h"
 #include "../src/cuda-sim/cuda-sim.h"
-#include "../src/gpgpusim_entrypoint.h"
 #include "../src/cuda-sim/ptx_loader.h"
+#include "../src/cuda-sim/ptx_ir.h"
+#include "../src/gpgpusim_entrypoint.h"
 #include "../src/gpgpu-sim/gpu-sim.h"
-
-struct gpgpu_ptx_sim_arg {
-   const void *m_start;
-   size_t m_nbytes;
-   size_t m_offset;
-   struct gpgpu_ptx_sim_arg *m_next;
-};
+#include "../src/gpgpu-sim/shader.h"
 
 static struct cudaDeviceProp the_cuda_device;
 static struct cudaDeviceProp **gpgpu_cuda_devices;
 static int g_gpgpusim_init = 0;
-
-extern const char *g_gpgpusim_version_string;
 
 #define GPGPUSIM_INIT \
    if( gpgpu_cuda_devices == NULL ) { \
@@ -317,12 +310,6 @@ cl_int _cl_kernel::bind_args( struct gpgpu_ptx_sim_arg **arg_list )
    return CL_SUCCESS;
 }
 
-
-unsigned ptx_kernel_shmem_size( void *kernel_impl );
-unsigned ptx_kernel_nregs( void *kernel_impl );
-extern unsigned int gpgpu_shmem_size;
-extern unsigned int gpgpu_shader_registers;
-
 #define min(a,b) ((a<b)?(a):(b))
 
 size_t _cl_kernel::get_workgroup_size()
@@ -438,8 +425,6 @@ _cl_program::_cl_program( cl_context        context,
       free(tmp);
    }
 }
-
-extern const char *g_filename;
 
 static pgm_info *sg_info;
 
@@ -1033,8 +1018,6 @@ clGetDeviceIDs(cl_platform_id   platform,
    }
    return CL_SUCCESS;
 }
-
-extern double core_freq;
 
 extern CL_API_ENTRY cl_int CL_API_CALL
 clGetDeviceInfo(cl_device_id    device,

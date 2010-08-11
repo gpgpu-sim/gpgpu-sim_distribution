@@ -74,6 +74,11 @@ CCFLAGS = -O3 -g -Wall -fPIC $(GL)
 ifeq ($(DEBUG),1)
 	CCFLAGS =  -Wall -g -fPIC $(GL)
 endif
+GNUC_CPP0X := $(shell gcc --version | perl -ne 'if (/gcc\s+\(.*\)\s+([0-9.]+)/){ if($$1 >= 4.3) {$$n=1} else {$$n=0;} } END { print $$n; }')
+ifeq ($(GNUC_CPP0X), 1)
+    CCFLAGS += -std=c++0x
+endif
+
 
 PROG     =opencl
 

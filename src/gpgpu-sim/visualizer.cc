@@ -67,32 +67,14 @@
 #include "../option_parser.h"
 #include "mem_latency_stat.h"
 #include "stat-tool.h"
+#include "gpu-cache.h"
 
 #include <time.h>
 #include <string.h>
 #include <zlib.h>
 
-extern unsigned int gpu_mem_n_bk;
-extern unsigned long long int mf_total_lat;
-extern unsigned num_mfs;
-extern unsigned long long  gpu_tot_sim_insn;
-extern unsigned int gpgpu_n_sent_writes;
-extern unsigned int gpgpu_n_processed_writes;
-extern unsigned int gpgpu_n_cache_bkconflict;
-extern unsigned int gpgpu_n_shmem_bkconflict;
-extern unsigned int *max_return_queue_length;
-extern int gpgpu_warpdistro_shader;
-extern unsigned ***mem_access_type_stats;
-
-extern unsigned int warp_size; 
-extern unsigned int *shader_cycle_distro;
-
 static void time_vector_print_interval2file(FILE *outfile);
 static void time_vector_print_interval2gzfile(gzFile outfile);
-void cflog_visualizer_gzprint(gzFile fout);
-void shader_CTA_count_visualizer_gzprint(gzFile fout);
-float shd_cache_windowed_cache_miss_rate(shd_cache_t*, int);
-void shd_cache_new_window(shd_cache_t*);
 
 int g_visualizer_enabled = 1;
 char *g_visualizer_filename = NULL;

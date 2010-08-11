@@ -68,6 +68,7 @@
 
 #include "../abstract_hardware_model.h"
 #include <stdio.h>
+#include <zlib.h>
 
 void try_snap_shot (unsigned long long  current_cycle);
 void set_spill_interval (unsigned long long  interval);
@@ -80,7 +81,7 @@ void cflog_snapshot( int logger_id, unsigned long long  cycle );
 void cflog_print(FILE *fout);
 void cflog_print_path_expression(FILE *fout);
 void cflog_visualizer_print(FILE *fout);
-
+void cflog_visualizer_gzprint(gzFile fout);
 
 void insn_warp_occ_create( int n_loggers, int simd_width, int n_insn );
 void insn_warp_occ_log( int logger_id, address_type pc, int warp_occ );
@@ -120,5 +121,6 @@ void shader_CTA_count_unlog( int shader_id, int nCTAdone );
 void shader_CTA_count_resetnow( );
 void shader_CTA_count_print( FILE *fout );
 void shader_CTA_count_visualizer_print( FILE *fout );
+void shader_CTA_count_visualizer_gzprint(gzFile fout);
 
 #endif /* CFLOGGER_H */

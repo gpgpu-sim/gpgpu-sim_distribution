@@ -897,5 +897,36 @@ unsigned int max_cta_per_shader( shader_core_ctx_t *shader);
 #define ID_OC 7
 
 extern shader_core_ctx_t **sc;
+extern unsigned int gpgpu_n_load_insn;
+extern unsigned int gpgpu_n_store_insn;
+extern unsigned int gpgpu_n_shmem_insn;
+extern unsigned int gpgpu_n_tex_insn;
+extern unsigned int gpgpu_n_const_insn;
+extern unsigned int gpgpu_multi_unq_fetches;
+extern unsigned int gpgpu_n_cache_bkconflict;
+extern unsigned int gpgpu_n_shmem_bkconflict;
+extern int gpgpu_warpdistro_shader;
+extern unsigned int *shader_cycle_distro;
+extern int gpgpu_interwarp_mshr_merge;
+extern unsigned int gpgpu_shmem_size;
+extern unsigned int gpgpu_shader_registers;
+extern unsigned int gpgpu_shader_cta;
+extern int gpgpu_shmem_bkconflict;
+extern int gpgpu_cache_bkconflict;
+extern int gpgpu_n_cache_bank;
+extern int pipe_simd_width;
+extern int gpgpu_shmem_port_per_bank;
+extern int gpgpu_cache_port_per_bank;
+extern int gpgpu_const_port_per_bank;
+extern int gpgpu_shmem_pipe_speedup;  
+extern int gpgpu_reg_bank_conflict_model;
+extern unsigned int gpgpu_num_reg_banks;
+extern unsigned int gpu_max_cta_per_shader;
+extern unsigned int gpu_padded_cta_size;
+extern int gpgpu_local_mem_map;
+extern unsigned int n_regconflict_stall;
+extern int gpgpu_coalesce_arch;
+extern unsigned get_max_mshr_used(shader_core_ctx_t* shader);
+extern void mshr_return_from_mem(shader_core_ctx_t * shader, mshr_entry_t* mshr);
 
 #endif /* SHADER_H */
