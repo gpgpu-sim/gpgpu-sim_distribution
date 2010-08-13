@@ -371,7 +371,6 @@ _cl_mem::_cl_mem(
    m_device_ptr = (size_t) gpgpu_ptx_sim_malloc(size);
    if( host_ptr )
       gpgpu_ptx_sim_memcpy_to_gpu( m_device_ptr, host_ptr, size );
-   *errcode_ret = CL_SUCCESS;
 }
 
 cl_mem _cl_context::CreateBuffer(
@@ -381,9 +380,7 @@ cl_mem _cl_context::CreateBuffer(
                cl_int *     errcode_ret )
 {
    if( host_ptr && (m_hostptr_to_cl_mem.find(host_ptr) != m_hostptr_to_cl_mem.end()) ) {
-      printf("GPGPU-Sim OpenCL API: clCreateBuffer - buffer already created for this host variable\n");
-      *errcode_ret = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-      return NULL;
+      printf("GPGPU-Sim OpenCL API: WARNING ** clCreateBuffer - buffer already created for this host variable\n");
    }
    cl_mem result = new _cl_mem(flags,size,host_ptr,errcode_ret);
    m_devptr_to_cl_mem[result->device_ptr()] = result;
