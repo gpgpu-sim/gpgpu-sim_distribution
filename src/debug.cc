@@ -60,7 +60,7 @@ void gpgpu_debug()
       if( b.is_watchpoint() ) {
          unsigned addr = b.get_addr();
          unsigned new_value = read_location(addr);
-         if( new_value != b.get_value() ) {
+         if( new_value != b.get_value() || g_watchpoint_hits.find(num) != g_watchpoint_hits.end() ) {
             printf( "GPGPU-Sim PTX DBG: watch point %u triggered (old value=%x, new value=%x)\n",
                      num,b.get_value(),new_value );
             std::map<unsigned,watchpoint_event>::iterator w=g_watchpoint_hits.find(num);

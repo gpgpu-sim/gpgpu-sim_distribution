@@ -152,39 +152,36 @@ char *gpgpu_runtime_stat;
 int gpu_stat_sample_freq = 10000;
 int gpu_runtime_stat_flag = 0;
 
-// GPGPU options
 unsigned long long  gpu_max_cycle = 0;
 unsigned long long  gpu_max_insn = 0;
-int gpu_max_cycle_opt = 0;
-int gpu_max_insn_opt = 0;
-int gpu_max_cta_opt = 0;
-int gpu_deadlock_detect = 0;
 int gpu_deadlock = 0;
+unsigned g_next_mf_request_uid = 1;
 static unsigned long long  last_gpu_sim_insn = 0;
-int gpgpu_dram_scheduler = DRAM_FIFO;
-int gpgpu_simd_model = 0;
-int gpgpu_no_dl1 = 0;
+int g_nthreads_issued;
+int g_total_cta_left;
+
+// GPGPU-Sim timing model options
+int   gpu_max_cycle_opt;
+int   gpu_max_insn_opt;
+int   gpu_max_cta_opt;
+bool  gpu_deadlock_detect;
+int   gpgpu_simd_model;
+enum dram_ctrl_t gpgpu_dram_scheduler;
+bool  gpgpu_no_dl1;
 char *gpgpu_cache_texl1_opt;
 char *gpgpu_cache_constl1_opt;
 char *gpgpu_cache_dl1_opt;
 char *gpgpu_cache_dl2_opt;
-int gpgpu_partial_write_mask = 0;
-
-bool gpgpu_perfect_mem = false;
+int   gpgpu_partial_write_mask;
+bool  gpgpu_perfect_mem;
 char *gpgpu_shader_core_pipeline_opt;
-unsigned int gpgpu_dram_buswidth = 4;
-unsigned int gpgpu_dram_burst_length = 4;
-int gpgpu_dram_sched_queue_size = 0; 
-char * gpgpu_dram_timing_opt;
-int gpgpu_flush_cache = 0;
-int gpgpu_mem_address_mask = 0;
-unsigned int recent_dram_util = 0;
-int gpgpu_cflog_interval = 0;
-unsigned int finished_trace = 0;
-unsigned g_next_request_uid = 1;
-int g_nthreads_issued;
-int g_total_cta_left;
-
+unsigned int gpgpu_dram_buswidth;
+unsigned int gpgpu_dram_burst_length;
+int   gpgpu_dram_sched_queue_size; 
+char *gpgpu_dram_timing_opt;
+bool  gpgpu_flush_cache;
+int   gpgpu_mem_address_mask;
+int   gpgpu_cflog_interval;
 
 void ptx_dump_regs( void *thd );
 unsigned ptx_kernel_program_size();
@@ -222,38 +219,38 @@ double l2_period = 1 / (2 MhZ);
 char * gpgpu_clock_domains;
 
 /* GPU uArch parameters */
-unsigned int gpu_n_mem = 8;
-unsigned int gpu_mem_n_bk = 4;
-unsigned int gpu_n_mem_per_ctrlr = 1;
-unsigned int gpu_n_shader = 8;
-int gpu_concentration = 1;
+unsigned int gpu_n_mem;
+unsigned int gpu_mem_n_bk;
+unsigned int gpu_n_mem_per_ctrlr;
+unsigned int gpu_n_shader;
+int gpu_concentration;
 int gpu_n_tpc = 8;
 unsigned int gpu_n_mshr_per_shader;
 unsigned int gpu_n_thread_per_shader = 128;
 unsigned int gpu_n_warp_per_shader;
 unsigned int gpu_n_mshr_per_thread = 1;
-bool gpgpu_reg_bankconflict = false;
-int gpgpu_operand_collector;
-int gpgpu_operand_collector_num_units = 4;
-unsigned int gpgpu_pre_mem_stages = 0;
-unsigned int gpgpu_no_divg_load = 0;
+bool gpgpu_reg_bankconflict;
+bool gpgpu_operand_collector;
+int gpgpu_operand_collector_num_units;
+unsigned int gpgpu_pre_mem_stages;
+bool gpgpu_no_divg_load;
 char *gpgpu_dwf_hw_opt;
-unsigned int gpgpu_thread_swizzling = 0;
-unsigned int gpgpu_strict_simd_wrbk = 0;
-int pdom_sched_type = 0;
+bool gpgpu_thread_swizzling;
+bool gpgpu_strict_simd_wrbk;
+int pdom_sched_type;
 int n_pdom_sc_orig_stat = 0; //the selected pdom schedular is used 
 int n_pdom_sc_single_stat = 0; //only a single warp is ready to go in that cycle.  
 int *num_warps_issuable;
 int *num_warps_issuable_pershader;
-int gpgpu_cuda_sim = 1;
-int gpgpu_spread_blocks_across_cores = 1;
+bool gpgpu_cuda_sim;
+bool gpgpu_spread_blocks_across_cores;
 shader_core_ctx_t **sc;
 dram_t **dram;
 unsigned int common_clock = 0;
 unsigned int more_thread = 1;
 unsigned int warp_conflict_at_writeback = 0;
 unsigned int gpgpu_commit_pc_beyond_two = 0;
-int gpgpu_cache_wt_through = 0;
+bool gpgpu_cache_wt_through;
 
 //memory access classification
 int gpgpu_n_mem_read_local = 0;
@@ -366,7 +363,7 @@ void gpu_reg_options(option_parser_t opp)
                 "Check for bank conflict in the pipeline",
                 "0");
 
-   option_parser_register(opp, "-gpgpu_dwf_regbk", OPT_BOOL, (int*)&gpgpu_dwf_regbk, 
+   option_parser_register(opp, "-gpgpu_dwf_regbk", OPT_BOOL, &gpgpu_dwf_regbk, 
                 "Have dwf scheduler to avoid bank conflict",
                 "1");
 
@@ -411,7 +408,7 @@ void gpu_reg_options(option_parser_t opp)
                 "default = 0 pre-memory pipeline stages",
                 "0");
 
-   option_parser_register(opp, "-gpgpu_no_divg_load", OPT_BOOL, (int*)&gpgpu_no_divg_load, 
+   option_parser_register(opp, "-gpgpu_no_divg_load", OPT_BOOL, &gpgpu_no_divg_load, 
                 "Don't allow divergence on load",
                 "0");
 
@@ -419,11 +416,11 @@ void gpu_reg_options(option_parser_t opp)
                   "dynamic warp formation hw config, i.e., {<#LUT_entries>:<associativity>|none}",
                   "32:2");
 
-   option_parser_register(opp, "-gpgpu_thread_swizzling", OPT_BOOL, (int*)&gpgpu_thread_swizzling, 
+   option_parser_register(opp, "-gpgpu_thread_swizzling", OPT_BOOL, &gpgpu_thread_swizzling, 
                 "Thread Swizzling (1=on, 0=off)",
                 "0");
 
-   option_parser_register(opp, "-gpgpu_strict_simd_wrbk", OPT_BOOL, (int*)&gpgpu_strict_simd_wrbk, 
+   option_parser_register(opp, "-gpgpu_strict_simd_wrbk", OPT_BOOL, &gpgpu_strict_simd_wrbk, 
                 "Applying Strick SIMD WriteBack Stage (1=on, 0=off)",
                 "0");
 
@@ -677,8 +674,7 @@ unsigned int run_gpu_sim(int grid_num)
    not_completed = 1;
    mem_busy = 1;
    icnt2mem_busy = 1;
-   finished_trace = 0;
-   g_next_request_uid = 1;
+   g_next_mf_request_uid = 1;
    more_thread = 1;
    gpu_sim_insn = 0;
    gpu_sim_insn_no_ld_const = 0;
@@ -1025,7 +1021,7 @@ unsigned char fq_push(unsigned long long int addr, int bsize, unsigned char writ
    mem_fetch_t *mf;
 
    mf = (mem_fetch_t*) calloc(1,sizeof(mem_fetch_t));
-   mf->request_uid = g_next_request_uid++;
+   mf->request_uid = g_next_mf_request_uid++;
    mf->addr = addr;
    mf->nbytes_L1 = bsize;
    mf->sid = sid;

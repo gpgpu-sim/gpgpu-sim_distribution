@@ -116,6 +116,6 @@ void dwf_set_accPC( int n_shaders, unsigned *acc_pc_count );
 void dwf_update_statistics( int shader_id );
 
 extern unsigned int gpgpu_dwf_heuristic;
-extern unsigned int gpgpu_dwf_regbk;
+extern bool gpgpu_dwf_regbk;
 
 #endif

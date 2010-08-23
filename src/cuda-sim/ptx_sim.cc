@@ -65,6 +65,7 @@
 #include <string>
 #include "ptx_ir.h"
 #include "../gpgpu-sim/gpu-sim.h"
+#include "../gpgpu-sim/shader.h"
 
 void feature_not_implemented( const char *f );
 
@@ -357,11 +358,6 @@ void ptx_thread_info::callstack_push( unsigned pc, unsigned rpc, const symbol *r
    m_regs.push_back( reg_map_t() );
    m_local_mem_stack_pointer += m_func_info->local_mem_framesize(); 
 }
-
-#define POST_DOMINATOR 1 /* must match definition in shader.h */
-extern int gpgpu_simd_model;
-extern ptx_reg_t get_operand_value( const symbol *reg );
-extern void set_operand_value( const symbol *dst, const ptx_reg_t &data );
 
 bool ptx_thread_info::callstack_pop()
 {

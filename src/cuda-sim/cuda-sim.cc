@@ -83,7 +83,7 @@
 #include "ptx_sim.h"
 #include "../gpgpusim_entrypoint.h"
 
-int gpgpu_ptx_instruction_classification=0;
+int gpgpu_ptx_instruction_classification;
 void ** g_inst_classification_stat = NULL;
 void ** g_inst_op_classification_stat= NULL;
 int g_ptx_kernel_count = -1; // used for classification stat collection purposes 
@@ -1327,7 +1327,7 @@ void gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t co
    fflush(stdout);
 }
 
-int g_ptx_sim_mode=0; // if non-zero run functional simulation only (i.e., no notion of a clock cycle)
+int g_ptx_sim_mode; // if non-zero run functional simulation only (i.e., no notion of a clock cycle)
 
 extern "C" int ptx_debug;
 

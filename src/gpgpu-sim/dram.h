@@ -79,12 +79,10 @@
 #define FIFO_NUM_WRITE_LIMIT 3   //used for both BANK_CONF and REALISTIC schedulers
 #define LOOKAHEAD_VALUE 10    //used for REALISTIC scheduler ONLY
 
-enum {
-   DRAM_FIFO,
-   DRAM_IDEAL_FAST,
-   DRAM_NUM_HANDLES
+enum dram_ctrl_t {
+   DRAM_FIFO=0,
+   DRAM_IDEAL_FAST=1
 };
-
 
 #define READ 'R'  //define read and write states
 #define WRITE 'W'

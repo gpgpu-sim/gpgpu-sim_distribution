@@ -51,7 +51,6 @@ extern int gpgpu_dram_sched_queue_size;
 extern unsigned made_write_mfs;
 extern unsigned freed_L1write_mfs;
 extern unsigned freed_L2write_mfs;
-extern unsigned g_next_request_uid;
 
 void memlatstat_icnt2sh_push(mem_fetch_t *mf);
 void memlatstat_dram_access(mem_fetch_t *mf, unsigned dram_id, unsigned bank);
@@ -60,8 +59,8 @@ unsigned memlatstat_done(mem_fetch_t *mf);
 
 // option
 char *gpgpu_L2_queue_config;
-int gpgpu_l2_readoverwrite = 0;
-int l2_ideal = 0;
+bool gpgpu_l2_readoverwrite;
+bool l2_ideal;
 
 void L2c_options(option_parser_t opp)
 {
@@ -715,7 +714,7 @@ unsigned char L2c_write_back(unsigned long long int addr, int bsize, int dram_id
 
    mf = (mem_fetch_t*) malloc(sizeof(mem_fetch_t));
    made_write_mfs++;
-   mf->request_uid = g_next_request_uid++;
+   mf->request_uid = g_next_mf_request_uid++;
    mf->addr = addr;
    mf->nbytes_L1 = bsize + READ_PACKET_SIZE;
    mf->txbytes_L1 = 0;

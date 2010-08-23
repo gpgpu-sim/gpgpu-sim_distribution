@@ -299,12 +299,16 @@ void gpgpu_ptx_sim_add_ptxstring( const char *ptx_string, const char *sourcefnam
     }
 }
 
-static int g_save_embedded_ptx = 0;
+static bool g_save_embedded_ptx;
+bool g_keep_intermediate_files;
 
 void ptx_reg_options(option_parser_t opp)
 {
    option_parser_register(opp, "-save_embedded_ptx", OPT_BOOL, &g_save_embedded_ptx, 
                 "saves ptx files embedded in binary as <n>.ptx",
+                "0");
+   option_parser_register(opp, "-keep", OPT_BOOL, &g_keep_intermediate_files, 
+                "keep intermediate files created by GPGPU-Sim when interfacing with external programs",
                 "0");
 }
 

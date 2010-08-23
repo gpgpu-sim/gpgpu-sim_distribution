@@ -75,6 +75,9 @@
 #include "cuda-math.h"
 #include "../abstract_hardware_model.h"
 #include "ptx_loader.h"
+#include "cuda_device_printf.h"
+#include "../gpgpu-sim/gpu-sim.h"
+#include "../gpgpu-sim/shader.h"
 
 #include <stdarg.h>
 
@@ -677,11 +680,6 @@ void bra_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
 void brev_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 void brkpt_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
-
-extern int gpgpu_simd_model;
-#define POST_DOMINATOR 1 /* must match enum value in shader.h */
-void get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *npc, unsigned *rpc );
-void gpgpusim_cuda_vprintf(const ptx_instruction * pI, const ptx_thread_info * thread, const function_info * target_func ); 
 
 void call_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 {

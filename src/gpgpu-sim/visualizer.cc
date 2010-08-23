@@ -76,9 +76,9 @@
 static void time_vector_print_interval2file(FILE *outfile);
 static void time_vector_print_interval2gzfile(gzFile outfile);
 
-int g_visualizer_enabled = 1;
-char *g_visualizer_filename = NULL;
-int g_visualizer_zlevel = 6;
+bool g_visualizer_enabled;
+char *g_visualizer_filename;
+int g_visualizer_zlevel;
 
 void visualizer_options(option_parser_t opp)
 {

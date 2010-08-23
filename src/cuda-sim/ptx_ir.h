@@ -1272,6 +1272,8 @@ extern std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
 
 #define STATIC_ALLOC_LIMIT (GLOBAL_HEAP_START - (TOTAL_LOCAL_MEM+TOTAL_SHARED_MEM))
 
+extern bool g_keep_intermediate_files;
+
 void gpgpu_ptx_assemble( std::string kname, void *kinfo );
 #include "../option_parser.h"
 void ptx_reg_options(option_parser_t opp);

@@ -50,4 +50,4 @@ extern unsigned L2_write_miss;
 extern unsigned L2_write_hit;
 extern unsigned L2_read_hit;
 extern unsigned L2_read_miss;
-extern int gpgpu_l2_readoverwrite;
+extern bool gpgpu_l2_readoverwrite;

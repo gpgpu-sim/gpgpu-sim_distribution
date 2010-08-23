@@ -71,7 +71,7 @@
 extern function_info *g_func_info;
 
 // options
-int enable_ptx_file_line_stats;
+bool enable_ptx_file_line_stats;
 char * ptx_line_stats_filename = NULL;
 
 void ptx_file_line_stats_options(option_parser_t opp)

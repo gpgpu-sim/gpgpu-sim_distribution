@@ -190,7 +190,7 @@ unsigned int LOGB2_32( unsigned int v ) {
 }
 
 
-static char *addrdec_option = NULL;
+static char *addrdec_option;
 void addrdec_setoption(option_parser_t opp)
 {
    option_parser_register(opp, "-gpgpu_mem_addr_mapping", OPT_CSTR, &addrdec_option,

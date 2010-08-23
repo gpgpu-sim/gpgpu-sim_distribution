@@ -1,6 +1,9 @@
 /* 
- * Copyright © 2009 by Wilson W. L. Fung and the University of British Columbia, 
- * Vancouver, BC V6T 1Z4, All Rights Reserved.
+ * Copyright (c) 2009 by Tor M. Aamodt, Ali Bakhoda, Joey Ting, Dan O'Connor, 
+ * Clive Lin, George L. Yuan, Wilson W. L. Fung and the 
+ * University of British Columbia
+ * Vancouver, BC  V6T 1Z4
+ * All Rights Reserved.
  * 
  * THIS IS A LEGAL DOCUMENT BY DOWNLOADING GPGPU-SIM, YOU ARE AGREEING TO THESE
  * TERMS AND CONDITIONS.
@@ -59,34 +62,9 @@
  * Vancouver, BC V6T 1Z4
  */
 
-#pragma once 
+#ifndef CUDA_DEVICE_PRINTF_INCLUDED
+#define CUDA_DEVICE_PRINTF_INCLUDED
 
-#include "../option_parser.h"
+void gpgpusim_cuda_vprintf(const class ptx_instruction * pI, const class ptx_thread_info * thread, const class function_info * target_func );
 
-extern bool enable_ptx_file_line_stats;
-
-// set options
-void ptx_file_line_stats_options(option_parser_t opp);
-
-// output stats to a file
-void ptx_file_line_stats_write_file();
-
-#ifdef __cplusplus
-// stat collection interface to cuda-sim
-class ptx_instruction;
-void ptx_file_line_stats_add_exec_count(const ptx_instruction *pInsn);
 #endif
-
-// stat collection interface to gpgpu-sim
-void ptx_file_line_stats_add_latency(void * ptx_thd, unsigned pc, unsigned latency);
-void ptx_file_line_stats_add_dram_traffic(unsigned pc, unsigned dram_traffic);
-void ptx_file_line_stats_add_smem_bank_conflict(void * ptx_thd, unsigned pc, unsigned n_way_bkconflict);
-void ptx_file_line_stats_add_uncoalesced_gmem(void * ptx_thd, unsigned pc, unsigned n_access);
-
-void ptx_file_line_stats_create_exposed_latency_tracker(int n_shader_cores);
-void ptx_file_line_stats_add_inflight_memory_insn(int sc_id, unsigned pc);
-void ptx_file_line_stats_sub_inflight_memory_insn(int sc_id, unsigned pc);
-void ptx_file_line_stats_commit_exposed_latency(int sc_id, int exposed_latency);
-
-void ptx_file_line_stats_add_warp_divergence(unsigned pc, unsigned n_way_divergence);
-

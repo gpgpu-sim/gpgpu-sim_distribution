@@ -500,11 +500,13 @@ void _cl_program::Build(const char *options)
             printf("GPGPU-Sim OpenCL API: command line was \'%s\'\n", commandline);
             exit(1);
          }
-         // clean up files...
-         snprintf(commandline,1024,"rm -f %s", cl_fname );
-         result = system(commandline);
-         if( result != 0 ) 
-            printf("GPGPU-Sim OpenCL API: could not remove temporary files generated while generating PTX\n");
+         if( !g_keep_intermediate_files ) {
+            // clean up files...
+            snprintf(commandline,1024,"rm -f %s", cl_fname );
+            result = system(commandline);
+            if( result != 0 ) 
+               printf("GPGPU-Sim OpenCL API: could not remove temporary files generated while generating PTX\n");
+         }
       } else {
          snprintf(ptx_fname,1024,"_%u.ptx", source_num);
       }

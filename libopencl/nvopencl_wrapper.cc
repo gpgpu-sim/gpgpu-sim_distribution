@@ -92,6 +92,13 @@ int main(int argc, const char **argv)
 
    bool debug=false;
 
+   printf("%s: command line = \'",PREAMBLE);
+   for( int i=0; i < argc; i++ ) {
+      printf("%s", argv[i]);
+      if( (i+1) < argc ) printf(" ");
+   }
+   printf("'\n");
+
    if( !strncmp(argv[1],"-d",2) ) {
       printf("nvopencl_wrapper started\n");
       fflush(stdout);

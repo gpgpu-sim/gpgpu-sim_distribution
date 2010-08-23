@@ -74,8 +74,8 @@
 
 using namespace std;
 
-unsigned int gpgpu_dwf_regbk = 1;
-unsigned int gpgpu_dwf_heuristic = 0;
+bool gpgpu_dwf_regbk;
+unsigned int gpgpu_dwf_heuristic;
 enum {
    MAJORITY  = 0,
    MINORITY  = 1,
@@ -2321,8 +2321,6 @@ void g_print_max_heap(int sid) {
 
    #undef UNIT_TEST
    #include "stat-tool.cc"
-
-unsigned gpgpu_thread_swizzling = 0;
 
 int regfile_hash(signed istream_number, unsigned simd_size, unsigned n_banks) {
    if (gpgpu_thread_swizzling) {

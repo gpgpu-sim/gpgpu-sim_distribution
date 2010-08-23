@@ -73,18 +73,13 @@
 #include "stat-tool.h"
 #include "../cuda-sim/ptx-stats.h"
 #include "visualizer.h"
+#include "dram.h"
 
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 
-extern unsigned int gpu_n_mem;
-extern unsigned int gpu_n_shader;
-extern int gpgpu_dram_sched_queue_size;
-extern int gpgpu_dram_scheduler;
-extern unsigned int gpu_mem_n_bk;
-
-bool gpgpu_memlatency_stat = false;
+bool gpgpu_memlatency_stat;
 
 unsigned max_mrq_latency;
 unsigned max_dq_latency;

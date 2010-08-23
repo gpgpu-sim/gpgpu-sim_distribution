@@ -62,6 +62,7 @@
  * Vancouver, BC V6T 1Z4
  */
 
+#include "cuda_device_printf.h"
 #include "ptx_ir.h"
 
 void decode_space( memory_space_t &space, const ptx_thread_info *thread, const operand_info &op, memory_space *&mem, addr_t &addr);

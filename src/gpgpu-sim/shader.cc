@@ -82,6 +82,7 @@
 #include "mem_latency_stat.h"
 #include "visualizer.h"
 #include <string.h>
+#include <limits.h>
 
 #define PRIORITIZE_MSHR_OVER_WB 1
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -113,9 +114,9 @@ unsigned warp_size = 4;
 int pipe_simd_width;
 unsigned int *shader_cycle_distro;
 unsigned int g_waiting_at_barrier = 0;
-unsigned int gpgpu_shmem_size = 16384;
-unsigned int gpgpu_shader_registers = 8192;
-unsigned int gpgpu_shader_cta = 8;
+unsigned int gpgpu_shmem_size;
+unsigned int gpgpu_shader_registers;
+unsigned int gpgpu_shader_cta;
 unsigned int gpgpu_n_load_insn = 0;
 unsigned int gpgpu_n_store_insn = 0;
 unsigned int gpgpu_n_shmem_insn = 0;
@@ -123,24 +124,24 @@ unsigned int gpgpu_n_tex_insn = 0;
 unsigned int gpgpu_n_const_insn = 0;
 unsigned int gpgpu_n_param_insn = 0;
 unsigned int gpgpu_multi_unq_fetches = 0;
-int          gpgpu_shmem_bkconflict = 0;
+bool         gpgpu_shmem_bkconflict;
 unsigned int gpgpu_n_shmem_bkconflict = 0;
 int          gpgpu_n_shmem_bank = 16;
-int          gpgpu_cache_bkconflict = 0;
+bool         gpgpu_cache_bkconflict;
 unsigned int gpgpu_n_cache_bkconflict = 0;
 unsigned int gpgpu_n_cmem_portconflict = 0;
-int          gpgpu_n_cache_bank = 16;
-int          gpgpu_warpdistro_shader = -1;
-int          gpgpu_interwarp_mshr_merge = 0;
+int          gpgpu_n_cache_bank;
+int          gpgpu_warpdistro_shader;
+int          gpgpu_interwarp_mshr_merge;
 int          gpgpu_n_intrawarp_mshr_merge = 0;
 int          gpgpu_n_partial_writes = 0;
-int          gpgpu_shmem_port_per_bank = 4;
-int          gpgpu_cache_port_per_bank = 4;
-int          gpgpu_const_port_per_bank = 4;
-int          gpgpu_shmem_pipe_speedup = 2;
+int          gpgpu_shmem_port_per_bank;
+int          gpgpu_cache_port_per_bank;
+int          gpgpu_const_port_per_bank;
+int          gpgpu_shmem_pipe_speedup;
 unsigned int gpu_max_cta_per_shader = 8;
 unsigned int gpu_padded_cta_size = 32;
-int          gpgpu_local_mem_map = 1;
+int          gpgpu_local_mem_map;
 
 /////////////////////////////////////////////////////////////////////////////
 /*-------------------------------------------------------------------------*/
@@ -1649,10 +1650,10 @@ inline address_type translate_local_memaddr(address_type localaddr, shader_core_
 /////////////////////////////////////////////////////////////////////////////////////////
 // Register Bank Conflict Structures
 
-int gpgpu_reg_bank_conflict_model = 0;
+bool gpgpu_reg_bank_conflict_model;
 
 #define MAX_REG_BANKS 32
-unsigned int gpgpu_num_reg_banks=8; // this needs to be less than MAX_REG_BANKS
+unsigned int gpgpu_num_reg_banks; // this needs to be less than MAX_REG_BANKS
 
 #define MAX_BANK_CONFLICT 8 /* tex can have four source and four destination regs */
 
@@ -2075,7 +2076,7 @@ void shader_pre_memory( shader_core_ctx_t *shader,
    }
 }
 
-int gpgpu_coalesce_arch = 13;
+int gpgpu_coalesce_arch;
 
 enum memory_path {
    NO_MEM_PATH = 0,
@@ -3071,7 +3072,6 @@ void shader_writeback( shader_core_ctx_t *shader, unsigned int shader_number, in
          // thread completed if it is going to fetching beyond code boundry 
          if ( gpgpu_cuda_sim && ptx_thread_done(shader->thread[unlock_tid[i]].ptx_thd_info) ) {
 
-            finished_trace += 1;
             shader->not_completed -= 1;
             gpu_completed_thread += 1;
 
