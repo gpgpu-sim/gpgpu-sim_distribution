@@ -361,16 +361,19 @@ _cl_mem::_cl_mem(
       return;
    }
    if( flags & CL_MEM_ALLOC_HOST_PTR ) 
-      gpgpusim_opencl_error(__my_func__,__LINE__," CL_MEM_ALLOC_HOST_PTR -- not yet supported.\n");
+      gpgpusim_opencl_error(__my_func__,__LINE__," CL_MEM_ALLOC_HOST_PTR -- not yet supported/tested.\n");
 
-   if( flags & CL_MEM_USE_HOST_PTR ) {
+   if( flags & (CL_MEM_USE_HOST_PTR|CL_MEM_ALLOC_HOST_PTR) ) {
       m_is_on_host = true;
    } else {
       m_is_on_host = false;
    }
-   m_device_ptr = (size_t) gpgpu_ptx_sim_malloc(size);
-   if( host_ptr )
-      gpgpu_ptx_sim_memcpy_to_gpu( m_device_ptr, host_ptr, size );
+   if( !(flags & (CL_MEM_USE_HOST_PTR|CL_MEM_ALLOC_HOST_PTR)) ) {
+      // if not allocating on host, then allocate GPU memory and make a copy
+      m_device_ptr = (size_t) gpgpu_ptx_sim_malloc(size);
+      if( host_ptr )
+         gpgpu_ptx_sim_memcpy_to_gpu( m_device_ptr, host_ptr, size );
+   }
 }
 
 cl_mem _cl_context::CreateBuffer(

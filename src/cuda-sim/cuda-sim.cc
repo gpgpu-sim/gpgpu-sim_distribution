@@ -628,44 +628,59 @@ void function_info::add_param_data( unsigned argn, struct gpgpu_ptx_sim_arg *arg
 {
    const void *data = args->m_start;
 
-   if( data ) {
+   std::map<unsigned,param_info>::iterator i=m_ptx_kernel_param_info.find(argn);
+   if( i != m_ptx_kernel_param_info.end()) {
       param_t tmp;
-
       tmp.pdata = args->m_start;
       tmp.size = args->m_nbytes;
       tmp.offset = args->m_offset;
       tmp.type = 0;
-      std::map<unsigned,param_info>::iterator i=m_ptx_kernel_param_info.find(argn);
-      if( i != m_ptx_kernel_param_info.end()) {
-         i->second.add_data(tmp);
-      } else {
-         // This should only happen for OpenCL:
-         // 
-         // The LLVM PTX compiler in NVIDIA's driver (version 190.29)
-         // does not generate an argument in the function declaration 
-         // for __constant arguments.
-         //
-         // The associated constant memory space can be allocated in two 
-         // ways. It can be explicitly initialized in the .ptx file where
-         // it is declared.  Or, it can be allocated using the clCreateBuffer
-         // on the host. In this later case, the .ptx file will contain 
-         // a global declaration of the parameter, but it will have an unknown
-         // array size.  Thus, the symbol's address will not be set and we need
-         // to set it here before executing the PTX.
-         
-         char buffer[2048];
-         snprintf(buffer,2048,"%s_param_%u",m_name.c_str(),argn);
-         
-         symbol *p = m_symtab->lookup(buffer);
-         if( p == NULL ) {
-            printf("GPGPU-Sim PTX: ERROR ** could not locate symbol for \'%s\' : cannot bind buffer\n", buffer);
-            abort();
-         }
-         p->set_address((addr_t)*(size_t*)data);
-      } 
+      i->second.add_data(tmp);
    } else {
-      // This should only happen for OpenCL, but doesn't cause problems
-   }
+      // This should only happen for OpenCL:
+      // 
+      // The LLVM PTX compiler in NVIDIA's driver (version 190.29)
+      // does not generate an argument in the function declaration 
+      // for __constant arguments.
+      //
+      // The associated constant memory space can be allocated in two 
+      // ways. It can be explicitly initialized in the .ptx file where
+      // it is declared.  Or, it can be allocated using the clCreateBuffer
+      // on the host. In this later case, the .ptx file will contain 
+      // a global declaration of the parameter, but it will have an unknown
+      // array size.  Thus, the symbol's address will not be set and we need
+      // to set it here before executing the PTX.
+      
+      char buffer[2048];
+      snprintf(buffer,2048,"%s_param_%u",m_name.c_str(),argn);
+      
+      symbol *p = m_symtab->lookup(buffer);
+      if( p == NULL ) {
+         printf("GPGPU-Sim PTX: ERROR ** could not locate symbol for \'%s\' : cannot bind buffer\n", buffer);
+         abort();
+      }
+      if( data ) 
+         p->set_address((addr_t)*(size_t*)data);
+      else {
+         // clSetKernelArg was passed NULL pointer for data...
+         // this is used for dynamically sized shared memory on NVIDIA platforms
+         if( !p->is_shared() ) {
+            printf("GPGPU-Sim PTX: ERROR ** clSetKernelArg passed NULL but arg not shared memory\n");
+            abort();     
+         }
+         unsigned num_bits = 8*args->m_nbytes;
+         printf("GPGPU-Sim PTX: deferred allocation of shared region for \"%s\" from 0x%x to 0x%x (shared memory space)\n",
+                p->name().c_str(),
+                m_symtab->get_shared_next(),
+                m_symtab->get_shared_next() + num_bits/8 );
+         fflush(stdout);
+         assert( (num_bits%8) == 0  );
+         addr_t addr = m_symtab->get_shared_next();
+         addr_t addr_pad = num_bits ? (((num_bits/8) - (addr % (num_bits/8))) % (num_bits/8)) : 0;
+         p->set_address( addr+addr_pad );
+         m_symtab->alloc_shared( num_bits/8 + addr_pad );
+      }
+   } 
 }
 
 void function_info::finalize( memory_space *param_mem ) 
