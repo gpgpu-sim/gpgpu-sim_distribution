@@ -2898,35 +2898,6 @@ void register_cta_thread_exit(shader_core_ctx_t *shader, int tid )
    }
 }
 
-#if 0
-//this function is unecessary, cache is properly dirtied by fill with cache line function in gpu-sim.cc
-void dirty_cache_lines(shader_core_ctx_t *shader, mshr_entry_t* mshr){
-   shd_cache_line_t *hit_cacheline;
-   if (mshr->istexture) {
-      hit_cacheline = shd_cache_access(shader->L1texcache, 
-                                       mshr->addr, WORD_SIZE, 
-                                       mshr->iswrite, //should always be 0
-                                       shader->gpu_cycle); 
-      shd_cache_undo_stats( shader->L1texcache, !hit_cacheline );
-   } else if (mshr->isconst) {
-      hit_cacheline = shd_cache_access(shader->L1constcache, 
-                                       mshr->addr, WORD_SIZE, 
-                                       mshr->iswrite, //should always be 0
-                                       shader->gpu_cycle); 
-      shd_cache_undo_stats( shader->L1constcache, !hit_cacheline );
-   } else if (!gpgpu_no_dl1) {
-      hit_cacheline = shd_cache_access(shader->L1cache, 
-                                       mshr->addr, WORD_SIZE, 
-                                       mshr->iswrite, 
-                                       shader->gpu_cycle); 
-      shd_cache_undo_stats( shader->L1constcache, !hit_cacheline );
-      if (!hit_cacheline) {
-         writeback_l1_miss++;
-      }
-   }
-}
-#endif
-
 typedef struct {
    unsigned pc;
    unsigned long latency;

@@ -69,28 +69,23 @@
 #ifndef GPU_SIM_H
 #define GPU_SIM_H
 
-#define NUM_SHADERS 8
-#define STREAMS_PER_FILE 128
-
+// constants for statistics printouts
 #define GPU_RSTAT_SHD_INFO 0x1
 #define GPU_RSTAT_BW_STAT  0x2
 #define GPU_RSTAT_WARP_DIS 0x4
 #define GPU_RSTAT_DWF_MAP  0x8
+#define GPU_RSTAT_L1MISS 0x10
+#define GPU_RSTAT_PDOM 0x20
+#define GPU_RSTAT_SCHED 0x40
+#define GPU_MEMLATSTAT_MC 0x2
+#define GPU_MEMLATSTAT_QUEUELOGS 0x4
 
-//gpgpu_interwarp_mshr_merge
+// constants for configuring merging of coalesced scatter-gather requests
 #define TEX_MSHR_MERGE 0x4
 #define CONST_MSHR_MERGE 0x2
 #define GLOBAL_MSHR_MERGE 0x1
 
-//Prints out a verbose L1 miss rate per thread for shader 0 
-#define GPU_RSTAT_L1MISS 0x10
-#define GPU_RSTAT_PDOM 0x20
-#define GPU_RSTAT_SCHED 0x40
-
-//options for gpgpu_memlatency_stat
-#define GPU_MEMLATSTAT_MC 0x2
-#define GPU_MEMLATSTAT_QUEUELOGS 0x4
-
+// clock constants
 #define MhZ *1000000
 
 extern void         init_gpu();
