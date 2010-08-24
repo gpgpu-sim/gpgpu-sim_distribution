@@ -65,7 +65,7 @@
 #include "../option_parser.h"
 #include <stdio.h>
 #include <map>
-#include <unordered_map>
+#include "../tr1_hash_map.h"
 
 // external dependencies
 extern function_info *g_func_info;
@@ -147,7 +147,12 @@ public:
     unsigned long long warp_divergence; // number of warp divergence occured at this instruction
 };
 
-typedef std::unordered_map<ptx_file_line, ptx_file_line_stats, hash_ptx_file_line> ptx_file_line_stats_map_t;
+#if (tr1_hash_map_ismap == 1)
+typedef tr1_hash_map<ptx_file_line, ptx_file_line_stats> ptx_file_line_stats_map_t;
+#else
+typedef tr1_hash_map<ptx_file_line, ptx_file_line_stats, hash_ptx_file_line> ptx_file_line_stats_map_t;
+#endif
+
 static ptx_file_line_stats_map_t ptx_file_line_stats_tracker;
 
 // output statistics to a file

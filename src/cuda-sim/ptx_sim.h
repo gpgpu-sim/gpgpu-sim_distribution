@@ -69,6 +69,7 @@
 
 #include "dram_callback.h"
 #include "../abstract_hardware_model.h"
+#include "../tr1_hash_map.h" 
 
 
 struct gpgpu_ptx_sim_arg {
@@ -94,7 +95,6 @@ struct gpgpu_ptx_sim_kernel_info {
 #include <map>
 #include <set>
 #include <list>
-#include <unordered_map>
 
 #include "memory.h"
 
@@ -464,7 +464,7 @@ private:
    std::list<stack_entry> m_callstack;
    unsigned m_local_mem_stack_pointer;
 
-   typedef std::unordered_map<const symbol*,ptx_reg_t> reg_map_t;
+   typedef tr1_hash_map<const symbol*,ptx_reg_t> reg_map_t;
    std::list<reg_map_t> m_regs;
 
    bool m_enable_debug_trace;

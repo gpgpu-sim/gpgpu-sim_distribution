@@ -2988,21 +2988,13 @@ void shader_writeback( shader_core_ctx_t *shader, unsigned int shader_number, in
    }
 
    //check mshrs for commit;
-   //in future do req bank checking here;
    unsigned mshr_threads_unlocked = 0;
    for (unsigned i = 0; i < gpu_n_max_mshr_writeback; i++) {
       mshr_head = shader->mshr_unit->return_head();
       if (mshr_head) {
-         //bail if we can't unlock anymore threads, needs to be implemented better.
-         if (mshr_threads_unlocked + mshr_head->insts.size() > (unsigned) pipe_simd_width) break;//todo, do this right
-         assert(!gpgpu_strict_simd_wrbk);//implementation commented out below 
-/*
-         //for stalling in the middle of an mshr writeback due to mshr having threads from multiple warps, does this happen anymore?
-         static unsigned next_mshr_index = 0;
-         int  mshr_warpid = -1; 
-         bool mshr_not_blocked_by_samewarp = true;
-         //use below: for (j = next_mshr_index; ...
-*/
+         //bail if we can't unlock anymore threads
+         if (mshr_threads_unlocked + mshr_head->insts.size() > (unsigned) pipe_simd_width) break;
+         assert(!gpgpu_strict_simd_wrbk);//implementation removed
          assert (mshr_head->insts.size());
          for (unsigned j = 0; j < mshr_head->insts.size(); j++) {
             inst_t &insn = mshr_head->insts[j];
@@ -3014,31 +3006,8 @@ void shader_writeback( shader_core_ctx_t *shader, unsigned int shader_number, in
             shader->pending_mem_access--;
             // for ensuring that we don't unlock more than the code allows, needs to be fixed.
             mshr_threads_unlocked++;
-/*
-            next_mshr_index++;
-            if ((shader->model == POST_DOMINATOR || shader->model == NO_RECONVERGE) && gpgpu_strict_simd_wrbk) {
-               // restricting the threads from mshr to be in the same warp
-               if (mshr_warpid == -1) {
-                  mshr_warpid = mshr_head->insts[j].hw_thread_id / warp_size;
-               } else if ((unsigned)mshr_warpid != (mshr_head->insts[j].hw_thread_id / warp_size)) {
-                  warp_conflict_at_writeback++;
-                  mshr_not_blocked_by_samewarp = false;
-                  break;
-               }
-            }
-*/
          }
-         //done with it since garanteed to wb
-/*
-         if (mshr_not_blocked_by_samewarp) {
-*/
-         //this mshr is done this cycle, can pop it
          shader->mshr_unit->pop_return_head();
-/*
-            //reset for next mshr
-            next_mshr_index = 0;
-         }
-*/
          writeback_by_MSHR = true;
          unlock_lat_info = mshr_lat_info; 
          if (w2rf) {
@@ -3571,15 +3540,26 @@ void shader_print_accstats( FILE* fout )
    fprintf(fout, "gpgpu_stall_shd_mem[t_mem][mshr_rc] = %d\n", gpu_stall_shd_mem_breakdown[T_MEM][MSHR_RC_FAIL]);
    fprintf(fout, "gpgpu_stall_shd_mem[t_mem][icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[T_MEM][ICNT_RC_FAIL]);
    fprintf(fout, "gpgpu_stall_shd_mem[s_mem][bk_conf] = %d\n", gpu_stall_shd_mem_breakdown[S_MEM][BK_CONF]);
-   fprintf(fout, "gpgpu_stall_shd_mem[g_mem][coal_stall] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_LD][COAL_STALL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[gl_mem][bk_conf] = %d\n", 
+           gpu_stall_shd_mem_breakdown[G_MEM_LD][BK_CONF] + 
+           gpu_stall_shd_mem_breakdown[G_MEM_ST][BK_CONF] + 
+           gpu_stall_shd_mem_breakdown[L_MEM_LD][BK_CONF] + 
+           gpu_stall_shd_mem_breakdown[L_MEM_ST][BK_CONF]   
+           ); // coalescing stall at data cache 
+   fprintf(fout, "gpgpu_stall_shd_mem[gl_mem][coal_stall] = %d\n", 
+           gpu_stall_shd_mem_breakdown[G_MEM_LD][COAL_STALL] + 
+           gpu_stall_shd_mem_breakdown[G_MEM_ST][COAL_STALL] + 
+           gpu_stall_shd_mem_breakdown[L_MEM_LD][COAL_STALL] + 
+           gpu_stall_shd_mem_breakdown[L_MEM_ST][COAL_STALL]    
+           ); // coalescing stall + bank conflict at data cache 
    fprintf(fout, "gpgpu_stall_shd_mem[g_mem_ld][mshr_rc] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_LD][MSHR_RC_FAIL]);
    fprintf(fout, "gpgpu_stall_shd_mem[g_mem_ld][icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_LD][ICNT_RC_FAIL]);
    fprintf(fout, "gpgpu_stall_shd_mem[g_mem_ld][wb_icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_LD][WB_ICNT_RC_FAIL]);
    fprintf(fout, "gpgpu_stall_shd_mem[g_mem_ld][wb_rsrv_fail] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_LD][WB_CACHE_RSRV_FAIL]);
    fprintf(fout, "gpgpu_stall_shd_mem[g_mem_st][mshr_rc] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_ST][MSHR_RC_FAIL]);
    fprintf(fout, "gpgpu_stall_shd_mem[g_mem_st][icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_ST][ICNT_RC_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[g_mem_st][wb_icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_LD][WB_ICNT_RC_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[g_mem_st][wb_rsrv_fail] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_LD][WB_CACHE_RSRV_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[g_mem_st][wb_icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_ST][WB_ICNT_RC_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[g_mem_st][wb_rsrv_fail] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_ST][WB_CACHE_RSRV_FAIL]);
    fprintf(fout, "gpgpu_stall_shd_mem[l_mem_ld][mshr_rc] = %d\n", gpu_stall_shd_mem_breakdown[L_MEM_LD][MSHR_RC_FAIL]);
    fprintf(fout, "gpgpu_stall_shd_mem[l_mem_ld][icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[L_MEM_LD][ICNT_RC_FAIL]);
    fprintf(fout, "gpgpu_stall_shd_mem[l_mem_ld][wb_icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[L_MEM_LD][WB_ICNT_RC_FAIL]);
