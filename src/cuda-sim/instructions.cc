@@ -2639,7 +2639,7 @@ void st_impl( const ptx_instruction *pI, ptx_thread_info *thread )
          thread->get_vector_operand_values(src1, ptx_regs, 2); 
          mem->write(addr,size/8,&ptx_regs[0].s64,thread,pI);
          mem->write(addr+size/8,size/8,&ptx_regs[1].s64,thread,pI);
-         free(ptx_regs);
+         delete [] ptx_regs;
       }
       if (vector_spec == V3_TYPE) {
          ptx_reg_t* ptx_regs = new ptx_reg_t[3]; 
@@ -2647,7 +2647,7 @@ void st_impl( const ptx_instruction *pI, ptx_thread_info *thread )
          mem->write(addr,size/8,&ptx_regs[0].s64,thread,pI);
          mem->write(addr+size/8,size/8,&ptx_regs[1].s64,thread,pI);
          mem->write(addr+2*size/8,size/8,&ptx_regs[2].s64,thread,pI);
-         free(ptx_regs);
+         delete [] ptx_regs;
       }
       if (vector_spec == V4_TYPE) {
          ptx_reg_t* ptx_regs = new ptx_reg_t[4]; 
@@ -2656,7 +2656,7 @@ void st_impl( const ptx_instruction *pI, ptx_thread_info *thread )
          mem->write(addr+size/8,size/8,&ptx_regs[1].s64,thread,pI);
          mem->write(addr+2*size/8,size/8,&ptx_regs[2].s64,thread,pI);
          mem->write(addr+3*size/8,size/8,&ptx_regs[3].s64,thread,pI);
-         free(ptx_regs);
+         delete [] ptx_regs;
       }
    }
    thread->m_last_effective_address = addr;

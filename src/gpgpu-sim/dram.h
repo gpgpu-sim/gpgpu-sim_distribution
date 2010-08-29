@@ -71,6 +71,7 @@
 
 #include "delayqueue.h"
 #include "../cuda-sim/dram_callback.h"
+#include <set>
 
 #ifndef DRAM_H
 #define DRAM_H
@@ -123,6 +124,8 @@ typedef struct {
    unsigned int n_writes;
    unsigned int n_idle;
 } bank_t;
+
+struct mem_fetch;
 
 typedef struct dram_timing {
    unsigned int id;
@@ -198,6 +201,8 @@ typedef struct dram_timing {
    unsigned int bwutil_partial;
 
    void * req_hist;
+
+   std::set<mem_fetch*> m_request_tracker;
 } dram_t;
 
 

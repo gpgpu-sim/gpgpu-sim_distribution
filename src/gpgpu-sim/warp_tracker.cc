@@ -1,5 +1,5 @@
 /* 
- * waro_tracker.cc
+ * warp_tracker.cc
  *
  * Copyright (c) 2009 by Tor M. Aamodt, Wilson W. L. Fung, Ali Bakhoda and the 
  * University of British Columbia
@@ -66,102 +66,242 @@
 #include "warp_tracker.h"
 #include "gpu-sim.h"
 #include "shader.h"
+#include <set>
 
 using namespace std;
 
-#include <set>
 
-class warp_tracker {
-public:
+void register_cta_thread_exit(shader_core_ctx_t *shader, int cta_num );
 
-   int *tid; // the threads in this warp
-   int n_thd; // total number of threads in this warp
-   int n_notavail; // number of threads still not available
-   shader_core_ctx_t *shd; // reference to shader core
+/*
+ * Constructor for warp_tracker_pool.
+ *
+ * Resizes the warp_tracker map and pool and allocates empty warp_trackers.
+ *
+ * @param tid_in Array of thread id's corresponding to a warp
+ * @param *shd Pointer to the shader core
+ *
+ * @return Pointer to a warp_tracker
+ */
+warp_tracker_pool::warp_tracker_pool(unsigned gpu_n_shader, unsigned gpu_n_thread_per_shader) {
+	this->gpu_n_shader = gpu_n_shader;
+	this->gpu_n_thread_per_shader = gpu_n_thread_per_shader;
 
-   warp_tracker () {
-      tid = new int[warp_size];
-      memset(tid, -1, sizeof(int)*warp_size);
-      n_thd = 0;
-      n_notavail = 0;
-      shd = NULL;
+	// Resize the warp tracker map
+	warp_tracker_map.resize(gpu_n_shader);
+	for(unsigned i=0; i<gpu_n_shader; i++) {
+		warp_tracker_map[i].resize(gpu_n_thread_per_shader);
+	}
+
+	// Create a pool of warp_trackers
+	warp_tracker_list.resize(gpu_n_shader * gpu_n_thread_per_shader);
+
+	// Add all warp_trackers to the list of free warp_trackers
+	std::list<warp_tracker>::iterator it;
+	for(it=warp_tracker_list.begin(); it!=warp_tracker_list.end(); it++)
+		warp_tracker_free_list.push_back(&(*it));
+
+}
+
+/*
+ * Fetch a free warp_tracker from the pool of warp_trackers. Assigns the warp_tracker to
+ * the input warp.
+ *
+ * If there are no free warp_trackers in the pool, the pool is extended by allocating more
+ * warp_trackers.
+ *
+ * @param tid_in Array of thread id's corresponding to a warp
+ * @param *shd Pointer to the shader core
+ *
+ * @return Pointer to a warp_tracker
+ */
+warp_tracker* warp_tracker_pool::alloc_warp_tracker( int *tid_in, shader_core_ctx_t *shd, address_type pc ) {
+	// If no free warp trackers are available, allocate some more
+	if(warp_tracker_free_list.empty()) {
+		printf("warp_tracker_list empty (size=%d) - allocating new warp_trackers\n", size());
+		fflush(stdout);
+		// Warp tracker list is empty, resize the list
+		unsigned previous_size = warp_tracker_list.size();
+		warp_tracker_list.resize( previous_size + this->gpu_n_thread_per_shader);
+
+		// Add newly allocated warp trackers to list of free warp trackers
+		std::list<warp_tracker>::iterator it = warp_tracker_list.begin();
+		for(unsigned i=0; i<previous_size; i++)
+			it++; // Increment iterator
+		for(; it!=warp_tracker_list.end(); it++)
+				warp_tracker_free_list.push_back(&(*it));
+	}
+
+	assert(!warp_tracker_free_list.empty());
+	// Fetch a free warp_tracker
+	warp_tracker* wpt = warp_tracker_free_list.front();
+	warp_tracker_free_list.pop_front();
+	wpt->set_warp(tid_in, shd, pc);
+
+	return wpt;
+}
+
+/*
+ * Free the warp_tracker.
+ *
+ * Puts the warp_tracker back into the pool of free warp_trackers.
+ *
+ * @param wpt Pointer to a warp_tracker
+ *
+ */
+void warp_tracker_pool::free_warp_tracker(warp_tracker* wpt) {
+	warp_tracker_free_list.push_back(wpt);
+}
+
+/*
+ * Register a new warp_tracker with a warp
+ *
+ * A warp_tracker is fetched from the pool of warp_trackers and assigned to
+ * track the input warp. A (sid,tid,pc) to warp_tracker mapping is also stored.
+ *
+ * @param tid_in Array of thread id's corresponding to a single warp (array of size warp_size)
+ * @param *shd Pointer to the shader core
+ *
+ */
+void warp_tracker_pool::wpt_register_warp( int *tid_in, shader_core_ctx_t *shd, address_type pc)
+{
+   int sid = shd->sid;
+   unsigned i;
+   int n_thd = 0;
+   for (i=0; i<warp_size; i++) {
+      if (tid_in[i] >= 0) n_thd++;
    }
-   warp_tracker( int *tid, shader_core_ctx_t * shd ) {
-      this->tid = new int[warp_size];
-      memcpy(this->tid, tid, sizeof(int)*warp_size);
-      this->n_thd = 0;
-      this->n_notavail = 0;
+
+   if (!n_thd) return;
+
+   warp_tracker *wpt = this->alloc_warp_tracker(tid_in, shd, pc);
+
+   // assign the new warp_tracker to warp_tracker_map
+   for (i=0; i<warp_size; i++) {
+      if (tid_in[i] >= 0) {
+         assert( map_get_warp_tracker(sid,tid_in[i],pc) == NULL );
+         map_set_warp_tracker(sid, tid_in[i], pc, wpt);
+      }
+   }
+}
+
+/*
+ * Signal that the current thread has completed and ready to be unlocked.
+ *
+ * @param tid Thread that is exiting
+ * @param *shd Pointer to the shader core
+ *
+ * @return Returns true is all threads in the warp have completed.
+ */
+int warp_tracker_pool::wpt_signal_avail( int tid, shader_core_ctx_t *shd, address_type pc )
+{
+   int sid = shd->sid;
+   warp_tracker *wpt = map_get_warp_tracker(sid,tid,pc);
+   assert(wpt != NULL);
+
+
+   // signal the warp tracker
+   if (wpt->avail_thd()) {
+      return 1;
+   } else {
+      return 0;
+   }
+}
+
+/*
+ * Unlock a warp
+ *
+ * Unlocks a warp for re-fetching. Sets avail4fetch = 1 for all threads and increments n_avail4fetch
+ * by number of active threads.
+ *
+ * @param tid Thread that is exiting
+ * @param *shd Pointer to the shader core
+ *
+ */
+void warp_tracker_pool::wpt_deregister_warp( int tid, shader_core_ctx_t *shd, address_type pc ) {
+   int sid = shd->sid;
+   warp_tracker *wpt = map_get_warp_tracker(sid,tid,pc);
+   assert(wpt != NULL);
+
+    // the warp is ready to be fetched again, remove this warp_tracker
+    for (unsigned i=0; i<warp_size; i++) {
+	   if (wpt->tid[i] >= 0) {
+		  map_clear_warp_tracker(sid,wpt->tid[i],pc);
+	   }
+    }
+
+    free_warp_tracker( wpt );
+}
+
+
+/*
+ * Signal that the a thread is done and is exiting (exit instruction)
+ *
+ * Marks a thread as completed. If all threads in the warp have completed, call register_cta_thread_exit on all
+ * threads and removed the warp from warp tracker.
+ *
+ * @param tid Thread that is exiting
+ * @param *shd Pointer to the shader core
+ *
+ * @return The warp's mask of active threads.
+ */
+int warp_tracker_pool::wpt_signal_complete( int tid, shader_core_ctx_t *shd, address_type pc )
+{
+   int sid = shd->sid;
+   warp_tracker *wpt = map_get_warp_tracker(sid,tid,pc);
+   assert(wpt != NULL);
+
+   // signal the warp tracker
+   if (wpt->complete_thd(tid)) {
+      // if the warp has completed execution, remove this warp_tracker
+      int warp_mask = 0;
       for (unsigned i=0; i<warp_size; i++) {
-         if (this->tid[i] >= 0) {
-            this->n_thd++;
+         if (wpt->tid[i] >= 0) {
+            register_cta_thread_exit(shd, wpt->tid[i] );
+            map_clear_warp_tracker(sid,wpt->tid[i],pc);
+            warp_mask |= (1 << i);
          }
       }
-      this->n_notavail = this->n_thd;
-      this->shd = shd;
-   }
-   ~warp_tracker () {
-      delete[] tid;
-   }
 
-   // set the warp to be consist of the given threads
-   void set_warp ( int *tid, shader_core_ctx_t *shd) {
-      memcpy(this->tid, tid, sizeof(int)*warp_size);
-      this->n_thd = 0;
-      this->n_notavail = 0;
-      for (unsigned i=0; i<warp_size; i++) {
-         if (this->tid[i] >= 0) {
-            this->n_thd++;
-         }
-      }
-      this->n_notavail = this->n_thd;
-      this->shd = shd;
+      free_warp_tracker( wpt );
+
+      return warp_mask;
+   } else {
+      return 0;
    }
+}
 
-   // signal that this thread is available for fetch
-   // if all threads in the warp are available, change all their status
-   // and return true
-   bool avail_thd ( int tid_in ) {
-      n_notavail--;
-      if (n_notavail) {
-         return false;
-      } else {
+/*
+ * Check if this thread is being tracked by the warp tracker currently
+ *
+ * Checks if any pc of the given tid maps to a warp_tracker
+ *
+ * @param *shd Pointer to the shader core
+ * @param tid Thread to check
+ *
+ * @return True is thread is being tracked
+ */
+bool warp_tracker_pool::wpt_thread_in_wpt(shader_core_ctx *shd, int tid) {
+	int sid = shd->sid;
+	std::map<address_type, warp_tracker*>::iterator it;
+	for(it=warp_tracker_map[sid][tid].begin(); it!=warp_tracker_map[sid][tid].end(); it++)
+		if((*it).second != NULL)
+			return true;
 
-         int thd_unlocked = 0;
-         if (shd->model == POST_DOMINATOR || shd->model == NO_RECONVERGE) {
-            thd_unlocked = 1;
-         } else {
-            // unlock the threads here if scheduler is not PDOM or NO-RECONV
-            for (unsigned i=0; i<warp_size; i++) {
-               if (this->tid[i] >= 0) {
-                  shd->thread[tid[i]].avail4fetch++;
-                  assert(shd->thread[tid[i]].avail4fetch <= 1);
-                  assert( shd->warp[tid[i]/warp_size].n_avail4fetch < warp_size );
-                  shd->warp[tid[i]/warp_size].n_avail4fetch++;
-                  thd_unlocked = 1;
-               }
-            }
-         }
-         if (shd->using_commit_queue && thd_unlocked) {
-            int *tid_unlocked = alloc_commit_warp();
-            memcpy(tid_unlocked, this->tid, sizeof(int)*warp_size);
-            dq_push(shd->thd_commit_queue,(void*)tid_unlocked);
-         }
+	return false;
+}
 
-         return true;
-      }
-   }
 
-   // a bookkeeping method to allow a warp to be deallocated 
-   // when its threads have finished executing.
-   bool complete_thd ( int tid_in ) {
-      n_notavail--;
-      if (n_notavail) {
-         return false;
-      } else {
-         return true;
-      }
-   }
-};
+
+warp_tracker_pool& get_warp_tracker_pool(){
+	static warp_tracker_pool* wpt_pool = new warp_tracker_pool(gpu_n_shader, gpu_n_thread_per_shader);
+	return *wpt_pool;
+}
+
+
+//-------------------------------------------------------------------------------
+
+/*
 
 static warp_tracker ***warp_tracker_map;
 static unsigned **g_warp_tracker_map_setl_cycle;
@@ -236,25 +376,69 @@ int wpt_signal_avail( int tid, shader_core_ctx_t *shd )
 
 
    // signal the warp tracker
-   if (wpt->avail_thd(tid)) {
-      // if the warp is ready to be fetched again, remove this warp_tracker
-      for (unsigned i=0; i<warp_size; i++) {
-         if (wpt->tid[i] >= 0) {
-            warp_tracker_map[sid][wpt->tid[i]] = NULL;
-            g_warp_tracker_map_setl_cycle[sid][wpt->tid[i]] = gpu_tot_sim_cycle + gpu_sim_cycle;
-         }
-      }
-
-      free_warp_tracker( wpt );
-
+   if (wpt->avail_thd()) {
       return 1;
    } else {
       return 0;
    }
 }
 
-void register_cta_thread_exit(shader_core_ctx_t *shader, int cta_num );
+// Unlock a warp
+void wpt_unlock_threads( int tid, shader_core_ctx_t *shd ) {
+   int sid = shd->sid;
+   warp_tracker *wpt = warp_tracker_map[sid][tid];
+   assert(wpt != NULL);
 
+    int thd_unlocked = 0;
+    // Unlock
+    for (unsigned i=0; i<warp_size; i++) {
+		   if (wpt->tid[i] >= 0) {
+			  shd->thread[wpt->tid[i]].avail4fetch++;
+			  assert(shd->thread[wpt->tid[i]].avail4fetch <= 1);
+			  assert( shd->warp[wpt->tid[i]/warp_size].n_avail4fetch < warp_size );
+			  shd->warp[wpt->tid[i]/warp_size].n_avail4fetch++;
+			   thd_unlocked = 1;
+		   }
+	   }
+
+    if (shd->model == POST_DOMINATOR || shd->model == NO_RECONVERGE) {
+   	 // Do nothing
+    } else {
+       // For this case, submit to commit_queue
+       if (shd->using_commit_queue && thd_unlocked) {
+          int *tid_unlocked = alloc_commit_warp();
+          memcpy(tid_unlocked, wpt->tid, sizeof(int)*warp_size);
+          dq_push(shd->thd_commit_queue,(void*)tid_unlocked);
+       }
+    }
+
+    // the warp is ready to be fetched again, remove this warp_tracker
+    for (unsigned i=0; i<warp_size; i++) {
+	   if (wpt->tid[i] >= 0) {
+		  warp_tracker_map[sid][wpt->tid[i]] = NULL;
+		  g_warp_tracker_map_setl_cycle[sid][wpt->tid[i]] = gpu_tot_sim_cycle + gpu_sim_cycle;
+	   }
+    }
+
+    free_warp_tracker( wpt );
+}
+
+*/
+
+/*
+ * Signal that the a thread is done and is exiting (exit instruction)
+ *
+ * Marks a thread as completed. If all threads in the warp have completed, call register_cta_thread_exit on all
+ * threads and removed the warp from warp tracker.
+ *
+ * @param tid Thread that is exiting
+ * @param *shd Pointer to the shader core
+ *
+ * @return The warp's mask of active threads.
+ */
+//
+
+/*
 int wpt_signal_complete( int tid, shader_core_ctx_t *shd ) 
 {
    int sid = shd->sid;
@@ -281,6 +465,7 @@ int wpt_signal_complete( int tid, shader_core_ctx_t *shd )
       return 0;
    }
 }
+*/
 
 //------------------------------------------------------------------------------------
 

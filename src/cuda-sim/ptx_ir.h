@@ -565,6 +565,13 @@ public:
    bool is_label() const { return m_type == label_t;}
    bool is_builtin() const { return m_type == builtin_t;}
    bool is_memory_operand() const { return m_type == memory_t;}
+   // Memory operand with immediate access (ex. s[0x0004] or g[$r1+=0x0004])
+   bool is_memory_operand2() const { 
+      /* TODO: modify after integrate with ptxplus*/ 
+      return m_type == memory_t; 
+      /*return (m_addr_space==1 || m_addr_space==2 || m_addr_space==3 || m_addr_space==4);*/ 
+   }
+
    bool is_literal() const { return m_type == int_t ||
       m_type == float_op_t ||
       m_type == double_op_t ||
@@ -620,6 +627,8 @@ public:
    }
    bool is_neg_pred() const { return m_neg_pred; }
    bool is_valid() const { return m_valid; }
+
+   int get_double_operand_type() const { return 0; /* TODO: modify after integrate with ptxplus*/ }
 
 private:
    unsigned m_uid;
@@ -828,6 +837,17 @@ public:
 
    unsigned warp_size() const { return m_warp_size; }
    int membar_level() const { return m_membar_level; }
+
+   bool has_memory_read() const {
+      if( m_opcode == LD_OP || m_opcode == TEX_OP ) 
+         return true;
+      return false;
+   }
+   bool has_memory_write() const {
+      if( m_opcode == ST_OP ) return true;
+      return false;
+   }
+
 private:
    basic_block_t        *m_basic_block;
    unsigned          m_uid;
@@ -958,8 +978,11 @@ public:
                          int *o4,
                          int *vectorin,
                          int *vectorout,
-                         int *arch_reg );
-   void ptx_exec_inst( ptx_thread_info *thd, addr_t *addr, memory_space_t *space, unsigned *data_size, dram_callback_t* callback, unsigned warp_active_mask  );
+                         int *arch_reg,
+                         int *pred,
+                         int *ar1, int *ar2 );
+   void ptx_exec_inst( ptx_thread_info *thd, addr_t *addr, memory_space_t *space, unsigned *data_size, unsigned *cycles, dram_callback_t* callback, unsigned warp_active_mask  );
+   unsigned ptx_get_inst_op( ptx_thread_info *thread );
    void add_param( const char *name, struct param_t value )
    {
       m_kernel_params[ name ] = value;

@@ -100,6 +100,9 @@
 
 #include <stdio.h>
 #include <string.h>
+
+#include <queue>
+
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
 bool g_interactive_debugger_enabled=false;
@@ -224,14 +227,15 @@ unsigned int gpu_mem_n_bk;
 unsigned int gpu_n_mem_per_ctrlr;
 unsigned int gpu_n_shader;
 int gpu_concentration;
-int gpu_n_tpc = 8;
+int gpu_n_tpc;
 unsigned int gpu_n_mshr_per_shader;
-unsigned int gpu_n_thread_per_shader = 128;
+unsigned int gpu_n_thread_per_shader;
 unsigned int gpu_n_warp_per_shader;
 unsigned int gpu_n_mshr_per_thread = 1;
 bool gpgpu_reg_bankconflict;
 bool gpgpu_operand_collector;
 int gpgpu_operand_collector_num_units;
+int gpgpu_operand_collector_num_units_sfu;
 unsigned int gpgpu_pre_mem_stages;
 bool gpgpu_no_divg_load;
 char *gpgpu_dwf_hw_opt;
@@ -244,6 +248,7 @@ int *num_warps_issuable;
 int *num_warps_issuable_pershader;
 bool gpgpu_cuda_sim;
 bool gpgpu_spread_blocks_across_cores;
+bool gpgpu_stall_on_use;
 shader_core_ctx_t **sc;
 dram_t **dram;
 unsigned int common_clock = 0;
@@ -282,11 +287,23 @@ void print_shader_cycle_distro( FILE *fout ) ;
 void find_reconvergence_points();
 void dwf_process_reconv_pts();
 
+int   g_ptx_inst_debug_to_file;
+char* g_ptx_inst_debug_file;
+int   g_ptx_inst_debug_thread_uid;
+
 #define CREATELOG 111
 #define SAMPLELOG 222
 #define DUMPLOG 333
 void L2c_log(int task);
 void dram_log(int task);
+
+// DRAM delay queue and memory_fetch container
+// A delay queue for each mem - vector of queues
+struct dram_delay_t{
+	unsigned long long ready_cycle;
+	mem_fetch_t* mf;
+};
+std::vector< std::queue<dram_delay_t> > dram_delay_queues;
 
 void visualizer_options(option_parser_t opp);
 void gpu_reg_options(option_parser_t opp)
@@ -466,6 +483,11 @@ void gpu_reg_options(option_parser_t opp)
                 "Spread block-issuing across all cores instead of filling up core by core (do NOT disable)", 
                 "1");
 
+   option_parser_register(opp, "-gpgpu_stall_on_use", OPT_BOOL,
+                &gpgpu_stall_on_use,
+                "Enable stall-on-use",
+                "1");
+
    option_parser_register(opp, "-gpgpu_cuda_sim", OPT_BOOL, &gpgpu_cuda_sim, 
                 "use PTX instruction set", 
                 "1");
@@ -507,10 +529,26 @@ void gpu_reg_options(option_parser_t opp)
    option_parser_register(opp, "-gpgpu_num_reg_banks", OPT_INT32, &gpgpu_num_reg_banks, 
                "Number of register banks (default = 8)", 
                "8");
+   option_parser_register(opp, "-gpgpu_reg_bank_use_warp_id", OPT_BOOL, &gpgpu_reg_bank_use_warp_id,
+            "Use warp ID in mapping registers to banks (default = off)",
+            "0");
+   option_parser_register(opp, "-gpgpu_ptx_inst_debug_to_file", OPT_BOOL, 
+                &g_ptx_inst_debug_to_file, 
+                "Dump executed instructions' debug information to file", 
+                "0");
+   option_parser_register(opp, "-gpgpu_ptx_inst_debug_file", OPT_CSTR, &g_ptx_inst_debug_file, 
+                  "Executed instructions' debug output file",
+                  "inst_debug.txt");
+   option_parser_register(opp, "-gpgpu_ptx_inst_debug_thread_uid", OPT_INT32, &g_ptx_inst_debug_thread_uid, 
+               "Thread UID for executed instructions' debug output", 
+               "1");
    option_parser_register(opp, "-gpgpu_operand_collector", OPT_BOOL, &gpgpu_operand_collector,
                "Enable operand collector model (default = off)",
                "0");
    option_parser_register(opp, "-gpgpu_operand_collector_num_units", OPT_INT32, &gpgpu_operand_collector_num_units,
+               "number of collecture units (default = 4)", 
+               "4");
+   option_parser_register(opp, "-gpgpu_operand_collector_num_units_sfu", OPT_INT32, &gpgpu_operand_collector_num_units_sfu,
                "number of collecture units (default = 4)", 
                "4");
    option_parser_register(opp, "-gpgpu_coalesce_arch", OPT_INT32, &gpgpu_coalesce_arch, 
@@ -578,8 +616,10 @@ void init_gpu ()
    gpgpu_no_divg_load = gpgpu_no_divg_load && (gpgpu_simd_model == DWF);
    // always use no diverge on load for PDOM and NAIVE
    gpgpu_no_divg_load = gpgpu_no_divg_load || (gpgpu_simd_model == POST_DOMINATOR || gpgpu_simd_model == NO_RECONVERGE);
-   if (gpgpu_no_divg_load)
-      init_warp_tracker();
+   if (gpgpu_no_divg_load) {
+      //init_warp_tracker();
+      printf("warp_tracker_pool size = %d\n", get_warp_tracker_pool().size());
+   }
 
    assert(gpu_n_shader % gpu_concentration == 0);
    gpu_n_tpc = gpu_n_shader / gpu_concentration;
@@ -747,6 +787,11 @@ unsigned int run_gpu_sim(int grid_num)
    if (g_network_mode) {
       icnt_init_grid(); 
    }
+
+   // Initialize dram delay queues
+   dram_delay_queues.resize(gpu_n_mem);
+
+
    last_gpu_sim_insn = 0;
    // add this condition as well? (gpgpu_n_processed_writes < gpgpu_n_sent_writes)
    while (not_completed || mem_busy || icnt2mem_busy) {
@@ -1230,6 +1275,7 @@ int mem_ctrl_full( int mc_id )
 //#define DEBUG_PARTIAL_WRITES
 void mem_ctrl_push( int mc_id, mem_fetch_t* mf ) 
 {
+   dram[mc_id]->m_request_tracker.insert(mf);
    if (gpgpu_cache_dl2_opt) {
       L2c_push(dram[mc_id], mf);
    } else {
@@ -1258,6 +1304,7 @@ void* mem_ctrl_pop( int mc_id )
          dram_callback_t* cb = &(mf->mshr->insts[0].callback);
          cb->function(cb->instruction, cb->thread);
       }
+      dram[mc_id]->m_request_tracker.erase(mf);
       return mf;
    } else {
       mf = static_cast<mem_fetch_t*> (dq_pop(dram[mc_id]->returnq)); //dram_pop(dram[mc_id]);
@@ -1266,6 +1313,7 @@ void* mem_ctrl_pop( int mc_id )
          dram_callback_t* cb = &(mf->mshr->insts[0].callback);
          cb->function(cb->instruction, cb->thread);
       }
+      dram[mc_id]->m_request_tracker.erase(mf);
       return mf;
    }
 }
@@ -1446,11 +1494,10 @@ void gpu_sim_loop( int grid_num )
 
    if (clock_mask & ICNT) {
       // pop memory request from ICNT and 
-      // push it to the proper memory controller (L2 or DRAM controller)
+      // push it to a dram delay queue
       for (unsigned i=0;i<gpu_n_mem;i++) {
-
+      	 // Push memory request to dram delay queue if mem_ctrl is not full
          if ( mem_ctrl_full(i) ) {
-            gpu_stall_dramfull++;
             continue;
          }
 
@@ -1458,15 +1505,35 @@ void gpu_sim_loop( int grid_num )
          mf = (mem_fetch_t*) icnt_pop( mem2device(i) );
 
          if (mf) {
-            if (mf->type==RD_REQ) {
-               time_vector_update(mf->mshr->insts[0].uid ,MR_DRAMQ,gpu_sim_cycle+gpu_tot_sim_cycle,mf->type ) ;             
-            } else {
-               time_vector_update(mf->request_uid ,MR_DRAMQ,gpu_sim_cycle+gpu_tot_sim_cycle,mf->type ) ;
-            }
-            memlatstat_icnt2mem_pop(mf);
-            mem_ctrl_push( i, mf );
+
+        	dram_delay_t dram_delay;
+        	dram_delay.mf = mf;
+        	dram_delay.ready_cycle = gpu_sim_cycle + gpu_tot_sim_cycle + 115; // Add 115*4=460 delay cycles
+        	dram_delay_queues[i].push(dram_delay);
          }
       }
+
+      // pop memory request from dram delay queue and
+      // push it to the proper memory controller (L2 or DRAM controller)
+      for (unsigned i=0;i<gpu_n_mem;i++) {
+    	  if(!dram_delay_queues[i].empty() && dram_delay_queues[i].front().ready_cycle <= gpu_sim_cycle + gpu_tot_sim_cycle) {
+    		  if ( mem_ctrl_full(i) ) {
+				gpu_stall_dramfull++;
+				continue;
+			  }
+    		  mem_fetch_t* mf = dram_delay_queues[i].front().mf;
+              if (mf->type==RD_REQ) {
+                 time_vector_update(mf->mshr->insts[0].uid ,MR_DRAMQ,gpu_sim_cycle+gpu_tot_sim_cycle,mf->type ) ;
+              } else {
+                 time_vector_update(mf->request_uid ,MR_DRAMQ,gpu_sim_cycle+gpu_tot_sim_cycle,mf->type ) ;
+              }
+              memlatstat_icnt2mem_pop(mf);
+              mem_ctrl_push( i, mf );
+
+              dram_delay_queues[i].pop();
+    	  }
+      }
+
       icnt_transfer( );
    }
 

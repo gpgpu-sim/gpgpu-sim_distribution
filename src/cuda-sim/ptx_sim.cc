@@ -310,42 +310,47 @@ void ptx_thread_info::print_insn( unsigned pc, FILE * fp ) const
    m_func_info->print_insn(pc,fp);
 }
 
-static void print_reg( std::string name, ptx_reg_t value, symbol_table *symtab )
+static void print_reg( FILE *fp, std::string name, ptx_reg_t value, symbol_table *symtab )
 {
    const symbol *sym = symtab->lookup(name.c_str());
-   printf("  %8s   ", name.c_str() );
+   fprintf(fp,"  %8s   ", name.c_str() );
    if( sym == NULL ) {
-      printf("<unknown type> 0x%llx\n", (unsigned long long ) value.u64 );
+      fprintf(fp,"<unknown type> 0x%llx\n", (unsigned long long ) value.u64 );
       return;
    }
    const type_info *t = sym->type();
    if( t == NULL ) {
-      printf("<unknown type> 0x%llx\n", (unsigned long long ) value.u64 );
+      fprintf(fp,"<unknown type> 0x%llx\n", (unsigned long long ) value.u64 );
       return;
    }
    type_info_key ti = t->get_key();
 
    switch ( ti.scalar_type() ) {
-   case S8_TYPE:  printf(".s8  %d\n", value.s8 );  break;
-   case S16_TYPE: printf(".s16 %d\n", value.s16 ); break;
-   case S32_TYPE: printf(".s32 %d\n", value.s32 ); break;
-   case S64_TYPE: printf(".s64 %Ld\n", value.s64 ); break;
-   case U8_TYPE:  printf(".u8  0x%02x\n", (unsigned) value.u8 );  break;
-   case U16_TYPE: printf(".u16 0x%04x\n", (unsigned) value.u16 ); break;
-   case U32_TYPE: printf(".u32 0x%08x\n", (unsigned) value.u32 ); break;
-   case U64_TYPE: printf(".u64 0x%llx\n", value.u64 ); break;
-   case F16_TYPE: printf(".f16 %f [0x%04x]\n",  value.f16, (unsigned) value.u16 ); break;
-   case F32_TYPE: printf(".f32 %.15lf [0x%08x]\n",  value.f32, value.u32 ); break;
-   case F64_TYPE: printf(".f64 %.15le [0x%016llx]\n", value.f64, value.u64 ); break;
-   case B8_TYPE:  printf(".b8  0x%02x\n",   (unsigned) value.u8 );  break;
-   case B16_TYPE: printf(".b16 0x%04x\n",   (unsigned) value.u16 ); break;
-   case B32_TYPE: printf(".b32 0x%08x\n", (unsigned) value.u32 ); break;
-   case B64_TYPE: printf(".b64 0x%llx\n",    (unsigned long long ) value.u64 ); break;
-   case PRED_TYPE: printf(".pred %u\n",     (unsigned) value.pred ); break;
+   case S8_TYPE:  fprintf(fp,".s8  %d\n", value.s8 );  break;
+   case S16_TYPE: fprintf(fp,".s16 %d\n", value.s16 ); break;
+   case S32_TYPE: fprintf(fp,".s32 %d\n", value.s32 ); break;
+   case S64_TYPE: fprintf(fp,".s64 %Ld\n", value.s64 ); break;
+   case U8_TYPE:  fprintf(fp,".u8  0x%02x\n", (unsigned) value.u8 );  break;
+   case U16_TYPE: fprintf(fp,".u16 0x%04x\n", (unsigned) value.u16 ); break;
+   case U32_TYPE: fprintf(fp,".u32 0x%08x\n", (unsigned) value.u32 ); break;
+   case U64_TYPE: fprintf(fp,".u64 0x%llx\n", value.u64 ); break;
+   case F16_TYPE: fprintf(fp,".f16 %f [0x%04x]\n",  value.f16, (unsigned) value.u16 ); break;
+   case F32_TYPE: fprintf(fp,".f32 %.15lf [0x%08x]\n",  value.f32, value.u32 ); break;
+   case F64_TYPE: fprintf(fp,".f64 %.15le [0x%016llx]\n", value.f64, value.u64 ); break;
+   case B8_TYPE:  fprintf(fp,".b8  0x%02x\n",   (unsigned) value.u8 );  break;
+   case B16_TYPE: fprintf(fp,".b16 0x%04x\n",   (unsigned) value.u16 ); break;
+   case B32_TYPE: fprintf(fp,".b32 0x%08x\n", (unsigned) value.u32 ); break;
+   case B64_TYPE: fprintf(fp,".b64 0x%llx\n",    (unsigned long long ) value.u64 ); break;
+   case PRED_TYPE: fprintf(fp,".pred %u\n",     (unsigned) value.pred ); break;
    default: 
-      printf( "non-scalar type\n" );
+      fprintf( fp, "non-scalar type\n" );
       break;
    }
+}
+
+static void print_reg( std::string name, ptx_reg_t value, symbol_table *symtab )
+{
+   print_reg(stdout,name,value,symtab);
 }
 
 void ptx_thread_info::callstack_push( unsigned pc, unsigned rpc, const symbol *return_var_src, const symbol *return_var_dst, unsigned call_uid )
@@ -438,7 +443,12 @@ const ptx_instruction *ptx_thread_info::get_inst( addr_t pc ) const
 
 void ptx_thread_info::dump_regs()
 {
-   printf("Register File Contents:\n");
+   dump_regs(stdout);
+}
+
+void ptx_thread_info::dump_regs( FILE *fp )
+{
+   fprintf(fp,"Register File Contents:\n");
    reg_map_t::const_iterator r;
    for ( r=m_regs.back().begin(); r != m_regs.back().end(); ++r ) {
       std::string name = r->first->name();
@@ -449,9 +459,14 @@ void ptx_thread_info::dump_regs()
 
 void ptx_thread_info::dump_modifiedregs()
 {
+   dump_modifiedregs(stdout);
+}
+
+void ptx_thread_info::dump_modifiedregs(FILE *fp)
+{
    if( m_debug_trace_regs_modified.empty() ) 
       return;
-   printf("Modified Registers:\n");
+   fprintf(fp,"Modified Registers:\n");
    reg_map_t::const_iterator r;
    for ( r=m_debug_trace_regs_modified.begin(); r != m_debug_trace_regs_modified.end(); ++r ) {
       std::string name = r->first->name();

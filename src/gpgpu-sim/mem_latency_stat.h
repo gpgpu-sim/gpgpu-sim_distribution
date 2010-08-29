@@ -93,7 +93,6 @@ extern unsigned int **totalbankwrites; //bankwrites[dram chip id][bank id]
 extern unsigned int **totalbankreads; //bankreads[dram chip id][bank id]
 extern unsigned int **totalbankaccesses; //bankaccesses[dram chip id][bank id]
 extern unsigned int *requests_by_warp;
-extern unsigned int *MCB_accesses; //upon cache miss, tracks which memory controllers accessed by a warp
 extern unsigned int *num_MCBs_accessed; //tracks how many memory controllers are accessed whenever any thread in a warp misses in cache
 extern unsigned int *position_of_mrq_chosen; //position of mrq in m_queue chosen 
 extern unsigned *mf_num_lat_pw_perwarp;

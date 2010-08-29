@@ -104,7 +104,6 @@ unsigned int **totalbankwrites; //bankwrites[dram chip id][bank id]
 unsigned int **totalbankreads; //bankreads[dram chip id][bank id]
 unsigned int **totalbankaccesses; //bankaccesses[dram chip id][bank id]
 unsigned int *requests_by_warp;
-unsigned int *MCB_accesses; //upon cache miss, tracks which memory controllers accessed by a warp
 unsigned int *num_MCBs_accessed; //tracks how many memory controllers are accessed whenever any thread in a warp misses in cache
 unsigned int *position_of_mrq_chosen; //position of mrq in m_queue chosen 
 unsigned *mf_num_lat_pw_perwarp;
@@ -149,8 +148,7 @@ void memlatstat_init( )
    mf_max_lat_table = (unsigned **) calloc(gpu_n_mem, sizeof(unsigned *));
    bankreads = (unsigned int***) calloc(gpu_n_shader, sizeof(unsigned int**));
    bankwrites = (unsigned int***) calloc(gpu_n_shader, sizeof(unsigned int**));
-   MCB_accesses = (unsigned int*) calloc(gpu_n_mem*4, sizeof(unsigned int));
-   num_MCBs_accessed = (unsigned int*) calloc(gpu_n_mem*4+1, sizeof(unsigned int));
+   num_MCBs_accessed = (unsigned int*) calloc(gpu_n_mem*gpu_mem_n_bk, sizeof(unsigned int));
    if (gpgpu_dram_sched_queue_size) {
       position_of_mrq_chosen = (unsigned int*) calloc(gpgpu_dram_sched_queue_size, sizeof(unsigned int));
    } else
@@ -512,7 +510,7 @@ void memlatstat_print( )
       printf("\nNumber of Memory Banks Accessed per Memory Operation per Warp (from 0):\n");
       unsigned long long accum_MCBs_accessed = 0;
       unsigned long long tot_mem_ops_per_warp = 0;
-      for (i=0;i<= gpu_n_mem*4 ; i++ ) {
+      for (i=0;i<= gpu_n_mem*gpu_mem_n_bk ; i++ ) {
          accum_MCBs_accessed += i*num_MCBs_accessed[i];
          tot_mem_ops_per_warp += num_MCBs_accessed[i];
          printf("%d\t", num_MCBs_accessed[i]);

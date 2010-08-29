@@ -540,7 +540,7 @@ void destroy_thread_CFlogger( )
          remove_spill_log(thread_CFlogger[i]);
          delete thread_CFlogger[i];
       }
-      delete thread_CFlogger;
+      delete [] thread_CFlogger;
       thread_CFlogger = NULL;
    }
 }

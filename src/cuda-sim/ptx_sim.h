@@ -414,7 +414,9 @@ public:
       m_PC = m_NPC;
    }
    void dump_regs();
+   void dump_regs(FILE *fp);
    void dump_modifiedregs();
+   void dump_modifiedregs(FILE *fp);
    void clear_modifiedregs() { m_debug_trace_regs_modified.clear();}
    function_info *get_finfo() { return m_func_info;   }
    const function_info *get_finfo() const { return m_func_info;   }

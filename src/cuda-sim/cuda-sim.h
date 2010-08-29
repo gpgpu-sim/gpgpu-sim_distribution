@@ -89,11 +89,15 @@ void ptx_decode_inst( void *thd,
                       int *o4, 
                       int *vectorin, 
                       int *vectorout, 
-                      int *arch_reg );
+                      int *arch_reg, 
+                      int *pred,
+                      int *ar1, 
+                      int *ar2 );
 void ptx_exec_inst( void *thd, 
                     address_type *addr, 
                     memory_space_t *space, 
-                    unsigned *data_size, 
+                    unsigned *data_size,
+                    unsigned *cycles, 
                     dram_callback_t* callback, 
                     unsigned warp_active_mask );
 

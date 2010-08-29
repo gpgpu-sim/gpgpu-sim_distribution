@@ -86,6 +86,7 @@ dram_t* dram_create( unsigned int id, unsigned int nbk,
    unsigned i;
 
    dm = (dram_t*)calloc(1,sizeof(dram_t));
+   dm = new (dm) dram_t();
 
    dm->id = id;
 
@@ -577,17 +578,6 @@ void dram_print_stat( dram_t* dm, FILE* simFile )
 
 unsigned dram_busy( dram_t* dm) 
 {
-   unsigned busy = 0;
-
-   switch (dm->scheduler_type) {
-   case DRAM_FIFO:
-      busy = (dm->mrqq->length > 0);
-      break;
-   case DRAM_IDEAL_FAST:
-      busy = (fast_scheduler_queue_length(dm) > 0) || (dm->mrqq->length > 0);
-      break;
-   }
-
-   return busy;
+   return !dm->m_request_tracker.empty();
 }
 

@@ -143,6 +143,7 @@ extern unsigned int gpu_stall_shd_mem;
 extern unsigned int gpu_stall_sh2icnt;
 extern bool gpgpu_operand_collector;
 extern int gpgpu_operand_collector_num_units;
+extern int gpgpu_operand_collector_num_units_sfu;
 extern int gpu_runtime_stat_flag;
 extern unsigned int *max_return_queue_length;
 extern int gpgpu_partial_write_mask;
@@ -167,5 +168,8 @@ extern unsigned int gpgpu_n_processed_writes;
 extern int gpgpu_simd_model;
 extern unsigned int gpu_mem_n_bk;
 extern unsigned g_next_mf_request_uid;
+extern int   g_ptx_inst_debug_to_file;
+extern char* g_ptx_inst_debug_file;
+extern int   g_ptx_inst_debug_thread_uid;
 
 #endif

@@ -524,13 +524,57 @@ void ptx_print_insn( address_type pc, FILE *fp )
    finfo->print_insn(pc,fp);
 }
 
+static void get_opcode_info( const ptx_instruction *pI, unsigned opcode, unsigned *cycles, unsigned *op_type )
+{
+   *op_type = ALU_OP;
+   *cycles = 1;
+   if ( opcode == LD_OP ) {
+      *op_type = LOAD_OP;
+   } else if ( opcode == ST_OP ) {
+      *op_type = STORE_OP;
+   } else if ( opcode == BRA_OP ) {
+      *op_type = BRANCH_OP;
+   } else if ( opcode == TEX_OP ) {
+      *op_type = LOAD_OP;
+   } else if ( opcode == ATOM_OP ) {
+      *op_type = LOAD_OP; // make atomics behave more like a load.
+   } else if ( opcode == BAR_OP ) {
+      *op_type = BARRIER_OP;
+   }
+
+   // Floating point instructions
+   if( opcode == RCP_OP || opcode == LG2_OP || opcode == RSQRT_OP ) {
+      *cycles = 4;
+      *op_type = SFU_OP;
+   } else if( opcode == SQRT_OP || opcode == SIN_OP || opcode == COS_OP || opcode == EX2_OP ) {
+      *cycles = 4;
+      *op_type = SFU_OP;
+   } else if( opcode == DIV_OP ) {
+      // Floating point only
+      if( pI->get_type() == F32_TYPE || pI->get_type() == F64_TYPE ) {
+         *cycles = 8;         
+         *op_type = SFU_OP;
+      }
+   }
+   // Integer instructions
+   if( opcode == MUL_OP ) {
+      if( pI->get_type() == B32_TYPE || pI->get_type() == U32_TYPE || pI->get_type() == S32_TYPE ) {
+         // 32-bit integer instruction
+         *cycles = 4;
+         *op_type = SFU_OP;
+      }
+   }
+}
+
 void function_info::ptx_decode_inst( ptx_thread_info *thread, 
                                      unsigned *op_type, 
                                      int *i1, int *i2, int *i3, int *i4, 
                                      int *o1, int *o2, int *o3, int *o4, 
                                      int *vectorin, 
                                      int *vectorout,
-                                     int *arch_reg )
+                                     int *arch_reg,
+                                     int *pred,
+                                     int *ar1, int *ar2 )
 {
    addr_t pc = thread->get_pc();
    unsigned index = pc - m_start_PC;
@@ -549,21 +593,10 @@ void function_info::ptx_decode_inst( ptx_thread_info *thread,
       break;
    }
 
-   *op_type = ALU_OP;
-   if ( opcode == LD_OP ) {
-      *op_type = LOAD_OP;
-   } else if ( opcode == ST_OP ) {
-      *op_type = STORE_OP;
-   } else if ( opcode == BRA_OP ) {
-      *op_type = BRANCH_OP;
-   } else if ( opcode == TEX_OP ) {
-      *op_type = LOAD_OP;
-   } else if ( opcode == ATOM_OP ) {
-      *op_type = LOAD_OP; // make atomics behave more like a load.
-   } else if ( opcode == BAR_OP ) {
-      *op_type = BARRIER_OP;
-   }
+   unsigned cycles;
+   get_opcode_info(pI,opcode,&cycles,op_type);
 
+   // Get register operands
    int n=0,m=0;
    ptx_instruction::const_iterator op=pI->op_iter_begin();
    for ( ; op != pI->op_iter_end(); op++, n++ ) { //process operands
@@ -606,6 +639,37 @@ void function_info::ptx_decode_inst( ptx_thread_info *thread,
             m+=4;
          }
       }
+   }
+
+   // Get predicate
+   if(pI->has_pred()) {
+	   const operand_info &p = pI->get_pred();
+	   *pred = p.reg_num();
+   }
+
+   // Get address registers inside memory operands.
+   // Assuming only one memory operand per instruction,
+   //  and maximum of two address registers for one memory operand.
+   if( pI->has_memory_read() || pI->has_memory_write() ) {
+	  ptx_instruction::const_iterator op=pI->op_iter_begin();
+	  for ( ; op != pI->op_iter_end(); op++, n++ ) { //process operands
+	     const operand_info &o = *op;
+
+	     // memory operand with addressing (ex. s[0x4] or g[$r1])
+	     if(o.is_memory_operand2()) {
+	    	 // memory operand with one address register (ex. g[$r1] or s[$r2+0x4])
+	    	 if(o.get_double_operand_type() == 0 && o.is_memory_operand()){
+             const symbol *base_addr = o.get_symbol();
+             if( base_addr->is_reg() ) 
+                *ar1 = base_addr->reg_num();
+	    	 }
+	    	 // memory operand with two address register (ex. s[$r1+$r1] or g[$r1+=$r2])
+	    	 else if(o.get_double_operand_type() == 1 || o.get_double_operand_type() == 2) {
+	    		 *ar1 = o.reg1_num();
+	    		 *ar2 = o.reg2_num();
+	    	 }
+	     }
+	  }
    }
 }
 
@@ -773,11 +837,13 @@ unsigned datatype2size( unsigned data_type )
 }
 
 unsigned g_warp_active_mask;
+FILE *ptx_inst_debug_file;
 
 void function_info::ptx_exec_inst( ptx_thread_info *thread, 
                                    addr_t *addr, 
                                    memory_space_t *space, 
-                                   unsigned *data_size, 
+                                   unsigned *data_size,
+                                   unsigned *cycles,
                                    dram_callback_t* callback, 
                                    unsigned warp_active_mask  )
 {
@@ -832,10 +898,9 @@ void function_info::ptx_exec_inst( ptx_thread_info *thread,
    addr_t insn_memaddr = 0xFEEBDAED;
    memory_space_t insn_space = undefined_space;
    unsigned insn_data_size = 0;
-   if ( pI->get_opcode() == LD_OP || pI->get_opcode() == ST_OP || pI->get_opcode() == TEX_OP ) {
+   if ( (pI->has_memory_read()  || pI->has_memory_write()) ) {
       insn_memaddr = thread->last_eaddr();
       insn_space = thread->last_space();
-
       unsigned to_type = pI->get_type();
       insn_data_size = datatype2size(to_type);
    }
@@ -853,6 +918,47 @@ void function_info::ptx_exec_inst( ptx_thread_info *thread,
       // make sure that the callback isn't set
       callback->function = NULL;
       callback->instruction = NULL;
+   }
+
+   // Set number of cycles for this instruction
+   int opcode = pI->get_opcode(); //determine the opcode
+   unsigned op_type;
+   get_opcode_info(pI,opcode,cycles,&op_type);
+
+   if (pI->get_opcode() == TEX_OP) {
+      *addr = thread->last_eaddr();
+      *space = thread->last_space();
+
+      unsigned to_type = pI->get_type();
+      switch ( to_type ) {
+      case B8_TYPE:
+      case S8_TYPE:
+      case U8_TYPE: 
+         *data_size = 1; break;
+      case B16_TYPE:
+      case S16_TYPE:
+      case U16_TYPE:
+      case F16_TYPE: 
+         *data_size = 2; break;
+      case B32_TYPE:
+      case S32_TYPE:
+      case U32_TYPE:
+      case F32_TYPE: 
+         *data_size = 4; break;
+      case B64_TYPE:
+      case S64_TYPE:
+      case U64_TYPE:
+      case F64_TYPE: 
+         *data_size = 8; break;
+      default: assert(0); break;
+      }
+   }
+
+   // Output register information to file and stdout
+   if( g_ptx_inst_debug_to_file != 0 && 
+        (g_ptx_inst_debug_thread_uid == 0 || g_ptx_inst_debug_thread_uid == thread->get_uid()) ) {
+      thread->dump_modifiedregs(ptx_inst_debug_file);
+      thread->dump_regs(ptx_inst_debug_file);
    }
 
    if ( g_debug_execution >= 6 ) {
@@ -1414,6 +1520,8 @@ void gpgpu_cuda_ptx_sim_main_func( const char *kernel_key, dim3 gridDim, dim3 bl
    time_t end_time, elapsed_time, days, hrs, minutes, sec;
    int i1, i2, i3, i4, o1, o2, o3, o4;
    int vectorin, vectorout;
+   int pred;
+   int ar1, ar2;
 
    gpgpu_cuda_ptx_sim_init_grid(kernel_key, args,gridDim,blockDim);
 
@@ -1498,6 +1606,7 @@ void gpgpu_cuda_ptx_sim_main_func( const char *kernel_key, dim3 gridDim, dim3 bl
 
                   unsigned op_type;
                   addr_t addr;
+                  unsigned cycles;
                   memory_space_t space;
                   int arch_reg[MAX_REG_OPERANDS] = { -1 };
                   unsigned data_size;
@@ -1505,8 +1614,8 @@ void gpgpu_cuda_ptx_sim_main_func( const char *kernel_key, dim3 gridDim, dim3 bl
                   unsigned warp_active_mask = (unsigned)-1; // vote instruction with diverged warps won't execute correctly
                                                             // in functional simulation mode
 
-                  g_func_info->ptx_decode_inst( thread, &op_type, &i1, &i2, &i3, &i4, &o1, &o2, &o3, &o4, &vectorin, &vectorout, arch_reg );
-                  g_func_info->ptx_exec_inst( thread, &addr, &space, &data_size, &callback, warp_active_mask );
+                  g_func_info->ptx_decode_inst( thread, &op_type, &i1, &i2, &i3, &i4, &o1, &o2, &o3, &o4, &vectorin, &vectorout, arch_reg, &pred, &ar1, &ar2 );
+                  g_func_info->ptx_exec_inst( thread, &addr, &space, &data_size, &cycles, &callback, warp_active_mask );
                }
             }
          }
@@ -1532,7 +1641,7 @@ void gpgpu_cuda_ptx_sim_main_func( const char *kernel_key, dim3 gridDim, dim3 bl
    fflush(stdout); 
 }
 
-void ptx_decode_inst( void *thd, unsigned *op, int *i1, int *i2, int *i3, int *i4, int *o1, int *o2, int *o3, int *o4, int *vectorin, int *vectorout, int *arch_reg  )
+void ptx_decode_inst( void *thd, unsigned *op, int *i1, int *i2, int *i3, int *i4, int *o1, int *o2, int *o3, int *o4, int *vectorin, int *vectorout, int *arch_reg, int *pred, int *ar1, int *ar2 )
 {
    *op = NO_OP;
    *o1 = 0;
@@ -1546,22 +1655,35 @@ void ptx_decode_inst( void *thd, unsigned *op, int *i1, int *i2, int *i3, int *i
    *vectorin = 0;
    *vectorout = 0;
    std::fill_n(arch_reg, MAX_REG_OPERANDS, -1);
+   *pred = 0;
+   *ar1 = 0;
+   *ar2 = 0;
 
    if ( thd == NULL )
       return;
 
    ptx_thread_info *thread = (ptx_thread_info *) thd;
    g_func_info = thread->func_info();
-   g_func_info->ptx_decode_inst(thread,op,i1,i2,i3,i4,o1,o2,o3,o4,vectorin,vectorout,arch_reg);
+   g_func_info->ptx_decode_inst(thread,op,i1,i2,i3,i4,o1,o2,o3,o4,vectorin,vectorout,arch_reg,pred,ar1,ar2);
 }
 
-void ptx_exec_inst( void *thd, address_type *addr, memory_space_t *space, unsigned *data_size, dram_callback_t* callback, unsigned warp_active_mask )
+extern "C" unsigned ptx_get_inst_op( void *thd)
+{
+   if ( thd == NULL )
+      return NO_OP;
+
+   ptx_thread_info *thread = (ptx_thread_info *) thd;
+   return(thread->func_info())->ptx_get_inst_op(thread);
+}
+
+void ptx_exec_inst( void *thd, address_type *addr, memory_space_t *space, unsigned *data_size, unsigned *cycles, dram_callback_t* callback, unsigned warp_active_mask )
 {
    if ( thd == NULL )
       return;
+   *cycles = 1;
    ptx_thread_info *thread = (ptx_thread_info *) thd;
    g_func_info = thread->func_info();
-   g_func_info->ptx_exec_inst( thread, addr, space, data_size, callback, warp_active_mask );
+   g_func_info->ptx_exec_inst( thread, addr, space, data_size, cycles, callback, warp_active_mask );
 }
 
 void ptx_dump_regs( void *thd )

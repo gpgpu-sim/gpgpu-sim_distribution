@@ -87,6 +87,7 @@
 #define PRIORITIZE_MSHR_OVER_WB 1
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
+extern bool gpgpu_stall_on_use;
 enum mem_stage_access_type {
    C_MEM,
    T_MEM,
@@ -419,7 +420,9 @@ inst_t create_nop_inst() // just because C++ does not have designated initialize
    nop_inst.id_cycle = 0;
    nop_inst.ex_cycle = 0;
    nop_inst.mm_cycle = 0;
+   nop_inst.cache_miss = false;
    nop_inst.space = memory_space_t();
+   nop_inst.cycles = 0;
    return nop_inst;
 }
 
@@ -476,6 +479,24 @@ shader_core_ctx_t* shader_create( const char *name, int sid,
                                   unsigned int model )
 {
    shader_core_ctx_t *sc;
+   sc = (shader_core_ctx_t*)calloc(sizeof(shader_core_ctx_t),1);
+   sc = new (sc) shader_core_ctx(name,sid,n_threads,n_mshr,fq_push,fq_has_buffer,model,
+                                 gpu_n_warp_per_shader,gpgpu_shader_cta);
+   return sc;
+}
+
+shader_core_ctx::shader_core_ctx( const char *name, int sid, 
+                                  unsigned int n_threads, 
+                                  unsigned int n_mshr, 
+                                  fq_push_t fq_push, 
+                                  fq_has_buffer_t fq_has_buffer,
+                                  unsigned model,
+                                  unsigned max_warps_per_cta, unsigned max_cta_per_core )
+   : m_barriers( max_warps_per_cta, max_cta_per_core )
+{
+   shader_core_ctx *sc = this;
+   assert( !((model == DWF) && gpgpu_operand_collector) );
+
    int i;
    unsigned int shd_n_set;
    unsigned int shd_linesize;
@@ -503,9 +524,6 @@ shader_core_ctx_t* shader_create( const char *name, int sid,
          abort();
       }
    }
-
-   sc = (shader_core_ctx_t*)calloc(sizeof(shader_core_ctx_t),1);
-   sc = new (sc) shader_core_ctx_t( gpu_n_warp_per_shader, gpgpu_shader_cta );
 
    sc->name = name;
    sc->sid = sid;
@@ -627,7 +645,14 @@ shader_core_ctx_t* shader_create( const char *name, int sid,
 
    sc->shader_memory_new_instruction_processed = false;
 
-   return sc;
+   // Initialize scoreboard
+   sc->scrb = new Scoreboard(sc->sid, n_warp);
+
+   if( gpgpu_operand_collector ) {
+      m_opndcoll_new.init( gpgpu_operand_collector_num_units, 
+                           gpgpu_operand_collector_num_units_sfu, 
+                           gpgpu_num_reg_banks, this );
+   }
 }
 
 
@@ -1021,6 +1046,9 @@ void shader_fetch_simd_postdominator(shader_core_ctx_t *shader, unsigned int sha
          w_pipe_c++;
       } else if ( shader->warp_waiting_at_barrier(shader->next_warp) ) {
          w_barr_c++;
+      } else if ( shader_warp_scoreboard_hazard(shader, shader->next_warp) ) {
+    	  // Do nothing - warp is filtered out
+    	  //printf("SCOREBOARD COLLISION - wid=%d\n", shader->next_warp);
       } else {
          // A valid warp is found at this point
          tmp_ready_warps[ready_warp_count] = shader->next_warp;
@@ -1060,80 +1088,9 @@ void shader_fetch_simd_postdominator(shader_core_ctx_t *shader, unsigned int sha
 
    warp_id = shader->next_warp;
    last_warp[shader->sid] = warp_id;
-   int wtid = warp_size*shader->next_warp;
+   int wtid = warp_size*warp_id;
 
    pdom_warp_ctx_t *scheduled_warp = &(shader->pdom_warp[warp_id]);
-
-   int stack_top = scheduled_warp->m_stack_top;
-
-   address_type top_pc = scheduled_warp->m_pc[stack_top];
-   unsigned int top_active_mask = scheduled_warp->m_active_mask[stack_top];
-   address_type top_recvg_pc = scheduled_warp->m_recvg_pc[stack_top];
-
-   assert(top_active_mask != 0);
-
-   const address_type null_pc = 0;
-   int warp_diverged = 0;
-   address_type new_recvg_pc = null_pc;
-   while (top_active_mask != 0) {
-
-      // extract a group of threads with the same next PC among the active threads in the warp
-      address_type tmp_next_pc = null_pc;
-      unsigned int tmp_active_mask = 0;
-      void *first_active_thread=NULL;
-      for (i = warp_size - 1; i >= 0; i--) {
-         unsigned int mask = (1 << i);
-         if ((top_active_mask & mask) == mask) { // is this thread active?
-            if (ptx_thread_done( shader->thread[wtid+i].ptx_thd_info )) {
-               top_active_mask &= ~mask; // remove completed thread from active mask
-            } else if (tmp_next_pc == null_pc) {
-               first_active_thread = shader->thread[wtid+i].ptx_thd_info;
-               tmp_next_pc = shader_thread_nextpc(shader, wtid+i);
-               tmp_active_mask |= mask;
-               top_active_mask &= ~mask;
-            } else if (tmp_next_pc == shader_thread_nextpc(shader, wtid+i)) {
-               tmp_active_mask |= mask;
-               top_active_mask &= ~mask;
-            }
-         }
-      }
-
-      // discard the new entry if its PC matches with reconvergence PC
-      // that automatically reconverges the entry 
-      if (tmp_next_pc == top_recvg_pc) continue;
-
-      // this new entry is not converging
-      // if this entry does not include thread from the warp, divergence occurs
-      if (top_active_mask != 0 && warp_diverged == 0) {
-         warp_diverged = 1;
-         // modify the existing top entry into a reconvergence entry in the pdom stack
-         new_recvg_pc = get_converge_point(top_pc,first_active_thread);
-         if (new_recvg_pc != top_recvg_pc) {
-            scheduled_warp->m_pc[stack_top] = new_recvg_pc;
-            scheduled_warp->m_branch_div_cycle[stack_top] = gpu_sim_cycle;
-            stack_top += 1;
-            scheduled_warp->m_branch_div_cycle[stack_top] = 0;
-         }
-      }
-
-      // discard the new entry if its PC matches with reconvergence PC
-      if (warp_diverged && tmp_next_pc == new_recvg_pc) continue;
-
-      // update the current top of pdom stack
-      scheduled_warp->m_pc[stack_top] = tmp_next_pc;
-      scheduled_warp->m_active_mask[stack_top] = tmp_active_mask;
-      if (warp_diverged) {
-         scheduled_warp->m_calldepth[stack_top] = 0;
-         scheduled_warp->m_recvg_pc[stack_top] = new_recvg_pc;
-      } else {
-         scheduled_warp->m_recvg_pc[stack_top] = top_recvg_pc;
-      }
-      stack_top += 1; // set top to next entry in the pdom stack
-   }
-   scheduled_warp->m_stack_top = stack_top - 1;
-
-   assert(scheduled_warp->m_stack_top >= 0);
-   assert(scheduled_warp->m_stack_top < (int)warp_size * 2);
 
    // schedule threads according to active mask on the top of pdom stack
    for (i = 0; i < (int)warp_size; i++) {
@@ -1155,6 +1112,124 @@ void shader_fetch_simd_postdominator(shader_core_ctx_t *shader, unsigned int sha
          }
       }
    }
+}
+
+bool shader_warp_scoreboard_hazard(shader_core_ctx_t *shader, int warp_id) {
+	static inst_t active_inst;
+	static op_type op = NO_OP;
+	static int i1, i2, i3, i4, o1, o2, o3, o4; //4 outputs needed for texture fetches in cuda-sim
+	static int vectorin, vectorout;
+	static int arch_reg[MAX_REG_OPERANDS] = { -1 };
+	static int pred;
+	static int ar1, ar2; // address registers for memory operands
+
+	// Get an active thread in the warp
+	int wtid = warp_size*warp_id;
+	pdom_warp_ctx_t *scheduled_warp = &(shader->pdom_warp[warp_id]);
+	thread_ctx_t *active_thread = NULL;
+	for (int i = 0; i < (int)warp_size; i++) {
+		unsigned int mask = (1 << i);
+		if ((scheduled_warp->m_active_mask[scheduled_warp->m_stack_top] & mask) == mask) {
+			active_thread = &(shader->thread[wtid+i]);
+		}
+	}
+	if(active_thread == NULL) return false;
+
+	// Decode instruction
+	ptx_decode_inst( active_thread->ptx_thd_info, (unsigned*)&op, &i1, &i2, &i3, &i4, &o1, &o2, &o3, &o4, &vectorin, &vectorout, arch_reg, &pred, &ar1, &ar2);
+	active_inst.op = op;
+	active_inst.in[0] = i1;
+	active_inst.in[1] = i2;
+	active_inst.in[2] = i3;
+	active_inst.in[3] = i4;
+	active_inst.out[0] = o1;
+	active_inst.out[1] = o2;
+	active_inst.out[2] = o3;
+	active_inst.out[3] = o4;
+	active_inst.is_vectorin = vectorin;
+	active_inst.is_vectorout = vectorout;
+	active_inst.pred = pred;
+	active_inst.ar1 = ar1;
+	active_inst.ar2 = ar2;
+
+	return shader->scrb->checkCollision(warp_id, &active_inst);
+}
+
+void shader_pdom_update_warp_mask(shader_core_ctx_t *shader, int warp_id) {
+	int wtid = warp_size*warp_id;
+
+	pdom_warp_ctx_t *scheduled_warp = &(shader->pdom_warp[warp_id]);
+
+	int stack_top = scheduled_warp->m_stack_top;
+
+	address_type top_pc = scheduled_warp->m_pc[stack_top];
+	unsigned int top_active_mask = scheduled_warp->m_active_mask[stack_top];
+	address_type top_recvg_pc = scheduled_warp->m_recvg_pc[stack_top];
+
+	assert(top_active_mask != 0);
+
+	const address_type null_pc = 0;
+	int warp_diverged = 0;
+	address_type new_recvg_pc = null_pc;
+	while (top_active_mask != 0) {
+
+	  // extract a group of threads with the same next PC among the active threads in the warp
+	  address_type tmp_next_pc = null_pc;
+	  unsigned int tmp_active_mask = 0;
+	  void *first_active_thread=NULL;
+	  for (int i = warp_size - 1; i >= 0; i--) {
+		 unsigned int mask = (1 << i);
+		 if ((top_active_mask & mask) == mask) { // is this thread active?
+			if (ptx_thread_done( shader->thread[wtid+i].ptx_thd_info )) {
+			   top_active_mask &= ~mask; // remove completed thread from active mask
+			} else if (tmp_next_pc == null_pc) {
+			   first_active_thread = shader->thread[wtid+i].ptx_thd_info;
+			   tmp_next_pc = shader_thread_nextpc(shader, wtid+i);
+			   tmp_active_mask |= mask;
+			   top_active_mask &= ~mask;
+			} else if (tmp_next_pc == shader_thread_nextpc(shader, wtid+i)) {
+			   tmp_active_mask |= mask;
+			   top_active_mask &= ~mask;
+			}
+		 }
+	  }
+
+	  // discard the new entry if its PC matches with reconvergence PC
+	  // that automatically reconverges the entry
+	  if (tmp_next_pc == top_recvg_pc) continue;
+
+	  // this new entry is not converging
+	  // if this entry does not include thread from the warp, divergence occurs
+	  if (top_active_mask != 0 && warp_diverged == 0) {
+		 warp_diverged = 1;
+		 // modify the existing top entry into a reconvergence entry in the pdom stack
+		 new_recvg_pc = get_converge_point(top_pc,first_active_thread);
+		 if (new_recvg_pc != top_recvg_pc) {
+			scheduled_warp->m_pc[stack_top] = new_recvg_pc;
+			scheduled_warp->m_branch_div_cycle[stack_top] = gpu_sim_cycle;
+			stack_top += 1;
+			scheduled_warp->m_branch_div_cycle[stack_top] = 0;
+		 }
+	  }
+
+	  // discard the new entry if its PC matches with reconvergence PC
+	  if (warp_diverged && tmp_next_pc == new_recvg_pc) continue;
+
+	  // update the current top of pdom stack
+	  scheduled_warp->m_pc[stack_top] = tmp_next_pc;
+	  scheduled_warp->m_active_mask[stack_top] = tmp_active_mask;
+	  if (warp_diverged) {
+		 scheduled_warp->m_calldepth[stack_top] = 0;
+		 scheduled_warp->m_recvg_pc[stack_top] = new_recvg_pc;
+	  } else {
+		 scheduled_warp->m_recvg_pc[stack_top] = top_recvg_pc;
+	  }
+	  stack_top += 1; // set top to next entry in the pdom stack
+	}
+	scheduled_warp->m_stack_top = stack_top - 1;
+
+	assert(scheduled_warp->m_stack_top >= 0);
+	assert(scheduled_warp->m_stack_top < (int)warp_size * 2);
 }
 
 
@@ -1432,24 +1507,6 @@ void shader_fetch( shader_core_ctx_t *shader, unsigned int shader_number, int gr
 
    if (shader->gpu_cycle % n_warp_parts == 0) {
 
-      if (shader->model == POST_DOMINATOR || shader->model == NO_RECONVERGE) {
-         int warpupdate_bw = 1; // number of warps to be unlocked per scheduler cycle
-         while (!dq_empty(shader->thd_commit_queue) && warpupdate_bw > 0) {
-            // grab a committed warp and unlock it here
-            int *tid_commit = (int*)dq_pop(shader->thd_commit_queue);
-            for (unsigned i = 0; i < warp_size; i++) {
-               if (tid_commit[i] >= 0) {
-                  shader->thread[tid_commit[i]].avail4fetch++;
-                  assert(shader->thread[tid_commit[i]].avail4fetch <= 1);
-                  assert( shader->warp[wid_from_hw_tid(tid_commit[i],warp_size)].n_avail4fetch < (unsigned)warp_size );
-                  shader->warp[wid_from_hw_tid(tid_commit[i],warp_size)].n_avail4fetch++;
-               }
-            }
-            warpupdate_bw -= 1;
-            free_commit_warp(tid_commit);
-         }
-      }
-
       switch (shader->model) {
       case NO_RECONVERGE:
          shader_fetch_simd_no_reconverge(shader, shader_number, grid_num );
@@ -1489,7 +1546,10 @@ void shader_fetch( shader_core_ctx_t *shader, unsigned int shader_number, int gr
                pc_out = shader->pipeline_reg[TS_IF][i].pc;
             }
          }
-         wpt_register_warp(tid_out, shader);
+
+         //wpt_register_warp(tid_out, shader);
+         get_warp_tracker_pool().wpt_register_warp(tid_out, shader, pc_out);
+
          if (gpu_runtime_stat_flag & GPU_RSTAT_DWF_MAP) {
             track_thread_pc( shader->sid, tid_out, pc_out );
          }
@@ -1654,6 +1714,7 @@ bool gpgpu_reg_bank_conflict_model;
 
 #define MAX_REG_BANKS 32
 unsigned int gpgpu_num_reg_banks; // this needs to be less than MAX_REG_BANKS
+bool gpgpu_reg_bank_use_warp_id;
 
 #define MAX_BANK_CONFLICT 8 /* tex can have four source and four destination regs */
 
@@ -1668,6 +1729,14 @@ public:
 	int rd_regs[4];
 }; 
 
+int register_bank(int regnum, int tid)
+{
+   int bank = regnum;
+   if (gpgpu_reg_bank_use_warp_id)
+      bank += tid >> 5/*log2(warp_size)*/;
+   return bank % gpgpu_num_reg_banks;
+}
+
 reg_bank_access g_reg_bank_access[MAX_REG_BANKS];
 
 // just to use as "shorthand" for clearing accesses each cycle
@@ -1678,8 +1747,7 @@ unsigned int gpu_reg_bank_conflict_stalls = 0;
 void shader_opnd_collect_read(shader_core_ctx_t* shader)
 {
    const int prevstage = ID_OC;
-   const int nextstage = shader->using_rrstage ? ID_RR : ID_EX;
-   shader->m_opndcoll_new.step(shader->pipeline_reg[prevstage],shader->pipeline_reg[nextstage]);
+   shader->m_opndcoll_new.step(shader->pipeline_reg[prevstage]);
 }
 
 void shader_opnd_collect_write(shader_core_ctx_t* shader)
@@ -1703,12 +1771,17 @@ void shader_decode( shader_core_ctx_t *shader,
    int warp_tid=0;
    unsigned data_size;
    memory_space_t space;
+   unsigned cycles;
    int vectorin, vectorout;
    int arch_reg[MAX_REG_OPERANDS] = { -1 };
+   int pred;
+   int ar1, ar2; // address registers for memory operands
    address_type regs_regs_PC = 0xDEADBEEF;
    address_type warp_current_pc = 0x600DBEEF;
    address_type warp_next_pc = 0x600DBEEF;
    int       warp_diverging = 0;
+   const int nextstage = (gpgpu_operand_collector) ? ID_OC : \
+      (shader->using_rrstage ? ID_RR : ID_EX);
    unsigned warp_id = -1;
    unsigned cta_id = -1;
 
@@ -1727,8 +1800,7 @@ void shader_decode( shader_core_ctx_t *shader,
    }
 
    for (i=0; i<pipe_simd_width;i++) {
-      int next_stage = (shader->using_rrstage)? ID_RR:ID_EX;
-      if (shader->pipeline_reg[next_stage][i].hw_thread_id != -1 ) {
+      if (shader->pipeline_reg[nextstage][i].hw_thread_id != -1 ) {
          return;  /* stalled */
       }
    }
@@ -1752,7 +1824,7 @@ void shader_decode( shader_core_ctx_t *shader,
       }
 
       if ( gpgpu_cuda_sim ) {
-         ptx_decode_inst( shader->thread[tid].ptx_thd_info, (unsigned*)&op, &i1, &i2, &i3, &i4, &o1, &o2, &o3, &o4, &vectorin, &vectorout, arch_reg);
+         ptx_decode_inst( shader->thread[tid].ptx_thd_info, (unsigned*)&op, &i1, &i2, &i3, &i4, &o1, &o2, &o3, &o4, &vectorin, &vectorout, arch_reg, &pred, &ar1, &ar2);
          shader->pipeline_reg[IF_ID][i].op = op;
          shader->pipeline_reg[IF_ID][i].pc = ptx_thread_get_next_pc( shader->thread[tid].ptx_thd_info );
          shader->pipeline_reg[IF_ID][i].ptx_thd_info = shader->thread[tid].ptx_thd_info;
@@ -1823,15 +1895,27 @@ void shader_decode( shader_core_ctx_t *shader,
    }
 
    // execute the instruction functionally
+   short last_hw_thread_id = -1;
+   bool first_thread_in_warp = true;
    for (i=0; i<pipe_simd_width;i++) {
       if (shader->pipeline_reg[IF_ID][i].hw_thread_id == -1 )
          continue; /* bubble */
+
+      if(last_hw_thread_id > -1)
+    	  first_thread_in_warp = false;
+      last_hw_thread_id = shader->pipeline_reg[IF_ID][i].hw_thread_id;
+
       /* get the next instruction to execute from fetch stage */
       tid = shader->pipeline_reg[IF_ID][i].hw_thread_id;
       if ( gpgpu_cuda_sim ) {
          int arch_reg[MAX_REG_OPERANDS];
-         ptx_decode_inst( shader->thread[tid].ptx_thd_info, (unsigned*)&op, &i1, &i2, &i3, &i4, &o1, &o2, &o3, &o4, &vectorin, &vectorout, arch_reg );
-         ptx_exec_inst( shader->thread[tid].ptx_thd_info, &addr, &space, &data_size, &callback, shader->pipeline_reg[IF_ID][i].warp_active_mask );
+
+         // Decode instruction
+         ptx_decode_inst( shader->thread[tid].ptx_thd_info, (unsigned*)&op, &i1, &i2, &i3, &i4, &o1, &o2, &o3, &o4, &vectorin, &vectorout, arch_reg, &pred, &ar1, &ar2 );
+
+         // Functionally execute instruction
+         ptx_exec_inst( shader->thread[tid].ptx_thd_info, &addr, &space, &data_size, &cycles, &callback, shader->pipeline_reg[IF_ID][i].warp_active_mask );
+
          shader->pipeline_reg[IF_ID][i].callback = callback;
          shader->pipeline_reg[IF_ID][i].space = space;
          if (is_local(space) && (is_load(op) || is_store(op))) {
@@ -1839,7 +1923,19 @@ void shader_decode( shader_core_ctx_t *shader,
          }
          shader->pipeline_reg[IF_ID][i].is_vectorin = vectorin;
          shader->pipeline_reg[IF_ID][i].is_vectorout = vectorout;
+         shader->pipeline_reg[IF_ID][i].pred = pred;
+         shader->pipeline_reg[IF_ID][i].ar1 = ar1;
+         shader->pipeline_reg[IF_ID][i].ar2 = ar2;
          shader->pipeline_reg[IF_ID][i].data_size = data_size;
+         shader->pipeline_reg[IF_ID][i].cycles = cycles;
+
+         // Mark destination registers as write-pending in scoreboard
+	     // Only do this for the first thread in warp
+	     if(first_thread_in_warp) {
+   		    shader->scrb->reserveRegisters(warp_id, &(shader->pipeline_reg[IF_ID][i]));
+			//shader->scrb->printContents();
+	     }
+
          warp_current_pc = shader->pipeline_reg[IF_ID][i].pc;
          memcpy( shader->pipeline_reg[IF_ID][i].arch_reg, arch_reg, sizeof(arch_reg) );
          regs_regs_PC = ptx_thread_get_next_pc( shader->thread[tid].ptx_thd_info );
@@ -1909,9 +2005,8 @@ void shader_decode( shader_core_ctx_t *shader,
       }
 
       // direct the instruction to the appropriate next stage (config dependent)
-      int next_stage = (shader->using_rrstage)? ID_RR:ID_EX;
-      shader->pipeline_reg[next_stage][i] = shader->pipeline_reg[IF_ID][i];
-      shader->pipeline_reg[next_stage][i].id_cycle = gpu_tot_sim_cycle + gpu_sim_cycle;
+      shader->pipeline_reg[nextstage][i] = shader->pipeline_reg[IF_ID][i];
+      shader->pipeline_reg[nextstage][i].id_cycle = gpu_tot_sim_cycle + gpu_sim_cycle;
       shader->pipeline_reg[IF_ID][i] = nop_inst;
    }
 
@@ -2008,42 +2103,66 @@ void shader_preexecute( shader_core_ctx_t *shader,
 }
 
 
-void shader_execute( shader_core_ctx_t *shader, 
-                     unsigned int shader_number ) {
-
+void shader_execute_pipe( shader_core_ctx_t *shader, unsigned int shader_number, unsigned pipeline, unsigned next_stage ) 
+{
    int i;
-
    for (i=0; i<pipe_simd_width; i++) {
       if (gpgpu_pre_mem_stages) {
          if (shader->pre_mem_pipeline[0][i].hw_thread_id != -1 ) {
-            //printf("stalled in shader_execute\n");
             return;  // stalled 
          }
       } else {
-         if (shader->pipeline_reg[EX_MM][i].hw_thread_id != -1 )
+         if (shader->pipeline_reg[next_stage][i].hw_thread_id != -1 )
             return;  // stalled 
       }
    }
 
    check_stage_pcs(shader,ID_EX);
 
+   // Check that all threads have the same delay cycles
+   unsigned cycles = -1;
    for (i=0; i<pipe_simd_width; i++) {
-      if (shader->pipeline_reg[ID_EX][i].hw_thread_id == -1 )
-         continue; // bubble 
+      if (shader->pipeline_reg[pipeline][i].hw_thread_id == -1 )
+         continue; // bubble
+      if(cycles == (unsigned)-1)
+         cycles = shader->pipeline_reg[pipeline][i].cycles;
+      else {
+         if( cycles != shader->pipeline_reg[pipeline][i].cycles ) {
+            printf("Shader %d: threads do not have the same delay cycles.\n", shader->sid);
+            assert(0);
+         }
+      }
+   }
+
+   for (i=0; i<pipe_simd_width; i++) {
+      if (shader->pipeline_reg[pipeline][i].hw_thread_id == -1 )
+         continue; // bubble
+
+      // Stall based on delay cycles
+      shader->pipeline_reg[pipeline][i].cycles--;
+      if( shader->pipeline_reg[pipeline][i].cycles > 0 )
+         continue;
+
       if (gpgpu_pre_mem_stages) {
-         shader->pre_mem_pipeline[0][i] = shader->pipeline_reg[ID_EX][i];
+         shader->pre_mem_pipeline[0][i] = shader->pipeline_reg[pipeline][i];
          shader->pre_mem_pipeline[0][i].ex_cycle = gpu_tot_sim_cycle + gpu_sim_cycle;
       } else {
-         shader->pipeline_reg[EX_MM][i] = shader->pipeline_reg[ID_EX][i];
-         shader->pipeline_reg[EX_MM][i].ex_cycle = gpu_tot_sim_cycle + gpu_sim_cycle;
+         shader->pipeline_reg[next_stage][i] = shader->pipeline_reg[pipeline][i];
+         shader->pipeline_reg[next_stage][i].ex_cycle = gpu_tot_sim_cycle + gpu_sim_cycle;
       }
-      shader->pipeline_reg[ID_EX][i] = nop_inst;
+      shader->pipeline_reg[pipeline][i] = nop_inst;
    }  
 
    if (!gpgpu_pre_mem_stages) {
       // inform memory stage that a new instruction has arrived 
       shader->shader_memory_new_instruction_processed = 0;
    }
+}
+
+void shader_execute( shader_core_ctx_t *shader, unsigned int shader_number ) 
+{
+   shader_execute_pipe(shader,shader_number, OC_EX_SFU, EX_MM);
+   shader_execute_pipe(shader,shader_number, ID_EX, EX_MM);
 }
 
 void shader_pre_memory( shader_core_ctx_t *shader, 
@@ -2346,6 +2465,7 @@ void shader_memory_global_process_inst(shader_core_ctx_t * shader, unsigned char
             break;
          case 4:
          case 8:
+         case 16:
             line_size = 128;
             break;
          default:
@@ -2520,14 +2640,19 @@ mem_stage_stall_type send_mem_request(shader_core_ctx_t *shader, mem_access_t &a
 #endif   
       }
 
+      // Scoreboard addition: do not make cache miss instructions wait for memory,
+      //                      let the scoreboard handle stalling of instructions.
+      //                      Mark thread as a cache miss
+
       if (not access.iswrite) {
          // set the pipeline instructions in this request to noops, they all wait for memory;
          for (unsigned i = 0; i < access.warp_indices.size(); i++) {
             unsigned o = access.warp_indices[i];
-            shader->pipeline_reg[EX_MM][o] = nop_inst;
-            
+            //shader->pipeline_reg[EX_MM][o] = nop_inst;
+            shader->pipeline_reg[EX_MM][o].cache_miss = true;
          }
       }
+
    }
 
    return NO_RC_FAIL;
@@ -2830,7 +2955,7 @@ void shader_memory( shader_core_ctx_t *shader, unsigned int shader_number )
    }
 
    bool done = true;
-   mem_stage_access_type type; 
+   mem_stage_access_type type;
 
    done &= shader_memory_shared_cycle(shader, accessqs->shared, rc_fail, type);
    done &= shader_memory_constant_cycle(shader, accessqs->constant, rc_fail, type);
@@ -2859,10 +2984,10 @@ void shader_memory( shader_core_ctx_t *shader, unsigned int shader_number )
    // pipeline forward
 
    check_stage_pcs(shader,EX_MM);
-   // and pass instruction from EX_MM to MM_WB for cache hit
+   // and pass instruction from EX_MM to MM_WB
    for (unsigned i=0; i< (unsigned) pipe_simd_width; i++) {
       if (shader->pipeline_reg[EX_MM][i].hw_thread_id == -1 )
-         continue; // bubble 
+         continue; // bubble
       shader->pipeline_reg[MM_WB][i] = shader->pipeline_reg[EX_MM][i];
       shader->pipeline_reg[MM_WB][i].mm_cycle = gpu_tot_sim_cycle + gpu_sim_cycle;
       shader->pipeline_reg[EX_MM][i] = nop_inst;
@@ -2898,12 +3023,6 @@ void register_cta_thread_exit(shader_core_ctx_t *shader, int tid )
    }
 }
 
-typedef struct {
-   unsigned pc;
-   unsigned long latency;
-   void *ptx_thd_info;
-} insn_latency_info;
-
 void obtain_insn_latency_info(insn_latency_info *latinfo, inst_t *insn)
 {
    latinfo->pc = insn->pc;
@@ -2911,15 +3030,17 @@ void obtain_insn_latency_info(insn_latency_info *latinfo, inst_t *insn)
    latinfo->ptx_thd_info = insn->ptx_thd_info;
 }
 
+int debug_tid = 0;
+
 unsigned   gpu_n_max_mshr_writeback=1;
 void shader_writeback( shader_core_ctx_t *shader, unsigned int shader_number, int grid_num ) 
 {
-   static int *unlock_tid = NULL;
-   static int *freed_warp = NULL;
+   std::vector<inst_t> done_insts;
+
    static int *mshr_tid = NULL;
    static int *pl_tid = NULL;
-   static int *done_tid = NULL;
-   insn_latency_info *unlock_lat_info = NULL;
+
+   std::vector<insn_latency_info> unlock_lat_infos;
    static insn_latency_info *mshr_lat_info = NULL;
    static insn_latency_info *pl_lat_info = NULL;
 
@@ -2932,30 +3053,23 @@ void shader_writeback( shader_core_ctx_t *shader, unsigned int shader_number, in
    bool writeback_by_MSHR = false;
    bool w2rf = false;
 
-   if ( unlock_tid == NULL ) {
-      unlock_tid = (int*) malloc(sizeof(int)*pipe_simd_width);
+   if ( mshr_tid == NULL ) {
       mshr_tid = (int*) malloc(sizeof(int)*pipe_simd_width);
       pl_tid = (int*) malloc(sizeof(int)*pipe_simd_width);
-      done_tid = (int*) malloc(sizeof(int)*pipe_simd_width);
-      freed_warp = (int *) malloc(sizeof(int)*pipe_simd_width);
       mshr_lat_info = (insn_latency_info*) malloc(sizeof(insn_latency_info) * pipe_simd_width);
       pl_lat_info = (insn_latency_info*) malloc(sizeof(insn_latency_info) * pipe_simd_width);
    }
-   memset(unlock_tid, -1, sizeof(int)*pipe_simd_width);
+
    memset(mshr_tid,   -1, sizeof(int)*pipe_simd_width);
    memset(pl_tid,     -1, sizeof(int)*pipe_simd_width);
-   memset(done_tid,   -1, sizeof(int)*pipe_simd_width);
-   memset(freed_warp,  0, sizeof(int)*pipe_simd_width);
-   unlock_lat_info = NULL;
+
 
    check_stage_pcs(shader,MM_WB);
 
-   /* Generate Condition for instruction writeback to register file.
-      A load miss *instruction* does not reach writeback until the data is fetched */
+   /* Generate Condition for instruction writeback to register file. */
    for (int i=0; i<pipe_simd_width; i++) {
-      tid = shader->pipeline_reg[MM_WB][i].hw_thread_id;
-      w2rf |= (tid >= 0); 
-      pl_tid[i] = tid;
+	  w2rf |= (shader->pipeline_reg[MM_WB][i].hw_thread_id >= 0);
+	  pl_tid[i] = shader->pipeline_reg[MM_WB][i].hw_thread_id;
    }
 
    //check mshrs for commit;
@@ -2973,14 +3087,17 @@ void shader_writeback( shader_core_ctx_t *shader, unsigned int shader_number, in
             obtain_insn_latency_info(&mshr_lat_info[mshr_threads_unlocked], &(mshr_head->insts[j]));
             inflight_memory_insn_sub(shader, &mshr_head->insts[j]);
             assert (insn.hw_thread_id >= 0);
-            unlock_tid[mshr_threads_unlocked] = insn.hw_thread_id;
             shader->pending_mem_access--;
             // for ensuring that we don't unlock more than the code allows, needs to be fixed.
             mshr_threads_unlocked++;
          }
+         done_insts.insert(done_insts.end(), mshr_head->insts.begin(), mshr_head->insts.end());
+
          shader->mshr_unit->pop_return_head();
          writeback_by_MSHR = true;
-         unlock_lat_info = mshr_lat_info; 
+         unlock_lat_infos.resize(mshr_threads_unlocked);
+         std::copy(mshr_lat_info, mshr_lat_info + mshr_threads_unlocked, unlock_lat_infos.begin());
+
          if (w2rf) {
             stalled_by_MSHR = true;
          }
@@ -2992,6 +3109,8 @@ void shader_writeback( shader_core_ctx_t *shader, unsigned int shader_number, in
    }
 
    if (!writeback_by_MSHR) { //!writeback_by_MSHR
+	  memory_space_t warp_space = undefined_space;
+
       for (int i=0; i<pipe_simd_width; i++) {
          op  = shader->pipeline_reg[MM_WB][i].op;
          tid = shader->pipeline_reg[MM_WB][i].hw_thread_id;
@@ -3000,76 +3119,62 @@ void shader_writeback( shader_core_ctx_t *shader, unsigned int shader_number, in
          o3  = shader->pipeline_reg[MM_WB][i].out[2];
          o4  = shader->pipeline_reg[MM_WB][i].out[3];
 
-         unlock_tid[i] = pl_tid[i];
          obtain_insn_latency_info(&pl_lat_info[i], &shader->pipeline_reg[MM_WB][i]);
-      }
-      unlock_lat_info = pl_lat_info;
-   }
-   int thd_unlocked = 0;
-   for (int i=0; i<pipe_simd_width; i++) {
-      // NOTE: no need to check for next-stage stall at the last stage
-      if (unlock_tid[i] >= 0 ) { // not unlocking an invalid thread (ie. due to a bubble)
-         // thread completed if it is going to fetching beyond code boundry 
-         if ( gpgpu_cuda_sim && ptx_thread_done(shader->thread[unlock_tid[i]].ptx_thd_info) ) {
 
-            shader->not_completed -= 1;
-            gpu_completed_thread += 1;
-
-            int warp_id = wid_from_hw_tid(unlock_tid[i],warp_size);
-            if (!(shader->warp[warp_id].n_completed < (unsigned)warp_size)) {
-               printf("shader[%d]->warp[%d].n_completed = %d; warp_size = %d\n", 
-                      shader->sid,warp_id, shader->warp[warp_id].n_completed, warp_size);
-            }
-            assert( shader->warp[warp_id].n_completed < (unsigned)warp_size );
-            shader->warp[warp_id].n_completed++;
-            if ( shader->model == NO_RECONVERGE ) {
-               update_max_branch_priority(shader,warp_id,grid_num);
-            }
-
-            if (gpgpu_no_divg_load) {
-               int amask = wpt_signal_complete(unlock_tid[i], shader);
-               freed_warp[i] = (amask != 0)? 1 : 0;
-            } else {
-               register_cta_thread_exit(shader, unlock_tid[i] );
-            }
-         } else { //thread is not finished yet
-            // program is not finished yet, allow more fetch 
-            if (gpgpu_no_divg_load) {
-               freed_warp[i] = wpt_signal_avail(unlock_tid[i], shader);
-            } else {
-               shader->thread[unlock_tid[i]].avail4fetch++;
-               assert(shader->thread[unlock_tid[i]].avail4fetch <= 1);
-               assert( shader->warp[wid_from_hw_tid(unlock_tid[i],warp_size)].n_avail4fetch < (unsigned)warp_size );
-               shader->warp[wid_from_hw_tid(unlock_tid[i],warp_size)].n_avail4fetch++;
-               thd_unlocked = 1;
-            }
+         // Collect threads that are done
+         // Do not include cache misses for a writeback
+         if(!shader->pipeline_reg[MM_WB][i].cache_miss) {
+			 if(shader->pipeline_reg[MM_WB][i].hw_thread_id > -1) {
+				 done_insts.push_back(shader->pipeline_reg[MM_WB][i]);
+				 unlock_lat_infos.push_back(pl_lat_info[i]);
+			 }
          }
 
-         // At any rate, a real instruction is committed
-         // - don't count cache miss
-         if ( shader->pipeline_reg[MM_WB][i].inst_type != NO_OP_FLAG ) {
-            gpu_sim_insn++;
-            if ( !is_const(shader->pipeline_reg[MM_WB][i].space) ) 
-               gpu_sim_insn_no_ld_const++;
-            gpu_sim_insn_last_update = gpu_sim_cycle;
-            shader->num_sim_insn++;
-            shader->thread[unlock_tid[i]].n_insn++;
-            shader->thread[unlock_tid[i]].n_insn_ac++;
+         // All threads in the warp should have the same pc and space
+         if(pl_tid[i] > -1 ) {
+        	 warp_space = shader->pipeline_reg[MM_WB][i].space;
          }
 
-         if (enable_ptx_file_line_stats) {
-            unsigned pc = unlock_lat_info[i].pc;
-            unsigned long latency = unlock_lat_info[i].latency;
-            ptx_file_line_stats_add_latency(unlock_lat_info[i].ptx_thd_info, pc, latency);
+         if(tid > -1) {
+/*
+        	 if(!shader->pipeline_reg[MM_WB][i].cache_miss)
+        		 printf("CACHE HIT sid=%d tid=%d pc=%d \n", shader->sid, tid, shader->pipeline_reg[MM_WB][i].pc);
+        	 else
+        		 printf("CACHE MISS sid=%d tid=%d pc=%d \n", shader->sid, tid, shader->pipeline_reg[MM_WB][i].pc);
+*/
          }
       }
-   }
-   if (shader->using_commit_queue && thd_unlocked) {
-      int *tid_unlocked = alloc_commit_warp();
-      memcpy(tid_unlocked, unlock_tid, sizeof(int)*pipe_simd_width); //NOTE: this maybe warp_size
-      dq_push(shader->thd_commit_queue,(void*)tid_unlocked);
+
+      // Unlock the warp for re-fetching (put it in the fixed delay queue)
+      // Only need to unlock if warp is not empty
+      if(w2rf)
+    	  shader_queue_warp_unlocking(shader, pl_tid, warp_space, grid_num);
    }
 
+   // Mark threads as done in warp tracker
+   for (unsigned i=0; i<done_insts.size(); i++) {
+	   inst_t done_inst = done_insts[i];
+
+		shader_call_thread_done(shader, grid_num, done_inst);
+
+		// Statistics
+		// At any rate, a real instruction is committed
+		// - don't count cache miss
+		gpu_sim_insn++;
+		if ( !is_const(done_inst.space) )
+			gpu_sim_insn_no_ld_const++;
+		gpu_sim_insn_last_update = gpu_sim_cycle;
+		shader->num_sim_insn++;
+		shader->thread[done_inst.hw_thread_id].n_insn++;
+		shader->thread[done_inst.hw_thread_id].n_insn_ac++;
+
+		if (enable_ptx_file_line_stats) {
+		  unsigned pc = unlock_lat_infos[i].pc;
+		  unsigned long latency = unlock_lat_infos[i].latency;
+		  ptx_file_line_stats_add_latency(unlock_lat_infos[i].ptx_thd_info, pc, latency);
+		}
+
+  }
 
    /* The pipeline can be stalled by MSHR */
    if (!stalled_by_MSHR) {
@@ -3078,6 +3183,189 @@ void shader_writeback( shader_core_ctx_t *shader, unsigned int shader_number, in
          shader->pipeline_reg[MM_WB][i] = nop_inst;
       }
    }
+
+   // Process the delay queue for current cycle
+   shader_process_delay_queue(shader);
+}
+
+/*
+ * Queues a warp into fixed delay queue for unlocking
+ *
+ * The amount of delay to add is determined by the instruction type.
+ *
+ * @param *shader Pointer to shader core
+ * @param *tid Array of tid in the warp to unlock
+ * @param pc Program counter for the current instruction in the warp
+ * @param space Address space for the current instruction in the warp
+ *
+ */
+void shader_queue_warp_unlocking(shader_core_ctx_t *shader, int *tids, memory_space_t space, int grid_num) {
+
+	// Create a delay queue object and add it to the queue
+	shader_core_ctx_t::fixeddelay_queue_warp_t fixeddelay_queue_warp;
+
+	fixeddelay_queue_warp.grid_num = grid_num;
+
+	// Set ready_cycle based on instruction space
+	switch(space.get_type()) {
+		case shared_space:
+			fixeddelay_queue_warp.ready_cycle = gpu_tot_sim_cycle + gpu_sim_cycle + 5; // Adds 5*4=20 cycles
+			break;
+		default:
+			fixeddelay_queue_warp.ready_cycle = gpu_tot_sim_cycle + gpu_sim_cycle;
+			break;
+	}
+
+	// Store threads in delay queue warp object
+	fixeddelay_queue_warp.tids.resize(warp_size);
+	std::copy(tids, tids+warp_size, fixeddelay_queue_warp.tids.begin());
+
+	shader->fixeddelay_queue.insert(fixeddelay_queue_warp);
+}
+
+/*
+ * Process a delay queue by unlocking warps ready this cycle
+ *
+ * @param *shader Pointer to shader core
+ *
+ */
+void shader_process_delay_queue(shader_core_ctx_t *shader) {
+	// Unlock warps in fixeddelay_queue_warp
+	std::multiset<shader_core_ctx_t::fixeddelay_queue_warp_t, shader_core_ctx_t::fixeddelay_queue_warp_comp>::iterator it;
+	std::multiset<shader_core_ctx_t::fixeddelay_queue_warp_t, shader_core_ctx_t::fixeddelay_queue_warp_comp>::iterator it_last;
+	for ( it=shader->fixeddelay_queue.begin() ;
+		  it != shader->fixeddelay_queue.end();
+		) {
+	   if(it->ready_cycle <= gpu_tot_sim_cycle + gpu_sim_cycle) {
+		   if(!gpgpu_stall_on_use) {
+			   // This disables stall-on-use
+			   // If thread is still in warp_tracker, do not unlock yet
+			   bool skip_unlock = false;
+			   for(unsigned i=0; i<warp_size; i++) {
+				   int tid = it->tids[i];
+				   if(tid < 0) continue;
+				   if(get_warp_tracker_pool().wpt_thread_in_wpt(shader,tid)) {
+					   skip_unlock = true;
+					   break;
+				   }
+			   }
+			   if(skip_unlock) {
+				   it_last = it++;
+				   continue;
+			   }
+		   }
+
+		   // Unlock warp
+		   shader_unlock_warp(shader,it->tids, it->grid_num);
+
+		   // Remove warp information from delay queue
+		   it_last = it++;
+		   shader->fixeddelay_queue.erase(it_last);
+	   } else {
+		   break;
+	   }
+	}
+}
+
+/*
+ * Unlock a warp
+ *
+ * @param *shd Pointer to shader core
+ * @param tids Vector of tid in the warp to unlock
+ *
+ */
+void shader_unlock_warp(shader_core_ctx_t *shd, std::vector<int> tids, int grid_num) {
+    int thd_unlocked = 0;
+    int thd_exited = 0;
+    int tid;
+    int valid_tid = -1;
+    // Unlock
+    for (unsigned i=0; i<warp_size; i++) {
+        tid = tids[i];
+		if (tid >= 0) {
+			valid_tid = tid;
+			// thread completed if it is going to fetching beyond code boundary
+			if ( gpgpu_cuda_sim && ptx_thread_done(shd->thread[tid].ptx_thd_info) ) {
+				shd->not_completed -= 1;
+				gpu_completed_thread += 1;
+
+				int warp_id = wid_from_hw_tid(tid,warp_size);
+				if (!(shd->warp[warp_id].n_completed < (unsigned)warp_size)) {
+				 printf("shader[%d]->warp[%d].n_completed = %d; warp_size = %d\n",
+						shd->sid,warp_id, shd->warp[warp_id].n_completed, warp_size);
+				}
+				assert( shd->warp[warp_id].n_completed < (unsigned)warp_size );
+				shd->warp[warp_id].n_completed++;
+				if ( shd->model == NO_RECONVERGE ) {
+				 update_max_branch_priority(shd,warp_id,grid_num);
+				}
+
+				register_cta_thread_exit(shd, tid );
+				thd_exited = 1;
+
+				//printf("THREAD EXIT sid=%d tid=%d \n", shd->sid, tid);
+
+			} else {
+				shd->thread[tid].avail4fetch++;
+				assert(shd->thread[tid].avail4fetch <= 1);
+				assert( shd->warp[tid/warp_size].n_avail4fetch < warp_size );
+				shd->warp[tid/warp_size].n_avail4fetch++;
+				thd_unlocked = 1;
+
+				//printf("THREAD UNLOCK sid=%d tid=%d \n", shd->sid, tid);
+			}
+		}
+    }
+
+    // Update warp was unlocked, update the warp active mask
+    if(thd_unlocked || thd_exited) {
+    	// Update the warp active mask
+		shader_pdom_update_warp_mask(shd, wid_from_hw_tid(valid_tid,warp_size));
+    }
+
+
+
+	if (shd->model == POST_DOMINATOR || shd->model == NO_RECONVERGE) {
+		// Do nothing
+	} else {
+		// For this case, submit to commit_queue
+		if (shd->using_commit_queue && thd_unlocked) {
+			int *tid_unlocked = alloc_commit_warp();
+			std::copy(tids.begin(), tids.end(), tid_unlocked);
+			dq_push(shd->thd_commit_queue,(void*)tid_unlocked);
+		}
+	}
+}
+
+
+/*
+ * Signals to the warp_tracker that a thread in a warp (for a given pc/instruction) is done
+ *
+ * @param *shd Pointer to shader core
+ * @param grid_num Grid number
+ * @param done_inst Completed instruction
+ *
+ */
+void shader_call_thread_done( shader_core_ctx_t *shader, int grid_num, inst_t &done_inst ) {
+
+	if (gpgpu_no_divg_load) {
+
+		//printf("THREAD RETURNED sid=%d tid=%d pc=%d \n", shader->sid, done_inst.hw_thread_id, done_inst.pc);
+
+		// Signal to unlock the thread. If all threads are done, deregister warp
+		if( get_warp_tracker_pool().wpt_signal_avail(done_inst.hw_thread_id, shader, done_inst.pc) == 1 ) {
+			// Entire warp has returned
+			//printf("WARP RETURNED sid=%d tid=%d pc=%d \n", shader->sid, done_inst.hw_thread_id, done_inst.pc);
+
+			// Deregister warp
+			get_warp_tracker_pool().wpt_deregister_warp(done_inst.hw_thread_id, shader, done_inst.pc);
+
+			// Signal scoreboard to release register
+			shader->scrb->releaseRegisters( wid_from_hw_tid(done_inst.hw_thread_id, warp_size), &done_inst );
+
+		}
+	}
+
 }
 
 
@@ -3454,34 +3742,21 @@ void shader_cycle( shader_core_ctx_t *shader,
                    unsigned int shader_number,
                    int grid_num ) 
 {
-
    if (gpgpu_operand_collector) 
       shader_opnd_collect_write(shader);
-
-   // last pipeline stage
    shader_writeback(shader, shader_number, grid_num);
-
-   // three parallel stages (only one does something on a given cycle)
-   //shader_const_memory   (shader, shader_number);
-   shader_memory   (shader, shader_number);
-   //shader_texture_memory   (shader, shader_number);
-
-   // empty stage
-   if (gpgpu_pre_mem_stages)
-      shader_pre_memory(shader, shader_number);
-
-   shader_execute  (shader, shader_number);
+   shader_memory(shader, shader_number);
+   if (gpgpu_pre_mem_stages) // for modeling deeper pipelines
+      shader_pre_memory(shader, shader_number); 
+   shader_execute(shader, shader_number);
    if (shader->using_rrstage) {
-      // model register bank conflicts 
-      // (see Fung et al. MICRO'07 paper or ACM TACO paper)
+      // Model register bank conflicts as in 
+      // Fung et al. MICRO'07 / ACM TACO'09 papers.
       shader_preexecute (shader, shader_number);
    }
-
    if (gpgpu_operand_collector) 
       shader_opnd_collect_read(shader);
-
    shader_decode   (shader, shader_number, grid_num);
-
    shader_fetch    (shader, shader_number, grid_num);
 }
 
@@ -3603,7 +3878,7 @@ std::list<opndcoll_rfu_t::op_t> opndcoll_rfu_t::arbiter_t::allocate_reads()
       _inmatch = new int[ _inputs ];
       _outmatch = new int[ _outputs ];
       _request = new int*[ _inputs ];
-      for(int i=0; i<_outputs;i++) 
+      for(int i=0; i<_inputs;i++) 
          _request[i] = new int[_outputs];
    }
 
@@ -3790,11 +4065,6 @@ void barrier_set_t::dump() const
    fflush(stdout); 
 }
 
-shader_core_ctx::shader_core_ctx( unsigned max_warps_per_cta, unsigned max_cta_per_core )
-   : m_barriers( max_warps_per_cta, max_cta_per_core ), m_opndcoll_new( gpgpu_operand_collector_num_units, gpgpu_num_reg_banks, this )
-{
-}
-
 void shader_core_ctx::set_at_barrier( unsigned cta_id, unsigned warp_id )
 {
    m_barriers.warp_reaches_barrier(cta_id,warp_id);
@@ -3818,4 +4088,38 @@ void shader_core_ctx::allocate_barrier( unsigned cta_id, warp_set_t warps )
 void shader_core_ctx::deallocate_barrier( unsigned cta_id )
 {
    m_barriers.deallocate_barrier(cta_id);
+}
+
+void opndcoll_rfu_t::init( unsigned num_collectors_alu, 
+                           unsigned num_collectors_sfu, 
+                           unsigned num_banks, 
+                           const shader_core_ctx *shader ) 
+{
+   unsigned num_alu_cu = gpgpu_operand_collector_num_units;
+   unsigned num_sfu_cu = gpgpu_operand_collector_num_units_sfu;
+   m_num_collectors = num_alu_cu+num_sfu_cu;
+    
+   m_shader=shader;
+   m_arbiter.init(m_num_collectors,num_banks);
+
+   m_alu_port = shader->pipeline_reg[ID_EX];
+   m_sfu_port = shader->pipeline_reg[OC_EX_SFU];
+
+   m_dispatch_units[ m_alu_port ].init( num_alu_cu );
+   m_dispatch_units[ m_sfu_port ].init( num_sfu_cu );
+
+   m_num_banks = num_banks;
+   m_cu = new collector_unit_t[m_num_collectors];
+
+   unsigned c=0;
+   for(; c<num_alu_cu; c++) {
+      m_cu[c].init(c,m_alu_port);
+      m_free_cu[m_alu_port].push_back(&m_cu[c]);
+      m_dispatch_units[m_alu_port].add_cu(&m_cu[c]);
+   }
+   for(; c<m_num_collectors; c++) {
+      m_cu[c].init(c,m_sfu_port);
+      m_free_cu[m_sfu_port].push_back(&m_cu[c]);
+      m_dispatch_units[m_sfu_port].add_cu(&m_cu[c]);
+   }
 }

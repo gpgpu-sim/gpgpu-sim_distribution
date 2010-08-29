@@ -69,6 +69,8 @@
 #include <math.h>
 #include <assert.h>
 #include <map>
+#include <set>
+#include <vector>
 #include <list>
 
 #include "../cuda-sim/ptx.tab.h"
@@ -79,6 +81,7 @@
 #include "stack.h"
 #include "dram.h"
 #include "../abstract_hardware_model.h"
+#include "scoreboard.h"
 
 #ifndef SHADER_H
 #define SHADER_H
@@ -133,8 +136,11 @@ typedef struct {
    unsigned in[4];
    unsigned char is_vectorin;
    unsigned char is_vectorout;
+   int pred;
+   int ar1, ar2;
    int arch_reg[MAX_REG_OPERANDS]; // register number for bank conflict evaluation
    unsigned data_size; // what is the size of the word being operated on?
+   unsigned cycles; // number of cycles taken by current instruction
 
    int reg_bank_access_pending;
    int reg_bank_conflict_stall_checked; // flag to turn off register bank conflict checker to avoid double stalling
@@ -153,6 +159,8 @@ typedef struct {
    unsigned long long  id_cycle;
    unsigned long long  ex_cycle;
    unsigned long long  mm_cycle;
+
+   bool cache_miss;
 
 } inst_t;
 
@@ -323,19 +331,19 @@ void shader_print_warp( const shader_core_ctx *shader, inst_t *warp, FILE *fout,
 class opndcoll_rfu_t{ // operand collector based register file unit
 public:
    // constructors
-   opndcoll_rfu_t( unsigned num_collectors, unsigned num_banks, const shader_core_ctx *shader ) 
-      : m_arbiter(num_collectors,num_banks)
+   opndcoll_rfu_t()
    {
-      m_num_collectors=num_collectors;
-      m_num_banks = num_banks;
-      m_cu = new collector_unit_t[num_collectors];
-      m_last_cu=0;
-      m_shader=shader;
-      for(unsigned c=0; c<num_collectors; c++) {
-         m_cu[c].set_cuid(c);
-         m_free_cu.push_back(&m_cu[c]);
-      }
+      m_num_collectors=0;
+      m_num_banks=0;
+      m_cu = NULL;
+      m_shader=NULL;
+      m_sfu_port=NULL;
+      m_alu_port=NULL;
    }
+   void init( unsigned num_collectors_alu, 
+              unsigned num_collectors_sfu, 
+              unsigned num_banks, 
+              const shader_core_ctx *shader );
 
    // modifiers
    void writeback( inst_t *warp )
@@ -353,9 +361,9 @@ public:
       }
    }
 
-   void step( inst_t *id_oc_reg, inst_t *oc_ex_reg ) 
+   void step( inst_t *id_oc_reg ) 
    {
-      dispatch_ready_cu(oc_ex_reg);   
+      dispatch_ready_cu();   
       allocate_reads();
       allocate_cu(id_oc_reg);
       process_banks();
@@ -379,17 +387,18 @@ private:
       m_arbiter.reset_alloction();
    }
 
-   void dispatch_ready_cu( inst_t *oc_ex_reg )
+   void dispatch_ready_cu()
    {
-      if( !pipeline_regster_empty(oc_ex_reg) ) 
-         return;
-      for( unsigned n=0; n < m_num_collectors; n++ ) {
-         unsigned c=(m_last_cu+n+1)%m_num_collectors;
-         if( m_cu[c].ready() ) {
-            m_cu[c].dispatch(oc_ex_reg);
-            m_free_cu.push_back(&m_cu[c]);
-            m_last_cu=c;
-            break;
+      port_to_du_t::iterator p;
+      for( p=m_dispatch_units.begin(); p!=m_dispatch_units.end(); ++p ) {
+         inst_t *port = p->first;
+         if( !pipeline_regster_empty(port) ) 
+            continue;
+         dispatch_unit_t &du = p->second;
+         collector_unit_t *cu = du.find_ready();
+         if( cu ) {
+            cu->dispatch();
+            m_free_cu[port].push_back(cu);
          }
       }
    }
@@ -397,11 +406,18 @@ private:
    void allocate_cu( inst_t *id_oc_reg )
    {
       inst_t *fvi = first_valid_thread(id_oc_reg);
-      if( fvi && !m_free_cu.empty() ) {
-         collector_unit_t *cu = m_free_cu.back();
-         m_free_cu.pop_back();
-         cu->allocate(id_oc_reg);
-         m_arbiter.add_read_requests(cu);
+      if( fvi ) {
+         inst_t *port = NULL;
+         if( fvi->op == SFU_OP ) 
+            port = m_sfu_port;
+         else
+            port = m_alu_port;
+         if( !m_free_cu[port].empty() ) {
+            collector_unit_t *cu = m_free_cu[port].back();
+            m_free_cu[port].pop_back();
+            cu->allocate(id_oc_reg);
+            m_arbiter.add_read_requests(cu);
+         }
       }
    }
 
@@ -521,7 +537,13 @@ private:
    class arbiter_t {
    public:
       // constructors
-      arbiter_t( unsigned num_cu, unsigned num_banks ) 
+      arbiter_t()
+      {
+         m_queue=NULL;
+         m_allocated_bank=NULL;
+         m_allocator_rr_head=NULL;
+      }
+      void init( unsigned num_cu, unsigned num_banks ) 
       { 
          m_num_collectors = num_cu;
          m_num_banks = num_banks;
@@ -607,7 +629,10 @@ private:
          m_warp_id = -1;
       }
       // accessors
-      bool ready() const { return (!m_free) && m_not_ready.none(); }
+      bool ready() const 
+      { 
+         return (!m_free) && m_not_ready.none() && pipeline_regster_empty(m_port); 
+      }
       const op_t *get_operands() const { return m_src_op; }
       void dump(FILE *fp, const shader_core_ctx *shader ) const
       {
@@ -629,7 +654,7 @@ private:
       unsigned get_id() const { return m_cuid; } // returns CU hw id
 
       // modifiers
-      void set_cuid(unsigned n) { m_cuid=n; }
+      void init(unsigned n, inst_t *port) { m_cuid=n; m_port=port; }
       void allocate( inst_t *pipeline_reg ) 
       {
          assert(m_free);
@@ -656,10 +681,10 @@ private:
          m_not_ready.reset(op);
       }
 
-      void dispatch( inst_t *pipeline_reg )
+      void dispatch()
       {
          assert( m_not_ready.none() );
-         move_warp(pipeline_reg,m_warp);
+         move_warp(m_port,m_warp);
          m_free=true;
          for( unsigned i=0; i<MAX_REG_OPERANDS;i++) 
             m_src_op[i].reset();
@@ -669,20 +694,69 @@ private:
       bool m_free;
       unsigned m_tid;
       unsigned m_cuid; // collector unit hw id
+      inst_t  *m_port; // pipeline register to issue to when ready
       unsigned m_warp_id;
-      inst_t *m_warp;
+      inst_t  *m_warp;
       op_t *m_src_op;
       std::bitset<MAX_REG_OPERANDS> m_not_ready;
    };
 
-   // data members
+   class dispatch_unit_t {
+   public:
+      dispatch_unit_t() 
+      { 
+         m_last_cu=0;
+         m_num_collectors=0;
+         m_collector_units=NULL;
+         m_next_cu=0;
+      }
+
+      void init( unsigned num_collectors )
+      { 
+         m_num_collectors = num_collectors;
+         m_collector_units = new collector_unit_t * [num_collectors];
+         m_next_cu=0;
+      }
+
+      void add_cu( collector_unit_t *cu )
+      {
+         assert(m_next_cu<m_num_collectors);
+         m_collector_units[m_next_cu] = cu;
+         m_next_cu++;
+      }
+
+      collector_unit_t *find_ready()
+      {
+         for( unsigned n=0; n < m_num_collectors; n++ ) {
+            unsigned c=(m_last_cu+n+1)%m_num_collectors;
+            if( m_collector_units[c]->ready() ) {
+               m_last_cu=c;
+               return m_collector_units[c];
+            }
+         }
+         return NULL;
+      }
+
+   private:
+      unsigned m_num_collectors;
+      collector_unit_t **m_collector_units;
+      unsigned m_last_cu; // dispatch ready cu's rr
+      unsigned m_next_cu;  // for initialization
+   };
+
+   // opndcoll_rfu_t data members
 
    unsigned                         m_num_collectors;
    unsigned                         m_num_banks;
    collector_unit_t                *m_cu;
-   unsigned                         m_last_cu; // dispatch ready cu's rr
    arbiter_t                        m_arbiter;
-   std::list<collector_unit_t*>     m_free_cu;
+
+   inst_t *m_alu_port;
+   inst_t *m_sfu_port;
+
+   typedef std::map<inst_t*/*port*/,dispatch_unit_t> port_to_du_t;
+   port_to_du_t                     m_dispatch_units;
+   std::map<inst_t*,std::list<collector_unit_t*> > m_free_cu;
    const shader_core_ctx           *m_shader;
 };
 
@@ -723,11 +797,19 @@ private:
 };
 
 class mshr_shader_unit;
-  
+class warp_tracker;
+class warp_tracker_pool;
+
 class shader_core_ctx : public core_t 
 {
 public:
-   shader_core_ctx( unsigned max_warps_per_cta, unsigned max_cta_per_core );
+   shader_core_ctx(   const char *name, int sid, 
+                      unsigned int n_threads, 
+                      unsigned int n_mshr, 
+                      fq_push_t fq_push, 
+                      fq_has_buffer_t fq_has_buffer,
+                      unsigned model,
+                      unsigned max_warps_per_cta, unsigned max_cta_per_core );
 
 	virtual void set_at_barrier( unsigned cta_id, unsigned warp_id );
    virtual void warp_exit( unsigned warp_id );
@@ -821,9 +903,38 @@ public:
    unsigned int n_cta;      //Limit on number of concurrent CTAs in shader core
 
    mshr_shader_unit *mshr_unit;
+
+   //
+   // Fixed-delay queue for locked warps
+   //
+
+   // Struct for storing warp information in fixeddelay_queue
+   struct fixeddelay_queue_warp_t {
+	   int grid_num;
+   	   unsigned long long ready_cycle;
+   	   std::vector<int> tids; // list of tid's in this warp (to unlock)
+   };
+   struct fixeddelay_queue_warp_comp {
+       inline bool operator()(const fixeddelay_queue_warp_t& left,const fixeddelay_queue_warp_t& right) const
+       {
+           return left.ready_cycle < right.ready_cycle;
+       }
+   };
+
+   // The queue
+   std::multiset<fixeddelay_queue_warp_t, fixeddelay_queue_warp_comp> fixeddelay_queue;
+
+   // Scoreboard
+   Scoreboard *scrb;
 };
 
 typedef shader_core_ctx shader_core_ctx_t;
+
+typedef struct {
+   unsigned pc;
+   unsigned long latency;
+   void *ptx_thd_info;
+} insn_latency_info;
 
 
 shader_core_ctx_t* shader_create( const char *name, int sid, unsigned int n_threads, 
@@ -853,6 +964,9 @@ void shader_writeback( shader_core_ctx_t *shader,
                        unsigned int shader_number,
                        int grid_num );
 
+bool shader_warp_scoreboard_hazard(shader_core_ctx_t *shader, int warp_id);
+void shader_pdom_update_warp_mask(shader_core_ctx_t *shader, int warp_id);
+
 void shader_display_pipeline(shader_core_ctx_t *shader, FILE *fout, int print_mem, int mask3bit );
 void shader_dump_thread_state(shader_core_ctx_t *shader, FILE *fout );
 void shader_cycle( shader_core_ctx_t *shader, 
@@ -875,6 +989,11 @@ void free_mshr_entry( mshr_entry * );
 void shader_clean(shader_core_ctx_t *sc, unsigned int n_threads);
 void shader_cache_flush(shader_core_ctx_t* sc);
 
+void shader_call_thread_done( shader_core_ctx_t *shader, int grid_num, inst_t &done_inst );
+void shader_queue_warp_unlocking(shader_core_ctx_t *shader, int *tids, memory_space_t space, int grid_num);
+void shader_process_delay_queue(shader_core_ctx_t *shader);
+void shader_unlock_warp(shader_core_ctx_t *shd, std::vector<int> tids, int grid_num);
+
 // print out the accumulative statistics for shaders (those that are not local to one shader)
 void shader_print_accstats( FILE* fout );
 void shader_print_runtime_stat( FILE *fout );
@@ -884,7 +1003,6 @@ void shader_print_l1_miss_stat( FILE *fout );
 //based on on the current kernel's CTA size and is 1 if mutiple CTA per block is not supported
 unsigned int max_cta_per_shader( shader_core_ctx_t *shader);
 
-#define N_PIPELINE_STAGES (gpgpu_operand_collector ? 8 : 7)
 #define TS_IF 0
 #define IF_ID 1
 #define ID_RR 2
@@ -893,7 +1011,11 @@ unsigned int max_cta_per_shader( shader_core_ctx_t *shader);
 #define EX_MM 4
 #define MM_WB 5
 #define WB_RT 6
-#define ID_OC 7
+
+#define ID_OC 7 
+#define OC_EX_SFU 8
+
+#define N_PIPELINE_STAGES 9
 
 extern shader_core_ctx_t **sc;
 extern unsigned int gpgpu_n_load_insn;
@@ -920,6 +1042,7 @@ extern int gpgpu_const_port_per_bank;
 extern int gpgpu_shmem_pipe_speedup;  
 extern bool gpgpu_reg_bank_conflict_model;
 extern unsigned int gpgpu_num_reg_banks;
+extern bool gpgpu_reg_bank_use_warp_id;
 extern unsigned int gpu_max_cta_per_shader;
 extern unsigned int gpu_padded_cta_size;
 extern int gpgpu_local_mem_map;

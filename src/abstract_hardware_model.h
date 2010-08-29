@@ -26,11 +26,12 @@ typedef unsigned addr_t;
 
 // these are operations the timing model can see
 #define NO_OP -1
-#define ALU_OP 1000
-#define LOAD_OP 2000
-#define STORE_OP 3000
-#define BRANCH_OP 4000
-#define BARRIER_OP 5000
+#define ALU_OP     0x01000
+#define SFU_OP     0x02000
+#define LOAD_OP    0x04000
+#define STORE_OP   0x08000
+#define BRANCH_OP  0x10000
+#define BARRIER_OP 0x20000
 
 enum _memory_space_t {
    undefined_space=0,
