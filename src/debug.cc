@@ -123,7 +123,7 @@ void gpgpu_debug()
       } else if( !strcmp(tok,"q") || !strcmp(tok,"quit") ) {
          printf("\nreally quit GPGPU-Sim (y/n)?\n");
          fgets(line,1024,stdin);
-         tok = strtok(NULL," \t\n");
+         tok = strtok(line," \t\n");
          if( !strcmp(tok,"y") ) {
             exit(0);
          } else {

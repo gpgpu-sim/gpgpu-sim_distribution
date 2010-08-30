@@ -238,6 +238,8 @@ ptx_thread_info::ptx_thread_info()
    m_last_dram_callback.function = NULL;
    m_last_dram_callback.instruction = NULL;
    m_regs.push_back( reg_map_t() );
+   m_debug_trace_regs_modified.push_back( reg_map_t() );
+   m_debug_trace_regs_read.push_back( reg_map_t() );
    m_callstack.push_back( stack_entry() );
    m_RPC = -1;
    m_RPC_updated = false;
@@ -266,7 +268,12 @@ unsigned ptx_thread_info::get_builtin( int builtin_id, unsigned dim_mod )
       return (unsigned)(gpu_sim_cycle + gpu_tot_sim_cycle);
    case CLOCK64_REG:
       abort(); // change return value to unsigned long long?
-      return gpu_sim_cycle + gpu_tot_sim_cycle;
+	  // GPGPUSim clock is 4 times slower - multiply by 4
+	   return (gpu_sim_cycle + gpu_tot_sim_cycle)*4;
+   case HALFCLOCK_ID:
+      // GPGPUSim clock is 4 times slower - multiply by 4
+	  // Hardware clock counter is incremented at half the shader clock frequency - divide by 2 (Henry '10)
+      return (gpu_sim_cycle + gpu_tot_sim_cycle)*2;
    case CTAID_REG:
       assert( dim_mod < 3 );
       return m_ctaid[dim_mod];
@@ -303,6 +310,18 @@ void ptx_thread_info::set_info( function_info *func )
   m_symbol_table = func->get_symtab();
   m_func_info = func;
   m_PC = func->get_start_PC();
+}
+
+void ptx_thread_info::cpy_tid_to_reg( int x, int y, int z)
+{
+   //copies %tid.x, %tid.y and %tid.z into $r0
+   ptx_reg_t data;
+   data.s64=0;
+
+   data.u32=(x + (y<<16) + (z<<26));
+
+   const symbol *r0 = m_symbol_table->lookup("$r0");
+   set_reg(r0,data);
 }
 
 void ptx_thread_info::print_insn( unsigned pc, FILE * fp ) const
@@ -346,6 +365,7 @@ static void print_reg( FILE *fp, std::string name, ptx_reg_t value, symbol_table
       fprintf( fp, "non-scalar type\n" );
       break;
    }
+   fflush(fp);
 }
 
 static void print_reg( std::string name, ptx_reg_t value, symbol_table *symtab )
@@ -361,6 +381,8 @@ void ptx_thread_info::callstack_push( unsigned pc, unsigned rpc, const symbol *r
    assert( m_func_info != NULL );
    m_callstack.push_back( stack_entry(m_symbol_table,m_func_info,pc,rpc,return_var_src,return_var_dst,call_uid) );
    m_regs.push_back( reg_map_t() );
+   m_debug_trace_regs_modified.push_back( reg_map_t() );
+   m_debug_trace_regs_read.push_back( reg_map_t() );
    m_local_mem_stack_pointer += m_func_info->local_mem_framesize(); 
 }
 
@@ -387,6 +409,8 @@ bool ptx_thread_info::callstack_pop()
    }
    m_callstack.pop_back();
    m_regs.pop_back();
+   m_debug_trace_regs_modified.pop_back();
+   m_debug_trace_regs_read.pop_back();
 
    // write return value into caller frame
    if( rv_dst != NULL ) 
@@ -441,38 +465,63 @@ const ptx_instruction *ptx_thread_info::get_inst( addr_t pc ) const
    return m_func_info->get_instruction(pc);
 }
 
-void ptx_thread_info::dump_regs()
-{
-   dump_regs(stdout);
-}
-
 void ptx_thread_info::dump_regs( FILE *fp )
 {
+   if(m_regs.empty()) return;
+   if(m_regs.back().empty()) return;
    fprintf(fp,"Register File Contents:\n");
+   fflush(fp);
    reg_map_t::const_iterator r;
    for ( r=m_regs.back().begin(); r != m_regs.back().end(); ++r ) {
-      std::string name = r->first->name();
+      const symbol *sym = r->first;
       ptx_reg_t value = r->second;
+      std::string name = sym->name();
       print_reg(name,value,m_symbol_table);
    }
-}
-
-void ptx_thread_info::dump_modifiedregs()
-{
-   dump_modifiedregs(stdout);
 }
 
 void ptx_thread_info::dump_modifiedregs(FILE *fp)
 {
-   if( m_debug_trace_regs_modified.empty() ) 
-      return;
-   fprintf(fp,"Modified Registers:\n");
-   reg_map_t::const_iterator r;
-   for ( r=m_debug_trace_regs_modified.begin(); r != m_debug_trace_regs_modified.end(); ++r ) {
-      std::string name = r->first->name();
-      ptx_reg_t value = r->second;
-      print_reg(name,value,m_symbol_table);
+   if( !(m_debug_trace_regs_modified.empty() || 
+         m_debug_trace_regs_modified.back().empty()) ) { 
+      fprintf(fp,"Output Registers:\n");
+      fflush(fp);
+      reg_map_t::iterator r;
+      for ( r=m_debug_trace_regs_modified.back().begin(); r != m_debug_trace_regs_modified.back().end(); ++r ) {
+         const symbol *sym = r->first;
+         std::string name = sym->name();
+         ptx_reg_t value = r->second;
+         print_reg(fp,name,value,m_symbol_table);
+      }
    }
+   if( !(m_debug_trace_regs_read.empty() ||
+         m_debug_trace_regs_read.back().empty()) ) { 
+      fprintf(fp,"Input Registers:\n");
+      fflush(fp);
+      reg_map_t::iterator r;
+      for ( r=m_debug_trace_regs_read.back().begin(); r != m_debug_trace_regs_read.back().end(); ++r ) {
+         const symbol *sym = r->first;
+         std::string name = sym->name();
+         ptx_reg_t value = r->second;
+         print_reg(fp,name,value,m_symbol_table);
+      }
+   }
+}
+
+void ptx_thread_info::push_breakaddr(const operand_info &breakaddr) 
+{
+   m_breakaddrs.push(breakaddr);
+}
+
+const operand_info& ptx_thread_info::pop_breakaddr() 
+{
+   if(m_breakaddrs.empty()) {
+      printf("empty breakaddrs stack");
+      assert(0);
+   }
+   operand_info& breakaddr = m_breakaddrs.top();
+   m_breakaddrs.pop();
+   return breakaddr;
 }
 
 void ptx_thread_info::set_npc( const function_info *f )
@@ -481,6 +530,7 @@ void ptx_thread_info::set_npc( const function_info *f )
    m_func_info = const_cast<function_info*>( f );
    m_symbol_table = m_func_info->get_symtab();
 }
+
 
 void feature_not_implemented( const char *f ) 
 {

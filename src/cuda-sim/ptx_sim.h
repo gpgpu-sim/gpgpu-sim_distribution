@@ -105,6 +105,10 @@ struct param_t {
    size_t offset;
 };
 
+#include <stack>
+
+#include "memory.h"
+
 union ptx_reg_t {
    ptx_reg_t() {
       bits.ms = 0;
@@ -155,7 +159,13 @@ union ptx_reg_t {
       unsigned ls;
       unsigned ms;
    } bits;
-   unsigned       pred : 1;
+   struct {
+       unsigned int lowest;
+       unsigned int low;
+       unsigned int high;
+       unsigned int highest;
+   } u128;
+   unsigned       pred : 4;
 
 };
 
@@ -238,7 +248,7 @@ public:
          m_ptx_extensions = extensions;
       }
       float ver() const { assert(m_valid); return m_ptx_version; }
-      float extensions() const { assert(m_valid); return m_ptx_extensions; }
+      unsigned extensions() const { assert(m_valid); return m_ptx_extensions; }
 private:
       bool     m_valid;
       float    m_ptx_version;
@@ -251,10 +261,11 @@ public:
    ptx_thread_info();
 
    const ptx_version &get_ptx_version() const;
-   ptx_reg_t get_operand_value( const symbol *reg );
-   ptx_reg_t get_operand_value( const operand_info &op );
-   void set_operand_value( const operand_info &dst, const ptx_reg_t &data );
-   void set_operand_value( const symbol *dst, const ptx_reg_t &data );
+   void set_reg( const symbol *reg, const ptx_reg_t &value );
+   ptx_reg_t get_reg( const symbol *reg );
+   ptx_reg_t get_operand_value( const operand_info &op, operand_info dstInfo, unsigned opType, ptx_thread_info *thread, int derefFlag );
+   void set_operand_value( const operand_info &dst, const ptx_reg_t &data, unsigned type, ptx_thread_info *thread, const ptx_instruction *pI );
+   void set_operand_value( const operand_info &dst, const ptx_reg_t &data, unsigned type, ptx_thread_info *thread, const ptx_instruction *pI, int overflow, int carry );
    void get_vector_operand_values( const operand_info &op, ptx_reg_t* ptx_regs, unsigned num_elements );
    void set_vector_operand_values( const operand_info &dst, 
                                    const ptx_reg_t &data1, 
@@ -345,6 +356,7 @@ public:
       m_tid[1] = y;
       m_tid[2] = z;
    }
+   void cpy_tid_to_reg( int x, int y, int z);
    void set_ctaid( int x, int y, int z)
    {
       m_ctaid[0] = x;
@@ -413,14 +425,13 @@ public:
    {
       m_PC = m_NPC;
    }
-   void dump_regs();
-   void dump_regs(FILE *fp);
-   void dump_modifiedregs();
+   void dump_regs(FILE * fp);
    void dump_modifiedregs(FILE *fp);
-   void clear_modifiedregs() { m_debug_trace_regs_modified.clear();}
+   void clear_modifiedregs() { m_debug_trace_regs_modified.back().clear(); m_debug_trace_regs_read.back().clear(); }
    function_info *get_finfo() { return m_func_info;   }
    const function_info *get_finfo() const { return m_func_info;   }
-
+   void push_breakaddr(const operand_info &breakaddr);
+   const operand_info& pop_breakaddr();
    void enable_debug_trace() { m_enable_debug_trace = true; }
    unsigned get_local_mem_stack_pointer() const { return m_local_mem_stack_pointer; }
 
@@ -435,6 +446,8 @@ public:
    ptx_reg_t m_last_set_operand_value;
 
 private:
+
+
    unsigned m_uid;
    core_t *m_core;
    bool   m_valid;
@@ -468,9 +481,11 @@ private:
 
    typedef tr1_hash_map<const symbol*,ptx_reg_t> reg_map_t;
    std::list<reg_map_t> m_regs;
-
+   std::list<reg_map_t> m_debug_trace_regs_modified;
+   std::list<reg_map_t> m_debug_trace_regs_read;
    bool m_enable_debug_trace;
-   reg_map_t m_debug_trace_regs_modified; // track the modified register for each executed insn
+
+   std::stack<class operand_info> m_breakaddrs;
 };
 
 addr_t generic_to_local( unsigned smid, unsigned hwtid, addr_t addr );

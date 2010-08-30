@@ -94,6 +94,7 @@ type_info *g_var_type = NULL;
 // instruction definition stuff:
 const symbol *g_pred;
 int g_neg_pred;
+int g_pred_mod;
 symbol *g_label;
 int g_opcode = -1;
 std::list<operand_info> g_operands;
@@ -165,6 +166,7 @@ void init_instruction_state()
    DPRINTF("init_instruction_state");
    g_pred = NULL;
    g_neg_pred = 0;
+   g_pred_mod = -1;
    g_label = NULL;
    g_opcode = -1;
    g_options.clear();
@@ -291,7 +293,8 @@ void add_instruction()
    DPRINTF("add_instruction: %s", ((g_opcode>0)?g_opcode_string[g_opcode]:"<label>") );
    ptx_instruction *i = new ptx_instruction( g_opcode, 
                                              g_pred, 
-                                             g_neg_pred, 
+                                             g_neg_pred,
+                                             g_pred_mod, 
                                              g_label, 
                                              g_operands,
                                              g_return_var,
@@ -495,6 +498,21 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
    }
 }
 
+void add_constptr(const char* identifier1, const char* identifier2, int offset)
+{
+   symbol *s1 = g_current_symbol_table->lookup(identifier1);
+   const symbol *s2 = g_current_symbol_table->lookup(identifier2);
+   parse_assert( s1 != NULL, "'from' constant identifier does not exist.");
+   parse_assert( s1 != NULL, "'to' constant identifier does not exist.");
+
+   unsigned addr = s2->get_address();
+
+   printf("GPGPU-Sim PTX: moving \"%s\" from 0x%x to 0x%x (%s+%x)\n",
+      identifier1, s1->get_address(), addr+offset, identifier2, offset);
+
+   s1->set_address( addr + offset );
+}
+
 void add_function_arg()
 {
    if( g_func_info ) {
@@ -570,7 +588,7 @@ void add_opcode( int opcode )
    g_opcode = opcode;
 }
 
-void add_pred( const char *identifier, int neg ) 
+void add_pred( const char *identifier, int neg, int predModifier ) 
 {
    DPRINTF("add_pred");
    const symbol *s = g_current_symbol_table->lookup(identifier);
@@ -580,12 +598,26 @@ void add_pred( const char *identifier, int neg )
    }
    g_pred = s;
    g_neg_pred = neg;
+   g_pred_mod = predModifier;
 }
 
 void add_option( int option ) 
 {
    DPRINTF("add_option");
    g_options.push_back( option );
+}
+
+void add_double_operand( const char *d1, const char *d2 )
+{
+   //operands that access two variables.
+   //eg. s[$ofs1+$r0], g[$ofs1+=$r0]
+   //TODO: Not sure if I'm going to use this for storing to two destinations or not.
+
+   DPRINTF("add_double_operand");
+   const symbol *s1 = g_current_symbol_table->lookup(d1);
+   const symbol *s2 = g_current_symbol_table->lookup(d2);
+   parse_assert( s1 != NULL && s2 != NULL, "component(s) missing declarations.");
+   g_operands.push_back( operand_info(s1,s2) );
 }
 
 void add_2vector_operand( const char *d1, const char *d2 ) 
@@ -629,6 +661,109 @@ void add_memory_operand()
    DPRINTF("add_memory_operand");
    assert( !g_operands.empty() );
    g_operands.back().make_memory_operand();
+}
+
+/*TODO: add other memory locations*/
+void change_memory_addr_space(const char *identifier) 
+{
+   /*0 = N/A, not reading from memory
+    *1 = global memory
+    *2 = shared memory
+    *3 = const memory segment
+    *4 = local memory segment
+    */
+
+   bool recognizedType = false;
+
+   DPRINTF("change_memory_addr_space");
+   assert( !g_operands.empty() );
+   if(!strcmp(identifier, "g"))
+   {
+       g_operands.back().set_addr_space(1);
+       recognizedType = true;
+   }
+   if(!strcmp(identifier, "s"))
+   {
+       g_operands.back().set_addr_space(2);
+       recognizedType = true;
+   }
+   // For constants, check if the first character is 'c'
+   char c[2];
+   strncpy(c, identifier, 1); c[1] = '\0';
+   if(!strcmp(c, "c"))
+   {
+       g_operands.back().set_addr_space(3);
+       parse_assert(g_current_symbol_table->lookup(identifier) != NULL, "Constant was not defined.");
+       g_operands.back().set_const_mem_offset(g_current_symbol_table->lookup(identifier)->get_address());
+       recognizedType = true;
+   }
+   // For local memory, check if the first character is 'l'
+   char l[2];
+   strncpy(l, identifier, 1); l[1] = '\0';
+   if(!strcmp(l, "l"))
+   {
+       g_operands.back().set_addr_space(4);
+       parse_assert(g_current_symbol_table->lookup(identifier) != NULL, "Local memory segment was not defined.");
+       g_operands.back().set_const_mem_offset(g_current_symbol_table->lookup(identifier)->get_address());
+       recognizedType = true;
+   }
+
+   parse_assert(recognizedType, "Error: unrecognized memory type.");
+}
+
+void change_operand_lohi( int lohi )
+{
+   /*0 = N/A, read entire operand
+    *1 = lo, reading from lowest bits
+    *2 = hi, reading from highest bits
+    */
+
+   DPRINTF("change_operand_lohi");
+   assert( !g_operands.empty() );
+
+   g_operands.back().set_operand_lohi(lohi);
+
+}
+
+void change_double_operand_type( int operand_type )
+{
+   /*
+    *-3 = reg / reg (set instruction, but both get same value)
+    *-2 = reg | reg (cvt instruction)
+    *-1 = reg | reg (set instruction)
+    *0 = N/A, default
+    *1 = reg + reg
+    *2 = reg += reg
+    *3 = reg += immediate
+    */
+
+   DPRINTF("change_double_operand_type");
+   assert( !g_operands.empty() );
+
+   // For double destination operands, ensure valid instruction
+   if( operand_type == -1 || operand_type == -2 ) {
+      if((g_opcode == SET_OP)||(g_opcode == SETP_OP))
+         g_operands.back().set_double_operand_type(-1);
+      else
+         g_operands.back().set_double_operand_type(-2);
+   } else if( operand_type == -3 ) {
+      if(g_opcode == SET_OP)
+         g_operands.back().set_double_operand_type(operand_type);
+      else
+         parse_assert(0, "Error: Unsupported use of double destination operand.");
+   } else {
+      g_operands.back().set_double_operand_type(operand_type);
+   }
+
+}
+
+void change_operand_neg( )
+{
+   DPRINTF("change_operand_neg");
+   assert( !g_operands.empty() );
+
+   g_operands.back().set_operand_neg();
+
 }
 
 void add_literal_int( int value ) 
@@ -741,3 +876,11 @@ void add_pragma( const char *str )
 {
    printf("GPGPU-Sim PTX: Warning -- ignoring pragma '%s'\n", str );
 }
+
+void version_header(double a) {}  //intentional dummy function
+void target_header(char* a) {}  //intentional dummy function
+void target_header2(char* a, char* b) {}  //intentional dummy function
+
+void func_header(char* a) {} //intentional dummy function
+void func_header_info(char* a) {} //intentional dummy function
+void func_header_info_int(char* a, int b) {} //intentional dummy function

@@ -92,7 +92,12 @@ void gpgpu_ptx_sim_init_perf()
    ptx_reg_options(opp);
    option_parser_cmdline(opp, sg_argc, sg_argv); // parse configuration options
 
-   srand(1); 
+   srand(1);
+
+   // Open instructions debug output file for writing
+   if(g_ptx_inst_debug_to_file != 0) {
+      ptx_inst_debug_file = fopen(g_ptx_inst_debug_file, "w");
+   }
 
    fprintf(stdout, "GPGPU-Sim: Configuration options:\n\n");
    option_parser_print(opp, stdout);

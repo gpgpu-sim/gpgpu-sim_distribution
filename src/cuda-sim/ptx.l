@@ -88,6 +88,7 @@ abs	TC; ptx_lval.int_value = ABS_OP; return OPCODE;
 add	TC; ptx_lval.int_value = ADD_OP; return OPCODE;
 addc    TC; ptx_lval.int_value = ADDC_OP; return OPCODE;
 and	TC; ptx_lval.int_value = AND_OP; return OPCODE;
+andn	TC; ptx_lval.int_value = ANDN_OP; return OPCODE;
 atom	TC; ptx_lval.int_value = ATOM_OP; return OPCODE;
 bar.sync TC; ptx_lval.int_value = BAR_OP; return OPCODE;
 bfe     TC; ptx_lval.int_value = BFE_OP; return OPCODE;
@@ -120,8 +121,11 @@ mov     TC; ptx_lval.int_value = MOV_OP; return OPCODE;
 mul24   TC; ptx_lval.int_value = MUL24_OP; return OPCODE;
 mul     TC; ptx_lval.int_value = MUL_OP; return OPCODE;
 neg     TC; ptx_lval.int_value = NEG_OP; return OPCODE;
+nandn   TC; ptx_lval.int_value = NANDN_OP; return OPCODE;
+norn    TC; ptx_lval.int_value = NORN_OP; return OPCODE;
 not     TC; ptx_lval.int_value = NOT_OP; return OPCODE;
 or      TC; ptx_lval.int_value = OR_OP; return OPCODE;
+orn     TC; ptx_lval.int_value = ORN_OP; return OPCODE;
 pmevent TC; ptx_lval.int_value = PMEVENT_OP; return OPCODE;
 popc    TC; ptx_lval.int_value = POPC_OP; return OPCODE;
 prefetch TC; ptx_lval.int_value = PREFETCH_OP; return OPCODE;
@@ -163,6 +167,9 @@ vshr    TC; ptx_lval.int_value = VSHR_OP; return OPCODE;
 vsub    TC; ptx_lval.int_value = VSUB_OP; return OPCODE;
 vote	TC; ptx_lval.int_value = VOTE_OP; return OPCODE;
 xor     TC; ptx_lval.int_value = XOR_OP; return OPCODE;
+nop     TC; ptx_lval.int_value = NOP_OP; return OPCODE;
+break  TC; ptx_lval.int_value = BREAK_OP; return OPCODE;
+breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 
 <INITIAL,NOT_OPCODE>{
 
@@ -199,8 +206,11 @@ xor     TC; ptx_lval.int_value = XOR_OP; return OPCODE;
 \.version TC; return VERSION_DIRECTIVE;
 \.visible TC; return VISIBLE_DIRECTIVE;
 
+\.constptr TC; return CONSTPTR_DIRECTIVE; /* Ptx plus directive for pointer to constant memory */
+
 
 "%clock" TC; ptx_lval.int_value = CLOCK_REG; return SPECIAL_REGISTER;
+"%halfclock" TC; ptx_lval.int_value = HALFCLOCK_ID; return SPECIAL_REGISTER;
 "%clock64" TC; ptx_lval.int_value = CLOCK64_REG; return SPECIAL_REGISTER;
 "%ctaid" TC; ptx_lval.int_value = CTAID_REG; return SPECIAL_REGISTER;
 "%envreg"[0-9]+ TC; sscanf(yytext+7,"%u",&ptx_lval.int_value); ptx_lval.int_value<<=16; ptx_lval.int_value += ENVREG_REG; return SPECIAL_REGISTER;
@@ -249,6 +259,8 @@ xor     TC; ptx_lval.int_value = XOR_OP; return OPCODE;
 \.b16  TC;  return B16_TYPE;
 \.b32  TC;  return B32_TYPE;
 \.b64  TC;  return B64_TYPE;
+\.bb64  TC;  return BB64_TYPE;
+\.bb128  TC;  return BB128_TYPE;
 \.pred TC;  return PRED_TYPE;
 
 \.texref TC;  return TEXREF_TYPE;
@@ -276,6 +288,9 @@ xor     TC; ptx_lval.int_value = XOR_OP; return OPCODE;
 \.le    TC; return LE_OPTION;
 \.gt    TC; return GT_OPTION;
 \.ge    TC; return GE_OPTION;
+\.cf    TC; return CF_OPTION;
+\.sf    TC; return SF_OPTION;
+\.nsf    TC; return NSF_OPTION;
 
 \.lo    TC; return LO_OPTION;
 \.ls    TC; return LS_OPTION;
@@ -295,6 +310,8 @@ xor     TC; ptx_lval.int_value = XOR_OP; return OPCODE;
 
 \.ftz	TC; return FTZ_OPTION;
 
+\.neg	TC; return NEG_OPTION;
+
 \.wide  TC; return WIDE_OPTION;
 \.uni	TC; return UNI_OPTION;
 
@@ -305,6 +322,10 @@ xor     TC; ptx_lval.int_value = XOR_OP; return OPCODE;
 \.all	TC; return ALL_OPTION;
 \.gl    TC; return GLOBAL_OPTION;
 \.cta   TC; return CTA_OPTION;
+
+\.exit   TC; return EXIT_OPTION;
+
+\.abs   TC; return ABS_OPTION;
 
 \.to	TC; return TO_OPTION;
 
@@ -336,9 +357,11 @@ xor     TC; ptx_lval.int_value = XOR_OP; return OPCODE;
 \.y	TC; ptx_lval.int_value = 1; return DIMENSION_MODIFIER;
 \.z	TC; ptx_lval.int_value = 2; return DIMENSION_MODIFIER;
 
+"-"	TC; return MINUS;
 "+"	TC; return PLUS;
 ","     TC; return COMMA;
 "@" 	TC; return PRED;
+"|" 	TC; return PIPE;
 "["     TC; return LEFT_SQUARE_BRACKET;
 "]"	TC; return RIGHT_SQUARE_BRACKET;
 "<"     TC; return LEFT_ANGLE_BRACKET;
@@ -352,6 +375,7 @@ xor     TC; ptx_lval.int_value = XOR_OP; return OPCODE;
 "{"	TC; BEGIN(INITIAL); return LEFT_BRACE;
 "}"	TC; return RIGHT_BRACE;
 \.	TC; return PERIOD;
+"/"	TC; return BACKSLASH;
 
 "//"[^\n]* TC;	// eat single
 

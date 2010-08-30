@@ -34,8 +34,6 @@ void Scoreboard::printContents() {
 
 // Mark register as write-pending
 void Scoreboard::reserveRegister(int wid, int regnum) {
-	//printf("Reserving register sid=%d wid=%d regnum=%d\n", sid, wid, regnum);
-
 	if( !(reg_table[wid].find(regnum) == reg_table[wid].end()) ){
 		printf("Error: trying to reserve an already reserved register (sid=%d, wid=%d, regnum=%d).", sid, wid, regnum);
 		assert(reg_table[wid].find(regnum) == reg_table[wid].end());
@@ -47,8 +45,6 @@ void Scoreboard::reserveRegister(int wid, int regnum) {
 
 // Unmark register as write-pending
 void Scoreboard::releaseRegister(int wid, int regnum) {
-	//printf("Releasing register sid=%d wid=%d regnum=%d\n", sid, wid, regnum);
-
 	if( !(reg_table[wid].find(regnum) != reg_table[wid].end()) ) {
 		printf("Error: trying to release an unreserved register (sid=%d, wid=%d, regnum=%d).", sid, wid, regnum);
 		assert(reg_table[wid].find(regnum) != reg_table[wid].end());

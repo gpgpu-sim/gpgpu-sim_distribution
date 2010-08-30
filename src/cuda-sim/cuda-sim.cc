@@ -82,6 +82,7 @@
 #include "../gpgpu-sim/gpu-sim.h"
 #include "ptx_sim.h"
 #include "../gpgpusim_entrypoint.h"
+#include "decuda_pred_table/decuda_pred_table.h"
 
 int gpgpu_ptx_instruction_classification;
 void ** g_inst_classification_stat = NULL;
@@ -90,6 +91,9 @@ int g_ptx_kernel_count = -1; // used for classification stat collection purposes
 int g_debug_execution = 0;
 int g_debug_thread_uid = 0;
 addr_t g_debug_pc = 0xBEEF1518;
+// Output debug information to file options
+FILE* ptx_inst_debug_file;
+
 unsigned g_ptx_sim_num_insn = 0;
 std::map<const struct textureReference*,const struct cudaArray*> TextureToArrayMap; // texture bindings
 std::map<const struct textureReference*, const struct textureInfo*> TextureToInfoMap;
@@ -245,7 +249,7 @@ void function_info::ptx_assemble()
    g_assemble_code_next_pc=PC;
    for ( unsigned ii=0; ii < n; ii++ ) { // handle branch instructions
       ptx_instruction *pI = m_instr_mem[ii];
-      if ( pI->get_opcode() == BRA_OP ) {
+      if ( pI->get_opcode() == BRA_OP || pI->get_opcode() == BREAKADDR_OP ) {
          operand_info &target = pI->dst(); //get operand, e.g. target name
          if ( labels.find(target.name()) == labels.end() ) {
             printf("GPGPU-Sim PTX: Loader error (%s:%u): Branch label \"%s\" does not appear in assembly code.",
@@ -263,10 +267,20 @@ void function_info::ptx_assemble()
 
    create_basic_blocks();
    connect_basic_blocks();
+   bool modified = false; 
+   do {
+      find_dominators();
+      find_idominators();
+      modified = connect_break_targets(); 
+   } while (modified == true);
+
    if ( g_debug_execution>=50 ) {
       print_basic_blocks();
       print_basic_block_links();
       print_basic_block_dot();
+   }
+   if ( g_debug_execution>=2 ) {
+      print_dominators();
    }
    find_postdominators();
    find_ipostdominators();
@@ -274,6 +288,7 @@ void function_info::ptx_assemble()
       print_postdominators();
       print_ipostdominators();
    }
+
    m_assembled = true;
 }
 
@@ -534,6 +549,8 @@ static void get_opcode_info( const ptx_instruction *pI, unsigned opcode, unsigne
       *op_type = STORE_OP;
    } else if ( opcode == BRA_OP ) {
       *op_type = BRANCH_OP;
+   } else if ( opcode == BREAKADDR_OP ) {
+      *op_type = BRANCH_OP;
    } else if ( opcode == TEX_OP ) {
       *op_type = LOAD_OP;
    } else if ( opcode == ATOM_OP ) {
@@ -595,6 +612,17 @@ void function_info::ptx_decode_inst( ptx_thread_info *thread,
 
    unsigned cycles;
    get_opcode_info(pI,opcode,&cycles,op_type);
+
+   // Quick fix for memory operands in ALU instructions
+   if( pI->has_memory_read() )
+      *op_type = LOAD_OP;   
+   else if( pI->has_memory_write() )
+      *op_type = STORE_OP;
+
+   if( pI->has_memory_read() && pI->has_memory_write() ) {
+      printf("Instruction has both a memory read and memory write - not supported by timing simulator.");
+      assert(0);
+   }
 
    // Get register operands
    int n=0,m=0;
@@ -659,6 +687,35 @@ void function_info::ptx_decode_inst( ptx_thread_info *thread,
 	     if(o.is_memory_operand2()) {
 	    	 // memory operand with one address register (ex. g[$r1] or s[$r2+0x4])
 	    	 if(o.get_double_operand_type() == 0 && o.is_memory_operand()){
+				 *ar1 = o.reg_num();
+	    	 }
+	    	 // memory operand with two address register (ex. s[$r1+$r1] or g[$r1+=$r2])
+	    	 else if(o.get_double_operand_type() == 1 || o.get_double_operand_type() == 2) {
+	    		 *ar1 = o.reg1_num();
+	    		 *ar2 = o.reg2_num();
+	    	 }
+	     }
+	  }
+   }
+
+   // Get predicate
+   if(pI->has_pred()) {
+	   const operand_info &p = pI->get_pred();
+	   *pred = p.reg_num();
+   }
+
+   // Get address registers inside memory operands.
+   // Assuming only one memory operand per instruction,
+   //  and maximum of two address registers for one memory operand.
+   if( pI->has_memory_read() || pI->has_memory_write() ) {
+	  ptx_instruction::const_iterator op=pI->op_iter_begin();
+	  for ( ; op != pI->op_iter_end(); op++, n++ ) { //process operands
+	     const operand_info &o = *op;
+
+	     // memory operand with addressing (ex. s[0x4] or g[$r1])
+	     if(o.is_memory_operand2()) {
+	    	 // memory operand with one address register (ex. g[$r1] or s[$r2+0x4])
+	    	 if(o.get_double_operand_type() == 0 && o.is_memory_operand()){
              const symbol *base_addr = o.get_symbol();
              if( base_addr->is_reg() ) 
                 *ar1 = base_addr->reg_num();
@@ -700,6 +757,7 @@ void function_info::add_param_data( unsigned argn, struct gpgpu_ptx_sim_arg *arg
       tmp.offset = args->m_offset;
       tmp.type = 0;
       i->second.add_data(tmp);
+      i->second.add_offset((unsigned) args->m_offset);
    } else {
       // This should only happen for OpenCL:
       // 
@@ -778,6 +836,30 @@ void function_info::finalize( memory_space *param_mem )
    }
 }
 
+void function_info::param_to_shared( memory_space *shared_mem, symbol_table *symtab ) 
+{
+/*copies parameters into simulated shared memory*/
+   for( std::map<unsigned,param_info>::iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
+      param_info &p = i->second;
+      std::string name = p.get_name();
+      int type = p.get_type();
+      param_t value = p.get_value();
+      value.type = type;
+      symbol *param = symtab->lookup(name.c_str());
+      unsigned xtype = param->type()->get_key().scalar_type();
+      assert(xtype==(unsigned)type);
+
+      int tmp;
+      size_t size;
+      unsigned offset = p.get_offset();
+      type_info_key::type_decode(xtype,size,tmp);
+
+      // Write to shared memory - offset + 0x10
+      shared_mem->write(offset+0x10,size/8,&value,NULL,NULL);
+   }
+}
+
+
 void function_info::list_param( FILE *fout ) const
 {
    for( std::map<unsigned,param_info>::const_iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
@@ -827,17 +909,19 @@ unsigned datatype2size( unsigned data_type )
       case F32_TYPE: 
          data_size = 4; break;
       case B64_TYPE:
+      case BB64_TYPE:
       case S64_TYPE:
       case U64_TYPE:
       case F64_TYPE: 
          data_size = 8; break;
+      case BB128_TYPE: 
+         data_size = 16; break;
       default: assert(0); break;
    }
    return data_size; 
 }
 
 unsigned g_warp_active_mask;
-FILE *ptx_inst_debug_file;
 
 void function_info::ptx_exec_inst( ptx_thread_info *thread, 
                                    addr_t *addr, 
@@ -858,6 +942,11 @@ void function_info::ptx_exec_inst( ptx_thread_info *thread,
    thread->clearRPC();
    thread->m_last_set_operand_value.u64 = 0;
 
+   if(thread->is_done())
+   {
+      printf("attempted to execute instruction on a thread that is already done.\n");
+      assert(0);
+   }
    if ( g_debug_execution >= 6 ) {
       if ( (g_debug_thread_uid==0) || (thread->get_uid() == (unsigned)g_debug_thread_uid) ) {
          thread->clear_modifiedregs();
@@ -866,8 +955,12 @@ void function_info::ptx_exec_inst( ptx_thread_info *thread,
    }
    if( pI->has_pred() ) {
       const operand_info &pred = pI->get_pred();
-      ptx_reg_t pred_value = thread->get_operand_value(pred);
-      skip = !pred_value.pred ^ pI->get_pred_neg();
+      ptx_reg_t pred_value = thread->get_operand_value(pred, pred, PRED_TYPE, thread, 0);
+      if(pI->get_pred_mod() == -1) {
+            skip = (pred_value.pred & 0x0001) ^ pI->get_pred_neg(); //ptxplus inverts the zero flag
+      } else {
+            skip = !pred_lookup(pI->get_pred_mod(), pred_value.pred & 0x000F);
+      }
    }
    g_warp_active_mask = warp_active_mask;
    if( !skip ) {
@@ -875,10 +968,28 @@ void function_info::ptx_exec_inst( ptx_thread_info *thread,
 #define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,thread); op_classification = CLASSIFICATION; break;
 #include "opcodes.def"
 #undef OP_DEF
-      default:
-         printf( "Execution error: Invalid opcode (0x%x)\n", pI->get_opcode() );
-         break;
+
+         default:
+            printf( "Execution error: Invalid opcode (0x%x)\n", pI->get_opcode() );
+            break;
       }
+
+      // Run exit instruction if exit option included
+      if(pI->is_exit())
+         exit_impl(pI,thread);
+   }
+
+   // Output instruction information to file and stdout
+   if( g_ptx_inst_debug_to_file != 0 && 
+        (g_ptx_inst_debug_thread_uid == 0 || g_ptx_inst_debug_thread_uid == thread->get_uid()) ) {
+      dim3 ctaid = thread->get_ctaid();
+      dim3 tid = thread->get_tid();
+      fprintf(ptx_inst_debug_file,
+             "[thd=%u] : (%s:%u - %s)\n",
+             thread->get_uid(),
+             pI->source_file(), pI->source_line(), pI->get_source() );
+      //fprintf(ptx_inst_debug_file, "has memory read=%d, has memory write=%d\n", pI->has_memory_read(), pI->has_memory_write());
+      fflush(ptx_inst_debug_file);
    }
 
    if ( ptx_debug_exec_dump_cond<5>(thread->get_uid(), pc) ) {
@@ -958,15 +1069,15 @@ void function_info::ptx_exec_inst( ptx_thread_info *thread,
    if( g_ptx_inst_debug_to_file != 0 && 
         (g_ptx_inst_debug_thread_uid == 0 || g_ptx_inst_debug_thread_uid == thread->get_uid()) ) {
       thread->dump_modifiedregs(ptx_inst_debug_file);
-      thread->dump_regs(ptx_inst_debug_file);
    }
 
    if ( g_debug_execution >= 6 ) {
       if ( ptx_debug_exec_dump_cond<6>(thread->get_uid(), pc) )
-         thread->dump_modifiedregs();
-   } else if ( g_debug_execution >= 10 ) {
+         thread->dump_modifiedregs(stdout);
+   }
+   if ( g_debug_execution >= 10 ) {
       if ( ptx_debug_exec_dump_cond<10>(thread->get_uid(), pc) )
-         thread->dump_regs();
+         thread->dump_regs(stdout);
    }
    thread->update_pc();
    g_ptx_sim_num_insn++;
@@ -1168,6 +1279,8 @@ unsigned ptx_sim_init_thread( ptx_thread_info** thread_info,int sid,unsigned tid
             thd->set_ntid(g_cudaBlockDim.x,g_cudaBlockDim.y,g_cudaBlockDim.z);
             thd->set_ctaid(g_gx,g_gy,g_gz);
             thd->set_tid(tx,ty,tz);
+            if( g_entrypoint_func_info->get_ptx_version().extensions() ) 
+               thd->cpy_tid_to_reg(tx,ty,tz);
             thd->set_hw_tid((unsigned)-1);
             thd->set_hw_wid((unsigned)-1);
             thd->set_hw_ctaid((unsigned)-1);
@@ -1175,6 +1288,9 @@ unsigned ptx_sim_init_thread( ptx_thread_info** thread_info,int sid,unsigned tid
             thd->set_hw_sid((unsigned)-1);
             thd->set_valid();
             thd->m_shared_mem = shared_mem;
+            function_info *finfo = thd->func_info();
+            symbol_table *st = finfo->get_symtab();
+            thd->func_info()->param_to_shared(thd->m_shared_mem,st);
             thd->m_cta_info = cta_info;
             cta_info->add_thread(thd);
             thd->m_local_mem = local_mem;
@@ -1691,7 +1807,7 @@ void ptx_dump_regs( void *thd )
    if ( thd == NULL )
       return;
    ptx_thread_info *t = (ptx_thread_info *) thd;
-   t->dump_regs();
+   t->dump_regs(stdout);
 }
 
 unsigned ptx_set_tex_cache_linesize(unsigned linesize)

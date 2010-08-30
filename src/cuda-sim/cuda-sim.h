@@ -20,6 +20,7 @@ extern std::map<std::string,function_info*> *g_kernel_name_to_function_lookup;
 extern void ** g_inst_classification_stat;
 extern void ** g_inst_op_classification_stat;
 extern int g_ptx_kernel_count; // used for classification stat collection purposes 
+extern FILE* ptx_inst_debug_file;
 
 
 extern void   gpgpu_cuda_ptx_sim_init_grid( const char *kernel_key,

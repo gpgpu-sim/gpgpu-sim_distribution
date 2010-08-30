@@ -90,7 +90,7 @@ void add_neg_pred_operand( const char *identifier );
 void add_variables();
 void set_variable_type();
 void add_opcode( int opcode );
-void add_pred( const char *identifier, int negate );
+void add_pred( const char *identifier, int negate, int predModifier );
 void add_2vector_operand( const char *d1, const char *d2 );
 void add_3vector_operand( const char *d1, const char *d2, const char *d3 );
 void add_4vector_operand( const char *d1, const char *d2, const char *d3, const char *d4 );
@@ -114,6 +114,18 @@ void add_version_info( float ver );
 void *reset_symtab();
 void set_symtab(void*);
 void add_pragma( const char *str );
+void func_header(char* a);
+void func_header_info(char* a);
+void func_header_info_int(char* a, int b);
+void add_constptr(const char* identifier1, const char* identifier2, int offset);
+void target_header(char* a);
+void target_header2(char* a, char* b);
+void add_double_operand( const char *d1, const char *d2 );
+void change_memory_addr_space( const char *identifier );
+void change_operand_lohi( int lohi );
+void change_double_operand_type( int addr_type );
+void change_operand_neg( );
+void version_header(double a);
 #ifdef __cplusplus 
 }
 #endif

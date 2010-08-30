@@ -72,6 +72,7 @@ enum opcode_t {
 
 enum special_regs {
    CLOCK_REG,
+   HALFCLOCK_ID,
    CLOCK64_REG,
    CTAID_REG,
    ENVREG_REG,

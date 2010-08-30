@@ -283,6 +283,7 @@ public:
       return m_arch_reg_num; 
    }
    void print_info(FILE *fp) const;
+   unsigned uid() const { return m_uid; }
 
 private:
    unsigned get_uid();
@@ -370,11 +371,21 @@ class operand_info {
 public:
    operand_info()
    {
+      m_addr_space = 0;
+      m_operand_lohi = 0;
+      m_double_operand_type = 0;
+      m_operand_neg = false;
+      m_const_mem_offset = 0;
       m_uid = get_uid();
       m_valid = false;
    }
    operand_info( const symbol *addr )
    {
+      m_addr_space = 0;
+      m_operand_lohi = 0;
+      m_double_operand_type = 0;
+      m_operand_neg = false;
+      m_const_mem_offset = 0;
       m_uid = get_uid();
       m_valid = true;
       if ( addr->is_label() ) {
@@ -402,8 +413,33 @@ public:
       m_neg_pred = false;
       m_is_return_var = false;
    }
+   operand_info( const symbol *addr1, const symbol *addr2 )
+   {
+      m_addr_space = 0;
+      m_operand_lohi = 0;
+      m_double_operand_type = 0;
+      m_operand_neg = false;
+      m_const_mem_offset = 0;
+      m_uid = get_uid();
+      m_valid = true;
+      m_type = memory_t;
+      m_value.m_vector_symbolic = new const symbol*[4];
+      m_value.m_vector_symbolic[0] = addr1;
+      m_value.m_vector_symbolic[1] = addr2;
+      m_value.m_vector_symbolic[2] = NULL;
+      m_value.m_vector_symbolic[3] = NULL;
+      m_addr_offset = 0;
+      m_vector = false;
+      m_neg_pred = false;
+      m_is_return_var = false;
+   }
    operand_info( int builtin_id, int dim_mod )
    {
+      m_addr_space = 0;
+      m_operand_lohi = 0;
+      m_double_operand_type = 0;
+      m_operand_neg = false;
+      m_const_mem_offset = 0;
       m_uid = get_uid();
       m_valid = true;
       m_vector = false;
@@ -415,6 +451,11 @@ public:
    }
    operand_info( const symbol *addr, int offset )
    {
+      m_addr_space = 0;
+      m_operand_lohi = 0;
+      m_double_operand_type = 0;
+      m_operand_neg = false;
+      m_const_mem_offset = 0;
       m_uid = get_uid();
       m_valid = true;
       m_vector = false;
@@ -426,6 +467,11 @@ public:
    }
    operand_info( unsigned x )
    {
+      m_addr_space = 0;
+      m_operand_lohi = 0;
+      m_double_operand_type = 0;
+      m_operand_neg = false;
+      m_const_mem_offset = 0;
       m_uid = get_uid();
       m_valid = true;
       m_vector = false;
@@ -437,6 +483,11 @@ public:
    }
    operand_info( int x )
    {
+      m_addr_space = 0;
+      m_operand_lohi = 0;
+      m_double_operand_type = 0;
+      m_operand_neg = false;
+      m_const_mem_offset = 0;
       m_uid = get_uid();
       m_valid = true;
       m_vector = false;
@@ -448,6 +499,11 @@ public:
    }
    operand_info( float x )
    {
+      m_addr_space = 0;
+      m_operand_lohi = 0;
+      m_double_operand_type = 0;
+      m_operand_neg = false;
+      m_const_mem_offset = 0;
       m_uid = get_uid();
       m_valid = true;
       m_vector = false;
@@ -459,6 +515,11 @@ public:
    }
    operand_info( double x )
    {
+      m_addr_space = 0;
+      m_operand_lohi = 0;
+      m_double_operand_type = 0;
+      m_operand_neg = false;
+      m_const_mem_offset = 0;
       m_uid = get_uid();
       m_valid = true;
       m_vector = false;
@@ -470,6 +531,11 @@ public:
    }
    operand_info( const symbol *s1, const symbol *s2, const symbol *s3, const symbol *s4 )
    {
+      m_addr_space = 0;
+      m_operand_lohi = 0;
+      m_double_operand_type = 0;
+      m_operand_neg = false;
+      m_const_mem_offset = 0;
       m_uid = get_uid();
       m_valid = true;
       m_vector = true;
@@ -506,7 +572,9 @@ public:
    const symbol* vec_symbol(int idx) const 
    {
       assert(idx < 4);
-      return m_value.m_vector_symbolic[idx];
+      const symbol *result = m_value.m_vector_symbolic[idx];
+      assert( result != NULL );
+      return result;
    }
 
    const std::string &vec_name1() const
@@ -564,12 +632,13 @@ public:
    int arch_reg_num(unsigned n) const { return (m_value.m_vector_symbolic[n])? m_value.m_vector_symbolic[n]->arch_reg_num() : -1; }
    bool is_label() const { return m_type == label_t;}
    bool is_builtin() const { return m_type == builtin_t;}
+
+   // Memory operand used in ld / st instructions (ex. [__var1])
    bool is_memory_operand() const { return m_type == memory_t;}
+
    // Memory operand with immediate access (ex. s[0x0004] or g[$r1+=0x0004])
    bool is_memory_operand2() const { 
-      /* TODO: modify after integrate with ptxplus*/ 
-      return m_type == memory_t; 
-      /*return (m_addr_space==1 || m_addr_space==2 || m_addr_space==3 || m_addr_space==4);*/ 
+      return (m_addr_space==1 || m_addr_space==2 || m_addr_space==3 || m_addr_space==4); 
    }
 
    bool is_literal() const { return m_type == int_t ||
@@ -628,7 +697,16 @@ public:
    bool is_neg_pred() const { return m_neg_pred; }
    bool is_valid() const { return m_valid; }
 
-   int get_double_operand_type() const { return 0; /* TODO: modify after integrate with ptxplus*/ }
+   void set_addr_space(int set_value) { m_addr_space = set_value; }
+   int get_addr_space() const { return m_addr_space; }
+   void set_operand_lohi(int set_value) { m_operand_lohi = set_value; }
+   int get_operand_lohi() const { return m_operand_lohi; }
+   void set_double_operand_type(int set_value) {  m_double_operand_type = set_value; }
+   int get_double_operand_type() const { return  m_double_operand_type; }
+   void set_operand_neg() { m_operand_neg = true; }
+   bool get_operand_neg() const { return m_operand_neg; }
+   void set_const_mem_offset(addr_t set_value) { m_const_mem_offset = set_value; }
+   addr_t get_const_mem_offset() const { return m_const_mem_offset; }
 
 private:
    unsigned m_uid;
@@ -636,6 +714,11 @@ private:
    bool m_vector;
    enum operand_type m_type;
 
+   int m_addr_space;
+   int m_operand_lohi;
+   int m_double_operand_type;
+   bool m_operand_neg;
+   addr_t m_const_mem_offset;
    union {
       int             m_int;
       unsigned int    m_unsigned;
@@ -645,7 +728,7 @@ private:
       unsigned int    m_vunsigned[4];
       float           m_vfloat[4];
       double          m_vdouble[4];
-      const symbol*   m_symbolic;
+      const symbol*  m_symbolic;
       const symbol**  m_vector_symbolic;
    } m_value;
 
@@ -669,6 +752,7 @@ struct basic_block_t {
       is_entry=entry;
       is_exit=ex;
       immediatepostdominator_id = -1;
+      immediatedominator_id = -1;
    }
 
    ptx_instruction* ptx_begin;
@@ -679,9 +763,20 @@ struct basic_block_t {
    std::set<int> dominator_ids;
    std::set<int> Tmp_ids;
    int immediatepostdominator_id;
+   int immediatedominator_id;
    bool is_entry;
    bool is_exit;
    unsigned bb_id;
+
+   // if this basic block dom B
+   bool dom(const basic_block_t *B) {
+      return (B->dominator_ids.find(this->bb_id) != B->dominator_ids.end());
+   }
+
+   // if this basic block pdom B
+   bool pdom(const basic_block_t *B) {
+      return (B->postdominator_ids.find(this->bb_id) != B->postdominator_ids.end());
+   }
 };
 
 struct gpgpu_recon_t {
@@ -694,6 +789,7 @@ public:
    ptx_instruction( int opcode, 
                     const symbol *pred, 
                     int neg_pred, 
+                    int pred_mod,
                     symbol *label,
                     const std::list<operand_info> &operands, 
                     const operand_info &return_var,
@@ -706,7 +802,7 @@ public:
    void print_insn() const;
    void print_insn( FILE *fp ) const;
    unsigned uid() const { return m_uid;}
-   int get_opcode() { return m_opcode;}
+   int get_opcode() const { return m_opcode;}
    const char *get_opcode_cstr() const 
    {
       if ( m_opcode != -1 ) {
@@ -721,6 +817,7 @@ public:
    bool has_pred() const { return m_pred != NULL;}
    operand_info get_pred() const { return operand_info( m_pred );}
    bool get_pred_neg() const { return m_neg_pred;}
+   int get_pred_mod() const { return m_pred_mod;}
    const char *get_source() const { return m_source.c_str();}
 
    typedef std::vector<operand_info>::const_iterator const_iterator;
@@ -827,6 +924,9 @@ public:
    bool is_lo() const { return m_lo;}
    bool is_wide() const { return m_wide;}
    bool is_uni() const { return m_uni;}
+   bool is_exit() const { return m_exit;}
+   bool is_abs() const { return m_abs;}
+   bool is_neg() const { return m_neg;}
    bool is_to() const { return m_to_option; }
    unsigned cache_option() const { return m_cache_option; }
    unsigned rounding_mode() const { return m_rounding_mode;}
@@ -841,10 +941,22 @@ public:
    bool has_memory_read() const {
       if( m_opcode == LD_OP || m_opcode == TEX_OP ) 
          return true;
+      // Source operands are memory operands
+      ptx_instruction::const_iterator op=op_iter_begin();
+      for ( int n=0; op != op_iter_end(); op++, n++ ) { //process operands
+         if( n > 0 && op->is_memory_operand2()) // source operands only
+            return true;
+      }
       return false;
    }
    bool has_memory_write() const {
       if( m_opcode == ST_OP ) return true;
+      // Destination operand is a memory operand
+      ptx_instruction::const_iterator op=op_iter_begin();
+      for ( int n=0; (op!=op_iter_end() && n<1); op++, n++ ) { //process operands
+         if( n==0 && op->is_memory_operand2()) // source operands only
+            return true;
+      }
       return false;
    }
 
@@ -859,6 +971,7 @@ private:
 
    const symbol           *m_pred;
    bool                    m_neg_pred;
+   int                    m_pred_mod;
    int                     m_opcode;
    const symbol           *m_label;
    std::vector<operand_info> m_operands;
@@ -868,7 +981,10 @@ private:
    bool                m_wide;
    bool                m_hi;
    bool                m_lo;
-   bool           m_uni; //if branch instruction, this evaluates to true for uniform branches (ie jumps)
+   bool                m_exit;
+   bool                m_abs;
+   bool                m_neg;
+   bool                m_uni; //if branch instruction, this evaluates to true for uniform branches (ie jumps)
    bool                m_to_option;
    unsigned            m_cache_option;
    unsigned            m_rounding_mode;
@@ -900,6 +1016,8 @@ public:
       m_value_set = true;
       m_value = v;
    }
+   void add_offset( unsigned offset ) { m_offset = offset; }
+   unsigned get_offset() { assert(m_valid); return m_offset; }
    std::string get_name() const { assert(m_valid); return m_name; }
    int get_type() const { assert(m_valid);  return m_type; }
    param_t get_value() const { assert(m_value_set); return m_value; }
@@ -911,6 +1029,7 @@ private:
    size_t m_size;
    bool m_value_set;
    param_t m_value;
+   unsigned m_offset;
 };
 
 class function_info {
@@ -943,21 +1062,30 @@ public:
    void print_basic_block_links();
    void print_basic_block_dot();
 
+   operand_info* find_break_target( ptx_instruction * p_break_insn ); //find the target of a break instruction 
    void connect_basic_blocks( ); //iterate across m_basic_blocks of function, connecting basic blocks together
+   bool connect_break_targets(); //connecting break instructions with proper targets
+
+   //iterate across m_basic_blocks of function, 
+   //finding dominator blocks, using algorithm of
+   //Muchnick's Adv. Compiler Design & Implemmntation Fig 7.14 
+   void find_dominators( );
+   void print_dominators();
+   void find_idominators();
+   void print_idominators();
 
    //iterate across m_basic_blocks of function, 
    //finding postdominator blocks, using algorithm of
    //Muchnick's Adv. Compiler Design & Implemmntation Fig 7.14 
    void find_postdominators( );
+   void print_postdominators();
 
    //iterate across m_basic_blocks of function, 
    //finding immediate postdominator blocks, using algorithm of
    //Muchnick's Adv. Compiler Design & Implemmntation Fig 7.15 
    void find_ipostdominators( );
-
-   void print_postdominators();
-
    void print_ipostdominators();
+
 
    unsigned get_num_reconvergence_pairs();
 
@@ -1032,6 +1160,7 @@ public:
    }
 
    void finalize( memory_space *param_mem );
+   void param_to_shared( memory_space *shared_mem, symbol_table *symtab ); 
    void list_param( FILE *fout ) const;
 
    const struct gpgpu_ptx_sim_kernel_info* get_kernel_info () {
@@ -1292,8 +1421,9 @@ extern std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
 #define TOTAL_LOCAL_MEM (MAX_STREAMING_MULTIPROCESSORS*MAX_THREAD_PER_SM*LOCAL_MEM_SIZE_MAX)
 #define SHARED_GENERIC_START (GLOBAL_HEAP_START-TOTAL_SHARED_MEM)
 #define LOCAL_GENERIC_START (SHARED_GENERIC_START-TOTAL_LOCAL_MEM)
-
 #define STATIC_ALLOC_LIMIT (GLOBAL_HEAP_START - (TOTAL_LOCAL_MEM+TOTAL_SHARED_MEM))
+
+
 
 extern bool g_keep_intermediate_files;
 

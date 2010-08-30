@@ -91,7 +91,7 @@ ifeq ($(GNUC_CPP0X),1)
 endif
 endif
 
-OBJS	:= ptx_parser.o ptx_loader.o cuda_device_printf.o instructions.o cuda-sim.o ptx_ir.o ptx_sim.o memory.o ptx-stats.o ptx.tab.o lex.ptx_.o ptxinfo.tab.o lex.ptxinfo_.o
+OBJS	:= ptx_parser.o ptx_loader.o cuda_device_printf.o instructions.o cuda-sim.o ptx_ir.o ptx_sim.o memory.o ptx-stats.o decuda_pred_table/decuda_pred_table.o  ptx.tab.o lex.ptx_.o ptxinfo.tab.o lex.ptxinfo_.o
 
 CUDART_VERSION:=$(shell nvcc --version | awk '/release/ {print $$5;}' | sed 's/,//' | sed 's/\./ /' | awk '{printf("%02u%02u", 10*int($$1), 10*$$2);}')
 
@@ -128,7 +128,8 @@ clean:
 	rm -f *~ *.o *.gcda *.gcno *.gcov libgpgpu_ptx_sim.a \
 		ptx.tab.h ptx.tab.c ptx.output lex.ptx_.c \
 		ptxinfo.tab.h ptxinfo.tab.c ptxinfo.output lex.ptxinfo_.c \
-		instructions.h ptx_parser_decode.def directed_tests.log
+		instructions.h ptx_parser_decode.def directed_tests.log \
+		decuda_pred_table/decuda_pred_table.o
 
 .c.o:
 	$(CC) -c $(OPT) $< -o $*.o
@@ -171,154 +172,3 @@ ptx_parser.o: ptx.tab.c ptx_parser_decode.def
 
 # DO NOT DELETE
 
-cuda_device_printf.o: ptx_ir.h ../abstract_hardware_model.h
-cuda_device_printf.o: /usr/include/assert.h /usr/include/features.h
-cuda_device_printf.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
-cuda_device_printf.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h
-cuda_device_printf.o: ptx_sim.h /usr/include/stdlib.h
-cuda_device_printf.o: /usr/include/sys/types.h /usr/include/bits/types.h
-cuda_device_printf.o: /usr/include/bits/typesizes.h /usr/include/time.h
-cuda_device_printf.o: /usr/include/endian.h /usr/include/bits/endian.h
-cuda_device_printf.o: /usr/include/bits/byteswap.h /usr/include/sys/select.h
-cuda_device_printf.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-cuda_device_printf.o: /usr/include/bits/time.h /usr/include/sys/sysmacros.h
-cuda_device_printf.o: /usr/include/bits/pthreadtypes.h /usr/include/alloca.h
-cuda_device_printf.o: dram_callback.h opcodes.h opcodes.def memory.h
-cuda_device_printf.o: /usr/include/string.h /usr/include/stdio.h
-cuda_device_printf.o: /usr/include/libio.h /usr/include/_G_config.h
-cuda_device_printf.o: /usr/include/wchar.h /usr/include/bits/stdio_lim.h
-cuda_device_printf.o: /usr/include/bits/sys_errlist.h ../option_parser.h
-cuda-sim.o: cuda-sim.h ../abstract_hardware_model.h /usr/include/stdlib.h
-cuda-sim.o: /usr/include/features.h /usr/include/sys/cdefs.h
-cuda-sim.o: /usr/include/bits/wordsize.h /usr/include/gnu/stubs.h
-cuda-sim.o: /usr/include/gnu/stubs-64.h /usr/include/sys/types.h
-cuda-sim.o: /usr/include/bits/types.h /usr/include/bits/typesizes.h
-cuda-sim.o: /usr/include/time.h /usr/include/endian.h
-cuda-sim.o: /usr/include/bits/endian.h /usr/include/bits/byteswap.h
-cuda-sim.o: /usr/include/sys/select.h /usr/include/bits/select.h
-cuda-sim.o: /usr/include/bits/sigset.h /usr/include/bits/time.h
-cuda-sim.o: /usr/include/sys/sysmacros.h /usr/include/bits/pthreadtypes.h
-cuda-sim.o: /usr/include/alloca.h ptx_ir.h /usr/include/assert.h ptx_sim.h
-cuda-sim.o: dram_callback.h opcodes.h opcodes.def memory.h
-cuda-sim.o: /usr/include/string.h /usr/include/stdio.h /usr/include/libio.h
-cuda-sim.o: /usr/include/_G_config.h /usr/include/wchar.h
-cuda-sim.o: /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h
-cuda-sim.o: ../option_parser.h ../intersim/statwraper.h ptx-stats.h
-cuda-sim.o: ptx_loader.h ptx_parser.h
-instructions.o: ptx_ir.h ../abstract_hardware_model.h /usr/include/assert.h
-instructions.o: /usr/include/features.h /usr/include/sys/cdefs.h
-instructions.o: /usr/include/bits/wordsize.h /usr/include/gnu/stubs.h
-instructions.o: /usr/include/gnu/stubs-64.h ptx_sim.h /usr/include/stdlib.h
-instructions.o: /usr/include/sys/types.h /usr/include/bits/types.h
-instructions.o: /usr/include/bits/typesizes.h /usr/include/time.h
-instructions.o: /usr/include/endian.h /usr/include/bits/endian.h
-instructions.o: /usr/include/bits/byteswap.h /usr/include/sys/select.h
-instructions.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-instructions.o: /usr/include/bits/time.h /usr/include/sys/sysmacros.h
-instructions.o: /usr/include/bits/pthreadtypes.h /usr/include/alloca.h
-instructions.o: dram_callback.h opcodes.h opcodes.def memory.h
-instructions.o: /usr/include/string.h /usr/include/stdio.h
-instructions.o: /usr/include/libio.h /usr/include/_G_config.h
-instructions.o: /usr/include/wchar.h /usr/include/bits/stdio_lim.h
-instructions.o: /usr/include/bits/sys_errlist.h ../option_parser.h
-instructions.o: /usr/include/math.h /usr/include/bits/huge_val.h
-instructions.o: /usr/include/bits/mathdef.h /usr/include/bits/mathcalls.h
-instructions.o: /usr/include/fenv.h /usr/include/bits/fenv.h cuda-math.h
-instructions.o: ptx_loader.h
-memory.o: memory.h ../abstract_hardware_model.h /usr/include/assert.h
-memory.o: /usr/include/features.h /usr/include/sys/cdefs.h
-memory.o: /usr/include/bits/wordsize.h /usr/include/gnu/stubs.h
-memory.o: /usr/include/gnu/stubs-64.h /usr/include/string.h
-memory.o: /usr/include/stdio.h /usr/include/bits/types.h
-memory.o: /usr/include/bits/typesizes.h /usr/include/libio.h
-memory.o: /usr/include/_G_config.h /usr/include/wchar.h
-memory.o: /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h
-memory.o: /usr/include/stdlib.h /usr/include/sys/types.h /usr/include/time.h
-memory.o: /usr/include/endian.h /usr/include/bits/endian.h
-memory.o: /usr/include/bits/byteswap.h /usr/include/sys/select.h
-memory.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-memory.o: /usr/include/bits/time.h /usr/include/sys/sysmacros.h
-memory.o: /usr/include/bits/pthreadtypes.h /usr/include/alloca.h ../debug.h
-memory.o: ../abstract_hardware_model.h
-ptx_ir.o: ptx_parser.h ../abstract_hardware_model.h ptx_ir.h
-ptx_ir.o: /usr/include/assert.h /usr/include/features.h
-ptx_ir.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
-ptx_ir.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h ptx_sim.h
-ptx_ir.o: /usr/include/stdlib.h /usr/include/sys/types.h
-ptx_ir.o: /usr/include/bits/types.h /usr/include/bits/typesizes.h
-ptx_ir.o: /usr/include/time.h /usr/include/endian.h
-ptx_ir.o: /usr/include/bits/endian.h /usr/include/bits/byteswap.h
-ptx_ir.o: /usr/include/sys/select.h /usr/include/bits/select.h
-ptx_ir.o: /usr/include/bits/sigset.h /usr/include/bits/time.h
-ptx_ir.o: /usr/include/sys/sysmacros.h /usr/include/bits/pthreadtypes.h
-ptx_ir.o: /usr/include/alloca.h dram_callback.h opcodes.h opcodes.def
-ptx_ir.o: memory.h /usr/include/string.h /usr/include/stdio.h
-ptx_ir.o: /usr/include/libio.h /usr/include/_G_config.h /usr/include/wchar.h
-ptx_ir.o: /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h
-ptx_ir.o: ../option_parser.h cuda-sim.h
-ptx_loader.o: ptx_loader.h ptx_ir.h ../abstract_hardware_model.h
-ptx_loader.o: /usr/include/assert.h /usr/include/features.h
-ptx_loader.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
-ptx_loader.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h ptx_sim.h
-ptx_loader.o: /usr/include/stdlib.h /usr/include/sys/types.h
-ptx_loader.o: /usr/include/bits/types.h /usr/include/bits/typesizes.h
-ptx_loader.o: /usr/include/time.h /usr/include/endian.h
-ptx_loader.o: /usr/include/bits/endian.h /usr/include/bits/byteswap.h
-ptx_loader.o: /usr/include/sys/select.h /usr/include/bits/select.h
-ptx_loader.o: /usr/include/bits/sigset.h /usr/include/bits/time.h
-ptx_loader.o: /usr/include/sys/sysmacros.h /usr/include/bits/pthreadtypes.h
-ptx_loader.o: /usr/include/alloca.h dram_callback.h opcodes.h opcodes.def
-ptx_loader.o: memory.h /usr/include/string.h /usr/include/stdio.h
-ptx_loader.o: /usr/include/libio.h /usr/include/_G_config.h
-ptx_loader.o: /usr/include/wchar.h /usr/include/bits/stdio_lim.h
-ptx_loader.o: /usr/include/bits/sys_errlist.h ../option_parser.h cuda-sim.h
-ptx_loader.o: ptx_parser.h /usr/include/dirent.h /usr/include/bits/dirent.h
-ptx_loader.o: /usr/include/bits/posix1_lim.h /usr/include/bits/local_lim.h
-ptx_loader.o: /usr/include/linux/limits.h
-ptx_parser.o: ptx_parser.h ../abstract_hardware_model.h ptx_ir.h
-ptx_parser.o: /usr/include/assert.h /usr/include/features.h
-ptx_parser.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
-ptx_parser.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h ptx_sim.h
-ptx_parser.o: /usr/include/stdlib.h /usr/include/sys/types.h
-ptx_parser.o: /usr/include/bits/types.h /usr/include/bits/typesizes.h
-ptx_parser.o: /usr/include/time.h /usr/include/endian.h
-ptx_parser.o: /usr/include/bits/endian.h /usr/include/bits/byteswap.h
-ptx_parser.o: /usr/include/sys/select.h /usr/include/bits/select.h
-ptx_parser.o: /usr/include/bits/sigset.h /usr/include/bits/time.h
-ptx_parser.o: /usr/include/sys/sysmacros.h /usr/include/bits/pthreadtypes.h
-ptx_parser.o: /usr/include/alloca.h dram_callback.h opcodes.h opcodes.def
-ptx_parser.o: memory.h /usr/include/string.h /usr/include/stdio.h
-ptx_parser.o: /usr/include/libio.h /usr/include/_G_config.h
-ptx_parser.o: /usr/include/wchar.h /usr/include/bits/stdio_lim.h
-ptx_parser.o: /usr/include/bits/sys_errlist.h ../option_parser.h
-ptx_sim.o: ptx_sim.h /usr/include/stdlib.h /usr/include/features.h
-ptx_sim.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
-ptx_sim.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h
-ptx_sim.o: /usr/include/sys/types.h /usr/include/bits/types.h
-ptx_sim.o: /usr/include/bits/typesizes.h /usr/include/time.h
-ptx_sim.o: /usr/include/endian.h /usr/include/bits/endian.h
-ptx_sim.o: /usr/include/bits/byteswap.h /usr/include/sys/select.h
-ptx_sim.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-ptx_sim.o: /usr/include/bits/time.h /usr/include/sys/sysmacros.h
-ptx_sim.o: /usr/include/bits/pthreadtypes.h /usr/include/alloca.h
-ptx_sim.o: dram_callback.h ../abstract_hardware_model.h /usr/include/assert.h
-ptx_sim.o: opcodes.h opcodes.def ptx_ir.h memory.h /usr/include/string.h
-ptx_sim.o: /usr/include/stdio.h /usr/include/libio.h /usr/include/_G_config.h
-ptx_sim.o: /usr/include/wchar.h /usr/include/bits/stdio_lim.h
-ptx_sim.o: /usr/include/bits/sys_errlist.h ../option_parser.h
-ptx-stats.o: ptx_ir.h ../abstract_hardware_model.h /usr/include/assert.h
-ptx-stats.o: /usr/include/features.h /usr/include/sys/cdefs.h
-ptx-stats.o: /usr/include/bits/wordsize.h /usr/include/gnu/stubs.h
-ptx-stats.o: /usr/include/gnu/stubs-64.h ptx_sim.h /usr/include/stdlib.h
-ptx-stats.o: /usr/include/sys/types.h /usr/include/bits/types.h
-ptx-stats.o: /usr/include/bits/typesizes.h /usr/include/time.h
-ptx-stats.o: /usr/include/endian.h /usr/include/bits/endian.h
-ptx-stats.o: /usr/include/bits/byteswap.h /usr/include/sys/select.h
-ptx-stats.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-ptx-stats.o: /usr/include/bits/time.h /usr/include/sys/sysmacros.h
-ptx-stats.o: /usr/include/bits/pthreadtypes.h /usr/include/alloca.h
-ptx-stats.o: dram_callback.h opcodes.h opcodes.def memory.h
-ptx-stats.o: /usr/include/string.h /usr/include/stdio.h /usr/include/libio.h
-ptx-stats.o: /usr/include/_G_config.h /usr/include/wchar.h
-ptx-stats.o: /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h
-ptx-stats.o: ../option_parser.h ptx-stats.h

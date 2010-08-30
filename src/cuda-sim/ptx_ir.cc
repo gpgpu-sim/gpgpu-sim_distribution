@@ -459,7 +459,53 @@ void function_info::connect_basic_blocks( ) //iterate across m_basic_blocks of f
          assert(pI->get_opcode() == BRA_OP);
    }
 }
+bool function_info::connect_break_targets() //connecting break instructions with proper targets
+{
+   std::vector<basic_block_t*>::iterator bb_itr;
+   std::vector<basic_block_t*>::iterator bb_target_itr;
+   bool modified = false; 
 
+   //start from first basic block, which we know is the entry point
+   bb_itr = m_basic_blocks.begin(); 
+   for (bb_itr = m_basic_blocks.begin();bb_itr != m_basic_blocks.end(); bb_itr++) {
+      basic_block_t *p_bb = *bb_itr; 
+      ptx_instruction *pI = p_bb->ptx_end;
+      if (p_bb->is_exit) //reached last basic block, no successors to link 
+         continue;
+      if (pI->get_opcode() == BREAK_OP) {
+         // backup existing successor_ids for stability check
+         std::set<int> orig_successor_ids = p_bb->successor_ids; 
+
+         // erase the previous linkage with old successors 
+         for(std::set<int>::iterator succ_ids = p_bb->successor_ids.begin(); succ_ids != p_bb->successor_ids.end(); ++succ_ids) {
+            basic_block_t *successor_bb = m_basic_blocks[*succ_ids];
+            successor_bb->predecessor_ids.erase(p_bb->bb_id); 
+         }
+         p_bb->successor_ids.clear(); 
+
+         //find successor and link that basic_block to this one
+         //successor of a break is set by an preceeding breakaddr instruction 
+         operand_info *target = find_break_target(pI); 
+         unsigned addr = labels[ target->name() ];
+         ptx_instruction *target_pI = m_instr_mem[addr];
+         basic_block_t *target_bb = target_pI->get_bb();
+         p_bb->successor_ids.insert(target_bb->bb_id);
+         target_bb->predecessor_ids.insert(p_bb->bb_id);
+
+         if (pI->has_pred()) {
+            // predicated break - add link to next basic block
+            unsigned next_addr = pI->get_m_instr_mem_index() + 1;
+            basic_block_t *next_bb = m_instr_mem[next_addr]->get_bb();
+            p_bb->successor_ids.insert(next_bb->bb_id);
+            next_bb->predecessor_ids.insert(p_bb->bb_id);
+         }
+
+         modified = modified || (orig_successor_ids != p_bb->successor_ids); 
+      }
+   }
+
+   return modified; 
+}
 void intersect( std::set<int> &A, const std::set<int> &B )
 {
    // return intersection of A and B in A
@@ -491,6 +537,44 @@ void print_set(const std::set<int> &A)
       printf("%d ", (*a));
    }
    printf("\n");
+}
+
+void function_info::find_dominators( )
+{  
+   // find dominators using algorithm of Muchnick's Adv. Compiler Design & Implemmntation Fig 7.14 
+   printf("GPGPU-Sim PTX: Finding dominators for \'%s\'...\n", m_name.c_str() );
+   fflush(stdout);
+   assert( m_basic_blocks.size() >= 2 ); // must have a distinquished entry block
+   std::vector<basic_block_t*>::iterator bb_itr = m_basic_blocks.begin();
+   (*bb_itr)->dominator_ids.insert((*bb_itr)->bb_id);  // the only dominator of the entry block is the entry
+   //copy all basic blocks to all dominator lists EXCEPT for the entry block
+   for (++bb_itr;bb_itr != m_basic_blocks.end(); bb_itr++) { 
+      for (unsigned i = 0; i < m_basic_blocks.size(); i++) 
+         (*bb_itr)->dominator_ids.insert(i);
+   }
+   bool change = true;
+   while (change) {
+      change = false;
+      for ( int h = 1/*skip entry*/; h < m_basic_blocks.size(); ++h ) {
+         assert( m_basic_blocks[h]->bb_id == (unsigned)h );
+         std::set<int> T;
+         for (unsigned i=0;i< m_basic_blocks.size();i++) 
+            T.insert(i);
+         for ( std::set<int>::iterator s = m_basic_blocks[h]->predecessor_ids.begin();s != m_basic_blocks[h]->predecessor_ids.end();s++) 
+            intersect(T, m_basic_blocks[*s]->dominator_ids);
+         T.insert(h);
+         if (!is_equal(T, m_basic_blocks[h]->dominator_ids)) {
+            change = true;
+            m_basic_blocks[h]->dominator_ids = T;
+         }
+      }
+   }
+   //clean the basic block of dominators of it has no predecessors -- except for entry block
+   bb_itr = m_basic_blocks.begin();
+   for (++bb_itr;bb_itr != m_basic_blocks.end(); bb_itr++) {
+	  if ((*bb_itr)->predecessor_ids.empty())
+         (*bb_itr)->dominator_ids.clear();
+   }
 }
 
 void function_info::find_postdominators( )
@@ -567,6 +651,64 @@ void function_info::find_ipostdominators( )
       // the exit node does not have an immediate post dominator, but everyone else should
 }
 
+void function_info::find_idominators( )
+{  
+   // find immediate postdominator blocks, using algorithm of
+   // Muchnick's Adv. Compiler Design & Implemmntation Fig 7.15 
+   printf("GPGPU-Sim PTX: Finding immediate postdominators for \'%s\'...\n", m_name.c_str() );
+   fflush(stdout);
+   assert( m_basic_blocks.size() >= 2 ); // must have a distinquished exit block
+   for (unsigned i=0; i<m_basic_blocks.size(); i++) { //initialize Tmp(n) to all pdoms of n except for n
+      m_basic_blocks[i]->Tmp_ids = m_basic_blocks[i]->dominator_ids;
+      assert( m_basic_blocks[i]->bb_id == i );
+      m_basic_blocks[i]->Tmp_ids.erase(i);
+   }
+   for ( int n = 0; n < m_basic_blocks.size(); ++n) {
+      // point iterator to basic block before the exit
+      for( std::set<int>::iterator s=m_basic_blocks[n]->Tmp_ids.begin(); s != m_basic_blocks[n]->Tmp_ids.end(); s++ ) {
+         int bb_s = *s;
+         for( std::set<int>::iterator t=m_basic_blocks[n]->Tmp_ids.begin(); t != m_basic_blocks[n]->Tmp_ids.end(); ) {
+            std::set<int>::iterator t_next = t; t_next++; // might erase thing pointed to be t, invalidating iterator t
+            if( *s == *t ) {
+               t = t_next;
+               continue;
+            }
+            int bb_t = *t;
+            if( m_basic_blocks[bb_s]->dominator_ids.find(bb_t) != m_basic_blocks[bb_s]->dominator_ids.end() ) 
+                m_basic_blocks[n]->Tmp_ids.erase(bb_t);
+            t = t_next;
+         }
+      }
+   }
+   unsigned num_idoms=0;
+   unsigned num_nopred = 0;
+   for ( int n = 0; n < m_basic_blocks.size(); ++n) {
+      assert( m_basic_blocks[n]->Tmp_ids.size() <= 1 ); 
+         // if the above assert fails we have an error in either postdominator 
+         // computation, the flow graph does not have a unique exit, or some other error
+      if( !m_basic_blocks[n]->Tmp_ids.empty() ) {
+         m_basic_blocks[n]->immediatedominator_id = *m_basic_blocks[n]->Tmp_ids.begin();
+         num_idoms++;
+      } else if (m_basic_blocks[n]->predecessor_ids.empty()) {
+    	  num_nopred += 1;
+      }
+   }
+   assert( num_idoms == m_basic_blocks.size()-num_nopred );
+      // the entry node does not have an immediate dominator, but everyone else should
+}
+
+void function_info::print_dominators()
+{
+   printf("Printing dominators for function \'%s\':\n", m_name.c_str() );
+   std::vector<int>::iterator bb_itr;
+   for (unsigned i = 0; i < m_basic_blocks.size(); i++) {
+      printf("ID: %d\t:", i);
+      for( std::set<int>::iterator j=m_basic_blocks[i]->dominator_ids.begin(); j!=m_basic_blocks[i]->dominator_ids.end(); j++) 
+         printf(" %d", *j );
+      printf("\n");
+   }
+}
+
 void function_info::print_postdominators()
 {
    printf("Printing postdominators for function \'%s\':\n", m_name.c_str() );
@@ -586,6 +728,16 @@ void function_info::print_ipostdominators()
    for (unsigned i = 0; i < m_basic_blocks.size(); i++) {
       printf("ID: %d\t:", i);
       printf("%d\n", m_basic_blocks[i]->immediatepostdominator_id);
+   }
+}
+
+void function_info::print_idominators()
+{
+   printf("Printing immediate dominators for function \'%s\':\n", m_name.c_str() );
+   std::vector<int>::iterator bb_itr;
+   for (unsigned i = 0; i < m_basic_blocks.size(); i++) {
+      printf("ID: %d\t:", i);
+      printf("%d\n", m_basic_blocks[i]->immediatedominator_id);
    }
 }
 
@@ -703,7 +855,7 @@ unsigned type_info_key::type_decode( int type, size_t &size, int &basic_type )
 arg_buffer_t copy_arg_to_buffer(ptx_thread_info * thread, operand_info actual_param_op, const symbol * formal_param)
 {
    if( actual_param_op.is_reg() )  {
-      ptx_reg_t value = thread->get_operand_value(actual_param_op);
+      ptx_reg_t value = thread->get_reg(actual_param_op.get_symbol());
       return arg_buffer_t(formal_param,actual_param_op,value);
    } else if ( actual_param_op.is_param_local() ) {
       unsigned size=formal_param->get_size_in_bytes();
@@ -738,7 +890,7 @@ void copy_buffer_to_frame(ptx_thread_info * thread, const arg_buffer_t &a)
    if( a.is_reg() ) {
       ptx_reg_t value = a.get_reg();
       operand_info dst_reg = operand_info(a.get_dst()); 
-      thread->set_operand_value(dst_reg,value);
+      thread->set_reg(dst_reg.get_symbol(),value);
    } else {  
       const void *buffer = a.get_param_buffer();
       size_t size = a.get_param_buffer_size();
@@ -807,6 +959,7 @@ static std::list<operand_info> check_operands( int opcode,
 ptx_instruction::ptx_instruction( int opcode, 
                                   const symbol *pred, 
                                   int neg_pred, 
+                                  int pred_mod,
                                   symbol *label,
                                   const std::list<operand_info> &operands, 
                                   const operand_info &return_var,
@@ -822,6 +975,7 @@ ptx_instruction::ptx_instruction( int opcode,
    m_opcode = opcode;
    m_pred = pred;
    m_neg_pred = neg_pred;
+   m_pred_mod = pred_mod;
    m_label = label;
    const std::list<operand_info> checked_operands = check_operands(opcode,scalar_type,operands);
    m_operands.insert(m_operands.begin(), checked_operands.begin(), checked_operands.end() );
@@ -831,6 +985,9 @@ ptx_instruction::ptx_instruction( int opcode,
    m_hi = false;
    m_lo = false;
    m_uni = false;
+   m_exit = false;
+   m_abs = false;
+   m_neg = false;
    m_to_option = false;
    m_cache_option = 0;
    m_rounding_mode = RN_OPTION;
@@ -940,6 +1097,15 @@ ptx_instruction::ptx_instruction( int opcode,
          m_membar_level = CTA_OPTION;
          break;
       case FTZ_OPTION:
+         break;
+      case EXIT_OPTION:
+         m_exit = true;
+         break;
+      case ABS_OPTION:
+         m_abs = true;
+         break;
+      case NEG_OPTION:
+         m_neg = true;
          break;
       case TO_OPTION:
          m_to_option = true;
