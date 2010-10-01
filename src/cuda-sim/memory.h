@@ -164,6 +164,7 @@ public:
    virtual void set_watch( addr_t addr, unsigned watchpoint ); 
 
 private:
+   void read_single_block( mem_addr_t blk_idx, mem_addr_t addr, size_t length, void *data) const; 
    std::string m_name;
    unsigned m_log2_block_size;
    typedef mem_map<mem_addr_t,mem_storage<BSIZE> > map_t;

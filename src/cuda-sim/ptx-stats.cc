@@ -67,9 +67,6 @@
 #include <map>
 #include "../tr1_hash_map.h"
 
-// external dependencies
-extern function_info *g_func_info;
-
 // options
 bool enable_ptx_file_line_stats;
 char * ptx_line_stats_filename = NULL;
@@ -192,7 +189,7 @@ void ptx_file_line_stats_add_exec_count(const ptx_instruction *pInsn)
 
 // attribute pipeline latency to this ptx instruction (specified by the pc)
 // pipeline latency is the number of cycles a warp with this instruction spent in the pipeline
-void ptx_file_line_stats_add_latency(void * ptx_thd, unsigned pc, unsigned latency)
+void ptx_file_line_stats_add_latency(unsigned pc, unsigned latency)
 {
     const ptx_instruction *pInsn = function_info::pc_to_instruction(pc);
     
@@ -210,7 +207,7 @@ void ptx_file_line_stats_add_dram_traffic(unsigned pc, unsigned dram_traffic)
 
 // attribute the number of shared memory access cycles to a ptx instruction
 // counts both the number of warps doing shared memory access and the number of cycles involved
-void ptx_file_line_stats_add_smem_bank_conflict(void * ptx_thd, unsigned pc, unsigned n_way_bkconflict)
+void ptx_file_line_stats_add_smem_bank_conflict(unsigned pc, unsigned n_way_bkconflict)
 {
     const ptx_instruction *pInsn = function_info::pc_to_instruction(pc);
     
@@ -221,7 +218,7 @@ void ptx_file_line_stats_add_smem_bank_conflict(void * ptx_thd, unsigned pc, uns
 
 // attribute a non-coalesced mem access to a ptx instruction 
 // counts both the number of warps causing this and the number of memory requests generated
-void ptx_file_line_stats_add_uncoalesced_gmem(void * ptx_thd, unsigned pc, unsigned n_access)
+void ptx_file_line_stats_add_uncoalesced_gmem(unsigned pc, unsigned n_access)
 {
     const ptx_instruction *pInsn = function_info::pc_to_instruction(pc);
     

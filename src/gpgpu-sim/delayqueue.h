@@ -70,51 +70,167 @@
 #ifndef DELAYQUEUE_H
 #define DELAYQUEUE_H
 
-typedef struct delay_data_t delay_data;
-struct delay_data_t {
-   void *data;
-   unsigned int time_elapsed;
-   delay_data *next;
+#include "../intersim/statwraper.h"
+#include "gpu-misc.h"
+
+template <class T>
+struct fifo_data {
+   T *m_data;
+   fifo_data *m_next;
    unsigned long long  push_time; //for stat collection
 };
 
-typedef struct {
-   const char* name;
-   int uid;
+template <class T> 
+class fifo_pipeline {
+public:
+   fifo_pipeline(const char* nm, unsigned int minlen, unsigned int maxlen, unsigned long long current_time ) 
+   {
+      m_name = nm;
+      m_min_len = minlen;
+      m_max_len = maxlen;
+      m_length = 0;
+      m_n_element = 0;
+      m_head = NULL;
+      m_tail = NULL;
+      for (unsigned i=0;i<m_min_len;i++) 
+         push(NULL,current_time);
+      m_lat_stat = StatCreate(m_name,1,32);  
+   }
 
-   unsigned int latency;
-   unsigned int min_len;
-   unsigned int max_len;
-   unsigned int length;
-   unsigned int n_element;
+   ~fifo_pipeline() 
+   {
+      while (m_head) {
+         m_tail = m_head;
+         m_head = m_head->m_next;
+         delete m_tail;
+      }
+   }
 
-   delay_data *head;
-   delay_data *tail;
+   void push(T* data, unsigned long long current_time ) 
+   {
+      if (m_max_len) assert(m_length < m_max_len);
+      if (m_head) {
+         if (m_tail->m_data || m_length < m_min_len) {
+            m_tail->m_next = new fifo_data<T>();
+            m_tail = m_tail->m_next;
+            m_length++;
+            m_n_element++;
+         }
+      } else {
+         m_head = m_tail = new fifo_data<T>();
+         m_length++;
+         m_n_element++;
+      }
+      m_tail->m_next = NULL;
+      m_tail->m_data = data;
+      m_tail->push_time = current_time;
+   }
 
-   void* lat_stat; //a pointer to latency stats distribution structure
-   //occupancy stat
-   unsigned int max_size_stat;
-   unsigned int n_stat_samples;
-   float  avg_size_stat;
-} delay_queue;
+   T* pop( unsigned long long current_time ) 
+   {
+      fifo_data<T>* next;
+      T* data;
+      if (m_head) {
+        next = m_head->m_next;
+        data = m_head->m_data;
+        StatAddSample(m_lat_stat, LOGB2 (current_time - m_head->push_time));
+        if ( m_head == m_tail ) {
+           assert( next == NULL );
+           m_tail = NULL;     
+        }
+        delete m_head;
+        m_head = next;
+        m_length--;
+        if (m_length == 0) {
+           assert( m_head == NULL );
+           m_tail = m_head;
+        }
+        m_n_element--; 
+         if (m_min_len && m_length < m_min_len) {
+            push(NULL,current_time);
+            m_n_element--; // uncount NULL elements inserted to create delays
+         }
+      } else {
+         data = NULL;
+      }
+      return data;
+   }
 
-unsigned char dq_full(delay_queue* dq );
-unsigned char dq_empty(delay_queue* dq );
-unsigned int dq_n_element(delay_queue* dq );
-unsigned char dq_push(delay_queue* dq, void* data);
-void* dq_pop(delay_queue* dq);
-void dq_set_min_length(delay_queue* dq, unsigned int new_min_len);
-void removeEntry(void* data, delay_queue** dq, int size_dq);
-delay_queue* dq_create( const char* name, 
-		   unsigned int latency, 
-		   unsigned int min_len, 
-		   unsigned int max_len);
-void dq_remove(void* data, delay_queue* dq);
-void dq_print(delay_queue* dq);
-void dq_free(delay_queue* dq);
-void* dq_top(delay_queue* dq);//return the data in the head without poping the queue
+   T* top() 
+   {
+      if (m_head) {
+         return m_head->m_data;
+      } else {
+         return NULL;
+      }
+   }
 
-void dq_update_stat(delay_queue* dq);
-void dq_print_stat(delay_queue* dq);
+   void set_min_length(unsigned int new_min_len, unsigned long long current_time) 
+   {
+      if (new_min_len == m_min_len) return;
+   
+      if (new_min_len > m_min_len) {
+         m_min_len = new_min_len;
+         while (m_length < m_min_len) {
+            push(NULL,current_time);
+            m_n_element--; // uncount NULL elements inserted to create delays
+         }
+      } else {
+         // in this branch imply that the original min_len is larger then 0
+         // ie. head != 0
+         assert(m_head);
+         m_min_len = new_min_len;
+         while ((m_length > m_min_len) && (m_tail->m_data == 0)) {
+            fifo_data<T> *iter;
+            iter = m_head;
+            while (iter && (iter->m_next != m_tail))
+               iter = iter->m_next;
+            if (!iter) {
+               // there is only one node, and that node is empty
+               assert(m_head->m_data == 0);
+               pop(current_time);
+            } else {
+               // there are more than one node, and tail node is empty
+               assert(iter->m_next == m_tail);
+               delete m_tail;
+               m_tail = iter;
+               m_tail->m_next = 0;
+               m_length--;
+            }
+         }
+      }
+   }
+
+   bool full() const { return (m_max_len && m_length >= m_max_len); }
+   bool empty() const { return m_head == NULL; }
+   unsigned get_n_element() const { return m_n_element; }
+   unsigned get_length() const { return m_length; }
+   unsigned get_max_len() const { return m_max_len; }
+   void* get_lat_stat() { return m_lat_stat; }
+
+   void print() const
+   {
+      fifo_data<T>* ddp = m_head;
+      printf("%s(%d): ", m_name, m_length);
+      while (ddp) {
+         printf("%p ", ddp->m_data);
+         ddp = ddp->m_next;
+      }
+      printf("\n");
+   }
+
+private:
+   const char* m_name;
+
+   unsigned int m_min_len;
+   unsigned int m_max_len;
+   unsigned int m_length;
+   unsigned int m_n_element;
+
+   fifo_data<T> *m_head;
+   fifo_data<T> *m_tail;
+
+   void* m_lat_stat; //a pointer to latency stats distribution structure
+};
 
 #endif

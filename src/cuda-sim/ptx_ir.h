@@ -319,7 +319,9 @@ public:
    symbol_table( const char *scope_name, unsigned entry_point, symbol_table *parent );
    void set_name( const char *name );
    const ptx_version &get_ptx_version() const;
+   unsigned get_sm_target() const;
    void set_ptx_version( float ver, unsigned ext );
+   void set_sm_target( const char *target, const char *ext, const char *ext2 );
    symbol* lookup( const char *identifier );
    std::string get_scope_name() const { return m_scope_name; }
    symbol *add_variable( const char *identifier, const type_info *type, unsigned size, const char *filename, unsigned line );
@@ -784,9 +786,9 @@ struct gpgpu_recon_t {
    address_type target_pc;
 };
 
-class ptx_instruction {
+class ptx_instruction : public inst_t {
 public:
-   ptx_instruction( int opcode, 
+    ptx_instruction( int opcode, 
                     const symbol *pred, 
                     int neg_pred, 
                     int pred_mod,
@@ -798,9 +800,13 @@ public:
                     memory_space_t space_spec,
                     const char *file, 
                     unsigned line,
-                    const char *source );
+                    const char *source,
+                    unsigned warp_size );
+
+
    void print_insn() const;
-   void print_insn( FILE *fp ) const;
+   virtual void print_insn( FILE *fp ) const;
+   unsigned inst_size() const { return m_inst_size; }
    unsigned uid() const { return m_uid;}
    int get_opcode() const { return m_opcode;}
    const char *get_opcode_cstr() const 
@@ -961,6 +967,7 @@ public:
    }
 
 private:
+
    basic_block_t        *m_basic_block;
    unsigned          m_uid;
    addr_t            m_PC;
@@ -999,6 +1006,10 @@ private:
    enum vote_mode_t m_vote_mode;
    int m_membar_level;
    int m_instr_mem_index; //index into m_instr_mem array
+   unsigned m_inst_size; // bytes
+
+   virtual void pre_decode();
+   friend class function_info;
 };
 
 class param_info {
@@ -1036,6 +1047,7 @@ class function_info {
 public:
    function_info(int entry_point );
    const ptx_version &get_ptx_version() const { return m_symtab->get_ptx_version(); }
+   unsigned get_sm_target() const { return m_symtab->get_sm_target(); }
    bool is_extern() const { return m_extern; }
    void set_name(const char *name)
    {
@@ -1094,22 +1106,7 @@ public:
    unsigned get_function_size() { return m_instructions.size();}
 
    void ptx_assemble();
-   void ptx_decode_inst( ptx_thread_info *thd, 
-                         unsigned *op_type, 
-                         int *i1, 
-                         int *i2, 
-                         int *i3,
-                         int *i4,
-                         int *o1,
-                         int *o2,
-                         int *o3,
-                         int *o4,
-                         int *vectorin,
-                         int *vectorout,
-                         int *arch_reg,
-                         int *pred,
-                         int *ar1, int *ar2 );
-   void ptx_exec_inst( ptx_thread_info *thd, addr_t *addr, memory_space_t *space, unsigned *data_size, unsigned *cycles, dram_callback_t* callback, unsigned warp_active_mask  );
+ 
    unsigned ptx_get_inst_op( ptx_thread_info *thread );
    void add_param( const char *name, struct param_t value )
    {
@@ -1169,6 +1166,8 @@ public:
 
    const void set_kernel_info (const struct gpgpu_ptx_sim_kernel_info &info) {
       m_kernel_info = info;
+      m_kernel_info.ptx_version = 10*get_ptx_version().ver();
+      m_kernel_info.sm_target = get_ptx_version().target();
    }
    symbol_table *get_symtab()
    {
@@ -1177,9 +1176,8 @@ public:
 
    static const ptx_instruction* pc_to_instruction(unsigned pc) 
    {
-      assert(pc > 0);
       assert(pc <= s_g_pc_to_insn.size());
-      return s_g_pc_to_insn[pc - 1];
+      return s_g_pc_to_insn[pc];
    }
    unsigned local_mem_framesize() const 
    { 
@@ -1404,16 +1402,12 @@ struct textureInfo {
    unsigned int texel_size_numbits; //log2(texel_size)
 };
 
-
-extern function_info *g_func_info;
-
-extern function_info *g_entrypoint_func_info;
 extern std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
 
-#define GLOBAL_HEAP_START 0x10000000
+#define GLOBAL_HEAP_START 0x80000000
    // start allocating from this address (lower values used for allocating globals in .ptx file)
 #define SHARED_MEM_SIZE_MAX (64*1024)
-#define LOCAL_MEM_SIZE_MAX 1024
+#define LOCAL_MEM_SIZE_MAX (16*1024)
 #define MAX_STREAMING_MULTIPROCESSORS 64
 #define MAX_THREAD_PER_SM 1024
 #define TOTAL_LOCAL_MEM_PER_SM (MAX_THREAD_PER_SM*LOCAL_MEM_SIZE_MAX)

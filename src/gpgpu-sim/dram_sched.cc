@@ -170,21 +170,13 @@ void ideal_dram_scheduler::print( FILE *fp )
    }
 }
 
-void* alloc_fast_ideal_scheduler(dram_t *dm)
+void dram_t::fast_scheduler_ideal()
 {
-   return new ideal_dram_scheduler(dm);
-}
-
-void fast_scheduler_ideal(dram_t* dm)
-{
-
-
+   dram_t* dm=this;
    unsigned mrq_latency;
-   // replacement for scheduler_ideal()
-
-   ideal_dram_scheduler *sched = reinterpret_cast<ideal_dram_scheduler*>( dm->m_fast_ideal_scheduler );
-   while ( !dq_empty(dm->mrqq) && (!gpgpu_dram_sched_queue_size || sched->num_pending() < (unsigned) gpgpu_dram_sched_queue_size)) {
-      dram_req_t *req = (dram_req_t*)dq_pop(dm->mrqq);
+   ideal_dram_scheduler *sched = dm->m_fast_ideal_scheduler;
+   while ( !dm->mrqq->empty() && (!m_config->gpgpu_dram_sched_queue_size || sched->num_pending() < m_config->gpgpu_dram_sched_queue_size)) {
+      dram_req_t *req = dm->mrqq->pop(gpu_sim_cycle);
       sched->add_req(req);
    }
 
@@ -199,12 +191,12 @@ void fast_scheduler_ideal(dram_t* dm)
          if ( req ) {
             dm->prio = (dm->prio+1)%dm->nbk;
             dm->bk[b]->mrq = req;
-            if (gpgpu_memlatency_stat) {
+            if (m_config->gpgpu_memlatency_stat) {
                mrq_latency = gpu_sim_cycle + gpu_tot_sim_cycle - dm->bk[b]->mrq->timestamp;
                dm->bk[b]->mrq->timestamp = gpu_tot_sim_cycle + gpu_sim_cycle;
-               mrq_lat_table[LOGB2(mrq_latency)]++;
-               if (mrq_latency > max_mrq_latency) {
-                  max_mrq_latency = mrq_latency;
+               m_stats->mrq_lat_table[LOGB2(mrq_latency)]++;
+               if (mrq_latency > m_stats->max_mrq_latency) {
+                  m_stats->max_mrq_latency = mrq_latency;
                }
             }
 
@@ -213,24 +205,3 @@ void fast_scheduler_ideal(dram_t* dm)
       }
    }
 }
-
-
-
-void dump_fast_ideal_scheduler( dram_t *dm )
-{
-   ideal_dram_scheduler *sched = reinterpret_cast<ideal_dram_scheduler*>( dm->m_fast_ideal_scheduler );
-   sched->print(stdout);
-}
-
-unsigned fast_scheduler_queue_length(dram_t *dm)
-{
-   if (dm->m_fast_ideal_scheduler ) {
-      ideal_dram_scheduler *sched = reinterpret_cast<ideal_dram_scheduler*>( dm->m_fast_ideal_scheduler );
-      return sched->num_pending();
-   } else {
-      printf("fast_scheduler_queue_length(): Where did the scheduler go?\n");
-      exit(1);
-   }
-}
-
-

@@ -79,45 +79,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-bool gpgpu_memlatency_stat;
-
-unsigned max_mrq_latency;
-unsigned max_dq_latency;
-unsigned max_mf_latency;
-unsigned max_icnt2mem_latency;
-unsigned max_icnt2sh_latency;
-unsigned mrq_lat_table[32];
-unsigned dq_lat_table[32];
-unsigned mf_lat_table[32];
-unsigned icnt2mem_lat_table[24];
-unsigned icnt2sh_lat_table[24];
-unsigned mf_lat_pw_table[32]; //table storing values of mf latency Per Window
-unsigned mf_num_lat_pw;
-unsigned mf_tot_lat_pw; //total latency summed up per window. divide by mf_num_lat_pw to obtain average latency Per Window
-unsigned long long int mf_total_lat;
-unsigned long long int ** mf_total_lat_table; //mf latency sums[dram chip id][bank id]
-unsigned ** mf_max_lat_table; //mf latency sums[dram chip id][bank id]
-unsigned num_mfs;
-unsigned int ***bankwrites; //bankwrites[shader id][dram chip id][bank id]
-unsigned int ***bankreads; //bankreads[shader id][dram chip id][bank id]
-unsigned int **totalbankwrites; //bankwrites[dram chip id][bank id]
-unsigned int **totalbankreads; //bankreads[dram chip id][bank id]
-unsigned int **totalbankaccesses; //bankaccesses[dram chip id][bank id]
-unsigned int *requests_by_warp;
-unsigned int *num_MCBs_accessed; //tracks how many memory controllers are accessed whenever any thread in a warp misses in cache
-unsigned int *position_of_mrq_chosen; //position of mrq in m_queue chosen 
-unsigned *mf_num_lat_pw_perwarp;
-unsigned *mf_tot_lat_pw_perwarp; //total latency summed up per window per warp. divide by mf_num_lat_pw_perwarp to obtain average latency Per Window
-unsigned long long int *mf_total_lat_perwarp;
-unsigned *num_mfs_perwarp;
-unsigned *acc_mrq_length;
-
-unsigned ***mem_access_type_stats; // dram access type classification
-
-
-void memlatstat_init( )
+memory_stats_t::memory_stats_t( unsigned n_mem, unsigned n_shader, struct shader_core_config *shader_config, struct memory_config *mem_config )
 {
    unsigned i,j;
+
+   m_n_shader=n_shader;
+   m_n_mem=n_mem;
+   m_memory_config=mem_config;
 
    max_mrq_latency = 0;
    max_dq_latency = 0;
@@ -131,72 +99,85 @@ void memlatstat_init( )
    memset(icnt2sh_lat_table, 0, sizeof(unsigned)*24);
    memset(mf_lat_pw_table, 0, sizeof(unsigned)*32);
    mf_num_lat_pw = 0;
-   mf_num_lat_pw_perwarp = (unsigned *) calloc((gpu_n_shader * gpu_n_thread_per_shader / warp_size)+1, sizeof(unsigned int));
-   mf_tot_lat_pw_perwarp = (unsigned *) calloc((gpu_n_shader * gpu_n_thread_per_shader / warp_size)+1, sizeof(unsigned int));
-   mf_total_lat_perwarp = (unsigned long long int *) calloc((gpu_n_shader * gpu_n_thread_per_shader / warp_size)+1, sizeof(unsigned long long int));
-   num_mfs_perwarp = (unsigned *) calloc((gpu_n_shader * gpu_n_thread_per_shader / warp_size)+1, sizeof(unsigned int));
-   acc_mrq_length = (unsigned *) calloc(gpu_n_mem, sizeof(unsigned int));
+   max_warps = n_shader * (shader_config->n_thread_per_shader / shader_config->warp_size+1);
+   mf_num_lat_pw_perwarp = (unsigned *) calloc(max_warps, sizeof(unsigned int));
+   mf_tot_lat_pw_perwarp = (unsigned *) calloc(max_warps, sizeof(unsigned int));
+   mf_total_lat_perwarp = (unsigned long long int *) calloc(max_warps, sizeof(unsigned long long int));
+   num_mfs_perwarp = (unsigned *) calloc(max_warps, sizeof(unsigned int));
+   acc_mrq_length = (unsigned *) calloc(n_mem, sizeof(unsigned int));
    mf_tot_lat_pw = 0; //total latency summed up per window. divide by mf_num_lat_pw to obtain average latency Per Window
    mf_total_lat = 0;
    num_mfs = 0;
    printf("*** Initializing Memory Statistics ***\n");
-   requests_by_warp = (unsigned int*) calloc((gpu_n_shader * gpu_n_thread_per_shader / warp_size)+1, sizeof(unsigned int));
-   totalbankreads = (unsigned int**) calloc(gpu_n_mem, sizeof(unsigned int*));
-   totalbankwrites = (unsigned int**) calloc(gpu_n_mem, sizeof(unsigned int*));
-   totalbankaccesses = (unsigned int**) calloc(gpu_n_mem, sizeof(unsigned int*));
-   mf_total_lat_table = (unsigned long long int **) calloc(gpu_n_mem, sizeof(unsigned long long *));
-   mf_max_lat_table = (unsigned **) calloc(gpu_n_mem, sizeof(unsigned *));
-   bankreads = (unsigned int***) calloc(gpu_n_shader, sizeof(unsigned int**));
-   bankwrites = (unsigned int***) calloc(gpu_n_shader, sizeof(unsigned int**));
-   num_MCBs_accessed = (unsigned int*) calloc(gpu_n_mem*gpu_mem_n_bk, sizeof(unsigned int));
-   if (gpgpu_dram_sched_queue_size) {
-      position_of_mrq_chosen = (unsigned int*) calloc(gpgpu_dram_sched_queue_size, sizeof(unsigned int));
+   totalbankreads = (unsigned int**) calloc(n_mem, sizeof(unsigned int*));
+   totalbankwrites = (unsigned int**) calloc(n_mem, sizeof(unsigned int*));
+   totalbankaccesses = (unsigned int**) calloc(n_mem, sizeof(unsigned int*));
+   mf_total_lat_table = (unsigned long long int **) calloc(n_mem, sizeof(unsigned long long *));
+   mf_max_lat_table = (unsigned **) calloc(n_mem, sizeof(unsigned *));
+   bankreads = (unsigned int***) calloc(n_shader, sizeof(unsigned int**));
+   bankwrites = (unsigned int***) calloc(n_shader, sizeof(unsigned int**));
+   num_MCBs_accessed = (unsigned int*) calloc(n_mem*mem_config->gpu_mem_n_bk, sizeof(unsigned int));
+   if (mem_config->gpgpu_dram_sched_queue_size) {
+      position_of_mrq_chosen = (unsigned int*) calloc(mem_config->gpgpu_dram_sched_queue_size, sizeof(unsigned int));
    } else
       position_of_mrq_chosen = (unsigned int*) calloc(1024, sizeof(unsigned int));
-   for (i=0;i<gpu_n_shader ;i++ ) {
-      bankreads[i] = (unsigned int**) calloc(gpu_n_mem, sizeof(unsigned int*));
-      bankwrites[i] = (unsigned int**) calloc(gpu_n_mem, sizeof(unsigned int*));
-      for (j=0;j<gpu_n_mem ;j++ ) {
-         bankreads[i][j] = (unsigned int*) calloc(gpu_mem_n_bk, sizeof(unsigned int));
-         bankwrites[i][j] = (unsigned int*) calloc(gpu_mem_n_bk, sizeof(unsigned int));
+   for (i=0;i<n_shader ;i++ ) {
+      bankreads[i] = (unsigned int**) calloc(n_mem, sizeof(unsigned int*));
+      bankwrites[i] = (unsigned int**) calloc(n_mem, sizeof(unsigned int*));
+      for (j=0;j<n_mem ;j++ ) {
+         bankreads[i][j] = (unsigned int*) calloc(mem_config->gpu_mem_n_bk, sizeof(unsigned int));
+         bankwrites[i][j] = (unsigned int*) calloc(mem_config->gpu_mem_n_bk, sizeof(unsigned int));
       }
    }
 
-   for (i=0;i<gpu_n_mem ;i++ ) {
-      totalbankreads[i] = (unsigned int*) calloc(gpu_mem_n_bk, sizeof(unsigned int));
-      totalbankwrites[i] = (unsigned int*) calloc(gpu_mem_n_bk, sizeof(unsigned int));
-      totalbankaccesses[i] = (unsigned int*) calloc(gpu_mem_n_bk, sizeof(unsigned int));
-      mf_total_lat_table[i] = (unsigned long long int*) calloc(gpu_mem_n_bk, sizeof(unsigned long long int));
-      mf_max_lat_table[i] = (unsigned *) calloc(gpu_mem_n_bk, sizeof(unsigned));
+   for (i=0;i<n_mem ;i++ ) {
+      totalbankreads[i] = (unsigned int*) calloc(mem_config->gpu_mem_n_bk, sizeof(unsigned int));
+      totalbankwrites[i] = (unsigned int*) calloc(mem_config->gpu_mem_n_bk, sizeof(unsigned int));
+      totalbankaccesses[i] = (unsigned int*) calloc(mem_config->gpu_mem_n_bk, sizeof(unsigned int));
+      mf_total_lat_table[i] = (unsigned long long int*) calloc(mem_config->gpu_mem_n_bk, sizeof(unsigned long long int));
+      mf_max_lat_table[i] = (unsigned *) calloc(mem_config->gpu_mem_n_bk, sizeof(unsigned));
    }
 
    mem_access_type_stats = (unsigned ***) malloc(NUM_MEM_ACCESS_TYPE * sizeof(unsigned **));
    for (i = 0; i < NUM_MEM_ACCESS_TYPE; i++) {
       int j;
-      mem_access_type_stats[i] = (unsigned **) calloc(gpu_n_mem, sizeof(unsigned*));
-      for (j=0; (unsigned) j< gpu_n_mem; j++) {
-         mem_access_type_stats[i][j] = (unsigned *) calloc((gpu_mem_n_bk+1), sizeof(unsigned*));
+      mem_access_type_stats[i] = (unsigned **) calloc(n_mem, sizeof(unsigned*));
+      for (j=0; (unsigned) j< n_mem; j++) {
+         mem_access_type_stats[i][j] = (unsigned *) calloc((mem_config->gpu_mem_n_bk+1), sizeof(unsigned*));
       }
    }
+
+   L2_write_miss=0;
+   L2_write_hit=0;
+   L2_read_hit=0;
+   L2_read_miss=0;
+   L2_cbtoL2length = (unsigned int*) calloc(n_mem, sizeof(unsigned int));
+   L2_cbtoL2writelength = (unsigned int*) calloc(n_mem, sizeof(unsigned int));
+   L2_L2tocblength = (unsigned int*) calloc(n_mem, sizeof(unsigned int));
+   L2_dramtoL2length = (unsigned int*) calloc(n_mem, sizeof(unsigned int));
+   L2_dramtoL2writelength = (unsigned int*) calloc(n_mem, sizeof(unsigned int));
+   L2_L2todramlength = (unsigned int*) calloc(n_mem, sizeof(unsigned int));
 }
 
-void memlatstat_start(mem_fetch_t *mf)
+void memory_stats_t::memlatstat_start(mem_fetch *mf)
 {
    mf->timestamp = gpu_sim_cycle + gpu_tot_sim_cycle;
    mf->timestamp2 = 0;
 }
 
 // recorder the total latency
-unsigned memlatstat_done(mem_fetch_t *mf)
+unsigned memory_stats_t::memlatstat_done(mem_fetch *mf, unsigned n_warp_per_shader )
 {
    unsigned mf_latency;
-   unsigned wid = mf->sid*gpu_n_warp_per_shader + mf->wid;
+   unsigned wid = mf->sid*n_warp_per_shader + mf->wid;
+   assert(wid<max_warps);
    mf_latency = (gpu_sim_cycle+gpu_tot_sim_cycle) - mf->timestamp;
    mf_num_lat_pw++;
    mf_num_lat_pw_perwarp[wid]++;
    mf_tot_lat_pw_perwarp[wid] += mf_latency;
    mf_tot_lat_pw += mf_latency;
-   check_time_vector_update(mf->mshr->insts[0].uid,MR_2SH_FQ_POP,mf_latency, mf->type ) ;
+   if( mf->mshr && mf->mshr->has_inst() ) 
+       check_time_vector_update(mf->mshr->get_insts_uid(),MR_2SH_FQ_POP,mf_latency,mf->type);
    mf_lat_table[LOGB2(mf_latency)]++;
    shader_mem_lat_log(mf->sid, mf_latency);
    mf_total_lat_table[mf->chip][mf->bank] += mf_latency;
@@ -205,15 +186,15 @@ unsigned memlatstat_done(mem_fetch_t *mf)
    return mf_latency;
 }
 
-void memlatstat_icnt2sh_push(mem_fetch_t *mf)
+void memory_stats_t::memlatstat_icnt2sh_push(mem_fetch *mf)
 {
    mf->timestamp2 = gpu_sim_cycle+gpu_tot_sim_cycle;
 }
 
-void memlatstat_read_done(mem_fetch_t *mf)
+void memory_stats_t::memlatstat_read_done(mem_fetch *mf, unsigned n_warp_per_shader)
 {
-   if (gpgpu_memlatency_stat) {
-      unsigned mf_latency = memlatstat_done(mf);
+   if (m_memory_config->gpgpu_memlatency_stat) {
+      unsigned mf_latency = memlatstat_done(mf,n_warp_per_shader);
 
       if (mf_latency > mf_max_lat_table[mf->chip][mf->bank]) {
          mf_max_lat_table[mf->chip][mf->bank] = mf_latency;
@@ -227,13 +208,13 @@ void memlatstat_read_done(mem_fetch_t *mf)
    }
 }
 
-void memlatstat_dram_access(mem_fetch_t *mf, unsigned dram_id, unsigned bank)
+void memory_stats_t::memlatstat_dram_access(mem_fetch *mf)
 {
-   assert(dram_id < gpu_n_mem);
-   assert(bank < gpu_mem_n_bk);
-   if (gpgpu_memlatency_stat) { 
-      if (mf->write) {
-         if ( (unsigned) mf->sid  <  gpu_n_shader  ) {   //do not count L2_writebacks here 
+   unsigned dram_id = mf->chip;
+   unsigned bank = mf->bank;
+   if (m_memory_config->gpgpu_memlatency_stat) { 
+      if (mf->m_write) {
+         if ( (unsigned) mf->sid  < m_n_shader  ) {   //do not count L2_writebacks here 
             bankwrites[mf->sid][dram_id][bank]++;
             shader_mem_acc_log( mf->sid, dram_id, bank, 'w');
          }
@@ -243,18 +224,16 @@ void memlatstat_dram_access(mem_fetch_t *mf, unsigned dram_id, unsigned bank)
          shader_mem_acc_log( mf->sid, dram_id, bank, 'r');
          totalbankreads[dram_id][bank]++;
       }
-
       if (mf->pc != (unsigned) -1) {
          ptx_file_line_stats_add_dram_traffic(mf->pc, 1);
       }
-      
       mem_access_type_stats[mf->mem_acc][dram_id][bank]++;
    }
 }
 
-void memlatstat_icnt2mem_pop(mem_fetch_t *mf)
+void memory_stats_t::memlatstat_icnt2mem_pop(mem_fetch *mf)
 {
-   if (gpgpu_memlatency_stat) {
+   if (m_memory_config->gpgpu_memlatency_stat) {
       unsigned icnt2mem_latency;
       icnt2mem_latency = (gpu_tot_sim_cycle+gpu_sim_cycle) - mf->timestamp;
       icnt2mem_lat_table[LOGB2(icnt2mem_latency)]++;
@@ -263,10 +242,10 @@ void memlatstat_icnt2mem_pop(mem_fetch_t *mf)
    }
 }
 
-void memlatstat_lat_pw( )
+void memory_stats_t::memlatstat_lat_pw( unsigned n_shader, unsigned n_thread_per_shader, unsigned warp_size )
 {
    unsigned i;
-   if (mf_num_lat_pw && gpgpu_memlatency_stat) {
+   if (mf_num_lat_pw && m_memory_config->gpgpu_memlatency_stat) {
       assert(mf_tot_lat_pw);
       mf_total_lat = mf_tot_lat_pw;
       num_mfs = mf_num_lat_pw;
@@ -274,12 +253,12 @@ void memlatstat_lat_pw( )
       mf_tot_lat_pw = 0;
       mf_num_lat_pw = 0;
    }
-   for (i=0;i < ((gpu_n_shader * gpu_n_thread_per_shader / warp_size)+1); i++) {
-      if (mf_num_lat_pw_perwarp[i] && gpgpu_memlatency_stat) {
+   for (i=0;i < ((n_shader * n_thread_per_shader / warp_size)+1); i++) {
+      assert(i<max_warps);
+      if (mf_num_lat_pw_perwarp[i] && m_memory_config->gpgpu_memlatency_stat) {
          assert(mf_tot_lat_pw_perwarp[i]);
          mf_total_lat_perwarp[i] += mf_tot_lat_pw_perwarp[i];
          num_mfs_perwarp[i] += mf_num_lat_pw_perwarp[i];
-         //mf_lat_pw_table[LOGB2(mf_tot_lat_pw/mf_num_lat_pw)]++;
          mf_tot_lat_pw_perwarp[i] = 0;
          mf_num_lat_pw_perwarp[i] = 0;
       }
@@ -287,12 +266,12 @@ void memlatstat_lat_pw( )
 }
 
 
-void memlatstat_print( )
+void memory_stats_t::memlatstat_print( unsigned n_mem, unsigned gpu_mem_n_bk )
 {
    unsigned i,j,k,l,m;
    unsigned max_bank_accesses, min_bank_accesses, max_chip_accesses, min_chip_accesses;
 
-   if (gpgpu_memlatency_stat) {
+   if (m_memory_config->gpgpu_memlatency_stat) {
       printf("maxmrqlatency = %d \n", max_mrq_latency);
       printf("maxdqlatency = %d \n", max_dq_latency);
       printf("maxmflatency = %d \n", max_mf_latency);
@@ -334,7 +313,7 @@ void memlatstat_print( )
 
       /*MAXIMUM CONCURRENT ACCESSES TO SAME ROW*/
       printf("maximum concurrent accesses to same row:\n");
-      for (i=0;i<gpu_n_mem ;i++ ) {
+      for (i=0;i<n_mem ;i++ ) {
          printf("dram[%d]: ", i);
          for (j=0;j<4 ;j++ ) {
             printf("%9d ",max_conc_access2samerow[i][j]);
@@ -344,7 +323,7 @@ void memlatstat_print( )
 
       /*MAXIMUM SERVICE TIME TO SAME ROW*/
       printf("maximum service time to same row:\n");
-      for (i=0;i<gpu_n_mem ;i++ ) {
+      for (i=0;i<n_mem ;i++ ) {
          printf("dram[%d]: ", i);
          for (j=0;j<4 ;j++ ) {
             printf("%9d ",max_servicetime2samerow[i][j]);
@@ -356,7 +335,7 @@ void memlatstat_print( )
       int total_row_accesses = 0;
       int total_num_activates = 0;
       printf("average row accesses per activate:\n");
-      for (i=0;i<gpu_n_mem ;i++ ) {
+      for (i=0;i<n_mem ;i++ ) {
          printf("dram[%d]: ", i);
          for (j=0;j<4 ;j++ ) {
             total_row_accesses += row_access[i][j];
@@ -375,7 +354,7 @@ void memlatstat_print( )
       min_bank_accesses = 0xFFFFFFFF;
       min_chip_accesses = 0xFFFFFFFF;
       printf("number of total memory accesses made:\n");
-      for (i=0;i<gpu_n_mem ;i++ ) {
+      for (i=0;i<n_mem ;i++ ) {
          printf("dram[%d]: ", i);
          for (j=0;j<4 ;j++ ) {
             l = totalbankaccesses[i][j];
@@ -413,7 +392,7 @@ void memlatstat_print( )
       min_bank_accesses = 0xFFFFFFFF;
       min_chip_accesses = 0xFFFFFFFF;
       printf("number of total read accesses:\n");
-      for (i=0;i<gpu_n_mem ;i++ ) {
+      for (i=0;i<n_mem ;i++ ) {
          printf("dram[%d]: ", i);
          for (j=0;j<4 ;j++ ) {
             l = totalbankreads[i][j];
@@ -451,7 +430,7 @@ void memlatstat_print( )
       min_bank_accesses = 0xFFFFFFFF;
       min_chip_accesses = 0xFFFFFFFF;
       printf("number of total write accesses:\n");
-      for (i=0;i<gpu_n_mem ;i++ ) {
+      for (i=0;i<n_mem ;i++ ) {
          printf("dram[%d]: ", i);
          for (j=0;j<4 ;j++ ) {
             l = totalbankwrites[i][j];
@@ -483,7 +462,7 @@ void memlatstat_print( )
 
       /*AVERAGE MF LATENCY PER BANK*/
       printf("average mf latency per bank:\n");
-      for (i=0;i<gpu_n_mem ;i++ ) {
+      for (i=0;i<n_mem ;i++ ) {
          printf("dram[%d]: ", i);
          for (j=0;j<4 ;j++ ) {
             k = totalbankwrites[i][j] + totalbankreads[i][j];
@@ -497,7 +476,7 @@ void memlatstat_print( )
 
       /*MAXIMUM MF LATENCY PER BANK*/
       printf("maximum mf latency per bank:\n");
-      for (i=0;i<gpu_n_mem ;i++ ) {
+      for (i=0;i<n_mem ;i++ ) {
          printf("dram[%d]: ", i);
          for (j=0;j<4 ;j++ ) {
             printf("%10d", mf_max_lat_table[i][j]);
@@ -506,11 +485,11 @@ void memlatstat_print( )
       }
    }
 
-   if (gpgpu_memlatency_stat & GPU_MEMLATSTAT_MC) {
+   if (m_memory_config->gpgpu_memlatency_stat & GPU_MEMLATSTAT_MC) {
       printf("\nNumber of Memory Banks Accessed per Memory Operation per Warp (from 0):\n");
       unsigned long long accum_MCBs_accessed = 0;
       unsigned long long tot_mem_ops_per_warp = 0;
-      for (i=0;i<= gpu_n_mem*gpu_mem_n_bk ; i++ ) {
+      for (i=0;i<= n_mem*gpu_mem_n_bk ; i++ ) {
          accum_MCBs_accessed += i*num_MCBs_accessed[i];
          tot_mem_ops_per_warp += num_MCBs_accessed[i];
          printf("%d\t", num_MCBs_accessed[i]);
@@ -523,10 +502,10 @@ void memlatstat_print( )
 
       printf("\nposition of mrq chosen\n");
 
-      if (!gpgpu_dram_sched_queue_size)
+      if (!m_memory_config->gpgpu_dram_sched_queue_size)
          j = 1024;
       else
-         j = gpgpu_dram_sched_queue_size;
+         j = m_memory_config->gpgpu_dram_sched_queue_size;
       k=0;l=0;
       for (i=0;i< j; i++ ) {
          printf("%d\t", position_of_mrq_chosen[i]);

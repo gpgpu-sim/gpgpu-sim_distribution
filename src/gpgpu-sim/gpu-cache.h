@@ -71,22 +71,22 @@
 #ifndef GPU_CACHE_H
 #define GPU_CACHE_H
 
-#define VALID 0x01
-#define DIRTY 0x02
-#define RESERVED 0x04
+#define VALID 0x01    // block is valid (and present in cache)
+#define DIRTY 0x02    // block is dirty
+#define RESERVED 0x04 // there is an outstanding request for this block, but it has not returned yet
 
 enum cache_request_status {
     HIT,
-    HIT_W_WT, /* Hit, but write through cache, still needs to send to memory */
-    MISS_NO_WB, /* miss, but witeback not necessary*/
-    MISS_W_WB, /* miss, must do writeback */
-    WB_HIT_ON_MISS, /* request hit on a reservation in wb cache*/
+    HIT_W_WT,       // Hit, but write through cache, still needs to send to memory 
+    MISS_NO_WB,     // miss, but witeback not necessary
+    MISS_W_WB,      // miss, must do writeback 
+    WB_HIT_ON_MISS, // request hit on a reservation in wb cache
     RESERVATION_FAIL,
     NUM_CACHE_REQUEST_STATUS
 };
 
 
-typedef struct {
+struct shd_cache_line_t {
    unsigned long long int tag;
    unsigned long long int addr;
    unsigned int set;
@@ -94,7 +94,7 @@ typedef struct {
    unsigned int fetch_time;
    unsigned int last_used;
    unsigned char status; /* valid, dirty... etc */
-} shd_cache_line_t;
+};
 
 
 #define LRU 'L'
@@ -107,7 +107,7 @@ enum cache_write_policy{
     write_through //reservation based, use much handle reservation full error.
 };
 
-typedef struct {
+struct shd_cache_t {
 
    char *name;
 
@@ -135,13 +135,10 @@ typedef struct {
 
    unsigned long long int bank_mask;
 
-} shd_cache_t;
+};
 
-shd_cache_t * shd_cache_create( char *name,
-                                unsigned int nset,
-                                unsigned int assoc,
-                                unsigned int line_sz,
-                                unsigned char policy,
+shd_cache_t * shd_cache_create( const char *name, 
+                                const char *opt,
                                 unsigned int hit_latency,
                                 unsigned long long int bank_mask,
                                 enum cache_write_policy wp);
@@ -151,15 +148,14 @@ void shd_cache_destroy( shd_cache_t* cp );
 // hook up with shader core logger
 void shd_cache_bind_logger(shd_cache_t* cp, int core_id, int type_id);
 
-//depercated, use _wb
+// depricated use shd_cache_access_new
 shd_cache_line_t* shd_cache_access( shd_cache_t *cp, 
                                     unsigned long long int addr, 
                                     unsigned int nbytes, 
                                     unsigned char write,
                                     unsigned int sim_cycle );
 
-//cache check checks for wb and forwards information over.
-enum cache_request_status shd_cache_access_wb( shd_cache_t *cp, 
+enum cache_request_status shd_cache_access_new( shd_cache_t *cp, 
                                     unsigned long long int addr, 
                                     unsigned int nbytes, 
                                     unsigned char write,
@@ -185,7 +181,7 @@ unsigned long long int L2_shd_cache_fill( shd_cache_t *cp,
                                           unsigned long long int addr,
                                           unsigned int sim_cycle );
 
-void shd_cache_print( shd_cache_t *cp,  FILE *stream);
+void shd_cache_print( const shd_cache_t *cp,  FILE *stream, unsigned &total_access, unsigned &total_misses );
 float shd_cache_windowed_cache_miss_rate(shd_cache_t*, int);
 void shd_cache_new_window(shd_cache_t*);
 

@@ -78,10 +78,10 @@ void ptx_file_line_stats_add_exec_count(const ptx_instruction *pInsn);
 #endif
 
 // stat collection interface to gpgpu-sim
-void ptx_file_line_stats_add_latency(void * ptx_thd, unsigned pc, unsigned latency);
+void ptx_file_line_stats_add_latency(unsigned pc, unsigned latency);
 void ptx_file_line_stats_add_dram_traffic(unsigned pc, unsigned dram_traffic);
-void ptx_file_line_stats_add_smem_bank_conflict(void * ptx_thd, unsigned pc, unsigned n_way_bkconflict);
-void ptx_file_line_stats_add_uncoalesced_gmem(void * ptx_thd, unsigned pc, unsigned n_access);
+void ptx_file_line_stats_add_smem_bank_conflict(unsigned pc, unsigned n_way_bkconflict);
+void ptx_file_line_stats_add_uncoalesced_gmem(unsigned pc, unsigned n_access);
 
 void ptx_file_line_stats_create_exposed_latency_tracker(int n_shader_cores);
 void ptx_file_line_stats_add_inflight_memory_insn(int sc_id, unsigned pc);

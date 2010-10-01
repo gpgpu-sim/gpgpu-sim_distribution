@@ -133,6 +133,7 @@
 %token  V4_TYPE
 %token  COMMA
 %token  PRED
+%token  HALF_OPTION
 %token  EQ_OPTION
 %token  NE_OPTION
 %token  LT_OPTION
@@ -205,6 +206,7 @@
 %token  ALL_OPTION
 %token  GLOBAL_OPTION
 %token  CTA_OPTION
+%token  SYS_OPTION
 %token  EXIT_OPTION
 %token  ABS_OPTION
 %token  TO_OPTION
@@ -260,7 +262,8 @@ function_decl_header: ENTRY_DIRECTIVE { $$ = 1; g_func_decl=1; func_header(".ent
 	| EXTERN_DIRECTIVE FUNC_DIRECTIVE { $$ = 2; g_func_decl=1; func_header(".func"); }
 	;
 
-param_list: param_entry { add_directive(); }
+param_list: /*empty*/
+	| param_entry { add_directive(); }
 	| param_list COMMA {func_header_info(",");} param_entry { add_directive(); }
 
 param_entry: PARAM_DIRECTIVE { add_space_spec(param_space_unclassified,0); } variable_spec identifier_spec { add_function_arg(); }
@@ -277,8 +280,10 @@ statement_list: directive_statement { add_directive(); }
 	;
 
 directive_statement: variable_declaration SEMI_COLON
-	| VERSION_DIRECTIVE DOUBLE_OPERAND { add_version_info($2); }
+	| VERSION_DIRECTIVE DOUBLE_OPERAND { add_version_info($2, 0); }
+	| VERSION_DIRECTIVE DOUBLE_OPERAND PLUS { add_version_info($2,1); }
 	| TARGET_DIRECTIVE IDENTIFIER COMMA IDENTIFIER { target_header2($2,$4); }
+	| TARGET_DIRECTIVE IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER { target_header3($2,$4,$6); }
 	| TARGET_DIRECTIVE IDENTIFIER { target_header($2); }
 	| FILE_DIRECTIVE INT_OPERAND STRING { add_file($2,$3); } 
 	| LOC_DIRECTIVE INT_OPERAND INT_OPERAND INT_OPERAND 
@@ -416,6 +421,7 @@ option: type_spec
 	| ALL_OPTION { add_option(ALL_OPTION); }
 	| GLOBAL_OPTION { add_option(GLOBAL_OPTION); }
 	| CTA_OPTION { add_option(CTA_OPTION); }
+	| SYS_OPTION { add_option(SYS_OPTION); }
 	| GEOM_MODIFIER_1D { add_option(GEOM_MODIFIER_1D); }
 	| GEOM_MODIFIER_2D { add_option(GEOM_MODIFIER_2D); }
 	| GEOM_MODIFIER_3D { add_option(GEOM_MODIFIER_3D); }
@@ -428,6 +434,7 @@ option: type_spec
 	| ABS_OPTION { add_option(ABS_OPTION); }
 	| atomic_operation_spec ;
 	| TO_OPTION { add_option(TO_OPTION); }
+	| HALF_OPTION { add_option(HALF_OPTION); }
 	;
 
 atomic_operation_spec: ATOMIC_AND { add_option(ATOMIC_AND); } 

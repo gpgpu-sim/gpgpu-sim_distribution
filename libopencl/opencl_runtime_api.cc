@@ -83,38 +83,6 @@
 #include "../src/gpgpu-sim/gpu-sim.h"
 #include "../src/gpgpu-sim/shader.h"
 
-static struct cudaDeviceProp the_cuda_device;
-static struct cudaDeviceProp **gpgpu_cuda_devices;
-static int g_gpgpusim_init = 0;
-
-#define GPGPUSIM_INIT \
-   if( gpgpu_cuda_devices == NULL ) { \
-      snprintf(the_cuda_device.name,256,"GPGPU-Sim_v%s", g_gpgpusim_version_string );\
-      the_cuda_device.major = 1;\
-      the_cuda_device.minor = 3;\
-      the_cuda_device.totalGlobalMem = 0x40000000 /* 1 GB */;\
-      the_cuda_device.sharedMemPerBlock = (16*1024);\
-      the_cuda_device.regsPerBlock = (16*1024);\
-      the_cuda_device.warpSize = 32;\
-      the_cuda_device.memPitch = 0; \
-      the_cuda_device.maxThreadsPerBlock = 512;\
-      the_cuda_device.maxThreadsDim[0] = 512; \
-      the_cuda_device.maxThreadsDim[1] = 512; \
-      the_cuda_device.maxThreadsDim[2] = 512; \
-      the_cuda_device.maxGridSize[0] = 0x40000000; \
-      the_cuda_device.maxGridSize[1] = 0x40000000; \
-      the_cuda_device.maxGridSize[2] = 0x40000000; \
-      the_cuda_device.totalConstMem = 0x40000000; \
-      the_cuda_device.clockRate = 1000000; /* 1 GHz (WARNING: ignored by performance model) */\
-      the_cuda_device.textureAlignment = 0; \
-      gpgpu_cuda_devices = (cudaDeviceProp **) calloc(sizeof(struct cudaDeviceProp *),1); \
-      gpgpu_cuda_devices[0] = &the_cuda_device; \
-   } \
-   if( !g_gpgpusim_init ) { \
-      gpgpu_ptx_sim_init_perf(); \
-      g_gpgpusim_init = 1; \
-   }
-
 //#   define __my_func__    __PRETTY_FUNCTION__
 # if defined __cplusplus ? __GNUC_PREREQ (2, 6) : __GNUC_PREREQ (2, 4)
 #   define __my_func__    __func__
@@ -126,18 +94,14 @@ static int g_gpgpusim_init = 0;
 #  endif
 # endif
 
-// global kernel parameters...  
-static dim3 g_cudaGridDim;
-static dim3 g_cudaBlockDim;
-static struct gpgpu_ptx_sim_arg *g_ptx_sim_params;
-
 #include <CL/cl.h>
 
 #include <map>
 #include <string>
 
 struct _cl_context {
-   _cl_context() { m_uid = sm_context_uid++; }
+   _cl_context( cl_device_id gpu );
+   cl_device_id get_first_device();
    cl_mem CreateBuffer(
                cl_mem_flags flags,
                size_t       size ,
@@ -146,6 +110,7 @@ struct _cl_context {
    cl_mem lookup_mem( cl_mem m );
 private:
    unsigned m_uid;
+   cl_device_id m_gpu;
    static unsigned sm_context_uid;
 
    std::map<void*/*host_ptr*/,cl_mem> m_hostptr_to_cl_mem;
@@ -153,10 +118,12 @@ private:
 };
 
 struct _cl_device_id {
-   _cl_device_id() { m_id = 0; m_next = NULL; }
+   _cl_device_id(gpgpu_sim* gpu) {m_id = 0; m_next = NULL; m_gpgpu=gpu;}
    struct _cl_device_id *next() { return m_next; }
+   gpgpu_sim *the_device() const { return m_gpgpu; }
 private:
    unsigned m_id;
+   gpgpu_sim *m_gpgpu;
    struct _cl_device_id *m_next;
 };
 
@@ -222,9 +189,9 @@ struct _cl_kernel {
       cl_uint      arg_index,
       size_t       arg_size,
       const void * arg_value );
-   cl_int bind_args( struct gpgpu_ptx_sim_arg **arg_list );
+   cl_int bind_args( gpgpu_ptx_sim_arg_list_t &arg_list );
    std::string name() const { return m_kernel_name; }
-   size_t get_workgroup_size();
+   size_t get_workgroup_size(cl_device_id device);
    cl_program get_program() { return m_prog; }
    class function_info *get_implementation() { return m_kernel_impl; }
 private:
@@ -284,27 +251,17 @@ void _cl_kernel::SetKernelArg(
    m_args[arg_index] = arg;
 }
 
-cl_int _cl_kernel::bind_args( struct gpgpu_ptx_sim_arg **arg_list )
+cl_int _cl_kernel::bind_args( gpgpu_ptx_sim_arg_list_t &arg_list )
 {
-   while( *arg_list ) {
-      struct gpgpu_ptx_sim_arg *n = (*arg_list)->m_next;
-      free( *arg_list );
-      *arg_list = n;
-   }
+   assert( arg_list.empty() );
    unsigned k=0;
    std::map<unsigned, arg_info>::iterator i;
    for( i = m_args.begin(); i!=m_args.end(); i++ ) {
       if( i->first != k ) 
          return CL_INVALID_KERNEL_ARGS;
       arg_info arg = i->second;
-
-      struct gpgpu_ptx_sim_arg *param = (gpgpu_ptx_sim_arg*) calloc(1,sizeof(struct gpgpu_ptx_sim_arg));
-      param->m_start = arg.m_arg_value;
-      param->m_nbytes = arg.m_arg_size;
-      param->m_offset = 0;
-      param->m_next = *arg_list;
-      *arg_list = param;
-
+      gpgpu_ptx_sim_arg param( arg.m_arg_value, arg.m_arg_size, 0 );
+      arg_list.push_front( param );
       k++;
    }
    return CL_SUCCESS;
@@ -312,13 +269,13 @@ cl_int _cl_kernel::bind_args( struct gpgpu_ptx_sim_arg **arg_list )
 
 #define min(a,b) ((a<b)?(a):(b))
 
-size_t _cl_kernel::get_workgroup_size()
+size_t _cl_kernel::get_workgroup_size(cl_device_id device)
 {
    unsigned nregs = ptx_kernel_nregs( m_kernel_impl );
    unsigned result_regs = (unsigned)-1;
    if( nregs > 0 )
-      result_regs = gpgpu_shader_registers / ((nregs+3)&~3);
-   unsigned result = gpu_n_thread_per_shader;
+      result_regs = device->the_device()->num_registers_per_core() / ((nregs+3)&~3);
+   unsigned result = device->the_device()->threads_per_core();
    result = min(result, result_regs);
    return (size_t)result;
 }
@@ -360,8 +317,11 @@ _cl_mem::_cl_mem(
          *errcode_ret = CL_INVALID_VALUE;
       return;
    }
-   if( flags & CL_MEM_ALLOC_HOST_PTR ) 
-      gpgpusim_opencl_error(__my_func__,__LINE__," CL_MEM_ALLOC_HOST_PTR -- not yet supported/tested.\n");
+   if( flags & CL_MEM_ALLOC_HOST_PTR ) {
+      if( host_ptr ) 
+         gpgpusim_opencl_error(__my_func__,__LINE__," CL_MEM_ALLOC_HOST_PTR -- not yet supported/tested.\n");
+      m_host_ptr = malloc(size);
+   }
 
    if( flags & (CL_MEM_USE_HOST_PTR|CL_MEM_ALLOC_HOST_PTR) ) {
       m_is_on_host = true;
@@ -374,6 +334,17 @@ _cl_mem::_cl_mem(
       if( host_ptr )
          gpgpu_ptx_sim_memcpy_to_gpu( m_device_ptr, host_ptr, size );
    }
+}
+
+_cl_context::_cl_context( struct _cl_device_id *gpu ) 
+{ 
+   m_uid = sm_context_uid++; 
+   m_gpu = gpu;
+}
+
+cl_device_id _cl_context::get_first_device() 
+{
+   return m_gpu;
 }
 
 cl_mem _cl_context::CreateBuffer(
@@ -545,7 +516,7 @@ void _cl_program::Build(const char *options)
          }
       }
       info.m_asm = tmp;
-      info.m_symtab = gpgpu_ptx_sim_load_ptx_from_string( tmp, source_num );
+      info.m_symtab = gpgpu_ptx_sim_load_ptx_from_string( tmp, tmp, source_num );
       free(tmp);
    }
    printf("GPGPU-Sim OpenCL API: finished compiling OpenCL kernels.\n"); 
@@ -606,13 +577,18 @@ size_t _cl_program::get_ptx_size()
    return buffer_length;
 }
 
-
-
 unsigned _cl_context::sm_context_uid = 0;
 unsigned _cl_kernel::sm_context_uid = 0;
 
-struct _cl_device_id    g_gpgpusim_cl_device_id;
-struct _cl_device_id*   g_gpgpusim_cl_device_id_list = &g_gpgpusim_cl_device_id;
+class _cl_device_id *GPGPUSim_Init()
+{
+   static _cl_device_id *the_device = NULL;
+   if( !the_device ) { 
+      gpgpu_sim *the_gpu = gpgpu_ptx_sim_init_perf(); 
+      the_device = new _cl_device_id(the_gpu);
+   } 
+   return the_device;
+}
 
 void opencl_not_implemented( const char* func, unsigned line )
 {
@@ -643,7 +619,7 @@ clCreateContextFromType(cl_context_properties * properties,
                         void *                  user_data,
                         cl_int *                errcode_ret) CL_API_SUFFIX__VERSION_1_0
 {
-   GPGPUSIM_INIT 
+   _cl_device_id *gpu = GPGPUSim_Init();
    if( device_type != CL_DEVICE_TYPE_GPU ) {
       printf("GPGPU-Sim OpenCL API: unsupported device type %lx\n", device_type );
       exit(1);
@@ -654,7 +630,7 @@ clCreateContextFromType(cl_context_properties * properties,
    }
    if( errcode_ret ) 
       *errcode_ret = CL_SUCCESS;
-   cl_context ctx = new _cl_context;
+   cl_context ctx = new _cl_context(gpu);
    return ctx;
 }
 
@@ -666,14 +642,17 @@ clCreateContext(  const cl_context_properties * properties,
                   void *                  user_data,
                   cl_int *                errcode_ret) CL_API_SUFFIX__VERSION_1_0
 {
-   GPGPUSIM_INIT 
+   struct _cl_device_id *gpu = GPGPUSim_Init();
    if( properties != NULL ) {
-      printf("GPGPU-Sim OpenCL API: do not know how to use properties in %s\n", __my_func__ );
-      exit(1);
+      if( properties[0] != CL_CONTEXT_PLATFORM || properties[1] != (cl_context_properties)&g_gpgpu_sim_platform_id ) {
+         if( errcode_ret ) 
+            *errcode_ret = CL_INVALID_PLATFORM;
+         return NULL;
+      }
    }
    if( errcode_ret ) 
       *errcode_ret = CL_SUCCESS;
-   cl_context ctx = new _cl_context;
+   cl_context ctx = new _cl_context(gpu);
    return ctx;
 }
 
@@ -688,7 +667,7 @@ clGetContextInfo(cl_context         context,
    switch( param_name ) {
    case CL_CONTEXT_DEVICES: {
       unsigned ngpu=0;
-      cl_device_id device_id = g_gpgpusim_cl_device_id_list;
+      cl_device_id device_id = context->get_first_device();
       while ( device_id != NULL ) {
          if( param_value ) 
             ((cl_device_id*)param_value)[ngpu] = device_id;
@@ -815,7 +794,7 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
       printf("GPGPU-Sim OpenCL API: clEnqueueNDRangeKernel automatic local work size selection:\n");
       for ( unsigned d=0; d < work_dim; d++ ) {
           if( d==0 ) {
-             if( global_work_size[d] <= gpu_n_thread_per_shader ) {
+             if( global_work_size[d] <= command_queue->get_device()->the_device()->threads_per_core() ) {
                 _local_size[d] = global_work_size[d];
              } else { 
                 printf("GPGPU-Sim OpenCL API: ERROR clEnqueueNDRangeKernel does not know how to divide work\n" );
@@ -835,29 +814,30 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
    }
 
    assert( global_work_size[0] == _local_size[0] * (global_work_size[0]/_local_size[0]) ); // i.e., we can divide into equal CTAs
-   g_cudaGridDim.x = global_work_size[0]/_local_size[0];
-   g_cudaGridDim.y = (work_dim < 2)?1:(global_work_size[1]/_local_size[1]);
-   g_cudaGridDim.z = (work_dim < 3)?1:(global_work_size[2]/_local_size[2]);
-   g_cudaBlockDim.x = _local_size[0];
-   g_cudaBlockDim.y = (work_dim < 2)?1:_local_size[1];
-   g_cudaBlockDim.z = (work_dim < 3)?1:_local_size[2];
+   dim3 GridDim;
+   GridDim.x = global_work_size[0]/_local_size[0];
+   GridDim.y = (work_dim < 2)?1:(global_work_size[1]/_local_size[1]);
+   GridDim.z = (work_dim < 3)?1:(global_work_size[2]/_local_size[2]);
+   dim3 BlockDim;
+   BlockDim.x = _local_size[0];
+   BlockDim.y = (work_dim < 2)?1:_local_size[1];
+   BlockDim.z = (work_dim < 3)?1:_local_size[2];
 
-   cl_int err_val = kernel->bind_args(&g_ptx_sim_params);
-   if ( err_val != CL_SUCCESS ) {
+   gpgpu_ptx_sim_arg_list_t params;
+   cl_int err_val = kernel->bind_args(params);
+   if ( err_val != CL_SUCCESS ) 
       return err_val;
-   }
 
    gpgpu_ptx_sim_memcpy_symbol( "%_global_size", _global_size, 3 * sizeof(int), 0, 1 );
    gpgpu_ptx_sim_memcpy_symbol( "%_work_dim", &work_dim, 1 * sizeof(int), 0, 1  );
-   gpgpu_ptx_sim_memcpy_symbol( "%_global_num_groups", &g_cudaGridDim, 3 * sizeof(int), 0, 1  );
+   gpgpu_ptx_sim_memcpy_symbol( "%_global_num_groups", &GridDim, 3 * sizeof(int), 0, 1  );
    gpgpu_ptx_sim_memcpy_symbol( "%_global_launch_offset", zeros, 3 * sizeof(int), 0, 1  );
    gpgpu_ptx_sim_memcpy_symbol( "%_global_block_offset", zeros, 3 * sizeof(int), 0, 1  );
 
    if ( g_ptx_sim_mode )
-      gpgpu_opencl_ptx_sim_main_func( kernel->get_implementation(), g_cudaGridDim, g_cudaBlockDim, g_ptx_sim_params );
+      gpgpu_opencl_ptx_sim_main_func( kernel->get_implementation(), GridDim, BlockDim, params );
    else
-      gpgpu_opencl_ptx_sim_main_perf( kernel->get_implementation(), g_cudaGridDim, g_cudaBlockDim, g_ptx_sim_params );
-   g_ptx_sim_params=NULL;
+      gpgpu_opencl_ptx_sim_main_perf( kernel->get_implementation(), GridDim, BlockDim, params );
    return CL_SUCCESS;
 }
 
@@ -1007,13 +987,11 @@ clGetDeviceIDs(cl_platform_id   platform,
    case CL_DEVICE_TYPE_DEFAULT:
    case CL_DEVICE_TYPE_GPU: 
    case CL_DEVICE_TYPE_ACCELERATOR:
+   case CL_DEVICE_TYPE_ALL:
       if( devices != NULL ) 
-         devices[0] = &g_gpgpusim_cl_device_id;
+         devices[0] = GPGPUSim_Init();
       if( num_devices ) 
          *num_devices = NUM_DEVICES;
-      break;
-   case CL_DEVICE_TYPE_ALL:
-      opencl_not_implemented(__my_func__,__LINE__);
       break;
    default:
       return CL_INVALID_DEVICE_TYPE;
@@ -1028,14 +1006,14 @@ clGetDeviceInfo(cl_device_id    device,
                 void *          param_value,
                 size_t *        param_value_size_ret) CL_API_SUFFIX__VERSION_1_0
 {
-   if( device != &g_gpgpusim_cl_device_id ) 
+   if( device != GPGPUSim_Init() ) 
       return CL_INVALID_DEVICE;
    char *buf = (char*)param_value;
    switch( param_name ) {
    case CL_DEVICE_NAME: CL_STRING_CASE( "GPGPU-Sim" ); break;
    case CL_DEVICE_GLOBAL_MEM_SIZE: CL_ULONG_CASE( 1024*1024*1024 ); break;
-   case CL_DEVICE_MAX_COMPUTE_UNITS: CL_INT_CASE( gpu_n_shader ); break;
-   case CL_DEVICE_MAX_CLOCK_FREQUENCY: CL_INT_CASE( (cl_int)core_freq ); break;
+   case CL_DEVICE_MAX_COMPUTE_UNITS: CL_INT_CASE( device->the_device()->num_shader() ); break;
+   case CL_DEVICE_MAX_CLOCK_FREQUENCY: CL_INT_CASE( device->the_device()->shader_clock() ); break;
    case CL_DEVICE_VENDOR:CL_STRING_CASE("GPGPU-Sim.org"); break;
    case CL_DRIVER_VERSION: CL_STRING_CASE("1.0"); break;
    case CL_DEVICE_TYPE: CL_INT_CASE(CL_DEVICE_TYPE_GPU); break;
@@ -1043,13 +1021,14 @@ clGetDeviceInfo(cl_device_id    device,
    case CL_DEVICE_MAX_WORK_ITEM_SIZES: 
       if( param_value && param_value_size < 3*sizeof(size_t) ) return CL_INVALID_VALUE; \
       if( param_value ) {
-         ((size_t*)param_value)[0] = gpu_n_thread_per_shader;
-         ((size_t*)param_value)[1] = gpu_n_thread_per_shader;
-         ((size_t*)param_value)[2] = gpu_n_thread_per_shader;
+         unsigned n_thread_per_shader = device->the_device()->threads_per_core();
+         ((size_t*)param_value)[0] = n_thread_per_shader;
+         ((size_t*)param_value)[1] = n_thread_per_shader;
+         ((size_t*)param_value)[2] = n_thread_per_shader;
       }
       if( param_value_size_ret ) *param_value_size_ret = 3*sizeof(cl_uint);
       break;
-   case CL_DEVICE_MAX_WORK_GROUP_SIZE: CL_INT_CASE( gpu_n_thread_per_shader ); break;
+   case CL_DEVICE_MAX_WORK_GROUP_SIZE: CL_INT_CASE( device->the_device()->threads_per_core() ); break;
    case CL_DEVICE_ADDRESS_BITS: CL_INT_CASE( 32 ); break;
    case CL_DEVICE_IMAGE_SUPPORT: CL_INT_CASE( CL_TRUE ); break;
    case CL_DEVICE_MAX_READ_IMAGE_ARGS: CL_INT_CASE( 128 ); break;
@@ -1062,7 +1041,7 @@ clGetDeviceInfo(cl_device_id    device,
    case CL_DEVICE_MAX_MEM_ALLOC_SIZE: CL_INT_CASE( 128*1024*1024 ); break;
    case CL_DEVICE_ERROR_CORRECTION_SUPPORT: CL_INT_CASE( 0 ); break;
    case CL_DEVICE_LOCAL_MEM_TYPE: CL_INT_CASE( CL_LOCAL ); break;
-   case CL_DEVICE_LOCAL_MEM_SIZE: CL_ULONG_CASE( gpgpu_shmem_size ); break;
+   case CL_DEVICE_LOCAL_MEM_SIZE: CL_ULONG_CASE( device->the_device()->shared_mem_size() ); break;
    case CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE: CL_ULONG_CASE( 64 * 1024 ); break;
    case CL_DEVICE_QUEUE_PROPERTIES: CL_INT_CASE( CL_QUEUE_PROFILING_ENABLE ); break;
    case CL_DEVICE_EXTENSIONS: 
@@ -1117,7 +1096,7 @@ clGetProgramInfo(cl_program         program,
          return CL_INVALID_VALUE;
       if( param_value ) {
          assert( NUM_DEVICES == 1 );
-         ((cl_device_id*)param_value)[0] = &g_gpgpusim_cl_device_id;
+         ((cl_device_id*)param_value)[0] = GPGPUSim_Init();
       }
       if( param_value_size_ret ) *param_value_size_ret = sizeof(cl_device_id);
       break;
@@ -1187,7 +1166,7 @@ clGetKernelWorkGroupInfo(cl_kernel                  kernel,
       return CL_INVALID_KERNEL;
    switch( param_name ) {
    case CL_KERNEL_WORK_GROUP_SIZE:
-      CL_SIZE_CASE( kernel->get_workgroup_size() );
+      CL_SIZE_CASE( kernel->get_workgroup_size(device) );
       break;
    case CL_KERNEL_COMPILE_WORK_GROUP_SIZE:
    case CL_KERNEL_LOCAL_MEM_SIZE:
@@ -1237,4 +1216,118 @@ extern CL_API_ENTRY cl_int CL_API_CALL
 clFlush(cl_command_queue /* command_queue */) CL_API_SUFFIX__VERSION_1_0
 {
    return CL_SUCCESS;
+}
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clGetSupportedImageFormats(cl_context           context,
+                           cl_mem_flags         flags,
+                           cl_mem_object_type   image_type,
+                           cl_uint              num_entries,
+                           cl_image_format *    image_formats,
+                           cl_uint *            num_image_formats) CL_API_SUFFIX__VERSION_1_0
+{
+   if( !context ) 
+      return CL_INVALID_CONTEXT;
+   if( flags == CL_MEM_READ_ONLY ) {
+      if( image_type == CL_MEM_OBJECT_IMAGE2D || image_type == CL_MEM_OBJECT_IMAGE2D ) {
+         if( num_entries == 0 || image_formats == NULL ) {
+            if( num_image_formats != NULL ) 
+               *num_image_formats = 71;
+         } else {
+            if( num_entries != 71 ) 
+               opencl_not_implemented(__my_func__,__LINE__);
+            image_formats[0].image_channel_order = CL_R;                        image_formats[0].image_channel_data_type = CL_FLOAT               ;
+            image_formats[1].image_channel_order = CL_R;                        image_formats[1].image_channel_data_type = CL_HALF_FLOAT          ;
+            image_formats[2].image_channel_order = CL_R;                        image_formats[2].image_channel_data_type = CL_UNORM_INT8          ;
+            image_formats[3].image_channel_order = CL_R;                        image_formats[3].image_channel_data_type = CL_UNORM_INT16         ;
+            image_formats[4].image_channel_order = CL_R;                        image_formats[4].image_channel_data_type = CL_SNORM_INT16         ;
+            image_formats[5].image_channel_order = CL_R;                        image_formats[5].image_channel_data_type = CL_SIGNED_INT8         ;
+            image_formats[6].image_channel_order = CL_R;                        image_formats[6].image_channel_data_type = CL_SIGNED_INT16        ;
+            image_formats[7].image_channel_order = CL_R;                        image_formats[7].image_channel_data_type = CL_SIGNED_INT32        ;
+            image_formats[8].image_channel_order = CL_R;                        image_formats[8].image_channel_data_type = CL_UNSIGNED_INT8       ;
+            image_formats[9].image_channel_order = CL_R;                        image_formats[9].image_channel_data_type = CL_UNSIGNED_INT16      ;
+            image_formats[10].image_channel_order = CL_R;                       image_formats[10].image_channel_data_type = CL_UNSIGNED_INT32     ;
+            image_formats[11].image_channel_order = CL_A;                       image_formats[11].image_channel_data_type = CL_FLOAT              ;
+            image_formats[12].image_channel_order = CL_A;                       image_formats[12].image_channel_data_type = CL_HALF_FLOAT         ;
+            image_formats[13].image_channel_order = CL_A;                       image_formats[13].image_channel_data_type = CL_UNORM_INT8         ;
+            image_formats[14].image_channel_order = CL_A;                       image_formats[14].image_channel_data_type = CL_UNORM_INT16        ;
+            image_formats[15].image_channel_order = CL_A;                       image_formats[15].image_channel_data_type = CL_SNORM_INT16        ;
+            image_formats[16].image_channel_order = CL_A;                       image_formats[16].image_channel_data_type = CL_SIGNED_INT8        ;
+            image_formats[17].image_channel_order = CL_A;                       image_formats[17].image_channel_data_type = CL_SIGNED_INT16       ;
+            image_formats[18].image_channel_order = CL_A;                       image_formats[18].image_channel_data_type = CL_SIGNED_INT32       ;
+            image_formats[19].image_channel_order = CL_A;                       image_formats[19].image_channel_data_type = CL_UNSIGNED_INT8      ;
+            image_formats[20].image_channel_order = CL_A;                       image_formats[20].image_channel_data_type = CL_UNSIGNED_INT16     ;
+            image_formats[21].image_channel_order = CL_A;                       image_formats[21].image_channel_data_type = CL_UNSIGNED_INT32     ;
+            image_formats[22].image_channel_order = CL_RG;                      image_formats[22].image_channel_data_type = CL_FLOAT              ;
+            image_formats[23].image_channel_order = CL_RG;                      image_formats[23].image_channel_data_type = CL_HALF_FLOAT         ;
+            image_formats[24].image_channel_order = CL_RG;                      image_formats[24].image_channel_data_type = CL_UNORM_INT8         ;
+            image_formats[25].image_channel_order = CL_RG;                      image_formats[25].image_channel_data_type = CL_UNORM_INT16        ;
+            image_formats[26].image_channel_order = CL_RG;                      image_formats[26].image_channel_data_type = CL_SNORM_INT16        ;
+            image_formats[27].image_channel_order = CL_RG;                      image_formats[27].image_channel_data_type = CL_SIGNED_INT8        ;
+            image_formats[28].image_channel_order = CL_RG;                      image_formats[28].image_channel_data_type = CL_SIGNED_INT16       ;
+            image_formats[29].image_channel_order = CL_RG;                      image_formats[29].image_channel_data_type = CL_SIGNED_INT32       ;
+            image_formats[30].image_channel_order = CL_RG;                      image_formats[30].image_channel_data_type = CL_UNSIGNED_INT8      ;
+            image_formats[31].image_channel_order = CL_RG;                      image_formats[31].image_channel_data_type = CL_UNSIGNED_INT16     ;
+            image_formats[32].image_channel_order = CL_RG;                      image_formats[32].image_channel_data_type = CL_UNSIGNED_INT32     ;
+            image_formats[33].image_channel_order = CL_RA;                      image_formats[33].image_channel_data_type = CL_FLOAT              ;
+            image_formats[34].image_channel_order = CL_RA;                      image_formats[34].image_channel_data_type = CL_HALF_FLOAT         ;
+            image_formats[35].image_channel_order = CL_RA;                      image_formats[35].image_channel_data_type = CL_UNORM_INT8         ;
+            image_formats[36].image_channel_order = CL_RA;                      image_formats[36].image_channel_data_type = CL_UNORM_INT16        ;
+            image_formats[37].image_channel_order = CL_RA;                      image_formats[37].image_channel_data_type = CL_SNORM_INT16        ;
+            image_formats[38].image_channel_order = CL_RA;                      image_formats[38].image_channel_data_type = CL_SIGNED_INT8        ;
+            image_formats[39].image_channel_order = CL_RA;                      image_formats[39].image_channel_data_type = CL_SIGNED_INT16       ;
+            image_formats[40].image_channel_order = CL_RA;                      image_formats[40].image_channel_data_type = CL_SIGNED_INT32       ;
+            image_formats[41].image_channel_order = CL_RA;                      image_formats[41].image_channel_data_type = CL_UNSIGNED_INT8      ;
+            image_formats[42].image_channel_order = CL_RA;                      image_formats[42].image_channel_data_type = CL_UNSIGNED_INT16     ;
+            image_formats[43].image_channel_order = CL_RA;                      image_formats[43].image_channel_data_type = CL_UNSIGNED_INT32     ;
+            image_formats[44].image_channel_order = CL_RGBA;                    image_formats[44].image_channel_data_type = CL_FLOAT              ;
+            image_formats[45].image_channel_order = CL_RGBA;                    image_formats[45].image_channel_data_type = CL_HALF_FLOAT         ;
+            image_formats[46].image_channel_order = CL_RGBA;                    image_formats[46].image_channel_data_type = CL_UNORM_INT8         ;
+            image_formats[47].image_channel_order = CL_RGBA;                    image_formats[47].image_channel_data_type = CL_UNORM_INT16        ;
+            image_formats[48].image_channel_order = CL_RGBA;                    image_formats[48].image_channel_data_type = CL_SNORM_INT16        ;
+            image_formats[49].image_channel_order = CL_RGBA;                    image_formats[49].image_channel_data_type = CL_SIGNED_INT8        ;
+            image_formats[50].image_channel_order = CL_RGBA;                    image_formats[50].image_channel_data_type = CL_SIGNED_INT16       ;
+            image_formats[51].image_channel_order = CL_RGBA;                    image_formats[51].image_channel_data_type = CL_SIGNED_INT32       ;
+            image_formats[52].image_channel_order = CL_RGBA;                    image_formats[52].image_channel_data_type = CL_UNSIGNED_INT8      ;
+            image_formats[53].image_channel_order = CL_RGBA;                    image_formats[53].image_channel_data_type = CL_UNSIGNED_INT16     ;
+            image_formats[54].image_channel_order = CL_RGBA;                    image_formats[54].image_channel_data_type = CL_UNSIGNED_INT32     ;
+            image_formats[55].image_channel_order = CL_BGRA;                    image_formats[55].image_channel_data_type = CL_UNORM_INT8         ;
+            image_formats[56].image_channel_order = CL_BGRA;                    image_formats[56].image_channel_data_type = CL_SIGNED_INT8        ;
+            image_formats[57].image_channel_order = CL_BGRA;                    image_formats[57].image_channel_data_type = CL_UNSIGNED_INT8      ;
+            image_formats[58].image_channel_order = CL_ARGB;                    image_formats[58].image_channel_data_type = CL_UNORM_INT8         ;
+            image_formats[59].image_channel_order = CL_ARGB;                    image_formats[59].image_channel_data_type = CL_SIGNED_INT8        ;
+            image_formats[60].image_channel_order = CL_ARGB;                    image_formats[60].image_channel_data_type = CL_UNSIGNED_INT8      ;
+            image_formats[61].image_channel_order = CL_INTENSITY;               image_formats[61].image_channel_data_type = CL_FLOAT              ;
+            image_formats[62].image_channel_order = CL_INTENSITY;               image_formats[62].image_channel_data_type = CL_HALF_FLOAT         ;
+            image_formats[63].image_channel_order = CL_INTENSITY;               image_formats[63].image_channel_data_type = CL_UNORM_INT8         ;
+            image_formats[64].image_channel_order = CL_INTENSITY;               image_formats[64].image_channel_data_type = CL_UNORM_INT16        ;
+            image_formats[65].image_channel_order = CL_INTENSITY;               image_formats[65].image_channel_data_type = CL_SNORM_INT16        ;
+            image_formats[66].image_channel_order = CL_LUMINANCE;               image_formats[66].image_channel_data_type = CL_FLOAT              ;
+            image_formats[67].image_channel_order = CL_LUMINANCE;               image_formats[67].image_channel_data_type = CL_HALF_FLOAT         ;
+            image_formats[68].image_channel_order = CL_LUMINANCE;               image_formats[68].image_channel_data_type = CL_UNORM_INT8         ;
+            image_formats[69].image_channel_order = CL_LUMINANCE;               image_formats[69].image_channel_data_type = CL_UNORM_INT16        ;
+            image_formats[70].image_channel_order = CL_LUMINANCE;               image_formats[70].image_channel_data_type = CL_SNORM_INT16        ;
+         }
+      } else return CL_INVALID_VALUE;
+   } else {
+      opencl_not_implemented(__my_func__,__LINE__);
+   }
+   return CL_SUCCESS;
+}
+
+extern CL_API_ENTRY void * CL_API_CALL
+clEnqueueMapBuffer(cl_command_queue command_queue,
+                   cl_mem           buffer,
+                   cl_bool          blocking_map, 
+                   cl_map_flags     map_flags,
+                   size_t           offset,
+                   size_t           cb,
+                   cl_uint          num_events_in_wait_list,
+                   const cl_event * event_wait_list,
+                   cl_event *       event,
+                   cl_int *         errcode_ret ) CL_API_SUFFIX__VERSION_1_0
+{
+   _cl_mem *mem = command_queue->get_context()->lookup_mem(buffer);
+   assert( mem->is_on_host() );
+   return mem->host_ptr();
 }

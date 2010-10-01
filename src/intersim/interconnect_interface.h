@@ -13,12 +13,14 @@ struct glue_buf {
 };
 
 //node side functions
-int interconnect_has_buffer(unsigned int input, unsigned int *size); 
+int interconnect_has_buffer(unsigned int input, unsigned int size); 
 void interconnect_push ( unsigned int input, unsigned int output, 
 		    void* data, unsigned int size); 
 void* interconnect_pop(unsigned int output);
-void init_interconnect (char* config_file, 
-		   unsigned int n_shader, unsigned int n_mem);
+void init_interconnect (char* config_file,
+                        unsigned int n_shader, 
+                        unsigned int n_mem,
+                        struct shader_core_config *shader_config);
 void advance_interconnect();
 unsigned interconnect_busy();
 void interconnect_stats() ;
@@ -29,6 +31,10 @@ int in_map (int input) ;
 void write_out_buf(int output, Flit * data);
 void transfer2boundary_buf(int output);
 void time_vector_update_icnt_injected(void* mf, int input);
+
+// other
+void icnt_overal_stat();
+void icnt_init_grid ();
 
 #endif
 

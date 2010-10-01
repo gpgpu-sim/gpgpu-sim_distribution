@@ -14,29 +14,28 @@
 #ifndef SCOREBOARD_H_
 #define SCOREBOARD_H_
 
-typedef unsigned op_type;
+#include "../abstract_hardware_model.h"
 
-class Scoreboard
-{
-	private:
-		int sid; // Shader id
-		// Table to keep track of write-pending registers
-		// Indexed by warp id (wid)
-		std::vector< std::set<int> > reg_table;
+class Scoreboard {
+public:
+    Scoreboard( unsigned sid, unsigned n_warps );
 
-		void reserveRegister(int wid, int regnum);
-		void releaseRegister(int wid, int regnum);
+    void printContents();
 
-	public:
-		Scoreboard( int sid, int n_warps );
+    void reserveRegisters(unsigned wid, const inst_t *inst);
+    void releaseRegisters(unsigned wid, const inst_t *inst);
 
-		void printContents();
+    bool checkCollision(unsigned wid, const inst_t *inst);
+    bool pendingWrites(unsigned wid) const;
+private:
+    void reserveRegister(unsigned wid, unsigned regnum);
+    void releaseRegister(unsigned wid, unsigned regnum);
 
-		void reserveRegisters(int wid, void *inst_void);
-		void releaseRegisters(int wid, void *inst_void);
+    unsigned m_sid;
 
-		bool checkCollision(int wid, void *inst_void);
-
+    // keeps track of pending writes to registers
+    // indexed by warp id
+    std::vector< std::set<int> > reg_table;
 };
 
 

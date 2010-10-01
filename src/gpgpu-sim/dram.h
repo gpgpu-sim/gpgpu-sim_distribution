@@ -1,5 +1,5 @@
 /* 
- * dram.c
+ * dram.cc
  *
  * Copyright (c) 2009 by Tor M. Aamodt, Wilson W. L. Fung, George L. Yuan,
  * Ivan Sham, Justin Kwong, Dan O'Connor and the 
@@ -66,28 +66,24 @@
  * Vancouver, BC V6T 1Z4
  */
 
-#include <stdio.h>
-#include <stdlib.h>
+#ifndef DRAM_H
+#define DRAM_H
 
 #include "delayqueue.h"
 #include "../cuda-sim/dram_callback.h"
 #include <set>
-
-#ifndef DRAM_H
-#define DRAM_H
-
-#define FIFO_AGE_LIMIT 50     //used for both BANK_CONF and REALISTIC schedulers
-#define FIFO_NUM_WRITE_LIMIT 3   //used for both BANK_CONF and REALISTIC schedulers
-#define LOOKAHEAD_VALUE 10    //used for REALISTIC scheduler ONLY
-
-enum dram_ctrl_t {
-   DRAM_FIFO=0,
-   DRAM_IDEAL_FAST=1
-};
+#include <zlib.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #define READ 'R'  //define read and write states
 #define WRITE 'W'
-typedef struct {
+#define BANK_IDLE 'I'
+#define BANK_ACTIVE 'A'
+
+struct dram_req_t 
+{
+   dram_req_t( class mem_fetch *data );
    unsigned int row;
    unsigned int col;
    unsigned int bk;
@@ -99,15 +95,12 @@ typedef struct {
    unsigned char rw;    //is the request a read or a write?
    unsigned long long int addr;
    unsigned int insertion_time;
-   void* data;
-
+   class mem_fetch * data;
    int cache_hits_waiting; 
-} dram_req_t;
+};
 
-#define BANK_IDLE 'I'
-#define BANK_ACTIVE 'A'
-
-typedef struct {
+struct bank_t
+{
    unsigned int RCDc;
    unsigned int RCDWRc;
    unsigned int RASc;
@@ -123,12 +116,44 @@ typedef struct {
    unsigned int n_access;
    unsigned int n_writes;
    unsigned int n_idle;
-} bank_t;
+};
 
 struct mem_fetch;
 
-typedef struct dram_timing {
+class dram_t 
+{
+public:
+   dram_t( unsigned int parition_id, struct memory_config *config);
+
+   void set_stats( class memory_stats_t *stats ) {m_stats=stats;}
+
+   int full();
+   class mem_fetch* top();
+   void print( FILE* simFile ) const;
+   void visualize() const;
+   void print_stat( FILE* simFile );
+   unsigned int que_length() const; 
+   bool returnq_full() const;
+   unsigned int queue_limit() const;
+   void visualizer_print( gzFile visualizer_file );
+
+   class mem_fetch* pop();
+   void returnq_push( class mem_fetch *mf, unsigned long long gpu_sim_cycle);
+   class mem_fetch* returnq_pop( unsigned long long gpu_sim_cycle);
+   class mem_fetch* returnq_top();
+   void push( class mem_fetch *data );
+   void issueCMD();
+   void queue_latency_log_dump( FILE *fp );
+   void dram_log (int task);
+
+   struct memory_partition_unit *m_memory_partition_unit;
    unsigned int id;
+
+private:
+   void scheduler_fifo();
+   void fast_scheduler_ideal();
+
+   struct memory_config *m_config;
 
    unsigned int tCCD;   //column to column delay
    unsigned int tRRD;   //minimal time required between activation of rows in different banks
@@ -157,20 +182,16 @@ typedef struct dram_timing {
    unsigned char rw; //was last request a read or write? (important for RTW, WTR)
 
    unsigned int pending_writes;
-   unsigned char realistic_scheduler_mode;
 
-   delay_queue *rwq;
-   delay_queue *mrqq;
+   fifo_pipeline<dram_req_t> *rwq;
+   fifo_pipeline<dram_req_t> *mrqq;
    //buffer to hold packets when DRAM processing is over
    //should be filled with dram clock and popped with l2or icnt clock 
-   delay_queue *returnq;      
-
+   fifo_pipeline<mem_fetch> *returnq;
 
    unsigned int dram_util_bins[10];
    unsigned int dram_eff_bins[10];
    unsigned int last_n_cmd, last_n_activity, last_bwutil;
-
-   unsigned int queue_limit;
 
    unsigned int n_cmd;
    unsigned int n_activity;
@@ -185,11 +206,8 @@ typedef struct dram_timing {
    unsigned int bwutil;
    unsigned int max_mrqs;
    unsigned int ave_mrqs;
-   unsigned char scheduler_type;
 
-   void *m_fast_ideal_scheduler;
-
-   void *m_L2cache;
+   class ideal_dram_scheduler* m_fast_ideal_scheduler;
 
    unsigned int n_cmd_partial;
    unsigned int n_activity_partial;
@@ -200,41 +218,10 @@ typedef struct dram_timing {
    unsigned int ave_mrqs_partial;
    unsigned int bwutil_partial;
 
-   void * req_hist;
+   struct memory_stats_t *m_stats;
+   class Stats* mrqq_Dist; //memory request queue inside DRAM  
 
-   std::set<mem_fetch*> m_request_tracker;
-} dram_t;
-
-
-dram_t* dram_create( unsigned int id, unsigned int nbk, 
-		unsigned int tCCD, unsigned int tRRD,
-		unsigned int tRCD, unsigned int tRAS,
-		unsigned int tRP, unsigned int tRC,
-		unsigned int CL, unsigned int WL, 
-		unsigned int BL, unsigned int tWTR,
-		unsigned int busW, unsigned int queue_limit,
-		unsigned char scheduler_type );
-void dram_free( dram_t *dm );
-int dram_full( dram_t *dm );
-void dram_push( dram_t *dm, unsigned int bank,
-	   unsigned int row, unsigned int col,
-	   unsigned int nbytes, unsigned int write,
-	   unsigned int wid, unsigned int sid, int cache_hits_waiting, unsigned long long addr,
-	   void *data );
-void scheduler_fifo(dram_t* dm);
-void dram_issueCMD (dram_t* dm);
-void* dram_pop( dram_t *dm );
-void* dram_top( dram_t *dm );
-unsigned dram_busy( dram_t *dm);
-void dram_print( dram_t* dm, FILE* simFile );
-void dram_visualize( dram_t* dm );
-void dram_print_stat( dram_t* dm, FILE* simFile );
-void fast_scheduler_ideal(dram_t* dm);
-void* alloc_fast_ideal_scheduler(dram_t *dm);
-void dump_fast_ideal_scheduler(dram_t *dm);
-unsigned fast_scheduler_queue_length(dram_t *dm);
-
-//supposed to return the current queue length for all memory scheduler types.
-unsigned int dram_que_length( dram_t *dm ); 
+   friend class ideal_dram_scheduler;
+};
 
 #endif /*DRAM_H*/

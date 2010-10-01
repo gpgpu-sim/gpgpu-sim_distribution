@@ -58,6 +58,8 @@ sys.path.insert(0,"Lib/site-packages/ply-3.2/ply-3.2")
 import ply.lex as lex
 import ply.yacc as yacc
 import gzip
+import gc
+
 import variableclasses as vc
 
 global skipCFLOGParsing
@@ -171,9 +173,9 @@ def parseMe(filename):
         'globalSentWrites':vc.variable('gpgpunsentwrites', 1, 0, 'scalar'), 
         'globalProcessedWrites':vc.variable('gpgpunprocessedwrites', 1, 0, 'scalar'), 
         'averagemflatency' :vc.variable('', 1, 0, 'custom'), 
-        'LDmemlatdist':vc.variable('', 3, 0, 'impVec'), 
-        'STmemlatdist':vc.variable('', 3, 0, 'impVec'), 
-        'WarpDivergenceBreakdown':vc.variable('', 3, 0, 'impVec'), 
+        'LDmemlatdist':vc.variable('', 3, 0, 'stackbar'), 
+        'STmemlatdist':vc.variable('', 3, 0, 'stackbar'), 
+        'WarpDivergenceBreakdown':vc.variable('', 3, 0, 'stackbar'), 
         'dram_writes_per_cycle':vc.variable('', 1, 0, 'scalar', float),
         'dram_reads_per_cycle' :vc.variable('', 1, 0, 'scalar', float),
         'gpu_stall_by_MSHRwb':vc.variable('', 1, 0, 'scalar'),
@@ -213,11 +215,6 @@ def parseMe(filename):
         '''sentence : WORD NUMBERSEQUENCE'''
         #print p[0], p[1],p[2]
         num = p[2].split(" ")  
-        for x in list(num):
-            try:
-                float(x)
-            except:
-                num.remove(x)
         
         lookup_input = p[1].lower()
         if (lookup_input  in stat_lookuptable):
@@ -244,7 +241,18 @@ def parseMe(filename):
                     stat.data.append(stat.datatype(x))
                 stat.data.append("NULL")
 
-        elif (p[1].lower()[0:5] == 'cflog'):
+            elif (stat.type == 5):
+                stat.initSparseMatrix()
+                for entry in num:
+                    row, value = entry.split(',')
+                    row = stat.datatype(row)
+                    value = stat.datatype(value)
+                    stat.data[0].append(value)
+                    stat.data[1].append(row)
+                    stat.data[2].append(stat.sampleNum)
+                stat.sampleNum += 1
+
+        elif (lookup_input[0:5] == 'cflog'):
             if (skipCFLOGParsing == 1): 
                 return
             count = 0
@@ -280,7 +288,7 @@ def parseMe(filename):
             print("Syntax error at EOF")
     
     yacc.yacc()
-   
+
     # detect for gzip'ed log file and gunzip on the fly
     if (filename.endswith('.gz')):
         file = gzip.open(filename, 'r')
@@ -289,16 +297,15 @@ def parseMe(filename):
     while file:
         line = file.readline()
         if not line : break
-        parts = line.split(":")
-        if (len(parts) != 2): 
+        nameNdata = line.split(":")
+        if (len(nameNdata) != 2): 
             print("Syntax error at '%s'" % line) 
-        parts[0] = parts[0].strip()
-        parts[1] = parts[1].strip()
-        parts = [' '] + parts
+        namePart = nameNdata[0].strip()
+        dataPart= nameNdata[1].strip()
+        parts = [' ', namePart, dataPart]
         p_sentence(parts)
         # yacc.parse(line[0:-1])
     file.close()    
-    
 
     return variables
   

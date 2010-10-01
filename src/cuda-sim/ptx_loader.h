@@ -75,7 +75,8 @@ extern memory_space *g_param_mem;
 extern bool g_override_embedded_ptx;
  
 void gpgpu_ptx_sim_load_gpu_kernels();
-void gpgpu_ptx_sim_add_ptxstring( const char *ptx_string, const char *sourcefname );
-class symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num );
+void gpgpu_ptx_sim_add_ptxstring( const char *ptx_string, const char *cubin_string,  const char *sourcefname );
+class symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, const char *p_for_info, unsigned source_num );
+char* gpgpu_ptx_sim_convert_ptx_to_ptxplus(const char *ptx_str, const char *cubin_str, unsigned source_num);
 
 #endif

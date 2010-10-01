@@ -71,7 +71,6 @@ void feature_not_implemented( const char *f );
 
 std::set<unsigned long long> g_ptx_cta_info_sm_idx_used;
 unsigned long long g_ptx_cta_info_uid = 1;
-extern int gpgpu_option_spread_blocks_across_cores;
 
 ptx_cta_info::ptx_cta_info( unsigned sm_idx )
 {
@@ -276,7 +275,11 @@ unsigned ptx_thread_info::get_builtin( int builtin_id, unsigned dim_mod )
       return (gpu_sim_cycle + gpu_tot_sim_cycle)*2;
    case CTAID_REG:
       assert( dim_mod < 3 );
-      return m_ctaid[dim_mod];
+      if( dim_mod == 0 ) return m_ctaid.x;
+      if( dim_mod == 1 ) return m_ctaid.y;
+      if( dim_mod == 2 ) return m_ctaid.z;
+      abort();
+      break;
    case ENVREG_REG: feature_not_implemented( "%envreg" ); return 0;
    case GRIDID_REG:
       return m_gridid;
@@ -288,16 +291,28 @@ unsigned ptx_thread_info::get_builtin( int builtin_id, unsigned dim_mod )
    case LANEMASK_GT_REG: feature_not_implemented( "%lanemask_gt" ); return 0;
    case NCTAID_REG:
       assert( dim_mod < 3 );
-      return m_nctaid[dim_mod];
+      if( dim_mod == 0 ) return m_nctaid.x;
+      if( dim_mod == 1 ) return m_nctaid.y;
+      if( dim_mod == 2 ) return m_nctaid.z;
+      abort();
+      break;
    case NTID_REG:
       assert( dim_mod < 3 );
-      return m_ntid[dim_mod];
+      if( dim_mod == 0 ) return m_ntid.x;
+      if( dim_mod == 1 ) return m_ntid.y;
+      if( dim_mod == 2 ) return m_ntid.z;
+      abort();
+      break;
    case NWARPID_REG: feature_not_implemented( "%nwarpid" ); return 0;
    case PM_REG: feature_not_implemented( "%pm" ); return 0;
    case SMID_REG: feature_not_implemented( "%smid" ); return 0;
    case TID_REG:
       assert( dim_mod < 3 );
-      return m_tid[dim_mod];
+      if( dim_mod == 0 ) return m_tid.x;
+      if( dim_mod == 1 ) return m_tid.y;
+      if( dim_mod == 2 ) return m_tid.z;
+      abort();
+      break;
    case WARPSZ_REG: feature_not_implemented( "WARP_SZ" ); return 0;
    default:
       assert(0);
@@ -312,13 +327,13 @@ void ptx_thread_info::set_info( function_info *func )
   m_PC = func->get_start_PC();
 }
 
-void ptx_thread_info::cpy_tid_to_reg( int x, int y, int z)
+void ptx_thread_info::cpy_tid_to_reg( dim3 tid )
 {
    //copies %tid.x, %tid.y and %tid.z into $r0
    ptx_reg_t data;
    data.s64=0;
 
-   data.u32=(x + (y<<16) + (z<<26));
+   data.u32=(tid.x + (tid.y<<16) + (tid.z<<26));
 
    const symbol *r0 = m_symbol_table->lookup("$r0");
    set_reg(r0,data);
@@ -386,6 +401,21 @@ void ptx_thread_info::callstack_push( unsigned pc, unsigned rpc, const symbol *r
    m_local_mem_stack_pointer += m_func_info->local_mem_framesize(); 
 }
 
+//ptxplus version of callstack_push.
+void ptx_thread_info::callstack_push_plus( unsigned pc, unsigned rpc, const symbol *return_var_src, const symbol *return_var_dst, unsigned call_uid )
+{
+   m_RPC = -1;
+   m_RPC_updated = true;
+   m_last_was_call = true;
+   assert( m_func_info != NULL );
+   m_callstack.push_back( stack_entry(m_symbol_table,m_func_info,pc,rpc,return_var_src,return_var_dst,call_uid) );
+   //m_regs.push_back( reg_map_t() );
+   //m_debug_trace_regs_modified.push_back( reg_map_t() );
+   //m_debug_trace_regs_read.push_back( reg_map_t() );
+   m_local_mem_stack_pointer += m_func_info->local_mem_framesize();
+}
+
+
 bool ptx_thread_info::callstack_pop()
 {
    const symbol *rv_src = m_callstack.back().m_return_var_src;
@@ -414,6 +444,40 @@ bool ptx_thread_info::callstack_pop()
 
    // write return value into caller frame
    if( rv_dst != NULL ) 
+      copy_buffer_to_frame(this, buffer);
+
+   return m_callstack.empty();
+}
+
+//ptxplus version of callstack_pop
+bool ptx_thread_info::callstack_pop_plus()
+{
+   const symbol *rv_src = m_callstack.back().m_return_var_src;
+   const symbol *rv_dst = m_callstack.back().m_return_var_dst;
+   assert( !((rv_src != NULL) ^ (rv_dst != NULL)) ); // ensure caller and callee agree on whether there is a return value
+
+   // read return value from callee frame
+   arg_buffer_t buffer;
+   if( rv_src != NULL )
+      buffer = copy_arg_to_buffer(this, operand_info(rv_src), rv_dst );
+
+   m_symbol_table = m_callstack.back().m_symbol_table;
+   m_NPC = m_callstack.back().m_PC;
+   m_RPC_updated = true;
+   m_last_was_call = false;
+   m_RPC = m_callstack.back().m_RPC;
+   m_func_info = m_callstack.back().m_func_info;
+   if( m_func_info ) {
+      assert( m_local_mem_stack_pointer >= m_func_info->local_mem_framesize() );
+      m_local_mem_stack_pointer -= m_func_info->local_mem_framesize();
+   }
+   m_callstack.pop_back();
+   //m_regs.pop_back();
+   //m_debug_trace_regs_modified.pop_back();
+   //m_debug_trace_regs_read.pop_back();
+
+   // write return value into caller frame
+   if( rv_dst != NULL )
       copy_buffer_to_frame(this, buffer);
 
    return m_callstack.empty();
@@ -476,7 +540,7 @@ void ptx_thread_info::dump_regs( FILE *fp )
       const symbol *sym = r->first;
       ptx_reg_t value = r->second;
       std::string name = sym->name();
-      print_reg(name,value,m_symbol_table);
+      print_reg(fp,name,value,m_symbol_table);
    }
 }
 

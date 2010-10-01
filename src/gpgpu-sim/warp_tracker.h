@@ -63,176 +63,199 @@
  * Vancouver, BC V6T 1Z4
  */
 
+#ifndef warp_tracker_h_INCLUDED
+#define warp_tracker_h_INCLUDED
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cassert>
+#include <map>
+#include <list>
+#include <deque>
+#include <queue>
 #include <vector>
 #include <map>
 #include <list>
 
-#ifndef warp_tracker_h_INCLUDED
-#define warp_tracker_h_INCLUDED
-
-#ifdef __cplusplus
-
-   #include <cstdio>
-   #include <cstdlib>
-   #include <cstring>
-   #include <cassert>
-   #include <map>
-   #include <list>
-   #include <deque>
-   #include <queue>
-
-#endif
-
 #include "../abstract_hardware_model.h"
 #include "shader.h"
 
-extern unsigned int warp_size;
-extern unsigned int gpu_n_shader;
-extern unsigned int gpu_n_thread_per_shader;
-
-//void init_warp_tracker( );
-
-//void wpt_register_warp( int *tid_in, shader_core_ctx_t *shd );
-
-//int wpt_signal_avail( int tid, shader_core_ctx_t *shd );
-
-//void wpt_unlock_threads( int tid, shader_core_ctx_t *shd );
-
-//int wpt_signal_complete( int tid, shader_core_ctx_t *shd );
-
 void print_thread_pc_histogram( FILE *fout );
-void print_thread_pc( FILE *fout );
-void track_thread_pc( int shader_id, int *tid, address_type pc );
-
-int* alloc_commit_warp( );
-void free_commit_warp( int *commit_warp );
+void print_thread_pc( FILE *fout, unsigned n_shader );
 
 class warp_tracker {
 public:
-   std::vector<int> tid;
-
-   int n_thd; // total number of threads in this warp
-   int n_notavail; // number of threads still not available
-   shader_core_ctx_t *shd; // reference to shader core
-   address_type pc;
-
-   warp_tracker () {
-	  tid.resize(warp_size,-1);
-
-      n_thd = 0;
-      n_notavail = 0;
-      shd = NULL;
+   warp_tracker( int *tid, address_type pc, unsigned warp_size ) 
+   {
+      // makes a copy of pc and thread ids in warp 
+      m_pc = pc;
+      m_n_thd = 0;
+      m_warp_size=warp_size;
+      m_tid.reserve(warp_size);
+      std::copy(tid, tid+warp_size, m_tid.begin());
+      for (unsigned i=0; i<warp_size; i++) 
+         if (tid[i] >= 0) m_n_thd++;
+      m_n_notavail = m_n_thd;
    }
 
-   void print_info(){
-	   printf("sid=%d ", shd->sid);
-
-	   printf("tid=[");
-	   for(unsigned i=0; i<warp_size; i++)
-		   if(tid[i] > -1)
-			   printf("%d ", tid[i]);
+   void print_info( unsigned sid ) const
+   {
+	   printf("sid=%d tid=[", sid);
+	   for(unsigned i=0; i<m_tid.size(); i++)
+		   if(m_tid[i] > -1) printf("%d ", m_tid[i]);
 	   printf("]\n");
    }
+   unsigned warp_size() const { return m_warp_size; }
+   address_type pc() const { return m_pc; }
+   int tid(unsigned i) const { return m_tid[i]; }
 
-   void copy_tid( int *tid ) {
-	   std::copy(tid, tid+warp_size, this->tid.begin());
+   bool avail_thd() 
+   {
+      // signal that this thread is available for fetch
+      // if all threads in the warp are available, change all their status
+      // and return true
+      assert( m_n_notavail > 0 );
+      m_n_notavail--;
+      return (m_n_notavail==0);
    }
 
-   // set the warp to be consist of the given threads
-   void set_warp ( int *tid, shader_core_ctx_t *shd, address_type pc) {
-	  copy_tid(tid);
-
-      this->n_thd = 0;
-      this->n_notavail = 0;
-      for (unsigned i=0; i<warp_size; i++) {
-         if (this->tid[i] >= 0) {
-            this->n_thd++;
-         }
-      }
-      this->n_notavail = this->n_thd;
-      this->shd = shd;
-      this->pc = pc;
-   }
-
-   // signal that this thread is available for fetch
-   // if all threads in the warp are available, change all their status
-   // and return true
-   bool avail_thd ( ) {
-      n_notavail--;
-      return (n_notavail==0);
-   }
-
-   // a bookkeeping method to allow a warp to be deallocated
-   // when its threads have finished executing.
-   bool complete_thd ( int tid_in ) {
-      n_notavail--;
-      if (n_notavail) {
+   bool complete_thd( int tid_in ) 
+   {
+      // a bookkeeping method to allow a warp to be deallocated
+      // when its threads have finished executing.
+      assert( m_n_notavail > 0 );
+      m_n_notavail--;
+      if (m_n_notavail) {
          return false;
       } else {
          return true;
       }
    }
+
+private:
+   address_type     m_pc;
+   std::vector<int> m_tid;
+   int              m_n_thd;      // total number of threads in this warp with active mask set to enabled
+   int              m_n_notavail; // number of threads waiting (preventing this warp from being issued again)
+   unsigned m_warp_size;
 };
 
-//-------------------------------------------------------------------
 
-class warp_tracker_pool
-{
-	private:
-		unsigned gpu_n_shader;
-		unsigned gpu_n_thread_per_shader;
+class warp_tracker_pool {
+public:
+   warp_tracker_pool( class shader_core_ctx *my_shader );
+   
+   void wpt_register_warp( int *tid_in, address_type pc, unsigned n_thread_in_warp, unsigned warp_size );
+   int  wpt_signal_avail( int tid, address_type pc );
+   void wpt_deregister_warp( int tid, address_type pc );
+   int  wpt_signal_complete( int tid, address_type pc );
+   bool wpt_thread_in_wpt( int tid );
 
-		// Warp tracker map: a vector (index shader id) of vectors (index thread id) of maps (index pc)
-		std::vector< std::vector< std::map<address_type, warp_tracker*> > > warp_tracker_map;
+private:
+   warp_tracker* map_get_warp_tracker(int tid, address_type pc) {
+      // Returns NULL pointer if no warp_tracker assigned
+      if(warp_tracker_map[tid].find(pc) == warp_tracker_map[tid].end())
+         return NULL;
+      return warp_tracker_map[tid][pc];
+   }
 
-		// Pool of warp trackers
-		std::list<warp_tracker> warp_tracker_list;
+   void map_set_warp_tracker(int tid, address_type pc, warp_tracker* wpt) {
+      // Make sure that warp tracker is not already assigned here
+      if(warp_tracker_map[tid].find(pc) != warp_tracker_map[tid].end())
+         assert(warp_tracker_map[tid][pc] == NULL);
+      warp_tracker_map[tid][pc] = wpt;
+   }
 
-		// List to keep track of free warp trackers
-		std::list<warp_tracker*> warp_tracker_free_list;
+   void map_clear_warp_tracker( warp_tracker *wpt ) {
+      // Make sure that warp tracker was previously assigned
+      address_type pc = wpt->pc();
+      for (unsigned i=0; i<wpt->warp_size(); i++) {
+         int tid = wpt->tid(i);
+         if (tid >= 0) {
+            assert(warp_tracker_map[tid].find(pc) != warp_tracker_map[tid].end());
+            assert(warp_tracker_map[tid][pc] != NULL);
+            warp_tracker_map[tid][pc] = NULL;
+         }
+      }
+   }
 
-		warp_tracker* map_get_warp_tracker(int sid, int tid, address_type pc) {
-			// Return NULL pointer if no warp_tracker assigned
-			if(warp_tracker_map[sid][tid].find(pc) == warp_tracker_map[sid][tid].end())
-				return NULL;
+// data
 
-			return warp_tracker_map[sid][tid][pc];
-		}
+   class shader_core_ctx *m_shader;
+   unsigned gpu_n_thread_per_shader;
+   unsigned warp_size;
 
-		void map_set_warp_tracker(int sid, int tid, address_type pc, warp_tracker* wpt) {
-			// Make sure that warp tracker is not already assigned here
-			if(warp_tracker_map[sid][tid].find(pc) != warp_tracker_map[sid][tid].end())
-				assert(warp_tracker_map[sid][tid][pc] == NULL);
-
-			warp_tracker_map[sid][tid][pc] = wpt;
-		}
-
-		void map_clear_warp_tracker(int sid, int tid, address_type pc) {
-			// Make sure that warp tracker was previously assigned
-			assert(warp_tracker_map[sid][tid].find(pc) != warp_tracker_map[sid][tid].end());
-			assert(warp_tracker_map[sid][tid][pc] != NULL);
-
-			warp_tracker_map[sid][tid][pc] = NULL;
-		}
-
-		warp_tracker* alloc_warp_tracker( int *tid_in, shader_core_ctx_t *shd, address_type pc );
-		void free_warp_tracker(warp_tracker* wpt);
-
-	public:
-		warp_tracker_pool( unsigned gpu_n_shader, unsigned gpu_n_thread_per_shader  );
-
-		void wpt_register_warp( int *tid_in, shader_core_ctx_t *shd, address_type pc );
-		int wpt_signal_avail( int tid, shader_core_ctx_t *shd, address_type pc );
-		void wpt_deregister_warp( int tid, shader_core_ctx_t *shd, address_type pc );
-		int wpt_signal_complete( int tid, shader_core_ctx_t *shd, address_type pc );
-
-		unsigned size() { return warp_tracker_list.size(); }
-		unsigned free_size() { return warp_tracker_free_list.size(); }
-
-		bool wpt_thread_in_wpt(shader_core_ctx *shd, int tid);
-
+   // Warp tracker map: vector (index thread id) of maps (index pc)
+   std::vector< std::map<address_type, warp_tracker*> > warp_tracker_map;
 };
 
-warp_tracker_pool& get_warp_tracker_pool();
+class thread_pc_tracker {
+public:
+   address_type *thd_pc; // tracks the pc of each thread
+   std::map<address_type, unsigned> pc_count;
+   unsigned acc_pc_count;
+   int simd_width;
+   static std::map<unsigned, unsigned> histogram; // static so automatically aggregated across cores
+
+   thread_pc_tracker( ) {
+      this->acc_pc_count = 0;
+      this->simd_width = 0;
+      this->thd_pc = NULL;
+   }
+
+   thread_pc_tracker(int simd_width, int thread_count) {
+      this->acc_pc_count = 0;
+      this->simd_width = simd_width;
+      this->thd_pc = new address_type[thread_count];
+      memset( this->thd_pc, 0, sizeof(address_type)*thread_count);
+   }
+
+   void add_threads( int *tid, address_type pc ) {
+      for (int i=0; i<simd_width; i++) {
+         if (tid[i] != -1) {
+            pc_count[pc] += 1; // automatically create a new entry if not exist
+            thd_pc[tid[i]] = pc;
+         }
+      }
+   }
+
+   void sub_threads( int *tid ) {
+      for (int i=0; i<simd_width; i++) {
+         if (tid[i] != -1) {
+            address_type pc = thd_pc[tid[i]];
+            if (pc == 0) break;
+            pc_count[pc] -= 1;
+            assert((int)pc_count[pc] >= 0);
+            if (pc_count[pc] == 0) pc_count.erase(pc); // manually erasing entries with 0 count
+         }
+      }
+   }
+
+   void update_acc_count( ) { 
+      acc_pc_count += pc_count.size(); 
+      histogram[pc_count.size()] += 1;
+   }
+
+   void set_threads_pc ( int *tid, address_type pc ) {
+      sub_threads(tid);
+      add_threads(tid, pc);
+      update_acc_count( );
+   }
+
+   unsigned get_acc_pc_count( ) { return acc_pc_count;}
+
+   unsigned count( ) { return pc_count.size();}
+
+   static void histo_print( FILE* fout ) {
+      if (histogram.empty()) return; // do not output anything if the histogram is empty
+      std::map<unsigned, unsigned>::iterator i;
+      fprintf(fout, "Thread PC Histogram: ");
+      for (i = histogram.begin(); i != histogram.end(); i++) {
+         fprintf(fout, "%d:%d ", i->first, i->second);
+      }
+      fprintf(fout, "\n");
+   }
+};
 
 #endif

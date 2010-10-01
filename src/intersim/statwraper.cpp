@@ -2,10 +2,10 @@
 #include "stats.hpp"
 #include <stdio.h>
 
-void* StatCreate (const char * name, double bin_size, int num_bins) {
+Stats* StatCreate (const char * name, double bin_size, int num_bins) {
    Stats* newstat = new Stats(NULL,name,bin_size,num_bins);
    newstat->Clear ();
-   return(void *) newstat;  
+   return newstat;  
 }
 
 void StatClear(void * st)
@@ -43,11 +43,6 @@ void StatDisp (void * st)
       printf("Min %f Max %f Average %f \n",((Stats *)st)->Min(),((Stats *)st)->Max(),StatAverage(st));
       ((Stats *)st)->Display();
    }
-}
-
-void StatDumptofile (void * st, FILE *f)
-{
-
 }
 
 #if 0 

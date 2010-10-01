@@ -67,9 +67,9 @@
 #ifndef MEM_FETCH_H
 #define MEM_FETCH_H
 
-#include "shader.h"
 #include "addrdec.h"
 #include "../abstract_hardware_model.h"
+#include <bitset>
 
 enum mf_type {
    RD_REQ = 0,
@@ -80,7 +80,38 @@ enum mf_type {
    N_MF_TYPE
 };
 
-typedef struct mem_fetch {
+enum mem_access_type { 
+   GLOBAL_ACC_R = 0, 
+   LOCAL_ACC_R = 1, 
+   CONST_ACC_R = 2, 
+   TEXTURE_ACC_R = 3, 
+   GLOBAL_ACC_W = 4, 
+   LOCAL_ACC_W = 5,
+   L2_WRBK_ACC = 6, 
+   INST_ACC_R = 7, 
+   NUM_MEM_ACCESS_TYPE = 8
+};
+
+const unsigned partial_write_mask_bits = 128; //must be at least size of largest memory access.
+typedef std::bitset<partial_write_mask_bits> partial_write_mask_t;
+
+class mem_fetch {
+public:
+   mem_fetch( unsigned long long int addr,
+              int                 l1bsize,
+              int                 l2bsize,
+              int                     sid,
+              unsigned                tpc,
+              int                     wid,
+              int      cache_hits_waiting,
+              class mshr_entry   * mshr,
+              bool                  write,
+              partial_write_mask_t partial_write_mask,
+              enum mem_access_type mem_acc,
+              enum mf_type type,
+              address_type pc );
+
+public:
    unsigned request_uid;
    unsigned long long int addr;
    int nbytes_L1;
@@ -92,9 +123,9 @@ typedef struct mem_fetch {
    int sid; //shader core id
    int wid; //warp id
    int cache_hits_waiting;
-   mshr_entry* mshr;
+   class mshr_entry* mshr;
    address_type pc;
-   unsigned char write;
+   bool m_write;
    enum mem_access_type mem_acc;
    unsigned int timestamp; //set to gpu_sim_cycle at struct creation
    unsigned int timestamp2; //set to gpu_sim_cycle when pushed onto icnt to shader; only used for reads
@@ -104,8 +135,7 @@ typedef struct mem_fetch {
    addrdec_t tlx;
    enum mf_type type;
    partial_write_mask_t write_mask;
-   int source_node; //memory node id when sending from mem to shader
-                    //same as sid when sending from shader 2 mem 
-} mem_fetch_t;
+   static unsigned sm_next_mf_request_uid;
+};
 
 #endif

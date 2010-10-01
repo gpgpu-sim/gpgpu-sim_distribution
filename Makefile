@@ -90,9 +90,10 @@ lib/libcudart.so: $(LIBS) cudalib
 	g++ $(SNOW) -shared -Wl,-soname,libcudart.so \
 			./libcuda/*.o \
 			./src/cuda-sim/*.o \
+			./src/cuda-sim/decuda_pred_table/*.o \
 			./src/gpgpu-sim/*.o \
 			./src/intersim/*.o \
-			./src/*.o -lm -lz -lGL \
+			./src/*.o -lm -lz -lGL -pthread \
 			-o lib/libcudart.so
 	if [ ! -f lib/libcudart.so.2 ]; then ln -s libcudart.so lib/libcudart.so.2; fi
 	if [ ! -f lib/libcudart.so.3 ]; then ln -s libcudart.so lib/libcudart.so.3; fi
@@ -102,24 +103,26 @@ lib/libcudart.dylib: $(LIBS) cudalib
 	g++ $(SNOW) -dynamiclib -Wl,-headerpad_max_install_names,-undefined,dynamic_lookup,-compatibility_version,1.1,-current_version,1.1\
 			./libcuda/*.o \
 			./src/cuda-sim/*.o \
+			./src/cuda-sim/decuda_pred_table/*.o \
 			./src/gpgpu-sim/*.o \
 			./src/intersim/*.o \
-			./src/*.o -lm -lz \
+			./src/*.o -lm -lz -pthread \
 			-o lib/libcudart.dylib
 
 lib/libOpenCL.so: $(LIBS) opencllib
 	g++ $(SNOW) -shared -Wl,-soname,libOpenCL.so \
 			./libopencl/*.o \
 			./src/cuda-sim/*.o \
+			./src/cuda-sim/decuda_pred_table/*.o \
 			./src/gpgpu-sim/*.o \
 			./src/intersim/*.o \
-			./src/*.o -lm -lz -lGL \
+			./src/*.o -lm -lz -lGL -pthread \
 			-o lib/libOpenCL.so 
 	if [ ! -f lib/libOpenCL.so.1 ]; then ln -s libOpenCL.so lib/libOpenCL.so.1; fi
 	if [ ! -f lib/libOpenCL.so.1.1 ]; then ln -s libOpenCL.so lib/libOpenCL.so.1.1; fi
 
 cudalib:
-	make -e -C ./libcuda/
+	make -C ./libcuda/
 
 cuda-sim:
 	make -C ./src/cuda-sim/ depend
@@ -137,20 +140,13 @@ gpgpusimlib:
 	make -C ./src/
 
 opencllib:
-	make -e -C ./libopencl/
+	make -C ./libopencl/
 
-bench:
-	make -C ./benchmarks/CUDA/BlackScholes
-	make -C ./benchmarks/CUDA/template
-	if [ -f ./benchmarks/Makefile ]; then make -C ./benchmarks/; fi
-	
 all:
 	make gpgpusim
-	make bench
 
 clean: 
 	make cleangpgpusim
-	make cleanbench 
 
 cleangpgpusim:
 	make clean -C ./libcuda/
@@ -162,8 +158,3 @@ endif
 	make clean -C ./src/gpgpu-sim/
 	make clean -C ./src/
 	rm -rf ./lib/*.so*
-
-cleanbench:
-	make clean -C ./benchmarks/CUDA/BlackScholes
-	make clean -C ./benchmarks/CUDA/template
-	if [ -f ./benchmarks/Makefile ]; then make clean -C ./benchmarks/; fi

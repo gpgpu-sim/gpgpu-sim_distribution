@@ -98,6 +98,7 @@ bra     TC; ptx_lval.int_value = BRA_OP; return OPCODE;
 brev    TC; ptx_lval.int_value = BREV_OP; return OPCODE;
 brkpt   TC; ptx_lval.int_value = BRKPT_OP; return OPCODE;
 call	TC; ptx_lval.int_value = CALL_OP; return OPCODE;
+callp    TC; ptx_lval.int_value = CALLP_OP; return OPCODE;
 clz	TC; ptx_lval.int_value = CLZ_OP; return OPCODE;
 cnot	TC; ptx_lval.int_value = CNOT_OP; return OPCODE;
 cos	TC; ptx_lval.int_value = COS_OP; return OPCODE;
@@ -135,6 +136,7 @@ rcp	TC; ptx_lval.int_value = RCP_OP; return OPCODE;
 red     TC; ptx_lval.int_value = RED_OP; return OPCODE;
 rem	TC; ptx_lval.int_value = REM_OP; return OPCODE;
 ret	TC; ptx_lval.int_value = RET_OP; return OPCODE;
+retp     TC; ptx_lval.int_value = RETP_OP; return OPCODE;
 rsqrt	TC; ptx_lval.int_value = RSQRT_OP; return OPCODE;
 sad     TC; ptx_lval.int_value = SAD_OP; return OPCODE;
 selp	TC; ptx_lval.int_value = SELP_OP; return OPCODE;
@@ -263,13 +265,15 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.bb128  TC;  return BB128_TYPE;
 \.pred TC;  return PRED_TYPE;
 
-\.texref TC;  return TEXREF_TYPE;
+\.texref TC; BEGIN(NOT_OPCODE); return TEXREF_TYPE;
 \.samplerref TC;  return SAMPLERREF_TYPE;
 \.surfref TC;  return SURFREF_TYPE;
 
 \.v2	TC; return V2_TYPE;
 \.v3	TC; return V3_TYPE;
 \.v4	TC; return V4_TYPE;
+
+\.half  TC; return HALF_OPTION; /* ptxplus */
 
 \.equ	TC; return EQU_OPTION;
 \.neu	TC; return NEU_OPTION;
@@ -322,6 +326,7 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.all	TC; return ALL_OPTION;
 \.gl    TC; return GLOBAL_OPTION;
 \.cta   TC; return CTA_OPTION;
+\.sys   TC; return SYS_OPTION;
 
 \.exit   TC; return EXIT_OPTION;
 
@@ -368,11 +373,11 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 ">"	TC; return RIGHT_ANGLE_BRACKET;
 "("	TC; return LEFT_PAREN;
 ")"	TC; return RIGHT_PAREN;
-":"	TC; return COLON;
+":"	TC; BEGIN(INITIAL); return COLON;
 ";"	TC; BEGIN(INITIAL); return SEMI_COLON;
 "!"	TC; return EXCLAMATION;
 "=" 	TC; return EQUALS;
-"{"	TC; BEGIN(INITIAL); return LEFT_BRACE;
+"{"	TC; return LEFT_BRACE;
 "}"	TC; return RIGHT_BRACE;
 \.	TC; return PERIOD;
 "/"	TC; return BACKSLASH;

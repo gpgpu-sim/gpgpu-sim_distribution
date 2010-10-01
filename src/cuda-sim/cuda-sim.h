@@ -23,15 +23,15 @@ extern int g_ptx_kernel_count; // used for classification stat collection purpos
 extern FILE* ptx_inst_debug_file;
 
 
-extern void   gpgpu_cuda_ptx_sim_init_grid( const char *kernel_key,
-                                            struct gpgpu_ptx_sim_arg *args, 
+extern class kernel_info_t gpgpu_cuda_ptx_sim_init_grid( const char *kernel_key,
+                                            gpgpu_ptx_sim_arg_list_t args, 
                                             struct dim3 gridDim, 
                                             struct dim3 blockDim );
-extern void   gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
-                                            struct gpgpu_ptx_sim_arg *args, 
+extern class kernel_info_t gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
+                                            gpgpu_ptx_sim_arg_list_t args, 
                                             struct dim3 gridDim, 
                                             struct dim3 blockDim );
-extern void   gpgpu_cuda_ptx_sim_main_func( const char *kernel_key, dim3 gridDim, dim3 blockDim, struct gpgpu_ptx_sim_arg *);
+extern void   gpgpu_cuda_ptx_sim_main_func( const char *kernel_key, dim3 gridDim, dim3 blockDim, gpgpu_ptx_sim_arg_list_t );
 extern void   print_splash();
 extern void*  gpgpu_ptx_sim_malloc( size_t count );
 extern void*  gpgpu_ptx_sim_mallocarray( size_t count );
@@ -55,8 +55,8 @@ extern void read_sim_environment_variables();
 extern void register_function_implementation( const char *name, function_info *impl );
 extern void ptxinfo_cuda_addinfo();
 extern void ptxinfo_opencl_addinfo( std::map<std::string,function_info*> &kernels );
-extern void ptx_sim_free_sm( class ptx_thread_info** thread_info );
-unsigned ptx_sim_init_thread( class ptx_thread_info** thread_info,
+unsigned ptx_sim_init_thread( kernel_info_t &kernel,
+                              class ptx_thread_info** thread_info,
                               int sid,
                               unsigned tid,
                               unsigned threads_left,
@@ -64,12 +64,9 @@ unsigned ptx_sim_init_thread( class ptx_thread_info** thread_info,
                               class core_t *core, 
                               unsigned hw_cta_id, 
                               unsigned hw_warp_id );
-unsigned ptx_sim_cta_size();
-const struct gpgpu_ptx_sim_kernel_info* ptx_sim_kernel_info();
-void set_option_gpgpu_spread_blocks_across_cores(int option);
-int ptx_thread_done( void *thd );
+const inst_t *ptx_fetch_inst( address_type pc );
+const struct gpgpu_ptx_sim_kernel_info* ptx_sim_kernel_info(class function_info *kernel);
 unsigned ptx_thread_donecycle( void *thr );
-int ptx_thread_get_next_pc( void *thd );
 void* ptx_thread_get_next_finfo( void *thd );
 int ptx_thread_at_barrier( void *thd );
 int ptx_thread_all_at_barrier( void *thd );
@@ -78,28 +75,10 @@ void ptx_thread_reset_barrier( void *thd );
 void ptx_thread_release_barrier( void *thd );
 void ptx_print_insn( address_type pc, FILE *fp );
 unsigned int ptx_set_tex_cache_linesize( unsigned linesize);
-void ptx_decode_inst( void *thd, 
-                      unsigned *op, 
-                      int *i1, 
-                      int *i2, 
-                      int *i3, 
-                      int *i4, 
-                      int *o1, 
-                      int *o2, 
-                      int *o3, 
-                      int *o4, 
-                      int *vectorin, 
-                      int *vectorout, 
-                      int *arch_reg, 
-                      int *pred,
-                      int *ar1, 
-                      int *ar2 );
-void ptx_exec_inst( void *thd, 
-                    address_type *addr, 
-                    memory_space_t *space, 
-                    unsigned *data_size,
-                    unsigned *cycles, 
-                    dram_callback_t* callback, 
-                    unsigned warp_active_mask );
+
+function_info *get_kernel(const char *kernel_key, std::string &kernel_func_name_mangled );
+void dwf_process_reconv_pts(function_info *entry);
+void set_param_gpgpu_num_shaders(int num_shaders);
+unsigned int get_converge_point(unsigned int pc, void *thd);
 
 #endif

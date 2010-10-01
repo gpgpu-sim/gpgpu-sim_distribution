@@ -71,23 +71,6 @@
 #include "../abstract_hardware_model.h"
 #include "../tr1_hash_map.h" 
 
-
-struct gpgpu_ptx_sim_arg {
-   const void *m_start;
-   size_t m_nbytes;
-   size_t m_offset;
-   struct gpgpu_ptx_sim_arg *m_next;
-};
-
-//Holds properties of the kernel (Kernel's resource use). These will be zero if 
-//the ptxinfo file is not present.
-struct gpgpu_ptx_sim_kernel_info {
-   int lmem;
-   int smem;
-   int cmem;
-   int regs;
-};
-
 #include <assert.h>
 #include "opcodes.h"
 
@@ -240,18 +223,51 @@ public:
          m_valid = false;
          m_ptx_version = 0;
          m_ptx_extensions = 0;
+         m_sm_version_valid=false;
+         m_texmode_unified=true;
+         m_map_f64_to_f32 = true; 
       }
       ptx_version(float ver, unsigned extensions)
       {
          m_valid = true;
          m_ptx_version = ver;
          m_ptx_extensions = extensions;
+         m_sm_version_valid=false;
+         m_texmode_unified=true;
       }
-      float ver() const { assert(m_valid); return m_ptx_version; }
+      void set_target( const char *sm_ver, const char *ext, const char *ext2 ) 
+      { 
+         assert( m_valid );
+         m_sm_version_str = sm_ver;
+         check_target_extension(ext); 
+         check_target_extension(ext2); 
+         sscanf(sm_ver,"%u",&m_sm_version);
+         m_sm_version_valid=true; 
+      }
+      float    ver() const { assert(m_valid); return m_ptx_version; }
+      unsigned target() const { assert(m_valid&&m_sm_version_valid); return m_sm_version; }
       unsigned extensions() const { assert(m_valid); return m_ptx_extensions; }
 private:
+      void check_target_extension( const char *ext ) 
+      {
+         if( ext ) {
+            if( !strcmp(ext,"texmode_independent") ) 
+               m_texmode_unified=false;
+            else if( !strcmp(ext,"texmode_unified") ) 
+               m_texmode_unified=true;
+            else if( !strcmp(ext,"map_f64_to_f32") ) 
+               m_map_f64_to_f32 = true; 
+            else abort();
+         }
+      }
+
       bool     m_valid;
       float    m_ptx_version;
+      unsigned m_sm_version_valid;
+      std::string m_sm_version_str;
+      bool     m_texmode_unified;
+      bool     m_map_f64_to_f32; 
+      unsigned m_sm_version;
       unsigned m_ptx_extensions;
 };
 
@@ -259,6 +275,9 @@ class ptx_thread_info {
 public:
    ~ptx_thread_info();
    ptx_thread_info();
+
+   void ptx_fetch_inst( inst_t &inst ) const;
+   void ptx_exec_inst( inst_t &inst );
 
    const ptx_version &get_ptx_version() const;
    void set_reg( const symbol *reg, const ptx_reg_t &value );
@@ -271,8 +290,7 @@ public:
                                    const ptx_reg_t &data1, 
                                    const ptx_reg_t &data2, 
                                    const ptx_reg_t &data3, 
-                                   const ptx_reg_t &data4, 
-                                   unsigned num_elements );
+                                   const ptx_reg_t &data4 );
 
    function_info *func_info()
    {
@@ -285,22 +303,9 @@ public:
       return m_uid;
    }
 
-   dim3 get_ctaid() const
-   {
-      dim3 r;
-      r.x = m_ctaid[0];
-      r.y = m_ctaid[1];
-      r.z = m_ctaid[2];
-      return r;
-   }
-   dim3 get_tid() const
-   {
-      dim3 r;
-      r.x = m_tid[0];
-      r.y = m_tid[1];
-      r.z = m_tid[2];
-      return r;
-   }
+   dim3 get_ctaid() const { return m_ctaid; }
+   dim3 get_tid() const { return m_tid; }
+   class gpgpu_sim *get_gpu() { return m_core->get_gpu(); }
    unsigned get_hw_tid() const { return m_hw_tid;}
    unsigned get_hw_ctaid() const { return m_hw_ctaid;}
    unsigned get_hw_wid() const { return m_hw_wid;}
@@ -335,46 +340,26 @@ public:
 
    void set_single_thread_single_block()
    {
-      m_ntid[0] = 1;
-      m_ntid[1] = 1;
-      m_ntid[2] = 1;
-      m_ctaid[0] = 0;
-      m_ctaid[1] = 0;
-      m_ctaid[2] = 0;
-      m_tid[0] = 0;
-      m_tid[1] = 0;
-      m_tid[2] = 0;
-      m_nctaid[0] = 1;
-      m_nctaid[1] = 1;
-      m_nctaid[2] = 1;
+      m_ntid.x = 1;
+      m_ntid.y = 1;
+      m_ntid.z = 1;
+      m_ctaid.x = 0;
+      m_ctaid.y = 0;
+      m_ctaid.z = 0;
+      m_tid.x = 0;
+      m_tid.y = 0;
+      m_tid.z = 0;
+      m_nctaid.x = 1;
+      m_nctaid.y = 1;
+      m_nctaid.z = 1;
       m_gridid = 0;
       m_valid = true;
    }
-   void set_tid( int x, int y, int z)
-   {
-      m_tid[0] = x;
-      m_tid[1] = y;
-      m_tid[2] = z;
-   }
-   void cpy_tid_to_reg( int x, int y, int z);
-   void set_ctaid( int x, int y, int z)
-   {
-      m_ctaid[0] = x;
-      m_ctaid[1] = y;
-      m_ctaid[2] = z;
-   }
-   void set_ntid( int x, int y, int z)
-   {
-      m_ntid[0] = x;
-      m_ntid[1] = y;
-      m_ntid[2] = z;
-   }
-   void set_nctaid( int x, int y, int z)
-   {
-      m_nctaid[0] = x;
-      m_nctaid[1] = y;
-      m_nctaid[2] = z;
-   }
+   void set_tid( dim3 tid ) { m_tid = tid; }
+   void cpy_tid_to_reg( dim3 tid );
+   void set_ctaid( dim3 ctaid ) { m_ctaid = ctaid; }
+   void set_ntid( dim3 tid ) { m_ntid = tid; }
+   void set_nctaid( dim3 cta_size ) { m_nctaid = cta_size; }
 
    unsigned get_builtin( int builtin_id, unsigned dim_mod ); 
 
@@ -384,7 +369,6 @@ public:
 
    unsigned next_instr()
    {
-      m_NPC = m_PC+1;   // increment to next instruction in case of no branch
       m_icount++;
       m_branch_taken = false;
       return m_PC;
@@ -404,6 +388,8 @@ public:
    void set_npc( const function_info *f );
    void callstack_push( unsigned npc, unsigned rpc, const symbol *return_var_src, const symbol *return_var_dst, unsigned call_uid );
    bool callstack_pop();
+   void callstack_push_plus( unsigned npc, unsigned rpc, const symbol *return_var_src, const symbol *return_var_dst, unsigned call_uid );
+   bool callstack_pop_plus();
    void dump_callstack() const;
    std::string get_location() const;
    const ptx_instruction *get_inst() const;
@@ -421,7 +407,7 @@ public:
    {
        return m_callstack.back().m_PC;
    }
-   void update_pc()
+   void update_pc( unsigned nbytes )
    {
       m_PC = m_NPC;
    }
@@ -451,10 +437,10 @@ private:
    unsigned m_uid;
    core_t *m_core;
    bool   m_valid;
-   unsigned m_ntid[3];
-   unsigned m_tid[3];
-   unsigned m_nctaid[3];
-   unsigned m_ctaid[3];
+   dim3   m_ntid;
+   dim3   m_tid;
+   dim3   m_nctaid;
+   dim3   m_ctaid;
    unsigned m_gridid;
    bool m_thread_done;
    unsigned m_hw_sid;

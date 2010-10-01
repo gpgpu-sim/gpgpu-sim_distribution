@@ -1,37 +1,27 @@
 #ifndef ABSTRACT_HARDWARE_MODEL_INCLUDED
 #define ABSTRACT_HARDWARE_MODEL_INCLUDED
 
-#ifdef __cplusplus
+#include <string.h>
+#include <stdio.h>
 
-#if !defined(__VECTOR_TYPES_H__)
-struct dim3 {
-   unsigned int x, y, z;
-};
-#endif
-
-class core_t {
-public:
-   virtual ~core_t() {}
-	virtual void set_at_barrier( unsigned cta_id, unsigned warp_id ) = 0;
-   virtual void warp_exit( unsigned warp_id ) = 0;
-   virtual bool warp_waiting_at_barrier( unsigned warp_id ) = 0;
-};
-
-#define MAX_REG_OPERANDS 8
-extern unsigned int warp_size; 
-#endif
-
+typedef unsigned long long new_addr_type;
 typedef unsigned address_type;
 typedef unsigned addr_t;
 
-// these are operations the timing model can see
-#define NO_OP -1
-#define ALU_OP     0x01000
-#define SFU_OP     0x02000
-#define LOAD_OP    0x04000
-#define STORE_OP   0x08000
-#define BRANCH_OP  0x10000
-#define BARRIER_OP 0x20000
+// the following are operations the timing model can see 
+
+enum uarch_op_t {
+   NO_OP=-1,
+   ALU_OP=1,
+   SFU_OP,
+   ALU_SFU_OP,
+   LOAD_OP,
+   STORE_OP,
+   BRANCH_OP,
+   BARRIER_OP,
+   MEMORY_BARRIER_OP
+};
+typedef enum uarch_op_t op_type;
 
 enum _memory_space_t {
    undefined_space=0,
@@ -45,10 +35,62 @@ enum _memory_space_t {
    tex_space,
    surf_space,
    global_space,
-   generic_space
+   generic_space,
+   instruction_space
+};
+
+enum _memory_op_t {
+	no_memory_op = 0,
+	memory_load,
+	memory_store
 };
 
 #ifdef __cplusplus
+
+#include <list>
+
+#if !defined(__VECTOR_TYPES_H__)
+struct dim3 {
+   unsigned int x, y, z;
+};
+#endif
+
+class core_t {
+public:
+   virtual ~core_t() {}
+   virtual void set_at_barrier( unsigned cta_id, unsigned warp_id ) = 0;
+   virtual void warp_exit( unsigned warp_id ) = 0;
+   virtual bool warp_waiting_at_barrier( unsigned warp_id ) const = 0;
+   virtual bool warp_waiting_for_atomics( unsigned warp_id ) const = 0;
+   virtual class gpgpu_sim *get_gpu() = 0;
+};
+
+struct gpgpu_ptx_sim_kernel_info 
+{
+   // Holds properties of the kernel (Kernel's resource use). 
+   // These will be set to zero if a ptxinfo file is not present.
+   int lmem;
+   int smem;
+   int cmem;
+   int regs;
+   unsigned ptx_version;
+   unsigned sm_target;
+};
+
+struct gpgpu_ptx_sim_arg {
+   gpgpu_ptx_sim_arg() { m_start=NULL; }
+   gpgpu_ptx_sim_arg(const void *arg, size_t size, size_t offset)
+   {
+      m_start=arg;
+      m_nbytes=size;
+      m_offset=offset;
+   }
+   const void *m_start;
+   size_t m_nbytes;
+   size_t m_offset;
+};
+
+typedef std::list<gpgpu_ptx_sim_arg> gpgpu_ptx_sim_arg_list_t;
 
 class memory_space_t {
 public:
@@ -74,6 +116,82 @@ private:
    unsigned m_bank; // n in ".const[n]"; note .const == .const[0] (see PTX 2.1 manual, sec. 5.1.3)
 };
 
-#endif
 
-#endif
+#define MAX_REG_OPERANDS 8
+
+struct dram_callback_t {
+   void (*function)(void* pI, void* gOldGThread);
+   void* instruction;
+   void* thread;
+};
+
+class inst_t {
+public:
+    inst_t()
+    {
+        m_decoded=false;
+        pc = (address_type)-1;
+        op=NO_OP; 
+        memset(out, 0, sizeof(unsigned)); 
+        memset(in, 0, sizeof(unsigned)); 
+        is_vectorin=0; 
+        is_vectorout=0;
+        memreqaddr=0; 
+        hw_thread_id=-1; 
+        wlane=-1;
+        uid = (unsigned)-1;
+        warp_active_mask = 0;
+        issue_cycle = 0;
+        cache_miss = false;
+        space = memory_space_t();
+        cycles = 0;
+        for( unsigned i=0; i < MAX_REG_OPERANDS; i++ )
+           arch_reg[i]=-1;
+        callback.function = NULL;
+        callback.instruction = NULL;
+        callback.thread = NULL;
+        isize=0;
+    }
+    bool valid() const { return m_decoded; }
+    virtual void print_insn( FILE *fp ) const 
+    {
+        fprintf(fp," [inst @ pc=0x%04x] ", pc );
+    }
+
+    unsigned uid;           // unique id (for debugging)
+    address_type pc;        // program counter address of instruction
+    unsigned isize;         // size of instruction in bytes 
+    op_type op;             // opcode (uarch visible)
+    _memory_op_t memory_op; // ptxplus 
+    short hw_thread_id;     // scalar hardware thread id
+    short wlane;            // SIMT lane
+    
+    unsigned warp_active_mask;
+    unsigned long long  issue_cycle;
+
+    unsigned out[4];
+    unsigned in[4];
+    unsigned char is_vectorin;
+    unsigned char is_vectorout;
+    int pred;
+    int ar1, ar2;
+    int arch_reg[MAX_REG_OPERANDS]; // register number for bank conflict evaluation
+    unsigned cycles; // 1/throughput for instruction
+
+    unsigned long long int memreqaddr; // effective address
+    unsigned data_size; // what is the size of the word being operated on?
+    memory_space_t space;
+    dram_callback_t callback;
+    bool cache_miss;
+
+protected:
+    bool m_decoded;
+    virtual void pre_decode() {}
+};
+
+
+const struct gpgpu_ptx_sim_kernel_info * get_kernel_info(const char *kernel_key);
+size_t get_kernel_code_size( class function_info *entry );
+
+#endif // #ifdef __cplusplus
+#endif // #ifndef ABSTRACT_HARDWARE_MODEL_INCLUDED

@@ -985,12 +985,13 @@ static int s_cache_access_logger_n_types = 0;
 static std::vector<linear_histogram_logger> s_cache_access_logger;
 
 enum cache_access_logger_types {
-   NORMAL, TEXTURE, CONSTANT
+   NORMAL, TEXTURE, CONSTANT, INSTRUCTION
 };
 
 int get_shader_normal_cache_id() { return NORMAL; }
 int get_shader_texture_cache_id() { return TEXTURE; }
 int get_shader_constant_cache_id() { return CONSTANT; }
+int get_shader_instruction_cache_id() { return INSTRUCTION; }
 
 void shader_cache_access_create( int n_loggers, int n_types, unsigned long long  logging_interval)
 {
@@ -1010,7 +1011,7 @@ void shader_cache_access_log( int logger_id, int type, int miss)
 {
    if (s_cache_access_logger_n_types == 0) return;
    if (logger_id < 0) return;
-   assert(type == NORMAL || type == TEXTURE || type == CONSTANT);
+   assert(type == NORMAL || type == TEXTURE || type == CONSTANT || type == INSTRUCTION);
    assert(miss == 0 || miss == 1);
    
    s_cache_access_logger[logger_id].log(2 * type + miss);
@@ -1020,7 +1021,7 @@ void shader_cache_access_unlog( int logger_id, int type, int miss)
 {
    if (s_cache_access_logger_n_types == 0) return;
    if (logger_id < 0) return;
-   assert(type == NORMAL || type == TEXTURE || type == CONSTANT);
+   assert(type == NORMAL || type == TEXTURE || type == CONSTANT || type == INSTRUCTION);
    assert(miss == 0 || miss == 1);
    
    s_cache_access_logger[logger_id].unlog(2 * type + miss);

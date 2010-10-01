@@ -81,14 +81,21 @@ shd_cache_line_t* shd_cache_access_internal( shd_cache_t *cp,
                                              unsigned int sim_cycle,
                                              unsigned int real_access); 
 
-shd_cache_t * shd_cache_create( char *name,
-                                unsigned int nset,
-                                unsigned int assoc,
-                                unsigned int line_sz,
-                                unsigned char policy,
+shd_cache_t * shd_cache_create( const char *name, 
+                                const char *opt,
                                 unsigned int hit_latency,
                                 unsigned long long int bank_mask,
-                                enum cache_write_policy wp) {
+                                enum cache_write_policy wp) 
+{
+   unsigned int nset;
+   unsigned int line_sz;
+   unsigned int assoc;
+   unsigned char policy;
+   int ntok = sscanf(opt,"%d:%d:%d:%c", &nset, &line_sz, &assoc, &policy);
+   if( ntok != 4 ) {
+      printf("GPGPU-Sim uArch: cache configuration string parsing error for cache %s\n", name);
+      abort();
+   }
 
    shd_cache_t *cp;
    unsigned int nlines;
@@ -129,10 +136,6 @@ shd_cache_t * shd_cache_create( char *name,
    cp->prev_snapshot_access = 0;
    cp->prev_snapshot_miss = 0;
    cp->prev_snapshot_merge_hit = 0;
-
-//   printf("%s: %d(%x) x %d x %d(%x) %c, %d\n",
-//          cp->name, cp->nset, cp->nset_log2, cp->assoc, cp->line_sz,
-//          cp->line_sz_log2, cp->policy, nlines);
 
    return cp;
 }
@@ -203,142 +206,115 @@ shd_cache_line_t* shd_cache_access( shd_cache_t *cp,
                                     unsigned char write,
                                     unsigned int sim_cycle ) 
 {
+   assert( cp->write_policy != write_back );
    return shd_cache_access_internal(cp,addr,nbytes,write,sim_cycle,1/*this is a real access*/);
 }
 
-shd_cache_t *test = NULL;
-enum cache_request_status shd_cache_access_wb( shd_cache_t *cp, 
+enum cache_request_status shd_cache_access_new( shd_cache_t *cp, 
                                     unsigned long long int addr, 
                                     unsigned int nbytes, 
                                     unsigned char write,
                                     unsigned int sim_cycle, address_type *wb_address) 
 {
-   unsigned int i;
-   unsigned int set;
-   unsigned long long int tag; 
-   unsigned long long int packed_addr;
-   shd_cache_line_t *pline;
-
-   unsigned already_reserved = 0;
-   unsigned all_reserved = 1;
-   shd_cache_line_t *free_line = NULL;
+   unsigned long long int bank_addr; // offset within bank
+   bool all_reserved = true;
+   shd_cache_line_t *pending_line = NULL;
+   shd_cache_line_t *clean_line = NULL;
 
    if (cp->bank_mask)
-      packed_addr = addrdec_packbits(cp->bank_mask, addr, 64, 0);
+      bank_addr = addrdec_packbits(cp->bank_mask, addr, 64, 0);
    else
-      packed_addr = addr;
+      bank_addr = addr;
 
-   set = (packed_addr >> cp->line_sz_log2) & ( (1<<cp->nset_log2) - 1 );
-   tag = packed_addr >> (cp->line_sz_log2 + cp->nset_log2);
+   unsigned set = (bank_addr >> cp->line_sz_log2) & ( (1<<cp->nset_log2) - 1 );
+   unsigned long long tag = bank_addr >> (cp->line_sz_log2 + cp->nset_log2);
 
    cp->access++;
    shader_cache_access_log(cp->core_id, cp->type_id, 0);
 
-   for (i=0; i<cp->assoc; i++) {
-      pline = &(cp->lines[set*cp->assoc+i] );
-      if (pline->tag == tag) {
-         if (pline->status & RESERVED) {
-            already_reserved = 1;
+   for (unsigned way=0; way<cp->assoc; way++) {
+      shd_cache_line_t *line = &(cp->lines[set*cp->assoc+way] );
+      if (line->tag == tag) {
+         if (line->status & RESERVED) {
+            pending_line = line;
             break;
-         } else if (pline->status & VALID) {
-            //printf("Cache Hit! Addr=%08x Set=%x Way=%x Tag=%x\n", packed_addr, set, i, tag);
-            pline->last_used = sim_cycle;
-            if (write) {
-               pline->status |= DIRTY;
-            }            
-            //return pline;
-            if (cp->write_policy == write_through) return HIT_W_WT;
+         } else if (line->status & VALID) {
+            line->last_used = sim_cycle;
+            if (write) 
+               line->status |= DIRTY;
+            if (cp->write_policy == write_through) 
+               return HIT_W_WT;
             return HIT;
          }
       } 
-      if (!(pline->status & RESERVED)) {
-         all_reserved = 0;
-         if (!(pline->status & VALID)) { 
-             free_line = pline;
-         }
+      if (!(line->status & RESERVED)) {
+         all_reserved = false;
+         if (!(line->status & VALID)) 
+             clean_line = line;
       }
    }
    cp->miss++;
    shader_cache_access_log(cp->core_id, cp->type_id, 1);
 
-   if (already_reserved || cp->write_policy != write_back || write) {
-      //not in cache yet, but no wb as place is reserved.
-      //or wt caches never nead to worry about it (as do no_write caches) 
-      //or is a write
-      if (already_reserved && write) {
-         //write the data into the cache line, make it dirty
-         //up to mshrs to save write mask to not overwrite this data when the read returns
-         pline->status |= DIRTY;
-         return WB_HIT_ON_MISS;
-      } else if (already_reserved) {
+   if (pending_line || cp->write_policy != write_back || write) {
+      if (pending_line) {
+         if( write ) // write hit-under-miss (irrelevant whether write-back or write-through)
+                     // - timing assumes a large enough write buffer in shader core that we never
+                     //   encounter a structural hazard
+                     // - write buffer merged with returning cache block in zero cycles
+            pending_line->status |= DIRTY;
          return WB_HIT_ON_MISS;
       }
       return MISS_NO_WB;
    }
 
-   //if not in cache, and a write back cache, and not already allocated, need to allocate a place for this request
+   // at this point: this must be a write back cache (and not a hit-under-miss)
+   assert( cp->write_policy == write_back );
 
-   if (all_reserved) {
-      //cannot service this request, because we can't garantee that we have room for the line when it comes back
+   if (all_reserved) 
+      // cannot service this request, because we can't garantee that we have room for the line when it comes back
       return RESERVATION_FAIL;
+
+   if (clean_line) {
+      // found a clean line in the cache so, no need to do a writeback
+      clean_line->status |= RESERVED;
+      clean_line->tag = tag;
+      return MISS_NO_WB; 
    }
 
-   //printf("RESRV %d\n",tag);
-
-   if (free_line) {
-      //reserve fo this request
-      free_line->status |= RESERVED;
-      free_line->tag = tag;
-      //no writeback
-      return MISS_NO_WB;
-   }
-
-   // need to kick a line out to reserve a spot
-   shd_cache_line_t *rline = NULL;
+   // no clean lines, need to kick a line out to reserve a spot
+   shd_cache_line_t *wb_line = NULL;
            
-   for (i=0; i<cp->assoc; i++) {
-      pline = &(cp->lines[set*cp->assoc+i] );
-      if (pline->status & VALID && !(pline->status & RESERVED)) {
-         if (!rline) {
-            rline = pline; //select first available for ejection for later comparison
+   for (unsigned way=0; way<cp->assoc; way++) {
+      shd_cache_line_t *line = &(cp->lines[set*cp->assoc+way] );
+      if (line->status & VALID && !(line->status & RESERVED)) {
+         if (!wb_line) {
+            wb_line = line;
             continue;
          }
          switch (cp->policy) {
          case LRU: 
-            if (pline->last_used < rline->last_used)
-               rline = pline;
+            if (line->last_used < wb_line->last_used)
+               wb_line = line;
             break;
          case FIFO:
-            if (pline->fetch_time < rline->fetch_time)
-               rline = pline;
+            if (line->fetch_time < wb_line->fetch_time)
+               wb_line = line;
             break;
          default:
-            rline = pline; //pick one, ie. the last valied one.
+            abort(); 
          }   
       }
    }
-   assert(rline); //ensure we actually found one.
-
-   unsigned needs_wb = (rline->status & (DIRTY|VALID)) == (DIRTY|VALID);
-   /* Set the replaced cache line address */
-   if (needs_wb) {   
-      *wb_address = rline->addr; 
-   }
+   assert(wb_line); // should always find a line
+   assert((wb_line->status & (DIRTY|VALID)) == (DIRTY|VALID)); // should be dirty (or we would have found a clean line earlier)
    
-   /* reserve this new line */
-   rline->status |= RESERVED;
-   rline->status &= ~VALID;
-   rline->status &= ~DIRTY;
-   rline->tag = tag; 
+   // reserve line 
+   wb_line->status = RESERVED;
+   wb_line->tag = tag; 
+   *wb_address = wb_line->addr; 
 
-   /* printf("Fetching! Addr=%08x ReplAddr=%08x(%d) Set=%x Tag=%x\n",
-             packed_addr, repl_addr, nofreeslot, set, tag);
-   */
-   if (needs_wb) {
-      return MISS_W_WB;
-   } else {
-      return MISS_NO_WB;
-   }
+   return MISS_W_WB;
 }
 
 shd_cache_line_t* shd_cache_probe( shd_cache_t *cp, 
@@ -439,9 +415,6 @@ unsigned long long int shd_cache_fill( shd_cache_t *cp,
          }
       }
 
-      //if (cline) printf("FOUND %d\n",tag);
-      //else printf("UNFOUND!!! %d\n", tag);
-
       if (!cline) printf("----!!! about to abort - this probably happened because global memory msrh merging is not enabled with a writeback cache !!!----\n");
 
       assert(cline); //error if it doesn't have a reserved space
@@ -518,9 +491,6 @@ unsigned long long int shd_cache_fill( shd_cache_t *cp,
    cline->last_used = sim_cycle;
    cline->fetch_time = sim_cycle;
 
-/*    printf("Fetching! Addr=%08x ReplAddr=%08x(%d) Set=%x Tag=%x\n",
-          packed_addr, repl_addr, nofreeslot, set, tag);
- */
    return repl_addr;
 }
 
@@ -529,7 +499,8 @@ void shd_cache_mergehit( shd_cache_t *cp, unsigned long long int addr )
    cp->merge_hit += 1;
 }
 
-void shd_cache_print( shd_cache_t *cp,  FILE *stream) {
+void shd_cache_print( const shd_cache_t *cp,  FILE *stream, unsigned &total_access, unsigned &total_misses ) 
+{
    fprintf( stream, "Cache %s:\t", cp->name);
    fprintf( stream, "Size = %d B (%d Set x %d-way x %d byte line)\n", 
             cp->line_sz * cp->nset * cp->assoc,
@@ -537,67 +508,6 @@ void shd_cache_print( shd_cache_t *cp,  FILE *stream) {
    fprintf( stream, "\t\tAccess = %d, Miss = %d (%.3g), -MgHts = %d (%.3g)\n", 
             cp->access, cp->miss, (float) cp->miss / cp->access, 
             cp->miss - cp->merge_hit, (float) (cp->miss - cp->merge_hit) / cp->access);
+   total_misses+=cp->miss;
+   total_access+=cp->access;
 }
-
-#ifdef UNIT_TEST
-
-int main() {
-   shd_cache_t *cp[3];
-   unsigned int addr, i;
-   unsigned int cachenum;
-   unsigned int sim_cycle;
-
-   unsigned int test_addrs[8] = { 0x100, 0x200, 0x300, 0x400, 
-      0x104, 0x204, 0x500, 0x100}; 
-   unsigned int repl_addr[8] = {0,0,0,0,0,0,0,0};
-   unsigned int rdwr[8] = {0,1,0,0,0,0,0,0};
-
-   sim_cycle = 0;
-   cp[0] = shd_cache_create ("cp1", 16, 4, 16, LRU, 1);
-   cp[1] = shd_cache_create ("cp2", 16, 4, 16, FIFO, 1);
-
-   for (cachenum = 0; cachenum<2; cachenum++)
-      for (i=0; i<8; i++) {
-         if ( !shd_cache_access(cp[cachenum], test_addrs[i], 4, rdwr[i], sim_cycle) ) {
-            repl_addr[i] = shd_cache_fill(cp[cachenum], test_addrs[i], sim_cycle);
-            shd_cache_access(cp[cachenum], test_addrs[i], 4, rdwr[i], sim_cycle);
-         }
-         sim_cycle++;
-      }
-
-   printf("replaced address:");
-   for (i=0; i<8; i++) {
-      printf("0x%x ", repl_addr[i]);
-   }
-   printf("\n");
-   shd_cache_print(cp[0],stdout);
-   shd_cache_print(cp[1],stdout);
-
-   shd_cache_fill(cp[0], 0x104b3ecb0, sim_cycle);
-   printf("Accessing 64-bit address tag: %d\n",
-          shd_cache_access(cp[0], 0x104b3ecb2, 4, 0, sim_cycle));
-   printf("Accessing 64-bit address tag: %d\n",
-          shd_cache_access(cp[0], 0x103433330, 4, 0, sim_cycle));
-
-
-   shd_set_coherency_policy(2);
-   cp[2] = shd_cache_create("cp2", 16, 4, 16, LRU, 1);
-   shd_cache_fill(cp[2], 0x12345000, 0);
-   shd_cache_access(cp[2], 0x12345000, 4, 1, 0);
-   shd_cache_access(cp[2], 0x12345004, 4, 0, 0);
-   shd_cache_access(cp[2], 0x12345008, 4, 0, 0);
-   shd_cache_access(cp[2], 0x1234500C, 4, 1, 0);
-   printf("Checking Dirty Vector %x, Result = %d (Expect %d)\n", 0xf,
-          shd_cache_linedirty(cp[2], 0x12345000, 0xf), 1 );
-   printf("Checking Dirty Vector %x, Result = %d (Expect %d)\n", 0x6,
-          shd_cache_linedirty(cp[2], 0x12345000, 0x6), 0 );
-   printf("Checking Dirty Vector %x, Result = %d (Expect %d)\n", 0x1,
-          shd_cache_linedirty(cp[2], 0x12345000, 0x1), 1 );
-   printf("Checking Dirty Vector %x, Result = %d (Expect %d)\n", 0x8,
-          shd_cache_linedirty(cp[2], 0x12345000, 0x8), 1 );
-   printf("Checking Dirty Vector %x, Result = %d (Expect %d)\n", 0x9,
-          shd_cache_linedirty(cp[2], 0x12345000, 0x9), 1 );
-
-}
-
-#endif

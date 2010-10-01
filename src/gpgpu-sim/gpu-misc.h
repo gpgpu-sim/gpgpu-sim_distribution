@@ -70,9 +70,9 @@
 #define CONSTC  100
 #define DCACHE   200
 #define TEXTC      300
-#define SHD_CACHE_TAG(x,shdr) ((x) & (~((unsigned long long int)shdr->L1cache->line_sz - 1)))
-#define SHD_TEXCACHE_TAG(x,shdr) ((x) & (~((unsigned long long int)shdr->L1texcache->line_sz - 1)))
-#define SHD_CONSTCACHE_TAG(x,shdr) ((x) & (~((unsigned long long int)shdr->L1constcache->line_sz - 1)))
+#define SHD_CACHE_TAG(x,shdr) ((x) & (~((unsigned long long int)shdr->m_L1D->line_sz - 1)))
+#define SHD_TEXCACHE_TAG(x,shdr) ((x) & (~((unsigned long long int)shdr->m_L1T->line_sz - 1)))
+#define SHD_CONSTCACHE_TAG(x,shdr) ((x) & (~((unsigned long long int)shdr->m_L1C->line_sz - 1)))
 #define CACHE_TAG_OF(x,cache) ((x) & (~((unsigned long long int)cache->line_sz - 1)))
 #define CACHE_TAG_OF_64(x) ((x) & (~((unsigned long long int)64 - 1)))
 

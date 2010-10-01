@@ -68,195 +68,163 @@
 #include "gpu-misc.h"
 #include "dram.h"
 #include "mem_latency_stat.h"
+#include "dram_sched.h"
 
 #ifdef DRAM_VERIFY
 int PRINT_CYCLE = 0;
 #endif
 
-dram_t* dram_create( unsigned int id, unsigned int nbk, 
-                     unsigned int tCCD, unsigned int tRRD,
-                     unsigned int tRCD, unsigned int tRAS,
-                     unsigned int tRP, unsigned int tRC,
-                     unsigned int CL, unsigned int WL,
-                     unsigned int BL, unsigned int tWTR,
-                     unsigned int busW, unsigned int queue_limit,
-                     unsigned char scheduler_type ) 
+template class fifo_pipeline<mem_fetch>;
+template class fifo_pipeline<dram_req_t>;
+
+dram_t::dram_t( unsigned int partition_id, struct memory_config *config )
 {
-   dram_t *dm;
-   unsigned i;
+   id = partition_id;
+   m_stats = NULL;
+   m_config = config;
 
-   dm = (dram_t*)calloc(1,sizeof(dram_t));
-   dm = new (dm) dram_t();
+   BL=m_config->gpgpu_dram_burst_length;
+   busW=m_config->gpgpu_dram_buswidth;
 
-   dm->id = id;
+   sscanf(m_config->gpgpu_dram_timing_opt,"%d:%d:%d:%d:%d:%d:%d:%d:%d:%d",&nbk,&tCCD,&tRRD,&tRCD,&tRAS,&tRP,&tRC,&CL,&WL,&tWTR);
+   m_config->gpu_mem_n_bk = nbk;
 
-   dm->nbk = nbk;
-   dm->tCCD = tCCD;
-   dm->tRRD = tRRD;
-   dm->tRCD = tRCD;
-   dm->tRCDWR = tRCD - (WL + 1); //formula given in datasheet
-   dm->tRAS = tRAS;
-   dm->tRP  = tRP;
-   dm->tRC  = tRC;
-   dm->CL = CL;
-   dm->WL = WL;
-   dm->BL = BL;
+   tRCDWR = tRCD - (WL + 1); //formula given in datasheet
+   tRTW = (CL+(BL/2)+2-WL); //read to write time according to datasheet
 
-   dm->tRTW = (CL+(BL/2)+2-WL); //read to write time according to datasheet
-   dm->tWTR = tWTR;
+   CCDc = 0;
+   RRDc = 0;
+   RTWc = 0;
+   WTRc = 0;
 
-   dm->busW = busW;
+   rw = READ; //read mode is default
 
-   dm->CCDc = 0;
-   dm->RRDc = 0;
-   dm->RTWc = 0;
-   dm->WTRc = 0;
+   bk = (bank_t**) calloc(sizeof(bank_t*),nbk);
+   bk[0] = (bank_t*) calloc(sizeof(bank_t),nbk);
+   for (unsigned i=1;i<nbk;i++) 
+      bk[i] = bk[0] + i;
+   for (unsigned i=0;i<nbk;i++) 
+      bk[i]->state = BANK_IDLE;
 
-   dm->rw = READ; //read mode is default
+   prio = 0;  
+   rwq = new fifo_pipeline<dram_req_t>("rwq",CL,CL+1,gpu_sim_cycle);
+   mrqq = new fifo_pipeline<dram_req_t>("mrqq",0,0,gpu_sim_cycle);
+   returnq = new fifo_pipeline<mem_fetch>("dramreturnq",0,m_config->gpgpu_dram_sched_queue_size,gpu_sim_cycle); 
+   m_fast_ideal_scheduler = NULL;
+   if ( m_config->scheduler_type == DRAM_IDEAL_FAST )
+      m_fast_ideal_scheduler = new ideal_dram_scheduler(this);
+   n_cmd = 0;
+   n_activity = 0;
+   n_nop = 0; 
+   n_act = 0; 
+   n_pre = 0; 
+   n_rd = 0;
+   n_wr = 0;
+   n_req = 0;
+   max_mrqs_temp = 0;
+   bwutil = 0;
+   max_mrqs = 0;
 
-   dm->bk = (bank_t**) calloc(sizeof(bank_t*),dm->nbk);
-   dm->bk[0] = (bank_t*) calloc(sizeof(bank_t),dm->nbk);
-   for (i=1;i<dm->nbk;i++) {
-      dm->bk[i] = dm->bk[0] + i;
+   for (unsigned i=0;i<10;i++) {
+      dram_util_bins[i]=0;
+      dram_eff_bins[i]=0;
    }
-   for (i=0;i<dm->nbk;i++) {
-      dm->bk[i]->state = BANK_IDLE;
-   }
-   dm->prio = 0;  
-   dm->rwq = dq_create("rwq",0,dm->CL,dm->CL+1);
-   dm->mrqq = dq_create("mrqq",0,0,0);
-   dm->queue_limit = queue_limit;
+   last_n_cmd = last_n_activity = last_bwutil = 0;
 
-   dm->returnq = dq_create("dramreturnq",0,0, queue_limit); 
+   n_cmd_partial = 0;
+   n_activity_partial = 0;
+   n_nop_partial = 0;  
+   n_act_partial = 0;  
+   n_pre_partial = 0;  
+   n_req_partial = 0;
+   ave_mrqs_partial = 0;
+   bwutil_partial = 0;
 
-   dm->m_fast_ideal_scheduler = NULL;
-   if ( scheduler_type == DRAM_IDEAL_FAST )
-      dm->m_fast_ideal_scheduler = alloc_fast_ideal_scheduler(dm);
-
-
-   dm->n_cmd = 0;
-   dm->n_activity = 0;
-   dm->n_nop = 0; 
-   dm->n_act = 0; 
-   dm->n_pre = 0; 
-   dm->n_rd = 0;
-   dm->n_wr = 0;
-   dm->n_req = 0;
-   dm->max_mrqs_temp = 0;
-
-   dm->bwutil = 0;
-
-   dm->max_mrqs = 0;
-
-   dm->scheduler_type = scheduler_type;
-
-   dm->realistic_scheduler_mode = READ; //realistic scheduler defaults to read
-   for (i=0;i<10;i++) {
-      dm->dram_util_bins[i]=0;
-      dm->dram_eff_bins[i]=0;
-   }
-   dm->last_n_cmd = dm->last_n_activity = dm->last_bwutil = 0;
-
-   dm->n_cmd_partial = 0;
-   dm->n_activity_partial = 0;
-   dm->n_nop_partial = 0;  
-   dm->n_act_partial = 0;  
-   dm->n_pre_partial = 0;  
-   dm->n_req_partial = 0;
-   dm->ave_mrqs_partial = 0;
-   dm->bwutil_partial = 0;
-   return dm;
+   if ( queue_limit() )
+      mrqq_Dist = StatCreate("mrqq_length",1, queue_limit());
+   else //queue length is unlimited; 
+      mrqq_Dist = StatCreate("mrqq_length",1,64); //track up to 64 entries
 }
 
-void dram_free( dram_t *dm ) 
-{
-   dq_free(dm->mrqq);
-   dq_free(dm->rwq);
-   dq_free( dm->returnq );
-
-   free(dm->bk[0]);
-   free(dm->bk);
-   free(dm);
-}
-
-int dram_full( dram_t *dm ) 
+int dram_t::full() 
 {
    int full = 0;
-   if ( dm->queue_limit == 0 ) return 0;
-   if ( dm->scheduler_type == DRAM_IDEAL_FAST ) {
-      unsigned nreqs = fast_scheduler_queue_length(dm) + dq_n_element(dm->mrqq);
-      full = (nreqs >= dm->queue_limit);
+   if ( m_config->gpgpu_dram_sched_queue_size == 0 ) return 0;
+   if ( m_config->scheduler_type == DRAM_IDEAL_FAST ) {
+      unsigned nreqs = m_fast_ideal_scheduler->num_pending() + mrqq->get_n_element();
+      full = (nreqs >= m_config->gpgpu_dram_sched_queue_size);
    } else {
-      full = (dm->mrqq->length >= dm->queue_limit);
+      full = (mrqq->get_length() >= m_config->gpgpu_dram_sched_queue_size);
    }
 
    return full;
 }
 
-unsigned int dram_que_length( dram_t *dm ) 
+unsigned int dram_t::que_length() const
 {
    unsigned nreqs = 0;
-   if (dm->scheduler_type == DRAM_IDEAL_FAST ) {
-      nreqs = fast_scheduler_queue_length(dm);
+   if (m_config->scheduler_type == DRAM_IDEAL_FAST ) {
+      nreqs = m_fast_ideal_scheduler->num_pending();
    } else {
-      nreqs = dm->mrqq->length ;
+      nreqs = mrqq->get_length();
    }
    return nreqs;
 }
 
-void dram_push( dram_t *dm, unsigned int bank,
-                unsigned int row, unsigned int col,
-                unsigned int nbytes, unsigned int write,
-                unsigned int wid, 
-                unsigned int sid, int cache_hits_waiting, unsigned long long addr,
-                void *data ) 
+bool dram_t::returnq_full() const
 {
-   dram_req_t *mrq;
-
-   if (bank>=dm->nbk) printf("ERROR: no such bank exist in DRAM %d\n", bank);
-
-   mrq = (dram_req_t *) malloc(sizeof(dram_req_t));
-
-   mrq->bk = bank;
-   mrq->row = row;
-   mrq->col = col;
-   mrq->nbytes = nbytes;
-   mrq->txbytes = 0;
-   mrq->dqbytes = 0;
-   mrq->data = data;
-   mrq->timestamp = gpu_tot_sim_cycle + gpu_sim_cycle;
-   mrq->cache_hits_waiting = cache_hits_waiting;
-   mrq->addr = addr;
-   mrq->insertion_time = (unsigned) gpu_sim_cycle;
-
-   if (!write) {
-      mrq->rw = READ;   //request is a read
-   } else {
-      mrq->rw = WRITE;  //request is a write
-   }
-
-   dq_push(dm->mrqq,mrq);
-   dm->n_req += 1;
-   dm->n_req_partial += 1;
-
-   if ( dm->scheduler_type == DRAM_IDEAL_FAST ) {
-      unsigned nreqs = fast_scheduler_queue_length(dm);
-      if ( nreqs > dm->max_mrqs_temp)
-         dm->max_mrqs_temp = nreqs;
-   } else {
-      dm->max_mrqs_temp = (dm->max_mrqs_temp > dm->mrqq->length)? dm->max_mrqs_temp : dm->mrqq->length;
-   }
+   return returnq->full();
 }
 
-void scheduler_fifo(dram_t* dm) 
+unsigned int dram_t::queue_limit() const 
+{ 
+   return m_config->gpgpu_dram_sched_queue_size; 
+}
+
+
+dram_req_t::dram_req_t( class mem_fetch *mf )
 {
-   if (dm->mrqq->head) {
-      dram_req_t *head_mrqq;
+   bk = mf->tlx.bk; 
+   row = mf->tlx.row; 
+   col = mf->tlx.col; 
+   nbytes = mf->nbytes_L1;
+   txbytes = 0;
+   dqbytes = 0;
+   data = mf;
+   timestamp = gpu_tot_sim_cycle + gpu_sim_cycle;
+   cache_hits_waiting = mf->cache_hits_waiting;
+   addr = mf->addr;
+   insertion_time = (unsigned) gpu_sim_cycle;
+   rw = data->m_write?WRITE:READ;
+}
+
+void dram_t::push( class mem_fetch *data ) 
+{
+   assert(data->tlx.bk<nbk);
+   dram_req_t *mrq = new dram_req_t(data);
+   mrqq->push(mrq,gpu_sim_cycle);
+
+   // stats...
+   n_req += 1;
+   n_req_partial += 1;
+   if ( m_config->scheduler_type == DRAM_IDEAL_FAST ) {
+      unsigned nreqs = m_fast_ideal_scheduler->num_pending();
+      if ( nreqs > max_mrqs_temp)
+         max_mrqs_temp = nreqs;
+   } else {
+      max_mrqs_temp = (max_mrqs_temp > mrqq->get_length())? max_mrqs_temp : mrqq->get_length();
+   }
+   m_stats->memlatstat_dram_access(data);
+}
+
+void dram_t::scheduler_fifo()
+{
+   if (!mrqq->empty()) {
       unsigned int bkn;
-      head_mrqq = (dram_req_t *)dm->mrqq->head->data;
+      dram_req_t *head_mrqq = mrqq->top();
       bkn = head_mrqq->bk;
-      if (!dm->bk[bkn]->mrq) {
-         dm->bk[bkn]->mrq = (dram_req_t*) dq_pop(dm->mrqq);
+      if (!bk[bkn]->mrq) {
+         bk[bkn]->mrq = mrqq->pop(gpu_sim_cycle);
       }
    }
 }
@@ -265,7 +233,7 @@ void scheduler_fifo(dram_t* dm)
 #define DEC2ZERO(x) x = (x)? (x-1) : 0;
 #define SWAP(a,b) a ^= b; b ^= a; a ^= b;
 
-void dram_issueCMD (dram_t* dm) 
+void dram_t::issueCMD()
 {
    unsigned i,j,k;
    unsigned char issued;
@@ -274,206 +242,196 @@ void dram_issueCMD (dram_t* dm)
    /* check if the upcoming request is on an idle bank */
    /* Should we modify this so that multiple requests are checked? */
 
-   switch (dm->scheduler_type) {
-   case DRAM_FIFO:
-      scheduler_fifo(dm);
-      break;
-   case DRAM_IDEAL_FAST:
-      fast_scheduler_ideal(dm);
-      break;
+   switch (m_config->scheduler_type) {
+   case DRAM_FIFO: scheduler_fifo(); break;
+   case DRAM_IDEAL_FAST: fast_scheduler_ideal(); break;
 	default:
 		printf("Error: Unknown DRAM scheduler type\n");
 		assert(0);
    }
-   if ( dm->scheduler_type == DRAM_IDEAL_FAST ) {
-      unsigned nreqs = fast_scheduler_queue_length(dm);
-      if ( nreqs > dm->max_mrqs) {
-         dm->max_mrqs = nreqs;
+   if ( m_config->scheduler_type == DRAM_IDEAL_FAST ) {
+      unsigned nreqs = m_fast_ideal_scheduler->num_pending();
+      if ( nreqs > max_mrqs) {
+         max_mrqs = nreqs;
       }
-      dm->ave_mrqs += nreqs;
-      dm->ave_mrqs_partial += nreqs;
+      ave_mrqs += nreqs;
+      ave_mrqs_partial += nreqs;
    } else {
-      if (dm->mrqq->length > dm->max_mrqs) {
-         dm->max_mrqs = dm->mrqq->length;
+      if (mrqq->get_length() > max_mrqs) {
+         max_mrqs = mrqq->get_length();
       }
-      dm->ave_mrqs += dm->mrqq->length;
-      dm->ave_mrqs_partial +=  dm->mrqq->length;
+      ave_mrqs += mrqq->get_length();
+      ave_mrqs_partial +=  mrqq->get_length();
    }
-   k=dm->nbk;
+   k=nbk;
    // check if any bank is ready to issue a new read
-   for (i=0;i<dm->nbk;i++) {
-      j = (i + dm->prio) % dm->nbk;
-      if (dm->bk[j]->mrq) { //if currently servicing a memory request
+   for (i=0;i<nbk;i++) {
+      j = (i + prio) % nbk;
+      if (bk[j]->mrq) { //if currently servicing a memory request
          // correct row activated for a READ
-         if ( !issued && !dm->CCDc && !dm->bk[j]->RCDc &&
-              (dm->bk[j]->curr_row == dm->bk[j]->mrq->row) && 
-              (dm->bk[j]->mrq->rw == READ) && (dm->WTRc == 0 )  &&
-              (dm->bk[j]->state == BANK_ACTIVE) &&
-              !dq_full(dm->rwq) ) {
-            if (dm->rw==WRITE) {
-               dm->rw=READ;
-               dq_set_min_length(dm->rwq, dm->CL);
+         if ( !issued && !CCDc && !bk[j]->RCDc &&
+              (bk[j]->curr_row == bk[j]->mrq->row) && 
+              (bk[j]->mrq->rw == READ) && (WTRc == 0 )  &&
+              (bk[j]->state == BANK_ACTIVE) &&
+              !rwq->full() ) {
+            if (rw==WRITE) {
+               rw=READ;
+               rwq->set_min_length(CL,gpu_sim_cycle);
             }
-            dq_push(dm->rwq,(void*)dm->bk[j]->mrq); //only push when rwq empty?
-            dm->bk[j]->mrq->txbytes += dm->BL * dm->busW * gpu_n_mem_per_ctrlr; //16 bytes
-            dm->CCDc = dm->tCCD;
-            dm->RTWc = dm->tRTW;
+            rwq->push(bk[j]->mrq,gpu_sim_cycle);
+            bk[j]->mrq->txbytes += BL * busW * gpu_n_mem_per_ctrlr; //16 bytes
+            CCDc = tCCD;
+            RTWc = tRTW;
             issued = 1;
-            dm->n_rd++;
-            //printf("\tn_rd++ Bank: %d Row: %d Col: %d\n", j, dm->bk[j]->mrq->row, dm->bk[j]->mrq->col);
-            dm->bwutil+= dm->BL/2;
-            dm->bwutil_partial += dm->BL/2;
-            dm->bk[j]->n_access++;
+            n_rd++;
+            bwutil+= BL/2;
+            bwutil_partial += BL/2;
+            bk[j]->n_access++;
 #ifdef DRAM_VERIFY
             PRINT_CYCLE=1;
             printf("\tRD  Bk:%d Row:%03x Col:%03x \n",
-                   j, dm->bk[j]->curr_row,
-                   dm->bk[j]->mrq->col+dm->bk[j]->mrq->txbytes-dm->BL*dm->busW);
+                   j, bk[j]->curr_row,
+                   bk[j]->mrq->col+bk[j]->mrq->txbytes-BL*busW);
 #endif            
             // transfer done
-            if ( !(dm->bk[j]->mrq->txbytes < dm->bk[j]->mrq->nbytes) ) {
-               dm->bk[j]->mrq = NULL;
+            if ( !(bk[j]->mrq->txbytes < bk[j]->mrq->nbytes) ) {
+               bk[j]->mrq = NULL;
             }
          } else
             // correct row activated for a WRITE
-            if ( !issued && !dm->CCDc && !dm->bk[j]->RCDWRc &&
-                 (dm->bk[j]->curr_row == dm->bk[j]->mrq->row)  && 
-                 (dm->bk[j]->mrq->rw == WRITE) && (dm->RTWc == 0 )  &&
-                 (dm->bk[j]->state == BANK_ACTIVE) &&
-                 !dq_full(dm->rwq) ) {
-            if (dm->rw==READ) {
-               dm->rw=WRITE;
-               dq_set_min_length(dm->rwq, dm->WL);
+            if ( !issued && !CCDc && !bk[j]->RCDWRc &&
+                 (bk[j]->curr_row == bk[j]->mrq->row)  && 
+                 (bk[j]->mrq->rw == WRITE) && (RTWc == 0 )  &&
+                 (bk[j]->state == BANK_ACTIVE) &&
+                 !rwq->full() ) {
+            if (rw==READ) {
+               rw=WRITE;
+               rwq->set_min_length(WL,gpu_sim_cycle);
             }
-            dq_push(dm->rwq,(void*)dm->bk[j]->mrq);
+            rwq->push(bk[j]->mrq,gpu_sim_cycle);
 
-            dm->bk[j]->mrq->txbytes += dm->BL * dm->busW * gpu_n_mem_per_ctrlr; /*16 bytes*/
-            dm->CCDc = dm->tCCD;
+            bk[j]->mrq->txbytes += BL * busW * gpu_n_mem_per_ctrlr; /*16 bytes*/
+            CCDc = tCCD;
             issued = 1;
-            dm->n_wr++;
-            dm->bwutil+=2;
-            dm->bwutil_partial += dm->BL/2;
+            n_wr++;
+            bwutil+=2;
+            bwutil_partial += BL/2;
 #ifdef DRAM_VERIFY
             PRINT_CYCLE=1;
             printf("\tWR  Bk:%d Row:%03x Col:%03x \n",
-                   j, dm->bk[j]->curr_row, 
-                   dm->bk[j]->mrq->col+dm->bk[j]->mrq->txbytes-dm->BL*dm->busW);
+                   j, bk[j]->curr_row, 
+                   bk[j]->mrq->col+bk[j]->mrq->txbytes-BL*busW);
 #endif  
             // transfer done 
-            if ( !(dm->bk[j]->mrq->txbytes < dm->bk[j]->mrq->nbytes) ) {
-               dm->bk[j]->mrq = NULL;
+            if ( !(bk[j]->mrq->txbytes < bk[j]->mrq->nbytes) ) {
+               bk[j]->mrq = NULL;
             }
          }
 
          else
             // bank is idle
-            if ( !issued && !dm->RRDc && 
-                 (dm->bk[j]->state == BANK_IDLE) &&
-                 !dm->bk[j]->RPc && !dm->bk[j]->RCc ) {
+            if ( !issued && !RRDc && 
+                 (bk[j]->state == BANK_IDLE) &&
+                 !bk[j]->RPc && !bk[j]->RCc ) {
 #ifdef DRAM_VERIFY
             PRINT_CYCLE=1;
             printf("\tACT BK:%d NewRow:%03x From:%03x \n",
-                   j,dm->bk[j]->mrq->row,dm->bk[j]->curr_row);
+                   j,bk[j]->mrq->row,bk[j]->curr_row);
 #endif
             // activate the row with current memory request 
-            dm->bk[j]->curr_row = dm->bk[j]->mrq->row;
-            dm->bk[j]->state = BANK_ACTIVE;
-            dm->RRDc = dm->tRRD;
-            dm->bk[j]->RCDc = dm->tRCD;
-            dm->bk[j]->RCDWRc = dm->tRCDWR;
-            dm->bk[j]->RASc = dm->tRAS;
-            dm->bk[j]->RCc = dm->tRC;
-            dm->prio = (j + 1) % dm->nbk;
+            bk[j]->curr_row = bk[j]->mrq->row;
+            bk[j]->state = BANK_ACTIVE;
+            RRDc = tRRD;
+            bk[j]->RCDc = tRCD;
+            bk[j]->RCDWRc = tRCDWR;
+            bk[j]->RASc = tRAS;
+            bk[j]->RCc = tRC;
+            prio = (j + 1) % nbk;
             issued = 1;
-            dm->n_act_partial++;
-            dm->n_act++;
+            n_act_partial++;
+            n_act++;
          }
 
          else
             // different row activated
             if ( (!issued) && 
-                 (dm->bk[j]->curr_row != dm->bk[j]->mrq->row) &&
-                 (dm->bk[j]->state == BANK_ACTIVE) && 
-                 (!dm->bk[j]->RASc) ) {
-            //printf("\tRASc: %d \n", dm->bk[j]->RASc);
+                 (bk[j]->curr_row != bk[j]->mrq->row) &&
+                 (bk[j]->state == BANK_ACTIVE) && 
+                 (!bk[j]->RASc) ) {
             // make the bank idle again
-            dm->bk[j]->state = BANK_IDLE;
-            dm->bk[j]->RPc = dm->tRP;
-            dm->prio = (j + 1) % dm->nbk;
+            bk[j]->state = BANK_IDLE;
+            bk[j]->RPc = tRP;
+            prio = (j + 1) % nbk;
             issued = 1;
-            dm->n_pre++;
-            dm->n_pre_partial++;
+            n_pre++;
+            n_pre_partial++;
 #ifdef DRAM_VERIFY
             PRINT_CYCLE=1;
-            printf("\tPRE BK:%d Row:%03x \n", j,dm->bk[j]->curr_row);
-            //printf("\tRASc: %d \n", dm->bk[j]->RASc);
+            printf("\tPRE BK:%d Row:%03x \n", j,bk[j]->curr_row);
 #endif
          }
       } else {
-         if (!dm->CCDc && !dm->RRDc && !dm->RTWc && !dm->WTRc && !dm->bk[j]->RCDc && !dm->bk[j]->RASc
-             && !dm->bk[j]->RCc && !dm->bk[j]->RPc  && !dm->bk[j]->RCDWRc) k--;
-         dm->bk[i]->n_idle++;
+         if (!CCDc && !RRDc && !RTWc && !WTRc && !bk[j]->RCDc && !bk[j]->RASc
+             && !bk[j]->RCc && !bk[j]->RPc  && !bk[j]->RCDWRc) k--;
+         bk[i]->n_idle++;
       }
    }
    if (!issued) {
-      dm->n_nop++;
-      dm->n_nop_partial++;
+      n_nop++;
+      n_nop_partial++;
 #ifdef DRAM_VIEWCMD
       printf("\tNOP                        ");
 #endif
    }
    if (k) {
-      dm->n_activity++;
-      dm->n_activity_partial++;
+      n_activity++;
+      n_activity_partial++;
    }
-   dm->n_cmd++;
-   dm->n_cmd_partial++;
+   n_cmd++;
+   n_cmd_partial++;
 
    // decrements counters once for each time dram_issueCMD is called
-   DEC2ZERO(dm->RRDc);
-   DEC2ZERO(dm->CCDc);
-   DEC2ZERO(dm->RTWc);
-   DEC2ZERO(dm->WTRc);
-   for (j=0;j<dm->nbk;j++) {
-      DEC2ZERO(dm->bk[j]->RCDc);
-      DEC2ZERO(dm->bk[j]->RASc);
-      DEC2ZERO(dm->bk[j]->RCc);
-      DEC2ZERO(dm->bk[j]->RPc);
-      DEC2ZERO(dm->bk[j]->RCDWRc);
+   DEC2ZERO(RRDc);
+   DEC2ZERO(CCDc);
+   DEC2ZERO(RTWc);
+   DEC2ZERO(WTRc);
+   for (j=0;j<nbk;j++) {
+      DEC2ZERO(bk[j]->RCDc);
+      DEC2ZERO(bk[j]->RASc);
+      DEC2ZERO(bk[j]->RCc);
+      DEC2ZERO(bk[j]->RPc);
+      DEC2ZERO(bk[j]->RCDWRc);
    }
 
 #ifdef DRAM_VISUALIZE
-   dram_visualize(dm);
+   visualize();
 #endif
 }
 
 //if mrq is being serviced by dram, gets popped after CL latency fulfilled
-void* dram_pop( dram_t *dm ) 
-{ 
+class mem_fetch* dram_t::pop() 
+{
    dram_req_t *mrq;
-   void *data;
+   class mem_fetch *data;
    unsigned dq_latency;
 
    data = NULL;
-   mrq = (dram_req_t*)dq_pop(dm->rwq);
+   mrq = rwq->pop(gpu_sim_cycle);
    if (mrq) {
-      // data = mrq->data; 
 #ifdef DRAM_VIEWCMD 
       printf("\tDQ: BK%d Row:%03x Col:%03x",
              mrq->bk, mrq->row, mrq->col + mrq->dqbytes);
 #endif
-      mrq->dqbytes += dm->BL * dm->busW * gpu_n_mem_per_ctrlr; /*16 bytes*/
+      mrq->dqbytes += BL * busW * gpu_n_mem_per_ctrlr; /*16 bytes*/
       if (mrq->dqbytes >= mrq->nbytes) {
-
-         if (gpgpu_memlatency_stat) {
+         if (m_config->gpgpu_memlatency_stat) {
             dq_latency = gpu_sim_cycle + gpu_tot_sim_cycle - mrq->timestamp;
-            dq_lat_table[LOGB2(dq_latency)]++;
-            if (dq_latency > max_dq_latency)
-               max_dq_latency = dq_latency;
+            m_stats->dq_lat_table[LOGB2(dq_latency)]++;
+            if (dq_latency > m_stats->max_dq_latency)
+               m_stats->max_dq_latency = dq_latency;
          }
          data = mrq->data; 
-
-         free(mrq);
+         delete mrq;
       }
    }
 #ifdef DRAM_VIEWCMD 
@@ -483,17 +441,33 @@ void* dram_pop( dram_t *dm )
    return data;
 }
 
+void dram_t::returnq_push( class mem_fetch *mf, unsigned long long gpu_sim_cycle)
+{
+   returnq->push(mf,gpu_sim_cycle);
+}
+
+class mem_fetch* dram_t::returnq_pop( unsigned long long gpu_sim_cycle)
+{
+   return returnq->pop(gpu_sim_cycle);
+}
+
+class mem_fetch* dram_t::returnq_top()
+{
+   return returnq->top();
+}
+
+
 // a hack to allow peeking into what memory request will be serviced.
-void* dram_top( dram_t *dm )
+class mem_fetch* dram_t::top()
 {
    dram_req_t *mrq;
-   void *data;
+   class mem_fetch *data;
 
    data = NULL;
-   mrq = (dram_req_t*)dq_top(dm->rwq);
+   mrq = rwq->top();
    if (mrq) {
       // number of bytes returned from dram if this is ever popped
-      unsigned tobe_dqbytes = mrq->dqbytes + dm->BL * dm->busW * gpu_n_mem_per_ctrlr; 
+      unsigned tobe_dqbytes = mrq->dqbytes + BL * busW * gpu_n_mem_per_ctrlr; 
       if (tobe_dqbytes >= mrq->nbytes) {
          data = mrq->data; 
       }
@@ -502,82 +476,112 @@ void* dram_top( dram_t *dm )
    return data;
 }
 
-void dram_print( dram_t* dm, FILE* simFile) 
+void dram_t::print( FILE* simFile) const
 {
    unsigned i;
    fprintf(simFile,"DRAM[%d]: %d bks, busW=%d BL=%d CL=%d, ", 
-           dm->id, dm->nbk, dm->busW, dm->BL, dm->CL );
+           id, nbk, busW, BL, CL );
    fprintf(simFile,"tRRD=%d tCCD=%d, tRCD=%d tRAS=%d tRP=%d tRC=%d\n",
-           dm->tCCD, dm->tRRD, dm->tRCD, dm->tRAS, dm->tRP, dm->tRC );
+           tCCD, tRRD, tRCD, tRAS, tRP, tRC );
    fprintf(simFile,"n_cmd=%d n_nop=%d n_act=%d n_pre=%d n_req=%d n_rd=%d n_write=%d bw_util=%.4g\n",
-           dm->n_cmd, dm->n_nop, dm->n_act, dm->n_pre, dm->n_req, dm->n_rd, dm->n_wr,
-           (float)dm->bwutil/dm->n_cmd);
+           n_cmd, n_nop, n_act, n_pre, n_req, n_rd, n_wr,
+           (float)bwutil/n_cmd);
    fprintf(simFile,"n_activity=%d dram_eff=%.4g\n",
-           dm->n_activity, (float)dm->bwutil/dm->n_activity);
-   for (i=0;i<dm->nbk;i++) {
-      fprintf(simFile, "bk%d: %da %di ",i,dm->bk[i]->n_access,dm->bk[i]->n_idle);
+           n_activity, (float)bwutil/n_activity);
+   for (i=0;i<nbk;i++) {
+      fprintf(simFile, "bk%d: %da %di ",i,bk[i]->n_access,bk[i]->n_idle);
    }
    fprintf(simFile, "\n");
    fprintf(simFile, "dram_util_bins:");
-   for (i=0;i<10;i++) fprintf(simFile, " %d", dm->dram_util_bins[i]);
+   for (i=0;i<10;i++) fprintf(simFile, " %d", dram_util_bins[i]);
    fprintf(simFile, "\ndram_eff_bins:");
-   for (i=0;i<10;i++) fprintf(simFile, " %d", dm->dram_eff_bins[i]);
+   for (i=0;i<10;i++) fprintf(simFile, " %d", dram_eff_bins[i]);
    fprintf(simFile, "\n");
-   /*
-   {
-   delay_data* mrq;
-   mrq = dm->mrqq->head;
-   while (mrq) {
-      printf("%d",((dram_req_t*)mrq->data)->bk);
-      mrq = mrq->next;
-   }
-   printf("\n");
-   }
-   */
-   fprintf(simFile, "mrqq: max=%d avg=%g\n", dm->max_mrqs, (float)dm->ave_mrqs/dm->n_cmd);
+   fprintf(simFile, "mrqq: max=%d avg=%g\n", max_mrqs, (float)ave_mrqs/n_cmd);
 }
 
-void dram_visualize( dram_t* dm ) 
+void dram_t::visualize() const
 {
-   unsigned i;
-
    printf("RRDc=%d CCDc=%d mrqq.Length=%d rwq.Length=%d\n", 
-          dm->RRDc, dm->CCDc, dm->mrqq->length,dm->rwq->length);
-   for (i=0;i<dm->nbk;i++) {
+          RRDc, CCDc, mrqq->get_length(),rwq->get_length());
+   for (unsigned i=0;i<nbk;i++) {
       printf("BK%d: state=%c curr_row=%03x, %2d %2d %2d %2d %p ", 
-             i, dm->bk[i]->state, dm->bk[i]->curr_row,
-             dm->bk[i]->RCDc, dm->bk[i]->RASc,
-             dm->bk[i]->RPc, dm->bk[i]->RCc,
-             dm->bk[i]->mrq );
-      if (dm->bk[i]->mrq)
-         printf("txf: %d %d", dm->bk[i]->mrq->nbytes, dm->bk[i]->mrq->txbytes);
+             i, bk[i]->state, bk[i]->curr_row,
+             bk[i]->RCDc, bk[i]->RASc,
+             bk[i]->RPc, bk[i]->RCc,
+             bk[i]->mrq );
+      if (bk[i]->mrq)
+         printf("txf: %d %d", bk[i]->mrq->nbytes, bk[i]->mrq->txbytes);
       printf("\n");
    }
-   if ( dm->m_fast_ideal_scheduler ) {
-      dump_fast_ideal_scheduler( dm );
-   }
-
+   if ( m_fast_ideal_scheduler ) 
+      m_fast_ideal_scheduler->print(stdout);
 }
 
-void dram_print_stat( dram_t* dm, FILE* simFile ) 
+void dram_t::print_stat( FILE* simFile ) 
 {
-   int i;
    fprintf(simFile,"DRAM (%d): n_cmd=%d n_nop=%d n_act=%d n_pre=%d n_req=%d n_rd=%d n_write=%d bw_util=%.4g ",
-           dm->id, dm->n_cmd, dm->n_nop, dm->n_act, dm->n_pre, dm->n_req, dm->n_rd, dm->n_wr,
-           (float)dm->bwutil/dm->n_cmd);
-   fprintf(simFile, "mrqq: %d %.4g mrqsmax=%d ", dm->max_mrqs, (float)dm->ave_mrqs/dm->n_cmd, dm->max_mrqs_temp);
+           id, n_cmd, n_nop, n_act, n_pre, n_req, n_rd, n_wr,
+           (float)bwutil/n_cmd);
+   fprintf(simFile, "mrqq: %d %.4g mrqsmax=%d ", max_mrqs, (float)ave_mrqs/n_cmd, max_mrqs_temp);
    fprintf(simFile, "\n");
    fprintf(simFile, "dram_util_bins:");
-   for (i=0;i<10;i++) fprintf(simFile, " %d", dm->dram_util_bins[i]);
+   for (unsigned i=0;i<10;i++) fprintf(simFile, " %d", dram_util_bins[i]);
    fprintf(simFile, "\ndram_eff_bins:");
-   for (i=0;i<10;i++) fprintf(simFile, " %d", dm->dram_eff_bins[i]);
+   for (unsigned i=0;i<10;i++) fprintf(simFile, " %d", dram_eff_bins[i]);
    fprintf(simFile, "\n");
-   dm->max_mrqs_temp = 0;
+   max_mrqs_temp = 0;
 }
 
-
-unsigned dram_busy( dram_t* dm) 
+void dram_t::queue_latency_log_dump( FILE *fp ) 
 {
-   return !dm->m_request_tracker.empty();
+   fprintf(fp,"(LOGB2)Latency DRAM[%d] ",id);
+   StatDisp(mrqq->get_lat_stat());
+   fprintf(fp,"(LOGB2)Latency DRAM[%d] ",id);
+   StatDisp(rwq->get_lat_stat());   
+   dram_log(DUMPLOG);
 }
 
+void dram_t::visualizer_print( gzFile visualizer_file )
+{
+   // dram specific statistics
+   gzprintf(visualizer_file,"dramncmd: %u %u\n",id, n_cmd_partial);  
+   gzprintf(visualizer_file,"dramnop: %u %u\n",id,n_nop_partial);
+   gzprintf(visualizer_file,"dramnact: %u %u\n",id,n_act_partial);
+   gzprintf(visualizer_file,"dramnpre: %u %u\n",id,n_pre_partial);
+   gzprintf(visualizer_file,"dramnreq: %u %u\n",id,n_req_partial);
+   gzprintf(visualizer_file,"dramavemrqs: %u %u\n",id,
+            n_cmd_partial?(ave_mrqs_partial/n_cmd_partial ):0);
+
+   // utilization and efficiency
+   gzprintf(visualizer_file,"dramutil: %u %u\n",  
+            id,n_cmd_partial?100*bwutil_partial/n_cmd_partial:0);
+   gzprintf(visualizer_file,"drameff: %u %u\n", 
+            id,n_activity_partial?100*bwutil_partial/n_activity_partial:0);
+
+   // reset for next interval
+   bwutil_partial = 0;
+   n_activity_partial = 0;
+   ave_mrqs_partial = 0; 
+   n_cmd_partial = 0;
+   n_nop_partial = 0;
+   n_act_partial = 0;
+   n_pre_partial = 0;
+   n_req_partial = 0;
+
+   // dram access type classification
+   for (unsigned j = 0; j < m_config->gpu_mem_n_bk; j++) {
+      gzprintf(visualizer_file,"dramglobal_acc_r: %u %u %u\n", id, j, 
+               m_stats->mem_access_type_stats[GLOBAL_ACC_R][id][j]);
+      gzprintf(visualizer_file,"dramglobal_acc_w: %u %u %u\n", id, j, 
+               m_stats->mem_access_type_stats[GLOBAL_ACC_W][id][j]);
+      gzprintf(visualizer_file,"dramlocal_acc_r: %u %u %u\n", id, j, 
+               m_stats->mem_access_type_stats[LOCAL_ACC_R][id][j]);
+      gzprintf(visualizer_file,"dramlocal_acc_w: %u %u %u\n", id, j, 
+               m_stats->mem_access_type_stats[LOCAL_ACC_W][id][j]);
+      gzprintf(visualizer_file,"dramconst_acc_r: %u %u %u\n", id, j, 
+               m_stats->mem_access_type_stats[CONST_ACC_R][id][j]);
+      gzprintf(visualizer_file,"dramtexture_acc_r: %u %u %u\n", id, j, 
+               m_stats->mem_access_type_stats[TEXTURE_ACC_R][id][j]);
+   }
+}

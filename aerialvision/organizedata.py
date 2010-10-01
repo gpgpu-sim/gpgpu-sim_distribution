@@ -61,6 +61,9 @@
 # Vancouver, BC V6T 1Z4
 
 import os
+import array
+#from numpy import array
+import numpy
 import lexyacctexteditor
 import variableclasses as vc
 
@@ -83,28 +86,30 @@ def setCFLOGInfoFiles(sourceViewFileList):
     if CFLOGptxFile == '' and len(sourceViewFileList[1]) > 0:
         CFLOGptxFile = sourceViewFileList[1][0]
 
-
 def organizedata(fileVars):
 
     organizeFunction = {
         'scalar':OrganizeScalar,        # Scalar data
         'impVec':nullOrganizedShader,   # Implicit vector data for multiple units (used by Shader Core stats)
+        'stackbar':nullOrganizedStackedBar, # Stacked bars 
         'idxVec':nullOrganizedDram,     # Vector data with index  (used by DRAM stats)
         'idx2DVec':nullOrganizedDramV2, # Vector data with 2D index  (used by DRAM access stats)
+        'sparse':OrganizeSparse,        # Vector data with 2D index  (used by DRAM access stats)
         'custom':0
     }
+    data_type_char = {int:'I', float:'f'}
 
     print "Organizing data into internal format..."
 
     # Organize globalCycle in advance because it is used as a reference
     if ('globalCycle' in fileVars):
         statData = fileVars['globalCycle']
-        fileVars['globalCycle'].data = organizeFunction[statData.organize](statData.data)
+        fileVars['globalCycle'].data = organizeFunction[statData.organize](statData.data, data_type_char[statData.datatype])
 
     # Organize other stat data into internal format
     for statName, statData in fileVars.iteritems():
         if (statName != 'CFLOG' and statName != 'globalCycle' and statData.organize != 'custom'):
-            fileVars[statName].data = organizeFunction[statData.organize](statData.data)
+            fileVars[statName].data = organizeFunction[statData.organize](statData.data, data_type_char[statData.datatype])
   
     # Custom routines to organize stat data into internal format
     if fileVars.has_key('averagemflatency'):
@@ -177,11 +182,12 @@ def organizedata(fileVars):
 
     return fileVars
 
-def OrganizeScalar(data):
+def OrganizeScalar(data, datatype_c):
     organized = [0] + data;
+    organized = array.array(datatype_c, organized)
     return organized;
 
-def nullOrganizedShader(nullVar):
+def nullOrganizedShader(nullVar, datatype_c):
     #need to organize this array into usable information
     count = 0
     organized = []
@@ -197,7 +203,7 @@ def nullOrganizedShader(nullVar):
     
     #initializing 2D list
     for x in range(0, numPlots):
-        organized.append([])
+        organized.append(array.array(datatype_c, [0]))
     
     #filling up list appropriately
     for x in range(0,(len(nullVar))):
@@ -205,15 +211,33 @@ def nullOrganizedShader(nullVar):
             count=0
         else:
             organized[count].append(nullVar[x])
-            count +=  1
+            count += 1
 
-    for x in range(0,len(organized)):
-        organized[x] = [0] + organized[x]
+    #for x in range(0,len(organized)):
+    #    organized[x] = [0] + organized[x]
     
     return organized
 
-def nullOrganizedDram(nullVar):
-    organized = [[0]]
+def nullOrganizedStackedBar(nullVar, datatype_c):
+    organized = nullOrganizedShader(nullVar, datatype_c)
+
+    # group data points to improve display speed
+    if len(organized[0]) > 512:
+        n_data = len(organized[0]) // 512 + 1 
+        newLen = 512
+        for row in range (0,len(organized)):
+            newy = array.array(datatype_c, [0 for col in range(newLen)])
+            for col in range(0, len(organized[row])):
+                newcol = col / n_data
+                newy[newcol] += organized[row][col]
+            for col in range(0, len(newy)):
+                newy[col] /= n_data 
+            organized[row] = newy
+
+    return organized
+    
+def nullOrganizedDram(nullVar, datatype_c):
+    organized = [array.array(datatype_c, [0])]
     mem = 1
     for iter in nullVar:
         if iter == 'NULL':
@@ -227,11 +251,11 @@ def nullOrganizedDram(nullVar):
             try:
                 organized[memNum].append(iter)
             except:
-                organized.append([0])
+                organized.append(array.array(datatype_c, [0]))
                 organized[memNum].append(iter)
     return organized
 
-def nullOrganizedDramV2(nullVar):
+def nullOrganizedDramV2(nullVar, datatype_c):
     organized = {}
     mem = 1
     for iter in nullVar:
@@ -251,8 +275,18 @@ def nullOrganizedDramV2(nullVar):
                 key = str(ChipNum) + '.' + str(BankNum)
                 organized[key].append(iter)
             except:
-                organized[key] = [0]
+                organized[key] = array.array(datatype_c, [0])
                 organized[key].append(iter)
+
+    return organized
+
+def OrganizeSparse(variable, datatype_c):
+    data = numpy.array(variable[0], dtype=numpy.int32)
+    row = numpy.array(variable[1], dtype=numpy.int32)
+    col = numpy.array(variable[2], dtype=numpy.int32)
+    del variable[0:]
+    #organized = sparse.coo_matrix((data, (row, col)))
+    organized = [data, row, col]
 
     return organized
 
@@ -263,7 +297,8 @@ def CFLOGOrganizePTX(list, maxPC):
     organizedPC = list[0]
 
     nCycles = len(organizedPC)
-    final = [[0 for cycle in range(nCycles)] for pc in range(maxPC + 1)] # fill the 2D array with zeros
+    final_template = [0 for cycle in range(nCycles)]
+    final = [array.array('I', final_template) for pc in range(maxPC + 1)] # fill the 2D array with zeros
 
     for cycle in range(0, nCycles):
         pcList = organizedPC[cycle]

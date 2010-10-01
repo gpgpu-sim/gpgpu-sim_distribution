@@ -8,7 +8,7 @@ set print array-indexes
 set unwindonsignal on
 
 define dp
-        call dump_pipeline_impl((0x40|0x4|0x1),$arg0,0)
+        call g_the_gpu.dump_pipeline((0x40|0x4|0x1),$arg0,0)
 end
 
 document dp
@@ -18,12 +18,12 @@ Display pipeline state.
 
 This function displays the state of the pipeline on a single shader core
 (setting different values for the first argument of the call to
-dump_pipeline_impl will cause different information to be displayed--
+dump_pipeline will cause different information to be displayed--
 see the source code for more details)
 end
 
 define dpc
-        call dump_pipeline_impl((0x40|0x4|0x1),$arg0,0)
+        call g_the_gpu.dump_pipeline((0x40|0x4|0x1),$arg0,0)
         continue
 end
 
@@ -36,6 +36,10 @@ This version is useful if you set a breakpoint where gpu_sim_cycle is
 incremented in gpu_sim_loop() in src/gpgpu-sim/gpu-sim.c
 repeatly hitting enter will advance to show the pipeline contents on
 the next cycle.
+end
+
+define dm
+        call g_the_gpu.dump_pipeline(0x100,$arg0,0)
 end
 
 define ptxdis
@@ -56,7 +60,7 @@ Disassemble PTX instructions between <start> and <end> (PCs).
 end
 
 define ptxdis_func
-	set $ptx_tinfo = (ptx_thread_info*)sc[$arg0]->thread[$arg1].ptx_thd_info
+	set $ptx_tinfo = g_the_gpu.m_sc[$arg0]->thread[$arg1].ptx_thd_info
 	set $finfo = $ptx_tinfo->m_func_info
 	set $minpc = $finfo->m_start_PC
 	set $maxpc = $minpc + $finfo->m_instr_mem_size
@@ -74,7 +78,7 @@ define ptx_tids2pcs
 	set $i = 0
 	while ( $i < $arg1 )
 		set $tid =  $arg0[$i]
-  		set $addr = ((ptx_thread_info*)sc[$arg2]->thread[$tid].ptx_thd_info)->m_PC
+  		set $addr = (g_the_gpu.m_sc[$arg2]->thread[$tid].ptx_thd_info)->m_PC
 		printf "%2u : tid = %3u  => pc = %d\n", $i, $tid, $addr
 		set $i = $i + 1
 	end

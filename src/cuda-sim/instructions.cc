@@ -651,16 +651,20 @@ void ptx_thread_info::set_vector_operand_values( const operand_info &dst,
                                                  const ptx_reg_t &data1, 
                                                  const ptx_reg_t &data2, 
                                                  const ptx_reg_t &data3, 
-                                                 const ptx_reg_t &data4, 
-                                                 unsigned num_elements )
+                                                 const ptx_reg_t &data4 )
 {
-   set_reg(dst.vec_symbol(0), data1);
-   set_reg(dst.vec_symbol(1), data2);
-   if (num_elements > 2) {
-      set_reg(dst.vec_symbol(2), data3);
-      if (num_elements > 3) {
-         set_reg(dst.vec_symbol(3), data4);
-      }
+   unsigned num_elements = dst.get_vect_nelem(); 
+   if (num_elements > 0) {
+       set_reg(dst.vec_symbol(0), data1);
+       if (num_elements > 1) {
+           set_reg(dst.vec_symbol(1), data2);
+           if (num_elements > 2) {
+              set_reg(dst.vec_symbol(2), data3);
+              if (num_elements > 3) {
+                 set_reg(dst.vec_symbol(3), data4);
+              }
+           }
+       }
    }
 
    m_last_set_operand_value = data1;
@@ -1084,6 +1088,8 @@ void atom_callback( void* ptx_inst, void* thd )
    // Write operation result into global memory
    // (i.e. copy src1_data to dst)
    g_global_mem->write(src1_data.u32,size/8,&op_result.s64,thread,pI);
+   gpgpu_sim *gpu = thread->get_gpu();
+   gpu->decrement_atomic_count(thread->get_hw_sid(),thread->get_hw_wid());
 }
 
 // atom_impl will now result in a callback being called in mem_ctrl_pop (gpu-sim.c)
@@ -1113,7 +1119,7 @@ void bar_sync_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 { 
    const operand_info &dst  = pI->dst();
    ptx_reg_t b = thread->get_operand_value(dst, dst, U32_TYPE, thread, 1);
-   assert( b.u32 == 0 ); // not clear what should happen if this is not zero
+   assert( b.u32 == 0 ); // support for bar.sync a{,b}; where a != 0 not yet implemented
 }
 
 void bfe_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
@@ -1194,20 +1200,80 @@ void call_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    unsigned sid = thread->get_hw_sid();
    unsigned tid = thread->get_hw_tid();
+   gpgpu_sim *gpu = thread->get_gpu();
    unsigned callee_pc=0, callee_rpc=0;
-   if( gpgpu_simd_model == POST_DOMINATOR ) {
-      get_pdom_stack_top_info(sid,tid,&callee_pc,&callee_rpc);
+   if( gpu->simd_model() == POST_DOMINATOR ) {
+      gpu->get_pdom_stack_top_info(sid,tid,&callee_pc,&callee_rpc);
       assert( callee_pc == thread->get_pc() );
    }
 
-   thread->callstack_push(callee_pc+1,callee_rpc,return_var_src,return_var_dst,call_uid_next++);
+   thread->callstack_push(callee_pc + pI->inst_size(), callee_rpc, return_var_src, return_var_dst, call_uid_next++);
 
    copy_buffer_list_into_frame(thread, arg_values);
 
    thread->set_npc(target_func);
 }
 
-void clz_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+//Ptxplus version of call instruction. Jumps to a label not a different Kernel.
+void callp_impl( const ptx_instruction *pI, ptx_thread_info *thread )
+{
+   
+   static unsigned call_uid_next = 1;
+
+   const operand_info &target  = pI->dst();
+   ptx_reg_t target_pc = thread->get_operand_value(target, target, U32_TYPE, thread, 1);
+
+   const symbol *return_var_src = NULL;
+   const symbol *return_var_dst = NULL;
+
+   unsigned sid = thread->get_hw_sid();
+   unsigned tid = thread->get_hw_tid();
+   gpgpu_sim *gpu = thread->get_gpu();
+   unsigned callee_pc=0, callee_rpc=0;
+   if( gpu->simd_model() == POST_DOMINATOR ) {
+      gpu->get_pdom_stack_top_info(sid,tid,&callee_pc,&callee_rpc);
+      assert( callee_pc == thread->get_pc() );
+   } 
+
+   thread->callstack_push_plus(callee_pc + pI->inst_size(), callee_rpc, return_var_src, return_var_dst, call_uid_next++);
+   thread->set_npc(target_pc);
+}
+
+void clz_impl( const ptx_instruction *pI, ptx_thread_info *thread )
+{
+   ptx_reg_t a, d;
+   const operand_info &dst  = pI->dst();
+   const operand_info &src1 = pI->src1();
+
+   unsigned i_type = pI->get_type();
+   a = thread->get_operand_value(src1, dst, i_type, thread, 1);
+
+   int max;
+   unsigned long long mask;
+   d.u64 = 0;
+
+   switch ( i_type ) {
+   case B32_TYPE:
+      max = 32;
+      mask = 0x80000000;
+      break;
+   case B64_TYPE:
+      max = 64;
+      mask = 0x8000000000000000;
+      break;
+   default:
+      printf("Execution error: type mismatch with instruction\n");
+      assert(0);
+      break;
+   }
+
+   while ((d.u32 < max) && ((a.u64&mask) == 0) ) {
+      d.u32++;
+      a.u64 = a.u64 << 1;
+   }
+
+   thread->set_operand_value(dst,d, B32_TYPE, thread, pI);
+}
 
 void cnot_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 
@@ -1313,7 +1379,7 @@ ptx_reg_t f2x( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
 
    ptx_reg_t y;
    if ( to_sign == 1 ) { // convert to 64-bit number first?
-      int tmp = cuda_math::__internal_float2int(x.f32, mode);
+      int tmp = cuda_math::float2int(x.f32, mode);
       if ((x.u32 & 0x7f800000) == 0)
          tmp = 0; // round denorm. FP to 0
       if (saturation_mode && to_width < 32) {
@@ -1327,7 +1393,7 @@ ptx_reg_t f2x( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
       default: assert(0); break;
       }
    } else if ( to_sign == 0 ) {
-      unsigned int tmp = cuda_math::__internal_float2uint(x.f32, mode);
+      unsigned int tmp = cuda_math::float2uint(x.f32, mode);
       if ((x.u32 & 0x7f800000) == 0)
          tmp = 0; // round denorm. FP to 0
       if (saturation_mode && to_width < 32) {
@@ -1432,10 +1498,10 @@ ptx_reg_t s2f( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
       case 16: assert(0); break;
       case 32: 
          switch (rounding_mode) {
-         case RZ_OPTION: y.f32 = cuda_math::__ll2float_rn(y.s64); break; 
+         case RZ_OPTION: y.f32 = cuda_math::__ll2float_rz(y.s64); break; 
          case RN_OPTION: y.f32 = cuda_math::__ll2float_rn(y.s64); break;
-         case RM_OPTION: y.f32 = cuda_math::__ll2float_rn(y.s64); break; 
-         case RP_OPTION: y.f32 = cuda_math::__ll2float_rn(y.s64); break;
+         case RM_OPTION: y.f32 = cuda_math::__ll2float_rd(y.s64); break; 
+         case RP_OPTION: y.f32 = cuda_math::__ll2float_ru(y.s64); break;
          default: break; 
          }
          break;
@@ -1549,9 +1615,9 @@ ptx_reg_t d2d( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
       break;          
    case RNI_OPTION: 
 #if CUDART_VERSION >= 3000
-      y.f64 = nearbyint(x.f32); 
+      y.f64 = nearbyint(x.f64); 
 #else
-      y.f64 = cuda_math::__internal_nearbyint(x.f64); 
+      y.f64 = cuda_math::__internal_nearbyintf(x.f64); 
 #endif
       break;          
    case RMI_OPTION: 
@@ -1816,7 +1882,8 @@ void cvta_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    } else {
       switch( space.get_type() ) {
       case shared_space: to_addr_hw = shared_to_generic( smid, from_addr_hw ); break;
-      case local_space:  to_addr_hw =  local_to_generic( smid, hwtid, from_addr_hw ); break;
+      case local_space:  to_addr_hw =  local_to_generic( smid, hwtid, from_addr_hw )
+                                      + thread->get_local_mem_stack_pointer(); break; // add stack ptr here so that it can be passed as a pointer at function call 
       case global_space: to_addr_hw = global_to_generic( from_addr_hw ); break;
       default: abort();
       }
@@ -2018,11 +2085,11 @@ void ld_exec( const ptx_instruction *pI, ptx_thread_info *thread )
          mem->read(addr+2*size/8,size/8,&data3.s64);
          if (vector_spec != V3_TYPE) { //v4
             mem->read(addr+3*size/8,size/8,&data4.s64);
-            thread->set_vector_operand_values(dst,data1,data2,data3,data4, 4);
+            thread->set_vector_operand_values(dst,data1,data2,data3,data4);
          } else //v3
-            thread->set_vector_operand_values(dst,data1,data2,data3,data3,3);
+            thread->set_vector_operand_values(dst,data1,data2,data3,data3);
       } else //v2
-         thread->set_vector_operand_values(dst,data1,data2,data2,data2,2);
+         thread->set_vector_operand_values(dst,data1,data2,data2,data2);
    }
    thread->m_last_effective_address = addr;
    thread->m_last_memory_space = space; 
@@ -2249,7 +2316,10 @@ void max_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->set_operand_value(dst,d, i_type, thread, pI);
 }
 
-void membar_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void membar_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
+{ 
+   // handled by timing simulator 
+}
 
 void min_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 
@@ -2332,16 +2402,16 @@ void mov_impl( const ptx_instruction *pI, ptx_thread_info *thread )
          unsigned bits_per_dst_elem = nbits_to_move / nelem;
          for( unsigned i=0; i < nelem; i++ ) {
             switch(bits_per_dst_elem) {
-            case 8:  v[i].u8  = tmp_bits.u64  & (((unsigned long long) 0xFF) << (8*i)); break;
-            case 16: v[i].u16 = tmp_bits.u64  & (((unsigned long long) 0xFFFF) << (16*i)); break;
-            case 32: v[i].u32 = tmp_bits.u64  & (((unsigned long long) 0xFFFFFFFF) << (32*i)); break;
+            case 8:  v[i].u8  = (tmp_bits.u64 >> (8*i)) & ((unsigned long long) 0xFF); break;
+            case 16: v[i].u16 = (tmp_bits.u64 >> (16*i)) & ((unsigned long long) 0xFFFF); break;
+            case 32: v[i].u32 = (tmp_bits.u64 >> (32*i)) & ((unsigned long long) 0xFFFFFFFF); break;
             default:
                printf("Execution error: mov pack/unpack with unsupported source/dst size ratio (dst)\n");
                assert(0);
                break;
             }
          }
-         thread->set_vector_operand_values(dst,v[0],v[1],v[2],v[3],nelem);
+         thread->set_vector_operand_values(dst,v[0],v[1],v[2],v[3]);
       } else {
          thread->set_operand_value(dst,tmp_bits, i_type, thread, pI);
       }
@@ -2698,6 +2768,19 @@ void rem_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 void ret_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 
    bool empty = thread->callstack_pop();
+   if( empty ) {
+      core_t *sc = thread->get_core();
+      unsigned warp_id = thread->get_hw_wid();
+      sc->warp_exit(warp_id);
+      thread->m_cta_info->register_thread_exit(thread);
+      thread->set_done();
+   }
+}
+
+//Ptxplus version of ret instruction.
+void retp_impl( const ptx_instruction *pI, ptx_thread_info *thread )
+{
+   bool empty = thread->callstack_pop_plus();
    if( empty ) {
       core_t *sc = thread->get_core();
       unsigned warp_id = thread->get_hw_wid();
@@ -3689,7 +3772,7 @@ void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       assert(0);
    }
    thread->m_last_memory_space = tex_space; 
-   thread->set_vector_operand_values(dst,data1,data2,data3,data4,4);
+   thread->set_vector_operand_values(dst,data1,data2,data3,data4);
 }
 
 void txq_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
@@ -3790,10 +3873,6 @@ void inst_not_implemented( const ptx_instruction * pI )
           pI->source_line(), 
           pI->get_opcode_cstr() );
    abort();
-}
-
-void print_instruction(const ptx_instruction *instruction)
-{
 }
 
 ptx_reg_t srcOperandModifiers(ptx_reg_t opData, operand_info opInfo, operand_info dstInfo, unsigned type, ptx_thread_info *thread)

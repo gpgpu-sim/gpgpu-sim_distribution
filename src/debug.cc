@@ -37,7 +37,9 @@ void hit_watchpoint( unsigned watchpoint_num, ptx_thread_info *thd, const ptx_in
 
 /// interactive debugger 
 
-void gpgpu_debug()
+extern gpgpu_sim g_the_gpu;
+
+void gpgpu_sim::gpgpu_debug()
 {
    bool done=true;
 
@@ -81,14 +83,16 @@ void gpgpu_debug()
             done = false; 
          }
       } else {
-         for( unsigned sid=0; sid < gpu_n_shader; sid++ ) { 
-            inst_t *fvi = first_valid_thread(sc[sid]->pipeline_reg[IF_ID]);
+         for( unsigned sid=0; sid < m_n_shader; sid++ ) { 
+            inst_t *fvi = m_sc[sid]->first_valid_thread(IF_ID);
             if( !fvi ) continue;
-            if( thread_at_brkpt(fvi->ptx_thd_info, b) ) {
+            unsigned hw_thread_id = fvi->hw_thread_id;
+            ptx_thread_info *thread = m_sc[sid]->get_functional_thread(hw_thread_id);
+            if( thread_at_brkpt(thread, b) ) {
                done = false;
                printf("GPGPU-Sim PTX DBG: reached breakpoint %u at %s (sm=%u, hwtid=%u)\n", 
                       num, b.location().c_str(), sid, fvi->hw_thread_id );
-               brk_thd = (ptx_thread_info*)fvi->ptx_thd_info;
+               brk_thd = thread;
                brk_inst = brk_thd->get_inst();
                printf( "GPGPU-Sim PTX DBG: reached by thread uid=%u, sid=%u, hwtid=%u\n",
                        brk_thd->get_uid(),brk_thd->get_hw_sid(), brk_thd->get_hw_tid() );
@@ -117,7 +121,7 @@ void gpgpu_debug()
          int shader_num = 0;
          tok = strtok(NULL," \t\n");
          sscanf(tok,"%d",&shader_num);
-         dump_pipeline_impl((0x40|0x4|0x1),shader_num,0);
+         dump_pipeline((0x40|0x4|0x1),shader_num,0);
          printf("\n");
          fflush(stdout);
       } else if( !strcmp(tok,"q") || !strcmp(tok,"quit") ) {
@@ -190,9 +194,8 @@ void gpgpu_debug()
    }
 }
 
-bool thread_at_brkpt( void *thd, const struct brk_pt &b )
+bool thread_at_brkpt( ptx_thread_info *thread, const struct brk_pt &b )
 {
-   ptx_thread_info *thread = (ptx_thread_info *) thd;
    return b.is_equal(thread->get_location(),thread->get_uid());
 }
 

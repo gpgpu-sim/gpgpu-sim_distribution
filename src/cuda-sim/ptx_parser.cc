@@ -68,6 +68,12 @@
 extern "C" int ptx_error( const char *s );
 extern int ptx_lineno;
 
+static unsigned g_warp_size;
+void set_ptx_warp_size(unsigned warp_size)
+{
+   g_warp_size=warp_size;
+}
+
 static bool g_debug_ir_generation=false;
 const char *g_filename;
 unsigned g_max_regs_per_thread = 0;
@@ -110,12 +116,10 @@ std::list<int> g_scalar_type;
       fflush(stdout); \
    }
 
-unsigned g_entry_func_param_index=0;
-function_info *g_func_info = NULL;
-function_info *g_entrypoint_func_info = NULL;
-symbol_table *g_entrypoint_symbol_table = NULL;
-std::map<unsigned,std::string> g_ptx_token_decode;
-operand_info g_return_var;
+static unsigned g_entry_func_param_index=0;
+static function_info *g_func_info = NULL;
+static std::map<unsigned,std::string> g_ptx_token_decode;
+static operand_info g_return_var;
 
 const char *decode_token( int type )
 {
@@ -194,9 +198,6 @@ void add_function_name( const char *name )
 {
    DPRINTF("add_function_name %s %s", name,  ((g_entry_point==1)?"(entrypoint)":((g_entry_point==2)?"(extern)":"")));
    bool prior_decl = g_global_symbol_table->add_function_decl( name, g_entry_point, &g_func_info, &g_current_symbol_table );
-   if( g_entry_point ) {
-      g_entrypoint_func_info = g_func_info;
-   }
    if( g_add_identifier_cached__identifier ) {
       add_identifier( g_add_identifier_cached__identifier,
                       g_add_identifier_cached__array_dim,
@@ -270,7 +271,7 @@ extern "C" char linebuf[1024];
 
 void set_return()
 {
-   parse_assert( (g_opcode == CALL_OP), "only call can have return value");
+   parse_assert( (g_opcode == CALL_OP || g_opcode == CALLP_OP), "only call can have return value");
    g_operands.front().set_return();
    g_return_var = g_operands.front();
 }
@@ -291,6 +292,7 @@ const ptx_instruction *ptx_instruction_lookup( const char *filename, unsigned li
 void add_instruction() 
 {
    DPRINTF("add_instruction: %s", ((g_opcode>0)?g_opcode_string[g_opcode]:"<label>") );
+   assert( g_warp_size != 0 );
    ptx_instruction *i = new ptx_instruction( g_opcode, 
                                              g_pred, 
                                              g_neg_pred,
@@ -303,7 +305,8 @@ void add_instruction()
                                              g_space_spec,
                                              g_filename,
                                              ptx_lineno,
-                                             linebuf );
+                                             linebuf,
+                                             g_warp_size );
    g_instructions.push_back(i);
    g_inst_lookup[g_filename][ptx_lineno] = i;
    init_instruction_state();
@@ -457,7 +460,14 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       break;
    case local_space:
       if( g_func_info == NULL ) {
-         printf("GPGPU-Sim PTX: not allocating .local \"%s\" declared at global scope\n", identifier);
+	      printf("GPGPU-Sim PTX: allocating local region for \"%s\" from 0x%x to 0x%lx (local memory space)\n",
+             identifier,
+             g_current_symbol_table->get_local_next(),
+             g_current_symbol_table->get_local_next() + num_bits/8 );
+         fflush(stdout);
+         assert( (num_bits%8) == 0  );
+         g_last_symbol->set_address( g_current_symbol_table->get_local_next() );
+         g_current_symbol_table->alloc_local( num_bits/8 );
          break;
       }
       printf("GPGPU-Sim PTX: allocating stack frame region for .local \"%s\" from 0x%x to 0x%lx\n",
@@ -647,6 +657,10 @@ void add_4vector_operand( const char *d1, const char *d2, const char *d3, const 
    const symbol *s3 = g_current_symbol_table->lookup(d3);
    const symbol *s4 = g_current_symbol_table->lookup(d4);
    parse_assert( s1 != NULL && s2 != NULL && s3 != NULL && s4 != NULL, "v4 component(s) missing declarations.");
+   const symbol *null_op = g_current_symbol_table->lookup("_");
+   if ( s2 == null_op ) s2 = NULL;
+   if ( s3 == null_op ) s3 = NULL;
+   if ( s4 == null_op ) s4 = NULL;
    g_operands.push_back( operand_info(s1,s2,s3,s4) );
 }
 
@@ -789,7 +803,7 @@ void add_scalar_operand( const char *identifier )
    DPRINTF("add_scalar_operand");
    const symbol *s = g_current_symbol_table->lookup(identifier);
    if ( s == NULL ) {
-      if ( g_opcode == BRA_OP ) {
+      if ( g_opcode == BRA_OP || g_opcode == CALLP_OP) {
          // forward branch target...
          s = g_current_symbol_table->add_variable(identifier,NULL,0,g_filename,ptx_lineno);
       } else {
@@ -828,9 +842,9 @@ void add_array_initializer()
    g_last_symbol->add_initializer(g_operands);
 }
 
-void add_version_info( float ver )
+void add_version_info( float ver, unsigned ext )
 {
-   g_global_symbol_table->set_ptx_version(ver,0);
+   g_global_symbol_table->set_ptx_version(ver,ext);
 }
 
 void add_file( unsigned num, const char *filename )
@@ -878,8 +892,21 @@ void add_pragma( const char *str )
 }
 
 void version_header(double a) {}  //intentional dummy function
-void target_header(char* a) {}  //intentional dummy function
-void target_header2(char* a, char* b) {}  //intentional dummy function
+
+void target_header(char* a) 
+{
+   g_global_symbol_table->set_sm_target(a,NULL,NULL);
+}
+
+void target_header2(char* a, char* b) 
+{
+   g_global_symbol_table->set_sm_target(a,b,NULL);
+}
+
+void target_header3(char* a, char* b, char* c) 
+{
+   g_global_symbol_table->set_sm_target(a,b,c);
+}
 
 void func_header(char* a) {} //intentional dummy function
 void func_header_info(char* a) {} //intentional dummy function

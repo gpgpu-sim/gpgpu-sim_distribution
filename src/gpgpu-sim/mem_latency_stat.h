@@ -68,49 +68,79 @@
 #ifndef MEM_LATENCY_STAT_H
 #define MEM_LATENCY_STAT_H
 
-extern bool gpgpu_memlatency_stat;
+#include <stdio.h>
 
-extern unsigned max_mrq_latency;
-extern unsigned max_dq_latency;
-extern unsigned max_mf_latency;
-extern unsigned max_icnt2mem_latency;
-extern unsigned max_icnt2sh_latency;
-extern unsigned mrq_lat_table[32];
-extern unsigned dq_lat_table[32];
-extern unsigned mf_lat_table[32];
-extern unsigned icnt2mem_lat_table[24];
-extern unsigned icnt2sh_lat_table[24];
-extern unsigned mf_lat_pw_table[32]; //table storing values of mf latency Per Window
-extern unsigned mf_num_lat_pw;
-extern unsigned mf_tot_lat_pw; //total latency summed up per window. divide by mf_num_lat_pw to obtain average latency Per Window
-extern unsigned long long int mf_total_lat;
-extern unsigned long long int ** mf_total_lat_table; //mf latency sums[dram chip id][bank id]
-extern unsigned ** mf_max_lat_table; //mf latency sums[dram chip id][bank id]
-extern unsigned num_mfs;
-extern unsigned int ***bankwrites; //bankwrites[shader id][dram chip id][bank id]
-extern unsigned int ***bankreads; //bankreads[shader id][dram chip id][bank id]
-extern unsigned int **totalbankwrites; //bankwrites[dram chip id][bank id]
-extern unsigned int **totalbankreads; //bankreads[dram chip id][bank id]
-extern unsigned int **totalbankaccesses; //bankaccesses[dram chip id][bank id]
-extern unsigned int *requests_by_warp;
-extern unsigned int *num_MCBs_accessed; //tracks how many memory controllers are accessed whenever any thread in a warp misses in cache
-extern unsigned int *position_of_mrq_chosen; //position of mrq in m_queue chosen 
-extern unsigned *mf_num_lat_pw_perwarp;
-extern unsigned *mf_tot_lat_pw_perwarp; //total latency summed up per window per warp. divide by mf_num_lat_pw_perwarp to obtain average latency Per Window
-extern unsigned long long int *mf_total_lat_perwarp;
-extern unsigned *num_mfs_perwarp;
-extern unsigned *acc_mrq_length;
+class memory_stats_t {
+public:
+   memory_stats_t( unsigned n_mem, 
+                   unsigned n_shader, 
+                   struct shader_core_config *shader_config, 
+                   struct memory_config *mem_config );
 
-extern unsigned ***mem_access_type_stats; // dram access type classification
+   void memlatstat_start( class mem_fetch *mf);
+   unsigned memlatstat_done( class mem_fetch *mf, unsigned n_warp_per_shader );
+   void memlatstat_icnt2sh_push( class mem_fetch *mf);
+   void memlatstat_read_done( class mem_fetch *mf, unsigned n_warp_per_shader);
+   void memlatstat_dram_access( class mem_fetch *mf );
+   void memlatstat_icnt2mem_pop( class mem_fetch *mf);
+   void memlatstat_lat_pw( unsigned n_shader, unsigned n_thread_per_shader, unsigned warp_size );
+   void memlatstat_print(unsigned n_mem, unsigned gpu_mem_n_bk);
 
-void memlatstat_init();
-void memlatstat_start(struct mem_fetch *mf);
-unsigned memlatstat_done(struct mem_fetch *mf);
-void memlatstat_icnt2sh_push(struct mem_fetch *mf);
-void memlatstat_read_done(struct mem_fetch *mf);
-void memlatstat_dram_access(struct mem_fetch *mf, unsigned dram_id, unsigned bank);
-void memlatstat_icnt2mem_pop(struct mem_fetch *mf);
-void memlatstat_lat_pw();
-void memlatstat_print();
+   void L2c_print_stat(unsigned n_mem);
+
+   void print( FILE *fp );
+
+   unsigned m_n_mem;
+   unsigned m_n_shader;
+
+   const struct shader_core_config *m_shader_config;
+   const struct memory_config *m_memory_config;
+
+   unsigned max_mrq_latency;
+   unsigned max_dq_latency;
+   unsigned max_mf_latency;
+   unsigned max_icnt2mem_latency;
+   unsigned max_icnt2sh_latency;
+   unsigned mrq_lat_table[32];
+   unsigned dq_lat_table[32];
+   unsigned mf_lat_table[32];
+   unsigned icnt2mem_lat_table[24];
+   unsigned icnt2sh_lat_table[24];
+   unsigned mf_lat_pw_table[32]; //table storing values of mf latency Per Window
+   unsigned mf_num_lat_pw;
+   unsigned max_warps;
+   unsigned mf_tot_lat_pw; //total latency summed up per window. divide by mf_num_lat_pw to obtain average latency Per Window
+   unsigned long long int mf_total_lat;
+   unsigned long long int ** mf_total_lat_table; //mf latency sums[dram chip id][bank id]
+   unsigned ** mf_max_lat_table; //mf latency sums[dram chip id][bank id]
+   unsigned num_mfs;
+   unsigned int ***bankwrites; //bankwrites[shader id][dram chip id][bank id]
+   unsigned int ***bankreads; //bankreads[shader id][dram chip id][bank id]
+   unsigned int **totalbankwrites; //bankwrites[dram chip id][bank id]
+   unsigned int **totalbankreads; //bankreads[dram chip id][bank id]
+   unsigned int **totalbankaccesses; //bankaccesses[dram chip id][bank id]
+   unsigned int *num_MCBs_accessed; //tracks how many memory controllers are accessed whenever any thread in a warp misses in cache
+   unsigned int *position_of_mrq_chosen; //position of mrq in m_queue chosen 
+   unsigned *mf_num_lat_pw_perwarp;
+   unsigned *mf_tot_lat_pw_perwarp; //total latency summed up per window per warp. divide by mf_num_lat_pw_perwarp to obtain average latency Per Window
+   unsigned long long int *mf_total_lat_perwarp;
+   unsigned *num_mfs_perwarp;
+   unsigned *acc_mrq_length;
+   
+   unsigned ***mem_access_type_stats; // dram access type classification
+
+
+   // stats
+   unsigned L2_write_miss;
+   unsigned L2_write_hit;
+   unsigned L2_read_hit;
+   unsigned L2_read_miss;
+   unsigned int *L2_cbtoL2length;
+   unsigned int *L2_cbtoL2writelength;
+   unsigned int *L2_L2tocblength;
+   unsigned int *L2_dramtoL2length;
+   unsigned int *L2_dramtoL2writelength;
+   unsigned int *L2_L2todramlength;
+};
 
 #endif /*MEM_LATENCY_STAT_H*/

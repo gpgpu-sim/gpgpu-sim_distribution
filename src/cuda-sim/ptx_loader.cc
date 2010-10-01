@@ -67,6 +67,7 @@
 #include "cuda-sim.h"
 #include "ptx_parser.h"
 #include <dirent.h>
+#include <fstream>
 
 /// globals
 
@@ -78,6 +79,7 @@ bool g_override_embedded_ptx = false;
 
 struct ptx_info_t {
     char *str;
+    char *cubin_str;
     char *fname;
     ptx_info_t *next;
 };
@@ -92,6 +94,9 @@ extern "C" const char *g_ptxinfo_filename = NULL;
 extern "C" int ptxinfo_parse();
 extern "C" int ptxinfo_debug;
 extern "C" FILE *ptxinfo_in;
+
+extern int g_ptx_convert_to_ptxplus;
+extern int g_ptx_save_converted_ptxplus;
 
 /// static functions
 
@@ -223,11 +228,23 @@ void gpgpu_ptx_sim_load_gpu_kernels()
             printf("GPGPU-Sim PTX: USING EMBEDDED .ptx files...\n"); 
             ptx_info_t *s;
             for ( s=g_ptx_source_array; s!=NULL; s=s->next ) {
-                 symbol_table *symtab=gpgpu_ptx_sim_load_ptx_from_string(s->str, ++source_num);
+            	 symbol_table *symtab;
+            	 source_num++;
+            	 if(g_ptx_convert_to_ptxplus) {
+            		 char *ptxplus_str = gpgpu_ptx_sim_convert_ptx_to_ptxplus(s->str, s->cubin_str, source_num);
+                     symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str, s->str, source_num);
+                     delete[] ptxplus_str;
+            	 } else {
+                     symtab=gpgpu_ptx_sim_load_ptx_from_string(s->str, s->str, source_num);
+            	 }
                  load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF);
                  load_constants(symtab,STATIC_ALLOC_LIMIT);
             }
         } else {
+        	if(g_ptx_convert_to_ptxplus) {
+        		perror("GPGPU-Sim PTX: convert_to_ptxplus option enabled. Cannot use this option with external ptx files.\n");
+        		assert(0);
+        	}
             const char *filename = NULL;
             struct dirent **namelist;
             int n = scandir(".", &namelist, ptx_file_filter, alphasort);
@@ -235,20 +252,17 @@ void gpgpu_ptx_sim_load_gpu_kernels()
                 perror("GPGPU-Sim PTX: no PTX files returned by scandir");
             else {
                 while (n--) {
-                    if ( filename != NULL ) {
-                        printf("Loader error: support for multiple .ptx files not yet enabled\n");
-                        abort();
-                    }
                     filename = namelist[n]->d_name;
                     printf("Parsing %s..\n", filename);
                     ptx_in = fopen( filename, "r" );
-                    free(namelist[n]);
                     symbol_table *symtab=init_parser(filename);
                     ptx_parse ();
                     ptxinfo_in = open_ptxinfo(filename);
                     ptxinfo_parse();
                     load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF);
                     load_constants(symtab,STATIC_ALLOC_LIMIT);
+
+                    free(namelist[n]);
                 }
                 free(namelist);
             }
@@ -278,11 +292,17 @@ void gpgpu_ptx_sim_load_gpu_kernels()
    }
 }
 
-void gpgpu_ptx_sim_add_ptxstring( const char *ptx_string, const char *sourcefname )
+void gpgpu_ptx_sim_add_ptxstring( const char *ptx_string, const char *cubin_string, const char *sourcefname )
 {
     ptx_info_t *t = new ptx_info_t;
     t->next = NULL;
     t->str = strdup(ptx_string);
+    if (cubin_string != NULL) {
+       t->cubin_str = strdup(cubin_string);
+    } else {
+       assert(g_ptx_convert_to_ptxplus == 0); 
+       t->cubin_str = NULL; 
+    }
     t->fname = strdup(sourcefname);
 
     // put ptx source into a fifo
@@ -338,7 +358,106 @@ void print_ptx_file( const char *p, unsigned source_num, const char *filename )
    fflush(stdout);
 }
 
-symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num ) 
+char* gpgpu_ptx_sim_convert_ptx_to_ptxplus(const char *ptx_str, const char *cubin_str, unsigned source_num)
+{
+	printf("GPGPU-Sim PTX: converting EMBEDDED .ptx file to ptxplus \n");
+
+	// Extract ptx to a file
+    char fname_ptx[1024];
+    snprintf(fname_ptx,1024,"_ptx_XXXXXX");
+    int fd=mkstemp(fname_ptx);
+    close(fd);
+
+    printf("GPGPU-Sim PTX: extracting embedded .ptx to temporary file \"%s\"\n", fname_ptx);
+    FILE *ptxfile = fopen(fname_ptx,"w");
+    fprintf(ptxfile,"%s",ptx_str);
+    fclose(ptxfile);
+
+    // Extract cubin to a file
+    char fname_cubin[1024];
+    snprintf(fname_cubin,1024,"_cubin_XXXXXX");
+    int fd2=mkstemp(fname_cubin);
+    close(fd2);
+
+    printf("GPGPU-Sim PTX: extracting embedded cubin to temporary file \"%s\"\n", fname_cubin);
+    FILE *cubinfile = fopen(fname_cubin,"w");
+    fprintf(cubinfile,"%s",cubin_str);
+    fclose(cubinfile);
+
+    // Run decuda
+    char fname_decuda[1024];
+    snprintf(fname_decuda,1024,"_decuda_XXXXXX");
+    int fd3=mkstemp(fname_decuda);
+    close(fd3);
+
+    char decuda_commandline[1024];
+    snprintf(decuda_commandline,1024,"$DECUDA_INSTALL_PATH/decuda.py -o %s %s", fname_decuda, fname_cubin);
+
+    printf("GPGPU-Sim PTX: calling decuda on cubin file, decuda output file = \"%s\"\n", fname_decuda);
+    int decuda_result = system(decuda_commandline);
+	if( decuda_result != 0 ) {
+	   printf("GPGPU-Sim PTX: ERROR ** while calling decuda (b) %d\n", decuda_result);
+	   printf("               Ensure env variable DECUDA_INSTALL_PATH is set and points to decuda base directory.\n");
+	   exit(1);
+	}
+
+	// Run decuda_to_ptxplus
+    char fname_ptxplus[1024];
+    snprintf(fname_ptxplus,1024,"_ptxplus_XXXXXX");
+    int fd4=mkstemp(fname_ptxplus);
+    close(fd4);
+
+    char d2pp_commandline[1024];
+    snprintf(d2pp_commandline,1024,"$D2PP_INSTALL_PATH/decuda_to_ptxplus %s %s %s %s > /dev/null", fname_decuda, fname_ptx, fname_cubin, fname_ptxplus);
+
+    printf("GPGPU-Sim PTX: calling decuda_to_ptxplus, ptxplus output file = \"%s\"\n", fname_ptxplus);
+    int d2pp_result = system(d2pp_commandline);
+	if( d2pp_result != 0 ) {
+	   printf("GPGPU-Sim PTX: ERROR ** while calling decuda_to_ptxplus %d\n", d2pp_result);
+	   printf("               Ensure env variable D2PP_INSTALL_PATH is set and points to decuda_to_ptxplus base directory.\n");
+	   exit(1);
+	}
+
+	// Get ptxplus from file
+	std::ifstream fileStream(fname_ptxplus, std::ios::in);
+	std::string text, line;
+	while(getline(fileStream,line)) {
+		text += (line + "\n");
+	}
+	fileStream.close();
+
+	char* ptxplus_str = new char [strlen(text.c_str())+1];
+	strcpy(ptxplus_str, text.c_str());
+
+	// Save ptxplus to file if specified
+	if(g_ptx_save_converted_ptxplus) {
+	    char fname_ptxplus_save[1024];
+	    snprintf(fname_ptxplus_save,1024,"_%u.ptxplus", source_num );
+		printf("GPGPU-Sim PTX: saving converted ptxplus to file \"%s\"\n", fname_ptxplus_save);
+
+	    FILE *file_ptxplus_save = fopen(fname_ptxplus_save,"w");
+	    fprintf(file_ptxplus_save,"%s",ptxplus_str);
+	    fclose(file_ptxplus_save);
+	}
+
+	// Remove temporary files
+	char rm_commandline[1024];
+	snprintf(rm_commandline,1024,"rm -f %s %s %s %s", fname_ptx, fname_cubin, fname_decuda, fname_ptxplus);
+	printf("GPGPU-Sim PTX: removing temporary files using \"%s\"\n", rm_commandline);
+	int rm_result = system(rm_commandline);
+	if( rm_result != 0 ) {
+	   printf("GPGPU-Sim PTX: ERROR ** while removing temporary files %d\n", rm_result);
+	   exit(1);
+	}
+
+	printf("GPGPU-Sim PTX: DONE converting EMBEDDED .ptx file to ptxplus \n");
+
+	return ptxplus_str;
+
+}
+
+
+symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, const char *p_for_info,  unsigned source_num )
 {
     char buf[1024];
     snprintf(buf,1024,"_%u.ptx", source_num );
@@ -375,7 +494,7 @@ symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source
 
     printf("GPGPU-Sim PTX: extracting embedded .ptx to temporary file \"%s\"\n", fname);
     FILE *ptxfile = fopen(fname,"w");
-    fprintf(ptxfile,"%s",p);
+    fprintf(ptxfile,"%s", p_for_info);
     fclose(ptxfile);
 
     char fname2[1024];

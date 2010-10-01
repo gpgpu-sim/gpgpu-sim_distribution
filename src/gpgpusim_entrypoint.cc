@@ -72,23 +72,47 @@
 #include "gpgpu-sim/gpu-sim.h"
 #include "gpgpu-sim/icnt_wrapper.h"
 
+#include <pthread.h>
+#include <semaphore.h>
+
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
-struct gpgpu_ptx_sim_arg *grid_params;
-static int sg_grid_num=0;
 static int sg_argc = 3;
 static const char *sg_argv[] = {"", "-config","gpgpusim.config"};
 
-time_t g_simulation_starttime;
+struct gpgpu_ptx_sim_arg *grid_params;
 
-void gpgpu_ptx_sim_init_perf()
+sem_t g_sim_signal_start;
+sem_t g_sim_signal_finish;
+time_t g_simulation_starttime;
+pthread_t g_simulation_thread;
+
+gpgpu_sim g_the_gpu;
+
+static void print_simulation_time();
+
+void *gpgpu_sim_thread(void*)
+{
+   do {
+      sem_wait(&g_sim_signal_start);
+      unsigned grid;
+      class function_info *entry;
+      g_the_gpu.next_grid(grid,entry);
+      g_the_gpu.run_gpu_sim();
+      print_simulation_time();
+      sem_post(&g_sim_signal_finish);
+   } while(1);
+   return NULL;
+}
+
+gpgpu_sim *gpgpu_ptx_sim_init_perf()
 {
    print_splash();
    read_sim_environment_variables();
    read_parser_environment_variables();
    option_parser_t opp = option_parser_create();
    icnt_reg_options(opp);
-   gpu_reg_options(opp); // register GPU microrachitecture options
+   g_the_gpu.reg_options(opp); // register GPU microrachitecture options
    ptx_reg_options(opp);
    option_parser_cmdline(opp, sg_argc, sg_argv); // parse configuration options
 
@@ -101,14 +125,19 @@ void gpgpu_ptx_sim_init_perf()
 
    fprintf(stdout, "GPGPU-Sim: Configuration options:\n\n");
    option_parser_print(opp, stdout);
-   init_gpu();
-   fprintf(stdout, "GPU performance model initialization complete.\n");
+
+   g_the_gpu.init_gpu();
 
    g_simulation_starttime = time((time_t *)NULL);
+
+   sem_init(&g_sim_signal_start,0,0);
+   sem_init(&g_sim_signal_finish,0,0);
+   pthread_create(&g_simulation_thread,NULL,gpgpu_sim_thread,NULL);
+
+   return &g_the_gpu;
 }
 
-
-static void print_simulation_time()
+void print_simulation_time()
 {
    time_t current_time, difference, d, h, m, s;
    current_time = time((time_t *)NULL);
@@ -130,29 +159,31 @@ static void print_simulation_time()
 int gpgpu_cuda_ptx_sim_main_perf( const char *kernel_key, 
                                   struct dim3 gridDim, 
                                   struct dim3 blockDim, 
-                                  struct gpgpu_ptx_sim_arg *grid_params )
+                                  gpgpu_ptx_sim_arg_list_t grid_params )
 {
-   gpgpu_cuda_ptx_sim_init_grid(kernel_key,grid_params,gridDim,blockDim);
-   run_gpu_sim(sg_grid_num++);
-   print_simulation_time();
+   kernel_info_t grid = gpgpu_cuda_ptx_sim_init_grid(kernel_key,grid_params,gridDim,blockDim);
+   g_the_gpu.launch(grid);
+   sem_post(&g_sim_signal_start);
+   sem_wait(&g_sim_signal_finish);
    return 0;
 }
 
 int gpgpu_opencl_ptx_sim_main_perf( class function_info *entry, 
                                   struct dim3 gridDim, 
                                   struct dim3 blockDim, 
-                                  struct gpgpu_ptx_sim_arg *grid_params )
+                                  gpgpu_ptx_sim_arg_list_t grid_params )
 {
-   gpgpu_opencl_ptx_sim_init_grid(entry,grid_params,gridDim,blockDim);
-   run_gpu_sim(sg_grid_num++);
-   print_simulation_time();
+   kernel_info_t grid = gpgpu_opencl_ptx_sim_init_grid(entry,grid_params,gridDim,blockDim);
+   g_the_gpu.launch(grid);
+   sem_post(&g_sim_signal_start);
+   sem_wait(&g_sim_signal_finish);
    return 0;
 }
 
 int gpgpu_opencl_ptx_sim_main_func( class function_info *entry, 
                                   struct dim3 gridDim, 
                                   struct dim3 blockDim, 
-                                  struct gpgpu_ptx_sim_arg *grid_params )
+                                  gpgpu_ptx_sim_arg_list_t grid_params )
 {
    printf("GPGPU-Sim PTX API: OpenCL functional-only simulation not yet implemented (use performance simulation)\n");
    exit(1);

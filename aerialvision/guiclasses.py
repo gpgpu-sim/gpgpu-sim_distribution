@@ -63,6 +63,7 @@
 
 import time
 import os
+import array
 import Tkinter as Tk
 import matplotlib
 matplotlib.use('TkAgg')
@@ -70,6 +71,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from matplotlib.figure import Figure
 from matplotlib import mpl
 from matplotlib.colors import colorConverter
+from matplotlib import pyplot
 import Pmw
 import numpy
 import startup
@@ -84,14 +86,14 @@ from configs import avconfig
 class formEntry:
   
   #This class is essentially a form placed inside a tab. It collects all the data from the user required for graphing. It then instantiates a new object that takes care of all the graphing
-
+  graphForVarType = { 1:[0,3], 2:[0,3], 3:[4], 4:[0,3,5], 5:[6] }
   
   def __init__(self, graphTabs, numb, vars, res, entry):
     
     #Variable Initializations
     self.data = vars
     self.subBool = 0
-    self.possGraphs = ['Line', 'Histogram', 'Bar Chart', 'Parallel Intensity Plot', 'Stacked Bar Chart', 'Parallel Intensity Plot (Sum)']
+    self.possGraphs = ['Line', 'Histogram', 'Bar Chart', 'Parallel Intensity Plot', 'Stacked Bar Chart', 'Parallel Intensity Plot (Sum)', 'Scatter Plot']
     self.res = res
     self.subplots = []
     self.dataChosenX = "globalCycle"
@@ -290,15 +292,18 @@ class formEntry:
     
     
     if ((self.dataChosenX != "") and (self.dataChosenY != "")):
-      if self.data[self.fileChosen][self.dataChosenY].type == 1 or self.data[self.fileChosen][self.dataChosenY].type == 2:
-          self.cTypeGraph.insert(Tk.END, self.possGraphs[0])
-          self.cTypeGraph.insert(Tk.END, self.possGraphs[3])
-      elif self.data[self.fileChosen][self.dataChosenY].type == 4:
-          self.cTypeGraph.insert(Tk.END, self.possGraphs[0])
-          self.cTypeGraph.insert(Tk.END, self.possGraphs[3])
-          self.cTypeGraph.insert(Tk.END, self.possGraphs[5])
-      else:
-          self.cTypeGraph.insert(Tk.END, self.possGraphs[4])
+      varType = self.data[self.fileChosen][self.dataChosenY].type
+      for g in formEntry.graphForVarType[varType]:
+          self.cTypeGraph.insert(Tk.END, self.possGraphs[g])
+      #if self.data[self.fileChosen][self.dataChosenY].type == 1 or self.data[self.fileChosen][self.dataChosenY].type == 2:
+      #    self.cTypeGraph.insert(Tk.END, self.possGraphs[0])
+      #    self.cTypeGraph.insert(Tk.END, self.possGraphs[3])
+      #elif self.data[self.fileChosen][self.dataChosenY].type == 4:
+      #    self.cTypeGraph.insert(Tk.END, self.possGraphs[0])
+      #    self.cTypeGraph.insert(Tk.END, self.possGraphs[3])
+      #    self.cTypeGraph.insert(Tk.END, self.possGraphs[5])
+      #else:
+      #    self.cTypeGraph.insert(Tk.END, self.possGraphs[4])
           
           
     self.updateChosen()
@@ -567,7 +572,7 @@ class subplotInstance(formEntry):
     self.graphChosen = ''
     self.data = data
     self.var0 = Tk.IntVar()
-    self.possGraphs = ['Line', 'Histogram', 'Bar Chart', 'Parallel Intensity Plot', 'Stacked Bar Chart', 'Parallel Intensity Plot (Sum)']
+    self.possGraphs = ['Line', 'Histogram', 'Bar Chart', 'Parallel Intensity Plot', 'Stacked Bar Chart', 'Parallel Intensity Plot (Sum)', 'Scatter Plot']
     self.dydx = 0
     self.ChosenVarsTextbox = plotInstance.ChosenVarsTextbox
     self.num = subNum
@@ -721,13 +726,14 @@ class graphManager:
         self.dataChosen = dataChosen
         self.data = data
         self.disconnect = 0
-        self.possGraphs = ['Line', 'Histogram', 'Bar Chart', 'Parallel Intensity Plot', 'Stacked Bar Chart', 'Parallel Intensity Plot (Sum)']
+        self.possGraphs = ['Line', 'Histogram', 'Bar Chart', 'Parallel Intensity Plot', 'Stacked Bar Chart', 'Parallel Intensity Plot (Sum)', 'Scatter Plot']
         self.xlim = 0
         self.xAxisStepsWilStack = {}
         self.cbarAxes = {}
         self.plotRef = {}
         self.plotFormatInfo = {}
-        
+        self.displayData = {}
+
         if self.res == "small":
             self.underneathGraph = Tk.Frame(master, borderwidth = 5, relief = Tk.GROOVE, height = 100, width = 1225);
         elif self.res == 'medium':
@@ -834,15 +840,18 @@ class graphManager:
             self.dataPointer = self.dataChosen[1][self.currPlot - 1]
 
         file.close()
-    
-    def format_coordWilson(self,x, y):
+   
+   
+    def format_coordWilson(self, x, y):
         col = int(x)*(self.simplerName[self.dataPointer.dataChosenX].data[1])
         row = int(y+0.5)
+
         numrows = len(self.simplerName[self.dataPointer.dataChosenY].data)
         try:
           numcols = len(self.simplerName[self.dataPointer.dataChosenY].data[0])
         except:
           numcols = 1
+
         if x>=0 and x<numcols and y>=0 and y<numrows:
             #z = self.simplerName[self.dataPointer.dataChosenY].data[int(y)][int(x)]
             #return 'x=%d, y=%d, z=%1.3f'%(col, row, z)
@@ -850,10 +859,7 @@ class graphManager:
         else:
             return 'x=%d, y=%d'%(col, row)
 
-    
-      
-    
-      
+
     def plotData(self):
         
         #Variable initializations
@@ -867,7 +873,7 @@ class graphManager:
         self.colorbars = {}
         
         for self.currPlot in range(1,numPlots + 1):
-          self.xAxisStepsWilStack.append(20)
+          self.xAxisStepsWilStack.append(8)
           self.yAxisStepsWilStack.append('null')
           self.findKernalLocs()
           tmp = self.updateVarKernal(self.simplerName[self.dataPointer.dataChosenX].data)
@@ -898,14 +904,19 @@ class graphManager:
           self.plotFormatInfo[self.currPlot].graphType = self.dataPointer.graphChosen
           if self.dataPointer.graphChosen == 'Parallel Intensity Plot':
               self.plot.format_coord = self.format_coordWilson
-          if self.simplerName[self.dataPointer.dataChosenY].type == 1:
+          yDataType = self.simplerName[self.dataPointer.dataChosenY].type
+          if yDataType == 1:
               self.type1Variable(self.simplerName[self.dataPointer.dataChosenX].data , self.dataPointer.dataChosenX, self.simplerName[self.dataPointer.dataChosenY].data, self.dataPointer.dataChosenY, self.simplerName[self.dataPointer.dataChosenY].bool, self.currPlot)
-          elif self.simplerName[self.dataPointer.dataChosenY].type == 2:
+          elif yDataType == 2:
               self.type2Variable(self.simplerName[self.dataPointer.dataChosenX].data,self.dataPointer.dataChosenX, self.simplerName[self.dataPointer.dataChosenY].data,self.dataPointer.dataChosenY, self.currPlot)
-          elif self.simplerName[self.dataPointer.dataChosenY].type == 3:
+          elif yDataType == 3:
               self.type3Variable(self.simplerName[self.dataPointer.dataChosenX].data,self.dataPointer.dataChosenX,self.simplerName[self.dataPointer.dataChosenY].data,self.dataPointer.dataChosenY, self.currPlot)
-          else:
+          elif yDataType == 4:
               self.type4Variable(self.simplerName[self.dataPointer.dataChosenX].data,self.dataPointer.dataChosenX,self.simplerName[self.dataPointer.dataChosenY].data,self.dataPointer.dataChosenY, self.currPlot)
+          elif yDataType == 5:
+              self.type5Variable(self.simplerName[self.dataPointer.dataChosenX].data,self.dataPointer.dataChosenX,self.simplerName[self.dataPointer.dataChosenY].data,self.dataPointer.dataChosenY, self.currPlot)
+          else:
+              raise Exception("Unknown data type!\n")
 
           if self.dataChosen[1] != [] and self.currPlot != numPlots:
               self.dataPointer = self.dataChosen[1][self.currPlot - 1]
@@ -931,7 +942,7 @@ class graphManager:
             yAxis = yAxis + '/Cycle'
                 
             if (self.graphChosen == self.possGraphs[3]):
-                self.plotWilson(x, xAxis, [y], yAxis, yAxis, [1], plotID)
+                self.plotParallelIntensity(x, xAxis, [y], yAxis, yAxis, [1], plotID)
             else:
                 self.plot2VarLine(x, xAxis, y, yAxis)
     
@@ -949,7 +960,7 @@ class graphManager:
     
                
           if (self.dataPointer.graphChosen == self.possGraphs[3]):
-              self.plotWilson(x, xAxis, [y], yAxis, yAxis, [1], plotID)
+              self.plotParallelIntensity(x, xAxis, [y], yAxis, yAxis, [1], plotID)
           else:           
               #Label and plot Line Graph
               self.labelKernals(x,y)
@@ -974,7 +985,7 @@ class graphManager:
     
           if (self.dataPointer.graphChosen == self.possGraphs[3]):
               yTicks = [n for n in range(len(y))]
-              self.plotWilson(x, xAxis, y, yAxis, yAxis, yTicks, plotID)
+              self.plotParallelIntensity(x, xAxis, y, yAxis, yAxis, yTicks, plotID)
           else:
               self.plotMultVarLine(x, xAxis, y, yAxis)
     
@@ -992,7 +1003,7 @@ class graphManager:
     
           if (self.dataPointer.graphChosen == self.possGraphs[3]):
               yTicks = [n for n in range(len(y))]
-              self.plotWilson(x, xAxis, y, yAxis, yAxis, yTicks, plotID)
+              self.plotParallelIntensity(x, xAxis, y, yAxis, yAxis, yTicks, plotID)
           
           else:           
               #Label and Plot
@@ -1010,16 +1021,7 @@ class graphManager:
         if self.simplerName.has_key('globalTotInsn'):
             x = self.updateVarKernal(x)
 
-        concentrationFactor = 1
-        if len(y[0]) > 512: 
-            concentrationFactor = len(y[0]) // 512 + 1
-            newLen = 512
-            for row in range (0,len(y)):
-                newy = [0 for col in range(newLen)] 
-                for col in range(0, len(y[row])):
-                    newcol = col/concentrationFactor
-                    newy[newcol] += y[row][col]
-                y[row] = newy
+        concentrationFactor = len(x) // 512 + 1
         
         #Scalar Vars
         numCols = len(y[0]) #the number of columns in the stacked bar plot
@@ -1036,26 +1038,24 @@ class graphManager:
         yoff = numpy.array([0.0] * numCols) #variable use to remember the last top location of a bar so that we may stack the proceeding bar on top of it
         #Legendname = ['UNUSED', 'UNUSED', 'FQPUSHED','ICNT_PUSHED','ICNT_INJECTED','ICNT_AT_DEST','DRAMQ','DRAM_PROCESSING_START','DRAM_PROCESSING_END','DRAM_OUTQ','2SH_ICNT_PUSHED','2SH_ICNT_INJECTED','2SH_ICNT_AT_DEST','2SH_FQ_POP','RETURN_Q']; 
         Legendname = ['N/A', 'N/A','N/A','IcntInpBuf','N/A','Icnt2DRAM','N/A','N/A','N/A','DRAM','2Sh_IcntInpBuf','N/A','Icnt2shd','N/A','N/A']; 
+        BarSequence = range(numRows-1,-1,-1)
+
+        if yAxis == 'WarpDivergenceBreakdown':
+            Legendname = []
+            Legendname.append('Fetch Stalled')
+            Legendname.append('W0')
+            for c in range(2, numRows):
+                Legendname.append('W' + `4*(c-2)+1` +  ':' + `4*(c-1)`)
+            BarSequence = range(0,numRows)
 
         yoff_max = numpy.array([0.0] * numCols)
         for row in range(numRows-1,-1,-1):
             yoff_max += y[row]
     
-        if yAxis == 'WarpDivergenceBreakdown':
-            for row in range(0,numRows):
-                row1 = float(row) #Used to select a new color from the colormap.. need to be a float thats why a new variable was made
-                yoff = yoff + y[row] #updating the yoff variable
-                if row == 0:
-                  self.plot.bar(ind, y[row], width, bottom = yoff_max-yoff, color=colours(row1/numRows), edgecolor=colours(row1/numRows), label = 'Fetch Stalled' ) 
-                elif row == 1:
-                  self.plot.bar(ind, y[row], width, bottom = yoff_max-yoff, color=colours(row1/numRows), edgecolor=colours(row1/numRows), label = 'W0' ) 
-                else: # next line: 4=warp_size/8 
-                  self.plot.bar(ind, y[row], width, bottom = yoff_max-yoff, color=colours(row1/numRows), edgecolor=colours(row1/numRows), label = 'W' + `4*(row-2)+1` +  ':' + `4*(row-1)`) 
-        else:
-            for row in range(numRows-1,-1,-1):
-                row1 = float(row) #Used to select a new color from the colormap.. need to be a float thats why a new variable was made
-                yoff = yoff + y[row] #updating the yoff variable
-                self.plot.bar(ind, y[row], width, bottom = yoff_max-yoff, color=colours(row1/numRows), edgecolor=colours(row1/numRows), label = Legendname[row]) #plotting each set of bar plots individually
+        for row in BarSequence:
+            row1 = float(row) #Used to select a new color from the colormap.. need to be a float thats why a new variable was made
+            yoff = yoff + y[row] #updating the yoff variable
+            self.plot.bar(ind, y[row], width, bottom = yoff_max-yoff, color=colours(row1/numRows), edgecolor=colours(row1/numRows), label = Legendname[row]) #plotting each set of bar plots individually
         
         
         plotFormat = self.plotFormatInfo[plotID]
@@ -1073,7 +1073,7 @@ class graphManager:
         labelValues = []
         labelPos = []
         try:
-            for count in range(0,len(x)/concentrationFactor,len(x)/20/concentrationFactor):
+            for count in range(0,len(x)/concentrationFactor,len(x)/8/concentrationFactor):
                 labelValues.append(x[count * concentrationFactor])
                 labelPos.append(ind[count])
         except:
@@ -1131,8 +1131,17 @@ class graphManager:
         else: 
             pass
 
-        
-        self.plotWilson(x, xAxis, image, yAxis, yAxis, keys, plotID)
+        self.plotParallelIntensity(x, xAxis, image, yAxis, yAxis, keys, plotID)
+      
+
+    def type5Variable(self, x, xAxis, y, yAxis, plotID):
+            
+        assert (self.dataPointer.graphChosen == self.possGraphs[6])
+
+        xScatter = y[2][0:] * (x[1] - x[0])
+        self.plotScatter(xScatter, xAxis, y[1], yAxis, plotID)
+
+        del xScatter
       
 
     def updateVarKernal(self,var):
@@ -1185,47 +1194,39 @@ class graphManager:
             if max(y[vectors]) > max(y[maximum]):
                 maximum = vectors
     
-    
         for a in self.kernalLocs:
             a = a - 1
             countKernal += 1
             label = " EndKern" + str(countKernal)
-            self.plot.text(x[a],sum[a]/len(y), label, fontsize = 13)
-            tmpx = []
-            tmpy = []
-            for num in (y[maximum] + [max(y[maximum]) + max(sumAve)/10]):
-                tmpx.append(x[a])
-                tmpy.append(num)
+            self.plot.text(x[a],sum[a]/len(y), label, fontsize = 10)
+            tmpx = [x[a], x[a]]
+            tmpy = [0, max(y[maximum])]
             self.plot.plot(tmpx, tmpy, 'k:' )
-     
         
         
     def labelKernals(self,x, y):
         countKernal = 0
         label = ""
     
-
         for cycleNum in range(0,len(x)):
             if(self.xIsKernal(cycleNum,self.kernalLocs)):
                 countKernal += 1
                 label = " EndKern" + str(countKernal)
-                self.plot.text(x[self.kernalLocs[self.kernalLocs.index(cycleNum)] - 1], y[self.kernalLocs[self.kernalLocs.index(cycleNum)] - 1], label, fontsize = 10)
+                kernelBound = self.kernalLocs[self.kernalLocs.index(cycleNum)] - 1
+                self.plot.text(x[kernelBound], y[kernelBound], label, fontsize = 10)
+
+                kernelBoundx = x[kernelBound]
                 
-                tmpx = []
-                tmpy = []
-                for num in (y + [max(y) + max(y)/10]):
-                    tmpx.append(x[self.kernalLocs[self.kernalLocs.index(cycleNum)] - 1])
-                    tmpy.append(num)
-                # tmpx, tmpy
+                tmpx = [kernelBoundx, kernelBoundx]
+                tmpy = [0, max(y)]
                 self.plot.plot(tmpx, tmpy, 'k:' )
         countKernal += 1
         label = " EndKern" + str(countKernal)
         self.plot.text(x[-1], y[-1], label, fontsize = 10)
-        tmpx = []
-        tmpy = []
-        for num in (y + [max(y) + max(y)/10]):
-            tmpx.append(x[-1])
-            tmpy.append(num)
+
+        kernelBoundx = x[-1]
+        tmpx = [kernelBoundx, kernelBoundx]
+        tmpy = [0, max(y)]
         self.plot.plot(tmpx, tmpy, 'k:' )
     
     
@@ -1246,10 +1247,22 @@ class graphManager:
       self.plotFormatInfo[self.currPlot].InitLabels(xlabel = xAxis, ylabel = yAxis, cbarlabel = '', title = '')
       self.plot.set_xlabel(self.plotFormatInfo[self.currPlot].xlabel, fontsize = self.plotFormatInfo[self.currPlot].labelFontSize)
       self.plot.set_ylabel(self.plotFormatInfo[self.currPlot].ylabel, fontsize = self.plotFormatInfo[self.currPlot].labelFontSize)
-      #self.plot.set_xlabel(xAxis)
-      #self.plot.set_ylabel(yAxis)
-      #self.plot.set_title(self.dataChosen)
       self.canvas.show()
+
+
+    def plotScatter(self, x, xAxis, y, yAxis, plotID):
+        plotFormat = self.plotFormatInfo[self.currPlot]
+        self.plot.scatter(x, y, s=5, marker='s', edgecolors='none')
+        self.plot.set_xlim(0, self.xlim)
+        ymax = max(y)
+        ymin = min(y)
+        self.plot.set_ylim(ymin, ymax)
+        plotFormat.InitLabels(xlabel = xAxis, ylabel = yAxis, cbarlabel = '', title = xAxis + ' vs ' + yAxis + ' ...' + self.dataPointer.fileChosen[-80:])
+        self.plot.set_title(plotFormat.title, fontsize = plotFormat.labelFontSize)
+        self.plot.set_xlabel(plotFormat.xlabel, fontsize = plotFormat.labelFontSize)
+        self.plot.set_ylabel(plotFormat.ylabel, fontsize = plotFormat.labelFontSize)
+        self.canvas.show()
+      
     
     def takeDerivativeMult(self,x,y):
         multDerivative = []
@@ -1263,9 +1276,9 @@ class graphManager:
     
     
     def takeDerivative(self,x,y,b_acc=1): #both variables have to already be organized for this to work!!!
-        x = [val for val in x]
-        y = [val for val in y]
-        derivative = []
+        #x = [val for val in x]
+        #y = [val for val in y]
+        derivative = array.array('f')
         prevY = 0
         
         cycleStep = x[1] - x[0]
@@ -1287,7 +1300,7 @@ class graphManager:
         return derivative
     
     
-    def plotWilson(self, x, xAxis, y, yAxis, colorAxis, yTicks, plotID):
+    def plotParallelIntensity(self, x, xAxis, y, yAxis, colorAxis, yTicks, plotID):
         # Obtain plot format info
         plotFormat = self.plotFormatInfo[plotID]
 
@@ -1298,8 +1311,8 @@ class graphManager:
         yticks, yticksPos =  self.updateWilTicks(y)
         #currently not using the variable xticks. we want to use values from the x input parameter and place them at 'xticksPos'
         xticks, xticksPos = self.updateWilTicks(x) 
-        
-        #Limits the number of xAxis labels to 20 otherwise the labels will become too cluttered
+
+        #Limits the number of xAxis labels to 8 otherwise the labels will become too cluttered
         xlabelValues = []
         xlabelPos = []
         ylabelValues = []
@@ -1311,7 +1324,7 @@ class graphManager:
             self.xAxisStepsWilStack[self.currPlot] = len(x)
         
         if self.yAxisStepsWilStack[self.currPlot] == 'null':
-            self.yAxisStepsWilStack[self.currPlot] = 32
+            self.yAxisStepsWilStack[self.currPlot] = 8
         if self.yAxisStepsWilStack[self.currPlot] < 1:
             self.yAxisStepsWilStack[self.currPlot] = 1
         if self.yAxisStepsWilStack[self.currPlot] > len(y):
@@ -1335,9 +1348,6 @@ class graphManager:
         self.plot.set_xticklabels(xlabelValues, rotation = plotFormat.rotation, fontsize = plotFormat.xticksFontSize)
         self.plot.set_xticks(xlabelPos)
         
-        y = self.wilsonScaleX(y)
-
-        # interpolation = 'lanczos'
         interpolation = 'nearest'
         norm = plotFormat.norm
         im = self.plot.imshow(y, cmap = cmap, interpolation = interpolation, aspect = 'auto', norm = norm )
@@ -1350,8 +1360,6 @@ class graphManager:
         self.cbarAxes[plotID]= cax  # use for cleanup
         self.colorbars[self.currPlot] = cbar
 
-        # scaleTicks = self.updateWilScaleTicks(y)
-
         self.plotFormatInfo[plotID].InitLabels( cbarlabel = 'Scale: ' + colorAxis, xlabel = xAxis + ' ...' + self.dataPointer.fileChosen[-80:], ylabel = yAxis )
         cbar.set_label( plotFormat.cbarlabel, fontsize = plotFormat.labelFontSize)
         for label in cbar.ax.get_yticklabels():
@@ -1359,6 +1367,11 @@ class graphManager:
         self.plot.set_xlabel(plotFormat.xlabel, fontsize = plotFormat.labelFontSize)
         self.plot.set_ylabel(plotFormat.ylabel, fontsize = plotFormat.labelFontSize)
         #self.plot.set_title(self.dataChosenY)
+
+        # provide default scaling to match all plots on figure 
+        xtickStep = x[1] - x[0]
+        self.plot.set_xlim(0 / xtickStep - 0.5, self.xlim / xtickStep + 0.5)
+
         self.canvas.show()
         
     def updateWilTicks(self, z):
@@ -1443,7 +1456,10 @@ class graphManager:
         for self.currPlot in range(1,numPlots + 1):
           self.findKernalLocs()
           if 'Parallel Intensity Plot' in self.dataPointer.graphChosen:
-              if self.simplerName[self.dataPointer.dataChosenY].type != 1:
+              if self.simplerName[self.dataPointer.dataChosenY].type == 5:
+                  locMax = self.simplerName[self.dataPointer.dataChosenY].data[0,1][0]
+                  locMin = 0
+              elif self.simplerName[self.dataPointer.dataChosenY].type != 1:
                   if self.dataPointer.dydx == 0:
                       y = self.simplerName[self.dataPointer.dataChosenY].data
                   else:

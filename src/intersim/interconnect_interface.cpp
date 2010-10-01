@@ -82,7 +82,7 @@ class mycomparison {
 public:
    bool operator() (const void* lhs, const void* rhs) const
    {
-      return( ((mem_fetch_t *)lhs)->icnt_receive_time > ((mem_fetch_t *) rhs)->icnt_receive_time);
+      return( ((mem_fetch *)lhs)->icnt_receive_time > ((mem_fetch *) rhs)->icnt_receive_time);
    }
 };
 
@@ -95,7 +95,7 @@ priority_queue<void * , vector<void* >, mycomparison> * out_buf_fixedlat_buf;
 //perfect icnt stats:
 unsigned int* max_fixedlat_buf_size;
 
-static unsigned int net_c; //number of inetrconnection networks
+static unsigned int net_c; //number of interconnection networks
 
 static unsigned int _n_shader = 0;
 static unsigned int _n_mem = 0;
@@ -287,24 +287,16 @@ void icnt_init_grid (){
    }
 }
 
-int interconnect_has_buffer(unsigned int input_node, 
-                            unsigned int *size) 
+int interconnect_has_buffer(unsigned int input_node, unsigned int tot_req_size) 
 {
 
    unsigned int input = node_map[input_node];   
    int has_buffer;
-   int tot_req_size = 0;
-   for (unsigned int i=0; i<(_n_mem+_n_shader);i++ ) {
-      if (size[i]) {
-         tot_req_size+= size[i];
-      }
-   }
    unsigned int n_flits = tot_req_size / _flit_size + ((tot_req_size % _flit_size)? 1:0);
    if (!(fixed_lat_icnt || perfect_icnt)) {
       has_buffer = (traffic[0]->_partial_packets[input][0].size() + n_flits) <=  input_buffer_capacity; 
-      if ((net_c>1) && is_mem(input)) {
+      if ((net_c>1) && is_mem(input)) 
          has_buffer = (traffic[1]->_partial_packets[input][0].size() + n_flits) <=  input_buffer_capacity; 
-      }
    } else {
       has_buffer = 1; 
    }
@@ -322,7 +314,7 @@ void interconnect_push ( unsigned int input_node, unsigned int output_node,
 #endif
 
    if (fixed_lat_icnt) {
-      ((mem_fetch_t *) data)->icnt_receive_time = gpu_sim_cycle + fixed_latency(input,output);  
+      ((mem_fetch *) data)->icnt_receive_time = gpu_sim_cycle + fixed_latency(input,output);  
       out_buf_fixedlat_buf[output].push(data); //deliver the whole packet to destination in zero cycles
       if (out_buf_fixedlat_buf[output].size()  > max_fixedlat_buf_size[output]) {
          max_fixedlat_buf_size[output]= out_buf_fixedlat_buf[output].size();
@@ -356,10 +348,10 @@ void* interconnect_pop(unsigned int output_node)
    void* data = NULL;
    if (fixed_lat_icnt) {
       if (!out_buf_fixedlat_buf[output].empty()) {
-         if (((mem_fetch_t *)out_buf_fixedlat_buf[output].top())->icnt_receive_time <= gpu_sim_cycle) {
+         if (((mem_fetch *)out_buf_fixedlat_buf[output].top())->icnt_receive_time <= gpu_sim_cycle) {
             data = out_buf_fixedlat_buf[output].top();
             out_buf_fixedlat_buf[output].pop();
-            assert (((mem_fetch_t *)data)->icnt_receive_time);
+            assert (((mem_fetch *)data)->icnt_receive_time);
          }
       }
    } else {
@@ -386,7 +378,9 @@ extern int DISPLAY_PAIR_LATENCY ;
 
 
 void init_interconnect (char* config_file,
-                        unsigned int n_shader, unsigned int n_mem)
+                        unsigned int n_shader, 
+                        unsigned int n_mem,
+                        struct shader_core_config *shader_config )
 {
    _n_shader = n_shader;
    _n_mem = n_mem;
@@ -457,15 +451,15 @@ void init_interconnect (char* config_file,
    if (icnt_config.GetInt("input_buf_size")) {
       input_buffer_capacity = icnt_config.GetInt("input_buf_size");
    } else {
-      if (gpgpu_cache_dl1_opt && !gpgpu_no_dl1) {
+      if (shader_config->gpgpu_cache_dl1_opt && !shader_config->gpgpu_no_dl1) {
          int l1cache_linesize = 32;
-         sscanf(gpgpu_cache_dl1_opt,"%*d:%d:%*d:%*c", &l1cache_linesize);
-         input_buffer_capacity = gpu_n_thread_per_shader*(l1cache_linesize/_flit_size+(int)ceil(8.0f/_flit_size)); 
+         sscanf(shader_config->gpgpu_cache_dl1_opt,"%*d:%d:%*d:%*c", &l1cache_linesize);
+         input_buffer_capacity = shader_config->n_thread_per_shader*(l1cache_linesize/_flit_size+(int)ceil(8.0f/_flit_size)); 
       } else {
-         input_buffer_capacity = gpu_n_thread_per_shader*((int)ceil(8.0f/_flit_size)); 
+         input_buffer_capacity = shader_config->n_thread_per_shader*((int)ceil(8.0f/_flit_size)); 
       }
    }
-   create_buf(traffic[0]->_dests,warp_size,icnt_config.GetInt( "num_vcs" )); 
+   create_buf(traffic[0]->_dests,shader_config->warp_size,icnt_config.GetInt( "num_vcs" )); 
    MATLAB_OUTPUT        = icnt_config.GetInt("MATLAB_OUTPUT");
    DISPLAY_LAT_DIST     = icnt_config.GetInt("DISPLAY_LAT_DIST");
    DISPLAY_HOP_DIST     = icnt_config.GetInt("DISPLAY_HOP_DIST");
@@ -557,14 +551,18 @@ void transfer2boundary_buf(int output) {
 }
 
 void time_vector_update(unsigned int uid, int slot , long int cycle, int type);
-void time_vector_update_icnt_injected(void* data, int input) {
-    mem_fetch_t* mf = (mem_fetch_t*) data;
-    unsigned int uid = mf->write? mf->request_uid : mf->mshr->insts[0].uid;
-    long int cycle = gpu_sim_cycle + gpu_tot_sim_cycle;
-    int req_type = mf->write? WT_REQ : RD_REQ;
-    if (is_mem(input)) {
-       time_vector_update( uid, MR_2SH_ICNT_INJECTED, cycle, req_type );      
-    } else { 
-       time_vector_update( uid, MR_ICNT_INJECTED, cycle,req_type );
+
+void time_vector_update_icnt_injected(void* data, int input) 
+{
+    mem_fetch* mf = (mem_fetch*) data;
+    if( mf->mshr && !mf->mshr->isinst() ) {
+        unsigned uid=mf->m_write? mf->request_uid : mf->mshr->get_insts_uid();
+        long int cycle = gpu_sim_cycle + gpu_tot_sim_cycle;
+        int req_type = mf->m_write? WT_REQ : RD_REQ;
+        if (is_mem(input)) {
+           time_vector_update( uid, MR_2SH_ICNT_INJECTED, cycle, req_type );      
+        } else { 
+           time_vector_update( uid, MR_ICNT_INJECTED, cycle,req_type );
+        }
     }
 }

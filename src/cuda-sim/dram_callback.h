@@ -75,10 +75,4 @@
 #ifndef __DRAM_CALLBACK_H__
 #define __DRAM_CALLBACK_H__
 
-typedef struct {
-   void (*function)(void* pI, void* gOldGThread);
-   void* instruction;
-   void* thread;// callback has to abuse g_thread when executed
-}dram_callback_t;
-
 #endif // #ifndef __DRAM_CALLBACK_H__

@@ -118,10 +118,10 @@ symbol_table::symbol_table( const char *scope_name, unsigned entry_point, symbol
 {
    m_scope_name = std::string(scope_name);
    m_reg_allocator=0;
-   m_shared_next = 0x100; // for debug with valgrind: make zero imply undefined address
-   m_const_next  = 0x100; // for debug with valgrind: make zero imply undefined address
-   m_global_next = 0x100; // for debug with valgrind: make zero imply undefined address
-   m_local_next  = 0x100; // for debug with valgrind: make zero imply undefined address
+   m_shared_next = 0x100;
+   m_const_next  = 0x100;
+   m_global_next = 0x100;
+   m_local_next  = 0;
    m_parent = parent;
    if ( m_parent ) {
       m_shared_next = m_parent->m_shared_next;
@@ -140,10 +140,22 @@ const ptx_version &symbol_table::get_ptx_version() const
    else return m_parent->get_ptx_version(); 
 }
 
+unsigned symbol_table::get_sm_target() const 
+{ 
+   if( m_parent == NULL ) 
+      return m_ptx_version.target();
+   else return m_parent->get_sm_target(); 
+}
+
 void symbol_table::set_ptx_version( float ver, unsigned ext ) 
 { 
    m_ptx_version = ptx_version(ver,ext); 
    assert( m_ptx_version.ver() < 3 );
+}
+
+void symbol_table::set_sm_target( const char *target, const char *ext, const char *ext2 )
+{
+   m_ptx_version.set_target(target,ext,ext2);
 }
 
 symbol *symbol_table::lookup( const char *identifier ) 
@@ -306,13 +318,13 @@ void function_info::create_basic_blocks()
          i = find_next_real_instruction(++i);
       } else {
          switch( pI->get_opcode() ) {
-         case BRA_OP: case RET_OP: case EXIT_OP:
+         case BRA_OP: case RET_OP: case EXIT_OP: case RETP_OP:
             i++;
             if( i != m_instructions.end() ) 
                leaders.push_back(*i);
             i = find_next_real_instruction(i);
             break;
-         case CALL_OP:
+         case CALL_OP: case CALLP_OP:
             if( pI->has_pred() ) {
                printf("GPGPU-Sim PTX: Warning found predicated call\n");
                i++;
@@ -424,7 +436,7 @@ void function_info::connect_basic_blocks( ) //iterate across m_basic_blocks of f
       ptx_instruction *pI = (*bb_itr)->ptx_end;
       if ((*bb_itr)->is_exit) //reached last basic block, no successors to link 
          continue;
-      if (pI->get_opcode() == RET_OP || pI->get_opcode() == EXIT_OP ) {
+      if (pI->get_opcode() == RETP_OP || pI->get_opcode() == RET_OP || pI->get_opcode() == EXIT_OP ) {
          (*bb_itr)->successor_ids.insert(exit_bb->bb_id);
          exit_bb->predecessor_ids.insert((*bb_itr)->bb_id);
          if( pI->has_pred() ) {
@@ -451,7 +463,7 @@ void function_info::connect_basic_blocks( ) //iterate across m_basic_blocks of f
          // if basic block does not end in an unpredicated branch, 
          // then next basic block is also successor
          // (this is better than testing for .uni)
-         unsigned next_addr = pI->get_m_instr_mem_index() + 1;
+         unsigned next_addr = pI->get_m_instr_mem_index() + pI->inst_size();
          basic_block_t *next_bb = m_instr_mem[next_addr]->get_bb();
          (*bb_itr)->successor_ids.insert(next_bb->bb_id);
          next_bb->predecessor_ids.insert((*bb_itr)->bb_id);
@@ -653,12 +665,12 @@ void function_info::find_ipostdominators( )
 
 void function_info::find_idominators( )
 {  
-   // find immediate postdominator blocks, using algorithm of
+   // find immediate dominator blocks, using algorithm of
    // Muchnick's Adv. Compiler Design & Implemmntation Fig 7.15 
-   printf("GPGPU-Sim PTX: Finding immediate postdominators for \'%s\'...\n", m_name.c_str() );
+   printf("GPGPU-Sim PTX: Finding immediate dominators for \'%s\'...\n", m_name.c_str() );
    fflush(stdout);
-   assert( m_basic_blocks.size() >= 2 ); // must have a distinquished exit block
-   for (unsigned i=0; i<m_basic_blocks.size(); i++) { //initialize Tmp(n) to all pdoms of n except for n
+   assert( m_basic_blocks.size() >= 2 ); // must have a distinquished entry block
+   for (unsigned i=0; i<m_basic_blocks.size(); i++) { //initialize Tmp(n) to all doms of n except for n
       m_basic_blocks[i]->Tmp_ids = m_basic_blocks[i]->dominator_ids;
       assert( m_basic_blocks[i]->bb_id == i );
       m_basic_blocks[i]->Tmp_ids.erase(i);
@@ -683,9 +695,9 @@ void function_info::find_idominators( )
    unsigned num_idoms=0;
    unsigned num_nopred = 0;
    for ( int n = 0; n < m_basic_blocks.size(); ++n) {
-      assert( m_basic_blocks[n]->Tmp_ids.size() <= 1 ); 
-         // if the above assert fails we have an error in either postdominator 
-         // computation, the flow graph does not have a unique exit, or some other error
+      //assert( m_basic_blocks[n]->Tmp_ids.size() <= 1 );
+         // if the above assert fails we have an error in either dominator
+         // computation, the flow graph does not have a unique entry, or some other error
       if( !m_basic_blocks[n]->Tmp_ids.empty() ) {
          m_basic_blocks[n]->immediatedominator_id = *m_basic_blocks[n]->Tmp_ids.begin();
          num_idoms++;
@@ -843,6 +855,8 @@ unsigned type_info_key::type_decode( int type, size_t &size, int &basic_type )
    case B16_TYPE: size=16; basic_type=0; return 13;
    case B32_TYPE: size=32; basic_type=0; return 14;
    case B64_TYPE: size=64; basic_type=0; return 15;
+   case BB64_TYPE: size=64; basic_type=0; return 15;
+   case BB128_TYPE: size=128; basic_type=0; return 16;
    case TEXREF_TYPE: case SAMPLERREF_TYPE: case SURFREF_TYPE:
       size=32; basic_type=3; return 16;
    default: 
@@ -968,7 +982,8 @@ ptx_instruction::ptx_instruction( int opcode,
                                   memory_space_t space_spec,
                                   const char *file, 
                                   unsigned line,
-                                  const char *source ) 
+                                  const char *source,
+                                  unsigned warp_size ) : inst_t()
 {
    m_uid = ++g_num_ptx_inst_uid;
    m_PC = 0;
@@ -996,8 +1011,9 @@ ptx_instruction::ptx_instruction( int opcode,
    m_geom_spec = 0;
    m_vector_spec = 0;
    m_atomic_spec = 0;
-   m_warp_size = ::warp_size;
+   m_warp_size = warp_size;
    m_membar_level = 0;
+   m_inst_size = 8; // bytes
 
    std::list<int>::const_iterator i;
    unsigned n=1;
@@ -1096,6 +1112,9 @@ ptx_instruction::ptx_instruction( int opcode,
       case CTA_OPTION:
          m_membar_level = CTA_OPTION;
          break;
+      case SYS_OPTION:
+         m_membar_level = SYS_OPTION;
+         break;
       case FTZ_OPTION:
          break;
       case EXIT_OPTION:
@@ -1113,7 +1132,9 @@ ptx_instruction::ptx_instruction( int opcode,
       case CA_OPTION: case CG_OPTION: case CS_OPTION: case LU_OPTION: case CV_OPTION:
          m_cache_option = last_ptx_inst_option;
          break;
-
+      case HALF_OPTION:
+         m_inst_size = 4; // bytes
+         break;
       default:
          assert(0);
          break;
@@ -1141,7 +1162,7 @@ void ptx_instruction::print_insn( FILE *fp ) const
    snprintf(buf,1024,"%s", m_source.c_str());
    p = strtok(buf,";");
    if( !is_label() ) 
-      fprintf(fp,"PC=%3u [idx=%3u] ", m_PC, m_instr_mem_index );
+      fprintf(fp," PC=%3u [%3u] ", m_PC, m_instr_mem_index );
    else
       fprintf(fp,"                " );
    fprintf(fp,"(%s:%u) %s", m_source_file.c_str(), m_source_line, p );
@@ -1168,7 +1189,13 @@ function_info::function_info(int entry_point )
 void function_info::print_insn( unsigned pc, FILE * fp ) const
 {
    unsigned index = pc - m_start_PC;
-   fprintf(fp,"FUNC[%s]",m_name.c_str() );
+   char command[1024];
+   char buffer[1024];
+   snprintf(command,1024,"c++filt -p %s",m_name.c_str());
+   FILE *p = popen(command,"r");
+   buffer[0]=0;
+   fscanf(p,"%1023s",buffer);
+   fprintf(fp,"%s",buffer);
    if ( index >= m_instr_mem_size ) {
       fprintf(fp, "<past last instruction (max pc=%u)>", m_start_PC + m_instr_mem_size - 1 );
    } else {
@@ -1191,10 +1218,13 @@ extern "C" FILE *ptxinfo_in;
 void gpgpu_ptx_assemble( std::string kname, void *kinfo )
 {
     function_info *func_info = (function_info *)kinfo;
+    if((function_info *)kinfo == NULL) {
+       printf("GPGPU-Sim PTX: Error - missing function definition \'%s\'\n", kname.c_str());
+       abort();
+    }
     if( func_info->is_extern() ) {
        printf("GPGPU-Sim PTX: skipping assembly for extern declared function \'%s\'\n", func_info->get_name().c_str() );
        return;
     }
-    g_func_info = func_info;
     func_info->ptx_assemble();
 }
