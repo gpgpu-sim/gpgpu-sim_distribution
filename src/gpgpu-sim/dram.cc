@@ -411,12 +411,8 @@ void dram_t::issueCMD()
 //if mrq is being serviced by dram, gets popped after CL latency fulfilled
 class mem_fetch* dram_t::pop() 
 {
-   dram_req_t *mrq;
-   class mem_fetch *data;
-   unsigned dq_latency;
-
-   data = NULL;
-   mrq = rwq->pop(gpu_sim_cycle);
+   class mem_fetch *data = NULL;
+   dram_req_t *mrq = rwq->pop(gpu_sim_cycle);
    if (mrq) {
 #ifdef DRAM_VIEWCMD 
       printf("\tDQ: BK%d Row:%03x Col:%03x",
@@ -425,7 +421,7 @@ class mem_fetch* dram_t::pop()
       mrq->dqbytes += BL * busW * gpu_n_mem_per_ctrlr; /*16 bytes*/
       if (mrq->dqbytes >= mrq->nbytes) {
          if (m_config->gpgpu_memlatency_stat) {
-            dq_latency = gpu_sim_cycle + gpu_tot_sim_cycle - mrq->timestamp;
+            unsigned dq_latency = gpu_sim_cycle + gpu_tot_sim_cycle - mrq->timestamp;
             m_stats->dq_lat_table[LOGB2(dq_latency)]++;
             if (dq_latency > m_stats->max_dq_latency)
                m_stats->max_dq_latency = dq_latency;
@@ -437,7 +433,6 @@ class mem_fetch* dram_t::pop()
 #ifdef DRAM_VIEWCMD 
    printf("\n");
 #endif
-
    return data;
 }
 
@@ -454,26 +449,6 @@ class mem_fetch* dram_t::returnq_pop( unsigned long long gpu_sim_cycle)
 class mem_fetch* dram_t::returnq_top()
 {
    return returnq->top();
-}
-
-
-// a hack to allow peeking into what memory request will be serviced.
-class mem_fetch* dram_t::top()
-{
-   dram_req_t *mrq;
-   class mem_fetch *data;
-
-   data = NULL;
-   mrq = rwq->top();
-   if (mrq) {
-      // number of bytes returned from dram if this is ever popped
-      unsigned tobe_dqbytes = mrq->dqbytes + BL * busW * gpu_n_mem_per_ctrlr; 
-      if (tobe_dqbytes >= mrq->nbytes) {
-         data = mrq->data; 
-      }
-   }
-
-   return data;
 }
 
 void dram_t::print( FILE* simFile) const

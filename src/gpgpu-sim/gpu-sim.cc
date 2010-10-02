@@ -1074,18 +1074,18 @@ void shader_core_ctx::fill_shd_L1_with_new_line(mem_fetch * mf)
    // When the data arrives, it flags all the appropriate MSHR
    // entries accordingly (by checking the address in each entry ) 
    if (mf->mshr->isinst()) {
-       shd_cache_fill(m_L1I,mf->addr,gpu_sim_cycle+gpu_tot_sim_cycle);
+       m_L1I->shd_cache_fill(mf->addr,gpu_sim_cycle+gpu_tot_sim_cycle);
        m_warp[mf->mshr->get_warp_id()].clear_imiss_pending();
        delete mf->mshr;
        mf->mshr=NULL;
    } else {
        m_mshr_unit->mshr_return_from_mem(mf->mshr);
        if (mf->mshr->istexture()) 
-           shd_cache_fill(m_L1T,mf->addr,gpu_sim_cycle+gpu_tot_sim_cycle);
+           m_L1T->shd_cache_fill(mf->addr,gpu_sim_cycle+gpu_tot_sim_cycle);
        else if (mf->mshr->isconst()) 
-           shd_cache_fill(m_L1C,mf->addr,gpu_sim_cycle+gpu_tot_sim_cycle);
+           m_L1C->shd_cache_fill(mf->addr,gpu_sim_cycle+gpu_tot_sim_cycle);
        else if (!m_config->gpgpu_no_dl1) 
-           shd_cache_fill(m_L1D,mf->addr,gpu_sim_cycle+gpu_tot_sim_cycle);
+           m_L1D->shd_cache_fill(mf->addr,gpu_sim_cycle+gpu_tot_sim_cycle);
    }
    freed_read_mfs++;
    delete mf;
@@ -1189,10 +1189,10 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
 ///////////////////////////////////////////////////////////////////////////////////////////
 // wrapper code to to create an illusion of a memory controller with L2 cache.
 
-//#define DEBUG_PARTIAL_WRITES
 void memory_partition_unit::push( mem_fetch* req, unsigned long long cycle ) 
 {
     if (req) {
+        m_request_tracker.insert(req);
         rop_delay_t r;
         r.req = req;
         r.ready_cycle = cycle + 115; // Add 115*4=460 delay cycles
@@ -1209,12 +1209,11 @@ void memory_partition_unit::push( mem_fetch* req, unsigned long long cycle )
                 time_vector_update(mf->request_uid ,MR_DRAMQ,gpu_sim_cycle+gpu_tot_sim_cycle,mf->type ) ;
         }
         m_stats->memlatstat_icnt2mem_pop(mf);
-        request_tracker_insert(mf);
         if (m_config->gpgpu_cache_dl2_opt) {
             if (m_config->gpgpu_l2_readoverwrite && mf->m_write)
-                cbtoL2writequeue->push(mf,gpu_sim_cycle);
+                m_icnt2cache_write_queue->push(mf,gpu_sim_cycle);
             else
-                cbtoL2queue->push(mf,gpu_sim_cycle);
+                m_icnt2cache_queue->push(mf,gpu_sim_cycle);
             m_accessLocality->access(mf); 
             if (mf->mshr) mf->mshr->set_status(IN_CBTOL2QUEUE);
         } else {
@@ -1228,7 +1227,7 @@ mem_fetch* memory_partition_unit::pop()
 {
    mem_fetch* mf;
    if (m_config->gpgpu_cache_dl2_opt) {
-      mf = L2c_pop(m_dram);
+      mf = L2tocbqueue->pop(gpu_sim_cycle);
       if (mf && mf->mshr && mf->mshr->isatomic() ) {
          dram_callback_t &cb = mf->mshr->get_atomic_callback();
          cb.function(cb.instruction, cb.thread);
@@ -1241,7 +1240,7 @@ mem_fetch* memory_partition_unit::pop()
          cb.function(cb.instruction, cb.thread);
       }
    }
-   request_tracker_erase(mf);
+   m_request_tracker.erase(mf);
    return mf;
 }
 
@@ -1258,25 +1257,27 @@ mem_fetch* memory_partition_unit::top()
 
 void memory_partition_unit::issueCMD() 
 { 
-   mem_fetch* mf_top = m_dram->top();
-   if (mf_top) {
-      if (mf_top->type == DUMMY_READ) {
-         m_dram->pop();
-         free(mf_top);
-         freed_dummy_read_mfs++;
-         return;
-      }
-   }
    if (m_config->gpgpu_cache_dl2_opt) {
-      L2c_get_dram_output();
+      // pop completed memory request from dram and push it to dram-to-L2 queue 
+      if ( !(dramtoL2queue->full() || dramtoL2writequeue->full()) ) { 
+         mem_fetch* mf = m_dram->pop();
+         if (mf) {
+            if (m_config->gpgpu_l2_readoverwrite && mf->m_write)
+               dramtoL2writequeue->push(mf,gpu_sim_cycle);
+            else
+               dramtoL2queue->push(mf,gpu_sim_cycle);
+            if (mf->mshr) 
+               mf->mshr->set_status(IN_DRAMTOL2QUEUE);
+         }
+      }
    } else {
       if ( m_dram->returnq_full() ) 
          return;
       mem_fetch* mf = m_dram->pop();
-      assert (mf_top==mf );
       if (mf) {
          m_dram->returnq_push(mf,gpu_sim_cycle);
-         if (mf->mshr) mf->mshr->set_status(IN_DRAMRETURN_Q);
+         if (mf->mshr) 
+            mf->mshr->set_status(IN_DRAMRETURN_Q);
       }
    }
    m_dram->issueCMD(); 
@@ -1413,18 +1414,18 @@ void gpgpu_sim::gpu_sim_loop()
       if (gpgpu_flush_cache) {
          int all_threads_complete = 1 ; 
          for (unsigned i=0;i<m_n_shader;i++) {
-            if (m_sc[i]->get_not_completed() == 0) {
+            if (m_sc[i]->get_not_completed() == 0) 
                m_sc[i]->cache_flush();
-            } else {
+            else 
                all_threads_complete = 0 ; 
-            }
          }
          if (all_threads_complete) {
-            printf("Flushed L1 caches...\n");
+            printf("Flushed L2 caches...\n");
             if (m_memory_config->gpgpu_cache_dl2_opt) {
                int dlc = 0;
                for (unsigned i=0;i<m_n_mem;i++) {
-                  dlc = m_memory_partition_unit[i]->L2c_cache_flush();
+                  dlc = m_memory_partition_unit[i]->flushL2();
+                  assert (dlc == 0); // need to model actual writes to DRAM here
                   printf("Dirty lines flushed from L2 %d is %d\n", i, dlc  );
                }
             }
@@ -1547,6 +1548,7 @@ void gpgpu_sim::dump_pipeline( int mask, int s, int m ) const
          printf("DRAM / memory controller %u:\n", i);
          if(mask&0x100000) m_memory_partition_unit[i]->print_stat(stdout);
          if(mask&0x1000000)   m_memory_partition_unit[i]->visualize();
+         if(mask&0x10000000)   m_memory_partition_unit[i]->print(stdout);
          if(m != -1) {
             break;
          }

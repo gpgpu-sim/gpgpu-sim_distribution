@@ -76,7 +76,6 @@ enum mf_type {
    WT_REQ,
    REPLY_DATA, // send to shader
    L2_WTBK_DATA,
-   DUMMY_READ, //used in write mask    
    N_MF_TYPE
 };
 
@@ -110,6 +109,8 @@ public:
               enum mem_access_type mem_acc,
               enum mf_type type,
               address_type pc );
+
+   void print( FILE *fp ) const;
 
 public:
    unsigned request_uid;

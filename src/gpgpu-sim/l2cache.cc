@@ -296,7 +296,7 @@ void memory_partition_unit::set_stats( class memory_stats_t *stats )
 
 void memory_partition_unit::cache_cycle()
 {
-   L2c_process_dram_output(); // pop from dram
+   process_dram_output(); // pop from dram
    L2c_push_miss_to_dram();   // push to dram
    L2c_service_mem_req();     // pop(push) from(to)  icnt2l2(l2toicnt) queues; service l2 requests 
    if (m_config->gpgpu_cache_dl2_opt) { // L2 cache enabled
@@ -307,13 +307,13 @@ void memory_partition_unit::cache_cycle()
 
 unsigned memory_partition_unit::L2c_get_linesize() 
 { 
-   return L2cache->line_sz; 
+   return m_L2cache->get_line_sz(); 
 }
 
 bool memory_partition_unit::full() const
 {
    if (m_config->gpgpu_cache_dl2_opt) {
-      return cbtoL2queue->full() || cbtoL2writequeue->full();
+      return m_icnt2cache_queue->full() || m_icnt2cache_write_queue->full();
    } else {
       return( m_config->gpgpu_dram_sched_queue_size && m_dram->full() );
    }
@@ -330,16 +330,15 @@ memory_partition_unit::memory_partition_unit( unsigned partition_id, struct memo
    m_stats=NULL;
    m_dram = new dram_t(m_id, m_config);
 
-   char L2c_name[32];
-   snprintf(L2c_name, 32, "L2_%03d", m_id);
-
    if( m_config->gpgpu_cache_dl2_opt ) {
-      L2cache = shd_cache_create(L2c_name,m_config->gpgpu_cache_dl2_opt, 16, ~addrdec_mask[CHIP], write_through);
-      m_mshr = new L2c_mshr(L2cache->line_sz);
-      m_missTracker = new L2c_miss_tracker(L2cache->line_sz); 
-      m_accessLocality = new L2c_access_locality(L2cache->line_sz);
+      char L2c_name[32];
+      snprintf(L2c_name, 32, "L2_%03d", m_id);
+      m_L2cache = new cache_t(L2c_name,m_config->gpgpu_cache_dl2_opt, ~addrdec_mask[CHIP], write_through, -1, -1 );
+      m_mshr = new L2c_mshr(m_L2cache->get_line_sz());
+      m_missTracker = new L2c_miss_tracker(m_L2cache->get_line_sz()); 
+      m_accessLocality = new L2c_access_locality(m_L2cache->get_line_sz());
    } else {
-      L2cache=NULL;
+      m_L2cache=NULL;
       m_mshr=NULL;
       m_missTracker=NULL;
       m_accessLocality=NULL;
@@ -359,19 +358,18 @@ memory_partition_unit::memory_partition_unit( unsigned partition_id, struct memo
           &L2c_dm_L2_length, &L2c_dm_L2w_length, &L2c_L2_cb_length,
           &L2c_L2_cb_minlength, &L2c_L2_dm_minlength );
    //(<name>,<latency>,<min_length>,<max_length>)
-   cbtoL2queue        = new fifo_pipeline<mem_fetch>("cbtoL2queue",       0,L2c_cb_L2_length, gpu_sim_cycle); 
-   cbtoL2writequeue   = new fifo_pipeline<mem_fetch>("cbtoL2writequeue",  0,L2c_cb_L2w_length, gpu_sim_cycle); 
+   m_icnt2cache_queue        = new fifo_pipeline<mem_fetch>("cbtoL2queue",       0,L2c_cb_L2_length, gpu_sim_cycle); 
+   m_icnt2cache_write_queue   = new fifo_pipeline<mem_fetch>("cbtoL2writequeue",  0,L2c_cb_L2w_length, gpu_sim_cycle); 
    L2todramqueue      = new fifo_pipeline<mem_fetch>("L2todramqueue",     L2c_L2_dm_minlength, L2c_L2_dm_length, gpu_sim_cycle);
    dramtoL2queue      = new fifo_pipeline<mem_fetch>("dramtoL2queue",     0,L2c_dm_L2_length, gpu_sim_cycle);
    dramtoL2writequeue = new fifo_pipeline<mem_fetch>("dramtoL2writequeue",0,L2c_dm_L2w_length, gpu_sim_cycle);
    L2tocbqueue        = new fifo_pipeline<mem_fetch>("L2tocbqueue",       L2c_L2_cb_minlength, L2c_L2_cb_length, gpu_sim_cycle);
    L2todram_wbqueue   = new fifo_pipeline<mem_fetch>("L2todram_wbqueue",  L2c_L2_dm_minlength, L2c_L2_dm_minlength + m_config->gpgpu_dram_sched_queue_size + L2c_dm_L2_length, gpu_sim_cycle);
-   L2request = NULL; 
    L2dramout = NULL;
    wb_addr=-1;
    if (m_config->gpgpu_cache_dl2_opt && 1) {
-      cbtol2_Dist      = StatCreate("cbtoL2",1, cbtoL2queue->get_max_len());
-      cbtoL2wr_Dist    = StatCreate("cbtoL2write",1, cbtoL2writequeue->get_max_len());
+      cbtol2_Dist      = StatCreate("cbtoL2",1, m_icnt2cache_queue->get_max_len());
+      cbtoL2wr_Dist    = StatCreate("cbtoL2write",1, m_icnt2cache_write_queue->get_max_len());
       L2tocb_Dist      = StatCreate("L2tocb",1, L2tocbqueue->get_max_len());
       dramtoL2_Dist    = StatCreate("dramtoL2",1, dramtoL2queue->get_max_len());
       dramtoL2wr_Dist  = StatCreate("dramtoL2write",1, dramtoL2writequeue->get_max_len());
@@ -388,83 +386,49 @@ memory_partition_unit::memory_partition_unit( unsigned partition_id, struct memo
    }
 }
 
-mem_fetch* memory_partition_unit::L2c_pop( dram_t *dram_p )
-{
-   assert(dram_p->m_memory_partition_unit != NULL);
-   memory_partition_unit *p_L2c = reinterpret_cast<memory_partition_unit*>(dram_p->m_memory_partition_unit);
-
-   mem_fetch *mf;
-   mf = p_L2c->L2tocbqueue->pop(gpu_sim_cycle);
-
-   return mf;
-}
-
-// service memory request in icnt-to-L2 queue, writing to L2 as necessary
-// (if L2 writeback miss, writeback to memory) 
 void memory_partition_unit::L2c_service_mem_req()
 {
-   if (!L2request) {
-      //if not servicing L2 cache request..
-      L2request = cbtoL2queue->pop(gpu_sim_cycle); //..then get one
-      if (!L2request) 
-         L2request = cbtoL2writequeue->pop(gpu_sim_cycle);
-   }
-
-   mem_fetch* mf = L2request;
-
-   if (!mf) return;
-
+   // service memory request in icnt-to-L2 queue, writing to L2 as necessary
+   if( L2tocbqueue->full() || L2todramqueue->full() ) 
+      return;
+   mem_fetch* mf = m_icnt2cache_queue->pop(gpu_sim_cycle);
+   if( !mf ) 
+      mf = m_icnt2cache_write_queue->pop(gpu_sim_cycle);
+   if( !mf ) 
+      return;
    switch (mf->type) {
    case RD_REQ:
    case WT_REQ: {
-         shd_cache_line_t *hit_cacheline = shd_cache_access(L2cache,
-                                                            mf->addr,
-                                                            4, mf->m_write,
-                                                            gpu_sim_cycle);
-
-         if (hit_cacheline || m_config->l2_ideal) { //L2 Cache Hit; reads are sent as a single command and need to be stored
-            if (!mf->m_write) { //L2 Cache Read
-               if ( L2tocbqueue->full() ) {
-                  L2cache->access--;
-               } else {
-                  mf->type = REPLY_DATA;
-                  L2tocbqueue->push(mf,gpu_sim_cycle);
-                  // at this point, should first check if earlier L2 miss is ready to be serviced
-                  // if so, service earlier L2 miss first
-                  L2request = NULL; //finished servicing
-                  m_stats->L2_read_hit++;
-                  m_stats->memlatstat_icnt2sh_push(mf);
-                  if (mf->mshr) mf->mshr->set_status(IN_L2TOCBQUEUE_HIT);
-               }
-            } else { //L2 Cache Write aka servicing L1 Writeback
-               L2request = NULL;    
+         address_type rep_block;
+         enum cache_request_status status = m_L2cache->access( mf->addr, 4, mf->m_write, gpu_sim_cycle, &rep_block);
+         if( (status==HIT) || m_config->l2_ideal ) {
+            mf->type = REPLY_DATA;
+            L2tocbqueue->push(mf,gpu_sim_cycle);
+            if (!mf->m_write) { 
+               m_stats->L2_read_hit++;
+               m_stats->memlatstat_icnt2sh_push(mf);
+               if (mf->mshr) 
+                  mf->mshr->set_status(IN_L2TOCBQUEUE_HIT);
+            } else { 
                m_stats->L2_write_hit++;
                freed_L1write_mfs++;
-               free(mf); //writeback from L1 successful
                gpgpu_n_processed_writes++;
             }
          } else {
-            // L2 Cache Miss; issue commands accordingly
-            if ( L2todramqueue->full() ) {
-               L2cache->miss--;
-               L2cache->access--;
-            } else {
-               // if a miss hit the mshr, that means there is another inflight request for the same data
-               // this miss just need to access the cache later when this request is serviced
-               bool mshr_hit = m_mshr->new_miss(mf);
-               if (not mshr_hit) {
-                  if (!mf->m_write) {
-                     L2todramqueue->push(mf,gpu_sim_cycle);
-                  } else {
-                     // if request is writeback from L1 and misses, 
-                     // then redirect mf writes to dram (no write allocate)
-                     mf->nbytes_L2 = mf->nbytes_L1 - READ_PACKET_SIZE;
-                     L2todramqueue->push(mf,gpu_sim_cycle);
-                  }
+            // L2 Cache Miss
+            // if a miss hits in the mshr, that means there is another inflight request for the same data
+            // this miss just need to access the cache later when this request is serviced
+            bool mshr_hit = m_mshr->new_miss(mf);
+            if (not mshr_hit) {
+               if (mf->m_write) {
+                  // if request is writeback from L1 and misses, 
+                  // then redirect mf writes to dram (no write allocate)
+                  mf->nbytes_L2 = mf->nbytes_L1 - READ_PACKET_SIZE;
                }
-               if (mf->mshr) mf->mshr->set_status(IN_L2TODRAMQUEUE);
-               L2request = NULL;
+               L2todramqueue->push(mf,gpu_sim_cycle);
             }
+            if (mf->mshr) 
+               mf->mshr->set_status(IN_L2TODRAMQUEUE);
          }
       }
       break;
@@ -477,7 +441,6 @@ void memory_partition_unit::L2c_push_miss_to_dram()
 {
    if ( m_config->gpgpu_dram_sched_queue_size && m_dram->full() ) 
       return;
-
    mem_fetch* mf = L2todram_wbqueue->pop(gpu_sim_cycle); //prioritize writeback
    if (!mf) mf = L2todramqueue->pop(gpu_sim_cycle);
    if (mf) {
@@ -492,27 +455,9 @@ void memory_partition_unit::L2c_push_miss_to_dram()
    }
 }
 
-// pop completed memory request from dram and push it to dram-to-L2 queue 
-void memory_partition_unit::L2c_get_dram_output () 
-{
-   mem_fetch* mf;
-   mem_fetch* mf_top;
-   if ( dramtoL2queue->full() || dramtoL2writequeue->full() ) return;
-   mf_top = m_dram->top();
-   mf = m_dram->pop();
-   assert (mf_top==mf );
-   if (mf) {
-      if (m_config->gpgpu_l2_readoverwrite && mf->m_write)
-         dramtoL2writequeue->push(mf,gpu_sim_cycle);
-      else
-         dramtoL2queue->push(mf,gpu_sim_cycle);
-      if (mf->mshr) mf->mshr->set_status(IN_DRAMTOL2QUEUE);
-   }
-}
-
 // service memory request in dramtoL2queue, writing to L2 as necessary
 // (may cause cache eviction and subsequent writeback) 
-void memory_partition_unit::L2c_process_dram_output() 
+void memory_partition_unit::process_dram_output() 
 {
    if (L2dramout == NULL) {
       // pop from mshr chain if it is not empty, otherwise, pop a new cacheline from dram output queue
@@ -521,11 +466,10 @@ void memory_partition_unit::L2c_process_dram_output()
          m_mshr->mshr_chain_pop();
       } else {
          L2dramout = dramtoL2queue->pop(gpu_sim_cycle);
-         if (!L2dramout) L2dramout = dramtoL2writequeue->pop(gpu_sim_cycle);
-
+         if (!L2dramout) 
+            L2dramout = dramtoL2writequeue->pop(gpu_sim_cycle);
          if (L2dramout != NULL) {
             m_mshr->miss_serviced(L2dramout);
-
             if (m_mshr->mshr_chain_empty() == false) { // possible if this is a L2 writeback
                L2dramout = m_mshr->mshr_chain_top();
                m_mshr->mshr_chain_pop();
@@ -533,47 +477,45 @@ void memory_partition_unit::L2c_process_dram_output()
          }
       }
    }
-
    mem_fetch* mf = L2dramout;
    if (mf) {
       if (!mf->m_write) { //service L2 read miss
-
          // it is a pre-fill dramout mf
          if (wb_addr == (unsigned long long int)-1) {
-            if ( L2tocbqueue->full() ) goto RETURN;
-
-            if (mf->mshr) mf->mshr->set_status(IN_L2TOCBQUEUE_MISS);
-
+            if ( L2tocbqueue->full() ) {
+               assert (L2dramout || wb_addr == (unsigned long long int)-1);
+               return;
+            }
+            if (mf->mshr) 
+               mf->mshr->set_status(IN_L2TOCBQUEUE_MISS);
             //only transfer across icnt once the whole line has been received by L2 cache
             mf->type = REPLY_DATA;
             L2tocbqueue->push(mf,gpu_sim_cycle);
-
-            shd_cache_line_t *fetch_line_exist = shd_cache_probe(L2cache, mf->addr);
-            if (fetch_line_exist == NULL) {
-               wb_addr = L2_shd_cache_fill(L2cache, mf->addr, gpu_sim_cycle );
-            }
+            wb_addr = m_L2cache->shd_cache_fill(mf->addr, gpu_sim_cycle);
          }
          // only perform a write on cache eviction (write-back policy)
          // it is the 1st or nth time trial to writeback
          if (wb_addr != (unsigned long long int)-1) {
             // performing L2 writeback (no false sharing for memory-side cache)
-            int wb_succeed = L2c_write_back(wb_addr, L2cache->line_sz); 
-            if (!wb_succeed) goto RETURN; //try again next cycle
+            int wb_succeed = L2c_write_back(wb_addr, m_L2cache->get_line_sz()); 
+            if (!wb_succeed) {
+               assert (L2dramout || wb_addr == (unsigned long long int)-1);
+               return;
+            }
          }
-
          m_missTracker->miss_serviced(mf);
          L2dramout = NULL;
          wb_addr = -1;
       } else { //service L2 write miss
          m_missTracker->miss_serviced(mf);
          freed_L2write_mfs++;
-         free(mf);
+         m_request_tracker.erase(mf);
+         delete mf;
          gpgpu_n_processed_writes++;
          L2dramout = NULL;
          wb_addr = -1;
       }
    }
-   RETURN:   
    assert (L2dramout || wb_addr == (unsigned long long int)-1);
 }
 
@@ -599,36 +541,37 @@ bool memory_partition_unit::L2c_write_back( unsigned long long int addr, int bsi
    return true;
 }
 
-unsigned int memory_partition_unit::L2c_cache_flush() 
-{
-   shd_cache_t *cp = L2cache; 
-   int dirty_lines_flushed = 0 ;
-   for (unsigned i = 0; i < cp->nset * cp->assoc ; i++) {
-      if ( (cp->lines[i].status & (DIRTY|VALID)) == (DIRTY|VALID) ) {
-         dirty_lines_flushed++;
-      }
-      cp->lines[i].status &= ~VALID;
-      cp->lines[i].status &= ~DIRTY;
-   }
-   return dirty_lines_flushed;
-}
-
 void memory_partition_unit::L2c_print_cache_stat(unsigned &accesses, unsigned &misses) const
 {
    FILE *fp = stdout;
-   shd_cache_print(L2cache,fp,accesses,misses);
+   m_L2cache->shd_cache_print(fp,accesses,misses);
    m_mshr->print_stat(fp); 
    m_missTracker->print_stat(fp);
    m_accessLocality->print_stat(fp, false);
 }
 
+void memory_partition_unit::print( FILE *fp ) const
+{
+   if( !m_request_tracker.empty() ) {
+      fprintf(fp,"Memory Parition %u: pending memory requests:\n", m_id);
+      for( std::set<mem_fetch*>::const_iterator r=m_request_tracker.begin(); r != m_request_tracker.end(); ++r ) {
+         mem_fetch *mf = *r;
+         if( mf ) 
+            mf->print(fp);
+         else 
+            fprintf(fp," <NULL mem_fetch?>\n");
+      }
+   }
+   m_dram->print(fp); 
+}
+
 void memory_partition_unit::L2c_update_stat()
 {
    unsigned i=m_id;
-   if (cbtoL2queue->get_length() > m_stats->L2_cbtoL2length[i])
-      m_stats->L2_cbtoL2length[i] = cbtoL2queue->get_length();
-   if (cbtoL2writequeue->get_length() > m_stats->L2_cbtoL2writelength[i])
-      m_stats->L2_cbtoL2writelength[i] = cbtoL2writequeue->get_length();
+   if (m_icnt2cache_queue->get_length() > m_stats->L2_cbtoL2length[i])
+      m_stats->L2_cbtoL2length[i] = m_icnt2cache_queue->get_length();
+   if (m_icnt2cache_write_queue->get_length() > m_stats->L2_cbtoL2writelength[i])
+      m_stats->L2_cbtoL2writelength[i] = m_icnt2cache_write_queue->get_length();
    if (L2tocbqueue->get_length() > m_stats->L2_L2tocblength[i])
       m_stats->L2_L2tocblength[i] = L2tocbqueue->get_length();
    if (dramtoL2queue->get_length() > m_stats->L2_dramtoL2length[i])
@@ -759,8 +702,8 @@ void gpgpu_sim::L2c_print_debug()
 void memory_partition_unit::L2c_log(int task)
 {
    if (task == SAMPLELOG) {
-      StatAddSample(cbtol2_Dist,       cbtoL2queue->get_length());
-      StatAddSample(cbtoL2wr_Dist,     cbtoL2writequeue->get_length());
+      StatAddSample(cbtol2_Dist,       m_icnt2cache_queue->get_length());
+      StatAddSample(cbtoL2wr_Dist,     m_icnt2cache_write_queue->get_length());
       StatAddSample(L2tocb_Dist,       L2tocbqueue->get_length());
       StatAddSample(dramtoL2_Dist,     dramtoL2queue->get_length());
       StatAddSample(dramtoL2wr_Dist,   dramtoL2writequeue->get_length());
@@ -777,6 +720,11 @@ void memory_partition_unit::L2c_log(int task)
    }
 }
 
+unsigned memory_partition_unit::flushL2() 
+{ 
+   return m_L2cache->flush(); 
+}
+
 void gpgpu_sim::L2c_latency_log_dump()
 {
    for (unsigned i=0;i<m_n_mem;i++) 
@@ -785,8 +733,8 @@ void gpgpu_sim::L2c_latency_log_dump()
 
 void memory_partition_unit::L2c_latency_log_dump()
 {
-   printf ("(LOGB2)Latency DRAM[%u] ",m_id); StatDisp(cbtoL2queue->get_lat_stat());
-   printf ("(LOGB2)Latency DRAM[%u] ",m_id); StatDisp(cbtoL2writequeue->get_lat_stat());
+   printf ("(LOGB2)Latency DRAM[%u] ",m_id); StatDisp(m_icnt2cache_queue->get_lat_stat());
+   printf ("(LOGB2)Latency DRAM[%u] ",m_id); StatDisp(m_icnt2cache_write_queue->get_lat_stat());
    printf ("(LOGB2)Latency DRAM[%u] ",m_id); StatDisp(L2tocbqueue->get_lat_stat());
    printf ("(LOGB2)Latency DRAM[%u] ",m_id); StatDisp(dramtoL2queue->get_lat_stat());
    printf ("(LOGB2)Latency DRAM[%u] ",m_id); StatDisp(dramtoL2writequeue->get_lat_stat());
@@ -799,12 +747,3 @@ bool memory_partition_unit::busy() const
    return !m_request_tracker.empty();
 }
 
-void memory_partition_unit::request_tracker_insert(class mem_fetch *mf)
-{
-   m_request_tracker.insert(mf);
-}
-
-void memory_partition_unit::request_tracker_erase(class mem_fetch *mf)
-{
-   m_request_tracker.erase(mf);
-}

@@ -1099,9 +1099,9 @@ public:
    void L1texcache_print( FILE *fp, unsigned &total_accesses, unsigned &total_misses) const;
    void L1constcache_print( FILE *fp, unsigned &total_accesses, unsigned &total_misses) const;
    unsigned get_n_active_cta() const { return m_n_active_cta; }
-   float L1_windowed_cache_miss_rate( int x ) const { return shd_cache_windowed_cache_miss_rate(m_L1D,x); }
-   float L1tex_windowed_cache_miss_rate( int x ) const { return shd_cache_windowed_cache_miss_rate(m_L1T,x); }
-   float L1const_windowed_cache_miss_rate( int x ) const { return shd_cache_windowed_cache_miss_rate(m_L1C,x); }
+   float L1_windowed_cache_miss_rate( int x ) const { return m_L1D->shd_cache_windowed_cache_miss_rate(x); }
+   float L1tex_windowed_cache_miss_rate( int x ) const { return m_L1T->shd_cache_windowed_cache_miss_rate(x); }
+   float L1const_windowed_cache_miss_rate( int x ) const { return m_L1C->shd_cache_windowed_cache_miss_rate(x); }
   
 private:
 
@@ -1252,10 +1252,10 @@ private:
    int  m_dwf_RR_k;          // counter for register read pipeline
    int *m_dwf_rrstage_bank_access_counter;
 
-   shd_cache_t *m_L1I; // instruction cache
-   shd_cache_t *m_L1D; // data cache (global/local memory accesses)
-   shd_cache_t *m_L1T; // texture cache
-   shd_cache_t *m_L1C; // constant cache
+   cache_t *m_L1I; // instruction cache
+   cache_t *m_L1D; // data cache (global/local memory accesses)
+   cache_t *m_L1T; // texture cache
+   cache_t *m_L1C; // constant cache
 
    bool m_shader_memory_new_instruction_processed;
    int m_pending_mem_access; // number of memory access to be serviced (use for W0 classification)

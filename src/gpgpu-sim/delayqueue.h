@@ -156,7 +156,7 @@ public:
       return data;
    }
 
-   T* top() 
+   T* top() const
    {
       if (m_head) {
          return m_head->m_data;

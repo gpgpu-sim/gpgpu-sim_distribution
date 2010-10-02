@@ -348,17 +348,17 @@ bool shader_core_ctx::pipeline_regster_empty( inst_t *reg )
 
 void shader_core_ctx::L1cache_print( FILE *fp, unsigned &total_accesses, unsigned &total_misses) const
 {
-   shd_cache_print(m_L1D,fp,total_accesses,total_misses);
+   m_L1D->shd_cache_print(fp,total_accesses,total_misses);
 }
 
 void shader_core_ctx::L1texcache_print( FILE *fp, unsigned &total_accesses, unsigned &total_misses) const
 {
-   shd_cache_print(m_L1T,fp,total_accesses,total_misses);
+   m_L1T->shd_cache_print(fp,total_accesses,total_misses);
 }
 
 void shader_core_ctx::L1constcache_print( FILE *fp, unsigned &total_accesses, unsigned &total_misses) const
 {
-   shd_cache_print(m_L1C,fp,total_accesses,total_misses);
+   m_L1C->shd_cache_print(fp,total_accesses,total_misses);
 }
 
 std::list<unsigned> shader_core_ctx::get_regs_written( const inst_t &fvt ) const
@@ -438,21 +438,15 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
    char L1I_name[STRSIZE];
 
    snprintf(L1D_name, STRSIZE, "L1D_%03d", m_sid);
-   m_L1D = shd_cache_create(L1D_name,m_config->gpgpu_cache_dl1_opt,1,0,m_config->gpgpu_cache_wt_through?write_through:write_back);
-   shd_cache_bind_logger(m_L1D, m_sid, get_shader_normal_cache_id());
-
    snprintf(L1T_name, STRSIZE, "L1T_%03d", m_sid);
-   m_L1T = shd_cache_create(L1T_name,m_config->gpgpu_cache_texl1_opt,1,0, no_writes );
-   shd_cache_bind_logger(m_L1T, m_sid, get_shader_texture_cache_id());
-   ptx_set_tex_cache_linesize(m_L1T->line_sz);
-
    snprintf(L1C_name, STRSIZE, "L1C_%03d", m_sid);
-   m_L1C = shd_cache_create(L1C_name,m_config->gpgpu_cache_constl1_opt,1,0, no_writes );
-   shd_cache_bind_logger(m_L1C, m_sid, get_shader_constant_cache_id());
-
    snprintf(L1I_name, STRSIZE, "L1I_%03d", m_sid);
-   m_L1I = shd_cache_create(L1I_name,m_config->gpgpu_cache_il1_opt,1,0, no_writes );
-   shd_cache_bind_logger(m_L1D, m_sid, get_shader_instruction_cache_id());
+   enum cache_write_policy L1D_policy = m_config->gpgpu_cache_wt_through?write_through:write_back;
+   m_L1D = new cache_t(L1D_name,m_config->gpgpu_cache_dl1_opt,    0,L1D_policy,m_sid,get_shader_normal_cache_id());
+   m_L1T = new cache_t(L1T_name,m_config->gpgpu_cache_texl1_opt,  0,no_writes, m_sid,get_shader_texture_cache_id());
+   m_L1C = new cache_t(L1C_name,m_config->gpgpu_cache_constl1_opt,0,no_writes, m_sid,get_shader_constant_cache_id());
+   m_L1I = new cache_t(L1I_name,m_config->gpgpu_cache_il1_opt,    0,no_writes, m_sid,get_shader_instruction_cache_id());
+   ptx_set_tex_cache_linesize(m_L1T->get_line_sz());
 
    m_mshr_unit = new mshr_shader_unit(m_config);
    m_pdom_warp = new pdom_warp_ctx_t*[config->max_warps_per_shader];
@@ -896,9 +890,9 @@ void pdom_warp_ctx_t::print (FILE *fout) const
 
 void shader_core_ctx::new_cache_window()
 {
-    shd_cache_new_window(m_L1D);
-    shd_cache_new_window(m_L1T);
-    shd_cache_new_window(m_L1C);
+    m_L1D->shd_cache_new_window();
+    m_L1T->shd_cache_new_window();
+    m_L1C->shd_cache_new_window();
 }
 
 void shader_core_ctx::fetch_mimd()
@@ -1166,10 +1160,10 @@ void shader_core_ctx::fetch_new()
                 address_type ppc = pc + PROGRAM_MEM_START;
                 address_type wb=0;
                 unsigned nbytes=16; 
-                unsigned offset_in_block = pc & (m_L1I->line_sz-1);
-                if( (offset_in_block+nbytes) > m_L1I->line_sz )
-                    nbytes = (m_L1I->line_sz-offset_in_block);
-                enum cache_request_status status = shd_cache_access_new( m_L1I, (unsigned long long)pc, nbytes, 0, gpu_sim_cycle, &wb );
+                unsigned offset_in_block = pc & (m_L1I->get_line_sz()-1);
+                if( (offset_in_block+nbytes) > m_L1I->get_line_sz() )
+                    nbytes = (m_L1I->get_line_sz()-offset_in_block);
+                enum cache_request_status status = m_L1I->access( (unsigned long long)pc, nbytes, 0, gpu_sim_cycle, &wb );
                 if( status != HIT ) {
                     unsigned req_size = READ_PACKET_SIZE;
                     if( m_gpu->fq_has_buffer(ppc, req_size, false, m_sid) ) {
@@ -1852,19 +1846,18 @@ void shader_core_ctx::memory_const_process_warp()
       line_size_based_tag_func,
       CONSTANT_MEM_PATH, 
       1, //warp parts 
-      m_L1C->line_sz, false, //no broadcast limit.
+      m_L1C->get_line_sz(), false, //no broadcast limit.
       accessq);
    //do cache checks here for each request (non-physical), could be done later for more accurate timing of cache accesses, but probably uneccesary; 
    for (unsigned i = qbegin; i < accessq.size(); i++) {
       if ( accessq[i].space == param_space_kernel ) {
          accessq[i].cache_hit = true;
       } else {
-         cache_request_status status = shd_cache_access_new(m_L1C,
-                                                            accessq[i].addr,
-                                                            WORD_SIZE, //this field is ingored.
-                                                            0, //should always be a read
-                                                            gpu_sim_cycle+gpu_tot_sim_cycle,
-							    NULL/*should never writeback*/);
+         cache_request_status status = m_L1C->access( accessq[i].addr,
+                                                          WORD_SIZE, //this field is ingored.
+                                                          0, //should always be a read
+                                                          gpu_sim_cycle+gpu_tot_sim_cycle, 
+                                                          NULL/*should never writeback*/);
          accessq[i].cache_hit = (status == HIT);
          if (m_config->gpgpu_perfect_mem) accessq[i].cache_hit = true;
 	 if (accessq[i].cache_hit) m_stats->L1_const_miss++;
@@ -1882,17 +1875,16 @@ void shader_core_ctx::memory_texture_process_warp()
                           &line_size_based_tag_func,
                           TEXTURE_MEM_PATH, 
                           1, //warp parts
-                          m_L1T->line_sz,
+                          m_L1T->get_line_sz(),
 			  false, //no broadcast limit.
                           accessq);
    //do cache checks here for each request (non-hardware), could be done later for more accurate timing of cache accesses, but probably uneccesary; 
    for (unsigned i = qbegin; i < accessq.size(); i++) {
-      cache_request_status status = shd_cache_access_new(m_L1T,
-                                                         accessq[i].addr,
-                                                         WORD_SIZE, //this field is ignored.
-                                                         0, //should always be a read
-                                                         gpu_sim_cycle+gpu_tot_sim_cycle,
-							 NULL /*should never writeback*/);
+      cache_request_status status = m_L1T->access( accessq[i].addr,
+                                                       WORD_SIZE, //this field is ignored.
+                                                       0, //should always be a read
+                                                       gpu_sim_cycle+gpu_tot_sim_cycle, 
+                                                       NULL /*should never writeback*/);
       accessq[i].cache_hit = (status == HIT);
       if (m_config->gpgpu_perfect_mem) accessq[i].cache_hit = true;
       if (accessq[i].cache_hit) m_stats->L1_texture_miss++;
@@ -1905,7 +1897,7 @@ void shader_core_ctx::memory_global_process_warp()
    std::vector<mem_access_t> &accessq = m_memory_queue.local_global;
    unsigned qbegin = accessq.size();
    unsigned warp_parts = 1;
-   unsigned line_size = m_L1D->line_sz;
+   unsigned line_size = m_L1D->get_line_sz();
    if (m_config->gpgpu_coalesce_arch == 13) {
       warp_parts = 2;
       if(m_config->gpgpu_no_dl1) {
@@ -1966,7 +1958,7 @@ mem_stage_stall_type shader_core_ctx::send_mem_request(mem_access_t &access)
    // If the cache told us it needed to write back a dirty line, do this now
    // It is possible to do this writeback in the same cycle as the access request, this may not be realistic.
    if (access.need_wb) {
-      unsigned req_size = m_L1D->line_sz + WRITE_PACKET_SIZE;
+      unsigned req_size = m_L1D->get_line_sz() + WRITE_PACKET_SIZE;
       if ( ! m_gpu->fq_has_buffer(access.wb_addr, req_size, true, m_sid) ) {
          m_stats->gpu_stall_sh2icnt++; 
          return WB_ICNT_RC_FAIL;
@@ -1978,15 +1970,14 @@ mem_stage_stall_type shader_core_ctx::send_mem_request(mem_access_t &access)
       access.need_wb = false; 
    }
 
-   unsigned code;
    mem_access_type access_type;
    switch(access.space.get_type()) {
    case const_space:
-   case param_space_kernel: code = CONSTC; access_type = CONST_ACC_R;   break;
-   case tex_space:          code = TEXTC;  access_type = TEXTURE_ACC_R;   break;
-   case global_space:       code = DCACHE; access_type = (access.iswrite)? GLOBAL_ACC_W: GLOBAL_ACC_R;   break;
+   case param_space_kernel: access_type = CONST_ACC_R;   break;
+   case tex_space:          access_type = TEXTURE_ACC_R;   break;
+   case global_space:       access_type = (access.iswrite)? GLOBAL_ACC_W: GLOBAL_ACC_R;   break;
    case local_space:
-   case param_space_local:  code = DCACHE; access_type = (access.iswrite)? LOCAL_ACC_W: LOCAL_ACC_R;   break;
+   case param_space_local:  access_type = (access.iswrite)? LOCAL_ACC_W: LOCAL_ACC_R;   break;
    default: assert(0); break; 
    }
    //reserve mshr
@@ -2162,12 +2153,11 @@ mem_stage_stall_type shader_core_ctx::dcache_check(mem_access_t& access)
       return NO_RC_FAIL;
    if (!m_config->gpgpu_no_dl1 && !m_config->gpgpu_perfect_mem) { 
       //check cache
-      cache_request_status status = shd_cache_access_new(m_L1D,
-                                                         access.addr,
-                                                         WORD_SIZE, //this field is ignored.
-                                                         access.iswrite,
-                                                         gpu_sim_cycle+gpu_tot_sim_cycle,
-                                                         &access.wb_addr);
+      cache_request_status status = m_L1D->access( access.addr,
+                                                       WORD_SIZE, //this field is ignored.
+                                                       access.iswrite,
+                                                       gpu_sim_cycle+gpu_tot_sim_cycle,
+                                                       &access.wb_addr );
       if (status == RESERVATION_FAIL) {
          access.cache_checked = false;
          return WB_CACHE_RSRV_FAIL;
@@ -2951,27 +2941,28 @@ void shader_core_ctx::cycle()
 
 void shader_core_ctx::cache_flush()
 {
+   m_L1D->flush();
+   // TODO: add flush 'interface' object to provide functionality commented out below
+/* 
+ 
    unsigned int i;
    unsigned int set;
    unsigned long long int flush_addr;
-
-   shd_cache_t *cp = m_L1D;
-   shd_cache_line_t *pline;
-
-   for (i=0; i<cp->nset*cp->assoc; i++) {
-      pline = &(cp->lines[i]);
-      set = i / cp->assoc;
+   cache_t *cp = m_L1D;
+   cache_block_t *pline;
+   for (i=0; i<cp->m_nset*cp->m_assoc; i++) {
+      pline = &(cp->m_lines[i]);
+      set = i / cp->m_assoc;
       if ((pline->status & (DIRTY|VALID)) == (DIRTY|VALID)) {
          flush_addr = pline->addr;
-
-         fq_push(flush_addr, m_L1D->line_sz, 1, NO_PARTIAL_WRITE, 0, NULL, 0, GLOBAL_ACC_W, -1);
-
+         fq_push(flush_addr, m_L1D->get_line_sz(), 1, NO_PARTIAL_WRITE, 0, NULL, 0, GLOBAL_ACC_W, -1);
          pline->status &= ~VALID;
          pline->status &= ~DIRTY;
       } else if (pline->status & VALID) {
          pline->status &= ~VALID;
       }
    }
+*/
 }
 
 static int *_inmatch;
@@ -3356,6 +3347,7 @@ void mshr_entry::set_status( enum mshr_status status )
       req = req->m_merged_requests;
    }
 #if DEBUGL1MISS 
+#define CACHE_TAG_OF_64(x) ((x) & (~((unsigned long long int)64 - 1)))
    printf("cycle %d Addr %x  %d \n",gpu_sim_cycle,CACHE_TAG_OF_64(m_addr),status);
 #endif
 }

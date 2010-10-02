@@ -104,3 +104,9 @@ mem_fetch::mem_fetch(  unsigned long long int addr,
    mf->type = type;
    mf->pc = pc;
 }
+
+void mem_fetch::print( FILE *fp ) const
+{
+   fprintf(fp,"  mf: uid=%6u, addr=0x%08llx, sid=%u, wid=%u, pc=0x%04x, %s, bank=%u\n", 
+           request_uid, addr, sid, wid, pc, (m_write?"write":"read "), bank);
+}

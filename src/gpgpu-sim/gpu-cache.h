@@ -85,8 +85,7 @@ enum cache_request_status {
     NUM_CACHE_REQUEST_STATUS
 };
 
-
-struct shd_cache_line_t {
+struct cache_block_t {
    unsigned long long int tag;
    unsigned long long int addr;
    unsigned int set;
@@ -95,7 +94,6 @@ struct shd_cache_line_t {
    unsigned int last_used;
    unsigned char status; /* valid, dirty... etc */
 };
-
 
 #define LRU 'L'
 #define FIFO 'F'
@@ -107,21 +105,44 @@ enum cache_write_policy{
     write_through //reservation based, use much handle reservation full error.
 };
 
-struct shd_cache_t {
+class cache_t {
+public:
+   cache_t( const char *name, 
+            const char *opt, 
+            unsigned long long int bank_mask, 
+            enum cache_write_policy wp, 
+            int core_id, 
+            int type_id);
+   ~cache_t();
 
-   char *name;
+   enum cache_request_status access( new_addr_type addr, 
+                                     unsigned int nbytes, 
+                                     unsigned char write,
+                                     unsigned int sim_cycle, 
+                                     address_type *wb_address);
 
-   shd_cache_line_t *lines; /* nset x assoc lines in total */
-   unsigned int nset;
-   unsigned int nset_log2;
-   unsigned int assoc;
-   unsigned int line_sz; // bytes 
+   new_addr_type shd_cache_fill( new_addr_type addr, unsigned int sim_cycle );
+
+   unsigned flush();
+   
+   void     shd_cache_print( FILE *stream, unsigned &total_access, unsigned &total_misses );
+   float    shd_cache_windowed_cache_miss_rate(int);
+   void     shd_cache_new_window();
+   unsigned get_line_sz() const { return m_line_sz; }
+
+private:
+   char *m_name;
+
+   cache_block_t *m_lines; /* nset x assoc lines in total */
+   unsigned int m_nset;
+   unsigned int m_nset_log2;
+   unsigned int m_assoc;
+   unsigned int m_line_sz; // bytes 
    unsigned int line_sz_log2;
    enum cache_write_policy write_policy; 
    unsigned char policy;
-   unsigned int hit_latency;
 
-   unsigned int access;
+   unsigned int m_access;
    unsigned int miss;
    unsigned int merge_hit; // number of cache miss that hit the same line (and merged as a result)
 
@@ -135,54 +156,7 @@ struct shd_cache_t {
 
    unsigned long long int bank_mask;
 
+   class linear_histogram_logger *m_logger;
 };
-
-shd_cache_t * shd_cache_create( const char *name, 
-                                const char *opt,
-                                unsigned int hit_latency,
-                                unsigned long long int bank_mask,
-                                enum cache_write_policy wp);
-
-void shd_cache_destroy( shd_cache_t* cp );
-
-// hook up with shader core logger
-void shd_cache_bind_logger(shd_cache_t* cp, int core_id, int type_id);
-
-// depricated use shd_cache_access_new
-shd_cache_line_t* shd_cache_access( shd_cache_t *cp, 
-                                    unsigned long long int addr, 
-                                    unsigned int nbytes, 
-                                    unsigned char write,
-                                    unsigned int sim_cycle );
-
-enum cache_request_status shd_cache_access_new( shd_cache_t *cp, 
-                                    unsigned long long int addr, 
-                                    unsigned int nbytes, 
-                                    unsigned char write,
-                                    unsigned int sim_cycle, 
-                                    address_type *wb_address);
-
-
-//just probe the tag array to see if addr is in the cache or not
-//does not update LRU or stats...
-shd_cache_line_t* shd_cache_probe( shd_cache_t *cp, 
-                                   unsigned long long int addr);
-
-// undo the statistic record when the memory access is stalled/squashed and will try again next cycle
-void shd_cache_undo_stats( shd_cache_t *cp, int miss );
-
-void shd_cache_mergehit( shd_cache_t *cp, unsigned long long int addr );
-
-unsigned long long int shd_cache_fill( shd_cache_t *cp, 
-                                       unsigned long long int addr,
-                                       unsigned int sim_cycle );
-
-unsigned long long int L2_shd_cache_fill( shd_cache_t *cp, 
-                                          unsigned long long int addr,
-                                          unsigned int sim_cycle );
-
-void shd_cache_print( const shd_cache_t *cp,  FILE *stream, unsigned &total_access, unsigned &total_misses );
-float shd_cache_windowed_cache_miss_rate(shd_cache_t*, int);
-void shd_cache_new_window(shd_cache_t*);
 
 #endif

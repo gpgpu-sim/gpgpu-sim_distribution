@@ -128,7 +128,6 @@ public:
    void set_stats( class memory_stats_t *stats ) {m_stats=stats;}
 
    int full();
-   class mem_fetch* top();
    void print( FILE* simFile ) const;
    void visualize() const;
    void print_stat( FILE* simFile );

@@ -67,30 +67,12 @@
 #ifndef GPU_MISC_H
 #define GPU_MISC_H
 
-#define CONSTC  100
-#define DCACHE   200
-#define TEXTC      300
-#define SHD_CACHE_TAG(x,shdr) ((x) & (~((unsigned long long int)shdr->m_L1D->line_sz - 1)))
-#define SHD_TEXCACHE_TAG(x,shdr) ((x) & (~((unsigned long long int)shdr->m_L1T->line_sz - 1)))
-#define SHD_CONSTCACHE_TAG(x,shdr) ((x) & (~((unsigned long long int)shdr->m_L1C->line_sz - 1)))
-#define CACHE_TAG_OF(x,cache) ((x) & (~((unsigned long long int)cache->line_sz - 1)))
-#define CACHE_TAG_OF_64(x) ((x) & (~((unsigned long long int)64 - 1)))
-
-#define ispowerof2(x)   ((((x) - 1) & (x)) == 0)
-#define powerof2(x)  (1 << (x))
-
 //enables a verbose printout of all L1 cache misses and all MSHR status changes 
 //good for a single shader configuration
 #define DEBUGL1MISS 0
 
 unsigned int LOGB2( unsigned int v );
 
-unsigned int MAX2NUM( unsigned int a, unsigned int b );
-
-unsigned int MIN2NUM( unsigned int a, unsigned int b );
-
-
-#define gs_max2(a,b) (((a)>(b))?(a):(b))
 #define gs_min2(a,b) (((a)<(b))?(a):(b))
 #define min3(x,y,z) (((x)<(y) && (x)<(z))?(x):(gs_min2((y),(z))))
 

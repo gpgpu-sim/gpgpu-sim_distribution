@@ -72,20 +72,17 @@
 #include <assert.h>
 #include <string.h>
 
-// both shd_cache_access and shd_cache_probe functions use 
-// shd_cache_access_internal to access/probe cache
-shd_cache_line_t* shd_cache_access_internal( shd_cache_t *cp, 
-                                             unsigned long long int addr, 
-                                             unsigned int nbytes, 
-                                             unsigned char write,
-                                             unsigned int sim_cycle,
-                                             unsigned int real_access); 
+cache_t::~cache_t() 
+{
+   delete m_lines;
+}
 
-shd_cache_t * shd_cache_create( const char *name, 
-                                const char *opt,
-                                unsigned int hit_latency,
-                                unsigned long long int bank_mask,
-                                enum cache_write_policy wp) 
+cache_t::cache_t( const char *name, 
+                  const char *opt, 
+                  unsigned long long int bank_mask, 
+                  enum cache_write_policy wp, 
+                  int core_id, 
+                  int type_id) 
 {
    unsigned int nset;
    unsigned int line_sz;
@@ -96,36 +93,29 @@ shd_cache_t * shd_cache_create( const char *name,
       printf("GPGPU-Sim uArch: cache configuration string parsing error for cache %s\n", name);
       abort();
    }
+   assert(nset && assoc);
 
-   shd_cache_t *cp;
+   cache_t *cp = this;
    unsigned int nlines;
-
    unsigned int i;
 
-   if (!nset || !assoc) {
-      printf("Creating non-existing cache!\n");
-      return 0;
-   }
 
    nlines = nset * assoc;
-   cp = (shd_cache_t*) calloc(1, sizeof(shd_cache_t));
-
    cp->bank_mask = bank_mask;
-   cp->name = (char*) malloc(sizeof(char) * (strlen(name) + 1));
-   strcpy(cp->name, name);
-   cp->nset = nset;
-   cp->nset_log2 = LOGB2(nset);
-   cp->assoc = assoc;
-   cp->line_sz = line_sz;
+   cp->m_name = (char*) malloc(sizeof(char) * (strlen(name) + 1));
+   strcpy(cp->m_name, name);
+   cp->m_nset = nset;
+   cp->m_nset_log2 = LOGB2(nset);
+   cp->m_assoc = assoc;
+   cp->m_line_sz = line_sz;
    cp->line_sz_log2 = LOGB2(line_sz);
    cp->policy = policy;
-   cp->hit_latency = hit_latency; 
-   cp->lines = (shd_cache_line_t*) calloc(nlines, sizeof(shd_cache_line_t));
+   cp->m_lines = (cache_block_t*) calloc(nlines, sizeof(cache_block_t));
    cp->write_policy = wp;
 
    for (i=0; i<nlines; i++) {
-      cp->lines[i].line_sz = line_sz;
-      cp->lines[i].status = 0;
+      cp->m_lines[i].line_sz = line_sz;
+      cp->m_lines[i].status = 0;
    }
 
    // don't hook up with any logger
@@ -136,104 +126,35 @@ shd_cache_t * shd_cache_create( const char *name,
    cp->prev_snapshot_access = 0;
    cp->prev_snapshot_miss = 0;
    cp->prev_snapshot_merge_hit = 0;
-
-   return cp;
-}
-
-void shd_cache_destroy( shd_cache_t* cp ) {
-
-   free(cp->lines);
-   free(cp);
-}
-
-// hook up with shader core logger
-void shd_cache_bind_logger(shd_cache_t* cp, int core_id, int type_id) {
    cp->core_id = core_id; 
    cp->type_id = type_id;
 }
 
-shd_cache_line_t* shd_cache_access_internal( shd_cache_t *cp, 
-                                             unsigned long long int addr, 
-                                             unsigned int nbytes, 
-                                             unsigned char write,
-                                             unsigned int sim_cycle,
-                                             unsigned int real_access) {
-   //if real_access==0 then its only a cache probe stats and LRU tags should not be updated 
-   unsigned int i;
-   unsigned int set;
-   unsigned long long int tag; 
-   unsigned long long int packed_addr;
-   shd_cache_line_t *pline;
-
-   if (cp->bank_mask)
-      packed_addr = addrdec_packbits(cp->bank_mask, addr, 64, 0);
-   else
-      packed_addr = addr;
-
-   set = (packed_addr >> cp->line_sz_log2) & ( (1<<cp->nset_log2) - 1 );
-   tag = packed_addr >> (cp->line_sz_log2 + cp->nset_log2);
-
-   if (real_access) {
-      cp->access++;
-      shader_cache_access_log(cp->core_id, cp->type_id, 0);
-   }
-
-   for (i=0; i<cp->assoc; i++) {
-      pline = &(cp->lines[set*cp->assoc+i] );
-      if (pline->status & VALID) {
-         if (pline->tag == tag) {
-            //printf("Cache Hit! Addr=%08x Set=%x Way=%x Tag=%x\n", packed_addr, set, i, tag);
-            if (real_access) {
-               pline->last_used = sim_cycle;
-               if (write) {
-                  pline->status |= DIRTY;
-               }
-            }
-            return pline;
-         }
-      }
-   }
-   if (real_access) {
-      cp->miss++;
-      shader_cache_access_log(cp->core_id, cp->type_id, 1);
-   }
-   return 0;
-}
-
-shd_cache_line_t* shd_cache_access( shd_cache_t *cp, 
-                                    unsigned long long int addr, 
-                                    unsigned int nbytes, 
-                                    unsigned char write,
-                                    unsigned int sim_cycle ) 
+enum cache_request_status cache_t::access( unsigned long long int addr, 
+                                           unsigned int nbytes, 
+                                           unsigned char write, 
+                                           unsigned int sim_cycle, 
+                                           address_type *wb_address ) 
 {
-   assert( cp->write_policy != write_back );
-   return shd_cache_access_internal(cp,addr,nbytes,write,sim_cycle,1/*this is a real access*/);
-}
-
-enum cache_request_status shd_cache_access_new( shd_cache_t *cp, 
-                                    unsigned long long int addr, 
-                                    unsigned int nbytes, 
-                                    unsigned char write,
-                                    unsigned int sim_cycle, address_type *wb_address) 
-{
+   cache_t *cp = this; 
    unsigned long long int bank_addr; // offset within bank
    bool all_reserved = true;
-   shd_cache_line_t *pending_line = NULL;
-   shd_cache_line_t *clean_line = NULL;
+   cache_block_t *pending_line = NULL;
+   cache_block_t *clean_line = NULL;
 
    if (cp->bank_mask)
       bank_addr = addrdec_packbits(cp->bank_mask, addr, 64, 0);
    else
       bank_addr = addr;
 
-   unsigned set = (bank_addr >> cp->line_sz_log2) & ( (1<<cp->nset_log2) - 1 );
-   unsigned long long tag = bank_addr >> (cp->line_sz_log2 + cp->nset_log2);
+   unsigned set = (bank_addr >> cp->line_sz_log2) & ( (1<<cp->m_nset_log2) - 1 );
+   unsigned long long tag = bank_addr >> (cp->line_sz_log2 + cp->m_nset_log2);
 
-   cp->access++;
+   cp->m_access++;
    shader_cache_access_log(cp->core_id, cp->type_id, 0);
 
-   for (unsigned way=0; way<cp->assoc; way++) {
-      shd_cache_line_t *line = &(cp->lines[set*cp->assoc+way] );
+   for (unsigned way=0; way<cp->m_assoc; way++) {
+      cache_block_t *line = &(cp->m_lines[set*cp->m_assoc+way] );
       if (line->tag == tag) {
          if (line->status & RESERVED) {
             pending_line = line;
@@ -283,10 +204,10 @@ enum cache_request_status shd_cache_access_new( shd_cache_t *cp,
    }
 
    // no clean lines, need to kick a line out to reserve a spot
-   shd_cache_line_t *wb_line = NULL;
+   cache_block_t *wb_line = NULL;
            
-   for (unsigned way=0; way<cp->assoc; way++) {
-      shd_cache_line_t *line = &(cp->lines[set*cp->assoc+way] );
+   for (unsigned way=0; way<cp->m_assoc; way++) {
+      cache_block_t *line = &(cp->m_lines[set*cp->m_assoc+way] );
       if (line->status & VALID && !(line->status & RESERVED)) {
          if (!wb_line) {
             wb_line = line;
@@ -317,55 +238,30 @@ enum cache_request_status shd_cache_access_new( shd_cache_t *cp,
    return MISS_W_WB;
 }
 
-shd_cache_line_t* shd_cache_probe( shd_cache_t *cp, 
-                                   unsigned long long int addr)
-{
-   return shd_cache_access_internal(cp,addr,
-                                    1,0,0, /*do not matter*/
-                                    0/*this is just a probe*/);  
-}
-
-void shd_cache_undo_stats( shd_cache_t *cp, int miss )
-{
-   if (miss) {
-      cp->miss--;
-      shader_cache_access_unlog(cp->core_id, cp->type_id, 1);
-   }
-   cp->access--;
-   shader_cache_access_unlog(cp->core_id, cp->type_id, 0);
-}
-
 // Obtain the windowed cache miss rate for visualizer
-float shd_cache_windowed_cache_miss_rate( shd_cache_t *cp, int minus_merge_hit )
+float cache_t::shd_cache_windowed_cache_miss_rate( int minus_merge_hit )
 {
-   unsigned int n_access = cp->access - cp->prev_snapshot_access;
+   cache_t *cp = this;
+   unsigned int n_access = cp->m_access - cp->prev_snapshot_access;
    unsigned int n_miss = cp->miss - cp->prev_snapshot_miss;
    unsigned int n_merge_hit = cp->merge_hit - cp->prev_snapshot_merge_hit;
    
-   if (minus_merge_hit) {
+   if (minus_merge_hit) 
       n_miss -= n_merge_hit;
-   }
    float missrate = 0.0f;
-   if (n_access != 0) {
+   if (n_access != 0) 
       missrate = (float) n_miss / n_access;
-   }
    
    return missrate;
 }
 
 // start a new sampling window
-void shd_cache_new_window( shd_cache_t *cp )
+void cache_t::shd_cache_new_window()
 {
-   cp->prev_snapshot_access = cp->access;
+   cache_t *cp = this;
+   cp->prev_snapshot_access = cp->m_access;
    cp->prev_snapshot_miss = cp->miss;
    cp->prev_snapshot_merge_hit = cp->merge_hit;
-}
-
-unsigned long long int L2_shd_cache_fill( shd_cache_t *cp, 
-                                          unsigned long long int addr,
-                                          unsigned int sim_cycle ) {
-   unsigned long long int result = shd_cache_fill(cp, addr, sim_cycle);
-   return result;
 }
 
 static unsigned int _n_line_existed = 0; // debug counter
@@ -373,35 +269,25 @@ static unsigned int _n_line_existed = 0; // debug counter
 // Fetch requested data into cache line. 
 // Returning address on the replaced line if it is dirty, or -1 if it is clean
 // Assume the line is filled all at once. 
-unsigned long long int shd_cache_fill( shd_cache_t *cp, 
-                                       unsigned long long int addr,
-                                       unsigned int sim_cycle ) {
-
-   unsigned int i;
-   unsigned int set;
-   unsigned long long int tag;
-   unsigned long long int packed_addr;
-   unsigned long long int repl_addr;
-
-   unsigned char nofreeslot; 
-   unsigned char line_exists;
+new_addr_type cache_t::shd_cache_fill( new_addr_type addr, unsigned int sim_cycle ) 
+{
+   cache_t *cp = this;
    unsigned int base = 0 ; 
-   unsigned int maxway = cp->assoc ; 
-
-   shd_cache_line_t *pline, *cline;
-
+   unsigned int maxway = cp->m_assoc ; 
+   cache_block_t *pline, *cline;
+   unsigned long long int packed_addr;
    if (cp->bank_mask)
       packed_addr = addrdec_packbits(cp->bank_mask, addr, 64, 0);
    else
       packed_addr = addr;
-   set = (packed_addr >> cp->line_sz_log2) & ( (1<<cp->nset_log2) - 1 );
-   tag = packed_addr >> (cp->line_sz_log2 + cp->nset_log2);
+   unsigned set = (packed_addr >> cp->line_sz_log2) & ( (1<<cp->m_nset_log2) - 1 );
+   unsigned long long tag = packed_addr >> (cp->line_sz_log2 + cp->m_nset_log2);
 
    if (cp->write_policy == write_back) {
       //this request must have a reserved spot
       cline = NULL;
-      for (i=base; i<maxway; i++) {
-         pline = &(cp->lines[set*cp->assoc+i] );
+      for (unsigned i=base; i<maxway; i++) {
+         pline = &(cp->m_lines[set*cp->m_assoc+i] );
          if ((pline->tag == tag) && (pline->status & RESERVED)) { 
             cline = pline;
             break;
@@ -435,17 +321,17 @@ unsigned long long int shd_cache_fill( shd_cache_t *cp,
    //behavior unchanged for write through cache... probably not all necessary.
    
    // Look for any free slots and the possibility that the line is in the cache already
-   nofreeslot = 1;
-   line_exists = 0;
-   for (i=base; i<maxway; i++) {
-      pline = &(cp->lines[set*cp->assoc+i] );
+   bool nofreeslot = true;
+   bool line_exists = false;
+   for (unsigned i=base; i<maxway; i++) {
+      pline = &(cp->m_lines[set*cp->m_assoc+i] );
       if (!(pline->status & VALID)) {
          cline = pline;
-         nofreeslot = 0;
+         nofreeslot = false;
          break;
       } else if (pline->tag == tag) {
          cline = pline;
-         line_exists = 1;
+         line_exists = true;
          break;
       }
    }
@@ -456,9 +342,9 @@ unsigned long long int shd_cache_fill( shd_cache_t *cp,
    }
 
    if (nofreeslot) {
-      cline = &(cp->lines[set*cp->assoc+base] );
-      for (i=1+base; i<maxway; i++) {
-         pline = &(cp->lines[set*cp->assoc+i] );
+      cline = &(cp->m_lines[set*cp->m_assoc+base] );
+      for (unsigned i=1+base; i<maxway; i++) {
+         pline = &(cp->m_lines[set*cp->m_assoc+i] );
          if (pline->status & VALID) {
             switch (cp->policy) {
             case LRU: 
@@ -477,6 +363,7 @@ unsigned long long int shd_cache_fill( shd_cache_t *cp,
    }
 
    /* Set the replaced cache line address */
+   unsigned long long int repl_addr;
    if ((cline->status & (DIRTY|VALID)) == (DIRTY|VALID)) {
       repl_addr = cline->addr; 
    } else {
@@ -494,20 +381,30 @@ unsigned long long int shd_cache_fill( shd_cache_t *cp,
    return repl_addr;
 }
 
-void shd_cache_mergehit( shd_cache_t *cp, unsigned long long int addr )
+unsigned int cache_t::flush() 
 {
-   cp->merge_hit += 1;
+   cache_t *cp = this;
+   int dirty_lines_flushed = 0 ;
+   for (unsigned i = 0; i < cp->m_nset * cp->m_assoc ; i++) {
+      if ( (cp->m_lines[i].status & (DIRTY|VALID)) == (DIRTY|VALID) ) {
+         dirty_lines_flushed++;
+      }
+      cp->m_lines[i].status &= ~VALID;
+      cp->m_lines[i].status &= ~DIRTY;
+   }
+   return dirty_lines_flushed;
 }
 
-void shd_cache_print( const shd_cache_t *cp,  FILE *stream, unsigned &total_access, unsigned &total_misses ) 
+void cache_t::shd_cache_print( FILE *stream, unsigned &total_access, unsigned &total_misses ) 
 {
-   fprintf( stream, "Cache %s:\t", cp->name);
+   cache_t *cp = this;
+   fprintf( stream, "Cache %s:\t", cp->m_name);
    fprintf( stream, "Size = %d B (%d Set x %d-way x %d byte line)\n", 
-            cp->line_sz * cp->nset * cp->assoc,
-            cp->nset, cp->assoc, cp->line_sz );
+            cp->m_line_sz * cp->m_nset * cp->m_assoc,
+            cp->m_nset, cp->m_assoc, cp->m_line_sz );
    fprintf( stream, "\t\tAccess = %d, Miss = %d (%.3g), -MgHts = %d (%.3g)\n", 
-            cp->access, cp->miss, (float) cp->miss / cp->access, 
-            cp->miss - cp->merge_hit, (float) (cp->miss - cp->merge_hit) / cp->access);
+            cp->m_access, cp->miss, (float) cp->miss / cp->m_access, 
+            cp->miss - cp->merge_hit, (float) (cp->miss - cp->merge_hit) / cp->m_access);
    total_misses+=cp->miss;
-   total_access+=cp->access;
+   total_access+=cp->m_access;
 }

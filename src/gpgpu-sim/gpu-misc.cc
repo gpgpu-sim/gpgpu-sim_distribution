@@ -80,17 +80,3 @@ unsigned int LOGB2( unsigned int v ) {
 
    return r;
 }
-
-unsigned int MAX2NUM( unsigned int a, unsigned int b ) {
-   if (a > b) {
-      return a;
-   } else
-      return b;
-}
-
-unsigned int MIN2NUM( unsigned int a, unsigned int b ) {
-   if (a < b) {
-      return a;
-   } else
-      return b;
-}
