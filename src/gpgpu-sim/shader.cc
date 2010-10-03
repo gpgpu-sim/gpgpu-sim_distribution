@@ -1160,7 +1160,7 @@ void shader_core_ctx::fetch_new()
                 unsigned offset_in_block = pc & (m_L1I->get_line_sz()-1);
                 if( (offset_in_block+nbytes) > m_L1I->get_line_sz() )
                     nbytes = (m_L1I->get_line_sz()-offset_in_block);
-                enum cache_request_status status = m_L1I->access( (unsigned long long)pc, nbytes, 0, gpu_sim_cycle, &wb );
+                enum cache_request_status status = m_L1I->access( (unsigned long long)pc, 0, gpu_sim_cycle, &wb );
                 if( status != HIT ) {
                     unsigned req_size = READ_PACKET_SIZE;
                     if( m_gpu->fq_has_buffer(ppc, req_size, false, m_sid) ) {
@@ -1851,10 +1851,9 @@ void shader_core_ctx::memory_const_process_warp()
          accessq[i].cache_hit = true;
       } else {
          cache_request_status status = m_L1C->access( accessq[i].addr,
-                                                          WORD_SIZE, //this field is ingored.
-                                                          0, //should always be a read
-                                                          gpu_sim_cycle+gpu_tot_sim_cycle, 
-                                                          NULL/*should never writeback*/);
+                                                      0, //should always be a read
+                                                      gpu_sim_cycle+gpu_tot_sim_cycle, 
+                                                      NULL/*should never writeback*/);
          accessq[i].cache_hit = (status == HIT);
          if (m_config->gpgpu_perfect_mem) accessq[i].cache_hit = true;
 	 if (accessq[i].cache_hit) m_stats->L1_const_miss++;
@@ -1878,10 +1877,9 @@ void shader_core_ctx::memory_texture_process_warp()
    //do cache checks here for each request (non-hardware), could be done later for more accurate timing of cache accesses, but probably uneccesary; 
    for (unsigned i = qbegin; i < accessq.size(); i++) {
       cache_request_status status = m_L1T->access( accessq[i].addr,
-                                                       WORD_SIZE, //this field is ignored.
-                                                       0, //should always be a read
-                                                       gpu_sim_cycle+gpu_tot_sim_cycle, 
-                                                       NULL /*should never writeback*/);
+                                                   0, //should always be a read
+                                                   gpu_sim_cycle+gpu_tot_sim_cycle, 
+                                                   NULL /*should never writeback*/);
       accessq[i].cache_hit = (status == HIT);
       if (m_config->gpgpu_perfect_mem) accessq[i].cache_hit = true;
       if (accessq[i].cache_hit) m_stats->L1_texture_miss++;
@@ -2150,10 +2148,9 @@ mem_stage_stall_type shader_core_ctx::dcache_check(mem_access_t& access)
    if (!m_config->gpgpu_no_dl1 && !m_config->gpgpu_perfect_mem) { 
       //check cache
       cache_request_status status = m_L1D->access( access.addr,
-                                                       WORD_SIZE, //this field is ignored.
-                                                       access.iswrite,
-                                                       gpu_sim_cycle+gpu_tot_sim_cycle,
-                                                       &access.wb_addr );
+                                                   access.iswrite,
+                                                   gpu_sim_cycle+gpu_tot_sim_cycle,
+                                                   &access.wb_addr );
       if (status == RESERVATION_FAIL) {
          access.cache_checked = false;
          return WB_CACHE_RSRV_FAIL;
@@ -2370,6 +2367,7 @@ void shader_core_ctx::writeback()
 		if ( !is_const(done_inst.space) )
 			m_stats->gpu_sim_insn_no_ld_const++;
 		m_gpu->gpu_sim_insn_last_update = gpu_sim_cycle;
+        m_gpu->gpu_sim_insn_last_update_sid = m_sid;
 		m_num_sim_insn++;
 		m_thread[done_inst.hw_thread_id].n_insn++;
 		m_thread[done_inst.hw_thread_id].n_insn_ac++;

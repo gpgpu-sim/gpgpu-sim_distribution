@@ -1396,7 +1396,7 @@ void print_splash()
    }
 }
 
-void gpgpu_ptx_sim_register_kernel(const char *hostFun, const char *deviceFun)
+void gpgpu_ptx_sim_register_kernel(void **fatCubinHandle,const char *hostFun, const char *deviceFun)
 {
    const void* key=hostFun;
    print_splash();
@@ -1428,16 +1428,12 @@ void gpgpu_ptx_sim_register_const_variable(void *hostVar, const char *deviceName
 {
    printf("GPGPU-Sim PTX registering constant %s (%zu bytes) to name mapping\n", deviceName, size );
    g_const_name_lookup[hostVar] = deviceName;
-   //assert( g_current_symbol_table != NULL );
-   //g_sym_name_to_symbol_table[deviceName] = g_current_symbol_table;
 }
 
 void gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size )
 {
    printf("GPGPU-Sim PTX registering global %s hostVar to name mapping\n", deviceName );
    g_global_name_lookup[hostVar] = deviceName;
-   //assert( g_current_symbol_table != NULL );
-   //g_sym_name_to_symbol_table[deviceName] = g_current_symbol_table;
 }
 
 void gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t count, size_t offset, int to )

@@ -105,8 +105,10 @@ mem_fetch::mem_fetch( new_addr_type addr,
 
 void mem_fetch::print( FILE *fp ) const
 {
-   fprintf(fp,"  mf: uid=%6u, addr=0x%08llx, sid=%u, wid=%u, pc=0x%04x, %s, bank=%u\n", 
+   fprintf(fp,"  mf: uid=%6u, addr=0x%08llx, sid=%u, wid=%u, pc=0x%04x, %s, bank=%u, ", 
            request_uid, addr, sid, wid, pc, (m_write?"write":"read "), tlx.bk);
+   if( mshr ) mshr->print(fp,0x100);
+   else fprintf(fp,"\n");
 }
 
 void mem_fetch::set_status( enum mshr_status status, enum mem_req_stat stat, unsigned long long cycle ) 

@@ -41,7 +41,7 @@ extern void   gpgpu_ptx_sim_memcpy_gpu_to_gpu( size_t dst, size_t src, size_t co
 extern void   gpgpu_ptx_sim_memset( size_t dst_start_addr, int c, size_t count );
 extern void   gpgpu_ptx_sim_init_memory();
 extern void   gpgpu_ptx_sim_load_gpu_kernels();
-extern void   gpgpu_ptx_sim_register_kernel(const char *hostFun, const char *deviceFun);
+extern void   gpgpu_ptx_sim_register_kernel(void **fatCubinHandle,const char *hostFun, const char *deviceFun);
 extern void   gpgpu_ptx_sim_register_const_variable(void*, const char *deviceName, size_t size );
 extern void   gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size );
 extern void   gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t count, size_t offset, int to );

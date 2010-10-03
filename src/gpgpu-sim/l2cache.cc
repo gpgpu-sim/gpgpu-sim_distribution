@@ -399,9 +399,12 @@ void memory_partition_unit::L2c_service_mem_req()
    case RD_REQ:
    case WT_REQ: {
          address_type rep_block;
-         enum cache_request_status status = m_L2cache->access( mf->get_addr(), 4, mf->get_is_write(), gpu_sim_cycle, &rep_block);
+         enum cache_request_status status = MISS_NO_WB;
+         if( mf->istexture() )
+            status = m_L2cache->access( mf->get_addr(), mf->get_is_write(), gpu_sim_cycle, &rep_block);
          if( (status==HIT) || m_config->l2_ideal ) {
             mf->set_type( REPLY_DATA );
+            assert( mf != NULL );
             L2tocbqueue->push(mf,gpu_sim_cycle);
             if (!mf->get_is_write()) { 
                m_stats->L2_read_hit++;
@@ -417,9 +420,8 @@ void memory_partition_unit::L2c_service_mem_req()
             // if a miss hits in the mshr, that means there is another inflight request for the same data
             // this miss just need to access the cache later when this request is serviced
             bool mshr_hit = m_mshr->new_miss(mf);
-            if (not mshr_hit) {
+            if (not mshr_hit) 
                L2todramqueue->push(mf,gpu_sim_cycle);
-            }
             mf->set_status(IN_L2TODRAMQUEUE,MR_DRAM_OUTQ,gpu_sim_cycle+gpu_tot_sim_cycle);
          }
       }
@@ -481,7 +483,8 @@ void memory_partition_unit::process_dram_output()
             //only transfer across icnt once the whole line has been received by L2 cache
             mf->set_type(REPLY_DATA);
             L2tocbqueue->push(mf,gpu_sim_cycle);
-            wb_addr = m_L2cache->shd_cache_fill(mf->get_addr(), gpu_sim_cycle);
+            if( mf->istexture() )
+               wb_addr = m_L2cache->shd_cache_fill(mf->get_addr(), gpu_sim_cycle);
          }
          // only perform a write on cache eviction (write-back policy)
          // it is the 1st or nth time trial to writeback
@@ -499,8 +502,8 @@ void memory_partition_unit::process_dram_output()
       } else { //service L2 write miss
          m_missTracker->miss_serviced(mf);
          freed_L2write_mfs++;
-         m_request_tracker.erase(mf);
-         delete mf;
+         mf->set_type(REPLY_DATA);
+         L2tocbqueue->push(mf,gpu_sim_cycle);
          gpgpu_n_processed_writes++;
          L2dramout = NULL;
          wb_addr = -1;

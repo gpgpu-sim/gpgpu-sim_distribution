@@ -39,7 +39,7 @@ the next cycle.
 end
 
 define dm
-        call g_the_gpu.dump_pipeline(0x100,$arg0,0)
+        call g_the_gpu.dump_pipeline(0x10000|0x10000000,0,$arg0)
 end
 
 define ptxdis

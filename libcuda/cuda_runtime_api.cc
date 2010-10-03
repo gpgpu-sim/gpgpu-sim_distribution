@@ -1036,6 +1036,8 @@ int CUDARTAPI __cudaSynchronizeThreads(void**, void*)
 
 void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin ) 
 {
+   static unsigned next_fat_bin_handle = 1;
+   unsigned fat_cubin_handle = next_fat_bin_handle++;
 #if (CUDART_VERSION >= 2010)
    __cudaFatCudaBinary *info =   (__cudaFatCudaBinary *)fatCubin;
    assert( info->version >= 3 );
@@ -1054,10 +1056,10 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
    if ( selected_capability_offset != (unsigned)-1 ) {
       printf("GPGPU-Sim PTX: __cudaRegisterFatBinary found %u PTX versions for '%s', ", num_ptx_versions, info->ident);
       printf("selected = %s\n", info->ptx[selected_capability_offset].gpuProfileName );
-      gpgpu_ptx_sim_add_ptxstring( info->ptx[selected_capability_offset].ptx, info->cubin[selected_capability_offset].cubin, info->ident );
+      gpgpu_ptx_sim_add_ptxstring( fat_cubin_handle, info->ptx[selected_capability_offset].ptx, info->cubin[selected_capability_offset].cubin, info->ident );
    }
 #endif
-   return 0;
+   return (void**)fat_cubin_handle;
 }
 void __cudaUnregisterFatBinary(void **fatCubinHandle)
 {
@@ -1077,7 +1079,7 @@ void CUDARTAPI __cudaRegisterFunction(
                                      dim3    *gDim
                                      ) 
 {
-   gpgpu_ptx_sim_register_kernel(hostFun,deviceFun);
+   gpgpu_ptx_sim_register_kernel(fatCubinHandle,hostFun,deviceFun);
    return;
 }
 

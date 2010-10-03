@@ -116,7 +116,6 @@ public:
    ~cache_t();
 
    enum cache_request_status access( new_addr_type addr, 
-                                     unsigned int nbytes, 
                                      unsigned char write,
                                      unsigned int sim_cycle, 
                                      address_type *wb_address);

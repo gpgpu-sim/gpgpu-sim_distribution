@@ -78,6 +78,7 @@ memory_space *g_param_mem;
 bool g_override_embedded_ptx = false;
 
 struct ptx_info_t {
+    unsigned fat_cubin_handle;
     char *str;
     char *cubin_str;
     char *fname;
@@ -292,15 +293,21 @@ void gpgpu_ptx_sim_load_gpu_kernels()
    }
 }
 
-void gpgpu_ptx_sim_add_ptxstring( const char *ptx_string, const char *cubin_string, const char *sourcefname )
+void gpgpu_ptx_sim_add_ptxstring( unsigned fat_cubin_handle, const char *ptx_string, const char *cubin_string, const char *sourcefname )
 {
     ptx_info_t *t = new ptx_info_t;
     t->next = NULL;
     t->str = strdup(ptx_string);
+    t->fat_cubin_handle = fat_cubin_handle;
     if (cubin_string != NULL) {
        t->cubin_str = strdup(cubin_string);
     } else {
-       assert(g_ptx_convert_to_ptxplus == 0); 
+       if(g_ptx_convert_to_ptxplus != 0) {
+           printf("GPGPU-Sim PTX: ERROR cubin information, required for ptxplus, missing from fat bin object\n");
+           printf("GPGPU-Sim PTX: ptxplus currently requires CUDA 2.3 or earlier... disable ptxplus by removing\n");
+           printf("GPGPU-Sim PTX: \'-gpgpu_ptx_convert_to_ptxplus 1\' in \'gpgpusim.config\'\n");
+           abort();
+       }
        t->cubin_str = NULL; 
     }
     t->fname = strdup(sourcefname);

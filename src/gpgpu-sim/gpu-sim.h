@@ -297,7 +297,7 @@ private:
    int next_clock_domain(void);
     
    unsigned char check_icnt_has_buffer(unsigned long long int addr, int bsize, int sid );
-   void gpu_sim_loop();
+   void cycle();
    void fq_pop(int tpc_id);
    void L2c_options(class OptionParser *opp);
    void L2c_print_cache_stat() const;
@@ -352,6 +352,7 @@ private:
    class memory_stats_t      *m_memory_stats;
 public:
    unsigned long long  gpu_sim_insn_last_update;
+   unsigned gpu_sim_insn_last_update_sid;
 };
 
 // global counters

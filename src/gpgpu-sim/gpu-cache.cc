@@ -131,7 +131,6 @@ cache_t::cache_t( const char *name,
 }
 
 enum cache_request_status cache_t::access( unsigned long long int addr, 
-                                           unsigned int nbytes, 
                                            unsigned char write, 
                                            unsigned int sim_cycle, 
                                            address_type *wb_address ) 

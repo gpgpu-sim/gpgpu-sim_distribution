@@ -729,7 +729,7 @@ unsigned int gpgpu_sim::run_gpu_sim()
 
    last_gpu_sim_insn = 0;
    while (not_completed || mem_busy || icnt2mem_busy) {
-      gpu_sim_loop();
+      cycle();
       not_completed = 0;
       for (unsigned i=0;i<m_n_shader;i++) 
          not_completed += m_sc[i]->get_not_completed();
@@ -771,7 +771,8 @@ unsigned int gpgpu_sim::run_gpu_sim()
 
    if (gpu_deadlock_detect && gpu_deadlock) {
       fflush(stdout);
-      printf("GPGPU-Sim uArch: ERROR ** deadlock detected: last writeback @ gpu_sim_cycle %u (+ gpu_tot_sim_cycle %u) (%u cycles ago)\n", 
+      printf("GPGPU-Sim uArch: ERROR ** deadlock detected: last writeback core %u @ gpu_sim_cycle %u (+ gpu_tot_sim_cycle %u) (%u cycles ago)\n", 
+             gpu_sim_insn_last_update_sid,
              (unsigned) gpu_sim_insn_last_update, (unsigned) (gpu_tot_sim_cycle-gpu_sim_cycle),
              (unsigned) (gpu_sim_cycle - gpu_sim_insn_last_update )); 
       unsigned num_cores=0;
@@ -791,9 +792,9 @@ unsigned int gpgpu_sim::run_gpu_sim()
       }
       printf("\n");
       for (unsigned i=0;i<m_n_mem;i++) {
-         mem_busy += m_memory_partition_unit[i]->busy();
-         if( mem_busy ) 
-             printf("GPGPU-Sim uArch DEADLOCK:  memory partition %u still busy\n", i);
+         bool busy = m_memory_partition_unit[i]->busy();
+         if( busy ) 
+             printf("GPGPU-Sim uArch DEADLOCK:  memory partition %u busy\n", i );
       }
       if( icnt_busy() ) 
          printf("GPGPU-Sim uArch DEADLOCK:  iterconnect contains traffic\n");
@@ -1166,9 +1167,7 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
     
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////
-// wrapper code to to create an illusion of a memory controller with L2 cache.
 
 void memory_partition_unit::push( mem_fetch* req, unsigned long long cycle ) 
 {
@@ -1200,15 +1199,17 @@ void memory_partition_unit::push( mem_fetch* req, unsigned long long cycle )
 mem_fetch* memory_partition_unit::pop() 
 {
    mem_fetch* mf;
-   if (m_config->gpgpu_cache_dl2_opt) {
+   if( m_config->gpgpu_cache_dl2_opt ) {
       mf = L2tocbqueue->pop(gpu_sim_cycle);
-      if ( mf->isatomic() ) 
+      if( mf && mf->isatomic() ) 
          mf->do_atomic();
    } else {
       mf = m_dram->returnq_pop(gpu_sim_cycle);
-      if (mf) mf->set_type( REPLY_DATA );
-      if (mf->isatomic() ) 
-         mf->do_atomic();
+      if( mf ) {
+          mf->set_type( REPLY_DATA );
+          if( mf->isatomic() ) 
+             mf->do_atomic();
+      }
    }
    m_request_tracker.erase(mf);
    return mf;
@@ -1232,11 +1233,16 @@ void memory_partition_unit::issueCMD()
       if ( !(dramtoL2queue->full() || dramtoL2writequeue->full()) ) { 
          mem_fetch* mf = m_dram->pop();
          if (mf) {
-            if (m_config->gpgpu_l2_readoverwrite && mf->get_is_write() )
-               dramtoL2writequeue->push(mf,gpu_sim_cycle);
-            else
-               dramtoL2queue->push(mf,gpu_sim_cycle);
-            mf->set_status(IN_DRAMTOL2QUEUE,MR_DRAM_OUTQ,gpu_sim_cycle+gpu_tot_sim_cycle);
+             if( mf->get_mem_acc() == L2_WRBK_ACC ) {
+                 m_request_tracker.erase(mf);
+                 delete mf;
+             } else {
+                if (m_config->gpgpu_l2_readoverwrite && mf->get_is_write() )
+                   dramtoL2writequeue->push(mf,gpu_sim_cycle);
+                else
+                   dramtoL2queue->push(mf,gpu_sim_cycle);
+                mf->set_status(IN_DRAMTOL2QUEUE,MR_DRAM_OUTQ,gpu_sim_cycle+gpu_tot_sim_cycle);
+             }
          }
       }
    } else {
@@ -1289,7 +1295,7 @@ int gpgpu_sim::next_clock_domain(void)
 
 unsigned long long g_single_step=0; // set this in gdb to single step the pipeline
 
-void gpgpu_sim::gpu_sim_loop()
+void gpgpu_sim::cycle()
 {
    int clock_mask = next_clock_domain();
 
@@ -1317,6 +1323,8 @@ void gpgpu_sim::gpu_sim_loop()
                 } else {
                     gpu_stall_icnt2sh++;
                 }
+            } else {
+                m_memory_partition_unit[i]->pop();
             }
         }
     }
