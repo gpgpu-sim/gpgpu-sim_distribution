@@ -270,8 +270,6 @@ public:
 
    unsigned run_gpu_sim();
 
-   unsigned get_L2_linesize() const;
-
    unsigned char fq_has_buffer(unsigned long long int addr, int bsize, bool write, int sid );
    void decrement_atomic_count( unsigned sid, unsigned wid );
    void get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc );
@@ -286,11 +284,11 @@ public:
 
    unsigned num_shader() const { return m_n_shader; }
    unsigned threads_per_core() const;
-   void     mem_instruction_stats( class inst_t* warp);
+   void mem_instruction_stats( class inst_t* warp);
    int issue_mf_from_fq(class mem_fetch *mf);
 
-   void     gpu_print_stat() const;
-   void     dump_pipeline( int mask, int s, int m ) const;
+   void gpu_print_stat() const;
+   void dump_pipeline( int mask, int s, int m ) const;
 
 private:
    // clocks

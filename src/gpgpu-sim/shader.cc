@@ -273,25 +273,22 @@ unsigned char shader_core_ctx::fq_push(unsigned long long int addr,
                                        partial_write_mask_t partial_write_mask, 
                                        int wid, 
                                        mshr_entry* mshr, 
-                                       int cache_hits_waiting, 
                                        enum mem_access_type mem_acc, 
                                        address_type pc) 
 {
    assert(write || (partial_write_mask == NO_PARTIAL_WRITE));
-   int nbytes_L2 = m_gpu->get_L2_linesize();
    mem_fetch *mf = new mem_fetch(addr,
-                                   bsize,
-                                   nbytes_L2,
-                                   m_sid,
-                                   m_tpc,
-                                   wid,
-                                   cache_hits_waiting,
-                                   mshr,
-                                   write,
-                                   partial_write_mask,
-                                   mem_acc,
-                                   write?WT_REQ:RD_REQ,
-                                   pc);
+                                 bsize,
+                                 (write?WRITE_PACKET_SIZE:READ_PACKET_SIZE),
+                                 m_sid,
+                                 m_tpc,
+                                 wid,
+                                 mshr,
+                                 write,
+                                 partial_write_mask,
+                                 mem_acc,
+                                 (write?WT_REQ:RD_REQ),
+                                 pc);
    if (mshr) mshr->set_mf(mf);
 
    // stats
@@ -1173,7 +1170,7 @@ void shader_core_ctx::fetch_new()
                         fq_push( pc, req_size, false, 
                                  NO_PARTIAL_WRITE, 
                                  warp_id, 
-                                 mshr, 0, 
+                                 mshr, 
                                  INST_ACC_R, pc );
                         m_warp[warp_id].set_imiss_pending(mshr);
                         m_warp[warp_id].set_last_fetch(gpu_sim_cycle);
@@ -1963,7 +1960,7 @@ mem_stage_stall_type shader_core_ctx::send_mem_request(mem_access_t &access)
          m_stats->gpu_stall_sh2icnt++; 
          return WB_ICNT_RC_FAIL;
       }
-      fq_push( access.wb_addr, req_size, true, NO_PARTIAL_WRITE, -1, NULL, 0, 
+      fq_push( access.wb_addr, req_size, true, NO_PARTIAL_WRITE, -1, NULL, 
                is_local(access.space)?LOCAL_ACC_W:GLOBAL_ACC_W, //space of cache line is same as new request
 		        -1);
       m_stats->L1_writeback++;
@@ -2005,7 +2002,6 @@ mem_stage_stall_type shader_core_ctx::send_mem_request(mem_access_t &access)
          return ICNT_RC_FAIL;
       }
       //send over interconnect
-      unsigned cache_hits_waiting = 0;
       partial_write_mask_t  write_mask = NO_PARTIAL_WRITE;
       unsigned warp_id = req_head->hw_thread_id/m_config->warp_size;
       if (access.iswrite) {
@@ -2021,7 +2017,7 @@ mem_stage_stall_type shader_core_ctx::send_mem_request(mem_access_t &access)
       }
       fq_push( access.addr, request_size,
                access.iswrite, write_mask, warp_id , access.reserved_mshr, 
-               cache_hits_waiting, access_type, req_head->pc);
+               access_type, req_head->pc);
    }
 
    // book keeping for mshr : this request is done (sent/accounted for)
@@ -3364,7 +3360,7 @@ void mshr_entry::print(FILE *fp, unsigned mask) const
                 (m_merged_requests != NULL || m_merged_on_other_reqest), 
                 MSHR_Status_str[m_status]);
         if ( m_mf )
-            ptx_print_insn( m_mf->pc, fp );
+            ptx_print_insn( m_mf->get_pc(), fp );
         fprintf(fp,"\n");
         if ( mask & 0x200 ) {
             for (unsigned i = 0; i < m_insts.size(); i++) {

@@ -93,17 +93,17 @@ extern unsigned freed_L2write_mfs;
 
 address_type L2c_mshr::cache_tag(const mem_fetch *mf) const 
 {
-   return (mf->addr & ~(m_linesize - 1));
+   return (mf->get_addr() & ~(m_linesize - 1));
 }
 
 address_type L2c_miss_tracker::cache_tag(const mem_fetch *mf) const 
 {
-   return (mf->addr & ~(m_linesize - 1));
+   return (mf->get_addr() & ~(m_linesize - 1));
 }
 
 address_type L2c_access_locality::cache_tag(const mem_fetch *mf) const 
 {
-   return (mf->addr & ~(m_linesize - 1));
+   return (mf->get_addr() & ~(m_linesize - 1));
 }
 
 void gpgpu_sim::L2c_options(option_parser_t opp)
@@ -148,8 +148,8 @@ void L2c_mshr::miss_serviced(const mem_fetch *mf)
    assert(m_active_mshr_chain.list == NULL);
    address_type cacheTag = cache_tag(mf);
    L2missGroup::iterator missGroup = m_L2missgroup.find(cacheTag);
-   if (missGroup == m_L2missgroup.end() || mf->type == L2_WTBK_DATA) {
-      assert(mf->type == L2_WTBK_DATA); // only this returning mem req can be missed by the MSHR
+   if (missGroup == m_L2missgroup.end() || mf->get_type() == L2_WTBK_DATA) {
+      assert(mf->get_type() == L2_WTBK_DATA); // only this returning mem req can be missed by the MSHR
       return; 
    } 
    assert(missGroup->first == cacheTag);
@@ -191,9 +191,8 @@ void L2c_mshr::print(FILE *fout)
    for (missGroup = m_L2missgroup.begin(); missGroup != m_L2missgroup.end(); ++missGroup) {
       fprintf(fout, "%#08x: ", missGroup->first); 
       mem_fetch_list &mf_list = missGroup->second; 
-      for (mem_fetch_list::iterator imf = mf_list.begin(); imf != mf_list.end(); ++imf) {
-         fprintf(fout, "%p:%d ", *imf, (*imf)->request_uid);
-      }
+      for (mem_fetch_list::iterator imf = mf_list.begin(); imf != mf_list.end(); ++imf) 
+         (*imf)->print(fout);
       fprintf(fout, "\n");
    }
 }
@@ -396,19 +395,18 @@ void memory_partition_unit::L2c_service_mem_req()
       mf = m_icnt2cache_write_queue->pop(gpu_sim_cycle);
    if( !mf ) 
       return;
-   switch (mf->type) {
+   switch (mf->get_type()) {
    case RD_REQ:
    case WT_REQ: {
          address_type rep_block;
-         enum cache_request_status status = m_L2cache->access( mf->addr, 4, mf->m_write, gpu_sim_cycle, &rep_block);
+         enum cache_request_status status = m_L2cache->access( mf->get_addr(), 4, mf->get_is_write(), gpu_sim_cycle, &rep_block);
          if( (status==HIT) || m_config->l2_ideal ) {
-            mf->type = REPLY_DATA;
+            mf->set_type( REPLY_DATA );
             L2tocbqueue->push(mf,gpu_sim_cycle);
-            if (!mf->m_write) { 
+            if (!mf->get_is_write()) { 
                m_stats->L2_read_hit++;
-               m_stats->memlatstat_icnt2sh_push(mf);
-               if (mf->mshr) 
-                  mf->mshr->set_status(IN_L2TOCBQUEUE_HIT);
+               mf->set_return_timestamp(gpu_sim_cycle+gpu_tot_sim_cycle);
+               mf->set_status(IN_L2TOCBQUEUE_HIT,MR_DRAM_OUTQ,gpu_sim_cycle+gpu_tot_sim_cycle);
             } else { 
                m_stats->L2_write_hit++;
                freed_L1write_mfs++;
@@ -420,15 +418,9 @@ void memory_partition_unit::L2c_service_mem_req()
             // this miss just need to access the cache later when this request is serviced
             bool mshr_hit = m_mshr->new_miss(mf);
             if (not mshr_hit) {
-               if (mf->m_write) {
-                  // if request is writeback from L1 and misses, 
-                  // then redirect mf writes to dram (no write allocate)
-                  mf->nbytes_L2 = mf->nbytes_L1 - READ_PACKET_SIZE;
-               }
                L2todramqueue->push(mf,gpu_sim_cycle);
             }
-            if (mf->mshr) 
-               mf->mshr->set_status(IN_L2TODRAMQUEUE);
+            mf->set_status(IN_L2TODRAMQUEUE,MR_DRAM_OUTQ,gpu_sim_cycle+gpu_tot_sim_cycle);
          }
       }
       break;
@@ -444,14 +436,13 @@ void memory_partition_unit::L2c_push_miss_to_dram()
    mem_fetch* mf = L2todram_wbqueue->pop(gpu_sim_cycle); //prioritize writeback
    if (!mf) mf = L2todramqueue->pop(gpu_sim_cycle);
    if (mf) {
-      if (mf->m_write) {
+      if (mf->get_is_write()) 
          m_stats->L2_write_miss++;
-      } else {
+      else 
          m_stats->L2_read_miss++;
-      }
       m_missTracker->new_miss(mf);
       m_dram->push(mf);
-      if (mf->mshr) mf->mshr->set_status(IN_DRAM_REQ_QUEUE);
+      mf->set_status(IN_DRAM_REQ_QUEUE, MR_DRAMQ, gpu_sim_cycle+gpu_tot_sim_cycle);
    }
 }
 
@@ -479,19 +470,18 @@ void memory_partition_unit::process_dram_output()
    }
    mem_fetch* mf = L2dramout;
    if (mf) {
-      if (!mf->m_write) { //service L2 read miss
+      if (!mf->get_is_write()) { //service L2 read miss
          // it is a pre-fill dramout mf
          if (wb_addr == (unsigned long long int)-1) {
             if ( L2tocbqueue->full() ) {
                assert (L2dramout || wb_addr == (unsigned long long int)-1);
                return;
             }
-            if (mf->mshr) 
-               mf->mshr->set_status(IN_L2TOCBQUEUE_MISS);
+            mf->set_status(IN_L2TOCBQUEUE_MISS,MR_DRAM_OUTQ,gpu_sim_cycle+gpu_tot_sim_cycle);
             //only transfer across icnt once the whole line has been received by L2 cache
-            mf->type = REPLY_DATA;
+            mf->set_type(REPLY_DATA);
             L2tocbqueue->push(mf,gpu_sim_cycle);
-            wb_addr = m_L2cache->shd_cache_fill(mf->addr, gpu_sim_cycle);
+            wb_addr = m_L2cache->shd_cache_fill(mf->get_addr(), gpu_sim_cycle);
          }
          // only perform a write on cache eviction (write-back policy)
          // it is the 1st or nth time trial to writeback
@@ -527,14 +517,16 @@ bool memory_partition_unit::L2c_write_back( unsigned long long int addr, int bsi
    if ( L2todram_wbqueue->full() ) 
       return false;
    mem_fetch *mf = new mem_fetch(addr,
-                                 bsize+READ_PACKET_SIZE/*l1*/,
-                                 bsize/*l2*/,
-                                 0/*sid*/,0/*tpc*/,0/*wid*/,0/*cache_hits_waiting*/,NULL,true,
+                                 bsize,
+                                 READ_PACKET_SIZE,
+                                 (unsigned)-1/*sid*/,
+                                 (unsigned)-1/*tpc*/,
+                                 (unsigned)-1/*wid*/,
+                                 NULL,true,
                                  partial_write_mask_t(),
                                  L2_WRBK_ACC,
                                  L2_WTBK_DATA,
                                  -1/*pc*/);
-   m_stats->memlatstat_start(mf);
    made_write_mfs++;
    L2todram_wbqueue->push(mf,gpu_sim_cycle);
    gpgpu_n_sent_writes++;

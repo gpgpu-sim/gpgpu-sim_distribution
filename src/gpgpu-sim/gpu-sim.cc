@@ -1036,36 +1036,19 @@ unsigned char gpgpu_sim::check_icnt_has_buffer(unsigned long long int addr, int 
    return icnt_has_buffer(tpc_id, bsize);
 }
 
-unsigned gpgpu_sim::get_L2_linesize() const
-{
-   if (m_memory_partition_unit[0]->has_cache())
-      return m_memory_partition_unit[0]->L2c_get_linesize();
-   else
-      return 0;
-}
-
 int gpgpu_sim::issue_mf_from_fq(mem_fetch *mf)
 {
-   m_memory_stats->memlatstat_start(mf);
-   int destination; // where is the next level of memory?
-   destination = mf->tlx.chip;
-   int tpc_id = mf->sid / gpu_concentration;
-
-   if (mf->mshr) mf->mshr->set_status(IN_ICNT2MEM);
-   if (!mf->m_write) {
-      mf->type = RD_REQ;
-      assert( mf->timestamp == (gpu_sim_cycle+gpu_tot_sim_cycle) );
-      if( mf->mshr && mf->mshr->has_inst() ) 
-          time_vector_update(mf->mshr->get_insts_uid(), MR_ICNT_PUSHED, gpu_sim_cycle+gpu_tot_sim_cycle, mf->type );
-      icnt_push(tpc_id, mem2device(destination), (void*)mf, READ_PACKET_SIZE);
+   unsigned destination = mf->get_tlx_addr().chip;
+   unsigned tpc_id = mf->get_tpc();
+   mf->set_status(IN_ICNT2MEM,MR_ICNT_PUSHED,gpu_sim_cycle+gpu_tot_sim_cycle);
+   if (!mf->get_is_write()) {
+      mf->set_type(RD_REQ);
+      icnt_push(tpc_id, mem2device(destination), (void*)mf, mf->get_ctrl_size() );
    } else {
-      mf->type = WT_REQ;
-      icnt_push(tpc_id, mem2device(destination), (void*)mf, mf->nbytes_L1);
+      mf->set_type(WT_REQ);
+      icnt_push(tpc_id, mem2device(destination), (void*)mf, mf->size());
       gpgpu_n_sent_writes++;
-      assert( mf->timestamp == (gpu_sim_cycle+gpu_tot_sim_cycle) );
-      time_vector_update(mf->request_uid, MR_ICNT_PUSHED, gpu_sim_cycle+gpu_tot_sim_cycle, mf->type ) ;
    }
-
    return 0;
 }
 
@@ -1073,19 +1056,18 @@ void shader_core_ctx::fill_shd_L1_with_new_line(mem_fetch * mf)
 {
    // When the data arrives, it flags all the appropriate MSHR
    // entries accordingly (by checking the address in each entry ) 
-   if (mf->mshr->isinst()) {
-       m_L1I->shd_cache_fill(mf->addr,gpu_sim_cycle+gpu_tot_sim_cycle);
-       m_warp[mf->mshr->get_warp_id()].clear_imiss_pending();
-       delete mf->mshr;
-       mf->mshr=NULL;
+   if ( mf->isinst() ) {
+       m_L1I->shd_cache_fill(mf->get_addr(),gpu_sim_cycle+gpu_tot_sim_cycle);
+       m_warp[mf->get_wid()].clear_imiss_pending();
+       delete mf->get_mshr();
    } else {
-       m_mshr_unit->mshr_return_from_mem(mf->mshr);
-       if (mf->mshr->istexture()) 
-           m_L1T->shd_cache_fill(mf->addr,gpu_sim_cycle+gpu_tot_sim_cycle);
-       else if (mf->mshr->isconst()) 
-           m_L1C->shd_cache_fill(mf->addr,gpu_sim_cycle+gpu_tot_sim_cycle);
+       m_mshr_unit->mshr_return_from_mem(mf->get_mshr());
+       if (mf->istexture()) 
+           m_L1T->shd_cache_fill(mf->get_addr(),gpu_sim_cycle+gpu_tot_sim_cycle);
+       else if (mf->isconst()) 
+           m_L1C->shd_cache_fill(mf->get_addr(),gpu_sim_cycle+gpu_tot_sim_cycle);
        else if (!m_config->gpgpu_no_dl1) 
-           m_L1D->shd_cache_fill(mf->addr,gpu_sim_cycle+gpu_tot_sim_cycle);
+           m_L1D->shd_cache_fill(mf->get_addr(),gpu_sim_cycle+gpu_tot_sim_cycle);
    }
    freed_read_mfs++;
    delete mf;
@@ -1094,7 +1076,7 @@ void shader_core_ctx::fill_shd_L1_with_new_line(mem_fetch * mf)
 void shader_core_ctx::store_ack( class mem_fetch *mf )
 {
    if (!strcmp("GT200",m_config->pipeline_model) )  {
-    unsigned warp_id = mf->wid;
+    unsigned warp_id = mf->get_wid();
     m_warp[warp_id].dec_store_req();
    }
 }
@@ -1104,15 +1086,14 @@ void gpgpu_sim::fq_pop(int tpc_id)
     mem_fetch *mf = (mem_fetch*) icnt_pop(tpc_id);
     if (!mf) 
         return;
-    assert(mf->type == REPLY_DATA);
-    if( mf->mshr && mf->mshr->has_inst() ) 
-        time_vector_update(mf->mshr->get_insts_uid() ,MR_2SH_FQ_POP,gpu_sim_cycle+gpu_tot_sim_cycle, mf->type );
-    if (mf->m_write) { 
-        m_sc[mf->sid]->store_ack(mf);
+    assert(mf->get_type() == REPLY_DATA);
+    mf->set_status(IN_ICNT2SHADER,MR_2SH_FQ_POP,gpu_sim_cycle+gpu_tot_sim_cycle);
+    if (mf->get_is_write()) { 
+        m_sc[mf->get_sid()]->store_ack(mf);
         delete mf;
     } else {
         m_memory_stats->memlatstat_read_done(mf,m_shader_config->max_warps_per_shader);
-        m_sc[mf->sid]->fill_shd_L1_with_new_line(mf);
+        m_sc[mf->get_sid()]->fill_shd_L1_with_new_line(mf);
     }
 }
 
@@ -1201,24 +1182,17 @@ void memory_partition_unit::push( mem_fetch* req, unsigned long long cycle )
     if ( !m_rop.empty() && (cycle >= m_rop.front().ready_cycle) ) {
         mem_fetch* mf = m_rop.front().req;
         m_rop.pop();
-        if (mf->type==RD_REQ) {
-            if ( mf->mshr && mf->mshr->has_inst() )
-                time_vector_update(mf->mshr->get_insts_uid(),MR_DRAMQ,gpu_sim_cycle+gpu_tot_sim_cycle,mf->type ) ;
-        } else {
-            if ( mf->mshr && !mf->mshr->isinst() )
-                time_vector_update(mf->request_uid ,MR_DRAMQ,gpu_sim_cycle+gpu_tot_sim_cycle,mf->type ) ;
-        }
         m_stats->memlatstat_icnt2mem_pop(mf);
         if (m_config->gpgpu_cache_dl2_opt) {
-            if (m_config->gpgpu_l2_readoverwrite && mf->m_write)
+            if (m_config->gpgpu_l2_readoverwrite && mf->get_is_write())
                 m_icnt2cache_write_queue->push(mf,gpu_sim_cycle);
             else
                 m_icnt2cache_queue->push(mf,gpu_sim_cycle);
             m_accessLocality->access(mf); 
-            if (mf->mshr) mf->mshr->set_status(IN_CBTOL2QUEUE);
+            mf->set_status(IN_CBTOL2QUEUE,MR_DRAMQ,gpu_sim_cycle+gpu_tot_sim_cycle);
         } else {
             m_dram->push(mf); 
-            if (mf->mshr) mf->mshr->set_status(IN_DRAM_REQ_QUEUE);
+            mf->set_status(IN_DRAM_REQ_QUEUE,MR_DRAMQ,gpu_sim_cycle+gpu_tot_sim_cycle);
         }
     }
 }
@@ -1228,17 +1202,13 @@ mem_fetch* memory_partition_unit::pop()
    mem_fetch* mf;
    if (m_config->gpgpu_cache_dl2_opt) {
       mf = L2tocbqueue->pop(gpu_sim_cycle);
-      if (mf && mf->mshr && mf->mshr->isatomic() ) {
-         dram_callback_t &cb = mf->mshr->get_atomic_callback();
-         cb.function(cb.instruction, cb.thread);
-      }
+      if ( mf->isatomic() ) 
+         mf->do_atomic();
    } else {
       mf = m_dram->returnq_pop(gpu_sim_cycle);
-      if (mf) mf->type = REPLY_DATA;
-      if (mf && mf->mshr && mf->mshr->isatomic() ) {
-         dram_callback_t &cb = mf->mshr->get_atomic_callback();
-         cb.function(cb.instruction, cb.thread);
-      }
+      if (mf) mf->set_type( REPLY_DATA );
+      if (mf->isatomic() ) 
+         mf->do_atomic();
    }
    m_request_tracker.erase(mf);
    return mf;
@@ -1250,7 +1220,7 @@ mem_fetch* memory_partition_unit::top()
       return L2tocbqueue->top();
    } else {
        mem_fetch* mf = m_dram->returnq_top();
-      if (mf) mf->type = REPLY_DATA;
+      if (mf) mf->set_type( REPLY_DATA );
       return mf;
    }
 }
@@ -1262,12 +1232,11 @@ void memory_partition_unit::issueCMD()
       if ( !(dramtoL2queue->full() || dramtoL2writequeue->full()) ) { 
          mem_fetch* mf = m_dram->pop();
          if (mf) {
-            if (m_config->gpgpu_l2_readoverwrite && mf->m_write)
+            if (m_config->gpgpu_l2_readoverwrite && mf->get_is_write() )
                dramtoL2writequeue->push(mf,gpu_sim_cycle);
             else
                dramtoL2queue->push(mf,gpu_sim_cycle);
-            if (mf->mshr) 
-               mf->mshr->set_status(IN_DRAMTOL2QUEUE);
+            mf->set_status(IN_DRAMTOL2QUEUE,MR_DRAM_OUTQ,gpu_sim_cycle+gpu_tot_sim_cycle);
          }
       }
    } else {
@@ -1276,8 +1245,7 @@ void memory_partition_unit::issueCMD()
       mem_fetch* mf = m_dram->pop();
       if (mf) {
          m_dram->returnq_push(mf,gpu_sim_cycle);
-         if (mf->mshr) 
-            mf->mshr->set_status(IN_DRAMRETURN_Q);
+         mf->set_status(IN_DRAMRETURN_Q,MR_DRAM_OUTQ,gpu_sim_cycle+gpu_tot_sim_cycle);
       }
    }
    m_dram->issueCMD(); 
@@ -1330,27 +1298,21 @@ void gpgpu_sim::gpu_sim_loop()
       for (int i=0;i<gpu_n_tpc;i++) 
          fq_pop(i); 
    }
-
     if (clock_mask & ICNT) {
         // pop from memory controller to interconnect
         for (unsigned i=0;i<m_n_mem;i++) {
             mem_fetch* mf = m_memory_partition_unit[i]->top();
             if (mf) {
-                assert( mf->type != RD_REQ && mf->type != WT_REQ );
-                unsigned response_size = mf->m_write?mf->nbytes_L1:WRITE_PACKET_SIZE;
+                mf->set_status(IN_ICNT2SHADER,MR_2SH_ICNT_PUSHED,gpu_sim_cycle+gpu_tot_sim_cycle);
+                unsigned response_size = mf->get_is_write()?mf->get_ctrl_size():mf->size();
                 if ( icnt_has_buffer( mem2device(i), response_size ) ) {
-                    if (!mf->m_write) {
-                        if (mf->mshr) mf->mshr->set_status(IN_ICNT2SHADER);
-                        m_memory_stats->memlatstat_icnt2sh_push(mf);
-                        if ( mf->mshr && mf->mshr->has_inst() )
-                            time_vector_update(mf->mshr->get_insts_uid(),MR_2SH_ICNT_PUSHED,gpu_sim_cycle+gpu_tot_sim_cycle,RD_REQ);
-                    } else {
-                        time_vector_update(mf->request_uid ,MR_2SH_ICNT_PUSHED,gpu_sim_cycle+gpu_tot_sim_cycle,WT_REQ ) ;
+                    if (!mf->get_is_write()) 
+                       mf->set_return_timestamp(gpu_sim_cycle+gpu_tot_sim_cycle);
+                    else {
                         freed_L1write_mfs++;
                         gpgpu_n_processed_writes++;
                     }
-                    int return_dev = mf->sid / gpu_concentration;
-                    icnt_push( mem2device(i), return_dev, mf, response_size );
+                    icnt_push( mem2device(i), mf->get_tpc(), mf, response_size );
                     m_memory_partition_unit[i]->pop();
                 } else {
                     gpu_stall_icnt2sh++;
@@ -1360,9 +1322,8 @@ void gpgpu_sim::gpu_sim_loop()
     }
 
    if (clock_mask & DRAM) {
-      for (unsigned i=0;i<m_n_mem;i++) { 
+      for (unsigned i=0;i<m_n_mem;i++)  
          m_memory_partition_unit[i]->issueCMD(); // Issue the dram command (scheduler + delay model) 
-      }
    }
 
    // L2 operations follow L2 clock domain
@@ -1374,7 +1335,7 @@ void gpgpu_sim::gpu_sim_loop()
    if (clock_mask & ICNT) {
       for (unsigned i=0;i<m_n_mem;i++) {
          if ( m_memory_partition_unit[i]->full() ) {
-			gpu_stall_dramfull++;
+            gpu_stall_dramfull++;
             continue;
          }
          // move memory request from interconnect into memory partition (if memory controller not backed up)

@@ -184,23 +184,25 @@ unsigned int dram_t::queue_limit() const
 
 dram_req_t::dram_req_t( class mem_fetch *mf )
 {
-   bk = mf->tlx.bk; 
-   row = mf->tlx.row; 
-   col = mf->tlx.col; 
-   nbytes = mf->nbytes_L1;
    txbytes = 0;
    dqbytes = 0;
    data = mf;
+
+   const addrdec_t &tlx = mf->get_tlx_addr();
+
+   bk  = tlx.bk; 
+   row = tlx.row; 
+   col = tlx.col; 
+   nbytes = mf->get_data_size();
+
    timestamp = gpu_tot_sim_cycle + gpu_sim_cycle;
-   cache_hits_waiting = mf->cache_hits_waiting;
-   addr = mf->addr;
+   addr = mf->get_addr();
    insertion_time = (unsigned) gpu_sim_cycle;
-   rw = data->m_write?WRITE:READ;
+   rw = data->get_is_write()?WRITE:READ;
 }
 
 void dram_t::push( class mem_fetch *data ) 
 {
-   assert(data->tlx.bk<nbk);
    dram_req_t *mrq = new dram_req_t(data);
    mrqq->push(mrq,gpu_sim_cycle);
 

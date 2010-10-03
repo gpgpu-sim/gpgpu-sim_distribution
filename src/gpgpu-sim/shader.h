@@ -283,8 +283,11 @@ private:
     unsigned m_inst_in_pipeline;
 };
 
+
+
 inline unsigned hw_tid_from_wid(unsigned wid, unsigned warp_size, unsigned i){return wid * warp_size + i;};
 inline unsigned wid_from_hw_tid(unsigned tid, unsigned warp_size){return tid/warp_size;};
+
 
 // bounded stack that implements pdom reconvergence (see MICRO'07 paper)
 class pdom_warp_ctx_t {
@@ -314,43 +317,6 @@ private:
     unsigned long long  *m_branch_div_cycle;
 };
 
-
-enum mshr_status {
-   INITIALIZED = 0,
-   INVALID,
-   IN_ICNT2MEM,
-   IN_CBTOL2QUEUE,
-   IN_L2TODRAMQUEUE,
-   IN_DRAM_REQ_QUEUE,
-   IN_DRAMRETURN_Q,
-   IN_DRAMTOL2QUEUE,
-   IN_L2TOCBQUEUE_HIT,
-   IN_L2TOCBQUEUE_MISS,
-   IN_ICNT2SHADER,
-   FETCHED,
-   NUM_MSHR_STATUS
-};
-
-//used to stages that time_vector will keep track of their timing 
-enum mem_req_stat {
-   MR_UNUSED,
-   MR_FQPUSHED,
-   MR_ICNT_PUSHED,
-   MR_ICNT_INJECTED,
-   MR_ICNT_AT_DEST,
-   MR_DRAMQ, //icnt_pop at dram side and mem_ctrl_push
-   MR_DRAM_PROCESSING_START,
-   MR_DRAM_PROCESSING_END,
-   MR_DRAM_OUTQ,
-   MR_2SH_ICNT_PUSHED, // icnt_push and mem_ctl_pop //STORES END HERE!
-   MR_2SH_ICNT_INJECTED,
-   MR_2SH_ICNT_AT_DEST,
-   MR_2SH_FQ_POP, //icnt_pop called inside fq_pop
-   MR_RETURN_Q,
-   MR_WRITEBACK, //done
-   NUM_MEM_REQ_STAT
-};
-#include <vector>
 
 class mshr_entry {
 public:
@@ -1183,7 +1149,6 @@ private:
                           unsigned char write, 
                           partial_write_mask_t partial_write_mask, 
                           int wid, mshr_entry* mshr, 
-                          int cache_hits_waiting,
                           enum mem_access_type mem_acc, 
                           address_type pc );
 

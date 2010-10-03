@@ -91,18 +91,53 @@ enum mem_access_type {
    NUM_MEM_ACCESS_TYPE = 8
 };
 
+enum mshr_status {
+   INITIALIZED = 0,
+   INVALID,
+   IN_ICNT2MEM,
+   IN_CBTOL2QUEUE,
+   IN_L2TODRAMQUEUE,
+   IN_DRAM_REQ_QUEUE,
+   IN_DRAMRETURN_Q,
+   IN_DRAMTOL2QUEUE,
+   IN_L2TOCBQUEUE_HIT,
+   IN_L2TOCBQUEUE_MISS,
+   IN_ICNT2SHADER,
+   FETCHED,
+   NUM_MSHR_STATUS
+};
+
+//used to stages that time_vector will keep track of their timing 
+enum mem_req_stat {
+   MR_UNUSED,
+   MR_FQPUSHED,
+   MR_ICNT_PUSHED,
+   MR_ICNT_INJECTED,
+   MR_ICNT_AT_DEST,
+   MR_DRAMQ, //icnt_pop at dram side and mem_ctrl_push
+   MR_DRAM_PROCESSING_START,
+   MR_DRAM_PROCESSING_END,
+   MR_DRAM_OUTQ,
+   MR_2SH_ICNT_PUSHED, // icnt_push and mem_ctl_pop //STORES END HERE!
+   MR_2SH_ICNT_INJECTED,
+   MR_2SH_ICNT_AT_DEST,
+   MR_2SH_FQ_POP, //icnt_pop called inside fq_pop
+   MR_RETURN_Q,
+   MR_WRITEBACK, //done
+   NUM_MEM_REQ_STAT
+};
+
 const unsigned partial_write_mask_bits = 128; //must be at least size of largest memory access.
 typedef std::bitset<partial_write_mask_bits> partial_write_mask_t;
 
 class mem_fetch {
 public:
-   mem_fetch( unsigned long long int addr,
-              int                 l1bsize,
-              int                 l2bsize,
-              int                     sid,
-              unsigned                tpc,
-              int                     wid,
-              int      cache_hits_waiting,
+   mem_fetch( new_addr_type addr,
+              unsigned data_size,
+              unsigned ctrl_size,
+              unsigned sid,
+              unsigned tpc,
+              unsigned wid,
               class mshr_entry   * mshr,
               bool                  write,
               partial_write_mask_t partial_write_mask,
@@ -110,32 +145,60 @@ public:
               enum mf_type type,
               address_type pc );
 
+   void set_status( enum mshr_status status, enum mem_req_stat stat, unsigned long long cycle );
+   void set_type( enum mf_type t ) { type=t; }
+   void do_atomic();
+
    void print( FILE *fp ) const;
 
-public:
+   const addrdec_t &get_tlx_addr() const { return tlx; }
+   unsigned get_data_size() const { return nbytes_L1; }
+   unsigned get_ctrl_size() const { return ctrl_size; }
+   unsigned size() const { return nbytes_L1+ctrl_size; }
+   new_addr_type get_addr() const { return addr; }
+   class mshr_entry *get_mshr() { return mshr; }
+   bool get_is_write() const { return m_write; }
+   unsigned get_request_uid() const { return request_uid; }
+   unsigned get_sid() const { return sid; }
+   unsigned get_tpc() const { return tpc; }
+   unsigned get_wid() const { return wid; }
+   bool isinst() const;
+   bool istexture() const;
+   bool isconst() const;
+   enum mf_type get_type() const { return type; }
+   bool isatomic() const;
+   void set_return_timestamp( unsigned t ) { timestamp2=t; }
+   void set_icnt_receive_time( unsigned t ) { icnt_receive_time=t; }
+   unsigned get_timestamp() const { return timestamp; }
+   unsigned get_return_timestamp() const { return timestamp2; }
+   unsigned get_icnt_receive_time() const { return icnt_receive_time; }
+   enum mem_access_type get_mem_acc() const { return mem_acc; }
+   address_type get_pc() const { return pc; }
+
+private:
+   // request origination
    unsigned request_uid;
-   unsigned long long int addr;
-   int nbytes_L1;
-   int txbytes_L1;
-   int rxbytes_L1;
-   int nbytes_L2;
-   int txbytes_L2;
-   int rxbytes_L2;
-   int sid; //shader core id
-   int wid; //warp id
-   int cache_hits_waiting;
-   class mshr_entry* mshr;
    address_type pc;
+   unsigned sid;
+   unsigned tpc;
+   unsigned wid;
+   class mshr_entry* mshr;
+
+   // request type, address, size, mask
    bool m_write;
    enum mem_access_type mem_acc;
-   unsigned int timestamp; //set to gpu_sim_cycle at struct creation
-   unsigned int timestamp2; //set to gpu_sim_cycle when pushed onto icnt to shader; only used for reads
-   unsigned int icnt_receive_time; //set to gpu_sim_cycle + interconnect_latency when fixed icnt latency mode is enabled
-   unsigned char bank;
-   unsigned char chip;
-   addrdec_t tlx;
    enum mf_type type;
+   new_addr_type addr;
+   addrdec_t tlx;
    partial_write_mask_t write_mask;
+   unsigned nbytes_L1;
+   unsigned ctrl_size;
+
+   // statistics
+   unsigned timestamp;  // set to gpu_sim_cycle+gpu_tot_sim_cycle at struct creation
+   unsigned timestamp2; // set to gpu_sim_cycle+gpu_tot_sim_cycle when pushed onto icnt to shader; only used for reads
+   unsigned icnt_receive_time; // set to gpu_sim_cycle + interconnect_latency when fixed icnt latency mode is enabled
+
    static unsigned sm_next_mf_request_uid;
 };
 

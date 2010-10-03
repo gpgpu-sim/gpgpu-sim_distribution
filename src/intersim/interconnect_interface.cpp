@@ -82,7 +82,7 @@ class mycomparison {
 public:
    bool operator() (const void* lhs, const void* rhs) const
    {
-      return( ((mem_fetch *)lhs)->icnt_receive_time > ((mem_fetch *) rhs)->icnt_receive_time);
+      return( ((mem_fetch *)lhs)->get_icnt_receive_time() > ((mem_fetch *) rhs)->get_icnt_receive_time());
    }
 };
 
@@ -314,7 +314,7 @@ void interconnect_push ( unsigned int input_node, unsigned int output_node,
 #endif
 
    if (fixed_lat_icnt) {
-      ((mem_fetch *) data)->icnt_receive_time = gpu_sim_cycle + fixed_latency(input,output);  
+      ((mem_fetch *) data)->set_icnt_receive_time( gpu_sim_cycle + fixed_latency(input,output) );  
       out_buf_fixedlat_buf[output].push(data); //deliver the whole packet to destination in zero cycles
       if (out_buf_fixedlat_buf[output].size()  > max_fixedlat_buf_size[output]) {
          max_fixedlat_buf_size[output]= out_buf_fixedlat_buf[output].size();
@@ -348,10 +348,10 @@ void* interconnect_pop(unsigned int output_node)
    void* data = NULL;
    if (fixed_lat_icnt) {
       if (!out_buf_fixedlat_buf[output].empty()) {
-         if (((mem_fetch *)out_buf_fixedlat_buf[output].top())->icnt_receive_time <= gpu_sim_cycle) {
+         if (((mem_fetch *)out_buf_fixedlat_buf[output].top())->get_icnt_receive_time() <= gpu_sim_cycle) {
             data = out_buf_fixedlat_buf[output].top();
             out_buf_fixedlat_buf[output].pop();
-            assert (((mem_fetch *)data)->icnt_receive_time);
+            assert (((mem_fetch *)data)->get_icnt_receive_time());
          }
       }
    } else {
@@ -555,10 +555,10 @@ void time_vector_update(unsigned int uid, int slot , long int cycle, int type);
 void time_vector_update_icnt_injected(void* data, int input) 
 {
     mem_fetch* mf = (mem_fetch*) data;
-    if( mf->mshr && !mf->mshr->isinst() ) {
-        unsigned uid=mf->m_write? mf->request_uid : mf->mshr->get_insts_uid();
+    if( mf->get_mshr() && !mf->get_mshr()->isinst() ) {
+        unsigned uid=mf->get_is_write()? mf->get_request_uid() : mf->get_mshr()->get_insts_uid();
         long int cycle = gpu_sim_cycle + gpu_tot_sim_cycle;
-        int req_type = mf->m_write? WT_REQ : RD_REQ;
+        int req_type = mf->get_is_write()? WT_REQ : RD_REQ;
         if (is_mem(input)) {
            time_vector_update( uid, MR_2SH_ICNT_INJECTED, cycle, req_type );      
         } else { 

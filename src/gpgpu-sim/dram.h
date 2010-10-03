@@ -81,9 +81,10 @@
 #define BANK_IDLE 'I'
 #define BANK_ACTIVE 'A'
 
-struct dram_req_t 
-{
+class dram_req_t {
+public:
    dram_req_t( class mem_fetch *data );
+
    unsigned int row;
    unsigned int col;
    unsigned int bk;
@@ -96,7 +97,6 @@ struct dram_req_t
    unsigned long long int addr;
    unsigned int insertion_time;
    class mem_fetch * data;
-   int cache_hits_waiting; 
 };
 
 struct bank_t

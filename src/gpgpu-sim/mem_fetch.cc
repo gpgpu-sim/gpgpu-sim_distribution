@@ -65,48 +65,84 @@
 
 #include "mem_fetch.h"
 #include "mem_latency_stat.h"
+#include "shader.h"
+#include "visualizer.h"
+#include "gpu-sim.h"
 
 unsigned mem_fetch::sm_next_mf_request_uid=1;
 
-mem_fetch::mem_fetch(  unsigned long long int addr,
-                       int                 l1bsize,
-                       int                 l2bsize,
-                       int                     sid,
-                       unsigned                tpc,
-                       int                     wid,
-                       int      cache_hits_waiting,
-                       class mshr_entry   * mshr,
-                       bool                  write,
-                       partial_write_mask_t partial_write_mask,
-                       enum mem_access_type mem_acc,
-                       enum mf_type type,
-                       address_type pc )
+mem_fetch::mem_fetch( new_addr_type addr,
+                      unsigned data_size,
+                      unsigned ctrl_size,
+                      unsigned sid,
+                      unsigned tpc,
+                      unsigned wid,
+                      class mshr_entry   * mshr,
+                      bool                  write,
+                      partial_write_mask_t partial_write_mask,
+                      enum mem_access_type mem_acc,
+                      enum mf_type type,
+                      address_type pc )
 {
    class mem_fetch *mf = this;
    mf->request_uid = sm_next_mf_request_uid++;
+
    mf->addr = addr;
-   mf->nbytes_L1 = l1bsize;
-   mf->nbytes_L2 = l2bsize;
+   mf->nbytes_L1 = data_size;
+   mf->ctrl_size = ctrl_size;
    mf->sid = sid;
    mf->wid = wid;
-   mf->cache_hits_waiting = cache_hits_waiting;
-   mf->txbytes_L1 = 0;
-   mf->rxbytes_L1 = 0;  
+   mf->tpc = tpc;
    mf->mshr = mshr;
    mf->m_write = write;
    addrdec_tlx(addr,&mf->tlx);
-   mf->bank = mf->tlx.bk;
-   mf->chip = mf->tlx.chip;
-   mf->txbytes_L2 = 0;
-   mf->rxbytes_L2 = 0;  
-   mf->write_mask = partial_write_mask;
    mf->mem_acc = mem_acc;
    mf->type = type;
    mf->pc = pc;
+   mf->timestamp = gpu_sim_cycle + gpu_tot_sim_cycle;
+   mf->timestamp2 = 0;
 }
 
 void mem_fetch::print( FILE *fp ) const
 {
    fprintf(fp,"  mf: uid=%6u, addr=0x%08llx, sid=%u, wid=%u, pc=0x%04x, %s, bank=%u\n", 
-           request_uid, addr, sid, wid, pc, (m_write?"write":"read "), bank);
+           request_uid, addr, sid, wid, pc, (m_write?"write":"read "), tlx.bk);
+}
+
+void mem_fetch::set_status( enum mshr_status status, enum mem_req_stat stat, unsigned long long cycle ) 
+{
+   if ( mshr ) {
+      mshr->set_status(status);
+      if( mshr->has_inst() ) 
+         time_vector_update(mshr->get_insts_uid(),stat,cycle,type);
+      else 
+         time_vector_update(request_uid,stat,cycle,type);
+   }
+}
+
+bool mem_fetch::isatomic() const
+{
+   if( !mshr ) return false;
+   return mshr->isatomic();
+}
+
+void mem_fetch::do_atomic()
+{
+   dram_callback_t &cb = mshr->get_atomic_callback();
+   cb.function(cb.instruction, cb.thread);
+}
+
+bool mem_fetch::isinst() const 
+{ 
+   return (mshr==NULL)?false:mshr->isinst(); 
+}
+
+bool mem_fetch::istexture() const
+{ 
+   return (mshr==NULL)?false:mshr->istexture(); 
+}
+
+bool mem_fetch::isconst() const
+{ 
+   return (mshr==NULL)?false:mshr->isconst(); 
 }

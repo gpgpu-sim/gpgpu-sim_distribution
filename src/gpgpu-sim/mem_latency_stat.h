@@ -77,9 +77,7 @@ public:
                    struct shader_core_config *shader_config, 
                    struct memory_config *mem_config );
 
-   void memlatstat_start( class mem_fetch *mf);
    unsigned memlatstat_done( class mem_fetch *mf, unsigned n_warp_per_shader );
-   void memlatstat_icnt2sh_push( class mem_fetch *mf);
    void memlatstat_read_done( class mem_fetch *mf, unsigned n_warp_per_shader);
    void memlatstat_dram_access( class mem_fetch *mf );
    void memlatstat_icnt2mem_pop( class mem_fetch *mf);
