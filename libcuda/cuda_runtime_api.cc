@@ -100,6 +100,7 @@
  * include, in the user documentation and internal comments to the code,
  * the above Disclaimer and U.S. Government End Users Notice.
  */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -114,21 +115,33 @@
  #include <GL/gl.h>
  #endif
 #endif
+#include <dirent.h>
 
 #define __CUDA_RUNTIME_API_H__
-
-/*******************************************************************************
-*                                                                              *
-*                                                                              *
-*                                                                              *
-*******************************************************************************/
-
 
 #include "host_defines.h"
 #include "builtin_types.h"
 #include "driver_types.h"
 #include "__cudaFatFormat.h"
 #include "../src/gpgpu-sim/gpu-sim.h"
+#include "../src/cuda-sim/ptx_loader.h"
+#include "../src/cuda-sim/cuda-sim.h"
+#include "../src/cuda-sim/ptx_ir.h"
+#include "../src/cuda-sim/ptx_parser.h"
+#include "../src/gpgpusim_entrypoint.h"
+
+static void gpgpu_ptx_sim_load_gpu_kernels();
+static const struct gpgpu_ptx_sim_kernel_info * get_kernel_info(const char *kernel_key);
+static void register_function_implementation( const char *name, class function_info *impl );
+static void ptxinfo_cuda_addinfo();
+static void gpgpu_ptx_sim_add_ptxstring( unsigned fat_cubin_handle, 
+                                         const char *ptx_string, 
+                                         const char *cubin_string,  
+                                         const char *sourcefname, 
+                                         unsigned capability );
+static kernel_info_t gpgpu_cuda_ptx_sim_init_grid( const char *kernel_key, 
+                                                   gpgpu_ptx_sim_arg_list_t args, 
+                                                   struct dim3 gridDim, struct dim3 blockDim ); 
 
 /*DEVICE_BUILTIN*/
 struct cudaArray
@@ -142,7 +155,6 @@ struct cudaArray
     unsigned dimensions;
 };
 
-
 #if !defined(__dv)
 #if defined(__cplusplus)
 #define __dv(v) \
@@ -152,17 +164,7 @@ struct cudaArray
 #endif /* __cplusplus */
 #endif /* !__dv */
 
-/*******************************************************************************
-*                                                                              *
-*                                                                              *
-*                                                                              *
-*******************************************************************************/
-
 cudaError_t g_last_cudaError = cudaSuccess;
-
-#include "../src/cuda-sim/ptx_loader.h"
-#include "../src/cuda-sim/cuda-sim.h"
-#include "../src/gpgpusim_entrypoint.h"
 
 void register_ptx_function( const char *name, function_info *impl )
 {
@@ -873,10 +875,11 @@ __host__ cudaError_t CUDARTAPI cudaLaunch(const char *symbol )
           g_ptx_sim_mode?"functional simulation":"performance simulation");
    gpgpusim_ptx_assert( !g_cuda_launch_stack.empty(), "empty launch stack" );
    kernel_config &config = g_cuda_launch_stack.back();
+   kernel_info_t grid = gpgpu_cuda_ptx_sim_init_grid(symbol,config.get_args(),config.grid_dim(),config.block_dim());
    if( g_ptx_sim_mode )
-      gpgpu_cuda_ptx_sim_main_func( symbol, config.grid_dim(), config.block_dim(), config.get_args() );
+      gpgpu_cuda_ptx_sim_main_func( grid, config.grid_dim(), config.block_dim(), config.get_args() );
    else
-      gpgpu_cuda_ptx_sim_main_perf( symbol, config.grid_dim(), config.block_dim(), config.get_args() );
+      gpgpu_cuda_ptx_sim_main_perf( grid, config.grid_dim(), config.block_dim(), config.get_args() );
    return g_last_cudaError = cudaSuccess;
 }
 
@@ -1358,3 +1361,407 @@ int CUDARTAPI __cudaSynchronizeThreads(void**, void*)
 }
 
 }
+
+////////
+
+
+
+struct ptx_info_t {
+    unsigned fat_cubin_handle;
+    char *str;
+    char *cubin_str;
+    char *fname;
+    ptx_info_t *next;
+    unsigned capability;
+};
+
+static ptx_info_t *g_ptx_source_array = NULL;
+static unsigned g_ptx_max_capability = 0;
+
+extern "C" int ptx_parse();
+extern "C" int ptx__scan_string(const char*);
+extern "C" FILE *ptx_in;
+
+extern "C" const char *g_ptxinfo_filename;
+extern "C" int ptxinfo_parse();
+extern "C" int ptxinfo_debug;
+extern "C" FILE *ptxinfo_in;
+
+/// static functions
+
+
+
+std::map<std::string,function_info*> *g_kernel_name_to_function_lookup=NULL;
+std::map<const void*,std::string> *g_host_to_kernel_entrypoint_name_lookup=NULL;
+
+function_info *get_kernel(const char *kernel_key, std::string &kernel_func_name_mangled )
+{
+   if ( g_host_to_kernel_entrypoint_name_lookup->find(kernel_key) ==
+        g_host_to_kernel_entrypoint_name_lookup->end() ) {
+      printf("GPGPU-Sim PTX: ERROR ** cannot locate __global__ function from hostPtr\n" );
+      printf("GPGPU-Sim PTX: registered PTX kernels: \n");
+      std::map<const void*,std::string>::iterator i_eptr = g_host_to_kernel_entrypoint_name_lookup->begin();
+      for (; i_eptr != g_host_to_kernel_entrypoint_name_lookup->end(); ++i_eptr) {
+         printf("GPGPU-Sim PTX: (%p,%s)\n", i_eptr->first, i_eptr->second.c_str());
+      }
+      printf("\n");
+      abort();
+   } 
+   kernel_func_name_mangled = (*g_host_to_kernel_entrypoint_name_lookup)[kernel_key];
+   if ( g_kernel_name_to_function_lookup->find(kernel_func_name_mangled) ==
+        g_kernel_name_to_function_lookup->end() ) {
+      printf("GPGPU-Sim PTX: ERROR ** function \'%s\' not found in ptx file\n", 
+             kernel_func_name_mangled.c_str() );
+      abort();
+   }
+   return (*g_kernel_name_to_function_lookup)[kernel_func_name_mangled];
+}
+
+void gpgpu_ptx_sim_register_kernel(void **fatCubinHandle,const char *hostFun, const char *deviceFun)
+{
+   const void* key=hostFun;
+   print_splash();
+   if ( g_host_to_kernel_entrypoint_name_lookup == NULL )
+        g_host_to_kernel_entrypoint_name_lookup = new std::map<const void*,std::string>;
+   if( g_kernel_name_to_function_lookup == NULL )
+        g_kernel_name_to_function_lookup = new std::map<std::string,function_info*>;
+   if ( g_host_to_kernel_entrypoint_name_lookup->find(key) !=
+        g_host_to_kernel_entrypoint_name_lookup->end() ) {
+      printf("GPGPU-Sim Loader error: Don't know how to identify PTX kernels during cudaLaunch\n"
+             "                        for this application.\n");
+      abort();
+   }
+   (*g_host_to_kernel_entrypoint_name_lookup)[key] = deviceFun;
+   if( g_kernel_name_to_function_lookup->find(deviceFun) ==
+       g_kernel_name_to_function_lookup->end() ) {
+      (*g_kernel_name_to_function_lookup)[deviceFun] = NULL; // we set this later, set keys now for error checking
+   }
+
+   printf("GPGPU-Sim PTX: __cudaRegisterFunction %s : 0x%Lx\n", deviceFun, (unsigned long long)hostFun);
+}
+
+void ptxinfo_cuda_addinfo()
+{
+   if( !strcmp("__cuda_dummy_entry__",get_ptxinfo_kname()) ) {
+      // this string produced by ptxas for empty ptx files (e.g., bandwidth test)
+      clear_ptxinfo();
+      return;
+   }
+   if ( g_kernel_name_to_function_lookup ) {
+      std::map<std::string,function_info*>::iterator i=g_kernel_name_to_function_lookup->find(get_ptxinfo_kname());
+      if ( (g_kernel_name_to_function_lookup == NULL) || (i == g_kernel_name_to_function_lookup->end()) ) {
+        printf ("GPGPU-Sim PTX: ERROR ** implementation for '%s' not found.\n", get_ptxinfo_kname() );
+        abort();
+      } else {
+          print_ptxinfo();
+        function_info *fi = i->second;
+        assert(fi!=NULL);
+        fi->set_kernel_info(get_ptxinfo_kinfo());
+      }
+   } else {
+      printf ("GPGPU-Sim PTX: ERROR ** Kernel '%s' not found (no kernels registered).\n", get_ptxinfo_kname() );
+      abort();
+   }
+   clear_ptxinfo();
+}
+
+static void register_function_implementation( const char *name, function_info *impl )
+{
+   printf("GPGPU-Sim PTX: parsing function %s\n", name );
+   if( g_kernel_name_to_function_lookup == NULL )
+      g_kernel_name_to_function_lookup = new std::map<std::string,function_info*>;
+
+   std::map<std::string,function_info*>::iterator i_kernel = g_kernel_name_to_function_lookup->find(name);
+   if (i_kernel != g_kernel_name_to_function_lookup->end() && i_kernel->second != NULL) {
+      printf("GPGPU-Sim PTX: WARNING: Function already parsed once. Overwriting.\n");
+   }
+   (*g_kernel_name_to_function_lookup)[name] = impl;
+}
+
+
+static int load_static_globals( symbol_table *symtab, unsigned min_gaddr, unsigned max_gaddr) 
+{
+   printf( "GPGPU-Sim PTX: loading globals with explicit initializers... \n" );
+   fflush(stdout);
+   int ng_bytes=0;
+   symbol_table::iterator g=symtab->global_iterator_begin();
+
+   for ( ; g!=symtab->global_iterator_end(); g++) {
+      symbol *global = *g;
+      if ( global->has_initializer() ) {
+         printf( "GPGPU-Sim PTX:     initializing '%s' ... ", global->name().c_str() ); 
+         unsigned addr=global->get_address();
+         const type_info *type = global->type();
+         type_info_key ti=type->get_key();
+         size_t size;
+         int t;
+         ti.type_decode(size,t);
+         int nbytes = size/8;
+         int offset=0;
+         std::list<operand_info> init_list = global->get_initializer();
+         for ( std::list<operand_info>::iterator i=init_list.begin(); i!=init_list.end(); i++ ) {
+            operand_info op = *i;
+            ptx_reg_t value = op.get_literal_value();
+            assert( (addr+offset+nbytes) < min_gaddr ); // min_gaddr is start of "heap" for cudaMalloc
+            g_global_mem->write(addr+offset,nbytes,&value,NULL,NULL); // assuming little endian here
+            offset+=nbytes;
+            ng_bytes+=nbytes;
+         }
+         printf(" wrote %u bytes\n", offset ); 
+      }
+   }
+   printf( "GPGPU-Sim PTX: finished loading globals (%u bytes total).\n", ng_bytes );
+   fflush(stdout);
+   return ng_bytes;
+}
+
+static int load_constants( symbol_table *symtab, addr_t min_gaddr ) 
+{
+   printf( "GPGPU-Sim PTX: loading constants with explicit initializers... " );
+   fflush(stdout);
+   int nc_bytes = 0;
+   symbol_table::iterator g=symtab->const_iterator_begin();
+
+   for ( ; g!=symtab->const_iterator_end(); g++) {
+      symbol *constant = *g;
+      if ( constant->is_const() && constant->has_initializer() ) {
+
+         // get the constant element data size
+         int basic_type;
+         size_t num_bits;
+         constant->type()->get_key().type_decode(num_bits,basic_type); 
+
+         std::list<operand_info> init_list = constant->get_initializer();
+         int nbytes_written = 0;
+         for ( std::list<operand_info>::iterator i=init_list.begin(); i!=init_list.end(); i++ ) {
+            operand_info op = *i;
+            ptx_reg_t value = op.get_literal_value();
+            int nbytes = num_bits/8;
+            switch ( op.get_type() ) {
+            case int_t: assert(nbytes >= 1); break;
+            case float_op_t: assert(nbytes == 4); break;
+            case double_op_t: assert(nbytes >= 4); break; // account for double DEMOTING
+            default:
+               abort();
+            }
+            unsigned addr=constant->get_address() + nbytes_written;
+            assert( addr+nbytes < min_gaddr );
+
+            g_global_mem->write(addr,nbytes,&value,NULL,NULL); // assume little endian (so u8 is the first byte in u32)
+            nc_bytes+=nbytes;
+            nbytes_written += nbytes;
+         }
+      }
+   }
+   printf( " done.\n");
+   fflush(stdout);
+   return nc_bytes;
+}
+
+static FILE *open_ptxinfo (const char* ptx_filename)
+{
+   const int ptx_fnamelen = strlen(ptx_filename);
+   char *ptxi_fname = new char[ptx_fnamelen+5];
+   strcpy (ptxi_fname, ptx_filename);
+   strcpy (ptxi_fname+ptx_fnamelen, "info");
+
+   //ptxinfo_debug=1;
+   g_ptxinfo_filename = ptxi_fname;
+   FILE *f = fopen (ptxi_fname, "rt");
+   return f;
+}
+
+
+static int ptx_file_filter(
+#if !defined(__APPLE__)
+   const
+#endif
+   struct dirent *de )
+{
+   const char *tmp = strstr(de->d_name,".ptx");
+   if ( tmp != NULL && tmp[4] == 0 ) {
+      return 1;
+   }
+   return 0;
+}
+
+extern unsigned g_ptx_force_max_capability;
+extern int g_ptx_convert_to_ptxplus;
+
+void gpgpu_ptx_sim_add_ptxstring( unsigned fat_cubin_handle, const char *ptx_string, const char *cubin_string, const char *sourcefname, unsigned capability )
+{
+    ptx_info_t *t = new ptx_info_t;
+    t->next = NULL;
+    t->str = strdup(ptx_string);
+    t->fat_cubin_handle = fat_cubin_handle;
+    if (cubin_string != NULL) {
+       t->cubin_str = strdup(cubin_string);
+    } else {
+       if(g_ptx_convert_to_ptxplus != 0) {
+           printf("GPGPU-Sim PTX: ERROR cubin information, required for ptxplus, missing from fat bin object\n");
+           printf("GPGPU-Sim PTX: ptxplus currently requires CUDA 2.3 or earlier... disable ptxplus by removing\n");
+           printf("GPGPU-Sim PTX: \'-gpgpu_ptx_convert_to_ptxplus 1\' in \'gpgpusim.config\'\n");
+           abort();
+       }
+       t->cubin_str = NULL; 
+    }
+    t->fname = strdup(sourcefname);
+    t->capability = capability;
+
+    // Set overall max capability
+    if(g_ptx_max_capability < capability)
+    	g_ptx_max_capability = capability;
+
+    // put ptx source into a fifo
+    if (g_ptx_source_array == NULL) {
+        // first ptx source
+        g_ptx_source_array = t;
+    } else {
+        // insert subsequent ptx source at the end of queue
+        ptx_info_t *l_ptx_source = g_ptx_source_array;
+        while (l_ptx_source->next != NULL) {
+            l_ptx_source = l_ptx_source->next;
+        }
+        l_ptx_source->next = t;
+    }
+}
+
+void gpgpu_ptx_sim_load_gpu_kernels()
+{
+    static unsigned source_num = 0;
+    ptx_in = NULL;
+    if ( g_filename )
+        ptx_in = fopen( g_filename, "r" );
+    gpgpu_ptx_sim_init_memory();
+    if (ptx_in) {
+        symbol_table *symtab=init_parser(g_filename);
+        ptx_parse();
+        ptxinfo_in = open_ptxinfo(g_filename);
+        ptxinfo_parse();
+        load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF);
+        load_constants(symtab,STATIC_ALLOC_LIMIT);
+    } else {
+        if (!g_override_embedded_ptx) {
+            printf("GPGPU-Sim PTX: USING EMBEDDED .ptx files...\n");
+            unsigned selected_capability = 0;
+
+            if(g_ptx_force_max_capability == 0) {
+            	// No forced max capability, selected the highest capability
+            	//assert(g_ptx_max_capability > 0);
+            	selected_capability = g_ptx_max_capability;
+            	printf("GPGPU-Sim PTX: Loading PTX, selected capability: compute_%u\n", selected_capability);
+            } else {
+            	// Forced max capability, select the highest capability less than or equal to forced capability
+            	ptx_info_t *pti;
+            	for( pti=g_ptx_source_array; pti!=NULL; pti=pti->next ){
+            		if(selected_capability < pti->capability && pti->capability <= g_ptx_force_max_capability)
+            			selected_capability = pti->capability;
+            	}
+            	//assert(selected_capability > 0);
+            	printf("GPGPU-Sim PTX: Loading PTX, max forced capability: compute_%u, selected capability: compute_%u\n",
+            			g_ptx_force_max_capability, selected_capability);
+            }
+
+            ptx_info_t *s;
+            for ( s=g_ptx_source_array; s!=NULL; s=s->next ) {
+            	 if(s->capability != selected_capability)
+            		 continue;
+
+            	 printf("GPGPU-Sim PTX: Loading PTX for %s, capability = compute_%u\n", s->fname, s->capability);
+
+            	 symbol_table *symtab;
+            	 source_num++;
+            	 if(g_ptx_convert_to_ptxplus) {
+            		 char *ptxplus_str = gpgpu_ptx_sim_convert_ptx_to_ptxplus(s->str, s->cubin_str, source_num);
+                     symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str, s->str, source_num);
+                     delete[] ptxplus_str;
+            	 } else {
+                     symtab=gpgpu_ptx_sim_load_ptx_from_string(s->str, s->str, source_num);
+            	 }
+                 load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF);
+                 load_constants(symtab,STATIC_ALLOC_LIMIT);
+            }
+        } else {
+        	if(g_ptx_convert_to_ptxplus) {
+        		perror("GPGPU-Sim PTX: convert_to_ptxplus option enabled. Cannot use this option with external ptx files.\n");
+        		assert(0);
+        	}
+            const char *filename = NULL;
+            struct dirent **namelist;
+            int n = scandir(".", &namelist, ptx_file_filter, alphasort);
+            if (n < 0)
+                perror("GPGPU-Sim PTX: no PTX files returned by scandir");
+            else {
+                while (n--) {
+                    filename = namelist[n]->d_name;
+                    printf("Parsing %s..\n", filename);
+                    ptx_in = fopen( filename, "r" );
+                    symbol_table *symtab=init_parser(filename);
+                    ptx_parse ();
+                    ptxinfo_in = open_ptxinfo(filename);
+                    ptxinfo_parse();
+                    load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF);
+                    load_constants(symtab,STATIC_ALLOC_LIMIT);
+
+                    free(namelist[n]);
+                }
+                free(namelist);
+            }
+        }
+    }
+
+   if ( ptx_in == NULL && g_override_embedded_ptx ) {
+      printf("GPGPU-Sim PTX Simulator error: Could find/open .ptx file for reading\n");
+      printf("    This means there are no .ptx files in the current directory.\n");
+      printf("    Either place a .ptx file in the current directory, or ensure\n" );
+      printf("    the PTX_SIM_KERNELFILE environment variable points to .ptx file.\n");  
+      printf("    PTX_SIM_KERNELFILE=\"%s\"\n", g_filename );  
+      exit(1);
+   }
+
+   if ( g_error_detected ) {
+      printf( "GPGPU-Sim PTX: PTX parsing errors detected -- exiting.\n" );
+      exit(1);
+   }
+   printf( "GPGPU-Sim PTX: Program parsing completed\n" );
+
+   if ( g_kernel_name_to_function_lookup ) {
+      for ( std::map<std::string,function_info*>::iterator f=g_kernel_name_to_function_lookup->begin();
+          f != g_kernel_name_to_function_lookup->end(); f++ ) {
+         gpgpu_ptx_assemble(f->first,f->second);
+      }
+   }
+}
+
+const struct gpgpu_ptx_sim_kernel_info * get_kernel_info(const char *kernel_key)
+{
+   std::string kname;
+   function_info *finfo = get_kernel(kernel_key,kname);
+   return finfo->get_kernel_info();
+}
+
+kernel_info_t gpgpu_cuda_ptx_sim_init_grid( const char *kernel_key, gpgpu_ptx_sim_arg_list_t args,
+                                         struct dim3 gridDim, struct dim3 blockDim ) 
+{
+   std::string kname;
+   function_info *entry = get_kernel(kernel_key,kname);
+
+   printf("GPGPU-Sim PTX: Launching kernel \'%s\' gridDim= (%u,%u,%u) blockDim = (%u,%u,%u); ntuid=%u\n",
+          kname.c_str(), gridDim.x,gridDim.y,gridDim.z,blockDim.x,blockDim.y,blockDim.z, 
+          g_ptx_thread_info_uid_next );
+
+
+   unsigned argcount=args.size();
+   unsigned argn=1;
+   for( gpgpu_ptx_sim_arg_list_t::iterator a = args.begin(); a != args.end(); a++ ) {
+      entry->add_param_data(argcount-argn,&(*a));
+      argn++;
+   }
+
+   entry->finalize(g_param_mem);
+   g_ptx_kernel_count++; 
+   fflush(stdout);
+
+   return kernel_info_t(gridDim,blockDim,entry);
+}
+

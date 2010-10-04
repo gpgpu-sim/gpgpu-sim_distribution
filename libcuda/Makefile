@@ -66,19 +66,25 @@ ifeq ($(OPENGL_SUPPORT),1)
 	GL = -DOPENGL_SUPPORT
 endif
 
+GNUC_CPP0X := $(shell gcc --version | perl -ne 'if (/gcc\s+\(.*\)\s+([0-9.]+)/){ if($$1 >= 4.3) {$$n=1} else {$$n=0;} } END { print $$n; }')
+ifeq ($(GNUC_CPP0X), 1)
+    CXXFLAGS = -std=c++0x
+endif
+
+
 CPP = g++ $(SNOW)
 CC = gcc &(SNOW)
 CREATELIBRARY    =  1
 DEBUG ?= 0
-CCFLAGS = -O3 -g -Wall -fPIC $(GL)
+CXXFLAGS += -O3 -g -Wall -fPIC $(GL)
 ifeq ($(DEBUG),1)
-	CCFLAGS =  -Wall -g -fPIC $(GL)
+	CXXFLAGS +=  -Wall -g -fPIC $(GL)
 endif
 
 PROG     =cuda
 
 CXX_SRCS =  cuda_runtime_api.cc
-CCFLAGS += -DCUDART_VERSION=$(CUDART_VERSION)
+CXXFLAGS += -DCUDART_VERSION=$(CUDART_VERSION)
 
 .PHONY: clean
 
@@ -90,7 +96,7 @@ lib$(PROG).a: $(OBJS)
 	ar rcs lib$(PROG).a $(OBJS)
 
 %.o: %.cc
-	$(CPP) $(CCFLAGS) -I./ -I$(CUDAHOME)/include  -c $< -o $@
+	$(CPP) $(CXXFLAGS) -I./ -I$(CUDAHOME)/include  -c $< -o $@
 
 clean:
 	rm -f $(PROG)

@@ -1206,15 +1206,6 @@ void function_info::print_insn( unsigned pc, FILE * fp ) const
    }
 }
 
-extern "C" int ptx_parse();
-extern "C" int ptx__scan_string(const char*);
-extern "C" FILE *ptx_in;
-
-extern "C" const char *g_ptxinfo_filename;
-extern "C" int ptxinfo_parse();
-extern "C" int ptxinfo_debug;
-extern "C" FILE *ptxinfo_in;
-
 void gpgpu_ptx_assemble( std::string kname, void *kinfo )
 {
     function_info *func_info = (function_info *)kinfo;

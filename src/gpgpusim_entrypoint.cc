@@ -156,12 +156,11 @@ void print_simulation_time()
    fflush(stdout);
 }
 
-int gpgpu_cuda_ptx_sim_main_perf( const char *kernel_key, 
+int gpgpu_cuda_ptx_sim_main_perf( kernel_info_t grid,
                                   struct dim3 gridDim, 
                                   struct dim3 blockDim, 
                                   gpgpu_ptx_sim_arg_list_t grid_params )
 {
-   kernel_info_t grid = gpgpu_cuda_ptx_sim_init_grid(kernel_key,grid_params,gridDim,blockDim);
    g_the_gpu.launch(grid);
    sem_post(&g_sim_signal_start);
    sem_wait(&g_sim_signal_finish);

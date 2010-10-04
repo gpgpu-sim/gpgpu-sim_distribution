@@ -55,6 +55,76 @@ struct dim3 {
 };
 #endif
 
+void increment_x_then_y_then_z( dim3 &i, const dim3 &bound);
+
+class kernel_info_t {
+public:
+   kernel_info_t()
+   {
+      m_valid=false;
+      m_kernel_entry=NULL;
+   }
+   kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry )
+   {
+      m_valid=true;
+      m_kernel_entry=entry;
+      m_grid_dim=gridDim;
+      m_block_dim=blockDim;
+      m_next_cta.x=0;
+      m_next_cta.y=0;
+      m_next_cta.z=0;
+      m_next_tid=m_next_cta;
+   }
+
+   class function_info *entry() { return m_kernel_entry; }
+
+   size_t num_blocks() const
+   {
+      return m_grid_dim.x * m_grid_dim.y * m_grid_dim.z;
+   }
+
+   size_t threads_per_cta() const
+   {
+      return m_block_dim.x * m_block_dim.y * m_block_dim.z;
+   } 
+
+   dim3 get_grid_dim() const { return m_grid_dim; }
+   dim3 get_cta_dim() const { return m_block_dim; }
+
+   void increment_cta_id() 
+   { 
+      increment_x_then_y_then_z(m_next_cta,m_grid_dim); 
+      m_next_tid.x=0;
+      m_next_tid.y=0;
+      m_next_tid.z=0;
+   }
+   dim3 get_next_cta_id() const { return m_next_cta; }
+   bool no_more_ctas_to_run() const 
+   {
+      return (m_next_cta.x >= m_grid_dim.x || m_next_cta.y >= m_grid_dim.y || m_next_cta.z >= m_grid_dim.z );
+   }
+
+   void increment_thread_id() { increment_x_then_y_then_z(m_next_tid,m_block_dim); }
+   dim3 get_next_thread_id_3d() const  { return m_next_tid; }
+   unsigned get_next_thread_id() const 
+   { 
+      return m_next_tid.x + m_block_dim.x*m_next_tid.y + m_block_dim.x*m_block_dim.y*m_next_tid.z;
+   }
+   bool more_threads_in_cta() const 
+   {
+      return m_next_tid.z < m_block_dim.z && m_next_tid.y < m_block_dim.y && m_next_tid.z < m_block_dim.x;
+   }
+
+private:
+   bool m_valid;
+   class function_info *m_kernel_entry;
+
+   dim3 m_grid_dim;
+   dim3 m_block_dim;
+   dim3 m_next_cta;
+   dim3 m_next_tid;
+};
+
 class core_t {
 public:
    virtual ~core_t() {}
@@ -190,7 +260,6 @@ protected:
 };
 
 
-const struct gpgpu_ptx_sim_kernel_info * get_kernel_info(const char *kernel_key);
 size_t get_kernel_code_size( class function_info *entry );
 
 #endif // #ifdef __cplusplus

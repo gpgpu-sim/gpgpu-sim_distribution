@@ -902,6 +902,22 @@ unsigned datatype2size( unsigned data_type )
    return data_size; 
 }
 
+void init_inst_classification_stat() 
+{
+   static bool init=false;
+   if( init ) return;
+   init=true; 
+   char kernelname[256] ="";
+#define MAX_CLASS_KER 1024
+   if (!g_inst_classification_stat) g_inst_classification_stat = (void**)calloc(MAX_CLASS_KER, sizeof(void*));
+   snprintf(kernelname, MAX_CLASS_KER, "Kernel %d Classification\n",g_ptx_kernel_count  );         
+   assert( g_ptx_kernel_count < MAX_CLASS_KER ) ; // a static limit on number of kernels increase it if it fails! 
+   g_inst_classification_stat[g_ptx_kernel_count] = StatCreate(kernelname,1,20);
+   if (!g_inst_op_classification_stat) g_inst_op_classification_stat = (void**)calloc(MAX_CLASS_KER, sizeof(void*));
+   snprintf(kernelname, MAX_CLASS_KER, "Kernel %d OP Classification\n",g_ptx_kernel_count  );         
+   g_inst_op_classification_stat[g_ptx_kernel_count] = StatCreate(kernelname,1,100);
+}
+
 unsigned g_warp_active_mask;
 
 void ptx_thread_info::ptx_exec_inst( inst_t &inst )
@@ -1058,6 +1074,7 @@ void ptx_thread_info::ptx_exec_inst( inst_t &inst )
    g_ptx_sim_num_insn++;
    ptx_file_line_stats_add_exec_count(pI);
    if ( gpgpu_ptx_instruction_classification ) {
+      init_inst_classification_stat();
       unsigned space_type=0;
       switch ( pI->get_space().get_type() ) {
       case global_space: space_type = 10; break;
@@ -1104,10 +1121,7 @@ void ptx_thread_info::ptx_exec_inst( inst_t &inst )
    }
 }
 
-unsigned g_cta_launch_sid;
 std::list<ptx_thread_info *> g_active_threads;
-std::map<unsigned,unsigned> g_sm_idx_offset_next;
-unsigned g_sm_next_index;
 std::map<unsigned,memory_space*> g_shared_memory_lookup;
 std::map<unsigned,ptx_cta_info*> g_ptx_cta_lookup;
 std::map<unsigned,std::map<unsigned,memory_space*> > g_local_memory_lookup;
@@ -1155,9 +1169,6 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
 
    if ( !g_active_threads.empty() ) { //if g_active_threads not empty...
       assert( g_active_threads.size() <= threads_left );
-      if ( g_cta_launch_sid == (unsigned)-1 )
-         g_cta_launch_sid = sid;
-      assert( g_cta_launch_sid == (unsigned)sid );
       ptx_thread_info *thd = g_active_threads.front(); 
       g_active_threads.pop_front();
       *thread_info = thd;
@@ -1187,7 +1198,6 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
    memory_space *shared_mem = NULL;
 
    unsigned cta_size = kernel.threads_per_cta();
-   unsigned sm_offset = g_sm_idx_offset_next[sid];
    unsigned max_cta_per_sm = num_threads/cta_size; // e.g., 256 / 48 = 5 
    assert( max_cta_per_sm > 0 );
 
@@ -1195,8 +1205,8 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
 
    if ( g_shared_memory_lookup.find(sm_idx) == g_shared_memory_lookup.end() ) {
       if ( g_debug_execution >= 1 ) {
-         printf("  <CTA alloc> : sm_idx=%u sid=%u sm_offset=%u max_cta_per_sm=%u\n", 
-                sm_idx, sid, sm_offset, max_cta_per_sm );
+         printf("  <CTA alloc> : sm_idx=%u sid=%u max_cta_per_sm=%u\n", 
+                sm_idx, sid, max_cta_per_sm );
       }
       char buf[512];
       snprintf(buf,512,"shared_%u", sid);
@@ -1206,8 +1216,8 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
       g_ptx_cta_lookup[sm_idx] = cta_info;
    } else {
       if ( g_debug_execution >= 1 ) {
-         printf("  <CTA realloc> : sm_idx=%u sid=%u sm_offset=%u max_cta_per_sm=%u\n", 
-                sm_idx, sid, sm_offset, max_cta_per_sm );
+         printf("  <CTA realloc> : sm_idx=%u sid=%u max_cta_per_sm=%u\n", 
+                sm_idx, sid, max_cta_per_sm );
       }
       shared_mem = g_shared_memory_lookup[sm_idx];
       cta_info = g_ptx_cta_lookup[sm_idx];
@@ -1267,11 +1277,8 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
 
    kernel.increment_cta_id();
 
-   g_cta_launch_sid = -1;
-
    assert( g_active_threads.size() <= threads_left );
 
-   g_cta_launch_sid = sid;
    *thread_info = g_active_threads.front();
    (*thread_info)->set_hw_tid(tid);
    (*thread_info)->set_hw_wid(hw_warp_id);
@@ -1283,92 +1290,14 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
    return 1;
 }
 
-void init_inst_classification_stat() {
-   char kernelname[256] ="";
-#define MAX_CLASS_KER 1024
-   if (!g_inst_classification_stat) g_inst_classification_stat = (void**)calloc(MAX_CLASS_KER, sizeof(void*));
-   snprintf(kernelname, MAX_CLASS_KER, "Kernel %d Classification\n",g_ptx_kernel_count  );         
-   assert( g_ptx_kernel_count < MAX_CLASS_KER ) ; // a static limit on number of kernels increase it if it fails! 
-   g_inst_classification_stat[g_ptx_kernel_count] = StatCreate(kernelname,1,20);
-   if (!g_inst_op_classification_stat) g_inst_op_classification_stat = (void**)calloc(MAX_CLASS_KER, sizeof(void*));
-   snprintf(kernelname, MAX_CLASS_KER, "Kernel %d OP Classification\n",g_ptx_kernel_count  );         
-   g_inst_op_classification_stat[g_ptx_kernel_count] = StatCreate(kernelname,1,100);
-}
-
-
-std::map<std::string,function_info*> *g_kernel_name_to_function_lookup=NULL;
-std::map<const void*,std::string> *g_host_to_kernel_entrypoint_name_lookup=NULL;
-
-function_info *get_kernel(const char *kernel_key, std::string &kernel_func_name_mangled )
-{
-   if ( g_host_to_kernel_entrypoint_name_lookup->find(kernel_key) ==
-        g_host_to_kernel_entrypoint_name_lookup->end() ) {
-      printf("GPGPU-Sim PTX: ERROR ** cannot locate __global__ function from hostPtr\n" );
-      printf("GPGPU-Sim PTX: registered PTX kernels: \n");
-      std::map<const void*,std::string>::iterator i_eptr = g_host_to_kernel_entrypoint_name_lookup->begin();
-      for (; i_eptr != g_host_to_kernel_entrypoint_name_lookup->end(); ++i_eptr) {
-         printf("GPGPU-Sim PTX: (%p,%s)\n", i_eptr->first, i_eptr->second.c_str());
-      }
-      printf("\n");
-      abort();
-   } 
-   kernel_func_name_mangled = (*g_host_to_kernel_entrypoint_name_lookup)[kernel_key];
-   if ( g_kernel_name_to_function_lookup->find(kernel_func_name_mangled) ==
-        g_kernel_name_to_function_lookup->end() ) {
-      printf("GPGPU-Sim PTX: ERROR ** function \'%s\' not found in ptx file\n", 
-             kernel_func_name_mangled.c_str() );
-      abort();
-   }
-   return (*g_kernel_name_to_function_lookup)[kernel_func_name_mangled];
-}
-
-const struct gpgpu_ptx_sim_kernel_info * get_kernel_info(const char *kernel_key)
-{
-   std::string kname;
-   function_info *finfo = get_kernel(kernel_key,kname);
-   return finfo->get_kernel_info();
-}
-
 size_t get_kernel_code_size( class function_info *entry )
 {
    return entry->get_function_size();
 }
 
-kernel_info_t gpgpu_cuda_ptx_sim_init_grid( const char *kernel_key, gpgpu_ptx_sim_arg_list_t args,
-                                         struct dim3 gridDim, struct dim3 blockDim ) 
-{
-   g_sm_idx_offset_next.clear();
-   g_sm_next_index = 0;  
-   std::string kname;
-   function_info *entry = get_kernel(kernel_key,kname);
-
-   printf("GPGPU-Sim PTX: Launching kernel \'%s\' gridDim= (%u,%u,%u) blockDim = (%u,%u,%u); ntuid=%u\n",
-          kname.c_str(), gridDim.x,gridDim.y,gridDim.z,blockDim.x,blockDim.y,blockDim.z, 
-          g_ptx_thread_info_uid_next );
-
-
-   unsigned argcount=args.size();
-   unsigned argn=1;
-   for( gpgpu_ptx_sim_arg_list_t::iterator a = args.begin(); a != args.end(); a++ ) {
-      entry->add_param_data(argcount-argn,&(*a));
-      argn++;
-   }
-
-   entry->finalize(g_param_mem);
-   g_ptx_kernel_count++; 
-   if ( gpgpu_ptx_instruction_classification ) {
-      init_inst_classification_stat();
-   }
-   fflush(stdout);
-
-   return kernel_info_t(gridDim,blockDim,entry);
-}
 
 kernel_info_t gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,gpgpu_ptx_sim_arg_list_t args, struct dim3 gridDim, struct dim3 blockDim )
 {
-   g_sm_idx_offset_next.clear();
-   g_sm_next_index = 0;  
-
    unsigned argcount=args.size();
    unsigned argn=1;
    for( gpgpu_ptx_sim_arg_list_t::iterator a = args.begin(); a != args.end(); a++ ) {
@@ -1377,9 +1306,6 @@ kernel_info_t gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,gpgpu_pt
    }
    entry->finalize(g_param_mem);
    g_ptx_kernel_count++; 
-   if ( gpgpu_ptx_instruction_classification ) {
-      init_inst_classification_stat();
-   }
    fflush(stdout);
 
    return kernel_info_t(gridDim,blockDim,entry);
@@ -1394,29 +1320,6 @@ void print_splash()
       fprintf(stdout, "\n\n        *** GPGPU-Sim version %s ***\n\n\n", g_gpgpusim_version_string );
       splash_printed=1;
    }
-}
-
-void gpgpu_ptx_sim_register_kernel(void **fatCubinHandle,const char *hostFun, const char *deviceFun)
-{
-   const void* key=hostFun;
-   print_splash();
-   if ( g_host_to_kernel_entrypoint_name_lookup == NULL )
-        g_host_to_kernel_entrypoint_name_lookup = new std::map<const void*,std::string>;
-   if( g_kernel_name_to_function_lookup == NULL )
-        g_kernel_name_to_function_lookup = new std::map<std::string,function_info*>;
-   if ( g_host_to_kernel_entrypoint_name_lookup->find(key) !=
-        g_host_to_kernel_entrypoint_name_lookup->end() ) {
-      printf("GPGPU-Sim Loader error: Don't know how to identify PTX kernels during cudaLaunch\n"
-             "                        for this application.\n");
-      abort();
-   }
-   (*g_host_to_kernel_entrypoint_name_lookup)[key] = deviceFun;
-   if( g_kernel_name_to_function_lookup->find(deviceFun) ==
-       g_kernel_name_to_function_lookup->end() ) {
-      (*g_kernel_name_to_function_lookup)[deviceFun] = NULL; // we set this later, set keys now for error checking
-   }
-
-   printf("GPGPU-Sim PTX: __cudaRegisterFunction %s : 0x%Lx\n", deviceFun, (unsigned long long)hostFun);
 }
 
 std::map<const void*,std::string>   g_const_name_lookup; // indexed by hostVar
@@ -1567,21 +1470,12 @@ ptx_cta_info *g_func_cta_info = NULL;
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
-void gpgpu_cuda_ptx_sim_main_func( const char *kernel_key, dim3 gridDim, dim3 blockDim, gpgpu_ptx_sim_arg_list_t args)
+void gpgpu_cuda_ptx_sim_main_func( kernel_info_t kernel, dim3 gridDim, dim3 blockDim, gpgpu_ptx_sim_arg_list_t args)
 {
    printf("GPGPU-Sim: Performing Functional Simulation...\n");
 
-   printf("ERROR: Need to derived core_t for functional simulation, functional simulation no longer operational\n"); 
-      // also: need PDOM stack, etc... for functional simulation
-   exit(1);
-   
    time_t end_time, elapsed_time, days, hrs, minutes, sec;
-
-   kernel_info_t kernel = gpgpu_cuda_ptx_sim_init_grid(kernel_key, args,gridDim,blockDim);
-
-   std::string kname;
-   function_info *finfo = get_kernel(kernel_key,kname);
-
+   function_info *finfo = kernel.entry();
    memory_space *shared_mem = new memory_space_impl<16*1024>("shared",4);
 
    std::map<unsigned,memory_space*> lm_lookup;
@@ -1698,13 +1592,33 @@ unsigned translate_pc_to_ptxlineno(unsigned pc)
    return ptx_line_number;
 }
 
-int g_ptxinfo_error_detected;
+// ptxinfo parser
 
+int g_ptxinfo_error_detected;
 
 static char *g_ptxinfo_kname = NULL;
 static struct gpgpu_ptx_sim_kernel_info g_ptxinfo_kinfo;
 
-static void clear_ptxinfo();
+const char *get_ptxinfo_kname() 
+{ 
+    return g_ptxinfo_kname; 
+}
+
+void print_ptxinfo()
+{
+    printf ("GPGPU-Sim PTX: Kernel \'%s\' : regs=%u, lmem=%u, smem=%u, cmem=%u\n", 
+            get_ptxinfo_kname(),
+            g_ptxinfo_kinfo.regs,
+            g_ptxinfo_kinfo.lmem,
+            g_ptxinfo_kinfo.smem,
+            g_ptxinfo_kinfo.cmem );
+}
+
+
+struct gpgpu_ptx_sim_kernel_info get_ptxinfo_kinfo()
+{
+    return g_ptxinfo_kinfo;
+}
 
 extern "C" void ptxinfo_function(const char *fname )
 {
@@ -1744,6 +1658,7 @@ void clear_ptxinfo()
     g_ptxinfo_kinfo.sm_target=0;
 }
 
+
 void ptxinfo_opencl_addinfo( std::map<std::string,function_info*> &kernels )
 {
    if( !strcmp("__cuda_dummy_entry__",g_ptxinfo_kname) ) {
@@ -1768,37 +1683,6 @@ void ptxinfo_opencl_addinfo( std::map<std::string,function_info*> &kernels )
    }
    clear_ptxinfo();
 }
-
-void ptxinfo_cuda_addinfo()
-{
-   if( !strcmp("__cuda_dummy_entry__",g_ptxinfo_kname) ) {
-      // this string produced by ptxas for empty ptx files (e.g., bandwidth test)
-      clear_ptxinfo();
-      return;
-   }
-   if ( g_kernel_name_to_function_lookup ) {
-      std::map<std::string,function_info*>::iterator i=g_kernel_name_to_function_lookup->find(g_ptxinfo_kname);
-      if ( (g_kernel_name_to_function_lookup == NULL) || (i == g_kernel_name_to_function_lookup->end()) ) {
-        printf ("GPGPU-Sim PTX: ERROR ** implementation for '%s' not found.\n", g_ptxinfo_kname );
-        abort();
-      } else {
-        printf ("GPGPU-Sim PTX: Kernel \'%s\' : regs=%u, lmem=%u, smem=%u, cmem=%u\n", 
-                g_ptxinfo_kname,
-                g_ptxinfo_kinfo.regs,
-                g_ptxinfo_kinfo.lmem,
-                g_ptxinfo_kinfo.smem,
-                g_ptxinfo_kinfo.cmem );
-        function_info *fi = i->second;
-        assert(fi!=NULL);
-        fi->set_kernel_info(g_ptxinfo_kinfo);
-      }
-   } else {
-      printf ("GPGPU-Sim PTX: ERROR ** Kernel '%s' not found (no kernels registered).\n", g_ptxinfo_kname );
-      abort();
-   }
-   clear_ptxinfo();
-}
-
 
 void dwf_insert_reconv_pt(address_type pc); 
 
@@ -1865,29 +1749,5 @@ void dwf_process_reconv_pts(function_info *entry)
    for (int i = 0; i < tmp.s_num_recon; ++i) {
       dwf_insert_reconv_pt(tmp.s_kernel_recon_points[i].target_pc);
    }
-}
-
-void register_function_implementation( const char *name, function_info *impl )
-{
-   printf("GPGPU-Sim PTX: parsing function %s\n", name );
-   if( g_kernel_name_to_function_lookup == NULL )
-      g_kernel_name_to_function_lookup = new std::map<std::string,function_info*>;
-
-   std::map<std::string,function_info*>::iterator i_kernel = g_kernel_name_to_function_lookup->find(name);
-   if (i_kernel != g_kernel_name_to_function_lookup->end() && i_kernel->second != NULL) {
-      printf("GPGPU-Sim PTX: WARNING: Function already parsed once. Overwriting.\n");
-   }
-   (*g_kernel_name_to_function_lookup)[name] = impl;
-}
-
-void *gpgpusim_opencl_getkernel_Object( const char *kernel_name )
-{
-   std::map<std::string,function_info*>::iterator i=g_kernel_name_to_function_lookup->find(kernel_name);
-
-   if( i == g_kernel_name_to_function_lookup->end() ) {
-      abort();
-      return NULL;
-   }
-   return i->second;
 }
 
