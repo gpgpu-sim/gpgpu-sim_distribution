@@ -1042,21 +1042,17 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
    __cudaFatCudaBinary *info =   (__cudaFatCudaBinary *)fatCubin;
    assert( info->version >= 3 );
    unsigned num_ptx_versions=0;
-   unsigned max_capability=0;
-   unsigned selected_capability_offset=(unsigned)-1;
+   //unsigned max_capability=0;
+   //unsigned selected_capability_offset=(unsigned)-1;
    while( info->ptx[num_ptx_versions].gpuProfileName != NULL ) {
       unsigned capability=0;
       sscanf(info->ptx[num_ptx_versions].gpuProfileName,"compute_%u",&capability);
-      if( capability > max_capability ) {
-         max_capability = capability;
-         selected_capability_offset=num_ptx_versions;
-      }
+
+      printf("GPGPU-Sim PTX: __cudaRegisterFatBinary found PTX versions for '%s', ", info->ident);
+	  printf("capability = %s\n", info->ptx[num_ptx_versions].gpuProfileName );
+	  gpgpu_ptx_sim_add_ptxstring( fat_cubin_handle, info->ptx[num_ptx_versions].ptx, info->cubin[num_ptx_versions].cubin, info->ident, capability );
+
       num_ptx_versions++;
-   }
-   if ( selected_capability_offset != (unsigned)-1 ) {
-      printf("GPGPU-Sim PTX: __cudaRegisterFatBinary found %u PTX versions for '%s', ", num_ptx_versions, info->ident);
-      printf("selected = %s\n", info->ptx[selected_capability_offset].gpuProfileName );
-      gpgpu_ptx_sim_add_ptxstring( fat_cubin_handle, info->ptx[selected_capability_offset].ptx, info->cubin[selected_capability_offset].cubin, info->ident );
    }
 #endif
    return (void**)fat_cubin_handle;

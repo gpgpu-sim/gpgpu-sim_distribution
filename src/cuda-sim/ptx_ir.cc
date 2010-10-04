@@ -1219,8 +1219,8 @@ void gpgpu_ptx_assemble( std::string kname, void *kinfo )
 {
     function_info *func_info = (function_info *)kinfo;
     if((function_info *)kinfo == NULL) {
-       printf("GPGPU-Sim PTX: Error - missing function definition \'%s\'\n", kname.c_str());
-       abort();
+       printf("GPGPU-Sim PTX: Warning - missing function definition \'%s\'\n", kname.c_str());
+       return;
     }
     if( func_info->is_extern() ) {
        printf("GPGPU-Sim PTX: skipping assembly for extern declared function \'%s\'\n", func_info->get_name().c_str() );

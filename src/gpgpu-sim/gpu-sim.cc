@@ -188,6 +188,7 @@ int   g_ptx_inst_debug_thread_uid;
 
 int   g_ptx_convert_to_ptxplus;
 int   g_ptx_save_converted_ptxplus;
+unsigned g_ptx_force_max_capability;
 
 void visualizer_options(option_parser_t opp);
 
@@ -416,6 +417,10 @@ void gpgpu_sim::reg_options(option_parser_t opp)
    option_parser_register(opp, "-gpgpu_ptx_save_converted_ptxplus", OPT_BOOL,
                 &g_ptx_save_converted_ptxplus,
                 "Saved converted ptxplus to a file",
+                "0");
+   option_parser_register(opp, "-gpgpu_ptx_force_max_capability", OPT_UINT32,
+                &g_ptx_force_max_capability,
+                "Force maximum compute capability",
                 "0");
    option_parser_register(opp, "-gpgpu_operand_collector", OPT_BOOL, &m_shader_config->gpgpu_operand_collector,
                "Enable operand collector model (default = off)",

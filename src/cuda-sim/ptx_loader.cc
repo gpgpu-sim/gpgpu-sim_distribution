@@ -83,6 +83,7 @@ struct ptx_info_t {
     char *cubin_str;
     char *fname;
     ptx_info_t *next;
+    unsigned capability;
 };
 
 /// extern prototypes
@@ -98,6 +99,7 @@ extern "C" FILE *ptxinfo_in;
 
 extern int g_ptx_convert_to_ptxplus;
 extern int g_ptx_save_converted_ptxplus;
+extern unsigned g_ptx_force_max_capability;
 
 /// static functions
 
@@ -209,6 +211,7 @@ static int ptx_file_filter(
 // global functions
 
 static ptx_info_t *g_ptx_source_array = NULL;
+static unsigned g_ptx_max_capability = 0;
 
 void gpgpu_ptx_sim_load_gpu_kernels()
 {
@@ -226,9 +229,33 @@ void gpgpu_ptx_sim_load_gpu_kernels()
         load_constants(symtab,STATIC_ALLOC_LIMIT);
     } else {
         if (!g_override_embedded_ptx) {
-            printf("GPGPU-Sim PTX: USING EMBEDDED .ptx files...\n"); 
+            printf("GPGPU-Sim PTX: USING EMBEDDED .ptx files...\n");
+            unsigned selected_capability = 0;
+
+            if(g_ptx_force_max_capability == 0) {
+            	// No forced max capability, selected the highest capability
+            	//assert(g_ptx_max_capability > 0);
+            	selected_capability = g_ptx_max_capability;
+            	printf("GPGPU-Sim PTX: Loading PTX, selected capability: compute_%u\n", selected_capability);
+            } else {
+            	// Forced max capability, select the highest capability less than or equal to forced capability
+            	ptx_info_t *pti;
+            	for( pti=g_ptx_source_array; pti!=NULL; pti=pti->next ){
+            		if(selected_capability < pti->capability && pti->capability <= g_ptx_force_max_capability)
+            			selected_capability = pti->capability;
+            	}
+            	//assert(selected_capability > 0);
+            	printf("GPGPU-Sim PTX: Loading PTX, max forced capability: compute_%u, selected capability: compute_%u\n",
+            			g_ptx_force_max_capability, selected_capability);
+            }
+
             ptx_info_t *s;
             for ( s=g_ptx_source_array; s!=NULL; s=s->next ) {
+            	 if(s->capability != selected_capability)
+            		 continue;
+
+            	 printf("GPGPU-Sim PTX: Loading PTX for %s, capability = compute_%u\n", s->fname, s->capability);
+
             	 symbol_table *symtab;
             	 source_num++;
             	 if(g_ptx_convert_to_ptxplus) {
@@ -293,7 +320,7 @@ void gpgpu_ptx_sim_load_gpu_kernels()
    }
 }
 
-void gpgpu_ptx_sim_add_ptxstring( unsigned fat_cubin_handle, const char *ptx_string, const char *cubin_string, const char *sourcefname )
+void gpgpu_ptx_sim_add_ptxstring( unsigned fat_cubin_handle, const char *ptx_string, const char *cubin_string, const char *sourcefname, unsigned capability )
 {
     ptx_info_t *t = new ptx_info_t;
     t->next = NULL;
@@ -311,6 +338,11 @@ void gpgpu_ptx_sim_add_ptxstring( unsigned fat_cubin_handle, const char *ptx_str
        t->cubin_str = NULL; 
     }
     t->fname = strdup(sourcefname);
+    t->capability = capability;
+
+    // Set overall max capability
+    if(g_ptx_max_capability < capability)
+    	g_ptx_max_capability = capability;
 
     // put ptx source into a fifo
     if (g_ptx_source_array == NULL) {
