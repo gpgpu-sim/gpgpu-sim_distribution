@@ -904,9 +904,10 @@ unsigned datatype2size( unsigned data_type )
 
 void init_inst_classification_stat() 
 {
-   static bool init=false;
-   if( init ) return;
-   init=true; 
+   static std::set<unsigned> init;
+   if( init.find(g_ptx_kernel_count) != init.end() ) 
+      return;
+   init.insert(g_ptx_kernel_count);
    char kernelname[256] ="";
 #define MAX_CLASS_KER 1024
    if (!g_inst_classification_stat) g_inst_classification_stat = (void**)calloc(MAX_CLASS_KER, sizeof(void*));
