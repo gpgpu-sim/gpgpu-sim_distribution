@@ -786,7 +786,7 @@ struct gpgpu_recon_t {
    address_type target_pc;
 };
 
-class ptx_instruction : public inst_t {
+class ptx_instruction : public warp_inst_t {
 public:
     ptx_instruction( int opcode, 
                     const symbol *pred, 

@@ -463,71 +463,6 @@ void gpgpu_ptx_sim_memset( size_t dst_start_addr, int c, size_t count )
    fflush(stdout);
 }
 
-const char * ptx_get_fname( unsigned PC )
-{
-    static const char *null_ptr = "<null finfo ptr>";
-    std::map<unsigned,function_info*>::iterator f=g_pc_to_finfo.find(PC);
-    if( f== g_pc_to_finfo.end() ) 
-        return null_ptr;
-    return f->second->get_name().c_str();
-}
-
-unsigned ptx_thread_donecycle( void *thr )
-{
-   ptx_thread_info *the_thread = (ptx_thread_info *) thr;
-   if( the_thread == NULL ) 
-      return 0;
-   return the_thread->donecycle();
-}
-
-void* ptx_thread_get_next_finfo( void *thd )
-{
-   ptx_thread_info *the_thread = (ptx_thread_info *) thd;
-   if ( the_thread == NULL )
-      return NULL;
-   return the_thread->get_finfo(); // finfo should already be updatd to next PC at this point (was set in shader_decode() last time thread ran)
-}
-
-int ptx_thread_at_barrier( void *thd )
-{
-   ptx_thread_info *the_thread = (ptx_thread_info *) thd;
-   if ( the_thread == NULL )
-      return 0;
-   return the_thread->is_at_barrier();
-}
-
-int ptx_thread_all_at_barrier( void *thd )
-{
-   ptx_thread_info *the_thread = (ptx_thread_info *) thd;
-   if ( the_thread == NULL )
-      return 0;
-   return the_thread->all_at_barrier()?1:0;
-}
-
-unsigned long long ptx_thread_get_cta_uid( void *thd )
-{
-   ptx_thread_info *the_thread = (ptx_thread_info *) thd;
-   if ( the_thread == NULL )
-      return 0;
-   return the_thread->get_cta_uid();
-}
-
-void ptx_thread_reset_barrier( void *thd )
-{
-   ptx_thread_info *the_thread = (ptx_thread_info *) thd;
-   if ( the_thread == NULL )
-      return;
-   the_thread->clear_barrier();
-}
-
-void ptx_thread_release_barrier( void *thd )
-{
-   ptx_thread_info *the_thread = (ptx_thread_info *) thd;
-   if ( the_thread == NULL )
-      return;
-   the_thread->release_barrier();
-}
-
 void ptx_print_insn( address_type pc, FILE *fp )
 {
    std::map<unsigned,function_info*>::iterator f = g_pc_to_finfo.find(pc);
@@ -919,9 +854,7 @@ void init_inst_classification_stat()
    g_inst_op_classification_stat[g_ptx_kernel_count] = StatCreate(kernelname,1,100);
 }
 
-unsigned g_warp_active_mask;
-
-void ptx_thread_info::ptx_exec_inst( inst_t &inst )
+void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
 {
    inst.memory_op = no_memory_op;
    bool skip = false;
@@ -956,7 +889,6 @@ void ptx_thread_info::ptx_exec_inst( inst_t &inst )
             skip = !pred_lookup(pI->get_pred_mod(), pred_value.pred & 0x000F);
       }
    }
-   g_warp_active_mask = inst.warp_active_mask;
    if( !skip ) {
       switch ( pI->get_opcode() ) {
 #define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,this); op_classification = CLASSIFICATION; break;
@@ -1014,21 +946,13 @@ void ptx_thread_info::ptx_exec_inst( inst_t &inst )
    if ( pI->get_opcode() == ATOM_OP ) {
       insn_memaddr = last_eaddr();
       insn_space = last_space();
-      inst.callback.function = last_callback().function;
-      inst.callback.instruction = last_callback().instruction;
-      inst.callback.thread = this;
-
+      inst.add_callback( lane_id, last_callback().function, last_callback().instruction, this );
       unsigned to_type = pI->get_type();
       insn_data_size = datatype2size(to_type);
-   } else {
-      // make sure that the callback isn't set
-      inst.callback.function = NULL;
-      inst.callback.instruction = NULL;
-      inst.callback.thread = NULL;
    }
 
    if (pI->get_opcode() == TEX_OP) {
-      inst.memreqaddr = last_eaddr();
+      inst.set_addr(lane_id, last_eaddr() );
       inst.space = last_space();
 
       unsigned to_type = pI->get_type();
@@ -1106,11 +1030,10 @@ void ptx_thread_info::ptx_exec_inst( inst_t &inst )
    // "Return values"
    if(!skip) {
       inst.space = insn_space;
-      inst.memreqaddr = insn_memaddr;
+      inst.set_addr(lane_id, insn_memaddr);
       inst.data_size = insn_data_size;
       inst.memory_op = insn_memory_op;
    } else {
-      inst.memreqaddr = 0xFEEBDAED;
       inst.space = undefined_space;
       inst.memory_op = no_memory_op;
    }
@@ -1137,7 +1060,7 @@ const struct gpgpu_ptx_sim_kernel_info* ptx_sim_kernel_info(function_info *kerne
    return kernel->get_kernel_info();
 }
 
-const inst_t *ptx_fetch_inst( address_type pc )
+const warp_inst_t *ptx_fetch_inst( address_type pc )
 {
     return function_info::pc_to_instruction(pc);
 }
@@ -1550,10 +1473,7 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t kernel, dim3 gridDim, dim3 bloc
                      break;
                   }
 
-                  inst_t inst;
-                  inst.warp_active_mask = (unsigned)-1; // vote instruction with diverged warps won't execute correctly
-                                                        // in functional simulation mode
-                  thread->ptx_exec_inst( inst );
+                  abort(); // need to exec. inst
                }
             }
    }
@@ -1685,8 +1605,6 @@ void ptxinfo_opencl_addinfo( std::map<std::string,function_info*> &kernels )
    clear_ptxinfo();
 }
 
-void dwf_insert_reconv_pt(address_type pc); 
-
 struct rec_pts {
    gpgpu_recon_t *s_kernel_recon_points;
    int s_num_recon;
@@ -1742,13 +1660,5 @@ unsigned int get_converge_point( unsigned int pc, void *thd )
    }
    assert(i < tmp.s_num_recon);
    abort(); // returning garbage!
-}
-
-void dwf_process_reconv_pts(function_info *entry)
-{
-   rec_pts tmp = find_reconvergence_points(entry);
-   for (int i = 0; i < tmp.s_num_recon; ++i) {
-      dwf_insert_reconv_pt(tmp.s_kernel_recon_points[i].target_pc);
-   }
 }
 

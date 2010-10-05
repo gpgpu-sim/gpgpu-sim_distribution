@@ -67,8 +67,9 @@ void Scoreboard::reserveRegisters(unsigned wid, const class inst_t* inst)
 }
 
 // Release registers for an instruction
-void Scoreboard::releaseRegisters(unsigned wid, const class inst_t *inst) 
+void Scoreboard::releaseRegisters(const class warp_inst_t *inst) 
 {
+	unsigned wid = inst->warp_id();
 	if(inst->out[0] > 0) releaseRegister(wid, inst->out[0]);
 	if(inst->out[1] > 0) releaseRegister(wid, inst->out[1]);
 	if(inst->out[2] > 0) releaseRegister(wid, inst->out[2]);

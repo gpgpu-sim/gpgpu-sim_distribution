@@ -84,8 +84,6 @@
 #include "icnt_wrapper.h"
 #include "dram.h"
 #include "addrdec.h"
-#include "dwf.h"
-#include "warp_tracker.h"
 #include "stat-tool.h"
 #include "l2cache.h"
 
@@ -176,7 +174,6 @@ char * gpgpu_clock_domains;
 unsigned int gpu_n_mem_per_ctrlr;
 int gpu_n_tpc;
 char *gpgpu_dwf_hw_opt;
-bool gpgpu_thread_swizzling;
 unsigned int more_thread = 1;
 
 #define MEM_LATENCY_STAT_IMPL
@@ -266,18 +263,6 @@ void gpgpu_sim::reg_options(option_parser_t opp)
                   "display runtime statistics such as dram utilization {<freq>:<flag>}",
                   "10000:0");
 
-   option_parser_register(opp, "-gpgpu_dwf_heuristic", OPT_UINT32, &gpgpu_dwf_heuristic, 
-                "DWF scheduling heuristic: 0 = majority, 1 = minority, 2 = timestamp, 3 = pdom priority, 4 = pc-based, 5 = max-heap",
-                "0");
-
-   option_parser_register(opp, "-gpgpu_dwf_reg_bankconflict", OPT_BOOL, &m_shader_config->gpgpu_dwf_reg_bankconflict, 
-                "bank conflict model used in MICRO'07/TACO'09 work (default=disabled)",
-                "0");
-
-   option_parser_register(opp, "-gpgpu_dwf_regbk", OPT_BOOL, &gpgpu_dwf_regbk, 
-                "Have dwf scheduler to avoid bank conflict",
-                "1");
-
    option_parser_register(opp, "-gpgpu_memlatency_stat", OPT_INT32, &m_memory_config->gpgpu_memlatency_stat, 
                "track and display latency statistics 0x2 enables MC, 0x4 enables queue logs",
                "0");
@@ -313,22 +298,6 @@ void gpgpu_sim::reg_options(option_parser_t opp)
 
    option_parser_register(opp, "-gpgpu_flush_cache", OPT_BOOL, &gpgpu_flush_cache, 
                 "Flush cache at the end of each kernel call",
-                "0");
-
-   option_parser_register(opp, "-gpgpu_pre_mem_stages", OPT_UINT32, &m_shader_config->gpgpu_pre_mem_stages, 
-                "default = 0 pre-memory pipeline stages",
-                "0");
-
-   option_parser_register(opp, "-gpgpu_no_divg_load", OPT_BOOL, &m_shader_config->gpgpu_no_divg_load, 
-                "Don't allow divergence on load (meaningful for dynamic warp formation only)",
-                "1");
-
-   option_parser_register(opp, "-gpgpu_dwf_hw", OPT_CSTR, &gpgpu_dwf_hw_opt, 
-                  "dynamic warp formation hw config, i.e., {<#LUT_entries>:<associativity>|none}",
-                  "32:2");
-
-   option_parser_register(opp, "-gpgpu_thread_swizzling", OPT_BOOL, &gpgpu_thread_swizzling, 
-                "Thread Swizzling (1=on, 0=off)",
                 "0");
 
    option_parser_register(opp, "-gpgpu_shmem_size", OPT_UINT32, &m_shader_config->gpgpu_shmem_size, 
@@ -538,24 +507,6 @@ void gpgpu_sim::init_gpu()
 
    ptx_file_line_stats_create_exposed_latency_tracker(m_n_shader);
 
-   // initialize dynamic warp formation scheduler
-   int dwf_lut_size, dwf_lut_assoc;
-   sscanf(gpgpu_dwf_hw_opt,"%d:%d", &dwf_lut_size, &dwf_lut_assoc);
-   char *dwf_hw_policy_opt = strchr(gpgpu_dwf_hw_opt, ';');
-   int insn_size = 1; // for cuda-sim
-   create_dwf_schedulers(m_n_shader, dwf_lut_size, dwf_lut_assoc, 
-                         m_shader_config->warp_size, m_shader_config->warp_size, 
-                         m_shader_config->n_thread_per_shader, insn_size, 
-                         gpgpu_dwf_heuristic, dwf_hw_policy_opt );
-
-   // always use no diverge on load for stack based SIMT execution (PDOM)
-   m_shader_config->gpgpu_no_divg_load = (m_shader_config->model != DWF) || 
-      (m_shader_config->gpgpu_no_divg_load && (m_shader_config->model == DWF)); 
-   m_shader_config->m_using_dwf_rrstage = (m_shader_config->model == DWF);
-   m_shader_config->using_commit_queue = (m_shader_config->model == DWF || m_shader_config->model == POST_DOMINATOR);
-
-   m_shader_config->gpgpu_dwf_rr_stage_n_reg_banks=8;  
-
    assert(m_n_shader % gpu_concentration == 0);
    gpu_n_tpc = m_n_shader / gpu_concentration;
 
@@ -699,11 +650,6 @@ unsigned int gpgpu_sim::run_gpu_sim()
    if (gpu_max_insn && (gpu_tot_sim_insn + gpu_sim_insn) >= gpu_max_insn) {
       return gpu_sim_cycle;
    }
-
-   // refind the diverge/reconvergence pairs
-   dwf_reset_reconv_pt();
-   dwf_process_reconv_pts(entry.entry());
-   dwf_reinit_schedulers(m_n_shader);
 
    // initialize the control-flow, memory access, memory latency logger
    create_thread_CFlogger( m_n_shader, m_shader_config->n_thread_per_shader, program_size, 0, gpgpu_cflog_interval );
@@ -888,11 +834,6 @@ void gpgpu_sim::gpu_print_stat() const
 
    if (m_memory_config->gpgpu_cache_dl2_opt) 
       L2c_print_cache_stat();
-   printf("n_regconflict_stall = %d\n", n_regconflict_stall);
-
-   if (m_shader_config->model == DWF) {
-      dwf_print_stat(stdout);
-   }
 
    if (m_shader_config->model == POST_DOMINATOR) {
       printf("num_warps_issuable:");
@@ -905,8 +846,6 @@ void gpgpu_sim::gpu_print_stat() const
    printf("gpgpu_commit_pc_beyond_two = %d\n", m_shader_stats->gpgpu_commit_pc_beyond_two);
 
    print_shader_cycle_distro( stdout );
-
-   print_thread_pc_histogram( stdout );
 
    if (gpgpu_cflog_interval != 0) {
       spill_log_to_file (stdout, 1, gpu_sim_cycle);
@@ -983,41 +922,38 @@ unsigned gpgpu_sim::threads_per_core() const
    return m_shader_config->n_thread_per_shader; 
 }
 
-void gpgpu_sim::mem_instruction_stats(inst_t* warp)
+void gpgpu_sim::mem_instruction_stats(warp_inst_t* warp)
 {
-   for (unsigned i=0; i< (unsigned) m_shader_config->warp_size; i++) {
-      if (warp[i].hw_thread_id == -1) continue; //bubble 
-         //this breaks some encapsulation: the is_[space] functions, if you change those, change this.
-      bool store = is_store(warp[i]);
-      switch (warp[i].space.get_type()) {
-      case undefined_space:
-      case reg_space:
-         break;
-      case shared_space:
-         m_shader_stats->gpgpu_n_shmem_insn++;
-         break;
-      case const_space:
-         m_shader_stats->gpgpu_n_const_insn++;
-         break;
-      case param_space_kernel:
-      case param_space_local:
-         m_shader_stats->gpgpu_n_param_insn++;
-         break;
-      case tex_space:
-         m_shader_stats->gpgpu_n_tex_insn++;
-         break;
-      case global_space:
-      case local_space:
-         if (store){ 
+    if( warp->empty() )
+        return; //bubble 
+    //this breaks some encapsulation: the is_[space] functions, if you change those, change this.
+    switch (warp->space.get_type()) {
+    case undefined_space:
+    case reg_space:
+        break;
+    case shared_space:
+        m_shader_stats->gpgpu_n_shmem_insn++;
+        break;
+    case const_space:
+        m_shader_stats->gpgpu_n_const_insn++;
+        break;
+    case param_space_kernel:
+    case param_space_local:
+        m_shader_stats->gpgpu_n_param_insn++;
+        break;
+    case tex_space:
+        m_shader_stats->gpgpu_n_tex_insn++;
+        break;
+    case global_space:
+    case local_space:
+        if( is_store(*warp) )
             m_shader_stats->gpgpu_n_store_insn++;
-         } else {
+        else 
             m_shader_stats->gpgpu_n_load_insn++;
-         }
-         break;
-      default:
-         abort();
-      }
-   }
+        break;
+    default:
+        abort();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -1159,7 +1095,7 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
     allocate_barrier( free_cta_hw_id, warps );
 
     // initialize the SIMT stacks and fetch hardware
-    init_warps(start_thread, end_thread);
+    init_warps( free_cta_hw_id, start_thread, end_thread);
 
     m_n_active_cta++;
     g_total_cta_left-=1; // used for exiting early from simulation
@@ -1362,10 +1298,9 @@ void gpgpu_sim::cycle()
       // L1 cache + shader core pipeline stages 
       for (unsigned i=0;i<m_n_shader;i++) {
          if (m_sc[i]->get_not_completed() || more_thread) {
-            if (!strcmp("GPGPUSIM_ORIG",m_shader_config->pipeline_model) ) 
-               m_sc[i]->cycle();
-            else if (!strcmp("GT200",m_shader_config->pipeline_model) ) 
+            if (!strcmp("GT200",m_shader_config->pipeline_model) ) 
                m_sc[i]->cycle_gt200();
+            else abort();
          }
       }
       if( g_single_step && ((gpu_sim_cycle+gpu_tot_sim_cycle) >= g_single_step) ) {
@@ -1430,14 +1365,6 @@ void gpgpu_sim::cycle()
                   m_memory_partition_unit[i]->print_stat(stdout);
                printf("maxmrqlatency = %d \n", m_memory_stats->max_mrq_latency);
                printf("maxmflatency = %d \n", m_memory_stats->max_mf_latency);
-            }
-            if (gpu_runtime_stat_flag & GPU_RSTAT_DWF_MAP) {
-               printf("DWF_MS: ");
-               for (unsigned i=0;i<m_n_shader;i++) {
-                  printf("%u ",acc_dyn_pcs[i]);
-               }
-               printf("\n");
-               print_thread_pc( stdout, m_n_shader );
             }
             if (gpu_runtime_stat_flag & GPU_RSTAT_SHD_INFO) {
                shader_print_runtime_stat( stdout );

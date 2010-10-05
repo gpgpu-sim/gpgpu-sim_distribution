@@ -831,10 +831,9 @@ void andn_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->set_operand_value(dst,data, i_type, thread, pI);
 }
 
-void atom_callback( void* ptx_inst, void* thd )
+void atom_callback( const inst_t* inst, ptx_thread_info* thread )
 {
-   ptx_thread_info *thread = (ptx_thread_info*)thd;
-   ptx_instruction *pI = (ptx_instruction*)ptx_inst;
+   const ptx_instruction *pI = dynamic_cast<const ptx_instruction*>(inst);
 
    // Check state space
    assert( pI->get_space()==global_space );
@@ -1112,7 +1111,7 @@ void atom_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->m_last_effective_address = src1_data.u32;
    thread->m_last_memory_space = space;
    thread->m_last_dram_callback.function = atom_callback;
-   thread->m_last_dram_callback.instruction = (void*)pI; 
+   thread->m_last_dram_callback.instruction = pI; 
 }
 
 void bar_sync_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
@@ -3787,8 +3786,6 @@ void vshl_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_
 void vshr_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 void vsub_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 
-extern unsigned g_warp_active_mask;
-
 void vote_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 {
    static bool first_in_warp = true;
@@ -3804,7 +3801,7 @@ void vote_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       or_all = false;
       unsigned mask=0x80000000;
       unsigned offset=31;
-      while( mask && ((mask & g_warp_active_mask)==0) ) {
+      while( mask && !pI->active(mask) ) {
          mask = mask>>1;
          offset--;
       }

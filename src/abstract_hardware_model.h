@@ -47,7 +47,11 @@ enum _memory_op_t {
 
 #ifdef __cplusplus
 
+#include <bitset>
 #include <list>
+#include <vector>
+#include <assert.h>
+#include <stdlib.h>
 
 #if !defined(__VECTOR_TYPES_H__)
 struct dim3 {
@@ -190,9 +194,10 @@ private:
 #define MAX_REG_OPERANDS 8
 
 struct dram_callback_t {
-   void (*function)(void* pI, void* gOldGThread);
-   void* instruction;
-   void* thread;
+   dram_callback_t() { function=NULL; instruction=NULL; thread=NULL; }
+   void (*function)(const class inst_t*, class ptx_thread_info*);
+   const class inst_t* instruction;
+   class ptx_thread_info *thread;
 };
 
 class inst_t {
@@ -200,26 +205,16 @@ public:
     inst_t()
     {
         m_decoded=false;
-        pc = (address_type)-1;
+        pc=(address_type)-1;
         op=NO_OP; 
         memset(out, 0, sizeof(unsigned)); 
         memset(in, 0, sizeof(unsigned)); 
         is_vectorin=0; 
         is_vectorout=0;
-        memreqaddr=0; 
-        hw_thread_id=-1; 
-        wlane=-1;
-        uid = (unsigned)-1;
-        warp_active_mask = 0;
-        issue_cycle = 0;
-        cache_miss = false;
         space = memory_space_t();
         cycles = 0;
         for( unsigned i=0; i < MAX_REG_OPERANDS; i++ )
            arch_reg[i]=-1;
-        callback.function = NULL;
-        callback.instruction = NULL;
-        callback.thread = NULL;
         isize=0;
     }
     bool valid() const { return m_decoded; }
@@ -228,37 +223,139 @@ public:
         fprintf(fp," [inst @ pc=0x%04x] ", pc );
     }
 
-    unsigned uid;           // unique id (for debugging)
     address_type pc;        // program counter address of instruction
     unsigned isize;         // size of instruction in bytes 
     op_type op;             // opcode (uarch visible)
-    _memory_op_t memory_op; // ptxplus 
-    short hw_thread_id;     // scalar hardware thread id
-    short wlane;            // SIMT lane
+    _memory_op_t memory_op; // memory_op used by ptxplus 
     
-    unsigned warp_active_mask;
-    unsigned long long  issue_cycle;
-
     unsigned out[4];
     unsigned in[4];
     unsigned char is_vectorin;
     unsigned char is_vectorout;
-    int pred;
+    int pred; // predicate register number
     int ar1, ar2;
     int arch_reg[MAX_REG_OPERANDS]; // register number for bank conflict evaluation
     unsigned cycles; // 1/throughput for instruction
 
-    unsigned long long int memreqaddr; // effective address
     unsigned data_size; // what is the size of the word being operated on?
     memory_space_t space;
-    dram_callback_t callback;
-    bool cache_miss;
 
 protected:
     bool m_decoded;
     virtual void pre_decode() {}
 };
 
+#define MAX_WARP_SIZE 32
+
+class warp_inst_t: public inst_t {
+public:
+    // constructors
+    warp_inst_t( unsigned warp_size ) 
+    { 
+        assert(warp_size<=MAX_WARP_SIZE); 
+        m_warp_size=warp_size;
+        m_empty=true; 
+        m_isatomic=false;
+        m_per_scalar_thread_valid=false;
+    }
+
+    // modifiers
+    void do_atomic()
+    {
+        assert( m_isatomic && !m_empty );
+        std::vector<per_thread_info>::iterator t;
+        for( t=m_per_scalar_thread.begin(); t != m_per_scalar_thread.end(); ++t ) {
+            dram_callback_t &cb = t->callback;
+            if( cb.thread ) 
+                cb.function(cb.instruction, cb.thread);
+        }
+    }
+    void clear() 
+    { 
+        m_empty=true; 
+    }
+    void issue( unsigned mask, unsigned warp_id, unsigned long long cycle ) 
+    {
+        for (int i=(int)m_warp_size-1; i>=0; i--) {
+            if( mask & (1<<i) )
+                warp_active_mask.set(i);
+        }
+        m_warp_id = warp_id;
+        issue_cycle = cycle;
+        m_empty=false;
+    }
+    void set_addr( unsigned n, new_addr_type addr ) 
+    {
+        if( !m_per_scalar_thread_valid ) {
+            m_per_scalar_thread.resize(m_warp_size);
+            m_per_scalar_thread_valid=true;
+        }
+        m_per_scalar_thread[n].memreqaddr = addr;
+    }
+    void add_callback( unsigned lane_id, 
+                       void (*function)(const class inst_t*, class ptx_thread_info*),
+                       const inst_t *inst, 
+                       class ptx_thread_info *thread )
+    {
+        if( !m_per_scalar_thread_valid ) {
+            m_per_scalar_thread.resize(m_warp_size);
+            m_per_scalar_thread_valid=true;
+            m_isatomic=true;
+        }
+        m_per_scalar_thread[lane_id].callback.function = function;
+        m_per_scalar_thread[lane_id].callback.instruction = inst;
+        m_per_scalar_thread[lane_id].callback.thread = thread;
+    }
+
+    // accessors
+    virtual void print_insn(FILE *fp) const 
+    {
+        fprintf(fp," [inst @ pc=0x%04x] ", pc );
+        for (int i=(int)m_warp_size-1; i>=0; i--)
+            fprintf(fp, "%c", ((warp_active_mask[i])?'1':'0') );
+    }
+    bool active( unsigned thread ) const { return warp_active_mask.test(thread); }
+    bool empty() const { return m_empty; }
+    unsigned warp_id() const 
+    { 
+        assert( !m_empty );
+        return m_warp_id; 
+    }
+    bool has_callback( unsigned n ) const
+    {
+        return warp_active_mask[n] && m_per_scalar_thread_valid && 
+            (m_per_scalar_thread[n].callback.function!=NULL);
+    }
+    new_addr_type get_addr( unsigned n ) const
+    {
+        assert( m_per_scalar_thread_valid );
+        return m_per_scalar_thread[n].memreqaddr;
+    }
+
+    bool isatomic() const { return m_isatomic; }
+
+protected:
+    bool m_empty;
+    unsigned long long issue_cycle;
+    bool m_isatomic;
+    unsigned m_warp_id;
+    unsigned m_warp_size;
+    std::bitset<MAX_WARP_SIZE> warp_active_mask;
+
+    struct per_thread_info {
+        per_thread_info() {
+            cache_miss=false;
+            memreqaddr=0;
+        }
+        dram_callback_t callback;
+        new_addr_type memreqaddr; // effective address
+        bool cache_miss;
+    };
+    bool m_per_scalar_thread_valid;
+    std::vector<per_thread_info> m_per_scalar_thread;
+};
+
+void move_warp( warp_inst_t *&dst, warp_inst_t *&src );
 
 size_t get_kernel_code_size( class function_info *entry );
 

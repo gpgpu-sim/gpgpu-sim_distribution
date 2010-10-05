@@ -556,7 +556,7 @@ void time_vector_update_icnt_injected(void* data, int input)
 {
     mem_fetch* mf = (mem_fetch*) data;
     if( mf->get_mshr() && !mf->get_mshr()->isinst() ) {
-        unsigned uid=mf->get_is_write()? mf->get_request_uid() : mf->get_mshr()->get_insts_uid();
+        unsigned uid=mf->get_request_uid();
         long int cycle = gpu_sim_cycle + gpu_tot_sim_cycle;
         int req_type = mf->get_is_write()? WT_REQ : RD_REQ;
         if (is_mem(input)) {

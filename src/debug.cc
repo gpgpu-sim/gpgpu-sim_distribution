@@ -84,14 +84,14 @@ void gpgpu_sim::gpgpu_debug()
          }
       } else {
          for( unsigned sid=0; sid < m_n_shader; sid++ ) { 
-            inst_t *fvi = m_sc[sid]->first_valid_thread(IF_ID);
-            if( !fvi ) continue;
-            unsigned hw_thread_id = fvi->hw_thread_id;
+            unsigned hw_thread_id = m_sc[sid]->first_valid_thread(IF_ID);
+            if( hw_thread_id == (unsigned)-1 ) 
+               continue;
             ptx_thread_info *thread = m_sc[sid]->get_functional_thread(hw_thread_id);
             if( thread_at_brkpt(thread, b) ) {
                done = false;
                printf("GPGPU-Sim PTX DBG: reached breakpoint %u at %s (sm=%u, hwtid=%u)\n", 
-                      num, b.location().c_str(), sid, fvi->hw_thread_id );
+                      num, b.location().c_str(), sid, hw_thread_id );
                brk_thd = thread;
                brk_inst = brk_thd->get_inst();
                printf( "GPGPU-Sim PTX DBG: reached by thread uid=%u, sid=%u, hwtid=%u\n",

@@ -170,9 +170,9 @@ unsigned memory_stats_t::memlatstat_done(mem_fetch *mf, unsigned n_warp_per_shad
    mf_num_lat_pw_perwarp[wid]++;
    mf_tot_lat_pw_perwarp[wid] += mf_latency;
    mf_tot_lat_pw += mf_latency;
-   if( mf->get_mshr() && mf->get_mshr()->has_inst() ) 
-       check_time_vector_update(mf->get_mshr()->get_insts_uid(),MR_2SH_FQ_POP,mf_latency,mf->get_type());
-   mf_lat_table[LOGB2(mf_latency)]++;
+   unsigned idx = LOGB2(mf_latency);
+   assert(idx<32);
+   mf_lat_table[idx]++;
    shader_mem_lat_log(mf->get_sid(), mf_latency);
    mf_total_lat_table[mf->get_tlx_addr().chip][mf->get_tlx_addr().bk] += mf_latency;
    if (mf_latency > max_mf_latency)

@@ -56,19 +56,10 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
                               class core_t *core, 
                               unsigned hw_cta_id, 
                               unsigned hw_warp_id );
-const inst_t *ptx_fetch_inst( address_type pc );
+const warp_inst_t *ptx_fetch_inst( address_type pc );
 const struct gpgpu_ptx_sim_kernel_info* ptx_sim_kernel_info(class function_info *kernel);
-unsigned ptx_thread_donecycle( void *thr );
-void* ptx_thread_get_next_finfo( void *thd );
-int ptx_thread_at_barrier( void *thd );
-int ptx_thread_all_at_barrier( void *thd );
-unsigned long long ptx_thread_get_cta_uid( void *thd );
-void ptx_thread_reset_barrier( void *thd );
-void ptx_thread_release_barrier( void *thd );
 void ptx_print_insn( address_type pc, FILE *fp );
 unsigned int ptx_set_tex_cache_linesize( unsigned linesize);
-
-void dwf_process_reconv_pts(function_info *entry);
 void set_param_gpgpu_num_shaders(int num_shaders);
 unsigned int get_converge_point(unsigned int pc, void *thd);
 const char *get_ptxinfo_kname();

@@ -117,12 +117,6 @@ public:
    class ptx_thread_info *m_functional_model_thread_state; 
    unsigned m_cta_id; // hardware CTA this thread belongs
 
-   // used for controlling fetch
-   bool m_avail4fetch;  // false if instruction from thread is in pipeline
-   bool m_in_scheduler; // DWF error checking
-   bool m_waiting_at_barrier; // DWF and MIMD models
-   bool m_reached_barrier; // DWF only
-
    // per thread stats (ac stands for accumulative).
    unsigned n_insn;
    unsigned n_insn_ac;
@@ -147,7 +141,6 @@ public:
         m_imiss_pending=false;
         m_warp_id=(unsigned)-1;
         n_completed = m_warp_size; 
-        n_avail4fetch = n_waiting_at_barrier = 0; 
         m_n_atomic=0;
         m_membar=false;
         m_done_exit=false;
@@ -156,15 +149,14 @@ public:
         for(unsigned i=0;i<IBUFFER_SIZE;i++) 
             m_ibuffer[i]=NULL; 
     }
-    void init( address_type start_pc, unsigned wid, unsigned active )
+    void init( address_type start_pc, unsigned cta_id, unsigned wid, unsigned active )
     {
+        m_cta_id=cta_id;
         m_warp_id=wid;
         m_next_pc=start_pc;
         assert( n_completed >= active );
         assert( n_completed <= m_warp_size);
-        assert( n_avail4fetch < m_warp_size );
         n_completed   -= active; // active threads are not yet completed
-        n_avail4fetch += active; // number of threads in warp available to be fetched
     }
 
     bool done();
@@ -176,10 +168,6 @@ public:
     void print( FILE *fout ) const;
     void print_ibuffer( FILE *fout ) const;
 
-    unsigned get_avail4fetch() const { return n_avail4fetch; }
-    void inc_avail4fetch() { n_avail4fetch++; }
-    void dec_avail4fetch() { n_avail4fetch--; }
-
     unsigned get_n_completed() const { return n_completed; }
     void inc_n_completed() { n_completed++; }
 
@@ -189,16 +177,13 @@ public:
     void inc_n_atomic() { m_n_atomic++; }
     void dec_n_atomic() { m_n_atomic--; }
 
-    void inc_waiting_at_barrier() { n_waiting_at_barrier++; }
-    void clear_waiting_at_barrier() { n_waiting_at_barrier=0; }
-
     void set_membar() { m_membar=true; }
     void clear_membar() { m_membar=false; }
     bool get_membar() const { return m_membar; }
     address_type get_pc() const { return m_next_pc; }
     void set_next_pc( address_type pc ) { m_next_pc = pc; }
 
-    void ibuffer_fill( unsigned slot, const inst_t *pI )
+    void ibuffer_fill( unsigned slot, const warp_inst_t *pI )
     {
        assert(slot < IBUFFER_SIZE );
        m_ibuffer[slot]=pI;
@@ -219,10 +204,9 @@ public:
             m_ibuffer[i]=NULL; 
         }
     }
-    const inst_t *ibuffer_next()
+    const warp_inst_t *ibuffer_next()
     {
-        const inst_t *result = m_ibuffer[m_next];
-        return result;
+        return m_ibuffer[m_next];
     }
     void ibuffer_free()
     {
@@ -255,23 +239,23 @@ public:
         assert( m_inst_in_pipeline > 0 );
         m_inst_in_pipeline--;
     }
+    unsigned get_cta_id() const { return m_cta_id; }
 
 private:
     static const unsigned IBUFFER_SIZE=2;
     class shader_core_ctx *m_shader;
+    unsigned m_cta_id;
     unsigned m_warp_id;
     unsigned m_warp_size;
 
     address_type m_next_pc;
     unsigned n_completed;          // number of threads in warp completed
-    unsigned n_avail4fetch;        // number of threads in warp available to fetch 
 
     class mshr_entry *m_imiss_pending;
                                   
-    const inst_t *m_ibuffer[IBUFFER_SIZE]; 
+    const warp_inst_t *m_ibuffer[IBUFFER_SIZE]; 
     unsigned m_next;
                                    
-    int      n_waiting_at_barrier; // number of threads in warp that have reached the barrier
     unsigned m_n_atomic;           // number of outstanding atomic operations 
     bool     m_membar;             // if true, warp is waiting at memory barrier
 
@@ -331,7 +315,7 @@ public:
    void init( new_addr_type address, bool wr, memory_space_t space, unsigned warp_id );
    void clear() { m_insts.clear(); }
    void set_mf( class mem_fetch *mf ) { m_mf=mf; }
-   void add_inst( inst_t inst ) { m_insts.push_back(inst); }
+   void add_inst( warp_inst_t inst ) { m_insts.push_back(inst); }
    void set_status( enum mshr_status status );
    void merge( mshr_entry *mshr )
    {
@@ -339,11 +323,12 @@ public:
        m_merged_requests = mshr;
        mshr->m_merged_on_other_reqest = true;
    }
-
-   dram_callback_t &get_atomic_callback() 
+   void do_atomic() 
    {
-       assert(isatomic());
-       return m_insts[0].callback;
+       for( std::vector<warp_inst_t>::iterator e=m_insts.begin(); e != m_insts.end(); ++e ) {
+           warp_inst_t &inst = *e;
+           inst.do_atomic();
+       }
    }
    mshr_entry *get_last_merged()
    {
@@ -382,18 +367,13 @@ public:
        assert(m_status!=INVALID&&m_insts.size()>0);
        return m_insts[n]; 
    }
-   unsigned get_insts_uid() const 
-   {
-       assert(m_status!=INVALID&&m_insts.size()>0);
-       return m_insts[0].uid;
-   }
    bool isatomic() const
    {
        assert(m_status!=INVALID);
        if( isinst() ) 
            return false;
        assert(m_insts.size()>0);
-       return (m_insts[0].callback.function != NULL);
+       return m_insts[0].isatomic();
    }
    new_addr_type get_addr() const { return m_addr; }
    void print(FILE *fp, unsigned mask) const;
@@ -403,7 +383,7 @@ private:
     unsigned m_request_uid;
     unsigned m_warp_id;
     new_addr_type m_addr; // address being fetched
-    std::vector<inst_t> m_insts;
+    std::vector<warp_inst_t> m_insts;
     bool m_iswrite;
     bool m_merged_on_other_reqest; //true if waiting for another mshr - this mshr doesn't send a memory request
     struct mshr_entry *m_merged_requests; //mshrs waiting on this mshr
@@ -419,7 +399,7 @@ private:
 const unsigned WARP_PER_CTA_MAX = 32;
 typedef std::bitset<WARP_PER_CTA_MAX> warp_set_t;
 
-int register_bank(int regnum, int tid, unsigned num_banks, unsigned bank_warp_shift);
+int register_bank(int regnum, int wid, unsigned num_banks, unsigned bank_warp_shift);
 
 class shader_core_ctx;
 
@@ -439,22 +419,13 @@ public:
               unsigned num_collectors_sfu, 
               unsigned num_banks, 
               shader_core_ctx *shader,
-              inst_t **alu_port,
-              inst_t **sfu_port );
+              warp_inst_t **alu_port,
+              warp_inst_t **sfu_port );
 
    // modifiers
-   bool writeback( const inst_t &fvt );
-   bool writeback( inst_t *warp ); // might cause stall 
+   bool writeback( const warp_inst_t &warp ); // might cause stall 
 
-   void step( inst_t *&id_oc_reg ) 
-   {
-      dispatch_ready_cu();   
-      allocate_reads();
-      allocate_cu(id_oc_reg);
-      process_banks();
-   }
-
-   void step( inst_t *&alu_issue_port, inst_t *&sfu_issue_port ) 
+   void step( warp_inst_t *&alu_issue_port, warp_inst_t *&sfu_issue_port ) 
    {
       dispatch_ready_cu();   
       allocate_reads();
@@ -484,7 +455,7 @@ private:
    }
 
    void dispatch_ready_cu();
-   void allocate_cu( inst_t *&id_oc_reg );
+   void allocate_cu( warp_inst_t *&id_oc_reg );
    void allocate_reads();
 
    // types
@@ -498,22 +469,20 @@ private:
       op_t( collector_unit_t *cu, unsigned op, unsigned reg, unsigned num_banks, unsigned bank_warp_shift )
       {
          m_valid = true;
-         m_fvi=NULL;
+         m_warp=NULL;
          m_cu = cu;
          m_operand = op;
          m_register = reg;
-         m_tid = cu->get_tid();
-         m_bank = register_bank(reg,m_tid,num_banks,bank_warp_shift);
+         m_bank = register_bank(reg,cu->get_warp_id(),num_banks,bank_warp_shift);
       }
-      op_t( const inst_t *fvi, unsigned reg, unsigned num_banks, unsigned bank_warp_shift )
+      op_t( const warp_inst_t *warp, unsigned reg, unsigned num_banks, unsigned bank_warp_shift )
       {
          m_valid=true;
-         m_fvi=fvi;
+         m_warp=warp;
          m_register=reg;
          m_cu=NULL;
          m_operand = -1;
-         m_tid = fvi->hw_thread_id;
-         m_bank = register_bank(reg,m_tid,num_banks,bank_warp_shift);
+         m_bank = register_bank(reg,warp->warp_id(),num_banks,bank_warp_shift);
       }
 
       // accessors
@@ -523,16 +492,22 @@ private:
          assert( m_valid );
          return m_register;
       }
+      unsigned get_wid() const
+      {
+          if( m_warp ) return m_warp->warp_id();
+          else if( m_cu ) return m_cu->get_warp_id();
+          else abort();
+          return 0;
+      }
       unsigned get_oc_id() const { return m_cu->get_id(); }
-      unsigned get_tid() const { return m_tid; }
       unsigned get_bank() const { return m_bank; }
       unsigned get_operand() const { return m_operand; }
       void dump(FILE *fp) const 
       {
          if(m_cu) 
             fprintf(fp," <R%u, CU:%u, w:%02u> ", m_register,m_cu->get_id(),m_cu->get_warp_id());
-         else if( m_fvi )
-            fprintf(fp," <R%u, fvi tid:%02u> ", m_register,m_fvi->hw_thread_id );
+         else if( !m_warp->empty() )
+            fprintf(fp," <R%u, wid:%02u> ", m_register,m_warp->warp_id() );
       }
       std::string get_reg_string() const
       {
@@ -546,11 +521,10 @@ private:
    private:
       bool m_valid;
       collector_unit_t  *m_cu; 
-      const inst_t      *m_fvi;
+      const warp_inst_t *m_warp;
       unsigned  m_operand; // operand offset in instruction. e.g., add r1,r2,r3; r2 is oprd 0, r3 is 1 (r1 is dst)
       unsigned  m_register;
       unsigned  m_bank;
-      unsigned  m_tid;
    };
 
    enum alloc_t {
@@ -676,7 +650,6 @@ private:
          m_warp = NULL;
          m_src_op = new op_t[MAX_REG_OPERANDS];
          m_not_ready.reset();
-         m_tid = -1;
          m_warp_id = -1;
          m_num_banks = 0;
          m_bank_warp_shift = 0;
@@ -686,18 +659,17 @@ private:
       const op_t *get_operands() const { return m_src_op; }
       void dump(FILE *fp, const shader_core_ctx *shader ) const;
 
-      unsigned get_tid() const { return m_tid; } // returns hw id of first valid instruction
       unsigned get_warp_id() const { return m_warp_id; }
       unsigned get_id() const { return m_cuid; } // returns CU hw id
 
       // modifiers
       void init(unsigned n, 
-                inst_t **port, 
+                warp_inst_t **port, 
                 unsigned num_banks, 
                 unsigned log2_warp_size,
                 unsigned warp_size,
                 opndcoll_rfu_t *rfu ); 
-      void allocate( inst_t *&pipeline_reg );
+      void allocate( warp_inst_t *&pipeline_reg );
 
       void collect_operand( unsigned op )
       {
@@ -708,11 +680,10 @@ private:
 
    private:
       bool m_free;
-      unsigned m_tid;
       unsigned m_cuid; // collector unit hw id
-      inst_t **m_port; // pipeline register to issue to when ready
+      warp_inst_t **m_port; // pipeline register to issue to when ready
       unsigned m_warp_id;
-      inst_t  *m_warp;
+      warp_inst_t  *m_warp;
       op_t *m_src_op;
       std::bitset<MAX_REG_OPERANDS> m_not_ready;
       unsigned m_num_banks;
@@ -772,12 +743,12 @@ private:
    collector_unit_t                *m_cu;
    arbiter_t                        m_arbiter;
 
-   inst_t **m_alu_port;
-   inst_t **m_sfu_port;
+   warp_inst_t **m_alu_port;
+   warp_inst_t **m_sfu_port;
 
-   typedef std::map<inst_t**/*port*/,dispatch_unit_t> port_to_du_t;
+   typedef std::map<warp_inst_t**/*port*/,dispatch_unit_t> port_to_du_t;
    port_to_du_t                     m_dispatch_units;
-   std::map<inst_t**,std::list<collector_unit_t*> > m_free_cu;
+   std::map<warp_inst_t**,std::list<collector_unit_t*> > m_free_cu;
    shader_core_ctx                 *m_shader;
 };
 
@@ -929,7 +900,7 @@ public:
    //return queue pop; (includes texture pipeline return)
    void pop_return_head();
 
-   mshr_entry* add_mshr(mem_access_t &access, inst_t* warp);
+   mshr_entry* add_mshr(mem_access_t &access, warp_inst_t* warp);
    void mshr_return_from_mem(mshr_entry *mshr);
    unsigned get_max_mshr_used() const {return m_max_mshr_used;}  
    void print(FILE* fp, class shader_core_ctx* shader,unsigned mask);
@@ -1028,11 +999,10 @@ public:
    void deallocate_barrier( unsigned cta_id );
    void decrement_atomic_count( unsigned wid );
 
-   void cycle();
    void cycle_gt200();
 
    void reinit(unsigned start_thread, unsigned end_thread, bool reset_not_completed );
-   void init_warps(unsigned start_thread, unsigned end_thread);
+   void init_warps(unsigned cta_id, unsigned start_thread, unsigned end_thread);
 
    unsigned max_cta( class function_info *kernel );
    void cache_flush();
@@ -1043,14 +1013,10 @@ public:
    void store_ack( class mem_fetch *mf );
    void dump_istream_state( FILE *fout );
    void mshr_print(FILE* fp, unsigned mask);
-   inst_t *first_valid_thread( inst_t *warp );
-   inst_t *first_valid_thread( unsigned stage );
+   unsigned first_valid_thread( unsigned stage );
    class ptx_thread_info* get_functional_thread( unsigned tid ) { return m_thread[tid].m_functional_model_thread_state; }
-   void move_warp( inst_t *&dst, inst_t *&src );
-   void print_warp( inst_t *warp, FILE *fout, int print_mem, int mask ) const;
-   void clear_stage(inst_t *warp);
+   void print_warp( warp_inst_t *warp, FILE *fout, int print_mem, int mask ) const;
    std::list<unsigned> get_regs_written( const inst_t &fvt ) const;
-   bool pipeline_regster_empty( inst_t *reg );
    const shader_core_config *get_config() const { return m_config; }
    unsigned get_num_sim_insn() const { return m_num_sim_insn; }
    int get_not_completed() const { return m_not_completed; }
@@ -1075,29 +1041,13 @@ private:
 
    address_type next_pc( int tid ) const;
 
-   void ptx_exec_inst( inst_t &inst );
+   void func_exec_inst( warp_inst_t &inst );
    void fetch_new();
-   void issue_warp(const inst_t *pI, unsigned active_mask, inst_t *&warp, unsigned warp_id );
+   void issue_warp( warp_inst_t *&warp, const warp_inst_t *pI, unsigned active_mask, unsigned warp_id );
    void decode_new();
-
-   void fetch();
-
-   void fetch_mimd();
-   void fetch_simd_dwf();
-   void fetch_simd_postdominator();
-   int  pdom_sched_find_next_warp (int ready_warp_count);
-   bool fetch_stalled();
-   void shader_issue_thread(int tid, int wlane, unsigned active_mask );
-   int warp_reached_barrier(int *tid_in);
-
-   void decode();
-
-   void preexecute();
 
    void execute();
    void execute_pipe( unsigned pipeline, unsigned next_stage );
-
-   void pre_memory();
 
    void memory(); // advance memory pipeline stage
    void memory_queue();
@@ -1137,12 +1087,7 @@ private:
                                 std::vector<mem_access_t> &accessq );
    mem_stage_stall_type send_mem_request(mem_access_t &access);
 
-   void check_stage_pcs( unsigned stage );
-   void check_pm_stage_pcs( unsigned stage );
-
    void writeback();
-   int  split_warp_by_pc(int *tid_in, int **tid_split, address_type *pc);
-   int  split_warp_by_cta(int *tid_in, int **tid_split, address_type *pc, int *cta);
 
    unsigned char fq_push( unsigned long long int addr, 
                           int bsize, 
@@ -1152,19 +1097,9 @@ private:
                           enum mem_access_type mem_acc, 
                           address_type pc );
 
-   bool warp_scoreboard_hazard(int warp_id);
-   mshr_entry* check_mshr4tag(unsigned long long int addr,int mem_type);
-   void update_mshr(unsigned long long int fetched_addr, unsigned int mshr_idx, int mem_type );
-   void visualizer_dump(FILE *fp);
-   void clean(unsigned int n_threads);
    void call_thread_done(inst_t &done_inst );
-   void queue_warp_unlocking(int *tids, const inst_t &inst );
-   void process_delay_queue();
-   void unlock_warp(std::vector<int> tids );
 
-   void print_pre_mem_stages( FILE *fout, int print_mem, int mask );
    void print_stage(unsigned int stage, FILE *fout, int print_mem, int mask );
-   void print_shader_cycle_distro( FILE *fout );
 
    // general information
    unsigned m_sid; // shader id
@@ -1191,8 +1126,7 @@ private:
    pdom_warp_ctx_t         **m_pdom_warp; // pdom reconvergence context for each warp
 
    class warp_tracker_pool *m_warp_tracker;
-   inst_t** m_pipeline_reg;
-   inst_t** pre_mem_pipeline;
+   warp_inst_t** m_pipeline_reg;
    Scoreboard *m_scoreboard;
    opndcoll_rfu_t m_operand_collector;
    mshr_shader_unit *m_mshr_unit;
@@ -1203,19 +1137,6 @@ private:
    // fetch
    int  m_last_warp_fetched;
    int  m_last_warp_issued;
-
-   bool m_new_warp_TS; // new warp at TS pipeline register
-   int  m_last_warp;   // SIMT: last warp issued
-   int  m_next_warp;   // SIMT: Keeps track of which warp of instructions to fetch/execute
-   unsigned m_last_issued_thread; // MIMD
-
-   int *m_ready_warps;
-   int *m_tmp_ready_warps;
-   int *m_fetch_tid_out;
-
-   // pre-execute stage
-   int  m_dwf_RR_k;          // counter for register read pipeline
-   int *m_dwf_rrstage_bank_access_counter;
 
    cache_t *m_L1I; // instruction cache
    cache_t *m_L1D; // data cache (global/local memory accesses)
@@ -1229,8 +1150,6 @@ private:
    int *m_pl_tid;
    insn_latency_info *m_mshr_lat_info;
    insn_latency_info *m_pl_lat_info;
-
-   class thread_pc_tracker *m_thread_pc_tracker;
 };
 
 void init_mshr_pool();
@@ -1255,7 +1174,6 @@ void shader_print_l1_miss_stat( FILE *fout );
 #define N_PIPELINE_STAGES 10
 
 extern unsigned int *shader_cycle_distro;
-extern unsigned int n_regconflict_stall;
 
 int is_store ( const inst_t &op );
 

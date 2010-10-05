@@ -983,7 +983,7 @@ ptx_instruction::ptx_instruction( int opcode,
                                   const char *file, 
                                   unsigned line,
                                   const char *source,
-                                  unsigned warp_size ) : inst_t()
+                                  unsigned warp_size ) : warp_inst_t(warp_size)
 {
    m_uid = ++g_num_ptx_inst_uid;
    m_PC = 0;

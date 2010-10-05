@@ -98,8 +98,6 @@
 
 enum divergence_support_t {
    POST_DOMINATOR = 1,
-   MIMD = 2,
-   DWF = 3,
    NUM_SIMD_MODEL
 };
 
@@ -123,8 +121,6 @@ struct shader_core_config
    bool gpgpu_operand_collector;
    int gpgpu_operand_collector_num_units;
    int gpgpu_operand_collector_num_units_sfu;
-   unsigned gpgpu_pre_mem_stages;
-   bool gpgpu_no_divg_load;
    bool gpgpu_stall_on_use;
    bool gpgpu_cache_wt_through;
    //Shader core resources
@@ -145,9 +141,6 @@ struct shader_core_config
    int gpgpu_coalesce_arch;
    bool gpgpu_local_mem_map;
    int gpu_padded_cta_size;
-   unsigned gpgpu_dwf_rr_stage_n_reg_banks;  
-   int  m_using_dwf_rrstage; // model register read bank conflicts in DWF (i.e., not "lane aware")
-   int using_commit_queue; //is the scheduler using commit_queue?
 };
 
 enum dram_ctrl_t {
@@ -172,8 +165,6 @@ struct memory_config {
 // global config
 extern int gpgpu_mem_address_mask;
 extern unsigned int gpu_n_mem_per_ctrlr;
-
-extern bool gpgpu_thread_swizzling;
 
 extern int gpu_runtime_stat_flag;
 extern int gpgpu_cflog_interval;
@@ -214,7 +205,7 @@ public:
 
    unsigned num_shader() const { return m_n_shader; }
    unsigned threads_per_core() const;
-   void mem_instruction_stats( class inst_t* warp);
+   void mem_instruction_stats( class warp_inst_t* warp);
    int issue_mf_from_fq(class mem_fetch *mf);
 
    void gpu_print_stat() const;

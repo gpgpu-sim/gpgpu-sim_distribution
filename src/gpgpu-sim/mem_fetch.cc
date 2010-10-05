@@ -115,10 +115,7 @@ void mem_fetch::set_status( enum mshr_status status, enum mem_req_stat stat, uns
 {
    if ( mshr ) {
       mshr->set_status(status);
-      if( mshr->has_inst() ) 
-         time_vector_update(mshr->get_insts_uid(),stat,cycle,type);
-      else 
-         time_vector_update(request_uid,stat,cycle,type);
+      time_vector_update(request_uid,stat,cycle,type);
    }
 }
 
@@ -130,8 +127,7 @@ bool mem_fetch::isatomic() const
 
 void mem_fetch::do_atomic()
 {
-   dram_callback_t &cb = mshr->get_atomic_callback();
-   cb.function(cb.instruction, cb.thread);
+    mshr->do_atomic();
 }
 
 bool mem_fetch::isinst() const 

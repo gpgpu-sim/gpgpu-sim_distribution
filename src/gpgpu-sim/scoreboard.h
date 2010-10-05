@@ -23,7 +23,7 @@ public:
     void printContents();
 
     void reserveRegisters(unsigned wid, const inst_t *inst);
-    void releaseRegisters(unsigned wid, const inst_t *inst);
+    void releaseRegisters(const warp_inst_t *inst);
 
     bool checkCollision(unsigned wid, const inst_t *inst);
     bool pendingWrites(unsigned wid) const;
