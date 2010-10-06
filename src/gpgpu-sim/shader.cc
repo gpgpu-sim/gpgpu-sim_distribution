@@ -852,9 +852,7 @@ mshr_entry* mshr_shader_unit::add_mshr(mem_access_t &access, warp_inst_t* warp)
     // creates an mshr based on the access struct information
     mshr_entry* mshr = alloc_free_mshr(access.space == tex_space);
     mshr->init(access.addr,access.iswrite,access.space,warp->warp_id());
-    assert(access.warp_indices.size()); //code assumes at least one instruction attached to mshr.
-    for (unsigned i = 0; i < access.warp_indices.size(); i++)
-        mshr->add_inst(warp[access.warp_indices[i]]);
+    mshr->add_inst(*warp);
     if( m_shader_config->gpgpu_interwarp_mshr_merge ) {
         mshr_entry* mergehit = m_mshr_lookup.shader_get_mergeable_mshr(mshr);
         if (mergehit) {
@@ -1193,8 +1191,10 @@ void shader_core_ctx::writeback()
     mshr_entry *m = m_mshr_unit->return_head();
     if( m ) 
         m_mshr_unit->pop_return_head();
-    if( !m_pipeline_reg[MM_WB]->empty() )
+    if( !m_pipeline_reg[MM_WB]->empty() ) {
         m_scoreboard->releaseRegisters( m_pipeline_reg[MM_WB] );
+        m_warp[m_pipeline_reg[MM_WB]->warp_id()].dec_inst_in_pipeline();
+    }
     move_warp(m_pipeline_reg[WB_RT],m_pipeline_reg[MM_WB]);
 }
 

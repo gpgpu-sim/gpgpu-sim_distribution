@@ -889,12 +889,8 @@ class mshr_shader_unit {
 public:
    mshr_shader_unit( const shader_core_config *config );
 
-   bool has_mshr(unsigned num)
-   {
-       return (num <= m_free_list.size());
-   }
+   bool has_mshr(unsigned num) const { return (num <= m_free_list.size()); }
 
-   //return queue access; (includes texture pipeline return)
    mshr_entry* return_head();
 
    //return queue pop; (includes texture pipeline return)
@@ -1125,7 +1121,6 @@ private:
    ifetch_buffer_t           m_inst_fetch_buffer;
    pdom_warp_ctx_t         **m_pdom_warp; // pdom reconvergence context for each warp
 
-   class warp_tracker_pool *m_warp_tracker;
    warp_inst_t** m_pipeline_reg;
    Scoreboard *m_scoreboard;
    opndcoll_rfu_t m_operand_collector;
