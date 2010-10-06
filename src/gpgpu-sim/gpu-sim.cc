@@ -113,13 +113,7 @@ unsigned freed_L1write_mfs = 0;
 unsigned freed_L2write_mfs = 0;
 unsigned freed_dummy_read_mfs = 0;
 unsigned long long  gpu_sim_cycle = 0;
-unsigned long long  gpu_sim_insn = 0;
-unsigned long long  gpu_sim_prev_insn = 0;
 unsigned long long  gpu_tot_sim_cycle = 0;
-unsigned long long  gpu_tot_sim_insn = 0;
-unsigned long long  gpu_last_sim_cycle = 0;
-unsigned long long  gpu_tot_issued_cta = 0;
-unsigned long long  gpu_tot_completed_thread = 0;
 
 unsigned int **concurrent_row_access; //concurrent_row_access[dram chip id][bank id]
 unsigned int **num_activates; //num_activates[dram chip id][bank id]
@@ -143,16 +137,13 @@ int gpu_runtime_stat_flag = 0;
 
 unsigned long long  gpu_max_cycle = 0;
 unsigned long long  gpu_max_insn = 0;
-int gpu_deadlock = 0;
 unsigned g_next_mf_request_uid = 1;
-static unsigned long long  last_gpu_sim_insn = 0;
 int g_total_cta_left;
 
 // GPGPU-Sim timing model options
 int   gpu_max_cycle_opt;
 int   gpu_max_insn_opt;
 int   gpu_max_cta_opt;
-bool  gpu_deadlock_detect;
 char *gpgpu_shader_core_pipeline_opt;
 int   gpgpu_dram_sched_queue_size; 
 bool  gpgpu_flush_cache;
@@ -466,6 +457,11 @@ gpgpu_sim::gpgpu_sim()
    m_shader_stats = (shader_core_stats*)calloc(1,sizeof(shader_core_stats));
    m_memory_config = (memory_config*)calloc(1,sizeof(memory_config));
    m_memory_stats = NULL;
+   gpu_sim_insn = 0;
+   gpu_tot_sim_insn = 0;
+   gpu_tot_issued_cta = 0;
+   gpu_tot_completed_thread = 0;
+   gpu_deadlock = false;
 }
 
 void set_ptx_warp_size(unsigned warp_size);
@@ -1397,7 +1393,7 @@ void gpgpu_sim::cycle()
       if (!(gpu_sim_cycle % 20000)) {
          // deadlock detection 
          if (gpu_deadlock_detect && gpu_sim_insn == last_gpu_sim_insn) {
-            gpu_deadlock = 1;
+            gpu_deadlock = true;
          } else {
             last_gpu_sim_insn = gpu_sim_insn;
          }

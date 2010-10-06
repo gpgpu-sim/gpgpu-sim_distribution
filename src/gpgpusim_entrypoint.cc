@@ -151,7 +151,7 @@ void print_simulation_time()
    fflush(stderr);
    printf("\n\ngpgpu_simulation_time = %u days, %u hrs, %u min, %u sec (%u sec)\n",
           (unsigned)d, (unsigned)h, (unsigned)m, (unsigned)s, (unsigned)difference );
-   printf("gpgpu_simulation_rate = %u (inst/sec)\n", (unsigned)(gpu_tot_sim_insn / difference) );
+   printf("gpgpu_simulation_rate = %u (inst/sec)\n", (unsigned)(g_the_gpu.gpu_tot_sim_insn / difference) );
    printf("gpgpu_simulation_rate = %u (cycle/sec)\n", (unsigned)(gpu_tot_sim_cycle / difference) );
    fflush(stdout);
 }

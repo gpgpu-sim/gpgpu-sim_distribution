@@ -269,9 +269,21 @@ private:
 
    int m_pdom_sched_type;
 
+   // options
+   bool gpu_deadlock_detect;
+
+   // stats
    struct shader_core_stats  *m_shader_stats;
    class memory_stats_t      *m_memory_stats;
+   unsigned long long  gpu_tot_issued_cta;
+   unsigned long long  gpu_tot_completed_thread;
+   unsigned long long  last_gpu_sim_insn;
+
+   // debug
+   bool gpu_deadlock;
 public:
+   unsigned long long  gpu_sim_insn;
+   unsigned long long  gpu_tot_sim_insn;
    unsigned long long  gpu_sim_insn_last_update;
    unsigned gpu_sim_insn_last_update_sid;
 };
@@ -280,8 +292,6 @@ public:
 
 extern unsigned long long  gpu_sim_cycle;
 extern unsigned long long  gpu_tot_sim_cycle;
-extern unsigned long long  gpu_sim_insn;
-extern unsigned long long  gpu_tot_sim_insn;
 extern unsigned g_next_mf_request_uid;
 
 // stats 

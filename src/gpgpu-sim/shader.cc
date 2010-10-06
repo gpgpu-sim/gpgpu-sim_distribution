@@ -1194,6 +1194,9 @@ void shader_core_ctx::writeback()
     if( !m_pipeline_reg[MM_WB]->empty() ) {
         m_scoreboard->releaseRegisters( m_pipeline_reg[MM_WB] );
         m_warp[m_pipeline_reg[MM_WB]->warp_id()].dec_inst_in_pipeline();
+        m_gpu->gpu_sim_insn_last_update_sid = m_sid;
+        m_gpu->gpu_sim_insn_last_update = gpu_sim_cycle;
+        m_gpu->gpu_sim_insn += m_pipeline_reg[MM_WB]->active_count();
     }
     move_warp(m_pipeline_reg[WB_RT],m_pipeline_reg[MM_WB]);
 }

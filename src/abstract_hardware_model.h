@@ -315,6 +315,7 @@ public:
             fprintf(fp, "%c", ((warp_active_mask[i])?'1':'0') );
     }
     bool active( unsigned thread ) const { return warp_active_mask.test(thread); }
+    unsigned active_count() const { return warp_active_mask.count(); }
     bool empty() const { return m_empty; }
     unsigned warp_id() const 
     { 
