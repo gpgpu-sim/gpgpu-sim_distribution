@@ -231,11 +231,15 @@ struct CUctx_st {
 
    void register_function( unsigned fat_cubin_handle, const char *hostFun, const char *deviceFun )
    {
-      symbol *s = m_code[fat_cubin_handle]->lookup(deviceFun);
-      assert( s != NULL );
-      function_info *f = s->get_pc();
-      assert( f != NULL );
-      m_kernel_lookup[hostFun] = f;
+       if( m_code.find(fat_cubin_handle) != m_code.end() ) {
+          symbol *s = m_code[fat_cubin_handle]->lookup(deviceFun);
+          assert( s != NULL );
+          function_info *f = s->get_pc();
+          assert( f != NULL );
+          m_kernel_lookup[hostFun] = f;
+       } else {
+          m_kernel_lookup[hostFun] = NULL;
+       }
    }
 
    function_info *get_kernel(const char *hostFun)
@@ -1117,19 +1121,24 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
    unsigned max_capability=0;
    unsigned selected_capability=0;
    bool found=false;
+   unsigned forced_max_capability = context->get_device()->get_gpgpu()->get_forced_max_capability();
    while( info->ptx[num_ptx_versions].gpuProfileName != NULL ) {
       unsigned capability=0;
       sscanf(info->ptx[num_ptx_versions].gpuProfileName,"compute_%u",&capability);
       printf("GPGPU-Sim PTX: __cudaRegisterFatBinary found PTX versions for '%s', ", info->ident);
-	   printf("capability = %s\n", info->ptx[num_ptx_versions].gpuProfileName );
-      if( capability > max_capability ) {
-         found = true;
-         max_capability=capability;
-         selected_capability = num_ptx_versions;
-      }
-      if( capability == context->get_device()->get_gpgpu()->get_forced_capability() ) {
-         found = true;
-         selected_capability = num_ptx_versions;
+	  printf("capability = %s\n", info->ptx[num_ptx_versions].gpuProfileName );
+      if( forced_max_capability ) {
+          if( capability > max_capability && capability <= forced_max_capability ) {
+             found = true;
+             max_capability=capability;
+             selected_capability = num_ptx_versions;
+          } 
+      } else {
+          if( capability > max_capability ) {
+             found = true;
+             max_capability=capability;
+             selected_capability = num_ptx_versions;
+          }
       }
       num_ptx_versions++;
    }
@@ -1154,8 +1163,7 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
       load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
       load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
    } else {
-      printf("GPGPU-Sim PTX: ERROR ** did not find an appropriate PTX in Cubin\n"); 
-      abort();
+      printf("GPGPU-Sim PTX: warning -- did not find an appropriate PTX in cubin\n"); 
    }
 #endif
    return (void**)fat_cubin_handle;
@@ -1382,17 +1390,18 @@ cudaError_t CUDARTAPI cudaFuncGetAttributes(struct cudaFuncAttributes *attr, con
 {
    CUctx_st *context = GPGPUSim_Context();
    function_info *entry = context->get_kernel(hostFun);
-   const struct gpgpu_ptx_sim_kernel_info *kinfo = entry->get_kernel_info();
-
-   attr->sharedSizeBytes = kinfo->smem;
-   attr->constSizeBytes  = kinfo->cmem;
-   attr->localSizeBytes  = kinfo->lmem;
-   attr->numRegs         = kinfo->regs;
-   attr->maxThreadsPerBlock = 0; // from pragmas?
+   if( entry ) {
+       const struct gpgpu_ptx_sim_kernel_info *kinfo = entry->get_kernel_info();
+       attr->sharedSizeBytes = kinfo->smem;
+       attr->constSizeBytes  = kinfo->cmem;
+       attr->localSizeBytes  = kinfo->lmem;
+       attr->numRegs         = kinfo->regs;
+       attr->maxThreadsPerBlock = 0; // from pragmas?
 #if CUDART_VERSION >= 3000
-   attr->ptxVersion      = kinfo->ptx_version;
-   attr->binaryVersion   = kinfo->sm_target;
+       attr->ptxVersion      = kinfo->ptx_version;
+       attr->binaryVersion   = kinfo->sm_target;
 #endif
+   }
    return g_last_cudaError = cudaSuccess;
 }
 
@@ -1602,6 +1611,10 @@ kernel_info_t gpgpu_cuda_ptx_sim_init_grid( const char *hostFun,
                                             CUctx_st* context )
 {
    function_info *entry = context->get_kernel(hostFun);
+   if( entry == NULL ) {
+       printf("GPGPU-Sim PTX: ERROR launching kernel -- no PTX implementation found\n");
+       abort();
+   }
    std::string kname = entry->get_name();
 
    printf("GPGPU-Sim PTX: Launching kernel \'%s\' gridDim= (%u,%u,%u) blockDim = (%u,%u,%u); ntuid=%u\n",

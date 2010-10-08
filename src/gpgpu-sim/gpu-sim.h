@@ -211,7 +211,7 @@ public:
    void gpu_print_stat() const;
    void dump_pipeline( int mask, int s, int m ) const;
 
-   unsigned get_forced_capability() const { return m_ptx_force_max_capability; }
+   unsigned get_forced_max_capability() const { return m_ptx_force_max_capability; }
    bool convert_to_ptxplus() const { return m_ptx_convert_to_ptxplus; }
    bool saved_converted_ptxplus() const { return m_ptx_save_converted_ptxplus; }
 
