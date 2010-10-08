@@ -174,10 +174,6 @@ int   g_ptx_inst_debug_to_file;
 char* g_ptx_inst_debug_file;
 int   g_ptx_inst_debug_thread_uid;
 
-int   g_ptx_convert_to_ptxplus;
-int   g_ptx_save_converted_ptxplus;
-unsigned g_ptx_force_max_capability;
-
 void visualizer_options(option_parser_t opp);
 
 void gpgpu_sim::reg_options(option_parser_t opp)
@@ -371,15 +367,15 @@ void gpgpu_sim::reg_options(option_parser_t opp)
                "Thread UID for executed instructions' debug output", 
                "1");
    option_parser_register(opp, "-gpgpu_ptx_convert_to_ptxplus", OPT_BOOL,
-                &g_ptx_convert_to_ptxplus,
+                &m_ptx_convert_to_ptxplus,
                 "Convert embedded ptx to ptxplus",
                 "0");
    option_parser_register(opp, "-gpgpu_ptx_save_converted_ptxplus", OPT_BOOL,
-                &g_ptx_save_converted_ptxplus,
+                &m_ptx_save_converted_ptxplus,
                 "Saved converted ptxplus to a file",
                 "0");
    option_parser_register(opp, "-gpgpu_ptx_force_max_capability", OPT_UINT32,
-                &g_ptx_force_max_capability,
+                &m_ptx_force_max_capability,
                 "Force maximum compute capability",
                 "0");
    option_parser_register(opp, "-gpgpu_operand_collector", OPT_BOOL, &m_shader_config->gpgpu_operand_collector,
@@ -1080,7 +1076,7 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
     for (unsigned i = start_thread; i<end_thread; i++) {
         m_thread[i].m_cta_id = free_cta_hw_id;
         unsigned warp_id = i/m_config->warp_size;
-        nthreads_in_block += ptx_sim_init_thread(kernel,&m_thread[i].m_functional_model_thread_state,m_sid,i,cta_size-(i-start_thread),m_config->n_thread_per_shader,this,free_cta_hw_id,warp_id);
+        nthreads_in_block += ptx_sim_init_thread(kernel,&m_thread[i].m_functional_model_thread_state,m_sid,i,cta_size-(i-start_thread),m_config->n_thread_per_shader,this,free_cta_hw_id,warp_id,m_gpu);
         warps.set( warp_id );
     }
     assert( nthreads_in_block > 0 && nthreads_in_block <= m_config->n_thread_per_shader); // should be at least one, but less than max

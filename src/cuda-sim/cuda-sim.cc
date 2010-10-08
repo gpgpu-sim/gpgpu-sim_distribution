@@ -309,20 +309,6 @@ void function_info::ptx_assemble()
    m_assembled = true;
 }
 
-
-
-void gpgpu_ptx_sim_init_memory()
-{
-   static bool initialized = false;
-   if ( !initialized ) {
-      g_global_mem = new memory_space_impl<8192>("global",64*1024);
-      g_param_mem = new memory_space_impl<8192>("param",64*1024);
-      g_tex_mem = new memory_space_impl<8192>("tex",64*1024);
-      g_surf_mem = new memory_space_impl<8192>("surf",64*1024);
-      initialized = true;
-   }
-}
-
 addr_t shared_to_generic( unsigned smid, addr_t addr )
 {
    assert( addr < SHARED_MEM_SIZE_MAX );
@@ -392,9 +378,7 @@ addr_t generic_to_global( addr_t addr )
 }
 
 
-unsigned long long g_dev_malloc=GLOBAL_HEAP_START; 
-
-void* gpgpu_ptx_sim_malloc( size_t size )
+void* gpgpu_t::gpgpu_ptx_sim_malloc( size_t size )
 {
    unsigned long long result = g_dev_malloc;
    printf("GPGPU-Sim PTX: allocating %zu bytes on GPU starting at address 0x%Lx\n", size, g_dev_malloc );
@@ -404,7 +388,7 @@ void* gpgpu_ptx_sim_malloc( size_t size )
    return(void*) result;
 }
 
-void* gpgpu_ptx_sim_mallocarray( size_t size )
+void* gpgpu_t::gpgpu_ptx_sim_mallocarray( size_t size )
 {
    unsigned long long result = g_dev_malloc;
    printf("GPGPU-Sim PTX: allocating %zu bytes on GPU starting at address 0x%Lx\n", size, g_dev_malloc );
@@ -415,7 +399,7 @@ void* gpgpu_ptx_sim_mallocarray( size_t size )
 }
 
 
-void gpgpu_ptx_sim_memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t count )
+void gpgpu_t::gpgpu_ptx_sim_memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t count )
 {
    printf("GPGPU-Sim PTX: copying %zu bytes from CPU[0x%Lx] to GPU[0x%Lx] ... ", count, (unsigned long long) src, (unsigned long long) dst_start_addr );
    fflush(stdout);
@@ -426,7 +410,7 @@ void gpgpu_ptx_sim_memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t
    fflush(stdout);
 }
 
-void gpgpu_ptx_sim_memcpy_from_gpu( void *dst, size_t src_start_addr, size_t count )
+void gpgpu_t::gpgpu_ptx_sim_memcpy_from_gpu( void *dst, size_t src_start_addr, size_t count )
 {
    printf("GPGPU-Sim PTX: copying %zu bytes from GPU[0x%Lx] to CPU[0x%Lx] ...", count, (unsigned long long) src_start_addr, (unsigned long long) dst );
    fflush(stdout);
@@ -437,7 +421,7 @@ void gpgpu_ptx_sim_memcpy_from_gpu( void *dst, size_t src_start_addr, size_t cou
    fflush(stdout);
 }
 
-void gpgpu_ptx_sim_memcpy_gpu_to_gpu( size_t dst, size_t src, size_t count )
+void gpgpu_t::gpgpu_ptx_sim_memcpy_gpu_to_gpu( size_t dst, size_t src, size_t count )
 {
    printf("GPGPU-Sim PTX: copying %zu bytes from GPU[0x%Lx] to GPU[0x%Lx] ...", count, 
           (unsigned long long) src, (unsigned long long) dst );
@@ -451,7 +435,7 @@ void gpgpu_ptx_sim_memcpy_gpu_to_gpu( size_t dst, size_t src, size_t count )
    fflush(stdout);
 }
 
-void gpgpu_ptx_sim_memset( size_t dst_start_addr, int c, size_t count )
+void gpgpu_t::gpgpu_ptx_sim_memset( size_t dst_start_addr, int c, size_t count )
 {
    printf("GPGPU-Sim PTX: setting %zu bytes of memory to 0x%x starting at 0x%Lx... ", 
           count, (unsigned char) c, (unsigned long long) dst_start_addr );
@@ -890,6 +874,12 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
       }
    }
    if( !skip ) {
+      ptx_instruction *pJ = NULL;
+      if( pI->get_opcode() == VOTE_OP ) {
+         pJ = new ptx_instruction(*pI);
+         *((warp_inst_t*)pJ) = inst;
+         pI = pJ;
+      }
       switch ( pI->get_opcode() ) {
 #define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,this); op_classification = CLASSIFICATION; break;
 #include "opcodes.def"
@@ -899,6 +889,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
             printf( "Execution error: Invalid opcode (0x%x)\n", pI->get_opcode() );
             break;
       }
+      delete pJ;
 
       // Run exit instruction if exit option included
       if(pI->is_exit())
@@ -1045,11 +1036,6 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
    }
 }
 
-std::list<ptx_thread_info *> g_active_threads;
-std::map<unsigned,memory_space*> g_shared_memory_lookup;
-std::map<unsigned,ptx_cta_info*> g_ptx_cta_lookup;
-std::map<unsigned,std::map<unsigned,memory_space*> > g_local_memory_lookup;
-
 void set_param_gpgpu_num_shaders(int num_shaders)
 {
    gpgpu_param_num_shaders = num_shaders;
@@ -1073,8 +1059,14 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
                               unsigned num_threads, 
                               core_t *core, 
                               unsigned hw_cta_id, 
-                              unsigned hw_warp_id )
+                              unsigned hw_warp_id,
+                              gpgpu_t *gpu )
 {
+   static std::list<ptx_thread_info *> active_threads;
+   static std::map<unsigned,memory_space*> shared_memory_lookup;
+   static std::map<unsigned,ptx_cta_info*> ptx_cta_lookup;
+   static std::map<unsigned,std::map<unsigned,memory_space*> > local_memory_lookup;
+
    if ( *thread_info != NULL ) {
       ptx_thread_info *thd = *thread_info;
       assert( thd->is_done() );
@@ -1091,16 +1083,12 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
       *thread_info = NULL;
    }
 
-   if ( !g_active_threads.empty() ) { //if g_active_threads not empty...
-      assert( g_active_threads.size() <= threads_left );
-      ptx_thread_info *thd = g_active_threads.front(); 
-      g_active_threads.pop_front();
+   if ( !active_threads.empty() ) { //if g_active_threads not empty...
+      assert( active_threads.size() <= threads_left );
+      ptx_thread_info *thd = active_threads.front(); 
+      active_threads.pop_front();
       *thread_info = thd;
-      thd->set_hw_tid(tid);
-      thd->set_hw_wid(hw_warp_id);
-      thd->set_hw_ctaid(hw_cta_id);
-      thd->set_core(core);
-      thd->set_hw_sid(sid);
+      thd->init(gpu, core, sid, hw_cta_id, hw_warp_id, tid );
       return 1;
    }
 
@@ -1127,7 +1115,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
 
    unsigned sm_idx = (tid/cta_size)*gpgpu_param_num_shaders + sid;
 
-   if ( g_shared_memory_lookup.find(sm_idx) == g_shared_memory_lookup.end() ) {
+   if ( shared_memory_lookup.find(sm_idx) == shared_memory_lookup.end() ) {
       if ( g_debug_execution >= 1 ) {
          printf("  <CTA alloc> : sm_idx=%u sid=%u max_cta_per_sm=%u\n", 
                 sm_idx, sid, max_cta_per_sm );
@@ -1135,20 +1123,20 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
       char buf[512];
       snprintf(buf,512,"shared_%u", sid);
       shared_mem = new memory_space_impl<16*1024>(buf,4);
-      g_shared_memory_lookup[sm_idx] = shared_mem;
+      shared_memory_lookup[sm_idx] = shared_mem;
       cta_info = new ptx_cta_info(sm_idx);
-      g_ptx_cta_lookup[sm_idx] = cta_info;
+      ptx_cta_lookup[sm_idx] = cta_info;
    } else {
       if ( g_debug_execution >= 1 ) {
          printf("  <CTA realloc> : sm_idx=%u sid=%u max_cta_per_sm=%u\n", 
                 sm_idx, sid, max_cta_per_sm );
       }
-      shared_mem = g_shared_memory_lookup[sm_idx];
-      cta_info = g_ptx_cta_lookup[sm_idx];
+      shared_mem = shared_memory_lookup[sm_idx];
+      cta_info = ptx_cta_lookup[sm_idx];
       cta_info->check_cta_thread_status_and_reset();
    }
 
-   std::map<unsigned,memory_space*> &local_mem_lookup = g_local_memory_lookup[sid];
+   std::map<unsigned,memory_space*> &local_mem_lookup = local_memory_lookup[sid];
    while( kernel.more_threads_in_cta() ) {
       dim3 ctaid3d = kernel.get_next_cta_id();
       unsigned new_tid = kernel.get_next_thread_id();
@@ -1174,11 +1162,6 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
       thd->set_tid(tid3d);
       if( kernel.entry()->get_ptx_version().extensions() ) 
          thd->cpy_tid_to_reg(tid3d);
-      thd->set_hw_tid((unsigned)-1);
-      thd->set_hw_wid((unsigned)-1);
-      thd->set_hw_ctaid((unsigned)-1);
-      thd->set_core(NULL);
-      thd->set_hw_sid((unsigned)-1);
       thd->set_valid();
       thd->m_shared_mem = shared_mem;
       function_info *finfo = thd->func_info();
@@ -1192,7 +1175,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
                 ctaid3d.x,ctaid3d.y,ctaid3d.z,tid3d.x,tid3d.y,tid3d.z, (unsigned long long)thd );
          fflush(stdout);
       }
-      g_active_threads.push_back(thd);
+      active_threads.push_back(thd);
    }
    if ( g_debug_execution==-1 ) {
       printf("GPGPU-Sim PTX simulator:  <-- FINISHING THREAD ALLOCATION\n");
@@ -1201,16 +1184,10 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
 
    kernel.increment_cta_id();
 
-   assert( g_active_threads.size() <= threads_left );
-
-   *thread_info = g_active_threads.front();
-   (*thread_info)->set_hw_tid(tid);
-   (*thread_info)->set_hw_wid(hw_warp_id);
-   (*thread_info)->set_hw_ctaid(hw_cta_id);
-   (*thread_info)->set_core(core);
-   (*thread_info)->set_hw_sid(sid);
-   g_active_threads.pop_front();
-
+   assert( active_threads.size() <= threads_left );
+   *thread_info = active_threads.front();
+   (*thread_info)->init(gpu, core, sid, hw_cta_id, hw_warp_id, tid );
+   active_threads.pop_front();
    return 1;
 }
 
@@ -1220,7 +1197,11 @@ size_t get_kernel_code_size( class function_info *entry )
 }
 
 
-kernel_info_t gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,gpgpu_ptx_sim_arg_list_t args, struct dim3 gridDim, struct dim3 blockDim )
+kernel_info_t gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
+                                             gpgpu_ptx_sim_arg_list_t args, 
+                                             struct dim3 gridDim,
+                                             struct dim3 blockDim,
+                                             gpgpu_t *gpu )
 {
    unsigned argcount=args.size();
    unsigned argn=1;
@@ -1228,7 +1209,7 @@ kernel_info_t gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,gpgpu_pt
       entry->add_param_data(argcount-argn,&(*a));
       argn++;
    }
-   entry->finalize(g_param_mem);
+   entry->finalize(gpu->get_param_memory());
    g_ptx_kernel_count++; 
    fflush(stdout);
 
@@ -1263,7 +1244,7 @@ void gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceNam
    g_global_name_lookup[hostVar] = deviceName;
 }
 
-void gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t count, size_t offset, int to )
+void gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t count, size_t offset, int to, gpgpu_t *gpu )
 {
    printf("GPGPU-Sim PTX: starting gpgpu_ptx_sim_memcpy_symbol with hostVar 0x%p\n", hostVar);
    bool found_sym = false;
@@ -1314,11 +1295,11 @@ void gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t co
    unsigned dst = sym->get_address() + offset; 
    switch (mem_region.get_type()) {
    case const_space:
-      mem = g_global_mem;
+      mem = gpu->get_global_memory();
       mem_name = "global";
       break;
    case global_space:
-      mem = g_global_mem;
+      mem = gpu->get_global_memory();
       mem_name = "global";
       break;
    default:

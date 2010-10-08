@@ -1162,7 +1162,7 @@ void ptx_instruction::print_insn( FILE *fp ) const
    snprintf(buf,1024,"%s", m_source.c_str());
    p = strtok(buf,";");
    if( !is_label() ) 
-      fprintf(fp," PC=%3u [%3u] ", m_PC, m_instr_mem_index );
+      fprintf(fp," PC=0x%03x ", m_PC );
    else
       fprintf(fp,"                " );
    fprintf(fp,"(%s:%u) %s", m_source_file.c_str(), m_source_line, p );

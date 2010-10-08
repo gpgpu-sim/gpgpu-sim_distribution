@@ -167,19 +167,18 @@ int gpgpu_cuda_ptx_sim_main_perf( kernel_info_t grid,
    return 0;
 }
 
-int gpgpu_opencl_ptx_sim_main_perf( class function_info *entry, 
+int gpgpu_opencl_ptx_sim_main_perf( kernel_info_t grid,
                                   struct dim3 gridDim, 
                                   struct dim3 blockDim, 
                                   gpgpu_ptx_sim_arg_list_t grid_params )
 {
-   kernel_info_t grid = gpgpu_opencl_ptx_sim_init_grid(entry,grid_params,gridDim,blockDim);
    g_the_gpu.launch(grid);
    sem_post(&g_sim_signal_start);
    sem_wait(&g_sim_signal_finish);
    return 0;
 }
 
-int gpgpu_opencl_ptx_sim_main_func( class function_info *entry, 
+int gpgpu_opencl_ptx_sim_main_func( kernel_info_t grid,
                                   struct dim3 gridDim, 
                                   struct dim3 blockDim, 
                                   gpgpu_ptx_sim_arg_list_t grid_params )

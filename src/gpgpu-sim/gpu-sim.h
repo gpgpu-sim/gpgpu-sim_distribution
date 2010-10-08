@@ -178,7 +178,7 @@ extern int   g_ptx_inst_debug_thread_uid;
 
 
 
-class gpgpu_sim {
+class gpgpu_sim : public gpgpu_t {
 public:
    gpgpu_sim();
 
@@ -210,6 +210,10 @@ public:
 
    void gpu_print_stat() const;
    void dump_pipeline( int mask, int s, int m ) const;
+
+   unsigned get_forced_capability() const { return m_ptx_force_max_capability; }
+   bool convert_to_ptxplus() const { return m_ptx_convert_to_ptxplus; }
+   bool saved_converted_ptxplus() const { return m_ptx_save_converted_ptxplus; }
 
 private:
    // clocks
@@ -271,6 +275,9 @@ private:
 
    // options
    bool gpu_deadlock_detect;
+   int   m_ptx_convert_to_ptxplus;
+   int   m_ptx_save_converted_ptxplus;
+   unsigned m_ptx_force_max_capability;
 
    // stats
    struct shader_core_stats  *m_shader_stats;

@@ -13,7 +13,6 @@ class symbol_table;
 
 extern const char *g_gpgpusim_version_string;
 extern int g_ptx_sim_mode;
-extern memory_space *g_global_mem;
 extern int g_debug_execution;
 extern int g_debug_thread_uid;
 extern void ** g_inst_classification_stat;
@@ -25,20 +24,13 @@ extern FILE* ptx_inst_debug_file;
 extern class kernel_info_t gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
                                             gpgpu_ptx_sim_arg_list_t args, 
                                             struct dim3 gridDim, 
-                                            struct dim3 blockDim );
+                                            struct dim3 blockDim, 
+                                                          class gpgpu_t *gpu );
 extern void gpgpu_cuda_ptx_sim_main_func( kernel_info_t kernel, dim3 gridDim, dim3 blockDim, gpgpu_ptx_sim_arg_list_t args);
 extern void   print_splash();
-extern void*  gpgpu_ptx_sim_malloc( size_t count );
-extern void*  gpgpu_ptx_sim_mallocarray( size_t count );
-extern void   gpgpu_ptx_sim_memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t count );
-extern void   gpgpu_ptx_sim_memcpy_from_gpu( void *dst, size_t src_start_addr, size_t count );
-extern void   gpgpu_ptx_sim_memcpy_gpu_to_gpu( size_t dst, size_t src, size_t count );
-extern void   gpgpu_ptx_sim_memset( size_t dst_start_addr, int c, size_t count );
-extern void   gpgpu_ptx_sim_init_memory();
-extern void   gpgpu_ptx_sim_register_kernel(void **fatCubinHandle,const char *hostFun, const char *deviceFun);
 extern void   gpgpu_ptx_sim_register_const_variable(void*, const char *deviceName, size_t size );
 extern void   gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size );
-extern void   gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t count, size_t offset, int to );
+extern void   gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t count, size_t offset, int to, gpgpu_t *gpu );
 
 extern void   gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, const struct cudaArray* array);
 extern void   gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref);
@@ -55,7 +47,8 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
                               unsigned num_threads, 
                               class core_t *core, 
                               unsigned hw_cta_id, 
-                              unsigned hw_warp_id );
+                              unsigned hw_warp_id,
+                              gpgpu_t *gpu );
 const warp_inst_t *ptx_fetch_inst( address_type pc );
 const struct gpgpu_ptx_sim_kernel_info* ptx_sim_kernel_info(class function_info *kernel);
 void ptx_print_insn( address_type pc, FILE *fp );

@@ -245,6 +245,7 @@ ptx_thread_info::ptx_thread_info()
    m_last_was_call = false;
    m_enable_debug_trace = false;
    m_local_mem_stack_pointer = 0;
+   m_gpu = NULL;
 }
 
 const ptx_version &ptx_thread_info::get_ptx_version() const 

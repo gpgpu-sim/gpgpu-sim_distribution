@@ -61,7 +61,6 @@ extern int gpgpu_ptx_instruction_classification ;
 class ptx_thread_info;
 class ptx_instruction;
 bool thread_at_brkpt( ptx_thread_info *thd_info, const struct brk_pt &b );
-unsigned read_location( addr_t addr );
 void hit_watchpoint( unsigned watchpoint_num, ptx_thread_info *thd, const ptx_instruction *pI );
 
 #endif

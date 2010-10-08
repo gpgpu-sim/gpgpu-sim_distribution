@@ -65,7 +65,7 @@
 #include "cuda_device_printf.h"
 #include "ptx_ir.h"
 
-void decode_space( memory_space_t &space, const ptx_thread_info *thread, const operand_info &op, memory_space *&mem, addr_t &addr);
+void decode_space( memory_space_t &space, ptx_thread_info *thread, const operand_info &op, memory_space *&mem, addr_t &addr);
 
 void my_cuda_printf(const char *fmtstr,const char *arg_list)
 {
@@ -104,7 +104,7 @@ void my_cuda_printf(const char *fmtstr,const char *arg_list)
    }
 }
 
-void gpgpusim_cuda_vprintf(const ptx_instruction * pI, const ptx_thread_info * thread, const function_info * target_func ) 
+void gpgpusim_cuda_vprintf(const ptx_instruction * pI, ptx_thread_info * thread, const function_info * target_func ) 
 {
       char *fmtstr = NULL;
       char *arg_list = NULL;

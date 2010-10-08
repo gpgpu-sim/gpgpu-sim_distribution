@@ -87,9 +87,6 @@ extern "C" int ptxinfo_parse();
 extern "C" int ptxinfo_debug;
 extern "C" FILE *ptxinfo_in;
 
-extern int g_ptx_save_converted_ptxplus;
-
-
 static bool g_save_embedded_ptx;
 bool g_keep_intermediate_files;
 
@@ -129,7 +126,7 @@ void print_ptx_file( const char *p, unsigned source_num, const char *filename )
    fflush(stdout);
 }
 
-char* gpgpu_ptx_sim_convert_ptx_to_ptxplus(const char *ptx_str, const char *cubin_str, unsigned source_num)
+char* gpgpu_ptx_sim_convert_ptx_to_ptxplus(const char *ptx_str, const char *cubin_str, unsigned source_num, bool save_converted )
 {
 	printf("GPGPU-Sim PTX: converting EMBEDDED .ptx file to ptxplus \n");
 
@@ -201,7 +198,7 @@ char* gpgpu_ptx_sim_convert_ptx_to_ptxplus(const char *ptx_str, const char *cubi
 	strcpy(ptxplus_str, text.c_str());
 
 	// Save ptxplus to file if specified
-	if(g_ptx_save_converted_ptxplus) {
+	if(save_converted) {
 	    char fname_ptxplus_save[1024];
 	    snprintf(fname_ptxplus_save,1024,"_%u.ptxplus", source_num );
 		printf("GPGPU-Sim PTX: saving converted ptxplus to file \"%s\"\n", fname_ptxplus_save);
@@ -224,11 +221,10 @@ char* gpgpu_ptx_sim_convert_ptx_to_ptxplus(const char *ptx_str, const char *cubi
 	printf("GPGPU-Sim PTX: DONE converting EMBEDDED .ptx file to ptxplus \n");
 
 	return ptxplus_str;
-
 }
 
 
-symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, const char *p_for_info,  unsigned source_num )
+symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num )
 {
     char buf[1024];
     snprintf(buf,1024,"_%u.ptx", source_num );
@@ -242,7 +238,7 @@ symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, const char *p_f
     int errors = ptx_parse ();
     if ( errors ) {
         char fname[1024];
-        snprintf(fname,1024,"_ptx_XXXXXX");
+        snprintf(fname,1024,"_ptx_errors_XXXXXX");
         int fd=mkstemp(fname); 
         close(fd);
         printf("GPGPU-Sim PTX: parser error detected, exiting... but first extracting .ptx to \"%s\"\n", fname);
@@ -257,7 +253,11 @@ symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, const char *p_f
        print_ptx_file(p,source_num,buf);
 
     printf("GPGPU-Sim PTX: finished parsing EMBEDDED .ptx file %s\n",buf);
+    return symtab;
+}
 
+void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num )
+{
     char fname[1024];
     snprintf(fname,1024,"_ptx_XXXXXX");
     int fd=mkstemp(fname); 
@@ -287,9 +287,11 @@ symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, const char *p_f
     char commandline[1024];
     char extra_flags[1024];
     extra_flags[0]=0;
+
 #if CUDART_VERSION >= 3000
     snprintf(extra_flags,1024,"--gpu-name=sm_20");
 #endif
+
     snprintf(commandline,1024,"ptxas %s -v %s --output-file /dev/null 2> %s", 
              extra_flags, fname2, tempfile_ptxinfo);
     printf("GPGPU-Sim PTX: generating ptxinfo using \"%s\"\n", commandline);
@@ -310,6 +312,5 @@ symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, const char *p_f
        printf("GPGPU-Sim PTX: ERROR ** while loading PTX (c) %d\n", result);
        exit(1);
     }
-    return symtab;
 }
 

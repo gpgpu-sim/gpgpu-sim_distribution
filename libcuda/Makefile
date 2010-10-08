@@ -76,9 +76,10 @@ CPP = g++ $(SNOW)
 CC = gcc &(SNOW)
 CREATELIBRARY    =  1
 DEBUG ?= 0
-CXXFLAGS += -O3 -g -Wall -fPIC $(GL)
 ifeq ($(DEBUG),1)
 	CXXFLAGS +=  -Wall -g -fPIC $(GL)
+else
+	CXXFLAGS += -O3 -g -Wall -fPIC $(GL)
 endif
 
 PROG     =cuda

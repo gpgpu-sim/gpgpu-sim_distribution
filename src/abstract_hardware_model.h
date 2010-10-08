@@ -139,6 +139,44 @@ public:
    virtual class gpgpu_sim *get_gpu() = 0;
 };
 
+#define GLOBAL_HEAP_START 0x80000000
+   // start allocating from this address (lower values used for allocating globals in .ptx file)
+#define SHARED_MEM_SIZE_MAX (64*1024)
+#define LOCAL_MEM_SIZE_MAX (16*1024)
+#define MAX_STREAMING_MULTIPROCESSORS 64
+#define MAX_THREAD_PER_SM 1024
+#define TOTAL_LOCAL_MEM_PER_SM (MAX_THREAD_PER_SM*LOCAL_MEM_SIZE_MAX)
+#define TOTAL_SHARED_MEM (MAX_STREAMING_MULTIPROCESSORS*SHARED_MEM_SIZE_MAX)
+#define TOTAL_LOCAL_MEM (MAX_STREAMING_MULTIPROCESSORS*MAX_THREAD_PER_SM*LOCAL_MEM_SIZE_MAX)
+#define SHARED_GENERIC_START (GLOBAL_HEAP_START-TOTAL_SHARED_MEM)
+#define LOCAL_GENERIC_START (SHARED_GENERIC_START-TOTAL_LOCAL_MEM)
+#define STATIC_ALLOC_LIMIT (GLOBAL_HEAP_START - (TOTAL_LOCAL_MEM+TOTAL_SHARED_MEM))
+
+class gpgpu_t {
+public:
+   gpgpu_t();
+   void* gpgpu_ptx_sim_malloc( size_t size );
+   void* gpgpu_ptx_sim_mallocarray( size_t count );
+   void  gpgpu_ptx_sim_memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t count );
+   void  gpgpu_ptx_sim_memcpy_from_gpu( void *dst, size_t src_start_addr, size_t count );
+   void  gpgpu_ptx_sim_memcpy_gpu_to_gpu( size_t dst, size_t src, size_t count );
+   void  gpgpu_ptx_sim_memset( size_t dst_start_addr, int c, size_t count );
+
+   class memory_space *get_global_memory() { return g_global_mem; }
+   class memory_space *get_tex_memory() { return g_tex_mem; }
+   class memory_space *get_surf_memory() { return g_surf_mem; }
+   class memory_space *get_param_memory() { return g_param_mem; }
+
+protected:
+   // functional simulation state 
+   class memory_space *g_global_mem;
+   class memory_space *g_tex_mem;
+   class memory_space *g_surf_mem;
+   class memory_space *g_param_mem;
+
+   unsigned long long g_dev_malloc;
+};
+
 struct gpgpu_ptx_sim_kernel_info 
 {
    // Holds properties of the kernel (Kernel's resource use). 
@@ -305,6 +343,24 @@ public:
         m_per_scalar_thread[lane_id].callback.function = function;
         m_per_scalar_thread[lane_id].callback.instruction = inst;
         m_per_scalar_thread[lane_id].callback.thread = thread;
+    }
+    void set_active( std::vector<unsigned> &active ) 
+    {
+       warp_active_mask.reset();
+       for( std::vector<unsigned>::iterator i=active.begin(); i!=active.end(); ++i ) {
+          unsigned t = *i;
+          assert( t < m_warp_size );
+          warp_active_mask.set(t);
+       }
+       if( m_isatomic ) {
+          for( unsigned i=0; i < m_warp_size; i++ ) {
+             if( !warp_active_mask.test(i) ) {
+                 m_per_scalar_thread[i].callback.function = NULL;
+                 m_per_scalar_thread[i].callback.instruction = NULL;
+                 m_per_scalar_thread[i].callback.thread = NULL;
+             }
+          }
+       }
     }
 
     // accessors

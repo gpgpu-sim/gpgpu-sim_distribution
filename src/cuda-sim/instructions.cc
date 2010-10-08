@@ -249,7 +249,7 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
    //complete other cases for reading from memory, such as reading from other const memory
    if((op.get_addr_space() == 1)&&(derefFlag)) {
        // global memory - g[4], g[$r0]
-       mem = g_global_mem;
+       mem = thread->get_global_memory();
        type_info_key::type_decode(opType,size,t);
        mem->read(result.u32,size/8,&finalResult.u128);
        thread->m_last_effective_address = result.u32;
@@ -269,7 +269,7 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
          sign_extend(finalResult,size,dstInfo);
    } else if((op.get_addr_space() == 3)&&(derefFlag)) {
       // const memory - ce0c1[4], ce0c1[$r0]
-       mem = g_global_mem;
+       mem = thread->get_global_memory();
        type_info_key::type_decode(opType,size,t);
        mem->read((result.u32 + op.get_const_mem_offset()),size/8,&finalResult.u128);
        thread->m_last_effective_address = result.u32;
@@ -606,7 +606,7 @@ void ptx_thread_info::set_operand_value( const operand_info &dst, const ptx_reg_
    else if(dst.get_addr_space() == 1)
    {
        dstData = thread->get_operand_value(dst, dst, type, thread, 0);
-       mem = g_global_mem;
+       mem = thread->get_global_memory();
        type_info_key::type_decode(type,size,t);
 
        mem->write(dstData.u32,size/8,&data.u128,thread,pI);
@@ -863,7 +863,7 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
 
    // Copy value pointed to in operand 'a' into register 'd'
    // (i.e. copy src1_data to dst)
-   g_global_mem->read(src1_data.u32,size/8,&data.s64);
+   thread->get_global_memory()->read(src1_data.u32,size/8,&data.s64);
    thread->set_operand_value(dst, data, to_type, thread, pI);                         // Write value into register 'd'
 
    // Get the atomic operation to be performed
@@ -1086,7 +1086,7 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
 
    // Write operation result into global memory
    // (i.e. copy src1_data to dst)
-   g_global_mem->write(src1_data.u32,size/8,&op_result.s64,thread,pI);
+   thread->get_global_memory()->write(src1_data.u32,size/8,&op_result.s64,thread,pI);
    gpgpu_sim *gpu = thread->get_gpu();
    gpu->decrement_atomic_count(thread->get_hw_sid(),thread->get_hw_wid());
 }
@@ -1998,7 +1998,7 @@ void isspacep_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->set_reg(dst.get_symbol(),p);
 }
 
-void decode_space( memory_space_t &space, const ptx_thread_info *thread, const operand_info &op, memory_space *&mem, addr_t &addr)
+void decode_space( memory_space_t &space, ptx_thread_info *thread, const operand_info &op, memory_space *&mem, addr_t &addr)
 {
    unsigned smid = thread->get_hw_sid();
    unsigned hwtid = thread->get_hw_tid();
@@ -2018,23 +2018,23 @@ void decode_space( memory_space_t &space, const ptx_thread_info *thread, const o
       }
    }
    switch ( space.get_type() ) {
-   case global_space: mem = g_global_mem; break;
+   case global_space: mem = thread->get_global_memory(); break;
    case param_space_local:
    case local_space:
       mem = thread->m_local_mem; 
       addr += thread->get_local_mem_stack_pointer();
       break; 
-   case tex_space:    mem = g_tex_mem; break; 
-   case surf_space:   mem = g_surf_mem; break; 
-   case param_space_kernel:  mem = g_param_mem; break;
+   case tex_space:    mem = thread->get_tex_memory(); break; 
+   case surf_space:   mem = thread->get_surf_memory(); break; 
+   case param_space_kernel:  mem = thread->get_param_memory(); break;
    case shared_space:  mem = thread->m_shared_mem; break; 
-   case const_space:  mem = g_global_mem; break;
+   case const_space:  mem = thread->get_global_memory(); break;
    case generic_space:
       if( thread->get_ptx_version().ver() >= 2.0 ) {
          // convert generic address to memory space address
          space = whichspace(addr);
          switch ( space.get_type() ) {
-         case global_space: mem = g_global_mem; addr = generic_to_global(addr); break;
+         case global_space: mem = thread->get_global_memory(); addr = generic_to_global(addr); break;
          case local_space:  mem = thread->m_local_mem; addr = generic_to_local(smid,hwtid,addr); break; 
          case shared_space: mem = thread->m_shared_mem; addr = generic_to_shared(smid,addr); break; 
          default: abort();
@@ -3555,7 +3555,7 @@ void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    //assume always 2D f32 input
    //access array with src2 coordinates
-   memory_space *mem = g_global_mem;
+   memory_space *mem = thread->get_global_memory();
    float x_f32,  y_f32;
    size_t size;
    int t;
@@ -3799,12 +3799,10 @@ void vote_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       threads_in_warp.clear();
       and_all = true;
       or_all = false;
-      unsigned mask=0x80000000;
-      unsigned offset=31;
-      while( mask && !pI->active(mask) ) {
-         mask = mask>>1;
+      int offset=31;
+      while( (offset>=0) && !pI->active(offset) ) 
          offset--;
-      }
+      assert( offset >= 0 );
       last_tid = (thread->get_hw_tid() - (thread->get_hw_tid()%pI->warp_size())) + offset;
    }
 
@@ -3883,7 +3881,7 @@ ptx_reg_t srcOperandModifiers(ptx_reg_t opData, operand_info opInfo, operand_inf
    //complete other cases for reading from memory, such as reading from other const memory
    if(opInfo.get_addr_space() == 1)
    {
-       mem = g_global_mem;
+       mem = thread->get_global_memory();
        type_info_key::type_decode(type,size,t);
        mem->read(opData.u32,size/8,&result.u64);
        if( type == S16_TYPE || type == S32_TYPE ) 
@@ -3901,7 +3899,7 @@ ptx_reg_t srcOperandModifiers(ptx_reg_t opData, operand_info opInfo, operand_inf
    }
    else if(opInfo.get_addr_space() == 3)
    {
-       mem = g_global_mem;
+       mem = thread->get_global_memory();
        type_info_key::type_decode(type,size,t);
 
        mem->read((opData.u32 + opInfo.get_const_mem_offset()),size/8,&result.u64);

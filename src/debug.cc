@@ -61,7 +61,8 @@ void gpgpu_sim::gpgpu_debug()
       brk_pt &b=i->second;
       if( b.is_watchpoint() ) {
          unsigned addr = b.get_addr();
-         unsigned new_value = read_location(addr);
+         unsigned new_value; 
+         g_global_mem->read(addr,4,&new_value);
          if( new_value != b.get_value() || g_watchpoint_hits.find(num) != g_watchpoint_hits.end() ) {
             printf( "GPGPU-Sim PTX DBG: watch point %u triggered (old value=%x, new value=%x)\n",
                      num,b.get_value(),new_value );
@@ -155,7 +156,8 @@ void gpgpu_sim::gpgpu_debug()
          tok = strtok(NULL," \t\n");
          unsigned addr;
          sscanf(tok,"%x",&addr);
-         unsigned value = read_location(addr);
+         unsigned value; 
+         g_global_mem->read(addr,4,&value);
          g_global_mem->set_watch(addr,next_brkpt); 
          breakpoints[next_brkpt++] = brk_pt(addr,value);
       } else if( !strcmp(tok,"l") ) {
@@ -199,9 +201,3 @@ bool thread_at_brkpt( ptx_thread_info *thread, const struct brk_pt &b )
    return b.is_equal(thread->get_location(),thread->get_uid());
 }
 
-unsigned read_location( addr_t addr )
-{
-   unsigned result=0;
-   g_global_mem->read(addr,4,&result);
-   return result;
-}

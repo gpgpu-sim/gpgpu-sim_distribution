@@ -77,12 +77,12 @@ int gpgpu_cuda_ptx_sim_main_perf( kernel_info_t grid,
                                    struct dim3 blockDim, 
                                    gpgpu_ptx_sim_arg_list_t grid_params );
 
-int gpgpu_opencl_ptx_sim_main_perf( class function_info *entry, 
+int gpgpu_opencl_ptx_sim_main_perf( kernel_info_t grid,
                                   struct dim3 gridDim, 
                                   struct dim3 blockDim, 
                                   gpgpu_ptx_sim_arg_list_t grid_params );
 
-int gpgpu_opencl_ptx_sim_main_func( class function_info *entry, 
+int gpgpu_opencl_ptx_sim_main_func( kernel_info_t grid,
                                   struct dim3 gridDim, 
                                   struct dim3 blockDim, 
                                   gpgpu_ptx_sim_arg_list_t grid_params );

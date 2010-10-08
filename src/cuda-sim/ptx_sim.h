@@ -276,6 +276,16 @@ public:
    ~ptx_thread_info();
    ptx_thread_info();
 
+   void init(gpgpu_t *gpu, core_t *core, unsigned sid, unsigned cta_id, unsigned wid, unsigned tid ) 
+   { 
+      m_gpu = gpu;
+      m_core = core; 
+      m_hw_sid=sid;
+      m_hw_ctaid=cta_id;
+      m_hw_wid=wid;
+      m_hw_tid=tid;
+   }
+
    void ptx_fetch_inst( inst_t &inst ) const;
    void ptx_exec_inst( warp_inst_t &inst, unsigned lane_id );
 
@@ -310,11 +320,6 @@ public:
    unsigned get_hw_ctaid() const { return m_hw_ctaid;}
    unsigned get_hw_wid() const { return m_hw_wid;}
    unsigned get_hw_sid() const { return m_hw_sid;}
-   void set_hw_tid(unsigned tid) { m_hw_tid=tid;}
-   void set_hw_wid(unsigned wid) { m_hw_wid=wid;}
-   void set_hw_sid(unsigned sid) { m_hw_sid=sid;}
-   void set_hw_ctaid(unsigned cta_id) { m_hw_ctaid=cta_id;}
-   void set_core(core_t *core) { m_core = core; }
    core_t *get_core() { return m_core; }
 
    unsigned get_icount() const { return m_icount;}
@@ -421,6 +426,11 @@ public:
    void enable_debug_trace() { m_enable_debug_trace = true; }
    unsigned get_local_mem_stack_pointer() const { return m_local_mem_stack_pointer; }
 
+   memory_space *get_global_memory() { return m_gpu->get_global_memory(); }
+   memory_space *get_tex_memory() { return m_gpu->get_tex_memory(); }
+   memory_space *get_surf_memory() { return m_gpu->get_surf_memory(); }
+   memory_space *get_param_memory() { return m_gpu->get_param_memory(); }
+
 public:
    addr_t         m_last_effective_address;
    bool        m_branch_taken;
@@ -436,6 +446,7 @@ private:
 
    unsigned m_uid;
    core_t *m_core;
+   gpgpu_t *m_gpu;
    bool   m_valid;
    dim3   m_ntid;
    dim3   m_tid;

@@ -803,7 +803,6 @@ public:
                     const char *source,
                     unsigned warp_size );
 
-
    void print_insn() const;
    virtual void print_insn( FILE *fp ) const;
    unsigned inst_size() const { return m_inst_size; }
@@ -1403,20 +1402,6 @@ struct textureInfo {
 };
 
 extern std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
-
-#define GLOBAL_HEAP_START 0x80000000
-   // start allocating from this address (lower values used for allocating globals in .ptx file)
-#define SHARED_MEM_SIZE_MAX (64*1024)
-#define LOCAL_MEM_SIZE_MAX (16*1024)
-#define MAX_STREAMING_MULTIPROCESSORS 64
-#define MAX_THREAD_PER_SM 1024
-#define TOTAL_LOCAL_MEM_PER_SM (MAX_THREAD_PER_SM*LOCAL_MEM_SIZE_MAX)
-#define TOTAL_SHARED_MEM (MAX_STREAMING_MULTIPROCESSORS*SHARED_MEM_SIZE_MAX)
-#define TOTAL_LOCAL_MEM (MAX_STREAMING_MULTIPROCESSORS*MAX_THREAD_PER_SM*LOCAL_MEM_SIZE_MAX)
-#define SHARED_GENERIC_START (GLOBAL_HEAP_START-TOTAL_SHARED_MEM)
-#define LOCAL_GENERIC_START (SHARED_GENERIC_START-TOTAL_LOCAL_MEM)
-#define STATIC_ALLOC_LIMIT (GLOBAL_HEAP_START - (TOTAL_LOCAL_MEM+TOTAL_SHARED_MEM))
-
 
 
 extern bool g_keep_intermediate_files;

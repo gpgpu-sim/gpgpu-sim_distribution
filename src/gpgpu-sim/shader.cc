@@ -593,7 +593,7 @@ void pdom_warp_ctx_t::print (FILE *fout) const
         }
         for (unsigned m=1,j=0; j<m_warp_size; j++, m<<=1)
             fprintf(fout, "%c", ((warp->m_active_mask[k] & m)?'1':'0') );
-        fprintf(fout, " pc: %4u", warp->m_pc[k] );
+        fprintf(fout, " pc: 0x%03x", warp->m_pc[k] );
         if ( warp->m_recvg_pc[k] == (unsigned)-1 ) {
             fprintf(fout," rp: ---- cd: %2u ", warp->m_calldepth[k] );
         } else {
@@ -639,13 +639,14 @@ void shader_core_ctx::fetch_new()
         // decode 1 or 2 instructions and place them into ibuffer
         address_type pc = m_inst_fetch_buffer.m_pc;
         const warp_inst_t* pI1 = ptx_fetch_inst(pc);
-        assert(pI1);
         m_warp[m_inst_fetch_buffer.m_warp_id].ibuffer_fill(0,pI1);
         m_warp[m_inst_fetch_buffer.m_warp_id].inc_inst_in_pipeline();
-        const warp_inst_t* pI2 = ptx_fetch_inst(pc+pI1->isize);
-        if( pI2 ) {
-            m_warp[m_inst_fetch_buffer.m_warp_id].ibuffer_fill(1,pI2);
-            m_warp[m_inst_fetch_buffer.m_warp_id].inc_inst_in_pipeline();
+        if( pI1 ) {
+           const warp_inst_t* pI2 = ptx_fetch_inst(pc+pI1->isize);
+           if( pI2 ) {
+               m_warp[m_inst_fetch_buffer.m_warp_id].ibuffer_fill(1,pI2);
+               m_warp[m_inst_fetch_buffer.m_warp_id].inc_inst_in_pipeline();
+           }
         }
         m_inst_fetch_buffer.m_valid = false;
     }
@@ -767,10 +768,12 @@ void shader_core_ctx::decode_new()
         unsigned issued=0;
         while( !m_warp[warp_id].waiting() && !m_warp[warp_id].ibuffer_empty() && (checked < 2) && (issued < 2) ) {
             unsigned active_mask = m_pdom_warp[warp_id]->get_active_mask();
-            const warp_inst_t *pI = m_warp[warp_id].ibuffer_next();
+            const warp_inst_t *pI = m_warp[warp_id].ibuffer_next_inst();
+            bool valid = m_warp[warp_id].ibuffer_next_valid();
             unsigned pc,rpc;
             m_pdom_warp[warp_id]->get_pdom_stack_top_info(&pc,&rpc);
             if( pI ) {
+                assert(valid);
                 if( pc != pI->pc ) {
                     // control hazard
                     m_warp[warp_id].set_next_pc(pc);
@@ -785,6 +788,10 @@ void shader_core_ctx::decode_new()
                         issued++;
                     } 
                 }
+            } else if( valid ) {
+               // this case can happen after a return instruction in diverged warp
+               m_warp[warp_id].set_next_pc(pc);
+               m_warp[warp_id].ibuffer_flush();
             }
             m_warp[warp_id].ibuffer_step();
             checked++;
@@ -792,7 +799,7 @@ void shader_core_ctx::decode_new()
         if ( issued ) {
             m_last_warp_issued=warp_id;
             break;
-        }
+        } 
     }
 }
 
@@ -852,7 +859,9 @@ mshr_entry* mshr_shader_unit::add_mshr(mem_access_t &access, warp_inst_t* warp)
     // creates an mshr based on the access struct information
     mshr_entry* mshr = alloc_free_mshr(access.space == tex_space);
     mshr->init(access.addr,access.iswrite,access.space,warp->warp_id());
-    mshr->add_inst(*warp);
+    warp_inst_t inst = *warp;
+    inst.set_active(access.warp_indices);
+    mshr->add_inst(inst);
     if( m_shader_config->gpgpu_interwarp_mshr_merge ) {
         mshr_entry* mergehit = m_mshr_lookup.shader_get_mergeable_mshr(mshr);
         if (mergehit) {
@@ -2025,8 +2034,10 @@ void shd_warp_t::print_ibuffer( FILE *fout ) const
 {
     fprintf(fout,"  ibuffer[%2u] : ", m_warp_id );
     for( unsigned i=0; i < IBUFFER_SIZE; i++) {
-        const inst_t *inst = m_ibuffer[i];
+        const inst_t *inst = m_ibuffer[i].m_inst;
         if( inst ) inst->print_insn(fout);
+        else if( m_ibuffer[i].m_valid ) 
+           fprintf(fout," <invalid instruction> ");
         else fprintf(fout," <empty> ");
     }
     fprintf(fout,"\n");

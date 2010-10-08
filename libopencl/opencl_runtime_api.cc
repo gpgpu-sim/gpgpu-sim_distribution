@@ -148,7 +148,7 @@ private:
 };
 
 struct _cl_mem {
-   _cl_mem( cl_mem_flags flags, size_t size , void *host_ptr, cl_int *errcode_ret );
+   _cl_mem( cl_mem_flags flags, size_t size , void *host_ptr, cl_int *errcode_ret, cl_device_id gpu );
    cl_mem device_ptr();
    void* host_ptr();
    bool is_on_host() { return m_is_on_host; }
@@ -295,7 +295,8 @@ _cl_mem::_cl_mem(
    cl_mem_flags flags,
    size_t       size ,
    void *       host_ptr,
-   cl_int *     errcode_ret )
+   cl_int *     errcode_ret,
+   cl_device_id gpu )
 {
    if( errcode_ret ) 
       *errcode_ret = CL_SUCCESS;
@@ -305,7 +306,6 @@ _cl_mem::_cl_mem(
    m_size = size;
    m_host_ptr = host_ptr;
    m_device_ptr = 0;
-   gpgpu_ptx_sim_init_memory();
 
    if( (flags & (CL_MEM_USE_HOST_PTR|CL_MEM_COPY_HOST_PTR)) && host_ptr == NULL ) {
       if( errcode_ret != NULL ) 
@@ -330,9 +330,9 @@ _cl_mem::_cl_mem(
    }
    if( !(flags & (CL_MEM_USE_HOST_PTR|CL_MEM_ALLOC_HOST_PTR)) ) {
       // if not allocating on host, then allocate GPU memory and make a copy
-      m_device_ptr = (size_t) gpgpu_ptx_sim_malloc(size);
+      m_device_ptr = (size_t) gpu->the_device()->gpgpu_ptx_sim_malloc(size);
       if( host_ptr )
-         gpgpu_ptx_sim_memcpy_to_gpu( m_device_ptr, host_ptr, size );
+         gpu->the_device()->gpgpu_ptx_sim_memcpy_to_gpu( m_device_ptr, host_ptr, size );
    }
 }
 
@@ -356,7 +356,7 @@ cl_mem _cl_context::CreateBuffer(
    if( host_ptr && (m_hostptr_to_cl_mem.find(host_ptr) != m_hostptr_to_cl_mem.end()) ) {
       printf("GPGPU-Sim OpenCL API: WARNING ** clCreateBuffer - buffer already created for this host variable\n");
    }
-   cl_mem result = new _cl_mem(flags,size,host_ptr,errcode_ret);
+   cl_mem result = new _cl_mem(flags,size,host_ptr,errcode_ret,m_gpu);
    m_devptr_to_cl_mem[result->device_ptr()] = result;
    if( host_ptr ) 
       m_hostptr_to_cl_mem[host_ptr] = result;
@@ -516,7 +516,8 @@ void _cl_program::Build(const char *options)
          }
       }
       info.m_asm = tmp;
-      info.m_symtab = gpgpu_ptx_sim_load_ptx_from_string( tmp, tmp, source_num );
+      info.m_symtab = gpgpu_ptx_sim_load_ptx_from_string( tmp, source_num );
+      gpgpu_ptxinfo_load_from_string( tmp, source_num );
       free(tmp);
    }
    printf("GPGPU-Sim OpenCL API: finished compiling OpenCL kernels.\n"); 
@@ -828,16 +829,19 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
    if ( err_val != CL_SUCCESS ) 
       return err_val;
 
-   gpgpu_ptx_sim_memcpy_symbol( "%_global_size", _global_size, 3 * sizeof(int), 0, 1 );
-   gpgpu_ptx_sim_memcpy_symbol( "%_work_dim", &work_dim, 1 * sizeof(int), 0, 1  );
-   gpgpu_ptx_sim_memcpy_symbol( "%_global_num_groups", &GridDim, 3 * sizeof(int), 0, 1  );
-   gpgpu_ptx_sim_memcpy_symbol( "%_global_launch_offset", zeros, 3 * sizeof(int), 0, 1  );
-   gpgpu_ptx_sim_memcpy_symbol( "%_global_block_offset", zeros, 3 * sizeof(int), 0, 1  );
+   gpgpu_t *gpu = command_queue->get_device()->the_device();
 
+   gpgpu_ptx_sim_memcpy_symbol( "%_global_size", _global_size, 3 * sizeof(int), 0, 1, gpu );
+   gpgpu_ptx_sim_memcpy_symbol( "%_work_dim", &work_dim, 1 * sizeof(int), 0, 1, gpu  );
+   gpgpu_ptx_sim_memcpy_symbol( "%_global_num_groups", &GridDim, 3 * sizeof(int), 0, 1, gpu );
+   gpgpu_ptx_sim_memcpy_symbol( "%_global_launch_offset", zeros, 3 * sizeof(int), 0, 1, gpu );
+   gpgpu_ptx_sim_memcpy_symbol( "%_global_block_offset", zeros, 3 * sizeof(int), 0, 1, gpu );
+
+   kernel_info_t grid = gpgpu_opencl_ptx_sim_init_grid(kernel->get_implementation(),params,GridDim,BlockDim,gpu);
    if ( g_ptx_sim_mode )
-      gpgpu_opencl_ptx_sim_main_func( kernel->get_implementation(), GridDim, BlockDim, params );
+      gpgpu_opencl_ptx_sim_main_func( grid, GridDim, BlockDim, params );
    else
-      gpgpu_opencl_ptx_sim_main_perf( kernel->get_implementation(), GridDim, BlockDim, params );
+      gpgpu_opencl_ptx_sim_main_perf( grid, GridDim, BlockDim, params );
    return CL_SUCCESS;
 }
 
@@ -854,7 +858,8 @@ clEnqueueReadBuffer(cl_command_queue    command_queue,
 {
    if( !blocking_read ) 
       gpgpusim_opencl_warning(__my_func__,__LINE__, "non-blocking read treated as blocking read");
-   gpgpu_ptx_sim_memcpy_from_gpu( ptr, (size_t)buffer, cb );
+   gpgpu_t *gpu = command_queue->get_device()->the_device();
+   gpu->gpgpu_ptx_sim_memcpy_from_gpu( ptr, (size_t)buffer, cb );
    return CL_SUCCESS;
 }
 
@@ -871,7 +876,8 @@ clEnqueueWriteBuffer(cl_command_queue   command_queue,
 {
    if( !blocking_write ) 
       gpgpusim_opencl_warning(__my_func__,__LINE__, "non-blocking write treated as blocking write");
-   gpgpu_ptx_sim_memcpy_to_gpu( (size_t)buffer, ptr, cb );
+   gpgpu_t *gpu = command_queue->get_device()->the_device();
+   gpu->gpgpu_ptx_sim_memcpy_to_gpu( (size_t)buffer, ptr, cb );
    return CL_SUCCESS;
 }
 
@@ -1143,12 +1149,13 @@ clEnqueueCopyBuffer(cl_command_queue    command_queue,
    if( src == NULL || dst == NULL ) 
       return CL_INVALID_MEM_OBJECT;
 
+   gpgpu_t *gpu = command_queue->get_device()->the_device();
    if( src->is_on_host() && !dst->is_on_host() )
-      gpgpu_ptx_sim_memcpy_to_gpu( ((size_t)dst->device_ptr())+dst_offset, ((char*)src->host_ptr())+src_offset, cb );
+      gpu->gpgpu_ptx_sim_memcpy_to_gpu( ((size_t)dst->device_ptr())+dst_offset, ((char*)src->host_ptr())+src_offset, cb );
    else if( !src->is_on_host() && dst->is_on_host() ) 
-      gpgpu_ptx_sim_memcpy_from_gpu( ((char*)dst->host_ptr())+dst_offset, ((size_t)src->device_ptr())+src_offset, cb );
+      gpu->gpgpu_ptx_sim_memcpy_from_gpu( ((char*)dst->host_ptr())+dst_offset, ((size_t)src->device_ptr())+src_offset, cb );
    else if( !src->is_on_host() && !dst->is_on_host() ) 
-      gpgpu_ptx_sim_memcpy_gpu_to_gpu( ((size_t)dst->device_ptr())+dst_offset, ((size_t)src->device_ptr())+src_offset, cb );
+      gpu->gpgpu_ptx_sim_memcpy_gpu_to_gpu( ((size_t)dst->device_ptr())+dst_offset, ((size_t)src->device_ptr())+src_offset, cb );
    else
       opencl_not_implemented(__my_func__,__LINE__);
    return CL_SUCCESS;

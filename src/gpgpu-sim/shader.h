@@ -146,8 +146,6 @@ public:
         m_done_exit=false;
         m_last_fetch=0;
         m_next=0;
-        for(unsigned i=0;i<IBUFFER_SIZE;i++) 
-            m_ibuffer[i]=NULL; 
     }
     void init( address_type start_pc, unsigned cta_id, unsigned wid, unsigned active )
     {
@@ -186,31 +184,32 @@ public:
     void ibuffer_fill( unsigned slot, const warp_inst_t *pI )
     {
        assert(slot < IBUFFER_SIZE );
-       m_ibuffer[slot]=pI;
+       m_ibuffer[slot].m_inst=pI;
+       m_ibuffer[slot].m_valid=true;
        m_next=0; 
     }
     bool ibuffer_empty() const
     {
         for( unsigned i=0; i < IBUFFER_SIZE; i++) 
-            if(m_ibuffer[i]) 
+            if(m_ibuffer[i].m_valid) 
                 return false;
         return true;
     }
     void ibuffer_flush()
     {
         for(unsigned i=0;i<IBUFFER_SIZE;i++) {
-            if( m_ibuffer[i] )
+            if( m_ibuffer[i].m_valid )
                 dec_inst_in_pipeline();
-            m_ibuffer[i]=NULL; 
+            m_ibuffer[i].m_inst=NULL; 
+            m_ibuffer[i].m_valid=false; 
         }
     }
-    const warp_inst_t *ibuffer_next()
-    {
-        return m_ibuffer[m_next];
-    }
+    const warp_inst_t *ibuffer_next_inst() { return m_ibuffer[m_next].m_inst; }
+    bool ibuffer_next_valid() { return m_ibuffer[m_next].m_valid; }
     void ibuffer_free()
     {
-        m_ibuffer[m_next] = NULL;
+        m_ibuffer[m_next].m_inst = NULL;
+        m_ibuffer[m_next].m_valid = false;
     }
     void ibuffer_step()
     {
@@ -252,8 +251,13 @@ private:
     unsigned n_completed;          // number of threads in warp completed
 
     class mshr_entry *m_imiss_pending;
-                                  
-    const warp_inst_t *m_ibuffer[IBUFFER_SIZE]; 
+    
+    struct ibuffer_entry {
+       ibuffer_entry() { m_valid = false; m_inst = NULL; }
+       const warp_inst_t *m_inst;
+       bool m_valid;
+    };
+    ibuffer_entry m_ibuffer[IBUFFER_SIZE]; 
     unsigned m_next;
                                    
     unsigned m_n_atomic;           // number of outstanding atomic operations 
