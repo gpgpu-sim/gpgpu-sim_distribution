@@ -402,6 +402,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
    for (unsigned i = 0; i < config->max_warps_per_shader; ++i) 
        m_pdom_warp[i] = new pdom_warp_ctx_t(i,this);
    m_shader_memory_new_instruction_processed = false;
+   m_mem_rc = NO_RC_FAIL, 
 
    // Initialize scoreboard
    m_scoreboard = new Scoreboard(m_sid, m_config->max_warps_per_shader);
@@ -418,11 +419,6 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
    m_memory_queue.constant.reserve(warp_size);
    m_memory_queue.texture.reserve(warp_size);
    m_memory_queue.local_global.reserve(warp_size);
-
-   // writeback
-   m_pl_tid = (int*) malloc(sizeof(int)*warp_size);
-   m_mshr_lat_info = (insn_latency_info*) malloc(sizeof(insn_latency_info) * warp_size);
-   m_pl_lat_info = (insn_latency_info*) malloc(sizeof(insn_latency_info) * warp_size);
 
    // fetch
    m_last_warp_fetched = 0;
@@ -840,7 +836,7 @@ void shader_core_ctx::execute_pipe( unsigned pipeline, unsigned next_stage )
 {
     if( !m_pipeline_reg[next_stage]->empty() )
         return;
-    if( m_pipeline_reg[pipeline]->cycles ) {
+    if( m_pipeline_reg[pipeline]->cycles > 1 ) {
         m_pipeline_reg[pipeline]->cycles--;
         return;
     }
@@ -1417,7 +1413,7 @@ void shader_core_ctx::memory()
    done &= memory_constant_cycle(rc_fail, type);
    done &= memory_texture_cycle(rc_fail, type);
    done &= memory_cycle(rc_fail, type);
-
+   m_mem_rc = rc_fail;
    if (!done) { // log stall types and return
       assert(rc_fail != NO_RC_FAIL);
       m_stats->gpu_stall_shd_mem++;
@@ -1425,7 +1421,7 @@ void shader_core_ctx::memory()
       return;
    }
    if( not m_pipeline_reg[MM_WB]->empty() )
-      return; // writeback stalled
+       return; // writeback stalled
    move_warp(m_pipeline_reg[MM_WB],m_pipeline_reg[EX_MM]);
 }
 
@@ -1631,6 +1627,20 @@ void shader_core_ctx::display_pipeline(FILE *fout, int print_mem, int mask )
    }
    fprintf(fout, "EX/MEM      = ");
    print_stage(EX_MM, fout, print_mem, mask);
+   if( m_mem_rc != NO_RC_FAIL ) {
+       fprintf(fout, "EX/MEM        (stall condition: ");
+       switch ( m_mem_rc ) {
+       case BK_CONF:        fprintf(fout,"BK_CONF"); break;
+       case MSHR_RC_FAIL:   fprintf(fout,"MSHR_RC_FAIL"); break;
+       case ICNT_RC_FAIL:   fprintf(fout,"ICNT_RC_FAIL"); break;
+       case COAL_STALL:     fprintf(fout,"COAL_STALL"); break;
+       case WB_ICNT_RC_FAIL: fprintf(fout,"WB_ICNT_RC_FAIL"); break;
+       case WB_CACHE_RSRV_FAIL: fprintf(fout,"WB_CACHE_RSRV_FAIL"); break;
+       case N_MEM_STAGE_STALL_TYPE: fprintf(fout,"N_MEM_STAGE_STALL_TYPE"); break;
+       default: abort();
+       }
+       fprintf(fout,")\n");
+   }
    fprintf(fout, "MEM/WB      = ");
    print_stage(MM_WB, fout, print_mem, mask);
    fprintf(fout, "\n");

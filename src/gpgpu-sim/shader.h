@@ -1130,8 +1130,6 @@ private:
    opndcoll_rfu_t m_operand_collector;
    mshr_shader_unit *m_mshr_unit;
    shader_queues_t m_memory_queue;
-   fifo_pipeline<std::vector<int> > *m_thd_commit_queue;
-   std::multiset<fixeddelay_queue_warp_t, fixeddelay_queue_warp_comp> m_fixeddelay_queue;
 
    // fetch
    int  m_last_warp_fetched;
@@ -1143,12 +1141,7 @@ private:
    cache_t *m_L1C; // constant cache
 
    bool m_shader_memory_new_instruction_processed;
-   int m_pending_mem_access; // number of memory access to be serviced (use for W0 classification)
-
-   // used in writeback
-   int *m_pl_tid;
-   insn_latency_info *m_mshr_lat_info;
-   insn_latency_info *m_pl_lat_info;
+   enum mem_stage_stall_type m_mem_rc;
 };
 
 void init_mshr_pool();

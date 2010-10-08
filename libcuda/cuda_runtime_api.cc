@@ -1479,8 +1479,6 @@ int CUDARTAPI __cudaSynchronizeThreads(void**, void*)
 
 ////////
 
-
-
 extern "C" int ptx_parse();
 extern "C" int ptx__scan_string(const char*);
 extern "C" FILE *ptx_in;
@@ -1491,39 +1489,6 @@ extern "C" int ptxinfo_debug;
 extern "C" FILE *ptxinfo_in;
 
 /// static functions
-
-
-
-std::map<std::string,function_info*> *g_kernel_name_to_function_lookup=NULL;
-std::map<const void*,std::string> *g_host_to_kernel_entrypoint_name_lookup=NULL;
-
-function_info *get_kernel(const char *kernel_key, std::string &kernel_func_name_mangled )
-{
-   if ( g_host_to_kernel_entrypoint_name_lookup->find(kernel_key) ==
-        g_host_to_kernel_entrypoint_name_lookup->end() ) {
-      printf("GPGPU-Sim PTX: ERROR ** cannot locate __global__ function from hostPtr\n" );
-      printf("GPGPU-Sim PTX: registered PTX kernels: \n");
-      std::map<const void*,std::string>::iterator i_eptr = g_host_to_kernel_entrypoint_name_lookup->begin();
-      for (; i_eptr != g_host_to_kernel_entrypoint_name_lookup->end(); ++i_eptr) {
-         printf("GPGPU-Sim PTX: (%p,%s)\n", i_eptr->first, i_eptr->second.c_str());
-      }
-      printf("\n");
-      abort();
-   } 
-   kernel_func_name_mangled = (*g_host_to_kernel_entrypoint_name_lookup)[kernel_key];
-   if ( g_kernel_name_to_function_lookup->find(kernel_func_name_mangled) ==
-        g_kernel_name_to_function_lookup->end() ) {
-      printf("GPGPU-Sim PTX: ERROR ** function \'%s\' not found in ptx file\n", 
-             kernel_func_name_mangled.c_str() );
-      abort();
-   }
-   return (*g_kernel_name_to_function_lookup)[kernel_func_name_mangled];
-}
-
-
-void ptxinfo_cuda_addinfo( CUctx_st *context )
-{
-}
 
 static int load_static_globals( symbol_table *symtab, unsigned min_gaddr, unsigned max_gaddr, gpgpu_t *gpu ) 
 {
