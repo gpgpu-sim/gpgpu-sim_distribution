@@ -221,10 +221,6 @@ void gpgpu_sim::reg_options(option_parser_t opp)
                 "enable perfect memory mode (no cache miss)",
                 "0");
 
-   option_parser_register(opp, "-gpgpu_sm_uarch", OPT_CSTR, &m_shader_config->pipeline_model,
-                  "shader core uarch model [GPGPUSIM_ORIG,GT200] (default=GPGPUSIM_ORIG)",
-                  "GPGPUSIM_ORIG");
-
    option_parser_register(opp, "-gpgpu_shader_core_pipeline", OPT_CSTR, &gpgpu_shader_core_pipeline_opt, 
                   "shader core pipeline config, i.e., {<nthread>:<warpsize>:<pipe_simd_width>}",
                   "256:32:32");
@@ -378,9 +374,6 @@ void gpgpu_sim::reg_options(option_parser_t opp)
                 &m_ptx_force_max_capability,
                 "Force maximum compute capability",
                 "0");
-   option_parser_register(opp, "-gpgpu_operand_collector", OPT_BOOL, &m_shader_config->gpgpu_operand_collector,
-               "Enable operand collector model (default = off)",
-               "0");
    option_parser_register(opp, "-gpgpu_operand_collector_num_units", OPT_INT32, &m_shader_config->gpgpu_operand_collector_num_units,
                "number of collecture units (default = 4)", 
                "4");
@@ -914,12 +907,10 @@ unsigned gpgpu_sim::threads_per_core() const
    return m_shader_config->n_thread_per_shader; 
 }
 
-void gpgpu_sim::mem_instruction_stats(warp_inst_t* warp)
+void gpgpu_sim::mem_instruction_stats(warp_inst_t &inst)
 {
-    if( warp->empty() )
-        return; //bubble 
     //this breaks some encapsulation: the is_[space] functions, if you change those, change this.
-    switch (warp->space.get_type()) {
+    switch (inst.space.get_type()) {
     case undefined_space:
     case reg_space:
         break;
@@ -938,7 +929,7 @@ void gpgpu_sim::mem_instruction_stats(warp_inst_t* warp)
         break;
     case global_space:
     case local_space:
-        if( is_store(*warp) )
+        if( inst.is_store() )
             m_shader_stats->gpgpu_n_store_insn++;
         else 
             m_shader_stats->gpgpu_n_load_insn++;
@@ -1009,10 +1000,8 @@ void shader_core_ctx::fill_shd_L1_with_new_line(mem_fetch * mf)
 
 void shader_core_ctx::store_ack( class mem_fetch *mf )
 {
-   if (!strcmp("GT200",m_config->pipeline_model) )  {
     unsigned warp_id = mf->get_wid();
     m_warp[warp_id].dec_store_req();
-   }
 }
 
 void gpgpu_sim::fq_pop(int tpc_id) 
@@ -1290,9 +1279,7 @@ void gpgpu_sim::cycle()
       // L1 cache + shader core pipeline stages 
       for (unsigned i=0;i<m_n_shader;i++) {
          if (m_sc[i]->get_not_completed() || more_thread) {
-            if (!strcmp("GT200",m_shader_config->pipeline_model) ) 
                m_sc[i]->cycle_gt200();
-            else abort();
          }
       }
       if( g_single_step && ((gpu_sim_cycle+gpu_tot_sim_cycle) >= g_single_step) ) {
@@ -1426,8 +1413,6 @@ void gpgpu_sim::dump_pipeline( int mask, int s, int m ) const
          i = s;
       }
       if(mask&1) m_sc[i]->display_pipeline(stdout, 1, mask & 0x2E );
-      if (!strcmp("GPGPUSIM_ORIG",m_shader_config->pipeline_model) ) 
-         if(mask&0x40) m_sc[i]->dump_istream_state(stdout);
       if(mask&0x100) m_sc[i]->mshr_print(stdout, mask);
       if(s != -1) {
          break;

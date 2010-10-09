@@ -873,21 +873,20 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
             skip = !pred_lookup(pI->get_pred_mod(), pred_value.pred & 0x000F);
       }
    }
-   if( !skip ) {
+   if( skip ) {
+      inst.set_not_active(lane_id);
+   } else {
       ptx_instruction *pJ = NULL;
       if( pI->get_opcode() == VOTE_OP ) {
          pJ = new ptx_instruction(*pI);
-         *((warp_inst_t*)pJ) = inst;
+         *((warp_inst_t*)pJ) = inst; // copy active mask information
          pI = pJ;
       }
       switch ( pI->get_opcode() ) {
 #define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,this); op_classification = CLASSIFICATION; break;
 #include "opcodes.def"
 #undef OP_DEF
-
-         default:
-            printf( "Execution error: Invalid opcode (0x%x)\n", pI->get_opcode() );
-            break;
+      default: printf( "Execution error: Invalid opcode (0x%x)\n", pI->get_opcode() ); break;
       }
       delete pJ;
 
@@ -1024,10 +1023,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
       inst.set_addr(lane_id, insn_memaddr);
       inst.data_size = insn_data_size;
       inst.memory_op = insn_memory_op;
-   } else {
-      inst.space = undefined_space;
-      inst.memory_op = no_memory_op;
-   }
+   } 
 
    } catch ( int x  ) {
       printf("GPGPU-Sim PTX: ERROR (%d) executing intruction (%s:%u)\n", x, pI->source_file(), pI->source_line() );

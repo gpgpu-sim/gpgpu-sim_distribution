@@ -792,84 +792,6 @@ private:
    warp_set_t m_warp_at_barrier;
 };
 
-class warp_tracker;
-class warp_tracker_pool;
-
-enum memory_pipe_t {
-   NO_MEM_PATH = 0,
-   SHARED_MEM_PATH,
-   GLOBAL_MEM_PATH,
-   TEXTURE_MEM_PATH,
-   CONSTANT_MEM_PATH,
-   NUM_MEM_PATHS //not a mem path
-};
-
-class mem_access_t {
-public:
-   mem_access_t() : space(undefined_space)
-   { 
-      init();
-   }
-   mem_access_t(address_type a, memory_space_t s, memory_pipe_t p, bool atomic, bool w, unsigned r, unsigned quarter, unsigned idx )
-   {
-      init();
-      addr = a;
-      space = s;
-      mem_pipe = p;
-      isatomic = atomic;
-      iswrite = w;
-      req_size = r;
-      quarter_count[quarter]++;
-      warp_indices.push_back(idx);
-   }
-
-   bool operator<(const mem_access_t &other) const {return (order > other.order);}//this is reverse
-
-private:
-   void init() 
-   {
-      uid=++next_access_uid;
-      addr=0;
-      req_size=0;
-      order=0;
-      _quarter_count_all=0;
-      mem_pipe = NO_MEM_PATH;
-      isatomic = false;
-      cache_hit = false;
-      cache_checked = false;
-      recheck_cache = false;
-      iswrite = false;
-      need_wb = false;
-      wb_addr = 0;
-      reserved_mshr = NULL;
-   }
-
-public:
-
-   unsigned uid;
-   address_type addr; //address of the segment to load.
-   unsigned req_size; //bytes
-   unsigned order; // order of accesses, based on banks.
-   union{
-     unsigned _quarter_count_all;
-     char quarter_count[4]; //access counts to each quarter of segment, for compaction;
-   };
-   std::vector<unsigned> warp_indices; // warp indicies for this request.
-   memory_space_t space;
-   memory_pipe_t  mem_pipe;
-   bool isatomic;
-   bool cache_hit;
-   bool cache_checked;
-   bool recheck_cache;
-   bool iswrite;
-   bool need_wb;
-   address_type wb_addr; // writeback address (if necessary).
-   mshr_entry* reserved_mshr;
-
-private:
-   static unsigned next_access_uid;
-};
-
 class mshr_lookup {
 public:
    mshr_lookup( const struct shader_core_config *config ) { m_shader_config = config; }
@@ -900,7 +822,7 @@ public:
    //return queue pop; (includes texture pipeline return)
    void pop_return_head();
 
-   mshr_entry* add_mshr(mem_access_t &access, warp_inst_t* warp);
+   mshr_entry* add_mshr(mem_access_t &access, warp_inst_t* inst);
    void mshr_return_from_mem(mshr_entry *mshr);
    unsigned get_max_mshr_used() const {return m_max_mshr_used;}  
    void print(FILE* fp, class shader_core_ctx* shader,unsigned mask);
@@ -927,13 +849,6 @@ private:
    mshr_lookup m_mshr_lookup;
 };
 
-struct shader_queues_t {
-   std::vector<mem_access_t> shared;
-   std::vector<mem_access_t> constant;
-   std::vector<mem_access_t> texture;
-   std::vector<mem_access_t> local_global;
-};
-
 struct insn_latency_info {
    unsigned pc;
    unsigned long latency;
@@ -954,20 +869,6 @@ struct ifetch_buffer_t {
     address_type m_pc;
     unsigned m_nbytes;
     unsigned m_warp_id;
-};
-
-// Struct for storing warp information in fixeddelay_queue
-struct fixeddelay_queue_warp_t {
-   unsigned long long ready_cycle;
-   std::vector<int> tids; // list of tid's in this warp (to unlock)
-     inst_t inst;
-};
-
-struct fixeddelay_queue_warp_comp {
-   inline bool operator()(const fixeddelay_queue_warp_t& left,const fixeddelay_queue_warp_t& right) const
-   {
-       return left.ready_cycle < right.ready_cycle;
-   }
 };
 
 typedef address_type (*tag_func_t)(address_type add, unsigned line_size);
@@ -1050,27 +951,27 @@ private:
    void execute_pipe( unsigned pipeline, unsigned next_stage );
 
    void memory(); // advance memory pipeline stage
-   void memory_queue();
-   void memory_shared_process_warp(); 
-   void memory_const_process_warp();
-   void memory_texture_process_warp();
-   void memory_global_process_warp();
-   bool memory_shared_cycle( mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
-   bool memory_constant_cycle( mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
-   bool memory_texture_cycle( mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
-   bool memory_cycle( mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
+   void memory_queue(warp_inst_t &pipe_reg);
+   void memory_shared_process_warp(warp_inst_t &inst); 
+   void memory_const_process_warp(warp_inst_t &inst);
+   void memory_texture_process_warp(warp_inst_t &inst);
+   void memory_global_process_warp(warp_inst_t &inst);
+   bool memory_shared_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
+   bool memory_constant_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
+   bool memory_texture_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
+   bool memory_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
    address_type translate_local_memaddr(address_type localaddr, int tid, unsigned num_shader );
 
-   mem_stage_stall_type ccache_check(mem_access_t& access){ return NO_RC_FAIL;}
-   mem_stage_stall_type tcache_check(mem_access_t& access){ return NO_RC_FAIL;}
-   mem_stage_stall_type dcache_check(mem_access_t& access);
+   mem_stage_stall_type ccache_check(warp_inst_t &inst, mem_access_t& access){ return NO_RC_FAIL;}
+   mem_stage_stall_type tcache_check(warp_inst_t &inst, mem_access_t& access){ return NO_RC_FAIL;}
+   mem_stage_stall_type dcache_check(warp_inst_t &inst, mem_access_t& access);
 
-   typedef mem_stage_stall_type (shader_core_ctx::*cache_check_t)(mem_access_t&);
+   typedef mem_stage_stall_type (shader_core_ctx::*cache_check_t)(warp_inst_t &,mem_access_t&);
 
    mem_stage_stall_type process_memory_access_queue( shader_core_ctx::cache_check_t cache_check,
                                                      unsigned ports_per_bank, 
                                                      unsigned memory_send_max, 
-                                                     std::vector<mem_access_t> &accessq );
+                                                     warp_inst_t &inst );
 
    typedef int (shader_core_ctx::*bank_func_t)(address_type add, unsigned line_size);
    
@@ -1080,12 +981,11 @@ private:
 
    void get_memory_access_list( bank_func_t bank_func,
                                 tag_func_t tag_func,
-                                memory_pipe_t mem_pipe, 
                                 unsigned warp_parts, 
                                 unsigned line_size, 
                                 bool limit_broadcast, 
-                                std::vector<mem_access_t> &accessq );
-   mem_stage_stall_type send_mem_request(mem_access_t &access);
+                                warp_inst_t &inst );
+   mem_stage_stall_type send_mem_request(warp_inst_t &inst, mem_access_t &access);
 
    void writeback();
 
@@ -1129,7 +1029,6 @@ private:
    Scoreboard *m_scoreboard;
    opndcoll_rfu_t m_operand_collector;
    mshr_shader_unit *m_mshr_unit;
-   shader_queues_t m_memory_queue;
 
    // fetch
    int  m_last_warp_fetched;
@@ -1140,33 +1039,18 @@ private:
    cache_t *m_L1T; // texture cache
    cache_t *m_L1C; // constant cache
 
-   bool m_shader_memory_new_instruction_processed;
    enum mem_stage_stall_type m_mem_rc;
 };
 
-void init_mshr_pool();
-mshr_entry* alloc_mshr_entry();
-void free_mshr_entry( mshr_entry * );
-
-// print out the accumulative statistics for shaders (those that are not local to one shader)
-void shader_print_runtime_stat( FILE *fout );
-void shader_print_l1_miss_stat( FILE *fout );
-
-#define TS_IF 0
-#define IF_ID 1
-#define ID_RR 2
-#define ID_EX 3
-#define RR_EX 3
-#define EX_MM 4
-#define MM_WB 5
-#define WB_RT 6
-#define ID_OC 7 
-#define ID_OC_SFU 8 
-#define OC_EX_SFU 9
-#define N_PIPELINE_STAGES 10
-
-extern unsigned int *shader_cycle_distro;
-
-int is_store ( const inst_t &op );
+enum pipeline_stage_name_t {
+    ID_OC_SP=0,
+    ID_OC_SFU,  
+    OC_EX_SP,
+    OC_EX_SFU,
+    EX_MM,
+    MM_WB,
+    WB_RT,
+    N_PIPELINE_STAGES 
+};
 
 #endif /* SHADER_H */

@@ -103,7 +103,6 @@ enum divergence_support_t {
 
 struct shader_core_config 
 {
-   char *pipeline_model;
    unsigned warp_size;
    bool gpgpu_perfect_mem;
    enum divergence_support_t model;
@@ -118,7 +117,6 @@ struct shader_core_config
    char *gpgpu_cache_il1_opt;
    unsigned n_mshr_per_shader;
    bool gpgpu_dwf_reg_bankconflict;
-   bool gpgpu_operand_collector;
    int gpgpu_operand_collector_num_units;
    int gpgpu_operand_collector_num_units_sfu;
    bool gpgpu_stall_on_use;
@@ -205,7 +203,7 @@ public:
 
    unsigned num_shader() const { return m_n_shader; }
    unsigned threads_per_core() const;
-   void mem_instruction_stats( class warp_inst_t* warp);
+   void mem_instruction_stats( class warp_inst_t &inst);
    int issue_mf_from_fq(class mem_fetch *mf);
 
    void gpu_print_stat() const;

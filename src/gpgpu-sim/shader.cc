@@ -1,5 +1,5 @@
 /* 
- * shader.c
+ * shader.cc
  *
  * Copyright (c) 2009 by Tor M. Aamodt, Wilson W. L. Fung, Ali Bakhoda, 
  * George L. Yuan, Ivan Sham, Henry Wong, Dan O'Connor, Henry Tran and the 
@@ -85,8 +85,6 @@
 #define PRIORITIZE_MSHR_OVER_WB 1
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
-
-unsigned mem_access_t::next_access_uid = 0;   
 
 /////////////////////////////////////////////////////////////////////////////
 /*-------------------------------------------------------------------------*/
@@ -306,12 +304,6 @@ unsigned char shader_core_ctx::fq_push(unsigned long long int addr,
    return(m_gpu->issue_mf_from_fq(mf));
 }
 
-unsigned shader_core_ctx::first_valid_thread( unsigned stage )
-{
-    abort();
-}
-
-
 void shader_core_ctx::L1cache_print( FILE *fp, unsigned &total_accesses, unsigned &total_misses) const
 {
    m_L1D->shd_cache_print(fp,total_accesses,total_misses);
@@ -401,24 +393,16 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
    m_pdom_warp = new pdom_warp_ctx_t*[config->max_warps_per_shader];
    for (unsigned i = 0; i < config->max_warps_per_shader; ++i) 
        m_pdom_warp[i] = new pdom_warp_ctx_t(i,this);
-   m_shader_memory_new_instruction_processed = false;
    m_mem_rc = NO_RC_FAIL, 
 
    // Initialize scoreboard
    m_scoreboard = new Scoreboard(m_sid, m_config->max_warps_per_shader);
 
-   if( m_config->gpgpu_operand_collector ) {
-      m_operand_collector.init( m_config->gpgpu_operand_collector_num_units, 
-                           m_config->gpgpu_operand_collector_num_units_sfu, 
-                           m_config->gpgpu_num_reg_banks, this,
-                           &m_pipeline_reg[ID_EX],
-                           &m_pipeline_reg[OC_EX_SFU] );
-   }
-
-   m_memory_queue.shared.reserve(warp_size);
-   m_memory_queue.constant.reserve(warp_size);
-   m_memory_queue.texture.reserve(warp_size);
-   m_memory_queue.local_global.reserve(warp_size);
+   m_operand_collector.init( m_config->gpgpu_operand_collector_num_units, 
+                        m_config->gpgpu_operand_collector_num_units_sfu, 
+                        m_config->gpgpu_num_reg_banks, this,
+                        &m_pipeline_reg[OC_EX_SP],
+                        &m_pipeline_reg[OC_EX_SFU] );
 
    // fetch
    m_last_warp_fetched = 0;
@@ -701,27 +685,6 @@ void shader_core_ctx::fetch_new()
     }
 }
 
-int is_load ( const inst_t &inst )
-{
-   return (inst.op == LOAD_OP || inst.memory_op == memory_load);
-}
-
-int is_store ( const inst_t &inst )
-{
-   return (inst.op == STORE_OP || inst.memory_op == memory_store);
-}
-
-int is_const ( memory_space_t space ) 
-{
-   return((space.get_type() == const_space) || (space == param_space_kernel));
-}
-
-int is_local ( memory_space_t space ) 
-{
-   return (space == local_space) || (space == param_space_local);
-}
-
-
 void shader_core_ctx::func_exec_inst( warp_inst_t &inst )
 {
     for ( unsigned t=0; t < m_config->warp_size; t++ ) {
@@ -730,7 +693,7 @@ void shader_core_ctx::func_exec_inst( warp_inst_t &inst )
             m_thread[tid].m_functional_model_thread_state->ptx_exec_inst(inst,t);
             if( inst.has_callback(t) ) 
                m_warp[inst.warp_id()].inc_n_atomic();
-            if (is_local(inst.space.get_type()) && (is_load(inst) || is_store(inst)))
+            if (inst.space.is_local() && (inst.is_load() || inst.is_store()))
                inst.set_addr(t, translate_local_memaddr(inst.get_addr(t), tid, m_gpu->num_shader()) );
             if ( ptx_thread_done(tid) ) {
                 m_warp[inst.warp_id()].inc_n_completed();
@@ -763,7 +726,6 @@ void shader_core_ctx::decode_new()
         unsigned checked=0;
         unsigned issued=0;
         while( !m_warp[warp_id].waiting() && !m_warp[warp_id].ibuffer_empty() && (checked < 2) && (issued < 2) ) {
-            unsigned active_mask = m_pdom_warp[warp_id]->get_active_mask();
             const warp_inst_t *pI = m_warp[warp_id].ibuffer_next_inst();
             bool valid = m_warp[warp_id].ibuffer_next_valid();
             unsigned pc,rpc;
@@ -775,9 +737,10 @@ void shader_core_ctx::decode_new()
                     m_warp[warp_id].set_next_pc(pc);
                     m_warp[warp_id].ibuffer_flush();
                 } else if ( !m_scoreboard->checkCollision(warp_id, pI) ) {
+                    unsigned active_mask = m_pdom_warp[warp_id]->get_active_mask();
                     assert( m_warp[warp_id].inst_in_pipeline() );
-                    if ( (pI->op != SFU_OP) && m_pipeline_reg[ID_OC]->empty() ) {
-                        issue_warp(m_pipeline_reg[ID_OC],pI,active_mask,warp_id);
+                    if ( (pI->op != SFU_OP) && m_pipeline_reg[ID_OC_SP]->empty() ) {
+                        issue_warp(m_pipeline_reg[ID_OC_SP],pI,active_mask,warp_id);
                         issued++;
                     } else if ( (pI->op == SFU_OP || pI->op == ALU_SFU_OP) && m_pipeline_reg[ID_OC_SFU]->empty() ) {
                         issue_warp(m_pipeline_reg[ID_OC_SFU],pI,active_mask,warp_id);
@@ -832,30 +795,30 @@ address_type shader_core_ctx::translate_local_memaddr(address_type localaddr, in
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-void shader_core_ctx::execute_pipe( unsigned pipeline, unsigned next_stage ) 
+void shader_core_ctx::execute_pipe( unsigned current_stage, unsigned next_stage ) 
 {
-    if( !m_pipeline_reg[next_stage]->empty() )
-        return;
-    if( m_pipeline_reg[pipeline]->cycles > 1 ) {
-        m_pipeline_reg[pipeline]->cycles--;
-        return;
+    if( !m_pipeline_reg[current_stage]->empty() ) {
+        if( m_pipeline_reg[current_stage]->cycles > 1 ) {
+            m_pipeline_reg[current_stage]->cycles--;
+            return;
+        }
     }
-    move_warp(m_pipeline_reg[next_stage],m_pipeline_reg[pipeline]);
-    m_shader_memory_new_instruction_processed = false;
+    if( m_pipeline_reg[next_stage]->empty() )
+        move_warp(m_pipeline_reg[next_stage],m_pipeline_reg[current_stage]);
 }
 
 void shader_core_ctx::execute()
 {
-   execute_pipe(OC_EX_SFU, EX_MM);
-   execute_pipe(ID_EX, EX_MM);
+    execute_pipe(OC_EX_SFU,EX_MM);
+    execute_pipe(OC_EX_SP,EX_MM);
 }
 
-mshr_entry* mshr_shader_unit::add_mshr(mem_access_t &access, warp_inst_t* warp)
+mshr_entry* mshr_shader_unit::add_mshr(mem_access_t &access, warp_inst_t* pinst)
 {
     // creates an mshr based on the access struct information
-    mshr_entry* mshr = alloc_free_mshr(access.space == tex_space);
-    mshr->init(access.addr,access.iswrite,access.space,warp->warp_id());
-    warp_inst_t inst = *warp;
+    mshr_entry* mshr = alloc_free_mshr(pinst->space == tex_space);
+    mshr->init(access.addr,pinst->is_store(),pinst->space,pinst->warp_id());
+    warp_inst_t inst = *pinst;
     inst.set_active(access.warp_indices);
     mshr->add_inst(inst);
     if( m_shader_config->gpgpu_interwarp_mshr_merge ) {
@@ -878,7 +841,7 @@ address_type line_size_based_tag_func(address_type address, unsigned line_size)
 
 address_type null_tag_func(address_type address, unsigned line_size)
 {
-   return address; //no modification: each address is its own tag. Equivalent to line_size_based_tag_func(address,1), but line_size ignored.
+   return address; //no modification: each address is its own tag.
 }
 
 // only 1 bank
@@ -906,172 +869,155 @@ typedef address_type (*tag_func_t)(address_type add, unsigned line_size);
 void shader_core_ctx::get_memory_access_list(
                                shader_core_ctx::bank_func_t bank_func,
                                tag_func_t tag_func,
-                               memory_pipe_t mem_pipe, 
                                unsigned warp_parts, 
                                unsigned line_size, 
                                bool limit_broadcast, 
-                               std::vector<mem_access_t> &accessq )
+                               warp_inst_t &inst )
 {
-   const warp_inst_t* insns = m_pipeline_reg[EX_MM];
    // Calculates memory accesses generated by this warp
    // Returns acesses which are "coalesced" 
    // Does not coalesce nor overlap bank accesses across warp "parts".
 
+   // This is called once per warp_inst_t when the warp_inst_t enters the memory stage.
+   // It produces the set of distinct memory accesses that need to be peformed.
+   // These accessess are then performed over multiple cycles (stalling the pipeline) 
+   // if the accessses cannot be performed all at once.
 
-   // This is called once per warp when it enters the memory stage.
-   // It takes the warp and produces a queue of accesses that can be peformed.
-   // These are then performed over multiple cycles (stalling the pipeline) if the accessses cannot be 
-   // performed all at once.
-   // It is a convenience for simulation; in hardware the warp would be processed each cycle
-   // until it was done. Each cycle would do the first accesses available to it and mark off the
-   // those threads served by those accesses. 
-
-   // Because it calculates all the accesses at once, what follows is largely not as the hw would do it.
-   // Accesses are assigned an order number based on when that access may be issued. 
+   // Below, accesses are assigned an "order" based on when that access may be issued. 
    // Accesses with the same order number may occur at the same time: they are to different banks. 
-   // Later when the queue is processed it will evaluate accesses of 
-   // as many orders as ports on that cache/shmem. 
-   // These accesses are placed into a queue and sorted so that accesses of the same order are next to each other.
+   // Later, when the queue is processed it will evaluate accesses of as many orders as 
+   // ports on that cache/shmem.
+   //  
+   // Accesses are placed in accessq sorted so that accesses of the same order are adjacent.
 
-
-   // tracks bank accesses for sorting into generations;
+   // bank_accs tracks bank accesses for sorting into generations;
    // each entry is (bank #, number of accesses)
    // the idea is that you can only access a bank a number of times each cycle equal to 
    // its number of ports in one cycle. 
    std::map<unsigned,unsigned> bank_accs;
 
-   //keep track of broadcasts with unique orders if limit_broadcast
-   //the normally calculated orders will never be greater than warp_size
+   // keep track of broadcasts with unique orders if limit_broadcast
+   // the normally calculated orders will never be greater than warp_size
    unsigned broadcast_order =  m_config->warp_size;
-   unsigned qbegin = accessq.size();
+   unsigned qbegin = inst.get_accessq_size();
    unsigned qpartbegin = qbegin;
    unsigned mem_pipe_size = m_config->warp_size / warp_parts;
    for (unsigned part = 0; part < m_config->warp_size; part += mem_pipe_size) {
       for (unsigned i = part; i < part + mem_pipe_size; i++) {
-         if ( !insns->active(i) ) 
+         if ( !inst.active(i) ) 
             continue;
-         if( insns->space == undefined_space ) 
-        	 continue; // this happens when thread predicated off
-         new_addr_type addr = insns->get_addr(i);
+         assert( inst.space != undefined_space ); 
+         new_addr_type addr = inst.get_addr(i);
          address_type lane_segment_address = tag_func(addr, line_size);
          unsigned quarter = 0;
          if( line_size>=4 )
             quarter = (addr / (line_size/4)) & 3;
          bool match = false;
-         if( !insns->isatomic() ) { //atomics must have own request
-            for (unsigned j = qpartbegin; j < accessq.size(); j++) {
-               if (lane_segment_address == accessq[j].addr) {
-                  assert( not accessq[j].isatomic );
-                  accessq[j].quarter_count[quarter]++;
-                  accessq[j].warp_indices.push_back(i);
+         if( !inst.isatomic() ) { //atomics must have own request
+            for( unsigned j = qpartbegin; j <inst.get_accessq_size(); j++ ) {
+               if (lane_segment_address == inst.accessq(j).addr) {
+                  inst.accessq(j).quarter_count[quarter]++;
+                  inst.accessq(j).warp_indices.push_back(i);
                   if (limit_broadcast) // two threads access this address, so its a broadcast. 
-                     accessq[j].order = ++broadcast_order; //do broadcast in its own cycle.
+                     inst.accessq(j).order = ++broadcast_order; //do broadcast in its own cycle.
                   match = true;
                   break;
                }
             }
          }
-         if (!match) { // does not match an previous request by another thread, so need a new request
-            assert( insns->space != undefined_space );
-            accessq.push_back( mem_access_t( lane_segment_address, 
-                                             insns->space, 
-                                             mem_pipe, 
-                                             insns->isatomic(), 
-                                             is_store(*insns),
-                                             line_size, quarter, i) );
+         if (!match) { // does not match a previous request by another thread, so need a new request
+            assert( inst.space != undefined_space );
+            inst.accessq_push_back( mem_access_t( lane_segment_address, line_size, quarter, i) );
             // Determine Bank Conflicts:
-            unsigned bank = (this->*bank_func)(insns->get_addr(i), line_size);
+            unsigned bank = (this->*bank_func)(inst.get_addr(i), line_size);
             // ensure no concurrent bank access accross warp parts. 
             // ie. order will be less than part for all previous loads in previous parts, so:
             if (bank_accs[bank] < part) 
                bank_accs[bank]=part; 
-            accessq.back().order = bank_accs[bank];
+            inst.accessq_back().order = bank_accs[bank];
             bank_accs[bank]++;
          }
       }
-      qpartbegin = accessq.size(); //don't coalesce accross warp parts
+      qpartbegin = inst.get_accessq_size(); //don't coalesce accross warp parts
    }
-   //sort requests into order according to order (orders will not necessarily be consequtive if multiple parts)
-   std::stable_sort(accessq.begin()+qbegin,accessq.end());
+   //sort requests by order they will be processed in
+   inst.sort_accessq(qbegin);
 } 
 
-void shader_core_ctx::memory_shared_process_warp()
+void shader_core_ctx::memory_shared_process_warp(warp_inst_t &inst)
 {
    // initial processing of shared memory warps 
    get_memory_access_list(&shader_core_ctx::shmem_bank_func, 
                           null_tag_func,
-                          SHARED_MEM_PATH, 
                           m_config->gpgpu_shmem_pipe_speedup, 
                           1, //shared memory doesn't care about line_size, needs to be at least 1;
-                          true, // limit broadcasts to single cycle. 
-                          m_memory_queue.shared);
+                          true,
+                          inst); // limit broadcasts to single cycle. 
 }
 
-void shader_core_ctx::memory_const_process_warp()
+void shader_core_ctx::memory_const_process_warp(warp_inst_t &inst)
 {
     // initial processing of const memory warps 
-    std::vector<mem_access_t> &accessq = m_memory_queue.constant;
-    unsigned qbegin = accessq.size();
+    unsigned qbegin = inst.get_accessq_size();
     get_memory_access_list( &shader_core_ctx::null_bank_func, 
                           line_size_based_tag_func,
-                          CONSTANT_MEM_PATH, 
                           1, //warp parts 
-                          m_L1C->get_line_sz(), false, //no broadcast limit.
-                          accessq);
+                          m_L1C->get_line_sz(), 
+                          false, //no broadcast limit.
+                          inst);
     // do cache checks here for each request (non-physical), could be 
     // done later for more accurate timing of cache accesses, but probably uneccesary; 
-    for (unsigned i = qbegin; i < accessq.size(); i++) {
-        if ( accessq[i].space == param_space_kernel ) {
-            accessq[i].cache_hit = true;
+    for (unsigned i = qbegin; i < inst.get_accessq_size(); i++) {
+        mem_access_t &req = inst.accessq(i);
+        if ( inst.space == param_space_kernel ) {
+            req.cache_hit = true;
         } else {
-            cache_request_status status = m_L1C->access( accessq[i].addr,
+            cache_request_status status = m_L1C->access( req.addr,
                                                          0, //should always be a read
                                                          gpu_sim_cycle+gpu_tot_sim_cycle, 
                                                          NULL/*should never writeback*/);
-            accessq[i].cache_hit = (status == HIT);
-            if (m_config->gpgpu_perfect_mem) accessq[i].cache_hit = true;
-            if (accessq[i].cache_hit) m_stats->L1_const_miss++;
+            req.cache_hit = (status == HIT);
+            if (m_config->gpgpu_perfect_mem) req.cache_hit = true;
+            if (req.cache_hit) m_stats->L1_const_miss++;
         } 
-        accessq[i].cache_checked = true;
+        req.cache_checked = true;
     }
 }
 
-void shader_core_ctx::memory_texture_process_warp()
+void shader_core_ctx::memory_texture_process_warp(warp_inst_t &inst)
 {
    // initial processing of shared texture warps 
-   std::vector<mem_access_t> &accessq = m_memory_queue.texture;
-   unsigned qbegin = accessq.size();
+   unsigned qbegin = inst.get_accessq_size();
    get_memory_access_list(&shader_core_ctx::null_bank_func, 
                           &line_size_based_tag_func,
-                          TEXTURE_MEM_PATH, 
                           1, //warp parts
-                          m_L1T->get_line_sz(),
-			  false, //no broadcast limit.
-                          accessq);
+                          m_L1T->get_line_sz(), 
+                          false, //no broadcast limit.
+                          inst);
    // do cache checks here for each request (non-hardware), could be done later 
    // for more accurate timing of cache accesses, but probably uneccesary; 
-   for (unsigned i = qbegin; i < accessq.size(); i++) {
-      cache_request_status status = m_L1T->access( accessq[i].addr,
+   for (unsigned i = qbegin; i < inst.get_accessq_size(); i++) {
+       mem_access_t &req = inst.accessq(i);
+      cache_request_status status = m_L1T->access( req.addr,
                                                    0, //should always be a read
                                                    gpu_sim_cycle+gpu_tot_sim_cycle, 
                                                    NULL /*should never writeback*/);
-      accessq[i].cache_hit = (status == HIT);
-      if (m_config->gpgpu_perfect_mem) accessq[i].cache_hit = true;
-      if (accessq[i].cache_hit) m_stats->L1_texture_miss++;
-      accessq[i].cache_checked = true;
+      req.cache_hit = (status == HIT);
+      if (m_config->gpgpu_perfect_mem) req.cache_hit = true;
+      if (req.cache_hit) m_stats->L1_texture_miss++;
+      req.cache_checked = true;
    }
 }
 
-void shader_core_ctx::memory_global_process_warp()
+void shader_core_ctx::memory_global_process_warp( warp_inst_t &inst )
 {
-   std::vector<mem_access_t> &accessq = m_memory_queue.local_global;
-   unsigned qbegin = accessq.size();
+   unsigned qbegin = inst.get_accessq_size();
    unsigned warp_parts = 1;
    unsigned line_size = m_L1D->get_line_sz();
    if (m_config->gpgpu_coalesce_arch == 13) {
       warp_parts = 2;
       if(m_config->gpgpu_no_dl1) {
-         unsigned data_size = m_pipeline_reg[EX_MM]->data_size;
+         unsigned data_size = inst.data_size;
          // line size is dependant on instruction;
          switch (data_size) {
          case 1: line_size = 32; break;
@@ -1083,43 +1029,41 @@ void shader_core_ctx::memory_global_process_warp()
    }          
    get_memory_access_list( &shader_core_ctx::dcache_bank_func,
                            &line_size_based_tag_func, 
-                           GLOBAL_MEM_PATH, 
                            warp_parts,
                            line_size,
                            false,
-                           accessq);
+                           inst );
 
    // Now that we have the accesses, if we don't have a cache we can adjust request sizes to 
    // include only the data referenced by the threads 
-   for (unsigned i = qbegin; i < accessq.size(); i++) {
+   for (unsigned i = qbegin; i < inst.get_accessq_size(); i++) {
       if (m_config->gpgpu_coalesce_arch == 13 and m_config->gpgpu_no_dl1) {
          //if there is no l1 cache it makes sense to do coalescing here.
          //reduce memory request sizes.
-         char* quarter_counts = accessq[i].quarter_count;
+         char* quarter_counts = inst.accessq(i).quarter_count;
          bool low = quarter_counts[0] or quarter_counts[1];
          bool high = quarter_counts[2] or quarter_counts[3];
-         if (accessq[i].req_size == 128) {
+         if (inst.accessq(i).req_size == 128) {
             if (low xor high) { //can reduce size
-               accessq[i].req_size = 64;
-               if (high) accessq[i].addr += 64;
+               inst.accessq(i).req_size = 64;
+               if (high) inst.accessq(i).addr += 64;
                low = quarter_counts[0] or quarter_counts[2]; //set low and high for next pass
                high = quarter_counts[1] or quarter_counts[3];
             }
          }
-         if (accessq[i].req_size == 64) {
+         if (inst.accessq(i).req_size == 64) {
             if (low xor high) { //can reduce size
-               accessq[i].req_size = 32;
-               if (high) accessq[i].addr += 32;
+               inst.accessq(i).req_size = 32;
+               if (high) inst.accessq(i).addr += 32;
             }
          }
       }
    }
 }
 
-mem_stage_stall_type shader_core_ctx::send_mem_request(mem_access_t &access)
+mem_stage_stall_type shader_core_ctx::send_mem_request(warp_inst_t &inst, mem_access_t &access)
 {
    // Attempt to send an request/write to memory based on information in access.  
-   warp_inst_t* warp = m_pipeline_reg[EX_MM];
 
    // If the cache told us it needed to write back a dirty line, do this now
    // It is possible to do this writeback in the same cycle as the access request, this may not be realistic.
@@ -1130,63 +1074,64 @@ mem_stage_stall_type shader_core_ctx::send_mem_request(mem_access_t &access)
          return WB_ICNT_RC_FAIL;
       }
       fq_push( access.wb_addr, req_size, true, NO_PARTIAL_WRITE, -1, NULL, 
-               is_local(access.space)?LOCAL_ACC_W:GLOBAL_ACC_W, //space of cache line is same as new request
+               inst.space.is_local()?LOCAL_ACC_W:GLOBAL_ACC_W, //space of cache line is same as new request
 		        -1);
       m_stats->L1_writeback++;
       access.need_wb = false; 
    }
 
+
+   bool is_write = inst.is_store();
    mem_access_type access_type;
-   switch(access.space.get_type()) {
+   switch(inst.space.get_type()) {
    case const_space:
    case param_space_kernel: access_type = CONST_ACC_R;   break;
    case tex_space:          access_type = TEXTURE_ACC_R;   break;
-   case global_space:       access_type = (access.iswrite)? GLOBAL_ACC_W: GLOBAL_ACC_R;   break;
+   case global_space:       access_type = is_write? GLOBAL_ACC_W: GLOBAL_ACC_R;   break;
    case local_space:
-   case param_space_local:  access_type = (access.iswrite)? LOCAL_ACC_W: LOCAL_ACC_R;   break;
+   case param_space_local:  access_type = is_write? LOCAL_ACC_W: LOCAL_ACC_R;   break;
    default: assert(0); break; 
    }
    //reserve mshr
-   bool requires_mshr = (not access.iswrite);
-   if (requires_mshr and not access.reserved_mshr) {
+   bool requires_mshr = (!is_write);
+   if (requires_mshr && !access.reserved_mshr) {
       if (not m_mshr_unit->has_mshr(1)) 
          return MSHR_RC_FAIL;
-      access.reserved_mshr = m_mshr_unit->add_mshr(access, warp);
+      access.reserved_mshr = m_mshr_unit->add_mshr(access, &inst);
       access.recheck_cache = false; //we have an mshr now, so have checked cache in same cycle as checking mshrs, so have merged if necessary.
    }
    //require inct if access is this far without reserved mshr, or has and mshr but not merged with another request
-   bool requires_icnt = (not access.reserved_mshr) or (not access.reserved_mshr->ismerged() );
+   bool requires_icnt = (!access.reserved_mshr) || (!access.reserved_mshr->ismerged());
    if (requires_icnt) {
       //calculate request size for icnt check (and later send);
       unsigned request_size = access.req_size;
-      if (access.iswrite) {
+      if (is_write) {
          if (requires_mshr) 
             request_size += READ_PACKET_SIZE + WRITE_MASK_SIZE; // needs information for a load back into cache.
          else 
             request_size += WRITE_PACKET_SIZE + WRITE_MASK_SIZE; //plain write
       }
-      if ( !m_gpu->fq_has_buffer(access.addr, request_size, access.iswrite, m_sid) ) {
+      if ( !m_gpu->fq_has_buffer(access.addr, request_size, is_write, m_sid) ) {
          // can't allocate icnt
          m_stats->gpu_stall_sh2icnt++;
          return ICNT_RC_FAIL;
       }
       //send over interconnect
       partial_write_mask_t  write_mask = NO_PARTIAL_WRITE;
-      unsigned warp_id = warp->warp_id();
-      if (access.iswrite) {
-         if (!strcmp("GT200",m_config->pipeline_model) ) 
-            m_warp[warp_id].inc_store_req();
+      unsigned warp_id = inst.warp_id();
+      if (is_write) {
+        m_warp[warp_id].inc_store_req();
          for (unsigned i=0;i < access.warp_indices.size();i++) {
             unsigned w = access.warp_indices[i];
-            int data_offset = warp->get_addr(w) & ((unsigned long long int)access.req_size - 1);
-            for (unsigned b = data_offset; b < data_offset + warp->data_size; b++) write_mask.set(b);
+            int data_offset = inst.get_addr(w) & ((unsigned long long int)access.req_size - 1);
+            for (unsigned b = data_offset; b < data_offset + inst.data_size; b++) write_mask.set(b);
          }
          if (write_mask.count() != access.req_size) 
             m_stats->gpgpu_n_partial_writes++;
       }
       fq_push( access.addr, request_size,
-               access.iswrite, write_mask, warp_id , access.reserved_mshr, 
-               access_type, warp->pc );
+               is_write, write_mask, warp_id , access.reserved_mshr, 
+               access_type, inst.pc );
    }
    return NO_RC_FAIL;
 }     
@@ -1206,32 +1151,33 @@ void shader_core_ctx::writeback()
     move_warp(m_pipeline_reg[WB_RT],m_pipeline_reg[MM_WB]);
 }
 
-bool shader_core_ctx::memory_shared_cycle( mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type)
+bool shader_core_ctx::memory_shared_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type)
 {
    // Process a single cycle of activity from the shared memory queue.
+   if( inst.space.get_type() != shared_space )
+       return true;
 
-   std::vector<mem_access_t> &accessq  = m_memory_queue.shared;
    //consume port number orders from the top of the queue;
-   for (int i = 0; i < m_config->gpgpu_shmem_port_per_bank; i++) {
-      if (accessq.empty()) 
+   for( int i = 0; i < m_config->gpgpu_shmem_port_per_bank; i++ ) {
+      if (inst.accessq_empty()) 
          break;
-      unsigned current_order = accessq.back().order;
+      unsigned current_order = inst.accessq_back().order;
       //consume all requests of the same order (concurrent bank requests)
-      while ((not accessq.empty()) and accessq.back().order == current_order) 
-         accessq.pop_back();
+      while ((!inst.accessq_empty()) && inst.accessq_back().order == current_order) 
+         inst.accessq_pop_back();
    }
-   if (not accessq.empty()) {
+   if( !inst.accessq_empty() ) {
       rc_fail = BK_CONF;
       fail_type = S_MEM;
       m_stats->gpgpu_n_shmem_bkconflict++;
    }
-   return accessq.empty(); //done if empty.
+   return inst.accessq_empty(); //done if empty.
 }
 
 mem_stage_stall_type shader_core_ctx::process_memory_access_queue( shader_core_ctx::cache_check_t cache_check,
                                                                    unsigned ports_per_bank, 
                                                                    unsigned memory_send_max, 
-                                                                   std::vector<mem_access_t> &accessq )
+                                                                   warp_inst_t &inst )
 {
    // Generic algorithm for processing a single cycle of accesses for the memory space types that go to L2 or DRAM.
 
@@ -1239,42 +1185,42 @@ mem_stage_stall_type shader_core_ctx::process_memory_access_queue( shader_core_c
    mem_stage_stall_type hazard_cond = NO_RC_FAIL; 
    unsigned mem_req_count = 0; // number of requests to sent to memory this cycle
    for (unsigned i = 0; i < ports_per_bank; i++) {
-      if (accessq.empty()) 
+      if (inst.accessq_empty()) 
          break;
-      unsigned current_order = accessq.back().order;
+      unsigned current_order = inst.accessq_back().order;
       // consume all requests of the same "order" but stop if we hit a structural hazard
-      while ((not accessq.empty()) and accessq.back().order == current_order and hazard_cond == NO_RC_FAIL) {
-         hazard_cond = (this->*cache_check)(accessq.back());
+      while ((!inst.accessq_empty()) && inst.accessq_back().order == current_order && hazard_cond == NO_RC_FAIL) {
+         hazard_cond = (this->*cache_check)(inst,inst.accessq_back());
          if (hazard_cond != NO_RC_FAIL) 
             break; // can't complete this request this cycle.
-         if (not accessq.back().cache_hit){
+         if (! inst.accessq_back().cache_hit){
             if (mem_req_count < memory_send_max) {
                mem_req_count++;
-               hazard_cond = send_mem_request(accessq.back()); // attemp to get mshr, icnt, send;
+               hazard_cond = send_mem_request(inst,inst.accessq_back()); // attemp to get mshr, icnt, send;
             }
             else hazard_cond = COAL_STALL; // not really a coal stall, its a too many memory request stall;
             if ( hazard_cond != NO_RC_FAIL) break; //can't complete this request this cycle.
          }
-         accessq.pop_back();
+         inst.accessq_pop_back();
       }
    }
-   if (not accessq.empty() and hazard_cond == NO_RC_FAIL) {
+   if (!inst.accessq_empty() && hazard_cond == NO_RC_FAIL) {
       //no resource failed so must be a bank comflict.
       hazard_cond = BK_CONF;
    }
    return hazard_cond;
 }  
 
-bool shader_core_ctx::memory_constant_cycle( mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type)
+bool shader_core_ctx::memory_constant_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type)
 {
+   if( (inst.space.get_type() != const_space) && (inst.space.get_type() != param_space_kernel) )
+       return true;
+
    // Process a single cycle of activity from the the constant memory queue.
-
-   std::vector<mem_access_t> &accessq = m_memory_queue.constant; 
-
    mem_stage_stall_type fail = process_memory_access_queue(&shader_core_ctx::ccache_check, 
                                                            m_config->gpgpu_const_port_per_bank, 
                                                            1, //memory send max per cycle
-                                                           accessq );
+                                                           inst );
    if (fail != NO_RC_FAIL){ 
       rc_fail = fail; //keep other fails if this didn't fail.
       fail_type = C_MEM;
@@ -1282,37 +1228,39 @@ bool shader_core_ctx::memory_constant_cycle( mem_stage_stall_type &rc_fail, mem_
          m_stats->gpgpu_n_cmem_portconflict++; //coal stalls aren't really a bank conflict, but this maintains previous behavior.
       }
    }
-   return accessq.empty(); //done if empty.
+   return inst.accessq_empty(); //done if empty.
 }
 
-bool shader_core_ctx::memory_texture_cycle( mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type)
+bool shader_core_ctx::memory_texture_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type)
 {
+   if( inst.space.get_type() != tex_space )
+       return true;
+
    // Process a single cycle of activity from the the texture memory queue.
 
-   std::vector<mem_access_t> &accessq = m_memory_queue.texture; 
    mem_stage_stall_type fail = process_memory_access_queue(&shader_core_ctx::tcache_check, 
                                                            1, //how is tex memory banked? 
                                                            1, //memory send max per cycle
-                                                           accessq );
+                                                           inst );
    if (fail != NO_RC_FAIL){ 
       rc_fail = fail; //keep other fails if this didn't fail.
       fail_type = T_MEM;
    }
-   return accessq.empty(); //done if empty.
+   return inst.accessq_empty(); //done if empty.
 }
 
 
-mem_stage_stall_type shader_core_ctx::dcache_check(mem_access_t& access)
+mem_stage_stall_type shader_core_ctx::dcache_check(warp_inst_t &inst, mem_access_t& access)
 {
    // Global memory (data cache) checks the cache for each access at the time it is processed.
    // This is more accurate to hardware, and necessary for proper action of the writeback cache.
 
-   if (access.cache_checked and not access.recheck_cache) 
+   if (access.cache_checked && !access.recheck_cache) 
       return NO_RC_FAIL;
    if (!m_config->gpgpu_no_dl1 && !m_config->gpgpu_perfect_mem) { 
       //check cache
       cache_request_status status = m_L1D->access( access.addr,
-                                                   access.iswrite,
+                                                   inst.is_store(),
                                                    gpu_sim_cycle+gpu_tot_sim_cycle,
                                                    &access.wb_addr );
       if (status == RESERVATION_FAIL) {
@@ -1321,7 +1269,7 @@ mem_stage_stall_type shader_core_ctx::dcache_check(mem_access_t& access)
       }
       access.cache_hit = (status == HIT); //if HIT_W_WT then still send to memory so "MISS" 
       if (status == MISS_W_WB) access.need_wb = true;
-      if (status == WB_HIT_ON_MISS and access.iswrite) 
+      if (status == WB_HIT_ON_MISS && inst.is_store()) 
       {
          //write has hit a reserved cache line
          //it has writen its data into the cache line, so no need to go to memory
@@ -1333,7 +1281,7 @@ mem_stage_stall_type shader_core_ctx::dcache_check(mem_access_t& access)
          // MSHR will still forward the unmasked value to its dependant reads. 
          // if doing stall on use, must stall this thread after this write (otherwise, inproper values may be forwarded to future reads).
       }
-      if (status == WB_HIT_ON_MISS and not access.iswrite) {
+      if (status == WB_HIT_ON_MISS && !inst.is_store() ) {
          //read has hit on a reserved cache line, 
          //we need to make sure cache check happens on same cycle as a mshr merge happens, otherwise we might miss it coming back
          access.recheck_cache = true;
@@ -1343,12 +1291,13 @@ mem_stage_stall_type shader_core_ctx::dcache_check(mem_access_t& access)
       access.cache_hit = false;
    }
 
-   if (m_config->gpgpu_perfect_mem) access.cache_hit = true;
+   if (m_config->gpgpu_perfect_mem) 
+       access.cache_hit = true;
    
-   if (access.isatomic) {
+   if (inst.isatomic()) {
       if (m_config->gpgpu_perfect_mem) {
          // complete functional execution of atomic here
-         m_pipeline_reg[EX_MM]->do_atomic();
+         inst.do_atomic();
       } else {
          // atomics always go to memory 
          access.cache_hit = false;
@@ -1356,63 +1305,65 @@ mem_stage_stall_type shader_core_ctx::dcache_check(mem_access_t& access)
    }
 
    if (!access.cache_hit) { 
-      if (access.iswrite) m_stats->L1_write_miss++;
+      if (inst.is_store()) m_stats->L1_write_miss++;
       else m_stats->L1_read_miss++;
    }
    return NO_RC_FAIL;
 }
 
-bool shader_core_ctx::memory_cycle( mem_stage_stall_type &stall_reason, mem_stage_access_type &access_type)
+bool shader_core_ctx::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_reason, mem_stage_access_type &access_type )
 {
+   if( (inst.space.get_type() != global_space) &&
+       (inst.space.get_type() != local_space) &&
+       (inst.space.get_type() != param_space_local) ) 
+       return true;
+
    // Process a single cycle of activity from the the global/local memory queue.
-
-   std::vector<mem_access_t> &accessq = m_memory_queue.local_global; 
-   mem_stage_stall_type stall_cond = process_memory_access_queue(&shader_core_ctx::dcache_check, m_config->gpgpu_cache_port_per_bank, 1, accessq);
-
+   mem_stage_stall_type stall_cond = process_memory_access_queue(&shader_core_ctx::dcache_check,m_config->gpgpu_cache_port_per_bank,1,inst);
    if (stall_cond != NO_RC_FAIL) {
       stall_reason = stall_cond;
-      bool iswrite = accessq.back().iswrite;
-      if (is_local(accessq.back().space)) 
+      bool iswrite = inst.is_store();
+      if (inst.space.is_local()) 
          access_type = (iswrite)?L_MEM_ST:L_MEM_LD;
       else 
          access_type = (iswrite)?G_MEM_ST:G_MEM_LD;
-      if (stall_cond == BK_CONF or stall_cond == COAL_STALL) 
+      if (stall_cond == BK_CONF || stall_cond == COAL_STALL) 
          m_stats->gpgpu_n_cache_bkconflict++;
    }
-   return accessq.empty(); //done if empty.
+   return inst.accessq_empty(); //done if empty.
 }
 
-void shader_core_ctx::memory_queue()
+void shader_core_ctx::memory_queue( warp_inst_t &pipe_reg )
 {
    // Called once per warp when warp enters memory stage.
    // Generates a list of memory accesses, but does not perform the memory access.
-
-   if( m_pipeline_reg[EX_MM]->empty() )
+   if( pipe_reg.empty() )
        return;
-   m_gpu->mem_instruction_stats(m_pipeline_reg[EX_MM]);
-   switch( m_pipeline_reg[EX_MM]->space.get_type() ) {
-      case shared_space: memory_shared_process_warp(); break;
-      case tex_space:    memory_texture_process_warp(); break;
-      case const_space:  case param_space_kernel: memory_const_process_warp(); break;
-      case global_space: case local_space: case param_space_local: memory_global_process_warp(); break;
+   if( pipe_reg.mem_accesses_computed() )
+       return;
+   m_gpu->mem_instruction_stats(pipe_reg);
+   switch( pipe_reg.space.get_type() ) {
+      case shared_space: memory_shared_process_warp(pipe_reg); break;
+      case tex_space:    memory_texture_process_warp(pipe_reg); break;
+      case const_space:  case param_space_kernel: memory_const_process_warp(pipe_reg); break;
+      case global_space: case local_space: case param_space_local: memory_global_process_warp(pipe_reg); break;
       case param_space_unclassified: abort(); break;
       default: break; // non-memory operations
    }
+   pipe_reg.set_mem_accesses_computed();
 }
 
 void shader_core_ctx::memory()
 {
-   if (!m_shader_memory_new_instruction_processed) {
-      m_shader_memory_new_instruction_processed = true; // do once per warp instruction
-      memory_queue();
-   }
+   warp_inst_t &pipe_reg = *m_pipeline_reg[EX_MM];
+   memory_queue(pipe_reg);
    bool done = true;
    enum mem_stage_stall_type rc_fail = NO_RC_FAIL;
    mem_stage_access_type type;
-   done &= memory_shared_cycle(rc_fail, type);
-   done &= memory_constant_cycle(rc_fail, type);
-   done &= memory_texture_cycle(rc_fail, type);
-   done &= memory_cycle(rc_fail, type);
+   done &= memory_shared_cycle(pipe_reg, rc_fail, type);
+   done &= memory_constant_cycle(pipe_reg, rc_fail, type);
+   done &= memory_texture_cycle(pipe_reg, rc_fail, type);
+   done &= memory_cycle(pipe_reg, rc_fail, type);
    m_mem_rc = rc_fail;
    if (!done) { // log stall types and return
       assert(rc_fail != NO_RC_FAIL);
@@ -1420,7 +1371,7 @@ void shader_core_ctx::memory()
       m_stats->gpu_stall_shd_mem_breakdown[type][rc_fail]++;
       return;
    }
-   if( not m_pipeline_reg[MM_WB]->empty() )
+   if( !m_pipeline_reg[MM_WB]->empty() )
        return; // writeback stalled
    move_warp(m_pipeline_reg[MM_WB],m_pipeline_reg[EX_MM]);
 }
@@ -1579,52 +1530,37 @@ void shader_core_ctx::display_pipeline(FILE *fout, int print_mem, int mask )
            gpu_tot_sim_cycle, gpu_sim_cycle, m_not_completed);
    fprintf(fout, "=================================================\n");
 
-   if (!strcmp("GT200",m_config->pipeline_model) ) {
-       dump_istream_state(fout);
-       fprintf(fout,"\n");
+   dump_istream_state(fout);
+   fprintf(fout,"\n");
 
-       fprintf(fout, "IF/ID       = ");
-       if( !m_inst_fetch_buffer.m_valid )
-           fprintf(fout,"bubble\n");
-       else {
-           fprintf(fout,"w%2u : pc = 0x%x, nbytes = %u\n", 
-                   m_inst_fetch_buffer.m_warp_id,
-                   m_inst_fetch_buffer.m_pc, 
-                   m_inst_fetch_buffer.m_nbytes );
-       }
-       fprintf(fout,"\nibuffer status:\n");
-       for( unsigned i=0; i<m_config->max_warps_per_shader; i++) {
-           if( !m_warp[i].ibuffer_empty() ) 
-               m_warp[i].print_ibuffer(fout);
-       }
-       fprintf(fout,"\n");
-       display_pdom_state(fout,mask);
+   fprintf(fout, "IF/ID       = ");
+   if( !m_inst_fetch_buffer.m_valid )
+       fprintf(fout,"bubble\n");
+   else {
+       fprintf(fout,"w%2u : pc = 0x%x, nbytes = %u\n", 
+               m_inst_fetch_buffer.m_warp_id,
+               m_inst_fetch_buffer.m_pc, 
+               m_inst_fetch_buffer.m_nbytes );
    }
+   fprintf(fout,"\nibuffer status:\n");
+   for( unsigned i=0; i<m_config->max_warps_per_shader; i++) {
+       if( !m_warp[i].ibuffer_empty() ) 
+           m_warp[i].print_ibuffer(fout);
+   }
+   fprintf(fout,"\n");
+   display_pdom_state(fout,mask);
 
    m_scoreboard->printContents();
 
-   if (!strcmp("GPGPUSIM_ORIG",m_config->pipeline_model) ) {
-       if ( mask & 0x20 ) {
-          fprintf(fout, "TS/IF       = ");
-          print_stage(TS_IF, fout, print_mem, mask);
-       }
-       fprintf(fout, "IF/ID       = ");
-       print_stage(IF_ID, fout, print_mem, mask );
-   }
-   if (m_config->gpgpu_operand_collector) {
-      fprintf(fout,"ID/OC (SP)  = ");
-      print_stage(ID_OC, fout, print_mem, mask);
-      fprintf(fout,"ID/OC (SFU) = ");
-      print_stage(ID_OC_SFU, fout, print_mem, mask);
-      m_operand_collector.dump(fout);
-   }
-   if (!strcmp("GT200",m_config->pipeline_model) ) 
-      fprintf(fout, "ID/EX (SP)  = ");
-   print_stage(ID_EX, fout, print_mem, mask);
-   if (!strcmp("GT200",m_config->pipeline_model) ) {
-      fprintf(fout, "ID/EX (SFU) = ");
-      print_stage(OC_EX_SFU, fout, print_mem, mask);
-   }
+   fprintf(fout,"ID/OC (SP)  = ");
+   print_stage(ID_OC_SP, fout, print_mem, mask);
+   fprintf(fout,"ID/OC (SFU) = ");
+   print_stage(ID_OC_SFU, fout, print_mem, mask);
+   m_operand_collector.dump(fout);
+   fprintf(fout, "ID/EX (SP)  = ");
+   print_stage(OC_EX_SP, fout, print_mem, mask);
+   fprintf(fout, "ID/EX (SFU) = ");
+   print_stage(OC_EX_SFU, fout, print_mem, mask);
    fprintf(fout, "EX/MEM      = ");
    print_stage(EX_MM, fout, print_mem, mask);
    if( m_mem_rc != NO_RC_FAIL ) {
@@ -1702,7 +1638,7 @@ void shader_core_ctx::cycle_gt200()
     writeback();
     memory();
     execute();
-    m_operand_collector.step(m_pipeline_reg[ID_OC],m_pipeline_reg[ID_OC_SFU]);
+    m_operand_collector.step(m_pipeline_reg[ID_OC_SP],m_pipeline_reg[ID_OC_SFU]);
     decode_new();
     fetch_new();
 }
@@ -2101,8 +2037,8 @@ void mshr_entry::init( new_addr_type address, bool wr, memory_space_t space, uns
    m_merged_requests =NULL;
    m_iswrite = wr;
    m_isinst = space==instruction_space;
-   m_islocal = is_local(space);
-   m_isconst = is_const(space);
+   m_islocal = space.is_local();
+   m_isconst = space.is_const();
    m_istexture = space==tex_space;
    m_insts.clear();
    m_warp_id = warp_id;

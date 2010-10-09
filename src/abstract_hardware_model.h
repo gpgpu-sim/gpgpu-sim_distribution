@@ -223,11 +223,68 @@ public:
    enum _memory_space_t get_type() const { return m_type; }
    unsigned get_bank() const { return m_bank; }
    void set_bank( unsigned b ) { m_bank = b; }
+   bool is_const() const { return (m_type == const_space) || (m_type == param_space_kernel); }
+   bool is_local() const { return (m_type == local_space) || (m_type == param_space_local); }
+
 private:
    enum _memory_space_t m_type;
    unsigned m_bank; // n in ".const[n]"; note .const == .const[0] (see PTX 2.1 manual, sec. 5.1.3)
 };
 
+class mem_access_t {
+public:
+   mem_access_t()
+   { 
+      init();
+   }
+   mem_access_t(address_type address, unsigned size, unsigned quarter, unsigned idx )
+   {
+      init();
+      addr = address;
+      req_size = size;
+      quarter_count[quarter]++;
+      warp_indices.push_back(idx);
+   }
+
+   bool operator<(const mem_access_t &other) const {return (order > other.order);}//this is reverse
+
+private:
+   void init() 
+   {
+      uid=++next_access_uid;
+      addr=0;
+      req_size=0;
+      order=0;
+      _quarter_count_all=0;
+      cache_hit = false;
+      cache_checked = false;
+      recheck_cache = false;
+      need_wb = false;
+      wb_addr = 0;
+      reserved_mshr = NULL;
+   }
+
+public:
+
+   unsigned uid;
+   address_type addr; //address of the segment to load.
+   unsigned req_size; //bytes
+   unsigned order; // order of accesses, based on banks.
+   union{
+     unsigned _quarter_count_all;
+     char quarter_count[4]; //access counts to each quarter of segment, for compaction;
+   };
+   std::vector<unsigned> warp_indices; // warp indicies for this request.
+   bool cache_hit;
+   bool cache_checked;
+   bool recheck_cache;
+   bool need_wb;
+   address_type wb_addr; // writeback address (if necessary).
+   class mshr_entry* reserved_mshr;
+
+private:
+   static unsigned next_access_uid;
+};
 
 #define MAX_REG_OPERANDS 8
 
@@ -260,6 +317,8 @@ public:
     {
         fprintf(fp," [inst @ pc=0x%04x] ", pc );
     }
+    bool is_load() const { return (op == LOAD_OP || memory_op == memory_load); }
+    bool is_store() const { return (op == STORE_OP || memory_op == memory_store); }
 
     address_type pc;        // program counter address of instruction
     unsigned isize;         // size of instruction in bytes 
@@ -362,6 +421,10 @@ public:
           }
        }
     }
+    void set_not_active( unsigned lane_id )
+    {
+        warp_active_mask.reset(lane_id);
+    }
 
     // accessors
     virtual void print_insn(FILE *fp) const 
@@ -391,6 +454,16 @@ public:
 
     bool isatomic() const { return m_isatomic; }
 
+    bool mem_accesses_computed() const { return m_mem_accesses_created; }
+    void set_mem_accesses_computed() { m_mem_accesses_created=true; }
+    bool accessq_empty() const { return m_accessq.empty(); }
+    unsigned get_accessq_size() const { return m_accessq.size(); }
+    mem_access_t &accessq( unsigned n ) { return m_accessq[n]; }
+    mem_access_t &accessq_back() { return m_accessq.back(); }
+    void accessq_push_back( const mem_access_t &req ) { m_accessq.push_back(req); }
+    void accessq_pop_back() { m_accessq.pop_back(); }
+    void sort_accessq( unsigned qbegin );
+
 protected:
     bool m_empty;
     unsigned long long issue_cycle;
@@ -410,6 +483,8 @@ protected:
     };
     bool m_per_scalar_thread_valid;
     std::vector<per_thread_info> m_per_scalar_thread;
+    bool m_mem_accesses_created;
+    std::vector<mem_access_t> m_accessq;
 };
 
 void move_warp( warp_inst_t *&dst, warp_inst_t *&src );
