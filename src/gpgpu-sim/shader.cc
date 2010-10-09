@@ -387,7 +387,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
    m_L1T = new cache_t(L1T_name,m_config->gpgpu_cache_texl1_opt,  0,no_writes, m_sid,get_shader_texture_cache_id());
    m_L1C = new cache_t(L1C_name,m_config->gpgpu_cache_constl1_opt,0,no_writes, m_sid,get_shader_constant_cache_id());
    m_L1I = new cache_t(L1I_name,m_config->gpgpu_cache_il1_opt,    0,no_writes, m_sid,get_shader_instruction_cache_id());
-   ptx_set_tex_cache_linesize(m_L1T->get_line_sz());
+   m_gpu->ptx_set_tex_cache_linesize(m_L1T->get_line_sz());
 
    m_mshr_unit = new mshr_shader_unit(m_config);
    m_pdom_warp = new pdom_warp_ctx_t*[config->max_warps_per_shader];

@@ -32,11 +32,6 @@ extern void   gpgpu_ptx_sim_register_const_variable(void*, const char *deviceNam
 extern void   gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size );
 extern void   gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t count, size_t offset, int to, gpgpu_t *gpu );
 
-extern void   gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, const struct cudaArray* array);
-extern void   gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref);
-extern int    gpgpu_ptx_sim_sizeofTexture(const char* name);
-extern const char* gpgpu_ptx_sim_findNamefromTexture(const struct textureReference* texref);
-extern const struct textureReference* gpgpu_ptx_sim_accessTextureofName(const char* name); 
 extern void read_sim_environment_variables();
 extern void ptxinfo_opencl_addinfo( std::map<std::string,function_info*> &kernels );
 unsigned ptx_sim_init_thread( kernel_info_t &kernel,
@@ -52,7 +47,6 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
 const warp_inst_t *ptx_fetch_inst( address_type pc );
 const struct gpgpu_ptx_sim_kernel_info* ptx_sim_kernel_info(class function_info *kernel);
 void ptx_print_insn( address_type pc, FILE *fp );
-unsigned int ptx_set_tex_cache_linesize( unsigned linesize);
 void set_param_gpgpu_num_shaders(int num_shaders);
 unsigned int get_converge_point(unsigned int pc, void *thd);
 const char *get_ptxinfo_kname();

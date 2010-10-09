@@ -81,8 +81,7 @@
 
 #include <stdarg.h>
 
-unsigned g_num_ptx_inst_uid=0;
-unsigned cudasim_n_tex_insn=0;
+unsigned ptx_instruction::g_num_ptx_inst_uid=0;
 
 const char *g_opcode_string[NUM_OPCODES] = {
 #define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) STR,
@@ -90,13 +89,8 @@ const char *g_opcode_string[NUM_OPCODES] = {
 #undef OP_DEF
 };
 
-extern std::map<struct textureReference*,struct cudaArray*> TextureToArrayMap; // texture bindings
-extern std::map<struct textureReference*,struct textureInfo*> TextureToInfoMap; // texture bindings
-extern std::map<std::string, struct textureReference*> NameToTextureMap;
-
 void inst_not_implemented( const ptx_instruction * pI ) ;
 ptx_reg_t srcOperandModifiers(ptx_reg_t opData, operand_info opInfo, operand_info dstInfo, unsigned type, ptx_thread_info *thread);
-unsigned unfound_register_warned = 0;
 
 void sign_extend( ptx_reg_t &data, unsigned src_size, const operand_info &dst );
 
@@ -114,6 +108,7 @@ void ptx_thread_info::set_reg( const symbol *reg, const ptx_reg_t &value )
 
 ptx_reg_t ptx_thread_info::get_reg( const symbol *reg )
 {
+   static bool unfound_register_warned = false;
    assert( reg != NULL );
    assert( !m_regs.empty() );
    reg_map_t::iterator regs_iter = m_regs.back().find(reg);
@@ -128,7 +123,7 @@ ptx_reg_t ptx_thread_info::get_reg( const symbol *reg )
       if( !unfound_register_warned ) {
           printf("GPGPU-Sim PTX: WARNING (%s) ** reading undefined register \'%s\' (cuid:%u). Setting to 0XDEADBEEF.\n",
                  file_loc.c_str(), name.c_str(), call_uid );
-          unfound_register_warned = 1;
+          unfound_register_warned = true;
       }
       regs_iter = m_regs.back().find(reg);
    }
@@ -3532,7 +3527,6 @@ float tex_linf_sampling(memory_space* mem, unsigned tex_array_base,
 
 void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 {
-   cudasim_n_tex_insn++;
    unsigned dimension = pI->dimension();
    const operand_info &dst = pI->dst(); //the registers to which fetched texel will be placed
    const operand_info &src1 = pI->src1(); //the name of the texture
@@ -3546,12 +3540,10 @@ void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    unsigned nelem = src2.get_vect_nelem();
    thread->get_vector_operand_values(src2, ptx_tex_regs, nelem); //ptx_reg should be 4 entry vector type...coordinates into texture
 
-   assert(NameToTextureMap.find(texname) != NameToTextureMap.end());//use map to find texturerefence, then use map to find pointer to array
-   struct textureReference* texref = NameToTextureMap[texname];
-   assert(TextureToArrayMap.find(texref) != TextureToArrayMap.end());
-   struct cudaArray* cuArray = TextureToArrayMap[texref];
-   assert(TextureToInfoMap.find(texref) != TextureToInfoMap.end());
-   struct textureInfo* texInfo = TextureToInfoMap[texref];
+   gpgpu_t *gpu = thread->get_gpu();
+   const struct textureReference* texref = gpu->get_texref(texname);
+   const struct cudaArray* cuArray = gpu->get_texarray(texref); 
+   const struct textureInfo* texInfo = gpu->get_texinfo(texref);
 
    //assume always 2D f32 input
    //access array with src2 coordinates

@@ -52,6 +52,7 @@ enum _memory_op_t {
 #include <vector>
 #include <assert.h>
 #include <stdlib.h>
+#include <map>
 
 #if !defined(__VECTOR_TYPES_H__)
 struct dim3 {
@@ -152,29 +153,110 @@ public:
 #define LOCAL_GENERIC_START (SHARED_GENERIC_START-TOTAL_LOCAL_MEM)
 #define STATIC_ALLOC_LIMIT (GLOBAL_HEAP_START - (TOTAL_LOCAL_MEM+TOTAL_SHARED_MEM))
 
+#if !defined(__CUDA_RUNTIME_API_H__)
+
+enum cudaChannelFormatKind {
+   cudaChannelFormatKindSigned,
+   cudaChannelFormatKindUnsigned,
+   cudaChannelFormatKindFloat
+};
+
+struct cudaChannelFormatDesc {
+   int                        x;
+   int                        y;
+   int                        z;
+   int                        w;
+   enum cudaChannelFormatKind f;
+};
+
+struct cudaArray {
+   void *devPtr;
+   int devPtr32;
+   struct cudaChannelFormatDesc desc;
+   int width;
+   int height;
+   int size; //in bytes
+   unsigned dimensions;
+};
+
+enum cudaTextureAddressMode {
+   cudaAddressModeWrap,
+   cudaAddressModeClamp
+};
+
+enum cudaTextureFilterMode {
+   cudaFilterModePoint,
+   cudaFilterModeLinear
+};
+
+enum cudaTextureReadMode {
+   cudaReadModeElementType,
+   cudaReadModeNormalizedFloat
+};
+
+struct textureReference {
+   int                           normalized;
+   enum cudaTextureFilterMode    filterMode;
+   enum cudaTextureAddressMode   addressMode[2];
+   struct cudaChannelFormatDesc  channelDesc;
+};
+
+#endif
+
 class gpgpu_t {
 public:
-   gpgpu_t();
-   void* gpgpu_ptx_sim_malloc( size_t size );
-   void* gpgpu_ptx_sim_mallocarray( size_t count );
-   void  gpgpu_ptx_sim_memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t count );
-   void  gpgpu_ptx_sim_memcpy_from_gpu( void *dst, size_t src_start_addr, size_t count );
-   void  gpgpu_ptx_sim_memcpy_gpu_to_gpu( size_t dst, size_t src, size_t count );
-   void  gpgpu_ptx_sim_memset( size_t dst_start_addr, int c, size_t count );
+    gpgpu_t();
+    void* gpu_malloc( size_t size );
+    void* gpu_mallocarray( size_t count );
+    void  gpu_memset( size_t dst_start_addr, int c, size_t count );
+    void  memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t count );
+    void  memcpy_from_gpu( void *dst, size_t src_start_addr, size_t count );
+    void  memcpy_gpu_to_gpu( size_t dst, size_t src, size_t count );
+    
+    class memory_space *get_global_memory() { return m_global_mem; }
+    class memory_space *get_tex_memory() { return m_tex_mem; }
+    class memory_space *get_surf_memory() { return m_surf_mem; }
+    class memory_space *get_param_memory() { return m_param_mem; }
 
-   class memory_space *get_global_memory() { return g_global_mem; }
-   class memory_space *get_tex_memory() { return g_tex_mem; }
-   class memory_space *get_surf_memory() { return g_surf_mem; }
-   class memory_space *get_param_memory() { return g_param_mem; }
+    void gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, const struct cudaArray* array);
+    void gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref);
+    const char* gpgpu_ptx_sim_findNamefromTexture(const struct textureReference* texref);
+    unsigned ptx_set_tex_cache_linesize(unsigned linesize);
+    const struct cudaArray* gpgpu_ptx_sim_accessArrayofTexture(struct textureReference* texref); 
+    const struct textureReference* gpgpu_ptx_sim_accessTextureofName(const char* name); 
+    int gpgpu_ptx_sim_sizeofTexture(const char* name);
+
+    const struct textureReference* get_texref(const std::string &texname) const
+    {
+        std::map<std::string, const struct textureReference*>::const_iterator t=NameToTextureMap.find(texname);
+        assert( t != NameToTextureMap.end() );
+        return t->second;
+    }
+    const struct cudaArray* get_texarray( const struct textureReference *texref ) const
+    {
+        std::map<const struct textureReference*,const struct cudaArray*>::const_iterator t=TextureToArrayMap.find(texref);
+        assert(t != TextureToArrayMap.end());
+        return t->second;
+    }
+    const struct textureInfo* get_texinfo( const struct textureReference *texref ) const
+    {
+        std::map<const struct textureReference*, const struct textureInfo*>::const_iterator t=TextureToInfoMap.find(texref);
+        assert(t != TextureToInfoMap.end());
+        return t->second;
+    }
 
 protected:
-   // functional simulation state 
-   class memory_space *g_global_mem;
-   class memory_space *g_tex_mem;
-   class memory_space *g_surf_mem;
-   class memory_space *g_param_mem;
+   class memory_space *m_global_mem;
+   class memory_space *m_tex_mem;
+   class memory_space *m_surf_mem;
+   class memory_space *m_param_mem;
 
-   unsigned long long g_dev_malloc;
+   unsigned long long m_dev_malloc;
+
+   std::map<const struct textureReference*,const struct cudaArray*> TextureToArrayMap; // texture bindings
+   std::map<const struct textureReference*, const struct textureInfo*> TextureToInfoMap;
+   std::map<std::string, const struct textureReference*> NameToTextureMap;
+   unsigned int g_texcache_linesize;
 };
 
 struct gpgpu_ptx_sim_kernel_info 

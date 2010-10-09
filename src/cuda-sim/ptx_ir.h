@@ -1009,6 +1009,7 @@ private:
 
    virtual void pre_decode();
    friend class function_info;
+   static unsigned g_num_ptx_inst_uid;
 };
 
 class param_info {
@@ -1343,56 +1344,6 @@ void copy_args_into_buffer_list( const ptx_instruction * pI,
 void copy_buffer_list_into_frame(ptx_thread_info * thread, arg_buffer_list_t &arg_values);
 void copy_buffer_to_frame(ptx_thread_info * thread, const arg_buffer_t &a);
 
-#if !defined(__CUDA_RUNTIME_API_H__)
-/*******************************/
-// These declarations should be identical to those in ./../../cuda-sim-dev/libcuda/texture_types.h
-enum cudaChannelFormatKind {
-   cudaChannelFormatKindSigned,
-   cudaChannelFormatKindUnsigned,
-   cudaChannelFormatKindFloat
-};
-
-struct cudaChannelFormatDesc {
-   int                        x;
-   int                        y;
-   int                        z;
-   int                        w;
-   enum cudaChannelFormatKind f;
-};
-
-struct cudaArray {
-   void *devPtr;
-   int devPtr32;
-   struct cudaChannelFormatDesc desc;
-   int width;
-   int height;
-   int size; //in bytes
-   unsigned dimensions;
-};
-
-enum cudaTextureAddressMode {
-   cudaAddressModeWrap,
-   cudaAddressModeClamp
-};
-
-enum cudaTextureFilterMode {
-   cudaFilterModePoint,
-   cudaFilterModeLinear
-};
-
-enum cudaTextureReadMode {
-   cudaReadModeElementType,
-   cudaReadModeNormalizedFloat
-};
-
-struct textureReference {
-   int                           normalized;
-   enum cudaTextureFilterMode    filterMode;
-   enum cudaTextureAddressMode   addressMode[2];
-   struct cudaChannelFormatDesc  channelDesc;
-};
-/**********************************/
-#endif
 
 struct textureInfo {
    unsigned int texel_size; //size in bytes, e.g. (channelDesc.x+y+z+w)/8

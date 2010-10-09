@@ -15,12 +15,12 @@ void move_warp( warp_inst_t *&dst, warp_inst_t *&src )
 
 gpgpu_t::gpgpu_t()
 {
-   g_global_mem = new memory_space_impl<8192>("global",64*1024);
-   g_param_mem = new memory_space_impl<8192>("param",64*1024);
-   g_tex_mem = new memory_space_impl<8192>("tex",64*1024);
-   g_surf_mem = new memory_space_impl<8192>("surf",64*1024);
+   m_global_mem = new memory_space_impl<8192>("global",64*1024);
+   m_param_mem = new memory_space_impl<8192>("param",64*1024);
+   m_tex_mem = new memory_space_impl<8192>("tex",64*1024);
+   m_surf_mem = new memory_space_impl<8192>("surf",64*1024);
 
-   g_dev_malloc=GLOBAL_HEAP_START; 
+   m_dev_malloc=GLOBAL_HEAP_START; 
 }
 
 void warp_inst_t::sort_accessq( unsigned qbegin )

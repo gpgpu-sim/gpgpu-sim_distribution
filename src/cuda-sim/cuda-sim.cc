@@ -95,24 +95,21 @@ addr_t g_debug_pc = 0xBEEF1518;
 FILE* ptx_inst_debug_file;
 
 unsigned g_ptx_sim_num_insn = 0;
-std::map<const struct textureReference*,const struct cudaArray*> TextureToArrayMap; // texture bindings
-std::map<const struct textureReference*, const struct textureInfo*> TextureToInfoMap;
-std::map<std::string, const struct textureReference*> NameToTextureMap;
-unsigned int g_texcache_linesize;
 unsigned gpgpu_param_num_shaders = 0;
 
-void gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref)
+void gpgpu_t::gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref)
 {
    std::string texname(name);
    NameToTextureMap[texname] = texref;
 }
 
-const struct textureReference* gpgpu_ptx_sim_accessTextureofName(const char* name) {
+const struct textureReference* gpgpu_t::gpgpu_ptx_sim_accessTextureofName(const char* name) 
+{
    std::string texname(name);
    return NameToTextureMap[texname];
 }
 
-const char* gpgpu_ptx_sim_findNamefromTexture(const struct textureReference* texref)
+const char* gpgpu_t::gpgpu_ptx_sim_findNamefromTexture(const struct textureReference* texref)
 {
    std::map<std::string, const struct textureReference*>::iterator itr = NameToTextureMap.begin();
    while (itr != NameToTextureMap.end()) {
@@ -140,7 +137,7 @@ unsigned int intLOGB2( unsigned int v ) {
    return r;
 }
 
-void gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, const struct cudaArray* array)
+void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, const struct cudaArray* array)
 {
    TextureToArrayMap[texref] = array;
    unsigned int texel_size_bits = array->desc.w + array->desc.x + array->desc.y + array->desc.z;
@@ -195,11 +192,12 @@ void gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, con
    TextureToInfoMap[texref] = texInfo;
 }
 
-const struct cudaArray* gpgpu_ptx_sim_accessArrayofTexture(struct textureReference* texref) {
+const struct cudaArray* gpgpu_t::gpgpu_ptx_sim_accessArrayofTexture(struct textureReference* texref) 
+{
    return TextureToArrayMap[texref];
 }
 
-int gpgpu_ptx_sim_sizeofTexture(const char* name)
+int gpgpu_t::gpgpu_ptx_sim_sizeofTexture(const char* name)
 {
    std::string texname(name);
    const struct textureReference* texref = NameToTextureMap[texname];
@@ -378,71 +376,71 @@ addr_t generic_to_global( addr_t addr )
 }
 
 
-void* gpgpu_t::gpgpu_ptx_sim_malloc( size_t size )
+void* gpgpu_t::gpu_malloc( size_t size )
 {
-   unsigned long long result = g_dev_malloc;
-   printf("GPGPU-Sim PTX: allocating %zu bytes on GPU starting at address 0x%Lx\n", size, g_dev_malloc );
+   unsigned long long result = m_dev_malloc;
+   printf("GPGPU-Sim PTX: allocating %zu bytes on GPU starting at address 0x%Lx\n", size, m_dev_malloc );
    fflush(stdout);
-   g_dev_malloc += size;
-   if (size%64) g_dev_malloc += (64 - size%64); //align to 64 byte boundaries
+   m_dev_malloc += size;
+   if (size%64) m_dev_malloc += (64 - size%64); //align to 64 byte boundaries
    return(void*) result;
 }
 
-void* gpgpu_t::gpgpu_ptx_sim_mallocarray( size_t size )
+void* gpgpu_t::gpu_mallocarray( size_t size )
 {
-   unsigned long long result = g_dev_malloc;
-   printf("GPGPU-Sim PTX: allocating %zu bytes on GPU starting at address 0x%Lx\n", size, g_dev_malloc );
+   unsigned long long result = m_dev_malloc;
+   printf("GPGPU-Sim PTX: allocating %zu bytes on GPU starting at address 0x%Lx\n", size, m_dev_malloc );
    fflush(stdout);
-   g_dev_malloc += size;
-   if (size%64) g_dev_malloc += (64 - size%64); //align to 64 byte boundaries
+   m_dev_malloc += size;
+   if (size%64) m_dev_malloc += (64 - size%64); //align to 64 byte boundaries
    return(void*) result;
 }
 
 
-void gpgpu_t::gpgpu_ptx_sim_memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t count )
+void gpgpu_t::memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t count )
 {
    printf("GPGPU-Sim PTX: copying %zu bytes from CPU[0x%Lx] to GPU[0x%Lx] ... ", count, (unsigned long long) src, (unsigned long long) dst_start_addr );
    fflush(stdout);
    char *src_data = (char*)src;
    for (unsigned n=0; n < count; n ++ ) 
-      g_global_mem->write(dst_start_addr+n,1, src_data+n,NULL,NULL);
+      m_global_mem->write(dst_start_addr+n,1, src_data+n,NULL,NULL);
    printf( " done.\n");
    fflush(stdout);
 }
 
-void gpgpu_t::gpgpu_ptx_sim_memcpy_from_gpu( void *dst, size_t src_start_addr, size_t count )
+void gpgpu_t::memcpy_from_gpu( void *dst, size_t src_start_addr, size_t count )
 {
    printf("GPGPU-Sim PTX: copying %zu bytes from GPU[0x%Lx] to CPU[0x%Lx] ...", count, (unsigned long long) src_start_addr, (unsigned long long) dst );
    fflush(stdout);
    unsigned char *dst_data = (unsigned char*)dst;
    for (unsigned n=0; n < count; n ++ ) 
-      g_global_mem->read(src_start_addr+n,1,dst_data+n);
+      m_global_mem->read(src_start_addr+n,1,dst_data+n);
    printf( " done.\n");
    fflush(stdout);
 }
 
-void gpgpu_t::gpgpu_ptx_sim_memcpy_gpu_to_gpu( size_t dst, size_t src, size_t count )
+void gpgpu_t::memcpy_gpu_to_gpu( size_t dst, size_t src, size_t count )
 {
    printf("GPGPU-Sim PTX: copying %zu bytes from GPU[0x%Lx] to GPU[0x%Lx] ...", count, 
           (unsigned long long) src, (unsigned long long) dst );
    fflush(stdout);
    for (unsigned n=0; n < count; n ++ ) {
       unsigned char tmp;
-      g_global_mem->read(src+n,1,&tmp); 
-      g_global_mem->write(dst+n,1, &tmp,NULL,NULL);
+      m_global_mem->read(src+n,1,&tmp); 
+      m_global_mem->write(dst+n,1, &tmp,NULL,NULL);
    }
    printf( " done.\n");
    fflush(stdout);
 }
 
-void gpgpu_t::gpgpu_ptx_sim_memset( size_t dst_start_addr, int c, size_t count )
+void gpgpu_t::gpu_memset( size_t dst_start_addr, int c, size_t count )
 {
    printf("GPGPU-Sim PTX: setting %zu bytes of memory to 0x%x starting at 0x%Lx... ", 
           count, (unsigned char) c, (unsigned long long) dst_start_addr );
    fflush(stdout);
    unsigned char c_value = (unsigned char)c;
    for (unsigned n=0; n < count; n ++ ) 
-      g_global_mem->write(dst_start_addr+n,1,&c_value,NULL,NULL);
+      m_global_mem->write(dst_start_addr+n,1,&c_value,NULL,NULL);
    printf( " done.\n");
    fflush(stdout);
 }
@@ -1474,7 +1472,7 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t kernel, dim3 gridDim, dim3 bloc
    fflush(stdout); 
 }
 
-unsigned ptx_set_tex_cache_linesize(unsigned linesize)
+unsigned gpgpu_t::ptx_set_tex_cache_linesize(unsigned linesize)
 {
    g_texcache_linesize = linesize;
    return 0;

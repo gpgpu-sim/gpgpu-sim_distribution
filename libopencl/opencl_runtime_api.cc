@@ -330,9 +330,9 @@ _cl_mem::_cl_mem(
    }
    if( !(flags & (CL_MEM_USE_HOST_PTR|CL_MEM_ALLOC_HOST_PTR)) ) {
       // if not allocating on host, then allocate GPU memory and make a copy
-      m_device_ptr = (size_t) gpu->the_device()->gpgpu_ptx_sim_malloc(size);
+      m_device_ptr = (size_t) gpu->the_device()->gpu_malloc(size);
       if( host_ptr )
-         gpu->the_device()->gpgpu_ptx_sim_memcpy_to_gpu( m_device_ptr, host_ptr, size );
+         gpu->the_device()->memcpy_to_gpu( m_device_ptr, host_ptr, size );
    }
 }
 
@@ -859,7 +859,7 @@ clEnqueueReadBuffer(cl_command_queue    command_queue,
    if( !blocking_read ) 
       gpgpusim_opencl_warning(__my_func__,__LINE__, "non-blocking read treated as blocking read");
    gpgpu_t *gpu = command_queue->get_device()->the_device();
-   gpu->gpgpu_ptx_sim_memcpy_from_gpu( ptr, (size_t)buffer, cb );
+   gpu->memcpy_from_gpu( ptr, (size_t)buffer, cb );
    return CL_SUCCESS;
 }
 
@@ -877,7 +877,7 @@ clEnqueueWriteBuffer(cl_command_queue   command_queue,
    if( !blocking_write ) 
       gpgpusim_opencl_warning(__my_func__,__LINE__, "non-blocking write treated as blocking write");
    gpgpu_t *gpu = command_queue->get_device()->the_device();
-   gpu->gpgpu_ptx_sim_memcpy_to_gpu( (size_t)buffer, ptr, cb );
+   gpu->memcpy_to_gpu( (size_t)buffer, ptr, cb );
    return CL_SUCCESS;
 }
 
@@ -1151,11 +1151,11 @@ clEnqueueCopyBuffer(cl_command_queue    command_queue,
 
    gpgpu_t *gpu = command_queue->get_device()->the_device();
    if( src->is_on_host() && !dst->is_on_host() )
-      gpu->gpgpu_ptx_sim_memcpy_to_gpu( ((size_t)dst->device_ptr())+dst_offset, ((char*)src->host_ptr())+src_offset, cb );
+      gpu->memcpy_to_gpu( ((size_t)dst->device_ptr())+dst_offset, ((char*)src->host_ptr())+src_offset, cb );
    else if( !src->is_on_host() && dst->is_on_host() ) 
-      gpu->gpgpu_ptx_sim_memcpy_from_gpu( ((char*)dst->host_ptr())+dst_offset, ((size_t)src->device_ptr())+src_offset, cb );
+      gpu->memcpy_from_gpu( ((char*)dst->host_ptr())+dst_offset, ((size_t)src->device_ptr())+src_offset, cb );
    else if( !src->is_on_host() && !dst->is_on_host() ) 
-      gpu->gpgpu_ptx_sim_memcpy_gpu_to_gpu( ((size_t)dst->device_ptr())+dst_offset, ((size_t)src->device_ptr())+src_offset, cb );
+      gpu->memcpy_gpu_to_gpu( ((size_t)dst->device_ptr())+dst_offset, ((size_t)src->device_ptr())+src_offset, cb );
    else
       opencl_not_implemented(__my_func__,__LINE__);
    return CL_SUCCESS;
