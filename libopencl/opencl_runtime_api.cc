@@ -467,15 +467,15 @@ void _cl_program::Build(const char *options)
          const char* remote_host = getenv( "OPENCL_REMOTE_GPU_HOST" );
          if ( remote_host && test_dir )
          {
-           snprintf(commandline,1024,"ssh %s \"%s/libopencl/bin/nvopencl_wrapper %s/%s %s/%s %s\"", 
-                   remote_host, gpgpusim_opencl_path, test_dir, cl_fname, test_dir, ptx_fname, opt );
+           snprintf(commandline,1024,"ssh %s \"export LD_LIBRARY_PATH=%s; %s/libopencl/bin/nvopencl_wrapper %s/%s %s/%s %s\"", 
+                    remote_host, nvopencl_libdir, gpgpusim_opencl_path, test_dir, cl_fname, test_dir, ptx_fname, opt );
          }
          else
          {
            snprintf(commandline,1024,"%s/libopencl/bin/nvopencl_wrapper %s %s %s", 
                    gpgpusim_opencl_path, cl_fname, ptx_fname, opt );
          }
-
+         printf("GPGPU-Sim OpenCL API: OpenCL wrapper command line \'%s\'\n", commandline);
          int result = system(commandline);
          setenv("LD_LIBRARY_PATH",ld_library_path_orig,1);
          if( result != 0 ) {
