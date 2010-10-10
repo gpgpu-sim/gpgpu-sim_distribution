@@ -222,26 +222,23 @@ public:
     void gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref);
     const char* gpgpu_ptx_sim_findNamefromTexture(const struct textureReference* texref);
     unsigned ptx_set_tex_cache_linesize(unsigned linesize);
-    const struct cudaArray* gpgpu_ptx_sim_accessArrayofTexture(struct textureReference* texref); 
-    const struct textureReference* gpgpu_ptx_sim_accessTextureofName(const char* name); 
-    int gpgpu_ptx_sim_sizeofTexture(const char* name);
 
     const struct textureReference* get_texref(const std::string &texname) const
     {
-        std::map<std::string, const struct textureReference*>::const_iterator t=NameToTextureMap.find(texname);
-        assert( t != NameToTextureMap.end() );
+        std::map<std::string, const struct textureReference*>::const_iterator t=m_NameToTextureRef.find(texname);
+        assert( t != m_NameToTextureRef.end() );
         return t->second;
     }
     const struct cudaArray* get_texarray( const struct textureReference *texref ) const
     {
-        std::map<const struct textureReference*,const struct cudaArray*>::const_iterator t=TextureToArrayMap.find(texref);
-        assert(t != TextureToArrayMap.end());
+        std::map<const struct textureReference*,const struct cudaArray*>::const_iterator t=m_TextureRefToCudaArray.find(texref);
+        assert(t != m_TextureRefToCudaArray.end());
         return t->second;
     }
     const struct textureInfo* get_texinfo( const struct textureReference *texref ) const
     {
-        std::map<const struct textureReference*, const struct textureInfo*>::const_iterator t=TextureToInfoMap.find(texref);
-        assert(t != TextureToInfoMap.end());
+        std::map<const struct textureReference*, const struct textureInfo*>::const_iterator t=m_TextureRefToTexureInfo.find(texref);
+        assert(t != m_TextureRefToTexureInfo.end());
         return t->second;
     }
 
@@ -253,10 +250,10 @@ protected:
 
    unsigned long long m_dev_malloc;
 
-   std::map<const struct textureReference*,const struct cudaArray*> TextureToArrayMap; // texture bindings
-   std::map<const struct textureReference*, const struct textureInfo*> TextureToInfoMap;
-   std::map<std::string, const struct textureReference*> NameToTextureMap;
-   unsigned int g_texcache_linesize;
+   std::map<std::string, const struct textureReference*> m_NameToTextureRef;
+   std::map<const struct textureReference*,const struct cudaArray*> m_TextureRefToCudaArray;
+   std::map<const struct textureReference*, const struct textureInfo*> m_TextureRefToTexureInfo;
+   unsigned int m_texcache_linesize;
 };
 
 struct gpgpu_ptx_sim_kernel_info 

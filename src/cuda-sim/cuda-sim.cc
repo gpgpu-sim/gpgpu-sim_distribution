@@ -100,19 +100,13 @@ unsigned gpgpu_param_num_shaders = 0;
 void gpgpu_t::gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref)
 {
    std::string texname(name);
-   NameToTextureMap[texname] = texref;
-}
-
-const struct textureReference* gpgpu_t::gpgpu_ptx_sim_accessTextureofName(const char* name) 
-{
-   std::string texname(name);
-   return NameToTextureMap[texname];
+   m_NameToTextureRef[texname] = texref;
 }
 
 const char* gpgpu_t::gpgpu_ptx_sim_findNamefromTexture(const struct textureReference* texref)
 {
-   std::map<std::string, const struct textureReference*>::iterator itr = NameToTextureMap.begin();
-   while (itr != NameToTextureMap.end()) {
+   std::map<std::string, const struct textureReference*>::iterator itr = m_NameToTextureRef.begin();
+   while (itr != m_NameToTextureRef.end()) {
       if ((*itr).second == texref) {
          const char *p = ((*itr).first).c_str();
          return p;
@@ -139,16 +133,16 @@ unsigned int intLOGB2( unsigned int v ) {
 
 void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, const struct cudaArray* array)
 {
-   TextureToArrayMap[texref] = array;
+   m_TextureRefToCudaArray[texref] = array;
    unsigned int texel_size_bits = array->desc.w + array->desc.x + array->desc.y + array->desc.z;
    unsigned int texel_size = texel_size_bits/8;
    unsigned int Tx, Ty;
    int r;
 
    printf("GPGPU-Sim PTX:   texel size = %d\n", texel_size);
-   printf("GPGPU-Sim PTX:   texture cache linesize = %d\n", g_texcache_linesize);
+   printf("GPGPU-Sim PTX:   texture cache linesize = %d\n", m_texcache_linesize);
    //first determine base Tx size for given linesize
-   switch (g_texcache_linesize) {
+   switch (m_texcache_linesize) {
    case 16:
       Tx = 4;
       break;
@@ -165,7 +159,7 @@ void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* te
       Tx = 16;
       break;
    default:
-      printf("GPGPU-Sim PTX:   Line size of %d bytes currently not supported.\n", g_texcache_linesize);
+      printf("GPGPU-Sim PTX:   Line size of %d bytes currently not supported.\n", m_texcache_linesize);
       assert(0);
       break;
    }
@@ -176,7 +170,7 @@ void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* te
       r = r >> 2;
    }
    //by now, got the correct Tx size, calculate correct Ty size
-   Ty = g_texcache_linesize/(Tx*texel_size);
+   Ty = m_texcache_linesize/(Tx*texel_size);
 
    printf("GPGPU-Sim PTX:   Tx = %d; Ty = %d, Tx_numbits = %d, Ty_numbits = %d\n", Tx, Ty, intLOGB2(Tx), intLOGB2(Ty));
    printf("GPGPU-Sim PTX:   Texel size = %d bytes; texel_size_numbits = %d\n", texel_size, intLOGB2(texel_size));
@@ -189,20 +183,7 @@ void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* te
    texInfo->Ty_numbits = intLOGB2(Ty);
    texInfo->texel_size = texel_size;
    texInfo->texel_size_numbits = intLOGB2(texel_size);
-   TextureToInfoMap[texref] = texInfo;
-}
-
-const struct cudaArray* gpgpu_t::gpgpu_ptx_sim_accessArrayofTexture(struct textureReference* texref) 
-{
-   return TextureToArrayMap[texref];
-}
-
-int gpgpu_t::gpgpu_ptx_sim_sizeofTexture(const char* name)
-{
-   std::string texname(name);
-   const struct textureReference* texref = NameToTextureMap[texname];
-   const struct cudaArray* array = TextureToArrayMap[texref];
-   return array->size;
+   m_TextureRefToTexureInfo[texref] = texInfo;
 }
 
 unsigned g_assemble_code_next_pc=0; 
@@ -1474,7 +1455,7 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t kernel, dim3 gridDim, dim3 bloc
 
 unsigned gpgpu_t::ptx_set_tex_cache_linesize(unsigned linesize)
 {
-   g_texcache_linesize = linesize;
+   m_texcache_linesize = linesize;
    return 0;
 }
 
