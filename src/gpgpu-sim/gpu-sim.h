@@ -96,51 +96,6 @@
 #define SAMPLELOG 222
 #define DUMPLOG 333
 
-enum divergence_support_t {
-   POST_DOMINATOR = 1,
-   NUM_SIMD_MODEL
-};
-
-struct shader_core_config 
-{
-   unsigned warp_size;
-   bool gpgpu_perfect_mem;
-   enum divergence_support_t model;
-   unsigned n_thread_per_shader;
-   unsigned max_warps_per_shader; 
-   unsigned max_cta_per_core; //Limit on number of concurrent CTAs in shader core
-   unsigned pdom_sched_type;
-   bool gpgpu_no_dl1;
-   char *gpgpu_cache_texl1_opt;
-   char *gpgpu_cache_constl1_opt;
-   char *gpgpu_cache_dl1_opt;
-   char *gpgpu_cache_il1_opt;
-   unsigned n_mshr_per_shader;
-   bool gpgpu_dwf_reg_bankconflict;
-   int gpgpu_operand_collector_num_units;
-   int gpgpu_operand_collector_num_units_sfu;
-   bool gpgpu_stall_on_use;
-   bool gpgpu_cache_wt_through;
-   //Shader core resources
-   unsigned gpgpu_shmem_size;
-   unsigned gpgpu_shader_registers;
-   int gpgpu_warpdistro_shader;
-   int gpgpu_interwarp_mshr_merge;
-   int gpgpu_n_shmem_bank;
-   int gpgpu_n_cache_bank;
-   int gpgpu_shmem_port_per_bank;
-   int gpgpu_cache_port_per_bank;
-   int gpgpu_const_port_per_bank;
-   int gpgpu_shmem_pipe_speedup;  
-   unsigned gpgpu_num_reg_banks;
-   unsigned gpu_max_cta_per_shader; // TODO: modify this for fermi... computed based upon kernel 
-                                    // resource usage; used in shader_core_ctx::translate_local_memaddr 
-   bool gpgpu_reg_bank_use_warp_id;
-   int gpgpu_coalesce_arch;
-   bool gpgpu_local_mem_map;
-   int gpu_padded_cta_size;
-};
-
 enum dram_ctrl_t {
    DRAM_FIFO=0,
    DRAM_IDEAL_FAST=1
@@ -309,7 +264,5 @@ extern unsigned int **concurrent_row_access; //concurrent_row_access[dram chip i
 
 extern unsigned int gpgpu_n_sent_writes;
 extern unsigned int gpgpu_n_processed_writes;
-extern unsigned made_write_mfs;
-extern unsigned made_read_mfs;
 
 #endif

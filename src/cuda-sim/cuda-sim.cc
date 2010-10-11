@@ -438,61 +438,64 @@ void ptx_print_insn( address_type pc, FILE *fp )
    finfo->print_insn(pc,fp);
 }
 
-static void get_opcode_info( const ptx_instruction *pI, unsigned opcode, unsigned *cycles, op_type *op )
+void ptx_instruction::get_opcode_info()
 {
-   *op = ALU_OP;
-   *cycles = 1;
-   if ( opcode == LD_OP ) {
-      *op = LOAD_OP;
-   } else if ( opcode == ST_OP ) {
-      *op = STORE_OP;
-   } else if ( opcode == BRA_OP ) {
-      *op = BRANCH_OP;
-   } else if ( opcode == BREAKADDR_OP ) {
-      *op = BRANCH_OP;
-   } else if ( opcode == TEX_OP ) {
-      *op = LOAD_OP;
-   } else if ( opcode == ATOM_OP ) {
-      *op = LOAD_OP; // timing model treats this like load for now
-   } else if ( opcode == BAR_OP ) {
-      *op = BARRIER_OP;
-   } else if ( opcode == MEMBAR_OP ) 
-      *op = MEMORY_BARRIER_OP;
-
-   // Floating point instructions
-   if( opcode == RCP_OP ) {
-       *cycles = 2;
-       *op = SFU_OP;
-   } else if ( opcode == LG2_OP || opcode == RSQRT_OP ) {
-       *cycles = 4;
-       *op = SFU_OP;
-   } else if( opcode == SQRT_OP || opcode == SIN_OP || opcode == COS_OP || opcode == EX2_OP ) {
-      *cycles = 4;
-      *op = SFU_OP;
-   } else if( opcode == DIV_OP ) {
+   op = ALU_OP;
+   initiation_interval = latency = 1;
+   switch( m_opcode ) {
+   case LD_OP: op = LOAD_OP; break;
+   case ST_OP: op = STORE_OP; break;
+   case BRA_OP: op = BRANCH_OP; break;
+   case BREAKADDR_OP: op = BRANCH_OP; break;
+   case TEX_OP: op = LOAD_OP; break;
+   case ATOM_OP: op = LOAD_OP; break;
+   case BAR_OP: op = BARRIER_OP; break;
+   case MEMBAR_OP: op = MEMORY_BARRIER_OP; break;
+   case RCP_OP:
+       latency = 2;
+       initiation_interval = 2;
+       op = SFU_OP;
+       break;
+   case LG2_OP: case RSQRT_OP:
+       latency = 4;
+       initiation_interval = 4;
+       op = SFU_OP;
+       break;
+   case SQRT_OP: case SIN_OP: case COS_OP: case EX2_OP:
+      latency = 10;
+      initiation_interval = 4;
+      op = SFU_OP;
+      break;
+   case DIV_OP: 
       // Floating point only
-      if( pI->get_type() == F32_TYPE || pI->get_type() == F64_TYPE ) {
-         *cycles = 4;         
-         *op = SFU_OP;
+      if( get_type() == F32_TYPE || get_type() == F64_TYPE ) {
+         latency = 10;
+         initiation_interval = 4;
+         op = SFU_OP;
       }
-   }
-   // Integer instructions
-   if( opcode == MUL_OP ) {
-      if( pI->get_type() == B32_TYPE || pI->get_type() == U32_TYPE || pI->get_type() == S32_TYPE ) {
+      break;
+   case MUL_OP:
+      if( get_type() == B32_TYPE || get_type() == U32_TYPE || get_type() == S32_TYPE ) {
          // 32-bit integer instruction
-         *cycles = 5;
-         *op = SFU_OP;
+         latency = 24;
+         initiation_interval = 5;
+         op = SFU_OP;
       }
-      if( pI->get_type() == F32_TYPE || pI->get_type() == F64_TYPE ) 
-         *op = ALU_SFU_OP;
-   }
-   if( opcode == MAD_OP ) {
-       if( pI->get_type() == B32_TYPE || pI->get_type() == U32_TYPE || pI->get_type() == S32_TYPE ) {
+      if( get_type() == F32_TYPE || get_type() == F64_TYPE ) {
+         op = ALU_SFU_OP;
+      }
+      break;
+   case MAD_OP:
+       if( get_type() == B32_TYPE || get_type() == U32_TYPE || get_type() == S32_TYPE ) {
           // 32-bit integer instruction
-          *cycles = 6;
-          *op = SFU_OP;
+          latency = 30;
+          initiation_interval = 6;
+          op = SFU_OP;
        }
-    }
+       break;
+   default: 
+       break;
+   }
 }
 
 void ptx_thread_info::ptx_fetch_inst( inst_t &inst ) const
@@ -519,7 +522,6 @@ void ptx_instruction::pre_decode()
    ar2 = 0;
 
    bool has_dst = false ;
-   int opcode = get_opcode(); //determine the opcode
 
    switch ( get_opcode() ) {
 #define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: has_dst = (DST!=0); break;
@@ -530,7 +532,7 @@ void ptx_instruction::pre_decode()
       break;
    }
 
-   get_opcode_info(this,opcode,&cycles,&op);
+   get_opcode_info();
 
    // Get register operands
    int n=0,m=0;

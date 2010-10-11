@@ -386,7 +386,8 @@ public:
         is_vectorin=0; 
         is_vectorout=0;
         space = memory_space_t();
-        cycles = 0;
+        latency = 1;
+        initiation_interval = 1;
         for( unsigned i=0; i < MAX_REG_OPERANDS; i++ )
            arch_reg[i]=-1;
         isize=0;
@@ -411,7 +412,8 @@ public:
     int pred; // predicate register number
     int ar1, ar2;
     int arch_reg[MAX_REG_OPERANDS]; // register number for bank conflict evaluation
-    unsigned cycles; // 1/throughput for instruction
+    unsigned latency; // operation latency 
+    unsigned initiation_interval;
 
     unsigned data_size; // what is the size of the word being operated on?
     memory_space_t space;
@@ -423,16 +425,77 @@ protected:
 
 #define MAX_WARP_SIZE 32
 
+enum divergence_support_t {
+   POST_DOMINATOR = 1,
+   NUM_SIMD_MODEL
+};
+
+struct shader_core_config 
+{
+   unsigned warp_size;
+   bool gpgpu_perfect_mem;
+   enum divergence_support_t model;
+   unsigned n_thread_per_shader;
+   unsigned max_warps_per_shader; 
+   unsigned max_cta_per_core; //Limit on number of concurrent CTAs in shader core
+   unsigned pdom_sched_type;
+   bool gpgpu_no_dl1;
+   char *gpgpu_cache_texl1_opt;
+   char *gpgpu_cache_constl1_opt;
+   char *gpgpu_cache_dl1_opt;
+   char *gpgpu_cache_il1_opt;
+   unsigned n_mshr_per_shader;
+   bool gpgpu_dwf_reg_bankconflict;
+   int gpgpu_operand_collector_num_units_sp;
+   int gpgpu_operand_collector_num_units_sfu;
+   int gpgpu_operand_collector_num_units_mem;
+   bool gpgpu_stall_on_use;
+   bool gpgpu_cache_wt_through;
+   //Shader core resources
+   unsigned gpgpu_shmem_size;
+   unsigned gpgpu_shader_registers;
+   int gpgpu_warpdistro_shader;
+   int gpgpu_interwarp_mshr_merge;
+   int gpgpu_n_shmem_bank;
+   int gpgpu_n_cache_bank;
+   int gpgpu_shmem_port_per_bank;
+   int gpgpu_cache_port_per_bank;
+   int gpgpu_const_port_per_bank;
+   int gpgpu_shmem_pipe_speedup;  
+   unsigned gpgpu_num_reg_banks;
+   unsigned gpu_max_cta_per_shader; // TODO: modify this for fermi... computed based upon kernel 
+                                    // resource usage; used in shader_core_ctx::translate_local_memaddr 
+   bool gpgpu_reg_bank_use_warp_id;
+   int gpgpu_coalesce_arch;
+   bool gpgpu_local_mem_map;
+   int gpu_padded_cta_size;
+
+   unsigned max_sp_latency;
+   unsigned max_sfu_latency;
+   unsigned gpgpu_cache_texl1_linesize;
+   unsigned gpgpu_cache_constl1_linesize;
+   unsigned gpgpu_cache_dl1_linesize;
+
+   static const address_type WORD_SIZE=4;
+   unsigned null_bank_func(address_type, unsigned) const { return 1; }
+   unsigned shmem_bank_func(address_type addr, unsigned) const;
+   unsigned dcache_bank_func(address_type add, unsigned line_size) const;
+};
+
+typedef unsigned (shader_core_config::*bank_func_t)(address_type add, unsigned line_size) const;
+typedef address_type (*tag_func_t)(address_type add, unsigned line_size);
+
 class warp_inst_t: public inst_t {
 public:
     // constructors
-    warp_inst_t( unsigned warp_size ) 
+    warp_inst_t( const struct shader_core_config *config ) 
     { 
-        assert(warp_size<=MAX_WARP_SIZE); 
-        m_warp_size=warp_size;
+        assert(config->warp_size<=MAX_WARP_SIZE); 
+        m_config=config;
         m_empty=true; 
         m_isatomic=false;
         m_per_scalar_thread_valid=false;
+        m_mem_accesses_created=false;
     }
 
     // modifiers
@@ -452,18 +515,19 @@ public:
     }
     void issue( unsigned mask, unsigned warp_id, unsigned long long cycle ) 
     {
-        for (int i=(int)m_warp_size-1; i>=0; i--) {
+        for (int i=(int)m_config->warp_size-1; i>=0; i--) {
             if( mask & (1<<i) )
                 warp_active_mask.set(i);
         }
         m_warp_id = warp_id;
         issue_cycle = cycle;
+        cycles = initiation_interval;
         m_empty=false;
     }
     void set_addr( unsigned n, new_addr_type addr ) 
     {
         if( !m_per_scalar_thread_valid ) {
-            m_per_scalar_thread.resize(m_warp_size);
+            m_per_scalar_thread.resize(m_config->warp_size);
             m_per_scalar_thread_valid=true;
         }
         m_per_scalar_thread[n].memreqaddr = addr;
@@ -474,7 +538,7 @@ public:
                        class ptx_thread_info *thread )
     {
         if( !m_per_scalar_thread_valid ) {
-            m_per_scalar_thread.resize(m_warp_size);
+            m_per_scalar_thread.resize(m_config->warp_size);
             m_per_scalar_thread_valid=true;
             m_isatomic=true;
         }
@@ -487,11 +551,11 @@ public:
        warp_active_mask.reset();
        for( std::vector<unsigned>::iterator i=active.begin(); i!=active.end(); ++i ) {
           unsigned t = *i;
-          assert( t < m_warp_size );
+          assert( t < m_config->warp_size );
           warp_active_mask.set(t);
        }
        if( m_isatomic ) {
-          for( unsigned i=0; i < m_warp_size; i++ ) {
+          for( unsigned i=0; i < m_config->warp_size; i++ ) {
              if( !warp_active_mask.test(i) ) {
                  m_per_scalar_thread[i].callback.function = NULL;
                  m_per_scalar_thread[i].callback.instruction = NULL;
@@ -504,12 +568,13 @@ public:
     {
         warp_active_mask.reset(lane_id);
     }
+    void get_memory_access_list();
 
     // accessors
     virtual void print_insn(FILE *fp) const 
     {
         fprintf(fp," [inst @ pc=0x%04x] ", pc );
-        for (int i=(int)m_warp_size-1; i>=0; i--)
+        for (int i=(int)m_config->warp_size-1; i>=0; i--)
             fprintf(fp, "%c", ((warp_active_mask[i])?'1':'0') );
     }
     bool active( unsigned thread ) const { return warp_active_mask.test(thread); }
@@ -533,22 +598,32 @@ public:
 
     bool isatomic() const { return m_isatomic; }
 
-    bool mem_accesses_computed() const { return m_mem_accesses_created; }
-    void set_mem_accesses_computed() { m_mem_accesses_created=true; }
+    unsigned warp_size() const { return m_config->warp_size; }
+
+    bool mem_accesses_created() const { return m_mem_accesses_created; }
+    void set_mem_accesses_created() { m_mem_accesses_created=true; }
     bool accessq_empty() const { return m_accessq.empty(); }
     unsigned get_accessq_size() const { return m_accessq.size(); }
     mem_access_t &accessq( unsigned n ) { return m_accessq[n]; }
     mem_access_t &accessq_back() { return m_accessq.back(); }
-    void accessq_push_back( const mem_access_t &req ) { m_accessq.push_back(req); }
     void accessq_pop_back() { m_accessq.pop_back(); }
-    void sort_accessq( unsigned qbegin );
+
+    bool dispatch_delay()
+    { 
+        if( cycles > 0 ) 
+            cycles--;
+        return cycles > 0;
+    }
+
+    void print( FILE *fout ) const;
 
 protected:
     bool m_empty;
     unsigned long long issue_cycle;
+    unsigned cycles; // used for implementing initiation interval delay
     bool m_isatomic;
     unsigned m_warp_id;
-    unsigned m_warp_size;
+    const struct shader_core_config *m_config; 
     std::bitset<MAX_WARP_SIZE> warp_active_mask;
 
     struct per_thread_info {

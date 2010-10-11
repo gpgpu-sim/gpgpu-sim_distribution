@@ -107,7 +107,7 @@ void mem_fetch::print( FILE *fp ) const
 {
    fprintf(fp,"  mf: uid=%6u, addr=0x%08llx, sid=%u, wid=%u, pc=0x%04x, %s, bank=%u, ", 
            request_uid, addr, sid, wid, pc, (m_write?"write":"read "), tlx.bk);
-   if( mshr ) mshr->print(fp,0x100);
+   if( mshr ) mshr->print(fp);
    else fprintf(fp,"\n");
 }
 

@@ -142,6 +142,7 @@ void gpgpu_sim::visualizer_printstat()
    shader_CTA_count_visualizer_gzprint(visualizer_file);
 
    // per shader core cache miss rate 
+/*
    gzprintf(visualizer_file, "CacheMissRate_GlobalLocalL1_All: ");
    for (unsigned i=0;i<m_n_shader;i++) 
       gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1_windowed_cache_miss_rate(0));
@@ -166,10 +167,10 @@ void gpgpu_sim::visualizer_printstat()
    for (unsigned i=0;i<m_n_shader;i++) 
       gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1const_windowed_cache_miss_rate(1));
    gzprintf(visualizer_file, "\n");
-
    // reset for next interval
    for (unsigned i=0;i<m_n_shader;i++) 
       m_sc[i]->new_cache_window();
+*/
 
    for (unsigned i=0;i<m_n_mem;i++) 
       m_memory_partition_unit[i]->visualizer_print(visualizer_file);

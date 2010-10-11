@@ -983,7 +983,7 @@ ptx_instruction::ptx_instruction( int opcode,
                                   const char *file, 
                                   unsigned line,
                                   const char *source,
-                                  unsigned warp_size ) : warp_inst_t(warp_size)
+                                  const shader_core_config *config ) : warp_inst_t(config)
 {
    m_uid = ++g_num_ptx_inst_uid;
    m_PC = 0;
@@ -1011,7 +1011,6 @@ ptx_instruction::ptx_instruction( int opcode,
    m_geom_spec = 0;
    m_vector_spec = 0;
    m_atomic_spec = 0;
-   m_warp_size = warp_size;
    m_membar_level = 0;
    m_inst_size = 8; // bytes
 

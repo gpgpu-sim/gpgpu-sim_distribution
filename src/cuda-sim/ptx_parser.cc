@@ -68,10 +68,10 @@
 extern "C" int ptx_error( const char *s );
 extern int ptx_lineno;
 
-static unsigned g_warp_size;
-void set_ptx_warp_size(unsigned warp_size)
+static const struct shader_core_config *g_shader_core_config;
+void set_ptx_warp_size(const struct shader_core_config * warp_size)
 {
-   g_warp_size=warp_size;
+   g_shader_core_config=warp_size;
 }
 
 static bool g_debug_ir_generation=false;
@@ -292,7 +292,7 @@ const ptx_instruction *ptx_instruction_lookup( const char *filename, unsigned li
 void add_instruction() 
 {
    DPRINTF("add_instruction: %s", ((g_opcode>0)?g_opcode_string[g_opcode]:"<label>") );
-   assert( g_warp_size != 0 );
+   assert( g_shader_core_config != 0 );
    ptx_instruction *i = new ptx_instruction( g_opcode, 
                                              g_pred, 
                                              g_neg_pred,
@@ -306,7 +306,7 @@ void add_instruction()
                                              g_filename,
                                              ptx_lineno,
                                              linebuf,
-                                             g_warp_size );
+                                             g_shader_core_config );
    g_instructions.push_back(i);
    g_inst_lookup[g_filename][ptx_lineno] = i;
    init_instruction_state();

@@ -107,8 +107,6 @@
 #define WRITE_MASK_SIZE 8
 #define NO_PARTIAL_WRITE (partial_write_mask_t())
 
-#define WORD_SIZE 4
-
 //Set a hard limit of 32 CTAs per shader [cuda only has 8]
 #define MAX_CTA_PER_SHADER 32
 
@@ -319,6 +317,7 @@ public:
    void init( new_addr_type address, bool wr, memory_space_t space, unsigned warp_id );
    void clear() { m_insts.clear(); }
    void set_mf( class mem_fetch *mf ) { m_mf=mf; }
+   class mem_fetch *get_mf() { return m_mf; }
    void add_inst( warp_inst_t inst ) { m_insts.push_back(inst); }
    void set_status( enum mshr_status status );
    void merge( mshr_entry *mshr )
@@ -346,7 +345,7 @@ public:
    {
        done_insts.insert(done_insts.end(),m_insts.begin(),m_insts.end());
    }
-   void add_to_queue( std::deque<mshr_entry*> &q )
+   void add_to_queue( std::list<mshr_entry*> &q )
    {
        // place all merged requests in return queue
        mshr_entry *req = this;
@@ -380,7 +379,7 @@ public:
        return m_insts[0].isatomic();
    }
    new_addr_type get_addr() const { return m_addr; }
-   void print(FILE *fp, unsigned mask) const;
+   void print(FILE *fp) const;
     
 private:
     unsigned m_id;
@@ -416,25 +415,22 @@ public:
       m_num_banks=0;
       m_cu = NULL;
       m_shader=NULL;
-      m_sfu_port=NULL;
-      m_alu_port=NULL;
+      m_num_ports=0;
    }
-   void init( unsigned num_collectors_alu, 
-              unsigned num_collectors_sfu, 
-              unsigned num_banks, 
-              shader_core_ctx *shader,
-              warp_inst_t **alu_port,
-              warp_inst_t **sfu_port );
+   void add_port( unsigned num_collector_units,
+                  warp_inst_t **input_port,
+                  warp_inst_t **output_port );
+   void init( unsigned num_banks, shader_core_ctx *shader );
 
    // modifiers
    bool writeback( const warp_inst_t &warp ); // might cause stall 
 
-   void step( warp_inst_t *&alu_issue_port, warp_inst_t *&sfu_issue_port ) 
+   void step()
    {
       dispatch_ready_cu();   
       allocate_reads();
-      allocate_cu(alu_issue_port);
-      allocate_cu(sfu_issue_port);
+      for( unsigned p=0; p < m_num_ports; p++ ) 
+          allocate_cu( p );
       process_banks();
    }
 
@@ -459,7 +455,7 @@ private:
    }
 
    void dispatch_ready_cu();
-   void allocate_cu( warp_inst_t *&id_oc_reg );
+   void allocate_cu( unsigned port );
    void allocate_reads();
 
    // types
@@ -671,7 +667,7 @@ private:
                 warp_inst_t **port, 
                 unsigned num_banks, 
                 unsigned log2_warp_size,
-                unsigned warp_size,
+                const shader_core_config *config,
                 opndcoll_rfu_t *rfu ); 
       void allocate( warp_inst_t *&pipeline_reg );
 
@@ -747,8 +743,11 @@ private:
    collector_unit_t                *m_cu;
    arbiter_t                        m_arbiter;
 
+   unsigned m_num_ports;
+   std::vector<warp_inst_t**> m_input;
+   std::vector<warp_inst_t**> m_output;
+   std::vector<unsigned> m_num_collector_units;
    warp_inst_t **m_alu_port;
-   warp_inst_t **m_sfu_port;
 
    typedef std::map<warp_inst_t**/*port*/,dispatch_unit_t> port_to_du_t;
    port_to_du_t                     m_dispatch_units;
@@ -825,7 +824,7 @@ public:
    mshr_entry* add_mshr(mem_access_t &access, warp_inst_t* inst);
    void mshr_return_from_mem(mshr_entry *mshr);
    unsigned get_max_mshr_used() const {return m_max_mshr_used;}  
-   void print(FILE* fp, class shader_core_ctx* shader,unsigned mask);
+   void print(FILE* fp);
 
 private:
    mshr_entry *alloc_free_mshr(bool istexture);
@@ -836,15 +835,15 @@ private:
        return (not m_mshr_return_queue.empty()) or 
               ((not m_texture_mshr_pipeline.empty()) and m_texture_mshr_pipeline.front()->fetched());
    }
-   std::deque<mshr_entry*> &choose_return_queue();
+   std::list<mshr_entry*> &choose_return_queue();
 
    const struct shader_core_config *m_shader_config;
 
    typedef std::vector<mshr_entry> mshr_storage_type;
    mshr_storage_type m_mshrs; 
-   std::deque<mshr_entry*> m_free_list;
-   std::deque<mshr_entry*> m_mshr_return_queue;
-   std::deque<mshr_entry*> m_texture_mshr_pipeline;
+   std::list<mshr_entry*> m_free_list;
+   std::list<mshr_entry*> m_mshr_return_queue;
+   std::list<mshr_entry*> m_texture_mshr_pipeline;
    unsigned m_max_mshr_used;
    mshr_lookup m_mshr_lookup;
 };
@@ -871,7 +870,196 @@ struct ifetch_buffer_t {
     unsigned m_warp_id;
 };
 
-typedef address_type (*tag_func_t)(address_type add, unsigned line_size);
+class simd_function_unit {
+public:
+    simd_function_unit( warp_inst_t **result_port, const shader_core_config *config ) 
+    { 
+        m_result_port = result_port;
+        m_config=config;
+        m_dispatch_reg = new warp_inst_t(config); 
+    }
+    ~simd_function_unit() { delete m_dispatch_reg; }
+
+    // modifiers
+    virtual void issue( warp_inst_t *&inst ) { move_warp(m_dispatch_reg,inst); }
+    virtual void cycle() = 0;
+
+    // accessors
+    virtual bool can_issue( const warp_inst_t & ) const { return m_dispatch_reg->empty(); }
+    virtual bool stallable() const = 0;
+    virtual void print( FILE *fp ) const
+    {
+        fprintf(fp,"%s dispatch= ", m_name.c_str() );
+        m_dispatch_reg->print(fp);
+    }
+protected:
+    std::string m_name;
+    const shader_core_config *m_config;
+    warp_inst_t **m_result_port;
+    warp_inst_t *m_dispatch_reg;
+};
+
+class alu : public simd_function_unit {
+public:
+    alu( warp_inst_t **result_port, const shader_core_config *config, unsigned max_latency ) 
+        : simd_function_unit(result_port,config) 
+    {
+        m_result_port = result_port;
+        m_pipeline_depth = max_latency;
+        m_pipeline_reg = new warp_inst_t*[m_pipeline_depth];
+        for( unsigned i=0; i < m_pipeline_depth; i++ ) 
+            m_pipeline_reg[i] = new warp_inst_t( config );
+    }
+
+    //modifiers
+    virtual void cycle() 
+    {
+        if( !m_pipeline_reg[0]->empty() )
+            move_warp(*m_result_port,m_pipeline_reg[0]); // non-stallable pipeline
+        for( unsigned stage=0; (stage+1)<m_pipeline_depth; stage++ ) 
+            move_warp(m_pipeline_reg[stage], m_pipeline_reg[stage+1]);
+        if( !m_dispatch_reg->empty() ) {
+            if( !m_dispatch_reg->dispatch_delay() ) {
+                int start_stage = m_dispatch_reg->latency - m_dispatch_reg->initiation_interval;
+                move_warp(m_pipeline_reg[start_stage],m_dispatch_reg);
+            }
+        }
+    }
+    virtual void issue( warp_inst_t *&inst )
+    {
+        move_warp(m_dispatch_reg,inst);
+    }
+
+    // accessors
+    virtual bool stallable() const { return false; }
+    virtual bool can_issue( const warp_inst_t &inst ) const
+    {
+        return simd_function_unit::can_issue(inst);
+    }
+    virtual void print(FILE *fp) const
+    {
+        simd_function_unit::print(fp);
+        for( int s=m_pipeline_depth-1; s>=0; s-- ) {
+            if( !m_pipeline_reg[s]->empty() ) { 
+                fprintf(fp,"      %s[%2d] ", m_name.c_str(), s );
+                m_pipeline_reg[s]->print(fp);
+            }
+        }
+    }
+private:
+    unsigned m_pipeline_depth;
+    warp_inst_t **m_pipeline_reg;
+};
+
+class sfu : public alu
+{
+public:
+    sfu( warp_inst_t **result_port, const shader_core_config *config ) 
+        : alu(result_port,config,config->max_sfu_latency) { m_name = "SFU"; }
+    virtual bool can_issue( const warp_inst_t &inst ) const
+    {
+        switch(inst.op) {
+        case SFU_OP: break;
+        case ALU_SFU_OP: break;
+        default: return false;
+        }
+        return alu::can_issue(inst);
+    }
+};
+
+class sp_unit : public alu
+{
+public:
+    sp_unit( warp_inst_t **result_port, const shader_core_config *config ) 
+        : alu(result_port,config,config->max_sp_latency) { m_name = "SP "; }
+    virtual bool can_issue( const warp_inst_t &inst ) const
+    {
+        switch(inst.op) {
+        case SFU_OP: return false; 
+        case LOAD_OP: return false;
+        case STORE_OP: return false;
+        case MEMORY_BARRIER_OP: return false;
+        default: break;
+        }
+        return alu::can_issue(inst);
+    }
+};
+
+class ldst_unit : public simd_function_unit {
+public:
+    ldst_unit( gpgpu_sim *gpu, 
+               shader_core_ctx *core, 
+               warp_inst_t **result_port, 
+               shader_core_config *config, 
+               shader_core_stats *stats, 
+               unsigned sid, unsigned tpc );
+
+    // modifiers
+    virtual void cycle(); 
+    void fill( mem_fetch *mf );
+    void flush();
+
+    // accessors
+    virtual bool can_issue( const warp_inst_t &inst ) const
+    {
+        switch(inst.op) {
+        case LOAD_OP: break;
+        case STORE_OP: break;
+        case MEMORY_BARRIER_OP: break;
+        default: return false;
+        }
+        return simd_function_unit::can_issue(inst);
+    }
+    virtual bool stallable() const { return true; }
+    void print(FILE *fout) const;
+
+private:
+   void generate_mem_accesses(warp_inst_t &pipe_reg);
+   void tex_cache_access(warp_inst_t &inst);
+   void const_cache_access(warp_inst_t &inst);
+
+   bool shared_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
+   bool constant_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
+   bool texture_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
+   bool memory_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
+
+   mem_stage_stall_type ccache_check(warp_inst_t &inst, mem_access_t& access){ return NO_RC_FAIL;}
+   mem_stage_stall_type tcache_check(warp_inst_t &inst, mem_access_t& access){ return NO_RC_FAIL;}
+   mem_stage_stall_type dcache_check(warp_inst_t &inst, mem_access_t& access);
+
+   typedef mem_stage_stall_type (ldst_unit::*cache_check_t)(warp_inst_t &,mem_access_t&);
+
+   mem_stage_stall_type process_memory_access_queue( ldst_unit::cache_check_t cache_check,
+                                                     unsigned ports_per_bank, 
+                                                     unsigned memory_send_max, 
+                                                     warp_inst_t &inst );
+   mem_stage_stall_type send_mem_request(warp_inst_t &inst, mem_access_t &access);
+
+   gpgpu_sim *m_gpu;
+   shader_core_ctx *m_core;
+   unsigned m_sid;
+   unsigned m_tpc;
+
+   cache_t *m_L1D; // data cache (global/local memory accesses)
+   cache_t *m_L1T; // texture cache
+   cache_t *m_L1C; // constant cache
+   mshr_shader_unit *m_mshr_unit;
+
+   enum mem_stage_stall_type m_mem_rc;
+
+   shader_core_stats *m_stats; 
+};
+
+enum pipeline_stage_name_t {
+    ID_OC_SP=0,
+    ID_OC_SFU,  
+    ID_OC_MEM,  
+    OC_EX_SP,
+    OC_EX_SFU,
+    OC_EX_MEM,
+    EX_WB,
+    N_PIPELINE_STAGES 
+};
 
 class shader_core_ctx : public core_t 
 {
@@ -880,12 +1068,11 @@ public:
                     const char *name, 
                     unsigned shader_id,
                     unsigned tpc_id,
-                    const struct shader_core_config *config,
+                    struct shader_core_config *config,
                     struct shader_core_stats *stats );
 
    void issue_block2core( class kernel_info_t &kernel );
    void get_pdom_stack_top_info( unsigned tid, unsigned *pc, unsigned *rpc );
-   void new_cache_window();
    bool ptx_thread_done( unsigned hw_thread_id ) const;
    class ptx_thread_info *get_thread_state( unsigned hw_thread_id );
 
@@ -900,7 +1087,7 @@ public:
    void deallocate_barrier( unsigned cta_id );
    void decrement_atomic_count( unsigned wid );
 
-   void cycle_gt200();
+   void cycle();
 
    void reinit(unsigned start_thread, unsigned end_thread, bool reset_not_completed );
    void init_warps(unsigned cta_id, unsigned start_thread, unsigned end_thread);
@@ -913,10 +1100,8 @@ public:
    void fill_shd_L1_with_new_line( class mem_fetch * mf );
    void store_ack( class mem_fetch *mf );
    void dump_istream_state( FILE *fout );
-   void mshr_print(FILE* fp, unsigned mask);
    unsigned first_valid_thread( unsigned stage );
    class ptx_thread_info* get_functional_thread( unsigned tid ) { return m_thread[tid].m_functional_model_thread_state; }
-   void print_warp( warp_inst_t *warp, FILE *fout, int print_mem, int mask ) const;
    std::list<unsigned> get_regs_written( const inst_t &fvt ) const;
    const shader_core_config *get_config() const { return m_config; }
    unsigned get_num_sim_insn() const { return m_num_sim_insn; }
@@ -927,14 +1112,8 @@ public:
    unsigned get_thread_n_l1_mis_ac( unsigned tid ) const { return m_thread[tid].n_l1_mis_ac; }
    unsigned get_thread_n_l1_mrghit_ac( unsigned tid ) const { return m_thread[tid].n_l1_mrghit_ac; }
    unsigned get_thread_n_l1_access_ac( unsigned tid ) const { return m_thread[tid].n_l1_access_ac; }
-   unsigned get_max_mshr_used() const { return m_mshr_unit->get_max_mshr_used(); }
-   void L1cache_print( FILE *fp, unsigned &total_accesses, unsigned &total_misses) const;
-   void L1texcache_print( FILE *fp, unsigned &total_accesses, unsigned &total_misses) const;
-   void L1constcache_print( FILE *fp, unsigned &total_accesses, unsigned &total_misses) const;
    unsigned get_n_active_cta() const { return m_n_active_cta; }
-   float L1_windowed_cache_miss_rate( int x ) const { return m_L1D->shd_cache_windowed_cache_miss_rate(x); }
-   float L1tex_windowed_cache_miss_rate( int x ) const { return m_L1T->shd_cache_windowed_cache_miss_rate(x); }
-   float L1const_windowed_cache_miss_rate( int x ) const { return m_L1C->shd_cache_windowed_cache_miss_rate(x); }
+   void inc_store_req( unsigned warp_id) { m_warp[warp_id].inc_store_req(); }
   
 private:
 
@@ -942,64 +1121,20 @@ private:
 
    address_type next_pc( int tid ) const;
 
-   void func_exec_inst( warp_inst_t &inst );
-   void fetch_new();
+   void fetch();
+
+   void decode();
    void issue_warp( warp_inst_t *&warp, const warp_inst_t *pI, unsigned active_mask, unsigned warp_id );
-   void decode_new();
+   void func_exec_inst( warp_inst_t &inst );
+   address_type translate_local_memaddr(address_type localaddr, unsigned tid, unsigned num_shader );
 
    void execute();
-   void execute_pipe( unsigned pipeline, unsigned next_stage );
-
-   void memory(); // advance memory pipeline stage
-   void memory_queue(warp_inst_t &pipe_reg);
-   void memory_shared_process_warp(warp_inst_t &inst); 
-   void memory_const_process_warp(warp_inst_t &inst);
-   void memory_texture_process_warp(warp_inst_t &inst);
-   void memory_global_process_warp(warp_inst_t &inst);
-   bool memory_shared_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
-   bool memory_constant_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
-   bool memory_texture_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
-   bool memory_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
-   address_type translate_local_memaddr(address_type localaddr, int tid, unsigned num_shader );
-
-   mem_stage_stall_type ccache_check(warp_inst_t &inst, mem_access_t& access){ return NO_RC_FAIL;}
-   mem_stage_stall_type tcache_check(warp_inst_t &inst, mem_access_t& access){ return NO_RC_FAIL;}
-   mem_stage_stall_type dcache_check(warp_inst_t &inst, mem_access_t& access);
-
-   typedef mem_stage_stall_type (shader_core_ctx::*cache_check_t)(warp_inst_t &,mem_access_t&);
-
-   mem_stage_stall_type process_memory_access_queue( shader_core_ctx::cache_check_t cache_check,
-                                                     unsigned ports_per_bank, 
-                                                     unsigned memory_send_max, 
-                                                     warp_inst_t &inst );
-
-   typedef int (shader_core_ctx::*bank_func_t)(address_type add, unsigned line_size);
-   
-   int null_bank_func(address_type add, unsigned line_size);
-   int shmem_bank_func(address_type add, unsigned line_size);
-   int dcache_bank_func(address_type add, unsigned line_size);
-
-   void get_memory_access_list( bank_func_t bank_func,
-                                tag_func_t tag_func,
-                                unsigned warp_parts, 
-                                unsigned line_size, 
-                                bool limit_broadcast, 
-                                warp_inst_t &inst );
-   mem_stage_stall_type send_mem_request(warp_inst_t &inst, mem_access_t &access);
 
    void writeback();
 
-   unsigned char fq_push( unsigned long long int addr, 
-                          int bsize, 
-                          unsigned char write, 
-                          partial_write_mask_t partial_write_mask, 
-                          int wid, mshr_entry* mshr, 
-                          enum mem_access_type mem_acc, 
-                          address_type pc );
-
    void call_thread_done(inst_t &done_inst );
 
-   void print_stage(unsigned int stage, FILE *fout, int print_mem, int mask );
+   void print_stage(unsigned int stage, FILE *fout) const;
 
    // general information
    unsigned m_sid; // shader id
@@ -1020,37 +1155,29 @@ private:
 
    // thread contexts 
    thread_ctx_t             *m_thread; // functional state, per thread fetch state
+
+   // fetch
+   cache_t *m_L1I; // instruction cache
+   int  m_last_warp_fetched;
+
+   // decode/dispatch
+   int  m_last_warp_issued;
    std::vector<shd_warp_t>   m_warp;   // per warp information array
    barrier_set_t             m_barriers;
    ifetch_buffer_t           m_inst_fetch_buffer;
    pdom_warp_ctx_t         **m_pdom_warp; // pdom reconvergence context for each warp
-
    warp_inst_t** m_pipeline_reg;
    Scoreboard *m_scoreboard;
    opndcoll_rfu_t m_operand_collector;
-   mshr_shader_unit *m_mshr_unit;
 
-   // fetch
-   int  m_last_warp_fetched;
-   int  m_last_warp_issued;
-
-   cache_t *m_L1I; // instruction cache
-   cache_t *m_L1D; // data cache (global/local memory accesses)
-   cache_t *m_L1T; // texture cache
-   cache_t *m_L1C; // constant cache
-
-   enum mem_stage_stall_type m_mem_rc;
-};
-
-enum pipeline_stage_name_t {
-    ID_OC_SP=0,
-    ID_OC_SFU,  
-    OC_EX_SP,
-    OC_EX_SFU,
-    EX_MM,
-    MM_WB,
-    WB_RT,
-    N_PIPELINE_STAGES 
+   // execute
+   unsigned m_num_function_units;
+   enum pipeline_stage_name_t *m_dispatch_port;
+   enum pipeline_stage_name_t *m_issue_port;
+   simd_function_unit **m_fu; // stallable pipelines should be last in this array
+   ldst_unit *m_ldst_unit;
+   static const unsigned MAX_ALU_LATENCY = 64;
+   std::bitset<MAX_ALU_LATENCY> m_result_bus;
 };
 
 #endif /* SHADER_H */

@@ -23,7 +23,3 @@ gpgpu_t::gpgpu_t()
    m_dev_malloc=GLOBAL_HEAP_START; 
 }
 
-void warp_inst_t::sort_accessq( unsigned qbegin )
-{
-    std::stable_sort( m_accessq.begin()+qbegin,m_accessq.end());
-}

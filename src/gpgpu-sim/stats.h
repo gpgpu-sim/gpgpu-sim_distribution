@@ -133,6 +133,9 @@ struct shader_core_stats
 
    int n_pdom_sc_orig_stat;
    int n_pdom_sc_single_stat;
+
+   unsigned made_write_mfs;
+   unsigned made_read_mfs;
 };
 
 #endif

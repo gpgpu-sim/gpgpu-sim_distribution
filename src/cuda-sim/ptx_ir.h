@@ -801,7 +801,7 @@ public:
                     const char *file, 
                     unsigned line,
                     const char *source,
-                    unsigned warp_size );
+                    const shader_core_config *config );
 
    void print_insn() const;
    virtual void print_insn( FILE *fp ) const;
@@ -940,7 +940,6 @@ public:
    enum vote_mode_t { vote_any, vote_all, vote_uni };
    enum vote_mode_t vote_mode() const { return m_vote_mode; }
 
-   unsigned warp_size() const { return m_warp_size; }
    int membar_level() const { return m_membar_level; }
 
    bool has_memory_read() const {
@@ -966,6 +965,7 @@ public:
    }
 
 private:
+   void get_opcode_info();
 
    basic_block_t        *m_basic_block;
    unsigned          m_uid;
@@ -973,7 +973,6 @@ private:
    std::string             m_source_file;
    unsigned                m_source_line;
    std::string          m_source;
-   unsigned             m_warp_size;
 
    const symbol           *m_pred;
    bool                    m_neg_pred;
@@ -1176,8 +1175,10 @@ public:
 
    static const ptx_instruction* pc_to_instruction(unsigned pc) 
    {
-      assert(pc <= s_g_pc_to_insn.size());
-      return s_g_pc_to_insn[pc];
+      if( pc < s_g_pc_to_insn.size() )
+          return s_g_pc_to_insn[pc];
+      else
+          return NULL;
    }
    unsigned local_mem_framesize() const 
    { 

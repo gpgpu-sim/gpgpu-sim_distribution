@@ -374,12 +374,15 @@ void gpgpu_sim::reg_options(option_parser_t opp)
                 &m_ptx_force_max_capability,
                 "Force maximum compute capability",
                 "0");
-   option_parser_register(opp, "-gpgpu_operand_collector_num_units", OPT_INT32, &m_shader_config->gpgpu_operand_collector_num_units,
-               "number of collecture units (default = 4)", 
+   option_parser_register(opp, "-gpgpu_operand_collector_num_units_sp", OPT_INT32, &m_shader_config->gpgpu_operand_collector_num_units_sp,
+               "number of collector units (default = 4)", 
                "4");
    option_parser_register(opp, "-gpgpu_operand_collector_num_units_sfu", OPT_INT32, &m_shader_config->gpgpu_operand_collector_num_units_sfu,
-               "number of collecture units (default = 4)", 
+               "number of collector units (default = 4)", 
                "4");
+   option_parser_register(opp, "-gpgpu_operand_collector_num_units_mem", OPT_INT32, &m_shader_config->gpgpu_operand_collector_num_units_mem,
+               "number of collector units (default = 2)", 
+               "2");
    option_parser_register(opp, "-gpgpu_coalesce_arch", OPT_INT32, &m_shader_config->gpgpu_coalesce_arch, 
                            "Coalescing arch (default = 13, anything else is off for now)", 
                            "13");
@@ -453,7 +456,7 @@ gpgpu_sim::gpgpu_sim()
    gpu_deadlock = false;
 }
 
-void set_ptx_warp_size(unsigned warp_size);
+void set_ptx_warp_size(const struct shader_core_config * warp_size);
 
 void gpgpu_sim::init_gpu() 
 {
@@ -465,7 +468,7 @@ void gpgpu_sim::init_gpu()
    int ntok = sscanf(gpgpu_shader_core_pipeline_opt,"%d:%d", 
                      &m_shader_config->n_thread_per_shader,
                      &m_shader_config->warp_size);
-   set_ptx_warp_size(m_shader_config->warp_size);
+   set_ptx_warp_size(m_shader_config);
     
    m_shader_config->max_warps_per_shader =  m_shader_config->n_thread_per_shader/m_shader_config->warp_size;
    assert( !(m_shader_config->n_thread_per_shader % m_shader_config->warp_size) );
@@ -743,8 +746,6 @@ unsigned int gpgpu_sim::run_gpu_sim()
 
 void gpgpu_sim::gpu_print_stat() const
 {  
-   unsigned i;
-    
    printf("gpu_sim_cycle = %lld\n", gpu_sim_cycle);
    printf("gpu_sim_insn = %lld\n", gpu_sim_insn);
    printf("gpu_sim_no_ld_const_insn = %lld\n", m_shader_stats->gpu_sim_insn_no_ld_const);
@@ -796,16 +797,16 @@ void gpgpu_sim::gpu_print_stat() const
    printf("gpgpu_n_mem_texture = %d\n", m_shader_stats->gpgpu_n_mem_texture);
    printf("gpgpu_n_mem_const = %d\n", m_shader_stats->gpgpu_n_mem_const);
 
-   printf("max_n_mshr_used = ");
-   for (unsigned i=0; i< m_n_shader; i++) printf("%d ", m_sc[i]->get_max_mshr_used() );
-   printf("\n");
+   //printf("max_n_mshr_used = ");
+   //for (unsigned i=0; i< m_n_shader; i++) printf("%d ", m_sc[i]->get_max_mshr_used() );
+   //printf("\n");
 
    if (m_memory_config->gpgpu_cache_dl2_opt) {
       m_memory_stats->L2c_print_stat( m_n_mem );
    }
    for (unsigned i=0;i<m_n_mem;i++) 
       m_memory_partition_unit[i]->print(stdout);
-
+/*
    unsigned a,m;
    for (unsigned i=0, a=0, m=0;i<m_n_shader;i++) 
       m_sc[i]->L1cache_print(stdout,a,m);
@@ -816,7 +817,7 @@ void gpgpu_sim::gpu_print_stat() const
    for (i=0,a=0,m=0;i<m_n_shader;i++) 
        m_sc[i]->L1constcache_print(stdout,a,m);
    printf("L1 Const Cache Total Miss Rate = %0.3f\n", (float)m/a);
-
+*/
    if (m_memory_config->gpgpu_cache_dl2_opt) 
       L2c_print_cache_stat();
 
@@ -963,6 +964,20 @@ unsigned char gpgpu_sim::check_icnt_has_buffer(unsigned long long int addr, int 
 
 int gpgpu_sim::issue_mf_from_fq(mem_fetch *mf)
 {
+    // stats
+    if (mf->get_is_write()) m_shader_stats->made_write_mfs++;
+    else m_shader_stats->made_read_mfs++;
+    switch (mf->get_mem_acc()) {
+    case CONST_ACC_R: m_shader_stats->gpgpu_n_mem_const++; break;
+    case TEXTURE_ACC_R: m_shader_stats->gpgpu_n_mem_texture++; break;
+    case GLOBAL_ACC_R: m_shader_stats->gpgpu_n_mem_read_global++; break;
+    case GLOBAL_ACC_W: m_shader_stats->gpgpu_n_mem_write_global++; break;
+    case LOCAL_ACC_R: m_shader_stats->gpgpu_n_mem_read_local++; break;
+    case LOCAL_ACC_W: m_shader_stats->gpgpu_n_mem_write_local++; break;
+    case INST_ACC_R: m_shader_stats->gpgpu_n_mem_read_inst++; break;
+    default: assert(0);
+    }
+
    unsigned destination = mf->get_tlx_addr().chip;
    unsigned tpc_id = mf->get_tpc();
    mf->set_status(IN_ICNT2MEM,MR_ICNT_PUSHED,gpu_sim_cycle+gpu_tot_sim_cycle);
@@ -985,17 +1000,11 @@ void shader_core_ctx::fill_shd_L1_with_new_line(mem_fetch * mf)
        m_L1I->shd_cache_fill(mf->get_addr(),gpu_sim_cycle+gpu_tot_sim_cycle);
        m_warp[mf->get_wid()].clear_imiss_pending();
        delete mf->get_mshr();
+       delete mf;
    } else {
-       m_mshr_unit->mshr_return_from_mem(mf->get_mshr());
-       if (mf->istexture()) 
-           m_L1T->shd_cache_fill(mf->get_addr(),gpu_sim_cycle+gpu_tot_sim_cycle);
-       else if (mf->isconst()) 
-           m_L1C->shd_cache_fill(mf->get_addr(),gpu_sim_cycle+gpu_tot_sim_cycle);
-       else if (!m_config->gpgpu_no_dl1) 
-           m_L1D->shd_cache_fill(mf->get_addr(),gpu_sim_cycle+gpu_tot_sim_cycle);
+       m_ldst_unit->fill(mf);
    }
    freed_read_mfs++;
-   delete mf;
 }
 
 void shader_core_ctx::store_ack( class mem_fetch *mf )
@@ -1279,7 +1288,7 @@ void gpgpu_sim::cycle()
       // L1 cache + shader core pipeline stages 
       for (unsigned i=0;i<m_n_shader;i++) {
          if (m_sc[i]->get_not_completed() || more_thread) {
-               m_sc[i]->cycle_gt200();
+               m_sc[i]->cycle();
          }
       }
       if( g_single_step && ((gpu_sim_cycle+gpu_tot_sim_cycle) >= g_single_step) ) {
@@ -1413,7 +1422,6 @@ void gpgpu_sim::dump_pipeline( int mask, int s, int m ) const
          i = s;
       }
       if(mask&1) m_sc[i]->display_pipeline(stdout, 1, mask & 0x2E );
-      if(mask&0x100) m_sc[i]->mshr_print(stdout, mask);
       if(s != -1) {
          break;
       }
