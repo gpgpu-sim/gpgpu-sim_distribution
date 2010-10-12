@@ -3,6 +3,7 @@
 #include <algorithm>
 
 unsigned mem_access_t::next_access_uid = 0;   
+unsigned warp_inst_t::sm_next_uid = 0;
 
 void move_warp( warp_inst_t *&dst, warp_inst_t *&src )
 {

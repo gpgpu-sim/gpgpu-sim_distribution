@@ -13,7 +13,7 @@ struct glue_buf {
 };
 
 //node side functions
-int interconnect_has_buffer(unsigned int input, unsigned int size); 
+bool interconnect_has_buffer(unsigned int input, unsigned int size); 
 void interconnect_push ( unsigned int input, unsigned int output, 
 		    void* data, unsigned int size); 
 void* interconnect_pop(unsigned int output);

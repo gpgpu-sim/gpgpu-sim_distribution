@@ -1082,8 +1082,6 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
    // Write operation result into global memory
    // (i.e. copy src1_data to dst)
    thread->get_global_memory()->write(src1_data.u32,size/8,&op_result.s64,thread,pI);
-   gpgpu_sim *gpu = thread->get_gpu();
-   gpu->decrement_atomic_count(thread->get_hw_sid(),thread->get_hw_wid());
 }
 
 // atom_impl will now result in a callback being called in mem_ctrl_pop (gpu-sim.c)

@@ -95,9 +95,7 @@ void *gpgpu_sim_thread(void*)
 {
    do {
       sem_wait(&g_sim_signal_start);
-      unsigned grid;
-      class function_info *entry;
-      g_the_gpu.next_grid(grid,entry);
+      g_the_gpu.next_grid();
       g_the_gpu.run_gpu_sim();
       print_simulation_time();
       sem_post(&g_sim_signal_finish);

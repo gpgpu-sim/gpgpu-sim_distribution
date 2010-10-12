@@ -120,7 +120,6 @@ struct shader_core_stats
    unsigned int gpu_stall_by_MSHRwb;
    unsigned int gpu_stall_shd_mem;
    unsigned int gpu_stall_sh2icnt;
-   unsigned int *max_return_queue_length;
 
    //memory access classification
    int gpgpu_n_mem_read_local;

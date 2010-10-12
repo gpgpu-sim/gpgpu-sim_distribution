@@ -171,7 +171,7 @@ public:
 
     unsigned get_n_atomic() const { return m_n_atomic; }
     void inc_n_atomic() { m_n_atomic++; }
-    void dec_n_atomic() { m_n_atomic--; }
+    void dec_n_atomic(unsigned n) { m_n_atomic-=n; }
 
     void set_membar() { m_membar=true; }
     void clear_membar() { m_membar=false; }
@@ -209,16 +209,11 @@ public:
         m_ibuffer[m_next].m_inst = NULL;
         m_ibuffer[m_next].m_valid = false;
     }
-    void ibuffer_step()
-    {
-        m_next = (m_next+1)%IBUFFER_SIZE;
-    }
-    bool imiss_pending() const { return m_imiss_pending!=NULL; }
-    void set_imiss_pending( class mshr_entry *mshr )
-    { 
-        m_imiss_pending=mshr; 
-    }
-    void clear_imiss_pending() { m_imiss_pending=NULL; }
+    void ibuffer_step() { m_next = (m_next+1)%IBUFFER_SIZE; }
+
+    bool imiss_pending() const { return m_imiss_pending; }
+    void set_imiss_pending() { m_imiss_pending=true; }
+    void clear_imiss_pending() { m_imiss_pending=false; }
 
     bool stores_done() const { return m_stores_outstanding == 0; }
     void inc_store_req() { m_stores_outstanding++; }
@@ -229,13 +224,13 @@ public:
     }
 
     bool inst_in_pipeline() const { return m_inst_in_pipeline > 0; }
-
     void inc_inst_in_pipeline() { m_inst_in_pipeline++; }
     void dec_inst_in_pipeline() 
     {
         assert( m_inst_in_pipeline > 0 );
         m_inst_in_pipeline--;
     }
+
     unsigned get_cta_id() const { return m_cta_id; }
 
 private:
@@ -248,7 +243,7 @@ private:
     address_type m_next_pc;
     unsigned n_completed;          // number of threads in warp completed
 
-    class mshr_entry *m_imiss_pending;
+    bool m_imiss_pending;
     
     struct ibuffer_entry {
        ibuffer_entry() { m_valid = false; m_inst = NULL; }
@@ -308,34 +303,40 @@ class mshr_entry {
 public:
    mshr_entry() 
    { 
-       m_status = INVALID; 
        m_merged_requests=NULL;
        m_mf=NULL;
        m_id=0;
+       m_status = INITIALIZED;
+       m_isatomic=false;
    }
    void set_id( unsigned n ) { m_id = n; }
+   unsigned get_id() const { return m_id; }
    void init( new_addr_type address, bool wr, memory_space_t space, unsigned warp_id );
    void clear() { m_insts.clear(); }
    void set_mf( class mem_fetch *mf ) { m_mf=mf; }
    class mem_fetch *get_mf() { return m_mf; }
-   void add_inst( warp_inst_t inst ) { m_insts.push_back(inst); }
-   void set_status( enum mshr_status status );
+   void add_inst( warp_inst_t inst ) 
+   { 
+       m_insts.push_back(inst); 
+       m_isatomic = inst.isatomic();
+   }
    void merge( mshr_entry *mshr )
    {
        //merge this request;
        m_merged_requests = mshr;
        mshr->m_merged_on_other_reqest = true;
    }
-   void do_atomic() 
+   void set_fetched()
    {
-       for( std::vector<warp_inst_t>::iterator e=m_insts.begin(); e != m_insts.end(); ++e ) {
-           warp_inst_t &inst = *e;
-           inst.do_atomic();
+       mshr_entry *mshr = this;
+       while( mshr ) {
+           mshr->m_status=FETCHED;
+           mshr->m_mf=NULL;
+           mshr=mshr->m_merged_requests;
        }
    }
    mshr_entry *get_last_merged()
    {
-       assert(m_status!=INVALID);
        mshr_entry *mshr_hit = this;
        while (mshr_hit->m_merged_requests) 
           mshr_hit = mshr_hit->m_merged_requests;
@@ -357,7 +358,7 @@ public:
 
    unsigned get_warp_id() const { return m_warp_id; }
    bool ismerged() const { return m_merged_on_other_reqest; }
-   bool fetched() const { return m_status == FETCHED;};
+   bool fetched() const { return m_status==FETCHED;}
    bool iswrite() const { return m_iswrite; }
    bool isinst()  const { return m_isinst; }
    bool istexture() const { return m_istexture; }
@@ -367,17 +368,10 @@ public:
    unsigned num_inst() const { return m_insts.size(); }
    inst_t &get_inst(unsigned n) 
    { 
-       assert(m_status!=INVALID&&m_insts.size()>0);
+       assert(n<m_insts.size());
        return m_insts[n]; 
    }
-   bool isatomic() const
-   {
-       assert(m_status!=INVALID);
-       if( isinst() ) 
-           return false;
-       assert(m_insts.size()>0);
-       return m_insts[0].isatomic();
-   }
+   bool isatomic() const { return m_isatomic; }
    new_addr_type get_addr() const { return m_addr; }
    void print(FILE *fp) const;
     
@@ -390,13 +384,14 @@ private:
     bool m_iswrite;
     bool m_merged_on_other_reqest; //true if waiting for another mshr - this mshr doesn't send a memory request
     struct mshr_entry *m_merged_requests; //mshrs waiting on this mshr
-    enum mshr_status m_status; 
     class mem_fetch *m_mf; // link to corresponding memory fetch structure
+    enum mshr_status m_status;
     bool m_isinst;    //if it's a request from the instruction cache
     bool m_istexture; //if it's a request from the texture cache
     bool m_isconst;   //if it's a request from the constant cache
     bool m_islocal;   //if it's a request to the local memory of a thread
     bool m_wt_no_w2cache; //in write_through, sometimes need to prevent writing back returning data into cache, because its been written in the meantime. 
+    bool m_isatomic;
 };
 
 const unsigned WARP_PER_CTA_MAX = 32;
@@ -822,7 +817,7 @@ public:
    void pop_return_head();
 
    mshr_entry* add_mshr(mem_access_t &access, warp_inst_t* inst);
-   void mshr_return_from_mem(mshr_entry *mshr);
+   void mshr_return_from_mem(unsigned mshr_id);
    unsigned get_max_mshr_used() const {return m_max_mshr_used;}  
    void print(FILE* fp);
 
@@ -872,9 +867,8 @@ struct ifetch_buffer_t {
 
 class simd_function_unit {
 public:
-    simd_function_unit( warp_inst_t **result_port, const shader_core_config *config ) 
+    simd_function_unit( const shader_core_config *config ) 
     { 
-        m_result_port = result_port;
         m_config=config;
         m_dispatch_reg = new warp_inst_t(config); 
     }
@@ -895,14 +889,13 @@ public:
 protected:
     std::string m_name;
     const shader_core_config *m_config;
-    warp_inst_t **m_result_port;
     warp_inst_t *m_dispatch_reg;
 };
 
-class alu : public simd_function_unit {
+class pipelined_simd_unit : public simd_function_unit {
 public:
-    alu( warp_inst_t **result_port, const shader_core_config *config, unsigned max_latency ) 
-        : simd_function_unit(result_port,config) 
+    pipelined_simd_unit( warp_inst_t **result_port, const shader_core_config *config, unsigned max_latency ) 
+        : simd_function_unit(config) 
     {
         m_result_port = result_port;
         m_pipeline_depth = max_latency;
@@ -946,16 +939,17 @@ public:
             }
         }
     }
-private:
+protected:
     unsigned m_pipeline_depth;
     warp_inst_t **m_pipeline_reg;
+    warp_inst_t **m_result_port;
 };
 
-class sfu : public alu
+class sfu : public pipelined_simd_unit
 {
 public:
     sfu( warp_inst_t **result_port, const shader_core_config *config ) 
-        : alu(result_port,config,config->max_sfu_latency) { m_name = "SFU"; }
+        : pipelined_simd_unit(result_port,config,config->max_sfu_latency) { m_name = "SFU"; }
     virtual bool can_issue( const warp_inst_t &inst ) const
     {
         switch(inst.op) {
@@ -963,15 +957,15 @@ public:
         case ALU_SFU_OP: break;
         default: return false;
         }
-        return alu::can_issue(inst);
+        return pipelined_simd_unit::can_issue(inst);
     }
 };
 
-class sp_unit : public alu
+class sp_unit : public pipelined_simd_unit
 {
 public:
     sp_unit( warp_inst_t **result_port, const shader_core_config *config ) 
-        : alu(result_port,config,config->max_sp_latency) { m_name = "SP "; }
+        : pipelined_simd_unit(result_port,config,config->max_sp_latency) { m_name = "SP "; }
     virtual bool can_issue( const warp_inst_t &inst ) const
     {
         switch(inst.op) {
@@ -981,15 +975,18 @@ public:
         case MEMORY_BARRIER_OP: return false;
         default: break;
         }
-        return alu::can_issue(inst);
+        return pipelined_simd_unit::can_issue(inst);
     }
 };
 
-class ldst_unit : public simd_function_unit {
+class simt_core_cluster;
+
+class ldst_unit: public pipelined_simd_unit {
 public:
-    ldst_unit( gpgpu_sim *gpu, 
+    ldst_unit( simt_core_cluster *gpu, 
                shader_core_ctx *core, 
-               warp_inst_t **result_port, 
+               opndcoll_rfu_t *operand_collector,
+               Scoreboard *scoreboard,
                shader_core_config *config, 
                shader_core_stats *stats, 
                unsigned sid, unsigned tpc );
@@ -998,6 +995,7 @@ public:
     virtual void cycle(); 
     void fill( mem_fetch *mf );
     void flush();
+    void writeback();
 
     // accessors
     virtual bool can_issue( const warp_inst_t &inst ) const
@@ -1011,6 +1009,7 @@ public:
         return simd_function_unit::can_issue(inst);
     }
     virtual bool stallable() const { return true; }
+    bool response_buffer_full() const;
     void print(FILE *fout) const;
 
 private:
@@ -1035,8 +1034,8 @@ private:
                                                      warp_inst_t &inst );
    mem_stage_stall_type send_mem_request(warp_inst_t &inst, mem_access_t &access);
 
-   gpgpu_sim *m_gpu;
-   shader_core_ctx *m_core;
+   class simt_core_cluster *m_cluster;
+   class shader_core_ctx *m_core;
    unsigned m_sid;
    unsigned m_tpc;
 
@@ -1044,6 +1043,10 @@ private:
    cache_t *m_L1T; // texture cache
    cache_t *m_L1C; // constant cache
    mshr_shader_unit *m_mshr_unit;
+   std::map<unsigned/*warp_id*/, std::map<unsigned/*regnum*/,unsigned/*count*/> > m_pending_writes;
+   std::list<mem_fetch*> m_response_fifo;
+   opndcoll_rfu_t *m_operand_collector;
+   Scoreboard *m_scoreboard;
 
    enum mem_stage_stall_type m_mem_rc;
 
@@ -1065,7 +1068,7 @@ class shader_core_ctx : public core_t
 {
 public:
    shader_core_ctx( class gpgpu_sim *gpu,
-                    const char *name, 
+                    class simt_core_cluster *cluster,
                     unsigned shader_id,
                     unsigned tpc_id,
                     struct shader_core_config *config,
@@ -1085,7 +1088,7 @@ public:
    bool warp_waiting_at_mem_barrier( unsigned warp_id );
    void allocate_barrier( unsigned cta_id, warp_set_t warps );
    void deallocate_barrier( unsigned cta_id );
-   void decrement_atomic_count( unsigned wid );
+   void decrement_atomic_count( unsigned wid, unsigned n );
 
    void cycle();
 
@@ -1097,10 +1100,12 @@ public:
    void display_pdom_state(FILE *fout, int mask );
    void display_pipeline( FILE *fout, int print_mem, int mask3bit );
    void register_cta_thread_exit(int cta_num );
-   void fill_shd_L1_with_new_line( class mem_fetch * mf );
+   bool fetch_unit_response_buffer_full() const;
+   void accept_fetch_response( mem_fetch *mf );
+   bool ldst_unit_response_buffer_full();
+   void accept_ldst_unit_response( class mem_fetch * mf );
    void store_ack( class mem_fetch *mf );
    void dump_istream_state( FILE *fout );
-   unsigned first_valid_thread( unsigned stage );
    class ptx_thread_info* get_functional_thread( unsigned tid ) { return m_thread[tid].m_functional_model_thread_state; }
    std::list<unsigned> get_regs_written( const inst_t &fvt ) const;
    const shader_core_config *get_config() const { return m_config; }
@@ -1114,10 +1119,9 @@ public:
    unsigned get_thread_n_l1_access_ac( unsigned tid ) const { return m_thread[tid].n_l1_access_ac; }
    unsigned get_n_active_cta() const { return m_n_active_cta; }
    void inc_store_req( unsigned warp_id) { m_warp[warp_id].inc_store_req(); }
+   void dec_inst_in_pipeline( unsigned warp_id ) { m_warp[warp_id].dec_inst_in_pipeline(); }
   
 private:
-
-   void clear_stage_reg(int stage);
 
    address_type next_pc( int tid ) const;
 
@@ -1132,15 +1136,13 @@ private:
 
    void writeback();
 
-   void call_thread_done(inst_t &done_inst );
-
    void print_stage(unsigned int stage, FILE *fout) const;
 
    // general information
    unsigned m_sid; // shader id
    unsigned m_tpc; // texture processor cluster id (aka, node id when using interconnect concentration)
-   const char *m_name;
    const shader_core_config *m_config;
+   class simt_core_cluster *m_cluster;
    class gpgpu_sim *m_gpu;
 
    // statistics 
@@ -1178,6 +1180,48 @@ private:
    ldst_unit *m_ldst_unit;
    static const unsigned MAX_ALU_LATENCY = 64;
    std::bitset<MAX_ALU_LATENCY> m_result_bus;
+};
+
+class simt_core_cluster {
+public:
+    simt_core_cluster( class gpgpu_sim *gpu, 
+                       unsigned cluster_id, 
+                       struct shader_core_config *config, 
+                       struct shader_core_stats *stats );
+
+    void core_cycle();
+    void icnt_cycle();
+
+    void reinit();
+    unsigned max_cta( class function_info *kernel );
+    int get_not_completed() const;
+    unsigned get_n_active_cta() const;
+    void issue_block2core( class kernel_info_t &kernel );
+    void cache_flush();
+
+    bool icnt_injection_buffer_full(new_addr_type addr, int bsize, bool write );
+    void icnt_inject_request_packet(class mem_fetch *mf);
+    bool icnt_ejection_buffer_full() const { return m_response_fifo.size() >= m_config->n_simt_ejection_buffer_size; }
+    void icnt_eject_response_packet(class mem_fetch * mf);
+    void mem_instruction_stats(class warp_inst_t &inst);
+    void get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc );
+
+    gpgpu_sim *get_gpu() { return m_gpu; }
+
+    void display_pipeline( unsigned sid, FILE *fout, int print_mem, int mask );
+
+private:
+    unsigned sid_to_cid( unsigned sid ) { return sid % m_config->n_simt_cores_per_cluster; }
+    unsigned cid_to_sid( unsigned cid ) { return m_cluster_id*m_config->n_simt_cores_per_cluster + cid; }
+
+    unsigned m_cluster_id;
+    gpgpu_sim *m_gpu;
+    const shader_core_config *m_config;
+    shader_core_stats *m_stats;
+    shader_core_ctx **m_core;
+
+    unsigned m_cta_issue_next_core;
+    std::list<mem_fetch*> m_response_fifo;
 };
 
 #endif /* SHADER_H */

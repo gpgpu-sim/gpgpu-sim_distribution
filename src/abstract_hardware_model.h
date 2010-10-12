@@ -480,6 +480,13 @@ struct shader_core_config
    unsigned null_bank_func(address_type, unsigned) const { return 1; }
    unsigned shmem_bank_func(address_type addr, unsigned) const;
    unsigned dcache_bank_func(address_type add, unsigned line_size) const;
+
+   unsigned n_simt_cores_per_cluster;
+   unsigned n_simt_clusters;
+   unsigned n_simt_ejection_buffer_size;
+   unsigned ldst_unit_response_queue_size;
+
+   unsigned mem2device(unsigned memid) const { return memid + n_simt_clusters; }
 };
 
 typedef unsigned (shader_core_config::*bank_func_t)(address_type add, unsigned line_size) const;
@@ -488,14 +495,22 @@ typedef address_type (*tag_func_t)(address_type add, unsigned line_size);
 class warp_inst_t: public inst_t {
 public:
     // constructors
+    warp_inst_t() 
+    {
+        m_uid=0;
+        m_empty=true; 
+        m_config=NULL; 
+    }
     warp_inst_t( const struct shader_core_config *config ) 
     { 
+        m_uid=0;
         assert(config->warp_size<=MAX_WARP_SIZE); 
         m_config=config;
         m_empty=true; 
         m_isatomic=false;
         m_per_scalar_thread_valid=false;
         m_mem_accesses_created=false;
+        m_cache_hit=false;
     }
 
     // modifiers
@@ -519,9 +534,11 @@ public:
             if( mask & (1<<i) )
                 warp_active_mask.set(i);
         }
+        m_uid = ++sm_next_uid;
         m_warp_id = warp_id;
         issue_cycle = cycle;
         cycles = initiation_interval;
+        m_cache_hit=false;
         m_empty=false;
     }
     void set_addr( unsigned n, new_addr_type addr ) 
@@ -563,6 +580,14 @@ public:
              }
           }
        }
+    }
+    void clear_active( std::vector<unsigned> &inactive )
+    {
+        std::vector<unsigned>::iterator i;
+        for(i=inactive.begin(); i!=inactive.end();i++) {
+            unsigned t=*i;
+            warp_active_mask.reset(t);
+        }
     }
     void set_not_active( unsigned lane_id )
     {
@@ -618,7 +643,9 @@ public:
     void print( FILE *fout ) const;
 
 protected:
+    unsigned m_uid;
     bool m_empty;
+    bool m_cache_hit;
     unsigned long long issue_cycle;
     unsigned cycles; // used for implementing initiation interval delay
     bool m_isatomic;
@@ -628,17 +655,17 @@ protected:
 
     struct per_thread_info {
         per_thread_info() {
-            cache_miss=false;
             memreqaddr=0;
         }
         dram_callback_t callback;
         new_addr_type memreqaddr; // effective address
-        bool cache_miss;
     };
     bool m_per_scalar_thread_valid;
     std::vector<per_thread_info> m_per_scalar_thread;
     bool m_mem_accesses_created;
     std::vector<mem_access_t> m_accessq;
+
+    static unsigned sm_next_uid;
 };
 
 void move_warp( warp_inst_t *&dst, warp_inst_t *&src );

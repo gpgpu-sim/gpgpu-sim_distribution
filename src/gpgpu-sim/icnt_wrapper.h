@@ -68,9 +68,9 @@
 #define ICNT_WRAPPER_H
 
 // functional interface to the interconnect
-typedef int (*icnt_has_buffer_p)(unsigned int input, unsigned int size);
-typedef void (*icnt_push_p)(unsigned int input, unsigned int output, void* data, unsigned int size);
-typedef void* (*icnt_pop_p)(unsigned int output);
+typedef bool (*icnt_has_buffer_p)(unsigned input, unsigned int size);
+typedef void (*icnt_push_p)(unsigned input, unsigned output, void* data, unsigned int size);
+typedef void* (*icnt_pop_p)(unsigned output);
 typedef void (*icnt_transfer_p)( );
 typedef unsigned (*icnt_busy_p)( );
 typedef void (*icnt_drain_p)( );

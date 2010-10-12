@@ -525,11 +525,12 @@ bool memory_partition_unit::L2c_write_back( unsigned long long int addr, int bsi
                                  (unsigned)-1/*sid*/,
                                  (unsigned)-1/*tpc*/,
                                  (unsigned)-1/*wid*/,
-                                 NULL,true,
+                                 (unsigned)-1/*mshr_id*/,
+                                 NULL/*inst*/,
+                                 true/*write*/,
                                  partial_write_mask_t(),
                                  L2_WRBK_ACC,
-                                 L2_WTBK_DATA,
-                                 -1/*pc*/);
+                                 L2_WTBK_DATA );
    made_write_mfs++;
    L2todram_wbqueue->push(mf,gpu_sim_cycle);
    gpgpu_n_sent_writes++;
@@ -635,7 +636,7 @@ void memory_stats_t::print( FILE *fp )
 void gpgpu_sim::L2c_print_cache_stat() const
 {
    unsigned i, j, k;
-   for (i=0,j=0,k=0;i<m_n_mem;i++) 
+   for (i=0,j=0,k=0;i<m_memory_config->m_n_mem;i++) 
       m_memory_partition_unit[i]->L2c_print_cache_stat(k,j);
    printf("L2 Cache Total Miss Rate = %0.3f\n", (float)j/k);
 }
@@ -645,46 +646,46 @@ void gpgpu_sim::L2c_print_debug()
    unsigned i;
 
    printf("                                     ");
-   for (i=0;i<m_n_mem;i++) 
+   for (i=0;i<m_memory_config->m_n_mem;i++) 
       printf(" dram[%d]", i);
    printf("\n");
 
    printf("cbtoL2 queue length         ="); 
-   for (i=0;i<m_n_mem;i++) 
+   for (i=0;i<m_memory_config->m_n_mem;i++) 
       printf("%8d", m_memory_partition_unit[i]->get_cbtoL2queue_length() );
    printf("\n");
 
    printf("cbtoL2 write queue length   ="); 
-   for (i=0;i<m_n_mem;i++) 
+   for (i=0;i<m_memory_config->m_n_mem;i++) 
       printf("%8d", m_memory_partition_unit[i]->get_cbtoL2writequeue_length());
    printf("\n");
 
    printf("L2tocb queue length         =");
-   for (i=0;i<m_n_mem;i++) {
+   for (i=0;i<m_memory_config->m_n_mem;i++) {
       printf("%8d", m_memory_partition_unit[i]->get_L2tocbqueue_length());
    }
    printf("\n");
 
    printf("dramtoL2 queue length       =");
-   for (i=0;i<m_n_mem;i++) {
+   for (i=0;i<m_memory_config->m_n_mem;i++) {
       printf("%8d", m_memory_partition_unit[i]->get_dramtoL2queue_length());
    }
    printf("\n");
 
    printf("dramtoL2 write queue length ="); 
-   for (i=0;i<m_n_mem;i++) {
+   for (i=0;i<m_memory_config->m_n_mem;i++) {
       printf("%8d", m_memory_partition_unit[i]->get_dramtoL2writequeue_length());
    }
    printf("\n");
 
    printf("L2todram queue length       =");
-   for (i=0;i<m_n_mem;i++) {
+   for (i=0;i<m_memory_config->m_n_mem;i++) {
       printf("%8d", m_memory_partition_unit[i]->get_L2todramqueue_length());
    }
    printf("\n");
 
    printf("L2todram writeback queue length       =");
-   for (i=0;i<m_n_mem;i++) {
+   for (i=0;i<m_memory_config->m_n_mem;i++) {
       printf("%8d", m_memory_partition_unit[i]->get_L2todram_wbqueue_length());
    }
    printf("\n");
@@ -722,7 +723,7 @@ unsigned memory_partition_unit::flushL2()
 
 void gpgpu_sim::L2c_latency_log_dump()
 {
-   for (unsigned i=0;i<m_n_mem;i++) 
+   for (unsigned i=0;i<m_memory_config->m_n_mem;i++) 
       m_memory_partition_unit[i]->L2c_latency_log_dump();
 }
 

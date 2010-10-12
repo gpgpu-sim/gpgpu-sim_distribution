@@ -67,6 +67,18 @@ public:
       }
       return data; 
    }
+   void * top_packet(){
+      assert (packet_n);
+      void * data = NULL;
+      void * temp_d = buf.front();
+      while (data==NULL) {
+         if (tail_flag.front()) {
+            data = buf.front();
+         }
+         assert(temp_d == buf.front()); //all flits must belong to the same packet
+      }
+      return data; 
+   }
    void push_flit_data(void* data,bool is_tail) {
       buf.push(data);
       tail_flag.push(is_tail);
@@ -130,17 +142,19 @@ void map_gen(int dim,int  memcount, int memnodes[])
    assert(k==dim*dim);
 }
 
-void display_map(int dim,int count){
+void display_map(int dim,int count)
+{
+    printf("GPGPU-Sim uArch: ");
    int i=0;
    for (i=0;i<count;i++) {
-      printf("%d ",node_map[i]);
-      if (i%dim ==0) {
-         printf("\n");
-      }
+      printf("%3d ",node_map[i]);
+      if (i%dim ==0) 
+         printf("\nGPGPU-Sim uArch: ");
    }
 }
 
-void create_node_map(int n_shader, int n_mem, int size, int use_map) {
+void create_node_map(int n_shader, int n_mem, int size, int use_map) 
+{
    node_map = (int*)malloc((size)*sizeof(int));   
    if (use_map) {
       switch (size) {
@@ -216,7 +230,7 @@ void create_node_map(int n_shader, int n_mem, int size, int use_map) {
          }
       }
    }
-   printf("nodemap\n");
+   printf("GPGPU-Sim uArch: interconnect nodemap\n");
    display_map((int) sqrt(size),size);
 
 }
@@ -287,18 +301,18 @@ void icnt_init_grid (){
    }
 }
 
-int interconnect_has_buffer(unsigned int input_node, unsigned int tot_req_size) 
+bool interconnect_has_buffer(unsigned int input_node, unsigned int tot_req_size) 
 {
 
    unsigned int input = node_map[input_node];   
-   int has_buffer;
+   bool has_buffer = false;
    unsigned int n_flits = tot_req_size / _flit_size + ((tot_req_size % _flit_size)? 1:0);
    if (!(fixed_lat_icnt || perfect_icnt)) {
       has_buffer = (traffic[0]->_partial_packets[input][0].size() + n_flits) <=  input_buffer_capacity; 
       if ((net_c>1) && is_mem(input)) 
          has_buffer = (traffic[1]->_partial_packets[input][0].size() + n_flits) <=  input_buffer_capacity; 
    } else {
-      has_buffer = 1; 
+      has_buffer = true; 
    }
    return has_buffer;
 }
@@ -554,6 +568,7 @@ void time_vector_update(unsigned int uid, int slot , long int cycle, int type);
 
 void time_vector_update_icnt_injected(void* data, int input) 
 {
+    /*
     mem_fetch* mf = (mem_fetch*) data;
     if( mf->get_mshr() && !mf->get_mshr()->isinst() ) {
         unsigned uid=mf->get_request_uid();
@@ -565,4 +580,5 @@ void time_vector_update_icnt_injected(void* data, int input)
            time_vector_update( uid, MR_ICNT_INJECTED, cycle,req_type );
         }
     }
+    */
 }

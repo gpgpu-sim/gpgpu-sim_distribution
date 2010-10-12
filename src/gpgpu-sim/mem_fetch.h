@@ -103,6 +103,7 @@ enum mshr_status {
    IN_L2TOCBQUEUE_HIT,
    IN_L2TOCBQUEUE_MISS,
    IN_ICNT2SHADER,
+   IN_CLUSTER2SHADER,
    FETCHED,
    NUM_MSHR_STATUS
 };
@@ -138,66 +139,72 @@ public:
               unsigned sid,
               unsigned tpc,
               unsigned wid,
-              class mshr_entry   * mshr,
-              bool                  write,
+              unsigned mshr_id,
+              warp_inst_t *inst,
+              bool write,
               partial_write_mask_t partial_write_mask,
               enum mem_access_type mem_acc,
-              enum mf_type type,
-              address_type pc );
+              enum mf_type type );
 
    void set_status( enum mshr_status status, enum mem_req_stat stat, unsigned long long cycle );
-   void set_type( enum mf_type t ) { type=t; }
+   void set_type( enum mf_type t ) { m_type=t; }
    void do_atomic();
 
    void print( FILE *fp ) const;
 
-   const addrdec_t &get_tlx_addr() const { return tlx; }
-   unsigned get_data_size() const { return nbytes_L1; }
-   unsigned get_ctrl_size() const { return ctrl_size; }
-   unsigned size() const { return nbytes_L1+ctrl_size; }
-   new_addr_type get_addr() const { return addr; }
-   class mshr_entry *get_mshr() { return mshr; }
+   const addrdec_t &get_tlx_addr() const { return m_raw_addr; }
+   unsigned get_data_size() const { return m_data_size; }
+   unsigned get_ctrl_size() const { return m_ctrl_size; }
+   unsigned size() const { return m_data_size+m_ctrl_size; }
+   new_addr_type get_addr() const { return m_addr; }
+   unsigned get_mshr() { return m_mshr_id; }
    bool get_is_write() const { return m_write; }
-   unsigned get_request_uid() const { return request_uid; }
-   unsigned get_sid() const { return sid; }
-   unsigned get_tpc() const { return tpc; }
-   unsigned get_wid() const { return wid; }
-   bool isinst() const;
+   unsigned get_request_uid() const { return m_request_uid; }
+   unsigned get_sid() const { return m_sid; }
+   unsigned get_tpc() const { return m_tpc; }
+   unsigned get_wid() const { return m_wid; }
    bool istexture() const;
    bool isconst() const;
-   enum mf_type get_type() const { return type; }
+   enum mf_type get_type() const { return m_type; }
    bool isatomic() const;
-   void set_return_timestamp( unsigned t ) { timestamp2=t; }
-   void set_icnt_receive_time( unsigned t ) { icnt_receive_time=t; }
-   unsigned get_timestamp() const { return timestamp; }
-   unsigned get_return_timestamp() const { return timestamp2; }
-   unsigned get_icnt_receive_time() const { return icnt_receive_time; }
-   enum mem_access_type get_mem_acc() const { return mem_acc; }
-   address_type get_pc() const { return pc; }
+   void set_return_timestamp( unsigned t ) { m_timestamp2=t; }
+   void set_icnt_receive_time( unsigned t ) { m_icnt_receive_time=t; }
+   unsigned get_timestamp() const { return m_timestamp; }
+   unsigned get_return_timestamp() const { return m_timestamp2; }
+   unsigned get_icnt_receive_time() const { return m_icnt_receive_time; }
+   enum mem_access_type get_mem_acc() const { return m_mem_acc; }
+   address_type get_pc() const { return m_inst.empty()?-1:m_inst.pc; }
+   const warp_inst_t &get_inst() { return m_inst; }
+   enum mshr_status get_status() const { return m_status; }
 
 private:
-   // request origination
-   unsigned request_uid;
-   address_type pc;
-   unsigned sid;
-   unsigned tpc;
-   unsigned wid;
-   class mshr_entry* mshr;
+   // request source information
+   unsigned m_request_uid;
+   unsigned m_sid;
+   unsigned m_tpc;
+   unsigned m_wid;
+   unsigned m_mshr_id;
+
+   // where is the request now?
+   enum mshr_status m_status;  
 
    // request type, address, size, mask
    bool m_write;
-   enum mem_access_type mem_acc;
-   enum mf_type type;
-   new_addr_type addr;
-   addrdec_t tlx;
-   partial_write_mask_t write_mask;
-   unsigned nbytes_L1;
-   unsigned ctrl_size;
+   enum mem_access_type m_mem_acc;
+   enum mf_type m_type;
+   new_addr_type m_addr;
+   addrdec_t m_raw_addr;
+   partial_write_mask_t m_write_mask;
+   unsigned m_data_size; // bytes
+   unsigned m_ctrl_size;
 
    // statistics
-   unsigned timestamp;  // set to gpu_sim_cycle+gpu_tot_sim_cycle at struct creation
-   unsigned timestamp2; // set to gpu_sim_cycle+gpu_tot_sim_cycle when pushed onto icnt to shader; only used for reads
-   unsigned icnt_receive_time; // set to gpu_sim_cycle + interconnect_latency when fixed icnt latency mode is enabled
+   unsigned m_timestamp;  // set to gpu_sim_cycle+gpu_tot_sim_cycle at struct creation
+   unsigned m_timestamp2; // set to gpu_sim_cycle+gpu_tot_sim_cycle when pushed onto icnt to shader; only used for reads
+   unsigned m_icnt_receive_time; // set to gpu_sim_cycle + interconnect_latency when fixed icnt latency mode is enabled
+
+   // requesting instruction
+   warp_inst_t m_inst;
 
    static unsigned sm_next_mf_request_uid;
 };

@@ -126,6 +126,7 @@ void gpgpu_sim::visualizer_printstat()
    gzsetparams(visualizer_file, g_visualizer_zlevel, Z_DEFAULT_STRATEGY);
    visualizer_first_printstat = false;
 
+   /*
    // instruction count per shader core
    gzprintf(visualizer_file, "shaderinsncount:  ");
    for (unsigned i=0;i<m_n_shader;i++) 
@@ -137,6 +138,7 @@ void gpgpu_sim::visualizer_printstat()
    for (unsigned i=0;i<m_n_shader;i++) 
       gzprintf(visualizer_file, "%u ", m_sc[i]->get_n_diverge());
    gzprintf(visualizer_file, "\n");
+    */
 
    cflog_visualizer_gzprint(visualizer_file);
    shader_CTA_count_visualizer_gzprint(visualizer_file);
@@ -172,7 +174,7 @@ void gpgpu_sim::visualizer_printstat()
       m_sc[i]->new_cache_window();
 */
 
-   for (unsigned i=0;i<m_n_mem;i++) 
+   for (unsigned i=0;i<m_memory_config->m_n_mem;i++) 
       m_memory_partition_unit[i]->visualizer_print(visualizer_file);
 
    // overall cache miss rates
@@ -208,7 +210,7 @@ void gpgpu_sim::visualizer_printstat()
    time_vector_print_interval2gzfile(visualizer_file);
    gzprintf(visualizer_file, "WarpDivergenceBreakdown:");
    unsigned int total=0;
-   unsigned int cf = (m_shader_config->gpgpu_warpdistro_shader==-1)?m_n_shader:1;
+   unsigned int cf = (m_shader_config->gpgpu_warpdistro_shader==-1)?num_shader():1;
    gzprintf(visualizer_file, " %d", (m_shader_stats->shader_cycle_distro[0] - last_shader_cycle_distro[0]) / cf );
    gzprintf(visualizer_file, " %d", (m_shader_stats->shader_cycle_distro[2] - last_shader_cycle_distro[2]) / cf );
    for (unsigned i=0; i<m_shader_config->warp_size+3; i++) {

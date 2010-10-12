@@ -113,6 +113,7 @@ struct memory_config {
    bool gpgpu_memlatency_stat;
    unsigned gpgpu_dram_buswidth;
    unsigned gpgpu_dram_burst_length;
+   unsigned m_n_mem;
 };
 
 // global config
@@ -140,12 +141,10 @@ public:
    void set_prop( struct cudaDeviceProp *prop );
 
    void launch( kernel_info_t &kinfo );
-   void next_grid( unsigned &grid_num, class function_info *&entry );
+   void next_grid();
 
    unsigned run_gpu_sim();
 
-   unsigned char fq_has_buffer(unsigned long long int addr, int bsize, bool write, int sid );
-   void decrement_atomic_count( unsigned sid, unsigned wid );
    void get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc );
    const kernel_info_t &the_kernel() const { return m_the_kernel; }
 
@@ -156,10 +155,9 @@ public:
    const struct cudaDeviceProp *get_prop() const;
    enum divergence_support_t simd_model() const; 
 
-   unsigned num_shader() const { return m_n_shader; }
+   unsigned num_shader() const { return m_shader_config->n_simt_clusters*m_shader_config->n_simt_cores_per_cluster; }
    unsigned threads_per_core() const;
    void mem_instruction_stats( class warp_inst_t &inst);
-   int issue_mf_from_fq(class mem_fetch *mf);
 
    void gpu_print_stat() const;
    void dump_pipeline( int mask, int s, int m ) const;
@@ -174,9 +172,7 @@ private:
    void reinit_clock_domains(void);
    int next_clock_domain(void);
     
-   unsigned char check_icnt_has_buffer(unsigned long long int addr, int bsize, int sid );
    void cycle();
-   void fq_pop(int tpc_id);
    void L2c_options(class OptionParser *opp);
    void L2c_print_cache_stat() const;
    void L2c_print_debug();
@@ -188,14 +184,27 @@ private:
    void print_shader_cycle_distro( FILE *fout ) const;
 
    void gpgpu_debug();
+   unsigned sid_to_cluster( unsigned sid ) const;
 
-   // data
-   class shader_core_ctx **m_sc;
+///// data /////
+
+   class simt_core_cluster **m_cluster;
    class memory_partition_unit **m_memory_partition_unit;
 
-   unsigned m_grid_num;
    kernel_info_t m_the_kernel;
    std::list<kernel_info_t> m_running_kernels;
+
+   // time of next rising edge 
+   double core_time;
+   double icnt_time;
+   double dram_time;
+   double l2_time;
+
+   // debug
+   bool gpu_deadlock;
+
+   //// configuration parameters ////
+   bool m_options_set;
 
    // clock domains - frequency
    double core_freq;
@@ -209,24 +218,12 @@ private:
    double dram_period;
    double l2_period;
 
-   // time of next rising edge 
-   double core_time;
-   double icnt_time;
-   double dram_time;
-   double l2_time;
-
-   // configuration parameters
-   bool m_options_set;
    struct cudaDeviceProp     *m_cuda_properties;
    struct shader_core_config *m_shader_config;
    struct memory_config      *m_memory_config;
-   unsigned int               m_n_shader;
-   unsigned int               m_n_mem;
-   int gpu_concentration;
 
    int m_pdom_sched_type;
 
-   // options
    bool gpu_deadlock_detect;
    int   m_ptx_convert_to_ptxplus;
    int   m_ptx_save_converted_ptxplus;
@@ -239,8 +236,6 @@ private:
    unsigned long long  gpu_tot_completed_thread;
    unsigned long long  last_gpu_sim_insn;
 
-   // debug
-   bool gpu_deadlock;
 public:
    unsigned long long  gpu_sim_insn;
    unsigned long long  gpu_tot_sim_insn;

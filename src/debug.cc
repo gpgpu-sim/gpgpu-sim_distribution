@@ -84,6 +84,7 @@ void gpgpu_sim::gpgpu_debug()
             done = false; 
          }
       } else {
+          /*
          for( unsigned sid=0; sid < m_n_shader; sid++ ) { 
             unsigned hw_thread_id = -1;
             abort();
@@ -101,6 +102,7 @@ void gpgpu_sim::gpgpu_debug()
                printf( "\n" );
             }
          }
+         */
       }
    }
 

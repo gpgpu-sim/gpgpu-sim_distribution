@@ -77,70 +77,65 @@ mem_fetch::mem_fetch( new_addr_type addr,
                       unsigned sid,
                       unsigned tpc,
                       unsigned wid,
-                      class mshr_entry   * mshr,
-                      bool                  write,
+                      unsigned mshr_id,
+                      warp_inst_t *inst,
+                      bool write,
                       partial_write_mask_t partial_write_mask,
                       enum mem_access_type mem_acc,
-                      enum mf_type type,
-                      address_type pc )
+                      enum mf_type type )
 {
-   class mem_fetch *mf = this;
-   mf->request_uid = sm_next_mf_request_uid++;
+   m_request_uid = sm_next_mf_request_uid++;
 
-   mf->addr = addr;
-   mf->nbytes_L1 = data_size;
-   mf->ctrl_size = ctrl_size;
-   mf->sid = sid;
-   mf->wid = wid;
-   mf->tpc = tpc;
-   mf->mshr = mshr;
-   mf->m_write = write;
-   addrdec_tlx(addr,&mf->tlx);
-   mf->mem_acc = mem_acc;
-   mf->type = type;
-   mf->pc = pc;
-   mf->timestamp = gpu_sim_cycle + gpu_tot_sim_cycle;
-   mf->timestamp2 = 0;
+   m_addr = addr;
+   m_data_size = data_size;
+   m_ctrl_size = ctrl_size;
+   m_sid = sid;
+   m_wid = wid;
+   m_tpc = tpc;
+   m_mshr_id = mshr_id;
+   if( inst ) m_inst = *inst;
+   m_write = write;
+   addrdec_tlx(addr,&m_raw_addr);
+   m_mem_acc = mem_acc;
+   m_type = type;
+   m_timestamp = gpu_sim_cycle + gpu_tot_sim_cycle;
+   m_timestamp2 = 0;
+
+   m_status = INITIALIZED;
 }
 
 void mem_fetch::print( FILE *fp ) const
 {
-   fprintf(fp,"  mf: uid=%6u, addr=0x%08llx, sid=%u, wid=%u, pc=0x%04x, %s, bank=%u, ", 
-           request_uid, addr, sid, wid, pc, (m_write?"write":"read "), tlx.bk);
-   if( mshr ) mshr->print(fp);
+   fprintf(fp,"  mf: uid=%6u, addr=0x%08llx, sid=%u, wid=%u, mshr_id=%u, %s, bank=%u, ", 
+           m_request_uid, m_addr, m_sid, m_wid, m_mshr_id, (m_write?"write":"read "), m_raw_addr.bk);
+   if( !m_inst.empty() ) m_inst.print(fp);
    else fprintf(fp,"\n");
 }
 
 void mem_fetch::set_status( enum mshr_status status, enum mem_req_stat stat, unsigned long long cycle ) 
 {
-   if ( mshr ) {
-      mshr->set_status(status);
-      time_vector_update(request_uid,stat,cycle,type);
-   }
+    m_status = status;
 }
 
 bool mem_fetch::isatomic() const
 {
-   if( !mshr ) return false;
-   return mshr->isatomic();
+   if( m_inst.empty() ) return false;
+   return m_inst.isatomic();
 }
 
 void mem_fetch::do_atomic()
 {
-    mshr->do_atomic();
-}
-
-bool mem_fetch::isinst() const 
-{ 
-   return (mshr==NULL)?false:mshr->isinst(); 
+    m_inst.do_atomic();
 }
 
 bool mem_fetch::istexture() const
-{ 
-   return (mshr==NULL)?false:mshr->istexture(); 
+{
+    if( m_inst.empty() ) return false;
+    return m_inst.space.get_type() == tex_space;
 }
 
 bool mem_fetch::isconst() const
 { 
-   return (mshr==NULL)?false:mshr->isconst(); 
+    if( m_inst.empty() ) return false;
+    return m_inst.space.get_type() == const_space;
 }
