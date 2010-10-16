@@ -81,7 +81,7 @@ cache_t::cache_t( const char *name,
                   const char *opt, 
                   enum cache_write_policy wp, 
                   int core_id, 
-                  int type_id) 
+                  int type_id ) 
 {
    unsigned int nset;
    unsigned int line_sz;
@@ -120,19 +120,18 @@ cache_t::cache_t( const char *name,
 
 enum cache_request_status cache_t::access( new_addr_type addr, bool write, unsigned int cycle, address_type *wb_address ) 
 {
+   m_access++;
+   unsigned set_index = (addr >> m_line_sz_log2) & ( (1<<m_nset_log2) - 1 );
+   new_addr_type tag = addr >> (m_line_sz_log2 + m_nset_log2);
+
    bool all_reserved = true;
    cache_block_t *pending_line = NULL;
    cache_block_t *clean_line = NULL;
-   new_addr_type bank_addr = addr; // offset within bank
 
-   unsigned set = (bank_addr >> m_line_sz_log2) & ( (1<<m_nset_log2) - 1 );
-   unsigned long long tag = bank_addr >> (m_line_sz_log2 + m_nset_log2);
-
-   m_access++;
    shader_cache_access_log(m_core_id, m_type_id, 0);
 
    for (unsigned way=0; way<m_assoc; way++) {
-      cache_block_t *line = &(m_lines[set*m_assoc+way] );
+      cache_block_t *line = &(m_lines[set_index*m_assoc+way] );
       if (line->tag == tag) {
          if (line->status & RESERVED) {
             pending_line = line;
@@ -185,7 +184,7 @@ enum cache_request_status cache_t::access( new_addr_type addr, bool write, unsig
    cache_block_t *wb_line = NULL;
            
    for (unsigned way=0; way<m_assoc; way++) {
-      cache_block_t *line = &(m_lines[set*m_assoc+way] );
+      cache_block_t *line = &(m_lines[set_index*m_assoc+way] );
       if (line->status & VALID && !(line->status & RESERVED)) {
          if (!wb_line) {
             wb_line = line;

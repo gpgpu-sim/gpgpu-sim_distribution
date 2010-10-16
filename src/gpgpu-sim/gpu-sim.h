@@ -153,18 +153,16 @@ struct memory_config {
 
 // global config
 extern int gpgpu_mem_address_mask;
-
 extern int gpu_runtime_stat_flag;
 extern int gpgpu_cflog_interval;
-
 extern bool g_interactive_debugger_enabled;
-
 extern int   g_ptx_inst_debug_to_file;
 extern char* g_ptx_inst_debug_file;
 extern int   g_ptx_inst_debug_thread_uid;
 
-
-
+// global counters
+extern unsigned long long  gpu_sim_cycle;
+extern unsigned long long  gpu_tot_sim_cycle;
 
 class gpgpu_sim : public gpgpu_t {
 public:
@@ -278,16 +276,5 @@ public:
    unsigned long long  gpu_sim_insn_last_update;
    unsigned gpu_sim_insn_last_update_sid;
 };
-
-// global counters
-
-extern unsigned long long  gpu_sim_cycle;
-extern unsigned long long  gpu_tot_sim_cycle;
-extern unsigned g_next_mf_request_uid;
-
-// stats 
-
-extern unsigned int gpgpu_n_sent_writes;
-extern unsigned int gpgpu_n_processed_writes;
 
 #endif

@@ -69,153 +69,13 @@
 #include <assert.h>
 #include <zlib.h>
 #include <string>
-
-// detect gcc 4.3 and use unordered map (part of c++0x)
-// unordered map doesn't play nice with _GLIBCXX_DEBUG, just use a map if its enabled.
-#if  defined( __GNUC__ ) and not defined( _GLIBCXX_DEBUG )
-#if __GNUC__ >= 4 && __GNUC_MINOR__ >= 3
-   #include <unordered_map>
-   #define my_hash_map std::unordered_map
-#else
-   #include <ext/hash_map>
-   namespace std {
-      using namespace __gnu_cxx;
-   }
-   #define my_hash_map std::hash_map
-#endif
-#else
-   #include <map>
-   #define my_hash_map std::map
-   #define USE_MAP
-#endif
-
-#include "histogram.h"
-#include "../abstract_hardware_model.h"
-
-binned_histogram::binned_histogram (std::string name, int nbins, int* bins) 
-   : m_name(name), m_nbins(nbins), m_bins(NULL), m_bin_cnts(new int[m_nbins]), m_maximum(0), m_sum(0) 
-{
-   if (bins) {
-      m_bins = new int[m_nbins];
-      for (int i = 0; i < nbins; i++) {
-         m_bins[i] = bins[i];
-      }
-   }
-
-   reset_bins();
-}
-
-binned_histogram::binned_histogram (const binned_histogram& other)
-   : m_name(other.m_name), m_nbins(other.m_nbins), m_bins(NULL), 
-     m_bin_cnts(new int[m_nbins]), m_maximum(0), m_sum(0)
-{
-   for (int i = 0; i < m_nbins; i++) {
-      m_bin_cnts[i] = other.m_bin_cnts[i];
-   }
-}
-
-void binned_histogram::reset_bins () {
-   for (int i = 0; i < m_nbins; i++) {
-      m_bin_cnts[i] = 0;
-   }
-}
-
-void binned_histogram::add2bin (int sample) {
-   assert(0);
-   m_maximum = (sample > m_maximum)? sample : m_maximum;
-}
-
-void binned_histogram::fprint (FILE *fout) {
-   if (m_name.c_str() != NULL) fprintf(fout, "%s = ", m_name.c_str());
-   int total_sample = 0;
-   for (int i = 0; i < m_nbins; i++) {
-      fprintf(fout, "%d ", m_bin_cnts[i]);
-      total_sample += m_bin_cnts[i];
-   }
-   fprintf(fout, "max=%d ", m_maximum);
-   float avg = 0.0f;
-   if (total_sample > 0) {
-      avg = (float)m_sum / total_sample;
-   }
-   fprintf(fout, "avg=%0.2f ", avg);
-}
-
-binned_histogram::~binned_histogram () {
-   if (m_bins) delete[] m_bins;
-   delete[] m_bin_cnts;
-}
-
-pow2_histogram::pow2_histogram (std::string name, int nbins, int* bins) 
-   : binned_histogram (name, nbins, bins) {}
-
-void pow2_histogram::add2bin (int sample) {
-   assert(sample >= 0);
-   
-   int bin;
-   int v = sample;
-   register unsigned int shift;
-
-   bin =   (v > 0xFFFF) << 4; v >>= bin;
-   shift = (v > 0xFF  ) << 3; v >>= shift; bin |= shift;
-   shift = (v > 0xF   ) << 2; v >>= shift; bin |= shift;
-   shift = (v > 0x3   ) << 1; v >>= shift; bin |= shift;
-                                           bin |= (v >> 1);
-   bin += (sample > 0)? 1:0;
-   
-   m_bin_cnts[bin] += 1;
-   
-   m_maximum = (sample > m_maximum)? sample : m_maximum;
-   m_sum += sample;
-}
-
-linear_histogram::linear_histogram (int stride, const char *name, int nbins, int* bins) 
-   : binned_histogram (name, nbins, bins), m_stride(stride)
-{
-}
-
-void linear_histogram::add2bin (int sample) {
-   assert(sample >= 0);
-
-   int bin = sample / m_stride;      
-   if (bin >= m_nbins) bin = m_nbins - 1;
-   
-   m_bin_cnts[bin] += 1;
-   
-   m_maximum = (sample > m_maximum)? sample : m_maximum;
-   m_sum += sample;
-}
-
-
 #include <list>
 #include <vector>
 #include <map>
 #include <algorithm>
 #include <string>
 
-/////////////////////////////////////////////////////////////////////////////////////
-// logger snapshot trigger: 
-// - automate the snap_shot part of loggers to avoid modifying simulation loop everytime 
-//   a new time-dependent stat is added
-/////////////////////////////////////////////////////////////////////////////////////
-
-class snap_shot_trigger {
-protected:
-   unsigned long long  m_snap_shot_interval;
-
-public:
-   snap_shot_trigger(unsigned long long  interval) : m_snap_shot_interval(interval) {}
-   virtual ~snap_shot_trigger() {}
-   
-   const unsigned long long & get_interval() const { return m_snap_shot_interval;}
-   
-   void try_snap_shot(unsigned long long  current_cycle) {
-      if ((current_cycle % m_snap_shot_interval == 0) && current_cycle != 0) {
-         snap_shot(current_cycle);
-      }
-   }
-   
-   virtual void snap_shot(unsigned long long  current_cycle) = 0;
-};
+////////////////////////////////////////////////////////////////////////////////
 
 static unsigned long long  min_snap_shot_interval = 0;
 static unsigned long long  next_snap_shot_cycle = 0;
@@ -248,19 +108,8 @@ void try_snap_shot (unsigned long long  current_cycle)
    next_snap_shot_cycle = current_cycle + min_snap_shot_interval; // WF: stateful testing, maybe bad
 }
 
-/////////////////////////////////////////////////////////////////////////////////////
-// spill log interface: 
-// - unified interface to spill log to file to avoid infinite memory usage for logging
-/////////////////////////////////////////////////////////////////////////////////////
-
-class spill_log_interface {
-   public:
-   spill_log_interface() {}
-   virtual ~spill_log_interface() {}
-   
-   virtual void spill(FILE *fout, bool final) = 0;
-};
-
+////////////////////////////////////////////////////////////////////////////////
+ 
 static unsigned long long  spill_interval = 0;
 static unsigned long long  next_spill_cycle = 0;
 static std::list<spill_log_interface*> list_spill_log;
@@ -296,219 +145,9 @@ void spill_log_to_file (FILE *fout, int final, unsigned long long  current_cycle
    next_spill_cycle = current_cycle + spill_interval; // WF: stateful testing, maybe bad
 }
 
-/////////////////////////////////////////////////////////////////////////////////////
-// thread control-flow locality logger
-/////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
 unsigned translate_pc_to_ptxlineno(unsigned pc);
-class thread_insn_span {
-private: 
-   
-   typedef my_hash_map<address_type, int> span_count_map;
-   unsigned long long  m_cycle;
-   int m_n_insn;
-   span_count_map m_insn_span_count;
-   
-public:
-   
-   thread_insn_span(unsigned long long  cycle, int n_insn)
-      : m_cycle(cycle), m_n_insn(n_insn), 
-#ifdef USE_MAP
-        m_insn_span_count() 
-#else 
-        m_insn_span_count(n_insn * 2) 
-#endif
-   { }
-
-   ~thread_insn_span() { }
-   
-   thread_insn_span(const thread_insn_span& other)
-      : m_cycle(other.m_cycle), m_n_insn(other.m_n_insn), 
-        m_insn_span_count(other.m_insn_span_count) 
-   { }
-      
-   thread_insn_span& operator=(const thread_insn_span& other)
-   {
-      printf("thread_insn_span& operator=\n");
-      if (this != &other && m_n_insn != other.m_n_insn) {
-         m_n_insn = other.m_n_insn;
-         m_insn_span_count = other.m_insn_span_count;
-         m_cycle = other.m_cycle;
-      }
-      return *this;
-   }
-   
-   thread_insn_span& operator+=(const thread_insn_span& other)
-   {
-      assert(m_n_insn == other.m_n_insn); // no way to aggregate if they are different programs
-      span_count_map::const_iterator i_sc = other.m_insn_span_count.begin();
-      for (; i_sc != other.m_insn_span_count.end(); ++i_sc) {
-         m_insn_span_count[i_sc->first] += i_sc->second;
-      }
-      return *this;
-   }
-   
-   void set_span( address_type pc ) {
-      if( ((int)pc) >= 0 )
-         m_insn_span_count[pc] += 1;
-   }
-   
-   void reset(unsigned long long  cycle) {
-      m_cycle = cycle;
-      m_insn_span_count.clear(); 
-   }
-   
-   void print_span(FILE *fout) {
-      fprintf(fout, "%d: ", (int)m_cycle);
-      span_count_map::const_iterator i_sc = m_insn_span_count.begin();
-      for (; i_sc != m_insn_span_count.end(); ++i_sc) {
-         fprintf(fout, "%d ", i_sc->first);
-      }
-      fprintf(fout, "\n");
-   }
-
-   void print_histo(FILE *fout) {
-      fprintf(fout, "%d:", (int)m_cycle);
-      span_count_map::const_iterator i_sc = m_insn_span_count.begin();
-      for (; i_sc != m_insn_span_count.end(); ++i_sc) {
-         fprintf(fout, "%d ", i_sc->second);
-      }
-      fprintf(fout, "\n");
-   }
-
-   void print_sparse_histo(FILE *fout) {
-      int n_printed_entries = 0;
-      span_count_map::const_iterator i_sc = m_insn_span_count.begin();
-      for (; i_sc != m_insn_span_count.end(); ++i_sc) {
-         unsigned ptx_lineno = translate_pc_to_ptxlineno(i_sc->first);
-         fprintf(fout, "%u %d ", ptx_lineno, i_sc->second);
-         n_printed_entries++;
-      }
-      if (n_printed_entries == 0) {
-         fprintf(fout, "0 0 ");
-      }
-      fprintf(fout, "\n");
-   }
-
-   void print_sparse_histo(gzFile fout) {
-      int n_printed_entries = 0;
-      span_count_map::const_iterator i_sc = m_insn_span_count.begin();
-      for (; i_sc != m_insn_span_count.end(); ++i_sc) {
-         unsigned ptx_lineno = translate_pc_to_ptxlineno(i_sc->first);
-         gzprintf(fout, "%u %d ", ptx_lineno, i_sc->second);
-         n_printed_entries++;
-      }
-      if (n_printed_entries == 0) {
-         gzprintf(fout, "0 0 ");
-      }
-      gzprintf(fout, "\n");
-   }
-};
-
-class thread_CFlocality : public snap_shot_trigger, public spill_log_interface {
-private:
-   
-   std::string m_name;
-
-   int m_nthreads;
-   std::vector<address_type> m_thread_pc;
-   
-   unsigned long long  m_cycle;
-   thread_insn_span m_thd_span;
-   std::list<thread_insn_span> m_thd_span_archive;
-   
-public:
-   
-   thread_CFlocality(std::string name, unsigned long long  snap_shot_interval, 
-                     int nthreads, int n_insn, address_type start_pc, unsigned long long  start_cycle = 0)
-      : snap_shot_trigger(snap_shot_interval), m_name(name),
-        m_nthreads(nthreads), m_thread_pc(nthreads, start_pc), m_cycle(start_cycle),
-        m_thd_span(start_cycle, n_insn)
-   {
-      std::fill(m_thread_pc.begin(), m_thread_pc.end(), -1); // so that hw thread with no work assigned will not clobber results
-   }
-   
-   ~thread_CFlocality() {} 
-   
-   void update_thread_pc( int thread_id, address_type pc ) {
-      m_thread_pc[thread_id] = pc;
-      m_thd_span.set_span(pc);
-   }
-   
-   void snap_shot(unsigned long long  current_cycle) {
-      m_thd_span_archive.push_back(m_thd_span);
-      m_thd_span.reset(current_cycle);
-      for (int i = 0; i < (int)m_thread_pc.size(); i++) {
-         m_thd_span.set_span(m_thread_pc[i]);
-      }
-   }
-   
-   void spill(FILE *fout, bool final) {
-      std::list<thread_insn_span>::iterator lit = m_thd_span_archive.begin();
-      for (; lit != m_thd_span_archive.end(); lit = m_thd_span_archive.erase(lit) ) {
-         fprintf(fout, "%s-", m_name.c_str());
-         lit->print_histo(fout);
-      }
-      assert( m_thd_span_archive.empty() );
-      if (final) {
-         fprintf(fout, "%s-", m_name.c_str());
-         m_thd_span.print_histo(fout);
-      }
-   }
-   
-   void print_visualizer(FILE *fout) {
-      fprintf(fout, "%s: ", m_name.c_str());
-      if (m_thd_span_archive.empty()) {
-      
-         // visualizer do no require snap_shots
-         m_thd_span.print_sparse_histo(fout);
-         
-         // clean the thread span
-         m_thd_span.reset(0);
-         for (int i = 0; i < (int)m_thread_pc.size(); i++) {
-            m_thd_span.set_span(m_thread_pc[i]);
-         }
-      } else { 
-         assert(0); // TODO: implement fall back so that visualizer can work with snap shots
-      }
-   }
-   
-   void print_visualizer(gzFile fout) {
-      gzprintf(fout, "%s: ", m_name.c_str());
-      if (m_thd_span_archive.empty()) {
-      
-         // visualizer do no require snap_shots
-         m_thd_span.print_sparse_histo(fout);
-         
-         // clean the thread span
-         m_thd_span.reset(0);
-         for (int i = 0; i < (int)m_thread_pc.size(); i++) {
-            m_thd_span.set_span(m_thread_pc[i]);
-         }
-      } else { 
-         assert(0); // TODO: implement fall back so that visualizer can work with snap shots
-      }
-   }
-   
-   void print_span(FILE *fout) {
-      std::list<thread_insn_span>::iterator lit = m_thd_span_archive.begin();
-      for (; lit != m_thd_span_archive.end(); ++lit) {
-         fprintf(fout, "%s-", m_name.c_str());
-         lit->print_span(fout);
-      }
-      fprintf(fout, "%s-", m_name.c_str());
-      m_thd_span.print_span(fout);
-   }
-
-   void print_histo(FILE *fout) {
-      std::list<thread_insn_span>::iterator lit = m_thd_span_archive.begin();
-      for (; lit != m_thd_span_archive.end(); ++lit) {
-         fprintf(fout, "%s-", m_name.c_str());
-         lit->print_histo(fout);
-      }
-      fprintf(fout, "%s-", m_name.c_str());
-      m_thd_span.print_histo(fout);
-   }
-};
 
 static int n_thread_CFloggers = 0;
 static thread_CFlocality** thread_CFlogger = NULL;
@@ -577,52 +216,8 @@ void cflog_visualizer_gzprint(gzFile fout)
    }
 }
 
-/////////////////////////////////////////////////////////////////////////////////////
-// per-insn active thread distribution (warp occ) logger
-/////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
-class insn_warp_occ_logger{
-private:
-   int m_simd_width;
-   std::vector<linear_histogram> m_insn_warp_occ;
-   int m_id;
-   static int s_ids;
-
-public:
-   insn_warp_occ_logger(int simd_width, int n_insn)
-      : m_simd_width(simd_width), 
-        m_insn_warp_occ(n_insn, linear_histogram(1, "", m_simd_width)),
-        m_id(s_ids++) {}
-   
-   insn_warp_occ_logger(const insn_warp_occ_logger& other)
-      : m_simd_width(other.m_simd_width), 
-        m_insn_warp_occ(other.m_insn_warp_occ.size(), linear_histogram(1, "", m_simd_width)),
-        m_id(s_ids++) {}
-   
-   insn_warp_occ_logger& operator=(const insn_warp_occ_logger& p) {
-      printf("insn_warp_occ_logger Operator= called: %02d \n", m_id);
-      assert(0);
-      return *this;
-   }   
-
-   ~insn_warp_occ_logger() {}
-   
-   void set_id(int id) {
-      m_id = id;
-   }
-   
-   void log(address_type pc, int warp_occ) {
-      m_insn_warp_occ[pc].add2bin(warp_occ - 1);
-   }
-   
-   void print(FILE *fout) {
-      for (unsigned i = 0; i < m_insn_warp_occ.size(); i++) {
-         fprintf(fout, "InsnWarpOcc%02d-%d", m_id, i);
-         m_insn_warp_occ[i].fprint(fout);
-         fprintf(fout, "\n");
-      }
-   }
-};
 int insn_warp_occ_logger::s_ids = 0;
 
 static std::vector<insn_warp_occ_logger> iwo_logger;
@@ -649,188 +244,8 @@ void insn_warp_occ_print( FILE *fout )
    }
 }
 
-/////////////////////////////////////////////////////////////////////////////////////
-// generic linear histogram logger
-/////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
-class linear_histogram_snapshot {
-private:
-   unsigned long long  m_cycle;
-   std::vector<int> m_linear_histogram;
-public:
-   linear_histogram_snapshot(int n_bins, unsigned long long  cycle) 
-      : m_cycle(cycle), 
-        m_linear_histogram(n_bins,0) 
-   { }
-   
-   linear_histogram_snapshot(const linear_histogram_snapshot& other) 
-      : m_cycle(other.m_cycle), 
-        m_linear_histogram(other.m_linear_histogram)
-   { }
-   
-   ~linear_histogram_snapshot() { }
-   
-   void addsample(int pos) {
-      assert((size_t)pos < m_linear_histogram.size());
-      m_linear_histogram[pos] += 1;
-   }
-   
-   void subsample(int pos) {
-      assert((size_t)pos < m_linear_histogram.size());
-      m_linear_histogram[pos] -= 1;
-   }
-   
-   void reset(unsigned long long  cycle) {
-      m_cycle = cycle;
-      m_linear_histogram.assign(m_linear_histogram.size(), 0);
-   }
-   
-   void set_cycle(unsigned long long  cycle) {
-      m_cycle = cycle;
-   }
-   
-   void print(FILE *fout) {
-      fprintf(fout, "%d = ", (int)m_cycle);
-      for (unsigned int i = 0; i < m_linear_histogram.size(); i++) {
-         fprintf(fout, "%d ", m_linear_histogram[i]);
-      }
-   }
-
-   void print_visualizer(FILE *fout) {
-      for (unsigned int i = 0; i < m_linear_histogram.size(); i++) {
-         fprintf(fout, "%d ", m_linear_histogram[i]);
-      }
-   }
-
-   void print_visualizer(gzFile fout) {
-      for (unsigned int i = 0; i < m_linear_histogram.size(); i++) {
-         gzprintf(fout, "%d ", m_linear_histogram[i]);
-      }
-   }
-};
-
-class linear_histogram_logger : public snap_shot_trigger, public spill_log_interface {
-private:
-   int m_n_bins;
-   linear_histogram_snapshot m_curr_lin_hist;
-   std::list<linear_histogram_snapshot> m_lin_hist_archive;
-   unsigned long long  m_cycle;
-   bool m_reset_at_snap_shot;
-   std::string m_name;
-   int m_id;
-   static int s_ids;
-
-public:
-   linear_histogram_logger(int n_bins, 
-                           unsigned long long  snap_shot_interval, 
-                           const char *name, 
-                           bool reset_at_snap_shot = true, 
-                           unsigned long long  start_cycle = 0)
-      : snap_shot_trigger(snap_shot_interval), 
-        m_n_bins(n_bins), 
-        m_curr_lin_hist(m_n_bins, start_cycle),
-        m_lin_hist_archive(),
-        m_cycle(start_cycle),
-        m_reset_at_snap_shot(reset_at_snap_shot), 
-        m_name(name),
-        m_id(s_ids++) {}
-   
-   linear_histogram_logger(const linear_histogram_logger& other) // WF: Buggy - Not really copying data over
-      : snap_shot_trigger(other.get_interval()), 
-        m_n_bins(other.m_n_bins), 
-        m_curr_lin_hist(m_n_bins, other.m_cycle),
-        m_lin_hist_archive(),
-        m_cycle(other.m_cycle),
-        m_reset_at_snap_shot(other.m_reset_at_snap_shot), 
-        m_name(other.m_name),
-        m_id(s_ids++) {}
-   
-   // using default assignment operator!
-   
-   ~linear_histogram_logger() {
-      // printf("Destroyer called: %s%02d \n", m_name.c_str(), m_id);
-      remove_snap_shot_trigger(this);
-      remove_spill_log(this);
-   }
-   
-   void set_id(int id) {
-      m_id = id;
-   }
-   
-   void log(int pos) {
-      m_curr_lin_hist.addsample(pos);
-   }
-   
-   void unlog(int pos) {
-      m_curr_lin_hist.subsample(pos);
-   }
-   
-   void snap_shot(unsigned long long  current_cycle) {
-      m_lin_hist_archive.push_back(m_curr_lin_hist);
-      if (m_reset_at_snap_shot) {
-         m_curr_lin_hist.reset(current_cycle);
-      } else {
-         m_curr_lin_hist.set_cycle(current_cycle);
-      }
-   }
-   
-   void spill(FILE *fout, bool final) {
-      std::list<linear_histogram_snapshot>::iterator iter = m_lin_hist_archive.begin();
-      for (; iter != m_lin_hist_archive.end(); iter = m_lin_hist_archive.erase(iter) ) {
-         fprintf(fout, "%s%02d-", m_name.c_str(), (m_id >= 0)? m_id : 0);
-         iter->print(fout);
-         fprintf(fout, "\n");
-      }
-      assert( m_lin_hist_archive.empty() );
-      if (final) {
-         fprintf(fout, "%s%02d-", m_name.c_str(), (m_id >= 0)? m_id : 0);
-         m_curr_lin_hist.print(fout);
-         fprintf(fout, "\n");
-      }
-   }
-   
-   void print(FILE *fout) {
-      std::list<linear_histogram_snapshot>::iterator iter = m_lin_hist_archive.begin();
-      for (; iter != m_lin_hist_archive.end(); ++iter) {
-         fprintf(fout, "%s%02d-", m_name.c_str(), m_id);
-         iter->print(fout);
-         fprintf(fout, "\n");
-      }
-      fprintf(fout, "%s%02d-", m_name.c_str(), m_id);
-      m_curr_lin_hist.print(fout);
-      fprintf(fout, "\n");
-   }
-
-   void print_visualizer(FILE *fout) {
-      assert(m_lin_hist_archive.empty()); // don't support snapshot for now
-      fprintf(fout, "%s", m_name.c_str());
-      if (m_id >= 0) {
-         fprintf(fout, "%02d: ", m_id);
-      } else {
-         fprintf(fout, ": ");
-      }
-      m_curr_lin_hist.print_visualizer(fout);
-      fprintf(fout, "\n");
-      if (m_reset_at_snap_shot) {
-         m_curr_lin_hist.reset(0);
-      } 
-   }
-
-   void print_visualizer(gzFile fout) {
-      assert(m_lin_hist_archive.empty()); // don't support snapshot for now
-      gzprintf(fout, "%s", m_name.c_str());
-      if (m_id >= 0) {
-         gzprintf(fout, "%02d: ", m_id);
-      } else {
-         gzprintf(fout, ": ");
-      }
-      m_curr_lin_hist.print_visualizer(fout);
-      gzprintf(fout, "\n");
-      if (m_reset_at_snap_shot) {
-         m_curr_lin_hist.reset(0);
-      } 
-   }
-};
 int linear_histogram_logger::s_ids = 0;
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -1049,9 +464,9 @@ void shader_CTA_count_create( int n_shaders, unsigned long long  logging_interva
 
    s_CTA_count_logger->set_id(-1);
    if (logging_interval != 0) {
-   add_snap_shot_trigger(s_CTA_count_logger);
-   add_spill_log(s_CTA_count_logger);
-}
+      add_snap_shot_trigger(s_CTA_count_logger);
+      add_spill_log(s_CTA_count_logger);
+   }
 }
 
 void shader_CTA_count_log( int shader_id, int nCTAadded )
@@ -1088,5 +503,322 @@ void shader_CTA_count_visualizer_gzprint( gzFile fout )
 {
    if (s_CTA_count_logger == NULL) return;
    s_CTA_count_logger->print_visualizer(fout);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+thread_insn_span::thread_insn_span(unsigned long long  cycle, int n_insn)
+  : m_cycle(cycle), m_n_insn(n_insn), 
+#ifdef USE_MAP
+     m_insn_span_count() 
+#else 
+     m_insn_span_count(n_insn * 2) 
+#endif
+{ 
+}
+
+thread_insn_span::~thread_insn_span() { }
+   
+thread_insn_span::thread_insn_span(const thread_insn_span& other)
+      : m_cycle(other.m_cycle), m_n_insn(other.m_n_insn), 
+        m_insn_span_count(other.m_insn_span_count) 
+{ 
+}
+      
+thread_insn_span& thread_insn_span::operator=(const thread_insn_span& other)
+{
+   printf("thread_insn_span& operator=\n");
+   if (this != &other && m_n_insn != other.m_n_insn) {
+      m_n_insn = other.m_n_insn;
+      m_insn_span_count = other.m_insn_span_count;
+      m_cycle = other.m_cycle;
+   }
+   return *this;
+}
+   
+thread_insn_span& thread_insn_span::operator+=(const thread_insn_span& other)
+{
+   assert(m_n_insn == other.m_n_insn); // no way to aggregate if they are different programs
+   span_count_map::const_iterator i_sc = other.m_insn_span_count.begin();
+   for (; i_sc != other.m_insn_span_count.end(); ++i_sc) {
+      m_insn_span_count[i_sc->first] += i_sc->second;
+   }
+   return *this;
+}
+   
+void thread_insn_span::set_span( address_type pc ) 
+{
+   if( ((int)pc) >= 0 )
+      m_insn_span_count[pc] += 1;
+}
+   
+void thread_insn_span::reset(unsigned long long  cycle) 
+{
+   m_cycle = cycle;
+   m_insn_span_count.clear(); 
+}
+   
+void thread_insn_span::print_span(FILE *fout) const
+{
+   fprintf(fout, "%d: ", (int)m_cycle);
+   span_count_map::const_iterator i_sc = m_insn_span_count.begin();
+   for (; i_sc != m_insn_span_count.end(); ++i_sc) {
+      fprintf(fout, "%d ", i_sc->first);
+   }
+   fprintf(fout, "\n");
+}
+
+void thread_insn_span::print_histo(FILE *fout) const
+{
+   fprintf(fout, "%d:", (int)m_cycle);
+   span_count_map::const_iterator i_sc = m_insn_span_count.begin();
+   for (; i_sc != m_insn_span_count.end(); ++i_sc) {
+      fprintf(fout, "%d ", i_sc->second);
+   }
+   fprintf(fout, "\n");
+}
+
+void thread_insn_span::print_sparse_histo(FILE *fout) const
+{
+   int n_printed_entries = 0;
+   span_count_map::const_iterator i_sc = m_insn_span_count.begin();
+   for (; i_sc != m_insn_span_count.end(); ++i_sc) {
+      unsigned ptx_lineno = translate_pc_to_ptxlineno(i_sc->first);
+      fprintf(fout, "%u %d ", ptx_lineno, i_sc->second);
+      n_printed_entries++;
+   }
+   if (n_printed_entries == 0) {
+      fprintf(fout, "0 0 ");
+   }
+   fprintf(fout, "\n");
+}
+
+void thread_insn_span::print_sparse_histo(gzFile fout) const
+{
+   int n_printed_entries = 0;
+   span_count_map::const_iterator i_sc = m_insn_span_count.begin();
+   for (; i_sc != m_insn_span_count.end(); ++i_sc) {
+      unsigned ptx_lineno = translate_pc_to_ptxlineno(i_sc->first);
+      gzprintf(fout, "%u %d ", ptx_lineno, i_sc->second);
+      n_printed_entries++;
+   }
+   if (n_printed_entries == 0) {
+      gzprintf(fout, "0 0 ");
+   }
+   gzprintf(fout, "\n");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+thread_CFlocality::thread_CFlocality(std::string name, 
+                                     unsigned long long  snap_shot_interval, 
+                                     int nthreads, 
+                                     int n_insn, 
+                                     address_type start_pc, 
+                                     unsigned long long  start_cycle)
+      : snap_shot_trigger(snap_shot_interval), m_name(name),
+        m_nthreads(nthreads), m_thread_pc(nthreads, start_pc), m_cycle(start_cycle),
+        m_thd_span(start_cycle, n_insn)
+{
+   std::fill(m_thread_pc.begin(), m_thread_pc.end(), -1); // so that hw thread with no work assigned will not clobber results
+}
+   
+thread_CFlocality::~thread_CFlocality() 
+{
+} 
+   
+void thread_CFlocality::update_thread_pc( int thread_id, address_type pc ) 
+{
+   m_thread_pc[thread_id] = pc;
+   m_thd_span.set_span(pc);
+}
+   
+void thread_CFlocality::snap_shot(unsigned long long  current_cycle) 
+{
+   m_thd_span_archive.push_back(m_thd_span);
+   m_thd_span.reset(current_cycle);
+   for (int i = 0; i < (int)m_thread_pc.size(); i++) {
+      m_thd_span.set_span(m_thread_pc[i]);
+   }
+}
+   
+void thread_CFlocality::spill(FILE *fout, bool final) 
+{
+   std::list<thread_insn_span>::iterator lit = m_thd_span_archive.begin();
+   for (; lit != m_thd_span_archive.end(); lit = m_thd_span_archive.erase(lit) ) {
+      fprintf(fout, "%s-", m_name.c_str());
+      lit->print_histo(fout);
+   }
+   assert( m_thd_span_archive.empty() );
+   if (final) {
+      fprintf(fout, "%s-", m_name.c_str());
+      m_thd_span.print_histo(fout);
+   }
+}
+   
+      
+void thread_CFlocality::print_visualizer(FILE *fout)  
+{
+   fprintf(fout, "%s: ", m_name.c_str());
+   if (m_thd_span_archive.empty()) {
+   
+      // visualizer do no require snap_shots
+      m_thd_span.print_sparse_histo(fout);
+      
+      // clean the thread span
+      m_thd_span.reset(0);
+      for (int i = 0; i < (int)m_thread_pc.size(); i++) 
+         m_thd_span.set_span(m_thread_pc[i]);
+   } else { 
+      assert(0); // TODO: implement fall back so that visualizer can work with snap shots
+   }
+}
+   
+void thread_CFlocality::print_visualizer(gzFile fout)
+{
+   gzprintf(fout, "%s: ", m_name.c_str());
+   if (m_thd_span_archive.empty()) {
+   
+      // visualizer do no require snap_shots
+      m_thd_span.print_sparse_histo(fout);
+      
+      // clean the thread span
+      m_thd_span.reset(0);
+      for (int i = 0; i < (int)m_thread_pc.size(); i++) {
+         m_thd_span.set_span(m_thread_pc[i]);
+      }
+   } else { 
+      assert(0); // TODO: implement fall back so that visualizer can work with snap shots
+   }
+}
+   
+void thread_CFlocality::print_span(FILE *fout) const
+{
+   std::list<thread_insn_span>::const_iterator lit = m_thd_span_archive.begin();
+   for (; lit != m_thd_span_archive.end(); ++lit) {
+      fprintf(fout, "%s-", m_name.c_str());
+      lit->print_span(fout);
+   }
+   fprintf(fout, "%s-", m_name.c_str());
+   m_thd_span.print_span(fout);
+}
+
+void thread_CFlocality::print_histo(FILE *fout) const
+{
+   std::list<thread_insn_span>::const_iterator lit = m_thd_span_archive.begin();
+   for (; lit != m_thd_span_archive.end(); ++lit) {
+      fprintf(fout, "%s-", m_name.c_str());
+      lit->print_histo(fout);
+   }
+   fprintf(fout, "%s-", m_name.c_str());
+   m_thd_span.print_histo(fout);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+linear_histogram_logger::linear_histogram_logger(int n_bins, 
+                           unsigned long long  snap_shot_interval, 
+                           const char *name, 
+                           bool reset_at_snap_shot, 
+                           unsigned long long  start_cycle )
+      : snap_shot_trigger(snap_shot_interval), 
+        m_n_bins(n_bins), 
+        m_curr_lin_hist(m_n_bins, start_cycle),
+        m_lin_hist_archive(),
+        m_cycle(start_cycle),
+        m_reset_at_snap_shot(reset_at_snap_shot), 
+        m_name(name),
+        m_id(s_ids++) 
+{
+}
+
+linear_histogram_logger::linear_histogram_logger(const linear_histogram_logger& other) 
+      : snap_shot_trigger(other.get_interval()), 
+        m_n_bins(other.m_n_bins), 
+        m_curr_lin_hist(m_n_bins, other.m_cycle),
+        m_lin_hist_archive(),
+        m_cycle(other.m_cycle),
+        m_reset_at_snap_shot(other.m_reset_at_snap_shot), 
+        m_name(other.m_name),
+        m_id(s_ids++) 
+{
+}
+
+linear_histogram_logger::~linear_histogram_logger() 
+{
+      remove_snap_shot_trigger(this);
+      remove_spill_log(this);
+}
+   
+void linear_histogram_logger::snap_shot(unsigned long long  current_cycle) {
+   m_lin_hist_archive.push_back(m_curr_lin_hist);
+   if (m_reset_at_snap_shot) {
+      m_curr_lin_hist.reset(current_cycle);
+   } else {
+      m_curr_lin_hist.set_cycle(current_cycle);
+   }
+}
+   
+void linear_histogram_logger::spill(FILE *fout, bool final) 
+{
+   std::list<linear_histogram_snapshot>::iterator iter = m_lin_hist_archive.begin();
+   for (; iter != m_lin_hist_archive.end(); iter = m_lin_hist_archive.erase(iter) ) {
+      fprintf(fout, "%s%02d-", m_name.c_str(), (m_id >= 0)? m_id : 0);
+      iter->print(fout);
+      fprintf(fout, "\n");
+   }
+   assert( m_lin_hist_archive.empty() );
+   if (final) {
+      fprintf(fout, "%s%02d-", m_name.c_str(), (m_id >= 0)? m_id : 0);
+      m_curr_lin_hist.print(fout);
+      fprintf(fout, "\n");
+   }
+}
+   
+void linear_histogram_logger::print(FILE *fout) const
+{
+   std::list<linear_histogram_snapshot>::const_iterator iter = m_lin_hist_archive.begin();
+   for (; iter != m_lin_hist_archive.end(); ++iter) {
+      fprintf(fout, "%s%02d-", m_name.c_str(), m_id);
+      iter->print(fout);
+      fprintf(fout, "\n");
+   }
+   fprintf(fout, "%s%02d-", m_name.c_str(), m_id);
+   m_curr_lin_hist.print(fout);
+   fprintf(fout, "\n");
+}
+
+void linear_histogram_logger::print_visualizer(FILE *fout)
+{
+   assert(m_lin_hist_archive.empty()); // don't support snapshot for now
+   fprintf(fout, "%s", m_name.c_str());
+   if (m_id >= 0) {
+      fprintf(fout, "%02d: ", m_id);
+   } else {
+      fprintf(fout, ": ");
+   }
+   m_curr_lin_hist.print_visualizer(fout);
+   fprintf(fout, "\n");
+   if (m_reset_at_snap_shot) {
+      m_curr_lin_hist.reset(0);
+   } 
+}
+
+void linear_histogram_logger::print_visualizer(gzFile fout)
+{
+   assert(m_lin_hist_archive.empty()); // don't support snapshot for now
+   gzprintf(fout, "%s", m_name.c_str());
+   if (m_id >= 0) {
+      gzprintf(fout, "%02d: ", m_id);
+   } else {
+      gzprintf(fout, ": ");
+   }
+   m_curr_lin_hist.print_visualizer(fout);
+   gzprintf(fout, "\n");
+   if (m_reset_at_snap_shot) {
+      m_curr_lin_hist.reset(0);
+   } 
 }
 

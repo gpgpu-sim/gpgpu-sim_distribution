@@ -197,8 +197,6 @@ void gpgpu_sim::visualizer_printstat()
    gzprintf(visualizer_file, "globalinsncount: %lld\n", gpu_sim_insn);
    gzprintf(visualizer_file, "globaltotinsncount: %lld\n", gpu_tot_sim_insn);
    gzprintf(visualizer_file, "gpucompletedthreads: %lld\n", m_shader_stats->gpu_completed_thread);
-   gzprintf(visualizer_file, "gpgpunsentwrites: %d\n", gpgpu_n_sent_writes);
-   gzprintf(visualizer_file, "gpgpunprocessedwrites: %d\n", gpgpu_n_processed_writes);
    gzprintf(visualizer_file, "gpgpu_n_cache_bkconflict: %d\n", m_shader_stats->gpgpu_n_cache_bkconflict);
    gzprintf(visualizer_file, "gpgpu_n_shmem_bkconflict: %d\n", m_shader_stats->gpgpu_n_shmem_bkconflict);     
    gzprintf(visualizer_file, "gpu_stall_by_MSHRwb: %d\n", m_shader_stats->gpu_stall_by_MSHRwb);   

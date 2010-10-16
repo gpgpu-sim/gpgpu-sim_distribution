@@ -402,7 +402,6 @@ void memory_partition_unit::L2c_service_mem_req()
                mf->set_status(IN_L2TOCBQUEUE_HIT,MR_DRAM_OUTQ,gpu_sim_cycle+gpu_tot_sim_cycle);
             } else { 
                m_stats->L2_write_hit++;
-               gpgpu_n_processed_writes++;
             }
          } else {
             // L2 Cache Miss
@@ -492,7 +491,6 @@ void memory_partition_unit::process_dram_output()
          m_missTracker->miss_serviced(mf);
          mf->set_type(REPLY_DATA);
          L2tocbqueue->push(mf,gpu_sim_cycle);
-         gpgpu_n_processed_writes++;
          L2dramout = NULL;
          wb_addr = -1;
       }
@@ -521,7 +519,6 @@ bool memory_partition_unit::L2c_write_back( unsigned long long int addr, int bsi
                                  L2_WTBK_DATA,
                                  m_config );
    L2todram_wbqueue->push(mf,gpu_sim_cycle);
-   gpgpu_n_sent_writes++;
    return true;
 }
 

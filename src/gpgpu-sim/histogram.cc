@@ -1,8 +1,7 @@
 /* 
- * gpu-cache.c
+ * histogram.cc
  *
- * Copyright (c) 2009 by Tor M. Aamodt, Wilson W. L. Fung, Ali Bakhoda, 
- * George L. Yuan and the 
+ * Copyright (c) 2009 by Tor M. Aamodt, Wilson W. L. Fung and the 
  * University of British Columbia
  * Vancouver, BC  V6T 1Z4
  * All Rights Reserved.
@@ -64,101 +63,100 @@
  * Vancouver, BC V6T 1Z4
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include "../abstract_hardware_model.h"
+#include "histogram.h"
 
-#ifndef GPU_CACHE_H
-#define GPU_CACHE_H
+#include <assert.h>
 
-#define VALID 0x01    // block is valid (and present in cache)
-#define DIRTY 0x02    // block is dirty
-#define RESERVED 0x04 // there is an outstanding request for this block, but it has not returned yet
-
-enum cache_request_status {
-    HIT,
-    HIT_W_WT,       // Hit, but write through cache, still needs to send to memory 
-    MISS_NO_WB,     // miss, but witeback not necessary
-    MISS_W_WB,      // miss, must do writeback 
-    WB_HIT_ON_MISS, // request hit on a reservation in wb cache
-    RESERVATION_FAIL,
-    NUM_CACHE_REQUEST_STATUS
-};
-
-struct cache_block_t {
-   cache_block_t()
-   {
-      tag=0;
-      addr=0;
-      fetch_time=0;
-      last_used=0;
-      status=0;
+binned_histogram::binned_histogram (std::string name, int nbins, int* bins) 
+   : m_name(name), m_nbins(nbins), m_bins(NULL), m_bin_cnts(new int[m_nbins]), m_maximum(0), m_sum(0) 
+{
+   if (bins) {
+      m_bins = new int[m_nbins];
+      for (int i = 0; i < nbins; i++) {
+         m_bins[i] = bins[i];
+      }
    }
-   new_addr_type tag;
-   new_addr_type addr;
-   unsigned fetch_time;
-   unsigned last_used;
-   unsigned char status; /* valid, dirty... etc */
-};
 
-#define LRU 'L'
-#define FIFO 'F'
-#define RANDOM 'R'
+   reset_bins();
+}
 
-enum cache_write_policy {
-    no_writes,    // line replacement when new line arrives
-    write_back,   // line replacement when new line arrives
-    write_through // reservation based, use much handle reservation full error.
-};
+binned_histogram::binned_histogram (const binned_histogram& other)
+   : m_name(other.m_name), m_nbins(other.m_nbins), m_bins(NULL), 
+     m_bin_cnts(new int[m_nbins]), m_maximum(0), m_sum(0)
+{
+   for (int i = 0; i < m_nbins; i++) {
+      m_bin_cnts[i] = other.m_bin_cnts[i];
+   }
+}
 
-class cache_t {
-public:
-   cache_t( const char *name, 
-            const char *opt, 
-            enum cache_write_policy wp, 
-            int core_id, 
-            int type_id);
-   ~cache_t();
+void binned_histogram::reset_bins () {
+   for (int i = 0; i < m_nbins; i++) {
+      m_bin_cnts[i] = 0;
+   }
+}
 
-   enum cache_request_status access( new_addr_type addr, 
-                                     bool write,
-                                     unsigned int sim_cycle, 
-                                     address_type *wb_address );
+void binned_histogram::add2bin (int sample) {
+   assert(0);
+   m_maximum = (sample > m_maximum)? sample : m_maximum;
+}
 
-   new_addr_type fill( new_addr_type addr, unsigned int sim_cycle );
+void binned_histogram::fprint (FILE *fout) const
+{
+   if (m_name.c_str() != NULL) fprintf(fout, "%s = ", m_name.c_str());
+   int total_sample = 0;
+   for (int i = 0; i < m_nbins; i++) {
+      fprintf(fout, "%d ", m_bin_cnts[i]);
+      total_sample += m_bin_cnts[i];
+   }
+   fprintf(fout, "max=%d ", m_maximum);
+   float avg = 0.0f;
+   if (total_sample > 0) {
+      avg = (float)m_sum / total_sample;
+   }
+   fprintf(fout, "avg=%0.2f ", avg);
+}
 
-   unsigned flush();
+binned_histogram::~binned_histogram () {
+   if (m_bins) delete[] m_bins;
+   delete[] m_bin_cnts;
+}
+
+pow2_histogram::pow2_histogram (std::string name, int nbins, int* bins) 
+   : binned_histogram (name, nbins, bins) {}
+
+void pow2_histogram::add2bin (int sample) {
+   assert(sample >= 0);
    
-   void     print( FILE *stream, unsigned &total_access, unsigned &total_misses );
-   float    windowed_cache_miss_rate(int);
-   void     new_window();
-   unsigned get_line_sz() const { return m_line_sz; }
+   int bin;
+   int v = sample;
+   register unsigned int shift;
 
-private:
-   std::string m_name;
-
-   cache_block_t *m_lines; /* nbanks x nset x assoc lines in total */
-   unsigned m_n_banks;
-   unsigned m_nset;
-   unsigned m_nset_log2;
-   unsigned m_assoc;
-   unsigned m_line_sz; // bytes 
-   unsigned m_line_sz_log2;
-
-   enum cache_write_policy m_write_policy; 
-   unsigned char m_replacement_policy;
-
-   unsigned m_access;
-   unsigned m_miss;
-   unsigned m_merge_hit; // number of cache miss that hit the same line (and merged as a result)
-
-   // performance counters for calculating the amount of misses within a time window
-   unsigned m_prev_snapshot_access;
-   unsigned m_prev_snapshot_miss;
-   unsigned m_prev_snapshot_merge_hit; 
+   bin =   (v > 0xFFFF) << 4; v >>= bin;
+   shift = (v > 0xFF  ) << 3; v >>= shift; bin |= shift;
+   shift = (v > 0xF   ) << 2; v >>= shift; bin |= shift;
+   shift = (v > 0x3   ) << 1; v >>= shift; bin |= shift;
+                                           bin |= (v >> 1);
+   bin += (sample > 0)? 1:0;
    
-   int m_core_id; // which shader core is using this
-   int m_type_id; // what kind of cache is this (normal, texture, constant)
-};
+   m_bin_cnts[bin] += 1;
+   
+   m_maximum = (sample > m_maximum)? sample : m_maximum;
+   m_sum += sample;
+}
 
-#endif
+linear_histogram::linear_histogram (int stride, const char *name, int nbins, int* bins) 
+   : binned_histogram (name, nbins, bins), m_stride(stride)
+{
+}
+
+void linear_histogram::add2bin (int sample) {
+   assert(sample >= 0);
+
+   int bin = sample / m_stride;      
+   if (bin >= m_nbins) bin = m_nbins - 1;
+   
+   m_bin_cnts[bin] += 1;
+   
+   m_maximum = (sample > m_maximum)? sample : m_maximum;
+   m_sum += sample;
+}

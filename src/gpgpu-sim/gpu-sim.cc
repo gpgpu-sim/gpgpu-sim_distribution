@@ -109,9 +109,6 @@ bool g_interactive_debugger_enabled=false;
 unsigned long long  gpu_sim_cycle = 0;
 unsigned long long  gpu_tot_sim_cycle = 0;
 
-unsigned int gpgpu_n_sent_writes = 0;
-unsigned int gpgpu_n_processed_writes = 0;
-
 // performance counter for stalls due to congestion.
 unsigned int gpu_stall_wr_back = 0;
 unsigned int gpu_stall_dramfull = 0; 
@@ -126,7 +123,6 @@ int gpu_runtime_stat_flag = 0;
 
 unsigned long long  gpu_max_cycle = 0;
 unsigned long long  gpu_max_insn = 0;
-unsigned g_next_mf_request_uid = 1;
 int g_total_cta_left;
 
 // GPGPU-Sim timing model options
@@ -560,7 +556,6 @@ unsigned int gpgpu_sim::run_gpu_sim()
    not_completed = 1;
    mem_busy = 1;
    icnt2mem_busy = 1;
-   g_next_mf_request_uid = 1;
    more_thread = 1;
    gpu_sim_insn = 0;
    m_shader_stats->gpu_sim_insn_no_ld_const = 0;
@@ -705,8 +700,6 @@ void gpgpu_sim::gpu_print_stat() const
    printf("gpu_tot_ipc = %12.4f\n", (float)gpu_tot_sim_insn / gpu_tot_sim_cycle);
    printf("gpu_tot_completed_thread = %lld\n", gpu_tot_completed_thread);
    printf("gpu_tot_issued_cta = %lld\n", gpu_tot_issued_cta);
-   printf("gpgpu_n_sent_writes = %d\n", gpgpu_n_sent_writes);
-   printf("gpgpu_n_processed_writes = %d\n", gpgpu_n_processed_writes);
 
    // performance counter for stalls due to congestion.
    printf("gpu_stall_by_MSHRwb= %d\n", m_shader_stats->gpu_stall_by_MSHRwb);
@@ -1095,9 +1088,6 @@ void gpgpu_sim::cycle()
                 if ( ::icnt_has_buffer( m_shader_config->mem2device(i), response_size ) ) {
                     if (!mf->get_is_write()) 
                        mf->set_return_timestamp(gpu_sim_cycle+gpu_tot_sim_cycle);
-                    else {
-                        gpgpu_n_processed_writes++;
-                    }
                     ::icnt_push( m_shader_config->mem2device(i), mf->get_tpc(), mf, response_size );
                     m_memory_partition_unit[i]->pop();
                 } else {
