@@ -460,35 +460,59 @@ void _cl_program::Build(const char *options)
          fprintf(fp,source);
          fclose(fp);
 
-         setenv("LD_LIBRARY_PATH",nvopencl_libdir,1);
          char commandline[1024];
          const char *opt = options?options:"";
          const char* test_dir = getenv( "OPENCL_CURRENT_TEST_PATH" );
          const char* remote_host = getenv( "OPENCL_REMOTE_GPU_HOST" );
-         if ( remote_host && test_dir )
-         {
-           snprintf(commandline,1024,"ssh %s \"export LD_LIBRARY_PATH=%s; %s/libopencl/bin/nvopencl_wrapper %s/%s %s/%s %s\"", 
+         if ( remote_host && test_dir ) {
+            // create same directory on OpenCL to PTX server
+            snprintf(commandline,1024,"ssh %s mkdir -p %s", remote_host, test_dir );
+            printf("GPGPU-Sim OpenCL API: OpenCL wrapper command line \'%s\'\n", commandline);
+            fflush(stdout);
+            int result = system(commandline);
+            if( result ) { printf("GPGPU-Sim OpenCL API: ERROR (%d)\n", result ); exit(1); }
+
+            // copy input OpenCL file to OpenCL to PTX server
+            snprintf(commandline,1024,"scp %s/%s %s:%s/%s", test_dir, cl_fname, remote_host, test_dir, cl_fname );
+            printf("GPGPU-Sim OpenCL API: OpenCL wrapper command line \'%s\'\n", commandline);
+            fflush(stdout);
+            result = system(commandline);
+            if( result ) { printf("GPGPU-Sim OpenCL API: ERROR (%d)\n", result ); exit(1); }
+
+            // convert OpenCL to PTX on remote server
+            snprintf(commandline,1024,"ssh %s \"export LD_LIBRARY_PATH=%s; %s/libopencl/bin/nvopencl_wrapper %s/%s %s/%s %s\"", 
                     remote_host, nvopencl_libdir, gpgpusim_opencl_path, test_dir, cl_fname, test_dir, ptx_fname, opt );
-         }
-         else
-         {
-           snprintf(commandline,1024,"%s/libopencl/bin/nvopencl_wrapper %s %s %s", 
+            printf("GPGPU-Sim OpenCL API: OpenCL wrapper command line \'%s\'\n", commandline);
+            fflush(stdout);
+            result = system(commandline);
+            if( result ) { printf("GPGPU-Sim OpenCL API: ERROR (%d)\n", result ); exit(1); }
+
+            // copy output PTX from OpenCL to PTX server back to simulation directory
+            snprintf(commandline,1024,"scp %s:%s/%s %s/%s", remote_host, test_dir, ptx_fname, test_dir, ptx_fname );
+            printf("GPGPU-Sim OpenCL API: OpenCL wrapper command line \'%s\'\n", commandline);
+            fflush(stdout);
+            result = system(commandline);
+            if( result ) { printf("GPGPU-Sim OpenCL API: ERROR (%d)\n", result ); exit(1); }
+         } else {
+            setenv("LD_LIBRARY_PATH",nvopencl_libdir,1);
+            snprintf(commandline,1024,"%s/libopencl/bin/nvopencl_wrapper %s %s %s", 
                    gpgpusim_opencl_path, cl_fname, ptx_fname, opt );
-         }
-         printf("GPGPU-Sim OpenCL API: OpenCL wrapper command line \'%s\'\n", commandline);
-         int result = system(commandline);
-         setenv("LD_LIBRARY_PATH",ld_library_path_orig,1);
-         if( result != 0 ) {
-            printf("GPGPU-Sim OpenCL API: ERROR ** while calling NVIDIA driver to convert OpenCL to PTX (%u)\n",
-                   result );
-            printf("GPGPU-Sim OpenCL API: LD_LIBRARY_PATH was \'%s\'\n", nvopencl_libdir);
-            printf("GPGPU-Sim OpenCL API: command line was \'%s\'\n", commandline);
-            exit(1);
+            printf("GPGPU-Sim OpenCL API: OpenCL wrapper command line \'%s\'\n", commandline);
+            fflush(stdout);
+            int result = system(commandline);
+            setenv("LD_LIBRARY_PATH",ld_library_path_orig,1);
+            if( result != 0 ) {
+               printf("GPGPU-Sim OpenCL API: ERROR ** while calling NVIDIA driver to convert OpenCL to PTX (%u)\n",
+                      result );
+               printf("GPGPU-Sim OpenCL API: LD_LIBRARY_PATH was \'%s\'\n", nvopencl_libdir);
+               printf("GPGPU-Sim OpenCL API: command line was \'%s\'\n", commandline);
+               exit(1);
+            }
          }
          if( !g_keep_intermediate_files ) {
             // clean up files...
             snprintf(commandline,1024,"rm -f %s", cl_fname );
-            result = system(commandline);
+            int result = system(commandline);
             if( result != 0 ) 
                printf("GPGPU-Sim OpenCL API: could not remove temporary files generated while generating PTX\n");
          }
