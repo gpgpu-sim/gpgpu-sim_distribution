@@ -85,12 +85,6 @@
 
 template class fifo_pipeline<mem_fetch>;
 
-// external dependencies
-extern unsigned long long int addrdec_mask[5];
-extern unsigned made_write_mfs;
-extern unsigned freed_L1write_mfs;
-extern unsigned freed_L2write_mfs;
-
 address_type L2c_mshr::cache_tag(const mem_fetch *mf) const 
 {
    return (mf->get_addr() & ~(m_linesize - 1));
@@ -287,12 +281,6 @@ memory_partition_unit::~memory_partition_unit()
    delete m_accessLocality; 
 }
 
-void memory_partition_unit::set_stats( class memory_stats_t *stats )
-{
-    m_stats=stats;
-    m_dram->set_stats(stats);
-}
-
 void memory_partition_unit::cache_cycle()
 {
    process_dram_output(); // pop from dram
@@ -322,17 +310,19 @@ bool memory_partition_unit::full() const
 // L2 access functions
 
 // L2 Cache Creation 
-memory_partition_unit::memory_partition_unit( unsigned partition_id, struct memory_config *config )
+memory_partition_unit::memory_partition_unit( unsigned partition_id, 
+                                              struct memory_config *config,
+                                              class memory_stats_t *stats )
 {
    m_id = partition_id;
    m_config=config;
-   m_stats=NULL;
-   m_dram = new dram_t(m_id, m_config);
+   m_stats=stats;
+   m_dram = new dram_t(m_id,m_config,m_stats);
 
    if( m_config->gpgpu_cache_dl2_opt ) {
       char L2c_name[32];
       snprintf(L2c_name, 32, "L2_%03d", m_id);
-      m_L2cache = new cache_t(L2c_name,m_config->gpgpu_cache_dl2_opt, ~addrdec_mask[CHIP], write_through, -1, -1 );
+      m_L2cache = new cache_t(L2c_name,m_config->gpgpu_cache_dl2_opt, write_through,-1,-1);
       m_mshr = new L2c_mshr(m_L2cache->get_line_sz());
       m_missTracker = new L2c_miss_tracker(m_L2cache->get_line_sz()); 
       m_accessLocality = new L2c_access_locality(m_L2cache->get_line_sz());
@@ -401,7 +391,7 @@ void memory_partition_unit::L2c_service_mem_req()
          address_type rep_block;
          enum cache_request_status status = MISS_NO_WB;
          if( mf->istexture() )
-            status = m_L2cache->access( mf->get_addr(), mf->get_is_write(), gpu_sim_cycle, &rep_block);
+            status = m_L2cache->access( mf->get_partition_addr(), mf->get_is_write(), gpu_sim_cycle, &rep_block);
          if( (status==HIT) || m_config->l2_ideal ) {
             mf->set_type( REPLY_DATA );
             assert( mf != NULL );
@@ -412,7 +402,6 @@ void memory_partition_unit::L2c_service_mem_req()
                mf->set_status(IN_L2TOCBQUEUE_HIT,MR_DRAM_OUTQ,gpu_sim_cycle+gpu_tot_sim_cycle);
             } else { 
                m_stats->L2_write_hit++;
-               freed_L1write_mfs++;
                gpgpu_n_processed_writes++;
             }
          } else {
@@ -484,7 +473,7 @@ void memory_partition_unit::process_dram_output()
             mf->set_type(REPLY_DATA);
             L2tocbqueue->push(mf,gpu_sim_cycle);
             if( mf->istexture() )
-               wb_addr = m_L2cache->shd_cache_fill(mf->get_addr(), gpu_sim_cycle);
+               wb_addr = m_L2cache->fill(mf->get_partition_addr(), gpu_sim_cycle);
          }
          // only perform a write on cache eviction (write-back policy)
          // it is the 1st or nth time trial to writeback
@@ -501,7 +490,6 @@ void memory_partition_unit::process_dram_output()
          wb_addr = -1;
       } else { //service L2 write miss
          m_missTracker->miss_serviced(mf);
-         freed_L2write_mfs++;
          mf->set_type(REPLY_DATA);
          L2tocbqueue->push(mf,gpu_sim_cycle);
          gpgpu_n_processed_writes++;
@@ -530,8 +518,8 @@ bool memory_partition_unit::L2c_write_back( unsigned long long int addr, int bsi
                                  true/*write*/,
                                  partial_write_mask_t(),
                                  L2_WRBK_ACC,
-                                 L2_WTBK_DATA );
-   made_write_mfs++;
+                                 L2_WTBK_DATA,
+                                 m_config );
    L2todram_wbqueue->push(mf,gpu_sim_cycle);
    gpgpu_n_sent_writes++;
    return true;
@@ -540,7 +528,7 @@ bool memory_partition_unit::L2c_write_back( unsigned long long int addr, int bsi
 void memory_partition_unit::L2c_print_cache_stat(unsigned &accesses, unsigned &misses) const
 {
    FILE *fp = stdout;
-   m_L2cache->shd_cache_print(fp,accesses,misses);
+   m_L2cache->print(fp,accesses,misses);
    m_mshr->print_stat(fp); 
    m_missTracker->print_stat(fp);
    m_accessLocality->print_stat(fp, false);

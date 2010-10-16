@@ -72,8 +72,7 @@
 
 class memory_stats_t {
 public:
-   memory_stats_t( unsigned n_mem, 
-                   unsigned n_shader, 
+   memory_stats_t( unsigned n_shader, 
                    struct shader_core_config *shader_config, 
                    struct memory_config *mem_config );
 
@@ -88,7 +87,6 @@ public:
 
    void print( FILE *fp );
 
-   unsigned m_n_mem;
    unsigned m_n_shader;
 
    const struct shader_core_config *m_shader_config;
@@ -139,6 +137,12 @@ public:
    unsigned int *L2_dramtoL2length;
    unsigned int *L2_dramtoL2writelength;
    unsigned int *L2_L2todramlength;
+
+   unsigned int **concurrent_row_access; //concurrent_row_access[dram chip id][bank id]
+   unsigned int **num_activates; //num_activates[dram chip id][bank id]
+   unsigned int **row_access; //row_access[dram chip id][bank id]
+   unsigned int **max_conc_access2samerow; //max_conc_access2samerow[dram chip id][bank id]
+   unsigned int **max_servicetime2samerow; //max_servicetime2samerow[dram chip id][bank id]
 };
 
 #endif /*MEM_LATENCY_STAT_H*/

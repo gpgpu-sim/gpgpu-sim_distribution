@@ -239,7 +239,7 @@ std::list<mshr_entry*> &mshr_shader_unit::choose_return_queue()
 
 void mshr_shader_unit::mshr_return_from_mem(unsigned mshr_id)
 {
-    if(mshr_id == -1) {
+    if(mshr_id == (unsigned)-1) {
         return;
     }
    mshr_entry *mshr = &m_mshrs[mshr_id];
@@ -294,12 +294,14 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                   unsigned shader_id,
                                   unsigned tpc_id,
                                   struct shader_core_config *config,
+                                  const struct memory_config *mem_config,
                                   struct shader_core_stats *stats )
    : m_barriers( config->max_warps_per_shader, config->max_cta_per_core )
 {
-    m_gpu = gpu;
+   m_gpu = gpu;
    m_cluster = cluster;
    m_config = config;
+   m_memory_config = mem_config;
    m_stats = stats;
    unsigned warp_size=config->warp_size;
    config->max_sfu_latency = 32;
@@ -330,7 +332,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
    #define STRSIZE 1024
    char L1I_name[STRSIZE];
    snprintf(L1I_name, STRSIZE, "L1I_%03d", m_sid);
-   m_L1I = new cache_t(L1I_name,m_config->gpgpu_cache_il1_opt,    0,no_writes, m_sid,get_shader_instruction_cache_id());
+   m_L1I = new cache_t(L1I_name,m_config->gpgpu_cache_il1_opt,no_writes,m_sid,get_shader_instruction_cache_id());
 
    m_warp.resize(m_config->max_warps_per_shader, shd_warp_t(this, warp_size));
    m_pdom_warp = new pdom_warp_ctx_t*[config->max_warps_per_shader];
@@ -364,7 +366,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
    m_dispatch_port[1] = ID_OC_SFU;
    m_issue_port[1] = OC_EX_SFU;
 
-   m_ldst_unit = new ldst_unit( m_cluster, this, &m_operand_collector, m_scoreboard, config, m_stats, m_sid, m_tpc );
+   m_ldst_unit = new ldst_unit( cluster, this, &m_operand_collector, m_scoreboard, config, mem_config, stats, shader_id, tpc_id );
    m_fu[2] = m_ldst_unit;
    m_dispatch_port[2] = ID_OC_MEM;
    m_issue_port[2] = OC_EX_MEM;
@@ -628,7 +630,8 @@ void shader_core_ctx::fetch()
                                                       false,
                                                       NO_PARTIAL_WRITE,
                                                       INST_ACC_R,
-                                                      RD_REQ );
+                                                      RD_REQ,
+                                                      m_memory_config );
                         m_cluster->icnt_inject_request_packet(mf);
 
                         m_warp[warp_id].set_imiss_pending();
@@ -1047,7 +1050,8 @@ mem_stage_stall_type ldst_unit::send_mem_request(warp_inst_t &inst, mem_access_t
                                     true,
                                     NO_PARTIAL_WRITE,
                                     inst.space.is_local()?LOCAL_ACC_W:GLOBAL_ACC_W, //space of cache line is same as new request
-                                    WT_REQ );
+                                    WT_REQ,
+                                    m_memory_config );
       m_cluster->icnt_inject_request_packet(mf);
       inst.clear_active(access.warp_indices);
       m_stats->L1_writeback++;
@@ -1125,7 +1129,8 @@ mem_stage_stall_type ldst_unit::send_mem_request(warp_inst_t &inst, mem_access_t
                                     is_write,
                                     write_mask,
                                     access_type,
-                                    is_write?WT_REQ:RD_REQ);
+                                    is_write?WT_REQ:RD_REQ,
+                                    m_memory_config);
       if( access.reserved_mshr ) 
           access.reserved_mshr->set_mf(mf);
       m_cluster->icnt_inject_request_packet(mf);
@@ -1399,11 +1404,13 @@ ldst_unit::ldst_unit( simt_core_cluster *cluster,
                       shader_core_ctx *core, 
                       opndcoll_rfu_t *operand_collector,
                       Scoreboard *scoreboard,
-                      shader_core_config *config, 
+                      shader_core_config *config,
+                      const memory_config *mem_config,  
                       shader_core_stats *stats, 
                       unsigned sid,
                       unsigned tpc ) : pipelined_simd_unit(NULL,config,6) 
 {
+   m_memory_config = mem_config;
     m_cluster = cluster;
     m_core = core;
     m_operand_collector = operand_collector;
@@ -1419,9 +1426,9 @@ ldst_unit::ldst_unit( simt_core_cluster *cluster,
     snprintf(L1T_name, STRSIZE, "L1T_%03d", m_sid);
     snprintf(L1C_name, STRSIZE, "L1C_%03d", m_sid);
     enum cache_write_policy L1D_policy = m_config->gpgpu_cache_wt_through?write_through:write_back;
-    m_L1D = new cache_t(L1D_name,m_config->gpgpu_cache_dl1_opt,0,L1D_policy,m_sid,get_shader_normal_cache_id());
-    m_L1T = new cache_t(L1T_name,m_config->gpgpu_cache_texl1_opt,0,no_writes, m_sid,get_shader_texture_cache_id());
-    m_L1C = new cache_t(L1C_name,m_config->gpgpu_cache_constl1_opt,0,no_writes, m_sid,get_shader_constant_cache_id());
+    m_L1D = new cache_t(L1D_name,m_config->gpgpu_cache_dl1_opt,L1D_policy,m_sid,get_shader_normal_cache_id());
+    m_L1T = new cache_t(L1T_name,m_config->gpgpu_cache_texl1_opt,no_writes, m_sid,get_shader_texture_cache_id());
+    m_L1C = new cache_t(L1C_name,m_config->gpgpu_cache_constl1_opt,no_writes, m_sid,get_shader_constant_cache_id());
     config->gpgpu_cache_dl1_linesize = m_L1D->get_line_sz();
     config->gpgpu_cache_texl1_linesize = m_L1T->get_line_sz();
     config->gpgpu_cache_constl1_linesize = m_L1C->get_line_sz();
@@ -1467,11 +1474,11 @@ void ldst_unit::writeback()
                 }
                 m_mshr_unit->mshr_return_from_mem(mf->get_mshr());
                 if (mf->istexture()) 
-                    m_L1T->shd_cache_fill(mf->get_addr(),gpu_sim_cycle+gpu_tot_sim_cycle);
+                    m_L1T->fill(mf->get_addr(),gpu_sim_cycle+gpu_tot_sim_cycle);
                 else if (mf->isconst()) 
-                    m_L1C->shd_cache_fill(mf->get_addr(),gpu_sim_cycle+gpu_tot_sim_cycle);
+                    m_L1C->fill(mf->get_addr(),gpu_sim_cycle+gpu_tot_sim_cycle);
                 else if (!m_config->gpgpu_no_dl1) 
-                    m_L1D->shd_cache_fill(mf->get_addr(),gpu_sim_cycle+gpu_tot_sim_cycle);
+                    m_L1D->fill(mf->get_addr(),gpu_sim_cycle+gpu_tot_sim_cycle);
                 delete mf;
             }
         }
@@ -2098,7 +2105,7 @@ bool shader_core_ctx::fetch_unit_response_buffer_full() const
 
 void shader_core_ctx::accept_fetch_response( mem_fetch *mf )
 {
-    m_L1I->shd_cache_fill(mf->get_addr(),gpu_sim_cycle+gpu_tot_sim_cycle);
+    m_L1I->fill(mf->get_addr(),gpu_sim_cycle+gpu_tot_sim_cycle);
     m_warp[mf->get_wid()].clear_imiss_pending();
     delete mf;
 }
@@ -2450,6 +2457,7 @@ class ptx_thread_info *shader_core_ctx::get_thread_state( unsigned hw_thread_id 
 simt_core_cluster::simt_core_cluster( class gpgpu_sim *gpu, 
                                       unsigned cluster_id, 
                                       struct shader_core_config *config, 
+                                      const struct memory_config *mem_config,
                                       struct shader_core_stats *stats )
 {
     m_cta_issue_next_core=0;
@@ -2459,7 +2467,7 @@ simt_core_cluster::simt_core_cluster( class gpgpu_sim *gpu,
     m_stats = stats;
     m_core = new shader_core_ctx*[ config->n_simt_cores_per_cluster ];
     for( unsigned i=0; i < config->n_simt_cores_per_cluster; i++ ) 
-        m_core[i] = new shader_core_ctx(gpu,this,cid_to_sid(i),m_cluster_id,config,stats);
+        m_core[i] = new shader_core_ctx(gpu,this,cid_to_sid(i),m_cluster_id,config,mem_config,stats);
 }
 
 void simt_core_cluster::core_cycle()

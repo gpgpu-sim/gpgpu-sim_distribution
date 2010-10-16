@@ -167,10 +167,8 @@ private:
 class memory_partition_unit 
 {
 public:
-   memory_partition_unit( unsigned partition_id, struct memory_config *config);
+   memory_partition_unit( unsigned partition_id, struct memory_config *config, class memory_stats_t *stats );
    ~memory_partition_unit(); 
-
-   void set_stats( class memory_stats_t *stats );
 
    void cache_cycle();
 
@@ -224,7 +222,7 @@ private:
 
 // data
    unsigned m_id;
-   struct memory_config *m_config;
+   const struct memory_config *m_config;
    class dram_t *m_dram;
    class cache_t *m_L2cache;
 

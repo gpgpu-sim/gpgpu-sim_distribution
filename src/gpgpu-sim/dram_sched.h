@@ -76,7 +76,7 @@
 
 class ideal_dram_scheduler {
 public:
-   ideal_dram_scheduler( dram_t *dm );
+   ideal_dram_scheduler( const memory_config *config, dram_t *dm, memory_stats_t *stats );
    void add_req( dram_req_t *req );
    std::list<dram_req_t*>::iterator binarysort_VFTF(dram_req_t *req);
    std::list<dram_req_t*>::iterator sort_VFTF(dram_req_t *req);
@@ -86,7 +86,7 @@ public:
    unsigned num_pending() const { return m_num_pending;}
 
 private:
-
+   const memory_config *m_config;
    dram_t *m_dram;
    unsigned m_num_pending;
    std::list<dram_req_t*>                                    *m_queue;
@@ -94,6 +94,8 @@ private:
    std::list<std::list<dram_req_t*>::iterator>                 **m_last_row;
    unsigned *curr_row_service_time; //one set of variables for each bank.
    unsigned *row_service_timestamp; //tracks when scheduler began servicing current row
+
+   memory_stats_t *m_stats;
 };
 
 #endif

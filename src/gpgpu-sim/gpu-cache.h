@@ -86,12 +86,18 @@ enum cache_request_status {
 };
 
 struct cache_block_t {
-   unsigned long long int tag;
-   unsigned long long int addr;
-   unsigned int set;
-   unsigned int line_sz; /* bytes */
-   unsigned int fetch_time;
-   unsigned int last_used;
+   cache_block_t()
+   {
+      tag=0;
+      addr=0;
+      fetch_time=0;
+      last_used=0;
+      status=0;
+   }
+   new_addr_type tag;
+   new_addr_type addr;
+   unsigned fetch_time;
+   unsigned last_used;
    unsigned char status; /* valid, dirty... etc */
 };
 
@@ -99,7 +105,7 @@ struct cache_block_t {
 #define FIFO 'F'
 #define RANDOM 'R'
 
-enum cache_write_policy{
+enum cache_write_policy {
     no_writes, //line replacement when new line arrives
     write_back, //line replacement when new line arrives
     write_through //reservation based, use much handle reservation full error.
@@ -109,51 +115,50 @@ class cache_t {
 public:
    cache_t( const char *name, 
             const char *opt, 
-            unsigned long long int bank_mask, 
             enum cache_write_policy wp, 
             int core_id, 
             int type_id);
    ~cache_t();
 
    enum cache_request_status access( new_addr_type addr, 
-                                     unsigned char write,
+                                     bool write,
                                      unsigned int sim_cycle, 
-                                     address_type *wb_address);
+                                     address_type *wb_address );
 
-   new_addr_type shd_cache_fill( new_addr_type addr, unsigned int sim_cycle );
+   new_addr_type fill( new_addr_type addr, unsigned int sim_cycle );
 
    unsigned flush();
    
-   void     shd_cache_print( FILE *stream, unsigned &total_access, unsigned &total_misses );
-   float    shd_cache_windowed_cache_miss_rate(int);
-   void     shd_cache_new_window();
+   void     print( FILE *stream, unsigned &total_access, unsigned &total_misses );
+   float    windowed_cache_miss_rate(int);
+   void     new_window();
    unsigned get_line_sz() const { return m_line_sz; }
 
 private:
-   char *m_name;
+   std::string m_name;
 
-   cache_block_t *m_lines; /* nset x assoc lines in total */
-   unsigned int m_nset;
-   unsigned int m_nset_log2;
-   unsigned int m_assoc;
-   unsigned int m_line_sz; // bytes 
-   unsigned int line_sz_log2;
-   enum cache_write_policy write_policy; 
-   unsigned char policy;
+   cache_block_t *m_lines; /* nbanks x nset x assoc lines in total */
+   unsigned m_n_banks;
+   unsigned m_nset;
+   unsigned m_nset_log2;
+   unsigned m_assoc;
+   unsigned m_line_sz; // bytes 
+   unsigned m_line_sz_log2;
 
-   unsigned int m_access;
-   unsigned int miss;
-   unsigned int merge_hit; // number of cache miss that hit the same line (and merged as a result)
+   enum cache_write_policy m_write_policy; 
+   unsigned char m_replacement_policy;
+
+   unsigned m_access;
+   unsigned m_miss;
+   unsigned m_merge_hit; // number of cache miss that hit the same line (and merged as a result)
 
    // performance counters for calculating the amount of misses within a time window
-   unsigned int prev_snapshot_access;
-   unsigned int prev_snapshot_miss;
-   unsigned int prev_snapshot_merge_hit; 
+   unsigned m_prev_snapshot_access;
+   unsigned m_prev_snapshot_miss;
+   unsigned m_prev_snapshot_merge_hit; 
    
-   int core_id; // which shader core is using this
-   int type_id; // what kind of cache is this (normal, texture, constant)
-
-   unsigned long long int bank_mask;
+   int m_core_id; // which shader core is using this
+   int m_type_id; // what kind of cache is this (normal, texture, constant)
 
    class linear_histogram_logger *m_logger;
 };

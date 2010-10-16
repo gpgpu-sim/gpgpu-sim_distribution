@@ -1,5 +1,5 @@
 /* 
- * addrdec.c 
+ * addrdec.cc 
  *
  * Copyright (c) 2009 by Tor M. Aamodt, Wilson W. L. Fung, Ali Bakhoda, 
  * George L. Yuan and the University of British Columbia
@@ -68,84 +68,39 @@
 #include "gpu-sim.h"
 #include "../option_parser.h"
 
-int ADDR_CHIP_S = 10;
 
-long int powli( long int x, long int y ) // compute x to the y
+
+static long int powli( long int x, long int y );
+static unsigned int LOGB2_32( unsigned int v );
+static new_addr_type addrdec_packbits( new_addr_type mask, new_addr_type val, unsigned char high, unsigned char low);
+static void addrdec_getmasklimit(new_addr_type mask, unsigned char *high, unsigned char *low); 
+
+linear_to_raw_address_translation::linear_to_raw_address_translation()
 {
-   long int r = 1;
-   int i; 
-   for (i = 0; i < y; ++i ) {
-      r *= x;
-   }
-   return r;
+   addrdec_option = NULL;
+   ADDR_CHIP_S = 10;
+   memset(addrdec_mklow,0,N_ADDRDEC);
+   memset(addrdec_mkhigh,64,N_ADDRDEC);
+   addrdec_mask[0] = 0x0000000000001C00;
+   addrdec_mask[1] = 0x0000000000000300;
+   addrdec_mask[2] = 0x000000000FFF0000;
+   addrdec_mask[3] = 0x000000000000E0FF;
+   addrdec_mask[4] = 0x000000000000000F;
 }
 
-void addrdec_display(addrdec_t *a) {
-   //printf("DRAM:  unused:%x chip:%x row:%x col:%x bk:%x\n",
-   //       a.dram.unused, a.dram.chip, GET_ROW(a), GET_COL(a), a.dram.bk);
-
-   if (a->chip)   printf("\tchip:%x ",  a->chip);
-   if (a->row)    printf("\trow:%x ",   a->row);
-   if (a->col)    printf("\tcol:%x ",   a->col);
-   if (a->bk)     printf("\tbk:%x ",    a->bk);
-   if (a->burst)  printf("\tburst:%x ", a->burst);
-}  
-
-unsigned long long int addrdec_packbits(unsigned long long int mask, 
-                                        unsigned long long int val,
-                                        unsigned char high, unsigned char low) 
+void linear_to_raw_address_translation::addrdec_setoption(option_parser_t opp)
 {
-   int i, pos;
-   unsigned long long int out;
-   out = 0;
-   pos = 0;
-   for (i=low;i<high;i++) {
-      if ((mask & ((unsigned long long int)1<<i)) != 0) {
-         out |= ((val & ((unsigned long long int)1<<i)) >> i) << pos;
-         pos++;
-      }
-      // printf("%02d: %016llx %d\n",i,out,pos);
-   }
-
-   return out;
+   option_parser_register(opp, "-gpgpu_mem_addr_mapping", OPT_CSTR, &addrdec_option,
+      "mapping memory address to dram model {dramid@<start bit>;<memory address map>}",
+      NULL);
 }
 
-unsigned long long int addrdec_mask[5] = {
-   0x0000000000001C00,
-   0x0000000000000300,
-   0x000000000FFF0000,
-   0x000000000000E0FF,
-   0x000000000000000F
-};
-
-void addrdec_getmasklimit(unsigned long long int mask, unsigned char *high, unsigned char *low) 
-{
-   *high = 64;
-   *low = 0;
-   int i;
-   int low_found = 0;
-
-   for (i=0;i<64;i++) {
-      if ((mask & ((unsigned long long int)1<<i)) != 0) {
-         if (low_found) {
-            *high = i + 1;
-         } else {
-            *high = i + 1;
-            *low = i;
-            low_found = 1;
-         }
-      }
-      // printf("%02d: %016llx %d\n",i,out,pos);
-   }
+new_addr_type linear_to_raw_address_translation::partition_address( new_addr_type addr ) const 
+{ 
+   return addrdec_packbits( ~addrdec_mask[CHIP], addr, 64, 0 ); 
 }
 
-unsigned char addrdec_mklow[5] = { 0, 0, 0, 0, 0};
-unsigned char addrdec_mkhigh[5] = { 64, 64, 64, 64, 64};
-
-static unsigned int gap;
-static int Nchips;
-
-void addrdec_tlx(unsigned long long int addr, addrdec_t *tlx) 
+void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr, addrdec_t *tlx) const
 {  
    unsigned long long int addr_for_chip,rest_of_addr;
    if (!gap) {
@@ -174,31 +129,7 @@ void addrdec_tlx(unsigned long long int addr, addrdec_t *tlx)
    }
 }
 
-unsigned int LOGB2_32( unsigned int v ) {
-   unsigned int shift;
-   unsigned int r;
-
-   r = 0;
-
-   shift = (( v & 0xFFFF0000) != 0 ) << 4; v >>= shift; r |= shift;
-   shift = (( v & 0xFF00    ) != 0 ) << 3; v >>= shift; r |= shift;
-   shift = (( v & 0xF0      ) != 0 ) << 2; v >>= shift; r |= shift;
-   shift = (( v & 0xC       ) != 0 ) << 1; v >>= shift; r |= shift;
-   shift = (( v & 0x2       ) != 0 ) << 0; v >>= shift; r |= shift;
-
-   return r;
-}
-
-
-static char *addrdec_option;
-void addrdec_setoption(option_parser_t opp)
-{
-   option_parser_register(opp, "-gpgpu_mem_addr_mapping", OPT_CSTR, &addrdec_option,
-      "mapping memory address to dram model {dramid@<start bit>;<memory address map>}",
-      NULL);
-}
-
-void addrdec_parseoption(const char *option)
+void linear_to_raw_address_translation::addrdec_parseoption(const char *option)
 {
    unsigned int dramid_start = 0;
    int dramid_parsed = sscanf(option, "dramid@%d", &dramid_start);
@@ -248,15 +179,14 @@ void addrdec_parseoption(const char *option)
    }
 }
 
-
-void addrdec_setnchip(unsigned int nchips) 
+void linear_to_raw_address_translation::init(unsigned int nchips) 
 {
    unsigned i;
    unsigned long long int mask;
-   unsigned int nchipbits = LOGB2_32(nchips);
+   unsigned int nchipbits = ::LOGB2_32(nchips);
    Nchips = nchips;
 
-   gap = (nchips - powli(2,nchipbits));
+   gap = (nchips - ::powli(2,nchipbits));
    if (gap) {
       nchipbits++;
    }
@@ -359,9 +289,8 @@ void addrdec_setnchip(unsigned int nchips)
       break;
    }
 
-   if (addrdec_option != NULL) {
+   if (addrdec_option != NULL) 
       addrdec_parseoption(addrdec_option);
-   }
 
    if (ADDR_CHIP_S != -1) {
       mask = ((unsigned long long int)1 << ADDR_CHIP_S) - 1;
@@ -391,80 +320,71 @@ void addrdec_setnchip(unsigned int nchips)
    printf("addr_dec_mask[BURST] = %016llx \thigh:%d low:%d\n", addrdec_mask[BURST], addrdec_mkhigh[BURST], addrdec_mklow[BURST]);
 }
 
-#ifdef UNIT_TEST
+void addrdec_t::print( FILE *fp ) const
+{
+   if (chip) fprintf(fp,"\tchip:%x ", chip);
+   if (row) fprintf(fp,"\trow:%x ", row);
+   if (col) fprintf(fp,"\tcol:%x ", col);
+   if (bk) fprintf(fp,"\tbk:%x ", bk);
+   if (burst) fprintf(fp,"\tburst:%x ", burst);
+} 
 
-int main () {
-   unsigned int tb = 1;
-   unsigned pos;
-   addrdec_t_o tlx;
 
-   printf("DRAM: %d %d %d %d %d %d %d\n", 
-          D_COLL, D_BK, D_COLU, D_ROWL, D_CHIP, D_ROWU, D_UNUSED);
-   for (tb=1, pos=0; tb!=0; tb <<= 1, pos++) {
-      printf("%08lx|%02d =>", tb,pos);
-      tlx.plain = tb;
-      addrdec_fetch(tlx);
-      addrdec_dram(tlx);
-      printf("\n");
+static long int powli( long int x, long int y ) // compute x to the y
+{
+   long int r = 1;
+   int i; 
+   for (i = 0; i < y; ++i ) {
+      r *= x;
    }
-
-   unsigned long long int packed;
-   packed = addrdec_packbits(0xFFFF0000FFFF0000, 0x2244113322441133);
-   assert (packed == 0x22442244);
-   printf("%016llx\n", packed);
-
-   packed = addrdec_packbits(0x5555555555555555, 0x3333333333333333);
-   assert (packed == 0x55555555);
-   printf("%016llx\n", packed);
-
-   packed = addrdec_packbits(0x5555555555555555, 0x6363636363636363);
-   assert (packed == 0x99999999);
-   printf("%016llx\n", packed);
-
-   addrdec_t tls;
-   for (tb=1, pos=0; tb!=0; tb <<= 1, pos++) {
-      printf("%08lx|%02d =>", tb,pos);
-      addrdec_tlx(tb, &tls);
-      addrdec_display(&tls);
-      printf("\n");
-   }
-
-   addrdec_setnchip(32);
-   for (tb=1, pos=0; tb!=0; tb <<= 1, pos++) {
-      printf("%08lx|%02d =>", tb,pos);
-      addrdec_tlx(tb, &tls);
-      addrdec_display(&tls);
-      printf("\n");
-   }
-   addrdec_setnchip(16);
-   for (tb=1, pos=0; tb!=0; tb <<= 1, pos++) {
-      printf("%08lx|%02d =>", tb,pos);
-      addrdec_tlx(tb, &tls);
-      addrdec_display(&tls);
-      printf("\n");
-   }
-   addrdec_setnchip(8);
-   for (tb=1, pos=0; tb!=0; tb <<= 1, pos++) {
-      printf("%08lx|%02d =>", tb,pos);
-      addrdec_tlx(tb, &tls);
-      addrdec_display(&tls);
-      printf("\n");
-   }
-   addrdec_setnchip(7);
-   for (tb=1, pos=0; tb!=0; tb <<= 1, pos++) {
-      printf("%08lx|%02d =>", tb,pos);
-      addrdec_tlx(tb, &tls);
-      addrdec_display(&tls);
-      printf("\n");
-   }
-/*   addrdec_setnchip(6);
-   for(tb=1, pos=0; tb!=0; tb ++, pos++) {
-      printf("%08lx|%02d =>", tb,pos);
-      addrdec_tlx(tb, &tls);
-      addrdec_display(&tls);
-      printf("\n");
-   }*/
-   return 0;
+   return r;
 }
 
-#endif
+static unsigned int LOGB2_32( unsigned int v ) 
+{
+   unsigned int shift;
+   unsigned int r;
+
+   r = 0;
+
+   shift = (( v & 0xFFFF0000) != 0 ) << 4; v >>= shift; r |= shift;
+   shift = (( v & 0xFF00    ) != 0 ) << 3; v >>= shift; r |= shift;
+   shift = (( v & 0xF0      ) != 0 ) << 2; v >>= shift; r |= shift;
+   shift = (( v & 0xC       ) != 0 ) << 1; v >>= shift; r |= shift;
+   shift = (( v & 0x2       ) != 0 ) << 0; v >>= shift; r |= shift;
+
+   return r;
+}
+
+static new_addr_type addrdec_packbits( new_addr_type mask, new_addr_type val, unsigned char high, unsigned char low) 
+{
+   unsigned pos=0;
+   new_addr_type result = 0;
+   for (unsigned i=low;i<high;i++) {
+      if ((mask & ((unsigned long long int)1<<i)) != 0) {
+         result |= ((val & ((unsigned long long int)1<<i)) >> i) << pos;
+         pos++;
+      }
+   }
+   return result;
+}
+
+static void addrdec_getmasklimit(new_addr_type mask, unsigned char *high, unsigned char *low) 
+{
+   *high = 64;
+   *low = 0;
+   int i;
+   int low_found = 0;
+
+   for (i=0;i<64;i++) {
+      if ((mask & ((unsigned long long int)1<<i)) != 0) {
+         if (low_found) {
+            *high = i + 1;
+         } else {
+            *high = i + 1;
+            *low = i;
+            low_found = 1;
+         }
+      }
+   }
+}

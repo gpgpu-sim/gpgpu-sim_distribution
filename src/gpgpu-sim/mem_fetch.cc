@@ -82,7 +82,8 @@ mem_fetch::mem_fetch( new_addr_type addr,
                       bool write,
                       partial_write_mask_t partial_write_mask,
                       enum mem_access_type mem_acc,
-                      enum mf_type type )
+                      enum mf_type type,
+                      const memory_config *config )
 {
    m_request_uid = sm_next_mf_request_uid++;
 
@@ -95,7 +96,8 @@ mem_fetch::mem_fetch( new_addr_type addr,
    m_mshr_id = mshr_id;
    if( inst ) m_inst = *inst;
    m_write = write;
-   addrdec_tlx(addr,&m_raw_addr);
+   config->m_address_mapping.addrdec_tlx(addr,&m_raw_addr);
+   m_partition_addr = config->m_address_mapping.partition_address(addr);
    m_mem_acc = mem_acc;
    m_type = type;
    m_timestamp = gpu_sim_cycle + gpu_tot_sim_cycle;

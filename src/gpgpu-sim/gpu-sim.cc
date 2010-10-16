@@ -106,20 +106,9 @@
 
 bool g_interactive_debugger_enabled=false;
 
-unsigned made_read_mfs = 0;
-unsigned made_write_mfs = 0;
-unsigned freed_read_mfs = 0;
-unsigned freed_L1write_mfs = 0;
-unsigned freed_L2write_mfs = 0;
-unsigned freed_dummy_read_mfs = 0;
 unsigned long long  gpu_sim_cycle = 0;
 unsigned long long  gpu_tot_sim_cycle = 0;
 
-unsigned int **concurrent_row_access; //concurrent_row_access[dram chip id][bank id]
-unsigned int **num_activates; //num_activates[dram chip id][bank id]
-unsigned int **row_access; //row_access[dram chip id][bank id]
-unsigned int **max_conc_access2samerow; //max_conc_access2samerow[dram chip id][bank id]
-unsigned int **max_servicetime2samerow; //max_servicetime2samerow[dram chip id][bank id]
 unsigned int gpgpu_n_sent_writes = 0;
 unsigned int gpgpu_n_processed_writes = 0;
 
@@ -149,9 +138,12 @@ int   gpgpu_dram_sched_queue_size;
 bool  gpgpu_flush_cache;
 int   gpgpu_mem_address_mask;
 int   gpgpu_cflog_interval;
+char * gpgpu_clock_domains;
+int   g_ptx_inst_debug_to_file;
+char* g_ptx_inst_debug_file;
+int   g_ptx_inst_debug_thread_uid;
 
-/* Defining Clock Domains
-basically just the ratio is important */
+/* Clock Domains */
 
 #define  CORE  0x01
 #define  L2    0x02
@@ -159,19 +151,8 @@ basically just the ratio is important */
 #define  ICNT  0x08  
 
 
-char * gpgpu_clock_domains;
-
-/* GPU uArch parameters */
-unsigned int gpu_n_mem_per_ctrlr;
-char *gpgpu_dwf_hw_opt;
-unsigned int more_thread = 1;
-
 #define MEM_LATENCY_STAT_IMPL
 #include "mem_latency_stat.h"
-
-int   g_ptx_inst_debug_to_file;
-char* g_ptx_inst_debug_file;
-int   g_ptx_inst_debug_thread_uid;
 
 void visualizer_options(option_parser_t opp);
 
@@ -246,7 +227,7 @@ void gpgpu_sim::reg_options(option_parser_t opp)
    option_parser_register(opp, "-gpgpu_n_mem", OPT_UINT32, &m_memory_config->m_n_mem, 
                 "number of memory modules (e.g. memory controllers) in gpu",
                 "8");
-   option_parser_register(opp, "-gpgpu_n_mem_per_ctrlr", OPT_UINT32, &gpu_n_mem_per_ctrlr, 
+   option_parser_register(opp, "-gpgpu_n_mem_per_ctrlr", OPT_UINT32, &m_memory_config->gpu_n_mem_per_ctrlr, 
                 "number of memory chips per memory controller",
                 "1");
    option_parser_register(opp, "-gpgpu_runtime_stat", OPT_CSTR, &gpgpu_runtime_stat, 
@@ -269,11 +250,11 @@ void gpgpu_sim::reg_options(option_parser_t opp)
                "0 = unlimited (default); # entries per chip",
                "0");
 
-   option_parser_register(opp, "-gpgpu_dram_buswidth", OPT_UINT32, &m_memory_config->gpgpu_dram_buswidth, 
+   option_parser_register(opp, "-gpgpu_dram_buswidth", OPT_UINT32, &m_memory_config->busW, 
                 "default = 4 bytes (8 bytes per cycle at DDR)",
                 "4");
 
-   option_parser_register(opp, "-gpgpu_dram_burst_length", OPT_UINT32, &m_memory_config->gpgpu_dram_burst_length, 
+   option_parser_register(opp, "-gpgpu_dram_burst_length", OPT_UINT32, &m_memory_config->BL, 
                 "Burst length of each DRAM request (default = 4 DDR cycle)",
                 "4");
 
@@ -390,7 +371,7 @@ void gpgpu_sim::reg_options(option_parser_t opp)
    option_parser_register(opp, "-gpgpu_coalesce_arch", OPT_INT32, &m_shader_config->gpgpu_coalesce_arch, 
                            "Coalescing arch (default = 13, anything else is off for now)", 
                            "13");
-   addrdec_setoption(opp);
+   m_memory_config->m_address_mapping.addrdec_setoption(opp);
    L2c_options(opp);
    visualizer_options(opp);
    ptx_file_line_stats_options(opp);
@@ -483,33 +464,16 @@ void gpgpu_sim::init_gpu()
 
    m_cluster = new simt_core_cluster*[m_shader_config->n_simt_clusters];
    for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) 
-      m_cluster[i] = new simt_core_cluster(this,i,m_shader_config,m_shader_stats);
+      m_cluster[i] = new simt_core_cluster(this,i,m_shader_config,m_memory_config,m_shader_stats);
 
    ptx_file_line_stats_create_exposed_latency_tracker(num_shader());
 
-   addrdec_setnchip(m_memory_config->m_n_mem);
+   m_memory_stats = new memory_stats_t(num_shader(),m_shader_config,m_memory_config);
+
+   m_memory_config->init();
    m_memory_partition_unit = new memory_partition_unit*[m_memory_config->m_n_mem];
    for (unsigned i=0;i<m_memory_config->m_n_mem;i++) 
-      m_memory_partition_unit[i] = new memory_partition_unit(i, m_memory_config);
-   m_memory_stats = new memory_stats_t(m_memory_config->m_n_mem,num_shader(),m_shader_config,m_memory_config);
-   for (unsigned i=0;i<m_memory_config->m_n_mem;i++) 
-      m_memory_partition_unit[i]->set_stats(m_memory_stats);
-
-   concurrent_row_access = (unsigned int**) calloc(m_memory_config->m_n_mem, sizeof(unsigned int*));
-   num_activates = (unsigned int**) calloc(m_memory_config->m_n_mem, sizeof(unsigned int*));
-   row_access = (unsigned int**) calloc(m_memory_config->m_n_mem, sizeof(unsigned int*));
-   max_conc_access2samerow = (unsigned int**) calloc(m_memory_config->m_n_mem, sizeof(unsigned int*));
-   max_servicetime2samerow = (unsigned int**) calloc(m_memory_config->m_n_mem, sizeof(unsigned int*));
-
-   for (unsigned i=0;i<m_memory_config->m_n_mem ;i++ ) {
-      concurrent_row_access[i] = (unsigned int*) calloc(m_memory_config->gpu_mem_n_bk, sizeof(unsigned int));
-      row_access[i] = (unsigned int*) calloc(m_memory_config->gpu_mem_n_bk, sizeof(unsigned int));
-      num_activates[i] = (unsigned int*) calloc(m_memory_config->gpu_mem_n_bk, sizeof(unsigned int));
-      max_conc_access2samerow[i] = (unsigned int*) calloc(m_memory_config->gpu_mem_n_bk, sizeof(unsigned int));
-      max_servicetime2samerow[i] = (unsigned int*) calloc(m_memory_config->gpu_mem_n_bk, sizeof(unsigned int));
-   }
-
-   m_memory_stats = new memory_stats_t(m_memory_config->m_n_mem,num_shader(),m_shader_config,m_memory_config);
+      m_memory_partition_unit[i] = new memory_partition_unit(i, m_memory_config, m_memory_stats);
 
    icnt_init(m_shader_config->n_simt_clusters, m_memory_config->m_n_mem,m_shader_config);
 
@@ -754,7 +718,7 @@ void gpgpu_sim::gpu_print_stat() const
    // performance counter that are not local to one shader
    shader_print_accstats(stdout);
 
-   m_memory_stats->memlatstat_print(m_memory_config->m_n_mem,m_memory_config->gpu_mem_n_bk);
+   m_memory_stats->memlatstat_print(m_memory_config->m_n_mem,m_memory_config->nbk);
    // merge misses
    printf("L1 read misses = %d\n", m_shader_stats->L1_read_miss);
    printf("L1 write misses = %d\n", m_shader_stats->L1_write_miss);
@@ -763,12 +727,6 @@ void gpgpu_sim::gpu_print_stat() const
    printf("L1 texture misses = %d\n", m_shader_stats->L1_texture_miss);
    printf("L1 const misses = %d\n", m_shader_stats->L1_const_miss);
    m_memory_stats->print(stdout);
-   printf("made_read_mfs = %d\n", made_read_mfs);
-   printf("made_write_mfs = %d\n", made_write_mfs);
-   printf("freed_read_mfs = %d\n", freed_read_mfs);
-   printf("freed_L1write_mfs = %d\n", freed_L1write_mfs);
-   printf("freed_L2write_mfs = %d\n", freed_L2write_mfs);
-   printf("freed_dummy_read_mfs = %d\n", freed_dummy_read_mfs);
 
    printf("gpgpu_n_mem_read_local = %d\n", m_shader_stats->gpgpu_n_mem_read_local);
    printf("gpgpu_n_mem_write_local = %d\n", m_shader_stats->gpgpu_n_mem_write_local);
@@ -1138,7 +1096,6 @@ void gpgpu_sim::cycle()
                     if (!mf->get_is_write()) 
                        mf->set_return_timestamp(gpu_sim_cycle+gpu_tot_sim_cycle);
                     else {
-                        freed_L1write_mfs++;
                         gpgpu_n_processed_writes++;
                     }
                     ::icnt_push( m_shader_config->mem2device(i), mf->get_tpc(), mf, response_size );

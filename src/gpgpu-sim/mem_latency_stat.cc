@@ -79,12 +79,27 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-memory_stats_t::memory_stats_t( unsigned n_mem, unsigned n_shader, struct shader_core_config *shader_config, struct memory_config *mem_config )
+memory_stats_t::memory_stats_t( unsigned n_shader, struct shader_core_config *shader_config, struct memory_config *mem_config )
 {
    unsigned i,j;
 
+
+   concurrent_row_access = (unsigned int**) calloc(mem_config->m_n_mem, sizeof(unsigned int*));
+   num_activates = (unsigned int**) calloc(mem_config->m_n_mem, sizeof(unsigned int*));
+   row_access = (unsigned int**) calloc(mem_config->m_n_mem, sizeof(unsigned int*));
+   max_conc_access2samerow = (unsigned int**) calloc(mem_config->m_n_mem, sizeof(unsigned int*));
+   max_servicetime2samerow = (unsigned int**) calloc(mem_config->m_n_mem, sizeof(unsigned int*));
+
+   for (unsigned i=0;i<mem_config->m_n_mem ;i++ ) {
+      concurrent_row_access[i] = (unsigned int*) calloc(mem_config->nbk, sizeof(unsigned int));
+      row_access[i] = (unsigned int*) calloc(mem_config->nbk, sizeof(unsigned int));
+      num_activates[i] = (unsigned int*) calloc(mem_config->nbk, sizeof(unsigned int));
+      max_conc_access2samerow[i] = (unsigned int*) calloc(mem_config->nbk, sizeof(unsigned int));
+      max_servicetime2samerow[i] = (unsigned int*) calloc(mem_config->nbk, sizeof(unsigned int));
+   }
+
+
    m_n_shader=n_shader;
-   m_n_mem=n_mem;
    m_memory_config=mem_config;
 
    max_mrq_latency = 0;
@@ -104,46 +119,46 @@ memory_stats_t::memory_stats_t( unsigned n_mem, unsigned n_shader, struct shader
    mf_tot_lat_pw_perwarp = (unsigned *) calloc(max_warps, sizeof(unsigned int));
    mf_total_lat_perwarp = (unsigned long long int *) calloc(max_warps, sizeof(unsigned long long int));
    num_mfs_perwarp = (unsigned *) calloc(max_warps, sizeof(unsigned int));
-   acc_mrq_length = (unsigned *) calloc(n_mem, sizeof(unsigned int));
+   acc_mrq_length = (unsigned *) calloc(mem_config->m_n_mem, sizeof(unsigned int));
    mf_tot_lat_pw = 0; //total latency summed up per window. divide by mf_num_lat_pw to obtain average latency Per Window
    mf_total_lat = 0;
    num_mfs = 0;
    printf("*** Initializing Memory Statistics ***\n");
-   totalbankreads = (unsigned int**) calloc(n_mem, sizeof(unsigned int*));
-   totalbankwrites = (unsigned int**) calloc(n_mem, sizeof(unsigned int*));
-   totalbankaccesses = (unsigned int**) calloc(n_mem, sizeof(unsigned int*));
-   mf_total_lat_table = (unsigned long long int **) calloc(n_mem, sizeof(unsigned long long *));
-   mf_max_lat_table = (unsigned **) calloc(n_mem, sizeof(unsigned *));
+   totalbankreads = (unsigned int**) calloc(mem_config->m_n_mem, sizeof(unsigned int*));
+   totalbankwrites = (unsigned int**) calloc(mem_config->m_n_mem, sizeof(unsigned int*));
+   totalbankaccesses = (unsigned int**) calloc(mem_config->m_n_mem, sizeof(unsigned int*));
+   mf_total_lat_table = (unsigned long long int **) calloc(mem_config->m_n_mem, sizeof(unsigned long long *));
+   mf_max_lat_table = (unsigned **) calloc(mem_config->m_n_mem, sizeof(unsigned *));
    bankreads = (unsigned int***) calloc(n_shader, sizeof(unsigned int**));
    bankwrites = (unsigned int***) calloc(n_shader, sizeof(unsigned int**));
-   num_MCBs_accessed = (unsigned int*) calloc(n_mem*mem_config->gpu_mem_n_bk, sizeof(unsigned int));
+   num_MCBs_accessed = (unsigned int*) calloc(mem_config->m_n_mem*mem_config->nbk, sizeof(unsigned int));
    if (mem_config->gpgpu_dram_sched_queue_size) {
       position_of_mrq_chosen = (unsigned int*) calloc(mem_config->gpgpu_dram_sched_queue_size, sizeof(unsigned int));
    } else
       position_of_mrq_chosen = (unsigned int*) calloc(1024, sizeof(unsigned int));
    for (i=0;i<n_shader ;i++ ) {
-      bankreads[i] = (unsigned int**) calloc(n_mem, sizeof(unsigned int*));
-      bankwrites[i] = (unsigned int**) calloc(n_mem, sizeof(unsigned int*));
-      for (j=0;j<n_mem ;j++ ) {
-         bankreads[i][j] = (unsigned int*) calloc(mem_config->gpu_mem_n_bk, sizeof(unsigned int));
-         bankwrites[i][j] = (unsigned int*) calloc(mem_config->gpu_mem_n_bk, sizeof(unsigned int));
+      bankreads[i] = (unsigned int**) calloc(mem_config->m_n_mem, sizeof(unsigned int*));
+      bankwrites[i] = (unsigned int**) calloc(mem_config->m_n_mem, sizeof(unsigned int*));
+      for (j=0;j<mem_config->m_n_mem ;j++ ) {
+         bankreads[i][j] = (unsigned int*) calloc(mem_config->nbk, sizeof(unsigned int));
+         bankwrites[i][j] = (unsigned int*) calloc(mem_config->nbk, sizeof(unsigned int));
       }
    }
 
-   for (i=0;i<n_mem ;i++ ) {
-      totalbankreads[i] = (unsigned int*) calloc(mem_config->gpu_mem_n_bk, sizeof(unsigned int));
-      totalbankwrites[i] = (unsigned int*) calloc(mem_config->gpu_mem_n_bk, sizeof(unsigned int));
-      totalbankaccesses[i] = (unsigned int*) calloc(mem_config->gpu_mem_n_bk, sizeof(unsigned int));
-      mf_total_lat_table[i] = (unsigned long long int*) calloc(mem_config->gpu_mem_n_bk, sizeof(unsigned long long int));
-      mf_max_lat_table[i] = (unsigned *) calloc(mem_config->gpu_mem_n_bk, sizeof(unsigned));
+   for (i=0;i<mem_config->m_n_mem ;i++ ) {
+      totalbankreads[i] = (unsigned int*) calloc(mem_config->nbk, sizeof(unsigned int));
+      totalbankwrites[i] = (unsigned int*) calloc(mem_config->nbk, sizeof(unsigned int));
+      totalbankaccesses[i] = (unsigned int*) calloc(mem_config->nbk, sizeof(unsigned int));
+      mf_total_lat_table[i] = (unsigned long long int*) calloc(mem_config->nbk, sizeof(unsigned long long int));
+      mf_max_lat_table[i] = (unsigned *) calloc(mem_config->nbk, sizeof(unsigned));
    }
 
    mem_access_type_stats = (unsigned ***) malloc(NUM_MEM_ACCESS_TYPE * sizeof(unsigned **));
    for (i = 0; i < NUM_MEM_ACCESS_TYPE; i++) {
       int j;
-      mem_access_type_stats[i] = (unsigned **) calloc(n_mem, sizeof(unsigned*));
-      for (j=0; (unsigned) j< n_mem; j++) {
-         mem_access_type_stats[i][j] = (unsigned *) calloc((mem_config->gpu_mem_n_bk+1), sizeof(unsigned*));
+      mem_access_type_stats[i] = (unsigned **) calloc(mem_config->m_n_mem, sizeof(unsigned*));
+      for (j=0; (unsigned) j< mem_config->m_n_mem; j++) {
+         mem_access_type_stats[i][j] = (unsigned *) calloc((mem_config->nbk+1), sizeof(unsigned*));
       }
    }
 
@@ -151,12 +166,12 @@ memory_stats_t::memory_stats_t( unsigned n_mem, unsigned n_shader, struct shader
    L2_write_hit=0;
    L2_read_hit=0;
    L2_read_miss=0;
-   L2_cbtoL2length = (unsigned int*) calloc(n_mem, sizeof(unsigned int));
-   L2_cbtoL2writelength = (unsigned int*) calloc(n_mem, sizeof(unsigned int));
-   L2_L2tocblength = (unsigned int*) calloc(n_mem, sizeof(unsigned int));
-   L2_dramtoL2length = (unsigned int*) calloc(n_mem, sizeof(unsigned int));
-   L2_dramtoL2writelength = (unsigned int*) calloc(n_mem, sizeof(unsigned int));
-   L2_L2todramlength = (unsigned int*) calloc(n_mem, sizeof(unsigned int));
+   L2_cbtoL2length = (unsigned int*) calloc(mem_config->m_n_mem, sizeof(unsigned int));
+   L2_cbtoL2writelength = (unsigned int*) calloc(mem_config->m_n_mem, sizeof(unsigned int));
+   L2_L2tocblength = (unsigned int*) calloc(mem_config->m_n_mem, sizeof(unsigned int));
+   L2_dramtoL2length = (unsigned int*) calloc(mem_config->m_n_mem, sizeof(unsigned int));
+   L2_dramtoL2writelength = (unsigned int*) calloc(mem_config->m_n_mem, sizeof(unsigned int));
+   L2_L2todramlength = (unsigned int*) calloc(mem_config->m_n_mem, sizeof(unsigned int));
 }
 
 // recorder the total latency

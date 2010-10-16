@@ -70,6 +70,8 @@
 #define GPU_SIM_H
 
 #include "../abstract_hardware_model.h"
+#include "addrdec.h"
+
 #include <list>
 #include <stdio.h>
 
@@ -102,23 +104,55 @@ enum dram_ctrl_t {
 };
 
 struct memory_config {
+   memory_config()
+   {
+       gpgpu_cache_dl2_opt=NULL;
+       gpgpu_dram_timing_opt=NULL;
+       gpgpu_L2_queue_config=NULL;
+   }
+   void init()
+   {
+      assert(gpgpu_dram_timing_opt);
+      sscanf(gpgpu_dram_timing_opt,"%d:%d:%d:%d:%d:%d:%d:%d:%d:%d",&nbk,&tCCD,&tRRD,&tRCD,&tRAS,&tRP,&tRC,&CL,&WL,&tWTR);
+      tRCDWR = tRCD-(WL+1);
+      tRTW = (CL+(BL/2)+2-WL);
+      m_address_mapping.init(m_n_mem);
+   }
+
    char *gpgpu_cache_dl2_opt;
    char *gpgpu_dram_timing_opt;
    char *gpgpu_L2_queue_config;
    bool gpgpu_l2_readoverwrite;
    bool l2_ideal;
    unsigned gpgpu_dram_sched_queue_size;
-   unsigned int gpu_mem_n_bk;
    enum dram_ctrl_t scheduler_type;
    bool gpgpu_memlatency_stat;
-   unsigned gpgpu_dram_buswidth;
-   unsigned gpgpu_dram_burst_length;
    unsigned m_n_mem;
+   unsigned int gpu_n_mem_per_ctrlr;
+
+   // DRAM parameters
+   unsigned int tCCD;   //column to column delay
+   unsigned int tRRD;   //minimal time required between activation of rows in different banks
+   unsigned int tRCD;   //row to column delay - time required to activate a row before a read
+   unsigned int tRCDWR; //row to column delay for a write command
+   unsigned int tRAS;   //time needed to activate row
+   unsigned int tRP;    //row precharge ie. deactivate row
+   unsigned int tRC;    //row cycle time ie. precharge current, then activate different row
+
+   unsigned int CL;     //CAS latency
+   unsigned int WL;     //WRITE latency
+   unsigned int BL;     //Burst Length in bytes (we're using 4? could be 8)
+   unsigned int tRTW;   //time to switch from read to write
+   unsigned int tWTR;   //time to switch from write to read 5? look in datasheet
+   unsigned int busW;
+
+   unsigned int nbk;
+
+   linear_to_raw_address_translation m_address_mapping;
 };
 
 // global config
 extern int gpgpu_mem_address_mask;
-extern unsigned int gpu_n_mem_per_ctrlr;
 
 extern int gpu_runtime_stat_flag;
 extern int gpgpu_cflog_interval;
@@ -194,6 +228,8 @@ private:
    kernel_info_t m_the_kernel;
    std::list<kernel_info_t> m_running_kernels;
 
+   unsigned int more_thread;
+
    // time of next rising edge 
    double core_time;
    double icnt_time;
@@ -250,12 +286,6 @@ extern unsigned long long  gpu_tot_sim_cycle;
 extern unsigned g_next_mf_request_uid;
 
 // stats 
-
-extern unsigned int **max_conc_access2samerow;
-extern unsigned int **max_servicetime2samerow;
-extern unsigned int **row_access;
-extern unsigned int **num_activates;
-extern unsigned int **concurrent_row_access; //concurrent_row_access[dram chip id][bank id]
 
 extern unsigned int gpgpu_n_sent_writes;
 extern unsigned int gpgpu_n_processed_writes;

@@ -70,17 +70,18 @@
 #include "../abstract_hardware_model.h"
 #include "mem_latency_stat.h"
 
-ideal_dram_scheduler::ideal_dram_scheduler( dram_t *dm )
+ideal_dram_scheduler::ideal_dram_scheduler( const memory_config *config, dram_t *dm, memory_stats_t *stats )
 {
-
+   m_config = config;
+   m_stats = stats;
    m_num_pending = 0;
    m_dram = dm;
-   m_queue = new std::list<dram_req_t*>[dm->nbk];
-   m_bins = new std::map<unsigned,std::list<std::list<dram_req_t*>::iterator> >[ dm->nbk ];
-   m_last_row = new std::list<std::list<dram_req_t*>::iterator>*[ dm->nbk ];
-   curr_row_service_time = new unsigned[dm->nbk];
-   row_service_timestamp = new unsigned[dm->nbk];
-   for ( unsigned i=0; i < dm->nbk; i++ ) {
+   m_queue = new std::list<dram_req_t*>[m_config->nbk];
+   m_bins = new std::map<unsigned,std::list<std::list<dram_req_t*>::iterator> >[ m_config->nbk ];
+   m_last_row = new std::list<std::list<dram_req_t*>::iterator>*[ m_config->nbk ];
+   curr_row_service_time = new unsigned[m_config->nbk];
+   row_service_timestamp = new unsigned[m_config->nbk];
+   for ( unsigned i=0; i < m_config->nbk; i++ ) {
       m_queue[i].clear();
       m_bins[i].clear();
       m_last_row[i] = NULL;
@@ -107,16 +108,16 @@ inline void ideal_dram_scheduler::data_collection(unsigned int bank)
 {
    if (gpu_sim_cycle > row_service_timestamp[bank]) {
       curr_row_service_time[bank] = gpu_sim_cycle - row_service_timestamp[bank];
-      if (curr_row_service_time[bank] > max_servicetime2samerow[m_dram->id][bank])
-         max_servicetime2samerow[m_dram->id][bank] = curr_row_service_time[bank];
+      if (curr_row_service_time[bank] > m_stats->max_servicetime2samerow[m_dram->id][bank])
+         m_stats->max_servicetime2samerow[m_dram->id][bank] = curr_row_service_time[bank];
    }
    curr_row_service_time[bank] = 0;
    row_service_timestamp[bank] = gpu_sim_cycle;
-   if (concurrent_row_access[m_dram->id][bank] > max_conc_access2samerow[m_dram->id][bank]) {
-      max_conc_access2samerow[m_dram->id][bank] = concurrent_row_access[m_dram->id][bank];
+   if (m_stats->concurrent_row_access[m_dram->id][bank] > m_stats->max_conc_access2samerow[m_dram->id][bank]) {
+      m_stats->max_conc_access2samerow[m_dram->id][bank] = m_stats->concurrent_row_access[m_dram->id][bank];
    }
-   concurrent_row_access[m_dram->id][bank] = 0;
-   num_activates[m_dram->id][bank]++;
+   m_stats->concurrent_row_access[m_dram->id][bank] = 0;
+   m_stats->num_activates[m_dram->id][bank]++;
 }
 
 dram_req_t *ideal_dram_scheduler::schedule( unsigned bank, unsigned curr_row )
@@ -142,8 +143,8 @@ dram_req_t *ideal_dram_scheduler::schedule( unsigned bank, unsigned curr_row )
    std::list<dram_req_t*>::iterator next = m_last_row[bank]->back();
    dram_req_t *req = (*next);
 
-   concurrent_row_access[m_dram->id][bank]++;
-   row_access[m_dram->id][bank]++;
+   m_stats->concurrent_row_access[m_dram->id][bank]++;
+   m_stats->row_access[m_dram->id][bank]++;
    m_last_row[bank]->pop_back();
 
    m_queue[bank].erase(next);
@@ -165,35 +166,34 @@ dram_req_t *ideal_dram_scheduler::schedule( unsigned bank, unsigned curr_row )
 
 void ideal_dram_scheduler::print( FILE *fp )
 {
-   for ( unsigned b=0; b < m_dram->nbk; b++ ) {
+   for ( unsigned b=0; b < m_config->nbk; b++ ) {
       printf(" %u: queue length = %u\n", b, (unsigned)m_queue[b].size() );
    }
 }
 
 void dram_t::fast_scheduler_ideal()
 {
-   dram_t* dm=this;
    unsigned mrq_latency;
-   ideal_dram_scheduler *sched = dm->m_fast_ideal_scheduler;
-   while ( !dm->mrqq->empty() && (!m_config->gpgpu_dram_sched_queue_size || sched->num_pending() < m_config->gpgpu_dram_sched_queue_size)) {
-      dram_req_t *req = dm->mrqq->pop(gpu_sim_cycle);
+   ideal_dram_scheduler *sched = m_fast_ideal_scheduler;
+   while ( !mrqq->empty() && (!m_config->gpgpu_dram_sched_queue_size || sched->num_pending() < m_config->gpgpu_dram_sched_queue_size)) {
+      dram_req_t *req = mrqq->pop(gpu_sim_cycle);
       sched->add_req(req);
    }
 
    dram_req_t *req;
    unsigned i;
-   for ( i=0; i < dm->nbk; i++ ) {
-      unsigned b = (i+dm->prio)%dm->nbk;
-      if ( !dm->bk[b]->mrq ) {
+   for ( i=0; i < m_config->nbk; i++ ) {
+      unsigned b = (i+prio)%m_config->nbk;
+      if ( !bk[b]->mrq ) {
 
-         req = sched->schedule(b, dm->bk[b]->curr_row);
+         req = sched->schedule(b, bk[b]->curr_row);
 
          if ( req ) {
-            dm->prio = (dm->prio+1)%dm->nbk;
-            dm->bk[b]->mrq = req;
+            prio = (prio+1)%m_config->nbk;
+            bk[b]->mrq = req;
             if (m_config->gpgpu_memlatency_stat) {
-               mrq_latency = gpu_sim_cycle + gpu_tot_sim_cycle - dm->bk[b]->mrq->timestamp;
-               dm->bk[b]->mrq->timestamp = gpu_tot_sim_cycle + gpu_sim_cycle;
+               mrq_latency = gpu_sim_cycle + gpu_tot_sim_cycle - bk[b]->mrq->timestamp;
+               bk[b]->mrq->timestamp = gpu_tot_sim_cycle + gpu_sim_cycle;
                m_stats->mrq_lat_table[LOGB2(mrq_latency)]++;
                if (mrq_latency > m_stats->max_mrq_latency) {
                   m_stats->max_mrq_latency = mrq_latency;

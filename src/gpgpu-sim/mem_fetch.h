@@ -144,7 +144,8 @@ public:
               bool write,
               partial_write_mask_t partial_write_mask,
               enum mem_access_type mem_acc,
-              enum mf_type type );
+              enum mf_type type, 
+              const class memory_config *config );
 
    void set_status( enum mshr_status status, enum mem_req_stat stat, unsigned long long cycle );
    void set_type( enum mf_type t ) { m_type=t; }
@@ -157,6 +158,7 @@ public:
    unsigned get_ctrl_size() const { return m_ctrl_size; }
    unsigned size() const { return m_data_size+m_ctrl_size; }
    new_addr_type get_addr() const { return m_addr; }
+   new_addr_type get_partition_addr() const { return m_partition_addr; }
    unsigned get_mshr() { return m_mshr_id; }
    bool get_is_write() const { return m_write; }
    unsigned get_request_uid() const { return m_request_uid; }
@@ -185,25 +187,26 @@ private:
    unsigned m_wid;
    unsigned m_mshr_id;
 
-   // where is the request now?
+   // where is this request now?
    enum mshr_status m_status;  
 
    // request type, address, size, mask
    bool m_write;
    enum mem_access_type m_mem_acc;
    enum mf_type m_type;
-   new_addr_type m_addr;
-   addrdec_t m_raw_addr;
-   partial_write_mask_t m_write_mask;
-   unsigned m_data_size; // bytes
-   unsigned m_ctrl_size;
+   new_addr_type m_addr; // linear (physical) address
+   new_addr_type m_partition_addr; // linear physical address *within* dram partition (partition bank select bits squeezed out)
+   addrdec_t m_raw_addr; // raw physical address (i.e., decoded DRAM chip-row-bank-column address)
+   partial_write_mask_t m_write_mask; 
+   unsigned m_data_size; // how much data is being written
+   unsigned m_ctrl_size; // how big would all this meta data be in hardware (does not necessarily match actual size of mem_fetch)
 
    // statistics
    unsigned m_timestamp;  // set to gpu_sim_cycle+gpu_tot_sim_cycle at struct creation
    unsigned m_timestamp2; // set to gpu_sim_cycle+gpu_tot_sim_cycle when pushed onto icnt to shader; only used for reads
    unsigned m_icnt_receive_time; // set to gpu_sim_cycle + interconnect_latency when fixed icnt latency mode is enabled
 
-   // requesting instruction
+   // requesting instruction (put last so mem_fetch prints nicer in gdb)
    warp_inst_t m_inst;
 
    static unsigned sm_next_mf_request_uid;

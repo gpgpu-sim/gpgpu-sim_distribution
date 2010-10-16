@@ -123,9 +123,7 @@ struct mem_fetch;
 class dram_t 
 {
 public:
-   dram_t( unsigned int parition_id, struct memory_config *config);
-
-   void set_stats( class memory_stats_t *stats ) {m_stats=stats;}
+   dram_t( unsigned int parition_id, const struct memory_config *config, class memory_stats_t *stats );
 
    int full();
    void print( FILE* simFile ) const;
@@ -152,24 +150,8 @@ private:
    void scheduler_fifo();
    void fast_scheduler_ideal();
 
-   struct memory_config *m_config;
+   const struct memory_config *m_config;
 
-   unsigned int tCCD;   //column to column delay
-   unsigned int tRRD;   //minimal time required between activation of rows in different banks
-   unsigned int tRCD;   //row to column delay - time required to activate a row before a read
-   unsigned int tRCDWR;//row to column delay for a write command
-   unsigned int tRAS;   //time needed to activate row
-   unsigned int tRP; //row precharge ie. deactivate row
-   unsigned int tRC; //row cycle time ie. precharge current, then activate different row
-
-   unsigned int CL;  //CAS latency
-   unsigned int WL;  //WRITE latency
-   unsigned int BL;  //Burst Length in bytes (we're using 4? could be 8)
-   unsigned int tRTW;   //time to switch from read to write
-   unsigned int tWTR;   //time to switch from write to read 5? look in datasheet
-   unsigned int busW;
-
-   unsigned int nbk;
    bank_t **bk;
    unsigned int prio;
 

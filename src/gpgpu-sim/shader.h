@@ -983,11 +983,12 @@ class simt_core_cluster;
 
 class ldst_unit: public pipelined_simd_unit {
 public:
-    ldst_unit( simt_core_cluster *gpu, 
+    ldst_unit( simt_core_cluster *cluster, 
                shader_core_ctx *core, 
                opndcoll_rfu_t *operand_collector,
                Scoreboard *scoreboard,
                shader_core_config *config, 
+               const memory_config *mem_config,  
                shader_core_stats *stats, 
                unsigned sid, unsigned tpc );
 
@@ -1034,6 +1035,7 @@ private:
                                                      warp_inst_t &inst );
    mem_stage_stall_type send_mem_request(warp_inst_t &inst, mem_access_t &access);
 
+   const memory_config *m_memory_config;
    class simt_core_cluster *m_cluster;
    class shader_core_ctx *m_core;
    unsigned m_sid;
@@ -1072,6 +1074,7 @@ public:
                     unsigned shader_id,
                     unsigned tpc_id,
                     struct shader_core_config *config,
+                    const struct memory_config *mem_config,
                     struct shader_core_stats *stats );
 
    void issue_block2core( class kernel_info_t &kernel );
@@ -1142,6 +1145,7 @@ private:
    unsigned m_sid; // shader id
    unsigned m_tpc; // texture processor cluster id (aka, node id when using interconnect concentration)
    const shader_core_config *m_config;
+   const memory_config *m_memory_config;
    class simt_core_cluster *m_cluster;
    class gpgpu_sim *m_gpu;
 
@@ -1187,6 +1191,7 @@ public:
     simt_core_cluster( class gpgpu_sim *gpu, 
                        unsigned cluster_id, 
                        struct shader_core_config *config, 
+                       const struct memory_config *mem_config,
                        struct shader_core_stats *stats );
 
     void core_cycle();

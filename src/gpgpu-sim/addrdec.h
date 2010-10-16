@@ -71,28 +71,49 @@
 #ifndef ADDRDEC_H
 #define ADDRDEC_H
 
-enum {
-   CHIP  = 0,
-   BK    = 1,
-   ROW   = 2,
-   COL   = 3,
-   BURST = 4,
-   N_ADDRDEC
-};
+#include "../abstract_hardware_model.h"
 
-typedef struct {
+struct addrdec_t {
+   void print( FILE *fp ) const;
+    
    unsigned chip;
    unsigned bk;
    unsigned row;
    unsigned col;
    unsigned burst;
-} addrdec_t;
+};
 
-void addrdec_tlx(unsigned long long int addr, addrdec_t *tlx);
-void addrdec_setnchip(unsigned int nchips);
-void addrdec_setoption(option_parser_t opp);
-void addrdec_parseoption(const char *option);
-extern unsigned long long int addrdec_packbits(unsigned long long int mask, 
-                                               unsigned long long int val,
-                                               unsigned char high, unsigned char low);
+class linear_to_raw_address_translation {
+public:
+   linear_to_raw_address_translation();
+   void addrdec_setoption(option_parser_t opp);
+   void init(unsigned int nchips); 
+
+   // accessors
+   void addrdec_tlx(new_addr_type addr, addrdec_t *tlx) const; 
+   new_addr_type partition_address( new_addr_type addr ) const;
+
+private:
+   void addrdec_parseoption(const char *option);
+
+   enum {
+      CHIP  = 0,
+      BK    = 1,
+      ROW   = 2,
+      COL   = 3,
+      BURST = 4,
+      N_ADDRDEC
+   };
+
+   const char *addrdec_option;
+
+   int ADDR_CHIP_S;
+   unsigned char addrdec_mklow[N_ADDRDEC];
+   unsigned char addrdec_mkhigh[N_ADDRDEC];
+   new_addr_type addrdec_mask[N_ADDRDEC];
+   
+   unsigned int gap;
+   int Nchips;
+};
+
 #endif
