@@ -169,27 +169,27 @@ void gpgpu_sim::reg_options(option_parser_t opp)
                "terminates gpu simulation early (0 = no limit)",
                "0");
 
-   option_parser_register(opp, "-gpgpu_tex_cache:l1", OPT_CSTR, &m_shader_config->gpgpu_cache_texl1_opt, 
+   option_parser_register(opp, "-gpgpu_tex_cache:l1", OPT_CSTR, &m_shader_config->m_L1T_config.m_config_string, 
                   "per-shader L1 texture cache  (READ-ONLY) config, i.e., {<nsets>:<linesize>:<assoc>:<repl>|none}",
-                  "512:64:2:L");
+                  "512:64:2:L:R:m");
 
-   option_parser_register(opp, "-gpgpu_const_cache:l1", OPT_CSTR, &m_shader_config->gpgpu_cache_constl1_opt, 
+   option_parser_register(opp, "-gpgpu_const_cache:l1", OPT_CSTR, &m_shader_config->m_L1C_config.m_config_string, 
                   "per-shader L1 constant memory cache  (READ-ONLY) config, i.e., {<nsets>:<linesize>:<assoc>:<repl>|none}",
-                  "64:64:2:L");
+                  "64:64:2:L:R:f");
 
    option_parser_register(opp, "-gpgpu_no_dl1", OPT_BOOL, &m_shader_config->gpgpu_no_dl1, 
                 "no dl1 cache (voids -gpgpu_cache:dl1 option)",
                 "0");
 
-   option_parser_register(opp, "-gpgpu_cache:dl1", OPT_CSTR, &m_shader_config->gpgpu_cache_dl1_opt, 
+   option_parser_register(opp, "-gpgpu_cache:dl1", OPT_CSTR, &m_shader_config->m_L1D_config.m_config_string, 
                   "shader L1 data cache config, i.e., {<nsets>:<bsize>:<assoc>:<repl>|none}",
                   "256:128:1:L");
 
-   option_parser_register(opp, "-gpgpu_cache:il1", OPT_CSTR, &m_shader_config->gpgpu_cache_il1_opt, 
+   option_parser_register(opp, "-gpgpu_cache:il1", OPT_CSTR, &m_shader_config->m_L1I_config.m_config_string, 
                   "shader L1 instruction cache config, i.e., {<nsets>:<bsize>:<assoc>:<repl>|none}",
-                  "4:256:4:L");
+                  "4:256:4:L:R:f");
 
-   option_parser_register(opp, "-gpgpu_cache:dl2", OPT_CSTR, &m_memory_config->gpgpu_cache_dl2_opt, 
+   option_parser_register(opp, "-gpgpu_cache:dl2", OPT_CSTR, &m_memory_config->m_L2_config.m_config_string, 
                   "unified banked L2 data cache config, i.e., {<nsets>:<bsize>:<assoc>:<repl>|none}; disabled by default",
                   NULL); 
 
@@ -274,10 +274,6 @@ void gpgpu_sim::reg_options(option_parser_t opp)
    option_parser_register(opp, "-gpgpu_shmem_pipe_speedup", OPT_INT32, &m_shader_config->gpgpu_shmem_pipe_speedup,  
                 "Number of groups each warp is divided for shared memory bank conflict check",
                 "2");
-
-   option_parser_register(opp, "-gpgpu_cache_wt_through", OPT_BOOL, &m_shader_config->gpgpu_cache_wt_through, 
-                "L1 cache become write through (1=on, 0=off)", 
-                "0");
 
    option_parser_register(opp, "-gpgpu_deadlock_detect", OPT_BOOL, &gpu_deadlock_detect, 
                 "Stop the simulation at deadlock (1=on (default), 0=off)", 
@@ -416,9 +412,9 @@ void gpgpu_sim::next_grid()
 gpgpu_sim::gpgpu_sim()
 { 
    m_options_set=false;
-   m_shader_config = (shader_core_config*)calloc(1,sizeof(shader_core_config));
-   m_shader_stats = (shader_core_stats*)calloc(1,sizeof(shader_core_stats));
-   m_memory_config = (memory_config*)calloc(1,sizeof(memory_config));
+   m_shader_config = new shader_core_config();
+   m_memory_config = new memory_config();
+   m_shader_stats = (shader_core_stats*) calloc(1,sizeof(shader_core_stats));
    m_memory_stats = NULL;
    gpu_sim_insn = 0;
    gpu_tot_sim_insn = 0;
@@ -427,7 +423,7 @@ gpgpu_sim::gpgpu_sim()
    gpu_deadlock = false;
 }
 
-void set_ptx_warp_size(const struct shader_core_config * warp_size);
+void set_ptx_warp_size(const struct core_config * warp_size);
 
 void gpgpu_sim::init_gpu() 
 {
@@ -440,9 +436,8 @@ void gpgpu_sim::init_gpu()
                      &m_shader_config->n_thread_per_shader,
                      &m_shader_config->warp_size);
    set_ptx_warp_size(m_shader_config);
-    
-   m_shader_config->max_warps_per_shader =  m_shader_config->n_thread_per_shader/m_shader_config->warp_size;
-   assert( !(m_shader_config->n_thread_per_shader % m_shader_config->warp_size) );
+
+   m_shader_config->init();    
 
    m_shader_stats->num_warps_issuable = (int*) calloc(m_shader_config->max_warps_per_shader+1, sizeof(int));
    m_shader_stats->num_warps_issuable_pershader = (int*) calloc(m_shader_config->n_simt_clusters*m_shader_config->n_simt_cores_per_cluster, sizeof(int));
@@ -645,7 +640,7 @@ unsigned int gpgpu_sim::run_gpu_sim()
    if (m_memory_config->gpgpu_memlatency_stat & GPU_MEMLATSTAT_QUEUELOGS ) {
       for (unsigned i=0;i<m_memory_config->m_n_mem;i++) 
          m_memory_partition_unit[i]->queue_latency_log_dump(stdout);
-      if (m_memory_config->gpgpu_cache_dl2_opt) {
+      if (m_memory_config->m_L2_config.get_num_lines() > 0 ) {
          for(unsigned i=0; i<m_memory_config->m_n_mem; i++) 
             m_memory_partition_unit[i]->L2c_log(DUMPLOG);
          L2c_latency_log_dump();
@@ -732,9 +727,9 @@ void gpgpu_sim::gpu_print_stat() const
    //for (unsigned i=0; i< m_n_shader; i++) printf("%d ", m_sc[i]->get_max_mshr_used() );
    //printf("\n");
 
-   if (m_memory_config->gpgpu_cache_dl2_opt) {
+   if (m_memory_config->m_L2_config.get_num_lines()) 
       m_memory_stats->L2c_print_stat( m_memory_config->m_n_mem );
-   }
+   
    for (unsigned i=0;i<m_memory_config->m_n_mem;i++) 
       m_memory_partition_unit[i]->print(stdout);
 /*
@@ -749,7 +744,7 @@ void gpgpu_sim::gpu_print_stat() const
        m_sc[i]->L1constcache_print(stdout,a,m);
    printf("L1 Const Cache Total Miss Rate = %0.3f\n", (float)m/a);
 */
-   if (m_memory_config->gpgpu_cache_dl2_opt) 
+   if (m_memory_config->m_L2_config.get_num_lines()) 
       L2c_print_cache_stat();
 
    if (m_shader_config->model == POST_DOMINATOR) {
@@ -956,7 +951,7 @@ void memory_partition_unit::push( mem_fetch* req, unsigned long long cycle )
         mem_fetch* mf = m_rop.front().req;
         m_rop.pop();
         m_stats->memlatstat_icnt2mem_pop(mf);
-        if (m_config->gpgpu_cache_dl2_opt) {
+        if (m_config->m_L2_config.get_num_lines()) {
             if (m_config->gpgpu_l2_readoverwrite && mf->get_is_write())
                 m_icnt2cache_write_queue->push(mf,gpu_sim_cycle);
             else
@@ -973,7 +968,7 @@ void memory_partition_unit::push( mem_fetch* req, unsigned long long cycle )
 mem_fetch* memory_partition_unit::pop() 
 {
    mem_fetch* mf;
-   if( m_config->gpgpu_cache_dl2_opt ) {
+   if( m_config->m_L2_config.get_num_lines()) {
       mf = L2tocbqueue->pop(gpu_sim_cycle);
       if( mf && mf->isatomic() ) 
          mf->do_atomic();
@@ -991,7 +986,7 @@ mem_fetch* memory_partition_unit::pop()
 
 mem_fetch* memory_partition_unit::top() 
 {
-   if (m_config->gpgpu_cache_dl2_opt) {
+   if (m_config->m_L2_config.get_num_lines()) {
       return L2tocbqueue->top();
    } else {
        mem_fetch* mf = m_dram->returnq_top();
@@ -1002,7 +997,7 @@ mem_fetch* memory_partition_unit::top()
 
 void memory_partition_unit::issueCMD() 
 { 
-   if (m_config->gpgpu_cache_dl2_opt) {
+   if (m_config->m_L2_config.get_num_lines()) {
       // pop completed memory request from dram and push it to dram-to-L2 queue 
       if ( !(dramtoL2queue->full() || dramtoL2writequeue->full()) ) { 
          mem_fetch* mf = m_dram->pop();
@@ -1046,8 +1041,8 @@ int gpgpu_sim::next_clock_domain(void)
 {
    double smallest = min3(core_time,icnt_time,dram_time);
    int mask = 0x00;
-   if (m_memory_config->gpgpu_cache_dl2_opt  //when no-L2 it will never be L2's turn
-       && ( l2_time <= smallest) ) {
+   if ( m_memory_config->m_L2_config.get_num_lines()   //when no-L2 it will never be L2's turn
+       && (l2_time <= smallest) ) {
       smallest = l2_time;
       mask |= L2 ;
       l2_time += l2_period;
@@ -1157,7 +1152,7 @@ void gpgpu_sim::cycle()
          }
          if (all_threads_complete) {
             printf("Flushed L2 caches...\n");
-            if (m_memory_config->gpgpu_cache_dl2_opt) {
+            if (m_memory_config->m_L2_config.get_num_lines()) {
                int dlc = 0;
                for (unsigned i=0;i<m_memory_config->m_n_mem;i++) {
                   dlc = m_memory_partition_unit[i]->flushL2();

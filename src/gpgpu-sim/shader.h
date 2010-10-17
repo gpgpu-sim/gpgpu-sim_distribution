@@ -662,7 +662,7 @@ private:
                 warp_inst_t **port, 
                 unsigned num_banks, 
                 unsigned log2_warp_size,
-                const shader_core_config *config,
+                const core_config *config,
                 opndcoll_rfu_t *rfu ); 
       void allocate( warp_inst_t *&pipeline_reg );
 
@@ -867,11 +867,7 @@ struct ifetch_buffer_t {
 
 class simd_function_unit {
 public:
-    simd_function_unit( const shader_core_config *config ) 
-    { 
-        m_config=config;
-        m_dispatch_reg = new warp_inst_t(config); 
-    }
+    simd_function_unit( const shader_core_config *config );
     ~simd_function_unit() { delete m_dispatch_reg; }
 
     // modifiers
@@ -894,15 +890,7 @@ protected:
 
 class pipelined_simd_unit : public simd_function_unit {
 public:
-    pipelined_simd_unit( warp_inst_t **result_port, const shader_core_config *config, unsigned max_latency ) 
-        : simd_function_unit(config) 
-    {
-        m_result_port = result_port;
-        m_pipeline_depth = max_latency;
-        m_pipeline_reg = new warp_inst_t*[m_pipeline_depth];
-        for( unsigned i=0; i < m_pipeline_depth; i++ ) 
-            m_pipeline_reg[i] = new warp_inst_t( config );
-    }
+    pipelined_simd_unit( warp_inst_t **result_port, const shader_core_config *config, unsigned max_latency );
 
     //modifiers
     virtual void cycle() 
@@ -948,8 +936,7 @@ protected:
 class sfu : public pipelined_simd_unit
 {
 public:
-    sfu( warp_inst_t **result_port, const shader_core_config *config ) 
-        : pipelined_simd_unit(result_port,config,config->max_sfu_latency) { m_name = "SFU"; }
+    sfu( warp_inst_t **result_port, const shader_core_config *config );
     virtual bool can_issue( const warp_inst_t &inst ) const
     {
         switch(inst.op) {
@@ -964,8 +951,7 @@ public:
 class sp_unit : public pipelined_simd_unit
 {
 public:
-    sp_unit( warp_inst_t **result_port, const shader_core_config *config ) 
-        : pipelined_simd_unit(result_port,config,config->max_sp_latency) { m_name = "SP "; }
+    sp_unit( warp_inst_t **result_port, const shader_core_config *config );
     virtual bool can_issue( const warp_inst_t &inst ) const
     {
         switch(inst.op) {
@@ -987,7 +973,7 @@ public:
                shader_core_ctx *core, 
                opndcoll_rfu_t *operand_collector,
                Scoreboard *scoreboard,
-               shader_core_config *config, 
+               const shader_core_config *config, 
                const memory_config *mem_config,  
                shader_core_stats *stats, 
                unsigned sid, unsigned tpc );
@@ -1066,6 +1052,71 @@ enum pipeline_stage_name_t {
     N_PIPELINE_STAGES 
 };
 
+struct shader_core_config : public core_config
+{
+    void init()
+    {
+        max_warps_per_shader =  n_thread_per_shader/warp_size;
+        assert( !(n_thread_per_shader % warp_size) );
+
+        max_sfu_latency = 32;
+        max_sp_latency = 32;
+
+        m_L1I_config.init();
+        m_L1T_config.init();
+        m_L1C_config.init();
+        m_L1D_config.init();
+        gpgpu_cache_dl1_linesize = m_L1D_config.get_line_sz();
+        gpgpu_cache_texl1_linesize = m_L1T_config.get_line_sz();
+        gpgpu_cache_constl1_linesize = m_L1C_config.get_line_sz();
+        
+        m_valid = true;
+    }
+
+   bool gpgpu_perfect_mem;
+   enum divergence_support_t model;
+   unsigned n_thread_per_shader;
+   unsigned max_warps_per_shader; 
+   unsigned max_cta_per_core; //Limit on number of concurrent CTAs in shader core
+   unsigned pdom_sched_type;
+
+   cache_config m_L1I_config;
+   cache_config m_L1T_config;
+   cache_config m_L1C_config;
+   cache_config m_L1D_config;
+
+   unsigned n_mshr_per_shader;
+   bool gpgpu_dwf_reg_bankconflict;
+   int gpgpu_operand_collector_num_units_sp;
+   int gpgpu_operand_collector_num_units_sfu;
+   int gpgpu_operand_collector_num_units_mem;
+   bool gpgpu_stall_on_use;
+   //Shader core resources
+   unsigned gpgpu_shmem_size;
+   unsigned gpgpu_shader_registers;
+   int gpgpu_warpdistro_shader;
+   int gpgpu_interwarp_mshr_merge;
+   int gpgpu_shmem_port_per_bank;
+   int gpgpu_cache_port_per_bank;
+   int gpgpu_const_port_per_bank;
+   unsigned gpgpu_num_reg_banks;
+   unsigned gpu_max_cta_per_shader; // TODO: modify this for fermi... computed based upon kernel 
+                                    // resource usage; used in shader_core_ctx::translate_local_memaddr 
+   bool gpgpu_reg_bank_use_warp_id;
+   bool gpgpu_local_mem_map;
+   int gpu_padded_cta_size;
+
+   unsigned max_sp_latency;
+   unsigned max_sfu_latency;
+
+   unsigned n_simt_cores_per_cluster;
+   unsigned n_simt_clusters;
+   unsigned n_simt_ejection_buffer_size;
+   unsigned ldst_unit_response_queue_size;
+
+   unsigned mem2device(unsigned memid) const { return memid + n_simt_clusters; }
+};
+
 class shader_core_ctx : public core_t 
 {
 public:
@@ -1073,7 +1124,7 @@ public:
                     class simt_core_cluster *cluster,
                     unsigned shader_id,
                     unsigned tpc_id,
-                    struct shader_core_config *config,
+                    const struct shader_core_config *config,
                     const struct memory_config *mem_config,
                     struct shader_core_stats *stats );
 
@@ -1190,7 +1241,7 @@ class simt_core_cluster {
 public:
     simt_core_cluster( class gpgpu_sim *gpu, 
                        unsigned cluster_id, 
-                       struct shader_core_config *config, 
+                       const struct shader_core_config *config, 
                        const struct memory_config *mem_config,
                        struct shader_core_stats *stats );
 

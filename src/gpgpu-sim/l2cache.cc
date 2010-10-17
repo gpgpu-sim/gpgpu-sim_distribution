@@ -286,7 +286,7 @@ void memory_partition_unit::cache_cycle()
    process_dram_output(); // pop from dram
    L2c_push_miss_to_dram();   // push to dram
    L2c_service_mem_req();     // pop(push) from(to)  icnt2l2(l2toicnt) queues; service l2 requests 
-   if (m_config->gpgpu_cache_dl2_opt) { // L2 cache enabled
+   if (m_config->m_L2_config.get_num_lines()) { // L2 cache enabled
       L2c_update_stat(); 
       L2c_log(SAMPLELOG); 
    }
@@ -294,12 +294,12 @@ void memory_partition_unit::cache_cycle()
 
 unsigned memory_partition_unit::L2c_get_linesize() 
 { 
-   return m_L2cache->get_line_sz(); 
+   return m_config->m_L2_config.get_line_sz(); 
 }
 
 bool memory_partition_unit::full() const
 {
-   if (m_config->gpgpu_cache_dl2_opt) {
+   if (m_config->m_L2_config.get_num_lines()) {
       return m_icnt2cache_queue->full() || m_icnt2cache_write_queue->full();
    } else {
       return( m_config->gpgpu_dram_sched_queue_size && m_dram->full() );
@@ -319,13 +319,14 @@ memory_partition_unit::memory_partition_unit( unsigned partition_id,
    m_stats=stats;
    m_dram = new dram_t(m_id,m_config,m_stats);
 
-   if( m_config->gpgpu_cache_dl2_opt ) {
+   if( m_config->m_L2_config.get_num_lines() ) {
       char L2c_name[32];
-      snprintf(L2c_name, 32, "L2_%03d", m_id);
-      m_L2cache = new cache_t(L2c_name,m_config->gpgpu_cache_dl2_opt, write_through,-1,-1);
-      m_mshr = new L2c_mshr(m_L2cache->get_line_sz());
-      m_missTracker = new L2c_miss_tracker(m_L2cache->get_line_sz()); 
-      m_accessLocality = new L2c_access_locality(m_L2cache->get_line_sz());
+      snprintf(L2c_name, 32, "L2_bank_%03d", m_id);
+      m_L2cache = new cache_t(L2c_name,m_config->m_L2_config,-1,-1);
+      unsigned l2_line_sz = m_config->m_L2_config.get_line_sz();
+      m_mshr = new L2c_mshr( l2_line_sz );
+      m_missTracker = new L2c_miss_tracker( l2_line_sz ); 
+      m_accessLocality = new L2c_access_locality( l2_line_sz );
    } else {
       m_L2cache=NULL;
       m_mshr=NULL;
@@ -356,7 +357,7 @@ memory_partition_unit::memory_partition_unit( unsigned partition_id,
    L2todram_wbqueue   = new fifo_pipeline<mem_fetch>("L2todram_wbqueue",  L2c_L2_dm_minlength, L2c_L2_dm_minlength + m_config->gpgpu_dram_sched_queue_size + L2c_dm_L2_length, gpu_sim_cycle);
    L2dramout = NULL;
    wb_addr=-1;
-   if (m_config->gpgpu_cache_dl2_opt && 1) {
+   if (m_config->m_L2_config.get_num_lines() && 1) {
       cbtol2_Dist      = StatCreate("cbtoL2",1, m_icnt2cache_queue->get_max_len());
       cbtoL2wr_Dist    = StatCreate("cbtoL2write",1, m_icnt2cache_write_queue->get_max_len());
       L2tocb_Dist      = StatCreate("L2tocb",1, L2tocbqueue->get_max_len());
@@ -478,7 +479,7 @@ void memory_partition_unit::process_dram_output()
          // it is the 1st or nth time trial to writeback
          if (wb_addr != (unsigned long long int)-1) {
             // performing L2 writeback (no false sharing for memory-side cache)
-            int wb_succeed = L2c_write_back(wb_addr, m_L2cache->get_line_sz()); 
+            int wb_succeed = L2c_write_back(wb_addr, m_config->m_L2_config.get_line_sz()); 
             if (!wb_succeed) {
                assert (L2dramout || wb_addr == (unsigned long long int)-1);
                return;

@@ -130,6 +130,29 @@ private:
    dim3 m_next_tid;
 };
 
+struct core_config {
+    core_config() { m_valid = false; }
+    virtual void init() = 0;
+
+    bool m_valid;
+    unsigned warp_size;
+
+    // memory request architecture parameters
+    int gpgpu_coalesce_arch;
+    bool gpgpu_no_dl1;
+    int gpgpu_shmem_pipe_speedup;  
+    unsigned gpgpu_cache_texl1_linesize;
+    unsigned gpgpu_cache_constl1_linesize;
+    unsigned gpgpu_cache_dl1_linesize;
+
+    static const address_type WORD_SIZE=4;
+    unsigned null_bank_func(address_type, unsigned) const { return 1; }
+    int gpgpu_n_shmem_bank;
+    unsigned shmem_bank_func(address_type addr, unsigned) const;
+    int gpgpu_n_cache_bank;
+    unsigned dcache_bank_func(address_type add, unsigned line_size) const;
+};
+
 class core_t {
 public:
    virtual ~core_t() {}
@@ -430,68 +453,6 @@ enum divergence_support_t {
    NUM_SIMD_MODEL
 };
 
-struct shader_core_config 
-{
-   unsigned warp_size;
-   bool gpgpu_perfect_mem;
-   enum divergence_support_t model;
-   unsigned n_thread_per_shader;
-   unsigned max_warps_per_shader; 
-   unsigned max_cta_per_core; //Limit on number of concurrent CTAs in shader core
-   unsigned pdom_sched_type;
-   bool gpgpu_no_dl1;
-   char *gpgpu_cache_texl1_opt;
-   char *gpgpu_cache_constl1_opt;
-   char *gpgpu_cache_dl1_opt;
-   char *gpgpu_cache_il1_opt;
-   unsigned n_mshr_per_shader;
-   bool gpgpu_dwf_reg_bankconflict;
-   int gpgpu_operand_collector_num_units_sp;
-   int gpgpu_operand_collector_num_units_sfu;
-   int gpgpu_operand_collector_num_units_mem;
-   bool gpgpu_stall_on_use;
-   bool gpgpu_cache_wt_through;
-   //Shader core resources
-   unsigned gpgpu_shmem_size;
-   unsigned gpgpu_shader_registers;
-   int gpgpu_warpdistro_shader;
-   int gpgpu_interwarp_mshr_merge;
-   int gpgpu_n_shmem_bank;
-   int gpgpu_n_cache_bank;
-   int gpgpu_shmem_port_per_bank;
-   int gpgpu_cache_port_per_bank;
-   int gpgpu_const_port_per_bank;
-   int gpgpu_shmem_pipe_speedup;  
-   unsigned gpgpu_num_reg_banks;
-   unsigned gpu_max_cta_per_shader; // TODO: modify this for fermi... computed based upon kernel 
-                                    // resource usage; used in shader_core_ctx::translate_local_memaddr 
-   bool gpgpu_reg_bank_use_warp_id;
-   int gpgpu_coalesce_arch;
-   bool gpgpu_local_mem_map;
-   int gpu_padded_cta_size;
-
-   unsigned max_sp_latency;
-   unsigned max_sfu_latency;
-   unsigned gpgpu_cache_texl1_linesize;
-   unsigned gpgpu_cache_constl1_linesize;
-   unsigned gpgpu_cache_dl1_linesize;
-
-   static const address_type WORD_SIZE=4;
-   unsigned null_bank_func(address_type, unsigned) const { return 1; }
-   unsigned shmem_bank_func(address_type addr, unsigned) const;
-   unsigned dcache_bank_func(address_type add, unsigned line_size) const;
-
-   unsigned n_simt_cores_per_cluster;
-   unsigned n_simt_clusters;
-   unsigned n_simt_ejection_buffer_size;
-   unsigned ldst_unit_response_queue_size;
-
-   unsigned mem2device(unsigned memid) const { return memid + n_simt_clusters; }
-};
-
-typedef unsigned (shader_core_config::*bank_func_t)(address_type add, unsigned line_size) const;
-typedef address_type (*tag_func_t)(address_type add, unsigned line_size);
-
 class warp_inst_t: public inst_t {
 public:
     // constructors
@@ -501,7 +462,7 @@ public:
         m_empty=true; 
         m_config=NULL; 
     }
-    warp_inst_t( const struct shader_core_config *config ) 
+    warp_inst_t( const core_config *config ) 
     { 
         m_uid=0;
         assert(config->warp_size<=MAX_WARP_SIZE); 
@@ -650,7 +611,7 @@ protected:
     unsigned cycles; // used for implementing initiation interval delay
     bool m_isatomic;
     unsigned m_warp_id;
-    const struct shader_core_config *m_config; 
+    const core_config *m_config; 
     std::bitset<MAX_WARP_SIZE> warp_active_mask;
 
     struct per_thread_info {

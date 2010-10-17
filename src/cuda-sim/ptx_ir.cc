@@ -983,7 +983,7 @@ ptx_instruction::ptx_instruction( int opcode,
                                   const char *file, 
                                   unsigned line,
                                   const char *source,
-                                  const shader_core_config *config ) : warp_inst_t(config)
+                                  const core_config *config ) : warp_inst_t(config)
 {
    m_uid = ++g_num_ptx_inst_uid;
    m_PC = 0;

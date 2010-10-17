@@ -801,7 +801,7 @@ public:
                     const char *file, 
                     unsigned line,
                     const char *source,
-                    const shader_core_config *config );
+                    const core_config *config );
 
    void print_insn() const;
    virtual void print_insn( FILE *fp ) const;

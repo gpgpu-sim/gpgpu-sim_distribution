@@ -90,7 +90,7 @@ enum mem_stage_stall_type {
    N_MEM_STAGE_STALL_TYPE
 };
 
-struct shader_core_stats 
+struct shader_core_stats
 {
    unsigned int gpgpu_n_load_insn;
    unsigned int gpgpu_n_store_insn;

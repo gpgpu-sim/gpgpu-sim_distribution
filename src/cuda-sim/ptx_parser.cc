@@ -68,8 +68,8 @@
 extern "C" int ptx_error( const char *s );
 extern int ptx_lineno;
 
-static const struct shader_core_config *g_shader_core_config;
-void set_ptx_warp_size(const struct shader_core_config * warp_size)
+static const struct core_config *g_shader_core_config;
+void set_ptx_warp_size(const struct core_config * warp_size)
 {
    g_shader_core_config=warp_size;
 }

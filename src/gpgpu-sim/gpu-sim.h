@@ -71,6 +71,8 @@
 
 #include "../abstract_hardware_model.h"
 #include "addrdec.h"
+#include "gpu-cache.h"
+#include "shader.h"
 
 #include <list>
 #include <stdio.h>
@@ -106,7 +108,7 @@ enum dram_ctrl_t {
 struct memory_config {
    memory_config()
    {
-       gpgpu_cache_dl2_opt=NULL;
+       m_valid = false;
        gpgpu_dram_timing_opt=NULL;
        gpgpu_L2_queue_config=NULL;
    }
@@ -117,9 +119,13 @@ struct memory_config {
       tRCDWR = tRCD-(WL+1);
       tRTW = (CL+(BL/2)+2-WL);
       m_address_mapping.init(m_n_mem);
+      m_L2_config.init();
+      m_valid = true;
    }
 
-   char *gpgpu_cache_dl2_opt;
+   bool m_valid;
+   cache_config m_L2_config;
+
    char *gpgpu_dram_timing_opt;
    char *gpgpu_L2_queue_config;
    bool gpgpu_l2_readoverwrite;

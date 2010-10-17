@@ -77,38 +77,19 @@ cache_t::~cache_t()
    delete m_lines;
 }
 
-cache_t::cache_t( const char *name, 
-                  const char *opt, 
-                  enum cache_write_policy wp, 
-                  int core_id, 
-                  int type_id ) 
+cache_t::cache_t( const char *name, const cache_config &config, int core_id, int type_id ) 
+    : m_config(config)
 {
-   unsigned int nset;
-   unsigned int line_sz;
-   unsigned int assoc;
-   unsigned char policy;
-   int ntok = sscanf(opt,"%d:%d:%d:%c", &nset, &line_sz, &assoc, &policy);
-   if( ntok != 4 ) {
-      printf("GPGPU-Sim uArch: cache configuration string parsing error for cache %s\n", name);
-      abort();
-   }
-   assert(nset && assoc);
-
-   unsigned int nlines;
-   nlines = nset * assoc;
    m_name = name;
-   m_nset = nset;
-   m_nset_log2 = LOGB2(nset);
-   m_assoc = assoc;
-   m_line_sz = line_sz;
-   m_line_sz_log2 = LOGB2(line_sz);
-   m_replacement_policy = policy;
-   m_write_policy = wp;
+   m_nset = config.nset;
+   m_nset_log2 = LOGB2(config.nset);
+   m_assoc = config.assoc;
+   m_line_sz = config.line_sz;
+   m_line_sz_log2 = LOGB2(config.line_sz);
+   m_replacement_policy = config.replacement_policy;
+   m_write_policy = config.get_write_policy();
+   unsigned nlines = config.get_num_lines();
    m_lines = new cache_block_t[nlines];
-
-   // don't hook up with any logger
-   m_core_id = -1; 
-   m_type_id = -1;
 
    // initialize snapshot counters for visualizer
    m_prev_snapshot_access = 0;

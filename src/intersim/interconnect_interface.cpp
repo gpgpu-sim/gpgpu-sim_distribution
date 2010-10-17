@@ -465,9 +465,8 @@ void init_interconnect (char* config_file,
    if (icnt_config.GetInt("input_buf_size")) {
       input_buffer_capacity = icnt_config.GetInt("input_buf_size");
    } else {
-      if (shader_config->gpgpu_cache_dl1_opt && !shader_config->gpgpu_no_dl1) {
-         int l1cache_linesize = 32;
-         sscanf(shader_config->gpgpu_cache_dl1_opt,"%*d:%d:%*d:%*c", &l1cache_linesize);
+      if (shader_config->m_L1D_config.get_num_lines() && !shader_config->gpgpu_no_dl1) {
+         int l1cache_linesize = shader_config->m_L1D_config.get_line_sz();
          input_buffer_capacity = shader_config->n_thread_per_shader*(l1cache_linesize/_flit_size+(int)ceil(8.0f/_flit_size)); 
       } else {
          input_buffer_capacity = shader_config->n_thread_per_shader*((int)ceil(8.0f/_flit_size)); 

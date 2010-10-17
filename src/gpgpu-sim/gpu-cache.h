@@ -101,23 +101,79 @@ struct cache_block_t {
    unsigned char status; /* valid, dirty... etc */
 };
 
-#define LRU 'L'
-#define FIFO 'F'
-#define RANDOM 'R'
+enum replacement_policy {
+    LRU,
+    FIFO
+};
 
-enum cache_write_policy {
+enum write_policy {
     no_writes,    // line replacement when new line arrives
     write_back,   // line replacement when new line arrives
     write_through // reservation based, use much handle reservation full error.
 };
 
+enum allocation_policy {
+    on_miss,
+    on_fill
+};
+
+class cache_config {
+public:
+    cache_config() 
+    { 
+	m_valid = false; 
+	m_config_string = NULL;	// set by option parser
+    }
+    void init()
+    {
+	assert( m_config_string );
+	int ntok = sscanf(m_config_string,"%d:%d:%d:%c:%c:%c", &nset, &line_sz, &assoc, &replacement_policy, &write_policy, &alloc_policy);
+	if( ntok != 6 ) {
+	    printf("GPGPU-Sim uArch: cache configuration parsing error (%s)\n", m_config_string );
+	    abort();
+	}
+	m_valid = true;
+    }
+    unsigned get_line_sz() const
+    {
+	assert( m_valid );
+	return line_sz;
+    }
+    unsigned get_num_lines() const
+    {
+	assert( m_valid );
+	return nset * assoc;
+    }
+
+    enum write_policy get_write_policy() const
+    {
+	if( write_policy == 'R' ) 
+	    return no_writes;
+	else if( write_policy == 'B' ) 
+	    return write_back;
+	else if( write_policy == 'T' ) 
+	    return write_through;
+	else
+	    abort();
+    }
+
+    char *m_config_string;
+
+private:
+    bool m_valid;
+    unsigned int nset;
+    unsigned int line_sz;
+    unsigned int assoc;
+    unsigned char replacement_policy; // 'L' = LRU, 'F' = FIFO, 'R' = RANDOM
+    unsigned char write_policy;       // 'T' = write through, 'B' = write back, 'R' = read only
+    unsigned char alloc_policy;       // 'm' = allocate on miss, 'f' = allocate on fill
+
+    friend class cache_t;
+};
+
 class cache_t {
 public:
-   cache_t( const char *name, 
-            const char *opt, 
-            enum cache_write_policy wp, 
-            int core_id, 
-            int type_id);
+    cache_t( const char *name, const cache_config &config, int core_id, int type_id ); 
    ~cache_t();
 
    enum cache_request_status access( new_addr_type addr, 
@@ -132,10 +188,10 @@ public:
    void     print( FILE *stream, unsigned &total_access, unsigned &total_misses );
    float    windowed_cache_miss_rate(int);
    void     new_window();
-   unsigned get_line_sz() const { return m_line_sz; }
 
 private:
    std::string m_name;
+   const cache_config &m_config;
 
    cache_block_t *m_lines; /* nbanks x nset x assoc lines in total */
    unsigned m_n_banks;
@@ -145,7 +201,7 @@ private:
    unsigned m_line_sz; // bytes 
    unsigned m_line_sz_log2;
 
-   enum cache_write_policy m_write_policy; 
+   enum write_policy m_write_policy; 
    unsigned char m_replacement_policy;
 
    unsigned m_access;
