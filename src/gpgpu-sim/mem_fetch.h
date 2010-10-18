@@ -91,41 +91,26 @@ enum mem_access_type {
    NUM_MEM_ACCESS_TYPE = 8
 };
 
-enum mshr_status {
-   INITIALIZED = 0,
-   INVALID,
-   IN_ICNT2MEM,
-   IN_CBTOL2QUEUE,
-   IN_L2TODRAMQUEUE,
-   IN_DRAM_REQ_QUEUE,
-   IN_DRAMRETURN_Q,
-   IN_DRAMTOL2QUEUE,
-   IN_L2TOCBQUEUE_HIT,
-   IN_L2TOCBQUEUE_MISS,
-   IN_ICNT2SHADER,
-   IN_CLUSTER2SHADER,
-   FETCHED,
-   NUM_MSHR_STATUS
-};
-
-//used to stages that time_vector will keep track of their timing 
-enum mem_req_stat {
-   MR_UNUSED,
-   MR_FQPUSHED,
-   MR_ICNT_PUSHED,
-   MR_ICNT_INJECTED,
-   MR_ICNT_AT_DEST,
-   MR_DRAMQ, //icnt_pop at dram side and mem_ctrl_push
-   MR_DRAM_PROCESSING_START,
-   MR_DRAM_PROCESSING_END,
-   MR_DRAM_OUTQ,
-   MR_2SH_ICNT_PUSHED, // icnt_push and mem_ctl_pop //STORES END HERE!
-   MR_2SH_ICNT_INJECTED,
-   MR_2SH_ICNT_AT_DEST,
-   MR_2SH_FQ_POP, //icnt_pop called inside fq_pop
-   MR_RETURN_Q,
-   MR_WRITEBACK, //done
-   NUM_MEM_REQ_STAT
+enum mem_fetch_status {
+    MEM_FETCH_INITIALIZED = 0,
+    IN_ICNT_TO_MEM,
+    IN_PARTITION_ROP_DELAY,
+    IN_PARTITION_ICNT_TO_L2_QUEUE,
+    IN_PARTITION_L2_TO_DRAM_QUEUE,
+    IN_PARTITION_MC_INTERFACE_QUEUE,
+    IN_PARTITION_MC_INPUT_QUEUE,
+    IN_PARTITION_MC_BANK_ARB_QUEUE,
+    IN_PARTITION_DRAM,
+    IN_PARTITION_MC_RETURNQ,
+    IN_PARTITION_DRAM_TO_L2_QUEUE,
+    IN_PARTITION_L2_FILL_QUEUE,
+    IN_PARTITION_L2_TO_ICNT_QUEUE,
+    IN_ICNT_TO_SHADER,
+    IN_CLUSTER_TO_SHADER_QUEUE,
+    IN_SHADER_LDST_RESPONSE_FIFO,
+    IN_SHADER_FETCHED,
+    MEM_FETCH_DELETED,
+    NUM_MEM_REQ_STAT
 };
 
 const unsigned partial_write_mask_bits = 128; //must be at least size of largest memory access.
@@ -139,15 +124,15 @@ public:
               unsigned sid,
               unsigned tpc,
               unsigned wid,
-              unsigned mshr_id,
               warp_inst_t *inst,
               bool write,
               partial_write_mask_t partial_write_mask,
               enum mem_access_type mem_acc,
               enum mf_type type, 
               const class memory_config *config );
+   ~mem_fetch();
 
-   void set_status( enum mshr_status status, enum mem_req_stat stat, unsigned long long cycle );
+   void set_status( enum mem_fetch_status status, unsigned long long cycle );
    void set_type( enum mf_type t ) { m_type=t; }
    void do_atomic();
 
@@ -159,7 +144,6 @@ public:
    unsigned size() const { return m_data_size+m_ctrl_size; }
    new_addr_type get_addr() const { return m_addr; }
    new_addr_type get_partition_addr() const { return m_partition_addr; }
-   unsigned get_mshr() { return m_mshr_id; }
    bool get_is_write() const { return m_write; }
    unsigned get_request_uid() const { return m_request_uid; }
    unsigned get_sid() const { return m_sid; }
@@ -177,7 +161,7 @@ public:
    enum mem_access_type get_mem_acc() const { return m_mem_acc; }
    address_type get_pc() const { return m_inst.empty()?-1:m_inst.pc; }
    const warp_inst_t &get_inst() { return m_inst; }
-   enum mshr_status get_status() const { return m_status; }
+   enum mem_fetch_status get_status() const { return m_status; }
 
 private:
    // request source information
@@ -185,10 +169,10 @@ private:
    unsigned m_sid;
    unsigned m_tpc;
    unsigned m_wid;
-   unsigned m_mshr_id;
 
    // where is this request now?
-   enum mshr_status m_status;  
+   enum mem_fetch_status m_status;  
+   unsigned long long m_status_change;
 
    // request type, address, size, mask
    bool m_write;

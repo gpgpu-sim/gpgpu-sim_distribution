@@ -70,7 +70,7 @@
 #include "../abstract_hardware_model.h"
 #include "mem_latency_stat.h"
 
-ideal_dram_scheduler::ideal_dram_scheduler( const memory_config *config, dram_t *dm, memory_stats_t *stats )
+frfcfs_scheduler::frfcfs_scheduler( const memory_config *config, dram_t *dm, memory_stats_t *stats )
 {
    m_config = config;
    m_stats = stats;
@@ -91,20 +91,15 @@ ideal_dram_scheduler::ideal_dram_scheduler( const memory_config *config, dram_t 
 
 }
 
-void ideal_dram_scheduler::add_req( dram_req_t *req )
+void frfcfs_scheduler::add_req( dram_req_t *req )
 {
    m_num_pending++;
-
    m_queue[req->bk].push_front(req);
    std::list<dram_req_t*>::iterator ptr = m_queue[req->bk].begin();
-
    m_bins[req->bk][req->row].push_front( ptr ); //newest reqs to the front
-
-
 }
 
-
-inline void ideal_dram_scheduler::data_collection(unsigned int bank)
+void frfcfs_scheduler::data_collection(unsigned int bank)
 {
    if (gpu_sim_cycle > row_service_timestamp[bank]) {
       curr_row_service_time[bank] = gpu_sim_cycle - row_service_timestamp[bank];
@@ -120,7 +115,7 @@ inline void ideal_dram_scheduler::data_collection(unsigned int bank)
    m_stats->num_activates[m_dram->id][bank]++;
 }
 
-dram_req_t *ideal_dram_scheduler::schedule( unsigned bank, unsigned curr_row )
+dram_req_t *frfcfs_scheduler::schedule( unsigned bank, unsigned curr_row )
 {
    int row_hit = 0;
    if ( m_last_row[bank] == NULL ) {
@@ -164,7 +159,7 @@ dram_req_t *ideal_dram_scheduler::schedule( unsigned bank, unsigned curr_row )
 }
 
 
-void ideal_dram_scheduler::print( FILE *fp )
+void frfcfs_scheduler::print( FILE *fp )
 {
    for ( unsigned b=0; b < m_config->nbk; b++ ) {
       printf(" %u: queue length = %u\n", b, (unsigned)m_queue[b].size() );
@@ -174,9 +169,10 @@ void ideal_dram_scheduler::print( FILE *fp )
 void dram_t::fast_scheduler_ideal()
 {
    unsigned mrq_latency;
-   ideal_dram_scheduler *sched = m_fast_ideal_scheduler;
+   frfcfs_scheduler *sched = m_fast_ideal_scheduler;
    while ( !mrqq->empty() && (!m_config->gpgpu_dram_sched_queue_size || sched->num_pending() < m_config->gpgpu_dram_sched_queue_size)) {
-      dram_req_t *req = mrqq->pop(gpu_sim_cycle);
+      dram_req_t *req = mrqq->pop();
+      req->data->set_status(IN_PARTITION_MC_INPUT_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
       sched->add_req(req);
    }
 
@@ -189,6 +185,7 @@ void dram_t::fast_scheduler_ideal()
          req = sched->schedule(b, bk[b]->curr_row);
 
          if ( req ) {
+            req->data->set_status(IN_PARTITION_MC_BANK_ARB_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
             prio = (prio+1)%m_config->nbk;
             bk[b]->mrq = req;
             if (m_config->gpgpu_memlatency_stat) {

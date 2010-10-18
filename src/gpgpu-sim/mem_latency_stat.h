@@ -73,8 +73,8 @@
 class memory_stats_t {
 public:
    memory_stats_t( unsigned n_shader, 
-                   struct shader_core_config *shader_config, 
-                   struct memory_config *mem_config );
+                   const struct shader_core_config *shader_config, 
+                   const struct memory_config *mem_config );
 
    unsigned memlatstat_done( class mem_fetch *mf, unsigned n_warp_per_shader );
    void memlatstat_read_done( class mem_fetch *mf, unsigned n_warp_per_shader);
@@ -82,8 +82,6 @@ public:
    void memlatstat_icnt2mem_pop( class mem_fetch *mf);
    void memlatstat_lat_pw( unsigned n_shader, unsigned n_thread_per_shader, unsigned warp_size );
    void memlatstat_print(unsigned n_mem, unsigned gpu_mem_n_bk);
-
-   void L2c_print_stat(unsigned n_mem);
 
    void print( FILE *fp );
 
@@ -121,7 +119,6 @@ public:
    unsigned *mf_tot_lat_pw_perwarp; //total latency summed up per window per warp. divide by mf_num_lat_pw_perwarp to obtain average latency Per Window
    unsigned long long int *mf_total_lat_perwarp;
    unsigned *num_mfs_perwarp;
-   unsigned *acc_mrq_length;
    
    unsigned ***mem_access_type_stats; // dram access type classification
 

@@ -462,7 +462,7 @@ void _cl_program::Build(const char *options)
 
          char commandline[1024];
          const char *opt = options?options:"";
-         const char* test_dir = getenv( "OPENCL_CURRENT_TEST_PATH" );
+         const char* test_dir = getenv( "PWD" );
          const char* remote_host = getenv( "OPENCL_REMOTE_GPU_HOST" );
          if ( remote_host && test_dir ) {
             // create same directory on OpenCL to PTX server

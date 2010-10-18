@@ -77,14 +77,14 @@ template <class T>
 struct fifo_data {
    T *m_data;
    fifo_data *m_next;
-   unsigned long long  push_time; //for stat collection
 };
 
 template <class T> 
 class fifo_pipeline {
 public:
-   fifo_pipeline(const char* nm, unsigned int minlen, unsigned int maxlen, unsigned long long current_time ) 
+   fifo_pipeline(const char* nm, unsigned int minlen, unsigned int maxlen ) 
    {
+      assert(maxlen);
       m_name = nm;
       m_min_len = minlen;
       m_max_len = maxlen;
@@ -93,8 +93,7 @@ public:
       m_head = NULL;
       m_tail = NULL;
       for (unsigned i=0;i<m_min_len;i++) 
-         push(NULL,current_time);
-      m_lat_stat = StatCreate(m_name,1,32);  
+         push(NULL);
    }
 
    ~fifo_pipeline() 
@@ -106,9 +105,9 @@ public:
       }
    }
 
-   void push(T* data, unsigned long long current_time ) 
+   void push(T* data ) 
    {
-      if (m_max_len) assert(m_length < m_max_len);
+      assert(m_length < m_max_len);
       if (m_head) {
          if (m_tail->m_data || m_length < m_min_len) {
             m_tail->m_next = new fifo_data<T>();
@@ -123,17 +122,15 @@ public:
       }
       m_tail->m_next = NULL;
       m_tail->m_data = data;
-      m_tail->push_time = current_time;
    }
 
-   T* pop( unsigned long long current_time ) 
+   T* pop() 
    {
       fifo_data<T>* next;
       T* data;
       if (m_head) {
         next = m_head->m_next;
         data = m_head->m_data;
-        StatAddSample(m_lat_stat, LOGB2 (current_time - m_head->push_time));
         if ( m_head == m_tail ) {
            assert( next == NULL );
            m_tail = NULL;     
@@ -147,7 +144,7 @@ public:
         }
         m_n_element--; 
          if (m_min_len && m_length < m_min_len) {
-            push(NULL,current_time);
+            push(NULL);
             m_n_element--; // uncount NULL elements inserted to create delays
          }
       } else {
@@ -165,14 +162,14 @@ public:
       }
    }
 
-   void set_min_length(unsigned int new_min_len, unsigned long long current_time) 
+   void set_min_length(unsigned int new_min_len) 
    {
       if (new_min_len == m_min_len) return;
    
       if (new_min_len > m_min_len) {
          m_min_len = new_min_len;
          while (m_length < m_min_len) {
-            push(NULL,current_time);
+            push(NULL);
             m_n_element--; // uncount NULL elements inserted to create delays
          }
       } else {
@@ -188,7 +185,7 @@ public:
             if (!iter) {
                // there is only one node, and that node is empty
                assert(m_head->m_data == 0);
-               pop(current_time);
+               pop();
             } else {
                // there are more than one node, and tail node is empty
                assert(iter->m_next == m_tail);
@@ -206,7 +203,6 @@ public:
    unsigned get_n_element() const { return m_n_element; }
    unsigned get_length() const { return m_length; }
    unsigned get_max_len() const { return m_max_len; }
-   void* get_lat_stat() { return m_lat_stat; }
 
    void print() const
    {
@@ -229,8 +225,6 @@ private:
 
    fifo_data<T> *m_head;
    fifo_data<T> *m_tail;
-
-   void* m_lat_stat; //a pointer to latency stats distribution structure
 };
 
 #endif

@@ -121,40 +121,40 @@ lib/libOpenCL.so: $(LIBS) opencllib
 	if [ ! -f lib/libOpenCL.so.1 ]; then ln -s libOpenCL.so lib/libOpenCL.so.1; fi
 	if [ ! -f lib/libOpenCL.so.1.1 ]; then ln -s libOpenCL.so lib/libOpenCL.so.1.1; fi
 
-cudalib:
-	make -C ./libcuda/
+cudalib: cuda-sim
+	$(MAKE) -C ./libcuda/
 
 cuda-sim:
-	make -C ./src/cuda-sim/ depend
-	make -C ./src/cuda-sim/
+	$(MAKE) -C ./src/cuda-sim/ depend
+	$(MAKE) -C ./src/cuda-sim/
 
-gpgpu-sim_uarch:
-	make -C ./src/gpgpu-sim/ depend
-	make -C ./src/gpgpu-sim/
+gpgpu-sim_uarch: cuda-sim
+	$(MAKE) -C ./src/gpgpu-sim/ depend
+	$(MAKE) -C ./src/gpgpu-sim/
 
-intersim:
-	make "CREATELIBRARY=1" "DEBUG=$(DEBUG)" -C ./src/intersim	
+intersim: cuda-sim gpgpu-sim_uarch
+	$(MAKE) "CREATELIBRARY=1" "DEBUG=$(DEBUG)" -C ./src/intersim	
 
-gpgpusimlib:
-	make -C ./src/ depend
-	make -C ./src/
+gpgpusimlib: cuda-sim gpgpu-sim_uarch intersim
+	$(MAKE) -C ./src/ depend
+	$(MAKE) -C ./src/
 
-opencllib:
-	make -C ./libopencl/
+opencllib: cuda-sim
+	$(MAKE) -C ./libopencl/
 
 all:
-	make gpgpusim
+	$(MAKE) gpgpusim
 
 clean: 
-	make cleangpgpusim
+	$(MAKE) cleangpgpusim
 
 cleangpgpusim:
-	make clean -C ./libcuda/
+	$(MAKE) clean -C ./libcuda/
 ifneq  ($(NVOPENCL_LIBDIR),)
-	make clean -C ./libopencl/
+	$(MAKE) clean -C ./libopencl/
 endif
-	make clean -C ./src/intersim/
-	make clean -C ./src/cuda-sim/
-	make clean -C ./src/gpgpu-sim/
-	make clean -C ./src/
+	$(MAKE) clean -C ./src/intersim/
+	$(MAKE) clean -C ./src/cuda-sim/
+	$(MAKE) clean -C ./src/gpgpu-sim/
+	$(MAKE) clean -C ./src/
 	rm -rf ./lib/*.so*

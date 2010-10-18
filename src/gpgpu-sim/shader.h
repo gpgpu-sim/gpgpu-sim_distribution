@@ -64,6 +64,9 @@
  * Vancouver, BC V6T 1Z4
  */
 
+#ifndef SHADER_H
+#define SHADER_H
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -80,7 +83,6 @@
 #include "../cuda-sim/ptx.tab.h"
 #include "../cuda-sim/dram_callback.h"
 
-#include "gpu-cache.h"
 #include "delayqueue.h"
 #include "stack.h"
 #include "dram.h"
@@ -88,9 +90,7 @@
 #include "scoreboard.h"
 #include "mem_fetch.h"
 #include "stats.h"
-
-#ifndef SHADER_H
-#define SHADER_H
+#include "gpu-cache.h"
 
 #define NO_OP_FLAG            0xFF
 
@@ -298,102 +298,6 @@ private:
     unsigned long long  *m_branch_div_cycle;
 };
 
-
-class mshr_entry {
-public:
-   mshr_entry() 
-   { 
-       m_merged_requests=NULL;
-       m_mf=NULL;
-       m_id=0;
-       m_status = INITIALIZED;
-       m_isatomic=false;
-   }
-   void set_id( unsigned n ) { m_id = n; }
-   unsigned get_id() const { return m_id; }
-   void init( new_addr_type address, bool wr, memory_space_t space, unsigned warp_id );
-   void clear() { m_insts.clear(); }
-   void set_mf( class mem_fetch *mf ) { m_mf=mf; }
-   class mem_fetch *get_mf() { return m_mf; }
-   void add_inst( warp_inst_t inst ) 
-   { 
-       m_insts.push_back(inst); 
-       m_isatomic = inst.isatomic();
-   }
-   void merge( mshr_entry *mshr )
-   {
-       //merge this request;
-       m_merged_requests = mshr;
-       mshr->m_merged_on_other_reqest = true;
-   }
-   void set_fetched()
-   {
-       mshr_entry *mshr = this;
-       while( mshr ) {
-           mshr->m_status=FETCHED;
-           mshr->m_mf=NULL;
-           mshr=mshr->m_merged_requests;
-       }
-   }
-   mshr_entry *get_last_merged()
-   {
-       mshr_entry *mshr_hit = this;
-       while (mshr_hit->m_merged_requests) 
-          mshr_hit = mshr_hit->m_merged_requests;
-       return mshr_hit;
-   }
-   void get_insts( std::vector<inst_t> &done_insts )
-   {
-       done_insts.insert(done_insts.end(),m_insts.begin(),m_insts.end());
-   }
-   void add_to_queue( std::list<mshr_entry*> &q )
-   {
-       // place all merged requests in return queue
-       mshr_entry *req = this;
-       while (req) {
-           q.push_back(req);
-           req = req->m_merged_requests;
-       } 
-   }
-
-   unsigned get_warp_id() const { return m_warp_id; }
-   bool ismerged() const { return m_merged_on_other_reqest; }
-   bool fetched() const { return m_status==FETCHED;}
-   bool iswrite() const { return m_iswrite; }
-   bool isinst()  const { return m_isinst; }
-   bool istexture() const { return m_istexture; }
-   bool isconst() const { return m_isconst; }
-   bool islocal() const { return m_islocal; }
-   bool has_inst() const { return m_insts.size()>0; }
-   unsigned num_inst() const { return m_insts.size(); }
-   inst_t &get_inst(unsigned n) 
-   { 
-       assert(n<m_insts.size());
-       return m_insts[n]; 
-   }
-   bool isatomic() const { return m_isatomic; }
-   new_addr_type get_addr() const { return m_addr; }
-   void print(FILE *fp) const;
-    
-private:
-    unsigned m_id;
-    unsigned m_request_uid;
-    unsigned m_warp_id;
-    new_addr_type m_addr; // address being fetched
-    std::vector<warp_inst_t> m_insts;
-    bool m_iswrite;
-    bool m_merged_on_other_reqest; //true if waiting for another mshr - this mshr doesn't send a memory request
-    struct mshr_entry *m_merged_requests; //mshrs waiting on this mshr
-    class mem_fetch *m_mf; // link to corresponding memory fetch structure
-    enum mshr_status m_status;
-    bool m_isinst;    //if it's a request from the instruction cache
-    bool m_istexture; //if it's a request from the texture cache
-    bool m_isconst;   //if it's a request from the constant cache
-    bool m_islocal;   //if it's a request to the local memory of a thread
-    bool m_wt_no_w2cache; //in write_through, sometimes need to prevent writing back returning data into cache, because its been written in the meantime. 
-    bool m_isatomic;
-};
-
 const unsigned WARP_PER_CTA_MAX = 32;
 typedef std::bitset<WARP_PER_CTA_MAX> warp_set_t;
 
@@ -556,11 +460,19 @@ private:
          m_queue=NULL;
          m_allocated_bank=NULL;
          m_allocator_rr_head=NULL;
+         _inmatch=NULL;
+         _outmatch=NULL;
+         _request=NULL;
       }
       void init( unsigned num_cu, unsigned num_banks ) 
       { 
          m_num_collectors = num_cu;
          m_num_banks = num_banks;
+         _inmatch = new int[ m_num_banks ];
+         _outmatch = new int[ m_num_collectors ];
+         _request = new int*[ m_num_banks ];
+         for(unsigned i=0; i<m_num_banks;i++) 
+             _request[i] = new int[m_num_collectors];
          m_queue = new std::list<op_t>[num_banks];
          m_allocated_bank = new allocation_t[num_banks];
          m_allocator_rr_head = new unsigned[num_cu];
@@ -634,6 +546,10 @@ private:
 
       unsigned *m_allocator_rr_head; // cu # -> next bank to check for request (rr-arb)
       unsigned  m_last_cu; // first cu to check while arb-ing banks (rr)
+
+      int *_inmatch;
+      int *_outmatch;
+      int **_request;
    };
 
    class collector_unit_t {
@@ -786,63 +702,6 @@ private:
    warp_set_t m_warp_at_barrier;
 };
 
-class mshr_lookup {
-public:
-   mshr_lookup( const struct shader_core_config *config ) { m_shader_config = config; }
-   bool can_merge(mshr_entry * mshr);
-   void mshr_fast_lookup_insert(mshr_entry* mshr);
-   void mshr_fast_lookup_remove(mshr_entry* mshr);
-   mshr_entry* shader_get_mergeable_mshr(mshr_entry* mshr);
-
-private:
-   void insert(mshr_entry* mshr);
-   mshr_entry* lookup(new_addr_type addr) const;
-   void remove(mshr_entry* mshr);
-
-   typedef std::multimap<new_addr_type, mshr_entry*> mshr_lut_t; // multimap since multiple mshr entries can have the same tag
-
-   const shader_core_config *m_shader_config;
-   mshr_lut_t m_lut; 
-};
-
-class mshr_shader_unit {
-public:
-   mshr_shader_unit( const shader_core_config *config );
-
-   bool has_mshr(unsigned num) const { return (num <= m_free_list.size()); }
-
-   mshr_entry* return_head();
-
-   //return queue pop; (includes texture pipeline return)
-   void pop_return_head();
-
-   mshr_entry* add_mshr(mem_access_t &access, warp_inst_t* inst);
-   void mshr_return_from_mem(unsigned mshr_id);
-   unsigned get_max_mshr_used() const {return m_max_mshr_used;}  
-   void print(FILE* fp);
-
-private:
-   mshr_entry *alloc_free_mshr(bool istexture);
-   void free_mshr( mshr_entry *mshr );
-   unsigned mshr_used() const;
-   bool has_return() 
-   { 
-       return (not m_mshr_return_queue.empty()) or 
-              ((not m_texture_mshr_pipeline.empty()) and m_texture_mshr_pipeline.front()->fetched());
-   }
-   std::list<mshr_entry*> &choose_return_queue();
-
-   const struct shader_core_config *m_shader_config;
-
-   typedef std::vector<mshr_entry> mshr_storage_type;
-   mshr_storage_type m_mshrs; 
-   std::list<mshr_entry*> m_free_list;
-   std::list<mshr_entry*> m_mshr_return_queue;
-   std::list<mshr_entry*> m_texture_mshr_pipeline;
-   unsigned m_max_mshr_used;
-   mshr_lookup m_mshr_lookup;
-};
-
 struct insn_latency_info {
    unsigned pc;
    unsigned long latency;
@@ -864,6 +723,8 @@ struct ifetch_buffer_t {
     unsigned m_nbytes;
     unsigned m_warp_id;
 };
+
+class shader_core_config;
 
 class simd_function_unit {
 public:
@@ -966,10 +827,12 @@ public:
 };
 
 class simt_core_cluster;
+class shader_memory_interface;
+class cache_t;
 
 class ldst_unit: public pipelined_simd_unit {
 public:
-    ldst_unit( simt_core_cluster *cluster, 
+    ldst_unit( shader_memory_interface *icnt, 
                shader_core_ctx *core, 
                opndcoll_rfu_t *operand_collector,
                Scoreboard *scoreboard,
@@ -1001,40 +864,32 @@ public:
 
 private:
    void generate_mem_accesses(warp_inst_t &pipe_reg);
-   void tex_cache_access(warp_inst_t &inst);
-   void const_cache_access(warp_inst_t &inst);
 
    bool shared_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
    bool constant_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
    bool texture_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
    bool memory_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
 
-   mem_stage_stall_type ccache_check(warp_inst_t &inst, mem_access_t& access){ return NO_RC_FAIL;}
-   mem_stage_stall_type tcache_check(warp_inst_t &inst, mem_access_t& access){ return NO_RC_FAIL;}
-   mem_stage_stall_type dcache_check(warp_inst_t &inst, mem_access_t& access);
-
-   typedef mem_stage_stall_type (ldst_unit::*cache_check_t)(warp_inst_t &,mem_access_t&);
-
-   mem_stage_stall_type process_memory_access_queue( ldst_unit::cache_check_t cache_check,
-                                                     unsigned ports_per_bank, 
-                                                     unsigned memory_send_max, 
-                                                     warp_inst_t &inst );
-   mem_stage_stall_type send_mem_request(warp_inst_t &inst, mem_access_t &access);
+   mem_stage_stall_type process_memory_access_queue( cache_t *cache, warp_inst_t &inst );
+   mem_fetch *create_data_mem_fetch(warp_inst_t &inst, mem_access_t &access);
 
    const memory_config *m_memory_config;
-   class simt_core_cluster *m_cluster;
+   class shader_memory_interface *m_icnt;
    class shader_core_ctx *m_core;
    unsigned m_sid;
    unsigned m_tpc;
 
-   cache_t *m_L1D; // data cache (global/local memory accesses)
    cache_t *m_L1T; // texture cache
    cache_t *m_L1C; // constant cache
-   mshr_shader_unit *m_mshr_unit;
    std::map<unsigned/*warp_id*/, std::map<unsigned/*regnum*/,unsigned/*count*/> > m_pending_writes;
    std::list<mem_fetch*> m_response_fifo;
    opndcoll_rfu_t *m_operand_collector;
    Scoreboard *m_scoreboard;
+
+   mem_fetch *m_next_global;
+   warp_inst_t m_next_wb;
+   unsigned m_writeback_arb; // round-robin arbiter for writeback contention between L1T, L1C, shared
+   unsigned m_num_writeback_clients;
 
    enum mem_stage_stall_type m_mem_rc;
 
@@ -1065,8 +920,6 @@ struct shader_core_config : public core_config
         m_L1I_config.init();
         m_L1T_config.init();
         m_L1C_config.init();
-        m_L1D_config.init();
-        gpgpu_cache_dl1_linesize = m_L1D_config.get_line_sz();
         gpgpu_cache_texl1_linesize = m_L1T_config.get_line_sz();
         gpgpu_cache_constl1_linesize = m_L1C_config.get_line_sz();
         
@@ -1083,7 +936,6 @@ struct shader_core_config : public core_config
    cache_config m_L1I_config;
    cache_config m_L1T_config;
    cache_config m_L1C_config;
-   cache_config m_L1D_config;
 
    unsigned n_mshr_per_shader;
    bool gpgpu_dwf_reg_bankconflict;
@@ -1095,10 +947,7 @@ struct shader_core_config : public core_config
    unsigned gpgpu_shmem_size;
    unsigned gpgpu_shader_registers;
    int gpgpu_warpdistro_shader;
-   int gpgpu_interwarp_mshr_merge;
    int gpgpu_shmem_port_per_bank;
-   int gpgpu_cache_port_per_bank;
-   int gpgpu_const_port_per_bank;
    unsigned gpgpu_num_reg_banks;
    unsigned gpu_max_cta_per_shader; // TODO: modify this for fermi... computed based upon kernel 
                                     // resource usage; used in shader_core_ctx::translate_local_memaddr 
@@ -1213,6 +1062,9 @@ private:
    // thread contexts 
    thread_ctx_t             *m_thread; // functional state, per thread fetch state
 
+   // interconnect interface
+   shader_memory_interface *m_icnt;
+
    // fetch
    cache_t *m_L1I; // instruction cache
    int  m_last_warp_fetched;
@@ -1255,11 +1107,9 @@ public:
     void issue_block2core( class kernel_info_t &kernel );
     void cache_flush();
 
-    bool icnt_injection_buffer_full(new_addr_type addr, int bsize, bool write );
+    bool icnt_injection_buffer_full(unsigned size, bool write);
     void icnt_inject_request_packet(class mem_fetch *mf);
-    bool icnt_ejection_buffer_full() const { return m_response_fifo.size() >= m_config->n_simt_ejection_buffer_size; }
-    void icnt_eject_response_packet(class mem_fetch * mf);
-    void mem_instruction_stats(class warp_inst_t &inst);
+    void mem_instruction_stats(const class warp_inst_t &inst);
     void get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc );
 
     gpgpu_sim *get_gpu() { return m_gpu; }
@@ -1278,6 +1128,23 @@ private:
 
     unsigned m_cta_issue_next_core;
     std::list<mem_fetch*> m_response_fifo;
+};
+
+class shader_memory_interface : public mem_fetch_interface {
+public:
+    shader_memory_interface( simt_core_cluster *port ) { m_port=port; }
+    virtual bool full( unsigned size, bool write ) const 
+    {
+        return m_port->icnt_injection_buffer_full(size,write);
+    }
+    virtual void push(mem_fetch *mf) 
+    {
+    	if( !mf->get_inst().empty() ) 
+    	    m_port->mem_instruction_stats(mf->get_inst()); // not I$-fetch
+        m_port->icnt_inject_request_packet(mf);
+    }
+private:
+    simt_core_cluster *m_port;
 };
 
 #endif /* SHADER_H */

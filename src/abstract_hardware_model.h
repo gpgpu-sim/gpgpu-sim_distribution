@@ -1,6 +1,24 @@
 #ifndef ABSTRACT_HARDWARE_MODEL_INCLUDED
 #define ABSTRACT_HARDWARE_MODEL_INCLUDED
 
+enum _memory_space_t {
+   undefined_space=0,
+   reg_space,
+   local_space,
+   shared_space,
+   param_space_unclassified,
+   param_space_kernel,  /* global to all threads in a kernel : read-only */
+   param_space_local,   /* local to a thread : read-writable */
+   const_space,
+   tex_space,
+   surf_space,
+   global_space,
+   generic_space,
+   instruction_space
+};
+
+#ifdef __cplusplus
+
 #include <string.h>
 #include <stdio.h>
 
@@ -23,29 +41,11 @@ enum uarch_op_t {
 };
 typedef enum uarch_op_t op_type;
 
-enum _memory_space_t {
-   undefined_space=0,
-   reg_space,
-   local_space,
-   shared_space,
-   param_space_unclassified,
-   param_space_kernel,  /* global to all threads in a kernel : read-only */
-   param_space_local,   /* local to a thread : read-writable */
-   const_space,
-   tex_space,
-   surf_space,
-   global_space,
-   generic_space,
-   instruction_space
-};
-
 enum _memory_op_t {
 	no_memory_op = 0,
 	memory_load,
 	memory_store
 };
-
-#ifdef __cplusplus
 
 #include <bitset>
 #include <list>
@@ -58,6 +58,29 @@ enum _memory_op_t {
 struct dim3 {
    unsigned int x, y, z;
 };
+#endif
+
+#if 0
+
+// detect gcc 4.3 and use unordered map (part of c++0x)
+// unordered map doesn't play nice with _GLIBCXX_DEBUG, just use a map if its enabled.
+#if  defined( __GNUC__ ) and not defined( _GLIBCXX_DEBUG )
+#if __GNUC__ >= 4 && __GNUC_MINOR__ >= 3
+   #include <unordered_map>
+   #define my_hash_map std::unordered_map
+#else
+   #include <ext/hash_map>
+   namespace std {
+      using namespace __gnu_cxx;
+   }
+   #define my_hash_map std::hash_map
+#endif
+#else
+   #include <map>
+   #define my_hash_map std::map
+   #define USE_MAP
+#endif
+
 #endif
 
 void increment_x_then_y_then_z( dim3 &i, const dim3 &bound);
@@ -139,18 +162,14 @@ struct core_config {
 
     // memory request architecture parameters
     int gpgpu_coalesce_arch;
-    bool gpgpu_no_dl1;
     int gpgpu_shmem_pipe_speedup;  
     unsigned gpgpu_cache_texl1_linesize;
     unsigned gpgpu_cache_constl1_linesize;
-    unsigned gpgpu_cache_dl1_linesize;
 
     static const address_type WORD_SIZE=4;
     unsigned null_bank_func(address_type, unsigned) const { return 1; }
     int gpgpu_n_shmem_bank;
     unsigned shmem_bank_func(address_type addr, unsigned) const;
-    int gpgpu_n_cache_bank;
-    unsigned dcache_bank_func(address_type add, unsigned line_size) const;
 };
 
 class core_t {
@@ -363,7 +382,6 @@ private:
       recheck_cache = false;
       need_wb = false;
       wb_addr = 0;
-      reserved_mshr = NULL;
    }
 
 public:
@@ -382,10 +400,17 @@ public:
    bool recheck_cache;
    bool need_wb;
    address_type wb_addr; // writeback address (if necessary).
-   class mshr_entry* reserved_mshr;
 
 private:
    static unsigned next_access_uid;
+};
+
+class mem_fetch;
+
+class mem_fetch_interface {
+public:
+    virtual bool full( unsigned size, bool write ) const = 0;
+    virtual void push( mem_fetch *mf ) = 0;
 };
 
 #define MAX_REG_OPERANDS 8
@@ -634,4 +659,5 @@ void move_warp( warp_inst_t *&dst, warp_inst_t *&src );
 size_t get_kernel_code_size( class function_info *entry );
 
 #endif // #ifdef __cplusplus
+
 #endif // #ifndef ABSTRACT_HARDWARE_MODEL_INCLUDED

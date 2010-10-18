@@ -29,12 +29,6 @@ unsigned core_config::shmem_bank_func(address_type addr, unsigned) const
    return ((addr/WORD_SIZE) % gpgpu_n_shmem_bank);
 }
 
-unsigned core_config::dcache_bank_func(address_type add, unsigned line_size) const
-{
-   if (gpgpu_no_dl1) return 1; //no banks
-   else return (add / line_size) & (gpgpu_n_cache_bank - 1);
-}
-
 address_type null_tag_func(address_type address, unsigned line_size)
 {
    return address; //no modification: each address is its own tag.
@@ -101,20 +95,18 @@ void warp_inst_t::get_memory_access_list()
     case global_space: case local_space: case param_space_local: 
         global_mem_access=true;
         warp_parts = 1;
-        line_size = m_config->gpgpu_cache_dl1_linesize;
+        line_size = 0;
         if( m_config->gpgpu_coalesce_arch == 13 ){
            warp_parts = 2;
-           if( m_config->gpgpu_no_dl1 ) {
-              // line size is dependant on instruction;
-              switch (data_size) {
-              case 1: line_size = 32; break;
-              case 2: line_size = 64; break;
-              case 4: case 8: case 16: line_size = 128; break;
-              default: assert(0);
-              }
+           // line size is dependant on instruction;
+           switch (data_size) {
+           case 1: line_size = 32; break;
+           case 2: line_size = 64; break;
+           case 4: case 8: case 16: line_size = 128; break;
+           default: assert(0);
            }
-        }          
-        bank_func = &core_config::dcache_bank_func;
+        } else abort();
+        bank_func = &core_config::null_bank_func;
         tag_func = line_size_based_tag_func;
         limit_broadcast = false;
         break;
@@ -178,7 +170,7 @@ void warp_inst_t::get_memory_access_list()
        // Now that we have the accesses, if we don't have a cache we can adjust request sizes to 
        // include only the data referenced by the threads 
        for (unsigned i = 0; i < get_accessq_size(); i++) {
-          if (m_config->gpgpu_coalesce_arch == 13 && m_config->gpgpu_no_dl1) {
+          if (m_config->gpgpu_coalesce_arch == 13) {
              // do coalescing here.
              char* quarter_counts = accessq(i).quarter_count;
              bool low = quarter_counts[0] or quarter_counts[1];

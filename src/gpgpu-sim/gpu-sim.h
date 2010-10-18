@@ -71,7 +71,6 @@
 
 #include "../abstract_hardware_model.h"
 #include "addrdec.h"
-#include "gpu-cache.h"
 #include "shader.h"
 
 #include <list>
@@ -86,7 +85,6 @@
 #define GPU_RSTAT_PDOM 0x20
 #define GPU_RSTAT_SCHED 0x40
 #define GPU_MEMLATSTAT_MC 0x2
-#define GPU_MEMLATSTAT_QUEUELOGS 0x4
 
 // constants for configuring merging of coalesced scatter-gather requests
 #define TEX_MSHR_MERGE 0x4
@@ -102,7 +100,7 @@
 
 enum dram_ctrl_t {
    DRAM_FIFO=0,
-   DRAM_IDEAL_FAST=1
+   DRAM_FRFCFS=1
 };
 
 struct memory_config {
@@ -128,31 +126,30 @@ struct memory_config {
 
    char *gpgpu_dram_timing_opt;
    char *gpgpu_L2_queue_config;
-   bool gpgpu_l2_readoverwrite;
    bool l2_ideal;
    unsigned gpgpu_dram_sched_queue_size;
    enum dram_ctrl_t scheduler_type;
    bool gpgpu_memlatency_stat;
    unsigned m_n_mem;
-   unsigned int gpu_n_mem_per_ctrlr;
+   unsigned gpu_n_mem_per_ctrlr;
 
    // DRAM parameters
-   unsigned int tCCD;   //column to column delay
-   unsigned int tRRD;   //minimal time required between activation of rows in different banks
-   unsigned int tRCD;   //row to column delay - time required to activate a row before a read
-   unsigned int tRCDWR; //row to column delay for a write command
-   unsigned int tRAS;   //time needed to activate row
-   unsigned int tRP;    //row precharge ie. deactivate row
-   unsigned int tRC;    //row cycle time ie. precharge current, then activate different row
+   unsigned tCCD;   //column to column delay
+   unsigned tRRD;   //minimal time required between activation of rows in different banks
+   unsigned tRCD;   //row to column delay - time required to activate a row before a read
+   unsigned tRCDWR; //row to column delay for a write command
+   unsigned tRAS;   //time needed to activate row
+   unsigned tRP;    //row precharge ie. deactivate row
+   unsigned tRC;    //row cycle time ie. precharge current, then activate different row
 
-   unsigned int CL;     //CAS latency
-   unsigned int WL;     //WRITE latency
-   unsigned int BL;     //Burst Length in bytes (we're using 4? could be 8)
-   unsigned int tRTW;   //time to switch from read to write
-   unsigned int tWTR;   //time to switch from write to read 5? look in datasheet
-   unsigned int busW;
+   unsigned CL;     //CAS latency
+   unsigned WL;     //WRITE latency
+   unsigned BL;     //Burst Length in bytes (we're using 4? could be 8)
+   unsigned tRTW;   //time to switch from read to write
+   unsigned tWTR;   //time to switch from write to read 5? look in datasheet
+   unsigned busW;
 
-   unsigned int nbk;
+   unsigned nbk;
 
    linear_to_raw_address_translation m_address_mapping;
 };
@@ -195,7 +192,7 @@ public:
 
    unsigned num_shader() const { return m_shader_config->n_simt_clusters*m_shader_config->n_simt_cores_per_cluster; }
    unsigned threads_per_core() const;
-   void mem_instruction_stats( class warp_inst_t &inst);
+   void mem_instruction_stats( const class warp_inst_t &inst);
 
    void gpu_print_stat() const;
    void dump_pipeline( int mask, int s, int m ) const;
@@ -213,8 +210,6 @@ private:
    void cycle();
    void L2c_options(class OptionParser *opp);
    void L2c_print_cache_stat() const;
-   void L2c_print_debug();
-   void L2c_latency_log_dump();
    void shader_print_runtime_stat( FILE *fout );
    void shader_print_l1_miss_stat( FILE *fout );
    void shader_print_accstats( FILE* fout ) const;

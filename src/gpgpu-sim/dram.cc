@@ -1,5 +1,5 @@
 /* 
- * dram.c
+ * dram.cc
  *
  * Copyright (c) 2009 by Tor M. Aamodt, Wilson W. L. Fung, George L. Yuan,
  * Ivan Sham, Justin Kwong, Dan O'Connor and the 
@@ -69,6 +69,7 @@
 #include "dram.h"
 #include "mem_latency_stat.h"
 #include "dram_sched.h"
+#include "mem_fetch.h"
 
 #ifdef DRAM_VERIFY
 int PRINT_CYCLE = 0;
@@ -98,12 +99,12 @@ dram_t::dram_t( unsigned int partition_id, const struct memory_config *config, m
       bk[i]->state = BANK_IDLE;
 
    prio = 0;  
-   rwq = new fifo_pipeline<dram_req_t>("rwq",m_config->CL,m_config->CL+1,gpu_sim_cycle);
-   mrqq = new fifo_pipeline<dram_req_t>("mrqq",0,0,gpu_sim_cycle);
-   returnq = new fifo_pipeline<mem_fetch>("dramreturnq",0,m_config->gpgpu_dram_sched_queue_size,gpu_sim_cycle); 
+   rwq = new fifo_pipeline<dram_req_t>("rwq",m_config->CL,m_config->CL+1);
+   mrqq = new fifo_pipeline<dram_req_t>("mrqq",0,2);
+   returnq = new fifo_pipeline<mem_fetch>("dramreturnq",0,m_config->gpgpu_dram_sched_queue_size); 
    m_fast_ideal_scheduler = NULL;
-   if ( m_config->scheduler_type == DRAM_IDEAL_FAST )
-      m_fast_ideal_scheduler = new ideal_dram_scheduler(m_config,this,stats);
+   if ( m_config->scheduler_type == DRAM_FRFCFS )
+      m_fast_ideal_scheduler = new frfcfs_scheduler(m_config,this,stats);
    n_cmd = 0;
    n_activity = 0;
    n_nop = 0; 
@@ -137,24 +138,20 @@ dram_t::dram_t( unsigned int partition_id, const struct memory_config *config, m
       mrqq_Dist = StatCreate("mrqq_length",1,64); //track up to 64 entries
 }
 
-int dram_t::full() 
+bool dram_t::full() const 
 {
-   int full = 0;
-   if ( m_config->gpgpu_dram_sched_queue_size == 0 ) return 0;
-   if ( m_config->scheduler_type == DRAM_IDEAL_FAST ) {
-      unsigned nreqs = m_fast_ideal_scheduler->num_pending() + mrqq->get_n_element();
-      full = (nreqs >= m_config->gpgpu_dram_sched_queue_size);
-   } else {
-      full = (mrqq->get_length() >= m_config->gpgpu_dram_sched_queue_size);
-   }
-
-   return full;
+   if( m_config->gpgpu_dram_sched_queue_size == 0 ) 
+       return false;
+   if( m_config->scheduler_type == DRAM_FRFCFS ) 
+       return m_fast_ideal_scheduler->num_pending() >= m_config->gpgpu_dram_sched_queue_size;
+   else 
+       return mrqq->full();
 }
 
-unsigned int dram_t::que_length() const
+unsigned dram_t::que_length() const
 {
    unsigned nreqs = 0;
-   if (m_config->scheduler_type == DRAM_IDEAL_FAST ) {
+   if (m_config->scheduler_type == DRAM_FRFCFS ) {
       nreqs = m_fast_ideal_scheduler->num_pending();
    } else {
       nreqs = mrqq->get_length();
@@ -195,12 +192,13 @@ dram_req_t::dram_req_t( class mem_fetch *mf )
 void dram_t::push( class mem_fetch *data ) 
 {
    dram_req_t *mrq = new dram_req_t(data);
-   mrqq->push(mrq,gpu_sim_cycle);
+   data->set_status(IN_PARTITION_MC_INTERFACE_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
+   mrqq->push(mrq);
 
    // stats...
    n_req += 1;
    n_req_partial += 1;
-   if ( m_config->scheduler_type == DRAM_IDEAL_FAST ) {
+   if ( m_config->scheduler_type == DRAM_FRFCFS ) {
       unsigned nreqs = m_fast_ideal_scheduler->num_pending();
       if ( nreqs > max_mrqs_temp)
          max_mrqs_temp = nreqs;
@@ -215,10 +213,10 @@ void dram_t::scheduler_fifo()
    if (!mrqq->empty()) {
       unsigned int bkn;
       dram_req_t *head_mrqq = mrqq->top();
+      head_mrqq->data->set_status(IN_PARTITION_MC_BANK_ARB_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
       bkn = head_mrqq->bk;
-      if (!bk[bkn]->mrq) {
-         bk[bkn]->mrq = mrqq->pop(gpu_sim_cycle);
-      }
+      if (!bk[bkn]->mrq) 
+         bk[bkn]->mrq = mrqq->pop();
    }
 }
 
@@ -226,23 +224,40 @@ void dram_t::scheduler_fifo()
 #define DEC2ZERO(x) x = (x)? (x-1) : 0;
 #define SWAP(a,b) a ^= b; b ^= a; a ^= b;
 
-void dram_t::issueCMD()
+void dram_t::cycle()
 {
-   unsigned i,j,k;
-   unsigned char issued;
-   issued = 0;
+
+   if( !returnq->full() ) {
+       dram_req_t *cmd = rwq->pop();
+       if( cmd ) {
+#ifdef DRAM_VIEWCMD 
+           printf("\tDQ: BK%d Row:%03x Col:%03x", cmd->bk, cmd->row, cmd->col + cmd->dqbytes);
+#endif
+           cmd->dqbytes += m_config->BL * m_config->busW * m_config->gpu_n_mem_per_ctrlr; /*16 bytes*/
+           if (cmd->dqbytes >= cmd->nbytes) {
+              mem_fetch *data = cmd->data; 
+              data->set_status(IN_PARTITION_MC_RETURNQ,gpu_sim_cycle+gpu_tot_sim_cycle); 
+              data->set_type(REPLY_DATA);
+              returnq->push(data);
+              delete cmd;
+           }
+#ifdef DRAM_VIEWCMD 
+           printf("\n");
+#endif
+       }
+   }
 
    /* check if the upcoming request is on an idle bank */
    /* Should we modify this so that multiple requests are checked? */
 
    switch (m_config->scheduler_type) {
    case DRAM_FIFO: scheduler_fifo(); break;
-   case DRAM_IDEAL_FAST: fast_scheduler_ideal(); break;
+   case DRAM_FRFCFS: fast_scheduler_ideal(); break;
 	default:
 		printf("Error: Unknown DRAM scheduler type\n");
 		assert(0);
    }
-   if ( m_config->scheduler_type == DRAM_IDEAL_FAST ) {
+   if ( m_config->scheduler_type == DRAM_FRFCFS ) {
       unsigned nreqs = m_fast_ideal_scheduler->num_pending();
       if ( nreqs > max_mrqs) {
          max_mrqs = nreqs;
@@ -256,11 +271,15 @@ void dram_t::issueCMD()
       ave_mrqs += mrqq->get_length();
       ave_mrqs_partial +=  mrqq->get_length();
    }
-   k=m_config->nbk;
+
+   unsigned k=m_config->nbk;
+   bool issued = false;
+
    // check if any bank is ready to issue a new read
-   for (i=0;i<m_config->nbk;i++) {
-      j = (i + prio) % m_config->nbk;
+   for (unsigned i=0;i<m_config->nbk;i++) {
+      unsigned j = (i + prio) % m_config->nbk;
       if (bk[j]->mrq) { //if currently servicing a memory request
+          bk[j]->mrq->data->set_status(IN_PARTITION_DRAM,gpu_sim_cycle+gpu_tot_sim_cycle);
          // correct row activated for a READ
          if ( !issued && !CCDc && !bk[j]->RCDc &&
               (bk[j]->curr_row == bk[j]->mrq->row) && 
@@ -269,13 +288,13 @@ void dram_t::issueCMD()
               !rwq->full() ) {
             if (rw==WRITE) {
                rw=READ;
-               rwq->set_min_length(m_config->CL,gpu_sim_cycle);
+               rwq->set_min_length(m_config->CL);
             }
-            rwq->push(bk[j]->mrq,gpu_sim_cycle);
+            rwq->push(bk[j]->mrq);
             bk[j]->mrq->txbytes += m_config->BL * m_config->busW * m_config->gpu_n_mem_per_ctrlr; //16 bytes
             CCDc = m_config->tCCD;
             RTWc = m_config->tRTW;
-            issued = 1;
+            issued = true;
             n_rd++;
             bwutil+= m_config->BL/2;
             bwutil_partial += m_config->BL/2;
@@ -299,13 +318,13 @@ void dram_t::issueCMD()
                  !rwq->full() ) {
             if (rw==READ) {
                rw=WRITE;
-               rwq->set_min_length(m_config->WL,gpu_sim_cycle);
+               rwq->set_min_length(m_config->WL);
             }
-            rwq->push(bk[j]->mrq,gpu_sim_cycle);
+            rwq->push(bk[j]->mrq);
 
             bk[j]->mrq->txbytes += m_config->BL * m_config->busW * m_config->gpu_n_mem_per_ctrlr; /*16 bytes*/
             CCDc = m_config->tCCD;
-            issued = 1;
+            issued = true;
             n_wr++;
             bwutil+=2;
             bwutil_partial += m_config->BL/2;
@@ -340,7 +359,7 @@ void dram_t::issueCMD()
             bk[j]->RASc = m_config->tRAS;
             bk[j]->RCc = m_config->tRC;
             prio = (j + 1) % m_config->nbk;
-            issued = 1;
+            issued = true;
             n_act_partial++;
             n_act++;
          }
@@ -355,7 +374,7 @@ void dram_t::issueCMD()
             bk[j]->state = BANK_IDLE;
             bk[j]->RPc = m_config->tRP;
             prio = (j + 1) % m_config->nbk;
-            issued = 1;
+            issued = true;
             n_pre++;
             n_pre_partial++;
 #ifdef DRAM_VERIFY
@@ -388,7 +407,7 @@ void dram_t::issueCMD()
    DEC2ZERO(CCDc);
    DEC2ZERO(RTWc);
    DEC2ZERO(WTRc);
-   for (j=0;j<m_config->nbk;j++) {
+   for (unsigned j=0;j<m_config->nbk;j++) {
       DEC2ZERO(bk[j]->RCDc);
       DEC2ZERO(bk[j]->RASc);
       DEC2ZERO(bk[j]->RCc);
@@ -404,44 +423,7 @@ void dram_t::issueCMD()
 //if mrq is being serviced by dram, gets popped after CL latency fulfilled
 class mem_fetch* dram_t::pop() 
 {
-   class mem_fetch *data = NULL;
-   dram_req_t *mrq = rwq->pop(gpu_sim_cycle);
-   if (mrq) {
-#ifdef DRAM_VIEWCMD 
-      printf("\tDQ: BK%d Row:%03x Col:%03x",
-             mrq->bk, mrq->row, mrq->col + mrq->dqbytes);
-#endif
-      mrq->dqbytes += m_config->BL * m_config->busW * m_config->gpu_n_mem_per_ctrlr; /*16 bytes*/
-      if (mrq->dqbytes >= mrq->nbytes) {
-         if (m_config->gpgpu_memlatency_stat) {
-            unsigned dq_latency = gpu_sim_cycle + gpu_tot_sim_cycle - mrq->timestamp;
-            m_stats->dq_lat_table[LOGB2(dq_latency)]++;
-            if (dq_latency > m_stats->max_dq_latency)
-               m_stats->max_dq_latency = dq_latency;
-         }
-         data = mrq->data; 
-         delete mrq;
-      }
-   }
-#ifdef DRAM_VIEWCMD 
-   printf("\n");
-#endif
-   return data;
-}
-
-void dram_t::returnq_push( class mem_fetch *mf, unsigned long long gpu_sim_cycle)
-{
-   returnq->push(mf,gpu_sim_cycle);
-}
-
-class mem_fetch* dram_t::returnq_pop( unsigned long long gpu_sim_cycle)
-{
-   return returnq->pop(gpu_sim_cycle);
-}
-
-class mem_fetch* dram_t::returnq_top()
-{
-   return returnq->top();
+    return returnq->pop();
 }
 
 void dram_t::print( FILE* simFile) const
@@ -499,15 +481,6 @@ void dram_t::print_stat( FILE* simFile )
    for (unsigned i=0;i<10;i++) fprintf(simFile, " %d", dram_eff_bins[i]);
    fprintf(simFile, "\n");
    max_mrqs_temp = 0;
-}
-
-void dram_t::queue_latency_log_dump( FILE *fp ) 
-{
-   fprintf(fp,"(LOGB2)Latency DRAM[%d] ",id);
-   StatDisp(mrqq->get_lat_stat());
-   fprintf(fp,"(LOGB2)Latency DRAM[%d] ",id);
-   StatDisp(rwq->get_lat_stat());   
-   dram_log(DUMPLOG);
 }
 
 void dram_t::visualizer_print( gzFile visualizer_file )

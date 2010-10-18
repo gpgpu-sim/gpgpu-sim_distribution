@@ -79,8 +79,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-memory_stats_t::memory_stats_t( unsigned n_shader, struct shader_core_config *shader_config, struct memory_config *mem_config )
+memory_stats_t::memory_stats_t( unsigned n_shader, const struct shader_core_config *shader_config, const struct memory_config *mem_config )
 {
+   assert( mem_config->m_valid );
+   assert( shader_config->m_valid );
+
    unsigned i,j;
 
 
@@ -119,7 +122,6 @@ memory_stats_t::memory_stats_t( unsigned n_shader, struct shader_core_config *sh
    mf_tot_lat_pw_perwarp = (unsigned *) calloc(max_warps, sizeof(unsigned int));
    mf_total_lat_perwarp = (unsigned long long int *) calloc(max_warps, sizeof(unsigned long long int));
    num_mfs_perwarp = (unsigned *) calloc(max_warps, sizeof(unsigned int));
-   acc_mrq_length = (unsigned *) calloc(mem_config->m_n_mem, sizeof(unsigned int));
    mf_tot_lat_pw = 0; //total latency summed up per window. divide by mf_num_lat_pw to obtain average latency Per Window
    mf_total_lat = 0;
    num_mfs = 0;

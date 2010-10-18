@@ -259,7 +259,7 @@ public:
    void update_ld(unsigned int uid,unsigned int slot, long int time) { 
       if ( ld_time_map.find( uid )!=ld_time_map.end() ) {
          ld_time_map[uid][slot]=time;
-      } else if (slot <= MR_2SH_FQ_POP ) {
+      } else if (slot < NUM_MEM_REQ_STAT ) {
          std::vector<long int> time_vec;
          time_vec.resize(ld_vector_size);
          time_vec[slot] = time;
@@ -280,15 +280,15 @@ public:
    }
    void check_ld_update(unsigned int uid,unsigned int slot, long int latency) { 
       if ( ld_time_map.find( uid )!=ld_time_map.end() ) {
-         int our_latency = ld_time_map[uid][slot] - ld_time_map[uid][MR_ICNT_PUSHED];
+         int our_latency = ld_time_map[uid][slot] - ld_time_map[uid][IN_ICNT_TO_MEM];
          assert( our_latency == latency);
-      } else if (slot <= MR_2SH_FQ_POP ) {
+      } else if (slot < NUM_MEM_REQ_STAT ) {
          abort();
       }
    }
    void check_st_update(unsigned int uid,unsigned int slot, long int latency) { 
       if ( st_time_map.find( uid )!=st_time_map.end() ) {
-         int our_latency = st_time_map[uid][slot] - st_time_map[uid][MR_ICNT_PUSHED];
+         int our_latency = st_time_map[uid][slot] - st_time_map[uid][IN_ICNT_TO_MEM];
          assert( our_latency == latency);
       } else {
          abort();
@@ -306,7 +306,7 @@ private:
       while (iter != ld_time_map.end()) {
          last_update=0;
          first=-1;
-         if (!iter->second[MR_WRITEBACK]) {
+         if (!iter->second[IN_SHADER_FETCHED]) {
             //this request is not done yet skip it!
             ++iter; 
             continue;
@@ -351,7 +351,7 @@ private:
       while (  iter != st_time_map.end() ) {
          last_update=0;
          first=-1;
-         if (!iter->second[MR_2SH_ICNT_PUSHED]) {
+         if (!iter->second[IN_SHADER_FETCHED]) {
             //this request is not done yet skip it!
             ++iter;
             continue;
@@ -465,8 +465,8 @@ public:
 
 my_time_vector* g_my_time_vector; 
 
-void time_vector_create(int ld_size,int st_size) {
-   g_my_time_vector = new my_time_vector(ld_size,st_size); 
+void time_vector_create(int size) {
+   g_my_time_vector = new my_time_vector(size,size); 
 }                               
 
 

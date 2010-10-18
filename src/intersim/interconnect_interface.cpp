@@ -17,9 +17,8 @@
 #include "injection.hpp"
 #include "interconnect_interface.h"
 #include "../gpgpu-sim/mem_fetch.h"
-#include "../gpgpu-sim/gpu-sim.h"
-#include "../gpgpu-sim/shader.h"
 #include <string.h>
+#include <math.h>
 
 int _flit_size ;
 
@@ -317,6 +316,9 @@ bool interconnect_has_buffer(unsigned int input_node, unsigned int tot_req_size)
    return has_buffer;
 }
 
+extern unsigned long long  gpu_sim_cycle;
+extern unsigned long long  gpu_tot_sim_cycle;
+
 void interconnect_push ( unsigned int input_node, unsigned int output_node, 
                          void* data, unsigned int size) 
 { 
@@ -465,14 +467,9 @@ void init_interconnect (char* config_file,
    if (icnt_config.GetInt("input_buf_size")) {
       input_buffer_capacity = icnt_config.GetInt("input_buf_size");
    } else {
-      if (shader_config->m_L1D_config.get_num_lines() && !shader_config->gpgpu_no_dl1) {
-         int l1cache_linesize = shader_config->m_L1D_config.get_line_sz();
-         input_buffer_capacity = shader_config->n_thread_per_shader*(l1cache_linesize/_flit_size+(int)ceil(8.0f/_flit_size)); 
-      } else {
-         input_buffer_capacity = shader_config->n_thread_per_shader*((int)ceil(8.0f/_flit_size)); 
-      }
+      input_buffer_capacity = 8;
    }
-   create_buf(traffic[0]->_dests,shader_config->warp_size,icnt_config.GetInt( "num_vcs" )); 
+   create_buf(traffic[0]->_dests,input_buffer_capacity,icnt_config.GetInt( "num_vcs" )); 
    MATLAB_OUTPUT        = icnt_config.GetInt("MATLAB_OUTPUT");
    DISPLAY_LAT_DIST     = icnt_config.GetInt("DISPLAY_LAT_DIST");
    DISPLAY_HOP_DIST     = icnt_config.GetInt("DISPLAY_HOP_DIST");

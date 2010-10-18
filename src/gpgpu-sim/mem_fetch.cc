@@ -77,13 +77,12 @@ mem_fetch::mem_fetch( new_addr_type addr,
                       unsigned sid,
                       unsigned tpc,
                       unsigned wid,
-                      unsigned mshr_id,
                       warp_inst_t *inst,
                       bool write,
                       partial_write_mask_t partial_write_mask,
                       enum mem_access_type mem_acc,
                       enum mf_type type,
-                      const memory_config *config )
+                      const memory_config *config ) : m_inst()
 {
    m_request_uid = sm_next_mf_request_uid++;
 
@@ -93,7 +92,6 @@ mem_fetch::mem_fetch( new_addr_type addr,
    m_sid = sid;
    m_wid = wid;
    m_tpc = tpc;
-   m_mshr_id = mshr_id;
    if( inst ) m_inst = *inst;
    m_write = write;
    config->m_address_mapping.addrdec_tlx(addr,&m_raw_addr);
@@ -103,20 +101,54 @@ mem_fetch::mem_fetch( new_addr_type addr,
    m_timestamp = gpu_sim_cycle + gpu_tot_sim_cycle;
    m_timestamp2 = 0;
 
-   m_status = INITIALIZED;
+   m_status = MEM_FETCH_INITIALIZED;
+   m_status_change = gpu_sim_cycle + gpu_tot_sim_cycle;
 }
+
+mem_fetch::~mem_fetch()
+{
+    m_status = MEM_FETCH_DELETED;
+}
+
+static const char* Status_str[] = {
+"INITIALIZED",
+"IN_ICNT_TO_MEM",
+"IN_PARTITION_ROP_DELAY",
+"IN_PARTITION_ICNT_TO_L2_QUEUE",
+"IN_PARTITION_L2_TO_DRAM_QUEUE",
+"IN_PARTITION_MC_INTERFACE_QUEUE",
+"IN_PARTITION_MC_INPUT_QUEUE",
+"IN_PARTITION_MC_BANK_ARB_QUEUE",
+"IN_PARTITION_DRAM",
+"IN_PARTITION_MC_RETURNQ",
+"IN_PARTITION_DRAM_TO_L2_QUEUE",
+"IN_PARTITION_L2_FILL_QUEUE",
+"IN_PARTITION_L2_TO_ICNT_QUEUE",
+"IN_ICNT_TO_SHADER",
+"IN_CLUSTER_TO_SHADER_QUEUE",
+"IN_SHADER_LDST_RESPONSE_FIFO",
+"IN_SHADER_FETCHED",
+"MEM_FETCH_DELETED",
+"??",
+"???"
+};
 
 void mem_fetch::print( FILE *fp ) const
 {
-   fprintf(fp,"  mf: uid=%6u, addr=0x%08llx, sid=%u, wid=%u, mshr_id=%u, %s, bank=%u, ", 
-           m_request_uid, m_addr, m_sid, m_wid, m_mshr_id, (m_write?"write":"read "), m_raw_addr.bk);
+   fprintf(fp,"  mf: uid=%6u, addr=0x%08llx, sid=%u, wid=%u, %s, partition=%u, ", 
+           m_request_uid, m_addr, m_sid, m_wid, (m_write?"write":"read "), m_raw_addr.chip);
+   if( (unsigned)m_status < NUM_MEM_REQ_STAT ) 
+       fprintf(fp," status = %s (%llu), ", Status_str[m_status], m_status_change );
+   else
+       fprintf(fp," status = %u??? (%llu), ", m_status, m_status_change );
    if( !m_inst.empty() ) m_inst.print(fp);
    else fprintf(fp,"\n");
 }
 
-void mem_fetch::set_status( enum mshr_status status, enum mem_req_stat stat, unsigned long long cycle ) 
+void mem_fetch::set_status( enum mem_fetch_status status, unsigned long long cycle ) 
 {
     m_status = status;
+    m_status_change = cycle;
 }
 
 bool mem_fetch::isatomic() const
@@ -139,5 +171,5 @@ bool mem_fetch::istexture() const
 bool mem_fetch::isconst() const
 { 
     if( m_inst.empty() ) return false;
-    return m_inst.space.get_type() == const_space;
+    return (m_inst.space.get_type() == const_space) || (m_inst.space.get_type() == param_space_kernel);
 }

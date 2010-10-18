@@ -1,5 +1,5 @@
 /* 
- * gpu-cache.c
+ * gpu-cache.cc
  *
  * Copyright (c) 2009 by Tor M. Aamodt, Wilson W. L. Fung, Ali Bakhoda, 
  * George L. Yuan and the 
@@ -65,291 +65,163 @@
  */
 
 #include "gpu-cache.h"
-#include "gpu-misc.h"
-#include "addrdec.h"
 #include "stat-tool.h"
-#include "gpu-sim.h"
 #include <assert.h>
-#include <string.h>
 
-cache_t::~cache_t() 
+tag_array::~tag_array() 
 {
    delete m_lines;
 }
 
-cache_t::cache_t( const char *name, const cache_config &config, int core_id, int type_id ) 
+tag_array::tag_array( const cache_config &config, int core_id, int type_id ) 
     : m_config(config)
 {
-   m_name = name;
-   m_nset = config.nset;
-   m_nset_log2 = LOGB2(config.nset);
-   m_assoc = config.assoc;
-   m_line_sz = config.line_sz;
-   m_line_sz_log2 = LOGB2(config.line_sz);
-   m_replacement_policy = config.replacement_policy;
-   m_write_policy = config.get_write_policy();
-   unsigned nlines = config.get_num_lines();
-   m_lines = new cache_block_t[nlines];
+   assert( m_config.m_write_policy == READ_ONLY );
+   m_lines = new cache_block_t[ config.get_num_lines()];
 
    // initialize snapshot counters for visualizer
    m_prev_snapshot_access = 0;
    m_prev_snapshot_miss = 0;
-   m_prev_snapshot_merge_hit = 0;
+   m_prev_snapshot_pending_hit = 0;
    m_core_id = core_id; 
    m_type_id = type_id;
 }
 
-enum cache_request_status cache_t::access( new_addr_type addr, bool write, unsigned int cycle, address_type *wb_address ) 
+enum cache_request_status tag_array::probe( new_addr_type addr, unsigned &idx ) const
 {
-   m_access++;
-   unsigned set_index = (addr >> m_line_sz_log2) & ( (1<<m_nset_log2) - 1 );
-   new_addr_type tag = addr >> (m_line_sz_log2 + m_nset_log2);
+    assert( m_config.m_write_policy == READ_ONLY );
+    unsigned set_index = m_config.set_index(addr);
+    new_addr_type tag = m_config.tag(addr);
 
-   bool all_reserved = true;
-   cache_block_t *pending_line = NULL;
-   cache_block_t *clean_line = NULL;
+    unsigned invalid_line = (unsigned)-1;
+    unsigned valid_line = (unsigned)-1;
+    unsigned valid_timestamp = (unsigned)-1;
 
-   shader_cache_access_log(m_core_id, m_type_id, 0);
-
-   for (unsigned way=0; way<m_assoc; way++) {
-      cache_block_t *line = &(m_lines[set_index*m_assoc+way] );
-      if (line->tag == tag) {
-         if (line->status & RESERVED) {
-            pending_line = line;
-            break;
-         } else if (line->status & VALID) {
-            line->last_used = cycle;
-            if (write) 
-               line->status |= DIRTY;
-            if (m_write_policy == write_through) 
-               return HIT_W_WT;
-            return HIT;
-         }
-      } 
-      if (!(line->status & RESERVED)) {
-         all_reserved = false;
-         if (!(line->status & VALID)) 
-             clean_line = line;
-      }
+    bool all_reserved = true;
+    
+    // check for hit or pending hit
+    for (unsigned way=0; way<m_config.m_assoc; way++) {
+	unsigned index = set_index*m_config.m_assoc+way;
+	cache_block_t *line = &m_lines[index];
+	if (line->m_tag == tag) {
+	    if( line->m_status == RESERVED ) {
+		idx = index;
+		return HIT_RESERVED;
+	    } else if( line->m_status == VALID ) {
+		idx = index;
+		return HIT;
+	    } else {
+		assert( line->m_status == INVALID );
+	    }
+	} 
+	if(line->m_status != RESERVED) {
+	    all_reserved = false;
+	    if(line->m_status == INVALID) {
+		invalid_line = index;
+	    } else {
+		// valid line : keep track of most appropriate replacement candidate
+		if( m_config.m_replacement_policy == LRU ) {
+		    if( line->m_last_access_time < valid_timestamp ) {
+			valid_timestamp = line->m_last_access_time;
+			valid_line = index;
+		    }
+		} else if( m_config.m_replacement_policy == FIFO ) {
+		    if( line->m_alloc_time < valid_timestamp ) {
+			valid_timestamp = line->m_alloc_time;
+			valid_line = index;
+		    }
+		}
+	    }
+	}
    }
-   m_miss++;
-   shader_cache_access_log(m_core_id, m_type_id, 1);
-
-   if (pending_line || m_write_policy != write_back || write) {
-      if (pending_line) {
-         if( write ) // write hit-under-miss (irrelevant whether write-back or write-through)
-                     // - timing assumes a large enough write buffer in shader core that we never
-                     //   encounter a structural hazard
-                     // - write buffer merged with returning cache block in zero cycles
-            pending_line->status |= DIRTY;
-         return WB_HIT_ON_MISS;
-      }
-      return MISS_NO_WB;
-   }
-
-   // at this point: this must be a write back cache (and not a hit-under-miss)
-   assert( m_write_policy == write_back );
-
-   if (all_reserved) 
-      // cannot service this request, because we can't garantee that we have room for the line when it comes back
-      return RESERVATION_FAIL;
-
-   if (clean_line) {
-      // found a clean line in the cache so, no need to do a writeback
-      clean_line->status |= RESERVED;
-      clean_line->tag = tag;
-      return MISS_NO_WB; 
+   if( all_reserved ) {
+       assert( m_config.m_alloc_policy == ON_MISS ); 
+       return RESERVATION_FAIL; // miss and not enough space in cache to allocate on miss
    }
 
-   // no clean lines, need to kick a line out to reserve a spot
-   cache_block_t *wb_line = NULL;
-           
-   for (unsigned way=0; way<m_assoc; way++) {
-      cache_block_t *line = &(m_lines[set_index*m_assoc+way] );
-      if (line->status & VALID && !(line->status & RESERVED)) {
-         if (!wb_line) {
-            wb_line = line;
-            continue;
-         }
-         switch (m_replacement_policy) {
-         case LRU: 
-            if (line->last_used < wb_line->last_used)
-               wb_line = line;
-            break;
-         case FIFO:
-            if (line->fetch_time < wb_line->fetch_time)
-               wb_line = line;
-            break;
-         default:
-            abort(); 
-         }   
-      }
-   }
-   assert(wb_line); // should always find a line
-   assert((wb_line->status & (DIRTY|VALID)) == (DIRTY|VALID)); // should be dirty (or we would have found a clean line earlier)
-   
-   // reserve line 
-   wb_line->status = RESERVED;
-   wb_line->tag = tag; 
-   *wb_address = wb_line->addr; 
+   if( invalid_line != (unsigned)-1 ) {
+       idx = invalid_line;
+   } else if( valid_line != (unsigned)-1) {
+       idx = valid_line;
+   } else abort(); // if an unreserved block exists, it is either invalid or replaceable 
 
-   return MISS_W_WB;
+   return MISS;
 }
 
-// Obtain the windowed cache miss rate for visualizer
-float cache_t::windowed_cache_miss_rate( int minus_merge_hit )
+enum cache_request_status tag_array::access( new_addr_type addr, unsigned time, unsigned &idx )
 {
-   cache_t *cp = this;
-   unsigned int n_access = cp->m_access - cp->m_prev_snapshot_access;
-   unsigned int n_miss = cp->m_miss - cp->m_prev_snapshot_miss;
-   unsigned int n_merge_hit = cp->m_merge_hit - cp->m_prev_snapshot_merge_hit;
+    m_access++;
+    shader_cache_access_log(m_core_id, m_type_id, 0); // log accesses to cache
+    enum cache_request_status status = probe(addr,idx);
+    switch(status) {
+    case HIT_RESERVED: 
+	m_pending_hit++;
+    case HIT: 
+	m_lines[idx].m_last_access_time=time; 
+	break;
+    case MISS:
+	m_miss++;
+	shader_cache_access_log(m_core_id, m_type_id, 1); // log cache misses
+	if( m_config.m_alloc_policy == ON_MISS ) 
+	    m_lines[idx].allocate( m_config.tag(addr), m_config.block_addr(addr), time );
+	break;
+    case RESERVATION_FAIL:
+	m_miss++;
+	shader_cache_access_log(m_core_id, m_type_id, 1); // log cache misses
+	break;
+    }
+    return status;
+}
+
+void tag_array::fill( new_addr_type addr, unsigned time )
+{
+    assert( m_config.m_alloc_policy == ON_FILL );
+    unsigned idx;
+    enum cache_request_status status = probe(addr,idx);
+    assert(status==MISS); // MSHR should have prevented redundant memory request
+    m_lines[idx].allocate( m_config.tag(addr), m_config.block_addr(addr), time );
+    m_lines[idx].fill(time);
+}
+
+void tag_array::fill( unsigned index, unsigned time ) 
+{
+    assert( m_config.m_alloc_policy == ON_MISS );
+    m_lines[index].fill(time);
+}
+
+void tag_array::flush() 
+{
+   for (unsigned i=0; i < m_config.get_num_lines(); i++) 
+      m_lines[i].m_status = INVALID;
+}
+
+float tag_array::windowed_miss_rate( bool minus_pending_hit ) const
+{
+   unsigned n_access    = m_access - m_prev_snapshot_access;
+   unsigned n_miss      = m_miss - m_prev_snapshot_miss;
+   unsigned n_pending_hit = m_pending_hit - m_prev_snapshot_pending_hit;
    
-   if (minus_merge_hit) 
-      n_miss -= n_merge_hit;
+   if (minus_pending_hit) 
+      n_miss -= n_pending_hit;
    float missrate = 0.0f;
    if (n_access != 0) 
       missrate = (float) n_miss / n_access;
-   
    return missrate;
 }
 
-// start a new sampling window
-void cache_t::new_window()
+void tag_array::new_window()
 {
    m_prev_snapshot_access = m_access;
    m_prev_snapshot_miss = m_miss;
-   m_prev_snapshot_merge_hit = m_merge_hit;
+   m_prev_snapshot_pending_hit = m_pending_hit;
 }
 
-// Fetch requested data into cache line. 
-// Returning address on the replaced line if it is dirty, or -1 if it is clean
-// Assume the line is filled all at once. 
-new_addr_type cache_t::fill( new_addr_type addr, unsigned int sim_cycle ) 
+void tag_array::print( FILE *stream, unsigned &total_access, unsigned &total_misses ) const
 {
-   unsigned int base = 0 ; 
-   unsigned int maxway = m_assoc; 
-   cache_block_t *pline, *cline;
-   new_addr_type packed_addr = addr;
-   unsigned set = (packed_addr >> m_line_sz_log2) & ( (1<<m_nset_log2) - 1 );
-   unsigned long long tag = packed_addr >> (m_line_sz_log2 + m_nset_log2);
-
-   if (m_write_policy == write_back) {
-      //this request must have a reserved spot
-      cline = NULL;
-      for (unsigned i=base; i<maxway; i++) {
-         pline = &(m_lines[set*m_assoc+i] );
-         if ((pline->tag == tag) && (pline->status & RESERVED)) { 
-            cline = pline;
-            break;
-         }
-         if ((pline->tag == tag) && (pline->status & VALID)) {
-            //A second fill has returned to a line in the cache
-            //discard it as line in cache may have been modified, or is the same
-            return -1;
-         }
-      }
-
-      if (!cline) printf("----!!! about to abort - this probably happened because global memory msrh merging is not enabled with a writeback cache !!!----\n");
-
-      assert(cline); //error if it doesn't have a reserved space
-      
-      /* Fetch data into block */
-      cline->status &= ~RESERVED;
-      cline->status |= VALID;
-      //cline->status &= ~DIRTY; Don't clear dirty bit, as might be dirty from write.
-      cline->tag = tag; 
-      cline->addr = addr;
-      cline->last_used = sim_cycle;
-      cline->fetch_time = sim_cycle;
-
-      // no wb, already handled.
-      return -1;
-   }  
-
-   //behavior unchanged for write through cache... probably not all necessary.
-   
-   // Look for any free slots and the possibility that the line is in the cache already
-   bool nofreeslot = true;
-   bool line_exists = false;
-   for (unsigned i=base; i<maxway; i++) {
-      pline = &(m_lines[set*m_assoc+i] );
-      if (!(pline->status & VALID)) {
-         cline = pline;
-         nofreeslot = false;
-         break;
-      } else if (pline->tag == tag) {
-         cline = pline;
-         line_exists = true;
-         break;
-      }
-   }
-
-   if (line_exists) {
-      return -1; // don't need to spill any line, nor it needs to be filled
-   }
-
-   if (nofreeslot) {
-      cline = &(m_lines[set*m_assoc+base] );
-      for (unsigned i=1+base; i<maxway; i++) {
-         pline = &(m_lines[set*m_assoc+i] );
-         if (pline->status & VALID) {
-            switch (m_replacement_policy) {
-            case LRU: 
-               if (pline->last_used < cline->last_used)
-                  cline = pline;
-               break;
-            case FIFO:
-               if (pline->fetch_time < cline->fetch_time)
-                  cline = pline;
-               break;
-            default:
-               break;
-            }   
-         }
-      }
-   }
-
-   /* Set the replaced cache line address */
-   unsigned long long int repl_addr;
-   if ((cline->status & (DIRTY|VALID)) == (DIRTY|VALID)) {
-      repl_addr = cline->addr; 
-   } else {
-      repl_addr = -1;
-   }
-
-   /* Fetch data into block */
-   cline->status |= VALID;
-   cline->status &= ~DIRTY;
-   cline->tag = tag; 
-   cline->addr = addr;
-   cline->last_used = sim_cycle;
-   cline->fetch_time = sim_cycle;
-
-   return repl_addr;
-}
-
-unsigned int cache_t::flush() 
-{
-   int dirty_lines_flushed = 0 ;
-   for (unsigned i = 0; i < m_nset * m_assoc ; i++) {
-      if ( (m_lines[i].status & (DIRTY|VALID)) == (DIRTY|VALID) ) {
-         dirty_lines_flushed++;
-      }
-      m_lines[i].status &= ~VALID;
-      m_lines[i].status &= ~DIRTY;
-   }
-   return dirty_lines_flushed;
-}
-
-void cache_t::print( FILE *stream, unsigned &total_access, unsigned &total_misses ) 
-{
-   fprintf( stream, "Cache %s:\t", m_name.c_str() );
-   fprintf( stream, "Size = %d B (%d Set x %d-way x %d byte line)\n", 
-            m_line_sz * m_nset * m_assoc,
-            m_nset, m_assoc, m_line_sz );
+   m_config.print(stream);
    fprintf( stream, "\t\tAccess = %d, Miss = %d (%.3g), -MgHts = %d (%.3g)\n", 
             m_access, m_miss, (float) m_miss / m_access, 
-            m_miss - m_merge_hit, (float) (m_miss - m_merge_hit) / m_access);
+            m_miss - m_pending_hit, (float) (m_miss - m_pending_hit) / m_access);
    total_misses+=m_miss;
    total_access+=m_access;
 }

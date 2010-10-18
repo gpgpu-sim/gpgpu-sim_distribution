@@ -74,13 +74,11 @@
 #include <list>
 #include <map>
 
-class ideal_dram_scheduler {
+class frfcfs_scheduler {
 public:
-   ideal_dram_scheduler( const memory_config *config, dram_t *dm, memory_stats_t *stats );
+   frfcfs_scheduler( const memory_config *config, dram_t *dm, memory_stats_t *stats );
    void add_req( dram_req_t *req );
-   std::list<dram_req_t*>::iterator binarysort_VFTF(dram_req_t *req);
-   std::list<dram_req_t*>::iterator sort_VFTF(dram_req_t *req);
-   inline void data_collection(unsigned bank);
+   void data_collection(unsigned bank);
    dram_req_t *schedule( unsigned bank, unsigned curr_row );
    void print( FILE *fp );
    unsigned num_pending() const { return m_num_pending;}

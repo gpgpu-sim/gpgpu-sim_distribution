@@ -67,7 +67,6 @@
 #define MC_PARTITION_INCLUDED
 
 #include "dram.h"
-#include "../tr1_hash_map.h"
 #include "../abstract_hardware_model.h"
 
 #include <list>
@@ -75,156 +74,37 @@
 
 class mem_fetch;
 
-class L2c_mshr 
-{
-private:
-   typedef std::list<const mem_fetch*> mem_fetch_list;
-   typedef tr1_hash_map<address_type, mem_fetch_list> L2missGroup;
-   L2missGroup m_L2missgroup; // structure tracking redundant dram access
-
-   struct active_chain {
-      address_type cacheTag;
-      mem_fetch_list *list;
-      active_chain() : cacheTag(0xDEADBEEF), list(NULL) { }
-   };
-   active_chain m_active_mshr_chain; 
-   size_t m_linesize; // L2 cache line size
-
-   const size_t m_n_entries; // total number of entries available
-   size_t m_entries_used; // number of entries in use
-
-   int m_n_miss; 
-   int m_n_miss_serviced_by_dram;
-   int m_n_mshr_hits;
-   size_t m_max_entries_used; 
-   
-   address_type cache_tag(const mem_fetch *mf) const;
-
-public:
-   L2c_mshr(size_t linesize, size_t n_entries = 64) 
-   : m_linesize(linesize), m_n_entries(n_entries), m_entries_used(0), 
-     m_n_miss(0), m_n_miss_serviced_by_dram(0), m_n_mshr_hits(0), m_max_entries_used(0) { }
-  
-   // add a cache miss to MSHR, return true if this access is hit another existing entry and merges with it
-   bool new_miss(const mem_fetch *mf);
-
-   // notify MSHR that a new cache line has been fetched, activate the associated MSHR chain
-   void miss_serviced(const mem_fetch *mf);
-
-   // probe if there are pending hits left in this MSHR chain
-   bool mshr_chain_empty();
-
-   // peek the first entry in the active MSHR chain
-   mem_fetch *mshr_chain_top();
-
-   // pop the first entry in the active MSHR chain
-   void mshr_chain_pop(); 
-
-   void print(FILE *fout = stdout); 
-   void print_stat(FILE *fout = stdout) const; 
-};
-
-class L2c_miss_tracker
-{
-private:
-   typedef std::set<mem_fetch*> mem_fetch_set;
-   typedef tr1_hash_map<address_type, mem_fetch_set> L2missGroup;
-   L2missGroup m_L2missgroup; // structure tracking redundant dram access
-   size_t m_linesize; // L2 cache line size
-
-   typedef tr1_hash_map<address_type, int> L2redundantCnt; 
-   L2redundantCnt m_L2redundantCnt; 
-
-   int m_totalL2redundantAcc;
-
-   address_type cache_tag(const mem_fetch *mf) const;
-
-public:
-   L2c_miss_tracker(size_t linesize) : m_linesize(linesize), m_totalL2redundantAcc(0) { }
-   void new_miss(mem_fetch *mf);
-   void miss_serviced(mem_fetch *mf);
-
-   void print(FILE *fout, bool brief = true);
-   void print_stat(FILE *fout, bool brief = true) const;
-};
-
-class L2c_access_locality
-{
-public:
-   L2c_access_locality(size_t linesize) : m_linesize(linesize), m_totalL2accAcc(0) { }
-   void print_stat(FILE *fout, bool brief = true) const;
-   void access(mem_fetch *mf);
-private:
-   address_type cache_tag(const mem_fetch *mf) const;
-
-   size_t m_linesize; // L2 cache line size
-
-   typedef tr1_hash_map<address_type, int> L2accCnt; 
-   L2accCnt m_L2accCnt; 
-   int m_totalL2accAcc;
-};
-
 class memory_partition_unit 
 {
 public:
    memory_partition_unit( unsigned partition_id, struct memory_config *config, class memory_stats_t *stats );
    ~memory_partition_unit(); 
 
-   void cache_cycle();
-
-   bool has_cache() { return m_L2cache != NULL; }
-   unsigned L2c_get_linesize();
-   bool full() const;
    bool busy() const;
 
+   void cache_cycle();
+   void dram_cycle();
+
+   bool full() const;
    void push( class mem_fetch* mf, unsigned long long clock_cycle );
    class mem_fetch* pop(); 
    class mem_fetch* top();
-   void issueCMD();
-   void visualizer_print( gzFile visualizer_file );
-   void L2c_latency_log_dump();
-   void L2c_log(int task);
+
    unsigned flushL2();
-   void L2c_print_cache_stat(unsigned &accesses, unsigned &misses) const;
 
-   unsigned get_cbtoL2queue_length() const { return m_icnt2cache_queue->get_length(); }
-   unsigned get_cbtoL2writequeue_length() const { return m_icnt2cache_write_queue->get_length(); }
-   unsigned get_dramtoL2queue_length() const { return dramtoL2queue->get_length(); }
-   unsigned get_dramtoL2writequeue_length() const { return dramtoL2writequeue->get_length(); }
-   unsigned get_L2todramqueue_length() const { return L2todramqueue->get_length(); }
-   unsigned get_L2todram_wbqueue_length() const { return L2todram_wbqueue->get_length(); }
-   unsigned get_L2tocbqueue_length() const { return L2tocbqueue->get_length(); }
-
+   void visualizer_print( gzFile visualizer_file );
+   void print_cache_stat(unsigned &accesses, unsigned &misses) const;
    void print_stat( FILE *fp ) { m_dram->print_stat(fp); }
    void visualize() const { m_dram->visualize(); }
-   unsigned dram_que_length() const { return m_dram->que_length(); }
-   void queue_latency_log_dump( FILE *fp ) { m_dram->queue_latency_log_dump(fp); }
    void print( FILE *fp ) const;
 
 private:
-
-   // service memory request in icnt-to-L2 queue, writing to L2 as necessary
-   // (if L2 writeback miss, writeback to memory) 
-   void L2c_service_mem_req();
-   
-   // service memory request in L2todramqueue, pushing to dram 
-   void L2c_push_miss_to_dram();
-   
-   // service memory request in dramtoL2queue, writing to L2 as necessary
-   // (may cause cache eviction and subsequent writeback) 
-   void process_dram_output();
-   
-   bool L2c_write_back( unsigned long long int addr, int bsize );
-   
-   void L2c_init_stat(unsigned n_mem);
-   void L2c_update_stat();
-   void L2c_print_debug();
-
 // data
    unsigned m_id;
    const struct memory_config *m_config;
    class dram_t *m_dram;
    class cache_t *m_L2cache;
+   class L2interface *m_L2interface;
 
    // model delay of ROP units with a fixed latency
    struct rop_delay_t
@@ -235,32 +115,35 @@ private:
    std::queue<rop_delay_t> m_rop; 
 
    // these are various FIFOs between units within a memory partition
-   fifo_pipeline<mem_fetch> *m_icnt2cache_queue;
-   fifo_pipeline<mem_fetch> *m_icnt2cache_write_queue;
-   fifo_pipeline<mem_fetch> *dramtoL2queue;
-   fifo_pipeline<mem_fetch> *dramtoL2writequeue;
-   fifo_pipeline<mem_fetch> *L2todramqueue;
-   fifo_pipeline<mem_fetch> *L2todram_wbqueue;
-   fifo_pipeline<mem_fetch> *L2tocbqueue; // L2 cache hit response queue
-
-   L2c_mshr *m_mshr; // mshr model 
-   L2c_miss_tracker *m_missTracker; // tracker observing for redundant misses
-   L2c_access_locality *m_accessLocality; // tracking true locality of L2 Cache access 
+   fifo_pipeline<mem_fetch> *m_icnt_L2_queue;
+   fifo_pipeline<mem_fetch> *m_L2_dram_queue;
+   fifo_pipeline<mem_fetch> *m_dram_L2_queue;
+   fifo_pipeline<mem_fetch> *m_L2_icnt_queue; // L2 cache hit response queue
 
    class mem_fetch *L2dramout; 
    unsigned long long int wb_addr;
 
    class memory_stats_t *m_stats;
 
-   class Stats *cbtol2_Dist;  
-   class Stats *cbtoL2wr_Dist;  
-   class Stats *L2tocb_Dist; 
-   class Stats *dramtoL2_Dist;
-   class Stats *dramtoL2wr_Dist;
-   class Stats *L2todram_Dist;
-   class Stats *L2todram_wb_Dist;
-
    std::set<mem_fetch*> m_request_tracker;
+
+   friend class L2interface;
+};
+
+class L2interface : public mem_fetch_interface {
+public:
+    L2interface( memory_partition_unit *unit ) { m_unit=unit; }
+    virtual bool full( unsigned size, bool write) const 
+    {
+        // assume read and write packets all same size
+        return m_unit->m_L2_dram_queue->full();
+    }
+    virtual void push(mem_fetch *mf) 
+    {
+	m_unit->m_L2_dram_queue->push(mf);
+    }
+private:
+    memory_partition_unit *m_unit;
 };
 
 #endif

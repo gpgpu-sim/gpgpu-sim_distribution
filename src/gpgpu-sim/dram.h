@@ -125,22 +125,18 @@ class dram_t
 public:
    dram_t( unsigned int parition_id, const struct memory_config *config, class memory_stats_t *stats );
 
-   int full();
+   bool full() const;
    void print( FILE* simFile ) const;
    void visualize() const;
    void print_stat( FILE* simFile );
-   unsigned int que_length() const; 
+   unsigned que_length() const; 
    bool returnq_full() const;
    unsigned int queue_limit() const;
    void visualizer_print( gzFile visualizer_file );
 
    class mem_fetch* pop();
-   void returnq_push( class mem_fetch *mf, unsigned long long gpu_sim_cycle);
-   class mem_fetch* returnq_pop( unsigned long long gpu_sim_cycle);
-   class mem_fetch* returnq_top();
    void push( class mem_fetch *data );
-   void issueCMD();
-   void queue_latency_log_dump( FILE *fp );
+   void cycle();
    void dram_log (int task);
 
    struct memory_partition_unit *m_memory_partition_unit;
@@ -188,7 +184,7 @@ private:
    unsigned int max_mrqs;
    unsigned int ave_mrqs;
 
-   class ideal_dram_scheduler* m_fast_ideal_scheduler;
+   class frfcfs_scheduler* m_fast_ideal_scheduler;
 
    unsigned int n_cmd_partial;
    unsigned int n_activity_partial;
@@ -202,7 +198,7 @@ private:
    struct memory_stats_t *m_stats;
    class Stats* mrqq_Dist; //memory request queue inside DRAM  
 
-   friend class ideal_dram_scheduler;
+   friend class frfcfs_scheduler;
 };
 
 #endif /*DRAM_H*/

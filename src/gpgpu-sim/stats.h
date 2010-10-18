@@ -102,7 +102,6 @@ struct shader_core_stats
    unsigned int gpgpu_n_cache_bkconflict;
    int          gpgpu_n_intrawarp_mshr_merge;
    unsigned int gpgpu_n_cmem_portconflict;
-   int          gpgpu_n_partial_writes;
    unsigned int gpu_stall_shd_mem_breakdown[N_MEM_STAGE_ACCESS_TYPE][N_MEM_STAGE_STALL_TYPE];
    unsigned int gpu_reg_bank_conflict_stalls;
    unsigned int *shader_cycle_distro;
