@@ -403,8 +403,10 @@ public:
 	new_addr_type block_addr = m_config.block_addr(addr);
 	unsigned cache_index = (unsigned)-1;
 	enum cache_request_status status = m_tag_array.probe(block_addr,cache_index);
-	if( status == HIT ) 
+	if( status == HIT ) {
+	    m_tag_array.access(block_addr,time,cache_index); // update LRU state 
 	    return HIT;
+	}
 	if( status != RESERVATION_FAIL ) {
 	    bool mshr_hit = m_mshrs.probe(block_addr);
 	    bool mshr_avail = !m_mshrs.full(block_addr);
