@@ -108,7 +108,7 @@ memory_partition_unit::memory_partition_unit( unsigned partition_id,
     char L2c_name[32];
     snprintf(L2c_name, 32, "L2_bank_%03d", m_id);
     m_L2interface = new L2interface(this);
-    m_L2cache = new cache_t(L2c_name,m_config->m_L2_config,-1,-1,m_L2interface);
+    m_L2cache = new read_only_cache(L2c_name,m_config->m_L2_config,-1,-1,m_L2interface);
 
     unsigned int icnt_L2;
     unsigned int L2_dram;

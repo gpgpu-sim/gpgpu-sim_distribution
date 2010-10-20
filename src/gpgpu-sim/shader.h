@@ -879,8 +879,8 @@ private:
    unsigned m_sid;
    unsigned m_tpc;
 
-   cache_t *m_L1T; // texture cache
-   cache_t *m_L1C; // constant cache
+   tex_cache *m_L1T; // texture cache
+   read_only_cache *m_L1C; // constant cache
    std::map<unsigned/*warp_id*/, std::map<unsigned/*regnum*/,unsigned/*count*/> > m_pending_writes;
    std::list<mem_fetch*> m_response_fifo;
    opndcoll_rfu_t *m_operand_collector;
@@ -1066,7 +1066,7 @@ private:
    shader_memory_interface *m_icnt;
 
    // fetch
-   cache_t *m_L1I; // instruction cache
+   read_only_cache *m_L1I; // instruction cache
    int  m_last_warp_fetched;
 
    // decode/dispatch

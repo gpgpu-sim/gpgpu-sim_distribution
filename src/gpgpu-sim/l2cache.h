@@ -103,7 +103,7 @@ private:
    unsigned m_id;
    const struct memory_config *m_config;
    class dram_t *m_dram;
-   class cache_t *m_L2cache;
+   class read_only_cache *m_L2cache;
    class L2interface *m_L2interface;
 
    // model delay of ROP units with a fixed latency

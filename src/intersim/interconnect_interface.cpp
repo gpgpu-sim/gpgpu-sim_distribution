@@ -467,7 +467,7 @@ void init_interconnect (char* config_file,
    if (icnt_config.GetInt("input_buf_size")) {
       input_buffer_capacity = icnt_config.GetInt("input_buf_size");
    } else {
-      input_buffer_capacity = 8;
+      input_buffer_capacity = 9;
    }
    create_buf(traffic[0]->_dests,input_buffer_capacity,icnt_config.GetInt( "num_vcs" )); 
    MATLAB_OUTPUT        = icnt_config.GetInt("MATLAB_OUTPUT");

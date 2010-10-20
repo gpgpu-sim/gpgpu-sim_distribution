@@ -964,6 +964,8 @@ void gpgpu_sim::cycle()
                 } else {
                     gpu_stall_icnt2sh++;
                 }
+            } else {
+               m_memory_partition_unit[i]->pop();
             }
         }
     }

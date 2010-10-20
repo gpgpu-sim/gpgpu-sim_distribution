@@ -128,21 +128,23 @@ static const char* Status_str[] = {
 "IN_CLUSTER_TO_SHADER_QUEUE",
 "IN_SHADER_LDST_RESPONSE_FIFO",
 "IN_SHADER_FETCHED",
-"MEM_FETCH_DELETED",
-"??",
-"???"
+"MEM_FETCH_DELETED"
 };
 
-void mem_fetch::print( FILE *fp ) const
+void mem_fetch::print( FILE *fp, bool print_inst ) const
 {
-   fprintf(fp,"  mf: uid=%6u, addr=0x%08llx, sid=%u, wid=%u, %s, partition=%u, ", 
+    if( this == NULL ) {
+        fprintf(fp," <NULL mem_fetch pointer>\n");
+        return;
+    }
+    fprintf(fp,"  mf: uid=%6u, addr=0x%08llx, sid=%2u, wid=%2u, %s, partition=%u, ", 
            m_request_uid, m_addr, m_sid, m_wid, (m_write?"write":"read "), m_raw_addr.chip);
-   if( (unsigned)m_status < NUM_MEM_REQ_STAT ) 
+    if( (unsigned)m_status < NUM_MEM_REQ_STAT ) 
        fprintf(fp," status = %s (%llu), ", Status_str[m_status], m_status_change );
-   else
+    else
        fprintf(fp," status = %u??? (%llu), ", m_status, m_status_change );
-   if( !m_inst.empty() ) m_inst.print(fp);
-   else fprintf(fp,"\n");
+    if( !m_inst.empty() && print_inst ) m_inst.print(fp);
+    else fprintf(fp,"\n");
 }
 
 void mem_fetch::set_status( enum mem_fetch_status status, unsigned long long cycle ) 

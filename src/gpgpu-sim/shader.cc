@@ -144,7 +144,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
    #define STRSIZE 1024
    char L1I_name[STRSIZE];
    snprintf(L1I_name, STRSIZE, "L1I_%03d", m_sid);
-   m_L1I = new cache_t(L1I_name,m_config->m_L1I_config,m_sid,get_shader_instruction_cache_id(),m_icnt);
+   m_L1I = new read_only_cache(L1I_name,m_config->m_L1I_config,m_sid,get_shader_instruction_cache_id(),m_icnt);
 
    m_warp.resize(m_config->max_warps_per_shader, shd_warp_t(this, warp_size));
    m_pdom_warp = new pdom_warp_ctx_t*[config->max_warps_per_shader];
@@ -711,7 +711,7 @@ mem_stage_stall_type ldst_unit::process_memory_access_queue( cache_t *cache, war
            delete mf;
            break;
        } else {
-           assert( status == MISS );
+           assert( status == MISS || status == HIT_RESERVED );
            inst.accessq_pop_back();
            if( inst.is_load() ) { 
               for( unsigned r=0; r < 4; r++) 
@@ -873,8 +873,8 @@ ldst_unit::ldst_unit( shader_memory_interface *icnt,
     char L1C_name[STRSIZE];
     snprintf(L1T_name, STRSIZE, "L1T_%03d", m_sid);
     snprintf(L1C_name, STRSIZE, "L1C_%03d", m_sid);
-    m_L1T = new cache_t(L1T_name,m_config->m_L1T_config,m_sid,get_shader_texture_cache_id(),icnt);
-    m_L1C = new cache_t(L1C_name,m_config->m_L1C_config,m_sid,get_shader_constant_cache_id(),icnt);
+    m_L1T = new tex_cache(L1T_name,m_config->m_L1T_config,m_sid,get_shader_texture_cache_id(),icnt);
+    m_L1C = new read_only_cache(L1C_name,m_config->m_L1C_config,m_sid,get_shader_constant_cache_id(),icnt);
     m_mem_rc = NO_RC_FAIL;
     m_num_writeback_clients=4; // = shared memory, global/local, L1T, L1C
     m_writeback_arb = 0;

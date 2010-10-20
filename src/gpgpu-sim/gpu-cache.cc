@@ -148,27 +148,26 @@ enum cache_request_status tag_array::probe( new_addr_type addr, unsigned &idx ) 
    return MISS;
 }
 
-enum cache_request_status tag_array::access( new_addr_type addr, unsigned time, unsigned &idx )
-{
+enum cache_request_status tag_array::access( new_addr_type addr, unsigned time, unsigned &idx ) {
     m_access++;
     shader_cache_access_log(m_core_id, m_type_id, 0); // log accesses to cache
     enum cache_request_status status = probe(addr,idx);
-    switch(status) {
+    switch (status) {
     case HIT_RESERVED: 
-	m_pending_hit++;
+        m_pending_hit++;
     case HIT: 
-	m_lines[idx].m_last_access_time=time; 
-	break;
+        m_lines[idx].m_last_access_time=time; 
+        break;
     case MISS:
-	m_miss++;
-	shader_cache_access_log(m_core_id, m_type_id, 1); // log cache misses
-	if( m_config.m_alloc_policy == ON_MISS ) 
-	    m_lines[idx].allocate( m_config.tag(addr), m_config.block_addr(addr), time );
-	break;
+        m_miss++;
+        shader_cache_access_log(m_core_id, m_type_id, 1); // log cache misses
+        if ( m_config.m_alloc_policy == ON_MISS )
+            m_lines[idx].allocate( m_config.tag(addr), m_config.block_addr(addr), time );
+        break;
     case RESERVATION_FAIL:
-	m_miss++;
-	shader_cache_access_log(m_core_id, m_type_id, 1); // log cache misses
-	break;
+        m_miss++;
+        shader_cache_access_log(m_core_id, m_type_id, 1); // log cache misses
+        break;
     }
     return status;
 }
