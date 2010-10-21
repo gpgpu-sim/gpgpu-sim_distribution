@@ -229,7 +229,7 @@ void memory_stats_t::memlatstat_dram_access(mem_fetch *mf)
       }
       if (mf->get_pc() != (unsigned)-1) 
          ptx_file_line_stats_add_dram_traffic(mf->get_pc(),1);
-      mem_access_type_stats[mf->get_mem_acc()][dram_id][bank]++;
+      mem_access_type_stats[mf->get_access_type()][dram_id][bank]++;
    }
 }
 

@@ -160,16 +160,21 @@ struct core_config {
     bool m_valid;
     unsigned warp_size;
 
-    // memory request architecture parameters
+    // off-chip memory request architecture parameters
     int gpgpu_coalesce_arch;
-    int gpgpu_shmem_pipe_speedup;  
+
+    // shared memory bank conflict checking parameters
+    static const address_type WORD_SIZE=4;
+    int num_shmem_bank;
+    unsigned shmem_bank_func(address_type addr) const
+    {
+        return ((addr/WORD_SIZE) % num_shmem_bank);
+    }
+    unsigned shmem_warp_parts;  
+
+    // texture and constant cache line sizes (used to determine number of memory accesses)
     unsigned gpgpu_cache_texl1_linesize;
     unsigned gpgpu_cache_constl1_linesize;
-
-    static const address_type WORD_SIZE=4;
-    unsigned null_bank_func(address_type, unsigned) const { return 1; }
-    int gpgpu_n_shmem_bank;
-    unsigned shmem_bank_func(address_type addr, unsigned) const;
 };
 
 class core_t {
@@ -352,57 +357,94 @@ private:
    unsigned m_bank; // n in ".const[n]"; note .const == .const[0] (see PTX 2.1 manual, sec. 5.1.3)
 };
 
+const unsigned MAX_MEMORY_ACCESS_SIZE = 128;
+typedef std::bitset<MAX_MEMORY_ACCESS_SIZE> mem_access_byte_mask_t;
+#define NO_PARTIAL_WRITE (mem_access_byte_mask_t())
+
+const unsigned MAX_WARP_SIZE = 32;
+typedef std::bitset<MAX_WARP_SIZE> active_mask_t;
+
+enum mem_access_type {
+   GLOBAL_ACC_R, 
+   LOCAL_ACC_R, 
+   CONST_ACC_R, 
+   TEXTURE_ACC_R, 
+   GLOBAL_ACC_W, 
+   LOCAL_ACC_W,
+   L2_WRBK_ACC, 
+   INST_ACC_R, 
+   NUM_MEM_ACCESS_TYPE
+};
+
 class mem_access_t {
 public:
-   mem_access_t()
-   { 
-      init();
+   mem_access_t() { init(); }
+   mem_access_t( mem_access_type type, 
+                 address_type address, 
+                 unsigned size,
+                 bool wr )
+   {
+       init();
+       m_type = type;
+       m_addr = address;
+       m_req_size = size;
+       m_write = wr;
    }
-   mem_access_t(address_type address, unsigned size, unsigned quarter, unsigned idx )
+   mem_access_t( mem_access_type type, 
+                 address_type address, 
+                 unsigned size, 
+                 bool wr, 
+                 const active_mask_t &active_mask,
+                 const mem_access_byte_mask_t &byte_mask )
+    : m_warp_mask(active_mask), m_byte_mask(byte_mask)
    {
       init();
-      addr = address;
-      req_size = size;
-      quarter_count[quarter]++;
-      warp_indices.push_back(idx);
+      m_type = type;
+      m_addr = address;
+      m_req_size = size;
+      m_write = wr;
    }
 
-   bool operator<(const mem_access_t &other) const {return (order > other.order);}//this is reverse
+   new_addr_type get_addr() const { return m_addr; }
+   unsigned get_size() const { return m_req_size; }
+   const active_mask_t &get_warp_mask() const { return m_warp_mask; }
+   bool is_write() const { return m_write; }
+   enum mem_access_type get_type() const { return m_type; }
+   mem_access_byte_mask_t get_byte_mask() const { return m_byte_mask; }
+
+   void print(FILE *fp) const
+   {
+       fprintf(fp,"addr=0x%llx, %s, size=%u, ", m_addr, m_write?"store":"load ", m_req_size );
+       switch(m_type) {
+       case GLOBAL_ACC_R:  fprintf(fp,"GLOBAL_R"); break;
+       case LOCAL_ACC_R:   fprintf(fp,"LOCAL_R "); break;
+       case CONST_ACC_R:   fprintf(fp,"CONST   "); break;
+       case TEXTURE_ACC_R: fprintf(fp,"TEXTURE "); break;
+       case GLOBAL_ACC_W:  fprintf(fp,"GLOBAL_W"); break;
+       case LOCAL_ACC_W:   fprintf(fp,"LOCAL_W "); break;
+       case L2_WRBK_ACC:   fprintf(fp,"L2_WRBK "); break;
+       case INST_ACC_R:    fprintf(fp,"INST    "); break;
+       default:            fprintf(fp,"unknown "); break;
+       }
+   }
 
 private:
    void init() 
    {
-      uid=++next_access_uid;
-      addr=0;
-      req_size=0;
-      order=0;
-      _quarter_count_all=0;
-      cache_hit = false;
-      cache_checked = false;
-      recheck_cache = false;
-      need_wb = false;
-      wb_addr = 0;
+      m_uid=++sm_next_access_uid;
+      m_addr=0;
+      m_req_size=0;
    }
 
-public:
+   unsigned      m_uid;
+   new_addr_type m_addr;     // request address
+   bool          m_write;
+   unsigned      m_req_size; // bytes
+   mem_access_type m_type;
+   active_mask_t m_warp_mask;
+   mem_access_byte_mask_t m_byte_mask;
 
-   unsigned uid;
-   address_type addr; //address of the segment to load.
-   unsigned req_size; //bytes
-   unsigned order; // order of accesses, based on banks.
-   union{
-     unsigned _quarter_count_all;
-     char quarter_count[4]; //access counts to each quarter of segment, for compaction;
-   };
-   std::vector<unsigned> warp_indices; // warp indicies for this request.
-   bool cache_hit;
-   bool cache_checked;
-   bool recheck_cache;
-   bool need_wb;
-   address_type wb_addr; // writeback address (if necessary).
-
-private:
-   static unsigned next_access_uid;
+   static unsigned sm_next_access_uid;
 };
 
 class mem_fetch;
@@ -471,8 +513,6 @@ protected:
     virtual void pre_decode() {}
 };
 
-#define MAX_WARP_SIZE 32
-
 enum divergence_support_t {
    POST_DOMINATOR = 1,
    NUM_SIMD_MODEL
@@ -518,7 +558,7 @@ public:
     {
         for (int i=(int)m_config->warp_size-1; i>=0; i--) {
             if( mask & (1<<i) )
-                warp_active_mask.set(i);
+                m_warp_active_mask.set(i);
         }
         m_uid = ++sm_next_uid;
         m_warp_id = warp_id;
@@ -535,6 +575,7 @@ public:
         }
         m_per_scalar_thread[n].memreqaddr = addr;
     }
+    void generate_mem_accesses();
     void add_callback( unsigned lane_id, 
                        void (*function)(const class inst_t*, class ptx_thread_info*),
                        const inst_t *inst, 
@@ -549,17 +590,12 @@ public:
         m_per_scalar_thread[lane_id].callback.instruction = inst;
         m_per_scalar_thread[lane_id].callback.thread = thread;
     }
-    void set_active( std::vector<unsigned> &active ) 
+    void set_active( const active_mask_t &active ) 
     {
-       warp_active_mask.reset();
-       for( std::vector<unsigned>::iterator i=active.begin(); i!=active.end(); ++i ) {
-          unsigned t = *i;
-          assert( t < m_config->warp_size );
-          warp_active_mask.set(t);
-       }
+       m_warp_active_mask = active;
        if( m_isatomic ) {
           for( unsigned i=0; i < m_config->warp_size; i++ ) {
-             if( !warp_active_mask.test(i) ) {
+             if( !m_warp_active_mask.test(i) ) {
                  m_per_scalar_thread[i].callback.function = NULL;
                  m_per_scalar_thread[i].callback.instruction = NULL;
                  m_per_scalar_thread[i].callback.thread = NULL;
@@ -567,29 +603,27 @@ public:
           }
        }
     }
-    void clear_active( std::vector<unsigned> &inactive )
+    void clear_active( const active_mask_t &inactive )
     {
-        std::vector<unsigned>::iterator i;
-        for(i=inactive.begin(); i!=inactive.end();i++) {
-            unsigned t=*i;
-            warp_active_mask.reset(t);
-        }
+        active_mask_t test = m_warp_active_mask;
+        test &= inactive;
+        assert( test == inactive ); // verify threads being disabled were active
+        m_warp_active_mask &= ~inactive;
     }
     void set_not_active( unsigned lane_id )
     {
-        warp_active_mask.reset(lane_id);
+        m_warp_active_mask.reset(lane_id);
     }
-    void get_memory_access_list();
 
     // accessors
     virtual void print_insn(FILE *fp) const 
     {
         fprintf(fp," [inst @ pc=0x%04x] ", pc );
         for (int i=(int)m_config->warp_size-1; i>=0; i--)
-            fprintf(fp, "%c", ((warp_active_mask[i])?'1':'0') );
+            fprintf(fp, "%c", ((m_warp_active_mask[i])?'1':'0') );
     }
-    bool active( unsigned thread ) const { return warp_active_mask.test(thread); }
-    unsigned active_count() const { return warp_active_mask.count(); }
+    bool active( unsigned thread ) const { return m_warp_active_mask.test(thread); }
+    unsigned active_count() const { return m_warp_active_mask.count(); }
     bool empty() const { return m_empty; }
     unsigned warp_id() const 
     { 
@@ -598,7 +632,7 @@ public:
     }
     bool has_callback( unsigned n ) const
     {
-        return warp_active_mask[n] && m_per_scalar_thread_valid && 
+        return m_warp_active_mask[n] && m_per_scalar_thread_valid && 
             (m_per_scalar_thread[n].callback.function!=NULL);
     }
     new_addr_type get_addr( unsigned n ) const
@@ -611,12 +645,8 @@ public:
 
     unsigned warp_size() const { return m_config->warp_size; }
 
-    bool mem_accesses_created() const { return m_mem_accesses_created; }
-    void set_mem_accesses_created() { m_mem_accesses_created=true; }
     bool accessq_empty() const { return m_accessq.empty(); }
-    unsigned get_accessq_size() const { return m_accessq.size(); }
-    mem_access_t &accessq( unsigned n ) { return m_accessq[n]; }
-    mem_access_t &accessq_back() { return m_accessq.back(); }
+    const mem_access_t &accessq_back() { return m_accessq.back(); }
     void accessq_pop_back() { m_accessq.pop_back(); }
 
     bool dispatch_delay()
@@ -629,6 +659,7 @@ public:
     void print( FILE *fout ) const;
 
 protected:
+
     unsigned m_uid;
     bool m_empty;
     bool m_cache_hit;
@@ -637,7 +668,7 @@ protected:
     bool m_isatomic;
     unsigned m_warp_id;
     const core_config *m_config; 
-    std::bitset<MAX_WARP_SIZE> warp_active_mask;
+    active_mask_t m_warp_active_mask;
 
     struct per_thread_info {
         per_thread_info() {

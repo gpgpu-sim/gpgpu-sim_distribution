@@ -259,8 +259,8 @@ void gpgpu_sim::reg_options(option_parser_t opp)
                 "Size of shared memory per shader core (default 16kB)",
                 "16384");
 
-   option_parser_register(opp, "-gpgpu_shmem_pipe_speedup", OPT_INT32, &m_shader_config->gpgpu_shmem_pipe_speedup,  
-                "Number of groups each warp is divided for shared memory bank conflict check",
+   option_parser_register(opp, "-gpgpu_shmem_warp_parts", OPT_INT32, &m_shader_config->shmem_warp_parts,  
+                "Number of portions a warp is divided into for shared memory bank conflict check ",
                 "2");
 
    option_parser_register(opp, "-gpgpu_deadlock_detect", OPT_BOOL, &gpu_deadlock_detect, 
@@ -431,7 +431,7 @@ void gpgpu_sim::init_gpu()
    sscanf(gpgpu_runtime_stat, "%d:%x", &gpu_stat_sample_freq, &gpu_runtime_stat_flag);
 
    m_shader_config->pdom_sched_type = m_pdom_sched_type;
-   m_shader_config->gpgpu_n_shmem_bank=16;
+   m_shader_config->num_shmem_bank=16;
 
    m_cluster = new simt_core_cluster*[m_shader_config->n_simt_clusters];
    for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) 

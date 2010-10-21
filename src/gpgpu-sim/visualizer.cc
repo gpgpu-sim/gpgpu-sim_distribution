@@ -483,7 +483,7 @@ void time_vector_print_interval2gzfile(gzFile outfile) {
 void time_vector_update(unsigned int uid,int slot ,long int cycle,int type) {
    if ( (type == RD_REQ) || (type == REPLY_DATA) ) {
       g_my_time_vector->update_ld( uid, slot,cycle);
-   } else if ( type == WT_REQ ) {
+   } else if ( type == WR_REQ ) {
       g_my_time_vector->update_st( uid, slot,cycle);
    } else {
       abort(); 
@@ -494,7 +494,7 @@ void check_time_vector_update(unsigned int uid,int slot ,long int latency,int ty
 {
    if ( (type == RD_REQ) || (type == REPLY_DATA) ) {
       g_my_time_vector->check_ld_update( uid, slot, latency );
-   } else if ( type == WT_REQ ) {
+   } else if ( type == WR_REQ ) {
       g_my_time_vector->check_st_update( uid, slot, latency );
    } else {
       abort(); 

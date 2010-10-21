@@ -105,7 +105,6 @@
 #define WRITE_PACKET_SIZE 8
 
 #define WRITE_MASK_SIZE 8
-#define NO_PARTIAL_WRITE (partial_write_mask_t())
 
 //Set a hard limit of 32 CTAs per shader [cuda only has 8]
 #define MAX_CTA_PER_SHADER 32
@@ -863,15 +862,13 @@ public:
     void print(FILE *fout) const;
 
 private:
-   void generate_mem_accesses(warp_inst_t &pipe_reg);
-
    bool shared_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
    bool constant_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
    bool texture_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
    bool memory_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
 
    mem_stage_stall_type process_memory_access_queue( cache_t *cache, warp_inst_t &inst );
-   mem_fetch *create_data_mem_fetch(warp_inst_t &inst, mem_access_t &access);
+   mem_fetch *create_data_mem_fetch(const warp_inst_t &inst, const mem_access_t &access);
 
    const memory_config *m_memory_config;
    class shader_memory_interface *m_icnt;

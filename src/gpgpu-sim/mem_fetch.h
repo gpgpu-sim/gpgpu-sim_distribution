@@ -73,22 +73,8 @@
 
 enum mf_type {
    RD_REQ = 0,
-   WT_REQ,
-   REPLY_DATA, // send to shader
-   L2_WTBK_DATA,
-   N_MF_TYPE
-};
-
-enum mem_access_type { 
-   GLOBAL_ACC_R = 0, 
-   LOCAL_ACC_R = 1, 
-   CONST_ACC_R = 2, 
-   TEXTURE_ACC_R = 3, 
-   GLOBAL_ACC_W = 4, 
-   LOCAL_ACC_W = 5,
-   L2_WRBK_ACC = 6, 
-   INST_ACC_R = 7, 
-   NUM_MEM_ACCESS_TYPE = 8
+   WR_REQ,
+   REPLY_DATA // send to shader
 };
 
 enum mem_fetch_status {
@@ -113,23 +99,15 @@ enum mem_fetch_status {
     NUM_MEM_REQ_STAT
 };
 
-const unsigned partial_write_mask_bits = 128; //must be at least size of largest memory access.
-typedef std::bitset<partial_write_mask_bits> partial_write_mask_t;
-
 class mem_fetch {
 public:
-   mem_fetch( new_addr_type addr,
-              unsigned data_size,
-              unsigned ctrl_size,
-              unsigned sid,
-              unsigned tpc,
-              unsigned wid,
-              warp_inst_t *inst,
-              bool write,
-              partial_write_mask_t partial_write_mask,
-              enum mem_access_type mem_acc,
-              enum mf_type type, 
-              const class memory_config *config );
+    mem_fetch( const mem_access_t &access, 
+               const warp_inst_t *inst,
+               unsigned ctrl_size, 
+               unsigned wid,
+               unsigned sid, 
+               unsigned tpc, 
+               const class memory_config *config );
    ~mem_fetch();
 
    void set_status( enum mem_fetch_status status, unsigned long long cycle );
@@ -143,9 +121,9 @@ public:
    void     set_data_size( unsigned size ) { m_data_size=size; }
    unsigned get_ctrl_size() const { return m_ctrl_size; }
    unsigned size() const { return m_data_size+m_ctrl_size; }
-   new_addr_type get_addr() const { return m_addr; }
+   new_addr_type get_addr() const { return m_access.get_addr(); }
    new_addr_type get_partition_addr() const { return m_partition_addr; }
-   bool get_is_write() const { return m_write; }
+   bool     get_is_write() const { return m_access.is_write(); }
    unsigned get_request_uid() const { return m_request_uid; }
    unsigned get_sid() const { return m_sid; }
    unsigned get_tpc() const { return m_tpc; }
@@ -154,12 +132,14 @@ public:
    bool isconst() const;
    enum mf_type get_type() const { return m_type; }
    bool isatomic() const;
+
    void set_return_timestamp( unsigned t ) { m_timestamp2=t; }
    void set_icnt_receive_time( unsigned t ) { m_icnt_receive_time=t; }
    unsigned get_timestamp() const { return m_timestamp; }
    unsigned get_return_timestamp() const { return m_timestamp2; }
    unsigned get_icnt_receive_time() const { return m_icnt_receive_time; }
-   enum mem_access_type get_mem_acc() const { return m_mem_acc; }
+
+   enum mem_access_type get_access_type() const { return m_access.get_type(); }
    address_type get_pc() const { return m_inst.empty()?-1:m_inst.pc; }
    const warp_inst_t &get_inst() { return m_inst; }
    enum mem_fetch_status get_status() const { return m_status; }
@@ -176,15 +156,12 @@ private:
    unsigned long long m_status_change;
 
    // request type, address, size, mask
-   bool m_write;
-   enum mem_access_type m_mem_acc;
-   enum mf_type m_type;
-   new_addr_type m_addr; // linear (physical) address
-   new_addr_type m_partition_addr; // linear physical address *within* dram partition (partition bank select bits squeezed out)
-   addrdec_t m_raw_addr; // raw physical address (i.e., decoded DRAM chip-row-bank-column address)
-   partial_write_mask_t m_write_mask; 
+   mem_access_t m_access;
    unsigned m_data_size; // how much data is being written
    unsigned m_ctrl_size; // how big would all this meta data be in hardware (does not necessarily match actual size of mem_fetch)
+   new_addr_type m_partition_addr; // linear physical address *within* dram partition (partition bank select bits squeezed out)
+   addrdec_t m_raw_addr; // raw physical address (i.e., decoded DRAM chip-row-bank-column address)
+   enum mf_type m_type;
 
    // statistics
    unsigned m_timestamp;  // set to gpu_sim_cycle+gpu_tot_sim_cycle at struct creation

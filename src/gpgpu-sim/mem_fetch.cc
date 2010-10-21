@@ -71,36 +71,30 @@
 
 unsigned mem_fetch::sm_next_mf_request_uid=1;
 
-mem_fetch::mem_fetch( new_addr_type addr,
-                      unsigned data_size,
-                      unsigned ctrl_size,
-                      unsigned sid,
-                      unsigned tpc,
+mem_fetch::mem_fetch( const mem_access_t &access, 
+                      const warp_inst_t *inst,
+                      unsigned ctrl_size, 
                       unsigned wid,
-                      warp_inst_t *inst,
-                      bool write,
-                      partial_write_mask_t partial_write_mask,
-                      enum mem_access_type mem_acc,
-                      enum mf_type type,
-                      const memory_config *config ) : m_inst()
+                      unsigned sid, 
+                      unsigned tpc, 
+                      const class memory_config *config )
 {
    m_request_uid = sm_next_mf_request_uid++;
-
-   m_addr = addr;
-   m_data_size = data_size;
+   m_access = access;
+   if( inst ) { 
+       m_inst = *inst;
+       assert( wid == m_inst.warp_id() );
+   }
+   m_data_size = access.get_size();
    m_ctrl_size = ctrl_size;
    m_sid = sid;
-   m_wid = wid;
    m_tpc = tpc;
-   if( inst ) m_inst = *inst;
-   m_write = write;
-   config->m_address_mapping.addrdec_tlx(addr,&m_raw_addr);
-   m_partition_addr = config->m_address_mapping.partition_address(addr);
-   m_mem_acc = mem_acc;
-   m_type = type;
+   m_wid = wid;
+   config->m_address_mapping.addrdec_tlx(access.get_addr(),&m_raw_addr);
+   m_partition_addr = config->m_address_mapping.partition_address(access.get_addr());
+   m_type = m_access.is_write()?WR_REQ:RD_REQ;
    m_timestamp = gpu_sim_cycle + gpu_tot_sim_cycle;
    m_timestamp2 = 0;
-
    m_status = MEM_FETCH_INITIALIZED;
    m_status_change = gpu_sim_cycle + gpu_tot_sim_cycle;
 }
@@ -137,8 +131,8 @@ void mem_fetch::print( FILE *fp, bool print_inst ) const
         fprintf(fp," <NULL mem_fetch pointer>\n");
         return;
     }
-    fprintf(fp,"  mf: uid=%6u, addr=0x%08llx, sid=%2u, wid=%2u, %s, partition=%u, ", 
-           m_request_uid, m_addr, m_sid, m_wid, (m_write?"write":"read "), m_raw_addr.chip);
+    fprintf(fp,"  mf: uid=%6u, sid=%2u, partition=%u, ", m_request_uid, m_sid, m_raw_addr.chip );
+    m_access.print(fp);
     if( (unsigned)m_status < NUM_MEM_REQ_STAT ) 
        fprintf(fp," status = %s (%llu), ", Status_str[m_status], m_status_change );
     else
