@@ -684,6 +684,8 @@ bool ldst_unit::constant_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail
 {
    if( inst.empty() || ((inst.space.get_type() != const_space) && (inst.space.get_type() != param_space_kernel)) )
        return true;
+   if( inst.active_count() == 0 ) 
+       return true;
    mem_stage_stall_type fail = process_memory_access_queue(m_L1C,inst);
    if (fail != NO_RC_FAIL){ 
       rc_fail = fail; //keep other fails if this didn't fail.
@@ -699,6 +701,8 @@ bool ldst_unit::texture_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail,
 {
    if( inst.empty() || inst.space.get_type() != tex_space )
        return true;
+   if( inst.active_count() == 0 ) 
+       return true;
    mem_stage_stall_type fail = process_memory_access_queue(m_L1T,inst);
    if (fail != NO_RC_FAIL){ 
       rc_fail = fail; //keep other fails if this didn't fail.
@@ -713,6 +717,8 @@ bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_rea
        ((inst.space.get_type() != global_space) &&
         (inst.space.get_type() != local_space) &&
         (inst.space.get_type() != param_space_local)) ) 
+       return true;
+   if( inst.active_count() == 0 ) 
        return true;
    assert( !inst.accessq_empty() );
    mem_stage_stall_type stall_cond = NO_RC_FAIL;

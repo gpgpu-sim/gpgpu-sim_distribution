@@ -40,8 +40,10 @@ void warp_inst_t::generate_mem_accesses()
 {
     if( empty() || op == MEMORY_BARRIER_OP || m_mem_accesses_created ) 
         return;
-    if ( !( (op == LOAD_OP) || (op == STORE_OP) || (op == MEMORY_BARRIER_OP) ) )
+    if ( !((op == LOAD_OP) || (op == STORE_OP)) )
         return; 
+    if( m_warp_active_mask.count() == 0 ) 
+        return; // predicated off
 
     assert( is_load() || is_store() );
     assert( m_per_scalar_thread_valid ); // need address information per thread

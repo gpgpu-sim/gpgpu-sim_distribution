@@ -1143,7 +1143,15 @@ ptx_instruction::ptx_instruction( int opcode,
    m_space_spec = space_spec;
    if( ( opcode == ST_OP || opcode == LD_OP ) && (space_spec == undefined_space) ) {
       m_space_spec = generic_space;
+   } 
+   for( std::vector<operand_info>::const_iterator i=m_operands.begin(); i!=m_operands.end(); ++i) {
+       const operand_info &op = *i;
+       if( op.get_addr_space() != undefined_space ) 
+           m_space_spec = op.get_addr_space(); // TODO: can have more than one memory space for ptxplus (g8x) inst
    }
+   if( opcode == TEX_OP ) 
+       m_space_spec = tex_space;
+   
    m_source_file = file?file:"<unknown>";
    m_source_line = line;
    m_source = source;

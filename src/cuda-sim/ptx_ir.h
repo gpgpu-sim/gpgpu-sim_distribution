@@ -373,7 +373,7 @@ class operand_info {
 public:
    operand_info()
    {
-      m_addr_space = 0;
+      m_addr_space = undefined_space;
       m_operand_lohi = 0;
       m_double_operand_type = 0;
       m_operand_neg = false;
@@ -383,7 +383,7 @@ public:
    }
    operand_info( const symbol *addr )
    {
-      m_addr_space = 0;
+      m_addr_space = undefined_space;
       m_operand_lohi = 0;
       m_double_operand_type = 0;
       m_operand_neg = false;
@@ -417,7 +417,7 @@ public:
    }
    operand_info( const symbol *addr1, const symbol *addr2 )
    {
-      m_addr_space = 0;
+      m_addr_space = undefined_space;
       m_operand_lohi = 0;
       m_double_operand_type = 0;
       m_operand_neg = false;
@@ -437,7 +437,7 @@ public:
    }
    operand_info( int builtin_id, int dim_mod )
    {
-      m_addr_space = 0;
+      m_addr_space = undefined_space;
       m_operand_lohi = 0;
       m_double_operand_type = 0;
       m_operand_neg = false;
@@ -453,7 +453,7 @@ public:
    }
    operand_info( const symbol *addr, int offset )
    {
-      m_addr_space = 0;
+      m_addr_space = undefined_space;
       m_operand_lohi = 0;
       m_double_operand_type = 0;
       m_operand_neg = false;
@@ -469,7 +469,7 @@ public:
    }
    operand_info( unsigned x )
    {
-      m_addr_space = 0;
+      m_addr_space = undefined_space;
       m_operand_lohi = 0;
       m_double_operand_type = 0;
       m_operand_neg = false;
@@ -485,7 +485,7 @@ public:
    }
    operand_info( int x )
    {
-      m_addr_space = 0;
+      m_addr_space = undefined_space;
       m_operand_lohi = 0;
       m_double_operand_type = 0;
       m_operand_neg = false;
@@ -501,7 +501,7 @@ public:
    }
    operand_info( float x )
    {
-      m_addr_space = 0;
+      m_addr_space = undefined_space;
       m_operand_lohi = 0;
       m_double_operand_type = 0;
       m_operand_neg = false;
@@ -517,7 +517,7 @@ public:
    }
    operand_info( double x )
    {
-      m_addr_space = 0;
+      m_addr_space = undefined_space;
       m_operand_lohi = 0;
       m_double_operand_type = 0;
       m_operand_neg = false;
@@ -533,7 +533,7 @@ public:
    }
    operand_info( const symbol *s1, const symbol *s2, const symbol *s3, const symbol *s4 )
    {
-      m_addr_space = 0;
+      m_addr_space = undefined_space;
       m_operand_lohi = 0;
       m_double_operand_type = 0;
       m_operand_neg = false;
@@ -640,7 +640,7 @@ public:
 
    // Memory operand with immediate access (ex. s[0x0004] or g[$r1+=0x0004])
    bool is_memory_operand2() const { 
-      return (m_addr_space==1 || m_addr_space==2 || m_addr_space==3 || m_addr_space==4); 
+      return (m_addr_space!=undefined_space); 
    }
 
    bool is_literal() const { return m_type == int_t ||
@@ -699,8 +699,8 @@ public:
    bool is_neg_pred() const { return m_neg_pred; }
    bool is_valid() const { return m_valid; }
 
-   void set_addr_space(int set_value) { m_addr_space = set_value; }
-   int get_addr_space() const { return m_addr_space; }
+   void set_addr_space(enum _memory_space_t set_value) { m_addr_space = set_value; }
+   enum _memory_space_t get_addr_space() const { return m_addr_space; }
    void set_operand_lohi(int set_value) { m_operand_lohi = set_value; }
    int get_operand_lohi() const { return m_operand_lohi; }
    void set_double_operand_type(int set_value) {  m_double_operand_type = set_value; }
@@ -716,7 +716,7 @@ private:
    bool m_vector;
    enum operand_type m_type;
 
-   int m_addr_space;
+   enum _memory_space_t m_addr_space;
    int m_operand_lohi;
    int m_double_operand_type;
    bool m_operand_neg;
@@ -965,7 +965,7 @@ public:
    }
 
 private:
-   void get_opcode_info();
+   void set_opcode_and_latency();
 
    basic_block_t        *m_basic_block;
    unsigned          m_uid;

@@ -137,7 +137,7 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
    ptx_reg_t result, tmp;
 
    if(op.get_double_operand_type() == 0) {
-      if(((opType != BB128_TYPE) && (opType != BB64_TYPE)) || (op.get_addr_space() != 0)) {
+      if(((opType != BB128_TYPE) && (opType != BB64_TYPE)) || (op.get_addr_space() != undefined_space)) {
          if ( op.is_reg() ) {
             result = get_reg( op.get_symbol() );
          } else if ( op.is_builtin()) {
@@ -242,7 +242,7 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
    finalResult.u64=0;
 
    //complete other cases for reading from memory, such as reading from other const memory
-   if((op.get_addr_space() == 1)&&(derefFlag)) {
+   if((op.get_addr_space() == global_space)&&(derefFlag)) {
        // global memory - g[4], g[$r0]
        mem = thread->get_global_memory();
        type_info_key::type_decode(opType,size,t);
@@ -252,7 +252,7 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
 
        if( opType == S16_TYPE || opType == S32_TYPE )
          sign_extend(finalResult,size,dstInfo);
-   } else if((op.get_addr_space() == 2)&&(derefFlag)) {
+   } else if((op.get_addr_space() == shared_space)&&(derefFlag)) {
       // shared memory - s[4], s[$r0]
        mem = thread->m_shared_mem;
        type_info_key::type_decode(opType,size,t);
@@ -262,7 +262,7 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
 
        if( opType == S16_TYPE || opType == S32_TYPE ) 
          sign_extend(finalResult,size,dstInfo);
-   } else if((op.get_addr_space() == 3)&&(derefFlag)) {
+   } else if((op.get_addr_space() == const_space)&&(derefFlag)) {
       // const memory - ce0c1[4], ce0c1[$r0]
        mem = thread->get_global_memory();
        type_info_key::type_decode(opType,size,t);
@@ -271,7 +271,7 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
        thread->m_last_memory_space = const_space;
        if( opType == S16_TYPE || opType == S32_TYPE )
          sign_extend(finalResult,size,dstInfo);
-   } else if((op.get_addr_space() == 4)&&(derefFlag)) {
+   } else if((op.get_addr_space() == local_space)&&(derefFlag)) {
       // local memory - l0[4], l0[$r0]
        mem = thread->m_local_mem;
        type_info_key::type_decode(opType,size,t);
@@ -432,7 +432,7 @@ void ptx_thread_info::set_operand_value( const operand_info &dst, const ptx_reg_
    type_info_key::type_decode(type,size,t);
 
    /*complete this section for other cases*/
-   if(dst.get_addr_space() == 0)
+   if(dst.get_addr_space() == undefined_space)
    {
       ptx_reg_t setValue;
       setValue.u64 = data.u64;
@@ -598,7 +598,7 @@ void ptx_thread_info::set_operand_value( const operand_info &dst, const ptx_reg_
    }
 
    // global memory - g[4], g[$r0]
-   else if(dst.get_addr_space() == 1)
+   else if(dst.get_addr_space() == global_space)
    {
        dstData = thread->get_operand_value(dst, dst, type, thread, 0);
        mem = thread->get_global_memory();
@@ -610,7 +610,7 @@ void ptx_thread_info::set_operand_value( const operand_info &dst, const ptx_reg_
    }
 
    // shared memory - s[4], s[$r0]
-   else if(dst.get_addr_space() == 2)
+   else if(dst.get_addr_space() == shared_space)
    {
        dstData = thread->get_operand_value(dst, dst, type, thread, 0);
        mem = thread->m_shared_mem;
@@ -622,7 +622,7 @@ void ptx_thread_info::set_operand_value( const operand_info &dst, const ptx_reg_
    }
 
    // local memory - l0[4], l0[$r0]
-   else if(dst.get_addr_space() == 4)
+   else if(dst.get_addr_space() == local_space)
    {
        dstData = thread->get_operand_value(dst, dst, type, thread, 0);
        mem = thread->m_local_mem;
@@ -3869,7 +3869,7 @@ ptx_reg_t srcOperandModifiers(ptx_reg_t opData, operand_info opInfo, operand_inf
    result.u64=0;
 
    //complete other cases for reading from memory, such as reading from other const memory
-   if(opInfo.get_addr_space() == 1)
+   if(opInfo.get_addr_space() == global_space)
    {
        mem = thread->get_global_memory();
        type_info_key::type_decode(type,size,t);
@@ -3877,7 +3877,7 @@ ptx_reg_t srcOperandModifiers(ptx_reg_t opData, operand_info opInfo, operand_inf
        if( type == S16_TYPE || type == S32_TYPE ) 
          sign_extend(result,size,dstInfo);
    }
-   else if(opInfo.get_addr_space() == 2)
+   else if(opInfo.get_addr_space() == shared_space)
    {
        mem = thread->m_shared_mem;
        type_info_key::type_decode(type,size,t);
@@ -3887,7 +3887,7 @@ ptx_reg_t srcOperandModifiers(ptx_reg_t opData, operand_info opInfo, operand_inf
          sign_extend(result,size,dstInfo);
 
    }
-   else if(opInfo.get_addr_space() == 3)
+   else if(opInfo.get_addr_space() == const_space)
    {
        mem = thread->get_global_memory();
        type_info_key::type_decode(type,size,t);

@@ -438,11 +438,16 @@ void ptx_print_insn( address_type pc, FILE *fp )
    finfo->print_insn(pc,fp);
 }
 
-void ptx_instruction::get_opcode_info()
+void ptx_instruction::set_opcode_and_latency()
 {
    op = ALU_OP;
    initiation_interval = latency = 1;
    switch( m_opcode ) {
+   case MOV_OP:
+       assert( !(has_memory_read() && has_memory_write()) );
+       if ( has_memory_read() ) op = LOAD_OP;
+       if ( has_memory_write() ) op = STORE_OP;
+       break;
    case LD_OP: op = LOAD_OP; break;
    case ST_OP: op = STORE_OP; break;
    case BRA_OP: op = BRANCH_OP; break;
@@ -506,6 +511,37 @@ void ptx_thread_info::ptx_fetch_inst( inst_t &inst ) const
    assert( inst.valid() );
 }
 
+static unsigned datatype2size( unsigned data_type )
+{
+   unsigned data_size;
+   switch ( data_type ) {
+      case B8_TYPE:
+      case S8_TYPE:
+      case U8_TYPE: 
+         data_size = 1; break;
+      case B16_TYPE:
+      case S16_TYPE:
+      case U16_TYPE:
+      case F16_TYPE: 
+         data_size = 2; break;
+      case B32_TYPE:
+      case S32_TYPE:
+      case U32_TYPE:
+      case F32_TYPE: 
+         data_size = 4; break;
+      case B64_TYPE:
+      case BB64_TYPE:
+      case S64_TYPE:
+      case U64_TYPE:
+      case F64_TYPE: 
+         data_size = 8; break;
+      case BB128_TYPE: 
+         data_size = 16; break;
+      default: assert(0); break;
+   }
+   return data_size; 
+}
+
 void ptx_instruction::pre_decode()
 {
    pc = m_PC;
@@ -520,6 +556,14 @@ void ptx_instruction::pre_decode()
    pred = 0;
    ar1 = 0;
    ar2 = 0;
+   space = m_space_spec;
+   memory_op = no_memory_op;
+   data_size = 0;
+   if ( has_memory_read() || has_memory_write() ) {
+      unsigned to_type = get_type();
+      data_size = datatype2size(to_type);
+      memory_op = has_memory_read() ? memory_load : memory_store;
+   }
 
    bool has_dst = false ;
 
@@ -532,13 +576,12 @@ void ptx_instruction::pre_decode()
       break;
    }
 
-   get_opcode_info();
+   set_opcode_and_latency();
 
    // Get register operands
    int n=0,m=0;
    ptx_instruction::const_iterator opr=op_iter_begin();
    for ( ; opr != op_iter_end(); opr++, n++ ) { //process operands
-
       const operand_info &o = *opr;
       if ( has_dst && n==0 ) {
          if ( o.is_reg() ) { //but is destination an actual register? (seems like it fails if it's a vector)
@@ -771,37 +814,6 @@ bool ptx_debug_exec_dump_cond(int thd_uid, addr_t pc)
    return false;
 }
 
-unsigned datatype2size( unsigned data_type )
-{
-   unsigned data_size;
-   switch ( data_type ) {
-      case B8_TYPE:
-      case S8_TYPE:
-      case U8_TYPE: 
-         data_size = 1; break;
-      case B16_TYPE:
-      case S16_TYPE:
-      case U16_TYPE:
-      case F16_TYPE: 
-         data_size = 2; break;
-      case B32_TYPE:
-      case S32_TYPE:
-      case U32_TYPE:
-      case F32_TYPE: 
-         data_size = 4; break;
-      case B64_TYPE:
-      case BB64_TYPE:
-      case S64_TYPE:
-      case U64_TYPE:
-      case F64_TYPE: 
-         data_size = 8; break;
-      case BB128_TYPE: 
-         data_size = 16; break;
-      default: assert(0); break;
-   }
-   return data_size; 
-}
-
 void init_inst_classification_stat() 
 {
    static std::set<unsigned> init;
@@ -821,7 +833,6 @@ void init_inst_classification_stat()
 
 void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
 {
-   inst.memory_op = no_memory_op;
    bool skip = false;
    int op_classification = 0;
    addr_t pc = next_instr();
@@ -857,6 +868,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
    if( skip ) {
       inst.set_not_active(lane_id);
    } else {
+      const ptx_instruction *pI_saved = pI;
       ptx_instruction *pJ = NULL;
       if( pI->get_opcode() == VOTE_OP ) {
          pJ = new ptx_instruction(*pI);
@@ -870,6 +882,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
       default: printf( "Execution error: Invalid opcode (0x%x)\n", pI->get_opcode() ); break;
       }
       delete pJ;
+      pI = pI_saved;
 
       // Run exit instruction if exit option included
       if(pI->is_exit())
@@ -924,7 +937,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
 
    if (pI->get_opcode() == TEX_OP) {
       inst.set_addr(lane_id, last_eaddr() );
-      inst.space = last_space();
+      assert( inst.space == last_space() );
 
       unsigned to_type = pI->get_type();
       switch ( to_type ) {
@@ -1002,8 +1015,8 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
    if(!skip) {
       inst.space = insn_space;
       inst.set_addr(lane_id, insn_memaddr);
-      inst.data_size = insn_data_size;
-      inst.memory_op = insn_memory_op;
+      inst.data_size = insn_data_size; // simpleAtomicIntrinsics
+      assert( inst.memory_op == insn_memory_op );
    } 
 
    } catch ( int x  ) {

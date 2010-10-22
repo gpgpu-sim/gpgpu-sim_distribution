@@ -693,12 +693,12 @@ void change_memory_addr_space(const char *identifier)
    assert( !g_operands.empty() );
    if(!strcmp(identifier, "g"))
    {
-       g_operands.back().set_addr_space(1);
+       g_operands.back().set_addr_space(global_space);
        recognizedType = true;
    }
    if(!strcmp(identifier, "s"))
    {
-       g_operands.back().set_addr_space(2);
+       g_operands.back().set_addr_space(shared_space);
        recognizedType = true;
    }
    // For constants, check if the first character is 'c'
@@ -706,7 +706,7 @@ void change_memory_addr_space(const char *identifier)
    strncpy(c, identifier, 1); c[1] = '\0';
    if(!strcmp(c, "c"))
    {
-       g_operands.back().set_addr_space(3);
+       g_operands.back().set_addr_space(const_space);
        parse_assert(g_current_symbol_table->lookup(identifier) != NULL, "Constant was not defined.");
        g_operands.back().set_const_mem_offset(g_current_symbol_table->lookup(identifier)->get_address());
        recognizedType = true;
@@ -716,7 +716,7 @@ void change_memory_addr_space(const char *identifier)
    strncpy(l, identifier, 1); l[1] = '\0';
    if(!strcmp(l, "l"))
    {
-       g_operands.back().set_addr_space(4);
+       g_operands.back().set_addr_space(local_space);
        parse_assert(g_current_symbol_table->lookup(identifier) != NULL, "Local memory segment was not defined.");
        g_operands.back().set_const_mem_offset(g_current_symbol_table->lookup(identifier)->get_address());
        recognizedType = true;
