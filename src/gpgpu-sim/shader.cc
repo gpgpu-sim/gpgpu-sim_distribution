@@ -1996,10 +1996,10 @@ simt_core_cluster::simt_core_cluster( class gpgpu_sim *gpu,
                                       const struct memory_config *mem_config,
                                       shader_core_stats *stats )
 {
-    m_cta_issue_next_core=0;
+    m_config = config;
+    m_cta_issue_next_core=m_config->n_simt_cores_per_cluster-1; // this causes first launch to use hw cta 0
     m_cluster_id=cluster_id;
     m_gpu = gpu;
-    m_config = config;
     m_stats = stats;
     m_core = new shader_core_ctx*[ config->n_simt_cores_per_cluster ];
     for( unsigned i=0; i < config->n_simt_cores_per_cluster; i++ ) 
@@ -2043,10 +2043,11 @@ unsigned simt_core_cluster::issue_block2core( class kernel_info_t &kernel )
 {
     unsigned num_blocks_issued=0;
     for( unsigned i=0; i < m_config->n_simt_cores_per_cluster; i++ ) {
-        unsigned core = (i+m_cta_issue_next_core)%m_config->n_simt_cores_per_cluster;
+        unsigned core = (i+m_cta_issue_next_core+1)%m_config->n_simt_cores_per_cluster;
         if( m_core[core]->get_n_active_cta() < m_config->max_cta(kernel) ) {
             m_core[core]->issue_block2core(kernel);
             num_blocks_issued++;
+            m_cta_issue_next_core=core; 
             break;
         }
     }
