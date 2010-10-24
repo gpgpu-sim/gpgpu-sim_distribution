@@ -82,7 +82,7 @@ public:
 
    bool busy() const;
 
-   void cache_cycle();
+   void cache_cycle( unsigned cycle );
    void dram_cycle();
 
    bool full() const;

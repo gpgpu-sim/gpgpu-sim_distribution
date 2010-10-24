@@ -309,14 +309,9 @@ void pdom_warp_ctx_t::pdom_update_warp_mask()
 	assert(scheduled_warp->m_stack_top < m_warp_size * 2);
 }
 
-unsigned gpgpu_sim::sid_to_cluster( unsigned sid ) const
-{
-    return sid / m_shader_config->n_simt_cores_per_cluster;
-}
-
 void gpgpu_sim::get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc )
 {
-    unsigned cluster_id = sid_to_cluster(sid);
+    unsigned cluster_id = m_shader_config->sid_to_cluster(sid);
     m_cluster[cluster_id]->get_pdom_stack_top_info(sid,tid,pc,rpc);
 }
 
@@ -2002,8 +1997,10 @@ simt_core_cluster::simt_core_cluster( class gpgpu_sim *gpu,
     m_gpu = gpu;
     m_stats = stats;
     m_core = new shader_core_ctx*[ config->n_simt_cores_per_cluster ];
-    for( unsigned i=0; i < config->n_simt_cores_per_cluster; i++ ) 
-        m_core[i] = new shader_core_ctx(gpu,this,cid_to_sid(i),m_cluster_id,config,mem_config,stats);
+    for( unsigned i=0; i < config->n_simt_cores_per_cluster; i++ ) {
+        unsigned sid = m_config->cid_to_sid(i,m_cluster_id);
+        m_core[i] = new shader_core_ctx(gpu,this,sid,m_cluster_id,config,mem_config,stats);
+    }
 }
 
 void simt_core_cluster::core_cycle()
@@ -2095,7 +2092,7 @@ void simt_core_cluster::icnt_cycle()
 {
     if( !m_response_fifo.empty() ) {
         mem_fetch *mf = m_response_fifo.front();
-        unsigned cid = sid_to_cid(mf->get_sid());
+        unsigned cid = m_config->sid_to_cid(mf->get_sid());
         if( mf->get_access_type() == INST_ACC_R ) {
             // instruction fetch response
             if( !m_core[cid]->fetch_unit_response_buffer_full() ) {
@@ -2124,11 +2121,11 @@ void simt_core_cluster::icnt_cycle()
 
 void simt_core_cluster::get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc ) const
 {
-    unsigned cid = sid_to_cid(sid);
+    unsigned cid = m_config->sid_to_cid(sid);
     m_core[cid]->get_pdom_stack_top_info(tid,pc,rpc);
 }
 
 void simt_core_cluster::display_pipeline( unsigned sid, FILE *fout, int print_mem, int mask )
 {
-    m_core[sid_to_cid(sid)]->display_pipeline(fout,print_mem,mask);
+    m_core[m_config->sid_to_cid(sid)]->display_pipeline(fout,print_mem,mask);
 }

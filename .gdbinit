@@ -8,7 +8,7 @@ set print array-indexes
 set unwindonsignal on
 
 define dp
-        call g_the_gpu.dump_pipeline((0x40|0x4|0x1),$arg0,0)
+        call g_the_gpu->dump_pipeline((0x40|0x4|0x1),$arg0,0)
 end
 
 document dp
@@ -23,7 +23,7 @@ see the source code for more details)
 end
 
 define dpc
-        call g_the_gpu.dump_pipeline((0x40|0x4|0x1),$arg0,0)
+        call g_the_gpu->dump_pipeline((0x40|0x4|0x1),$arg0,0)
         continue
 end
 
@@ -39,7 +39,7 @@ the next cycle.
 end
 
 define dm
-        call g_the_gpu.dump_pipeline(0x10000|0x10000000,0,$arg0)
+        call g_the_gpu->dump_pipeline(0x10000|0x10000000,0,$arg0)
 end
 
 define ptxdis
@@ -50,7 +50,7 @@ define ptxdis
 	      printf "0x%04x (%4u)  : ", $addr, $addr
 	      call ptx_print_insn( $addr, stdout )
 	      call fflush(stdout)
-	      set $addr = $addr + 1
+	      set $addr = $addr + ptx_print_insn::size
 	end
 end
 
@@ -60,16 +60,19 @@ Disassemble PTX instructions between <start> and <end> (PCs).
 end
 
 define ptxdis_func
-	set $ptx_tinfo = g_the_gpu.m_sc[$arg0]->thread[$arg1].ptx_thd_info
-	set $finfo = $ptx_tinfo->m_func_info
-	set $minpc = $finfo->m_start_PC
-	set $maxpc = $minpc + $finfo->m_instr_mem_size
+	set $sid = $arg0
+	set $cluster   = g_the_gpu_config.m_shader_config.sid_to_cluster($sid)
+	set $cid       = g_the_gpu_config.m_shader_config.sid_to_cid($sid)
+	set $ptx_tinfo = g_the_gpu->m_cluster[$cluster]->m_core[$cid]->m_thread[$arg1].m_functional_model_thread_state
+	set $finfo     = $ptx_tinfo->m_func_info
+	set $minpc     = $finfo->m_start_PC
+	set $maxpc     = $minpc + $finfo->m_instr_mem_size
 	printf "disassembly of function %s (min pc = %u, max pc = %u):\n", $finfo->m_name.c_str(), $minpc, $maxpc
-	ptxdis $minpc $maxpc $arg0 $arg1
+	ptxdis $minpc $maxpc
 end
 
 document ptxdis_func
-Usage: ptxdis_func <shd_idx> <tid>
+Usage: ptxdis_func <shd_idx> <tid> (requires debug build)
 <shd_idx>: shader core number
 <tid>: thread ID
 end
@@ -78,7 +81,9 @@ define ptx_tids2pcs
 	set $i = 0
 	while ( $i < $arg1 )
 		set $tid =  $arg0[$i]
-  		set $addr = (g_the_gpu.m_sc[$arg2]->thread[$tid].ptx_thd_info)->m_PC
+		set $cluster = g_the_gpu_config.m_shader_config.sid_to_cluster($sid);
+		set $cid = g_the_gpu_config.m_shader_config.sid_to_cid($sid);
+		set $addr = g_the_gpu->m_cluster[$cluster]->m_core[$cid]->m_thread[$tid].m_functional_model_thread_state->m_PC
 		printf "%2u : tid = %3u  => pc = %d\n", $i, $tid, $addr
 		set $i = $i + 1
 	end

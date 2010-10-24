@@ -936,6 +936,9 @@ struct shader_core_config : public core_config
     void reg_options(class OptionParser * opp );
     unsigned max_cta( const kernel_info_t &k ) const;
     unsigned num_shader() const { return n_simt_clusters*n_simt_cores_per_cluster; }
+    unsigned sid_to_cluster( unsigned sid ) const { return sid / n_simt_cores_per_cluster; }
+    unsigned sid_to_cid( unsigned sid )     const { return sid % n_simt_cores_per_cluster; }
+    unsigned cid_to_sid( unsigned cid, unsigned cluster_id ) const { return cluster_id*n_simt_cores_per_cluster + cid; }
 
 // data
     char *gpgpu_shader_core_pipeline_opt;
@@ -1183,9 +1186,6 @@ public:
     void display_pipeline( unsigned sid, FILE *fout, int print_mem, int mask );
 
 private:
-    unsigned sid_to_cid( unsigned sid ) const { return sid % m_config->n_simt_cores_per_cluster; }
-    unsigned cid_to_sid( unsigned cid ) const { return m_cluster_id*m_config->n_simt_cores_per_cluster + cid; }
-
     unsigned m_cluster_id;
     gpgpu_sim *m_gpu;
     const shader_core_config *m_config;

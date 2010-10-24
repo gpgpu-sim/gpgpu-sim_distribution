@@ -427,6 +427,7 @@ void gpgpu_t::gpu_memset( size_t dst_start_addr, int c, size_t count )
 
 void ptx_print_insn( address_type pc, FILE *fp )
 {
+   static unsigned size=1;
    std::map<unsigned,function_info*>::iterator f = g_pc_to_finfo.find(pc);
    if( f == g_pc_to_finfo.end() ) {
        fprintf(fp,"<no instruction at address 0x%x>", pc );
@@ -434,7 +435,7 @@ void ptx_print_insn( address_type pc, FILE *fp )
    }
    function_info *finfo = f->second;
    assert( finfo );
-   finfo->print_insn(pc,fp);
+   size = finfo->print_insn(pc,fp);
 }
 
 void ptx_instruction::set_opcode_and_latency()

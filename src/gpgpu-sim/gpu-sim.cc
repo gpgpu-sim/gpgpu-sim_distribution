@@ -749,7 +749,7 @@ void gpgpu_sim::cycle()
    // L2 operations follow L2 clock domain
    if (clock_mask & L2) {
       for (unsigned i=0;i<m_memory_config->m_n_mem;i++) 
-         m_memory_partition_unit[i]->cache_cycle();
+         m_memory_partition_unit[i]->cache_cycle(gpu_sim_cycle+gpu_tot_sim_cycle);
    }
 
    if (clock_mask & ICNT) {
@@ -885,7 +885,7 @@ void gpgpu_sim::dump_pipeline( int mask, int s, int m ) const
       if(s != -1) {
          i = s;
       }
-      if(mask&1) m_cluster[sid_to_cluster(i)]->display_pipeline(i,stdout,1,mask & 0x2E);
+      if(mask&1) m_cluster[m_shader_config->sid_to_cluster(i)]->display_pipeline(i,stdout,1,mask & 0x2E);
       if(s != -1) {
          break;
       }

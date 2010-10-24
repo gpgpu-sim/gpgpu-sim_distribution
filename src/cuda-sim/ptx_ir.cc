@@ -1193,8 +1193,9 @@ function_info::function_info(int entry_point )
    m_local_mem_framesize = 0;
 }
 
-void function_info::print_insn( unsigned pc, FILE * fp ) const
+unsigned function_info::print_insn( unsigned pc, FILE * fp ) const
 {
+   unsigned inst_size=1; // return offset to next instruction or 1 if unknown
    unsigned index = pc - m_start_PC;
    char command[1024];
    char buffer[1024];
@@ -1206,11 +1207,13 @@ void function_info::print_insn( unsigned pc, FILE * fp ) const
    if ( index >= m_instr_mem_size ) {
       fprintf(fp, "<past last instruction (max pc=%u)>", m_start_PC + m_instr_mem_size - 1 );
    } else {
-      if ( m_instr_mem[index] != NULL )
+      if ( m_instr_mem[index] != NULL ) {
          m_instr_mem[index]->print_insn(fp);
-      else
+         inst_size = m_instr_mem[index]->isize;
+      } else
          fprintf(fp, "<no instruction at pc = %u>", pc );
    }
+   return inst_size;
 }
 
 void gpgpu_ptx_assemble( std::string kname, void *kinfo )

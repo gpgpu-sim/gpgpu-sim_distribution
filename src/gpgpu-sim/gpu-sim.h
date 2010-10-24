@@ -286,7 +286,6 @@ private:
    void print_shader_cycle_distro( FILE *fout ) const;
 
    void gpgpu_debug();
-   unsigned sid_to_cluster( unsigned sid ) const;
 
 ///// data /////
 

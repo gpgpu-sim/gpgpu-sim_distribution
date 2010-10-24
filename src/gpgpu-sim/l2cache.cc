@@ -120,7 +120,7 @@ memory_partition_unit::~memory_partition_unit()
     delete m_L2interface;
 }
 
-void memory_partition_unit::cache_cycle()
+void memory_partition_unit::cache_cycle( unsigned cycle )
 {
     // L2 fill responses 
     if ( m_L2cache->access_ready() && !m_L2_icnt_queue->full() ) {
@@ -171,6 +171,14 @@ void memory_partition_unit::cache_cycle()
             m_L2_dram_queue->push(mf);
             m_icnt_L2_queue->pop();
         }
+    }
+
+    // ROP delay queue
+    if( !m_rop.empty() && (cycle >= m_rop.front().ready_cycle) && !m_icnt_L2_queue->full() ) {
+        mem_fetch* mf = m_rop.front().req;
+        m_rop.pop();
+        m_icnt_L2_queue->push(mf);
+        mf->set_status(IN_PARTITION_ICNT_TO_L2_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
     }
 }
 
@@ -231,18 +239,17 @@ void memory_partition_unit::push( mem_fetch* req, unsigned long long cycle )
 {
     if (req) {
         m_request_tracker.insert(req);
-        rop_delay_t r;
-        r.req = req;
-        r.ready_cycle = cycle + 115; // Add 115*4=460 delay cycles
-        m_rop.push(r);
-        req->set_status(IN_PARTITION_ROP_DELAY,gpu_sim_cycle+gpu_tot_sim_cycle);
-    }
-    if ( !m_rop.empty() && (cycle >= m_rop.front().ready_cycle) ) {
-        mem_fetch* mf = m_rop.front().req;
-        m_rop.pop();
-        m_stats->memlatstat_icnt2mem_pop(mf);
-        m_icnt_L2_queue->push(mf);
-        mf->set_status(IN_PARTITION_ICNT_TO_L2_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
+        m_stats->memlatstat_icnt2mem_pop(req);
+        if( req->istexture() ) {
+            m_icnt_L2_queue->push(req);
+            req->set_status(IN_PARTITION_ICNT_TO_L2_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
+        } else {
+            rop_delay_t r;
+            r.req = req;
+            r.ready_cycle = cycle + 115; // Add 115*4=460 delay cycles
+            m_rop.push(r);
+            req->set_status(IN_PARTITION_ROP_DELAY,gpu_sim_cycle+gpu_tot_sim_cycle);
+        }
     }
 }
 

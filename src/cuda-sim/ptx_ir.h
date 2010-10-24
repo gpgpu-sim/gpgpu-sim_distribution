@@ -1060,7 +1060,7 @@ public:
    {
       return m_name;
    }
-   void print_insn( unsigned pc, FILE * fp ) const;
+   unsigned print_insn( unsigned pc, FILE * fp ) const;
    void add_inst( const std::list<ptx_instruction*> &instructions )
    {
       m_instructions = instructions;
