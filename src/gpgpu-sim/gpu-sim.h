@@ -319,7 +319,6 @@ private:
    class shader_core_stats  *m_shader_stats;
    class memory_stats_t     *m_memory_stats;
    unsigned long long  gpu_tot_issued_cta;
-   unsigned long long  gpu_tot_completed_thread;
    unsigned long long  last_gpu_sim_insn;
 
 public:

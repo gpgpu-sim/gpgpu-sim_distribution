@@ -258,7 +258,6 @@ void memory_stats_t::memlatstat_lat_pw( unsigned n_shader, unsigned n_thread_per
    for (i=0;i < ((n_shader * n_thread_per_shader / warp_size)+1); i++) {
       assert(i<max_warps);
       if (mf_num_lat_pw_perwarp[i] && m_memory_config->gpgpu_memlatency_stat) {
-         assert(mf_tot_lat_pw_perwarp[i]);
          mf_total_lat_perwarp[i] += mf_tot_lat_pw_perwarp[i];
          num_mfs_perwarp[i] += mf_num_lat_pw_perwarp[i];
          mf_tot_lat_pw_perwarp[i] = 0;

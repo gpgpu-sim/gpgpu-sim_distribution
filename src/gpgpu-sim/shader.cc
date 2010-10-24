@@ -366,29 +366,18 @@ void pdom_warp_ctx_t::print (FILE *fout) const
 
 void shader_core_stats::print( FILE* fout ) const
 {
-    fprintf(fout,"gpu_sim_no_ld_const_insn = %lld\n", gpu_sim_insn_no_ld_const);
-    fprintf(fout,"gpu_completed_thread = %lld\n", gpu_completed_thread);
-    fprintf(fout,"gpu_stall_shd_mem = %d\n", gpu_stall_shd_mem );
-    fprintf(fout,"gpu_stall_sh2icnt = %d\n", gpu_stall_sh2icnt   );
-    fprintf(fout,"L1 read misses = %d\n", L1_read_miss);
-    fprintf(fout,"L1 write misses = %d\n", L1_write_miss);
-    fprintf(fout,"L1 write hit on misses = %d\n", L1_write_hit_on_miss);
-    fprintf(fout,"L1 writebacks = %d\n", L1_writeback);
-    fprintf(fout,"L1 texture misses = %d\n", L1_texture_miss);
-    fprintf(fout,"L1 const misses = %d\n", L1_const_miss);
+    unsigned icount_uarch=0;
+    for(unsigned i=0; i < m_config->num_shader(); i++) {
+        icount_uarch += m_num_sim_insn[i];
+    }
+    fprintf(fout,"gpgpu_n_tot_icount = %u\n", icount_uarch);
+    fprintf(fout,"gpgpu_n_stall_shd_mem = %d\n", gpgpu_n_stall_shd_mem );
     fprintf(fout,"gpgpu_n_mem_read_local = %d\n", gpgpu_n_mem_read_local);
     fprintf(fout,"gpgpu_n_mem_write_local = %d\n", gpgpu_n_mem_write_local);
     fprintf(fout,"gpgpu_n_mem_read_global = %d\n", gpgpu_n_mem_read_global);
     fprintf(fout,"gpgpu_n_mem_write_global = %d\n", gpgpu_n_mem_write_global);
     fprintf(fout,"gpgpu_n_mem_texture = %d\n", gpgpu_n_mem_texture);
     fprintf(fout,"gpgpu_n_mem_const = %d\n", gpgpu_n_mem_const);
-    if( m_config->model == POST_DOMINATOR) {
-       fprintf(fout,"num_warps_issuable:");
-       for (unsigned i=0;i<(m_config->max_warps_per_shader+1);i++) 
-          fprintf(fout,"%d ", num_warps_issuable[i]);
-       fprintf(fout,"\n");
-    }
-    fprintf(fout,"gpgpu_commit_pc_beyond_two = %d\n",gpgpu_commit_pc_beyond_two);
 /*
    unsigned a,m;
    for (unsigned i=0, a=0, m=0;i<m_n_shader;i++) 
@@ -482,27 +471,20 @@ void shader_core_stats::visualizer_print( gzFile visualizer_file )
     gzprintf(visualizer_file,"\n");
 
     // overall cache miss rates
-    gzprintf(visualizer_file, "Lonetexturemiss: %d\n", L1_texture_miss);
-    gzprintf(visualizer_file, "Loneconstmiss: %d\n", L1_const_miss);
-    gzprintf(visualizer_file, "Lonereadmiss: %d\n", L1_read_miss);
-    gzprintf(visualizer_file, "Lonewritemiss: %d\n", L1_write_miss);
-    gzprintf(visualizer_file, "gpucompletedthreads: %lld\n", gpu_completed_thread);
     gzprintf(visualizer_file, "gpgpu_n_cache_bkconflict: %d\n", gpgpu_n_cache_bkconflict);
     gzprintf(visualizer_file, "gpgpu_n_shmem_bkconflict: %d\n", gpgpu_n_shmem_bkconflict);     
 
-/*
+
    // instruction count per shader core
    gzprintf(visualizer_file, "shaderinsncount:  ");
-   for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) 
-       for (unsigned j=0;j<m_shader_config->n_simt_cores_per_cluster;j++) 
-      gzprintf(visualizer_file, "%u ",m_cluster[i]->get_core(j)->get_core_stats()->m_icount);
+   for (unsigned i=0;i<m_config->num_shader();i++) 
+      gzprintf(visualizer_file, "%u ", m_num_sim_insn[i] );
    gzprintf(visualizer_file, "\n");
    // warp divergence per shader core
    gzprintf(visualizer_file, "shaderwarpdiv: ");
-   for (unsigned i=0;i<m_n_shader;i++) 
-      gzprintf(visualizer_file, "%u ", m_sc[i]->get_n_diverge());
+   for (unsigned i=0;i<m_config->num_shader();i++) 
+      gzprintf(visualizer_file, "%u ", m_n_diverge[i] );
    gzprintf(visualizer_file, "\n");
-*/ 
 
 /*
    gzprintf(visualizer_file, "CacheMissRate_GlobalLocalL1_All: ");
@@ -650,7 +632,7 @@ void shader_core_ctx::issue_warp( warp_inst_t *&pipe_reg, const warp_inst_t *nex
     if( next_inst->op == BARRIER_OP ) 
         m_barriers.warp_reaches_barrier(m_warp[warp_id].get_cta_id(),warp_id);
     else if( next_inst->op == MEMORY_BARRIER_OP ) 
-       set_at_memory_barrier(warp_id);
+        m_warp[warp_id].set_membar();
     m_pdom_warp[warp_id]->pdom_update_warp_mask();
     m_scoreboard->reserveRegisters(pipe_reg);
     m_warp[warp_id].set_next_pc(next_inst->pc + next_inst->isize);
@@ -721,18 +703,13 @@ void shader_core_ctx::decode()
         } 
     }
 
-//  fprintf(fout, "Stall:%d\t", m_shader_stats->shader_cycle_distro[0]);
-//  fprintf(fout, "W0_Idle:%d\t", m_shader_stats->shader_cycle_distro[1]);
-//  fprintf(fout, "W0_Mem:%d", m_shader_stats->shader_cycle_distro[2]);
-
-    // statistics:
+    // issue stall statistics:
     if( !valid_inst ) 
         m_stats->shader_cycle_distro[0]++; // idle or control hazard
     else if( !ready_inst ) 
         m_stats->shader_cycle_distro[1]++; // waiting for RAW hazards (possibly due to memory) 
     else if( !issued_inst ) 
         m_stats->shader_cycle_distro[2]++; // pipeline stalled
-    
 }
 
 address_type coalesced_segment(address_type addr, unsigned segment_size_lg2bytes)
@@ -813,6 +790,7 @@ void shader_core_ctx::writeback()
         unsigned warp_id = pipe_reg->warp_id();
         m_scoreboard->releaseRegisters( pipe_reg );
         m_warp[warp_id].dec_inst_in_pipeline();
+        m_stats->m_num_sim_insn[m_sid]++;
         m_gpu->gpu_sim_insn_last_update_sid = m_sid;
         m_gpu->gpu_sim_insn_last_update = gpu_sim_cycle;
         m_gpu->gpu_sim_insn += pipe_reg->active_count();
@@ -1026,9 +1004,12 @@ void ldst_unit::writeback()
                         if( !still_pending ) {
                             m_pending_writes[m_next_wb.warp_id()].erase(m_next_wb.out[r]);
                             m_scoreboard->releaseRegister( m_next_wb.warp_id(), m_next_wb.out[r] );
+                            m_stats->m_num_sim_insn[m_sid]++;
                         }
-                    } else // shared 
+                    } else { // shared 
                         m_scoreboard->releaseRegister( m_next_wb.warp_id(), m_next_wb.out[r] );
+                        m_stats->m_num_sim_insn[m_sid]++;
+                    }
                 }
             }
             m_next_wb.clear();
@@ -1123,7 +1104,7 @@ void ldst_unit::cycle()
    m_mem_rc = rc_fail;
    if (!done) { // log stall types and return
       assert(rc_fail != NO_RC_FAIL);
-      m_stats->gpu_stall_shd_mem++;
+      m_stats->gpgpu_n_stall_shd_mem++;
       m_stats->gpu_stall_shd_mem_breakdown[type][rc_fail]++;
       return;
    }
@@ -1154,8 +1135,10 @@ void ldst_unit::cycle()
                        }
                    }
                }
-               if( !pending_requests )
+               if( !pending_requests ) {
                    m_scoreboard->releaseRegisters(m_dispatch_reg);
+                   m_stats->m_num_sim_insn[m_sid]++;
+               }
                m_core->dec_inst_in_pipeline(warp_id);
                m_dispatch_reg->clear();
            }
@@ -1163,6 +1146,7 @@ void ldst_unit::cycle()
            // stores exit pipeline here
            m_core->dec_inst_in_pipeline(warp_id);
            m_dispatch_reg->clear();
+           m_stats->m_num_sim_insn[m_sid]++;
        }
    }
 }
@@ -1177,7 +1161,7 @@ void shader_core_ctx::register_cta_thread_exit(int tid )
    m_cta_status[cta_num]--;
    if (!m_cta_status[cta_num]) {
       m_n_active_cta--;
-      deallocate_barrier(cta_num);
+      m_barriers.deallocate_barrier(cta_num);
       shader_CTA_count_unlog(m_sid, 1);
       printf("GPGPU-Sim uArch: Shader %d finished CTA #%d (%lld,%lld)\n", m_sid, cta_num, gpu_sim_cycle, gpu_tot_sim_cycle );
    }
@@ -1661,11 +1645,6 @@ bool shader_core_ctx::warp_waiting_at_barrier( unsigned warp_id ) const
    return m_barriers.warp_waiting_at_barrier(warp_id);
 }
 
-void shader_core_ctx::set_at_memory_barrier( unsigned warp_id ) 
-{
-   m_warp[warp_id].set_membar();
-}
-
 bool shader_core_ctx::warp_waiting_at_mem_barrier( unsigned warp_id ) 
 {
    if( !m_warp[warp_id].get_membar() ) 
@@ -1680,16 +1659,6 @@ bool shader_core_ctx::warp_waiting_at_mem_barrier( unsigned warp_id )
 gpgpu_sim *shader_core_ctx::get_gpu()
 {
    return m_gpu;
-}
-
-void shader_core_ctx::allocate_barrier( unsigned cta_id, warp_set_t warps )
-{
-   m_barriers.allocate_barrier(cta_id,warps);
-}
-
-void shader_core_ctx::deallocate_barrier( unsigned cta_id )
-{
-   m_barriers.deallocate_barrier(cta_id);
 }
 
 void shader_core_ctx::decrement_atomic_count( unsigned wid, unsigned n )
@@ -1710,7 +1679,7 @@ void shader_core_ctx::accept_fetch_response( mem_fetch *mf )
     m_L1I->fill(mf,gpu_sim_cycle+gpu_tot_sim_cycle);
 }
 
-bool shader_core_ctx::ldst_unit_response_buffer_full() 
+bool shader_core_ctx::ldst_unit_response_buffer_full() const
 {
     return m_ldst_unit->response_buffer_full();
 }
@@ -1863,6 +1832,7 @@ void opndcoll_rfu_t::init( unsigned num_banks, shader_core_ctx *shader )
           m_dispatch_units[m_output[n]].add_cu(&m_cu[c]);
        }
    }
+   m_initialized=true;
 }
 
 int register_bank(int regnum, int wid, unsigned num_banks, unsigned bank_warp_shift)
