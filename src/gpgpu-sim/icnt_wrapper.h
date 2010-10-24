@@ -88,7 +88,7 @@ enum network_mode {
    N_NETWORK_MODE
 };
 
-void icnt_init( unsigned int n_shader, unsigned int n_mem, struct shader_core_config *shader_config );
+void icnt_init( unsigned int n_shader, unsigned int n_mem );
 void icnt_reg_options( class OptionParser * opp );
 
 #endif

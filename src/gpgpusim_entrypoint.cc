@@ -87,44 +87,44 @@ sem_t g_sim_signal_finish;
 time_t g_simulation_starttime;
 pthread_t g_simulation_thread;
 
-gpgpu_sim g_the_gpu;
+gpgpu_sim_config g_the_gpu_config;
+gpgpu_sim *g_the_gpu;
 
 static void print_simulation_time();
 
 void *gpgpu_sim_thread(void*)
 {
+   kernel_info_t *kernel = NULL;
    do {
       sem_wait(&g_sim_signal_start);
-      g_the_gpu.next_grid();
-      g_the_gpu.run_gpu_sim();
-      print_simulation_time();
+      kernel = g_the_gpu->next_grid();
+      if( kernel ) {
+          g_the_gpu_config.set_max_cta(*kernel);
+          g_the_gpu->run_gpu_sim();
+          print_simulation_time();
+      }
       sem_post(&g_sim_signal_finish);
-   } while(1);
+   } while(kernel);
    return NULL;
 }
 
 gpgpu_sim *gpgpu_ptx_sim_init_perf()
 {
+   srand(1);
    print_splash();
    read_sim_environment_variables();
    read_parser_environment_variables();
    option_parser_t opp = option_parser_create();
+
    icnt_reg_options(opp);
-   g_the_gpu.reg_options(opp); // register GPU microrachitecture options
+   g_the_gpu_config.reg_options(opp); // register GPU microrachitecture options
    ptx_reg_options(opp);
    option_parser_cmdline(opp, sg_argc, sg_argv); // parse configuration options
-
-   srand(1);
-
-   // Open instructions debug output file for writing
-   if(g_ptx_inst_debug_to_file != 0) {
-      ptx_inst_debug_file = fopen(g_ptx_inst_debug_file, "w");
-   }
-
    fprintf(stdout, "GPGPU-Sim: Configuration options:\n\n");
    option_parser_print(opp, stdout);
+   g_the_gpu_config.init();
 
-   g_the_gpu.init_gpu();
+   g_the_gpu = new gpgpu_sim(g_the_gpu_config);
 
    g_simulation_starttime = time((time_t *)NULL);
 
@@ -132,7 +132,7 @@ gpgpu_sim *gpgpu_ptx_sim_init_perf()
    sem_init(&g_sim_signal_finish,0,0);
    pthread_create(&g_simulation_thread,NULL,gpgpu_sim_thread,NULL);
 
-   return &g_the_gpu;
+   return g_the_gpu;
 }
 
 void print_simulation_time()
@@ -149,7 +149,7 @@ void print_simulation_time()
    fflush(stderr);
    printf("\n\ngpgpu_simulation_time = %u days, %u hrs, %u min, %u sec (%u sec)\n",
           (unsigned)d, (unsigned)h, (unsigned)m, (unsigned)s, (unsigned)difference );
-   printf("gpgpu_simulation_rate = %u (inst/sec)\n", (unsigned)(g_the_gpu.gpu_tot_sim_insn / difference) );
+   printf("gpgpu_simulation_rate = %u (inst/sec)\n", (unsigned)(g_the_gpu->gpu_tot_sim_insn / difference) );
    printf("gpgpu_simulation_rate = %u (cycle/sec)\n", (unsigned)(gpu_tot_sim_cycle / difference) );
    fflush(stdout);
 }
@@ -159,7 +159,7 @@ int gpgpu_cuda_ptx_sim_main_perf( kernel_info_t grid,
                                   struct dim3 blockDim, 
                                   gpgpu_ptx_sim_arg_list_t grid_params )
 {
-   g_the_gpu.launch(grid);
+   g_the_gpu->launch(grid);
    sem_post(&g_sim_signal_start);
    sem_wait(&g_sim_signal_finish);
    return 0;
@@ -170,7 +170,7 @@ int gpgpu_opencl_ptx_sim_main_perf( kernel_info_t grid,
                                   struct dim3 blockDim, 
                                   gpgpu_ptx_sim_arg_list_t grid_params )
 {
-   g_the_gpu.launch(grid);
+   g_the_gpu->launch(grid);
    sem_post(&g_sim_signal_start);
    sem_wait(&g_sim_signal_finish);
    return 0;

@@ -1042,8 +1042,9 @@ class graphManager:
 
         if yAxis == 'WarpDivergenceBreakdown':
             Legendname = []
-            Legendname.append('Fetch Stalled')
-            Legendname.append('W0')
+            Legendname.append('Idle')
+            Legendname.append('Data Hazard')
+            Legendname.append('Stall')
             for c in range(2, numRows):
                 Legendname.append('W' + `4*(c-2)+1` +  ':' + `4*(c-1)`)
             BarSequence = range(0,numRows)

@@ -83,21 +83,8 @@
 #include "shader.h"
 #include "mem_latency_stat.h"
 
-void gpgpu_sim::L2c_options(option_parser_t opp)
-{
-    option_parser_register(opp, "-gpgpu_dram_partition_queues", OPT_CSTR, &m_memory_config->gpgpu_L2_queue_config, 
-                           "i2$:$2d:d2$:$2i",
-                           "8:8:8:8");
-
-    option_parser_register(opp, "-l2_ideal", OPT_BOOL, &m_memory_config->l2_ideal, 
-                           "Use a ideal L2 cache that always hit",
-                           "0");
-}
-
-//////////
-
 memory_partition_unit::memory_partition_unit( unsigned partition_id, 
-                                              struct memory_config *config,
+                                              const struct memory_config *config,
                                               class memory_stats_t *stats )
 {
     m_id = partition_id;

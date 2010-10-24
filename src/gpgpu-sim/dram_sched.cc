@@ -166,10 +166,10 @@ void frfcfs_scheduler::print( FILE *fp )
    }
 }
 
-void dram_t::fast_scheduler_ideal()
+void dram_t::scheduler_frfcfs()
 {
    unsigned mrq_latency;
-   frfcfs_scheduler *sched = m_fast_ideal_scheduler;
+   frfcfs_scheduler *sched = m_frfcfs_scheduler;
    while ( !mrqq->empty() && (!m_config->gpgpu_dram_sched_queue_size || sched->num_pending() < m_config->gpgpu_dram_sched_queue_size)) {
       dram_req_t *req = mrqq->pop();
       req->data->set_status(IN_PARTITION_MC_INPUT_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);

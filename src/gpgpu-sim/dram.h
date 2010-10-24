@@ -144,7 +144,7 @@ public:
 
 private:
    void scheduler_fifo();
-   void fast_scheduler_ideal();
+   void scheduler_frfcfs();
 
    const struct memory_config *m_config;
 
@@ -184,7 +184,7 @@ private:
    unsigned int max_mrqs;
    unsigned int ave_mrqs;
 
-   class frfcfs_scheduler* m_fast_ideal_scheduler;
+   class frfcfs_scheduler* m_frfcfs_scheduler;
 
    unsigned int n_cmd_partial;
    unsigned int n_activity_partial;

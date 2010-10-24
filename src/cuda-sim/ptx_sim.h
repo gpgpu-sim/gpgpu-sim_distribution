@@ -430,6 +430,7 @@ public:
    memory_space *get_tex_memory() { return m_gpu->get_tex_memory(); }
    memory_space *get_surf_memory() { return m_gpu->get_surf_memory(); }
    memory_space *get_param_memory() { return m_gpu->get_param_memory(); }
+   const gpgpu_functional_sim_config &get_config() const { return m_gpu->get_config(); }
 
 public:
    addr_t         m_last_effective_address;

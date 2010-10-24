@@ -1053,7 +1053,7 @@ clGetDeviceInfo(cl_device_id    device,
    switch( param_name ) {
    case CL_DEVICE_NAME: CL_STRING_CASE( "GPGPU-Sim" ); break;
    case CL_DEVICE_GLOBAL_MEM_SIZE: CL_ULONG_CASE( 1024*1024*1024 ); break;
-   case CL_DEVICE_MAX_COMPUTE_UNITS: CL_INT_CASE( device->the_device()->num_shader() ); break;
+   case CL_DEVICE_MAX_COMPUTE_UNITS: CL_INT_CASE( device->the_device()->get_config().num_shader() ); break;
    case CL_DEVICE_MAX_CLOCK_FREQUENCY: CL_INT_CASE( device->the_device()->shader_clock() ); break;
    case CL_DEVICE_VENDOR:CL_STRING_CASE("GPGPU-Sim.org"); break;
    case CL_DRIVER_VERSION: CL_STRING_CASE("1.0"); break;

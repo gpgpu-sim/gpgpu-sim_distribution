@@ -118,8 +118,8 @@ symbol_table::symbol_table( const char *scope_name, unsigned entry_point, symbol
 {
    m_scope_name = std::string(scope_name);
    m_reg_allocator=0;
-   m_shared_next = 0x100;
-   m_const_next  = 0x100;
+   m_shared_next = 0;
+   m_const_next  = 0;
    m_global_next = 0x100;
    m_local_next  = 0;
    m_parent = parent;

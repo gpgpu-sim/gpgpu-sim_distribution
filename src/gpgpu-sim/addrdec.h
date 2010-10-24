@@ -106,6 +106,7 @@ private:
    };
 
    const char *addrdec_option;
+   int gpgpu_mem_address_mask;
 
    int ADDR_CHIP_S;
    unsigned char addrdec_mklow[N_ADDRDEC];

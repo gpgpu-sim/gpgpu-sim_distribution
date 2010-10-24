@@ -183,7 +183,7 @@ void register_ptx_function( const char *name, function_info *impl )
 struct _cuda_device_id {
    _cuda_device_id(gpgpu_sim* gpu) {m_id = 0; m_next = NULL; m_gpgpu=gpu;}
    struct _cuda_device_id *next() { return m_next; }
-   unsigned num_shader() const { return m_gpgpu->num_shader(); }
+   unsigned num_shader() const { return m_gpgpu->get_config().num_shader(); }
    int num_devices() const {
       if( m_next == NULL ) return 1;
       else return 1 + m_next->num_devices();
@@ -282,7 +282,7 @@ class _cuda_device_id *GPGPUSim_Init()
       prop->warpSize = the_gpu->wrp_size();
       prop->clockRate = the_gpu->shader_clock();
 #if (CUDART_VERSION >= 2010)
-      prop->multiProcessorCount = the_gpu->num_shader();
+      prop->multiProcessorCount = the_gpu->get_config().num_shader();
 #endif
       the_gpu->set_prop(prop);
       the_device = new _cuda_device_id(the_gpu);
@@ -1103,7 +1103,7 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
    unsigned max_capability=0;
    unsigned selected_capability=0;
    bool found=false;
-   unsigned forced_max_capability = context->get_device()->get_gpgpu()->get_forced_max_capability();
+   unsigned forced_max_capability = context->get_device()->get_gpgpu()->get_config().get_forced_max_capability();
    while( info->ptx[num_ptx_versions].gpuProfileName != NULL ) {
       unsigned capability=0;
       sscanf(info->ptx[num_ptx_versions].gpuProfileName,"compute_%u",&capability);
@@ -1129,9 +1129,9 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
              info->ident, info->ptx[selected_capability].gpuProfileName );
       symbol_table *symtab;
       const char *ptx = info->ptx[selected_capability].ptx;
-      if(context->get_device()->get_gpgpu()->convert_to_ptxplus() ) {
+      if(context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() ) {
            char *ptxplus_str = gpgpu_ptx_sim_convert_ptx_to_ptxplus(ptx, info->cubin[selected_capability].cubin, source_num++,
-                                                                    context->get_device()->get_gpgpu()->saved_converted_ptxplus());
+                                                  context->get_device()->get_gpgpu()->get_config().saved_converted_ptxplus());
            symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str,source_num);
            context->add_binary(symtab,fat_cubin_handle);
            gpgpu_ptxinfo_load_from_string(ptx,source_num);

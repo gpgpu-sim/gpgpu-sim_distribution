@@ -37,8 +37,6 @@ void hit_watchpoint( unsigned watchpoint_num, ptx_thread_info *thd, const ptx_in
 
 /// interactive debugger 
 
-extern gpgpu_sim g_the_gpu;
-
 void gpgpu_sim::gpgpu_debug()
 {
    bool done=true;

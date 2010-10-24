@@ -75,153 +75,47 @@
 
 static void time_vector_print_interval2gzfile(gzFile outfile);
 
-bool g_visualizer_enabled;
-char *g_visualizer_filename;
-int g_visualizer_zlevel;
-
-void visualizer_options(option_parser_t opp)
-{
-   option_parser_register(opp, "-visualizer_enabled", OPT_BOOL,
-                          &g_visualizer_enabled, "Turn on visualizer output (1=On, 0=Off)",
-                          "1");
-
-   option_parser_register(opp, "-visualizer_outputfile", OPT_CSTR, 
-                          &g_visualizer_filename, "Specifies the output log file for visualizer",
-                          NULL);
-
-   option_parser_register(opp, "-visualizer_zlevel", OPT_INT32,
-                          &g_visualizer_zlevel, "Compression level of the visualizer output log (0=no comp, 9=highest)",
-                          "6");
-
-}
-
 void gpgpu_sim::visualizer_printstat()
 {
    gzFile visualizer_file = NULL; // gzFile is basically a pointer to a struct, so it is fine to initialize it as NULL
-   if ( !g_visualizer_enabled )
+   if ( !m_config.g_visualizer_enabled )
       return;
-   // initialize file name if it is not set 
-   if ( g_visualizer_filename == NULL ) {
-      time_t curr_time;
-      time(&curr_time);
-      char *date = ctime(&curr_time);
-      char *s = date;
-      while (*s) {
-         if (*s == ' ' || *s == '\t' || *s == ':') *s = '-';
-         if (*s == '\n' || *s == '\r' ) *s = 0;
-         s++;
-      }
-      char buf[1024];
-      snprintf(buf,1024,"gpgpusim_visualizer__%s.log.gz",date);
-      g_visualizer_filename = strdup(buf);
-   }
 
    // clean the content of the visualizer log if it is the first time, otherwise attach at the end
    static bool visualizer_first_printstat = true;
-   visualizer_file = gzopen(g_visualizer_filename, (visualizer_first_printstat)? "w" : "a");
+
+   visualizer_file = gzopen(m_config.g_visualizer_filename, (visualizer_first_printstat)? "w" : "a");
    if (visualizer_file == NULL) {
       printf("error - could not open visualizer trace file.\n");
       exit(1);
    }
-   gzsetparams(visualizer_file, g_visualizer_zlevel, Z_DEFAULT_STRATEGY);
+   gzsetparams(visualizer_file, m_config.g_visualizer_zlevel, Z_DEFAULT_STRATEGY);
    visualizer_first_printstat = false;
-
-   /*
-   // instruction count per shader core
-   gzprintf(visualizer_file, "shaderinsncount:  ");
-   for (unsigned i=0;i<m_n_shader;i++) 
-      gzprintf(visualizer_file, "%u ",m_sc[i]->get_num_sim_insn());
-   gzprintf(visualizer_file, "\n");
-
-   // warp divergence per shader core
-   gzprintf(visualizer_file, "shaderwarpdiv: ");
-   for (unsigned i=0;i<m_n_shader;i++) 
-      gzprintf(visualizer_file, "%u ", m_sc[i]->get_n_diverge());
-   gzprintf(visualizer_file, "\n");
-    */
-
+   
    cflog_visualizer_gzprint(visualizer_file);
    shader_CTA_count_visualizer_gzprint(visualizer_file);
 
    // per shader core cache miss rate 
-/*
-   gzprintf(visualizer_file, "CacheMissRate_GlobalLocalL1_All: ");
-   for (unsigned i=0;i<m_n_shader;i++) 
-      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1_windowed_cache_miss_rate(0));
-   gzprintf(visualizer_file, "\n");
-   gzprintf(visualizer_file, "CacheMissRate_TextureL1_All: ");
-   for (unsigned i=0;i<m_n_shader;i++) 
-      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1tex_windowed_cache_miss_rate(0));
-   gzprintf(visualizer_file, "\n");
-   gzprintf(visualizer_file, "CacheMissRate_ConstL1_All: ");
-   for (unsigned i=0;i<m_n_shader;i++) 
-      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1const_windowed_cache_miss_rate(0));
-   gzprintf(visualizer_file, "\n");
-   gzprintf(visualizer_file, "CacheMissRate_GlobalLocalL1_noMgHt: ");
-   for (unsigned i=0;i<m_n_shader;i++) 
-      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1_windowed_cache_miss_rate(1));
-   gzprintf(visualizer_file, "\n");
-   gzprintf(visualizer_file, "CacheMissRate_TextureL1_noMgHt: ");
-   for (unsigned i=0;i<m_n_shader;i++) 
-      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1tex_windowed_cache_miss_rate(1));
-   gzprintf(visualizer_file, "\n");
-   gzprintf(visualizer_file, "CacheMissRate_ConstL1_noMgHt: ");
-   for (unsigned i=0;i<m_n_shader;i++) 
-      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1const_windowed_cache_miss_rate(1));
-   gzprintf(visualizer_file, "\n");
-   // reset for next interval
-   for (unsigned i=0;i<m_n_shader;i++) 
-      m_sc[i]->new_cache_window();
-*/
 
    for (unsigned i=0;i<m_memory_config->m_n_mem;i++) 
       m_memory_partition_unit[i]->visualizer_print(visualizer_file);
+   m_shader_stats->visualizer_print(visualizer_file);
 
-   // overall cache miss rates
-   gzprintf(visualizer_file, "Lonetexturemiss: %d\n", m_shader_stats->L1_texture_miss);
-   gzprintf(visualizer_file, "Loneconstmiss: %d\n", m_shader_stats->L1_const_miss);
-   gzprintf(visualizer_file, "Lonereadmiss: %d\n", m_shader_stats->L1_read_miss);
-   gzprintf(visualizer_file, "Lonewritemiss: %d\n", m_shader_stats->L1_write_miss);
    gzprintf(visualizer_file, "Ltwowritemiss: %d\n", m_memory_stats->L2_write_miss);
    gzprintf(visualizer_file, "Ltwowritehit: %d\n",  m_memory_stats->L2_write_hit);
    gzprintf(visualizer_file, "Ltworeadmiss: %d\n", m_memory_stats->L2_read_miss);
    gzprintf(visualizer_file, "Ltworeadhit: %d\n", m_memory_stats->L2_read_hit);
 
    // latency stats
-   if (m_memory_stats->num_mfs) {
+   if (m_memory_stats->num_mfs) 
       gzprintf(visualizer_file, "averagemflatency: %lld\n", m_memory_stats->mf_total_lat/m_memory_stats->num_mfs);
-   }
 
    // other parameters for graphing
    gzprintf(visualizer_file, "globalcyclecount: %lld\n", gpu_sim_cycle);
    gzprintf(visualizer_file, "globalinsncount: %lld\n", gpu_sim_insn);
    gzprintf(visualizer_file, "globaltotinsncount: %lld\n", gpu_tot_sim_insn);
-   gzprintf(visualizer_file, "gpucompletedthreads: %lld\n", m_shader_stats->gpu_completed_thread);
-   gzprintf(visualizer_file, "gpgpu_n_cache_bkconflict: %d\n", m_shader_stats->gpgpu_n_cache_bkconflict);
-   gzprintf(visualizer_file, "gpgpu_n_shmem_bkconflict: %d\n", m_shader_stats->gpgpu_n_shmem_bkconflict);     
-   gzprintf(visualizer_file, "gpu_stall_by_MSHRwb: %d\n", m_shader_stats->gpu_stall_by_MSHRwb);   
 
-   // warp divergence breakdown
-   static unsigned int *last_shader_cycle_distro = NULL;
-   if (!last_shader_cycle_distro)
-      last_shader_cycle_distro = (unsigned int*) calloc(m_shader_config->warp_size + 3, sizeof(unsigned int));
    time_vector_print_interval2gzfile(visualizer_file);
-   gzprintf(visualizer_file, "WarpDivergenceBreakdown:");
-   unsigned int total=0;
-   unsigned int cf = (m_shader_config->gpgpu_warpdistro_shader==-1)?num_shader():1;
-   gzprintf(visualizer_file, " %d", (m_shader_stats->shader_cycle_distro[0] - last_shader_cycle_distro[0]) / cf );
-   gzprintf(visualizer_file, " %d", (m_shader_stats->shader_cycle_distro[2] - last_shader_cycle_distro[2]) / cf );
-   for (unsigned i=0; i<m_shader_config->warp_size+3; i++) {
-      if ( i>=3 ) {
-         total += (m_shader_stats->shader_cycle_distro[i] - last_shader_cycle_distro[i]);
-         if ( ((i-3) % (m_shader_config->warp_size/8)) == ((m_shader_config->warp_size/8)-1) ) {
-            gzprintf(visualizer_file, " %d", total / cf );
-            total=0;
-         }
-      }
-      last_shader_cycle_distro[i] = m_shader_stats->shader_cycle_distro[i];
-   }
-   gzprintf(visualizer_file,"\n");
 
    gzclose(visualizer_file);
 }

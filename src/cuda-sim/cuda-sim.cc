@@ -92,7 +92,6 @@ int g_debug_execution = 0;
 int g_debug_thread_uid = 0;
 addr_t g_debug_pc = 0xBEEF1518;
 // Output debug information to file options
-FILE* ptx_inst_debug_file;
 
 unsigned g_ptx_sim_num_insn = 0;
 unsigned gpgpu_param_num_shaders = 0;
@@ -140,9 +139,9 @@ void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* te
    int r;
 
    printf("GPGPU-Sim PTX:   texel size = %d\n", texel_size);
-   printf("GPGPU-Sim PTX:   texture cache linesize = %d\n", m_texcache_linesize);
+   printf("GPGPU-Sim PTX:   texture cache linesize = %d\n", m_function_model_config.get_texcache_linesize());
    //first determine base Tx size for given linesize
-   switch (m_texcache_linesize) {
+   switch (m_function_model_config.get_texcache_linesize()) {
    case 16:
       Tx = 4;
       break;
@@ -159,7 +158,7 @@ void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* te
       Tx = 16;
       break;
    default:
-      printf("GPGPU-Sim PTX:   Line size of %d bytes currently not supported.\n", m_texcache_linesize);
+      printf("GPGPU-Sim PTX:   Line size of %d bytes currently not supported.\n", m_function_model_config.get_texcache_linesize());
       assert(0);
       break;
    }
@@ -170,7 +169,7 @@ void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* te
       r = r >> 2;
    }
    //by now, got the correct Tx size, calculate correct Ty size
-   Ty = m_texcache_linesize/(Tx*texel_size);
+   Ty = m_function_model_config.get_texcache_linesize()/(Tx*texel_size);
 
    printf("GPGPU-Sim PTX:   Tx = %d; Ty = %d, Tx_numbits = %d, Ty_numbits = %d\n", Tx, Ty, intLOGB2(Tx), intLOGB2(Ty));
    printf("GPGPU-Sim PTX:   Texel size = %d bytes; texel_size_numbits = %d\n", texel_size, intLOGB2(texel_size));
@@ -850,7 +849,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
       printf("attempted to execute instruction on a thread that is already done.\n");
       assert(0);
    }
-   if ( g_debug_execution >= 6 || g_ptx_inst_debug_to_file) {
+   if ( g_debug_execution >= 6 || m_gpu->get_config().get_ptx_inst_debug_to_file()) {
       if ( (g_debug_thread_uid==0) || (get_uid() == (unsigned)g_debug_thread_uid) ) {
          clear_modifiedregs();
          enable_debug_trace();
@@ -889,17 +888,19 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
          exit_impl(pI,this);
    }
 
+   const gpgpu_functional_sim_config &config = m_gpu->get_config();
+   
    // Output instruction information to file and stdout
-   if( g_ptx_inst_debug_to_file != 0 && 
-        (g_ptx_inst_debug_thread_uid == 0 || g_ptx_inst_debug_thread_uid == get_uid()) ) {
+   if( config.get_ptx_inst_debug_to_file() != 0 && 
+        (config.get_ptx_inst_debug_thread_uid() == 0 || config.get_ptx_inst_debug_thread_uid() == get_uid()) ) {
       dim3 ctaid = get_ctaid();
       dim3 tid = get_tid();
-      fprintf(ptx_inst_debug_file,
+      fprintf(m_gpu->get_ptx_inst_debug_file(),
              "[thd=%u] : (%s:%u - %s)\n",
              get_uid(),
              pI->source_file(), pI->source_line(), pI->get_source() );
       //fprintf(ptx_inst_debug_file, "has memory read=%d, has memory write=%d\n", pI->has_memory_read(), pI->has_memory_write());
-      fflush(ptx_inst_debug_file);
+      fflush(m_gpu->get_ptx_inst_debug_file());
    }
 
    if ( ptx_debug_exec_dump_cond<5>(get_uid(), pc) ) {
@@ -965,10 +966,10 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
    }
 
    // Output register information to file and stdout
-   if( g_ptx_inst_debug_to_file != 0 && 
-        (g_ptx_inst_debug_thread_uid == 0 || g_ptx_inst_debug_thread_uid == get_uid()) ) {
-      dump_modifiedregs(ptx_inst_debug_file);
-      dump_regs(ptx_inst_debug_file);
+   if( config.get_ptx_inst_debug_to_file()!=0 && 
+       (config.get_ptx_inst_debug_thread_uid()==0||config.get_ptx_inst_debug_thread_uid()==get_uid()) ) {
+      dump_modifiedregs(m_gpu->get_ptx_inst_debug_file());
+      dump_regs(m_gpu->get_ptx_inst_debug_file());
    }
 
    if ( g_debug_execution >= 6 ) {
@@ -1031,7 +1032,7 @@ void set_param_gpgpu_num_shaders(int num_shaders)
    gpgpu_param_num_shaders = num_shaders;
 }
 
-const struct gpgpu_ptx_sim_kernel_info* ptx_sim_kernel_info(function_info *kernel) 
+const struct gpgpu_ptx_sim_kernel_info* ptx_sim_kernel_info(const function_info *kernel) 
 {
    return kernel->get_kernel_info();
 }
@@ -1466,12 +1467,6 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t kernel, dim3 gridDim, dim3 bloc
           (unsigned)days, (unsigned)hrs, (unsigned)minutes, (unsigned)sec, (unsigned)elapsed_time );
    printf("gpgpu_simulation_rate = %u (inst/sec)\n", (unsigned)(g_ptx_sim_num_insn / elapsed_time) );
    fflush(stdout); 
-}
-
-unsigned gpgpu_t::ptx_set_tex_cache_linesize(unsigned linesize)
-{
-   m_texcache_linesize = linesize;
-   return 0;
 }
 
 unsigned translate_pc_to_ptxlineno(unsigned pc)

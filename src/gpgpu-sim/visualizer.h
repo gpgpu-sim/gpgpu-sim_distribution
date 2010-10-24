@@ -65,8 +65,6 @@
 #include <stdio.h>
 #include <zlib.h>
 
-void visualizer_options(class OptionParser *opp);
-void visualizer_printstat( class shader_core_ctx **sc, unsigned n_shader, class dram_t **dram, unsigned n_mem );
 void time_vector_create(int size);
 void time_vector_print(void);
 void time_vector_update(unsigned int uid,int slot ,long int cycle,int type);

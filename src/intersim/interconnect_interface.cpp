@@ -395,8 +395,7 @@ extern int DISPLAY_PAIR_LATENCY ;
 
 void init_interconnect (char* config_file,
                         unsigned int n_shader, 
-                        unsigned int n_mem,
-                        struct shader_core_config *shader_config )
+                        unsigned int n_mem )
 {
    _n_shader = n_shader;
    _n_mem = n_mem;

@@ -279,9 +279,9 @@ public:
     void pdom_update_warp_mask();
 
     unsigned get_active_mask() const;
-    void get_pdom_stack_top_info( unsigned *pc, unsigned *rpc );
+    void     get_pdom_stack_top_info( unsigned *pc, unsigned *rpc ) const;
     unsigned get_rp() const;
-    void print(FILE*fp) const;
+    void     print(FILE*fp) const;
 
 private:
     unsigned m_warp_id;
@@ -735,6 +735,7 @@ public:
     virtual void cycle() = 0;
 
     // accessors
+    virtual unsigned clock_multiplier() const { return 1; }
     virtual bool can_issue( const warp_inst_t & ) const { return m_dispatch_reg->empty(); }
     virtual bool stallable() const = 0;
     virtual void print( FILE *fp ) const
@@ -837,16 +838,19 @@ public:
                Scoreboard *scoreboard,
                const shader_core_config *config, 
                const memory_config *mem_config,  
-               shader_core_stats *stats, 
+               class shader_core_stats *stats, 
                unsigned sid, unsigned tpc );
 
     // modifiers
-    virtual void cycle(); 
+    virtual void cycle();
+     
     void fill( mem_fetch *mf );
     void flush();
     void writeback();
 
     // accessors
+    virtual unsigned clock_multiplier() const;
+
     virtual bool can_issue( const warp_inst_t &inst ) const
     {
         switch(inst.op) {
@@ -908,59 +912,137 @@ struct shader_core_config : public core_config
 {
     void init()
     {
+        int ntok = sscanf(gpgpu_shader_core_pipeline_opt,"%d:%d", 
+                          &n_thread_per_shader,
+                          &warp_size);
+        if(ntok != 2) {
+           printf("GPGPU-Sim uArch: error while parsing configuration string gpgpu_shader_core_pipeline_opt\n");
+           abort();
+        }
         max_warps_per_shader =  n_thread_per_shader/warp_size;
         assert( !(n_thread_per_shader % warp_size) );
-
         max_sfu_latency = 32;
         max_sp_latency = 32;
-
         m_L1I_config.init();
         m_L1T_config.init();
         m_L1C_config.init();
         gpgpu_cache_texl1_linesize = m_L1T_config.get_line_sz();
         gpgpu_cache_constl1_linesize = m_L1C_config.get_line_sz();
-        
         m_valid = true;
     }
+    void reg_options(class OptionParser * opp );
+    unsigned max_cta( const kernel_info_t &k ) const;
+    unsigned num_shader() const { return n_simt_clusters*n_simt_cores_per_cluster; }
 
-   bool gpgpu_perfect_mem;
-   enum divergence_support_t model;
-   unsigned n_thread_per_shader;
-   unsigned max_warps_per_shader; 
-   unsigned max_cta_per_core; //Limit on number of concurrent CTAs in shader core
-   unsigned pdom_sched_type;
-
-   cache_config m_L1I_config;
-   cache_config m_L1T_config;
-   cache_config m_L1C_config;
-
-   unsigned n_mshr_per_shader;
-   bool gpgpu_dwf_reg_bankconflict;
-   int gpgpu_operand_collector_num_units_sp;
-   int gpgpu_operand_collector_num_units_sfu;
-   int gpgpu_operand_collector_num_units_mem;
-   bool gpgpu_stall_on_use;
-   //Shader core resources
-   unsigned gpgpu_shmem_size;
-   unsigned gpgpu_shader_registers;
-   int gpgpu_warpdistro_shader;
-   int gpgpu_shmem_port_per_bank;
-   unsigned gpgpu_num_reg_banks;
-   unsigned gpu_max_cta_per_shader; // TODO: modify this for fermi... computed based upon kernel 
+// data
+    char *gpgpu_shader_core_pipeline_opt;
+    bool gpgpu_perfect_mem;
+    enum divergence_support_t model;
+    unsigned n_thread_per_shader;
+    unsigned max_warps_per_shader; 
+    unsigned max_cta_per_core; //Limit on number of concurrent CTAs in shader core
+    
+    cache_config m_L1I_config;
+    cache_config m_L1T_config;
+    cache_config m_L1C_config;
+    
+    bool gpgpu_dwf_reg_bankconflict;
+    int gpgpu_operand_collector_num_units_sp;
+    int gpgpu_operand_collector_num_units_sfu;
+    int gpgpu_operand_collector_num_units_mem;
+    //Shader core resources
+    unsigned gpgpu_shader_registers;
+    int gpgpu_warpdistro_shader;
+    unsigned gpgpu_num_reg_banks;
+    unsigned gpu_max_cta_per_shader; // TODO: modify this for fermi... computed based upon kernel 
                                     // resource usage; used in shader_core_ctx::translate_local_memaddr 
-   bool gpgpu_reg_bank_use_warp_id;
-   bool gpgpu_local_mem_map;
-   int gpu_padded_cta_size;
+    bool gpgpu_reg_bank_use_warp_id;
+    bool gpgpu_local_mem_map;
+    int gpu_padded_cta_size;
+    
+    unsigned max_sp_latency;
+    unsigned max_sfu_latency;
+    
+    unsigned n_simt_cores_per_cluster;
+    unsigned n_simt_clusters;
+    unsigned n_simt_ejection_buffer_size;
+    unsigned ldst_unit_response_queue_size;
+    
+    unsigned mem2device(unsigned memid) const { return memid + n_simt_clusters; }
+};
 
-   unsigned max_sp_latency;
-   unsigned max_sfu_latency;
+struct shader_core_stats_pod {
+   unsigned gpgpu_n_load_insn;
+   unsigned gpgpu_n_store_insn;
+   unsigned gpgpu_n_shmem_insn;
+   unsigned gpgpu_n_tex_insn;
+   unsigned gpgpu_n_const_insn;
+   unsigned gpgpu_n_param_insn;
+   unsigned gpgpu_n_shmem_bkconflict;
+   unsigned gpgpu_n_cache_bkconflict;
+   int      gpgpu_n_intrawarp_mshr_merge;
+   unsigned gpgpu_n_cmem_portconflict;
+   unsigned gpu_stall_shd_mem_breakdown[N_MEM_STAGE_ACCESS_TYPE][N_MEM_STAGE_STALL_TYPE];
+   unsigned gpu_reg_bank_conflict_stalls;
+   unsigned *shader_cycle_distro;
+   unsigned *last_shader_cycle_distro;
+   unsigned L1_write_miss;
+   unsigned L1_read_miss;
+   unsigned L1_texture_miss;
+   unsigned L1_const_miss;
+   unsigned L1_write_hit_on_miss;
+   unsigned L1_writeback;
+   unsigned long long  gpu_sim_insn_no_ld_const;
+   unsigned long long  gpu_completed_thread;
+   unsigned gpgpu_commit_pc_beyond_two;
+   unsigned gpu_stall_shd_mem;
+   unsigned gpu_stall_sh2icnt;
+   int *num_warps_issuable;
+   int *num_warps_issuable_pershader;
 
-   unsigned n_simt_cores_per_cluster;
-   unsigned n_simt_clusters;
-   unsigned n_simt_ejection_buffer_size;
-   unsigned ldst_unit_response_queue_size;
+   //memory access classification
+   int gpgpu_n_mem_read_local;
+   int gpgpu_n_mem_write_local;
+   int gpgpu_n_mem_texture;
+   int gpgpu_n_mem_const;
+   int gpgpu_n_mem_read_global;
+   int gpgpu_n_mem_write_global;
+   int gpgpu_n_mem_read_inst;
 
-   unsigned mem2device(unsigned memid) const { return memid + n_simt_clusters; }
+   unsigned made_write_mfs;
+   unsigned made_read_mfs;
+};
+
+class shader_core_stats : private shader_core_stats_pod {
+public:
+    shader_core_stats( const shader_core_config *config )
+    {
+        m_config = config;
+        shader_core_stats_pod *pod = this;
+        memset(pod,0,sizeof(shader_core_stats_pod));
+
+        num_warps_issuable = (int*) calloc(config->max_warps_per_shader+1, sizeof(int));
+        num_warps_issuable_pershader = (int*) calloc(config->n_simt_clusters*config->n_simt_cores_per_cluster, sizeof(int));
+        shader_cycle_distro = (unsigned int*) calloc(config->warp_size+3, sizeof(unsigned int));
+        last_shader_cycle_distro = (unsigned int*) calloc(m_config->warp_size+3, sizeof(unsigned int));
+    }
+    void new_grid()
+    {
+        gpu_sim_insn_no_ld_const = 0;
+        gpu_completed_thread = 0;
+    }
+
+    void visualizer_print( gzFile visualizer_file );
+
+    unsigned long long get_gpu_completed_thread() const { return gpu_completed_thread; }
+    void print( FILE *fout ) const;
+
+private:
+    const shader_core_config *m_config;
+
+    friend class shader_core_ctx;
+    friend class ldst_unit;
+    friend class simt_core_cluster;
 };
 
 class shader_core_ctx : public core_t 
@@ -972,17 +1054,16 @@ public:
                     unsigned tpc_id,
                     const struct shader_core_config *config,
                     const struct memory_config *mem_config,
-                    struct shader_core_stats *stats );
+                    shader_core_stats *stats );
 
    void issue_block2core( class kernel_info_t &kernel );
-   void get_pdom_stack_top_info( unsigned tid, unsigned *pc, unsigned *rpc );
+   void get_pdom_stack_top_info( unsigned tid, unsigned *pc, unsigned *rpc ) const;
    bool ptx_thread_done( unsigned hw_thread_id ) const;
    class ptx_thread_info *get_thread_state( unsigned hw_thread_id );
+   void mem_instruction_stats(const warp_inst_t &inst);
 
-   virtual void set_at_barrier( unsigned cta_id, unsigned warp_id );
    virtual void warp_exit( unsigned warp_id );
    virtual bool warp_waiting_at_barrier( unsigned warp_id ) const;
-   virtual bool warp_waiting_for_atomics( unsigned warp_id ) const;
    virtual class gpgpu_sim *get_gpu();
    void set_at_memory_barrier( unsigned warp_id );
    bool warp_waiting_at_mem_barrier( unsigned warp_id );
@@ -995,17 +1076,16 @@ public:
    void reinit(unsigned start_thread, unsigned end_thread, bool reset_not_completed );
    void init_warps(unsigned cta_id, unsigned start_thread, unsigned end_thread);
 
-   unsigned max_cta( class function_info *kernel );
    void cache_flush();
-   void display_pdom_state(FILE *fout, int mask );
-   void display_pipeline( FILE *fout, int print_mem, int mask3bit );
+   void display_pdom_state(FILE *fout, int mask ) const;
+   void display_pipeline( FILE *fout, int print_mem, int mask3bit ) const;
    void register_cta_thread_exit(int cta_num );
    bool fetch_unit_response_buffer_full() const;
    void accept_fetch_response( mem_fetch *mf );
    bool ldst_unit_response_buffer_full();
    void accept_ldst_unit_response( class mem_fetch * mf );
    void store_ack( class mem_fetch *mf );
-   void dump_istream_state( FILE *fout );
+
    class ptx_thread_info* get_functional_thread( unsigned tid ) { return m_thread[tid].m_functional_model_thread_state; }
    std::list<unsigned> get_regs_written( const inst_t &fvt ) const;
    const shader_core_config *get_config() const { return m_config; }
@@ -1020,8 +1100,9 @@ public:
    unsigned get_n_active_cta() const { return m_n_active_cta; }
    void inc_store_req( unsigned warp_id) { m_warp[warp_id].inc_store_req(); }
    void dec_inst_in_pipeline( unsigned warp_id ) { m_warp[warp_id].dec_inst_in_pipeline(); }
-  
+
 private:
+   void dump_istream_state( FILE *fout ) const;
 
    address_type next_pc( int tid ) const;
 
@@ -1047,9 +1128,9 @@ private:
    class gpgpu_sim *m_gpu;
 
    // statistics 
-   struct shader_core_stats *m_stats; // pointer to single object shared by all shader cores in GPU
+   shader_core_stats *m_stats;
    unsigned int m_num_sim_insn; // number of instructions committed by this shader core
-   unsigned int m_n_diverge; // number of divergence occurred in this shader
+   unsigned int m_n_diverge;    // number of divergence occurred in this shader
 
    // CTA scheduling / hardware thread allocation
    int m_n_active_cta; // number of Cooperative Thread Arrays (blocks) currently running on this shader.
@@ -1092,30 +1173,28 @@ public:
                        unsigned cluster_id, 
                        const struct shader_core_config *config, 
                        const struct memory_config *mem_config,
-                       struct shader_core_stats *stats );
+                       shader_core_stats *stats );
 
     void core_cycle();
     void icnt_cycle();
 
     void reinit();
-    unsigned max_cta( class function_info *kernel );
-    int get_not_completed() const;
-    unsigned get_n_active_cta() const;
-    void issue_block2core( class kernel_info_t &kernel );
+    unsigned issue_block2core( class kernel_info_t &kernel );
     void cache_flush();
-
     bool icnt_injection_buffer_full(unsigned size, bool write);
     void icnt_inject_request_packet(class mem_fetch *mf);
-    void mem_instruction_stats(const class warp_inst_t &inst);
-    void get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc );
 
+    void get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc ) const;
+    unsigned max_cta( const kernel_info_t &kernel );
+    unsigned get_not_completed() const;
+    unsigned get_n_active_cta() const;
     gpgpu_sim *get_gpu() { return m_gpu; }
 
     void display_pipeline( unsigned sid, FILE *fout, int print_mem, int mask );
 
 private:
-    unsigned sid_to_cid( unsigned sid ) { return sid % m_config->n_simt_cores_per_cluster; }
-    unsigned cid_to_sid( unsigned cid ) { return m_cluster_id*m_config->n_simt_cores_per_cluster + cid; }
+    unsigned sid_to_cid( unsigned sid ) const { return sid % m_config->n_simt_cores_per_cluster; }
+    unsigned cid_to_sid( unsigned cid ) const { return m_cluster_id*m_config->n_simt_cores_per_cluster + cid; }
 
     unsigned m_cluster_id;
     gpgpu_sim *m_gpu;
@@ -1129,19 +1208,20 @@ private:
 
 class shader_memory_interface : public mem_fetch_interface {
 public:
-    shader_memory_interface( simt_core_cluster *port ) { m_port=port; }
+    shader_memory_interface( shader_core_ctx *core, simt_core_cluster *cluster ) { m_core=core; m_cluster=cluster; }
     virtual bool full( unsigned size, bool write ) const 
     {
-        return m_port->icnt_injection_buffer_full(size,write);
+        return m_cluster->icnt_injection_buffer_full(size,write);
     }
     virtual void push(mem_fetch *mf) 
     {
     	if( !mf->get_inst().empty() ) 
-    	    m_port->mem_instruction_stats(mf->get_inst()); // not I$-fetch
-        m_port->icnt_inject_request_packet(mf);
+    	    m_core->mem_instruction_stats(mf->get_inst()); // not I$-fetch
+        m_cluster->icnt_inject_request_packet(mf);
     }
 private:
-    simt_core_cluster *m_port;
+    shader_core_ctx *m_core;
+    simt_core_cluster *m_cluster;
 };
 
 #endif /* SHADER_H */

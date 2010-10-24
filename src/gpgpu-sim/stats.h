@@ -66,8 +66,6 @@
 #ifndef STATS_INCLUDED
 #define STATS_INCLUDED
 
-
-
 enum mem_stage_access_type {
    C_MEM,
    T_MEM,
@@ -90,50 +88,5 @@ enum mem_stage_stall_type {
    N_MEM_STAGE_STALL_TYPE
 };
 
-struct shader_core_stats
-{
-   unsigned int gpgpu_n_load_insn;
-   unsigned int gpgpu_n_store_insn;
-   unsigned int gpgpu_n_shmem_insn;
-   unsigned int gpgpu_n_tex_insn;
-   unsigned int gpgpu_n_const_insn;
-   unsigned int gpgpu_n_param_insn;
-   unsigned int gpgpu_n_shmem_bkconflict;
-   unsigned int gpgpu_n_cache_bkconflict;
-   int          gpgpu_n_intrawarp_mshr_merge;
-   unsigned int gpgpu_n_cmem_portconflict;
-   unsigned int gpu_stall_shd_mem_breakdown[N_MEM_STAGE_ACCESS_TYPE][N_MEM_STAGE_STALL_TYPE];
-   unsigned int gpu_reg_bank_conflict_stalls;
-   unsigned int *shader_cycle_distro;
-   unsigned int L1_write_miss;
-   unsigned int L1_read_miss;
-   unsigned int L1_texture_miss;
-   unsigned int L1_const_miss;
-   unsigned int L1_write_hit_on_miss;
-   unsigned int L1_writeback;
-   int *num_warps_issuable;
-   int *num_warps_issuable_pershader;
-   unsigned long long  gpu_sim_insn_no_ld_const;
-   unsigned long long  gpu_completed_thread;
-   unsigned int gpgpu_commit_pc_beyond_two;
-   unsigned int gpu_stall_by_MSHRwb;
-   unsigned int gpu_stall_shd_mem;
-   unsigned int gpu_stall_sh2icnt;
-
-   //memory access classification
-   int gpgpu_n_mem_read_local;
-   int gpgpu_n_mem_write_local;
-   int gpgpu_n_mem_texture;
-   int gpgpu_n_mem_const;
-   int gpgpu_n_mem_read_global;
-   int gpgpu_n_mem_write_global;
-   int gpgpu_n_mem_read_inst;
-
-   int n_pdom_sc_orig_stat;
-   int n_pdom_sc_single_stat;
-
-   unsigned made_write_mfs;
-   unsigned made_read_mfs;
-};
 
 #endif

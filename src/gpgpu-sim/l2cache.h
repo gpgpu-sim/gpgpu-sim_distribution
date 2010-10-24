@@ -77,7 +77,7 @@ class mem_fetch;
 class memory_partition_unit 
 {
 public:
-   memory_partition_unit( unsigned partition_id, struct memory_config *config, class memory_stats_t *stats );
+   memory_partition_unit( unsigned partition_id, const struct memory_config *config, class memory_stats_t *stats );
    ~memory_partition_unit(); 
 
    bool busy() const;

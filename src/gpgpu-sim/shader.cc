@@ -107,7 +107,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                   unsigned tpc_id,
                                   const struct shader_core_config *config,
                                   const struct memory_config *mem_config,
-                                  struct shader_core_stats *stats )
+                                  shader_core_stats *stats )
    : m_barriers( config->max_warps_per_shader, config->max_cta_per_core )
 {
    m_gpu = gpu;
@@ -135,7 +135,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
       m_thread[i].m_cta_id = -1;
    }
    
-   m_icnt = new shader_memory_interface(cluster);
+   m_icnt = new shader_memory_interface(this,cluster);
 
    // fetch
    m_last_warp_fetched = 0;
@@ -320,13 +320,13 @@ void gpgpu_sim::get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *p
     m_cluster[cluster_id]->get_pdom_stack_top_info(sid,tid,pc,rpc);
 }
 
-void shader_core_ctx::get_pdom_stack_top_info( unsigned tid, unsigned *pc, unsigned *rpc )
+void shader_core_ctx::get_pdom_stack_top_info( unsigned tid, unsigned *pc, unsigned *rpc ) const
 {
     unsigned warp_id = tid/m_config->warp_size;
     m_pdom_warp[warp_id]->get_pdom_stack_top_info(pc,rpc);
 }
 
-void pdom_warp_ctx_t::get_pdom_stack_top_info( unsigned *pc, unsigned *rpc )
+void pdom_warp_ctx_t::get_pdom_stack_top_info( unsigned *pc, unsigned *rpc ) const
 {
    *pc = m_pc[m_stack_top];
    *rpc = m_recvg_pc[m_stack_top];
@@ -364,18 +364,176 @@ void pdom_warp_ctx_t::print (FILE *fout) const
     }
 }
 
-void gpgpu_sim::print_shader_cycle_distro( FILE *fout ) const
+void shader_core_stats::print( FILE* fout ) const
 {
+    fprintf(fout,"gpu_sim_no_ld_const_insn = %lld\n", gpu_sim_insn_no_ld_const);
+    fprintf(fout,"gpu_completed_thread = %lld\n", gpu_completed_thread);
+    fprintf(fout,"gpu_stall_shd_mem = %d\n", gpu_stall_shd_mem );
+    fprintf(fout,"gpu_stall_sh2icnt = %d\n", gpu_stall_sh2icnt   );
+    fprintf(fout,"L1 read misses = %d\n", L1_read_miss);
+    fprintf(fout,"L1 write misses = %d\n", L1_write_miss);
+    fprintf(fout,"L1 write hit on misses = %d\n", L1_write_hit_on_miss);
+    fprintf(fout,"L1 writebacks = %d\n", L1_writeback);
+    fprintf(fout,"L1 texture misses = %d\n", L1_texture_miss);
+    fprintf(fout,"L1 const misses = %d\n", L1_const_miss);
+    fprintf(fout,"gpgpu_n_mem_read_local = %d\n", gpgpu_n_mem_read_local);
+    fprintf(fout,"gpgpu_n_mem_write_local = %d\n", gpgpu_n_mem_write_local);
+    fprintf(fout,"gpgpu_n_mem_read_global = %d\n", gpgpu_n_mem_read_global);
+    fprintf(fout,"gpgpu_n_mem_write_global = %d\n", gpgpu_n_mem_write_global);
+    fprintf(fout,"gpgpu_n_mem_texture = %d\n", gpgpu_n_mem_texture);
+    fprintf(fout,"gpgpu_n_mem_const = %d\n", gpgpu_n_mem_const);
+    if( m_config->model == POST_DOMINATOR) {
+       fprintf(fout,"num_warps_issuable:");
+       for (unsigned i=0;i<(m_config->max_warps_per_shader+1);i++) 
+          fprintf(fout,"%d ", num_warps_issuable[i]);
+       fprintf(fout,"\n");
+    }
+    fprintf(fout,"gpgpu_commit_pc_beyond_two = %d\n",gpgpu_commit_pc_beyond_two);
+/*
+   unsigned a,m;
+   for (unsigned i=0, a=0, m=0;i<m_n_shader;i++) 
+      m_sc[i]->L1cache_print(stdout,a,m);
+   printf("L1 Data Cache Total Miss Rate = %0.3f\n", (float)m/a);
+   for (i=0,a=0,m=0;i<m_n_shader;i++) 
+       m_sc[i]->L1texcache_print(stdout,a,m);
+   printf("L1 Texture Cache Total Miss Rate = %0.3f\n", (float)m/a);
+   for (i=0,a=0,m=0;i<m_n_shader;i++) 
+       m_sc[i]->L1constcache_print(stdout,a,m);
+   printf("L1 Const Cache Total Miss Rate = %0.3f\n", (float)m/a);
+*/
+   fprintf(fout, "gpgpu_n_load_insn  = %d\n", gpgpu_n_load_insn);
+   fprintf(fout, "gpgpu_n_store_insn = %d\n", gpgpu_n_store_insn);
+   fprintf(fout, "gpgpu_n_shmem_insn = %d\n", gpgpu_n_shmem_insn);
+   fprintf(fout, "gpgpu_n_tex_insn = %d\n", gpgpu_n_tex_insn);
+   fprintf(fout, "gpgpu_n_const_mem_insn = %d\n", gpgpu_n_const_insn);
+   fprintf(fout, "gpgpu_n_param_mem_insn = %d\n", gpgpu_n_param_insn);
+
+   fprintf(fout, "gpgpu_n_shmem_bkconflict = %d\n", gpgpu_n_shmem_bkconflict);
+   fprintf(fout, "gpgpu_n_cache_bkconflict = %d\n", gpgpu_n_cache_bkconflict);   
+
+   fprintf(fout, "gpgpu_n_intrawarp_mshr_merge = %d\n", gpgpu_n_intrawarp_mshr_merge);
+   fprintf(fout, "gpgpu_n_cmem_portconflict = %d\n", gpgpu_n_cmem_portconflict);
+
+   fprintf(fout, "gpgpu_stall_shd_mem[c_mem][bk_conf] = %d\n", gpu_stall_shd_mem_breakdown[C_MEM][BK_CONF]);
+   fprintf(fout, "gpgpu_stall_shd_mem[c_mem][mshr_rc] = %d\n", gpu_stall_shd_mem_breakdown[C_MEM][MSHR_RC_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[c_mem][icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[C_MEM][ICNT_RC_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[t_mem][mshr_rc] = %d\n", gpu_stall_shd_mem_breakdown[T_MEM][MSHR_RC_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[t_mem][icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[T_MEM][ICNT_RC_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[s_mem][bk_conf] = %d\n", gpu_stall_shd_mem_breakdown[S_MEM][BK_CONF]);
+   fprintf(fout, "gpgpu_stall_shd_mem[gl_mem][bk_conf] = %d\n", 
+           gpu_stall_shd_mem_breakdown[G_MEM_LD][BK_CONF] + 
+           gpu_stall_shd_mem_breakdown[G_MEM_ST][BK_CONF] + 
+           gpu_stall_shd_mem_breakdown[L_MEM_LD][BK_CONF] + 
+           gpu_stall_shd_mem_breakdown[L_MEM_ST][BK_CONF]   
+           ); // coalescing stall at data cache 
+   fprintf(fout, "gpgpu_stall_shd_mem[gl_mem][coal_stall] = %d\n", 
+           gpu_stall_shd_mem_breakdown[G_MEM_LD][COAL_STALL] + 
+           gpu_stall_shd_mem_breakdown[G_MEM_ST][COAL_STALL] + 
+           gpu_stall_shd_mem_breakdown[L_MEM_LD][COAL_STALL] + 
+           gpu_stall_shd_mem_breakdown[L_MEM_ST][COAL_STALL]    
+           ); // coalescing stall + bank conflict at data cache 
+   fprintf(fout, "gpgpu_stall_shd_mem[g_mem_ld][mshr_rc] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_LD][MSHR_RC_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[g_mem_ld][icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_LD][ICNT_RC_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[g_mem_ld][wb_icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_LD][WB_ICNT_RC_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[g_mem_ld][wb_rsrv_fail] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_LD][WB_CACHE_RSRV_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[g_mem_st][mshr_rc] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_ST][MSHR_RC_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[g_mem_st][icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_ST][ICNT_RC_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[g_mem_st][wb_icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_ST][WB_ICNT_RC_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[g_mem_st][wb_rsrv_fail] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_ST][WB_CACHE_RSRV_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[l_mem_ld][mshr_rc] = %d\n", gpu_stall_shd_mem_breakdown[L_MEM_LD][MSHR_RC_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[l_mem_ld][icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[L_MEM_LD][ICNT_RC_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[l_mem_ld][wb_icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[L_MEM_LD][WB_ICNT_RC_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[l_mem_ld][wb_rsrv_fail] = %d\n", gpu_stall_shd_mem_breakdown[L_MEM_LD][WB_CACHE_RSRV_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[l_mem_st][mshr_rc] = %d\n", gpu_stall_shd_mem_breakdown[L_MEM_ST][MSHR_RC_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[l_mem_st][icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[L_MEM_ST][ICNT_RC_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[l_mem_ld][wb_icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[L_MEM_ST][WB_ICNT_RC_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[l_mem_ld][wb_rsrv_fail] = %d\n", gpu_stall_shd_mem_breakdown[L_MEM_ST][WB_CACHE_RSRV_FAIL]);
+
+   fprintf(fout, "gpu_reg_bank_conflict_stalls = %d\n", gpu_reg_bank_conflict_stalls);
+
    fprintf(fout, "Warp Occupancy Distribution:\n");
-   fprintf(fout, "Stall:%d\t", m_shader_stats->shader_cycle_distro[0]);
-   fprintf(fout, "W0_Idle:%d\t", m_shader_stats->shader_cycle_distro[1]);
-   fprintf(fout, "W0_Mem:%d", m_shader_stats->shader_cycle_distro[2]);
-   for (unsigned i = 3; i < m_shader_config->warp_size + 3; i++) {
-      fprintf(fout, "\tW%d:%d", i-2, m_shader_stats->shader_cycle_distro[i]);
-   }
+   fprintf(fout, "Stall:%d\t", shader_cycle_distro[0]);
+   fprintf(fout, "W0_Idle:%d\t", shader_cycle_distro[1]);
+   fprintf(fout, "W0_Mem:%d", shader_cycle_distro[2]);
+   for (unsigned i = 3; i < m_config->warp_size + 3; i++) 
+      fprintf(fout, "\tW%d:%d", i-2, shader_cycle_distro[i]);
    fprintf(fout, "\n");
 }
 
+void shader_core_stats::visualizer_print( gzFile visualizer_file )
+{
+    // warp divergence breakdown
+    gzprintf(visualizer_file, "WarpDivergenceBreakdown:");
+    unsigned int total=0;
+    unsigned int cf = (m_config->gpgpu_warpdistro_shader==-1)?m_config->num_shader():1;
+    gzprintf(visualizer_file, " %d", (shader_cycle_distro[0] - last_shader_cycle_distro[0]) / cf );
+    gzprintf(visualizer_file, " %d", (shader_cycle_distro[1] - last_shader_cycle_distro[1]) / cf );
+    gzprintf(visualizer_file, " %d", (shader_cycle_distro[2] - last_shader_cycle_distro[2]) / cf );
+    for (unsigned i=0; i<m_config->warp_size+3; i++) {
+       if ( i>=3 ) {
+          total += (shader_cycle_distro[i] - last_shader_cycle_distro[i]);
+          if ( ((i-3) % (m_config->warp_size/8)) == ((m_config->warp_size/8)-1) ) {
+             gzprintf(visualizer_file, " %d", total / cf );
+             total=0;
+          }
+       }
+       last_shader_cycle_distro[i] = shader_cycle_distro[i];
+    }
+    gzprintf(visualizer_file,"\n");
+
+    // overall cache miss rates
+    gzprintf(visualizer_file, "Lonetexturemiss: %d\n", L1_texture_miss);
+    gzprintf(visualizer_file, "Loneconstmiss: %d\n", L1_const_miss);
+    gzprintf(visualizer_file, "Lonereadmiss: %d\n", L1_read_miss);
+    gzprintf(visualizer_file, "Lonewritemiss: %d\n", L1_write_miss);
+    gzprintf(visualizer_file, "gpucompletedthreads: %lld\n", gpu_completed_thread);
+    gzprintf(visualizer_file, "gpgpu_n_cache_bkconflict: %d\n", gpgpu_n_cache_bkconflict);
+    gzprintf(visualizer_file, "gpgpu_n_shmem_bkconflict: %d\n", gpgpu_n_shmem_bkconflict);     
+
+/*
+   // instruction count per shader core
+   gzprintf(visualizer_file, "shaderinsncount:  ");
+   for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) 
+       for (unsigned j=0;j<m_shader_config->n_simt_cores_per_cluster;j++) 
+      gzprintf(visualizer_file, "%u ",m_cluster[i]->get_core(j)->get_core_stats()->m_icount);
+   gzprintf(visualizer_file, "\n");
+   // warp divergence per shader core
+   gzprintf(visualizer_file, "shaderwarpdiv: ");
+   for (unsigned i=0;i<m_n_shader;i++) 
+      gzprintf(visualizer_file, "%u ", m_sc[i]->get_n_diverge());
+   gzprintf(visualizer_file, "\n");
+*/ 
+
+/*
+   gzprintf(visualizer_file, "CacheMissRate_GlobalLocalL1_All: ");
+   for (unsigned i=0;i<m_n_shader;i++) 
+      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1_windowed_cache_miss_rate(0));
+   gzprintf(visualizer_file, "\n");
+   gzprintf(visualizer_file, "CacheMissRate_TextureL1_All: ");
+   for (unsigned i=0;i<m_n_shader;i++) 
+      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1tex_windowed_cache_miss_rate(0));
+   gzprintf(visualizer_file, "\n");
+   gzprintf(visualizer_file, "CacheMissRate_ConstL1_All: ");
+   for (unsigned i=0;i<m_n_shader;i++) 
+      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1const_windowed_cache_miss_rate(0));
+   gzprintf(visualizer_file, "\n");
+   gzprintf(visualizer_file, "CacheMissRate_GlobalLocalL1_noMgHt: ");
+   for (unsigned i=0;i<m_n_shader;i++) 
+      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1_windowed_cache_miss_rate(1));
+   gzprintf(visualizer_file, "\n");
+   gzprintf(visualizer_file, "CacheMissRate_TextureL1_noMgHt: ");
+   for (unsigned i=0;i<m_n_shader;i++) 
+      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1tex_windowed_cache_miss_rate(1));
+   gzprintf(visualizer_file, "\n");
+   gzprintf(visualizer_file, "CacheMissRate_ConstL1_noMgHt: ");
+   for (unsigned i=0;i<m_n_shader;i++) 
+      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1const_windowed_cache_miss_rate(1));
+   gzprintf(visualizer_file, "\n");
+   // reset for next interval
+   for (unsigned i=0;i<m_n_shader;i++) 
+      m_sc[i]->new_cache_window();
+*/
+}
 
 #define PROGRAM_MEM_START 0xF0000000 /* should be distinct from other memory spaces... 
                                         check ptx_ir.h to verify this does not overlap 
@@ -487,9 +645,10 @@ void shader_core_ctx::issue_warp( warp_inst_t *&pipe_reg, const warp_inst_t *nex
     assert(next_inst->valid());
     *pipe_reg = *next_inst; // static instruction information
     pipe_reg->issue( active_mask, warp_id, gpu_tot_sim_cycle + gpu_sim_cycle ); // dynamic instruction information
+    m_stats->shader_cycle_distro[2+pipe_reg->active_count()]++;
     func_exec_inst( *pipe_reg );
     if( next_inst->op == BARRIER_OP ) 
-       set_at_barrier(m_warp[warp_id].get_cta_id(),warp_id);
+        m_barriers.warp_reaches_barrier(m_warp[warp_id].get_cta_id(),warp_id);
     else if( next_inst->op == MEMORY_BARRIER_OP ) 
        set_at_memory_barrier(warp_id);
     m_pdom_warp[warp_id]->pdom_update_warp_mask();
@@ -499,6 +658,10 @@ void shader_core_ctx::issue_warp( warp_inst_t *&pipe_reg, const warp_inst_t *nex
 
 void shader_core_ctx::decode()
 {
+    bool valid_inst = false;  // there was one warp with a valid instruction to issue (didn't require flush due to control hazard)
+    bool ready_inst = false;  // of the valid instructions, there was one not waiting for pending register writes
+    bool issued_inst = false; // of these we issued one
+
     for ( unsigned i=0; i < m_config->max_warps_per_shader; i++ ) {
         unsigned warp_id = (m_last_warp_issued+1+i) % m_config->max_warps_per_shader;
         unsigned checked=0;
@@ -514,27 +677,34 @@ void shader_core_ctx::decode()
                     // control hazard
                     m_warp[warp_id].set_next_pc(pc);
                     m_warp[warp_id].ibuffer_flush();
-                } else if ( !m_scoreboard->checkCollision(warp_id, pI) ) {
-                    unsigned active_mask = m_pdom_warp[warp_id]->get_active_mask();
-                    assert( m_warp[warp_id].inst_in_pipeline() );
-                    if ( (pI->op == LOAD_OP) || (pI->op == STORE_OP) || (pI->op == MEMORY_BARRIER_OP) ) {
-                        if( m_pipeline_reg[ID_OC_MEM]->empty() ) {
-                            issue_warp(m_pipeline_reg[ID_OC_MEM],pI,active_mask,warp_id);
-                            issued++;
-                        }
-                    } else {
-                        bool sp_pipe_avail = m_pipeline_reg[ID_OC_SP]->empty();
-                        bool sfu_pipe_avail = m_pipeline_reg[ID_OC_SFU]->empty();
-                        if( sp_pipe_avail && (pI->op != SFU_OP) ) {
-                            // always prefer SP pipe for operations that can use both SP and SFU pipelines
-                            issue_warp(m_pipeline_reg[ID_OC_SP],pI,active_mask,warp_id);
-                            issued++;
-                        } else if ( (pI->op == SFU_OP) || (pI->op == ALU_SFU_OP) ) {
-                            if( sfu_pipe_avail ) {
-                                issue_warp(m_pipeline_reg[ID_OC_SFU],pI,active_mask,warp_id);
+                } else {
+                    valid_inst = true;
+                    if ( !m_scoreboard->checkCollision(warp_id, pI) ) {
+                        ready_inst = true;
+                        unsigned active_mask = m_pdom_warp[warp_id]->get_active_mask();
+                        assert( m_warp[warp_id].inst_in_pipeline() );
+                        if ( (pI->op == LOAD_OP) || (pI->op == STORE_OP) || (pI->op == MEMORY_BARRIER_OP) ) {
+                            if( m_pipeline_reg[ID_OC_MEM]->empty() ) {
+                                issue_warp(m_pipeline_reg[ID_OC_MEM],pI,active_mask,warp_id);
                                 issued++;
+                                issued_inst=true;
                             }
-                        } 
+                        } else {
+                            bool sp_pipe_avail = m_pipeline_reg[ID_OC_SP]->empty();
+                            bool sfu_pipe_avail = m_pipeline_reg[ID_OC_SFU]->empty();
+                            if( sp_pipe_avail && (pI->op != SFU_OP) ) {
+                                // always prefer SP pipe for operations that can use both SP and SFU pipelines
+                                issue_warp(m_pipeline_reg[ID_OC_SP],pI,active_mask,warp_id);
+                                issued++;
+                                issued_inst=true;
+                            } else if ( (pI->op == SFU_OP) || (pI->op == ALU_SFU_OP) ) {
+                                if( sfu_pipe_avail ) {
+                                    issue_warp(m_pipeline_reg[ID_OC_SFU],pI,active_mask,warp_id);
+                                    issued++;
+                                    issued_inst=true;
+                                }
+                            } 
+                        }
                     }
                 }
             } else if( valid ) {
@@ -550,6 +720,19 @@ void shader_core_ctx::decode()
             break;
         } 
     }
+
+//  fprintf(fout, "Stall:%d\t", m_shader_stats->shader_cycle_distro[0]);
+//  fprintf(fout, "W0_Idle:%d\t", m_shader_stats->shader_cycle_distro[1]);
+//  fprintf(fout, "W0_Mem:%d", m_shader_stats->shader_cycle_distro[2]);
+
+    // statistics:
+    if( !valid_inst ) 
+        m_stats->shader_cycle_distro[0]++; // idle or control hazard
+    else if( !ready_inst ) 
+        m_stats->shader_cycle_distro[1]++; // waiting for RAW hazards (possibly due to memory) 
+    else if( !issued_inst ) 
+        m_stats->shader_cycle_distro[2]++; // pipeline stalled
+    
 }
 
 address_type coalesced_segment(address_type addr, unsigned segment_size_lg2bytes)
@@ -589,7 +772,9 @@ void shader_core_ctx::execute()
 {
     m_result_bus >>= 1;
     for( unsigned n=0; n < m_num_function_units; n++ ) {
-        m_fu[n]->cycle();
+        unsigned multiplier = m_fu[n]->clock_multiplier();
+        for( unsigned c=0; c < multiplier; c++ ) 
+            m_fu[n]->cycle();
         enum pipeline_stage_name_t issue_port = m_issue_port[n];
         warp_inst_t *& issue_inst = m_pipeline_reg[ issue_port ];
         if( !issue_inst->empty() && m_fu[n]->can_issue( *issue_inst ) ) {
@@ -805,7 +990,7 @@ ldst_unit::ldst_unit( shader_memory_interface *icnt,
                       const memory_config *mem_config,  
                       shader_core_stats *stats, 
                       unsigned sid,
-                      unsigned tpc ) : pipelined_simd_unit(NULL,config,6), m_next_wb(config)
+                      unsigned tpc ) : pipelined_simd_unit(NULL,config,3), m_next_wb(config)
 {
    m_memory_config = mem_config;
     m_icnt = icnt;
@@ -888,6 +1073,11 @@ void ldst_unit::writeback()
     }
 }
 
+unsigned ldst_unit::clock_multiplier() const
+{ 
+    return m_config->mem_warp_parts; 
+}
+
 void ldst_unit::cycle()
 {
    for( unsigned stage=0; (stage+1)<m_pipeline_depth; stage++ ) 
@@ -942,9 +1132,9 @@ void ldst_unit::cycle()
        unsigned warp_id = pipe_reg.warp_id();
        if( pipe_reg.is_load() ) {
            if( pipe_reg.space.get_type() == shared_space ) {
-               if( m_pipeline_reg[5]->empty() ) {
+               if( m_pipeline_reg[2]->empty() ) {
                    // new shared memory request
-                   move_warp(m_pipeline_reg[5],m_dispatch_reg);
+                   move_warp(m_pipeline_reg[2],m_dispatch_reg);
                    m_dispatch_reg->clear();
                }
            } else {
@@ -1091,7 +1281,7 @@ void shader_core_ctx::print_stage(unsigned int stage, FILE *fout ) const
    m_pipeline_reg[stage]->print(fout);
 }
 
-void shader_core_ctx::display_pdom_state(FILE *fout, int mask )
+void shader_core_ctx::display_pdom_state(FILE *fout, int mask ) const
 {
     if ( (mask & 4) && m_config->model == POST_DOMINATOR ) {
        fprintf(fout,"warp status:\n");
@@ -1156,7 +1346,7 @@ void ldst_unit::print(FILE *fout) const
     m_L1T->display_state(fout);
 }
 
-void shader_core_ctx::display_pipeline(FILE *fout, int print_mem, int mask ) 
+void shader_core_ctx::display_pipeline(FILE *fout, int print_mem, int mask ) const
 {
    fprintf(fout, "=================================================\n");
    fprintf(fout, "shader %u at cycle %Lu+%Lu (%u threads running)\n", m_sid, 
@@ -1211,31 +1401,31 @@ void shader_core_ctx::display_pipeline(FILE *fout, int print_mem, int mask )
    fprintf(fout, "\n");
 }
 
-unsigned int shader_core_ctx::max_cta( class function_info *kernel )
+unsigned int shader_core_config::max_cta( const kernel_info_t &k ) const
 {
-   unsigned int padded_cta_size;
-
-   padded_cta_size = m_gpu->the_kernel().threads_per_cta();
-   if (padded_cta_size%m_config->warp_size) 
-      padded_cta_size = ((padded_cta_size/m_config->warp_size)+1)*(m_config->warp_size);
+   unsigned threads_per_cta  = k.threads_per_cta();
+   const class function_info *kernel = k.entry();
+   unsigned int padded_cta_size = threads_per_cta;
+   if (padded_cta_size%warp_size) 
+      padded_cta_size = ((padded_cta_size/warp_size)+1)*(warp_size);
 
    //Limit by n_threads/shader
-   unsigned int result_thread = m_config->n_thread_per_shader / padded_cta_size;
+   unsigned int result_thread = n_thread_per_shader / padded_cta_size;
 
    const struct gpgpu_ptx_sim_kernel_info *kernel_info = ptx_sim_kernel_info(kernel);
 
    //Limit by shmem/shader
    unsigned int result_shmem = (unsigned)-1;
    if (kernel_info->smem > 0)
-      result_shmem = m_config->gpgpu_shmem_size / kernel_info->smem;
+      result_shmem = gpgpu_shmem_size / kernel_info->smem;
 
    //Limit by register count, rounded up to multiple of 4.
    unsigned int result_regs = (unsigned)-1;
    if (kernel_info->regs > 0)
-      result_regs = m_config->gpgpu_shader_registers / (padded_cta_size * ((kernel_info->regs+3)&~3));
+      result_regs = gpgpu_shader_registers / (padded_cta_size * ((kernel_info->regs+3)&~3));
 
    //Limit by CTA
-   unsigned int result_cta = m_config->max_cta_per_core;
+   unsigned int result_cta = max_cta_per_core;
 
    unsigned result = result_thread;
    result = gs_min2(result, result_shmem);
@@ -1254,7 +1444,7 @@ unsigned int shader_core_ctx::max_cta( class function_info *kernel )
    }
 
    if (result < 1) {
-      printf ("Error: max_cta_per_shader(\"sid=%u\") returning %d. Kernel requires more resources than shader has?\n", m_sid, result);
+      printf ("GPGPU-Sim uArch: ERROR ** Kernel requires more resources than shader has.\n");
       abort();
    }
    return result;
@@ -1461,11 +1651,6 @@ void barrier_set_t::dump() const
    fflush(stdout); 
 }
 
-void shader_core_ctx::set_at_barrier( unsigned cta_id, unsigned warp_id )
-{
-   m_barriers.warp_reaches_barrier(cta_id,warp_id);
-}
-
 void shader_core_ctx::warp_exit( unsigned warp_id )
 {
    m_barriers.warp_exit( warp_id );
@@ -1490,11 +1675,6 @@ bool shader_core_ctx::warp_waiting_at_mem_barrier( unsigned warp_id )
       return false;
    }
    return true;
-}
-
-bool shader_core_ctx::warp_waiting_for_atomics( unsigned warp_id ) const
-{
-   return m_warp[warp_id].get_n_atomic()>0;
 }
 
 gpgpu_sim *shader_core_ctx::get_gpu()
@@ -1562,7 +1742,7 @@ bool shd_warp_t::waiting()
     } else if ( m_shader->warp_waiting_at_mem_barrier(m_warp_id) ) {
         // waiting for memory barrier
         return true;
-    } else if ( m_shader->warp_waiting_for_atomics(m_warp_id) ) {
+    } else if ( m_n_atomic >0 ) {
         // waiting for atomic operation to complete at memory:
         // this stall is not required for accurate timing model, but rather we
         // stall here since if a call/return instruction occurs in the meantime
@@ -1844,7 +2024,7 @@ simt_core_cluster::simt_core_cluster( class gpgpu_sim *gpu,
                                       unsigned cluster_id, 
                                       const struct shader_core_config *config, 
                                       const struct memory_config *mem_config,
-                                      struct shader_core_stats *stats )
+                                      shader_core_stats *stats )
 {
     m_cta_issue_next_core=0;
     m_cluster_id=cluster_id;
@@ -1868,12 +2048,12 @@ void simt_core_cluster::reinit()
         m_core[i]->reinit(0,m_config->n_thread_per_shader,true);
 }
 
-unsigned simt_core_cluster::max_cta( class function_info *kernel )
+unsigned simt_core_cluster::max_cta( const kernel_info_t &kernel )
 {
-    return m_config->n_simt_cores_per_cluster * m_core[0]->max_cta(kernel);
+    return m_config->n_simt_cores_per_cluster * m_config->max_cta(kernel);
 }
 
-int simt_core_cluster::get_not_completed() const
+unsigned simt_core_cluster::get_not_completed() const
 {
     unsigned not_completed=0;
     for( unsigned i=0; i < m_config->n_simt_cores_per_cluster; i++ ) 
@@ -1889,15 +2069,18 @@ unsigned simt_core_cluster::get_n_active_cta() const
     return n;
 }
 
-void simt_core_cluster::issue_block2core( class kernel_info_t &kernel )
+unsigned simt_core_cluster::issue_block2core( class kernel_info_t &kernel )
 {
+    unsigned num_blocks_issued=0;
     for( unsigned i=0; i < m_config->n_simt_cores_per_cluster; i++ ) {
         unsigned core = (i+m_cta_issue_next_core)%m_config->n_simt_cores_per_cluster;
-        if( m_core[core]->get_n_active_cta() < m_core[core]->max_cta(kernel.entry()) ) {
+        if( m_core[core]->get_n_active_cta() < m_config->max_cta(kernel) ) {
             m_core[core]->issue_block2core(kernel);
+            num_blocks_issued++;
             break;
         }
     }
+    return num_blocks_issued;
 }
 
 void simt_core_cluster::cache_flush()
@@ -1968,12 +2151,7 @@ void simt_core_cluster::icnt_cycle()
     }
 }
 
-void simt_core_cluster::mem_instruction_stats(const class warp_inst_t &inst)
-{
-    m_gpu->mem_instruction_stats(inst);
-}
-
-void simt_core_cluster::get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc )
+void simt_core_cluster::get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc ) const
 {
     unsigned cid = sid_to_cid(sid);
     m_core[cid]->get_pdom_stack_top_info(tid,pc,rpc);

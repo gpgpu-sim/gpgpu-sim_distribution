@@ -105,6 +105,7 @@ public:
    }
 
    class function_info *entry() { return m_kernel_entry; }
+   const class function_info *entry() const { return m_kernel_entry; }
 
    size_t num_blocks() const
    {
@@ -154,7 +155,11 @@ private:
 };
 
 struct core_config {
-    core_config() { m_valid = false; }
+    core_config() 
+    { 
+        m_valid = false; 
+        num_shmem_bank=16; 
+    }
     virtual void init() = 0;
 
     bool m_valid;
@@ -165,12 +170,13 @@ struct core_config {
 
     // shared memory bank conflict checking parameters
     static const address_type WORD_SIZE=4;
-    int num_shmem_bank;
+    unsigned num_shmem_bank;
     unsigned shmem_bank_func(address_type addr) const
     {
         return ((addr/WORD_SIZE) % num_shmem_bank);
     }
-    unsigned shmem_warp_parts;  
+    unsigned mem_warp_parts;  
+    unsigned gpgpu_shmem_size;
 
     // texture and constant cache line sizes (used to determine number of memory accesses)
     unsigned gpgpu_cache_texl1_linesize;
@@ -180,10 +186,8 @@ struct core_config {
 class core_t {
 public:
    virtual ~core_t() {}
-   virtual void set_at_barrier( unsigned cta_id, unsigned warp_id ) = 0;
    virtual void warp_exit( unsigned warp_id ) = 0;
    virtual bool warp_waiting_at_barrier( unsigned warp_id ) const = 0;
-   virtual bool warp_waiting_for_atomics( unsigned warp_id ) const = 0;
    virtual class gpgpu_sim *get_gpu() = 0;
 };
 
@@ -250,9 +254,38 @@ struct textureReference {
 
 #endif
 
+class gpgpu_functional_sim_config 
+{
+public:
+    void reg_options(class OptionParser * opp);
+
+    void ptx_set_tex_cache_linesize(unsigned linesize);
+
+    unsigned get_forced_max_capability() const { return m_ptx_force_max_capability; }
+    bool convert_to_ptxplus() const { return m_ptx_convert_to_ptxplus; }
+    bool saved_converted_ptxplus() const { return m_ptx_save_converted_ptxplus; }
+
+    int         get_ptx_inst_debug_to_file() const { return g_ptx_inst_debug_to_file; }
+    const char* get_ptx_inst_debug_file() const  { return g_ptx_inst_debug_file; }
+    int         get_ptx_inst_debug_thread_uid() const { return g_ptx_inst_debug_thread_uid; }
+    unsigned    get_texcache_linesize() const { return m_texcache_linesize; }
+
+private:
+    // PTX options
+    int m_ptx_convert_to_ptxplus;
+    int m_ptx_save_converted_ptxplus;
+    unsigned m_ptx_force_max_capability;
+
+    int   g_ptx_inst_debug_to_file;
+    char* g_ptx_inst_debug_file;
+    int   g_ptx_inst_debug_thread_uid;
+
+    unsigned m_texcache_linesize;
+};
+
 class gpgpu_t {
 public:
-    gpgpu_t();
+    gpgpu_t( const gpgpu_functional_sim_config &config );
     void* gpu_malloc( size_t size );
     void* gpu_mallocarray( size_t count );
     void  gpu_memset( size_t dst_start_addr, int c, size_t count );
@@ -268,7 +301,6 @@ public:
     void gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, const struct cudaArray* array);
     void gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref);
     const char* gpgpu_ptx_sim_findNamefromTexture(const struct textureReference* texref);
-    unsigned ptx_set_tex_cache_linesize(unsigned linesize);
 
     const struct textureReference* get_texref(const std::string &texname) const
     {
@@ -289,18 +321,23 @@ public:
         return t->second;
     }
 
+    const gpgpu_functional_sim_config &get_config() const { return m_function_model_config; }
+    FILE* get_ptx_inst_debug_file() { return ptx_inst_debug_file; }
+
 protected:
-   class memory_space *m_global_mem;
-   class memory_space *m_tex_mem;
-   class memory_space *m_surf_mem;
-   class memory_space *m_param_mem;
+    const gpgpu_functional_sim_config &m_function_model_config;
+    FILE* ptx_inst_debug_file;
 
-   unsigned long long m_dev_malloc;
-
-   std::map<std::string, const struct textureReference*> m_NameToTextureRef;
-   std::map<const struct textureReference*,const struct cudaArray*> m_TextureRefToCudaArray;
-   std::map<const struct textureReference*, const struct textureInfo*> m_TextureRefToTexureInfo;
-   unsigned int m_texcache_linesize;
+    class memory_space *m_global_mem;
+    class memory_space *m_tex_mem;
+    class memory_space *m_surf_mem;
+    class memory_space *m_param_mem;
+    
+    unsigned long long m_dev_malloc;
+    
+    std::map<std::string, const struct textureReference*> m_NameToTextureRef;
+    std::map<const struct textureReference*,const struct cudaArray*> m_TextureRefToCudaArray;
+    std::map<const struct textureReference*, const struct textureInfo*> m_TextureRefToTexureInfo;
 };
 
 struct gpgpu_ptx_sim_kernel_info 

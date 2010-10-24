@@ -85,12 +85,11 @@ void icnt_reg_options( class OptionParser * opp )
    option_parser_register(opp, "-inter_config_file", OPT_CSTR, &g_network_config_filename, "Interconnection network config file", "mesh");
 }
 
-void icnt_init( unsigned int n_shader, unsigned int n_mem, struct shader_core_config *shader_config )
+void icnt_init( unsigned int n_shader, unsigned int n_mem )
 {
    switch (g_network_mode) {
-   
    case INTERSIM:
-      init_interconnect(g_network_config_filename, n_shader, n_mem, shader_config );
+      init_interconnect(g_network_config_filename, n_shader, n_mem );
       icnt_has_buffer = interconnect_has_buffer;
       icnt_push       = interconnect_push;
       icnt_pop        = interconnect_pop;

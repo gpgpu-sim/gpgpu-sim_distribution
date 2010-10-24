@@ -19,8 +19,7 @@ void interconnect_push ( unsigned int input, unsigned int output,
 void* interconnect_pop(unsigned int output);
 void init_interconnect (char* config_file,
                         unsigned int n_shader, 
-                        unsigned int n_mem,
-                        struct shader_core_config *shader_config);
+                        unsigned int n_mem);
 void advance_interconnect();
 unsigned interconnect_busy();
 void interconnect_stats() ;

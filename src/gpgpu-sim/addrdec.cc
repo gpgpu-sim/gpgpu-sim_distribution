@@ -93,6 +93,9 @@ void linear_to_raw_address_translation::addrdec_setoption(option_parser_t opp)
    option_parser_register(opp, "-gpgpu_mem_addr_mapping", OPT_CSTR, &addrdec_option,
       "mapping memory address to dram model {dramid@<start bit>;<memory address map>}",
       NULL);
+   option_parser_register(opp, "-gpgpu_mem_address_mask", OPT_INT32, &gpgpu_mem_address_mask, 
+               "0 = old addressing mask, 1 = new addressing mask, 2 = new add. mask + flipped bank sel and chip sel bits",
+               "0");
 }
 
 new_addr_type linear_to_raw_address_translation::partition_address( new_addr_type addr ) const 

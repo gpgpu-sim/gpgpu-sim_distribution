@@ -1,5 +1,5 @@
 /* 
- * gpu-sim.c
+ * gpu-sim.cc
  *
  * Copyright (c) 2009 by Tor M. Aamodt, Wilson W. L. Fung, Ali Bakhoda, 
  * George L. Yuan, Ivan Sham, Henry Wong, Dan O'Connor and the 
@@ -110,34 +110,8 @@ unsigned long long  gpu_sim_cycle = 0;
 unsigned long long  gpu_tot_sim_cycle = 0;
 
 // performance counter for stalls due to congestion.
-unsigned int gpu_stall_wr_back = 0;
 unsigned int gpu_stall_dramfull = 0; 
 unsigned int gpu_stall_icnt2sh = 0;
-
-//shader cannot send to icnt because icnt buffer is full
-//Note: it is accumulative for all shaders and is never reset
-//so it might increase 8 times in a cycle if we have 8 shaders
-char *gpgpu_runtime_stat;
-int gpu_stat_sample_freq = 10000;
-int gpu_runtime_stat_flag = 0;
-
-unsigned long long  gpu_max_cycle = 0;
-unsigned long long  gpu_max_insn = 0;
-int g_total_cta_left;
-
-// GPGPU-Sim timing model options
-int   gpu_max_cycle_opt;
-int   gpu_max_insn_opt;
-int   gpu_max_cta_opt;
-char *gpgpu_shader_core_pipeline_opt;
-int   gpgpu_dram_sched_queue_size; 
-bool  gpgpu_flush_cache;
-int   gpgpu_mem_address_mask;
-int   gpgpu_cflog_interval;
-char * gpgpu_clock_domains;
-int   g_ptx_inst_debug_to_file;
-char* g_ptx_inst_debug_file;
-int   g_ptx_inst_debug_thread_uid;
 
 /* Clock Domains */
 
@@ -150,14 +124,119 @@ int   g_ptx_inst_debug_thread_uid;
 #define MEM_LATENCY_STAT_IMPL
 #include "mem_latency_stat.h"
 
-void visualizer_options(option_parser_t opp);
-
-void gpgpu_sim::reg_options(option_parser_t opp)
+void memory_config::reg_options(class OptionParser * opp)
 {
-   option_parser_register(opp, "-gpgpu_simd_model", OPT_INT32, &m_shader_config->model, 
-               "0 = no recombination, 1 = post-dominator, 2 = MIMD, 3 = dynamic warp formation", "0");
-   option_parser_register(opp, "-gpgpu_dram_scheduler", OPT_INT32, &m_memory_config->scheduler_type, 
-               "0 = fifo, 1 = FR-FCFS (defaul)", "1");
+    option_parser_register(opp, "-gpgpu_dram_scheduler", OPT_INT32, &scheduler_type, 
+                                "0 = fifo, 1 = FR-FCFS (defaul)", "1");
+    option_parser_register(opp, "-gpgpu_dram_partition_queues", OPT_CSTR, &gpgpu_L2_queue_config, 
+                           "i2$:$2d:d2$:$2i",
+                           "8:8:8:8");
+
+    option_parser_register(opp, "-l2_ideal", OPT_BOOL, &l2_ideal, 
+                           "Use a ideal L2 cache that always hit",
+                           "0");
+    option_parser_register(opp, "-gpgpu_cache:dl2", OPT_CSTR, &m_L2_config.m_config_string, 
+                   "unified banked L2 data cache config, i.e., {<nsets>:<bsize>:<assoc>:<repl>|none}; disabled by default",
+                   NULL); 
+    option_parser_register(opp, "-gpgpu_n_mem", OPT_UINT32, &m_n_mem, 
+                 "number of memory modules (e.g. memory controllers) in gpu",
+                 "8");
+    option_parser_register(opp, "-gpgpu_n_mem_per_ctrlr", OPT_UINT32, &gpu_n_mem_per_ctrlr, 
+                 "number of memory chips per memory controller",
+                 "1");
+    option_parser_register(opp, "-gpgpu_memlatency_stat", OPT_INT32, &gpgpu_memlatency_stat, 
+                "track and display latency statistics 0x2 enables MC, 0x4 enables queue logs",
+                "0");
+    option_parser_register(opp, "-gpgpu_dram_sched_queue_size", OPT_INT32, &gpgpu_dram_sched_queue_size, 
+                "0 = unlimited (default); # entries per chip",
+                "0");
+    option_parser_register(opp, "-gpgpu_dram_buswidth", OPT_UINT32, &busW, 
+                 "default = 4 bytes (8 bytes per cycle at DDR)",
+                 "4");
+    option_parser_register(opp, "-gpgpu_dram_burst_length", OPT_UINT32, &BL, 
+                 "Burst length of each DRAM request (default = 4 DDR cycle)",
+                 "4");
+    option_parser_register(opp, "-gpgpu_dram_timing_opt", OPT_CSTR, &gpgpu_dram_timing_opt, 
+                "DRAM timing parameters = {nbk:tCCD:tRRD:tRCD:tRAS:tRP:tRC:CL:WL:tWTR}",
+                "4:2:8:12:21:13:34:9:4:5");
+
+    m_address_mapping.addrdec_setoption(opp);
+}
+
+void shader_core_config::reg_options(class OptionParser * opp)
+{
+    option_parser_register(opp, "-gpgpu_simd_model", OPT_INT32, &model, 
+                   "1 = post-dominator", "1");
+    option_parser_register(opp, "-gpgpu_shader_core_pipeline", OPT_CSTR, &gpgpu_shader_core_pipeline_opt, 
+                   "shader core pipeline config, i.e., {<nthread>:<warpsize>:<pipe_simd_width>}",
+                   "256:32:32");
+    option_parser_register(opp, "-gpgpu_tex_cache:l1", OPT_CSTR, &m_L1T_config.m_config_string, 
+                   "per-shader L1 texture cache  (READ-ONLY) config, i.e., {<nsets>:<linesize>:<assoc>:<repl>|none}",
+                   "512:64:2:L:R:m");
+    option_parser_register(opp, "-gpgpu_const_cache:l1", OPT_CSTR, &m_L1C_config.m_config_string, 
+                   "per-shader L1 constant memory cache  (READ-ONLY) config, i.e., {<nsets>:<linesize>:<assoc>:<repl>|none}",
+                   "64:64:2:L:R:f");
+    option_parser_register(opp, "-gpgpu_cache:il1", OPT_CSTR, &m_L1I_config.m_config_string, 
+                   "shader L1 instruction cache config, i.e., {<nsets>:<bsize>:<assoc>:<repl>|none}",
+                   "4:256:4:L:R:f");
+    option_parser_register(opp, "-gpgpu_perfect_mem", OPT_BOOL, &gpgpu_perfect_mem, 
+                 "enable perfect memory mode (no cache miss)",
+                 "0");
+    option_parser_register(opp, "-gpgpu_shader_registers", OPT_UINT32, &gpgpu_shader_registers, 
+                 "Number of registers per shader core. Limits number of concurrent CTAs. (default 8192)",
+                 "8192");
+    option_parser_register(opp, "-gpgpu_shader_cta", OPT_UINT32, &max_cta_per_core, 
+                 "Maximum number of concurrent CTAs in shader (default 8)",
+                 "8");
+    option_parser_register(opp, "-gpgpu_n_clusters", OPT_UINT32, &n_simt_clusters, 
+                 "number of processing clusters",
+                 "10");
+    option_parser_register(opp, "-gpgpu_n_cores_per_cluster", OPT_UINT32, &n_simt_cores_per_cluster, 
+                 "number of simd cores per cluster",
+                 "3");
+    option_parser_register(opp, "-gpgpu_n_cluster_ejection_buffer_size", OPT_UINT32, &n_simt_ejection_buffer_size, 
+                 "number of packets in ejection buffer",
+                 "8");
+    option_parser_register(opp, "-gpgpu_n_ldst_response_buffer_size", OPT_UINT32, &ldst_unit_response_queue_size, 
+                 "number of response packets in ld/st unit ejection buffer",
+                 "2");
+    option_parser_register(opp, "-gpgpu_shmem_size", OPT_UINT32, &gpgpu_shmem_size, 
+                 "Size of shared memory per shader core (default 16kB)",
+                 "16384");
+    option_parser_register(opp, "-gpgpu_shmem_warp_parts", OPT_INT32, &mem_warp_parts,  
+                 "Number of portions a warp is divided into for shared memory bank conflict check ",
+                 "2");
+    option_parser_register(opp, "-gpgpu_warpdistro_shader", OPT_INT32, &gpgpu_warpdistro_shader, 
+                "Specify which shader core to collect the warp size distribution from", 
+                "-1");
+    option_parser_register(opp, "-gpgpu_local_mem_map", OPT_BOOL, &gpgpu_local_mem_map, 
+                "Mapping from local memory space address to simulated GPU physical address space (default = enabled)", 
+                "1");
+    option_parser_register(opp, "-gpgpu_num_reg_banks", OPT_INT32, &gpgpu_num_reg_banks, 
+                "Number of register banks (default = 8)", 
+                "8");
+    option_parser_register(opp, "-gpgpu_reg_bank_use_warp_id", OPT_BOOL, &gpgpu_reg_bank_use_warp_id,
+             "Use warp ID in mapping registers to banks (default = off)",
+             "0");
+    option_parser_register(opp, "-gpgpu_operand_collector_num_units_sp", OPT_INT32, &gpgpu_operand_collector_num_units_sp,
+                "number of collector units (default = 4)", 
+                "4");
+    option_parser_register(opp, "-gpgpu_operand_collector_num_units_sfu", OPT_INT32, &gpgpu_operand_collector_num_units_sfu,
+                "number of collector units (default = 4)", 
+                "4");
+    option_parser_register(opp, "-gpgpu_operand_collector_num_units_mem", OPT_INT32, &gpgpu_operand_collector_num_units_mem,
+                "number of collector units (default = 2)", 
+                "2");
+    option_parser_register(opp, "-gpgpu_coalesce_arch", OPT_INT32, &gpgpu_coalesce_arch, 
+                            "Coalescing arch (default = 13, anything else is off for now)", 
+                            "13");
+}
+
+void gpgpu_sim_config::reg_options(option_parser_t opp)
+{
+    gpgpu_functional_sim_config::reg_options(opp);
+    m_shader_config.reg_options(opp);
+    m_memory_config.reg_options(opp);
 
    option_parser_register(opp, "-gpgpu_max_cycle", OPT_INT32, &gpu_max_cycle_opt, 
                "terminates gpu simulation early (0 = no limit)",
@@ -168,118 +247,15 @@ void gpgpu_sim::reg_options(option_parser_t opp)
    option_parser_register(opp, "-gpgpu_max_cta", OPT_INT32, &gpu_max_cta_opt, 
                "terminates gpu simulation early (0 = no limit)",
                "0");
-
-   option_parser_register(opp, "-gpgpu_tex_cache:l1", OPT_CSTR, &m_shader_config->m_L1T_config.m_config_string, 
-                  "per-shader L1 texture cache  (READ-ONLY) config, i.e., {<nsets>:<linesize>:<assoc>:<repl>|none}",
-                  "512:64:2:L:R:m");
-
-   option_parser_register(opp, "-gpgpu_const_cache:l1", OPT_CSTR, &m_shader_config->m_L1C_config.m_config_string, 
-                  "per-shader L1 constant memory cache  (READ-ONLY) config, i.e., {<nsets>:<linesize>:<assoc>:<repl>|none}",
-                  "64:64:2:L:R:f");
-
-   option_parser_register(opp, "-gpgpu_cache:il1", OPT_CSTR, &m_shader_config->m_L1I_config.m_config_string, 
-                  "shader L1 instruction cache config, i.e., {<nsets>:<bsize>:<assoc>:<repl>|none}",
-                  "4:256:4:L:R:f");
-
-   option_parser_register(opp, "-gpgpu_cache:dl2", OPT_CSTR, &m_memory_config->m_L2_config.m_config_string, 
-                  "unified banked L2 data cache config, i.e., {<nsets>:<bsize>:<assoc>:<repl>|none}; disabled by default",
-                  NULL); 
-
-   option_parser_register(opp, "-gpgpu_perfect_mem", OPT_BOOL, &m_shader_config->gpgpu_perfect_mem, 
-                "enable perfect memory mode (no cache miss)",
-                "0");
-
-   option_parser_register(opp, "-gpgpu_shader_core_pipeline", OPT_CSTR, &gpgpu_shader_core_pipeline_opt, 
-                  "shader core pipeline config, i.e., {<nthread>:<warpsize>:<pipe_simd_width>}",
-                  "256:32:32");
-
-   option_parser_register(opp, "-gpgpu_shader_registers", OPT_UINT32, &m_shader_config->gpgpu_shader_registers, 
-                "Number of registers per shader core. Limits number of concurrent CTAs. (default 8192)",
-                "8192");
-
-   option_parser_register(opp, "-gpgpu_shader_cta", OPT_UINT32, &m_shader_config->max_cta_per_core, 
-                "Maximum number of concurrent CTAs in shader (default 8)",
-                "8");
-   option_parser_register(opp, "-gpgpu_n_clusters", OPT_UINT32, &m_shader_config->n_simt_clusters, 
-                "number of processing clusters",
-                "10");
-   option_parser_register(opp, "-gpgpu_n_cores_per_cluster", OPT_UINT32, &m_shader_config->n_simt_cores_per_cluster, 
-                "number of simd cores per cluster",
-                "3");
-   option_parser_register(opp, "-gpgpu_n_cluster_ejection_buffer_size", OPT_UINT32, &m_shader_config->n_simt_ejection_buffer_size, 
-                "number of packets in ejection buffer",
-                "8");
-   option_parser_register(opp, "-gpgpu_n_ldst_response_buffer_size", OPT_UINT32, &m_shader_config->ldst_unit_response_queue_size, 
-                "number of response packets in ld/st unit ejection buffer",
-                "2");
-   option_parser_register(opp, "-gpgpu_n_mem", OPT_UINT32, &m_memory_config->m_n_mem, 
-                "number of memory modules (e.g. memory controllers) in gpu",
-                "8");
-   option_parser_register(opp, "-gpgpu_n_mem_per_ctrlr", OPT_UINT32, &m_memory_config->gpu_n_mem_per_ctrlr, 
-                "number of memory chips per memory controller",
-                "1");
    option_parser_register(opp, "-gpgpu_runtime_stat", OPT_CSTR, &gpgpu_runtime_stat, 
                   "display runtime statistics such as dram utilization {<freq>:<flag>}",
                   "10000:0");
-
-   option_parser_register(opp, "-gpgpu_memlatency_stat", OPT_INT32, &m_memory_config->gpgpu_memlatency_stat, 
-               "track and display latency statistics 0x2 enables MC, 0x4 enables queue logs",
-               "0");
-
-   option_parser_register(opp, "-gpu_n_mshr_per_shader", OPT_UINT32, &m_shader_config->n_mshr_per_shader, 
-                "Number of MSHRs per shader",
-                "64");
-
-   option_parser_register(opp, "-gpgpu_dram_sched_queue_size", OPT_INT32, &m_memory_config->gpgpu_dram_sched_queue_size, 
-               "0 = unlimited (default); # entries per chip",
-               "0");
-
-   option_parser_register(opp, "-gpgpu_dram_buswidth", OPT_UINT32, &m_memory_config->busW, 
-                "default = 4 bytes (8 bytes per cycle at DDR)",
-                "4");
-
-   option_parser_register(opp, "-gpgpu_dram_burst_length", OPT_UINT32, &m_memory_config->BL, 
-                "Burst length of each DRAM request (default = 4 DDR cycle)",
-                "4");
-
-   option_parser_register(opp, "-gpgpu_dram_timing_opt", OPT_CSTR, &m_memory_config->gpgpu_dram_timing_opt, 
-               "DRAM timing parameters = {nbk:tCCD:tRRD:tRCD:tRAS:tRP:tRC:CL:WL:tWTR}",
-               "4:2:8:12:21:13:34:9:4:5");
-
-
-   option_parser_register(opp, "-gpgpu_mem_address_mask", OPT_INT32, &gpgpu_mem_address_mask, 
-               "0 = old addressing mask, 1 = new addressing mask, 2 = new add. mask + flipped bank sel and chip sel bits",
-               "0");
-
    option_parser_register(opp, "-gpgpu_flush_cache", OPT_BOOL, &gpgpu_flush_cache, 
                 "Flush cache at the end of each kernel call",
                 "0");
-
-   option_parser_register(opp, "-gpgpu_shmem_size", OPT_UINT32, &m_shader_config->gpgpu_shmem_size, 
-                "Size of shared memory per shader core (default 16kB)",
-                "16384");
-
-   option_parser_register(opp, "-gpgpu_shmem_warp_parts", OPT_INT32, &m_shader_config->shmem_warp_parts,  
-                "Number of portions a warp is divided into for shared memory bank conflict check ",
-                "2");
-
    option_parser_register(opp, "-gpgpu_deadlock_detect", OPT_BOOL, &gpu_deadlock_detect, 
                 "Stop the simulation at deadlock (1=on (default), 0=off)", 
                 "1");
-
-   option_parser_register(opp, "-gpgpu_warpdistro_shader", OPT_INT32, &m_shader_config->gpgpu_warpdistro_shader, 
-               "Specify which shader core to collect the warp size distribution from", 
-               "-1");
-
-   option_parser_register(opp, "-gpgpu_pdom_sched_type", OPT_INT32, &m_pdom_sched_type, 
-               "0 = first ready warp found, 1 = random, 8 = loose round robin", 
-               "8");
-
-   option_parser_register(opp, "-gpgpu_stall_on_use", OPT_BOOL,
-                &m_shader_config->gpgpu_stall_on_use,
-                "Enable stall-on-use",
-                "1");
-
    option_parser_register(opp, "-gpgpu_ptx_instruction_classification", OPT_INT32, 
                &gpgpu_ptx_instruction_classification, 
                "if enabled will classify ptx instruction types per kernel (Max 255 kernels now)", 
@@ -290,62 +266,19 @@ void gpgpu_sim::reg_options(option_parser_t opp)
    option_parser_register(opp, "-gpgpu_clock_domains", OPT_CSTR, &gpgpu_clock_domains, 
                   "Clock Domain Frequencies in MhZ {<Core Clock>:<ICNT Clock>:<L2 Clock>:<DRAM Clock>}",
                   "500.0:2000.0:2000.0:2000.0");
-
-   option_parser_register(opp, "-gpgpu_shmem_port_per_bank", OPT_INT32, &m_shader_config->gpgpu_shmem_port_per_bank, 
-               "Number of access processed by a shared memory bank per cycle (default = 2)", 
-               "2");
    option_parser_register(opp, "-gpgpu_cflog_interval", OPT_INT32, &gpgpu_cflog_interval, 
                "Interval between each snapshot in control flow logger", 
                "0");
-   option_parser_register(opp, "-gpgpu_local_mem_map", OPT_BOOL, &m_shader_config->gpgpu_local_mem_map, 
-               "Mapping from local memory space address to simulated GPU physical address space (default = enabled)", 
-               "1");
-   option_parser_register(opp, "-gpgpu_num_reg_banks", OPT_INT32, &m_shader_config->gpgpu_num_reg_banks, 
-               "Number of register banks (default = 8)", 
-               "8");
-   option_parser_register(opp, "-gpgpu_reg_bank_use_warp_id", OPT_BOOL, &m_shader_config->gpgpu_reg_bank_use_warp_id,
-            "Use warp ID in mapping registers to banks (default = off)",
-            "0");
-   option_parser_register(opp, "-gpgpu_ptx_inst_debug_to_file", OPT_BOOL, 
-                &g_ptx_inst_debug_to_file, 
-                "Dump executed instructions' debug information to file", 
-                "0");
-   option_parser_register(opp, "-gpgpu_ptx_inst_debug_file", OPT_CSTR, &g_ptx_inst_debug_file, 
-                  "Executed instructions' debug output file",
-                  "inst_debug.txt");
-   option_parser_register(opp, "-gpgpu_ptx_inst_debug_thread_uid", OPT_INT32, &g_ptx_inst_debug_thread_uid, 
-               "Thread UID for executed instructions' debug output", 
-               "1");
-   option_parser_register(opp, "-gpgpu_ptx_convert_to_ptxplus", OPT_BOOL,
-                &m_ptx_convert_to_ptxplus,
-                "Convert embedded ptx to ptxplus",
-                "0");
-   option_parser_register(opp, "-gpgpu_ptx_save_converted_ptxplus", OPT_BOOL,
-                &m_ptx_save_converted_ptxplus,
-                "Saved converted ptxplus to a file",
-                "0");
-   option_parser_register(opp, "-gpgpu_ptx_force_max_capability", OPT_UINT32,
-                &m_ptx_force_max_capability,
-                "Force maximum compute capability",
-                "0");
-   option_parser_register(opp, "-gpgpu_operand_collector_num_units_sp", OPT_INT32, &m_shader_config->gpgpu_operand_collector_num_units_sp,
-               "number of collector units (default = 4)", 
-               "4");
-   option_parser_register(opp, "-gpgpu_operand_collector_num_units_sfu", OPT_INT32, &m_shader_config->gpgpu_operand_collector_num_units_sfu,
-               "number of collector units (default = 4)", 
-               "4");
-   option_parser_register(opp, "-gpgpu_operand_collector_num_units_mem", OPT_INT32, &m_shader_config->gpgpu_operand_collector_num_units_mem,
-               "number of collector units (default = 2)", 
-               "2");
-   option_parser_register(opp, "-gpgpu_coalesce_arch", OPT_INT32, &m_shader_config->gpgpu_coalesce_arch, 
-                           "Coalescing arch (default = 13, anything else is off for now)", 
-                           "13");
-   m_memory_config->m_address_mapping.addrdec_setoption(opp);
-   L2c_options(opp);
-   visualizer_options(opp);
+   option_parser_register(opp, "-visualizer_enabled", OPT_BOOL,
+                          &g_visualizer_enabled, "Turn on visualizer output (1=On, 0=Off)",
+                          "1");
+   option_parser_register(opp, "-visualizer_outputfile", OPT_CSTR, 
+                          &g_visualizer_filename, "Specifies the output log file for visualizer",
+                          NULL);
+   option_parser_register(opp, "-visualizer_zlevel", OPT_INT32,
+                          &g_visualizer_zlevel, "Compression level of the visualizer output log (0=no comp, 9=highest)",
+                          "6");
    ptx_file_line_stats_options(opp);
-
-   m_options_set = true;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -380,76 +313,44 @@ void gpgpu_sim::launch( kernel_info_t &kinfo )
    m_running_kernels.push_back(kinfo);
 }
 
-void gpgpu_sim::next_grid()
+kernel_info_t *gpgpu_sim::next_grid()
 {
    m_the_kernel = m_running_kernels.front();
    m_running_kernels.pop_front();
-}
-
-gpgpu_sim::gpgpu_sim()
-{ 
-   m_options_set=false;
-   m_shader_config = new shader_core_config();
-   m_memory_config = new memory_config();
-   m_shader_stats = (shader_core_stats*) calloc(1,sizeof(shader_core_stats));
-   m_memory_stats = NULL;
-   gpu_sim_insn = 0;
-   gpu_tot_sim_insn = 0;
-   gpu_tot_issued_cta = 0;
-   gpu_tot_completed_thread = 0;
-   gpu_deadlock = false;
+   return &m_the_kernel;
 }
 
 void set_ptx_warp_size(const struct core_config * warp_size);
 
-void gpgpu_sim::init_gpu() 
-{
-   assert( m_options_set );
-    
-   gpu_max_cycle = gpu_max_cycle_opt;
-   gpu_max_insn  = gpu_max_insn_opt;
+gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config ) 
+    : gpgpu_t(config), m_config(config)
+{ 
+    m_shader_config = &m_config.m_shader_config;
+    m_memory_config = &m_config.m_memory_config;
+    set_ptx_warp_size(m_shader_config);
+    ptx_file_line_stats_create_exposed_latency_tracker(m_config.num_shader());
 
-   int ntok = sscanf(gpgpu_shader_core_pipeline_opt,"%d:%d", 
-                     &m_shader_config->n_thread_per_shader,
-                     &m_shader_config->warp_size);
-   set_ptx_warp_size(m_shader_config);
+    m_shader_stats = new shader_core_stats(m_shader_config);
+    m_memory_stats = new memory_stats_t(m_config.num_shader(),m_shader_config,m_memory_config);
 
-   m_shader_config->init();    
-   m_memory_config->init();
+    gpu_sim_insn = 0;
+    gpu_tot_sim_insn = 0;
+    gpu_tot_issued_cta = 0;
+    gpu_tot_completed_thread = 0;
+    gpu_deadlock = false;
 
-   ptx_set_tex_cache_linesize(m_shader_config->m_L1T_config.get_line_sz());
+    m_cluster = new simt_core_cluster*[m_shader_config->n_simt_clusters];
+    for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) 
+        m_cluster[i] = new simt_core_cluster(this,i,m_shader_config,m_memory_config,m_shader_stats);
 
-   m_shader_stats->num_warps_issuable = (int*) calloc(m_shader_config->max_warps_per_shader+1, sizeof(int));
-   m_shader_stats->num_warps_issuable_pershader = (int*) calloc(m_shader_config->n_simt_clusters*m_shader_config->n_simt_cores_per_cluster, sizeof(int));
-   m_shader_stats->shader_cycle_distro = (unsigned int*) calloc(m_shader_config->warp_size + 3, sizeof(unsigned int));
+    m_memory_partition_unit = new memory_partition_unit*[m_memory_config->m_n_mem];
+    for (unsigned i=0;i<m_memory_config->m_n_mem;i++) 
+        m_memory_partition_unit[i] = new memory_partition_unit(i, m_memory_config, m_memory_stats);
 
-   if(ntok != 2) {
-      printf("GPGPU-Sim uArch: error while parsing configuration string gpgpu_shader_core_pipeline_opt\n");
-      abort();
-   }
+    icnt_init(m_shader_config->n_simt_clusters,m_memory_config->m_n_mem);
 
-   sscanf(gpgpu_runtime_stat, "%d:%x", &gpu_stat_sample_freq, &gpu_runtime_stat_flag);
-
-   m_shader_config->pdom_sched_type = m_pdom_sched_type;
-   m_shader_config->num_shmem_bank=16;
-
-   m_cluster = new simt_core_cluster*[m_shader_config->n_simt_clusters];
-   for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) 
-      m_cluster[i] = new simt_core_cluster(this,i,m_shader_config,m_memory_config,m_shader_stats);
-
-   ptx_file_line_stats_create_exposed_latency_tracker(num_shader());
-
-   m_memory_stats = new memory_stats_t(num_shader(),m_shader_config,m_memory_config);
-
-   m_memory_partition_unit = new memory_partition_unit*[m_memory_config->m_n_mem];
-   for (unsigned i=0;i<m_memory_config->m_n_mem;i++) 
-      m_memory_partition_unit[i] = new memory_partition_unit(i, m_memory_config, m_memory_stats);
-
-   icnt_init(m_shader_config->n_simt_clusters, m_memory_config->m_n_mem,m_shader_config);
-
-   time_vector_create(NUM_MEM_REQ_STAT);
-   fprintf(stdout, "GPGPU-Sim uArch: performance model initialization complete.\n");
-   init_clock_domains();
+    time_vector_create(NUM_MEM_REQ_STAT);
+    fprintf(stdout, "GPGPU-Sim uArch: performance model initialization complete.\n");
 }
 
 int gpgpu_sim::shared_mem_size() const
@@ -469,7 +370,7 @@ int gpgpu_sim::wrp_size() const
 
 int gpgpu_sim::shader_clock() const
 {
-   return core_freq/1000;
+   return m_config.core_freq/1000;
 }
 
 void gpgpu_sim::set_prop( cudaDeviceProp *prop )
@@ -487,7 +388,7 @@ enum divergence_support_t gpgpu_sim::simd_model() const
    return m_shader_config->model;
 }
 
-void gpgpu_sim::init_clock_domains(void ) 
+void gpgpu_sim_config::init_clock_domains(void ) 
 {
    sscanf(gpgpu_clock_domains,"%lf:%lf:%lf:%lf", 
           &core_freq, &icnt_freq, &l2_freq, &dram_freq);
@@ -499,10 +400,6 @@ void gpgpu_sim::init_clock_domains(void )
    icnt_period = 1/icnt_freq;
    dram_period = 1/dram_freq;
    l2_period = 1/l2_freq;
-   core_time = 0 ;
-   dram_time = 0 ;
-   icnt_time = 0;
-   l2_time = 0;
    printf("GPGPU-Sim uArch: clock freqs: %lf:%lf:%lf:%lf\n",core_freq,icnt_freq,l2_freq,dram_freq);
    printf("GPGPU-Sim uArch: clock periods: %.20lf:%.20lf:%.20lf:%.20lf\n",core_period,icnt_period,l2_period,dram_period);
 }
@@ -530,60 +427,47 @@ unsigned int gpgpu_sim::run_gpu_sim()
    not_completed = 1;
    mem_busy = 1;
    icnt2mem_busy = 1;
-   more_thread = 1;
+   more_thread = true;
+   g_total_cta_left=0;
    gpu_sim_insn = 0;
-   m_shader_stats->gpu_sim_insn_no_ld_const = 0;
-   m_shader_stats->gpu_completed_thread = 0;
+   m_shader_stats->new_grid();
 
    reinit_clock_domains();
-   set_param_gpgpu_num_shaders(num_shader());
+   set_param_gpgpu_num_shaders(m_config.num_shader());
    for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) 
       m_cluster[i]->reinit();
-   if (gpu_max_cta_opt != 0) {
-      g_total_cta_left = gpu_max_cta_opt;
+   if (m_config.gpu_max_cta_opt != 0) {
+      g_total_cta_left = m_config.gpu_max_cta_opt;
    } else {
       g_total_cta_left =  m_the_kernel.num_blocks();
    }
-   if (gpu_max_cta_opt != 0) {
+   if (m_config.gpu_max_cta_opt != 0) {
       // the maximum number of CTA has been reached, stop any further simulation
-      if (gpu_tot_issued_cta >= (unsigned)gpu_max_cta_opt) {
+      if (gpu_tot_issued_cta >= m_config.gpu_max_cta_opt) 
          return 0;
-      }
    }
 
-   if (gpu_max_cycle && (gpu_tot_sim_cycle + gpu_sim_cycle) >= gpu_max_cycle) {
+   if (m_config.gpu_max_cycle_opt && (gpu_tot_sim_cycle + gpu_sim_cycle) >= m_config.gpu_max_cycle_opt) {
       return gpu_sim_cycle;
    }
-   if (gpu_max_insn && (gpu_tot_sim_insn + gpu_sim_insn) >= gpu_max_insn) {
+   if (m_config.gpu_max_insn_opt && (gpu_tot_sim_insn + gpu_sim_insn) >= m_config.gpu_max_insn_opt) {
       return gpu_sim_cycle;
    }
 
    // initialize the control-flow, memory access, memory latency logger
-   create_thread_CFlogger( num_shader(), m_shader_config->n_thread_per_shader, program_size, 0, gpgpu_cflog_interval );
-   shader_CTA_count_create( num_shader(), gpgpu_cflog_interval);
-   if (gpgpu_cflog_interval != 0) {
-      insn_warp_occ_create( num_shader(), m_shader_config->warp_size, program_size );
-      shader_warp_occ_create( num_shader(), m_shader_config->warp_size, gpgpu_cflog_interval);
-      shader_mem_acc_create( num_shader(), m_memory_config->m_n_mem, 4, gpgpu_cflog_interval);
-      shader_mem_lat_create( num_shader(), gpgpu_cflog_interval);
-      shader_cache_access_create( num_shader(), 3, gpgpu_cflog_interval);
-      set_spill_interval (gpgpu_cflog_interval * 40);
+   create_thread_CFlogger( m_config.num_shader(), m_shader_config->n_thread_per_shader, program_size, 0, m_config.gpgpu_cflog_interval );
+   shader_CTA_count_create( m_config.num_shader(), m_config.gpgpu_cflog_interval);
+   if (m_config.gpgpu_cflog_interval != 0) {
+      insn_warp_occ_create( m_config.num_shader(), m_shader_config->warp_size, program_size );
+      shader_warp_occ_create( m_config.num_shader(), m_shader_config->warp_size, m_config.gpgpu_cflog_interval);
+      shader_mem_acc_create( m_config.num_shader(), m_memory_config->m_n_mem, 4, m_config.gpgpu_cflog_interval);
+      shader_mem_lat_create( m_config.num_shader(), m_config.gpgpu_cflog_interval);
+      shader_cache_access_create( m_config.num_shader(), 3, m_config.gpgpu_cflog_interval);
+      set_spill_interval (m_config.gpgpu_cflog_interval * 40);
    }
 
-   // calcaulte the max cta count and cta size for local memory address mapping
-   m_shader_config->gpu_max_cta_per_shader = m_cluster[0]->max_cta(entry.entry());
-   //gpu_max_cta_per_shader is limited by number of CTAs if not enough    
-   if (m_the_kernel.num_blocks() < m_shader_config->gpu_max_cta_per_shader*num_shader()) { 
-      m_shader_config->gpu_max_cta_per_shader = (m_the_kernel.num_blocks() / num_shader());
-      if (m_the_kernel.num_blocks() % num_shader())
-         m_shader_config->gpu_max_cta_per_shader++;
-   }
-   unsigned int gpu_cta_size = m_the_kernel.threads_per_cta();
-   m_shader_config->gpu_padded_cta_size = (gpu_cta_size%32) ? 32*((gpu_cta_size/32)+1) : gpu_cta_size;
-
-   if (g_network_mode) {
+   if (g_network_mode) 
       icnt_init_grid(); 
-   }
 
    last_gpu_sim_insn = 0;
    while (not_completed || mem_busy || icnt2mem_busy) {
@@ -595,17 +479,17 @@ unsigned int gpgpu_sim::run_gpu_sim()
       for (unsigned i=0;i<m_memory_config->m_n_mem;i++) 
          mem_busy += m_memory_partition_unit[i]->busy();
       icnt2mem_busy = icnt_busy();
-      if (gpu_max_cycle && (gpu_tot_sim_cycle + gpu_sim_cycle) >= gpu_max_cycle) 
+      if (m_config.gpu_max_cycle_opt && (gpu_tot_sim_cycle + gpu_sim_cycle) >= m_config.gpu_max_cycle_opt) 
          break;
-      if (gpu_max_insn && (gpu_tot_sim_insn + gpu_sim_insn) >= gpu_max_insn) 
+      if (m_config.gpu_max_insn_opt && (gpu_tot_sim_insn + gpu_sim_insn) >= m_config.gpu_max_insn_opt) 
          break;
-      if (gpu_deadlock_detect && gpu_deadlock) 
+      if (m_config.gpu_deadlock_detect && gpu_deadlock) 
          break;
    }
-   m_memory_stats->memlatstat_lat_pw(num_shader(),m_shader_config->n_thread_per_shader,m_shader_config->warp_size);
+   m_memory_stats->memlatstat_lat_pw(m_config.num_shader(),m_shader_config->n_thread_per_shader,m_shader_config->warp_size);
    gpu_tot_sim_cycle += gpu_sim_cycle;
    gpu_tot_sim_insn += gpu_sim_insn;
-   gpu_tot_completed_thread += m_shader_stats->gpu_completed_thread;
+   gpu_tot_completed_thread += m_shader_stats->get_gpu_completed_thread();
    
    ptx_file_line_stats_write_file();
 
@@ -617,7 +501,7 @@ unsigned int gpgpu_sim::run_gpu_sim()
       printf("----------------------------END-of-Interconnect-DETAILS-------------------------" );
    }
 
-   if (gpu_deadlock_detect && gpu_deadlock) {
+   if (m_config.gpu_deadlock_detect && gpu_deadlock) {
       fflush(stdout);
       printf("GPGPU-Sim uArch: ERROR ** deadlock detected: last writeback core %u @ gpu_sim_cycle %u (+ gpu_tot_sim_cycle %u) (%u cycles ago)\n", 
              gpu_sim_insn_last_update_sid,
@@ -657,9 +541,7 @@ void gpgpu_sim::gpu_print_stat() const
 {  
    printf("gpu_sim_cycle = %lld\n", gpu_sim_cycle);
    printf("gpu_sim_insn = %lld\n", gpu_sim_insn);
-   printf("gpu_sim_no_ld_const_insn = %lld\n", m_shader_stats->gpu_sim_insn_no_ld_const);
    printf("gpu_ipc = %12.4f\n", (float)gpu_sim_insn / gpu_sim_cycle);
-   printf("gpu_completed_thread = %lld\n", m_shader_stats->gpu_completed_thread);
    printf("gpu_tot_sim_cycle = %lld\n", gpu_tot_sim_cycle);
    printf("gpu_tot_sim_insn = %lld\n", gpu_tot_sim_insn);
    printf("gpu_tot_ipc = %12.4f\n", (float)gpu_tot_sim_insn / gpu_tot_sim_cycle);
@@ -667,66 +549,19 @@ void gpgpu_sim::gpu_print_stat() const
    printf("gpu_tot_issued_cta = %lld\n", gpu_tot_issued_cta);
 
    // performance counter for stalls due to congestion.
-   printf("gpu_stall_by_MSHRwb= %d\n", m_shader_stats->gpu_stall_by_MSHRwb);
-   printf("gpu_stall_shd_mem  = %d\n", m_shader_stats->gpu_stall_shd_mem );
-   printf("gpu_stall_wr_back  = %d\n", gpu_stall_wr_back );
    printf("gpu_stall_dramfull = %d\n", gpu_stall_dramfull);
-   printf("gpu_stall_icnt2sh    = %d\n", gpu_stall_icnt2sh   );
-   printf("gpu_stall_sh2icnt    = %d\n", m_shader_stats->gpu_stall_sh2icnt   );
+   printf("gpu_stall_icnt2sh    = %d\n", gpu_stall_icnt2sh );
+
+   m_shader_stats->print(stdout);
+
    // performance counter that are not local to one shader
-   shader_print_accstats(stdout);
-
    m_memory_stats->memlatstat_print(m_memory_config->m_n_mem,m_memory_config->nbk);
-   // merge misses
-   printf("L1 read misses = %d\n", m_shader_stats->L1_read_miss);
-   printf("L1 write misses = %d\n", m_shader_stats->L1_write_miss);
-   printf("L1 write hit on misses = %d\n", m_shader_stats->L1_write_hit_on_miss);
-   printf("L1 writebacks = %d\n", m_shader_stats->L1_writeback);
-   printf("L1 texture misses = %d\n", m_shader_stats->L1_texture_miss);
-   printf("L1 const misses = %d\n", m_shader_stats->L1_const_miss);
    m_memory_stats->print(stdout);
-
-   printf("gpgpu_n_mem_read_local = %d\n", m_shader_stats->gpgpu_n_mem_read_local);
-   printf("gpgpu_n_mem_write_local = %d\n", m_shader_stats->gpgpu_n_mem_write_local);
-   printf("gpgpu_n_mem_read_global = %d\n", m_shader_stats->gpgpu_n_mem_read_global);
-   printf("gpgpu_n_mem_write_global = %d\n", m_shader_stats->gpgpu_n_mem_write_global);
-   printf("gpgpu_n_mem_texture = %d\n", m_shader_stats->gpgpu_n_mem_texture);
-   printf("gpgpu_n_mem_const = %d\n", m_shader_stats->gpgpu_n_mem_const);
-
-   //printf("max_n_mshr_used = ");
-   //for (unsigned i=0; i< m_n_shader; i++) printf("%d ", m_sc[i]->get_max_mshr_used() );
-   //printf("\n");
-
    for (unsigned i=0;i<m_memory_config->m_n_mem;i++) 
       m_memory_partition_unit[i]->print(stdout);
-/*
-   unsigned a,m;
-   for (unsigned i=0, a=0, m=0;i<m_n_shader;i++) 
-      m_sc[i]->L1cache_print(stdout,a,m);
-   printf("L1 Data Cache Total Miss Rate = %0.3f\n", (float)m/a);
-   for (i=0,a=0,m=0;i<m_n_shader;i++) 
-       m_sc[i]->L1texcache_print(stdout,a,m);
-   printf("L1 Texture Cache Total Miss Rate = %0.3f\n", (float)m/a);
-   for (i=0,a=0,m=0;i<m_n_shader;i++) 
-       m_sc[i]->L1constcache_print(stdout,a,m);
-   printf("L1 Const Cache Total Miss Rate = %0.3f\n", (float)m/a);
-*/
    if (m_memory_config->m_L2_config.get_num_lines()) 
       L2c_print_cache_stat();
-
-   if (m_shader_config->model == POST_DOMINATOR) {
-      printf("num_warps_issuable:");
-      for (unsigned i=0;i<(m_shader_config->max_warps_per_shader+1);i++) {
-         printf("%d ", m_shader_stats->num_warps_issuable[i]);
-      }
-      printf("\n");
-   }
-
-   printf("gpgpu_commit_pc_beyond_two = %d\n", m_shader_stats->gpgpu_commit_pc_beyond_two);
-
-   print_shader_cycle_distro( stdout );
-
-   if (gpgpu_cflog_interval != 0) {
+   if (m_config.gpgpu_cflog_interval != 0) {
       spill_log_to_file (stdout, 1, gpu_sim_cycle);
       insn_warp_occ_print(stdout);
    }
@@ -735,71 +570,17 @@ void gpgpu_sim::gpu_print_stat() const
       StatDisp( g_inst_op_classification_stat[g_ptx_kernel_count]);
    }
    time_vector_print();
-
    fflush(stdout);
 }
 
 
 // performance counter that are not local to one shader
-void gpgpu_sim::shader_print_accstats( FILE* fout ) const
-{
-   fprintf(fout, "gpgpu_n_load_insn  = %d\n", m_shader_stats->gpgpu_n_load_insn);
-   fprintf(fout, "gpgpu_n_store_insn = %d\n", m_shader_stats->gpgpu_n_store_insn);
-   fprintf(fout, "gpgpu_n_shmem_insn = %d\n", m_shader_stats->gpgpu_n_shmem_insn);
-   fprintf(fout, "gpgpu_n_tex_insn = %d\n", m_shader_stats->gpgpu_n_tex_insn);
-   fprintf(fout, "gpgpu_n_const_mem_insn = %d\n", m_shader_stats->gpgpu_n_const_insn);
-   fprintf(fout, "gpgpu_n_param_mem_insn = %d\n", m_shader_stats->gpgpu_n_param_insn);
-
-   fprintf(fout, "gpgpu_n_shmem_bkconflict = %d\n", m_shader_stats->gpgpu_n_shmem_bkconflict);
-   fprintf(fout, "gpgpu_n_cache_bkconflict = %d\n", m_shader_stats->gpgpu_n_cache_bkconflict);   
-
-   fprintf(fout, "gpgpu_n_intrawarp_mshr_merge = %d\n", m_shader_stats->gpgpu_n_intrawarp_mshr_merge);
-   fprintf(fout, "gpgpu_n_cmem_portconflict = %d\n", m_shader_stats->gpgpu_n_cmem_portconflict);
-
-   fprintf(fout, "gpgpu_stall_shd_mem[c_mem][bk_conf] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[C_MEM][BK_CONF]);
-   fprintf(fout, "gpgpu_stall_shd_mem[c_mem][mshr_rc] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[C_MEM][MSHR_RC_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[c_mem][icnt_rc] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[C_MEM][ICNT_RC_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[t_mem][mshr_rc] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[T_MEM][MSHR_RC_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[t_mem][icnt_rc] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[T_MEM][ICNT_RC_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[s_mem][bk_conf] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[S_MEM][BK_CONF]);
-   fprintf(fout, "gpgpu_stall_shd_mem[gl_mem][bk_conf] = %d\n", 
-           m_shader_stats->gpu_stall_shd_mem_breakdown[G_MEM_LD][BK_CONF] + 
-           m_shader_stats->gpu_stall_shd_mem_breakdown[G_MEM_ST][BK_CONF] + 
-           m_shader_stats->gpu_stall_shd_mem_breakdown[L_MEM_LD][BK_CONF] + 
-           m_shader_stats->gpu_stall_shd_mem_breakdown[L_MEM_ST][BK_CONF]   
-           ); // coalescing stall at data cache 
-   fprintf(fout, "gpgpu_stall_shd_mem[gl_mem][coal_stall] = %d\n", 
-           m_shader_stats->gpu_stall_shd_mem_breakdown[G_MEM_LD][COAL_STALL] + 
-           m_shader_stats->gpu_stall_shd_mem_breakdown[G_MEM_ST][COAL_STALL] + 
-           m_shader_stats->gpu_stall_shd_mem_breakdown[L_MEM_LD][COAL_STALL] + 
-           m_shader_stats->gpu_stall_shd_mem_breakdown[L_MEM_ST][COAL_STALL]    
-           ); // coalescing stall + bank conflict at data cache 
-   fprintf(fout, "gpgpu_stall_shd_mem[g_mem_ld][mshr_rc] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[G_MEM_LD][MSHR_RC_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[g_mem_ld][icnt_rc] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[G_MEM_LD][ICNT_RC_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[g_mem_ld][wb_icnt_rc] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[G_MEM_LD][WB_ICNT_RC_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[g_mem_ld][wb_rsrv_fail] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[G_MEM_LD][WB_CACHE_RSRV_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[g_mem_st][mshr_rc] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[G_MEM_ST][MSHR_RC_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[g_mem_st][icnt_rc] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[G_MEM_ST][ICNT_RC_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[g_mem_st][wb_icnt_rc] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[G_MEM_ST][WB_ICNT_RC_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[g_mem_st][wb_rsrv_fail] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[G_MEM_ST][WB_CACHE_RSRV_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[l_mem_ld][mshr_rc] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[L_MEM_LD][MSHR_RC_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[l_mem_ld][icnt_rc] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[L_MEM_LD][ICNT_RC_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[l_mem_ld][wb_icnt_rc] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[L_MEM_LD][WB_ICNT_RC_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[l_mem_ld][wb_rsrv_fail] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[L_MEM_LD][WB_CACHE_RSRV_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[l_mem_st][mshr_rc] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[L_MEM_ST][MSHR_RC_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[l_mem_st][icnt_rc] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[L_MEM_ST][ICNT_RC_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[l_mem_ld][wb_icnt_rc] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[L_MEM_ST][WB_ICNT_RC_FAIL]);
-   fprintf(fout, "gpgpu_stall_shd_mem[l_mem_ld][wb_rsrv_fail] = %d\n", m_shader_stats->gpu_stall_shd_mem_breakdown[L_MEM_ST][WB_CACHE_RSRV_FAIL]);
-
-   fprintf(fout, "gpu_reg_bank_conflict_stalls = %d\n", m_shader_stats->gpu_reg_bank_conflict_stalls);
-}
-
 unsigned gpgpu_sim::threads_per_core() const 
 { 
    return m_shader_config->n_thread_per_shader; 
 }
 
-void gpgpu_sim::mem_instruction_stats(const warp_inst_t &inst)
+void shader_core_ctx::mem_instruction_stats(const warp_inst_t &inst)
 {
     //this breaks some encapsulation: the is_[space] functions, if you change those, change this.
     switch (inst.space.get_type()) {
@@ -807,24 +588,24 @@ void gpgpu_sim::mem_instruction_stats(const warp_inst_t &inst)
     case reg_space:
         break;
     case shared_space:
-        m_shader_stats->gpgpu_n_shmem_insn++;
+        m_stats->gpgpu_n_shmem_insn++;
         break;
     case const_space:
-        m_shader_stats->gpgpu_n_const_insn++;
+        m_stats->gpgpu_n_const_insn++;
         break;
     case param_space_kernel:
     case param_space_local:
-        m_shader_stats->gpgpu_n_param_insn++;
+        m_stats->gpgpu_n_param_insn++;
         break;
     case tex_space:
-        m_shader_stats->gpgpu_n_tex_insn++;
+        m_stats->gpgpu_n_tex_insn++;
         break;
     case global_space:
     case local_space:
         if( inst.is_store() )
-            m_shader_stats->gpgpu_n_store_insn++;
+            m_stats->gpgpu_n_store_insn++;
         else 
-            m_shader_stats->gpgpu_n_load_insn++;
+            m_stats->gpgpu_n_load_insn++;
         break;
     default:
         abort();
@@ -845,7 +626,7 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
 {
     // find a free CTA context 
     unsigned free_cta_hw_id=(unsigned)-1;
-    unsigned max_concurrent_cta_this_kernel = max_cta(kernel.entry());
+    unsigned max_concurrent_cta_this_kernel = m_config->max_cta(kernel);
     assert( max_concurrent_cta_this_kernel <= MAX_CTA_PER_SHADER );
     for (unsigned i=0;i<max_concurrent_cta_this_kernel;i++ ) {
       if( m_cta_status[i]==0 ) {
@@ -889,16 +670,10 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
 
     // initialize the SIMT stacks and fetch hardware
     init_warps( free_cta_hw_id, start_thread, end_thread);
-
     m_n_active_cta++;
-    g_total_cta_left-=1; // used for exiting early from simulation
 
     shader_CTA_count_log(m_sid, 1);
-    
-    printf("GPGPU-Sim uArch: Shader %d initialized CTA #%d with hw tids from %d to %d @(%lld,%lld)", 
-          m_sid, free_cta_hw_id, start_thread, start_thread+nthreads_in_block, gpu_sim_cycle, gpu_tot_sim_cycle );
-    printf(" active threads = %d\n", get_not_completed() );
-    
+    printf("GPGPU-Sim uArch: core:%d, cta:%u initialized @(%lld,%lld)\n", m_sid, free_cta_hw_id, gpu_sim_cycle, gpu_tot_sim_cycle );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -917,23 +692,22 @@ int gpgpu_sim::next_clock_domain(void)
 {
    double smallest = min3(core_time,icnt_time,dram_time);
    int mask = 0x00;
-   if ( m_memory_config->m_L2_config.get_num_lines()   //when no-L2 it will never be L2's turn
-       && (l2_time <= smallest) ) {
+   if ( l2_time <= smallest ) {
       smallest = l2_time;
       mask |= L2 ;
-      l2_time += l2_period;
+      l2_time += m_config.l2_period;
    }
    if ( icnt_time <= smallest ) {
       mask |= ICNT;
-      icnt_time += icnt_period;
+      icnt_time += m_config.icnt_period;
    }
    if ( dram_time <= smallest ) {
       mask |= DRAM;
-      dram_time += dram_period;
+      dram_time += m_config.dram_period;
    }
    if ( core_time <= smallest ) {
       mask |= CORE;
-      core_time += core_period;
+      core_time += m_config.core_period;
    }
    return mask;
 }
@@ -1009,16 +783,18 @@ void gpgpu_sim::cycle()
          gpgpu_debug();
 
       for (unsigned i=0;i<m_shader_config->n_simt_clusters && more_thread;i++) {
-         if ( ( (m_cluster[i]->get_n_active_cta()+1) <= m_cluster[i]->max_cta(m_the_kernel.entry()) ) && g_total_cta_left ) {
-            m_cluster[i]->issue_block2core( m_the_kernel );
-            if (!g_total_cta_left) 
-               more_thread = 0;
-            assert( g_total_cta_left > -1 );
+         if ( ( (m_cluster[i]->get_n_active_cta()+1) <= m_cluster[i]->max_cta(m_the_kernel) ) && g_total_cta_left ) {
+            unsigned num = m_cluster[i]->issue_block2core( m_the_kernel );
+            if (num >= g_total_cta_left) {
+               g_total_cta_left = 0;
+               more_thread = false;
+            } else 
+               g_total_cta_left -= num;
          }
       }
 
       // Flush the caches once all of threads are completed.
-      if (gpgpu_flush_cache) {
+      if (m_config.gpgpu_flush_cache) {
          int all_threads_complete = 1 ; 
          for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) {
             if (m_cluster[i]->get_not_completed() == 0) 
@@ -1039,7 +815,7 @@ void gpgpu_sim::cycle()
          }
       }
 
-      if (!(gpu_sim_cycle % gpu_stat_sample_freq)) {
+      if (!(gpu_sim_cycle % m_config.gpu_stat_sample_freq)) {
          time_t days, hrs, minutes, sec;
          time_t curr_time;
          time(&curr_time);
@@ -1055,44 +831,27 @@ void gpgpu_sim::cycle()
                 (unsigned)days,(unsigned)hrs,(unsigned)minutes,(unsigned)sec,
                 ctime(&curr_time));
          fflush(stdout);
-         m_memory_stats->memlatstat_lat_pw(num_shader(),m_shader_config->n_thread_per_shader,m_shader_config->warp_size);
+         m_memory_stats->memlatstat_lat_pw(m_config.num_shader(),m_shader_config->n_thread_per_shader,m_shader_config->warp_size);
          visualizer_printstat();
-         if (gpgpu_runtime_stat && (gpu_runtime_stat_flag != 0) ) {
-            if (gpu_runtime_stat_flag & GPU_RSTAT_BW_STAT) {
+         if (m_config.gpgpu_runtime_stat && (m_config.gpu_runtime_stat_flag != 0) ) {
+            if (m_config.gpu_runtime_stat_flag & GPU_RSTAT_BW_STAT) {
                for (unsigned i=0;i<m_memory_config->m_n_mem;i++) 
                   m_memory_partition_unit[i]->print_stat(stdout);
                printf("maxmrqlatency = %d \n", m_memory_stats->max_mrq_latency);
                printf("maxmflatency = %d \n", m_memory_stats->max_mf_latency);
             }
-            if (gpu_runtime_stat_flag & GPU_RSTAT_SHD_INFO) {
+            if (m_config.gpu_runtime_stat_flag & GPU_RSTAT_SHD_INFO) 
                shader_print_runtime_stat( stdout );
-            }
-            if (gpu_runtime_stat_flag & GPU_RSTAT_WARP_DIS) {
+            if (m_config.gpu_runtime_stat_flag & GPU_RSTAT_WARP_DIS) 
                print_shader_cycle_distro( stdout );
-            }
-            if (gpu_runtime_stat_flag & GPU_RSTAT_L1MISS) {
+            if (m_config.gpu_runtime_stat_flag & GPU_RSTAT_L1MISS) 
                shader_print_l1_miss_stat( stdout );
-            }
-            if (gpu_runtime_stat_flag & GPU_RSTAT_PDOM ) {
-               if (m_pdom_sched_type) {
-                  printf ("pdom_original_warps_count %d \n",m_shader_stats->n_pdom_sc_orig_stat );
-                  printf ("pdom_single_warps_count %d \n",m_shader_stats->n_pdom_sc_single_stat );
-               }
-            }
-            if (gpu_runtime_stat_flag & GPU_RSTAT_SCHED ) {
-               printf("Average Num. Warps Issuable per Shader:\n");
-               for (unsigned i=0;i<num_shader();i++) {
-                  printf("%2.2f ", (float) m_shader_stats->num_warps_issuable_pershader[i]/ gpu_stat_sample_freq);
-                  m_shader_stats->num_warps_issuable_pershader[i] = 0;
-               }
-               printf("\n");
-            }
          }
       }
 
       if (!(gpu_sim_cycle % 20000)) {
          // deadlock detection 
-         if (gpu_deadlock_detect && gpu_sim_insn == last_gpu_sim_insn) {
+         if (m_config.gpu_deadlock_detect && gpu_sim_insn == last_gpu_sim_insn) {
             gpu_deadlock = true;
          } else {
             last_gpu_sim_insn = gpu_sim_insn;
@@ -1103,7 +862,7 @@ void gpgpu_sim::cycle()
    }
 }
 
-void shader_core_ctx::dump_istream_state( FILE *fout )
+void shader_core_ctx::dump_istream_state( FILE *fout ) const
 {
    fprintf(fout, "\n");
    for (unsigned w=0; w < m_config->max_warps_per_shader; w++ ) 

@@ -1,5 +1,6 @@
 #include "abstract_hardware_model.h"
 #include "cuda-sim/memory.h"
+#include "option_parser.h"
 #include <algorithm>
 
 unsigned mem_access_t::sm_next_access_uid = 0;   
@@ -14,7 +15,40 @@ void move_warp( warp_inst_t *&dst, warp_inst_t *&src )
    src->clear();
 }
 
-gpgpu_t::gpgpu_t()
+
+void gpgpu_functional_sim_config::reg_options(class OptionParser * opp)
+{
+    option_parser_register(opp, "-gpgpu_ptx_convert_to_ptxplus", OPT_BOOL,
+                 &m_ptx_convert_to_ptxplus,
+                 "Convert embedded ptx to ptxplus",
+                 "0");
+    option_parser_register(opp, "-gpgpu_ptx_save_converted_ptxplus", OPT_BOOL,
+                 &m_ptx_save_converted_ptxplus,
+                 "Saved converted ptxplus to a file",
+                 "0");
+    option_parser_register(opp, "-gpgpu_ptx_force_max_capability", OPT_UINT32,
+                 &m_ptx_force_max_capability,
+                 "Force maximum compute capability",
+                 "0");
+   option_parser_register(opp, "-gpgpu_ptx_inst_debug_to_file", OPT_BOOL, 
+                &g_ptx_inst_debug_to_file, 
+                "Dump executed instructions' debug information to file", 
+                "0");
+   option_parser_register(opp, "-gpgpu_ptx_inst_debug_file", OPT_CSTR, &g_ptx_inst_debug_file, 
+                  "Executed instructions' debug output file",
+                  "inst_debug.txt");
+   option_parser_register(opp, "-gpgpu_ptx_inst_debug_thread_uid", OPT_INT32, &g_ptx_inst_debug_thread_uid, 
+               "Thread UID for executed instructions' debug output", 
+               "1");
+}
+
+void gpgpu_functional_sim_config::ptx_set_tex_cache_linesize(unsigned linesize)
+{
+   m_texcache_linesize = linesize;
+}
+
+gpgpu_t::gpgpu_t( const gpgpu_functional_sim_config &config )
+    : m_function_model_config(config)
 {
    m_global_mem = new memory_space_impl<8192>("global",64*1024);
    m_param_mem = new memory_space_impl<8192>("param",64*1024);
@@ -22,6 +56,9 @@ gpgpu_t::gpgpu_t()
    m_surf_mem = new memory_space_impl<8192>("surf",64*1024);
 
    m_dev_malloc=GLOBAL_HEAP_START; 
+
+   if(m_function_model_config.get_ptx_inst_debug_to_file() != 0) 
+      ptx_inst_debug_file = fopen(m_function_model_config.get_ptx_inst_debug_file(), "w");
 }
 
 address_type line_size_based_tag_func(new_addr_type address, new_addr_type line_size)
@@ -75,9 +112,9 @@ void warp_inst_t::generate_mem_accesses()
 
     switch( space.get_type() ) {
     case shared_space: {
-        unsigned subwarp_size = m_config->warp_size / m_config->shmem_warp_parts;
+        unsigned subwarp_size = m_config->warp_size / m_config->mem_warp_parts;
         unsigned total_accesses=0;
-        for( unsigned subwarp=0; subwarp <  m_config->shmem_warp_parts; subwarp++ ) {
+        for( unsigned subwarp=0; subwarp <  m_config->mem_warp_parts; subwarp++ ) {
 
             // data structures used per part warp 
             std::map<unsigned,std::map<new_addr_type,unsigned> > bank_accs; // bank -> word address -> access count
@@ -87,6 +124,8 @@ void warp_inst_t::generate_mem_accesses()
                 if( !active(thread) ) 
                     continue;
                 new_addr_type addr = m_per_scalar_thread[thread].memreqaddr;
+                //FIXME: deferred allocation of shared memory should not accumulate across kernel launches
+                //assert( addr < m_config->gpgpu_shmem_size ); 
                 unsigned bank = m_config->shmem_bank_func(addr);
                 new_addr_type word = line_size_based_tag_func(addr,m_config->WORD_SIZE);
                 bank_accs[bank][word]++;

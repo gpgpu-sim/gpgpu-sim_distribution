@@ -18,7 +18,6 @@ extern int g_debug_thread_uid;
 extern void ** g_inst_classification_stat;
 extern void ** g_inst_op_classification_stat;
 extern int g_ptx_kernel_count; // used for classification stat collection purposes 
-extern FILE* ptx_inst_debug_file;
 
 
 extern class kernel_info_t gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
@@ -45,7 +44,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
                               unsigned hw_warp_id,
                               gpgpu_t *gpu );
 const warp_inst_t *ptx_fetch_inst( address_type pc );
-const struct gpgpu_ptx_sim_kernel_info* ptx_sim_kernel_info(class function_info *kernel);
+const struct gpgpu_ptx_sim_kernel_info* ptx_sim_kernel_info(const class function_info *kernel);
 void ptx_print_insn( address_type pc, FILE *fp );
 void set_param_gpgpu_num_shaders(int num_shaders);
 unsigned int get_converge_point(unsigned int pc, void *thd);

@@ -120,6 +120,7 @@ struct memory_config {
       m_L2_config.init();
       m_valid = true;
    }
+   void reg_options(class OptionParser * opp);
 
    bool m_valid;
    cache_config m_L2_config;
@@ -154,29 +155,105 @@ struct memory_config {
    linear_to_raw_address_translation m_address_mapping;
 };
 
-// global config
-extern int gpgpu_mem_address_mask;
-extern int gpu_runtime_stat_flag;
-extern int gpgpu_cflog_interval;
-extern bool g_interactive_debugger_enabled;
-extern int   g_ptx_inst_debug_to_file;
-extern char* g_ptx_inst_debug_file;
-extern int   g_ptx_inst_debug_thread_uid;
-
-// global counters
+// global counters and flags (please try not to add to this list!!!)
 extern unsigned long long  gpu_sim_cycle;
 extern unsigned long long  gpu_tot_sim_cycle;
+extern bool g_interactive_debugger_enabled;
+
+class gpgpu_sim_config : public gpgpu_functional_sim_config {
+public:
+    gpgpu_sim_config() { m_valid = false; }
+    void reg_options(class OptionParser * opp);
+    void init() 
+    {
+        gpu_stat_sample_freq = 10000;
+        gpu_runtime_stat_flag = 0;
+        sscanf(gpgpu_runtime_stat, "%d:%x", &gpu_stat_sample_freq, &gpu_runtime_stat_flag);
+        m_shader_config.init();    
+        ptx_set_tex_cache_linesize(m_shader_config.m_L1T_config.get_line_sz());
+        m_memory_config.init();
+        init_clock_domains(); 
+
+        // initialize file name if it is not set 
+        time_t curr_time;
+        time(&curr_time);
+        char *date = ctime(&curr_time);
+        char *s = date;
+        while (*s) {
+            if (*s == ' ' || *s == '\t' || *s == ':') *s = '-';
+            if (*s == '\n' || *s == '\r' ) *s = 0;
+            s++;
+        }
+        char buf[1024];
+        snprintf(buf,1024,"gpgpusim_visualizer__%s.log.gz",date);
+        g_visualizer_filename = strdup(buf);
+
+        m_valid=true;
+    }
+
+    void set_max_cta( const kernel_info_t &kernel ) 
+    {
+        // calcaulte the max cta count and cta size for local memory address mapping
+        m_shader_config.gpu_max_cta_per_shader = m_shader_config.max_cta(kernel);
+        //gpu_max_cta_per_shader is limited by number of CTAs if not enough    
+        if( kernel.num_blocks() < m_shader_config.gpu_max_cta_per_shader*num_shader() ) { 
+           m_shader_config.gpu_max_cta_per_shader = (kernel.num_blocks() / num_shader());
+           if (kernel.num_blocks() % num_shader())
+              m_shader_config.gpu_max_cta_per_shader++;
+        }
+        unsigned int gpu_cta_size = kernel.threads_per_cta();
+        m_shader_config.gpu_padded_cta_size = (gpu_cta_size%32) ? 32*((gpu_cta_size/32)+1) : gpu_cta_size;
+    }
+    unsigned num_shader() const { return m_shader_config.num_shader(); }
+
+private:
+    void init_clock_domains(void ); 
+
+    bool m_valid;
+    shader_core_config m_shader_config;
+    memory_config m_memory_config;
+
+    // clock domains - frequency
+    double core_freq;
+    double icnt_freq;
+    double dram_freq;
+    double l2_freq;
+    double core_period;
+    double icnt_period;
+    double dram_period;
+    double l2_period;
+
+    // GPGPU-Sim timing model options
+    unsigned gpu_max_cycle_opt;
+    unsigned gpu_max_insn_opt;
+    unsigned gpu_max_cta_opt;
+    char *gpgpu_runtime_stat;
+    bool  gpgpu_flush_cache;
+    bool  gpu_deadlock_detect;
+    int   gpgpu_dram_sched_queue_size; 
+    int   gpgpu_cflog_interval;
+    char * gpgpu_clock_domains;
+
+    // visualizer
+    bool  g_visualizer_enabled;
+    char *g_visualizer_filename;
+    int   g_visualizer_zlevel;
+
+    // statistics collection
+    int gpu_stat_sample_freq;
+    int gpu_runtime_stat_flag;
+
+    friend class gpgpu_sim;
+};
 
 class gpgpu_sim : public gpgpu_t {
 public:
-   gpgpu_sim();
+   gpgpu_sim( const gpgpu_sim_config &config );
 
-   void reg_options(class OptionParser * opp);
-   void init_gpu();
    void set_prop( struct cudaDeviceProp *prop );
 
    void launch( kernel_info_t &kinfo );
-   void next_grid();
+   kernel_info_t *next_grid();
 
    unsigned run_gpu_sim();
 
@@ -190,29 +267,21 @@ public:
    const struct cudaDeviceProp *get_prop() const;
    enum divergence_support_t simd_model() const; 
 
-   unsigned num_shader() const { return m_shader_config->n_simt_clusters*m_shader_config->n_simt_cores_per_cluster; }
    unsigned threads_per_core() const;
-   void mem_instruction_stats( const class warp_inst_t &inst);
 
+   const gpgpu_sim_config &get_config() const { return m_config; }
    void gpu_print_stat() const;
    void dump_pipeline( int mask, int s, int m ) const;
 
-   unsigned get_forced_max_capability() const { return m_ptx_force_max_capability; }
-   bool convert_to_ptxplus() const { return m_ptx_convert_to_ptxplus; }
-   bool saved_converted_ptxplus() const { return m_ptx_save_converted_ptxplus; }
-
 private:
    // clocks
-   void init_clock_domains(void);
    void reinit_clock_domains(void);
-   int next_clock_domain(void);
+   int  next_clock_domain(void);
     
    void cycle();
-   void L2c_options(class OptionParser *opp);
    void L2c_print_cache_stat() const;
    void shader_print_runtime_stat( FILE *fout );
    void shader_print_l1_miss_stat( FILE *fout );
-   void shader_print_accstats( FILE* fout ) const;
    void visualizer_printstat();
    void print_shader_cycle_distro( FILE *fout ) const;
 
@@ -227,7 +296,8 @@ private:
    kernel_info_t m_the_kernel;
    std::list<kernel_info_t> m_running_kernels;
 
-   unsigned int more_thread;
+   unsigned g_total_cta_left;
+   bool more_thread;
 
    // time of next rising edge 
    double core_time;
@@ -239,34 +309,15 @@ private:
    bool gpu_deadlock;
 
    //// configuration parameters ////
-   bool m_options_set;
-
-   // clock domains - frequency
-   double core_freq;
-   double icnt_freq;
-   double dram_freq;
-   double l2_freq;
+   const gpgpu_sim_config &m_config;
   
-   // clock period  
-   double core_period;
-   double icnt_period;
-   double dram_period;
-   double l2_period;
-
-   struct cudaDeviceProp     *m_cuda_properties;
-   struct shader_core_config *m_shader_config;
-   struct memory_config      *m_memory_config;
-
-   int m_pdom_sched_type;
-
-   bool gpu_deadlock_detect;
-   int   m_ptx_convert_to_ptxplus;
-   int   m_ptx_save_converted_ptxplus;
-   unsigned m_ptx_force_max_capability;
+   const struct cudaDeviceProp     *m_cuda_properties;
+   const struct shader_core_config *m_shader_config;
+   const struct memory_config      *m_memory_config;
 
    // stats
-   struct shader_core_stats  *m_shader_stats;
-   class memory_stats_t      *m_memory_stats;
+   class shader_core_stats  *m_shader_stats;
+   class memory_stats_t     *m_memory_stats;
    unsigned long long  gpu_tot_issued_cta;
    unsigned long long  gpu_tot_completed_thread;
    unsigned long long  last_gpu_sim_insn;
