@@ -1166,7 +1166,8 @@ public:
                        unsigned cluster_id, 
                        const struct shader_core_config *config, 
                        const struct memory_config *mem_config,
-                       shader_core_stats *stats );
+                       shader_core_stats *stats,
+                       memory_stats_t *mstats );
 
     void core_cycle();
     void icnt_cycle();
@@ -1190,6 +1191,7 @@ private:
     gpgpu_sim *m_gpu;
     const shader_core_config *m_config;
     shader_core_stats *m_stats;
+    memory_stats_t *m_memory_stats;
     shader_core_ctx **m_core;
 
     unsigned m_cta_issue_next_core;

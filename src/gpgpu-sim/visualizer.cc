@@ -95,20 +95,10 @@ void gpgpu_sim::visualizer_printstat()
    cflog_visualizer_gzprint(visualizer_file);
    shader_CTA_count_visualizer_gzprint(visualizer_file);
 
-   // per shader core cache miss rate 
-
    for (unsigned i=0;i<m_memory_config->m_n_mem;i++) 
       m_memory_partition_unit[i]->visualizer_print(visualizer_file);
    m_shader_stats->visualizer_print(visualizer_file);
-
-   gzprintf(visualizer_file, "Ltwowritemiss: %d\n", m_memory_stats->L2_write_miss);
-   gzprintf(visualizer_file, "Ltwowritehit: %d\n",  m_memory_stats->L2_write_hit);
-   gzprintf(visualizer_file, "Ltworeadmiss: %d\n", m_memory_stats->L2_read_miss);
-   gzprintf(visualizer_file, "Ltworeadhit: %d\n", m_memory_stats->L2_read_hit);
-
-   // latency stats
-   if (m_memory_stats->num_mfs) 
-      gzprintf(visualizer_file, "averagemflatency: %lld\n", m_memory_stats->mf_total_lat/m_memory_stats->num_mfs);
+   m_memory_stats->visualizer_print(visualizer_file);
 
    // other parameters for graphing
    gzprintf(visualizer_file, "globalcyclecount: %lld\n", gpu_sim_cycle);
@@ -118,6 +108,35 @@ void gpgpu_sim::visualizer_printstat()
    time_vector_print_interval2gzfile(visualizer_file);
 
    gzclose(visualizer_file);
+/*
+   gzprintf(visualizer_file, "CacheMissRate_GlobalLocalL1_All: ");
+   for (unsigned i=0;i<m_n_shader;i++) 
+      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1_windowed_cache_miss_rate(0));
+   gzprintf(visualizer_file, "\n");
+   gzprintf(visualizer_file, "CacheMissRate_TextureL1_All: ");
+   for (unsigned i=0;i<m_n_shader;i++) 
+      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1tex_windowed_cache_miss_rate(0));
+   gzprintf(visualizer_file, "\n");
+   gzprintf(visualizer_file, "CacheMissRate_ConstL1_All: ");
+   for (unsigned i=0;i<m_n_shader;i++) 
+      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1const_windowed_cache_miss_rate(0));
+   gzprintf(visualizer_file, "\n");
+   gzprintf(visualizer_file, "CacheMissRate_GlobalLocalL1_noMgHt: ");
+   for (unsigned i=0;i<m_n_shader;i++) 
+      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1_windowed_cache_miss_rate(1));
+   gzprintf(visualizer_file, "\n");
+   gzprintf(visualizer_file, "CacheMissRate_TextureL1_noMgHt: ");
+   for (unsigned i=0;i<m_n_shader;i++) 
+      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1tex_windowed_cache_miss_rate(1));
+   gzprintf(visualizer_file, "\n");
+   gzprintf(visualizer_file, "CacheMissRate_ConstL1_noMgHt: ");
+   for (unsigned i=0;i<m_n_shader;i++) 
+      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1const_windowed_cache_miss_rate(1));
+   gzprintf(visualizer_file, "\n");
+   // reset for next interval
+   for (unsigned i=0;i<m_n_shader;i++) 
+      m_sc[i]->new_cache_window();
+*/
 }
 
 #include <list>

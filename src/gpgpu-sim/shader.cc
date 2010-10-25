@@ -480,36 +480,6 @@ void shader_core_stats::visualizer_print( gzFile visualizer_file )
    for (unsigned i=0;i<m_config->num_shader();i++) 
       gzprintf(visualizer_file, "%u ", m_n_diverge[i] );
    gzprintf(visualizer_file, "\n");
-
-/*
-   gzprintf(visualizer_file, "CacheMissRate_GlobalLocalL1_All: ");
-   for (unsigned i=0;i<m_n_shader;i++) 
-      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1_windowed_cache_miss_rate(0));
-   gzprintf(visualizer_file, "\n");
-   gzprintf(visualizer_file, "CacheMissRate_TextureL1_All: ");
-   for (unsigned i=0;i<m_n_shader;i++) 
-      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1tex_windowed_cache_miss_rate(0));
-   gzprintf(visualizer_file, "\n");
-   gzprintf(visualizer_file, "CacheMissRate_ConstL1_All: ");
-   for (unsigned i=0;i<m_n_shader;i++) 
-      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1const_windowed_cache_miss_rate(0));
-   gzprintf(visualizer_file, "\n");
-   gzprintf(visualizer_file, "CacheMissRate_GlobalLocalL1_noMgHt: ");
-   for (unsigned i=0;i<m_n_shader;i++) 
-      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1_windowed_cache_miss_rate(1));
-   gzprintf(visualizer_file, "\n");
-   gzprintf(visualizer_file, "CacheMissRate_TextureL1_noMgHt: ");
-   for (unsigned i=0;i<m_n_shader;i++) 
-      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1tex_windowed_cache_miss_rate(1));
-   gzprintf(visualizer_file, "\n");
-   gzprintf(visualizer_file, "CacheMissRate_ConstL1_noMgHt: ");
-   for (unsigned i=0;i<m_n_shader;i++) 
-      gzprintf(visualizer_file, "%0.4f ", m_sc[i]->L1const_windowed_cache_miss_rate(1));
-   gzprintf(visualizer_file, "\n");
-   // reset for next interval
-   for (unsigned i=0;i<m_n_shader;i++) 
-      m_sc[i]->new_cache_window();
-*/
 }
 
 #define PROGRAM_MEM_START 0xF0000000 /* should be distinct from other memory spaces... 
@@ -1989,13 +1959,15 @@ simt_core_cluster::simt_core_cluster( class gpgpu_sim *gpu,
                                       unsigned cluster_id, 
                                       const struct shader_core_config *config, 
                                       const struct memory_config *mem_config,
-                                      shader_core_stats *stats )
+                                      shader_core_stats *stats, 
+                                      class memory_stats_t *mstats )
 {
     m_config = config;
     m_cta_issue_next_core=m_config->n_simt_cores_per_cluster-1; // this causes first launch to use hw cta 0
     m_cluster_id=cluster_id;
     m_gpu = gpu;
     m_stats = stats;
+    m_memory_stats = mstats;
     m_core = new shader_core_ctx*[ config->n_simt_cores_per_cluster ];
     for( unsigned i=0; i < config->n_simt_cores_per_cluster; i++ ) {
         unsigned sid = m_config->cid_to_sid(i,m_cluster_id);
@@ -2103,6 +2075,7 @@ void simt_core_cluster::icnt_cycle()
             // data response
             if( !m_core[cid]->ldst_unit_response_buffer_full() ) {
                 m_response_fifo.pop_front();
+                m_memory_stats->memlatstat_read_done(mf);
                 m_core[cid]->accept_ldst_unit_response(mf);
             }
         }

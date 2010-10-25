@@ -118,10 +118,6 @@ memory_stats_t::memory_stats_t( unsigned n_shader, const struct shader_core_conf
    memset(mf_lat_pw_table, 0, sizeof(unsigned)*32);
    mf_num_lat_pw = 0;
    max_warps = n_shader * (shader_config->n_thread_per_shader / shader_config->warp_size+1);
-   mf_num_lat_pw_perwarp = (unsigned *) calloc(max_warps, sizeof(unsigned int));
-   mf_tot_lat_pw_perwarp = (unsigned *) calloc(max_warps, sizeof(unsigned int));
-   mf_total_lat_perwarp = (unsigned long long int *) calloc(max_warps, sizeof(unsigned long long int));
-   num_mfs_perwarp = (unsigned *) calloc(max_warps, sizeof(unsigned int));
    mf_tot_lat_pw = 0; //total latency summed up per window. divide by mf_num_lat_pw to obtain average latency Per Window
    mf_total_lat = 0;
    num_mfs = 0;
@@ -176,16 +172,12 @@ memory_stats_t::memory_stats_t( unsigned n_shader, const struct shader_core_conf
    L2_L2todramlength = (unsigned int*) calloc(mem_config->m_n_mem, sizeof(unsigned int));
 }
 
-// recorder the total latency
-unsigned memory_stats_t::memlatstat_done(mem_fetch *mf, unsigned n_warp_per_shader )
+// record the total latency
+unsigned memory_stats_t::memlatstat_done(mem_fetch *mf )
 {
    unsigned mf_latency;
-   unsigned wid = mf->get_sid()*n_warp_per_shader + mf->get_wid();
-   assert(wid<max_warps);
    mf_latency = (gpu_sim_cycle+gpu_tot_sim_cycle) - mf->get_timestamp();
    mf_num_lat_pw++;
-   mf_num_lat_pw_perwarp[wid]++;
-   mf_tot_lat_pw_perwarp[wid] += mf_latency;
    mf_tot_lat_pw += mf_latency;
    unsigned idx = LOGB2(mf_latency);
    assert(idx<32);
@@ -197,10 +189,10 @@ unsigned memory_stats_t::memlatstat_done(mem_fetch *mf, unsigned n_warp_per_shad
    return mf_latency;
 }
 
-void memory_stats_t::memlatstat_read_done(mem_fetch *mf, unsigned n_warp_per_shader)
+void memory_stats_t::memlatstat_read_done(mem_fetch *mf)
 {
    if (m_memory_config->gpgpu_memlatency_stat) {
-      unsigned mf_latency = memlatstat_done(mf,n_warp_per_shader);
+      unsigned mf_latency = memlatstat_done(mf);
       if (mf_latency > mf_max_lat_table[mf->get_tlx_addr().chip][mf->get_tlx_addr().bk]) 
          mf_max_lat_table[mf->get_tlx_addr().chip][mf->get_tlx_addr().bk] = mf_latency;
       unsigned icnt2sh_latency;
@@ -244,9 +236,8 @@ void memory_stats_t::memlatstat_icnt2mem_pop(mem_fetch *mf)
    }
 }
 
-void memory_stats_t::memlatstat_lat_pw( unsigned n_shader, unsigned n_thread_per_shader, unsigned warp_size )
+void memory_stats_t::memlatstat_lat_pw()
 {
-   unsigned i;
    if (mf_num_lat_pw && m_memory_config->gpgpu_memlatency_stat) {
       assert(mf_tot_lat_pw);
       mf_total_lat = mf_tot_lat_pw;
@@ -254,15 +245,6 @@ void memory_stats_t::memlatstat_lat_pw( unsigned n_shader, unsigned n_thread_per
       mf_lat_pw_table[LOGB2(mf_tot_lat_pw/mf_num_lat_pw)]++;
       mf_tot_lat_pw = 0;
       mf_num_lat_pw = 0;
-   }
-   for (i=0;i < ((n_shader * n_thread_per_shader / warp_size)+1); i++) {
-      assert(i<max_warps);
-      if (mf_num_lat_pw_perwarp[i] && m_memory_config->gpgpu_memlatency_stat) {
-         mf_total_lat_perwarp[i] += mf_tot_lat_pw_perwarp[i];
-         num_mfs_perwarp[i] += mf_num_lat_pw_perwarp[i];
-         mf_tot_lat_pw_perwarp[i] = 0;
-         mf_num_lat_pw_perwarp[i] = 0;
-      }
    }
 }
 

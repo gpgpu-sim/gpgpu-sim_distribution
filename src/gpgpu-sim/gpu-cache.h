@@ -657,7 +657,7 @@ public:
         for( int n=m_rob.size()-1; n>=0; n-- ) {
             unsigned index = (m_rob.next_pop_index() + n)%m_rob.capacity();
             const rob_entry &r = m_rob.peek(index);
-            fprintf(fp, "tex rob[%2d] : %s ", index, (r.m_ready?"ready  ":"pending") );
+            fprintf(fp, "tex rob[%3d] : %s ", index, (r.m_ready?"ready  ":"pending") );
             if( r.m_ready ) 
                 fprintf(fp,"@%6u", r.m_time );
             else 

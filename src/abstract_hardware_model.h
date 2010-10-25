@@ -717,7 +717,7 @@ protected:
     bool m_per_scalar_thread_valid;
     std::vector<per_thread_info> m_per_scalar_thread;
     bool m_mem_accesses_created;
-    std::vector<mem_access_t> m_accessq;
+    std::list<mem_access_t> m_accessq;
 
     static unsigned sm_next_uid;
 };

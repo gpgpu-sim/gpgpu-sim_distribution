@@ -340,7 +340,7 @@ gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config )
 
     m_cluster = new simt_core_cluster*[m_shader_config->n_simt_clusters];
     for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) 
-        m_cluster[i] = new simt_core_cluster(this,i,m_shader_config,m_memory_config,m_shader_stats);
+        m_cluster[i] = new simt_core_cluster(this,i,m_shader_config,m_memory_config,m_shader_stats,m_memory_stats);
 
     m_memory_partition_unit = new memory_partition_unit*[m_memory_config->m_n_mem];
     for (unsigned i=0;i<m_memory_config->m_n_mem;i++) 
@@ -485,7 +485,7 @@ unsigned int gpgpu_sim::run_gpu_sim()
       if (m_config.gpu_deadlock_detect && gpu_deadlock) 
          break;
    }
-   m_memory_stats->memlatstat_lat_pw(m_config.num_shader(),m_shader_config->n_thread_per_shader,m_shader_config->warp_size);
+   m_memory_stats->memlatstat_lat_pw();
    gpu_tot_sim_cycle += gpu_sim_cycle;
    gpu_tot_sim_insn += gpu_sim_insn;
    
@@ -828,7 +828,7 @@ void gpgpu_sim::cycle()
                 (unsigned)days,(unsigned)hrs,(unsigned)minutes,(unsigned)sec,
                 ctime(&curr_time));
          fflush(stdout);
-         m_memory_stats->memlatstat_lat_pw(m_config.num_shader(),m_shader_config->n_thread_per_shader,m_shader_config->warp_size);
+         m_memory_stats->memlatstat_lat_pw();
          visualizer_printstat();
          if (m_config.gpgpu_runtime_stat && (m_config.gpu_runtime_stat_flag != 0) ) {
             if (m_config.gpu_runtime_stat_flag & GPU_RSTAT_BW_STAT) {

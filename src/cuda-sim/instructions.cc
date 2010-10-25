@@ -3745,11 +3745,8 @@ void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       thread->m_last_effective_address = tex_array_index;
       break;
    case GEOM_MODIFIER_2D: 
-      x_block_coord = x;
-      x_block_coord = x_block_coord >> (texInfo->Tx_numbits + texInfo->texel_size_numbits);
-
-      y_block_coord = y;
-      y_block_coord = y_block_coord >> texInfo->Ty_numbits;
+      x_block_coord = x >> (texInfo->Tx_numbits + texInfo->texel_size_numbits);
+      y_block_coord = y >> texInfo->Ty_numbits;
 
       memreqindex = ((y_block_coord*cuArray->width/texInfo->Tx)+x_block_coord)<<6;
 

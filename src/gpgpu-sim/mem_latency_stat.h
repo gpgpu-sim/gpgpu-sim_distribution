@@ -69,6 +69,7 @@
 #define MEM_LATENCY_STAT_H
 
 #include <stdio.h>
+#include <zlib.h>
 
 class memory_stats_t {
 public:
@@ -76,14 +77,15 @@ public:
                    const struct shader_core_config *shader_config, 
                    const struct memory_config *mem_config );
 
-   unsigned memlatstat_done( class mem_fetch *mf, unsigned n_warp_per_shader );
-   void memlatstat_read_done( class mem_fetch *mf, unsigned n_warp_per_shader);
+   unsigned memlatstat_done( class mem_fetch *mf );
+   void memlatstat_read_done( class mem_fetch *mf );
    void memlatstat_dram_access( class mem_fetch *mf );
    void memlatstat_icnt2mem_pop( class mem_fetch *mf);
-   void memlatstat_lat_pw( unsigned n_shader, unsigned n_thread_per_shader, unsigned warp_size );
+   void memlatstat_lat_pw();
    void memlatstat_print(unsigned n_mem, unsigned gpu_mem_n_bk);
 
    void print( FILE *fp );
+   void visualizer_print( gzFile visualizer_file );
 
    unsigned m_n_shader;
 
@@ -115,10 +117,6 @@ public:
    unsigned int **totalbankaccesses; //bankaccesses[dram chip id][bank id]
    unsigned int *num_MCBs_accessed; //tracks how many memory controllers are accessed whenever any thread in a warp misses in cache
    unsigned int *position_of_mrq_chosen; //position of mrq in m_queue chosen 
-   unsigned *mf_num_lat_pw_perwarp;
-   unsigned *mf_tot_lat_pw_perwarp; //total latency summed up per window per warp. divide by mf_num_lat_pw_perwarp to obtain average latency Per Window
-   unsigned long long int *mf_total_lat_perwarp;
-   unsigned *num_mfs_perwarp;
    
    unsigned ***mem_access_type_stats; // dram access type classification
 

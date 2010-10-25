@@ -216,6 +216,16 @@ void memory_stats_t::print( FILE *fp )
     fprintf(fp,"L2_read_hit = %d\n", L2_read_hit);
 }
 
+void memory_stats_t::visualizer_print( gzFile visualizer_file )
+{
+   gzprintf(visualizer_file, "Ltwowritemiss: %d\n", L2_write_miss);
+   gzprintf(visualizer_file, "Ltwowritehit: %d\n",  L2_write_hit);
+   gzprintf(visualizer_file, "Ltworeadmiss: %d\n", L2_read_miss);
+   gzprintf(visualizer_file, "Ltworeadhit: %d\n", L2_read_hit);
+   if (num_mfs) 
+      gzprintf(visualizer_file, "averagemflatency: %lld\n", mf_total_lat/num_mfs);
+}
+
 void gpgpu_sim::L2c_print_cache_stat() const
 {
     unsigned i, j, k;
