@@ -1,0 +1,37 @@
+diff -crB decuda/Instruction.py decudaplus/Instruction.py
+*** decuda/Instruction.py	2010-07-24 05:28:03.000000000 -0700
+--- decudaplus/Instruction.py	2010-09-27 12:52:24.000000000 -0700
+***************
+*** 401,406 ****
+--- 401,409 ----
+                      value = self.bits(0,0x001F0000)
+                  else:
+                      value = self.bits(0,0x007F0000)
++ 		    if len(self.inst)==2:
++ 			    if self.bits(1,0x00200000):
++ 				    t_offset = 0
+              
+              if opt_imm and self.fullinst and self.bits(1,0x00100000):
+                  # Operand 3 is immediate
+diff -crB decuda/Operand.py decudaplus/Operand.py
+*** decuda/Operand.py	2010-07-24 05:28:03.000000000 -0700
+--- decudaplus/Operand.py	2010-09-27 12:52:24.000000000 -0700
+***************
+*** 176,183 ****
+                      rv.write(("0x%06x") % value)
+              elif self.offset != None:
+                  rv.write(("%s[$ofs%i%s%s0x%0"+width+"x]") % (_indir[self.indirection], self.offset, _ofs_inc[self.offset_inc], times, value))
+!             elif self.indirection == OP_INDIRECTION_SHARED and self.size==16 and value in _param_space:
+!                 rv.write(_param_space[value])
+              elif self.indirection == OP_INDIRECTION_INTERNAL and value in _ldgpu_ops:
+                  rv.write(_ldgpu_ops[value])
+              else:
+--- 176,183 ----
+                      rv.write(("0x%06x") % value)
+              elif self.offset != None:
+                  rv.write(("%s[$ofs%i%s%s0x%0"+width+"x]") % (_indir[self.indirection], self.offset, _ofs_inc[self.offset_inc], times, value))
+!             elif self.indirection == OP_INDIRECTION_SHARED and self.size==16 and value/2 in _param_space:
+!                 rv.write(_param_space[value/2])
+              elif self.indirection == OP_INDIRECTION_INTERNAL and value in _ldgpu_ops:
+                  rv.write(_ldgpu_ops[value])
+              else:

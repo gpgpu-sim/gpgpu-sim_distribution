@@ -45,11 +45,11 @@ headerParser.o : headerParser.cpp stringList.h decudaInst.h decudaInstList.h
 decuda_to_ptxplus.o : decuda_to_ptxplus.cc decudaInstList.h
 	g++ ${FLAGS} -c -odecuda_to_ptxplus.o decuda_to_ptxplus.cc
 
-lex.ptx_.c : ../distribution/src/cuda-sim/ptx.l
-	flex ../distribution/src/cuda-sim/ptx.l
+lex.ptx_.c : ../src/cuda-sim/ptx.l
+	flex ../src/cuda-sim/ptx.l
 
-ptx.tab.c : ../distribution/src/cuda-sim/ptx.y
-	bison --name-prefix=ptx_ -v -d ../distribution/src/cuda-sim/ptx.y
+ptx.tab.c : ../src/cuda-sim/ptx.y
+	bison --name-prefix=ptx_ -v -d ../src/cuda-sim/ptx.y
 
 ptx.tab.h : ptx.tab.c
 
