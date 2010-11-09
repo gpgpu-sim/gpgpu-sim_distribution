@@ -82,6 +82,8 @@ endif
 ifneq  ($(NVOPENCL_LIBDIR),)
 	TARGETS += lib/libOpenCL.so
 endif
+	TARGETS += decuda_to_ptxplus/decuda_to_ptxplus
+	TARGETS += decuda
 
 gpgpusim: $(TARGETS)
 
@@ -142,6 +144,12 @@ gpgpusimlib: cuda-sim gpgpu-sim_uarch intersim
 opencllib: cuda-sim
 	$(MAKE) -C ./libopencl/
 
+decuda_to_ptxplus/decuda_to_ptxplus: 
+	$(MAKE) -C ./decuda_to_ptxplus/
+
+decuda:
+	./getDecuda/getDecuda.sh
+
 all:
 	$(MAKE) gpgpusim
 
@@ -157,4 +165,5 @@ endif
 	$(MAKE) clean -C ./src/cuda-sim/
 	$(MAKE) clean -C ./src/gpgpu-sim/
 	$(MAKE) clean -C ./src/
+	$(MAKE) clean -C ./decuda_to_ptxplus/
 	rm -rf ./lib/*.so*
