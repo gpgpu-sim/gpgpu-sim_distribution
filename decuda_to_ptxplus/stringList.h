@@ -1,6 +1,6 @@
 struct stringListPiece
 {
-	char* stringText;
+	const char* stringText;
 	
 	stringListPiece* nextString;
 };

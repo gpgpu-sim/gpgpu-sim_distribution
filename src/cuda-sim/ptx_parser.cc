@@ -908,6 +908,6 @@ void target_header3(char* a, char* b, char* c)
    g_global_symbol_table->set_sm_target(a,b,c);
 }
 
-void func_header(char* a) {} //intentional dummy function
-void func_header_info(char* a) {} //intentional dummy function
-void func_header_info_int(char* a, int b) {} //intentional dummy function
+void func_header(const char* a) {} //intentional dummy function
+void func_header_info(const char* a) {} //intentional dummy function
+void func_header_info_int(const char* a, int b) {} //intentional dummy function

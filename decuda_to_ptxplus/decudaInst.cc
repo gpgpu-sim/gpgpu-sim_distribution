@@ -25,7 +25,7 @@ decudaInst::decudaInst()
 }
 
 //retreive instruction mnemonic
-char* decudaInst::getBase()
+const char* decudaInst::getBase()
 {
 	return m_base;
 }
@@ -52,12 +52,12 @@ decudaInst* decudaInst::getNextDecudaInst()
 	return m_nextDecudaInst;
 }
 
-void decudaInst::setBase(char* setBaseValue)
+void decudaInst::setBase(const char* setBaseValue)
 {
 	m_base = setBaseValue;
 }
 
-void decudaInst::addBaseModifier(char* addBaseMod)
+void decudaInst::addBaseModifier(const char* addBaseMod)
 {
 	stringListPiece* tempPiece = new stringListPiece;
 	tempPiece->stringText = addBaseMod;
@@ -65,7 +65,7 @@ void decudaInst::addBaseModifier(char* addBaseMod)
 	m_baseModifiers->add(tempPiece);
 }
 
-void decudaInst::addTypeModifier(char* addTypeMod)
+void decudaInst::addTypeModifier(const char* addTypeMod)
 {
 	stringListPiece* tempPiece = new stringListPiece;
 	tempPiece->stringText = addTypeMod;
@@ -73,7 +73,7 @@ void decudaInst::addTypeModifier(char* addTypeMod)
 	m_typeModifiers->add(tempPiece);
 }
 
-void decudaInst::addOperand(char* addOp)
+void decudaInst::addOperand(const char* addOp)
 {
 	stringListPiece* tempPiece = new stringListPiece;
 	tempPiece->stringText = addOp;
@@ -81,12 +81,12 @@ void decudaInst::addOperand(char* addOp)
 	m_operands->add(tempPiece);
 }
 
-void decudaInst::setPredicate(char* setPredicateValue)
+void decudaInst::setPredicate(const char* setPredicateValue)
 {
 	m_predicate = setPredicateValue;
 }
 
-void decudaInst::addPredicateModifier(char* addPredicateMod)
+void decudaInst::addPredicateModifier(const char* addPredicateMod)
 {
 	stringListPiece* tempPiece = new stringListPiece;
 	tempPiece->stringText = addPredicateMod;
@@ -94,7 +94,7 @@ void decudaInst::addPredicateModifier(char* addPredicateMod)
 	m_predicateModifiers->add(tempPiece);
 }
 
-void decudaInst::setLabel(char* setLabelValue)
+void decudaInst::setLabel(const char* setLabelValue)
 {
 	m_label = setLabelValue;
 }
@@ -332,7 +332,7 @@ void decudaInst::printTypeModifiers()
 void decudaInst::printOperands()
 {
 	stringListPiece* currentPiece = m_operands->getListStart();
-	char* operandDelimiter = "";
+	const char* operandDelimiter = "";
 	for(int i=0; (i<m_operands->getSize())&&(currentPiece!=NULL); i++)
 	{
 		output(operandDelimiter); output(" "); output(currentPiece->stringText);
@@ -355,9 +355,9 @@ void decudaInst::printNewPtx()
 	currentPiece = m_operands->getListStart();
 	for(int i=0; (i<m_operands->getSize())&&(currentPiece!=NULL); i++)
 	{
-		char* modString = currentPiece->stringText;
+		const char* modString = currentPiece->stringText;
 		if( strcmp(modString, "%%clock")==0 ) {
-			char* newText = "%%halfclock";
+			const char* newText = "%%halfclock";
 			currentPiece->stringText = newText;
 		}
 		currentPiece = currentPiece->nextString;
@@ -367,7 +367,7 @@ void decudaInst::printNewPtx()
 	currentPiece = m_baseModifiers->getListStart();
 	for(int i=0; (i<m_baseModifiers->getSize())&&(currentPiece!=NULL); i++)
 	{
-		char* modString = currentPiece->stringText;
+		const char* modString = currentPiece->stringText;
 		if( strcmp(modString, ".join")==0 ) {
 			m_baseModifiers->remove(i);
 		}
@@ -378,9 +378,9 @@ void decudaInst::printNewPtx()
 	currentPiece = m_baseModifiers->getListStart();
 	for(int i=0; (i<m_baseModifiers->getSize())&&(currentPiece!=NULL); i++)
 	{
-		char* modString = currentPiece->stringText;
+		const char* modString = currentPiece->stringText;
 		if( strcmp(modString, ".end")==0 ) {
-			char* newText = ".exit";
+			const char* newText = ".exit";
 			currentPiece->stringText = newText;
 		}
 		currentPiece = currentPiece->nextString;
@@ -391,14 +391,14 @@ void decudaInst::printNewPtx()
 	currentPiece = m_typeModifiers->getListStart();
 	for(int i=0; (i<m_typeModifiers->getSize())&&(currentPiece!=NULL); i++)
 	{
-		char* modString = currentPiece->stringText;
+		const char* modString = currentPiece->stringText;
 		if( strcmp(modString, ".b64")==0 ) {
-			char* newText = ".bb64";
+			const char* newText = ".bb64";
 			currentPiece->stringText = newText;
 			vectorFlag = 1;
 		}
 		if( strcmp(modString, ".b128")==0 ) {
-			char* newText = ".bb128";
+			const char* newText = ".bb128";
 			currentPiece->stringText = newText;
 			vectorFlag = 2;
 		}
@@ -415,7 +415,7 @@ void decudaInst::printNewPtx()
 			char *regNumString;
 			int regNumInt;
 
-			char* modString = currentPiece->stringText;
+			const char* modString = currentPiece->stringText;
 			if( modString[0] == '$' && modString[1] == 'r' ) {
 				strcpy(newText, modString);
 				strtok (newText, "r");
@@ -542,7 +542,7 @@ void decudaInst::printNewPtx()
 		stringListPiece* currentPiece = m_baseModifiers->getListStart();
 		for(int i=0; (i<m_baseModifiers->getSize())&&(currentPiece!=NULL); i++)
 		{
-                        char* modString = currentPiece->stringText;
+                        const char* modString = currentPiece->stringText;
 			if( strcmp(modString, ".abs")==0 ) {
 				cvt_inst_type = 1;
 			}
@@ -559,7 +559,7 @@ void decudaInst::printNewPtx()
 
 			output("abs");
 
-			char* type = m_typeModifiers->getListStart()->stringText;
+			const char* type = m_typeModifiers->getListStart()->stringText;
 			output(type);
 
 			printOperands();
@@ -593,12 +593,12 @@ void decudaInst::printNewPtx()
                                 else
 				    stringListPiece* currentPiece = m_baseModifiers->getListStart()->nextString;
 
-				char* dstType = m_typeModifiers->getListStart()->stringText;
-				char* srcType = m_typeModifiers->getListStart()->nextString->stringText;
+				const char* dstType = m_typeModifiers->getListStart()->stringText;
+				const char* srcType = m_typeModifiers->getListStart()->nextString->stringText;
 
 				for(int i=0; (i<m_baseModifiers->getSize())&&(currentPiece!=NULL); i++)
 				{
-				        char* modString = currentPiece->stringText;
+				        const char* modString = currentPiece->stringText;
 					if(
 						(strcmp(modString, ".rn")==0) || 
 						(strcmp(modString, ".rm")==0) ||
@@ -869,7 +869,7 @@ void decudaInst::printNewPtx()
 		printDefaultPtx();
 
       // opPerCycle - lower if a 32-bit integer mul
-      char* dstType = m_typeModifiers->getListStart()->stringText;
+      const char* dstType = m_typeModifiers->getListStart()->stringText;
       if( strcmp(dstType, ".s32")==0 || strcmp(dstType, ".u32")==0 || strcmp(dstType, ".b32")==0 )
          m_opPerCycle = 2;
 	}
@@ -954,7 +954,7 @@ void decudaInst::printNewPtx()
 		printDefaultPtx();
 
       // opPerCycle - lower if a 32-bit integer mad
-      char* dstType = m_typeModifiers->getListStart()->stringText;
+      const char* dstType = m_typeModifiers->getListStart()->stringText;
       if( strcmp(dstType, ".s32")==0 || strcmp(dstType, ".u32")==0 || strcmp(dstType, ".b32")==0 )
          m_opPerCycle = 2;
 	}
@@ -1191,7 +1191,7 @@ void decudaInst::printNewPtx()
 		output(";");
 
       // opPerCycle - lower if a 32-bit integer mac
-      char* dstType = m_typeModifiers->getListStart()->stringText;
+      const char* dstType = m_typeModifiers->getListStart()->stringText;
       if( strcmp(dstType, ".s32")==0 || strcmp(dstType, ".u32")==0 || strcmp(dstType, ".b32")==0 )
          m_opPerCycle = 2;
 	}
@@ -1310,9 +1310,9 @@ void decudaInst::printNewPtx()
 			output("Error: subr instruction with number of operands other than 3.\n");
 			assert(0);
 		}
-		char* firstOperand = m_operands->getListStart()->stringText;
-		char* secondOperand = m_operands->getListStart()->nextString->stringText;
-		char* thirdOperand = m_operands->getListStart()->nextString->nextString->stringText;
+		const char* firstOperand = m_operands->getListStart()->stringText;
+		const char* secondOperand = m_operands->getListStart()->nextString->stringText;
+		const char* thirdOperand = m_operands->getListStart()->nextString->nextString->stringText;
 		output(" "); output(firstOperand); output(",");
 		output(" "); output(thirdOperand); output(",");
 		output(" "); output(secondOperand);

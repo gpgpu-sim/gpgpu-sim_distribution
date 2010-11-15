@@ -133,7 +133,6 @@ return	yylval.string_value = strdup(yytext); return RETURN;
 \.le	yylval.string_value = strdup(yytext); return DOTLE;
 \.gt	yylval.string_value = strdup(yytext); return DOTGT;
 \.ge	yylval.string_value = strdup(yytext); return DOTGE;
-\.lo	yylval.string_value = strdup(yytext); return DOTLO;
 \.ls	yylval.string_value = strdup(yytext); return DOTLS;
 \.hi	yylval.string_value = strdup(yytext); return DOTHI;
 \.hs	yylval.string_value = strdup(yytext); return DOTHS;

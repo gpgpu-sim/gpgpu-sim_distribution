@@ -14,7 +14,7 @@ struct constMemory
 {
 	int index;
 	int entryIndex;
-	char* type;
+	const char* type;
 	std::list<std::string> m_constMemory;
 };
 
@@ -65,7 +65,7 @@ struct decudaEntry
 class decudaInstList
 {
 
-private:
+protected:
 	// List of decuda entries
 	std::list<decudaEntry> m_entryList;
 
@@ -125,7 +125,7 @@ public:
 	// Parsing constant memory segments list
 	void addEntryConstMemory(int index); // add entry specific const memory
 	void addConstMemory(int index); // add global const memory
-	void setConstMemoryType(char* type); // set type of constant memory
+	void setConstMemoryType(const char* type); // set type of constant memory
 	void addConstMemoryValue(std::string constMemoryValue); // add const memory
 
 	std::list<std::string> getRealTexList(); // get the list of real tex names

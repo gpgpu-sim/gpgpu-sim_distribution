@@ -4,11 +4,11 @@
 class decudaInst
 {
 
-private:
+protected:
 	//instruction data
-	char* m_label; //instruction label
-	char* m_predicate; //instruction predicate
-	char* m_base; //instruction mnemonic
+	const char* m_label; //instruction label
+	const char* m_predicate; //instruction predicate
+	const char* m_base; //instruction mnemonic
 	stringList* m_baseModifiers; //base modifiers
 	stringList* m_typeModifiers; //operand types
 	stringList* m_operands; //operands
@@ -34,7 +34,7 @@ public:
 	decudaInst();
 
 	//accessors
-	char* getBase();
+	const char* getBase();
 	stringList* getOperands();
 	stringList* getBaseModifiers();
         stringList* getTypeModifiers();
@@ -45,13 +45,13 @@ public:
 	bool isEntryStart();	// true if start of an entry
 
 	//mutators
-	void setBase(char* setBaseValue);
-	void addBaseModifier(char* addBaseMod);
-	void addTypeModifier(char* addTypeMod);
-	void addOperand(char* addOp);
-	void setPredicate(char* setPredicateValue);
-	void addPredicateModifier(char* addPredicateMod);
-	void setLabel(char* setLabelValue);
+	void setBase(const char* setBaseValue);
+	void addBaseModifier(const char* addBaseMod);
+	void addTypeModifier(const char* addTypeMod);
+	void addOperand(const char* addOp);
+	void setPredicate(const char* setPredicateValue);
+	void addPredicateModifier(const char* addPredicateMod);
+	void setLabel(const char* setLabelValue);
 
 	void setNextDecudaInst(decudaInst* setDecudaInstValue);
 

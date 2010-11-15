@@ -61,7 +61,7 @@ void change_memory_addr_space( const char *a ) {}
 void add_literal_int( int a ) {}
 void add_literal_float( float a ) {}
 void add_literal_double( double a ) {}
-void func_header_info_int(char*, int) {}
+void func_header_info_int(const char*, int) {}
 void add_extern_spec() {}
 void add_alignment_spec( int ) {}
 void add_pragma( const char *a ) {}
@@ -88,7 +88,7 @@ bool inTexDirective = false;
 void add_function_name( const char *headerInput )
 {
 	char* headerInfo = (char*) headerInput;
-	char* compareString = g_headerList->getListEnd().getBase();
+	const char* compareString = g_headerList->getListEnd().getBase();
 
 	if((strcmp(compareString, ".entry")==0)||(strcmp(compareString, ".func")==0))
 	{
@@ -120,7 +120,7 @@ void add_space_spec( enum _memory_space_t spec, int value )
 
 void add_scalar_type_spec( int headerInput )
 {
-	char* compareString = g_headerList->getListEnd().getBase();
+	const char* compareString = g_headerList->getListEnd().getBase();
 
 	if( (inEntryDirective && inParamDirective) || inTexDirective)
 	{
@@ -244,7 +244,7 @@ void* reset_symtab()
 	return a;
 }
 
-void func_header(char* headerBase)
+void func_header(const char* headerBase)
 {
 
 	// If start of an entry
@@ -258,9 +258,9 @@ void func_header(char* headerBase)
 	}
 }
 
-void func_header_info(char* headerInfo)
+void func_header_info(const char* headerInfo)
 {
-	char* compareString = g_headerList->getListEnd().getBase();
+	const char* compareString = g_headerList->getListEnd().getBase();
 
 	if(inEntryDirective) {
 		g_headerList->getListEnd().addOperand(headerInfo);

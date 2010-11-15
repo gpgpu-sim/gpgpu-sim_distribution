@@ -301,7 +301,7 @@ void decudaInstList::addRegister(std::string reg, bool lo)
 	currentPiece = typeModifiers->getListStart();
         for(int i=0; (i<typeModifiers->getSize())&&(currentPiece!=NULL); i++)
         {
-                char* modString = currentPiece->stringText;
+                const char* modString = currentPiece->stringText;
 
                 if( strcmp(modString, ".b64")==0 )
                         vectorFlag = 64;
@@ -451,7 +451,7 @@ void decudaInstList::addConstMemoryValue(std::string constMemoryValue)
 }
 
 // set type of constant memory
-void decudaInstList::setConstMemoryType(char* type)
+void decudaInstList::setConstMemoryType(const char* type)
 {
 	m_constMemoryList.back().type = type;
 }

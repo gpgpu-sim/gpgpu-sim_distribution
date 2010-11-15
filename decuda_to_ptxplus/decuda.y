@@ -285,8 +285,12 @@ constMemoryStatements	: constMemoryStatement
 
 constMemoryStatement	: POUND constMemoryTypes constMemoryList { g_instList->setConstMemoryType($2); } NEWLINE
 
-constMemoryTypes	: DDOTU32 { $$=".u32"}
-			| DDOTF32 { $$=".f32"}
+constMemoryTypes	: DDOTU32 { char tempString[5];
+					strcpy(tempString, ".u32");
+					$$ = tempString; }
+			| DDOTF32 { char tempString[5];
+					strcpy(tempString, ".f32");
+					$$ = tempString; }
 			;
 
 constMemoryList		: constMemory
