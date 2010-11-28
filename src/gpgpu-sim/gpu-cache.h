@@ -77,7 +77,8 @@
 enum cache_block_state {
     INVALID,
     RESERVED,
-    VALID
+    VALID,
+    MODIFIED
 };
 
 enum cache_request_status {
@@ -147,6 +148,7 @@ public:
     cache_config() 
     { 
         m_valid = false; 
+        m_disabled = false;
         m_config_string = NULL; // set by option parser
     }
     void init()
@@ -156,8 +158,13 @@ public:
         int ntok = sscanf(m_config_string,"%u:%u:%u:%c:%c:%c,%c:%u:%u,%u:%u", 
                           &m_nset, &m_line_sz, &m_assoc, &rp, &wp, &ap,
                           &mshr_type,&m_mshr_entries,&m_mshr_max_merge,&m_miss_queue_size,&m_result_fifo_entries);
-        if ( ntok < 10 )
+        if ( ntok < 10 ) {
+            if ( !strcmp(m_config_string,"none") ) {
+                m_disabled = true;
+                return;
+            }
             exit_parse_error();
+        }
         switch (rp) {
         case 'L': m_replacement_policy = LRU; break;
         case 'F': m_replacement_policy = FIFO; break;
@@ -183,6 +190,7 @@ public:
         m_nset_log2 = LOGB2(m_nset);
         m_valid = true;
     }
+    bool disabled() const { return m_disabled;}
     unsigned get_line_sz() const
     {
         assert( m_valid );
@@ -224,6 +232,7 @@ private:
     }
 
     bool m_valid;
+    bool m_disabled;
     unsigned m_line_sz;
     unsigned m_line_sz_log2;
     unsigned m_nset;
@@ -252,6 +261,7 @@ private:
     friend class tag_array;
     friend class read_only_cache;
     friend class tex_cache;
+    friend class data_cache;
 };
 
 class tag_array {
@@ -261,9 +271,13 @@ public:
 
     enum cache_request_status probe( new_addr_type addr, unsigned &idx ) const;
     enum cache_request_status access( new_addr_type addr, unsigned time, unsigned &idx );
+    enum cache_request_status access( new_addr_type addr, unsigned time, unsigned &idx, bool &wb, cache_block_t &evicted ); 
 
     void fill( new_addr_type addr, unsigned time );
     void fill( unsigned idx, unsigned time );
+
+    unsigned size() const { return m_config.get_num_lines();}
+    cache_block_t &get_block(unsigned idx) { return m_lines[idx];}
 
     void flush(); // flash invalidate all entries 
     void new_window();
@@ -408,12 +422,12 @@ public:
     {
         m_name = name;
         assert(config.m_mshr_type == ASSOC);
-        assert(config.m_write_policy == READ_ONLY);
         m_memport=memport;
     }
 
     // access cache: returns RESERVATION_FAIL if request could not be accepted (for any reason)
     virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time ) {
+        assert(m_config.m_write_policy == READ_ONLY);
         new_addr_type block_addr = m_config.block_addr(addr);
         unsigned cache_index = (unsigned)-1;
         enum cache_request_status status = m_tag_array.probe(block_addr,cache_index);
@@ -499,7 +513,8 @@ public:
         fprintf(fp,"\n");
     }
 
-private:
+
+    protected:
     std::string m_name;
     const cache_config &m_config;
     tag_array  m_tag_array;
@@ -521,13 +536,100 @@ private:
         unsigned m_cache_index;
         unsigned m_data_size;
     };
-    
+
     typedef std::map<mem_fetch*,extra_mf_fields> extra_mf_fields_lookup;
 
     extra_mf_fields_lookup m_extra_mf_fields;
 };
 
- 
+// This is meant to model the first level data cache in Fermi.
+// It is write-evict (global) or write-back (local) at the granularity 
+// of individual blocks (the policy used in fermi according to the CUDA manual)
+
+class data_cache : public read_only_cache {
+public:
+    data_cache( const char *name, const cache_config &config, int core_id, int type_id, mem_fetch_interface *memport, mem_fetch_allocator *mfcreator ) 
+    : read_only_cache(name,config,core_id,type_id,memport)
+    {
+        m_memfetch_creator=mfcreator;
+    }
+    virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time ) {
+        bool wr = mf->get_is_write();
+        enum mem_access_type type = mf->get_access_type();
+        bool evict = (type == GLOBAL_ACC_W); // evict a line that hits on global memory write
+
+        new_addr_type block_addr = m_config.block_addr(addr);
+        unsigned cache_index = (unsigned)-1;
+        enum cache_request_status status = m_tag_array.probe(block_addr,cache_index);
+        if ( status == HIT ) {
+            if ( evict ) {
+                if ( m_miss_queue.size() >= m_config.m_miss_queue_size )
+                    return RESERVATION_FAIL; // cannot handle request this cycle
+
+                // generate writeback request (this assumes we merge global write with this request)
+                // this does not ensure coherence since multiple writes to block could occcur at same 
+                // time on different shader cores 
+                cache_block_t &block = m_tag_array.get_block(cache_index);
+                mem_fetch *wb = m_memfetch_creator->alloc(block_addr,L1_WRBK_ACC,m_config.get_line_sz(),true);
+                m_miss_queue.push_back(wb);
+
+                // invalidate block
+                block.m_status = INVALID;
+            } else {
+                m_tag_array.access(block_addr,time,cache_index); // update LRU state 
+                if ( wr ) {
+                    assert( type == LOCAL_ACC_W );
+                    // treated as write back...
+                    cache_block_t &block = m_tag_array.get_block(cache_index);
+                    block.m_status = MODIFIED;
+                }
+            }
+            return HIT;
+        } else if ( status != RESERVATION_FAIL ) {
+            if ( wr ) {
+                if ( m_miss_queue.size() >= m_config.m_miss_queue_size )
+                    return RESERVATION_FAIL; // cannot handle request this cycle
+
+                // on miss, generate write through (no write buffering -- too many threads for that)
+                m_miss_queue.push_back(mf); 
+                return MISS;
+            } else {
+                if ( (m_miss_queue.size()+1) >= m_config.m_miss_queue_size )
+                    return RESERVATION_FAIL; // cannot handle request this cycle (might need to generate two requests)
+
+                bool do_miss = false;
+                bool wb = false;
+                cache_block_t evicted;
+
+                bool mshr_hit = m_mshrs.probe(block_addr);
+                bool mshr_avail = !m_mshrs.full(block_addr);
+                if ( mshr_hit && mshr_avail ) {
+                    m_tag_array.access(addr,time,cache_index,wb,evicted);
+                    m_mshrs.add(block_addr,mf);
+                    do_miss = true;
+                } else if ( !mshr_hit && mshr_avail && (m_miss_queue.size() < m_config.m_miss_queue_size) ) {
+                    m_tag_array.access(addr,time,cache_index,wb,evicted);
+                    m_mshrs.add(block_addr,mf);
+                    m_extra_mf_fields[mf] = extra_mf_fields(block_addr,cache_index, mf->get_data_size());
+                    mf->set_data_size( m_config.get_line_sz() );
+                    m_miss_queue.push_back(mf);
+                    do_miss = true;
+                }
+                if( wb ) {
+                    mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,L1_WRBK_ACC,m_config.get_line_sz(),true);
+                    m_miss_queue.push_back(wb);
+                }
+                if( do_miss ) 
+                    return MISS;
+            }
+        }
+
+        return RESERVATION_FAIL;
+    }
+    private:
+    mem_fetch_allocator *m_memfetch_creator;
+};
+
 // See the following paper to understand this cache model:
 // 
 // Igehy, et al., Prefetching in a Texture Cache Architecture, 
@@ -537,11 +639,11 @@ class tex_cache : public cache_t {
 public:
     tex_cache( const char *name, const cache_config &config, int core_id, int type_id, mem_fetch_interface *memport ) 
     : m_config(config), 
-      m_tags(config,core_id,type_id), 
-      m_fragment_fifo(config.m_fragment_fifo_entries), 
-      m_request_fifo(config.m_request_fifo_entries),
-      m_rob(config.m_rob_entries),
-      m_result_fifo(config.m_result_fifo_entries)
+    m_tags(config,core_id,type_id), 
+    m_fragment_fifo(config.m_fragment_fifo_entries), 
+    m_request_fifo(config.m_request_fifo_entries),
+    m_rob(config.m_rob_entries),
+    m_result_fifo(config.m_result_fifo_entries)
     {
         m_name = name;
         assert(config.m_mshr_type == TEX_FIFO);
@@ -555,11 +657,10 @@ public:
     // otherwise returns HIT_RESERVED or MISS; NOTE: *never* returns HIT 
     // since unlike a normal CPU cache, a "HIT" in texture cache does not 
     // mean the data is ready (still need to get through fragment fifo)
-    enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time ) 
-    {
-        if( m_fragment_fifo.full() || m_request_fifo.full() || m_rob.full() )
+    enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time ) {
+        if ( m_fragment_fifo.full() || m_request_fifo.full() || m_rob.full() )
             return RESERVATION_FAIL;
-       
+
         // at this point, we will accept the request : access tags and immediately allocate line
         new_addr_type block_addr = m_config.block_addr(addr);
         unsigned cache_index = (unsigned)-1;
@@ -567,7 +668,7 @@ public:
         assert( status != RESERVATION_FAIL );
         assert( status != HIT_RESERVED ); // as far as tags are concerned: HIT or MISS 
         m_fragment_fifo.push( fragment_entry(mf,cache_index,status==MISS,mf->get_data_size()) );
-        if( status == MISS ) {
+        if ( status == MISS ) {
             // we need to send a memory request...
             unsigned rob_index = m_rob.push( rob_entry(cache_index, mf, block_addr) );
             m_extra_mf_fields[mf] = extra_mf_fields(rob_index);
@@ -592,15 +693,15 @@ public:
             }
         }
         // read ready lines from cache
-        if( !m_fragment_fifo.empty() && !m_result_fifo.full() ) {
+        if ( !m_fragment_fifo.empty() && !m_result_fifo.full() ) {
             const fragment_entry &e = m_fragment_fifo.peek();
-            if( e.m_miss ) {
+            if ( e.m_miss ) {
                 // check head of reorder buffer to see if data is back from memory
                 unsigned rob_index = m_rob.next_pop_index();
                 const rob_entry &r = m_rob.peek(rob_index);
                 assert( r.m_request == e.m_request );
                 assert( r.m_block_addr == m_config.block_addr(e.m_request->get_addr()) );
-                if( r.m_ready ) {
+                if ( r.m_ready ) {
                     assert( r.m_index == e.m_cache_index );
                     m_cache[r.m_index].m_valid = true;
                     m_cache[r.m_index].m_block_addr = r.m_block_addr;
@@ -608,7 +709,7 @@ public:
                     m_rob.pop();
                     m_fragment_fifo.pop();
                 }
-            } else { 
+            } else {
                 // hit:
                 assert( m_cache[e.m_cache_index].m_valid ); 
                 assert( m_cache[e.m_cache_index].m_block_addr = m_config.block_addr(e.m_request->get_addr()) );
@@ -652,20 +753,20 @@ public:
         fprintf(fp,"fragment fifo entries  = %u / %u\n", m_fragment_fifo.size(), m_fragment_fifo.capacity() );
         fprintf(fp,"reorder buffer entries = %u / %u\n", m_rob.size(), m_rob.capacity() );
         fprintf(fp,"request fifo entries   = %u / %u\n", m_request_fifo.size(), m_request_fifo.capacity() );
-        if( !m_rob.empty() ) 
+        if ( !m_rob.empty() )
             fprintf(fp,"reorder buffer contents:\n");
-        for( int n=m_rob.size()-1; n>=0; n-- ) {
+        for ( int n=m_rob.size()-1; n>=0; n-- ) {
             unsigned index = (m_rob.next_pop_index() + n)%m_rob.capacity();
             const rob_entry &r = m_rob.peek(index);
             fprintf(fp, "tex rob[%3d] : %s ", index, (r.m_ready?"ready  ":"pending") );
-            if( r.m_ready ) 
+            if ( r.m_ready )
                 fprintf(fp,"@%6u", r.m_time );
-            else 
+            else
                 fprintf(fp,"       ");
             fprintf(fp,"[idx=%4u]",r.m_index);
             r.m_request->print(fp,false);
         }
-        if( !m_fragment_fifo.empty() ) {
+        if ( !m_fragment_fifo.empty() ) {
             fprintf(fp,"fragment fifo (oldest) :");
             fragment_entry &f = m_fragment_fifo.peek();
             fprintf(fp,"%s:          ", f.m_miss?"miss":"hit ");
@@ -673,7 +774,8 @@ public:
         }
     }
 
-private:
+
+    private:
     std::string m_name;
     const cache_config &m_config;
 
@@ -693,7 +795,7 @@ private:
     };
 
     struct rob_entry {
-        rob_entry() { m_ready = false; m_time=0; m_request=NULL; }
+        rob_entry() { m_ready = false; m_time=0; m_request=NULL;}
         rob_entry( unsigned i, mem_fetch *mf, new_addr_type a ) 
         { 
             m_ready=false; 
@@ -710,7 +812,7 @@ private:
     };
 
     struct data_block {
-        data_block() { m_valid = false; }
+        data_block() { m_valid = false;}
         bool m_valid;
         new_addr_type m_block_addr;
     };
@@ -726,10 +828,10 @@ private:
             m_tail=0; 
             m_data = new T[size];
         }
-        bool full() const { return m_num == m_size; }
-        bool empty() const { return m_num == 0; }
-        unsigned size() const { return m_num; }
-        unsigned capacity() const { return m_size; }
+        bool full() const { return m_num == m_size;}
+        bool empty() const { return m_num == 0;}
+        unsigned size() const { return m_num;}
+        unsigned capacity() const { return m_size;}
         unsigned push( const T &e ) 
         { 
             assert(!full()); 
@@ -764,8 +866,8 @@ private:
             return m_tail;
         }
     private:
-        void inc_head() { m_head = (m_head+1)%m_size; m_num++; }
-        void inc_tail() { assert(m_num>0); m_tail = (m_tail+1)%m_size; m_num--; }
+        void inc_head() { m_head = (m_head+1)%m_size; m_num++;}
+        void inc_tail() { assert(m_num>0); m_tail = (m_tail+1)%m_size; m_num--;}
 
         unsigned   m_head; // next entry goes here
         unsigned   m_tail; // oldest entry found here
@@ -793,7 +895,7 @@ private:
         bool m_valid;
         unsigned m_rob_index;
     };
-    
+
     typedef std::map<mem_fetch*,extra_mf_fields> extra_mf_fields_lookup;
 
     extra_mf_fields_lookup m_extra_mf_fields;

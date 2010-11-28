@@ -408,9 +408,27 @@ enum mem_access_type {
    TEXTURE_ACC_R, 
    GLOBAL_ACC_W, 
    LOCAL_ACC_W,
+   L1_WRBK_ACC,
    L2_WRBK_ACC, 
-   INST_ACC_R, 
+   INST_ACC_R,
    NUM_MEM_ACCESS_TYPE
+};
+
+enum cache_operator_type {
+    CACHE_UNDEFINED, 
+
+    // loads
+    CACHE_ALL,          // .ca
+    CACHE_LAST_USE,     // .lu
+    CACHE_VOLATILE,     // .cv
+                       
+    // loads and stores 
+    CACHE_STREAMING,    // .cs
+    CACHE_GLOBAL,       // .cg
+
+    // stores
+    CACHE_WRITE_BACK,   // .wb
+    CACHE_WRITE_THROUGH // .wt
 };
 
 class mem_access_t {
@@ -461,6 +479,7 @@ public:
        case LOCAL_ACC_W:   fprintf(fp,"LOCAL_W "); break;
        case L2_WRBK_ACC:   fprintf(fp,"L2_WRBK "); break;
        case INST_ACC_R:    fprintf(fp,"INST    "); break;
+       case L1_WRBK_ACC:   fprintf(fp,"L1_WRBK "); break;
        default:            fprintf(fp,"unknown "); break;
        }
    }
@@ -492,6 +511,12 @@ public:
     virtual void push( mem_fetch *mf ) = 0;
 };
 
+class mem_fetch_allocator {
+public:
+    virtual mem_fetch *alloc( new_addr_type addr, mem_access_type type, unsigned size, bool wr ) const = 0;
+    virtual mem_fetch *alloc( const class warp_inst_t &inst, const mem_access_t &access ) const = 0;
+};
+
 #define MAX_REG_OPERANDS 8
 
 struct dram_callback_t {
@@ -513,6 +538,7 @@ public:
         is_vectorin=0; 
         is_vectorout=0;
         space = memory_space_t();
+        cache_op = CACHE_UNDEFINED;
         latency = 1;
         initiation_interval = 1;
         for( unsigned i=0; i < MAX_REG_OPERANDS; i++ )
@@ -544,6 +570,7 @@ public:
 
     unsigned data_size; // what is the size of the word being operated on?
     memory_space_t space;
+    cache_operator_type cache_op;
 
 protected:
     bool m_decoded;

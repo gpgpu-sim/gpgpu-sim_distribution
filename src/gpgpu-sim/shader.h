@@ -831,11 +831,13 @@ public:
 
 class simt_core_cluster;
 class shader_memory_interface;
+class shader_core_mem_fetch_allocator;
 class cache_t;
 
 class ldst_unit: public pipelined_simd_unit {
 public:
     ldst_unit( shader_memory_interface *icnt, 
+               shader_core_mem_fetch_allocator *mf_allocator,
                shader_core_ctx *core, 
                opndcoll_rfu_t *operand_collector,
                Scoreboard *scoreboard,
@@ -875,16 +877,17 @@ private:
    bool memory_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
 
    mem_stage_stall_type process_memory_access_queue( cache_t *cache, warp_inst_t &inst );
-   mem_fetch *create_data_mem_fetch(const warp_inst_t &inst, const mem_access_t &access);
 
    const memory_config *m_memory_config;
-   class shader_memory_interface *m_icnt;
+   shader_memory_interface *m_icnt;
+   shader_core_mem_fetch_allocator *m_mf_allocator;
    class shader_core_ctx *m_core;
    unsigned m_sid;
    unsigned m_tpc;
 
    tex_cache *m_L1T; // texture cache
    read_only_cache *m_L1C; // constant cache
+   data_cache *m_L1D; // data cache
    std::map<unsigned/*warp_id*/, std::map<unsigned/*regnum*/,unsigned/*count*/> > m_pending_writes;
    std::list<mem_fetch*> m_response_fifo;
    opndcoll_rfu_t *m_operand_collector;
@@ -929,6 +932,7 @@ struct shader_core_config : public core_config
         m_L1I_config.init();
         m_L1T_config.init();
         m_L1C_config.init();
+        m_L1D_config.init();
         gpgpu_cache_texl1_linesize = m_L1T_config.get_line_sz();
         gpgpu_cache_constl1_linesize = m_L1C_config.get_line_sz();
         m_valid = true;
@@ -951,6 +955,7 @@ struct shader_core_config : public core_config
     cache_config m_L1I_config;
     cache_config m_L1T_config;
     cache_config m_L1C_config;
+    cache_config m_L1D_config;
     
     bool gpgpu_dwf_reg_bankconflict;
     int gpgpu_operand_collector_num_units_sp;
@@ -1037,6 +1042,47 @@ private:
     friend class shader_core_ctx;
     friend class ldst_unit;
     friend class simt_core_cluster;
+};
+
+class shader_core_mem_fetch_allocator : public mem_fetch_allocator {
+public:
+    shader_core_mem_fetch_allocator( unsigned core_id, unsigned cluster_id, const memory_config *config )
+    {
+    	m_core_id = core_id;
+    	m_cluster_id = cluster_id;
+    	m_memory_config = config;
+    }
+    mem_fetch *alloc( new_addr_type addr, mem_access_type type, unsigned size, bool wr ) const 
+    {
+    	mem_access_t access( type, addr, size, wr );
+    	mem_fetch *mf = new mem_fetch( access, 
+    				       NULL,
+    				       wr?WRITE_PACKET_SIZE:READ_PACKET_SIZE, 
+    				       -1, 
+    				       m_core_id, 
+    				       m_cluster_id,
+    				       m_memory_config );
+    	return mf;
+    }
+    
+    mem_fetch *alloc( const warp_inst_t &inst, const mem_access_t &access ) const
+    {
+        warp_inst_t inst_copy = inst;
+        inst_copy.set_active(access.get_warp_mask());
+        mem_fetch *mf = new mem_fetch(access, 
+                                      &inst_copy, 
+                                      access.is_write()?WRITE_PACKET_SIZE:READ_PACKET_SIZE,
+                                      inst.warp_id(),
+                                      m_core_id, 
+                                      m_cluster_id, 
+                                      m_memory_config);
+        return mf;
+    }
+
+private:
+    unsigned m_core_id;
+    unsigned m_cluster_id;
+    const memory_config *m_memory_config;
 };
 
 class shader_core_ctx : public core_t {
@@ -1135,6 +1181,7 @@ private:
     
     // interconnect interface
     shader_memory_interface *m_icnt;
+    shader_core_mem_fetch_allocator *m_mem_fetch_allocator;
     
     // fetch
     read_only_cache *m_L1I; // instruction cache

@@ -136,15 +136,16 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
    }
    
    m_icnt = new shader_memory_interface(this,cluster);
+   m_mem_fetch_allocator = new shader_core_mem_fetch_allocator(shader_id,tpc_id,mem_config);
 
    // fetch
    m_last_warp_fetched = 0;
    m_last_warp_issued = 0;
 
    #define STRSIZE 1024
-   char L1I_name[STRSIZE];
-   snprintf(L1I_name, STRSIZE, "L1I_%03d", m_sid);
-   m_L1I = new read_only_cache(L1I_name,m_config->m_L1I_config,m_sid,get_shader_instruction_cache_id(),m_icnt);
+   char name[STRSIZE];
+   snprintf(name, STRSIZE, "L1I_%03d", m_sid);
+   m_L1I = new read_only_cache( name,m_config->m_L1I_config,m_sid,get_shader_instruction_cache_id(),m_icnt);
 
    m_warp.resize(m_config->max_warps_per_shader, shd_warp_t(this, warp_size));
    m_pdom_warp = new pdom_warp_ctx_t*[config->max_warps_per_shader];
@@ -178,7 +179,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
    m_dispatch_port[1] = ID_OC_SFU;
    m_issue_port[1] = OC_EX_SFU;
 
-   m_ldst_unit = new ldst_unit( m_icnt, this, &m_operand_collector, m_scoreboard, config, mem_config, stats, shader_id, tpc_id );
+   m_ldst_unit = new ldst_unit( m_icnt, m_mem_fetch_allocator, this, &m_operand_collector, m_scoreboard, config, mem_config, stats, shader_id, tpc_id );
    m_fu[2] = m_ldst_unit;
    m_dispatch_port[2] = ID_OC_MEM;
    m_issue_port[2] = OC_EX_MEM;
@@ -530,6 +531,9 @@ void shader_core_ctx::fetch()
                 unsigned offset_in_block = pc & (m_config->m_L1I_config.get_line_sz()-1);
                 if( (offset_in_block+nbytes) > m_config->m_L1I_config.get_line_sz() )
                     nbytes = (m_config->m_L1I_config.get_line_sz()-offset_in_block);
+
+                // TODO: replace with use of allocator
+                // mem_fetch *mf = m_mem_fetch_allocator->alloc()
                 mem_access_t acc(INST_ACC_R,ppc,nbytes,false);
                 mem_fetch *mf = new mem_fetch(acc,
                                               NULL/*we don't have an instruction yet*/,
@@ -734,20 +738,6 @@ void shader_core_ctx::execute()
     }
 }
 
-mem_fetch *ldst_unit::create_data_mem_fetch(const warp_inst_t &inst, const mem_access_t &access)
-{
-    warp_inst_t inst_copy = inst;
-    inst_copy.set_active(access.get_warp_mask());
-    mem_fetch *mf = new mem_fetch(access, 
-                                  &inst_copy, 
-                                  access.is_write()?WRITE_PACKET_SIZE:READ_PACKET_SIZE,
-                                  inst.warp_id(),
-                                  m_sid, 
-                                  m_tpc, 
-                                  m_memory_config);
-    return mf;
-}     
-
 void shader_core_ctx::writeback()
 {
     warp_inst_t *&pipe_reg = m_pipeline_reg[EX_WB];
@@ -784,7 +774,7 @@ mem_stage_stall_type ldst_unit::process_memory_access_queue( cache_t *cache, war
         return result;
 
     const mem_access_t &access = inst.accessq_back();
-    mem_fetch *mf = create_data_mem_fetch(inst,inst.accessq_back());
+    mem_fetch *mf = m_mf_allocator->alloc(inst,inst.accessq_back());
     enum cache_request_status status = cache->access(mf->get_addr(),mf,gpu_sim_cycle+gpu_tot_sim_cycle);
 
     if ( status == HIT ) {
@@ -801,7 +791,8 @@ mem_stage_stall_type ldst_unit::process_memory_access_queue( cache_t *cache, war
             for ( unsigned r=0; r < 4; r++)
                 if (inst.out[r] > 0)
                     m_pending_writes[inst.warp_id()][inst.out[r]]++;
-        }
+        } else if( inst.is_store() ) 
+            m_core->inc_store_req( inst.warp_id() );
     }
     if( !inst.accessq_empty() )
         result = BK_CONF;
@@ -852,19 +843,27 @@ bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_rea
    mem_stage_stall_type stall_cond = NO_RC_FAIL;
    const mem_access_t &access = inst.accessq_back();
    unsigned size = access.get_size(); 
-   if( m_icnt->full(size, inst.is_store()) ) {
-       stall_cond = ICNT_RC_FAIL;
+
+   assert( CACHE_UNDEFINED != inst.cache_op );
+  
+   if( CACHE_GLOBAL == inst.cache_op || (m_L1D == NULL) ) {
+       // bypass L1 cache
+       if( m_icnt->full(size, inst.is_store()) ) {
+           stall_cond = ICNT_RC_FAIL;
+       } else {
+           mem_fetch *mf = m_mf_allocator->alloc(inst,access);
+           m_icnt->push(mf);
+           inst.accessq_pop_back();
+           inst.clear_active( access.get_warp_mask() );
+           if( inst.is_load() ) { 
+              for( unsigned r=0; r < 4; r++) 
+                  if(inst.out[r] > 0) 
+                      m_pending_writes[inst.warp_id()][inst.out[r]]++;
+           } else if( inst.is_store() ) 
+              m_core->inc_store_req( inst.warp_id() );
+       }
    } else {
-       mem_fetch *mf = create_data_mem_fetch(inst,access);
-       m_icnt->push(mf);
-       inst.accessq_pop_back();
-       inst.clear_active( access.get_warp_mask() );
-       if( inst.is_load() ) { 
-          for( unsigned r=0; r < 4; r++) 
-              if(inst.out[r] > 0) 
-                  m_pending_writes[inst.warp_id()][inst.out[r]]++;
-       } else if( inst.is_store() ) 
-          m_core->inc_store_req( inst.warp_id() );
+       stall_cond = process_memory_access_queue(m_L1D,inst);
    }
    if( !inst.accessq_empty() ) 
        stall_cond = COAL_STALL;
@@ -926,6 +925,7 @@ pipelined_simd_unit::pipelined_simd_unit( warp_inst_t **result_port, const shade
 }
 
 ldst_unit::ldst_unit( shader_memory_interface *icnt, 
+                      shader_core_mem_fetch_allocator *mf_allocator,
                       shader_core_ctx *core, 
                       opndcoll_rfu_t *operand_collector,
                       Scoreboard *scoreboard,
@@ -935,8 +935,9 @@ ldst_unit::ldst_unit( shader_memory_interface *icnt,
                       unsigned sid,
                       unsigned tpc ) : pipelined_simd_unit(NULL,config,3), m_next_wb(config)
 {
-   m_memory_config = mem_config;
+    m_memory_config = mem_config;
     m_icnt = icnt;
+    m_mf_allocator=mf_allocator;
     m_core = core;
     m_operand_collector = operand_collector;
     m_scoreboard = scoreboard;
@@ -946,12 +947,17 @@ ldst_unit::ldst_unit( shader_memory_interface *icnt,
     #define STRSIZE 1024
     char L1T_name[STRSIZE];
     char L1C_name[STRSIZE];
+    char L1D_name[STRSIZE];
     snprintf(L1T_name, STRSIZE, "L1T_%03d", m_sid);
     snprintf(L1C_name, STRSIZE, "L1C_%03d", m_sid);
+    snprintf(L1D_name, STRSIZE, "L1D_%03d", m_sid);
     m_L1T = new tex_cache(L1T_name,m_config->m_L1T_config,m_sid,get_shader_texture_cache_id(),icnt);
     m_L1C = new read_only_cache(L1C_name,m_config->m_L1C_config,m_sid,get_shader_constant_cache_id(),icnt);
+    m_L1D = NULL;
+    if( !m_config->m_L1D_config.disabled() ) 
+        m_L1D = new data_cache(L1D_name,m_config->m_L1D_config,m_sid,get_shader_normal_cache_id(),m_icnt,m_mf_allocator);
     m_mem_rc = NO_RC_FAIL;
-    m_num_writeback_clients=4; // = shared memory, global/local, L1T, L1C
+    m_num_writeback_clients=5; // = shared memory, global/local (uncached), L1D, L1T, L1C
     m_writeback_arb = 0;
     m_next_global=NULL;
 }
@@ -1014,6 +1020,13 @@ void ldst_unit::writeback()
                 m_next_global = NULL;
             }
             break;
+        case 4: 
+            if( m_L1D && m_L1D->access_ready() ) {
+                mem_fetch *mf = m_L1D->next_access();
+                m_next_wb = mf->get_inst();
+                delete mf;
+            }
+            break;
         default: abort();
         }
     }
@@ -1046,7 +1059,10 @@ void ldst_unit::cycle()
                m_response_fifo.pop_front();
                delete mf;
            } else {
-               if( m_next_global == NULL ) {
+               if( mf->get_inst().cache_op != CACHE_GLOBAL && m_L1D ) {
+                   m_L1D->fill(mf,gpu_sim_cycle+gpu_tot_sim_cycle);
+                   m_response_fifo.pop_front();
+               } else if( m_next_global == NULL ) {
                    mf->set_status(IN_SHADER_FETCHED,gpu_sim_cycle+gpu_tot_sim_cycle);
                    m_response_fifo.pop_front();
                    m_next_global = mf;
@@ -1057,6 +1073,7 @@ void ldst_unit::cycle()
 
    m_L1T->cycle();
    m_L1C->cycle();
+   if( m_L1D ) m_L1D->cycle();
 
    warp_inst_t &pipe_reg = *m_dispatch_reg;
    enum mem_stage_stall_type rc_fail = NO_RC_FAIL;
@@ -1084,10 +1101,10 @@ void ldst_unit::cycle()
                    m_dispatch_reg->clear();
                }
            } else {
-               if( pipe_reg.active_count() > 0 ) {
-                   if( !m_operand_collector->writeback(pipe_reg) ) 
-                       return;
-               } 
+               //if( pipe_reg.active_count() > 0 ) {
+               //    if( !m_operand_collector->writeback(pipe_reg) ) 
+               //        return;
+               //} 
 
                bool pending_requests=false;
                for( unsigned r=0; r<4; r++ ) {
@@ -1293,6 +1310,12 @@ void ldst_unit::print(FILE *fout) const
     }
     m_L1C->display_state(fout);
     m_L1T->display_state(fout);
+    m_L1D->display_state(fout);
+    fprintf(fout,"LD/ST response FIFO (occupancy = %zu):\n", m_response_fifo.size() );
+    for( std::list<mem_fetch*>::const_iterator i=m_response_fifo.begin(); i != m_response_fifo.end(); i++ ) {
+        const mem_fetch *mf = *i;
+        mf->print(fout);
+    }
 }
 
 void shader_core_ctx::display_pipeline(FILE *fout, int print_mem, int mask ) const
@@ -2050,6 +2073,7 @@ void simt_core_cluster::icnt_inject_request_packet(class mem_fetch *mf)
     case LOCAL_ACC_R: m_stats->gpgpu_n_mem_read_local++; break;
     case LOCAL_ACC_W: m_stats->gpgpu_n_mem_write_local++; break;
     case INST_ACC_R: m_stats->gpgpu_n_mem_read_inst++; break;
+    case L1_WRBK_ACC: m_stats->gpgpu_n_mem_write_global++; break;
     default: assert(0);
     }
    unsigned destination = mf->get_tlx_addr().chip;
@@ -2101,4 +2125,12 @@ void simt_core_cluster::get_pdom_stack_top_info( unsigned sid, unsigned tid, uns
 void simt_core_cluster::display_pipeline( unsigned sid, FILE *fout, int print_mem, int mask )
 {
     m_core[m_config->sid_to_cid(sid)]->display_pipeline(fout,print_mem,mask);
+
+    fprintf(fout,"\n");
+    fprintf(fout,"Cluster %u pipeline state\n", m_cluster_id );
+    fprintf(fout,"Response FIFO (occupancy = %zu):\n", m_response_fifo.size() );
+    for( std::list<mem_fetch*>::const_iterator i=m_response_fifo.begin(); i != m_response_fifo.end(); i++ ) {
+        const mem_fetch *mf = *i;
+        mf->print(fout);
+    }
 }

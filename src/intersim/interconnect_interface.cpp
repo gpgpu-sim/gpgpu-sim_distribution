@@ -512,6 +512,28 @@ unsigned interconnect_busy()
 	return 0;
 }
 
+void display_icnt_state( FILE *fp )
+{
+   fprintf(fp,"GPGPU-Sim uArch: interconnect busy state\n");
+   for (unsigned i=0; i<net_c;i++) {
+      if (traffic[i]->_measured_in_flight) 
+         fprintf(fp,"   Network %u has %u _measured_in_flight\n", i, traffic[i]->_measured_in_flight );
+   }
+   
+   for (unsigned i=0 ;i<(_n_shader+_n_mem);i++ ) {
+      if( !traffic[0]->_partial_packets[i] [0].empty() ) 
+         fprintf(fp,"   Network 0 has nonempty _partial_packets[%u][0]\n", i);
+		if ( doub_net && !traffic[1]->_partial_packets[i] [0].empty() ) 
+         fprintf(fp,"   Network 1 has nonempty _partial_packets[%u][0]\n", i);
+		for (unsigned j=0;j<g_num_vcs;j++ ) {
+			if( !ejection_buf[i][j].empty() )
+            fprintf(fp,"   ejection_buf[%u][%u] is non-empty\n", i, j);
+         if( clock_boundary_buf[i][j].has_packet() )
+            fprintf(fp,"   clock_boundary_buf[%u][%u] has packet\n", i, j );
+		}
+	}
+}
+
 //create buffers for src_n nodes   
 void create_buf(int src_n,int warp_n,int vc_n)
 {

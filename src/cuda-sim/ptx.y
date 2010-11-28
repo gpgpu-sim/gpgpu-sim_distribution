@@ -215,6 +215,8 @@
 %token  CS_OPTION;
 %token  LU_OPTION;
 %token  CV_OPTION;
+%token  WB_OPTION;
+%token  WT_OPTION;
 
 %type <int_value> function_decl_header
 %type <ptr_value> function_decl
@@ -435,6 +437,13 @@ option: type_spec
 	| atomic_operation_spec ;
 	| TO_OPTION { add_option(TO_OPTION); }
 	| HALF_OPTION { add_option(HALF_OPTION); }
+	| CA_OPTION { add_option(CA_OPTION); }
+	| CG_OPTION { add_option(CG_OPTION); }
+	| CS_OPTION { add_option(CS_OPTION); }
+	| LU_OPTION { add_option(LU_OPTION); }
+	| CV_OPTION { add_option(CV_OPTION); }
+	| WB_OPTION { add_option(WB_OPTION); }
+	| WT_OPTION { add_option(WT_OPTION); }
 	;
 
 atomic_operation_spec: ATOMIC_AND { add_option(ATOMIC_AND); } 

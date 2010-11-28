@@ -566,6 +566,24 @@ void ptx_instruction::pre_decode()
       break;
    }
 
+   switch( m_cache_option ) {
+   case CA_OPTION: cache_op = CACHE_ALL; break;
+   case CG_OPTION: cache_op = CACHE_GLOBAL; break;
+   case CS_OPTION: cache_op = CACHE_STREAMING; break;
+   case LU_OPTION: cache_op = CACHE_LAST_USE; break;
+   case CV_OPTION: cache_op = CACHE_VOLATILE; break;
+   case WB_OPTION: cache_op = CACHE_WRITE_BACK; break;
+   case WT_OPTION: cache_op = CACHE_WRITE_THROUGH; break;
+   default: 
+      if( m_opcode == LD_OP ) 
+         cache_op = CACHE_ALL;
+      else if( m_opcode == ST_OP ) 
+         cache_op = CACHE_WRITE_BACK;
+      else if( m_opcode == ATOM_OP ) 
+         cache_op = CACHE_GLOBAL;
+      break;
+   }
+
    set_opcode_and_latency();
 
    // Get register operands

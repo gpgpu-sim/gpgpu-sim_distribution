@@ -67,6 +67,8 @@
 #ifndef ICNT_WRAPPER_H
 #define ICNT_WRAPPER_H
 
+#include <stdio.h>
+
 // functional interface to the interconnect
 typedef bool (*icnt_has_buffer_p)(unsigned input, unsigned int size);
 typedef void (*icnt_push_p)(unsigned input, unsigned output, void* data, unsigned int size);
@@ -90,5 +92,6 @@ enum network_mode {
 
 void icnt_init( unsigned int n_shader, unsigned int n_mem );
 void icnt_reg_options( class OptionParser * opp );
+void display_icnt_state( FILE *fp );
 
 #endif

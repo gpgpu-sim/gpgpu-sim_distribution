@@ -283,8 +283,13 @@ void memory_partition_unit::dram_cycle()
     if ( !m_dram_L2_queue->full() ) {
         mem_fetch* mf = m_dram->pop();
         if (mf) {
-            m_dram_L2_queue->push(mf);
-            mf->set_status(IN_PARTITION_DRAM_TO_L2_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
+            if( mf->get_access_type() == L1_WRBK_ACC ) {
+                m_request_tracker.erase(mf);
+                delete mf;
+            } else {
+                m_dram_L2_queue->push(mf);
+                mf->set_status(IN_PARTITION_DRAM_TO_L2_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
+            }
         }
     }
     m_dram->cycle(); 

@@ -136,7 +136,8 @@ void memory_config::reg_options(class OptionParser * opp)
                            "Use a ideal L2 cache that always hit",
                            "0");
     option_parser_register(opp, "-gpgpu_cache:dl2", OPT_CSTR, &m_L2_config.m_config_string, 
-                   "unified banked L2 data cache config, i.e., {<nsets>:<bsize>:<assoc>:<repl>|none}; disabled by default",
+                   "unified banked L2 data cache config "
+                   " {<nsets>:<bsize>:<assoc>:<rep>:<wr>:<alloc>,<mshr>:<N>:<merge>,<mq>}",
                    NULL); 
     option_parser_register(opp, "-gpgpu_n_mem", OPT_UINT32, &m_n_mem, 
                  "number of memory modules (e.g. memory controllers) in gpu",
@@ -174,11 +175,17 @@ void shader_core_config::reg_options(class OptionParser * opp)
                    "per-shader L1 texture cache  (READ-ONLY) config, i.e., {<nsets>:<linesize>:<assoc>:<repl>|none}",
                    "512:64:2:L:R:m");
     option_parser_register(opp, "-gpgpu_const_cache:l1", OPT_CSTR, &m_L1C_config.m_config_string, 
-                   "per-shader L1 constant memory cache  (READ-ONLY) config, i.e., {<nsets>:<linesize>:<assoc>:<repl>|none}",
-                   "64:64:2:L:R:f");
+                   "per-shader L1 constant memory cache  (READ-ONLY) config "
+                   " {<nsets>:<bsize>:<assoc>:<rep>:<wr>:<alloc>,<mshr>:<N>:<merge>,<mq>}",
+                   "64:64:2:L:R:f,A:2:32,4" );
     option_parser_register(opp, "-gpgpu_cache:il1", OPT_CSTR, &m_L1I_config.m_config_string, 
-                   "shader L1 instruction cache config, i.e., {<nsets>:<bsize>:<assoc>:<repl>|none}",
-                   "4:256:4:L:R:f");
+                   "shader L1 instruction cache config "
+                   " {<nsets>:<bsize>:<assoc>:<rep>:<wr>:<alloc>,<mshr>:<N>:<merge>,<mq>}",
+                   "4:256:4:L:R:f,A:2:32,4" );
+    option_parser_register(opp, "-gpgpu_cache:dl1", OPT_CSTR, &m_L1D_config.m_config_string, 
+                   "per-shader L1 data cache config "
+                   " {<nsets>:<bsize>:<assoc>:<rep>:<wr>:<alloc>,<mshr>:<N>:<merge>,<mq>|none}",
+                   "none" );
     option_parser_register(opp, "-gpgpu_perfect_mem", OPT_BOOL, &gpgpu_perfect_mem, 
                  "enable perfect memory mode (no cache miss)",
                  "0");
@@ -501,7 +508,7 @@ unsigned int gpgpu_sim::run_gpu_sim()
 
    if (m_config.gpu_deadlock_detect && gpu_deadlock) {
       fflush(stdout);
-      printf("GPGPU-Sim uArch: ERROR ** deadlock detected: last writeback core %u @ gpu_sim_cycle %u (+ gpu_tot_sim_cycle %u) (%u cycles ago)\n", 
+      printf("\n\nGPGPU-Sim uArch: ERROR ** deadlock detected: last writeback core %u @ gpu_sim_cycle %u (+ gpu_tot_sim_cycle %u) (%u cycles ago)\n", 
              gpu_sim_insn_last_update_sid,
              (unsigned) gpu_sim_insn_last_update, (unsigned) (gpu_tot_sim_cycle-gpu_sim_cycle),
              (unsigned) (gpu_sim_cycle - gpu_sim_insn_last_update )); 
@@ -526,8 +533,10 @@ unsigned int gpgpu_sim::run_gpu_sim()
          if( busy ) 
              printf("GPGPU-Sim uArch DEADLOCK:  memory partition %u busy\n", i );
       }
-      if( icnt_busy() ) 
+      if( icnt_busy() ) {
          printf("GPGPU-Sim uArch DEADLOCK:  iterconnect contains traffic\n");
+         display_icnt_state( stdout );
+      }
       printf("\nRe-run the simulator in gdb and use debug routines in .gdbinit to debug this\n");
       fflush(stdout);
       abort();
