@@ -83,6 +83,21 @@
 #include "shader.h"
 #include "mem_latency_stat.h"
 
+
+mem_fetch * partition_mf_allocator::alloc(new_addr_type addr, mem_access_type type, unsigned size, bool wr ) const 
+{
+    assert( wr );
+    mem_access_t access( type, addr, size, wr );
+    mem_fetch *mf = new mem_fetch( access, 
+                                   NULL,
+                                   WRITE_PACKET_SIZE, 
+                                   -1, 
+                                   -1, 
+                                   -1,
+                                   m_memory_config );
+    return mf;
+}
+
 memory_partition_unit::memory_partition_unit( unsigned partition_id, 
                                               const struct memory_config *config,
                                               class memory_stats_t *stats )
@@ -95,7 +110,8 @@ memory_partition_unit::memory_partition_unit( unsigned partition_id,
     char L2c_name[32];
     snprintf(L2c_name, 32, "L2_bank_%03d", m_id);
     m_L2interface = new L2interface(this);
-    m_L2cache = new read_only_cache(L2c_name,m_config->m_L2_config,-1,-1,m_L2interface);
+    m_mf_allocator = new partition_mf_allocator(config);
+    m_L2cache = new data_cache(L2c_name,m_config->m_L2_config,-1,-1,m_L2interface,m_mf_allocator,IN_PARTITION_L2_MISS_QUEUE);
 
     unsigned int icnt_L2;
     unsigned int L2_dram;
@@ -125,14 +141,14 @@ void memory_partition_unit::cache_cycle( unsigned cycle )
     // L2 fill responses 
     if ( m_L2cache->access_ready() && !m_L2_icnt_queue->full() ) {
         mem_fetch *mf = m_L2cache->next_access();
-        mf->set_type(REPLY_DATA);
+        mf->set_reply();
         mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
         m_L2_icnt_queue->push(mf);
     }
     // DRAM to L2 (texture) and icnt (not texture)
     if ( !m_dram_L2_queue->empty() ) {
         mem_fetch *mf = m_dram_L2_queue->top();
-        if ( mf->istexture() ) {
+        if ( m_L2cache->waiting_for_fill(mf) ) { 
             mf->set_status(IN_PARTITION_L2_FILL_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
             m_L2cache->fill(mf,gpu_sim_cycle+gpu_tot_sim_cycle);
             m_dram_L2_queue->pop();
@@ -149,19 +165,31 @@ void memory_partition_unit::cache_cycle( unsigned cycle )
     // new L2 texture accesses and/or non-texture accesses
     if ( !m_L2_dram_queue->full() && !m_icnt_L2_queue->empty() ) {
         mem_fetch *mf = m_icnt_L2_queue->top();
-        if ( mf->istexture() ) {
-            // in this model, L2 is for texture only
+        if ( (m_config->m_L2_texure_only && mf->istexture()) || (!m_config->m_L2_texure_only) ) {
             if ( !m_L2_icnt_queue->full() ) {
-                enum cache_request_status status = m_L2cache->access(mf->get_partition_addr(),mf,gpu_sim_cycle+gpu_tot_sim_cycle);
+                std::list<cache_event> events;
+                enum cache_request_status status = m_L2cache->access(mf->get_partition_addr(),mf,gpu_sim_cycle+gpu_tot_sim_cycle,events);
+                bool write_sent = was_write_sent(events);
+                bool read_sent = was_read_sent(events);
+
                 if ( status == HIT ) {
-                    // L2 cache replies with data
-                    mf->set_type(REPLY_DATA);
-                    m_L2_icnt_queue->push(mf);
-                    m_icnt_L2_queue->pop();
+                    if( !write_sent ) {
+                        // L2 cache replies
+                        assert(!read_sent);
+                        mf->set_reply();
+                        mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
+                        m_L2_icnt_queue->push(mf);
+                        m_icnt_L2_queue->pop();
+                    } else {
+                        assert(write_sent);
+                        m_icnt_L2_queue->pop();
+                    }
                 } else if ( status != RESERVATION_FAIL ) {
                     // L2 cache accepted request
                     m_icnt_L2_queue->pop();
                 } else {
+                    assert(!write_sent);
+                    assert(!read_sent);
                     // L2 cache lock-up: will try again next cycle
                 }
             }
@@ -205,6 +233,7 @@ void memory_partition_unit::print( FILE *fp ) const
                 fprintf(fp," <NULL mem_fetch?>\n");
         }
     }
+    m_L2cache->display_state(fp);
     m_dram->print(fp); 
 }
 
@@ -266,15 +295,26 @@ void memory_partition_unit::push( mem_fetch* req, unsigned long long cycle )
 mem_fetch* memory_partition_unit::pop() 
 {
     mem_fetch* mf = m_L2_icnt_queue->pop();
+    m_request_tracker.erase(mf);
     if ( mf && mf->isatomic() )
         mf->do_atomic();
-    m_request_tracker.erase(mf);
+    if( mf && (mf->get_access_type() == L2_WRBK_ACC || mf->get_access_type() == L1_WRBK_ACC) ) {
+        delete mf;
+        mf = NULL;
+    } 
     return mf;
 }
 
 mem_fetch* memory_partition_unit::top() 
 {
-    return m_L2_icnt_queue->top();
+    mem_fetch *mf = m_L2_icnt_queue->top();
+    if( mf && (mf->get_access_type() == L2_WRBK_ACC || mf->get_access_type() == L1_WRBK_ACC) ) {
+        m_L2_icnt_queue->pop();
+        m_request_tracker.erase(mf);
+        delete mf;
+        mf = NULL;
+    } 
+    return mf;
 }
 
 void memory_partition_unit::dram_cycle() 

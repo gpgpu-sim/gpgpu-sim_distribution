@@ -74,6 +74,22 @@
 
 class mem_fetch;
 
+class partition_mf_allocator : public mem_fetch_allocator {
+public:
+    partition_mf_allocator( const memory_config *config )
+    {
+        m_memory_config = config;
+    }
+    virtual mem_fetch * alloc(const class warp_inst_t &inst, const mem_access_t &access) const 
+    {
+        abort();
+        return NULL;
+    }
+    virtual mem_fetch * alloc(new_addr_type addr, mem_access_type type, unsigned size, bool wr) const;
+private:
+    const memory_config *m_memory_config;
+};
+
 class memory_partition_unit 
 {
 public:
@@ -103,8 +119,9 @@ private:
    unsigned m_id;
    const struct memory_config *m_config;
    class dram_t *m_dram;
-   class read_only_cache *m_L2cache;
+   class data_cache *m_L2cache;
    class L2interface *m_L2interface;
+   partition_mf_allocator *m_mf_allocator;
 
    // model delay of ROP units with a fixed latency
    struct rop_delay_t
@@ -140,7 +157,8 @@ public:
     }
     virtual void push(mem_fetch *mf) 
     {
-	m_unit->m_L2_dram_queue->push(mf);
+        mf->set_status(IN_PARTITION_L2_TO_DRAM_QUEUE,0/*FIXME*/);
+        m_unit->m_L2_dram_queue->push(mf);
     }
 private:
     memory_partition_unit *m_unit;

@@ -241,3 +241,21 @@ void tag_array::print( FILE *stream, unsigned &total_access, unsigned &total_mis
     total_misses+=m_miss;
     total_access+=m_access;
 }
+
+bool was_write_sent( const std::list<cache_event> &events )
+{
+    for( std::list<cache_event>::const_iterator e=events.begin(); e!=events.end(); e++ ) {
+        if( *e == WRITE_REQUEST_SENT ) 
+            return true;
+    }
+    return false;
+}
+
+bool was_read_sent( const std::list<cache_event> &events )
+{
+    for( std::list<cache_event>::const_iterator e=events.begin(); e!=events.end(); e++ ) {
+        if( *e == READ_REQUEST_SENT ) 
+            return true;
+    }
+    return false;
+}

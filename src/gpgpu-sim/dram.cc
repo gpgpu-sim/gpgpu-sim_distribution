@@ -237,7 +237,7 @@ void dram_t::cycle()
            if (cmd->dqbytes >= cmd->nbytes) {
               mem_fetch *data = cmd->data; 
               data->set_status(IN_PARTITION_MC_RETURNQ,gpu_sim_cycle+gpu_tot_sim_cycle); 
-              data->set_type(REPLY_DATA);
+              data->set_reply();
               returnq->push(data);
               delete cmd;
            }

@@ -88,6 +88,12 @@ enum cache_request_status {
     RESERVATION_FAIL
 };
 
+enum cache_event {
+    WRITE_BACK_REQUEST_SENT,
+    READ_REQUEST_SENT,
+    WRITE_REQUEST_SENT
+};
+
 struct cache_block_t {
     cache_block_t()
     {
@@ -412,22 +418,29 @@ private:
 class cache_t {
 public:
     virtual ~cache_t() {}
-    virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time ) =  0;
+    virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ) =  0;
 };
+
+bool was_write_sent( const std::list<cache_event> &events );
+bool was_read_sent( const std::list<cache_event> &events );
 
 class read_only_cache : public cache_t {
 public:
-    read_only_cache( const char *name, const cache_config &config, int core_id, int type_id, mem_fetch_interface *memport ) 
+    read_only_cache( const char *name, const cache_config &config, int core_id, int type_id, mem_fetch_interface *memport, 
+                     enum mem_fetch_status status )
     : m_config(config), m_tag_array(config,core_id,type_id), m_mshrs(config.m_mshr_entries,config.m_mshr_max_merge)
     {
         m_name = name;
         assert(config.m_mshr_type == ASSOC);
         m_memport=memport;
+        m_miss_queue_status = status;
     }
 
     // access cache: returns RESERVATION_FAIL if request could not be accepted (for any reason)
-    virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time ) {
+    virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ) 
+    {
         assert(m_config.m_write_policy == READ_ONLY);
+        assert(!mf->get_is_write());
         new_addr_type block_addr = m_config.block_addr(addr);
         unsigned cache_index = (unsigned)-1;
         enum cache_request_status status = m_tag_array.probe(block_addr,cache_index);
@@ -448,6 +461,8 @@ public:
                 m_extra_mf_fields[mf] = extra_mf_fields(block_addr,cache_index, mf->get_data_size());
                 mf->set_data_size( m_config.get_line_sz() );
                 m_miss_queue.push_back(mf);
+                mf->set_status(m_miss_queue_status,time);
+                events.push_back(READ_REQUEST_SENT);
                 return MISS;
             }
         }
@@ -480,6 +495,12 @@ public:
         else abort();
         m_mshrs.mark_ready(e->second.m_block_addr);
         m_extra_mf_fields.erase(mf);
+    }
+
+    bool waiting_for_fill( mem_fetch *mf )
+    {
+        extra_mf_fields_lookup::iterator e = m_extra_mf_fields.find(mf); 
+        return e != m_extra_mf_fields.end();
     }
 
     // are any (accepted) accesses that had to wait for memory now ready? (does not include accesses that "HIT")
@@ -520,6 +541,7 @@ public:
     tag_array  m_tag_array;
     mshr_table m_mshrs;
     std::list<mem_fetch*> m_miss_queue;
+    enum mem_fetch_status m_miss_queue_status;
     mem_fetch_interface *m_memport;
 
     struct extra_mf_fields {
@@ -548,12 +570,14 @@ public:
 
 class data_cache : public read_only_cache {
 public:
-    data_cache( const char *name, const cache_config &config, int core_id, int type_id, mem_fetch_interface *memport, mem_fetch_allocator *mfcreator ) 
-    : read_only_cache(name,config,core_id,type_id,memport)
+    data_cache( const char *name, const cache_config &config, int core_id, int type_id, mem_fetch_interface *memport, 
+                mem_fetch_allocator *mfcreator, enum mem_fetch_status status )
+    : read_only_cache(name,config,core_id,type_id,memport,status)
     {
         m_memfetch_creator=mfcreator;
     }
-    virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time ) {
+    virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ) 
+    {
         bool wr = mf->get_is_write();
         enum mem_access_type type = mf->get_access_type();
         bool evict = (type == GLOBAL_ACC_W); // evict a line that hits on global memory write
@@ -566,19 +590,19 @@ public:
                 if ( m_miss_queue.size() >= m_config.m_miss_queue_size )
                     return RESERVATION_FAIL; // cannot handle request this cycle
 
-                // generate writeback request (this assumes we merge global write with this request)
-                // this does not ensure coherence since multiple writes to block could occcur at same 
-                // time on different shader cores 
+                // generate a write through
                 cache_block_t &block = m_tag_array.get_block(cache_index);
-                mem_fetch *wb = m_memfetch_creator->alloc(block_addr,L1_WRBK_ACC,m_config.get_line_sz(),true);
-                m_miss_queue.push_back(wb);
+                assert( block.m_status != MODIFIED ); // fails if block was allocated by a ld.local and now accessed by st.global
+                m_miss_queue.push_back(mf);
+                mf->set_status(m_miss_queue_status,time); 
+                events.push_back(WRITE_REQUEST_SENT);
 
-                // invalidate block
+                // invalidate block 
                 block.m_status = INVALID;
             } else {
                 m_tag_array.access(block_addr,time,cache_index); // update LRU state 
                 if ( wr ) {
-                    assert( type == LOCAL_ACC_W );
+                    assert( type == LOCAL_ACC_W || /*l2 only*/ type == L1_WRBK_ACC );
                     // treated as write back...
                     cache_block_t &block = m_tag_array.get_block(cache_index);
                     block.m_status = MODIFIED;
@@ -592,6 +616,8 @@ public:
 
                 // on miss, generate write through (no write buffering -- too many threads for that)
                 m_miss_queue.push_back(mf); 
+                mf->set_status(m_miss_queue_status,time); 
+                events.push_back(WRITE_REQUEST_SENT);
                 return MISS;
             } else {
                 if ( (m_miss_queue.size()+1) >= m_config.m_miss_queue_size )
@@ -613,11 +639,16 @@ public:
                     m_extra_mf_fields[mf] = extra_mf_fields(block_addr,cache_index, mf->get_data_size());
                     mf->set_data_size( m_config.get_line_sz() );
                     m_miss_queue.push_back(mf);
+                    mf->set_status(m_miss_queue_status,time); 
+                    events.push_back(READ_REQUEST_SENT);
                     do_miss = true;
                 }
                 if( wb ) {
+                    assert(do_miss);
                     mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,L1_WRBK_ACC,m_config.get_line_sz(),true);
+                    events.push_back(WRITE_BACK_REQUEST_SENT);
                     m_miss_queue.push_back(wb);
+                    wb->set_status(m_miss_queue_status,time); 
                 }
                 if( do_miss ) 
                     return MISS;
@@ -637,7 +668,9 @@ public:
 // http://www-graphics.stanford.edu/papers/texture_prefetch/
 class tex_cache : public cache_t {
 public:
-    tex_cache( const char *name, const cache_config &config, int core_id, int type_id, mem_fetch_interface *memport ) 
+    tex_cache( const char *name, const cache_config &config, int core_id, int type_id, mem_fetch_interface *memport,
+               enum mem_fetch_status request_status, 
+               enum mem_fetch_status rob_status )
     : m_config(config), 
     m_tags(config,core_id,type_id), 
     m_fragment_fifo(config.m_fragment_fifo_entries), 
@@ -651,13 +684,15 @@ public:
         assert(config.m_alloc_policy == ON_MISS);
         m_memport=memport;
         m_cache = new data_block[ config.get_num_lines() ];
+        m_request_queue_status = request_status;
+        m_rob_status = rob_status;
     }
 
     // return values: RESERVATION_FAIL if request could not be accepted 
     // otherwise returns HIT_RESERVED or MISS; NOTE: *never* returns HIT 
     // since unlike a normal CPU cache, a "HIT" in texture cache does not 
     // mean the data is ready (still need to get through fragment fifo)
-    enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time ) {
+    enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ) {
         if ( m_fragment_fifo.full() || m_request_fifo.full() || m_rob.full() )
             return RESERVATION_FAIL;
 
@@ -675,6 +710,8 @@ public:
             mf->set_data_size(m_config.get_line_sz());
             m_tags.fill(cache_index,time); // mark block as valid 
             m_request_fifo.push(mf);
+            mf->set_status(m_request_queue_status,time);
+            events.push_back(READ_REQUEST_SENT);
             return MISS;
         } else {
             // the value *will* *be* in the cache already
@@ -726,6 +763,7 @@ public:
         assert( e != m_extra_mf_fields.end() );
         assert( e->second.m_valid );
         assert( !m_rob.empty() );
+        mf->set_status(m_rob_status,time);
 
         unsigned rob_index = e->second.m_rob_index;
         rob_entry &r = m_rob.peek(rob_index);
@@ -884,6 +922,8 @@ public:
     fifo<mem_fetch*>        m_result_fifo; // next completed texture fetch
 
     mem_fetch_interface    *m_memport;
+    enum mem_fetch_status   m_request_queue_status;
+    enum mem_fetch_status   m_rob_status;
 
     struct extra_mf_fields {
         extra_mf_fields()  { m_valid = false;}

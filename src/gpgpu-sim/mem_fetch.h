@@ -72,17 +72,23 @@
 #include <bitset>
 
 enum mf_type {
-   RD_REQ = 0,
-   WR_REQ,
-   REPLY_DATA // send to shader
+   READ_REQUEST = 0,
+   WRITE_REQUEST,
+   READ_REPLY, // send to shader
+   WRITE_ACK
 };
 
 enum mem_fetch_status {
     MEM_FETCH_INITIALIZED = 0,
+    IN_L1I_MISS_QUEUE,
+    IN_L1D_MISS_QUEUE,
+    IN_L1T_MISS_QUEUE,
+    IN_L1C_MISS_QUEUE,
     IN_ICNT_TO_MEM,
     IN_PARTITION_ROP_DELAY,
     IN_PARTITION_ICNT_TO_L2_QUEUE,
     IN_PARTITION_L2_TO_DRAM_QUEUE,
+    IN_PARTITION_L2_MISS_QUEUE,
     IN_PARTITION_MC_INTERFACE_QUEUE,
     IN_PARTITION_MC_INPUT_QUEUE,
     IN_PARTITION_MC_BANK_ARB_QUEUE,
@@ -95,6 +101,7 @@ enum mem_fetch_status {
     IN_CLUSTER_TO_SHADER_QUEUE,
     IN_SHADER_LDST_RESPONSE_FIFO,
     IN_SHADER_FETCHED,
+    IN_SHADER_L1T_ROB,
     MEM_FETCH_DELETED,
     NUM_MEM_REQ_STAT
 };
@@ -111,7 +118,17 @@ public:
    ~mem_fetch();
 
    void set_status( enum mem_fetch_status status, unsigned long long cycle );
-   void set_type( enum mf_type t ) { m_type=t; }
+   void set_reply() 
+   { 
+       assert( m_access.get_type() != L1_WRBK_ACC && m_access.get_type() != L2_WRBK_ACC );
+       if( m_type==READ_REQUEST ) {
+           assert( !get_is_write() );
+           m_type = READ_REPLY;
+       } else if( m_type == WRITE_REQUEST ) {
+           assert( get_is_write() );
+           m_type = WRITE_ACK;
+       }
+   }
    void do_atomic();
 
    void print( FILE *fp, bool print_inst = true ) const;
@@ -152,7 +169,7 @@ private:
    unsigned m_wid;
 
    // where is this request now?
-   enum mem_fetch_status m_status;  
+   enum mem_fetch_status m_status;
    unsigned long long m_status_change;
 
    // request type, address, size, mask

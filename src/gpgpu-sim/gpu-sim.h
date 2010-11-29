@@ -124,6 +124,7 @@ struct memory_config {
 
    bool m_valid;
    cache_config m_L2_config;
+   bool m_L2_texure_only;
 
    char *gpgpu_dram_timing_opt;
    char *gpgpu_L2_queue_config;

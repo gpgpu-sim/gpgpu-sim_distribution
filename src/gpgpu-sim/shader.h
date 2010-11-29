@@ -140,22 +140,25 @@ public:
         n_completed = m_warp_size; 
         m_n_atomic=0;
         m_membar=false;
-        m_done_exit=false;
+        m_done_exit=true;
         m_last_fetch=0;
         m_next=0;
     }
-    void init( address_type start_pc, unsigned cta_id, unsigned wid, unsigned active )
+    void init( address_type start_pc, unsigned cta_id, unsigned wid, const std::bitset<MAX_WARP_SIZE> &active )
     {
         m_cta_id=cta_id;
         m_warp_id=wid;
         m_next_pc=start_pc;
-        assert( n_completed >= active );
+        assert( n_completed >= active.count() );
         assert( n_completed <= m_warp_size);
-        n_completed   -= active; // active threads are not yet completed
+        n_completed   -= active.count(); // active threads are not yet completed
+        m_active_threads = active;
+        m_done_exit=false;
     }
 
-    bool done();
-    bool waiting();
+    bool functional_done() const;
+    bool waiting(); // not const due to membar
+    bool hardware_done() const;
 
     bool done_exit() const { return m_done_exit; }
     void set_done_exit() { m_done_exit=true; }
@@ -164,7 +167,12 @@ public:
     void print_ibuffer( FILE *fout ) const;
 
     unsigned get_n_completed() const { return n_completed; }
-    void inc_n_completed() { n_completed++; }
+    void set_completed( unsigned lane ) 
+    { 
+        assert( m_active_threads.test(lane) );
+        m_active_threads.reset(lane);
+        n_completed++; 
+    }
 
     void set_last_fetch( unsigned long long sim_cycle ) { m_last_fetch=sim_cycle; }
 
@@ -241,6 +249,7 @@ private:
 
     address_type m_next_pc;
     unsigned n_completed;          // number of threads in warp completed
+    std::bitset<MAX_WARP_SIZE> m_active_threads;
 
     bool m_imiss_pending;
     
@@ -901,6 +910,10 @@ private:
    enum mem_stage_stall_type m_mem_rc;
 
    shader_core_stats *m_stats; 
+
+   // for debugging
+   unsigned long long m_last_inst_gpu_sim_cycle;
+   unsigned long long m_last_inst_gpu_tot_sim_cycle;
 };
 
 enum pipeline_stage_name_t {
@@ -1136,7 +1149,7 @@ public:
     const shader_core_config *get_config() const { return m_config; }
 
 // debug:
-    void display_pdom_state(FILE *fout, int mask ) const;
+    void display_simt_state(FILE *fout, int mask ) const;
     void display_pipeline( FILE *fout, int print_mem, int mask3bit ) const;
 
 private:
@@ -1157,8 +1170,10 @@ private:
     void writeback();
     
     // used in display_pipeline():
-    void dump_istream_state( FILE *fout ) const;
+    void dump_warp_state( FILE *fout ) const;
     void print_stage(unsigned int stage, FILE *fout) const;
+    unsigned long long m_last_inst_gpu_sim_cycle;
+    unsigned long long m_last_inst_gpu_tot_sim_cycle;
 
     // general information
     unsigned m_sid; // shader id
@@ -1175,6 +1190,7 @@ private:
     unsigned m_n_active_cta; // number of Cooperative Thread Arrays (blocks) currently running on this shader.
     unsigned m_cta_status[MAX_CTA_PER_SHADER]; // CTAs status 
     unsigned m_not_completed; // number of threads to be completed (==0 when all thread on this core completed) 
+    std::bitset<MAX_THREAD_PER_SM> m_active_threads;
     
     // thread contexts 
     thread_ctx_t             *m_thread; // functional state, per thread fetch state
@@ -1228,6 +1244,7 @@ public:
     void get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc ) const;
     unsigned max_cta( const kernel_info_t &kernel );
     unsigned get_not_completed() const;
+    void print_not_completed( FILE *fp ) const;
     unsigned get_n_active_cta() const;
     gpgpu_sim *get_gpu() { return m_gpu; }
 

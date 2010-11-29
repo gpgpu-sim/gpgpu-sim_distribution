@@ -138,7 +138,10 @@ void memory_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_cache:dl2", OPT_CSTR, &m_L2_config.m_config_string, 
                    "unified banked L2 data cache config "
                    " {<nsets>:<bsize>:<assoc>:<rep>:<wr>:<alloc>,<mshr>:<N>:<merge>,<mq>}",
-                   NULL); 
+                   NULL);
+    option_parser_register(opp, "-gpgpu_cache:dl2_texture_only", OPT_BOOL, &m_L2_texure_only, 
+                           "L2 cache used for texture only",
+                           "0");
     option_parser_register(opp, "-gpgpu_n_mem", OPT_UINT32, &m_n_mem, 
                  "number of memory modules (e.g. memory controllers) in gpu",
                  "8");
@@ -518,13 +521,14 @@ unsigned int gpgpu_sim::run_gpu_sim()
          if( not_completed ) {
              if ( !num_cores )  {
                  printf("GPGPU-Sim uArch: DEADLOCK  shader cores no longer committing instructions [core(# threads)]:\n" );
-                 printf("GPGPU-Sim uArch: DEADLOCK  %u(%u)", i, not_completed);
+                 printf("GPGPU-Sim uArch: DEADLOCK  ");
+                 m_cluster[i]->print_not_completed(stdout);
              } else if (num_cores < 8 ) {
-                 printf(" %u(%u)", i, not_completed);
-             } else if (num_cores == 8 ) {
+                 m_cluster[i]->print_not_completed(stdout);
+             } else if (num_cores >= 8 ) {
                  printf(" + others ... ");
              }
-             num_cores++;
+             num_cores+=m_shader_config->n_simt_cores_per_cluster;
          }
       }
       printf("\n");
@@ -868,9 +872,10 @@ void gpgpu_sim::cycle()
    }
 }
 
-void shader_core_ctx::dump_istream_state( FILE *fout ) const
+void shader_core_ctx::dump_warp_state( FILE *fout ) const
 {
    fprintf(fout, "\n");
+   fprintf(fout, "per warp functional simulation status:\n");
    for (unsigned w=0; w < m_config->max_warps_per_shader; w++ ) 
        m_warp[w].print(fout);
 }
