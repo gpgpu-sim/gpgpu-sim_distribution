@@ -871,8 +871,6 @@ bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_rea
    const mem_access_t &access = inst.accessq_back();
    unsigned size = access.get_size(); 
 
-   assert( CACHE_UNDEFINED != inst.cache_op );
-  
    if( CACHE_GLOBAL == inst.cache_op || (m_L1D == NULL) ) {
        // bypass L1 cache
        if( m_icnt->full(size, inst.is_store()) ) {
@@ -890,6 +888,7 @@ bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_rea
               m_core->inc_store_req( inst.warp_id() );
        }
    } else {
+       assert( CACHE_UNDEFINED != inst.cache_op );
        stall_cond = process_memory_access_queue(m_L1D,inst);
    }
    if( !inst.accessq_empty() ) 
