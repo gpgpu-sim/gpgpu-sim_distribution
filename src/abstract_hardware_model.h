@@ -618,12 +618,9 @@ public:
     { 
         m_empty=true; 
     }
-    void issue( unsigned mask, unsigned warp_id, unsigned long long cycle ) 
+    void issue( const active_mask_t &mask, unsigned warp_id, unsigned long long cycle ) 
     {
-        for (int i=(int)m_config->warp_size-1; i>=0; i--) {
-            if( mask & (1<<i) )
-                m_warp_active_mask.set(i);
-        }
+        m_warp_active_mask=mask;
         m_uid = ++sm_next_uid;
         m_warp_id = warp_id;
         issue_cycle = cycle;

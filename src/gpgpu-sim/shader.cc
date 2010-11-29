@@ -149,9 +149,9 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
    m_L1I = new read_only_cache( name,m_config->m_L1I_config,m_sid,get_shader_instruction_cache_id(),m_icnt,IN_L1I_MISS_QUEUE);
 
    m_warp.resize(m_config->max_warps_per_shader, shd_warp_t(this, warp_size));
-   m_pdom_warp = new pdom_warp_ctx_t*[config->max_warps_per_shader];
+   m_pdom_warp = new simt_stack*[config->max_warps_per_shader];
    for (unsigned i = 0; i < config->max_warps_per_shader; ++i) 
-       m_pdom_warp[i] = new pdom_warp_ctx_t(i,this);
+       m_pdom_warp[i] = new simt_stack(i,this);
    m_scoreboard = new Scoreboard(m_sid, m_config->max_warps_per_shader);
 
    m_operand_collector.add_port( m_config->gpgpu_operand_collector_num_units_sp, 
@@ -212,20 +212,18 @@ void shader_core_ctx::init_warps( unsigned cta_id, unsigned start_thread, unsign
         unsigned start_warp = start_thread / m_config->warp_size;
         unsigned end_warp = end_thread / m_config->warp_size + ((end_thread % m_config->warp_size)? 1 : 0);
         for (unsigned i = start_warp; i < end_warp; ++i) {
-            unsigned initial_active_mask = 0;
             unsigned n_active=0;
-            std::bitset<MAX_WARP_SIZE> active_threads;
+            simt_mask_t active_threads;
             for (unsigned t = 0; t < m_config->warp_size; t++) {
                 unsigned hwtid = i * m_config->warp_size + t;
                 if ( hwtid < end_thread ) {
-                    initial_active_mask |= (1 << t);
                     n_active++;
                     assert( !m_active_threads.test(hwtid) );
                     m_active_threads.set( hwtid );
                     active_threads.set(t);
                 }
             }
-            m_pdom_warp[i]->launch(start_pc,initial_active_mask);
+            m_pdom_warp[i]->launch(start_pc,active_threads);
             m_warp[i].init(start_pc,cta_id,i,active_threads);
             m_not_completed += n_active;
       }
@@ -243,42 +241,38 @@ address_type shader_core_ctx::next_pc( int tid ) const
     return the_thread->get_pc(); // PC should already be updatd to next PC at this point (was set in shader_decode() last time thread ran)
 }
 
-void pdom_warp_ctx_t::pdom_update_warp_mask() 
+void simt_stack::update() 
 {
 	int wtid = m_warp_size*m_warp_id;
+	int stack_top = m_stack_top;
 
-	pdom_warp_ctx_t *scheduled_warp = this;
+	address_type top_pc = m_pc[stack_top];
+	simt_mask_t  top_active_mask = m_active_mask[stack_top];
+	address_type top_recvg_pc = m_recvg_pc[stack_top];
 
-	int stack_top = scheduled_warp->m_stack_top;
-
-	address_type top_pc = scheduled_warp->m_pc[stack_top];
-	unsigned int top_active_mask = scheduled_warp->m_active_mask[stack_top];
-	address_type top_recvg_pc = scheduled_warp->m_recvg_pc[stack_top];
-
-	assert(top_active_mask != 0);
+	assert(top_active_mask.any());
 
 	const address_type null_pc = 0;
-	int warp_diverged = 0;
+	bool warp_diverged = false;
 	address_type new_recvg_pc = null_pc;
-	while (top_active_mask != 0) {
+	while (top_active_mask.any()) {
 
 	  // extract a group of threads with the same next PC among the active threads in the warp
 	  address_type tmp_next_pc = null_pc;
-	  unsigned int tmp_active_mask = 0;
+	  simt_mask_t tmp_active_mask;
       class ptx_thread_info *first_active_thread=NULL;
 	  for (int i = m_warp_size - 1; i >= 0; i--) {
-		 unsigned int mask = (1 << i);
-		 if ((top_active_mask & mask) == mask) { // is this thread active?
+		 if ( top_active_mask.test(i) ) { // is this thread active?
 			 if (m_shader->ptx_thread_done(wtid+i)) {
-			    top_active_mask &= ~mask; // remove completed thread from active mask
+			    top_active_mask.reset(i); // remove completed thread from active mask
 			 } else if (tmp_next_pc == null_pc) {
                 first_active_thread=m_shader->get_thread_state(wtid+i);
 			    tmp_next_pc = first_active_thread->get_pc();
-			    tmp_active_mask |= mask;
-			    top_active_mask &= ~mask;
+			    tmp_active_mask.set(i);
+			    top_active_mask.reset(i);
 			 } else if (tmp_next_pc == m_shader->get_thread_state(wtid+i)->get_pc()) {
-			    tmp_active_mask |= mask;
-			    top_active_mask &= ~mask;
+			    tmp_active_mask.set(i);
+			    top_active_mask.reset(i);
 			 }
 		 }
 	  }
@@ -289,15 +283,15 @@ void pdom_warp_ctx_t::pdom_update_warp_mask()
 
 	  // this new entry is not converging
 	  // if this entry does not include thread from the warp, divergence occurs
-	  if (top_active_mask != 0 && warp_diverged == 0) {
-		 warp_diverged = 1;
+	  if (top_active_mask.any() && !warp_diverged ) {
+		 warp_diverged = true;
 		 // modify the existing top entry into a reconvergence entry in the pdom stack
 		 new_recvg_pc = get_converge_point(top_pc,first_active_thread);
 		 if (new_recvg_pc != top_recvg_pc) {
-			scheduled_warp->m_pc[stack_top] = new_recvg_pc;
-			scheduled_warp->m_branch_div_cycle[stack_top] = gpu_sim_cycle;
+			m_pc[stack_top] = new_recvg_pc;
+			m_branch_div_cycle[stack_top] = gpu_sim_cycle;
 			stack_top += 1;
-			scheduled_warp->m_branch_div_cycle[stack_top] = 0;
+			m_branch_div_cycle[stack_top] = 0;
 		 }
 	  }
 
@@ -305,20 +299,20 @@ void pdom_warp_ctx_t::pdom_update_warp_mask()
 	  if (warp_diverged && tmp_next_pc == new_recvg_pc) continue;
 
 	  // update the current top of pdom stack
-	  scheduled_warp->m_pc[stack_top] = tmp_next_pc;
-	  scheduled_warp->m_active_mask[stack_top] = tmp_active_mask;
+	  m_pc[stack_top] = tmp_next_pc;
+	  m_active_mask[stack_top] = tmp_active_mask;
 	  if (warp_diverged) {
-		 scheduled_warp->m_calldepth[stack_top] = 0;
-		 scheduled_warp->m_recvg_pc[stack_top] = new_recvg_pc;
+		 m_calldepth[stack_top] = 0;
+		 m_recvg_pc[stack_top] = new_recvg_pc;
 	  } else {
-		 scheduled_warp->m_recvg_pc[stack_top] = top_recvg_pc;
+		 m_recvg_pc[stack_top] = top_recvg_pc;
 	  }
 	  stack_top += 1; // set top to next entry in the pdom stack
 	}
-	scheduled_warp->m_stack_top = stack_top - 1;
+	m_stack_top = stack_top - 1;
 
-	assert(scheduled_warp->m_stack_top >= 0);
-	assert(scheduled_warp->m_stack_top < m_warp_size * 2);
+	assert(m_stack_top >= 0);
+	assert(m_stack_top < m_warp_size * 2);
 }
 
 void gpgpu_sim::get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc )
@@ -333,28 +327,28 @@ void shader_core_ctx::get_pdom_stack_top_info( unsigned tid, unsigned *pc, unsig
     m_pdom_warp[warp_id]->get_pdom_stack_top_info(pc,rpc);
 }
 
-void pdom_warp_ctx_t::get_pdom_stack_top_info( unsigned *pc, unsigned *rpc ) const
+void simt_stack::get_pdom_stack_top_info( unsigned *pc, unsigned *rpc ) const
 {
    *pc = m_pc[m_stack_top];
    *rpc = m_recvg_pc[m_stack_top];
 }
 
-unsigned pdom_warp_ctx_t::get_rp() const 
+unsigned simt_stack::get_rp() const 
 { 
     return m_recvg_pc[m_stack_top]; 
 }
 
-void pdom_warp_ctx_t::print (FILE *fout) const
+void simt_stack::print (FILE *fout) const
 {
-    const pdom_warp_ctx_t *warp=this;
+    const simt_stack *warp=this;
     for ( unsigned k=0; k <= warp->m_stack_top; k++ ) {
         if ( k==0 ) {
             fprintf(fout, "w%02d %1u ", m_warp_id, k );
         } else {
             fprintf(fout, "    %1u ", k );
         }
-        for (unsigned m=1,j=0; j<m_warp_size; j++, m<<=1)
-            fprintf(fout, "%c", ((warp->m_active_mask[k] & m)?'1':'0') );
+        for (unsigned j=0; j<m_warp_size; j++)
+            fprintf(fout, "%c", (warp->m_active_mask[k].test(j)?'1':'0') );
         fprintf(fout, " pc: 0x%03x", warp->m_pc[k] );
         if ( warp->m_recvg_pc[k] == (unsigned)-1 ) {
             fprintf(fout," rp: ---- cd: %2u ", warp->m_calldepth[k] );
@@ -607,7 +601,7 @@ void shader_core_ctx::func_exec_inst( warp_inst_t &inst )
         inst.generate_mem_accesses();
 }
 
-void shader_core_ctx::issue_warp( warp_inst_t *&pipe_reg, const warp_inst_t *next_inst, unsigned active_mask, unsigned warp_id )
+void shader_core_ctx::issue_warp( warp_inst_t *&pipe_reg, const warp_inst_t *next_inst, const active_mask_t &active_mask, unsigned warp_id )
 {
     m_warp[warp_id].ibuffer_free();
     assert(next_inst->valid());
@@ -619,7 +613,7 @@ void shader_core_ctx::issue_warp( warp_inst_t *&pipe_reg, const warp_inst_t *nex
         m_barriers.warp_reaches_barrier(m_warp[warp_id].get_cta_id(),warp_id);
     else if( next_inst->op == MEMORY_BARRIER_OP ) 
         m_warp[warp_id].set_membar();
-    m_pdom_warp[warp_id]->pdom_update_warp_mask();
+    m_pdom_warp[warp_id]->update();
     m_scoreboard->reserveRegisters(pipe_reg);
     m_warp[warp_id].set_next_pc(next_inst->pc + next_inst->isize);
 }
@@ -649,7 +643,7 @@ void shader_core_ctx::decode()
                     valid_inst = true;
                     if ( !m_scoreboard->checkCollision(warp_id, pI) ) {
                         ready_inst = true;
-                        unsigned active_mask = m_pdom_warp[warp_id]->get_active_mask();
+                        const active_mask_t &active_mask = m_pdom_warp[warp_id]->get_active_mask();
                         assert( m_warp[warp_id].inst_in_pipeline() );
                         if ( (pI->op == LOAD_OP) || (pI->op == STORE_OP) || (pI->op == MEMORY_BARRIER_OP) ) {
                             if( m_pipeline_reg[ID_OC_MEM]->empty() ) {
@@ -1808,7 +1802,7 @@ void shd_warp_t::print_ibuffer( FILE *fout ) const
     fprintf(fout,"\n");
 }
 
-pdom_warp_ctx_t::pdom_warp_ctx_t( unsigned wid, class shader_core_ctx *shdr )
+simt_stack::simt_stack( unsigned wid, class shader_core_ctx *shdr )
 {
     m_warp_id=wid;
     m_shader=shdr;
@@ -1816,23 +1810,24 @@ pdom_warp_ctx_t::pdom_warp_ctx_t( unsigned wid, class shader_core_ctx *shdr )
     m_stack_top = 0;
     m_pc = (address_type*)calloc(m_warp_size * 2, sizeof(address_type));
     m_calldepth = (unsigned int*)calloc(m_warp_size * 2, sizeof(unsigned int));
-    m_active_mask = (unsigned int*)calloc(m_warp_size * 2, sizeof(unsigned int));
+    m_active_mask = new simt_mask_t[m_warp_size * 2];
     m_recvg_pc = (address_type*)calloc(m_warp_size * 2, sizeof(address_type));
     m_branch_div_cycle = (unsigned long long *)calloc(m_warp_size * 2, sizeof(unsigned long long ));
     reset();
 }
 
-void pdom_warp_ctx_t::reset()
+void simt_stack::reset()
 {
     m_stack_top = 0;
     memset(m_pc, -1, m_warp_size * 2 * sizeof(address_type));
     memset(m_calldepth, 0, m_warp_size * 2 * sizeof(unsigned int));
-    memset(m_active_mask, 0, m_warp_size * 2 * sizeof(unsigned int));
     memset(m_recvg_pc, -1, m_warp_size * 2 * sizeof(address_type));
     memset(m_branch_div_cycle, 0, m_warp_size * 2 * sizeof(unsigned long long ));
+    for( unsigned i=0; i < 2*m_warp_size; i++ ) 
+        m_active_mask[i].reset();
 }
 
-void pdom_warp_ctx_t::launch( address_type start_pc, unsigned active_mask )
+void simt_stack::launch( address_type start_pc, const simt_mask_t &active_mask )
 {
     reset();
     m_pc[0] = start_pc;
@@ -1840,7 +1835,7 @@ void pdom_warp_ctx_t::launch( address_type start_pc, unsigned active_mask )
     m_active_mask[0] = active_mask;
 }
 
-unsigned pdom_warp_ctx_t::get_active_mask() const
+const simt_mask_t &simt_stack::get_active_mask() const
 {
     return m_active_mask[m_stack_top];
 }

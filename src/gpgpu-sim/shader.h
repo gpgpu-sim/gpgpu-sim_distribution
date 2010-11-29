@@ -278,28 +278,32 @@ inline unsigned hw_tid_from_wid(unsigned wid, unsigned warp_size, unsigned i){re
 inline unsigned wid_from_hw_tid(unsigned tid, unsigned warp_size){return tid/warp_size;};
 
 
-// bounded stack that implements pdom reconvergence (see MICRO'07 paper)
-class pdom_warp_ctx_t {
+// bounded stack that implements simt reconvergence using pdom mechanism from MICRO'07 paper
+
+#define MAX_WARP_SIZE_SIMT_STACK  MAX_WARP_SIZE
+typedef std::bitset<MAX_WARP_SIZE_SIMT_STACK> simt_mask_t;
+
+class simt_stack {
 public:
-    pdom_warp_ctx_t( unsigned wid, class shader_core_ctx *shdr );
+    simt_stack( unsigned wid, class shader_core_ctx *shdr );
 
     void reset();
-    void launch( address_type start_pc, unsigned active_mask );
-    void pdom_update_warp_mask();
+    void launch( address_type start_pc, const simt_mask_t &active_mask );
+    void update();
 
-    unsigned get_active_mask() const;
+    const simt_mask_t &get_active_mask() const;
     void     get_pdom_stack_top_info( unsigned *pc, unsigned *rpc ) const;
     unsigned get_rp() const;
     void     print(FILE*fp) const;
 
-private:
+protected:
     unsigned m_warp_id;
     class shader_core_ctx *m_shader;
     unsigned m_stack_top;
     unsigned m_warp_size;
     
     address_type *m_pc;
-    unsigned int *m_active_mask;
+    simt_mask_t  *m_active_mask;
     address_type *m_recvg_pc;
     unsigned int *m_calldepth;
     
@@ -1161,7 +1165,7 @@ private:
     void register_cta_thread_exit(int cta_num );
     
     void decode();
-    void issue_warp( warp_inst_t *&warp, const warp_inst_t *pI, unsigned active_mask, unsigned warp_id );
+    void issue_warp( warp_inst_t *&warp, const warp_inst_t *pI, const active_mask_t &active_mask, unsigned warp_id );
     void func_exec_inst( warp_inst_t &inst );
     address_type translate_local_memaddr(address_type localaddr, unsigned tid, unsigned num_shader );
     
@@ -1208,7 +1212,7 @@ private:
     std::vector<shd_warp_t>   m_warp;   // per warp information array
     barrier_set_t             m_barriers;
     ifetch_buffer_t           m_inst_fetch_buffer;
-    pdom_warp_ctx_t         **m_pdom_warp; // pdom reconvergence context for each warp
+    simt_stack         **m_pdom_warp; // pdom reconvergence context for each warp
     warp_inst_t** m_pipeline_reg;
     Scoreboard *m_scoreboard;
     opndcoll_rfu_t m_operand_collector;
