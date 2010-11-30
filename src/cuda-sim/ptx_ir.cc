@@ -756,6 +756,8 @@ void function_info::print_idominators()
 unsigned function_info::get_num_reconvergence_pairs()
 {
    if (!num_reconvergence_pairs) {
+      if( m_basic_blocks.size() == 0 ) 
+         return 0;
       for (unsigned i=0; i< (m_basic_blocks.size()-1); i++) { //last basic block containing exit obviously won't have a pair
          if (m_basic_blocks[i]->ptx_end->get_opcode() == BRA_OP) {
             num_reconvergence_pairs++;
@@ -768,6 +770,8 @@ unsigned function_info::get_num_reconvergence_pairs()
 void function_info::get_reconvergence_pairs(gpgpu_recon_t* recon_points)
 {
    unsigned idx=0; //array index
+   if( m_basic_blocks.size() == 0 ) 
+       return;
    for (unsigned i=0; i< (m_basic_blocks.size()-1); i++) { //last basic block containing exit obviously won't have a pair
 #ifdef DEBUG_GET_RECONVERG_PAIRS
       printf("i=%d\n", i); fflush(stdout);

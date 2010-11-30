@@ -532,6 +532,7 @@ public:
     {
         m_decoded=false;
         pc=(address_type)-1;
+        reconvergence_pc=(address_type)-1;
         op=NO_OP; 
         memset(out, 0, sizeof(unsigned)); 
         memset(in, 0, sizeof(unsigned)); 
@@ -557,6 +558,8 @@ public:
     unsigned isize;         // size of instruction in bytes 
     op_type op;             // opcode (uarch visible)
     _memory_op_t memory_op; // memory_op used by ptxplus 
+
+    address_type reconvergence_pc; // -1 => not a branch, -2 => use function return address
     
     unsigned out[4];
     unsigned in[4];

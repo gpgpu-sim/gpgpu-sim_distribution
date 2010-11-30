@@ -282,6 +282,7 @@ inline unsigned wid_from_hw_tid(unsigned tid, unsigned warp_size){return tid/war
 
 #define MAX_WARP_SIZE_SIMT_STACK  MAX_WARP_SIZE
 typedef std::bitset<MAX_WARP_SIZE_SIMT_STACK> simt_mask_t;
+typedef std::vector<address_type> addr_vector_t;
 
 class simt_stack {
 public:
@@ -289,7 +290,7 @@ public:
 
     void reset();
     void launch( address_type start_pc, const simt_mask_t &active_mask );
-    void update();
+    void update( simt_mask_t &thread_done, addr_vector_t &next_pc, address_type recvg_pc );
 
     const simt_mask_t &get_active_mask() const;
     void     get_pdom_stack_top_info( unsigned *pc, unsigned *rpc ) const;
@@ -1214,10 +1215,10 @@ private:
     std::vector<shd_warp_t>   m_warp;   // per warp information array
     barrier_set_t             m_barriers;
     ifetch_buffer_t           m_inst_fetch_buffer;
-    simt_stack         **m_pdom_warp; // pdom reconvergence context for each warp
-    warp_inst_t** m_pipeline_reg;
-    Scoreboard *m_scoreboard;
-    opndcoll_rfu_t m_operand_collector;
+    simt_stack              **m_simt_stack; // pdom based reconvergence context for each warp
+    warp_inst_t             **m_pipeline_reg;
+    Scoreboard               *m_scoreboard;
+    opndcoll_rfu_t            m_operand_collector;
     
     // execute
     unsigned m_num_function_units;

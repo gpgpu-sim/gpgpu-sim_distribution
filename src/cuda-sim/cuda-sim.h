@@ -47,7 +47,10 @@ const warp_inst_t *ptx_fetch_inst( address_type pc );
 const struct gpgpu_ptx_sim_kernel_info* ptx_sim_kernel_info(const class function_info *kernel);
 void ptx_print_insn( address_type pc, FILE *fp );
 void set_param_gpgpu_num_shaders(int num_shaders);
-unsigned int get_converge_point(unsigned int pc, void *thd);
+
+#define RECONVERGE_RETURN_PC ((address_type)-2)
+#define NO_BRANCH_DIVERGENCE ((address_type)-1)
+address_type get_return_pc( void *thd );
 const char *get_ptxinfo_kname();
 void print_ptxinfo();
 void clear_ptxinfo();

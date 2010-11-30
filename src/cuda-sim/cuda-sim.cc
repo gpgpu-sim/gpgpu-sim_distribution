@@ -96,6 +96,8 @@ addr_t g_debug_pc = 0xBEEF1518;
 unsigned g_ptx_sim_num_insn = 0;
 unsigned gpgpu_param_num_shaders = 0;
 
+static address_type get_converge_point(address_type pc);
+
 void gpgpu_t::gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref)
 {
    std::string texname(name);
@@ -242,13 +244,10 @@ void function_info::ptx_assemble()
          target.set_type(label_t);
       }
    }
-   for ( unsigned ii=0; ii < n; ii += m_instr_mem[ii]->inst_size() ) { // handle branch instructions
-      ptx_instruction *pI = m_instr_mem[ii];
-      pI->pre_decode();
-   }
 
    printf("  done.\n");
    fflush(stdout);
+   printf("GPGPU-Sim PTX: finding reconvergence points for \'%s\'...\n", m_name.c_str() );
 
    create_basic_blocks();
    connect_basic_blocks();
@@ -273,6 +272,14 @@ void function_info::ptx_assemble()
       print_postdominators();
       print_ipostdominators();
    }
+
+   printf("GPGPU-Sim PTX: pre-decoding instructions for \'%s\'... ", m_name.c_str() );
+   for ( unsigned ii=0; ii < n; ii += m_instr_mem[ii]->inst_size() ) { // handle branch instructions
+      ptx_instruction *pI = m_instr_mem[ii];
+      pI->pre_decode();
+   }
+   printf("  done.\n");
+   fflush(stdout);
 
    m_assembled = true;
 }
@@ -659,6 +666,10 @@ void ptx_instruction::pre_decode()
 	     }
 	  }
    }
+
+   // get reconvergence pc
+   reconvergence_pc = get_converge_point(pc);
+
    m_decoded=true;
 }
 
@@ -1609,7 +1620,15 @@ struct rec_pts find_reconvergence_points( function_info *finfo )
    return tmp;
 }
 
-unsigned int get_converge_point( unsigned int pc, void *thd ) 
+address_type get_return_pc( void *thd )
+{
+    // function call return
+    ptx_thread_info *the_thread = (ptx_thread_info*)thd;
+    assert( the_thread != NULL );
+    return the_thread->get_return_PC();
+}
+
+address_type get_converge_point( address_type pc ) 
 {
    // the branch could encode the reconvergence point and/or a bit that indicates the 
    // reconvergence point is the return PC on the call stack in the case the branch has 
@@ -1624,16 +1643,12 @@ unsigned int get_converge_point( unsigned int pc, void *thd )
    for (; i < tmp.s_num_recon; ++i) {
       if (tmp.s_kernel_recon_points[i].source_pc == pc) {
           if( tmp.s_kernel_recon_points[i].target_pc == (unsigned) -2 ) {
-              // function call return
-              ptx_thread_info *the_thread = (ptx_thread_info*)thd;
-              assert( the_thread != NULL );
-              return the_thread->get_return_PC();
+              return RECONVERGE_RETURN_PC;
           } else {
               return tmp.s_kernel_recon_points[i].target_pc;
           }
       }
    }
-   assert(i < tmp.s_num_recon);
-   abort(); // returning garbage!
+   return NO_BRANCH_DIVERGENCE;
 }
 

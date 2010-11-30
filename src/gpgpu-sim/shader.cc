@@ -149,9 +149,9 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
    m_L1I = new read_only_cache( name,m_config->m_L1I_config,m_sid,get_shader_instruction_cache_id(),m_icnt,IN_L1I_MISS_QUEUE);
 
    m_warp.resize(m_config->max_warps_per_shader, shd_warp_t(this, warp_size));
-   m_pdom_warp = new simt_stack*[config->max_warps_per_shader];
+   m_simt_stack = new simt_stack*[config->max_warps_per_shader];
    for (unsigned i = 0; i < config->max_warps_per_shader; ++i) 
-       m_pdom_warp[i] = new simt_stack(i,this);
+       m_simt_stack[i] = new simt_stack(i,this);
    m_scoreboard = new Scoreboard(m_sid, m_config->max_warps_per_shader);
 
    m_operand_collector.add_port( m_config->gpgpu_operand_collector_num_units_sp, 
@@ -201,7 +201,7 @@ void shader_core_ctx::reinit(unsigned start_thread, unsigned end_thread, bool re
    }
    for (unsigned i = start_thread / m_config->warp_size; i < end_thread / m_config->warp_size; ++i) {
       m_warp[i].reset();
-      m_pdom_warp[i]->reset();
+      m_simt_stack[i]->reset();
    }
 }
 
@@ -223,7 +223,7 @@ void shader_core_ctx::init_warps( unsigned cta_id, unsigned start_thread, unsign
                     active_threads.set(t);
                 }
             }
-            m_pdom_warp[i]->launch(start_pc,active_threads);
+            m_simt_stack[i]->launch(start_pc,active_threads);
             m_warp[i].init(start_pc,cta_id,i,active_threads);
             m_not_completed += n_active;
       }
@@ -241,78 +241,76 @@ address_type shader_core_ctx::next_pc( int tid ) const
     return the_thread->get_pc(); // PC should already be updatd to next PC at this point (was set in shader_decode() last time thread ran)
 }
 
-void simt_stack::update() 
+void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, address_type recvg_pc ) 
 {
-	int wtid = m_warp_size*m_warp_id;
-	int stack_top = m_stack_top;
+    int stack_top = m_stack_top;
 
-	address_type top_pc = m_pc[stack_top];
-	simt_mask_t  top_active_mask = m_active_mask[stack_top];
-	address_type top_recvg_pc = m_recvg_pc[stack_top];
+    assert( next_pc.size() == m_warp_size );
 
-	assert(top_active_mask.any());
+    simt_mask_t  top_active_mask = m_active_mask[stack_top];
+    address_type top_recvg_pc = m_recvg_pc[stack_top];
 
-	const address_type null_pc = 0;
-	bool warp_diverged = false;
-	address_type new_recvg_pc = null_pc;
-	while (top_active_mask.any()) {
+    assert(top_active_mask.any());
 
-	  // extract a group of threads with the same next PC among the active threads in the warp
-	  address_type tmp_next_pc = null_pc;
-	  simt_mask_t tmp_active_mask;
-      class ptx_thread_info *first_active_thread=NULL;
-	  for (int i = m_warp_size - 1; i >= 0; i--) {
-		 if ( top_active_mask.test(i) ) { // is this thread active?
-			 if (m_shader->ptx_thread_done(wtid+i)) {
-			    top_active_mask.reset(i); // remove completed thread from active mask
-			 } else if (tmp_next_pc == null_pc) {
-                first_active_thread=m_shader->get_thread_state(wtid+i);
-			    tmp_next_pc = first_active_thread->get_pc();
-			    tmp_active_mask.set(i);
-			    top_active_mask.reset(i);
-			 } else if (tmp_next_pc == m_shader->get_thread_state(wtid+i)->get_pc()) {
-			    tmp_active_mask.set(i);
-			    top_active_mask.reset(i);
-			 }
-		 }
-	  }
+    const address_type null_pc = 0;
+    bool warp_diverged = false;
+    address_type new_recvg_pc = null_pc;
+    while (top_active_mask.any()) {
 
-	  // discard the new entry if its PC matches with reconvergence PC
-	  // that automatically reconverges the entry
-	  if (tmp_next_pc == top_recvg_pc) continue;
+        // extract a group of threads with the same next PC among the active threads in the warp
+        address_type tmp_next_pc = null_pc;
+        simt_mask_t tmp_active_mask;
+        for (int i = m_warp_size - 1; i >= 0; i--) {
+            if ( top_active_mask.test(i) ) { // is this thread active?
+                if (thread_done.test(i)) {
+                    top_active_mask.reset(i); // remove completed thread from active mask
+                } else if (tmp_next_pc == null_pc) {
+                    tmp_next_pc = next_pc[i];
+                    tmp_active_mask.set(i);
+                    top_active_mask.reset(i);
+                } else if (tmp_next_pc == next_pc[i]) {
+                    tmp_active_mask.set(i);
+                    top_active_mask.reset(i);
+                }
+            }
+        }
 
-	  // this new entry is not converging
-	  // if this entry does not include thread from the warp, divergence occurs
-	  if (top_active_mask.any() && !warp_diverged ) {
-		 warp_diverged = true;
-		 // modify the existing top entry into a reconvergence entry in the pdom stack
-		 new_recvg_pc = get_converge_point(top_pc,first_active_thread);
-		 if (new_recvg_pc != top_recvg_pc) {
-			m_pc[stack_top] = new_recvg_pc;
-			m_branch_div_cycle[stack_top] = gpu_sim_cycle;
-			stack_top += 1;
-			m_branch_div_cycle[stack_top] = 0;
-		 }
-	  }
+        // discard the new entry if its PC matches with reconvergence PC
+        // that automatically reconverges the entry
+        if (tmp_next_pc == top_recvg_pc) continue;
 
-	  // discard the new entry if its PC matches with reconvergence PC
-	  if (warp_diverged && tmp_next_pc == new_recvg_pc) continue;
+        // this new entry is not converging
+        // if this entry does not include thread from the warp, divergence occurs
+        if (top_active_mask.any() && !warp_diverged ) {
+            warp_diverged = true;
+            // modify the existing top entry into a reconvergence entry in the pdom stack
+            new_recvg_pc = recvg_pc;
+            if (new_recvg_pc != top_recvg_pc) {
+                m_pc[stack_top] = new_recvg_pc;
+                m_branch_div_cycle[stack_top] = gpu_sim_cycle;
+                stack_top += 1;
+                m_branch_div_cycle[stack_top] = 0;
+            }
+        }
 
-	  // update the current top of pdom stack
-	  m_pc[stack_top] = tmp_next_pc;
-	  m_active_mask[stack_top] = tmp_active_mask;
-	  if (warp_diverged) {
-		 m_calldepth[stack_top] = 0;
-		 m_recvg_pc[stack_top] = new_recvg_pc;
-	  } else {
-		 m_recvg_pc[stack_top] = top_recvg_pc;
-	  }
-	  stack_top += 1; // set top to next entry in the pdom stack
-	}
-	m_stack_top = stack_top - 1;
+        // discard the new entry if its PC matches with reconvergence PC
+        if (warp_diverged && tmp_next_pc == new_recvg_pc) continue;
 
-	assert(m_stack_top >= 0);
-	assert(m_stack_top < m_warp_size * 2);
+        // update the current top of pdom stack
+        m_pc[stack_top] = tmp_next_pc;
+        m_active_mask[stack_top] = tmp_active_mask;
+        if (warp_diverged) {
+            m_calldepth[stack_top] = 0;
+            m_recvg_pc[stack_top] = new_recvg_pc;
+        } else {
+            m_recvg_pc[stack_top] = top_recvg_pc;
+        }
+        stack_top += 1; // set top to next entry in the pdom stack
+    }
+    m_stack_top = stack_top - 1;
+
+    assert(m_stack_top >= 0);
+    assert(m_stack_top < m_warp_size * 2);
 }
 
 void gpgpu_sim::get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc )
@@ -324,7 +322,7 @@ void gpgpu_sim::get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *p
 void shader_core_ctx::get_pdom_stack_top_info( unsigned tid, unsigned *pc, unsigned *rpc ) const
 {
     unsigned warp_id = tid/m_config->warp_size;
-    m_pdom_warp[warp_id]->get_pdom_stack_top_info(pc,rpc);
+    m_simt_stack[warp_id]->get_pdom_stack_top_info(pc,rpc);
 }
 
 void simt_stack::get_pdom_stack_top_info( unsigned *pc, unsigned *rpc ) const
@@ -613,7 +611,28 @@ void shader_core_ctx::issue_warp( warp_inst_t *&pipe_reg, const warp_inst_t *nex
         m_barriers.warp_reaches_barrier(m_warp[warp_id].get_cta_id(),warp_id);
     else if( next_inst->op == MEMORY_BARRIER_OP ) 
         m_warp[warp_id].set_membar();
-    m_pdom_warp[warp_id]->update();
+
+    // extract thread done and next pc information from functional model here
+    simt_mask_t thread_done;
+    addr_vector_t next_pc;
+
+    unsigned wtid = warp_id * m_config->warp_size;
+    for (unsigned i = 0; i < m_config->warp_size; i++) {
+         if( ptx_thread_done(wtid+i) ) {
+             thread_done.set(i);
+             next_pc.push_back( (address_type)-1 );
+         } else {
+             class ptx_thread_info *info = get_thread_state(wtid+i);
+             assert( info ); 
+             if( pipe_reg->reconvergence_pc == RECONVERGE_RETURN_PC ) 
+                 pipe_reg->reconvergence_pc = get_return_pc(info);
+             next_pc.push_back( info->get_pc() );
+         }
+    }
+
+    // use to update simt stack here
+    m_simt_stack[warp_id]->update(thread_done,next_pc,pipe_reg->reconvergence_pc);
+
     m_scoreboard->reserveRegisters(pipe_reg);
     m_warp[warp_id].set_next_pc(next_inst->pc + next_inst->isize);
 }
@@ -632,7 +651,7 @@ void shader_core_ctx::decode()
             const warp_inst_t *pI = m_warp[warp_id].ibuffer_next_inst();
             bool valid = m_warp[warp_id].ibuffer_next_valid();
             unsigned pc,rpc;
-            m_pdom_warp[warp_id]->get_pdom_stack_top_info(&pc,&rpc);
+            m_simt_stack[warp_id]->get_pdom_stack_top_info(&pc,&rpc);
             if( pI ) {
                 assert(valid);
                 if( pc != pI->pc ) {
@@ -643,7 +662,7 @@ void shader_core_ctx::decode()
                     valid_inst = true;
                     if ( !m_scoreboard->checkCollision(warp_id, pI) ) {
                         ready_inst = true;
-                        const active_mask_t &active_mask = m_pdom_warp[warp_id]->get_active_mask();
+                        const active_mask_t &active_mask = m_simt_stack[warp_id]->get_active_mask();
                         assert( m_warp[warp_id].inst_in_pipeline() );
                         if ( (pI->op == LOAD_OP) || (pI->op == STORE_OP) || (pI->op == MEMORY_BARRIER_OP) ) {
                             if( m_pipeline_reg[ID_OC_MEM]->empty() ) {
@@ -1297,7 +1316,7 @@ void shader_core_ctx::display_simt_state(FILE *fout, int mask ) const
           if ( nactive == 0 ) {
              continue;
           }
-          m_pdom_warp[i]->print(fout);
+          m_simt_stack[i]->print(fout);
        }
        fprintf(fout,"\n");
     }
