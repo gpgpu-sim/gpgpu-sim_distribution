@@ -692,6 +692,11 @@ void shader_core_ctx::decode()
         m_stats->shader_cycle_distro[2]++; // pipeline stalled
 }
 
+void shader_core_ctx::read_operands()
+{
+    m_operand_collector.step();
+}
+
 address_type coalesced_segment(address_type addr, unsigned segment_size_lg2bytes)
 {
    return  (addr >> segment_size_lg2bytes);
@@ -1470,7 +1475,7 @@ void shader_core_ctx::cycle()
 {
     writeback();
     execute();
-    m_operand_collector.step();
+    read_operands();
     decode();
     fetch();
 }

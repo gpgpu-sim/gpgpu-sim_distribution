@@ -1168,6 +1168,8 @@ private:
     void issue_warp( warp_inst_t *&warp, const warp_inst_t *pI, const active_mask_t &active_mask, unsigned warp_id );
     void func_exec_inst( warp_inst_t &inst );
     address_type translate_local_memaddr(address_type localaddr, unsigned tid, unsigned num_shader );
+
+    void read_operands();
     
     void execute();
     
