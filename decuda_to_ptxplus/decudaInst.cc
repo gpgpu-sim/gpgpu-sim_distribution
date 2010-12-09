@@ -11,7 +11,7 @@ decudaInst::decudaInst()
 {
 	//initilize everything to empty
 	m_label = "";
-	m_predicate = "";
+	m_predicate = new stringList();
 	m_base = "";
 	m_baseModifiers = new stringList();
 	m_typeModifiers = new stringList();
@@ -83,7 +83,10 @@ void decudaInst::addOperand(const char* addOp)
 
 void decudaInst::setPredicate(const char* setPredicateValue)
 {
-	m_predicate = setPredicateValue;
+	stringListPiece* tempPiece = new stringListPiece;
+	tempPiece->stringText = setPredicateValue;
+
+	m_predicate->add(tempPiece);
 }
 
 void decudaInst::addPredicateModifier(const char* addPredicateMod)
@@ -292,15 +295,17 @@ void decudaInst::printLabel()
 
 void decudaInst::printPredicate()
 {
-	if(m_predicate != "") {
-		output(m_predicate);
+	stringListPiece* currentPiece = m_predicate->getListStart();
+	if(currentPiece!=NULL)
+	{
+		output(currentPiece->stringText);
 
-		stringListPiece* currentPiece = m_predicateModifiers->getListStart();
-		for(int i=0; (i<m_predicateModifiers->getSize())&&(currentPiece!=NULL); i++)
+		stringListPiece* currentPiece2 = m_predicateModifiers->getListStart();
+		for(int i=0; (i<m_predicateModifiers->getSize())&&(currentPiece2!=NULL); i++)
 		{
-			output(currentPiece->stringText);
+			output(currentPiece2->stringText);
 
-			currentPiece = currentPiece->nextString;
+			currentPiece2 = currentPiece2->nextString;
 		}
 
 		output(" ");

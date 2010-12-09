@@ -7,7 +7,7 @@ class decudaInst
 protected:
 	//instruction data
 	const char* m_label; //instruction label
-	const char* m_predicate; //instruction predicate
+	stringList* m_predicate; //instruction predicate
 	const char* m_base; //instruction mnemonic
 	stringList* m_baseModifiers; //base modifiers
 	stringList* m_typeModifiers; //operand types

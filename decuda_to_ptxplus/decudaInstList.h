@@ -56,6 +56,9 @@ struct decudaEntry
 	// Local memory size
 	int m_lMemSize;
 
+	//use for recording used labels
+	std::list<std::string> m_labelList;
+
    // Histogram for operation per cycle count
    std::map<std::string, int> m_opPerCycleHistogram; 
 };
