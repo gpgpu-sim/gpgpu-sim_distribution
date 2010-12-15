@@ -354,7 +354,7 @@ void decudaInst::printNewPtx()
 	// Common modifications that apply to all instructions
 	//
 	stringListPiece* currentPiece;
-        int vectorFlag = 0; //0=default, 1=bb64 type, 2=bb128 type
+        int vectorFlag = 0; //0=default, 1=bb64/ff64 type, 2=bb128 type
 
 	// Replace '%clock' with '%halfclock'
 	currentPiece = m_operands->getListStart();
@@ -393,6 +393,7 @@ void decudaInst::printNewPtx()
 
 	// Change .b64 to .bb64 from type modifier list
 	// Change .b128 to .bb128 from type modifier list
+	// Change .f64 to .ff64 from type modifier list
 	currentPiece = m_typeModifiers->getListStart();
 	for(int i=0; (i<m_typeModifiers->getSize())&&(currentPiece!=NULL); i++)
 	{
@@ -407,6 +408,11 @@ void decudaInst::printNewPtx()
 			currentPiece->stringText = newText;
 			vectorFlag = 2;
 		}
+		if( strcmp(modString, ".f64")==0 ) {
+			const char* newText = ".ff64";
+			currentPiece->stringText = newText;
+			vectorFlag = 1;
+		}
 		currentPiece = currentPiece->nextString;
 	}
 
@@ -416,7 +422,7 @@ void decudaInst::printNewPtx()
 		currentPiece = m_operands->getListStart();
 		for(int i=0; (i<m_operands->getSize())&&(currentPiece!=NULL); i++)
 		{
-			char newText[40] = "";
+			char *newText = new char[40];
 			char *regNumString;
 			int regNumInt;
 
@@ -432,8 +438,7 @@ void decudaInst::printNewPtx()
 					snprintf(newText,40,"{$r%u,$r%u,$r%u,$r%u}", regNumInt+0, regNumInt+1, regNumInt+2, regNumInt+3);
 
 				currentPiece->stringText = newText;
-				break;
-			} else if( modString[0] == '$' && modString[1] == 'o'&& modString[2] == 'f' ) {
+			} /*else if( modString[0] == '$' && modString[1] == 'o'&& modString[2] == 'f' ) {
 				strcpy(newText, modString);
 				strtok (newText, "s");
 				regNumString = strtok (NULL, "s");
@@ -444,7 +449,6 @@ void decudaInst::printNewPtx()
 					snprintf(newText,40,"{$ofs%u,$ofs%u,$ofs%u,$ofs%u}", regNumInt+0, regNumInt+1, regNumInt+2, regNumInt+3);
 
 				currentPiece->stringText = newText;
-				break;
 			} else if( modString[0] == '$' && modString[1] == 'p' ) {
 				strcpy(newText, modString);
 				strtok (newText, "p");
@@ -456,7 +460,6 @@ void decudaInst::printNewPtx()
 					snprintf(newText,40,"{$p%u,$p%u,$p%u,$p%u}", regNumInt+0, regNumInt+1, regNumInt+2, regNumInt+3);
 
 				currentPiece->stringText = newText;
-				break;
 			} else if( modString[0] == '$' && modString[1] == 'o' ) {
 				strcpy(newText, modString);
 				strtok (newText, "o");
@@ -468,7 +471,6 @@ void decudaInst::printNewPtx()
 					snprintf(newText,40,"{$o%u,$o%u,$o%u,$o%u}", regNumInt+0, regNumInt+1, regNumInt+2, regNumInt+3);
 
 				currentPiece->stringText = newText;
-				break;
 			} else if( modString[0] == '$' && modString[1] == 't'&& modString[2] == 'e' ) {
 				strcpy(newText, modString);
 				strtok (newText, "x");
@@ -480,38 +482,10 @@ void decudaInst::printNewPtx()
 					snprintf(newText,40,"{$tex%u,$tex%u,$tex%u,$tex%u}", regNumInt+0, regNumInt+1, regNumInt+2, regNumInt+3);
 
 				currentPiece->stringText = newText;
-				break;
-			}
+			}*/
 			currentPiece = currentPiece->nextString;
 		}
 	}
-
-	// Predicate modifiers :
-	// @$p0.ne and @$p0.neu map to @$p0,
-	// $p0.eq, $p0.equ, $p0.ge map to @!$p0
-	// Assuming only one modifier for now, only removes the first one
-	/*if(m_predicate != "")
-	{
-		currentPiece = m_predicateModifiers->getListStart();
-		char* modString = currentPiece->stringText;
-		if( strcmp(modString, ".ne")==0 || 
-		    strcmp(modString, ".neu")==0 ||
-		    strcmp(modString, ".gtu")==0 ||
-		    strcmp(modString, ".ltu")==0 ||
-                    strcmp(modString, ".sf")==0 ) {
-			m_predicateModifiers->remove(0);
-		} else if( strcmp(modString, ".eq")==0 || 
-			    strcmp(modString, ".equ")==0 ||
-			    strcmp(modString, ".le")==0 ||
-			    strcmp(modString, ".ge")==0 ||
-                            strcmp(modString, ".nsf")==0 )  {
-			// Insert '!' into predicate
-			std::string temp = m_predicate;
-			temp.insert(1, "!");
-			strcpy(m_predicate, temp.c_str());
-			m_predicateModifiers->remove(0);
-		}
-	}*/
 
 	//
 	// Instruction specific modifications

@@ -470,7 +470,7 @@ void ptx_instruction::set_opcode_and_latency()
       break;
    case DIV_OP: 
       // Floating point only
-      if( get_type() == F32_TYPE || get_type() == F64_TYPE ) {
+      if( get_type() == F32_TYPE || get_type() == F64_TYPE || get_type() == FF64_TYPE) {
          latency = 10;
          initiation_interval = 4;
          op = SFU_OP;
@@ -483,7 +483,7 @@ void ptx_instruction::set_opcode_and_latency()
          initiation_interval = 5;
          op = SFU_OP;
       }
-      if( get_type() == F32_TYPE || get_type() == F64_TYPE ) {
+      if( get_type() == F32_TYPE || get_type() == F64_TYPE || get_type() == FF64_TYPE ) {
          op = ALU_SFU_OP;
       }
       break;
@@ -531,6 +531,7 @@ static unsigned datatype2size( unsigned data_type )
       case S64_TYPE:
       case U64_TYPE:
       case F64_TYPE: 
+      case FF64_TYPE:
          data_size = 8; break;
       case BB128_TYPE: 
          data_size = 16; break;
@@ -599,10 +600,10 @@ void ptx_instruction::pre_decode()
    for ( ; opr != op_iter_end(); opr++, n++ ) { //process operands
       const operand_info &o = *opr;
       if ( has_dst && n==0 ) {
-         if ( o.is_reg() ) { //but is destination an actual register? (seems like it fails if it's a vector)
+         if ( o.is_reg() ) {
             out[0] = o.reg_num();
             arch_reg[0] = o.arch_reg_num();
-         } else if ( o.is_vector() ) { //but is destination an actual register? (seems like it fails if it's a vector)
+         } else if ( o.is_vector() ) {
             is_vectorin = 1;
             unsigned num_elem = o.get_vect_nelem();
             if( num_elem >= 1 ) out[0] = o.reg1_num();
@@ -624,7 +625,7 @@ void ptx_instruction::pre_decode()
             }
             m++;
          } else if ( o.is_vector() ) {
-            assert(m == 0); //only support 1 vector operand (for textures) right now
+            //assert(m == 0); //only support 1 vector operand (for textures) right now
             is_vectorout = 1;
             unsigned num_elem = o.get_vect_nelem();
             if( num_elem >= 1 ) in[0] = o.reg1_num();
@@ -980,6 +981,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
       case S64_TYPE:
       case U64_TYPE:
       case F64_TYPE: 
+      case FF64_TYPE:
          inst.data_size = 8; break;
       default: assert(0); break;
       }

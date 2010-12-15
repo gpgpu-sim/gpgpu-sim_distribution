@@ -118,6 +118,7 @@
 %token  F16_TYPE
 %token  F32_TYPE
 %token  F64_TYPE
+%token  FF64_TYPE
 %token  B8_TYPE
 %token  B16_TYPE
 %token  B32_TYPE
@@ -365,6 +366,7 @@ scalar_type: S8_TYPE { add_scalar_type_spec( S8_TYPE ); }
 	| F16_TYPE   { add_scalar_type_spec( F16_TYPE ); }
 	| F32_TYPE   { add_scalar_type_spec( F32_TYPE ); }
 	| F64_TYPE   { add_scalar_type_spec( F64_TYPE ); }
+	| FF64_TYPE   { add_scalar_type_spec( FF64_TYPE ); }
 	| B8_TYPE    { add_scalar_type_spec( B8_TYPE );  }
 	| B16_TYPE   { add_scalar_type_spec( B16_TYPE ); }
 	| B32_TYPE   { add_scalar_type_spec( B32_TYPE ); }

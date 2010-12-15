@@ -257,6 +257,7 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.f16  TC;  return F16_TYPE;
 \.f32  TC;  return F32_TYPE;
 \.f64  TC;  return F64_TYPE;
+\.ff64 TC;  return FF64_TYPE;
 \.b8   TC;  return B8_TYPE;
 \.b16  TC;  return B16_TYPE;
 \.b32  TC;  return B32_TYPE;

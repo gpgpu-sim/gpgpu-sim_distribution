@@ -854,6 +854,7 @@ unsigned type_info_key::type_decode( int type, size_t &size, int &basic_type )
    case F16_TYPE: size=16; basic_type=-1; return 8;
    case F32_TYPE: size=32; basic_type=-1; return 9;
    case F64_TYPE: size=64; basic_type=-1; return 10;
+   case FF64_TYPE: size=64; basic_type=-1; return 10;
    case PRED_TYPE: size=1; basic_type=2; return 11;
    case B8_TYPE:  size=8;  basic_type=0; return 12;
    case B16_TYPE: size=16; basic_type=0; return 13;

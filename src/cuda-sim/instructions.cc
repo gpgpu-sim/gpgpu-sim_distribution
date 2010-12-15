@@ -137,7 +137,7 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
    ptx_reg_t result, tmp;
 
    if(op.get_double_operand_type() == 0) {
-      if(((opType != BB128_TYPE) && (opType != BB64_TYPE)) || (op.get_addr_space() != undefined_space)) {
+      if(((opType != BB128_TYPE) && (opType != BB64_TYPE) && (opType != FF64_TYPE)) || (op.get_addr_space() != undefined_space)) {
          if ( op.is_reg() ) {
             result = get_reg( op.get_symbol() );
          } else if ( op.is_builtin()) {
@@ -199,7 +199,7 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
           result.u128.high = get_reg( op.vec_symbol(2) ).u32;
           result.u128.highest = get_reg( op.vec_symbol(3) ).u32;
       } else {
-          // bb64
+          // bb64 or ff64
           result.bits.ls = get_reg( op.vec_symbol(0) ).u32;
           result.bits.ms = get_reg( op.vec_symbol(1) ).u32;
       }
@@ -314,6 +314,7 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
          finalResult.f32 = -finalResult.f32;
          break;
       case F64_TYPE:
+      case FF64_TYPE:
          finalResult.f64 = -finalResult.f64;
          break;
       default:
@@ -444,7 +445,7 @@ void ptx_thread_info::set_operand_value( const operand_info &dst, const ptx_reg_
           const symbol *name1 = dst.vec_symbol(0);
           const symbol *name2 = dst.vec_symbol(1);
 
-          if ( (type==F16_TYPE)||(type==F32_TYPE)||(type==F64_TYPE) ) {
+          if ( (type==F16_TYPE)||(type==F32_TYPE)||(type==F64_TYPE)||(type==FF64_TYPE) ) {
              setValue2.f32 = (setValue.u64==0)?1.0f:0.0f;
           } else {
              setValue2.u32 = (setValue.u64==0)?0xFFFFFFFF:0;
@@ -510,6 +511,7 @@ void ptx_thread_info::set_operand_value( const operand_info &dst, const ptx_reg_
                   predValue.u64 |= 1;
               break;
           case F64_TYPE:
+          case FF64_TYPE:
               if(setValue.f64 == 0)
                   predValue.u64 |= 1;
               break;
@@ -565,7 +567,7 @@ void ptx_thread_info::set_operand_value( const operand_info &dst, const ptx_reg_
           set_reg(name3,setValue3);
           set_reg(name4,setValue4);
       }
-      else if (type == BB64_TYPE)
+      else if (type == BB64_TYPE || type == FF64_TYPE)
       {
           //ptxplus version of storing 64 bit values to registers stores to two adjacent registers
           ptx_reg_t setValue2;
@@ -698,7 +700,7 @@ void abs_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    case U32_TYPE: d.s32 = my_abs(a.u32); break;
    case U64_TYPE: d.s64 = my_abs(a.u64); break;
    case F32_TYPE: d.f32 = my_abs(a.f32); break;
-   case F64_TYPE: d.f64 = my_abs(a.f64); break;
+   case F64_TYPE: case FF64_TYPE: d.f64 = my_abs(a.f64); break;
    default:
       printf("Execution error: type mismatch with instruction\n");
       assert(0);
@@ -767,7 +769,7 @@ void add_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       break;
    case F16_TYPE: assert(0); break;
    case F32_TYPE: data.f32 = src1_data.f32 + src2_data.f32; break;
-   case F64_TYPE: data.f64 = src1_data.f64 + src2_data.f64; break;
+   case F64_TYPE: case FF64_TYPE: data.f64 = src1_data.f64 + src2_data.f64; break;
    default: assert(0); break;
    }
    fesetround( orig_rm );
@@ -1667,6 +1669,7 @@ void ptx_round(ptx_reg_t& data, int rounding_mode, int type)
          data.f32 = truncf(data.f32); 
          break;          
       case F64_TYPE:
+      case FF64_TYPE:
          if (data.f64 < 0) data.f64 = ceil(data.f64); //negative
          else data.f64 = floor(data.f64); //positive
          break; 
@@ -1692,7 +1695,7 @@ void ptx_round(ptx_reg_t& data, int rounding_mode, int type)
          data.f32 = cuda_math::__cuda_nearbyintf(data.f32); 
 #endif
          break;          
-      case F64_TYPE: data.f64 = round(data.f64); break; 
+      case F64_TYPE: case FF64_TYPE: data.f64 = round(data.f64); break; 
       default: assert(0); break;
       }
       break;
@@ -1711,7 +1714,7 @@ void ptx_round(ptx_reg_t& data, int rounding_mode, int type)
       case F32_TYPE: 
          data.f32 = floorf(data.f32); 
          break;          
-      case F64_TYPE: data.f64 = floor(data.f64); break; 
+      case F64_TYPE: case FF64_TYPE: data.f64 = floor(data.f64); break; 
       default: assert(0); break;
       }
       break;
@@ -1728,7 +1731,7 @@ void ptx_round(ptx_reg_t& data, int rounding_mode, int type)
          printf("Trying to round an integer??\n"); assert(0); break;
       case F16_TYPE: assert(0); break;
       case F32_TYPE: data.f32 = ceilf(data.f32); break;          
-      case F64_TYPE: data.f64 = ceil(data.f64); break; 
+      case F64_TYPE: case FF64_TYPE: data.f64 = ceil(data.f64); break; 
       default: assert(0); break;
       }
       break;
@@ -1745,7 +1748,7 @@ void ptx_round(ptx_reg_t& data, int rounding_mode, int type)
          data.u32 = 0x7fffffff;
       }
    }
-   if (type == F64_TYPE) {
+   if ((type == F64_TYPE)||(type == FF64_TYPE)) {
       if (isnan(data.f64)) {
          data.u64 = 0xfff8000000000000ull;
       }
@@ -1773,6 +1776,7 @@ void ptx_saturate(ptx_reg_t& data, int saturation_mode, int type)
       if (data.f32 < 0.0f) data.f32 = 0.0f; //positive
       break;          
    case F64_TYPE:
+   case FF64_TYPE:
       if (data.f64 > 1.0f) data.f64 = 1.0f; //negative
       if (data.f64 < 0.0f) data.f64 = 0.0f; //positive
       break; 
@@ -1831,6 +1835,7 @@ void cvt_impl( const ptx_instruction *pI, ptx_thread_info *thread )
          data.f32 = -data.f32;
          break;
       case F64_TYPE:
+      case FF64_TYPE:
          data.f64 = -data.f64;
          break;
       default:
@@ -1917,7 +1922,7 @@ void div_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       data.u64 = src1_data.u64 / src2_data.u64; break;
    case F16_TYPE: assert(0); break;
    case F32_TYPE: data.f32 = src1_data.f32 / src2_data.f32; break;
-   case F64_TYPE: data.f64 = src1_data.f64 / src2_data.f64; break;
+   case F64_TYPE: case FF64_TYPE: data.f64 = src1_data.f64 / src2_data.f64; break;
    default: assert(0); break;
    }
    thread->set_operand_value(dst,data, i_type, thread,pI);
@@ -2246,7 +2251,7 @@ void mad_def( const ptx_instruction *pI, ptx_thread_info *thread )
          fesetround( orig_rm );
          break;
       }  
-   case F64_TYPE: {
+   case F64_TYPE: case FF64_TYPE: {
          int orig_rm = fegetround();
          switch ( rounding_mode ) {
          case RN_OPTION: break;
@@ -2298,7 +2303,7 @@ void max_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    case S32_TYPE: d.s32 = MY_MAX_I(a.s32,b.s32); break;
    case S64_TYPE: d.s64 = MY_MAX_I(a.s64,b.s64); break;
    case F32_TYPE: d.f32 = MY_MAX_F(a.f32,b.f32); break;
-   case F64_TYPE: d.f64 = MY_MAX_F(a.f64,b.f64); break;
+   case F64_TYPE: case FF64_TYPE: d.f64 = MY_MAX_F(a.f64,b.f64); break;
    default:
       printf("Execution error: type mismatch with instruction\n");
       assert(0); 
@@ -2333,7 +2338,7 @@ void min_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    case S32_TYPE: d.s32 = MY_MIN_I(a.s32,b.s32); break;
    case S64_TYPE: d.s64 = MY_MIN_I(a.s64,b.s64); break;
    case F32_TYPE: d.f32 = MY_MIN_F(a.f32,b.f32); break;
-   case F64_TYPE: d.f64 = MY_MIN_F(a.f64,b.f64); break;
+   case F64_TYPE: case FF64_TYPE: d.f64 = MY_MIN_F(a.f64,b.f64); break;
    default:
       printf("Execution error: type mismatch with instruction\n");
       assert(0);
@@ -2351,7 +2356,7 @@ void mov_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    const operand_info &src1 = pI->src1();
    unsigned i_type = pI->get_type();
 
-   if( (src1.is_vector() || dst.is_vector()) && (i_type != BB64_TYPE) && (i_type != BB128_TYPE) ) {
+   if( (src1.is_vector() || dst.is_vector()) && (i_type != BB64_TYPE) && (i_type != BB128_TYPE) && (i_type != FF64_TYPE) ) {
       // pack or unpack operation
       unsigned nbits_to_move;
       ptx_reg_t tmp_bits;
@@ -2540,7 +2545,7 @@ void mul_impl( const ptx_instruction *pI, ptx_thread_info *thread )
          fesetround( orig_rm );
          break;
       }  
-   case F64_TYPE: {
+   case F64_TYPE: case FF64_TYPE:{
          int orig_rm = fegetround();
          switch ( rounding_mode ) {
          case RN_OPTION: break;
@@ -2587,7 +2592,7 @@ void neg_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       assert(0); break;
    case F16_TYPE: assert(0); break;
    case F32_TYPE: data.f32 = 0.0f - src1_data.f32; break;
-   case F64_TYPE: data.f64 = 0.0f - src1_data.f64; break;
+   case F64_TYPE: case FF64_TYPE: data.f64 = 0.0f - src1_data.f64; break;
    default: assert(0); break;
    }
 
@@ -2727,6 +2732,7 @@ void rcp_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       data.f32 = 1.0f / src1_data.f32;
       break;
    case F64_TYPE:
+   case FF64_TYPE:
       data.f64 = 1.0f / src1_data.f64;
       break;
    default:
@@ -2804,6 +2810,7 @@ void rsqrt_impl( const ptx_instruction *pI, ptx_thread_info *thread )
          d.f32 = cuda_math::__internal_accurate_fdividef(1.0f, sqrtf(a.f32));
       break;
    case F64_TYPE: 
+   case FF64_TYPE:
       if ( a.f32 < 0 ) {
          d.u64 = 0;
 	      d.u32 = 0x7fc00000; // NaN
@@ -2850,7 +2857,7 @@ void sad_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    case S32_TYPE: SAD(d.s32,a.s32,b.s32,c.s32); break;
    case S64_TYPE: SAD(d.s64,a.s64,b.s64,c.s64); break;
    case F32_TYPE: SAD(d.f32,a.f32,b.f32,c.f32); break;
-   case F64_TYPE: SAD(d.f64,a.f64,b.f64,c.f64); break;
+   case F64_TYPE: case FF64_TYPE: SAD(d.f64,a.f64,b.f64,c.f64); break;
    default:
       printf("Execution error: type mismatch with instruction\n");
       assert(0); 
@@ -2887,6 +2894,7 @@ bool isFloat(int type)
    case F16_TYPE:
    case F32_TYPE:
    case F64_TYPE:
+   case FF64_TYPE:
       return true;
    default:
       return false;
@@ -3029,6 +3037,7 @@ bool CmpOp( int type, ptx_reg_t a, ptx_reg_t b, unsigned cmpop )
       }
       break;
    case F64_TYPE: 
+   case FF64_TYPE:
       switch (cmpop) {
       case EQ_OPTION: t = (a.f64 == b.f64) && !isNaN(a.f64) && !isNaN(b.f64); break;
       case NE_OPTION: t = (a.f64 != b.f64) && !isNaN(a.f64) && !isNaN(b.f64); break;
@@ -3107,7 +3116,7 @@ void set_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       case U32_TYPE: a.u32 = my_abs(a.u32); break;
       case U64_TYPE: a.u64 = my_abs(a.u64); break;
       case F32_TYPE: a.f32 = my_abs(a.f32); break;
-      case F64_TYPE: a.f64 = my_abs(a.f64); break;
+      case F64_TYPE: case FF64_TYPE: a.f64 = my_abs(a.f64); break;
       default:
          printf("Execution error: type mismatch with instruction\n");
          assert(0);
@@ -3303,6 +3312,7 @@ void slct_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    case B32_TYPE:
    case U32_TYPE: d.u32 = t?a.u32:b.u32; break;
    case F64_TYPE:
+   case FF64_TYPE:
    case B64_TYPE:
    case U64_TYPE: d.u64 = t?a.u64:b.u64; break;
    default: assert(0);
@@ -3328,6 +3338,7 @@ void sqrt_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       else
          d.f32 = sqrt(a.f32); break;
    case F64_TYPE: 
+   case FF64_TYPE:
       if ( a.f64 < 0 )
          d.f64 = nan("");
       else
@@ -3447,7 +3458,7 @@ void sub_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       data.u64 = src1_data.u64 - src2_data.u64; break;
    case F16_TYPE: assert(0); break;
    case F32_TYPE: data.f32 = src1_data.f32 - src2_data.f32; break;
-   case F64_TYPE: data.f64 = src1_data.f64 - src2_data.f64; break;
+   case F64_TYPE: case FF64_TYPE: data.f64 = src1_data.f64 - src2_data.f64; break;
    default: assert(0); break;
    }
 
@@ -3726,6 +3737,7 @@ void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       }
    } break;
    case F64_TYPE: 
+   case FF64_TYPE:
       mem->read( tex_array_index, 8, &data1.f64);
       if (cuArray->desc.y) {
          mem->read( tex_array_index+8, 8, &data2.f64);
