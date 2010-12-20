@@ -1218,6 +1218,7 @@ unsigned function_info::print_insn( unsigned pc, FILE * fp ) const
       } else
          fprintf(fp, "<no instruction at pc = %u>", pc );
    }
+   pclose(p);
    return inst_size;
 }
 
