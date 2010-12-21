@@ -438,6 +438,17 @@ void decudaInst::printNewPtx()
 					snprintf(newText,40,"{$r%u,$r%u,$r%u,$r%u}", regNumInt+0, regNumInt+1, regNumInt+2, regNumInt+3);
 
 				currentPiece->stringText = newText;
+			} else if( modString[0] == '-' && modString[1] == '$' && modString[2] == 'r' ) {
+				strcpy(newText, modString);
+				strtok (newText, "r");
+				regNumString = strtok (NULL, "r");
+				regNumInt = atoi(regNumString);
+				if(vectorFlag ==1)
+					snprintf(newText,40,"-{$r%u,$r%u}", regNumInt+0, regNumInt+1);
+				if(vectorFlag ==2)
+					snprintf(newText,40,"-{$r%u,$r%u,$r%u,$r%u}", regNumInt+0, regNumInt+1, regNumInt+2, regNumInt+3);
+
+				currentPiece->stringText = newText;
 			} /*else if( modString[0] == '$' && modString[1] == 'o'&& modString[2] == 'f' ) {
 				strcpy(newText, modString);
 				strtok (newText, "s");

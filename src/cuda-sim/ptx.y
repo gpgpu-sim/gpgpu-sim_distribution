@@ -505,6 +505,7 @@ operand: IDENTIFIER  { add_scalar_operand( $1 ); }
 	| literal_operand
 	| builtin_operand
 	| vector_operand
+	| MINUS vector_operand { change_operand_neg(); }
 	| tex_operand
 	| IDENTIFIER PLUS INT_OPERAND { add_address_operand($1,$3); }
 	| IDENTIFIER LO_OPTION { add_scalar_operand( $1 ); change_operand_lohi(1);}
