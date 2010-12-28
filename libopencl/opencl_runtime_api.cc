@@ -623,6 +623,7 @@ class _cl_device_id *GPGPUSim_Init()
       gpgpu_sim *the_gpu = gpgpu_ptx_sim_init_perf(); 
       the_device = new _cl_device_id(the_gpu);
    } 
+   start_sim_thread(2);
    return the_device;
 }
 
@@ -874,9 +875,9 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
 
    kernel_info_t grid = gpgpu_opencl_ptx_sim_init_grid(kernel->get_implementation(),params,GridDim,BlockDim,gpu);
    if ( g_ptx_sim_mode )
-      gpgpu_opencl_ptx_sim_main_func( grid, GridDim, BlockDim, params );
+      gpgpu_opencl_ptx_sim_main_func( grid );
    else
-      gpgpu_opencl_ptx_sim_main_perf( grid, GridDim, BlockDim, params );
+      gpgpu_opencl_ptx_sim_main_perf( grid );
    return CL_SUCCESS;
 }
 

@@ -118,7 +118,7 @@ public:
 
 class thread_insn_span {
 public:
-   thread_insn_span(unsigned long long  cycle, int n_insn);
+   thread_insn_span(unsigned long long  cycle);
    thread_insn_span(const thread_insn_span& other);
    ~thread_insn_span();
    
@@ -135,14 +135,13 @@ public:
 private: 
    typedef my_hash_map<address_type, int> span_count_map;
    unsigned long long  m_cycle;
-   int m_n_insn;
    span_count_map m_insn_span_count;
 };
 
 class thread_CFlocality : public snap_shot_trigger, public spill_log_interface {
 public:
    thread_CFlocality(std::string name, unsigned long long  snap_shot_interval, 
-                     int nthreads, int n_insn, address_type start_pc, unsigned long long  start_cycle = 0);
+                     int nthreads, address_type start_pc, unsigned long long  start_cycle = 0);
    ~thread_CFlocality();
    
    void update_thread_pc( int thread_id, address_type pc );
@@ -170,9 +169,9 @@ private:
 
 class insn_warp_occ_logger {
 public:
-   insn_warp_occ_logger(int simd_width, int n_insn)
+   insn_warp_occ_logger(int simd_width)
       : m_simd_width(simd_width), 
-        m_insn_warp_occ(n_insn, linear_histogram(1, "", m_simd_width)),
+        m_insn_warp_occ(1,linear_histogram(1, "", m_simd_width)),
         m_id(s_ids++) {}
    
    insn_warp_occ_logger(const insn_warp_occ_logger& other)
@@ -191,7 +190,9 @@ public:
    void set_id(int id) { m_id = id; }
    
    void log(address_type pc, int warp_occ) {
-      m_insn_warp_occ[pc].add2bin(warp_occ - 1);
+       if( pc >= m_insn_warp_occ.size() ) 
+           m_insn_warp_occ.resize(2*pc, linear_histogram(1, "", m_simd_width));
+       m_insn_warp_occ[pc].add2bin(warp_occ - 1);
    }
    
    void print(FILE *fout) const 
@@ -307,7 +308,7 @@ void try_snap_shot (unsigned long long  current_cycle);
 void set_spill_interval (unsigned long long  interval);
 void spill_log_to_file (FILE *fout, int final, unsigned long long  current_cycle);
 
-void create_thread_CFlogger( int n_loggers, int n_threads, int n_insn, address_type start_pc, unsigned long long  logging_interval);
+void create_thread_CFlogger( int n_loggers, int n_threads, address_type start_pc, unsigned long long  logging_interval);
 void destroy_thread_CFlogger( );
 void cflog_update_thread_pc( int logger_id, int thread_id, address_type pc );
 void cflog_snapshot( int logger_id, unsigned long long  cycle );
@@ -316,7 +317,7 @@ void cflog_print_path_expression(FILE *fout);
 void cflog_visualizer_print(FILE *fout);
 void cflog_visualizer_gzprint(gzFile fout);
 
-void insn_warp_occ_create( int n_loggers, int simd_width, int n_insn );
+void insn_warp_occ_create( int n_loggers, int simd_width );
 void insn_warp_occ_log( int logger_id, address_type pc, int warp_occ );
 void insn_warp_occ_print( FILE *fout );
 

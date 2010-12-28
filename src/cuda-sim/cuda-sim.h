@@ -25,7 +25,7 @@ extern class kernel_info_t gpgpu_opencl_ptx_sim_init_grid(class function_info *e
                                             struct dim3 gridDim, 
                                             struct dim3 blockDim, 
                                                           class gpgpu_t *gpu );
-extern void gpgpu_cuda_ptx_sim_main_func( kernel_info_t kernel, dim3 gridDim, dim3 blockDim, gpgpu_ptx_sim_arg_list_t args);
+extern void gpgpu_cuda_ptx_sim_main_func( kernel_info_t kernel );
 extern void   print_splash();
 extern void   gpgpu_ptx_sim_register_const_variable(void*, const char *deviceName, size_t size );
 extern void   gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size );

@@ -1331,6 +1331,8 @@ int g_ptx_sim_mode; // if non-zero run functional simulation only (i.e., no noti
 
 extern "C" int ptx_debug;
 
+bool g_cuda_launch_blocking = false;
+
 void read_sim_environment_variables() 
 {
    ptx_debug = 0;
@@ -1375,7 +1377,12 @@ void read_sim_environment_variables()
         fflush(stdout);
         g_override_embedded_ptx = true;
     }
+    char *blocking = getenv("CUDA_LAUNCH_BLOCKING");
+    if( blocking && !strcmp(blocking,"1") ) {
+        g_cuda_launch_blocking = true;
+    }
 #else
+   g_cuda_launch_blocking = true;
    g_override_embedded_ptx = true;
 #endif
 
@@ -1388,7 +1395,7 @@ ptx_cta_info *g_func_cta_info = NULL;
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
-void gpgpu_cuda_ptx_sim_main_func( kernel_info_t kernel, dim3 gridDim, dim3 blockDim, gpgpu_ptx_sim_arg_list_t args)
+void gpgpu_cuda_ptx_sim_main_func( kernel_info_t kernel )
 {
    printf("GPGPU-Sim: Performing Functional Simulation...\n");
 

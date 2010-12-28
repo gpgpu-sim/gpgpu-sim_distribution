@@ -71,19 +71,10 @@
 extern time_t g_simulation_starttime;
 
 class gpgpu_sim *gpgpu_ptx_sim_init_perf();
+void start_sim_thread(int api);
 
-int gpgpu_cuda_ptx_sim_main_perf( kernel_info_t grid,
-                                   struct dim3 gridDim, 
-                                   struct dim3 blockDim, 
-                                   gpgpu_ptx_sim_arg_list_t grid_params );
+int gpgpu_cuda_ptx_sim_main_perf( kernel_info_t grid );
+int gpgpu_opencl_ptx_sim_main_perf( kernel_info_t grid );
+int gpgpu_opencl_ptx_sim_main_func( kernel_info_t grid );
 
-int gpgpu_opencl_ptx_sim_main_perf( kernel_info_t grid,
-                                  struct dim3 gridDim, 
-                                  struct dim3 blockDim, 
-                                  gpgpu_ptx_sim_arg_list_t grid_params );
-
-int gpgpu_opencl_ptx_sim_main_func( kernel_info_t grid,
-                                  struct dim3 gridDim, 
-                                  struct dim3 blockDim, 
-                                  gpgpu_ptx_sim_arg_list_t grid_params );
 #endif

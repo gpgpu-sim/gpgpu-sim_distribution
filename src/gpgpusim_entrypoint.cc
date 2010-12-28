@@ -71,6 +71,7 @@
 #include "cuda-sim/ptx_parser.h"
 #include "gpgpu-sim/gpu-sim.h"
 #include "gpgpu-sim/icnt_wrapper.h"
+#include "stream_manager.h"
 
 #include <pthread.h>
 #include <semaphore.h>
@@ -84,29 +85,115 @@ struct gpgpu_ptx_sim_arg *grid_params;
 
 sem_t g_sim_signal_start;
 sem_t g_sim_signal_finish;
+sem_t g_sim_signal_exit;
 time_t g_simulation_starttime;
 pthread_t g_simulation_thread;
 
 gpgpu_sim_config g_the_gpu_config;
 gpgpu_sim *g_the_gpu;
+stream_manager *g_stream_manager;
 
 static void print_simulation_time();
 
-void *gpgpu_sim_thread(void*)
+void *gpgpu_sim_thread_sequential(void*)
 {
-   kernel_info_t *kernel = NULL;
+   // at most one kernel running at a time
+   bool done;
    do {
       sem_wait(&g_sim_signal_start);
-      kernel = g_the_gpu->next_grid();
-      if( kernel ) {
-          g_the_gpu_config.set_max_cta(*kernel);
-          g_the_gpu->run_gpu_sim();
+      done = true;
+      if( g_the_gpu->get_more_cta_left() ) {
+          done = false;
+          g_the_gpu->init();
+          while( g_the_gpu->active() )
+              g_the_gpu->cycle();
+          g_the_gpu->print_stats();
+          g_the_gpu->deadlock_check();
           print_simulation_time();
       }
       sem_post(&g_sim_signal_finish);
-   } while(kernel);
+   } while(!done);
+   sem_post(&g_sim_signal_exit);
    return NULL;
 }
+
+pthread_mutex_t g_sim_lock = PTHREAD_MUTEX_INITIALIZER;
+bool g_sim_active = false;
+bool g_sim_done = true;
+
+void *gpgpu_sim_thread_concurrent(void*)
+{
+    // concurrent kernel execution simulation thread
+    g_the_gpu->init();
+    do {
+        printf("GPGPU-Sim: *** simulation thread starting and spinning waiting for work ***\n");
+        fflush(stdout);
+        while( g_stream_manager->empty() && !g_sim_done )
+            ;
+        printf("GPGPU-Sim: ** START simulation thread (detected work) **\n");
+        g_stream_manager->print(stdout);
+        fflush(stdout);
+        pthread_mutex_lock(&g_sim_lock);
+        g_sim_active = true;
+        pthread_mutex_unlock(&g_sim_lock);
+        bool active = false;
+        do {
+            // check if a kernel has completed
+            unsigned grid_uid = g_the_gpu->finished_kernel();
+            if( grid_uid )
+                g_stream_manager->register_finished_kernel(grid_uid);
+             
+            // launch operation on device if one is pending and can be run
+            stream_operation op = g_stream_manager->front();
+            op.do_operation(g_the_gpu);
+    
+            // simulate a clock cycle on the GPU 
+            if( g_the_gpu->active() ) 
+                g_the_gpu->cycle();
+            g_the_gpu->deadlock_check();
+            active = g_the_gpu->active() || !g_stream_manager->empty();
+        } while( active );
+        printf("GPGPU-Sim: ** STOP simulation thread (no work) **\n");
+        fflush(stdout);
+        g_the_gpu->print_stats();
+        pthread_mutex_lock(&g_sim_lock);
+        g_sim_active = false;
+        pthread_mutex_unlock(&g_sim_lock);
+    } while( !g_sim_done );
+    printf("GPGPU-Sim: *** simulation thread exiting ***\n");
+    fflush(stdout);
+    sem_post(&g_sim_signal_exit);
+    return NULL;
+}
+
+void synchronize()
+{
+    printf("GPGPU-Sim: synchronize waiting for inactive GPU simulation\n");
+    g_stream_manager->print(stdout);
+    fflush(stdout);
+//    sem_wait(&g_sim_signal_finish);
+    bool done = false;
+    do {
+        pthread_mutex_lock(&g_sim_lock);
+        done = g_stream_manager->empty() && !g_sim_active;
+        pthread_mutex_unlock(&g_sim_lock);
+    } while (!done);
+    printf("GPGPU-Sim: detected inactive GPU simulation thread\n");
+    fflush(stdout);
+//    sem_post(&g_sim_signal_start);
+}
+
+void exit_simulation()
+{
+    g_sim_done=true;
+    printf("GPGPU-Sim: exit_simulation called\n");
+    fflush(stdout);
+    sem_wait(&g_sim_signal_exit);
+    printf("GPGPU-Sim: simulation thread signaled exit\n");
+    fflush(stdout);
+}
+
+extern bool g_cuda_launch_blocking;
 
 gpgpu_sim *gpgpu_ptx_sim_init_perf()
 {
@@ -125,14 +212,27 @@ gpgpu_sim *gpgpu_ptx_sim_init_perf()
    g_the_gpu_config.init();
 
    g_the_gpu = new gpgpu_sim(g_the_gpu_config);
+   g_stream_manager = new stream_manager(g_the_gpu,g_cuda_launch_blocking);
 
    g_simulation_starttime = time((time_t *)NULL);
 
    sem_init(&g_sim_signal_start,0,0);
    sem_init(&g_sim_signal_finish,0,0);
-   pthread_create(&g_simulation_thread,NULL,gpgpu_sim_thread,NULL);
+   sem_init(&g_sim_signal_exit,0,0);
 
    return g_the_gpu;
+}
+
+void start_sim_thread(int api)
+{
+    if( g_sim_done ) {
+        g_sim_done = false;
+        if( g_the_gpu_config.get_max_concurrent_kernel() > 1 && api == 1 ) {
+           pthread_create(&g_simulation_thread,NULL,gpgpu_sim_thread_concurrent,NULL);
+        } else {
+           pthread_create(&g_simulation_thread,NULL,gpgpu_sim_thread_sequential,NULL);
+        }
+    }
 }
 
 void print_simulation_time()
@@ -154,10 +254,15 @@ void print_simulation_time()
    fflush(stdout);
 }
 
-int gpgpu_cuda_ptx_sim_main_perf( kernel_info_t grid,
-                                  struct dim3 gridDim, 
-                                  struct dim3 blockDim, 
-                                  gpgpu_ptx_sim_arg_list_t grid_params )
+int gpgpu_cuda_ptx_sim_main_perf( kernel_info_t grid )
+{
+   g_the_gpu->launch(grid);
+   //sem_post(&g_sim_signal_start);
+   //sem_wait(&g_sim_signal_finish);
+   return 0;
+}
+
+int gpgpu_opencl_ptx_sim_main_perf( kernel_info_t grid )
 {
    g_the_gpu->launch(grid);
    sem_post(&g_sim_signal_start);
@@ -165,21 +270,7 @@ int gpgpu_cuda_ptx_sim_main_perf( kernel_info_t grid,
    return 0;
 }
 
-int gpgpu_opencl_ptx_sim_main_perf( kernel_info_t grid,
-                                  struct dim3 gridDim, 
-                                  struct dim3 blockDim, 
-                                  gpgpu_ptx_sim_arg_list_t grid_params )
-{
-   g_the_gpu->launch(grid);
-   sem_post(&g_sim_signal_start);
-   sem_wait(&g_sim_signal_finish);
-   return 0;
-}
-
-int gpgpu_opencl_ptx_sim_main_func( kernel_info_t grid,
-                                  struct dim3 gridDim, 
-                                  struct dim3 blockDim, 
-                                  gpgpu_ptx_sim_arg_list_t grid_params )
+int gpgpu_opencl_ptx_sim_main_func( kernel_info_t grid )
 {
    printf("GPGPU-Sim PTX API: OpenCL functional-only simulation not yet implemented (use performance simulation)\n");
    exit(1);

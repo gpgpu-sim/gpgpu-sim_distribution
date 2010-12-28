@@ -1,6 +1,7 @@
 #include "abstract_hardware_model.h"
 #include "cuda-sim/memory.h"
 #include "option_parser.h"
+#include "cuda-sim/ptx_ir.h"
 #include <algorithm>
 
 unsigned mem_access_t::sm_next_access_uid = 0;   
@@ -306,3 +307,11 @@ void warp_inst_t::generate_mem_accesses()
 
     m_mem_accesses_created=true;
 } 
+
+unsigned kernel_info_t::m_next_uid = 1;
+
+
+std::string kernel_info_t::name() const
+{
+    return m_kernel_entry->get_name();
+}

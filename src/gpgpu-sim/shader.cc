@@ -110,6 +110,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                   shader_core_stats *stats )
    : m_barriers( config->max_warps_per_shader, config->max_cta_per_core )
 {
+   m_kernel = NULL;
    m_gpu = gpu;
    m_cluster = cluster;
    m_config = config;
@@ -519,7 +520,8 @@ void shader_core_ctx::fetch()
                 for( unsigned t=0; t<m_config->warp_size;t++) {
                     unsigned tid=warp_id*m_config->warp_size+t;
                     if( m_thread[tid].m_functional_model_thread_state ) {
-                        register_cta_thread_exit(tid);
+                        unsigned cta_id = m_warp[warp_id].get_cta_id();
+                        register_cta_thread_exit(cta_id);
                         m_not_completed -= 1;
                         m_active_threads.reset(tid);
                         m_thread[tid].m_functional_model_thread_state=NULL;
@@ -725,26 +727,37 @@ address_type shader_core_ctx::translate_local_memaddr( address_type localaddr, u
 {
    // During functional execution, each thread sees its own memory space for local memory, but these
    // need to be mapped to a shared address space for timing simulation.  We do that mapping here.
-   localaddr /=4;
+
+   address_type thread_base = 0;
+   unsigned max_concurrent_threads=0;
    if (m_config->gpgpu_local_mem_map) {
-      // Dnew = D*nTpC*nCpS*nS + nTpC*C + T%nTpC
-      // C = S + nS*(T/nTpC)
-      // D = data index; T = thread; C = CTA; S = shader core; p = per
-      // keep threads in a warp contiguous
+      // Dnew = D*N + T%nTpC + nTpC*C
+      // N = nTpC*nCpS*nS (max concurent threads)
+      // C = nS*K + S (hw cta number per gpu)
+      // K = T/nTpC   (hw cta number per core)
+      // D = data index
+      // T = thread
+      // nTpC = number of threads per CTA
+      // nCpS = number of CTA per shader
+      // 
+      // for a given local memory address threads in a CTA map to contiguous addresses,
       // then distribute across memory space by CTAs from successive shader cores first, 
       // then by successive CTA in same shader core
-      localaddr *= m_config->gpu_padded_cta_size * m_config->gpu_max_cta_per_shader * num_shader;
-      localaddr += m_config->gpu_padded_cta_size * (m_sid + num_shader * (tid / m_config->gpu_padded_cta_size));
-      localaddr += tid % m_config->gpu_padded_cta_size; 
+      thread_base = 4*(kernel_padded_threads_per_cta * (m_sid + num_shader * (tid / kernel_padded_threads_per_cta))
+                       + tid % kernel_padded_threads_per_cta); 
+      max_concurrent_threads = kernel_padded_threads_per_cta * kernel_max_cta_per_shader * num_shader;
    } else {
       // legacy mapping that maps the same address in the local memory space of all threads 
       // to a single contiguous address region 
-      localaddr *= num_shader * m_config->n_thread_per_shader;
-      localaddr += (m_config->n_thread_per_shader *m_sid) + tid;
+      thread_base = 4*(m_config->n_thread_per_shader * m_sid + tid);
+      max_concurrent_threads = num_shader * m_config->n_thread_per_shader;
    }
-   localaddr *= 4;
+   assert( thread_base < 4/*word size*/*max_concurrent_threads );
 
-   return localaddr;
+   address_type local_word = localaddr/4;
+   address_type word_offset = localaddr%4;
+   address_type linear_address = local_word*max_concurrent_threads + thread_base + word_offset;
+   return linear_address;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -1181,19 +1194,29 @@ void ldst_unit::cycle()
    }
 }
 
-void shader_core_ctx::register_cta_thread_exit(int tid )
+void shader_core_ctx::register_cta_thread_exit( unsigned cta_num )
 {
-   unsigned padded_cta_size = m_gpu->the_kernel().threads_per_cta();
-   if (padded_cta_size%m_config->warp_size) 
-      padded_cta_size = ((padded_cta_size/m_config->warp_size)+1)*(m_config->warp_size);
-   int cta_num = tid/padded_cta_size;
    assert( m_cta_status[cta_num] > 0 );
    m_cta_status[cta_num]--;
    if (!m_cta_status[cta_num]) {
       m_n_active_cta--;
       m_barriers.deallocate_barrier(cta_num);
       shader_CTA_count_unlog(m_sid, 1);
-      printf("GPGPU-Sim uArch: Shader %d finished CTA #%d (%lld,%lld)\n", m_sid, cta_num, gpu_sim_cycle, gpu_tot_sim_cycle );
+      printf("GPGPU-Sim uArch: Shader %d finished CTA #%d (%lld,%lld), %u CTAs running\n", m_sid, cta_num, gpu_sim_cycle, gpu_tot_sim_cycle,
+             m_n_active_cta );
+      if( m_n_active_cta == 0 ) {
+          assert( m_kernel != NULL );
+          m_kernel->dec_running();
+          printf("GPGPU-Sim uArch: Shader %u empty.\n", m_sid );
+          if( m_kernel->no_more_ctas_to_run() ) {
+              if( !m_kernel->running() ) {
+                  m_gpu->set_kernel_done( m_kernel->get_uid() );
+                  printf("GPGPU-Sim uArch: GPU detected kernel \'%s\' finished on shader %u.\n", m_kernel->name().c_str(), m_sid );
+              }
+          }
+          m_kernel=NULL;
+          fflush(stdout);
+      }
    }
 }
 
@@ -1483,11 +1506,20 @@ unsigned int shader_core_config::max_cta( const kernel_info_t &k ) const
       printf ("\n");
    }
 
-   if (result < 1) {
-      printf ("GPGPU-Sim uArch: ERROR ** Kernel requires more resources than shader has.\n");
-      abort();
-   }
-   return result;
+    //gpu_max_cta_per_shader is limited by number of CTAs if not enough to keep all cores busy    
+    if( k.num_blocks() < result*num_shader() ) { 
+       result = k.num_blocks() / num_shader();
+       if (k.num_blocks() % num_shader())
+          result++;
+    }
+
+    assert( result <= MAX_CTA_PER_SHADER );
+    if (result < 1) {
+       printf ("GPGPU-Sim uArch: ERROR ** Kernel requires more resources than shader has.\n");
+       abort();
+    }
+
+    return result;
 }
 
 void shader_core_ctx::cycle()
@@ -1710,6 +1742,16 @@ bool shader_core_ctx::warp_waiting_at_mem_barrier( unsigned warp_id )
       return false;
    }
    return true;
+}
+
+void shader_core_ctx::set_max_cta( const kernel_info_t &kernel ) 
+{
+    // calculate the max cta count and cta size for local memory address mapping
+    kernel_max_cta_per_shader = m_config->max_cta(kernel);
+    unsigned int gpu_cta_size = kernel.threads_per_cta();
+    kernel_padded_threads_per_cta = (gpu_cta_size%m_config->warp_size) ? 
+        m_config->warp_size*((gpu_cta_size/m_config->warp_size)+1) : 
+        gpu_cta_size;
 }
 
 gpgpu_sim *shader_core_ctx::get_gpu()
@@ -2120,13 +2162,21 @@ unsigned simt_core_cluster::get_n_active_cta() const
     return n;
 }
 
-unsigned simt_core_cluster::issue_block2core( class kernel_info_t &kernel )
+unsigned simt_core_cluster::issue_block2core()
 {
     unsigned num_blocks_issued=0;
     for( unsigned i=0; i < m_config->n_simt_cores_per_cluster; i++ ) {
         unsigned core = (i+m_cta_issue_next_core+1)%m_config->n_simt_cores_per_cluster;
-        if( m_core[core]->get_n_active_cta() < m_config->max_cta(kernel) ) {
-            m_core[core]->issue_block2core(kernel);
+        if( m_core[core]->get_not_completed() == 0 ) {
+            if( m_core[core]->get_kernel() == NULL ) {
+                kernel_info_t *k = m_gpu->select_kernel();
+                if( k ) 
+                    m_core[core]->set_kernel(k);
+            }
+        }
+        kernel_info_t *kernel = m_core[core]->get_kernel();
+        if( kernel && !kernel->no_more_ctas_to_run() && (m_core[core]->get_n_active_cta() < m_config->max_cta(*kernel)) ) {
+            m_core[core]->issue_block2core(*kernel);
             num_blocks_issued++;
             m_cta_issue_next_core=core; 
             break;

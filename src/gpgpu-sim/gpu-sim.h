@@ -192,20 +192,8 @@ public:
         m_valid=true;
     }
 
-    void set_max_cta( const kernel_info_t &kernel ) 
-    {
-        // calcaulte the max cta count and cta size for local memory address mapping
-        m_shader_config.gpu_max_cta_per_shader = m_shader_config.max_cta(kernel);
-        //gpu_max_cta_per_shader is limited by number of CTAs if not enough    
-        if( kernel.num_blocks() < m_shader_config.gpu_max_cta_per_shader*num_shader() ) { 
-           m_shader_config.gpu_max_cta_per_shader = (kernel.num_blocks() / num_shader());
-           if (kernel.num_blocks() % num_shader())
-              m_shader_config.gpu_max_cta_per_shader++;
-        }
-        unsigned int gpu_cta_size = kernel.threads_per_cta();
-        m_shader_config.gpu_padded_cta_size = (gpu_cta_size%32) ? 32*((gpu_cta_size/32)+1) : gpu_cta_size;
-    }
     unsigned num_shader() const { return m_shader_config.num_shader(); }
+    unsigned get_max_concurrent_kernel() const { return max_concurrent_kernel; }
 
 private:
     void init_clock_domains(void ); 
@@ -234,6 +222,7 @@ private:
     int   gpgpu_dram_sched_queue_size; 
     int   gpgpu_cflog_interval;
     char * gpgpu_clock_domains;
+    unsigned max_concurrent_kernel;
 
     // visualizer
     bool  g_visualizer_enabled;
@@ -254,12 +243,17 @@ public:
    void set_prop( struct cudaDeviceProp *prop );
 
    void launch( kernel_info_t &kinfo );
-   kernel_info_t *next_grid();
+   bool can_start_kernel();
+   unsigned finished_kernel();
+   void set_kernel_done( unsigned uid ) { m_finished_kernel.push_back(uid); }
 
-   unsigned run_gpu_sim();
+   void init();
+   void cycle();
+   bool active(); 
+   void print_stats();
+   void deadlock_check();
 
    void get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc );
-   const kernel_info_t &the_kernel() const { return m_the_kernel; }
 
    int shared_mem_size() const;
    int num_registers_per_core() const;
@@ -269,6 +263,8 @@ public:
    enum divergence_support_t simd_model() const; 
 
    unsigned threads_per_core() const;
+   bool get_more_cta_left() const;
+   kernel_info_t *select_kernel();
 
    const gpgpu_sim_config &get_config() const { return m_config; }
    void gpu_print_stat() const;
@@ -278,8 +274,8 @@ private:
    // clocks
    void reinit_clock_domains(void);
    int  next_clock_domain(void);
+   void issue_block2core();
     
-   void cycle();
    void L2c_print_cache_stat() const;
    void shader_print_runtime_stat( FILE *fout );
    void shader_print_l1_miss_stat( FILE *fout );
@@ -293,11 +289,12 @@ private:
    class simt_core_cluster **m_cluster;
    class memory_partition_unit **m_memory_partition_unit;
 
-   kernel_info_t m_the_kernel;
-   std::list<kernel_info_t> m_running_kernels;
+   std::vector<kernel_info_t> m_running_kernels;
+   unsigned m_last_issued_kernel;
 
-   unsigned g_total_cta_left;
-   bool more_thread;
+   std::list<unsigned> m_finished_kernel;
+   unsigned m_total_cta_launched;
+   unsigned m_last_cluster_issue;
 
    // time of next rising edge 
    double core_time;

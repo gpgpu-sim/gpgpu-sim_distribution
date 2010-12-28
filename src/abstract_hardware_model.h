@@ -91,6 +91,8 @@ public:
    {
       m_valid=false;
       m_kernel_entry=NULL;
+      m_uid=0;
+      m_num_cores_running=0;
    }
    kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry )
    {
@@ -102,8 +104,22 @@ public:
       m_next_cta.y=0;
       m_next_cta.z=0;
       m_next_tid=m_next_cta;
+      m_num_cores_running=0;
+      m_uid = m_next_uid++;
    }
 
+   void inc_running() { m_num_cores_running++; }
+   void dec_running()
+   {
+       assert( m_num_cores_running > 0 );
+       m_num_cores_running--; 
+   }
+   bool running() const { return m_num_cores_running>0; }
+   bool valid() const  { return m_valid; }
+   bool done() const 
+   {
+       return (!valid()) || (no_more_ctas_to_run() && !running());
+   }
    class function_info *entry() { return m_kernel_entry; }
    const class function_info *entry() const { return m_kernel_entry; }
 
@@ -143,15 +159,22 @@ public:
    {
       return m_next_tid.z < m_block_dim.z && m_next_tid.y < m_block_dim.y && m_next_tid.z < m_block_dim.x;
    }
+   unsigned get_uid() const { return m_uid; }
+   std::string name() const;
 
 private:
    bool m_valid;
    class function_info *m_kernel_entry;
 
+   unsigned m_uid;
+   static unsigned m_next_uid;
+
    dim3 m_grid_dim;
    dim3 m_block_dim;
    dim3 m_next_cta;
    dim3 m_next_tid;
+
+   unsigned m_num_cores_running;
 };
 
 struct core_config {

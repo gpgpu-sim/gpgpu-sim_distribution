@@ -983,11 +983,8 @@ struct shader_core_config : public core_config
     unsigned gpgpu_shader_registers;
     int gpgpu_warpdistro_shader;
     unsigned gpgpu_num_reg_banks;
-    unsigned gpu_max_cta_per_shader; // TODO: modify this for fermi... computed based upon kernel 
-                                    // resource usage; used in shader_core_ctx::translate_local_memaddr 
     bool gpgpu_reg_bank_use_warp_id;
     bool gpgpu_local_mem_map;
-    int gpu_padded_cta_size;
     
     unsigned max_sp_latency;
     unsigned max_sfu_latency;
@@ -1122,12 +1119,20 @@ public:
     void cache_flush();
     void accept_fetch_response( mem_fetch *mf );
     void accept_ldst_unit_response( class mem_fetch * mf );
+    void set_kernel( kernel_info_t *k ) 
+    {
+        assert(k);
+        m_kernel=k; 
+        if(k) k->inc_running(); 
+        printf("GPGPU-Sim uArch: Shader %d kernel = 0x%p\n", m_sid, m_kernel );
+    }
     
     // accessors
     bool fetch_unit_response_buffer_full() const;
     bool ldst_unit_response_buffer_full() const;
     unsigned get_not_completed() const { return m_not_completed; }
     unsigned get_n_active_cta() const { return m_n_active_cta; }
+    kernel_info_t *get_kernel() { return m_kernel; }
 
 // used by functional simulation:
     // modifiers
@@ -1148,6 +1153,7 @@ public:
     void dec_inst_in_pipeline( unsigned warp_id ) { m_warp[warp_id].dec_inst_in_pipeline(); } // also used in writeback()
     void store_ack( class mem_fetch *mf );
     bool warp_waiting_at_mem_barrier( unsigned warp_id );
+    void set_max_cta( const kernel_info_t &kernel );
     
     // accessors
     std::list<unsigned> get_regs_written( const inst_t &fvt ) const;
@@ -1163,7 +1169,7 @@ private:
     address_type next_pc( int tid ) const;
     
     void fetch();
-    void register_cta_thread_exit(int cta_num );
+    void register_cta_thread_exit( unsigned cta_num );
     
     void decode();
     void issue_warp( warp_inst_t *&warp, const warp_inst_t *pI, const active_mask_t &active_mask, unsigned warp_id );
@@ -1189,6 +1195,7 @@ private:
     const memory_config *m_memory_config;
     class simt_core_cluster *m_cluster;
     class gpgpu_sim *m_gpu;
+    kernel_info_t *m_kernel;
     
     // statistics 
     shader_core_stats *m_stats;
@@ -1228,6 +1235,10 @@ private:
     ldst_unit *m_ldst_unit;
     static const unsigned MAX_ALU_LATENCY = 64;
     std::bitset<MAX_ALU_LATENCY> m_result_bus;
+
+    // used for local address mapping with single kernel launch
+    unsigned kernel_max_cta_per_shader;
+    unsigned kernel_padded_threads_per_cta;
 };
 
 class simt_core_cluster {
@@ -1243,7 +1254,7 @@ public:
     void icnt_cycle();
 
     void reinit();
-    unsigned issue_block2core( class kernel_info_t &kernel );
+    unsigned issue_block2core();
     void cache_flush();
     bool icnt_injection_buffer_full(unsigned size, bool write);
     void icnt_inject_request_packet(class mem_fetch *mf);

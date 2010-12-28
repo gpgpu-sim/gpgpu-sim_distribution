@@ -152,7 +152,7 @@ unsigned translate_pc_to_ptxlineno(unsigned pc);
 static int n_thread_CFloggers = 0;
 static thread_CFlocality** thread_CFlogger = NULL;
 
-void create_thread_CFlogger( int n_loggers, int n_threads, int n_insn, address_type start_pc, unsigned long long  logging_interval) 
+void create_thread_CFlogger( int n_loggers, int n_threads, address_type start_pc, unsigned long long  logging_interval) 
 {
    destroy_thread_CFlogger();
    
@@ -163,7 +163,7 @@ void create_thread_CFlogger( int n_loggers, int n_threads, int n_insn, address_t
    char buffer[32];
    for (int i = 0; i < n_thread_CFloggers; i++) {
       snprintf(buffer, 32, "%02d", i);
-      thread_CFlogger[i] = new thread_CFlocality( name_tpl + buffer, logging_interval, n_threads, n_insn, start_pc);
+      thread_CFlogger[i] = new thread_CFlocality( name_tpl + buffer, logging_interval, n_threads, start_pc);
       if (logging_interval != 0) {
          add_snap_shot_trigger(thread_CFlogger[i]);
          add_spill_log(thread_CFlogger[i]);
@@ -222,10 +222,10 @@ int insn_warp_occ_logger::s_ids = 0;
 
 static std::vector<insn_warp_occ_logger> iwo_logger;
 
-void insn_warp_occ_create( int n_loggers, int simd_width, int n_insn)
+void insn_warp_occ_create( int n_loggers, int simd_width )
 {
    iwo_logger.clear();
-   iwo_logger.assign(n_loggers, insn_warp_occ_logger(simd_width, n_insn));
+   iwo_logger.assign(n_loggers, insn_warp_occ_logger(simd_width));
    for (unsigned i = 0; i < iwo_logger.size(); i++) {
       iwo_logger[i].set_id(i);
    }
@@ -509,12 +509,12 @@ void shader_CTA_count_visualizer_gzprint( gzFile fout )
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-thread_insn_span::thread_insn_span(unsigned long long  cycle, int n_insn)
-  : m_cycle(cycle), m_n_insn(n_insn), 
+thread_insn_span::thread_insn_span(unsigned long long  cycle)
+  : m_cycle(cycle),
 #ifdef USE_MAP
      m_insn_span_count() 
 #else 
-     m_insn_span_count(n_insn * 2) 
+     m_insn_span_count(32*1024) 
 #endif
 { 
 }
@@ -522,7 +522,7 @@ thread_insn_span::thread_insn_span(unsigned long long  cycle, int n_insn)
 thread_insn_span::~thread_insn_span() { }
    
 thread_insn_span::thread_insn_span(const thread_insn_span& other)
-      : m_cycle(other.m_cycle), m_n_insn(other.m_n_insn), 
+      : m_cycle(other.m_cycle),
         m_insn_span_count(other.m_insn_span_count) 
 { 
 }
@@ -530,8 +530,7 @@ thread_insn_span::thread_insn_span(const thread_insn_span& other)
 thread_insn_span& thread_insn_span::operator=(const thread_insn_span& other)
 {
    printf("thread_insn_span& operator=\n");
-   if (this != &other && m_n_insn != other.m_n_insn) {
-      m_n_insn = other.m_n_insn;
+   if (this != &other) {
       m_insn_span_count = other.m_insn_span_count;
       m_cycle = other.m_cycle;
    }
@@ -540,7 +539,6 @@ thread_insn_span& thread_insn_span::operator=(const thread_insn_span& other)
    
 thread_insn_span& thread_insn_span::operator+=(const thread_insn_span& other)
 {
-   assert(m_n_insn == other.m_n_insn); // no way to aggregate if they are different programs
    span_count_map::const_iterator i_sc = other.m_insn_span_count.begin();
    for (; i_sc != other.m_insn_span_count.end(); ++i_sc) {
       m_insn_span_count[i_sc->first] += i_sc->second;
@@ -615,12 +613,11 @@ void thread_insn_span::print_sparse_histo(gzFile fout) const
 thread_CFlocality::thread_CFlocality(std::string name, 
                                      unsigned long long  snap_shot_interval, 
                                      int nthreads, 
-                                     int n_insn, 
                                      address_type start_pc, 
                                      unsigned long long  start_cycle)
       : snap_shot_trigger(snap_shot_interval), m_name(name),
         m_nthreads(nthreads), m_thread_pc(nthreads, start_pc), m_cycle(start_cycle),
-        m_thd_span(start_cycle, n_insn)
+        m_thd_span(start_cycle)
 {
    std::fill(m_thread_pc.begin(), m_thread_pc.end(), -1); // so that hw thread with no work assigned will not clobber results
 }

@@ -128,6 +128,13 @@
 #include "../src/cuda-sim/ptx_ir.h"
 #include "../src/cuda-sim/ptx_parser.h"
 #include "../src/gpgpusim_entrypoint.h"
+#include "../src/stream_manager.h"
+
+#include <pthread.h>
+#include <semaphore.h>
+
+extern void synchronize();
+extern void exit_simulation();
 
 static int load_static_globals( symbol_table *symtab, unsigned min_gaddr, unsigned max_gaddr, gpgpu_t *gpu );
 static int load_constants( symbol_table *symtab, addr_t min_gaddr, gpgpu_t *gpu );
@@ -160,6 +167,8 @@ struct cudaArray
 #endif /* !__dv */
 
 cudaError_t g_last_cudaError = cudaSuccess;
+
+extern stream_manager *g_stream_manager;
 
 void register_ptx_function( const char *name, function_info *impl )
 {
@@ -256,6 +265,32 @@ private:
    std::map<const void*,function_info*> m_kernel_lookup; // unique id (CUDA app function address) => kernel entry point
 };
 
+class kernel_config {
+public:
+    kernel_config( dim3 GridDim, dim3 BlockDim, size_t sharedMem, struct CUstream_st *stream )
+    { 
+        m_GridDim=GridDim; 
+        m_BlockDim=BlockDim; 
+        m_sharedMem=sharedMem;
+        m_stream = stream;
+    }
+    void set_arg( const void *arg, size_t size, size_t offset )
+    {
+        m_args.push_front( gpgpu_ptx_sim_arg(arg,size,offset) );
+    }
+    dim3 grid_dim() const { return m_GridDim; }
+    dim3 block_dim() const { return m_BlockDim; }
+    gpgpu_ptx_sim_arg_list_t get_args() { return m_args; }
+    struct CUstream_st *get_stream() { return m_stream; }
+    
+private:
+    dim3 m_GridDim;
+    dim3 m_BlockDim;
+    size_t m_sharedMem;
+    struct CUstream_st *m_stream;
+    gpgpu_ptx_sim_arg_list_t m_args;
+};
+
 class _cuda_device_id *GPGPUSim_Init()
 {
    static _cuda_device_id *the_device = NULL;
@@ -287,6 +322,7 @@ class _cuda_device_id *GPGPUSim_Init()
       the_gpu->set_prop(prop);
       the_device = new _cuda_device_id(the_gpu);
    } 
+   start_sim_thread(1);
    return the_device;
 }
 
@@ -353,67 +389,6 @@ void gpgpusim_ptx_assert_impl( int test_value, const char *func, const char *fil
       gpgpusim_ptx_error_impl(func, file, line, msg);
 }
 
-class kernel_config {
-public:
-   kernel_config( dim3 GridDim, dim3 BlockDim, size_t sharedMem, cudaStream_t stream ) 
-   { 
-      m_GridDim=GridDim; 
-      m_BlockDim=BlockDim; 
-      m_sharedMem=sharedMem;
-      m_stream=stream;
-   }
-   void set_arg(const void *arg, size_t size, size_t offset)
-   {
-      m_args.push_front( gpgpu_ptx_sim_arg(arg,size,offset) );
-   }
-   dim3 grid_dim() const { return m_GridDim; }
-   dim3 block_dim() const { return m_BlockDim; }
-   gpgpu_ptx_sim_arg_list_t get_args() { return m_args; }
-    
-private:
-   dim3 m_GridDim;
-   dim3 m_BlockDim;
-   size_t m_sharedMem;
-   cudaStream_t m_stream;
-   gpgpu_ptx_sim_arg_list_t m_args;
-};
-
-struct CUstream_st {
-   int _;
-};
-
-class CUevent_st {
-public:
-   CUevent_st( bool blocking )
-   {
-      m_uid = ++m_next_event_uid;
-      m_blocking = blocking;
-      m_updates = 0;
-      m_wallclock = 0;
-      m_gpu_tot_sim_cycle = 0;
-      m_done = true;
-   }
-   void update( double cycle, time_t clk )
-   {
-      m_updates++;
-      m_wallclock=clk;
-      m_gpu_tot_sim_cycle=cycle;
-   }
-   //void set_done() { assert(!m_done); m_done=true; }
-   int get_uid() const { return m_uid; }
-   unsigned num_updates() const { return m_updates; }
-   bool done() const { return m_done; }
-   time_t clock() const { return m_wallclock; }
-private:
-   int m_uid;
-   bool m_blocking;
-   bool m_done;
-   int m_updates;
-   time_t m_wallclock;
-   double m_gpu_tot_sim_cycle;
-
-   static int m_next_event_uid;
-};
 
 typedef std::map<unsigned,CUevent_st*> event_tracker_t;
 
@@ -516,17 +491,17 @@ __host__ cudaError_t CUDARTAPI cudaFree(void *devPtr)
 *                                                                              *
 *******************************************************************************/
 
- __host__ cudaError_t CUDARTAPI cudaMemcpy(void *dst, const void *src, size_t count, enum cudaMemcpyKind kind)
+__host__ cudaError_t CUDARTAPI cudaMemcpy(void *dst, const void *src, size_t count, enum cudaMemcpyKind kind)
 {
-   CUctx_st *context = GPGPUSim_Context();
-   gpgpu_t *gpu = context->get_device()->get_gpgpu();
+   //CUctx_st *context = GPGPUSim_Context();
+   //gpgpu_t *gpu = context->get_device()->get_gpgpu();
    printf("GPGPU-Sim PTX: cudaMemcpy(): devPtr = %p\n", dst);
    if( kind == cudaMemcpyHostToDevice ) 
-      gpu->memcpy_to_gpu( (size_t)dst, src, count ); 
+       g_stream_manager->push( stream_operation(src,(size_t)dst,count,0) );
    else if( kind == cudaMemcpyDeviceToHost ) 
-     	gpu->memcpy_from_gpu( dst, (size_t)src, count ); 
+       g_stream_manager->push( stream_operation((size_t)src,dst,count,0) );
    else if( kind == cudaMemcpyDeviceToDevice ) 
-      gpu->memcpy_gpu_to_gpu( (size_t)dst, (size_t)src, count ); 
+       g_stream_manager->push( stream_operation((size_t)src,(size_t)dst,count,0) );
    else {
       printf("GPGPU-Sim PTX: cudaMemcpy - ERROR : unsupported cudaMemcpyKind\n"); 
       abort();
@@ -636,20 +611,23 @@ __host__ cudaError_t CUDARTAPI cudaFree(void *devPtr)
 
  __host__ cudaError_t CUDARTAPI cudaMemcpyToSymbol(const char *symbol, const void *src, size_t count, size_t offset __dv(0), enum cudaMemcpyKind kind __dv(cudaMemcpyHostToDevice))
 {
-   CUctx_st *context = GPGPUSim_Context();
+   //CUctx_st *context = GPGPUSim_Context();
    assert(kind == cudaMemcpyHostToDevice);
    printf("GPGPU-Sim PTX: cudaMemcpyToSymbol: symbol = %p\n", symbol);
-   gpgpu_ptx_sim_memcpy_symbol(symbol,src,count,offset,1,context->get_device()->get_gpgpu());
+    //stream_operation( const char *symbol, const void *src, size_t count, size_t offset )
+   g_stream_manager->push( stream_operation(src,symbol,count,offset,0) );
+   //gpgpu_ptx_sim_memcpy_symbol(symbol,src,count,offset,1,context->get_device()->get_gpgpu());
    return g_last_cudaError = cudaSuccess;
 }
 
 
  __host__ cudaError_t CUDARTAPI cudaMemcpyFromSymbol(void *dst, const char *symbol, size_t count, size_t offset __dv(0), enum cudaMemcpyKind kind __dv(cudaMemcpyDeviceToHost))
 {
-   CUctx_st *context = GPGPUSim_Context();
+   //CUctx_st *context = GPGPUSim_Context();
    assert(kind == cudaMemcpyDeviceToHost);
    printf("GPGPU-Sim PTX: cudaMemcpyFromSymbol: symbol = %p\n", symbol);
-   gpgpu_ptx_sim_memcpy_symbol(symbol,dst,count,offset,0,context->get_device()->get_gpgpu());
+   g_stream_manager->push( stream_operation(symbol,dst,count,offset,0) );
+   //gpgpu_ptx_sim_memcpy_symbol(symbol,dst,count,offset,0,context->get_device()->get_gpgpu());
    return g_last_cudaError = cudaSuccess;
 }
 
@@ -663,8 +641,14 @@ __host__ cudaError_t CUDARTAPI cudaFree(void *devPtr)
 
  __host__ cudaError_t CUDARTAPI cudaMemcpyAsync(void *dst, const void *src, size_t count, enum cudaMemcpyKind kind, cudaStream_t stream)
 {
-   printf("GPGPU-Sim PTX: warning cudaMemcpyAsync is implemented as blocking in this version of GPGPU-Sim...\n");
-   return cudaMemcpy(dst,src,count,kind);
+    switch( kind ) {
+    case cudaMemcpyHostToDevice: g_stream_manager->push( stream_operation(src,(size_t)dst,count,stream) ); break;
+    case cudaMemcpyDeviceToHost: g_stream_manager->push( stream_operation((size_t)src,dst,count,stream) ); break;
+    case cudaMemcpyDeviceToDevice: g_stream_manager->push( stream_operation((size_t)src,(size_t)dst,count,stream) ); break;
+    default:
+        abort();
+    }
+    return g_last_cudaError = cudaSuccess;
 }
 
 
@@ -920,15 +904,20 @@ __host__ cudaError_t CUDARTAPI cudaLaunch( const char *hostFun )
    char *mode = getenv("PTX_SIM_MODE_FUNC");
    if( mode ) 
       sscanf(mode,"%u", &g_ptx_sim_mode);
-   printf("\nGPGPU-Sim PTX: cudaLaunch for 0x%p (mode=%s)\n", hostFun,
-          g_ptx_sim_mode?"functional simulation":"performance simulation");
    gpgpusim_ptx_assert( !g_cuda_launch_stack.empty(), "empty launch stack" );
-   kernel_config &config = g_cuda_launch_stack.back();
+   kernel_config config = g_cuda_launch_stack.back();
+   cudaStream_t stream = config.get_stream();
+   printf("\nGPGPU-Sim PTX: cudaLaunch for 0x%p (mode=%s) on stream %u\n", hostFun,
+          g_ptx_sim_mode?"functional simulation":"performance simulation", stream?stream->get_uid():0 );
    kernel_info_t grid = gpgpu_cuda_ptx_sim_init_grid(hostFun,config.get_args(),config.grid_dim(),config.block_dim(),context);
-   if( g_ptx_sim_mode )
-      gpgpu_cuda_ptx_sim_main_func( grid, config.grid_dim(), config.block_dim(), config.get_args() );
-   else
-      gpgpu_cuda_ptx_sim_main_perf( grid, config.grid_dim(), config.block_dim(), config.get_args() );
+   std::string kname = grid.name();
+   dim3 gridDim = config.grid_dim();
+   dim3 blockDim = config.block_dim();
+   printf("GPGPU-Sim PTX: pushing kernel \'%s\' to stream %u, gridDim= (%u,%u,%u) blockDim = (%u,%u,%u) \n",
+          kname.c_str(), stream?stream->get_uid():0, gridDim.x,gridDim.y,gridDim.z,blockDim.x,blockDim.y,blockDim.z );
+   stream_operation op(grid,g_ptx_sim_mode,stream);
+   g_stream_manager->push(op);
+   g_cuda_launch_stack.pop_back();
    return g_last_cudaError = cudaSuccess;
 }
 
@@ -943,8 +932,10 @@ __host__ cudaError_t CUDARTAPI cudaStreamCreate(cudaStream_t *stream)
    printf("GPGPU-Sim PTX: cudaStreamCreate\n");
 #if (CUDART_VERSION >= 3000)
    *stream = new struct CUstream_st();
+   g_stream_manager->add_stream(*stream);
 #else
    *stream = 0;
+   printf("GPGPU-Sim PTX: WARNING: Asynchronous kernel execution not supported (%s)\n", __my_func__);
 #endif
    return g_last_cudaError = cudaSuccess;
 }
@@ -952,21 +943,33 @@ __host__ cudaError_t CUDARTAPI cudaStreamCreate(cudaStream_t *stream)
 __host__ cudaError_t CUDARTAPI cudaStreamDestroy(cudaStream_t stream)
 {
 #if (CUDART_VERSION >= 3000)
-   delete stream;
+    g_stream_manager->destroy_stream(stream);
 #endif
    return g_last_cudaError = cudaSuccess;
 }
 
 __host__ cudaError_t CUDARTAPI cudaStreamSynchronize(cudaStream_t stream)
 {
-   printf("GPGPU-Sim PTX: WARNING: This implementation of %s is only a stub! \n", __my_func__);
-   return g_last_cudaError = cudaSuccess; // it is stub because all cuda calls are synchronous
+#if (CUDART_VERSION >= 3000)
+    if( stream == NULL ) 
+        return g_last_cudaError = cudaErrorInvalidResourceHandle;
+    stream->synchronize();
+#else
+    printf("GPGPU-Sim PTX: WARNING: Asynchronous kernel execution not supported (%s)\n", __my_func__);
+#endif
+    return g_last_cudaError = cudaSuccess;
 }
 
 __host__ cudaError_t CUDARTAPI cudaStreamQuery(cudaStream_t stream)
 {
-   printf("GPGPU-Sim PTX: WARNING: This implementation of %s is only a stub! \n", __my_func__);
+#if (CUDART_VERSION >= 3000)
+   if( stream == NULL ) 
+       return g_last_cudaError = cudaErrorInvalidResourceHandle;
+   return g_last_cudaError = stream->empty()?cudaSuccess:cudaErrorNotReady;
+#else
+   printf("GPGPU-Sim PTX: WARNING: Asynchronous kernel execution not supported (%s)\n", __my_func__);
    return g_last_cudaError = cudaSuccess; // it is always success because all cuda calls are synchronous
+#endif
 }
 
 /*******************************************************************************
@@ -1005,15 +1008,15 @@ __host__ cudaError_t CUDARTAPI cudaEventRecord(cudaEvent_t event, cudaStream_t s
 {
    CUevent_st *e = get_event(event);
    if( !e ) return g_last_cudaError = cudaErrorUnknown;
-   time_t wallclock = time((time_t *)NULL);
-   e->update( gpu_tot_sim_cycle, wallclock );
+   stream_operation op(e,stream);
+   g_stream_manager->push(op);
    return g_last_cudaError = cudaSuccess;
 }
 
 __host__ cudaError_t CUDARTAPI cudaEventQuery(cudaEvent_t event)
 {
    CUevent_st *e = get_event(event);
-   if( e == NULL || e->num_updates() == 0 ) {
+   if( e == NULL ) {
       return g_last_cudaError = cudaErrorInvalidValue;
    } else if( e->done() ) {
       return g_last_cudaError = cudaSuccess;
@@ -1024,7 +1027,13 @@ __host__ cudaError_t CUDARTAPI cudaEventQuery(cudaEvent_t event)
 
 __host__ cudaError_t CUDARTAPI cudaEventSynchronize(cudaEvent_t event)
 {
-   return g_last_cudaError = cudaSuccess;
+    printf("GPGPU-Sim API: cudaEventSynchronize ** waiting for event\n");
+    fflush(stdout);
+    while( !event->done() )
+        ; 
+    printf("GPGPU-Sim API: cudaEventSynchronize ** event detected\n");
+    fflush(stdout);
+    return g_last_cudaError = cudaSuccess;
 }
 
 __host__ cudaError_t CUDARTAPI cudaEventDestroy(cudaEvent_t event)
@@ -1061,22 +1070,20 @@ __host__ cudaError_t CUDARTAPI cudaEventElapsedTime(float *ms, cudaEvent_t start
 
 __host__ cudaError_t CUDARTAPI cudaThreadExit(void)
 {
-   // TODO...  manage memory resources?
+   exit_simulation();
    return g_last_cudaError = cudaSuccess;
 }
 
-
 __host__ cudaError_t CUDARTAPI cudaThreadSynchronize(void)
 {
-   //Called on host side 
-   //TODO This function should syncronize if we support Asyn kernel calls
-   return g_last_cudaError = cudaSuccess;
+    //Called on host side 
+    synchronize();
+    return g_last_cudaError = cudaSuccess;
 };
 
 int CUDARTAPI __cudaSynchronizeThreads(void**, void*)
 {
-   //TODO This function should syncronize if we support Asyn kernel calls
-   return g_last_cudaError = cudaSuccess;
+   return cudaThreadExit();
 }
 
 
@@ -1563,12 +1570,6 @@ kernel_info_t gpgpu_cuda_ptx_sim_init_grid( const char *hostFun,
        printf("GPGPU-Sim PTX: ERROR launching kernel -- no PTX implementation found\n");
        abort();
    }
-   std::string kname = entry->get_name();
-
-   printf("GPGPU-Sim PTX: Launching kernel \'%s\' gridDim= (%u,%u,%u) blockDim = (%u,%u,%u); ntuid=%u\n",
-          kname.c_str(), gridDim.x,gridDim.y,gridDim.z,blockDim.x,blockDim.y,blockDim.z, 
-          g_ptx_thread_info_uid_next );
-
    unsigned argcount=args.size();
    unsigned argn=1;
    for( gpgpu_ptx_sim_arg_list_t::iterator a = args.begin(); a != args.end(); a++ ) {
