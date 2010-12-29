@@ -1023,6 +1023,7 @@ public:
       m_size = size;
    }
    void add_data( param_t v ) { 
+      assert( (!m_value_set) || (m_value.size == v.size) ); // if this fails concurrent kernel launches might execute incorrectly
       m_value_set = true;
       m_value = v;
    }
