@@ -52,7 +52,6 @@ gpgpu_t::gpgpu_t( const gpgpu_functional_sim_config &config )
     : m_function_model_config(config)
 {
    m_global_mem = new memory_space_impl<8192>("global",64*1024);
-   m_param_mem = new memory_space_impl<8192>("param",64*1024);
    m_tex_mem = new memory_space_impl<8192>("tex",64*1024);
    m_surf_mem = new memory_space_impl<8192>("surf",64*1024);
 
@@ -310,6 +309,25 @@ void warp_inst_t::generate_mem_accesses()
 
 unsigned kernel_info_t::m_next_uid = 1;
 
+kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry )
+{
+    m_kernel_entry=entry;
+    m_grid_dim=gridDim;
+    m_block_dim=blockDim;
+    m_next_cta.x=0;
+    m_next_cta.y=0;
+    m_next_cta.z=0;
+    m_next_tid=m_next_cta;
+    m_num_cores_running=0;
+    m_uid = m_next_uid++;
+    m_param_mem = new memory_space_impl<8192>("param",64*1024);
+}
+
+kernel_info_t::~kernel_info_t()
+{
+    assert( m_active_threads.empty() );
+    delete m_param_mem;
+}
 
 std::string kernel_info_t::name() const
 {

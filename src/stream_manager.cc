@@ -182,9 +182,9 @@ void stream_operation::do_operation( gpgpu_sim *gpu )
         break;
     case stream_kernel_launch:
         if( gpu->can_start_kernel() ) {
-            printf("kernel \'%s\' transfer to GPU hardware scheduler\n", m_kernel.name().c_str() );
+            printf("kernel \'%s\' transfer to GPU hardware scheduler\n", m_kernel->name().c_str() );
             if( m_sim_mode )
-                gpgpu_cuda_ptx_sim_main_func( m_kernel );
+                gpgpu_cuda_ptx_sim_main_func( *m_kernel );
             else
                 gpu->launch( m_kernel );
         }
@@ -231,9 +231,11 @@ void stream_manager::register_finished_kernel( unsigned grid_uid )
     // called by gpu simulation thread
     pthread_mutex_lock(&m_lock);
     CUstream_st *stream = m_grid_id_to_stream[grid_uid];
-    assert( grid_uid == stream->front().get_kernel().get_uid() );
+    kernel_info_t *kernel = stream->front().get_kernel();
+    assert( grid_uid == kernel->get_uid() );
     stream->record_next_done();
     m_grid_id_to_stream.erase(grid_uid);
+    delete kernel;
     pthread_mutex_unlock(&m_lock);
 }
 
@@ -249,7 +251,7 @@ stream_operation stream_manager::front()
             if( !m_stream_zero.busy() ) {
                 result = m_stream_zero.next();
                 if( result.is_kernel() ) {
-                    unsigned grid_id = result.get_kernel().get_uid();
+                    unsigned grid_id = result.get_kernel()->get_uid();
                     m_grid_id_to_stream[grid_id] = &m_stream_zero;
                 }
             }
@@ -262,18 +264,10 @@ stream_operation stream_manager::front()
             CUstream_st *stream = *s;
             if( !stream->busy() && !stream->empty() ) {
                 result = stream->next();
-//                stream_barrier *b = result.get_barrier();
-//                if( b && b->value() > 1 ) {
-//                    b->dec();
-//                    result = stream_operation();
-//                } else {
-//                    assert( b->value() == 1 );
-//                    delete b;
-                    if( result.is_kernel() ) {
-                        unsigned grid_id = result.get_kernel().get_uid();
-                        m_grid_id_to_stream[grid_id] = stream;
-                    }
-//                }
+                if( result.is_kernel() ) {
+                    unsigned grid_id = result.get_kernel()->get_uid();
+                    m_grid_id_to_stream[grid_id] = stream;
+                }
                 break;
             }
         }

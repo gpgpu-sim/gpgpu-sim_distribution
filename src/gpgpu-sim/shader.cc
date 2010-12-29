@@ -1207,11 +1207,12 @@ void shader_core_ctx::register_cta_thread_exit( unsigned cta_num )
       if( m_n_active_cta == 0 ) {
           assert( m_kernel != NULL );
           m_kernel->dec_running();
-          printf("GPGPU-Sim uArch: Shader %u empty.\n", m_sid );
+          printf("GPGPU-Sim uArch: Shader %u empty (release kernel %u \'%s\').\n", m_sid, m_kernel->get_uid(),
+                 m_kernel->name().c_str() );
           if( m_kernel->no_more_ctas_to_run() ) {
               if( !m_kernel->running() ) {
-                  m_gpu->set_kernel_done( m_kernel->get_uid() );
                   printf("GPGPU-Sim uArch: GPU detected kernel \'%s\' finished on shader %u.\n", m_kernel->name().c_str(), m_sid );
+                  m_gpu->set_kernel_done( m_kernel );
               }
           }
           m_kernel=NULL;

@@ -309,9 +309,9 @@ void increment_x_then_y_then_z( dim3 &i, const dim3 &bound)
    }
 }
 
-void gpgpu_sim::launch( kernel_info_t &kinfo )
+void gpgpu_sim::launch( kernel_info_t *kinfo )
 {
-   unsigned cta_size = kinfo.threads_per_cta();
+   unsigned cta_size = kinfo->threads_per_cta();
    if ( cta_size > m_shader_config->n_thread_per_shader ) {
       printf("Execution error: Shader kernel CTA (block) size is too large for microarch config.\n");
       printf("                 CTA size (x*y*z) = %u, max supported = %u\n", cta_size, 
@@ -322,7 +322,7 @@ void gpgpu_sim::launch( kernel_info_t &kinfo )
    }
    unsigned n=0;
    for(n=0; n < m_running_kernels.size(); n++ ) {
-       if( m_running_kernels[n].done() ) {
+       if( (NULL==m_running_kernels[n]) || m_running_kernels[n]->done() ) {
            m_running_kernels[n] = kinfo;
            break;
        }
@@ -333,7 +333,7 @@ void gpgpu_sim::launch( kernel_info_t &kinfo )
 bool gpgpu_sim::can_start_kernel()
 {
    for(unsigned n=0; n < m_running_kernels.size(); n++ ) {
-       if( m_running_kernels[n].done() ) 
+       if( (NULL==m_running_kernels[n]) || m_running_kernels[n]->done() ) 
            return true;
    }
    return false;
@@ -346,7 +346,7 @@ bool gpgpu_sim::get_more_cta_left() const
           return false;
    }
    for(unsigned n=0; n < m_running_kernels.size(); n++ ) {
-       if( m_running_kernels[n].valid() && !m_running_kernels[n].no_more_ctas_to_run() ) 
+       if( m_running_kernels[n] && !m_running_kernels[n]->no_more_ctas_to_run() ) 
            return true;
    }
    return false;
@@ -356,9 +356,9 @@ kernel_info_t *gpgpu_sim::select_kernel()
 {
     for(unsigned n=0; n < m_running_kernels.size(); n++ ) {
         unsigned idx = (n+m_last_issued_kernel+1)%m_config.max_concurrent_kernel;
-        if( m_running_kernels[idx].valid() && !m_running_kernels[idx].no_more_ctas_to_run() ) {
+        if( m_running_kernels[idx] && !m_running_kernels[idx]->no_more_ctas_to_run() ) {
             m_last_issued_kernel=idx;
-            return &m_running_kernels[idx];
+            return m_running_kernels[idx];
         }
     }
     return NULL;
@@ -371,6 +371,20 @@ unsigned gpgpu_sim::finished_kernel()
     unsigned result = m_finished_kernel.front();
     m_finished_kernel.pop_front();
     return result;
+}
+
+void gpgpu_sim::set_kernel_done( kernel_info_t *kernel ) 
+{ 
+    unsigned uid = kernel->get_uid();
+    m_finished_kernel.push_back(uid);
+    std::vector<kernel_info_t*>::iterator k;
+    for( k=m_running_kernels.begin(); k!=m_running_kernels.end(); k++ ) {
+        if( *k == kernel ) {
+            *k = NULL;
+            break;
+        }
+    }
+    assert( k != m_running_kernels.end() ); 
 }
 
 void set_ptx_warp_size(const struct core_config * warp_size);
@@ -404,7 +418,7 @@ gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config )
     time_vector_create(NUM_MEM_REQ_STAT);
     fprintf(stdout, "GPGPU-Sim uArch: performance model initialization complete.\n");
 
-    m_running_kernels.resize( config.max_concurrent_kernel );
+    m_running_kernels.resize( config.max_concurrent_kernel, NULL );
     m_last_issued_kernel = 0;
     m_last_cluster_issue = 0;
 }

@@ -1123,8 +1123,9 @@ public:
     {
         assert(k);
         m_kernel=k; 
-        if(k) k->inc_running(); 
-        printf("GPGPU-Sim uArch: Shader %d kernel = 0x%p\n", m_sid, m_kernel );
+        k->inc_running(); 
+        printf("GPGPU-Sim uArch: Shader %d bind to kernel %u \'%s\'\n", m_sid, m_kernel->get_uid(),
+                 m_kernel->name().c_str() );
     }
     
     // accessors

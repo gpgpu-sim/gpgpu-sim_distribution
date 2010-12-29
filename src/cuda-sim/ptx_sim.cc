@@ -211,7 +211,8 @@ ptx_thread_info::~ptx_thread_info()
    g_ptx_thread_info_delete_count++;
 }
 
-ptx_thread_info::ptx_thread_info()
+ptx_thread_info::ptx_thread_info( kernel_info_t &kernel )
+    : m_kernel(kernel)
 {
    m_uid = g_ptx_thread_info_uid_next++;
    m_core = NULL;

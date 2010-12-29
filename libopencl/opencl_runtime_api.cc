@@ -873,7 +873,7 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
    gpgpu_ptx_sim_memcpy_symbol( "%_global_launch_offset", zeros, 3 * sizeof(int), 0, 1, gpu );
    gpgpu_ptx_sim_memcpy_symbol( "%_global_block_offset", zeros, 3 * sizeof(int), 0, 1, gpu );
 
-   kernel_info_t grid = gpgpu_opencl_ptx_sim_init_grid(kernel->get_implementation(),params,GridDim,BlockDim,gpu);
+   kernel_info_t *grid = gpgpu_opencl_ptx_sim_init_grid(kernel->get_implementation(),params,GridDim,BlockDim,gpu);
    if ( g_ptx_sim_mode )
       gpgpu_opencl_ptx_sim_main_func( grid );
    else

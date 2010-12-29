@@ -137,6 +137,7 @@ void *gpgpu_sim_thread_concurrent(void*)
         g_sim_active = true;
         pthread_mutex_unlock(&g_sim_lock);
         bool active = false;
+        bool sim_cycles = false;
         do {
             // check if a kernel has completed
             unsigned grid_uid = g_the_gpu->finished_kernel();
@@ -148,14 +149,17 @@ void *gpgpu_sim_thread_concurrent(void*)
             op.do_operation(g_the_gpu);
     
             // simulate a clock cycle on the GPU 
-            if( g_the_gpu->active() ) 
+            if( g_the_gpu->active() ) { 
                 g_the_gpu->cycle();
+                sim_cycles = true;
+            }
             g_the_gpu->deadlock_check();
             active = g_the_gpu->active() || !g_stream_manager->empty();
         } while( active );
         printf("GPGPU-Sim: ** STOP simulation thread (no work) **\n");
         fflush(stdout);
-        g_the_gpu->print_stats();
+        if( sim_cycles ) 
+            g_the_gpu->print_stats();
         pthread_mutex_lock(&g_sim_lock);
         g_sim_active = false;
         pthread_mutex_unlock(&g_sim_lock);
@@ -254,15 +258,7 @@ void print_simulation_time()
    fflush(stdout);
 }
 
-int gpgpu_cuda_ptx_sim_main_perf( kernel_info_t grid )
-{
-   g_the_gpu->launch(grid);
-   //sem_post(&g_sim_signal_start);
-   //sem_wait(&g_sim_signal_finish);
-   return 0;
-}
-
-int gpgpu_opencl_ptx_sim_main_perf( kernel_info_t grid )
+int gpgpu_opencl_ptx_sim_main_perf( kernel_info_t *grid )
 {
    g_the_gpu->launch(grid);
    sem_post(&g_sim_signal_start);
@@ -270,7 +266,7 @@ int gpgpu_opencl_ptx_sim_main_perf( kernel_info_t grid )
    return 0;
 }
 
-int gpgpu_opencl_ptx_sim_main_func( kernel_info_t grid )
+int gpgpu_opencl_ptx_sim_main_func( kernel_info_t *grid )
 {
    printf("GPGPU-Sim PTX API: OpenCL functional-only simulation not yet implemented (use performance simulation)\n");
    exit(1);

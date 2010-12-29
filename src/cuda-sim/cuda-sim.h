@@ -20,12 +20,12 @@ extern void ** g_inst_op_classification_stat;
 extern int g_ptx_kernel_count; // used for classification stat collection purposes 
 
 
-extern class kernel_info_t gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
+extern class kernel_info_t *gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
                                             gpgpu_ptx_sim_arg_list_t args, 
                                             struct dim3 gridDim, 
                                             struct dim3 blockDim, 
                                                           class gpgpu_t *gpu );
-extern void gpgpu_cuda_ptx_sim_main_func( kernel_info_t kernel );
+extern void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel );
 extern void   print_splash();
 extern void   gpgpu_ptx_sim_register_const_variable(void*, const char *deviceName, size_t size );
 extern void   gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size );

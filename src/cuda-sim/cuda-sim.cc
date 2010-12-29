@@ -1075,7 +1075,8 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
                               unsigned hw_warp_id,
                               gpgpu_t *gpu )
 {
-   static std::list<ptx_thread_info *> active_threads;
+   std::list<ptx_thread_info *> &active_threads = kernel.active_threads();
+
    static std::map<unsigned,memory_space*> shared_memory_lookup;
    static std::map<unsigned,ptx_cta_info*> ptx_cta_lookup;
    static std::map<unsigned,std::map<unsigned,memory_space*> > local_memory_lookup;
@@ -1096,7 +1097,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
       *thread_info = NULL;
    }
 
-   if ( !active_threads.empty() ) { //if g_active_threads not empty...
+   if ( !active_threads.empty() ) {
       assert( active_threads.size() <= threads_left );
       ptx_thread_info *thd = active_threads.front(); 
       active_threads.pop_front();
@@ -1156,7 +1157,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
       dim3 tid3d = kernel.get_next_thread_id_3d();
       kernel.increment_thread_id();
       new_tid += tid;
-      ptx_thread_info *thd = new ptx_thread_info();
+      ptx_thread_info *thd = new ptx_thread_info(kernel);
    
       memory_space *local_mem = NULL;
       std::map<unsigned,memory_space*>::iterator l = local_mem_lookup.find(new_tid);
@@ -1210,23 +1211,24 @@ size_t get_kernel_code_size( class function_info *entry )
 }
 
 
-kernel_info_t gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
+kernel_info_t *gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
                                              gpgpu_ptx_sim_arg_list_t args, 
                                              struct dim3 gridDim,
                                              struct dim3 blockDim,
                                              gpgpu_t *gpu )
 {
+   kernel_info_t *result = new kernel_info_t(gridDim,blockDim,entry);
    unsigned argcount=args.size();
    unsigned argn=1;
    for( gpgpu_ptx_sim_arg_list_t::iterator a = args.begin(); a != args.end(); a++ ) {
       entry->add_param_data(argcount-argn,&(*a));
       argn++;
    }
-   entry->finalize(gpu->get_param_memory());
+   entry->finalize(result->get_param_memory());
    g_ptx_kernel_count++; 
    fflush(stdout);
 
-   return kernel_info_t(gridDim,blockDim,entry);
+   return result;
 }
 
 const char *g_gpgpusim_version_string = "2.1.1b (beta)";
@@ -1395,7 +1397,7 @@ ptx_cta_info *g_func_cta_info = NULL;
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
-void gpgpu_cuda_ptx_sim_main_func( kernel_info_t kernel )
+void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel )
 {
    printf("GPGPU-Sim: Performing Functional Simulation...\n");
 
@@ -1416,7 +1418,7 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t kernel )
             g_func_cta_info->check_cta_thread_status_and_reset();
             while( kernel.more_threads_in_cta() ) {
                      memory_space *local_mem = NULL;
-                     ptx_thread_info *thd = new ptx_thread_info();
+                     ptx_thread_info *thd = new ptx_thread_info(kernel);
                      dim3 tid3d = kernel.get_next_thread_id_3d();
                      unsigned lm_idx = kernel.get_next_thread_id();
                      kernel.increment_thread_id();

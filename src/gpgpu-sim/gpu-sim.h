@@ -242,10 +242,10 @@ public:
 
    void set_prop( struct cudaDeviceProp *prop );
 
-   void launch( kernel_info_t &kinfo );
+   void launch( kernel_info_t *kinfo );
    bool can_start_kernel();
    unsigned finished_kernel();
-   void set_kernel_done( unsigned uid ) { m_finished_kernel.push_back(uid); }
+   void set_kernel_done( kernel_info_t *kernel );
 
    void init();
    void cycle();
@@ -289,7 +289,7 @@ private:
    class simt_core_cluster **m_cluster;
    class memory_partition_unit **m_memory_partition_unit;
 
-   std::vector<kernel_info_t> m_running_kernels;
+   std::vector<kernel_info_t*> m_running_kernels;
    unsigned m_last_issued_kernel;
 
    std::list<unsigned> m_finished_kernel;

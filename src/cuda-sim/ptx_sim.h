@@ -274,7 +274,7 @@ private:
 class ptx_thread_info {
 public:
    ~ptx_thread_info();
-   ptx_thread_info();
+   ptx_thread_info( kernel_info_t &kernel );
 
    void init(gpgpu_t *gpu, core_t *core, unsigned sid, unsigned cta_id, unsigned wid, unsigned tid ) 
    { 
@@ -429,7 +429,7 @@ public:
    memory_space *get_global_memory() { return m_gpu->get_global_memory(); }
    memory_space *get_tex_memory() { return m_gpu->get_tex_memory(); }
    memory_space *get_surf_memory() { return m_gpu->get_surf_memory(); }
-   memory_space *get_param_memory() { return m_gpu->get_param_memory(); }
+   memory_space *get_param_memory() { return m_kernel.get_param_memory(); }
    const gpgpu_functional_sim_config &get_config() const { return m_gpu->get_config(); }
 
 public:
@@ -446,6 +446,7 @@ private:
 
 
    unsigned m_uid;
+   kernel_info_t &m_kernel;
    core_t *m_core;
    gpgpu_t *m_gpu;
    bool   m_valid;

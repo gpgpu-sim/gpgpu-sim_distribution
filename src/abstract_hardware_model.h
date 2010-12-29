@@ -87,26 +87,16 @@ void increment_x_then_y_then_z( dim3 &i, const dim3 &bound);
 
 class kernel_info_t {
 public:
-   kernel_info_t()
-   {
-      m_valid=false;
-      m_kernel_entry=NULL;
-      m_uid=0;
-      m_num_cores_running=0;
-   }
-   kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry )
-   {
-      m_valid=true;
-      m_kernel_entry=entry;
-      m_grid_dim=gridDim;
-      m_block_dim=blockDim;
-      m_next_cta.x=0;
-      m_next_cta.y=0;
-      m_next_cta.z=0;
-      m_next_tid=m_next_cta;
-      m_num_cores_running=0;
-      m_uid = m_next_uid++;
-   }
+//   kernel_info_t()
+//   {
+//      m_valid=false;
+//      m_kernel_entry=NULL;
+//      m_uid=0;
+//      m_num_cores_running=0;
+//      m_param_mem=NULL;
+//   }
+   kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry );
+   ~kernel_info_t();
 
    void inc_running() { m_num_cores_running++; }
    void dec_running()
@@ -115,10 +105,9 @@ public:
        m_num_cores_running--; 
    }
    bool running() const { return m_num_cores_running>0; }
-   bool valid() const  { return m_valid; }
    bool done() const 
    {
-       return (!valid()) || (no_more_ctas_to_run() && !running());
+       return no_more_ctas_to_run() && !running();
    }
    class function_info *entry() { return m_kernel_entry; }
    const class function_info *entry() const { return m_kernel_entry; }
@@ -162,8 +151,13 @@ public:
    unsigned get_uid() const { return m_uid; }
    std::string name() const;
 
+   std::list<class ptx_thread_info *> &active_threads() { return m_active_threads; }
+   class memory_space *get_param_memory() { return m_param_mem; }
+
 private:
-   bool m_valid;
+   kernel_info_t( const kernel_info_t & ); // disable copy constructor
+   void operator=( const kernel_info_t & ); // disable copy operator
+
    class function_info *m_kernel_entry;
 
    unsigned m_uid;
@@ -175,6 +169,9 @@ private:
    dim3 m_next_tid;
 
    unsigned m_num_cores_running;
+
+   std::list<class ptx_thread_info *> m_active_threads;
+   class memory_space *m_param_mem;
 };
 
 struct core_config {
@@ -319,7 +316,6 @@ public:
     class memory_space *get_global_memory() { return m_global_mem; }
     class memory_space *get_tex_memory() { return m_tex_mem; }
     class memory_space *get_surf_memory() { return m_surf_mem; }
-    class memory_space *get_param_memory() { return m_param_mem; }
 
     void gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, const struct cudaArray* array);
     void gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref);
@@ -354,7 +350,6 @@ protected:
     class memory_space *m_global_mem;
     class memory_space *m_tex_mem;
     class memory_space *m_surf_mem;
-    class memory_space *m_param_mem;
     
     unsigned long long m_dev_malloc;
     
