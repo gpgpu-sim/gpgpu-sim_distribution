@@ -70,6 +70,7 @@
 #include "mem_latency_stat.h"
 #include "dram_sched.h"
 #include "mem_fetch.h"
+#include "l2cache.h"
 
 #ifdef DRAM_VERIFY
 int PRINT_CYCLE = 0;
@@ -78,9 +79,11 @@ int PRINT_CYCLE = 0;
 template class fifo_pipeline<mem_fetch>;
 template class fifo_pipeline<dram_req_t>;
 
-dram_t::dram_t( unsigned int partition_id, const struct memory_config *config, memory_stats_t *stats )
+dram_t::dram_t( unsigned int partition_id, const struct memory_config *config, memory_stats_t *stats,
+                memory_partition_unit *mp )
 {
    id = partition_id;
+   m_memory_partition_unit = mp;
    m_stats = stats;
    m_config = config;
 
@@ -237,8 +240,13 @@ void dram_t::cycle()
            if (cmd->dqbytes >= cmd->nbytes) {
               mem_fetch *data = cmd->data; 
               data->set_status(IN_PARTITION_MC_RETURNQ,gpu_sim_cycle+gpu_tot_sim_cycle); 
-              data->set_reply();
-              returnq->push(data);
+              if( data->get_access_type() != L1_WRBK_ACC && data->get_access_type() != L2_WRBK_ACC ) {
+                 data->set_reply();
+                 returnq->push(data);
+              } else {
+                 m_memory_partition_unit->set_done(data);
+                 delete data;
+              }
               delete cmd;
            }
 #ifdef DRAM_VIEWCMD 

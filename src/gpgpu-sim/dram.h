@@ -123,7 +123,8 @@ struct mem_fetch;
 class dram_t 
 {
 public:
-   dram_t( unsigned int parition_id, const struct memory_config *config, class memory_stats_t *stats );
+   dram_t( unsigned int parition_id, const struct memory_config *config, class memory_stats_t *stats, 
+           class memory_partition_unit *mp );
 
    bool full() const;
    void print( FILE* simFile ) const;
@@ -139,7 +140,7 @@ public:
    void cycle();
    void dram_log (int task);
 
-   struct memory_partition_unit *m_memory_partition_unit;
+   class memory_partition_unit *m_memory_partition_unit;
    unsigned int id;
 
 private:

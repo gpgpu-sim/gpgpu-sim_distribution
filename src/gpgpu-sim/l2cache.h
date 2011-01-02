@@ -105,6 +105,7 @@ public:
    void push( class mem_fetch* mf, unsigned long long clock_cycle );
    class mem_fetch* pop(); 
    class mem_fetch* top();
+   void set_done( mem_fetch *mf );
 
    unsigned flushL2();
 

@@ -105,7 +105,7 @@ memory_partition_unit::memory_partition_unit( unsigned partition_id,
     m_id = partition_id;
     m_config=config;
     m_stats=stats;
-    m_dram = new dram_t(m_id,m_config,m_stats);
+    m_dram = new dram_t(m_id,m_config,m_stats,this);
 
     char L2c_name[32];
     snprintf(L2c_name, 32, "L2_bank_%03d", m_id);
@@ -315,6 +315,11 @@ mem_fetch* memory_partition_unit::top()
         mf = NULL;
     } 
     return mf;
+}
+
+void memory_partition_unit::set_done( mem_fetch *mf )
+{
+    m_request_tracker.erase(mf);
 }
 
 void memory_partition_unit::dram_cycle() 
