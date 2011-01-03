@@ -176,9 +176,14 @@ void memory_partition_unit::cache_cycle( unsigned cycle )
                     if( !write_sent ) {
                         // L2 cache replies
                         assert(!read_sent);
-                        mf->set_reply();
-                        mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
-                        m_L2_icnt_queue->push(mf);
+                        if( mf->get_access_type() == L1_WRBK_ACC ) {
+                            m_request_tracker.erase(mf);
+                            delete mf;
+                        } else {
+                            mf->set_reply();
+                            mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
+                            m_L2_icnt_queue->push(mf);
+                        }
                         m_icnt_L2_queue->pop();
                     } else {
                         assert(write_sent);
