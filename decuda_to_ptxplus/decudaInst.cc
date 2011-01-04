@@ -354,7 +354,7 @@ void decudaInst::printNewPtx()
 	// Common modifications that apply to all instructions
 	//
 	stringListPiece* currentPiece;
-        int vectorFlag = 0; //0=default, 1=bb64/ff64 type, 2=bb128 type
+        int vectorFlag[4] = {0,0,0,0}; //0=16/32type, 1=bb64/ff64 type, 2=bb128 type
 
 	// Replace '%clock' with '%halfclock'
 	currentPiece = m_operands->getListStart();
@@ -401,23 +401,60 @@ void decudaInst::printNewPtx()
 		if( strcmp(modString, ".b64")==0 ) {
 			const char* newText = ".bb64";
 			currentPiece->stringText = newText;
-			vectorFlag = 1;
+			vectorFlag[i] = 1;
 		}
-		if( strcmp(modString, ".b128")==0 ) {
+		else if( strcmp(modString, ".b128")==0 ) {
 			const char* newText = ".bb128";
 			currentPiece->stringText = newText;
-			vectorFlag = 2;
+			vectorFlag[i] = 2;
 		}
-		if( strcmp(modString, ".f64")==0 ) {
+		else if( strcmp(modString, ".f64")==0 ) {
 			const char* newText = ".ff64";
 			currentPiece->stringText = newText;
-			vectorFlag = 1;
+			vectorFlag[i] = 1;
 		}
 		currentPiece = currentPiece->nextString;
 	}
 
-	//TODO: add support for two vectors in one instruction. Currently not sure if it can actually occur or not
-	if(vectorFlag != 0)
+	/*decuda bug workaround.
+	cvt.abs should drop the first type modifier.
+	cvt.rn.f32.f64 needs to have type modifiers reversed to cvt.ff64.f32*/
+	int absFound = 0;
+	if(strcmp(m_base, "cvt")==0 && m_typeModifiers->getSize() == 2)
+	{
+		stringListPiece* currentPieceCvt = m_baseModifiers->getListStart();
+		for(int i=0; (i<m_baseModifiers->getSize())&&(currentPieceCvt!=NULL); i++)
+		{
+                        const char* modStringCvt = currentPieceCvt->stringText;
+			if( strcmp(modStringCvt, ".abs")==0 ) {
+				vectorFlag[0] = vectorFlag[1];
+				absFound = 1;
+				break;
+			}
+			currentPieceCvt = currentPieceCvt->nextString;
+		}
+		if(absFound == 0 && vectorFlag[1] == 1)
+		{
+			vectorFlag[0] = 1;
+			vectorFlag[1] = 0;
+			const char* tempCharPtr = m_typeModifiers->getListStart()->stringText;
+			m_typeModifiers->getListStart()->stringText = m_typeModifiers->getListStart()->nextString->stringText;
+			m_typeModifiers->getListStart()->nextString->stringText = tempCharPtr;
+		}
+	}
+
+	/*decuda bug workaround, cvt.rz.f64 is really cvt.rz.f32.f64*/
+	if(strcmp(m_base, "cvt")==0 && m_typeModifiers->getSize() == 1 && vectorFlag[0]==1)
+	{
+		vectorFlag[0] = 0;
+		vectorFlag[1] = 1;
+		addTypeModifier(m_typeModifiers->getListStart()->stringText);
+		const char* newText = ".f32";
+		m_typeModifiers->getListStart()->stringText = newText;
+	}
+
+	/*expand vector operands eg. $r0 -> {$r0, $r1}*/
+	if((vectorFlag[0] != 0) || (vectorFlag[1] != 0) || (vectorFlag[2] != 0) || (vectorFlag[3] != 0) )
 	{
 		currentPiece = m_operands->getListStart();
 		for(int i=0; (i<m_operands->getSize())&&(currentPiece!=NULL); i++)
@@ -427,73 +464,69 @@ void decudaInst::printNewPtx()
 			int regNumInt;
 
 			const char* modString = currentPiece->stringText;
-			if( modString[0] == '$' && modString[1] == 'r' ) {
-				strcpy(newText, modString);
-				strtok (newText, "r");
-				regNumString = strtok (NULL, "r");
-				regNumInt = atoi(regNumString);
-				if(vectorFlag ==1)
-					snprintf(newText,40,"{$r%u,$r%u}", regNumInt+0, regNumInt+1);
-				if(vectorFlag ==2)
-					snprintf(newText,40,"{$r%u,$r%u,$r%u,$r%u}", regNumInt+0, regNumInt+1, regNumInt+2, regNumInt+3);
 
-				currentPiece->stringText = newText;
-			} else if( modString[0] == '-' && modString[1] == '$' && modString[2] == 'r' ) {
-				strcpy(newText, modString);
-				strtok (newText, "r");
-				regNumString = strtok (NULL, "r");
-				regNumInt = atoi(regNumString);
-				if(vectorFlag ==1)
-					snprintf(newText,40,"-{$r%u,$r%u}", regNumInt+0, regNumInt+1);
-				if(vectorFlag ==2)
-					snprintf(newText,40,"-{$r%u,$r%u,$r%u,$r%u}", regNumInt+0, regNumInt+1, regNumInt+2, regNumInt+3);
+			if(strcmp(m_base, "set")==0 || strcmp(m_base, "cvt")==0 || 
+				strcmp(m_base, "set?68?")==0 || strcmp(m_base, "set?65?")==0 ||
+				strcmp(m_base, "set?67?")==0 || strcmp(m_base, "set?13?")==0)
+			{
+				if( modString[0] == '$' && modString[1] == 'r' ) {
+					strcpy(newText, modString);
+					strtok (newText, "r");
+					regNumString = strtok (NULL, "r");
+					regNumInt = atoi(regNumString);
+					if(vectorFlag[i] ==0)
+						strcpy(newText, modString);
+					if(vectorFlag[i] ==1)
+						snprintf(newText,40,"{$r%u,$r%u}", regNumInt+0, regNumInt+1);
+					if(vectorFlag[i] ==2)
+						snprintf(newText,40,"{$r%u,$r%u,$r%u,$r%u}", regNumInt+0, regNumInt+1, regNumInt+2, regNumInt+3);
 
-				currentPiece->stringText = newText;
-			} /*else if( modString[0] == '$' && modString[1] == 'o'&& modString[2] == 'f' ) {
-				strcpy(newText, modString);
-				strtok (newText, "s");
-				regNumString = strtok (NULL, "s");
-				regNumInt = atoi(regNumString);
-				if(vectorFlag ==1)
-					snprintf(newText,40,"{$ofs%u,$ofs%u}", regNumInt+0, regNumInt+1);
-				if(vectorFlag ==2)
-					snprintf(newText,40,"{$ofs%u,$ofs%u,$ofs%u,$ofs%u}", regNumInt+0, regNumInt+1, regNumInt+2, regNumInt+3);
+					currentPiece->stringText = newText;
+				} else if( modString[0] == '-' && modString[1] == '$' && modString[2] == 'r' ) {
+					strcpy(newText, modString);
+					strtok (newText, "r");
+					regNumString = strtok (NULL, "r");
+					regNumInt = atoi(regNumString);
+					if(vectorFlag[i] ==0)
+						strcpy(newText, modString);
+					else if(vectorFlag[i] ==1)
+						snprintf(newText,40,"-{$r%u,$r%u}", regNumInt+0, regNumInt+1);
+					else if(vectorFlag[i] ==2)
+						snprintf(newText,40,"-{$r%u,$r%u,$r%u,$r%u}", regNumInt+0, regNumInt+1, regNumInt+2, regNumInt+3);
 
-				currentPiece->stringText = newText;
-			} else if( modString[0] == '$' && modString[1] == 'p' ) {
-				strcpy(newText, modString);
-				strtok (newText, "p");
-				regNumString = strtok (NULL, "p");
-				regNumInt = atoi(regNumString);
-				if(vectorFlag ==1)
-					snprintf(newText,40,"{$p%u,$p%u}", regNumInt+0, regNumInt+1);
-				if(vectorFlag ==2)
-					snprintf(newText,40,"{$p%u,$p%u,$p%u,$p%u}", regNumInt+0, regNumInt+1, regNumInt+2, regNumInt+3);
+					currentPiece->stringText = newText;
+				}
+			}
+			else
+			{
+				if( modString[0] == '$' && modString[1] == 'r' ) {
+					strcpy(newText, modString);
+					strtok (newText, "r");
+					regNumString = strtok (NULL, "r");
+					regNumInt = atoi(regNumString);
+					if(vectorFlag[0] ==0)
+						strcpy(newText, modString);
+					else if(vectorFlag[0] ==1)
+						snprintf(newText,40,"{$r%u,$r%u}", regNumInt+0, regNumInt+1);
+					else if(vectorFlag[0] ==2)
+						snprintf(newText,40,"{$r%u,$r%u,$r%u,$r%u}", regNumInt+0, regNumInt+1, regNumInt+2, regNumInt+3);
 
-				currentPiece->stringText = newText;
-			} else if( modString[0] == '$' && modString[1] == 'o' ) {
-				strcpy(newText, modString);
-				strtok (newText, "o");
-				regNumString = strtok (NULL, "o");
-				regNumInt = atoi(regNumString);
-				if(vectorFlag ==1)
-					snprintf(newText,40,"{$o%u,$o%u}", regNumInt+0, regNumInt+1);
-				if(vectorFlag ==2)
-					snprintf(newText,40,"{$o%u,$o%u,$o%u,$o%u}", regNumInt+0, regNumInt+1, regNumInt+2, regNumInt+3);
+					currentPiece->stringText = newText;
+				} else if( modString[0] == '-' && modString[1] == '$' && modString[2] == 'r' ) {
+					strcpy(newText, modString);
+					strtok (newText, "r");
+					regNumString = strtok (NULL, "r");
+					regNumInt = atoi(regNumString);
+					if(vectorFlag[0] ==0)
+						strcpy(newText, modString);
+					else if(vectorFlag[0] ==1)
+						snprintf(newText,40,"-{$r%u,$r%u}", regNumInt+0, regNumInt+1);
+					else if(vectorFlag[0] ==2)
+						snprintf(newText,40,"-{$r%u,$r%u,$r%u,$r%u}", regNumInt+0, regNumInt+1, regNumInt+2, regNumInt+3);
 
-				currentPiece->stringText = newText;
-			} else if( modString[0] == '$' && modString[1] == 't'&& modString[2] == 'e' ) {
-				strcpy(newText, modString);
-				strtok (newText, "x");
-				regNumString = strtok (NULL, "x");
-				regNumInt = atoi(regNumString);
-				if(vectorFlag ==1)
-					snprintf(newText,40,"{$tex%u,$tex%u}", regNumInt+0, regNumInt+1);
-				if(vectorFlag ==2)
-					snprintf(newText,40,"{$tex%u,$tex%u,$tex%u,$tex%u}", regNumInt+0, regNumInt+1, regNumInt+2, regNumInt+3);
-
-				currentPiece->stringText = newText;
-			}*/
+					currentPiece->stringText = newText;
+				}
+			}
 			currentPiece = currentPiece->nextString;
 		}
 	}
@@ -549,8 +582,16 @@ void decudaInst::printNewPtx()
 
 			output("abs");
 
-			const char* type = m_typeModifiers->getListStart()->stringText;
-			output(type);
+			if(m_typeModifiers->getSize() == 1)
+			{
+				const char* type = m_typeModifiers->getListStart()->stringText;
+				output(type);
+			}
+			else
+			{
+				const char* type = m_typeModifiers->getListStart()->nextString->stringText;
+				output(type);
+			}
 
 			printOperands();
 
@@ -558,18 +599,6 @@ void decudaInst::printNewPtx()
 
 		} else {
 			// cvt instruction
-
-			// Remove .neg base modifier
-			/*currentPiece = m_baseModifiers->getListStart();
-			for(int i=0; (i<m_baseModifiers->getSize())&&(currentPiece!=NULL); i++)
-			{
-				char* modString = currentPiece->stringText;
-				if( strcmp(modString, ".neg")==0 ) {
-					m_baseModifiers->remove(i);
-				}
-				currentPiece = currentPiece->nextString;
-			}*/
-
 			printLabel();
 			printPredicate();
 
@@ -578,10 +607,11 @@ void decudaInst::printNewPtx()
 			int typeModifiers = m_typeModifiers->getSize();
 
 			if(typeModifiers == 2) {
-                                if(cvt_neg_mod_flag == 0)
-				    stringListPiece* currentPiece = m_baseModifiers->getListStart();
-                                else
-				    stringListPiece* currentPiece = m_baseModifiers->getListStart()->nextString;
+
+				stringListPiece* currentPiece = m_baseModifiers->getListStart();
+
+				if(cvt_neg_mod_flag != 0)
+				    currentPiece = m_baseModifiers->getListStart()->nextString;
 
 				const char* dstType = m_typeModifiers->getListStart()->stringText;
 				const char* srcType = m_typeModifiers->getListStart()->nextString->stringText;
@@ -596,9 +626,9 @@ void decudaInst::printNewPtx()
 						(strcmp(modString, ".rz")==0)
 					)
 					{
-						if((strcmp(dstType, ".f32")==0) && (strcmp(srcType, ".f64")==0))
+						if((strcmp(dstType, ".f32")==0) && (strcmp(srcType, ".ff64")==0))
 							output(modString);
-						if((strcmp(dstType, ".f16")==0) && (strcmp(srcType, ".f64")==0))
+						if((strcmp(dstType, ".f16")==0) && (strcmp(srcType, ".ff64")==0))
 							output(modString);
 						if((strcmp(dstType, ".f16")==0) && (strcmp(srcType, ".f32")==0))
 							output(modString);
@@ -634,21 +664,21 @@ void decudaInst::printNewPtx()
 							output(modString);
 						if((strcmp(dstType, ".f32")==0) && (strcmp(srcType, ".s64")==0))
 							output(modString);
-						if((strcmp(dstType, ".f64")==0) && (strcmp(srcType, ".u8")==0))
+						if((strcmp(dstType, ".ff64")==0) && (strcmp(srcType, ".u8")==0))
 							output(modString);
-						if((strcmp(dstType, ".f64")==0) && (strcmp(srcType, ".u16")==0))
+						if((strcmp(dstType, ".ff64")==0) && (strcmp(srcType, ".u16")==0))
 							output(modString);
-						if((strcmp(dstType, ".f64")==0) && (strcmp(srcType, ".u32")==0))
+						if((strcmp(dstType, ".ff64")==0) && (strcmp(srcType, ".u32")==0))
 							output(modString);
-						if((strcmp(dstType, ".f64")==0) && (strcmp(srcType, ".u64")==0))
+						if((strcmp(dstType, ".ff64")==0) && (strcmp(srcType, ".u64")==0))
 							output(modString);
-						if((strcmp(dstType, ".f64")==0) && (strcmp(srcType, ".s8")==0))
+						if((strcmp(dstType, ".ff64")==0) && (strcmp(srcType, ".s8")==0))
 							output(modString);
-						if((strcmp(dstType, ".f64")==0) && (strcmp(srcType, ".s16")==0))
+						if((strcmp(dstType, ".ff64")==0) && (strcmp(srcType, ".s16")==0))
 							output(modString);
-						if((strcmp(dstType, ".f64")==0) && (strcmp(srcType, ".s32")==0))
+						if((strcmp(dstType, ".ff64")==0) && (strcmp(srcType, ".s32")==0))
 							output(modString);
-						if((strcmp(dstType, ".f64")==0) && (strcmp(srcType, ".s64")==0))
+						if((strcmp(dstType, ".ff64")==0) && (strcmp(srcType, ".s64")==0))
 							output(modString);
 						if((strcmp(dstType, ".u8")==0) && (strcmp(srcType, ".f16")==0))
 							{ output(modString); output("i"); }
@@ -682,31 +712,32 @@ void decudaInst::printNewPtx()
 							{ output(modString); output("i"); }
 						if((strcmp(dstType, ".s64")==0) && (strcmp(srcType, ".f32")==0))
 							{ output(modString); output("i"); }
-						if((strcmp(dstType, ".u8")==0) && (strcmp(srcType, ".f64")==0))
+						if((strcmp(dstType, ".u8")==0) && (strcmp(srcType, ".ff64")==0))
 							{ output(modString); output("i"); }
-						if((strcmp(dstType, ".u16")==0) && (strcmp(srcType, ".f64")==0))
+						if((strcmp(dstType, ".u16")==0) && (strcmp(srcType, ".ff64")==0))
 							{ output(modString); output("i"); }
-						if((strcmp(dstType, ".u32")==0) && (strcmp(srcType, ".f64")==0))
+						if((strcmp(dstType, ".u32")==0) && (strcmp(srcType, ".ff64")==0))
 							{ output(modString); output("i"); }
-						if((strcmp(dstType, ".u64")==0) && (strcmp(srcType, ".f64")==0))
+						if((strcmp(dstType, ".u64")==0) && (strcmp(srcType, ".ff64")==0))
 							{ output(modString); output("i"); }
-						if((strcmp(dstType, ".s8")==0) && (strcmp(srcType, ".f64")==0))
+						if((strcmp(dstType, ".s8")==0) && (strcmp(srcType, ".ff64")==0))
 							{ output(modString); output("i"); }
-						if((strcmp(dstType, ".s16")==0) && (strcmp(srcType, ".f64")==0))
+						if((strcmp(dstType, ".s16")==0) && (strcmp(srcType, ".ff64")==0))
 							{ output(modString); output("i"); }
-						if((strcmp(dstType, ".s32")==0) && (strcmp(srcType, ".f64")==0))
+						if((strcmp(dstType, ".s32")==0) && (strcmp(srcType, ".ff64")==0))
 							{ output(modString); output("i"); }
-						if((strcmp(dstType, ".s64")==0) && (strcmp(srcType, ".f64")==0))
+						if((strcmp(dstType, ".s64")==0) && (strcmp(srcType, ".ff64")==0))
 							{ output(modString); output("i"); }
 						if((strcmp(dstType, ".f16")==0) && (strcmp(srcType, ".f16")==0))
 							{ output(modString); output("i"); }
 						if((strcmp(dstType, ".f32")==0) && (strcmp(srcType, ".f32")==0))
 							{ output(modString); output("i"); }
-						if((strcmp(dstType, ".f64")==0) && (strcmp(srcType, ".f64")==0))
+						if((strcmp(dstType, ".ff64")==0) && (strcmp(srcType, ".ff64")==0))
 							{ output(modString); output("i"); }
 					}
 					else if (						
-						(strcmp(modString, ".rzi")==0)
+						(strcmp(modString, ".rni")==0 || strcmp(modString, ".rmi")==0 ||
+						 strcmp(modString, ".rpi")==0 || strcmp(modString, ".rzi")==0)
 					)
 					{
 						output(modString);

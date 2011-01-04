@@ -303,7 +303,7 @@ void decudaInstList::addRegister(std::string reg, bool lo)
         {
                 const char* modString = currentPiece->stringText;
 
-                if( strcmp(modString, ".b64")==0 )
+                if( (strcmp(modString, ".b64")==0) || (strcmp(modString, ".f64")==0) )
                         vectorFlag = 64;
                 if( strcmp(modString, ".b128")==0 )
                         vectorFlag = 128;
