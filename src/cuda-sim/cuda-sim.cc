@@ -313,7 +313,7 @@ memory_space_t whichspace( addr_t addr )
 {
    if( (addr >= GLOBAL_HEAP_START) || (addr < STATIC_ALLOC_LIMIT) ) {
       return global_space;
-   } else if( addr > SHARED_GENERIC_START ) {
+   } else if( addr >= SHARED_GENERIC_START ) {
       return shared_space;
    } else {
       return local_space;
@@ -851,6 +851,19 @@ void init_inst_classification_stat()
    g_inst_op_classification_stat[g_ptx_kernel_count] = StatCreate(kernelname,1,100);
 }
 
+static unsigned get_tex_datasize( const ptx_instruction *pI, ptx_thread_info *thread )
+{
+   const operand_info &src1 = pI->src1(); //the name of the texture
+   std::string texname = src1.name();
+
+   gpgpu_t *gpu = thread->get_gpu();
+   const struct textureReference* texref = gpu->get_texref(texname);
+   const struct textureInfo* texInfo = gpu->get_texinfo(texref);
+
+   unsigned data_size = texInfo->texel_size;
+   return data_size; 
+}
+
 void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
 {
    bool skip = false;
@@ -960,31 +973,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
    if (pI->get_opcode() == TEX_OP) {
       inst.set_addr(lane_id, last_eaddr() );
       assert( inst.space == last_space() );
-
-      unsigned to_type = pI->get_type();
-      switch ( to_type ) {
-      case B8_TYPE:
-      case S8_TYPE:
-      case U8_TYPE: 
-         inst.data_size = 1; break;
-      case B16_TYPE:
-      case S16_TYPE:
-      case U16_TYPE:
-      case F16_TYPE: 
-         inst.data_size = 2; break;
-      case B32_TYPE:
-      case S32_TYPE:
-      case U32_TYPE:
-      case F32_TYPE: 
-         inst.data_size = 4; break;
-      case B64_TYPE:
-      case S64_TYPE:
-      case U64_TYPE:
-      case F64_TYPE: 
-      case FF64_TYPE:
-         inst.data_size = 8; break;
-      default: assert(0); break;
-      }
+      insn_data_size = get_tex_datasize(pI, this); // texture obtain its data granularity from the texture info 
    }
 
    // Output register information to file and stdout

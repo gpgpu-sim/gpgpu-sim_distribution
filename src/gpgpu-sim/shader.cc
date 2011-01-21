@@ -135,6 +135,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
    for (unsigned i = 0; i<config->n_thread_per_shader; i++) {
       m_thread[i].m_functional_model_thread_state = NULL;
       m_thread[i].m_cta_id = -1;
+      m_thread[i].m_active = false;
    }
    
    m_icnt = new shader_memory_interface(this,cluster);
@@ -519,12 +520,13 @@ void shader_core_ctx::fetch()
                 bool did_exit=false;
                 for( unsigned t=0; t<m_config->warp_size;t++) {
                     unsigned tid=warp_id*m_config->warp_size+t;
-                    if( m_thread[tid].m_functional_model_thread_state ) {
+                    if( m_thread[tid].m_active == true ) {
+                        m_thread[tid].m_active = false; 
                         unsigned cta_id = m_warp[warp_id].get_cta_id();
                         register_cta_thread_exit(cta_id);
                         m_not_completed -= 1;
                         m_active_threads.reset(tid);
-                        m_thread[tid].m_functional_model_thread_state=NULL;
+                        assert( m_thread[tid].m_functional_model_thread_state != NULL );
                         did_exit=true;
                     }
                 }

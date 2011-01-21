@@ -711,6 +711,7 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
         m_thread[i].m_cta_id = free_cta_hw_id;
         unsigned warp_id = i/m_config->warp_size;
         nthreads_in_block += ptx_sim_init_thread(kernel,&m_thread[i].m_functional_model_thread_state,m_sid,i,cta_size-(i-start_thread),m_config->n_thread_per_shader,this,free_cta_hw_id,warp_id,m_cluster->get_gpu());
+        m_thread[i].m_active = true; 
         warps.set( warp_id );
     }
     assert( nthreads_in_block > 0 && nthreads_in_block <= m_config->n_thread_per_shader); // should be at least one, but less than max

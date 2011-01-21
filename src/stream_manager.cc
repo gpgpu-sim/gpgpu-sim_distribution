@@ -370,8 +370,16 @@ void stream_manager::push( stream_operation op )
     print_impl(stdout);
     pthread_mutex_unlock(&m_lock);
     if( m_cuda_launch_blocking || stream == NULL ) {
-        while( !empty() )
-            ; 
+        unsigned int wait_amount = 100; 
+        unsigned int wait_cap = 100000; // 100ms 
+        while( !empty() ) {
+            // sleep to prevent CPU hog by empty spin
+            // sleep time increased exponentially ensure fast response when needed 
+            usleep(wait_amount); 
+            wait_amount *= 2; 
+            if (wait_amount > wait_cap) 
+               wait_amount = wait_cap; 
+        }
     }
 }
 

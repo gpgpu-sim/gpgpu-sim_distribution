@@ -120,6 +120,8 @@ public:
    unsigned n_l1_mis_ac;
    unsigned n_l1_mrghit_ac;
    unsigned n_l1_access_ac; 
+
+   bool m_active; 
 };
 
 class shd_warp_t {
