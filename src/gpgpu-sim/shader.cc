@@ -156,15 +156,57 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
        m_simt_stack[i] = new simt_stack(i,this);
    m_scoreboard = new Scoreboard(m_sid, m_config->max_warps_per_shader);
 
-   m_operand_collector.add_port( m_config->gpgpu_operand_collector_num_units_sp, 
-                                 &m_pipeline_reg[ID_OC_SP],
-                                 &m_pipeline_reg[OC_EX_SP] );
-   m_operand_collector.add_port( m_config->gpgpu_operand_collector_num_units_sfu, 
-                                 &m_pipeline_reg[ID_OC_SFU],
-                                 &m_pipeline_reg[OC_EX_SFU] );
-   m_operand_collector.add_port( m_config->gpgpu_operand_collector_num_units_mem, 
-                                 &m_pipeline_reg[ID_OC_MEM],
-                                 &m_pipeline_reg[OC_EX_MEM] );
+
+   //op collector configuration
+   enum { SP_CUS, SFU_CUS, MEM_CUS, GEN_CUS };
+   m_operand_collector.add_cu_set(SP_CUS, m_config->gpgpu_operand_collector_num_units_sp, m_config->gpgpu_operand_collector_num_out_ports_sp);
+   m_operand_collector.add_cu_set(SFU_CUS, m_config->gpgpu_operand_collector_num_units_sfu, m_config->gpgpu_operand_collector_num_out_ports_sfu);
+   m_operand_collector.add_cu_set(MEM_CUS, m_config->gpgpu_operand_collector_num_units_mem, m_config->gpgpu_operand_collector_num_out_ports_mem);
+   m_operand_collector.add_cu_set(GEN_CUS, m_config->gpgpu_operand_collector_num_units_gen, m_config->gpgpu_operand_collector_num_out_ports_gen);
+
+   opndcoll_rfu_t::port_vector_t in_ports;
+   opndcoll_rfu_t::port_vector_t out_ports;
+   opndcoll_rfu_t::uint_vector_t cu_sets;
+   for (unsigned i = 0; i < m_config->gpgpu_operand_collector_num_in_ports_sp; i++) {
+       in_ports.push_back(&m_pipeline_reg[ID_OC_SP]);
+       out_ports.push_back(&m_pipeline_reg[OC_EX_SP]);
+       cu_sets.push_back((unsigned)SP_CUS);
+       cu_sets.push_back((unsigned)GEN_CUS);
+       m_operand_collector.add_port(in_ports,out_ports,cu_sets);
+       in_ports.clear(),out_ports.clear(),cu_sets.clear();
+   }
+
+   for (unsigned i = 0; i < m_config->gpgpu_operand_collector_num_in_ports_sfu; i++) {
+       in_ports.push_back(&m_pipeline_reg[ID_OC_SFU]);
+       out_ports.push_back(&m_pipeline_reg[OC_EX_SFU]);
+       cu_sets.push_back((unsigned)SFU_CUS);
+       cu_sets.push_back((unsigned)GEN_CUS);
+       m_operand_collector.add_port(in_ports,out_ports,cu_sets);
+       in_ports.clear(),out_ports.clear(),cu_sets.clear();
+   }
+
+   for (unsigned i = 0; i < m_config->gpgpu_operand_collector_num_in_ports_mem; i++) {
+       in_ports.push_back(&m_pipeline_reg[ID_OC_MEM]);
+       out_ports.push_back(&m_pipeline_reg[OC_EX_MEM]);
+       cu_sets.push_back((unsigned)MEM_CUS);
+       cu_sets.push_back((unsigned)GEN_CUS);                       
+       m_operand_collector.add_port(in_ports,out_ports,cu_sets);
+       in_ports.clear(),out_ports.clear(),cu_sets.clear();
+   }   
+
+
+   for (unsigned i = 0; i < m_config->gpgpu_operand_collector_num_in_ports_gen; i++) {
+       in_ports.push_back(&m_pipeline_reg[ID_OC_SP]);
+       in_ports.push_back(&m_pipeline_reg[ID_OC_SFU]);
+       in_ports.push_back(&m_pipeline_reg[ID_OC_MEM]);
+       out_ports.push_back(&m_pipeline_reg[OC_EX_SP]);
+       out_ports.push_back(&m_pipeline_reg[OC_EX_SFU]);
+       out_ports.push_back(&m_pipeline_reg[OC_EX_MEM]);
+       cu_sets.push_back((unsigned)GEN_CUS);   
+       m_operand_collector.add_port(in_ports,out_ports,cu_sets);
+       in_ports.clear(),out_ports.clear(),cu_sets.clear();
+   }
+
    m_operand_collector.init( m_config->gpgpu_num_reg_banks, this );
 
    // execute
@@ -1551,6 +1593,7 @@ std::list<opndcoll_rfu_t::op_t> opndcoll_rfu_t::arbiter_t::allocate_reads()
    int _inputs = m_num_banks;
    int _outputs = m_num_collectors;
    int _square = ( _inputs > _outputs ) ? _inputs : _outputs;
+   assert(_square > 0);
    int _pri = (int)m_last_cu;
 
    // Clear matching
@@ -1909,41 +1952,46 @@ const simt_mask_t &simt_stack::get_active_mask() const
     return m_active_mask[m_stack_top];
 }
 
-void opndcoll_rfu_t::add_port( unsigned num_collector_units,
-                               warp_inst_t **input_port,
-                               warp_inst_t **output_port )
+void opndcoll_rfu_t::add_cu_set(unsigned set_id, unsigned num_cu, unsigned num_dispatch){
+    m_cus[set_id].reserve(num_cu); //this is necessary to stop pointers in m_cu from being invalid do to a resize;
+    for (unsigned i = 0; i < num_cu; i++) {
+        m_cus[set_id].push_back(collector_unit_t());
+        m_cu.push_back(&m_cus[set_id].back());
+    }
+    // for now each collector set gets dedicated dispatch units.
+    for (unsigned i = 0; i < num_dispatch; i++) {
+        m_dispatch_units.push_back(dispatch_unit_t(&m_cus[set_id]));
+    }
+}
+
+
+void opndcoll_rfu_t::add_port(port_vector_t & input, port_vector_t & output, uint_vector_t cu_sets)
 {
-    m_num_ports++;
-    m_num_collectors += num_collector_units;
-    m_input.resize(m_num_ports);
-    m_output.resize(m_num_ports);
-    m_num_collector_units.resize(m_num_ports);
-    m_input[m_num_ports-1]=input_port;
-    m_output[m_num_ports-1]=output_port;
-    m_num_collector_units[m_num_ports-1]=num_collector_units;
+    //m_num_ports++;
+    //m_num_collectors += num_collector_units;
+    //m_input.resize(m_num_ports);
+    //m_output.resize(m_num_ports);
+    //m_num_collector_units.resize(m_num_ports);
+    //m_input[m_num_ports-1]=input_port;
+    //m_output[m_num_ports-1]=output_port;
+    //m_num_collector_units[m_num_ports-1]=num_collector_units;
+    m_in_ports.push_back(input_port_t(input,output,cu_sets));
 }
 
 void opndcoll_rfu_t::init( unsigned num_banks, shader_core_ctx *shader )
 {
    m_shader=shader;
-   m_arbiter.init(m_num_collectors,num_banks);
-   for( unsigned n=0; n<m_num_ports;n++ ) 
-       m_dispatch_units[m_output[n]].init( m_num_collector_units[n] );
+   m_arbiter.init(m_cu.size(),num_banks);
+   //for( unsigned n=0; n<m_num_ports;n++ ) 
+   //    m_dispatch_units[m_output[n]].init( m_num_collector_units[n] );
    m_num_banks = num_banks;
    m_bank_warp_shift = 0; 
    m_warp_size = shader->get_config()->warp_size;
    m_bank_warp_shift = (unsigned)(int) (log(m_warp_size+0.5) / log(2.0));
    assert( (m_bank_warp_shift == 5) || (m_warp_size != 32) );
 
-   m_cu = new collector_unit_t[m_num_collectors];
-
-   unsigned c=0;
-   for( unsigned n=0; n<m_num_ports;n++ ) {
-       for( unsigned j=0; j<m_num_collector_units[n]; j++, c++) {
-          m_cu[c].init(c,m_output[n],num_banks,m_bank_warp_shift,shader->get_config(),this);
-          m_free_cu[m_output[n]].push_back(&m_cu[c]);
-          m_dispatch_units[m_output[n]].add_cu(&m_cu[c]);
-       }
+   for( unsigned j=0; j<m_cu.size(); j++) {
+       m_cu[j]->init(j,num_banks,m_bank_warp_shift,shader->get_config(),this);
    }
    m_initialized=true;
 }
@@ -1976,30 +2024,35 @@ bool opndcoll_rfu_t::writeback( const warp_inst_t &inst )
 
 void opndcoll_rfu_t::dispatch_ready_cu()
 {
-   port_to_du_t::iterator p;
-   for( p=m_dispatch_units.begin(); p!=m_dispatch_units.end(); ++p ) {
-      warp_inst_t **port = p->first;
-      if( !(*port)->empty() ) 
-         continue;
-      dispatch_unit_t &du = p->second;
+   for( unsigned p=0; p < m_dispatch_units.size(); ++p ) {
+      dispatch_unit_t &du = m_dispatch_units[p];
       collector_unit_t *cu = du.find_ready();
       if( cu ) {
          cu->dispatch();
-         m_free_cu[port].push_back(cu);
       }
    }
 }
 
 void opndcoll_rfu_t::allocate_cu( unsigned port_num )
 {
-   if( !(*m_input[port_num])->empty() ) {
-      warp_inst_t **port = m_output[port_num];
-      if( !m_free_cu[port].empty() ) {
-         collector_unit_t *cu = m_free_cu[port].back();
-         m_free_cu[port].pop_back();
-         cu->allocate(*m_input[port_num]);
-         m_arbiter.add_read_requests(cu);
-      }
+   input_port_t& inp = m_in_ports[port_num];
+   for (unsigned i = 0; i < inp.m_in.size(); i++) {
+       if( !(*inp.m_in[i])->empty() ) {
+           //find a free cu
+          for (unsigned j = 0; j < inp.m_cu_sets.size(); j++) {
+              std::vector<collector_unit_t> & cu_set = m_cus[inp.m_cu_sets[j]]; 
+              for (unsigned k = 0; k < cu_set.size(); k++) {
+                  if(cu_set[k].is_free()) {
+                     collector_unit_t *cu = &cu_set[k];
+                     cu->allocate(inp.m_in[i],inp.m_out[i]);
+                     m_arbiter.add_read_requests(cu);
+                     break;
+                  }
+              }
+              if ((*inp.m_in[i])->empty()) break; //cu has been allocated, no need to search more.
+          }
+          break; // can only service a single input, if it failed it will fail for others.
+       }
    }
 }
 
@@ -2021,14 +2074,13 @@ void opndcoll_rfu_t::allocate_reads()
       op_t &op = r->second;
       unsigned cu = op.get_oc_id();
       unsigned operand = op.get_operand();
-      assert( cu < m_num_collectors );
-      m_cu[cu].collect_operand(operand);
+      m_cu[cu]->collect_operand(operand);
    }
 } 
 
 bool opndcoll_rfu_t::collector_unit_t::ready() const 
 { 
-   return (!m_free) && m_not_ready.none() && (*m_port)->empty(); 
+   return (!m_free) && m_not_ready.none() && (*m_output_register)->empty(); 
 }
 
 void opndcoll_rfu_t::collector_unit_t::dump(FILE *fp, const shader_core_ctx *shader ) const
@@ -2047,7 +2099,6 @@ void opndcoll_rfu_t::collector_unit_t::dump(FILE *fp, const shader_core_ctx *sha
 }
 
 void opndcoll_rfu_t::collector_unit_t::init( unsigned n, 
-                                             warp_inst_t **port, 
                                              unsigned num_banks, 
                                              unsigned log2_warp_size,
                                              const core_config *config,
@@ -2055,37 +2106,38 @@ void opndcoll_rfu_t::collector_unit_t::init( unsigned n,
 { 
    m_rfu=rfu;
    m_cuid=n; 
-   m_port=port; 
    m_num_banks=num_banks;
    assert(m_warp==NULL); 
    m_warp = new warp_inst_t(config);
    m_bank_warp_shift=log2_warp_size;
 }
 
-void opndcoll_rfu_t::collector_unit_t::allocate( warp_inst_t *&pipeline_reg ) 
+void opndcoll_rfu_t::collector_unit_t::allocate( warp_inst_t** pipeline_reg, warp_inst_t** output_reg ) 
 {
    assert(m_free);
    assert(m_not_ready.none());
    m_free = false;
-   if( !pipeline_reg->empty() ) {
-      m_warp_id = pipeline_reg->warp_id();
+   m_output_register = output_reg;
+   if( !(*pipeline_reg)->empty() ) {
+      m_warp_id = (*pipeline_reg)->warp_id();
       for( unsigned op=0; op < 4; op++ ) {
-         int reg_num = pipeline_reg->arch_reg[4+op]; // this math needs to match that used in function_info::ptx_decode_inst
+         int reg_num = (*pipeline_reg)->arch_reg[4+op]; // this math needs to match that used in function_info::ptx_decode_inst
          if( reg_num >= 0 ) { // valid register
             m_src_op[op] = op_t( this, op, reg_num, m_num_banks, m_bank_warp_shift );
             m_not_ready.set(op);
          } else 
             m_src_op[op] = op_t();
       }
-      move_warp(m_warp,pipeline_reg);
+      move_warp(m_warp,*pipeline_reg);
    }
 }
 
 void opndcoll_rfu_t::collector_unit_t::dispatch()
 {
    assert( m_not_ready.none() );
-   move_warp(*m_port,m_warp);
+   move_warp(*m_output_register,m_warp);
    m_free=true;
+   m_output_register = NULL;
    for( unsigned i=0; i<MAX_REG_OPERANDS;i++) 
       m_src_op[i].reset();
 }
