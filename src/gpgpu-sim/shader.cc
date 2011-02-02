@@ -143,7 +143,6 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
 
    // fetch
    m_last_warp_fetched = 0;
-   m_last_warp_issued = 0;
 
    #define STRSIZE 1024
    char name[STRSIZE];
@@ -156,6 +155,18 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
        m_simt_stack[i] = new simt_stack(i,this);
    m_scoreboard = new Scoreboard(m_sid, m_config->max_warps_per_shader);
 
+   //scedulers
+   //must currently occur after all inputs have been initialized.
+   for (int i = 0; i < m_config->gpgpu_num_sched_per_core; i++) {
+       schedulers.push_back(scheduler_unit(m_stats,this,m_scoreboard,m_simt_stack,&m_warp,
+                            &m_pipeline_reg[ID_OC_SP],
+                            &m_pipeline_reg[ID_OC_SFU],
+                            &m_pipeline_reg[ID_OC_MEM]));
+   }
+   for (unsigned i = 0; i < m_warp.size(); i++) {
+       //distribute i's evenly though schedulers;
+       schedulers[i%m_config->gpgpu_num_sched_per_core].add_supervised_warp_id(i);
+   }
 
    //op collector configuration
    enum { SP_CUS, SFU_CUS, MEM_CUS, GEN_CUS };
@@ -683,50 +694,62 @@ void shader_core_ctx::issue_warp( warp_inst_t *&pipe_reg, const warp_inst_t *nex
     m_warp[warp_id].set_next_pc(next_inst->pc + next_inst->isize);
 }
 
-void shader_core_ctx::decode()
+void shader_core_ctx::decode(){
+    //really is issue;
+    for (unsigned i = 0; i < schedulers.size(); i++) {
+        schedulers[i].cycle();
+    }
+}
+
+shd_warp_t& scheduler_unit::warp(int i){
+    return (*m_warp)[i];
+}
+
+void scheduler_unit::cycle()
 {
     bool valid_inst = false;  // there was one warp with a valid instruction to issue (didn't require flush due to control hazard)
     bool ready_inst = false;  // of the valid instructions, there was one not waiting for pending register writes
     bool issued_inst = false; // of these we issued one
 
-    for ( unsigned i=0; i < m_config->max_warps_per_shader; i++ ) {
-        unsigned warp_id = (m_last_warp_issued+1+i) % m_config->max_warps_per_shader;
+    for ( unsigned i=0; i < supervised_warps.size(); i++ ) {
+        unsigned supervised_id = (m_last_sup_id_issued+1+i) % supervised_warps.size();
+        unsigned warp_id = supervised_warps[supervised_id];
         unsigned checked=0;
         unsigned issued=0;
-        while( !m_warp[warp_id].waiting() && !m_warp[warp_id].ibuffer_empty() && (checked < 2) && (issued < 2) ) {
-            const warp_inst_t *pI = m_warp[warp_id].ibuffer_next_inst();
-            bool valid = m_warp[warp_id].ibuffer_next_valid();
+        while( !warp(warp_id).waiting() && !warp(warp_id).ibuffer_empty() && (checked < 2) && (issued < 2) ) {
+            const warp_inst_t *pI = warp(warp_id).ibuffer_next_inst();
+            bool valid = warp(warp_id).ibuffer_next_valid();
             unsigned pc,rpc;
             m_simt_stack[warp_id]->get_pdom_stack_top_info(&pc,&rpc);
             if( pI ) {
                 assert(valid);
                 if( pc != pI->pc ) {
                     // control hazard
-                    m_warp[warp_id].set_next_pc(pc);
-                    m_warp[warp_id].ibuffer_flush();
+                    warp(warp_id).set_next_pc(pc);
+                    warp(warp_id).ibuffer_flush();
                 } else {
                     valid_inst = true;
                     if ( !m_scoreboard->checkCollision(warp_id, pI) ) {
                         ready_inst = true;
                         const active_mask_t &active_mask = m_simt_stack[warp_id]->get_active_mask();
-                        assert( m_warp[warp_id].inst_in_pipeline() );
+                        assert( warp(warp_id).inst_in_pipeline() );
                         if ( (pI->op == LOAD_OP) || (pI->op == STORE_OP) || (pI->op == MEMORY_BARRIER_OP) ) {
-                            if( m_pipeline_reg[ID_OC_MEM]->empty() ) {
-                                issue_warp(m_pipeline_reg[ID_OC_MEM],pI,active_mask,warp_id);
+                            if( (*m_mem_out)->empty() ) {
+                                m_shader->issue_warp(*m_mem_out,pI,active_mask,warp_id);
                                 issued++;
                                 issued_inst=true;
                             }
                         } else {
-                            bool sp_pipe_avail = m_pipeline_reg[ID_OC_SP]->empty();
-                            bool sfu_pipe_avail = m_pipeline_reg[ID_OC_SFU]->empty();
+                            bool sp_pipe_avail = (*m_sp_out)->empty();
+                            bool sfu_pipe_avail = (*m_sfu_out)->empty();
                             if( sp_pipe_avail && (pI->op != SFU_OP) ) {
                                 // always prefer SP pipe for operations that can use both SP and SFU pipelines
-                                issue_warp(m_pipeline_reg[ID_OC_SP],pI,active_mask,warp_id);
+                                m_shader->issue_warp(*m_sp_out,pI,active_mask,warp_id);
                                 issued++;
                                 issued_inst=true;
                             } else if ( (pI->op == SFU_OP) || (pI->op == ALU_SFU_OP) ) {
                                 if( sfu_pipe_avail ) {
-                                    issue_warp(m_pipeline_reg[ID_OC_SFU],pI,active_mask,warp_id);
+                                    m_shader->issue_warp(*m_sfu_out,pI,active_mask,warp_id);
                                     issued++;
                                     issued_inst=true;
                                 }
@@ -736,14 +759,14 @@ void shader_core_ctx::decode()
                 }
             } else if( valid ) {
                // this case can happen after a return instruction in diverged warp
-               m_warp[warp_id].set_next_pc(pc);
-               m_warp[warp_id].ibuffer_flush();
+               warp(warp_id).set_next_pc(pc);
+               warp(warp_id).ibuffer_flush();
             }
-            m_warp[warp_id].ibuffer_step();
+            warp(warp_id).ibuffer_step();
             checked++;
         }
         if ( issued ) {
-            m_last_warp_issued=warp_id;
+            m_last_sup_id_issued=supervised_id;
             break;
         } 
     }
