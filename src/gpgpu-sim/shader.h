@@ -319,6 +319,44 @@ typedef std::bitset<WARP_PER_CTA_MAX> warp_set_t;
 int register_bank(int regnum, int wid, unsigned num_banks, unsigned bank_warp_shift);
 
 class shader_core_ctx;
+class shader_core_config;
+class shader_core_stats;
+
+class scheduler_unit { //this can be copied freely, so can be used in std containers.
+public:
+    scheduler_unit(shader_core_stats* stats, shader_core_ctx* shader, 
+                   Scoreboard* scoreboard, simt_stack** simt, 
+                   std::vector<shd_warp_t>* warp, 
+                   warp_inst_t** sp_out,
+                   warp_inst_t** sfu_out,
+                   warp_inst_t** mem_out) 
+        : supervised_warps(), m_last_sup_id_issued(0), m_stats(stats), m_shader(shader),
+        m_scoreboard(scoreboard), m_simt_stack(simt), /*m_pipeline_reg(pipe_regs),*/ m_warp(warp),
+        m_sp_out(sp_out),m_sfu_out(sfu_out),m_mem_out(mem_out){} 
+    void add_supervised_warp_id(int i) {
+        supervised_warps.push_back(i);
+    }
+    void cycle();
+private:
+    shd_warp_t& warp(int i);
+
+    std::vector<int> supervised_warps;
+    int m_last_sup_id_issued;
+    shader_core_stats *m_stats;
+    shader_core_ctx* m_shader;
+    // these things should become accessors: but would need a bigger rearchitect of how shader_core_ctx interacts with its parts.
+    Scoreboard* m_scoreboard; 
+    simt_stack** m_simt_stack;
+    //warp_inst_t** m_pipeline_reg;
+    std::vector<shd_warp_t>* m_warp;
+    warp_inst_t** m_sp_out;
+    warp_inst_t** m_sfu_out;
+    warp_inst_t** m_mem_out;
+};
+
+
+
+
 
 class opndcoll_rfu_t { // operand collector based register file unit
 public:
@@ -985,6 +1023,9 @@ struct shader_core_config : public core_config
     cache_config m_L1D_config;
     
     bool gpgpu_dwf_reg_bankconflict;
+
+    int gpgpu_num_sched_per_core;
+
     //op collector
     int gpgpu_operand_collector_num_units_sp;
     int gpgpu_operand_collector_num_units_sfu;
@@ -1079,6 +1120,7 @@ private:
     friend class shader_core_ctx;
     friend class ldst_unit;
     friend class simt_core_cluster;
+    friend class scheduler_unit;
 };
 
 class shader_core_mem_fetch_allocator : public mem_fetch_allocator {
@@ -1195,6 +1237,7 @@ private:
     void register_cta_thread_exit( unsigned cta_num );
     
     void decode();
+    friend class scheduler_unit; //this is needed to use private issue warp.
     void issue_warp( warp_inst_t *&warp, const warp_inst_t *pI, const active_mask_t &active_mask, unsigned warp_id );
     void func_exec_inst( warp_inst_t &inst );
     address_type translate_local_memaddr(address_type localaddr, unsigned tid, unsigned num_shader );
@@ -1241,7 +1284,6 @@ private:
     int  m_last_warp_fetched;
 
     // decode/dispatch
-    int  m_last_warp_issued;
     std::vector<shd_warp_t>   m_warp;   // per warp information array
     barrier_set_t             m_barriers;
     ifetch_buffer_t           m_inst_fetch_buffer;
@@ -1249,7 +1291,10 @@ private:
     warp_inst_t             **m_pipeline_reg;
     Scoreboard               *m_scoreboard;
     opndcoll_rfu_t            m_operand_collector;
-    
+
+    //schedule
+    std::vector<scheduler_unit>  schedulers;
+
     // execute
     unsigned m_num_function_units;
     enum pipeline_stage_name_t *m_dispatch_port;
