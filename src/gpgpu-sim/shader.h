@@ -1235,8 +1235,10 @@ private:
     
     void fetch();
     void register_cta_thread_exit( unsigned cta_num );
-    
+
     void decode();
+    
+    void issue();
     friend class scheduler_unit; //this is needed to use private issue warp.
     void issue_warp( warp_inst_t *&warp, const warp_inst_t *pI, const active_mask_t &active_mask, unsigned warp_id );
     void func_exec_inst( warp_inst_t &inst );
