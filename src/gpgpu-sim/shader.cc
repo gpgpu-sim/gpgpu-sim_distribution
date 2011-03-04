@@ -544,7 +544,7 @@ void shader_core_stats::visualizer_print( gzFile visualizer_file )
 #define PROGRAM_MEM_START 0xF0000000 /* should be distinct from other memory spaces... 
                                         check ptx_ir.h to verify this does not overlap 
                                         other memory spaces */
-void shader_core_ctx::fetch()
+void shader_core_ctx::decode()
 {
     if( m_inst_fetch_buffer.m_valid ) {
         // decode 1 or 2 instructions and place them into ibuffer
@@ -561,7 +561,10 @@ void shader_core_ctx::fetch()
         }
         m_inst_fetch_buffer.m_valid = false;
     }
+}
 
+void shader_core_ctx::fetch()
+{
     if( !m_inst_fetch_buffer.m_valid ) {
         // find an active warp with space in instruction buffer that is not already waiting on a cache miss
         // and get next 1-2 instructions from i-cache...
@@ -694,7 +697,7 @@ void shader_core_ctx::issue_warp( warp_inst_t *&pipe_reg, const warp_inst_t *nex
     m_warp[warp_id].set_next_pc(next_inst->pc + next_inst->isize);
 }
 
-void shader_core_ctx::decode(){
+void shader_core_ctx::issue(){
     //really is issue;
     for (unsigned i = 0; i < schedulers.size(); i++) {
         schedulers[i].cycle();
@@ -1595,6 +1598,7 @@ void shader_core_ctx::cycle()
     writeback();
     execute();
     read_operands();
+    issue();
     decode();
     fetch();
 }
