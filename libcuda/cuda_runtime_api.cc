@@ -641,10 +641,11 @@ __host__ cudaError_t CUDARTAPI cudaMemcpy(void *dst, const void *src, size_t cou
 
  __host__ cudaError_t CUDARTAPI cudaMemcpyAsync(void *dst, const void *src, size_t count, enum cudaMemcpyKind kind, cudaStream_t stream)
 {
+    struct CUstream_st *s = (struct CUstream_st *)stream;
     switch( kind ) {
-    case cudaMemcpyHostToDevice: g_stream_manager->push( stream_operation(src,(size_t)dst,count,stream) ); break;
-    case cudaMemcpyDeviceToHost: g_stream_manager->push( stream_operation((size_t)src,dst,count,stream) ); break;
-    case cudaMemcpyDeviceToDevice: g_stream_manager->push( stream_operation((size_t)src,(size_t)dst,count,stream) ); break;
+    case cudaMemcpyHostToDevice: g_stream_manager->push( stream_operation(src,(size_t)dst,count,s) ); break;
+    case cudaMemcpyDeviceToHost: g_stream_manager->push( stream_operation((size_t)src,dst,count,s) ); break;
+    case cudaMemcpyDeviceToDevice: g_stream_manager->push( stream_operation((size_t)src,(size_t)dst,count,s) ); break;
     default:
         abort();
     }
@@ -879,7 +880,8 @@ __host__ const char* CUDARTAPI cudaGetErrorString(cudaError_t error)
 
 __host__ cudaError_t CUDARTAPI cudaConfigureCall(dim3 gridDim, dim3 blockDim, size_t sharedMem, cudaStream_t stream)
 {
-   g_cuda_launch_stack.push_back( kernel_config(gridDim,blockDim,sharedMem,stream) );
+    struct CUstream_st *s = (struct CUstream_st *)stream;
+   g_cuda_launch_stack.push_back( kernel_config(gridDim,blockDim,sharedMem,s) );
    return g_last_cudaError = cudaSuccess;
 }
 
@@ -906,7 +908,7 @@ __host__ cudaError_t CUDARTAPI cudaLaunch( const char *hostFun )
       sscanf(mode,"%u", &g_ptx_sim_mode);
    gpgpusim_ptx_assert( !g_cuda_launch_stack.empty(), "empty launch stack" );
    kernel_config config = g_cuda_launch_stack.back();
-   cudaStream_t stream = config.get_stream();
+   struct CUstream_st *stream = config.get_stream();
    printf("\nGPGPU-Sim PTX: cudaLaunch for 0x%p (mode=%s) on stream %u\n", hostFun,
           g_ptx_sim_mode?"functional simulation":"performance simulation", stream?stream->get_uid():0 );
    kernel_info_t *grid = gpgpu_cuda_ptx_sim_init_grid(hostFun,config.get_args(),config.grid_dim(),config.block_dim(),context);
@@ -1008,7 +1010,8 @@ __host__ cudaError_t CUDARTAPI cudaEventRecord(cudaEvent_t event, cudaStream_t s
 {
    CUevent_st *e = get_event(event);
    if( !e ) return g_last_cudaError = cudaErrorUnknown;
-   stream_operation op(e,stream);
+   struct CUstream_st *s = (struct CUstream_st *)stream;
+   stream_operation op(e,s);
    g_stream_manager->push(op);
    return g_last_cudaError = cudaSuccess;
 }
@@ -1029,7 +1032,8 @@ __host__ cudaError_t CUDARTAPI cudaEventSynchronize(cudaEvent_t event)
 {
     printf("GPGPU-Sim API: cudaEventSynchronize ** waiting for event\n");
     fflush(stdout);
-    while( !event->done() )
+    CUevent_st *e = (CUevent_st*) event;
+    while( !e->done() )
         ; 
     printf("GPGPU-Sim API: cudaEventSynchronize ** event detected\n");
     fflush(stdout);
