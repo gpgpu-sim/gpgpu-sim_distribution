@@ -646,9 +646,13 @@ void shader_core_ctx::func_exec_inst( warp_inst_t &inst )
             m_thread[tid].m_functional_model_thread_state->ptx_exec_inst(inst,t);
             if( inst.has_callback(t) ) 
                m_warp[inst.warp_id()].inc_n_atomic();
-            if (inst.space.is_local() && (inst.is_load() || inst.is_store()))
-               inst.set_addr(t, translate_local_memaddr(inst.get_addr(t), tid, 
-                                 m_config->n_simt_clusters*m_config->n_simt_cores_per_cluster) );
+            if (inst.space.is_local() && (inst.is_load() || inst.is_store())) {
+                new_addr_type localaddrs[8];
+                unsigned num_addrs;
+                num_addrs = translate_local_memaddr(inst.get_addr(t), tid, m_config->n_simt_clusters*m_config->n_simt_cores_per_cluster,
+                       inst.data_size, (new_addr_type*) localaddrs );
+                inst.set_addr(t, (new_addr_type*) localaddrs, num_addrs);
+            }
             if ( ptx_thread_done(tid) ) {
                 m_warp[inst.warp_id()].set_completed(t);
                 m_warp[inst.warp_id()].ibuffer_flush();
@@ -793,7 +797,8 @@ address_type coalesced_segment(address_type addr, unsigned segment_size_lg2bytes
    return  (addr >> segment_size_lg2bytes);
 }
 
-address_type shader_core_ctx::translate_local_memaddr( address_type localaddr, unsigned tid, unsigned num_shader )
+// Returns numbers of addresses in translated_addrs, each addr points to a 4B (32-bit) word
+unsigned shader_core_ctx::translate_local_memaddr( address_type localaddr, unsigned tid, unsigned num_shader, unsigned datasize, new_addr_type* translated_addrs )
 {
    // During functional execution, each thread sees its own memory space for local memory, but these
    // need to be mapped to a shared address space for timing simulation.  We do that mapping here.
@@ -824,10 +829,16 @@ address_type shader_core_ctx::translate_local_memaddr( address_type localaddr, u
    }
    assert( thread_base < 4/*word size*/*max_concurrent_threads );
 
-   address_type local_word = localaddr/4;
-   address_type word_offset = localaddr%4;
-   address_type linear_address = local_word*max_concurrent_threads + thread_base + word_offset;
-   return linear_address;
+   assert(datasize%4 == 0);
+   assert(datasize >= 4);
+   assert(datasize <= 32); // max 32B
+   assert(localaddr%4 == 0); // Required if accessing 4B per request, otherwise access will overflow into next thread's space
+   for(unsigned i=0; i<datasize/4; i++) {
+       address_type local_word = localaddr/4 + i;
+       address_type linear_address = local_word*max_concurrent_threads + thread_base;
+       translated_addrs[i] = linear_address;
+   }
+   return datasize/4;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -914,7 +925,7 @@ mem_stage_stall_type ldst_unit::process_memory_access_queue( cache_t *cache, war
         delete mf;
     } else {
         assert( status == MISS || status == HIT_RESERVED );
-        inst.clear_active( access.get_warp_mask() ); // threads in mf writeback when mf returns 
+        //inst.clear_active( access.get_warp_mask() ); // threads in mf writeback when mf returns
         inst.accessq_pop_back();
         if ( inst.is_load() ) {
             for ( unsigned r=0; r < 4; r++)
@@ -980,7 +991,7 @@ bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_rea
            mem_fetch *mf = m_mf_allocator->alloc(inst,access);
            m_icnt->push(mf);
            inst.accessq_pop_back();
-           inst.clear_active( access.get_warp_mask() );
+           //inst.clear_active( access.get_warp_mask() );
            if( inst.is_load() ) { 
               for( unsigned r=0; r < 4; r++) 
                   if(inst.out[r] > 0) 

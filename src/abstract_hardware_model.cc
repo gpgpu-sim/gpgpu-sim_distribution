@@ -123,7 +123,7 @@ void warp_inst_t::generate_mem_accesses()
             for( unsigned thread=subwarp*subwarp_size; thread < (subwarp+1)*subwarp_size; thread++ ) {
                 if( !active(thread) ) 
                     continue;
-                new_addr_type addr = m_per_scalar_thread[thread].memreqaddr;
+                new_addr_type addr = m_per_scalar_thread[thread].memreqaddr[0];
                 //FIXME: deferred allocation of shared memory should not accumulate across kernel launches
                 //assert( addr < m_config->gpgpu_shmem_size ); 
                 unsigned bank = m_config->shmem_bank_func(addr);
@@ -211,15 +211,26 @@ void warp_inst_t::generate_mem_accesses()
                 for( unsigned thread=subwarp*subwarp_size; thread<subwarp_size*(subwarp+1); thread++ ) {
                     if( !active(thread) ) 
                         continue;
-                    new_addr_type addr = m_per_scalar_thread[thread].memreqaddr;
-                    unsigned block_address = line_size_based_tag_func(addr,segment_size);
-                    unsigned chunk = (addr&127)/32; // which 32-byte chunk within in a 128-byte chunk does this thread access?
-                    transaction_info &info = subwarp_transactions[block_address];
-                    info.chunks.set(chunk);
-                    info.active.set(thread);
-                    unsigned idx = (addr&127);
-                    for( unsigned i=0; i < data_size; i++ ) 
-                        info.bytes.set(idx+i);
+
+                    // local memory can only be accessed in 4B chunks by one thread
+                    unsigned data_size_coales = (space.get_type() == local_space || space.get_type() == param_space_local ) ? 4 : data_size;
+                    unsigned num_accesses = (space.get_type() == local_space || space.get_type() == param_space_local ) ? data_size/4 : 1;
+
+                    for(unsigned access=0; access<num_accesses; access++) {
+                        new_addr_type addr = m_per_scalar_thread[thread].memreqaddr[access];
+                        unsigned block_address = line_size_based_tag_func(addr,segment_size);
+                        unsigned chunk = (addr&127)/32; // which 32-byte chunk within in a 128-byte chunk does this thread access?
+                        transaction_info &info = subwarp_transactions[block_address];
+
+                        // can only write to one segment
+                        assert(block_address == line_size_based_tag_func(addr+data_size_coales-1,segment_size));
+
+                        info.chunks.set(chunk);
+                        info.active.set(thread);
+                        unsigned idx = (addr&127);
+                        for( unsigned i=0; i < data_size_coales; i++ )
+                            info.bytes.set(idx+i);
+                    }
                 }
 
                 // step 2: reduce each transaction size, if possible
@@ -293,7 +304,7 @@ void warp_inst_t::generate_mem_accesses()
         for( unsigned thread=0; thread < m_config->warp_size; thread++ ) {
             if( !active(thread) ) 
                 continue;
-            new_addr_type addr = m_per_scalar_thread[thread].memreqaddr;
+            new_addr_type addr = m_per_scalar_thread[thread].memreqaddr[0];
             unsigned block_address = line_size_based_tag_func(addr,cache_block_size);
             accesses[block_address].set(thread);
             unsigned idx = addr-block_address; 

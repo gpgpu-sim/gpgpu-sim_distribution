@@ -655,7 +655,16 @@ public:
             m_per_scalar_thread.resize(m_config->warp_size);
             m_per_scalar_thread_valid=true;
         }
-        m_per_scalar_thread[n].memreqaddr = addr;
+        m_per_scalar_thread[n].memreqaddr[0] = addr;
+    }
+    void set_addr( unsigned n, new_addr_type* addr, unsigned num_addrs )
+    {
+        if( !m_per_scalar_thread_valid ) {
+            m_per_scalar_thread.resize(m_config->warp_size);
+            m_per_scalar_thread_valid=true;
+        }
+        for(unsigned i=0; i<num_addrs; i++)
+            m_per_scalar_thread[n].memreqaddr[i] = addr[i];
     }
     void generate_mem_accesses();
     void add_callback( unsigned lane_id, 
@@ -720,7 +729,7 @@ public:
     new_addr_type get_addr( unsigned n ) const
     {
         assert( m_per_scalar_thread_valid );
-        return m_per_scalar_thread[n].memreqaddr;
+        return m_per_scalar_thread[n].memreqaddr[0];
     }
 
     bool isatomic() const { return m_isatomic; }
@@ -754,10 +763,11 @@ protected:
 
     struct per_thread_info {
         per_thread_info() {
-            memreqaddr=0;
+            for(unsigned i=0; i<8; i++)
+                memreqaddr[i] = 0;
         }
         dram_callback_t callback;
-        new_addr_type memreqaddr; // effective address
+        new_addr_type memreqaddr[8]; // effective address, upto 8 different requests (to support 32B access in 8 chunks of 4B each)
     };
     bool m_per_scalar_thread_valid;
     std::vector<per_thread_info> m_per_scalar_thread;
