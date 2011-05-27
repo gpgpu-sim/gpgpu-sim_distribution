@@ -835,7 +835,7 @@ unsigned shader_core_ctx::translate_local_memaddr( address_type localaddr, unsig
    assert(localaddr%4 == 0); // Required if accessing 4B per request, otherwise access will overflow into next thread's space
    for(unsigned i=0; i<datasize/4; i++) {
        address_type local_word = localaddr/4 + i;
-       address_type linear_address = local_word*max_concurrent_threads*4 + thread_base;
+       address_type linear_address = local_word*max_concurrent_threads*4 + thread_base + LOCAL_GENERIC_START;
        translated_addrs[i] = linear_address;
    }
    return datasize/4;
