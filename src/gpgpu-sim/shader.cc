@@ -1123,6 +1123,7 @@ void ldst_unit::writeback()
                     }
                 }
             }
+            m_core->get_gpu()->gpu_sim_insn += m_next_wb.active_count();
             m_next_wb.clear();
             m_last_inst_gpu_sim_cycle = gpu_sim_cycle;
             m_last_inst_gpu_tot_sim_cycle = gpu_tot_sim_cycle;
