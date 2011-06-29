@@ -1,64 +1,28 @@
-# Copyright (c) 2009 by Tor M. Aamodt and the University of British Columbia
-# Vancouver, BC  V6T 1Z4
-# All Rights Reserved.
-# 
-# THIS IS A LEGAL DOCUMENT BY DOWNLOADING GPGPU-SIM, YOU ARE AGREEING TO THESE
-# TERMS AND CONDITIONS.
-# 
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNERS OR CONTRIBUTORS BE
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-# 
-# NOTE: The files libcuda/cuda_runtime_api.c and src/cuda-sim/cuda-math.h
-# are derived from the CUDA Toolset available from http://www.nvidia.com/cuda
-# (property of NVIDIA).  The files benchmarks/BlackScholes/ and 
-# benchmarks/template/ are derived from the CUDA SDK available from 
-# http://www.nvidia.com/cuda (also property of NVIDIA).  The files 
-# src/gpgpusim_entrypoint.c and src/simplesim-3.0/ are derived from the 
-# SimpleScalar Toolset available from http://www.simplescalar.com/ 
-# (property of SimpleScalar LLC) and the files src/intersim/ are derived 
-# from Booksim (Simulator provided with the textbook "Principles and 
-# Practices of Interconnection Networks" available from 
-# http://cva.stanford.edu/books/ppin/).  As such, those files are bound by 
-# the corresponding legal terms and conditions set forth separately (original 
-# copyright notices are left in files from these sources and where we have 
-# modified a file our copyright notice appears before the original copyright 
-# notice).  
-# 
-# Using this version of GPGPU-Sim requires a complete installation of CUDA
-# which is distributed seperately by NVIDIA under separate terms and
-# conditions.
-# 
+# Copyright (c) 2009-2011, The University of British Columbia
+# All rights reserved.
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
-# 
-# 1. Redistributions of source code must retain the above copyright notice,
-# this list of conditions and the following disclaimer.
-# 
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-# this list of conditions and the following disclaimer in the documentation
-# and/or other materials provided with the distribution.
-# 
-# 3. Neither the name of the University of British Columbia nor the names of
-# its contributors may be used to endorse or promote products derived from
-# this software without specific prior written permission.
-# 
-# 4. This version of GPGPU-SIM is distributed freely for non-commercial use only.  
-#  
-# 5. No nonprofit user may place any restrictions on the use of this software,
-#  including as modified by the user, by any other authorized user.
-# 
-# 6. GPGPU-SIM was developed primarily by Tor M. Aamodt, Wilson W. L. Fung, 
-# Ali Bakhoda, George L. Yuan, at the University of British Columbia, 
-# Vancouver, BC V6T 1Z4
+#
+# Redistributions of source code must retain the above copyright notice, this
+# list of conditions and the following disclaimer.
+# Redistributions in binary form must reproduce the above copyright notice, this
+# list of conditions and the following disclaimer in the documentation and/or
+# other materials provided with the distribution.
+# Neither the name of The University of British Columbia nor the names of its
+# contributors may be used to endorse or promote products derived from this
+# software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 default: libgpgpu_ptx_sim.a 
  
@@ -182,7 +146,7 @@ cuda_device_printf.o: cuda_device_printf.h ptx_ir.h
 cuda_device_printf.o: ../abstract_hardware_model.h /usr/include/assert.h
 cuda_device_printf.o: /usr/include/features.h /usr/include/sys/cdefs.h
 cuda_device_printf.o: /usr/include/bits/wordsize.h /usr/include/gnu/stubs.h
-cuda_device_printf.o: /usr/include/gnu/stubs-64.h ptx_sim.h
+cuda_device_printf.o: /usr/include/gnu/stubs-64.h ptx.tab.h ptx_sim.h
 cuda_device_printf.o: /usr/include/stdlib.h /usr/include/sys/types.h
 cuda_device_printf.o: /usr/include/bits/types.h /usr/include/bits/typesizes.h
 cuda_device_printf.o: /usr/include/time.h /usr/include/endian.h
@@ -206,30 +170,31 @@ cuda-sim.o: /usr/include/endian.h /usr/include/bits/endian.h
 cuda-sim.o: /usr/include/bits/byteswap.h /usr/include/sys/select.h
 cuda-sim.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
 cuda-sim.o: /usr/include/bits/time.h /usr/include/sys/sysmacros.h
-cuda-sim.o: /usr/include/bits/pthreadtypes.h /usr/include/alloca.h ptx_ir.h
-cuda-sim.o: /usr/include/assert.h ptx_sim.h ../tr1_hash_map.h opcodes.h
-cuda-sim.o: opcodes.def memory.h /usr/include/string.h /usr/include/stdio.h
-cuda-sim.o: /usr/include/libio.h /usr/include/_G_config.h
-cuda-sim.o: /usr/include/wchar.h /usr/include/bits/stdio_lim.h
-cuda-sim.o: /usr/include/bits/sys_errlist.h ../option_parser.h
-cuda-sim.o: ../intersim/statwraper.h ptx-stats.h ptx_loader.h ptx_parser.h
-cuda-sim.o: ../gpgpu-sim/gpu-sim.h ../gpgpu-sim/addrdec.h
-cuda-sim.o: ../gpgpu-sim/shader.h /usr/include/math.h
+cuda-sim.o: /usr/include/bits/pthreadtypes.h /usr/include/alloca.h
+cuda-sim.o: instructions.h ptx_ir.h /usr/include/assert.h ptx.tab.h ptx_sim.h
+cuda-sim.o: ../tr1_hash_map.h opcodes.h opcodes.def memory.h
+cuda-sim.o: /usr/include/string.h /usr/include/stdio.h /usr/include/libio.h
+cuda-sim.o: /usr/include/_G_config.h /usr/include/wchar.h
+cuda-sim.o: /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h
+cuda-sim.o: ../option_parser.h ../intersim/statwraper.h ptx-stats.h
+cuda-sim.o: ptx_loader.h ptx_parser.h ../gpgpu-sim/gpu-sim.h
+cuda-sim.o: ../gpgpu-sim/addrdec.h ../gpgpu-sim/shader.h /usr/include/math.h
 cuda-sim.o: /usr/include/bits/huge_val.h /usr/include/bits/mathdef.h
-cuda-sim.o: /usr/include/bits/mathcalls.h ../cuda-sim/dram_callback.h
-cuda-sim.o: ../gpgpu-sim/delayqueue.h ../gpgpu-sim/gpu-misc.h
-cuda-sim.o: ../gpgpu-sim/stack.h ../gpgpu-sim/dram.h /usr/include/zlib.h
-cuda-sim.o: /usr/include/zconf.h /usr/include/unistd.h
+cuda-sim.o: /usr/include/bits/mathcalls.h ../cuda-sim/ptx.tab.h
+cuda-sim.o: ../cuda-sim/dram_callback.h ../gpgpu-sim/delayqueue.h
+cuda-sim.o: ../gpgpu-sim/gpu-misc.h ../gpgpu-sim/stack.h ../gpgpu-sim/dram.h
+cuda-sim.o: /usr/include/zlib.h /usr/include/zconf.h /usr/include/unistd.h
 cuda-sim.o: /usr/include/bits/posix_opt.h /usr/include/bits/confname.h
 cuda-sim.o: /usr/include/getopt.h ../gpgpu-sim/scoreboard.h
 cuda-sim.o: ../gpgpu-sim/mem_fetch.h ../gpgpu-sim/stats.h
 cuda-sim.o: ../gpgpu-sim/gpu-cache.h ../gpgpusim_entrypoint.h
 cuda-sim.o: ../abstract_hardware_model.h
 cuda-sim.o: decuda_pred_table/decuda_pred_table.h
-instructions.o: ptx_ir.h ../abstract_hardware_model.h /usr/include/assert.h
-instructions.o: /usr/include/features.h /usr/include/sys/cdefs.h
-instructions.o: /usr/include/bits/wordsize.h /usr/include/gnu/stubs.h
-instructions.o: /usr/include/gnu/stubs-64.h ptx_sim.h /usr/include/stdlib.h
+instructions.o: instructions.h ptx_ir.h ../abstract_hardware_model.h
+instructions.o: /usr/include/assert.h /usr/include/features.h
+instructions.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
+instructions.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h
+instructions.o: ptx.tab.h ptx_sim.h /usr/include/stdlib.h
 instructions.o: /usr/include/sys/types.h /usr/include/bits/types.h
 instructions.o: /usr/include/bits/typesizes.h /usr/include/time.h
 instructions.o: /usr/include/endian.h /usr/include/bits/endian.h
@@ -247,14 +212,15 @@ instructions.o: /usr/include/bits/mathdef.h /usr/include/bits/mathcalls.h
 instructions.o: /usr/include/fenv.h /usr/include/bits/fenv.h cuda-math.h
 instructions.o: ptx_loader.h cuda_device_printf.h ../gpgpu-sim/gpu-sim.h
 instructions.o: ../gpgpu-sim/addrdec.h ../gpgpu-sim/shader.h
-instructions.o: ../cuda-sim/dram_callback.h ../gpgpu-sim/delayqueue.h
-instructions.o: ../intersim/statwraper.h ../gpgpu-sim/gpu-misc.h
-instructions.o: ../gpgpu-sim/stack.h ../gpgpu-sim/dram.h /usr/include/zlib.h
-instructions.o: /usr/include/zconf.h /usr/include/unistd.h
-instructions.o: /usr/include/bits/posix_opt.h /usr/include/bits/confname.h
-instructions.o: /usr/include/getopt.h ../gpgpu-sim/scoreboard.h
-instructions.o: ../gpgpu-sim/mem_fetch.h ../gpgpu-sim/stats.h
-instructions.o: ../gpgpu-sim/gpu-cache.h ../gpgpu-sim/shader.h
+instructions.o: ../cuda-sim/ptx.tab.h ../cuda-sim/dram_callback.h
+instructions.o: ../gpgpu-sim/delayqueue.h ../intersim/statwraper.h
+instructions.o: ../gpgpu-sim/gpu-misc.h ../gpgpu-sim/stack.h
+instructions.o: ../gpgpu-sim/dram.h /usr/include/zlib.h /usr/include/zconf.h
+instructions.o: /usr/include/unistd.h /usr/include/bits/posix_opt.h
+instructions.o: /usr/include/bits/confname.h /usr/include/getopt.h
+instructions.o: ../gpgpu-sim/scoreboard.h ../gpgpu-sim/mem_fetch.h
+instructions.o: ../gpgpu-sim/stats.h ../gpgpu-sim/gpu-cache.h
+instructions.o: ../gpgpu-sim/shader.h
 memory.o: memory.h ../abstract_hardware_model.h /usr/include/assert.h
 memory.o: /usr/include/features.h /usr/include/sys/cdefs.h
 memory.o: /usr/include/bits/wordsize.h /usr/include/gnu/stubs.h
@@ -273,8 +239,8 @@ memory.o: ../abstract_hardware_model.h
 ptx_ir.o: ptx_parser.h ../abstract_hardware_model.h ptx_ir.h
 ptx_ir.o: /usr/include/assert.h /usr/include/features.h
 ptx_ir.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
-ptx_ir.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h ptx_sim.h
-ptx_ir.o: /usr/include/stdlib.h /usr/include/sys/types.h
+ptx_ir.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h ptx.tab.h
+ptx_ir.o: ptx_sim.h /usr/include/stdlib.h /usr/include/sys/types.h
 ptx_ir.o: /usr/include/bits/types.h /usr/include/bits/typesizes.h
 ptx_ir.o: /usr/include/time.h /usr/include/endian.h
 ptx_ir.o: /usr/include/bits/endian.h /usr/include/bits/byteswap.h
@@ -289,8 +255,8 @@ ptx_ir.o: ../option_parser.h cuda-sim.h
 ptx_loader.o: ptx_loader.h ptx_ir.h ../abstract_hardware_model.h
 ptx_loader.o: /usr/include/assert.h /usr/include/features.h
 ptx_loader.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
-ptx_loader.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h ptx_sim.h
-ptx_loader.o: /usr/include/stdlib.h /usr/include/sys/types.h
+ptx_loader.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h ptx.tab.h
+ptx_loader.o: ptx_sim.h /usr/include/stdlib.h /usr/include/sys/types.h
 ptx_loader.o: /usr/include/bits/types.h /usr/include/bits/typesizes.h
 ptx_loader.o: /usr/include/time.h /usr/include/endian.h
 ptx_loader.o: /usr/include/bits/endian.h /usr/include/bits/byteswap.h
@@ -309,8 +275,8 @@ ptx_loader.o: /usr/include/linux/limits.h
 ptx_parser.o: ptx_parser.h ../abstract_hardware_model.h ptx_ir.h
 ptx_parser.o: /usr/include/assert.h /usr/include/features.h
 ptx_parser.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
-ptx_parser.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h ptx_sim.h
-ptx_parser.o: /usr/include/stdlib.h /usr/include/sys/types.h
+ptx_parser.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h ptx.tab.h
+ptx_parser.o: ptx_sim.h /usr/include/stdlib.h /usr/include/sys/types.h
 ptx_parser.o: /usr/include/bits/types.h /usr/include/bits/typesizes.h
 ptx_parser.o: /usr/include/time.h /usr/include/endian.h
 ptx_parser.o: /usr/include/bits/endian.h /usr/include/bits/byteswap.h
@@ -322,7 +288,7 @@ ptx_parser.o: opcodes.h opcodes.def memory.h /usr/include/string.h
 ptx_parser.o: /usr/include/stdio.h /usr/include/libio.h
 ptx_parser.o: /usr/include/_G_config.h /usr/include/wchar.h
 ptx_parser.o: /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h
-ptx_parser.o: ../option_parser.h
+ptx_parser.o: ../option_parser.h ptx_parser_decode.def
 ptx_sim.o: ptx_sim.h /usr/include/stdlib.h /usr/include/features.h
 ptx_sim.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
 ptx_sim.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h
@@ -338,13 +304,14 @@ ptx_sim.o: /usr/include/assert.h opcodes.h opcodes.def memory.h
 ptx_sim.o: /usr/include/string.h /usr/include/stdio.h /usr/include/libio.h
 ptx_sim.o: /usr/include/_G_config.h /usr/include/wchar.h
 ptx_sim.o: /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h
-ptx_sim.o: ptx_ir.h ../option_parser.h ../gpgpu-sim/gpu-sim.h
+ptx_sim.o: ptx_ir.h ptx.tab.h ../option_parser.h ../gpgpu-sim/gpu-sim.h
 ptx_sim.o: ../gpgpu-sim/addrdec.h ../gpgpu-sim/shader.h /usr/include/math.h
 ptx_sim.o: /usr/include/bits/huge_val.h /usr/include/bits/mathdef.h
-ptx_sim.o: /usr/include/bits/mathcalls.h ../cuda-sim/dram_callback.h
-ptx_sim.o: ../gpgpu-sim/delayqueue.h ../intersim/statwraper.h
-ptx_sim.o: ../gpgpu-sim/gpu-misc.h ../gpgpu-sim/stack.h ../gpgpu-sim/dram.h
-ptx_sim.o: /usr/include/zlib.h /usr/include/zconf.h /usr/include/unistd.h
+ptx_sim.o: /usr/include/bits/mathcalls.h ../cuda-sim/ptx.tab.h
+ptx_sim.o: ../cuda-sim/dram_callback.h ../gpgpu-sim/delayqueue.h
+ptx_sim.o: ../intersim/statwraper.h ../gpgpu-sim/gpu-misc.h
+ptx_sim.o: ../gpgpu-sim/stack.h ../gpgpu-sim/dram.h /usr/include/zlib.h
+ptx_sim.o: /usr/include/zconf.h /usr/include/unistd.h
 ptx_sim.o: /usr/include/bits/posix_opt.h /usr/include/bits/confname.h
 ptx_sim.o: /usr/include/getopt.h ../gpgpu-sim/scoreboard.h
 ptx_sim.o: ../gpgpu-sim/mem_fetch.h ../gpgpu-sim/stats.h
@@ -352,16 +319,81 @@ ptx_sim.o: ../gpgpu-sim/gpu-cache.h ../gpgpu-sim/shader.h
 ptx-stats.o: ptx_ir.h ../abstract_hardware_model.h /usr/include/assert.h
 ptx-stats.o: /usr/include/features.h /usr/include/sys/cdefs.h
 ptx-stats.o: /usr/include/bits/wordsize.h /usr/include/gnu/stubs.h
-ptx-stats.o: /usr/include/gnu/stubs-64.h ptx_sim.h /usr/include/stdlib.h
-ptx-stats.o: /usr/include/sys/types.h /usr/include/bits/types.h
-ptx-stats.o: /usr/include/bits/typesizes.h /usr/include/time.h
-ptx-stats.o: /usr/include/endian.h /usr/include/bits/endian.h
-ptx-stats.o: /usr/include/bits/byteswap.h /usr/include/sys/select.h
-ptx-stats.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-ptx-stats.o: /usr/include/bits/time.h /usr/include/sys/sysmacros.h
-ptx-stats.o: /usr/include/bits/pthreadtypes.h /usr/include/alloca.h
-ptx-stats.o: dram_callback.h ../tr1_hash_map.h opcodes.h opcodes.def memory.h
-ptx-stats.o: /usr/include/string.h /usr/include/stdio.h /usr/include/libio.h
+ptx-stats.o: /usr/include/gnu/stubs-64.h ptx.tab.h ptx_sim.h
+ptx-stats.o: /usr/include/stdlib.h /usr/include/sys/types.h
+ptx-stats.o: /usr/include/bits/types.h /usr/include/bits/typesizes.h
+ptx-stats.o: /usr/include/time.h /usr/include/endian.h
+ptx-stats.o: /usr/include/bits/endian.h /usr/include/bits/byteswap.h
+ptx-stats.o: /usr/include/sys/select.h /usr/include/bits/select.h
+ptx-stats.o: /usr/include/bits/sigset.h /usr/include/bits/time.h
+ptx-stats.o: /usr/include/sys/sysmacros.h /usr/include/bits/pthreadtypes.h
+ptx-stats.o: /usr/include/alloca.h dram_callback.h ../tr1_hash_map.h
+ptx-stats.o: opcodes.h opcodes.def memory.h /usr/include/string.h
+ptx-stats.o: /usr/include/stdio.h /usr/include/libio.h
 ptx-stats.o: /usr/include/_G_config.h /usr/include/wchar.h
 ptx-stats.o: /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h
 ptx-stats.o: ../option_parser.h ptx-stats.h
+lex.ptx_.o: /usr/include/stdio.h /usr/include/features.h
+lex.ptx_.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
+lex.ptx_.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h
+lex.ptx_.o: /usr/include/bits/types.h /usr/include/bits/typesizes.h
+lex.ptx_.o: /usr/include/libio.h /usr/include/_G_config.h
+lex.ptx_.o: /usr/include/wchar.h /usr/include/bits/stdio_lim.h
+lex.ptx_.o: /usr/include/bits/sys_errlist.h /usr/include/string.h
+lex.ptx_.o: /usr/include/errno.h /usr/include/bits/errno.h
+lex.ptx_.o: /usr/include/linux/errno.h /usr/include/asm/errno.h
+lex.ptx_.o: /usr/include/asm-generic/errno.h
+lex.ptx_.o: /usr/include/asm-generic/errno-base.h /usr/include/stdlib.h
+lex.ptx_.o: /usr/include/sys/types.h /usr/include/time.h
+lex.ptx_.o: /usr/include/endian.h /usr/include/bits/endian.h
+lex.ptx_.o: /usr/include/bits/byteswap.h /usr/include/sys/select.h
+lex.ptx_.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
+lex.ptx_.o: /usr/include/bits/time.h /usr/include/sys/sysmacros.h
+lex.ptx_.o: /usr/include/bits/pthreadtypes.h /usr/include/alloca.h opcodes.h
+lex.ptx_.o: opcodes.def ptx.tab.h /usr/include/unistd.h
+lex.ptx_.o: /usr/include/bits/posix_opt.h /usr/include/bits/confname.h
+lex.ptx_.o: /usr/include/getopt.h
+lex.ptxinfo_.o: /usr/include/stdio.h /usr/include/features.h
+lex.ptxinfo_.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
+lex.ptxinfo_.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h
+lex.ptxinfo_.o: /usr/include/bits/types.h /usr/include/bits/typesizes.h
+lex.ptxinfo_.o: /usr/include/libio.h /usr/include/_G_config.h
+lex.ptxinfo_.o: /usr/include/wchar.h /usr/include/bits/stdio_lim.h
+lex.ptxinfo_.o: /usr/include/bits/sys_errlist.h /usr/include/string.h
+lex.ptxinfo_.o: /usr/include/errno.h /usr/include/bits/errno.h
+lex.ptxinfo_.o: /usr/include/linux/errno.h /usr/include/asm/errno.h
+lex.ptxinfo_.o: /usr/include/asm-generic/errno.h
+lex.ptxinfo_.o: /usr/include/asm-generic/errno-base.h /usr/include/stdlib.h
+lex.ptxinfo_.o: /usr/include/sys/types.h /usr/include/time.h
+lex.ptxinfo_.o: /usr/include/endian.h /usr/include/bits/endian.h
+lex.ptxinfo_.o: /usr/include/bits/byteswap.h /usr/include/sys/select.h
+lex.ptxinfo_.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
+lex.ptxinfo_.o: /usr/include/bits/time.h /usr/include/sys/sysmacros.h
+lex.ptxinfo_.o: /usr/include/bits/pthreadtypes.h /usr/include/alloca.h
+lex.ptxinfo_.o: ptxinfo.tab.h /usr/include/unistd.h
+lex.ptxinfo_.o: /usr/include/bits/posix_opt.h /usr/include/bits/confname.h
+lex.ptxinfo_.o: /usr/include/getopt.h
+ptxinfo.tab.o: /usr/include/stdlib.h /usr/include/features.h
+ptxinfo.tab.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
+ptxinfo.tab.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h
+ptxinfo.tab.o: /usr/include/sys/types.h /usr/include/bits/types.h
+ptxinfo.tab.o: /usr/include/bits/typesizes.h /usr/include/time.h
+ptxinfo.tab.o: /usr/include/endian.h /usr/include/bits/endian.h
+ptxinfo.tab.o: /usr/include/bits/byteswap.h /usr/include/sys/select.h
+ptxinfo.tab.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
+ptxinfo.tab.o: /usr/include/bits/time.h /usr/include/sys/sysmacros.h
+ptxinfo.tab.o: /usr/include/bits/pthreadtypes.h /usr/include/alloca.h
+ptxinfo.tab.o: /usr/include/string.h
+ptx.tab.o: ptx_parser.h ../abstract_hardware_model.h /usr/include/stdlib.h
+ptx.tab.o: /usr/include/features.h /usr/include/sys/cdefs.h
+ptx.tab.o: /usr/include/bits/wordsize.h /usr/include/gnu/stubs.h
+ptx.tab.o: /usr/include/gnu/stubs-64.h /usr/include/sys/types.h
+ptx.tab.o: /usr/include/bits/types.h /usr/include/bits/typesizes.h
+ptx.tab.o: /usr/include/time.h /usr/include/endian.h
+ptx.tab.o: /usr/include/bits/endian.h /usr/include/bits/byteswap.h
+ptx.tab.o: /usr/include/sys/select.h /usr/include/bits/select.h
+ptx.tab.o: /usr/include/bits/sigset.h /usr/include/bits/time.h
+ptx.tab.o: /usr/include/sys/sysmacros.h /usr/include/bits/pthreadtypes.h
+ptx.tab.o: /usr/include/alloca.h /usr/include/string.h /usr/include/math.h
+ptx.tab.o: /usr/include/bits/huge_val.h /usr/include/bits/mathdef.h
+ptx.tab.o: /usr/include/bits/mathcalls.h
