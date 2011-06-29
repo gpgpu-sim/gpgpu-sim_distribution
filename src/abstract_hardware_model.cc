@@ -2,6 +2,7 @@
 #include "cuda-sim/memory.h"
 #include "option_parser.h"
 #include "cuda-sim/ptx_ir.h"
+#include "cuda-sim/ptx-stats.h"
 #include <algorithm>
 
 unsigned mem_access_t::sm_next_access_uid = 0;   
@@ -81,6 +82,8 @@ void warp_inst_t::generate_mem_accesses()
         return; 
     if( m_warp_active_mask.count() == 0 ) 
         return; // predicated off
+
+    const size_t starting_queue_size = m_accessq.size();
 
     assert( is_load() || is_store() );
     assert( m_per_scalar_thread_valid ); // need address information per thread
@@ -315,6 +318,7 @@ void warp_inst_t::generate_mem_accesses()
             m_accessq.push_back( mem_access_t(access_type,a->first,cache_block_size,is_write,a->second,byte_mask) );
     }
 
+    ptx_file_line_stats_add_uncoalesced_gmem( pc, m_accessq.size() - starting_queue_size );
     m_mem_accesses_created=true;
 } 
 
