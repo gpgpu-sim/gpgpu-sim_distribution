@@ -1,6 +1,6 @@
 SIMSUBDIR=fermi
 
-export GPGPUSIM_ROOT=$HOME/gpgpu_sim_research/$SIMSUBDIR/distribution/
+export GPGPUSIM_ROOT=$PWD
 
 export QTINC=/usr/include
 export BOOST_ROOT=/usr/include/boost
