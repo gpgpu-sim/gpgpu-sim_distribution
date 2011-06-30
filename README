@@ -1,4 +1,4 @@
-GPGPU-Sim Simulator version 2.1.1b (beta)
+GPGPU-Sim Simulator version 3.0.0b (beta)
 
 See doc/GPGPU-Sim_Manual.html for more documentation.
 
@@ -71,18 +71,10 @@ CUDA toolkit (including the trailing "/cuda").  Then, change to the C/common
 subdirectory of your CUDA SDK installation (or common subdirectory on older
 CUDA SDK versions) and type "make".
 
-Step 4: Set environment variables (e.g., your .bashrc file if you use bash as
-your shell). 
- 
-    (a) Set GPGPUSIM_ROOT to point to the directory containing this README file. 
-    (b) Set CUDAHOME to point to your CUDA installation directory
-    (c) Set NVIDIA_CUDA_SDK_LOCATION to point to the location of the CUDA SDK
-    (d) Add $CUDAHOME/bin and $GPGPUSIM_ROOT/bin to your PATH 
-    (e) Add $GPGPUSIM_ROOT/lib/ to your LD_LIBRARY_PATH and remove $CUDAHOME/lib
-        or $CUDAHOME/lib64 from LD_LIBRARY_PATH
-    (f) If using OpenCL, set NVOPENCL_LIBDIR to the installation directory of 
-        libOpenCL.so distributed with the NVIDIA OpenCL driver.
-        On SuSe 11.1 64-bit NVIDIA's libOpenCL.so is installed in /usr/lib64/.  
+Step 4: Set environment variables by sourcing the setup_environment script. 
+From a bash shell, type the following in this directory:
+
+	. setup_environment
 
 Step 5: Type "make" in this directory. This will build the simulator with
 optimizations enabled so the simulator runs faster. If you want to run the
