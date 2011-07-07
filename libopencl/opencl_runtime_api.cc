@@ -479,9 +479,16 @@ void _cl_program::Build(const char *options)
             result = system(commandline);
             if( result ) { printf("GPGPU-Sim OpenCL API: ERROR (%d)\n", result ); exit(1); }
 
+            // copy the nvopencl_wrapper file to the remote server
+            snprintf(commandline,1024,"scp %s/libopencl/bin/nvopencl_wrapper %s:%s/nvopencl_wrapper", gpgpusim_opencl_path, remote_host, test_dir );
+            printf("GPGPU-Sim OpenCL API: OpenCL wrapper command line \'%s\'\n", commandline);
+            fflush(stdout);
+            result = system(commandline);
+            if( result ) { printf("GPGPU-Sim OpenCL API: ERROR (%d)\n", result ); exit(1); }
+
             // convert OpenCL to PTX on remote server
-            snprintf(commandline,1024,"ssh %s \"export LD_LIBRARY_PATH=%s; %s/libopencl/bin/nvopencl_wrapper %s/%s %s/%s %s\"", 
-                    remote_host, nvopencl_libdir, gpgpusim_opencl_path, test_dir, cl_fname, test_dir, ptx_fname, opt );
+            snprintf(commandline,1024,"ssh %s \"export LD_LIBRARY_PATH=%s; %s/nvopencl_wrapper %s/%s %s/%s %s\"",
+                    remote_host, nvopencl_libdir, test_dir, test_dir, cl_fname, test_dir, ptx_fname, opt );
             printf("GPGPU-Sim OpenCL API: OpenCL wrapper command line \'%s\'\n", commandline);
             fflush(stdout);
             result = system(commandline);
