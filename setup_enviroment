@@ -1,6 +1,6 @@
 SIMSUBDIR=mem_divergence
 
-export GPGPUSIM_ROOT=$PWD/distribution
+export GPGPUSIM_ROOT=$PWD
 
 export QTINC=/usr/include
 export BOOST_ROOT=/usr/include/boost
