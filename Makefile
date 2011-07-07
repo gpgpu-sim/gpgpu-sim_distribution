@@ -120,6 +120,7 @@ $(SIM_LIB_DIR)/libOpenCL.so: $(LIBS) opencllib
 	g++ $(SNOW) -shared -Wl,-soname,libOpenCL.so \
 			$(SIM_OBJ_FILES_DIR)/libopencl/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/*.o \
+			$(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table/*.o \
 			$(SIM_OBJ_FILES_DIR)/gpgpu-sim/*.o \
 			$(SIM_OBJ_FILES_DIR)/intersim/*.o \
 			$(SIM_OBJ_FILES_DIR)/*.o -lm -lz -lGL -pthread \
