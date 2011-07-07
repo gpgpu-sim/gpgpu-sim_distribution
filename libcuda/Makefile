@@ -89,17 +89,103 @@ CXXFLAGS += -DCUDART_VERSION=$(CUDART_VERSION)
 
 .PHONY: clean
 
-OBJS = $(CXX_SRCS:.cc=.o)
+OUTPUT_DIR=../$(SIM_OBJ_FILES_DIR)/libcuda
+
+OBJS = $(CXX_SRCS:%.cc=$(OUTPUT_DIR)/%.o)
+
+
 
 #--- Make rules ---
-
 lib$(PROG).a: $(OBJS)
-	ar rcs lib$(PROG).a $(OBJS)
+	ar rcs $(OUTPUT_DIR)/lib$(PROG).a $(OBJS)
 
-%.o: %.cc
+$(OUTPUT_DIR)/%.o: %.cc
 	$(CPP) $(CXXFLAGS) -I./ -I$(CUDAHOME)/include  -c $< -o $@
+	
+depend:
+	makedepend -p$(OUTPUT_DIR)/ $(CXX_SRCS) 2> /dev/null
 
 clean:
 	rm -f $(PROG)
 	rm -f *.o
 	rm -f lib$(PROG).a
+# DO NOT DELETE
+
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/stdlib.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/features.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/sys/cdefs.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/bits/wordsize.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/gnu/stubs.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/gnu/stubs-64.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/sys/types.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/bits/types.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/bits/typesizes.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/time.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/endian.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/bits/endian.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/bits/byteswap.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/sys/select.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/bits/select.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/bits/sigset.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/bits/time.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/sys/sysmacros.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/bits/pthreadtypes.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/alloca.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/stdio.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/libio.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/_G_config.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/wchar.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/bits/stdio_lim.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/bits/sys_errlist.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/string.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/assert.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/sys/mman.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/bits/mman.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/abstract_hardware_model.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/gpgpu-sim/gpu-sim.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/abstract_hardware_model.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/gpgpu-sim/addrdec.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/option_parser.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/gpgpu-sim/shader.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/math.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/bits/huge_val.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/bits/mathdef.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/bits/mathcalls.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/cuda-sim/ptx.tab.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/cuda-sim/dram_callback.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/gpgpu-sim/delayqueue.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/intersim/statwraper.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/gpgpu-sim/gpu-misc.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/gpgpu-sim/stack.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/gpgpu-sim/dram.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/zlib.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/zconf.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/unistd.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/bits/posix_opt.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/bits/confname.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/getopt.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/gpgpu-sim/scoreboard.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/gpgpu-sim/mem_fetch.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/gpgpu-sim/stats.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/gpgpu-sim/gpu-cache.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/tr1_hash_map.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/cuda-sim/ptx_loader.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/cuda-sim/cuda-sim.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/cuda-sim/dram_callback.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/cuda-sim/ptx_ir.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/cuda-sim/ptx.tab.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/cuda-sim/ptx_sim.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/cuda-sim/opcodes.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/cuda-sim/opcodes.def
+../build/debug/libcuda/cuda_runtime_api.o: ../src/cuda-sim/memory.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/cuda-sim/ptx_parser.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/gpgpusim_entrypoint.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/abstract_hardware_model.h
+../build/debug/libcuda/cuda_runtime_api.o: ../src/stream_manager.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/pthread.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/sched.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/bits/sched.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/signal.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/bits/setjmp.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/semaphore.h
+../build/debug/libcuda/cuda_runtime_api.o: /usr/include/bits/semaphore.h

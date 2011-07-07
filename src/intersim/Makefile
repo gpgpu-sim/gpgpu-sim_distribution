@@ -32,6 +32,8 @@ endif
 
 PROG     = intersim
 
+OUTPUT_DIR=../../$(SIM_OBJ_FILES_DIR)/intersim
+
 CPP_SRCS = $(INTERFACE) \
 	config_utils.cpp \
 	booksim_config.cpp \
@@ -67,18 +69,23 @@ CPP_SRCS = $(INTERFACE) \
 	rng_double_wrapper.cpp \
 	statwraper.cpp
 
+#LEX_OBJS  = $(OUTPUT_DIR)/configlex.o
 LEX_OBJS  = configlex.o
+#YACC_OBJS = $(OUTPUT_DIR)/config_tab.o
 YACC_OBJS = config_tab.o
 
 #--- Make rules ---
 
-OBJS = $(CPP_SRCS:.cpp=.o) $(LEX_OBJS) $(YACC_OBJS)
+OBJS = $(CPP_SRCS:%.cpp=$(OUTPUT_DIR)/%.o) $(LEX_OBJS) $(YACC_OBJS)
 
 .PHONY: clean
 .PRECIOUS: %_tab.cpp %_tab.hpp %lex.cpp
 
 lib$(PROG).a: $(OBJS)
-	ar rcs lib$(PROG).a $(OBJS)
+	ar rcs $(OUTPUT_DIR)/lib$(PROG).a $(OBJS)
+	mv $(LEX_OBJS) $(OUTPUT_DIR)/
+	mv $(YACC_OBJS) $(OUTPUT_DIR)/
+	
 
 purify: $(OBJS)
 	$(PURIFY) -always-use-cache-dir $(CPP) $(OBJS) -o $(PROG) -L/usr/lib
@@ -89,10 +96,10 @@ quantify: $(OBJS)
 %lex.o: %lex.cpp %_tab.hpp
 	$(CPP) $(CPPFLAGS) -c $< -o $@
 
-%.o: %.cpp
+$(OUTPUT_DIR)/%.o: %.cpp
 	$(CPP) $(EXTRA) $(CPPFLAGS) $(TEST) -c $< -o $@
  
-%.o: %.c
+$(OUTPUT_DIR)/%.o: %.c
 	$(CPP) $(CPPFLAGS) $(TEST) $(VCSFLAGS) -c $< -o $@
 
 %_tab.cpp: %.y
@@ -111,7 +118,8 @@ clean:
 	rm -f $(OBJS) *_tab.cpp *_tab.hpp *.tab.c *.tab.h *lex.cpp
 	rm -f $(PROG)
 	rm -f lib$(PROG).a 
-	rm -f lib$(PROG).so 
+	rm -f lib$(PROG).so
+	rm -f $(OBJS) *.o 
 
 interconnect_interface.o: ../cuda-sim/ptx.tab.h
 
