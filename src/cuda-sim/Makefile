@@ -1,64 +1,28 @@
-# Copyright (c) 2009 by Tor M. Aamodt and the University of British Columbia
-# Vancouver, BC  V6T 1Z4
-# All Rights Reserved.
-# 
-# THIS IS A LEGAL DOCUMENT BY DOWNLOADING GPGPU-SIM, YOU ARE AGREEING TO THESE
-# TERMS AND CONDITIONS.
-# 
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNERS OR CONTRIBUTORS BE
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-# 
-# NOTE: The files libcuda/cuda_runtime_api.c and src/cuda-sim/cuda-math.h
-# are derived from the CUDA Toolset available from http://www.nvidia.com/cuda
-# (property of NVIDIA).  The files benchmarks/BlackScholes/ and 
-# benchmarks/template/ are derived from the CUDA SDK available from 
-# http://www.nvidia.com/cuda (also property of NVIDIA).  The files 
-# src/gpgpusim_entrypoint.c and src/simplesim-3.0/ are derived from the 
-# SimpleScalar Toolset available from http://www.simplescalar.com/ 
-# (property of SimpleScalar LLC) and the files src/intersim/ are derived 
-# from Booksim (Simulator provided with the textbook "Principles and 
-# Practices of Interconnection Networks" available from 
-# http://cva.stanford.edu/books/ppin/).  As such, those files are bound by 
-# the corresponding legal terms and conditions set forth separately (original 
-# copyright notices are left in files from these sources and where we have 
-# modified a file our copyright notice appears before the original copyright 
-# notice).  
-# 
-# Using this version of GPGPU-Sim requires a complete installation of CUDA
-# which is distributed seperately by NVIDIA under separate terms and
-# conditions.
-# 
+# Copyright (c) 2009-2011, The University of British Columbia
+# All rights reserved.
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
-# 
-# 1. Redistributions of source code must retain the above copyright notice,
-# this list of conditions and the following disclaimer.
-# 
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-# this list of conditions and the following disclaimer in the documentation
-# and/or other materials provided with the distribution.
-# 
-# 3. Neither the name of the University of British Columbia nor the names of
-# its contributors may be used to endorse or promote products derived from
-# this software without specific prior written permission.
-# 
-# 4. This version of GPGPU-SIM is distributed freely for non-commercial use only.  
-#  
-# 5. No nonprofit user may place any restrictions on the use of this software,
-#  including as modified by the user, by any other authorized user.
-# 
-# 6. GPGPU-SIM was developed primarily by Tor M. Aamodt, Wilson W. L. Fung, 
-# Ali Bakhoda, George L. Yuan, at the University of British Columbia, 
-# Vancouver, BC V6T 1Z4
+#
+# Redistributions of source code must retain the above copyright notice, this
+# list of conditions and the following disclaimer.
+# Redistributions in binary form must reproduce the above copyright notice, this
+# list of conditions and the following disclaimer in the documentation and/or
+# other materials provided with the distribution.
+# Neither the name of The University of British Columbia nor the names of its
+# contributors may be used to endorse or promote products derived from this
+# software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 default: libgpgpu_ptx_sim.a 
  
@@ -181,381 +145,395 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 
 # DO NOT DELETE
 
-../../build/debug/cuda-sim/cuda_device_printf.o: cuda_device_printf.h
-../../build/debug/cuda-sim/cuda_device_printf.o: ptx_ir.h
-../../build/debug/cuda-sim/cuda_device_printf.o: ../abstract_hardware_model.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/assert.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/features.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/sys/cdefs.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/bits/wordsize.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/gnu/stubs.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/gnu/stubs-64.h
-../../build/debug/cuda-sim/cuda_device_printf.o: ptx_sim.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/stdlib.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/sys/types.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/bits/types.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/bits/typesizes.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/time.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/endian.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/bits/endian.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/bits/byteswap.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/sys/select.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/bits/select.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/bits/sigset.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/bits/time.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/sys/sysmacros.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/bits/pthreadtypes.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/alloca.h
-../../build/debug/cuda-sim/cuda_device_printf.o: dram_callback.h
-../../build/debug/cuda-sim/cuda_device_printf.o: ../tr1_hash_map.h opcodes.h
-../../build/debug/cuda-sim/cuda_device_printf.o: opcodes.def memory.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/string.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/stdio.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/libio.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/_G_config.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/wchar.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/bits/stdio_lim.h
-../../build/debug/cuda-sim/cuda_device_printf.o: /usr/include/bits/sys_errlist.h
-../../build/debug/cuda-sim/cuda_device_printf.o: ../option_parser.h
-../../build/debug/cuda-sim/cuda-sim.o: cuda-sim.h
-../../build/debug/cuda-sim/cuda-sim.o: ../abstract_hardware_model.h
-../../build/debug/cuda-sim/cuda-sim.o: dram_callback.h /usr/include/stdlib.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/features.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/sys/cdefs.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/bits/wordsize.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/gnu/stubs.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/gnu/stubs-64.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/sys/types.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/bits/types.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/bits/typesizes.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/time.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/endian.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/bits/endian.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/bits/byteswap.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/sys/select.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/bits/select.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/bits/sigset.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/bits/time.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/sys/sysmacros.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/bits/pthreadtypes.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/alloca.h ptx_ir.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/assert.h ptx_sim.h
-../../build/debug/cuda-sim/cuda-sim.o: ../tr1_hash_map.h opcodes.h
-../../build/debug/cuda-sim/cuda-sim.o: opcodes.def memory.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/string.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/stdio.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/libio.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/_G_config.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/wchar.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/bits/stdio_lim.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/bits/sys_errlist.h
-../../build/debug/cuda-sim/cuda-sim.o: ../option_parser.h
-../../build/debug/cuda-sim/cuda-sim.o: ../intersim/statwraper.h ptx-stats.h
-../../build/debug/cuda-sim/cuda-sim.o: ptx_loader.h ptx_parser.h
-../../build/debug/cuda-sim/cuda-sim.o: ../gpgpu-sim/gpu-sim.h
-../../build/debug/cuda-sim/cuda-sim.o: ../gpgpu-sim/addrdec.h
-../../build/debug/cuda-sim/cuda-sim.o: ../gpgpu-sim/shader.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/math.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/bits/huge_val.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/bits/mathdef.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/bits/mathcalls.h
-../../build/debug/cuda-sim/cuda-sim.o: ../cuda-sim/dram_callback.h
-../../build/debug/cuda-sim/cuda-sim.o: ../gpgpu-sim/delayqueue.h
-../../build/debug/cuda-sim/cuda-sim.o: ../gpgpu-sim/gpu-misc.h
-../../build/debug/cuda-sim/cuda-sim.o: ../gpgpu-sim/stack.h
-../../build/debug/cuda-sim/cuda-sim.o: ../gpgpu-sim/dram.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/zlib.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/zconf.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/unistd.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/bits/posix_opt.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/bits/confname.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/getopt.h
-../../build/debug/cuda-sim/cuda-sim.o: ../gpgpu-sim/scoreboard.h
-../../build/debug/cuda-sim/cuda-sim.o: ../gpgpu-sim/mem_fetch.h
-../../build/debug/cuda-sim/cuda-sim.o: ../gpgpu-sim/stats.h
-../../build/debug/cuda-sim/cuda-sim.o: ../gpgpu-sim/gpu-cache.h
-../../build/debug/cuda-sim/cuda-sim.o: ../gpgpusim_entrypoint.h
-../../build/debug/cuda-sim/cuda-sim.o: ../abstract_hardware_model.h
-../../build/debug/cuda-sim/cuda-sim.o: decuda_pred_table/decuda_pred_table.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/sys/mman.h
-../../build/debug/cuda-sim/cuda-sim.o: /usr/include/bits/mman.h
-../../build/debug/cuda-sim/instructions.o: ptx_ir.h
-../../build/debug/cuda-sim/instructions.o: ../abstract_hardware_model.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/assert.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/features.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/sys/cdefs.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/bits/wordsize.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/gnu/stubs.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/gnu/stubs-64.h
-../../build/debug/cuda-sim/instructions.o: ptx_sim.h /usr/include/stdlib.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/sys/types.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/bits/types.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/bits/typesizes.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/time.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/endian.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/bits/endian.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/bits/byteswap.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/sys/select.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/bits/select.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/bits/sigset.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/bits/time.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/sys/sysmacros.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/bits/pthreadtypes.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/alloca.h
-../../build/debug/cuda-sim/instructions.o: dram_callback.h ../tr1_hash_map.h
-../../build/debug/cuda-sim/instructions.o: opcodes.h opcodes.def memory.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/string.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/stdio.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/libio.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/_G_config.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/wchar.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/bits/stdio_lim.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/bits/sys_errlist.h
-../../build/debug/cuda-sim/instructions.o: ../option_parser.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/math.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/bits/huge_val.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/bits/mathdef.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/bits/mathcalls.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/fenv.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/bits/fenv.h
-../../build/debug/cuda-sim/instructions.o: cuda-math.h ptx_loader.h
-../../build/debug/cuda-sim/instructions.o: cuda_device_printf.h
-../../build/debug/cuda-sim/instructions.o: ../gpgpu-sim/gpu-sim.h
-../../build/debug/cuda-sim/instructions.o: ../gpgpu-sim/addrdec.h
-../../build/debug/cuda-sim/instructions.o: ../gpgpu-sim/shader.h
-../../build/debug/cuda-sim/instructions.o: ../cuda-sim/dram_callback.h
-../../build/debug/cuda-sim/instructions.o: ../gpgpu-sim/delayqueue.h
-../../build/debug/cuda-sim/instructions.o: ../intersim/statwraper.h
-../../build/debug/cuda-sim/instructions.o: ../gpgpu-sim/gpu-misc.h
-../../build/debug/cuda-sim/instructions.o: ../gpgpu-sim/stack.h
-../../build/debug/cuda-sim/instructions.o: ../gpgpu-sim/dram.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/zlib.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/zconf.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/unistd.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/bits/posix_opt.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/bits/confname.h
-../../build/debug/cuda-sim/instructions.o: /usr/include/getopt.h
-../../build/debug/cuda-sim/instructions.o: ../gpgpu-sim/scoreboard.h
-../../build/debug/cuda-sim/instructions.o: ../gpgpu-sim/mem_fetch.h
-../../build/debug/cuda-sim/instructions.o: ../gpgpu-sim/stats.h
-../../build/debug/cuda-sim/instructions.o: ../gpgpu-sim/gpu-cache.h
-../../build/debug/cuda-sim/instructions.o: ../gpgpu-sim/shader.h
-../../build/debug/cuda-sim/memory.o: memory.h ../abstract_hardware_model.h
-../../build/debug/cuda-sim/memory.o: /usr/include/assert.h
-../../build/debug/cuda-sim/memory.o: /usr/include/features.h
-../../build/debug/cuda-sim/memory.o: /usr/include/sys/cdefs.h
-../../build/debug/cuda-sim/memory.o: /usr/include/bits/wordsize.h
-../../build/debug/cuda-sim/memory.o: /usr/include/gnu/stubs.h
-../../build/debug/cuda-sim/memory.o: /usr/include/gnu/stubs-64.h
-../../build/debug/cuda-sim/memory.o: /usr/include/string.h
-../../build/debug/cuda-sim/memory.o: /usr/include/stdio.h
-../../build/debug/cuda-sim/memory.o: /usr/include/bits/types.h
-../../build/debug/cuda-sim/memory.o: /usr/include/bits/typesizes.h
-../../build/debug/cuda-sim/memory.o: /usr/include/libio.h
-../../build/debug/cuda-sim/memory.o: /usr/include/_G_config.h
-../../build/debug/cuda-sim/memory.o: /usr/include/wchar.h
-../../build/debug/cuda-sim/memory.o: /usr/include/bits/stdio_lim.h
-../../build/debug/cuda-sim/memory.o: /usr/include/bits/sys_errlist.h
-../../build/debug/cuda-sim/memory.o: /usr/include/stdlib.h
-../../build/debug/cuda-sim/memory.o: /usr/include/sys/types.h
-../../build/debug/cuda-sim/memory.o: /usr/include/time.h
-../../build/debug/cuda-sim/memory.o: /usr/include/endian.h
-../../build/debug/cuda-sim/memory.o: /usr/include/bits/endian.h
-../../build/debug/cuda-sim/memory.o: /usr/include/bits/byteswap.h
-../../build/debug/cuda-sim/memory.o: /usr/include/sys/select.h
-../../build/debug/cuda-sim/memory.o: /usr/include/bits/select.h
-../../build/debug/cuda-sim/memory.o: /usr/include/bits/sigset.h
-../../build/debug/cuda-sim/memory.o: /usr/include/bits/time.h
-../../build/debug/cuda-sim/memory.o: /usr/include/sys/sysmacros.h
-../../build/debug/cuda-sim/memory.o: /usr/include/bits/pthreadtypes.h
-../../build/debug/cuda-sim/memory.o: /usr/include/alloca.h ../debug.h
-../../build/debug/cuda-sim/memory.o: ../abstract_hardware_model.h
-../../build/debug/cuda-sim/ptx_ir.o: ptx_parser.h
-../../build/debug/cuda-sim/ptx_ir.o: ../abstract_hardware_model.h ptx_ir.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/assert.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/features.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/sys/cdefs.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/bits/wordsize.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/gnu/stubs.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/gnu/stubs-64.h ptx_sim.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/stdlib.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/sys/types.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/bits/types.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/bits/typesizes.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/time.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/endian.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/bits/endian.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/bits/byteswap.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/sys/select.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/bits/select.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/bits/sigset.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/bits/time.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/sys/sysmacros.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/bits/pthreadtypes.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/alloca.h dram_callback.h
-../../build/debug/cuda-sim/ptx_ir.o: ../tr1_hash_map.h opcodes.h opcodes.def
-../../build/debug/cuda-sim/ptx_ir.o: memory.h /usr/include/string.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/stdio.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/libio.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/_G_config.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/wchar.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/bits/stdio_lim.h
-../../build/debug/cuda-sim/ptx_ir.o: /usr/include/bits/sys_errlist.h
-../../build/debug/cuda-sim/ptx_ir.o: ../option_parser.h cuda-sim.h
-../../build/debug/cuda-sim/ptx_loader.o: ptx_loader.h ptx_ir.h
-../../build/debug/cuda-sim/ptx_loader.o: ../abstract_hardware_model.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/assert.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/features.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/sys/cdefs.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/bits/wordsize.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/gnu/stubs.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/gnu/stubs-64.h
-../../build/debug/cuda-sim/ptx_loader.o: ptx_sim.h /usr/include/stdlib.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/sys/types.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/bits/types.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/bits/typesizes.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/time.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/endian.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/bits/endian.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/bits/byteswap.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/sys/select.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/bits/select.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/bits/sigset.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/bits/time.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/sys/sysmacros.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/bits/pthreadtypes.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/alloca.h
-../../build/debug/cuda-sim/ptx_loader.o: dram_callback.h ../tr1_hash_map.h
-../../build/debug/cuda-sim/ptx_loader.o: opcodes.h opcodes.def memory.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/string.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/stdio.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/libio.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/_G_config.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/wchar.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/bits/stdio_lim.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/bits/sys_errlist.h
-../../build/debug/cuda-sim/ptx_loader.o: ../option_parser.h cuda-sim.h
-../../build/debug/cuda-sim/ptx_loader.o: ptx_parser.h /usr/include/dirent.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/bits/dirent.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/bits/posix1_lim.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/bits/local_lim.h
-../../build/debug/cuda-sim/ptx_loader.o: /usr/include/linux/limits.h
-../../build/debug/cuda-sim/ptx_parser.o: ptx_parser.h
-../../build/debug/cuda-sim/ptx_parser.o: ../abstract_hardware_model.h
-../../build/debug/cuda-sim/ptx_parser.o: ptx_ir.h /usr/include/assert.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/features.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/sys/cdefs.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/bits/wordsize.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/gnu/stubs.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/gnu/stubs-64.h
-../../build/debug/cuda-sim/ptx_parser.o: ptx_sim.h /usr/include/stdlib.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/sys/types.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/bits/types.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/bits/typesizes.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/time.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/endian.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/bits/endian.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/bits/byteswap.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/sys/select.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/bits/select.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/bits/sigset.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/bits/time.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/sys/sysmacros.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/bits/pthreadtypes.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/alloca.h
-../../build/debug/cuda-sim/ptx_parser.o: dram_callback.h ../tr1_hash_map.h
-../../build/debug/cuda-sim/ptx_parser.o: opcodes.h opcodes.def memory.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/string.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/stdio.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/libio.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/_G_config.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/wchar.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/bits/stdio_lim.h
-../../build/debug/cuda-sim/ptx_parser.o: /usr/include/bits/sys_errlist.h
-../../build/debug/cuda-sim/ptx_parser.o: ../option_parser.h
-../../build/debug/cuda-sim/ptx_sim.o: ptx_sim.h /usr/include/stdlib.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/features.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/sys/cdefs.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/bits/wordsize.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/gnu/stubs.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/gnu/stubs-64.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/sys/types.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/bits/types.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/bits/typesizes.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/time.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/endian.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/bits/endian.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/bits/byteswap.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/sys/select.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/bits/select.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/bits/sigset.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/bits/time.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/sys/sysmacros.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/bits/pthreadtypes.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/alloca.h dram_callback.h
-../../build/debug/cuda-sim/ptx_sim.o: ../abstract_hardware_model.h
-../../build/debug/cuda-sim/ptx_sim.o: ../tr1_hash_map.h /usr/include/assert.h
-../../build/debug/cuda-sim/ptx_sim.o: opcodes.h opcodes.def memory.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/string.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/stdio.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/libio.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/_G_config.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/wchar.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/bits/stdio_lim.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/bits/sys_errlist.h
-../../build/debug/cuda-sim/ptx_sim.o: ptx_ir.h ../option_parser.h
-../../build/debug/cuda-sim/ptx_sim.o: ../gpgpu-sim/gpu-sim.h
-../../build/debug/cuda-sim/ptx_sim.o: ../gpgpu-sim/addrdec.h
-../../build/debug/cuda-sim/ptx_sim.o: ../gpgpu-sim/shader.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/math.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/bits/huge_val.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/bits/mathdef.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/bits/mathcalls.h
-../../build/debug/cuda-sim/ptx_sim.o: ../cuda-sim/dram_callback.h
-../../build/debug/cuda-sim/ptx_sim.o: ../gpgpu-sim/delayqueue.h
-../../build/debug/cuda-sim/ptx_sim.o: ../intersim/statwraper.h
-../../build/debug/cuda-sim/ptx_sim.o: ../gpgpu-sim/gpu-misc.h
-../../build/debug/cuda-sim/ptx_sim.o: ../gpgpu-sim/stack.h
-../../build/debug/cuda-sim/ptx_sim.o: ../gpgpu-sim/dram.h /usr/include/zlib.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/zconf.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/unistd.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/bits/posix_opt.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/bits/confname.h
-../../build/debug/cuda-sim/ptx_sim.o: /usr/include/getopt.h
-../../build/debug/cuda-sim/ptx_sim.o: ../gpgpu-sim/scoreboard.h
-../../build/debug/cuda-sim/ptx_sim.o: ../gpgpu-sim/mem_fetch.h
-../../build/debug/cuda-sim/ptx_sim.o: ../gpgpu-sim/stats.h
-../../build/debug/cuda-sim/ptx_sim.o: ../gpgpu-sim/gpu-cache.h
-../../build/debug/cuda-sim/ptx_sim.o: ../gpgpu-sim/shader.h
-../../build/debug/cuda-sim/ptx-stats.o: ptx_ir.h ../abstract_hardware_model.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/assert.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/features.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/sys/cdefs.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/bits/wordsize.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/gnu/stubs.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/gnu/stubs-64.h ptx_sim.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/stdlib.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/sys/types.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/bits/types.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/bits/typesizes.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/time.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/endian.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/bits/endian.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/bits/byteswap.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/sys/select.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/bits/select.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/bits/sigset.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/bits/time.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/sys/sysmacros.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/bits/pthreadtypes.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/alloca.h dram_callback.h
-../../build/debug/cuda-sim/ptx-stats.o: ../tr1_hash_map.h opcodes.h
-../../build/debug/cuda-sim/ptx-stats.o: opcodes.def memory.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/string.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/stdio.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/libio.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/_G_config.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/wchar.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/bits/stdio_lim.h
-../../build/debug/cuda-sim/ptx-stats.o: /usr/include/bits/sys_errlist.h
-../../build/debug/cuda-sim/ptx-stats.o: ../option_parser.h ptx-stats.h
+../../build/release/cuda-sim/cuda_device_printf.o: cuda_device_printf.h
+../../build/release/cuda-sim/cuda_device_printf.o: ptx_ir.h
+../../build/release/cuda-sim/cuda_device_printf.o: ../abstract_hardware_model.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/assert.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/features.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/sys/cdefs.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/wordsize.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/gnu/stubs.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/gnu/stubs-64.h
+../../build/release/cuda-sim/cuda_device_printf.o: ptx.tab.h ptx_sim.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/stdlib.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/sys/types.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/types.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/typesizes.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/time.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/endian.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/endian.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/byteswap.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/sys/select.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/select.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/sigset.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/time.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/sys/sysmacros.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/pthreadtypes.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/alloca.h
+../../build/release/cuda-sim/cuda_device_printf.o: dram_callback.h
+../../build/release/cuda-sim/cuda_device_printf.o: ../tr1_hash_map.h
+../../build/release/cuda-sim/cuda_device_printf.o: opcodes.h opcodes.def
+../../build/release/cuda-sim/cuda_device_printf.o: memory.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/string.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/stdio.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/libio.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/_G_config.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/wchar.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/stdio_lim.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/sys_errlist.h
+../../build/release/cuda-sim/cuda_device_printf.o: ../option_parser.h
+../../build/release/cuda-sim/cuda-sim.o: cuda-sim.h
+../../build/release/cuda-sim/cuda-sim.o: ../abstract_hardware_model.h
+../../build/release/cuda-sim/cuda-sim.o: dram_callback.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/stdlib.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/features.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/sys/cdefs.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/wordsize.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/gnu/stubs.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/gnu/stubs-64.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/sys/types.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/types.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/typesizes.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/time.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/endian.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/endian.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/byteswap.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/sys/select.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/select.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/sigset.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/time.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/sys/sysmacros.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/pthreadtypes.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/alloca.h instructions.h
+../../build/release/cuda-sim/cuda-sim.o: ptx_ir.h /usr/include/assert.h
+../../build/release/cuda-sim/cuda-sim.o: ptx.tab.h ptx_sim.h
+../../build/release/cuda-sim/cuda-sim.o: ../tr1_hash_map.h opcodes.h
+../../build/release/cuda-sim/cuda-sim.o: opcodes.def memory.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/string.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/stdio.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/libio.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/_G_config.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/wchar.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/stdio_lim.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/sys_errlist.h
+../../build/release/cuda-sim/cuda-sim.o: ../option_parser.h
+../../build/release/cuda-sim/cuda-sim.o: ../intersim/statwraper.h ptx-stats.h
+../../build/release/cuda-sim/cuda-sim.o: ptx_loader.h ptx_parser.h
+../../build/release/cuda-sim/cuda-sim.o: ../gpgpu-sim/gpu-sim.h
+../../build/release/cuda-sim/cuda-sim.o: ../gpgpu-sim/addrdec.h
+../../build/release/cuda-sim/cuda-sim.o: ../gpgpu-sim/shader.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/math.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/huge_val.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/mathdef.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/mathcalls.h
+../../build/release/cuda-sim/cuda-sim.o: ../cuda-sim/ptx.tab.h
+../../build/release/cuda-sim/cuda-sim.o: ../cuda-sim/dram_callback.h
+../../build/release/cuda-sim/cuda-sim.o: ../gpgpu-sim/delayqueue.h
+../../build/release/cuda-sim/cuda-sim.o: ../gpgpu-sim/gpu-misc.h
+../../build/release/cuda-sim/cuda-sim.o: ../gpgpu-sim/stack.h
+../../build/release/cuda-sim/cuda-sim.o: ../gpgpu-sim/dram.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/zlib.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/zconf.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/unistd.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/posix_opt.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/confname.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/getopt.h
+../../build/release/cuda-sim/cuda-sim.o: ../gpgpu-sim/scoreboard.h
+../../build/release/cuda-sim/cuda-sim.o: ../gpgpu-sim/mem_fetch.h
+../../build/release/cuda-sim/cuda-sim.o: ../gpgpu-sim/stats.h
+../../build/release/cuda-sim/cuda-sim.o: ../gpgpu-sim/gpu-cache.h
+../../build/release/cuda-sim/cuda-sim.o: ../gpgpusim_entrypoint.h
+../../build/release/cuda-sim/cuda-sim.o: ../abstract_hardware_model.h
+../../build/release/cuda-sim/cuda-sim.o: decuda_pred_table/decuda_pred_table.h
+../../build/release/cuda-sim/instructions.o: instructions.h ptx_ir.h
+../../build/release/cuda-sim/instructions.o: ../abstract_hardware_model.h
+../../build/release/cuda-sim/instructions.o: /usr/include/assert.h
+../../build/release/cuda-sim/instructions.o: /usr/include/features.h
+../../build/release/cuda-sim/instructions.o: /usr/include/sys/cdefs.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/wordsize.h
+../../build/release/cuda-sim/instructions.o: /usr/include/gnu/stubs.h
+../../build/release/cuda-sim/instructions.o: /usr/include/gnu/stubs-64.h
+../../build/release/cuda-sim/instructions.o: ptx.tab.h ptx_sim.h
+../../build/release/cuda-sim/instructions.o: /usr/include/stdlib.h
+../../build/release/cuda-sim/instructions.o: /usr/include/sys/types.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/types.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/typesizes.h
+../../build/release/cuda-sim/instructions.o: /usr/include/time.h
+../../build/release/cuda-sim/instructions.o: /usr/include/endian.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/endian.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/byteswap.h
+../../build/release/cuda-sim/instructions.o: /usr/include/sys/select.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/select.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/sigset.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/time.h
+../../build/release/cuda-sim/instructions.o: /usr/include/sys/sysmacros.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/pthreadtypes.h
+../../build/release/cuda-sim/instructions.o: /usr/include/alloca.h
+../../build/release/cuda-sim/instructions.o: dram_callback.h
+../../build/release/cuda-sim/instructions.o: ../tr1_hash_map.h opcodes.h
+../../build/release/cuda-sim/instructions.o: opcodes.def memory.h
+../../build/release/cuda-sim/instructions.o: /usr/include/string.h
+../../build/release/cuda-sim/instructions.o: /usr/include/stdio.h
+../../build/release/cuda-sim/instructions.o: /usr/include/libio.h
+../../build/release/cuda-sim/instructions.o: /usr/include/_G_config.h
+../../build/release/cuda-sim/instructions.o: /usr/include/wchar.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/stdio_lim.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/sys_errlist.h
+../../build/release/cuda-sim/instructions.o: ../option_parser.h
+../../build/release/cuda-sim/instructions.o: /usr/include/math.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/huge_val.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/mathdef.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/mathcalls.h
+../../build/release/cuda-sim/instructions.o: /usr/include/fenv.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/fenv.h
+../../build/release/cuda-sim/instructions.o: cuda-math.h ptx_loader.h
+../../build/release/cuda-sim/instructions.o: cuda_device_printf.h
+../../build/release/cuda-sim/instructions.o: ../gpgpu-sim/gpu-sim.h
+../../build/release/cuda-sim/instructions.o: ../gpgpu-sim/addrdec.h
+../../build/release/cuda-sim/instructions.o: ../gpgpu-sim/shader.h
+../../build/release/cuda-sim/instructions.o: ../cuda-sim/ptx.tab.h
+../../build/release/cuda-sim/instructions.o: ../cuda-sim/dram_callback.h
+../../build/release/cuda-sim/instructions.o: ../gpgpu-sim/delayqueue.h
+../../build/release/cuda-sim/instructions.o: ../intersim/statwraper.h
+../../build/release/cuda-sim/instructions.o: ../gpgpu-sim/gpu-misc.h
+../../build/release/cuda-sim/instructions.o: ../gpgpu-sim/stack.h
+../../build/release/cuda-sim/instructions.o: ../gpgpu-sim/dram.h
+../../build/release/cuda-sim/instructions.o: /usr/include/zlib.h
+../../build/release/cuda-sim/instructions.o: /usr/include/zconf.h
+../../build/release/cuda-sim/instructions.o: /usr/include/unistd.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/posix_opt.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/confname.h
+../../build/release/cuda-sim/instructions.o: /usr/include/getopt.h
+../../build/release/cuda-sim/instructions.o: ../gpgpu-sim/scoreboard.h
+../../build/release/cuda-sim/instructions.o: ../gpgpu-sim/mem_fetch.h
+../../build/release/cuda-sim/instructions.o: ../gpgpu-sim/stats.h
+../../build/release/cuda-sim/instructions.o: ../gpgpu-sim/gpu-cache.h
+../../build/release/cuda-sim/instructions.o: ../gpgpu-sim/shader.h
+../../build/release/cuda-sim/memory.o: memory.h ../abstract_hardware_model.h
+../../build/release/cuda-sim/memory.o: /usr/include/assert.h
+../../build/release/cuda-sim/memory.o: /usr/include/features.h
+../../build/release/cuda-sim/memory.o: /usr/include/sys/cdefs.h
+../../build/release/cuda-sim/memory.o: /usr/include/bits/wordsize.h
+../../build/release/cuda-sim/memory.o: /usr/include/gnu/stubs.h
+../../build/release/cuda-sim/memory.o: /usr/include/gnu/stubs-64.h
+../../build/release/cuda-sim/memory.o: /usr/include/string.h
+../../build/release/cuda-sim/memory.o: /usr/include/stdio.h
+../../build/release/cuda-sim/memory.o: /usr/include/bits/types.h
+../../build/release/cuda-sim/memory.o: /usr/include/bits/typesizes.h
+../../build/release/cuda-sim/memory.o: /usr/include/libio.h
+../../build/release/cuda-sim/memory.o: /usr/include/_G_config.h
+../../build/release/cuda-sim/memory.o: /usr/include/wchar.h
+../../build/release/cuda-sim/memory.o: /usr/include/bits/stdio_lim.h
+../../build/release/cuda-sim/memory.o: /usr/include/bits/sys_errlist.h
+../../build/release/cuda-sim/memory.o: /usr/include/stdlib.h
+../../build/release/cuda-sim/memory.o: /usr/include/sys/types.h
+../../build/release/cuda-sim/memory.o: /usr/include/time.h
+../../build/release/cuda-sim/memory.o: /usr/include/endian.h
+../../build/release/cuda-sim/memory.o: /usr/include/bits/endian.h
+../../build/release/cuda-sim/memory.o: /usr/include/bits/byteswap.h
+../../build/release/cuda-sim/memory.o: /usr/include/sys/select.h
+../../build/release/cuda-sim/memory.o: /usr/include/bits/select.h
+../../build/release/cuda-sim/memory.o: /usr/include/bits/sigset.h
+../../build/release/cuda-sim/memory.o: /usr/include/bits/time.h
+../../build/release/cuda-sim/memory.o: /usr/include/sys/sysmacros.h
+../../build/release/cuda-sim/memory.o: /usr/include/bits/pthreadtypes.h
+../../build/release/cuda-sim/memory.o: /usr/include/alloca.h ../debug.h
+../../build/release/cuda-sim/memory.o: ../abstract_hardware_model.h
+../../build/release/cuda-sim/ptx_ir.o: ptx_parser.h
+../../build/release/cuda-sim/ptx_ir.o: ../abstract_hardware_model.h ptx_ir.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/assert.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/features.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/sys/cdefs.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/wordsize.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/gnu/stubs.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/gnu/stubs-64.h ptx.tab.h
+../../build/release/cuda-sim/ptx_ir.o: ptx_sim.h /usr/include/stdlib.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/sys/types.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/types.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/typesizes.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/time.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/endian.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/endian.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/byteswap.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/sys/select.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/select.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/sigset.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/time.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/sys/sysmacros.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/pthreadtypes.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/alloca.h dram_callback.h
+../../build/release/cuda-sim/ptx_ir.o: ../tr1_hash_map.h opcodes.h
+../../build/release/cuda-sim/ptx_ir.o: opcodes.def memory.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/string.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/stdio.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/libio.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/_G_config.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/wchar.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/stdio_lim.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/sys_errlist.h
+../../build/release/cuda-sim/ptx_ir.o: ../option_parser.h cuda-sim.h
+../../build/release/cuda-sim/ptx_loader.o: ptx_loader.h ptx_ir.h
+../../build/release/cuda-sim/ptx_loader.o: ../abstract_hardware_model.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/assert.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/features.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/sys/cdefs.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/wordsize.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/gnu/stubs.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/gnu/stubs-64.h
+../../build/release/cuda-sim/ptx_loader.o: ptx.tab.h ptx_sim.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/stdlib.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/sys/types.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/types.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/typesizes.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/time.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/endian.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/endian.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/byteswap.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/sys/select.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/select.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/sigset.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/time.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/sys/sysmacros.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/pthreadtypes.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/alloca.h
+../../build/release/cuda-sim/ptx_loader.o: dram_callback.h ../tr1_hash_map.h
+../../build/release/cuda-sim/ptx_loader.o: opcodes.h opcodes.def memory.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/string.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/stdio.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/libio.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/_G_config.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/wchar.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/stdio_lim.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/sys_errlist.h
+../../build/release/cuda-sim/ptx_loader.o: ../option_parser.h cuda-sim.h
+../../build/release/cuda-sim/ptx_loader.o: ptx_parser.h /usr/include/dirent.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/dirent.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/posix1_lim.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/local_lim.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/linux/limits.h
+../../build/release/cuda-sim/ptx_parser.o: ptx_parser.h
+../../build/release/cuda-sim/ptx_parser.o: ../abstract_hardware_model.h
+../../build/release/cuda-sim/ptx_parser.o: ptx_ir.h /usr/include/assert.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/features.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/sys/cdefs.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/wordsize.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/gnu/stubs.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/gnu/stubs-64.h
+../../build/release/cuda-sim/ptx_parser.o: ptx.tab.h ptx_sim.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/stdlib.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/sys/types.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/types.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/typesizes.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/time.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/endian.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/endian.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/byteswap.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/sys/select.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/select.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/sigset.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/time.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/sys/sysmacros.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/pthreadtypes.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/alloca.h
+../../build/release/cuda-sim/ptx_parser.o: dram_callback.h ../tr1_hash_map.h
+../../build/release/cuda-sim/ptx_parser.o: opcodes.h opcodes.def memory.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/string.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/stdio.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/libio.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/_G_config.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/wchar.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/stdio_lim.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/sys_errlist.h
+../../build/release/cuda-sim/ptx_parser.o: ../option_parser.h
+../../build/release/cuda-sim/ptx_parser.o: ptx_parser_decode.def
+../../build/release/cuda-sim/ptx_sim.o: ptx_sim.h /usr/include/stdlib.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/features.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/sys/cdefs.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/wordsize.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/gnu/stubs.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/gnu/stubs-64.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/sys/types.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/types.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/typesizes.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/time.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/endian.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/endian.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/byteswap.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/sys/select.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/select.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/sigset.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/time.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/sys/sysmacros.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/pthreadtypes.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/alloca.h dram_callback.h
+../../build/release/cuda-sim/ptx_sim.o: ../abstract_hardware_model.h
+../../build/release/cuda-sim/ptx_sim.o: ../tr1_hash_map.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/assert.h opcodes.h
+../../build/release/cuda-sim/ptx_sim.o: opcodes.def memory.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/string.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/stdio.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/libio.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/_G_config.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/wchar.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/stdio_lim.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/sys_errlist.h
+../../build/release/cuda-sim/ptx_sim.o: ptx_ir.h ptx.tab.h ../option_parser.h
+../../build/release/cuda-sim/ptx_sim.o: ../gpgpu-sim/gpu-sim.h
+../../build/release/cuda-sim/ptx_sim.o: ../gpgpu-sim/addrdec.h
+../../build/release/cuda-sim/ptx_sim.o: ../gpgpu-sim/shader.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/math.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/huge_val.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/mathdef.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/mathcalls.h
+../../build/release/cuda-sim/ptx_sim.o: ../cuda-sim/ptx.tab.h
+../../build/release/cuda-sim/ptx_sim.o: ../cuda-sim/dram_callback.h
+../../build/release/cuda-sim/ptx_sim.o: ../gpgpu-sim/delayqueue.h
+../../build/release/cuda-sim/ptx_sim.o: ../intersim/statwraper.h
+../../build/release/cuda-sim/ptx_sim.o: ../gpgpu-sim/gpu-misc.h
+../../build/release/cuda-sim/ptx_sim.o: ../gpgpu-sim/stack.h
+../../build/release/cuda-sim/ptx_sim.o: ../gpgpu-sim/dram.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/zlib.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/zconf.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/unistd.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/posix_opt.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/confname.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/getopt.h
+../../build/release/cuda-sim/ptx_sim.o: ../gpgpu-sim/scoreboard.h
+../../build/release/cuda-sim/ptx_sim.o: ../gpgpu-sim/mem_fetch.h
+../../build/release/cuda-sim/ptx_sim.o: ../gpgpu-sim/stats.h
+../../build/release/cuda-sim/ptx_sim.o: ../gpgpu-sim/gpu-cache.h
+../../build/release/cuda-sim/ptx_sim.o: ../gpgpu-sim/shader.h
+../../build/release/cuda-sim/ptx-stats.o: ptx_ir.h
+../../build/release/cuda-sim/ptx-stats.o: ../abstract_hardware_model.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/assert.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/features.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/sys/cdefs.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/wordsize.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/gnu/stubs.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/gnu/stubs-64.h
+../../build/release/cuda-sim/ptx-stats.o: ptx.tab.h ptx_sim.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/stdlib.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/sys/types.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/types.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/typesizes.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/time.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/endian.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/endian.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/byteswap.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/sys/select.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/select.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/sigset.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/time.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/sys/sysmacros.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/pthreadtypes.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/alloca.h
+../../build/release/cuda-sim/ptx-stats.o: dram_callback.h ../tr1_hash_map.h
+../../build/release/cuda-sim/ptx-stats.o: opcodes.h opcodes.def memory.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/string.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/stdio.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/libio.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/_G_config.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/wchar.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/stdio_lim.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/sys_errlist.h
+../../build/release/cuda-sim/ptx-stats.o: ../option_parser.h ptx-stats.h
