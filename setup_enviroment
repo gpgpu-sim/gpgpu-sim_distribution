@@ -1,6 +1,6 @@
 SIMSUBDIR=fermi
 
-export GPGPUSIM_ROOT="$( cd "$( dirname "$0" )" && pwd )"
+export GPGPUSIM_ROOT="$( cd "$( dirname "$BASH_SOURCE" )" && pwd )"
 
 export QTINC=/usr/include
 export BOOST_ROOT=/usr/include/boost
