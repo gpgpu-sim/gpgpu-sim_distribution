@@ -1,4 +1,6 @@
-// Copyright (c) 2009-2011, The University of British Columbia
+// Copyright (c) 2009-2011, Tor M. Aamodt, Wilson W.L. Fung, Andrew Turner,
+// Ali Bakhoda 
+// The University of British Columbia
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -41,7 +43,6 @@
 #include <deque>
 
 #include "../cuda-sim/ptx.tab.h"
-#include "../cuda-sim/dram_callback.h"
 
 #include "delayqueue.h"
 #include "stack.h"

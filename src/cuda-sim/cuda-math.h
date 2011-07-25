@@ -1,7 +1,8 @@
 // This file created from vector_types.h distributed with CUDA 1.1
 // (see original copyright notice below)
 // 
-// Changes Copyright (c) 2009-2011, The University of British Columbia
+// Changes Copyright (c) 2009-2011, Tor M. Aamodt, Wilson W.L. Fung
+// The University of British Columbia
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
