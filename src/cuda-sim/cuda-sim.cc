@@ -1,4 +1,6 @@
-// Copyright (c) 2009-2011, The University of British Columbia
+// Copyright (c) 2009-2011, Tor M. Aamodt, Ali Bakhoda, Wilson W.L. Fung,
+// George L. Yuan, Jimmy Kwa 
+// The University of British Columbia
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -33,7 +35,6 @@
 
 #include "opcodes.h"
 #include "../intersim/statwraper.h"
-#include "dram_callback.h"
 #include <set>
 #include <map>
 #include "../abstract_hardware_model.h"

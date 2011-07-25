@@ -1,4 +1,5 @@
-# Copyright (c) 2009-2011, The University of British Columbia
+# Copyright (c) 2009-2011, Tor M. Aamodt, Ali Bakhoda, Timothy Rogers, 
+# Jimmy Kwa, and The University of British Columbia
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -65,6 +66,7 @@ $(SIM_LIB_DIR)/libcudart.so: $(LIBS) cudalib
 			-o $(SIM_LIB_DIR)/libcudart.so
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.2 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.2; fi
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.3 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.3; fi
+	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.4 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.4; fi
 
 $(SIM_LIB_DIR)/libcudart.dylib: $(LIBS) cudalib
 	g++ $(SNOW) -dynamiclib -Wl,-headerpad_max_install_names,-undefined,dynamic_lookup,-compatibility_version,1.1,-current_version,1.1\

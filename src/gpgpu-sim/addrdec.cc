@@ -1,4 +1,5 @@
-// Copyright (c) 2009-2011, The University of British Columbia
+// Copyright (c) 2009-2011, Wilson W.L. Fung, Tor M. Aamodt, Ali Bakhoda,
+// The University of British Columbia
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
