@@ -1,8 +1,6 @@
 export GPGPUSIM_CONFIG=release
 #export GPGPUSIM_CONFIG=debug
 
-SIMSUBDIR=fermi
-
 export GPGPUSIM_ROOT="$( cd "$( dirname "$BASH_SOURCE" )" && pwd )"
 
 export QTINC=/usr/include
