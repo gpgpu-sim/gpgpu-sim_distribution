@@ -1743,6 +1743,20 @@ void barrier_set_t::warp_exit( unsigned warp_id )
    // caller needs to verify all threads in warp are done, e.g., by checking PDOM stack to 
    // see it has only one entry during exit_impl()
    m_warp_active.reset(warp_id);
+
+   // test for barrier release 
+   cta_to_warp_t::iterator w=m_cta_to_warps.begin(); 
+   for (; w != m_cta_to_warps.end(); ++w) {
+      if (w->second.test(warp_id) == true) break; 
+   }
+   warp_set_t warps_in_cta = w->second;
+   warp_set_t at_barrier = warps_in_cta & m_warp_at_barrier;
+   warp_set_t active = warps_in_cta & m_warp_active;
+
+   if( at_barrier == active ) {
+      // all warps have reached barrier, so release waiting warps...
+      m_warp_at_barrier &= ~at_barrier;
+   }
 }
 
 // assertions
