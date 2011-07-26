@@ -30,7 +30,6 @@
 #define DRAM_H
 
 #include "delayqueue.h"
-#include "../cuda-sim/dram_callback.h"
 #include <set>
 #include <zlib.h>
 #include <stdio.h>

@@ -1,5 +1,5 @@
-#export GPGPUSIM_CONFIG=release
-export GPGPUSIM_CONFIG=debug
+export GPGPUSIM_CONFIG=release
+#export GPGPUSIM_CONFIG=debug
 
 SIMSUBDIR=fermi
 
@@ -11,8 +11,8 @@ export BOOST_LIB=/usr/lib64
 export BOOST_VER=
 export NVOPENCL_LIBDIR=/usr/lib64
 
-export CUDA_INSTALL_PATH=$HOME/nvcuda/4.0/cuda
-export CUDAHOME=$HOME/nvcuda/4.0/cuda
+export CUDA_INSTALL_PATH=$HOME/nvcuda/3.1/cuda
+export CUDAHOME=$HOME/nvcuda/3.1/cuda
 export NVIDIA_COMPUTE_SDK_LOCATION=$HOME/NVIDIA_GPU_Computing_SDK/
 export NVIDIA_CUDA_SDK_LOCATION=$NVIDIA_COMPUTE_SDK_LOCATION/
 export LD_LIBRARY_PATH=$GPGPUSIM_ROOT/lib/$GPGPUSIM_CONFIG:$LD_LIBRARY_PATH

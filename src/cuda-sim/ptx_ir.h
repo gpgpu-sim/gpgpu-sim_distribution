@@ -40,7 +40,6 @@
 
 #include "ptx.tab.h"
 #include "ptx_sim.h"
-#include "dram_callback.h"
 
 #include "memory.h"
 
