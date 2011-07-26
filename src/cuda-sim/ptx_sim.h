@@ -29,7 +29,6 @@
 
 #include <stdlib.h>
 
-#include "dram_callback.h"
 #include "../abstract_hardware_model.h"
 #include "../tr1_hash_map.h" 
 

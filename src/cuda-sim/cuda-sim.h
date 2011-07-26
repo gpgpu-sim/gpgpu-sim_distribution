@@ -29,7 +29,6 @@
 #define CUDASIM_H_INCLUDED
 
 #include "../abstract_hardware_model.h"
-#include "dram_callback.h"
 #include <stdlib.h>
 #include <map>
 #include <string>

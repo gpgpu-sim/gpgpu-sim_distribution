@@ -1,5 +1,19 @@
 CHANGE LOG:
 
+Version 3.0.0b versus 2.1.2b
+- massive refactoring of code to C++ (most global variables eliminated)
+- support for executing native SASS code via decuda
+- added to timing model:
+   - in order scoreboard allowing multiple instructions per warp in 
+     pipeline at a time
+   - operand collector for modeling access to banked register files
+   - prefetching texture cache model (Igehy et al., Graphics Hardware 1998)
+   - updated data and constant cache models with updated MSHR model
+- other changes I don't remember right now
+
+Version 2.1.2b versus 2.1.1b:
+- TODO: fill this in!
+
 Version 2.1.1b versus 2.1.0b:
 - Added support for OpenCL (requires OpenCL driver from NVIDIA)
 - Added performance visualizer tool

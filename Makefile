@@ -28,9 +28,13 @@
 
 # comment out next line to disable OpenGL support
 # export OPENGL_SUPPORT=1
-
-export DEBUG?=0 
 export SNOW?=
+
+ifeq ($(GPGPUSIM_CONFIG), debug)
+	export DEBUG=1
+else
+	export DEBUG=0
+endif
 
 ifeq ($(DEBUG), 1)
 	export SIM_LIB_DIR=lib/debug
