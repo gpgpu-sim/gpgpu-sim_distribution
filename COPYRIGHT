@@ -1,4 +1,5 @@
-Copyright (c) 2009-2011, The University of British Columbia
+Copyright (c) 2009-2011 
+Tor M. Aamodt and The University of British Columbia (UBC)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -25,7 +26,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-NOTE: The files libcuda/cuda_runtime_api.cc and src/cuda-sim/cuda-math.h are
+NOTE 1: The files libcuda/cuda_runtime_api.cc and src/cuda-sim/cuda-math.h are
 derived from the CUDA Toolset available from http://www.nvidia.com/cuda
 (property of NVIDIA).  The files from src/intersim/ are derived from Booksim (a
 simulator provided with the textbook "Principles and Practices of
@@ -36,3 +37,10 @@ As such, those files are bound by the corresponding legal terms and conditions
 set forth separately (original copyright notices are left in files from these
 sources and where we have modified a file our copyright notice appears before
 the original copyright notice).
+
+NOTE 2: Various UBC graduate students have contributed to different files in
+this distribution.  As copyright ownership at UBC is held by the authors (as
+per UBC policy 88, item 2.3 on literary works) these students names appear in
+the copyright notices of the respective files. UBC is also mentioned in the 
+copyright notice to highlight that was the author's affiliation when the work 
+was performed.
