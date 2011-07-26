@@ -1,5 +1,3 @@
-SIMSUBDIR=fermi
-
 export GPGPUSIM_ROOT=$PWD
 export NVOPENCL_LIBDIR=/usr/lib64/
 
