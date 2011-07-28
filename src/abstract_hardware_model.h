@@ -655,12 +655,16 @@ public:
     void do_atomic()
     {
         assert( m_isatomic && !m_empty );
-        std::vector<per_thread_info>::iterator t;
-        for( t=m_per_scalar_thread.begin(); t != m_per_scalar_thread.end(); ++t ) {
-            dram_callback_t &cb = t->callback;
-            if( cb.thread ) 
-                cb.function(cb.instruction, cb.thread);
-        }
+	for( unsigned i=0; i < m_config->warp_size; i++ )
+		{
+			if( m_warp_active_mask.test(i) )
+			{
+				dram_callback_t &cb = m_per_scalar_thread[i].callback;
+				if( cb.thread )
+					cb.function(cb.instruction, cb.thread);
+			}
+		}
+
     }
     void clear() 
     { 

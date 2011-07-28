@@ -954,7 +954,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
       if ( ptx_debug_exec_dump_cond<10>(get_uid(), pc) )
          dump_regs(stdout);
    }
-   update_pc( pI->inst_size() );
+   update_pc();
    g_ptx_sim_num_insn++;
    ptx_file_line_stats_add_exec_count(pI);
    if ( gpgpu_ptx_instruction_classification ) {
