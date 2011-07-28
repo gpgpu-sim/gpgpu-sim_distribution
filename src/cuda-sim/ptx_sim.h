@@ -373,7 +373,7 @@ public:
    {
        return m_callstack.back().m_PC;
    }
-   void update_pc( unsigned nbytes )
+   void update_pc( )
    {
       m_PC = m_NPC;
    }
