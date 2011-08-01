@@ -1,5 +1,8 @@
+# see README before running this
+
+# uncomment the line with debug if you want to run GPGPU-Sim in gdb 
 export GPGPUSIM_CONFIG=release
-#export GPGPUSIM_CONFIG=debug
+#export GPGPUSIM_CONFIG=debug  
 
 export GPGPUSIM_ROOT="$( cd "$( dirname "$BASH_SOURCE" )" && pwd )"
 
@@ -9,15 +12,29 @@ export BOOST_LIB=/usr/lib64
 export BOOST_VER=
 export NVOPENCL_LIBDIR=/usr/lib64
 
+# change the following to point to your installation of CUDA Toolkit
 export CUDA_INSTALL_PATH=$HOME/nvcuda/3.1/cuda
 export CUDAHOME=$HOME/nvcuda/3.1/cuda
+
+# change these to point to your installation of the CUDA SDK 
+# (you also need to build the SDK, see README)
 export NVIDIA_COMPUTE_SDK_LOCATION=$HOME/NVIDIA_GPU_Computing_SDK/
 export NVIDIA_CUDA_SDK_LOCATION=$NVIDIA_COMPUTE_SDK_LOCATION/
+
+# setting LD_LIBRARY_PATH as follows enables GPGPU-Sim to be invoked by 
+# native CUDA and OpenCL applications. GPGPU-Sim is dynamically linked
+# against instead of the CUDA toolkit.  This replaces this cumbersome
+# static link setup in prior GPGPU-Sim releases.
 export LD_LIBRARY_PATH=$GPGPUSIM_ROOT/lib/$GPGPUSIM_CONFIG:$LD_LIBRARY_PATH
 export PATH=$GPGPUSIM_ROOT/bin:$CUDA_INSTALL_PATH/bin:$PATH
-HF=`hostname -f`
-export OPENCL_REMOTE_GPU_HOST=aamodt-pc05.ece.ubc.ca
 
-if [ $HF = $OPENCL_REMOTE_GPU_HOST ]; then
-	unset OPENCL_REMOTE_GPU_HOST
+# The following sets OPENCL_REMOTE_GPU_HOST which is used by GPGPU-Sim to
+# SSH to remote node to generate PTX for OpenCL kernels when running on 
+# a node that does not have an NVIDIA driver installed.
+# The remote node should have GPGPU-Sim installed at the same path 
+if [ `hostname -d` = "ece.ubc.ca" ]; then
+	export OPENCL_REMOTE_GPU_HOST=aamodt-pc05.ece.ubc.ca
+	if [ `hostname -f` = $OPENCL_REMOTE_GPU_HOST ]; then
+		unset OPENCL_REMOTE_GPU_HOST
+	fi
 fi
