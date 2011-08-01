@@ -4,10 +4,10 @@
 # decuda.patch must be in the same folder as getDecuda.sh
 
 cd ./getDecuda
-wget --no-check-certificate  http://github.com/laanwj/decuda/tarball/master
-tar -xf ./laanwj-decuda-c30bd17.tar.gz
-mv laanwj-decuda-c30bd17 decuda
+wget -O decuda.tgz --no-check-certificate http://github.com/laanwj/decuda/tarball/master
+tar -xf ./decuda.tgz
+mv laanwj-decuda-c30bd17 decuda  # if this fails, we need to check what has changed in decuda, or get a perminant link to decuda 0.4.2
 patch -d ./decuda < ./decuda.patch
-rm ./laanwj-decuda-c30bd17.tar.gz
+rm ./decuda.tgz
 mv decuda ../decuda
 cd ..
