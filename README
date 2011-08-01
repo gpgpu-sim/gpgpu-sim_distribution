@@ -1,7 +1,7 @@
-GPGPU-Sim Simulator version 3.0.0b (beta)
+GPGPU-Sim Simulator Version 3.0 (beta)
 
 This version of GPGPU-Sim works with CUDA version 3.1 and some earlier 
-versions.  It does not work with CUDA version 4.x.
+versions.  It does not (yet) work with CUDA version 4.x. 
 
 Please see the copyright notice in the file COPYRIGHT distributed with this
 release in the same directory as this file.  
@@ -13,15 +13,18 @@ Analyzing CUDA Workloads Using a Detailed GPU Simulator, in IEEE International
 Symposium on Performance Analysis of Systems and Software (ISPASS), Boston, MA,
 April 19-21, 2009.
 
-Please sign up for the google groups page for Q&A (see gpgpu-sim.org).
+Please sign up for the google groups page for Q&A (see gpgpu-sim.org), but 
+note that use of this simulator does not imply any level of support.  Questions
+answered on a best effort basis.
 
 See Section 2 "INSTALLING, BUILDING and RUNNING GPGPU-Sim" below to get started.
 
 1. CONTRIBUTIONS and HISTORY
 
-GPGPU-Sim was created at the University of British Columbia by Tor M. Aamodt,
-Wilson W.  L. Fung, Ali Bakhoda, George Yuan along with contributions by Ivan
-Sham, Henry Wong, Henry Tran, and others.  
+GPGPU-Sim was created by Tor Aamodt's research group at the University of
+British Columbia.  Many students have contributed including: Wilson W.L. Fung,
+Ali Bakhoda, George Yuan, Ivan Sham, Henry Wong, Henry Tran, Andrew Turner,
+Aaron Ariel, Inderpret Singh, Tim Rogers, and others.
 
 GPGPU-Sim models the features of a modern graphics processor that are relevant
 to non-graphics applications.  The first version of GPGPU-Sim was used in a
@@ -59,14 +62,14 @@ Step 2: Download and install the CUDA Toolkit and CUDA SDK code samples from
 NVIDIA's website: <http://www.nvidia.com/cuda>.  If you want to run OpenCL on
 the simulator, download and install NVIDIA's OpenCL driver from
 <http://developer.nvidia.com/object/opencl-download.html>. Update your PATH and
-LD_LIBRARY_PATH as indicated by the install scripts.
+LD_LIBRARY_PATH as indicated by the NVIDIA install scripts.
 
-Step 3: Build libcutil.a. The install script for the CUDA SDK does not do this
-step automatically. If you installed the CUDA Toolkit in a nonstandard location
-you will first need to set CUDA_INSTALL_PATH to the location you installed the
-CUDA toolkit (including the trailing "/cuda").  Then, change to the C/common
-subdirectory of your CUDA SDK installation (or common subdirectory on older
-CUDA SDK versions) and type "make".
+Step 3: Build the NVIDIA SDK libcutil.a. The install script for the CUDA SDK
+does not do this step automatically. If you installed the CUDA Toolkit in a
+nonstandard location you will first need to set CUDA_INSTALL_PATH to the
+location you installed the CUDA toolkit (including the trailing "/cuda").
+Then, change to the C/common subdirectory of your CUDA SDK installation (or
+common subdirectory on older CUDA SDK versions) and type "make".
 
 Step 4: Set environment variables by sourcing the setup_environment script. 
 From a bash shell, type the following in this directory:
@@ -93,7 +96,8 @@ necessary).  The resulting PTX can be saved to disk by adding
 -save_embedded_ptx to your gpgpusim.config file (embedded PTX files with be
 saved as _0.ptx, _1.ptx, etc...).
 
-3. USING THE SIMULATOR
+3. USING/MODIFYING THE SIMULATOR
 
 Note that doc/GPGPU-Sim_Manual.html has not yet been updated to reflect
 changes to GPGPU-Sim versus the earlier 2.x versions.  
+
