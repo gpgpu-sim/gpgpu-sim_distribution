@@ -123,8 +123,8 @@ void memory_config::reg_options(class OptionParser * opp)
                  "Burst length of each DRAM request (default = 4 DDR cycle)",
                  "4");
     option_parser_register(opp, "-gpgpu_dram_timing_opt", OPT_CSTR, &gpgpu_dram_timing_opt, 
-                "DRAM timing parameters = {nbk:tCCD:tRRD:tRCD:tRAS:tRP:tRC:CL:WL:tWTR}",
-                "4:2:8:12:21:13:34:9:4:5");
+                "DRAM timing parameters = {nbk:tCCD:tRRD:tRCD:tRAS:tRP:tRC:CL:WL:tCDLR:tWR}",
+                "4:2:8:12:21:13:34:9:4:5:13");
 
     m_address_mapping.addrdec_setoption(opp);
 }
