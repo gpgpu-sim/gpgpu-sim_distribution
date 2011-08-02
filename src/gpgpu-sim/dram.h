@@ -65,6 +65,7 @@ struct bank_t
    unsigned int RASc;
    unsigned int RPc;
    unsigned int RCc;
+   unsigned int WTPc; // write to precharge 
 
    unsigned char rw;    //is the bank reading or writing?
    unsigned char state; //is the bank active or idle?

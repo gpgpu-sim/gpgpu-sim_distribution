@@ -72,9 +72,12 @@ struct memory_config {
    void init()
    {
       assert(gpgpu_dram_timing_opt);
-      sscanf(gpgpu_dram_timing_opt,"%d:%d:%d:%d:%d:%d:%d:%d:%d:%d",&nbk,&tCCD,&tRRD,&tRCD,&tRAS,&tRP,&tRC,&CL,&WL,&tWTR);
+      sscanf(gpgpu_dram_timing_opt,"%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d",
+             &nbk,&tCCD,&tRRD,&tRCD,&tRAS,&tRP,&tRC,&CL,&WL,&tCDLR,&tWR);
       tRCDWR = tRCD-(WL+1);
       tRTW = (CL+(BL/2)+2-WL);
+      tWTR = (WL+(BL/2)+tCDLR); 
+      tWTP = (WL+(BL/2)+tWR);
       m_address_mapping.init(m_n_mem);
       m_L2_config.init();
       m_valid = true;
@@ -102,12 +105,15 @@ struct memory_config {
    unsigned tRAS;   //time needed to activate row
    unsigned tRP;    //row precharge ie. deactivate row
    unsigned tRC;    //row cycle time ie. precharge current, then activate different row
+   unsigned tCDLR;  //Last data-in to Read command (switching from write to read)
+   unsigned tWR;    //Last data-in to Row precharge 
 
    unsigned CL;     //CAS latency
    unsigned WL;     //WRITE latency
    unsigned BL;     //Burst Length in bytes (we're using 4? could be 8)
    unsigned tRTW;   //time to switch from read to write
-   unsigned tWTR;   //time to switch from write to read 5? look in datasheet
+   unsigned tWTR;   //time to switch from write to read 
+   unsigned tWTP;   //time to switch from write to precharge in the same bank
    unsigned busW;
 
    unsigned nbk;
