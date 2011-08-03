@@ -1183,7 +1183,7 @@ kernel_info_t *gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
    return result;
 }
 
-const char *g_gpgpusim_version_string = "3.0.9917 (beta)";
+const char *g_gpgpusim_version_string = "3.0.9924 (beta)";
 
 void print_splash()
 {
