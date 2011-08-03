@@ -64,6 +64,7 @@ $(SIM_LIB_DIR)/libcudart.so: $(LIBS) cudalib
 	g++ $(SNOW) -shared -Wl,-soname,libcudart.so \
 			$(SIM_OBJ_FILES_DIR)/libcuda/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/*.o \
+			$(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table/*.o \
 			$(SIM_OBJ_FILES_DIR)/gpgpu-sim/*.o \
 			$(SIM_OBJ_FILES_DIR)/intersim/*.o \
             $(SIM_OBJ_FILES_DIR)/*.o -lm -lz -lGL -pthread \
