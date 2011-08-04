@@ -264,6 +264,7 @@ void dram_t::cycle()
             bk[j]->mrq->txbytes += m_config->BL * m_config->busW * m_config->gpu_n_mem_per_ctrlr; //16 bytes
             CCDc = m_config->tCCD;
             RTWc = m_config->tRTW;
+            bk[j]->RTPc = m_config->BL/2;
             issued = true;
             n_rd++;
             bwutil+= m_config->BL/2;
@@ -341,7 +342,7 @@ void dram_t::cycle()
             if ( (!issued) && 
                  (bk[j]->curr_row != bk[j]->mrq->row) &&
                  (bk[j]->state == BANK_ACTIVE) && 
-                 (!bk[j]->RASc && !bk[j]->WTPc) ) {
+                 (!bk[j]->RASc && !bk[j]->WTPc && !bk[j]->RTPc) ) {
             // make the bank idle again
             bk[j]->state = BANK_IDLE;
             bk[j]->RPc = m_config->tRP;
@@ -385,7 +386,8 @@ void dram_t::cycle()
       DEC2ZERO(bk[j]->RCc);
       DEC2ZERO(bk[j]->RPc);
       DEC2ZERO(bk[j]->RCDWRc);
-      DEC2ZERO(bk[j]->WTPc); 
+      DEC2ZERO(bk[j]->WTPc);
+      DEC2ZERO(bk[j]->RTPc);
    }
 
 #ifdef DRAM_VISUALIZE
