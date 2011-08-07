@@ -658,7 +658,7 @@ void opencl_not_finished( const char* func, unsigned line )
 
 extern CL_API_ENTRY cl_context CL_API_CALL
 clCreateContextFromType(cl_context_properties * properties,
-                        cl_device_type          device_type,
+                        cl_ulong          device_type,
                         void (*pfn_notify)(const char *, const void *, size_t, void *),
                         void *                  user_data,
                         cl_int *                errcode_ret) CL_API_SUFFIX__VERSION_1_0
@@ -668,15 +668,44 @@ clCreateContextFromType(cl_context_properties * properties,
       printf("GPGPU-Sim OpenCL API: unsupported device type %lx\n", device_type );
       exit(1);
    }
+   
    if( properties != NULL ) {
       printf("GPGPU-Sim OpenCL API: do not know how to use properties in %s\n", __my_func__ );
-      exit(1);
+      //exit(1); // Temporarily commented out to allow the AMD Sample applications to run. 
    }
+   
    if( errcode_ret ) 
       *errcode_ret = CL_SUCCESS;
    cl_context ctx = new _cl_context(gpu);
    return ctx;
 }
+
+/***************************** Unimplemented shell functions *******************************************/
+extern CL_API_ENTRY cl_program CL_API_CALL
+clCreateProgramWithBinary(cl_context                     /* context */,
+                          cl_uint                        /* num_devices */,
+                          const cl_device_id *           /* device_list */,
+                          const size_t *                 /* lengths */,
+                          const unsigned char **         /* binaries */,
+                          cl_int *                       /* binary_status */,
+                          cl_int *                       /* errcode_ret */) CL_API_SUFFIX__VERSION_1_0 {
+
+	opencl_not_finished(__my_func__, __LINE__ );
+	cl_program temp;
+	return temp;
+}
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clGetEventProfilingInfo(cl_event            /* event */,
+                        cl_profiling_info   /* param_name */,
+                        size_t              /* param_value_size */,
+                        void *              /* param_value */,
+                        size_t *            /* param_value_size_ret */) CL_API_SUFFIX__VERSION_1_0{
+	gpgpusim_opencl_warning(__my_func__,__LINE__, "GPGPUsim - OpenCLFunction is not implemented. Returning CL_SUCCESS");
+	return CL_SUCCESS;
+}
+/*******************************************************************************************************/
+
 
 extern CL_API_ENTRY cl_context CL_API_CALL
 clCreateContext(  const cl_context_properties * properties,
@@ -1221,6 +1250,7 @@ clGetKernelWorkGroupInfo(cl_kernel                  kernel,
    case CL_KERNEL_COMPILE_WORK_GROUP_SIZE:
    case CL_KERNEL_LOCAL_MEM_SIZE:
       opencl_not_implemented(__my_func__,__LINE__);
+      *(size_t *)param_value = device->the_device()->shared_mem_size();
       break;
    default:
       return CL_INVALID_VALUE;
