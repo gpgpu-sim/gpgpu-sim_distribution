@@ -415,7 +415,8 @@ __host__ cudaError_t CUDARTAPI cudaMalloc(void **devPtr, size_t size)
 {
    CUctx_st* context = GPGPUSim_Context();
    *devPtr = context->get_device()->get_gpgpu()->gpu_malloc(size);
-   printf("GPGPU-Sim PTX: cudaMallocing %zu bytes starting at 0x%llx..\n",size, (unsigned long long) *devPtr);
+   if(g_debug_execution >= 3)
+      printf("GPGPU-Sim PTX: cudaMallocing %zu bytes starting at 0x%llx..\n",size, (unsigned long long) *devPtr);
    if ( *devPtr  ) {
        return g_last_cudaError = cudaSuccess;
    } else { 
@@ -495,7 +496,8 @@ __host__ cudaError_t CUDARTAPI cudaMemcpy(void *dst, const void *src, size_t cou
 {
    //CUctx_st *context = GPGPUSim_Context();
    //gpgpu_t *gpu = context->get_device()->get_gpgpu();
-   printf("GPGPU-Sim PTX: cudaMemcpy(): devPtr = %p\n", dst);
+   if(g_debug_execution >= 3)
+      printf("GPGPU-Sim PTX: cudaMemcpy(): devPtr = %p\n", dst);
    if( kind == cudaMemcpyHostToDevice ) 
        g_stream_manager->push( stream_operation(src,(size_t)dst,count,0) );
    else if( kind == cudaMemcpyDeviceToHost ) 
