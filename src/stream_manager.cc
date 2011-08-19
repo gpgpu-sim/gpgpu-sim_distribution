@@ -116,30 +116,36 @@ void stream_operation::do_operation( gpgpu_sim *gpu )
         return;
 
     assert(!m_done && m_stream);
-    printf("GPGPU-Sim API: stream %u performing ", m_stream->get_uid() );
+    if(g_debug_execution >= 3)
+       printf("GPGPU-Sim API: stream %u performing ", m_stream->get_uid() );
     switch( m_type ) {
     case stream_memcpy_host_to_device:
-        printf("memcpy host-to-device\n");
+        if(g_debug_execution >= 3)
+            printf("memcpy host-to-device\n");
         gpu->memcpy_to_gpu(m_device_address_dst,m_host_address_src,m_cnt);
         m_stream->record_next_done();
         break;
-    case stream_memcpy_device_to_host: 
-        printf("memcpy device-to-host\n");
+    case stream_memcpy_device_to_host:
+        if(g_debug_execution >= 3)
+            printf("memcpy device-to-host\n");
         gpu->memcpy_from_gpu(m_host_address_dst,m_device_address_src,m_cnt);
         m_stream->record_next_done();
         break;
     case stream_memcpy_device_to_device:
-        printf("memcpy device-to-device\n");
+        if(g_debug_execution >= 3)
+            printf("memcpy device-to-device\n");
         gpu->memcpy_gpu_to_gpu(m_device_address_dst,m_device_address_src,m_cnt); 
         m_stream->record_next_done();
         break;
     case stream_memcpy_to_symbol:
-        printf("memcpy to symbol\n");
+        if(g_debug_execution >= 3)
+            printf("memcpy to symbol\n");
         gpgpu_ptx_sim_memcpy_symbol(m_symbol,m_host_address_src,m_cnt,m_offset,1,gpu);
         m_stream->record_next_done();
         break;
     case stream_memcpy_from_symbol:
-        printf("memcpy from symbol\n");
+        if(g_debug_execution >= 3)
+            printf("memcpy from symbol\n");
         gpgpu_ptx_sim_memcpy_symbol(m_symbol,m_host_address_dst,m_cnt,m_offset,0,gpu);
         m_stream->record_next_done();
         break;
@@ -330,7 +336,8 @@ void stream_manager::push( stream_operation op )
         op.set_stream(&m_stream_zero);
         m_stream_zero.push(op);
     }
-    print_impl(stdout);
+    if(g_debug_execution >= 3)
+       print_impl(stdout);
     pthread_mutex_unlock(&m_lock);
     if( m_cuda_launch_blocking || stream == NULL ) {
         unsigned int wait_amount = 100; 

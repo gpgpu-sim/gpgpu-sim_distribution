@@ -319,8 +319,10 @@ addr_t generic_to_global( addr_t addr )
 void* gpgpu_t::gpu_malloc( size_t size )
 {
    unsigned long long result = m_dev_malloc;
-   printf("GPGPU-Sim PTX: allocating %zu bytes on GPU starting at address 0x%Lx\n", size, m_dev_malloc );
-   fflush(stdout);
+   if(g_debug_execution >= 3) {
+      printf("GPGPU-Sim PTX: allocating %zu bytes on GPU starting at address 0x%Lx\n", size, m_dev_malloc );
+      fflush(stdout);
+   }
    m_dev_malloc += size;
    if (size%64) m_dev_malloc += (64 - size%64); //align to 64 byte boundaries
    return(void*) result;
@@ -329,8 +331,10 @@ void* gpgpu_t::gpu_malloc( size_t size )
 void* gpgpu_t::gpu_mallocarray( size_t size )
 {
    unsigned long long result = m_dev_malloc;
-   printf("GPGPU-Sim PTX: allocating %zu bytes on GPU starting at address 0x%Lx\n", size, m_dev_malloc );
-   fflush(stdout);
+   if(g_debug_execution >= 3) {
+      printf("GPGPU-Sim PTX: allocating %zu bytes on GPU starting at address 0x%Lx\n", size, m_dev_malloc );
+      fflush(stdout);
+   }
    m_dev_malloc += size;
    if (size%64) m_dev_malloc += (64 - size%64); //align to 64 byte boundaries
    return(void*) result;
@@ -339,50 +343,66 @@ void* gpgpu_t::gpu_mallocarray( size_t size )
 
 void gpgpu_t::memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t count )
 {
-   printf("GPGPU-Sim PTX: copying %zu bytes from CPU[0x%Lx] to GPU[0x%Lx] ... ", count, (unsigned long long) src, (unsigned long long) dst_start_addr );
-   fflush(stdout);
+   if(g_debug_execution >= 3) {
+      printf("GPGPU-Sim PTX: copying %zu bytes from CPU[0x%Lx] to GPU[0x%Lx] ... ", count, (unsigned long long) src, (unsigned long long) dst_start_addr );
+      fflush(stdout);
+   }
    char *src_data = (char*)src;
    for (unsigned n=0; n < count; n ++ ) 
       m_global_mem->write(dst_start_addr+n,1, src_data+n,NULL,NULL);
-   printf( " done.\n");
-   fflush(stdout);
+   if(g_debug_execution >= 3) {
+      printf( " done.\n");
+      fflush(stdout);
+   }
 }
 
 void gpgpu_t::memcpy_from_gpu( void *dst, size_t src_start_addr, size_t count )
 {
-   printf("GPGPU-Sim PTX: copying %zu bytes from GPU[0x%Lx] to CPU[0x%Lx] ...", count, (unsigned long long) src_start_addr, (unsigned long long) dst );
-   fflush(stdout);
+   if(g_debug_execution >= 3) {
+      printf("GPGPU-Sim PTX: copying %zu bytes from GPU[0x%Lx] to CPU[0x%Lx] ...", count, (unsigned long long) src_start_addr, (unsigned long long) dst );
+      fflush(stdout);
+   }
    unsigned char *dst_data = (unsigned char*)dst;
    for (unsigned n=0; n < count; n ++ ) 
       m_global_mem->read(src_start_addr+n,1,dst_data+n);
-   printf( " done.\n");
-   fflush(stdout);
+   if(g_debug_execution >= 3) {
+      printf( " done.\n");
+      fflush(stdout);
+   }
 }
 
 void gpgpu_t::memcpy_gpu_to_gpu( size_t dst, size_t src, size_t count )
 {
-   printf("GPGPU-Sim PTX: copying %zu bytes from GPU[0x%Lx] to GPU[0x%Lx] ...", count, 
+   if(g_debug_execution >= 3) {
+      printf("GPGPU-Sim PTX: copying %zu bytes from GPU[0x%Lx] to GPU[0x%Lx] ...", count,
           (unsigned long long) src, (unsigned long long) dst );
-   fflush(stdout);
+      fflush(stdout);
+   }
    for (unsigned n=0; n < count; n ++ ) {
       unsigned char tmp;
       m_global_mem->read(src+n,1,&tmp); 
       m_global_mem->write(dst+n,1, &tmp,NULL,NULL);
    }
-   printf( " done.\n");
-   fflush(stdout);
+   if(g_debug_execution >= 3) {
+      printf( " done.\n");
+      fflush(stdout);
+   }
 }
 
 void gpgpu_t::gpu_memset( size_t dst_start_addr, int c, size_t count )
 {
-   printf("GPGPU-Sim PTX: setting %zu bytes of memory to 0x%x starting at 0x%Lx... ", 
+   if(g_debug_execution >= 3) {
+      printf("GPGPU-Sim PTX: setting %zu bytes of memory to 0x%x starting at 0x%Lx... ",
           count, (unsigned char) c, (unsigned long long) dst_start_addr );
-   fflush(stdout);
+      fflush(stdout);
+   }
    unsigned char c_value = (unsigned char)c;
    for (unsigned n=0; n < count; n ++ ) 
       m_global_mem->write(dst_start_addr+n,1,&c_value,NULL,NULL);
-   printf( " done.\n");
-   fflush(stdout);
+   if(g_debug_execution >= 3) {
+      printf( " done.\n");
+      fflush(stdout);
+   }
 }
 
 void ptx_print_insn( address_type pc, FILE *fp )
