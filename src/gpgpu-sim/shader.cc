@@ -684,9 +684,11 @@ void scheduler_unit::cycle()
         unsigned warp_id = supervised_warps[supervised_id];
         unsigned checked=0;
         unsigned issued=0;
-        while( !warp(warp_id).waiting() && !warp(warp_id).ibuffer_empty() && (checked < 2) && (issued < 2) ) {
+        unsigned max_issue = m_shader->m_config->gpgpu_max_insn_issue_per_warp;
+        while( !warp(warp_id).waiting() && !warp(warp_id).ibuffer_empty() && (checked < max_issue) && (checked <= issued) && (issued < max_issue) ) {
             const warp_inst_t *pI = warp(warp_id).ibuffer_next_inst();
             bool valid = warp(warp_id).ibuffer_next_valid();
+            bool warp_inst_issued = false;
             unsigned pc,rpc;
             m_simt_stack[warp_id]->get_pdom_stack_top_info(&pc,&rpc);
             if( pI ) {
@@ -706,6 +708,7 @@ void scheduler_unit::cycle()
                                 m_shader->issue_warp(*m_mem_out,pI,active_mask,warp_id);
                                 issued++;
                                 issued_inst=true;
+                                warp_inst_issued = true;
                             }
                         } else {
                             bool sp_pipe_avail = (*m_sp_out)->empty();
@@ -715,11 +718,13 @@ void scheduler_unit::cycle()
                                 m_shader->issue_warp(*m_sp_out,pI,active_mask,warp_id);
                                 issued++;
                                 issued_inst=true;
+                                warp_inst_issued = true;
                             } else if ( (pI->op == SFU_OP) || (pI->op == ALU_SFU_OP) ) {
                                 if( sfu_pipe_avail ) {
                                     m_shader->issue_warp(*m_sfu_out,pI,active_mask,warp_id);
                                     issued++;
                                     issued_inst=true;
+                                    warp_inst_issued = true;
                                 }
                             } 
                         }
@@ -730,7 +735,8 @@ void scheduler_unit::cycle()
                warp(warp_id).set_next_pc(pc);
                warp(warp_id).ibuffer_flush();
             }
-            warp(warp_id).ibuffer_step();
+            if(warp_inst_issued)
+               warp(warp_id).ibuffer_step();
             checked++;
         }
         if ( issued ) {

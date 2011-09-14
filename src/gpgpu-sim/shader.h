@@ -986,6 +986,7 @@ struct shader_core_config : public core_config
     bool gpgpu_dwf_reg_bankconflict;
 
     int gpgpu_num_sched_per_core;
+    int gpgpu_max_insn_issue_per_warp;
 
     //op collector
     int gpgpu_operand_collector_num_units_sp;
