@@ -470,9 +470,9 @@ void shader_core_stats::visualizer_print( gzFile visualizer_file )
     gzprintf(visualizer_file, "WarpDivergenceBreakdown:");
     unsigned int total=0;
     unsigned int cf = (m_config->gpgpu_warpdistro_shader==-1)?m_config->num_shader():1;
-    gzprintf(visualizer_file, " %d", (shader_cycle_distro[2] - last_shader_cycle_distro[2]) / cf );
     gzprintf(visualizer_file, " %d", (shader_cycle_distro[0] - last_shader_cycle_distro[0]) / cf );
     gzprintf(visualizer_file, " %d", (shader_cycle_distro[1] - last_shader_cycle_distro[1]) / cf );
+    gzprintf(visualizer_file, " %d", (shader_cycle_distro[2] - last_shader_cycle_distro[2]) / cf );
     for (unsigned i=0; i<m_config->warp_size+3; i++) {
        if ( i>=3 ) {
           total += (shader_cycle_distro[i] - last_shader_cycle_distro[i]);
