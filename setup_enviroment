@@ -12,14 +12,11 @@ export BOOST_LIB=/usr/lib64
 export BOOST_VER=
 export NVOPENCL_LIBDIR=/usr/lib64
 
-# change the following to point to your installation of CUDA Toolkit
-export CUDA_INSTALL_PATH=$HOME/nvcuda/3.1/cuda
-export CUDAHOME=$HOME/nvcuda/3.1/cuda
+# change this to point to your installation of the NVIDIA compute SDK
+export NVIDIA_COMPUTE_SDK_LOCATION=~/NVIDIA_GPU_Computing_SDK
 
-# change these to point to your installation of the CUDA SDK 
-# (you also need to build the SDK, see README)
-export NVIDIA_COMPUTE_SDK_LOCATION=$HOME/NVIDIA_GPU_Computing_SDK/
-export NVIDIA_CUDA_SDK_LOCATION=$NVIDIA_COMPUTE_SDK_LOCATION/
+# change the following to point to your installation of CUDA Toolkit
+export CUDA_INSTALL_PATH=/usr/local/cuda
 
 # setting LD_LIBRARY_PATH as follows enables GPGPU-Sim to be invoked by 
 # native CUDA and OpenCL applications. GPGPU-Sim is dynamically linked
