@@ -58,25 +58,19 @@ installed on your system.  For CUDA 2.x we used gcc version 4.3.2, for CUDA 1.1
 we used gcc/g++ version 4.1.3.  This version of GPGPU-Sim does not work with 
 CUDA 4.x; We used bison version 2.3, and flex version 2.5.33.  
 
-Step 2: Download and install the CUDA Toolkit and CUDA SDK code samples from
-NVIDIA's website: <http://www.nvidia.com/cuda>.  If you want to run OpenCL on
+Step 2: Download and install the CUDA Toolkit. If you want to run OpenCL on
 the simulator, download and install NVIDIA's OpenCL driver from
 <http://developer.nvidia.com/object/opencl-download.html>. Update your PATH and
-LD_LIBRARY_PATH as indicated by the NVIDIA install scripts.
+LD_LIBRARY_PATH as indicated by the NVIDIA install scripts. Note that you will
+to use the lib64 directory if you are using a 64bit machine.
 
-Step 3: Build the NVIDIA SDK libcutil.a. The install script for the CUDA SDK
-does not do this step automatically. If you installed the CUDA Toolkit in a
-nonstandard location you will first need to set CUDA_INSTALL_PATH to the
-location you installed the CUDA toolkit (including the trailing "/cuda").
-Then, change to the C/common subdirectory of your CUDA SDK installation (or
-common subdirectory on older CUDA SDK versions) and type "make".
-
-Step 4: Set environment variables by sourcing the setup_environment script. 
-From a bash shell, type the following in this directory:
+Step 3: Edit CUDA_INSTALL_PATH in the setup_environment file then set
+environment variables by sourcing the setup_environment script. From a bash 
+shell, type the following in this directory:
 
 	. setup_environment
 
-Step 5: Type "make" in this directory. This will build the simulator with
+Step 4: Type "make" in this directory. This will build the simulator with
 optimizations enabled so the simulator runs faster. If you want to run the
 simulator in gdb to debug it, then uncomment the line 
 
@@ -84,10 +78,17 @@ simulator in gdb to debug it, then uncomment the line
 
 in setup_environment and type ". setup_environment" again, then "make" again.
 
-Step 6: Run a CUDA built with a recent version of CUDA (or an OpenCL
-application) and the device code should now run on the simulator instead of
-your graphics card.  To be able to run the application on your graphics card
-again, remove $GPGPUSIM_ROOT/lib from your LD_LIBRARY_PATH.  
+Step 5: Copy or create the configuration files gpgpusim.conf and \
+icnt_config_quadro_islip.txt in your working directory. Sample configuration
+files are provided under gpgpu-sim/v3.x/configs/*/
+
+Step 6: Build a CUDA appliction with a recent version of CUDA (or an OpenCL 
+application).
+
+Step 7: Run the application and the device code should now run on the 
+simulator instead of your graphics card.  To be able to run the application 
+on your graphics card again, remove $GPGPUSIM_ROOT/lib from your 
+LD_LIBRARY_PATH.
 
 Note that for OpenCL applications the NVIDIA driver is required to convert
 OpenCL ".cl" files to PTX (this in turn may require you have a graphics card,
@@ -96,8 +97,10 @@ necessary).  The resulting PTX can be saved to disk by adding
 -save_embedded_ptx to your gpgpusim.config file (embedded PTX files with be
 saved as _0.ptx, _1.ptx, etc...).
 
+If you need to run the set of applications in the NVIDIA CUDA SDK code
+samples then you will need to download, install and build the SDK.
+
 3. USING/MODIFYING THE SIMULATOR
 
 Note that doc/GPGPU-Sim_Manual.html has not yet been updated to reflect
 changes to GPGPU-Sim versus the earlier 2.x versions.  
-
