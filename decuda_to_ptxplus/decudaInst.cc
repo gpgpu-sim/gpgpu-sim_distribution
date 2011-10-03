@@ -3,6 +3,7 @@
 #include <string>
 #include <cstring>
 #include <stdlib.h>
+#include <stdio.h>
 
 extern void output(const char * text);
 

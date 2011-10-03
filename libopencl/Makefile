@@ -103,7 +103,7 @@ depend:
 
 nvopencl_wrapper: nvopencl_wrapper.cc
 	if [ ! -d bin ]; then mkdir bin; fi
-	g++ $(CCFLAGS) nvopencl_wrapper.cc -I./ -L $(NVOPENCL_LIBDIR) -lOpenCL  -o bin/nvopencl_wrapper
+	g++ $(CCFLAGS) nvopencl_wrapper.cc -I./ -I$(NVIDIA_CUDA_SDK_LOCATION)/OpenCL/common/inc -L $(NVOPENCL_LIBDIR) -lOpenCL  -o bin/nvopencl_wrapper
 	
 OUTPUT_DIR=../$(SIM_OBJ_FILES_DIR)/libopencl
 
@@ -144,6 +144,7 @@ clean:
 ../build/release/libopencl/opencl_runtime_api.o: /usr/include/bits/stdio_lim.h
 ../build/release/libopencl/opencl_runtime_api.o: /usr/include/bits/sys_errlist.h
 ../build/release/libopencl/opencl_runtime_api.o: /usr/include/string.h
+../build/release/libopencl/opencl_runtime_api.o: /usr/include/xlocale.h
 ../build/release/libopencl/opencl_runtime_api.o: /usr/include/assert.h
 ../build/release/libopencl/opencl_runtime_api.o: ../src/abstract_hardware_model.h
 ../build/release/libopencl/opencl_runtime_api.o: ../src/cuda-sim/cuda-sim.h
@@ -164,6 +165,10 @@ clean:
 ../build/release/libopencl/opencl_runtime_api.o: ../src/gpgpu-sim/shader.h
 ../build/release/libopencl/opencl_runtime_api.o: /usr/include/math.h
 ../build/release/libopencl/opencl_runtime_api.o: /usr/include/bits/huge_val.h
+../build/release/libopencl/opencl_runtime_api.o: /usr/include/bits/huge_valf.h
+../build/release/libopencl/opencl_runtime_api.o: /usr/include/bits/huge_vall.h
+../build/release/libopencl/opencl_runtime_api.o: /usr/include/bits/inf.h
+../build/release/libopencl/opencl_runtime_api.o: /usr/include/bits/nan.h
 ../build/release/libopencl/opencl_runtime_api.o: /usr/include/bits/mathdef.h
 ../build/release/libopencl/opencl_runtime_api.o: /usr/include/bits/mathcalls.h
 ../build/release/libopencl/opencl_runtime_api.o: ../src/cuda-sim/ptx.tab.h
@@ -183,7 +188,3 @@ clean:
 ../build/release/libopencl/opencl_runtime_api.o: ../src/gpgpu-sim/stats.h
 ../build/release/libopencl/opencl_runtime_api.o: ../src/gpgpu-sim/gpu-cache.h
 ../build/release/libopencl/opencl_runtime_api.o: ../src/gpgpu-sim/shader.h
-../build/release/libopencl/opencl_runtime_api.o: /usr/include/CL/cl.h
-../build/release/libopencl/opencl_runtime_api.o: /usr/include/CL/cl_platform.h
-../build/release/libopencl/opencl_runtime_api.o: /usr/include/stdint.h
-../build/release/libopencl/opencl_runtime_api.o: /usr/include/bits/wchar.h
