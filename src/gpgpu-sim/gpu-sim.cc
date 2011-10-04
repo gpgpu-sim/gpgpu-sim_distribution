@@ -811,20 +811,20 @@ void gpgpu_sim::cycle()
 
    // L2 operations follow L2 clock domain
    if (clock_mask & L2) {
-      for (unsigned i=0;i<m_memory_config->m_n_mem;i++) 
-         m_memory_partition_unit[i]->cache_cycle(gpu_sim_cycle+gpu_tot_sim_cycle);
+      for (unsigned i=0;i<m_memory_config->m_n_mem;i++) {
+          //move memory request from interconnect into memory partition (if not backed up)
+          //Note:This needs to be called in DRAM clock domain if there is no L2 cache in the system
+          if ( m_memory_partition_unit[i]->full() ) {
+             gpu_stall_dramfull++;
+          } else {
+              mem_fetch* mf = (mem_fetch*) icnt_pop( m_shader_config->mem2device(i) );
+              m_memory_partition_unit[i]->push( mf, gpu_sim_cycle + gpu_tot_sim_cycle );
+          }
+          m_memory_partition_unit[i]->cache_cycle(gpu_sim_cycle+gpu_tot_sim_cycle);
+      }
    }
 
    if (clock_mask & ICNT) {
-      for (unsigned i=0;i<m_memory_config->m_n_mem;i++) {
-         if ( m_memory_partition_unit[i]->full() ) {
-            gpu_stall_dramfull++;
-            continue;
-         }
-         // move memory request from interconnect into memory partition (if memory controller not backed up)
-         mem_fetch* mf = (mem_fetch*) icnt_pop( m_shader_config->mem2device(i) );
-         m_memory_partition_unit[i]->push( mf, gpu_sim_cycle + gpu_tot_sim_cycle );
-      }
       icnt_transfer();
    }
 
