@@ -87,7 +87,7 @@ bool g_sim_done = true;
 void *gpgpu_sim_thread_concurrent(void*)
 {
     // concurrent kernel execution simulation thread
-    g_the_gpu->init();
+
     do {
        if(g_debug_execution >= 3) {
           printf("GPGPU-Sim: *** simulation thread starting and spinning waiting for work ***\n");
@@ -105,6 +105,7 @@ void *gpgpu_sim_thread_concurrent(void*)
         pthread_mutex_unlock(&g_sim_lock);
         bool active = false;
         bool sim_cycles = false;
+        g_the_gpu->init();
         do {
             // check if a kernel has completed
             unsigned grid_uid = g_the_gpu->finished_kernel();
@@ -202,7 +203,7 @@ void start_sim_thread(int api)
 {
     if( g_sim_done ) {
         g_sim_done = false;
-        if( g_the_gpu_config.get_max_concurrent_kernel() > 1 && api == 1 ) {
+        if( api == 1 ) {
            pthread_create(&g_simulation_thread,NULL,gpgpu_sim_thread_concurrent,NULL);
         } else {
            pthread_create(&g_simulation_thread,NULL,gpgpu_sim_thread_sequential,NULL);
