@@ -152,7 +152,8 @@ void stream_operation::do_operation( gpgpu_sim *gpu )
     case stream_kernel_launch:
         if( gpu->can_start_kernel() ) {
             printf("kernel \'%s\' transfer to GPU hardware scheduler\n", m_kernel->name().c_str() );
-            if( m_sim_mode )
+           // if( m_sim_mode )
+           if(true)  
                 gpgpu_cuda_ptx_sim_main_func( *m_kernel );
             else
                 gpu->launch( m_kernel );
