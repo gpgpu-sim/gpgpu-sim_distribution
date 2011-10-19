@@ -177,6 +177,7 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/cuda_device_printf.o: opcodes.h opcodes.def
 ../../build/release/cuda-sim/cuda_device_printf.o: memory.h
 ../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/string.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/xlocale.h
 ../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/stdio.h
 ../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/libio.h
 ../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/_G_config.h
@@ -211,6 +212,7 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/cuda-sim.o: ../tr1_hash_map.h opcodes.h
 ../../build/release/cuda-sim/cuda-sim.o: opcodes.def memory.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/string.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/xlocale.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/stdio.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/libio.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/_G_config.h
@@ -225,6 +227,10 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/cuda-sim.o: ../gpgpu-sim/shader.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/math.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/huge_val.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/huge_valf.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/huge_vall.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/inf.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/nan.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/mathdef.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/mathcalls.h
 ../../build/release/cuda-sim/cuda-sim.o: ../cuda-sim/ptx.tab.h
@@ -272,6 +278,7 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/instructions.o: ../tr1_hash_map.h opcodes.h
 ../../build/release/cuda-sim/instructions.o: opcodes.def memory.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/string.h
+../../build/release/cuda-sim/instructions.o: /usr/include/xlocale.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/stdio.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/libio.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/_G_config.h
@@ -281,6 +288,10 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/instructions.o: ../option_parser.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/math.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/bits/huge_val.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/huge_valf.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/huge_vall.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/inf.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/nan.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/bits/mathdef.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/bits/mathcalls.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/fenv.h
@@ -315,6 +326,7 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/memory.o: /usr/include/gnu/stubs.h
 ../../build/release/cuda-sim/memory.o: /usr/include/gnu/stubs-64.h
 ../../build/release/cuda-sim/memory.o: /usr/include/string.h
+../../build/release/cuda-sim/memory.o: /usr/include/xlocale.h
 ../../build/release/cuda-sim/memory.o: /usr/include/stdio.h
 ../../build/release/cuda-sim/memory.o: /usr/include/bits/types.h
 ../../build/release/cuda-sim/memory.o: /usr/include/bits/typesizes.h
@@ -363,6 +375,7 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/ptx_ir.o: ../tr1_hash_map.h opcodes.h
 ../../build/release/cuda-sim/ptx_ir.o: opcodes.def memory.h
 ../../build/release/cuda-sim/ptx_ir.o: /usr/include/string.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/xlocale.h
 ../../build/release/cuda-sim/ptx_ir.o: /usr/include/stdio.h
 ../../build/release/cuda-sim/ptx_ir.o: /usr/include/libio.h
 ../../build/release/cuda-sim/ptx_ir.o: /usr/include/_G_config.h
@@ -397,6 +410,7 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/ptx_loader.o: ../tr1_hash_map.h opcodes.h
 ../../build/release/cuda-sim/ptx_loader.o: opcodes.def memory.h
 ../../build/release/cuda-sim/ptx_loader.o: /usr/include/string.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/xlocale.h
 ../../build/release/cuda-sim/ptx_loader.o: /usr/include/stdio.h
 ../../build/release/cuda-sim/ptx_loader.o: /usr/include/libio.h
 ../../build/release/cuda-sim/ptx_loader.o: /usr/include/_G_config.h
@@ -436,6 +450,7 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/ptx_parser.o: ../tr1_hash_map.h opcodes.h
 ../../build/release/cuda-sim/ptx_parser.o: opcodes.def memory.h
 ../../build/release/cuda-sim/ptx_parser.o: /usr/include/string.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/xlocale.h
 ../../build/release/cuda-sim/ptx_parser.o: /usr/include/stdio.h
 ../../build/release/cuda-sim/ptx_parser.o: /usr/include/libio.h
 ../../build/release/cuda-sim/ptx_parser.o: /usr/include/_G_config.h
@@ -469,6 +484,7 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/assert.h opcodes.h
 ../../build/release/cuda-sim/ptx_sim.o: opcodes.def memory.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/string.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/xlocale.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/stdio.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/libio.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/_G_config.h
@@ -481,6 +497,10 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/ptx_sim.o: ../gpgpu-sim/shader.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/math.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/huge_val.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/huge_valf.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/huge_vall.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/inf.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/nan.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/mathdef.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/mathcalls.h
 ../../build/release/cuda-sim/ptx_sim.o: ../cuda-sim/ptx.tab.h
@@ -527,6 +547,7 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/ptx-stats.o: ../tr1_hash_map.h opcodes.h
 ../../build/release/cuda-sim/ptx-stats.o: opcodes.def memory.h
 ../../build/release/cuda-sim/ptx-stats.o: /usr/include/string.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/xlocale.h
 ../../build/release/cuda-sim/ptx-stats.o: /usr/include/stdio.h
 ../../build/release/cuda-sim/ptx-stats.o: /usr/include/libio.h
 ../../build/release/cuda-sim/ptx-stats.o: /usr/include/_G_config.h

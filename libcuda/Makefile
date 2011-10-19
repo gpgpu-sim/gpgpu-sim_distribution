@@ -138,6 +138,7 @@ clean:
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/stdio_lim.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/sys_errlist.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/string.h
+../build/release/libcuda/cuda_runtime_api.o: /usr/include/xlocale.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/assert.h
 ../build/release/libcuda/cuda_runtime_api.o: ../src/gpgpu-sim/gpu-sim.h
 ../build/release/libcuda/cuda_runtime_api.o: ../src/abstract_hardware_model.h
@@ -146,6 +147,10 @@ clean:
 ../build/release/libcuda/cuda_runtime_api.o: ../src/gpgpu-sim/shader.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/math.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/huge_val.h
+../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/huge_valf.h
+../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/huge_vall.h
+../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/inf.h
+../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/nan.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/mathdef.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/mathcalls.h
 ../build/release/libcuda/cuda_runtime_api.o: ../src/cuda-sim/ptx.tab.h
