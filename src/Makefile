@@ -73,198 +73,185 @@ option_parser.$(OEXT): option_parser.h
 
 # DO NOT DELETE
 
-../build/release/abstract_hardware_model.o: abstract_hardware_model.h
-../build/release/abstract_hardware_model.o: cuda-sim/memory.h
-../build/release/abstract_hardware_model.o: abstract_hardware_model.h
-../build/release/abstract_hardware_model.o: /usr/include/assert.h
-../build/release/abstract_hardware_model.o: /usr/include/features.h
-../build/release/abstract_hardware_model.o: /usr/include/sys/cdefs.h
-../build/release/abstract_hardware_model.o: /usr/include/bits/wordsize.h
-../build/release/abstract_hardware_model.o: /usr/include/gnu/stubs.h
-../build/release/abstract_hardware_model.o: /usr/include/gnu/stubs-64.h
-../build/release/abstract_hardware_model.o: /usr/include/string.h
-../build/release/abstract_hardware_model.o: /usr/include/xlocale.h
-../build/release/abstract_hardware_model.o: /usr/include/stdio.h
-../build/release/abstract_hardware_model.o: /usr/include/bits/types.h
-../build/release/abstract_hardware_model.o: /usr/include/bits/typesizes.h
-../build/release/abstract_hardware_model.o: /usr/include/libio.h
-../build/release/abstract_hardware_model.o: /usr/include/_G_config.h
-../build/release/abstract_hardware_model.o: /usr/include/wchar.h
-../build/release/abstract_hardware_model.o: /usr/include/bits/stdio_lim.h
-../build/release/abstract_hardware_model.o: /usr/include/bits/sys_errlist.h
-../build/release/abstract_hardware_model.o: /usr/include/stdlib.h
-../build/release/abstract_hardware_model.o: /usr/include/sys/types.h
-../build/release/abstract_hardware_model.o: /usr/include/time.h
-../build/release/abstract_hardware_model.o: /usr/include/endian.h
-../build/release/abstract_hardware_model.o: /usr/include/bits/endian.h
-../build/release/abstract_hardware_model.o: /usr/include/bits/byteswap.h
-../build/release/abstract_hardware_model.o: /usr/include/sys/select.h
-../build/release/abstract_hardware_model.o: /usr/include/bits/select.h
-../build/release/abstract_hardware_model.o: /usr/include/bits/sigset.h
-../build/release/abstract_hardware_model.o: /usr/include/bits/time.h
-../build/release/abstract_hardware_model.o: /usr/include/sys/sysmacros.h
-../build/release/abstract_hardware_model.o: /usr/include/bits/pthreadtypes.h
-../build/release/abstract_hardware_model.o: /usr/include/alloca.h
-../build/release/abstract_hardware_model.o: option_parser.h cuda-sim/ptx_ir.h
-../build/release/abstract_hardware_model.o: cuda-sim/ptx.tab.h
-../build/release/abstract_hardware_model.o: cuda-sim/ptx_sim.h tr1_hash_map.h
-../build/release/abstract_hardware_model.o: cuda-sim/opcodes.h
-../build/release/abstract_hardware_model.o: cuda-sim/opcodes.def
-../build/release/abstract_hardware_model.o: cuda-sim/memory.h option_parser.h
-../build/release/abstract_hardware_model.o: cuda-sim/ptx-stats.h
-../build/release/debug.o: debug.h abstract_hardware_model.h
-../build/release/debug.o: gpgpu-sim/shader.h /usr/include/stdio.h
-../build/release/debug.o: /usr/include/features.h /usr/include/sys/cdefs.h
-../build/release/debug.o: /usr/include/bits/wordsize.h
-../build/release/debug.o: /usr/include/gnu/stubs.h
-../build/release/debug.o: /usr/include/gnu/stubs-64.h
-../build/release/debug.o: /usr/include/bits/types.h
-../build/release/debug.o: /usr/include/bits/typesizes.h /usr/include/libio.h
-../build/release/debug.o: /usr/include/_G_config.h /usr/include/wchar.h
-../build/release/debug.o: /usr/include/bits/stdio_lim.h
-../build/release/debug.o: /usr/include/bits/sys_errlist.h
-../build/release/debug.o: /usr/include/stdlib.h /usr/include/sys/types.h
-../build/release/debug.o: /usr/include/time.h /usr/include/endian.h
-../build/release/debug.o: /usr/include/bits/endian.h
-../build/release/debug.o: /usr/include/bits/byteswap.h
-../build/release/debug.o: /usr/include/sys/select.h
-../build/release/debug.o: /usr/include/bits/select.h
-../build/release/debug.o: /usr/include/bits/sigset.h /usr/include/bits/time.h
-../build/release/debug.o: /usr/include/sys/sysmacros.h
-../build/release/debug.o: /usr/include/bits/pthreadtypes.h
-../build/release/debug.o: /usr/include/alloca.h /usr/include/math.h
-../build/release/debug.o: /usr/include/bits/huge_val.h
-../build/release/debug.o: /usr/include/bits/huge_valf.h
-../build/release/debug.o: /usr/include/bits/huge_vall.h
-../build/release/debug.o: /usr/include/bits/inf.h /usr/include/bits/nan.h
-../build/release/debug.o: /usr/include/bits/mathdef.h
-../build/release/debug.o: /usr/include/bits/mathcalls.h /usr/include/assert.h
-../build/release/debug.o: cuda-sim/ptx.tab.h gpgpu-sim/delayqueue.h
-../build/release/debug.o: intersim/statwraper.h gpgpu-sim/gpu-misc.h
-../build/release/debug.o: gpgpu-sim/stack.h abstract_hardware_model.h
-../build/release/debug.o: gpgpu-sim/dram.h /usr/include/zlib.h
-../build/release/debug.o: /usr/include/zconf.h /usr/include/unistd.h
-../build/release/debug.o: /usr/include/bits/posix_opt.h
-../build/release/debug.o: /usr/include/bits/confname.h /usr/include/getopt.h
-../build/release/debug.o: gpgpu-sim/scoreboard.h gpgpu-sim/mem_fetch.h
-../build/release/debug.o: gpgpu-sim/addrdec.h option_parser.h
-../build/release/debug.o: gpgpu-sim/stats.h gpgpu-sim/gpu-cache.h
-../build/release/debug.o: tr1_hash_map.h gpgpu-sim/gpu-sim.h
-../build/release/debug.o: gpgpu-sim/shader.h cuda-sim/ptx_sim.h
-../build/release/debug.o: cuda-sim/opcodes.h cuda-sim/opcodes.def
-../build/release/debug.o: cuda-sim/memory.h cuda-sim/cuda-sim.h
-../build/release/debug.o: cuda-sim/ptx_ir.h cuda-sim/ptx.tab.h
-../build/release/debug.o: cuda-sim/ptx_sim.h /usr/include/string.h
-../build/release/debug.o: /usr/include/xlocale.h
-../build/release/gpgpusim_entrypoint.o: gpgpusim_entrypoint.h
-../build/release/gpgpusim_entrypoint.o: abstract_hardware_model.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/time.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/bits/types.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/features.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/sys/cdefs.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/bits/wordsize.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/gnu/stubs.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/gnu/stubs-64.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/bits/typesizes.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/stdio.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/libio.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/_G_config.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/wchar.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/bits/stdio_lim.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/bits/sys_errlist.h
-../build/release/gpgpusim_entrypoint.o: option_parser.h /usr/include/stdlib.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/sys/types.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/endian.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/bits/endian.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/bits/byteswap.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/sys/select.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/bits/select.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/bits/sigset.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/bits/time.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/sys/sysmacros.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/bits/pthreadtypes.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/alloca.h
-../build/release/gpgpusim_entrypoint.o: cuda-sim/cuda-sim.h
-../build/release/gpgpusim_entrypoint.o: abstract_hardware_model.h
-../build/release/gpgpusim_entrypoint.o: cuda-sim/ptx_ir.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/assert.h
-../build/release/gpgpusim_entrypoint.o: cuda-sim/ptx.tab.h cuda-sim/ptx_sim.h
-../build/release/gpgpusim_entrypoint.o: tr1_hash_map.h cuda-sim/opcodes.h
-../build/release/gpgpusim_entrypoint.o: cuda-sim/opcodes.def
-../build/release/gpgpusim_entrypoint.o: cuda-sim/memory.h option_parser.h
-../build/release/gpgpusim_entrypoint.o: cuda-sim/ptx_parser.h
-../build/release/gpgpusim_entrypoint.o: gpgpu-sim/gpu-sim.h
-../build/release/gpgpusim_entrypoint.o: gpgpu-sim/addrdec.h
-../build/release/gpgpusim_entrypoint.o: gpgpu-sim/shader.h
-../build/release/gpgpusim_entrypoint.o: gpgpu-sim/icnt_wrapper.h
-../build/release/gpgpusim_entrypoint.o: stream_manager.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/pthread.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/sched.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/bits/sched.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/signal.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/bits/setjmp.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/semaphore.h
-../build/release/gpgpusim_entrypoint.o: /usr/include/bits/semaphore.h
-../build/release/option_parser.o: /usr/include/stdio.h
-../build/release/option_parser.o: /usr/include/features.h
-../build/release/option_parser.o: /usr/include/sys/cdefs.h
-../build/release/option_parser.o: /usr/include/bits/wordsize.h
-../build/release/option_parser.o: /usr/include/gnu/stubs.h
-../build/release/option_parser.o: /usr/include/gnu/stubs-64.h
-../build/release/option_parser.o: /usr/include/bits/types.h
-../build/release/option_parser.o: /usr/include/bits/typesizes.h
-../build/release/option_parser.o: /usr/include/libio.h
-../build/release/option_parser.o: /usr/include/_G_config.h
-../build/release/option_parser.o: /usr/include/wchar.h
-../build/release/option_parser.o: /usr/include/bits/stdio_lim.h
-../build/release/option_parser.o: /usr/include/bits/sys_errlist.h
-../build/release/option_parser.o: /usr/include/stdlib.h
-../build/release/option_parser.o: /usr/include/sys/types.h
-../build/release/option_parser.o: /usr/include/time.h /usr/include/endian.h
-../build/release/option_parser.o: /usr/include/bits/endian.h
-../build/release/option_parser.o: /usr/include/bits/byteswap.h
-../build/release/option_parser.o: /usr/include/sys/select.h
-../build/release/option_parser.o: /usr/include/bits/select.h
-../build/release/option_parser.o: /usr/include/bits/sigset.h
-../build/release/option_parser.o: /usr/include/bits/time.h
-../build/release/option_parser.o: /usr/include/sys/sysmacros.h
-../build/release/option_parser.o: /usr/include/bits/pthreadtypes.h
-../build/release/option_parser.o: /usr/include/alloca.h /usr/include/assert.h
-../build/release/option_parser.o: /usr/include/string.h
-../build/release/option_parser.o: /usr/include/xlocale.h option_parser.h
-../build/release/stream_manager.o: stream_manager.h abstract_hardware_model.h
-../build/release/stream_manager.o: /usr/include/pthread.h
-../build/release/stream_manager.o: /usr/include/features.h
-../build/release/stream_manager.o: /usr/include/sys/cdefs.h
-../build/release/stream_manager.o: /usr/include/bits/wordsize.h
-../build/release/stream_manager.o: /usr/include/gnu/stubs.h
-../build/release/stream_manager.o: /usr/include/gnu/stubs-64.h
-../build/release/stream_manager.o: /usr/include/endian.h
-../build/release/stream_manager.o: /usr/include/bits/endian.h
-../build/release/stream_manager.o: /usr/include/bits/byteswap.h
-../build/release/stream_manager.o: /usr/include/sched.h
-../build/release/stream_manager.o: /usr/include/bits/types.h
-../build/release/stream_manager.o: /usr/include/bits/typesizes.h
-../build/release/stream_manager.o: /usr/include/time.h
-../build/release/stream_manager.o: /usr/include/bits/sched.h
-../build/release/stream_manager.o: /usr/include/signal.h
-../build/release/stream_manager.o: /usr/include/bits/sigset.h
-../build/release/stream_manager.o: /usr/include/bits/pthreadtypes.h
-../build/release/stream_manager.o: /usr/include/bits/setjmp.h
-../build/release/stream_manager.o: gpgpusim_entrypoint.h cuda-sim/cuda-sim.h
-../build/release/stream_manager.o: abstract_hardware_model.h
-../build/release/stream_manager.o: /usr/include/stdlib.h
-../build/release/stream_manager.o: /usr/include/sys/types.h
-../build/release/stream_manager.o: /usr/include/sys/select.h
-../build/release/stream_manager.o: /usr/include/bits/select.h
-../build/release/stream_manager.o: /usr/include/bits/time.h
-../build/release/stream_manager.o: /usr/include/sys/sysmacros.h
-../build/release/stream_manager.o: /usr/include/alloca.h gpgpu-sim/gpu-sim.h
-../build/release/stream_manager.o: gpgpu-sim/addrdec.h /usr/include/stdio.h
-../build/release/stream_manager.o: /usr/include/libio.h
-../build/release/stream_manager.o: /usr/include/_G_config.h
-../build/release/stream_manager.o: /usr/include/wchar.h
-../build/release/stream_manager.o: /usr/include/bits/stdio_lim.h
-../build/release/stream_manager.o: /usr/include/bits/sys_errlist.h
-../build/release/stream_manager.o: /usr/include/assert.h option_parser.h
-../build/release/stream_manager.o: gpgpu-sim/shader.h
+../build/debug/abstract_hardware_model.o: abstract_hardware_model.h
+../build/debug/abstract_hardware_model.o: cuda-sim/memory.h
+../build/debug/abstract_hardware_model.o: abstract_hardware_model.h
+../build/debug/abstract_hardware_model.o: /usr/include/assert.h
+../build/debug/abstract_hardware_model.o: /usr/include/features.h
+../build/debug/abstract_hardware_model.o: /usr/include/sys/cdefs.h
+../build/debug/abstract_hardware_model.o: /usr/include/bits/wordsize.h
+../build/debug/abstract_hardware_model.o: /usr/include/gnu/stubs.h
+../build/debug/abstract_hardware_model.o: /usr/include/gnu/stubs-64.h
+../build/debug/abstract_hardware_model.o: /usr/include/string.h
+../build/debug/abstract_hardware_model.o: /usr/include/stdio.h
+../build/debug/abstract_hardware_model.o: /usr/include/bits/types.h
+../build/debug/abstract_hardware_model.o: /usr/include/bits/typesizes.h
+../build/debug/abstract_hardware_model.o: /usr/include/libio.h
+../build/debug/abstract_hardware_model.o: /usr/include/_G_config.h
+../build/debug/abstract_hardware_model.o: /usr/include/wchar.h
+../build/debug/abstract_hardware_model.o: /usr/include/bits/stdio_lim.h
+../build/debug/abstract_hardware_model.o: /usr/include/bits/sys_errlist.h
+../build/debug/abstract_hardware_model.o: /usr/include/stdlib.h
+../build/debug/abstract_hardware_model.o: /usr/include/sys/types.h
+../build/debug/abstract_hardware_model.o: /usr/include/time.h
+../build/debug/abstract_hardware_model.o: /usr/include/endian.h
+../build/debug/abstract_hardware_model.o: /usr/include/bits/endian.h
+../build/debug/abstract_hardware_model.o: /usr/include/bits/byteswap.h
+../build/debug/abstract_hardware_model.o: /usr/include/sys/select.h
+../build/debug/abstract_hardware_model.o: /usr/include/bits/select.h
+../build/debug/abstract_hardware_model.o: /usr/include/bits/sigset.h
+../build/debug/abstract_hardware_model.o: /usr/include/bits/time.h
+../build/debug/abstract_hardware_model.o: /usr/include/sys/sysmacros.h
+../build/debug/abstract_hardware_model.o: /usr/include/bits/pthreadtypes.h
+../build/debug/abstract_hardware_model.o: /usr/include/alloca.h
+../build/debug/abstract_hardware_model.o: option_parser.h cuda-sim/ptx_ir.h
+../build/debug/abstract_hardware_model.o: cuda-sim/ptx.tab.h
+../build/debug/abstract_hardware_model.o: cuda-sim/ptx_sim.h
+../build/debug/abstract_hardware_model.o: cuda-sim/dram_callback.h
+../build/debug/abstract_hardware_model.o: tr1_hash_map.h cuda-sim/opcodes.h
+../build/debug/abstract_hardware_model.o: cuda-sim/opcodes.def
+../build/debug/abstract_hardware_model.o: cuda-sim/memory.h option_parser.h
+../build/debug/abstract_hardware_model.o: cuda-sim/ptx-stats.h
+../build/debug/debug.o: debug.h abstract_hardware_model.h gpgpu-sim/shader.h
+../build/debug/debug.o: /usr/include/stdio.h /usr/include/features.h
+../build/debug/debug.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
+../build/debug/debug.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h
+../build/debug/debug.o: /usr/include/bits/types.h
+../build/debug/debug.o: /usr/include/bits/typesizes.h /usr/include/libio.h
+../build/debug/debug.o: /usr/include/_G_config.h /usr/include/wchar.h
+../build/debug/debug.o: /usr/include/bits/stdio_lim.h
+../build/debug/debug.o: /usr/include/bits/sys_errlist.h /usr/include/stdlib.h
+../build/debug/debug.o: /usr/include/sys/types.h /usr/include/time.h
+../build/debug/debug.o: /usr/include/endian.h /usr/include/bits/endian.h
+../build/debug/debug.o: /usr/include/bits/byteswap.h
+../build/debug/debug.o: /usr/include/sys/select.h /usr/include/bits/select.h
+../build/debug/debug.o: /usr/include/bits/sigset.h /usr/include/bits/time.h
+../build/debug/debug.o: /usr/include/sys/sysmacros.h
+../build/debug/debug.o: /usr/include/bits/pthreadtypes.h
+../build/debug/debug.o: /usr/include/alloca.h /usr/include/math.h
+../build/debug/debug.o: /usr/include/bits/huge_val.h
+../build/debug/debug.o: /usr/include/bits/mathdef.h
+../build/debug/debug.o: /usr/include/bits/mathcalls.h /usr/include/assert.h
+../build/debug/debug.o: cuda-sim/ptx.tab.h cuda-sim/dram_callback.h
+../build/debug/debug.o: gpgpu-sim/delayqueue.h intersim/statwraper.h
+../build/debug/debug.o: gpgpu-sim/gpu-misc.h gpgpu-sim/stack.h
+../build/debug/debug.o: abstract_hardware_model.h gpgpu-sim/dram.h
+../build/debug/debug.o: /usr/include/zlib.h /usr/include/zconf.h
+../build/debug/debug.o: /usr/include/unistd.h /usr/include/bits/posix_opt.h
+../build/debug/debug.o: /usr/include/bits/confname.h /usr/include/getopt.h
+../build/debug/debug.o: gpgpu-sim/scoreboard.h gpgpu-sim/mem_fetch.h
+../build/debug/debug.o: gpgpu-sim/addrdec.h option_parser.h gpgpu-sim/stats.h
+../build/debug/debug.o: gpgpu-sim/gpu-cache.h tr1_hash_map.h
+../build/debug/debug.o: gpgpu-sim/gpu-sim.h gpgpu-sim/shader.h
+../build/debug/debug.o: cuda-sim/ptx_sim.h cuda-sim/dram_callback.h
+../build/debug/debug.o: cuda-sim/opcodes.h cuda-sim/opcodes.def
+../build/debug/debug.o: cuda-sim/memory.h cuda-sim/cuda-sim.h
+../build/debug/debug.o: cuda-sim/ptx_ir.h cuda-sim/ptx.tab.h
+../build/debug/debug.o: cuda-sim/ptx_sim.h /usr/include/string.h
+../build/debug/gpgpusim_entrypoint.o: gpgpusim_entrypoint.h
+../build/debug/gpgpusim_entrypoint.o: abstract_hardware_model.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/time.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/bits/types.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/features.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/sys/cdefs.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/bits/wordsize.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/gnu/stubs.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/gnu/stubs-64.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/bits/typesizes.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/stdio.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/libio.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/_G_config.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/wchar.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/bits/stdio_lim.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/bits/sys_errlist.h
+../build/debug/gpgpusim_entrypoint.o: option_parser.h /usr/include/stdlib.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/sys/types.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/endian.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/bits/endian.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/bits/byteswap.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/sys/select.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/bits/select.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/bits/sigset.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/bits/time.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/sys/sysmacros.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/bits/pthreadtypes.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/alloca.h
+../build/debug/gpgpusim_entrypoint.o: cuda-sim/cuda-sim.h
+../build/debug/gpgpusim_entrypoint.o: abstract_hardware_model.h
+../build/debug/gpgpusim_entrypoint.o: cuda-sim/dram_callback.h
+../build/debug/gpgpusim_entrypoint.o: cuda-sim/ptx_ir.h /usr/include/assert.h
+../build/debug/gpgpusim_entrypoint.o: cuda-sim/ptx.tab.h cuda-sim/ptx_sim.h
+../build/debug/gpgpusim_entrypoint.o: tr1_hash_map.h cuda-sim/opcodes.h
+../build/debug/gpgpusim_entrypoint.o: cuda-sim/opcodes.def cuda-sim/memory.h
+../build/debug/gpgpusim_entrypoint.o: option_parser.h cuda-sim/ptx_parser.h
+../build/debug/gpgpusim_entrypoint.o: gpgpu-sim/gpu-sim.h gpgpu-sim/addrdec.h
+../build/debug/gpgpusim_entrypoint.o: gpgpu-sim/shader.h
+../build/debug/gpgpusim_entrypoint.o: gpgpu-sim/icnt_wrapper.h
+../build/debug/gpgpusim_entrypoint.o: stream_manager.h /usr/include/pthread.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/sched.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/bits/sched.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/signal.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/bits/setjmp.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/semaphore.h
+../build/debug/gpgpusim_entrypoint.o: /usr/include/bits/semaphore.h
+../build/debug/option_parser.o: /usr/include/stdio.h /usr/include/features.h
+../build/debug/option_parser.o: /usr/include/sys/cdefs.h
+../build/debug/option_parser.o: /usr/include/bits/wordsize.h
+../build/debug/option_parser.o: /usr/include/gnu/stubs.h
+../build/debug/option_parser.o: /usr/include/gnu/stubs-64.h
+../build/debug/option_parser.o: /usr/include/bits/types.h
+../build/debug/option_parser.o: /usr/include/bits/typesizes.h
+../build/debug/option_parser.o: /usr/include/libio.h /usr/include/_G_config.h
+../build/debug/option_parser.o: /usr/include/wchar.h
+../build/debug/option_parser.o: /usr/include/bits/stdio_lim.h
+../build/debug/option_parser.o: /usr/include/bits/sys_errlist.h
+../build/debug/option_parser.o: /usr/include/stdlib.h
+../build/debug/option_parser.o: /usr/include/sys/types.h /usr/include/time.h
+../build/debug/option_parser.o: /usr/include/endian.h
+../build/debug/option_parser.o: /usr/include/bits/endian.h
+../build/debug/option_parser.o: /usr/include/bits/byteswap.h
+../build/debug/option_parser.o: /usr/include/sys/select.h
+../build/debug/option_parser.o: /usr/include/bits/select.h
+../build/debug/option_parser.o: /usr/include/bits/sigset.h
+../build/debug/option_parser.o: /usr/include/bits/time.h
+../build/debug/option_parser.o: /usr/include/sys/sysmacros.h
+../build/debug/option_parser.o: /usr/include/bits/pthreadtypes.h
+../build/debug/option_parser.o: /usr/include/alloca.h /usr/include/assert.h
+../build/debug/option_parser.o: /usr/include/string.h option_parser.h
+../build/debug/stream_manager.o: stream_manager.h abstract_hardware_model.h
+../build/debug/stream_manager.o: /usr/include/pthread.h
+../build/debug/stream_manager.o: /usr/include/features.h
+../build/debug/stream_manager.o: /usr/include/sys/cdefs.h
+../build/debug/stream_manager.o: /usr/include/bits/wordsize.h
+../build/debug/stream_manager.o: /usr/include/gnu/stubs.h
+../build/debug/stream_manager.o: /usr/include/gnu/stubs-64.h
+../build/debug/stream_manager.o: /usr/include/endian.h
+../build/debug/stream_manager.o: /usr/include/bits/endian.h
+../build/debug/stream_manager.o: /usr/include/bits/byteswap.h
+../build/debug/stream_manager.o: /usr/include/sched.h
+../build/debug/stream_manager.o: /usr/include/bits/types.h
+../build/debug/stream_manager.o: /usr/include/bits/typesizes.h
+../build/debug/stream_manager.o: /usr/include/time.h
+../build/debug/stream_manager.o: /usr/include/bits/sched.h
+../build/debug/stream_manager.o: /usr/include/signal.h
+../build/debug/stream_manager.o: /usr/include/bits/sigset.h
+../build/debug/stream_manager.o: /usr/include/bits/pthreadtypes.h
+../build/debug/stream_manager.o: /usr/include/bits/setjmp.h
+../build/debug/stream_manager.o: gpgpusim_entrypoint.h cuda-sim/cuda-sim.h
+../build/debug/stream_manager.o: abstract_hardware_model.h
+../build/debug/stream_manager.o: cuda-sim/dram_callback.h
+../build/debug/stream_manager.o: /usr/include/stdlib.h
+../build/debug/stream_manager.o: /usr/include/sys/types.h
+../build/debug/stream_manager.o: /usr/include/sys/select.h
+../build/debug/stream_manager.o: /usr/include/bits/select.h
+../build/debug/stream_manager.o: /usr/include/bits/time.h
+../build/debug/stream_manager.o: /usr/include/sys/sysmacros.h
+../build/debug/stream_manager.o: /usr/include/alloca.h gpgpu-sim/gpu-sim.h
+../build/debug/stream_manager.o: gpgpu-sim/addrdec.h /usr/include/stdio.h
+../build/debug/stream_manager.o: /usr/include/libio.h
+../build/debug/stream_manager.o: /usr/include/_G_config.h
+../build/debug/stream_manager.o: /usr/include/wchar.h
+../build/debug/stream_manager.o: /usr/include/bits/stdio_lim.h
+../build/debug/stream_manager.o: /usr/include/bits/sys_errlist.h
+../build/debug/stream_manager.o: /usr/include/assert.h option_parser.h
+../build/debug/stream_manager.o: gpgpu-sim/shader.h
