@@ -1298,7 +1298,7 @@ void gpgpu_sim::shader_print_runtime_stat( FILE *fout )
 }
 
 
-void gpgpu_sim::shader_print_l1_miss_stat( FILE *fout ) 
+void gpgpu_sim::shader_print_l1_miss_stat( FILE *fout ) const
 {
    unsigned total_d1_misses = 0, total_d1_accesses = 0;
    for ( unsigned i = 0; i < m_shader_config->n_simt_clusters; ++i ) {
