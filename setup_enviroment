@@ -10,7 +10,7 @@ export QTINC=/usr/include
 export BOOST_ROOT=/usr/include/boost
 export BOOST_LIB=/usr/lib64
 export BOOST_VER=
-#export NVOPENCL_LIBDIR=/usr/lib64
+export NVOPENCL_LIBDIR=/usr/lib64
 
 # change this to point to your installation of the NVIDIA compute SDK
 export NVIDIA_COMPUTE_SDK_LOCATION=~/NVIDIA_GPU_Computing_SDK
