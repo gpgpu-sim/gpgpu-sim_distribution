@@ -599,6 +599,8 @@ void gpgpu_sim::gpu_print_stat() const
    printf("gpu_stall_dramfull = %d\n", gpu_stall_dramfull);
    printf("gpu_stall_icnt2sh    = %d\n", gpu_stall_icnt2sh );
 
+   shader_print_l1_miss_stat( stdout );
+
    m_shader_stats->print(stdout);
 
    // performance counter that are not local to one shader
