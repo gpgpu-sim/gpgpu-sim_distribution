@@ -835,7 +835,9 @@ void shader_core_ctx::execute()
 }
 
 void ldst_unit::print_cache_stats( FILE *fp, unsigned& dl1_accesses, unsigned& dl1_misses ) {
-   m_L1D->print( fp, dl1_accesses, dl1_misses );
+   if( m_L1D ) {
+       m_L1D->print( fp, dl1_accesses, dl1_misses );
+   }
 }
 
 void shader_core_ctx::writeback()
