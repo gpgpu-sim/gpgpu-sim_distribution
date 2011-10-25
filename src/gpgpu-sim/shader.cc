@@ -834,6 +834,10 @@ void shader_core_ctx::execute()
     }
 }
 
+void ldst_unit::print_cache_stats( FILE *fp, unsigned& dl1_accesses, unsigned& dl1_misses ) {
+   m_L1D->print( fp, dl1_accesses, dl1_misses );
+}
+
 void shader_core_ctx::writeback()
 {
     warp_inst_t *&pipe_reg = m_pipeline_reg[EX_WB];
@@ -1296,7 +1300,17 @@ void gpgpu_sim::shader_print_runtime_stat( FILE *fout )
 
 void gpgpu_sim::shader_print_l1_miss_stat( FILE *fout ) 
 {
-    /*
+   unsigned total_d1_misses = 0, total_d1_accesses = 0;
+   for ( unsigned i = 0; i < m_shader_config->n_simt_clusters; ++i ) {
+         unsigned custer_d1_misses = 0, cluster_d1_accesses = 0;
+         m_cluster[ i ]->print_cache_stats( fout, cluster_d1_accesses, custer_d1_misses );
+         total_d1_misses += custer_d1_misses;
+         total_d1_accesses += cluster_d1_accesses;
+   }
+   fprintf( fout, "total_dl1_misses=%d\n", total_d1_misses );
+   fprintf( fout, "total_dl1_accesses=%d\n", total_d1_accesses );
+   fprintf( fout, "total_dl1_miss_rate= %f\n", (float)total_d1_misses / (float)total_d1_accesses );
+   /*
    fprintf(fout, "THD_INSN_AC: ");
    for (unsigned i=0; i<m_shader_config->n_thread_per_shader; i++) 
       fprintf(fout, "%d ", m_sc[0]->get_thread_n_insn_ac(i));
@@ -1860,6 +1874,10 @@ void shader_core_ctx::store_ack( class mem_fetch *mf )
     m_warp[warp_id].dec_store_req();
 }
 
+void shader_core_ctx::print_cache_stats( FILE *fp, unsigned& dl1_accesses, unsigned& dl1_misses ) {
+   m_ldst_unit->print_cache_stats( fp, dl1_accesses, dl1_misses );
+}
+
 bool shd_warp_t::functional_done() const
 {
     return get_n_completed() == m_warp_size;
@@ -2347,4 +2365,10 @@ void simt_core_cluster::display_pipeline( unsigned sid, FILE *fout, int print_me
         const mem_fetch *mf = *i;
         mf->print(fout);
     }
+}
+
+void simt_core_cluster::print_cache_stats( FILE *fp, unsigned& dl1_accesses, unsigned& dl1_misses ) const {
+   for ( unsigned i = 0; i < m_config->n_simt_cores_per_cluster; ++i ) {
+      m_core[ i ]->print_cache_stats( fp, dl1_accesses, dl1_misses );
+   }
 }
