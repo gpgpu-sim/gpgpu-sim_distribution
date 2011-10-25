@@ -16,7 +16,7 @@ export BOOST_VER=
 export NVIDIA_COMPUTE_SDK_LOCATION=~/NVIDIA_GPU_Computing_SDK
 
 # change the following to point to your installation of CUDA Toolkit
-export CUDA_INSTALL_PATH=/home/ayub/cuda
+export CUDA_INSTALL_PATH=$HOME/nvcuda/3.1/cuda
 
 # setting LD_LIBRARY_PATH as follows enables GPGPU-Sim to be invoked by 
 # native CUDA and OpenCL applications. GPGPU-Sim is dynamically linked
