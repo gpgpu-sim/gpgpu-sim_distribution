@@ -101,6 +101,30 @@ struct transaction_info {
     active_mask_t active; // threads in this transaction
 };
 
+void warp_inst_t::clear_active( const active_mask_t &inactive ) {
+    active_mask_t test = m_warp_active_mask;
+    test &= inactive;
+    assert( test == inactive ); // verify threads being disabled were active
+    m_warp_active_mask &= ~inactive;
+}
+
+void warp_inst_t::set_not_active( unsigned lane_id ) {
+    m_warp_active_mask.reset(lane_id);
+}
+
+void warp_inst_t::set_active( const active_mask_t &active ) {
+   m_warp_active_mask = active;
+   if( m_isatomic ) {
+      for( unsigned i=0; i < m_config->warp_size; i++ ) {
+         if( !m_warp_active_mask.test(i) ) {
+             m_per_scalar_thread[i].callback.function = NULL;
+             m_per_scalar_thread[i].callback.instruction = NULL;
+             m_per_scalar_thread[i].callback.thread = NULL;
+         }
+      }
+   }
+}
+
 void warp_inst_t::generate_mem_accesses()
 {
     if( empty() || op == MEMORY_BARRIER_OP || m_mem_accesses_created ) 
