@@ -1089,14 +1089,15 @@ void ldst_unit::writeback()
                             m_pending_writes[m_next_wb.warp_id()].erase(m_next_wb.out[r]);
                             m_scoreboard->releaseRegister( m_next_wb.warp_id(), m_next_wb.out[r] );
                             m_stats->m_num_sim_insn[m_sid]++;
+                            m_core->get_gpu()->gpu_sim_insn += m_next_wb.active_count();
                         }
                     } else { // shared 
                         m_scoreboard->releaseRegister( m_next_wb.warp_id(), m_next_wb.out[r] );
                         m_stats->m_num_sim_insn[m_sid]++;
+                        m_core->get_gpu()->gpu_sim_insn += m_next_wb.active_count();
                     }
                 }
             }
-            m_core->get_gpu()->gpu_sim_insn += m_next_wb.active_count();
             m_next_wb.clear();
             m_last_inst_gpu_sim_cycle = gpu_sim_cycle;
             m_last_inst_gpu_tot_sim_cycle = gpu_tot_sim_cycle;
@@ -1234,6 +1235,7 @@ void ldst_unit::cycle()
                    }
                }
                if( !pending_requests ) {
+                   m_core->get_gpu()->gpu_sim_insn += m_dispatch_reg->active_count();
                    m_scoreboard->releaseRegisters(m_dispatch_reg);
                    m_stats->m_num_sim_insn[m_sid]++;
                }
@@ -1243,6 +1245,7 @@ void ldst_unit::cycle()
        } else {
            // stores exit pipeline here
            m_core->dec_inst_in_pipeline(warp_id);
+           m_core->get_gpu()->gpu_sim_insn += m_dispatch_reg->active_count();
            m_dispatch_reg->clear();
            m_stats->m_num_sim_insn[m_sid]++;
        }

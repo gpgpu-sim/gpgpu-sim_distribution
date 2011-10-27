@@ -1110,7 +1110,8 @@ public:
     mem_fetch *alloc( const warp_inst_t &inst, const mem_access_t &access ) const
     {
         warp_inst_t inst_copy = inst;
-        inst_copy.set_active(access.get_warp_mask());
+        // tgrogers Oct 27, 2011 - I am commenting out this line of code, because it is screwing up our instruction counts on memory instructions.  I am not sure what the point of this was, because no one seems to read the active mask on the memory fetches's warp instruction.
+        //inst_copy.set_active(access.get_warp_mask());
         mem_fetch *mf = new mem_fetch(access, 
                                       &inst_copy, 
                                       access.is_write()?WRITE_PACKET_SIZE:READ_PACKET_SIZE,
