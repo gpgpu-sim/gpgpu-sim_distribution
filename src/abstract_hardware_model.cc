@@ -125,6 +125,23 @@ void warp_inst_t::set_active( const active_mask_t &active ) {
    }
 }
 
+void warp_inst_t::do_atomic() {
+    do_atomic( m_warp_active_mask );
+}
+
+void warp_inst_t::do_atomic( const active_mask_t& access_mask ) {
+    assert( m_isatomic && !m_empty );
+    for( unsigned i=0; i < m_config->warp_size; i++ )
+    {
+        if( access_mask.test(i) )
+        {
+            dram_callback_t &cb = m_per_scalar_thread[i].callback;
+            if( cb.thread )
+                cb.function(cb.instruction, cb.thread);
+        }
+    }
+}
+
 void warp_inst_t::generate_mem_accesses()
 {
     if( empty() || op == MEMORY_BARRIER_OP || m_mem_accesses_created ) 

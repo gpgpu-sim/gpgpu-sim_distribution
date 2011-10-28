@@ -1132,7 +1132,7 @@ void ldst_unit::writeback()
             if( m_next_global ) {
                 m_next_wb = m_next_global->get_inst();
                 if( m_next_global->isatomic() ) 
-                    m_core->decrement_atomic_count(m_next_global->get_wid(),m_next_wb.active_count());
+                    m_core->decrement_atomic_count(m_next_global->get_wid(),m_next_global->get_access_warp_mask().count());
                 delete m_next_global;
                 m_next_global = NULL;
             }
