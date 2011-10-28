@@ -691,8 +691,7 @@ clCreateProgramWithBinary(cl_context                     /* context */,
                           cl_int *                       /* errcode_ret */) CL_API_SUFFIX__VERSION_1_0 {
 
 	opencl_not_finished(__my_func__, __LINE__ );
-	cl_program temp;
-	return temp;
+	return cl_program();
 }
 
 extern CL_API_ENTRY cl_int CL_API_CALL

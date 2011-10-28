@@ -1452,7 +1452,7 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel )
                     threadLocalMemory = localMemoryPlace->second;
                  }
                  //new thread initialization
-                 newThread->init( g_the_gpu, NULL, NULL, NULL, NULL, NULL );
+                 newThread->init( g_the_gpu, NULL, 0, 0, 0, 0 );
                  newThread->set_info(functionInfo);
                  newThread->set_nctaid(CTA_Id3d);
                  newThread->set_ntid(kernel.get_cta_dim());
@@ -1532,13 +1532,12 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel )
                          {
                          //execute the warp threads till a barrier met
                                  
-                              printf("Executing warp %d out of %d and threads count is %d \n",i,ctaWarpsList.size(), ctaLiveThreads);
+                              printf("Executing warp %d out of %zu and threads count is %d \n",i,ctaWarpsList.size(), ctaLiveThreads);
                                 while(true){
                                      
                                  //for each warp execute threads until blocked or done
                                   active_mask_t takenBranches;
                                   bool atBarrier =false;
-                                  bool stop=false;
 
                                   //  printf("In warp %d of size %d\n ",i,ctaWarpsList[i].size());
                                        int threadsDoneInThisWarp =0;
