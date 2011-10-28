@@ -117,7 +117,7 @@ bool mem_fetch::isatomic() const
 
 void mem_fetch::do_atomic()
 {
-    m_inst.do_atomic();
+    m_inst.do_atomic( m_access.get_warp_mask() );
 }
 
 bool mem_fetch::istexture() const
