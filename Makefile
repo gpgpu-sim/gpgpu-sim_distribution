@@ -56,7 +56,7 @@ ifneq  ($(NVOPENCL_LIBDIR),)
 	TARGETS += $(SIM_LIB_DIR)/libOpenCL.so
 endif
 	TARGETS += decuda_to_ptxplus/decuda_to_ptxplus
-	TARGETS += decuda
+	#TARGETS += decuda
 
 gpgpusim: makedirs $(TARGETS)
 
