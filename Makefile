@@ -52,13 +52,21 @@ ifeq ($(shell uname),Linux)
 else
 	TARGETS += $(SIM_LIB_DIR)/libcudart.dylib
 endif
-ifneq  ($(NVOPENCL_LIBDIR),)
+
+ifeq  ($(NVOPENCL_LIBDIR),)
+	TARGETS += no_opencl_support
+else ifeq ($(NVOPENCL_INCDIR),)
+	TARGETS += no_opencl_support
+else
 	TARGETS += $(SIM_LIB_DIR)/libOpenCL.so
 endif
 	TARGETS += decuda_to_ptxplus/decuda_to_ptxplus
 	#TARGETS += decuda
 
 gpgpusim: makedirs $(TARGETS)
+
+no_opencl_support:
+	@echo "Warning: gpgpu-sim is building without opencl support. Make sure NVOPENCL_LIBDIR and NVOPENCL_INCDIR are set"
 
 $(SIM_LIB_DIR)/libcudart.so: $(LIBS) cudalib
 	g++ $(SNOW) -shared -Wl,-soname,libcudart.so \

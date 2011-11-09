@@ -2,7 +2,7 @@
 
 # uncomment the line with debug if you want to run GPGPU-Sim in gdb 
 export GPGPUSIM_CONFIG=release
-#export GPGPUSIM_CONFIG=debug  
+# export GPGPUSIM_CONFIG=debug  
 
 export GPGPUSIM_ROOT="$( cd "$( dirname "$BASH_SOURCE" )" && pwd )"
 
@@ -10,13 +10,22 @@ export QTINC=/usr/include
 export BOOST_ROOT=/usr/include/boost
 export BOOST_LIB=/usr/lib64
 export BOOST_VER=
-export NVOPENCL_LIBDIR=/usr/lib64
+
+# change this to point to your opencl library directory, usually /usr/lib
+# or /usr/lib64. Not setting this variable will cause gpgpu-sim to build
+# without opencl support.
+export NVOPENCL_LIBDIR=
+
+# change this to point to your opencl include directory, usually
+# $CUDA_INSTALL_PATH/include. Not setting this variable will cause
+# gpgpu-sim to build without opencl support.
+export NVOPENCL_INCDIR=
 
 # change this to point to your installation of the NVIDIA compute SDK
-export NVIDIA_COMPUTE_SDK_LOCATION=~/NVIDIA_GPU_Computing_SDK
+export NVIDIA_COMPUTE_SDK_LOCATION=$HOME/NVIDIA_GPU_Computing_SDK/
 
 # change the following to point to your installation of CUDA Toolkit
-export CUDA_INSTALL_PATH=$HOME/nvcuda/3.1/cuda
+export CUDA_INSTALL_PATH=/usr/local/cuda/
 
 # setting LD_LIBRARY_PATH as follows enables GPGPU-Sim to be invoked by 
 # native CUDA and OpenCL applications. GPGPU-Sim is dynamically linked
