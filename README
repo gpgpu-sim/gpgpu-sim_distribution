@@ -62,13 +62,12 @@ Step 2: Download and install the CUDA Toolkit. If you want to run OpenCL on
 the simulator, download and install NVIDIA's OpenCL driver from
 <http://developer.nvidia.com/object/opencl-download.html>. Update your PATH and
 LD_LIBRARY_PATH as indicated by the NVIDIA install scripts. Note that you will
-to use the lib64 directory if you are using a 64bit machine.
+need to use the lib64 directory if you are using a 64bit machine.
 
-Step 3: Edit CUDA_INSTALL_PATH in the setup_environment file then set
-environment variables by sourcing the setup_environment script. From a bash 
-shell, type the following in this directory:
+Step 3: Read the file setup_environment carefully and change it to match your
+system. Then, from a bash shell, type the following in this directory:
 
-	. setup_environment
+	source setup_environment
 
 Step 4: Type "make" in this directory. This will build the simulator with
 optimizations enabled so the simulator runs faster. If you want to run the
@@ -76,13 +75,13 @@ simulator in gdb to debug it, then uncomment the line
 
 	#export GPGPUSIM_CONFIG=debug
 
-in setup_environment and type ". setup_environment" again, then "make" again.
+in setup_environment and type "source setup_environment" again, then "make" again.
 
 Step 5: Copy or create the configuration files gpgpusim.conf and \
 icnt_config_quadro_islip.txt in your working directory. Sample configuration
 files are provided under gpgpu-sim/v3.x/configs/*/
 
-Step 6: Build a CUDA appliction with a recent version of CUDA (or an OpenCL 
+Step 6: Build a CUDA appliction (or an OpenCL 
 application).
 
 Step 7: Run the application and the device code should now run on the 
