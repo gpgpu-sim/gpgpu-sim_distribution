@@ -77,6 +77,11 @@ simulator in gdb to debug it, then uncomment the line
 
 in setup_environment and type "source setup_environment" again, then "make" again.
 
+Step 4.1 [optional]: Type "make docs" in this directory to build the doxygen
+documentation. You need to have doxygen and graphviz installed for this to work.
+"make cleandocs" will remove the generated documentation. The documentation resides
+at doc/doxygen/html.
+
 Step 5: Copy or create the configuration files gpgpusim.conf and \
 icnt_config_quadro_islip.txt in your working directory. Sample configuration
 files are provided under gpgpu-sim/v3.x/configs/*/
