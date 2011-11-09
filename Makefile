@@ -138,6 +138,12 @@ makedirs:
 all:
 	$(MAKE) gpgpusim
 
+docs:
+	$(MAKE) -C doc/doxygen/
+
+cleandocs:
+	$(MAKE) clean -C doc/doxygen/
+
 clean: 
 	$(MAKE) cleangpgpusim
 
