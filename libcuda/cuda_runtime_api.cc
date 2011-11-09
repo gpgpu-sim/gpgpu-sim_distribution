@@ -1143,6 +1143,10 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
       symbol_table *symtab;
       const char *ptx = info->ptx[selected_capability].ptx;
       if(context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() ) {
+           if (info->cubin[selected_capability].cubin ==NULL) {
+			   printf("GPGPU-Sim PTX: Cannot convert to ptxplus no cubin found, probably because it was compiled using newer version of cuda (>=3.0)\nGPGPU-Sim PTX: Exiting ...\n");
+			   exit(1);
+		   }
            char *ptxplus_str = gpgpu_ptx_sim_convert_ptx_to_ptxplus(ptx, info->cubin[selected_capability].cubin, source_num++,
                                                   context->get_device()->get_gpgpu()->get_config().saved_converted_ptxplus());
            symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str,source_num);
