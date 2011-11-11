@@ -51,7 +51,18 @@ See file CHANGES for updates in this and earlier versions.
 2. INSTALLING, BUILDING and RUNNING GPGPU-Sim
 
 GPGPU-Sim was developed on Linux SuSe (this release was tested with SuSe
-version 11.1) and has been used on several other Linux platforms.  
+version 11.1) We have tested it also on Ubuntu 10.04.3 LTS (32 bits)
+and has been used on several other Linux platforms.  
+
+If you are using Ubuntu, please run the following commands as necessary
+gpgpu-sim dependencies:
+"sudo apt-get install build-essentials xutils-dev bison zlib1g-dev flex libboost-all-dev libglu1-mesa-dev"
+
+gpgpu-sim documentation:
+"sudo apt-get install doxygen graphviz"
+
+cuda sdk dependencies:
+"sudo apt-get install libxi-dev libxmu-dev libglut3-dev"
 
 Step 1: Ensure you have gcc, g++, make, makedepend, zlib, bison and flex 
 installed on your system.  For CUDA 2.x we used gcc version 4.3.2, for CUDA 1.1 
