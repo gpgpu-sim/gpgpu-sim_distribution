@@ -1,4 +1,23 @@
 CHANGE LOG:
+Version 3.1.0b versus 3.0.0b
+- Added prints for L1 data cache statistics
+- Added read-to-precharge constraint in DRAM
+- Disabled Stream Manager's verbose output by default, use debug level 3 to 
+  enable it
+- Addresses returned by memory allocation are now 256 bytes aligned
+- Ejection from the clock domain interface buffer between interconnection 
+  network and L2 cache happens in the L2 clock domain instead of interconnect 
+  clock domain.
+- Testing the simulator on Ubuntu 10.04.3 LTS
+- Added Doxygen generated documentation
+- Bug fixes
+   - Fixed the variation in instruction count seen under different cache
+     configurations on the same workload
+   - Fixed unnecessary flushing of instruction buffer
+   - Fixed mislabeling of stall cycles recorded by scheduler
+   - Fixed compilation issues when using gcc 4.5.1
+   - Cleanup and bugfixes to build scripts
+   - Fixed gpu_sim_cycle with sequential kernel launches
 
 Version 3.0.0b versus 2.1.2b
 - massive refactoring of code to C++ (most global variables eliminated)
