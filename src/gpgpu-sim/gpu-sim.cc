@@ -134,11 +134,12 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_simd_model", OPT_INT32, &model, 
                    "1 = post-dominator", "1");
     option_parser_register(opp, "-gpgpu_shader_core_pipeline", OPT_CSTR, &gpgpu_shader_core_pipeline_opt, 
-                   "shader core pipeline config, i.e., {<nthread>:<warpsize>:<pipe_simd_width>}",
-                   "256:32:32");
+                   "shader core pipeline config, i.e., {<nthread>:<warpsize>}",
+                   "1024:32");
     option_parser_register(opp, "-gpgpu_tex_cache:l1", OPT_CSTR, &m_L1T_config.m_config_string, 
-                   "per-shader L1 texture cache  (READ-ONLY) config, i.e., {<nsets>:<linesize>:<assoc>:<repl>|none}",
-                   "512:64:2:L:R:m");
+                   "per-shader L1 texture cache  (READ-ONLY) config "
+                   " {<nsets>:<bsize>:<assoc>:<rep>:<wr>:<alloc>,<mshr>:<N>:<merge>,<mq>:<rf>}",
+                   "8:128:5:L:R:m,F:128:4,128:2");
     option_parser_register(opp, "-gpgpu_const_cache:l1", OPT_CSTR, &m_L1C_config.m_config_string, 
                    "per-shader L1 constant memory cache  (READ-ONLY) config "
                    " {<nsets>:<bsize>:<assoc>:<rep>:<wr>:<alloc>,<mshr>:<N>:<merge>,<mq>}",
