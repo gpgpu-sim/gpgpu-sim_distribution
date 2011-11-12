@@ -100,10 +100,10 @@ void memory_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_cache:dl2", OPT_CSTR, &m_L2_config.m_config_string, 
                    "unified banked L2 data cache config "
                    " {<nsets>:<bsize>:<assoc>:<rep>:<wr>:<alloc>,<mshr>:<N>:<merge>,<mq>}",
-                   NULL);
+                   "64:128:8:L:R:m,A:16:4,4");
     option_parser_register(opp, "-gpgpu_cache:dl2_texture_only", OPT_BOOL, &m_L2_texure_only, 
                            "L2 cache used for texture only",
-                           "0");
+                           "1");
     option_parser_register(opp, "-gpgpu_n_mem", OPT_UINT32, &m_n_mem, 
                  "number of memory modules (e.g. memory controllers) in gpu",
                  "8");
