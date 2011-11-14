@@ -343,7 +343,7 @@ void decudaInstList::addRegister(std::string reg, bool lo)
 	std::string parsedReg = parseRegister(reg, lo, vectorFlag);
 
 	// Add the register to instruction operand list
-	char* regName = new char [strlen(parsedReg.c_str())];
+	char* regName = new char [strlen(parsedReg.c_str())+1];
 	strcpy(regName, parsedReg.c_str());
 	getListEnd().addOperand(regName);
 }
@@ -388,7 +388,7 @@ void decudaInstList::addPredicate(std::string pred)
 	std::string parsedPred = parsePredicate(pred);
 
 	// Add the predicate to instruction operand list
-	char* predName = new char [strlen(parsedPred.c_str())];
+	char* predName = new char [strlen(parsedPred.c_str())+1];
 	strcpy(predName, parsedPred.c_str());
 	getListEnd().addOperand(predName);
 }
@@ -416,7 +416,7 @@ void decudaInstList::addDoublePredReg(std::string pred, std::string reg, bool lo
 	else
 		doublePredReg = parsedPred + "|" + parsedReg;
 
-	char* doublePredRegName = new char [strlen(doublePredReg.c_str())];
+	char* doublePredRegName = new char [strlen(doublePredReg.c_str())+1];
 	strcpy(doublePredRegName, doublePredReg.c_str());
 	getListEnd().addOperand(doublePredRegName);
 }
@@ -446,7 +446,7 @@ void decudaInstList::addTex(std::string tex)
 	}
 
 	// Add the tex to instruction operand list
-	char* texName = new char [strlen(origTex.c_str())];
+	char* texName = new char [strlen(origTex.c_str())+1];
 	strcpy(texName, origTex.c_str());
 	getListEnd().addOperand(texName);
 }
@@ -552,7 +552,7 @@ void decudaInstList::addVector(char* vector, int vectorSize) {
 	if(vectorSize == 1) {
 		std::string vectorNew = vector;
 		vectorNew = vectorNew.substr(0,vectorNew.size()-1) + ",_,_,_}";
-		char* vectorNewName = new char [strlen(vectorNew.c_str())];
+		char* vectorNewName = new char [strlen(vectorNew.c_str())+1];
 		strcpy(vectorNewName, vectorNew.c_str());
 		getListEnd().addOperand(vectorNewName);
 	} else {
@@ -621,7 +621,7 @@ void decudaInstList::addMemoryOperand(std::string mem, int memType) {
 	}
 
 	// Add the memory operand to instruction operand list
-	char* memName = new char [strlen(mem.c_str())];
+	char* memName = new char [strlen(mem.c_str())+1];
 	strcpy(memName, mem.c_str());
 	getListEnd().addOperand(memName);
 }
