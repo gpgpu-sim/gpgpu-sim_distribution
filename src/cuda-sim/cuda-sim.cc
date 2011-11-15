@@ -1222,7 +1222,7 @@ void print_splash()
    static int splash_printed=0;
    if ( !splash_printed ) {
       unsigned build=0;
-      sscanf(g_gpgpusim_build_string, "$Change$", &build);
+      sscanf(g_gpgpusim_build_string, "$Change"": %u $", &build);
       fprintf(stdout, "\n\n        *** GPGPU-Sim version %s.%u ***\n\n\n", g_gpgpusim_version_string, build );
       splash_printed=1;
    }
