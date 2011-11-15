@@ -1214,13 +1214,16 @@ kernel_info_t *gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
    return result;
 }
 
-const char *g_gpgpusim_version_string = "3.0.9924 (beta)";
+const char *g_gpgpusim_build_string = "$Change$";
+const char *g_gpgpusim_version_string = "3.0";
 
 void print_splash()
 {
    static int splash_printed=0;
    if ( !splash_printed ) {
-      fprintf(stdout, "\n\n        *** GPGPU-Sim version %s ***\n\n\n", g_gpgpusim_version_string );
+      unsigned build=0;
+      sscanf(g_gpgpusim_build_string, "$Change %u $", &build);
+      fprintf(stdout, "\n\n        *** GPGPU-Sim version %s.%u ***\n\n\n", g_gpgpusim_version_string, build );
       splash_printed=1;
    }
 }
