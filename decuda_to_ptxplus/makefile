@@ -112,6 +112,9 @@ decudaInst.o: /usr/include/bits/byteswap.h /usr/include/sys/select.h
 decudaInst.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
 decudaInst.o: /usr/include/bits/time.h /usr/include/sys/sysmacros.h
 decudaInst.o: /usr/include/bits/pthreadtypes.h /usr/include/alloca.h
+decudaInst.o: /usr/include/stdio.h /usr/include/libio.h
+decudaInst.o: /usr/include/_G_config.h /usr/include/wchar.h
+decudaInst.o: /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h
 decudaInstList.o: decudaInstList.h decudaInst.h stringList.h
 decudaInstList.o: /usr/include/assert.h /usr/include/features.h
 decudaInstList.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
