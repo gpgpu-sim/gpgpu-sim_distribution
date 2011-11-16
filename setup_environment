@@ -1,6 +1,11 @@
 # see README before running this
 
 # uncomment the line with debug if you want to run GPGPU-Sim in gdb 
+# Alternatively you can run: 
+# ./config_setup debug
+# or
+# ./config_setup release
+# This avoids extending your LD_LIBRARY_PATH when changing the configuration
 export GPGPUSIM_CONFIG=release
 # export GPGPUSIM_CONFIG=debug  
 
