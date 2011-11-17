@@ -1,13 +1,13 @@
 # see README before running this
 
-# uncomment the line with debug if you want to run GPGPU-Sim in gdb 
-# Alternatively you can run: 
-# ./config_setup debug
-# or
-# ./config_setup release
-# This avoids extending your LD_LIBRARY_PATH when changing the configuration
-export GPGPUSIM_CONFIG=release
-# export GPGPUSIM_CONFIG=debug  
+# to run the debug build of GPGPU-Sim run:
+# source setup_environment debug
+if [ $# == '1' ] ;
+then
+    export GPGPUSIM_CONFIG=$1
+else
+    export GPGPUSIM_CONFIG=release
+fi
 
 export GPGPUSIM_ROOT="$( cd "$( dirname "$BASH_SOURCE" )" && pwd )"
 
@@ -36,6 +36,7 @@ export CUDA_INSTALL_PATH=/usr/local/cuda/
 # native CUDA and OpenCL applications. GPGPU-Sim is dynamically linked
 # against instead of the CUDA toolkit.  This replaces this cumbersome
 # static link setup in prior GPGPU-Sim releases.
+export LD_LIBRARY_PATH=`echo $LD_LIBRARY_PATH | sed -re 's/.*gpgpu_sim.*(release|debug)://'`
 export LD_LIBRARY_PATH=$GPGPUSIM_ROOT/lib/$GPGPUSIM_CONFIG:$LD_LIBRARY_PATH
 export PATH=$GPGPUSIM_ROOT/bin:$CUDA_INSTALL_PATH/bin:$PATH
 
