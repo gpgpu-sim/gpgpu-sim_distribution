@@ -2,7 +2,7 @@
 
 # change the following to point to your installation of CUDA Toolkit
 # and your installation of the NVIDIA compute SDK
-export CUDA_INSTALL_PATH=/usr/local/cuda
+export CUDA_INSTALL_PATH=/home/taamodt/nvcuda/3.1/cuda
 export NVIDIA_COMPUTE_SDK_LOCATION=$HOME/NVIDIA_GPU_Computing_SDK/
 
 # used in commmon/common.mk:
@@ -28,13 +28,14 @@ export BOOST_VER=
 # /usr/lib or /usr/lib64. Not setting this variable will cause gpgpu-sim to
 # build without opencl support.
 if [ -f /usr/lib64/libOpenCL.so ]; then
-	export NVOPENCL_LIBDIR=/usr/lib64
-fi
+	export NVOPENCL_LIBDIR=/usr/lib64;
 
-# change NVOPENCL_INCDIR to point to your opencl include directory. Not setting
-# this variable will cause gpgpu-sim to build without opencl support.
-if [ -d /usr/include/CL ]; then
-	export NVOPENCL_INCDIR=/usr/include/CL
+	# change NVOPENCL_INCDIR to point to your opencl include directory.
+	if [ -f /usr/include/CL/cl.h ]; then
+		export NVOPENCL_INCDIR=/usr/include/;
+	elif [ -f $CUDA_INSTALL_PATH/include/CL/cl.h ]; then
+		export NVOPENCL_INCDIR=$CUDA_INSTALL_PATH/include/;
+	fi
 fi
 
 # setting LD_LIBRARY_PATH as follows enables GPGPU-Sim to be invoked by 
