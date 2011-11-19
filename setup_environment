@@ -1,5 +1,13 @@
 # see README before running this
 
+# change the following to point to your installation of CUDA Toolkit
+# and your installation of the NVIDIA compute SDK
+export CUDA_INSTALL_PATH=/usr/local/cuda
+export NVIDIA_COMPUTE_SDK_LOCATION=$HOME/NVIDIA_GPU_Computing_SDK/
+
+# used in commmon/common.mk:
+export NVIDIA_CUDA_SDK_LOCATION=$NVIDIA_COMPUTE_SDK_LOCATION/
+
 # to run the debug build of GPGPU-Sim run:
 # source setup_environment debug
 if [ $# == '1' ] ;
@@ -16,21 +24,18 @@ export BOOST_ROOT=/usr/include/boost
 export BOOST_LIB=/usr/lib64
 export BOOST_VER=
 
-# change this to point to your opencl library directory, usually /usr/lib
-# or /usr/lib64. Not setting this variable will cause gpgpu-sim to build
-# without opencl support.
-export NVOPENCL_LIBDIR=
+# change NVOPENCL_LIBDIR to point to your opencl library directory, usually
+# /usr/lib or /usr/lib64. Not setting this variable will cause gpgpu-sim to
+# build without opencl support.
+if [ -f /usr/lib64/libOpenCL.so ]; then
+	export NVOPENCL_LIBDIR=/usr/lib64
+fi
 
-# change this to point to your opencl include directory, usually
-# $CUDA_INSTALL_PATH/include. Not setting this variable will cause
-# gpgpu-sim to build without opencl support.
-export NVOPENCL_INCDIR=
-
-# change this to point to your installation of the NVIDIA compute SDK
-export NVIDIA_COMPUTE_SDK_LOCATION=$HOME/NVIDIA_GPU_Computing_SDK/
-
-# change the following to point to your installation of CUDA Toolkit
-export CUDA_INSTALL_PATH=/usr/local/cuda/
+# change NVOPENCL_INCDIR to point to your opencl include directory. Not setting
+# this variable will cause gpgpu-sim to build without opencl support.
+if [ -d /usr/include/CL ]; then
+	export NVOPENCL_INCDIR=/usr/include/CL
+fi
 
 # setting LD_LIBRARY_PATH as follows enables GPGPU-Sim to be invoked by 
 # native CUDA and OpenCL applications. GPGPU-Sim is dynamically linked
@@ -38,7 +43,7 @@ export CUDA_INSTALL_PATH=/usr/local/cuda/
 # static link setup in prior GPGPU-Sim releases.
 export LD_LIBRARY_PATH=`echo $LD_LIBRARY_PATH | sed -re 's/.*gpgpu_sim.*(release|debug)://'`
 export LD_LIBRARY_PATH=$GPGPUSIM_ROOT/lib/$GPGPUSIM_CONFIG:$LD_LIBRARY_PATH
-export PATH=$GPGPUSIM_ROOT/bin:$CUDA_INSTALL_PATH/bin:$PATH
+export PATH=$GPGPUSIM_ROOT/decuda/:$GPGPUSIM_ROOT/bin:$CUDA_INSTALL_PATH/bin:$PATH
 
 # The following sets OPENCL_REMOTE_GPU_HOST which is used by GPGPU-Sim to
 # SSH to remote node to generate PTX for OpenCL kernels when running on 
@@ -50,3 +55,7 @@ if [ `hostname -d` == "ece.ubc.ca" ]; then
 		unset OPENCL_REMOTE_GPU_HOST
 	fi
 fi
+
+# the following are required to use native SASS via decuda
+export DECUDA_INSTALL_PATH=$GPGPUSIM_ROOT/decuda/
+export D2PP_INSTALL_PATH=$GPGPUSIM_ROOT/decuda_to_ptxplus/
