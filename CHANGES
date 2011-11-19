@@ -1,6 +1,7 @@
 CHANGE LOG:
 Version 3.0.1 versus 3.0.0b
 - Updated README and more streamlined setup
+- Changed Quadro FX 5800 configuration to use ptx (not sass) by default 
 - Added prints for L1 data cache statistics
 - Added read-to-precharge constraint in DRAM
 - Disabled Stream Manager's verbose output by default, use debug level 3 to 
