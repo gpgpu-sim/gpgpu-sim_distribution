@@ -17,6 +17,7 @@ Version 3.0.1 versus 3.0.0b
 - Ejection from the clock domain interface buffer between interconnection 
   network and L2 cache happens in the L2 clock domain instead of interconnect 
   clock domain.
+- Update OpenCL support to work with AMD OpenCL sample applications
 - Bug fixes
    - Fixed the variation in instruction count seen under different cache
      configurations on the same workload
