@@ -1,8 +1,15 @@
 CHANGE LOG:
 Version 3.0.1 versus 3.0.0b
-- Updated README and more streamlined setup
-- Changed Quadro FX 5800 configuration to use ptx (not sass) by default 
+- Updated README and setup_environment for more streamlined setup. 
+  Including install instructions for Ubuntu 10.04.3 LTS
+- Changed Quadro FX 5800 config to use PTX by default (not SASS/decuda)
+- Added Doxygen generated documentation
+- Removed ISPASS 2009 configuration (use Quadro FX 5800 config instead)
+- Removed common.mk (run native CUDA/OpenCL applications)
+- Removed out-of-date GPGPU-Sim documentation. This wil be updated in a 
+  later release.  Refer to Doxygen documentation and/or source code.
 - Added prints for L1 data cache statistics
+- SIMD width option removed from shader_core_pipeline_opt (was not used)
 - Added read-to-precharge constraint in DRAM
 - Disabled Stream Manager's verbose output by default, use debug level 3 to 
   enable it
@@ -10,8 +17,6 @@ Version 3.0.1 versus 3.0.0b
 - Ejection from the clock domain interface buffer between interconnection 
   network and L2 cache happens in the L2 clock domain instead of interconnect 
   clock domain.
-- Testing the simulator on Ubuntu 10.04.3 LTS
-- Added Doxygen generated documentation
 - Bug fixes
    - Fixed the variation in instruction count seen under different cache
      configurations on the same workload
@@ -20,6 +25,7 @@ Version 3.0.1 versus 3.0.0b
    - Fixed compilation issues when using gcc 4.5.1
    - Cleanup and bugfixes to build scripts
    - Fixed gpu_sim_cycle with sequential kernel launches
+   - Fixed memory corruption bug in decuda_to_ptxplus causing parse errors
 
 Version 3.0.0b versus 2.1.2b
 - massive refactoring of code to C++ (most global variables eliminated)
