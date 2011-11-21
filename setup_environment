@@ -1,12 +1,9 @@
 # see README before running this
 
 # change the following to point to your installation of CUDA Toolkit
-# and your installation of the NVIDIA compute SDK
-export CUDA_INSTALL_PATH=/home/taamodt/nvcuda/3.1/cuda
-export NVIDIA_COMPUTE_SDK_LOCATION=$HOME/NVIDIA_GPU_Computing_SDK/
-
-# used in commmon/common.mk:
-export NVIDIA_CUDA_SDK_LOCATION=$NVIDIA_COMPUTE_SDK_LOCATION/
+if [ ! -n "$CUDA_INSTALL_PATH" ]; then
+	export CUDA_INSTALL_PATH=/home/taamodt/nvcuda/3.1/cuda
+fi
 
 # to run the debug build of GPGPU-Sim run:
 # source setup_environment debug
