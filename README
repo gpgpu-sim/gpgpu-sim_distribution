@@ -66,10 +66,11 @@ Update your PATH and LD_LIBRARY_PATH as indicated by the NVIDIA install
 scripts. Note that you will need to use the lib64 directory if you are using a
 64bit machine.
 
-Ensure you have gcc, g++, make, makedepend, zlib, bison and flex
-installed on your system.  For CUDA 2.x we used gcc version 4.3.2, for CUDA 1.1
-we used gcc/g++ version 4.1.3.  This version of GPGPU-Sim does not yet work
-with CUDA 4.x; We used bison version 2.3, and flex version 2.5.33.  
+Ensure you have gcc, g++, make, makedepend, zlib, bison and flex installed on
+your system.  For CUDA 3.1 we used gcc/g++ version 4.5.1, for CUDA 2.3 we used
+gcc/g++ version 4.3.2, for CUDA 1.1 we used gcc/g++ version 4.1.3.  This
+version of GPGPU-Sim does not yet work with CUDA 4.x; We used bison version
+2.3, and flex version 2.5.33.  
 
 If you are using Ubuntu, the following commands will install all required
 dependencies besides the CUDA Toolkit.
@@ -111,6 +112,8 @@ Step 3: Run
 
 Copy gpgpusim.conf and icnt_config_quadro_islip.txt from
 gpgpu-sim/v3.x/configs/QuadroFX5800/ to your application's working directory.
+These files configure the microarchitecture model of GPGPU-Sim to resemble a
+Quadro FX 5800 (GT 200).
 
 To use ptxplus (native ISA) uncomment the following two lines in
 gpgpusim.config (again, note this requires CUDA toolkit 2.3):
