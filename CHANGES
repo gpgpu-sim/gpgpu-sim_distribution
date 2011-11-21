@@ -40,7 +40,20 @@ Version 3.0.0b versus 2.1.2b
 - other changes I don't remember right now
 
 Version 2.1.2b versus 2.1.1b:
-- TODO: fill this in!
+- Better 1D texture support 
+- bar.sync timing change for compatibility with NVIDIA hardware 
+  (release barrier when all warps reach barrier, irrespective of 
+  divergence state). Functional simulation mode disabled to 
+  implement the expected barrier behavior under branch divergence 
+- Refactored memory stage 
+- Limited miss status holding registers 
+- Experimental support for running on Mac OS X 
+- Register bank conflict modeling (see MICRO-42 tutorial) 
+- Changed files to C++ 
+- Updated makefiles 
+- Various improvements to aerialvision 
+- Simulation speed improvement 
+- Various minor fixes 
 
 Version 2.1.1b versus 2.1.0b:
 - Added support for OpenCL (requires OpenCL driver from NVIDIA)
