@@ -477,14 +477,14 @@ void _cl_program::Build(const char *options)
             if( result ) { printf("GPGPU-Sim OpenCL API: ERROR (%d)\n", result ); exit(1); }
 
             // copy input OpenCL file to OpenCL to PTX server
-            snprintf(commandline,1024,"scp %s/%s %s:%s/%s", local_pwd, cl_fname, remote_host, remote_dir, cl_fname );
+            snprintf(commandline,1024,"rsync -t %s/%s %s:%s/%s", local_pwd, cl_fname, remote_host, remote_dir, cl_fname );
             printf("GPGPU-Sim OpenCL API: OpenCL wrapper command line \'%s\'\n", commandline);
             fflush(stdout);
             result = system(commandline);
             if( result ) { printf("GPGPU-Sim OpenCL API: ERROR (%d)\n", result ); exit(1); }
 
             // copy the nvopencl_wrapper file to the remote server
-            snprintf(commandline,1024,"scp %s/libopencl/bin/nvopencl_wrapper %s:%s/nvopencl_wrapper", gpgpusim_opencl_path, remote_host, remote_dir );
+            snprintf(commandline,1024,"rsync -t %s/libopencl/bin/nvopencl_wrapper %s:%s/nvopencl_wrapper", gpgpusim_opencl_path, remote_host, remote_dir );
             printf("GPGPU-Sim OpenCL API: OpenCL wrapper command line \'%s\'\n", commandline);
             fflush(stdout);
             result = system(commandline);
@@ -499,7 +499,7 @@ void _cl_program::Build(const char *options)
             if( result ) { printf("GPGPU-Sim OpenCL API: ERROR (%d)\n", result ); exit(1); }
 
             // copy output PTX from OpenCL to PTX server back to simulation directory
-            snprintf(commandline,1024,"scp %s:%s/%s %s/%s", remote_host, remote_dir, ptx_fname, local_pwd, ptx_fname );
+            snprintf(commandline,1024,"rsync -t %s:%s/%s %s/%s", remote_host, remote_dir, ptx_fname, local_pwd, ptx_fname );
             printf("GPGPU-Sim OpenCL API: OpenCL wrapper command line \'%s\'\n", commandline);
             fflush(stdout);
             result = system(commandline);
