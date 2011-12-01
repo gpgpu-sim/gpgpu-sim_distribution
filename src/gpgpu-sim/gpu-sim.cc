@@ -600,6 +600,11 @@ void gpgpu_sim::gpu_print_stat() const
    printf("gpu_stall_dramfull = %d\n", gpu_stall_dramfull);
    printf("gpu_stall_icnt2sh    = %d\n", gpu_stall_icnt2sh );
 
+   time_t curr_time;
+   time(&curr_time);
+   unsigned long long elapsed_time = MAX( curr_time - g_simulation_starttime, 1 );
+   printf( "gpu_total_sim_rate=%u\n", (unsigned)( ( gpu_tot_sim_insn + gpu_sim_insn ) / elapsed_time ) );
+
    shader_print_l1_miss_stat( stdout );
 
    m_shader_stats->print(stdout);
