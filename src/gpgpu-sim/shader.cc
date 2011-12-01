@@ -756,7 +756,6 @@ void scheduler_unit::cycle()
 
 void shader_core_ctx::read_operands()
 {
-    m_operand_collector.step();
 }
 
 address_type coalesced_segment(address_type addr, unsigned segment_size_lg2bytes)
@@ -855,7 +854,6 @@ void shader_core_ctx::writeback()
         m_gpu->gpu_sim_insn += pipe_reg->active_count();
         pipe_reg->clear();
     }
-    m_ldst_unit->writeback();
 }
 
 bool ldst_unit::shared_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type)
@@ -1156,6 +1154,8 @@ unsigned ldst_unit::clock_multiplier() const
 
 void ldst_unit::cycle()
 {
+   writeback();
+   m_operand_collector->step();
    for( unsigned stage=0; (stage+1)<m_pipeline_depth; stage++ ) 
        if( m_pipeline_reg[stage]->empty() && !m_pipeline_reg[stage+1]->empty() )
             move_warp(m_pipeline_reg[stage], m_pipeline_reg[stage+1]);
