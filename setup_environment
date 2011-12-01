@@ -41,6 +41,7 @@ fi
 # static link setup in prior GPGPU-Sim releases.
 export LD_LIBRARY_PATH=`echo $LD_LIBRARY_PATH | sed -re 's/.*gpgpu_sim.*(release|debug)://'`
 export LD_LIBRARY_PATH=$GPGPUSIM_ROOT/lib/$GPGPUSIM_CONFIG:$LD_LIBRARY_PATH
+export PATH=`echo $PATH | sed "s#$GPGPUSIM_ROOT/decuda/:$GPGPUSIM_ROOT/bin:$CUDA_INSTALL_PATH/bin:##"`
 export PATH=$GPGPUSIM_ROOT/decuda/:$GPGPUSIM_ROOT/bin:$CUDA_INSTALL_PATH/bin:$PATH
 
 # The following sets OPENCL_REMOTE_GPU_HOST which is used by GPGPU-Sim to
