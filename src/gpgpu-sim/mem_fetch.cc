@@ -66,26 +66,13 @@ mem_fetch::~mem_fetch()
     m_status = MEM_FETCH_DELETED;
 }
 
-static const char* Status_str[] = {
-"INITIALIZED",
-"IN_ICNT_TO_MEM",
-"IN_PARTITION_ROP_DELAY",
-"IN_PARTITION_ICNT_TO_L2_QUEUE",
-"IN_PARTITION_L2_TO_DRAM_QUEUE",
-"IN_PARTITION_MC_INTERFACE_QUEUE",
-"IN_PARTITION_MC_INPUT_QUEUE",
-"IN_PARTITION_MC_BANK_ARB_QUEUE",
-"IN_PARTITION_DRAM",
-"IN_PARTITION_MC_RETURNQ",
-"IN_PARTITION_DRAM_TO_L2_QUEUE",
-"IN_PARTITION_L2_FILL_QUEUE",
-"IN_PARTITION_L2_TO_ICNT_QUEUE",
-"IN_ICNT_TO_SHADER",
-"IN_CLUSTER_TO_SHADER_QUEUE",
-"IN_SHADER_LDST_RESPONSE_FIFO",
-"IN_SHADER_FETCHED",
-"MEM_FETCH_DELETED"
-};
+#define MF_TUP_BEGIN(X) static const char* Status_str[] = {
+#define MF_TUP(X) #X
+#define MF_TUP_END(X) };
+#include "mem_fetch_status.tup"
+#undef MF_TUP_BEGIN
+#undef MF_TUP
+#undef MF_TUP_END
 
 void mem_fetch::print( FILE *fp, bool print_inst ) const
 {
