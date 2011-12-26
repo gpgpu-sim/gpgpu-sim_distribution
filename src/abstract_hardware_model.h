@@ -687,7 +687,25 @@ public:
         for(unsigned i=0; i<num_addrs; i++)
             m_per_scalar_thread[n].memreqaddr[i] = addr[i];
     }
+
+    struct transaction_info {
+        std::bitset<4> chunks; // bitmask: 32-byte chunks accessed
+        mem_access_byte_mask_t bytes;
+        active_mask_t active; // threads in this transaction
+
+        bool test_bytes(unsigned start_bit, unsigned end_bit) {
+           for( unsigned i=start_bit; i<=end_bit; i++ )
+              if(bytes.test(i))
+                 return true;
+           return false;
+        }
+    };
+
     void generate_mem_accesses();
+    void memory_coalescing_arch_13( bool is_write, mem_access_type access_type );
+    void memory_coalescing_arch_13_atomic( bool is_write, mem_access_type access_type );
+    void memory_coalescing_arch_13_reduce_and_send( bool is_write, mem_access_type access_type, const transaction_info &info, new_addr_type addr, unsigned segment_size );
+
     void add_callback( unsigned lane_id, 
                        void (*function)(const class inst_t*, class ptx_thread_info*),
                        const inst_t *inst, 
