@@ -316,6 +316,7 @@ void warp_inst_t::memory_coalescing_arch_13( bool is_write, mem_access_type acce
             // local memory can only be accessed in 4B chunks by one thread
             unsigned data_size_coales = (space.get_type() == local_space || space.get_type() == param_space_local ) ? 4 : data_size;
             unsigned num_accesses = (space.get_type() == local_space || space.get_type() == param_space_local ) ? data_size/4 : 1;
+            assert(num_accesses <= MAX_ACCESSES_PER_INSN_PER_THREAD);
 
             for(unsigned access=0; access<num_accesses; access++) {
                 new_addr_type addr = m_per_scalar_thread[thread].memreqaddr[access];
