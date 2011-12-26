@@ -795,16 +795,32 @@ unsigned shader_core_ctx::translate_local_memaddr( address_type localaddr, unsig
    }
    assert( thread_base < 4/*word size*/*max_concurrent_threads );
 
-   assert(datasize%4 == 0);
-   assert(datasize >= 4);
-   assert(datasize/4 <= MAX_ACCESSES_PER_INSN_PER_THREAD); // max 32B
-   assert(localaddr%4 == 0); // Required if accessing 4B per request, otherwise access will overflow into next thread's space
-   for(unsigned i=0; i<datasize/4; i++) {
-       address_type local_word = localaddr/4 + i;
-       address_type linear_address = local_word*max_concurrent_threads*4 + thread_base + LOCAL_GENERIC_START;
-       translated_addrs[i] = linear_address;
+   // If requested datasize > 4B, split into multiple 4B accesses
+   // otherwise do one sub-4 byte memory access
+   unsigned num_accesses = 0;
+
+   if(datasize >= 4) {
+      // >4B access, split into 4B chunks
+      assert(datasize%4 == 0);   // Must be a multiple of 4B
+      num_accesses = datasize/4;
+      assert(num_accesses <= MAX_ACCESSES_PER_INSN_PER_THREAD); // max 32B
+      assert(localaddr%4 == 0); // Address must be 4B aligned - required if accessing 4B per request, otherwise access will overflow into next thread's space
+      for(unsigned i=0; i<num_accesses; i++) {
+          address_type local_word = localaddr/4 + i;
+          address_type linear_address = local_word*max_concurrent_threads*4 + thread_base + LOCAL_GENERIC_START;
+          translated_addrs[i] = linear_address;
+      }
+   } else {
+      // Sub-4B access, do only one access
+      assert(datasize > 0);
+      num_accesses = 1;
+      address_type local_word = localaddr/4;
+      address_type local_word_offset = localaddr%4;
+      assert( (localaddr+datasize-1)/4  == local_word ); // Make sure access doesn't overflow into next 4B chunk
+      address_type linear_address = local_word*max_concurrent_threads*4 + local_word_offset + thread_base + LOCAL_GENERIC_START;
+      translated_addrs[0] = linear_address;
    }
-   return datasize/4;
+   return num_accesses;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
