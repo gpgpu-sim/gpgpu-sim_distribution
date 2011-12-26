@@ -608,7 +608,7 @@ void shader_core_ctx::func_exec_inst( warp_inst_t &inst )
             if( inst.has_callback(t) ) 
                m_warp[inst.warp_id()].inc_n_atomic();
             if (inst.space.is_local() && (inst.is_load() || inst.is_store())) {
-                new_addr_type localaddrs[8];
+                new_addr_type localaddrs[MAX_ACCESSES_PER_INSN_PER_THREAD];
                 unsigned num_addrs;
                 num_addrs = translate_local_memaddr(inst.get_addr(t), tid, m_config->n_simt_clusters*m_config->n_simt_cores_per_cluster,
                        inst.data_size, (new_addr_type*) localaddrs );
@@ -797,7 +797,7 @@ unsigned shader_core_ctx::translate_local_memaddr( address_type localaddr, unsig
 
    assert(datasize%4 == 0);
    assert(datasize >= 4);
-   assert(datasize <= 32); // max 32B
+   assert(datasize/4 <= MAX_ACCESSES_PER_INSN_PER_THREAD); // max 32B
    assert(localaddr%4 == 0); // Required if accessing 4B per request, otherwise access will overflow into next thread's space
    for(unsigned i=0; i<datasize/4; i++) {
        address_type local_word = localaddr/4 + i;
