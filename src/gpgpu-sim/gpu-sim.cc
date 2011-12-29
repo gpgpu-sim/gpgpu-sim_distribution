@@ -614,7 +614,7 @@ void gpgpu_sim::gpu_print_stat() const
    m_memory_stats->print(stdout);
    for (unsigned i=0;i<m_memory_config->m_n_mem;i++) 
       m_memory_partition_unit[i]->print(stdout);
-   if (m_memory_config->m_L2_config.get_num_lines()) 
+   if (!m_memory_config->m_L2_config.disabled() && m_memory_config->m_L2_config.get_num_lines())
       L2c_print_cache_stat();
    if (m_config.gpgpu_cflog_interval != 0) {
       spill_log_to_file (stdout, 1, gpu_sim_cycle);
@@ -862,7 +862,7 @@ void gpgpu_sim::cycle()
             else 
                all_threads_complete = 0 ; 
          }
-         if (all_threads_complete) {
+         if (all_threads_complete && !m_memory_config->m_L2_config.disabled() ) {
             printf("Flushed L2 caches...\n");
             if (m_memory_config->m_L2_config.get_num_lines()) {
                int dlc = 0;
