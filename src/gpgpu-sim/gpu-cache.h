@@ -400,6 +400,8 @@ public:
     // access cache: returns RESERVATION_FAIL if request could not be accepted (for any reason)
     virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ) 
     {
+        assert( mf->get_data_size() <= m_config.get_line_sz());
+
         assert(m_config.m_write_policy == READ_ONLY);
         assert(!mf->get_is_write());
         new_addr_type block_addr = m_config.block_addr(addr);
@@ -539,6 +541,8 @@ public:
     }
     virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ) 
     {
+        assert( mf->get_data_size() <= m_config.get_line_sz());
+
         bool wr = mf->get_is_write();
         enum mem_access_type type = mf->get_access_type();
         bool evict = (type == GLOBAL_ACC_W); // evict a line that hits on global memory write
@@ -656,6 +660,8 @@ public:
     enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ) {
         if ( m_fragment_fifo.full() || m_request_fifo.full() || m_rob.full() )
             return RESERVATION_FAIL;
+
+        assert( mf->get_data_size() <= m_config.get_line_sz());
 
         // at this point, we will accept the request : access tags and immediately allocate line
         new_addr_type block_addr = m_config.block_addr(addr);
