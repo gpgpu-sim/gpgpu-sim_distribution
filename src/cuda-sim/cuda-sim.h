@@ -29,9 +29,11 @@
 #define CUDASIM_H_INCLUDED
 
 #include "../abstract_hardware_model.h"
+#include"../gpgpu-sim/shader.h"
 #include <stdlib.h>
 #include <map>
 #include <string>
+#include"ptx_sim.h"
 
 class memory_space;
 class function_info;
@@ -51,7 +53,7 @@ extern class kernel_info_t *gpgpu_opencl_ptx_sim_init_grid(class function_info *
                                             struct dim3 gridDim, 
                                             struct dim3 blockDim, 
                                                           class gpgpu_t *gpu );
-extern void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel );
+extern void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL = false );
 extern void   print_splash();
 extern void   gpgpu_ptx_sim_register_const_variable(void*, const char *deviceName, size_t size );
 extern void   gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size );
@@ -68,11 +70,58 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
                               class core_t *core, 
                               unsigned hw_cta_id, 
                               unsigned hw_warp_id,
-                              gpgpu_t *gpu );
+                              gpgpu_t *gpu,
+                              bool functionalSimulationMode = false);
 const warp_inst_t *ptx_fetch_inst( address_type pc );
 const struct gpgpu_ptx_sim_kernel_info* ptx_sim_kernel_info(const class function_info *kernel);
 void ptx_print_insn( address_type pc, FILE *fp );
 void set_param_gpgpu_num_shaders(int num_shaders);
+
+
+/*!
+ * This class functionally executes a kernel. It uses the basic data structures and procedures in core_t 
+ */
+class functionalCoreSim: public core_t
+{    
+public:
+    functionalCoreSim(kernel_info_t * kernel, gpgpu_sim *g, unsigned maxwarpSize){
+        this->m_kernel=kernel;
+        m_gpu=g;
+        m_maxWarpSize = maxwarpSize;
+    }
+    ~functionalCoreSim(){
+        warp_exit(0);
+        delete m_liveThreadCount;
+        delete m_warpAtBarrier;
+    }
+    //! executes all warps till completion 
+    void execute();
+    virtual void warp_exit( unsigned warp_id );
+    virtual bool warp_waiting_at_barrier( unsigned warp_id ) const  
+    {
+        return (m_warpAtBarrier[warp_id] || !(m_liveThreadCount[warp_id]>0));
+    }
+    
+private:
+    void executeWarp(unsigned, bool &, bool &);
+    //initializes threads in the CTA block which we are executing
+    void initializeCTA();
+    virtual void checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned t, unsigned tid)
+    {
+    if(m_thread[tid]==NULL || m_thread[tid]->is_done()){
+        m_liveThreadCount[tid/m_maxWarpSize]--;
+        }
+    }
+    
+    // lunches the stack and set the threads count
+    void  createWarp(unsigned warpId);
+    
+    unsigned m_maxWarpSize;
+    unsigned m_warpsCount;
+    //each warp live thread count and barrier indicator
+    unsigned * m_liveThreadCount;
+    bool* m_warpAtBarrier;
+};
 
 #define RECONVERGE_RETURN_PC ((address_type)-2)
 #define NO_BRANCH_DIVERGENCE ((address_type)-1)
