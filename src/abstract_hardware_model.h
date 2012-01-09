@@ -232,12 +232,37 @@ struct core_config {
 	unsigned gpgpu_max_insn_issue_per_warp;
 };
 
-class core_t {
+// bounded stack that implements simt reconvergence using pdom mechanism from MICRO'07 paper
+const unsigned MAX_WARP_SIZE = 32;
+typedef std::bitset<MAX_WARP_SIZE> active_mask_t;
+#define MAX_WARP_SIZE_SIMT_STACK  MAX_WARP_SIZE
+typedef std::bitset<MAX_WARP_SIZE_SIMT_STACK> simt_mask_t;
+typedef std::vector<address_type> addr_vector_t;
+
+class simt_stack {
 public:
-   virtual ~core_t() {}
-   virtual void warp_exit( unsigned warp_id ) = 0;
-   virtual bool warp_waiting_at_barrier( unsigned warp_id ) const = 0;
-   virtual class gpgpu_sim *get_gpu() = 0;
+    simt_stack( unsigned wid,  unsigned warpSize);
+
+    void reset();
+    void launch( address_type start_pc, const simt_mask_t &active_mask );
+    void update( simt_mask_t &thread_done, addr_vector_t &next_pc, address_type recvg_pc );
+
+    const simt_mask_t &get_active_mask() const;
+    void     get_pdom_stack_top_info( unsigned *pc, unsigned *rpc ) const;
+    unsigned get_rp() const;
+    void     print(FILE*fp) const;
+
+protected:
+    unsigned m_warp_id;
+    unsigned m_stack_top;
+    unsigned m_warp_size;
+    
+    address_type *m_pc;
+    simt_mask_t  *m_active_mask;
+    address_type *m_recvg_pc;
+    unsigned int *m_calldepth;
+    
+    unsigned long long  *m_branch_div_cycle;
 };
 
 #define GLOBAL_HEAP_START 0x80000000
@@ -444,9 +469,6 @@ private:
 const unsigned MAX_MEMORY_ACCESS_SIZE = 128;
 typedef std::bitset<MAX_MEMORY_ACCESS_SIZE> mem_access_byte_mask_t;
 #define NO_PARTIAL_WRITE (mem_access_byte_mask_t())
-
-const unsigned MAX_WARP_SIZE = 32;
-typedef std::bitset<MAX_WARP_SIZE> active_mask_t;
 
 enum mem_access_type {
    GLOBAL_ACC_R, 
@@ -656,8 +678,8 @@ public:
     }
 
     // modifiers
-    void do_atomic();
-    void do_atomic( const active_mask_t& access_mask );
+    void do_atomic(bool forceDo=false);
+    void do_atomic( const active_mask_t& access_mask, bool forceDo=false );
     void clear() 
     { 
         m_empty=true; 
@@ -802,6 +824,30 @@ protected:
 void move_warp( warp_inst_t *&dst, warp_inst_t *&src );
 
 size_t get_kernel_code_size( class function_info *entry );
+
+/*
+ * This abstract class used as a base for functional and performance and simulation, it has basic functional simulation
+ * data structures and procedures. 
+ */
+class core_t {
+    public:
+        virtual ~core_t() {}
+        virtual void warp_exit( unsigned warp_id ) = 0;
+        virtual bool warp_waiting_at_barrier( unsigned warp_id ) const = 0;
+        virtual void checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned t, unsigned tid)=0;
+        class gpgpu_sim * get_gpu() {return m_gpu;}
+        void execute_warp_inst_t(warp_inst_t &inst, unsigned warpSize, unsigned warpId =(unsigned)-1);
+        bool  ptx_thread_done( unsigned hw_thread_id ) const ;
+        void updateSIMTStack(unsigned warpId, unsigned warpSize, warp_inst_t * inst);
+        void initilizeSIMTStack(unsigned warps, unsigned warpsSize);
+        warp_inst_t getExecuteWarp(unsigned warpId);
+
+    protected:
+        class gpgpu_sim *m_gpu;
+        kernel_info_t *m_kernel;
+        simt_stack  **m_simt_stack; // pdom based reconvergence context for each warp
+        class ptx_thread_info ** m_thread; 
+};
 
 #endif // #ifdef __cplusplus
 

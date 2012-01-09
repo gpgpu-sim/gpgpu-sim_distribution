@@ -30,6 +30,8 @@
 #include "option_parser.h"
 #include "cuda-sim/ptx_ir.h"
 #include "cuda-sim/ptx-stats.h"
+#include "cuda-sim/cuda-sim.h"
+#include "gpgpu-sim/gpu-sim.h"
 #include <algorithm>
 
 unsigned mem_access_t::sm_next_access_uid = 0;   
@@ -119,12 +121,12 @@ void warp_inst_t::set_active( const active_mask_t &active ) {
    }
 }
 
-void warp_inst_t::do_atomic() {
-    do_atomic( m_warp_active_mask );
+void warp_inst_t::do_atomic(bool forceDo) {
+    do_atomic( m_warp_active_mask,forceDo );
 }
 
-void warp_inst_t::do_atomic( const active_mask_t& access_mask ) {
-    assert( m_isatomic && !m_empty );
+void warp_inst_t::do_atomic( const active_mask_t& access_mask,bool forceDo ) {
+    assert( m_isatomic && (!m_empty||forceDo) );
     for( unsigned i=0; i < m_config->warp_size; i++ )
     {
         if( access_mask.test(i) )
@@ -510,4 +512,203 @@ kernel_info_t::~kernel_info_t()
 std::string kernel_info_t::name() const
 {
     return m_kernel_entry->get_name();
+}
+
+simt_stack::simt_stack( unsigned wid, unsigned warpSize)
+{
+    m_warp_id=wid;
+    m_warp_size = warpSize;
+    m_stack_top = 0;
+    m_pc = (address_type*)calloc(m_warp_size * 2, sizeof(address_type));
+    m_calldepth = (unsigned int*)calloc(m_warp_size * 2, sizeof(unsigned int));
+    m_active_mask = new simt_mask_t[m_warp_size * 2];
+    m_recvg_pc = (address_type*)calloc(m_warp_size * 2, sizeof(address_type));
+    m_branch_div_cycle = (unsigned long long *)calloc(m_warp_size * 2, sizeof(unsigned long long ));
+    reset();
+}
+
+void simt_stack::reset()
+{
+    m_stack_top = 0;
+    memset(m_pc, -1, m_warp_size * 2 * sizeof(address_type));
+    memset(m_calldepth, 0, m_warp_size * 2 * sizeof(unsigned int));
+    memset(m_recvg_pc, -1, m_warp_size * 2 * sizeof(address_type));
+    memset(m_branch_div_cycle, 0, m_warp_size * 2 * sizeof(unsigned long long ));
+    for( unsigned i=0; i < 2*m_warp_size; i++ ) 
+        m_active_mask[i].reset();
+}
+
+void simt_stack::launch( address_type start_pc, const simt_mask_t &active_mask )
+{
+    reset();
+    m_pc[0] = start_pc;
+    m_calldepth[0] = 1;
+    m_active_mask[0] = active_mask;
+}
+
+const simt_mask_t &simt_stack::get_active_mask() const
+{
+    return m_active_mask[m_stack_top];
+}
+
+void simt_stack::get_pdom_stack_top_info( unsigned *pc, unsigned *rpc ) const
+{
+   *pc = m_pc[m_stack_top];
+   *rpc = m_recvg_pc[m_stack_top];
+}
+
+unsigned simt_stack::get_rp() const 
+{ 
+    return m_recvg_pc[m_stack_top]; 
+}
+
+void simt_stack::print (FILE *fout) const
+{
+    const simt_stack *warp=this;
+    for ( unsigned k=0; k <= warp->m_stack_top; k++ ) {
+        if ( k==0 ) {
+            fprintf(fout, "w%02d %1u ", m_warp_id, k );
+        } else {
+            fprintf(fout, "    %1u ", k );
+        }
+        for (unsigned j=0; j<m_warp_size; j++)
+            fprintf(fout, "%c", (warp->m_active_mask[k].test(j)?'1':'0') );
+        fprintf(fout, " pc: 0x%03x", warp->m_pc[k] );
+        if ( warp->m_recvg_pc[k] == (unsigned)-1 ) {
+            fprintf(fout," rp: ---- cd: %2u ", warp->m_calldepth[k] );
+        } else {
+            fprintf(fout," rp: %4u cd: %2u ", warp->m_recvg_pc[k], warp->m_calldepth[k] );
+        }
+        if ( warp->m_branch_div_cycle[k] != 0 ) {
+            fprintf(fout," bd@%6u ", (unsigned) warp->m_branch_div_cycle[k] );
+        } else {
+            fprintf(fout," " );
+        }
+        ptx_print_insn( warp->m_pc[k], fout );
+        fprintf(fout,"\n");
+    }
+}
+
+void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, address_type recvg_pc ) 
+{
+    int stack_top = m_stack_top;
+
+    assert( next_pc.size() == m_warp_size );
+
+    simt_mask_t  top_active_mask = m_active_mask[stack_top];
+    address_type top_recvg_pc = m_recvg_pc[stack_top];
+
+    assert(top_active_mask.any());
+
+    const address_type null_pc = 0;
+    bool warp_diverged = false;
+    address_type new_recvg_pc = null_pc;
+    while (top_active_mask.any()) {
+
+        // extract a group of threads with the same next PC among the active threads in the warp
+        address_type tmp_next_pc = null_pc;
+        simt_mask_t tmp_active_mask;
+        for (int i = m_warp_size - 1; i >= 0; i--) {
+            if ( top_active_mask.test(i) ) { // is this thread active?
+                if (thread_done.test(i)) {
+                    top_active_mask.reset(i); // remove completed thread from active mask
+                } else if (tmp_next_pc == null_pc) {
+                    tmp_next_pc = next_pc[i];
+                    tmp_active_mask.set(i);
+                    top_active_mask.reset(i);
+                } else if (tmp_next_pc == next_pc[i]) {
+                    tmp_active_mask.set(i);
+                    top_active_mask.reset(i);
+                }
+            }
+        }
+
+        // discard the new entry if its PC matches with reconvergence PC
+        // that automatically reconverges the entry
+        if (tmp_next_pc == top_recvg_pc) continue;
+
+        // this new entry is not converging
+        // if this entry does not include thread from the warp, divergence occurs
+        if (top_active_mask.any() && !warp_diverged ) {
+            warp_diverged = true;
+            // modify the existing top entry into a reconvergence entry in the pdom stack
+            new_recvg_pc = recvg_pc;
+            if (new_recvg_pc != top_recvg_pc) {
+                m_pc[stack_top] = new_recvg_pc;
+                m_branch_div_cycle[stack_top] = gpu_sim_cycle;
+                stack_top += 1;
+                m_branch_div_cycle[stack_top] = 0;
+            }
+        }
+
+        // discard the new entry if its PC matches with reconvergence PC
+        if (warp_diverged && tmp_next_pc == new_recvg_pc) continue;
+
+        // update the current top of pdom stack
+        m_pc[stack_top] = tmp_next_pc;
+        m_active_mask[stack_top] = tmp_active_mask;
+        if (warp_diverged) {
+            m_calldepth[stack_top] = 0;
+            m_recvg_pc[stack_top] = new_recvg_pc;
+        } else {
+            m_recvg_pc[stack_top] = top_recvg_pc;
+        }
+        stack_top += 1; // set top to next entry in the pdom stack
+    }
+    m_stack_top = stack_top - 1;
+
+    assert(m_stack_top >= 0);
+    assert(m_stack_top < m_warp_size * 2);
+}
+
+void core_t::execute_warp_inst_t(warp_inst_t &inst, unsigned warpSize, unsigned warpId){
+    for ( unsigned t=0; t < warpSize; t++ ) {
+        if( inst.active(t) ) {
+        if(warpId==(unsigned (-1)))
+            warpId = inst.warp_id();
+        unsigned tid=warpSize*warpId+t;
+        m_thread[tid]->ptx_exec_inst(inst,t);
+        
+        //virtual function
+        checkExecutionStatusAndUpdate(inst,t,tid);
+        }
+    } 
+}
+  
+bool  core_t::ptx_thread_done( unsigned hw_thread_id ) const  
+{
+    return ((m_thread[ hw_thread_id ]==NULL) || m_thread[ hw_thread_id ]->is_done());
+}
+  
+void core_t::updateSIMTStack(unsigned warpId, unsigned warpSize, warp_inst_t * inst){
+simt_mask_t thread_done;
+addr_vector_t next_pc;
+unsigned wtid = warpId * warpSize;
+for (unsigned i = 0; i < warpSize; i++) {
+    if( ptx_thread_done(wtid+i) ) {
+         thread_done.set(i);
+         next_pc.push_back( (address_type)-1 );
+     } else {
+         if( inst->reconvergence_pc == RECONVERGE_RETURN_PC ) 
+             inst->reconvergence_pc = get_return_pc(m_thread[wtid+i]);
+         next_pc.push_back( m_thread[wtid+i]->get_pc() );
+     }
+}
+m_simt_stack[warpId]->update(thread_done,next_pc,inst->reconvergence_pc);
+}
+
+//! Get the warp to be executed using the data taken form the SIMT stack
+warp_inst_t core_t::getExecuteWarp(unsigned warpId){
+    unsigned pc,rpc;
+    m_simt_stack[warpId]->get_pdom_stack_top_info(&pc,&rpc);
+    warp_inst_t wi= *ptx_fetch_inst(pc);
+    wi.set_active(m_simt_stack[warpId]->get_active_mask());
+    return wi;
+}
+
+void core_t::initilizeSIMTStack(unsigned warps, unsigned warpsSize)
+{ 
+m_simt_stack = new simt_stack*[warps];
+    for (unsigned i = 0; i < warps; ++i) 
+        m_simt_stack[i] = new simt_stack(i,warpsSize);
 }
