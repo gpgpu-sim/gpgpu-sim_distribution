@@ -711,10 +711,10 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
     warp_set_t warps;
     unsigned nthreads_in_block= 0;
     for (unsigned i = start_thread; i<end_thread; i++) {
-        m_thread[i].m_cta_id = free_cta_hw_id;
+        m_threadState[i].m_cta_id = free_cta_hw_id;
         unsigned warp_id = i/m_config->warp_size;
-        nthreads_in_block += ptx_sim_init_thread(kernel,&m_thread[i].m_functional_model_thread_state,m_sid,i,cta_size-(i-start_thread),m_config->n_thread_per_shader,this,free_cta_hw_id,warp_id,m_cluster->get_gpu());
-        m_thread[i].m_active = true; 
+        nthreads_in_block += ptx_sim_init_thread(kernel,&m_thread[i],m_sid,i,cta_size-(i-start_thread),m_config->n_thread_per_shader,this,free_cta_hw_id,warp_id,m_cluster->get_gpu());
+        m_threadState[i].m_active = true; 
         warps.set( warp_id );
     }
     assert( nthreads_in_block > 0 && nthreads_in_block <= m_config->n_thread_per_shader); // should be at least one, but less than max
@@ -969,6 +969,21 @@ void gpgpu_sim::dump_pipeline( int mask, int s, int m ) const
       }
    }
    fflush(stdout);
+}
+
+const struct shader_core_config * gpgpu_sim::getShaderCoreConfig()
+{
+   return m_shader_config;
+}
+
+const struct memory_config * gpgpu_sim::getMemoryConfig()
+{
+   return m_memory_config;
+}
+
+simt_core_cluster * gpgpu_sim::getSIMTCluster()
+{
+   return *m_cluster;
 }
 
 void memory_partition_unit::visualizer_print( gzFile visualizer_file )

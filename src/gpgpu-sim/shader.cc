@@ -86,7 +86,8 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
    for (int j = 0; j<N_PIPELINE_STAGES; j++) 
       m_pipeline_reg[j] = new warp_inst_t(config);
 
-   m_thread = (thread_ctx_t*) calloc(sizeof(thread_ctx_t), config->n_thread_per_shader);
+   m_threadState = (thread_ctx_t*) calloc(sizeof(thread_ctx_t), config->n_thread_per_shader);
+   m_thread = (ptx_thread_info**) calloc(sizeof(ptx_thread_info*), config->n_thread_per_shader);
 
    m_not_completed = 0;
    m_active_threads.reset();
@@ -94,9 +95,9 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
    for (unsigned i = 0; i<MAX_CTA_PER_SHADER; i++  ) 
       m_cta_status[i]=0;
    for (unsigned i = 0; i<config->n_thread_per_shader; i++) {
-      m_thread[i].m_functional_model_thread_state = NULL;
-      m_thread[i].m_cta_id = -1;
-      m_thread[i].m_active = false;
+      m_thread[i]= NULL;
+      m_threadState[i].m_cta_id = -1;
+      m_threadState[i].m_active = false;
    }
    
    m_icnt = new shader_memory_interface(this,cluster);
@@ -111,9 +112,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
    m_L1I = new read_only_cache( name,m_config->m_L1I_config,m_sid,get_shader_instruction_cache_id(),m_icnt,IN_L1I_MISS_QUEUE);
 
    m_warp.resize(m_config->max_warps_per_shader, shd_warp_t(this, warp_size));
-   m_simt_stack = new simt_stack*[config->max_warps_per_shader];
-   for (unsigned i = 0; i < config->max_warps_per_shader; ++i) 
-       m_simt_stack[i] = new simt_stack(i,this);
+   initilizeSIMTStack(config->max_warps_per_shader,this->get_config()->warp_size);
    m_scoreboard = new Scoreboard(m_sid, m_config->max_warps_per_shader);
 
    //scedulers
@@ -212,8 +211,8 @@ void shader_core_ctx::reinit(unsigned start_thread, unsigned end_thread, bool re
        m_active_threads.reset();
    }
    for (unsigned i = start_thread; i<end_thread; i++) {
-      m_thread[i].n_insn = 0;
-      m_thread[i].m_cta_id = -1;
+      m_threadState[i].n_insn = 0;
+      m_threadState[i].m_cta_id = -1;
    }
    for (unsigned i = start_thread / m_config->warp_size; i < end_thread / m_config->warp_size; ++i) {
       m_warp[i].reset();
@@ -251,82 +250,10 @@ address_type shader_core_ctx::next_pc( int tid ) const
 {
     if( tid == -1 ) 
         return -1;
-    ptx_thread_info *the_thread = m_thread[tid].m_functional_model_thread_state;
+    ptx_thread_info *the_thread = m_thread[tid];
     if ( the_thread == NULL )
         return -1;
     return the_thread->get_pc(); // PC should already be updatd to next PC at this point (was set in shader_decode() last time thread ran)
-}
-
-void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, address_type recvg_pc ) 
-{
-    int stack_top = m_stack_top;
-
-    assert( next_pc.size() == m_warp_size );
-
-    simt_mask_t  top_active_mask = m_active_mask[stack_top];
-    address_type top_recvg_pc = m_recvg_pc[stack_top];
-
-    assert(top_active_mask.any());
-
-    const address_type null_pc = 0;
-    bool warp_diverged = false;
-    address_type new_recvg_pc = null_pc;
-    while (top_active_mask.any()) {
-
-        // extract a group of threads with the same next PC among the active threads in the warp
-        address_type tmp_next_pc = null_pc;
-        simt_mask_t tmp_active_mask;
-        for (int i = m_warp_size - 1; i >= 0; i--) {
-            if ( top_active_mask.test(i) ) { // is this thread active?
-                if (thread_done.test(i)) {
-                    top_active_mask.reset(i); // remove completed thread from active mask
-                } else if (tmp_next_pc == null_pc) {
-                    tmp_next_pc = next_pc[i];
-                    tmp_active_mask.set(i);
-                    top_active_mask.reset(i);
-                } else if (tmp_next_pc == next_pc[i]) {
-                    tmp_active_mask.set(i);
-                    top_active_mask.reset(i);
-                }
-            }
-        }
-
-        // discard the new entry if its PC matches with reconvergence PC
-        // that automatically reconverges the entry
-        if (tmp_next_pc == top_recvg_pc) continue;
-
-        // this new entry is not converging
-        // if this entry does not include thread from the warp, divergence occurs
-        if (top_active_mask.any() && !warp_diverged ) {
-            warp_diverged = true;
-            // modify the existing top entry into a reconvergence entry in the pdom stack
-            new_recvg_pc = recvg_pc;
-            if (new_recvg_pc != top_recvg_pc) {
-                m_pc[stack_top] = new_recvg_pc;
-                m_branch_div_cycle[stack_top] = gpu_sim_cycle;
-                stack_top += 1;
-                m_branch_div_cycle[stack_top] = 0;
-            }
-        }
-
-        // discard the new entry if its PC matches with reconvergence PC
-        if (warp_diverged && tmp_next_pc == new_recvg_pc) continue;
-
-        // update the current top of pdom stack
-        m_pc[stack_top] = tmp_next_pc;
-        m_active_mask[stack_top] = tmp_active_mask;
-        if (warp_diverged) {
-            m_calldepth[stack_top] = 0;
-            m_recvg_pc[stack_top] = new_recvg_pc;
-        } else {
-            m_recvg_pc[stack_top] = top_recvg_pc;
-        }
-        stack_top += 1; // set top to next entry in the pdom stack
-    }
-    m_stack_top = stack_top - 1;
-
-    assert(m_stack_top >= 0);
-    assert(m_stack_top < m_warp_size * 2);
 }
 
 void gpgpu_sim::get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc )
@@ -339,44 +266,6 @@ void shader_core_ctx::get_pdom_stack_top_info( unsigned tid, unsigned *pc, unsig
 {
     unsigned warp_id = tid/m_config->warp_size;
     m_simt_stack[warp_id]->get_pdom_stack_top_info(pc,rpc);
-}
-
-void simt_stack::get_pdom_stack_top_info( unsigned *pc, unsigned *rpc ) const
-{
-   *pc = m_pc[m_stack_top];
-   *rpc = m_recvg_pc[m_stack_top];
-}
-
-unsigned simt_stack::get_rp() const 
-{ 
-    return m_recvg_pc[m_stack_top]; 
-}
-
-void simt_stack::print (FILE *fout) const
-{
-    const simt_stack *warp=this;
-    for ( unsigned k=0; k <= warp->m_stack_top; k++ ) {
-        if ( k==0 ) {
-            fprintf(fout, "w%02d %1u ", m_warp_id, k );
-        } else {
-            fprintf(fout, "    %1u ", k );
-        }
-        for (unsigned j=0; j<m_warp_size; j++)
-            fprintf(fout, "%c", (warp->m_active_mask[k].test(j)?'1':'0') );
-        fprintf(fout, " pc: 0x%03x", warp->m_pc[k] );
-        if ( warp->m_recvg_pc[k] == (unsigned)-1 ) {
-            fprintf(fout," rp: ---- cd: %2u ", warp->m_calldepth[k] );
-        } else {
-            fprintf(fout," rp: %4u cd: %2u ", warp->m_recvg_pc[k], warp->m_calldepth[k] );
-        }
-        if ( warp->m_branch_div_cycle[k] != 0 ) {
-            fprintf(fout," bd@%6u ", (unsigned) warp->m_branch_div_cycle[k] );
-        } else {
-            fprintf(fout," " );
-        }
-        ptx_print_insn( warp->m_pc[k], fout );
-        fprintf(fout,"\n");
-    }
 }
 
 void shader_core_stats::print( FILE* fout ) const
@@ -537,13 +426,13 @@ void shader_core_ctx::fetch()
                 bool did_exit=false;
                 for( unsigned t=0; t<m_config->warp_size;t++) {
                     unsigned tid=warp_id*m_config->warp_size+t;
-                    if( m_thread[tid].m_active == true ) {
-                        m_thread[tid].m_active = false; 
+                    if( m_threadState[tid].m_active == true ) {
+                        m_threadState[tid].m_active = false; 
                         unsigned cta_id = m_warp[warp_id].get_cta_id();
                         register_cta_thread_exit(cta_id);
                         m_not_completed -= 1;
                         m_active_threads.reset(tid);
-                        assert( m_thread[tid].m_functional_model_thread_state != NULL );
+                        assert( m_thread[tid]!= NULL );
                         did_exit=true;
                     }
                 }
@@ -601,25 +490,7 @@ void shader_core_ctx::fetch()
 
 void shader_core_ctx::func_exec_inst( warp_inst_t &inst )
 {
-    for ( unsigned t=0; t < m_config->warp_size; t++ ) {
-        if( inst.active(t) ) {
-            unsigned tid=m_config->warp_size*inst.warp_id()+t;
-            m_thread[tid].m_functional_model_thread_state->ptx_exec_inst(inst,t);
-            if( inst.has_callback(t) ) 
-               m_warp[inst.warp_id()].inc_n_atomic();
-            if (inst.space.is_local() && (inst.is_load() || inst.is_store())) {
-                new_addr_type localaddrs[MAX_ACCESSES_PER_INSN_PER_THREAD];
-                unsigned num_addrs;
-                num_addrs = translate_local_memaddr(inst.get_addr(t), tid, m_config->n_simt_clusters*m_config->n_simt_cores_per_cluster,
-                       inst.data_size, (new_addr_type*) localaddrs );
-                inst.set_addr(t, (new_addr_type*) localaddrs, num_addrs);
-            }
-            if ( ptx_thread_done(tid) ) {
-                m_warp[inst.warp_id()].set_completed(t);
-                m_warp[inst.warp_id()].ibuffer_flush();
-            }
-        }
-    }
+    execute_warp_inst_t(inst, m_config->warp_size);
     if( inst.is_load() || inst.is_store() )
         inst.generate_mem_accesses();
 }
@@ -637,27 +508,7 @@ void shader_core_ctx::issue_warp( warp_inst_t *&pipe_reg, const warp_inst_t *nex
     else if( next_inst->op == MEMORY_BARRIER_OP ) 
         m_warp[warp_id].set_membar();
 
-    // extract thread done and next pc information from functional model here
-    simt_mask_t thread_done;
-    addr_vector_t next_pc;
-
-    unsigned wtid = warp_id * m_config->warp_size;
-    for (unsigned i = 0; i < m_config->warp_size; i++) {
-         if( ptx_thread_done(wtid+i) ) {
-             thread_done.set(i);
-             next_pc.push_back( (address_type)-1 );
-         } else {
-             class ptx_thread_info *info = get_thread_state(wtid+i);
-             assert( info ); 
-             if( pipe_reg->reconvergence_pc == RECONVERGE_RETURN_PC ) 
-                 pipe_reg->reconvergence_pc = get_return_pc(info);
-             next_pc.push_back( info->get_pc() );
-         }
-    }
-
-    // use to update simt stack here
-    m_simt_stack[warp_id]->update(thread_done,next_pc,pipe_reg->reconvergence_pc);
-
+    updateSIMTStack(warp_id,m_config->warp_size,pipe_reg);
     m_scoreboard->reserveRegisters(pipe_reg);
     m_warp[warp_id].set_next_pc(next_inst->pc + next_inst->isize);
 }
@@ -1415,7 +1266,7 @@ void shader_core_ctx::display_simt_state(FILE *fout, int mask ) const
              int done = ptx_thread_done(tid);
              nactive += (ptx_thread_done(tid)?0:1);
              if ( done && (mask & 8) ) {
-                unsigned done_cycle = m_thread[tid].m_functional_model_thread_state->donecycle();
+                unsigned done_cycle = m_thread[tid]->donecycle();
                 if ( done_cycle ) {
                    printf("\n w%02u:t%03u: done @ cycle %u", i, tid, done_cycle );
                 }
@@ -1855,11 +1706,6 @@ void shader_core_ctx::set_max_cta( const kernel_info_t &kernel )
         gpu_cta_size;
 }
 
-gpgpu_sim *shader_core_ctx::get_gpu()
-{
-   return m_gpu;
-}
-
 void shader_core_ctx::decrement_atomic_count( unsigned wid, unsigned n )
 {
    assert( m_warp[wid].get_n_atomic() >= n );
@@ -1971,44 +1817,6 @@ void shd_warp_t::print_ibuffer( FILE *fout ) const
         else fprintf(fout," <empty> ");
     }
     fprintf(fout,"\n");
-}
-
-simt_stack::simt_stack( unsigned wid, class shader_core_ctx *shdr )
-{
-    m_warp_id=wid;
-    m_shader=shdr;
-    m_warp_size=m_shader->get_config()->warp_size;
-    m_stack_top = 0;
-    m_pc = (address_type*)calloc(m_warp_size * 2, sizeof(address_type));
-    m_calldepth = (unsigned int*)calloc(m_warp_size * 2, sizeof(unsigned int));
-    m_active_mask = new simt_mask_t[m_warp_size * 2];
-    m_recvg_pc = (address_type*)calloc(m_warp_size * 2, sizeof(address_type));
-    m_branch_div_cycle = (unsigned long long *)calloc(m_warp_size * 2, sizeof(unsigned long long ));
-    reset();
-}
-
-void simt_stack::reset()
-{
-    m_stack_top = 0;
-    memset(m_pc, -1, m_warp_size * 2 * sizeof(address_type));
-    memset(m_calldepth, 0, m_warp_size * 2 * sizeof(unsigned int));
-    memset(m_recvg_pc, -1, m_warp_size * 2 * sizeof(address_type));
-    memset(m_branch_div_cycle, 0, m_warp_size * 2 * sizeof(unsigned long long ));
-    for( unsigned i=0; i < 2*m_warp_size; i++ ) 
-        m_active_mask[i].reset();
-}
-
-void simt_stack::launch( address_type start_pc, const simt_mask_t &active_mask )
-{
-    reset();
-    m_pc[0] = start_pc;
-    m_calldepth[0] = 1;
-    m_active_mask[0] = active_mask;
-}
-
-const simt_mask_t &simt_stack::get_active_mask() const
-{
-    return m_active_mask[m_stack_top];
 }
 
 void opndcoll_rfu_t::add_cu_set(unsigned set_id, unsigned num_cu, unsigned num_dispatch){
@@ -2201,19 +2009,6 @@ void opndcoll_rfu_t::collector_unit_t::dispatch()
       m_src_op[i].reset();
 }
 
-bool shader_core_ctx::ptx_thread_done( unsigned hw_thread_id ) const
-{
-    assert( hw_thread_id < m_config->n_thread_per_shader );
-    ptx_thread_info *thd = m_thread[ hw_thread_id ].m_functional_model_thread_state;
-    return (thd==NULL) || thd->is_done();
-}
-
-class ptx_thread_info *shader_core_ctx::get_thread_state( unsigned hw_thread_id )
-{
-    assert( hw_thread_id < m_config->n_thread_per_shader );
-    return m_thread[ hw_thread_id ].m_functional_model_thread_state;
-}
-
 simt_core_cluster::simt_core_cluster( class gpgpu_sim *gpu, 
                                       unsigned cluster_id, 
                                       const struct shader_core_config *config, 
@@ -2392,4 +2187,21 @@ void simt_core_cluster::print_cache_stats( FILE *fp, unsigned& dl1_accesses, uns
    for ( unsigned i = 0; i < m_config->n_simt_cores_per_cluster; ++i ) {
       m_core[ i ]->print_cache_stats( fp, dl1_accesses, dl1_misses );
    }
+}
+
+void shader_core_ctx::checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned t, unsigned tid)
+{
+    if( inst.has_callback(t) ) 
+           m_warp[inst.warp_id()].inc_n_atomic();
+        if (inst.space.is_local() && (inst.is_load() || inst.is_store())) {
+            new_addr_type localaddrs[MAX_ACCESSES_PER_INSN_PER_THREAD];
+            unsigned num_addrs;
+            num_addrs = translate_local_memaddr(inst.get_addr(t), tid, m_config->n_simt_clusters*m_config->n_simt_cores_per_cluster,
+                   inst.data_size, (new_addr_type*) localaddrs );
+            inst.set_addr(t, (new_addr_type*) localaddrs, num_addrs);
+        }
+        if ( ptx_thread_done(tid) ) {
+            m_warp[inst.warp_id()].set_completed(t);
+            m_warp[inst.warp_id()].ibuffer_flush();
+        }
 }
