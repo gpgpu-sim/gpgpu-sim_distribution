@@ -237,7 +237,7 @@ public:
    ~ptx_thread_info();
    ptx_thread_info( kernel_info_t &kernel );
 
-   void init(gpgpu_t *gpu, core_t *core, unsigned sid, unsigned cta_id, unsigned wid, unsigned tid ) 
+   void init(gpgpu_t *gpu, core_t *core, unsigned sid, unsigned cta_id, unsigned wid, unsigned tid, bool fsim) 
    { 
       m_gpu = gpu;
       m_core = core; 
@@ -245,6 +245,7 @@ public:
       m_hw_ctaid=cta_id;
       m_hw_wid=wid;
       m_hw_tid=tid;
+      m_functionalSimulationMode = fsim;
    }
 
    void ptx_fetch_inst( inst_t &inst ) const;
@@ -276,7 +277,7 @@ public:
 
    dim3 get_ctaid() const { return m_ctaid; }
    dim3 get_tid() const { return m_tid; }
-   class gpgpu_sim *get_gpu() { return m_core->get_gpu(); }
+   class gpgpu_sim *get_gpu() { return (gpgpu_sim*)m_gpu;}
    unsigned get_hw_tid() const { return m_hw_tid;}
    unsigned get_hw_ctaid() const { return m_hw_ctaid;}
    unsigned get_hw_wid() const { return m_hw_wid;}
@@ -392,6 +393,15 @@ public:
    memory_space *get_surf_memory() { return m_gpu->get_surf_memory(); }
    memory_space *get_param_memory() { return m_kernel.get_param_memory(); }
    const gpgpu_functional_sim_config &get_config() const { return m_gpu->get_config(); }
+   bool isInFunctionalSimulationMode(){ return m_functionalSimulationMode;}
+   void exitCore()
+   {
+       //m_core is not used in case of functional simulation mode
+       if(!m_functionalSimulationMode)
+           m_core->warp_exit(m_hw_wid);
+   }
+   
+   void registerExit(){m_cta_info->register_thread_exit(this);}
 
 public:
    addr_t         m_last_effective_address;
@@ -405,7 +415,7 @@ public:
 
 private:
 
-
+   bool m_functionalSimulationMode; 
    unsigned m_uid;
    kernel_info_t &m_kernel;
    core_t *m_core;

@@ -43,9 +43,9 @@
 #include "ptx_loader.h"
 #include "ptx_parser.h"
 #include "../gpgpu-sim/gpu-sim.h"
-#include "ptx_sim.h"
 #include "../gpgpusim_entrypoint.h"
 #include "decuda_pred_table/decuda_pred_table.h"
+#include "../stream_manager.h"
 
 int gpgpu_ptx_instruction_classification;
 void ** g_inst_classification_stat = NULL;
@@ -847,7 +847,7 @@ static unsigned get_tex_datasize( const ptx_instruction *pI, ptx_thread_info *th
    return data_size; 
 }
 
-void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
+void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
 {
     
    bool skip = false;
@@ -954,7 +954,6 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
       insn_memory_op = pI->has_memory_read() ? memory_load : memory_store;
    }
    
-   
    if ( pI->get_opcode() == ATOM_OP ) {
       insn_memaddr = last_eaddr();
       insn_space = last_space();
@@ -986,7 +985,11 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id )
    }
    update_pc();
    g_ptx_sim_num_insn++;
-   ptx_file_line_stats_add_exec_count(pI);
+   
+   //not using it with functional simulation mode
+   if(!(this->m_functionalSimulationMode))
+       ptx_file_line_stats_add_exec_count(pI);
+   
    if ( gpgpu_ptx_instruction_classification ) {
       init_inst_classification_stat();
       unsigned space_type=0;
@@ -1056,7 +1059,8 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
                               core_t *core, 
                               unsigned hw_cta_id, 
                               unsigned hw_warp_id,
-                              gpgpu_t *gpu )
+                              gpgpu_t *gpu,
+                              bool isInFunctionalSimulationMode)
 {
    std::list<ptx_thread_info *> &active_threads = kernel.active_threads();
 
@@ -1085,7 +1089,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
       ptx_thread_info *thd = active_threads.front(); 
       active_threads.pop_front();
       *thread_info = thd;
-      thd->init(gpu, core, sid, hw_cta_id, hw_warp_id, tid );
+      thd->init(gpu, core, sid, hw_cta_id, hw_warp_id, tid, isInFunctionalSimulationMode );
       return 1;
    }
 
@@ -1183,7 +1187,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
 
    assert( active_threads.size() <= threads_left );
    *thread_info = active_threads.front();
-   (*thread_info)->init(gpu, core, sid, hw_cta_id, hw_warp_id, tid );
+   (*thread_info)->init(gpu, core, sid, hw_cta_id, hw_warp_id, tid,isInFunctionalSimulationMode );
    active_threads.pop_front();
    return 1;
 }
@@ -1383,301 +1387,38 @@ ptx_cta_info *g_func_cta_info = NULL;
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
-/*
+/*!
 This function simulates the CUDA code functionally, it takes a kernel_info_t parameter 
 which holds the data for the CUDA kernel to be executed
-*/
-
-
-void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel )
+!*/
+void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
 {
-   printf("GPGPU-Sim: Performing Functional Simulation...\n");
-   
-	
+     printf("GPGPU-Sim: Performing Functional Simulation, executing kernel %s...\n",kernel.name().c_str());
 
-   //storing kernel function information?? what it has
-   function_info *functionInfo = kernel.entry();
+     //using a shader core object for book keeping, it is not needed but as most function built for performance simulation need it we use it here
+    extern gpgpu_sim *g_the_gpu;
 
-   //defining a shared memory space for across the kernel blocks (size as param?)
-   memory_space *shared_mem = new memory_space_impl<16*1024>("shared",4);
-
-   //this table is to be used to store local memories for each thread indexed by their Idx
-   std::map<unsigned,memory_space*> localMemoriesTable;
-
-   //a global variable holds information on a block?
-   if ( g_func_cta_info == NULL )
-      g_func_cta_info = new ptx_cta_info(0);
-
-			//the main simulation loop, works through all the CTAs defined in the given kernel
-   while( !kernel.no_more_ctas_to_run() ) {
-
-
-         //holds the warps to be executed in the current CTA
-         std::vector<std::vector<ptx_thread_info*>> ctaWarpsList;
-         std::vector<std::stack<active_mask_t>> ctaWarpBranchDivergenceMaskStacksList;
-         std::vector<std::stack<address_type>> ctaRpcsStackList;
-        //g_func_cta_info->num_threads();
-        //int numberOfWarps = ceil(g_func_cta_info->num_threads()/warpSize);
-
-
-        //getting the current CTA id from the kernel grid of CTAs
-            dim3 CTA_Id3d = kernel.get_next_cta_id();
-            kernel.increment_cta_id();
-			
-	//here we check if there is any threads are still running from previous CTA, and also reset variables
-        g_func_cta_info->check_cta_thread_status_and_reset();
-			
-        //the loop initialize a local memory  for each thread in the current CTA
-        //and add threads to liveThreads list so they will be executed in the next loop
-        std::vector<ptx_thread_info*> newWarp;
-        
-        //ctaLiveThreads used to track the number of threads executing and used to terminate a CTA execution when all the threads have executed successfully
-        int ctaLiveThreads=0;
-        extern gpgpu_sim *g_the_gpu;
-        
-        while( kernel.more_threads_in_cta() ) {
-            
-
-                 memory_space *threadLocalMemory = NULL;
-                 ptx_thread_info *newThread = new ptx_thread_info(kernel);
-                 dim3 newThreadId3 = kernel.get_next_thread_id_3d();
-                 unsigned newThreadIdx = kernel.get_next_thread_id();
-                 kernel.increment_thread_id();
-
-                 //adding new thread local memory to the list of local memories table
-                 std::map<unsigned,memory_space*>::iterator localMemoryPlace=localMemoriesTable.find(newThreadIdx);
-                 if ( localMemoryPlace == localMemoriesTable.end() ) {
-                    char buf[1024];
-                    snprintf(buf,1024,"local_(%u,%u,%u)", newThreadId3.x, newThreadId3.y, newThreadId3.z );
-                    threadLocalMemory = new memory_space_impl<32>(buf,32);
-                    localMemoriesTable[newThreadIdx] = threadLocalMemory;
-                 } else {
-                    threadLocalMemory = localMemoryPlace->second;
-                 }
-                 //new thread initialization
-                 newThread->init( g_the_gpu, NULL, 0, 0, 0, 0 );
-                 newThread->set_info(functionInfo);
-                 newThread->set_nctaid(CTA_Id3d);
-                 newThread->set_ntid(kernel.get_cta_dim());
-                 newThread->set_ctaid(CTA_Id3d);
-                 newThread->set_tid(newThreadId3);
-                 newThread->set_valid();
-                 newThread->m_shared_mem = shared_mem;
-                 newThread->m_local_mem = threadLocalMemory;
-                 newThread->m_cta_info = g_func_cta_info;
-                 g_func_cta_info->add_thread(newThread);
-
-                         //adding the new thread to the CTA warp threads list so will be executed next loop
-                         newWarp.push_back(newThread);
-                         if(newWarp.size()==MAX_WARP_SIZE)
-                         {
-                                 ctaWarpsList.push_back(newWarp);
-
-                                 active_mask_t bools;
-                                 
-                                 
-                                 for(int i=0;i<newWarp.size();i++)
-                                 {
-                                         bools[i]= true;
-                                 }
-                                 
-                                 std::stack<active_mask_t> boolStack;
-                                 boolStack.push(bools);
-                                 
-                                 ctaWarpBranchDivergenceMaskStacksList.push_back(boolStack);
-
-                                 std::stack<address_type> rpcStack;
-                                 rpcStack.push(-1);
-                                 ctaRpcsStackList.push_back(rpcStack);
-
-                                 ctaLiveThreads+=newWarp.size();
-                                 
-                                 newWarp.clear();
-                         }
-
-        }
-
-            if(newWarp.size()!=0)
-            {
-                ctaWarpsList.push_back(newWarp);
-                 newWarp.clear();
-
-
-                 active_mask_t bools;
-
-                 for(int i=0;i<newWarp.size();i++)
-                 {
-                         bools[i]= true;
-                 }
-                 std::stack<active_mask_t> boolStack;
-                 boolStack.push(bools);
-                 ctaWarpBranchDivergenceMaskStacksList.push_back(boolStack);
-
-                 std::stack<address_type> rpcStack;
-                 rpcStack.push(-1);
-                 ctaRpcsStackList.push_back(rpcStack);
-
-                 ctaLiveThreads+=newWarp.size();
-            }
-        
-        
-
-            //after this loop the ctaWarps holds a list of warps to be executed 
-
-            //This loop will keep executing instructions in liveThreads list until they are all done
-            while (true)  {
-
-                //a pointer used as a temp variable
-                ptx_thread_info *currentThread = NULL; 
-
-                       //for each warp
-                          for(int i=0;i<ctaWarpsList.size();i++)
-                         {
-                         //execute the warp threads till a barrier met
-                                 
-                              printf("Executing warp %d out of %zu and threads count is %d \n",i,ctaWarpsList.size(), ctaLiveThreads);
-                                while(true){
-                                     
-                                 //for each warp execute threads until blocked or done
-                                  active_mask_t takenBranches;
-                                  bool atBarrier =false;
-
-                                  //  printf("In warp %d of size %d\n ",i,ctaWarpsList[i].size());
-                                       int threadsDoneInThisWarp =0;
-                                    //execute each thread in a warp one instruction at a time
-                                       for(int j=0;j<ctaWarpsList[i].size();j++)
-                                       {
-                                           
-                                                       currentThread= ctaWarpsList[i][j];
-                                                       
-                                                       //if the thread is done or disabled skip
-                                                       if(currentThread->is_done() ||ctaWarpBranchDivergenceMaskStacksList[i].top()[j]==0 )
-                                                       {
-                                                           threadsDoneInThisWarp++;
-                                                           continue;
-                                                       }
-                                                       
-                                                      
-                                                       currentThread->clear_barrier();
-                                                       //execute_thread(currentThread);
-                                                      // printf(" %d ",j);
-                                                       
-                                                       
-                                                       const warp_inst_t* w = ptx_fetch_inst(currentThread->get_pc());
-                                                       warp_inst_t * warpInstruction = new warp_inst_t();
-                                                       *warpInstruction = *w;
-                                                                                                             
-                                                       
-                                                       
-                                                       active_mask_t mask;
-                                                       mask[0]=1;
-                                                       
-                                                      //warpInstruction->set_active(ctaWarpBranchDivergenceMaskStacksList[i].top());
-                                                       warpInstruction->set_active(mask);
-                                                       currentThread->ptx_fetch_inst(*warpInstruction);
-                                                       //currentThread->get_inst()->print_insn();
-                                                       currentThread->ptx_exec_inst(*warpInstruction,0);
-                                                       
-                                                       
-                                                       //check this
-                                                       if(warpInstruction->isatomic() && !warpInstruction->empty() && (warpInstruction->is_load()|| warpInstruction->is_store()))
-                                                       warpInstruction->do_atomic();
-                                                       
-                                                       delete warpInstruction;
-                                                       
-                                                       if(currentThread->branch_taken())
-                                                       {
-                                                           takenBranches[j] = currentThread->branch_taken();
-                                                          // printf("found a branch \n");
-                                                           //stop = true;
-                                                           //abort();
-                                                       }
-
-                                                                if(currentThread->is_at_barrier())
-                                                                {
-                                                                    printf("found barrier \n");
-                                                                    atBarrier = true;
-                                                                }
-                                                                
-                                                                if(currentThread->is_done())
-                                                                {
-                                                                    //should do the cleaning later
-                                                                       // currentThread->m_cta_info->register_deleted_thread(currentThread);
-                                                                       // delete currentThread;
-                                                                        ctaLiveThreads--;       
-                                                                        printf("some one is done\n");
-                                                                }
-                                       }
-                                                                      //  printf("\n");
-
-
-                                           //detecting branch divergence
-                                           bool taken = false;
-                                           bool notTaken=false;
-
-                                           for(int j=0;j<ctaWarpsList[i].size();j++)
-                                           {
-                                                        if(takenBranches[j]==true)
-                                                                taken=true;
-                                                        else if(takenBranches[j]==false)
-                                                                notTaken=true;
-                                           }
-                                           //if both condition represented then there are a branch divergence
-                                           if(taken&& notTaken)
-                                           {
-                                               printf("Branch here\n");
-                                               abort();
-                                                        ctaRpcsStackList[i].push(currentThread->get_rpc());
-                                                        ctaRpcsStackList[i].push(currentThread->get_rpc());
-                                                        active_mask_t notTakenBranches;
-                                                        for(int k=0;k<ctaWarpsList.size();k++)
-                                                        {
-                                                                notTakenBranches[k] =!takenBranches[k]; 
-                                                        }
-                                                        ctaWarpBranchDivergenceMaskStacksList[i].push(notTakenBranches);
-                                                        ctaWarpBranchDivergenceMaskStacksList[i].push(takenBranches);
-                                                        //continue so we wont delete takenBranhes and no need to check for barriers after as well
-                                                        continue;
-                                                       // printf("memory\n");
-                                           }
-
-                                           //doing branch convergence if it is the time to
-                                           else if(ctaRpcsStackList[i].top()==currentThread->get_pc())
-                                           {
-                                                        ctaRpcsStackList[i].pop();
-                                                        ctaWarpBranchDivergenceMaskStacksList[i].pop();
-
-                                           } 
-
-                                           if(atBarrier || threadsDoneInThisWarp==ctaWarpsList[i].size())
-                                                   break;
-
-
-                          }
-                   }
-
-                   if(ctaLiveThreads==0)
-                           break;
-
-       }
+    //we excute the kernel one CTA (Block) at the time, as synchronization functions work block wise
+    while(!kernel.no_more_ctas_to_run()){
+        functionalCoreSim cta(&kernel, g_the_gpu, g_the_gpu->getShaderCoreConfig()->warp_size);
+        cta.execute();
     }
+    
+   //registering this kernel as done      
+   extern stream_manager *g_stream_manager;
+   
+   //openCL kernel simulation calls don't register the kernel so we don't register its exit
+   if(!openCL)
+   g_stream_manager->register_finished_kernel(kernel.get_uid());
 
-        //cleaning need to recheck here add cleaning deleted threads
-        delete shared_mem;
-        std::map<unsigned,memory_space*>::iterator i = localMemoriesTable.begin();
-        for(; i!= localMemoriesTable.end();i++)
-        {
-                delete i->second;
-        }
-		//delete localMemoriesTable;
-
+   //******PRINTING*******
    printf( "GPGPU-Sim: Done functional simulation (%u instructions simulated).\n", g_ptx_sim_num_insn );
    if ( gpgpu_ptx_instruction_classification ) {
       StatDisp( g_inst_classification_stat[g_ptx_kernel_count]);
       StatDisp ( g_inst_op_classification_stat[g_ptx_kernel_count]);
    }
 
-	//time_t variables used to calculate the total simulation time
+   //time_t variables used to calculate the total simulation time
    //the start time of simulation is hold by the global variable g_simulation_starttime
    //g_simulation_starttime is initilized by gpgpu_ptx_sim_init_perf() in gpgpusim_entrypoint.cc upon starting gpgpu-sim
    time_t end_time, elapsed_time, days, hrs, minutes, sec;
@@ -1698,25 +1439,79 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel )
    fflush(stdout); 
 }
 
-
-void execute_thread(ptx_thread_info* pThread)
+void functionalCoreSim::initializeCTA()
 {
-//	int i1, i2, i3, i4, o1, o2, o3, o4;
-//	int vectorin, vectorout;
-//	unsigned op_type;
-//	addr_t addr;
-//	unsigned space;
-//	int arch_reg[MAX_REG_OPERANDS] = { -1 };
-//	unsigned data_size;
-//	dram_callback_t callback;
-//	unsigned warp_active_mask = (unsigned)-1; // vote instruction with diverged warps won't execute correctly
-//	 in functional simulation mode
-//
-//	g_func_info->ptx_decode_inst( pThread, &op_type, &i1, &i2, &i3, &i4, &o1, &o2, &o3, &o4, &vectorin, &vectorout, arch_reg );
-//	g_func_info->ptx_exec_inst( pThread, &addr, &space, &data_size, &callback, warp_active_mask );
+    int ctaLiveThreads=0;
+    m_warpsCount= ceil((double)m_kernel->threads_per_cta()/m_maxWarpSize);
+    initilizeSIMTStack(m_warpsCount,m_maxWarpSize);
+    m_warpAtBarrier =  new bool [m_warpsCount];
+    m_liveThreadCount = new unsigned [m_warpsCount];
+    m_thread = new ptx_thread_info*[m_warpsCount*m_maxWarpSize];
+    
+    for(int i=0; i< m_warpsCount; i++){
+        m_warpAtBarrier[i]=false;
+        m_liveThreadCount[i]=0;
+    }
+    for(int i=0; i< m_warpsCount*m_maxWarpSize;i++)
+        m_thread[i]=NULL;
+    
+    //get threads for a cta
+    for(unsigned i=0; i<m_kernel->threads_per_cta();i++) {
+        ptx_sim_init_thread(*m_kernel,&m_thread[i],0,i,m_kernel->threads_per_cta()-i,m_kernel->threads_per_cta(),NULL,0,i/m_maxWarpSize,(gpgpu_t*)m_gpu, true);
+        assert(m_thread[i]!=NULL && !m_thread[i]->is_done());
+        ctaLiveThreads++;
+    }
+    
+    for(int k=0;k<m_warpsCount;k++)
+        createWarp(k);
 }
-////////////////////////////////////////////////////////////////////
 
+void  functionalCoreSim::createWarp(unsigned warpId)
+{
+   simt_mask_t initialMask;
+   unsigned liveThreadsCount=0;
+   initialMask.set();
+    for(int i=warpId*m_maxWarpSize; i<warpId*m_maxWarpSize+m_maxWarpSize;i++){
+        if(m_thread[i]==NULL) initialMask.reset(i-warpId*m_maxWarpSize);
+        else liveThreadsCount++;
+    }   
+   
+   assert(m_thread[warpId*m_maxWarpSize]!=NULL);
+   m_simt_stack[warpId]->launch(m_thread[warpId*m_maxWarpSize]->get_pc(),initialMask);
+   m_liveThreadCount[warpId]= liveThreadsCount;
+}
+
+void functionalCoreSim::execute()
+ {
+    initializeCTA();
+    
+    //start executing the CTA
+    while(true){
+        bool someOneLive= false;
+        bool allAtBarrier = true;
+        for(unsigned i=0;i<m_warpsCount;i++){
+            executeWarp(i,allAtBarrier,someOneLive);
+        }
+        if(!someOneLive) break;
+        if(allAtBarrier){
+             for(unsigned i=0;i<m_warpsCount;i++)
+                 m_warpAtBarrier[i]=false;
+        }
+    }
+ }
+
+void functionalCoreSim::executeWarp(unsigned i, bool &allAtBarrier, bool & someOneLive)
+{
+    if(!m_warpAtBarrier[i] && m_liveThreadCount[i]!=0){
+        warp_inst_t inst =getExecuteWarp(i);
+        execute_warp_inst_t(inst,m_maxWarpSize,i);
+        if(inst.isatomic()) inst.do_atomic(true);
+        if(inst.op==BARRIER_OP || inst.op==MEMORY_BARRIER_OP ) m_warpAtBarrier[i]=true;
+        updateSIMTStack(i,m_maxWarpSize,&inst);
+    }
+    if(m_liveThreadCount[i]>0) someOneLive=true;
+    if(!m_warpAtBarrier[i]&& m_liveThreadCount[i]>0) allAtBarrier = false;
+}
 
 unsigned translate_pc_to_ptxlineno(unsigned pc)
 {
@@ -1881,3 +1676,12 @@ address_type get_converge_point( address_type pc )
    return NO_BRANCH_DIVERGENCE;
 }
 
+void functionalCoreSim::warp_exit( unsigned warp_id )
+{
+    for(int i=0;i<m_warpsCount*m_maxWarpSize;i++){
+        if(m_thread[i]!=NULL){
+             m_thread[i]->m_cta_info->register_deleted_thread(m_thread[i]);
+             delete m_thread[i];
+        }
+    }
+}

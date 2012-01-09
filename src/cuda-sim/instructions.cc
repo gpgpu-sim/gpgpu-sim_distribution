@@ -1911,17 +1911,14 @@ void ex2_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       assert(0); 
       break;
    }
-
+   
    thread->set_operand_value(dst,data, i_type, thread,pI);
 }
 
 void exit_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
-{ 
-   core_t *sc = thread->get_core();
-   unsigned warp_id = thread->get_hw_wid();
-   sc->warp_exit(warp_id);
-
-   thread->m_cta_info->register_thread_exit(thread);
+{    
+   thread->exitCore();
+   thread->registerExit();
    thread->set_done();
 }
 
@@ -2730,11 +2727,9 @@ void ret_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 { 
    bool empty = thread->callstack_pop();
    if( empty ) {
-      core_t *sc = thread->get_core();
-      unsigned warp_id = thread->get_hw_wid();
-      sc->warp_exit(warp_id);
-      thread->m_cta_info->register_thread_exit(thread);
-      thread->set_done();
+   thread->exitCore();
+   thread->registerExit();
+   thread->set_done();
    }
 }
 
@@ -2743,11 +2738,9 @@ void retp_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 {
    bool empty = thread->callstack_pop_plus();
    if( empty ) {
-      core_t *sc = thread->get_core();
-      unsigned warp_id = thread->get_hw_wid();
-      sc->warp_exit(warp_id);
-      thread->m_cta_info->register_thread_exit(thread);
-      thread->set_done();
+   thread->exitCore();
+   thread->registerExit();
+   thread->set_done();
    }
 }
 
