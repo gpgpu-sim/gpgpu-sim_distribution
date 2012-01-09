@@ -234,6 +234,28 @@ public:
    const gpgpu_sim_config &get_config() const { return m_config; }
    void gpu_print_stat() const;
    void dump_pipeline( int mask, int s, int m ) const;
+   
+   //The next three functions added to be used by the functional simulation function
+   
+   //! Get shader core configuration
+   /*!
+    * Returning the configuration of the shader core, used by the functional simulation only so far
+    */
+   const struct shader_core_config * getShaderCoreConfig();
+   
+   
+   //! Get shader core Memory Configuration
+    /*!
+    * Returning the memory configuration of the shader core, used by the functional simulation only so far
+    */
+   const struct memory_config * getMemoryConfig();
+   
+   
+   //! Get shader core SIMT cluster
+   /*!
+    * Returning the cluster of of the shader core, used by the functional simulation so far
+    */
+    simt_core_cluster * getSIMTCluster();
 
 private:
    // clocks
@@ -287,7 +309,7 @@ public:
    unsigned long long  gpu_sim_insn;
    unsigned long long  gpu_tot_sim_insn;
    unsigned long long  gpu_sim_insn_last_update;
-   unsigned gpu_sim_insn_last_update_sid;
+   unsigned gpu_sim_insn_last_update_sid; 
 };
 
 #endif
