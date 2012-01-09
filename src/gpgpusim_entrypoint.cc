@@ -238,8 +238,15 @@ int gpgpu_opencl_ptx_sim_main_perf( kernel_info_t *grid )
    return 0;
 }
 
+//! Functional simulation of OpenCL
+/*!
+ * This function call the CUDA PTX functional simulator
+ */
 int gpgpu_opencl_ptx_sim_main_func( kernel_info_t *grid )
 {
-   printf("GPGPU-Sim PTX API: OpenCL functional-only simulation not yet implemented (use performance simulation)\n");
-   exit(1);
+    //calling the CUDA PTX simulator, sending the kernel by reference and a flag set to true,
+    //the flag used by the function to distinguish OpenCL calls from the CUDA simulation calls which
+    //it is needed by the called function to not register the exit the exit of OpenCL kernel as it doesn't register entering in the first place as the CUDA kernels does
+   gpgpu_cuda_ptx_sim_main_func( *grid, true );
+   return 0;
 }
