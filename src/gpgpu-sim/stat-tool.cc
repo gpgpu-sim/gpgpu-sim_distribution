@@ -149,10 +149,12 @@ void destroy_thread_CFlogger( )
 
 void cflog_update_thread_pc( int logger_id, int thread_id, address_type pc ) 
 {
+   if (thread_CFlogger == NULL) return;  // this means no visualizer output 
    if (thread_id < 0) return;
    thread_CFlogger[logger_id]->update_thread_pc(thread_id, pc);
 }
 
+// deprecated 
 void cflog_snapshot( int logger_id, unsigned long long  cycle ) 
 {
    thread_CFlogger[logger_id]->snap_shot(cycle);
@@ -160,6 +162,7 @@ void cflog_snapshot( int logger_id, unsigned long long  cycle )
 
 void cflog_print(FILE *fout) 
 {
+   if (thread_CFlogger == NULL) return;  // this means no visualizer output 
    for (int i = 0; i < n_thread_CFloggers; i++) {
       thread_CFlogger[i]->print_histo(fout);
    }
@@ -167,6 +170,7 @@ void cflog_print(FILE *fout)
 
 void cflog_visualizer_print(FILE *fout) 
 {
+   if (thread_CFlogger == NULL) return;  // this means no visualizer output 
    for (int i = 0; i < n_thread_CFloggers; i++) {
       thread_CFlogger[i]->print_visualizer(fout);
    }
@@ -174,6 +178,7 @@ void cflog_visualizer_print(FILE *fout)
 
 void cflog_visualizer_gzprint(gzFile fout) 
 {
+   if (thread_CFlogger == NULL) return;  // this means no visualizer output 
    for (int i = 0; i < n_thread_CFloggers; i++) {
       thread_CFlogger[i]->print_visualizer(fout);
    }

@@ -2204,4 +2204,14 @@ void shader_core_ctx::checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned 
             m_warp[inst.warp_id()].set_completed(t);
             m_warp[inst.warp_id()].ibuffer_flush();
         }
+
+    // PC-Histogram Update 
+    unsigned warp_id = inst.warp_id(); 
+    unsigned pc = inst.pc; 
+    for (unsigned t = 0; t < m_config->warp_size; t++) {
+        if (inst.active(t)) {
+            int tid = warp_id * m_config->warp_size + t; 
+            cflog_update_thread_pc(m_sid, tid, pc);  
+        }
+    }
 }
