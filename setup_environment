@@ -48,10 +48,12 @@ export PATH=$GPGPUSIM_ROOT/decuda/:$GPGPUSIM_ROOT/bin:$CUDA_INSTALL_PATH/bin:$PA
 # SSH to remote node to generate PTX for OpenCL kernels when running on 
 # a node that does not have an NVIDIA driver installed.
 # The remote node should have GPGPU-Sim installed at the same path 
-if [ `hostname -d` == "ece.ubc.ca" -a "$OPENCL_REMOTE_GPU_HOST" == "" ]; then
+HOSTNAME_DOMAIN=`hostname -d`
+if [ "x$HOSTNAME_DOMAIN" == "xece.ubc.ca" -a "$OPENCL_REMOTE_GPU_HOST" == "" ]; then
 	export OPENCL_REMOTE_GPU_HOST=aamodt-pc05.ece.ubc.ca
 fi
-if [ `hostname -f` == $OPENCL_REMOTE_GPU_HOST ]; then
+HOSTNAME_F=`hostname -f`
+if [ "x$HOSTNAME_F" == "x$OPENCL_REMOTE_GPU_HOST" ]; then
 	unset OPENCL_REMOTE_GPU_HOST
 fi
 
