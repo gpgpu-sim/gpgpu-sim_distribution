@@ -1870,17 +1870,27 @@ void div_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    switch ( i_type ) {
    case S8_TYPE:
+      data.s8  = src1_data.s8  / src2_data.s8 ; break;
    case S16_TYPE:
+      data.s16 = src1_data.s16 / src2_data.s16; break;
    case S32_TYPE:
+      data.s32 = src1_data.s32 / src2_data.s32; break;
    case S64_TYPE: 
       data.s64 = src1_data.s64 / src2_data.s64; break;
    case U8_TYPE:
+      data.u8  = src1_data.u8  / src2_data.u8 ; break;
    case U16_TYPE:
+      data.u16 = src1_data.u16 / src2_data.u16; break;
    case U32_TYPE:
+      data.u32 = src1_data.u32 / src2_data.u32; break;
    case U64_TYPE: 
+      data.u64 = src1_data.u64 / src2_data.u64; break;
    case B8_TYPE:
+      data.u8  = src1_data.u8  / src2_data.u8 ; break;
    case B16_TYPE:
+      data.u16 = src1_data.u16 / src2_data.u16; break;
    case B32_TYPE:
+      data.u32 = src1_data.u32 / src2_data.u32; break;
    case B64_TYPE:
       data.u64 = src1_data.u64 / src2_data.u64; break;
    case F16_TYPE: assert(0); break;
