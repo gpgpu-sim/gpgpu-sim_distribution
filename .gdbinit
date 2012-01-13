@@ -63,7 +63,7 @@ define ptxdis_func
 	set $sid = $arg0
 	set $cluster   = g_the_gpu_config.m_shader_config.sid_to_cluster($sid)
 	set $cid       = g_the_gpu_config.m_shader_config.sid_to_cid($sid)
-	set $ptx_tinfo = g_the_gpu->m_cluster[$cluster]->m_core[$cid]->m_thread[$arg1].m_functional_model_thread_state
+	set $ptx_tinfo = g_the_gpu->m_cluster[$cluster]->m_core[$cid]->m_thread[$arg1]
 	set $finfo     = $ptx_tinfo->m_func_info
 	set $minpc     = $finfo->m_start_PC
 	set $maxpc     = $minpc + $finfo->m_instr_mem_size
@@ -83,7 +83,7 @@ define ptx_tids2pcs
 		set $tid =  $arg0[$i]
 		set $cluster = g_the_gpu_config.m_shader_config.sid_to_cluster($sid);
 		set $cid = g_the_gpu_config.m_shader_config.sid_to_cid($sid);
-		set $addr = g_the_gpu->m_cluster[$cluster]->m_core[$cid]->m_thread[$tid].m_functional_model_thread_state->m_PC
+		set $addr = g_the_gpu->m_cluster[$cluster]->m_core[$cid]->m_thread[$tid]->m_PC
 		printf "%2u : tid = %3u  => pc = %d\n", $i, $tid, $addr
 		set $i = $i + 1
 	end
