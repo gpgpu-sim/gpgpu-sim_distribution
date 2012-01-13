@@ -719,6 +719,7 @@ void shader_core_ctx::writeback()
         m_last_inst_gpu_sim_cycle = gpu_sim_cycle;
         m_last_inst_gpu_tot_sim_cycle = gpu_tot_sim_cycle;
         m_gpu->gpu_sim_insn += pipe_reg->active_count();
+        pipe_reg->completed(gpu_tot_sim_cycle + gpu_sim_cycle); 
         pipe_reg->clear();
     }
 }
@@ -945,6 +946,7 @@ void ldst_unit::writeback()
     // process next instruction that is going to writeback
     if( !m_next_wb.empty() ) {
         if( m_operand_collector->writeback(m_next_wb) ) {
+            bool insn_completed = false; 
             for( unsigned r=0; r < 4; r++ ) {
                 if( m_next_wb.out[r] > 0 ) {
                     if( m_next_wb.space.get_type() != shared_space ) {
@@ -955,13 +957,18 @@ void ldst_unit::writeback()
                             m_scoreboard->releaseRegister( m_next_wb.warp_id(), m_next_wb.out[r] );
                             m_stats->m_num_sim_insn[m_sid]++;
                             m_core->get_gpu()->gpu_sim_insn += m_next_wb.active_count();
+                            insn_completed = true; 
                         }
                     } else { // shared 
                         m_scoreboard->releaseRegister( m_next_wb.warp_id(), m_next_wb.out[r] );
                         m_stats->m_num_sim_insn[m_sid]++;
                         m_core->get_gpu()->gpu_sim_insn += m_next_wb.active_count();
+                        insn_completed = true; 
                     }
                 }
+            }
+            if( insn_completed ) {
+                m_next_wb.completed( gpu_tot_sim_cycle + gpu_sim_cycle ); 
             }
             m_next_wb.clear();
             m_last_inst_gpu_sim_cycle = gpu_sim_cycle;
@@ -1103,6 +1110,7 @@ void ldst_unit::cycle()
                }
                if( !pending_requests ) {
                    m_core->get_gpu()->gpu_sim_insn += m_dispatch_reg->active_count();
+                   m_dispatch_reg->completed(gpu_tot_sim_cycle + gpu_sim_cycle); 
                    m_scoreboard->releaseRegisters(m_dispatch_reg);
                    m_stats->m_num_sim_insn[m_sid]++;
                }
@@ -1113,6 +1121,7 @@ void ldst_unit::cycle()
            // stores exit pipeline here
            m_core->dec_inst_in_pipeline(warp_id);
            m_core->get_gpu()->gpu_sim_insn += m_dispatch_reg->active_count();
+           m_dispatch_reg->completed(gpu_tot_sim_cycle + gpu_sim_cycle); 
            m_dispatch_reg->clear();
            m_stats->m_num_sim_insn[m_sid]++;
        }

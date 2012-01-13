@@ -694,6 +694,7 @@ public:
         m_cache_hit=false;
         m_empty=false;
     }
+    void completed( unsigned long long cycle );  // stat collection: called when the instruction is completed  
     void set_addr( unsigned n, new_addr_type addr ) 
     {
         if( !m_per_scalar_thread_valid ) {

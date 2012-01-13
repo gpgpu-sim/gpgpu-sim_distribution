@@ -248,6 +248,7 @@ void warp_inst_t::generate_mem_accesses()
         }
         assert( total_accesses > 0 && total_accesses <= m_config->warp_size );
         cycles = total_accesses; // shared memory conflicts modeled as larger initiation interval 
+        ptx_file_line_stats_add_smem_bank_conflict( pc, total_accesses );
         break;
     }
 
@@ -291,7 +292,9 @@ void warp_inst_t::generate_mem_accesses()
             m_accessq.push_back( mem_access_t(access_type,a->first,cache_block_size,is_write,a->second,byte_mask) );
     }
 
-    ptx_file_line_stats_add_uncoalesced_gmem( pc, m_accessq.size() - starting_queue_size );
+    if ( space.get_type() == global_space ) {
+        ptx_file_line_stats_add_uncoalesced_gmem( pc, m_accessq.size() - starting_queue_size );
+    }
     m_mem_accesses_created=true;
 }
 
@@ -486,6 +489,13 @@ void warp_inst_t::memory_coalescing_arch_13_reduce_and_send( bool is_write, mem_
    m_accessq.push_back( mem_access_t(access_type,addr,size,is_write,info.active,info.bytes) );
 }
 
+void warp_inst_t::completed( unsigned long long cycle )
+{
+   unsigned long long latency = cycle - issue_cycle; 
+   assert(latency <= cycle); // underflow detection 
+   ptx_file_line_stats_add_latency(pc, latency * active_count());  
+}
+
 
 unsigned kernel_info_t::m_next_uid = 1;
 
@@ -597,6 +607,7 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
 
     simt_mask_t  top_active_mask = m_active_mask[stack_top];
     address_type top_recvg_pc = m_recvg_pc[stack_top];
+    address_type top_pc = m_pc[stack_top]; // the pc of the instruction just executed 
 
     assert(top_active_mask.any());
 
@@ -659,6 +670,10 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
 
     assert(m_stack_top >= 0);
     assert(m_stack_top < m_warp_size * 2);
+
+    if (warp_diverged) {
+        ptx_file_line_stats_add_warp_divergence(top_pc, 1); 
+    }
 }
 
 void core_t::execute_warp_inst_t(warp_inst_t &inst, unsigned warpSize, unsigned warpId){

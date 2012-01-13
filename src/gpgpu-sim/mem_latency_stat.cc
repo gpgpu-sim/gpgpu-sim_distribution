@@ -181,10 +181,10 @@ void memory_stats_t::memlatstat_dram_access(mem_fetch *mf)
          shader_mem_acc_log( mf->get_sid(), dram_id, bank, 'r');
          totalbankreads[dram_id][bank]++;
       }
-      if (mf->get_pc() != (unsigned)-1) 
-         ptx_file_line_stats_add_dram_traffic(mf->get_pc(),1);
       mem_access_type_stats[mf->get_access_type()][dram_id][bank]++;
    }
+   if (mf->get_pc() != (unsigned)-1) 
+      ptx_file_line_stats_add_dram_traffic(mf->get_pc(), mf->get_data_size());
 }
 
 void memory_stats_t::memlatstat_icnt2mem_pop(mem_fetch *mf)
