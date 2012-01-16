@@ -155,7 +155,7 @@ cleandocs:
 clean: 
 	$(MAKE) cleangpgpusim
 
-cleangpgpusim:
+cleangpgpusim: cleandocs
 	$(MAKE) clean -C ./libcuda/
 ifneq  ($(NVOPENCL_LIBDIR),)
 	$(MAKE) clean -C ./libopencl/
