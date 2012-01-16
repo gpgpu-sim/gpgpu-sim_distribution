@@ -1328,7 +1328,8 @@ void ldst_unit::print(FILE *fout) const
     }
     m_L1C->display_state(fout);
     m_L1T->display_state(fout);
-    m_L1D->display_state(fout);
+    if( !m_config->m_L1D_config.disabled() )
+    	m_L1D->display_state(fout);
     fprintf(fout,"LD/ST response FIFO (occupancy = %zu):\n", m_response_fifo.size() );
     for( std::list<mem_fetch*>::const_iterator i=m_response_fifo.begin(); i != m_response_fifo.end(); i++ ) {
         const mem_fetch *mf = *i;
