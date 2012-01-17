@@ -267,7 +267,6 @@ private:
    void shader_print_runtime_stat( FILE *fout );
    void shader_print_l1_miss_stat( FILE *fout ) const;
    void visualizer_printstat();
-   void print_shader_cycle_distro( FILE *fout ) const;
 
    void gpgpu_debug();
 
