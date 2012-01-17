@@ -283,7 +283,7 @@ void function_info::create_basic_blocks()
          i = find_next_real_instruction(++i);
       } else {
          switch( pI->get_opcode() ) {
-         case BRA_OP: case RET_OP: case EXIT_OP: case RETP_OP:
+         case BRA_OP: case RET_OP: case EXIT_OP: case RETP_OP: case BREAK_OP: 
             i++;
             if( i != m_instructions.end() ) 
                leaders.push_back(*i);
@@ -389,6 +389,40 @@ void function_info::print_basic_block_links()
       printf("\n");
    }
 }
+operand_info* function_info::find_break_target( ptx_instruction * p_break_insn ) //find the target of a break instruction 
+{
+   const basic_block_t *break_bb = p_break_insn->get_bb(); 
+   // go through the dominator tree 
+   for(const basic_block_t *p_bb = break_bb; 
+       p_bb->immediatedominator_id != -1; 
+       p_bb = m_basic_blocks[p_bb->immediatedominator_id]) 
+   {
+      // reverse search through instructions in basic block for breakaddr instruction 
+      unsigned insn_addr = p_bb->ptx_end->get_m_instr_mem_index(); 
+      while (insn_addr >= p_bb->ptx_begin->get_m_instr_mem_index()) { 
+         ptx_instruction *pI = m_instr_mem[insn_addr]; 
+         insn_addr -= 1; 
+         if (pI == NULL) continue; // temporary solution for variable size instructions 
+         if (pI->get_opcode() == BREAKADDR_OP) {
+            return &(pI->dst()); 
+         }
+      }
+   }
+
+   assert(0); 
+
+   // lazy fallback: just traverse backwards? 
+   for (int insn_addr = p_break_insn->get_m_instr_mem_index(); 
+        insn_addr >= 0; insn_addr--) 
+   { 
+      ptx_instruction *pI = m_instr_mem[insn_addr]; 
+      if (pI->get_opcode() == BREAKADDR_OP) {
+         return &(pI->dst()); 
+      }
+   }
+
+   return NULL; 
+}
 void function_info::connect_basic_blocks( ) //iterate across m_basic_blocks of function, connecting basic blocks together
 {
    std::vector<basic_block_t*>::iterator bb_itr;
@@ -424,6 +458,7 @@ void function_info::connect_basic_blocks( ) //iterate across m_basic_blocks of f
          (*bb_itr)->successor_ids.insert(target_bb->bb_id);
          target_bb->predecessor_ids.insert((*bb_itr)->bb_id);
       } 
+
       if ( !(pI->get_opcode()==BRA_OP && (!pI->has_pred())) ) { 
          // if basic block does not end in an unpredicated branch, 
          // then next basic block is also successor
@@ -471,7 +506,7 @@ bool function_info::connect_break_targets() //connecting break instructions with
 
          if (pI->has_pred()) {
             // predicated break - add link to next basic block
-            unsigned next_addr = pI->get_m_instr_mem_index() + 1;
+            unsigned next_addr = pI->get_m_instr_mem_index() + pI->inst_size();
             basic_block_t *next_bb = m_instr_mem[next_addr]->get_bb();
             p_bb->successor_ids.insert(next_bb->bb_id);
             next_bb->predecessor_ids.insert(p_bb->bb_id);

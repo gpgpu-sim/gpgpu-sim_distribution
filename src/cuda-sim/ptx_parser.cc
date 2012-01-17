@@ -767,7 +767,7 @@ void add_scalar_operand( const char *identifier )
    DPRINTF("add_scalar_operand");
    const symbol *s = g_current_symbol_table->lookup(identifier);
    if ( s == NULL ) {
-      if ( g_opcode == BRA_OP || g_opcode == CALLP_OP) {
+      if ( g_opcode == BRA_OP || g_opcode == CALLP_OP || g_opcode == BREAKADDR_OP) {
          // forward branch target...
          s = g_current_symbol_table->add_variable(identifier,NULL,0,g_filename,ptx_lineno);
       } else {

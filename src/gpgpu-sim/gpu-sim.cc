@@ -904,8 +904,6 @@ void gpgpu_sim::cycle()
             }
             if (m_config.gpu_runtime_stat_flag & GPU_RSTAT_SHD_INFO) 
                shader_print_runtime_stat( stdout );
-            if (m_config.gpu_runtime_stat_flag & GPU_RSTAT_WARP_DIS) 
-               print_shader_cycle_distro( stdout );
             if (m_config.gpu_runtime_stat_flag & GPU_RSTAT_L1MISS) 
                shader_print_l1_miss_stat( stdout );
          }
