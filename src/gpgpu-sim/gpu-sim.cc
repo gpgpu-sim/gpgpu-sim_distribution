@@ -639,30 +639,31 @@ unsigned gpgpu_sim::threads_per_core() const
 
 void shader_core_ctx::mem_instruction_stats(const warp_inst_t &inst)
 {
+    unsigned active_count = inst.active_count(); 
     //this breaks some encapsulation: the is_[space] functions, if you change those, change this.
     switch (inst.space.get_type()) {
     case undefined_space:
     case reg_space:
         break;
     case shared_space:
-        m_stats->gpgpu_n_shmem_insn++;
+        m_stats->gpgpu_n_shmem_insn += active_count; 
         break;
     case const_space:
-        m_stats->gpgpu_n_const_insn++;
+        m_stats->gpgpu_n_const_insn += active_count;
         break;
     case param_space_kernel:
     case param_space_local:
-        m_stats->gpgpu_n_param_insn++;
+        m_stats->gpgpu_n_param_insn += active_count;
         break;
     case tex_space:
-        m_stats->gpgpu_n_tex_insn++;
+        m_stats->gpgpu_n_tex_insn += active_count;
         break;
     case global_space:
     case local_space:
         if( inst.is_store() )
-            m_stats->gpgpu_n_store_insn++;
+            m_stats->gpgpu_n_store_insn += active_count;
         else 
-            m_stats->gpgpu_n_load_insn++;
+            m_stats->gpgpu_n_load_insn += active_count;
         break;
     default:
         abort();

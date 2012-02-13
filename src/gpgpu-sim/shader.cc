@@ -1026,6 +1026,13 @@ unsigned ldst_unit::clock_multiplier() const
     return m_config->mem_warp_parts; 
 }
 
+void ldst_unit::issue( warp_inst_t *&inst ) 
+{ 
+   // stat collection
+   m_core->mem_instruction_stats(*inst); 
+   pipelined_simd_unit::issue(inst); 
+}
+
 void ldst_unit::cycle()
 {
    writeback();
