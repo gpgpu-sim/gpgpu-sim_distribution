@@ -834,6 +834,7 @@ public:
                unsigned sid, unsigned tpc );
 
     // modifiers
+    virtual void issue( warp_inst_t *&inst ); 
     virtual void cycle();
      
     void fill( mem_fetch *mf );
@@ -1283,8 +1284,6 @@ public:
     }
     virtual void push(mem_fetch *mf) 
     {
-    	if( !mf->get_inst().empty() ) 
-    	    m_core->mem_instruction_stats(mf->get_inst()); // not I$-fetch
         m_cluster->icnt_inject_request_packet(mf);
     }
 private:
