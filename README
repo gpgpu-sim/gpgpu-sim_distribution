@@ -50,8 +50,10 @@ See file CHANGES for updates in this and earlier versions.
 
 2. INSTALLING, BUILDING and RUNNING GPGPU-Sim
 
-GPGPU-Sim was developed on Linux SuSe. This release was tested with SuSe
-version 11.1 and Ubuntu 10.04.3 LTS (32 bits).
+GPGPU-Sim was developed on SUSE  Linux(this release was tested with SUSE
+version 11.3) and has been used on several other Linux platforms (both 32-bit
+and 64-bit systems).  In principle, GPGPU-Sim should work with any linux
+distribution as long as the following software dependencies are satisfied.
 
 Step 1: Dependencies
 ====================
@@ -72,8 +74,23 @@ have tested OpenCL on GPGPU-Sim using NVIDIA driver version 256.40
 Note the most recent version of the NVIDIA driver produces PTX that is
 incompatible with this version of GPGPU-Sim.
 
-Ensure you have gcc, g++, make, makedepend, zlib, bison and flex installed on
-your system.  For CUDA 3.1 we used gcc/g++ version 4.3.2 (if using the CUDA 3.1
+GPGPU-Sim dependencies:
+* gcc
+* g++
+* make
+* makedepend
+* xutils
+* bison
+* flex
+* zlib
+* libboost
+* cuda toolkit
+	
+GPGPU-Sim documentation dependencies:
+* doxygen
+* graphviz  
+
+For CUDA 3.1 we used gcc/g++ version 4.3.2 (if using the CUDA 3.1
 SDK) or 4.5.1 (if not using the CUDA SDK), for CUDA 2.3 we used gcc/g++ version
 4.3.2, for CUDA 1.1 we used gcc/g++ version 4.1.3.  This version of GPGPU-Sim
 does not yet work with CUDA 4.x; We used bison version 2.3, and flex version
@@ -83,7 +100,8 @@ If you are using Ubuntu, the following commands will install all required
 dependencies besides the CUDA Toolkit.
 
 gpgpu-sim dependencies:
-"sudo apt-get install build-essentials xutils-dev bison zlib1g-dev flex libboost-all-dev libglu1-mesa-dev"
+"sudo apt-get install build-essentials xutils-dev bison zlib1g-dev flex
+libboost-all-dev libglu1-mesa-dev"
 
 gpgpu-sim documentation:
 "sudo apt-get install doxygen graphviz"
@@ -95,24 +113,46 @@ cuda sdk dependencies:
 Step 2: Build
 =============
 
-Read the file setup_environment and modify CUDA_INSTALL_PATH to match the
-location of the CUDA toolkit on your system. Then, from a bash shell, type the
-following in this directory:
+To build the simulator, you first need to configure how you want it to be
+built. From the root directory if the simulator, do the following:
+	
+cd distribution
+	
+then open the file 'setup_environment' with your favorite text editor. Read
+the file carefully and modify the environment variables in that file to your
+environment specific paths. In particular, you need to set CUDA_INSTALL_PATH
+correctly. If you set CUDA_INSTALL_PATH in your .bashrc file as per the
+instructions in the cuda toolkit installation, setup_environment will detect
+that automatically, in which case, you don't need to change it in
+setup_environment. The setup_environment script is engineered to work with a
+default system setup, so in the general case you will not need to modify it,
+however, you should still read it carefully to figure out of something specific
+to your system needs to be changed. After you have edited that file, save it
+and run
+	
+source setup_environment <build_type>
+	
+replace <build_type> with debug or release. Use release if you need faster
+simulation and debug if you need to run the simulator in gdb.
 
-	source setup_environment
+Now you are ready to build the simulator, just run
+	
+make
+	
+After make is done, the simulator would be ready to use. To clean the build,
+run
+	
+make clean
+	
+To build the doxygen generated documentations, run
+	
+make docs
+	
+to clean the docs run
+	
+make cleandocs
 
-Type "make" in this directory. This will build the simulator with optimizations
-enabled so the simulator runs faster. If you want to run the simulator in gdb
-to debug it, then run 
-
-	source setup_environment debug
-
-then "make" again.
-
-[Optional]: Type "make docs" in this directory to build the doxygen
-documentation. You need to have doxygen and graphviz installed for this to
-work.  "make cleandocs" will remove the generated documentation. The
-documentation resides at doc/doxygen/html.
+The documentation resides at doc/doxygen/html.
 
 Step 3: Run
 ============
@@ -128,23 +168,23 @@ gpgpusim.config (again, note this requires CUDA toolkit 2.3):
 #-gpgpu_ptx_convert_to_ptxplus 1
 #-gpgpu_ptx_save_converted_ptxplus 1
 
-Now run your unmodified CUDA or OpenCL application.  It will automatically
-execute kernels on GPGPU-Sim.
+Now To run a CUDA application on the simulator, simply execute
+	
+source setup_environment <built_type>.
+	
+and just launch the executable as you would if it was to run on the hardware.
+To revert back to running on the hardware, remove GPGPU-Sim from your
+LD_LIBRARY_PATH environment variable.
 
-If you have not done so you need to build a CUDA appliction (or an OpenCL
-application). Note that you no longer need to recompile your application to run
-on GPGPU-Sim.  GPU kernels will automatically run on the simulator instead of
-your graphics card since the setup_environment script modifies your
-LD_LIBRARY_PATH to point to $GPGPUSIM_ROOT/lib.  To be able to run the
-application on your graphics card again, remove $GPGPUSIM_ROOT/lib from
-LD_LIBRARY_PATH.
-
-Note that for OpenCL applications the NVIDIA driver is required to convert
-OpenCL ".cl" files to PTX (this in turn may require you have a graphics card,
-but to run CUDA applications on the simulator a graphics card is not
-necessary).  The resulting PTX can be saved to disk by adding
--save_embedded_ptx to your gpgpusim.config file (embedded PTX files with be
-saved as _0.ptx, _1.ptx, etc...).
+Running OpenCL applications is identical to running CUDA applications. However,
+OpenCL applications need to communicate with the NVIDIA driver in order to
+build OpenCL at runtime. GPGPU-Sim supports offloading this compilation to a
+remote machine. The hostname of this machine can be specified using the
+environment variable OPENCL_REMOTE_GPU_HOST. This variable should also be set
+through the setup_environment script. If you are offloading to a remote machine,
+you might want to setup passwordless ssh login to that machine in order to
+avoid having too retype your password for every execution of an OpenCL
+application.
 
 If you need to run the set of applications in the NVIDIA CUDA SDK code
 samples then you will need to download, install and build the SDK.
