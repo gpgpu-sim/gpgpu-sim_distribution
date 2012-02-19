@@ -990,7 +990,8 @@ struct shader_core_config : public core_config
 };
 
 struct shader_core_stats_pod {
-    unsigned *m_num_sim_insn; // number of instructions committed by this shader core
+    unsigned *m_num_sim_insn; // number of scalar thread instructions committed by this shader core
+    unsigned *m_num_sim_winsn; // number of warp instructions committed by this shader core
     unsigned *m_n_diverge;    // number of divergence occurring in this shader
     unsigned gpgpu_n_load_insn;
     unsigned gpgpu_n_store_insn;
@@ -1031,6 +1032,7 @@ public:
         memset(pod,0,sizeof(shader_core_stats_pod));
 
         m_num_sim_insn = (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_sim_winsn = (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         m_n_diverge = (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         shader_cycle_distro = (unsigned*) calloc(config->warp_size+3, sizeof(unsigned));
         last_shader_cycle_distro = (unsigned*) calloc(m_config->warp_size+3, sizeof(unsigned));
@@ -1144,6 +1146,7 @@ public:
     void store_ack( class mem_fetch *mf );
     bool warp_waiting_at_mem_barrier( unsigned warp_id );
     void set_max_cta( const kernel_info_t &kernel );
+    void warp_inst_complete(const warp_inst_t &inst); 
     
     // accessors
     std::list<unsigned> get_regs_written( const inst_t &fvt ) const;
