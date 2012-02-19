@@ -116,7 +116,7 @@ def fileInput(cl_files=None):
     root.pack();
 
     #Title at top of Page
-    rootTitle = Tk.Label(root, text='AerialVision 1.0', font = ("Gill Sans MT", 20, "bold"), bg = 'white');
+    rootTitle = Tk.Label(root, text='AerialVision 1.1', font = ("Gill Sans MT", 20, "bold"), bg = 'white');
     rootTitle.pack(side = Tk.TOP);
     fileInputTitle = Tk.Label(root, text='Please Fill Out Specifications \n to Get Started', font = ("Gill Sans MT", 15, "bold", "underline"), bg = 'white', width = 400)
     fileInputTitle.pack(side = Tk.TOP)
@@ -124,12 +124,12 @@ def fileInput(cl_files=None):
     inputTabs = Pmw.NoteBook(root)
     inputTabs.pack(fill = 'both', expand = 'True')
     
-    fileInputOuter = inputTabs.add('File Inputs for Visualizer')
-    fileInputTextEditor = inputTabs.add('File Inputs for Source Code Viewer')
+    fileInputOuter = inputTabs.add('File Inputs for Time Lapse View')
+    fileInputTextEditor = inputTabs.add('File Inputs for Source Code View')
 
     
     
-    #################### The visualizer side #############################3
+    #################### The time lapse view side #############################3
     
     
     fileInput = Tk.Frame(fileInputOuter, bg = 'white', borderwidth = 5, relief = Tk.GROOVE)
@@ -207,7 +207,7 @@ def fileInput(cl_files=None):
     cbCFLog2CUDAsrc = Tk.Checkbutton(specChoices, text = "Convert CFLog to CUDA source line", bg = 'white', variable = cflog2cuda)
     cbCFLog2CUDAsrc.pack(side = Tk.LEFT)
     
-    ############### The text editor side ##################################
+    ############### The source code view side ##################################
     
     fileInputTE = Tk.Frame(fileInputTextEditor, bg = 'white', borderwidth = 5, relief = Tk.GROOVE)
     fileInputTE.pack()
@@ -494,15 +494,15 @@ def startup(res, TEFILES):
     root.pack_propagate(0);
     root.pack();
 
-    # User can choose between a text editor or a visualizer
+    # User can choose between time lapse view and source code view
     chooseTextVisualizer = Pmw.NoteBook(root)
     chooseTextVisualizer.pack(fill= 'both', expand = 'true')
     
-    visualizer = chooseTextVisualizer.add('Visualizer')
+    visualizer = chooseTextVisualizer.add('Time Lapse View')
     textEditor = chooseTextVisualizer.add('Source Code View')
     
 
-    #INITIALIZING THE VISUALIZER
+    #INITIALIZING THE TIME LAPSE VIEW
 
     #The top frame for the control panel
     # Frame for Control Panel
@@ -590,7 +590,7 @@ def startup(res, TEFILES):
     graphAddTab(vars, graphTabs, res, eAddTab)
 
 
-    # INITIALIZING THE TEXT EDITOR
+    # INITIALIZING THE SOURCE CODE VIEW
     
     if res == 'small':
         textControlPanel = Tk.Frame(textEditor, width = 1250, height = 50, bg = 'beige', borderwidth =  5, relief = Tk.GROOVE)
