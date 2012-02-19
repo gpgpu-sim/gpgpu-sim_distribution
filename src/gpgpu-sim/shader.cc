@@ -384,6 +384,11 @@ void shader_core_stats::visualizer_print( gzFile visualizer_file )
    for (unsigned i=0;i<m_config->num_shader();i++) 
       gzprintf(visualizer_file, "%u ", m_num_sim_insn[i] );
    gzprintf(visualizer_file, "\n");
+   // warp instruction count per shader core
+   gzprintf(visualizer_file, "shaderwarpinsncount:  ");
+   for (unsigned i=0;i<m_config->num_shader();i++) 
+      gzprintf(visualizer_file, "%u ", m_num_sim_winsn[i] );
+   gzprintf(visualizer_file, "\n");
    // warp divergence per shader core
    gzprintf(visualizer_file, "shaderwarpdiv: ");
    for (unsigned i=0;i<m_config->num_shader();i++) 
@@ -706,6 +711,13 @@ void ldst_unit::print_cache_stats( FILE *fp, unsigned& dl1_accesses, unsigned& d
    }
 }
 
+void shader_core_ctx::warp_inst_complete(const warp_inst_t &inst)
+{
+   m_stats->m_num_sim_insn[m_sid] += inst.active_count();
+   m_stats->m_num_sim_winsn[m_sid]++;
+   m_gpu->gpu_sim_insn += inst.active_count();
+}
+
 void shader_core_ctx::writeback()
 {
     warp_inst_t *&pipe_reg = m_pipeline_reg[EX_WB];
@@ -713,13 +725,12 @@ void shader_core_ctx::writeback()
         unsigned warp_id = pipe_reg->warp_id();
         m_scoreboard->releaseRegisters( pipe_reg );
         m_warp[warp_id].dec_inst_in_pipeline();
-        m_stats->m_num_sim_insn[m_sid]++;
+        warp_inst_complete(*pipe_reg); 
+        pipe_reg->completed(gpu_tot_sim_cycle + gpu_sim_cycle); 
         m_gpu->gpu_sim_insn_last_update_sid = m_sid;
         m_gpu->gpu_sim_insn_last_update = gpu_sim_cycle;
         m_last_inst_gpu_sim_cycle = gpu_sim_cycle;
         m_last_inst_gpu_tot_sim_cycle = gpu_tot_sim_cycle;
-        m_gpu->gpu_sim_insn += pipe_reg->active_count();
-        pipe_reg->completed(gpu_tot_sim_cycle + gpu_sim_cycle); 
         pipe_reg->clear();
     }
 }
@@ -955,14 +966,12 @@ void ldst_unit::writeback()
                         if( !still_pending ) {
                             m_pending_writes[m_next_wb.warp_id()].erase(m_next_wb.out[r]);
                             m_scoreboard->releaseRegister( m_next_wb.warp_id(), m_next_wb.out[r] );
-                            m_stats->m_num_sim_insn[m_sid]++;
-                            m_core->get_gpu()->gpu_sim_insn += m_next_wb.active_count();
+                            m_core->warp_inst_complete(m_next_wb); 
                             insn_completed = true; 
                         }
                     } else { // shared 
                         m_scoreboard->releaseRegister( m_next_wb.warp_id(), m_next_wb.out[r] );
-                        m_stats->m_num_sim_insn[m_sid]++;
-                        m_core->get_gpu()->gpu_sim_insn += m_next_wb.active_count();
+                        m_core->warp_inst_complete(m_next_wb); 
                         insn_completed = true; 
                     }
                 }
@@ -1116,10 +1125,9 @@ void ldst_unit::cycle()
                    }
                }
                if( !pending_requests ) {
-                   m_core->get_gpu()->gpu_sim_insn += m_dispatch_reg->active_count();
+                   m_core->warp_inst_complete(*m_dispatch_reg); 
                    m_dispatch_reg->completed(gpu_tot_sim_cycle + gpu_sim_cycle); 
                    m_scoreboard->releaseRegisters(m_dispatch_reg);
-                   m_stats->m_num_sim_insn[m_sid]++;
                }
                m_core->dec_inst_in_pipeline(warp_id);
                m_dispatch_reg->clear();
@@ -1127,10 +1135,9 @@ void ldst_unit::cycle()
        } else {
            // stores exit pipeline here
            m_core->dec_inst_in_pipeline(warp_id);
-           m_core->get_gpu()->gpu_sim_insn += m_dispatch_reg->active_count();
+           m_core->warp_inst_complete(*m_dispatch_reg); 
            m_dispatch_reg->completed(gpu_tot_sim_cycle + gpu_sim_cycle); 
            m_dispatch_reg->clear();
-           m_stats->m_num_sim_insn[m_sid]++;
        }
    }
 }
