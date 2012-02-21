@@ -1078,7 +1078,6 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
                 ctaid.x,ctaid.y,ctaid.z,t.x,t.y,t.z, thd->get_uid() );
          fflush(stdout);
       }
-      thd->m_cta_info->assert_barrier_empty();
       thd->m_cta_info->register_deleted_thread(thd);
       delete thd;
       *thread_info = NULL;
