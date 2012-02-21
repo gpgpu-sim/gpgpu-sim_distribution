@@ -50,22 +50,6 @@ void ptx_cta_info::add_thread( ptx_thread_info *thd )
    m_threads_in_cta.insert(thd);
 }
 
-void ptx_cta_info::add_to_barrier( ptx_thread_info *thd )
-{
-   m_threads_waiting_at_barrier.insert(thd);
-}
-
-void ptx_cta_info::release_barrier()
-{
-   assert( m_threads_waiting_at_barrier.size() == m_threads_in_cta.size() );
-   m_threads_waiting_at_barrier.clear();
-}
-
-bool ptx_cta_info::all_at_barrier() const
-{
-   return(m_threads_waiting_at_barrier.size() == m_threads_in_cta.size());
-}
-
 unsigned ptx_cta_info::num_threads() const
 {
    return m_threads_in_cta.size();
@@ -98,7 +82,6 @@ void ptx_cta_info::check_cta_thread_status_and_reset()
       printf("\n\n");
       fail = true;
    }
-   assert_barrier_empty(true);
    if ( fail ) {
       abort();
    }
@@ -126,29 +109,6 @@ void ptx_cta_info::check_cta_thread_status_and_reset()
    m_threads_in_cta.clear();
    m_threads_that_have_exited.clear();
    m_dangling_pointers.clear();
-}
-
-void ptx_cta_info::assert_barrier_empty( bool called_from_delete_threads ) const
-{
-   if ( !m_threads_waiting_at_barrier.empty() ) {
-      printf( "\n\n" );
-      printf( "Execution error: Some threads at barrier at %s:\n", 
-              (called_from_delete_threads?"CTA re-init":"thread exit") );
-      printf( "   CTA uid = %Lu (sm_idx = %u)\n", m_uid, m_sm_idx );
-      std::set<ptx_thread_info*>::iterator b;
-      for ( b=m_threads_waiting_at_barrier.begin(); b != m_threads_waiting_at_barrier.end(); ++b ) {
-         ptx_thread_info *t = *b;
-         if ( m_dangling_pointers.find(t) != m_dangling_pointers.end() ) {
-            printf("       <thread deleted>\n");
-         } else {
-            printf("       ");
-            t->print_insn( t->get_pc(), stdout );
-            printf("\n");
-         }
-      }
-      printf("\n\n");
-      abort();
-   }
 }
 
 void ptx_cta_info::register_thread_exit( ptx_thread_info *thd )

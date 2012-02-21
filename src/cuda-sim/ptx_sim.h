@@ -123,9 +123,6 @@ class ptx_cta_info {
 public:
    ptx_cta_info( unsigned sm_idx );
    void add_thread( ptx_thread_info *thd );
-   void add_to_barrier( ptx_thread_info *thd );
-   bool all_at_barrier() const;
-   void release_barrier();
    unsigned num_threads() const;
    void check_cta_thread_status_and_reset();
    void assert_barrier_empty( bool called_from_delete_threads = false ) const;
@@ -137,7 +134,6 @@ private:
    unsigned long long         m_uid;
    unsigned                m_sm_idx;
    std::set<ptx_thread_info*>    m_threads_in_cta;
-   std::set<ptx_thread_info*>    m_threads_waiting_at_barrier;
    std::set<ptx_thread_info*>  m_threads_that_have_exited;
    std::set<ptx_thread_info*>  m_dangling_pointers;
 };
@@ -289,21 +285,7 @@ public:
    addr_t last_eaddr() const { return m_last_effective_address;}
    memory_space_t last_space() const { return m_last_memory_space;}
    dram_callback_t last_callback() const { return m_last_dram_callback;}
-   void set_at_barrier( int barrier_num ) 
-   { 
-      m_barrier_num = barrier_num;
-      m_at_barrier = true; 
-      m_cta_info->add_to_barrier(this);
-   }
-   bool is_at_barrier() const { return m_at_barrier;}
-   bool all_at_barrier() const { return m_cta_info->all_at_barrier();}
    unsigned long long get_cta_uid() { return m_cta_info->get_sm_idx();}
-   void clear_barrier( ) 
-   { 
-      m_barrier_num = -1;
-      m_at_barrier = false; 
-   }
-   void release_barrier() { m_cta_info->release_barrier();}
 
    void set_single_thread_single_block()
    {
