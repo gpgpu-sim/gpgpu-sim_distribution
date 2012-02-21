@@ -489,7 +489,7 @@ void warp_inst_t::memory_coalescing_arch_13_reduce_and_send( bool is_write, mem_
    m_accessq.push_back( mem_access_t(access_type,addr,size,is_write,info.active,info.bytes) );
 }
 
-void warp_inst_t::completed( unsigned long long cycle )
+void warp_inst_t::completed( unsigned long long cycle ) const 
 {
    unsigned long long latency = cycle - issue_cycle; 
    assert(latency <= cycle); // underflow detection 
