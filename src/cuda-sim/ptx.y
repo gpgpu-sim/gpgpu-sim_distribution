@@ -357,6 +357,7 @@ instruction_statement:  instruction SEMI_COLON
 
 instruction: opcode_spec LEFT_PAREN operand RIGHT_PAREN { set_return(); } COMMA operand COMMA LEFT_PAREN operand_list RIGHT_PAREN
 	| opcode_spec operand COMMA LEFT_PAREN operand_list RIGHT_PAREN
+	| opcode_spec operand COMMA LEFT_PAREN RIGHT_PAREN
 	| opcode_spec operand_list 
 	| opcode_spec
 	;
