@@ -985,6 +985,8 @@ struct shader_core_config : public core_config
     unsigned n_simt_clusters;
     unsigned n_simt_ejection_buffer_size;
     unsigned ldst_unit_response_queue_size;
+
+    int simt_core_sim_order; 
     
     unsigned mem2device(unsigned memid) const { return memid + n_simt_clusters; }
 };
@@ -1275,6 +1277,7 @@ private:
     shader_core_ctx **m_core;
 
     unsigned m_cta_issue_next_core;
+    std::list<unsigned> m_core_sim_order;
     std::list<mem_fetch*> m_response_fifo;
 };
 

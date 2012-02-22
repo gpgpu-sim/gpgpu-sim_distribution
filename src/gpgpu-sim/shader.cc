@@ -2046,13 +2046,19 @@ simt_core_cluster::simt_core_cluster( class gpgpu_sim *gpu,
     for( unsigned i=0; i < config->n_simt_cores_per_cluster; i++ ) {
         unsigned sid = m_config->cid_to_sid(i,m_cluster_id);
         m_core[i] = new shader_core_ctx(gpu,this,sid,m_cluster_id,config,mem_config,stats);
+        m_core_sim_order.push_back(i); 
     }
 }
 
 void simt_core_cluster::core_cycle()
 {
-    for( unsigned i=0; i < m_config->n_simt_cores_per_cluster; i++ ) 
-        m_core[i]->cycle();
+    for( std::list<unsigned>::iterator it = m_core_sim_order.begin(); it != m_core_sim_order.end(); ++it ) {
+        m_core[*it]->cycle();
+    }
+
+    if (m_config->simt_core_sim_order == 1) {
+        m_core_sim_order.splice(m_core_sim_order.end(), m_core_sim_order, m_core_sim_order.begin()); 
+    }
 }
 
 void simt_core_cluster::reinit()
