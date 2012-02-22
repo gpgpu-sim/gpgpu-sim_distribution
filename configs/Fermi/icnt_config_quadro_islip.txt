@@ -1,0 +1,49 @@
+use_map = 0;
+flit_size = 32; 
+
+network_count = 2;
+
+// Topology
+topology = fly;
+k = 18;
+n = 1;
+
+// Routing
+routing_function = dest_tag;//dim_order;//min_adapt;//dim_order;//_ni;
+
+// Flow control
+num_vcs     = 1; //4; 
+vc_buf_size = 8; //16;
+wait_for_tail_credit = 0;
+
+// Router architecture
+
+vc_allocator = islip;//i1_pim; //islip; //pim
+sw_allocator = islip;//i1_pim;//islip; //pim
+alloc_iters  = 1;
+
+credit_delay   = 0;
+routing_delay  = 0;
+vc_alloc_delay = 0;
+
+input_speedup     = 2;
+output_speedup    = 1;
+internal_speedup  = 1.0;
+
+// Traffic (DO NOT CHANGE THIS)
+traffic = gpgpusim; 
+
+//not used in gpgpusim
+// const_flits_per_packet = 3;
+injection_process = gpgpu_injector;
+// Simulation 
+//not used in gpgpusim
+sim_type       = latency;
+injection_rate = 0.1;
+
+
+// Statistics for Interconnection (Added for GPGPU-Sim)
+MATLAB_OUTPUT = 1; // output data in MATLAB friendly format
+DISPLAY_LAT_DIST = 1; // distribution of packet latencies
+DISPLAY_HOP_DIST = 1; // distribution of hop counts
+DISPLAY_PAIR_LATENCY = 0;
