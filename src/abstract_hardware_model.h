@@ -268,7 +268,7 @@ protected:
 #define GLOBAL_HEAP_START 0x80000000
    // start allocating from this address (lower values used for allocating globals in .ptx file)
 #define SHARED_MEM_SIZE_MAX (64*1024)
-#define LOCAL_MEM_SIZE_MAX (16*1024)
+#define LOCAL_MEM_SIZE_MAX (8*1024)
 #define MAX_STREAMING_MULTIPROCESSORS 64
 #define MAX_THREAD_PER_SM 2048
 #define TOTAL_LOCAL_MEM_PER_SM (MAX_THREAD_PER_SM*LOCAL_MEM_SIZE_MAX)
