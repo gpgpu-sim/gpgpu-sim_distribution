@@ -126,11 +126,11 @@ void memory_config::reg_options(class OptionParser * opp)
                 "DRAM timing parameters = {nbk:tCCD:tRRD:tRCD:tRAS:tRP:tRC:CL:WL:tCDLR:tWR}",
                 "4:2:8:12:21:13:34:9:4:5:13");
     option_parser_register(opp, "-rop_latency", OPT_UINT32, &rop_latency,
-                     "ROP queue latency (default 115)",
-                     "115");
+                     "ROP queue latency (default 85)",
+                     "85");
     option_parser_register(opp, "-dram_latency", OPT_UINT32, &dram_latency,
-                     "DRAM latency (default 100)",
-                     "100");
+                     "DRAM latency (default 30)",
+                     "30");
 
     m_address_mapping.addrdec_setoption(opp);
 }
