@@ -318,7 +318,19 @@ void memory_partition_unit::dram_cycle()
     m_dram->dram_log(SAMPLELOG);   
 
     if( !m_dram->full() && !m_L2_dram_queue->empty() ) {
+        // L2->DRAM queue to DRAM latency queue
         mem_fetch *mf = m_L2_dram_queue->pop();
+        dram_delay_t d;
+        d.req = mf;
+        d.ready_cycle = gpu_sim_cycle+gpu_tot_sim_cycle + 200;
+        m_dram_latency_queue.push(d);
+        mf->set_status(IN_PARTITION_DRAM_LATENCY_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
+    }
+
+    // DRAM latency queue
+    if( !m_dram_latency_queue.empty() && ( (gpu_sim_cycle+gpu_tot_sim_cycle) >= m_dram_latency_queue.front().ready_cycle ) && !m_dram->full() ) {
+        mem_fetch* mf = m_dram_latency_queue.front().req;
+        m_dram_latency_queue.pop();
         m_dram->push(mf);
     }
 }
