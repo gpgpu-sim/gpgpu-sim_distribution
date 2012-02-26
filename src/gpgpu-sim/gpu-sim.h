@@ -97,6 +97,9 @@ struct memory_config {
    unsigned m_n_mem;
    unsigned gpu_n_mem_per_ctrlr;
 
+   unsigned rop_latency;
+   unsigned dram_latency;
+
    // DRAM parameters
    unsigned tCCD;   //column to column delay
    unsigned tRRD;   //minimal time required between activation of rows in different banks

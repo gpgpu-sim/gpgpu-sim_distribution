@@ -262,7 +262,7 @@ void memory_partition_unit::push( mem_fetch* req, unsigned long long cycle )
         } else {
             rop_delay_t r;
             r.req = req;
-            r.ready_cycle = cycle + 115; // Add 115*4=460 delay cycles
+            r.ready_cycle = cycle + m_config->rop_latency;
             m_rop.push(r);
             req->set_status(IN_PARTITION_ROP_DELAY,gpu_sim_cycle+gpu_tot_sim_cycle);
         }
@@ -322,7 +322,7 @@ void memory_partition_unit::dram_cycle()
         mem_fetch *mf = m_L2_dram_queue->pop();
         dram_delay_t d;
         d.req = mf;
-        d.ready_cycle = gpu_sim_cycle+gpu_tot_sim_cycle + 200;
+        d.ready_cycle = gpu_sim_cycle+gpu_tot_sim_cycle + m_config->dram_latency;
         m_dram_latency_queue.push(d);
         mf->set_status(IN_PARTITION_DRAM_LATENCY_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
     }
