@@ -918,6 +918,11 @@ struct shader_core_config : public core_config
            printf("GPGPU-Sim uArch: error while parsing configuration string gpgpu_shader_core_pipeline_opt\n");
            abort();
         }
+        if (n_thread_per_shader > MAX_THREAD_PER_SM) {
+           printf("GPGPU-Sim uArch: Error ** increase MAX_THREAD_PER_SM in abstract_hardware_model.h from %u to %u\n", 
+                  MAX_THREAD_PER_SM, n_thread_per_shader);
+           abort();
+        }
         max_warps_per_shader =  n_thread_per_shader/warp_size;
         assert( !(n_thread_per_shader % warp_size) );
         max_sfu_latency = 32;
