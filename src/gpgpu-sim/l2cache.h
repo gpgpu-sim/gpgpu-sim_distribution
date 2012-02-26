@@ -92,7 +92,15 @@ private:
     	unsigned long long ready_cycle;
     	class mem_fetch* req;
    };
-   std::queue<rop_delay_t> m_rop; 
+   std::queue<rop_delay_t> m_rop;
+
+   // model DRAM access scheduler latency (fixed latency between L2 and DRAM)
+   struct dram_delay_t
+   {
+      unsigned long long ready_cycle;
+      class mem_fetch* req;
+   };
+   std::queue<dram_delay_t> m_dram_latency_queue;
 
    // these are various FIFOs between units within a memory partition
    fifo_pipeline<mem_fetch> *m_icnt_L2_queue;
