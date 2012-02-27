@@ -172,14 +172,12 @@ void tag_array::flush()
         m_lines[i].m_status = INVALID;
 }
 
-float tag_array::windowed_miss_rate( bool minus_pending_hit ) const
+float tag_array::windowed_miss_rate( ) const
 {
     unsigned n_access    = m_access - m_prev_snapshot_access;
     unsigned n_miss      = m_miss - m_prev_snapshot_miss;
-    unsigned n_pending_hit = m_pending_hit - m_prev_snapshot_pending_hit;
+    // unsigned n_pending_hit = m_pending_hit - m_prev_snapshot_pending_hit;
 
-    if (minus_pending_hit)
-        n_miss -= n_pending_hit;
     float missrate = 0.0f;
     if (n_access != 0)
         missrate = (float) n_miss / n_access;
@@ -196,9 +194,9 @@ void tag_array::new_window()
 void tag_array::print( FILE *stream, unsigned &total_access, unsigned &total_misses ) const
 {
     m_config.print(stream);
-    fprintf( stream, "\t\tAccess = %d, Miss = %d (%.3g), -MgHts = %d (%.3g)\n", 
+    fprintf( stream, "\t\tAccess = %d, Miss = %d (%.3g), PendingHit = %d (%.3g)\n", 
              m_access, m_miss, (float) m_miss / m_access, 
-             m_miss - m_pending_hit, (float) (m_miss - m_pending_hit) / m_access);
+             m_pending_hit, (float) m_pending_hit / m_access);
     total_misses+=m_miss;
     total_access+=m_access;
 }
