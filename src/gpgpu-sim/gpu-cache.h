@@ -250,7 +250,7 @@ public:
     void new_window();
 
     void print( FILE *stream, unsigned &total_access, unsigned &total_misses ) const;
-    float windowed_miss_rate( bool minus_pending_hit ) const;
+    float windowed_miss_rate( ) const;
 
 protected:
 
