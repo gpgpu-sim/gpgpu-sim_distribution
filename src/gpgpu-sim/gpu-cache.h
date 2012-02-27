@@ -294,7 +294,7 @@ public:
     { 
         table::const_iterator i=m_data.find(block_addr);
         if ( i != m_data.end() )
-            return i->second.size() >= m_max_merged;
+            return i->second.m_list.size() >= m_max_merged;
         else
             return m_data.size() >= m_num_entries; 
     }
@@ -302,9 +302,13 @@ public:
     // add or merge this access
     void add( new_addr_type block_addr, mem_fetch *mf )
     {
-        m_data[block_addr].push_back(mf);
+        m_data[block_addr].m_list.push_back(mf);
         assert( m_data.size() <= m_num_entries );
-        assert( m_data[block_addr].size() <= m_max_merged );
+        assert( m_data[block_addr].m_list.size() <= m_max_merged );
+        // indicate that this MSHR entry contains an atomic operation 
+        if ( mf->isatomic() ) {
+            m_data[block_addr].m_has_atomic = true; 
+        }
     }
 
     // true if cannot accept new fill responses
@@ -314,12 +318,13 @@ public:
     }
 
     // accept a new cache fill response: mark entry ready for processing
-    void mark_ready( new_addr_type block_addr )
+    void mark_ready( new_addr_type block_addr, bool &has_atomic )
     {
         assert( !busy() );
         table::iterator a = m_data.find(block_addr);
         assert( a != m_data.end() ); // don't remove same request twice
         m_current_response.push_back( block_addr );
+        has_atomic = a->second.m_has_atomic; 
         assert( m_current_response.size() <= m_data.size() );
     }
 
@@ -334,10 +339,10 @@ public:
     {
         assert( access_ready() );
         new_addr_type block_addr = m_current_response.front();
-        assert( !m_data[block_addr].empty() );
-        mem_fetch *result = m_data[block_addr].front();
-        m_data[block_addr].pop_front();
-        if ( m_data[block_addr].empty() ) {
+        assert( !m_data[block_addr].m_list.empty() );
+        mem_fetch *result = m_data[block_addr].m_list.front();
+        m_data[block_addr].m_list.pop_front();
+        if ( m_data[block_addr].m_list.empty() ) {
             // release entry
             m_data.erase(block_addr); 
             m_current_response.pop_front();
@@ -350,9 +355,9 @@ public:
         fprintf(fp,"MSHR contents\n");
         for ( table::const_iterator e=m_data.begin(); e!=m_data.end(); ++e ) {
             unsigned block_addr = e->first;
-            fprintf(fp,"MSHR: tag=0x%06x, %zu entries : ", block_addr, e->second.size());
-            if ( !e->second.empty() ) {
-                mem_fetch *mf = e->second.front();
+            fprintf(fp,"MSHR: tag=0x%06x, atomic=%d %zu entries : ", block_addr, e->second.m_has_atomic, e->second.m_list.size());
+            if ( !e->second.m_list.empty() ) {
+                mem_fetch *mf = e->second.m_list.front();
                 fprintf(fp,"%p :",mf);
                 mf->print(fp);
             } else {
@@ -367,8 +372,12 @@ private:
     const unsigned m_num_entries;
     const unsigned m_max_merged;
 
-    typedef std::list<mem_fetch*> entry;
-    typedef my_hash_map<new_addr_type,entry> table;
+    struct mshr_entry {
+        std::list<mem_fetch*> m_list;
+        bool m_has_atomic; 
+        mshr_entry() : m_has_atomic(false) { }
+    }; 
+    typedef my_hash_map<new_addr_type,mshr_entry> table;
     table m_data;
 
     // it may take several cycles to process the merged requests
@@ -456,7 +465,13 @@ public:
         else if ( m_config.m_alloc_policy == ON_FILL )
             m_tag_array.fill(e->second.m_block_addr,time);
         else abort();
-        m_mshrs.mark_ready(e->second.m_block_addr);
+        bool has_atomic = false; 
+        m_mshrs.mark_ready(e->second.m_block_addr, has_atomic);
+        if (has_atomic) {
+            assert(m_config.m_alloc_policy == ON_MISS); 
+            cache_block_t &block = m_tag_array.get_block(e->second.m_cache_index); 
+            block.m_status = MODIFIED; // mark line as dirty for atomic operation 
+        }
         m_extra_mf_fields.erase(mf);
     }
 
@@ -544,6 +559,7 @@ public:
         assert( mf->get_data_size() <= m_config.get_line_sz());
 
         bool wr = mf->get_is_write();
+        bool isatomic = mf->isatomic();
         enum mem_access_type type = mf->get_access_type();
         bool evict = (type == GLOBAL_ACC_W); // evict a line that hits on global memory write
 
@@ -557,7 +573,7 @@ public:
 
                 // generate a write through
                 cache_block_t &block = m_tag_array.get_block(cache_index);
-                assert( block.m_status != MODIFIED ); // fails if block was allocated by a ld.local and now accessed by st.global
+                // assert( block.m_status != MODIFIED ); // fails if block was allocated by a ld.local and now accessed by st.global
                 m_miss_queue.push_back(mf);
                 mf->set_status(m_miss_queue_status,time); 
                 events.push_back(WRITE_REQUEST_SENT);
@@ -571,6 +587,11 @@ public:
                     // treated as write back...
                     cache_block_t &block = m_tag_array.get_block(cache_index);
                     block.m_status = MODIFIED;
+                } else if ( isatomic ) {
+                    assert( type == GLOBAL_ACC_R ); 
+                    // treated as write back...
+                    cache_block_t &block = m_tag_array.get_block(cache_index);
+                    block.m_status = MODIFIED;  // mark line as dirty 
                 }
             }
             return HIT;
