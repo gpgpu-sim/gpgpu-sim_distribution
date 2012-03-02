@@ -1,4 +1,39 @@
-CHANGE LOG:
+CHANGE LOG: Version 3.0.2 versus 3.0.1
+- Added Fermi configuration
+- Revived functional simulation mode
+- AerialVision: Revived support for PC-Histogram
+- AerialVision: Revived collection of source code view metrics (all except
+  exposed pipeline latency)
+- Added missing function implementations (caused static linking with GPGPU-Sim
+  to fail).
+- Fixed div_impl with 32-bit and smaller integers (Uninitialized upper bits in
+  the operands was causing the instruction to behave incorrectly).
+- Updated setup_environment script to handle host names with empty domains.
+- Forced L2 cache line size to be greater than or equal to L1 cache line size
+- L2 caches can now be disabled
+- Increased Quadro config's L2 line size to 256B and total L2 size to 256kB
+- Fixed generation of memory requests for local.s8 load instructions (fixed a
+  bug in local memory address translation)
+- Conflicting atomic accesses now generate multiple requests during coalescing
+- Updated Doxygen scripts
+- Fixed dump pipeline in case of L1 disabled.
+- Fixed a bug in the debug printing system by making the enum and string array
+  use the same list
+- Fixed a bug where the ldst_unit::cycle and ldst_unit::writeback were being
+  processed at different rates
+- Changes to setup_environment to prevent path explosion and crashing due to
+  empty host domain name
+- Changed the remote OpenCL compilation to use rsync instead of scp (scp had
+  issues with concurrent copying).
+- Fixed the data collection code for the following metrics (in 3.0.0 and 3.0.1
+  they were only counting memory instructions that generate off-core traffic):
+  gpgpu_n_load_insn
+  gpgpu_n_store_insn
+  gpgpu_n_shmem_insn
+  gpgpu_n_tex_insn
+  gpgpu_n_const_mem_insn
+  gpgpu_n_param_mem_insn
+
 Version 3.0.1 versus 3.0.0b
 - Updated README and setup_environment for more streamlined setup. 
   Including install instructions for Ubuntu 10.04.3 LTS
