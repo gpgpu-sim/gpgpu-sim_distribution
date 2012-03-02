@@ -54,8 +54,8 @@
 std::list<unsigned> shader_core_ctx::get_regs_written( const inst_t &fvt ) const
 {
    std::list<unsigned> result;
-   for( unsigned op=0; op < 4; op++ ) {
-      int reg_num = fvt.arch_reg[op]; // this math needs to match that used in function_info::ptx_decode_inst
+   for( unsigned op=0; op < MAX_REG_OPERANDS; op++ ) {
+      int reg_num = fvt.arch_reg.dst[op]; // this math needs to match that used in function_info::ptx_decode_inst
       if( reg_num >= 0 ) // valid register
          result.push_back(reg_num);
    }
@@ -1976,7 +1976,7 @@ void opndcoll_rfu_t::collector_unit_t::dump(FILE *fp, const shader_core_ctx *sha
       fprintf(fp,"    <free>\n");
    } else {
       m_warp->print(fp);
-      for( unsigned i=0; i < MAX_REG_OPERANDS; i++ ) {
+      for( unsigned i=0; i < MAX_REG_OPERANDS*2; i++ ) {
          if( m_not_ready.test(i) ) {
             std::string r = m_src_op[i].get_reg_string();
             fprintf(fp,"    '%s' not ready\n", r.c_str() );
@@ -2007,8 +2007,8 @@ void opndcoll_rfu_t::collector_unit_t::allocate( warp_inst_t** pipeline_reg, war
    m_output_register = output_reg;
    if( !(*pipeline_reg)->empty() ) {
       m_warp_id = (*pipeline_reg)->warp_id();
-      for( unsigned op=0; op < 4; op++ ) {
-         int reg_num = (*pipeline_reg)->arch_reg[4+op]; // this math needs to match that used in function_info::ptx_decode_inst
+      for( unsigned op=0; op < MAX_REG_OPERANDS; op++ ) {
+         int reg_num = (*pipeline_reg)->arch_reg.src[op]; // this math needs to match that used in function_info::ptx_decode_inst
          if( reg_num >= 0 ) { // valid register
             m_src_op[op] = op_t( this, op, reg_num, m_num_banks, m_bank_warp_shift );
             m_not_ready.set(op);
@@ -2025,7 +2025,7 @@ void opndcoll_rfu_t::collector_unit_t::dispatch()
    move_warp(*m_output_register,m_warp);
    m_free=true;
    m_output_register = NULL;
-   for( unsigned i=0; i<MAX_REG_OPERANDS;i++) 
+   for( unsigned i=0; i<MAX_REG_OPERANDS*2;i++)
       m_src_op[i].reset();
 }
 
