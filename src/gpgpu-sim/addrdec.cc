@@ -320,6 +320,8 @@ void linear_to_raw_address_translation::init(unsigned int nchips)
    }
 }
 
+#include "../tr1_hash_map.h" 
+
 bool operator==(const addrdec_t &x, const addrdec_t &y) 
 {
    return ( memcmp(&x, &y, sizeof(addrdec_t)) == 0 ); 
@@ -343,11 +345,12 @@ public:
    }
 };
 
+// a simple sweep test to ensure that two linear addresses are not mapped to the same raw address 
 void linear_to_raw_address_translation::sweep_test() const
 {
    new_addr_type sweep_range = 16 * 1024 * 1024; 
 
-   typedef std::unordered_map<addrdec_t, new_addr_type, hash_addrdec_t> history_map_t; 
+   typedef tr1_hash_map<addrdec_t, new_addr_type, hash_addrdec_t> history_map_t; 
    history_map_t history_map; 
 
    for (new_addr_type raw_addr = 4; raw_addr < sweep_range; raw_addr += 4) {
