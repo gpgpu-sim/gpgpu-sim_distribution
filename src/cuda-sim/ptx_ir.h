@@ -601,6 +601,7 @@ public:
    bool is_memory_operand() const { return m_type == memory_t;}
 
    // Memory operand with immediate access (ex. s[0x0004] or g[$r1+=0x0004])
+   // This is used by the PTXPlus extension. The operand is assigned an address space during parsing.
    bool is_memory_operand2() const { 
       return (m_addr_space!=undefined_space); 
    }
@@ -907,6 +908,7 @@ public:
    bool has_memory_read() const {
       if( m_opcode == LD_OP || m_opcode == TEX_OP ) 
          return true;
+      // Check PTXPlus operand type below
       // Source operands are memory operands
       ptx_instruction::const_iterator op=op_iter_begin();
       for ( int n=0; op != op_iter_end(); op++, n++ ) { //process operands
@@ -917,6 +919,7 @@ public:
    }
    bool has_memory_write() const {
       if( m_opcode == ST_OP ) return true;
+      // Check PTXPlus operand type below
       // Destination operand is a memory operand
       ptx_instruction::const_iterator op=op_iter_begin();
       for ( int n=0; (op!=op_iter_end() && n<1); op++, n++ ) { //process operands

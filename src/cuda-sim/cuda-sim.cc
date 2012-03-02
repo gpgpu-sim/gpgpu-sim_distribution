@@ -632,23 +632,35 @@ void ptx_instruction::pre_decode()
    // Assuming only one memory operand per instruction,
    //  and maximum of two address registers for one memory operand.
    if( has_memory_read() || has_memory_write() ) {
-	  ptx_instruction::const_iterator op=op_iter_begin();
-	  for ( ; op != op_iter_end(); op++, n++ ) { //process operands
-	     const operand_info &o = *op;
+      ptx_instruction::const_iterator op=op_iter_begin();
+      for ( ; op != op_iter_end(); op++, n++ ) { //process operands
+         const operand_info &o = *op;
 
-	     // memory operand with addressing (ex. s[0x4] or g[$r1])
-	     if(o.is_memory_operand2()) {
-	    	 // memory operand with one address register (ex. g[$r1] or s[$r2+0x4])
-	    	 if(o.get_double_operand_type() == 0 && o.is_memory_operand()){
-				 ar1 = o.reg_num();
-	    	 }
-	    	 // memory operand with two address register (ex. s[$r1+$r1] or g[$r1+=$r2])
-	    	 else if(o.get_double_operand_type() == 1 || o.get_double_operand_type() == 2) {
-	    		 ar1 = o.reg1_num();
-	    		 ar2 = o.reg2_num();
-	    	 }
-	     }
-	  }
+         if(o.is_memory_operand()) {
+
+            // Check PTXPlus-type operand
+            // memory operand with addressing (ex. s[0x4] or g[$r1])
+            if(o.is_memory_operand2()) {
+
+               // memory operand with one address register (ex. g[$r1+0x4] or s[$r2+=0x4])
+               if(o.get_double_operand_type() == 0 || o.get_double_operand_type() == 3){
+                  ar1 = o.reg_num();
+                  // TODO: address register in $r2+=0x4 should be an output register as well
+               }
+               // memory operand with two address register (ex. s[$r1+$r1] or g[$r1+=$r2])
+               else if(o.get_double_operand_type() == 1 || o.get_double_operand_type() == 2) {
+                  ar1 = o.reg1_num();
+                  ar2 = o.reg2_num();
+                  // TODO: first address register in $r1+=$r2 should be an output register as well
+               }
+            }
+            // Regular PTX operand
+            else if (o.get_symbol()->type()->get_key().is_reg()) { // Memory operand contains a register
+              ar1 = o.reg_num();
+            }
+
+         }
+      }
    }
 
    // get reconvergence pc
