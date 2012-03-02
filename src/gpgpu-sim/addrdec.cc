@@ -87,25 +87,6 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr, addrdec_
       tlx->col  = addrdec_packbits(addrdec_mask[COL], addr, addrdec_mkhigh[COL], addrdec_mklow[COL]);
       tlx->burst= addrdec_packbits(addrdec_mask[BURST], addr, addrdec_mkhigh[BURST], addrdec_mklow[BURST]);
    } else {
-      #if 0
-      addr_for_chip= ( (addr>>ADDR_CHIP_S) % Nchips) << ADDR_CHIP_S;
-      rest_of_addr= ( (addr>>ADDR_CHIP_S) / Nchips) << ADDR_CHIP_S;                
-
-      tlx->chip = addrdec_packbits(addrdec_mask[CHIP], addr_for_chip, addrdec_mkhigh[CHIP], addrdec_mklow[CHIP]);
-      if (addrdec_mask[BK] > addrdec_mask[CHIP]) {
-         tlx->bk   = addrdec_packbits(addrdec_mask[BK], rest_of_addr, addrdec_mkhigh[BK], addrdec_mklow[BK]);
-      } else {
-         tlx->bk   = addrdec_packbits(addrdec_mask[BK], addr, addrdec_mkhigh[BK], addrdec_mklow[BK]);
-      }
-      if (addrdec_mask[ROW] > addrdec_mask[CHIP]) {
-         tlx->row  = addrdec_packbits(addrdec_mask[ROW], rest_of_addr, addrdec_mkhigh[ROW], addrdec_mklow[ROW]);
-      } else {
-         tlx->row  = addrdec_packbits(addrdec_mask[ROW], addr, addrdec_mkhigh[ROW], addrdec_mklow[ROW]);
-      }
-      tlx->col  = addrdec_packbits(addrdec_mask[COL], addr, addrdec_mkhigh[COL], addrdec_mklow[COL]);
-      tlx->burst= addrdec_packbits(addrdec_mask[BURST], addr, addrdec_mkhigh[BURST], addrdec_mklow[BURST]);
-      #endif 
-
       // Split the given address at ADDR_CHIP_S into (MSBs,LSBs)
       // - extract chip address using modulus of MSBs
       // - recreate the rest of the address by stitching the quotient of MSBs and the LSBs 
