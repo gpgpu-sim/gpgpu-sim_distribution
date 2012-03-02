@@ -125,7 +125,6 @@ public:
    void add_thread( ptx_thread_info *thd );
    unsigned num_threads() const;
    void check_cta_thread_status_and_reset();
-   void assert_barrier_empty( bool called_from_delete_threads = false ) const;
    void register_thread_exit( ptx_thread_info *thd );
    void register_deleted_thread( ptx_thread_info *thd );
    unsigned get_sm_idx() const;
