@@ -57,6 +57,7 @@ public:
 
 private:
    void addrdec_parseoption(const char *option);
+   void sweep_test() const; // sanity check to ensure no overlapping
 
    enum {
       CHIP  = 0,
@@ -69,6 +70,7 @@ private:
 
    const char *addrdec_option;
    int gpgpu_mem_address_mask;
+   bool run_test; 
 
    int ADDR_CHIP_S;
    unsigned char addrdec_mklow[N_ADDRDEC];

@@ -56,6 +56,9 @@ void linear_to_raw_address_translation::addrdec_setoption(option_parser_t opp)
    option_parser_register(opp, "-gpgpu_mem_addr_mapping", OPT_CSTR, &addrdec_option,
       "mapping memory address to dram model {dramid@<start bit>;<memory address map>}",
       NULL);
+   option_parser_register(opp, "-gpgpu_mem_addr_test", OPT_BOOL, &run_test,
+      "run sweep test to check address mapping for aliased address",
+      "0");
    option_parser_register(opp, "-gpgpu_mem_address_mask", OPT_INT32, &gpgpu_mem_address_mask, 
                "0 = old addressing mask, 1 = new addressing mask, 2 = new add. mask + flipped bank sel and chip sel bits",
                "0");
@@ -63,7 +66,15 @@ void linear_to_raw_address_translation::addrdec_setoption(option_parser_t opp)
 
 new_addr_type linear_to_raw_address_translation::partition_address( new_addr_type addr ) const 
 { 
-   return addrdec_packbits( ~addrdec_mask[CHIP], addr, 64, 0 ); 
+   if (!gap) {
+      // see addrdec_tlx for explanation 
+      unsigned long long int partition_addr; 
+      partition_addr = ( (addr>>ADDR_CHIP_S) / Nchips) << ADDR_CHIP_S; 
+      partition_addr |= addr & ((1 << ADDR_CHIP_S) - 1); 
+      return partition_addr; 
+   } else {
+      return addrdec_packbits( ~addrdec_mask[CHIP], addr, 64, 0 ); 
+   }
 }
 
 void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr, addrdec_t *tlx) const
@@ -76,6 +87,7 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr, addrdec_
       tlx->col  = addrdec_packbits(addrdec_mask[COL], addr, addrdec_mkhigh[COL], addrdec_mklow[COL]);
       tlx->burst= addrdec_packbits(addrdec_mask[BURST], addr, addrdec_mkhigh[BURST], addrdec_mklow[BURST]);
    } else {
+      #if 0
       addr_for_chip= ( (addr>>ADDR_CHIP_S) % Nchips) << ADDR_CHIP_S;
       rest_of_addr= ( (addr>>ADDR_CHIP_S) / Nchips) << ADDR_CHIP_S;                
 
@@ -92,6 +104,20 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr, addrdec_
       }
       tlx->col  = addrdec_packbits(addrdec_mask[COL], addr, addrdec_mkhigh[COL], addrdec_mklow[COL]);
       tlx->burst= addrdec_packbits(addrdec_mask[BURST], addr, addrdec_mkhigh[BURST], addrdec_mklow[BURST]);
+      #endif 
+
+      // Split the given address at ADDR_CHIP_S into (MSBs,LSBs)
+      // - extract chip address using modulus of MSBs
+      // - recreate the rest of the address by stitching the quotient of MSBs and the LSBs 
+      addr_for_chip = (addr>>ADDR_CHIP_S) % Nchips; 
+      rest_of_addr = ( (addr>>ADDR_CHIP_S) / Nchips) << ADDR_CHIP_S; 
+      rest_of_addr |= addr & ((1 << ADDR_CHIP_S) - 1); 
+
+      tlx->chip = addr_for_chip; 
+      tlx->bk   = addrdec_packbits(addrdec_mask[BK], rest_of_addr, addrdec_mkhigh[BK], addrdec_mklow[BK]);
+      tlx->row  = addrdec_packbits(addrdec_mask[ROW], rest_of_addr, addrdec_mkhigh[ROW], addrdec_mklow[ROW]);
+      tlx->col  = addrdec_packbits(addrdec_mask[COL], rest_of_addr, addrdec_mkhigh[COL], addrdec_mklow[COL]);
+      tlx->burst= addrdec_packbits(addrdec_mask[BURST], rest_of_addr, addrdec_mkhigh[BURST], addrdec_mklow[BURST]);
    }
 }
 
@@ -258,16 +284,20 @@ void linear_to_raw_address_translation::init(unsigned int nchips)
    if (addrdec_option != NULL) 
       addrdec_parseoption(addrdec_option);
 
-   if (ADDR_CHIP_S != -1) {
-      mask = ((unsigned long long int)1 << ADDR_CHIP_S) - 1;
-      addrdec_mask[BK]   = ((addrdec_mask[BK] & ~mask) << nchipbits) | (addrdec_mask[BK] & mask);
-      addrdec_mask[ROW]  = ((addrdec_mask[ROW] & ~mask) << nchipbits) | (addrdec_mask[ROW] & mask);
-      addrdec_mask[COL]  = ((addrdec_mask[COL] & ~mask) << nchipbits) | (addrdec_mask[COL] & mask);
+   if (ADDR_CHIP_S != -1) { 
+      if (!gap) {
+         // number of chip is power of two: 
+         // - insert CHIP mask starting at the bit position ADDR_CHIP_S
+         mask = ((unsigned long long int)1 << ADDR_CHIP_S) - 1;
+         addrdec_mask[BK]   = ((addrdec_mask[BK] & ~mask) << nchipbits) | (addrdec_mask[BK] & mask);
+         addrdec_mask[ROW]  = ((addrdec_mask[ROW] & ~mask) << nchipbits) | (addrdec_mask[ROW] & mask);
+         addrdec_mask[COL]  = ((addrdec_mask[COL] & ~mask) << nchipbits) | (addrdec_mask[COL] & mask);
 
-      for (i=ADDR_CHIP_S;i<(ADDR_CHIP_S+nchipbits);i++) {
-         mask = (unsigned long long int)1 << i;
-         addrdec_mask[CHIP] |= mask;
-      }
+         for (i=ADDR_CHIP_S;i<(ADDR_CHIP_S+nchipbits);i++) {
+            mask = (unsigned long long int)1 << i;
+            addrdec_mask[CHIP] |= mask;
+         }
+      } // otherwise, no need to change the masks
    } else {
       // make sure nchips is power of two when explicit dram id mask is used
       assert((nchips & (nchips - 1)) == 0); 
@@ -284,6 +314,58 @@ void linear_to_raw_address_translation::init(unsigned int nchips)
    printf("addr_dec_mask[ROW]   = %016llx \thigh:%d low:%d\n", addrdec_mask[ROW],   addrdec_mkhigh[ROW],   addrdec_mklow[ROW]  );
    printf("addr_dec_mask[COL]   = %016llx \thigh:%d low:%d\n", addrdec_mask[COL],   addrdec_mkhigh[COL],   addrdec_mklow[COL]  );
    printf("addr_dec_mask[BURST] = %016llx \thigh:%d low:%d\n", addrdec_mask[BURST], addrdec_mkhigh[BURST], addrdec_mklow[BURST]);
+
+   if (run_test) {
+      sweep_test(); 
+   }
+}
+
+bool operator==(const addrdec_t &x, const addrdec_t &y) 
+{
+   return ( memcmp(&x, &y, sizeof(addrdec_t)) == 0 ); 
+}
+
+bool operator<(const addrdec_t &x, const addrdec_t &y) 
+{
+   if (x.chip >= y.chip) return false; 
+   else if (x.bk >= y.bk) return false;
+   else if (x.row >= y.row) return false;
+   else if (x.col >= y.col) return false;
+   else if (x.burst >= y.burst) return false;
+   else return true; 
+}
+
+class hash_addrdec_t
+{
+public: 
+   size_t operator()(const addrdec_t &x) const {
+      return (x.chip ^ x.bk ^ x.row ^ x.col ^ x.burst); 
+   }
+};
+
+void linear_to_raw_address_translation::sweep_test() const
+{
+   new_addr_type sweep_range = 16 * 1024 * 1024; 
+
+   typedef std::unordered_map<addrdec_t, new_addr_type, hash_addrdec_t> history_map_t; 
+   history_map_t history_map; 
+
+   for (new_addr_type raw_addr = 4; raw_addr < sweep_range; raw_addr += 4) {
+      addrdec_t tlx; 
+      addrdec_tlx(raw_addr, &tlx); 
+
+      history_map_t::iterator h = history_map.find(tlx); 
+
+      if (h != history_map.end()) {
+         printf("[AddrDec] ** Error: address decoding mapping aliases two addresses to same partition with same intra-partition address: %llx %llx\n", h->second, raw_addr); 
+         abort(); 
+      } else {
+         assert((int)tlx.chip < Nchips); 
+         history_map[tlx] = raw_addr; 
+      }
+
+      if ((raw_addr & 0xffff) == 0) printf("%llu scaned\n", raw_addr); 
+   }
 }
 
 void addrdec_t::print( FILE *fp ) const
