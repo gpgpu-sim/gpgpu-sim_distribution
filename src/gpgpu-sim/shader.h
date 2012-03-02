@@ -490,7 +490,7 @@ private:
       void add_read_requests( collector_unit_t *cu ) 
       {
          const op_t *src = cu->get_operands();
-         for( unsigned i=0; i<MAX_REG_OPERANDS; i++) {
+         for( unsigned i=0; i<MAX_REG_OPERANDS*2; i++) {
             const op_t &op = src[i];
             if( op.valid() ) {
                unsigned bank = op.get_bank();
@@ -554,7 +554,7 @@ private:
          m_free = true;
          m_warp = NULL;
          m_output_register = NULL;
-         m_src_op = new op_t[MAX_REG_OPERANDS];
+         m_src_op = new op_t[MAX_REG_OPERANDS*2];
          m_not_ready.reset();
          m_warp_id = -1;
          m_num_banks = 0;
@@ -591,7 +591,7 @@ private:
       warp_inst_t  *m_warp;
       warp_inst_t** m_output_register; // pipeline register to issue to when ready
       op_t *m_src_op;
-      std::bitset<MAX_REG_OPERANDS> m_not_ready;
+      std::bitset<MAX_REG_OPERANDS*2> m_not_ready;
       unsigned m_num_banks;
       unsigned m_bank_warp_shift;
       opndcoll_rfu_t *m_rfu;

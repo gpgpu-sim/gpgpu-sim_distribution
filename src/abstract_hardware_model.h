@@ -586,6 +586,7 @@ public:
     virtual mem_fetch *alloc( const class warp_inst_t &inst, const mem_access_t &access ) const = 0;
 };
 
+// the maximum number of destination, source, or address uarch operands in a instruction
 #define MAX_REG_OPERANDS 8
 
 struct dram_callback_t {
@@ -611,8 +612,10 @@ public:
         cache_op = CACHE_UNDEFINED;
         latency = 1;
         initiation_interval = 1;
-        for( unsigned i=0; i < MAX_REG_OPERANDS; i++ )
-           arch_reg[i]=-1;
+        for( unsigned i=0; i < MAX_REG_OPERANDS; i++ ) {
+            arch_reg.src[i] = -1;
+            arch_reg.dst[i] = -1;
+        }
         isize=0;
     }
     bool valid() const { return m_decoded; }
@@ -636,7 +639,12 @@ public:
     unsigned char is_vectorout;
     int pred; // predicate register number
     int ar1, ar2;
-    int arch_reg[MAX_REG_OPERANDS]; // register number for bank conflict evaluation
+    // register number for bank conflict evaluation
+    struct {
+        int dst[MAX_REG_OPERANDS];
+        int src[MAX_REG_OPERANDS];
+    } arch_reg;
+    //int arch_reg[MAX_REG_OPERANDS]; // register number for bank conflict evaluation
     unsigned latency; // operation latency 
     unsigned initiation_interval;
 

@@ -533,7 +533,8 @@ void ptx_instruction::pre_decode()
    }
    is_vectorin = 0;
    is_vectorout = 0;
-   std::fill_n(arch_reg, MAX_REG_OPERANDS, -1);
+   std::fill_n(arch_reg.src, MAX_REG_OPERANDS, -1);
+   std::fill_n(arch_reg.dst, MAX_REG_OPERANDS, -1);
    pred = 0;
    ar1 = 0;
    ar2 = 0;
@@ -585,7 +586,7 @@ void ptx_instruction::pre_decode()
       if ( has_dst && n==0 ) {
          if ( o.is_reg() ) {
             out[0] = o.reg_num();
-            arch_reg[0] = o.arch_reg_num();
+            arch_reg.dst[0] = o.arch_reg_num();
          } else if ( o.is_vector() ) {
             is_vectorin = 1;
             unsigned num_elem = o.get_vect_nelem();
@@ -594,12 +595,12 @@ void ptx_instruction::pre_decode()
             if( num_elem >= 3 ) out[2] = o.reg3_num();
             if( num_elem >= 4 ) out[3] = o.reg4_num();
             for (int i = 0; i < num_elem; i++) 
-               arch_reg[i] = o.arch_reg_num(i);
+               arch_reg.dst[i] = o.arch_reg_num(i);
          }
       } else {
          if ( o.is_reg() ) {
             int reg_num = o.reg_num();
-            arch_reg[m + 4] = o.arch_reg_num();
+            arch_reg.src[m] = o.arch_reg_num();
             switch ( m ) {
             case 0: in[0] = reg_num; break;
             case 1: in[1] = reg_num; break;
@@ -616,7 +617,7 @@ void ptx_instruction::pre_decode()
             if( num_elem >= 3 ) in[2] = o.reg3_num();
             if( num_elem >= 4 ) in[3] = o.reg4_num();
             for (int i = 0; i < num_elem; i++) 
-               arch_reg[i + 4] = o.arch_reg_num(i);
+               arch_reg.src[i] = o.arch_reg_num(i);
             m+=4;
          }
       }
@@ -645,18 +646,22 @@ void ptx_instruction::pre_decode()
                // memory operand with one address register (ex. g[$r1+0x4] or s[$r2+=0x4])
                if(o.get_double_operand_type() == 0 || o.get_double_operand_type() == 3){
                   ar1 = o.reg_num();
+                  arch_reg.src[4] = o.arch_reg_num();
                   // TODO: address register in $r2+=0x4 should be an output register as well
                }
                // memory operand with two address register (ex. s[$r1+$r1] or g[$r1+=$r2])
                else if(o.get_double_operand_type() == 1 || o.get_double_operand_type() == 2) {
                   ar1 = o.reg1_num();
+                  arch_reg.src[4] = o.arch_reg_num();
                   ar2 = o.reg2_num();
+                  arch_reg.src[5] = o.arch_reg_num();
                   // TODO: first address register in $r1+=$r2 should be an output register as well
                }
             }
             // Regular PTX operand
             else if (o.get_symbol()->type()->get_key().is_reg()) { // Memory operand contains a register
               ar1 = o.reg_num();
+              arch_reg.src[4] = o.arch_reg_num();
             }
 
          }
