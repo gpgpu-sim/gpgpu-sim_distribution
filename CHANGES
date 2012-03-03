@@ -33,6 +33,7 @@ CHANGE LOG: Version 3.0.2 versus 3.0.1
   gpgpu_n_tex_insn
   gpgpu_n_const_mem_insn
   gpgpu_n_param_mem_insn
+- Fixed a bug where the PTX load and store instructions' input address register dependencies were not being registered with the scoreboard
 
 Version 3.0.1 versus 3.0.0b
 - Updated README and setup_environment for more streamlined setup. 
