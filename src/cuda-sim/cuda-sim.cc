@@ -1235,7 +1235,7 @@ kernel_info_t *gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
 }
 
 const char *g_gpgpusim_build_string = "$Change$";
-const char *g_gpgpusim_version_string = "3.0.1";
+const char *g_gpgpusim_version_string = "3.0.2";
 
 void print_splash()
 {
