@@ -722,7 +722,8 @@ void shader_core_ctx::warp_inst_complete(const warp_inst_t &inst)
 void shader_core_ctx::writeback()
 {
     warp_inst_t *&pipe_reg = m_pipeline_reg[EX_WB];
-    if( !pipe_reg->empty() && m_operand_collector.writeback(*pipe_reg)) {
+    if( !pipe_reg->empty()) {
+        m_operand_collector.writeback(*pipe_reg);
         unsigned warp_id = pipe_reg->warp_id();
         m_scoreboard->releaseRegisters( pipe_reg );
         m_warp[warp_id].dec_inst_in_pipeline();
