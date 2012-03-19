@@ -723,6 +723,17 @@ void shader_core_ctx::writeback()
 {
     warp_inst_t *&pipe_reg = m_pipeline_reg[EX_WB];
     if( !pipe_reg->empty()) {
+    	/*
+    	 * The operand collector writeback can generally generate a stall
+    	 * However, here, the pipelines should be un-stallable. This is
+    	 * guaranteed because this is the first time the writeback function
+    	 * is called after the operand collector's step function, which
+    	 * resets the allocations. There is one case which could result in
+    	 * the writeback function returning false (stall), which is when
+    	 * an instruction tries to modify two registers (GPR and predicate)
+    	 * To handle this case, we ignore the return value (thus allowing
+    	 * no stalling).
+    	 */
         m_operand_collector.writeback(*pipe_reg);
         unsigned warp_id = pipe_reg->warp_id();
         m_scoreboard->releaseRegisters( pipe_reg );
