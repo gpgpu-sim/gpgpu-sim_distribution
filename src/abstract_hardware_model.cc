@@ -302,7 +302,7 @@ void warp_inst_t::memory_coalescing_arch_13( bool is_write, mem_access_type acce
 {
     // see the CUDA manual where it discusses coalescing rules before reading this
     unsigned segment_size = 0;
-    unsigned warp_parts = 2;
+    unsigned warp_parts = m_config->mem_warp_parts;
     switch( data_size ) {
     case 1: segment_size = 32; break;
     case 2: segment_size = 64; break;
