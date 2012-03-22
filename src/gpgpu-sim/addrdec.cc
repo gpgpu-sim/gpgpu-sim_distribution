@@ -67,13 +67,13 @@ void linear_to_raw_address_translation::addrdec_setoption(option_parser_t opp)
 new_addr_type linear_to_raw_address_translation::partition_address( new_addr_type addr ) const 
 { 
    if (!gap) {
+      return addrdec_packbits( ~addrdec_mask[CHIP], addr, 64, 0 ); 
+   } else {
       // see addrdec_tlx for explanation 
       unsigned long long int partition_addr; 
       partition_addr = ( (addr>>ADDR_CHIP_S) / Nchips) << ADDR_CHIP_S; 
       partition_addr |= addr & ((1 << ADDR_CHIP_S) - 1); 
       return partition_addr; 
-   } else {
-      return addrdec_packbits( ~addrdec_mask[CHIP], addr, 64, 0 ); 
    }
 }
 
@@ -345,6 +345,11 @@ void linear_to_raw_address_translation::sweep_test() const
          abort(); 
       } else {
          assert((int)tlx.chip < Nchips); 
+         // ensure that partition_address() returns the concatenated address 
+         if ((ADDR_CHIP_S != -1 and raw_addr >= (1ULL << ADDR_CHIP_S)) or 
+             (ADDR_CHIP_S == -1 and raw_addr >= (1ULL << addrdec_mklow[CHIP]))) {
+            assert(raw_addr != partition_address(raw_addr)); 
+         }
          history_map[tlx] = raw_addr; 
       }
 
