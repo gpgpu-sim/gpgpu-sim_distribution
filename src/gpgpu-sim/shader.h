@@ -823,7 +823,7 @@ class cache_t;
 
 class ldst_unit: public pipelined_simd_unit {
 public:
-    ldst_unit( shader_memory_interface *icnt, 
+    ldst_unit( mem_fetch_interface *icnt,
                shader_core_mem_fetch_allocator *mf_allocator,
                shader_core_ctx *core, 
                opndcoll_rfu_t *operand_collector,
@@ -868,7 +868,7 @@ private:
    mem_stage_stall_type process_memory_access_queue( cache_t *cache, warp_inst_t &inst );
 
    const memory_config *m_memory_config;
-   shader_memory_interface *m_icnt;
+   class mem_fetch_interface *m_icnt;
    shader_core_mem_fetch_allocator *m_mf_allocator;
    class shader_core_ctx *m_core;
    unsigned m_sid;
@@ -1213,7 +1213,7 @@ private:
     thread_ctx_t             *m_threadState;
     
     // interconnect interface
-    shader_memory_interface *m_icnt;
+    mem_fetch_interface *m_icnt;
     shader_core_mem_fetch_allocator *m_mem_fetch_allocator;
     
     // fetch
@@ -1263,6 +1263,14 @@ public:
     bool icnt_injection_buffer_full(unsigned size, bool write);
     void icnt_inject_request_packet(class mem_fetch *mf);
 
+    // for perfect memory interface
+    bool response_queue_full() {
+        return ( m_response_fifo.size() >= m_config->n_simt_ejection_buffer_size );
+    }
+    void push_response_fifo(class mem_fetch *mf) {
+        m_response_fifo.push_back(mf);
+    }
+
     void get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc ) const;
     unsigned max_cta( const kernel_info_t &kernel );
     unsigned get_not_completed() const;
@@ -1296,6 +1304,26 @@ public:
     virtual void push(mem_fetch *mf) 
     {
         m_cluster->icnt_inject_request_packet(mf);
+    }
+private:
+    shader_core_ctx *m_core;
+    simt_core_cluster *m_cluster;
+};
+
+class perfect_memory_interface : public mem_fetch_interface {
+public:
+    perfect_memory_interface( shader_core_ctx *core, simt_core_cluster *cluster ) { m_core=core; m_cluster=cluster; }
+    virtual bool full( unsigned size, bool write) const
+    {
+        return m_cluster->response_queue_full();
+    }
+    virtual void push(mem_fetch *mf)
+    {
+        if( !mf->get_inst().empty() )
+            m_core->mem_instruction_stats(mf->get_inst()); // not I$-fetch
+        if ( mf && mf->isatomic() )
+            mf->do_atomic(); // execute atomic inside the "memory subsystem"
+        m_cluster->push_response_fifo(mf);
     }
 private:
     shader_core_ctx *m_core;
