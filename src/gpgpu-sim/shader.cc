@@ -100,7 +100,12 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
       m_threadState[i].m_active = false;
    }
    
-   m_icnt = new shader_memory_interface(this,cluster);
+   // m_icnt = new shader_memory_interface(this,cluster);
+    if ( m_config->gpgpu_perfect_mem ) {
+        m_icnt = new perfect_memory_interface(this,cluster);
+    } else {
+        m_icnt = new shader_memory_interface(this,cluster);
+    }
    m_mem_fetch_allocator = new shader_core_mem_fetch_allocator(shader_id,tpc_id,mem_config);
 
    // fetch
@@ -924,7 +929,7 @@ pipelined_simd_unit::pipelined_simd_unit( warp_inst_t **result_port, const shade
 	m_pipeline_reg[i] = new warp_inst_t( config );
 }
 
-ldst_unit::ldst_unit( shader_memory_interface *icnt, 
+ldst_unit::ldst_unit( mem_fetch_interface *icnt,
                       shader_core_mem_fetch_allocator *mf_allocator,
                       shader_core_ctx *core, 
                       opndcoll_rfu_t *operand_collector,
@@ -1070,7 +1075,7 @@ void ldst_unit::cycle()
            m_L1C->fill(mf,gpu_sim_cycle+gpu_tot_sim_cycle);
            m_response_fifo.pop_front(); 
        } else {
-           if( mf->get_type() == WRITE_ACK ) {
+    	   if( mf->get_type() == WRITE_ACK || ( m_config->gpgpu_perfect_mem && mf->get_is_write() )) {
                m_core->store_ack(mf);
                m_response_fifo.pop_front();
                delete mf;
@@ -1768,7 +1773,7 @@ void shader_core_ctx::accept_ldst_unit_response(mem_fetch * mf)
 
 void shader_core_ctx::store_ack( class mem_fetch *mf )
 {
-    assert( mf->get_type() == WRITE_ACK );
+	assert( mf->get_type() == WRITE_ACK  || ( m_config->gpgpu_perfect_mem && mf->get_is_write() ) );
     unsigned warp_id = mf->get_wid();
     m_warp[warp_id].dec_store_req();
 }
