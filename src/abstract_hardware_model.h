@@ -790,6 +790,7 @@ public:
     unsigned warp_size() const { return m_config->warp_size; }
 
     bool accessq_empty() const { return m_accessq.empty(); }
+    unsigned accessq_count() const { return m_accessq.size(); }
     const mem_access_t &accessq_back() { return m_accessq.back(); }
     void accessq_pop_back() { m_accessq.pop_back(); }
 
@@ -801,6 +802,7 @@ public:
     }
 
     void print( FILE *fout ) const;
+    unsigned get_uid() const { return m_uid; }
 
 protected:
 
