@@ -718,6 +718,10 @@ void ldst_unit::print_cache_stats( FILE *fp, unsigned& dl1_accesses, unsigned& d
 
 void shader_core_ctx::warp_inst_complete(const warp_inst_t &inst)
 {
+   #if 0
+      printf("[warp_inst_complete] uid=%u core=%u warp=%u pc=%#x @ time=%llu issued@%llu\n", 
+             inst.get_uid(), m_sid, inst.warp_id(), inst.pc, gpu_tot_sim_cycle + gpu_sim_cycle, inst.get_issue_cycle()); 
+   #endif
    m_stats->m_num_sim_insn[m_sid] += inst.active_count();
    m_stats->m_num_sim_winsn[m_sid]++;
    m_gpu->gpu_sim_insn += inst.active_count();
@@ -783,6 +787,11 @@ mem_stage_stall_type ldst_unit::process_memory_access_queue( cache_t *cache, war
     if ( status == HIT ) {
         assert( !read_sent );
         inst.accessq_pop_back();
+        if ( inst.is_load() ) {
+            for ( unsigned r=0; r < 4; r++)
+                if (inst.out[r] > 0)
+                    m_pending_writes[inst.warp_id()][inst.out[r]]--; 
+        }
         if( !write_sent ) 
             delete mf;
     } else if ( status == RESERVATION_FAIL ) {
@@ -794,11 +803,6 @@ mem_stage_stall_type ldst_unit::process_memory_access_queue( cache_t *cache, war
         assert( status == MISS || status == HIT_RESERVED );
         //inst.clear_active( access.get_warp_mask() ); // threads in mf writeback when mf returns
         inst.accessq_pop_back();
-        if ( inst.is_load() ) {
-            for ( unsigned r=0; r < 4; r++)
-                if (inst.out[r] > 0)
-                    m_pending_writes[inst.warp_id()][inst.out[r]]++;
-        }
     }
     if( !inst.accessq_empty() )
         result = BK_CONF;
@@ -862,7 +866,7 @@ bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_rea
            if( inst.is_load() ) { 
               for( unsigned r=0; r < 4; r++) 
                   if(inst.out[r] > 0) 
-                      m_pending_writes[inst.warp_id()][inst.out[r]]++;
+                      assert( m_pending_writes[inst.warp_id()][inst.out[r]] > 0 );
            } else if( inst.is_store() ) 
               m_core->inc_store_req( inst.warp_id() );
        }
@@ -1054,6 +1058,20 @@ void ldst_unit::issue( warp_inst_t *&inst )
 { 
    // stat collection
    m_core->mem_instruction_stats(*inst); 
+
+   // record how many pending register writes/memory accesses there are for this instruction 
+   assert(inst->empty() == false); 
+   if (inst->is_load() and inst->space.get_type() != shared_space) {
+      unsigned warp_id = inst->warp_id(); 
+      unsigned n_accesses = inst->accessq_count(); 
+      for (unsigned r = 0; r < 4; r++) {
+         unsigned reg_id = inst->out[r]; 
+         if (reg_id > 0) {
+            m_pending_writes[warp_id][reg_id] += n_accesses; 
+         }
+      }
+   }
+
    pipelined_simd_unit::issue(inst); 
 }
 
@@ -1133,9 +1151,13 @@ void ldst_unit::cycle()
                    unsigned reg_id = pipe_reg.out[r];
                    if( reg_id > 0 ) {
                        if( m_pending_writes[warp_id].find(reg_id) != m_pending_writes[warp_id].end() ) {
-                           assert( m_pending_writes[warp_id][reg_id] > 0 );
-                           pending_requests=true;
-                           break;
+                           if ( m_pending_writes[warp_id][reg_id] > 0 ) {
+                               pending_requests=true;
+                               break;
+                           } else {
+                               // this instruction is done already
+                               m_pending_writes[warp_id].erase(reg_id); 
+                           }
                        }
                    }
                }
