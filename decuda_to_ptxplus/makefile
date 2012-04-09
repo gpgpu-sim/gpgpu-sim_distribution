@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-FLAGS = -ggdb -I${BOOST_ROOT} -lboost_regex -lboost_filesystem
+FLAGS = -ggdb -I${BOOST_ROOT} -lboost_regex -lboost_filesystem -L${BOOST_LIB}
 
 all: decuda_to_ptxplus
 
@@ -105,13 +105,17 @@ decudaInst.o: decudaInst.h stringList.h /usr/include/assert.h
 decudaInst.o: /usr/include/features.h /usr/include/sys/cdefs.h
 decudaInst.o: /usr/include/bits/wordsize.h /usr/include/gnu/stubs.h
 decudaInst.o: /usr/include/gnu/stubs-64.h /usr/include/stdlib.h
-decudaInst.o: /usr/include/sys/types.h /usr/include/bits/types.h
-decudaInst.o: /usr/include/bits/typesizes.h /usr/include/time.h
+decudaInst.o: /usr/include/bits/waitflags.h /usr/include/bits/waitstatus.h
 decudaInst.o: /usr/include/endian.h /usr/include/bits/endian.h
-decudaInst.o: /usr/include/bits/byteswap.h /usr/include/sys/select.h
+decudaInst.o: /usr/include/bits/byteswap.h /usr/include/sys/types.h
+decudaInst.o: /usr/include/bits/types.h /usr/include/bits/typesizes.h
+decudaInst.o: /usr/include/time.h /usr/include/sys/select.h
 decudaInst.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
 decudaInst.o: /usr/include/bits/time.h /usr/include/sys/sysmacros.h
 decudaInst.o: /usr/include/bits/pthreadtypes.h /usr/include/alloca.h
+decudaInst.o: /usr/include/stdio.h /usr/include/libio.h
+decudaInst.o: /usr/include/_G_config.h /usr/include/wchar.h
+decudaInst.o: /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h
 decudaInstList.o: decudaInstList.h decudaInst.h stringList.h
 decudaInstList.o: /usr/include/assert.h /usr/include/features.h
 decudaInstList.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
@@ -121,11 +125,13 @@ decudaInstList.o: /usr/include/bits/typesizes.h /usr/include/libio.h
 decudaInstList.o: /usr/include/_G_config.h /usr/include/wchar.h
 decudaInstList.o: /usr/include/bits/stdio_lim.h
 decudaInstList.o: /usr/include/bits/sys_errlist.h /usr/include/stdlib.h
+decudaInstList.o: /usr/include/bits/waitflags.h
+decudaInstList.o: /usr/include/bits/waitstatus.h /usr/include/endian.h
+decudaInstList.o: /usr/include/bits/endian.h /usr/include/bits/byteswap.h
 decudaInstList.o: /usr/include/sys/types.h /usr/include/time.h
-decudaInstList.o: /usr/include/endian.h /usr/include/bits/endian.h
-decudaInstList.o: /usr/include/bits/byteswap.h /usr/include/sys/select.h
-decudaInstList.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-decudaInstList.o: /usr/include/bits/time.h /usr/include/sys/sysmacros.h
+decudaInstList.o: /usr/include/sys/select.h /usr/include/bits/select.h
+decudaInstList.o: /usr/include/bits/sigset.h /usr/include/bits/time.h
+decudaInstList.o: /usr/include/sys/sysmacros.h
 decudaInstList.o: /usr/include/bits/pthreadtypes.h /usr/include/alloca.h
 decuda_to_ptxplus.o: decudaInstList.h decudaInst.h stringList.h
 decuda_to_ptxplus.o: /usr/include/assert.h /usr/include/features.h
@@ -136,11 +142,13 @@ decuda_to_ptxplus.o: /usr/include/bits/typesizes.h /usr/include/libio.h
 decuda_to_ptxplus.o: /usr/include/_G_config.h /usr/include/wchar.h
 decuda_to_ptxplus.o: /usr/include/bits/stdio_lim.h
 decuda_to_ptxplus.o: /usr/include/bits/sys_errlist.h /usr/include/stdlib.h
+decuda_to_ptxplus.o: /usr/include/bits/waitflags.h
+decuda_to_ptxplus.o: /usr/include/bits/waitstatus.h /usr/include/endian.h
+decuda_to_ptxplus.o: /usr/include/bits/endian.h /usr/include/bits/byteswap.h
 decuda_to_ptxplus.o: /usr/include/sys/types.h /usr/include/time.h
-decuda_to_ptxplus.o: /usr/include/endian.h /usr/include/bits/endian.h
-decuda_to_ptxplus.o: /usr/include/bits/byteswap.h /usr/include/sys/select.h
-decuda_to_ptxplus.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-decuda_to_ptxplus.o: /usr/include/bits/time.h /usr/include/sys/sysmacros.h
+decuda_to_ptxplus.o: /usr/include/sys/select.h /usr/include/bits/select.h
+decuda_to_ptxplus.o: /usr/include/bits/sigset.h /usr/include/bits/time.h
+decuda_to_ptxplus.o: /usr/include/sys/sysmacros.h
 decuda_to_ptxplus.o: /usr/include/bits/pthreadtypes.h /usr/include/alloca.h
 stringList.o: stringList.h /usr/include/stdio.h /usr/include/features.h
 stringList.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
