@@ -910,12 +910,17 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
             op_result.u32 = MY_CAS_I(data.u32, src2_data.u32, src3_data.u32);
             data_ready = true;
             break;
+         case B64_TYPE:
+         case U64_TYPE:
+            op_result.u64 = MY_CAS_I(data.u64, src2_data.u64, src3_data.u64);
+            data_ready = true;
+            break;
          case S32_TYPE:
             op_result.s32 = MY_CAS_I(data.s32, src2_data.s32, src3_data.s32);
             data_ready = true;
             break;
          default:
-            printf("Execution error: type mismatch (%x) with instruction\natom.CAS only accepts b32\n", to_type);
+            printf("Execution error: type mismatch (%x) with instruction\natom.CAS only accepts b32 and b64\n", to_type);
             assert(0);
             break;
          }
@@ -929,6 +934,11 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
          case B32_TYPE:
          case U32_TYPE:
             op_result.u32 = MY_EXCH(data.u32, src2_data.u32);
+            data_ready = true;
+            break;
+         case B64_TYPE:
+         case U64_TYPE:
+            op_result.u64 = MY_EXCH(data.u64, src2_data.u64);
             data_ready = true;
             break;
          case S32_TYPE:
@@ -956,8 +966,16 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
             op_result.s32 = data.s32 + src2_data.s32;
             data_ready = true;
             break;
+         case U64_TYPE: 
+            op_result.u64 = data.u64 + src2_data.u64; 
+            data_ready = true; 
+            break; 
+         case F32_TYPE: 
+            op_result.f32 = data.f32 + src2_data.f32; 
+            data_ready = true; 
+            break; 
          default:
-            printf("Execution error: type mismatch with instruction\natom.ADD only accepts u32 and s32\n");
+            printf("Execution error: type mismatch with instruction\natom.ADD only accepts u32, s32, u64, and f32\n");
             assert(0);
             break;
          }
