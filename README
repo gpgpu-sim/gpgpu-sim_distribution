@@ -100,7 +100,7 @@ If you are using Ubuntu, the following commands will install all required
 dependencies besides the CUDA Toolkit.
 
 gpgpu-sim dependencies:
-"sudo apt-get install build-essentials xutils-dev bison zlib1g-dev flex
+"sudo apt-get install build-essential xutils-dev bison zlib1g-dev flex
 libboost-all-dev libglu1-mesa-dev"
 
 gpgpu-sim documentation:
