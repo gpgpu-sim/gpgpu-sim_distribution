@@ -93,8 +93,8 @@ public:
 
 class SparseAllocator : public Allocator {
 protected:
-   list<int> _in_occ;
-   list<int> _out_occ;
+   list<int> *_in_occ;
+   list<int> *_out_occ;
 
    list<sRequest> *_in_req;
    list<sRequest> *_out_req;

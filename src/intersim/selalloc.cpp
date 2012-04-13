@@ -56,8 +56,8 @@ void SelAlloc::Allocate( )
    for ( int iter = 0; iter < _iter; ++iter ) {
       // Grant phase
 
-      for ( outer_iter = _out_occ.begin( ); 
-          outer_iter != _out_occ.end( ); ++outer_iter ) {
+      for ( outer_iter = _out_occ->begin( );
+          outer_iter != _out_occ->end( ); ++outer_iter ) {
          output = *outer_iter;
 
          // Skip loop if there are no requests
@@ -128,8 +128,8 @@ void SelAlloc::Allocate( )
 
       // Accept phase
 
-      for ( outer_iter = _in_occ.begin( ); 
-          outer_iter != _in_occ.end( ); ++outer_iter ) {
+      for ( outer_iter = _in_occ->begin( );
+          outer_iter != _in_occ->end( ); ++outer_iter ) {
          input = *outer_iter;
 
          if ( _in_req[input].empty( ) ) {

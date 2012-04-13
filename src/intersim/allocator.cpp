@@ -160,6 +160,8 @@ SparseAllocator::SparseAllocator( const Configuration &config,
                                   int inputs, int outputs ) :
 Allocator( config, parent, name, inputs, outputs )
 {
+   _in_occ = new list<int>();
+   _out_occ = new list<int>();
    _in_req =  new list<sRequest> [_inputs];
    _out_req = new list<sRequest> [_outputs];
 }
@@ -169,6 +171,8 @@ SparseAllocator::~SparseAllocator( )
 {
    delete [] _in_req;
    delete [] _out_req;
+   delete _in_occ;
+   delete _out_occ;
 }
 
 void SparseAllocator::Clear( )
@@ -181,8 +185,8 @@ void SparseAllocator::Clear( )
       _out_req[j].clear( );
    }
 
-   _in_occ.clear( );
-   _out_occ.clear( );
+   _in_occ->clear( );
+   _out_occ->clear( );
 }
 
 int SparseAllocator::ReadRequest( int in, int out ) const
@@ -234,28 +238,28 @@ void SparseAllocator::AddRequest( int in, int out, int label,
    // insert into occupied inputs list if
    // input is currently empty
    if ( _in_req[in].empty( ) ) {
-      occ_insert = _in_occ.begin( );
-      while ( ( occ_insert != _in_occ.end( ) ) &&
+      occ_insert = _in_occ->begin( );
+      while ( ( occ_insert != _in_occ->end( ) ) &&
               ( *occ_insert < in ) ) {
          occ_insert++;
       }
-      assert( ( occ_insert == _in_occ.end( ) ) || 
+      assert( ( occ_insert == _in_occ->end( ) ) ||
               ( *occ_insert != in ) );
 
-      _in_occ.insert( occ_insert, in );
+      _in_occ->insert( occ_insert, in );
    }
 
    // similarly for the output
    if ( _out_req[out].empty( ) ) {
-      occ_insert = _out_occ.begin( );
-      while ( ( occ_insert != _out_occ.end( ) ) &&
+      occ_insert = _out_occ->begin( );
+      while ( ( occ_insert != _out_occ->end( ) ) &&
               ( *occ_insert < out ) ) {
          occ_insert++;
       }
-      assert( ( occ_insert == _out_occ.end( ) ) || 
+      assert( ( occ_insert == _out_occ->end( ) ) ||
               ( *occ_insert != out ) );
 
-      _out_occ.insert( occ_insert, out );
+      _out_occ->insert( occ_insert, out );
    }
 
    // insert input request in order of it's output
@@ -338,14 +342,14 @@ void SparseAllocator::RemoveRequest( int in, int out, int label )
    // remove from occupied inputs list if
    // input is now empty
    if ( _in_req[in].empty( ) ) {
-      occ_remove = _in_occ.begin( );
-      while ( ( occ_remove != _in_occ.end( ) ) &&
+      occ_remove = _in_occ->begin( );
+      while ( ( occ_remove != _in_occ->end( ) ) &&
               ( *occ_remove != in ) ) {
          occ_remove++;
       }
 
-      assert( occ_remove != _in_occ.end( ) );
-      _in_occ.erase( occ_remove );
+      assert( occ_remove != _in_occ->end( ) );
+      _in_occ->erase( occ_remove );
    }
 
    // similarly for the output
@@ -359,14 +363,14 @@ void SparseAllocator::RemoveRequest( int in, int out, int label )
    _out_req[out].erase( erase_point );
 
    if ( _out_req[out].empty( ) ) {
-      occ_remove = _out_occ.begin( );
-      while ( ( occ_remove != _out_occ.end( ) ) &&
+      occ_remove = _out_occ->begin( );
+      while ( ( occ_remove != _out_occ->end( ) ) &&
               ( *occ_remove != out ) ) {
          occ_remove++;
       }
 
-      assert( occ_remove != _out_occ.end( ) );
-      _out_occ.erase( occ_remove );
+      assert( occ_remove != _out_occ->end( ) );
+      _out_occ->erase( occ_remove );
    }
 }
 
