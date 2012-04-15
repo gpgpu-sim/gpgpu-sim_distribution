@@ -1,2 +1,15 @@
 See the file AerialVision-Manual.pdf in the doc directory for 
 installation and usage instructions.
+
+To be able to use Aerial Vision, you only need to install its dependencies:
+	* python-pmw
+	* python-ply
+	* python-numpy
+	* libpng12-dev
+	* python-matplotlib
+
+For an Ubuntu system, this could be done by running the following command:
+sudo apt-get install python-pmw python-ply python-numpy libpng12-dev python-matplotlib
+
+For other systems, you need to use your respective package manager to install
+the dependencies
