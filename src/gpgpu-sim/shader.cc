@@ -1736,7 +1736,22 @@ void barrier_set_t::dump() const
 
 void shader_core_ctx::warp_exit( unsigned warp_id )
 {
-   m_barriers.warp_exit( warp_id );
+	bool done = true;
+	for (	unsigned i = warp_id*get_config()->warp_size;
+			i < (warp_id+1)*get_config()->warp_size;
+			i++ ) {
+
+//		if(this->m_thread[i]->m_functional_model_thread_state && this->m_thread[i].m_functional_model_thread_state->donecycle()==0) {
+//			done = false;
+//		}
+
+
+		if (m_thread[i] && !m_thread[i]->is_done()) done = false;
+	}
+	//if (m_warp[warp_id].get_n_completed() == get_config()->warp_size)
+	//if (this->m_simt_stack[warp_id]->get_num_entries() == 0)
+	if (done)
+		m_barriers.warp_exit( warp_id );
 }
 
 bool shader_core_ctx::warp_waiting_at_barrier( unsigned warp_id ) const

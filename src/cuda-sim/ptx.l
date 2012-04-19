@@ -381,8 +381,9 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 [^\"]*	TC; ptx_lval.string_value = strdup(yytext); 
 }
 
-<INITIAL,NOT_OPCODE>.  TC; ptx_error((const char*)NULL);
+<*>\t@@DWARF.*\n
 
+<INITIAL,NOT_OPCODE>.  TC; ptx_error((const char*)NULL);
 %%
 
 extern int g_error_detected;

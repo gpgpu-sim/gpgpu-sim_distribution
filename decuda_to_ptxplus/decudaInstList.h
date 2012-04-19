@@ -34,7 +34,7 @@
 #include <iostream>
 #include <sstream>
 #include <stdlib.h>
-#include <regex.hpp>
+#include <boost/regex.hpp>
 #include <map>
 
 // Used for entry specific constant memory segments (c1)
@@ -42,6 +42,13 @@ struct constMemory
 {
 	int index;
 	int entryIndex;
+	const char* type;
+	std::list<std::string> m_constMemory;
+};
+
+struct constMemory2
+{
+	const char* kernel;
 	const char* type;
 	std::list<std::string> m_constMemory;
 };
@@ -102,6 +109,7 @@ protected:
 
 	// Const memory list
 	std::list<constMemory> m_constMemoryList;
+	std::list<constMemory2> m_constMemoryList2;
 
 	// Const memory pointers list
 	std::list<constMemoryPtr> m_constMemoryPtrList;
@@ -157,7 +165,9 @@ public:
 	void addEntryConstMemory(int index); // add entry specific const memory
 	void addConstMemory(int index); // add global const memory
 	void setConstMemoryType(const char* type); // set type of constant memory
+	void setConstMemoryType2(const char* type); // set type of constant memory
 	void addConstMemoryValue(std::string constMemoryValue); // add const memory
+	void addConstMemoryValue2(std::string constMemoryValue); // add const memory
 
 	std::list<std::string> getRealTexList(); // get the list of real tex names
 	void setRealTexList(std::list<std::string> realTexList); // set the list of real tex names

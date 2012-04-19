@@ -43,6 +43,7 @@ const char *g_filename;
 unsigned g_max_regs_per_thread = 0;
 
 // the program intermediate representation...
+static symbol_table *g_global_allfiles_symbol_table = NULL;
 static symbol_table *g_global_symbol_table = NULL;
 std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
 static symbol_table *g_current_symbol_table = NULL;
@@ -105,7 +106,13 @@ void read_parser_environment_variables()
 symbol_table *init_parser( const char *ptx_filename )
 {
    g_filename = strdup(ptx_filename);
-   g_global_symbol_table = g_current_symbol_table = new symbol_table("global",0,NULL);
+   if  (g_global_allfiles_symbol_table == NULL) {
+	   g_global_allfiles_symbol_table = new symbol_table("global_allfiles", 0, NULL);
+	   g_global_symbol_table = g_current_symbol_table = g_global_allfiles_symbol_table;
+   }
+   else {
+	   g_global_symbol_table = g_current_symbol_table = new symbol_table("global",0,g_global_allfiles_symbol_table);
+   }
    ptx_lineno = 1;
 
 #define DEF(X,Y) g_ptx_token_decode[X] = Y;
@@ -767,7 +774,7 @@ void add_scalar_operand( const char *identifier )
    DPRINTF("add_scalar_operand");
    const symbol *s = g_current_symbol_table->lookup(identifier);
    if ( s == NULL ) {
-      if ( g_opcode == BRA_OP || g_opcode == CALLP_OP || g_opcode == BREAKADDR_OP) {
+      if ( g_opcode == BRA_OP || g_opcode == CALLP_OP) {
          // forward branch target...
          s = g_current_symbol_table->add_variable(identifier,NULL,0,g_filename,ptx_lineno);
       } else {

@@ -56,13 +56,24 @@ dram_t::dram_t( unsigned int partition_id, const struct memory_config *config, m
 
    rw = READ; //read mode is default
 
+	bkgrp = (bankgrp_t**) calloc(sizeof(bankgrp_t*), m_config->nbkgrp);
+	bkgrp[0] = (bankgrp_t*) calloc(sizeof(bank_t), m_config->nbkgrp);
+	for (unsigned i=1; i<m_config->nbkgrp; i++) {
+		bkgrp[i] = bkgrp[0] + i;
+	}
+	for (unsigned i=0; i<m_config->nbkgrp; i++) {
+		bkgrp[i]->CCDLc = 0;
+		bkgrp[i]->RTPLc = 0;
+	}
+
    bk = (bank_t**) calloc(sizeof(bank_t*),m_config->nbk);
    bk[0] = (bank_t*) calloc(sizeof(bank_t),m_config->nbk);
    for (unsigned i=1;i<m_config->nbk;i++) 
       bk[i] = bk[0] + i;
-   for (unsigned i=0;i<m_config->nbk;i++) 
+   for (unsigned i=0;i<m_config->nbk;i++) {
       bk[i]->state = BANK_IDLE;
-
+      bk[i]->bkgrpindex = i/(m_config->nbk/m_config->nbkgrp);
+   }
    prio = 0;  
    rwq = new fifo_pipeline<dram_req_t>("rwq",m_config->CL,m_config->CL+1);
    mrqq = new fifo_pipeline<dram_req_t>("mrqq",0,2);
@@ -248,10 +259,12 @@ void dram_t::cycle()
    // check if any bank is ready to issue a new read
    for (unsigned i=0;i<m_config->nbk;i++) {
       unsigned j = (i + prio) % m_config->nbk;
+	  unsigned grp = j>>m_config->bk_tag_length;
       if (bk[j]->mrq) { //if currently servicing a memory request
           bk[j]->mrq->data->set_status(IN_PARTITION_DRAM,gpu_sim_cycle+gpu_tot_sim_cycle);
          // correct row activated for a READ
          if ( !issued && !CCDc && !bk[j]->RCDc &&
+              !(bkgrp[grp]->CCDLc) &&
               (bk[j]->curr_row == bk[j]->mrq->row) && 
               (bk[j]->mrq->rw == READ) && (WTRc == 0 )  &&
               (bk[j]->state == BANK_ACTIVE) &&
@@ -263,8 +276,10 @@ void dram_t::cycle()
             rwq->push(bk[j]->mrq);
             bk[j]->mrq->txbytes += m_config->BL * m_config->busW * m_config->gpu_n_mem_per_ctrlr; //16 bytes
             CCDc = m_config->tCCD;
+			bkgrp[grp]->CCDLc = m_config->tCCDL;
             RTWc = m_config->tRTW;
             bk[j]->RTPc = m_config->BL/2;
+			bkgrp[grp]->RTPLc = m_config->tRTPL;
             issued = true;
             n_rd++;
             bwutil+= m_config->BL/2;
@@ -283,6 +298,7 @@ void dram_t::cycle()
          } else
             // correct row activated for a WRITE
             if ( !issued && !CCDc && !bk[j]->RCDWRc &&
+                 !(bkgrp[grp]->CCDLc) &&
                  (bk[j]->curr_row == bk[j]->mrq->row)  && 
                  (bk[j]->mrq->rw == WRITE) && (RTWc == 0 )  &&
                  (bk[j]->state == BANK_ACTIVE) &&
@@ -295,6 +311,7 @@ void dram_t::cycle()
 
             bk[j]->mrq->txbytes += m_config->BL * m_config->busW * m_config->gpu_n_mem_per_ctrlr; /*16 bytes*/
             CCDc = m_config->tCCD;
+			bkgrp[grp]->CCDLc = m_config->tCCDL;
             WTRc = m_config->tWTR; 
             bk[j]->WTPc = m_config->tWTP; 
             issued = true;
@@ -342,7 +359,9 @@ void dram_t::cycle()
             if ( (!issued) && 
                  (bk[j]->curr_row != bk[j]->mrq->row) &&
                  (bk[j]->state == BANK_ACTIVE) && 
-                 (!bk[j]->RASc && !bk[j]->WTPc && !bk[j]->RTPc) ) {
+                 (!bk[j]->RASc && !bk[j]->WTPc && 
+				  !bk[j]->RTPc &&
+				  !bkgrp[grp]->RTPLc) ) {
             // make the bank idle again
             bk[j]->state = BANK_IDLE;
             bk[j]->RPc = m_config->tRP;
@@ -388,6 +407,10 @@ void dram_t::cycle()
       DEC2ZERO(bk[j]->RCDWRc);
       DEC2ZERO(bk[j]->WTPc);
       DEC2ZERO(bk[j]->RTPc);
+   }
+   for (unsigned j=0; j<m_config->nbkgrp; j++) {
+	   DEC2ZERO(bkgrp[j]->CCDLc);
+	   DEC2ZERO(bkgrp[j]->RTPLc);
    }
 
 #ifdef DRAM_VISUALIZE

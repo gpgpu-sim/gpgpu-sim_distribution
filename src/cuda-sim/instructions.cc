@@ -80,11 +80,12 @@ ptx_reg_t ptx_thread_info::get_reg( const symbol *reg )
       const std::string &name = reg->name();
       unsigned call_uid = m_callstack.back().m_call_uid;
       ptx_reg_t uninit_reg;
-      uninit_reg.u32 = 0xDEADBEEF;
+      uninit_reg.u32 = 0x0;
       set_reg(reg, uninit_reg); // give it a value since we are going to warn the user anyway
       std::string file_loc = get_location();
       if( !unfound_register_warned ) {
-          printf("GPGPU-Sim PTX: WARNING (%s) ** reading undefined register \'%s\' (cuid:%u). Setting to 0XDEADBEEF.\n",
+          printf("GPGPU-Sim PTX: WARNING (%s) ** reading undefined register \'%s\' (cuid:%u). Setting to 0X00000000. This is okay if you are simulating the native ISA"
+        		  "\n",
                  file_loc.c_str(), name.c_str(), call_uid );
           unfound_register_warned = true;
       }
@@ -818,13 +819,21 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
    const operand_info &src2 = pI->src2();    // b
 
    // Get operand values
-   src1_data = thread->get_operand_value(src1, dst, to_type, thread, 1);      // a
-   src2_data = thread->get_operand_value(src2, dst, to_type, thread, 1);      // b
+   if (dst.get_symbol()->type()){
+	   src1_data = thread->get_operand_value(src1, dst, to_type, thread, 1);      // a
+	   src2_data = thread->get_operand_value(src2, dst, to_type, thread, 1);      // b
+   } else {
+	   //This is the case whent he first argument (dest) is '_'
+	   src1_data = thread->get_operand_value(src1, src1, to_type, thread, 1);      // a
+	   src2_data = thread->get_operand_value(src2, src1, to_type, thread, 1);      // b
+   }
 
    // Copy value pointed to in operand 'a' into register 'd'
    // (i.e. copy src1_data to dst)
    thread->get_global_memory()->read(src1_data.u32,size/8,&data.s64);
-   thread->set_operand_value(dst, data, to_type, thread, pI);                         // Write value into register 'd'
+   if (dst.get_symbol()->type()){
+	   thread->set_operand_value(dst, data, to_type, thread, pI);                         // Write value into register 'd'
+   }
 
    // Get the atomic operation to be performed
    unsigned m_atomic_spec = pI->get_atomic();
@@ -1080,7 +1089,12 @@ void atom_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    const operand_info &src1 = pI->src1();
    const operand_info &dst  = pI->dst();
    unsigned i_type = pI->get_type();
-   ptx_reg_t src1_data = thread->get_operand_value(src1, dst, i_type, thread, 1);
+   ptx_reg_t src1_data;
+   if (dst.get_symbol()->type()){
+	   src1_data = thread->get_operand_value(src1, dst, i_type, thread, 1);
+   } else {
+	   src1_data = thread->get_operand_value(src1, src1, i_type, thread, 1);
+   }
 
    memory_space_t space = pI->get_space();
 
@@ -1944,10 +1958,10 @@ void ex2_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 }
 
 void exit_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
-{    
+{
+   thread->set_done();
    thread->exitCore();
    thread->registerExit();
-   thread->set_done();
 }
 
 void mad_def( const ptx_instruction *pI, ptx_thread_info *thread );
@@ -2755,9 +2769,9 @@ void ret_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 { 
    bool empty = thread->callstack_pop();
    if( empty ) {
+   thread->set_done();
    thread->exitCore();
    thread->registerExit();
-   thread->set_done();
    }
 }
 
@@ -2766,9 +2780,9 @@ void retp_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 {
    bool empty = thread->callstack_pop_plus();
    if( empty ) {
+   thread->set_done();
    thread->exitCore();
    thread->registerExit();
-   thread->set_done();
    }
 }
 

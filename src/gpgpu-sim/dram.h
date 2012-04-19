@@ -58,6 +58,12 @@ public:
    class mem_fetch * data;
 };
 
+struct bankgrp_t
+{
+	unsigned int CCDLc;
+	unsigned int RTPLc;
+};
+
 struct bank_t
 {
    unsigned int RCDc;
@@ -77,6 +83,8 @@ struct bank_t
    unsigned int n_access;
    unsigned int n_writes;
    unsigned int n_idle;
+
+   unsigned int bkgrpindex;
 };
 
 struct mem_fetch;
@@ -109,6 +117,8 @@ private:
    void scheduler_frfcfs();
 
    const struct memory_config *m_config;
+
+   bankgrp_t **bkgrp;
 
    bank_t **bk;
    unsigned int prio;

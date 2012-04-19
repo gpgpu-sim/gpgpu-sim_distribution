@@ -123,8 +123,8 @@ void memory_config::reg_options(class OptionParser * opp)
                  "Burst length of each DRAM request (default = 4 DDR cycle)",
                  "4");
     option_parser_register(opp, "-gpgpu_dram_timing_opt", OPT_CSTR, &gpgpu_dram_timing_opt, 
-                "DRAM timing parameters = {nbk:tCCD:tRRD:tRCD:tRAS:tRP:tRC:CL:WL:tCDLR:tWR}",
-                "4:2:8:12:21:13:34:9:4:5:13");
+                "DRAM timing parameters = {nbk:nbkgrp:tCCD:tCCDL:tRRD:tRCD:tRAS:tRP:tRTPL:tRC:CL:WL:tCDLR:tWR}",
+                "4:1:2:0:8:12:21:13:0:34:9:4:5:13");
     option_parser_register(opp, "-rop_latency", OPT_UINT32, &rop_latency,
                      "ROP queue latency (default 85)",
                      "85");

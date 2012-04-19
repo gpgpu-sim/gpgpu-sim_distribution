@@ -37,6 +37,14 @@
 #define NON_ARRAY_IDENTIFIER 1
 #define ARRAY_IDENTIFIER_NO_DIM 2
 #define ARRAY_IDENTIFIER 3
+#define P_DEBUG 1
+#define DPRINTF(...) \
+   if(P_DEBUG) { \
+      printf("(%s:%u) ", __FILE__, __LINE__); \
+      printf(__VA_ARGS__); \
+      printf("\n"); \
+      fflush(stdout); \
+   }
 
 
 enum _memory_space_t {
@@ -128,20 +136,29 @@ void add_function_name( const char *headerInput )
 //void add_space_spec(int headerInput)
 void add_space_spec( enum _memory_space_t spec, int value )
 {
+	DPRINTF("add_space_spec: spec=%u", spec);
+	decudaInst *instEntry;
 	switch(spec)
 	{
 		case param_space_unclassified:
 			if(inEntryDirective && inParamDirective) {
-				decudaInst *instEntry = new decudaInst();
+				instEntry = new decudaInst();
 				instEntry->setBase(".param");
 				g_headerList->add(instEntry);
 			}
 			break;
 		case tex_space:
 			inTexDirective = true;
-			decudaInst *instEntry = new decudaInst();
+			instEntry = new decudaInst();
 			instEntry->setBase(".tex");
 			g_headerList->add(instEntry);			
+			break;
+		case const_space:
+			if(inEntryDirective) {
+				instEntry = new decudaInst();
+				instEntry->setBase(".const");
+				g_headerList->add(instEntry);
+			}
 			break;
 	}
 }
@@ -277,6 +294,7 @@ void func_header(const char* headerBase)
 
 	// If start of an entry
 	if((strcmp(headerBase, ".entry")==0)||(strcmp(headerBase, ".func")==0)) {
+		inEntryDirective = true;
 		g_headerList->addEntry("");
 
 		decudaInst *instEntry = new decudaInst();

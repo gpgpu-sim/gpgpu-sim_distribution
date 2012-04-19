@@ -476,7 +476,9 @@ operand: IDENTIFIER  { add_scalar_operand( $1 ); }
 	| tex_operand
 	| IDENTIFIER PLUS INT_OPERAND { add_address_operand($1,$3); }
 	| IDENTIFIER LO_OPTION { add_scalar_operand( $1 ); change_operand_lohi(1);}
+	| MINUS IDENTIFIER LO_OPTION { add_scalar_operand( $2 ); change_operand_lohi(1); change_operand_neg();}
 	| IDENTIFIER HI_OPTION { add_scalar_operand( $1 ); change_operand_lohi(2);}
+	| MINUS IDENTIFIER HI_OPTION { add_scalar_operand( $2 ); change_operand_lohi(2); change_operand_neg();}
 	| IDENTIFIER PIPE IDENTIFIER { add_2vector_operand($1,$3); change_double_operand_type(-1);}
 	| IDENTIFIER PIPE IDENTIFIER LO_OPTION { add_2vector_operand($1,$3); change_double_operand_type(-1); change_operand_lohi(1);}
 	| IDENTIFIER PIPE IDENTIFIER HI_OPTION { add_2vector_operand($1,$3); change_double_operand_type(-1); change_operand_lohi(2);}

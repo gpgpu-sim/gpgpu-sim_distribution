@@ -159,13 +159,15 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/gnu/stubs-64.h
 ../../build/release/cuda-sim/cuda_device_printf.o: ptx.tab.h ptx_sim.h
 ../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/stdlib.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/waitflags.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/waitstatus.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/endian.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/endian.h
+../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/byteswap.h
 ../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/sys/types.h
 ../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/types.h
 ../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/typesizes.h
 ../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/time.h
-../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/endian.h
-../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/endian.h
-../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/byteswap.h
 ../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/sys/select.h
 ../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/select.h
 ../../build/release/cuda-sim/cuda_device_printf.o: /usr/include/bits/sigset.h
@@ -193,13 +195,15 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/wordsize.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/gnu/stubs.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/gnu/stubs-64.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/waitflags.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/waitstatus.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/endian.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/endian.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/byteswap.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/sys/types.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/types.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/typesizes.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/time.h
-../../build/release/cuda-sim/cuda-sim.o: /usr/include/endian.h
-../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/endian.h
-../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/byteswap.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/sys/select.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/select.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/sigset.h
@@ -242,6 +246,7 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/zconf.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/unistd.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/posix_opt.h
+../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/environments.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/bits/confname.h
 ../../build/release/cuda-sim/cuda-sim.o: /usr/include/getopt.h
 ../../build/release/cuda-sim/cuda-sim.o: ../gpgpu-sim/scoreboard.h
@@ -261,13 +266,15 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/instructions.o: /usr/include/gnu/stubs-64.h
 ../../build/release/cuda-sim/instructions.o: ptx.tab.h ptx_sim.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/stdlib.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/waitflags.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/waitstatus.h
+../../build/release/cuda-sim/instructions.o: /usr/include/endian.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/endian.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/byteswap.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/sys/types.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/bits/types.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/bits/typesizes.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/time.h
-../../build/release/cuda-sim/instructions.o: /usr/include/endian.h
-../../build/release/cuda-sim/instructions.o: /usr/include/bits/endian.h
-../../build/release/cuda-sim/instructions.o: /usr/include/bits/byteswap.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/sys/select.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/bits/select.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/bits/sigset.h
@@ -311,6 +318,7 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/instructions.o: /usr/include/zconf.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/unistd.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/bits/posix_opt.h
+../../build/release/cuda-sim/instructions.o: /usr/include/bits/environments.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/bits/confname.h
 ../../build/release/cuda-sim/instructions.o: /usr/include/getopt.h
 ../../build/release/cuda-sim/instructions.o: ../gpgpu-sim/scoreboard.h
@@ -336,11 +344,13 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/memory.o: /usr/include/bits/stdio_lim.h
 ../../build/release/cuda-sim/memory.o: /usr/include/bits/sys_errlist.h
 ../../build/release/cuda-sim/memory.o: /usr/include/stdlib.h
-../../build/release/cuda-sim/memory.o: /usr/include/sys/types.h
-../../build/release/cuda-sim/memory.o: /usr/include/time.h
+../../build/release/cuda-sim/memory.o: /usr/include/bits/waitflags.h
+../../build/release/cuda-sim/memory.o: /usr/include/bits/waitstatus.h
 ../../build/release/cuda-sim/memory.o: /usr/include/endian.h
 ../../build/release/cuda-sim/memory.o: /usr/include/bits/endian.h
 ../../build/release/cuda-sim/memory.o: /usr/include/bits/byteswap.h
+../../build/release/cuda-sim/memory.o: /usr/include/sys/types.h
+../../build/release/cuda-sim/memory.o: /usr/include/time.h
 ../../build/release/cuda-sim/memory.o: /usr/include/sys/select.h
 ../../build/release/cuda-sim/memory.o: /usr/include/bits/select.h
 ../../build/release/cuda-sim/memory.o: /usr/include/bits/sigset.h
@@ -358,13 +368,15 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/ptx_ir.o: /usr/include/gnu/stubs.h
 ../../build/release/cuda-sim/ptx_ir.o: /usr/include/gnu/stubs-64.h ptx.tab.h
 ../../build/release/cuda-sim/ptx_ir.o: ptx_sim.h /usr/include/stdlib.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/waitflags.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/waitstatus.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/endian.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/endian.h
+../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/byteswap.h
 ../../build/release/cuda-sim/ptx_ir.o: /usr/include/sys/types.h
 ../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/types.h
 ../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/typesizes.h
 ../../build/release/cuda-sim/ptx_ir.o: /usr/include/time.h
-../../build/release/cuda-sim/ptx_ir.o: /usr/include/endian.h
-../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/endian.h
-../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/byteswap.h
 ../../build/release/cuda-sim/ptx_ir.o: /usr/include/sys/select.h
 ../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/select.h
 ../../build/release/cuda-sim/ptx_ir.o: /usr/include/bits/sigset.h
@@ -393,13 +405,15 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/ptx_loader.o: /usr/include/gnu/stubs-64.h
 ../../build/release/cuda-sim/ptx_loader.o: ptx.tab.h ptx_sim.h
 ../../build/release/cuda-sim/ptx_loader.o: /usr/include/stdlib.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/waitflags.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/waitstatus.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/endian.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/endian.h
+../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/byteswap.h
 ../../build/release/cuda-sim/ptx_loader.o: /usr/include/sys/types.h
 ../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/types.h
 ../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/typesizes.h
 ../../build/release/cuda-sim/ptx_loader.o: /usr/include/time.h
-../../build/release/cuda-sim/ptx_loader.o: /usr/include/endian.h
-../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/endian.h
-../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/byteswap.h
 ../../build/release/cuda-sim/ptx_loader.o: /usr/include/sys/select.h
 ../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/select.h
 ../../build/release/cuda-sim/ptx_loader.o: /usr/include/bits/sigset.h
@@ -433,13 +447,15 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/ptx_parser.o: /usr/include/gnu/stubs-64.h
 ../../build/release/cuda-sim/ptx_parser.o: ptx.tab.h ptx_sim.h
 ../../build/release/cuda-sim/ptx_parser.o: /usr/include/stdlib.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/waitflags.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/waitstatus.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/endian.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/endian.h
+../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/byteswap.h
 ../../build/release/cuda-sim/ptx_parser.o: /usr/include/sys/types.h
 ../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/types.h
 ../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/typesizes.h
 ../../build/release/cuda-sim/ptx_parser.o: /usr/include/time.h
-../../build/release/cuda-sim/ptx_parser.o: /usr/include/endian.h
-../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/endian.h
-../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/byteswap.h
 ../../build/release/cuda-sim/ptx_parser.o: /usr/include/sys/select.h
 ../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/select.h
 ../../build/release/cuda-sim/ptx_parser.o: /usr/include/bits/sigset.h
@@ -465,13 +481,15 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/wordsize.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/gnu/stubs.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/gnu/stubs-64.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/waitflags.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/waitstatus.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/endian.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/endian.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/byteswap.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/sys/types.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/types.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/typesizes.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/time.h
-../../build/release/cuda-sim/ptx_sim.o: /usr/include/endian.h
-../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/endian.h
-../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/byteswap.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/sys/select.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/select.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/sigset.h
@@ -513,6 +531,7 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/zconf.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/unistd.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/posix_opt.h
+../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/environments.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/bits/confname.h
 ../../build/release/cuda-sim/ptx_sim.o: /usr/include/getopt.h
 ../../build/release/cuda-sim/ptx_sim.o: ../gpgpu-sim/scoreboard.h
@@ -530,13 +549,15 @@ $(OUTPUT_DIR)/lex.ptx_.o: ptx.tab.c
 ../../build/release/cuda-sim/ptx-stats.o: /usr/include/gnu/stubs-64.h
 ../../build/release/cuda-sim/ptx-stats.o: ptx.tab.h ptx_sim.h
 ../../build/release/cuda-sim/ptx-stats.o: /usr/include/stdlib.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/waitflags.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/waitstatus.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/endian.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/endian.h
+../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/byteswap.h
 ../../build/release/cuda-sim/ptx-stats.o: /usr/include/sys/types.h
 ../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/types.h
 ../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/typesizes.h
 ../../build/release/cuda-sim/ptx-stats.o: /usr/include/time.h
-../../build/release/cuda-sim/ptx-stats.o: /usr/include/endian.h
-../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/endian.h
-../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/byteswap.h
 ../../build/release/cuda-sim/ptx-stats.o: /usr/include/sys/select.h
 ../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/select.h
 ../../build/release/cuda-sim/ptx-stats.o: /usr/include/bits/sigset.h
