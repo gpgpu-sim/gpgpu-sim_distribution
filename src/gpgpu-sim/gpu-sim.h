@@ -71,15 +71,20 @@ struct memory_config {
    }
    void init()
    {
+	  //Disabling bank groups if their values are not specified
+	  nbkgrp = 1;
+	  tCCDL = 0;
+	  tRTPL = 0;
       assert(gpgpu_dram_timing_opt);
       sscanf(gpgpu_dram_timing_opt,"%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d",
-             &nbk,&nbkgrp,&tCCD,&tCCDL,&tRRD,&tRCD,&tRAS,&tRP,&tRTPL,&tRC,&CL,&WL,&tCDLR,&tWR);
+             &nbk,&tCCD,&tRRD,&tRCD,&tRAS,&tRP,&tRC,&CL,&WL,&tCDLR,&tWR,&nbkgrp,&tCCDL,&tRTPL);
 		int nbkt = nbk/nbkgrp;
 		unsigned i;
 		for (i=0; nbkt>0; i++) {
 			nbkt = nbkt>>1;
 		}
 		bk_tag_length = i;
+	  assert(nbkgrp>0 && "Number of bank groups cannot be zero");
       tRCDWR = tRCD-(WL+1);
       tRTW = (CL+(BL/2)+2-WL);
       tWTR = (WL+(BL/2)+tCDLR); 
