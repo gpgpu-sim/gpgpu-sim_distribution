@@ -27,7 +27,14 @@
 
 
 #include "decudaInstList.h"
-
+#define P_DEBUG 1
+#define DPRINTF(...) \
+   if(P_DEBUG) { \
+      printf("(%s:%u) ", __FILE__, __LINE__); \
+      printf(__VA_ARGS__); \
+      printf("\n"); \
+      fflush(stdout); \
+   }
 extern void output(const char * text);
 
 //Constructor
@@ -128,6 +135,13 @@ void decudaInstList::printHeaderInstList()
 		{
 			break;
 		}
+	}
+	for (	std::list<std::string>::iterator iter = m_realTexList.begin();
+			iter != m_realTexList.end();
+			iter ++) {
+		output(".tex .u64 ");
+		output((*iter).c_str());
+		output(";\n");
 	}
 }
 
@@ -426,7 +440,7 @@ void decudaInstList::addDoublePredReg(std::string pred, std::string reg, bool lo
 void decudaInstList::addTex(std::string tex)
 {
 	std::string origTex = tex;
-
+	DPRINTF("decudaInstList::addTex tex=%s", tex.c_str());
 	// If $tex# tex from decuda, then use index to get real tex name
 	if(tex.substr(0, 4) == "$tex") {
 		tex = tex.substr(4, tex.size()-4);
@@ -446,9 +460,9 @@ void decudaInstList::addTex(std::string tex)
 	}
 
 	// Add the tex to instruction operand list
-	char* texName = new char [strlen(origTex.c_str())+1];
-	strcpy(texName, origTex.c_str());
-	getListEnd().addOperand(texName);
+	//char* texName = new char [strlen(origTex.c_str())+1];
+	//strcpy(texName, origTex.c_str());
+	//getListEnd().addOperand(texName);
 }
 
 
@@ -478,10 +492,20 @@ void decudaInstList::addConstMemoryValue(std::string constMemoryValue)
 	m_constMemoryList.back().m_constMemory.push_back(constMemoryValue);
 }
 
+void decudaInstList::addConstMemoryValue2(std::string constMemoryValue)
+{
+	m_constMemoryList2.back().m_constMemory.push_back(constMemoryValue);
+}
+
 // set type of constant memory
 void decudaInstList::setConstMemoryType(const char* type)
 {
 	m_constMemoryList.back().type = type;
+}
+
+void decudaInstList::setConstMemoryType2(const char* type)
+{
+	m_constMemoryList2.back().type = type;
 }
 
 // print const memory directive
@@ -489,16 +513,36 @@ void decudaInstList::printMemory()
 {
 
 	// Constant memory
-	std::list<constMemory>::iterator i;
-	for(i=m_constMemoryList.begin(); i!=m_constMemoryList.end(); ++i) {
+
+	for(std::list<constMemory>::iterator i=m_constMemoryList.begin(); i!=m_constMemoryList.end(); ++i) {
 		char line[40];
 
 		// Global or entry specific
 		if(i->entryIndex == 0)
-			sprintf(line, ".const %s c%d[%d] = {", i->type, i->index, i->m_constMemory.size());
+			sprintf(line, ".const %s constant0[%d] = {", i->type, i->m_constMemory.size());
 		else
 			sprintf(line, ".const %s ce%dc%d[%d] = {", i->type, i->entryIndex, i->index, i->m_constMemory.size());
 	
+		output(line);
+
+		std::list<std::string>::iterator j;
+		int l=0;
+		for(j=i->m_constMemory.begin(); j!=i->m_constMemory.end(); ++j) {
+			if(j!=i->m_constMemory.begin())
+				output(", ");
+			if( (l++ % 4) == 0) output("\n          ");
+			output(j->c_str());
+		}
+		output("\n};\n\n");
+	}
+
+
+	for(std::list<constMemory2>::iterator i=m_constMemoryList2.begin(); i!=m_constMemoryList2.end(); ++i) {
+		char line[1024];
+
+		// Global or entry specific
+		sprintf(line, ".const %s constant1%s[%d] = {", i->type, i->kernel, i->m_constMemory.size());
+
 		output(line);
 
 		std::list<std::string>::iterator j;
@@ -565,13 +609,16 @@ void decudaInstList::addVector(char* vector, int vectorSize) {
 // memType: 0=constant, 1=shared, 2=global, 3=local
 void decudaInstList::addMemoryOperand(std::string mem, int memType) {
 	std::string origMem = mem;
+	assert(0 && "This function is obsolete and shouldn't be used");
 
 	// If constant memory type, add prefix for entry specific constant memory
 	if(memType == 0) {
 		// Entry-specific constant memory c1
 		if(mem.substr(0, 3) == "c1[") {
 			std::stringstream out;
-			out << "ce" << m_entryList.size() << mem;
+			//out << "ce" << m_entryList.size() << mem;
+			mem = mem.substr(2);
+			out << "constant1" << this->m_entryList.back().m_entryName << mem;
 			mem = out.str();
 		}
 		// Global memory c14

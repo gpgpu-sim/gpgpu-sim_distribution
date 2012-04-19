@@ -43,6 +43,7 @@
 #include "ptx_loader.h"
 #include "ptx_parser.h"
 #include "../gpgpu-sim/gpu-sim.h"
+#include "ptx_sim.h"
 #include "../gpgpusim_entrypoint.h"
 #include "decuda_pred_table/decuda_pred_table.h"
 #include "../stream_manager.h"

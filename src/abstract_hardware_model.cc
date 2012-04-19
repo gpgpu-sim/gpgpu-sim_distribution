@@ -49,9 +49,18 @@ void move_warp( warp_inst_t *&dst, warp_inst_t *&src )
 
 void gpgpu_functional_sim_config::reg_options(class OptionParser * opp)
 {
+	option_parser_register(opp, "-gpgpu_ptx_use_cuobjdump", OPT_BOOL,
+                 &m_ptx_use_cuobjdump,
+                 "Use cuobjdump to extract ptx and sass from binaries",
+#if (CUDART_VERSION >= 4000)
+                 "1"
+#else
+                 "0"
+#endif
+                 );
     option_parser_register(opp, "-gpgpu_ptx_convert_to_ptxplus", OPT_BOOL,
                  &m_ptx_convert_to_ptxplus,
-                 "Convert embedded ptx to ptxplus",
+                 "Convert SASS (native ISA) to ptxplus and run ptxplus",
                  "0");
     option_parser_register(opp, "-gpgpu_ptx_save_converted_ptxplus", OPT_BOOL,
                  &m_ptx_save_converted_ptxplus,

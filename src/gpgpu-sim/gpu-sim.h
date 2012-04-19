@@ -72,8 +72,14 @@ struct memory_config {
    void init()
    {
       assert(gpgpu_dram_timing_opt);
-      sscanf(gpgpu_dram_timing_opt,"%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d",
-             &nbk,&tCCD,&tRRD,&tRCD,&tRAS,&tRP,&tRC,&CL,&WL,&tCDLR,&tWR);
+      sscanf(gpgpu_dram_timing_opt,"%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d",
+             &nbk,&nbkgrp,&tCCD,&tCCDL,&tRRD,&tRCD,&tRAS,&tRP,&tRTPL,&tRC,&CL,&WL,&tCDLR,&tWR);
+		int nbkt = nbk/nbkgrp;
+		unsigned i;
+		for (i=0; nbkt>0; i++) {
+			nbkt = nbkt>>1;
+		}
+		bk_tag_length = i;
       tRCDWR = tRCD-(WL+1);
       tRTW = (CL+(BL/2)+2-WL);
       tWTR = (WL+(BL/2)+tCDLR); 
@@ -101,6 +107,10 @@ struct memory_config {
    unsigned dram_latency;
 
    // DRAM parameters
+
+   unsigned tCCDL;  //column to column delay when bank groups are enabled
+   unsigned tRTPL;  //read to precharge delay when bank groups are enabled for GDDR5 this is identical to RTPS, if for other DRAM this is different, you will need to split them in two
+
    unsigned tCCD;   //column to column delay
    unsigned tRRD;   //minimal time required between activation of rows in different banks
    unsigned tRCD;   //row to column delay - time required to activate a row before a read
@@ -118,6 +128,9 @@ struct memory_config {
    unsigned tWTR;   //time to switch from write to read 
    unsigned tWTP;   //time to switch from write to precharge in the same bank
    unsigned busW;
+
+   unsigned nbkgrp; // number of bank groups (has to be power of 2)
+   unsigned bk_tag_length; //number of bits that define a bank inside a bank group
 
    unsigned nbk;
 
@@ -237,7 +250,7 @@ public:
    const gpgpu_sim_config &get_config() const { return m_config; }
    void gpu_print_stat() const;
    void dump_pipeline( int mask, int s, int m ) const;
-   
+
    //The next three functions added to be used by the functional simulation function
    
    //! Get shader core configuration
@@ -270,6 +283,7 @@ private:
    void shader_print_runtime_stat( FILE *fout );
    void shader_print_l1_miss_stat( FILE *fout ) const;
    void visualizer_printstat();
+   void print_shader_cycle_distro( FILE *fout ) const;
 
    void gpgpu_debug();
 
@@ -311,7 +325,7 @@ public:
    unsigned long long  gpu_sim_insn;
    unsigned long long  gpu_tot_sim_insn;
    unsigned long long  gpu_sim_insn_last_update;
-   unsigned gpu_sim_insn_last_update_sid; 
+   unsigned gpu_sim_insn_last_update_sid;
 };
 
 #endif
