@@ -45,7 +45,7 @@ unsigned ptxinfo_col = 0;
 %}
 
 %%
-
+"ptxas info    : Function properties for"[^\n]*\n[^\n]*
 "warning"[^\n]* TC; return WARNING;
 "ptxas"	TC; 	return HEADER;
 "info"	TC; 	return INFO;
