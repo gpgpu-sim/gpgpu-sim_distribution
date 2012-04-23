@@ -253,9 +253,9 @@ public:
     scheduler_unit(shader_core_stats* stats, shader_core_ctx* shader, 
                    Scoreboard* scoreboard, simt_stack** simt, 
                    std::vector<shd_warp_t>* warp, 
-                   warp_inst_t** sp_out,
-                   warp_inst_t** sfu_out,
-                   warp_inst_t** mem_out) 
+                   register_set* sp_out,
+                   register_set* sfu_out,
+                   register_set* mem_out) 
         : supervised_warps(), m_last_sup_id_issued(0), m_stats(stats), m_shader(shader),
         m_scoreboard(scoreboard), m_simt_stack(simt), /*m_pipeline_reg(pipe_regs),*/ m_warp(warp),
         m_sp_out(sp_out),m_sfu_out(sfu_out),m_mem_out(mem_out){} 
@@ -275,9 +275,9 @@ private:
     simt_stack** m_simt_stack;
     //warp_inst_t** m_pipeline_reg;
     std::vector<shd_warp_t>* m_warp;
-    warp_inst_t** m_sp_out;
-    warp_inst_t** m_sfu_out;
-    warp_inst_t** m_mem_out;
+    register_set* m_sp_out;
+    register_set* m_sfu_out;
+    register_set* m_mem_out;
 };
 
 
@@ -294,7 +294,7 @@ public:
       m_initialized=false;
    }
    void add_cu_set(unsigned cu_set, unsigned num_cu, unsigned num_dispatch);
-   typedef std::vector<warp_inst_t**> port_vector_t;
+   typedef std::vector<register_set*> port_vector_t;
    typedef std::vector<unsigned int> uint_vector_t;
    void add_port( port_vector_t & input, port_vector_t & ouput, uint_vector_t cu_sets);
    void init( unsigned num_banks, shader_core_ctx *shader );
@@ -574,7 +574,7 @@ private:
                 unsigned log2_warp_size,
                 const core_config *config,
                 opndcoll_rfu_t *rfu ); 
-      void allocate( warp_inst_t** pipeline_reg, warp_inst_t** output_reg );
+      bool allocate( register_set* pipeline_reg, register_set* output_reg );
 
       void collect_operand( unsigned op )
       {
@@ -589,7 +589,7 @@ private:
       unsigned m_cuid; // collector unit hw id
       unsigned m_warp_id;
       warp_inst_t  *m_warp;
-      warp_inst_t** m_output_register; // pipeline register to issue to when ready
+      register_set* m_output_register; // pipeline register to issue to when ready
       op_t *m_src_op;
       std::bitset<MAX_REG_OPERANDS*2> m_not_ready;
       unsigned m_num_banks;
@@ -721,7 +721,7 @@ public:
     ~simd_function_unit() { delete m_dispatch_reg; }
 
     // modifiers
-    virtual void issue( warp_inst_t *&inst ) { move_warp(m_dispatch_reg,inst); }
+    virtual void issue( register_set& source_reg ) { source_reg.move_out_to(m_dispatch_reg); }
     virtual void cycle() = 0;
 
     // accessors
@@ -741,13 +741,14 @@ protected:
 
 class pipelined_simd_unit : public simd_function_unit {
 public:
-    pipelined_simd_unit( warp_inst_t **result_port, const shader_core_config *config, unsigned max_latency );
+    pipelined_simd_unit( register_set* result_port, const shader_core_config *config, unsigned max_latency );
 
     //modifiers
     virtual void cycle() 
     {
         if( !m_pipeline_reg[0]->empty() )
-            move_warp(*m_result_port,m_pipeline_reg[0]); // non-stallable pipeline
+            //move_warp(*m_result_port,m_pipeline_reg[0]); // non-stallable pipeline
+            m_result_port->move_in(m_pipeline_reg[0]);
         for( unsigned stage=0; (stage+1)<m_pipeline_depth; stage++ ) 
             move_warp(m_pipeline_reg[stage], m_pipeline_reg[stage+1]);
         if( !m_dispatch_reg->empty() ) {
@@ -757,9 +758,11 @@ public:
             }
         }
     }
-    virtual void issue( warp_inst_t *&inst )
+
+    virtual void issue( register_set& source_reg )
     {
-        move_warp(m_dispatch_reg,inst);
+        //move_warp(m_dispatch_reg,source_reg);
+        source_reg.move_out_to(m_dispatch_reg);
     }
 
     // accessors
@@ -781,13 +784,13 @@ public:
 protected:
     unsigned m_pipeline_depth;
     warp_inst_t **m_pipeline_reg;
-    warp_inst_t **m_result_port;
+    register_set *m_result_port;
 };
 
 class sfu : public pipelined_simd_unit
 {
 public:
-    sfu( warp_inst_t **result_port, const shader_core_config *config );
+    sfu( register_set* result_port, const shader_core_config *config );
     virtual bool can_issue( const warp_inst_t &inst ) const
     {
         switch(inst.op) {
@@ -802,7 +805,7 @@ public:
 class sp_unit : public pipelined_simd_unit
 {
 public:
-    sp_unit( warp_inst_t **result_port, const shader_core_config *config );
+    sp_unit( register_set* result_port, const shader_core_config *config );
     virtual bool can_issue( const warp_inst_t &inst ) const
     {
         switch(inst.op) {
@@ -834,7 +837,7 @@ public:
                unsigned sid, unsigned tpc );
 
     // modifiers
-    virtual void issue( warp_inst_t *&inst ); 
+    virtual void issue( register_set &inst );
     virtual void cycle();
      
     void fill( mem_fetch *mf );
@@ -907,8 +910,22 @@ enum pipeline_stage_name_t {
     N_PIPELINE_STAGES 
 };
 
+const char* const pipeline_stage_name_decode[] = {
+    "ID_OC_SP",
+    "ID_OC_SFU",  
+    "ID_OC_MEM",  
+    "OC_EX_SP",
+    "OC_EX_SFU",
+    "OC_EX_MEM",
+    "EX_WB",
+    "N_PIPELINE_STAGES" 
+};
+
 struct shader_core_config : public core_config
 {
+    shader_core_config(){
+	pipeline_widths_string = NULL;
+    }
     void init()
     {
         int ntok = sscanf(gpgpu_shader_core_pipeline_opt,"%d:%d", 
@@ -917,7 +934,21 @@ struct shader_core_config : public core_config
         if(ntok != 2) {
            printf("GPGPU-Sim uArch: error while parsing configuration string gpgpu_shader_core_pipeline_opt\n");
            abort();
-        }
+	}
+
+	char* toks = new char[100];
+	char* tokd = toks;
+	strcpy(toks,pipeline_widths_string);
+
+	toks = strtok(toks,",");
+	for (unsigned i = 0; i < N_PIPELINE_STAGES; i++) { 
+	    assert(toks);
+	    ntok = sscanf(toks,"%d", &pipe_widths[i]);
+	    assert(ntok == 1); 
+	    toks = strtok(NULL,",");
+	}
+	delete tokd;
+
         if (n_thread_per_shader > MAX_THREAD_PER_SM) {
            printf("GPGPU-Sim uArch: Error ** increase MAX_THREAD_PER_SM in abstract_hardware_model.h from %u to %u\n", 
                   MAX_THREAD_PER_SM, n_thread_per_shader);
@@ -949,7 +980,10 @@ struct shader_core_config : public core_config
     unsigned n_thread_per_shader;
     unsigned max_warps_per_shader; 
     unsigned max_cta_per_core; //Limit on number of concurrent CTAs in shader core
-    
+
+    char* pipeline_widths_string;
+    int pipe_widths[N_PIPELINE_STAGES];
+
     cache_config m_L1I_config;
     cache_config m_L1T_config;
     cache_config m_L1C_config;
@@ -975,6 +1009,10 @@ struct shader_core_config : public core_config
     unsigned int gpgpu_operand_collector_num_out_ports_sfu;
     unsigned int gpgpu_operand_collector_num_out_ports_mem;
     unsigned int gpgpu_operand_collector_num_out_ports_gen;
+
+    int gpgpu_num_sp_units;
+    int gpgpu_num_sfu_units;
+    int gpgpu_num_mem_units;	
 
     //Shader core resources
     unsigned gpgpu_shader_registers;
@@ -1175,7 +1213,7 @@ private:
     
     void issue();
     friend class scheduler_unit; //this is needed to use private issue warp.
-    void issue_warp( warp_inst_t *&warp, const warp_inst_t *pI, const active_mask_t &active_mask, unsigned warp_id );
+    void issue_warp( register_set& warp, const warp_inst_t *pI, const active_mask_t &active_mask, unsigned warp_id );
     void func_exec_inst( warp_inst_t &inst );
 
      // Returns numbers of addresses in translated_addrs
@@ -1224,7 +1262,7 @@ private:
     std::vector<shd_warp_t>   m_warp;   // per warp information array
     barrier_set_t             m_barriers;
     ifetch_buffer_t           m_inst_fetch_buffer;
-    warp_inst_t             **m_pipeline_reg;
+    std::vector<register_set> m_pipeline_reg;
     Scoreboard               *m_scoreboard;
     opndcoll_rfu_t            m_operand_collector;
 
@@ -1233,9 +1271,9 @@ private:
 
     // execute
     unsigned m_num_function_units;
-    enum pipeline_stage_name_t *m_dispatch_port;
-    enum pipeline_stage_name_t *m_issue_port;
-    simd_function_unit **m_fu; // stallable pipelines should be last in this array
+    std::vector<pipeline_stage_name_t> m_dispatch_port;
+    std::vector<pipeline_stage_name_t> m_issue_port;
+    std::vector<simd_function_unit*> m_fu; // stallable pipelines should be last in this array
     ldst_unit *m_ldst_unit;
     static const unsigned MAX_ALU_LATENCY = 64;
     std::bitset<MAX_ALU_LATENCY> m_result_bus;
