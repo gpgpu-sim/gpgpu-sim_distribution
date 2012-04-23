@@ -862,6 +862,84 @@ class core_t {
         class ptx_thread_info ** m_thread; 
 };
 
+
+//register that can hold multiple instructions.
+class register_set {
+public:
+	register_set(unsigned num, const char* name){
+		for( unsigned i = 0; i < num; i++ ) {
+			regs.push_back(new warp_inst_t());
+		}
+		m_name = name;
+	}
+	bool has_free(){
+		for( unsigned i = 0; i < regs.size(); i++ ) {
+			if( regs[i]->empty() ) {
+				return true;
+			}
+		}
+		return false;
+	}
+	bool has_ready(){
+		for( unsigned i = 0; i < regs.size(); i++ ) {
+			if( not regs[i]->empty() ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	void move_in( warp_inst_t *&src ){
+		warp_inst_t** free = get_free();
+		move_warp(*free, src);
+	}
+	//void copy_in( warp_inst_t* src ){
+		//   src->copy_contents_to(*get_free());
+		//}
+	void move_out_to( warp_inst_t *&dest ){
+		warp_inst_t **ready=get_ready();
+		move_warp(dest, *ready);
+	}
+
+	warp_inst_t** get_ready(){
+		warp_inst_t** ready;
+		ready = NULL;
+		for( unsigned i = 0; i < regs.size(); i++ ) {
+			if( not regs[i]->empty() ) {
+				if( ready and (*ready)->get_uid() < regs[i]->get_uid() ) {
+					// ready is oldest
+				} else {
+					ready = &regs[i];
+				}
+			}
+		}
+		return ready;
+	}
+
+	void print(FILE* fp) const{
+		fprintf(fp, "%s : @%p\n", m_name, this);
+		for( unsigned i = 0; i < regs.size(); i++ ) {
+			fprintf(fp, "     ");
+			regs[i]->print(fp);
+			fprintf(fp, "\n");
+		}
+	}
+
+	warp_inst_t ** get_free(){
+		for( unsigned i = 0; i < regs.size(); i++ ) {
+			if( regs[i]->empty() ) {
+				return &regs[i];
+			}
+		}
+		assert(0 && "No free registers found");
+		return NULL;
+	}
+
+private:
+	std::vector<warp_inst_t*> regs;
+	const char* m_name;
+};
+
 #endif // #ifdef __cplusplus
 
 #endif // #ifndef ABSTRACT_HARDWARE_MODEL_INCLUDED

@@ -245,6 +245,19 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_simt_core_sim_order", OPT_INT32, &simt_core_sim_order,
                             "Select the simulation order of cores in a cluster (0=Fix, 1=Round-Robin)",
                             "1");
+    option_parser_register(opp, "-gpgpu_pipeline_widths", OPT_CSTR, &pipeline_widths_string,
+                            "Pipeline widths "
+    		                "ID_OC_SP,ID_OC_SFU,ID_OC_MEM,OC_EX_SP,OC_EX_SFU,OC_EX_MEM,EX_WB",
+                            "1,1,1,1,1,1,1" );
+    option_parser_register(opp, "-gpgpu_num_sp_units", OPT_INT32, &gpgpu_num_sp_units,
+    		                "Number of SP units (default=1)",
+    		                "1");
+    option_parser_register(opp, "-gpgpu_num_sfu_units", OPT_INT32, &gpgpu_num_sfu_units,
+    		                "Number of SF units (default=1)",
+    		                "1");
+    option_parser_register(opp, "-gpgpu_num_mem_units", OPT_INT32, &gpgpu_num_mem_units,
+    		                "Number if ldst units (default=1) WARNING: not hooked up to anything",
+                             "1");
 }
 
 void gpgpu_sim_config::reg_options(option_parser_t opp)

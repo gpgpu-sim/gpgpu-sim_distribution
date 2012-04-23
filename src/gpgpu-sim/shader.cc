@@ -82,9 +82,10 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
    m_sid = shader_id;
    m_tpc = tpc_id;
 
-   m_pipeline_reg = new warp_inst_t*[N_PIPELINE_STAGES];
-   for (int j = 0; j<N_PIPELINE_STAGES; j++) 
-      m_pipeline_reg[j] = new warp_inst_t(config);
+   m_pipeline_reg.reserve(N_PIPELINE_STAGES);
+   for (int j = 0; j<N_PIPELINE_STAGES; j++) {
+      m_pipeline_reg.push_back(register_set(m_config->pipe_widths[j],pipeline_stage_name_decode[j]));
+   }
 
    m_threadState = (thread_ctx_t*) calloc(sizeof(thread_ctx_t), config->n_thread_per_shader);
    m_thread = (ptx_thread_info**) calloc(sizeof(ptx_thread_info*), config->n_thread_per_shader);
@@ -186,24 +187,30 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
    m_operand_collector.init( m_config->gpgpu_num_reg_banks, this );
 
    // execute
-   m_num_function_units = 3; // sp_unit, sfu, ldst_unit
-   m_dispatch_port = new enum pipeline_stage_name_t[ m_num_function_units ];
-   m_issue_port = new enum pipeline_stage_name_t[ m_num_function_units ];
+   m_num_function_units = m_config->gpgpu_num_sp_units + m_config->gpgpu_num_sfu_units + 1; // sp_unit, sfu, ldst_unit
+   //m_dispatch_port = new enum pipeline_stage_name_t[ m_num_function_units ];
+   //m_issue_port = new enum pipeline_stage_name_t[ m_num_function_units ];
 
-   m_fu = new simd_function_unit*[m_num_function_units];
+   //m_fu = new simd_function_unit*[m_num_function_units];
 
-   m_fu[0] = new sp_unit( &m_pipeline_reg[EX_WB], m_config );
-   m_dispatch_port[0] = ID_OC_SP;
-   m_issue_port[0] = OC_EX_SP;
+   for (int k = 0; k < m_config->gpgpu_num_sp_units; k++) {
+       m_fu.push_back(new sp_unit( &m_pipeline_reg[EX_WB], m_config ));
+       m_dispatch_port.push_back(ID_OC_SP);
+       m_issue_port.push_back(OC_EX_SP);
+   }
 
-   m_fu[1] = new sfu( &m_pipeline_reg[EX_WB], m_config );
-   m_dispatch_port[1] = ID_OC_SFU;
-   m_issue_port[1] = OC_EX_SFU;
+   for (int k = 0; k < m_config->gpgpu_num_sfu_units; k++) {
+       m_fu.push_back(new sfu( &m_pipeline_reg[EX_WB], m_config ));
+       m_dispatch_port.push_back(ID_OC_SFU);
+       m_issue_port.push_back(OC_EX_SFU);
+   }
 
    m_ldst_unit = new ldst_unit( m_icnt, m_mem_fetch_allocator, this, &m_operand_collector, m_scoreboard, config, mem_config, stats, shader_id, tpc_id );
-   m_fu[2] = m_ldst_unit;
-   m_dispatch_port[2] = ID_OC_MEM;
-   m_issue_port[2] = OC_EX_MEM;
+   m_fu.push_back(m_ldst_unit);
+   m_dispatch_port.push_back(ID_OC_MEM);
+   m_issue_port.push_back(OC_EX_MEM);
+
+   assert(m_num_function_units == m_fu.size() and m_fu.size() == m_dispatch_port.size() and m_fu.size() == m_issue_port.size());
 
    m_last_inst_gpu_sim_cycle = 0;
    m_last_inst_gpu_tot_sim_cycle = 0;
@@ -505,21 +512,24 @@ void shader_core_ctx::func_exec_inst( warp_inst_t &inst )
         inst.generate_mem_accesses();
 }
 
-void shader_core_ctx::issue_warp( warp_inst_t *&pipe_reg, const warp_inst_t *next_inst, const active_mask_t &active_mask, unsigned warp_id )
+void shader_core_ctx::issue_warp( register_set& pipe_reg_set, const warp_inst_t* next_inst, const active_mask_t &active_mask, unsigned warp_id )
 {
+    warp_inst_t** pipe_reg = pipe_reg_set.get_free();
+    assert(pipe_reg);
+    
     m_warp[warp_id].ibuffer_free();
     assert(next_inst->valid());
-    *pipe_reg = *next_inst; // static instruction information
-    pipe_reg->issue( active_mask, warp_id, gpu_tot_sim_cycle + gpu_sim_cycle ); // dynamic instruction information
-    m_stats->shader_cycle_distro[2+pipe_reg->active_count()]++;
-    func_exec_inst( *pipe_reg );
+    **pipe_reg = *next_inst; // static instruction information
+    (*pipe_reg)->issue( active_mask, warp_id, gpu_tot_sim_cycle + gpu_sim_cycle ); // dynamic instruction information
+    m_stats->shader_cycle_distro[2+(*pipe_reg)->active_count()]++;
+    func_exec_inst( **pipe_reg );
     if( next_inst->op == BARRIER_OP ) 
         m_barriers.warp_reaches_barrier(m_warp[warp_id].get_cta_id(),warp_id);
     else if( next_inst->op == MEMORY_BARRIER_OP ) 
         m_warp[warp_id].set_membar();
 
-    updateSIMTStack(warp_id,m_config->warp_size,pipe_reg);
-    m_scoreboard->reserveRegisters(pipe_reg);
+    updateSIMTStack(warp_id,m_config->warp_size,*pipe_reg);
+    m_scoreboard->reserveRegisters(*pipe_reg);
     m_warp[warp_id].set_next_pc(next_inst->pc + next_inst->isize);
 }
 
@@ -565,15 +575,15 @@ void scheduler_unit::cycle()
                         const active_mask_t &active_mask = m_simt_stack[warp_id]->get_active_mask();
                         assert( warp(warp_id).inst_in_pipeline() );
                         if ( (pI->op == LOAD_OP) || (pI->op == STORE_OP) || (pI->op == MEMORY_BARRIER_OP) ) {
-                            if( (*m_mem_out)->empty() ) {
+                            if( m_mem_out->has_free() ) {
                                 m_shader->issue_warp(*m_mem_out,pI,active_mask,warp_id);
                                 issued++;
                                 issued_inst=true;
                                 warp_inst_issued = true;
                             }
                         } else {
-                            bool sp_pipe_avail = (*m_sp_out)->empty();
-                            bool sfu_pipe_avail = (*m_sfu_out)->empty();
+                            bool sp_pipe_avail = m_sp_out->has_free();
+                            bool sfu_pipe_avail = m_sfu_out->has_free();
                             if( sp_pipe_avail && (pI->op != SFU_OP) ) {
                                 // always prefer SP pipe for operations that can use both SP and SFU pipelines
                                 m_shader->issue_warp(*m_sp_out,pI,active_mask,warp_id);
@@ -694,12 +704,13 @@ void shader_core_ctx::execute()
         for( unsigned c=0; c < multiplier; c++ ) 
             m_fu[n]->cycle();
         enum pipeline_stage_name_t issue_port = m_issue_port[n];
-        warp_inst_t *& issue_inst = m_pipeline_reg[ issue_port ];
-        if( !issue_inst->empty() && m_fu[n]->can_issue( *issue_inst ) ) {
+        register_set& issue_inst = m_pipeline_reg[ issue_port ];
+	warp_inst_t** ready_reg = issue_inst.get_ready();
+        if( issue_inst.has_ready() && m_fu[n]->can_issue( **ready_reg ) ) {
             bool schedule_wb_now = !m_fu[n]->stallable();
-            if( schedule_wb_now && !m_result_bus.test( issue_inst->latency ) ) {
-                assert( issue_inst->latency < MAX_ALU_LATENCY );
-                m_result_bus.set( issue_inst->latency );
+            if( schedule_wb_now && !m_result_bus.test( (*ready_reg)->latency ) ) {
+                assert( (*ready_reg)->latency < MAX_ALU_LATENCY );
+                m_result_bus.set( (*ready_reg)->latency );
                 m_fu[n]->issue( issue_inst );
             } else if( !schedule_wb_now ) {
                 m_fu[n]->issue( issue_inst );
@@ -730,8 +741,9 @@ void shader_core_ctx::warp_inst_complete(const warp_inst_t &inst)
 
 void shader_core_ctx::writeback()
 {
-    warp_inst_t *&pipe_reg = m_pipeline_reg[EX_WB];
-    if( !pipe_reg->empty()) {
+    warp_inst_t** preg = m_pipeline_reg[EX_WB].get_ready();
+    warp_inst_t* pipe_reg = (preg==NULL)? NULL:*preg;
+    if( preg and !pipe_reg->empty() ) {
     	/*
     	 * The operand collector writeback can generally generate a stall
     	 * However, here, the pipelines should be un-stallable. This is
@@ -910,20 +922,20 @@ simd_function_unit::simd_function_unit( const shader_core_config *config )
     m_dispatch_reg = new warp_inst_t(config); 
 }
 
-sfu::sfu( warp_inst_t **result_port, const shader_core_config *config ) 
+sfu::sfu( register_set* result_port, const shader_core_config *config ) 
     : pipelined_simd_unit(result_port,config,config->max_sfu_latency) 
 { 
     m_name = "SFU"; 
 }
 
-sp_unit::sp_unit( warp_inst_t **result_port, const shader_core_config *config ) 
+sp_unit::sp_unit( register_set* result_port, const shader_core_config *config ) 
     : pipelined_simd_unit(result_port,config,config->max_sp_latency) 
 { 
     m_name = "SP "; 
 }
 
 
-pipelined_simd_unit::pipelined_simd_unit( warp_inst_t **result_port, const shader_core_config *config, unsigned max_latency ) 
+pipelined_simd_unit::pipelined_simd_unit( register_set* result_port, const shader_core_config *config, unsigned max_latency ) 
     : simd_function_unit(config) 
 {
     m_result_port = result_port;
@@ -1054,8 +1066,11 @@ unsigned ldst_unit::clock_multiplier() const
     return m_config->mem_warp_parts; 
 }
 
-void ldst_unit::issue( warp_inst_t *&inst ) 
-{ 
+/* Seems to be not used by anything
+ * */
+void ldst_unit::issue( register_set &reg_set )
+{
+	warp_inst_t* inst = *(reg_set.get_ready());
    // stat collection
    m_core->mem_instruction_stats(*inst); 
 
@@ -1072,7 +1087,7 @@ void ldst_unit::issue( warp_inst_t *&inst )
       }
    }
 
-   pipelined_simd_unit::issue(inst); 
+   pipelined_simd_unit::issue(reg_set);
 }
 
 void ldst_unit::cycle()
@@ -1309,7 +1324,8 @@ void warp_inst_t::print( FILE *fout ) const
 
 void shader_core_ctx::print_stage(unsigned int stage, FILE *fout ) const
 {
-   m_pipeline_reg[stage]->print(fout);
+   m_pipeline_reg[stage].print(fout);
+   //m_pipeline_reg[stage].print(fout);
 }
 
 void shader_core_ctx::display_simt_state(FILE *fout, int mask ) const
@@ -1414,26 +1430,39 @@ void shader_core_ctx::display_pipeline(FILE *fout, int print_mem, int mask ) con
    }
    fprintf(fout,"\n");
    display_simt_state(fout,mask);
-
+   fprintf(fout, "-------------------------- Scoreboard\n");
    m_scoreboard->printContents();
-
+/*
    fprintf(fout,"ID/OC (SP)  = ");
    print_stage(ID_OC_SP, fout);
    fprintf(fout,"ID/OC (SFU) = ");
    print_stage(ID_OC_SFU, fout);
    fprintf(fout,"ID/OC (MEM) = ");
    print_stage(ID_OC_MEM, fout);
-
+*/
+   fprintf(fout, "-------------------------- OP COL\n");
    m_operand_collector.dump(fout);
-
-   fprintf(fout, "OC/EX (SP)  = ");
+/* fprintf(fout, "OC/EX (SP)  = ");
    print_stage(OC_EX_SP, fout);
    fprintf(fout, "OC/EX (SFU) = ");
    print_stage(OC_EX_SFU, fout);
    fprintf(fout, "OC/EX (MEM) = ");
    print_stage(OC_EX_MEM, fout);
-   for( unsigned n=0; n < m_num_function_units; n++ ) 
+*/
+   fprintf(fout, "-------------------------- Pipe Regs\n");
+
+   for (unsigned i = 0; i < N_PIPELINE_STAGES; i++) {
+       fprintf(fout,"--- %s ---\n",pipeline_stage_name_decode[i]);
+       print_stage(i,fout);fprintf(fout,"\n");
+   }
+
+   fprintf(fout, "-------------------------- Fu\n");
+   for( unsigned n=0; n < m_num_function_units; n++ ){
        m_fu[n]->print(fout);
+       fprintf(fout, "---------------\n");
+   }
+   fprintf(fout, "-------------------------- other:\n");
+
    std::string bits = m_result_bus.to_string();
    fprintf(fout, "EX/WB sched= %s\n", bits.c_str() );
    fprintf(fout, "EX/WB      = ");
@@ -1978,19 +2007,20 @@ void opndcoll_rfu_t::allocate_cu( unsigned port_num )
 {
    input_port_t& inp = m_in_ports[port_num];
    for (unsigned i = 0; i < inp.m_in.size(); i++) {
-       if( !(*inp.m_in[i])->empty() ) {
-           //find a free cu
+       if( (*inp.m_in[i]).has_ready() ) {
+          //find a free cu 
           for (unsigned j = 0; j < inp.m_cu_sets.size(); j++) {
-              std::vector<collector_unit_t> & cu_set = m_cus[inp.m_cu_sets[j]]; 
+              std::vector<collector_unit_t> & cu_set = m_cus[inp.m_cu_sets[j]];
+	      bool allocated = false;
               for (unsigned k = 0; k < cu_set.size(); k++) {
                   if(cu_set[k].is_free()) {
                      collector_unit_t *cu = &cu_set[k];
-                     cu->allocate(inp.m_in[i],inp.m_out[i]);
+                     allocated = cu->allocate(inp.m_in[i],inp.m_out[i]);
                      m_arbiter.add_read_requests(cu);
                      break;
                   }
               }
-              if ((*inp.m_in[i])->empty()) break; //cu has been allocated, no need to search more.
+              if (allocated) break; //cu has been allocated, no need to search more.
           }
           break; // can only service a single input, if it failed it will fail for others.
        }
@@ -2021,7 +2051,7 @@ void opndcoll_rfu_t::allocate_reads()
 
 bool opndcoll_rfu_t::collector_unit_t::ready() const 
 { 
-   return (!m_free) && m_not_ready.none() && (*m_output_register)->empty(); 
+   return (!m_free) && m_not_ready.none() && (*m_output_register).has_free(); 
 }
 
 void opndcoll_rfu_t::collector_unit_t::dump(FILE *fp, const shader_core_ctx *shader ) const
@@ -2053,13 +2083,14 @@ void opndcoll_rfu_t::collector_unit_t::init( unsigned n,
    m_bank_warp_shift=log2_warp_size;
 }
 
-void opndcoll_rfu_t::collector_unit_t::allocate( warp_inst_t** pipeline_reg, warp_inst_t** output_reg ) 
+bool opndcoll_rfu_t::collector_unit_t::allocate( register_set* pipeline_reg_set, register_set* output_reg_set ) 
 {
    assert(m_free);
    assert(m_not_ready.none());
    m_free = false;
-   m_output_register = output_reg;
-   if( !(*pipeline_reg)->empty() ) {
+   m_output_register = output_reg_set;
+   warp_inst_t **pipeline_reg = pipeline_reg_set->get_ready();
+   if( (pipeline_reg) and !((*pipeline_reg)->empty()) ) {
       m_warp_id = (*pipeline_reg)->warp_id();
       for( unsigned op=0; op < MAX_REG_OPERANDS; op++ ) {
          int reg_num = (*pipeline_reg)->arch_reg.src[op]; // this math needs to match that used in function_info::ptx_decode_inst
@@ -2070,13 +2101,17 @@ void opndcoll_rfu_t::collector_unit_t::allocate( warp_inst_t** pipeline_reg, war
             m_src_op[op] = op_t();
       }
       move_warp(m_warp,*pipeline_reg);
+      //pipeline_reg_set->move_out_to(m_warp);
+      return true;
    }
+   return false;
 }
 
 void opndcoll_rfu_t::collector_unit_t::dispatch()
 {
    assert( m_not_ready.none() );
-   move_warp(*m_output_register,m_warp);
+   //move_warp(*m_output_register,m_warp);
+   m_output_register->move_in(m_warp);
    m_free=true;
    m_output_register = NULL;
    for( unsigned i=0; i<MAX_REG_OPERANDS*2;i++)
