@@ -58,12 +58,12 @@ distribution as long as the following software dependencies are satisfied.
 Step 1: Dependencies
 ====================
 
-Download and install version 3.1 of the CUDA Toolkit.  To use ptxplus (native
-hardware instructions) you must currently use the CUDA Toolkit version 2.3.
-Otherwise use CUDA 3.1.  GPGPU-Sim does not yet support CUDA 4.x.  Note that it
-is possible to have multiple versions of the CUDA toolkit installed on a single
-system -- just install them in different directories and update the
-setup_environment script to point to the version you want to use.
+Download and install the CUDA Toolkit. It is recommended to use version 3.1
+for normal PTX simulatino and version 4.0 for cuobjdump support and/or to use
+PTXPlus (Harware instruction set support). Note that it is possible to have
+multiple versions of the CUDA toolkit installed on a single system -- just
+install them in different directories and update the setup_environment script
+to point to the version you want to use.
 
 [Optional] If you want to run OpenCL on the simulator, download and install
 NVIDIA's OpenCL driver from <http://developer.nvidia.com/opencl>.  Update your
