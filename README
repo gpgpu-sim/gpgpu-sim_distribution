@@ -1,10 +1,9 @@
 GPGPU-Sim Simulator Version 3.0.2 build $Change$
 
-This version of GPGPU-Sim works with CUDA version 3.1 and some earlier
-versions.  It does not (yet) work with CUDA version 4.x. 
+This version of GPGPU-Sim works with CUDA version 3.1 or later.
 
 Please see the copyright notice in the file COPYRIGHT distributed with this
-release in the same directory as this file.  
+release in the same directory as this file.
 
 If you use this simulator in your research please cite:
 
