@@ -171,11 +171,11 @@ These files configure the microarchitecture model of GPGPU-Sim to resemble a
 Quadro FX 5800 (GT 200).
 
 To use ptxplus (native ISA) change the following options in the configuration
-file to "1" (Note: you need CUDA version 4.0 or higher).
+file to "1" (Note: you need CUDA version 4.0 or higher) as follows:
 
--gpgpu_ptx_use_cuobjdump
--gpgpu_ptx_convert_to_ptxplus
--gpgpu_ptx_save_converted_ptxplus
+-gpgpu_ptx_use_cuobjdump 1
+-gpgpu_ptx_convert_to_ptxplus 1
+-gpgpu_ptx_save_converted_ptxplus 1
 
 Now To run a CUDA application on the simulator, simply execute
 	
