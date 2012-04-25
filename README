@@ -121,9 +121,9 @@ Step 2: Build
 =============
 
 To build the simulator, you first need to configure how you want it to be
-built. From the root directory if the simulator, do the following:
+built. From the root directory of the simulator, do the following:
 	
-cd distribution
+cd v3.x
 	
 then open the file 'setup_environment' with your favorite text editor. Read
 the file carefully and modify the environment variables in that file to your
@@ -169,11 +169,12 @@ gpgpu-sim/v3.x/configs/QuadroFX5800/ to your application's working directory.
 These files configure the microarchitecture model of GPGPU-Sim to resemble a
 Quadro FX 5800 (GT 200).
 
-To use ptxplus (native ISA) uncomment the following two lines in
-gpgpusim.config (again, note this requires CUDA toolkit 2.3):
+To use ptxplus (native ISA) change the following options in the configuration
+file to "1" (Note: you need CUDA version 4.0 or higher).
 
-#-gpgpu_ptx_convert_to_ptxplus 1
-#-gpgpu_ptx_save_converted_ptxplus 1
+-gpgpu_ptx_use_cuobjdump
+-gpgpu_ptx_convert_to_ptxplus
+-gpgpu_ptx_save_converted_ptxplus
 
 Now To run a CUDA application on the simulator, simply execute
 	
