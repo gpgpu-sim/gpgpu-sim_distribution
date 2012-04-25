@@ -126,7 +126,7 @@ instructions in the cuda toolkit installation, setup_environment will detect
 that automatically, in which case, you don't need to change it in
 setup_environment. The setup_environment script is engineered to work with a
 default system setup, so in the general case you will not need to modify it,
-however, you should still read it carefully to figure out of something specific
+however, you should still read it carefully to figure out if something specific
 to your system needs to be changed. After you have edited that file, save it
 and run
 	
