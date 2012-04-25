@@ -140,7 +140,8 @@ and run
 source setup_environment <build_type>
 	
 replace <build_type> with debug or release. Use release if you need faster
-simulation and debug if you need to run the simulator in gdb.
+simulation and debug if you need to run the simulator in gdb. If nothing is
+specified, release will be used by default.
 
 Now you are ready to build the simulator, just run
 	
@@ -178,11 +179,12 @@ file to "1" (Note: you need CUDA version 4.0 or higher).
 
 Now To run a CUDA application on the simulator, simply execute
 	
-source setup_environment <built_type>.
+source setup_environment <build_type>
 	
-and just launch the executable as you would if it was to run on the hardware.
-To revert back to running on the hardware, remove GPGPU-Sim from your
-LD_LIBRARY_PATH environment variable.
+Use the same <build_type> you used while building the simulator. Then just
+launch the executable as you would if it was to run on the hardware. To revert
+back to running on the hardware, remove GPGPU-Sim from your LD_LIBRARY_PATH
+environment variable.
 
 Running OpenCL applications is identical to running CUDA applications. However,
 OpenCL applications need to communicate with the NVIDIA driver in order to
