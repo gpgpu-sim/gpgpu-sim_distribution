@@ -59,7 +59,7 @@ Step 1: Dependencies
 ====================
 
 Download and install the CUDA Toolkit. It is recommended to use version 3.1
-for normal PTX simulatino and version 4.0 for cuobjdump support and/or to use
+for normal PTX simulation and version 4.0 for cuobjdump support and/or to use
 PTXPlus (Harware instruction set support). Note that it is possible to have
 multiple versions of the CUDA toolkit installed on a single system -- just
 install them in different directories and update the setup_environment script
@@ -84,29 +84,37 @@ GPGPU-Sim dependencies:
 * flex
 * zlib
 * libboost
-* cuda toolkit
+* CUDA Toolkit
 	
 GPGPU-Sim documentation dependencies:
 * doxygen
-* graphviz  
+* graphvi
 
-For CUDA 3.1 we used gcc/g++ version 4.3.2 (if using the CUDA 3.1
-SDK) or 4.5.1 (if not using the CUDA SDK), for CUDA 2.3 we used gcc/g++ version
-4.3.2, for CUDA 1.1 we used gcc/g++ version 4.1.3.  This version of GPGPU-Sim
-does not yet work with CUDA 4.x; We used bison version 2.3, and flex version
-2.5.33.  
+AerialVision dependencies:
+* python-pmw
+* python-ply
+* python-numpy
+* libpng12-dev
+* python-matplotlib
+
+We used gcc/g++ version 4.3.2 with CUDA SDK version 3.1 or 4.5.1 for later CUDA
+SDK versions. We used bison version 2.3, and flex version 2.5.33.
 
 If you are using Ubuntu, the following commands will install all required
 dependencies besides the CUDA Toolkit.
 
-gpgpu-sim dependencies:
+GPGPU-Sim dependencies:
 "sudo apt-get install build-essential xutils-dev bison zlib1g-dev flex
 libboost-all-dev libglu1-mesa-dev"
 
-gpgpu-sim documentation:
+GPGPU-Sim documentation dependencies:
 "sudo apt-get install doxygen graphviz"
 
-cuda sdk dependencies:
+AerialVision dependencies:
+"sudo apt-get install python-pmw python-ply python-numpy libpng12-dev
+python-matplotlib"
+
+CUDA SDK dependencies:
 "sudo apt-get install libxi-dev libxmu-dev libglut3-dev"
 
 
