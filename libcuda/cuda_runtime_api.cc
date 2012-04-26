@@ -1154,7 +1154,8 @@ void setCuobjdumpsassfilename(const char* filename){
 }
 extern "C" int cuobjdump_parse();
 extern "C" FILE *cuobjdump_in;
-//! Return PTX file
+
+//! Call cuobjdump to extract everything (-elf -sass -ptx) to a file
 /*!
  *	This Function extract the whole PTX (for all the files) using cuobjdump
  * */
@@ -1163,7 +1164,7 @@ void extract_ptx(){
 	char* whole_code;
 	char fname[1024]="_ptx_whole_code_WESWW";
 	//! Running CUobjdump using dynamic link to current process
-	snprintf(command,1000,"cuobjdump -ptx -elf -sass /proc/%d/exe > %s",getpid(),fname);
+	snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass /proc/%d/exe > %s",getpid(),fname);
 	printf("Running cuobjdump using \"%s\"\n", command);
 	int result = system(command);
 	if(result) {printf("ERROR: Failed to execute: %s\n", command); exit(1);}
@@ -1174,23 +1175,6 @@ void extract_ptx(){
 	cuobjdump_parse();
 	fclose(cuobjdump_in);
 	printf("Done parsing!!!\n");
-	// Just to stop things here
-
-	/* Hadi's old code
-	FILE* fp = fopen(fname,"r");
-	//! finding size of the file
-	int lSize= 0;
-	fseek (fp , 0 , SEEK_END);
-	lSize = ftell (fp);
-	rewind (fp);
-	//! allocate and copy the entire ptx
-	whole_code = (char*)malloc(lSize * sizeof(char));
-	fread(whole_code,1,lSize,fp);
-	fclose(fp);
-	snprintf(command,1000,"rm %s",fname);
-	//system(command);
-	return whole_code;
-	*/
 }
 
 //! Return proper ptx version
@@ -1217,23 +1201,8 @@ unsigned get_best_version(std::list<cuobjdumpSection> sectionlist, CUctx_st *con
 		}
 	}
 	return max_capability;
-
-	/* Hadi's old code
-	char* start_entry;
-	char* arch_pointer;
-	start_entry = strstr(ptx,"Fatbin ptx code:");
-	while(start_entry){
-		arch_pointer = strstr (start_entry,"arch = ");
-		unsigned int capability = 0;
-		sscanf(arch_pointer,"arch = sm_%u",&capability);
-		if(capability > max_capability && (forced_max_capability == 0 || capability <= forced_max_capability)){
-			max_capability = capability;
-		}
-		start_entry = strstr(arch_pointer,"Fatbin ptx code:");
-	}
-	return  max_capability;
-	*/
 }
+
 /*!
  * Return number of diffrent ptx files generated in first argument
  *  which have sm version equal to selected_capability
@@ -1254,20 +1223,6 @@ unsigned get_number_of_ptx(std::list<cuobjdumpSection> sectionlist, unsigned sel
 		}
 	}
 	return result;
-	/* Hadi's old code
-	char* start_entry;
-	char* arch_pointer;
-	start_entry = strstr(ptx,"Fatbin ptx code:");
-	while(start_entry){
-		arch_pointer = strstr (start_entry,"arch = ");
-		unsigned int capability = 0;
-		sscanf(arch_pointer,"arch = sm_%u",&capability);
-		if(capability == selected_capability)
-			result++;
-		start_entry = strstr(arch_pointer,"Fatbin ptx code:");
-	}
-	*/
-
 }
 
 char* readfile (const char* filename){
@@ -1415,16 +1370,9 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 			symbol_table *symtab;
 			const char *ptx = info->ptx[selected_capability].ptx;
 			if(context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() ) {
-				if (info->cubin[selected_capability].cubin ==NULL) {
-					printf("GPGPU-Sim PTX: Cannot convert to ptxplus no cubin found, probably because it was compiled using newer version of cuda (>=3.0)\nGPGPU-Sim PTX: Exiting ...\n");
-					exit(1);
-				}
-				char *ptxplus_str = gpgpu_ptx_sim_convert_ptx_to_ptxplus(ptx, info->cubin[selected_capability].cubin, source_num++,
-						context->get_device()->get_gpgpu()->get_config().saved_converted_ptxplus(), false);
-				symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str,source_num);
-				context->add_binary(symtab,fat_cubin_handle);
-				gpgpu_ptxinfo_load_from_string(ptx,source_num);
-				delete[] ptxplus_str;
+				printf("GPGPU-Sim PTX: ERROR ** PTXPlus is only supported through cuobjdump\n"
+				"\tEither enable cuobjdump or disable PTXPlus in your configuration file\n");
+				exit(1);
 			} else {
 				symtab=gpgpu_ptx_sim_load_ptx_from_string(ptx,source_num);
 				context->add_binary(symtab,fat_cubin_handle);

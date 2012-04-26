@@ -90,157 +90,11 @@ void print_ptx_file( const char *p, unsigned source_num, const char *filename )
    fflush(stdout);
 }
 
-char* gpgpu_ptx_sim_convert_ptx_to_ptxplus(const char *ptx_str, const char *cubin_str, unsigned source_num, bool save_converted, bool cuobjdump)
-{
-
-	printf("GPGPU-Sim PTX: converting EMBEDDED .ptx file to ptxplus \n");
-
-	// Extract ptx to a file
-    char fname_ptx[1024];
-    snprintf(fname_ptx,1024,"_ptx_XXXXXX");
-    int fd=mkstemp(fname_ptx);
-    close(fd);
-
-    printf("GPGPU-Sim PTX: extracting embedded .ptx to temporary file \"%s\"\n", fname_ptx);
-    FILE *ptxfile = fopen(fname_ptx,"w");
-    fprintf(ptxfile,"%s",ptx_str);
-    fclose(ptxfile);
-
-    char fname_ptxplus[1024];
-    snprintf(fname_ptxplus,1024,"_ptxplus_XXXXXX");
-    int fd4=mkstemp(fname_ptxplus);
-    close(fd4);
-
-    // Extract cubin to a file
-    char fname_decuda[1024];
-    char fname_cubin[1024];
-    if( !cuobjdump){
-
-		snprintf(fname_cubin,1024,"_cubin_XXXXXX");
-		int fd2=mkstemp(fname_cubin);
-		close(fd2);
-
-		printf("GPGPU-Sim PTX: extracting embedded cubin to temporary file \"%s\"\n", fname_cubin);
-		FILE *cubinfile = fopen(fname_cubin,"w");
-		fprintf(cubinfile,"%s",cubin_str);
-		fclose(cubinfile);
-
-
-		snprintf(fname_decuda,1024,"_decuda_XXXXXX");
-		int fd3=mkstemp(fname_decuda);
-		close(fd3);
-
-		// Run decuda
-		char decuda_commandline[1024];
-		snprintf(decuda_commandline,1024,"$DECUDA_INSTALL_PATH/decuda.py -o %s %s", fname_decuda, fname_cubin);
-		printf("GPGPU-Sim PTX: calling decuda on cubin file, decuda output file = \"%s\"\n", fname_decuda);
-		int decuda_result = system(decuda_commandline);
-		if( decuda_result != 0 ) {
-			printf("GPGPU-Sim PTX: ERROR ** while calling decuda (b) %d\n", decuda_result);
-			printf("               Ensure env variable DECUDA_INSTALL_PATH is set and points to decuda base directory.\n");
-			exit(1);
-		}
-		// Run decuda_to_ptxplus
-		char d2pp_commandline[1024];
-		snprintf(d2pp_commandline,1024,"$D2PP_INSTALL_PATH/decuda_to_ptxplus %s %s %s %s > /dev/null", fname_decuda, fname_ptx, fname_cubin, fname_ptxplus);
-		printf("GPGPU-Sim PTX: calling decuda_to_ptxplus, ptxplus output file = \"%s\"\n", fname_ptxplus);
-		int d2pp_result = system(d2pp_commandline);
-		if( d2pp_result != 0 ) {
-			printf("GPGPU-Sim PTX: ERROR ** while calling decuda_to_ptxplus %d\n", d2pp_result);
-			printf("               Ensure env variable D2PP_INSTALL_PATH is set and points to decuda_to_ptxplus base directory.\n");
-			exit(1);
-		}
-    }
-    else {
-		// Run cuobjdump_to_ptxplus
-		char commandline[1024];
-		int result;
-		snprintf(commandline, 1024, "$GPGPUSIM_ROOT/cuobjdump_to_ptxplus/cuobjdump_to_ptxplus /proc/%d/exe %s", getpid(), fname_ptxplus);
-		fflush(stdout);
-		printf("GPGPU-Sim PTX: calling cuobjdump_to_ptxplus on exe file, output file = \"%s\"\n", fname_ptxplus);
-		result = system(commandline);
-		if(result){printf("GPGPU-Sim PTX: ERROR ** could not execute %s\n", commandline); exit(1);}
-	}
-
-	// Get ptxplus from file
-	std::ifstream fileStream(fname_ptxplus, std::ios::in);
-	std::string text, line;
-	while(getline(fileStream,line)) {
-		text += (line + "\n");
-	}
-	fileStream.close();
-
-	char* ptxplus_str = new char [strlen(text.c_str())+1];
-	strcpy(ptxplus_str, text.c_str());
-
-	// Save ptxplus to file if specified
-	if(save_converted) {
-	    char fname_ptxplus_save[1024];
-	    snprintf(fname_ptxplus_save,1024,"_%u.ptxplus", source_num );
-		printf("GPGPU-Sim PTX: saving converted ptxplus to file \"%s\"\n", fname_ptxplus_save);
-
-	    FILE *file_ptxplus_save = fopen(fname_ptxplus_save,"w");
-	    fprintf(file_ptxplus_save,"%s",ptxplus_str);
-	    fclose(file_ptxplus_save);
-	}
-
-	// Remove temporary files
-	char rm_commandline[1024];
-	if (!cuobjdump) {
-		snprintf(rm_commandline,1024,"rm -f %s %s %s %s", fname_ptx, fname_cubin, fname_decuda, fname_ptxplus);
-	}
-	else {
-		snprintf(rm_commandline,1024,"rm -f %s %s", fname_ptx, fname_ptxplus);
-	}
-	printf("GPGPU-Sim PTX: removing temporary files using \"%s\"\n", rm_commandline);
-	int rm_result = system(rm_commandline);
-	if( rm_result != 0 ) {
-	   printf("GPGPU-Sim PTX: ERROR ** while removing temporary files %d\n", rm_result);
-	   exit(1);
-	}
-
-	printf("GPGPU-Sim PTX: DONE converting EMBEDDED .ptx file to ptxplus \n");
-
-	return ptxplus_str;
-}
-
 char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const char *ptxfilename, const char *elffilename, const char *sassfilename)
 {
 
 	printf("GPGPU-Sim PTX: converting EMBEDDED .ptx file to ptxplus \n");
 
-/*
-	// Extract ptx to a file
-    char fname_ptx[1024];
-    snprintf(fname_ptx,1024,"_ptx_XXXXXX");
-    int fd1=mkstemp(fname_ptx);
-    close(fd1);
-
-    printf("GPGPU-Sim PTX: extracting embedded .ptx to temporary file \"%s\"\n", fname_ptx);
-    FILE *ptxfile = fopen(fname_ptx,"w");
-    fprintf(ptxfile,"%s",ptx_str);
-    fclose(ptxfile);
-
-    char fname_sass[1024];
-    snprintf(fname_sass,1024,"_sass_XXXXXX");
-    int fd2=mkstemp(fname_sass);
-    close(fd2);
-
-    printf("GPGPU-Sim PTX: extracting .sass to temporary file \"%s\"\n", fname_sass);
-    FILE *sassfile = fopen(fname_sass,"w");
-    fprintf(sassfile,"%s",sass_str);
-    fclose(sassfile);
-
-    char fname_elf[1024];
-    snprintf(fname_elf,1024,"_elf_XXXXXX");
-    int fd3=mkstemp(fname_elf);
-    close(fd3);
-
-    printf("GPGPU-Sim PTX: extracting .elf to temporary file \"%s\"\n", fname_elf);
-    FILE *elffile = fopen(fname_elf,"w");
-    fprintf(elffile,"%s",elf_str);
-    fclose(elffile);
-*/
     char fname_ptxplus[1024];
     snprintf(fname_ptxplus,1024,"_ptxplus_XXXXXX");
     int fd4=mkstemp(fname_ptxplus);
@@ -249,7 +103,6 @@ char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const char *ptxfilename, con
     // Extract cubin to a file
     char fname_decuda[1024];
     char fname_cubin[1024];
-
 
 	// Run cuobjdump_to_ptxplus
 	char commandline[1024];
@@ -273,6 +126,7 @@ char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const char *ptxfilename, con
 	strcpy(ptxplus_str, text.c_str());
 
 	// Remove temporary files
+	// TODO: Fix deleting/keeping PTXPlus files
 	/*
 	char rm_commandline[1024];
 

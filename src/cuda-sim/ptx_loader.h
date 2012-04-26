@@ -32,7 +32,6 @@ extern bool g_override_embedded_ptx;
  
 class symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num );
 void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num );
-char* gpgpu_ptx_sim_convert_ptx_to_ptxplus(const char *ptx_str, const char *cubin_str, unsigned source_num, bool save_converted, bool cuobjdump );
 char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const char *ptx_str, const char *sass_str, const char *elf_str);
 
 #endif
