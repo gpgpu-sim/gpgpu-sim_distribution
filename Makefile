@@ -61,7 +61,6 @@ else
 	TARGETS += $(SIM_LIB_DIR)/libOpenCL.so
 endif
 	TARGETS += decuda_to_ptxplus/decuda_to_ptxplus
-	TARGETS += decuda
 
 gpgpusim: makedirs $(TARGETS)
 
@@ -134,9 +133,6 @@ opencllib: cuda-sim
 decuda_to_ptxplus/decuda_to_ptxplus:
 	$(MAKE) -C ./decuda_to_ptxplus/ depend 
 	$(MAKE) -C ./decuda_to_ptxplus/
-
-decuda:
-	./getDecuda/getDecuda.sh
 
 makedirs:
 	if [ ! -d $(SIM_LIB_DIR) ]; then mkdir -p $(SIM_LIB_DIR); fi;
