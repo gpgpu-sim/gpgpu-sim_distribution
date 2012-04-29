@@ -1066,8 +1066,6 @@ unsigned ldst_unit::clock_multiplier() const
     return m_config->mem_warp_parts; 
 }
 
-/* Seems to be not used by anything
- * */
 void ldst_unit::issue( register_set &reg_set )
 {
 	warp_inst_t* inst = *(reg_set.get_ready());
