@@ -868,7 +868,7 @@ bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_rea
 
    if( CACHE_GLOBAL == inst.cache_op || (m_L1D == NULL) ) {
        // bypass L1 cache
-       if( m_icnt->full(size, inst.is_store()) ) {
+       if( m_icnt->full(size, inst.is_store() || inst.isatomic()) ) {
            stall_cond = ICNT_RC_FAIL;
        } else {
            mem_fetch *mf = m_mf_allocator->alloc(inst,access);
@@ -2251,7 +2251,7 @@ void simt_core_cluster::icnt_inject_request_packet(class mem_fetch *mf)
     }
    unsigned destination = mf->get_tlx_addr().chip;
    mf->set_status(IN_ICNT_TO_MEM,gpu_sim_cycle+gpu_tot_sim_cycle);
-   if (!mf->get_is_write()) 
+   if (!mf->get_is_write() && !mf->isatomic())
       ::icnt_push(m_cluster_id, m_config->mem2device(destination), (void*)mf, mf->get_ctrl_size() );
    else 
       ::icnt_push(m_cluster_id, m_config->mem2device(destination), (void*)mf, mf->size());
