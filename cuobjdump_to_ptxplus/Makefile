@@ -12,7 +12,6 @@ LD			= g++
 LDFLAGS		= ${CCFLAGS}
 
 
-CUOBJDUMP_PARSER_OBJECTS = cuobjdump_parser.o cuobjdump_lexer.o 
 SASS_PARSER_OBJECTS = sass_lexer.o sass_parser.o 
 ELF_PARSER_OBJECTS = elf_lexer.o elf_parser.o
 HEADER_PARSER_OBJECTS = headerParser.o headerLexer.o
@@ -20,7 +19,7 @@ PTX_PARSER_OBJECTS = ptx.tab.o lex.ptx_.o
 
 all: cuobjdump_to_ptxplus
 
-cuobjdump_to_ptxplus: stringList.o decudaInst.o decudaInstList.o cuobjdumpInst.o cuobjdumpInstList.o cuobjdump_to_ptxplus.o $(PTX_PARSER_OBJECTS) $(SASS_PARSER_OBJECTS) $(ELF_PARSER_OBJECTS) $(HEADER_PARSER_OBJECTS) $(CUOBJDUMP_PARSER_OBJECTS) 
+cuobjdump_to_ptxplus: stringList.o decudaInst.o decudaInstList.o cuobjdumpInst.o cuobjdumpInstList.o cuobjdump_to_ptxplus.o $(PTX_PARSER_OBJECTS) $(SASS_PARSER_OBJECTS) $(ELF_PARSER_OBJECTS) $(HEADER_PARSER_OBJECTS)
 	${LD} ${LDFLAGS} -ocuobjdump_to_ptxplus stringList.o decudaInst.o decudaInstList.o headerParser.o headerLexer.o cuobjdumpInst.o cuobjdumpInstList.o cuobjdump_to_ptxplus.o lex.ptx_.o ptx.tab.o $(SASS_PARSER_OBJECTS) $(ELF_PARSER_OBJECTS) 
 
 stringList.o: ../decuda_to_ptxplus/stringList.cc ../decuda_to_ptxplus/stringList.h
@@ -129,6 +128,11 @@ cuobjdump_lexer.o: cuobjdump_lexer.c
 %.o: %.cpp
 	$(CXX) ${CXXFLAGS} -c -o $@ $<
 
+SRCS = $(shell ls *.cc)
+
+depend:
+	makedepend $(SRCS) 2> /dev/null
+
 clean:
 	rm -f ./opcodes.def ./opcodes.h
 	rm -f ./lex.ptx_.c ./ptx.tab.c ./ptx.tab.h ./lex.ptx_.o ./ptx.tab.o ptx.output
@@ -143,3 +147,16 @@ clean:
 	rm -f ./cuobjdump_parser.o ./cuobjdump_parser.c ./cuobjdump_parser.output ./cuobjdump_parser.h
 	rm -f ./cuobjdump_lexer.o ./cuobjdump_lexer.c
 	rm -f ./elf_lexer.o ./elf_parser.o ./elf_lexer.cpp ./elf_parser.cpp ./elf_parser.hpp ./elf_parser.output
+# DO NOT DELETE
+
+cuobjdumpInst.o: cuobjdumpInst.h
+cuobjdumpInstList.o: cuobjdumpInstList.h cuobjdumpInst.h
+cuobjdump_to_ptxplus.o: cuobjdumpInstList.h cuobjdumpInst.h
+cuobjdump_to_ptxplus.o: /usr/include/stdio.h /usr/include/features.h
+cuobjdump_to_ptxplus.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
+cuobjdump_to_ptxplus.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h
+cuobjdump_to_ptxplus.o: /usr/include/bits/types.h
+cuobjdump_to_ptxplus.o: /usr/include/bits/typesizes.h /usr/include/libio.h
+cuobjdump_to_ptxplus.o: /usr/include/_G_config.h /usr/include/wchar.h
+cuobjdump_to_ptxplus.o: /usr/include/bits/stdio_lim.h
+cuobjdump_to_ptxplus.o: /usr/include/bits/sys_errlist.h
