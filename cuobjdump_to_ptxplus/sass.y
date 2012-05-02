@@ -26,7 +26,7 @@ cuobjdumpInst *instEntry;
 %token <string_value> IMUL IMUL24 IMULS24 IMUL32 IMUL32S24 IMUL32U24 IMUL32I IMUL32I24 IMUL32IS24
 %token <string_value> ISET LG2 LLD LST MOV MOV32 MVC MVI NOP NOT NOTS OR ORS
 %token <string_value> R2A R2G R2GU16U8 RCP RCP32 RET RRO RSQ SIN SHL SHR SSY XOR XORS
-%token <string_value> S2R LD STS LDS ST IMIN IMAX A2R FMAX FMIN TEX TEX32 C2R EXIT
+%token <string_value> S2R SASS_LD STS LDS SASS_ST IMIN IMAX A2R FMAX FMIN TEX TEX32 C2R EXIT
 %token <string_value> GRED PBK BRK R2C GATOM
 
 %token <string_value> EQ EQU GE GEU GT GTU LE LEU LT LTU NE NEU
@@ -145,8 +145,8 @@ simpleInstructions	: ADA | AND | ANDS | COS | DADD | DFMA | DMUL | EX2 | F2F
 					| IMUL32U24
 					| ISET | LG2 | LLD | LST | MOV | MOV32 | MVC | MVI | NOP 
 					| NOT | NOTS | OR | ORS | R2A | R2G | R2GU16U8 | RCP | RCP32 | RET | RRO 
-					| RSQ | SHL | SHR | SIN | SSY | XOR | XORS | S2R | LD | STS 
-					| LDS | ST | EXIT | BAR | IMIN | IMAX | A2R | FMAX | FMIN 
+					| RSQ | SHL | SHR | SIN | SSY | XOR | XORS | S2R | SASS_LD | STS 
+					| LDS | SASS_ST | EXIT | BAR | IMIN | IMAX | A2R | FMAX | FMIN 
 					| TEX | TEX32 | C2R | BRK | R2C
 					;
 
