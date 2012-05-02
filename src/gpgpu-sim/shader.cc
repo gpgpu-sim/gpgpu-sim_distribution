@@ -1016,7 +1016,8 @@ void ldst_unit::writeback()
         }
     }
 
-    for( unsigned c=0; m_next_wb.empty() && (c < m_num_writeback_clients); c++ ) {
+    unsigned serviced_client = -1; 
+    for( unsigned c = 0; m_next_wb.empty() && (c < m_num_writeback_clients); c++ ) {
         unsigned next_client = (c+m_writeback_arb)%m_num_writeback_clients;
         switch( next_client ) {
         case 0: // shared memory 
@@ -1024,6 +1025,7 @@ void ldst_unit::writeback()
                 m_next_wb = *m_pipeline_reg[0];
                 m_core->dec_inst_in_pipeline(m_pipeline_reg[0]->warp_id());
                 m_pipeline_reg[0]->clear();
+                serviced_client = next_client; 
             }
             break;
         case 1: // texture response
@@ -1031,6 +1033,7 @@ void ldst_unit::writeback()
                 mem_fetch *mf = m_L1T->next_access();
                 m_next_wb = mf->get_inst();
                 delete mf;
+                serviced_client = next_client; 
             }
             break;
         case 2: // const cache response
@@ -1038,6 +1041,7 @@ void ldst_unit::writeback()
                 mem_fetch *mf = m_L1C->next_access();
                 m_next_wb = mf->get_inst();
                 delete mf;
+                serviced_client = next_client; 
             }
             break;
         case 3: // global/local
@@ -1047,6 +1051,7 @@ void ldst_unit::writeback()
                     m_core->decrement_atomic_count(m_next_global->get_wid(),m_next_global->get_access_warp_mask().count());
                 delete m_next_global;
                 m_next_global = NULL;
+                serviced_client = next_client; 
             }
             break;
         case 4: 
@@ -1054,10 +1059,17 @@ void ldst_unit::writeback()
                 mem_fetch *mf = m_L1D->next_access();
                 m_next_wb = mf->get_inst();
                 delete mf;
+                serviced_client = next_client; 
             }
             break;
         default: abort();
         }
+    }
+    // update arbitration priority only if: 
+    // 1. the writeback buffer was available 
+    // 2. a client was serviced 
+    if (serviced_client != (unsigned)-1) {
+        m_writeback_arb = (serviced_client + 1) % m_num_writeback_clients; 
     }
 }
 
