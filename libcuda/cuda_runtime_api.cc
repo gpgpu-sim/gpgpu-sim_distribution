@@ -1185,7 +1185,7 @@ void extract_ptx(){
 unsigned get_best_version(std::list<cuobjdumpSection> sectionlist, CUctx_st *context){
 
 	unsigned forced_max_capability = context->get_device()->get_gpgpu()->get_config().get_forced_max_capability();
-	if (forced_max_capability >=20 &&
+	if (((forced_max_capability==0)||(forced_max_capability >=20)) &&
 			context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus()) {
 		printf("GPGPU-Sim: WARNING: Capability >= 20 are not supported in PTXPlus\n"
 				"\tSetting forced_max_capability to 19\n");
