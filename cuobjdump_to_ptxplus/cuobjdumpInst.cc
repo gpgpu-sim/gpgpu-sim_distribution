@@ -938,6 +938,22 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
+	else if(strstr(m_base, "IADD.CARRY")){
+		std::string pred = "C0";
+		pred[1] = m_base[10];
+		this->addOperand(pred.c_str());
+		printCuobjdumpPredicate();
+		output("addp");
+		printCuobjdumpBaseModifiers();
+
+		if(m_typeModifiers->getSize() == 0)
+			output(int_default_mod()); //TODO: setting default type modifier but I'm not sure if this is right.
+		else
+			printCuobjdumpTypeModifiers();
+
+		printCuobjdumpOperands();
+		output(";");
+	}
 	else if(strcmp(m_base, "IADD")==0)
 	{
 		printCuobjdumpPredicate();

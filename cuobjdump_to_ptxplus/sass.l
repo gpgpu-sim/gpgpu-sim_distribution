@@ -78,6 +78,7 @@ STS	yylval.string_value = strdup(yytext); return STS;
 LD	yylval.string_value = strdup(yytext); return SASS_LD;
 ST	yylval.string_value = strdup(yytext); return SASS_ST;
 IADD	yylval.string_value = strdup(yytext); return IADD;
+IADD\.CARRY{numeric}	yylval.string_value = strdup(yytext); return IADDCARRY;
 IADD32	yylval.string_value = strdup(yytext); return IADD32;
 IADD32I	yylval.string_value = strdup(yytext); return IADD32I;
 IMAD	yylval.string_value = strdup(yytext); return IMAD;
@@ -160,7 +161,6 @@ NEU	yylval.string_value = strdup(yytext); return NEU;
 \.IR	yylval.string_value = strdup(yytext); /*return DOTIR;*/
 \.UN	yylval.string_value = strdup(yytext); return DOTUN;
 \.NODEP	yylval.string_value = strdup(yytext); return DOTNODEP;
-\.CARRY0	yylval.string_value = strdup(yytext); return DOTCARRY0;
 \.SAT	yylval.string_value = strdup(yytext);
 
 
