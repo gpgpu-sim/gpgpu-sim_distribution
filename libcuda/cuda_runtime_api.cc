@@ -1185,6 +1185,12 @@ void extract_ptx(){
 unsigned get_best_version(std::list<cuobjdumpSection> sectionlist, CUctx_st *context){
 
 	unsigned forced_max_capability = context->get_device()->get_gpgpu()->get_config().get_forced_max_capability();
+	if (forced_max_capability >=20 &&
+			context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus()) {
+		printf("GPGPU-Sim: WARNING: Capability >= 20 are not supported in PTXPlus\n"
+				"\tSetting forced_max_capability to 19\n");
+		forced_max_capability = 19;
+	}
 	unsigned max_capability=0;
 
 	std::list<cuobjdumpSection>::iterator iter;
@@ -1216,7 +1222,7 @@ unsigned get_number_of_ptx(std::list<cuobjdumpSection> sectionlist, unsigned sel
 			){
 		unsigned capability = 0;
 		sscanf(iter->arch, "sm_%u", &capability);
-		if(capability <= selected_capability &&
+		if(capability == selected_capability &&
 				iter->type == PTXSECTION){
 			printf("Found compatible PTX section with capability %s\n", iter->arch);
 			result++;
@@ -1279,34 +1285,28 @@ void useCuobjdump() {
 			){
 		unsigned capability = 0;
 		sscanf(iter->arch,"sm_%u", &capability);
-		if((capability <= selected_capability) && (iter->type == PTXSECTION)){
+		if((capability == selected_capability) && (iter->type == PTXSECTION)){
 			symbol_table *symtab;
 			char *ptxcode = readfile(iter->ptxfilename);
 			if(context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() ) {
 				cuobjdumpSection* elfsection = findelfsection(cuobjdump, selected_capability, iter->identifier);
 				assert (elfsection!= NULL);
-				//char *elfcode = readfile(elfsection->elffilename);
-				//char *sasscode = readfile(elfsection->sassfilename);
 				char *ptxplus_str = gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(
 						iter->ptxfilename,
 						elfsection->elffilename,
 						elfsection->sassfilename);
 				symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str,source_num);
 				printf("Adding %s with cubin handle %u\n", iter->ptxfilename, source_num);
-				//context->add_binary(symtab,total_ptx_files/*fat_cubin_handle*/);
-				//gpgpu_ptxinfo_load_from_string(ptxcode,total_ptx_files/*source_num*/);
-				context->add_binary(symtab, source_num/*fat_cubin_handle*/);
-				gpgpu_ptxinfo_load_from_string( ptxcode,total_ptx_files-source_num/*source_num*/);
+				context->add_binary(symtab, source_num);
+				gpgpu_ptxinfo_load_from_string( ptxcode,total_ptx_files-source_num);
 				delete[] ptxplus_str;
 			} else {
-				symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxcode, source_num/*total_ptx_files*//*source_num*/);
-				context->add_binary(symtab,source_num/*fat_cubin_handle*/);
-				gpgpu_ptxinfo_load_from_string( ptxcode, total_ptx_files-source_num/*source_num */);
+				symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxcode, source_num);
+				context->add_binary(symtab,source_num);
+				gpgpu_ptxinfo_load_from_string( ptxcode, total_ptx_files-source_num);
 			}
 			source_num++;
-			/*!
-			 *  The order of files in output of cuobjdump is reverse
-			 */
+
 			load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
 			load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
 		}
