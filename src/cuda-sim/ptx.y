@@ -68,6 +68,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token  TEX_DIRECTIVE
 %token  UNION_DIRECTIVE
 %token  VERSION_DIRECTIVE
+%token  ADDRESS_SIZE_DIRECTIVE
 %token  VISIBLE_DIRECTIVE
 %token  <string_value> IDENTIFIER
 %token  <int_value> INT_OPERAND
@@ -251,6 +252,7 @@ statement_list: directive_statement { add_directive(); }
 directive_statement: variable_declaration SEMI_COLON
 	| VERSION_DIRECTIVE DOUBLE_OPERAND { add_version_info($2, 0); }
 	| VERSION_DIRECTIVE DOUBLE_OPERAND PLUS { add_version_info($2,1); }
+	| ADDRESS_SIZE_DIRECTIVE INT_OPERAND {/*Do nothing*/}
 	| TARGET_DIRECTIVE IDENTIFIER COMMA IDENTIFIER { target_header2($2,$4); }
 	| TARGET_DIRECTIVE IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER { target_header3($2,$4,$6); }
 	| TARGET_DIRECTIVE IDENTIFIER { target_header($2); }
