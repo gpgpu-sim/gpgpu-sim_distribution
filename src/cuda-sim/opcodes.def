@@ -39,6 +39,7 @@ Other 10
 */
 OP_DEF(ABS_OP,abs_impl,"abs",1,1)
 OP_DEF(ADD_OP,add_impl,"add",1,1)
+OP_DEF(ADDP_OP,addp_impl,"addp",1,1)
 OP_DEF(ADDC_OP,addc_impl,"addc",1,1)
 OP_DEF(AND_OP,and_impl,"and",1,1)
 OP_DEF(ANDN_OP,andn_impl,"andn",1,1)
