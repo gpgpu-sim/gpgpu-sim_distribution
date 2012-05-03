@@ -114,11 +114,11 @@ $(OUTPUT_DIR)/%.o: %.cc
 $(OUTPUT_DIR)/%.o: %.c
 	$(CC) $(CCFLAGS) -I./ -I$(CUDA_INSTALL_PATH)/include  -c $< -o $@
 
-%_parser.c: %.y
-	$(YACC) $(YFLAGS) -p $*_ -o$@ $<
+cuobjdump_parser.c: cuobjdump.y
+	$(YACC) $(YFLAGS) -p cuobjdump_ -o$@ $<
 
-%_lexer.c: %.l %_parser.h
-	$(LEX) $(LEXFLAGS) -P $*_ -o$@ $<
+cuobjdump_lexer.c: cuobjdump.l cuobjdump_parser.h
+	$(LEX) $(LEXFLAGS) -P cuobjdump_ -o$@ $<
 	
 # The next rule means just get parser.c and you will get parser.h with it
 # in other words, get parser.c and do nothing to get parser.h
@@ -143,13 +143,15 @@ clean:
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/wordsize.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/gnu/stubs.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/gnu/stubs-64.h
+../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/waitflags.h
+../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/waitstatus.h
+../build/release/libcuda/cuda_runtime_api.o: /usr/include/endian.h
+../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/endian.h
+../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/byteswap.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/sys/types.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/types.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/typesizes.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/time.h
-../build/release/libcuda/cuda_runtime_api.o: /usr/include/endian.h
-../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/endian.h
-../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/byteswap.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/sys/select.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/select.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/sigset.h
@@ -189,6 +191,7 @@ clean:
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/zconf.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/unistd.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/posix_opt.h
+../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/environments.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/confname.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/getopt.h
 ../build/release/libcuda/cuda_runtime_api.o: ../src/gpgpu-sim/scoreboard.h
@@ -213,7 +216,6 @@ clean:
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/pthread.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/sched.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/sched.h
-../build/release/libcuda/cuda_runtime_api.o: /usr/include/signal.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/setjmp.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/semaphore.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/semaphore.h
