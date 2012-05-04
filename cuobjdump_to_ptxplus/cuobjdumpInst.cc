@@ -981,7 +981,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "IMAD")==0 || strcmp(m_base, "IMAD32I")==0  || strcmp(m_base, "IMAD32")==0)
+	else if(strcmp(m_base, "IMAD32I")==0  || strcmp(m_base, "IMAD32")==0)
 	{
 		printCuobjdumpPredicate();
 		output("mad.lo");
@@ -991,9 +991,24 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 			output(int_default_mod()); //TODO: setting default type modifier but I'm not sure if this is right.
 		else
 			printCuobjdumpTypeModifiers();
+
 		printCuobjdumpOperands();
 		output(";");
-        }
+	}
+	else if(strcmp(m_base, "IMAD")==0)
+	{
+		printCuobjdumpPredicate();
+		output("mad.wide");
+		printCuobjdumpBaseModifiers();
+
+		if(m_typeModifiers->getSize() == 0)
+			output(int_default_mod()); //TODO: setting default type modifier but I'm not sure if this is right.
+		else
+			printCuobjdumpTypeModifiers();
+
+		printCuobjdumpOperands();
+		output(";");
+	}
 	else if(strcmp(m_base, "IMAD.U24")==0)
 	{
 		printCuobjdumpPredicate();
