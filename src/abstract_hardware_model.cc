@@ -62,10 +62,6 @@ void gpgpu_functional_sim_config::reg_options(class OptionParser * opp)
                  &m_ptx_convert_to_ptxplus,
                  "Convert SASS (native ISA) to ptxplus and run ptxplus",
                  "0");
-    option_parser_register(opp, "-gpgpu_ptx_save_converted_ptxplus", OPT_BOOL,
-                 &m_ptx_save_converted_ptxplus,
-                 "Saved converted ptxplus to a file",
-                 "0");
     option_parser_register(opp, "-gpgpu_ptx_force_max_capability", OPT_UINT32,
                  &m_ptx_force_max_capability,
                  "Force maximum compute capability",
