@@ -1159,10 +1159,15 @@ extern "C" FILE *cuobjdump_in;
 /*!
  *	This Function extract the whole PTX (for all the files) using cuobjdump
  * */
-void extract_ptx(){
+void extract_code_using_cuobjdump(){
 	char command[1000];
+
+	char fname[1024];
+	snprintf(fname,1024,"_cuobjdump_complete_output_XXXXXX");
+	int fd=mkstemp(fname);
+	close(fd);
+
 	char* whole_code;
-	char fname[1024]="_ptx_whole_code_WESWW";
 	//! Running CUobjdump using dynamic link to current process
 	snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass /proc/%d/exe > %s",getpid(),fname);
 	printf("Running cuobjdump using \"%s\"\n", command);
@@ -1177,10 +1182,10 @@ void extract_ptx(){
 	printf("Done parsing!!!\n");
 }
 
-//! Return proper ptx version
+//! Find the proper sm version to be used
 /*!
- * This function return newest ptx version inside the argument
- * which is is not newer than forced_max_capability
+ * The function finds the highest sm version lower than the option
+ * force_max_capability
  */
 unsigned get_best_version(std::list<cuobjdumpSection> sectionlist, CUctx_st *context){
 
@@ -1209,9 +1214,10 @@ unsigned get_best_version(std::list<cuobjdumpSection> sectionlist, CUctx_st *con
 	return max_capability;
 }
 
+//! Find number of files with a certain sm version
 /*!
- * Return number of diffrent ptx files generated in first argument
- *  which have sm version equal to selected_capability
+ * Once the sm verison to be used is known (using get_best_version), this
+ * function counts the number of files that use this sm version
  */
 unsigned get_number_of_ptx(std::list<cuobjdumpSection> sectionlist, unsigned selected_capability){
 	int result = 0;
@@ -1275,7 +1281,7 @@ void useCuobjdump() {
 	CUctx_st *context = GPGPUSim_Context();
 	unsigned source_num=1;
 	char *sass, *elf;
-	extract_ptx(); //extract all the output of cuobjdump to _cuobjdump_*.*
+	extract_code_using_cuobjdump(); //extract all the output of cuobjdump to _cuobjdump_*.*
 	unsigned selected_capability = get_best_version(cuobjdump, context); //Find max capability less than forced_max_capability
 	unsigned total_ptx_files = get_number_of_ptx(cuobjdump,selected_capability); //Count ptx files for the given capability
 
@@ -1311,6 +1317,19 @@ void useCuobjdump() {
 			load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
 		}
 	}
+	if(!keep_intermediate_files()){
+		char rm_commandline[1024];
+
+		snprintf(rm_commandline,1024,"rm -f _cuobjdump_*");
+
+		printf("GPGPU-Sim PTX: removing temporary files using \"%s\"\n", rm_commandline);
+		int rm_result = system(rm_commandline);
+		if( rm_result != 0 ) {
+			printf("GPGPU-Sim PTX: ERROR ** while removing temporary files %d\n", rm_result);
+			exit(1);
+		}
+	}
+
 }
 
 void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
@@ -1326,8 +1345,8 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 		next_fat_bin_handle++;
 		printf("GPGPU-Sim PTX: __cudaRegisterFatBinary, fat_cubin_handle = %u\n", fat_cubin_handle);
 		/*!
-		 * This function extracting all data from all files in first call
-		 * then for next calls, only return the appropriate number
+		 * This function extracts all data from all files in first call
+		 * then for next calls, only returns the appropriate number
 		 */
 		assert(fat_cubin_handle >= 1);
 		if(fat_cubin_handle == 1)

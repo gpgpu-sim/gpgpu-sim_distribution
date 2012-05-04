@@ -53,6 +53,9 @@ extern "C" FILE *ptxinfo_in;
 
 static bool g_save_embedded_ptx;
 bool g_keep_intermediate_files;
+bool m_ptx_save_converted_ptxplus;
+
+bool keep_intermediate_files() {return g_keep_intermediate_files;}
 
 void ptx_reg_options(option_parser_t opp)
 {
@@ -61,6 +64,10 @@ void ptx_reg_options(option_parser_t opp)
                 "0");
    option_parser_register(opp, "-keep", OPT_BOOL, &g_keep_intermediate_files, 
                 "keep intermediate files created by GPGPU-Sim when interfacing with external programs",
+                "0");
+   option_parser_register(opp, "-gpgpu_ptx_save_converted_ptxplus", OPT_BOOL,
+                &m_ptx_save_converted_ptxplus,
+                "Saved converted ptxplus to a file",
                 "0");
 }
 
@@ -125,20 +132,18 @@ char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const char *ptxfilename, con
 	char* ptxplus_str = new char [strlen(text.c_str())+1];
 	strcpy(ptxplus_str, text.c_str());
 
-	// Remove temporary files
-	// TODO: Fix deleting/keeping PTXPlus files
-	/*
-	char rm_commandline[1024];
+	if (!m_ptx_save_converted_ptxplus){
+		char rm_commandline[1024];
 
-	snprintf(rm_commandline,1024,"rm -f %s", fname_ptxplus);
+		snprintf(rm_commandline,1024,"rm -f %s", fname_ptxplus);
 
-	printf("GPGPU-Sim PTX: removing temporary files using \"%s\"\n", rm_commandline);
-	int rm_result = system(rm_commandline);
-	if( rm_result != 0 ) {
-	   printf("GPGPU-Sim PTX: ERROR ** while removing temporary files %d\n", rm_result);
-	   exit(1);
+		printf("GPGPU-Sim PTX: removing temporary files using \"%s\"\n", rm_commandline);
+		int rm_result = system(rm_commandline);
+		if( rm_result != 0 ) {
+			printf("GPGPU-Sim PTX: ERROR ** while removing temporary files %d\n", rm_result);
+			exit(1);
+		}
 	}
-	*/
 	printf("GPGPU-Sim PTX: DONE converting EMBEDDED .ptx file to ptxplus \n");
 
 	return ptxplus_str;
