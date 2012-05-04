@@ -2110,8 +2110,8 @@ bool opndcoll_rfu_t::collector_unit_t::allocate( register_set* pipeline_reg_set,
          } else 
             m_src_op[op] = op_t();
       }
-      move_warp(m_warp,*pipeline_reg);
-      //pipeline_reg_set->move_out_to(m_warp);
+      //move_warp(m_warp,*pipeline_reg);
+      pipeline_reg_set->move_out_to(m_warp);
       return true;
    }
    return false;
