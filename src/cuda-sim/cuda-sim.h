@@ -47,7 +47,7 @@ extern void ** g_inst_classification_stat;
 extern void ** g_inst_op_classification_stat;
 extern int g_ptx_kernel_count; // used for classification stat collection purposes 
 
-
+void ptx_opcocde_latency_options (option_parser_t opp);
 extern class kernel_info_t *gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
                                             gpgpu_ptx_sim_arg_list_t args, 
                                             struct dim3 gridDim, 

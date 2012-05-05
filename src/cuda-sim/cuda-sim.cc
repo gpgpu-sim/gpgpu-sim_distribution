@@ -60,6 +60,36 @@ addr_t g_debug_pc = 0xBEEF1518;
 unsigned g_ptx_sim_num_insn = 0;
 unsigned gpgpu_param_num_shaders = 0;
 
+char *opcode_latency_int, *opcode_latency_fp, *opcode_latency_dp;
+char *opcode_initiation_int, *opcode_initiation_fp, *opcode_initiation_dp;
+
+void ptx_opcocde_latency_options (option_parser_t opp) {
+	option_parser_register(opp, "-ptx_opcode_latency_int", OPT_CSTR, &opcode_latency_int,
+			"Opcode latencies for integers <ADD,MAX,MUL,MAD,DIV>"
+			"Default 1,1,19,25,145",
+			"1,1,19,25,145");
+	option_parser_register(opp, "-ptx_opcode_latency_fp", OPT_CSTR, &opcode_latency_fp,
+			"Opcode latencies for single precision floating points <ADD,MAX,MUL,MAD,DIV>"
+			"Default 1,1,1,1,30",
+			"1,1,1,1,30");
+	option_parser_register(opp, "-ptx_opcode_latency_dp", OPT_CSTR, &opcode_latency_dp,
+			"Opcode latencies for double precision floating points <ADD,MAX,MUL,MAD,DIV>"
+			"Default 8,8,8,8,335",
+			"8,8,8,8,335");
+	option_parser_register(opp, "-ptx_opcode_initiation_int", OPT_CSTR, &opcode_initiation_int,
+			"Opcode initiation intervals for integers <ADD,MAX,MUL,MAD,DIV>"
+			"Default 1,1,4,4,32",
+			"1,1,4,4,32");
+	option_parser_register(opp, "-ptx_opcode_initiation_fp", OPT_CSTR, &opcode_initiation_fp,
+			"Opcode initiation intervals for single precision floating points <ADD,MAX,MUL,MAD,DIV>"
+			"Default 1,1,1,1,5",
+			"1,1,1,1,5");
+	option_parser_register(opp, "-ptx_opcode_initiation_dp", OPT_CSTR, &opcode_initiation_dp,
+			"Opcode initiation intervals for double precision floating points <ADD,MAX,MUL,MAD,DIV>"
+			"Default 8,8,8,8,130",
+			"8,8,8,8,130");
+}
+
 static address_type get_converge_point(address_type pc);
 
 void gpgpu_t::gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref)
@@ -421,6 +451,38 @@ void ptx_print_insn( address_type pc, FILE *fp )
 
 void ptx_instruction::set_opcode_and_latency()
 {
+	unsigned int_latency[5];
+	unsigned fp_latency[5];
+	unsigned dp_latency[5];
+	unsigned int_init[5];
+	unsigned fp_init[5];
+	unsigned dp_init[5];
+	/*
+	 * [0] ADD,SUB
+	 * [1] MAX,Min
+	 * [2] MUL
+	 * [3] MAD
+	 * [4] DIV
+	 */
+	sscanf(opcode_latency_int, "%u,%u,%u,%u,%u",
+			&int_latency[0],&int_latency[1],&int_latency[2],
+			&int_latency[3],&int_latency[4]);
+	sscanf(opcode_latency_fp, "%u,%u,%u,%u,%u",
+			&fp_latency[0],&fp_latency[1],&fp_latency[2],
+			&fp_latency[3],&fp_latency[4]);
+	sscanf(opcode_latency_dp, "%u,%u,%u,%u,%u",
+			&dp_latency[0],&dp_latency[1],&dp_latency[2],
+			&dp_latency[3],&dp_latency[4]);
+	sscanf(opcode_initiation_int, "%u,%u,%u,%u,%u",
+			&int_init[0],&int_init[1],&int_init[2],
+			&int_init[3],&int_init[4]);
+	sscanf(opcode_initiation_fp, "%u,%u,%u,%u,%u",
+			&fp_init[0],&fp_init[1],&fp_init[2],
+			&fp_init[3],&fp_init[4]);
+	sscanf(opcode_initiation_dp, "%u,%u,%u,%u,%u",
+			&dp_init[0],&dp_init[1],&dp_init[2],
+			&dp_init[3],&dp_init[4]);
+
    op = ALU_OP;
    initiation_interval = latency = 1;
    switch( m_opcode ) {
@@ -437,48 +499,122 @@ void ptx_instruction::set_opcode_and_latency()
    case ATOM_OP: op = LOAD_OP; break;
    case BAR_OP: op = BARRIER_OP; break;
    case MEMBAR_OP: op = MEMORY_BARRIER_OP; break;
-   case RCP_OP:
-       latency = 2;
-       initiation_interval = 2;
-       op = SFU_OP;
-       break;
-   case LG2_OP: case RSQRT_OP:
-       latency = 4;
-       initiation_interval = 4;
-       op = SFU_OP;
-       break;
-   case SQRT_OP: case SIN_OP: case COS_OP: case EX2_OP:
-      latency = 10;
-      initiation_interval = 4;
+   case ADD_OP: case ADDP_OP: case ADDC_OP: case SUB_OP: case SUBC_OP:
+	   //ADD,SUB latency
+	   switch(get_type()){
+	   case F32_TYPE:
+		   latency = fp_latency[0];
+		   initiation_interval = fp_init[0];
+		   break;
+	   case F64_TYPE:
+	   case FF64_TYPE:
+		   latency = dp_latency[0];
+		   initiation_interval = dp_init[0];
+		   break;
+	   case B32_TYPE:
+	   case U32_TYPE:
+	   case S32_TYPE:
+	   default: //Use int settings for default
+		   latency = int_latency[0];
+		   initiation_interval = int_init[0];
+		   break;
+	   }
+	   break;
+   case MAX_OP: case MIN_OP:
+	   //MAX,MIN latency
+	   switch(get_type()){
+	   case F32_TYPE:
+		   latency = fp_latency[1];
+		   initiation_interval = fp_init[1];
+		   break;
+	   case F64_TYPE:
+	   case FF64_TYPE:
+		   latency = dp_latency[1];
+		   initiation_interval = dp_init[1];
+		   break;
+	   case B32_TYPE:
+	   case U32_TYPE:
+	   case S32_TYPE:
+	   default: //Use int settings for default
+		   latency = int_latency[1];
+		   initiation_interval = int_init[1];
+		   break;
+	   }
+	   break;
+   case MUL_OP:
+	   //MUL latency
+	   switch(get_type()){
+	   case F32_TYPE:
+		   latency = fp_latency[2];
+		   initiation_interval = fp_init[2];
+		   op = ALU_SFU_OP;
+		   break;
+	   case F64_TYPE:
+	   case FF64_TYPE:
+		   latency = dp_latency[2];
+		   initiation_interval = dp_init[2];
+		   op = ALU_SFU_OP;
+		   break;
+	   case B32_TYPE:
+	   case U32_TYPE:
+	   case S32_TYPE:
+	   default: //Use int settings for default
+		   latency = int_latency[2];
+		   initiation_interval = int_init[2];
+		   op = SFU_OP;
+		   break;
+	   }
+	   break;
+   case MAD_OP:
+	   //MAD latency
+	   switch(get_type()){
+	   case F32_TYPE:
+		   latency = fp_latency[3];
+		   initiation_interval = fp_init[3];
+		   break;
+	   case F64_TYPE:
+	   case FF64_TYPE:
+		   latency = dp_latency[3];
+		   initiation_interval = dp_init[3];
+		   break;
+	   case B32_TYPE:
+	   case U32_TYPE:
+	   case S32_TYPE:
+	   default: //Use int settings for default
+		   latency = int_latency[3];
+		   initiation_interval = int_init[3];
+		   op = SFU_OP;
+		   break;
+	   }
+	   break;
+   case DIV_OP:
+	   // Floating point only
+	   op = SFU_OP;
+	   switch(get_type()){
+	   case F32_TYPE:
+		   latency = fp_latency[4];
+		   initiation_interval = fp_init[4];
+		   break;
+	   case F64_TYPE:
+	   case FF64_TYPE:
+		   latency = dp_latency[4];
+		   initiation_interval = dp_init[4];
+		   break;
+	   case B32_TYPE:
+	   case U32_TYPE:
+	   case S32_TYPE:
+	   default: //Use int settings for default
+		   latency = int_latency[4];
+		   initiation_interval = int_init[4];
+		   break;
+	   }
+	   break;
+   case SQRT_OP: case SIN_OP: case COS_OP: case EX2_OP: case LG2_OP: case RSQRT_OP: case RCP_OP:
+	   //Using double to approximate those
+	  latency = dp_latency[2];
+	  initiation_interval = dp_init[2];
       op = SFU_OP;
       break;
-   case DIV_OP: 
-      // Floating point only
-      if( get_type() == F32_TYPE || get_type() == F64_TYPE || get_type() == FF64_TYPE) {
-         latency = 10;
-         initiation_interval = 4;
-         op = SFU_OP;
-      }
-      break;
-   case MUL_OP:
-      if( get_type() == B32_TYPE || get_type() == U32_TYPE || get_type() == S32_TYPE ) {
-         // 32-bit integer instruction
-         latency = 24;
-         initiation_interval = 5;
-         op = SFU_OP;
-      }
-      if( get_type() == F32_TYPE || get_type() == F64_TYPE || get_type() == FF64_TYPE ) {
-         op = ALU_SFU_OP;
-      }
-      break;
-   case MAD_OP:
-       if( get_type() == B32_TYPE || get_type() == U32_TYPE || get_type() == S32_TYPE ) {
-          // 32-bit integer instruction
-          latency = 30;
-          initiation_interval = 6;
-          op = SFU_OP;
-       }
-       break;
    default: 
        break;
    }
