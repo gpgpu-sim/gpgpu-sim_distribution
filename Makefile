@@ -130,6 +130,7 @@ decuda_to_ptxplus/decuda_to_ptxplus:
 	$(MAKE) -C ./decuda_to_ptxplus/ depend 
 	$(MAKE) -C ./decuda_to_ptxplus/
 
+.PHONY: cuobjdump_to_ptxplus/cuobjdump_to_ptxplus
 cuobjdump_to_ptxplus/cuobjdump_to_ptxplus:
 	$(MAKE) -C ./cuobjdump_to_ptxplus/ depend
 	$(MAKE) -C ./cuobjdump_to_ptxplus/
