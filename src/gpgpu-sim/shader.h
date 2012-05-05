@@ -956,7 +956,7 @@ struct shader_core_config : public core_config
         }
         max_warps_per_shader =  n_thread_per_shader/warp_size;
         assert( !(n_thread_per_shader % warp_size) );
-        max_sfu_latency = 32;
+        max_sfu_latency = 512;
         max_sp_latency = 32;
         m_L1I_config.init();
         m_L1T_config.init();
@@ -1275,7 +1275,7 @@ private:
     std::vector<pipeline_stage_name_t> m_issue_port;
     std::vector<simd_function_unit*> m_fu; // stallable pipelines should be last in this array
     ldst_unit *m_ldst_unit;
-    static const unsigned MAX_ALU_LATENCY = 64;
+    static const unsigned MAX_ALU_LATENCY = 512;
     std::bitset<MAX_ALU_LATENCY> m_result_bus;
 
     // used for local address mapping with single kernel launch
