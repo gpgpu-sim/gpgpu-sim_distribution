@@ -528,6 +528,7 @@ void gpgpu_sim::init()
     // run a CUDA grid on the GPU microarchitecture simulator
     gpu_sim_cycle = 0;
     gpu_sim_insn = 0;
+    last_gpu_sim_insn = 0;
     m_total_cta_launched=0;
 
     reinit_clock_domains();
@@ -861,7 +862,6 @@ void gpgpu_sim::cycle()
       icnt_transfer();
    }
 
-   last_gpu_sim_insn = 0;
    if (clock_mask & CORE) {
       // L1 cache + shader core pipeline stages 
       for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) {

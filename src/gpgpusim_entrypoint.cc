@@ -68,10 +68,11 @@ void *gpgpu_sim_thread_sequential(void*)
       if( g_the_gpu->get_more_cta_left() ) {
           done = false;
           g_the_gpu->init();
-          while( g_the_gpu->active() )
+          while( g_the_gpu->active() ) {
               g_the_gpu->cycle();
+              g_the_gpu->deadlock_check();
+          }
           g_the_gpu->print_stats();
-          g_the_gpu->deadlock_check();
           print_simulation_time();
       }
       sem_post(&g_sim_signal_finish);
@@ -120,8 +121,8 @@ void *gpgpu_sim_thread_concurrent(void*)
             if( g_the_gpu->active() ) { 
                 g_the_gpu->cycle();
                 sim_cycles = true;
+                g_the_gpu->deadlock_check();
             }
-            g_the_gpu->deadlock_check();
             active = g_the_gpu->active() || !g_stream_manager->empty();
         } while( active );
         if(g_debug_execution >= 3) {
