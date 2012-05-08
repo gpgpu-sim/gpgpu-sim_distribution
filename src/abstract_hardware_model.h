@@ -173,7 +173,7 @@ public:
    }
    bool more_threads_in_cta() const 
    {
-      return m_next_tid.z < m_block_dim.z && m_next_tid.y < m_block_dim.y && m_next_tid.z < m_block_dim.x;
+      return m_next_tid.z < m_block_dim.z && m_next_tid.y < m_block_dim.y && m_next_tid.x < m_block_dim.x;
    }
    unsigned get_uid() const { return m_uid; }
    std::string name() const;
