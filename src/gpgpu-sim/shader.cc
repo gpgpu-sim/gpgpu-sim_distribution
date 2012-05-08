@@ -212,6 +212,12 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
 
    assert(m_num_function_units == m_fu.size() and m_fu.size() == m_dispatch_port.size() and m_fu.size() == m_issue_port.size());
 
+   //there are as many result buses as the width of the EX_WB stage
+   num_result_bus = config->pipe_widths[EX_WB];
+   for(int i=0; i<num_result_bus; i++){
+	   this->m_result_bus.push_back(new std::bitset<MAX_ALU_LATENCY>());
+   }
+
    m_last_inst_gpu_sim_cycle = 0;
    m_last_inst_gpu_tot_sim_cycle = 0;
 }
@@ -695,10 +701,18 @@ unsigned shader_core_ctx::translate_local_memaddr( address_type localaddr, unsig
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
+int shader_core_ctx::test_res_bus(int latency){
+	for(int i=0; i<num_result_bus; i++){
+		if(!m_result_bus[i]->test(latency)){return i;}
+	}
+	return -1;
+}
 
 void shader_core_ctx::execute()
 {
-    m_result_bus >>= 1;
+	for(int i=0; i<num_result_bus; i++){
+		*(m_result_bus[i]) >>=1;
+	}
     for( unsigned n=0; n < m_num_function_units; n++ ) {
         unsigned multiplier = m_fu[n]->clock_multiplier();
         for( unsigned c=0; c < multiplier; c++ ) 
@@ -708,9 +722,10 @@ void shader_core_ctx::execute()
 	warp_inst_t** ready_reg = issue_inst.get_ready();
         if( issue_inst.has_ready() && m_fu[n]->can_issue( **ready_reg ) ) {
             bool schedule_wb_now = !m_fu[n]->stallable();
-            if( schedule_wb_now && !m_result_bus.test( (*ready_reg)->latency ) ) {
+            int resbus = -1;
+            if( schedule_wb_now && (resbus=test_res_bus( (*ready_reg)->latency ))!=-1 ) {
                 assert( (*ready_reg)->latency < MAX_ALU_LATENCY );
-                m_result_bus.set( (*ready_reg)->latency );
+                m_result_bus[resbus]->set( (*ready_reg)->latency );
                 m_fu[n]->issue( issue_inst );
             } else if( !schedule_wb_now ) {
                 m_fu[n]->issue( issue_inst );
@@ -743,7 +758,12 @@ void shader_core_ctx::writeback()
 {
     warp_inst_t** preg = m_pipeline_reg[EX_WB].get_ready();
     warp_inst_t* pipe_reg = (preg==NULL)? NULL:*preg;
-    if( preg and !pipe_reg->empty() ) {
+    while( preg and !pipe_reg->empty() ) {
+    	/*
+    	 * Right now, the writeback stage drains all waiting instructions
+    	 * assuming there are enough ports in the register file or the
+    	 * conflicts are resolved at issue.
+    	 */
     	/*
     	 * The operand collector writeback can generally generate a stall
     	 * However, here, the pipelines should be un-stallable. This is
@@ -765,6 +785,8 @@ void shader_core_ctx::writeback()
         m_last_inst_gpu_sim_cycle = gpu_sim_cycle;
         m_last_inst_gpu_tot_sim_cycle = gpu_tot_sim_cycle;
         pipe_reg->clear();
+        preg = m_pipeline_reg[EX_WB].get_ready();
+        pipe_reg = (preg==NULL)? NULL:*preg;
     }
 }
 
@@ -1473,8 +1495,10 @@ void shader_core_ctx::display_pipeline(FILE *fout, int print_mem, int mask ) con
    }
    fprintf(fout, "-------------------------- other:\n");
 
-   std::string bits = m_result_bus.to_string();
-   fprintf(fout, "EX/WB sched= %s\n", bits.c_str() );
+   for(int i=0; i<num_result_bus; i++){
+	   std::string bits = m_result_bus[i]->to_string();
+	   fprintf(fout, "EX/WB sched[%d]= %s\n", i, bits.c_str() );
+   }
    fprintf(fout, "EX/WB      = ");
    print_stage(EX_WB, fout);
    fprintf(fout, "\n");
@@ -2340,3 +2364,4 @@ void shader_core_ctx::checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned 
         }
     }
 }
+

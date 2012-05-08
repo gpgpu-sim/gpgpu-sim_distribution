@@ -721,12 +721,12 @@ public:
     ~simd_function_unit() { delete m_dispatch_reg; }
 
     // modifiers
-    virtual void issue( register_set& source_reg ) { source_reg.move_out_to(m_dispatch_reg); }
+    virtual void issue( register_set& source_reg ) { source_reg.move_out_to(m_dispatch_reg); occupied.set(m_dispatch_reg->latency);}
     virtual void cycle() = 0;
 
     // accessors
     virtual unsigned clock_multiplier() const { return 1; }
-    virtual bool can_issue( const warp_inst_t & ) const { return m_dispatch_reg->empty(); }
+    virtual bool can_issue( const warp_inst_t &inst ) const { return m_dispatch_reg->empty() && !occupied.test(inst.latency); }
     virtual bool stallable() const = 0;
     virtual void print( FILE *fp ) const
     {
@@ -737,6 +737,8 @@ protected:
     std::string m_name;
     const shader_core_config *m_config;
     warp_inst_t *m_dispatch_reg;
+    static const unsigned MAX_ALU_LATENCY = 512;
+    std::bitset<MAX_ALU_LATENCY> occupied;
 };
 
 class pipelined_simd_unit : public simd_function_unit {
@@ -746,23 +748,25 @@ public:
     //modifiers
     virtual void cycle() 
     {
-        if( !m_pipeline_reg[0]->empty() )
-            //move_warp(*m_result_port,m_pipeline_reg[0]); // non-stallable pipeline
+        if( !m_pipeline_reg[0]->empty() ){
             m_result_port->move_in(m_pipeline_reg[0]);
+        }
         for( unsigned stage=0; (stage+1)<m_pipeline_depth; stage++ ) 
             move_warp(m_pipeline_reg[stage], m_pipeline_reg[stage+1]);
         if( !m_dispatch_reg->empty() ) {
-            if( !m_dispatch_reg->dispatch_delay() ) {
+            if( !m_dispatch_reg->dispatch_delay()) {
                 int start_stage = m_dispatch_reg->latency - m_dispatch_reg->initiation_interval;
                 move_warp(m_pipeline_reg[start_stage],m_dispatch_reg);
             }
         }
+        occupied >>=1;
     }
 
     virtual void issue( register_set& source_reg )
     {
         //move_warp(m_dispatch_reg,source_reg);
-        source_reg.move_out_to(m_dispatch_reg);
+        //source_reg.move_out_to(m_dispatch_reg);
+        simd_function_unit::issue(source_reg);
     }
 
     // accessors
@@ -855,7 +859,7 @@ public:
         case MEMORY_BARRIER_OP: break;
         default: return false;
         }
-        return simd_function_unit::can_issue(inst);
+        return m_dispatch_reg->empty();
     }
     virtual bool stallable() const { return true; }
     bool response_buffer_full() const;
@@ -1203,6 +1207,7 @@ public:
     void display_pipeline( FILE *fout, int print_mem, int mask3bit ) const;
 
 private:
+    int test_res_bus(int latency);
     void init_warps(unsigned cta_id, unsigned start_thread, unsigned end_thread);
     virtual void checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned t, unsigned tid);
     address_type next_pc( int tid ) const;
@@ -1276,7 +1281,8 @@ private:
     std::vector<simd_function_unit*> m_fu; // stallable pipelines should be last in this array
     ldst_unit *m_ldst_unit;
     static const unsigned MAX_ALU_LATENCY = 512;
-    std::bitset<MAX_ALU_LATENCY> m_result_bus;
+    unsigned num_result_bus;
+    std::vector< std::bitset<MAX_ALU_LATENCY>* > m_result_bus;
 
     // used for local address mapping with single kernel launch
     unsigned kernel_max_cta_per_shader;
