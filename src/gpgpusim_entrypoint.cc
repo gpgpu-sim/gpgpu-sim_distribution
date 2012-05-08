@@ -111,7 +111,7 @@ void *gpgpu_sim_thread_concurrent(void*)
             // check if a kernel has completed
             unsigned grid_uid = g_the_gpu->finished_kernel();
             if( grid_uid ){
-                g_stream_manager->register_finished_kernel(grid_uid); //this requires recursive mutexes but doesnt appear to have them :( but works anyway?
+                g_stream_manager->register_finished_kernel(grid_uid);
                 break; //force stats print and update
             }
              
