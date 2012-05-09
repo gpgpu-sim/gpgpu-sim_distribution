@@ -20,18 +20,18 @@ cuobjdumpInst *instEntry;
 }
 
 %token <string_value> BAR
-%token <string_value> ADA AND ANDS BRA CAL COS DADD DFMA DMUL EX2 F2F F2I FADD
-%token <string_value> FADD32 FADD32I FMAD FMAD32I FMUL FMUL32 FMUL32I FSET G2R
-%token <string_value> GLD GST I2F I2I IADD IADD32 IADD32I IMAD IMAD24 IMAD32I IMAD32 IADDCARRY
+%token <string_value> ADA AND ANDS BRA CAL COS DADD DMIN DMAX DFMA DMUL EX2 F2F F2I FADD
+%token <string_value> FADD32 FADD32I FMAD FMAD32I FMUL FMUL32 FMUL32I FSET DSET G2R
+%token <string_value> GLD GST I2F I2I IADD IADD32 IADD32I IMAD ISAD IMAD24 IMAD32I IMAD32 IADDCARRY
 %token <string_value> IMUL IMUL24 IMULS24 IMUL32 IMUL32S24 IMUL32U24 IMUL32I IMUL32I24 IMUL32IS24
 %token <string_value> ISET LG2 LLD LST MOV MOV32 MVC MVI NOP NOT NOTS OR ORS
 %token <string_value> R2A R2G R2GU16U8 RCP RCP32 RET RRO RSQ SIN SHL SHR SSY XOR XORS
 %token <string_value> S2R SASS_LD STS LDS SASS_ST IMIN IMAX A2R FMAX FMIN TEX TEX32 C2R EXIT
-%token <string_value> GRED PBK BRK R2C GATOM
+%token <string_value> GRED PBK BRK R2C GATOM VOTE
 
 %token <string_value> EQ EQU GE GEU GT GTU LE LEU LT LTU NE NEU
 %token <string_value> DOTBEXT DOTS DOTSFU
-%token <string_value> DOTTRUNC DOTIR DOTUN DOTNODEP DOTSAT
+%token <string_value> DOTTRUNC DOTCEIL DOTFLOOR DOTIR DOTUN DOTNODEP DOTSAT DOTANY DOTALL
 %token <string_value> DOTF16 DOTF32 DOTF64 DOTS8 DOTS16 DOTS32 DOTS64 DOTS128 DOTU8 DOTU16 DOTU32 DOTU24 DOTU64
 %token <string_value> DOTHI DOTNOINC
 %token <string_value> DOTEQ DOTEQU DOTGE DOTGEU DOTGT DOTGTU DOTLE DOTLEU DOTLT DOTLTU DOTNE DOTNEU DOTNSF DOTSF DOTCARRY
@@ -137,17 +137,17 @@ baseInstruction : simpleInstructions	{ printf($1); instEntry->setBase($1); g_ins
 		| pbkInstruction
 		;
 
-simpleInstructions	: ADA | AND | ANDS | COS | DADD | DFMA | DMUL | EX2 | F2F 
+simpleInstructions	: ADA | AND | ANDS | COS | DADD | DMIN | DMAX | DFMA | DMUL | EX2 | F2F 
 					| F2I | FADD | FADD32 | FADD32I | FMAD | FMAD32I | FMUL 
-					| FMUL32 | FMUL32I | FSET | G2R | GLD | GST | I2F | I2I 
-					| IADD | IADD32 | IADD32I | IMAD | IMAD24 | IMAD32I | IMAD32 | IMUL 
+					| FMUL32 | FMUL32I | FSET | DSET | G2R | GLD | GST | I2F | I2I 
+					| IADD | IADD32 | IADD32I | IMAD | ISAD | IMAD24 | IMAD32I | IMAD32 | IMUL 
 					| IMUL24 | IMULS24 | IMUL32 | IMUL32S24 | IMUL32I | IMUL32I24 | IMUL32IS24
 					| IMUL32U24
 					| ISET | LG2 | LLD | LST | MOV | MOV32 | MVC | MVI | NOP 
 					| NOT | NOTS | OR | ORS | R2A | R2G | R2GU16U8 | RCP | RCP32 | RET | RRO 
 					| RSQ | SHL | SHR | SIN | SSY | XOR | XORS | S2R | SASS_LD | STS 
 					| LDS | SASS_ST | EXIT | BAR | IMIN | IMAX | A2R | FMAX | FMIN 
-					| TEX | TEX32 | C2R | BRK | R2C | IADDCARRY
+					| TEX | TEX32 | C2R | BRK | R2C | IADDCARRY | VOTE
 					;
 
 pbkInstruction	:	PBK {
@@ -258,6 +258,8 @@ modifier	: opTypes	{ printf($1); g_instList->getListEnd().addTypeModifier($1);}
 		| DOTS			{ g_instList->getListEnd().addBaseModifier(".s"); }
 		| DOTSFU		{ g_instList->getListEnd().addBaseModifier(".sfu"); }
 		| DOTTRUNC		{ g_instList->getListEnd().addBaseModifier(".rz"); }
+		| DOTCEIL		{ g_instList->getListEnd().addBaseModifier(".rp"); }
+		| DOTFLOOR		{ g_instList->getListEnd().addBaseModifier(".rm"); }
 		| DOTX			{ g_instList->getListEnd().addBaseModifier(".x"); }
 		| DOTE			{ g_instList->getListEnd().addBaseModifier(".e"); }
 		| DOTRED		{ g_instList->getListEnd().addBaseModifier(".red"); }
@@ -265,6 +267,8 @@ modifier	: opTypes	{ printf($1); g_instList->getListEnd().addTypeModifier($1);}
 		| DOTIR			{ g_instList->getListEnd().addBaseModifier(".ir"); }
 		| DOTUN			{ /*g_instList->getListEnd().addBaseModifier(".un"); */}
 		| DOTNODEP		{ /*g_instList->getListEnd().addBaseModifier(".nodep"); */}
+		| DOTANY		{ g_instList->getListEnd().addBaseModifier(".any"); }
+		| DOTALL		{ g_instList->getListEnd().addBaseModifier(".all"); }
 		;
 
 opTypes		: DOTF16	//{ printf($1); g_instList->getListEnd().addTypeModifier($1);}
