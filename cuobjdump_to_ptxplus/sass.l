@@ -54,6 +54,8 @@ BRA	yylval.string_value = strdup(yytext); return BRA;
 CAL	yylval.string_value = strdup(yytext); return CAL;
 COS	yylval.string_value = strdup(yytext); return COS;
 DADD	yylval.string_value = strdup(yytext); return DADD;
+DMIN	yylval.string_value = strdup(yytext); return DMIN;
+DMAX	yylval.string_value = strdup(yytext); return DMAX;
 DFMA	yylval.string_value = strdup(yytext); return DFMA;
 DMUL	yylval.string_value = strdup(yytext); return DMUL;
 EX2	yylval.string_value = strdup(yytext); return EX2;
@@ -68,6 +70,7 @@ FMUL	yylval.string_value = strdup(yytext); return FMUL;
 FMUL32	yylval.string_value = strdup(yytext); return FMUL32;
 FMUL32I	yylval.string_value = strdup(yytext); return FMUL32I;
 FSET	yylval.string_value = strdup(yytext); return FSET;
+DSET	yylval.string_value = strdup(yytext); return DSET;
 G2R	yylval.string_value = strdup(yytext); return G2R;
 GLD	yylval.string_value = strdup(yytext); return GLD;
 GST	yylval.string_value = strdup(yytext); return GST;
@@ -82,6 +85,7 @@ IADD\.CARRY{numeric}	yylval.string_value = strdup(yytext); return IADDCARRY;
 IADD32	yylval.string_value = strdup(yytext); return IADD32;
 IADD32I	yylval.string_value = strdup(yytext); return IADD32I;
 IMAD	yylval.string_value = strdup(yytext); return IMAD;
+ISAD	yylval.string_value = strdup(yytext); return ISAD;
 IMAD\.U24	yylval.string_value = strdup(yytext); return IMAD24;
 IMAD\.S24	yylval.string_value = strdup(yytext); return IMAD24;
 IMAD32	yylval.string_value = strdup(yytext); return IMAD32;
@@ -140,6 +144,7 @@ GRED	yylval.string_value = strdup(yytext); return GRED;
 GATOM	yylval.string_value = strdup(yytext); return GATOM;
 PBK	yylval.string_value = strdup(yytext); return PBK;
 BRK	yylval.string_value = strdup(yytext); return BRK;
+VOTE	yylval.string_value = strdup(yytext); return VOTE;
 
 	/*instruction modifiers*/
 EQ	yylval.string_value = strdup(yytext); return EQ;
@@ -158,10 +163,16 @@ NEU	yylval.string_value = strdup(yytext); return NEU;
 \.S	yylval.string_value = strdup(yytext); return DOTS;
 \.SFU	yylval.string_value = strdup(yytext); return DOTSFU;
 \.TRUNC	yylval.string_value = strdup(yytext); return DOTTRUNC;
-\.IR	yylval.string_value = strdup(yytext); /*return DOTIR;*/
+\.CEIL	yylval.string_value = strdup(yytext); return DOTCEIL;
+\.FLOOR	yylval.string_value = strdup(yytext); return DOTFLOOR;
+\.IR	yylval.string_value = strdup(yytext); /*unknown*/
 \.UN	yylval.string_value = strdup(yytext); return DOTUN;
 \.NODEP	yylval.string_value = strdup(yytext); return DOTNODEP;
-\.SAT	yylval.string_value = strdup(yytext);
+\.SAT	yylval.string_value = strdup(yytext); /*unknown*/
+\.ANY	yylval.string_value = strdup(yytext); return DOTANY;
+\.ALL	yylval.string_value = strdup(yytext); return DOTALL;
+\.MAD	yylval.string_value = strdup(yytext); /*unknown*/
+
 
 
 	/* comparison operators */
@@ -180,6 +191,7 @@ NEU	yylval.string_value = strdup(yytext); return NEU;
 \.NOT_SIGN	yylval.string_value = strdup(yytext); return DOTNSF;
 \.SIGN	yylval.string_value = strdup(yytext); return DOTSF;
 \.CARRY	yylval.string_value = strdup(yytext); return DOTCARRY;
+\.CARRY{numeric}	yylval.string_value = strdup(yytext); /*unknown*/
 \.CC	yylval.string_value = strdup(yytext); return DOTCC;
 \.X		yylval.string_value = strdup(yytext); return DOTX;
 \.E		yylval.string_value = strdup(yytext); return DOTE;

@@ -154,8 +154,6 @@ void cuobjdumpInst::printCuobjdumpBaseModifiers()
 			output(".ne");
 		else if( strcmp(modString, "NEU")==0 )
 			output(".neu");
-		else if( strcmp(modString, ".exit")==0 )
-			output(modString);
 		else if( strcmp(modString, ".abs")==0 )
 		{
 			if((strcmp(m_base, "F2F")!=0) && (strcmp(m_base, "I2I")!=0))
@@ -163,14 +161,16 @@ void cuobjdumpInst::printCuobjdumpBaseModifiers()
 				output(modString);
 			}
 		}
-		else if( strcmp(modString, "ex2")==0 )
-			output(modString);
-		else if( strcmp(modString, "sin")==0 )
-			output(modString);
-		else if( strcmp(modString, "cos")==0 )
-			output(modString);
-		else if( strcmp(modString, ".rz")==0 )
-			output(modString);
+		else if(	strcmp(modString, "ex2")==0 ||
+					strcmp(modString, ".exit")==0 ||
+					strcmp(modString, "sin")==0 ||
+					strcmp(modString, "cos")==0 ||
+					strcmp(modString, ".rz")==0 ||
+					strcmp(modString, ".rp")==0 ||
+					strcmp(modString, ".rm")==0 ||
+					strcmp(modString, ".any")==0 ||
+					strcmp(modString, ".all")==0 )
+				output(modString);
 		else if( strcmp(modString, ".bext")==0 )
 		{
 			//".bext" is a modifier that indicated u8 to u16 type conversion, I think
@@ -323,6 +323,8 @@ void cuobjdumpInst::printCuobjdumpOperand(stringListPiece* currentPiece, std::st
 		output("%%ctaid.x");
 	} else if(mod == "g [0x7].u16") {//handling special register case: %ctaid.y
 		output("%%ctaid.y");
+	} else if(mod == "sr1") {//handling special register case: %clock
+		output("%%clock");
 	} else if(mod[0]=='r') { //basic register
 		if(	(strcmp(m_base, "DADD")==0) ||
 			(strcmp(m_base, "DMUL")==0) ||
@@ -576,13 +578,12 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		//output(" //cos");
 		output("cos");
 		printCuobjdumpBaseModifiers();
-
 		if(m_typeModifiers->getSize() == 0)
 			output(".f32"); //TODO: setting default type modifier but I'm not sure if this is right.
 		else
 			printCuobjdumpTypeModifiers();
-
 		printCuobjdumpOperands();
+		output(";");
 	}
 	else if(strcmp(m_base, "DADD")==0)
 	{
@@ -598,6 +599,37 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
+	else if(strcmp(m_base, "DMIN")==0)
+	{
+		printCuobjdumpPredicate();
+		output("min");
+		printCuobjdumpBaseModifiers();
+
+		if(m_typeModifiers->getSize() == 0)
+			output(".f64"); //TODO: setting default type modifier but I'm not sure if this is right.
+		else
+			printCuobjdumpTypeModifiers();
+
+		printCuobjdumpOperands();
+		output(";");
+	}
+	else if(strcmp(m_base, "DMAX")==0)
+	{
+		printCuobjdumpPredicate();
+		output("max");
+		printCuobjdumpBaseModifiers();
+
+		if(m_typeModifiers->getSize() == 0)
+			output(".f64"); //TODO: setting default type modifier but I'm not sure if this is right.
+		else
+			printCuobjdumpTypeModifiers();
+
+		printCuobjdumpOperands();
+		output(";");
+	}
+
+
+	/*
 	else if(strcmp(m_base, "DFMA")==0)
 	{
 		printCuobjdumpPredicate();
@@ -612,6 +644,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
+	*/
 	else if(strcmp(m_base, "DMUL")==0)
 	{
 		printCuobjdumpPredicate();
@@ -765,7 +798,23 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 
 		if(m_typeModifiers->getSize() == 0)
 		{
-			output(".f32"); output(".f32");
+			output(".f32.f32");
+		}
+		else
+			printCuobjdumpTypeModifiers();
+
+		printCuobjdumpOperands();
+		output(";");
+	}
+	else if(strcmp(m_base, "DSET")==0)
+	{
+		printCuobjdumpPredicate();
+		output("set");
+		printCuobjdumpBaseModifiers();
+
+		if(m_typeModifiers->getSize() == 0)
+		{
+			output(".f64.f64");
 		}
 		else
 			printCuobjdumpTypeModifiers();
@@ -1009,6 +1058,21 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
+	else if(strcmp(m_base, "ISAD")==0)
+	{
+		printCuobjdumpPredicate();
+		output("sad");
+		printCuobjdumpBaseModifiers();
+
+		if(m_typeModifiers->getSize() == 0)
+			output(int_default_mod()); //TODO: setting default type modifier but I'm not sure if this is right.
+		else
+			printCuobjdumpTypeModifiers();
+
+		printCuobjdumpOperands();
+		output(";");
+	}
+
 	else if(strcmp(m_base, "IMAD.U24")==0)
 	{
 		printCuobjdumpPredicate();
@@ -1523,6 +1587,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 			printCuobjdumpTypeModifiers();
 
 		printCuobjdumpOperands();
+		output(";");
 	}
 	else if(strcmp(m_base, "S2R")==0)
 	{
@@ -1535,6 +1600,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		else
 			printCuobjdumpTypeModifiers();
 		printCuobjdumpOperands();
+		output(";");
 	}
 	else if(strcmp(m_base, "LD")==0)
 	{
@@ -1704,6 +1770,21 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 	} else if(strcmp(m_base, "R2C")==0) {
 		printCuobjdumpPredicate();
 		output("mov.pred");
+		printCuobjdumpOperands();
+		output(";");
+	} else if(strcmp(m_base, "VOTE")==0) {
+		printCuobjdumpPredicate();
+		output("vote");
+		printCuobjdumpBaseModifiers();
+		printCuobjdumpTypeModifiers();
+		printCuobjdumpOperands();
+		output(";");
+	}
+	else if(strcmp(m_base, "DFMA")==0)
+	{
+		printCuobjdumpPredicate();
+		output("fma.rz.f64");
+		printCuobjdumpBaseModifiers();
 		printCuobjdumpOperands();
 		output(";");
 	}
