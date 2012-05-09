@@ -107,27 +107,17 @@ void *gpgpu_sim_thread_concurrent(void*)
         bool active = false;
         bool sim_cycles = false;
         g_the_gpu->init();
-		bool finished_kernel=false;
         do {
             // check if a kernel has completed
             unsigned grid_uid = g_the_gpu->finished_kernel();
             if( grid_uid ){
                 g_stream_manager->register_finished_kernel(grid_uid);
-                finished_kernel=true;
+				g_the_gpu->print_stats();
             }
-             
 
-			if(finished_kernel){
-				if(!g_the_gpu->active()) break; //delay the break until all instructions drain
-			}
-			else{
-				/* Only insert new operations if no kernels have finished since the start of this
-				   loop
-				   */
-				// launch operation on device if one is pending and can be run
-				stream_operation op = g_stream_manager->front();
-				op.do_operation(g_the_gpu);
-			}
+			// launch operation on device if one is pending and can be run
+			stream_operation op = g_stream_manager->front();
+			op.do_operation(g_the_gpu);
     
             // simulate a clock cycle on the GPU 
             if( g_the_gpu->active() ) { 
@@ -141,8 +131,9 @@ void *gpgpu_sim_thread_concurrent(void*)
            printf("GPGPU-Sim: ** STOP simulation thread (no work) **\n");
            fflush(stdout);
         }
-        if( sim_cycles ) 
-            g_the_gpu->print_stats();
+		if(sim_cycles) {
+			g_the_gpu->update_stats();
+		}
         pthread_mutex_lock(&g_sim_lock);
         g_sim_active = false;
         pthread_mutex_unlock(&g_sim_lock);

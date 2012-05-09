@@ -554,11 +554,14 @@ void gpgpu_sim::init()
        icnt_init_grid(); 
 }
 
-void gpgpu_sim::print_stats()
-{
+void gpgpu_sim::update_stats() {
     m_memory_stats->memlatstat_lat_pw();
     gpu_tot_sim_cycle += gpu_sim_cycle;
     gpu_tot_sim_insn += gpu_sim_insn;
+}
+
+void gpgpu_sim::print_stats()
+{
 
     ptx_file_line_stats_write_file();
     gpu_print_stat();
@@ -616,9 +619,9 @@ void gpgpu_sim::gpu_print_stat() const
    printf("gpu_sim_cycle = %lld\n", gpu_sim_cycle);
    printf("gpu_sim_insn = %lld\n", gpu_sim_insn);
    printf("gpu_ipc = %12.4f\n", (float)gpu_sim_insn / gpu_sim_cycle);
-   printf("gpu_tot_sim_cycle = %lld\n", gpu_tot_sim_cycle);
-   printf("gpu_tot_sim_insn = %lld\n", gpu_tot_sim_insn);
-   printf("gpu_tot_ipc = %12.4f\n", (float)gpu_tot_sim_insn / gpu_tot_sim_cycle);
+   printf("gpu_tot_sim_cycle = %lld\n", gpu_tot_sim_cycle+gpu_sim_cycle);
+   printf("gpu_tot_sim_insn = %lld\n", gpu_tot_sim_insn+gpu_sim_insn);
+   printf("gpu_tot_ipc = %12.4f\n", (float)(gpu_tot_sim_insn+gpu_sim_cycle) / (gpu_tot_sim_cycle+gpu_sim_cycle));
    printf("gpu_tot_issued_cta = %lld\n", gpu_tot_issued_cta);
 
    // performance counter for stalls due to congestion.
