@@ -73,6 +73,7 @@ void *gpgpu_sim_thread_sequential(void*)
               g_the_gpu->deadlock_check();
           }
           g_the_gpu->print_stats();
+          g_the_gpu->update_stats();
           print_simulation_time();
       }
       sem_post(&g_sim_signal_finish);
