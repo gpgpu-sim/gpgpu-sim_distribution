@@ -262,7 +262,10 @@ void ptx_thread_info::cpy_tid_to_reg( dim3 tid )
    data.u32=(tid.x + (tid.y<<16) + (tid.z<<26));
 
    const symbol *r0 = m_symbol_table->lookup("$r0");
-   set_reg(r0,data);
+   if (r0){
+	   //No need to set pid if kernel doesn't use it
+	   set_reg(r0,data);
+   }
 }
 
 void ptx_thread_info::print_insn( unsigned pc, FILE * fp ) const
