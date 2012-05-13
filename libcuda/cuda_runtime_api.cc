@@ -1219,7 +1219,7 @@ std::list<cuobjdumpSection> pruneSectionList(std::list<cuobjdumpSection> cuobjdu
 	}
 
 	std::list<cuobjdumpSection> prunedList;
-	std::map<char*, unsigned> cuobjdumpSectionMap;
+	std::map<std::string, unsigned> cuobjdumpSectionMap;
 	for (	std::list<cuobjdumpSection>::iterator iter = cuobjdumpSectionList.begin();
 			iter != cuobjdumpSectionList.end();
 			iter++){
