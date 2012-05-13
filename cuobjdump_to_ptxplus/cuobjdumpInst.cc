@@ -89,8 +89,13 @@ void cuobjdumpInst::printCuobjdumpTypeModifiers()
 			output(".f16");
 		else if( strcmp(modString, ".F32")==0 )
 			output(".f32");
-		else if( strcmp(modString, ".F64")==0 )
-			output(".ff64");
+		else if( strcmp(modString, ".F64")==0 ){
+			if(		strcmp(m_base, "F2I") == 0||
+					strcmp(m_base, "F2F") == 0)
+				output(".f64");
+			else
+				output(".ff64");
+		}
 		else if( strcmp(modString, ".S8")==0 )
 			output(".s8");
 		else if( strcmp(modString, ".S16")==0 )
@@ -717,6 +722,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		output("cvt");
 		printCuobjdumpBaseModifiers();
 		printCuobjdumpTypeModifiers();
+		//output(".f64.s32");
 		printCuobjdumpOperands();
 		output(";");
 	}
@@ -1581,11 +1587,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpPredicate();
 		output("cvt");
 		printCuobjdumpBaseModifiers();
-
-		if(m_typeModifiers->getSize() == 0)
-			output(".u32");
-		else
-			printCuobjdumpTypeModifiers();
+		output(".u32.u32");
 		printCuobjdumpOperands();
 		output(";");
 	}
@@ -1770,7 +1772,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 	else if(strcmp(m_base, "DFMA")==0)
 	{
 		printCuobjdumpPredicate();
-		output("fma.rz.f64");
+		output("fma.rz.ff64");
 		printCuobjdumpBaseModifiers();
 		printCuobjdumpOperands();
 		output(";");
