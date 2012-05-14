@@ -2,7 +2,7 @@
 %{
 #include <stdio.h>
 #include <string.h>
-#include "elf_parser.hpp"
+#include "elf_parser.hh"
 
 #define yylval elf_lval
 

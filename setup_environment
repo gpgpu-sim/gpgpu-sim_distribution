@@ -17,9 +17,6 @@ fi
 export GPGPUSIM_ROOT="$( cd "$( dirname "$BASH_SOURCE" )" && pwd )"
 
 export QTINC=/usr/include
-export BOOST_ROOT=/usr/include/boost
-export BOOST_LIB=/usr/lib64
-export BOOST_VER=
 
 # change NVOPENCL_LIBDIR to point to your opencl library directory, usually
 # /usr/lib or /usr/lib64. Not setting this variable will cause gpgpu-sim to

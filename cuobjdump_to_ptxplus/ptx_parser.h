@@ -7,8 +7,9 @@
 #include <assert.h>
 #include <iostream>
 #include <sstream>
-#include "decudaInstList.h"
 #include <string.h>
+#include <stdio.h>
+#include "cuobjdumpInstList.h"
 
 #define NON_ARRAY_IDENTIFIER 1
 #define ARRAY_IDENTIFIER_NO_DIM 2
@@ -79,9 +80,7 @@ void add_constptr(const char* identifier1, const char* identifier2, int offset) 
 
 /*non-dummy stuff below this point*/
 
-
-
-extern decudaInstList *g_headerList;
+extern cuobjdumpInstList *g_headerList;
 
 // Global variable to track if we are currently inside a entry directive
 bool inEntryDirective = false;
@@ -118,13 +117,13 @@ void add_function_name( const char *headerInput )
 void add_space_spec( enum _memory_space_t spec, int value )
 {
 	DPRINTF("spec=%u", spec);
-	decudaInst *instEntry;
+	cuobjdumpInst *instEntry;
 	static int constmemindex=1;
 	switch(spec)
 	{
 		case param_space_unclassified:
 			if(inEntryDirective && inParamDirective) {
-				instEntry = new decudaInst();
+				instEntry = new cuobjdumpInst();
 				instEntry->setBase(".param");
 				g_headerList->add(instEntry);
 			}
@@ -132,7 +131,7 @@ void add_space_spec( enum _memory_space_t spec, int value )
 		case tex_space:
 			inTexDirective = true;
 			/*
-			instEntry = new decudaInst();
+			instEntry = new cuobjdumpInst();
 			instEntry->setBase(".tex");
 			g_headerList->add(instEntry);
 			*/
@@ -141,7 +140,7 @@ void add_space_spec( enum _memory_space_t spec, int value )
 			if(!inEntryDirective) {
 				/*
 				inConstDirective = true;
-				instEntry = new decudaInst();
+				instEntry = new cuobjdumpInst();
 				instEntry->setBase(".const");
 				g_headerList->add(instEntry);
 				*/
@@ -219,7 +218,7 @@ void add_scalar_type_spec( int headerInput )
 void add_version_info( float versionNumber, unsigned ext)
 {
 	DPRINTF("");
-	decudaInst *instEntry = new decudaInst();
+	cuobjdumpInst *instEntry = new cuobjdumpInst();
 	instEntry->setBase(".version");
 	g_headerList->add(instEntry);
 
@@ -236,7 +235,7 @@ void add_version_info( float versionNumber, unsigned ext)
 void target_header(char* firstTarget)
 {
 	DPRINTF("%s", firstTarget);
-	decudaInst *instEntry = new decudaInst();
+	cuobjdumpInst *instEntry = new cuobjdumpInst();
 	instEntry->setBase(".target");
 	g_headerList->add(instEntry);	
 
@@ -246,7 +245,7 @@ void target_header(char* firstTarget)
 void target_header2(char* firstTarget, char* secondTarget)
 {
 	DPRINTF("%s, %s", firstTarget, secondTarget);
-	decudaInst *instEntry = new decudaInst();
+	cuobjdumpInst *instEntry = new cuobjdumpInst();
 	instEntry->setBase(".target");
 	g_headerList->add(instEntry);	
 
@@ -258,7 +257,7 @@ void target_header2(char* firstTarget, char* secondTarget)
 void target_header3(char* firstTarget, char* secondTarget, char* thirdTarget)
 {
 	DPRINTF("%s, %s, %s", firstTarget, secondTarget, thirdTarget);
-	decudaInst *instEntry = new decudaInst();
+	cuobjdumpInst *instEntry = new cuobjdumpInst();
 	instEntry->setBase(".target");
 	g_headerList->add(instEntry);
 
@@ -290,7 +289,7 @@ void func_header(const char* headerBase)
 	if((strcmp(headerBase, ".entry")==0)||(strcmp(headerBase, ".func")==0)) {
 		inEntryDirective = true;
 		g_headerList->addEntry("");
-		decudaInst *instEntry = new decudaInst();
+		cuobjdumpInst *instEntry = new cuobjdumpInst();
 		instEntry->setBase(headerBase);
 		g_headerList->add(instEntry);
 

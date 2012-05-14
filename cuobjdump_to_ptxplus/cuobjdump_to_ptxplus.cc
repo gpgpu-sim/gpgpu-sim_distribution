@@ -1,7 +1,9 @@
 #include <iostream>
-#include "cuobjdumpInstList.h"
 #include <stdio.h>
 #include <fstream>
+#include <cassert>
+
+#include "cuobjdumpInstList.h"
 
 using namespace std;
 

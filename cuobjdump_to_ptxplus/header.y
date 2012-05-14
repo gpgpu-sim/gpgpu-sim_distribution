@@ -28,12 +28,12 @@
 
 %{
 #include <iostream>
-#include "decudaInstList.h"
+#include "cuobjdumpInstList.h"
 
 int yylex(void);
 void yyerror(const char*);
 
-extern decudaInstList *g_headerList;
+extern cuobjdumpInstList *g_headerList;
 extern void output(const char * text);
 %}
 
@@ -82,9 +82,9 @@ statement	: compilerDirective literal literal	{}
 		| compilerDirective identifierList LEFTPAREN parameterList RIGHTPAREN	{}
 		;
 
-compilerDirective	: DOTVERSION	{ output(".version"); decudaInst *instEntry = new decudaInst(); instEntry->setBase(".version"); g_headerList->add(instEntry);}
-			| DOTTARGET	{ output(".target"); decudaInst *instEntry = new decudaInst(); instEntry->setBase(".target"); g_headerList->add(instEntry);}
-			| DOTENTRY	{ output(".entry"); decudaInst *instEntry = new decudaInst(); instEntry->setBase(".entry"); g_headerList->add(instEntry);}
+compilerDirective	: DOTVERSION	{ output(".version"); cuobjdumpInst *instEntry = new cuobjdumpInst(); instEntry->setBase(".version"); g_headerList->add(instEntry);}
+			| DOTTARGET	{ output(".target"); cuobjdumpInst *instEntry = new cuobjdumpInst(); instEntry->setBase(".target"); g_headerList->add(instEntry);}
+			| DOTENTRY	{ output(".entry"); cuobjdumpInst *instEntry = new cuobjdumpInst(); instEntry->setBase(".entry"); g_headerList->add(instEntry);}
 			;
 
 identifierList	: identifierList IDENTIFER	{ output(" "); output($2); g_headerList->getListEnd().addOperand($2); }
@@ -98,7 +98,7 @@ parameterList	: parameterList parameter
 parameter	: stateSpace opTypes IDENTIFER	{ output(" "); output($3); g_headerList->getListEnd().addOperand($3);}
 		;
 
-stateSpace	: DOTPARAM	{ output("\n.param"); decudaInst *instEntry = new decudaInst(); instEntry->setBase(".param"); g_headerList->add(instEntry); }
+stateSpace	: DOTPARAM	{ output("\n.param"); cuobjdumpInst *instEntry = new cuobjdumpInst(); instEntry->setBase(".param"); g_headerList->add(instEntry); }
 		;
 
 opTypes		: DOTU64		{ output(".u64"); g_headerList->getListEnd().addTypeModifier(".u64");}

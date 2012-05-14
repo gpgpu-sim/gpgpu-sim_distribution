@@ -1,4 +1,72 @@
+#ifndef _CUOBJDUMPINSTLIST_H_
+#define _CUOBJDUMPINSTLIST_H_
+
+// External includes
+#include <list>
+#include <map>
+#include <string>
+
+// Local includes
 #include "cuobjdumpInst.h"
+
+// Used for entry specific constant memory segments (c1)
+struct constMemory
+{
+	int index;
+	int entryIndex;
+	const char* type;
+	std::list<std::string> m_constMemory;
+};
+
+struct constMemory2
+{
+	const char* kernel;
+	const char* type;
+	std::list<std::string> m_constMemory;
+};
+
+// Used for uninitialized constant memory (globally defined)
+struct constMemoryPtr
+{
+	int bytes;
+	std::string name;
+
+	std::string destination;
+	int offset;
+};
+
+// Used for global memory segments
+struct globalMemory
+{
+	int offset;
+	int bytes;
+	std::string name;
+};
+
+struct cuobjdumpEntry
+{
+	//char* m_entryName;
+	std::string m_entryName;
+	std::list<cuobjdumpInst> m_instList;	// List of cuobjdump instructions
+
+	// Register list
+	int m_largestRegIndex;
+	int m_largestOfsRegIndex;
+	bool m_reg124;
+	bool m_oreg127;
+
+	// Predicate list
+	int m_largestPredIndex;
+
+	// Local memory size
+	int m_lMemSize;
+
+	//use for recording used labels
+	std::list<std::string> m_labelList;
+
+   // Histogram for operation per cycle count
+   std::map<std::string, int> m_opPerCycleHistogram;
+};
 
 // Used for local memory segments
 struct localMemory
@@ -7,22 +75,46 @@ struct localMemory
 	int entryIndex;
 };
 
-class cuobjdumpInstList: public decudaInstList
+class cuobjdumpInstList
 {
 protected:
-	std::string parseCuobjdumpPredicate(std::string pred);
+	std::list<cuobjdumpEntry> m_entryList;
+	std::list<constMemory> m_constMemoryList;
+	std::list<constMemory2> m_constMemoryList2;
+	std::list<globalMemory> m_globalMemoryList;
+
 	int m_kernelCount;
 	std::map<std::string,int>kernelcmemmap;
 	std::map<std::string,int>kernellmemmap;
 	std::list<localMemory> m_localMemoryList;
+	std::list<std::string>  m_realTexList;	// Stores the real names of tex variables
+	std::list<constMemoryPtr> m_constMemoryPtrList;
 
+	// Functions:
+	std::string parseCuobjdumpPredicate(std::string pred);
+	void printMemory();// Print const memory directives
+	// Print register names
+	void printRegNames(cuobjdumpEntry entry);
+	void printOutOfBoundRegisters(cuobjdumpEntry entry);
+
+	// Print predicate names
+	void printPredNames(cuobjdumpEntry entry);
 public:
 	//Constructor
 	cuobjdumpInstList();
 
+	cuobjdumpInst getListEnd();
+
+	// Functions used by the parser
+	int addEntry(std::string entryName); // creates a new entry
+	int add(cuobjdumpInst* newInst); //add cuobjdumpInst to list
+	void addConstMemory(int index); // add global const memory
+	void addTex(std::string tex);	// add tex operand
+	bool findEntry(std::string entryName, cuobjdumpEntry& entry); // find and return entry
+
 	void setKernelCount(int k);
 	void readConstMemoryFromElfFile(std::string elf);
-
+	void setLastEntryName(std::string entryName); // sets name of last entry
 	void addCuobjdumpRegister(std::string reg, bool lo=false); //add register
 	void addCuobjdumpMemoryOperand(std::string mem, int memType);
 	std::string parseCuobjdumpRegister(std::string reg, bool lo, int vectorFlag);
@@ -32,16 +124,22 @@ public:
 
 	void addEntryConstMemory(int index, int entryIndex);
 	void addEntryConstMemory2(char* kernel);
+	void setConstMemoryType(const char* type);
+	void setConstMemoryType2(const char* type); // set type of constant memory
+	void addConstMemoryValue(std::string constMemoryValue); // add const memory
+	void addConstMemoryValue2(std::string constMemoryValue); // add const memory
 	void addConstMemoryPtr(const char* bytes, const char* offset, const char* name);
 	void setConstMemoryMap(const char* kernelname, int index);
 	void setLocalMemoryMap(const char* kernelname, int index);
 	void reverseConstMemory();
 	void addEntryLocalMemory(int value, int entryIndex);
 	void readOtherConstMemoryFromBinFile(std::string binString); // read in constant memory from bin file
-
+	std::list<std::string> getRealTexList(); // get the list of real tex names
+	void setRealTexList(std::list<std::string> realTexList); // set the list of real tex names
+	void printHeaderInstList();
 	void printCuobjdumpLocalMemory();
-
 	void printCuobjdumpInstList();
 	void printCuobjdumpPtxPlusList(cuobjdumpInstList* headerInfo);
 };
 
+#endif //_CUOBJDUMPINSTLIST_H_
