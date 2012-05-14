@@ -25,7 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
+#ifndef _STRINGLIST_H_
+#define _STRINGLIST_H_
 struct stringListPiece
 {
 	const char* stringText;
@@ -60,3 +61,4 @@ public:
 	//print representation
 	void printStringList();
 };
+#endif //_STRINGLIST_H_

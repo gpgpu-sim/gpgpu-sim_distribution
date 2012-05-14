@@ -1,5 +1,16 @@
+#include <sstream>
 #include <iostream>
+#include <cassert>
 #include "cuobjdumpInstList.h"
+
+#define P_DEBUG 1
+#define DPRINTF(...) \
+   if(P_DEBUG) { \
+      printf("(%s:%u) ", __FILE__, __LINE__); \
+      printf(__VA_ARGS__); \
+      printf("\n"); \
+      fflush(stdout); \
+   }
 
 extern void output(const char * text);
 
@@ -10,6 +21,289 @@ cuobjdumpInstList::cuobjdumpInstList()
 }
 
 
+
+// add to tex list
+void cuobjdumpInstList::addTex(std::string tex)
+{
+	std::string origTex = tex;
+	DPRINTF("cuobjdumpInstList::addTex tex=%s", tex.c_str());
+	// If $tex# tex from cuobjdump, then use index to get real tex name
+	if(tex.substr(0, 4) == "$tex") {
+		tex = tex.substr(4, tex.size()-4);
+		int texNum = atoi(tex.c_str());
+		if(texNum >= m_realTexList.size()) {
+			output("ERROR: tex does not exist in real tex list from ptx.\n.");
+			assert(0);
+		}
+
+		std::list<std::string>::iterator itex = m_realTexList.begin();
+		for(int i=0; i<texNum; i++) itex++;
+		origTex = *itex;
+	}
+	// Otherwise, tex from original ptx
+	else {
+		m_realTexList.push_back(tex);
+	}
+
+	// Add the tex to instruction operand list
+	//char* texName = new char [strlen(origTex.c_str())+1];
+	//strcpy(texName, origTex.c_str());
+	//getListEnd().addOperand(texName);
+}
+
+void cuobjdumpInstList::setLastEntryName(std::string entryName)
+{
+	m_entryList.back().m_entryName = entryName;
+}
+
+// create new global constant memory "bank"
+void cuobjdumpInstList::addConstMemory(int index)
+{
+	constMemory newConstMem;
+	newConstMem.index = index;
+	newConstMem.entryIndex = 0;
+	m_constMemoryList.push_back(newConstMem);
+}
+
+//add cuobjdumpInst to the last entry in entry list
+int cuobjdumpInstList::add(cuobjdumpInst* newCuobjdumpInst)
+{
+	if(m_entryList.size() == 0) {
+		//output("ERROR: Adding an instruction before entry.\n");
+		addEntry("");
+		//assert(0);
+	}
+
+	m_entryList.back().m_instList.push_back(*newCuobjdumpInst);
+
+	return m_entryList.size();
+}
+
+// add a new entry
+int cuobjdumpInstList::addEntry(std::string entryName)
+{
+	cuobjdumpEntry newEntry;
+	newEntry.m_largestRegIndex = -1;
+	newEntry.m_largestOfsRegIndex = -1;
+	newEntry.m_largestPredIndex = -1;
+	newEntry.m_reg124 = false;
+	newEntry.m_oreg127 = false;
+	newEntry.m_lMemSize = -1;
+
+	newEntry.m_entryName = entryName;
+
+
+   // Fill opPerCycle histogram with values
+   newEntry.m_opPerCycleHistogram.insert( std::pair<std::string,int>("OP_1", 0) );
+   newEntry.m_opPerCycleHistogram.insert( std::pair<std::string,int>("OP_2", 0) );
+   newEntry.m_opPerCycleHistogram.insert( std::pair<std::string,int>("OP_8", 0) );
+
+
+	m_entryList.push_back(newEntry);
+	return m_entryList.size();
+}
+
+// print out .version and .target headers
+void cuobjdumpInstList::printHeaderInstList()
+{
+	// These should be in the first entry
+	cuobjdumpEntry e_first = m_entryList.front();
+
+	std::list<cuobjdumpInst>::iterator currentInst;
+	for(currentInst=e_first.m_instList.begin(); currentInst!=e_first.m_instList.end(); ++currentInst)
+	{
+		if(!(currentInst->printHeaderInst()))
+		{
+			break;
+		}
+	}
+	for (	std::list<std::string>::iterator iter = m_realTexList.begin();
+			iter != m_realTexList.end();
+			iter ++) {
+		output(".tex .u64 ");
+		output((*iter).c_str());
+		output(";\n");
+	}
+}
+
+bool cuobjdumpInstList::findEntry(std::string entryName, cuobjdumpEntry& entry) {
+	std::list<cuobjdumpEntry>::iterator e;
+
+	std::string entryNameS = entryName;
+
+	for(e=m_entryList.begin(); e!=m_entryList.end(); ++e) {
+		if( e->m_entryName == entryNameS) {
+			entry = *e;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+// get the list of real tex names
+std::list<std::string> cuobjdumpInstList::getRealTexList() {
+	return m_realTexList;
+}
+
+// set the list of real tex names
+void cuobjdumpInstList::setRealTexList(std::list<std::string> realTexList) {
+	m_realTexList = realTexList;
+}
+
+// add value to const memory
+void cuobjdumpInstList::addConstMemoryValue(std::string constMemoryValue)
+{
+	m_constMemoryList.back().m_constMemory.push_back(constMemoryValue);
+}
+
+void cuobjdumpInstList::addConstMemoryValue2(std::string constMemoryValue)
+{
+	m_constMemoryList2.back().m_constMemory.push_back(constMemoryValue);
+}
+
+// set type of constant memory
+void cuobjdumpInstList::setConstMemoryType(const char* type)
+{
+	m_constMemoryList.back().type = type;
+}
+
+void cuobjdumpInstList::setConstMemoryType2(const char* type)
+{
+	m_constMemoryList2.back().type = type;
+}
+
+//retrieve point to list end
+cuobjdumpInst cuobjdumpInstList::getListEnd()
+{
+	return m_entryList.back().m_instList.back();
+}
+
+// print out predicate names
+void cuobjdumpInstList::printPredNames(cuobjdumpEntry entry)
+{
+	if( entry.m_largestPredIndex >= 0) {
+		char out[30];
+		sprintf(out, "\t.reg .pred $p<%d>;", entry.m_largestPredIndex+1);
+		output(out);
+		output("\n");
+	}
+
+}
+
+// print reg124 and set its value to 0
+void cuobjdumpInstList::printOutOfBoundRegisters(cuobjdumpEntry entry)
+{
+	if( entry.m_reg124 == true ) {
+		output("\n");
+		output("\t.reg .u32 $r124;\n");
+		output("\tmov.u32 $r124, 0x00000000;\n");
+	}
+	if( entry.m_oreg127 == true) {
+		output("\n");
+		output("\t.reg .u32 $o127;\n");
+	}
+}
+
+// print out register names
+void cuobjdumpInstList::printRegNames(cuobjdumpEntry entry)
+{
+	if( entry.m_largestRegIndex >= 0) {
+		char out[30];
+		sprintf(out, "\t.reg .u32 $r<%d>;", entry.m_largestRegIndex+1);
+		output(out);
+		output("\n");
+	}
+
+	if( entry.m_largestOfsRegIndex >= 0) {
+		char out[30];
+		sprintf(out, "\t.reg .u32 $ofs<%d>;", entry.m_largestOfsRegIndex+1);
+		output(out);
+		output("\n");
+	}
+}
+
+// print const memory directive
+void cuobjdumpInstList::printMemory()
+{
+
+	// Constant memory
+
+	for(std::list<constMemory>::iterator i=m_constMemoryList.begin(); i!=m_constMemoryList.end(); ++i) {
+		char line[40];
+
+		// Global or entry specific
+		if(i->entryIndex == 0)
+			sprintf(line, ".const %s constant0[%d] = {", i->type, i->m_constMemory.size());
+		else
+			sprintf(line, ".const %s ce%dc%d[%d] = {", i->type, i->entryIndex, i->index, i->m_constMemory.size());
+
+		output(line);
+
+		std::list<std::string>::iterator j;
+		int l=0;
+		for(j=i->m_constMemory.begin(); j!=i->m_constMemory.end(); ++j) {
+			if(j!=i->m_constMemory.begin())
+				output(", ");
+			if( (l++ % 4) == 0) output("\n          ");
+			output(j->c_str());
+		}
+		output("\n};\n\n");
+	}
+
+
+	for(std::list<constMemory2>::iterator i=m_constMemoryList2.begin(); i!=m_constMemoryList2.end(); ++i) {
+		char line[1024];
+
+		// Global or entry specific
+		sprintf(line, ".const %s constant1%s[%d] = {", i->type, i->kernel, i->m_constMemory.size());
+
+		output(line);
+
+		std::list<std::string>::iterator j;
+		int l=0;
+		for(j=i->m_constMemory.begin(); j!=i->m_constMemory.end(); ++j) {
+			if(j!=i->m_constMemory.begin())
+				output(", ");
+			if( (l++ % 4) == 0) output("\n          ");
+			output(j->c_str());
+		}
+		output("\n};\n\n");
+	}
+
+	// Next, print out the local memory declaration
+	std::list<cuobjdumpEntry>::iterator e;
+	int eIndex=1; // entry index starts from 1 from the first blank entry is missing here (only in header entry list)
+	for(e=m_entryList.begin(); e!=m_entryList.end(); ++e) {
+		if(e->m_lMemSize > 0) {
+			std::stringstream ssout;
+			ssout << ".local .b8 l" << eIndex << "[" << e->m_lMemSize << "];" << std::endl;
+			output(ssout.str().c_str());
+		}
+		eIndex++;
+	}
+	output("\n");
+
+	// Next, print out the global memory declaration
+	std::list<globalMemory>::iterator g;
+	for(g=m_globalMemoryList.begin(); g!=m_globalMemoryList.end(); ++g) {
+		std::stringstream out;
+		out << ".global .b8 " << g->name << "[" << g->bytes << "];" << std::endl;
+		output(out.str().c_str());
+	}
+	output("\n");
+
+	// Next, print out constant memory pointers
+	std::list<constMemoryPtr>::iterator cp;
+	for(cp=m_constMemoryPtrList.begin(); cp!=m_constMemoryPtrList.end(); ++cp) {
+		std::stringstream out;
+		out << ".const .b8 " << cp->name << "[" << cp->bytes << "];" << std::endl;
+		out << ".constptr " << cp->name << ", " << cp->destination << ", " << cp->offset << ";" << std::endl;
+		output(out.str().c_str());
+	}
+	output("\n");
+
+}
 
 
 //TODO: Some register processing work is supposed to be done here.
@@ -303,164 +597,25 @@ void cuobjdumpInstList::addEntryLocalMemory(int value, int entryIndex)
 	m_localMemoryList.push_back(newLocalMem);
 }
 
-
-// Read in constant memory from bin file
-// Two cases of constant memory have been noticed so far
-// 1 - All the constant memory is initialized in original ptx file. The assembler combines all this memory into c0
-// 2 - Constant memory is declared in ptx, but not initialized (initialized by host). The assembler still calls this c0
-void cuobjdumpInstList::readConstMemoryFromElfFile(std::string elf)
-{
-	unsigned k=1;
-	printf("Trying to find constant memory in elf file:\n");
-
-	// Get each constant segment
-	const boost::regex constPattern("^\\.nv\\.constant1\\.[^\n]+\n[ x0-9a-f\t]+$");
-	// Parse each constseg
-	const boost::sregex_token_iterator end;
-	for (
-		boost::sregex_token_iterator i(elf.begin(),elf.end(), constPattern);
-		i != end;
-		++i
-		)
-	{
-		std::string memseg = *i;
-		boost::smatch memResult;
-
-		const boost::regex memValuePattern("(0x[A-Fa-f0-9]{8,8})");
-
-		bool memExists = boost::regex_search(memseg, memResult, memValuePattern);
-
-
-		std::list<std::string> c1;
-		std::list<std::string>::iterator it = c1.begin();
-
-		const boost::sregex_token_iterator end2;
-		for (
-			boost::sregex_token_iterator j(memseg.begin(),memseg.end(), memValuePattern);
-			j != end2;
-			++j ){
-			c1.insert(it, *j);
-		}
-
-		addEntryConstMemory(1, k);
-		setConstMemoryType(".u32");
-
-		std::list<std::string>::iterator c;
-		if(c1.size() > 0) {
-			for(c=c1.begin(); c!=c1.end(); ++c) {
-				std::string a = *c;
-				//printf("%s ", a.c_str());
-				addConstMemoryValue(a);
-			}
-		}
-
-
-		printf("Found constant memory\n");
-		printf(memseg.c_str());
-		printf("\n");
-		k++;
-	}
-	m_kernelCount = k-1;
-}
 void cuobjdumpInstList::setKernelCount(int k){
 	m_kernelCount = k;
-}
-void cuobjdumpInstList::readOtherConstMemoryFromBinFile(std::string binString)
-{
-	// Initialize a list to store memory values
-	// std::list<std::string> c0;
-
-	// Get each code segment
-	//const boost::regex codePattern("(code \\{[^\\{\\}]*(const \\{[^\\{\\}]*(mem \\{[^\\{\\}]*\\}[^\\{\\}]*)+\\}[^\\{\\}]*)+bincode \\{[^\\{\\}]*\\}[^\\{\\}]*\\})");
-	const boost::regex codePattern("(code \\{[^\\{\\}]*(const \\{[^\\{\\}]*(mem \\{[^\\{\\}]*\\}[^\\{\\}]*)+\\}[^\\{\\}]*)*bincode \\{[^\\{\\}]*\\}[^\\{\\}]*\\})");
-
-	int k=1;
-
-	// Parse each codeseg
-	const boost::sregex_token_iterator end;
-	for(
-		boost::sregex_token_iterator i(binString.begin(),binString.end(), codePattern);
-		i != end;
-		++i
-	)
-	{
-		std::list<std::string> c1;
-
-		// For each code segment, get the seg numbers and memory values string
-		std::string codeSeg_s = *i;
-		std::string segnum_s, lmem_s, mem;
-		int segnum;
-		int lmem;
-
-		boost::smatch segnumResult;
-		boost::smatch lmemResult;
-		boost::smatch memResult;
-
-		const boost::regex segnumPattern("segnum\\s*=\\s(\\d*)");
-		const boost::regex lmemPattern("lmem\\s*=\\s(\\d*)");
-		const boost::regex memPattern("mem \\{([^\\}]*)\\}");
-
-		boost::regex_search(codeSeg_s, segnumResult, segnumPattern);
-		boost::regex_search(codeSeg_s, lmemResult, lmemPattern);
-		bool memExists = boost::regex_search(codeSeg_s, memResult, memPattern);
-
-		lmem_s = lmemResult[1];
-		lmem = atoi(lmem_s.c_str());
-
-		addEntryLocalMemory(lmem, k);
-
-		if(memExists)
-		{
-		segnum_s = segnumResult[1];
-		segnum = atoi(segnum_s.c_str());
-
-		mem = memResult[1];
-		const boost::regex memValuePattern("(0x[A-Fa-f0-9]{8,8})");
-
-		std::list<std::string>::iterator it = c1.begin();
-
-		const boost::sregex_token_iterator end2;
-		for (
-			boost::sregex_token_iterator j(mem.begin(),mem.end(), memValuePattern);
-			j != end2;
-			++j
-			)
-		{
-			c1.insert(it, *j);
-		}
-
-		addEntryConstMemory(segnum, k);
-		setConstMemoryType(".u32");
-
-		std::list<std::string>::iterator c;
-		if(c1.size() > 0) {
-			for(c=c1.begin(); c!=c1.end(); ++c) {
-				std::string a = *c;
-				//printf("%s ", a.c_str());
-				addConstMemoryValue(a);
-			}
-		}
-		}
-		k++;
-	}
-	m_kernelCount = k-1;
 }
 
 void cuobjdumpInstList::printCuobjdumpInstList()
 {
 	// Each entry
-	std::list<decudaEntry>::iterator e;
+	std::list<cuobjdumpEntry>::iterator e;
 	for(e=m_entryList.begin(); e!=m_entryList.end(); ++e) {
 
 
 
 
-		for(	std::list<decudaInst>::iterator currentInst=e->m_instList.begin();
+		for(	std::list<cuobjdumpInst>::iterator currentInst=e->m_instList.begin();
 				currentInst!=e->m_instList.end();
 				++currentInst) {
 			// Output the instruction
 			output("\t");
-			currentInst->printDecudaInst();
+			currentInst->printCuobjdumpInst();
 			output("\n");
 		}
 	}
@@ -486,18 +641,18 @@ void cuobjdumpInstList::printCuobjdumpPtxPlusList(cuobjdumpInstList* headerInfo)
 	printMemory();
 	printCuobjdumpLocalMemory();
 	// Each entry
-	std::list<decudaEntry>::reverse_iterator e;
+	std::list<cuobjdumpEntry>::reverse_iterator e;
 	for(e=m_entryList.rbegin(); e!=m_entryList.rend(); ++e) {
 
 		output("\n");
 
 		// Output the header information for this entry using headerInfo
 		// First, find the matching entry in headerInfo
-		decudaEntry headerEntry;
+		cuobjdumpEntry headerEntry;
 
 		if( headerInfo->findEntry(e->m_entryName, headerEntry) ) {
 			// Entry for current header found, print it out
-			std::list<decudaInst>::iterator headerInstIter;
+			std::list<cuobjdumpInst>::iterator headerInstIter;
 			for(headerInstIter=headerEntry.m_instList.begin();
 				headerInstIter!=headerEntry.m_instList.end();
 				++headerInstIter) {
@@ -517,7 +672,7 @@ void cuobjdumpInstList::printCuobjdumpPtxPlusList(cuobjdumpInstList* headerInfo)
 				output("\n");
 				output("{\n");
 			} else {
-				output("Mismatch in entry names between decuda output and original ptx file.\n");
+				output("Mismatch in entry names between cuobjdump output and original ptx file.\n");
 				assert(0);
 			}
 		}
@@ -527,13 +682,12 @@ void cuobjdumpInstList::printCuobjdumpPtxPlusList(cuobjdumpInstList* headerInfo)
 		printOutOfBoundRegisters(*e);
 		output("\n");
 
-		for(std::list<decudaInst>::iterator currentInst=e->m_instList.begin(); currentInst!=e->m_instList.end(); ++currentInst){
+		for(std::list<cuobjdumpInst>::iterator currentInst=e->m_instList.begin(); currentInst!=e->m_instList.end(); ++currentInst){
 			// Output the instruction
 			//cuobjdumpInst* outputInst = &*currentInst;
-			cuobjdumpInst* outputInst = static_cast<cuobjdumpInst*>(&*currentInst);
 			output("\t");
 			//outputInst->printCuobjdumpPtxPlus(m_entryList.back().m_labelList);
-			outputInst->printCuobjdumpPtxPlus(e->m_labelList, this->m_realTexList);
+			currentInst->printCuobjdumpPtxPlus(e->m_labelList, this->m_realTexList);
 			output("\n");
 		}
 		output("\n\tl_exit: exit;\n");

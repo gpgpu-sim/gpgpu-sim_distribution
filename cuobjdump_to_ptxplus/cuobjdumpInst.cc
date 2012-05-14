@@ -1,6 +1,10 @@
-#include "cuobjdumpInst.h"
+// External includes
 #include <sstream>
 #include <iostream>
+#include <cassert>
+
+// Local includes
+#include "cuobjdumpInst.h"
 
 extern void output(const char * text);
 
@@ -8,6 +12,191 @@ extern void output(const char * text);
 cuobjdumpInst::cuobjdumpInst()
 {
 	//initilize everything to empty
+	m_label = "";
+	m_predicate = new stringList();
+	m_base = "";
+	m_baseModifiers = new stringList();
+	m_typeModifiers = new stringList();
+	m_operands = new stringList();
+	m_predicateModifiers = new stringList();
+}
+
+void cuobjdumpInst::printCuobjdumpInst()
+{
+	/*TODO: print label here*/
+	/*TODO: print predicate here*/
+	/*std::cout << "Instruction Base: " << m_base << "\n";
+
+	std::cout << "Instruction Modifiers: ";
+	m_baseModifiers->printStringList();
+	std::cout << "\n";
+
+	std::cout << "Operand types: ";
+	m_typeModifiers->printStringList();
+	std::cout << "\n";
+
+	std::cout << "Operands: ";
+	m_operands->printStringList();
+	std::cout << "\n\n";*/
+
+	std::cout << m_base << " ";
+	m_baseModifiers->printStringList();
+	std::cout << " ";
+	m_typeModifiers->printStringList();
+	std::cout << " ";
+	m_operands->printStringList();
+	std::cout << "\n";
+}
+
+// Just prints the base and operands
+void cuobjdumpInst::printHeaderPtx()
+{
+	output(m_base); output(" ");
+
+	stringListPiece* currentPiece;
+
+	currentPiece = m_baseModifiers->getListStart();
+	for(int i=0; (i<m_baseModifiers->getSize())&&(currentPiece!=NULL); i++)
+	{
+		output(" "); output(currentPiece->stringText);
+		currentPiece = currentPiece->nextString;
+	}
+
+	currentPiece = m_operands->getListStart();
+	for(int i=0; (i<m_operands->getSize())&&(currentPiece!=NULL); i++)
+	{
+		output(" "); output(currentPiece->stringText);
+		currentPiece = currentPiece->nextString;
+	}
+}
+
+//retreive instruction mnemonic
+const char* cuobjdumpInst::getBase()
+{
+	return m_base;
+}
+
+stringList* cuobjdumpInst::getTypeModifiers()
+{
+        return m_typeModifiers;
+}
+
+//print out .version and .target header lines
+bool cuobjdumpInst::printHeaderInst()
+{
+	if(strcmp(m_base, ".version")==0)
+	{
+		output(m_base); output(" ");
+
+		stringListPiece* currentPiece = m_operands->getListStart();
+		output(currentPiece->stringText);
+		currentPiece = currentPiece->nextString;
+
+		if(currentPiece!=NULL)
+		{
+			output("."); output(currentPiece->stringText);
+		}
+      output("+");
+		output("\n");
+	}
+	else if(strcmp(m_base, ".target")==0)
+	{
+		output(m_base); output(" ");
+
+		stringListPiece* currentPiece = m_operands->getListStart();
+		output(currentPiece->stringText);
+		currentPiece = currentPiece->nextString;
+
+		while(currentPiece!=NULL)
+		{
+			output(", "); output(currentPiece->stringText);
+			currentPiece = currentPiece->nextString;
+		}
+		output("\n");
+	}
+	else if(strcmp(m_base, ".tex")==0)
+	{
+		output(m_base); output(" ");
+
+		stringListPiece* currentPiece;
+
+
+		currentPiece = m_baseModifiers->getListStart();
+		output(currentPiece->stringText); output(" ");
+		currentPiece = currentPiece->nextString;
+
+		while(currentPiece!=NULL)
+		{
+			output(" "); output(currentPiece->stringText);
+			currentPiece = currentPiece->nextString;
+		}
+
+		currentPiece = m_operands->getListStart();
+		output(currentPiece->stringText);
+		currentPiece = currentPiece->nextString;
+
+		while(currentPiece!=NULL)
+		{
+			output(" "); output(currentPiece->stringText);
+			currentPiece = currentPiece->nextString;
+		}
+		output(";\n");
+	}
+	else
+	{
+		return false;
+	}
+	return true;
+}
+
+void cuobjdumpInst::setBase(const char* setBaseValue)
+{
+	m_base = setBaseValue;
+}
+
+void cuobjdumpInst::addBaseModifier(const char* addBaseMod)
+{
+	stringListPiece* tempPiece = new stringListPiece;
+	tempPiece->stringText = addBaseMod;
+
+	m_baseModifiers->add(tempPiece);
+}
+
+void cuobjdumpInst::addTypeModifier(const char* addTypeMod)
+{
+	stringListPiece* tempPiece = new stringListPiece;
+	tempPiece->stringText = addTypeMod;
+
+	m_typeModifiers->add(tempPiece);
+}
+
+void cuobjdumpInst::addOperand(const char* addOp)
+{
+	stringListPiece* tempPiece = new stringListPiece;
+	tempPiece->stringText = addOp;
+
+	m_operands->add(tempPiece);
+}
+
+void cuobjdumpInst::setPredicate(const char* setPredicateValue)
+{
+	stringListPiece* tempPiece = new stringListPiece;
+	tempPiece->stringText = setPredicateValue;
+
+	m_predicate->add(tempPiece);
+}
+
+void cuobjdumpInst::addPredicateModifier(const char* addPredicateMod)
+{
+	stringListPiece* tempPiece = new stringListPiece;
+	tempPiece->stringText = addPredicateMod;
+
+	m_predicateModifiers->add(tempPiece);
+}
+
+void cuobjdumpInst::setLabel(const char* setLabelValue)
+{
+	m_label = setLabelValue;
 }
 
 bool cuobjdumpInst::checkCubojdumpLabel(std::list<std::string> labelList, std::string label)
@@ -182,7 +371,7 @@ void cuobjdumpInst::printCuobjdumpBaseModifiers()
 		}
 		else if( strcmp(modString, ".s")==0 )
 		{
-			//".s" is the same as ".join" in decuda.
+			//".s" is the same as ".join" in cuobjdump.
 		}
 		else if( strcmp(modString, ".sfu")==0 )
 		{

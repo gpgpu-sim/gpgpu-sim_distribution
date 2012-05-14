@@ -25,7 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
+#ifndef _DECUDAINST_H_
+#define _DECUDAINST_H_
 #include "stringList.h"
 #include <assert.h>
 
@@ -92,3 +93,4 @@ public:
 	//TODO: translate to New PTX and print
 
 };
+#endif //_DECUDAINST_H_

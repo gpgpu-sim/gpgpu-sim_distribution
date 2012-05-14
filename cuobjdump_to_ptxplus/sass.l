@@ -1,6 +1,6 @@
 %{
 #include <stdio.h>
-#include "sass_parser.hpp"
+#include "sass_parser.hh"
 #include <string.h>
 
 

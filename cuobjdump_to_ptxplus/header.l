@@ -32,7 +32,7 @@
 %option prefix="header_"
 %{
 #include <iostream>
-#include "headerParser.hpp"
+#include "header_parser.hh"
 #include <string.h>
 
 /* not sure if this is needed*/

@@ -82,7 +82,6 @@ GPGPU-Sim dependencies:
 * bison
 * flex
 * zlib
-* libboost
 * CUDA Toolkit
 	
 GPGPU-Sim documentation dependencies:
@@ -104,7 +103,7 @@ dependencies besides the CUDA Toolkit.
 
 GPGPU-Sim dependencies:
 "sudo apt-get install build-essential xutils-dev bison zlib1g-dev flex
-libboost-all-dev libglu1-mesa-dev"
+libglu1-mesa-dev"
 
 GPGPU-Sim documentation dependencies:
 "sudo apt-get install doxygen graphviz"

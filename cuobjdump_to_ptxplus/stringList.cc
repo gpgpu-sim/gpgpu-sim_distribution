@@ -115,7 +115,7 @@ bool stringList::remove(int index)
 	return true;
 }
 
-//print out all the Decuda Instructions in the list
+//print out all the cuobjdump Instructions in the list
 void stringList::printStringList()
 {
 	stringListPiece* currentPiece = m_listStart;
