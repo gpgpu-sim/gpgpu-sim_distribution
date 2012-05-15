@@ -1168,7 +1168,6 @@ void extract_code_using_cuobjdump(){
 	int fd=mkstemp(fname);
 	close(fd);
 
-	char* whole_code;
 	//! Running cuobjdump using dynamic link to current process
 	snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass /proc/%d/exe > %s",getpid(),fname);
 	printf("Running cuobjdump using \"%s\"\n", command);
@@ -1186,7 +1185,6 @@ void extract_code_using_cuobjdump(){
 //! Read file into char*
 char* readfile (const char* filename){
 	assert (filename != NULL);
-	char str[128];
 	FILE* fp = fopen(filename,"r");
 	if (!fp) {
 		printf("ERROR: Could not open file %s for reading\n", filename);
@@ -1288,7 +1286,6 @@ void useCuobjdump() {
 
 	CUctx_st *context = GPGPUSim_Context();
 	unsigned source_num=1;
-	char *sass, *elf;
 	extract_code_using_cuobjdump(); //extract all the output of cuobjdump to _cuobjdump_*.*
 	cuobjdumpSectionList = pruneSectionList(cuobjdumpSectionList, context);
 	unsigned total_ptx_files = cuobjdumpSectionList.size()/2;

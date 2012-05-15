@@ -214,7 +214,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
 
    //there are as many result buses as the width of the EX_WB stage
    num_result_bus = config->pipe_widths[EX_WB];
-   for(int i=0; i<num_result_bus; i++){
+   for(unsigned i=0; i<num_result_bus; i++){
 	   this->m_result_bus.push_back(new std::bitset<MAX_ALU_LATENCY>());
    }
 
@@ -702,7 +702,7 @@ unsigned shader_core_ctx::translate_local_memaddr( address_type localaddr, unsig
 
 /////////////////////////////////////////////////////////////////////////////////////////
 int shader_core_ctx::test_res_bus(int latency){
-	for(int i=0; i<num_result_bus; i++){
+	for(unsigned i=0; i<num_result_bus; i++){
 		if(!m_result_bus[i]->test(latency)){return i;}
 	}
 	return -1;
@@ -710,7 +710,7 @@ int shader_core_ctx::test_res_bus(int latency){
 
 void shader_core_ctx::execute()
 {
-	for(int i=0; i<num_result_bus; i++){
+	for(unsigned i=0; i<num_result_bus; i++){
 		*(m_result_bus[i]) >>=1;
 	}
     for( unsigned n=0; n < m_num_function_units; n++ ) {
@@ -1495,7 +1495,7 @@ void shader_core_ctx::display_pipeline(FILE *fout, int print_mem, int mask ) con
    }
    fprintf(fout, "-------------------------- other:\n");
 
-   for(int i=0; i<num_result_bus; i++){
+   for(unsigned i=0; i<num_result_bus; i++){
 	   std::string bits = m_result_bus[i]->to_string();
 	   fprintf(fout, "EX/WB sched[%d]= %s\n", i, bits.c_str() );
    }
