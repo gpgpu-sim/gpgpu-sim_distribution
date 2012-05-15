@@ -69,21 +69,13 @@ depend:
 	makedepend $(SRCS) 2> /dev/null
 
 clean:
-	rm -f ./opcodes.def ./opcodes.h
-	rm -f ./lex.ptx_.c ./ptx.tab.c ./ptx.tab.h ./lex.ptx_.o ./ptx.tab.o ptx.output
-	rm -f ./headerParser.o ./headerLexer.o ./headerParser.cpp ./headerParser.hpp ./headerLexer.cpp ./headerParser.output
-	rm -f ./header_parser.output ./header_parser.o header_parser.cc header_parser.hh header_lexer.cc header_lexer.hh
-	rm -f ./stringList.o
-	rm -f ./cuobjdumpInstList.o ./cuobjdumpInst.o
-	rm -f ./sass_lexer.o ./sass_parser.o ./cuobjdump_to_ptxplus.o
-	rm -f ./sass_parser.hpp ./sass_parser.output ./sass_parser.h
-	rm -f ./sass_parser.cpp ./sass_lexer.cpp
-	rm -f ./cuobjdump_to_ptxplus
-	rm -f ./cuobjdump_parser.o ./cuobjdump_parser.c ./cuobjdump_parser.output ./cuobjdump_parser.h
-	rm -f ./cuobjdump_lexer.o ./cuobjdump_lexer.c
-	rm -f ./elf_lexer.o ./elf_parser.o ./elf_lexer.cpp ./elf_parser.cpp ./elf_parser.hpp ./elf_parser.output
-	rm -f ./header_lexer.o header_lexer.c header_lexer.h sass_lexer.c sass_lexer.h sass_parser.c
-	rm -f ./sass_lexer.cc ./sass_parser.cc ./sass_parser.hh ./sass_lexer.hh
+	rm -f opcodes.def opcodes.h
+	rm -f lex.ptx_.c ptx.tab.c ptx.tab.h lex.ptx_.o ptx.tab.o ptx.output
+	rm -f elf_lexer.cc  elf_parser.cc  elf_parser.hh
+	rm -f sass_lexer.cc  sass_parser.cc  sass_parser.hh  sass_parser.output
+	rm -f header_lexer.cc  header_parser.cc  header_parser.hh  header_parser.output
+	rm -f *.o
+	rm -f cuobjdump_to_ptxplus
 # DO NOT DELETE
 
 cuobjdumpInst.o: cuobjdumpInst.h /usr/include/string.h
@@ -171,6 +163,77 @@ elf_parser.o: /usr/include/sys/select.h /usr/include/bits/select.h
 elf_parser.o: /usr/include/bits/sigset.h /usr/include/bits/time.h
 elf_parser.o: /usr/include/sys/sysmacros.h /usr/include/bits/pthreadtypes.h
 elf_parser.o: /usr/include/alloca.h stringList.h
+header_lexer.o: /usr/include/stdio.h /usr/include/features.h
+header_lexer.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
+header_lexer.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h
+header_lexer.o: /usr/include/bits/types.h /usr/include/bits/typesizes.h
+header_lexer.o: /usr/include/libio.h /usr/include/_G_config.h
+header_lexer.o: /usr/include/wchar.h /usr/include/bits/stdio_lim.h
+header_lexer.o: /usr/include/bits/sys_errlist.h /usr/include/string.h
+header_lexer.o: /usr/include/xlocale.h /usr/include/errno.h
+header_lexer.o: /usr/include/bits/errno.h /usr/include/linux/errno.h
+header_lexer.o: /usr/include/asm/errno.h /usr/include/asm-generic/errno.h
+header_lexer.o: /usr/include/asm-generic/errno-base.h /usr/include/stdlib.h
+header_lexer.o: /usr/include/sys/types.h /usr/include/time.h
+header_lexer.o: /usr/include/endian.h /usr/include/bits/endian.h
+header_lexer.o: /usr/include/bits/byteswap.h /usr/include/sys/select.h
+header_lexer.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
+header_lexer.o: /usr/include/bits/time.h /usr/include/sys/sysmacros.h
+header_lexer.o: /usr/include/bits/pthreadtypes.h /usr/include/alloca.h
+header_lexer.o: header_parser.hh /usr/include/unistd.h
+header_lexer.o: /usr/include/bits/posix_opt.h /usr/include/bits/confname.h
+header_lexer.o: /usr/include/getopt.h
+header_parser.o: cuobjdumpInstList.h cuobjdumpInst.h /usr/include/string.h
+header_parser.o: /usr/include/features.h /usr/include/sys/cdefs.h
+header_parser.o: /usr/include/bits/wordsize.h /usr/include/gnu/stubs.h
+header_parser.o: /usr/include/gnu/stubs-64.h /usr/include/xlocale.h
+header_parser.o: /usr/include/stdio.h /usr/include/bits/types.h
+header_parser.o: /usr/include/bits/typesizes.h /usr/include/libio.h
+header_parser.o: /usr/include/_G_config.h /usr/include/wchar.h
+header_parser.o: /usr/include/bits/stdio_lim.h
+header_parser.o: /usr/include/bits/sys_errlist.h /usr/include/stdlib.h
+header_parser.o: /usr/include/sys/types.h /usr/include/time.h
+header_parser.o: /usr/include/endian.h /usr/include/bits/endian.h
+header_parser.o: /usr/include/bits/byteswap.h /usr/include/sys/select.h
+header_parser.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
+header_parser.o: /usr/include/bits/time.h /usr/include/sys/sysmacros.h
+header_parser.o: /usr/include/bits/pthreadtypes.h /usr/include/alloca.h
+header_parser.o: stringList.h
+sass_lexer.o: /usr/include/stdio.h /usr/include/features.h
+sass_lexer.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
+sass_lexer.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h
+sass_lexer.o: /usr/include/bits/types.h /usr/include/bits/typesizes.h
+sass_lexer.o: /usr/include/libio.h /usr/include/_G_config.h
+sass_lexer.o: /usr/include/wchar.h /usr/include/bits/stdio_lim.h
+sass_lexer.o: /usr/include/bits/sys_errlist.h /usr/include/string.h
+sass_lexer.o: /usr/include/xlocale.h /usr/include/errno.h
+sass_lexer.o: /usr/include/bits/errno.h /usr/include/linux/errno.h
+sass_lexer.o: /usr/include/asm/errno.h /usr/include/asm-generic/errno.h
+sass_lexer.o: /usr/include/asm-generic/errno-base.h /usr/include/stdlib.h
+sass_lexer.o: /usr/include/sys/types.h /usr/include/time.h
+sass_lexer.o: /usr/include/endian.h /usr/include/bits/endian.h
+sass_lexer.o: /usr/include/bits/byteswap.h /usr/include/sys/select.h
+sass_lexer.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
+sass_lexer.o: /usr/include/bits/time.h /usr/include/sys/sysmacros.h
+sass_lexer.o: /usr/include/bits/pthreadtypes.h /usr/include/alloca.h
+sass_lexer.o: sass_parser.hh /usr/include/unistd.h
+sass_lexer.o: /usr/include/bits/posix_opt.h /usr/include/bits/confname.h
+sass_lexer.o: /usr/include/getopt.h
+sass_parser.o: /usr/include/stdio.h /usr/include/features.h
+sass_parser.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
+sass_parser.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h
+sass_parser.o: /usr/include/bits/types.h /usr/include/bits/typesizes.h
+sass_parser.o: /usr/include/libio.h /usr/include/_G_config.h
+sass_parser.o: /usr/include/wchar.h /usr/include/bits/stdio_lim.h
+sass_parser.o: /usr/include/bits/sys_errlist.h cuobjdumpInstList.h
+sass_parser.o: cuobjdumpInst.h /usr/include/string.h /usr/include/xlocale.h
+sass_parser.o: /usr/include/stdlib.h /usr/include/sys/types.h
+sass_parser.o: /usr/include/time.h /usr/include/endian.h
+sass_parser.o: /usr/include/bits/endian.h /usr/include/bits/byteswap.h
+sass_parser.o: /usr/include/sys/select.h /usr/include/bits/select.h
+sass_parser.o: /usr/include/bits/sigset.h /usr/include/bits/time.h
+sass_parser.o: /usr/include/sys/sysmacros.h /usr/include/bits/pthreadtypes.h
+sass_parser.o: /usr/include/alloca.h stringList.h
 stringList.o: stringList.h /usr/include/stdio.h /usr/include/features.h
 stringList.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
 stringList.o: /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h
