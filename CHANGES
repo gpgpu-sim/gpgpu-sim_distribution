@@ -20,9 +20,10 @@ Version 3.1.0 versus 3.0.2
 - Removed all dependencies on the boost libraries. Now GPGPU-Sim can run
   without boost.
 - Bug Fixes:
-    - Fix for bug #142, added a missed call to operand collector writeback which fixes some
+    - Added a missed call to operand collector writeback which fixes some
       writebacks that were not considered by the operand collector.
-    - Fix for bug #151, preserves the global symbol table accross ptx files.
+    - Fix for a bug that caused global symbol tables to be re-initialized after
+      parsing each ptx file.
     - Fix for a rare race condition that prevented kernel stats from being printed
     - Fix for a bug that caused sim rates to be double the actual value
 
