@@ -1,5 +1,5 @@
 CHANGE LOG:
-Version 3.0.3 versus 3.0.2
+Version 3.1.0 versus 3.0.2
 - Support for CUDA 4.0 for both PTX and PTXPlus.
 - Support for using cuobjdump to extract PTX/SASS from binaries.
 - Complete rework for the SASS to PTXPlus conversion code including support for
