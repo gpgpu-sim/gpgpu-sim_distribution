@@ -107,10 +107,6 @@ char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const char *ptxfilename, con
     int fd4=mkstemp(fname_ptxplus);
     close(fd4);
 
-    // Extract cubin to a file
-    char fname_decuda[1024];
-    char fname_cubin[1024];
-
 	// Run cuobjdump_to_ptxplus
 	char commandline[1024];
 	int result;
