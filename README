@@ -23,7 +23,7 @@ See Section 2 "INSTALLING, BUILDING and RUNNING GPGPU-Sim" below to get started.
 GPGPU-Sim was created by Tor Aamodt's research group at the University of
 British Columbia.  Many students have contributed including: Wilson W.L. Fung,
 Ali Bakhoda, George Yuan, Ivan Sham, Henry Wong, Henry Tran, Andrew Turner,
-Aaron Ariel, Inderpret Singh, Tim Rogers, Jimmy Kwa, and others.
+Aaron Ariel, Inderpret Singh, Tim Rogers, Jimmy Kwa, Andrew Boktor and others.
 
 GPGPU-Sim models the features of a modern graphics processor that are relevant
 to non-graphics applications.  The first version of GPGPU-Sim was used in a
@@ -53,6 +53,29 @@ GPGPU-Sim was developed on SUSE  Linux(this release was tested with SUSE
 version 11.3) and has been used on several other Linux platforms (both 32-bit
 and 64-bit systems).  In principle, GPGPU-Sim should work with any linux
 distribution as long as the following software dependencies are satisfied.
+
+Step 0: Getting GPGPU-Sim
+=========================
+To get GPGPU-Sim, you need git (a widely used source code management system)
+to be installed on your system.
+Run the following command to get the source code of GPGPU-Sim for the first
+time:
+
+git clone git://dev.ece.ubc.ca/gpgpu-sim
+
+If you have already obtained GPGPU-Sim and would like to get the latest updates
+and bug fixes, run the following command in the root directory of GPGPU-Sim:
+
+git pull
+
+While pulling the latest changes, conflicts might arise due to changes that you
+made to your codebase that conflict with the latest updates. In this case, you
+need to resolved those conflicts manually. You can either edit the conflicting
+files directly using your favorite text editor, or you can use the following
+command to open a graphical merge tool to do the merge:
+
+git mergetool
+
 
 Step 1: Dependencies
 ====================
@@ -95,8 +118,7 @@ AerialVision dependencies:
 * libpng12-dev
 * python-matplotlib
 
-We used gcc/g++ version 4.3.2 with CUDA SDK version 3.1 or 4.5.1 for later CUDA
-SDK versions. We used bison version 2.3, and flex version 2.5.33.
+We used gcc/g++ version 4.5.1, bison version 2.4.1, and flex version 2.5.35.
 
 If you are using Ubuntu, the following commands will install all required
 dependencies besides the CUDA Toolkit.
@@ -174,7 +196,6 @@ file to "1" (Note: you need CUDA version 4.0 or higher) as follows:
 
 -gpgpu_ptx_use_cuobjdump 1
 -gpgpu_ptx_convert_to_ptxplus 1
--gpgpu_ptx_save_converted_ptxplus 1
 
 Now To run a CUDA application on the simulator, simply execute
 	
