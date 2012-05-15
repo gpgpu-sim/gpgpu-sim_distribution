@@ -1,4 +1,4 @@
-CHANGE LOG: 
+CHANGE LOG:
 Version 3.0.3 versus 3.0.2
 - Support for CUDA 4.0 for both PTX and PTXPlus.
 - Support for using cuobjdump to extract PTX/SASS from binaries.
@@ -15,11 +15,16 @@ Version 3.0.3 versus 3.0.2
     to benchmark results
 - New installation instructions for AerialVision, removed deprecated install
   script.
+- Rework for some makefiles
+- Removed the no longer supported/used decuda_to_ptxplus
+- Removed all dependencies on the boost libraries. Now GPGPU-Sim can run
+  without boost.
 - Bug Fixes:
     - Fix for bug #142, added a missed call to operand collector writeback which fixes some
       writebacks that were not considered by the operand collector.
     - Fix for bug #151, preserves the global symbol table accross ptx files.
-
+    - Fix for a rare race condition that prevented kernel stats from being printed
+    - Fix for a bug that caused sim rates to be double the actual value
 
 Version 3.0.2 versus 3.0.1
 - Added Fermi configuration
