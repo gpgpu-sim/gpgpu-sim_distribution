@@ -24,8 +24,13 @@ Version 3.1.0 versus 3.0.2
       writebacks that were not considered by the operand collector.
     - Fix for a bug that caused global symbol tables to be re-initialized after
       parsing each ptx file.
-    - Fix for a rare race condition that prevented kernel stats from being printed
+    - Fix for a rare race condition that prevented kernel stats from being
+      printed
     - Fix for a bug that caused sim rates to be double the actual value
+    - Fix for a bug that caused atomic accesses not to have a payload to the
+      Atomic Operation Unit; atomic accesses now have a payload both to and
+      from the Atomic Operation Unit
+    - Fixed a bug that caused deadlock check to be ommitted
 
 Version 3.0.2 versus 3.0.1
 - Added Fermi configuration
