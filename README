@@ -23,7 +23,8 @@ See Section 2 "INSTALLING, BUILDING and RUNNING GPGPU-Sim" below to get started.
 GPGPU-Sim was created by Tor Aamodt's research group at the University of
 British Columbia.  Many students have contributed including: Wilson W.L. Fung,
 Ali Bakhoda, George Yuan, Ivan Sham, Henry Wong, Henry Tran, Andrew Turner,
-Aaron Ariel, Inderpret Singh, Tim Rogers, Jimmy Kwa, Andrew Boktor and others.
+Aaron Ariel, Inderpret Singh, Tim Rogers, Jimmy Kwa, Andrew Boktor, Ayub Gubran
+Tayler Hetherington and others.
 
 GPGPU-Sim models the features of a modern graphics processor that are relevant
 to non-graphics applications.  The first version of GPGPU-Sim was used in a
@@ -143,9 +144,9 @@ Step 2: Build
 
 To build the simulator, you first need to configure how you want it to be
 built. From the root directory of the simulator, do the following:
-	
+
 cd v3.x
-	
+
 then open the file 'setup_environment' with your favorite text editor. Read
 the file carefully and modify the environment variables in that file to your
 environment specific paths. In particular, you need to set CUDA_INSTALL_PATH
@@ -157,48 +158,48 @@ default system setup, so in the general case you will not need to modify it,
 however, you should still read it carefully to figure out if something specific
 to your system needs to be changed. After you have edited that file, save it
 and run
-	
+
 source setup_environment <build_type>
-	
+
 replace <build_type> with debug or release. Use release if you need faster
 simulation and debug if you need to run the simulator in gdb. If nothing is
 specified, release will be used by default.
 
 Now you are ready to build the simulator, just run
-	
+
 make
-	
+
 After make is done, the simulator would be ready to use. To clean the build,
 run
-	
+
 make clean
-	
+
 To build the doxygen generated documentations, run
-	
+
 make docs
-	
+
 to clean the docs run
-	
+
 make cleandocs
 
-The documentation resides at doc/doxygen/html.
+The documentation resides at v3.x/doc/doxygen/html.
 
 Step 3: Run
 ============
 
-Copy gpgpusim.conf and icnt_config_quadro_islip.txt from
-gpgpu-sim/v3.x/configs/QuadroFX5800/ to your application's working directory.
-These files configure the microarchitecture model of GPGPU-Sim to resemble a
-Quadro FX 5800 (GT 200).
+Copy the contents of v3.x/configs/QuadroFX5800/ or v3.x/configs/Fermi/ to your 
+application's working directory.
+These files configure the microarchitecture models to resemble the respective
+GPGPU architectures.
 
 To use ptxplus (native ISA) change the following options in the configuration
-file to "1" (Note: you need CUDA version 4.0 or higher) as follows:
+file to "1" (Note: you need CUDA version 4.0) as follows:
 
 -gpgpu_ptx_use_cuobjdump 1
 -gpgpu_ptx_convert_to_ptxplus 1
 
 Now To run a CUDA application on the simulator, simply execute
-	
+
 source setup_environment <build_type>
 
 Use the same <build_type> you used while building the simulator. Then just
@@ -225,4 +226,4 @@ samples then you will need to download, install and build the SDK.
 
 3. Documentation
 
-http://gpgpu-sim.ece.ubc.ca/GPGPU-Sim_3.x_Manual
+http://gpgpu-sim.org
