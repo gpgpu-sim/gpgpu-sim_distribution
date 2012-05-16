@@ -1,5 +1,5 @@
 See the file AerialVision-Manual.pdf in the doc directory for 
-installation and usage instructions.
+usage instructions.
 
 To be able to use Aerial Vision, you only need to install its dependencies:
 	* python-pmw
