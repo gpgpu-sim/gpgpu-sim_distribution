@@ -32,6 +32,8 @@ Version 3.1.0 versus 3.0.2
       Atomic Operation Unit; atomic accesses now have a payload both to and
       from the Atomic Operation Unit
     - Fixed a bug that caused deadlock check to be omitted
+    - Added a missed support for the perfect memory configuration option which
+      models a memory system with 1 cycle latency per request.   
 
 Version 3.0.2 versus 3.0.1
 - Added Fermi configuration
