@@ -107,6 +107,7 @@
 #include <assert.h>
 #include <time.h>
 #include <stdarg.h>
+#include <iostream>
 #ifdef OPENGL_SUPPORT
 #define GL_GLEXT_PROTOTYPES
 #ifdef __APPLE__
@@ -1109,48 +1110,114 @@ enum cuobjdumpSectionType {
 	ELFSECTION
 };
 
-typedef struct cuobjdumpSectionRec {
-	enum cuobjdumpSectionType type;
-	char* arch;
-	char* identifier;
-	char* ptxfilename;
-	char* elffilename;
-	char* sassfilename;
-}cuobjdumpSection;
 
+class cuobjdumpSection {
+public:
+	//Constructor
+	cuobjdumpSection() {
+		arch = 0;
+		identifier = "";
+	}
+	virtual ~cuobjdumpSection() {}
+	unsigned getArch() {return arch;}
+	void setArch(unsigned a) {arch = a;}
+	std::string getIdentifier() {return identifier;}
+	void setIdentifier(std::string i) {identifier = i;}
+	virtual void print(){std::cout << "cuobjdump Section: unknown type" << std::endl;}
+private:
+	unsigned arch;
+	std::string identifier;
+};
 
+class cuobjdumpELFSection : public cuobjdumpSection
+{
+public:
+	cuobjdumpELFSection() {}
+	virtual ~cuobjdumpELFSection() {
+		elffilename = "";
+		sassfilename = "";
+	}
+	std::string getELFfilename() {return elffilename;}
+	void setELFfilename(std::string f) {elffilename = f;}
+	std::string getSASSfilename() {return sassfilename;}
+	void setSASSfilename(std::string f) {sassfilename = f;}
+	virtual void print() {
+		std::cout << "ELF Section:" << std::endl;
+		std::cout << "arch: sm_" << getArch() << std::endl;
+		std::cout << "identifier: " << getIdentifier() << std::endl;
+		std::cout << "elf filename: " << getELFfilename() << std::endl;
+		std::cout << "sass filename: " << getSASSfilename() << std::endl;
+		std::cout << std::endl;
+	}
+private:
+	std::string elffilename;
+	std::string sassfilename;
+};
 
-std::list<cuobjdumpSection> cuobjdumpSectionList;
+class cuobjdumpPTXSection : public cuobjdumpSection
+{
+public:
+	cuobjdumpPTXSection(){
+		ptxfilename = "";
+	}
+	std::string getPTXfilename() {return ptxfilename;}
+	void setPTXfilename(std::string f) {ptxfilename = f;}
+	virtual void print() {
+		std::cout << "ELF Section:" << std::endl;
+		std::cout << "arch: sm_" << getArch() << std::endl;
+		std::cout << "identifier: " << getIdentifier() << std::endl;
+		std::cout << "ptx filename: " << getPTXfilename() << std::endl;
+		std::cout << std::endl;
+	}
+private:
+	std::string ptxfilename;
+};
+
+std::list<cuobjdumpSection*> cuobjdumpSectionList;
 
 // sectiontype: 0 for ptx, 1 for elf
 void addCuobjdumpSection(int sectiontype){
-	cuobjdumpSection x;
-	x.type = sectiontype? ELFSECTION: PTXSECTION;
-	cuobjdumpSectionList.push_front(x);
-	printf("## Adding new section %s\n", x.type==PTXSECTION?"PTX":"ELF");
+	if (sectiontype)
+		cuobjdumpSectionList.push_front(new cuobjdumpELFSection());
+	else
+		cuobjdumpSectionList.push_front(new cuobjdumpPTXSection());
+	printf("## Adding new section %s\n", sectiontype==PTXSECTION?"PTX":"ELF");
 }
 
 void setCuobjdumparch(const char* arch){
+	unsigned archnum;
+	sscanf(arch, "sm_%u", &archnum);
+	assert (archnum && "cannot have sm_0");
 	printf("Adding arch: %s\n", arch);
-	cuobjdumpSectionList.front().arch = strdup(arch);
+	cuobjdumpSectionList.front()->setArch(archnum);
 }
 
 void setCuobjdumpidentifier(const char* identifier){
 	printf("Adding identifier: %s\n", identifier);
-	cuobjdumpSectionList.front().identifier = strdup(identifier);
+	cuobjdumpSectionList.front()->setIdentifier(identifier);
 }
 
 void setCuobjdumpptxfilename(const char* filename){
 	printf("Adding ptx filename: %s\n", filename);
-	cuobjdumpSectionList.front().ptxfilename = strdup(filename);
+	cuobjdumpSection* x = cuobjdumpSectionList.front();
+	if (dynamic_cast<cuobjdumpPTXSection*>(x) == NULL){
+		assert (0 && "You shouldn't be trying to add a ptxfilename to an elf section");
+	}
+	(dynamic_cast<cuobjdumpPTXSection*>(x))->setPTXfilename(filename);
 }
 
 void setCuobjdumpelffilename(const char* filename){
-	cuobjdumpSectionList.front().elffilename = strdup(filename);
+	if (dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()) == NULL){
+		assert (0 && "You shouldn't be trying to add a elffilename to an ptx section");
+	}
+	(dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()))->setELFfilename(filename);
 }
 
 void setCuobjdumpsassfilename(const char* filename){
-	cuobjdumpSectionList.front().sassfilename = strdup(filename);
+	if (dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()) == NULL){
+		assert (0 && "You shouldn't be trying to add a sassfilename to an ptx section");
+	}
+	(dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()))->setSASSfilename(filename);
 }
 extern "C" int cuobjdump_parse();
 extern "C" FILE *cuobjdump_in;
@@ -1183,11 +1250,11 @@ void extract_code_using_cuobjdump(){
 }
 
 //! Read file into char*
-char* readfile (const char* filename){
-	assert (filename != NULL);
-	FILE* fp = fopen(filename,"r");
+char* readfile (const std::string filename){
+	assert (filename != "");
+	FILE* fp = fopen(filename.c_str(),"r");
 	if (!fp) {
-		printf("ERROR: Could not open file %s for reading\n", filename);
+		std::cout << "ERROR: Could not open file %s for reading\n" << filename << std::endl;
 		assert (0);
 	}
 	//! finding size of the file
@@ -1206,7 +1273,7 @@ char* readfile (const char* filename){
 
 
 //remove unecessary sm versions from the section list
-std::list<cuobjdumpSection> pruneSectionList(std::list<cuobjdumpSection> cuobjdumpSectionList, CUctx_st *context) {
+std::list<cuobjdumpSection*> pruneSectionList(std::list<cuobjdumpSection*> cuobjdumpSectionList, CUctx_st *context) {
 	unsigned forced_max_capability = context->get_device()->get_gpgpu()->get_config().get_forced_max_capability();
 	if (context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus()){
 		if (	(forced_max_capability == 0) ||
@@ -1216,25 +1283,27 @@ std::list<cuobjdumpSection> pruneSectionList(std::list<cuobjdumpSection> cuobjdu
 		}
 	}
 
-	std::list<cuobjdumpSection> prunedList;
+	std::list<cuobjdumpSection*> prunedList;
 	std::map<std::string, unsigned> cuobjdumpSectionMap;
-	for (	std::list<cuobjdumpSection>::iterator iter = cuobjdumpSectionList.begin();
+	for (	std::list<cuobjdumpSection*>::iterator iter = cuobjdumpSectionList.begin();
 			iter != cuobjdumpSectionList.end();
 			iter++){
-		unsigned capability = 0;
-		sscanf(iter->arch,"sm_%u", &capability);
-		if(capability <= forced_max_capability || forced_max_capability==0){
-			if(cuobjdumpSectionMap[iter->identifier] < capability) cuobjdumpSectionMap[iter->identifier] = capability;
+		unsigned capability = (*iter)->getArch();
+		if(dynamic_cast<cuobjdumpPTXSection*>(*iter) != NULL &&
+				(capability <= forced_max_capability ||
+						forced_max_capability==0)) {
+			if(cuobjdumpSectionMap[(*iter)->getIdentifier()] < capability) cuobjdumpSectionMap[(*iter)->getIdentifier()] = capability;
 		}
 	}
 
-	for (	std::list<cuobjdumpSection>::iterator iter = cuobjdumpSectionList.begin();
+	for (	std::list<cuobjdumpSection*>::iterator iter = cuobjdumpSectionList.begin();
 			iter != cuobjdumpSectionList.end();
 			iter++){
-		unsigned capability = 0;
-		sscanf(iter->arch,"sm_%u", &capability);
-		if(capability == cuobjdumpSectionMap[iter->identifier]){
+		unsigned capability = (*iter)->getArch();
+		if(capability == cuobjdumpSectionMap[(*iter)->getIdentifier()]){
 			prunedList.push_back(*iter);
+		} else {
+			delete *iter;
 		}
 	}
 	return prunedList;
@@ -1246,39 +1315,32 @@ std::list<cuobjdumpSection> pruneSectionList(std::list<cuobjdumpSection> cuobjdu
  * Within the section list, find the ELF section corresponding to a given
  * sm version and identifier
  */
-cuobjdumpSection* findelfsection(std::list<cuobjdumpSection> sectionlist, const char* identifier){
+cuobjdumpELFSection* findelfsection(std::list<cuobjdumpSection*> sectionlist, const std::string identifier){
 
-	std::list<cuobjdumpSection>::iterator iter;
+	std::list<cuobjdumpSection*>::iterator iter;
 	for (	iter = sectionlist.begin();
 			iter != sectionlist.end();
 			iter++
 			){
-		if(strcmp(identifier, iter->identifier)==0 &&
-				iter->type == ELFSECTION)
-			return &(*iter);
+		cuobjdumpELFSection* elfsection;
+		if((elfsection=dynamic_cast<cuobjdumpELFSection*>(*iter)) != NULL){
+			if(elfsection->getIdentifier() == identifier)
+				return elfsection;
+		}
 	}
 	assert(0 && "Could not find the required ELF section");
 	return NULL;
 }
 
 
-//Function that helps debugging that's happening
-void printSectionList(std::list<cuobjdumpSection> sl) {
-	std::list<cuobjdumpSection>::iterator iter;
+//Function that helps debugging
+void printSectionList(std::list<cuobjdumpSection*> sl) {
+	std::list<cuobjdumpSection*>::iterator iter;
 	for (	iter = sl.begin();
 			iter != sl.end();
 			iter++
 	){
-		if(iter->type == ELFSECTION){
-			printf("ELF Section:\n"
-					"identifier: %s, %s\n"
-					"elf filename: %s\n"
-					"sass filename: %s\n\n", iter->identifier, iter->arch, iter->elffilename, iter->sassfilename);
-		} else {
-			printf("PTX Section:\n"
-					"identifier: %s, %s\n"
-					"ptx filename: %s\n\n", iter->identifier, iter->arch, iter->ptxfilename);
-		}
+		(*iter)->print();
 	}
 }
 
@@ -1290,31 +1352,30 @@ void useCuobjdump() {
 	cuobjdumpSectionList = pruneSectionList(cuobjdumpSectionList, context);
 	unsigned total_ptx_files = cuobjdumpSectionList.size()/2;
 
-	for (	std::list<cuobjdumpSection>::iterator iter = cuobjdumpSectionList.begin();
-			iter != cuobjdumpSectionList.end();
-			iter++
+	for (	std::list<cuobjdumpSection*>::iterator iter2 = cuobjdumpSectionList.begin();
+			iter2 != cuobjdumpSectionList.end();
+			iter2++
 			){
-		unsigned capability = 0;
-		sscanf(iter->arch,"sm_%u", &capability);
-		if (iter->type ==PTXSECTION)
+		if (dynamic_cast<cuobjdumpPTXSection*>(*iter2) != NULL)
 		{
+			cuobjdumpPTXSection *iter = dynamic_cast<cuobjdumpPTXSection*>(*iter2);
 			symbol_table *symtab;
-			char *ptxcode = readfile(iter->ptxfilename);
+			char *ptxcode = readfile(iter->getPTXfilename());
 			if(context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() ) {
-				cuobjdumpSection* elfsection = findelfsection(cuobjdumpSectionList, iter->identifier);
+				cuobjdumpELFSection* elfsection = findelfsection(cuobjdumpSectionList, iter->getIdentifier());
 				assert (elfsection!= NULL);
 				char *ptxplus_str = gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(
-						iter->ptxfilename,
-						elfsection->elffilename,
-						elfsection->sassfilename);
+						iter->getPTXfilename(),
+						elfsection->getELFfilename(),
+						elfsection->getSASSfilename());
 				symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str,source_num);
-				printf("Adding %s with cubin handle %u\n", iter->ptxfilename, source_num);
+				printf("Adding %s with cubin handle %u\n", iter->getPTXfilename().c_str(), source_num);
 				context->add_binary(symtab, source_num);
 				gpgpu_ptxinfo_load_from_string( ptxcode,total_ptx_files-source_num);
 				delete[] ptxplus_str;
 			} else {
 				symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxcode, source_num);
-				printf("Adding %s with cubin handle %u\n", iter->ptxfilename, source_num);
+				printf("Adding %s with cubin handle %u\n", iter->getPTXfilename().c_str(), source_num);
 				context->add_binary(symtab,source_num);
 				gpgpu_ptxinfo_load_from_string( ptxcode, total_ptx_files-source_num);
 			}
@@ -1739,7 +1800,6 @@ extern "C" int ptx_parse();
 extern "C" int ptx__scan_string(const char*);
 extern "C" FILE *ptx_in;
 
-extern "C" const char *g_ptxinfo_filename;
 extern "C" int ptxinfo_parse();
 extern "C" int ptxinfo_debug;
 extern "C" FILE *ptxinfo_in;
@@ -1850,4 +1910,3 @@ kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *hostFun,
 
 	return result;
 }
-

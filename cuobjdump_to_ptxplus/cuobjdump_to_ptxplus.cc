@@ -57,6 +57,10 @@ void output(const char * text)
 	fprintf(ptxplus_out, text);
 }
 
+void output(const std::string text) {
+	output(text.c_str());
+}
+
 std::string fileToString(const char * fileName) {
 	ifstream fileStream(fileName, ios::in);
 	string text, line;

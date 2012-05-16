@@ -46,7 +46,7 @@ bool g_override_embedded_ptx = false;
 extern "C" int ptx_parse();
 extern "C" int ptx__scan_string(const char*);
 
-extern "C" const char *g_ptxinfo_filename = NULL;
+const char *g_ptxinfo_filename;
 extern "C" int ptxinfo_parse();
 extern "C" int ptxinfo_debug;
 extern "C" FILE *ptxinfo_in;
@@ -97,7 +97,7 @@ void print_ptx_file( const char *p, unsigned source_num, const char *filename )
    fflush(stdout);
 }
 
-char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const char *ptxfilename, const char *elffilename, const char *sassfilename)
+char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const std::string ptxfilename, const std::string elffilename, const std::string sassfilename)
 {
 
 	printf("GPGPU-Sim PTX: converting EMBEDDED .ptx file to ptxplus \n");
@@ -110,7 +110,11 @@ char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const char *ptxfilename, con
 	// Run cuobjdump_to_ptxplus
 	char commandline[1024];
 	int result;
-	snprintf(commandline, 1024, "$GPGPUSIM_ROOT/cuobjdump_to_ptxplus/cuobjdump_to_ptxplus %s %s %s %s", ptxfilename, sassfilename, elffilename, fname_ptxplus);
+	snprintf(commandline, 1024, "$GPGPUSIM_ROOT/cuobjdump_to_ptxplus/cuobjdump_to_ptxplus %s %s %s %s",
+			ptxfilename.c_str(),
+			sassfilename.c_str(),
+			elffilename.c_str(),
+			fname_ptxplus);
 	fflush(stdout);
 	printf("GPGPU-Sim PTX: calling cuobjdump_to_ptxplus\ncommandline: %s\n", commandline);
 	result = system(commandline);
