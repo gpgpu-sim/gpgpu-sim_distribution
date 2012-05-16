@@ -29,11 +29,13 @@
 #include <sstream>
 #include <iostream>
 #include <cassert>
+#include <string>
 
 // Local includes
 #include "cuobjdumpInst.h"
 
 extern void output(const char * text);
+extern void output(const std::string text);
 
 //Constructor
 cuobjdumpInst::cuobjdumpInst()
@@ -737,7 +739,7 @@ void cuobjdumpInst::printCuobjdumpOperands()
 	}
 }
 
-char * int_default_mod () { return ".u32" ;}
+std::string int_default_mod () { return ".u32" ;}
 
 
 std::string breaktarget;
