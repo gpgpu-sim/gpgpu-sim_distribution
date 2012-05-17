@@ -2,7 +2,7 @@
 
 # change the following to point to your installation of CUDA Toolkit
 if [ ! -n "$CUDA_INSTALL_PATH" ]; then
-	export CUDA_INSTALL_PATH=$HOME/nvcuda/3.1/cuda
+	export CUDA_INSTALL_PATH=$HOME/nvcuda/4.0/cuda
 fi
 
 # to run the debug build of GPGPU-Sim run:
