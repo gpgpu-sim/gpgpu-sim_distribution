@@ -37,9 +37,9 @@
 void elf_error(const char*);
 %}
 
-%option stack
 %option noyywrap
 %option yylineno
+%option nounput
 
 %x cmem
 %x symtab

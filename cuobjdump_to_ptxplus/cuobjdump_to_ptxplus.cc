@@ -75,59 +75,19 @@ std::string extractFilename( const std::string& path )
 {
 	return path.substr( path.find_last_of( '/' ) +1 );
 }
+
 int main(int argc, char* argv[])
 {
-	//TODO: Output to file not yet supported.
 	if(argc != 5)
 	{
-		cout << "Usage: cuobjdump_to_ptxplus ptxfile sassfile elffile ptxplusfile(output)\n";
+		cout << "Usage: " << argv[0] << " ptxfile sassfile elffile ptxplusfile(output)\n";
 		return 0;
 	}
-	int result;
+
 	string ptxfile = argv[1];
 	string sassfile = argv[2];
 	string elffile = argv[3];
 	string ptxplusfile = argv[4];
-
-	/*
-	char commandline[1024];
-
-	snprintf(commandline,1024,"cuobjdump -ptx %s > %s.ptx", exefile.c_str(), basefilename.c_str());
-	fflush(stdout);
-	result = system(commandline);
-	if (result) {printf("ERROR: could not execute %s\n", commandline); exit(1);}
-
-
-	snprintf(commandline,1024,"sed '/arch\\ =\\ sm_20/,/1a$/d' %s.ptx > %s.stripped2.ptx", basefilename.c_str(), basefilename.c_str());
-	fflush(stdout);
-	result = system(commandline);
-	if (result) {printf("ERROR: could not execute %s\n", commandline); exit(1);}
-
-	snprintf(commandline,1024,"grep -v \"^arch\\ =\\|Fatbin\\ \\|^code\\ version\\|===========\\|producer\\ =\\|host\\ =\\|compile_size\\ =\\|identifier\\ =\" %s.stripped2.ptx > %s.stripped.ptx", basefilename.c_str(), basefilename.c_str());
-	fflush(stdout);
-	result = system(commandline);
-	if (result) {printf("ERROR: could not execute %s\n", commandline); exit(1);}
-
-	snprintf(commandline,1024,"cuobjdump -sass %s > %s.sass", exefile.c_str(), basefilename.c_str());
-	fflush(stdout);
-	result = system(commandline);
-	if (result) {printf("ERROR: could not execute %s\n", commandline); exit(1);}
-
-	snprintf(commandline,1024,"sed '/arch\\ =\\ sm_20/,/1a$/d' %s.sass > %s.stripped.sass", basefilename.c_str(), basefilename.c_str());
-	fflush(stdout);
-	result = system(commandline);
-	if (result) {printf("ERROR: could not execute %s\n", commandline); exit(1);}
-
-	snprintf(commandline,1024,"cuobjdump -elf %s > %s.elf", exefile.c_str(), basefilename.c_str());
-	fflush(stdout);
-	result = system(commandline);
-	if (result) {printf("ERROR: could not execute %s\n", commandline); exit(1);}
-
-	snprintf(commandline,1024,"sed '/arch\\ =\\ sm_20/,/1a$/d' %s.elf > %s.stripped.elf", basefilename.c_str(), basefilename.c_str());
-	fflush(stdout);
-	result = system(commandline);
-	if (result) {printf("ERROR: could not execute %s\n", commandline); exit(1);}
-	*/
 
 	sass_in = fopen(sassfile.c_str(), "r" );
 	ptx_in = fopen(ptxfile.c_str(), "r" );
@@ -154,9 +114,6 @@ int main(int argc, char* argv[])
 
 	// Copy real tex list from ptx to ptxplus instruction list
 	g_instList->setRealTexList(g_headerList->getRealTexList());
-	// Insert constant memory from bin file
-//	g_instList->readConstMemoryFromElfFile(elf);
-//	g_instList->readOtherConstMemoryFromBinFile(fileToString(binFilename));
 
 	// Insert global memory from bin file
 //	g_instList->readGlobalMemoryFromBinFile(fileToString(binFilename));
@@ -165,14 +122,7 @@ int main(int argc, char* argv[])
 	printf("Parsing .sass file %s\n", sassfile.c_str());
 	sass_parse();
 	printf("Finished parsing .sass file %s\n", sassfile.c_str());
-	/*
-	printf("################################################## Instruction List dump\n");
-	g_instList->printCuobjdumpInstList();
-	printf("################################################## END Instruction List dump\n");
-	printf("################################################## Header Instructions Dump\n");
-	g_headerList->printCuobjdumpInstList();
-	printf("################################################## END Header Instructions Dump\n");
-	*/
+
 	// Print ptxplus
 	output("//HEADER\n");
 	g_headerList->printHeaderInstList();
@@ -180,12 +130,10 @@ int main(int argc, char* argv[])
 	output("//INSTRUCTIONS\n");
 	g_instList->printCuobjdumpPtxPlusList(g_headerList);
 	output("//END INSTRUCTIONS\n");
-	// TODO: remove this. Prints recorded cuobjdump output.
-//	g_instList->printCuobjdumpInstList();
 
 	fclose(sass_in);
 	fclose(ptx_in);
-//	fclose(bin_in);
+
 	fclose(ptxplus_out);
 
 	printf("DONE. \n");

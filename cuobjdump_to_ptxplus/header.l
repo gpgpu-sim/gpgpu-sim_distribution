@@ -30,6 +30,7 @@
 %option noyywrap
 %option yylineno
 %option prefix="header_"
+%option nounput
 %{
 #include <iostream>
 #include "header_parser.hh"

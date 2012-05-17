@@ -33,6 +33,8 @@
 #include "cuobjdump_parser.h"
 
 #define YY_NEVER_INTERACTIVE 1
+#define YY_NO_INPUT
+#define YY_NO_TOP_STATE
 
 #define YYDEBUG 1
 
@@ -44,6 +46,8 @@ void cuobjdump_error(const char*);
 %option stack
 %option noyywrap
 %option yylineno
+%option nounput
+
 
 %s ptxcode
 %s sasscode

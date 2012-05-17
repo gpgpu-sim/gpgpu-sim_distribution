@@ -354,7 +354,7 @@ memorylocation	: SMEMLOCATION	{ printf($1); g_instList->addCuobjdumpMemoryOperan
 				char* input = $1;
 				char* temp = new char[99];
 				temp[0] = input[1];
-				int i=1;
+				unsigned i=1;
 				while (i < strlen(input)-2) {
 					temp[i] = input[i+2];
 					i++;
