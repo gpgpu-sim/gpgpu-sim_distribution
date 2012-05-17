@@ -368,7 +368,6 @@ void cuobjdumpInstList::addCuobjdumpRegister(std::string reg, bool lo)
 
 // add memory operand
 // memType: 0=constant, 1=shared, 2=global, 3=local
-unsigned currconstmem =1;
 void cuobjdumpInstList::addCuobjdumpMemoryOperand(std::string mem, int memType) {
 	std::string origMem = mem;
 	bool neg = false;
@@ -409,7 +408,6 @@ void cuobjdumpInstList::addCuobjdumpMemoryOperand(std::string mem, int memType) 
 			mem = "constant0" + mem.substr(7, mem.length());
 		}
 		else if(mem.substr(0, 5) == "c [0x"){
-			if(currconstmem != m_entryList.size()) currconstmem++;
 			std::string out;
 			out = "constant1" + m_entryList.back().m_entryName + mem.substr(8);
 			mem = out.c_str();

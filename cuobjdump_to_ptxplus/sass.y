@@ -90,49 +90,41 @@ cuobjdumpInst *instEntry;
 %%
 
 	/*translation rules*/
-program		: NEWLINE sassCode
-			| program sassCode
-			| ;
+program		: program sassCode
+			| sassCode;
 
-sassCode	: VERSIONHEADER IDENTIFIER functionList			{ printf($1); printf($2); printf(" No parsing errors\n\n");  }
-		| newlines VERSIONHEADER IDENTIFIER functionList	{ printf($2); printf($3); printf(" No parsing errors\n\n");  }
-		;
+sassCode	: VERSIONHEADER IDENTIFIER NEWLINE functionList			{ printf($1); printf($2); printf(" No parsing errors\n\n");  }
+		| NEWLINE VERSIONHEADER IDENTIFIER NEWLINE functionList	{ printf($2); printf($3); printf(" No parsing errors\n\n");  }
+		| VERSIONHEADER IDENTIFIER NEWLINE;
 
-functionList	: functionList FUNCTIONHEADER IDENTIFIER {
-						printf($2); 
-						printf($3);
-						printf("\n");
-						g_instList->addEntry($3);
-						instEntry = new cuobjdumpInst();
-						instEntry->setBase(".entry");
-						g_instList->add(instEntry);
-						g_instList->getListEnd().addOperand($3);} statementList { /*g_instList->getListEnd().addBaseModifier(".exit");*/ }
-/*		| FUNCTIONHEADER IDENTIFIER { printf($1); printf($2);
-						g_instList->addEntry($2);
-						instEntry = new cuobjdumpInst();
-						instEntry->setBase(".entry");
-						g_instList->add(instEntry);
-						g_instList->getListEnd().addOperand($2);} statementList { g_instList->getListEnd().addBaseModifier(".exit"); }*/
-				| functionList newlines
-				| 
+functionList	: functionList function
+				| function
 				;
+				
+function	:	FUNCTIONHEADER IDENTIFIER {
+					printf($1); 
+					printf($2);
+					printf("\n");
+					g_instList->addEntry($2);
+					instEntry = new cuobjdumpInst();
+					instEntry->setBase(".entry");
+					g_instList->add(instEntry);
+					g_instList->getListEnd().addOperand($2);} statementList NEWLINE
+					;
 
-statementList	: statementList statement newlines	{ printf("\n"); }
-		| statement newlines			{ printf("\n"); }
-		| statementList statement SEMICOLON newlines	{ printf(";\n"); }
-		| statement SEMICOLON newlines			{ printf(";\n"); }
-		| newlines				{}
+
+statementList	: statementList statement NEWLINE	{ printf("\n"); }
+		| statementList statement SEMICOLON NEWLINE	{ printf(";\n"); }
+		| statement NEWLINE			{ printf("\n"); }
+		| statement SEMICOLON NEWLINE			{ printf(";\n"); }
+		| NEWLINE	{}
 		;
-
-newlines	: NEWLINE
-			| newlines NEWLINE
-			;
 
 statement	: { instEntry = new cuobjdumpInst(); } instructionLabel instructionHex assemblyInstruction
 			;
 
 instructionHex	: INSTHEX
-		;
+				;
 
 instructionLabel	: LABELSTART LABEL LABELEND	{ char* tempInput = $2;
 							  char* tempLabel = new char[12];

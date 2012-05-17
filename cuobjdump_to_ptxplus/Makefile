@@ -3,7 +3,7 @@ LEXFLAGS	= -B
 YACC		= bison
 YFLAGS		= -t -d -v --report=all
 CC			= gcc
-CCFLAGS		= -ggdb -fPIC -Wall
+CCFLAGS		= -ggdb -fPIC -Wall -Wno-unused-function -Wno-sign-compare
 CXX			= g++
 CXXFLAGS	= ${CCFLAGS}
 LD			= g++
