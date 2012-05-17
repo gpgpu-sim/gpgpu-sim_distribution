@@ -21,9 +21,11 @@ Version 3.1.0 versus 3.0.2
 - Removed the no longer supported/used decuda_to_ptxplus
 - Removed all dependencies on the boost libraries. Now GPGPU-Sim can run
   without boost.
-- Added missing support for -gpgpu_perfect_mem. When enabled this option
-  models a memory system with single cycle latency per memory request for
-  accesses that miss in the L1 caches.
+- Added missing support for -gpgpu_perfect_mem. When enabled this option models 
+  a memory system with single cycle latency per memory request for accesses that 
+  miss in the L1 cache. Bandwidth is limited to one memory request issued per 
+  SIMT core cycle. Note this means uncoalesced accessess will be slower than 
+  coalesced accesses.
 - Bug Fixes:
     - Added a missed call to operand collector writeback which fixes some
       writebacks that were not considered by the operand collector.
