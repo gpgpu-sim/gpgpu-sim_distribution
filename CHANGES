@@ -21,6 +21,9 @@ Version 3.1.0 versus 3.0.2
 - Removed the no longer supported/used decuda_to_ptxplus
 - Removed all dependencies on the boost libraries. Now GPGPU-Sim can run
   without boost.
+- Added missing support for -gpgpu_perfect_mem. When enabled this option
+  models a memory system with single cycle latency per memory request for
+  accesses that miss in the L1 caches.
 - Bug Fixes:
     - Added a missed call to operand collector writeback which fixes some
       writebacks that were not considered by the operand collector.
@@ -34,8 +37,6 @@ Version 3.1.0 versus 3.0.2
       Atomic Operation Unit; atomic accesses now have a payload both to and
       from the Atomic Operation Unit
     - Fixed a bug that caused deadlock check to be omitted
-    - Added a missed support for the perfect memory configuration option which
-      models a memory system with 1 cycle latency per request.   
     - Updated the Fermi config files such that when an access misses the L1 data 
       cache, it allocates a line immediately before sending a data fetch request 
       out to the memory partition. 
