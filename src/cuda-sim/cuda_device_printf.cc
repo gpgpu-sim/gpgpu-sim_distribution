@@ -54,11 +54,12 @@ void my_cuda_printf(const char *fmtstr,const char *arg_list)
          }
          buf[j] = c;
          buf[j+1] = 0;
-         unsigned long long value = ((unsigned long long*)arg_list)[arg_offset];
+         void* ptr = (void*)&arg_list[arg_offset];
+         //unsigned long long value = ((unsigned long long*)arg_list)[arg_offset];
          if( c == 'u' || c == 'd' ) {
-            fprintf(fp,buf,value);
+            fprintf(fp,buf,*((unsigned long long*)ptr));
          } else if( c == 'f' ) {
-            double tmp = *(double*)(void*)&value;
+            double tmp = *((double*)ptr);
             fprintf(fp,buf,tmp);
          }
          arg_offset++;
@@ -81,10 +82,10 @@ void gpgpusim_cuda_vprintf(const ptx_instruction * pI, ptx_thread_info * thread,
          assert( formal_param->is_param_local() );
          assert( actual_param_op.is_param_local() );
          addr_t from_addr = actual_param_op.get_symbol()->get_address();
-         char buffer[1024];
-         assert(size<1024); 
+         unsigned long long buffer[1024];
+         assert(size<1024*sizeof(unsigned long long));
          thread->m_local_mem->read(from_addr,size,buffer);
-         addr_t addr = (addr_t)*(unsigned long long*)((void*)buffer); // should be pointer to generic memory location
+         addr_t addr = (addr_t)buffer[0]; // should be pointer to generic memory location
          memory_space *mem=NULL;
          memory_space_t space = generic_space;
          decode_space(space,thread,actual_param_op,mem,addr); // figure out which space
