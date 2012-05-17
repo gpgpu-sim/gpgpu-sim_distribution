@@ -55,29 +55,6 @@ version 11.3) and has been used on several other Linux platforms (both 32-bit
 and 64-bit systems).  In principle, GPGPU-Sim should work with any linux
 distribution as long as the following software dependencies are satisfied.
 
-Step 0: Getting GPGPU-Sim
-=========================
-To get GPGPU-Sim, you need git (a widely used source code management system)
-to be installed on your system.
-Run the following command to get the source code of GPGPU-Sim for the first
-time:
-
-git clone git://dev.ece.ubc.ca/gpgpu-sim
-
-If you have already obtained GPGPU-Sim and would like to get the latest updates
-and bug fixes, run the following command in the root directory of GPGPU-Sim:
-
-git pull
-
-While pulling the latest changes, conflicts might arise due to changes that you
-made to your codebase that conflict with the latest updates. In this case, you
-need to resolved those conflicts manually. You can either edit the conflicting
-files directly using your favorite text editor, or you can use the following
-command to open a graphical merge tool to do the merge:
-
-git mergetool
-
-
 Step 1: Dependencies
 ====================
 
@@ -224,6 +201,59 @@ application.
 If you need to run the set of applications in the NVIDIA CUDA SDK code
 samples then you will need to download, install and build the SDK.
 
-3. Documentation
+3.  (OPTIONAL) Updating GPGPU-Sim (ADVANCED USERS ONLY)
 
-http://gpgpu-sim.org
+If you have made modifications to the simulator and wish to incorporate new
+features/bugfixes from subsequent releases the following instructions may help.
+They are meant only as a starting point and only recommended for users
+comfortable with using source control who have experience modifying and
+debugging GPGPU-Sim.
+
+WARNING: Before following the procedure below, back up your modifications to
+GPGPU-Sim. The following procedure may cause you to lose all your changes.  In
+general, merging code changes can require manual intervention and even in the
+case where a merge proceeds automatically it may introduce errors.  If many
+edits have been made the merge process can be a painful manual process.  Hence,
+you will almost certainly want to have a copy of your code as it existed before
+you followed the procedure below in case you need to start over again.  You
+will need to consult the documentation for git in addition to these
+instructions in the case of any complications.
+
+STOP.  BACK UP YOUR CHANGES BEFORE PROCEEDING. YOU HAVE BEEN WARNED. TWICE.
+
+To update GPGPU-Sim you need git to be installed on your system.  Below we
+assume that you ran the following command to get the source code of GPGPU-Sim:
+
+git clone git://dev.ece.ubc.ca/gpgpu-sim
+
+Since running the above command you have made local changes and we have
+published changes to GPGPU-Sim on the above git server. You have looked at the
+changes we made, looking at both the new CHANGES file and probably even the
+source code differences.  You decide you want to incorporate our changes into
+your modified version of GPGPU-Sim.  
+
+Before updating your source code, we recommend you remove any object files:
+
+make clean
+
+Then, run the following command in the root directory of GPGPU-Sim:
+
+git pull
+
+While git is pulling the latest changes, conflicts might arise due to changes
+that you made that conflict with the latest updates. In this case, you need to
+resolved those conflicts manually. You can either edit the conflicting files
+directly using your favorite text editor, or you can use the following command
+to open a graphical merge tool to do the merge:
+
+git mergetool
+
+Now you should test that the merged version "works".  This means following the
+steps for building GPGPU-Sim in the *new* README file (not this version) since
+they may have changed. Assuming the code compiles without errors/warnings the
+next step is to do some regression testing.  At UBC we have an extensive set of
+regression tests we run against our internal development branch when we make
+changes.  In the future we may make this set of regression tests publically
+available. For now, you will want to compile and re-run all of the applications
+you care about before making further changes to identify if any runtime errors
+that occur.
