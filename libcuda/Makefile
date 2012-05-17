@@ -77,11 +77,11 @@ CC = gcc $(SNOW)
 CREATELIBRARY    =  1
 DEBUG ?= 0
 ifeq ($(DEBUG),1)
-	CXXFLAGS +=  -Wall -g -fPIC $(GL)
-	CCFLAGS += -Wall -ggdb -fPIC
+	CXXFLAGS +=  -Wall -Wno-unused-function -Wno-sign-compare -g -fPIC $(GL)
+	CCFLAGS += -Wall -Wno-unused-function -Wno-sign-compare -ggdb -fPIC
 else
-	CXXFLAGS += -O3 -g -Wall -fPIC $(GL)
-	CCFLAGS += -Wall -fPIC
+	CXXFLAGS += -O3 -g -Wall -Wno-unused-function -Wno-sign-compare -fPIC $(GL)
+	CCFLAGS += -Wall -Wno-unused-function -Wno-sign-compare -fPIC
 endif
 
 PROG     =cuda
@@ -143,15 +143,13 @@ clean:
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/wordsize.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/gnu/stubs.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/gnu/stubs-64.h
-../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/waitflags.h
-../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/waitstatus.h
-../build/release/libcuda/cuda_runtime_api.o: /usr/include/endian.h
-../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/endian.h
-../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/byteswap.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/sys/types.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/types.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/typesizes.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/time.h
+../build/release/libcuda/cuda_runtime_api.o: /usr/include/endian.h
+../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/endian.h
+../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/byteswap.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/sys/select.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/select.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/sigset.h
@@ -191,7 +189,6 @@ clean:
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/zconf.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/unistd.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/posix_opt.h
-../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/environments.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/confname.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/getopt.h
 ../build/release/libcuda/cuda_runtime_api.o: ../src/gpgpu-sim/scoreboard.h
@@ -216,6 +213,7 @@ clean:
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/pthread.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/sched.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/sched.h
+../build/release/libcuda/cuda_runtime_api.o: /usr/include/signal.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/setjmp.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/semaphore.h
 ../build/release/libcuda/cuda_runtime_api.o: /usr/include/bits/semaphore.h
