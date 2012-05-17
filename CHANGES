@@ -13,6 +13,8 @@ Version 3.1.0 versus 3.0.2
 - Support for configurable instruction latency and initiation interval
   - Added corresponding configuration to Fermi and Quadro config files according
     to benchmark results
+- Support for 64-bit atomicAdd, atomicExch, and atomicCAS. 
+- Support for 32-bit floating point atomicAdd. 
 - New installation instructions for AerialVision, removed deprecated install
   script.
 - Rework for some makefiles
@@ -34,6 +36,20 @@ Version 3.1.0 versus 3.0.2
     - Fixed a bug that caused deadlock check to be omitted
     - Added a missed support for the perfect memory configuration option which
       models a memory system with 1 cycle latency per request.   
+    - Updated the Fermi config files such that when an access misses the L1 data 
+      cache, it allocates a line immediately before sending a data fetch request 
+      out to the memory partition. 
+    - Changed the writeback arbitration among multiple clients in the LDST unit 
+      to round-robin. 
+    - Fixed a rare pathological case that caused LD instructions with divergent 
+      memory accesses to be overcounted.  
+    - Fixed linear_to_raw_address_translation::partition_address() so that it 
+      works for non-power-of-two number of memory partitions.  Before, it just 
+      returns the input memory address without any change.  
+    - Fixed warp_inst_t::memory_coalescing_arch_13() to use the 
+      gpgpu_shmem_warp_parts option to divide up the warps in the coalescing 
+      logic.  It was hardcoded to 2, which causes coalescing to always operate 
+      on half-warps. 
 
 Version 3.0.2 versus 3.0.1
 - Added Fermi configuration
