@@ -684,6 +684,8 @@ public:
         m_mem_accesses_created=false;
         m_cache_hit=false;
     }
+    virtual ~warp_inst_t(){
+    }
 
     // modifiers
     void do_atomic(bool forceDo=false);

@@ -57,14 +57,14 @@ void cuobjdumpInstList::addTex(std::string tex)
 	// If $tex# tex from cuobjdump, then use index to get real tex name
 	if(tex.substr(0, 4) == "$tex") {
 		tex = tex.substr(4, tex.size()-4);
-		int texNum = atoi(tex.c_str());
+		unsigned texNum = atoi(tex.c_str());
 		if(texNum >= m_realTexList.size()) {
 			output("ERROR: tex does not exist in real tex list from ptx.\n.");
 			assert(0);
 		}
 
 		std::list<std::string>::iterator itex = m_realTexList.begin();
-		for(int i=0; i<texNum; i++) itex++;
+		for(unsigned i=0; i<texNum; i++) itex++;
 		origTex = *itex;
 	}
 	// Otherwise, tex from original ptx
@@ -261,9 +261,9 @@ void cuobjdumpInstList::printMemory()
 
 		// Global or entry specific
 		if(i->entryIndex == 0)
-			sprintf(line, ".const %s constant0[%d] = {", i->type, i->m_constMemory.size());
+			sprintf(line, ".const %s constant0[%d] = {", i->type, (int)i->m_constMemory.size());
 		else
-			sprintf(line, ".const %s ce%dc%d[%d] = {", i->type, i->entryIndex, i->index, i->m_constMemory.size());
+			sprintf(line, ".const %s ce%dc%d[%d] = {", i->type, i->entryIndex, i->index, (int)i->m_constMemory.size());
 
 		output(line);
 
@@ -283,7 +283,7 @@ void cuobjdumpInstList::printMemory()
 		char line[1024];
 
 		// Global or entry specific
-		sprintf(line, ".const %s constant1%s[%d] = {", i->type, i->kernel, i->m_constMemory.size());
+		sprintf(line, ".const %s constant1%s[%d] = {", i->type, i->kernel, (int)i->m_constMemory.size());
 
 		output(line);
 
@@ -368,7 +368,7 @@ void cuobjdumpInstList::addCuobjdumpRegister(std::string reg, bool lo)
 
 // add memory operand
 // memType: 0=constant, 1=shared, 2=global, 3=local
-int currconstmem =1;
+unsigned currconstmem =1;
 void cuobjdumpInstList::addCuobjdumpMemoryOperand(std::string mem, int memType) {
 	std::string origMem = mem;
 	bool neg = false;

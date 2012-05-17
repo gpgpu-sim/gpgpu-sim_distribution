@@ -41,6 +41,7 @@ void sass_error(const char*);
 %}
 %option noyywrap
 %option yylineno
+%option nounput
 
 /*Regular expresions go here*/
 alpha		[a-zA-Z]

@@ -269,7 +269,7 @@ void cuobjdumpInst::printCuobjdumpPredicate()
 			const char* modString2 = currentPiece2->stringText;
 			char* modString3 = new char[strlen(currentPiece2->stringText)+1];
 
-			for(int i=0; i<strlen(modString2); i++)
+			for(unsigned i=0; i<strlen(modString2); i++)
 			{
 				if(modString2[i] >= 'A' && modString2[i] <= 'Z')
 					modString3[i] = modString2[i] + 32;
@@ -437,7 +437,7 @@ void cuobjdumpInst::printCuobjdumpBaseModifiers()
 			output(".");
 			std::string modstr = modString;
 			modstr = modstr.substr(1);
-			for (int i=0; i<modstr.length(); i++){
+			for (unsigned i=0; i<modstr.length(); i++){
 				modstr[i] = tolower(modstr[i]);
 			}
 			output(modstr.c_str());
@@ -485,7 +485,7 @@ void cuobjdumpInst::printCuobjdumpOperand(stringListPiece* currentPiece, std::st
 		mod = currp.substr(1);
 
 		if(mod.substr(0,2) == "0x") {
-			unsigned int immValue;
+			unsigned immValue;
 			std::stringstream hexStringConvert2;
 			hexStringConvert2 << std::hex << mod;
 			hexStringConvert2 >> immValue;
@@ -499,7 +499,7 @@ void cuobjdumpInst::printCuobjdumpOperand(stringListPiece* currentPiece, std::st
 			std::string outputhex;
 			outputhex = outputhexstream.str();
 			output("0x");
-			for(int i=8; i > outputhex.length(); i--)
+			for(unsigned i=8; i > outputhex.length(); i--)
 			{
 				output("0");
 			}
@@ -516,7 +516,7 @@ void cuobjdumpInst::printCuobjdumpOperand(stringListPiece* currentPiece, std::st
 
 	// Make it lower case
 	if(mod.substr(0,9)!= "constant1")
-	for(int i=0; i<mod.length(); i++)
+	for(unsigned i=0; i<mod.length(); i++)
 	{
 		mod[i] = tolower(mod[i]);
 	}
@@ -668,7 +668,7 @@ void cuobjdumpInst::printCuobjdumpOperand(stringListPiece* currentPiece, std::st
 				std::stringstream outputhex;
 				outputhex << std::hex << addrValue;
 				output("0x");
-				for(int i=4; i > outputhex.str().length(); i--)
+				for(unsigned i=4; i > outputhex.str().length(); i--)
 				{
 					output("0");
 				}
@@ -699,7 +699,7 @@ void cuobjdumpInst::printCuobjdumpOperand(stringListPiece* currentPiece, std::st
 				std::stringstream outputhex;
 				outputhex << std::hex << addrValue;
 				output("0x");
-				for(int i=4; i > outputhex.str().length(); i--) {
+				for(unsigned i=4; i > outputhex.str().length(); i--) {
 					output("0");
 				}
 				output(outputhex.str().c_str());
@@ -711,7 +711,7 @@ void cuobjdumpInst::printCuobjdumpOperand(stringListPiece* currentPiece, std::st
 		std::string outputhex;
 		outputhex = mod.substr(2);
 
-		for(int i=8; i > outputhex.length(); i--) {
+		for(unsigned i=8; i > outputhex.length(); i--) {
 			output("0");
 		}
 		output(outputhex.c_str());
@@ -746,8 +746,6 @@ std::string breaktarget;
 
 void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std::list<std::string> texList)
 {
-	stringListPiece* currentPiece;
-
 	printCuobjdumpLabel(labelList);
 
 	if(strcmp(m_base, "")==0)
@@ -1923,7 +1921,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		ss << std::hex << tex_id;
 		ss >> tex_id_int;
 		std::list<std::string>::iterator texIter = texList.begin();
-		for (int i=0; i<tex_id_int; i++) {
+		for (unsigned i=0; i<tex_id_int; i++) {
 			assert (texIter!=texList.end());
 			texIter++;
 		}
