@@ -1431,6 +1431,11 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 		unsigned selected_capability=0;
 		bool found=false;
 		unsigned forced_max_capability = context->get_device()->get_gpgpu()->get_config().get_forced_max_capability();
+		if (!info->ptx){
+			printf("ERROR: Cannot find ptx code in cubin file\n"
+					"\tIf you are using CUDA 4.0 or higher, please enable cuobjdump or downgrade to CUDA 3.1\n");
+			exit(1);
+		}
 		while( info->ptx[num_ptx_versions].gpuProfileName != NULL ) {
 			unsigned capability=0;
 			sscanf(info->ptx[num_ptx_versions].gpuProfileName,"compute_%u",&capability);
