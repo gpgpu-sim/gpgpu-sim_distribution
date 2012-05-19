@@ -494,6 +494,7 @@ void shader_core_ctx::fetch()
                     m_warp[warp_id].set_last_fetch(gpu_sim_cycle);
                     delete mf;
                 } else {
+                    m_last_warp_fetched=warp_id;
                     assert( status == RESERVATION_FAIL );
                     delete mf;
                 }
