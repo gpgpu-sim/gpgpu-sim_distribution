@@ -53,7 +53,3 @@ HOSTNAME_F=`hostname -f`
 if [ "x$HOSTNAME_F" == "x$OPENCL_REMOTE_GPU_HOST" ]; then
 	unset OPENCL_REMOTE_GPU_HOST
 fi
-
-# the following are required to use native SASS via decuda
-export DECUDA_INSTALL_PATH=$GPGPUSIM_ROOT/decuda/
-export D2PP_INSTALL_PATH=$GPGPUSIM_ROOT/decuda_to_ptxplus/
