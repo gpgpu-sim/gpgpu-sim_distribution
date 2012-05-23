@@ -1,5 +1,4 @@
-See the file AerialVision-Manual.pdf in the doc directory for 
-usage instructions.
+See http://gpgpu-sim.org/manual/index.php5/AerialVision_Manual for usage instructions.
 
 To be able to use Aerial Vision, you only need to install its dependencies:
 	* python-pmw
