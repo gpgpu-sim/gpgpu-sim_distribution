@@ -12,12 +12,7 @@ Analyzing CUDA Workloads Using a Detailed GPU Simulator, in IEEE International
 Symposium on Performance Analysis of Systems and Software (ISPASS), Boston, MA,
 April 19-21, 2009.
 
-This file contains instructions on installing and building GPGPU-Sim. Examples
-of how to  run a CUDA or OpenCL application on GPGPU-Sim are described in the
-latest version of README.ISPASS-2009 distributed with the benchmarks described
-in the above paper. The file README.ISPASS-2009 is available online here:
-<https://dev.ece.ubc.ca/projects/gpgpu-sim/browser/ispass2009-benchmarks/benchmarks/README.ISPASS-2009>
-
+This file contains instructions on installing, building and running GPGPU-Sim.
 Detailed documentation on what GPGPU-Sim models, how to configure it, and a
 guide to the source code can be found here: <http://gpgpu-sim.org/manual/>. 
 
@@ -56,6 +51,7 @@ library is contained in cuda-math.h, which also includes several structures
 derived from vector_types.h (one of the CUDA header files).
 
 See file CHANGES for updates in this and earlier versions.
+
 
 2. INSTALLING, BUILDING and RUNNING GPGPU-Sim
 
@@ -209,6 +205,13 @@ application.
 
 If you need to run the set of applications in the NVIDIA CUDA SDK code
 samples then you will need to download, install and build the SDK.
+
+The CUDA applications from the ISPASS 2009 paper mentioned above are
+distributed separately on the git server under the directory
+ispass2009-benchmarks. The README.ISPASS-2009 file distributed with the
+benchmarks now contains updated instructions for running the benchmarks on
+GPGPU-Sim v3.x.
+
 
 3.  (OPTIONAL) Updating GPGPU-Sim (ADVANCED USERS ONLY)
 
