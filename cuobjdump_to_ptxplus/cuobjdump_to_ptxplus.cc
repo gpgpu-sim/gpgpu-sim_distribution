@@ -53,7 +53,7 @@ FILE *ptxplus_out;
 
 void output(const char * text)
 {
-	printf(text);
+	//printf(text);
 	fprintf(ptxplus_out, text);
 }
 
