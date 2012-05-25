@@ -30,7 +30,7 @@
 #include <cassert>
 #include "cuobjdumpInstList.h"
 
-#define P_DEBUG 1
+#define P_DEBUG 0
 #define DPRINTF(...) \
    if(P_DEBUG) { \
       printf("(%s:%u) ", __FILE__, __LINE__); \
@@ -571,7 +571,6 @@ void cuobjdumpInstList::setConstMemoryMap(const char* kernelname, int index){
 	std::string kernel = kernelname;
 	kernel = kernel.substr(14, kernel.length()-1);
 	kernel = kernel.substr(0, kernel.find("\t"));
-	printf("Setting kernelcmemmap[%s]=%d\n", kernel.c_str(), index);
 	kernelcmemmap[kernel] = index;
 }
 
@@ -579,7 +578,6 @@ void cuobjdumpInstList::setLocalMemoryMap(const char* kernelname, int index){
 	std::string kernel = kernelname;
 	kernel = kernel.substr(10, kernel.length()-1);
 	kernel = kernel.substr(0, kernel.find("\t"));
-	printf("Setting kernellmemmap[%s]=%d\n", kernel.c_str(), index);
 	kernellmemmap[kernel] = index;
 }
 
@@ -727,6 +725,5 @@ void cuobjdumpInstList::addConstMemoryPtr(const char* offset, const char* size, 
 	ptr.name = name;
 	ptr.destination = "constant0";
 	m_constMemoryPtrList.push_back(ptr);
-	printf("\naddConstMemoryPtr: %s, size: %d, offset: %d\n", ptr.name.c_str(), ptr.bytes, ptr.offset);
 }
 
