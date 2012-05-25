@@ -15,6 +15,7 @@ April 19-21, 2009.
 This file contains instructions on installing, building and running GPGPU-Sim.
 Detailed documentation on what GPGPU-Sim models, how to configure it, and a
 guide to the source code can be found here: <http://gpgpu-sim.org/manual/>. 
+Instructions for building doxygen source code documentation are included below.
 
 If you have questions, please sign up for the google groups page (see
 gpgpu-sim.org), but note that use of this simulator does not imply any level of
