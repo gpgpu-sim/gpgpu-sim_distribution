@@ -526,8 +526,9 @@ void cuobjdumpInstList::addCuobjdumpDoublePredReg(std::string pred, std::string 
 	else
 		doublePredReg = parsedPred + "|" + parsedReg;
 
-	char* doublePredRegName = new char [strlen(doublePredReg.c_str())];
+	char* doublePredRegName = new char [strlen(doublePredReg.c_str())+1];
 	strcpy(doublePredRegName, doublePredReg.c_str());
+	doublePredRegName[strlen(doublePredReg.c_str())] = '\0';
 	getListEnd().addOperand(doublePredRegName);
 }
 
