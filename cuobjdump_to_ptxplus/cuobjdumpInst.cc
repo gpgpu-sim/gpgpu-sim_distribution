@@ -262,33 +262,22 @@ void cuobjdumpInst::printCuobjdumpPredicate()
 		modString[0]=currentPiece->stringText[1];
 		modString[1]='\0';
 		output(modString);
-
 		stringListPiece* currentPiece2 = m_predicateModifiers->getListStart();
 		for(int i=0; (i<m_predicateModifiers->getSize())&&(currentPiece2!=NULL); i++)
 		{
-			const char* modString2 = currentPiece2->stringText;
-			char* modString3 = new char[strlen(currentPiece2->stringText)+1];
+			std::string modString3 = currentPiece2->stringText;
 
-			for(unsigned i=0; i<strlen(modString2); i++)
+			for(unsigned i=0; i<modString3.length(); i++)
 			{
-				if(modString2[i] >= 'A' && modString2[i] <= 'Z')
-					modString3[i] = modString2[i] + 32;
-				else
-					modString3[i] = modString2[i];
+				modString3[i] = tolower(modString3[i]);
 			}
-			modString3[strlen(modString2)]='\0';
-			if( strcmp(modString3, ".not_sign")==0)
-			{
+			if(modString3 ==".not_sign") {
 				output(".nsf");
-			} else if( strcmp(modString3, ".sign")==0)
-			{
+			} else if(modString3 == ".sign") {
 				output(".sf");
-			} else if( strcmp(modString3, ".carry")==0)
-			{
+			} else if(modString3 == ".carry") {
 				output(".cf");
-			}
-			else
-			{
+			} else {
 				output(modString3);
 			}
 			currentPiece = currentPiece2->nextString;
