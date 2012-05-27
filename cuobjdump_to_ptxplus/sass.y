@@ -315,7 +315,7 @@ operand		: registerlocation
 		| PIPE registerlocation PIPE	{ g_instList->getListEnd().addBaseModifier(".abs"); }
 		| TILDE registerlocation
 		| LEFTBRACKET instructionPredicate RIGHTBRACKET
-		| memorylocation opTypes { printf($2); g_instList->getListEnd().addTypeModifier($2);}
+		| memorylocation opTypes
 		| memorylocation
 		| immediateValue
 		| extraModifier
