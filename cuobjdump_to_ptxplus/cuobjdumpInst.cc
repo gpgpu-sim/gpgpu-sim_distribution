@@ -193,10 +193,15 @@ void cuobjdumpInst::addBaseModifier(const char* addBaseMod)
 
 void cuobjdumpInst::addTypeModifier(const char* addTypeMod)
 {
-	stringListPiece* tempPiece = new stringListPiece;
-	tempPiece->stringText = addTypeMod;
-
-	m_typeModifiers->add(tempPiece);
+	//We cannot have more than two modifiers, replace the last
+	//This will be the case if we have memory operand modifiers
+	if (m_typeModifiers->getSize() == 2) {
+		m_typeModifiers->getListEnd()->stringText = addTypeMod;
+	}else {
+		stringListPiece* tempPiece = new stringListPiece;
+		tempPiece->stringText = addTypeMod;
+		m_typeModifiers->add(tempPiece);
+	}
 }
 
 void cuobjdumpInst::addOperand(const char* addOp)
@@ -646,8 +651,8 @@ void cuobjdumpInst::printCuobjdumpOperand(stringListPiece* currentPiece, std::st
 				hexStringConvert >> addrValue;
 				unsigned chunksize = 4;
 				if (	this->m_typeModifiers->getSize()>0 &&
-						(	strcmp((m_typeModifiers->getListStart()->stringText), ".S16")==0 ||
-							strcmp((m_typeModifiers->getListStart()->stringText), ".U16")==0 )) chunksize = 2;
+						(	strcmp((m_typeModifiers->getListEnd()->stringText), ".S16")==0 ||
+							strcmp((m_typeModifiers->getListEnd()->stringText), ".U16")==0 )) chunksize = 2;
 				if (	this->m_typeModifiers->getSize()>0 &&
 						(	strcmp((m_typeModifiers->getListEnd()->stringText), ".U8")==0 ||
 							strcmp((m_typeModifiers->getListEnd()->stringText), ".S8")==0 )) chunksize = 1;
@@ -680,9 +685,12 @@ void cuobjdumpInst::printCuobjdumpOperand(stringListPiece* currentPiece, std::st
 				if(localFlag == 0)
 				{
 					unsigned chunksize = 4;
+					if ( m_typeModifiers->getSize()>0 &&
+							(	strcmp((m_typeModifiers->getListEnd()->stringText), ".S16")==0 ||
+								strcmp((m_typeModifiers->getListEnd()->stringText), ".U16")==0 )) chunksize = 2;
 					if (	this->m_typeModifiers->getSize()>0 &&
-							(strcmp((m_typeModifiers->getListStart()->stringText), ".S16")==0 ||
-									strcmp((m_typeModifiers->getListStart()->stringText), ".U16")==0 )) chunksize = 2;
+							(	strcmp((m_typeModifiers->getListEnd()->stringText), ".U8")==0 ||
+								strcmp((m_typeModifiers->getListEnd()->stringText), ".S8")==0 )) chunksize = 1;
 					addrValue = addrValue*chunksize;
 				}
 				std::stringstream outputhex;
@@ -1130,7 +1138,6 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpPredicate();
 
 		int absFlag = 0;
-		int bextFlag = 0;
 		stringListPiece* currentPiece = m_baseModifiers->getListStart();
 
 		while(currentPiece != NULL)
@@ -1139,11 +1146,6 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 			{
 				output("abs");
 				absFlag = 1;
-				break;
-			}
-			if(strcmp(currentPiece->stringText, ".bext")==0)
-			{
-				bextFlag = 1;
 				break;
 			}
 			currentPiece = currentPiece->nextString;
@@ -1155,44 +1157,12 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 
 		printCuobjdumpBaseModifiers();
 
-		currentPiece = this->m_typeModifiers->getListStart();
-		unsigned int maxlength=16;
-		unsigned int currlength = 16;
-		bool issigned = false;
-		std::string tmpstr;
-		while(currentPiece != NULL)
-		{
-			tmpstr = currentPiece->stringText;
-			if(tmpstr[1] == 'S')
-			{
-				issigned = true;
-			}
-			if(tmpstr.substr(2,2) ==  "32") {currlength=32;}
-			if (currlength > maxlength) {maxlength = currlength;}
-			currentPiece = currentPiece->nextString;
-		}
-
 		if(absFlag == 0)
 		{
-			if(bextFlag == 0)
+			if(m_typeModifiers->getSize() == 0)
+				output(int_default_mod()); //TODO: setting default type modifier but I'm not sure if this is right.
+			else
 				printCuobjdumpTypeModifiers();
-			else{
-				output(".");
-				if (issigned) {output("s");}
-				else {output("u");}
-				std::stringstream tmp;
-				tmp << maxlength;
-				output(tmp.str().c_str());
-				output(".");
-				if (issigned) {output("s");}
-				else {output("u");}
-				output("8");
-				//output(".u16.u8");
-			}
-		}
-		else
-		{
-			output(int_default_mod()); //TODO: setting default type modifier but I'm not sure if this is right.
 		}
 
 		printCuobjdumpOperands();
