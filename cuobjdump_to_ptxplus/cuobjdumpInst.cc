@@ -1158,15 +1158,11 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpBaseModifiers();
 
 
-		if (absFlag){
-			//abs takes only one modifier
-			output(m_typeModifiers->getListStart()->stringText);
-		}else {
-			if(m_typeModifiers->getSize() == 0)
-				output(int_default_mod()); //TODO: setting default type modifier but I'm not sure if this is right.
-			else
-				printCuobjdumpTypeModifiers();
-		}
+		if(m_typeModifiers->getSize() == 0 || absFlag)
+			output(int_default_mod()); //TODO: setting default type modifier but I'm not sure if this is right.
+		else
+			printCuobjdumpTypeModifiers();
+
 
 		printCuobjdumpOperands();
 		output(";");
