@@ -340,20 +340,20 @@ void cuobjdumpInstList::addCuobjdumpRegister(std::string reg, bool lo)
 	char * regString;
 	regString = new char [reg.size()+1];
 
-	stringList* typeModifiers = getListEnd().getTypeModifiers();
+	std::list<std::string>* typeModifiers = getListEnd().getTypeModifiers();
 	const char* baseInst = getListEnd().getBase();
 
 	//TODO: support for 64bit vectors and 128bit vectors
 	if((strcmp(baseInst, "DADD")==0) || (strcmp(baseInst, "DMUL")==0) || (strcmp(baseInst, "DFMA")==0) ||
-		((typeModifiers->getSize()==1) &&
-		(strcmp((typeModifiers->getListStart()->stringText), ".S64")==0) &&
+		((typeModifiers->size()==1) &&
+		(typeModifiers->front() == ".S64") &&
 		((strcmp(baseInst, "G2R")==0)||(strcmp(baseInst, "R2G")==0)||
 		(strcmp(baseInst, "GLD")==0)||(strcmp(baseInst, "GST")==0)||
 		(strcmp(baseInst, "LST")==0))))
 	{
 		vectorFlag = 64;
 	}
-	else if((typeModifiers->getSize()==1) && (strcmp((typeModifiers->getListStart()->stringText), ".S128")==0))
+	else if((typeModifiers->size()==1) && (typeModifiers->front() == ".S128"))
 	{
 		vectorFlag = 128;
 	}
