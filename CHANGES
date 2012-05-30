@@ -1,7 +1,15 @@
 CHANGE LOG:
 Version 3.1.0+edits (development branch) versus 3.1.0
+- Removed a dependency on an inhouse implementation of a string list in
+  cuobjdump_to_ptxplus.
+- Cleaned up the information printed out to stdout/stderr during the operation
+  of cuobjdump_to_ptxplus.
 - Bug Fixes:
-    - fix some potential memory corruption errors in cuobjdump_to_ptxplus
+    - Fixed a couple of memory errors in cuobjdump_to_ptxplus code.
+    - Implemented a better support for handling memory operand type modifier
+      in cuobjdump_to_ptxplus
+    - Correctly handling MVC instructions in cuobjdump_to_ptxplus; now they can
+      map to cvt or mov.
 
 Version 3.1.0 versus 3.0.2
 - Support for CUDA 4.0 for both PTX and PTXPlus.
