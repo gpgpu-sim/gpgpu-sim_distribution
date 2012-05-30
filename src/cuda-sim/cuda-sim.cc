@@ -1372,7 +1372,7 @@ kernel_info_t *gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
 }
 
 const char *g_gpgpusim_build_string = "$Change$";
-const char *g_gpgpusim_version_string = "3.1.0";
+const char *g_gpgpusim_version_string = "3.1.0+edits (development branch)";
 
 void print_splash()
 {
@@ -1380,7 +1380,7 @@ void print_splash()
    if ( !splash_printed ) {
       unsigned build=0;
       sscanf(g_gpgpusim_build_string, "$Change"": %u $", &build);
-      fprintf(stdout, "\n\n        *** GPGPU-Sim version %s (build %u) ***\n\n\n", g_gpgpusim_version_string, build );
+      fprintf(stdout, "\n\n        *** GPGPU-Sim Simulator Version %s (build %u) ***\n\n\n", g_gpgpusim_version_string, build );
       splash_printed=1;
    }
 }
