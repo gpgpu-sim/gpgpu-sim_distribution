@@ -21,6 +21,9 @@ If you have questions, please sign up for the google groups page (see
 gpgpu-sim.org), but note that use of this simulator does not imply any level of
 support.  Questions answered on a best effort basis.
 
+To submit a bug report, go here: http://www.gpgpu-sim.org/bugs/
+
+
 See Section 2 "INSTALLING, BUILDING and RUNNING GPGPU-Sim" below to get started.
 
 1. CONTRIBUTIONS and HISTORY
