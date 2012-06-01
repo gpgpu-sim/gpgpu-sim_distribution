@@ -1,14 +1,25 @@
 # see README before running this
 
-# change the following to point to your installation of CUDA Toolkit
 if [ ! -n "$CUDA_INSTALL_PATH" ]; then
-	if [ -d $HOME/nvcuda/4.0/cuda ]; then
-		export CUDA_INSTALL_PATH=$HOME/nvcuda/4.0/cuda
+
+	# Be sure to compile GPGPU-Sim with the same version of the CUDA
+	# Toolkit that you use to compile an application you want to run on
+	# GPGPU-Sim.
+	#
+	# If you need to use multiple CUDA Toolkit versions (e.g., one for
+	# GPGPU-Sim, and another for some other project), then you can change
+	# the following line to point to a local install of the CUDA Toolkit
+	# (this should be a verson that GPGPU-Sim supports).
+	
+	MYCUDA_INSTALL_PATH=$HOME/nvcuda/4.2.9/cuda
+
+	if [ -d $MYCUDA_INSTALL_PATH ]; then
+		export CUDA_INSTALL_PATH=$MYCUDA_INSTALL_PATH
 	fi
 fi
 if [ ! -n "$CUDA_INSTALL_PATH" ]; then
 	echo "";
-	echo "ERROR ** Install CUDA Toolkit and edit this file to point to it.";
+	echo "ERROR ** Install CUDA Toolkit then set CUDA_INSTALL_PATH or edit this file.";
 	echo "";
 	return;
 fi

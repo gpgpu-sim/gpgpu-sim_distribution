@@ -115,7 +115,6 @@ unsigned symbol_table::get_sm_target() const
 void symbol_table::set_ptx_version( float ver, unsigned ext ) 
 { 
    m_ptx_version = ptx_version(ver,ext); 
-   assert( m_ptx_version.ver() < 3 );
 }
 
 void symbol_table::set_sm_target( const char *target, const char *ext, const char *ext2 )
