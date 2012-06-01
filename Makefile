@@ -60,10 +60,18 @@ else ifeq ($(NVOPENCL_INCDIR),)
 else
 	TARGETS += $(SIM_LIB_DIR)/libOpenCL.so
 endif
-#	TARGETS += decuda_to_ptxplus/decuda_to_ptxplus
 	TARGETS += cuobjdump_to_ptxplus/cuobjdump_to_ptxplus
 
-gpgpusim: makedirs $(TARGETS)
+.PHONY: check_setup_environment
+gpgpusim: check_setup_environment makedirs $(TARGETS)
+
+
+check_setup_environment:
+	@if [ ! -n "$(GPGPUSIM_ROOT)" ]; then \
+		echo "ERROR *** run 'source setup_environment' before 'make'; please see README."; \
+		exit 101; \
+	 else true; \
+	 fi
 
 no_opencl_support:
 	@echo "Warning: gpgpu-sim is building without opencl support. Make sure NVOPENCL_LIBDIR and NVOPENCL_INCDIR are set"
@@ -126,10 +134,6 @@ opencllib: cuda-sim
 	$(MAKE) -C ./libopencl/ depend
 	$(MAKE) -C ./libopencl/
 
-decuda_to_ptxplus/decuda_to_ptxplus:
-	$(MAKE) -C ./decuda_to_ptxplus/ depend 
-	$(MAKE) -C ./decuda_to_ptxplus/
-
 .PHONY: cuobjdump_to_ptxplus/cuobjdump_to_ptxplus
 cuobjdump_to_ptxplus/cuobjdump_to_ptxplus:
 	$(MAKE) -C ./cuobjdump_to_ptxplus/ depend
@@ -143,7 +147,6 @@ makedirs:
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/gpgpu-sim ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/gpgpu-sim; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/libopencl ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/libopencl; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/intersim ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/intersim; fi;
-	if [ ! -d $(SIM_OBJ_FILES_DIR)/decuda_to_ptxplus ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/decuda_to_ptxplus; fi;
 
 all:
 	$(MAKE) gpgpusim
@@ -166,7 +169,6 @@ endif
 	$(MAKE) clean -C ./src/cuda-sim/
 	$(MAKE) clean -C ./src/gpgpu-sim/
 	$(MAKE) clean -C ./src/
-#	$(MAKE) clean -C ./decuda_to_ptxplus/
 	$(MAKE) clean -C ./cuobjdump_to_ptxplus/
 	rm -rf $(SIM_LIB_DIR)
 	rm -rf $(SIM_OBJ_FILES_DIR)

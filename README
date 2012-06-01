@@ -1,4 +1,6 @@
-GPGPU-Sim Simulator Version 3.1.0+edits (development branch) $Change$
+Welcome to GPGPU-Sim, a cycle-level simulator modeling contemporary graphics
+processing units (GPUs) running GPU computing workloads written in CUDA or
+OpenCL.  
 
 This version of GPGPU-Sim works with CUDA version 3.1 and 4.0.
 
@@ -23,8 +25,8 @@ support.  Questions answered on a best effort basis.
 
 To submit a bug report, go here: http://www.gpgpu-sim.org/bugs/
 
-
 See Section 2 "INSTALLING, BUILDING and RUNNING GPGPU-Sim" below to get started.
+
 
 1. CONTRIBUTIONS and HISTORY
 
@@ -67,12 +69,12 @@ distribution as long as the following software dependencies are satisfied.
 Step 1: Dependencies
 ====================
 
-Download and install the CUDA Toolkit. It is recommended to use version 3.1
-for normal PTX simulation and version 4.0 for cuobjdump support and/or to use
+Download and install the CUDA Toolkit. It is recommended to use version 3.1 for
+normal PTX simulation and version 4.0 for cuobjdump support and/or to use
 PTXPlus (Harware instruction set support). Note that it is possible to have
 multiple versions of the CUDA toolkit installed on a single system -- just
-install them in different directories and update the setup_environment script
-to point to the version you want to use.
+install them in different directories and set your CUDA_INSTALL_PATH
+environment variable to point to the version you want to use.
 
 [Optional] If you want to run OpenCL on the simulator, download and install
 NVIDIA's OpenCL driver from <http://developer.nvidia.com/opencl>.  Update your
@@ -132,19 +134,6 @@ To build the simulator, you first need to configure how you want it to be
 built. From the root directory of the simulator, do the following:
 
 cd v3.x
-
-then open the file 'setup_environment' with your favorite text editor. Read
-the file carefully and modify the environment variables in that file to your
-environment specific paths. In particular, you need to set CUDA_INSTALL_PATH
-correctly. If you set CUDA_INSTALL_PATH in your .bashrc file as per the
-instructions in the cuda toolkit installation, setup_environment will detect
-that automatically, in which case, you don't need to change it in
-setup_environment. The setup_environment script is engineered to work with a
-default system setup, so in the general case you will not need to modify it,
-however, you should still read it carefully to figure out if something specific
-to your system needs to be changed. After you have edited that file, save it
-and run
-
 source setup_environment <build_type>
 
 replace <build_type> with debug or release. Use release if you need faster
@@ -173,10 +162,9 @@ The documentation resides at v3.x/doc/doxygen/html.
 Step 3: Run
 ============
 
-Copy the contents of v3.x/configs/QuadroFX5800/ or v3.x/configs/Fermi/ to your 
-application's working directory.
-These files configure the microarchitecture models to resemble the respective
-GPGPU architectures.
+Copy the contents of v3.x/configs/QuadroFX5800/ or v3.x/configs/Fermi/ to your
+application's working directory.  These files configure the microarchitecture
+models to resemble the respective GPGPU architectures.
 
 To use ptxplus (native ISA) change the following options in the configuration
 file to "1" (Note: you need CUDA version 4.0) as follows:
