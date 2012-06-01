@@ -1,26 +1,7 @@
 # see README before running this
 
 if [ ! -n "$CUDA_INSTALL_PATH" ]; then
-
-	# Be sure to compile GPGPU-Sim with the same version of the CUDA
-	# Toolkit that you use to compile an application you want to run on
-	# GPGPU-Sim.
-	#
-	# If you need to use multiple CUDA Toolkit versions (e.g., one for
-	# GPGPU-Sim, and another for some other project), then you can change
-	# the following line to point to a local install of the CUDA Toolkit
-	# (this should be a verson that GPGPU-Sim supports).
-	
-	MYCUDA_INSTALL_PATH=$HOME/nvcuda/4.2.9/cuda
-
-	if [ -d $MYCUDA_INSTALL_PATH ]; then
-		export CUDA_INSTALL_PATH=$MYCUDA_INSTALL_PATH
-	fi
-fi
-if [ ! -n "$CUDA_INSTALL_PATH" ]; then
-	echo "";
-	echo "ERROR ** Install CUDA Toolkit then set CUDA_INSTALL_PATH or edit this file.";
-	echo "";
+	echo "ERROR ** Install CUDA Toolkit and set CUDA_INSTALL_PATH.";
 	return;
 fi
 
@@ -57,8 +38,8 @@ fi
 # static link setup in prior GPGPU-Sim releases.
 export LD_LIBRARY_PATH=`echo $LD_LIBRARY_PATH | sed -re 's/.*gpgpu_sim.*(release|debug)://'`
 export LD_LIBRARY_PATH=$GPGPUSIM_ROOT/lib/$GPGPUSIM_CONFIG:$LD_LIBRARY_PATH
-export PATH=`echo $PATH | sed "s#$GPGPUSIM_ROOT/decuda/:$GPGPUSIM_ROOT/bin:$CUDA_INSTALL_PATH/bin:##"`
-export PATH=$GPGPUSIM_ROOT/decuda/:$GPGPUSIM_ROOT/bin:$CUDA_INSTALL_PATH/bin:$PATH
+export PATH=`echo $PATH | sed "s#$GPGPUSIM_ROOT/bin:$CUDA_INSTALL_PATH/bin:##"`
+export PATH=$GPGPUSIM_ROOT/bin:$CUDA_INSTALL_PATH/bin:$PATH
 
 # The following sets OPENCL_REMOTE_GPU_HOST which is used by GPGPU-Sim to
 # SSH to remote node to generate PTX for OpenCL kernels when running on 

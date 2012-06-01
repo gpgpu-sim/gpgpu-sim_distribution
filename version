@@ -1,0 +1,2 @@
+const char *g_gpgpusim_version_string = "GPGPU-Sim Simulator Version 3.1.0+edits (development branch)";
+const char *g_gpgpusim_build_string   = "$Change: 12865 $";
