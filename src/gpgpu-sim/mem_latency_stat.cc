@@ -202,8 +202,8 @@ void memory_stats_t::memlatstat_lat_pw()
 {
    if (mf_num_lat_pw && m_memory_config->gpgpu_memlatency_stat) {
       assert(mf_tot_lat_pw);
-      mf_total_lat = mf_tot_lat_pw;
-      num_mfs = mf_num_lat_pw;
+      mf_total_lat += mf_tot_lat_pw;
+      num_mfs += mf_num_lat_pw;
       mf_lat_pw_table[LOGB2(mf_tot_lat_pw/mf_num_lat_pw)]++;
       mf_tot_lat_pw = 0;
       mf_num_lat_pw = 0;
