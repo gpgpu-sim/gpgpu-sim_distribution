@@ -919,8 +919,8 @@ void gpgpu_sim::cycle()
                 (unsigned)days,(unsigned)hrs,(unsigned)minutes,(unsigned)sec,
                 ctime(&curr_time));
          fflush(stdout);
-         m_memory_stats->memlatstat_lat_pw();
          visualizer_printstat();
+         m_memory_stats->memlatstat_lat_pw();
          if (m_config.gpgpu_runtime_stat && (m_config.gpu_runtime_stat_flag != 0) ) {
             if (m_config.gpu_runtime_stat_flag & GPU_RSTAT_BW_STAT) {
                for (unsigned i=0;i<m_memory_config->m_n_mem;i++) 

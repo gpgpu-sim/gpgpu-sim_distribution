@@ -228,8 +228,10 @@ void memory_stats_t::visualizer_print( gzFile visualizer_file )
    gzprintf(visualizer_file, "Ltwowritehit: %d\n",  L2_write_hit);
    gzprintf(visualizer_file, "Ltworeadmiss: %d\n", L2_read_miss);
    gzprintf(visualizer_file, "Ltworeadhit: %d\n", L2_read_hit);
-   if (num_mfs) 
-      gzprintf(visualizer_file, "averagemflatency: %lld\n", mf_total_lat/num_mfs);
+   signed long long average_mf_latency = 0; 
+   if (mf_num_lat_pw) 
+      average_mf_latency = mf_tot_lat_pw / mf_num_lat_pw; 
+   gzprintf(visualizer_file, "averagemflatency: %lld\n", average_mf_latency);
 }
 
 void gpgpu_sim::L2c_print_cache_stat() const
