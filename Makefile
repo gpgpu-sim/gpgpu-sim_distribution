@@ -70,7 +70,17 @@ check_setup_environment:
 	@if [ ! -n "$(GPGPUSIM_ROOT)" ]; then \
 		echo "ERROR *** run 'source setup_environment' before 'make'; please see README."; \
 		exit 101; \
-	 else true; \
+	 else \
+		NVCC_PATH=`which nvcc`; \
+		if [ $$? = 1 ]; then \
+			echo ""; \
+			echo "ERROR ** nvcc (from CUDA Toolkit) was not found in PATH but required to build GPGPU-Sim."; \
+			echo "         Try adding $(CUDA_INSTALL_PATH)/bin/ to your PATH environment variable."; \
+			echo "         Please also be sure to read the README file if you have not done so."; \
+			echo ""; \
+			exit 102; \
+		else true; \
+		fi \
 	 fi
 
 no_opencl_support:
