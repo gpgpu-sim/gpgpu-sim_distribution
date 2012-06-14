@@ -61,13 +61,30 @@ See file CHANGES for updates in this and earlier versions.
 
 2. INSTALLING, BUILDING and RUNNING GPGPU-Sim
 
-GPGPU-Sim was developed on SUSE  Linux(this release was tested with SUSE
-version 11.3) and has been used on several other Linux platforms (both 32-bit
-and 64-bit systems).  In principle, GPGPU-Sim should work with any linux
-distribution as long as the following software dependencies are satisfied.
+Assuming all dependencies required by GPGPU-Sim are installed on your system,
+to build GPGPU-Sim all you need to do is add the following line to your
+~/.bashrc file (assuming the CUDA Toolkit was installed in /usr/local/cuda):
+
+	export CUDA_INSTALL_PATH=/usr/local/cuda
+
+then type
+
+	source ~/.bashrc
+	source setup_environment
+	make
+
+If the above fails, see "Step 1" and "Step 2" below. 
+
+If the above worked, see "Step 3" below, which explains how to run a CUDA
+benchmark on GPGPU-Sim.
 
 Step 1: Dependencies
 ====================
+
+GPGPU-Sim was developed on SUSE  Linux (this release was tested with SUSE
+version 11.3) and has been used on several other Linux platforms (both 32-bit
+and 64-bit systems).  In principle, GPGPU-Sim should work with any linux
+distribution as long as the following software dependencies are satisfied.
 
 Download and install the CUDA Toolkit. It is recommended to use version 3.1 for
 normal PTX simulation and version 4.0 for cuobjdump support and/or to use
@@ -126,6 +143,14 @@ python-matplotlib"
 CUDA SDK dependencies:
 "sudo apt-get install libxi-dev libxmu-dev libglut3-dev"
 
+Finally, ensure CUDA_INSTALL_PATH is set to the location where you installed
+the CUDA Toolkit (e.g., /usr/local/cuda) and that $CUDA_INSTALL_PATH/bin is in
+your PATH.  You probably want to modify your .bashrc file to incude the
+following (this assumes the CUDA Toolkit was installed in /usr/local/cuda):
+
+	export CUDA_INSTALL_PATH=/usr/local/cuda
+	export PATH=$CUDA_INSTALL_PATH/bin
+
 
 Step 2: Build
 =============
@@ -138,7 +163,7 @@ source setup_environment <build_type>
 
 replace <build_type> with debug or release. Use release if you need faster
 simulation and debug if you need to run the simulator in gdb. If nothing is
-specified, release will be used by default.
+specified, release will be used by default.  
 
 Now you are ready to build the simulator, just run
 
