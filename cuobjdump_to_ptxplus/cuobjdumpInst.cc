@@ -116,7 +116,7 @@ void cuobjdumpInst::printHeaderPtx()
 }
 
 //retreive instruction mnemonic
-const char* cuobjdumpInst::getBase()
+const std::string cuobjdumpInst::getBase()
 {
 	return m_base;
 }
@@ -129,7 +129,7 @@ std::list<std::string>* cuobjdumpInst::getTypeModifiers()
 //print out .version and .target header lines
 bool cuobjdumpInst::printHeaderInst()
 {
-	if(strcmp(m_base, ".version")==0)
+	if(m_base == ".version")
 	{
 		output(m_base);
 		output(" ");
@@ -145,7 +145,7 @@ bool cuobjdumpInst::printHeaderInst()
       output("+");
 		output("\n");
 	}
-	else if(strcmp(m_base, ".target")==0)
+	else if(m_base ==  ".target")
 	{
 		output(m_base);
 		output(" ");
@@ -161,7 +161,7 @@ bool cuobjdumpInst::printHeaderInst()
 		}
 		output("\n");
 	}
-	else if(strcmp(m_base, ".tex")==0)
+	else if(m_base == ".tex")
 	{
 		output(m_base); output(" ");
 
@@ -252,7 +252,7 @@ bool cuobjdumpInst::checkCubojdumpLabel(std::list<std::string> labelList, std::s
 
 void cuobjdumpInst::printCuobjdumpLabel(std::list<std::string> labelList)
 {
-	if((strcmp(m_label, "")!=0)&&(checkCubojdumpLabel(labelList, m_label))) {
+	if((m_label != "")&&(checkCubojdumpLabel(labelList, m_label))) {
 		output(m_label);
 		output(": ");
 	}
@@ -298,8 +298,8 @@ void cuobjdumpInst::printCuobjdumpTypeModifiers()
 		else if(*typemod == ".F32")
 			output(".f32");
 		else if(*typemod == ".F64"){
-			if(		strcmp(m_base, "F2I") == 0||
-					strcmp(m_base, "F2F") == 0)
+			if(		m_base == "F2I"||
+					m_base == "F2F")
 				output(".f64");
 			else
 				output(".ff64");
@@ -368,7 +368,7 @@ void cuobjdumpInst::printCuobjdumpBaseModifiers()
 			output(".neu");
 		else if( *basemod == ".abs")
 		{
-			if((strcmp(m_base, "F2F")!=0) && (strcmp(m_base, "I2I")!=0))
+			if((m_base == "F2F") && (m_base == "I2I"))
 			{
 				output(*basemod);
 			}
@@ -452,7 +452,7 @@ void cuobjdumpInst::printCuobjdumpOperandlohi(std::string op) {
 	}
 }
 
-void cuobjdumpInst::printCuobjdumpOperand(std::string currentPiece, std::string operandDelimiter, const char* base)
+void cuobjdumpInst::printCuobjdumpOperand(std::string currentPiece, std::string operandDelimiter, std::string base)
 {
 
 	output(operandDelimiter);
@@ -530,16 +530,16 @@ void cuobjdumpInst::printCuobjdumpOperand(std::string currentPiece, std::string 
 	} else if(mod == "sr1") {//handling special register case: %clock
 		output("%%clock");
 	} else if(mod[0]=='r') { //basic register
-		if(	(strcmp(m_base, "DADD")==0) ||
-			(strcmp(m_base, "DMUL")==0) ||
-			(strcmp(m_base, "DFMA")==0) ||
+		if(	(m_base == "DADD") ||
+			(m_base == "DMUL") ||
+			(m_base == "DFMA") ||
 			(	(m_typeModifiers->size()==1) &&
 				(m_typeModifiers->front() == ".S64") &&
-				(	(strcmp(m_base, "G2R")==0) ||
-					(strcmp(m_base, "R2G")==0) ||
-					(strcmp(m_base, "GLD")==0) ||
-					(strcmp(m_base, "GST")==0) ||
-					(strcmp(m_base, "LST")==0) ))) {
+				(	(m_base == "G2R") ||
+					(m_base == "R2G") ||
+					(m_base == "GLD") ||
+					(m_base == "GST") ||
+					(m_base == "LST") ))) {
 			std::string modsub = mod.substr(1);
 			int regNumInt = atoi(modsub.c_str());
 			std::stringstream temp;
@@ -580,10 +580,10 @@ void cuobjdumpInst::printCuobjdumpOperand(std::string currentPiece, std::string 
 
 		if(mod.find("global14") != std::string::npos) {
 			//Those instructions don't need the dereferencing done by g [*]
-			if(	strcmp(base,"GRED")==0 ||
-				strcmp(base, "GATOM")==0 ||
-				strcmp(base, "GST")==0 ||
-				strcmp(base, "GLD")==0)
+			if(	base == "GRED" ||
+				base == "GATOM" ||
+				base == "GST" ||
+				base == "GLD")
 				output("[");
 			else
 				output("g[");
@@ -713,7 +713,7 @@ void cuobjdumpInst::printCuobjdumpOperands()
 	for (	std::list<std::string>::iterator operand = m_operands->begin();
 			operand != m_operands->end();
 			operand++, i++) {
-		if((strcmp(m_base, "LOP.PASS_B")==0 || strcmp(m_base, "LOP.S.PASS_B")==0) && (i==1)) {
+		if(((m_base == "LOP.PASS_B") || (m_base == "LOP.S.PASS_B")) && (i==1)) {
 			continue;
 		}
 		printCuobjdumpOperand(*operand, delimiter, m_base);
@@ -730,19 +730,19 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 {
 	printCuobjdumpLabel(labelList);
 
-	if(strcmp(m_base, "")==0)
+	if(m_base == "")
 	{
 	}
-	else if(strcmp(m_base, ".entry")==0)
+	else if(m_base == ".entry")
 	{
 		/*do nothing here*/
 	}
-	else if(strcmp(m_base, "BAR.ARV.WAIT b0, 0xfff")==0)
+	else if(m_base == "BAR.ARV.WAIT b0, 0xfff")
 	{
 		printCuobjdumpPredicate();
 		output("bar.sync 0x00000000;");
 	}
-	else if(strcmp(m_base, "ADA")==0)
+	else if(m_base == "ADA")
 	{
 		printCuobjdumpPredicate();
 		output("add");
@@ -756,7 +756,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "BRA")==0)
+	else if(m_base == "BRA")
 	{
 		printCuobjdumpPredicate();
 		output("bra");
@@ -765,7 +765,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "CAL")==0)
+	else if(m_base == "CAL")
 	{
 		printCuobjdumpPredicate();
 		output("callp");
@@ -774,7 +774,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "COS")==0)
+	else if(m_base == "COS")
 	{
 		printCuobjdumpPredicate();
 		//output("nop;");
@@ -788,7 +788,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "DADD")==0)
+	else if(m_base == "DADD")
 	{
 		printCuobjdumpPredicate();
 		output("add");
@@ -802,7 +802,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "DMIN")==0)
+	else if(m_base == "DMIN")
 	{
 		printCuobjdumpPredicate();
 		output("min");
@@ -816,7 +816,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "DMAX")==0)
+	else if(m_base == "DMAX")
 	{
 		printCuobjdumpPredicate();
 		output("max");
@@ -848,7 +848,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		output(";");
 	}
 	*/
-	else if(strcmp(m_base, "DMUL")==0)
+	else if(m_base == "DMUL")
 	{
 		printCuobjdumpPredicate();
 		output("mul");
@@ -862,7 +862,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "EX2")==0)
+	else if(m_base == "EX2")
 	{
 		printCuobjdumpPredicate();
 		//output("nop;");
@@ -878,7 +878,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "F2F")==0)
+	else if(m_base == "F2F")
 	{
 		printCuobjdumpPredicate();
 
@@ -913,7 +913,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "F2I")==0)
+	else if(m_base == "F2I")
 	{
 		printCuobjdumpPredicate();
 		output("cvt");
@@ -923,7 +923,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "FADD")==0 || strcmp(m_base, "FADD32I")==0)
+	else if(m_base == "FADD" || m_base == "FADD32I")
 	{
 		printCuobjdumpPredicate();
 		output("add");
@@ -937,7 +937,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "FADD32")==0)
+	else if(m_base == "FADD32")
 	{
 		printCuobjdumpPredicate();
 		output("add.half");
@@ -951,7 +951,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "FMAD")==0 || strcmp(m_base, "FMAD32I")==0)
+	else if(m_base == "FMAD" || m_base == "FMAD32I")
 	{
 		printCuobjdumpPredicate();
 		output("mad");
@@ -965,7 +965,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "FMUL")==0 || strcmp(m_base, "FMUL32I")==0)
+	else if(m_base == "FMUL" || m_base == "FMUL32I")
 	{
 		printCuobjdumpPredicate();
 		output("mul");
@@ -979,7 +979,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "FMUL32")==0)
+	else if(m_base == "FMUL32")
 	{
 		printCuobjdumpPredicate();
 		output("mul.half");
@@ -993,7 +993,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "FSET")==0)
+	else if(m_base == "FSET")
 	{
 		printCuobjdumpPredicate();
 		output("set");
@@ -1009,7 +1009,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "DSET")==0)
+	else if(m_base == "DSET")
 	{
 		printCuobjdumpPredicate();
 		output("set");
@@ -1025,7 +1025,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "G2R")==0)
+	else if(m_base == "G2R")
 	{
 		printCuobjdumpPredicate();
 		output("mov");
@@ -1077,7 +1077,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "GLD")==0)
+	else if(m_base == "GLD")
 	{
 		printCuobjdumpPredicate();
 		//output("mov");
@@ -1093,7 +1093,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "GST")==0)
+	else if(m_base == "GST")
 	{
 		printCuobjdumpPredicate();
 		//output("mov");
@@ -1109,7 +1109,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "I2F")==0)
+	else if(m_base == "I2F")
 	{
 		printCuobjdumpPredicate();
 		output("cvt");
@@ -1118,7 +1118,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "I2I")==0)
+	else if(m_base == "I2I")
 	{
 		printCuobjdumpPredicate();
 
@@ -1151,7 +1151,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strstr(m_base, "IADD.CARRY")){
+	else if(m_base == "IADD.CARRY"){
 		std::string pred = "C0";
 		pred[1] = m_base[10];
 		this->addOperand(pred.c_str());
@@ -1167,7 +1167,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "IADD")==0)
+	else if(m_base == "IADD")
 	{
 		printCuobjdumpPredicate();
 		output("add");
@@ -1181,7 +1181,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "IADD32")==0  || strcmp(m_base, "IADD32I")==0 )
+	else if(m_base == "IADD32" || m_base == "IADD32I")
 	{
 		printCuobjdumpPredicate();
 		output("add.half");
@@ -1194,7 +1194,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "IMAD32I")==0  || strcmp(m_base, "IMAD32")==0)
+	else if(m_base == "IMAD32I" || m_base == "IMAD32")
 	{
 		printCuobjdumpPredicate();
 		output("mad.lo");
@@ -1208,7 +1208,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "IMAD")==0)
+	else if(m_base == "IMAD")
 	{
 		printCuobjdumpPredicate();
 		output("mad.wide");
@@ -1222,7 +1222,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "ISAD")==0)
+	else if(m_base == "ISAD")
 	{
 		printCuobjdumpPredicate();
 		output("sad");
@@ -1237,7 +1237,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		output(";");
 	}
 
-	else if(strcmp(m_base, "IMAD.U24")==0)
+	else if(m_base == "IMAD.U24")
 	{
 		printCuobjdumpPredicate();
 		output("mad24.lo");
@@ -1250,7 +1250,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
         }
-	else if(strcmp(m_base, "IMAD.S24")==0)
+	else if(m_base == "IMAD.S24")
 	{
 		printCuobjdumpPredicate();
 		output("mad24.lo");
@@ -1263,12 +1263,12 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "IMUL32I.U24.U24")==0 ||
-			strcmp(m_base, "IMUL32I.S24.S24")==0 ||
-			strcmp(m_base, "IMUL32.U24.U24")==0 ||
-			strcmp(m_base, "IMUL32.S24.S24")==0 ||
-			strcmp(m_base, "IMUL.U24.U24")==0 ||
-			strcmp(m_base, "IMUL.S24.S24")==0)
+	else if(m_base == "IMUL32I.U24.U24" ||
+			m_base == "IMUL32I.S24.S24" ||
+			m_base == "IMUL32.U24.U24" ||
+			m_base == "IMUL32.S24.S24" ||
+			m_base == "IMUL.U24.U24" ||
+			m_base == "IMUL.S24.S24" )
 	{
 		printCuobjdumpPredicate();
 		output("mul24.lo");
@@ -1306,7 +1306,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "IMUL")==0 || strcmp(m_base, "IMUL32I")==0)
+	else if(m_base == "IMUL" || m_base == "IMUL32I")
 	{
 		printCuobjdumpPredicate();
 		output("mul.lo");
@@ -1346,7 +1346,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "IMUL32")==0)
+	else if(m_base == "IMUL32")
 	{
 		printCuobjdumpPredicate();
 		output("mul.half.lo");
@@ -1380,7 +1380,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "IMUL32.S24.S24")==0)
+	else if(m_base == "IMUL32.S24.S24")
 	{
 		printCuobjdumpPredicate();
 		output("mul24.half.lo");
@@ -1418,7 +1418,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "ISET")==0)
+	else if(m_base == "ISET")
 	{
 		printCuobjdumpPredicate();
 		output("set");
@@ -1435,7 +1435,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "LG2")==0)
+	else if(m_base == "LG2")
 	{
 		printCuobjdumpPredicate();
 		output("lg2");
@@ -1449,7 +1449,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "LST")==0)
+	else if(m_base == "LST")
 	{
 		printCuobjdumpPredicate();
 		output("mov");
@@ -1458,7 +1458,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "MVC")==0){
+	else if(m_base == "MVC"){
 		printCuobjdumpPredicate();
 		//Use cvt if there is conversion involved (2 modifiers) otherwise mov
 		if(m_typeModifiers->size() < 2)
@@ -1475,7 +1475,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "MOV")==0 || strcmp(m_base, "MVI")==0)
+	else if(m_base == "MOV" || m_base == "MVI")
 	{
 		printCuobjdumpPredicate();
 		output("mov");
@@ -1488,7 +1488,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "MOV32")==0)
+	else if(m_base == "MOV32")
 	{
 		printCuobjdumpPredicate();
 		output("mov.half");
@@ -1501,14 +1501,14 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "NOP")==0 || strcmp(m_base, "SSY")==0)
+	else if(m_base == "NOP" || m_base == "SSY")
 	{
 		printCuobjdumpPredicate();
 		output("nop");
 		printCuobjdumpBaseModifiers();
 		output(";");
 	}
-	else if(strcmp(m_base, "LLD")==0)
+	else if(m_base == "LLD")
 	{
 		printCuobjdumpPredicate();
 		output("mov");
@@ -1517,7 +1517,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "LOP.AND")==0 || strcmp(m_base, "LOP.S.AND")==0)
+	else if(m_base == "LOP.AND" || m_base == "LOP.S.AND")
 	{
 		printCuobjdumpPredicate();
 		output("and");
@@ -1531,7 +1531,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "LOP.OR")==0 || strcmp(m_base, "LOP.S.OR")==0)
+	else if(m_base == "LOP.OR" || m_base == "LOP.S.OR")
 	{
 		printCuobjdumpPredicate();
 		output("or");
@@ -1545,7 +1545,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "LOP.PASS_B")==0 || strcmp(m_base, "LOP.S.PASS_B")==0)
+	else if(m_base == "LOP.PASS_B" || m_base == "LOP.S.PASS_B")
 	{
 		printCuobjdumpPredicate();
 		output("not");
@@ -1559,7 +1559,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "LOP.XOR")==0 || strcmp(m_base, "LOP.S.XOR")==0)
+	else if(m_base == "LOP.XOR" || m_base == "LOP.S.XOR")
 	{
 		printCuobjdumpPredicate();
 		output("xor");
@@ -1573,7 +1573,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "R2A")==0)
+	else if(m_base == "R2A")
 	{
 		printCuobjdumpPredicate();
 		output("shl");
@@ -1588,7 +1588,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 			output(", 0x0");
 		output(";");
 	}
-	else if(strcmp(m_base, "R2G.U16.U8")==0){
+	else if(m_base == "R2G.U16.U8"){
 		/*
 		 * This code handles a cuobjdump bug that causes the wrong register number to be printed
 		 */
@@ -1610,7 +1610,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		output( regnum%2==0? ".lo": ".hi");
 		output(";");
 	}
-	else if(strcmp(m_base, "R2G")==0)
+	else if(m_base == "R2G")
 	{
 		printCuobjdumpPredicate();
 		output("mov");
@@ -1664,7 +1664,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "RCP")==0)
+	else if(m_base == "RCP")
 	{
 		printCuobjdumpPredicate();
 		output("rcp");
@@ -1678,7 +1678,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "RCP32")==0)
+	else if(m_base == "RCP32")
 	{
 		printCuobjdumpPredicate();
 		output("rcp.half");
@@ -1691,12 +1691,12 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "RET")==0)
+	else if(m_base == "RET")
 	{
 		printCuobjdumpPredicate();
 		output("retp;");
 	}
-	else if(strcmp(m_base, "RRO")==0)
+	else if(m_base == "RRO")
 	{
 		output("nop; //");
 		printCuobjdumpPredicate();
@@ -1710,7 +1710,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "RSQ")==0)
+	else if(m_base == "RSQ")
 	{
 		printCuobjdumpPredicate();
 		output("rsqrt");
@@ -1724,7 +1724,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "SHL")==0)
+	else if(m_base == "SHL")
 	{
 		printCuobjdumpPredicate();
 		output("shl");
@@ -1738,7 +1738,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "SHR")==0)
+	else if(m_base == "SHR")
 	{
 		printCuobjdumpPredicate();
 		output("shr");
@@ -1752,7 +1752,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "SIN")==0)
+	else if(m_base == "SIN")
 	{
 		printCuobjdumpPredicate();
 		output("sin");
@@ -1766,7 +1766,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "S2R")==0)
+	else if(m_base == "S2R")
 	{
 		printCuobjdumpPredicate();
 		output("cvt");
@@ -1775,7 +1775,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "LD")==0)
+	else if(m_base == "LD")
 	{
 		printCuobjdumpPredicate();
 		output("mov");
@@ -1784,7 +1784,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "STS")==0)
+	else if(m_base == "STS")
 	{
 		printCuobjdumpPredicate();
 		output("mov");
@@ -1793,12 +1793,12 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "BAR")==0)
+	else if(m_base == "BAR")
 	{
 		printCuobjdumpPredicate();
 		output("bar.sync 0;");
 	}
-	else if(strcmp(m_base, "LDS")==0)
+	else if(m_base == "LDS")
 	{
 		// If there is not global address space that includes shared memory, then fix this.
 		// Same for STS
@@ -1809,7 +1809,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "ST")==0)
+	else if(m_base == "ST")
 	{
 		printCuobjdumpPredicate();
 		output("mov");
@@ -1817,7 +1817,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpTypeModifiers();
 		printCuobjdumpOperands();
 		output(";");
-	} else if(strcmp(m_base, "IMIN")==0) {
+	} else if(m_base == "IMIN") {
 		printCuobjdumpPredicate();
 		output("min");
 		printCuobjdumpBaseModifiers();
@@ -1827,7 +1827,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 			printCuobjdumpTypeModifiers();
 		printCuobjdumpOperands();
 		output(";");
-	} else if(strcmp(m_base, "IMAX")==0) {
+	} else if(m_base == "IMAX") {
 		printCuobjdumpPredicate();
 		output("max");
 		printCuobjdumpBaseModifiers();
@@ -1837,7 +1837,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 			printCuobjdumpTypeModifiers();
 		printCuobjdumpOperands();
 		output(";");
-	} else if(strcmp(m_base, "FMIN")==0) {
+	} else if(m_base == "FMIN") {
 			printCuobjdumpPredicate();
 			output("min");
 			printCuobjdumpBaseModifiers();
@@ -1848,7 +1848,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 			printCuobjdumpOperands();
 			output(";");
 	}
-	else if(strcmp(m_base, "FMAX")==0) {
+	else if(m_base == "FMAX") {
 			printCuobjdumpPredicate();
 			output("max");
 			printCuobjdumpBaseModifiers();
@@ -1859,7 +1859,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 			printCuobjdumpOperands();
 			output(";");
 	}
-	else if(strcmp(m_base, "A2R")==0) {
+	else if(m_base == "A2R") {
 		printCuobjdumpPredicate();
 		output("mov");
 		printCuobjdumpBaseModifiers();
@@ -1870,8 +1870,8 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if((strcmp(m_base, "TEX")==0) ||
-			(strcmp(m_base, "TEX32")==0)) {
+	else if((m_base == "TEX") ||
+			(m_base == "TEX32")) {
 		printCuobjdumpPredicate();
 		output("tex.1d.v4.f32.s32 ");
 		std::string addrReg, tex_id;
@@ -1896,12 +1896,12 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperand(reg, "", "");
 		output(",_,_,_};");
 	}
-	else if(strcmp(m_base, "EXIT")==0) {
+	else if(m_base == "EXIT") {
 		printCuobjdumpPredicate();
 		output("exit");
 		output(";");
 	}
-	else if(strcmp(m_base, "GRED")==0) {
+	else if(m_base == "GRED") {
 		printCuobjdumpPredicate();
 		// ptx instruction atom can be used to perform reduction using destination register '_'
 		output("atom.global");
@@ -1910,7 +1910,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		output(" _, ");
 		printCuobjdumpOperands();
 		output(";");
-	} else if(strcmp(m_base, "GATOM")==0) {
+	} else if(m_base == "GATOM") {
 		printCuobjdumpPredicate();
 		output("atom.global");
 		printCuobjdumpBaseModifiers();
@@ -1918,12 +1918,12 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 
 		printCuobjdumpOperands();
 		output(";");
-	}else if(strcmp(m_base, "PBK")==0) {
+	}else if(m_base == "PBK") {
 		//PKB specifies the target of later BRK (break) instructions
 		// Here we convert it to nop and store the target
 		output("nop;");
 		breaktarget = m_operands->front();
-	} else if(strcmp(m_base, "BRK")==0) {
+	} else if(m_base == "BRK") {
 		printCuobjdumpPredicate();
 		/*
 		 * Convert it **at compile time** to a branch to the break target saved earlier
@@ -1933,17 +1933,17 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		output("bra ");
 		output(breaktarget.c_str());
 		output(";");
-	} else if(strcmp(m_base, "C2R")==0) {
+	} else if(m_base == "C2R") {
 		printCuobjdumpPredicate();
 		output("mov.u32");
 		printCuobjdumpOperands();
 		output(";");
-	} else if(strcmp(m_base, "R2C")==0) {
+	} else if(m_base == "R2C") {
 		printCuobjdumpPredicate();
 		output("mov.pred");
 		printCuobjdumpOperands();
 		output(";");
-	} else if(strcmp(m_base, "VOTE")==0) {
+	} else if(m_base == "VOTE") {
 		printCuobjdumpPredicate();
 		output("vote");
 		printCuobjdumpBaseModifiers();
@@ -1951,7 +1951,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(strcmp(m_base, "DFMA")==0)
+	else if(m_base == "DFMA")
 	{
 		printCuobjdumpPredicate();
 		output("fma.rz.ff64");
@@ -1962,7 +1962,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 	else
 	{
 		printf("Unknown Instruction: ");
-		printf(m_base);
+		printf(m_base.c_str());
 		printf("\n");
 		output("Unknown Instruction: ");
 		output(m_base);

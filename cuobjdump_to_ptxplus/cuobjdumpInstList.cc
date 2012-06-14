@@ -341,15 +341,15 @@ void cuobjdumpInstList::addCuobjdumpRegister(std::string reg, bool lo)
 	regString = new char [reg.size()+1];
 
 	std::list<std::string>* typeModifiers = getListEnd().getTypeModifiers();
-	const char* baseInst = getListEnd().getBase();
+	std::string baseInst = getListEnd().getBase();
 
 	//TODO: support for 64bit vectors and 128bit vectors
-	if((strcmp(baseInst, "DADD")==0) || (strcmp(baseInst, "DMUL")==0) || (strcmp(baseInst, "DFMA")==0) ||
+	if((baseInst == "DADD") || (baseInst == "DMUL") || (baseInst == "DFMA") ||
 		((typeModifiers->size()==1) &&
 		(typeModifiers->front() == ".S64") &&
-		((strcmp(baseInst, "G2R")==0)||(strcmp(baseInst, "R2G")==0)||
-		(strcmp(baseInst, "GLD")==0)||(strcmp(baseInst, "GST")==0)||
-		(strcmp(baseInst, "LST")==0))))
+		((baseInst == "G2R")||(baseInst == "R2G")||
+		(baseInst == "GLD")||(baseInst == "GST")||
+		(baseInst == "LST"))))
 	{
 		vectorFlag = 64;
 	}
@@ -518,9 +518,9 @@ void cuobjdumpInstList::addCuobjdumpDoublePredReg(std::string pred, std::string 
 
 	std::string doublePredReg;
 	if(
-		strcmp(getListEnd().getBase(), "DSET")==0 ||
-		strcmp(getListEnd().getBase(), "FSET")==0 ||
-		strcmp(getListEnd().getBase(), "ISET")==0
+		getListEnd().getBase() == "DSET" ||
+		getListEnd().getBase() == "FSET" ||
+		getListEnd().getBase() == "ISET"
 	)
 		doublePredReg = parsedPred + "/" + parsedReg;
 	else
