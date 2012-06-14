@@ -6,7 +6,7 @@ Version 3.1.0+edits (development branch) versus 3.1.0
   of cuobjdump_to_ptxplus.
 - Bug Fixes:
     - Fixed a couple of memory errors in cuobjdump_to_ptxplus code.
-    - Implemented a better support for handling memory operand type modifier
+    - Implemented better support for handling memory operand type modifier
       in cuobjdump_to_ptxplus
     - Correctly handling MVC instructions in cuobjdump_to_ptxplus; now they can
       map to cvt or mov.
