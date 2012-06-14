@@ -41,9 +41,9 @@ class cuobjdumpInst
 {
 protected:
 	//instruction data
-	const char* m_label; //instruction label
+	std::string m_label; //instruction label
 	std::list<std::string>* m_predicate; //instruction predicate
-	const char* m_base; //instruction mnemonic
+	std::string m_base; //instruction mnemonic
 	std::list<std::string>* m_baseModifiers; //base modifiers
 	std::list<std::string>* m_typeModifiers; //operand types
 	std::list<std::string>* m_operands; //operands
@@ -55,7 +55,7 @@ public:
 	~cuobjdumpInst();
 
 	//accessors
-	const char* getBase();
+	const std::string getBase();
 	std::list<std::string>* getTypeModifiers();
 
 	//Mutators
@@ -73,7 +73,7 @@ public:
 	void printCuobjdumpPredicate();
 	void printCuobjdumpTypeModifiers();
 	void printCuobjdumpBaseModifiers();
-	void printCuobjdumpOperand(std::string currentPiece, std::string operandDelimiter, const char* base);
+	void printCuobjdumpOperand(std::string currentPiece, std::string operandDelimiter, std::string base);
 	void printCuobjdumpOperandlohi(std::string op);
 	void printCuobjdumpOperands();
 

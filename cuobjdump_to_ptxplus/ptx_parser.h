@@ -134,9 +134,9 @@ void add_function_name( const char *headerInput )
 {
 	DPRINTF("name=%s", headerInput);
 	char* headerInfo = (char*) headerInput;
-	const char* compareString = g_headerList->getListEnd().getBase();
+	std::string compareString = g_headerList->getListEnd().getBase();
 
-	if((strcmp(compareString, ".entry")==0)||(strcmp(compareString, ".func")==0))
+	if((compareString == ".entry")||(compareString == ".func"))
 	{
 		g_headerList->setLastEntryName(headerInfo);
 		g_headerList->getListEnd().addOperand(headerInfo);
