@@ -368,7 +368,7 @@ void cuobjdumpInst::printCuobjdumpBaseModifiers()
 			output(".neu");
 		else if( *basemod == ".abs")
 		{
-			if((m_base == "F2F") && (m_base == "I2I"))
+			if((m_base != "F2F") && (m_base != "I2I"))
 			{
 				output(*basemod);
 			}
