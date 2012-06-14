@@ -1,4 +1,5 @@
 CHANGE LOG:
+
 Version 3.1.0+edits (development branch) versus 3.1.0
 - Removed a dependency on an inhouse implementation of a string list in
   cuobjdump_to_ptxplus.
