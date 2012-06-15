@@ -5,6 +5,7 @@ Version 3.1.0+edits (development branch) versus 3.1.0
   cuobjdump_to_ptxplus.
 - Cleaned up the information printed out to stdout/stderr during the operation
   of cuobjdump_to_ptxplus.
+- Change cuobjdump_to_ptxplus to use std::string instead of char*.
 - Bug Fixes:
     - Fixed a couple of memory errors in cuobjdump_to_ptxplus code.
     - Implemented better support for handling memory operand type modifier
