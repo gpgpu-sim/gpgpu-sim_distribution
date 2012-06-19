@@ -209,7 +209,7 @@ void dram_t::cycle()
 #ifdef DRAM_VIEWCMD 
            printf("\tDQ: BK%d Row:%03x Col:%03x", cmd->bk, cmd->row, cmd->col + cmd->dqbytes);
 #endif
-           cmd->dqbytes += m_config->BL * m_config->busW * m_config->gpu_n_mem_per_ctrlr; /*16 bytes*/
+           cmd->dqbytes += m_config->dram_atom_size; 
            if (cmd->dqbytes >= cmd->nbytes) {
               mem_fetch *data = cmd->data; 
               data->set_status(IN_PARTITION_MC_RETURNQ,gpu_sim_cycle+gpu_tot_sim_cycle); 
@@ -274,22 +274,22 @@ void dram_t::cycle()
                rwq->set_min_length(m_config->CL);
             }
             rwq->push(bk[j]->mrq);
-            bk[j]->mrq->txbytes += m_config->BL * m_config->busW * m_config->gpu_n_mem_per_ctrlr; //16 bytes
+            bk[j]->mrq->txbytes += m_config->dram_atom_size; 
             CCDc = m_config->tCCD;
-			bkgrp[grp]->CCDLc = m_config->tCCDL;
+            bkgrp[grp]->CCDLc = m_config->tCCDL;
             RTWc = m_config->tRTW;
-            bk[j]->RTPc = m_config->BL/2;
-			bkgrp[grp]->RTPLc = m_config->tRTPL;
+            bk[j]->RTPc = m_config->BL/m_config->data_command_freq_ratio;
+            bkgrp[grp]->RTPLc = m_config->tRTPL;
             issued = true;
             n_rd++;
-            bwutil+= m_config->BL/2;
-            bwutil_partial += m_config->BL/2;
+            bwutil += m_config->BL/m_config->data_command_freq_ratio;
+            bwutil_partial += m_config->BL/m_config->data_command_freq_ratio;
             bk[j]->n_access++;
 #ifdef DRAM_VERIFY
             PRINT_CYCLE=1;
             printf("\tRD  Bk:%d Row:%03x Col:%03x \n",
                    j, bk[j]->curr_row,
-                   bk[j]->mrq->col+bk[j]->mrq->txbytes-m_config->BL*m_config->busW);
+                   bk[j]->mrq->col + bk[j]->mrq->txbytes - m_config->dram_atom_size);
 #endif            
             // transfer done
             if ( !(bk[j]->mrq->txbytes < bk[j]->mrq->nbytes) ) {
@@ -309,20 +309,20 @@ void dram_t::cycle()
             }
             rwq->push(bk[j]->mrq);
 
-            bk[j]->mrq->txbytes += m_config->BL * m_config->busW * m_config->gpu_n_mem_per_ctrlr; /*16 bytes*/
+            bk[j]->mrq->txbytes += m_config->dram_atom_size; 
             CCDc = m_config->tCCD;
-			bkgrp[grp]->CCDLc = m_config->tCCDL;
+            bkgrp[grp]->CCDLc = m_config->tCCDL;
             WTRc = m_config->tWTR; 
             bk[j]->WTPc = m_config->tWTP; 
             issued = true;
             n_wr++;
-            bwutil+=2;
-            bwutil_partial += m_config->BL/2;
+            bwutil += m_config->BL/m_config->data_command_freq_ratio;
+            bwutil_partial += m_config->BL/m_config->data_command_freq_ratio;
 #ifdef DRAM_VERIFY
             PRINT_CYCLE=1;
             printf("\tWR  Bk:%d Row:%03x Col:%03x \n",
                    j, bk[j]->curr_row, 
-                   bk[j]->mrq->col+bk[j]->mrq->txbytes-m_config->BL*m_config->busW);
+                   bk[j]->mrq->col + bk[j]->mrq->txbytes - m_config->dram_atom_size);
 #endif  
             // transfer done 
             if ( !(bk[j]->mrq->txbytes < bk[j]->mrq->nbytes) ) {

@@ -86,9 +86,10 @@ struct memory_config {
 		bk_tag_length = i;
 	  assert(nbkgrp>0 && "Number of bank groups cannot be zero");
       tRCDWR = tRCD-(WL+1);
-      tRTW = (CL+(BL/2)+2-WL);
-      tWTR = (WL+(BL/2)+tCDLR); 
-      tWTP = (WL+(BL/2)+tWR);
+      tRTW = (CL+(BL/data_command_freq_ratio)+2-WL);
+      tWTR = (WL+(BL/data_command_freq_ratio)+tCDLR); 
+      tWTP = (WL+(BL/data_command_freq_ratio)+tWR);
+      dram_atom_size = BL * busW * gpu_n_mem_per_ctrlr; // burst length x bus width x # chips per partition 
       m_address_mapping.init(m_n_mem);
       m_L2_config.init();
       m_valid = true;
@@ -128,7 +129,7 @@ struct memory_config {
 
    unsigned CL;     //CAS latency
    unsigned WL;     //WRITE latency
-   unsigned BL;     //Burst Length in bytes (we're using 4? could be 8)
+   unsigned BL;     //Burst Length in bytes (4 in GDDR3, 8 in GDDR5)
    unsigned tRTW;   //time to switch from read to write
    unsigned tWTR;   //time to switch from write to read 
    unsigned tWTP;   //time to switch from write to precharge in the same bank
@@ -138,6 +139,10 @@ struct memory_config {
    unsigned bk_tag_length; //number of bits that define a bank inside a bank group
 
    unsigned nbk;
+
+   unsigned data_command_freq_ratio; // frequency ratio between DRAM data bus and command bus (2 for GDDR3, 4 for GDDR5)
+
+   unsigned dram_atom_size; // number of bytes transferred per read or write command 
 
    linear_to_raw_address_translation m_address_mapping;
 };
