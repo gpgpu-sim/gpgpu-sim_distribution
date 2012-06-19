@@ -120,8 +120,11 @@ void memory_config::reg_options(class OptionParser * opp)
                  "default = 4 bytes (8 bytes per cycle at DDR)",
                  "4");
     option_parser_register(opp, "-gpgpu_dram_burst_length", OPT_UINT32, &BL, 
-                 "Burst length of each DRAM request (default = 4 DDR cycle)",
+                 "Burst length of each DRAM request (default = 4 data bus cycle)",
                  "4");
+    option_parser_register(opp, "-dram_data_command_freq_ratio", OPT_UINT32, &data_command_freq_ratio, 
+                 "Frequency ratio between DRAM data bus and command bus (default = 2 times, i.e. DDR)",
+                 "2");
     option_parser_register(opp, "-gpgpu_dram_timing_opt", OPT_CSTR, &gpgpu_dram_timing_opt, 
                 "DRAM timing parameters = {nbk:tCCD:tRRD:tRCD:tRAS:tRP:tRC:CL:WL:tCDLR:tWR:nbkgrp:tCCDL:tRTPL}",
                 "4:2:8:12:21:13:34:9:4:5:13:1:0:0");

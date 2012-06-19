@@ -16,6 +16,15 @@ Version 3.1.0+edits (development branch) versus 3.1.0
       metric was only reporting the average for memory accesses from the final 
       AerialVision sampling window.  Now the metric reports average memory 
       latency for all memory accesses in the entire application run. 
+    - Corrected GDDR5 parameters in Fermi configuration: 
+      - Increased burst length to 8 and changed the address mapping to reflect
+        16 banks as suggested by Jungrae
+      - Decreased DRAM clock to 924MHz from 1848MHz. 
+      - Corrected CAS Latency, Write Latency and other timing constraints. 
+      - Added a new option 'dram_data_command_freq_ratio' to configure the
+        frequency ratio between the DRAM data bus and command bus.  This allows
+        GPGPU-Sim to support both GDDR3 (data rate = 2X command rate) and GDDR5
+        (data rate = 4X command rate). 
 
 Version 3.1.0 versus 3.0.2
 - Support for CUDA 4.0 for both PTX and PTXPlus.
