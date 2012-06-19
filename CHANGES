@@ -25,6 +25,8 @@ Version 3.1.0+edits (development branch) versus 3.1.0
         frequency ratio between the DRAM data bus and command bus.  This allows
         GPGPU-Sim to support both GDDR3 (data rate = 2X command rate) and GDDR5
         (data rate = 4X command rate). 
+    - Fixed the DRAM performance statistics log to display information properly
+      when there are more than 4 banks in each partition (reported by Jungrae). 
 
 Version 3.1.0 versus 3.0.2
 - Support for CUDA 4.0 for both PTX and PTXPlus.

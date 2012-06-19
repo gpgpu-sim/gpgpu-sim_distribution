@@ -260,7 +260,7 @@ void memory_stats_t::memlatstat_print( unsigned n_mem, unsigned gpu_mem_n_bk )
       printf("maximum concurrent accesses to same row:\n");
       for (i=0;i<n_mem ;i++ ) {
          printf("dram[%d]: ", i);
-         for (j=0;j<4 ;j++ ) {
+         for (j=0;j<gpu_mem_n_bk;j++ ) {
             printf("%9d ",max_conc_access2samerow[i][j]);
          }
          printf("\n");
@@ -270,7 +270,7 @@ void memory_stats_t::memlatstat_print( unsigned n_mem, unsigned gpu_mem_n_bk )
       printf("maximum service time to same row:\n");
       for (i=0;i<n_mem ;i++ ) {
          printf("dram[%d]: ", i);
-         for (j=0;j<4 ;j++ ) {
+         for (j=0;j<gpu_mem_n_bk;j++ ) {
             printf("%9d ",max_servicetime2samerow[i][j]);
          }
          printf("\n");
@@ -282,7 +282,7 @@ void memory_stats_t::memlatstat_print( unsigned n_mem, unsigned gpu_mem_n_bk )
       printf("average row accesses per activate:\n");
       for (i=0;i<n_mem ;i++ ) {
          printf("dram[%d]: ", i);
-         for (j=0;j<4 ;j++ ) {
+         for (j=0;j<gpu_mem_n_bk;j++ ) {
             total_row_accesses += row_access[i][j];
             total_num_activates += num_activates[i][j];
             printf("%9f ",(float) row_access[i][j]/num_activates[i][j]);
@@ -301,7 +301,7 @@ void memory_stats_t::memlatstat_print( unsigned n_mem, unsigned gpu_mem_n_bk )
       printf("number of total memory accesses made:\n");
       for (i=0;i<n_mem ;i++ ) {
          printf("dram[%d]: ", i);
-         for (j=0;j<4 ;j++ ) {
+         for (j=0;j<gpu_mem_n_bk;j++ ) {
             l = totalbankaccesses[i][j];
             if (l < min_bank_accesses)
                min_bank_accesses = l;
@@ -339,7 +339,7 @@ void memory_stats_t::memlatstat_print( unsigned n_mem, unsigned gpu_mem_n_bk )
       printf("number of total read accesses:\n");
       for (i=0;i<n_mem ;i++ ) {
          printf("dram[%d]: ", i);
-         for (j=0;j<4 ;j++ ) {
+         for (j=0;j<gpu_mem_n_bk;j++ ) {
             l = totalbankreads[i][j];
             if (l < min_bank_accesses)
                min_bank_accesses = l;
@@ -377,7 +377,7 @@ void memory_stats_t::memlatstat_print( unsigned n_mem, unsigned gpu_mem_n_bk )
       printf("number of total write accesses:\n");
       for (i=0;i<n_mem ;i++ ) {
          printf("dram[%d]: ", i);
-         for (j=0;j<4 ;j++ ) {
+         for (j=0;j<gpu_mem_n_bk;j++ ) {
             l = totalbankwrites[i][j];
             if (l < min_bank_accesses)
                min_bank_accesses = l;
@@ -409,7 +409,7 @@ void memory_stats_t::memlatstat_print( unsigned n_mem, unsigned gpu_mem_n_bk )
       printf("average mf latency per bank:\n");
       for (i=0;i<n_mem ;i++ ) {
          printf("dram[%d]: ", i);
-         for (j=0;j<4 ;j++ ) {
+         for (j=0;j<gpu_mem_n_bk;j++ ) {
             k = totalbankwrites[i][j] + totalbankreads[i][j];
             if (k)
                printf("%10lld", mf_total_lat_table[i][j] / k);
@@ -423,7 +423,7 @@ void memory_stats_t::memlatstat_print( unsigned n_mem, unsigned gpu_mem_n_bk )
       printf("maximum mf latency per bank:\n");
       for (i=0;i<n_mem ;i++ ) {
          printf("dram[%d]: ", i);
-         for (j=0;j<4 ;j++ ) {
+         for (j=0;j<gpu_mem_n_bk;j++ ) {
             printf("%10d", mf_max_lat_table[i][j]);
          }
          printf("\n");
