@@ -26,7 +26,14 @@ Version 3.1.0+edits (development branch) versus 3.1.0
         GPGPU-Sim to support both GDDR3 (data rate = 2X command rate) and GDDR5
         (data rate = 4X command rate). 
     - Fixed the DRAM performance statistics log to display information properly
-      when there are more than 4 banks in each partition (reported by Jungrae). 
+      when there are more than 4 banks in each partition (reported by Jungrae).
+    - Fixing a bug in the opencl prebuilt ptx flow.
+      If a kernel made modidifcations to the .cl code at runtime (like changed
+      the block size or some other constants) then recompiled itself, the saved_embedded_ptx flag
+      would just overwrite the same ptx file.  
+      The same thing happened when using a prebuilt ptx file through
+      PTX_SIM_USE_PTX_FILE - It always wanted to
+      load the same ptx file even though there should have been more than one.
 
 Version 3.1.0 versus 3.0.2
 - Support for CUDA 4.0 for both PTX and PTXPlus.
