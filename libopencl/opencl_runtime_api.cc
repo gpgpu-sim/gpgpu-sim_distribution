@@ -181,6 +181,7 @@ struct _cl_program {
 private:
    cl_context m_context;
    std::map<cl_uint,pgm_info> m_pgm;
+   static unsigned m_kernels_compiled;
 };
 
 struct _cl_kernel {
@@ -381,6 +382,7 @@ cl_mem _cl_context::lookup_mem( cl_mem m )
    }
 }
 
+unsigned _cl_program::m_kernels_compiled = 0;
 _cl_program::_cl_program( cl_context        context,
                           cl_uint           count, 
                           const char **     strings, 
@@ -392,7 +394,8 @@ _cl_program::_cl_program( cl_context        context,
       char *tmp = (char*)malloc(len+1);
       memcpy(tmp,strings[i],len);
       tmp[len] = 0;
-      m_pgm[i].m_source = tmp;
+      m_pgm[m_kernels_compiled].m_source = tmp;
+      ++m_kernels_compiled;
       free(tmp);
    }
 }
