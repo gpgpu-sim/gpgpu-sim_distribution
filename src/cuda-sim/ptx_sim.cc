@@ -293,10 +293,10 @@ static void print_reg( FILE *fp, std::string name, ptx_reg_t value, symbol_table
    case S16_TYPE: fprintf(fp,".s16 %d\n", value.s16 ); break;
    case S32_TYPE: fprintf(fp,".s32 %d\n", value.s32 ); break;
    case S64_TYPE: fprintf(fp,".s64 %Ld\n", value.s64 ); break;
-   case U8_TYPE:  fprintf(fp,".u8  0x%02x\n", (unsigned) value.u8 );  break;
-   case U16_TYPE: fprintf(fp,".u16 0x%04x\n", (unsigned) value.u16 ); break;
-   case U32_TYPE: fprintf(fp,".u32 0x%08x\n", (unsigned) value.u32 ); break;
-   case U64_TYPE: fprintf(fp,".u64 0x%llx\n", value.u64 ); break;
+   case U8_TYPE:  fprintf(fp,".u8  %u [0x%02x]\n", value.u8, (unsigned) value.u8 );  break;
+   case U16_TYPE: fprintf(fp,".u16 %u [0x%04x]\n", value.u16, (unsigned) value.u16 ); break;
+   case U32_TYPE: fprintf(fp,".u32 %u [0x%08x]\n", value.u32, (unsigned) value.u32 ); break;
+   case U64_TYPE: fprintf(fp,".u64 %llu [0x%llx]\n", value.u64, value.u64 ); break;
    case F16_TYPE: fprintf(fp,".f16 %f [0x%04x]\n",  value.f16, (unsigned) value.u16 ); break;
    case F32_TYPE: fprintf(fp,".f32 %.15lf [0x%08x]\n",  value.f32, value.u32 ); break;
    case F64_TYPE: fprintf(fp,".f64 %.15le [0x%016llx]\n", value.f64, value.u64 ); break;
