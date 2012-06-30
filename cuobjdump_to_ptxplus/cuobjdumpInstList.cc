@@ -211,7 +211,8 @@ void cuobjdumpInstList::printPredNames(cuobjdumpEntry entry)
 {
 	if( entry.m_largestPredIndex >= 0) {
 		char out[30];
-		sprintf(out, "\t.reg .pred $p<%d>;", entry.m_largestPredIndex+1);
+		// there is at least 4 predicates for GT200, possibly more in Fermi 
+		sprintf(out, "\t.reg .pred $p<%d>;", std::max(entry.m_largestPredIndex+1, 4)); 
 		output(out);
 		output("\n");
 	}

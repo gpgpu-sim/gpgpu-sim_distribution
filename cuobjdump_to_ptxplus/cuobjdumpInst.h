@@ -72,6 +72,7 @@ public:
 	void printCuobjdumpLabel(std::list<std::string> labelList);
 	void printCuobjdumpPredicate();
 	void printCuobjdumpTypeModifiers();
+	void printCuobjdumpOutputModifiers(const char* defaultMod);
 	void printCuobjdumpBaseModifiers();
 	void printCuobjdumpOperand(std::string currentPiece, std::string operandDelimiter, std::string base);
 	void printCuobjdumpOperandlohi(std::string op);
