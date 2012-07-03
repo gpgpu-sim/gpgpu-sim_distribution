@@ -32,10 +32,12 @@
 
 //Constructor
 Scoreboard::Scoreboard( unsigned sid, unsigned n_warps )
+: longopregs()
 {
 	m_sid = sid;
 	//Initialize size of table
 	reg_table.resize(n_warps);
+	longopregs.resize(n_warps);
 }
 
 // Print scoreboard contents
@@ -69,10 +71,24 @@ void Scoreboard::releaseRegister(unsigned wid, unsigned regnum)
 	reg_table[wid].erase(regnum);
 }
 
+const bool Scoreboard::islongop (unsigned warp_id,unsigned regnum) {
+	return longopregs[warp_id].find(regnum) != longopregs[warp_id].end();
+}
+
 void Scoreboard::reserveRegisters(const class warp_inst_t* inst) 
 {
     for( unsigned r=0; r < 4; r++) 
         if(inst->out[r] > 0) reserveRegister(inst->warp_id(), inst->out[r]);
+
+    //Keep track of long operations
+    if (inst->is_load() &&
+    		(	inst->space.get_type() == global_space ||
+    			inst->space.get_type() == local_space ||
+    			inst->space.get_type() == tex_space)){
+    	for ( unsigned r=0; r<4; r++) {
+    		if(inst->out[r] > 0) longopregs[inst->warp_id()].insert(r);
+    	}
+    }
 }
 
 // Release registers for an instruction
@@ -80,6 +96,7 @@ void Scoreboard::releaseRegisters(const class warp_inst_t *inst)
 {
     for( unsigned r=0; r < 4; r++) 
         if(inst->out[r] > 0) releaseRegister(inst->warp_id(), inst->out[r]);
+    longopregs[inst->warp_id()].clear();
 }
 
 /** 

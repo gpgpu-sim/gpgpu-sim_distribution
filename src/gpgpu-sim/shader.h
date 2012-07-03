@@ -258,12 +258,14 @@ public:
                    register_set* mem_out) 
         : supervised_warps(), m_last_sup_id_issued(0), m_stats(stats), m_shader(shader),
         m_scoreboard(scoreboard), m_simt_stack(simt), /*m_pipeline_reg(pipe_regs),*/ m_warp(warp),
-        m_sp_out(sp_out),m_sfu_out(sfu_out),m_mem_out(mem_out){} 
-    void add_supervised_warp_id(int i) {
+        m_sp_out(sp_out),m_sfu_out(sfu_out),m_mem_out(mem_out){}
+    virtual ~scheduler_unit(){}
+    virtual void add_supervised_warp_id(int i) {
         supervised_warps.push_back(i);
     }
-    void cycle();
-private:
+
+    virtual void cycle()=0;
+protected:
     shd_warp_t& warp(int i);
 
     std::vector<int> supervised_warps;
@@ -280,7 +282,44 @@ private:
     register_set* m_mem_out;
 };
 
+class LooseRoundRobbinScheduler : public scheduler_unit {
+public:
+	LooseRoundRobbinScheduler (shader_core_stats* stats, shader_core_ctx* shader,
+            Scoreboard* scoreboard, simt_stack** simt,
+            std::vector<shd_warp_t>* warp,
+            register_set* sp_out,
+            register_set* sfu_out,
+            register_set* mem_out)
+	: scheduler_unit (stats, shader, scoreboard, simt, warp, sp_out, sfu_out, mem_out){}
+	virtual ~LooseRoundRobbinScheduler () {}
+	virtual void cycle ();
+};
 
+
+class TwoLevelScheduler : public scheduler_unit {
+public:
+	TwoLevelScheduler (shader_core_stats* stats, shader_core_ctx* shader,
+            Scoreboard* scoreboard, simt_stack** simt,
+            std::vector<shd_warp_t>* warp,
+            register_set* sp_out,
+            register_set* sfu_out,
+            register_set* mem_out,
+            unsigned maw)
+	: scheduler_unit (stats, shader, scoreboard, simt, warp, sp_out, sfu_out, mem_out),
+	  activeWarps(),
+	  pendingWarps(){
+		maxActiveWarps = maw;
+	}
+	virtual ~TwoLevelScheduler () {}
+	virtual void cycle ();
+	virtual void add_supervised_warp_id(int i) {
+		pendingWarps.push_back(i);
+	}
+private:
+	unsigned maxActiveWarps;
+	std::list<int> activeWarps;
+	std::list<int> pendingWarps;
+};
 
 
 
@@ -985,6 +1024,8 @@ struct shader_core_config : public core_config
     unsigned max_warps_per_shader; 
     unsigned max_cta_per_core; //Limit on number of concurrent CTAs in shader core
 
+    char * gpgpu_scheduler_string;
+
     char* pipeline_widths_string;
     int pipe_widths[N_PIPELINE_STAGES];
 
@@ -1016,7 +1057,7 @@ struct shader_core_config : public core_config
 
     int gpgpu_num_sp_units;
     int gpgpu_num_sfu_units;
-    int gpgpu_num_mem_units;	
+    int gpgpu_num_mem_units;
 
     //Shader core resources
     unsigned gpgpu_shader_registers;
@@ -1101,6 +1142,8 @@ private:
     friend class ldst_unit;
     friend class simt_core_cluster;
     friend class scheduler_unit;
+    friend class TwoLevelScheduler;
+    friend class LooseRoundRobbinScheduler;
 };
 
 class shader_core_mem_fetch_allocator : public mem_fetch_allocator {
@@ -1218,6 +1261,8 @@ private:
     
     void issue();
     friend class scheduler_unit; //this is needed to use private issue warp.
+    friend class TwoLevelScheduler;
+    friend class LooseRoundRobbinScheduler;
     void issue_warp( register_set& warp, const warp_inst_t *pI, const active_mask_t &active_mask, unsigned warp_id );
     void func_exec_inst( warp_inst_t &inst );
 
@@ -1272,7 +1317,7 @@ private:
     opndcoll_rfu_t            m_operand_collector;
 
     //schedule
-    std::vector<scheduler_unit>  schedulers;
+    std::vector<scheduler_unit*>  schedulers;
 
     // execute
     unsigned m_num_function_units;
