@@ -123,15 +123,30 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
 
    //scedulers
    //must currently occur after all inputs have been initialized.
+   std::string sched_config = m_config->gpgpu_scheduler_string;
+   bool tlsched = sched_config.find("tl") != std::string::npos;
+   int tlmaw;
+   if (tlsched){
+	   sscanf(m_config->gpgpu_scheduler_string, "tl:%d", &tlmaw);
+   }
    for (int i = 0; i < m_config->gpgpu_num_sched_per_core; i++) {
-       schedulers.push_back(scheduler_unit(m_stats,this,m_scoreboard,m_simt_stack,&m_warp,
-                            &m_pipeline_reg[ID_OC_SP],
-                            &m_pipeline_reg[ID_OC_SFU],
-                            &m_pipeline_reg[ID_OC_MEM]));
+	   //###CONFIGURATION
+	   if (tlsched){
+		   schedulers.push_back(new TwoLevelScheduler(m_stats,this,m_scoreboard,m_simt_stack,&m_warp,
+				   &m_pipeline_reg[ID_OC_SP],
+				   &m_pipeline_reg[ID_OC_SFU],
+				   &m_pipeline_reg[ID_OC_MEM],
+				   tlmaw));
+	   } else {
+		   schedulers.push_back(new LooseRoundRobbinScheduler(m_stats,this,m_scoreboard,m_simt_stack,&m_warp,
+				   &m_pipeline_reg[ID_OC_SP],
+				   &m_pipeline_reg[ID_OC_SFU],
+				   &m_pipeline_reg[ID_OC_MEM]));
+	   }
    }
    for (unsigned i = 0; i < m_warp.size(); i++) {
        //distribute i's evenly though schedulers;
-       schedulers[i%m_config->gpgpu_num_sched_per_core].add_supervised_warp_id(i);
+       schedulers[i%m_config->gpgpu_num_sched_per_core]->add_supervised_warp_id(i);
    }
 
    //op collector configuration
@@ -543,7 +558,7 @@ void shader_core_ctx::issue_warp( register_set& pipe_reg_set, const warp_inst_t*
 void shader_core_ctx::issue(){
     //really is issue;
     for (unsigned i = 0; i < schedulers.size(); i++) {
-        schedulers[i].cycle();
+        schedulers[i]->cycle();
     }
 }
 
@@ -551,7 +566,7 @@ shd_warp_t& scheduler_unit::warp(int i){
     return (*m_warp)[i];
 }
 
-void scheduler_unit::cycle()
+void LooseRoundRobbinScheduler::cycle()
 {
     bool valid_inst = false;  // there was one warp with a valid instruction to issue (didn't require flush due to control hazard)
     bool ready_inst = false;  // of the valid instructions, there was one not waiting for pending register writes
@@ -630,6 +645,126 @@ void scheduler_unit::cycle()
         m_stats->shader_cycle_distro[1]++; // waiting for RAW hazards (possibly due to memory) 
     else if( !issued_inst ) 
         m_stats->shader_cycle_distro[2]++; // pipeline stalled
+}
+
+void TwoLevelScheduler::cycle() {
+	//Move waiting warps to pendingWarps
+	for (	std::list<int>::iterator iter = activeWarps.begin();
+			iter != activeWarps.end();
+			iter ++) {
+		bool waiting = warp(*iter).waiting();
+		for (int i=0; i<4; i++){
+			const warp_inst_t* inst = warp(*iter).ibuffer_next_inst();
+			//Is the instruction waiting on a long operation?
+			if ( inst && inst->in[i] > 0 && this->m_scoreboard->islongop(*iter, inst->in[i])){
+				waiting = true;
+			}
+		}
+
+		if(waiting){
+			pendingWarps.push_back(*iter);
+			activeWarps.erase(iter);
+			break;
+		}
+	}
+
+	//If there is space in activeWarps, try to find ready warps in pendingWarps
+	if (this->activeWarps.size() < maxActiveWarps){
+		for (	std::list<int>::iterator iter = pendingWarps.begin();
+				iter != pendingWarps.end();
+				iter++){
+			if(!warp(*iter).waiting()){
+				activeWarps.push_back(*iter);
+				pendingWarps.erase(iter);
+				break;
+			}
+		}
+	}
+
+	//Do the scheduling only from activeWarps
+	//If you schedule an instruction, move it to the end of the list
+
+	bool valid_inst = false;  // there was one warp with a valid instruction to issue (didn't require flush due to control hazard)
+	bool ready_inst = false;  // of the valid instructions, there was one not waiting for pending register writes
+	bool issued_inst = false; // of these we issued one
+
+	for (	std::list<int>::iterator warp_id = activeWarps.begin();
+			warp_id != activeWarps.end();
+			warp_id++) {
+		unsigned checked=0;
+		unsigned issued=0;
+		unsigned max_issue = m_shader->m_config->gpgpu_max_insn_issue_per_warp;
+		while(!warp(*warp_id).waiting() && !warp(*warp_id).ibuffer_empty() && (checked < max_issue) && (checked <= issued) && (issued < max_issue) ) {
+			const warp_inst_t *pI = warp(*warp_id).ibuffer_next_inst();
+			bool valid = warp(*warp_id).ibuffer_next_valid();
+			bool warp_inst_issued = false;
+			unsigned pc,rpc;
+			m_simt_stack[*warp_id]->get_pdom_stack_top_info(&pc,&rpc);
+			if( pI ) {
+				assert(valid);
+				if( pc != pI->pc ) {
+					// control hazard
+					warp(*warp_id).set_next_pc(pc);
+					warp(*warp_id).ibuffer_flush();
+				} else {
+					valid_inst = true;
+					if ( !m_scoreboard->checkCollision(*warp_id, pI) ) {
+						ready_inst = true;
+						const active_mask_t &active_mask = m_simt_stack[*warp_id]->get_active_mask();
+						assert( warp(*warp_id).inst_in_pipeline() );
+						if ( (pI->op == LOAD_OP) || (pI->op == STORE_OP) || (pI->op == MEMORY_BARRIER_OP) ) {
+							if( m_mem_out->has_free() ) {
+								m_shader->issue_warp(*m_mem_out,pI,active_mask,*warp_id);
+								issued++;
+								issued_inst=true;
+								warp_inst_issued = true;
+								// Move it to pendingWarps
+								unsigned currwarp = *warp_id;
+								activeWarps.erase(warp_id);
+								activeWarps.push_back(currwarp);
+							}
+						} else {
+							bool sp_pipe_avail = m_sp_out->has_free();
+							bool sfu_pipe_avail = m_sfu_out->has_free();
+							if( sp_pipe_avail && (pI->op != SFU_OP) ) {
+								// always prefer SP pipe for operations that can use both SP and SFU pipelines
+								m_shader->issue_warp(*m_sp_out,pI,active_mask,*warp_id);
+								issued++;
+								issued_inst=true;
+								warp_inst_issued = true;
+								//Move it to end of the activeWarps
+								unsigned currwarp = *warp_id;
+								activeWarps.erase(warp_id);
+								activeWarps.push_back(currwarp);
+							} else if ( (pI->op == SFU_OP) || (pI->op == ALU_SFU_OP) ) {
+								if( sfu_pipe_avail ) {
+									m_shader->issue_warp(*m_sfu_out,pI,active_mask,*warp_id);
+									issued++;
+									issued_inst=true;
+									warp_inst_issued = true;
+									//Move it to end of the activeWarps
+									unsigned currwarp = *warp_id;
+									activeWarps.erase(warp_id);
+									activeWarps.push_back(currwarp);
+
+								}
+							}
+						}
+					}
+				}
+			} else if( valid ) {
+				// this case can happen after a return instruction in diverged warp
+				warp(*warp_id).set_next_pc(pc);
+				warp(*warp_id).ibuffer_flush();
+			}
+			if(warp_inst_issued)
+				warp(*warp_id).ibuffer_step();
+			checked++;
+		}
+		if ( issued ) {
+			break;
+		}
+	}
 }
 
 void shader_core_ctx::read_operands()

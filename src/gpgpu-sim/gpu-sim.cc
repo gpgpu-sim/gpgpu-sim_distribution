@@ -261,6 +261,9 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_num_mem_units", OPT_INT32, &gpgpu_num_mem_units,
     		                "Number if ldst units (default=1) WARNING: not hooked up to anything",
                              "1");
+    option_parser_register(opp, "-gpgpu_scheduler", OPT_CSTR, &gpgpu_scheduler_string,
+        		                "Scheduler configuration: lrr|tl:num_active_warps default: lrr",
+                                 "lrr");
 }
 
 void gpgpu_sim_config::reg_options(option_parser_t opp)

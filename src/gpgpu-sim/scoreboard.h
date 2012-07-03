@@ -47,6 +47,7 @@ public:
     bool checkCollision(unsigned wid, const inst_t *inst) const;
     bool pendingWrites(unsigned wid) const;
     void printContents() const;
+    const bool islongop(unsigned warp_id, unsigned regnum);
 private:
     void reserveRegister(unsigned wid, unsigned regnum);
 
@@ -55,6 +56,8 @@ private:
     // keeps track of pending writes to registers
     // indexed by warp id, reg_id => pending write count
     std::vector< std::set<unsigned> > reg_table;
+    //Register that depend on a long operation (global, local or tex memory)
+    std::vector< std::set<unsigned> > longopregs;
 };
 
 

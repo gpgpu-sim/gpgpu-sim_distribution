@@ -8,6 +8,7 @@ Version 3.1.0+edits (development branch) versus 3.1.0
 - Change cuobjdump_to_ptxplus to use std::string instead of char*.
 - Change Fermi configuration folder name to GTX480.
 - Added TeslaC2050 configuration.
+- Added a two level warp scheduler (as presented at ISCA 2012 tutorial).
 - Bug Fixes:
     - Fixed a couple of memory errors in cuobjdump_to_ptxplus code.
     - Implemented better support for handling memory operand type modifier
