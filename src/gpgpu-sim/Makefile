@@ -64,8 +64,11 @@ OBJS = $(SRCS:%.cc=$(OUTPUT_DIR)/%.$(OEXT))
 libgpu_uarch_sim.a:$(OBJS)
 	ar rcs  $(OUTPUT_DIR)/libgpu_uarch_sim.a $(OBJS)
 
+Makefile.makedepend: depend
+
 depend:
-	makedepend -p$(OUTPUT_DIR)/ $(SRCS) 2> /dev/null
+	touch Makefile.makedepend
+	makedepend -fMakefile.makedepend -p$(OUTPUT_DIR)/ $(SRCS) 2> /dev/null
 
 $(OUTPUT_DIR)/l2cache.$(OEXT): l2cache.cc
 	$(CPP) $(OPTFLAGS) $(CXXFLAGS_L2CACHE) -o $*.$(OEXT) -c l2cache.cc
@@ -75,6 +78,7 @@ $(OUTPUT_DIR)/%.$(OEXT): %.cc
 
 clean:
 	rm -f *.o core *~ *.a 
+	rm -f Makefile.makedepend Makefile.makedepend.bak
 
 $(OUTPUT_DIR)/option_parser.$(OEXT): option_parser.h
 
@@ -83,5 +87,5 @@ $(OUTPUT_DIR)/dram_sched.$(OEXT): ../cuda-sim/ptx.tab.h
 ../cuda-sim/ptx.tab.h:
 	make -C ../cuda-sim/ ptx.tab.c
 
-# DO NOT DELETE
+include Makefile.makedepend
 
