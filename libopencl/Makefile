@@ -97,7 +97,9 @@ all: lib$(PROG).a nvopencl_wrapper
 
 lib$(PROG).a: $(OBJS)
 	ar rcs $(OUTPUT_DIR)/lib$(PROG).a $(OBJS)
-	
+
+Makefile.makedepend: depend
+
 depend:
 	touch Makefile.makedepend
 	makedepend -fMakefile.makedepend -p$(OUTPUT_DIR)/ $(CXX_SRCS) 2> /dev/null
