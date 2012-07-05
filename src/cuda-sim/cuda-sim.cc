@@ -565,7 +565,7 @@ void ptx_instruction::set_opcode_and_latency()
 		   break;
 	   }
 	   break;
-   case MAD_OP:
+   case MAD_OP: case MADP_OP:
 	   //MAD latency
 	   switch(get_type()){
 	   case F32_TYPE:
