@@ -2035,7 +2035,7 @@ void exit_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->registerExit();
 }
 
-void mad_def( const ptx_instruction *pI, ptx_thread_info *thread );
+void mad_def( const ptx_instruction *pI, ptx_thread_info *thread, bool use_carry = false );
 
 void fma_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 {
@@ -2245,10 +2245,15 @@ void mad24_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
 void mad_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 {
-   mad_def(pI,thread);
+   mad_def(pI, thread, false);
 }
 
-void mad_def( const ptx_instruction *pI, ptx_thread_info *thread ) 
+void madp_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
+{
+   mad_def(pI, thread, true);
+}
+
+void mad_def( const ptx_instruction *pI, ptx_thread_info *thread, bool use_carry ) 
 { 
    const operand_info &dst  = pI->dst();
    const operand_info &src1 = pI->src1();
@@ -2261,55 +2266,67 @@ void mad_def( const ptx_instruction *pI, ptx_thread_info *thread )
    ptx_reg_t b = thread->get_operand_value(src2, dst, i_type, thread, 1);
    ptx_reg_t c = thread->get_operand_value(src3, dst, i_type, thread, 1);
 
+   // take the carry bit, it should be the 4th operand 
+   ptx_reg_t carry_bit; 
+   carry_bit.u64 = 0;
+   if (use_carry) {
+      const operand_info &carry = pI->operand_lookup(4);
+      carry_bit = thread->get_operand_value(carry, dst, PRED_TYPE, thread, 0);
+      carry_bit.pred &= 0x4; 
+   }
+
    unsigned rounding_mode = pI->rounding_mode();
 
    switch ( i_type ) {
    case S16_TYPE: 
       t.s32 = a.s16 * b.s16;
-      if ( pI->is_wide() ) d.s32 = t.s32 + c.s32;
-      else if ( pI->is_hi() ) d.s16 = (t.s32>>16) + c.s16;
-      else if ( pI->is_lo() ) d.s16 = t.s16 + c.s16;
+      if ( pI->is_wide() ) d.s32 = t.s32 + c.s32 + carry_bit.pred;
+      else if ( pI->is_hi() ) d.s16 = (t.s32>>16) + c.s16 + carry_bit.pred;
+      else if ( pI->is_lo() ) d.s16 = t.s16 + c.s16 + carry_bit.pred;
       else assert(0);
       break;
    case S32_TYPE: 
       t.s64 = a.s32 * b.s32;
-      if ( pI->is_wide() ) d.s64 = t.s64 + c.s64;
-      else if ( pI->is_hi() ) d.s32 = (t.s64>>32) + c.s32;
-      else if ( pI->is_lo() ) d.s32 = t.s32 + c.s32;
+      if ( pI->is_wide() ) d.s64 = t.s64 + c.s64 + carry_bit.pred;
+      else if ( pI->is_hi() ) d.s32 = (t.s64>>32) + c.s32 + carry_bit.pred;
+      else if ( pI->is_lo() ) d.s32 = t.s32 + c.s32 + carry_bit.pred;
       else assert(0);
       break;
    case S64_TYPE: 
       t.s64 = a.s64 * b.s64;
       assert( !pI->is_wide() );
       assert( !pI->is_hi() );
-      if ( pI->is_lo() ) d.s64 = t.s64 + c.s64;
+      assert( use_carry == false); 
+      if ( pI->is_lo() ) d.s64 = t.s64 + c.s64 + carry_bit.pred;
       else assert(0);
       break;
    case U16_TYPE: 
       t.u32 = a.u16 * b.u16;
-      if ( pI->is_wide() ) d.u32 = t.u32 + c.u32;
-      else if ( pI->is_hi() ) d.u16 = (t.u32>>16) + c.u16;
-      else if ( pI->is_lo() ) d.u16 = t.u16 + c.u16;
+      if ( pI->is_wide() ) d.u32 = t.u32 + c.u32 + carry_bit.pred;
+      else if ( pI->is_hi() ) d.u16 = (t.u32 + c.u16 + carry_bit.pred)>>16;
+      else if ( pI->is_lo() ) d.u16 = t.u16 + c.u16 + carry_bit.pred;
       else assert(0);
       break;
    case U32_TYPE: 
       t.u64 = a.u32 * b.u32;
-      if ( pI->is_wide() ) d.u64 = t.u64 + c.u64;
-      else if ( pI->is_hi() ) d.u32 = (t.u64>>32) + c.u32;
-      else if ( pI->is_lo() ) d.u32 = t.u32 + c.u32;
+      if ( pI->is_wide() ) d.u64 = t.u64 + c.u64 + carry_bit.pred;
+      else if ( pI->is_hi() ) d.u32 = (t.u64 + c.u32 + carry_bit.pred)>>32;
+      else if ( pI->is_lo() ) d.u32 = t.u32 + c.u32 + carry_bit.pred;
       else assert(0);
       break;
    case U64_TYPE: 
       t.u64 = a.u64 * b.u64;
       assert( !pI->is_wide() );
       assert( !pI->is_hi() );
-      if ( pI->is_lo() ) d.u64 = t.u64 + c.u64;
+      assert( use_carry == false); 
+      if ( pI->is_lo() ) d.u64 = t.u64 + c.u64 + carry_bit.pred;
       else assert(0);
       break;
    case F16_TYPE: 
       assert(0); 
       break;
    case F32_TYPE: {
+         assert( use_carry == false); 
          int orig_rm = fegetround();
          switch ( rounding_mode ) {
          case RN_OPTION: break;
@@ -2325,6 +2342,7 @@ void mad_def( const ptx_instruction *pI, ptx_thread_info *thread )
          break;
       }  
    case F64_TYPE: case FF64_TYPE: {
+         assert( use_carry == false); 
          int orig_rm = fegetround();
          switch ( rounding_mode ) {
          case RN_OPTION: break;
