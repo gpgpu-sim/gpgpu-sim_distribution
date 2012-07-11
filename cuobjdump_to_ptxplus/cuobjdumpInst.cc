@@ -1228,8 +1228,20 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 	}
 	else if(m_base == "IMAD")
 	{
-		printCuobjdumpPredicate();
-		output("mad.wide");
+		//Patching the C3 problem
+		if(m_predicate->size() > 0 &&
+				m_predicate->front() == "C3" &&
+				m_operands->back()[0] == '-'){
+			m_predicate->clear();
+			std::string op = m_operands->back();
+			m_operands->pop_back();
+			m_operands->push_back(op.substr(1));
+			m_operands->push_back("C1");
+			output("madp.wide");
+		} else {
+			printCuobjdumpPredicate();
+			output("mad.wide");
+		}
 		printCuobjdumpBaseModifiers();
 
 		if(m_typeModifiers->size() == 0)
