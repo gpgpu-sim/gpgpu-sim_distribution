@@ -38,6 +38,7 @@ Version 3.1.0+edits (development branch) versus 3.1.0
       The same thing happened when using a prebuilt ptx file through
       PTX_SIM_USE_PTX_FILE - It always wanted to
       load the same ptx file even though there should have been more than one.
+    - Fixed bug that caused $p3 to be used before it was initialized.
 
 Version 3.1.0 versus 3.0.2
 - Support for CUDA 4.0 for both PTX and PTXPlus.

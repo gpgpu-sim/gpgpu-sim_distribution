@@ -2261,6 +2261,9 @@ void mad_def( const ptx_instruction *pI, ptx_thread_info *thread, bool use_carry
    const operand_info &src3 = pI->src3();
    ptx_reg_t d, t;
 
+   int carry=0;
+   int overflow=0;
+
    unsigned i_type = pI->get_type();
    ptx_reg_t a = thread->get_operand_value(src1, dst, i_type, thread, 1);
    ptx_reg_t b = thread->get_operand_value(src2, dst, i_type, thread, 1);
@@ -2272,7 +2275,8 @@ void mad_def( const ptx_instruction *pI, ptx_thread_info *thread, bool use_carry
    if (use_carry) {
       const operand_info &carry = pI->operand_lookup(4);
       carry_bit = thread->get_operand_value(carry, dst, PRED_TYPE, thread, 0);
-      carry_bit.pred &= 0x4; 
+      carry_bit.pred &= 0x4;
+      carry_bit.pred >>=2;
    }
 
    unsigned rounding_mode = pI->rounding_mode();
@@ -2284,6 +2288,7 @@ void mad_def( const ptx_instruction *pI, ptx_thread_info *thread, bool use_carry
       else if ( pI->is_hi() ) d.s16 = (t.s32>>16) + c.s16 + carry_bit.pred;
       else if ( pI->is_lo() ) d.s16 = t.s16 + c.s16 + carry_bit.pred;
       else assert(0);
+      carry = ((long long int)(t.s32 + c.s32 + carry_bit.pred)&0x100000000)>>32;
       break;
    case S32_TYPE: 
       t.s64 = a.s32 * b.s32;
@@ -2306,6 +2311,7 @@ void mad_def( const ptx_instruction *pI, ptx_thread_info *thread, bool use_carry
       else if ( pI->is_hi() ) d.u16 = (t.u32 + c.u16 + carry_bit.pred)>>16;
       else if ( pI->is_lo() ) d.u16 = t.u16 + c.u16 + carry_bit.pred;
       else assert(0);
+      carry = ((long long int)((long long int)t.u32 + c.u32 + carry_bit.pred)&0x100000000)>>32;
       break;
    case U32_TYPE: 
       t.u64 = a.u32 * b.u32;
@@ -2361,7 +2367,7 @@ void mad_def( const ptx_instruction *pI, ptx_thread_info *thread, bool use_carry
       assert(0);
       break;
    }
-   thread->set_operand_value(dst, d, i_type, thread, pI);
+   thread->set_operand_value(dst, d, i_type, thread, pI, overflow, carry);
 }
 
 bool isNaN(float x)

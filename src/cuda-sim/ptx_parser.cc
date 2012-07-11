@@ -732,7 +732,7 @@ void change_double_operand_type( int operand_type )
       else
          g_operands.back().set_double_operand_type(-2);
    } else if( operand_type == -3 ) {
-      if(g_opcode == SET_OP)
+      if(g_opcode == SET_OP || g_opcode == MAD_OP)
          g_operands.back().set_double_operand_type(operand_type);
       else
          parse_assert(0, "Error: Unsupported use of double destination operand.");
