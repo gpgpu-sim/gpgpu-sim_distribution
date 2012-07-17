@@ -1258,12 +1258,10 @@ void call_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       return_var_src = target_func->get_return_var();
    }
 
-   unsigned sid = thread->get_hw_sid();
-   unsigned tid = thread->get_hw_tid();
    gpgpu_sim *gpu = thread->get_gpu();
    unsigned callee_pc=0, callee_rpc=0;
    if( gpu->simd_model() == POST_DOMINATOR ) {
-      gpu->get_pdom_stack_top_info(sid,tid,&callee_pc,&callee_rpc);
+      thread->get_core()->get_pdom_stack_top_info(thread->get_hw_wid(),&callee_pc,&callee_rpc);
       assert( callee_pc == thread->get_pc() );
    }
 
@@ -1286,12 +1284,10 @@ void callp_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    const symbol *return_var_src = NULL;
    const symbol *return_var_dst = NULL;
 
-   unsigned sid = thread->get_hw_sid();
-   unsigned tid = thread->get_hw_tid();
    gpgpu_sim *gpu = thread->get_gpu();
    unsigned callee_pc=0, callee_rpc=0;
    if( gpu->simd_model() == POST_DOMINATOR ) {
-      gpu->get_pdom_stack_top_info(sid,tid,&callee_pc,&callee_rpc);
+      thread->get_core()->get_pdom_stack_top_info(thread->get_hw_wid(),&callee_pc,&callee_rpc);
       assert( callee_pc == thread->get_pc() );
    } 
 

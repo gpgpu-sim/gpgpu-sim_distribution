@@ -1227,7 +1227,6 @@ public:
     
     // accessors
     virtual bool warp_waiting_at_barrier( unsigned warp_id ) const;
-    void get_pdom_stack_top_info( unsigned tid, unsigned *pc, unsigned *rpc ) const;
 
 // used by pipeline timing model components:
     // modifiers
@@ -1360,7 +1359,6 @@ public:
         m_response_fifo.push_back(mf);
     }
 
-    void get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc ) const;
     unsigned max_cta( const kernel_info_t &kernel );
     unsigned get_not_completed() const;
     void print_not_completed( FILE *fp ) const;
