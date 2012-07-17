@@ -732,3 +732,8 @@ m_simt_stack = new simt_stack*[warps];
     for (unsigned i = 0; i < warps; ++i) 
         m_simt_stack[i] = new simt_stack(i,warpsSize);
 }
+
+void core_t::get_pdom_stack_top_info( unsigned warpId, unsigned *pc, unsigned *rpc ) const
+{
+    m_simt_stack[warpId]->get_pdom_stack_top_info(pc,rpc);
+}

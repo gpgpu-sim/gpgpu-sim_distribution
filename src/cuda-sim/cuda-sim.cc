@@ -1609,7 +1609,7 @@ void functionalCoreSim::initializeCTA()
     
     //get threads for a cta
     for(unsigned i=0; i<m_kernel->threads_per_cta();i++) {
-        ptx_sim_init_thread(*m_kernel,&m_thread[i],0,i,m_kernel->threads_per_cta()-i,m_kernel->threads_per_cta(),NULL,0,i/m_maxWarpSize,(gpgpu_t*)m_gpu, true);
+        ptx_sim_init_thread(*m_kernel,&m_thread[i],0,i,m_kernel->threads_per_cta()-i,m_kernel->threads_per_cta(),this,0,i/m_maxWarpSize,(gpgpu_t*)m_gpu, true);
         assert(m_thread[i]!=NULL && !m_thread[i]->is_done());
         ctaLiveThreads++;
     }
