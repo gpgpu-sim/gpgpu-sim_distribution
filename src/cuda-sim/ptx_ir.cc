@@ -783,14 +783,17 @@ void function_info::get_reconvergence_pairs(gpgpu_recon_t* recon_points)
          fflush(stdout);
 #endif
          recon_points[idx].source_pc = m_basic_blocks[i]->ptx_end->get_PC();
+         recon_points[idx].source_inst = m_basic_blocks[i]->ptx_end;
 #ifdef DEBUG_GET_RECONVERG_PAIRS
          printf("\trecon_points[idx].source_pc=%d\n", recon_points[idx].source_pc);
 #endif
          if( m_basic_blocks[m_basic_blocks[i]->immediatepostdominator_id]->ptx_begin ) {
             recon_points[idx].target_pc = m_basic_blocks[m_basic_blocks[i]->immediatepostdominator_id]->ptx_begin->get_PC();
+            recon_points[idx].target_inst = m_basic_blocks[m_basic_blocks[i]->immediatepostdominator_id]->ptx_begin;
          } else {
             // reconverge after function return
             recon_points[idx].target_pc = -2;
+            recon_points[idx].target_inst = NULL;
          }
 #ifdef DEBUG_GET_RECONVERG_PAIRS
          m_basic_blocks[m_basic_blocks[i]->immediatepostdominator_id]->ptx_begin->print_insn();

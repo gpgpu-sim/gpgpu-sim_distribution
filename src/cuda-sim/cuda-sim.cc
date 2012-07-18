@@ -267,12 +267,12 @@ void function_info::ptx_assemble()
       print_ipostdominators();
    }
 
-   printf("GPGPU-Sim PTX: pre-decoding instructions for \'%s\'... ", m_name.c_str() );
+   printf("GPGPU-Sim PTX: pre-decoding instructions for \'%s\'...\n", m_name.c_str() );
    for ( unsigned ii=0; ii < n; ii += m_instr_mem[ii]->inst_size() ) { // handle branch instructions
       ptx_instruction *pI = m_instr_mem[ii];
       pI->pre_decode();
    }
-   printf("  done.\n");
+   printf("GPGPU-Sim PTX: ... done pre-decoding instructions for \'%s\'.\n", m_name.c_str() );
    fflush(stdout);
 
    m_assembled = true;
@@ -1785,8 +1785,16 @@ struct rec_pts find_reconvergence_points( function_info *finfo )
       gpgpu_recon_t *kernel_recon_points = (struct gpgpu_recon_t*) calloc(num_recon, sizeof(struct gpgpu_recon_t));
       finfo->get_reconvergence_pairs(kernel_recon_points);
       printf("GPGPU-Sim PTX: Reconvergence Pairs for %s\n", finfo->get_name().c_str() );
-      for (int i=0;i<num_recon;i++) 
-         printf("GPGPU-Sim PTX:   branch pc = %d\ttarget pc = %d\n", kernel_recon_points[i].source_pc, kernel_recon_points[i].target_pc); 
+      for (int i=0;i<num_recon;i++) {
+         printf("GPGPU-Sim PTX:   branch pc = %4d : ", kernel_recon_points[i].source_pc );
+         kernel_recon_points[i].source_inst->print_insn();
+         printf("\n");
+         printf("GPGPU-Sim PTX:   target pc = %4d : ", kernel_recon_points[i].target_pc ); 
+         if( kernel_recon_points[i].target_inst )
+            kernel_recon_points[i].target_inst->print_insn();
+         printf("\n");
+      }
+
       tmp.s_kernel_recon_points = kernel_recon_points;
       tmp.s_num_recon = num_recon;
       g_rpts[finfo] = tmp;

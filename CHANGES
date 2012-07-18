@@ -10,6 +10,7 @@ Version 3.1.0+edits (development branch) versus 3.1.0
 - Added TeslaC2050 configuration.
 - Added a two level warp scheduler (as presented at ISCA 2012 tutorial).
 - Cleaner makedepend that doesn't interfere with Makefiles
+- Print out instructions at branch divergence/reconvergence points
 - Bug Fixes:
     - Fixed a bug in executing call_imp and callp_imp with the pure functional simulation mode.
     - Fixed a couple of memory errors in cuobjdump_to_ptxplus code.
