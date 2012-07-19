@@ -990,7 +990,7 @@ struct shader_core_config : public core_config
 	    assert(ntok == 1); 
 	    toks = strtok(NULL,",");
 	}
-	delete tokd;
+	delete[] tokd;
 
         if (n_thread_per_shader > MAX_THREAD_PER_SM) {
            printf("GPGPU-Sim uArch: Error ** increase MAX_THREAD_PER_SM in abstract_hardware_model.h from %u to %u\n", 
