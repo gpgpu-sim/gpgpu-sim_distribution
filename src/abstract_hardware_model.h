@@ -244,6 +244,7 @@ typedef std::vector<address_type> addr_vector_t;
 class simt_stack {
 public:
     simt_stack( unsigned wid,  unsigned warpSize);
+    ~simt_stack();
 
     void reset();
     void launch( address_type start_pc, const simt_mask_t &active_mask );
