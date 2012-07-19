@@ -533,24 +533,29 @@ simt_stack::simt_stack( unsigned wid, unsigned warpSize)
 {
     m_warp_id=wid;
     m_warp_size = warpSize;
+    m_max_stack_size = m_warp_size * 4;         // this choice is arbitrary. stack size can grow arbitrarily with deeper call hierarchies.
+                                                // TODO: expandable stack implementation
     m_stack_top = 0;
-    m_pc = (address_type*)calloc(m_warp_size * 2, sizeof(address_type));
-    m_calldepth = (unsigned int*)calloc(m_warp_size * 2, sizeof(unsigned int));
-    m_active_mask = new simt_mask_t[m_warp_size * 2];
-    m_recvg_pc = (address_type*)calloc(m_warp_size * 2, sizeof(address_type));
-    m_branch_div_cycle = (unsigned long long *)calloc(m_warp_size * 2, sizeof(unsigned long long ));
+    m_pc = (address_type*)calloc(m_max_stack_size, sizeof(address_type));
+    m_calldepth = (unsigned int*)calloc(m_max_stack_size, sizeof(unsigned int));
+    m_active_mask = new simt_mask_t[m_max_stack_size];
+    m_recvg_pc = (address_type*)calloc(m_max_stack_size, sizeof(address_type));
+    m_branch_div_cycle = (unsigned long long *)calloc(m_max_stack_size, sizeof(unsigned long long ));
+    m_type = (stack_entry_type *) calloc(m_max_stack_size, sizeof(stack_entry_type));
     reset();
 }
 
 void simt_stack::reset()
 {
     m_stack_top = 0;
-    memset(m_pc, -1, m_warp_size * 2 * sizeof(address_type));
-    memset(m_calldepth, 0, m_warp_size * 2 * sizeof(unsigned int));
-    memset(m_recvg_pc, -1, m_warp_size * 2 * sizeof(address_type));
-    memset(m_branch_div_cycle, 0, m_warp_size * 2 * sizeof(unsigned long long ));
-    for( unsigned i=0; i < 2*m_warp_size; i++ ) 
+    memset(m_pc, -1, m_max_stack_size * sizeof(address_type));
+    memset(m_calldepth, 0, m_max_stack_size * sizeof(unsigned int));
+    memset(m_recvg_pc, -1, m_max_stack_size * sizeof(address_type));
+    memset(m_branch_div_cycle, 0, m_max_stack_size * sizeof(unsigned long long ));
+    for( unsigned i=0; i < m_max_stack_size; i++ ) {
         m_active_mask[i].reset();
+        m_type[i] = NORMAL;
+    }
 }
 
 void simt_stack::launch( address_type start_pc, const simt_mask_t &active_mask )
@@ -590,9 +595,9 @@ void simt_stack::print (FILE *fout) const
             fprintf(fout, "%c", (warp->m_active_mask[k].test(j)?'1':'0') );
         fprintf(fout, " pc: 0x%03x", warp->m_pc[k] );
         if ( warp->m_recvg_pc[k] == (unsigned)-1 ) {
-            fprintf(fout," rp: ---- cd: %2u ", warp->m_calldepth[k] );
+            fprintf(fout," rp: ---- tp: %s cd: %2u ", (warp->m_type[k]==CALL?"C":"N"), warp->m_calldepth[k] );
         } else {
-            fprintf(fout," rp: %4u cd: %2u ", warp->m_recvg_pc[k], warp->m_calldepth[k] );
+            fprintf(fout," rp: %4u tp: %s cd: %2u ", warp->m_recvg_pc[k], (warp->m_type[k]==CALL?"C":"N"), warp->m_calldepth[k] );
         }
         if ( warp->m_branch_div_cycle[k] != 0 ) {
             fprintf(fout," bd@%6u ", (unsigned) warp->m_branch_div_cycle[k] );
@@ -604,7 +609,7 @@ void simt_stack::print (FILE *fout) const
     }
 }
 
-void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, address_type recvg_pc ) 
+void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, address_type recvg_pc, op_type next_inst_op )
 {
     int stack_top = m_stack_top;
 
@@ -613,6 +618,7 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
     simt_mask_t  top_active_mask = m_active_mask[stack_top];
     address_type top_recvg_pc = m_recvg_pc[stack_top];
     address_type top_pc = m_pc[stack_top]; // the pc of the instruction just executed 
+    stack_entry_type top_type = m_type[stack_top];
 
     assert(top_active_mask.any());
 
@@ -639,9 +645,43 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
             }
         }
 
+        // HANDLE THE SPECIAL CASES FIRST
+        if (next_inst_op== CALL_OPS)
+        {
+            // Since call is not a divergent instruction, all threads should have executed a call instruction
+            assert(top_active_mask.any() == false);
+            stack_top += 1;
+
+            m_active_mask[stack_top] = tmp_active_mask;
+            m_pc[stack_top]=tmp_next_pc;
+            m_type[stack_top]= CALL;
+            m_recvg_pc[stack_top] = -1;
+            m_stack_top = stack_top;
+            return;
+
+        } else if(next_inst_op == RET_OPS && top_type==CALL) {
+            // pop the CALL Entry
+            assert(top_active_mask.any() == false);
+
+            m_type[stack_top]= NORMAL; // RESET THE STACK ENTRY FOR FUTURE USE
+
+            stack_top -= 1; // REMOVE The top stack entry
+            m_stack_top = stack_top;
+            m_pc[stack_top]=tmp_next_pc;// set the PC of the stack top entry to return PC from  the call stack;
+            // Check if the New top of the stack is reconverging
+            if (tmp_next_pc == m_recvg_pc[stack_top] && m_type[stack_top]!=CALL)
+            {
+                assert(m_type[stack_top]==NORMAL);
+                stack_top -= 1; // REMOVE this entry as well
+                m_stack_top = stack_top;
+            }
+            return;
+        }
+
         // discard the new entry if its PC matches with reconvergence PC
         // that automatically reconverges the entry
-        if (tmp_next_pc == top_recvg_pc) continue;
+        // If the top stack entry is CALL, dont reconverge.
+        if (tmp_next_pc == top_recvg_pc && (top_type != CALL)) continue;
 
         // this new entry is not converging
         // if this entry does not include thread from the warp, divergence occurs
@@ -674,7 +714,7 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
     m_stack_top = stack_top - 1;
 
     assert(m_stack_top >= 0);
-    assert(m_stack_top < m_warp_size * 2);
+    assert(m_stack_top < m_max_stack_size);
 
     if (warp_diverged) {
         ptx_file_line_stats_add_warp_divergence(top_pc, 1); 
@@ -714,7 +754,7 @@ for (unsigned i = 0; i < warpSize; i++) {
          next_pc.push_back( m_thread[wtid+i]->get_pc() );
      }
 }
-m_simt_stack[warpId]->update(thread_done,next_pc,inst->reconvergence_pc);
+m_simt_stack[warpId]->update(thread_done,next_pc,inst->reconvergence_pc, inst->op);
 }
 
 //! Get the warp to be executed using the data taken form the SIMT stack

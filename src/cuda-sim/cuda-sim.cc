@@ -499,6 +499,23 @@ void ptx_instruction::set_opcode_and_latency()
    case ATOM_OP: op = LOAD_OP; break;
    case BAR_OP: op = BARRIER_OP; break;
    case MEMBAR_OP: op = MEMORY_BARRIER_OP; break;
+   case CALL_OP:
+   {
+       if(m_is_printf)
+           op = ALU_OP;
+       else
+           op = CALL_OPS;
+       break;
+   }
+   case CALLP_OP:
+   {
+       if(m_is_printf)
+               op = ALU_OP;
+           else
+               op = CALL_OPS;
+           break;
+   }
+   case RET_OP:  op = RET_OPS;break;
    case ADD_OP: case ADDP_OP: case ADDC_OP: case SUB_OP: case SUBC_OP:
 	   //ADD,SUB latency
 	   switch(get_type()){

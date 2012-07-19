@@ -1162,6 +1162,19 @@ ptx_instruction::ptx_instruction( int opcode,
    m_source_file = file?file:"<unknown>";
    m_source_line = line;
    m_source = source;
+
+   if (opcode == CALL_OP) {
+       const operand_info &target  = func_addr();
+       assert( target.is_function_address() );
+       const symbol *func_addr = target.get_symbol();
+       const function_info *target_func = func_addr->get_pc();
+       std::string fname = target_func->get_name();
+
+       if (fname =="vprintf"){
+           m_is_printf = true;
+       }
+
+   }
 }
 
 void ptx_instruction::print_insn() const
