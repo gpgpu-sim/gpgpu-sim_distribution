@@ -545,6 +545,16 @@ simt_stack::simt_stack( unsigned wid, unsigned warpSize)
     reset();
 }
 
+simt_stack::~simt_stack()
+{
+    free(m_pc);
+    free(m_calldepth);
+    delete m_active_mask;
+    free(m_recvg_pc);
+    free(m_branch_div_cycle);
+    free(m_type);
+}
+
 void simt_stack::reset()
 {
     m_stack_top = 0;
@@ -653,6 +663,7 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
             stack_top += 1;
 
             m_active_mask[stack_top] = tmp_active_mask;
+
             m_pc[stack_top]=tmp_next_pc;
             m_type[stack_top]= CALL;
             m_recvg_pc[stack_top] = -1;
