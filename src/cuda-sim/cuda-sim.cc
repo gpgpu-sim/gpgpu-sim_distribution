@@ -1801,16 +1801,17 @@ struct rec_pts find_reconvergence_points( function_info *finfo )
       
       gpgpu_recon_t *kernel_recon_points = (struct gpgpu_recon_t*) calloc(num_recon, sizeof(struct gpgpu_recon_t));
       finfo->get_reconvergence_pairs(kernel_recon_points);
-      printf("GPGPU-Sim PTX: Reconvergence Pairs for %s\n", finfo->get_name().c_str() );
+      printf("GPGPU-Sim PTX: reconvergence points for %s...\n", finfo->get_name().c_str() );
       for (int i=0;i<num_recon;i++) {
-         printf("GPGPU-Sim PTX:   branch pc = %4d : ", kernel_recon_points[i].source_pc );
+         printf("GPGPU-Sim PTX: %2u (potential) branch divergence @ ", i+1 );
          kernel_recon_points[i].source_inst->print_insn();
          printf("\n");
-         printf("GPGPU-Sim PTX:   target pc = %4d : ", kernel_recon_points[i].target_pc ); 
+         printf("GPGPU-Sim PTX:    immediate post dominator      @ " ); 
          if( kernel_recon_points[i].target_inst )
             kernel_recon_points[i].target_inst->print_insn();
          printf("\n");
       }
+      printf("GPGPU-Sim PTX: ... end of reconvergence points for %s\n", finfo->get_name().c_str() );
 
       tmp.s_kernel_recon_points = kernel_recon_points;
       tmp.s_num_recon = num_recon;
