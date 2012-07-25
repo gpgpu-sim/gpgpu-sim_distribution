@@ -1,5 +1,7 @@
 # see README before running this
 
+export GPGPUSIM_SETUP_ENVIRONMENT_WAS_RUN=
+
 if [ ! -n "$CUDA_INSTALL_PATH" ]; then
 	echo "ERROR ** Install CUDA Toolkit and set CUDA_INSTALL_PATH.";
 	return;
@@ -61,6 +63,14 @@ if [ $? = 1 ]; then
 	echo "         Try adding $CUDA_INSTALL_PATH/bin/ to your PATH environment variable.";
 	echo "         Please also be sure to read the README file if you have not done so.";
 	echo "";
+	return;
+fi
+
+CUDA_VERSION_STRING=`$CUDA_INSTALL_PATH/bin/nvcc --version | awk '/release/ {print $5;}' | sed 's/,//'`;
+CUDA_VERSION_NUMBER=`echo $CUDA_VERSION_STRING | sed 's/\./ /' | awk '{printf("%02u%02u", 10*int($1), 10*$2);}'`
+if [ $CUDA_VERSION -gt 4000 -o $CUDA_VERSION -lt 2030 ]; then
+	GPGPUSIM_VERSION_STRING=`cat version | awk '/Version/ {print $8}'`
+	echo "ERROR ** GPGPU-Sim version $GPGPUSIM_VERSION_STRING not tested with CUDA version $CUDA_VERSION_STRING (please see README)";
 	return;
 fi
 
