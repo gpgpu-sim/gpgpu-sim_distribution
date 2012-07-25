@@ -68,7 +68,7 @@ fi
 
 CUDA_VERSION_STRING=`$CUDA_INSTALL_PATH/bin/nvcc --version | awk '/release/ {print $5;}' | sed 's/,//'`;
 CUDA_VERSION_NUMBER=`echo $CUDA_VERSION_STRING | sed 's/\./ /' | awk '{printf("%02u%02u", 10*int($1), 10*$2);}'`
-if [ $CUDA_VERSION -gt 4000 -o $CUDA_VERSION -lt 2030 ]; then
+if [ $CUDA_VERSION_NUMBER -gt 4000 -o $CUDA_VERSION_NUMBER -lt 2030  ]; then
 	GPGPUSIM_VERSION_STRING=`cat version | awk '/Version/ {print $8}'`
 	echo "ERROR ** GPGPU-Sim version $GPGPUSIM_VERSION_STRING not tested with CUDA version $CUDA_VERSION_STRING (please see README)";
 	return;
@@ -78,7 +78,7 @@ fi
 # SSH to remote node to generate PTX for OpenCL kernels when running on 
 # a node that does not have an NVIDIA driver installed.
 # The remote node should have GPGPU-Sim installed at the same path 
-if [ `uname` = "Darwin" ]; then
+if [ `uname` == "Darwin" ]; then
 	HOSTNAME_PREFIX=`hostname -s`;
 	export HOSTNAME_DOMAIN=`hostname | sed s/$HOSTNAME_PREFIX\.//`;
 else
