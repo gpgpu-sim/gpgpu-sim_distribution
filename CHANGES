@@ -1,15 +1,17 @@
 CHANGE LOG:
 
 Version 3.1.0+edits (development branch) versus 3.1.0
+- Add checks to top level makefile to ensure setup_environment is run and checks to
+  setup_environment to ensure a compatible version of CUDA is installed.
+- Change Fermi configuration folder name to GTX480.
+- Added TeslaC2050 configuration.
+- Added a two level warp scheduler (as presented at ISCA 2012 tutorial).
+- Cleaner makedepend that doesn't interfere with Makefiles
 - Removed a dependency on an inhouse implementation of a string list in
   cuobjdump_to_ptxplus.
 - Cleaned up the information printed out to stdout/stderr during the operation
   of cuobjdump_to_ptxplus.
 - Change cuobjdump_to_ptxplus to use std::string instead of char*.
-- Change Fermi configuration folder name to GTX480.
-- Added TeslaC2050 configuration.
-- Added a two level warp scheduler (as presented at ISCA 2012 tutorial).
-- Cleaner makedepend that doesn't interfere with Makefiles
 - Print out instructions at branch divergence/reconvergence points
 - Bug Fixes:
     - SIMT stack correctly handles recursive functions by allocating a new stack entry on every
