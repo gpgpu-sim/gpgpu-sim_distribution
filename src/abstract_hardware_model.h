@@ -82,6 +82,7 @@ enum _memory_op_t {
 #include <assert.h>
 #include <stdlib.h>
 #include <map>
+#include <deque>
 
 #if !defined(__VECTOR_TYPES_H__)
 struct dim3 {
@@ -241,10 +242,23 @@ typedef std::bitset<MAX_WARP_SIZE> active_mask_t;
 typedef std::bitset<MAX_WARP_SIZE_SIMT_STACK> simt_mask_t;
 typedef std::vector<address_type> addr_vector_t;
 
+enum stack_entry_type {
+    STACK_ENTRY_TYPE_NORMAL = 0,
+    STACK_ENTRY_TYPE_CALL
+};
+
+struct simt_stack_entry {
+    address_type m_pc;
+    unsigned int m_calldepth;
+    simt_mask_t m_active_mask;
+    address_type m_recvg_pc;
+    unsigned long long m_branch_div_cycle;
+    stack_entry_type m_type;
+};
+
 class simt_stack {
 public:
     simt_stack( unsigned wid,  unsigned warpSize);
-    ~simt_stack();
 
     void reset();
     void launch( address_type start_pc, const simt_mask_t &active_mask );
@@ -257,22 +271,9 @@ public:
 
 protected:
     unsigned m_warp_id;
-    unsigned m_stack_top;
     unsigned m_warp_size;
-    unsigned m_max_stack_size;
-    
-    address_type *m_pc;
-    simt_mask_t  *m_active_mask;
-    address_type *m_recvg_pc;
-    unsigned int *m_calldepth;
-    
-    enum stack_entry_type {
-        NORMAL = 0,
-        CALL
-    };
-    stack_entry_type *m_type;
 
-    unsigned long long  *m_branch_div_cycle;
+    std::deque<simt_stack_entry> m_stack;
 };
 
 #define GLOBAL_HEAP_START 0x80000000

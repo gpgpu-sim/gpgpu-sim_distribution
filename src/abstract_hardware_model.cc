@@ -533,106 +533,87 @@ simt_stack::simt_stack( unsigned wid, unsigned warpSize)
 {
     m_warp_id=wid;
     m_warp_size = warpSize;
-    m_max_stack_size = m_warp_size * 4;         // this choice is arbitrary. stack size can grow arbitrarily with deeper call hierarchies.
-                                                // TODO: expandable stack implementation
-    m_stack_top = 0;
-    m_pc = (address_type*)calloc(m_max_stack_size, sizeof(address_type));
-    m_calldepth = (unsigned int*)calloc(m_max_stack_size, sizeof(unsigned int));
-    m_active_mask = new simt_mask_t[m_max_stack_size];
-    m_recvg_pc = (address_type*)calloc(m_max_stack_size, sizeof(address_type));
-    m_branch_div_cycle = (unsigned long long *)calloc(m_max_stack_size, sizeof(unsigned long long ));
-    m_type = (stack_entry_type *) calloc(m_max_stack_size, sizeof(stack_entry_type));
     reset();
-}
-
-simt_stack::~simt_stack()
-{
-    free(m_pc);
-    free(m_calldepth);
-    delete m_active_mask;
-    free(m_recvg_pc);
-    free(m_branch_div_cycle);
-    free(m_type);
 }
 
 void simt_stack::reset()
 {
-    m_stack_top = 0;
-    memset(m_pc, -1, m_max_stack_size * sizeof(address_type));
-    memset(m_calldepth, 0, m_max_stack_size * sizeof(unsigned int));
-    memset(m_recvg_pc, -1, m_max_stack_size * sizeof(address_type));
-    memset(m_branch_div_cycle, 0, m_max_stack_size * sizeof(unsigned long long ));
-    for( unsigned i=0; i < m_max_stack_size; i++ ) {
-        m_active_mask[i].reset();
-        m_type[i] = NORMAL;
-    }
+    m_stack.clear();
 }
 
 void simt_stack::launch( address_type start_pc, const simt_mask_t &active_mask )
 {
     reset();
-    m_pc[0] = start_pc;
-    m_calldepth[0] = 1;
-    m_active_mask[0] = active_mask;
+    simt_stack_entry new_stack_entry;
+    new_stack_entry.m_pc = start_pc;
+    new_stack_entry.m_calldepth = 1;
+    new_stack_entry.m_active_mask = active_mask;
+    new_stack_entry.m_recvg_pc = -1;
+    new_stack_entry.m_branch_div_cycle = 0;
+    new_stack_entry.m_type = STACK_ENTRY_TYPE_NORMAL;
+    m_stack.push_back(new_stack_entry);
 }
 
 const simt_mask_t &simt_stack::get_active_mask() const
 {
-    return m_active_mask[m_stack_top];
+    assert(m_stack.size() > 0);
+    return m_stack.back().m_active_mask;
 }
 
 void simt_stack::get_pdom_stack_top_info( unsigned *pc, unsigned *rpc ) const
 {
-   *pc = m_pc[m_stack_top];
-   *rpc = m_recvg_pc[m_stack_top];
+   assert(m_stack.size() > 0);
+   *pc = m_stack.back().m_pc;
+   *rpc = m_stack.back().m_recvg_pc;
 }
 
 unsigned simt_stack::get_rp() const 
 { 
-    return m_recvg_pc[m_stack_top]; 
+    assert(m_stack.size() > 0);
+    return m_stack.back().m_recvg_pc;
 }
 
 void simt_stack::print (FILE *fout) const
 {
-    const simt_stack *warp=this;
-    for ( unsigned k=0; k <= warp->m_stack_top; k++ ) {
+    for ( unsigned k=0; k < m_stack.size(); k++ ) {
+        simt_stack_entry stack_entry = m_stack[k];
         if ( k==0 ) {
             fprintf(fout, "w%02d %1u ", m_warp_id, k );
         } else {
             fprintf(fout, "    %1u ", k );
         }
         for (unsigned j=0; j<m_warp_size; j++)
-            fprintf(fout, "%c", (warp->m_active_mask[k].test(j)?'1':'0') );
-        fprintf(fout, " pc: 0x%03x", warp->m_pc[k] );
-        if ( warp->m_recvg_pc[k] == (unsigned)-1 ) {
-            fprintf(fout," rp: ---- tp: %s cd: %2u ", (warp->m_type[k]==CALL?"C":"N"), warp->m_calldepth[k] );
+            fprintf(fout, "%c", (stack_entry.m_active_mask.test(j)?'1':'0') );
+        fprintf(fout, " pc: 0x%03x", stack_entry.m_pc );
+        if ( stack_entry.m_recvg_pc == (unsigned)-1 ) {
+            fprintf(fout," rp: ---- tp: %s cd: %2u ", (stack_entry.m_type==STACK_ENTRY_TYPE_CALL?"C":"N"), stack_entry.m_calldepth );
         } else {
-            fprintf(fout," rp: %4u tp: %s cd: %2u ", warp->m_recvg_pc[k], (warp->m_type[k]==CALL?"C":"N"), warp->m_calldepth[k] );
+            fprintf(fout," rp: %4u tp: %s cd: %2u ", stack_entry.m_recvg_pc, (stack_entry.m_type==STACK_ENTRY_TYPE_CALL?"C":"N"), stack_entry.m_calldepth );
         }
-        if ( warp->m_branch_div_cycle[k] != 0 ) {
-            fprintf(fout," bd@%6u ", (unsigned) warp->m_branch_div_cycle[k] );
+        if ( stack_entry.m_branch_div_cycle != 0 ) {
+            fprintf(fout," bd@%6u ", (unsigned) stack_entry.m_branch_div_cycle );
         } else {
             fprintf(fout," " );
         }
-        ptx_print_insn( warp->m_pc[k], fout );
+        ptx_print_insn( stack_entry.m_pc, fout );
         fprintf(fout,"\n");
     }
 }
 
 void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, address_type recvg_pc, op_type next_inst_op )
 {
-    int stack_top = m_stack_top;
+    assert(m_stack.size() > 0);
 
     assert( next_pc.size() == m_warp_size );
 
-    simt_mask_t  top_active_mask = m_active_mask[stack_top];
-    address_type top_recvg_pc = m_recvg_pc[stack_top];
-    address_type top_pc = m_pc[stack_top]; // the pc of the instruction just executed 
-    stack_entry_type top_type = m_type[stack_top];
+    simt_mask_t  top_active_mask = m_stack.back().m_active_mask;
+    address_type top_recvg_pc = m_stack.back().m_recvg_pc;
+    address_type top_pc = m_stack.back().m_pc; // the pc of the instruction just executed
+    stack_entry_type top_type = m_stack.back().m_type;
 
     assert(top_active_mask.any());
 
-    const address_type null_pc = 0;
+    const address_type null_pc = -1;
     bool warp_diverged = false;
     address_type new_recvg_pc = null_pc;
     while (top_active_mask.any()) {
@@ -655,36 +636,38 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
             }
         }
 
+        if(tmp_next_pc == null_pc) {
+            assert(!top_active_mask.any()); // all threads done
+            continue;
+        }
+
         // HANDLE THE SPECIAL CASES FIRST
         if (next_inst_op== CALL_OPS)
         {
             // Since call is not a divergent instruction, all threads should have executed a call instruction
             assert(top_active_mask.any() == false);
-            stack_top += 1;
 
-            m_active_mask[stack_top] = tmp_active_mask;
-
-            m_pc[stack_top]=tmp_next_pc;
-            m_type[stack_top]= CALL;
-            m_recvg_pc[stack_top] = -1;
-            m_stack_top = stack_top;
+            simt_stack_entry new_stack_entry;
+            new_stack_entry.m_pc = tmp_next_pc;
+            new_stack_entry.m_active_mask = tmp_active_mask;
+            new_stack_entry.m_recvg_pc = -1;
+            new_stack_entry.m_branch_div_cycle = gpu_sim_cycle+gpu_tot_sim_cycle;
+            new_stack_entry.m_type = STACK_ENTRY_TYPE_CALL;
+            m_stack.push_back(new_stack_entry);
             return;
 
-        } else if(next_inst_op == RET_OPS && top_type==CALL) {
+        } else if(next_inst_op == RET_OPS && top_type==STACK_ENTRY_TYPE_CALL) {
             // pop the CALL Entry
             assert(top_active_mask.any() == false);
+            m_stack.pop_back();
 
-            m_type[stack_top]= NORMAL; // RESET THE STACK ENTRY FOR FUTURE USE
-
-            stack_top -= 1; // REMOVE The top stack entry
-            m_stack_top = stack_top;
-            m_pc[stack_top]=tmp_next_pc;// set the PC of the stack top entry to return PC from  the call stack;
+            assert(m_stack.size() > 0);
+            m_stack.back().m_pc=tmp_next_pc;// set the PC of the stack top entry to return PC from  the call stack;
             // Check if the New top of the stack is reconverging
-            if (tmp_next_pc == m_recvg_pc[stack_top] && m_type[stack_top]!=CALL)
+            if (tmp_next_pc == m_stack.back().m_recvg_pc && m_stack.back().m_type!=STACK_ENTRY_TYPE_CALL)
             {
-                assert(m_type[stack_top]==NORMAL);
-                stack_top -= 1; // REMOVE this entry as well
-                m_stack_top = stack_top;
+                assert(m_stack.back().m_type==STACK_ENTRY_TYPE_NORMAL);
+                m_stack.pop_back();
             }
             return;
         }
@@ -692,7 +675,7 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
         // discard the new entry if its PC matches with reconvergence PC
         // that automatically reconverges the entry
         // If the top stack entry is CALL, dont reconverge.
-        if (tmp_next_pc == top_recvg_pc && (top_type != CALL)) continue;
+        if (tmp_next_pc == top_recvg_pc && (top_type != STACK_ENTRY_TYPE_CALL)) continue;
 
         // this new entry is not converging
         // if this entry does not include thread from the warp, divergence occurs
@@ -701,10 +684,12 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
             // modify the existing top entry into a reconvergence entry in the pdom stack
             new_recvg_pc = recvg_pc;
             if (new_recvg_pc != top_recvg_pc) {
-                m_pc[stack_top] = new_recvg_pc;
-                m_branch_div_cycle[stack_top] = gpu_sim_cycle;
-                stack_top += 1;
-                m_branch_div_cycle[stack_top] = 0;
+                m_stack.back().m_pc = new_recvg_pc;
+                m_stack.back().m_branch_div_cycle = gpu_sim_cycle+gpu_tot_sim_cycle;
+
+                m_stack.push_back(simt_stack_entry());
+                m_stack.back().m_branch_div_cycle = 0;
+                m_stack.back().m_recvg_pc = -1;
             }
         }
 
@@ -712,20 +697,22 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
         if (warp_diverged && tmp_next_pc == new_recvg_pc) continue;
 
         // update the current top of pdom stack
-        m_pc[stack_top] = tmp_next_pc;
-        m_active_mask[stack_top] = tmp_active_mask;
+        m_stack.back().m_pc = tmp_next_pc;
+        m_stack.back().m_active_mask = tmp_active_mask;
         if (warp_diverged) {
-            m_calldepth[stack_top] = 0;
-            m_recvg_pc[stack_top] = new_recvg_pc;
+            m_stack.back().m_calldepth = 0;
+            m_stack.back().m_recvg_pc = new_recvg_pc;
         } else {
-            m_recvg_pc[stack_top] = top_recvg_pc;
+            m_stack.back().m_recvg_pc = top_recvg_pc;
         }
-        stack_top += 1; // set top to next entry in the pdom stack
-    }
-    m_stack_top = stack_top - 1;
 
-    assert(m_stack_top >= 0);
-    assert(m_stack_top < m_max_stack_size);
+        m_stack.push_back(simt_stack_entry());
+        m_stack.back().m_branch_div_cycle = 0;
+        m_stack.back().m_recvg_pc = -1;
+    }
+    assert(m_stack.size() > 0);
+    m_stack.pop_back();
+
 
     if (warp_diverged) {
         ptx_file_line_stats_add_warp_divergence(top_pc, 1); 
