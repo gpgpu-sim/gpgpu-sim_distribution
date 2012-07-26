@@ -254,6 +254,8 @@ struct simt_stack_entry {
     address_type m_recvg_pc;
     unsigned long long m_branch_div_cycle;
     stack_entry_type m_type;
+    simt_stack_entry() :
+        m_pc(-1), m_calldepth(0), m_active_mask(), m_recvg_pc(-1), m_branch_div_cycle(0), m_type(STACK_ENTRY_TYPE_NORMAL) { };
 };
 
 class simt_stack {
