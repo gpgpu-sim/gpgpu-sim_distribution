@@ -38,8 +38,7 @@ ifeq ($(INTEL),1)
 	CC = icc
 endif
 
-CC_VERSION := $(shell gcc --version | perl -ne '/gcc\s+\(.*\)\s+([0-9.]+)/ and print $$1;')
-GNUC_CPP0X := $(shell gcc --version | perl -ne 'if (/gcc\s+\(.*\)\s+([0-9.]+)/){ if($$1 >= 4.3) {$$n=1} else {$$n=0;} } END { print $$n; }')
+include ../../version_detection.mk
 
 OPT	:=  -O3 -g3 -Wall -Wno-unused-function -Wno-sign-compare
 ifeq ($(DEBUG),1)
@@ -61,7 +60,6 @@ OUTPUT_DIR=../../$(SIM_OBJ_FILES_DIR)/cuda-sim
 
 OBJS	:= $(OUTPUT_DIR)/ptx_parser.o $(OUTPUT_DIR)/ptx_loader.o $(OUTPUT_DIR)/cuda_device_printf.o $(OUTPUT_DIR)/instructions.o $(OUTPUT_DIR)/cuda-sim.o $(OUTPUT_DIR)/ptx_ir.o $(OUTPUT_DIR)/ptx_sim.o  $(OUTPUT_DIR)/memory.o $(OUTPUT_DIR)/ptx-stats.o $(OUTPUT_DIR)/decuda_pred_table/decuda_pred_table.o $(OUTPUT_DIR)/ptx.tab.o $(OUTPUT_DIR)/lex.ptx_.o $(OUTPUT_DIR)/ptxinfo.tab.o $(OUTPUT_DIR)/lex.ptxinfo_.o
 
-CUDART_VERSION:=$(shell $(CUDA_INSTALL_PATH)/bin/nvcc --version | awk '/release/ {print $$5;}' | sed 's/,//' | sed 's/\./ /' | awk '{printf("%02u%02u", 10*int($$1), 10*$$2);}')
 
 OPT += -DCUDART_VERSION=$(CUDART_VERSION)
 

@@ -331,7 +331,11 @@ void linear_to_raw_address_translation::sweep_test() const
 {
    new_addr_type sweep_range = 16 * 1024 * 1024; 
 
+#if tr1_hash_map_ismap == 1
+   typedef tr1_hash_map<addrdec_t, new_addr_type> history_map_t; 
+#else
    typedef tr1_hash_map<addrdec_t, new_addr_type, hash_addrdec_t> history_map_t; 
+#endif
    history_map_t history_map; 
 
    for (new_addr_type raw_addr = 4; raw_addr < sweep_range; raw_addr += 4) {
