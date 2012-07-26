@@ -1,6 +1,6 @@
 CHANGE LOG:
 
-Version 3.1.0+edits (development branch) versus 3.1.0
+Version 3.1.1 versus 3.1.0
 - Add checks to top level makefile to ensure setup_environment is run and checks to
   setup_environment to ensure a compatible version of CUDA is installed.
 - Change Fermi configuration folder name to GTX480.
