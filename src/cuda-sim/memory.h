@@ -30,23 +30,12 @@
 
 #include "../abstract_hardware_model.h"
 
-#ifdef __GNUC__
-#if __GNUC__ >= 4 && __GNUC_MINOR__ >= 3
-   #include <unordered_map>
-   #define mem_map std::unordered_map
-   #define MEM_MAP_RESIZE(hash_size) m_data.rehash(hash_size)
-#else
-   #include <ext/hash_map>
-   namespace std {
-      using namespace __gnu_cxx;
-   }
-   #define mem_map std::hash_map
-   #define MEM_MAP_RESIZE(hash_size) m_data.resize(hash_size)
-#endif
-#else
-   #include <map>
-   #define mem_map std::map
+#include "../tr1_hash_map.h"
+#define mem_map tr1_hash_map
+#if tr1_hash_map_ismap == 1
    #define MEM_MAP_RESIZE(hash_size) 
+#else
+   #define MEM_MAP_RESIZE(hash_size) (m_data.rehash(hash_size))
 #endif
 
 #include <assert.h>

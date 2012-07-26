@@ -275,9 +275,9 @@ class mshr_table {
 public:
     mshr_table( unsigned num_entries, unsigned max_merged )
     : m_num_entries(num_entries),
-    m_max_merged(max_merged),
-#ifndef USE_MAP
-    m_data(2*num_entries)
+    m_max_merged(max_merged)
+#if (tr1_hash_map_ismap == 0)
+    ,m_data(2*num_entries)
 #endif
     {
     }
@@ -377,7 +377,7 @@ private:
         bool m_has_atomic; 
         mshr_entry() : m_has_atomic(false) { }
     }; 
-    typedef my_hash_map<new_addr_type,mshr_entry> table;
+    typedef tr1_hash_map<new_addr_type,mshr_entry> table;
     table m_data;
 
     // it may take several cycles to process the merged requests

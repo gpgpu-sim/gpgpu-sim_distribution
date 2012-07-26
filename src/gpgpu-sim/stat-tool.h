@@ -95,7 +95,7 @@ public:
    void print_sparse_histo(gzFile fout) const;
 
 private: 
-   typedef my_hash_map<address_type, int> span_count_map;
+   typedef tr1_hash_map<address_type, int> span_count_map;
    unsigned long long  m_cycle;
    span_count_map m_insn_span_count;
 };

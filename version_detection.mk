@@ -1,5 +1,5 @@
-# Copyright (c) 2009-2011, Tor M. Aamodt, Timothy G. Rogers, Wilson W.L. Fung
-# Ali Bakhoda, Ivan Sham 
+# Copyright (c) 2009-2011, Tor M. Aamodt
+# Wilson W.L. Fung, Ali Bakhoda
 # The University of British Columbia
 # All rights reserved.
 #
@@ -27,53 +27,12 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-# GPGPU-Sim Makefile
+# Detect CUDA Runtime Version 
+CUDART_VERSION:=$(shell $(CUDA_INSTALL_PATH)/bin/nvcc --version | awk '/release/ {print $$5;}' | sed 's/,//' | sed 's/\./ /' | awk '{printf("%02u%02u", 10*int($$1), 10*$$2);}')
 
-DEBUG?=0
+# Detect GCC Version 
+CC_VERSION := $(shell gcc --version | perl -ne '/gcc\s+\(.*\)\s+([0-9.]+)/ and print $$1;')
 
-include ../version_detection.mk
-
-CXXFLAGS = -Wall -DDEBUG
-CXXFLAGS += -DCUDART_VERSION=$(CUDART_VERSION)
-
-ifeq ($(GNUC_CPP0X), 1)
-    CXXFLAGS += -std=c++0x
-endif
-
-ifneq ($(DEBUG),1)
-	OPTFLAGS += -O3
-else
-	CXXFLAGS += 
-endif
-
-OPTFLAGS += -g3 -fPIC
-
-CPP = g++ $(SNOW)
-OEXT = o
-
-OUTPUT_DIR=../$(SIM_OBJ_FILES_DIR)
-SRCS = $(shell ls *.cc)
-OBJS = $(SRCS:%.cc=$(OUTPUT_DIR)/%.$(OEXT))
-
-$(OUTPUT_DIR)/libgpgpusim.a:	$(OBJS) gpu_uarch_simlib
-	ar rcs  $(OUTPUT_DIR)/libgpgpusim.a $(OBJS) $(OUTPUT_DIR)/gpgpu-sim/*.o
-
-gpu_uarch_simlib:
-	make   -C ./gpgpu-sim
-	
-Makefile.makedepend: depend
-
-depend:
-	touch Makefile.makedepend
-	makedepend -fMakefile.makedepend -p$(OUTPUT_DIR)/ $(SRCS) 2> /dev/null
-
-$(OUTPUT_DIR)/%.$(OEXT): %.cc
-	$(CPP) $(OPTFLAGS) $(CXXFLAGS) -o $(OUTPUT_DIR)/$*.$(OEXT) -c $*.cc
-
-clean:
-	rm -f *.o core *~ *.a Makefile.makedepend Makefile.makedepend.bak
-
-option_parser.$(OEXT): option_parser.h
-
-include Makefile.makedepend
+# Detect Support for C++11 (C++0x) from GCC Version 
+GNUC_CPP0X := $(shell gcc --version | perl -ne 'if (/gcc\s+\(.*\)\s+([0-9.]+)/){ if($$1 >= 4.3) {$$n=1} else {$$n=0;} } END { print $$n; }')
 

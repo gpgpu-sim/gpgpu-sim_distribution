@@ -38,7 +38,8 @@ else
 	CXXFLAGS_L2CACHE = -Wall
 endif
 
-GNUC_CPP0X := $(shell gcc --version | perl -ne 'if (/gcc\s+\(.*\)\s+([0-9.]+)/){ if($$1 >= 4.3) {$$n=1} else {$$n=0;} } END { print $$n; }')
+include ../../version_detection.mk
+
 ifeq ($(GNUC_CPP0X), 1)
     CXXFLAGS += -std=c++0x
     CXXFLAGS_L2CACHE += -std=c++0x

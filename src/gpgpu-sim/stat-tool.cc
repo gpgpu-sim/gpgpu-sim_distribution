@@ -479,7 +479,7 @@ void shader_CTA_count_visualizer_gzprint( gzFile fout )
 
 thread_insn_span::thread_insn_span(unsigned long long  cycle)
   : m_cycle(cycle),
-#ifdef USE_MAP
+#if (tr1_hash_map_ismap == 1)
      m_insn_span_count() 
 #else 
      m_insn_span_count(32*1024) 
