@@ -548,8 +548,6 @@ void simt_stack::launch( address_type start_pc, const simt_mask_t &active_mask )
     new_stack_entry.m_pc = start_pc;
     new_stack_entry.m_calldepth = 1;
     new_stack_entry.m_active_mask = active_mask;
-    new_stack_entry.m_recvg_pc = -1;
-    new_stack_entry.m_branch_div_cycle = 0;
     new_stack_entry.m_type = STACK_ENTRY_TYPE_NORMAL;
     m_stack.push_back(new_stack_entry);
 }
@@ -650,7 +648,6 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
             simt_stack_entry new_stack_entry;
             new_stack_entry.m_pc = tmp_next_pc;
             new_stack_entry.m_active_mask = tmp_active_mask;
-            new_stack_entry.m_recvg_pc = -1;
             new_stack_entry.m_branch_div_cycle = gpu_sim_cycle+gpu_tot_sim_cycle;
             new_stack_entry.m_type = STACK_ENTRY_TYPE_CALL;
             m_stack.push_back(new_stack_entry);
@@ -688,8 +685,6 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
                 m_stack.back().m_branch_div_cycle = gpu_sim_cycle+gpu_tot_sim_cycle;
 
                 m_stack.push_back(simt_stack_entry());
-                m_stack.back().m_branch_div_cycle = 0;
-                m_stack.back().m_recvg_pc = -1;
             }
         }
 
@@ -707,8 +702,6 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
         }
 
         m_stack.push_back(simt_stack_entry());
-        m_stack.back().m_branch_div_cycle = 0;
-        m_stack.back().m_recvg_pc = -1;
     }
     assert(m_stack.size() > 0);
     m_stack.pop_back();
