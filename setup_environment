@@ -2,6 +2,9 @@
 
 export GPGPUSIM_SETUP_ENVIRONMENT_WAS_RUN=
 
+GPGPUSIM_VERSION_STRING=`cat version | awk '/Version/ {print $8}'`
+echo "GPGPU-Sim version $GPGPUSIM_VERSION_STRING";
+
 if [ ! -n "$CUDA_INSTALL_PATH" ]; then
 	echo "ERROR ** Install CUDA Toolkit and set CUDA_INSTALL_PATH.";
 	return;
@@ -11,9 +14,9 @@ if [ ! -d "$CUDA_INSTALL_PATH" ]; then
 	return;
 fi
 
-# for MacOS X
-if [ `uname` = "Darwin" ]; then
-	echo "Detected MacOS X platform..."
+if [ ! `uname` = "Linux" ]; then
+	echo "ERROR ** Unsupported platform: GPGPU-Sim $GPGPUSIM_VERSION_STRING developed and tested on Linux."
+	return;
 fi
 
 # to run the debug build of GPGPU-Sim run:
@@ -69,7 +72,6 @@ fi
 CUDA_VERSION_STRING=`$CUDA_INSTALL_PATH/bin/nvcc --version | awk '/release/ {print $5;}' | sed 's/,//'`;
 CUDA_VERSION_NUMBER=`echo $CUDA_VERSION_STRING | sed 's/\./ /' | awk '{printf("%02u%02u", 10*int($1), 10*$2);}'`
 if [ $CUDA_VERSION_NUMBER -gt 4000 -o $CUDA_VERSION_NUMBER -lt 2030  ]; then
-	GPGPUSIM_VERSION_STRING=`cat version | awk '/Version/ {print $8}'`
 	echo "ERROR ** GPGPU-Sim version $GPGPUSIM_VERSION_STRING not tested with CUDA version $CUDA_VERSION_STRING (please see README)";
 	return;
 fi
@@ -91,5 +93,7 @@ HOSTNAME_F=`hostname -f`
 if [ "x$HOSTNAME_F" == "x$OPENCL_REMOTE_GPU_HOST" ]; then
 	unset OPENCL_REMOTE_GPU_HOST
 fi
+
+echo "setup_environment succeeded";
 
 export GPGPUSIM_SETUP_ENVIRONMENT_WAS_RUN=1
