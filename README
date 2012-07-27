@@ -2,7 +2,7 @@ Welcome to GPGPU-Sim, a cycle-level simulator modeling contemporary graphics
 processing units (GPUs) running GPU computing workloads written in CUDA or
 OpenCL.  
 
-This version of GPGPU-Sim works with CUDA version 3.1 and 4.0.
+This version of GPGPU-Sim has been tested with CUDA version 2.3, 3.1 and 4.0.
 
 Please see the copyright notice in the file COPYRIGHT distributed with this
 release in the same directory as this file.

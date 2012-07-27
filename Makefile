@@ -29,8 +29,10 @@
 # comment out next line to disable OpenGL support
 # export OPENGL_SUPPORT=1
 
-# for MacOS X
+include version_detection.mk
+
 ifeq ($(shell uname), Darwin)
+	# Note: MacOX support not working for this version
 	export MACOSX_BUILD_FLAGS=-m32
 endif
 
@@ -71,7 +73,7 @@ gpgpusim: check_setup_environment makedirs $(TARGETS)
 
 
 check_setup_environment:
-	@if [ ! -n "$(GPGPUSIM_ROOT)" -o ! -n "$(CUDA_INSTALL_PATH)" -o ! -n "$(GPGPUSIM_SETUP_ENVIRONMENT_WAS_RUN)" ]; then \
+	 @if [ ! -n "$(GPGPUSIM_ROOT)" -o ! -n "$(CUDA_INSTALL_PATH)" -o ! -n "$(GPGPUSIM_SETUP_ENVIRONMENT_WAS_RUN)" ]; then \
 		echo "ERROR *** run 'source setup_environment' before 'make'; please see README."; \
 		exit 101; \
 	 else \
@@ -83,7 +85,9 @@ check_setup_environment:
 			echo "         Please also be sure to read the README file if you have not done so."; \
 			echo ""; \
 			exit 102; \
-		else true; \
+		else \
+			echo; echo -n "	Building GPGPU-Sim version "; cat version | awk '/Version/ {print $$8}';  echo "	on CUDA version $(CUDA_VERSION_STRING)"; echo; \
+	 		true; \
 		fi \
 	 fi
 
