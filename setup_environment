@@ -1,8 +1,9 @@
 # see README before running this
 
 export GPGPUSIM_SETUP_ENVIRONMENT_WAS_RUN=
+THIS_DIR="$( cd "$( dirname "$BASH_SOURCE" )" && pwd )"
 
-GPGPUSIM_VERSION_STRING=`cat version | awk '/Version/ {print $8}'`
+GPGPUSIM_VERSION_STRING=`cat $THIS_DIR/version | awk '/Version/ {print $8}'`
 echo "GPGPU-Sim version $GPGPUSIM_VERSION_STRING";
 
 if [ ! -n "$CUDA_INSTALL_PATH" ]; then
@@ -28,7 +29,7 @@ else
     export GPGPUSIM_CONFIG=release
 fi
 
-export GPGPUSIM_ROOT="$( cd "$( dirname "$BASH_SOURCE" )" && pwd )"
+export GPGPUSIM_ROOT=$THIS_DIR
 
 export QTINC=/usr/include
 
