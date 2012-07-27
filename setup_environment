@@ -4,7 +4,8 @@ export GPGPUSIM_SETUP_ENVIRONMENT_WAS_RUN=
 export GPGPUSIM_ROOT="$( cd "$( dirname "$BASH_SOURCE" )" && pwd )"
 
 GPGPUSIM_VERSION_STRING=`cat $GPGPUSIM_ROOT/version | awk '/Version/ {print $8}'`
-echo "GPGPU-Sim version $GPGPUSIM_VERSION_STRING";
+GPGPUSIM_BUILD_STRING=`cat $GPGPUSIM_ROOT/version | awk '/Change/ {print $6}'`
+echo "GPGPU-Sim version $GPGPUSIM_VERSION_STRING (build $GPGPUSIM_BUILD_STRING)";
 
 if [ ! -n "$CUDA_INSTALL_PATH" ]; then
 	echo "ERROR ** Install CUDA Toolkit and set CUDA_INSTALL_PATH.";
