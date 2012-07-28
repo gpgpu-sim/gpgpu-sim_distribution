@@ -336,11 +336,6 @@ float __powf(float a, float b)
 
 // math functions missing in Mac OSX GCC
 #ifdef __APPLE__
-int isnanf(float a) 
-{
-   return (isnan(a)); 
-}
-
 int __signbitd(double d)
 {
    unsigned long long int u = *((unsigned long long int*)&d); 
@@ -353,8 +348,17 @@ int __signbitd(double d)
 #include <math_functions.h>
 #undef __CUDA_INTERNAL_COMPILATION__
 #undef __attribute__
+
 #endif
 
 }
+
+// math functions missing in Mac OSX GCC
+#ifdef __APPLE__
+int isnanf(float a) 
+{
+   return (isnan(a)); 
+}
+#endif 
 
 #endif

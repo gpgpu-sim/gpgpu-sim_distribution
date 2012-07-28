@@ -16,7 +16,7 @@ if [ ! -d "$CUDA_INSTALL_PATH" ]; then
 	return;
 fi
 
-if [ ! `uname` = "Linux" ]; then
+if [ ! `uname` = "Linux" -a  ! `uname` = "Darwin" ]; then
 	echo "ERROR ** Unsupported platform: GPGPU-Sim $GPGPUSIM_VERSION_STRING developed and tested on Linux."
 	return;
 fi

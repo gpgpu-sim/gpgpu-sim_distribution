@@ -47,8 +47,4 @@
       #define tr1_hash_map_ismap 1
    #endif
 
-   #if tr1_hash_map_ismap == 1
-       #warning "Pre-C++11 GCC version detected.  Downgrading all use of <unordered_map> to <map>.  Please upgrade to GCC 4.3 or later for faster simulation."
-   #endif
-
 #endif

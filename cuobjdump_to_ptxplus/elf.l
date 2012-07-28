@@ -129,14 +129,14 @@ hexdigit	[[:digit:]abcdef]
 void elf_error(const char* message)
 {
 	printf("   ");
-	printf(message);
+	printf("%s",message);
 	printf(" near \"");
-	printf(yytext);
+	printf("%s",yytext);
 	printf("\"");
 	printf(" on line "); 
 	char line[5];
 	sprintf(line, "%i", yylineno);
-	printf(line);
+	printf("%s",line);
 	printf("\n");
 	abort();
 }
