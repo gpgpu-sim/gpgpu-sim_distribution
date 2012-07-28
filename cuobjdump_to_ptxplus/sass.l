@@ -357,9 +357,9 @@ C{numeric}	 yylval.string_value = strdup(yytext); return PREDREGISTER3;
 
 void sass_error(const char* message)
 {
-	printf("   "); printf(message); printf(" near \""); printf(yytext); printf("\"");
+	printf("   "); printf("%s",message); printf(" near \""); printf("%s",yytext); printf("\"");
 	printf(" on line "); 
-	char line[5]; sprintf(line, "%i", yylineno); printf(line);
+	char line[5]; sprintf(line, "%i", yylineno); printf("%s",line);
 	printf("\n");
 	exit(1);
 }

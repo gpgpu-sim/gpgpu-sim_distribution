@@ -27,8 +27,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # Detect GPGPU-Sim Version
+ifeq ($(GPGPUSIM_ROOT),)
+else
 GPGPUSIM_VERSION=$(shell cat $(GPGPUSIM_ROOT)/version | awk '/Version/ {print $$8}' )
 GPGPUSIM_BUILD=$(shell cat $(GPGPUSIM_ROOT)/version | awk '/Change/ {print $$6}' )
+endif
 
 # Detect CUDA Runtime Version 
 CUDA_VERSION_STRING:=$(shell $(CUDA_INSTALL_PATH)/bin/nvcc --version | awk '/release/ {print $$5;}' | sed 's/,//')

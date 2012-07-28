@@ -31,11 +31,6 @@
 
 include version_detection.mk
 
-ifeq ($(shell uname), Darwin)
-	# Note: MacOX support not working for this version
-	export MACOSX_BUILD_FLAGS=-m32
-endif
-
 ifeq ($(GPGPUSIM_CONFIG), debug)
 	export DEBUG=1
 else

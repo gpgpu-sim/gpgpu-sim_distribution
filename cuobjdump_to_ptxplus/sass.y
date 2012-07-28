@@ -31,6 +31,7 @@
 
 int yylex(void);
 void yyerror(const char*);
+void debug_print( const char *s );
 
 extern cuobjdumpInstList *g_instList;
 
@@ -93,8 +94,8 @@ cuobjdumpInst *instEntry;
 program		: program sassCode
 			| sassCode;
 
-sassCode	: VERSIONHEADER IDENTIFIER NEWLINE functionList			{ printf($1); printf($2); printf(" No parsing errors\n\n");  }
-		| NEWLINE VERSIONHEADER IDENTIFIER NEWLINE functionList	{ printf($2); printf($3); printf(" No parsing errors\n\n");  }
+sassCode	: VERSIONHEADER IDENTIFIER NEWLINE functionList			{ debug_print($1); debug_print($2); debug_print(" No parsing errors\n\n");  }
+		| NEWLINE VERSIONHEADER IDENTIFIER NEWLINE functionList	{ debug_print($2); debug_print($3); debug_print(" No parsing errors\n\n");  }
 		| VERSIONHEADER IDENTIFIER NEWLINE;
 
 functionList	: functionList function
@@ -102,9 +103,9 @@ functionList	: functionList function
 				;
 				
 function	:	FUNCTIONHEADER IDENTIFIER {
-					printf($1); 
-					printf($2);
-					printf("\n");
+					debug_print($1); 
+					debug_print($2);
+					debug_print("\n");
 					g_instList->addEntry($2);
 					instEntry = new cuobjdumpInst();
 					instEntry->setBase(".entry");
@@ -113,10 +114,10 @@ function	:	FUNCTIONHEADER IDENTIFIER {
 					;
 
 
-statementList	: statementList statement NEWLINE	{ printf("\n"); }
-		| statementList statement SEMICOLON NEWLINE	{ printf(";\n"); }
-		| statement NEWLINE			{ printf("\n"); }
-		| statement SEMICOLON NEWLINE			{ printf(";\n"); }
+statementList	: statementList statement NEWLINE	{ debug_print("\n"); }
+		| statementList statement SEMICOLON NEWLINE	{ debug_print(";\n"); }
+		| statement NEWLINE			{ debug_print("\n"); }
+		| statement SEMICOLON NEWLINE			{ debug_print(";\n"); }
 		| NEWLINE	{}
 		;
 
@@ -149,10 +150,10 @@ assemblyInstruction	: baseInstruction modifierList operandList	{ }
 					/*| baseInstruction				{ }*/
 					;
 
-baseInstruction : simpleInstructions	{ printf($1); instEntry->setBase($1); g_instList->add(instEntry);}
+baseInstruction : simpleInstructions	{ debug_print($1); instEntry->setBase($1); g_instList->add(instEntry);}
 		| branchInstructions
-		| GRED DOT simpleInstructions	{ printf($1); instEntry->setBase($1); g_instList->add(instEntry); g_instList->getListEnd().addBaseModifier($3);}
-		| GATOM DOT simpleInstructions	{ printf($1); instEntry->setBase($1); g_instList->add(instEntry); g_instList->getListEnd().addBaseModifier($3);}
+		| GRED DOT simpleInstructions	{ debug_print($1); instEntry->setBase($1); g_instList->add(instEntry); g_instList->getListEnd().addBaseModifier($3);}
+		| GATOM DOT simpleInstructions	{ debug_print($1); instEntry->setBase($1); g_instList->add(instEntry); g_instList->getListEnd().addBaseModifier($3);}
 		| pbkInstruction
 		;
 
@@ -170,7 +171,7 @@ simpleInstructions	: ADA | AND | ANDS | COS | DADD | DMIN | DMAX | DFMA | DMUL |
 					;
 
 pbkInstruction	:	PBK {
-						printf($1); instEntry->setBase($1); g_instList->add(instEntry);
+						debug_print($1); instEntry->setBase($1); g_instList->add(instEntry);
 					} HEXLITERAL {
 						char* tempInput = $3;
 						char* tempLabel = new char[12];
@@ -191,8 +192,8 @@ pbkInstruction	:	PBK {
 					}
 				;
 
-branchInstructions	: BRA {printf($1); instEntry->setBase($1); g_instList->add(instEntry);} instructionPredicate HEXLITERAL
-				{ printf($4);
+branchInstructions	: BRA {debug_print($1); instEntry->setBase($1); g_instList->add(instEntry);} instructionPredicate HEXLITERAL
+				{ debug_print($4);
 				  char* tempInput = $4;
 				  char* tempLabel = new char[12];
 				  tempLabel[0] = 'l';
@@ -209,8 +210,8 @@ branchInstructions	: BRA {printf($1); instEntry->setBase($1); g_instList->add(in
 				  tempLabel[11] = '\0';
 				  g_instList->getListEnd().addOperand(tempLabel);
 				  g_instList->addCubojdumpLabel(tempLabel);}
-			| BRA {printf($1); instEntry->setBase($1); g_instList->add(instEntry);} HEXLITERAL
-				{ printf($3);
+			| BRA {debug_print($1); instEntry->setBase($1); g_instList->add(instEntry);} HEXLITERAL
+				{ debug_print($3);
 				  char* tempInput = $3;
 				  char* tempLabel = new char[12];
 				  tempLabel[0] = 'l';
@@ -227,8 +228,8 @@ branchInstructions	: BRA {printf($1); instEntry->setBase($1); g_instList->add(in
 				  tempLabel[11] = '\0';
 				  g_instList->getListEnd().addOperand(tempLabel);
 				  g_instList->addCubojdumpLabel(tempLabel);}
-			| CAL {printf($1); instEntry->setBase($1); g_instList->add(instEntry);} HEXLITERAL
-				{ printf($3);
+			| CAL {debug_print($1); instEntry->setBase($1); g_instList->add(instEntry);} HEXLITERAL
+				{ debug_print($3);
 				  char* tempInput = $3;
 				  char* tempLabel = new char[12];
 				  tempLabel[0] = 'l';
@@ -246,8 +247,8 @@ branchInstructions	: BRA {printf($1); instEntry->setBase($1); g_instList->add(in
 				  g_instList->getListEnd().addOperand(tempLabel);
 				  g_instList->addCubojdumpLabel(tempLabel);}
 			
-			| CAL {printf($1); instEntry->setBase($1); g_instList->add(instEntry);} DOTNOINC HEXLITERAL
-				{ printf($4);
+			| CAL {debug_print($1); instEntry->setBase($1); g_instList->add(instEntry);} DOTNOINC HEXLITERAL
+				{ debug_print($4);
 				  char* tempInput = $4;
 				  char* tempLabel = new char[12];
 				  tempLabel[0] = 'l';
@@ -272,7 +273,7 @@ modifierList	: modifier modifierList
 				|
 				;
 
-modifier	: opTypes	{ printf($1); g_instList->getListEnd().addTypeModifier($1);}
+modifier	: opTypes	{ debug_print($1); g_instList->getListEnd().addTypeModifier($1);}
 		| DOTBEXT		{ g_instList->getListEnd().addBaseModifier(".bext"); }
 		| DOTS			{ g_instList->getListEnd().addBaseModifier(".s"); }
 		| DOTSFU		{ g_instList->getListEnd().addBaseModifier(".sfu"); }
@@ -290,24 +291,24 @@ modifier	: opTypes	{ printf($1); g_instList->getListEnd().addTypeModifier($1);}
 		| DOTALL		{ g_instList->getListEnd().addBaseModifier(".all"); }
 		;
 
-opTypes		: DOTF16	//{ printf($1); g_instList->getListEnd().addTypeModifier($1);}
-		| DOTF32	//{ printf($1); g_instList->getListEnd().addTypeModifier($1);}
-		| DOTF64	//{ printf($1); g_instList->getListEnd().addTypeModifier($1);}
-		| DOTS8		//{ printf($1); g_instList->getListEnd().addTypeModifier($1);}
-		| DOTS16	//{ printf($1); g_instList->getListEnd().addTypeModifier($1);}
-		| DOTS32	//{ printf($1); g_instList->getListEnd().addTypeModifier($1);}
-		| DOTS64	//{ printf($1); g_instList->getListEnd().addTypeModifier($1);}
-		| DOTS128	//{ printf($1); g_instList->getListEnd().addTypeModifier($1);}
-		| DOTU8		//{ printf($1); g_instList->getListEnd().addTypeModifier($1);}
-		| DOTU16	//{ printf($1); g_instList->getListEnd().addTypeModifier($1);}
-		| DOTU32	//{ printf($1); g_instList->getListEnd().addTypeModifier($1);}
-		| DOTU24	//{ printf($1); g_instList->getListEnd().addTypeModifier($1);}
-		| DOTU64	//{ printf($1); g_instList->getListEnd().addTypeModifier($1);}
-		| DOTHI		//{ printf($1); g_instList->getListEnd().addTypeModifier($1);}
+opTypes		: DOTF16	//{ debug_print($1); g_instList->getListEnd().addTypeModifier($1);}
+		| DOTF32	//{ debug_print($1); g_instList->getListEnd().addTypeModifier($1);}
+		| DOTF64	//{ debug_print($1); g_instList->getListEnd().addTypeModifier($1);}
+		| DOTS8		//{ debug_print($1); g_instList->getListEnd().addTypeModifier($1);}
+		| DOTS16	//{ debug_print($1); g_instList->getListEnd().addTypeModifier($1);}
+		| DOTS32	//{ debug_print($1); g_instList->getListEnd().addTypeModifier($1);}
+		| DOTS64	//{ debug_print($1); g_instList->getListEnd().addTypeModifier($1);}
+		| DOTS128	//{ debug_print($1); g_instList->getListEnd().addTypeModifier($1);}
+		| DOTU8		//{ debug_print($1); g_instList->getListEnd().addTypeModifier($1);}
+		| DOTU16	//{ debug_print($1); g_instList->getListEnd().addTypeModifier($1);}
+		| DOTU32	//{ debug_print($1); g_instList->getListEnd().addTypeModifier($1);}
+		| DOTU24	//{ debug_print($1); g_instList->getListEnd().addTypeModifier($1);}
+		| DOTU64	//{ debug_print($1); g_instList->getListEnd().addTypeModifier($1);}
+		| DOTHI		//{ debug_print($1); g_instList->getListEnd().addTypeModifier($1);}
 		;
 
-operandList	: operandList { printf(" "); } /*COMMA*/ operand	{}
-			/*| { printf(" "); } operand		{}*/
+operandList	: operandList { debug_print(" "); } /*COMMA*/ operand	{}
+			/*| { debug_print(" "); } operand		{}*/
 			|
 			;
 
@@ -315,7 +316,7 @@ operand		: registerlocation
 		| PIPE registerlocation PIPE	{ g_instList->getListEnd().addBaseModifier(".abs"); }
 		| TILDE registerlocation
 		| LEFTBRACKET instructionPredicate RIGHTBRACKET
-		| memorylocation opTypes { printf($2); g_instList->getListEnd().addTypeModifier($2);}
+		| memorylocation opTypes { debug_print($2); g_instList->getListEnd().addTypeModifier($2);}
 		| memorylocation
 		| immediateValue
 		| extraModifier
@@ -324,15 +325,15 @@ operand		: registerlocation
 		;
 /* Register of the format [R0] will be converted to R0 */
 /* regMod will be also ignored */
-registerlocation	: REGISTER regMod	{ printf($1); g_instList->addCuobjdumpRegister($1);}
-			| OSQBRACKET REGISTER CSQBRACKET	{ printf($1); printf($2); printf($3); g_instList->addCuobjdumpRegister($2);}
-			| REGISTERLO	{ printf($1); g_instList->addCuobjdumpRegister($1,true);}
-			| REGISTERHI	{ printf($1); g_instList->addCuobjdumpRegister($1,true);}
-			| SREGISTER		{ printf($1); g_instList->addCuobjdumpRegister($1,false);}
-			| OFFSETREGISTER	{ printf($1); g_instList->addCuobjdumpRegister($1);}
-			| PREDREGISTER PREDREGISTER2	{ printf($1); printf(" "); printf($2); g_instList->addCuobjdumpDoublePredReg($1, $2);}
-			| PREDREGISTER REGISTER	{ printf($1); printf(" "); printf($2); g_instList->addCuobjdumpDoublePredReg($1, $2);}
-			/*| REGISTER PREDREGISTER3 { printf($1); printf(" "); printf($2); g_instList->addCuobjdumpRegister($1); printf("WEIRD CASE\n");}*/
+registerlocation	: REGISTER regMod	{ debug_print($1); g_instList->addCuobjdumpRegister($1);}
+			| OSQBRACKET REGISTER CSQBRACKET	{ debug_print($1); debug_print($2); debug_print($3); g_instList->addCuobjdumpRegister($2);}
+			| REGISTERLO	{ debug_print($1); g_instList->addCuobjdumpRegister($1,true);}
+			| REGISTERHI	{ debug_print($1); g_instList->addCuobjdumpRegister($1,true);}
+			| SREGISTER		{ debug_print($1); g_instList->addCuobjdumpRegister($1,false);}
+			| OFFSETREGISTER	{ debug_print($1); g_instList->addCuobjdumpRegister($1);}
+			| PREDREGISTER PREDREGISTER2	{ debug_print($1); debug_print(" "); debug_print($2); g_instList->addCuobjdumpDoublePredReg($1, $2);}
+			| PREDREGISTER REGISTER	{ debug_print($1); debug_print(" "); debug_print($2); g_instList->addCuobjdumpDoublePredReg($1, $2);}
+			/*| REGISTER PREDREGISTER3 { debug_print($1); debug_print(" "); debug_print($2); g_instList->addCuobjdumpRegister($1); debug_print("WEIRD CASE\n");}*/
 			;
 
 regMod		: DOTCC
@@ -340,9 +341,9 @@ regMod		: DOTCC
 			;
 
 
-memorylocation	: SMEMLOCATION	{ printf($1); g_instList->addCuobjdumpMemoryOperand($1,1);}
+memorylocation	: SMEMLOCATION	{ debug_print($1); g_instList->addCuobjdumpMemoryOperand($1,1);}
 		|	ABSSMEMLOCATION {
-				printf($1);
+				debug_print($1);
 				char* input = $1;
 				char* temp = new char[99];
 				temp[0] = input[1];
@@ -354,54 +355,54 @@ memorylocation	: SMEMLOCATION	{ printf($1); g_instList->addCuobjdumpMemoryOperan
 				g_instList->addCuobjdumpMemoryOperand(temp,1);
 				g_instList->getListEnd().addBaseModifier(".abs");
 			}
-		| GMEMLOCATION	{ printf($1); g_instList->addCuobjdumpMemoryOperand($1,2);}
-		| CMEMLOCATION	{ printf($1); g_instList->addCuobjdumpMemoryOperand($1,0);}
-		| LMEMLOCATION	{ printf($1); g_instList->addCuobjdumpMemoryOperand($1,3);}
+		| GMEMLOCATION	{ debug_print($1); g_instList->addCuobjdumpMemoryOperand($1,2);}
+		| CMEMLOCATION	{ debug_print($1); g_instList->addCuobjdumpMemoryOperand($1,0);}
+		| LMEMLOCATION	{ debug_print($1); g_instList->addCuobjdumpMemoryOperand($1,3);}
 		;
 
-immediateValue	: IDENTIFIER { printf($1); g_instList->getListEnd().addOperand($1);}
-		| HEXLITERAL { printf($1); g_instList->getListEnd().addOperand($1);}
+immediateValue	: IDENTIFIER { debug_print($1); g_instList->getListEnd().addOperand($1);}
+		| HEXLITERAL { debug_print($1); g_instList->getListEnd().addOperand($1);}
 		;
 
-extraModifier	: EQ	{ printf($1); g_instList->getListEnd().addBaseModifier($1);} 
-		| EQU	{ printf($1); g_instList->getListEnd().addBaseModifier($1);}
-		| GE	{ printf($1); g_instList->getListEnd().addBaseModifier($1);}
-		| GEU	{ printf($1); g_instList->getListEnd().addBaseModifier($1);}
-		| GT	{ printf($1); g_instList->getListEnd().addBaseModifier($1);}
-		| GTU	{ printf($1); g_instList->getListEnd().addBaseModifier($1);}
-		| LE	{ printf($1); g_instList->getListEnd().addBaseModifier($1);}
-		| LEU	{ printf($1); g_instList->getListEnd().addBaseModifier($1);}
-		| LT	{ printf($1); g_instList->getListEnd().addBaseModifier($1);}
-		| LTU	{ printf($1); g_instList->getListEnd().addBaseModifier($1);}
-		| NE	{ printf($1); g_instList->getListEnd().addBaseModifier($1);}
-		| NEU	{ printf($1); g_instList->getListEnd().addBaseModifier($1);}
+extraModifier	: EQ	{ debug_print($1); g_instList->getListEnd().addBaseModifier($1);} 
+		| EQU	{ debug_print($1); g_instList->getListEnd().addBaseModifier($1);}
+		| GE	{ debug_print($1); g_instList->getListEnd().addBaseModifier($1);}
+		| GEU	{ debug_print($1); g_instList->getListEnd().addBaseModifier($1);}
+		| GT	{ debug_print($1); g_instList->getListEnd().addBaseModifier($1);}
+		| GTU	{ debug_print($1); g_instList->getListEnd().addBaseModifier($1);}
+		| LE	{ debug_print($1); g_instList->getListEnd().addBaseModifier($1);}
+		| LEU	{ debug_print($1); g_instList->getListEnd().addBaseModifier($1);}
+		| LT	{ debug_print($1); g_instList->getListEnd().addBaseModifier($1);}
+		| LTU	{ debug_print($1); g_instList->getListEnd().addBaseModifier($1);}
+		| NE	{ debug_print($1); g_instList->getListEnd().addBaseModifier($1);}
+		| NEU	{ debug_print($1); g_instList->getListEnd().addBaseModifier($1);}
 		;
 
-instructionPredicate	: PREDREGISTER3	predicateModifier {printf($1); printf($2);
+instructionPredicate	: PREDREGISTER3	predicateModifier {debug_print($1); debug_print($2);
 								g_instList->getListEnd().setPredicate($1);
 								g_instList->getListEnd().addPredicateModifier($2);}
-						| PREDREGISTER3 {printf($1); g_instList->getListEnd().setPredicate($1);}
+						| PREDREGISTER3 {debug_print($1); g_instList->getListEnd().setPredicate($1);}
 			;
 
 operandPredicate	:	PREDREGISTER3	predicateModifier {
-							printf($1); 
-							printf($2);
+							debug_print($1); 
+							debug_print($2);
 							//g_instList->getListEnd().addOperand($1);
 							g_instList->getListEnd().setPredicate($1);
 							g_instList->getListEnd().addPredicateModifier($2);
 							/*May be the modifier needs to be added too*/
 						}
 					|	PREDREGISTER3 {
-							printf("HELLO: "); 
-							printf($1); 
+							debug_print("HELLO: "); 
+							debug_print($1); 
 							g_instList->getListEnd().addOperand($1);
 						}
 					;
 
 
-preOperand	: EX2	{ printf($1); g_instList->getListEnd().addBaseModifier("ex2");}
-		| SIN	{ printf($1); g_instList->getListEnd().addBaseModifier("sin");}
-		| COS	{ printf($1); g_instList->getListEnd().addBaseModifier("cos");}
+preOperand	: EX2	{ debug_print($1); g_instList->getListEnd().addBaseModifier("ex2");}
+		| SIN	{ debug_print($1); g_instList->getListEnd().addBaseModifier("sin");}
+		| COS	{ debug_print($1); g_instList->getListEnd().addBaseModifier("cos");}
 		;
 
 predicateModifier	: DOTEQ	{ }
@@ -425,3 +426,8 @@ predicateModifier	: DOTEQ	{ }
 
 /*support c++ functions go here*/
 
+void debug_print( const char *s )
+{
+	// uncomment to debug
+	// printf("%s",s);
+}

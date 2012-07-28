@@ -327,7 +327,7 @@ void cuobjdumpInst::printCuobjdumpTypeModifiers()
 		else
 		{
 			printf("Unknown Type: ");
-			printf((*typemod).c_str());
+			printf("%s",(*typemod).c_str());
 			printf("\n");
 			output("Unknown Type: ");
 			output(*typemod);
@@ -428,7 +428,7 @@ void cuobjdumpInst::printCuobjdumpBaseModifiers()
 		else
 		{
 			printf("Unknown Base Mod: ");
-			printf((*basemod).c_str());
+			printf("%s",(*basemod).c_str());
 			printf("\n");
 			output("Unknown Base Mod: ");
 			output(*basemod);
