@@ -110,7 +110,7 @@ char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const std::string ptxfilenam
 	// Run cuobjdump_to_ptxplus
 	char commandline[1024];
 	int result;
-	snprintf(commandline, 1024, "$GPGPUSIM_ROOT/cuobjdump_to_ptxplus/cuobjdump_to_ptxplus %s %s %s %s",
+	snprintf(commandline, 1024, "$GPGPUSIM_ROOT/build/$GPGPUSIM_CONFIG/cuobjdump_to_ptxplus/cuobjdump_to_ptxplus %s %s %s %s",
 			ptxfilename.c_str(),
 			sassfilename.c_str(),
 			elffilename.c_str(),

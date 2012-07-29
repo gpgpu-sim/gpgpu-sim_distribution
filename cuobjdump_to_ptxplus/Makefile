@@ -3,44 +3,44 @@ LEXFLAGS	= -B
 YACC		= bison
 YFLAGS		= -t -d --report=all --verbose
 CC			= gcc
-CCFLAGS		= -ggdb -fPIC -Wall -Wno-unused-function -Wno-sign-compare
+CCFLAGS		= -ggdb -fPIC -Wall -Wno-unused-function -Wno-sign-compare 
 CXX			= g++
 CXXFLAGS	= ${CCFLAGS}
 LD			= g++
 LDFLAGS		= ${CCFLAGS}
+OUTPUT_DIR=../$(SIM_OBJ_FILES_DIR)/cuobjdump_to_ptxplus
 
+CXXFLAGS += -I $(OUTPUT_DIR) -I . -I ../src/cuda-sim/
 
-SASS_PARSER_OBJECTS = sass_lexer.o sass_parser.o 
-ELF_PARSER_OBJECTS = elf_lexer.o elf_parser.o
-HEADER_PARSER_OBJECTS = header_parser.o header_lexer.o
-PTX_PARSER_OBJECTS = ptx.tab.o lex.ptx_.o
+SASS_PARSER_OBJECTS = $(OUTPUT_DIR)/sass_lexer.o $(OUTPUT_DIR)/sass_parser.o 
+ELF_PARSER_OBJECTS = $(OUTPUT_DIR)/elf_lexer.o $(OUTPUT_DIR)/elf_parser.o
+HEADER_PARSER_OBJECTS = $(OUTPUT_DIR)/header_parser.o $(OUTPUT_DIR)/header_lexer.o
+PTX_PARSER_OBJECTS = $(OUTPUT_DIR)/ptx.tab.o $(OUTPUT_DIR)/lex.ptx_.o
 
-all: cuobjdump_to_ptxplus
+all: $(OUTPUT_DIR)/cuobjdump_to_ptxplus
 
 MAKEFLAGS += --no-builtin-rules
 
 .SUFFIXES:
 .SECONDARY:
 
-cuobjdump_to_ptxplus: cuobjdumpInst.o cuobjdumpInstList.o cuobjdump_to_ptxplus.o $(PTX_PARSER_OBJECTS) $(SASS_PARSER_OBJECTS) $(ELF_PARSER_OBJECTS) $(HEADER_PARSER_OBJECTS)
-	${LD} ${LDFLAGS} -o $@ cuobjdumpInst.o cuobjdumpInstList.o cuobjdump_to_ptxplus.o $(PTX_PARSER_OBJECTS) $(SASS_PARSER_OBJECTS) $(ELF_PARSER_OBJECTS) $(HEADER_PARSER_OBJECTS)
+$(OUTPUT_DIR)/cuobjdump_to_ptxplus: $(OUTPUT_DIR)/cuobjdumpInst.o $(OUTPUT_DIR)/cuobjdumpInstList.o $(OUTPUT_DIR)/cuobjdump_to_ptxplus.o $(PTX_PARSER_OBJECTS) $(SASS_PARSER_OBJECTS) $(ELF_PARSER_OBJECTS) $(HEADER_PARSER_OBJECTS)
+	${LD} ${LDFLAGS} -o $@ $(OUTPUT_DIR)/cuobjdumpInst.o $(OUTPUT_DIR)/cuobjdumpInstList.o $(OUTPUT_DIR)/cuobjdump_to_ptxplus.o $(PTX_PARSER_OBJECTS) $(SASS_PARSER_OBJECTS) $(ELF_PARSER_OBJECTS) $(HEADER_PARSER_OBJECTS)
+
 
 lex.ptx_.c : ../src/cuda-sim/ptx.l
-	${LEX} ${LEXFLAGS} ../src/cuda-sim/ptx.l
+	${LEX} ${LEXFLAGS} ../src/cuda-sim/ptx.l 
 
 ptx.tab.c : ../src/cuda-sim/ptx.y
-	${YACC} ${YFLAGS} --name-prefix=ptx_ -v ../src/cuda-sim/ptx.y
+	${YACC} ${YFLAGS} --name-prefix=ptx_ -v ../src/cuda-sim/ptx.y 
 
 ptx.tab.h : ptx.tab.c
 
-lex.ptx_.o : lex.ptx_.c ptx.tab.h
-	rm -f opcodes.def opcodes.h
-	ln -s ../src/cuda-sim/opcodes.def opcodes.def
-	ln -s ../src/cuda-sim/opcodes.h opcodes.h
-	${CXX} ${CXXFLAGS} -c lex.ptx_.c
+$(OUTPUT_DIR)/lex.ptx_.o : lex.ptx_.c ptx.tab.h
+	${CXX} ${CXXFLAGS} -c lex.ptx_.c -o $@
 
-ptx.tab.o : ptx.tab.c ptx_parser.h
-	${CXX} ${CXXFLAGS} -c ptx.tab.c
+$(OUTPUT_DIR)/ptx.tab.o : ptx.tab.c ptx_parser.h
+	${CXX} ${CXXFLAGS} -c ptx.tab.c -o $@
 
 
 %_lexer.cc: %.l %_parser.hh
@@ -54,13 +54,13 @@ ptx.tab.o : ptx.tab.c ptx_parser.h
 %_parser.hh: %_parser.cc
 	:
 
-%.o: %.cc
+$(OUTPUT_DIR)/%.o: %.cc
 	$(CXX) ${CXXFLAGS} -c -o $@ $<
 
-%.o: %.cpp %.h
+$(OUTPUT_DIR)/%.o: %.cpp %.h
 	$(CXX) ${CXXFLAGS} -c -o $@ $<
 
-%.o: %.c %.h
+$(OUTPUT_DIR)/%.o: %.c %.h
 	${CC} ${CCFLAGS} -c -o $@ $<
 
 SRCS = $(shell ls *.cc)
@@ -72,13 +72,11 @@ depend:
 	makedepend -fMakefile.makedepend $(SRCS) 2> /dev/null
 
 clean:
-	rm -f opcodes.def opcodes.h
-	rm -f lex.ptx_.c ptx.tab.c ptx.tab.h lex.ptx_.o ptx.tab.o ptx.output
+	rm -f lex.ptx_.c ptx.tab.c ptx.tab.h ptx.output
 	rm -f elf_lexer.cc  elf_parser.cc  elf_parser.hh elf_parser.output
 	rm -f sass_lexer.cc  sass_parser.cc  sass_parser.hh  sass_parser.output
 	rm -f header_lexer.cc  header_parser.cc  header_parser.hh  header_parser.output
-	rm -f *.o
-	rm -f cuobjdump_to_ptxplus
+	rm -rf $(OUTPUT_DIR)
 	rm -f Makefile.makedepend Makefile.makedepend.bak
 
 include Makefile.makedepend
