@@ -21,6 +21,9 @@ if [ ! `uname` = "Linux" -a  ! `uname` = "Darwin" ]; then
 	return;
 fi
 
+export PATH=`echo $PATH | sed "s#$GPGPUSIM_ROOT/bin:$CUDA_INSTALL_PATH/bin:##"`
+export PATH=$GPGPUSIM_ROOT/bin:$CUDA_INSTALL_PATH/bin:$PATH
+
 # to run the debug build of GPGPU-Sim run:
 # source setup_environment debug
 CUDA_VERSION=`nvcc --version | grep release | sed -re 's/.*release ([0-9]+\.[0-9]+).*/\1/'`
@@ -30,8 +33,6 @@ then
 else
     export GPGPUSIM_CONFIG=$CUDA_VERSION/release
 fi
-
-
 
 export QTINC=/usr/include
 
@@ -59,8 +60,6 @@ else
 	export LD_LIBRARY_PATH=`echo $LD_LIBRARY_PATH | sed -re 's/.*gpgpu_sim.*(release|debug)://'`
 fi
 export LD_LIBRARY_PATH=$GPGPUSIM_ROOT/lib/$GPGPUSIM_CONFIG:$LD_LIBRARY_PATH
-export PATH=`echo $PATH | sed "s#$GPGPUSIM_ROOT/bin:$CUDA_INSTALL_PATH/bin:##"`
-export PATH=$GPGPUSIM_ROOT/bin:$CUDA_INSTALL_PATH/bin:$PATH
 
 NVCC_PATH=`which nvcc`;
 if [ $? = 1 ]; then
