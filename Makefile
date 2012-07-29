@@ -39,13 +39,12 @@ endif
 
 NVCC_PATH=$(shellwhich nvcc)
 ifneq ($(shell which nvcc), "")
-	CUDA_VERSION=$(shell nvcc --version | grep release | sed -re 's/.*release ([0-9]+\.[0-9]+).*/\1/')
 	ifeq ($(DEBUG), 1)
-		export SIM_LIB_DIR=lib/$(CUDA_VERSION)/debug
-		export SIM_OBJ_FILES_DIR=build/$(CUDA_VERSION)/debug
+		export SIM_LIB_DIR=lib/$(CUDART_VERSION)/debug
+		export SIM_OBJ_FILES_DIR=build/$(CUDART_VERSION)/debug
 	else
-		export SIM_LIB_DIR=lib/$(CUDA_VERSION)/release
-		export SIM_OBJ_FILES_DIR=build/$(CUDA_VERSION)/release
+		export SIM_LIB_DIR=lib/$(CUDART_VERSION)/release
+		export SIM_OBJ_FILES_DIR=build/$(CUDART_VERSION)/release
 	endif
 endif
 
@@ -94,7 +93,7 @@ no_opencl_support:
 	@echo "Warning: gpgpu-sim is building without opencl support. Make sure NVOPENCL_LIBDIR and NVOPENCL_INCDIR are set"
 
 $(SIM_LIB_DIR)/libcudart.so: $(LIBS) cudalib
-	g++ $(MACOSX_BUILD_FLAGS) -shared -Wl,-soname,libcudart.so \
+	g++ -shared -Wl,-soname,libcudart.so \
 			$(SIM_OBJ_FILES_DIR)/libcuda/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table/*.o \
@@ -107,7 +106,7 @@ $(SIM_LIB_DIR)/libcudart.so: $(LIBS) cudalib
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.4 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.4; fi
 
 $(SIM_LIB_DIR)/libcudart.dylib: $(LIBS) cudalib
-	g++ $(MACOSX_BUILD_FLAGS) -dynamiclib -Wl,-headerpad_max_install_names,-undefined,dynamic_lookup,-compatibility_version,1.1,-current_version,1.1\
+	g++ -dynamiclib -Wl,-headerpad_max_install_names,-undefined,dynamic_lookup,-compatibility_version,1.1,-current_version,1.1\
 			$(SIM_OBJ_FILES_DIR)/libcuda/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table/*.o \
@@ -117,7 +116,7 @@ $(SIM_LIB_DIR)/libcudart.dylib: $(LIBS) cudalib
 			-o $(SIM_LIB_DIR)/libcudart.dylib
 
 $(SIM_LIB_DIR)/libOpenCL.so: $(LIBS) opencllib
-	g++ $(MACOSX_BUILD_FLAGS) -shared -Wl,-soname,libOpenCL.so \
+	g++ -shared -Wl,-soname,libOpenCL.so \
 			$(SIM_OBJ_FILES_DIR)/libopencl/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table/*.o \
