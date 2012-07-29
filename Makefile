@@ -37,12 +37,16 @@ else
 	export DEBUG=0
 endif
 
-ifeq ($(DEBUG), 1)
-	export SIM_LIB_DIR=lib/debug
-	export SIM_OBJ_FILES_DIR=build/debug
-else
-	export SIM_LIB_DIR=lib/release
-	export SIM_OBJ_FILES_DIR=build/release
+NVCC_PATH=$(shellwhich nvcc)
+ifneq ($(shell which nvcc), "")
+	CUDA_VERSION=$(shell nvcc --version | grep release | sed -re 's/.*release ([0-9]+\.[0-9]+).*/\1/')
+	ifeq ($(DEBUG), 1)
+		export SIM_LIB_DIR=lib/$(CUDA_VERSION)/debug
+		export SIM_OBJ_FILES_DIR=build/$(CUDA_VERSION)/debug
+	else
+		export SIM_LIB_DIR=lib/$(CUDA_VERSION)/release
+		export SIM_OBJ_FILES_DIR=build/$(CUDA_VERSION)/release
+	endif
 endif
 
 LIBS = cuda-sim gpgpu-sim_uarch intersim gpgpusimlib
@@ -160,6 +164,7 @@ makedirs:
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/gpgpu-sim ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/gpgpu-sim; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/libopencl ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/libopencl; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/intersim ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/intersim; fi;
+	if [ ! -d $(SIM_OBJ_FILES_DIR)/cuobjdump_to_ptxplus ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/cuobjdump_to_ptxplus; fi;
 
 all:
 	$(MAKE) gpgpusim

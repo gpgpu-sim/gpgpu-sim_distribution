@@ -23,11 +23,12 @@ fi
 
 # to run the debug build of GPGPU-Sim run:
 # source setup_environment debug
+CUDA_VERSION=`nvcc --version | grep release | sed -re 's/.*release ([0-9]+\.[0-9]+).*/\1/'`
 if [ $# == '1' ] ;
 then
-    export GPGPUSIM_CONFIG=$1
+    export GPGPUSIM_CONFIG=$CUDA_VERSION/$1
 else
-    export GPGPUSIM_CONFIG=release
+    export GPGPUSIM_CONFIG=$CUDA_VERSION/release
 fi
 
 
