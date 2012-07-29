@@ -26,7 +26,11 @@ export PATH=$GPGPUSIM_ROOT/bin:$CUDA_INSTALL_PATH/bin:$PATH
 
 # to run the debug build of GPGPU-Sim run:
 # source setup_environment debug
-CUDA_VERSION=`nvcc --version | grep release | sed -re 's/.*release ([0-9]+\.[0-9]+).*/\1/'`
+if [ `uname` = "Darwin" ]; then
+	CUDA_VERSION=`nvcc --version | grep release | sed -Ee 's/.*release ([0-9]+\.[0-9]+).*/\1/'`
+else
+	CUDA_VERSION=`nvcc --version | grep release | sed -re 's/.*release ([0-9]+\.[0-9]+).*/\1/'`
+fi
 if [ $# == '1' ] ;
 then
     export GPGPUSIM_CONFIG=$CUDA_VERSION/$1
