@@ -31,7 +31,7 @@
 
 include version_detection.mk
 
-ifeq ($(GPGPUSIM_CONFIG), debug)
+ifeq ($(GPGPUSIM_CONFIG), $(CUDART_VERSION)/debug)
 	export DEBUG=1
 else
 	export DEBUG=0
