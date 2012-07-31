@@ -35,7 +35,7 @@ tag_array::~tag_array()
 }
 
 tag_array::tag_array( const cache_config &config, int core_id, int type_id ) 
-: m_config(config)
+: m_config(config), m_access(0), m_miss(0), m_pending_hit(0)
 {
     assert( m_config.m_write_policy == READ_ONLY );
     m_lines = new cache_block_t[ config.get_num_lines()];
