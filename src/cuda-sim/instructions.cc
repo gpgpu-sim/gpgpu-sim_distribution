@@ -882,6 +882,8 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
    src2_data,   // b
    op_result;   // temp variable to hold operation result
 
+   bool data_ready = false;
+
    // Get operand info of sources and destination
    const operand_info &dst  = pI->dst();     // d
    const operand_info &src1 = pI->src1();    // a
@@ -916,9 +918,11 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
          case B32_TYPE:
          case U32_TYPE:
             op_result.u32 = data.u32 & src2_data.u32;
+            data_ready = true;
             break;
          case S32_TYPE:
             op_result.s32 = data.s32 & src2_data.s32;
+            data_ready = true;
             break;
          default:
             printf("Execution error: type mismatch (%x) with instruction\natom.AND only accepts b32\n", to_type);
@@ -936,9 +940,11 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
          case B32_TYPE:
          case U32_TYPE:
             op_result.u32 = data.u32 | src2_data.u32;
+            data_ready = true;
             break;
          case S32_TYPE:
             op_result.s32 = data.s32 | src2_data.s32;
+            data_ready = true;
             break;
          default:
             printf("Execution error: type mismatch (%x) with instruction\natom.OR only accepts b32\n", to_type);
@@ -956,9 +962,11 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
          case B32_TYPE:
          case U32_TYPE:
             op_result.u32 = data.u32 ^ src2_data.u32;
+            data_ready = true;
             break;
          case S32_TYPE:
             op_result.s32 = data.s32 ^ src2_data.s32;
+            data_ready = true;
             break;
          default:
             printf("Execution error: type mismatch (%x) with instruction\natom.XOR only accepts b32\n", to_type);
@@ -980,13 +988,16 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
          case B32_TYPE:
          case U32_TYPE:
             op_result.u32 = MY_CAS_I(data.u32, src2_data.u32, src3_data.u32);
+            data_ready = true;
             break;
          case B64_TYPE:
          case U64_TYPE:
             op_result.u64 = MY_CAS_I(data.u64, src2_data.u64, src3_data.u64);
+            data_ready = true;
             break;
          case S32_TYPE:
             op_result.s32 = MY_CAS_I(data.s32, src2_data.s32, src3_data.s32);
+            data_ready = true;
             break;
          default:
             printf("Execution error: type mismatch (%x) with instruction\natom.CAS only accepts b32 and b64\n", to_type);
@@ -1003,13 +1014,16 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
          case B32_TYPE:
          case U32_TYPE:
             op_result.u32 = MY_EXCH(data.u32, src2_data.u32);
+            data_ready = true;
             break;
          case B64_TYPE:
          case U64_TYPE:
             op_result.u64 = MY_EXCH(data.u64, src2_data.u64);
+            data_ready = true;
             break;
          case S32_TYPE:
             op_result.s32 = MY_EXCH(data.s32, src2_data.s32);
+            data_ready = true;
             break;
          default:
             printf("Execution error: type mismatch (%x) with instruction\natom.EXCH only accepts b32\n", to_type);
@@ -1026,15 +1040,19 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
          switch ( to_type ) {
          case U32_TYPE:
             op_result.u32 = data.u32 + src2_data.u32;
+            data_ready = true;
             break;
          case S32_TYPE:
             op_result.s32 = data.s32 + src2_data.s32;
+            data_ready = true;
             break;
          case U64_TYPE: 
             op_result.u64 = data.u64 + src2_data.u64; 
+            data_ready = true; 
             break; 
          case F32_TYPE: 
             op_result.f32 = data.f32 + src2_data.f32; 
+            data_ready = true; 
             break; 
          default:
             printf("Execution error: type mismatch with instruction\natom.ADD only accepts u32, s32, u64, and f32\n");
@@ -1050,6 +1068,7 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
          switch ( to_type ) {
          case U32_TYPE: 
             op_result.u32 = MY_INC_I(data.u32, src2_data.u32);
+            data_ready = true;
             break;
          default:
             printf("Execution error: type mismatch with instruction\natom.INC only accepts u32 and s32\n");
@@ -1065,6 +1084,7 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
          switch ( to_type ) {
          case U32_TYPE: 
             op_result.u32 = MY_DEC_I(data.u32, src2_data.u32);
+            data_ready = true;
             break;
          default:
             printf("Execution error: type mismatch with instruction\natom.DEC only accepts u32 and s32\n");
@@ -1080,9 +1100,11 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
          switch ( to_type ) {
          case U32_TYPE: 
             op_result.u32 = MY_MIN_I(data.u32, src2_data.u32);
+            data_ready = true;
             break;
          case S32_TYPE:
             op_result.s32 = MY_MIN_I(data.s32, src2_data.s32);
+            data_ready = true;
             break;
          default:
             printf("Execution error: type mismatch with instruction\natom.MIN only accepts u32 and s32\n");
@@ -1098,9 +1120,11 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
          switch ( to_type ) {
          case U32_TYPE:
             op_result.u32 = MY_MAX_I(data.u32, src2_data.u32);
+            data_ready = true;
             break;
          case S32_TYPE:
             op_result.s32 = MY_MAX_I(data.s32, src2_data.s32);
+            data_ready = true;
             break;
          default:
             printf("Execution error: type mismatch with instruction\natom.MAX only accepts u32 and s32\n");
