@@ -551,9 +551,7 @@ __host__ cudaError_t CUDARTAPI cudaMemcpy2D(void *dst, size_t dpitch, const void
 {
 	CUctx_st *context = GPGPUSim_Context();
 	gpgpu_t *gpu = context->get_device()->get_gpgpu();
-	struct cudaArray *cuArray_ptr;
 	size_t size = spitch*height;
-	cuArray_ptr = (cudaArray*)dst;
 	gpgpusim_ptx_assert( (dpitch==spitch), "different src and dst pitch not supported yet" );
 	if( kind == cudaMemcpyHostToDevice )
 		gpu->memcpy_to_gpu( (size_t)dst, src, size );
@@ -1801,7 +1799,7 @@ int CUDARTAPI __cudaSynchronizeThreads(void**, void*)
 
 ////////
 
-extern "C" int ptx_parse();
+//extern "C" int ptx_parse();
 extern "C" int ptx__scan_string(const char*);
 extern "C" FILE *ptx_in;
 

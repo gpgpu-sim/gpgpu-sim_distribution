@@ -672,10 +672,6 @@ void TwoLevelScheduler::cycle() {
 	//Do the scheduling only from activeWarps
 	//If you schedule an instruction, move it to the end of the list
 
-	bool valid_inst = false;  // there was one warp with a valid instruction to issue (didn't require flush due to control hazard)
-	bool ready_inst = false;  // of the valid instructions, there was one not waiting for pending register writes
-	bool issued_inst = false; // of these we issued one
-
 	for (	std::list<int>::iterator warp_id = activeWarps.begin();
 			warp_id != activeWarps.end();
 			warp_id++) {
@@ -695,16 +691,13 @@ void TwoLevelScheduler::cycle() {
 					warp(*warp_id).set_next_pc(pc);
 					warp(*warp_id).ibuffer_flush();
 				} else {
-					valid_inst = true;
 					if ( !m_scoreboard->checkCollision(*warp_id, pI) ) {
-						ready_inst = true;
 						const active_mask_t &active_mask = m_simt_stack[*warp_id]->get_active_mask();
 						assert( warp(*warp_id).inst_in_pipeline() );
 						if ( (pI->op == LOAD_OP) || (pI->op == STORE_OP) || (pI->op == MEMORY_BARRIER_OP) ) {
 							if( m_mem_out->has_free() ) {
 								m_shader->issue_warp(*m_mem_out,pI,active_mask,*warp_id);
 								issued++;
-								issued_inst=true;
 								warp_inst_issued = true;
 								// Move it to pendingWarps
 								unsigned currwarp = *warp_id;
@@ -718,7 +711,6 @@ void TwoLevelScheduler::cycle() {
 								// always prefer SP pipe for operations that can use both SP and SFU pipelines
 								m_shader->issue_warp(*m_sp_out,pI,active_mask,*warp_id);
 								issued++;
-								issued_inst=true;
 								warp_inst_issued = true;
 								//Move it to end of the activeWarps
 								unsigned currwarp = *warp_id;
@@ -728,7 +720,6 @@ void TwoLevelScheduler::cycle() {
 								if( sfu_pipe_avail ) {
 									m_shader->issue_warp(*m_sfu_out,pI,active_mask,*warp_id);
 									issued++;
-									issued_inst=true;
 									warp_inst_issued = true;
 									//Move it to end of the activeWarps
 									unsigned currwarp = *warp_id;
