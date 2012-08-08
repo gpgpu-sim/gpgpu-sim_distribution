@@ -43,7 +43,7 @@ bool g_override_embedded_ptx = false;
 
 /// extern prototypes
 
-//extern "C" int ptx_parse();
+extern "C" int ptx_parse();
 extern "C" int ptx__scan_string(const char*);
 
 const char *g_ptxinfo_filename;
