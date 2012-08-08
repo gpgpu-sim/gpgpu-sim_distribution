@@ -1,5 +1,10 @@
 CHANGE LOG:
 
+Version 3.1.2 versus 3.1.1
+- Bug Fixes:
+    - Fixed a minor compilation bug with newer gcc/g++ versions
+    - Removed compiler warnings with gcc 4.7.1
+
 Version 3.1.1 versus 3.1.0
 - Add checks to top level makefile to ensure setup_environment is run and checks to
   setup_environment to ensure a compatible version of CUDA is installed.
