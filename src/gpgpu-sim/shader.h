@@ -42,7 +42,7 @@
 #include <algorithm>
 #include <deque>
 
-#include "../cuda-sim/ptx.tab.h"
+//#include "../cuda-sim/ptx.tab.h"
 
 #include "delayqueue.h"
 #include "stack.h"

@@ -30,6 +30,7 @@
 
 #include "instructions.h"
 #include "ptx_ir.h"
+#include "ptx.tab.h"
 #include "ptx_sim.h"
 #include <stdio.h>
 
