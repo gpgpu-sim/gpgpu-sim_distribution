@@ -27,6 +27,7 @@
 
 #include "ptx_parser.h"
 #include "ptx_ir.h"
+#include "ptx.tab.h"
 #include <stdarg.h>
 
 extern "C" int ptx_error( const char *s );
