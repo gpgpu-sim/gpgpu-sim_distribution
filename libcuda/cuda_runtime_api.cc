@@ -1350,7 +1350,7 @@ void useCuobjdump() {
 	unsigned source_num=1;
 	extract_code_using_cuobjdump(); //extract all the output of cuobjdump to _cuobjdump_*.*
 	cuobjdumpSectionList = pruneSectionList(cuobjdumpSectionList, context);
-	unsigned total_ptx_files = cuobjdumpSectionList.size()/2;
+	unsigned total_ptx_files = cuobjdumpSectionList.size()/2 + 1;
 
 	for (	std::list<cuobjdumpSection*>::iterator iter2 = cuobjdumpSectionList.begin();
 			iter2 != cuobjdumpSectionList.end();
@@ -1369,14 +1369,14 @@ void useCuobjdump() {
 						elfsection->getELFfilename(),
 						elfsection->getSASSfilename());
 				symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str,source_num);
-				printf("Adding %s with cubin handle %u\n", iter->getPTXfilename().c_str(), source_num);
-				context->add_binary(symtab, source_num);
+				printf("Adding %s with cubin handle %u\n", iter->getPTXfilename().c_str(), total_ptx_files-source_num);
+				context->add_binary(symtab, total_ptx_files-source_num);
 				gpgpu_ptxinfo_load_from_string( ptxcode,total_ptx_files-source_num);
 				delete[] ptxplus_str;
 			} else {
 				symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxcode, source_num);
-				printf("Adding %s with cubin handle %u\n", iter->getPTXfilename().c_str(), source_num);
-				context->add_binary(symtab,source_num);
+				printf("Adding %s with cubin handle %u\n", iter->getPTXfilename().c_str(), total_ptx_files-source_num);
+				context->add_binary(symtab,total_ptx_files-source_num);
 				gpgpu_ptxinfo_load_from_string( ptxcode, total_ptx_files-source_num);
 			}
 			source_num++;
