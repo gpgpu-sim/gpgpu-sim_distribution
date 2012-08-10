@@ -5,6 +5,9 @@ Version 3.1.1+edits (development branch) versus 3.1.1
     - Fixed a compile error that happens with newer gcc/g++ versions (4.7.1)
     - Fixed a bug with the association between cuobjdump output and cubin 
       handles (Bug #7 external)
+    - Adding support for atomic operations with generic memory space.  Before
+      this, atomic operations can only work on global memory space.  (Bug #14
+      external)
 
 Version 3.1.1 versus 3.1.0
 - Add checks to top level makefile to ensure setup_environment is run and checks to

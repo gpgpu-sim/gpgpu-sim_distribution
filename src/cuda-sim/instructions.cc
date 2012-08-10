@@ -867,9 +867,6 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
 {
    const ptx_instruction *pI = dynamic_cast<const ptx_instruction*>(inst);
 
-   // Check state space
-   assert( pI->get_space()==global_space );
-
    // "Decode" the output type
    unsigned to_type = pI->get_type();
    size_t size;
@@ -877,10 +874,10 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
    type_info_key::type_decode(to_type, size, t);
 
    // Set up operand variables
-   ptx_reg_t data,      // d
-   src1_data,   // a
-   src2_data,   // b
-   op_result;   // temp variable to hold operation result
+   ptx_reg_t data;        // d
+   ptx_reg_t src1_data;   // a
+   ptx_reg_t src2_data;   // b
+   ptx_reg_t op_result;   // temp variable to hold operation result
 
    bool data_ready = false;
 
@@ -890,18 +887,28 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
    const operand_info &src2 = pI->src2();    // b
 
    // Get operand values
+   src1_data = thread->get_operand_value(src1, src1, to_type, thread, 1);        // a
    if (dst.get_symbol()->type()){
-	   src1_data = thread->get_operand_value(src1, dst, to_type, thread, 1);      // a
-	   src2_data = thread->get_operand_value(src2, dst, to_type, thread, 1);      // b
+      src2_data = thread->get_operand_value(src2, dst, to_type, thread, 1);      // b
    } else {
 	   //This is the case whent he first argument (dest) is '_'
-	   src1_data = thread->get_operand_value(src1, src1, to_type, thread, 1);      // a
-	   src2_data = thread->get_operand_value(src2, src1, to_type, thread, 1);      // b
+      src2_data = thread->get_operand_value(src2, src1, to_type, thread, 1);     // b
    }
+
+   // Check state space
+   addr_t effective_address = src1_data.u64;  
+   memory_space_t space = pI->get_space(); 
+   if (space == undefined_space) {
+      // generic space - determine space via address 
+      space = whichspace(effective_address); 
+      assert( space == global_space ); 
+      effective_address = generic_to_global(effective_address); 
+   } 
+   assert( space == global_space );
 
    // Copy value pointed to in operand 'a' into register 'd'
    // (i.e. copy src1_data to dst)
-   thread->get_global_memory()->read(src1_data.u32,size/8,&data.s64);
+   thread->get_global_memory()->read(effective_address,size/8,&data.s64);
    if (dst.get_symbol()->type()){
 	   thread->set_operand_value(dst, data, to_type, thread, pI);                         // Write value into register 'd'
    }
@@ -1144,7 +1151,7 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
 
    // Write operation result into global memory
    // (i.e. copy src1_data to dst)
-   thread->get_global_memory()->write(src1_data.u32,size/8,&op_result.s64,thread,pI);
+   thread->get_global_memory()->write(effective_address,size/8,&op_result.s64,thread,pI);
 }
 
 // atom_impl will now result in a callback being called in mem_ctrl_pop (gpu-sim.c)
@@ -1153,23 +1160,33 @@ void atom_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    // SYNTAX
    // atom.space.operation.type d, a, b[, c]; (now read in callback)
 
-   // Check state space
-   assert( pI->get_space()== global_space );
+   // obtain memory space of the operation 
+   memory_space_t space = pI->get_space(); 
 
    // get the memory address
    const operand_info &src1 = pI->src1();
-   const operand_info &dst  = pI->dst();
+   // const operand_info &dst  = pI->dst();  // not needed for effective address calculation 
    unsigned i_type = pI->get_type();
    ptx_reg_t src1_data;
-   if (dst.get_symbol()->type()){
-	   src1_data = thread->get_operand_value(src1, dst, i_type, thread, 1);
+   src1_data = thread->get_operand_value(src1, src1, i_type, thread, 1);
+   addr_t effective_address = src1_data.u64; 
+
+   addr_t effective_address_final; 
+
+   // handle generic memory space by converting it to global 
+   if ( space == undefined_space ) {
+      assert( whichspace(effective_address) == global_space ); 
+      effective_address_final = generic_to_global(effective_address); 
+      space = global_space; 
    } else {
-	   src1_data = thread->get_operand_value(src1, src1, i_type, thread, 1);
+      assert( space == global_space ); 
+      effective_address_final = effective_address; 
    }
 
-   memory_space_t space = pI->get_space();
+   // Check state space
+   assert( space == global_space );
 
-   thread->m_last_effective_address = src1_data.u32;
+   thread->m_last_effective_address = effective_address_final;
    thread->m_last_memory_space = space;
    thread->m_last_dram_callback.function = atom_callback;
    thread->m_last_dram_callback.instruction = pI; 
