@@ -94,6 +94,7 @@
 #  endif
 # endif
 
+#define CL_USE_DEPRECATED_OPENCL_1_0_APIS
 #include <CL/cl.h>
 
 #include <map>
