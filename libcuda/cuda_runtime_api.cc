@@ -1491,9 +1491,8 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 	CUctx_st *context = GPGPUSim_Context();
 	static unsigned next_fat_bin_handle = 1;
 	if(context->get_device()->get_gpgpu()->get_config().use_cuobjdump()) {
-		void * s1 = *((void**)(fatCubin+8));
-		void * s2 = (s1+72);
-		char * filename = (char *)s2;
+		char * s1 = *((char**)((char*)fatCubin+8));
+		char * filename = (s1+72);
 		unsigned fat_cubin_handle = next_fat_bin_handle;
 		next_fat_bin_handle++;
 		printf("GPGPU-Sim PTX: __cudaRegisterFatBinary, fat_cubin_handle = %u, filename=%s\n", fat_cubin_handle, filename);
