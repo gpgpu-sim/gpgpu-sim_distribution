@@ -1163,7 +1163,7 @@ public:
 	std::string getPTXfilename() {return ptxfilename;}
 	void setPTXfilename(std::string f) {ptxfilename = f;}
 	virtual void print() {
-		std::cout << "ELF Section:" << std::endl;
+		std::cout << "PTX Section:" << std::endl;
 		std::cout << "arch: sm_" << getArch() << std::endl;
 		std::cout << "identifier: " << getIdentifier() << std::endl;
 		std::cout << "ptx filename: " << getPTXfilename() << std::endl;
@@ -1181,7 +1181,7 @@ void addCuobjdumpSection(int sectiontype){
 		cuobjdumpSectionList.push_front(new cuobjdumpELFSection());
 	else
 		cuobjdumpSectionList.push_front(new cuobjdumpPTXSection());
-	printf("## Adding new section %s\n", sectiontype==PTXSECTION?"PTX":"ELF");
+	printf("## Adding new section %s\n", sectiontype?"ELF":"PTX");
 }
 
 void setCuobjdumparch(const char* arch){
@@ -1271,10 +1271,22 @@ char* readfile (const std::string filename){
 	return ret;
 }
 
+//Function that helps debugging
+void printSectionList(std::list<cuobjdumpSection*> sl) {
+	std::list<cuobjdumpSection*>::iterator iter;
+	for (	iter = sl.begin();
+			iter != sl.end();
+			iter++
+	){
+		(*iter)->print();
+	}
+}
 
 //remove unecessary sm versions from the section list
 std::list<cuobjdumpSection*> pruneSectionList(std::list<cuobjdumpSection*> cuobjdumpSectionList, CUctx_st *context) {
 	unsigned forced_max_capability = context->get_device()->get_gpgpu()->get_config().get_forced_max_capability();
+
+	//For ptxplus, force the max capability to 19 if it's higher or unspecified(0)
 	if (context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus()){
 		if (	(forced_max_capability == 0) ||
 				(forced_max_capability >= 20)){
@@ -1284,6 +1296,9 @@ std::list<cuobjdumpSection*> pruneSectionList(std::list<cuobjdumpSection*> cuobj
 	}
 
 	std::list<cuobjdumpSection*> prunedList;
+
+	//Find the highest capability (that is lower than the forces maximum) for each cubin file
+	//and set it in cuobjdumpSectionMap. Do this only for ptx sections
 	std::map<std::string, unsigned> cuobjdumpSectionMap;
 	for (	std::list<cuobjdumpSection*>::iterator iter = cuobjdumpSectionList.begin();
 			iter != cuobjdumpSectionList.end();
@@ -1292,10 +1307,13 @@ std::list<cuobjdumpSection*> pruneSectionList(std::list<cuobjdumpSection*> cuobj
 		if(dynamic_cast<cuobjdumpPTXSection*>(*iter) != NULL &&
 				(capability <= forced_max_capability ||
 						forced_max_capability==0)) {
-			if(cuobjdumpSectionMap[(*iter)->getIdentifier()] < capability) cuobjdumpSectionMap[(*iter)->getIdentifier()] = capability;
+			if(cuobjdumpSectionMap[(*iter)->getIdentifier()] < capability)
+				cuobjdumpSectionMap[(*iter)->getIdentifier()] = capability;
 		}
 	}
 
+	//Throw away the sections with the lower capabilites and push those with the highest in
+	//the pruned list
 	for (	std::list<cuobjdumpSection*>::iterator iter = cuobjdumpSectionList.begin();
 			iter != cuobjdumpSectionList.end();
 			iter++){
@@ -1310,10 +1328,8 @@ std::list<cuobjdumpSection*> pruneSectionList(std::list<cuobjdumpSection*> cuobj
 }
 
 
-//! Find number of files with a certain sm version
 /*!
- * Within the section list, find the ELF section corresponding to a given
- * sm version and identifier
+ * Within the section list, find the ELF section corresponding to a given identifier
  */
 cuobjdumpELFSection* findelfsection(std::list<cuobjdumpSection*> sectionlist, const std::string identifier){
 
@@ -1321,7 +1337,7 @@ cuobjdumpELFSection* findelfsection(std::list<cuobjdumpSection*> sectionlist, co
 	for (	iter = sectionlist.begin();
 			iter != sectionlist.end();
 			iter++
-			){
+	){
 		cuobjdumpELFSection* elfsection;
 		if((elfsection=dynamic_cast<cuobjdumpELFSection*>(*iter)) != NULL){
 			if(elfsection->getIdentifier() == identifier)
@@ -1332,32 +1348,97 @@ cuobjdumpELFSection* findelfsection(std::list<cuobjdumpSection*> sectionlist, co
 	return NULL;
 }
 
-
-//Function that helps debugging
-void printSectionList(std::list<cuobjdumpSection*> sl) {
+/*!
+ * Within the section list, find the PTX section corresponding to a given identifier
+ */
+cuobjdumpPTXSection* findptxsection(std::list<cuobjdumpSection*> sectionlist, const std::string identifier){
 	std::list<cuobjdumpSection*>::iterator iter;
-	for (	iter = sl.begin();
-			iter != sl.end();
+	for (	iter = sectionlist.begin();
+			iter != sectionlist.end();
 			iter++
 	){
-		(*iter)->print();
+		cuobjdumpPTXSection* ptxsection;
+		if((ptxsection=dynamic_cast<cuobjdumpPTXSection*>(*iter)) != NULL){
+			if(ptxsection->getIdentifier() == identifier)
+				return ptxsection;
+		}
 	}
+	std::cout << identifier << std::endl;
+	assert(0 && "Could not find the required PTX section");
+	return NULL;
 }
 
+
+void cuobjdumpInit(){
+	CUctx_st *context = GPGPUSim_Context();
+
+	extract_code_using_cuobjdump(); //extract all the output of cuobjdump to _cuobjdump_*.*
+
+	cuobjdumpSectionList = pruneSectionList(cuobjdumpSectionList, context);
+}
+
+
+
+void cuobjdumpRegisterFatBinary(unsigned int handle, char* filename){
+
+	CUctx_st *context = GPGPUSim_Context();
+
+	std::string fname = filename;
+	cuobjdumpPTXSection* ptx = findptxsection(cuobjdumpSectionList, fname);
+
+	symbol_table *symtab;
+	char *ptxcode = readfile(ptx->getPTXfilename());
+	if(context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() ) {
+		cuobjdumpELFSection* elfsection = findelfsection(cuobjdumpSectionList, ptx->getIdentifier());
+		assert (elfsection!= NULL);
+		char *ptxplus_str = gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(
+				ptx->getPTXfilename(),
+				elfsection->getELFfilename(),
+				elfsection->getSASSfilename());
+		symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str, handle);
+		printf("Adding %s with cubin handle %u\n", ptx->getPTXfilename().c_str(), handle);
+		context->add_binary(symtab, handle);
+		gpgpu_ptxinfo_load_from_string( ptxcode, handle);
+		delete[] ptxplus_str;
+	} else {
+		symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxcode, handle);
+		printf("Adding %s with cubin handle %u\n", ptx->getPTXfilename().c_str(), handle);
+		context->add_binary(symtab, handle);
+		gpgpu_ptxinfo_load_from_string( ptxcode, handle);
+	}
+	load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
+	load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
+
+	//TODO: Remove temporarily files as per configurations
+}
+
+
+// Currently not used
 void useCuobjdump() {
 
 	CUctx_st *context = GPGPUSim_Context();
+
 	unsigned source_num=1;
 	extract_code_using_cuobjdump(); //extract all the output of cuobjdump to _cuobjdump_*.*
+
+	// There is variation in the order by which the cubins are registered. It was observed that
+	// the order is correct when the first section is a PTX section and is reversed when the
+	// first section is an ELF section
+	bool reverse=false;
+	if (dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()) != NULL)reverse=true;
+
 	cuobjdumpSectionList = pruneSectionList(cuobjdumpSectionList, context);
 	unsigned total_ptx_files = cuobjdumpSectionList.size()/2 + 1;
 
 	for (	std::list<cuobjdumpSection*>::iterator iter2 = cuobjdumpSectionList.begin();
 			iter2 != cuobjdumpSectionList.end();
 			iter2++
-			){
+	){
 		if (dynamic_cast<cuobjdumpPTXSection*>(*iter2) != NULL)
 		{
+			int cubin_handle;
+			if(reverse) cubin_handle = total_ptx_files-source_num;
+			else cubin_handle = source_num;
 			cuobjdumpPTXSection *iter = dynamic_cast<cuobjdumpPTXSection*>(*iter2);
 			symbol_table *symtab;
 			char *ptxcode = readfile(iter->getPTXfilename());
@@ -1368,16 +1449,16 @@ void useCuobjdump() {
 						iter->getPTXfilename(),
 						elfsection->getELFfilename(),
 						elfsection->getSASSfilename());
-				symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str,source_num);
-				printf("Adding %s with cubin handle %u\n", iter->getPTXfilename().c_str(), total_ptx_files-source_num);
-				context->add_binary(symtab, total_ptx_files-source_num);
-				gpgpu_ptxinfo_load_from_string( ptxcode,total_ptx_files-source_num);
+				symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str,cubin_handle);
+				printf("Adding %s with cubin handle %u\n", iter->getPTXfilename().c_str(), cubin_handle);
+				context->add_binary(symtab, cubin_handle);
+				gpgpu_ptxinfo_load_from_string( ptxcode, cubin_handle);
 				delete[] ptxplus_str;
 			} else {
-				symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxcode, source_num);
-				printf("Adding %s with cubin handle %u\n", iter->getPTXfilename().c_str(), total_ptx_files-source_num);
-				context->add_binary(symtab,total_ptx_files-source_num);
-				gpgpu_ptxinfo_load_from_string( ptxcode, total_ptx_files-source_num);
+				symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxcode, cubin_handle);
+				printf("Adding %s with cubin handle %u\n", iter->getPTXfilename().c_str(), cubin_handle);
+				context->add_binary(symtab, cubin_handle);
+				gpgpu_ptxinfo_load_from_string( ptxcode, cubin_handle);
 			}
 			source_num++;
 
@@ -1400,6 +1481,7 @@ void useCuobjdump() {
 
 }
 
+
 void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 {
 #if (CUDART_VERSION < 2010)
@@ -1409,16 +1491,19 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 	CUctx_st *context = GPGPUSim_Context();
 	static unsigned next_fat_bin_handle = 1;
 	if(context->get_device()->get_gpgpu()->get_config().use_cuobjdump()) {
+		void * s1 = *((void**)(fatCubin+8));
+		void * s2 = (s1+72);
+		char * filename = (char *)s2;
 		unsigned fat_cubin_handle = next_fat_bin_handle;
 		next_fat_bin_handle++;
-		printf("GPGPU-Sim PTX: __cudaRegisterFatBinary, fat_cubin_handle = %u\n", fat_cubin_handle);
+		printf("GPGPU-Sim PTX: __cudaRegisterFatBinary, fat_cubin_handle = %u, filename=%s\n", fat_cubin_handle, filename);
 		/*!
 		 * This function extracts all data from all files in first call
 		 * then for next calls, only returns the appropriate number
 		 */
 		assert(fat_cubin_handle >= 1);
-		if(fat_cubin_handle == 1)
-			useCuobjdump();
+		if (fat_cubin_handle==1) cuobjdumpInit();
+		cuobjdumpRegisterFatBinary(fat_cubin_handle, filename);
 
 		return (void**)fat_cubin_handle;
 	} else {
@@ -1463,7 +1548,7 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 			const char *ptx = info->ptx[selected_capability].ptx;
 			if(context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() ) {
 				printf("GPGPU-Sim PTX: ERROR ** PTXPlus is only supported through cuobjdump\n"
-				"\tEither enable cuobjdump or disable PTXPlus in your configuration file\n");
+						"\tEither enable cuobjdump or disable PTXPlus in your configuration file\n");
 				exit(1);
 			} else {
 				symtab=gpgpu_ptx_sim_load_ptx_from_string(ptx,source_num);
