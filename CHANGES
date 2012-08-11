@@ -1,6 +1,8 @@
 CHANGE LOG:
 
 Version 3.1.1+edits (development branch) versus 3.1.1
+- Added an improved and less brittle support for associating fatbins to
+  sections from the output of cuobjdump
 - Bug Fixes:
     - Fixed a compile error that happens with newer gcc/g++ versions (4.7.1)
     - Fixed a bug with the association between cuobjdump output and cubin 

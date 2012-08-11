@@ -95,7 +95,7 @@ headerinfo :	H_SEPARATOR NEWLINE
 				H_PRODUCER IDENTIFIER NEWLINE
 				H_HOST IDENTIFIER NEWLINE
 				H_COMPILESIZE IDENTIFIER NEWLINE
-				H_IDENTIFIER FILENAME {setCuobjdumparch($4); setCuobjdumpidentifier($19);};
+				H_IDENTIFIER FILENAME emptylines {setCuobjdumparch($4); setCuobjdumpidentifier($19);};
 
 ptxcode :	ptxcode PTXLINE {fprintf(ptxfile, "%s", $2);}
 		|	;
