@@ -1492,7 +1492,16 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 	static unsigned next_fat_bin_handle = 1;
 	if(context->get_device()->get_gpgpu()->get_config().use_cuobjdump()) {
 		char * s1 = *((char**)((char*)fatCubin+8));
+#if (CUDART_VERSION < 4010)
 		char * filename = (s1+72);
+#else
+		// for CUDA 4.1 and 4.2, the source file name can be found at offset 80, 
+		// or offset 96 if the source file has been compiled with a ptxas option 
+		char * filename = (s1+80);
+		if (strncmp(filename, "-dlcm=", 6) == 0) {
+			filename += 16; 
+		}
+#endif
 		unsigned fat_cubin_handle = next_fat_bin_handle;
 		next_fat_bin_handle++;
 		printf("GPGPU-Sim PTX: __cudaRegisterFatBinary, fat_cubin_handle = %u, filename=%s\n", fat_cubin_handle, filename);
