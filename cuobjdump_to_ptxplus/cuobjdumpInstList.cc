@@ -350,7 +350,7 @@ void cuobjdumpInstList::addCuobjdumpRegister(std::string reg, bool lo)
 		(typeModifiers->front() == ".S64") &&
 		((baseInst == "G2R")||(baseInst == "R2G")||
 		(baseInst == "GLD")||(baseInst == "GST")||
-		(baseInst == "LST"))))
+		(baseInst == "LST")|| (baseInst == "LLD"))))
 	{
 		vectorFlag = 64;
 	}
@@ -426,6 +426,7 @@ void cuobjdumpInstList::addCuobjdumpMemoryOperand(std::string mem, int memType) 
 	}
 
 	// Local memory
+	/*
 	if(memType == 3) {
 		std::stringstream out;
 		printf("Trying to find lmem for: %s\n", m_entryList.back().m_entryName.c_str());
@@ -434,7 +435,7 @@ void cuobjdumpInstList::addCuobjdumpMemoryOperand(std::string mem, int memType) 
 		out << "l" << kernellmemmap[m_entryList.back().m_entryName];// << mem;
 		mem = out.str();
 	}
-
+	*/
 	// Add the memory operand to instruction operand list
 	char* memName = new char [strlen(mem.c_str())+1];
 	strcpy(memName, mem.c_str());

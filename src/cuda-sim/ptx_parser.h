@@ -64,6 +64,7 @@ void add_literal_int( int value );
 void add_literal_float( float value );
 void add_literal_double( double value );
 void add_address_operand( const char *identifier, int offset );
+void add_address_operand2( int offset );
 void add_label( const char *idenfiier );
 void add_vector_spec(int spec );
 void add_space_spec( enum _memory_space_t spec, int value );
@@ -89,6 +90,7 @@ void change_memory_addr_space( const char *identifier );
 void change_operand_lohi( int lohi );
 void change_double_operand_type( int addr_type );
 void change_operand_neg( );
+void set_immediate_operand_type( );
 void version_header(double a);
 #ifdef __cplusplus 
 }

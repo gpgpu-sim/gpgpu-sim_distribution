@@ -342,6 +342,7 @@ public:
       m_const_mem_offset = 0;
       m_uid = get_uid();
       m_valid = false;
+      m_immediate_address=false;
    }
    operand_info( const symbol *addr )
    {
@@ -376,6 +377,7 @@ public:
       m_vector = false;
       m_neg_pred = false;
       m_is_return_var = false;
+      m_immediate_address=false;
    }
    operand_info( const symbol *addr1, const symbol *addr2 )
    {
@@ -396,6 +398,7 @@ public:
       m_vector = false;
       m_neg_pred = false;
       m_is_return_var = false;
+      m_immediate_address=false;
    }
    operand_info( int builtin_id, int dim_mod )
    {
@@ -412,6 +415,7 @@ public:
       m_addr_offset = dim_mod;
       m_neg_pred = false;
       m_is_return_var = false;
+      m_immediate_address=false;
    }
    operand_info( const symbol *addr, int offset )
    {
@@ -428,6 +432,7 @@ public:
       m_addr_offset = offset;
       m_neg_pred = false;
       m_is_return_var = false;
+      m_immediate_address=false;
    }
    operand_info( unsigned x )
    {
@@ -441,9 +446,10 @@ public:
       m_vector = false;
       m_type = unsigned_t;
       m_value.m_unsigned = x;
-      m_addr_offset = 0;
+      m_addr_offset = x;
       m_neg_pred = false;
       m_is_return_var = false;
+      m_immediate_address=true;
    }
    operand_info( int x )
    {
@@ -460,6 +466,7 @@ public:
       m_addr_offset = 0;
       m_neg_pred = false;
       m_is_return_var = false;
+      m_immediate_address=false;
    }
    operand_info( float x )
    {
@@ -476,6 +483,7 @@ public:
       m_addr_offset = 0;
       m_neg_pred = false;
       m_is_return_var = false;
+      m_immediate_address=false;
    }
    operand_info( double x )
    {
@@ -492,6 +500,7 @@ public:
       m_addr_offset = 0;
       m_neg_pred = false;
       m_is_return_var = false;
+      m_immediate_address=false;
    }
    operand_info( const symbol *s1, const symbol *s2, const symbol *s3, const symbol *s4 )
    {
@@ -512,11 +521,12 @@ public:
       m_addr_offset = 0;
       m_neg_pred = false;
       m_is_return_var = false;
+      m_immediate_address=false;
    }
 
    void make_memory_operand() { m_type = memory_t;}
    void set_return() { m_is_return_var = true; }
-
+   void set_immediate_addr() {m_immediate_address=true;}
    const std::string &name() const
    {
       assert( m_type == symbolic_t || m_type == reg_t || m_type == address_t || m_type == memory_t || m_type == label_t);
@@ -606,6 +616,10 @@ public:
       return (m_addr_space!=undefined_space); 
    }
 
+   bool is_immediate_address() const {
+	   return   m_immediate_address;
+   }
+
    bool is_literal() const { return m_type == int_t ||
       m_type == float_op_t ||
       m_type == double_op_t ||
@@ -678,7 +692,7 @@ private:
    bool m_valid;
    bool m_vector;
    enum operand_type m_type;
-
+   bool m_immediate_address;
    enum _memory_space_t m_addr_space;
    int m_operand_lohi;
    int m_double_operand_type;

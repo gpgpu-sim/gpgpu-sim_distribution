@@ -689,8 +689,8 @@ void change_memory_addr_space(const char *identifier)
    if(!strcmp(l, "l"))
    {
        g_operands.back().set_addr_space(local_space);
-       parse_assert(g_current_symbol_table->lookup(identifier) != NULL, "Local memory segment was not defined.");
-       g_operands.back().set_const_mem_offset(g_current_symbol_table->lookup(identifier)->get_address());
+       //parse_assert(g_current_symbol_table->lookup(identifier) != NULL, "Local memory segment was not defined.");
+       //g_operands.back().set_const_mem_offset(g_current_symbol_table->lookup(identifier)->get_address());
        recognizedType = true;
    }
 
@@ -709,6 +709,13 @@ void change_operand_lohi( int lohi )
 
    g_operands.back().set_operand_lohi(lohi);
 
+}
+
+void set_immediate_operand_type ()
+{
+	 DPRINTF("set_immediate_operand_type");
+	 assert( !g_operands.empty() );
+	 g_operands.back().set_immediate_addr();
 }
 
 void change_double_operand_type( int operand_type )
@@ -807,6 +814,12 @@ void add_address_operand( const char *identifier, int offset )
       parse_error( msg.c_str() );
    }
    g_operands.push_back( operand_info(s,offset) );
+}
+
+void add_address_operand2( int offset )
+{
+   DPRINTF("add_address_operand");
+   g_operands.push_back( operand_info((unsigned)offset) );
 }
 
 void add_array_initializer()
