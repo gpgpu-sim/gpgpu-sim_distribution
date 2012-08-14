@@ -90,6 +90,7 @@ void add_pred( const char *a, int b, int c ) {DPRINTF(" ");}
 void add_scalar_operand( const char *a ) {DPRINTF("%s", a);}
 void add_neg_pred_operand( const char *a ) {DPRINTF(" ");}
 void add_address_operand( const char *a, int b ) {DPRINTF("%s", a);}
+void add_address_operand2( int b ) {DPRINTF(" ");}
 void change_operand_lohi( int a ) {DPRINTF(" ");}
 void change_double_operand_type( int a ) {DPRINTF(" ");}
 void change_operand_neg( ) {DPRINTF(" ");}

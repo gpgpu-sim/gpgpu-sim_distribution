@@ -539,7 +539,8 @@ void cuobjdumpInst::printCuobjdumpOperand(std::string currentPiece, std::string 
 					(m_base == "R2G") ||
 					(m_base == "GLD") ||
 					(m_base == "GST") ||
-					(m_base == "LST") ))) {
+					(m_base == "LST") ||
+					(m_base == "LLD")))) {
 			std::string modsub = mod.substr(1);
 			int regNumInt = atoi(modsub.c_str());
 			std::stringstream temp;
@@ -576,8 +577,7 @@ void cuobjdumpInst::printCuobjdumpOperand(std::string currentPiece, std::string 
 		std::string modsub2;
 		std::string modsub3;
 		modsub = mod.c_str();
-		int localFlag = 0;
-
+		int const_sharedFlag =0;
 		if(mod.find("global14") != std::string::npos) {
 			//Those instructions don't need the dereferencing done by g [*]
 			if(	base == "GRED" ||
@@ -590,15 +590,23 @@ void cuobjdumpInst::printCuobjdumpOperand(std::string currentPiece, std::string 
 		} else if(mod[0]=='g') {
 			//Shared memory
 			output("s[");
+			const_sharedFlag=1;
 		} else if(mod.find("local") !=  std::string::npos) {
-			modsub3 = modsub.substr(4, modsub.length()-10);
-			output(modsub3.c_str());
+			if((base=="LST")||
+				(base=="LLD"))
 			output("[");
-			localFlag = 1;
+		else
+			output("l[");
+			//modsub3 = modsub.substr(4, modsub.length()-10);
+			//output(modsub3.c_str());
+			//output("[");
+			//localFlag = 1;
 		} else if(mod.substr(0,9) == "constant1") {
 			output(modsub.substr(0, modsub.find_first_of("[]")+1).c_str());
+			const_sharedFlag=1;
 		} else if(mod.substr(0,9)=="constant0"){
 			output("constant0[");
+			const_sharedFlag=1;
 		} else {
 			printf("Unidentified modifier: %s\n", mod.c_str());
 			assert(0);
@@ -636,14 +644,17 @@ void cuobjdumpInst::printCuobjdumpOperand(std::string currentPiece, std::string 
 				std::stringstream hexStringConvert;
 				hexStringConvert << std::hex << modsub2;
 				hexStringConvert >> addrValue;
-				unsigned chunksize = 4;
-				if (	this->m_typeModifiers->size()>0 &&
-						(	m_typeModifiers->back() == ".S16" ||
-							m_typeModifiers->back() == ".U16")) chunksize = 2;
-				if (	this->m_typeModifiers->size()>0 &&
-						(	m_typeModifiers->back() == ".U8" ||
-							m_typeModifiers->back() == ".S8")) chunksize = 1;
-				addrValue = addrValue*chunksize;
+				if(const_sharedFlag == 1)
+				{
+					unsigned chunksize = 4;
+					if (	this->m_typeModifiers->size()>0 &&
+							(	m_typeModifiers->back() == ".S16" ||
+								m_typeModifiers->back() == ".U16")) chunksize = 2;
+					if (	this->m_typeModifiers->size()>0 &&
+							(	m_typeModifiers->back() == ".U8" ||
+								m_typeModifiers->back() == ".S8")) chunksize = 1;
+					addrValue = addrValue*chunksize;
+				}
 				char outputHex[10];
 				sprintf(outputHex, "%x", addrValue);
 				std::stringstream outputhex;
@@ -669,7 +680,7 @@ void cuobjdumpInst::printCuobjdumpOperand(std::string currentPiece, std::string 
 				hexStringConvert << std::hex << modsub;
 				hexStringConvert >> addrValue;
 
-				if(localFlag == 0)
+				if(const_sharedFlag == 1)
 				{
 					unsigned chunksize = 4;
 					if ( m_typeModifiers->size()>0 &&

@@ -106,7 +106,9 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
             result = get_reg( op.get_symbol() );
          } else if ( op.is_builtin()) {
             result = get_builtin( op.get_int(), op.get_addr_offset() );
-         } else if ( op.is_memory_operand() ) {
+         } else  if(op.is_immediate_address()){
+    		 result = op.get_addr_offset();
+    	 } else if ( op.is_memory_operand() ) {
             // a few options here...
             const symbol *sym = op.get_symbol();
             const type_info *type = sym->type();

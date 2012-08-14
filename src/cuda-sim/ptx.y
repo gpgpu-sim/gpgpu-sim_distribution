@@ -527,6 +527,7 @@ address_expression: IDENTIFIER { add_address_operand($1,0); }
 	| IDENTIFIER LO_OPTION { add_address_operand($1,0); change_operand_lohi(1);}
 	| IDENTIFIER HI_OPTION { add_address_operand($1,0); change_operand_lohi(2); }
 	| IDENTIFIER PLUS INT_OPERAND { add_address_operand($1,$3); }
+	| INT_OPERAND { add_address_operand2($1); }
 	;
 
 %%

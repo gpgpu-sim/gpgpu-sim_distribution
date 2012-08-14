@@ -813,6 +813,9 @@ void ptx_instruction::pre_decode()
                   // TODO: first address register in $r1+=$r2 should be an output register as well
                }
             }
+            else if(o.is_immediate_address()){
+
+            }
             // Regular PTX operand
             else if (o.get_symbol()->type()->get_key().is_reg()) { // Memory operand contains a register
               ar1 = o.reg_num();

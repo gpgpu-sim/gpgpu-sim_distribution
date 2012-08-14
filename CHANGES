@@ -10,6 +10,11 @@ Version 3.1.1+edits (development branch) versus 3.1.1
     - Adding support for atomic operations with generic memory space.  Before
       this, atomic operations can only work on global memory space.  (Bug #14
       external)
+    - Fixed a bug in conversion to ptxplus that was causing local memory store 
+      or load instruction to be ignored.
+    - Adding support for direct addressing using immediate values for the load
+      and store instructions.
+    - Fixed a bug that was causing inconsistency in local memory address calculations
 
 Version 3.1.1 versus 3.1.0
 - Add checks to top level makefile to ensure setup_environment is run and checks to
