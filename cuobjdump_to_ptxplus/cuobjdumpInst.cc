@@ -1494,9 +1494,16 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 	else if(m_base == "LST")
 	{
 		printCuobjdumpPredicate();
-		output("mov");
+		//output("mov");
+		output("st.local");
 		printCuobjdumpBaseModifiers();
-		printCuobjdumpTypeModifiers();
+		if (m_typeModifiers->front() == ".S128") {
+			output(".v4.u32");
+		} else if (m_typeModifiers->front() == ".S64") {
+			output(".v2.u32");
+		} else {
+			printCuobjdumpTypeModifiers();
+		}
 		printCuobjdumpOperands();
 		output(";");
 	}
@@ -1553,9 +1560,16 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 	else if(m_base == "LLD")
 	{
 		printCuobjdumpPredicate();
-		output("mov");
+		//output("mov");
+		output("ld.local");
 		printCuobjdumpBaseModifiers();
-		printCuobjdumpTypeModifiers();
+		if (m_typeModifiers->front() == ".S128") {
+			output(".v4.u32");
+		} else if (m_typeModifiers->front() == ".S64") {
+			output(".v2.u32");
+		} else {
+			printCuobjdumpTypeModifiers();
+		}
 		printCuobjdumpOperands();
 		output(";");
 	}
