@@ -1638,7 +1638,8 @@ void CUDARTAPI __cudaRegisterFunction(
 	unsigned fat_cubin_handle = (unsigned)(unsigned long long)fatCubinHandle;
 	printf("GPGPU-Sim PTX: __cudaRegisterFunction %s : hostFun 0x%p, fat_cubin_handle = %u\n",
 			deviceFun, hostFun, fat_cubin_handle);
-	cuobjdumpParseBinary(fat_cubin_handle);
+	if(context->get_device()->get_gpgpu()->get_config().use_cuobjdump())
+		cuobjdumpParseBinary(fat_cubin_handle);
 	context->register_function( fat_cubin_handle, hostFun, deviceFun );
 }
 
@@ -1654,7 +1655,8 @@ extern void __cudaRegisterVar(
 {
 	printf("GPGPU-Sim PTX: __cudaRegisterVar: hostVar = %p; deviceAddress = %s; deviceName = %s\n", hostVar, deviceAddress, deviceName);
 	printf("GPGPU-Sim PTX: __cudaRegisterVar: Registering const memory space of %d bytes\n", size);
-	cuobjdumpParseBinary((unsigned)(unsigned long long)fatCubinHandle);
+	if(GPGPUSim_Context()->get_device()->get_gpgpu()->get_config().use_cuobjdump())
+		cuobjdumpParseBinary((unsigned)(unsigned long long)fatCubinHandle);
 	fflush(stdout);
 	if ( constant && !global && !ext ) {
 		gpgpu_ptx_sim_register_const_variable(hostVar,deviceName,size);
