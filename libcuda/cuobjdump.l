@@ -107,13 +107,14 @@ newlines	{newline}+
 <header>"has debug info"{newline}
 
 	/* Looking for the identifier (filename) then the header is done */
-<endheader>[[:alnum:]_\.]+	yylval.string_value = strdup(yytext); yy_pop_state(); return FILENAME;
+	/* <endheader>[[:alnum:]_\./]+	yylval.string_value = strdup(yytext); yy_pop_state(); return FILENAME; */
+<endheader>{notnewline}+	yylval.string_value = strdup(yytext); yy_pop_state(); return FILENAME;
 
 
 {newline}	return NEWLINE;
 
 	/*Reached end of file*/
-<<EOF>> return 0;
+<<EOF>> BEGIN(INITIAL);return 0;
 
 	/*No other rule matched. Throw an error*/
 .	cuobjdump_error("Invalid token");

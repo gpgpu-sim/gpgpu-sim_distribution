@@ -6,7 +6,10 @@ Version 3.1.1+edits (development branch) versus 3.1.1
   sections from the output of cuobjdump
 - Added raw simulation time printout back for CUDA.  
 - Revived support for PTX file override via environment variables for CUDA 4.0
-  onwards. 
+  onwards.
+- Experimental support for libraries, currently not working because of
+  undocumented functions in the cuda runtime API.
+- Converted loading fat binaries to be done on demand basis
 - Bug Fixes:
     - Fixed a compile error that happens with newer gcc/g++ versions (4.7.1)
     - Fixed a bug with the association between cuobjdump output and cubin

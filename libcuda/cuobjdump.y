@@ -61,7 +61,8 @@ char filename [1024];
 
 %%
 
-program :	emptylines section
+program :	{printf("######### cuobjdump parser ########\n");}
+			emptylines section
 		|	program section;
 
 emptylines	:	emptylines NEWLINE
@@ -103,7 +104,7 @@ ptxcode :	ptxcode PTXLINE {fprintf(ptxfile, "%s", $2);}
 elfcode :	elfcode ELFLINE {fprintf(elffile, "%s", $2);}
 		|	;
 
-sasscode :	sasscode SASSLINE {fprintf(sassfile, "%s", $2)}
+sasscode :	sasscode SASSLINE {fprintf(sassfile, "%s", $2);}
 		 |	;
 
 
