@@ -51,7 +51,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token SEMICOLON
 %token QUOTE
 %token LINE
-%token WARNING
+%token <string_value> WARNING
 %token FOR
 
 %{
@@ -78,6 +78,7 @@ input:	/* empty */
 
 line: 	HEADER INFO COLON line_info
 	| HEADER IDENTIFIER COMMA LINE INT_OPERAND SEMICOLON WARNING
+	| HEADER WARNING { printf("GPGPU-Sim: ptxas %s\n", $2); }
 	;
 
 line_info: function_name

@@ -259,6 +259,7 @@ directive_statement: variable_declaration SEMI_COLON
 	| FILE_DIRECTIVE INT_OPERAND STRING { add_file($2,$3); } 
 	| LOC_DIRECTIVE INT_OPERAND INT_OPERAND INT_OPERAND 
 	| PRAGMA_DIRECTIVE STRING SEMI_COLON { add_pragma($2); }
+	| function_decl SEMI_COLON {/*Do nothing*/}
 	;
 
 variable_declaration: variable_spec identifier_list { add_variables(); }

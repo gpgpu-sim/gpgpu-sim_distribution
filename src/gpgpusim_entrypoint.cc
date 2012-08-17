@@ -132,9 +132,10 @@ void *gpgpu_sim_thread_concurrent(void*)
            printf("GPGPU-Sim: ** STOP simulation thread (no work) **\n");
            fflush(stdout);
         }
-		if(sim_cycles) {
-			g_the_gpu->update_stats();
-		}
+        if(sim_cycles) {
+            g_the_gpu->update_stats();
+            print_simulation_time();
+        }
         pthread_mutex_lock(&g_sim_lock);
         g_sim_active = false;
         pthread_mutex_unlock(&g_sim_lock);
