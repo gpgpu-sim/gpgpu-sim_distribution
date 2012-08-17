@@ -1612,12 +1612,6 @@ void __cudaUnregisterFatBinary(void **fatCubinHandle)
 	;
 }
 
-cudaError_t cudaGetExportTable(
-		const void **ppExportTable,
-		const cudaUUID_t *pExportTableId) {
-	return g_last_cudaError = cudaSuccess;
-}
-
 cudaError_t cudaDeviceReset ( void ) {
 	// Should reset the simulated GPU
 	return g_last_cudaError = cudaSuccess;
