@@ -66,8 +66,8 @@ bfind   TC; ptx_lval.int_value = BFIND_OP; return OPCODE;
 bra     TC; ptx_lval.int_value = BRA_OP; return OPCODE;
 brev    TC; ptx_lval.int_value = BREV_OP; return OPCODE;
 brkpt   TC; ptx_lval.int_value = BRKPT_OP; return OPCODE;
-call	TC; ptx_lval.int_value = CALL_OP; return OPCODE;
-callp    TC; ptx_lval.int_value = CALLP_OP; return OPCODE;
+call	TC; BEGIN(NOT_OPCODE); ptx_lval.int_value = CALL_OP; return OPCODE; // blocking opcode token in case the callee has the same name as an opcode
+callp    TC; BEGIN(NOT_OPCODE); ptx_lval.int_value = CALLP_OP; return OPCODE;
 clz	TC; ptx_lval.int_value = CLZ_OP; return OPCODE;
 cnot	TC; ptx_lval.int_value = CNOT_OP; return OPCODE;
 cos	TC; ptx_lval.int_value = COS_OP; return OPCODE;
@@ -155,7 +155,7 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.entry TC; return ENTRY_DIRECTIVE;
 \.extern TC; return EXTERN_DIRECTIVE;
 \.file	 TC; BEGIN(INITIAL); return FILE_DIRECTIVE;
-\.func   TC; BEGIN(NOT_OPCODE); return FUNC_DIRECTIVE;
+\.func   TC; BEGIN(NOT_OPCODE); return FUNC_DIRECTIVE; // blocking opcode parsing in case the function has the same name as an opcode (e.g. sin(), cos())
 \.global TC; return GLOBAL_DIRECTIVE;
 \.local  TC; return LOCAL_DIRECTIVE;
 \.loc    TC; return LOC_DIRECTIVE;
@@ -352,7 +352,7 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 ";"	TC; BEGIN(INITIAL); return SEMI_COLON;
 "!"	TC; return EXCLAMATION;
 "=" 	TC; return EQUALS;
-"{"	TC; return LEFT_BRACE;
+"{"	TC; BEGIN(INITIAL); return LEFT_BRACE; // starting a statement block (allow next token to be parsed as an opcode)
 "}"	TC; return RIGHT_BRACE;
 \.	TC; return PERIOD;
 "/"	TC; return BACKSLASH;
