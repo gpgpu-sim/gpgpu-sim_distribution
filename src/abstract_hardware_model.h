@@ -328,6 +328,7 @@ public:
     unsigned get_forced_max_capability() const { return m_ptx_force_max_capability; }
     bool convert_to_ptxplus() const { return m_ptx_convert_to_ptxplus; }
     bool use_cuobjdump() const { return m_ptx_use_cuobjdump; }
+    bool experimental_lib_support() const { return m_experimental_lib_support; }
 
     int         get_ptx_inst_debug_to_file() const { return g_ptx_inst_debug_to_file; }
     const char* get_ptx_inst_debug_file() const  { return g_ptx_inst_debug_file; }
@@ -338,6 +339,7 @@ private:
     // PTX options
     int m_ptx_convert_to_ptxplus;
     int m_ptx_use_cuobjdump;
+    int m_experimental_lib_support;
     unsigned m_ptx_force_max_capability;
 
     int   g_ptx_inst_debug_to_file;
