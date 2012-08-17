@@ -49,6 +49,7 @@ int ptx_error( const char *s );
 
 %s IN_STRING
 %s IN_COMMENT
+%x IN_FUNC_DECL
 %x NOT_OPCODE
 %%
 
@@ -143,7 +144,7 @@ nop     TC; ptx_lval.int_value = NOP_OP; return OPCODE;
 break  TC; ptx_lval.int_value = BREAK_OP; return OPCODE;
 breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 
-<INITIAL,NOT_OPCODE>{
+<INITIAL,NOT_OPCODE,IN_INST,IN_FUNC_DECL>{
 
 \.align TC; return ALIGN_DIRECTIVE;
 \.branchtargets TC; return BRANCHTARGETS_DIRECTIVE;
@@ -155,7 +156,7 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.entry TC; return ENTRY_DIRECTIVE;
 \.extern TC; return EXTERN_DIRECTIVE;
 \.file	 TC; BEGIN(INITIAL); return FILE_DIRECTIVE;
-\.func   TC; BEGIN(NOT_OPCODE); return FUNC_DIRECTIVE; // blocking opcode parsing in case the function has the same name as an opcode (e.g. sin(), cos())
+\.func   TC; BEGIN(IN_FUNC_DECL); return FUNC_DIRECTIVE; // blocking opcode parsing in case the function has the same name as an opcode (e.g. sin(), cos())
 \.global TC; return GLOBAL_DIRECTIVE;
 \.local  TC; return LOCAL_DIRECTIVE;
 \.loc    TC; return LOC_DIRECTIVE;
@@ -352,7 +353,6 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 ";"	TC; BEGIN(INITIAL); return SEMI_COLON;
 "!"	TC; return EXCLAMATION;
 "=" 	TC; return EQUALS;
-"{"	TC; BEGIN(INITIAL); return LEFT_BRACE; // starting a statement block (allow next token to be parsed as an opcode)
 "}"	TC; return RIGHT_BRACE;
 \.	TC; return PERIOD;
 "/"	TC; return BACKSLASH;
@@ -366,6 +366,9 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 
 
 }
+
+<IN_FUNC_DECL>"{"	TC; BEGIN(INITIAL); return LEFT_BRACE; // starting a statement block (allow next token to be parsed as an opcode)
+<INITIAL,NOT_OPCODE>"{"	TC; return LEFT_BRACE; // starting a vector operand (next token cannot be opcode)
 
 <INITIAL>{
 "/*"  BEGIN(IN_COMMENT);
@@ -387,7 +390,7 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 
 <*>\t@@DWARF.*\n
 
-<INITIAL,NOT_OPCODE>.  TC; ptx_error((const char*)NULL);
+<INITIAL,NOT_OPCODE,IN_FUNC_DECL>.  TC; ptx_error((const char*)NULL);
 %%
 
 extern int g_error_detected;
