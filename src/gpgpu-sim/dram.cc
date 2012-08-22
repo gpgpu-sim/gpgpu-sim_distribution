@@ -92,6 +92,7 @@ dram_t::dram_t( unsigned int partition_id, const struct memory_config *config, m
    max_mrqs_temp = 0;
    bwutil = 0;
    max_mrqs = 0;
+   ave_mrqs = 0;
 
    for (unsigned i=0;i<10;i++) {
       dram_util_bins[i]=0;

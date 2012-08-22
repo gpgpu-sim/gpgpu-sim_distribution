@@ -434,7 +434,7 @@ void memory_stats_t::memlatstat_print( unsigned n_mem, unsigned gpu_mem_n_bk )
       printf("\nNumber of Memory Banks Accessed per Memory Operation per Warp (from 0):\n");
       unsigned long long accum_MCBs_accessed = 0;
       unsigned long long tot_mem_ops_per_warp = 0;
-      for (i=0;i<= n_mem*gpu_mem_n_bk ; i++ ) {
+      for (i=0;i< n_mem*gpu_mem_n_bk ; i++ ) {
          accum_MCBs_accessed += i*num_MCBs_accessed[i];
          tot_mem_ops_per_warp += num_MCBs_accessed[i];
          printf("%d\t", num_MCBs_accessed[i]);
