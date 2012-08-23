@@ -493,11 +493,13 @@ operand: IDENTIFIER  { add_scalar_operand( $1 ); }
 vector_operand: LEFT_BRACE IDENTIFIER COMMA IDENTIFIER RIGHT_BRACE { add_2vector_operand($2,$4); }
 		| LEFT_BRACE IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER RIGHT_BRACE { add_3vector_operand($2,$4,$6); }
 		| LEFT_BRACE IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER RIGHT_BRACE { add_4vector_operand($2,$4,$6,$8); }
+		| LEFT_BRACE IDENTIFIER RIGHT_BRACE { add_1vector_operand($2); }
 	;
 
 tex_operand: LEFT_SQUARE_BRACKET IDENTIFIER COMMA { add_scalar_operand($2); }
 		vector_operand 
 	     RIGHT_SQUARE_BRACKET
+	;
 
 builtin_operand: SPECIAL_REGISTER DIMENSION_MODIFIER { add_builtin_operand($1,$2); }
         | SPECIAL_REGISTER { add_builtin_operand($1,-1); }

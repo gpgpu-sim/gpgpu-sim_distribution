@@ -95,6 +95,7 @@ void change_operand_lohi( int a ) {DPRINTF(" ");}
 void change_double_operand_type( int a ) {DPRINTF(" ");}
 void change_operand_neg( ) {DPRINTF(" ");}
 void add_double_operand( const char *a, const char *b ) {DPRINTF(" ");}
+void add_1vector_operand( const char *a ) {DPRINTF(" ");}
 void add_2vector_operand( const char *a, const char *b ) {DPRINTF(" ");}
 void add_3vector_operand( const char *a, const char *b, const char *c ) {DPRINTF(" ");}
 void add_4vector_operand( const char *a, const char *b, const char *c, const char *d ) {DPRINTF(" ");}
