@@ -54,6 +54,7 @@ void add_variables();
 void set_variable_type();
 void add_opcode( int opcode );
 void add_pred( const char *identifier, int negate, int predModifier );
+void add_1vector_operand( const char *d1 );
 void add_2vector_operand( const char *d1, const char *d2 );
 void add_3vector_operand( const char *d1, const char *d2, const char *d3 );
 void add_4vector_operand( const char *d1, const char *d2, const char *d3, const char *d4 );

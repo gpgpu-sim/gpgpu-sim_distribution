@@ -602,6 +602,15 @@ void add_double_operand( const char *d1, const char *d2 )
    g_operands.push_back( operand_info(s1,s2) );
 }
 
+void add_1vector_operand( const char *d1 ) 
+{
+   // handles the single element vector operand ({%v1}) found in tex.1d instructions
+   DPRINTF("add_1vector_operand");
+   const symbol *s1 = g_current_symbol_table->lookup(d1);
+   parse_assert( s1 != NULL, "component(s) missing declarations.");
+   g_operands.push_back( operand_info(s1,NULL,NULL,NULL) );
+}
+
 void add_2vector_operand( const char *d1, const char *d2 ) 
 {
    DPRINTF("add_2vector_operand");
