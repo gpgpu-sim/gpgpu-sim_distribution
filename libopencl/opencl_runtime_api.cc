@@ -601,18 +601,18 @@ char *_cl_program::get_ptx()
       abort();
    }
    size_t buffer_length= get_ptx_size();
-   char *tmp = (char*)calloc(buffer_length,1);
+   char *tmp = (char*)calloc(buffer_length + 1,1);
+   tmp[ buffer_length ] = NULL;
    unsigned n=0;
    std::map<cl_uint,pgm_info>::iterator p;
    for( p=m_pgm.begin(); p != m_pgm.end(); p++ ) {
       const char *ptx = p->second.m_asm.c_str();
-      unsigned len = strlen( ptx ) + 1;
-      assert( (n+len-1) < buffer_length );
+      unsigned len = strlen( ptx );
+      assert( (n+len) <= buffer_length );
       memcpy(tmp+n,ptx,len);
       n+=len;
    }
-   assert( n < buffer_length );
-   tmp[n]=0;
+   assert( n == buffer_length );
    return tmp;
 }
 
@@ -622,9 +622,7 @@ size_t _cl_program::get_ptx_size()
    std::map<cl_uint,pgm_info>::iterator p;
    for( p=m_pgm.begin(); p != m_pgm.end(); p++ ) {
       buffer_length += p->second.m_asm.length();
-      buffer_length++;
    }
-   buffer_length++;
    return buffer_length;
 }
 
@@ -1196,7 +1194,6 @@ clGetProgramInfo(cl_program         program,
       break;
    case CL_PROGRAM_BINARIES:
       len = program->get_ptx_size();
-      if( param_value && param_value_size < NUM_DEVICES * len ) return CL_INVALID_VALUE;
       tmp = program->get_ptx();
       if( param_value ) memcpy( ((char**)param_value)[0], tmp, len );
       if( param_value_size_ret ) *param_value_size_ret = len;
