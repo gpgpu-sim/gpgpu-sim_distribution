@@ -209,12 +209,17 @@ input:	/* empty */
 	;
 
 function_defn: function_decl { set_symtab($1); func_header(".skip"); } statement_block { end_function(); }
-	| function_decl { set_symtab($1); } block_spec { func_header(".skip"); } statement_block { end_function(); }
+	| function_decl { set_symtab($1); } block_spec_list { func_header(".skip"); } statement_block { end_function(); }
 	;
 
 block_spec: MAXNTID_DIRECTIVE INT_OPERAND COMMA INT_OPERAND COMMA INT_OPERAND {func_header_info_int(".maxntid", $2);
 										func_header_info_int(",", $4);
 										func_header_info_int(",", $6); }
+	| MINNCTAPERSM_DIRECTIVE INT_OPERAND { func_header_info_int(".minnctapersm", $2); printf("GPGPU-Sim: Warning: .minnctapersm ignored. \n"); }
+	;
+
+block_spec_list: block_spec
+	| block_spec_list block_spec
 	;
 
 function_decl: function_decl_header LEFT_PAREN { start_function($1); func_header_info("(");} param_entry RIGHT_PAREN {func_header_info(")");} function_ident_param { $$ = reset_symtab(); }
