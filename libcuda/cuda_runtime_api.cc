@@ -1104,6 +1104,8 @@ int CUDARTAPI __cudaSynchronizeThreads(void**, void*)
  *                                                                              *
  *******************************************************************************/
 
+#if (CUDART_VERSION >= 3010)
+
 typedef struct CUuuid_st {                                /**< CUDA definition of UUID */
     char bytes[16];
 } CUuuid;
@@ -1123,6 +1125,7 @@ __host__ cudaError_t CUDARTAPI cudaGetExportTable(const void **ppExportTable, co
 	return g_last_cudaError = cudaSuccess;
 }
 
+#endif
 
 
 /*******************************************************************************
