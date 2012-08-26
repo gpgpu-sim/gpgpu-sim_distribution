@@ -1098,6 +1098,31 @@ int CUDARTAPI __cudaSynchronizeThreads(void**, void*)
 
 
 
+/*******************************************************************************
+ *                                                                              *
+ *                                                                              *
+ *                                                                              *
+ *******************************************************************************/
+
+typedef struct CUuuid_st {                                /**< CUDA definition of UUID */
+    char bytes[16];
+} CUuuid;
+
+/**
+ * CUDA UUID types
+ */
+// typedef __device_builtin__ struct CUuuid_st cudaUUID_t;
+
+__host__ cudaError_t CUDARTAPI cudaGetExportTable(const void **ppExportTable, const cudaUUID_t *pExportTableId)
+{
+	printf("cudaGetExportTable: UUID = "); 
+	for (int s = 0; s < 16; s++) {
+		printf("%#2x ", (unsigned char) (pExportTableId->bytes[s])); 
+	}
+	printf("\n"); 
+	return g_last_cudaError = cudaSuccess;
+}
+
 
 
 /*******************************************************************************
@@ -1238,24 +1263,43 @@ void extract_code_using_cuobjdump(){
 	CUctx_st *context = GPGPUSim_Context();
 	char command[1000];
 
+	std::stringstream pid;
+	pid << getpid();
+
 	char fname[1024];
 	snprintf(fname,1024,"_cuobjdump_complete_output_XXXXXX");
 	int fd=mkstemp(fname);
 	close(fd);
-	std::stringstream pid;
-	pid << getpid();
 	// Running cuobjdump using dynamic link to current process
 	snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass /proc/%s/exe > %s",pid.str().c_str(),fname);
 	printf("Running cuobjdump using \"%s\"\n", command);
+	bool parse_output = true; 
 	int result = system(command);
-	if(result) {printf("ERROR: Failed to execute: %s\n", command); exit(1);}
+	if(result) {
+		if (context->get_device()->get_gpgpu()->get_config().experimental_lib_support() && (result == 65280)) {  
+			// Some CUDA application may exclusively use kernels provided by CUDA
+			// libraries (e.g. CUBLAS).  Skipping cuobjdump extraction from the
+			// executable for this case. 
+			// 65280 is the return code from cuobjdump denoting the specific error (tested on CUDA 4.0/4.1/4.2)
+			printf("WARNING: Failed to execute: %s\n", command); 
+			printf("         Executable binary does not contain any GPU kernel.\n"); 
+			parse_output = false; 
+		} else {
+			printf("ERROR: Failed to execute: %s\n", command); 
+			exit(1);
+		}
+	}
 
-	printf("Parsing file %s\n", fname);
-	cuobjdump_in = fopen(fname, "r");
+	if (parse_output) {
+		printf("Parsing file %s\n", fname);
+		cuobjdump_in = fopen(fname, "r");
 
-	cuobjdump_parse();
-	fclose(cuobjdump_in);
-	printf("Done parsing!!!\n");
+		cuobjdump_parse();
+		fclose(cuobjdump_in);
+		printf("Done parsing!!!\n");
+	} else {
+		printf("Parsing skipped for %s\n", fname); 
+	}
 
 	if (context->get_device()->get_gpgpu()->get_config().experimental_lib_support()){
 		//Experimental library support
@@ -1263,7 +1307,7 @@ void extract_code_using_cuobjdump(){
 
 		std::stringstream cmd;
 		cmd << "ldd /proc/" << pid.str() << "/exe | grep $CUDA_INSTALL_PATH | awk \'{print $3}\' > _tempfile_.txt";
-		result = system(cmd.str().c_str());
+		int result = system(cmd.str().c_str());
 		if(result){
 			std::cout << "Failed to execute: " << cmd << std::endl;
 			exit(1);
