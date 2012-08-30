@@ -872,9 +872,9 @@ void shader_core_ctx::warp_inst_complete(const warp_inst_t &inst)
       printf("[warp_inst_complete] uid=%u core=%u warp=%u pc=%#x @ time=%llu issued@%llu\n", 
              inst.get_uid(), m_sid, inst.warp_id(), inst.pc, gpu_tot_sim_cycle + gpu_sim_cycle, inst.get_issue_cycle()); 
    #endif
-   m_stats->m_num_sim_insn[m_sid] += inst.active_count();
+   m_stats->m_num_sim_insn[m_sid] += inst.issued_count();
    m_stats->m_num_sim_winsn[m_sid]++;
-   m_gpu->gpu_sim_insn += inst.active_count();
+   m_gpu->gpu_sim_insn += inst.issued_count();
    inst.completed(gpu_tot_sim_cycle + gpu_sim_cycle); 
 }
 

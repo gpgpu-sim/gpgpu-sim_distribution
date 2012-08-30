@@ -23,6 +23,9 @@ Version 3.1.1+edits (development branch) versus 3.1.1
       and store instructions.
     - Fixed a bug that was causing inconsistency in local memory address
       calculations
+    - Fixed incorrect counting of predicated instructions.  Now instructions
+      are counted into gpu_sim_insn regardless of predication outcome.  (Bug
+      #15 external)
 
 Version 3.1.1 versus 3.1.0
 - Add checks to top level makefile to ensure setup_environment is run and checks to
