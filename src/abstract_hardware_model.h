@@ -689,7 +689,8 @@ public:
     }
     void issue( const active_mask_t &mask, unsigned warp_id, unsigned long long cycle ) 
     {
-        m_warp_active_mask=mask;
+        m_warp_active_mask = mask;
+        m_warp_issued_mask = mask; 
         m_uid = ++sm_next_uid;
         m_warp_id = warp_id;
         issue_cycle = cycle;
@@ -763,6 +764,7 @@ public:
     }
     bool active( unsigned thread ) const { return m_warp_active_mask.test(thread); }
     unsigned active_count() const { return m_warp_active_mask.count(); }
+    unsigned issued_count() const { assert(m_empty == false); return m_warp_issued_mask.count(); }  // for instruction counting 
     bool empty() const { return m_empty; }
     unsigned warp_id() const 
     { 
@@ -810,7 +812,8 @@ protected:
     bool m_is_printf;
     unsigned m_warp_id;
     const core_config *m_config; 
-    active_mask_t m_warp_active_mask;
+    active_mask_t m_warp_active_mask; // dynamic active mask for timing model (after predication)
+    active_mask_t m_warp_issued_mask; // active mask at issue (prior to predication test) -- for instruction counting
 
     struct per_thread_info {
         per_thread_info() {
