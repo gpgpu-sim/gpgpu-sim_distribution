@@ -93,10 +93,12 @@ void ptx_opcocde_latency_options (option_parser_t opp) {
 
 static address_type get_converge_point(address_type pc);
 
-void gpgpu_t::gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref)
+void gpgpu_t::gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref, int dim, int readmode, int ext)
 {
    std::string texname(name);
    m_NameToTextureRef[texname] = texref;
+   const textureReferenceAttr *texAttr = new textureReferenceAttr(texref, dim, (enum cudaTextureReadMode)readmode, ext); 
+   m_TextureRefToAttribute[texref] = texAttr; 
 }
 
 const char* gpgpu_t::gpgpu_ptx_sim_findNamefromTexture(const struct textureReference* texref)
