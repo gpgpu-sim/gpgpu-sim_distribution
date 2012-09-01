@@ -3642,6 +3642,50 @@ float tex_linf_sampling(memory_space* mem, unsigned tex_array_base,
    return sample;
 }
 
+float textureNormalizeElementSigned(int element, int bits)
+{
+   if (bits) {
+      int maxN = (1 << bits) - 1; 
+      // removing upper bits 
+      element &= maxN;
+      // normalizing the number to [-1.0,1.0]
+      maxN >>= 1;
+      float output = (float) element / maxN;  
+      if (output < -1.0f) output = -1.0f; 
+      return output; 
+   } else {
+      return 0.0f; 
+   }
+}
+
+float textureNormalizeElementUnsigned(unsigned int element, int bits)
+{
+   if (bits) {
+      unsigned int maxN = (1 << bits) - 1; 
+      // removing upper bits and normalizing the number to [0.0,1.0]
+      return (float)(element & maxN) / maxN;  
+   } else {
+      return 0.0f; 
+   }
+}
+
+void textureNormalizeOutput( const struct cudaChannelFormatDesc& desc, ptx_reg_t& datax, ptx_reg_t& datay, ptx_reg_t& dataz, ptx_reg_t& dataw ) 
+{
+   if (desc.f == cudaChannelFormatKindSigned) {
+      datax.f32 = textureNormalizeElementSigned( datax.s32, desc.x ); 
+      datay.f32 = textureNormalizeElementSigned( datay.s32, desc.y ); 
+      dataz.f32 = textureNormalizeElementSigned( dataz.s32, desc.z ); 
+      dataw.f32 = textureNormalizeElementSigned( dataw.s32, desc.w ); 
+   } else if (desc.f == cudaChannelFormatKindUnsigned) {
+      datax.f32 = textureNormalizeElementUnsigned( datax.u32, desc.x ); 
+      datay.f32 = textureNormalizeElementUnsigned( datay.u32, desc.y ); 
+      dataz.f32 = textureNormalizeElementUnsigned( dataz.u32, desc.z ); 
+      dataw.f32 = textureNormalizeElementUnsigned( dataw.u32, desc.w ); 
+   } else {
+      assert(0 && "Undefined texture read mode: cudaReadModeNormalizedFloat expect integer elements"); 
+   }
+}
+
 void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 {
    unsigned dimension = pI->dimension();
@@ -3661,6 +3705,7 @@ void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    const struct textureReference* texref = gpu->get_texref(texname);
    const struct cudaArray* cuArray = gpu->get_texarray(texref); 
    const struct textureInfo* texInfo = gpu->get_texinfo(texref);
+   const struct textureReferenceAttr* texAttr = gpu->get_texattr(texref);
 
    //assume always 2D f32 input
    //access array with src2 coordinates
@@ -3878,6 +3923,14 @@ void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       assert(0);
    }
    thread->m_last_memory_space = tex_space; 
+
+   // normalize output into floating point numbers according to the texture read mode
+   if (texAttr->m_readmode == cudaReadModeNormalizedFloat) {
+      textureNormalizeOutput(cuArray->desc, data1, data2, data3, data4); 
+   } else {
+      assert(texAttr->m_readmode == cudaReadModeElementType); 
+   }
+
    thread->set_vector_operand_values(dst,data1,data2,data3,data4);
 }
 

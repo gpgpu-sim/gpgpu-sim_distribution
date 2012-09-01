@@ -318,6 +318,21 @@ struct textureReference {
 
 #endif
 
+// Struct that record other attributes in the textureReference declaration 
+// - These attributes are passed thru __cudaRegisterTexture()
+struct textureReferenceAttr {
+    const struct textureReference *m_texref; 
+    int m_dim; 
+    enum cudaTextureReadMode m_readmode; 
+    int m_ext; 
+    textureReferenceAttr(const struct textureReference *texref, 
+                         int dim, 
+                         enum cudaTextureReadMode readmode, 
+                         int ext)
+    : m_texref(texref), m_dim(dim), m_readmode(readmode), m_ext(ext) 
+    {  }
+};
+
 class gpgpu_functional_sim_config 
 {
 public:
@@ -364,7 +379,7 @@ public:
     class memory_space *get_surf_memory() { return m_surf_mem; }
 
     void gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, const struct cudaArray* array);
-    void gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref);
+    void gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref, int dim, int readmode, int ext);
     const char* gpgpu_ptx_sim_findNamefromTexture(const struct textureReference* texref);
 
     const struct textureReference* get_texref(const std::string &texname) const
@@ -386,6 +401,13 @@ public:
         return t->second;
     }
 
+    const struct textureReferenceAttr* get_texattr( const struct textureReference *texref ) const
+    {
+        std::map<const struct textureReference*, const struct textureReferenceAttr*>::const_iterator t=m_TextureRefToAttribute.find(texref);
+        assert(t != m_TextureRefToAttribute.end());
+        return t->second;
+    }
+
     const gpgpu_functional_sim_config &get_config() const { return m_function_model_config; }
     FILE* get_ptx_inst_debug_file() { return ptx_inst_debug_file; }
 
@@ -402,6 +424,7 @@ protected:
     std::map<std::string, const struct textureReference*> m_NameToTextureRef;
     std::map<const struct textureReference*,const struct cudaArray*> m_TextureRefToCudaArray;
     std::map<const struct textureReference*, const struct textureInfo*> m_TextureRefToTexureInfo;
+    std::map<const struct textureReference*, const struct textureReferenceAttr*> m_TextureRefToAttribute;
 };
 
 struct gpgpu_ptx_sim_kernel_info 
