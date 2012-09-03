@@ -3831,27 +3831,32 @@ void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    case B32_TYPE: 
    case S8_TYPE:
    case S16_TYPE:
-   case S32_TYPE:
+   case S32_TYPE: {
+      unsigned long long elementOffset = 0; // offset into the next element 
       mem->read( tex_array_index, cuArray->desc.x/8, &data1.u32);
+      elementOffset += cuArray->desc.x/8;  
       if (cuArray->desc.y) {
-         mem->read( tex_array_index+4, cuArray->desc.y/8, &data2.u32);
+         mem->read( tex_array_index + elementOffset, cuArray->desc.y/8, &data2.u32);
+         elementOffset += cuArray->desc.y/8; 
          if (cuArray->desc.z) {
-            mem->read( tex_array_index+8, cuArray->desc.z/8, &data3.u32);
+            mem->read( tex_array_index + elementOffset, cuArray->desc.z/8, &data3.u32);
+            elementOffset += cuArray->desc.z/8; 
             if (cuArray->desc.w) 
-               mem->read( tex_array_index+12, cuArray->desc.w/8, &data4.u32);
+               mem->read( tex_array_index + elementOffset, cuArray->desc.w/8, &data4.u32);
          }
       }
       break;
+   }
    case B64_TYPE:
    case U64_TYPE:
    case S64_TYPE:
       mem->read( tex_array_index, 8, &data1.u64);
       if (cuArray->desc.y) {
-         mem->read( tex_array_index+4, 8, &data2.u64);
+         mem->read( tex_array_index+8, 8, &data2.u64);
          if (cuArray->desc.z) {
-            mem->read( tex_array_index+8, 8, &data3.u64);
+            mem->read( tex_array_index+16, 8, &data3.u64);
             if (cuArray->desc.w) 
-               mem->read( tex_array_index+12, 8, &data4.u64);
+               mem->read( tex_array_index+24, 8, &data4.u64);
          }
       }
       break;
