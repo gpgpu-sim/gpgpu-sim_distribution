@@ -26,6 +26,8 @@ Version 3.1.1+edits (development branch) versus 3.1.1
     - Fixed incorrect counting of predicated instructions.  Now instructions
       are counted into gpu_sim_insn regardless of predication outcome.  (Bug
       #15 external)
+    - Added support for cudaReadModeNormalizedFloat (a texture read mode). 
+    - Fixed mult-element texel access (e.g. texel with RGBA components).  
 
 Version 3.1.1 versus 3.1.0
 - Add checks to top level makefile to ensure setup_environment is run and checks to
