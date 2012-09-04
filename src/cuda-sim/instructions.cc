@@ -3695,6 +3695,7 @@ void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    std::string texname = src1.name();
    unsigned to_type = pI->get_type();
+   unsigned c_type = pI->get_type2();
    fflush(stdout);
    ptx_reg_t data1, data2, data3, data4;
    if (!ptx_tex_regs) ptx_tex_regs = new ptx_reg_t[4];
@@ -3728,6 +3729,7 @@ void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       width = cuArray->width;
       height = cuArray->height;
       if (texref->normalized) {
+         assert(c_type == F32_TYPE); 
          x_f32 = ptx_tex_regs[0].f32;
          if (texref->addressMode[0] == cudaAddressModeClamp) {
             x_f32 = (x_f32 > 1.0)? 1.0 : x_f32;
@@ -3749,7 +3751,25 @@ void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread )
             y = 0;
          }
       } else {
-         x = ptx_tex_regs[0].u64;
+         switch ( c_type ) {
+         case S32_TYPE: 
+            x = ptx_tex_regs[0].s32; 
+            assert(texref->filterMode == cudaFilterModePoint); 
+            break; 
+         case F32_TYPE: 
+            x_f32 = ptx_tex_regs[0].f32; 
+            alpha = x_f32 - floor(x_f32); // offset into subtexel (for linear sampling)
+            x = (int) x_f32; 
+            break; 
+         default: assert(0 && "Unsupported texture coordinate type."); 
+         }
+         // handle texture fetch that exceeded boundaries
+         if (texref->addressMode[0] == cudaAddressModeClamp) {
+            x = (x > width - 1)? (width - 1) : x;
+            x = (x < 0)? 0 : x;
+         } else if (texref->addressMode[0] == cudaAddressModeWrap) {
+            x = x % width;
+         }
       }
       width *= (cuArray->desc.w+cuArray->desc.x+cuArray->desc.y+cuArray->desc.z)/8;
       x *= (cuArray->desc.w+cuArray->desc.x+cuArray->desc.y+cuArray->desc.z)/8;

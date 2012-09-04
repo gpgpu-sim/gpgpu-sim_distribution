@@ -312,7 +312,7 @@ enum cudaTextureReadMode {
 struct textureReference {
    int                           normalized;
    enum cudaTextureFilterMode    filterMode;
-   enum cudaTextureAddressMode   addressMode[2];
+   enum cudaTextureAddressMode   addressMode[3];
    struct cudaChannelFormatDesc  channelDesc;
 };
 
