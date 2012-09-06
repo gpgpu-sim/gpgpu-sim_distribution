@@ -1214,6 +1214,15 @@ void bra_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->set_npc(target_pc);
 }
 
+void brx_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
+{
+   const operand_info &target  = pI->dst();
+   ptx_reg_t target_pc = thread->get_operand_value(target, target, U32_TYPE, thread, 1);
+
+   thread->m_branch_taken = true;
+   thread->set_npc(target_pc);
+}
+
 void break_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 {
    const operand_info &target  = thread->pop_breakaddr();
@@ -3483,6 +3492,12 @@ void sqrt_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    }
 
    thread->set_operand_value(dst,d, i_type, thread, pI);
+}
+
+void ssy_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
+{
+   //printf("Execution Warning: unimplemented ssy instruction is treated as a nop\n");
+   // TODO: add implementation
 }
 
 void st_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 

@@ -43,6 +43,7 @@ void elf_error(const char*);
 
 %x cmem
 %x symtab
+%x cmem14
 
 whitespace	[ \t]
 newline		[\n]
@@ -52,23 +53,27 @@ ident		[[:alnum:]_\.]
 hexdigit	[[:digit:]abcdef]
 %%
 
-<cmem,INITIAL>\.nv\.constant1\.{notnewline}*{newline}	{
+<cmem,cmem14,INITIAL>\.nv\.constant1\.{notnewline}*{newline}	{
 	BEGIN(cmem);
 	yylval.string_value = strdup(yytext); 
 	return C1BEGIN;
 }
 
-<cmem,INITIAL>\.nv\.local{notnewline}*{newline}	{
+<cmem,cmem14,INITIAL>\.nv\.local{notnewline}*{newline}	{
 	BEGIN(INITIAL);
 	yylval.string_value = strdup(yytext); 
 	return LOCALMEM;
 }
 
-<cmem,INITIAL>\.nv\.constant0{notnewline}*{newline}	{
+<cmem,cmem14,INITIAL>\.nv\.constant0{notnewline}*{newline}	{
 	BEGIN(cmem);
 	return C0BEGIN;
 }
 
+<cmem,cmem14,INITIAL>\.section" "\.rel\.nv\.constant14{notnewline}*{newline}	{
+	BEGIN(cmem14);
+	return C14BEGIN;
+}
 
 \.section" "\.symtab\tSYMTAB{newline}	{
 	BEGIN(symtab);
@@ -79,7 +84,7 @@ hexdigit	[[:digit:]abcdef]
 	//These are the lines before the symtab
 }
 
-<cmem,INITIAL>\.{notnewline}*{newline}	{
+<cmem,cmem14,INITIAL>\.{notnewline}*{newline}	{
 	BEGIN(INITIAL);
 }
 
@@ -102,16 +107,16 @@ hexdigit	[[:digit:]abcdef]
 	return STHEADER;
 }
 
-<symtab>{whitespace}+ {}
+<symtab,cmem14>{whitespace}+ {}
 
-<symtab>{newline} {}
+<symtab,cmem14>{newline} {}
 
-<symtab>{hexdigit}+ {
+<symtab,cmem14>{hexdigit}+ {
 	yylval.string_value = strdup(yytext);
 	return NUMBER;
 }
 
-<symtab>{ident}+ {
+<symtab,cmem14>{ident}+ {
 	yylval.string_value = strdup(yytext);
 	return IDENTIFIER;
 }

@@ -280,6 +280,8 @@ void cuobjdumpInst::printCuobjdumpPredicate()
 				output(".sf");
 			} else if(modString3 == ".carry") {
 				output(".cf");
+			} else if(modString3 == ".false") {
+				output(".false"); //TODO: Need to find out what this is.
 			} else {
 				output(modString3);
 			}
@@ -496,7 +498,7 @@ void cuobjdumpInst::printCuobjdumpOperand(std::string currentPiece, std::string 
 	}
 
 	// Make it lower case
-	if(mod.substr(0,9)!= "constant1")
+	if(mod.substr(0,9)!= "constant1" && mod.substr(0,9) != "varglobal")
 	for(unsigned i=0; i<mod.length(); i++)
 	{
 		mod[i] = tolower(mod[i]);
@@ -712,7 +714,11 @@ void cuobjdumpInst::printCuobjdumpOperand(std::string currentPiece, std::string 
 		output(outputhex.c_str());
 	} else if(mod.substr(0,3) == "l0x") { //label
 		output(mod.c_str());
+	} else if(mod.substr(0,9) == "varglobal") { //global variable
+		output(mod.substr(9).c_str());
 	} else {//variable name
+		printf("Unrecognized Operand: %s\n", mod.c_str());
+		assert(0);
 		output(mod.c_str());
 	}
 }
@@ -791,6 +797,20 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		output("bra");
 		printCuobjdumpBaseModifiers();
 		printCuobjdumpTypeModifiers();
+		printCuobjdumpOperands();
+		output(";");
+	}
+	else if(m_base == "BRX")
+	{
+		printCuobjdumpPredicate();
+		output("brx");
+		printCuobjdumpBaseModifiers();
+
+		if(m_typeModifiers->size() == 0)
+			output(int_default_mod()); //TODO: setting default type modifier but I'm not sure if this is right.
+		else
+			printCuobjdumpTypeModifiers();
+
 		printCuobjdumpOperands();
 		output(";");
 	}
@@ -1180,7 +1200,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(m_base == "IADD.CARRY"){
+	else if( m_base.find("IADD.CARRY") == 0){ //searches for IADD.CARRY at the start to match IADD.CARRY{numeric}
 		std::string pred = "C0";
 		pred[1] = m_base[10];
 		this->addOperand(pred.c_str());
@@ -1196,7 +1216,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(m_base == "IADD")
+	else if(m_base == "IADD" || m_base == "IADD32I")
 	{
 		printCuobjdumpPredicate();
 		output("add");
@@ -1210,7 +1230,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(m_base == "IADD32" || m_base == "IADD32I")
+	else if(m_base == "IADD32")
 	{
 		printCuobjdumpPredicate();
 		output("add.half");
@@ -1336,6 +1356,42 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 			strcpy(tempString, type.c_str());
 			/*if(type1Size==16 && type2Size==16)
 				output(".lo");*/
+			if(tempString[1] >= 'A' && tempString[1] <= 'Z')
+				tempString[1] += 32;			
+			output(tempString);
+		}	
+		else
+		{
+			printCuobjdumpTypeModifiers();
+		}
+		printCuobjdumpOperands();
+		output(";");
+	}
+	else if(m_base == "IMUL.HI.U24.U24")
+	{
+		printCuobjdumpPredicate();
+		output("mul24.hi");
+		printCuobjdumpBaseModifiers();
+
+		if(m_typeModifiers->size() == 0)
+		{
+			output(".u32"); //TODO: setting default type modifier but I'm not sure if this is right.
+		}
+		else if(m_typeModifiers->size() == 2)
+		{
+			std::string type1, type2, type;
+			int type1Size, type2Size;
+			char tempString[5];
+
+			std::list<std::string>::iterator curr = m_typeModifiers->begin();
+			type1 = (*curr).c_str();
+			curr++;
+			type2 = (*curr).c_str();
+
+			type1Size = atoi(type1.substr(2, type1.size()-2).c_str());
+			type2Size = atoi(type2.substr(2, type2.size()-2).c_str());
+			type = (type1Size > type2Size) ? type1 : type2;
+			strcpy(tempString, type.c_str());
 			if(tempString[1] >= 'A' && tempString[1] <= 'Z')
 				tempString[1] += 32;			
 			output(tempString);
@@ -1550,7 +1606,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpOperands();
 		output(";");
 	}
-	else if(m_base == "NOP" || m_base == "SSY")
+	else if(m_base == "NOP")
 	{
 		printCuobjdumpPredicate();
 		output("nop");
@@ -1828,6 +1884,15 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		output("cvt");
 		printCuobjdumpBaseModifiers();
 		output(".u32.u32");
+		printCuobjdumpOperands();
+		output(";");
+	}
+	else if( m_base == "SSY")
+	{
+		printCuobjdumpPredicate();
+		output("ssy");
+		printCuobjdumpBaseModifiers();
+		printCuobjdumpTypeModifiers();
 		printCuobjdumpOperands();
 		output(";");
 	}

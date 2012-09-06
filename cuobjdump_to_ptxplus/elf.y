@@ -43,7 +43,7 @@ bool lastcmem = false;// false = constrant0, true = constant1
 %union {
 	char* string_value;
 }
-%token <string_value> C1BEGIN CMEMVAL SPACE2 C0BEGIN STBEGIN STHEADER
+%token <string_value> C1BEGIN C14BEGIN CMEMVAL SPACE2 C0BEGIN STBEGIN STHEADER
 %token <string_value> NUMBER HEXNUMBER IDENTIFIER LOCALMEM
 
 %%
@@ -58,8 +58,15 @@ stcontent	:	stcontent stline
 			|	stline;
 
 stline	:	NUMBER NUMBER NUMBER NUMBER NUMBER NUMBER IDENTIFIER {
+				if (strcmp($7, ".nv.global")==0) {
+					g_instList->setglobalVarShndx($6);
+				}
 				if (strcmp($4, "11")==0) {
-					g_instList->addConstMemoryPtr($2, $3, $7);
+					if(atoi($6) == g_instList->getglobalVarShndx()) {
+						g_instList->addGlobalMemoryID($3, $7);
+					} else {
+						g_instList->addConstMemoryPtr($2, $3, $7);
+					}
 				}
 			}
 		|	NUMBER NUMBER NUMBER NUMBER NUMBER NUMBER {}
@@ -67,6 +74,7 @@ stline	:	NUMBER NUMBER NUMBER NUMBER NUMBER NUMBER IDENTIFIER {
 
 program	:	program cmemsection
 		|	program localmemsection
+		|	program cmem14section
 		|	{
 				g_instList->setKernelCount(cmemcount-1);
 			};
@@ -96,4 +104,15 @@ cmemvals	:	cmemvals CMEMVAL SPACE2 {
 						g_instList->addConstMemoryValue($3);
 				}
 			|	;
+
+cmem14section	:	C14BEGIN c14content
+			|	C14BEGIN
+			;
+
+c14content	:	c14content c14line
+			|	c14line;
+
+c14line	:	NUMBER IDENTIFIER IDENTIFIER {
+				g_instList->updateGlobalMemoryID($1, $2);
+			};
 %%
