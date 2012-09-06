@@ -2824,7 +2824,32 @@ void orn_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 }
 
 void pmevent_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
-void popc_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void popc_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
+{ 
+   ptx_reg_t src_data, data;
+   const operand_info &dst  = pI->dst();
+   const operand_info &src = pI->src1();
+
+   unsigned i_type = pI->get_type();
+   src_data = thread->get_operand_value(src, dst, i_type, thread, 1);
+
+   switch ( i_type ) {
+   case B32_TYPE: {
+      std::bitset<32> mask(src_data.u32); 
+      data.u32 = mask.count(); 
+      } break;
+   case B64_TYPE: {
+      std::bitset<64> mask(src_data.u64); 
+      data.u32 = mask.count();
+      } break;
+   default:
+      printf("Execution error: type mismatch with instruction\n");
+      assert(0); 
+      break;
+   }
+
+   thread->set_operand_value(dst,data, i_type, thread, pI);
+}
 void prefetch_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 void prefetchu_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 void prmt_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
@@ -3976,6 +4001,7 @@ void vote_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    static bool first_in_warp = true;
    static bool and_all;
    static bool or_all;
+   static unsigned int ballot_result;
    static std::list<ptx_thread_info*> threads_in_warp;
    static unsigned last_tid;
 
@@ -3984,6 +4010,7 @@ void vote_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       threads_in_warp.clear();
       and_all = true;
       or_all = false;
+      ballot_result = 0;
       int offset=31;
       while( (offset>=0) && !pI->active(offset) ) 
          offset--;
@@ -4004,22 +4031,36 @@ void vote_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    and_all &= (invert ^ pred_value);
    or_all |= (invert ^ pred_value);
 
+   // vote.ballot
+   if (invert ^ pred_value) {
+      int lane_id = thread->get_hw_tid() % pI->warp_size(); 
+      ballot_result |= (1 << lane_id); 
+   }
+
    if( thread->get_hw_tid() == last_tid ) {
-      bool pred_value = false; 
+      if (pI->vote_mode() == ptx_instruction::vote_ballot) {
+         ptx_reg_t data = ballot_result; 
+         for( std::list<ptx_thread_info*>::iterator t=threads_in_warp.begin(); t!=threads_in_warp.end(); ++t ) {
+            const operand_info &dst = pI->dst();
+            (*t)->set_operand_value(dst,data, pI->get_type(), (*t), pI);
+         }
+      } else {
+         bool pred_value = false; 
 
-      switch( pI->vote_mode() ) {
-      case ptx_instruction::vote_any: pred_value = or_all; break;
-      case ptx_instruction::vote_all: pred_value = and_all; break;
-      case ptx_instruction::vote_uni: pred_value = (or_all ^ and_all); break;
-      default:
-         abort();
-      }
-      ptx_reg_t data;
-      data.pred = pred_value?0:1; //the way ptxplus handles the zero flag, 1 = false and 0 = true
+         switch( pI->vote_mode() ) {
+         case ptx_instruction::vote_any: pred_value = or_all; break;
+         case ptx_instruction::vote_all: pred_value = and_all; break;
+         case ptx_instruction::vote_uni: pred_value = (or_all ^ and_all); break;
+         default:
+            abort();
+         }
+         ptx_reg_t data;
+         data.pred = pred_value?0:1; //the way ptxplus handles the zero flag, 1 = false and 0 = true
 
-      for( std::list<ptx_thread_info*>::iterator t=threads_in_warp.begin(); t!=threads_in_warp.end(); ++t ) {
-         const operand_info &dst = pI->dst();
-         (*t)->set_operand_value(dst,data, PRED_TYPE, (*t), pI);
+         for( std::list<ptx_thread_info*>::iterator t=threads_in_warp.begin(); t!=threads_in_warp.end(); ++t ) {
+            const operand_info &dst = pI->dst();
+            (*t)->set_operand_value(dst,data, PRED_TYPE, (*t), pI);
+         }
       }
       first_in_warp = true;
    }

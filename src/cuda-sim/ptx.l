@@ -297,6 +297,7 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 
 \.any	TC; return ANY_OPTION;
 \.all	TC; return ALL_OPTION;
+\.ballot	TC; return BALLOT_OPTION;
 \.gl    TC; return GLOBAL_OPTION;
 \.cta   TC; return CTA_OPTION;
 \.sys   TC; return SYS_OPTION;

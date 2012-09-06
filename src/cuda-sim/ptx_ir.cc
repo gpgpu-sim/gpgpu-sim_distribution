@@ -1111,6 +1111,8 @@ ptx_instruction::ptx_instruction( int opcode,
          break;
       case ALL_OPTION:
          m_vote_mode = vote_all;
+      case BALLOT_OPTION:
+         m_vote_mode = vote_ballot;
          break;
       case GLOBAL_OPTION:
          m_membar_level = GLOBAL_OPTION;
