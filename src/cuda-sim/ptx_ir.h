@@ -916,7 +916,7 @@ public:
    unsigned rounding_mode() const { return m_rounding_mode;}
    unsigned saturation_mode() const { return m_saturation_mode;}
    unsigned dimension() const { return m_geom_spec;}
-   enum vote_mode_t { vote_any, vote_all, vote_uni };
+   enum vote_mode_t { vote_any, vote_all, vote_uni, vote_ballot };
    enum vote_mode_t vote_mode() const { return m_vote_mode; }
 
    int membar_level() const { return m_membar_level; }

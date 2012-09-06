@@ -10,6 +10,8 @@ Version 3.1.1+edits (development branch) versus 3.1.1
 - Experimental support for libraries, currently not working because of
   undocumented functions in the cuda runtime API.
 - Converted loading fat binaries to be done on demand basis
+- Added support for vote.ballot instruction. 
+- Added support for popc instruction. 
 - Bug Fixes:
     - Fixed a compile error that happens with newer gcc/g++ versions (4.7.1)
     - Fixed a bug with the association between cuobjdump output and cubin
