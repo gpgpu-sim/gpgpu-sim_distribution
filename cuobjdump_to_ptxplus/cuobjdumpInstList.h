@@ -116,6 +116,7 @@ protected:
 	std::list<localMemory> m_localMemoryList;
 	std::list<std::string>  m_realTexList;	// Stores the real names of tex variables
 	std::list<constMemoryPtr> m_constMemoryPtrList;
+	int m_globalVarShndx; //records shndx value of global variables in the elf file SYMTAB
 
 	// Functions:
 	std::string parseCuobjdumpPredicate(std::string pred);
@@ -158,6 +159,10 @@ public:
 	void addConstMemoryPtr(const char* bytes, const char* offset, const char* name);
 	void setConstMemoryMap(const char* kernelname, int index);
 	void setLocalMemoryMap(const char* kernelname, int index);
+	void setglobalVarShndx(const char* shndx);
+	int getglobalVarShndx();
+	void addGlobalMemoryID(const char* bytes, const char* name);
+	void updateGlobalMemoryID(const char* offset, const char* name);
 	void reverseConstMemory();
 	void addEntryLocalMemory(int value, int entryIndex);
 	void readOtherConstMemoryFromBinFile(std::string binString); // read in constant memory from bin file

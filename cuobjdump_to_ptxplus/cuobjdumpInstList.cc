@@ -225,7 +225,7 @@ void cuobjdumpInstList::printOutOfBoundRegisters(cuobjdumpEntry entry)
 	if( entry.m_reg124 == true ) {
 		output("\n");
 		output("\t.reg .u32 $r124;\n");
-		output("\tmov.u32 $r124, 0x00000000;\n");
+	//	output("\tmov.u32 $r124, 0x00000000;\n");
 	}
 	if( entry.m_oreg127 == true) {
 		output("\n");
@@ -392,7 +392,7 @@ void cuobjdumpInstList::addCuobjdumpMemoryOperand(std::string mem, int memType) 
 			std::list<globalMemory>::iterator g;
 			for(g=m_globalMemoryList.begin(); g!=m_globalMemoryList.end(); ++g) {
 				if(g->offset == offset) {
-					mem = g->name;
+					mem = "varglobal" + g->name;
 					found = true;
 					break;
 				}
@@ -584,6 +584,40 @@ void cuobjdumpInstList::setLocalMemoryMap(const char* kernelname, int index){
 	kernellmemmap[kernel] = index;
 }
 
+void cuobjdumpInstList::setglobalVarShndx(const char* shndx){
+	m_globalVarShndx = atoi(shndx);
+}
+
+int cuobjdumpInstList::getglobalVarShndx(){
+	return m_globalVarShndx;
+}
+
+void cuobjdumpInstList::addGlobalMemoryID(const char* bytes, const char* name){
+	globalMemory globalMemID;
+	//globalMemID.offset = atoi(index)/4;
+	globalMemID.bytes = atoi(bytes);
+	globalMemID.name = name;
+
+	m_globalMemoryList.push_back(globalMemID);
+}
+
+void cuobjdumpInstList::updateGlobalMemoryID(const char* offset, const char* name){
+	bool found = false;
+	std::list<globalMemory>::iterator g;
+	for(g=m_globalMemoryList.begin(); g!=m_globalMemoryList.end(); ++g) {
+		if(g->name.compare(name) == 0) {
+			g->offset = atoi(offset)/4;
+			found = true;
+			break;
+		}
+	}
+
+	if(!found) {
+		printf("Could not find a global memory with this offset in: %s\n", name);
+		output("Could not find a global memory with this offset.\n");
+		assert(0);
+	}
+}
 
 //NOT USED
 void cuobjdumpInstList::reverseConstMemory() {

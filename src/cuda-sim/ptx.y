@@ -376,6 +376,7 @@ opcode_spec: OPCODE { add_opcode($1); } option_list
 
 pred_spec: PRED IDENTIFIER  { add_pred($2,0, -1); }
 	| PRED EXCLAMATION IDENTIFIER { add_pred($3,1, -1); } 
+	| PRED IDENTIFIER LT_OPTION  { add_pred($2,0,1); }
 	| PRED IDENTIFIER EQ_OPTION  { add_pred($2,0,2); }
 	| PRED IDENTIFIER LE_OPTION  { add_pred($2,0,3); }
 	| PRED IDENTIFIER NE_OPTION  { add_pred($2,0,5); }
