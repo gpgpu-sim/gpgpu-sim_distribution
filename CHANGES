@@ -12,8 +12,11 @@ Version 3.1.1+edits (development branch) versus 3.1.1
 - Converted loading fat binaries to be done on demand basis
 - Added support for vote.ballot instruction. 
 - Added support for popc instruction. 
-- Changed SSY ptxplus intructions to have their own opcode but it still acts as a nop right now.
-- Added support for BRX instructions to cuobjdump_to_ptxplus and started work on getting it to work in gpgpusim
+- Changed ssy ptxplus instructions to have their own opcode but they still act
+  as a nop right now.
+- Added support for converting BRX sass instructions to brx ptxplus instructions
+  in cuobjdump_to_ptxplus and started work on getting the brx ptxplus
+  instruction to work in gpgpusim.
 - Bug Fixes:
     - Fixed a compile error that happens with newer gcc/g++ versions (4.7.1)
     - Fixed a bug with the association between cuobjdump output and cubin
@@ -33,9 +36,13 @@ Version 3.1.1+edits (development branch) versus 3.1.1
     - Added support for cudaReadModeNormalizedFloat (a texture read mode). 
     - Fixed texture fetching for 1D texture with non-normalized coordinates. 
     - Fixed mult-element texel fetching (e.g. texel with RGBA components).  
-    - fix bug where Global constants were not being declared in ptxplus.
-    - fixed bug with IADD.CARRY instruction conversion to addp.
-    - fixed bug with .half modifier showing up on the wrong instruction or not showing up at all. This should correct a bug where the addresses in ptxplus is different than sass. They need to be the same for BRX to work.
+    - Fixed bug where Global variables were not being declared in ptxplus.
+    - Fixed bug with IADD.CARRY sass instruction conversion to addp ptxplus
+      instruction.
+    - Fixed bug with .half ptxplus instruction modifier showing up on the wrong
+      instruction or not showing up at all. This should correct a bug where the
+      instruction addresses in ptxplus are different than sass. They need to be
+      the same for the brx ptxplus instruction to work.
 
 Version 3.1.1 versus 3.1.0
 - Add checks to top level makefile to ensure setup_environment is run and checks to
