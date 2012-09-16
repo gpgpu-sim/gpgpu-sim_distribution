@@ -37,7 +37,7 @@ tag_array::~tag_array()
 tag_array::tag_array( const cache_config &config, int core_id, int type_id ) 
 : m_config(config), m_access(0), m_miss(0), m_pending_hit(0)
 {
-    assert( m_config.m_write_policy == READ_ONLY );
+    //assert( m_config.m_write_policy == READ_ONLY ); Old assert
     m_lines = new cache_block_t[ config.get_num_lines()];
 
     // initialize snapshot counters for visualizer
@@ -49,7 +49,7 @@ tag_array::tag_array( const cache_config &config, int core_id, int type_id )
 }
 
 enum cache_request_status tag_array::probe( new_addr_type addr, unsigned &idx ) const {
-    assert( m_config.m_write_policy == READ_ONLY );
+    //assert( m_config.m_write_policy == READ_ONLY );
     unsigned set_index = m_config.set_index(addr);
     new_addr_type tag = m_config.tag(addr);
 

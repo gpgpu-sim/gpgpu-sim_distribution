@@ -495,6 +495,7 @@ enum mem_access_type {
    L1_WRBK_ACC,
    L2_WRBK_ACC, 
    INST_ACC_R,
+   L2_WR_ALLOC_R,
    NUM_MEM_ACCESS_TYPE
 };
 

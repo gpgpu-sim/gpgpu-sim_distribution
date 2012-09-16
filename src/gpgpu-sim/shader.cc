@@ -2395,6 +2395,8 @@ void simt_core_cluster::icnt_inject_request_packet(class mem_fetch *mf)
     case LOCAL_ACC_W: m_stats->gpgpu_n_mem_write_local++; break;
     case INST_ACC_R: m_stats->gpgpu_n_mem_read_inst++; break;
     case L1_WRBK_ACC: m_stats->gpgpu_n_mem_write_global++; break;
+    case L2_WRBK_ACC: m_stats->gpgpu_n_mem_l2_writeback++; break;
+    case L2_WR_ALLOC_R: m_stats->gpgpu_n_mem_l2_write_allocate++; break;
     default: assert(0);
     }
    unsigned destination = mf->get_tlx_addr().chip;
