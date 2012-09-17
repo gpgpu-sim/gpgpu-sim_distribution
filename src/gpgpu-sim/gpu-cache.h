@@ -112,8 +112,8 @@ enum write_allocate_policy_t {
 };
 
 enum cache_scope_t {
-	PRIVATE,
-	SHARED
+	PRIVATE, 	// Local cache: If write-back, global writes are write through
+	SHARED		// Global cache: If write-back, all writes are write-back
 };
 
 enum mshr_config_t {
@@ -311,19 +311,19 @@ public:
     {
     }
 
-    // is there a pending request to the lower memory level already?
+    /// Checks if there is a pending request to the lower memory level already
     bool probe( new_addr_type block_addr ) const;
-    // is there space for tracking a new memory access?
+    /// Checks if there is space for tracking a new memory access
     bool full( new_addr_type block_addr ) const;
-    // add or merge this access
+    /// Add or merge this access
     void add( new_addr_type block_addr, mem_fetch *mf );
-    // true if cannot accept new fill responses
+    /// Returns true if cannot accept new fill responses
     bool busy() const {return false;}
-    // accept a new cache fill response: mark entry ready for processing
+    /// Accept a new cache fill response: mark entry ready for processing
     void mark_ready( new_addr_type block_addr, bool &has_atomic );
-    // true if ready accesses exist
+    /// Returns true if ready accesses exist
     bool access_ready() const {return !m_current_response.empty();}
-    // next ready access
+    /// Returns next ready access
     mem_fetch *next_access();
     void display( FILE *fp ) const;
 
@@ -358,6 +358,9 @@ public:
 bool was_write_sent( const std::list<cache_event> &events );
 bool was_read_sent( const std::list<cache_event> &events );
 
+/// Baseline cache
+/// Implements common functions for read_only_cache and data_cache
+/// Each subclass implements its own 'access' function
 class baseline_cache : public cache_t {
 public:
     baseline_cache( const char *name, const cache_config &config, int core_id, int type_id, mem_fetch_interface *memport,
@@ -370,13 +373,15 @@ public:
         m_miss_queue_status = status;
     }
 
+    /// Sends next request to lower level of memory
     void cycle();
-    // interface for response from lower memory level (model bandwidth restictions in caller)
+    /// Interface for response from lower memory level (model bandwidth restictions in caller)
     void fill( mem_fetch *mf, unsigned time );
+    /// Checks if mf is waiting to be filled by lower memory level
     bool waiting_for_fill( mem_fetch *mf );
-    // are any (accepted) accesses that had to wait for memory now ready? (does not include accesses that "HIT")
+    /// Are any (accepted) accesses that had to wait for memory now ready? (does not include accesses that "HIT")
     bool access_ready() const {return m_mshrs.access_ready();}
-    // pop next ready access (does not include accesses that "HIT")
+    /// Pop next ready access (does not include accesses that "HIT")
     mem_fetch *next_access(){return m_mshrs.next_access();}
     // flash invalidate all entries in cache
     void flush(){m_tag_array.flush();}
@@ -411,30 +416,32 @@ public:
 
     extra_mf_fields_lookup m_extra_mf_fields;
 
+    /// Checks whether this request can be handled on this cycle. num_miss equals max # of misses to be handled on this cycle
     bool miss_queue_full(unsigned num_miss){
-    	  // Checks whether this request can be handled on this cycle. num_miss equals max # of misses to be handled on this cycle
     	  return ( (m_miss_queue.size()+num_miss) >= m_config.m_miss_queue_size );
     }
+    /// Read miss handler without writeback
     void read_request(new_addr_type addr, new_addr_type block_addr, unsigned cache_index, mem_fetch *mf,
     		unsigned time, bool &do_miss, std::list<cache_event> &events, bool read_only);
+    /// Read miss handler. Check MSHR hit or MSHR available
     void read_request(new_addr_type addr, new_addr_type block_addr, unsigned cache_index, mem_fetch *mf,
     		unsigned time, bool &do_miss, bool &wb, cache_block_t &evicted, std::list<cache_event> &events, bool read_only);
 };
 
-
+/// Read only cache
 class read_only_cache : public baseline_cache {
 public:
     read_only_cache( const char *name, const cache_config &config, int core_id, int type_id, mem_fetch_interface *memport, enum mem_fetch_status status )
     : baseline_cache(name,config,core_id,type_id,memport,status){}
 
-    // access cache: returns RESERVATION_FAIL if request could not be accepted (for any reason)
+    /// Access cache for read_only_cache: returns RESERVATION_FAIL if request could not be accepted (for any reason)
     virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events );
 };
 
-
-// This is meant to model the first level data cache in Fermi.
-// It is write-evict (global) or write-back (local) at the granularity 
-// of individual blocks (the policy used in fermi according to the CUDA manual)
+/// Data cache
+/// This is meant to model the first level data cache in Fermi.
+/// It is write-evict (global) or write-back (local) at the granularity of individual blocks
+/// for L1 and full write-back for L2 (the policy used in fermi according to the CUDA manual)
 class data_cache : public baseline_cache {
 public:
     data_cache( const char *name, const cache_config &config,
@@ -483,17 +490,18 @@ public:
         m_rob_status = rob_status;
     }
 
-    // return values: RESERVATION_FAIL if request could not be accepted 
-    // otherwise returns HIT_RESERVED or MISS; NOTE: *never* returns HIT 
-    // since unlike a normal CPU cache, a "HIT" in texture cache does not 
-    // mean the data is ready (still need to get through fragment fifo)
+    /// Access function for tex_cache
+    /// return values: RESERVATION_FAIL if request could not be accepted
+    /// otherwise returns HIT_RESERVED or MISS; NOTE: *never* returns HIT
+    /// since unlike a normal CPU cache, a "HIT" in texture cache does not
+    /// mean the data is ready (still need to get through fragment fifo)
     enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events );
     void cycle();
-    // place returning cache block into reorder buffer
+    /// Place returning cache block into reorder buffer
     void fill( mem_fetch *mf, unsigned time );
-    // are any (accepted) accesses that had to wait for memory now ready? (does not include accesses that "HIT")
+    /// Are any (accepted) accesses that had to wait for memory now ready? (does not include accesses that "HIT")
     bool access_ready() const{return !m_result_fifo.empty();}
-    // pop next ready access (includes both accesses that "HIT" and those that "MISS")
+    /// Pop next ready access (includes both accesses that "HIT" and those that "MISS")
     mem_fetch *next_access(){return m_result_fifo.pop();}
     void display_state( FILE *fp ) const;
 
