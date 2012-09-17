@@ -220,13 +220,13 @@ bool was_read_sent( const std::list<cache_event> &events )
 }
 /****************************************************************** MSHR ******************************************************************/
 
-// is there a pending request to the lower memory level already?
+/// Checks if there is a pending request to the lower memory level already
 bool mshr_table::probe( new_addr_type block_addr ) const{
     table::const_iterator a = m_data.find(block_addr);
     return a != m_data.end();
 }
 
-// is there space for tracking a new memory access?
+/// Checks if there is space for tracking a new memory access
 bool mshr_table::full( new_addr_type block_addr ) const{
     table::const_iterator i=m_data.find(block_addr);
     if ( i != m_data.end() )
@@ -235,7 +235,7 @@ bool mshr_table::full( new_addr_type block_addr ) const{
         return m_data.size() >= m_num_entries;
 }
 
-// add or merge this access
+/// Add or merge this access
 void mshr_table::add( new_addr_type block_addr, mem_fetch *mf ){
 	m_data[block_addr].m_list.push_back(mf);
 	assert( m_data.size() <= m_num_entries );
@@ -246,7 +246,7 @@ void mshr_table::add( new_addr_type block_addr, mem_fetch *mf ){
 	}
 }
 
-// accept a new cache fill response: mark entry ready for processing
+/// Accept a new cache fill response: mark entry ready for processing
 void mshr_table::mark_ready( new_addr_type block_addr, bool &has_atomic ){
     assert( !busy() );
     table::iterator a = m_data.find(block_addr);
@@ -256,7 +256,7 @@ void mshr_table::mark_ready( new_addr_type block_addr, bool &has_atomic ){
     assert( m_current_response.size() <= m_data.size() );
 }
 
-// next ready access
+/// Returns next ready access
 mem_fetch *mshr_table::next_access(){
     assert( access_ready() );
     new_addr_type block_addr = m_current_response.front();
@@ -286,9 +286,8 @@ void mshr_table::display( FILE *fp ) const{
     }
 }
 /***************************************************************** Caches *****************************************************************/
-
+/// Sends next request to lower level of memory
 void baseline_cache::cycle(){
-    // send next request to lower level of memory
     if ( !m_miss_queue.empty() ) {
         mem_fetch *mf = m_miss_queue.front();
         if ( !m_memport->full(mf->get_data_size(),mf->get_is_write()) ) {
@@ -298,7 +297,7 @@ void baseline_cache::cycle(){
     }
 }
 
-// interface for response from lower memory level (model bandwidth restictions in caller)
+/// Interface for response from lower memory level (model bandwidth restictions in caller)
 void baseline_cache::fill(mem_fetch *mf, unsigned time){
 	extra_mf_fields_lookup::iterator e = m_extra_mf_fields.find(mf);
 	assert( e != m_extra_mf_fields.end() );
@@ -319,6 +318,7 @@ void baseline_cache::fill(mem_fetch *mf, unsigned time){
 	m_extra_mf_fields.erase(mf);
 }
 
+/// Checks if mf is waiting to be filled by lower memory level
 bool baseline_cache::waiting_for_fill( mem_fetch *mf ){
     extra_mf_fields_lookup::iterator e = m_extra_mf_fields.find(mf);
     return e != m_extra_mf_fields.end();
@@ -335,22 +335,18 @@ void baseline_cache::display_state( FILE *fp ) const{
     fprintf(fp,"\n");
 }
 
+/// Read miss handler without writeback
 void baseline_cache::read_request(new_addr_type addr, new_addr_type block_addr, unsigned cache_index, mem_fetch *mf,
 		unsigned time, bool &do_miss, std::list<cache_event> &events, bool read_only){
-	// Read miss handler without writeback
+
 	bool wb=false;
 	cache_block_t e;
 	read_request(addr, block_addr, cache_index, mf, time, do_miss, wb, e, events, read_only);
 }
 
+/// Read miss handler. Check MSHR hit or MSHR available
 void baseline_cache::read_request(new_addr_type addr, new_addr_type block_addr, unsigned cache_index, mem_fetch *mf,
 		unsigned time, bool &do_miss, bool &wb, cache_block_t &evicted, std::list<cache_event> &events, bool read_only){
-	// Read miss handler. Check MSHR hit or MSHR available
-
-	if(m_config.set_index(addr) != m_config.set_index(block_addr))
-		abort();
-	if(m_config.tag(addr) != m_config.tag(block_addr))
-		abort();
 
     bool mshr_hit = m_mshrs.probe(block_addr);
     bool mshr_avail = !m_mshrs.full(block_addr);
@@ -379,7 +375,7 @@ void baseline_cache::read_request(new_addr_type addr, new_addr_type block_addr, 
 }
 
 
-// access cache: returns RESERVATION_FAIL if request could not be accepted (for any reason)
+/// Access cache for read_only_cache: returns RESERVATION_FAIL if request could not be accepted (for any reason)
 enum cache_request_status read_only_cache::access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ) {
     assert( mf->get_data_size() <= m_config.get_line_sz());
 
@@ -404,9 +400,9 @@ enum cache_request_status read_only_cache::access( new_addr_type addr, mem_fetch
 }
 
 
-// This is meant to model the first level data cache in Fermi.
-// It is write-evict (global) or write-back (local) at the granularity for L1 and full write-back for L2
-// of individual blocks (the policy used in fermi according to the CUDA manual)
+/// This is meant to model the first level data cache in Fermi.
+/// It is write-evict (global) or write-back (local) at the granularity of individual blocks
+/// for L1 and full write-back for L2 (the policy used in fermi according to the CUDA manual)
 enum cache_request_status data_cache::access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ){
     assert( mf->get_data_size() <= m_config.get_line_sz());
 
@@ -523,18 +519,18 @@ enum cache_request_status data_cache::access( new_addr_type addr, mem_fetch *mf,
     return RESERVATION_FAIL;
 }
 
+/// Sends write request to lower level memory (write or writeback)
 void data_cache::write_request(mem_fetch *mf, cache_event request, unsigned time, std::list<cache_event> &events){
-	// Send write request to lower level memory (write or writeback)
     events.push_back(request);
     m_miss_queue.push_back(mf);
     mf->set_status(m_miss_queue_status,time);
 }
 
-
-// return values: RESERVATION_FAIL if request could not be accepted
-// otherwise returns HIT_RESERVED or MISS; NOTE: *never* returns HIT
-// since unlike a normal CPU cache, a "HIT" in texture cache does not
-// mean the data is ready (still need to get through fragment fifo)
+/// Access function for tex_cache
+/// return values: RESERVATION_FAIL if request could not be accepted
+/// otherwise returns HIT_RESERVED or MISS; NOTE: *never* returns HIT
+/// since unlike a normal CPU cache, a "HIT" in texture cache does not
+/// mean the data is ready (still need to get through fragment fifo)
 enum cache_request_status tex_cache::access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ) {
     if ( m_fragment_fifo.full() || m_request_fifo.full() || m_rob.full() )
         return RESERVATION_FAIL;
@@ -600,7 +596,7 @@ void tex_cache::cycle(){
     }
 }
 
-// place returning cache block into reorder buffer
+/// Place returning cache block into reorder buffer
 void tex_cache::fill( mem_fetch *mf, unsigned time )
 {
     extra_mf_fields_lookup::iterator e = m_extra_mf_fields.find(mf);
