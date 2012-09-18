@@ -17,6 +17,9 @@ Version 3.1.1+edits (development branch) versus 3.1.1
 - Added support for converting BRX sass instructions to brx ptxplus instructions
   in cuobjdump_to_ptxplus and started work on getting the brx ptxplus
   instruction to work in gpgpusim.
+- Modified the cache hierarchy (cache_t -> baseline_cache -> [read_only_cache, data_cache, ...])
+- Enabled configurable cache policies (write-back, write-through) and implemented 
+  a write-allocate policy
 - Bug Fixes:
     - Fixed a compile error that happens with newer gcc/g++ versions (4.7.1)
     - Fixed a bug with the association between cuobjdump output and cubin
@@ -43,6 +46,8 @@ Version 3.1.1+edits (development branch) versus 3.1.1
       instruction or not showing up at all. This should correct a bug where the
       instruction addresses in ptxplus are different than sass. They need to be
       the same for the brx ptxplus instruction to work.
+	- Fixed a bug where the L2 cache was modelling write-back for local writes
+      and write-evict for global writes - Should be write-back for all writes.
 
 Version 3.1.1 versus 3.1.0
 - Add checks to top level makefile to ensure setup_environment is run and checks to
