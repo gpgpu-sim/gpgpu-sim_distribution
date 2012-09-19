@@ -82,7 +82,7 @@ private:
    unsigned m_id;
    const struct memory_config *m_config;
    class dram_t *m_dram;
-   class data_cache *m_L2cache;
+   class l2_cache *m_L2cache;
    class L2interface *m_L2interface;
    partition_mf_allocator *m_mf_allocator;
 

@@ -922,7 +922,7 @@ private:
 
    tex_cache *m_L1T; // texture cache
    read_only_cache *m_L1C; // constant cache
-   data_cache *m_L1D; // data cache
+   l1_cache *m_L1D; // data cache
    std::map<unsigned/*warp_id*/, std::map<unsigned/*regnum*/,unsigned/*count*/> > m_pending_writes;
    std::list<mem_fetch*> m_response_fifo;
    opndcoll_rfu_t *m_operand_collector;

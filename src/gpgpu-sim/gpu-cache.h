@@ -97,7 +97,8 @@ enum replacement_policy_t {
 enum write_policy_t {
     READ_ONLY,
     WRITE_BACK,
-    WRITE_THROUGH
+    WRITE_THROUGH,
+    WRITE_EVICT
 };
 
 enum allocation_policy_t {
@@ -109,11 +110,6 @@ enum allocation_policy_t {
 enum write_allocate_policy_t {
 	NO_WRITE_ALLOCATE,
 	WRITE_ALLOCATE
-};
-
-enum cache_scope_t {
-	PRIVATE, 	// Local cache: If write-back, global writes are write through
-	SHARED		// Global cache: If write-back, all writes are write-back
 };
 
 enum mshr_config_t {
@@ -132,11 +128,11 @@ public:
     void init()
     {
         assert( m_config_string );
-        char rp, wp, ap, mshr_type, scope, wap;
+        char rp, wp, ap, mshr_type, wap;
 
-        int ntok = sscanf(m_config_string,"%u:%u:%u:%c:%c:%c:%c:%c:%c:%u:%u:%u:%u",
+        int ntok = sscanf(m_config_string,"%u:%u:%u:%c:%c:%c:%c:%c:%u:%u:%u:%u",
                           &m_nset, &m_line_sz, &m_assoc, &rp, &wp, &ap,
-                          &mshr_type, &scope, &wap, &m_mshr_entries,&m_mshr_max_merge,
+                          &mshr_type, &wap, &m_mshr_entries,&m_mshr_max_merge,
                           &m_miss_queue_size,&m_result_fifo_entries);
 
         if ( ntok < 10 ) {
@@ -155,6 +151,7 @@ public:
         case 'R': m_write_policy = READ_ONLY; break;
         case 'B': m_write_policy = WRITE_BACK; break;
         case 'T': m_write_policy = WRITE_THROUGH; break;
+        case 'E': m_write_policy = WRITE_EVICT; break;
         default: exit_parse_error();
         }
         switch (ap) {
@@ -163,7 +160,7 @@ public:
         default: exit_parse_error();
         }
         switch (mshr_type) {
-        case 'F': m_mshr_type = TEX_FIFO; assert(ntok==13); break;
+        case 'F': m_mshr_type = TEX_FIFO; assert(ntok==12); break;
         case 'A': m_mshr_type = ASSOC; break;
         default: exit_parse_error();
         }
@@ -171,14 +168,9 @@ public:
         m_nset_log2 = LOGB2(m_nset);
         m_valid = true;
 
-        switch(scope){
-        case 'P': m_cache_scope = PRIVATE; break;
-        case 'S': m_cache_scope = SHARED; break;
-        default: exit_parse_error();
-        }
         switch(wap){
-        case 'W': m_write_aclloc_policy = WRITE_ALLOCATE; break;
-        case 'N': m_write_aclloc_policy = NO_WRITE_ALLOCATE; break;
+        case 'W': m_write_alloc_policy = WRITE_ALLOCATE; break;
+        case 'N': m_write_alloc_policy = NO_WRITE_ALLOCATE; break;
         default: exit_parse_error();
         }
     }
@@ -236,8 +228,7 @@ private:
     enum allocation_policy_t m_alloc_policy;        // 'm' = allocate on miss, 'f' = allocate on fill
     enum mshr_config_t m_mshr_type;
 
-    cache_scope_t m_cache_scope;					// 'P' = PRIVATE, 'S' = SHARED
-    write_allocate_policy_t m_write_aclloc_policy;	// 'W' = Write allocate, 'N' = No write allocate
+    write_allocate_policy_t m_write_alloc_policy;	// 'W' = Write allocate, 'N' = No write allocate
 
     union {
         unsigned m_mshr_entries;
@@ -258,6 +249,8 @@ private:
     friend class read_only_cache;
     friend class tex_cache;
     friend class data_cache;
+    friend class l1_cache;
+    friend class l2_cache;
 };
 
 class tag_array {
@@ -373,6 +366,7 @@ public:
         m_miss_queue_status = status;
     }
 
+    virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ) =  0;
     /// Sends next request to lower level of memory
     void cycle();
     /// Interface for response from lower memory level (model bandwidth restictions in caller)
@@ -421,11 +415,11 @@ public:
     	  return ( (m_miss_queue.size()+num_miss) >= m_config.m_miss_queue_size );
     }
     /// Read miss handler without writeback
-    void read_request(new_addr_type addr, new_addr_type block_addr, unsigned cache_index, mem_fetch *mf,
-    		unsigned time, bool &do_miss, std::list<cache_event> &events, bool read_only);
+    void send_read_request(new_addr_type addr, new_addr_type block_addr, unsigned cache_index, mem_fetch *mf,
+    		unsigned time, bool &do_miss, std::list<cache_event> &events, bool read_only, bool wa);
     /// Read miss handler. Check MSHR hit or MSHR available
-    void read_request(new_addr_type addr, new_addr_type block_addr, unsigned cache_index, mem_fetch *mf,
-    		unsigned time, bool &do_miss, bool &wb, cache_block_t &evicted, std::list<cache_event> &events, bool read_only);
+    void send_read_request(new_addr_type addr, new_addr_type block_addr, unsigned cache_index, mem_fetch *mf,
+    		unsigned time, bool &do_miss, bool &wb, cache_block_t &evicted, std::list<cache_event> &events, bool read_only, bool wa);
 };
 
 /// Read only cache
@@ -438,10 +432,7 @@ public:
     virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events );
 };
 
-/// Data cache
-/// This is meant to model the first level data cache in Fermi.
-/// It is write-evict (global) or write-back (local) at the granularity of individual blocks
-/// for L1 and full write-back for L2 (the policy used in fermi according to the CUDA manual)
+/// Data cache - Implements common functions for L1 and L2 data cache
 class data_cache : public baseline_cache {
 public:
     data_cache( const char *name, const cache_config &config,
@@ -452,13 +443,43 @@ public:
         m_memfetch_creator=mfcreator;
     }
 
-    virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events );
-
-    private:
+protected:
     mem_fetch_allocator *m_memfetch_creator;
 
-    // Private functions for data cache access
-    void write_request(mem_fetch *mf, cache_event request, unsigned time, std::list<cache_event> &events);
+    // Functions for data cache access
+    /// Sends write request to lower level memory (write or writeback)
+    void send_write_request(mem_fetch *mf, cache_event request, unsigned time, std::list<cache_event> &events);
+    /// Sends read request, and possible write-back request, to lower level memory for a write miss with write-allocate
+    bool send_write_allocate(mem_fetch *mf, new_addr_type addr, new_addr_type block_addr, unsigned cache_index, unsigned time, std::list<cache_event> &events);
+    /// Marks block as MODIFIED and updates block LRU
+    void write_back_hit(new_addr_type block_addr, unsigned time, unsigned cache_index);
+    /// Marks block as INVALID and sends write request to lower level memory
+    bool do_write_evict(mem_fetch *mf, unsigned time, unsigned cache_index, std::list<cache_event> &events);
+};
+
+/// This is meant to model the first level data cache in Fermi.
+/// It is write-evict (global) or write-back (local) at the granularity of individual blocks
+/// (the policy used in fermi according to the CUDA manual)
+class l1_cache : public data_cache {
+public:
+	l1_cache(const char *name, const cache_config &config,
+			int core_id, int type_id, mem_fetch_interface *memport,
+            mem_fetch_allocator *mfcreator, enum mem_fetch_status status )
+			: data_cache(name,config,core_id,type_id,memport,mfcreator,status){}
+
+	virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events );
+};
+
+/// Models second level shared cache with global write-back and write-allocate policies
+class l2_cache : public data_cache {
+public:
+	l2_cache(const char *name, const cache_config &config,
+			int core_id, int type_id, mem_fetch_interface *memport,
+            mem_fetch_allocator *mfcreator, enum mem_fetch_status status )
+			: data_cache(name,config,core_id,type_id,memport,mfcreator,status){}
+
+	virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events );
+
 };
 
 /********************************************************************************************************************************************************/
