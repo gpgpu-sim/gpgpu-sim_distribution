@@ -383,22 +383,86 @@ void data_cache::send_write_request(mem_fetch *mf, cache_event request, unsigned
     mf->set_status(m_miss_queue_status,time);
 }
 
-/// Sends read request, and possible write-back request, to lower level memory for a write miss with write-allocate
-bool data_cache::send_write_allocate(mem_fetch *mf, new_addr_type addr, new_addr_type block_addr, unsigned cache_index, unsigned time, std::list<cache_event> &events){
+
+/****** Write-hit functions (Set by config file) ******/
+
+/// Write-back hit: Mark block as modified
+cache_request_status data_cache::wr_hit_wb(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events ){
+	new_addr_type block_addr = m_config.block_addr(addr);
+	m_tag_array.access(block_addr,time,cache_index); // update LRU state
+	cache_block_t &block = m_tag_array.get_block(cache_index);
+	block.m_status = MODIFIED;
+
+	return HIT;
+}
+
+/// Write-through hit: Directly send request to lower level memory
+cache_request_status data_cache::wr_hit_wt(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events ){
+	if(miss_queue_full(0))
+		return RESERVATION_FAIL; // cannot handle request this cycle
+
+	// generate a write-through
+	send_write_request(mf, WRITE_REQUEST_SENT, time, events);
+
+	return HIT;
+}
+
+/// Write-evict hit: Send request to lower level memory and invalidate corresponding block
+cache_request_status data_cache::wr_hit_we(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events ){
+	if(miss_queue_full(0))
+		return RESERVATION_FAIL; // cannot handle request this cycle
+
+	// generate a write-through/evict
+	cache_block_t &block = m_tag_array.get_block(cache_index);
+	send_write_request(mf, WRITE_REQUEST_SENT, time, events);
+
+	// Invalidate block
+	block.m_status = INVALID;
+	return HIT;
+}
+
+/// Global write-evict, local write-back: Useful for private caches
+enum cache_request_status data_cache::wr_hit_global_we_local_wb(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events ){
+	bool evict = (mf->get_access_type() == GLOBAL_ACC_W); // evict a line that hits on global memory write
+	if(evict)
+		return wr_hit_wb(addr, cache_index, mf, time, events);
+	else
+		return wr_hit_we(addr, cache_index, mf, time, events);
+}
+
+/****** Write-miss functions (Set by config file) ******/
+
+/// Write-allocate miss: Send write request to lower level memory and send a read request for the same block
+enum cache_request_status data_cache::wr_miss_wa(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events) {
+
+	new_addr_type block_addr = m_config.block_addr(addr);
+
+	// Write allocate, maximum 3 requests (write miss, read request, write back request)
+	// Conservatively ensure the worst-case request can be handled this cycle
+	bool mshr_hit = m_mshrs.probe(block_addr);
+	bool mshr_avail = !m_mshrs.full(block_addr);
+	if(miss_queue_full(2) || (!(mshr_hit && mshr_avail) && !(!mshr_hit && mshr_avail && (m_miss_queue.size() < m_config.m_miss_queue_size))))
+		return RESERVATION_FAIL;
+
+	send_write_request(mf, WRITE_REQUEST_SENT, time, events);
+	// Tries to send write allocate request, returns true on success and false on failure
+	//if(!send_write_allocate(mf, addr, block_addr, cache_index, time, events))
+	//	return RESERVATION_FAIL;
+
 	const mem_access_t *ma = new  mem_access_t( L2_WR_ALLOC_R,
-												mf->get_addr(),
-												mf->get_data_size(),
-												false, // Now performing a read
-												mf->get_access_warp_mask(),
-												mf->get_access_byte_mask() );
+						mf->get_addr(),
+						mf->get_data_size(),
+						false, // Now performing a read
+						mf->get_access_warp_mask(),
+						mf->get_access_byte_mask() );
 
 	mem_fetch *n_mf = new mem_fetch( *ma,
-									NULL,
-									mf->get_ctrl_size(),
-									mf->get_wid(),
-									mf->get_sid(),
-									mf->get_tpc(),
-									mf->get_mem_config());
+					NULL,
+					mf->get_ctrl_size(),
+					mf->get_wid(),
+					mf->get_sid(),
+					mf->get_tpc(),
+					mf->get_mem_config());
 
 	bool do_miss = false;
 	bool wb = false;
@@ -413,191 +477,132 @@ bool data_cache::send_write_allocate(mem_fetch *mf, new_addr_type addr, new_addr
 		wb->set_status(m_miss_queue_status,time);
 	}
 	if( do_miss )
-		return true;
-	return false;
+		return MISS;
 
+	return RESERVATION_FAIL;
 }
 
-/// Marks block as MODIFIED and updates block LRU
-void data_cache::write_back_hit(new_addr_type block_addr, unsigned time, unsigned cache_index){
-	m_tag_array.access(block_addr,time,cache_index); // update LRU state
-    cache_block_t &block = m_tag_array.get_block(cache_index);
-    block.m_status = MODIFIED;
-}
-
-/// Marks block as INVALID and sends write request to lower level memory
-bool data_cache::do_write_evict(mem_fetch *mf, unsigned time, unsigned cache_index, std::list<cache_event> &events){
+/// No write-allocate miss: Simply send write request to lower level memory
+enum cache_request_status data_cache::wr_miss_no_wa(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events ){
 	if(miss_queue_full(0))
-		return false; // cannot handle request this cycle
+		return RESERVATION_FAIL; // cannot handle request this cycle
 
-    // generate a write-through/evict
-    cache_block_t &block = m_tag_array.get_block(cache_index);
-    send_write_request(mf, WRITE_REQUEST_SENT, time, events);
+	// on miss, generate write through (no write buffering -- too many threads for that)
+	send_write_request(mf, WRITE_REQUEST_SENT, time, events);
+	return MISS;
+}
 
-    // Invalidate block
-    block.m_status = INVALID;
-    return true;
+/****** Read hit functions (Set by config file) ******/
+
+/// Baseline read hit: Update LRU status of block. Special case for atomic instructions -> Mark block as modified
+enum cache_request_status data_cache::rd_hit_base(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events ){
+	new_addr_type block_addr = m_config.block_addr(addr);
+	m_tag_array.access(block_addr,time,cache_index);
+	if(mf->isatomic()){ // Atomics treated as global read/write requests - Perform read, mark line as MODIFIED
+		assert(mf->get_access_type() == GLOBAL_ACC_R);
+		cache_block_t &block = m_tag_array.get_block(cache_index);
+        block.m_status = MODIFIED;  // mark line as dirty
+	}
+	return HIT;
+}
+
+/****** Read miss functions (Set by config file) ******/
+
+/// Baseline read miss: Send read request to lower level memory, perform write-back as necessary
+enum cache_request_status data_cache::rd_miss_base(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events ){
+	if(miss_queue_full(1))
+		return RESERVATION_FAIL; // cannot handle request this cycle (might need to generate two requests)
+
+	new_addr_type block_addr = m_config.block_addr(addr);
+	bool do_miss = false;
+	bool wb = false;
+	cache_block_t evicted;
+	send_read_request(addr, block_addr, cache_index, mf, time, do_miss, wb, evicted, events, false, false);
+
+	if(wb){
+		mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr, L1_WRBK_ACC,m_config.get_line_sz(),true);
+		send_write_request(wb, WRITE_BACK_REQUEST_SENT, time, events);
+	}
+	if( do_miss )
+		return MISS;
+	return RESERVATION_FAIL;
 }
 
 /// Access cache for read_only_cache: returns RESERVATION_FAIL if request could not be accepted (for any reason)
 enum cache_request_status read_only_cache::access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ) {
-    assert( mf->get_data_size() <= m_config.get_line_sz());
-
-    assert(m_config.m_write_policy == READ_ONLY);
-    assert(!mf->get_is_write());
-    new_addr_type block_addr = m_config.block_addr(addr);
-    unsigned cache_index = (unsigned)-1;
-    enum cache_request_status status = m_tag_array.probe(block_addr,cache_index);
-    if ( status == HIT ) {
-        m_tag_array.access(block_addr,time,cache_index); // update LRU state
-        return HIT;
-    }
-    if ( status != RESERVATION_FAIL ) {
-    	if(!miss_queue_full(0)){
+	assert( mf->get_data_size() <= m_config.get_line_sz());
+	assert(m_config.m_write_policy == READ_ONLY);
+	assert(!mf->get_is_write());
+	new_addr_type block_addr = m_config.block_addr(addr);
+	unsigned cache_index = (unsigned)-1;
+	enum cache_request_status status = m_tag_array.probe(block_addr,cache_index);
+	if ( status == HIT ) {
+		m_tag_array.access(block_addr,time,cache_index); // update LRU state
+		return HIT;
+	}else if ( status != RESERVATION_FAIL ) {
+		if(!miss_queue_full(0)){
 			bool do_miss=false;
 			send_read_request(addr, block_addr, cache_index, mf, time, do_miss, events, true, false);
 			if(do_miss)
 				return MISS;
-    	}
-    }
-    return RESERVATION_FAIL;
+		}
+	}
+	return RESERVATION_FAIL;
 }
 
 /// This is meant to model the first level data cache in Fermi.
-/// It is write-evict (global) or write-back (local) at the granularity of individual blocks
+/// It is write-evict (global) or write-back (local) at the granularity of individual blocks (Set by GPGPU-Sim configuration file)
 /// (the policy used in fermi according to the CUDA manual)
 enum cache_request_status l1_cache::access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ){
 	assert( mf->get_data_size() <= m_config.get_line_sz());
 	bool wr = mf->get_is_write();
-    bool isatomic = mf->isatomic();
-    enum mem_access_type type = mf->get_access_type();
+	new_addr_type block_addr = m_config.block_addr(addr);
+	unsigned cache_index = (unsigned)-1;
+	enum cache_request_status status = m_tag_array.probe(block_addr,cache_index);
 
-    bool evict = (type == GLOBAL_ACC_W); // evict a line that hits on global memory write
 
-    new_addr_type block_addr = m_config.block_addr(addr);
-    unsigned cache_index = (unsigned)-1;
-    enum cache_request_status status = m_tag_array.probe(block_addr,cache_index);
-
-    if(wr){	// Write
-		assert(m_config.m_write_policy != READ_ONLY);
+	// Each function pointer (m_rd/wr_hit/miss) is set in the data_cache constructor to reflect the corresponding cache configuration options
+	if(wr){	// Write
 		if(status == HIT){
-			if(m_config.m_write_policy == WRITE_BACK && !evict){
-				write_back_hit(block_addr, time, cache_index);
-			}else if(m_config.m_write_policy == WRITE_EVICT || evict){
-				if(!do_write_evict(mf, time, cache_index, events))
-					return RESERVATION_FAIL;
-			}
-			return HIT;
+			return (this->*m_wr_hit)(addr, cache_index, mf, time, events);
 		}else if ( status != RESERVATION_FAIL ) {
-       		if(miss_queue_full(0))
-       			return RESERVATION_FAIL; // cannot handle request this cycle
-           	// on miss, generate write through (no write buffering -- too many threads for that)
-           	send_write_request(mf, WRITE_REQUEST_SENT, time, events);
-			return MISS;
+			return (this->*m_wr_miss)(addr, cache_index,  mf, time, events);
 		}
 	}else{ // Read
-		if(status == HIT){ // Read hit: Update LRU state
-			m_tag_array.access(block_addr,time,cache_index);
-			if(isatomic){ // Atomics treated as global read/write requests - Perform read, mark line as MODIFIED
-				assert(type == GLOBAL_ACC_R);
-				cache_block_t &block = m_tag_array.get_block(cache_index);
-                block.m_status = MODIFIED;  // mark line as dirty
-			}
-			return HIT;
+		if(status == HIT){
+			return (this->*m_rd_hit)(addr, cache_index,  mf, time, events);
 		}else if ( status != RESERVATION_FAIL ) {
-        	if(miss_queue_full(1))
-        		return RESERVATION_FAIL; // cannot handle request this cycle (might need to generate two requests)
-
-            bool do_miss = false;
-            bool wb = false;
-            cache_block_t evicted;
-            send_read_request(addr, block_addr, cache_index, mf, time, do_miss, wb, evicted, events, false, false);
-
-            if(wb){
-            	mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr, L1_WRBK_ACC,m_config.get_line_sz(),true);
-            	send_write_request(wb, WRITE_BACK_REQUEST_SENT, time, events);
-            }
-            if( do_miss )
-            	return MISS;
+			return (this->*m_rd_miss)(addr, cache_index,  mf, time, events);
 		}
 	}
 	return RESERVATION_FAIL;
 }
 
 /// Models second level shared cache with global write-back and write-allocate policies
+/// Currently the same as l1_cache, but separated to allow for different implementations
 enum cache_request_status l2_cache::access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ){
 	assert( mf->get_data_size() <= m_config.get_line_sz());
 	bool wr = mf->get_is_write();
-    bool isatomic = mf->isatomic();
-    enum mem_access_type type = mf->get_access_type();
+	new_addr_type block_addr = m_config.block_addr(addr);
+	unsigned cache_index = (unsigned)-1;
+	enum cache_request_status status = m_tag_array.probe(block_addr,cache_index);
 
-    new_addr_type block_addr = m_config.block_addr(addr);
-    unsigned cache_index = (unsigned)-1;
-    enum cache_request_status status = m_tag_array.probe(block_addr,cache_index);
-
-    if(wr){	// Write
-		assert(m_config.m_write_policy != READ_ONLY);
+	// Each function pointer (m_rd/wr_hit/miss) is set in the data_cache constructor to reflect the corresponding cache configuration options
+	if(wr){	// Write
 		if(status == HIT){
-			if(m_config.m_write_policy == WRITE_BACK){
-				write_back_hit(block_addr, time, cache_index);
-			}else if(m_config.m_write_policy == WRITE_EVICT){
-				assert(0);
-				if(!do_write_evict(mf, time, cache_index, events))
-					return RESERVATION_FAIL;
-			}
-			return HIT;
+			return (this->*m_wr_hit)(addr, cache_index,  mf, time, events);
 		}else if ( status != RESERVATION_FAIL ) {
-			if(m_config.m_write_alloc_policy == WRITE_ALLOCATE){
-        		// Write allocate, maximum 3 requests (write miss, read request, write back request)
-        		// Conservatively ensure the worst-case request can be handled this cycle
-                bool mshr_hit = m_mshrs.probe(block_addr);
-                bool mshr_avail = !m_mshrs.full(block_addr);
-        		if(miss_queue_full(2) || (!(mshr_hit && mshr_avail) && !(!mshr_hit && mshr_avail && (m_miss_queue.size() < m_config.m_miss_queue_size))))
-        			return RESERVATION_FAIL;
-
-        		send_write_request(mf, WRITE_REQUEST_SENT, time, events);
-        		// Tries to send write allocate request, returns true on success and false on failure
-        		if(!send_write_allocate(mf, addr, block_addr, cache_index, time, events))
-        			return RESERVATION_FAIL;
-			}else{
-        		if(miss_queue_full(0))
-        			return RESERVATION_FAIL; // cannot handle request this cycle
-
-            	// on miss, generate write through (no write buffering -- too many threads for that)
-            	send_write_request(mf, WRITE_REQUEST_SENT, time, events);
-			}
-			return MISS;
+			return (this->*m_wr_miss)(addr, cache_index,  mf, time, events);
 		}
 	}else{ // Read
-		if(status == HIT){ // Read hit: Update LRU state
-			m_tag_array.access(block_addr,time,cache_index);
-			if(isatomic){ // Atomics treated as global read/write requests - Perform read, mark line as MODIFIED
-				assert(type == GLOBAL_ACC_R);
-                // treated as write back...
-                cache_block_t &block = m_tag_array.get_block(cache_index);
-                block.m_status = MODIFIED;  // mark line as dirty
-			}
-			return HIT;
+		if(status == HIT){
+			return (this->*m_rd_hit)(addr, cache_index,  mf, time, events);
 		}else if ( status != RESERVATION_FAIL ) {
-        	if(miss_queue_full(1))
-        		return RESERVATION_FAIL; // cannot handle request this cycle (might need to generate two requests)
-
-            bool do_miss = false;
-            bool wb = false;
-            cache_block_t evicted;
-            send_read_request(addr, block_addr, cache_index, mf, time, do_miss, wb, evicted, events, false, false);
-
-            if(wb){
-            	mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr, L1_WRBK_ACC,m_config.get_line_sz(),true);
-            	send_write_request(wb, WRITE_BACK_REQUEST_SENT, time, events);
-            }
-            if( do_miss )
-            	return MISS;
+			return (this->*m_rd_miss)(addr, cache_index,  mf, time, events);
 		}
 	}
 	return RESERVATION_FAIL;
 }
-
 
 /// Access function for tex_cache
 /// return values: RESERVATION_FAIL if request could not be accepted
