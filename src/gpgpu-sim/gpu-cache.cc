@@ -561,7 +561,8 @@ enum cache_request_status l1_cache::access( new_addr_type addr, mem_fetch *mf, u
 	enum cache_request_status status = m_tag_array.probe(block_addr,cache_index);
 
 
-	// Each function pointer (m_rd/wr_hit/miss) is set in the data_cache constructor to reflect the corresponding cache configuration options
+	// Each function pointer ( m_[rd/wr]_[hit/miss] ) is set in the data_cache constructor to reflect the corresponding cache configuration options.
+	// Function pointers were used to avoid many long conditional branches resulting from many cache configuration options.
 	if(wr){	// Write
 		if(status == HIT){
 			return (this->*m_wr_hit)(addr, cache_index, mf, time, events);
@@ -587,7 +588,8 @@ enum cache_request_status l2_cache::access( new_addr_type addr, mem_fetch *mf, u
 	unsigned cache_index = (unsigned)-1;
 	enum cache_request_status status = m_tag_array.probe(block_addr,cache_index);
 
-	// Each function pointer (m_rd/wr_hit/miss) is set in the data_cache constructor to reflect the corresponding cache configuration options
+	// Each function pointer ( m_[rd/wr]_[hit/miss] ) is set in the data_cache constructor to reflect the corresponding cache configuration options.
+	// Function pointers were used to avoid many long conditional branches resulting from many cache configuration options.
 	if(wr){	// Write
 		if(status == HIT){
 			return (this->*m_wr_hit)(addr, cache_index,  mf, time, events);
