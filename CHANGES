@@ -48,6 +48,8 @@ Version 3.1.1+edits (development branch) versus 3.1.1
       the same for the brx ptxplus instruction to work.
 	- Fixed a bug where the L2 cache was modelling write-back for local writes
       and write-evict for global writes - Should be write-back for all writes.
+    - Fixed bug that was causing undetermistic kernel end detection inside the 
+      simulation thread. 
 
 Version 3.1.1 versus 3.1.0
 - Add checks to top level makefile to ensure setup_environment is run and checks to

@@ -235,15 +235,17 @@ private:
 class stream_manager {
 public:
     stream_manager( gpgpu_sim *gpu, bool cuda_launch_blocking );
-    void register_finished_kernel( unsigned grid_uid );
+    bool register_finished_kernel(unsigned grid_uid  );
+    bool check_finished_kernel(  );
     stream_operation front();
     void add_stream( CUstream_st *stream );
     void destroy_stream( CUstream_st *stream );
     bool concurrent_streams_empty();
+    bool empty_protected();
     bool empty();
     void print( FILE *fp);
     void push( stream_operation op );
-
+    void operation(bool * sim);
 private:
     void print_impl( FILE *fp);
 
