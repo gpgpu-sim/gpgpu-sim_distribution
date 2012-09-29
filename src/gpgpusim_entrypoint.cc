@@ -89,13 +89,12 @@ bool g_sim_done = true;
 void *gpgpu_sim_thread_concurrent(void*)
 {
     // concurrent kernel execution simulation thread
-
     do {
        if(g_debug_execution >= 3) {
           printf("GPGPU-Sim: *** simulation thread starting and spinning waiting for work ***\n");
           fflush(stdout);
        }
-        while( g_stream_manager->empty() && !g_sim_done )
+        while( g_stream_manager->empty_protected() && !g_sim_done )
             ;
         if(g_debug_execution >= 3) {
            printf("GPGPU-Sim: ** START simulation thread (detected work) **\n");
@@ -110,23 +109,14 @@ void *gpgpu_sim_thread_concurrent(void*)
         g_the_gpu->init();
         do {
             // check if a kernel has completed
-            unsigned grid_uid = g_the_gpu->finished_kernel();
-            if( grid_uid ){
-                g_stream_manager->register_finished_kernel(grid_uid);
-				g_the_gpu->print_stats();
-            }
-
 			// launch operation on device if one is pending and can be run
-			stream_operation op = g_stream_manager->front();
-			op.do_operation(g_the_gpu);
-    
-            // simulate a clock cycle on the GPU 
-            if( g_the_gpu->active() ) { 
-                g_the_gpu->cycle();
-                sim_cycles = true;
-                g_the_gpu->deadlock_check();
-            }
-            active = g_the_gpu->active() || !g_stream_manager->empty();
+			g_stream_manager->operation(&sim_cycles);
+		    if( g_the_gpu->active() ) {
+		        g_the_gpu->cycle();
+		        sim_cycles = true;
+		        g_the_gpu->deadlock_check();
+		    }
+		    active=g_the_gpu->active() || !g_stream_manager->empty_protected();
         } while( active );
         if(g_debug_execution >= 3) {
            printf("GPGPU-Sim: ** STOP simulation thread (no work) **\n");

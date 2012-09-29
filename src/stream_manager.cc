@@ -110,6 +110,7 @@ void CUstream_st::print(FILE *fp)
     pthread_mutex_unlock(&m_lock);
 }
 
+
 void stream_operation::do_operation( gpgpu_sim *gpu )
 {
     if( is_noop() ) 
@@ -195,24 +196,50 @@ stream_manager::stream_manager( gpgpu_sim *gpu, bool cuda_launch_blocking )
     pthread_mutex_init(&m_lock,NULL);
 }
 
-void stream_manager::register_finished_kernel( unsigned grid_uid ) 
+void stream_manager::operation( bool * sim)
+{
+	bool active=false;
+	pthread_mutex_lock(&m_lock);
+	bool check=check_finished_kernel();
+	if(check) m_gpu->print_stats();
+	stream_operation op =front();
+	op.do_operation( m_gpu );
+	pthread_mutex_unlock(&m_lock);
+	//pthread_mutex_lock(&m_lock);
+    // simulate a clock cycle on the GPU
+
+}
+
+bool stream_manager::check_finished_kernel()
+{
+
+	unsigned grid_uid = m_gpu->finished_kernel();
+	bool check=register_finished_kernel(grid_uid);
+	return check;
+
+}
+
+bool stream_manager::register_finished_kernel(unsigned grid_uid)
 {
     // called by gpu simulation thread
-    pthread_mutex_lock(&m_lock);
+    if(grid_uid > 0){
     CUstream_st *stream = m_grid_id_to_stream[grid_uid];
     kernel_info_t *kernel = stream->front().get_kernel();
     assert( grid_uid == kernel->get_uid() );
     stream->record_next_done();
     m_grid_id_to_stream.erase(grid_uid);
     delete kernel;
-    pthread_mutex_unlock(&m_lock);
+    return true;
+    }else{
+    	return false;
+    }
+    return false;
 }
 
 stream_operation stream_manager::front() 
 {
     // called by gpu simulation thread
     stream_operation result;
-    pthread_mutex_lock(&m_lock);
     if( concurrent_streams_empty() )
         m_service_stream_zero = true;
     if( m_service_stream_zero ) {
@@ -241,7 +268,6 @@ stream_operation stream_manager::front()
             }
         }
     }
-    pthread_mutex_unlock(&m_lock);
     return result;
 }
 
@@ -285,17 +311,28 @@ bool stream_manager::concurrent_streams_empty()
     return result;
 }
 
-bool stream_manager::empty()
+bool stream_manager::empty_protected()
 {
     bool result = true;
     pthread_mutex_lock(&m_lock);
-    if( !concurrent_streams_empty() ) 
+    if( !concurrent_streams_empty() )
         result = false;
-    if( !m_stream_zero.empty() ) 
+    if( !m_stream_zero.empty() )
         result = false;
     pthread_mutex_unlock(&m_lock);
     return result;
 }
+
+bool stream_manager::empty()
+{
+    bool result = true;
+    if( !concurrent_streams_empty() ) 
+        result = false;
+    if( !m_stream_zero.empty() ) 
+        result = false;
+    return result;
+}
+
 
 void stream_manager::print( FILE *fp)
 {
@@ -303,7 +340,6 @@ void stream_manager::print( FILE *fp)
     print_impl(fp);
     pthread_mutex_unlock(&m_lock);
 }
-
 void stream_manager::print_impl( FILE *fp)
 {
     fprintf(fp,"GPGPU-Sim API: Stream Manager State\n");
