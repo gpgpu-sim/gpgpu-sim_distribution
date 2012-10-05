@@ -401,6 +401,11 @@ cache_request_status data_cache::wr_hit_wt(new_addr_type addr, unsigned cache_in
 	if(miss_queue_full(0))
 		return RESERVATION_FAIL; // cannot handle request this cycle
 
+	new_addr_type block_addr = m_config.block_addr(addr);
+	m_tag_array.access(block_addr,time,cache_index); // update LRU state
+	cache_block_t &block = m_tag_array.get_block(cache_index);
+	block.m_status = MODIFIED;
+
 	// generate a write-through
 	send_write_request(mf, WRITE_REQUEST_SENT, time, events);
 
@@ -425,9 +430,9 @@ cache_request_status data_cache::wr_hit_we(new_addr_type addr, unsigned cache_in
 enum cache_request_status data_cache::wr_hit_global_we_local_wb(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events ){
 	bool evict = (mf->get_access_type() == GLOBAL_ACC_W); // evict a line that hits on global memory write
 	if(evict)
-		return wr_hit_wb(addr, cache_index, mf, time, events);
+		return wr_hit_we(addr, cache_index, mf, time, events); // Write-evict
 	else
-		return wr_hit_we(addr, cache_index, mf, time, events);
+		return wr_hit_wb(addr, cache_index, mf, time, events); // Write-back
 }
 
 /****** Write-miss functions (Set by config file) ******/
@@ -471,7 +476,7 @@ enum cache_request_status data_cache::wr_miss_wa(new_addr_type addr, unsigned ca
 	// Send read request resulting from write miss
 	send_read_request(addr, block_addr, cache_index, n_mf, time, do_miss, wb, evicted, events, false, true);
 
-	if( wb ) { // If evicted block is modified
+	if( wb && (m_config.m_write_policy != WRITE_THROUGH) ) { // If evicted block is modified and not a write-through (already modified lower level)
 		mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,L2_WRBK_ACC,m_config.get_line_sz(),true);
 		m_miss_queue.push_back(wb);
 		wb->set_status(m_miss_queue_status,time);
@@ -519,7 +524,7 @@ enum cache_request_status data_cache::rd_miss_base(new_addr_type addr, unsigned 
 	cache_block_t evicted;
 	send_read_request(addr, block_addr, cache_index, mf, time, do_miss, wb, evicted, events, false, false);
 
-	if(wb){
+	if(wb && (m_config.m_write_policy != WRITE_THROUGH) ){ // If evicted block is modified and not a write-through (already modified lower level)
 		mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr, L1_WRBK_ACC,m_config.get_line_sz(),true);
 		send_write_request(wb, WRITE_BACK_REQUEST_SENT, time, events);
 	}
