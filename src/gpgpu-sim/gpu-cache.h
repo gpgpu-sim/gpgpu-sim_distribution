@@ -478,29 +478,29 @@ protected:
 
     // Member Function pointers - Set by configuration options to the functions below each grouping
     /******* Write-hit configs *******/
-    enum cache_request_status (data_cache::*m_wr_hit)(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events);
+    enum cache_request_status (data_cache::*m_wr_hit)(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events, enum cache_request_status status);
     /// Marks block as MODIFIED and updates block LRU
-    enum cache_request_status wr_hit_wb(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events); // write-back
-    enum cache_request_status wr_hit_wt(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events); // write-through
+    enum cache_request_status wr_hit_wb(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events, enum cache_request_status status); // write-back
+    enum cache_request_status wr_hit_wt(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events, enum cache_request_status status); // write-through
     /// Marks block as INVALID and sends write request to lower level memory
-    enum cache_request_status wr_hit_we(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events); // write-evict
-    enum cache_request_status wr_hit_global_we_local_wb(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events); // global write-evict, local write-back
+    enum cache_request_status wr_hit_we(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events, enum cache_request_status status); // write-evict
+    enum cache_request_status wr_hit_global_we_local_wb(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events, enum cache_request_status status); // global write-evict, local write-back
 
 
     /******* Write-miss configs *******/
-    enum cache_request_status (data_cache::*m_wr_miss)(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events);
+    enum cache_request_status (data_cache::*m_wr_miss)(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events, enum cache_request_status status);
     /// Sends read request, and possible write-back request, to lower level memory for a write miss with write-allocate
-    enum cache_request_status wr_miss_wa(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events); // write-allocate
-    enum cache_request_status wr_miss_no_wa(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events); // no write-allocate
+    enum cache_request_status wr_miss_wa(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events, enum cache_request_status status); // write-allocate
+    enum cache_request_status wr_miss_no_wa(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events, enum cache_request_status status); // no write-allocate
 
     // Currently no separate functions for reads
     /******* Read-hit configs *******/
-    enum cache_request_status (data_cache::*m_rd_hit)(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events);
-    enum cache_request_status rd_hit_base(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events);
+    enum cache_request_status (data_cache::*m_rd_hit)(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events, enum cache_request_status status);
+    enum cache_request_status rd_hit_base(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events, enum cache_request_status status);
 
     /******* Read-miss configs *******/
-    enum cache_request_status (data_cache::*m_rd_miss)(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events);
-    enum cache_request_status rd_miss_base(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events);
+    enum cache_request_status (data_cache::*m_rd_miss)(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events, enum cache_request_status status);
+    enum cache_request_status rd_miss_base(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events, enum cache_request_status status);
 
 };
 
