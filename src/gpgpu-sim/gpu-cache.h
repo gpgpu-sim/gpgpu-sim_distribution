@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2011, Tor M. Aamodt
+// Copyright (c) 2009-2011, Tor M. Aamodt, Tayler Hetherington
 // The University of British Columbia
 // All rights reserved.
 //
@@ -131,9 +131,9 @@ public:
         assert( m_config_string );
         char rp, wp, ap, mshr_type, wap;
 
-        int ntok = sscanf(m_config_string,"%u:%u:%u:%c:%c:%c:%c:%c:%u:%u:%u:%u",
-                          &m_nset, &m_line_sz, &m_assoc, &rp, &wp, &ap,
-                          &mshr_type, &wap, &m_mshr_entries,&m_mshr_max_merge,
+        int ntok = sscanf(m_config_string,"%u:%u:%u,%c:%c:%c:%c,%c:%u:%u,%u:%u",
+                          &m_nset, &m_line_sz, &m_assoc, &rp, &wp, &ap, &wap,
+                          &mshr_type, &m_mshr_entries,&m_mshr_max_merge,
                           &m_miss_queue_size,&m_result_fifo_entries);
 
         if ( ntok < 10 ) {

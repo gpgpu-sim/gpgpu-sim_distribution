@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2011, Tor M. Aamodt 
+// Copyright (c) 2009-2011, Tor M. Aamodt, Tayler Hetherington
 // The University of British Columbia
 // All rights reserved.
 //
