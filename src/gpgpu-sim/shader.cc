@@ -1169,6 +1169,10 @@ void ldst_unit::writeback()
         case 0: // shared memory 
             if( !m_pipeline_reg[0]->empty() ) {
                 m_next_wb = *m_pipeline_reg[0];
+                if(m_next_wb.isatomic()) {
+                    m_next_wb.do_atomic();
+                    m_core->decrement_atomic_count(m_next_wb.warp_id(), m_next_wb.active_count());
+                }
                 m_core->dec_inst_in_pipeline(m_pipeline_reg[0]->warp_id());
                 m_pipeline_reg[0]->clear();
                 serviced_client = next_client; 

@@ -899,18 +899,33 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
 
    // Check state space
    addr_t effective_address = src1_data.u64;  
-   memory_space_t space = pI->get_space(); 
+   memory_space_t space = pI->get_space();
    if (space == undefined_space) {
-      // generic space - determine space via address 
-      space = whichspace(effective_address); 
-      assert( space == global_space ); 
-      effective_address = generic_to_global(effective_address); 
+      // generic space - determine space via address
+      if( whichspace(effective_address) == global_space ) {
+         effective_address = generic_to_global(effective_address);
+         space = global_space;
+      } else if( whichspace(effective_address) == shared_space ) {
+         unsigned smid = thread->get_hw_sid();
+         effective_address = generic_to_shared(smid,effective_address);
+         space = shared_space;
+      } else {
+         abort();
+      }
    } 
-   assert( space == global_space );
+   assert( space == global_space || space == shared_space );
+
+   memory_space *mem = NULL;
+   if(space == global_space)
+       mem = thread->get_global_memory();
+   else if(space == shared_space)
+       mem = thread->m_shared_mem;
+   else
+       abort();
 
    // Copy value pointed to in operand 'a' into register 'd'
    // (i.e. copy src1_data to dst)
-   thread->get_global_memory()->read(effective_address,size/8,&data.s64);
+   mem->read(effective_address,size/8,&data.s64);
    if (dst.get_symbol()->type()){
 	   thread->set_operand_value(dst, data, to_type, thread, pI);                         // Write value into register 'd'
    }
@@ -1151,9 +1166,9 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
       }
    }
 
-   // Write operation result into global memory
+   // Write operation result into  memory
    // (i.e. copy src1_data to dst)
-   thread->get_global_memory()->write(effective_address,size/8,&op_result.s64,thread,pI);
+   mem->write(effective_address,size/8,&op_result.s64,thread,pI);
 }
 
 // atom_impl will now result in a callback being called in mem_ctrl_pop (gpu-sim.c)
@@ -1177,16 +1192,23 @@ void atom_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    // handle generic memory space by converting it to global 
    if ( space == undefined_space ) {
-      assert( whichspace(effective_address) == global_space ); 
-      effective_address_final = generic_to_global(effective_address); 
-      space = global_space; 
+      if( whichspace(effective_address) == global_space ) {
+         effective_address_final = generic_to_global(effective_address);
+         space = global_space;
+      } else if( whichspace(effective_address) == shared_space ) {
+         unsigned smid = thread->get_hw_sid();
+         effective_address_final = generic_to_shared(smid,effective_address);
+         space = shared_space;
+      } else {
+         abort();
+      }
    } else {
-      assert( space == global_space ); 
+      assert( space == global_space || space == shared_space );
       effective_address_final = effective_address; 
    }
 
    // Check state space
-   assert( space == global_space );
+   assert( space == global_space || space == shared_space );
 
    thread->m_last_effective_address = effective_address_final;
    thread->m_last_memory_space = space;
