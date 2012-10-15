@@ -20,6 +20,7 @@ Version 3.1.1+edits (development branch) versus 3.1.1
 - Modified the cache hierarchy (cache_t -> baseline_cache -> [read_only_cache, data_cache, ...])
 - Enabled configurable cache policies (write-back, write-through) and implemented 
   a write-allocate policy
+- Added functional execution support for shared memory atomic operations
 - Bug Fixes:
     - Fixed a compile error that happens with newer gcc/g++ versions (4.7.1)
     - Fixed a bug with the association between cuobjdump output and cubin
