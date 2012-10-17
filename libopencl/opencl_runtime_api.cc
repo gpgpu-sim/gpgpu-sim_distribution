@@ -391,7 +391,11 @@ _cl_program::_cl_program( cl_context        context,
 {
    m_context = context;
    for( cl_uint i=0; i<count; i++ ) {
-      unsigned len = lengths[i];
+      unsigned len;
+      if(lengths != NULL and lengths[i] > 0)
+          len = lengths[i];
+      else
+          len = strlen(strings[i]);
       char *tmp = (char*)malloc(len+1);
       memcpy(tmp,strings[i],len);
       tmp[len] = 0;
@@ -461,7 +465,7 @@ void _cl_program::Build(const char *options)
             printf("                      Ensure you have write permission to the simulation directory\n");
             exit(1);
          }
-         fprintf(fp,source);
+         fputs(source,fp);
          fclose(fp);
 
          char commandline[1024];
