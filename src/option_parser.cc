@@ -45,21 +45,23 @@ class OptionRegistryInterface
 {
 public:
    OptionRegistryInterface(const string optionName, const string optionDesc) 
-      : m_optionName(optionName), m_optionDesc(optionDesc) 
+      : m_optionName(optionName), m_optionDesc(optionDesc), m_isParsed(false) 
    {}
 
    virtual ~OptionRegistryInterface() {}
 
    const string& GetName() { return m_optionName; }
    const string& GetDesc() { return m_optionDesc; }
+   const bool isParsed() { return m_isParsed; }
    virtual string toString() = 0;
    virtual bool fromString(const string str) = 0;
    virtual bool isFlag() = 0;
-    virtual bool assignDefault(const char *str) = 0;
+   virtual bool assignDefault(const char *str) = 0;
 
-private:
+protected:
    string m_optionName;
    string m_optionDesc;
+   bool m_isParsed; // true if the target variable has been updated by fromString()
 };
 
 // Template for option registry - class T = specify data type of the option
@@ -99,11 +101,12 @@ public:
       } catch (stringstream::failure &e) {
          return false;
       }
+      m_isParsed = true; 
       return true;
    }
 
    virtual bool isFlag() { return false; }
-    virtual bool assignDefault(const char *str) { return fromString(str); }
+   virtual bool assignDefault(const char *str) { return fromString(str); }
 
    operator T()
    {
@@ -119,6 +122,7 @@ template<>
 bool OptionRegistry<string>::fromString(const string str)
 {
    m_variable = str;
+   m_isParsed = true; 
    return true;
 }
 
@@ -128,6 +132,7 @@ bool OptionRegistry<char *>::fromString(const string str)
 {
    m_variable = new char[str.size() + 1];
    strcpy(m_variable, str.c_str());
+   m_isParsed = true; 
    return true;
 }
 
@@ -136,6 +141,7 @@ template<>
 bool OptionRegistry<char *>::assignDefault(const char *str) 
 {
     m_variable = const_cast<char *>(str); // c-string options are not meant to be edited anyway
+    m_isParsed = true; 
     return true;
 }
 
@@ -167,6 +173,7 @@ bool OptionRegistry<bool>::fromString(const string str)
    }
    assert(value == 0 or value == 1); // sanity check for boolean options (it can only be 1 or 0)
    m_variable = (value != 0);
+   m_isParsed = true; 
    return parsed;
 }
 
@@ -193,7 +200,7 @@ public:
       OptionRegistry<T> *p_option = new OptionRegistry<T>(optionName, optionDesc, optionVariable);
       m_optionReg.push_back(p_option);
       m_optionMap[optionName] = p_option;
-        p_option->assignDefault(optionDefault);
+      p_option->assignDefault(optionDefault);
    }
 
    void ParseCommandLine(int argc, const char * const argv[]) 
@@ -257,6 +264,26 @@ public:
       }
       inputFile.close();
 
+      ParseStringStream(args); 
+   }
+
+   // parse the given string as tokens separated by a set of given delimiters 
+   void ParseString(string inputString, const string delimiters = string(" ;")) {
+      // convert all delimiter characters into whitespaces 
+      for (unsigned t = 0; t < inputString.size(); t++) {
+         for (unsigned d = 0; d < delimiters.size(); d++) {
+            if (inputString[t] == delimiters.at(d)) {
+               inputString[t] = ' '; 
+               break; 
+            }
+         }
+      }
+      stringstream args(inputString); 
+      ParseStringStream(args); 
+   }
+
+   // parse the given stringstream as whitespace-separated tokens. drain the stream in the process 
+   void ParseStringStream(stringstream &args) {
       // extract non-whitespace string tokens
       vector<char*> argv;
       argv.push_back(new char[6]); 
@@ -298,6 +325,10 @@ public:
       OptionCollection::iterator i_option;
       for (i_option = m_optionReg.begin(); i_option != m_optionReg.end(); ++i_option) {
          stringstream sout;
+         if ((*i_option)->isParsed() == false) {
+            cerr << "\n\nGPGPU-Sim ** ERROR: Missing option '" << (*i_option)->GetName() << "'\n"; 
+            assert(0); 
+         }
          sout << setw(20) << left << (*i_option)->GetName() << " "; 
          sout << setw(20) << right << (*i_option)->toString() << " # ";
          sout << left << (*i_option)->GetDesc();
@@ -343,6 +374,7 @@ void option_parser_register(option_parser_t opp,
       case OPT_BOOL:      p_opr->Register<bool>(name, desc, *(bool*)variable, defaultvalue); break;
       case OPT_FLOAT:     p_opr->Register<float>(name, desc, *(float*)variable, defaultvalue); break;
       case OPT_DOUBLE:    p_opr->Register<double>(name, desc, *(double*)variable, defaultvalue); break;
+      case OPT_CHAR:      p_opr->Register<char>(name, desc, *(char*)variable, defaultvalue); break;
       case OPT_CSTR:      p_opr->Register<char*>(name, desc, *(char**)variable, defaultvalue); break;
         default:
             fprintf(stderr, "\n\nGPGPU-Sim ** ERROR: option data type (%d) not supported!\n", type);
@@ -363,6 +395,14 @@ void option_parser_cfgfile(option_parser_t opp,
 {
     OptionParser *p_opr = reinterpret_cast<OptionParser *>(opp);
     p_opr->ParseFile(filename);
+}
+
+void option_parser_delimited_string(option_parser_t opp,
+                                    const char *inputstring, 
+                                    const char *delimiters)
+{
+    OptionParser *p_opr = reinterpret_cast<OptionParser *>(opp);
+    p_opr->ParseString(inputstring, delimiters);
 }
 
 void option_parser_print(option_parser_t opp, 
@@ -398,7 +438,7 @@ public:
 };
 
 
-int cppinterfacetest(int argc, char *argv[])
+int cppinterfacetest(int argc, const char *argv[])
 {
    testtype c;
    OptionParser optionparser;
@@ -430,22 +470,22 @@ int cppinterfacetest(int argc, char *argv[])
    return 0;
 }
 
-int cinterfacetest(int argc, char *argv[])
+int cinterfacetest(int argc, const char *argv[])
 {
    testtype c;
    option_parser_t opp = option_parser_create();
    c.idata = 123;
    c.fdata = 3249586.333;
    c.sdata = string("haha");
-    char *otherstr;
+   char *otherstr;
 
-    option_parser_register(opp, "-idata", OPT_INT32, &c.idata, "integer data", "-456");
-    option_parser_register(opp, "-fdata", OPT_FLOAT, &c.fdata, "floating point data", "0.001");
-    option_parser_register(opp, "-sdata", OPT_CSTR, &otherstr, "first string data", "hellow");
-    option_parser_register(opp, "-ulldata", OPT_UINT64, &c.ulldata, "unsigend long long data", "0x123456789abcdef1");
-    option_parser_register(opp, "-someflag", OPT_BOOL, &c.bdata, "first flag", "0");
-    option_parser_register(opp, "-otherflag", OPT_BOOL, &c.boolint, "second flag", "1");
-    option_parser_register(opp, "-coption", OPT_CSTR, &c.coption, "char * data", NULL);
+   option_parser_register(opp, "-idata", OPT_INT32, &c.idata, "integer data", "-456");
+   option_parser_register(opp, "-fdata", OPT_FLOAT, &c.fdata, "floating point data", "0.001");
+   option_parser_register(opp, "-sdata", OPT_CSTR, &otherstr, "first string data", "hellow");
+   option_parser_register(opp, "-ulldata", OPT_UINT64, &c.ulldata, "unsigend long long data", "0x123456789abcdef1");
+   option_parser_register(opp, "-someflag", OPT_BOOL, &c.bdata, "first flag", "0");
+   option_parser_register(opp, "-otherflag", OPT_BOOL, &c.boolint, "second flag", "1");
+   option_parser_register(opp, "-coption", OPT_CSTR, &c.coption, "char * data", NULL);
 
    printf("Default: \n");
    option_parser_print(opp, stdout);
@@ -458,17 +498,42 @@ int cinterfacetest(int argc, char *argv[])
    option_parser_cfgfile(opp, "test.config");
    printf("File Parse Results: \n");
    option_parser_print(opp, stdout);
-    printf("%s %d\n", otherstr, c.idata);
+   printf("%s %d\n", otherstr, c.idata);
 
-    option_parser_destroy(opp);
+   option_parser_destroy(opp);
 
    return 0;
 }
 
-int main(int argc, char *argv[]) 
+int stringparsertest()
+{
+   int tABC; 
+   int tDEF; 
+   char tMode;
+   char *tName; 
+
+   option_parser_t opp = option_parser_create();
+   option_parser_register(opp, "ABC", OPT_INT32, &tABC, "tABC", "34");
+   option_parser_register(opp, "DEF", OPT_INT32, &tDEF, "tDEF", "-56");
+   option_parser_register(opp, "Mode", OPT_CHAR, &tMode, "tMode", "P");
+   option_parser_register(opp, "Name", OPT_CSTR, &tName, "tName", "Cache");
+
+   option_parser_delimited_string(opp, "ABC 1111; DEF 88; Mode A; Name out", " ;");
+   printf("String Parse Results: \n");
+   option_parser_print(opp, stdout);
+
+   option_parser_delimited_string(opp, "Name=dram;DEF=702;Mode=B;ABC=-9573;", " =;");
+   printf("String Parse Results: \n");
+   option_parser_print(opp, stdout);
+
+   return 0; 
+}
+
+int main(int argc, const char *argv[]) 
 {
     cppinterfacetest(argc,argv);
     cinterfacetest(argc,argv);
+    stringparsertest(); 
 
     return 0;
 }
