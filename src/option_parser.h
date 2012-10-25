@@ -42,6 +42,7 @@ enum option_dtype {
     OPT_BOOL,
     OPT_FLOAT,
     OPT_DOUBLE,
+    OPT_CHAR,
     OPT_CSTR
 };
 
@@ -69,6 +70,10 @@ void option_parser_cmdline(option_parser_t opp,
 void option_parser_cfgfile(option_parser_t opp,
                            const char *filename);
 
+// parse a delimited string
+void option_parser_delimited_string(option_parser_t opp,
+                                    const char *inputstring, 
+                                    const char *delimiters);
 // print options
 void option_parser_print(option_parser_t opp, 
                          FILE *fout);

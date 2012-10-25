@@ -28,6 +28,7 @@
 #ifndef GPU_SIM_H
 #define GPU_SIM_H
 
+#include "../option_parser.h"
 #include "../abstract_hardware_model.h"
 #include "addrdec.h"
 #include "shader.h"
@@ -71,20 +72,50 @@ struct memory_config {
    }
    void init()
    {
-	  //Disabling bank groups if their values are not specified
-	  nbkgrp = 1;
-	  tCCDL = 0;
-	  tRTPL = 0;
       assert(gpgpu_dram_timing_opt);
-      sscanf(gpgpu_dram_timing_opt,"%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d",
-             &nbk,&tCCD,&tRRD,&tRCD,&tRAS,&tRP,&tRC,&CL,&WL,&tCDLR,&tWR,&nbkgrp,&tCCDL,&tRTPL);
+      if (strchr(gpgpu_dram_timing_opt, '=') == NULL) {
+         // dram timing option in ordered variables (legacy)
+         // Disabling bank groups if their values are not specified
+         nbkgrp = 1;
+         tCCDL = 0;
+         tRTPL = 0;
+         sscanf(gpgpu_dram_timing_opt,"%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d",
+                &nbk,&tCCD,&tRRD,&tRCD,&tRAS,&tRP,&tRC,&CL,&WL,&tCDLR,&tWR,&nbkgrp,&tCCDL,&tRTPL);
+      } else {
+         // named dram timing options (unordered)
+         option_parser_t dram_opp = option_parser_create(); 
+
+         option_parser_register(dram_opp, "nbk",  OPT_UINT32, &nbk,   "number of banks", ""); 
+         option_parser_register(dram_opp, "CCD",  OPT_UINT32, &tCCD,  "column to column delay", ""); 
+         option_parser_register(dram_opp, "RRD",  OPT_UINT32, &tRRD,  "minimal delay between activation of rows in different banks", ""); 
+         option_parser_register(dram_opp, "RCD",  OPT_UINT32, &tRCD,  "row to column delay", ""); 
+         option_parser_register(dram_opp, "RAS",  OPT_UINT32, &tRAS,  "time needed to activate row", ""); 
+         option_parser_register(dram_opp, "RP",   OPT_UINT32, &tRP,   "time needed to precharge (deactivate) row", ""); 
+         option_parser_register(dram_opp, "RC",   OPT_UINT32, &tRC,   "row cycle time", ""); 
+         option_parser_register(dram_opp, "CDLR", OPT_UINT32, &tCDLR, "switching from write to read (changes tWTR)", ""); 
+         option_parser_register(dram_opp, "WR",   OPT_UINT32, &tWR,   "last data-in to row precharge", ""); 
+
+         option_parser_register(dram_opp, "CL", OPT_UINT32, &CL, "CAS latency", ""); 
+         option_parser_register(dram_opp, "WL", OPT_UINT32, &WL, "Write latency", ""); 
+
+         //Disabling bank groups if their values are not specified
+         option_parser_register(dram_opp, "nbkgrp", OPT_UINT32, &nbkgrp, "number of bank groups", "1"); 
+         option_parser_register(dram_opp, "CCDL",   OPT_UINT32, &tCCDL,  "column to column delay between accesses to different bank groups", "0"); 
+         option_parser_register(dram_opp, "RTPL",   OPT_UINT32, &tRTPL,  "read to precharge delay between accesses to different bank groups", "0"); 
+
+         option_parser_delimited_string(dram_opp, gpgpu_dram_timing_opt, "=:;"); 
+         fprintf(stdout, "DRAM Timing Options:\n"); 
+         option_parser_print(dram_opp, stdout); 
+         option_parser_destroy(dram_opp); 
+      }
+
 		int nbkt = nbk/nbkgrp;
 		unsigned i;
 		for (i=0; nbkt>0; i++) {
 			nbkt = nbkt>>1;
 		}
 		bk_tag_length = i;
-	  assert(nbkgrp>0 && "Number of bank groups cannot be zero");
+      assert(nbkgrp>0 && "Number of bank groups cannot be zero");
       tRCDWR = tRCD-(WL+1);
       tRTW = (CL+(BL/data_command_freq_ratio)+2-WL);
       tWTR = (WL+(BL/data_command_freq_ratio)+tCDLR); 

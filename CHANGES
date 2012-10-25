@@ -21,6 +21,10 @@ Version 3.1.1+edits (development branch) versus 3.1.1
 - Enabled configurable cache policies (write-back, write-through) and implemented 
   a write-allocate policy
 - Added functional execution support for shared memory atomic operations
+- Updated the option parser to support strings delimited by characters such as
+  '=' and ';'.  This allow options with a long string of sub-options (e.g. DRAM
+  timing) to have a more friendly format. 
+- Changed the DRAM timing option to a more reader-friendly format. 
 - Bug Fixes:
     - Fixed a compile error that happens with newer gcc/g++ versions (4.7.1)
     - Fixed a bug with the association between cuobjdump output and cubin
