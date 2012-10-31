@@ -57,6 +57,9 @@ Version 3.1.1+edits (development branch) versus 3.1.1
       simulation thread.
     - Fixed clCreateProgramWithSource to accept NULL or 0 as string length parameter
     - Fixed replacement of printf modifiers when compiling OpenCL code (e.g. '%f')
+    - Fixed the shared memory bank conflict model for GTX 480 and Tesla C2050.
+      Added options to configure the number of shared memory banks per shader
+      core and to allow a more flexible broadcast mechanism. 
 
 Version 3.1.1 versus 3.1.0
 - Add checks to top level makefile to ensure setup_environment is run and checks to

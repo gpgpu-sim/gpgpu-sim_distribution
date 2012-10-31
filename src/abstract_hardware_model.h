@@ -186,6 +186,7 @@ struct core_config {
     { 
         m_valid = false; 
         num_shmem_bank=16; 
+        shmem_limited_broadcast = false; 
     }
     virtual void init() = 0;
 
@@ -196,6 +197,7 @@ struct core_config {
     int gpgpu_coalesce_arch;
 
     // shared memory bank conflict checking parameters
+    bool shmem_limited_broadcast;
     static const address_type WORD_SIZE=4;
     unsigned num_shmem_bank;
     unsigned shmem_bank_func(address_type addr) const
