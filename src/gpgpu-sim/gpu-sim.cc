@@ -185,6 +185,12 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_shmem_size", OPT_UINT32, &gpgpu_shmem_size, 
                  "Size of shared memory per shader core (default 16kB)",
                  "16384");
+    option_parser_register(opp, "-gpgpu_shmem_num_banks", OPT_UINT32, &num_shmem_bank, 
+                 "Number of banks in the shared memory in each shader core (default 16)",
+                 "16");
+    option_parser_register(opp, "-gpgpu_shmem_limited_broadcast", OPT_BOOL, &shmem_limited_broadcast, 
+                 "Limit shared memory to do one broadcast per cycle (default on)",
+                 "1");
     option_parser_register(opp, "-gpgpu_shmem_warp_parts", OPT_INT32, &mem_warp_parts,  
                  "Number of portions a warp is divided into for shared memory bank conflict check ",
                  "2");

@@ -207,53 +207,65 @@ void warp_inst_t::generate_mem_accesses()
                 bank_accs[bank][word]++;
             }
 
-            // step 2: look for and select a broadcast bank/word if one occurs
-            bool broadcast_detected = false;
-            new_addr_type broadcast_word=(new_addr_type)-1;
-            unsigned broadcast_bank=(unsigned)-1;
-            std::map<unsigned,std::map<new_addr_type,unsigned> >::iterator b;
-            for( b=bank_accs.begin(); b != bank_accs.end(); b++ ) {
-                unsigned bank = b->first;
-                std::map<new_addr_type,unsigned> &access_set = b->second;
-                std::map<new_addr_type,unsigned>::iterator w;
-                for( w=access_set.begin(); w != access_set.end(); ++w ) {
-                    if( w->second > 1 ) {
-                        // found a broadcast
-                        broadcast_detected=true;
-                        broadcast_bank=bank;
-                        broadcast_word=w->first;
-                        break;
-                    }
-                }
-                if( broadcast_detected ) 
-                    break;
-            }
-
-            // step 3: figure out max bank accesses performed, taking account of broadcast case
-            unsigned max_bank_accesses=0;
-            for( b=bank_accs.begin(); b != bank_accs.end(); b++ ) {
-                unsigned bank_accesses=0;
-                std::map<new_addr_type,unsigned> &access_set = b->second;
-                std::map<new_addr_type,unsigned>::iterator w;
-                for( w=access_set.begin(); w != access_set.end(); ++w ) 
-                    bank_accesses += w->second;
-                if( broadcast_detected && broadcast_bank == b->first ) {
+            if (m_config->shmem_limited_broadcast) {
+                // step 2: look for and select a broadcast bank/word if one occurs
+                bool broadcast_detected = false;
+                new_addr_type broadcast_word=(new_addr_type)-1;
+                unsigned broadcast_bank=(unsigned)-1;
+                std::map<unsigned,std::map<new_addr_type,unsigned> >::iterator b;
+                for( b=bank_accs.begin(); b != bank_accs.end(); b++ ) {
+                    unsigned bank = b->first;
+                    std::map<new_addr_type,unsigned> &access_set = b->second;
+                    std::map<new_addr_type,unsigned>::iterator w;
                     for( w=access_set.begin(); w != access_set.end(); ++w ) {
-                        if( w->first == broadcast_word ) {
-                            unsigned n = w->second;
-                            assert(n > 1); // or this wasn't a broadcast
-                            assert(bank_accesses >= (n-1));
-                            bank_accesses -= (n-1);
+                        if( w->second > 1 ) {
+                            // found a broadcast
+                            broadcast_detected=true;
+                            broadcast_bank=bank;
+                            broadcast_word=w->first;
                             break;
                         }
                     }
+                    if( broadcast_detected ) 
+                        break;
                 }
-                if( bank_accesses > max_bank_accesses ) 
-                    max_bank_accesses = bank_accesses;
-            }
+            
+                // step 3: figure out max bank accesses performed, taking account of broadcast case
+                unsigned max_bank_accesses=0;
+                for( b=bank_accs.begin(); b != bank_accs.end(); b++ ) {
+                    unsigned bank_accesses=0;
+                    std::map<new_addr_type,unsigned> &access_set = b->second;
+                    std::map<new_addr_type,unsigned>::iterator w;
+                    for( w=access_set.begin(); w != access_set.end(); ++w ) 
+                        bank_accesses += w->second;
+                    if( broadcast_detected && broadcast_bank == b->first ) {
+                        for( w=access_set.begin(); w != access_set.end(); ++w ) {
+                            if( w->first == broadcast_word ) {
+                                unsigned n = w->second;
+                                assert(n > 1); // or this wasn't a broadcast
+                                assert(bank_accesses >= (n-1));
+                                bank_accesses -= (n-1);
+                                break;
+                            }
+                        }
+                    }
+                    if( bank_accesses > max_bank_accesses ) 
+                        max_bank_accesses = bank_accesses;
+                }
 
-            // step 4: accumulate
-            total_accesses+= max_bank_accesses;
+                // step 4: accumulate
+                total_accesses+= max_bank_accesses;
+            } else {
+                // step 2: look for the bank with the maximum number of access to different words 
+                unsigned max_bank_accesses=0;
+                std::map<unsigned,std::map<new_addr_type,unsigned> >::iterator b;
+                for( b=bank_accs.begin(); b != bank_accs.end(); b++ ) {
+                    max_bank_accesses = std::max(max_bank_accesses, (unsigned)b->second.size());
+                }
+
+                // step 3: accumulate
+                total_accesses+= max_bank_accesses;
+            }
         }
         assert( total_accesses > 0 && total_accesses <= m_config->warp_size );
         cycles = total_accesses; // shared memory conflicts modeled as larger initiation interval 
