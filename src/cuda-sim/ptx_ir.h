@@ -922,7 +922,7 @@ public:
    int membar_level() const { return m_membar_level; }
 
    bool has_memory_read() const {
-      if( m_opcode == LD_OP || m_opcode == TEX_OP ) 
+      if( m_opcode == LD_OP || m_opcode == LDU_OP || m_opcode == TEX_OP ) 
          return true;
       // Check PTXPlus operand type below
       // Source operands are memory operands
