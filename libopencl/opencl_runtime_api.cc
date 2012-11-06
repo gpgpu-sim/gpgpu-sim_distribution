@@ -894,7 +894,14 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
       if ( (global_work_size[d] % _local_size[d]) != 0 )
          return CL_INVALID_WORK_GROUP_SIZE;
    }
-
+   if (global_work_offset != NULL){
+	   for ( unsigned d=0; d < work_dim; d++ ) {
+		   if (global_work_offset[d] != 0){
+			   printf("GPGPU-Sim: global id offset is not supported\n");
+			   abort();
+		   }
+	   }
+   }
    assert( global_work_size[0] == _local_size[0] * (global_work_size[0]/_local_size[0]) ); // i.e., we can divide into equal CTAs
    dim3 GridDim;
    GridDim.x = global_work_size[0]/_local_size[0];
@@ -911,13 +918,13 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
       return err_val;
 
    gpgpu_t *gpu = command_queue->get_device()->the_device();
-
-   gpgpu_ptx_sim_memcpy_symbol( "%_global_size", _global_size, 3 * sizeof(int), 0, 1, gpu );
-   gpgpu_ptx_sim_memcpy_symbol( "%_work_dim", &work_dim, 1 * sizeof(int), 0, 1, gpu  );
-   gpgpu_ptx_sim_memcpy_symbol( "%_global_num_groups", &GridDim, 3 * sizeof(int), 0, 1, gpu );
-   gpgpu_ptx_sim_memcpy_symbol( "%_global_launch_offset", zeros, 3 * sizeof(int), 0, 1, gpu );
-   gpgpu_ptx_sim_memcpy_symbol( "%_global_block_offset", zeros, 3 * sizeof(int), 0, 1, gpu );
-
+   if (kernel->get_implementation()->get_ptx_version().ver() <3.0){
+	   gpgpu_ptx_sim_memcpy_symbol( "%_global_size", _global_size, 3 * sizeof(int), 0, 1, gpu );
+	   gpgpu_ptx_sim_memcpy_symbol( "%_work_dim", &work_dim, 1 * sizeof(int), 0, 1, gpu  );
+	   gpgpu_ptx_sim_memcpy_symbol( "%_global_num_groups", &GridDim, 3 * sizeof(int), 0, 1, gpu );
+	   gpgpu_ptx_sim_memcpy_symbol( "%_global_launch_offset", zeros, 3 * sizeof(int), 0, 1, gpu );
+	   gpgpu_ptx_sim_memcpy_symbol( "%_global_block_offset", zeros, 3 * sizeof(int), 0, 1, gpu );
+   }
    kernel_info_t *grid = gpgpu_opencl_ptx_sim_init_grid(kernel->get_implementation(),params,GridDim,BlockDim,gpu);
    if ( g_ptx_sim_mode )
       gpgpu_opencl_ptx_sim_main_func( grid );
