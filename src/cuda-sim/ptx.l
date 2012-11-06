@@ -183,7 +183,7 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.address_size TC; return ADDRESS_SIZE_DIRECTIVE;
 
 \.constptr TC; return CONSTPTR_DIRECTIVE; /* Ptx plus directive for pointer to constant memory */
-
+\.ptr TC; return PTR_DIRECTIVE; /* Added for new OpenCL genrated code */
 
 "%clock" TC; ptx_lval.int_value = CLOCK_REG; return SPECIAL_REGISTER;
 "%halfclock" TC; ptx_lval.int_value = HALFCLOCK_ID; return SPECIAL_REGISTER;

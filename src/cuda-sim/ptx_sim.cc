@@ -207,7 +207,36 @@ unsigned ptx_thread_info::get_builtin( int builtin_id, unsigned dim_mod )
       if( dim_mod == 2 ) return m_ctaid.z;
       abort();
       break;
-   case ENVREG_REG: feature_not_implemented( "%envreg" ); return 0;
+   case ENVREG_REG:{
+	int index = builtin_id >> 16;
+	dim3 gdim = this->get_core()->get_kernel_info()->get_grid_dim();
+		switch(index){
+		case 0:
+		case 1:
+		case 2:
+		case 3:
+		case 4:
+		case 5:
+			return 0;
+			break;
+		case 6:
+			return gdim.x;
+		case 7:
+			return gdim.y;
+		case 8:
+			return gdim.z;
+		case 9:
+			if(gdim.z == 1 && gdim.y == 1)
+				return 1;
+			else if(gdim.z == 1)
+				return 2;
+			else
+				return 3;
+			break;
+		default:
+			break;
+		}
+   }
    case GRIDID_REG:
       return m_gridid;
    case LANEID_REG: feature_not_implemented( "%laneid" ); return 0;

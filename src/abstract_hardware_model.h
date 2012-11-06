@@ -878,7 +878,7 @@ class core_t {
         void initilizeSIMTStack(unsigned warps, unsigned warpsSize);
         warp_inst_t getExecuteWarp(unsigned warpId);
         void get_pdom_stack_top_info( unsigned warpId, unsigned *pc, unsigned *rpc ) const;
-
+        kernel_info_t * get_kernel_info(){ return m_kernel;}
     protected:
         class gpgpu_sim *m_gpu;
         kernel_info_t *m_kernel;
