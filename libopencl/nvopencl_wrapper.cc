@@ -130,16 +130,29 @@ int main(int argc, const char **argv)
    platforms = (cl_platform_id*)malloc(num_platforms * sizeof(cl_platform_id));
    errcode = clGetPlatformIDs(num_platforms, platforms, NULL);
    if ( errcode != CL_SUCCESS ) myexit(3,"clGetPlatformIDs returned %d",errcode);
-   errcode = clGetPlatformInfo(platforms[0], CL_PLATFORM_NAME, 1024, &buffer, NULL);
+   unsigned use_platform = 0; 
+   if (num_platforms > 1) {
+      char platformName[1024]; 
+      printf("%s: Multiple OpenCL platforms found.  Searching for compatible platform...\n",PREAMBLE);
+      for (unsigned p = 0; p < num_platforms; p++) {
+         errcode = clGetPlatformInfo(platforms[p], CL_PLATFORM_NAME, 1024, &platformName, NULL);
+         if ( errcode != CL_SUCCESS ) myexit(3,"clGetPlatformInfo returned %d",errcode);
+         printf("%s:     OpenCL platform \'%s\'\n",PREAMBLE, platformName);
+         if (strstr(platformName, "NVIDIA") != NULL) {
+            use_platform = p; 
+         }
+      }
+   }
+   errcode = clGetPlatformInfo(platforms[use_platform], CL_PLATFORM_NAME, 1024, &buffer, NULL);
    if ( errcode != CL_SUCCESS ) myexit(3,"clGetPlatformInfo returned %d",errcode);
    printf("%s: Generating PTX using OpenCL platform \'%s\'\n",PREAMBLE,buffer);
 
-   errcode = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_GPU, 0, NULL, &num_devices);
+   errcode = clGetDeviceIDs(platforms[use_platform], CL_DEVICE_TYPE_GPU, 0, NULL, &num_devices);
    if ( errcode != CL_SUCCESS ) myexit(4,"clGetDeviceIDs returned %d",errcode);
    printf("%s: found %u native OpenCL devices\n",PREAMBLE,num_devices);
 
    cl_device_id *devices = (cl_device_id *)malloc(num_devices * sizeof(cl_device_id) );
-   errcode = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_GPU, num_devices, devices, NULL);
+   errcode = clGetDeviceIDs(platforms[use_platform], CL_DEVICE_TYPE_GPU, num_devices, devices, NULL);
    if ( errcode != CL_SUCCESS ) myexit(5,"clGetDeviceIDs returned %d",errcode);
    context = clCreateContext(0, num_devices, devices, NULL, NULL, &errcode);
    if ( errcode != CL_SUCCESS ) myexit(6,"clCreateContext returned %d",errcode);
