@@ -897,11 +897,6 @@ __host__ cudaError_t CUDARTAPI cudaSetupArgument(const void *arg, size_t size, s
 	kernel_config &config = g_cuda_launch_stack.back();
 	config.set_arg(arg,size,offset);
 
-	struct gpgpu_ptx_sim_arg *param = (gpgpu_ptx_sim_arg*) calloc(1,sizeof(struct gpgpu_ptx_sim_arg));
-	param->m_start = arg;
-	param->m_nbytes = size;
-	param->m_offset = offset;
-
 	return g_last_cudaError = cudaSuccess;
 }
 
