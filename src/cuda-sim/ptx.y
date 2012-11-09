@@ -250,10 +250,9 @@ ptr_spec: /*empty*/
         | PTR_DIRECTIVE ptr_space_spec ptr_align_spec
         | PTR_DIRECTIVE ptr_align_spec
 
-ptr_space_spec: GLOBAL_DIRECTIVE
-                                | LOCAL_DIRECTIVE
-                                | CONST_DIRECTIVE
-                                | SHARED_DIRECTIVE
+ptr_space_spec: GLOBAL_DIRECTIVE { add_ptr_spec(global_space); }
+              | LOCAL_DIRECTIVE  { add_ptr_spec(local_space); }
+              | SHARED_DIRECTIVE { add_ptr_spec(shared_space); }
 
 ptr_align_spec: ALIGN_DIRECTIVE INT_OPERAND
 

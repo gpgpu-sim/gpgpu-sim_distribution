@@ -105,6 +105,7 @@ void change_memory_addr_space( const char *a ) {DPRINTF(" ");}
 void add_literal_int( int a ) {DPRINTF(" ");}
 void add_literal_float( float a ) {DPRINTF(" ");}
 void add_literal_double( double a ) {DPRINTF(" ");}
+void add_ptr_spec( enum _memory_space_t spec ) {DPRINTF(" ");}
 void add_extern_spec() {DPRINTF(" ");}
 void add_alignment_spec( int ) {DPRINTF(" ");}
 void add_pragma( const char *a ) {DPRINTF(" ");}
