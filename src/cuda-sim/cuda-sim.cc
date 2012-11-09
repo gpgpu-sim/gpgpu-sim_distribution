@@ -835,7 +835,7 @@ void ptx_instruction::pre_decode()
    m_decoded=true;
 }
 
-void function_info::add_param_name_type_size( unsigned index, std::string name, int type, size_t size )
+void function_info::add_param_name_type_size( unsigned index, std::string name, int type, size_t size, bool ptr, memory_space_t space )
 {
    unsigned parsed_index;
    char buffer[2048];
@@ -843,10 +843,10 @@ void function_info::add_param_name_type_size( unsigned index, std::string name, 
    int ntokens = sscanf(name.c_str(),buffer,&parsed_index);
    if( ntokens == 1 ) {
       assert( m_ptx_kernel_param_info.find(parsed_index) == m_ptx_kernel_param_info.end() );
-      m_ptx_kernel_param_info[parsed_index] = param_info(name, type, size);
+      m_ptx_kernel_param_info[parsed_index] = param_info(name, type, size, ptr, space);
    } else {
       assert( m_ptx_kernel_param_info.find(index) == m_ptx_kernel_param_info.end() );
-      m_ptx_kernel_param_info[index] = param_info(name, type, size);
+      m_ptx_kernel_param_info[index] = param_info(name, type, size, ptr, space);
    }
 }
 
@@ -854,16 +854,27 @@ void function_info::add_param_data( unsigned argn, struct gpgpu_ptx_sim_arg *arg
 {
    const void *data = args->m_start;
 
+   bool scratchpad_memory_param = false; // Is this parameter in CUDA shared memory or OpenCL local memory 
+
    std::map<unsigned,param_info>::iterator i=m_ptx_kernel_param_info.find(argn);
-   if( i != m_ptx_kernel_param_info.end()) {
-      param_t tmp;
-      tmp.pdata = args->m_start;
-      tmp.size = args->m_nbytes;
-      tmp.offset = args->m_offset;
-      tmp.type = 0;
-      i->second.add_data(tmp);
-      i->second.add_offset((unsigned) args->m_offset);
+   if( i != m_ptx_kernel_param_info.end() ) {
+      if (i->second.is_ptr_shared()) {
+         assert(args->m_start == NULL && "OpenCL parameter pointer to local memory must have NULL as value"); 
+         scratchpad_memory_param = true; 
+      } else {
+         param_t tmp;
+         tmp.pdata = args->m_start;
+         tmp.size = args->m_nbytes;
+         tmp.offset = args->m_offset;
+         tmp.type = 0;
+         i->second.add_data(tmp);
+         i->second.add_offset((unsigned) args->m_offset);
+      }
    } else {
+      scratchpad_memory_param = true; 
+   }
+
+   if (scratchpad_memory_param) {
       // This should only happen for OpenCL:
       // 
       // The LLVM PTX compiler in NVIDIA's driver (version 190.29)
@@ -891,7 +902,12 @@ void function_info::add_param_data( unsigned argn, struct gpgpu_ptx_sim_arg *arg
       else {
          // clSetKernelArg was passed NULL pointer for data...
          // this is used for dynamically sized shared memory on NVIDIA platforms
-         if( !p->is_shared() ) {
+         bool is_ptr_shared = false; 
+         if( i != m_ptx_kernel_param_info.end() ) {
+            is_ptr_shared = i->second.is_ptr_shared(); 
+         }
+
+         if( !is_ptr_shared and !p->is_shared() ) {
             printf("GPGPU-Sim PTX: ERROR ** clSetKernelArg passed NULL but arg not shared memory\n");
             abort();     
          }
@@ -915,6 +931,7 @@ void function_info::finalize( memory_space *param_mem )
    unsigned param_address = 0;
    for( std::map<unsigned,param_info>::iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
       param_info &p = i->second;
+      if (p.is_ptr_shared()) continue; // Pointer to local memory: Should we pass the allocated shared memory address to the param memory space? 
       std::string name = p.get_name();
       int type = p.get_type();
       param_t param_value = p.get_value();
@@ -924,7 +941,7 @@ void function_info::finalize( memory_space *param_mem )
       assert(xtype==(unsigned)type);
       size_t size;
       size = param_value.size; // size of param in bytes
-      //assert(param_value.offset == param_address);
+      // assert(param_value.offset == param_address);
       if( size != p.get_size() / 8) {
          printf("GPGPU-Sim PTX: WARNING actual kernel paramter size = %zu bytes vs. formal size = %zu (using smaller of two)\n",
                 size, p.get_size()/8);
@@ -943,9 +960,14 @@ void function_info::finalize( memory_space *param_mem )
 
 void function_info::param_to_shared( memory_space *shared_mem, symbol_table *symtab ) 
 {
-/*copies parameters into simulated shared memory*/
+   // TODO: call this only for PTXPlus with GT200 models 
+   extern gpgpu_sim* g_the_gpu; 
+   if (g_the_gpu->get_config().convert_to_ptxplus()) return; 
+
+   // copies parameters into simulated shared memory
    for( std::map<unsigned,param_info>::iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
       param_info &p = i->second;
+      if (p.is_ptr_shared()) continue; // Pointer to local memory: Should we pass the allocated shared memory address to the param memory space? 
       std::string name = p.get_name();
       int type = p.get_type();
       param_t value = p.get_value();

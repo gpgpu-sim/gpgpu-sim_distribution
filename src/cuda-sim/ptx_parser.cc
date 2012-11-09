@@ -55,6 +55,7 @@ int g_error_detected = 0;
 
 // type specifier stuff:
 memory_space_t g_space_spec = undefined_space;
+memory_space_t g_ptr_spec = undefined_space;
 int g_scalar_type_spec = -1;
 int g_vector_spec = -1;
 int g_alignment_spec = -1;
@@ -127,6 +128,7 @@ void init_directive_state()
 {
    DPRINTF("init_directive_state");
    g_space_spec=undefined_space;
+   g_ptr_spec=undefined_space;
    g_scalar_type_spec=-1;
    g_vector_spec=-1;
    g_opcode=-1;
@@ -347,7 +349,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       g_last_symbol = s;
       if( g_func_decl ) 
          return;
-      std::string msg = std::string(identifier) + " was delcared previous at " + s->decl_location() + " skipping new declaration"; 
+      std::string msg = std::string(identifier) + " was declared previous at " + s->decl_location() + " skipping new declaration"; 
       printf("GPGPU-Sim PTX: Warning %s\n", msg.c_str());
       return;
    }
@@ -475,7 +477,8 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
 
    assert( !ti.is_param_unclassified() );
    if ( ti.is_param_kernel() ) {
-      g_func_info->add_param_name_type_size(g_entry_func_param_index,identifier, ti.scalar_type(), num_bits );
+      bool is_ptr = (g_ptr_spec != undefined_space); 
+      g_func_info->add_param_name_type_size(g_entry_func_param_index,identifier, ti.scalar_type(), num_bits, is_ptr, g_ptr_spec);
       g_entry_func_param_index++;
    }
 }
@@ -514,6 +517,14 @@ void add_alignment_spec( int spec )
    DPRINTF("add_alignment_spec");
    parse_assert( g_alignment_spec == -1, "multiple .align specifiers per variable declaration not allowed." );
    g_alignment_spec = spec;
+}
+
+void add_ptr_spec( enum _memory_space_t spec ) 
+{
+   DPRINTF("add_ptr_spec \"%s\"", g_ptx_token_decode[spec].c_str() );
+   parse_assert( g_ptr_spec == undefined_space, "multiple ptr space specifiers not allowed." );
+   parse_assert( spec == global_space or spec == local_space or spec == shared_space, "invalid space for ptr directive." );
+   g_ptr_spec = spec; 
 }
 
 void add_space_spec( enum _memory_space_t spec, int value ) 

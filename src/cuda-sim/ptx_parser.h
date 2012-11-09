@@ -69,6 +69,7 @@ void add_address_operand2( int offset );
 void add_label( const char *idenfiier );
 void add_vector_spec(int spec );
 void add_space_spec( enum _memory_space_t spec, int value );
+void add_ptr_spec( enum _memory_space_t spec ); 
 void add_extern_spec();
 void add_instruction();
 void set_return();
