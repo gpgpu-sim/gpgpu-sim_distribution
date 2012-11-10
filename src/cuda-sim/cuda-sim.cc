@@ -962,7 +962,7 @@ void function_info::param_to_shared( memory_space *shared_mem, symbol_table *sym
 {
    // TODO: call this only for PTXPlus with GT200 models 
    extern gpgpu_sim* g_the_gpu; 
-   if (g_the_gpu->get_config().convert_to_ptxplus()) return; 
+   if (not g_the_gpu->get_config().convert_to_ptxplus()) return; 
 
    // copies parameters into simulated shared memory
    for( std::map<unsigned,param_info>::iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
