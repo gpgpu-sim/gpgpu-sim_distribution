@@ -1452,6 +1452,20 @@ ptx_reg_t sext( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign
    return x;
 }
 
+// sign extend depending on the destination register size - hack to get SobelFilter working in CUDA 4.2
+ptx_reg_t sexd( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign, int rounding_mode, int saturation_mode )
+{
+   x=chop(x,0,from_width,0,rounding_mode,saturation_mode);
+   switch ( to_width ) {
+   case 8: if ( x.get_bit(7) ) x.mask_or(0xFFFFFFFF,0xFFFFFF00);break;
+   case 16:if ( x.get_bit(15) ) x.mask_or(0xFFFFFFFF,0xFFFF0000);break;
+   case 32: if ( x.get_bit(31) ) x.mask_or(0xFFFFFFFF,0x00000000);break;
+   case 64: break;
+   default: assert(0);
+   }
+   return x;
+}
+
 ptx_reg_t zext( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign, int rounding_mode, int saturation_mode )
 {
    return chop(x,0,from_width,0,rounding_mode,saturation_mode);
@@ -1748,7 +1762,7 @@ ptx_reg_t (*g_cvt_fn[11][11])( ptx_reg_t x, unsigned from_width, unsigned to_wid
                                int rounding_mode, int saturation_mode ) = {
    { NULL, sext, sext, sext, NULL, sext, sext, sext, s2f, s2f, s2f}, 
    { chop, NULL, sext, sext, chop, NULL, sext, sext, s2f, s2f, s2f}, 
-   { chop, chop, NULL, sext, chop, chop, NULL, sext, s2f, s2f, s2f}, 
+   { chop, sexd, NULL, sext, chop, chop, NULL, sext, s2f, s2f, s2f}, 
    { chop, chop, chop, NULL, chop, chop, chop, NULL, s2f, s2f, s2f}, 
    { NULL, zext, zext, zext, NULL, zext, zext, zext, u2f, u2f, u2f}, 
    { chop, NULL, zext, zext, chop, NULL, zext, zext, u2f, u2f, u2f}, 

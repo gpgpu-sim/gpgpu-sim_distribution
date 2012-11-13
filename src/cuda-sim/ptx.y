@@ -218,6 +218,7 @@ block_spec: MAXNTID_DIRECTIVE INT_OPERAND COMMA INT_OPERAND COMMA INT_OPERAND {f
 										func_header_info_int(",", $4);
 										func_header_info_int(",", $6); }
 	| MINNCTAPERSM_DIRECTIVE INT_OPERAND { func_header_info_int(".minnctapersm", $2); printf("GPGPU-Sim: Warning: .minnctapersm ignored. \n"); }
+	| MAXNCTAPERSM_DIRECTIVE INT_OPERAND { func_header_info_int(".maxnctapersm", $2); printf("GPGPU-Sim: Warning: .maxnctapersm ignored. \n"); }
 	;
 
 block_spec_list: block_spec
