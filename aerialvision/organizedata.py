@@ -136,6 +136,7 @@ def organizedata(fileVars):
             for lines in map:
                 for ptxLines in map[lines]:
                     newMap[ptxLines] = lines
+            print "    Total number of CUDA src lines = %s..." % len(newMap)
             
             markForDel = []
             for ptxLines in newMap:
@@ -143,9 +144,8 @@ def organizedata(fileVars):
                     markForDel.append(ptxLines)
             for lines in markForDel:
                 del newMap[lines]
+            print "    Number of touched CUDA src lines = %s..." % len(newMap)
     
-
-        
         fileVars['CFLOGglobalPTX'] = vc.variable('',2,0)
         fileVars['CFLOGglobalCUDA'] = vc.variable('',2,0)
         
@@ -162,17 +162,17 @@ def organizedata(fileVars):
 
             try:
                 if count == 0:
-                    fileVars['globalPTX'] = fileVars[iter + 'PTX']
+                    fileVars['CFLOGglobalPTX'] = fileVars[iter + 'PTX']
                     if parseCFLOGCUDA == 1:
-                        fileVars['globalCUDA'] = fileVars[iter + 'CUDA']
+                        fileVars['CFLOGglobalCUDA'] = fileVars[iter + 'CUDA']
                 else:
                     for rows in range(0, len(fileVars[iter + 'PTX'].data)):
                         for columns in range(0, len(fileVars[iter + 'PTX'].data[rows])):
-                            fileVars['globalPTX'].data[rows][columns] += fileVars[iter + 'PTX'].data[rows][columns]
+                            fileVars['CFLOGglobalPTX'].data[rows][columns] += fileVars[iter + 'PTX'].data[rows][columns]
                     if parseCFLOGCUDA == 1:
                         for rows in range(0, len(fileVars[iter + 'CUDA'].data)):
                             for columns in range(0, len(fileVars[iter + 'CUDA'].data[rows])): 
-                                fileVars['globalCUDA'].data[rows][columns] += fileVars[iter + 'CUDA'].data[rows][columns]
+                                fileVars['CFLOGglobalCUDA'].data[rows][columns] += fileVars[iter + 'CUDA'].data[rows][columns]
             except:
                 print "Error in generating globalCFLog data"
 
@@ -313,7 +313,7 @@ def CFLOGOrganizeCuda(list, ptx2cudamap):
     cudaMaxLineNo = max(ptx2cudamap.keys())
     tmp = {}
     #need to fill up the final matrix appropriately
-    
+
     nSamples = len(list[0])
 
     # create a dictionary of empty data array (one array per cuda source line)
@@ -339,17 +339,6 @@ def CFLOGOrganizeCuda(list, ptx2cudamap):
             final.append([0 for lengthData in range(nSamples)])
 
     return final
-                
-
-                #final[lines][lengthData] += 0
-                #list[ptxLines][lengthData] += 0
-
-    #print final
-            
-        
-        
-    
-        
                 
 
 #def stackedBar(nullVar):

@@ -63,6 +63,7 @@
 
 
 import sys
+import re
 sys.path.insert(0,"Lib/site-packages/ply-3.2/ply-3.2")
 import ply.lex as lex
 import ply.yacc as yacc
@@ -145,15 +146,11 @@ def ptxToCudaMapping(filename):
     except:
       map[loc] = []
       map[loc].append(count)
-    try:
-      line.index('.loc')
-      try:
-        line.index('.local')
-      except:
-        lineList = line.split('\t')
-        loc = int(lineList[3])
-    except:
-      pass
+
+    m = re.search('\.loc\s+(\d+)\s+(\d+)\s+(\d+)', line)
+    if (m != None):
+      loc = int(m.group(2))
+
     count += 1
   x = map.keys()
   return map

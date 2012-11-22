@@ -67,6 +67,7 @@ Version 3.1.1+edits (development branch) versus 3.1.1
     - Fixed the timing model for LDU instruction, before it was not recognized
       as a memory instruction in the timing model.
     - Removed memory leak in cudaSetupArgument(). 
+    - Fixed .loc directive parsing for PC-Histogram (CFLog) in AerialVision. 
 
 Version 3.1.1 versus 3.1.0
 - Add checks to top level makefile to ensure setup_environment is run and checks to
