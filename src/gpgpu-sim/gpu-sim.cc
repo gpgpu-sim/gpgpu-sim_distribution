@@ -107,7 +107,7 @@ void power_config::reg_options(class OptionParser * opp)
 
 	   option_parser_register(opp, "-power_simulation_enabled", OPT_BOOL,
 	                          &g_power_simulation_enabled, "Turn on power simulator (1=On, 0=Off)",
-	                          "1");
+	                          "0");
 
 	   option_parser_register(opp, "-power_per_cycle_dump", OPT_BOOL,
 	                          &g_power_per_cycle_dump, "Dump detailed power output each cycle",
