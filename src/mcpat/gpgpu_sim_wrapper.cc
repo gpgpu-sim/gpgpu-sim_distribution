@@ -241,7 +241,7 @@ void gpgpu_sim_wrapper::set_inst_power(bool clk_gated_lanes, double tot_cycles, 
 	p->sys.core[0].gpgpu_clock_gated_lanes = clk_gated_lanes;
 	p->sys.core[0].total_cycles = tot_cycles;
 	p->sys.core[0].busy_cycles = busy_cycles;
-	p->sys.core[0].total_instructions  = tot_inst * p->sys.scaling_coefficients[TOT_INST];;
+	p->sys.core[0].total_instructions  = tot_inst * p->sys.scaling_coefficients[TOT_INST];
 	p->sys.core[0].int_instructions    = int_inst * p->sys.scaling_coefficients[FP_INT];
 	p->sys.core[0].fp_instructions     = fp_inst  * p->sys.scaling_coefficients[FP_INT];
 	p->sys.core[0].load_instructions  = load_inst;
