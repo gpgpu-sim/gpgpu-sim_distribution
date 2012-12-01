@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+
 // pointer to C++ class
 typedef class OptionParser *option_parser_t;
 
@@ -65,6 +66,8 @@ void option_parser_register(option_parser_t opp,
 // parse command line
 void option_parser_cmdline(option_parser_t opp,
                            int argc, const char *argv[]);
+
+
 
 // parse config file
 void option_parser_cfgfile(option_parser_t opp,

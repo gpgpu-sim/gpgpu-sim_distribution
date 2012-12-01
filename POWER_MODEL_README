@@ -1,0 +1,80 @@
+// A Beta README file to allow folks to use the power model
+
+
+1. INTRODUCTION:
+
+General-purpose GPU architectures are becoming increasingly prevalent in mainstream computing, and as such they require judicious optimization for energy efficiency. To enable such research, we propose a new GPU power model that offers flexibility, adaptability, and stability. Flexibility is achieved by using a bottom-up methodology and abstracting parameters from the microarchitectural components as model inputs. Adaptability ensures that both program and microarchitectural level interactions are captured during execution, thereby enabling new power-management techniques specifically targeted at GPUs. Stability is examined by validating the power model against measurements of two commercial GPUs comprehensively through the leakage power, average dynamic power, and dynamic power trace. The measured error is within 9.7% and 13.6% across our evaluated benchmark suite for the two target GPUs (GTX 480 and Quadro FX 5600 respectively) and the model accurately tracks the relative power consumption trend over time.
+
+The power model modifies and extends the McPAT CPU power model simulator to model the power of contemporary GPGPUs and drive the modified McPAT version with a cycle-accurate simulator, GPGPU-Sim. 
+
+2. Using the Power Model 
+2.1 Compiling the Power Model
+By default, GPGPU-Sim bypasses the McPAT compilation. Hence, it is not necessary to install our modified McPAT along with GPGPU-Sim. However, if the power model is required, our modified version of McPAT will be compiled alongside GPGPU-Sim into libcudart.so.
+
+The location of McPAT is specified by the GPGPUSIM_POWER_MODEL environment variable and is used in GPGPU-Sim's Makefile to compile McPAT. This can either be set manually or automatically set by the setup_evironment.sh file in <GPGPU-Sim>/distribution if McPAT is found in the default directory (<GPGPU-Sim>/mcpat/).
+
+
+2.2. Configuration Options
+This sections lists the most relevant configuration options either to describe model a specific architecture, model a certain improvement, or to produce extra data from the simulation. Some of these configurations are set in the GPGPU-Sim config files and others will be set in the McPAT XML configuration files. GPGPU-Sim configurations mainly force specific changes to the performance modeling itself or the output format of data, while McPAT configurations mainly determine specific parameters for the different architectural components that are reflected in the power modeling of these components. Here, we metion only GPGPUsim cofigurations:
+
+1- power_simulation_enabled: Enablle the power model simulator; if enabled, an output file is genarated to include the detailed Power coefficients for the simulated configuration and the Average/Maximum/Minimum total power breakdowns for each kernel.
+
+2- mcpat_xml_file: The McPAT XML configuration file name; by default it is mcpat.xml.
+
+3- gpu_stat_sample_frequency: Determines the sampling frequency used in the power calculations, the performance counters are reset before each samples and accumulated during the sampling period, and finaly passed to the power model (McPAT) at the end of each sample.
+
+4- power_trace_enabled: If enabled, it produces two output files that details the power breakdown values, and the accumulative performance counters values for each sample.
+
+5- power_per_cycle_dump: Dump detailed power data each sample
+
+6- steady_power_levels_enabled: 	If enabled, it tracks the steady state power level throughout the execution and report the start/end values with the average power recorded for each componenet. The steady state is determined by (-steady_state_definition) option.
+
+7- steady_state_definition: Takes two values. First value detemines the allowed deviation within the steady state and the second value determines minimum number of samples required to assume this is a steady state power level.
+
+
+3. Understanding Simulation Output
+In this section, we detail the fromat of the power simulator output. By default, if the power simulation is enabled at least one output file that reports the average/maximum/minimum power values for each kernel is produced. More outputs can be enabled if the corresponding configurations is enabled. 
+
+
+1- gpgpusim_power_report_(date&time).log- Requires (-power_simulation_enabled 1):  	Includes the detailed power coefficients for this configuration and the Average/Maximum/Minimum total power and their breakdowns for the different components for each kernel
+
+2- gpgpusim_power_trace_(date&time).log.gz- Requires (-power_trace_enabled 1): 	A compressed file that has a detailed average power breakdown trace in a comma separated format
+
+3- gpgpusim_metric_trace_(date&time).log.gz- Requires (-power_trace_enabled 1): A compressed file that has a detailed performance counters trace in a comma separated format
+
+4- gpgpusim_steady_state_tracking_report_(date&time).log.gz- Requires (-steady_power_levels_enabled 1): It rports the steady state power level throughout the execution with the start/end values of each interval and the average power recorded for each componenet during this interval in a comma separated format  
+
+
+
+5. Software Design of the Power Model
+This section presents the software design of the power model.
+
+5.1. File list and brief description
+In this section, we briefly describe the files that were added to interface GPGPU-Sim with McPAT. 
+
+
+1- power_stat.cc/h @ <GPGPU_SIM>/distribution/src/gpgpu-sim/: 	These files contain the main structures used for recording GPGPU-Sim performance counters: power_core_stat_t (for all core related counters) and power_mem_stat_t (for all memory related counters), which are contained in the wrapper power_stat_t object. The core and mem stat structures contain multiple counter pointer arrays with 2 locations per counter (e.g. unsigned *m_counter[2]): [0] -> pointer to counter with the current value, [1] -> previous sampled value. The difference, [0]-[1], is used to get the per-sample estimated power in McPAT.
+
+2- gpgpu_sim_wrapper.cc/h @ <GPGPU_SIM>/mcpat/: These files contain the gpgpu_sim_wrapper class that contains all of the McPAT structures (such as Processor, ParseXML, etc), manages the power output files, and passes the GPGPU-Sim performance counters (described in power_stat.cc/h (1)) into McPAT. The gpgpu_sim_wrapper structure is used in power_interface.cc/h (3) to separate the McPAT structures and interface from GPGPU-Sim.
+
+3- power_interface.cc/h @ <GPGPU_SIM>/distribution/src/gpgpu-sim/: These files are used to interface GPGPU-Sim with McPAT via two main functions: init_mcpat() and mcpat_cycle(). init_mcpat() is called from gpgpu_sim::init() in gpu-sim.cc and through the gpgpu_sim_wrapper object, initializes all of the power related structures in GPGPU-Sim and McPAT. Similarly, mcpat_cycle() is called from gpgpu_sim::cycle() in gpu-sim.cc, which passes all of the performance counters to McPAT (through the gpgpu_sim_wrapper object).
+
+4- gpgpu_sim.verify @ <GPGPU_SIM>/mcpat/: This file is distributed with our modified version of McPAT to ensure the correct McPAT version is used with GPGPU-Sim 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

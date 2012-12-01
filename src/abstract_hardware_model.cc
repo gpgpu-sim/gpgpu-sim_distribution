@@ -25,13 +25,15 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+
+
 #include "abstract_hardware_model.h"
 #include "cuda-sim/memory.h"
-#include "option_parser.h"
 #include "cuda-sim/ptx_ir.h"
 #include "cuda-sim/ptx-stats.h"
 #include "cuda-sim/cuda-sim.h"
 #include "gpgpu-sim/gpu-sim.h"
+#include "option_parser.h"
 #include <algorithm>
 
 unsigned mem_access_t::sm_next_access_uid = 0;   

@@ -35,6 +35,8 @@ void time_vector_update_icnt_injected(void* mf, int input);
 void icnt_overal_stat();
 void icnt_init_grid ();
 
+unsigned interconnect_get_flit_size( );
+
 #endif
 
 

@@ -28,6 +28,9 @@
 #ifndef ABSTRACT_HARDWARE_MODEL_INCLUDED
 #define ABSTRACT_HARDWARE_MODEL_INCLUDED
 
+
+
+
 enum _memory_space_t {
    undefined_space=0,
    reg_space,
@@ -69,6 +72,42 @@ enum uarch_op_t {
    RET_OPS
 };
 typedef enum uarch_op_t op_type;
+
+enum uarch_op2_t {
+	UN_OP=-1,
+    INT_OP,
+    FP_OP
+};
+typedef enum uarch_op2_t op_type2;
+
+enum uarch_op3_t {
+    OTHER_OP,
+    INT__OP,
+	INT_MUL24_OP,
+	INT_MUL32_OP,
+	INT_MUL_OP,
+    INT_DIV_OP,
+    FP_MUL_OP,
+    FP_DIV_OP,
+    FP__OP,
+	 FP_SQRT_OP,
+	 FP_LG_OP,
+	 FP_SIN_OP,
+	 FP_EXP_OP
+};
+typedef enum uarch_op3_t op_type3;
+enum uarch_op4_t {
+    UNKOWN_OP,
+    SP__OP,
+    SFU__OP,
+    MEM__OP
+};
+typedef enum uarch_op4_t op_type4;
+enum uarch_op5_t {
+    NOT_TEX,
+    TEX
+};
+typedef enum uarch_op5_t op_type5;
 
 enum _memory_op_t {
 	no_memory_op = 0,
@@ -548,6 +587,7 @@ public:
    }
 
    new_addr_type get_addr() const { return m_addr; }
+   void set_addr(new_addr_type addr) {m_addr=addr;}
    unsigned get_size() const { return m_req_size; }
    const active_mask_t &get_warp_mask() const { return m_warp_mask; }
    bool is_write() const { return m_write; }
@@ -622,6 +662,12 @@ public:
         pc=(address_type)-1;
         reconvergence_pc=(address_type)-1;
         op=NO_OP; 
+        op2=UN_OP;
+        op3=OTHER_OP;
+        op4=UNKOWN_OP;
+        op5=NOT_TEX;
+        num_operands=0;
+        num_regs=0;
         memset(out, 0, sizeof(unsigned)); 
         memset(in, 0, sizeof(unsigned)); 
         is_vectorin=0; 
@@ -643,11 +689,21 @@ public:
     }
     bool is_load() const { return (op == LOAD_OP || memory_op == memory_load); }
     bool is_store() const { return (op == STORE_OP || memory_op == memory_store); }
+    unsigned get_num_operands() const {return num_operands;}
+    unsigned get_num_regs() const {return num_regs;}
+    void set_num_regs(unsigned num) {num_regs=num;}
+    void set_num_operands(unsigned num) {num_operands=num;}
 
     address_type pc;        // program counter address of instruction
     unsigned isize;         // size of instruction in bytes 
     op_type op;             // opcode (uarch visible)
+    op_type2 op2;           // opcode (uarch visible) determine if the operation is an interger or a floating point
+    op_type3 op3;           // opcode (uarch visible) determine if int_alu, fp_alu, int_mul ....
+    op_type4 op4;
+    op_type5 op5;
     _memory_op_t memory_op; // memory_op used by ptxplus 
+    unsigned num_operands;
+    unsigned num_regs; // count vector operand as one register operand
 
     address_type reconvergence_pc; // -1 => not a branch, -2 => use function return address
     
@@ -723,6 +779,10 @@ public:
         cycles = initiation_interval;
         m_cache_hit=false;
         m_empty=false;
+    }
+    const active_mask_t & get_active_mask() const
+    {
+    	return m_warp_active_mask;
     }
     void completed( unsigned long long cycle ) const;  // stat collection: called when the instruction is completed  
     void set_addr( unsigned n, new_addr_type addr ) 
@@ -822,6 +882,10 @@ public:
         if( cycles > 0 ) 
             cycles--;
         return cycles > 0;
+    }
+
+    bool has_dispatch_delay(){
+    	return cycles > 0;
     }
 
     void print( FILE *fout ) const;
