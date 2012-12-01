@@ -52,6 +52,11 @@ else
 	CXXFLAGS += 
 endif
 
+POWER_FLAGS=
+ifneq ($(GPGPUSIM_POWER_MODEL),)
+	POWER_FLAGS = -I$(GPGPUSIM_POWER_MODEL) -DGPGPUSIM_POWER_MODEL
+endif
+
 OPTFLAGS += -g3 -fPIC
 
 CPP = g++ $(SNOW)
@@ -60,7 +65,16 @@ OEXT = o
 OUTPUT_DIR=../../$(SIM_OBJ_FILES_DIR)/gpgpu-sim
 
 SRCS = $(shell ls *.cc)
-OBJS = $(SRCS:%.cc=$(OUTPUT_DIR)/%.$(OEXT))
+
+EXCLUDES = 
+
+ifeq ($(GPGPUSIM_POWER_MODEL), )
+EXCLUDES += power_interface.cc
+endif
+
+CSRCS = $(filter-out $(EXCLUDES), $(SRCS))
+
+OBJS = $(CSRCS:%.cc=$(OUTPUT_DIR)/%.$(OEXT))
  
 libgpu_uarch_sim.a:$(OBJS)
 	ar rcs  $(OUTPUT_DIR)/libgpu_uarch_sim.a $(OBJS)
@@ -69,13 +83,13 @@ Makefile.makedepend: depend
 
 depend:
 	touch Makefile.makedepend
-	makedepend -fMakefile.makedepend -p$(OUTPUT_DIR)/ $(SRCS) 2> /dev/null
+	makedepend -fMakefile.makedepend -p$(OUTPUT_DIR)/ $(CSRCS) 2> /dev/null
 
 $(OUTPUT_DIR)/l2cache.$(OEXT): l2cache.cc
 	$(CPP) $(OPTFLAGS) $(CXXFLAGS_L2CACHE) -o $*.$(OEXT) -c l2cache.cc
 
 $(OUTPUT_DIR)/%.$(OEXT): %.cc
-	$(CPP) $(OPTFLAGS) $(CXXFLAGS) -o $(OUTPUT_DIR)/$*.$(OEXT) -c $*.cc
+	$(CPP) $(OPTFLAGS) $(CXXFLAGS) $(POWER_FLAGS) -o $(OUTPUT_DIR)/$*.$(OEXT) -c $*.cc
 
 clean:
 	rm -f *.o core *~ *.a 

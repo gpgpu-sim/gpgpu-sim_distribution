@@ -53,6 +53,8 @@
 #include "stats.h"
 #include "gpu-cache.h"
 
+
+
 #define NO_OP_FLAG            0xFF
 
 /* READ_PACKET_SIZE:
@@ -413,7 +415,24 @@ private:
           if( m_warp ) return m_warp->warp_id();
           else if( m_cu ) return m_cu->get_warp_id();
           else abort();
-          return 0;
+      }
+      unsigned get_active_count() const
+      {
+          if( m_warp ) return m_warp->active_count();
+          else if( m_cu ) return m_cu->get_active_count();
+          else abort();
+      }
+      const active_mask_t & get_active_mask()
+      {
+          if( m_warp ) return m_warp->get_active_mask();
+          else if( m_cu ) return m_cu->get_active_mask();
+          else abort();
+      }
+      unsigned get_op3() const
+      {
+          if( m_warp ) return m_warp->op3;
+          else if( m_cu ) return m_cu->get_op3();
+          else abort();
       }
       unsigned get_oc_id() const { return m_cu->get_id(); }
       unsigned get_bank() const { return m_bank; }
@@ -605,6 +624,9 @@ private:
       void dump(FILE *fp, const shader_core_ctx *shader ) const;
 
       unsigned get_warp_id() const { return m_warp_id; }
+      unsigned get_active_count() const { return m_warp->active_count(); }
+      const active_mask_t & get_active_mask() const { return m_warp->get_active_mask(); }
+      unsigned get_op3() const { return m_warp->op3; }
       unsigned get_id() const { return m_cuid; } // returns CU hw id
 
       // modifiers
@@ -619,7 +641,12 @@ private:
       {
          m_not_ready.reset(op);
       }
-
+      unsigned get_num_operands() const{
+    	  return m_warp->get_num_operands();
+      }
+      unsigned get_num_regs() const{
+    	  return m_warp->get_num_regs();
+      }
       void dispatch();
       bool is_free(){return m_free;}
 
@@ -762,6 +789,7 @@ public:
     // modifiers
     virtual void issue( register_set& source_reg ) { source_reg.move_out_to(m_dispatch_reg); occupied.set(m_dispatch_reg->latency);}
     virtual void cycle() = 0;
+    virtual void active_lanes_in_pipeline() = 0;
 
     // accessors
     virtual unsigned clock_multiplier() const { return 1; }
@@ -782,7 +810,7 @@ protected:
 
 class pipelined_simd_unit : public simd_function_unit {
 public:
-    pipelined_simd_unit( register_set* result_port, const shader_core_config *config, unsigned max_latency );
+    pipelined_simd_unit( register_set* result_port, const shader_core_config *config, unsigned max_latency, shader_core_ctx *core );
 
     //modifiers
     virtual void cycle() 
@@ -800,14 +828,26 @@ public:
         }
         occupied >>=1;
     }
-
+    virtual void issue( register_set& source_reg );
+    virtual unsigned get_active_lanes_in_pipeline()
+    {
+    	active_mask_t active_lanes;
+    	active_lanes.reset();
+        for( unsigned stage=0; (stage+1)<m_pipeline_depth; stage++ ){
+        	if( !m_pipeline_reg[stage]->empty() )
+        		active_lanes|=m_pipeline_reg[stage]->get_active_mask();
+        }
+        return active_lanes.count();
+    }
+    virtual void active_lanes_in_pipeline() = 0;
+/*
     virtual void issue( register_set& source_reg )
     {
         //move_warp(m_dispatch_reg,source_reg);
         //source_reg.move_out_to(m_dispatch_reg);
         simd_function_unit::issue(source_reg);
     }
-
+*/
     // accessors
     virtual bool stallable() const { return false; }
     virtual bool can_issue( const warp_inst_t &inst ) const
@@ -828,12 +868,13 @@ protected:
     unsigned m_pipeline_depth;
     warp_inst_t **m_pipeline_reg;
     register_set *m_result_port;
+    class shader_core_ctx *m_core;
 };
 
 class sfu : public pipelined_simd_unit
 {
 public:
-    sfu( register_set* result_port, const shader_core_config *config );
+    sfu( register_set* result_port, const shader_core_config *config, shader_core_ctx *core );
     virtual bool can_issue( const warp_inst_t &inst ) const
     {
         switch(inst.op) {
@@ -843,12 +884,14 @@ public:
         }
         return pipelined_simd_unit::can_issue(inst);
     }
+    virtual void active_lanes_in_pipeline();
+    virtual void issue(  register_set& source_reg );
 };
 
 class sp_unit : public pipelined_simd_unit
 {
 public:
-    sp_unit( register_set* result_port, const shader_core_config *config );
+    sp_unit( register_set* result_port, const shader_core_config *config, shader_core_ctx *core );
     virtual bool can_issue( const warp_inst_t &inst ) const
     {
         switch(inst.op) {
@@ -860,6 +903,8 @@ public:
         }
         return pipelined_simd_unit::can_issue(inst);
     }
+    virtual void active_lanes_in_pipeline();
+    virtual void issue( register_set& source_reg );
 };
 
 class simt_core_cluster;
@@ -900,10 +945,16 @@ public:
         }
         return m_dispatch_reg->empty();
     }
+
+    virtual void active_lanes_in_pipeline();
     virtual bool stallable() const { return true; }
     bool response_buffer_full() const;
     void print(FILE *fout) const;
     void print_cache_stats( FILE *fp, unsigned& dl1_accesses, unsigned& dl1_misses );
+    void get_cache_stats(unsigned &read_accesses, unsigned &write_accesses, unsigned &read_misses, unsigned &write_misses, unsigned cache_type);
+    void set_stats();
+
+    void set_icnt_power_stats(unsigned &simt_to_mem) const;
 
 private:
    bool shared_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
@@ -940,6 +991,9 @@ private:
    // for debugging
    unsigned long long m_last_inst_gpu_sim_cycle;
    unsigned long long m_last_inst_gpu_tot_sim_cycle;
+
+   // Interconnect power stats
+   unsigned n_simt_to_mem;
 };
 
 enum pipeline_stage_name_t {
@@ -969,6 +1023,7 @@ struct shader_core_config : public core_config
     shader_core_config(){
 	pipeline_widths_string = NULL;
     }
+
     void init()
     {
         int ntok = sscanf(gpgpu_shader_core_pipeline_opt,"%d:%d", 
@@ -1019,8 +1074,11 @@ struct shader_core_config : public core_config
 // data
     char *gpgpu_shader_core_pipeline_opt;
     bool gpgpu_perfect_mem;
+    bool gpgpu_clock_gated_reg_file;
+    bool gpgpu_clock_gated_lanes;
     enum divergence_support_t model;
     unsigned n_thread_per_shader;
+    unsigned n_regfile_gating_group;
     unsigned max_warps_per_shader; 
     unsigned max_cta_per_core; //Limit on number of concurrent CTAs in shader core
 
@@ -1033,7 +1091,8 @@ struct shader_core_config : public core_config
     cache_config m_L1T_config;
     cache_config m_L1C_config;
     cache_config m_L1D_config;
-    
+    cache_config m_L2D_config;
+
     bool gpgpu_dwf_reg_bankconflict;
 
     int gpgpu_num_sched_per_core;
@@ -1080,8 +1139,44 @@ struct shader_core_config : public core_config
 };
 
 struct shader_core_stats_pod {
+
+	unsigned long long **inst_per_cycle;
+	unsigned long long *shader_cycles;
     unsigned *m_num_sim_insn; // number of scalar thread instructions committed by this shader core
     unsigned *m_num_sim_winsn; // number of warp instructions committed by this shader core
+	unsigned *m_last_num_sim_insn;
+	unsigned *m_last_num_sim_winsn;
+    unsigned *m_num_decoded_insn; // number of instructions decoded by this shader core
+    float *m_pipeline_duty_cycle;
+    unsigned *m_num_FPdecoded_insn;
+    unsigned *m_num_INTdecoded_insn;
+    unsigned *m_num_storequeued_insn;
+    unsigned *m_num_loadqueued_insn;
+    unsigned *m_num_ialu_acesses;
+    unsigned *m_num_fp_acesses;
+    unsigned *m_num_imul_acesses;
+    unsigned *m_num_tex_inst;
+    unsigned *m_num_fpmul_acesses;
+    unsigned *m_num_idiv_acesses;
+    unsigned *m_num_fpdiv_acesses;
+    unsigned *m_num_sp_acesses;
+    unsigned *m_num_sfu_acesses;
+    unsigned *m_num_trans_acesses;
+    unsigned *m_num_mem_acesses;
+    unsigned *m_num_sp_committed;
+    unsigned *m_num_tlb_hits;
+    unsigned *m_num_tlb_accesses;
+    unsigned *m_num_sfu_committed;
+    unsigned *m_num_mem_committed;
+    unsigned *m_read_regfile_acesses;
+    unsigned *m_write_regfile_acesses;
+    unsigned *m_non_rf_operands;
+    unsigned *m_num_imul24_acesses;
+    unsigned *m_num_imul32_acesses;
+    unsigned *m_active_sp_lanes;
+    unsigned *m_active_sfu_lanes;
+    unsigned *m_active_fu_lanes;
+    unsigned *m_active_fu_mem_lanes;
     unsigned *m_n_diverge;    // number of divergence occurring in this shader
     unsigned gpgpu_n_load_insn;
     unsigned gpgpu_n_store_insn;
@@ -1114,9 +1209,23 @@ struct shader_core_stats_pod {
 
     unsigned made_write_mfs;
     unsigned made_read_mfs;
+
+    // Power stats
+    unsigned *gpgpu_n_shmem_bank_access;
+    unsigned *inst_c_read_access;	// Instruction cache read access
+    unsigned *inst_c_read_miss;		// Instruction cache read miss
+    unsigned *const_c_read_access;	// Constant cache read access
+    unsigned *const_c_read_miss;		// Constant cache read miss
+    unsigned *text_c_read_access;	// Texture cache read access
+    unsigned *text_c_read_miss;		// Texture cache read miss
+    unsigned *l1d_read_access;		// L1 Data cache read access
+    unsigned *l1d_read_miss;			// L1 Data cache read miss
+    unsigned *l1d_write_access;		// L1 Data cache write access
+    unsigned *l1d_write_miss;		// L1 Data cache write miss
+
 };
 
-class shader_core_stats : private shader_core_stats_pod {
+class shader_core_stats : public shader_core_stats_pod {
 public:
     shader_core_stats( const shader_core_config *config )
     {
@@ -1124,11 +1233,64 @@ public:
         shader_core_stats_pod *pod = this;
         memset(pod,0,sizeof(shader_core_stats_pod));
 
+        inst_per_cycle=(unsigned long long **) calloc(6,sizeof(unsigned long long *));
+        for(unsigned i=0;i<6;i++){
+        	inst_per_cycle[i]=(unsigned long long *) calloc(config->num_shader(),sizeof(unsigned long long ));
+        }
+        shader_cycles=(unsigned long long *) calloc(config->num_shader(),sizeof(unsigned long long ));
         m_num_sim_insn = (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         m_num_sim_winsn = (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_last_num_sim_winsn = (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_last_num_sim_insn = (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_pipeline_duty_cycle=(float*) calloc(config->num_shader(),sizeof(float));
+        m_num_decoded_insn = (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_FPdecoded_insn = (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_storequeued_insn=(unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_loadqueued_insn=(unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_INTdecoded_insn = (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_ialu_acesses = (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_fp_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_tex_inst= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_imul_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_imul24_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_imul32_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_fpmul_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_idiv_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_fpdiv_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_sp_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_sfu_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_trans_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_mem_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_sp_committed= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_tlb_hits=(unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_tlb_accesses=(unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_active_sp_lanes= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_active_sfu_lanes= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_active_fu_lanes= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_active_fu_mem_lanes= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_sfu_committed= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_mem_committed= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_read_regfile_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_write_regfile_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_non_rf_operands=(unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         m_n_diverge = (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         shader_cycle_distro = (unsigned*) calloc(config->warp_size+3, sizeof(unsigned));
         last_shader_cycle_distro = (unsigned*) calloc(m_config->warp_size+3, sizeof(unsigned));
+
+        // Power stats
+        inst_c_read_access = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
+        inst_c_read_miss = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
+        const_c_read_access = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
+        const_c_read_miss = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
+        text_c_read_access = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
+        text_c_read_miss = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
+        l1d_read_access = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
+        l1d_read_miss = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
+        l1d_write_access = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
+        l1d_write_miss = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
+
+        gpgpu_n_shmem_bank_access = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
+
     }
     void new_grid()
     {
@@ -1141,6 +1303,7 @@ public:
 private:
     const shader_core_config *m_config;
 
+    friend class power_stat_t;
     friend class shader_core_ctx;
     friend class ldst_unit;
     friend class simt_core_cluster;
@@ -1216,13 +1379,20 @@ public:
         printf("GPGPU-Sim uArch: Shader %d bind to kernel %u \'%s\'\n", m_sid, m_kernel->get_uid(),
                  m_kernel->name().c_str() );
     }
-    
+   
+	 float roundUp(float num){
+		return (int)num+((num-(int)(num)>0)?0.5:0.0);
+   }
+
+ 
     // accessors
     bool fetch_unit_response_buffer_full() const;
     bool ldst_unit_response_buffer_full() const;
     unsigned get_not_completed() const { return m_not_completed; }
     unsigned get_n_active_cta() const { return m_n_active_cta; }
+    unsigned isactive() const {if(m_n_active_cta>0) return 1; else return 0;}
     kernel_info_t *get_kernel() { return m_kernel; }
+    unsigned get_sid() const {return m_sid;}
 
 // used by functional simulation:
     // modifiers
@@ -1230,6 +1400,7 @@ public:
     
     // accessors
     virtual bool warp_waiting_at_barrier( unsigned warp_id ) const;
+    void get_pdom_stack_top_info( unsigned tid, unsigned *pc, unsigned *rpc ) const;
 
 // used by pipeline timing model components:
     // modifiers
@@ -1240,18 +1411,128 @@ public:
     void store_ack( class mem_fetch *mf );
     bool warp_waiting_at_mem_barrier( unsigned warp_id );
     void set_max_cta( const kernel_info_t &kernel );
-    void warp_inst_complete(const warp_inst_t &inst); 
+    void warp_inst_complete(const warp_inst_t &inst,bool memory);
     
     // accessors
     std::list<unsigned> get_regs_written( const inst_t &fvt ) const;
     const shader_core_config *get_config() const { return m_config; }
     void print_cache_stats( FILE *fp, unsigned& dl1_accesses, unsigned& dl1_misses );
+    void get_cache_stats(unsigned &read_accesses, unsigned &write_accesses, unsigned &read_misses, unsigned &write_misses, unsigned cache_type);
+
+    void set_icnt_power_stats(unsigned &n_simt_to_mem) const;
 
 // debug:
     void display_simt_state(FILE *fout, int mask ) const;
     void display_pipeline( FILE *fout, int print_mem, int mask3bit ) const;
 
+    void incload_stat(unsigned sid) {m_stats->m_num_loadqueued_insn[sid]++;}
+    void incstore_stat(unsigned sid) {m_stats->m_num_storequeued_insn[sid]++;}
+    void incialu_stat(unsigned sid,unsigned active_count,double latency) {
+		if(m_config->gpgpu_clock_gated_lanes==false){
+		  m_stats->m_num_ialu_acesses[sid]=m_stats->m_num_ialu_acesses[sid]+active_count*latency
+		    + inactive_lanes_accesses_nonsfu(active_count, latency);
+		}else {
+        m_stats->m_num_ialu_acesses[sid]=m_stats->m_num_ialu_acesses[sid]+active_count*latency;
+		}
+	 }
+    void inctex_stat(unsigned sid,unsigned active_count,double latency){
+    	m_stats->m_num_tex_inst[sid]=m_stats->m_num_tex_inst[sid]+active_count*latency;
+    }
+    void incimul_stat(unsigned sid,unsigned active_count,double latency) {
+		if(m_config->gpgpu_clock_gated_lanes==false){
+		  m_stats->m_num_imul_acesses[sid]=m_stats->m_num_imul_acesses[sid]+active_count*latency
+		    + inactive_lanes_accesses_nonsfu(active_count, latency);
+		}else {
+        m_stats->m_num_imul_acesses[sid]=m_stats->m_num_imul_acesses[sid]+active_count*latency;
+		}
+	 }
+    void incimul24_stat(unsigned sid,unsigned active_count,double latency) {
+      if(m_config->gpgpu_clock_gated_lanes==false){
+   		m_stats->m_num_imul24_acesses[sid]=m_stats->m_num_imul24_acesses[sid]+active_count*latency
+		    + inactive_lanes_accesses_nonsfu(active_count, latency);
+		}else {
+		  m_stats->m_num_imul24_acesses[sid]=m_stats->m_num_imul24_acesses[sid]+active_count*latency;
+		}
+	 }
+	 void incimul32_stat(unsigned sid,unsigned active_count,double latency) {
+		if(m_config->gpgpu_clock_gated_lanes==false){
+		  m_stats->m_num_imul32_acesses[sid]=m_stats->m_num_imul32_acesses[sid]+active_count*latency
+			 + inactive_lanes_accesses_sfu(active_count, latency);			
+		}else{
+		  m_stats->m_num_imul32_acesses[sid]=m_stats->m_num_imul32_acesses[sid]+active_count*latency;
+		}
+		//printf("Int_Mul -- Active_count: %d\n",active_count);
+	 }
+	 void incidiv_stat(unsigned sid,unsigned active_count,double latency) {
+		if(m_config->gpgpu_clock_gated_lanes==false){
+		  m_stats->m_num_idiv_acesses[sid]=m_stats->m_num_idiv_acesses[sid]+active_count*latency
+			 + inactive_lanes_accesses_sfu(active_count, latency); 
+		}else {
+		  m_stats->m_num_idiv_acesses[sid]=m_stats->m_num_idiv_acesses[sid]+active_count*latency;
+		}
+	 }
+	 void incfpalu_stat(unsigned sid,unsigned active_count,double latency) {
+		if(m_config->gpgpu_clock_gated_lanes==false){
+		  m_stats->m_num_fp_acesses[sid]=m_stats->m_num_fp_acesses[sid]+active_count*latency
+			 + inactive_lanes_accesses_nonsfu(active_count, latency);
+		}else {
+        m_stats->m_num_fp_acesses[sid]=m_stats->m_num_fp_acesses[sid]+active_count*latency;
+		} 
+	 }
+	 void incfpmul_stat(unsigned sid,unsigned active_count,double latency) {
+		 		// printf("FP MUL stat increament\n");
+      if(m_config->gpgpu_clock_gated_lanes==false){
+		  m_stats->m_num_fpmul_acesses[sid]=m_stats->m_num_fpmul_acesses[sid]+active_count*latency
+		    + inactive_lanes_accesses_nonsfu(active_count, latency);
+		}else {
+        m_stats->m_num_fpmul_acesses[sid]=m_stats->m_num_fpmul_acesses[sid]+active_count*latency;
+		}
+	 }
+	 void incfpdiv_stat(unsigned sid,unsigned active_count,double latency) {
+		if(m_config->gpgpu_clock_gated_lanes==false){
+		  m_stats->m_num_fpdiv_acesses[sid]=m_stats->m_num_fpdiv_acesses[sid]+active_count*latency
+			+ inactive_lanes_accesses_sfu(active_count, latency); 
+		}else {
+		  m_stats->m_num_fpdiv_acesses[sid]=m_stats->m_num_fpdiv_acesses[sid]+active_count*latency;		
+		}
+	 }
+	 void inctrans_stat(unsigned sid,unsigned active_count,double latency) {
+		if(m_config->gpgpu_clock_gated_lanes==false){
+		  m_stats->m_num_trans_acesses[sid]=m_stats->m_num_trans_acesses[sid]+active_count*latency
+			+ inactive_lanes_accesses_sfu(active_count, latency); 
+		}else{
+		  m_stats->m_num_trans_acesses[sid]=m_stats->m_num_trans_acesses[sid]+active_count*latency;
+		}
+	 }
+
+	 void incsfu_stat(unsigned sid,unsigned active_count,double latency) {m_stats->m_num_sfu_acesses[sid]=m_stats->m_num_sfu_acesses[sid]+active_count*latency;}
+	 void incsp_stat(unsigned sid,unsigned active_count,double latency) {m_stats->m_num_sp_acesses[sid]=m_stats->m_num_sp_acesses[sid]+active_count*latency;}
+	 void incmem_stat(unsigned sid,unsigned active_count,double latency) {
+		if(m_config->gpgpu_clock_gated_lanes==false){
+		  m_stats->m_num_mem_acesses[sid]=m_stats->m_num_mem_acesses[sid]+active_count*latency
+		    + inactive_lanes_accesses_nonsfu(active_count, latency);
+		}else {
+		  m_stats->m_num_mem_acesses[sid]=m_stats->m_num_mem_acesses[sid]+active_count*latency;
+		}
+	 }
+	 void incexecstat(warp_inst_t *&inst);
+
+	 void incregfile_reads(unsigned sid,unsigned active_count) {m_stats->m_read_regfile_acesses[sid]=m_stats->m_read_regfile_acesses[sid]+active_count;}
+	 void incregfile_writes(unsigned sid,unsigned active_count){m_stats->m_write_regfile_acesses[sid]=m_stats->m_write_regfile_acesses[sid]+active_count;}
+	 void incnon_rf_operands(unsigned sid,unsigned active_count){m_stats->m_non_rf_operands[sid]=m_stats->m_non_rf_operands[sid]+active_count;}
+
+	 void incspactivelanes_stat(unsigned sid,unsigned active_count) {m_stats->m_active_sp_lanes[sid]=m_stats->m_active_sp_lanes[sid]+active_count;}
+	 void incsfuactivelanes_stat(unsigned sid,unsigned active_count) {m_stats->m_active_sfu_lanes[sid]=m_stats->m_active_sfu_lanes[sid]+active_count;}
+	 void incfuactivelanes_stat(unsigned sid,unsigned active_count) {m_stats->m_active_fu_lanes[sid]=m_stats->m_active_fu_lanes[sid]+active_count;}
+	 void incfumemactivelanes_stat(unsigned sid,unsigned active_count) {m_stats->m_active_fu_mem_lanes[sid]=m_stats->m_active_fu_mem_lanes[sid]+active_count;}
 private:
+	 unsigned inactive_lanes_accesses_sfu(unsigned active_count,double latency){
+      return  ( ((32-active_count)>>1)*latency) + ( ((32-active_count)>>3)*latency) + ( ((32-active_count)>>3)*latency);
+	 }
+	 unsigned inactive_lanes_accesses_nonsfu(unsigned active_count,double latency){
+      return  ( ((32-active_count)>>1)*latency);
+	 }
+
     int test_res_bus(int latency);
     void init_warps(unsigned cta_id, unsigned start_thread, unsigned end_thread);
     virtual void checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned t, unsigned tid);
@@ -1362,14 +1643,19 @@ public:
         m_response_fifo.push_back(mf);
     }
 
+    void get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc ) const;
     unsigned max_cta( const kernel_info_t &kernel );
     unsigned get_not_completed() const;
     void print_not_completed( FILE *fp ) const;
     unsigned get_n_active_cta() const;
+    unsigned get_n_active_sms() const;
     gpgpu_sim *get_gpu() { return m_gpu; }
 
     void display_pipeline( unsigned sid, FILE *fout, int print_mem, int mask );
     void print_cache_stats( FILE *fp, unsigned& dl1_accesses, unsigned& dl1_misses ) const;
+    void get_cache_stats(unsigned &read_accesses, unsigned &write_accesses, unsigned &read_misses, unsigned &write_misses, unsigned cache_type) const;
+
+    void set_icnt_stats(unsigned &n_simt_to_mem) const;
 
 private:
     unsigned m_cluster_id;

@@ -48,12 +48,13 @@ ifneq ($(shell which nvcc), "")
 	endif
 endif
 
-LIBS = cuda-sim gpgpu-sim_uarch intersim gpgpusimlib
+LIBS = cuda-sim gpgpu-sim_uarch intersim gpgpusimlib 
+
 
 TARGETS =
 ifeq ($(shell uname),Linux)
 	TARGETS += $(SIM_LIB_DIR)/libcudart.so
-else
+else # MAC
 	TARGETS += $(SIM_LIB_DIR)/libcudart.dylib
 endif
 
@@ -66,8 +67,26 @@ else
 endif
 	TARGETS += cuobjdump_to_ptxplus/cuobjdump_to_ptxplus
 
-.PHONY: check_setup_environment
-gpgpusim: check_setup_environment makedirs $(TARGETS)
+MCPAT=
+MCPAT_OBJ_DIR=
+MCPAT_DBG_FLAG=
+ifneq ($(GPGPUSIM_POWER_MODEL),)
+	LIBS += mcpat
+
+
+	ifeq ($(DEBUG), 1)
+		MCPAT_OBJ_DIR = $(GPGPUSIM_POWER_MODEL)/obj_dbg
+		MCPAT_DBG_FLAG = dbg
+	else
+		MCPAT_OBJ_DIR = $(GPGPUSIM_POWER_MODEL)/obj_opt
+	endif
+
+	MCPAT = $(MCPAT_OBJ_DIR)/*.o
+endif
+
+
+.PHONY: check_setup_environment check_power
+gpgpusim: check_setup_environment check_power makedirs $(TARGETS)
 
 
 check_setup_environment:
@@ -87,7 +106,30 @@ check_setup_environment:
 			echo; echo "	Building GPGPU-Sim version $(GPGPUSIM_VERSION) (build $(GPGPUSIM_BUILD)) with CUDA version $(CUDA_VERSION_STRING)"; echo; \
 	 		true; \
 		fi \
-	 fi
+	 fi 
+
+check_power:
+	@if [ -d "$(GPGPUSIM_ROOT)/src/mcpat/" -a ! -n "$(GPGPUSIM_POWER_MODEL)" ]; then \
+		echo ""; \
+		echo "	Power model detected in default directory ($(GPGPUSIM_ROOT)/src/mcpat) but GPGPUSIM_POWER_MODEL not set."; \
+		echo "	Please re-run setup_environment or manually set GPGPUSIM_POWER_MODEL to the mcpat directory if you would like to include the GPGPU-Sim Power Model."; \
+		echo ""; \
+		true; \
+	elif [ ! -d "$(GPGPUSIM_POWER_MODEL)" ]; then \
+		echo ""; \
+		echo "ERROR ** Power model directory invalid."; \
+		echo "($(GPGPUSIM_POWER_MODEL)) is not a valid directory."; \
+		echo "Please set GPGPUSIM_POWER_MODEL to the GPGPU-Sim mcpat directory."; \
+		echo ""; \
+		exit 101; \
+	elif [ -n "$(GPGPUSIM_POWER_MODEL)" -a ! -f "$(GPGPUSIM_POWER_MODEL)/gpgpu_sim.verify" ]; then \
+		echo ""; \
+		echo "ERROR ** Power model directory invalid."; \
+		echo "gpgpu_sim.verify not found in $(GPGPUSIM_POWER_MODEL)."; \
+		echo "Please ensure that GPGPUSIM_POWER_MODEL points to a valid mcpat directory and that you have the correct GPGPU-Sim mcpat distribution."; \
+		echo ""; \
+		exit 102; \
+	fi
 
 no_opencl_support:
 	@echo "Warning: gpgpu-sim is building without opencl support. Make sure NVOPENCL_LIBDIR and NVOPENCL_INCDIR are set"
@@ -100,6 +142,7 @@ $(SIM_LIB_DIR)/libcudart.so: $(LIBS) cudalib
 			$(SIM_OBJ_FILES_DIR)/gpgpu-sim/*.o \
 			$(SIM_OBJ_FILES_DIR)/intersim/*.o \
 			$(SIM_OBJ_FILES_DIR)/*.o -lm -lz -lGL -pthread \
+			$(MCPAT) \
 			-o $(SIM_LIB_DIR)/libcudart.so
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.2 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.2; fi
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.3 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.3; fi
@@ -113,6 +156,7 @@ $(SIM_LIB_DIR)/libcudart.dylib: $(LIBS) cudalib
 			$(SIM_OBJ_FILES_DIR)/gpgpu-sim/*.o \
 			$(SIM_OBJ_FILES_DIR)/intersim/*.o \
 			$(SIM_OBJ_FILES_DIR)/*.o -lm -lz -pthread \
+			$(MCPAT) \
 			-o $(SIM_LIB_DIR)/libcudart.dylib
 
 $(SIM_LIB_DIR)/libOpenCL.so: $(LIBS) opencllib
@@ -123,6 +167,7 @@ $(SIM_LIB_DIR)/libOpenCL.so: $(LIBS) opencllib
 			$(SIM_OBJ_FILES_DIR)/gpgpu-sim/*.o \
 			$(SIM_OBJ_FILES_DIR)/intersim/*.o \
 			$(SIM_OBJ_FILES_DIR)/*.o -lm -lz -lGL -pthread \
+			$(MCPAT) \
 			-o $(SIM_LIB_DIR)/libOpenCL.so 
 	if [ ! -f $(SIM_LIB_DIR)/libOpenCL.so.1 ]; then ln -s libOpenCL.so $(SIM_LIB_DIR)/libOpenCL.so.1; fi
 	if [ ! -f $(SIM_LIB_DIR)/libOpenCL.so.1.1 ]; then ln -s libOpenCL.so $(SIM_LIB_DIR)/libOpenCL.so.1.1; fi
@@ -130,6 +175,12 @@ $(SIM_LIB_DIR)/libOpenCL.so: $(LIBS) opencllib
 cudalib: cuda-sim
 	$(MAKE) -C ./libcuda/ depend
 	$(MAKE) -C ./libcuda/
+
+ifneq ($(GPGPUSIM_POWER_MODEL),)
+mcpat:
+	$(MAKE) -C $(GPGPUSIM_POWER_MODEL) depend
+	$(MAKE) -C $(GPGPUSIM_POWER_MODEL) $(MCPAT_DBG_FLAG)
+endif
 
 cuda-sim:
 	$(MAKE) -C ./src/cuda-sim/ depend
@@ -164,6 +215,7 @@ makedirs:
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/libopencl ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/libopencl; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/intersim ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/intersim; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/cuobjdump_to_ptxplus ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/cuobjdump_to_ptxplus; fi;
+	if [ ! -d $(GPGPUSIM_POWER_MODEL)/obj_opt ] && [ -n $(GPGPUSIM_POWER_MODEL) ]; then mkdir -p $(GPGPUSIM_POWER_MODEL)/obj_opt; fi;
 
 all:
 	$(MAKE) gpgpusim
@@ -187,5 +239,8 @@ endif
 	$(MAKE) clean -C ./src/gpgpu-sim/
 	$(MAKE) clean -C ./src/
 	$(MAKE) clean -C ./cuobjdump_to_ptxplus/
+ifneq ($(GPGPUSIM_POWER_MODEL),)
+	$(MAKE) clean -C $(GPGPUSIM_POWER_MODEL)
+endif
 	rm -rf $(SIM_LIB_DIR)
 	rm -rf $(SIM_OBJ_FILES_DIR)

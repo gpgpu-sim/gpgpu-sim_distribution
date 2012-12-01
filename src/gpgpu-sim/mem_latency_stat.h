@@ -82,9 +82,9 @@ public:
 
 
    // stats
+   unsigned L2_write_access;
    unsigned L2_write_miss;
-   unsigned L2_write_hit;
-   unsigned L2_read_hit;
+   unsigned L2_read_access;
    unsigned L2_read_miss;
    unsigned int *L2_cbtoL2length;
    unsigned int *L2_cbtoL2writelength;
@@ -98,6 +98,11 @@ public:
    unsigned int **row_access; //row_access[dram chip id][bank id]
    unsigned int **max_conc_access2samerow; //max_conc_access2samerow[dram chip id][bank id]
    unsigned int **max_servicetime2samerow; //max_servicetime2samerow[dram chip id][bank id]
+
+   // Power stats
+   unsigned total_n_access;
+   unsigned total_n_reads;
+   unsigned total_n_writes;
 };
 
 #endif /*MEM_LATENCY_STAT_H*/

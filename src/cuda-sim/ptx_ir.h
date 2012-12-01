@@ -947,6 +947,8 @@ public:
 
 private:
    void set_opcode_and_latency();
+   void set_fp_or_int_archop();
+   void set_mul_div_or_other_archop();
 
    basic_block_t        *m_basic_block;
    unsigned          m_uid;

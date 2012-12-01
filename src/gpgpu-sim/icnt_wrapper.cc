@@ -34,6 +34,7 @@ icnt_push_p       icnt_push;
 icnt_pop_p        icnt_pop;
 icnt_transfer_p   icnt_transfer;
 icnt_busy_p       icnt_busy;
+icnt_get_flit_size_p icnt_get_flit_size;
 
 int   g_network_mode;
 char* g_network_config_filename;
@@ -56,6 +57,7 @@ void icnt_init( unsigned int n_shader, unsigned int n_mem )
       icnt_pop        = interconnect_pop;
       icnt_transfer   = advance_interconnect;
       icnt_busy       = interconnect_busy;
+      icnt_get_flit_size = interconnect_get_flit_size;
      break;
 
    default:

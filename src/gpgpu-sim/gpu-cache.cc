@@ -201,6 +201,13 @@ void tag_array::print( FILE *stream, unsigned &total_access, unsigned &total_mis
     total_access+=m_access;
 }
 
+void tag_array::get_stats(unsigned &total_access, unsigned &total_misses) const{
+	// Get the access and miss counts from the tag array
+	total_misses = m_miss;
+	total_access = m_access;
+}
+
+
 bool was_write_sent( const std::list<cache_event> &events )
 {
     for( std::list<cache_event>::const_iterator e=events.begin(); e!=events.end(); e++ ) {
@@ -293,6 +300,7 @@ void baseline_cache::cycle(){
         if ( !m_memport->full(mf->get_data_size(),mf->get_is_write()) ) {
             m_miss_queue.pop_front();
             m_memport->push(mf);
+            n_simt_to_mem+=mf->get_num_flits(true); // Interconnect power stats
         }
     }
 }
@@ -393,6 +401,7 @@ cache_request_status data_cache::wr_hit_wb(new_addr_type addr, unsigned cache_in
 	cache_block_t &block = m_tag_array.get_block(cache_index);
 	block.m_status = MODIFIED;
 
+	m_write_access++;
 	return HIT;
 }
 
@@ -409,6 +418,7 @@ cache_request_status data_cache::wr_hit_wt(new_addr_type addr, unsigned cache_in
 	// generate a write-through
 	send_write_request(mf, WRITE_REQUEST_SENT, time, events);
 
+	m_write_access++;
 	return HIT;
 }
 
@@ -423,6 +433,8 @@ cache_request_status data_cache::wr_hit_we(new_addr_type addr, unsigned cache_in
 
 	// Invalidate block
 	block.m_status = INVALID;
+
+	m_write_access++;
 	return HIT;
 }
 
@@ -481,8 +493,11 @@ enum cache_request_status data_cache::wr_miss_wa(new_addr_type addr, unsigned ca
 		m_miss_queue.push_back(wb);
 		wb->set_status(m_miss_queue_status,time);
 	}
-	if( do_miss )
+	if( do_miss ){
+		m_write_access++;
+		m_write_miss++;
 		return MISS;
+	}
 
 	return RESERVATION_FAIL;
 }
@@ -494,6 +509,9 @@ enum cache_request_status data_cache::wr_miss_no_wa(new_addr_type addr, unsigned
 
 	// on miss, generate write through (no write buffering -- too many threads for that)
 	send_write_request(mf, WRITE_REQUEST_SENT, time, events);
+
+	m_write_access++;
+	m_write_miss++;
 	return MISS;
 }
 
@@ -508,6 +526,8 @@ enum cache_request_status data_cache::rd_hit_base(new_addr_type addr, unsigned c
 		cache_block_t &block = m_tag_array.get_block(cache_index);
         block.m_status = MODIFIED;  // mark line as dirty
 	}
+
+	m_read_access++;
 	return HIT;
 }
 
@@ -528,8 +548,11 @@ enum cache_request_status data_cache::rd_miss_base(new_addr_type addr, unsigned 
 		mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr, L1_WRBK_ACC,m_config.get_line_sz(),true);
 		send_write_request(wb, WRITE_BACK_REQUEST_SENT, time, events);
 	}
-	if( do_miss )
+	if( do_miss ){
+		m_read_access++;
+		m_read_miss++;
 		return MISS;
+	}
 	return RESERVATION_FAIL;
 }
 
@@ -564,7 +587,6 @@ enum cache_request_status l1_cache::access( new_addr_type addr, mem_fetch *mf, u
 	new_addr_type block_addr = m_config.block_addr(addr);
 	unsigned cache_index = (unsigned)-1;
 	enum cache_request_status status = m_tag_array.probe(block_addr,cache_index);
-
 
 	// Each function pointer ( m_[rd/wr]_[hit/miss] ) is set in the data_cache constructor to reflect the corresponding cache configuration options.
 	// Function pointers were used to avoid many long conditional branches resulting from many cache configuration options.
@@ -652,6 +674,7 @@ void tex_cache::cycle(){
         if ( !m_memport->full(mf->get_ctrl_size(),false) ) {
             m_request_fifo.pop();
             m_memport->push(mf);
+            n_simt_to_mem+=mf->get_num_flits(true); // Interconnect power stats
         }
     }
     // read ready lines from cache

@@ -133,6 +133,17 @@ void dram_t::scheduler_frfcfs()
    frfcfs_scheduler *sched = m_frfcfs_scheduler;
    while ( !mrqq->empty() && (!m_config->gpgpu_dram_sched_queue_size || sched->num_pending() < m_config->gpgpu_dram_sched_queue_size)) {
       dram_req_t *req = mrqq->pop();
+
+      // Power stats
+      //if(req->data->get_type() != READ_REPLY && req->data->get_type() != WRITE_ACK)
+      m_stats->total_n_access++;
+
+      if(req->data->get_type() == WRITE_REQUEST){
+    	  m_stats->total_n_writes++;
+      }else if(req->data->get_type() == READ_REQUEST){
+    	  m_stats->total_n_reads++;
+      }
+
       req->data->set_status(IN_PARTITION_MC_INPUT_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
       sched->add_req(req);
    }

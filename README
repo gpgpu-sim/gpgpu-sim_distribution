@@ -1,23 +1,34 @@
 Welcome to GPGPU-Sim, a cycle-level simulator modeling contemporary graphics
 processing units (GPUs) running GPU computing workloads written in CUDA or
-OpenCL.  
+OpenCL. Also included in GPGPU-Sim is a configurable and extensible power 
+model that has been rigorously validated with power measurements from real 
+hardware GPUs. 
 
 This version of GPGPU-Sim has been tested with CUDA version 2.3, 3.1 and 4.0.
 
 Please see the copyright notice in the file COPYRIGHT distributed with this
 release in the same directory as this file.
 
-If you use this simulator in your research please cite:
+If you use this simulator in your research, please cite:
 
 Ali Bakhoda, George Yuan, Wilson W. L. Fung, Henry Wong, Tor M. Aamodt,
 Analyzing CUDA Workloads Using a Detailed GPU Simulator, in IEEE International
 Symposium on Performance Analysis of Systems and Software (ISPASS), Boston, MA,
 April 19-21, 2009.
 
+If you use the power model in your research, please cite:
+
+<http://gpgpu-sim.org/power_manual/>
+
 This file contains instructions on installing, building and running GPGPU-Sim.
 Detailed documentation on what GPGPU-Sim models, how to configure it, and a
 guide to the source code can be found here: <http://gpgpu-sim.org/manual/>. 
 Instructions for building doxygen source code documentation are included below.
+
+This file also contains instructions on building and running the GPGPU-Sim
+Power Model. Detailed documentation on the power model, how to configure it,
+and a guide to the source code can be found here: 
+<http://gpgpu-sim.org/power_manual/>.
 
 If you have questions, please sign up for the google groups page (see
 gpgpu-sim.org), but note that use of this simulator does not imply any level of
@@ -27,8 +38,12 @@ To submit a bug report, go here: http://www.gpgpu-sim.org/bugs/
 
 See Section 2 "INSTALLING, BUILDING and RUNNING GPGPU-Sim" below to get started.
 
+See Section 3 "BUILDING and RUNNING the power model" below for the steps to build 
+and run the power model. 
 
 1. CONTRIBUTIONS and HISTORY
+
+== GPGPU-Sim ==
 
 GPGPU-Sim was created by Tor Aamodt's research group at the University of
 British Columbia.  Many students have contributed including: Wilson W.L. Fung,
@@ -57,6 +72,22 @@ library is contained in cuda-math.h, which also includes several structures
 derived from vector_types.h (one of the CUDA header files).
 
 See file CHANGES for updates in this and earlier versions.
+
+== Power Model ==
+
+The power model was created in collaboration by the University of British Columbia, 
+the University of Texas at Austin, and the University of Wisconsin-Madison. Many 
+students have contributed to the power model: Tor Aamodt's research group at 
+the University of British Columbia: Tayler Hetherington and Ahmed ElTantawy;
+Vijay Reddi's research group at the University of Texas at Austin: Jingwen Leng; 
+and Nam Sung Kim's research group at the University of Wisconsin-Madison: Syed
+Gilani. 
+
+The power model is built ontop of McPAT, which was developed by Sheng Li et al. 
+at the University of Notre Dame, Hewlett-Packard Labs, Seoul National University,
+and the University of California, San Diego. The paper can be found at 
+http://www.hpl.hp.com/research/mcpat/micro09.pdf. 
+
 
 
 2. INSTALLING, BUILDING and RUNNING GPGPU-Sim
@@ -96,11 +127,11 @@ environment variable to point to the version you want to use.
 [Optional] If you want to run OpenCL on the simulator, download and install
 NVIDIA's OpenCL driver from <http://developer.nvidia.com/opencl>.  Update your
 PATH and LD_LIBRARY_PATH as indicated by the NVIDIA install scripts. Note that
-you will need to use the lib64 directory if you are using a 64bit machine.  We
+you will need to use the lib64 directory if you are using a 64-bit machine.  We
 have tested OpenCL on GPGPU-Sim using NVIDIA driver version 256.40
 <http://developer.download.nvidia.com/compute/cuda/3_1/drivers/devdriver_3.1_linux_64_256.40.run>
-Note the most recent version of the NVIDIA driver produces PTX that is
-incompatible with this version of GPGPU-Sim.
+This version of GPGPU-Sim has been updated to support more recent versions of
+the NVIDIA drivers (tested on version 295.20). 
 
 GPGPU-Sim dependencies:
 * gcc
@@ -187,7 +218,7 @@ The documentation resides at v3.x/doc/doxygen/html.
 Step 3: Run
 ============
 
-Copy the contents of v3.x/configs/QuadroFX5800/ or v3.x/configs/Fermi/ to your
+Copy the contents of v3.x/configs/QuadroFX5800/ or v3.x/configs/GTX480/ to your
 application's working directory.  These files configure the microarchitecture
 models to resemble the respective GPGPU architectures.
 
@@ -230,7 +261,79 @@ benchmarks now contains updated instructions for running the benchmarks on
 GPGPU-Sim v3.x.
 
 
-3.  (OPTIONAL) Updating GPGPU-Sim (ADVANCED USERS ONLY)
+
+3. BUILDING and RUNNING the Power Model
+
+By default, GPGPU-Sim bypasses the compilation of McPAT if our modified version of
+McPAT is not included. Hence, it is not necessary to install our modified McPAT
+along with GPGPU-Sim. However, if the location to our modified version of McPAT
+is specified, it will be compiled and linked alongside GPGPU-Sim into
+libcudart.so, libcudart.dylib, and libOpenCL.so.
+
+The location of McPAT is specified by the GPGPUSIM_POWER_MODEL environment 
+variable and is used in GPGPU-Sim's Makefile to compile McPAT. This can either 
+be set manually to a user defined location or automatically set by the 
+setup_evironment script in <GPGPU-Sim>/v3.x/ if McPAT is found in the 
+default directory (<GPGPU-Sim>/v3.x/src/mcpat/).
+
+Step 1: Build
+==============
+
+The compilation steps are identical to compiling GPGPU-Sim:
+
+Ensure the McPAT directory is <GPGPU-Sim>/v3.x/src/mcpat/
+OR manually set the location by running
+
+	export GPGPUSIM_POWER_MODEL=<path to GPGPU-Sim McPAT>
+
+	cd v3.x
+	source setup_environment <build_type>
+
+Replace <build_type> with debug or release. Use release if you need faster
+simulation and debug if you need to run the simulator in gdb. If nothing is
+specified, release will be used by default.  
+
+Now you are ready to build the simulator and power model, just run
+
+	make
+
+After make is done, the simulator and power model would be ready to 
+use. To clean the build, run
+
+	make clean
+
+This will clean the build for both GPGPU-Sim and McPAT. 
+
+Step 2: Run
+==============
+
+Also included in v3.x/configs/GTX480/ is the XML configuration file required by
+McPAT to resemble the Geforce GTX 480 architectures. Copy this file to your
+working directory just like you do with the other GPGPU-Sim configuration
+files. 
+
+Besides copying the McPAT XML configuration file, running your applications
+with the power model enabled is identical to running without. Please refer to
+Section 2-Step 3 for details on running the simulator. 
+
+The following GPGPU-Sim configuration options are used to enable the power 
+model and set the McPAT XML configuration file. 
+
+	- power_simulation_enabled 1 (1=Enabled, 0 = Not enabled)
+
+	- mcpat_xml_file <filename>.xml 
+
+The McPAT XML configuration file name is set to mcpat.xml by default.
+
+If the power model simulator is enabled, an output file is genarated to include
+the detailed Power coefficients for the simulated configuration and the
+Average/Maximum/Minimum total power breakdowns for each kernel.
+
+Please refer to the power model manual for more information. 
+
+
+
+4.  (OPTIONAL) Updating GPGPU-Sim (ADVANCED USERS ONLY)
 
 If you have made modifications to the simulator and wish to incorporate new
 features/bugfixes from subsequent releases the following instructions may help.
@@ -288,3 +391,6 @@ the applications you care about (implying these applications worked for you
 before you did the merge). You want to do this before making further changes to
 identify any compile time or runtime errors that occur due to the code merging
 process. 
+
+
+

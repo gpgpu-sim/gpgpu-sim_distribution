@@ -32,9 +32,13 @@
 #include "../abstract_hardware_model.h"
 #include "addrdec.h"
 #include "shader.h"
+#include <iostream>
+#include <fstream>
 
 #include <list>
 #include <stdio.h>
+
+
 
 // constants for statistics printouts
 #define GPU_RSTAT_SHD_INFO 0x1
@@ -58,10 +62,89 @@
 #define SAMPLELOG 222
 #define DUMPLOG 333
 
+
+
+
+
 enum dram_ctrl_t {
    DRAM_FIFO=0,
    DRAM_FRFCFS=1
 };
+
+
+struct power_config {
+	power_config()
+	{
+		m_valid = true;
+	}
+	void init()
+	{
+
+		if (!g_power_simulation_enabled)
+			return;
+
+	    // initialize file name if it is not set
+	    time_t curr_time;
+	    time(&curr_time);
+	    char *date = ctime(&curr_time);
+	    char *s = date;
+	    while (*s) {
+	        if (*s == ' ' || *s == '\t' || *s == ':') *s = '-';
+	        if (*s == '\n' || *s == '\r' ) *s = 0;
+	        s++;
+	    }
+	    char buf1[1024];
+	    snprintf(buf1,1024,"gpgpusim_power_report__%s.log",date);
+	    g_power_filename = strdup(buf1);
+	    char buf2[1024];
+	    snprintf(buf2,1024,"gpgpusim_power_trace_report__%s.log.gz",date);
+	    g_power_trace_filename = strdup(buf2);
+	    char buf3[1024];
+	    snprintf(buf3,1024,"gpgpusim_metric_trace_report__%s.log.gz",date);
+	    g_metric_trace_filename = strdup(buf3);
+	    char buf4[1024];
+	    snprintf(buf4,1024,"gpgpusim_steady_state_tracking_report__%s.log.gz",date);
+	    g_steady_state_tracking_filename = strdup(buf4);
+
+	    if(g_steady_power_levels_enabled){
+	        sscanf(gpu_steady_state_definition,"%lf:%lf", &gpu_steady_power_deviation,&gpu_steady_min_period);
+	    }
+
+        //NOTE: After changing the nonlinear model to only scaling idle core,
+        //NOTE: The min_inc_per_active_sm is not used any more
+		if (g_use_nonlinear_model)
+		    sscanf(gpu_nonlinear_model_config,"%lf:%lf", &gpu_idle_core_power,&gpu_min_inc_per_active_sm);
+
+	}
+	void reg_options(class OptionParser * opp);
+
+	char *g_power_config_name;
+
+	bool m_valid;
+    bool g_power_simulation_enabled;
+    bool g_power_trace_enabled;
+    bool g_steady_power_levels_enabled;
+    bool g_power_per_cycle_dump;
+    bool g_power_simulator_debug;
+    char *g_power_filename;
+    char *g_power_trace_filename;
+    char *g_metric_trace_filename;
+    char * g_steady_state_tracking_filename;
+    int g_power_trace_zlevel;
+    char * gpu_steady_state_definition;
+    double gpu_steady_power_deviation;
+    double gpu_steady_min_period;
+
+    //Nonlinear power model
+    bool g_use_nonlinear_model;
+    char * gpu_nonlinear_model_config;
+    double gpu_idle_core_power;
+    double gpu_min_inc_per_active_sm;
+
+
+};
+
+
 
 struct memory_config {
    memory_config()
@@ -124,6 +207,7 @@ struct memory_config {
       m_address_mapping.init(m_n_mem);
       m_L2_config.init();
       m_valid = true;
+      icnt_flit_size = 32; // Default 32
    }
    void reg_options(class OptionParser * opp);
 
@@ -172,10 +256,11 @@ struct memory_config {
    unsigned nbk;
 
    unsigned data_command_freq_ratio; // frequency ratio between DRAM data bus and command bus (2 for GDDR3, 4 for GDDR5)
-
    unsigned dram_atom_size; // number of bytes transferred per read or write command 
 
    linear_to_raw_address_translation m_address_mapping;
+
+   unsigned icnt_flit_size;
 };
 
 // global counters and flags (please try not to add to this list!!!)
@@ -183,7 +268,7 @@ extern unsigned long long  gpu_sim_cycle;
 extern unsigned long long  gpu_tot_sim_cycle;
 extern bool g_interactive_debugger_enabled;
 
-class gpgpu_sim_config : public gpgpu_functional_sim_config {
+class gpgpu_sim_config : public power_config, public gpgpu_functional_sim_config {
 public:
     gpgpu_sim_config() { m_valid = false; }
     void reg_options(class OptionParser * opp);
@@ -192,10 +277,12 @@ public:
         gpu_stat_sample_freq = 10000;
         gpu_runtime_stat_flag = 0;
         sscanf(gpgpu_runtime_stat, "%d:%x", &gpu_stat_sample_freq, &gpu_runtime_stat_flag);
-        m_shader_config.init();    
+        m_shader_config.init();
         ptx_set_tex_cache_linesize(m_shader_config.m_L1T_config.get_line_sz());
         m_memory_config.init();
         init_clock_domains(); 
+        power_config::init();
+
 
         // initialize file name if it is not set 
         time_t curr_time;
@@ -220,10 +307,10 @@ public:
 private:
     void init_clock_domains(void ); 
 
+
     bool m_valid;
     shader_core_config m_shader_config;
     memory_config m_memory_config;
-
     // clock domains - frequency
     double core_freq;
     double icnt_freq;
@@ -239,7 +326,8 @@ private:
     unsigned gpu_max_insn_opt;
     unsigned gpu_max_cta_opt;
     char *gpgpu_runtime_stat;
-    bool  gpgpu_flush_cache;
+    bool  gpgpu_flush_l1_cache;
+    bool  gpgpu_flush_l2_cache;
     bool  gpu_deadlock_detect;
     int   gpgpu_dram_sched_queue_size; 
     int   gpgpu_cflog_interval;
@@ -251,9 +339,13 @@ private:
     char *g_visualizer_filename;
     int   g_visualizer_zlevel;
 
+
     // statistics collection
     int gpu_stat_sample_freq;
     int gpu_runtime_stat_flag;
+
+
+
 
     friend class gpgpu_sim;
 };
@@ -276,6 +368,8 @@ public:
    void update_stats();
    void deadlock_check();
 
+   void get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc );
+
    int shared_mem_size() const;
    int num_registers_per_core() const;
    int wrp_size() const;
@@ -288,7 +382,7 @@ public:
    kernel_info_t *select_kernel();
 
    const gpgpu_sim_config &get_config() const { return m_config; }
-   void gpu_print_stat() const;
+   void gpu_print_stat();
    void dump_pipeline( int mask, int s, int m ) const;
 
    //The next three functions added to be used by the functional simulation function
@@ -313,12 +407,13 @@ public:
     */
     simt_core_cluster * getSIMTCluster();
 
+
 private:
    // clocks
    void reinit_clock_domains(void);
    int  next_clock_domain(void);
    void issue_block2core();
-    
+   void print_dram_L2_stats(FILE *fout) const;
    void L2c_print_cache_stat() const;
    void shader_print_runtime_stat( FILE *fout );
    void shader_print_l1_miss_stat( FILE *fout ) const;
@@ -338,7 +433,8 @@ private:
    std::list<unsigned> m_finished_kernel;
    unsigned m_total_cta_launched;
    unsigned m_last_cluster_issue;
-
+   float * average_pipeline_duty_cycle;
+   float * active_sms;
    // time of next rising edge 
    double core_time;
    double icnt_time;
@@ -358,14 +454,25 @@ private:
    // stats
    class shader_core_stats  *m_shader_stats;
    class memory_stats_t     *m_memory_stats;
+   class power_stat_t *m_power_stats;
+#ifdef GPGPUSIM_POWER_MODEL
+   class gpgpu_sim_wrapper *m_gpgpusim_wrapper;
+#endif
    unsigned long long  gpu_tot_issued_cta;
    unsigned long long  last_gpu_sim_insn;
+
+
+
 
 public:
    unsigned long long  gpu_sim_insn;
    unsigned long long  gpu_tot_sim_insn;
    unsigned long long  gpu_sim_insn_last_update;
    unsigned gpu_sim_insn_last_update_sid;
+
+
+
+
 };
 
 #endif

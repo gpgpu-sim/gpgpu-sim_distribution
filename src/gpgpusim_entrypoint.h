@@ -33,6 +33,8 @@
 #include <time.h>
 extern time_t g_simulation_starttime;
 
+
+
 class gpgpu_sim *gpgpu_ptx_sim_init_perf();
 void start_sim_thread(int api);
 

@@ -419,6 +419,17 @@ void dram_t::cycle()
 #endif
 }
 
+void dram_t::get_access_stats(unsigned &total_access, unsigned &total_reads, unsigned &total_writes,unsigned &total_l2_read_access,unsigned &total_l2_read_miss,unsigned &total_l2_write_access,unsigned &total_l2_write_miss ){
+	total_access += m_stats->total_n_access;
+	total_reads += m_stats->total_n_reads;
+	total_writes += m_stats->total_n_writes;
+	total_l2_read_access += m_stats->L2_read_access;
+	total_l2_read_miss += m_stats->L2_read_miss;
+	total_l2_write_access += m_stats->L2_write_access;
+	total_l2_write_miss += m_stats->L2_write_miss;
+
+}
+
 //if mrq is being serviced by dram, gets popped after CL latency fulfilled
 class mem_fetch* dram_t::pop() 
 {
@@ -524,4 +535,25 @@ void dram_t::visualizer_print( gzFile visualizer_file )
       gzprintf(visualizer_file,"dramtexture_acc_r: %u %u %u\n", id, j, 
                m_stats->mem_access_type_stats[TEXTURE_ACC_R][id][j]);
    }
+}
+
+
+void dram_t::set_dram_power_stats(	unsigned &cmd,
+									unsigned &activity,
+									unsigned &nop,
+									unsigned &act,
+									unsigned &pre,
+									unsigned &rd,
+									unsigned &wr,
+									unsigned &req) const{
+
+	// Point power performance counters to low-level DRAM counters
+	cmd = n_cmd;
+	activity = n_activity;
+	nop = n_nop;
+	act = n_act;
+	pre = n_pre;
+	rd = n_rd;
+	wr = n_wr;
+	req = n_req;
 }

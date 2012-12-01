@@ -79,6 +79,8 @@ public:
    void     set_data_size( unsigned size ) { m_data_size=size; }
    unsigned get_ctrl_size() const { return m_ctrl_size; }
    unsigned size() const { return m_data_size+m_ctrl_size; }
+   bool is_write() {return m_access.is_write();}
+   void set_addr(new_addr_type addr) { m_access.set_addr(addr); }
    new_addr_type get_addr() const { return m_access.get_addr(); }
    new_addr_type get_partition_addr() const { return m_partition_addr; }
    bool     get_is_write() const { return m_access.is_write(); }
@@ -100,11 +102,14 @@ public:
    enum mem_access_type get_access_type() const { return m_access.get_type(); }
    const active_mask_t& get_access_warp_mask() const { return m_access.get_warp_mask(); }
    mem_access_byte_mask_t get_access_byte_mask() const { return m_access.get_byte_mask(); }
+
    address_type get_pc() const { return m_inst.empty()?-1:m_inst.pc; }
    const warp_inst_t &get_inst() { return m_inst; }
    enum mem_fetch_status get_status() const { return m_status; }
 
    const memory_config *get_mem_config(){return m_mem_config;}
+
+   unsigned get_num_flits(bool simt_to_mem);
 private:
    // request source information
    unsigned m_request_uid;
@@ -135,6 +140,7 @@ private:
    static unsigned sm_next_mf_request_uid;
 
    const class memory_config *m_mem_config;
+   unsigned icnt_flit_size;
 };
 
 #endif

@@ -60,6 +60,7 @@ mem_fetch::mem_fetch( const mem_access_t &access,
    m_status = MEM_FETCH_INITIALIZED;
    m_status_change = gpu_sim_cycle + gpu_tot_sim_cycle;
    m_mem_config = config;
+   icnt_flit_size = config->icnt_flit_size;
 }
 
 mem_fetch::~mem_fetch()
@@ -119,3 +120,17 @@ bool mem_fetch::isconst() const
     if( m_inst.empty() ) return false;
     return (m_inst.space.get_type() == const_space) || (m_inst.space.get_type() == param_space_kernel);
 }
+
+/// Returns number of flits traversing interconnect. simt_to_mem specifies the direction
+unsigned mem_fetch::get_num_flits(bool simt_to_mem){
+	unsigned sz=0;
+	if( (simt_to_mem && get_is_write()) || !(simt_to_mem || get_is_write()) )
+		sz = size();
+	else
+		sz = get_ctrl_size();
+
+	return (sz/icnt_flit_size) + ( (sz % icnt_flit_size)? 1:0);
+}
+
+
+

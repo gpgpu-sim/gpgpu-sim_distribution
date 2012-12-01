@@ -77,6 +77,24 @@ public:
    void visualize() const { m_dram->visualize(); }
    void print( FILE *fp ) const;
 
+
+   // Power model
+   void set_dram_power_stats(unsigned &n_cmd,
+			unsigned &n_activity,
+			unsigned &n_nop,
+			unsigned &n_act,
+			unsigned &n_pre,
+			unsigned &n_rd,
+			unsigned &n_wr,
+			unsigned &n_req) const;
+
+   void set_L2cache_power_stats(unsigned &n_read_access,
+			unsigned &n_read_miss,
+			unsigned &n_write_access,
+			unsigned &n_write_miss) const;
+
+   void set_icnt_power_stats(unsigned &n_mem_to_simt) const;
+
 private:
 // data
    unsigned m_id;
@@ -116,6 +134,9 @@ private:
    std::set<mem_fetch*> m_request_tracker;
 
    friend class L2interface;
+
+   // interconnect power stats
+   unsigned n_mem_to_simt;
 };
 
 class L2interface : public mem_fetch_interface {

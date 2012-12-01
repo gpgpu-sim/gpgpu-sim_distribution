@@ -599,3 +599,8 @@ void time_vector_update_icnt_injected(void* data, int input)
     }
     */
 }
+
+/// Returns size of flit
+unsigned interconnect_get_flit_size(){
+	return _flit_size;
+}

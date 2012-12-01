@@ -37,6 +37,8 @@
 #include <list>
 #include <map>
 #include <string.h>
+#include "option_parser.h"
+
 
 using namespace std;
 
@@ -203,7 +205,7 @@ public:
       p_option->assignDefault(optionDefault);
    }
 
-   void ParseCommandLine(int argc, const char * const argv[]) 
+   void ParseCommandLine(int argc, const char * const argv[])
    {
       for (int i = 1; i < argc; i++) {
          OptionMap::iterator i_option;
@@ -230,17 +232,18 @@ public:
                fprintf(stderr, "\n\nGPGPU-Sim ** ERROR: Missing filename for option '-config'.\n");
                exit(1);
             }
+
             ParseFile(argv[i + 1]);
             i += 1;
             optionFound = true;
          }
-
          if (optionFound == false) {
             fprintf(stderr, "\n\nGPGPU-Sim ** ERROR: Unknown Option: '%s' \n", argv[i]);
             exit(1);
          }
       }
    }
+
 
    void ParseFile(const char *filename) {
       ifstream inputFile;
@@ -384,11 +387,13 @@ void option_parser_register(option_parser_t opp,
 }
 
 void option_parser_cmdline(option_parser_t opp,
-                           int argc, const char *argv[]) 
+                           int argc, const char *argv[])
 {
     OptionParser *p_opr = reinterpret_cast<OptionParser *>(opp);
-    p_opr->ParseCommandLine(argc,argv);
+    return p_opr->ParseCommandLine(argc,argv);
+
 }
+
 
 void option_parser_cfgfile(option_parser_t opp,
                            const char *filename)

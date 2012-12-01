@@ -103,6 +103,7 @@ public:
    bool returnq_full() const;
    unsigned int queue_limit() const;
    void visualizer_print( gzFile visualizer_file );
+   void get_access_stats(unsigned &total_access, unsigned &total_reads, unsigned &total_writes,unsigned &total_l2_read_hit,unsigned &total_l2_read_miss,unsigned &total_l2_write_hit,unsigned &total_l2_write_miss );
 
    class mem_fetch* pop();
    void push( class mem_fetch *data );
@@ -111,6 +112,16 @@ public:
 
    class memory_partition_unit *m_memory_partition_unit;
    unsigned int id;
+
+   // Power Model
+   void set_dram_power_stats(	unsigned &cmd,
+								unsigned &activity,
+								unsigned &nop,
+								unsigned &act,
+								unsigned &pre,
+								unsigned &rd,
+								unsigned &wr,
+								unsigned &req) const;
 
 private:
    void scheduler_fifo();

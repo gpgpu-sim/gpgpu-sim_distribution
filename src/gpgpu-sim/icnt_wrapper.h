@@ -37,6 +37,8 @@ typedef void* (*icnt_pop_p)(unsigned output);
 typedef void (*icnt_transfer_p)( );
 typedef unsigned (*icnt_busy_p)( );
 typedef void (*icnt_drain_p)( );
+typedef unsigned (*icnt_get_flit_size_p)();
+
 
 extern icnt_has_buffer_p icnt_has_buffer;
 extern icnt_push_p       icnt_push;
@@ -44,6 +46,7 @@ extern icnt_pop_p        icnt_pop;
 extern icnt_transfer_p   icnt_transfer;
 extern icnt_busy_p       icnt_busy;
 extern icnt_drain_p      icnt_drain;
+extern icnt_get_flit_size_p icnt_get_flit_size;
 extern int g_network_mode;
 
 enum network_mode {
