@@ -971,10 +971,15 @@ void ldst_unit::set_icnt_power_stats(unsigned &simt_to_mem) const{
 	unsigned tex=0;
 	unsigned l1c=0;
 
-	m_L1D->set_icnt_power_stats(l1d);
-	m_L1T->set_icnt_power_stats(tex);
-	m_L1C->set_icnt_power_stats(l1c);
-
+	if( m_L1D ) {
+		m_L1D->set_icnt_power_stats(l1d);
+	}
+	if( m_L1T ){
+		m_L1T->set_icnt_power_stats(tex);
+	}
+	if( m_L1C ){
+		m_L1C->set_icnt_power_stats(l1c);
+	}
 	simt_to_mem = n_simt_to_mem+l1d+tex+l1c; // All components that push packets into the interconnect
 }
 

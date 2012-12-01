@@ -302,6 +302,7 @@ public:
     }
 
     unsigned num_shader() const { return m_shader_config.num_shader(); }
+    unsigned num_cluster() const { return m_shader_config.n_simt_clusters; }
     unsigned get_max_concurrent_kernel() const { return max_concurrent_kernel; }
 
 private:

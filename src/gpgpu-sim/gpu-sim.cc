@@ -759,7 +759,7 @@ void gpgpu_sim::gpu_print_stat()
       m_memory_partition_unit[i]->set_icnt_power_stats(temp);
       total_mem_to_simt += temp;
    }
-   for(unsigned i=0; i<m_config.num_shader(); i++){
+   for(unsigned i=0; i<m_config.num_cluster(); i++){
 	   unsigned temp=0;
 	   m_cluster[i]->set_icnt_stats(temp);
 	   total_simt_to_mem += temp;
