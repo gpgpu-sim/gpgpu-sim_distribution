@@ -1,24 +1,32 @@
 Welcome to GPGPU-Sim, a cycle-level simulator modeling contemporary graphics
 processing units (GPUs) running GPU computing workloads written in CUDA or
-OpenCL. Also included in GPGPU-Sim is a configurable and extensible power 
-model that has been rigorously validated with power measurements from real 
-hardware GPUs. 
+OpenCL. Also included in GPGPU-Sim is a performance visualization tool called
+AerialVision and a configurable and extensible power model called GPUWattch.
+GPGPU-Sim and GPUWattch have been rigorously validated with performance and
+power measurements of real hardware GPUs. 
 
 This version of GPGPU-Sim has been tested with CUDA version 2.3, 3.1 and 4.0.
 
 Please see the copyright notice in the file COPYRIGHT distributed with this
 release in the same directory as this file.
 
-If you use this simulator in your research, please cite:
+If you use GPGPU-Sim in your research, please cite:
 
 Ali Bakhoda, George Yuan, Wilson W. L. Fung, Henry Wong, Tor M. Aamodt,
 Analyzing CUDA Workloads Using a Detailed GPU Simulator, in IEEE International
 Symposium on Performance Analysis of Systems and Software (ISPASS), Boston, MA,
 April 19-21, 2009.
 
-If you use the power model in your research, please cite:
+In addition, if you use the power model in your research, please cite:
 
-<http://gpgpu-sim.org/power_manual/>
+http://gpgpu-sim.org/gpuwattch/
+
+If you use figures plotted using AerialVision in your publications, please cite:
+
+Aaron Ariel, Wilson W. L. Fung, Andrew Turner, Tor M. Aamodt, Visualizing
+Complex Dynamics in Many-Core Accelerator Architectures, In Proceedings of the
+IEEE International Symposium on Performance Analysis of Systems and Software
+(ISPASS), pp. 164-174, White Plains, NY, March 28-30, 2010.
 
 This file contains instructions on installing, building and running GPGPU-Sim.
 Detailed documentation on what GPGPU-Sim models, how to configure it, and a
@@ -27,8 +35,8 @@ Instructions for building doxygen source code documentation are included below.
 
 This file also contains instructions on building and running the GPGPU-Sim
 Power Model. Detailed documentation on the power model, how to configure it,
-and a guide to the source code can be found here: 
-<http://gpgpu-sim.org/power_manual/>.
+and a guide to the source code can be found here:
+<http://gpgpu-sim.org/gpuwattch/>.
 
 If you have questions, please sign up for the google groups page (see
 gpgpu-sim.org), but note that use of this simulator does not imply any level of
