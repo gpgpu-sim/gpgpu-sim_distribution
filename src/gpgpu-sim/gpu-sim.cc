@@ -311,19 +311,19 @@ void shader_core_config::reg_options(class OptionParser * opp)
                             "1");
     option_parser_register(opp, "-gpgpu_pipeline_widths", OPT_CSTR, &pipeline_widths_string,
                             "Pipeline widths "
-    		                "ID_OC_SP,ID_OC_SFU,ID_OC_MEM,OC_EX_SP,OC_EX_SFU,OC_EX_MEM,EX_WB",
+                            "ID_OC_SP,ID_OC_SFU,ID_OC_MEM,OC_EX_SP,OC_EX_SFU,OC_EX_MEM,EX_WB",
                             "1,1,1,1,1,1,1" );
     option_parser_register(opp, "-gpgpu_num_sp_units", OPT_INT32, &gpgpu_num_sp_units,
-    		                "Number of SP units (default=1)",
-    		                "1");
+                            "Number of SP units (default=1)",
+                            "1");
     option_parser_register(opp, "-gpgpu_num_sfu_units", OPT_INT32, &gpgpu_num_sfu_units,
-    		                "Number of SF units (default=1)",
-    		                "1");
+                            "Number of SF units (default=1)",
+                            "1");
     option_parser_register(opp, "-gpgpu_num_mem_units", OPT_INT32, &gpgpu_num_mem_units,
-    		                "Number if ldst units (default=1) WARNING: not hooked up to anything",
+                            "Number if ldst units (default=1) WARNING: not hooked up to anything",
                              "1");
     option_parser_register(opp, "-gpgpu_scheduler", OPT_CSTR, &gpgpu_scheduler_string,
-        		                "Scheduler configuration: lrr|tl:num_active_warps default: lrr",
+                                "Scheduler configuration: lrr|tl:num_active_warps default: lrr",
                                  "lrr");
 }
 
@@ -727,7 +727,9 @@ void gpgpu_sim::gpu_print_stat()
 
    m_shader_stats->print(stdout);
 #ifdef GPGPUSIM_POWER_MODEL
-   m_gpgpusim_wrapper->print_power_kernel_stats(gpu_sim_cycle,gpu_tot_sim_cycle,gpu_tot_sim_insn + gpu_sim_insn );
+   if(m_config.g_power_simulation_enabled){
+       m_gpgpusim_wrapper->print_power_kernel_stats(gpu_sim_cycle,gpu_tot_sim_cycle,gpu_tot_sim_insn + gpu_sim_insn );
+   }
 #endif
 
    // performance counter that are not local to one shader
@@ -747,7 +749,9 @@ void gpgpu_sim::gpu_print_stat()
    }
 
 #ifdef GPGPUSIM_POWER_MODEL
-   m_gpgpusim_wrapper->detect_print_steady_state(1,gpu_tot_sim_insn+gpu_sim_insn);
+   if(m_config.g_power_simulation_enabled){
+       m_gpgpusim_wrapper->detect_print_steady_state(1,gpu_tot_sim_insn+gpu_sim_insn);
+   }
 #endif
 
 
@@ -755,7 +759,7 @@ void gpgpu_sim::gpu_print_stat()
    unsigned total_mem_to_simt=0;
    unsigned total_simt_to_mem=0;
    for (unsigned i=0;i<m_memory_config->m_n_mem;i++){
-	  unsigned temp=0;
+      unsigned temp=0;
       m_memory_partition_unit[i]->set_icnt_power_stats(temp);
       total_mem_to_simt += temp;
    }
@@ -966,8 +970,8 @@ void gpgpu_sim::cycle()
          m_memory_partition_unit[i]->dram_cycle(); // Issue the dram command (scheduler + delay model)
          // Update performance counters for DRAM
          m_memory_partition_unit[i]->set_dram_power_stats(m_power_stats->pwr_mem_stat->n_cmd[0][i], m_power_stats->pwr_mem_stat->n_activity[0][i],
-     					m_power_stats->pwr_mem_stat->n_nop[0][i], m_power_stats->pwr_mem_stat->n_act[0][i], m_power_stats->pwr_mem_stat->n_pre[0][i],
-     					m_power_stats->pwr_mem_stat->n_rd[0][i], m_power_stats->pwr_mem_stat->n_wr[0][i], m_power_stats->pwr_mem_stat->n_req[0][i]);
+                        m_power_stats->pwr_mem_stat->n_nop[0][i], m_power_stats->pwr_mem_stat->n_act[0][i], m_power_stats->pwr_mem_stat->n_pre[0][i],
+                        m_power_stats->pwr_mem_stat->n_rd[0][i], m_power_stats->pwr_mem_stat->n_wr[0][i], m_power_stats->pwr_mem_stat->n_req[0][i]);
       }
    }
 
@@ -1007,11 +1011,11 @@ void gpgpu_sim::cycle()
       }
       float temp=0;
       for (unsigned i=0;i<m_shader_config->num_shader();i++){
-     	temp+=m_shader_stats->m_pipeline_duty_cycle[i];
+        temp+=m_shader_stats->m_pipeline_duty_cycle[i];
       }
       temp=temp/m_shader_config->num_shader();
       *average_pipeline_duty_cycle=((*average_pipeline_duty_cycle)+temp);
-		//cout<<"Average pipeline duty cycle: "<<*average_pipeline_duty_cycle<<endl;
+        //cout<<"Average pipeline duty cycle: "<<*average_pipeline_duty_cycle<<endl;
 
 
       if( g_single_step && ((gpu_sim_cycle+gpu_tot_sim_cycle) >= g_single_step) ) {
@@ -1024,7 +1028,7 @@ void gpgpu_sim::cycle()
       // McPAT main cycle (interface with McPAT)
 #ifdef GPGPUSIM_POWER_MODEL
       if(m_config.g_power_simulation_enabled){
-    	  mcpat_cycle(m_config, getShaderCoreConfig(), m_gpgpusim_wrapper, m_power_stats, m_config.gpu_stat_sample_freq, gpu_tot_sim_cycle, gpu_sim_cycle, gpu_tot_sim_insn, gpu_sim_insn);
+          mcpat_cycle(m_config, getShaderCoreConfig(), m_gpgpusim_wrapper, m_power_stats, m_config.gpu_stat_sample_freq, gpu_tot_sim_cycle, gpu_sim_cycle, gpu_tot_sim_insn, gpu_sim_insn);
       }
 #endif
 
@@ -1035,21 +1039,21 @@ void gpgpu_sim::cycle()
       if (m_config.gpgpu_flush_l1_cache) {
          for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) {
             if (m_cluster[i]->get_not_completed() == 0)
-            	m_cluster[i]->cache_flush();
+                m_cluster[i]->cache_flush();
             else
                all_threads_complete = 0 ;
          }
       }
 
       if(m_config.gpgpu_flush_l2_cache){
-    	  if(!m_config.gpgpu_flush_l1_cache){
-    		  for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) {
-    			  if (m_cluster[i]->get_not_completed() != 0){
-    				  all_threads_complete = 0 ;
-    				  break;
-    			  }
-    		  }
-    	  }
+          if(!m_config.gpgpu_flush_l1_cache){
+              for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) {
+                  if (m_cluster[i]->get_not_completed() != 0){
+                      all_threads_complete = 0 ;
+                      break;
+                  }
+              }
+          }
 
          if (all_threads_complete && !m_memory_config->m_L2_config.disabled() ) {
             printf("Flushed L2 caches...\n");
