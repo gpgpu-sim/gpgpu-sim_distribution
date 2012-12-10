@@ -80,35 +80,32 @@ struct power_config {
 	void init()
 	{
 
-		if (!g_power_simulation_enabled)
-			return;
+        // initialize file name if it is not set
+        time_t curr_time;
+        time(&curr_time);
+        char *date = ctime(&curr_time);
+        char *s = date;
+        while (*s) {
+            if (*s == ' ' || *s == '\t' || *s == ':') *s = '-';
+            if (*s == '\n' || *s == '\r' ) *s = 0;
+            s++;
+        }
+        char buf1[1024];
+        snprintf(buf1,1024,"gpgpusim_power_report__%s.log",date);
+        g_power_filename = strdup(buf1);
+        char buf2[1024];
+        snprintf(buf2,1024,"gpgpusim_power_trace_report__%s.log.gz",date);
+        g_power_trace_filename = strdup(buf2);
+        char buf3[1024];
+        snprintf(buf3,1024,"gpgpusim_metric_trace_report__%s.log.gz",date);
+        g_metric_trace_filename = strdup(buf3);
+        char buf4[1024];
+        snprintf(buf4,1024,"gpgpusim_steady_state_tracking_report__%s.log.gz",date);
+        g_steady_state_tracking_filename = strdup(buf4);
 
-	    // initialize file name if it is not set
-	    time_t curr_time;
-	    time(&curr_time);
-	    char *date = ctime(&curr_time);
-	    char *s = date;
-	    while (*s) {
-	        if (*s == ' ' || *s == '\t' || *s == ':') *s = '-';
-	        if (*s == '\n' || *s == '\r' ) *s = 0;
-	        s++;
-	    }
-	    char buf1[1024];
-	    snprintf(buf1,1024,"gpgpusim_power_report__%s.log",date);
-	    g_power_filename = strdup(buf1);
-	    char buf2[1024];
-	    snprintf(buf2,1024,"gpgpusim_power_trace_report__%s.log.gz",date);
-	    g_power_trace_filename = strdup(buf2);
-	    char buf3[1024];
-	    snprintf(buf3,1024,"gpgpusim_metric_trace_report__%s.log.gz",date);
-	    g_metric_trace_filename = strdup(buf3);
-	    char buf4[1024];
-	    snprintf(buf4,1024,"gpgpusim_steady_state_tracking_report__%s.log.gz",date);
-	    g_steady_state_tracking_filename = strdup(buf4);
-
-	    if(g_steady_power_levels_enabled){
-	        sscanf(gpu_steady_state_definition,"%lf:%lf", &gpu_steady_power_deviation,&gpu_steady_min_period);
-	    }
+        if(g_steady_power_levels_enabled){
+            sscanf(gpu_steady_state_definition,"%lf:%lf", &gpu_steady_power_deviation,&gpu_steady_min_period);
+        }
 
         //NOTE: After changing the nonlinear model to only scaling idle core,
         //NOTE: The min_inc_per_active_sm is not used any more
@@ -192,12 +189,12 @@ struct memory_config {
          option_parser_destroy(dram_opp); 
       }
 
-		int nbkt = nbk/nbkgrp;
-		unsigned i;
-		for (i=0; nbkt>0; i++) {
-			nbkt = nbkt>>1;
-		}
-		bk_tag_length = i;
+        int nbkt = nbk/nbkgrp;
+        unsigned i;
+        for (i=0; nbkt>0; i++) {
+            nbkt = nbkt>>1;
+        }
+        bk_tag_length = i;
       assert(nbkgrp>0 && "Number of bank groups cannot be zero");
       tRCDWR = tRCD-(WL+1);
       tRTW = (CL+(BL/data_command_freq_ratio)+2-WL);

@@ -37,7 +37,7 @@
 
 void init_mcpat(const gpgpu_sim_config &config, class gpgpu_sim_wrapper *wrapper, unsigned stat_sample_freq, unsigned tot_inst, unsigned inst);
 void mcpat_cycle(const gpgpu_sim_config &config, const struct shader_core_config *shdr_config, class gpgpu_sim_wrapper *wrapper, class power_stat_t *power_stats,
-		unsigned stat_sample_freq, unsigned tot_cycle, unsigned cycle, unsigned tot_inst, unsigned inst);
+unsigned stat_sample_freq, unsigned tot_cycle, unsigned cycle, unsigned tot_inst, unsigned inst);
 
 
 #endif /* POWER_INTERFACE_H_ */
