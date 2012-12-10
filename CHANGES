@@ -29,6 +29,7 @@ Version 3.1.2 versus 3.1.1
   drivers newer than version 256.40. 
 - nvopencl_wrapper now works on machine with both AMD and NVIDIA GPUs.  It will
   automatically compile the OpenCL Kernels via the NVIDIA platform. 
+- Added a GPGPU power model based on McPAT 0.8beta. 
 - Bug Fixes:
     - Fixed a compile error that happens with newer gcc/g++ versions (4.7.1)
     - Fixed a bug with the association between cuobjdump output and cubin
