@@ -561,7 +561,7 @@ class mem_access_t {
 public:
    mem_access_t() { init(); }
    mem_access_t( mem_access_type type, 
-                 address_type address, 
+                 new_addr_type address, 
                  unsigned size,
                  bool wr )
    {
@@ -572,7 +572,7 @@ public:
        m_write = wr;
    }
    mem_access_t( mem_access_type type, 
-                 address_type address, 
+                 new_addr_type address, 
                  unsigned size, 
                  bool wr, 
                  const active_mask_t &active_mask,
