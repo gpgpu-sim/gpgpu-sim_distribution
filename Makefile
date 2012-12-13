@@ -109,24 +109,24 @@ check_setup_environment:
 	 fi 
 
 check_power:
-	@if [ -d "$(GPGPUSIM_ROOT)/src/mcpat/" -a ! -n "$(GPGPUSIM_POWER_MODEL)" ]; then \
+	@if [ -d "$(GPGPUSIM_ROOT)/src/gpuwattch/" -a ! -n "$(GPGPUSIM_POWER_MODEL)" ]; then \
 		echo ""; \
-		echo "	Power model detected in default directory ($(GPGPUSIM_ROOT)/src/mcpat) but GPGPUSIM_POWER_MODEL not set."; \
-		echo "	Please re-run setup_environment or manually set GPGPUSIM_POWER_MODEL to the mcpat directory if you would like to include the GPGPU-Sim Power Model."; \
+		echo "	Power model detected in default directory ($(GPGPUSIM_ROOT)/src/gpuwattch) but GPGPUSIM_POWER_MODEL not set."; \
+		echo "	Please re-run setup_environment or manually set GPGPUSIM_POWER_MODEL to the gpuwattch directory if you would like to include the GPGPU-Sim Power Model."; \
 		echo ""; \
 		true; \
 	elif [ ! -d "$(GPGPUSIM_POWER_MODEL)" ]; then \
 		echo ""; \
 		echo "ERROR ** Power model directory invalid."; \
 		echo "($(GPGPUSIM_POWER_MODEL)) is not a valid directory."; \
-		echo "Please set GPGPUSIM_POWER_MODEL to the GPGPU-Sim mcpat directory."; \
+		echo "Please set GPGPUSIM_POWER_MODEL to the GPGPU-Sim gpuwattch directory."; \
 		echo ""; \
 		exit 101; \
 	elif [ -n "$(GPGPUSIM_POWER_MODEL)" -a ! -f "$(GPGPUSIM_POWER_MODEL)/gpgpu_sim.verify" ]; then \
 		echo ""; \
 		echo "ERROR ** Power model directory invalid."; \
 		echo "gpgpu_sim.verify not found in $(GPGPUSIM_POWER_MODEL)."; \
-		echo "Please ensure that GPGPUSIM_POWER_MODEL points to a valid mcpat directory and that you have the correct GPGPU-Sim mcpat distribution."; \
+		echo "Please ensure that GPGPUSIM_POWER_MODEL points to a valid gpuwattch directory and that you have the correct GPGPU-Sim mcpat distribution."; \
 		echo ""; \
 		exit 102; \
 	fi
