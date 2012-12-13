@@ -5,7 +5,7 @@ export GPGPUSIM_ROOT="$( cd "$( dirname "$BASH_SOURCE" )" && pwd )"
 
 GPGPUSIM_VERSION_STRING=`cat $GPGPUSIM_ROOT/version | awk '/Version/ {print $8}'`
 GPGPUSIM_BUILD_STRING=`cat $GPGPUSIM_ROOT/version | awk '/Change/ {print $6}'`
-echo "GPGPU-Sim version $GPGPUSIM_VERSION_STRING (build $GPGPUSIM_BUILD_STRING)";
+echo -n "GPGPU-Sim version $GPGPUSIM_VERSION_STRING (build $GPGPUSIM_BUILD_STRING) ";
 
 if [ ! -n "$CUDA_INSTALL_PATH" ]; then
 	echo "ERROR ** Install CUDA Toolkit and set CUDA_INSTALL_PATH.";
@@ -100,15 +100,13 @@ fi
 # The following checks to see if the GPGPU-Sim power model is enabled.
 # GPGPUSIM_POWER_MODEL points to the directory where gpgpusim_mcpat is located.
 # If this is not set, it checks the default directory "distribution/../mcpat/".
-echo "=== GPGPUSim Power model ==="
 if [ -d $GPGPUSIM_ROOT/src/mcpat/ ]; then
 	if [ ! -f $GPGPUSIM_ROOT/src/mcpat/gpgpu_sim.verify ]; then
 		echo "ERROR ** gpgpu_sim.verify not found in $GPGPUSIM_ROOT/../mcpat";
 		return;
 	fi
 	export GPGPUSIM_POWER_MODEL=$GPGPUSIM_ROOT/src/mcpat/;
-	echo "GPGPU-Sim_McPAT power model detected... Using default directory $GPGPUSIM_POWER_MODEL.";
-	echo "If you want to specify a non-default directory, modify GPGPUSIM_POWER_MODEL manually after running setup_environment."
+	echo "configured with GPUWattch.";
 elif [ -n "$GPGPUSIM_POWER_MODEL" ]; then
 	if [ ! -f $GPGPUSIM_POWER_MODEL/gpgpu_sim.verify ]; then
 		echo "ERROR ** gpgpu_sim.verify not found in $GPGPUSIM_ROOT/../mcpat/ - Either incorrect directory or incorrect McPAT version";
@@ -119,10 +117,8 @@ elif [ ! -d $GPGPUSIM_POWER_MODEL ]; then
 		echo "ERROR ** GPGPUSIM_POWER_MODEL ($GPGPUSIM_POWER_MODEL) does not exist... Please set this to the gpgpusim_mcpat directory or unset this environment variable.";
 		return;
 else
-	echo "GPGPU-Sim_McPAT power model not detected...";	
+	echo " configured without a power model";
 fi
-echo "============================"
-
 
 echo "setup_environment succeeded";
 
