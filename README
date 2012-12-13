@@ -249,6 +249,15 @@ need to re-compile your application simply to run it on GPGPU-Sim.
 To revert back to running on the hardware, remove GPGPU-Sim from your
 LD_LIBRARY_PATH environment variable.
 
+The following GPGPU-Sim configuration options are used to enable GPUWattch
+
+	- power_simulation_enabled 1 (1=Enabled, 0=Not enabled)
+	- mcpat_xml_file <filename>.xml 
+
+The McPAT XML configuration file name is set to mcpat.xml by default and
+currently only supplied for GTX480.  Please refer to
+<http://gpgpu-sim.org/gpuwattch/> for more information. 
+
 Running OpenCL applications is identical to running CUDA applications. However,
 OpenCL applications need to communicate with the NVIDIA driver in order to
 build OpenCL at runtime. GPGPU-Sim supports offloading this compilation to a
@@ -267,78 +276,6 @@ distributed separately on the git server under the directory
 ispass2009-benchmarks. The README.ISPASS-2009 file distributed with the
 benchmarks now contains updated instructions for running the benchmarks on
 GPGPU-Sim v3.x.
-
-
-
-3. BUILDING and RUNNING the Power Model
-
-By default, GPGPU-Sim bypasses the compilation of McPAT if our modified version of
-McPAT is not included. Hence, it is not necessary to install our modified McPAT
-along with GPGPU-Sim. However, if the location to our modified version of McPAT
-is specified, it will be compiled and linked alongside GPGPU-Sim into
-libcudart.so, libcudart.dylib, and libOpenCL.so.
-
-The location of McPAT is specified by the GPGPUSIM_POWER_MODEL environment 
-variable and is used in GPGPU-Sim's Makefile to compile McPAT. This can either 
-be set manually to a user defined location or automatically set by the 
-setup_evironment script in <GPGPU-Sim>/v3.x/ if McPAT is found in the 
-default directory (<GPGPU-Sim>/v3.x/src/mcpat/).
-
-Step 1: Build
-==============
-
-The compilation steps are identical to compiling GPGPU-Sim:
-
-Ensure the McPAT directory is <GPGPU-Sim>/v3.x/src/mcpat/
-OR manually set the location by running
-
-	export GPGPUSIM_POWER_MODEL=<path to GPGPU-Sim McPAT>
-
-	cd v3.x
-	source setup_environment <build_type>
-
-Replace <build_type> with debug or release. Use release if you need faster
-simulation and debug if you need to run the simulator in gdb. If nothing is
-specified, release will be used by default.  
-
-Now you are ready to build the simulator and power model, just run
-
-	make
-
-After make is done, the simulator and power model would be ready to 
-use. To clean the build, run
-
-	make clean
-
-This will clean the build for both GPGPU-Sim and McPAT. 
-
-Step 2: Run
-==============
-
-Also included in v3.x/configs/GTX480/ is the XML configuration file required by
-McPAT to resemble the Geforce GTX 480 architectures. Copy this file to your
-working directory just like you do with the other GPGPU-Sim configuration
-files. 
-
-Besides copying the McPAT XML configuration file, running your applications
-with the power model enabled is identical to running without. Please refer to
-Section 2-Step 3 for details on running the simulator. 
-
-The following GPGPU-Sim configuration options are used to enable the power 
-model and set the McPAT XML configuration file. 
-
-	- power_simulation_enabled 1 (1=Enabled, 0 = Not enabled)
-
-	- mcpat_xml_file <filename>.xml 
-
-The McPAT XML configuration file name is set to mcpat.xml by default.
-
-If the power model simulator is enabled, an output file is genarated to include
-the detailed Power coefficients for the simulated configuration and the
-Average/Maximum/Minimum total power breakdowns for each kernel.
-
-Please refer to the power model manual for more information. 
-
 
 
 4.  (OPTIONAL) Updating GPGPU-Sim (ADVANCED USERS ONLY)
