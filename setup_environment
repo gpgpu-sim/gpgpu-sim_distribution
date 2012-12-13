@@ -109,15 +109,17 @@ if [ -d $GPGPUSIM_ROOT/src/mcpat/ ]; then
 	echo "configured with GPUWattch.";
 elif [ -n "$GPGPUSIM_POWER_MODEL" ]; then
 	if [ ! -f $GPGPUSIM_POWER_MODEL/gpgpu_sim.verify ]; then
+		echo "";
 		echo "ERROR ** gpgpu_sim.verify not found in $GPGPUSIM_ROOT/../mcpat/ - Either incorrect directory or incorrect McPAT version";
 		return;
 	fi
-	echo "GPGPU-Sim_McPAT power model detected... Using directory $GPGPUSIM_POWER_MODEL.";
+	echo "configure with power model in $GPGPUSIM_POWER_MODEL.";
 elif [ ! -d $GPGPUSIM_POWER_MODEL ]; then
+		echo "";
 		echo "ERROR ** GPGPUSIM_POWER_MODEL ($GPGPUSIM_POWER_MODEL) does not exist... Please set this to the gpgpusim_mcpat directory or unset this environment variable.";
 		return;
 else
-	echo " configured without a power model";
+	echo "configured without a power model.";
 fi
 
 echo "setup_environment succeeded";
