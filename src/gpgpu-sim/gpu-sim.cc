@@ -101,9 +101,9 @@ void power_config::reg_options(class OptionParser * opp)
 {
 
 
-	  option_parser_register(opp, "-mcpat_xml_file", OPT_CSTR,
-			  	  	  	  	 &g_power_config_name,"McPAT XML file",
-	                   "mcpat.xml");
+	  option_parser_register(opp, "-gpuwattch_xml_file", OPT_CSTR,
+			  	  	  	  	 &g_power_config_name,"GPUWattch XML file",
+	                   "gpuwattch.xml");
 
 	   option_parser_register(opp, "-power_simulation_enabled", OPT_BOOL,
 	                          &g_power_simulation_enabled, "Turn on power simulator (1=On, 0=Off)",
