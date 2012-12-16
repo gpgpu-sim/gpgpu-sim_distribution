@@ -252,10 +252,10 @@ LD_LIBRARY_PATH environment variable.
 The following GPGPU-Sim configuration options are used to enable GPUWattch
 
 	- power_simulation_enabled 1 (1=Enabled, 0=Not enabled)
-	- mcpat_xml_file <filename>.xml 
+	- gpuwattch_xml_file <filename>.xml 
 
-The McPAT XML configuration file name is set to mcpat.xml by default and
-currently only supplied for GTX480.  Please refer to
+The GPUWattch XML configuration file name is set to gpuwattch.xml by default and
+currently only supplied for GTX480 (default=gpuwattch_gtx480.xml).  Please refer to
 <http://gpgpu-sim.org/gpuwattch/> for more information. 
 
 Running OpenCL applications is identical to running CUDA applications. However,
