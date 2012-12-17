@@ -1140,7 +1140,6 @@ struct shader_core_config : public core_config
 
 struct shader_core_stats_pod {
 
-	unsigned long long **inst_per_cycle;
 	unsigned long long *shader_cycles;
     unsigned *m_num_sim_insn; // number of scalar thread instructions committed by this shader core
     unsigned *m_num_sim_winsn; // number of warp instructions committed by this shader core
@@ -1232,11 +1231,6 @@ public:
         m_config = config;
         shader_core_stats_pod *pod = this;
         memset(pod,0,sizeof(shader_core_stats_pod));
-
-        inst_per_cycle=(unsigned long long **) calloc(6,sizeof(unsigned long long *));
-        for(unsigned i=0;i<6;i++){
-        	inst_per_cycle[i]=(unsigned long long *) calloc(config->num_shader(),sizeof(unsigned long long ));
-        }
         shader_cycles=(unsigned long long *) calloc(config->num_shader(),sizeof(unsigned long long ));
         m_num_sim_insn = (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         m_num_sim_winsn = (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
@@ -1380,11 +1374,6 @@ public:
                  m_kernel->name().c_str() );
     }
    
-	 float roundUp(float num){
-		return (int)num+((num-(int)(num)>0)?0.5:0.0);
-   }
-
- 
     // accessors
     bool fetch_unit_response_buffer_full() const;
     bool ldst_unit_response_buffer_full() const;
@@ -1411,7 +1400,7 @@ public:
     void store_ack( class mem_fetch *mf );
     bool warp_waiting_at_mem_barrier( unsigned warp_id );
     void set_max_cta( const kernel_info_t &kernel );
-    void warp_inst_complete(const warp_inst_t &inst,bool memory);
+    void warp_inst_complete(const warp_inst_t &inst);
     
     // accessors
     std::list<unsigned> get_regs_written( const inst_t &fvt ) const;
