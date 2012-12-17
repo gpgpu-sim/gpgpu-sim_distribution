@@ -983,7 +983,7 @@ void ldst_unit::set_icnt_power_stats(unsigned &simt_to_mem) const{
 	simt_to_mem = n_simt_to_mem+l1d+tex+l1c; // All components that push packets into the interconnect
 }
 
-void shader_core_ctx::warp_inst_complete(const warp_inst_t &inst, bool memory)
+void shader_core_ctx::warp_inst_complete(const warp_inst_t &inst)
 {
    #if 0
       printf("[warp_inst_complete] uid=%u core=%u warp=%u pc=%#x @ time=%llu issued@%llu\n", 
@@ -996,30 +996,31 @@ void shader_core_ctx::warp_inst_complete(const warp_inst_t &inst, bool memory)
   else if(inst.op4==MEM__OP)
 	  m_stats->m_num_mem_committed[m_sid]++;
 
-  	  if(memory==0){
-  		  m_stats->m_num_sim_insn[m_sid] += inst.active_count();
-  		  m_stats->m_num_sim_winsn[m_sid]++;
-  	  }
-   m_gpu->gpu_sim_insn += inst.active_count();
-   inst.completed(gpu_tot_sim_cycle + gpu_sim_cycle);
+  if(m_config->gpgpu_clock_gated_lanes==false)
+	  m_stats->m_num_sim_insn[m_sid] += m_config->warp_size;
+  else
+	  m_stats->m_num_sim_insn[m_sid] += inst.active_count();
+
+  m_stats->m_num_sim_winsn[m_sid]++;
+  m_gpu->gpu_sim_insn += inst.active_count();
+  inst.completed(gpu_tot_sim_cycle + gpu_sim_cycle);
 }
 
 void shader_core_ctx::writeback()
 {
-	 if(m_config->gpgpu_clock_gated_lanes==false){
-	   m_stats->m_pipeline_duty_cycle[m_sid]=roundUp((m_stats->m_num_sim_insn[m_sid]-m_stats->m_last_num_sim_insn[m_sid])/(64.0));
-	 }	else {
-	   m_stats->m_pipeline_duty_cycle[m_sid]=(m_stats->m_num_sim_insn[m_sid]-m_stats->m_last_num_sim_insn[m_sid])/(64.0);
-	 }
 
-    //assert(m_stats->m_pipeline_duty_cycle[m_sid]<=4*32);
-    if((m_stats->m_num_sim_winsn[m_sid]-m_stats->m_last_num_sim_winsn[m_sid])<5){
-    	m_stats->inst_per_cycle[(m_stats->m_num_sim_winsn[m_sid]-m_stats->m_last_num_sim_winsn[m_sid])][m_sid]++;
-    }
-    else{
-    	m_stats->inst_per_cycle[5][m_sid]++;
-    }
+	unsigned max_num_committed_instructions=m_config->warp_size * MAX(m_config->gpgpu_num_sp_units,m_config->gpgpu_num_sfu_units);
+	/*
+		With this writeback code the maximum number of committed instructions
+		may exceed MAX(m_config->gpgpu_num_sp_units,m_config->gpgpu_num_sfu_units).
+		Yet, it is forced to an upper limit to avoid unrealistic power results.
+	*/
 
+	if(m_config->gpgpu_clock_gated_lanes==false){
+		m_stats->m_pipeline_duty_cycle[m_sid]=(m_stats->m_num_sim_insn[m_sid]-m_stats->m_last_num_sim_insn[m_sid])/max_num_committed_instructions;
+	}else {
+		m_stats->m_pipeline_duty_cycle[m_sid]=(m_stats->m_num_sim_insn[m_sid]-m_stats->m_last_num_sim_insn[m_sid])/max_num_committed_instructions;
+	}
 
     m_stats->m_last_num_sim_insn[m_sid]=m_stats->m_num_sim_insn[m_sid];
     m_stats->m_last_num_sim_winsn[m_sid]=m_stats->m_num_sim_winsn[m_sid];
@@ -1047,7 +1048,7 @@ void shader_core_ctx::writeback()
         unsigned warp_id = pipe_reg->warp_id();
         m_scoreboard->releaseRegisters( pipe_reg );
         m_warp[warp_id].dec_inst_in_pipeline();
-        warp_inst_complete(*pipe_reg,0);
+        warp_inst_complete(*pipe_reg);
         m_gpu->gpu_sim_insn_last_update_sid = m_sid;
         m_gpu->gpu_sim_insn_last_update = gpu_sim_cycle;
         m_last_inst_gpu_sim_cycle = gpu_sim_cycle;
@@ -1392,7 +1393,7 @@ void ldst_unit::writeback()
                 }
             }
             if( insn_completed ) {
-                m_core->warp_inst_complete(m_next_wb, 1); 
+                m_core->warp_inst_complete(m_next_wb);
             }
             m_next_wb.clear();
             m_last_inst_gpu_sim_cycle = gpu_sim_cycle;
@@ -1575,7 +1576,7 @@ void ldst_unit::cycle()
                    }
                }
                if( !pending_requests ) {
-                   m_core->warp_inst_complete(*m_dispatch_reg, 1); 
+                   m_core->warp_inst_complete(*m_dispatch_reg);
                    m_scoreboard->releaseRegisters(m_dispatch_reg);
                }
                m_core->dec_inst_in_pipeline(warp_id);
@@ -1585,7 +1586,7 @@ void ldst_unit::cycle()
            // stores exit pipeline here
            m_core->dec_inst_in_pipeline(warp_id);
            m_core->get_gpu()->gpu_sim_insn += m_dispatch_reg->active_count();
-           m_core->warp_inst_complete(*m_dispatch_reg,1); 
+           m_core->warp_inst_complete(*m_dispatch_reg);
            m_dispatch_reg->clear();
        }
    }
