@@ -110,6 +110,7 @@ enum Wire_type
 class InputParameter
 {
   public:
+	InputParameter();
     void parse_cfg(const string & infile);
 
     bool error_checking();  // return false if the input parameters are problematic

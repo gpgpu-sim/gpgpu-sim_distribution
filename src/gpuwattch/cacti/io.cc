@@ -797,6 +797,8 @@ uca_org_t cacti_interface(
   g_ip->nbanks              = banks;
   g_ip->out_w               = output_width;
   g_ip->specific_tag        = specific_tag;
+
+
   if (tag_width == 0) {
     g_ip->tag_w = 42;
   }
@@ -1096,7 +1098,111 @@ uca_org_t cacti_interface(
 }
 
 
+InputParameter::InputParameter()
+{
+    cache_sz=0;  // in bytes
+    line_sz=0;
+    assoc=0;
+    nbanks=0;
+    out_w=0;// == nr_bits_out
+    specific_tag=false;
+    tag_w=0;
+    access_mode=0;
+    obj_func_dyn_energy=0;
+    obj_func_dyn_power=0;
+    obj_func_leak_power=0;
+    obj_func_cycle_t=0;
 
+    F_sz_nm=0;          // feature size in nm
+    F_sz_um=0;          // feature size in um
+    num_rw_ports=0;
+    num_rd_ports=0;
+    num_wr_ports=0;
+    num_se_rd_ports=0;  // number of single ended read ports
+    num_search_ports=0;  // Sheng: number of search ports for CAM
+    is_main_mem=false;
+    is_cache=false;
+    pure_ram=false;
+    pure_cam=false;
+    rpters_in_htree=false;  // if there are repeaters in htree segment
+    ver_htree_wires_over_array=0;
+    broadcast_addr_din_over_ver_htrees=0;
+    temp=0;
+
+    ram_cell_tech_type=0;
+    peri_global_tech_type=0;
+    data_arr_ram_cell_tech_type=0;
+    data_arr_peri_global_tech_type=0;
+    tag_arr_ram_cell_tech_type=0;
+    tag_arr_peri_global_tech_type=0;
+
+    burst_len=0;
+    int_prefetch_w=0;
+    page_sz_bits=0;
+
+    ic_proj_type=0;      // interconnect_projection_type
+    wire_is_mat_type=0;  // wire_inside_mat_type
+    wire_os_mat_type=0; // wire_outside_mat_type
+    wt=Invalid_wtype;
+    force_wiretype=0;
+    print_input_args=false;
+    nuca_cache_sz=0; // TODO
+    ndbl=0;
+    ndwl=0;
+    nspd=0;
+    ndsam1=0;
+    ndsam2=0;
+    ndcm=0;
+    force_cache_config=false;
+
+    cache_level=0;
+    cores=0;
+    nuca_bank_count=0;
+    force_nuca_bank=0;
+
+    delay_wt=0;
+    dynamic_power_wt=0;
+    leakage_power_wt=0;
+    cycle_time_wt=0;
+    area_wt=0;
+    delay_wt_nuca=0;
+    dynamic_power_wt_nuca=0;
+    leakage_power_wt_nuca=0;
+    cycle_time_wt_nuca=0;
+    area_wt_nuca=0;
+
+    delay_dev=0;
+    dynamic_power_dev=0;
+    leakage_power_dev=0;
+    cycle_time_dev=0;
+    area_dev=0;
+    delay_dev_nuca=0;
+    dynamic_power_dev_nuca=0;
+    leakage_power_dev_nuca=0;
+    cycle_time_dev_nuca=0;
+    area_dev_nuca=0;
+    ed=0; //ED or ED2 optimization
+    nuca=0;
+
+    fast_access=false;
+    block_sz=0;  // bytes
+    tag_assoc=0;
+    data_assoc=0;
+    is_seq_acc=false;
+    fully_assoc=false;
+    nsets=0;  // == number_of_sets
+    print_detail=0;
+
+
+    add_ecc_b_=false;
+    //parameters for design constraint
+    throughput=0;
+    latency=0;
+    pipelinable=false;
+    pipeline_stages=0;
+    per_stage_vector=0;
+    with_clock_grid=false;
+}
 bool InputParameter::error_checking()
 {
   int  A;

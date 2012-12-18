@@ -56,13 +56,25 @@ double wire_capacitance(double wire_width, double wire_thickness, double wire_sp
 
 void init_tech_params(double technology, bool is_tag)
 {
-  int    iter, tech, tech_lo, tech_hi;
-  double curr_alpha, curr_vpp;
-  double wire_width, wire_thickness, wire_spacing,
-         fringe_cap, pmos_to_nmos_sizing_r;
+  int   iter = 0;
+  int 	tech = 0;
+  int 	tech_lo = 0;
+  int 	tech_hi = 0;
+  double curr_alpha = 0;
+  double curr_vpp = 0;
+  double wire_width = 0;
+  double wire_thickness =0;
+  double wire_spacing = 0;
+  double fringe_cap = 0;
+  double pmos_to_nmos_sizing_r = 0;
 //  double aspect_ratio,ild_thickness, miller_value = 1.5, horiz_dielectric_constant, vert_dielectric_constant;
-  double barrier_thickness, dishing_thickness, alpha_scatter;
-  double curr_vdd_dram_cell, curr_v_th_dram_access_transistor, curr_I_on_dram_cell, curr_c_dram_cell;
+  double barrier_thickness = 0;
+  double dishing_thickness = 0;
+  double alpha_scatter = 0;
+  double curr_vdd_dram_cell = 0;
+  double curr_v_th_dram_access_transistor = 0;
+  double curr_I_on_dram_cell = 0;
+  double curr_c_dram_cell = 0;
 
   uint32_t ram_cell_tech_type    = (is_tag) ? g_ip->tag_arr_ram_cell_tech_type : g_ip->data_arr_ram_cell_tech_type;
   uint32_t peri_global_tech_type = (is_tag) ? g_ip->tag_arr_peri_global_tech_type : g_ip->data_arr_peri_global_tech_type;
@@ -73,12 +85,22 @@ void init_tech_params(double technology, bool is_tag)
   g_tp.reset();
   double gmp_to_gmn_multiplier_periph_global = 0;
 
-  double curr_Wmemcella_dram, curr_Wmemcellpmos_dram, curr_Wmemcellnmos_dram,
-         curr_area_cell_dram, curr_asp_ratio_cell_dram, curr_Wmemcella_sram,
-         curr_Wmemcellpmos_sram, curr_Wmemcellnmos_sram, curr_area_cell_sram,
-         curr_asp_ratio_cell_sram, curr_I_off_dram_cell_worst_case_length_temp;
-  double curr_Wmemcella_cam, curr_Wmemcellpmos_cam, curr_Wmemcellnmos_cam, curr_area_cell_cam,//Sheng: CAM data
-         curr_asp_ratio_cell_cam;
+  double curr_Wmemcella_dram = 0;
+  double curr_Wmemcellpmos_dram = 0;
+  double curr_Wmemcellnmos_dram = 0;
+  double curr_area_cell_dram = 0;
+  double curr_asp_ratio_cell_dram = 0;
+  double curr_Wmemcella_sram = 0;
+  double curr_Wmemcellpmos_sram = 0;
+  double curr_Wmemcellnmos_sram = 0;
+  double curr_area_cell_sram = 0;
+  double curr_asp_ratio_cell_sram = 0;
+  double curr_I_off_dram_cell_worst_case_length_temp = 0;
+  double curr_Wmemcella_cam = 0;
+  double curr_Wmemcellpmos_cam = 0;
+  double curr_Wmemcellnmos_cam = 0;
+  double curr_area_cell_cam = 0;//Sheng: CAM data
+  double curr_asp_ratio_cell_cam = 0;
   double SENSE_AMP_D, SENSE_AMP_P; // J
   double area_cell_dram = 0;
   double asp_ratio_cell_dram = 0;
