@@ -1249,6 +1249,31 @@ void setCuobjdumpsassfilename(const char* filename){
 extern "C" int cuobjdump_parse();
 extern "C" FILE *cuobjdump_in;
 
+//! Return the executable file of the process containing the PTX/SASS code 
+//!
+//! This Function returns the executable file ran by the process.  This
+//! executable is supposed to contain the PTX/SASS code.  It provides workaround
+//! for processes running on valgrind by dereferencing /proc/<pid>/exe within the
+//! GPGPU-Sim process before calling cuobjdump to extract PTX/SASS.  This is
+//! needed because valgrind uses x86 emulation to detect memory leak.  Other
+//! processes (e.g. cuobjdump) reading /proc/<pid>/exe will see the emulator
+//! executable instead of the application binary.  
+//! 
+std::string get_app_binary(){
+   std::stringstream exec_link;
+   // exec_link << "/proc/" << getpid() << "/exe";
+   exec_link << "/proc/self/exe";
+
+   char self_exe_path[1025]; 
+   ssize_t path_length = readlink(exec_link.str().c_str(), self_exe_path, 1024); 
+   assert(path_length != -1); 
+   self_exe_path[path_length] = '\0'; 
+
+   printf("self exe links to: %s\n", self_exe_path); 
+
+   return self_exe_path; 
+}
+
 //! Call cuobjdump to extract everything (-elf -sass -ptx)
 /*!
  *	This Function extract the whole PTX (for all the files) using cuobjdump
@@ -1261,15 +1286,18 @@ void extract_code_using_cuobjdump(){
 	CUctx_st *context = GPGPUSim_Context();
 	char command[1000];
 
-	std::stringstream pid;
-	pid << getpid();
+   std::string app_binary = get_app_binary(); 
 
 	char fname[1024];
 	snprintf(fname,1024,"_cuobjdump_complete_output_XXXXXX");
 	int fd=mkstemp(fname);
 	close(fd);
 	// Running cuobjdump using dynamic link to current process
-	snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass /proc/%s/exe > %s",pid.str().c_str(),fname);
+	snprintf(command,1000,"md5sum %s ", app_binary.c_str());
+	printf("Running md5sum using \"%s\"\n", command);
+	system(command);
+	// Running cuobjdump using dynamic link to current process
+	snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass %s > %s", app_binary.c_str(), fname);
 	printf("Running cuobjdump using \"%s\"\n", command);
 	bool parse_output = true; 
 	int result = system(command);
@@ -1304,7 +1332,7 @@ void extract_code_using_cuobjdump(){
 		//Currently only for cufft
 
 		std::stringstream cmd;
-		cmd << "ldd /proc/" << pid.str() << "/exe | grep $CUDA_INSTALL_PATH | awk \'{print $3}\' > _tempfile_.txt";
+		cmd << "ldd " << app_binary << " | grep $CUDA_INSTALL_PATH | awk \'{print $3}\' > _tempfile_.txt";
 		int result = system(cmd.str().c_str());
 		if(result){
 			std::cout << "Failed to execute: " << cmd << std::endl;
