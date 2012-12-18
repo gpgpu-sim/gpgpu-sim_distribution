@@ -207,12 +207,31 @@ DynamicParameter::DynamicParameter(
   number_way_select_signals_mat(0), V_b_sense(0), use_inp_params(0),
   is_main_mem(is_main_mem_), cell(), is_valid(false)
 {
+
+	num_di_b_bank_per_port=0;
+	num_do_b_bank_per_port=0;
+	num_di_b_mat=0;
+	num_do_b_mat=0;
+	num_di_b_subbank=0;
+	num_do_b_subbank=0;
+	num_si_b_mat=0;
+	num_so_b_mat=0;
+	num_si_b_subbank=0;
+	num_so_b_subbank=0;
+	num_si_b_bank_per_port=0;
+	num_so_b_bank_per_port=0;
+
+
   ram_cell_tech_type = (is_tag) ? g_ip->tag_arr_ram_cell_tech_type : g_ip->data_arr_ram_cell_tech_type;
   is_dram            = ((ram_cell_tech_type == lp_dram) || (ram_cell_tech_type == comm_dram));
 
   unsigned int capacity_per_die = g_ip->cache_sz / NUMBER_STACKED_DIE_LAYERS;  // capacity per stacked die layer
   const TechnologyParameter::InterconnectType & wire_local = g_tp.wire_local;
   fully_assoc = (g_ip->fully_assoc) ? true : false;
+
+
+
+
 
   if (fully_assoc || pure_cam)
   { // fully-assocative cache -- ref: CACTi 2.0 report
