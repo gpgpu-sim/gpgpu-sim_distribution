@@ -170,7 +170,7 @@ double drain_C_(
     bool _is_cell,
     bool _is_wl_tr)
 {
-  double w_folded_tr;
+  double w_folded_tr=0;
   const  TechnologyParameter::DeviceType * dt;
 
   if ((_is_dram) && (_is_cell))

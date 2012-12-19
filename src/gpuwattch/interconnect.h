@@ -51,8 +51,8 @@ class interconnect : public Component
     interconnect(
         string  name_,
         enum Device_ty device_ty_,
-    	double base_w, double base_h, int data_w, double len,
-        const InputParameter *configure_interface, int start_wiring_level_,
+    	double base_w =0, double base_h =0, int data_w =0, double len =0,
+        const InputParameter *configure_interface = NULL, int start_wiring_level_ =0,
         bool pipelinable_ = false,
         double route_over_perc_ =0.5,
         bool opt_local_=true,
