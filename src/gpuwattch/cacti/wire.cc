@@ -39,11 +39,19 @@ Wire::Wire(
     double w_s,
     double s_s,
     enum Wire_placement wp,
-    double resistivity,
+    double _resistivity,
     TechnologyParameter::DeviceType *dt
-    ):wt(wire_model), wire_length(wl*1e-6), nsense(n), w_scale(w_s), s_scale(s_s),
-    resistivity(resistivity), deviceType(dt)
+    )
 {
+
+  wt= wire_model;
+  wire_length=1e-6;
+  nsense=n;
+  w_scale=w_s;
+  s_scale=s_s;
+  resistivity=_resistivity;
+  deviceType=dt;
+
   wire_placement = wp;
   min_w_pmos     = deviceType->n_to_p_eff_curr_drv_ratio*g_tp.min_w_nmos_;
   in_rise_time   = 0;

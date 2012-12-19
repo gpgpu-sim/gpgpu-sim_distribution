@@ -64,6 +64,7 @@ Processor::Processor(ParseXML *XML_interface)
    *  There is no point to have heterogeneous memory controller on chip,
    *  thus McPAT only support homogeneous memory controllers.
    */
+  rt_power.reset();
   int i;
   double pppm_t[4]    = {1,1,1,1};
   l2_power=0;
@@ -1019,7 +1020,6 @@ void Processor::set_proc_param()
 }
 
 
-
 Processor::~Processor(){
 	while (!cores.empty())
 	{
@@ -1058,3 +1058,5 @@ Processor::~Processor(){
 		delete flashcontroller;
 	}
 };
+
+

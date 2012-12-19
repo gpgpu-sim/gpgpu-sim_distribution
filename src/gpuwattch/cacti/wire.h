@@ -45,7 +45,7 @@
 class Wire : public Component
 {
   public:
-    Wire(enum Wire_type wire_model, double len /* in u*/,
+    Wire(enum Wire_type wire_model, double len = 0 /* in u*/,
          int nsense = 1/* no. of sense amps connected to the low-swing wire */,
          double width_scaling = 1,
          double spacing_scaling = 1,

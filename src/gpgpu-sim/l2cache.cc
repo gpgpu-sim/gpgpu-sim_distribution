@@ -76,11 +76,11 @@ memory_partition_unit::memory_partition_unit( unsigned partition_id,
     if(!m_config->m_L2_config.disabled())
        m_L2cache = new l2_cache(L2c_name,m_config->m_L2_config,-1,-1,m_L2interface,m_mf_allocator,IN_PARTITION_L2_MISS_QUEUE);
 
+    n_mem_to_simt=0;
     unsigned int icnt_L2;
     unsigned int L2_dram;
     unsigned int dram_L2;
     unsigned int L2_icnt;
-
     sscanf(m_config->gpgpu_L2_queue_config,"%u:%u:%u:%u", &icnt_L2,&L2_dram,&dram_L2,&L2_icnt );
     m_icnt_L2_queue = new fifo_pipeline<mem_fetch>("icnt-to-L2",0,icnt_L2); 
     m_L2_dram_queue = new fifo_pipeline<mem_fetch>("L2-to-dram",0,L2_dram);
