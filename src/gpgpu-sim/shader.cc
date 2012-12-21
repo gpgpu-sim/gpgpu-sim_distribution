@@ -1016,11 +1016,7 @@ void shader_core_ctx::writeback()
 		Yet, it is forced to an upper limit to avoid unrealistic power results.
 	*/
 
-	if(m_config->gpgpu_clock_gated_lanes==false){
-		m_stats->m_pipeline_duty_cycle[m_sid]=(m_stats->m_num_sim_insn[m_sid]-m_stats->m_last_num_sim_insn[m_sid])/max_num_committed_instructions;
-	}else {
-		m_stats->m_pipeline_duty_cycle[m_sid]=(m_stats->m_num_sim_insn[m_sid]-m_stats->m_last_num_sim_insn[m_sid])/max_num_committed_instructions;
-	}
+	m_stats->m_pipeline_duty_cycle[m_sid]=(m_stats->m_num_sim_insn[m_sid]-m_stats->m_last_num_sim_insn[m_sid])/max_num_committed_instructions;
 
     m_stats->m_last_num_sim_insn[m_sid]=m_stats->m_num_sim_insn[m_sid];
     m_stats->m_last_num_sim_winsn[m_sid]=m_stats->m_num_sim_winsn[m_sid];
