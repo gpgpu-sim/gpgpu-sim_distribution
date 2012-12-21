@@ -453,9 +453,7 @@ private:
    class shader_core_stats  *m_shader_stats;
    class memory_stats_t     *m_memory_stats;
    class power_stat_t *m_power_stats;
-#ifdef GPGPUSIM_POWER_MODEL
    class gpgpu_sim_wrapper *m_gpgpusim_wrapper;
-#endif
    unsigned long long  gpu_tot_issued_cta;
    unsigned long long  last_gpu_sim_insn;
 

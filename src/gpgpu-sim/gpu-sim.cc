@@ -64,6 +64,8 @@
 
 #ifdef GPGPUSIM_POWER_MODEL
 #include "power_interface.h"
+#else
+class  gpgpu_sim_wrapper {};
 #endif
 
 #include <stdio.h>
