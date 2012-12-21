@@ -46,7 +46,7 @@ using namespace std;
 
 class gpgpu_sim_wrapper {
 public:
-	gpgpu_sim_wrapper(char* xmlfile);
+	gpgpu_sim_wrapper(bool power_simulation_enabled, char* xmlfile);
 	~gpgpu_sim_wrapper();
 
 	void init_mcpat(char* xmlfile, char* powerfile, char* power_trace_file,char* metric_trace_file,

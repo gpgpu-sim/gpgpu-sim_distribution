@@ -94,7 +94,7 @@ enum pwr_cmp_t {
 };
 
 
-gpgpu_sim_wrapper::gpgpu_sim_wrapper( char* xmlfile) {
+gpgpu_sim_wrapper::gpgpu_sim_wrapper( bool power_simulation_enabled, char* xmlfile) {
 	   count=0;
 	   gcount=0;
 
@@ -127,7 +127,7 @@ gpgpu_sim_wrapper::gpgpu_sim_wrapper( char* xmlfile) {
 	   g_metric_trace_filename = NULL;
 	   g_steady_state_tracking_filename = NULL;
 	   xml_filename= xmlfile;
-	   g_power_simulation_enabled= false;
+	   g_power_simulation_enabled= power_simulation_enabled;
 	   g_power_trace_enabled= false;
 	   g_steady_power_levels_enabled= false;
 	   g_power_trace_zlevel= 0;
@@ -137,7 +137,9 @@ gpgpu_sim_wrapper::gpgpu_sim_wrapper( char* xmlfile) {
 
 	   gpu_stat_sample_freq=0;
 	   p=new ParseXML();
-	   p->parse(xml_filename);
+	   if (g_power_simulation_enabled){
+	       p->parse(xml_filename);
+	   }
 	   proc = new Processor(p);
 	   power_trace_file = NULL;
 	   metric_trace_file = NULL;
