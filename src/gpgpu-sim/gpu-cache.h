@@ -373,6 +373,7 @@ public:
         m_write_access=0;
         m_read_miss=0;
         m_write_miss=0;
+        n_simt_to_mem=0;
     }
 
     virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ) =  0;
@@ -587,6 +588,7 @@ public:
         m_cache = new data_block[ config.get_num_lines() ];
         m_request_queue_status = request_status;
         m_rob_status = rob_status;
+        n_simt_to_mem=0;
     }
 
     /// Access function for tex_cache

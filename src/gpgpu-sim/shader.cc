@@ -1339,6 +1339,7 @@ ldst_unit::ldst_unit( mem_fetch_interface *icnt,
     m_mem_rc = NO_RC_FAIL;
     m_num_writeback_clients=5; // = shared memory, global/local (uncached), L1D, L1T, L1C
     m_writeback_arb = 0;
+    n_simt_to_mem = 0;
     m_next_global=NULL;
     m_last_inst_gpu_sim_cycle=0;
     m_last_inst_gpu_tot_sim_cycle=0;
@@ -2333,8 +2334,9 @@ void shader_core_ctx::get_cache_stats(unsigned &read_accesses, unsigned &write_a
 
 void shader_core_ctx::set_icnt_power_stats(unsigned &n_simt_to_mem) const{
 	unsigned l1i=0;
-
-	m_L1I->set_icnt_power_stats(l1i);
+	if( m_L1I ){
+		m_L1I->set_icnt_power_stats(l1i);
+	}
 	m_ldst_unit->set_icnt_power_stats(n_simt_to_mem);
 
 	n_simt_to_mem+=l1i; // l1i + l1d + l1c + l1t + any non-cached access

@@ -96,7 +96,7 @@ void power_mem_stat_t::init(){
 
 	    // Interconnect stats
 	    n_mem_to_simt[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned)); // Counted at memory partition
-	    n_simt_to_mem[i] = (unsigned *)calloc(m_core_config->num_shader(),sizeof(unsigned)); // Counted at SM
+	    n_simt_to_mem[i] = (unsigned *)calloc(m_core_config->n_simt_clusters,sizeof(unsigned)); // Counted at SM
     }
 }
 
