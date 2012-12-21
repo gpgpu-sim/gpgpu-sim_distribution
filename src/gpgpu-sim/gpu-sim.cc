@@ -487,7 +487,7 @@ gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config )
     ptx_file_line_stats_create_exposed_latency_tracker(m_config.num_shader());
 
 #ifdef GPGPUSIM_POWER_MODEL
-    m_gpgpusim_wrapper = new gpgpu_sim_wrapper(config.g_power_config_name);
+        m_gpgpusim_wrapper = new gpgpu_sim_wrapper(config.g_power_simulation_enabled,config.g_power_config_name);
 #endif
 
     m_shader_stats = new shader_core_stats(m_shader_config);
