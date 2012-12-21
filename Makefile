@@ -215,7 +215,7 @@ makedirs:
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/libopencl ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/libopencl; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/intersim ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/intersim; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/cuobjdump_to_ptxplus ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/cuobjdump_to_ptxplus; fi;
-	if [ ! -d $(GPGPUSIM_POWER_MODEL)/obj_opt ] && [ -n $(GPGPUSIM_POWER_MODEL) ]; then mkdir -p $(GPGPUSIM_POWER_MODEL)/obj_opt; fi;
+	if [ ! -d $(GPGPUSIM_POWER_MODEL)/obj_opt ] && [ ! -n $(GPGPUSIM_POWER_MODEL) ]; then mkdir -p $(GPGPUSIM_POWER_MODEL)/obj_opt; fi;
 
 all:
 	$(MAKE) gpgpusim
