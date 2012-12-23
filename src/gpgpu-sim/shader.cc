@@ -1010,7 +1010,7 @@ void shader_core_ctx::writeback()
 {
 
 	unsigned max_committed_thread_instructions=m_config->warp_size * (m_config->pipe_widths[EX_WB]); //from the functional units
-	m_stats->m_pipeline_duty_cycle[m_sid]=(m_stats->m_num_sim_insn[m_sid]-m_stats->m_last_num_sim_insn[m_sid])/max_num_committed_instructions;
+	m_stats->m_pipeline_duty_cycle[m_sid]=(m_stats->m_num_sim_insn[m_sid]-m_stats->m_last_num_sim_insn[m_sid])/max_committed_thread_instructions;
 
     m_stats->m_last_num_sim_insn[m_sid]=m_stats->m_num_sim_insn[m_sid];
     m_stats->m_last_num_sim_winsn[m_sid]=m_stats->m_num_sim_winsn[m_sid];
