@@ -1009,13 +1009,7 @@ void shader_core_ctx::warp_inst_complete(const warp_inst_t &inst)
 void shader_core_ctx::writeback()
 {
 
-	unsigned max_num_committed_instructions=m_config->warp_size * MAX(m_config->gpgpu_num_sp_units,m_config->gpgpu_num_sfu_units);
-	/*
-		With this writeback code the maximum number of committed instructions
-		may exceed MAX(m_config->gpgpu_num_sp_units,m_config->gpgpu_num_sfu_units).
-		Yet, it is forced to an upper limit to avoid unrealistic power results.
-	*/
-
+	unsigned max_committed_thread_instructions=m_config->warp_size * (m_config->pipe_widths[EX_WB]); //from the functional units
 	m_stats->m_pipeline_duty_cycle[m_sid]=(m_stats->m_num_sim_insn[m_sid]-m_stats->m_last_num_sim_insn[m_sid])/max_num_committed_instructions;
 
     m_stats->m_last_num_sim_insn[m_sid]=m_stats->m_num_sim_insn[m_sid];
