@@ -137,6 +137,10 @@
 #include <pthread.h>
 #include <semaphore.h>
 
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
+
 extern void synchronize();
 extern void exit_simulation();
 
@@ -1260,17 +1264,23 @@ extern "C" FILE *cuobjdump_in;
 //! executable instead of the application binary.  
 //! 
 std::string get_app_binary(){
+   char self_exe_path[1025];
+#ifdef __APPLE__
+   uint32_t size = sizeof(self_exe_path);
+   if( _NSGetExecutablePath(self_exe_path,&size) != 0 ) {
+	   printf("GPGPU-Sim ** ERROR: _NSGetExecutablePath input buffer too small\n");
+	   exit(1);
+   }
+#else
    std::stringstream exec_link;
-   // exec_link << "/proc/" << getpid() << "/exe";
    exec_link << "/proc/self/exe";
 
-   char self_exe_path[1025]; 
    ssize_t path_length = readlink(exec_link.str().c_str(), self_exe_path, 1024); 
    assert(path_length != -1); 
    self_exe_path[path_length] = '\0'; 
+#endif
 
    printf("self exe links to: %s\n", self_exe_path); 
-
    return self_exe_path; 
 }
 
