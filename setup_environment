@@ -72,11 +72,12 @@ fi
 # against instead of the CUDA toolkit.  This replaces this cumbersome
 # static link setup in prior GPGPU-Sim releases.
 if [ `uname` = "Darwin" ]; then
-	export LD_LIBRARY_PATH=`echo $LD_LIBRARY_PATH | sed -Ee 's/.*gpgpu_sim.*(release|debug)://'`
+	export DYLD_LIBRARY_PATH=`echo $DYLD_LIBRARY_PATH | sed -Ee 's/.*gpgpu_sim.*(release|debug)://'`
+	export DYLD_LIBRARY_PATH=$GPGPUSIM_ROOT/lib/$GPGPUSIM_CONFIG:$DYLD_LIBRARY_PATH
 else
 	export LD_LIBRARY_PATH=`echo $LD_LIBRARY_PATH | sed -re 's/.*gpgpu_sim.*(release|debug)://'`
+	export LD_LIBRARY_PATH=$GPGPUSIM_ROOT/lib/$GPGPUSIM_CONFIG:$LD_LIBRARY_PATH
 fi
-export LD_LIBRARY_PATH=$GPGPUSIM_ROOT/lib/$GPGPUSIM_CONFIG:$LD_LIBRARY_PATH
 
 
 # The following sets OPENCL_REMOTE_GPU_HOST which is used by GPGPU-Sim to

@@ -1,6 +1,8 @@
 LOG:
 Version 3.1.2+edits (development branch) versus 3.1.2
 - Added GPUWattch GPGPU power model based on McPAT 0.8beta. 
+- Bug Fixes:
+    - fix CUBIN parsing on Mac OS X
 
 Version 3.1.2 versus 3.1.1
 - Added support for CUDA 4.1 and 4.2 (PTX 3.0). 
