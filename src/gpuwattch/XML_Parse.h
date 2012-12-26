@@ -56,6 +56,42 @@ ToXMLStringTool tx,tx2;
 */
 //all subnodes at the level of system.core(0-n)
 //cache_policy is added into cache property arrays;//0 no write or write-though with non-write allocate;1 write-back with write-allocate
+static const char * perf_count_label[] = {"TOT_INST,", "FP_INT,", "IC_H,", "IC_M,", "DC_RH,", "DC_RM,", "DC_WH,", "DC_WM,",
+                                "TC_H,", "TC_M,", "CC_H,", "CC_M,", "SHRD_ACC,", "REG_RD,", "REG_WR,", "NON_REG_OPs,",
+                                "SP_ACC,", "SFU_ACC,", "FPU_ACC,", "MEM_RD,","MEM_WR,", "MEM_PRE,", "L2_RH,", "L2_RM,", "L2_WH,",
+                                "L2_WM,", "NOC_A,", "PIPE_A,", "IDLE_CORE_N,", "CONST_DYNAMICN"};
+enum perf_count_t {
+   TOT_INST=0,
+   FP_INT,
+   IC_H,
+   IC_M,
+   DC_RH,
+   DC_RM,
+   DC_WH,
+   DC_WM,
+   TC_H,
+   TC_M,
+   CC_H,
+   CC_M,
+   SHRD_ACC,
+   REG_RD,
+   REG_WR,
+   NON_REG_OPs,
+   SP_ACC,
+   SFU_ACC,
+   FPU_ACC,
+   MEM_RD,
+   MEM_WR,
+   MEM_PRE,
+   L2_RH,
+   L2_RM,
+   L2_WH,
+   L2_WM,
+   NOC_A,
+   PIPE_A,
+   IDLE_CORE_N,
+   CONST_DYNAMICN
+};
 
 typedef struct{
 	int prediction_width;
