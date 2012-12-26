@@ -29,7 +29,37 @@
 		<param name="physical_address_width" value="32"/>
 		<param name="virtual_memory_page_size" value="4096"/>
 		<param name="idle_core_power" value="1.59"/><!-- idle core power for GTX479 -->
-		<param name="scaling_coefficients" value="10,0.0884816,10,10,8,10,4.12782,10,2.48832,10,10,10,4.29982,0.387764,0.0714269,0.14302,0.01,0.546811,0.485351,0.806633,0.818073,1.9207,100,100,100,87.9303,100,10,4.3548,10"/>	
+		<!--param name="scaling_coefficients" value="10,0.0884816,10,10,8,10,4.12782,10,2.48832,10,10,10,4.29982,0.387764,0.0714269,0.14302,0.01,0.546811,0.485351,0.806633,0.818073,1.9207,100,100,100,87.9303,100,10,4.3548,10"/-->
+		<param name="TOT_INST" value="10"/>
+		<param name="FP_INT" value="0.0884816"/>
+		<param name="IC_H" value="10"/>
+		<param name="IC_M" value="10"/>
+		<param name="DC_RH" value="8"/>
+		<param name="DC_RM" value="10"/>
+		<param name="DC_WH" value="4.12782"/>
+		<param name="DC_WM" value="10"/>
+		<param name="TC_H" value="2.48832"/>
+		<param name="TC_M" value="10"/>
+		<param name="CC_H" value="10"/>
+		<param name="CC_M" value="10"/>
+		<param name="SHRD_ACC" value="4.29982"/>
+		<param name="REG_RD" value="0.387764"/>
+		<param name="REG_WR" value="0.0714269"/>
+		<param name="NON_REG_OPs" value="0.14302"/>
+		<param name="SP_ACC" value="0.01"/>
+		<param name="SFU_ACC" value="0.546811"/>
+		<param name="FPU_ACC" value="0.485351"/>
+		<param name="MEM_RD" value="0.806633"/>
+		<param name="MEM_WR" value="0.818073"/>
+		<param name="MEM_PRE" value="1.9207"/>
+		<param name="L2_RH" value="100"/>
+		<param name="L2_RM" value="100"/>
+		<param name="L2_WH" value="100"/>
+		<param name="L2_WM" value="87.9303"/>
+		<param name="NOC_A" value="100"/>
+		<param name="PIPE_A" value="10"/>
+		<param name="IDLE_CORE_N" value="4.3548"/>
+		<param name="CONST_DYNAMICN" value="10"/>	
 		<stat name="num_idle_cores" value="0"/><!-- Average Number of idle cores during this period -->
 		<stat name="total_cycles" value="total_cycles_match_mcpat"/>
 		<stat name="idle_cycles" value="idle_cycles_match_mcpat"/>

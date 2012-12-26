@@ -103,7 +103,39 @@ void ParseXML::parse(char* filepath)
 		if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),"virtual_address_width")==0) {sys.virtual_address_width=atoi(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
 		if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),"physical_address_width")==0) {sys.physical_address_width=atoi(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
 		if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),"virtual_memory_page_size")==0) {sys.virtual_memory_page_size=atoi(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
-		if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),"idle_core_power")==0) {sys.idle_core_power=(double)atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+		if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),"idle_core_power")==0) {sys.idle_core_power=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[TOT_INST])==0) {sys.scaling_coefficients[TOT_INST]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[FP_INT])==0) {sys.scaling_coefficients[FP_INT]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[IC_H])==0) {sys.scaling_coefficients[IC_H]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[IC_M])==0) {sys.scaling_coefficients[IC_M]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[DC_RH])==0) {sys.scaling_coefficients[DC_RH]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[DC_RM])==0) {sys.scaling_coefficients[DC_RM]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[DC_WH])==0) {sys.scaling_coefficients[DC_WH]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[DC_WM])==0) {sys.scaling_coefficients[DC_WM]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[TC_H])==0) {sys.scaling_coefficients[TC_H]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[TC_M])==0) {sys.scaling_coefficients[TC_M]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[CC_H])==0) {sys.scaling_coefficients[CC_H]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[CC_M])==0) {sys.scaling_coefficients[CC_M]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[SHRD_ACC])==0) {sys.scaling_coefficients[SHRD_ACC]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[REG_RD])==0) {sys.scaling_coefficients[REG_RD]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[REG_WR])==0) {sys.scaling_coefficients[REG_WR]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[NON_REG_OPs])==0) {sys.scaling_coefficients[NON_REG_OPs]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[SP_ACC])==0) {sys.scaling_coefficients[SP_ACC]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[SFU_ACC])==0) {sys.scaling_coefficients[SFU_ACC]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[FPU_ACC])==0) {sys.scaling_coefficients[FPU_ACC]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[MEM_RD])==0) {sys.scaling_coefficients[MEM_RD]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[MEM_WR])==0) {sys.scaling_coefficients[MEM_WR]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[MEM_PRE])==0) {sys.scaling_coefficients[MEM_PRE]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[L2_RH])==0) {sys.scaling_coefficients[L2_RH]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[L2_RM])==0) {sys.scaling_coefficients[L2_RM]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[L2_WH])==0) {sys.scaling_coefficients[L2_WH]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[L2_WM])==0) {sys.scaling_coefficients[L2_WM]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[NOC_A])==0) {sys.scaling_coefficients[NOC_A]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[PIPE_A])==0) {sys.scaling_coefficients[PIPE_A]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[IDLE_CORE_N])==0) {sys.scaling_coefficients[IDLE_CORE_N]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+        if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),perf_count_label[CONST_DYNAMICN])==0) {sys.scaling_coefficients[CONST_DYNAMICN]=atof(xNode2.getChildNode("param",i).getAttribute("value"));continue;}
+
+/*
 		if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),"scaling_coefficients")==0)
 		{
 			strtmp.assign(xNode2.getChildNode("param",i).getAttribute("value"));
@@ -126,6 +158,7 @@ void ParseXML::parse(char* filepath)
 			chtmp1[0]='\0';
 			continue;
 		}
+*/
 	}
 
 //	if (sys.Private_L2 && sys.number_of_cores!=sys.number_of_L2s)
@@ -1701,6 +1734,7 @@ void ParseXML::initialize() //Initialize all
 	sys.opt_clockrate=true;
 	sys.opt_area=false;
 	sys.interconnect_projection_type=1;
+	sys.idle_core_power=0;
 	int i,j;
 	for (i=0; i<=63; i++)
 	{
