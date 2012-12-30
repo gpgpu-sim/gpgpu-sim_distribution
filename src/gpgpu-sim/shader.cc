@@ -1529,6 +1529,8 @@ void ldst_unit::cycle()
    done &= texture_cycle(pipe_reg, rc_fail, type);
    done &= memory_cycle(pipe_reg, rc_fail, type);
    m_mem_rc = rc_fail;
+   set_stats(); // Sets stats in m_stats object
+
    if (!done) { // log stall types and return
       assert(rc_fail != NO_RC_FAIL);
       m_stats->gpgpu_n_stall_shd_mem++;
@@ -1581,8 +1583,6 @@ void ldst_unit::cycle()
            m_dispatch_reg->clear();
        }
    }
-   // Sets stats in m_stats object
-   set_stats();
 }
 
 void shader_core_ctx::register_cta_thread_exit( unsigned cta_num )
