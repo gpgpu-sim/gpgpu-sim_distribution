@@ -17,8 +17,10 @@ Analyzing CUDA Workloads Using a Detailed GPU Simulator, in IEEE International
 Symposium on Performance Analysis of Systems and Software (ISPASS), Boston, MA,
 April 19-21, 2009.
 
-In addition, if you use the power model in your research, please cite:
+In addition, if you use the GPUWattch power model in your research, please cite:
 
+Jingwen Leng, Syed Gilani, Ahmed ElTantawy, Tayler Hetherington, Nam Sung Kim,
+Tor M. Aamodt, Vijay Janapa Reddi, GPUWattch Energy Model Manual, 2013.
 http://gpgpu-sim.org/gpuwattch/
 
 If you use figures plotted using AerialVision in your publications, please cite:
