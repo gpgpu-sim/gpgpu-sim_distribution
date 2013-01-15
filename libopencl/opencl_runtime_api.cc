@@ -100,6 +100,12 @@
 #include <map>
 #include <string>
 
+static void setErrCode(cl_int *errcode_ret, cl_int err_code) {
+   if ( errcode_ret ) {
+      *errcode_ret = err_code;
+   }
+}
+
 struct _cl_context {
    _cl_context( cl_device_id gpu );
    cl_device_id get_first_device();
@@ -300,8 +306,7 @@ _cl_mem::_cl_mem(
    cl_int *     errcode_ret,
    cl_device_id gpu )
 {
-   if( errcode_ret ) 
-      *errcode_ret = CL_SUCCESS;
+   setErrCode( errcode_ret, CL_SUCCESS );
 
    m_is_on_host = false;
    m_flags = flags;
@@ -310,13 +315,11 @@ _cl_mem::_cl_mem(
    m_device_ptr = 0;
 
    if( (flags & (CL_MEM_USE_HOST_PTR|CL_MEM_COPY_HOST_PTR)) && host_ptr == NULL ) {
-      if( errcode_ret != NULL ) 
-         *errcode_ret = CL_INVALID_HOST_PTR;
+      setErrCode( errcode_ret, CL_INVALID_HOST_PTR );
       return;
    }
    if( (flags & CL_MEM_COPY_HOST_PTR) && (flags & CL_MEM_USE_HOST_PTR) ) {
-      if( errcode_ret ) 
-         *errcode_ret = CL_INVALID_VALUE;
+      setErrCode( errcode_ret, CL_INVALID_VALUE );
       return;
    }
    if( flags & CL_MEM_ALLOC_HOST_PTR ) {
@@ -592,7 +595,7 @@ cl_kernel _cl_program::CreateKernel( const char *kernel_name, cl_int *errcode_re
    }
 
    if( finfo == NULL ) 
-      *errcode_ret = CL_INVALID_PROGRAM_EXECUTABLE;
+      setErrCode( errcode_ret, CL_INVALID_PROGRAM_EXECUTABLE );
    else 
       result = new _cl_kernel(this,kernel_name,finfo);
    return result;
@@ -684,8 +687,7 @@ clCreateContextFromType(cl_context_properties * properties,
       //exit(1); // Temporarily commented out to allow the AMD Sample applications to run. 
    }
    
-   if( errcode_ret ) 
-      *errcode_ret = CL_SUCCESS;
+   setErrCode( errcode_ret, CL_SUCCESS );
    cl_context ctx = new _cl_context(gpu);
    return ctx;
 }
@@ -727,13 +729,11 @@ clCreateContext(  const cl_context_properties * properties,
    struct _cl_device_id *gpu = GPGPUSim_Init();
    if( properties != NULL ) {
       if( properties[0] != CL_CONTEXT_PLATFORM || properties[1] != (cl_context_properties)&g_gpgpu_sim_platform_id ) {
-         if( errcode_ret ) 
-            *errcode_ret = CL_INVALID_PLATFORM;
+         setErrCode( errcode_ret, CL_INVALID_PLATFORM );
          return NULL;
       }
    }
-   if( errcode_ret ) 
-      *errcode_ret = CL_SUCCESS;
+   setErrCode( errcode_ret, CL_SUCCESS );
    cl_context ctx = new _cl_context(gpu);
    return ctx;
 }
@@ -777,14 +777,13 @@ clCreateCommandQueue(cl_context                     context,
                      cl_command_queue_properties    properties,
                      cl_int *                       errcode_ret) CL_API_SUFFIX__VERSION_1_0
 {
-   if( !context ) { *errcode_ret = CL_INVALID_CONTEXT;   return NULL; }
+   if( !context ) { setErrCode( errcode_ret, CL_INVALID_CONTEXT );   return NULL; }
    gpgpusim_opencl_warning(__my_func__,__LINE__, "assuming device_id is in context");
    if( (properties & CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE) ) 
       gpgpusim_opencl_warning(__my_func__,__LINE__, "ignoring command queue property");
    if( (properties & CL_QUEUE_PROFILING_ENABLE) )
       gpgpusim_opencl_warning(__my_func__,__LINE__, "ignoring command queue property");
-   if( errcode_ret )
-       *errcode_ret = CL_SUCCESS;
+   setErrCode( errcode_ret, CL_SUCCESS );
    return new _cl_command_queue(context,device,properties);
 }
 
@@ -795,7 +794,7 @@ clCreateBuffer(cl_context   context,
                void *       host_ptr,
                cl_int *     errcode_ret ) CL_API_SUFFIX__VERSION_1_0
 {
-   if( !context ) { *errcode_ret = CL_INVALID_CONTEXT;   return NULL; }
+   if( !context ) { setErrCode( errcode_ret, CL_INVALID_CONTEXT );   return NULL; }
    return context->CreateBuffer(flags,size,host_ptr,errcode_ret);
 }
 
@@ -806,8 +805,8 @@ clCreateProgramWithSource(cl_context        context,
                           const size_t *    lengths,
                           cl_int *          errcode_ret) CL_API_SUFFIX__VERSION_1_0
 {
-   if( !context ) { *errcode_ret = CL_INVALID_CONTEXT;   return NULL; }
-   *errcode_ret = CL_SUCCESS;
+   if( !context ) { setErrCode( errcode_ret, CL_INVALID_CONTEXT );   return NULL; }
+   setErrCode( errcode_ret, CL_SUCCESS );
    return new _cl_program(context,count,strings,lengths);
 }
 
@@ -831,7 +830,7 @@ clCreateKernel(cl_program      program,
                cl_int *        errcode_ret) CL_API_SUFFIX__VERSION_1_0
 {
    if( kernel_name == NULL ) {
-      *errcode_ret = CL_INVALID_KERNEL_NAME;
+      setErrCode( errcode_ret, CL_INVALID_KERNEL_NAME );
       return NULL;
    }
    cl_kernel kobj = program->CreateKernel(kernel_name,errcode_ret);
