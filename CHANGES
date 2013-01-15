@@ -1,4 +1,9 @@
 LOG:
+Version 3.2.1 versus 3.2.0
+- Bug Fixes:
+    - Applied patch from Kito Cheng to update libopencl for checking NULL error
+      code pointer. 
+
 Version 3.2.0 versus 3.1.2
 - Added GPUWattch GPGPU power model based on McPAT 0.8beta. 
 
