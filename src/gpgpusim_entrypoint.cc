@@ -188,6 +188,9 @@ gpgpu_sim *gpgpu_ptx_sim_init_perf()
    option_parser_cmdline(opp, sg_argc, sg_argv); // parse configuration options
    fprintf(stdout, "GPGPU-Sim: Configuration options:\n\n");
    option_parser_print(opp, stdout);
+   // Set the Numeric locale to a standard locale where a decimal point is a "dot" not a "comma"
+   // so it does the parsing correctly independent of the system environment variables
+   assert(setlocale(LC_NUMERIC,"C"));
    g_the_gpu_config.init();
 
    g_the_gpu = new gpgpu_sim(g_the_gpu_config);
