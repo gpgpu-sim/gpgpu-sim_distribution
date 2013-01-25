@@ -1,5 +1,5 @@
 LOG:
-Version 3.2.1 versus 3.2.0
+Version 3.2.0+edits (development branch) versus 3.2.0
 - Bug Fixes:
     - Applied patch from Kito Cheng to update libopencl for checking NULL error
       code pointer. 
