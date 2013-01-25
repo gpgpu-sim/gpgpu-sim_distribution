@@ -1110,8 +1110,9 @@ void init_inst_classification_stat()
    if( init.find(g_ptx_kernel_count) != init.end() ) 
       return;
    init.insert(g_ptx_kernel_count);
-   char kernelname[256] ="";
-#define MAX_CLASS_KER 1024
+
+   #define MAX_CLASS_KER 1024
+   char kernelname[MAX_CLASS_KER] ="";
    if (!g_inst_classification_stat) g_inst_classification_stat = (void**)calloc(MAX_CLASS_KER, sizeof(void*));
    snprintf(kernelname, MAX_CLASS_KER, "Kernel %d Classification\n",g_ptx_kernel_count  );         
    assert( g_ptx_kernel_count < MAX_CLASS_KER ) ; // a static limit on number of kernels increase it if it fails! 

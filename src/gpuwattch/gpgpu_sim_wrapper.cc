@@ -275,7 +275,7 @@ void gpgpu_sim_wrapper::set_ccache_power(double hits, double misses)
 void gpgpu_sim_wrapper::set_tcache_power(double hits, double misses)
 {
 	p->sys.core[0].tcache.read_accesses = hits * p->sys.scaling_coefficients[TC_H]+misses * p->sys.scaling_coefficients[TC_M];
-	p->sys.core[0].tcache.read_misses = misses;
+	p->sys.core[0].tcache.read_misses = misses* p->sys.scaling_coefficients[TC_M];
 	perf_count[TC_H]=hits;
 	perf_count[TC_M]=misses;
 	// TODO: coalescing logic is counted as part of the caches power (this is not valid for no-caches architectures)
