@@ -459,7 +459,8 @@ private:
 
    std::vector<std::string> m_executed_kernel_names; //< names of kernel for stat printout 
    std::vector<unsigned> m_executed_kernel_uids; //< uids of kernel launches for stat printout
-
+   std::string executed_kernel_info_string(); //< format the kernel information into a string for stat printout
+   void clear_executed_kernel_info(); //< clear the kernel information after stat printout
 
 public:
    unsigned long long  gpu_sim_insn;

@@ -586,10 +586,11 @@ void gpgpu_sim_wrapper::compute()
 {
 	proc->compute();
 }
-void gpgpu_sim_wrapper::print_power_kernel_stats(double gpu_sim_cycle, double gpu_tot_sim_cycle, double init_value)
+void gpgpu_sim_wrapper::print_power_kernel_stats(double gpu_sim_cycle, double gpu_tot_sim_cycle, double init_value, const std::string & kernel_info_string)
 {
 	   detect_print_steady_state(1,init_value);
 	   if(g_power_simulation_enabled){
+         powerfile<<kernel_info_string<<std::endl; 
 		   powerfile<<"Kernel Average Power Data:"<<std::endl;
 		   powerfile<<"gpu_avg_power = "<< gpu_avg_power/ count<<std::endl;
 
