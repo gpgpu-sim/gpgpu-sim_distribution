@@ -1,11 +1,12 @@
 LOG:
 Version 3.2.0+edits (development branch) versus 3.2.0
+- Added kernel name and launch uids to performance statistics log. 
 - Bug Fixes:
     - Applied patch from Kito Cheng to update libopencl for checking NULL error
       code pointer. 
-    - Set the numeric locale before the parsing to a standard locale with the decimal point
-      represented as "dot" not a "comma", so parsing is done correctly independent of the
-      system locale.
+    - Set the numeric locale before the parsing to a standard locale with the
+      decimal point represented as "dot" not a "comma", so parsing is done
+      correctly independent of the system locale.
 
 Version 3.2.0 versus 3.1.2
 - Added GPUWattch GPGPU power model based on McPAT 0.8beta. 

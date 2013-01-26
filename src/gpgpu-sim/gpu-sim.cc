@@ -449,6 +449,14 @@ kernel_info_t *gpgpu_sim::select_kernel()
         unsigned idx = (n+m_last_issued_kernel+1)%m_config.max_concurrent_kernel;
         if( m_running_kernels[idx] && !m_running_kernels[idx]->no_more_ctas_to_run() ) {
             m_last_issued_kernel=idx;
+
+            // record this kernel for stat print if it is the first time this kernel is selected for execution  
+            unsigned launch_uid = m_running_kernels[idx]->get_uid(); 
+            if (std::find(m_executed_kernel_uids.begin(), m_executed_kernel_uids.end(), launch_uid) == m_executed_kernel_uids.end()) {
+               m_executed_kernel_uids.push_back(launch_uid); 
+               m_executed_kernel_names.push_back(m_running_kernels[idx]->name()); 
+            }
+
             return m_running_kernels[idx];
         }
     }
@@ -706,6 +714,22 @@ void gpgpu_sim::deadlock_check()
 
 void gpgpu_sim::gpu_print_stat() 
 {  
+   FILE *statfout = stdout; 
+
+   // printing the names and uids of a set of executed kernels (usually there is only one)
+   fprintf(statfout, "kernel_name = "); 
+   for (unsigned int k = 0; k < m_executed_kernel_names.size(); k++) {
+      fprintf(statfout, "'%s' ", m_executed_kernel_names[k].c_str());
+   }
+   fprintf(statfout, "\n"); 
+   fprintf(statfout, "kernel_launch_uid = ");
+   for (unsigned int k = 0; k < m_executed_kernel_uids.size(); k++) {
+      fprintf(statfout, "%d ", m_executed_kernel_uids[k]);
+   }
+   fprintf(statfout, "\n"); 
+   m_executed_kernel_names.clear(); 
+   m_executed_kernel_uids.clear(); 
+
    printf("gpu_sim_cycle = %lld\n", gpu_sim_cycle);
    printf("gpu_sim_insn = %lld\n", gpu_sim_insn);
    printf("gpu_ipc = %12.4f\n", (float)gpu_sim_insn / gpu_sim_cycle);

@@ -457,7 +457,8 @@ private:
    unsigned long long  gpu_tot_issued_cta;
    unsigned long long  last_gpu_sim_insn;
 
-
+   std::vector<std::string> m_executed_kernel_names; //< names of kernel for stat printout 
+   std::vector<unsigned> m_executed_kernel_uids; //< uids of kernel launches for stat printout
 
 
 public:
