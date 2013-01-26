@@ -70,6 +70,9 @@ class  gpgpu_sim_wrapper {};
 
 #include <stdio.h>
 #include <string.h>
+#include <iostream>
+#include <sstream>
+#include <string>
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
@@ -712,23 +715,37 @@ void gpgpu_sim::deadlock_check()
    }
 }
 
+/// printing the names and uids of a set of executed kernels (usually there is only one)
+std::string gpgpu_sim::executed_kernel_info_string() 
+{
+   std::stringstream statout; 
+
+   statout << "kernel_name = "; 
+   for (unsigned int k = 0; k < m_executed_kernel_names.size(); k++) {
+      statout << m_executed_kernel_names[k] << " "; 
+   }
+   statout << std::endl; 
+   statout << "kernel_launch_uid = ";
+   for (unsigned int k = 0; k < m_executed_kernel_uids.size(); k++) {
+      statout << m_executed_kernel_uids[k] << " "; 
+   }
+   statout << std::endl; 
+
+   return statout.str(); 
+}
+
+void gpgpu_sim::clear_executed_kernel_info()
+{
+   m_executed_kernel_names.clear(); 
+   m_executed_kernel_uids.clear(); 
+}
+
 void gpgpu_sim::gpu_print_stat() 
 {  
    FILE *statfout = stdout; 
 
-   // printing the names and uids of a set of executed kernels (usually there is only one)
-   fprintf(statfout, "kernel_name = "); 
-   for (unsigned int k = 0; k < m_executed_kernel_names.size(); k++) {
-      fprintf(statfout, "'%s' ", m_executed_kernel_names[k].c_str());
-   }
-   fprintf(statfout, "\n"); 
-   fprintf(statfout, "kernel_launch_uid = ");
-   for (unsigned int k = 0; k < m_executed_kernel_uids.size(); k++) {
-      fprintf(statfout, "%d ", m_executed_kernel_uids[k]);
-   }
-   fprintf(statfout, "\n"); 
-   m_executed_kernel_names.clear(); 
-   m_executed_kernel_uids.clear(); 
+   std::string kernel_info_str = executed_kernel_info_string(); 
+   fprintf(statfout, "%s", kernel_info_str.c_str()); 
 
    printf("gpu_sim_cycle = %lld\n", gpu_sim_cycle);
    printf("gpu_sim_insn = %lld\n", gpu_sim_insn);
@@ -754,7 +771,7 @@ void gpgpu_sim::gpu_print_stat()
    m_shader_stats->print(stdout);
 #ifdef GPGPUSIM_POWER_MODEL
    if(m_config.g_power_simulation_enabled){
-       m_gpgpusim_wrapper->print_power_kernel_stats(gpu_sim_cycle,gpu_tot_sim_cycle,gpu_tot_sim_insn + gpu_sim_insn );
+       m_gpgpusim_wrapper->print_power_kernel_stats(gpu_sim_cycle, gpu_tot_sim_cycle, gpu_tot_sim_insn + gpu_sim_insn, kernel_info_str );
    }
 #endif
 
@@ -800,9 +817,7 @@ void gpgpu_sim::gpu_print_stat()
    time_vector_print();
    fflush(stdout);
 
-
-
-
+   clear_executed_kernel_info(); 
 }
 
 
