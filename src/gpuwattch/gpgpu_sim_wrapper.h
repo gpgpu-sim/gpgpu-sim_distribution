@@ -80,6 +80,9 @@ public:
 	bool sanity_check(double a, double b);
 
 private:
+
+	void print_steady_state(int position, double init_val);
+
 	Processor* proc;
 	ParseXML * p;
     // power parameters
