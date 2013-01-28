@@ -1222,29 +1222,29 @@ void sfu::issue( register_set& source_reg )
 	//m_core->incexecstat((*ready_reg));
 
 	(*ready_reg)->op4=SFU__OP;
-	m_core->incsfu_stat(m_core->get_sid(),m_core->get_config()->warp_size,(*ready_reg)->latency);
+	m_core->incsfu_stat(m_core->get_config()->warp_size,(*ready_reg)->latency);
 	pipelined_simd_unit::issue(source_reg);
 }
 
 void ldst_unit::active_lanes_in_pipeline(){
 	unsigned active_count=pipelined_simd_unit::get_active_lanes_in_pipeline();
 	assert(active_count<=m_core->get_config()->warp_size);
-	m_core->incfumemactivelanes_stat(m_core->get_sid(),active_count);
+	m_core->incfumemactivelanes_stat(active_count);
 }
 void sp_unit::active_lanes_in_pipeline(){
 	unsigned active_count=pipelined_simd_unit::get_active_lanes_in_pipeline();
 	assert(active_count<=m_core->get_config()->warp_size);
-	m_core->incspactivelanes_stat(m_core->get_sid(),active_count);
-	m_core->incfuactivelanes_stat(m_core->get_sid(),active_count);
-	m_core->incfumemactivelanes_stat(m_core->get_sid(),active_count);
+	m_core->incspactivelanes_stat(active_count);
+	m_core->incfuactivelanes_stat(active_count);
+	m_core->incfumemactivelanes_stat(active_count);
 }
 
 void sfu::active_lanes_in_pipeline(){
 	unsigned active_count=pipelined_simd_unit::get_active_lanes_in_pipeline();
 	assert(active_count<=m_core->get_config()->warp_size);
-	m_core->incsfuactivelanes_stat(m_core->get_sid(),active_count);
-	m_core->incfuactivelanes_stat(m_core->get_sid(),active_count);
-	m_core->incfumemactivelanes_stat(m_core->get_sid(),active_count);
+	m_core->incsfuactivelanes_stat(active_count);
+	m_core->incfuactivelanes_stat(active_count);
+	m_core->incfumemactivelanes_stat(active_count);
 }
 
 sp_unit::sp_unit( register_set* result_port, const shader_core_config *config,shader_core_ctx *core)
@@ -1258,7 +1258,7 @@ void sp_unit :: issue(register_set& source_reg)
     warp_inst_t** ready_reg = source_reg.get_ready();
 	//m_core->incexecstat((*ready_reg));
 	(*ready_reg)->op4=SP__OP;
-	m_core->incsp_stat(m_core->get_sid(),m_core->get_config()->warp_size,(*ready_reg)->latency);
+	m_core->incsp_stat(m_core->get_config()->warp_size,(*ready_reg)->latency);
 	pipelined_simd_unit::issue(source_reg);
 }
 
@@ -1357,7 +1357,7 @@ void ldst_unit:: issue( register_set &reg_set )
 
 	inst->op4=MEM__OP;
 	m_core->mem_instruction_stats(*inst);
-	m_core->incmem_stat(m_core->get_sid(),m_core->get_config()->warp_size,1);
+	m_core->incmem_stat(m_core->get_config()->warp_size,1);
 	pipelined_simd_unit::issue(reg_set);
 }
 
@@ -1578,7 +1578,6 @@ void ldst_unit::cycle()
        } else {
            // stores exit pipeline here
            m_core->dec_inst_in_pipeline(warp_id);
-           m_core->get_gpu()->gpu_sim_insn += m_dispatch_reg->active_count();
            m_core->warp_inst_complete(*m_dispatch_reg);
            m_dispatch_reg->clear();
        }
@@ -1717,70 +1716,70 @@ void warp_inst_t::print( FILE *fout ) const
 void shader_core_ctx::incexecstat(warp_inst_t *&inst)
 {
 	if(inst->op5==TEX)
-		inctex_stat(get_sid(),inst->active_count(),1);
+		inctex_stat(inst->active_count(),1);
 
 	switch(inst->op3){
 	case INT__OP:
-		incialu_stat(get_sid(),inst->active_count(),25);
+		incialu_stat(inst->active_count(),25);
 		break;
 	case INT_MUL_OP:
 		if(m_config->gpgpu_shader_registers==32768) //i.e. FERMI
-		incimul_stat(get_sid(),inst->active_count(),7.2);
+			incimul_stat(inst->active_count(),7.2);
 		else
-                incimul_stat(get_sid(),inst->active_count(),16);
+			incimul_stat(inst->active_count(),16);
 		break;
 	case INT_MUL24_OP:
-		incimul24_stat(get_sid(),inst->active_count(),4.2);
+		incimul24_stat(inst->active_count(),4.2);
 		break;
 	case INT_MUL32_OP:
-		incimul32_stat(get_sid(),inst->active_count(),4);
+		incimul32_stat(inst->active_count(),4);
 		break;
 	case INT_DIV_OP:
-		incidiv_stat(get_sid(),inst->active_count(),40);
+		incidiv_stat(inst->active_count(),40);
 		break;
 	case FP__OP:
 		if(m_config->gpgpu_shader_registers==32768)
-		incfpalu_stat(get_sid(),inst->active_count(),1);
+		incfpalu_stat(inst->active_count(),1);
 		else
-		incfpalu_stat(get_sid(),inst->active_count(),1.7);
+		incfpalu_stat(inst->active_count(),1.7);
 		break;
 	case FP_MUL_OP:
 		if(m_config->gpgpu_shader_registers==32768)
-		incfpmul_stat(get_sid(),inst->active_count(),1.8);
+		incfpmul_stat(inst->active_count(),1.8);
 		else
-		incfpmul_stat(get_sid(),inst->active_count(),1.8);
+		incfpmul_stat(inst->active_count(),1.8);
 		break;
 	case FP_DIV_OP:
 		if(m_config->gpgpu_shader_registers==32768)
-		incfpdiv_stat(get_sid(),inst->active_count(),48);
+		incfpdiv_stat(inst->active_count(),48);
 		else 
-		incfpdiv_stat(get_sid(),inst->active_count(),22);
+		incfpdiv_stat(inst->active_count(),22);
 		break;
 	case FP_SQRT_OP:
 		if(m_config->gpgpu_shader_registers==32768)
-		inctrans_stat(get_sid(),inst->active_count(),25);
+		inctrans_stat(inst->active_count(),25);
 		else
-		inctrans_stat(get_sid(),inst->active_count(),8);
+		inctrans_stat(inst->active_count(),8);
 
 		break;
 	case FP_LG_OP:
 		if (m_config->gpgpu_shader_registers==32768)
-		inctrans_stat(get_sid(),inst->active_count(),35);
+		inctrans_stat(inst->active_count(),35);
 		else
-		inctrans_stat(get_sid(),inst->active_count(),0.3);
+		inctrans_stat(inst->active_count(),0.3);
 		break;
 	case FP_SIN_OP:
 		if(m_config->gpgpu_shader_registers==32768)
-		inctrans_stat(get_sid(),inst->active_count(),12);
+		inctrans_stat(inst->active_count(),12);
 		else 
-		inctrans_stat(get_sid(),inst->active_count(),40);
+		inctrans_stat(inst->active_count(),40);
 
 		break;
 	case FP_EXP_OP:
 		if(m_config->gpgpu_shader_registers==32768)
-		inctrans_stat(get_sid(),inst->active_count(),35);
+		inctrans_stat(inst->active_count(),35);
 		else 
-		inctrans_stat(get_sid(),inst->active_count(),9);
+		inctrans_stat(inst->active_count(),9);
 
 		break;
 
@@ -2484,9 +2483,9 @@ bool opndcoll_rfu_t::writeback( const warp_inst_t &inst )
 	    			  }
 	    		  }
 	    	  }
-	    	  m_shader->incregfile_writes(m_shader->get_sid(),active_count);
+	    	  m_shader->incregfile_writes(active_count);
 	      }else{
-	    	  m_shader->incregfile_writes(m_shader->get_sid(),m_shader->get_config()->warp_size);//inst.active_count());
+	    	  m_shader->incregfile_writes(m_shader->get_config()->warp_size);//inst.active_count());
 	      }
    }
    return true;
@@ -2509,9 +2508,9 @@ void opndcoll_rfu_t::dispatch_ready_cu()
    	    			  }
    	    		  }
    	    	  }
-   	    	  m_shader->incnon_rf_operands(m_shader->get_sid(),active_count);
+   	    	  m_shader->incnon_rf_operands(active_count);
    	      }else{
-    		 m_shader->incnon_rf_operands(m_shader->get_sid(),m_shader->get_config()->warp_size);//cu->get_active_count());
+    		 m_shader->incnon_rf_operands(m_shader->get_config()->warp_size);//cu->get_active_count());
    	      }
     	}
          cu->dispatch();
@@ -2572,9 +2571,9 @@ void opndcoll_rfu_t::allocate_reads()
     			  }
     		  }
     	  }
-    	  m_shader->incregfile_reads(m_shader->get_sid(),active_count);
+    	  m_shader->incregfile_reads(active_count);
       }else{
-    	  m_shader->incregfile_reads(m_shader->get_sid(),m_shader->get_config()->warp_size);//op.get_active_count());
+    	  m_shader->incregfile_reads(m_shader->get_config()->warp_size);//op.get_active_count());
       }
   }
 } 
