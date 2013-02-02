@@ -110,6 +110,7 @@ to build GPGPU-Sim all you need to do is add the following line to your
 
 then type
 
+	bash
 	source ~/.bashrc
 	source setup_environment
 	make
