@@ -111,7 +111,6 @@ to build GPGPU-Sim all you need to do is add the following line to your
 then type
 
 	bash
-	source ~/.bashrc
 	source setup_environment
 	make
 
@@ -198,7 +197,9 @@ Step 2: Build
 =============
 
 To build the simulator, you first need to configure how you want it to be
-built. From the root directory of the simulator, do the following:
+built. From the root directory of the simulator, type the following commands in
+a bash shell (you can check you are using a bash shell by running the command
+"echo $SHELL", which should print "/bin/bash"):
 
 cd v3.x
 source setup_environment <build_type>
