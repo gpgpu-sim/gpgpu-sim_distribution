@@ -1,7 +1,7 @@
 Welcome to GPGPU-Sim, a cycle-level simulator modeling contemporary graphics
 processing units (GPUs) running GPU computing workloads written in CUDA or
 OpenCL. Also included in GPGPU-Sim is a performance visualization tool called
-AerialVision and a configurable and extensible power model called GPUWattch.
+AerialVision and a configurable and extensible energy model called GPUWattch.
 GPGPU-Sim and GPUWattch have been rigorously validated with performance and
 power measurements of real hardware GPUs. 
 
@@ -17,7 +17,7 @@ Analyzing CUDA Workloads Using a Detailed GPU Simulator, in IEEE International
 Symposium on Performance Analysis of Systems and Software (ISPASS), Boston, MA,
 April 19-21, 2009.
 
-In addition, if you use the GPUWattch power model in your research, please cite:
+In addition, if you use the GPUWattch energy model in your research, please cite:
 
 Jingwen Leng, Syed Gilani, Ahmed ElTantawy, Tayler Hetherington, Nam Sung Kim,
 Tor M. Aamodt, Vijay Janapa Reddi, GPUWattch Energy Model Manual, 2013.
@@ -32,13 +32,10 @@ IEEE International Symposium on Performance Analysis of Systems and Software
 
 This file contains instructions on installing, building and running GPGPU-Sim.
 Detailed documentation on what GPGPU-Sim models, how to configure it, and a
-guide to the source code can be found here: <http://gpgpu-sim.org/manual/>. 
+guide to the source code can be found here: <http://gpgpu-sim.org/manual/>.
 Instructions for building doxygen source code documentation are included below.
-
-This file also contains instructions on building and running the GPGPU-Sim
-Power Model. Detailed documentation on the power model, how to configure it,
-and a guide to the source code can be found here:
-<http://gpgpu-sim.org/gpuwattch/>.
+Detailed documentation on GPUWattch including how to configure it and a guide
+to the source code can be found here: <http://gpgpu-sim.org/gpuwattch/>.
 
 If you have questions, please sign up for the google groups page (see
 gpgpu-sim.org), but note that use of this simulator does not imply any level of
@@ -48,54 +45,55 @@ To submit a bug report, go here: http://www.gpgpu-sim.org/bugs/
 
 See Section 2 "INSTALLING, BUILDING and RUNNING GPGPU-Sim" below to get started.
 
-See Section 3 "BUILDING and RUNNING the power model" below for the steps to build 
-and run the power model. 
+See file CHANGES for updates in this and earlier versions.
+
 
 1. CONTRIBUTIONS and HISTORY
 
 == GPGPU-Sim ==
 
 GPGPU-Sim was created by Tor Aamodt's research group at the University of
-British Columbia.  Many students have contributed including: Wilson W.L. Fung,
-Ali Bakhoda, George Yuan, Ivan Sham, Henry Wong, Henry Tran, Andrew Turner,
-Aaron Ariel, Inderpret Singh, Tim Rogers, Jimmy Kwa, Andrew Boktor, Ayub Gubran
-Tayler Hetherington and others.
+British Columbia.  Many have directly contributed to development of GPGPU-Sim
+including: Tor Aamodt, Wilson W.L. Fung, Ali Bakhoda, George Yuan, Ivan Sham,
+Henry Wong, Henry Tran, Andrew Turner, Aaron Ariel, Inderpret Singh, Tim
+Rogers, Jimmy Kwa, Andrew Boktor, Ayub Gubran Tayler Hetherington and others.
 
 GPGPU-Sim models the features of a modern graphics processor that are relevant
 to non-graphics applications.  The first version of GPGPU-Sim was used in a
 MICRO'07 paper and follow-on ACM TACO paper on dynamic warp formation. That
 version of GPGPU-Sim used the SimpleScalar PISA instruction set for functional
-simulation, and various configuration files to provide a programming model
-close to CUDA.  Creating benchmarks for the original GPGPU-Sim simulator was a
-very time consuming process.  This motivated the development an interface for
-directly running CUDA applications to leverage the growing number of
-applications being developed to use CUDA.  We subsequently added support for
-OpenCL and removed all SimpleScalar code.
+simulation, and various configuration files indicating which loops should be
+spawned as kernels on the GPU, along with reconvergence points required for
+SIMT execution to provide a programming model simlar to CUDA/OpenCL.  Creating
+benchmarks for the original GPGPU-Sim simulator was a very time consuming
+process and the validity of code generation for CPU run on a GPU was questioned
+by some.  These issues motivated the development an interface for directly
+running CUDA applications to leverage the growing number of applications being
+developed to use CUDA.  We subsequently added support for OpenCL and removed
+all SimpleScalar code.
 
 The interconnection network is simulated using the booksim simulator developed
 by Bill Dally's research group at Stanford.
 
-To produce output that is compatible with the output from running the same CUDA
-program on the GPU, we have implemented several PTX instructions using the CUDA
-Math library (part of the CUDA toolkit). Code to interface with the CUDA Math
+To produce output that matches the output from running the same CUDA program on
+the GPU, we have implemented several PTX instructions using the CUDA Math
+library (part of the CUDA toolkit). Code to interface with the CUDA Math
 library is contained in cuda-math.h, which also includes several structures
 derived from vector_types.h (one of the CUDA header files).
 
-See file CHANGES for updates in this and earlier versions.
+== GPUWattch Energy Model ==
 
-== Power Model ==
+GPUWattch (introduced in GPGPU-Sim 3.2.0) was developed by researchers at the
+University of British Columbia, the University of Texas at Austin, and the
+University of Wisconsin-Madison.  Contributors to GPUWattch include Tor
+Aamodt's research group at the University of British Columbia: Tayler
+Hetherington and Ahmed ElTantawy; Vijay Reddi's research group at the
+University of Texas at Austin: Jingwen Leng; and Nam Sung Kim's research group
+at the University of Wisconsin-Madison: Syed Gilani. 
 
-The power model was created in collaboration by the University of British Columbia, 
-the University of Texas at Austin, and the University of Wisconsin-Madison. Many 
-students have contributed to the power model: Tor Aamodt's research group at 
-the University of British Columbia: Tayler Hetherington and Ahmed ElTantawy;
-Vijay Reddi's research group at the University of Texas at Austin: Jingwen Leng; 
-and Nam Sung Kim's research group at the University of Wisconsin-Madison: Syed
-Gilani. 
-
-The power model is built ontop of McPAT, which was developed by Sheng Li et al. 
-at the University of Notre Dame, Hewlett-Packard Labs, Seoul National University,
-and the University of California, San Diego. The paper can be found at 
+GPUWattch leverages McPAT, which was developed by Sheng Li et al.  at the
+University of Notre Dame, Hewlett-Packard Labs, Seoul National University, and
+the University of California, San Diego. The paper can be found at
 http://www.hpl.hp.com/research/mcpat/micro09.pdf. 
 
 
