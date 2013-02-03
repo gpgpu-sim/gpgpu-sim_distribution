@@ -1,6 +1,6 @@
 # see README before running this
 
-ps -p $$ | awk '/bash/ {exit 1;}' && ( echo "ERROR ** source setup_environment must be run in a bash shell; see README" ; exit 0 ) && exit
+ps -p $$ | awk '/bash/ {exit 1;}' && echo "ERROR ** source setup_environment must be run in a bash shell; see README" && exit
 
 export GPGPUSIM_SETUP_ENVIRONMENT_WAS_RUN=
 export GPGPUSIM_ROOT="$( cd "$( dirname "$BASH_SOURCE" )" && pwd )"
