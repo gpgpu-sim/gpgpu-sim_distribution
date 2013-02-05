@@ -202,14 +202,14 @@ struct memory_config {
       tWTP = (WL+(BL/data_command_freq_ratio)+tWR);
       dram_atom_size = BL * busW * gpu_n_mem_per_ctrlr; // burst length x bus width x # chips per partition 
       m_address_mapping.init(m_n_mem);
-      m_L2_config.init();
+      m_L2_config.init(&m_address_mapping);
       m_valid = true;
       icnt_flit_size = 32; // Default 32
    }
    void reg_options(class OptionParser * opp);
 
    bool m_valid;
-   cache_config m_L2_config;
+   l2_cache_config m_L2_config;
    bool m_L2_texure_only;
 
    char *gpgpu_dram_timing_opt;

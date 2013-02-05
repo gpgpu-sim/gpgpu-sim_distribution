@@ -35,6 +35,8 @@
 #include "../abstract_hardware_model.h"
 #include "../tr1_hash_map.h"
 
+#include "addrdec.h"
+
 enum cache_block_state {
     INVALID,
     RESERVED,
@@ -118,6 +120,7 @@ enum mshr_config_t {
     ASSOC // normal cache 
 };
 
+
 class cache_config {
 public:
     cache_config() 
@@ -175,6 +178,7 @@ public:
         case 'N': m_write_alloc_policy = NO_WRITE_ALLOCATE; break;
         default: exit_parse_error();
         }
+
     }
     bool disabled() const { return m_disabled;}
     unsigned get_line_sz() const
@@ -195,13 +199,19 @@ public:
                  m_nset, m_assoc, m_line_sz );
     }
 
-    unsigned set_index( new_addr_type addr ) const 
+    virtual unsigned set_index( new_addr_type addr ) const
     {
         return(addr >> m_line_sz_log2) & (m_nset-1);
     }
+
     new_addr_type tag( new_addr_type addr ) const
     {
-        return addr >> (m_line_sz_log2+m_nset_log2);
+    	// For generality, the tag includes both index and tag. This allows for more complex set index
+    	// calculations that can result in different indexes mapping to the same set, thus the full
+    	// tag + index is required to check for hit/miss. Tag is now identical to the block address.
+
+        //return addr >> (m_line_sz_log2+m_nset_log2);
+    	return addr & ~(m_line_sz-1);
     }
     new_addr_type block_addr( new_addr_type addr ) const
     {
@@ -210,7 +220,7 @@ public:
 
     char *m_config_string;
 
-private:
+protected:
     void exit_parse_error()
     {
         printf("GPGPU-Sim uArch: cache configuration parsing error (%s)\n", m_config_string );
@@ -255,6 +265,16 @@ private:
     friend class l2_cache;
 };
 
+
+class l2_cache_config : public cache_config {
+public:
+	l2_cache_config() : cache_config(){}
+	void init(linear_to_raw_address_translation *address_mapping);
+	virtual unsigned set_index(new_addr_type addr) const;
+
+private:
+	linear_to_raw_address_translation *m_address_mapping;
+};
 
 class tag_array {
 public:
