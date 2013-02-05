@@ -145,7 +145,7 @@ void memory_partition_unit::cache_cycle( unsigned cycle )
             // L2 is enabled and access is for L2
             if ( !m_L2_icnt_queue->full() ) {
                 std::list<cache_event> events;
-                enum cache_request_status status = m_L2cache->access(mf->get_partition_addr(),mf,gpu_sim_cycle+gpu_tot_sim_cycle,events);
+                enum cache_request_status status = m_L2cache->access(mf->get_addr(),mf,gpu_sim_cycle+gpu_tot_sim_cycle,events);
                 bool write_sent = was_write_sent(events);
                 bool read_sent = was_read_sent(events);
 

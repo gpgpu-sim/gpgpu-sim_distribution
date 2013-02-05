@@ -29,6 +29,22 @@
 #include "stat-tool.h"
 #include <assert.h>
 
+
+void l2_cache_config::init(linear_to_raw_address_translation *address_mapping){
+	cache_config::init();
+	m_address_mapping = address_mapping;
+}
+
+unsigned l2_cache_config::set_index(new_addr_type addr) const{
+	if(!m_address_mapping){
+		return(addr >> m_line_sz_log2) & (m_nset-1);
+	}else{
+		// Calculate set index without memory partition bits to reduce set camping
+		new_addr_type part_addr = m_address_mapping->partition_address(addr);
+		return(part_addr >> m_line_sz_log2) & (m_nset -1);
+	}
+}
+
 tag_array::~tag_array() 
 {
     delete m_lines;
@@ -582,6 +598,7 @@ enum cache_request_status read_only_cache::access( new_addr_type addr, mem_fetch
 /// It is write-evict (global) or write-back (local) at the granularity of individual blocks (Set by GPGPU-Sim configuration file)
 /// (the policy used in fermi according to the CUDA manual)
 enum cache_request_status l1_cache::access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ){
+
 	assert( mf->get_data_size() <= m_config.get_line_sz());
 	bool wr = mf->get_is_write();
 	new_addr_type block_addr = m_config.block_addr(addr);
@@ -609,6 +626,7 @@ enum cache_request_status l1_cache::access( new_addr_type addr, mem_fetch *mf, u
 /// Models second level shared cache with global write-back and write-allocate policies
 /// Currently the same as l1_cache, but separated to allow for different implementations
 enum cache_request_status l2_cache::access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ){
+
 	assert( mf->get_data_size() <= m_config.get_line_sz());
 	bool wr = mf->get_is_write();
 	new_addr_type block_addr = m_config.block_addr(addr);

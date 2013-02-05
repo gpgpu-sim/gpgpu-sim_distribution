@@ -168,6 +168,8 @@ dram_req_t::dram_req_t( class mem_fetch *mf )
 
 void dram_t::push( class mem_fetch *data ) 
 {
+   assert(id == data->get_tlx_addr().chip); // Ensure request is in correct memory partition
+
    dram_req_t *mrq = new dram_req_t(data);
    data->set_status(IN_PARTITION_MC_INTERFACE_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
    mrqq->push(mrq);
