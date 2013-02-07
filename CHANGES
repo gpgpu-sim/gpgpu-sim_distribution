@@ -1,12 +1,18 @@
 LOG:
 Version 3.2.0+edits (development branch) versus 3.2.0
-- Added kernel name and launch uids to performance statistics log. 
+- Added kernel name and launch uids to performance statistics log.
+- Added l2_cache_config class to extend baseline cache_config. Allows for custom,
+  L2 cache specific functions (such as tag/set index generation functions).  
 - Bug Fixes:
     - Applied patch from Kito Cheng to update libopencl for checking NULL error
       code pointer. 
     - Set the numeric locale before the parsing to a standard locale with the
       decimal point represented as "dot" not a "comma", so parsing is done
       correctly independent of the system locale.
+    - Fixed L2 Writeback bug caused by using the memory partition address for 
+      both the cache set index generation and for storing tag/block address. 
+      Caused writebacks from the L2 to have a different address than the original 
+      memory request.     
 
 Version 3.2.0 versus 3.1.2
 - Added GPUWattch GPGPU power model based on McPAT 0.8beta. 
