@@ -69,7 +69,8 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                   const struct shader_core_config *config,
                                   const struct memory_config *mem_config,
                                   shader_core_stats *stats )
-   : m_barriers( config->max_warps_per_shader, config->max_cta_per_core )
+   : m_barriers( config->max_warps_per_shader, config->max_cta_per_core ),
+     m_dynamic_warp_id(0)
 {
    m_kernel = NULL;
    m_gpu = gpu;
@@ -272,7 +273,8 @@ void shader_core_ctx::init_warps( unsigned cta_id, unsigned start_thread, unsign
                 }
             }
             m_simt_stack[i]->launch(start_pc,active_threads);
-            m_warp[i].init(start_pc,cta_id,i,active_threads);
+            m_warp[i].init(start_pc,cta_id,i,active_threads, m_dynamic_warp_id);
+            ++m_dynamic_warp_id;
             m_not_completed += n_active;
       }
    }

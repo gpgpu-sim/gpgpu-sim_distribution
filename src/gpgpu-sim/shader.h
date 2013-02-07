@@ -108,10 +108,15 @@ public:
         m_last_fetch=0;
         m_next=0;
     }
-    void init( address_type start_pc, unsigned cta_id, unsigned wid, const std::bitset<MAX_WARP_SIZE> &active )
+    void init( address_type start_pc,
+               unsigned cta_id,
+               unsigned wid,
+               const std::bitset<MAX_WARP_SIZE> &active,
+               unsigned dynamic_warp_id )
     {
         m_cta_id=cta_id;
         m_warp_id=wid;
+        m_dynamic_warp_id=dynamic_warp_id;
         m_next_pc=start_pc;
         assert( n_completed >= active.count() );
         assert( n_completed <= m_warp_size);
@@ -204,12 +209,15 @@ public:
 
     unsigned get_cta_id() const { return m_cta_id; }
 
+    unsigned get_dynamic_warp_id() const { return m_dynamic_warp_id; }
+
 private:
     static const unsigned IBUFFER_SIZE=2;
     class shader_core_ctx *m_shader;
     unsigned m_cta_id;
     unsigned m_warp_id;
     unsigned m_warp_size;
+    unsigned m_dynamic_warp_id;
 
     address_type m_next_pc;
     unsigned n_completed;          // number of threads in warp completed
@@ -1603,6 +1611,11 @@ private:
     // used for local address mapping with single kernel launch
     unsigned kernel_max_cta_per_shader;
     unsigned kernel_padded_threads_per_cta;
+    // Used for handing out dynamic warp_ids to new warps.
+    // the differnece between a warp_id and a dynamic_warp_id
+    // is that the dynamic_warp_id is a running number unique to every warp
+    // run on this shader, where the warp_id is the static warp slot.
+    unsigned m_dynamic_warp_id;
 };
 
 class simt_core_cluster {
