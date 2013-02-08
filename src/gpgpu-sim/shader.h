@@ -1308,7 +1308,7 @@ public:
 
     void print( FILE *fout ) const;
 
-    std::vector< std::vector<unsigned> >& get_dynamic_warp_issue()
+    const std::vector< std::vector<unsigned> >& get_dynamic_warp_issue() const
     {
         return m_shader_dynamic_warp_issue_distro;
     }
