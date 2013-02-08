@@ -426,6 +426,16 @@ void shader_core_stats::print( FILE* fout ) const
    fprintf(fout, "\n");
 }
 
+void shader_core_stats::event_warp_issued( unsigned s_id, unsigned warp_id, unsigned num_issued, unsigned dynamic_warp_id ) {
+    assert( warp_id <= m_config->max_warps_per_shader );
+    for ( unsigned i = 0; i < num_issued; ++i ) {
+        if ( m_shader_dynamic_warp_issue_distro[ s_id ].size() <= dynamic_warp_id ) {
+            m_shader_dynamic_warp_issue_distro[ s_id ].resize(dynamic_warp_id + 1);
+        }
+        ++m_shader_dynamic_warp_issue_distro[ s_id ][ dynamic_warp_id ];
+    }
+}
+
 void shader_core_stats::visualizer_print( gzFile visualizer_file )
 {
     // warp divergence breakdown

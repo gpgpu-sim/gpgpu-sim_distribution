@@ -210,6 +210,7 @@ public:
     unsigned get_cta_id() const { return m_cta_id; }
 
     unsigned get_dynamic_warp_id() const { return m_dynamic_warp_id; }
+    unsigned get_warp_id() const { return m_warp_id; }
 
 private:
     static const unsigned IBUFFER_SIZE=2;
@@ -1147,6 +1148,7 @@ struct shader_core_config : public core_config
 
 struct shader_core_stats_pod {
 
+	void* shader_core_stats_pod_start[]; // DO NOT MOVE FROM THE TOP - spaceless pointer to the start of this structure
 	unsigned long long *shader_cycles;
     unsigned *m_num_sim_insn; // number of scalar thread instructions committed by this shader core
     unsigned *m_num_sim_winsn; // number of warp instructions committed by this shader core
@@ -1236,7 +1238,7 @@ public:
     shader_core_stats( const shader_core_config *config )
     {
         m_config = config;
-        shader_core_stats_pod *pod = this;
+        shader_core_stats_pod *pod = reinterpret_cast< shader_core_stats_pod * > ( this->shader_core_stats_pod_start );
         memset(pod,0,sizeof(shader_core_stats_pod));
         shader_cycles=(unsigned long long *) calloc(config->num_shader(),sizeof(unsigned long long ));
         m_num_sim_insn = (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
@@ -1292,10 +1294,15 @@ public:
 
         gpgpu_n_shmem_bank_access = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
 
+        m_shader_dynamic_warp_issue_distro.resize( config->num_shader() );
+
     }
+
     void new_grid()
     {
     }
+
+    void event_warp_issued( unsigned s_id, unsigned warp_id, unsigned num_issued, unsigned dynamic_warp_id );
 
     void visualizer_print( gzFile visualizer_file );
 
@@ -1303,6 +1310,8 @@ public:
 
 private:
     const shader_core_config *m_config;
+    // Counts the instructions issued for each dynamic warp.
+    std::vector< std::vector<unsigned> > m_shader_dynamic_warp_issue_distro;
 
     friend class power_stat_t;
     friend class shader_core_ctx;
