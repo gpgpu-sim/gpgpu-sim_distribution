@@ -1308,6 +1308,11 @@ public:
 
     void print( FILE *fout ) const;
 
+    std::vector< std::vector<unsigned> >& get_dynamic_warp_issue()
+    {
+        return m_shader_dynamic_warp_issue_distro;
+    }
+
 private:
     const shader_core_config *m_config;
     // Counts the instructions issued for each dynamic warp.
