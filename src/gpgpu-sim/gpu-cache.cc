@@ -50,12 +50,31 @@ tag_array::~tag_array()
     delete m_lines;
 }
 
-tag_array::tag_array( const cache_config &config, int core_id, int type_id ) 
-: m_config(config), m_access(0), m_miss(0), m_pending_hit(0)
+tag_array::tag_array( const cache_config &config,
+                      int core_id,
+                      int type_id,
+                      cache_block_t* new_lines)
+    : m_config( config ),
+      m_lines( new_lines )
+{
+    init( core_id, type_id );
+}
+
+tag_array::tag_array( const cache_config &config,
+                      int core_id,
+                      int type_id )
+    : m_config( config )
 {
     //assert( m_config.m_write_policy == READ_ONLY ); Old assert
     m_lines = new cache_block_t[ config.get_num_lines()];
+    init( core_id, type_id );
+}
 
+void tag_array::init( int core_id, int type_id )
+{
+    m_access = 0;
+    m_miss = 0;
+    m_pending_hit = 0;
     // initialize snapshot counters for visualizer
     m_prev_snapshot_access = 0;
     m_prev_snapshot_miss = 0;
