@@ -47,7 +47,7 @@ unsigned l2_cache_config::set_index(new_addr_type addr) const{
 
 tag_array::~tag_array() 
 {
-    delete m_lines;
+    delete[] m_lines;
 }
 
 tag_array::tag_array( const cache_config &config,
