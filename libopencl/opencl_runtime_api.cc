@@ -609,7 +609,7 @@ char *_cl_program::get_ptx()
    }
    size_t buffer_length= get_ptx_size();
    char *tmp = (char*)calloc(buffer_length + 1,1);
-   tmp[ buffer_length ] = NULL;
+   tmp[ buffer_length ] = '\0';
    unsigned n=0;
    std::map<cl_uint,pgm_info>::iterator p;
    for( p=m_pgm.begin(); p != m_pgm.end(); p++ ) {

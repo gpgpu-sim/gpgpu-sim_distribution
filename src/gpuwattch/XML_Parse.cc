@@ -43,6 +43,11 @@
 
 using namespace std;
 
+const char * perf_count_label[] = {"TOT_INST,", "FP_INT,", "IC_H,", "IC_M,", "DC_RH,", "DC_RM,", "DC_WH,", "DC_WM,",
+                                "TC_H,", "TC_M,", "CC_H,", "CC_M,", "SHRD_ACC,", "REG_RD,", "REG_WR,", "NON_REG_OPs,",
+                                "SP_ACC,", "SFU_ACC,", "FPU_ACC,", "MEM_RD,","MEM_WR,", "MEM_PRE,", "L2_RH,", "L2_RM,", "L2_WH,",
+                                "L2_WM,", "NOC_A,", "PIPE_A,", "IDLE_CORE_N,", "CONST_DYNAMICN"};
+
 void ParseXML::parse(char* filepath)
 {
 	unsigned int i,j,k,m,n;

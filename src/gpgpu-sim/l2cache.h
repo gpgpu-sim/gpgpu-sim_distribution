@@ -142,6 +142,7 @@ private:
 class L2interface : public mem_fetch_interface {
 public:
     L2interface( memory_partition_unit *unit ) { m_unit=unit; }
+    virtual ~L2interface() {}
     virtual bool full( unsigned size, bool write) const 
     {
         // assume read and write packets all same size

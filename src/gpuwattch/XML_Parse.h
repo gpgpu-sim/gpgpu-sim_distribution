@@ -56,10 +56,16 @@ ToXMLStringTool tx,tx2;
 */
 //all subnodes at the level of system.core(0-n)
 //cache_policy is added into cache property arrays;//0 no write or write-though with non-write allocate;1 write-back with write-allocate
-static const char * perf_count_label[] = {"TOT_INST,", "FP_INT,", "IC_H,", "IC_M,", "DC_RH,", "DC_RM,", "DC_WH,", "DC_WM,",
-                                "TC_H,", "TC_M,", "CC_H,", "CC_M,", "SHRD_ACC,", "REG_RD,", "REG_WR,", "NON_REG_OPs,",
-                                "SP_ACC,", "SFU_ACC,", "FPU_ACC,", "MEM_RD,","MEM_WR,", "MEM_PRE,", "L2_RH,", "L2_RM,", "L2_WH,",
-                                "L2_WM,", "NOC_A,", "PIPE_A,", "IDLE_CORE_N,", "CONST_DYNAMICN"};
+//
+//tgrogers - This was a static array declared in the header...
+//           Not too sure why the authors did this, maybe they didn't understand the context
+//           of the "static" keyword outside a class declaration.  As it was written, each object file
+//           had it's own copy of the string list - which is okay, since the string is constant but
+//           wastes space and causes the compiler to complain about unused vars in files where this header
+//           is included but they don't use the variable.  Now this is extern'd here and the storage/definition
+//           is in the XML_Parse.cc file
+extern const char * perf_count_label[];
+
 enum perf_count_t {
    TOT_INST=0,
    FP_INT,
