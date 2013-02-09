@@ -278,6 +278,7 @@ private:
 
 class tag_array {
 public:
+    // Use this constructor
     tag_array( const cache_config &config, int core_id, int type_id );
     ~tag_array();
 
@@ -297,6 +298,16 @@ public:
     void print( FILE *stream, unsigned &total_access, unsigned &total_misses ) const;
     float windowed_miss_rate( ) const;
     void get_stats(unsigned &total_access, unsigned &total_misses) const;
+
+protected:
+    // This constructor is intended for use only from derived classes that wish to
+    // avoid unnecessary memory allocation that takes place in the
+    // other tag_array constructor
+    tag_array( const cache_config &config,
+               int core_id,
+               int type_id,
+               cache_block_t* new_lines );
+    void init( int core_id, int type_id );
 
 protected:
 
