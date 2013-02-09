@@ -830,6 +830,20 @@ void TwoLevelScheduler::cycle() {
 			break;
 		}
 	}
+
+    // tgrogers - fixing a warning about unused variables at the top of this fucntion...
+    // This scheduler has A LOT of copied code from the LRR scheduler.
+    // TODO - this thing really needs to be re-written in a modular way.
+    // For now, to get rid of the warnings I am including the stats epilogue
+    // from the original scheduler function that the author of this function forgot to copy/paste
+    //
+    // issue stall statistics:
+    if( !valid_inst ) 
+        m_stats->shader_cycle_distro[0]++; // idle or control hazard
+    else if( !ready_inst ) 
+        m_stats->shader_cycle_distro[1]++; // waiting for RAW hazards (possibly due to memory) 
+    else if( !issued_inst ) 
+        m_stats->shader_cycle_distro[2]++; // pipeline stalled
 }
 
 void shader_core_ctx::read_operands()

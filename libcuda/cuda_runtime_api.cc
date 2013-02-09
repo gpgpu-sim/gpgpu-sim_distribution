@@ -558,9 +558,7 @@ __host__ cudaError_t CUDARTAPI cudaMemcpy2D(void *dst, size_t dpitch, const void
 {
 	CUctx_st *context = GPGPUSim_Context();
 	gpgpu_t *gpu = context->get_device()->get_gpgpu();
-	struct cudaArray *cuArray_ptr;
 	size_t size = spitch*height;
-	cuArray_ptr = (cudaArray*)dst;
 	gpgpusim_ptx_assert( (dpitch==spitch), "different src and dst pitch not supported yet" );
 	if( kind == cudaMemcpyHostToDevice )
 		gpu->memcpy_to_gpu( (size_t)dst, src, size );
@@ -1616,9 +1614,9 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 		// PTX/SASS code for the launched kernel function.  
 		// This allows us to work around the fact that cuobjdump only outputs the
 		// file name associated with each section. 
-		unsigned fat_cubin_handle = next_fat_bin_handle;
+		unsigned long long fat_cubin_handle = next_fat_bin_handle;
 		next_fat_bin_handle++;
-		printf("GPGPU-Sim PTX: __cudaRegisterFatBinary, fat_cubin_handle = %u, filename=%s\n", fat_cubin_handle, filename);
+		printf("GPGPU-Sim PTX: __cudaRegisterFatBinary, fat_cubin_handle = %llu, filename=%s\n", fat_cubin_handle, filename);
 		/*!
 		 * This function extracts all data from all files in first call
 		 * then for next calls, only returns the appropriate number
@@ -1630,7 +1628,7 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 		return (void**)fat_cubin_handle;
 	} else {
 		static unsigned source_num=1;
-		unsigned fat_cubin_handle = next_fat_bin_handle++;
+		unsigned long long fat_cubin_handle = next_fat_bin_handle++;
 		__cudaFatCudaBinary *info =   (__cudaFatCudaBinary *)fatCubin;
 		assert( info->version >= 3 );
 		unsigned num_ptx_versions=0;

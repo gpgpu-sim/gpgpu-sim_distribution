@@ -1168,7 +1168,12 @@ void atom_callback( const inst_t* inst, ptx_thread_info* thread )
 
    // Write operation result into  memory
    // (i.e. copy src1_data to dst)
-   mem->write(effective_address,size/8,&op_result.s64,thread,pI);
+   if ( data_ready ) {
+      mem->write(effective_address,size/8,&op_result.s64,thread,pI);
+   } else {
+      printf("Execution error: data_ready not set\n");
+      assert(0);
+   }
 }
 
 // atom_impl will now result in a callback being called in mem_ctrl_pop (gpu-sim.c)

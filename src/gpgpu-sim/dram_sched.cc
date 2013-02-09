@@ -78,7 +78,6 @@ void frfcfs_scheduler::data_collection(unsigned int bank)
 
 dram_req_t *frfcfs_scheduler::schedule( unsigned bank, unsigned curr_row )
 {
-   int row_hit = 0;
    if ( m_last_row[bank] == NULL ) {
       if ( m_queue[bank].empty() )
          return NULL;
@@ -95,7 +94,6 @@ dram_req_t *frfcfs_scheduler::schedule( unsigned bank, unsigned curr_row )
 
       }
    }
-   row_hit=1;
    std::list<dram_req_t*>::iterator next = m_last_row[bank]->back();
    dram_req_t *req = (*next);
 

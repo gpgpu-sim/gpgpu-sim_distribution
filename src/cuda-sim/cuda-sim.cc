@@ -441,7 +441,6 @@ void gpgpu_t::gpu_memset( size_t dst_start_addr, int c, size_t count )
 
 void ptx_print_insn( address_type pc, FILE *fp )
 {
-   static unsigned size=1;
    std::map<unsigned,function_info*>::iterator f = g_pc_to_finfo.find(pc);
    if( f == g_pc_to_finfo.end() ) {
        fprintf(fp,"<no instruction at address 0x%x>", pc );
@@ -449,7 +448,7 @@ void ptx_print_insn( address_type pc, FILE *fp )
    }
    function_info *finfo = f->second;
    assert( finfo );
-   size = finfo->print_insn(pc,fp);
+   finfo->print_insn(pc,fp);
 }
 void ptx_instruction::set_fp_or_int_archop(){
 	op2=UN_OP;
@@ -1207,8 +1206,6 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
    // Output instruction information to file and stdout
    if( config.get_ptx_inst_debug_to_file() != 0 && 
         (config.get_ptx_inst_debug_thread_uid() == 0 || config.get_ptx_inst_debug_thread_uid() == get_uid()) ) {
-      dim3 ctaid = get_ctaid();
-      dim3 tid = get_tid();
       fprintf(m_gpu->get_ptx_inst_debug_file(),
              "[thd=%u] : (%s:%u - %s)\n",
              get_uid(),
@@ -1587,7 +1584,7 @@ void gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t co
    switch (mem_region.get_type()) {
    case const_space:
       mem = gpu->get_global_memory();
-      mem_name = "global";
+      mem_name = "const";
       break;
    case global_space:
       mem = gpu->get_global_memory();
@@ -1596,8 +1593,8 @@ void gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t co
    default:
       abort();
    }
-   printf("GPGPU-Sim PTX: gpgpu_ptx_sim_memcpy_symbol: copying %zu bytes %s symbol %s+%zu @0x%x ...\n", 
-          count, (to?" to ":"from"), sym_name.c_str(), offset, dst );
+   printf("GPGPU-Sim PTX: gpgpu_ptx_sim_memcpy_symbol: copying %s memory %zu bytes %s symbol %s+%zu @0x%x ...\n", 
+          mem_name, count, (to?" to ":"from"), sym_name.c_str(), offset, dst );
    for ( unsigned n=0; n < count; n++ ) {
       if( to ) mem->write(dst+n,1,((char*)src)+n,NULL,NULL); 
       else mem->read(dst+n,1,((char*)src)+n); 
