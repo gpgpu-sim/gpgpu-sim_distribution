@@ -394,7 +394,15 @@ class baseline_cache : public cache_t {
 public:
     baseline_cache( const char *name, const cache_config &config, int core_id, int type_id, mem_fetch_interface *memport,
                      enum mem_fetch_status status )
-    : m_config(config), m_tag_array(config,core_id,type_id), m_mshrs(config.m_mshr_entries,config.m_mshr_max_merge)
+    : m_config(config), m_tag_array(new tag_array(config,core_id,type_id)), m_mshrs(config.m_mshr_entries,config.m_mshr_max_merge)
+    {
+        init( name, config, memport, status );
+    }
+
+    void init( const char *name,
+               const cache_config &config,
+               mem_fetch_interface *memport,
+               enum mem_fetch_status status )
     {
         m_name = name;
         assert(config.m_mshr_type == ASSOC);
@@ -405,6 +413,11 @@ public:
         m_read_miss=0;
         m_write_miss=0;
         n_simt_to_mem=0;
+    }
+
+    virtual ~baseline_cache()
+    {
+        delete m_tag_array;
     }
 
     virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ) =  0;
@@ -419,7 +432,7 @@ public:
     /// Pop next ready access (does not include accesses that "HIT")
     mem_fetch *next_access(){return m_mshrs.next_access();}
     // flash invalidate all entries in cache
-    void flush(){m_tag_array.flush();}
+    void flush(){m_tag_array->flush();}
     void print(FILE *fp, unsigned &accesses, unsigned &misses) const;
     void display_state( FILE *fp ) const;
 
@@ -431,17 +444,33 @@ public:
     }
 
     void get_stats(unsigned &accesses, unsigned &misses) const {
-    	m_tag_array.get_stats(accesses, misses);
+    	m_tag_array->get_stats(accesses, misses);
     }
 
     void set_icnt_power_stats(unsigned &simt_to_mem) const{
     	simt_to_mem = n_simt_to_mem;
     }
 
-    protected:
+protected:
+    // Constructor that can be used by derived classes with custom tag arrays
+    baseline_cache( const char *name,
+                    const cache_config &config,
+                    int core_id,
+                    int type_id,
+                    mem_fetch_interface *memport,
+                    enum mem_fetch_status status,
+                    tag_array* new_tag_array )
+    : m_config(config),
+      m_tag_array( new_tag_array ),
+      m_mshrs(config.m_mshr_entries,config.m_mshr_max_merge)
+    {
+        init( name, config, memport, status );
+    }
+
+protected:
     std::string m_name;
     const cache_config &m_config;
-    tag_array  m_tag_array;
+    tag_array*  m_tag_array;
     mshr_table m_mshrs;
     std::list<mem_fetch*> m_miss_queue;
     enum mem_fetch_status m_miss_queue_status;
@@ -494,6 +523,12 @@ public:
 
     /// Access cache for read_only_cache: returns RESERVATION_FAIL if request could not be accepted (for any reason)
     virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events );
+
+    virtual ~read_only_cache(){}
+
+protected:
+    read_only_cache( const char *name, const cache_config &config, int core_id, int type_id, mem_fetch_interface *memport, enum mem_fetch_status status, tag_array* new_tag_array )
+    : baseline_cache(name,config,core_id,type_id,memport,status, new_tag_array){}
 };
 
 /// Data cache - Implements common functions for L1 and L2 data cache
@@ -503,6 +538,13 @@ public:
     			int core_id, int type_id, mem_fetch_interface *memport,
                 mem_fetch_allocator *mfcreator, enum mem_fetch_status status )
     			: baseline_cache(name,config,core_id,type_id,memport,status)
+    {
+        init( mfcreator );
+    }
+
+    virtual ~data_cache() {}
+
+    void init( mem_fetch_allocator *mfcreator )
     {
         m_memfetch_creator=mfcreator;
 
@@ -528,6 +570,20 @@ public:
         case NO_WRITE_ALLOCATE: m_wr_miss = &data_cache::wr_miss_no_wa; break;
         default: assert(0 && "Error: Must set valid cache write miss policy\n"); break; // Need to set a write miss function
         }
+    }
+
+protected:
+    data_cache( const char *name,
+                const cache_config &config,
+    			int core_id,
+                int type_id,
+                mem_fetch_interface *memport,
+                mem_fetch_allocator *mfcreator,
+                enum mem_fetch_status status,
+                tag_array* new_tag_array )
+    : baseline_cache(name, config, core_id, type_id, memport,status, new_tag_array)
+    {
+        init( mfcreator );
     }
 
 protected:
@@ -576,7 +632,20 @@ public:
             mem_fetch_allocator *mfcreator, enum mem_fetch_status status )
 			: data_cache(name,config,core_id,type_id,memport,mfcreator,status){}
 
+    virtual ~l1_cache(){}
+
 	virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events );
+
+protected:
+	l1_cache( const char *name,
+              const cache_config &config,
+			  int core_id,
+              int type_id,
+              mem_fetch_interface *memport,
+              mem_fetch_allocator *mfcreator,
+              enum mem_fetch_status status,
+              tag_array* new_tag_array )
+	: data_cache(name,config,core_id,type_id,memport,mfcreator,status, new_tag_array){}
 
 };
 
@@ -587,6 +656,8 @@ public:
 			int core_id, int type_id, mem_fetch_interface *memport,
             mem_fetch_allocator *mfcreator, enum mem_fetch_status status )
 			: data_cache(name,config,core_id,type_id,memport,mfcreator,status){}
+
+    virtual ~l2_cache() {}
 
 	virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events );
 

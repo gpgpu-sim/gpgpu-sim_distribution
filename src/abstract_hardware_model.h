@@ -769,12 +769,13 @@ public:
     { 
         m_empty=true; 
     }
-    void issue( const active_mask_t &mask, unsigned warp_id, unsigned long long cycle ) 
+    void issue( const active_mask_t &mask, unsigned warp_id, unsigned long long cycle, int dynamic_warp_id ) 
     {
         m_warp_active_mask = mask;
         m_warp_issued_mask = mask; 
         m_uid = ++sm_next_uid;
         m_warp_id = warp_id;
+        m_dynamic_warp_id = dynamic_warp_id;
         issue_cycle = cycle;
         cycles = initiation_interval;
         m_cache_hit=false;
@@ -857,6 +858,11 @@ public:
         assert( !m_empty );
         return m_warp_id; 
     }
+    unsigned dynamic_warp_id() const 
+    { 
+        assert( !m_empty );
+        return m_dynamic_warp_id; 
+    }
     bool has_callback( unsigned n ) const
     {
         return m_warp_active_mask[n] && m_per_scalar_thread_valid && 
@@ -901,6 +907,7 @@ protected:
     bool m_isatomic;
     bool m_is_printf;
     unsigned m_warp_id;
+    unsigned m_dynamic_warp_id; 
     const core_config *m_config; 
     active_mask_t m_warp_active_mask; // dynamic active mask for timing model (after predication)
     active_mask_t m_warp_issued_mask; // active mask at issue (prior to predication test) -- for instruction counting
