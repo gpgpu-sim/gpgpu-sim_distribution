@@ -965,12 +965,41 @@ public:
 
     void set_icnt_power_stats(unsigned &simt_to_mem) const;
 
-private:
+protected:
+    ldst_unit( mem_fetch_interface *icnt,
+               shader_core_mem_fetch_allocator *mf_allocator,
+               shader_core_ctx *core, 
+               opndcoll_rfu_t *operand_collector,
+               Scoreboard *scoreboard,
+               const shader_core_config *config,
+               const memory_config *mem_config,  
+               shader_core_stats *stats,
+               unsigned sid,
+               unsigned tpc,
+               l1_cache* new_l1d_cache );
+    void init( mem_fetch_interface *icnt,
+               shader_core_mem_fetch_allocator *mf_allocator,
+               shader_core_ctx *core, 
+               opndcoll_rfu_t *operand_collector,
+               Scoreboard *scoreboard,
+               const shader_core_config *config,
+               const memory_config *mem_config,  
+               shader_core_stats *stats,
+               unsigned sid,
+               unsigned tpc );
+
+protected:
    bool shared_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
    bool constant_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
    bool texture_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
    bool memory_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type);
 
+   virtual mem_stage_stall_type process_cache_access( cache_t* cache,
+                                                      new_addr_type address,
+                                                      warp_inst_t &inst,
+                                                      std::list<cache_event>& events,
+                                                      mem_fetch *mf,
+                                                      enum cache_request_status status );
    mem_stage_stall_type process_memory_access_queue( cache_t *cache, warp_inst_t &inst );
 
    const memory_config *m_memory_config;

@@ -607,7 +607,7 @@ void shader_core_ctx::issue_warp( register_set& pipe_reg_set, const warp_inst_t*
     m_warp[warp_id].ibuffer_free();
     assert(next_inst->valid());
     **pipe_reg = *next_inst; // static instruction information
-    (*pipe_reg)->issue( active_mask, warp_id, gpu_tot_sim_cycle + gpu_sim_cycle ); // dynamic instruction information
+    (*pipe_reg)->issue( active_mask, warp_id, gpu_tot_sim_cycle + gpu_sim_cycle, m_warp[warp_id].get_dynamic_warp_id() ); // dynamic instruction information
     m_stats->shader_cycle_distro[2+(*pipe_reg)->active_count()]++;
     func_exec_inst( **pipe_reg );
     if( next_inst->op == BARRIER_OP ) 
@@ -1093,17 +1093,15 @@ bool ldst_unit::shared_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, 
    return !stall; 
 }
 
-mem_stage_stall_type ldst_unit::process_memory_access_queue( cache_t *cache, warp_inst_t &inst )
+mem_stage_stall_type
+ldst_unit::process_cache_access( cache_t* cache,
+                                 new_addr_type address,
+                                 warp_inst_t &inst,
+                                 std::list<cache_event>& events,
+                                 mem_fetch *mf,
+                                 enum cache_request_status status )
 {
     mem_stage_stall_type result = NO_RC_FAIL;
-    if( inst.accessq_empty() )
-        return result;
-
-    //const mem_access_t &access = inst.accessq_back();
-    mem_fetch *mf = m_mf_allocator->alloc(inst,inst.accessq_back());
-    std::list<cache_event> events;
-    enum cache_request_status status = cache->access(mf->get_addr(),mf,gpu_sim_cycle+gpu_tot_sim_cycle,events);
-
     bool write_sent = was_write_sent(events);
     bool read_sent = was_read_sent(events);
     if( write_sent ) 
@@ -1131,6 +1129,19 @@ mem_stage_stall_type ldst_unit::process_memory_access_queue( cache_t *cache, war
     if( !inst.accessq_empty() )
         result = BK_CONF;
     return result;
+}
+
+mem_stage_stall_type ldst_unit::process_memory_access_queue( cache_t *cache, warp_inst_t &inst )
+{
+    mem_stage_stall_type result = NO_RC_FAIL;
+    if( inst.accessq_empty() )
+        return result;
+
+    //const mem_access_t &access = inst.accessq_back();
+    mem_fetch *mf = m_mf_allocator->alloc(inst,inst.accessq_back());
+    std::list<cache_event> events;
+    enum cache_request_status status = cache->access(mf->get_addr(),mf,gpu_sim_cycle+gpu_tot_sim_cycle,events);
+    return process_cache_access( cache, mf->get_addr(), inst, events, mf, status );
 }
 
 bool ldst_unit::constant_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type)
@@ -1319,8 +1330,7 @@ void pipelined_simd_unit::issue( register_set& source_reg )
     }
 */
 
-
-ldst_unit::ldst_unit( mem_fetch_interface *icnt,
+void ldst_unit::init( mem_fetch_interface *icnt,
                       shader_core_mem_fetch_allocator *mf_allocator,
                       shader_core_ctx *core, 
                       opndcoll_rfu_t *operand_collector,
@@ -1329,7 +1339,7 @@ ldst_unit::ldst_unit( mem_fetch_interface *icnt,
                       const memory_config *mem_config,  
                       shader_core_stats *stats,
                       unsigned sid,
-                      unsigned tpc ) : pipelined_simd_unit(NULL,config,3,core), m_next_wb(config)
+                      unsigned tpc )
 {
     m_memory_config = mem_config;
     m_icnt = icnt;
@@ -1343,15 +1353,11 @@ ldst_unit::ldst_unit( mem_fetch_interface *icnt,
     #define STRSIZE 1024
     char L1T_name[STRSIZE];
     char L1C_name[STRSIZE];
-    char L1D_name[STRSIZE];
     snprintf(L1T_name, STRSIZE, "L1T_%03d", m_sid);
     snprintf(L1C_name, STRSIZE, "L1C_%03d", m_sid);
-    snprintf(L1D_name, STRSIZE, "L1D_%03d", m_sid);
     m_L1T = new tex_cache(L1T_name,m_config->m_L1T_config,m_sid,get_shader_texture_cache_id(),icnt,IN_L1T_MISS_QUEUE,IN_SHADER_L1T_ROB);
     m_L1C = new read_only_cache(L1C_name,m_config->m_L1C_config,m_sid,get_shader_constant_cache_id(),icnt,IN_L1C_MISS_QUEUE);
     m_L1D = NULL;
-    if( !m_config->m_L1D_config.disabled() ) 
-        m_L1D = new l1_cache(L1D_name,m_config->m_L1D_config,m_sid,get_shader_normal_cache_id(),m_icnt,m_mf_allocator,IN_L1D_MISS_QUEUE);
     m_mem_rc = NO_RC_FAIL;
     m_num_writeback_clients=5; // = shared memory, global/local (uncached), L1D, L1T, L1C
     m_writeback_arb = 0;
@@ -1359,6 +1365,66 @@ ldst_unit::ldst_unit( mem_fetch_interface *icnt,
     m_next_global=NULL;
     m_last_inst_gpu_sim_cycle=0;
     m_last_inst_gpu_tot_sim_cycle=0;
+}
+
+
+ldst_unit::ldst_unit( mem_fetch_interface *icnt,
+                      shader_core_mem_fetch_allocator *mf_allocator,
+                      shader_core_ctx *core, 
+                      opndcoll_rfu_t *operand_collector,
+                      Scoreboard *scoreboard,
+                      const shader_core_config *config,
+                      const memory_config *mem_config,  
+                      shader_core_stats *stats,
+                      unsigned sid,
+                      unsigned tpc ) : pipelined_simd_unit(NULL,config,3,core), m_next_wb(config)
+{
+    init( icnt,
+          mf_allocator,
+          core, 
+          operand_collector,
+          scoreboard,
+          config, 
+          mem_config,  
+          stats, 
+          sid,
+          tpc );
+    if( !m_config->m_L1D_config.disabled() ) {
+        char L1D_name[STRSIZE];
+        snprintf(L1D_name, STRSIZE, "L1D_%03d", m_sid);
+        m_L1D = new l1_cache( L1D_name,
+                              m_config->m_L1D_config,
+                              m_sid,
+                              get_shader_normal_cache_id(),
+                              m_icnt,
+                              m_mf_allocator,
+                              IN_L1D_MISS_QUEUE );
+    }
+}
+
+ldst_unit::ldst_unit( mem_fetch_interface *icnt,
+                      shader_core_mem_fetch_allocator *mf_allocator,
+                      shader_core_ctx *core, 
+                      opndcoll_rfu_t *operand_collector,
+                      Scoreboard *scoreboard,
+                      const shader_core_config *config,
+                      const memory_config *mem_config,  
+                      shader_core_stats *stats,
+                      unsigned sid,
+                      unsigned tpc,
+                      l1_cache* new_l1d_cache )
+    : pipelined_simd_unit(NULL,config,3,core), m_L1D(new_l1d_cache), m_next_wb(config)
+{
+    init( icnt,
+          mf_allocator,
+          core, 
+          operand_collector,
+          scoreboard,
+          config, 
+          mem_config,  
+          stats, 
+          sid,
+          tpc );
 }
 
 void ldst_unit:: issue( register_set &reg_set )
