@@ -77,7 +77,7 @@ dram_t::dram_t( unsigned int partition_id, const struct memory_config *config, m
    prio = 0;  
    rwq = new fifo_pipeline<dram_req_t>("rwq",m_config->CL,m_config->CL+1);
    mrqq = new fifo_pipeline<dram_req_t>("mrqq",0,2);
-   returnq = new fifo_pipeline<mem_fetch>("dramreturnq",0,m_config->gpgpu_dram_sched_queue_size); 
+   returnq = new fifo_pipeline<mem_fetch>("dramreturnq",0,m_config->gpgpu_dram_return_queue_size==0?1024:m_config->gpgpu_dram_return_queue_size); 
    m_frfcfs_scheduler = NULL;
    if ( m_config->scheduler_type == DRAM_FRFCFS )
       m_frfcfs_scheduler = new frfcfs_scheduler(m_config,this,stats);
@@ -117,12 +117,11 @@ dram_t::dram_t( unsigned int partition_id, const struct memory_config *config, m
 
 bool dram_t::full() const 
 {
-   if( m_config->gpgpu_dram_sched_queue_size == 0 ) 
-       return false;
-   if( m_config->scheduler_type == DRAM_FRFCFS ) 
-       return m_frfcfs_scheduler->num_pending() >= m_config->gpgpu_dram_sched_queue_size;
-   else 
-       return mrqq->full();
+    if(m_config->scheduler_type == DRAM_FRFCFS ){
+        if(m_config->gpgpu_frfcfs_dram_sched_queue_size == 0 ) return false;
+        return m_frfcfs_scheduler->num_pending() >= m_config->gpgpu_frfcfs_dram_sched_queue_size;
+    }
+   else return mrqq->full();
 }
 
 unsigned dram_t::que_length() const
@@ -143,7 +142,7 @@ bool dram_t::returnq_full() const
 
 unsigned int dram_t::queue_limit() const 
 { 
-   return m_config->gpgpu_dram_sched_queue_size; 
+   return m_config->gpgpu_frfcfs_dram_sched_queue_size; 
 }
 
 
@@ -448,7 +447,8 @@ void dram_t::print( FILE* simFile) const
    fprintf(simFile, "\ndram_eff_bins:");
    for (i=0;i<10;i++) fprintf(simFile, " %d", dram_eff_bins[i]);
    fprintf(simFile, "\n");
-   fprintf(simFile, "mrqq: max=%d avg=%g\n", max_mrqs, (float)ave_mrqs/n_cmd);
+   if(m_config->scheduler_type== DRAM_FRFCFS) 
+       fprintf(simFile, "mrqq: max=%d avg=%g\n", max_mrqs, (float)ave_mrqs/n_cmd);
 }
 
 void dram_t::visualize() const
