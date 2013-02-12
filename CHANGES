@@ -3,6 +3,9 @@ Version 3.2.0+edits (development branch) versus 3.2.0
 - Added kernel name and launch uids to performance statistics log.
 - Added l2_cache_config class to extend baseline cache_config. Allows for custom,
   L2 cache specific functions (such as tag/set index generation functions).  
+- For clarity, renaming '-gpgpu_dram_sched_queue_size' to '-gpgpu_frfcfs_dram_sched_queue_size'.
+- Print the max and the average queue size statistics for FRFCFS scheduling only.
+- New gpgpu_dram_return_queue_size option, which specifies the size of the return queue from the DRAM. 
 - Bug Fixes:
     - Applied patch from Kito Cheng to update libopencl for checking NULL error
       code pointer. 
@@ -13,9 +16,6 @@ Version 3.2.0+edits (development branch) versus 3.2.0
       both the cache set index generation and for storing tag/block address. 
       Caused writebacks from the L2 to have a different address than the original 
       memory request.    
-    - For the clarity of the simulator might be improved by the following changes:
-      1. Renaming '-gpgpu_dram_sched_queue_size' to '-gpgpu_frfcfs_dram_sched_queue_size'
-      2. Updating the output not print out max and avg size statistics for the DRAM access scheduler queue if it is a FIFO. 
 
 Version 3.2.0 versus 3.1.2
 - Added GPUWattch GPGPU power model based on McPAT 0.8beta. 
