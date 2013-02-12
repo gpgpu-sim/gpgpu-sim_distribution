@@ -94,8 +94,8 @@ memory_stats_t::memory_stats_t( unsigned n_shader, const struct shader_core_conf
    bankreads = (unsigned int***) calloc(n_shader, sizeof(unsigned int**));
    bankwrites = (unsigned int***) calloc(n_shader, sizeof(unsigned int**));
    num_MCBs_accessed = (unsigned int*) calloc(mem_config->m_n_mem*mem_config->nbk, sizeof(unsigned int));
-   if (mem_config->gpgpu_dram_sched_queue_size) {
-      position_of_mrq_chosen = (unsigned int*) calloc(mem_config->gpgpu_dram_sched_queue_size, sizeof(unsigned int));
+   if (mem_config->gpgpu_frfcfs_dram_sched_queue_size) {
+      position_of_mrq_chosen = (unsigned int*) calloc(mem_config->gpgpu_frfcfs_dram_sched_queue_size, sizeof(unsigned int));
    } else
       position_of_mrq_chosen = (unsigned int*) calloc(1024, sizeof(unsigned int));
    for (i=0;i<n_shader ;i++ ) {
@@ -449,10 +449,10 @@ void memory_stats_t::memlatstat_print( unsigned n_mem, unsigned gpu_mem_n_bk )
 
       printf("\nposition of mrq chosen\n");
 
-      if (!m_memory_config->gpgpu_dram_sched_queue_size)
+      if (!m_memory_config->gpgpu_frfcfs_dram_sched_queue_size)
          j = 1024;
       else
-         j = m_memory_config->gpgpu_dram_sched_queue_size;
+         j = m_memory_config->gpgpu_frfcfs_dram_sched_queue_size;
       k=0;l=0;
       for (i=0;i< j; i++ ) {
          printf("%d\t", position_of_mrq_chosen[i]);

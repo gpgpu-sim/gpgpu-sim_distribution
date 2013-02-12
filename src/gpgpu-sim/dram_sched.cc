@@ -129,7 +129,7 @@ void dram_t::scheduler_frfcfs()
 {
    unsigned mrq_latency;
    frfcfs_scheduler *sched = m_frfcfs_scheduler;
-   while ( !mrqq->empty() && (!m_config->gpgpu_dram_sched_queue_size || sched->num_pending() < m_config->gpgpu_dram_sched_queue_size)) {
+   while ( !mrqq->empty() && (!m_config->gpgpu_frfcfs_dram_sched_queue_size || sched->num_pending() < m_config->gpgpu_frfcfs_dram_sched_queue_size)) {
       dram_req_t *req = mrqq->pop();
 
       // Power stats

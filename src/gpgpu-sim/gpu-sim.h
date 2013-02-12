@@ -215,7 +215,8 @@ struct memory_config {
    char *gpgpu_dram_timing_opt;
    char *gpgpu_L2_queue_config;
    bool l2_ideal;
-   unsigned gpgpu_dram_sched_queue_size;
+   unsigned gpgpu_frfcfs_dram_sched_queue_size;
+   unsigned gpgpu_dram_return_queue_size;
    enum dram_ctrl_t scheduler_type;
    bool gpgpu_memlatency_stat;
    unsigned m_n_mem;
@@ -327,7 +328,7 @@ private:
     bool  gpgpu_flush_l1_cache;
     bool  gpgpu_flush_l2_cache;
     bool  gpu_deadlock_detect;
-    int   gpgpu_dram_sched_queue_size; 
+    int   gpgpu_frfcfs_dram_sched_queue_size; 
     int   gpgpu_cflog_interval;
     char * gpgpu_clock_domains;
     unsigned max_concurrent_kernel;
