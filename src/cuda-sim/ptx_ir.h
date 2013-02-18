@@ -369,6 +369,8 @@ public:
          m_type = symbolic_t;
       } else if ( addr->is_func_addr() ) {
          m_type = symbolic_t;
+      } else if ( !addr->is_reg() ) {
+         m_type = symbolic_t;
       } else {
          m_type = reg_t;
       }
