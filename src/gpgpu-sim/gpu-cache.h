@@ -179,6 +179,19 @@ public:
         default: exit_parse_error();
         }
 
+        // detect invalid configuration 
+        if (m_alloc_policy == ON_FILL and m_write_policy == WRITE_BACK) {
+            // A writeback cache with allocate-on-fill policy will inevitably lead to deadlock:  
+            // The deadlock happens when an incoming cache-fill evicts a dirty
+            // line, generating a writeback request.  If the memory subsystem
+            // is congested, the interconnection network may not have
+            // sufficient buffer for the writeback request.  This stalls the
+            // incoming cache-fill.  The stall may propagate through the memory
+            // subsystem back to the output port of the same core, creating a
+            // deadlock where the wrtieback request and the incoming cache-fill
+            // are stalling each other.  
+            assert(0 && "Invalid cache configuration: Writeback cache cannot allocate new line on fill. "); 
+        }
     }
     bool disabled() const { return m_disabled;}
     unsigned get_line_sz() const
