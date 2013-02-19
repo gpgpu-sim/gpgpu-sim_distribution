@@ -11,6 +11,12 @@ Version 3.2.0+edits (development branch) versus 3.2.0
   have the same warp_id but different dynamic_warp_ids.
 - Added extensions to the cache class hierarchy to allow for the use of custom tag_array objects.
 - Added some additional const-correctness
+- Added a check in cache_config to prevent configuration that specifies a
+  writeback cache with allocation-on-fill policy.  The current implementation
+  of the allocation-on-fill policy assumes a non-writeback cache and never
+  generates any writeback traffic.  Even if the writeback traffic is generated,
+  the configuration (writeback cache + allocation-on-fill) will inevitably lead
+  to deadlock.  
 - Bug Fixes:
     - Applied patch from Kito Cheng to update libopencl for checking NULL error
       code pointer. 
