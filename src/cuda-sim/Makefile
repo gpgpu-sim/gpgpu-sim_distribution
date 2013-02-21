@@ -30,6 +30,7 @@ default: libgpgpu_ptx_sim.a
  
 INTEL=0
 DEBUG?=0
+TRACE?=0
 
 CPP = g++ $(SNOW)
 CC = gcc $(SNOW)
@@ -46,6 +47,10 @@ ifeq ($(DEBUG),1)
 endif
 OPT += -I$(CUDA_INSTALL_PATH)/include 
 OPT += -fPIC 
+
+ifeq ($(TRACE),1)
+	OPT += -DTRACING_ON=1
+endif
 
 CXX_OPT = $(OPT)
 ifeq ($(INTEL),1)

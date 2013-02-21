@@ -37,6 +37,8 @@ else
 	export DEBUG=0
 endif
 
+export TRACE?=1
+
 NVCC_PATH=$(shellwhich nvcc)
 ifneq ($(shell which nvcc), "")
 	ifeq ($(DEBUG), 1)

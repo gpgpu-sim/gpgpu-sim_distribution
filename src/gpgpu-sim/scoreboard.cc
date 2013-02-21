@@ -28,6 +28,7 @@
 #include "scoreboard.h"
 #include "shader.h"
 #include "../cuda-sim/ptx_sim.h"
+#include "shader_trace.h"
 
 
 //Constructor
@@ -60,6 +61,8 @@ void Scoreboard::reserveRegister(unsigned wid, unsigned regnum)
 		printf("Error: trying to reserve an already reserved register (sid=%d, wid=%d, regnum=%d).", m_sid, wid, regnum);
         abort();
 	}
+    SHADER_DPRINTF( SCOREBOARD,
+                    "Reserved Register - warp:%d, reg: %d\n", wid, regnum );
 	reg_table[wid].insert(regnum);
 }
 
@@ -68,6 +71,8 @@ void Scoreboard::releaseRegister(unsigned wid, unsigned regnum)
 {
 	if( !(reg_table[wid].find(regnum) != reg_table[wid].end()) ) 
         return;
+    SHADER_DPRINTF( SCOREBOARD,
+                    "Release register - warp:%d, reg: %d\n", wid, regnum );
 	reg_table[wid].erase(regnum);
 }
 
@@ -77,16 +82,32 @@ const bool Scoreboard::islongop (unsigned warp_id,unsigned regnum) {
 
 void Scoreboard::reserveRegisters(const class warp_inst_t* inst) 
 {
-    for( unsigned r=0; r < 4; r++) 
-        if(inst->out[r] > 0) reserveRegister(inst->warp_id(), inst->out[r]);
+    for( unsigned r=0; r < 4; r++) {
+        if(inst->out[r] > 0) {
+            reserveRegister(inst->warp_id(), inst->out[r]);
+            SHADER_DPRINTF( SCOREBOARD,
+                            "Reserved register - warp:%d, reg: %d\n",
+                            inst->warp_id(),
+                            inst->out[r] );
+        }
+    }
 
     //Keep track of long operations
     if (inst->is_load() &&
     		(	inst->space.get_type() == global_space ||
     			inst->space.get_type() == local_space ||
+                inst->space.get_type() == param_space_kernel ||
+                inst->space.get_type() == param_space_local ||
+                inst->space.get_type() == param_space_unclassified ||
     			inst->space.get_type() == tex_space)){
     	for ( unsigned r=0; r<4; r++) {
-    		if(inst->out[r] > 0) longopregs[inst->warp_id()].insert(r);
+    		if(inst->out[r] > 0) {
+                SHADER_DPRINTF( SCOREBOARD,
+                                "New longopreg marked - warp:%d, reg: %d\n",
+                                inst->warp_id(),
+                                inst->out[r] );
+                longopregs[inst->warp_id()].insert(inst->out[r]);
+            }
     	}
     }
 }
@@ -94,9 +115,16 @@ void Scoreboard::reserveRegisters(const class warp_inst_t* inst)
 // Release registers for an instruction
 void Scoreboard::releaseRegisters(const class warp_inst_t *inst) 
 {
-    for( unsigned r=0; r < 4; r++) 
-        if(inst->out[r] > 0) releaseRegister(inst->warp_id(), inst->out[r]);
-    longopregs[inst->warp_id()].clear();
+    for( unsigned r=0; r < 4; r++) {
+        if(inst->out[r] > 0) {
+            SHADER_DPRINTF( SCOREBOARD,
+                            "Register Released - warp:%d, reg: %d\n",
+                            inst->warp_id(),
+                            inst->out[r] );
+            releaseRegister(inst->warp_id(), inst->out[r]);
+            longopregs[inst->warp_id()].erase(inst->out[r]);
+        }
+    }
 }
 
 /** 

@@ -30,6 +30,7 @@
 
 #include "../option_parser.h"
 #include "../abstract_hardware_model.h"
+#include "../trace.h"
 #include "addrdec.h"
 #include "shader.h"
 #include <iostream>
@@ -280,6 +281,7 @@ public:
         m_memory_config.init();
         init_clock_domains(); 
         power_config::init();
+        Trace::init();
 
 
         // initialize file name if it is not set 
@@ -416,6 +418,7 @@ private:
    void L2c_print_cache_stat() const;
    void shader_print_runtime_stat( FILE *fout );
    void shader_print_l1_miss_stat( FILE *fout ) const;
+   void shader_print_scheduler_stat( FILE* fout, bool print_dynamic_info ) const;
    void visualizer_printstat();
    void print_shader_cycle_distro( FILE *fout ) const;
 

@@ -35,8 +35,11 @@
 #include <list>
 #include <assert.h>
 #include <algorithm>
+#include "assert.h"
 
 #include "cuda-sim.h"
+
+#define STR_SIZE 1024
 
 unsigned symbol::sm_next_uid = 1;
 
@@ -1188,14 +1191,26 @@ void ptx_instruction::print_insn() const
 
 void ptx_instruction::print_insn( FILE *fp ) const
 {
-   char buf[1024], *p;
-   snprintf(buf,1024,"%s", m_source.c_str());
-   p = strtok(buf,";");
-   if( !is_label() ) 
-      fprintf(fp," PC=0x%03x ", m_PC );
-   else
-      fprintf(fp,"                " );
-   fprintf(fp,"(%s:%u) %s", m_source_file.c_str(), m_source_line, p );
+    fprintf( fp, to_string().c_str() );
+}
+
+std::string ptx_instruction::to_string() const
+{
+   std::string result( m_source );
+   unsigned semi_c_pos = result.find(";");
+   assert( semi_c_pos != std::string::npos );
+   if( !is_label() ) {
+      char buf[ STR_SIZE ];
+      buf[ STR_SIZE - 1 ] = '\0';
+      snprintf( buf, STR_SIZE, " PC=0x%03x ", m_PC );
+      result += std::string( buf );
+   } else
+      result += std::string("                ");
+   char buf[STR_SIZE];
+   buf[STR_SIZE - 1] = '\0';
+   snprintf( buf, STR_SIZE,
+            "(%s:%d) %s", m_source_file.c_str(), m_source_line, m_source.c_str() + semi_c_pos );
+   return result;
 }
 
 unsigned function_info::sm_next_uid = 1;
@@ -1238,6 +1253,26 @@ unsigned function_info::print_insn( unsigned pc, FILE * fp ) const
    }
    pclose(p);
    return inst_size;
+}
+
+std::string function_info::get_insn_str( unsigned pc ) const
+{
+   unsigned index = pc - m_start_PC;
+   if ( index >= m_instr_mem_size ) {
+      char buff[STR_SIZE];
+      buff[STR_SIZE-1] = '\0';
+      snprintf(buff, STR_SIZE, "<past last instruction (max pc=%u)>", m_start_PC + m_instr_mem_size - 1 );
+      return std::string(buff);
+   } else {
+      if ( m_instr_mem[index] != NULL ) {
+         return m_instr_mem[index]->to_string();
+      } else {
+         char buff[STR_SIZE];
+         buff[STR_SIZE-1] = '\0';
+         snprintf(buff, STR_SIZE, "<no instruction at pc = %u>", pc );
+         return std::string(buff);
+      }
+   }
 }
 
 void gpgpu_ptx_assemble( std::string kname, void *kinfo )

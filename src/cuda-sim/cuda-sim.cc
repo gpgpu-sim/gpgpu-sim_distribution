@@ -450,6 +450,22 @@ void ptx_print_insn( address_type pc, FILE *fp )
    assert( finfo );
    finfo->print_insn(pc,fp);
 }
+
+std::string ptx_get_insn_str( address_type pc )
+{
+   std::map<unsigned,function_info*>::iterator f = g_pc_to_finfo.find(pc);
+   if( f == g_pc_to_finfo.end() ) {
+       #define STR_SIZE 255
+       char buff[STR_SIZE];
+       buff[STR_SIZE - 1] = '\0';
+       snprintf(buff, STR_SIZE,"<no instruction at address 0x%x>", pc );
+       return std::string(buff);
+   }
+   function_info *finfo = f->second;
+   assert( finfo );
+   return finfo->get_insn_str(pc);
+}
+
 void ptx_instruction::set_fp_or_int_archop(){
 	op2=UN_OP;
 	if((m_opcode == MEMBAR_OP)||(m_opcode == SSY_OP )||(m_opcode == BRA_OP) || (m_opcode == BAR_OP) || (m_opcode == RET_OP) || (m_opcode == RETP_OP) || (m_opcode == NOP_OP) || (m_opcode == EXIT_OP) || (m_opcode == CALLP_OP) || (m_opcode == CALL_OP)){

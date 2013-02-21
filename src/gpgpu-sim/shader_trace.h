@@ -1,4 +1,5 @@
-// Copyright (c) 2009-2011, Tor M. Aamodt, Inderpreet Singh
+// Copyright (c) 2009-2011, Tor M. Aamodt, Tim Rogers
+// George L. Yuan, Andrew Turner, Inderpreet Singh 
 // The University of British Columbia
 // All rights reserved.
 //
@@ -25,41 +26,49 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <vector>
-#include <set>
-#include "assert.h"
+#ifndef __SHADER_TRACE_H__
+#define __SHADER_TRACE_H__
 
-#ifndef SCOREBOARD_H_
-#define SCOREBOARD_H_
-
-#include "../abstract_hardware_model.h"
-
-class Scoreboard {
-public:
-    Scoreboard( unsigned sid, unsigned n_warps );
-
-    void reserveRegisters(const warp_inst_t *inst);
-    void releaseRegisters(const warp_inst_t *inst);
-    void releaseRegister(unsigned wid, unsigned regnum);
-
-    bool checkCollision(unsigned wid, const inst_t *inst) const;
-    bool pendingWrites(unsigned wid) const;
-    void printContents() const;
-    const bool islongop(unsigned warp_id, unsigned regnum);
-private:
-    void reserveRegister(unsigned wid, unsigned regnum);
-    int get_sid() const { return m_sid; }
-
-    unsigned m_sid;
-
-    // keeps track of pending writes to registers
-    // indexed by warp id, reg_id => pending write count
-    std::vector< std::set<unsigned> > reg_table;
-    //Register that depend on a long operation (global, local or tex memory)
-    std::vector< std::set<unsigned> > longopregs;
-};
+#include "../trace.h"
 
 
-#endif /* SCOREBOARD_H_ */
+#if TRACING_ON
+
+#define SHADER_PRINT_STR SIM_PRINT_STR "Core %d - "
+#define SCHED_PRINT_STR SHADER_PRINT_STR "Scheduler %d - "
+#define SHADER_DTRACE(x)  (DTRACE(x) && Trace::sampling_core == get_sid())
+
+// Intended to be called from inside components of a shader core.
+// Depends on a get_sid() function
+#define SHADER_DPRINTF(x, ...) do {\
+    if (SHADER_DTRACE(x)) {\
+        printf( SHADER_PRINT_STR,\
+                gpu_sim_cycle + gpu_tot_sim_cycle,\
+                Trace::trace_streams_str[Trace::x],\
+                get_sid() );\
+        printf(__VA_ARGS__);\
+    }\
+} while (0)
+
+// Intended to be called from inside a scheduler_unit.
+// Depends on a m_id member
+#define SCHED_DPRINTF(...) do {\
+    if (SHADER_DTRACE(WARP_SCHEDULER)) {\
+        printf( SCHED_PRINT_STR,\
+                gpu_sim_cycle + gpu_tot_sim_cycle,\
+                Trace::trace_streams_str[Trace::WARP_SCHEDULER],\
+                get_sid(),\
+                m_id );\
+        printf(__VA_ARGS__);\
+    }\
+} while (0)
+
+#else
+
+#define SHADER_DTRACE(x)  (false)
+#define SHADER_DPRINTF(x, ...) do {} while (0)
+#define SCHED_DPRINTF(x, ...) do {} while (0)
+
+#endif
+
+#endif

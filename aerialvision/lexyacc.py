@@ -176,6 +176,8 @@ def parseMe(filename):
         'LDmemlatdist':vc.variable('', 3, 0, 'stackbar'), 
         'STmemlatdist':vc.variable('', 3, 0, 'stackbar'), 
         'WarpDivergenceBreakdown':vc.variable('', 3, 0, 'stackbar'), 
+        'WarpIssueSlotBreakdown':vc.variable('', 3, 0, 'stackbar'), 
+        'WarpIssueDynamicIdBreakdown':vc.variable('', 3, 0, 'stackbar'), 
         'dram_writes_per_cycle':vc.variable('', 1, 0, 'scalar', float),
         'dram_reads_per_cycle' :vc.variable('', 1, 0, 'scalar', float),
         'gpu_stall_by_MSHRwb':vc.variable('', 1, 0, 'scalar'),

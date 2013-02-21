@@ -1049,6 +1049,19 @@ class graphManager:
                 Legendname.append('W' + `4*(c-2)+1` +  ':' + `4*(c-1)`)
             BarSequence = range(0,numRows)
 
+        if yAxis == 'WarpIssueSlotBreakdown':
+            Legendname = []
+            for c in range(0, numRows):
+                Legendname.append('W' + `c`)
+            BarSequence = range(0,numRows)
+
+        dynamic_warp_resolution = 32
+        if yAxis == 'WarpIssueDynamicIdBreakdown':
+            Legendname = []
+            for c in range(0, numRows):
+                Legendname.append('W' + `dynamic_warp_resolution*c` + ":" + `dynamic_warp_resolution*(c+1)`)
+            BarSequence = range(0,numRows)
+
         yoff_max = numpy.array([0.0] * numCols)
         for row in range(numRows-1,-1,-1):
             yoff_max += y[row]

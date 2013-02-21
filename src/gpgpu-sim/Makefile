@@ -29,6 +29,7 @@
 # GPGPU-Sim Makefile
 
 DEBUG?=0
+TRACE?=0
 
 ifeq ($(DEBUG),1)
 	CXXFLAGS = -Wall -DDEBUG
@@ -36,6 +37,10 @@ ifeq ($(DEBUG),1)
 else
 	CXXFLAGS = -Wall
 	CXXFLAGS_L2CACHE = -Wall
+endif
+
+ifeq ($(TRACE),1)
+	CXXFLAGS += -DTRACING_ON=1
 endif
 
 include ../../version_detection.mk
