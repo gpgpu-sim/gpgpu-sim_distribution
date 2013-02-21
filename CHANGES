@@ -17,6 +17,13 @@ Version 3.2.0+edits (development branch) versus 3.2.0
   generates any writeback traffic.  Even if the writeback traffic is generated,
   the configuration (writeback cache + allocation-on-fill) will inevitably lead
   to deadlock.  
+- Added the ability plot stats with an increasing number of data points in aerielvision
+- Added aerialvision support for profiling which warps issue on a sampling shader
+- Added DPRINTF support to gpgpusim. Allows for dynamically enabled print streams.
+  Currently the warp scheduler and scoreboard use this system. All prints should be moved
+  to use it.
+- Added support in ptx_instruction to return a std::string which returns the ptx/ptxplus line.
+- Added a Greedy Then Oldest (GTO) warp scheduler.
 - Bug Fixes:
     - Applied patch from Kito Cheng to update libopencl for checking NULL error
       code pointer. 
@@ -31,6 +38,8 @@ Version 3.2.0+edits (development branch) versus 3.2.0
     - Fixed a delete [] problem.
     - Fixed a potential issue memsetting *this to 0.
     - Fix for Bug 42 - ptx parse failure on valid ptx file (Alexander Samoilov)
+    - Fixed the implementation of the two level scheduler.
+      Previously testing if an instruction was dependent on a long latency operation was broken.
 
 Version 3.2.0 versus 3.1.2
 - Added GPUWattch GPGPU power model based on McPAT 0.8beta. 
