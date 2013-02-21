@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2011, Tor M. Aamodt, Inderpreet Singh
+// Copyright (c) 2009-2013, Tor M. Aamodt, Timothy Rogers,
 // The University of British Columbia
 // All rights reserved.
 //
@@ -25,41 +25,31 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <vector>
-#include <set>
-#include "assert.h"
+#include "trace.h"
+#include "string.h"
 
-#ifndef SCOREBOARD_H_
-#define SCOREBOARD_H_
-
-#include "../abstract_hardware_model.h"
-
-class Scoreboard {
-public:
-    Scoreboard( unsigned sid, unsigned n_warps );
-
-    void reserveRegisters(const warp_inst_t *inst);
-    void releaseRegisters(const warp_inst_t *inst);
-    void releaseRegister(unsigned wid, unsigned regnum);
-
-    bool checkCollision(unsigned wid, const inst_t *inst) const;
-    bool pendingWrites(unsigned wid) const;
-    void printContents() const;
-    const bool islongop(unsigned warp_id, unsigned regnum);
-private:
-    void reserveRegister(unsigned wid, unsigned regnum);
-    int get_sid() const { return m_sid; }
-
-    unsigned m_sid;
-
-    // keeps track of pending writes to registers
-    // indexed by warp id, reg_id => pending write count
-    std::vector< std::set<unsigned> > reg_table;
-    //Register that depend on a long operation (global, local or tex memory)
-    std::vector< std::set<unsigned> > longopregs;
-};
+namespace Trace {
 
 
-#endif /* SCOREBOARD_H_ */
+#define TS_TUP_BEGIN(X) const char* trace_streams_str[] = {
+#define TS_TUP(X) #X
+#define TS_TUP_END(X) };
+#include "trace_streams.tup"
+#undef TS_TUP_BEGIN
+#undef TS_TUP
+#undef TS_TUP_END
+
+    bool enabled = false;
+    int sampling_core = 0;
+    bool trace_streams_enabled[NUM_TRACE_STREAMS] = {false};
+    const char* config_str;
+
+    void init()
+    {
+        for ( unsigned i = 0; i < NUM_TRACE_STREAMS; ++i ) {
+            if ( strstr( config_str, trace_streams_str[i] ) != NULL ) {
+                trace_streams_enabled[ i ] = true;
+            }
+        }
+    }
+} 

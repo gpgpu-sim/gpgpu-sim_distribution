@@ -57,6 +57,7 @@
 #include "../debug.h"
 #include "../gpgpusim_entrypoint.h"
 #include "../cuda-sim/cuda-sim.h"
+#include "../trace.h"
 #include "mem_latency_stat.h"
 #include "power_stat.h"
 #include "visualizer.h"
@@ -260,6 +261,9 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_warpdistro_shader", OPT_INT32, &gpgpu_warpdistro_shader, 
                 "Specify which shader core to collect the warp size distribution from", 
                 "-1");
+    option_parser_register(opp, "-gpgpu_warp_issue_shader", OPT_INT32, &gpgpu_warp_issue_shader, 
+                "Specify which shader core to collect the warp issue distribution from", 
+                "0");
     option_parser_register(opp, "-gpgpu_local_mem_map", OPT_BOOL, &gpgpu_local_mem_map, 
                 "Mapping from local memory space address to simulated GPU physical address space (default = enabled)", 
                 "1");
@@ -331,8 +335,11 @@ void shader_core_config::reg_options(class OptionParser * opp)
                             "Number if ldst units (default=1) WARNING: not hooked up to anything",
                              "1");
     option_parser_register(opp, "-gpgpu_scheduler", OPT_CSTR, &gpgpu_scheduler_string,
-                                "Scheduler configuration: lrr|tl:num_active_warps default: lrr",
-                                 "lrr");
+                                "Scheduler configuration: < lrr | gto | two_level_active > "
+                                "If two_level_active:<num_active_warps>:<inner_prioritization>:<outer_prioritization>"
+                                "For complete list of prioritization values see shader.h enum scheduler_prioritization_type"
+                                "Default: gto",
+                                 "gto");
 }
 
 void gpgpu_sim_config::reg_options(option_parser_t opp)
@@ -387,6 +394,17 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
    option_parser_register(opp, "-visualizer_zlevel", OPT_INT32,
                           &g_visualizer_zlevel, "Compression level of the visualizer output log (0=no comp, 9=highest)",
                           "6");
+    option_parser_register(opp, "-trace_enabled", OPT_BOOL, 
+                          &Trace::enabled, "Turn on traces",
+                          "0");
+    option_parser_register(opp, "-trace_components", OPT_CSTR, 
+                          &Trace::config_str, "comma seperated list of traces to enable. "
+                          "Complete list found in trace_streams.tup. "
+                          "Default none",
+                          "none");
+    option_parser_register(opp, "-trace_sampling_core", OPT_INT32, 
+                          &Trace::sampling_core, "The core which is printed using CORE_DPRINTF. Default 0",
+                          "0");
    ptx_file_line_stats_options(opp);
 }
 
@@ -770,6 +788,7 @@ void gpgpu_sim::gpu_print_stat()
    printf( "gpu_total_sim_rate=%u\n", (unsigned)( ( gpu_tot_sim_insn + gpu_sim_insn ) / elapsed_time ) );
 
    shader_print_l1_miss_stat( stdout );
+   shader_print_scheduler_stat( stdout, true );
 
    m_shader_stats->print(stdout);
 #ifdef GPGPUSIM_POWER_MODEL
@@ -1141,6 +1160,8 @@ void gpgpu_sim::cycle()
                shader_print_runtime_stat( stdout );
             if (m_config.gpu_runtime_stat_flag & GPU_RSTAT_L1MISS) 
                shader_print_l1_miss_stat( stdout );
+            if (m_config.gpu_runtime_stat_flag & GPU_RSTAT_SCHED) 
+               shader_print_scheduler_stat( stdout, false );
          }
       }
 

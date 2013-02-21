@@ -193,12 +193,12 @@ def nullOrganizedShader(nullVar, datatype_c):
     organized = []
     
     #determining how many shader cores are present
-    for x in nullVar:
+    for x in reversed(nullVar):
         if x != 'NULL':
             count += 1
-        else:
-            numPlots = count
+        elif count != 0:
             break
+    numPlots = count
     count = 0
     
     #initializing 2D list
@@ -208,6 +208,9 @@ def nullOrganizedShader(nullVar, datatype_c):
     #filling up list appropriately
     for x in range(0,(len(nullVar))):
         if nullVar[x] == 'NULL':
+            while count < numPlots:
+                organized[count].append(0)
+                count += 1
             count=0
         else:
             organized[count].append(nullVar[x])

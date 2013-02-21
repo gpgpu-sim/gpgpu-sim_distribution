@@ -786,6 +786,7 @@ public:
 
    void print_insn() const;
    virtual void print_insn( FILE *fp ) const;
+   std::string to_string() const;
    unsigned inst_size() const { return m_inst_size; }
    unsigned uid() const { return m_uid;}
    int get_opcode() const { return m_opcode;}
@@ -1052,6 +1053,7 @@ public:
       return m_name;
    }
    unsigned print_insn( unsigned pc, FILE * fp ) const;
+    std::string get_insn_str( unsigned pc ) const;
    void add_inst( const std::list<ptx_instruction*> &instructions )
    {
       m_instructions = instructions;

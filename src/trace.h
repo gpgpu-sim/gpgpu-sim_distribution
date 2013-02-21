@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2011, Tor M. Aamodt, Inderpreet Singh
+// Copyright (c) 2009-2013, Tor M. Aamodt, Timothy Rogers,
 // The University of British Columbia
 // All rights reserved.
 //
@@ -25,41 +25,55 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <vector>
-#include <set>
-#include "assert.h"
+// This file is inspired by the trace system in gem5.
+// This is a highly simplified version adpated for gpgpusim
 
-#ifndef SCOREBOARD_H_
-#define SCOREBOARD_H_
+#ifndef __TRACE_H__
+#define __TRACE_H__
 
-#include "../abstract_hardware_model.h"
+extern unsigned long long  gpu_sim_cycle;
+extern unsigned long long  gpu_tot_sim_cycle;
 
-class Scoreboard {
-public:
-    Scoreboard( unsigned sid, unsigned n_warps );
+namespace Trace {
 
-    void reserveRegisters(const warp_inst_t *inst);
-    void releaseRegisters(const warp_inst_t *inst);
-    void releaseRegister(unsigned wid, unsigned regnum);
+#define TS_TUP_BEGIN(X) enum X {
+#define TS_TUP(X) X
+#define TS_TUP_END(X) };
+#include "trace_streams.tup"
+#undef TS_TUP_BEGIN
+#undef TS_TUP
+#undef TS_TUP_END
 
-    bool checkCollision(unsigned wid, const inst_t *inst) const;
-    bool pendingWrites(unsigned wid) const;
-    void printContents() const;
-    const bool islongop(unsigned warp_id, unsigned regnum);
-private:
-    void reserveRegister(unsigned wid, unsigned regnum);
-    int get_sid() const { return m_sid; }
+    extern bool enabled;
+    extern int sampling_core;
+    extern const char* trace_streams_str[];
+    extern bool trace_streams_enabled[NUM_TRACE_STREAMS];
+    extern const char* config_str;
 
-    unsigned m_sid;
+    void init();
 
-    // keeps track of pending writes to registers
-    // indexed by warp id, reg_id => pending write count
-    std::vector< std::set<unsigned> > reg_table;
-    //Register that depend on a long operation (global, local or tex memory)
-    std::vector< std::set<unsigned> > longopregs;
-};
+} // namespace Trace
 
 
-#endif /* SCOREBOARD_H_ */
+#if TRACING_ON
+
+#define SIM_PRINT_STR "GPGPU-Sim Cycle %llu: %s - "
+#define DTRACE(x) ((Trace::trace_streams_enabled[Trace::x]) && Trace::enabled)
+#define DPRINTF(x, ...) do {\
+    if (DTRACE(x)) {\
+        printf( SIM_PRINT_STR,\
+                gpu_sim_cycle + gpu_tot_sim_cycle,\
+                Trace::trace_streams_str[Trace::x] );\
+        printf(__VA_ARGS__);\
+    }\
+} while (0)
+
+
+#else 
+
+#define DTRACE(x) (false)
+#define DPRINTF(x, ...) do {} while (0)
+
+#endif  
+
+#endif 

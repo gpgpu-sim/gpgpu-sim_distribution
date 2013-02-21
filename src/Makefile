@@ -30,6 +30,7 @@
 # GPGPU-Sim Makefile
 
 DEBUG?=0
+TRACE?=1
 
 include ../version_detection.mk
 
@@ -38,6 +39,10 @@ CXXFLAGS += -DCUDART_VERSION=$(CUDART_VERSION)
 
 ifeq ($(GNUC_CPP0X), 1)
     CXXFLAGS += -std=c++0x
+endif
+
+ifeq ($(TRACE),1)
+	CXXFLAGS += -DTRACING_ON=1
 endif
 
 ifneq ($(DEBUG),1)

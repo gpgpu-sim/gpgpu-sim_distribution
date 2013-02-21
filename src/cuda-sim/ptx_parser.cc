@@ -74,7 +74,7 @@ std::list<operand_info> g_operands;
 std::list<int> g_options;
 std::list<int> g_scalar_type;
 
-#define DPRINTF(...) \
+#define PTX_PARSE_DPRINTF(...) \
    if( g_debug_ir_generation ) { \
       printf(" %s:%u => ",g_filename,ptx_lineno); \
       printf("   (%s:%u) ", __FILE__, __LINE__); \
@@ -126,7 +126,7 @@ symbol_table *init_parser( const char *ptx_filename )
 
 void init_directive_state()
 {
-   DPRINTF("init_directive_state");
+   PTX_PARSE_DPRINTF("init_directive_state");
    g_space_spec=undefined_space;
    g_ptr_spec=undefined_space;
    g_scalar_type_spec=-1;
@@ -141,7 +141,7 @@ void init_directive_state()
 
 void init_instruction_state()
 {
-   DPRINTF("init_instruction_state");
+   PTX_PARSE_DPRINTF("init_instruction_state");
    g_pred = NULL;
    g_neg_pred = 0;
    g_pred_mod = -1;
@@ -156,7 +156,7 @@ static int g_entry_point;
 
 void start_function( int entry_point ) 
 {
-   DPRINTF("start_function");
+   PTX_PARSE_DPRINTF("start_function");
    init_directive_state();
    init_instruction_state();
    g_entry_point = entry_point;
@@ -170,7 +170,7 @@ int g_add_identifier_cached__array_ident;
 
 void add_function_name( const char *name ) 
 {
-   DPRINTF("add_function_name %s %s", name,  ((g_entry_point==1)?"(entrypoint)":((g_entry_point==2)?"(extern)":"")));
+   PTX_PARSE_DPRINTF("add_function_name %s %s", name,  ((g_entry_point==1)?"(entrypoint)":((g_entry_point==2)?"(extern)":"")));
    bool prior_decl = g_global_symbol_table->add_function_decl( name, g_entry_point, &g_func_info, &g_current_symbol_table );
    if( g_add_identifier_cached__identifier ) {
       add_identifier( g_add_identifier_cached__identifier,
@@ -189,7 +189,7 @@ void add_function_name( const char *name )
 
 void add_directive() 
 {
-   DPRINTF("add_directive");
+   PTX_PARSE_DPRINTF("add_directive");
    init_directive_state();
 }
 
@@ -197,7 +197,7 @@ void add_directive()
 
 void end_function() 
 {
-   DPRINTF("end_function");
+   PTX_PARSE_DPRINTF("end_function");
 
    init_directive_state();
    init_instruction_state();
@@ -207,7 +207,7 @@ void end_function()
    gpgpu_ptx_assemble( g_func_info->get_name(), g_func_info );
    g_current_symbol_table = g_global_symbol_table;
 
-   DPRINTF("function %s, PC = %d\n", g_func_info->get_name().c_str(), g_func_info->get_start_PC());
+   PTX_PARSE_DPRINTF("function %s, PC = %d\n", g_func_info->get_name().c_str(), g_func_info->get_start_PC());
 }
 
 #define parse_error(msg, ...) parse_error_impl(__FILE__,__LINE__, msg, ##__VA_ARGS__)
@@ -265,7 +265,7 @@ const ptx_instruction *ptx_instruction_lookup( const char *filename, unsigned li
 
 void add_instruction() 
 {
-   DPRINTF("add_instruction: %s", ((g_opcode>0)?g_opcode_string[g_opcode]:"<label>") );
+   PTX_PARSE_DPRINTF("add_instruction: %s", ((g_opcode>0)?g_opcode_string[g_opcode]:"<label>") );
    assert( g_shader_core_config != 0 );
    ptx_instruction *i = new ptx_instruction( g_opcode, 
                                              g_pred, 
@@ -288,7 +288,7 @@ void add_instruction()
 
 void add_variables() 
 {
-   DPRINTF("add_variables");
+   PTX_PARSE_DPRINTF("add_variables");
    if ( !g_operands.empty() ) {
       assert( g_last_symbol != NULL ); 
       g_last_symbol->add_initializer(g_operands);
@@ -298,7 +298,7 @@ void add_variables()
 
 void set_variable_type()
 {
-   DPRINTF("set_variable_type space_spec=%s scalar_type_spec=%s", 
+   PTX_PARSE_DPRINTF("set_variable_type space_spec=%s scalar_type_spec=%s", 
            g_ptx_token_decode[g_space_spec.get_type()].c_str(), 
            g_ptx_token_decode[g_scalar_type_spec].c_str() );
    parse_assert( g_space_spec != undefined_space, "variable has no space specification" );
@@ -333,7 +333,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       g_add_identifier_cached__array_ident = array_ident;
       return;
    }
-   DPRINTF("add_identifier \"%s\" (%u)", identifier, g_ident_add_uid);
+   PTX_PARSE_DPRINTF("add_identifier \"%s\" (%u)", identifier, g_ident_add_uid);
    g_ident_add_uid++;
    type_info *type = g_var_type;
    type_info_key ti = type->get_key();
@@ -501,27 +501,27 @@ void add_constptr(const char* identifier1, const char* identifier2, int offset)
 void add_function_arg()
 {
    if( g_func_info ) {
-      DPRINTF("add_function_arg \"%s\"", g_last_symbol->name().c_str() );
+      PTX_PARSE_DPRINTF("add_function_arg \"%s\"", g_last_symbol->name().c_str() );
       g_func_info->add_arg(g_last_symbol);
    }
 }
 
 void add_extern_spec() 
 {
-   DPRINTF("add_extern_spec");
+   PTX_PARSE_DPRINTF("add_extern_spec");
    g_extern_spec = 1;
 }
 
 void add_alignment_spec( int spec )
 {
-   DPRINTF("add_alignment_spec");
+   PTX_PARSE_DPRINTF("add_alignment_spec");
    parse_assert( g_alignment_spec == -1, "multiple .align specifiers per variable declaration not allowed." );
    g_alignment_spec = spec;
 }
 
 void add_ptr_spec( enum _memory_space_t spec ) 
 {
-   DPRINTF("add_ptr_spec \"%s\"", g_ptx_token_decode[spec].c_str() );
+   PTX_PARSE_DPRINTF("add_ptr_spec \"%s\"", g_ptx_token_decode[spec].c_str() );
    parse_assert( g_ptr_spec == undefined_space, "multiple ptr space specifiers not allowed." );
    parse_assert( spec == global_space or spec == local_space or spec == shared_space, "invalid space for ptr directive." );
    g_ptr_spec = spec; 
@@ -529,7 +529,7 @@ void add_ptr_spec( enum _memory_space_t spec )
 
 void add_space_spec( enum _memory_space_t spec, int value ) 
 {
-   DPRINTF("add_space_spec \"%s\"", g_ptx_token_decode[spec].c_str() );
+   PTX_PARSE_DPRINTF("add_space_spec \"%s\"", g_ptx_token_decode[spec].c_str() );
    parse_assert( g_space_spec == undefined_space, "multiple space specifiers not allowed." );
    if( spec == param_space_unclassified ) {
       if( g_func_decl ) {
@@ -548,14 +548,14 @@ void add_space_spec( enum _memory_space_t spec, int value )
 
 void add_vector_spec(int spec ) 
 {
-   DPRINTF("add_vector_spec");
+   PTX_PARSE_DPRINTF("add_vector_spec");
    parse_assert( g_vector_spec == -1, "multiple vector specifiers not allowed." );
    g_vector_spec = spec;
 }
 
 void add_scalar_type_spec( int type_spec ) 
 {
-   DPRINTF("add_scalar_type_spec \"%s\"", g_ptx_token_decode[type_spec].c_str());
+   PTX_PARSE_DPRINTF("add_scalar_type_spec \"%s\"", g_ptx_token_decode[type_spec].c_str());
    g_scalar_type.push_back( type_spec );
    if ( g_scalar_type.size() > 1 ) {
       parse_assert( (g_opcode == -1) || (g_opcode == CVT_OP) || (g_opcode == SET_OP) || (g_opcode == SLCT_OP)
@@ -567,7 +567,7 @@ void add_scalar_type_spec( int type_spec )
 
 void add_label( const char *identifier ) 
 {
-   DPRINTF("add_label");
+   PTX_PARSE_DPRINTF("add_label");
    symbol *s = g_current_symbol_table->lookup(identifier);
    if ( s != NULL ) {
       g_label = s;
@@ -583,7 +583,7 @@ void add_opcode( int opcode )
 
 void add_pred( const char *identifier, int neg, int predModifier ) 
 {
-   DPRINTF("add_pred");
+   PTX_PARSE_DPRINTF("add_pred");
    const symbol *s = g_current_symbol_table->lookup(identifier);
    if ( s == NULL ) {
       std::string msg = std::string("predicate \"") + identifier + "\" has no declaration.";
@@ -596,7 +596,7 @@ void add_pred( const char *identifier, int neg, int predModifier )
 
 void add_option( int option ) 
 {
-   DPRINTF("add_option");
+   PTX_PARSE_DPRINTF("add_option");
    g_options.push_back( option );
 }
 
@@ -606,7 +606,7 @@ void add_double_operand( const char *d1, const char *d2 )
    //eg. s[$ofs1+$r0], g[$ofs1+=$r0]
    //TODO: Not sure if I'm going to use this for storing to two destinations or not.
 
-   DPRINTF("add_double_operand");
+   PTX_PARSE_DPRINTF("add_double_operand");
    const symbol *s1 = g_current_symbol_table->lookup(d1);
    const symbol *s2 = g_current_symbol_table->lookup(d2);
    parse_assert( s1 != NULL && s2 != NULL, "component(s) missing declarations.");
@@ -616,7 +616,7 @@ void add_double_operand( const char *d1, const char *d2 )
 void add_1vector_operand( const char *d1 ) 
 {
    // handles the single element vector operand ({%v1}) found in tex.1d instructions
-   DPRINTF("add_1vector_operand");
+   PTX_PARSE_DPRINTF("add_1vector_operand");
    const symbol *s1 = g_current_symbol_table->lookup(d1);
    parse_assert( s1 != NULL, "component(s) missing declarations.");
    g_operands.push_back( operand_info(s1,NULL,NULL,NULL) );
@@ -624,7 +624,7 @@ void add_1vector_operand( const char *d1 )
 
 void add_2vector_operand( const char *d1, const char *d2 ) 
 {
-   DPRINTF("add_2vector_operand");
+   PTX_PARSE_DPRINTF("add_2vector_operand");
    const symbol *s1 = g_current_symbol_table->lookup(d1);
    const symbol *s2 = g_current_symbol_table->lookup(d2);
    parse_assert( s1 != NULL && s2 != NULL, "v2 component(s) missing declarations.");
@@ -633,7 +633,7 @@ void add_2vector_operand( const char *d1, const char *d2 )
 
 void add_3vector_operand( const char *d1, const char *d2, const char *d3 ) 
 {
-   DPRINTF("add_3vector_operand");
+   PTX_PARSE_DPRINTF("add_3vector_operand");
    const symbol *s1 = g_current_symbol_table->lookup(d1);
    const symbol *s2 = g_current_symbol_table->lookup(d2);
    const symbol *s3 = g_current_symbol_table->lookup(d3);
@@ -643,7 +643,7 @@ void add_3vector_operand( const char *d1, const char *d2, const char *d3 )
 
 void add_4vector_operand( const char *d1, const char *d2, const char *d3, const char *d4 ) 
 {
-   DPRINTF("add_4vector_operand");
+   PTX_PARSE_DPRINTF("add_4vector_operand");
    const symbol *s1 = g_current_symbol_table->lookup(d1);
    const symbol *s2 = g_current_symbol_table->lookup(d2);
    const symbol *s3 = g_current_symbol_table->lookup(d3);
@@ -658,13 +658,13 @@ void add_4vector_operand( const char *d1, const char *d2, const char *d3, const 
 
 void add_builtin_operand( int builtin, int dim_modifier ) 
 {
-   DPRINTF("add_builtin_operand");
+   PTX_PARSE_DPRINTF("add_builtin_operand");
    g_operands.push_back( operand_info(builtin,dim_modifier) );
 }
 
 void add_memory_operand() 
 {
-   DPRINTF("add_memory_operand");
+   PTX_PARSE_DPRINTF("add_memory_operand");
    assert( !g_operands.empty() );
    g_operands.back().make_memory_operand();
 }
@@ -681,7 +681,7 @@ void change_memory_addr_space(const char *identifier)
 
    bool recognizedType = false;
 
-   DPRINTF("change_memory_addr_space");
+   PTX_PARSE_DPRINTF("change_memory_addr_space");
    assert( !g_operands.empty() );
    if(!strcmp(identifier, "g"))
    {
@@ -724,7 +724,7 @@ void change_operand_lohi( int lohi )
     *2 = hi, reading from highest bits
     */
 
-   DPRINTF("change_operand_lohi");
+   PTX_PARSE_DPRINTF("change_operand_lohi");
    assert( !g_operands.empty() );
 
    g_operands.back().set_operand_lohi(lohi);
@@ -733,7 +733,7 @@ void change_operand_lohi( int lohi )
 
 void set_immediate_operand_type ()
 {
-	 DPRINTF("set_immediate_operand_type");
+	 PTX_PARSE_DPRINTF("set_immediate_operand_type");
 	 assert( !g_operands.empty() );
 	 g_operands.back().set_immediate_addr();
 }
@@ -750,7 +750,7 @@ void change_double_operand_type( int operand_type )
     *3 = reg += immediate
     */
 
-   DPRINTF("change_double_operand_type");
+   PTX_PARSE_DPRINTF("change_double_operand_type");
    assert( !g_operands.empty() );
 
    // For double destination operands, ensure valid instruction
@@ -772,7 +772,7 @@ void change_double_operand_type( int operand_type )
 
 void change_operand_neg( )
 {
-   DPRINTF("change_operand_neg");
+   PTX_PARSE_DPRINTF("change_operand_neg");
    assert( !g_operands.empty() );
 
    g_operands.back().set_operand_neg();
@@ -781,25 +781,25 @@ void change_operand_neg( )
 
 void add_literal_int( int value ) 
 {
-   DPRINTF("add_literal_int");
+   PTX_PARSE_DPRINTF("add_literal_int");
    g_operands.push_back( operand_info(value) );
 }
 
 void add_literal_float( float value ) 
 {
-   DPRINTF("add_literal_float");
+   PTX_PARSE_DPRINTF("add_literal_float");
    g_operands.push_back( operand_info(value) );
 }
 
 void add_literal_double( double value ) 
 {
-   DPRINTF("add_literal_double");
+   PTX_PARSE_DPRINTF("add_literal_double");
    g_operands.push_back( operand_info(value) );
 }
 
 void add_scalar_operand( const char *identifier ) 
 {
-   DPRINTF("add_scalar_operand");
+   PTX_PARSE_DPRINTF("add_scalar_operand");
    const symbol *s = g_current_symbol_table->lookup(identifier);
    if ( s == NULL ) {
       if ( g_opcode == BRA_OP || g_opcode == CALLP_OP) {
@@ -815,7 +815,7 @@ void add_scalar_operand( const char *identifier )
 
 void add_neg_pred_operand( const char *identifier ) 
 {
-   DPRINTF("add_neg_pred_operand");
+   PTX_PARSE_DPRINTF("add_neg_pred_operand");
    const symbol *s = g_current_symbol_table->lookup(identifier);
    if ( s == NULL ) {
        s = g_current_symbol_table->add_variable(identifier,NULL,1,g_filename,ptx_lineno);
@@ -827,7 +827,7 @@ void add_neg_pred_operand( const char *identifier )
 
 void add_address_operand( const char *identifier, int offset ) 
 {
-   DPRINTF("add_address_operand");
+   PTX_PARSE_DPRINTF("add_address_operand");
    const symbol *s = g_current_symbol_table->lookup(identifier);
    if ( s == NULL ) {
       std::string msg = std::string("operand \"") + identifier + "\" has no declaration.";
@@ -838,7 +838,7 @@ void add_address_operand( const char *identifier, int offset )
 
 void add_address_operand2( int offset )
 {
-   DPRINTF("add_address_operand");
+   PTX_PARSE_DPRINTF("add_address_operand");
    g_operands.push_back( operand_info((unsigned)offset) );
 }
 

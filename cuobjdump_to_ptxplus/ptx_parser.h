@@ -45,14 +45,13 @@
 #define ARRAY_IDENTIFIER_NO_DIM 2
 #define ARRAY_IDENTIFIER 3
 #define P_DEBUG 0
-#define DPRINTF(...) \
+#define PTX_PARSE_DPRINTF(...) \
    if(P_DEBUG) { \
       printf("(%s:%s:%u) ", __FILE__, __FUNCTION__, __LINE__); \
       printf(__VA_ARGS__); \
       printf("\n"); \
       fflush(stdout); \
    }
-
 
 enum _memory_space_t {
    undefined_space=0,
@@ -73,43 +72,43 @@ int g_error_detected;
 const char *g_filename = "";
 int g_func_decl;
 
-void set_symtab( void* a ) {DPRINTF(" ");}
-void end_function() {DPRINTF(" ");}
-void add_directive() {DPRINTF(" ");}
-void add_function_arg() {DPRINTF(" ");}
-void add_instruction() {DPRINTF(" ");}
-void add_file( unsigned a, const char *b ) {DPRINTF(" ");}
-void add_variables() {DPRINTF(" ");}
-void set_variable_type() {DPRINTF(" ");}
-void add_option(int a ) {DPRINTF(" ");}
-void add_array_initializer() {DPRINTF(" ");}
-void add_label( const char *a ) {DPRINTF(" ");}
-void set_return() {DPRINTF(" ");}
-void add_opcode( int a ) {DPRINTF(" ");}
-void add_pred( const char *a, int b, int c ) {DPRINTF(" ");}
-void add_scalar_operand( const char *a ) {DPRINTF("%s", a);}
-void add_neg_pred_operand( const char *a ) {DPRINTF(" ");}
-void add_address_operand( const char *a, int b ) {DPRINTF("%s", a);}
-void add_address_operand2( int b ) {DPRINTF(" ");}
-void change_operand_lohi( int a ) {DPRINTF(" ");}
-void change_double_operand_type( int a ) {DPRINTF(" ");}
-void change_operand_neg( ) {DPRINTF(" ");}
-void add_double_operand( const char *a, const char *b ) {DPRINTF(" ");}
-void add_1vector_operand( const char *a ) {DPRINTF(" ");}
-void add_2vector_operand( const char *a, const char *b ) {DPRINTF(" ");}
-void add_3vector_operand( const char *a, const char *b, const char *c ) {DPRINTF(" ");}
-void add_4vector_operand( const char *a, const char *b, const char *c, const char *d ) {DPRINTF(" ");}
-void add_builtin_operand( int a, int b ) {DPRINTF(" ");}
-void add_memory_operand() {DPRINTF(" ");}
-void change_memory_addr_space( const char *a ) {DPRINTF(" ");}
-void add_literal_int( int a ) {DPRINTF(" ");}
-void add_literal_float( float a ) {DPRINTF(" ");}
-void add_literal_double( double a ) {DPRINTF(" ");}
-void add_ptr_spec( enum _memory_space_t spec ) {DPRINTF(" ");}
-void add_extern_spec() {DPRINTF(" ");}
-void add_alignment_spec( int ) {DPRINTF(" ");}
-void add_pragma( const char *a ) {DPRINTF(" ");}
-void add_constptr(const char* identifier1, const char* identifier2, int offset) {DPRINTF(" ");}
+void set_symtab( void* a ) {PTX_PARSE_DPRINTF(" ");}
+void end_function() {PTX_PARSE_DPRINTF(" ");}
+void add_directive() {PTX_PARSE_DPRINTF(" ");}
+void add_function_arg() {PTX_PARSE_DPRINTF(" ");}
+void add_instruction() {PTX_PARSE_DPRINTF(" ");}
+void add_file( unsigned a, const char *b ) {PTX_PARSE_DPRINTF(" ");}
+void add_variables() {PTX_PARSE_DPRINTF(" ");}
+void set_variable_type() {PTX_PARSE_DPRINTF(" ");}
+void add_option(int a ) {PTX_PARSE_DPRINTF(" ");}
+void add_array_initializer() {PTX_PARSE_DPRINTF(" ");}
+void add_label( const char *a ) {PTX_PARSE_DPRINTF(" ");}
+void set_return() {PTX_PARSE_DPRINTF(" ");}
+void add_opcode( int a ) {PTX_PARSE_DPRINTF(" ");}
+void add_pred( const char *a, int b, int c ) {PTX_PARSE_DPRINTF(" ");}
+void add_scalar_operand( const char *a ) {PTX_PARSE_DPRINTF("%s", a);}
+void add_neg_pred_operand( const char *a ) {PTX_PARSE_DPRINTF(" ");}
+void add_address_operand( const char *a, int b ) {PTX_PARSE_DPRINTF("%s", a);}
+void add_address_operand2( int b ) {PTX_PARSE_DPRINTF(" ");}
+void change_operand_lohi( int a ) {PTX_PARSE_DPRINTF(" ");}
+void change_double_operand_type( int a ) {PTX_PARSE_DPRINTF(" ");}
+void change_operand_neg( ) {PTX_PARSE_DPRINTF(" ");}
+void add_double_operand( const char *a, const char *b ) {PTX_PARSE_DPRINTF(" ");}
+void add_1vector_operand( const char *a ) {PTX_PARSE_DPRINTF(" ");}
+void add_2vector_operand( const char *a, const char *b ) {PTX_PARSE_DPRINTF(" ");}
+void add_3vector_operand( const char *a, const char *b, const char *c ) {PTX_PARSE_DPRINTF(" ");}
+void add_4vector_operand( const char *a, const char *b, const char *c, const char *d ) {PTX_PARSE_DPRINTF(" ");}
+void add_builtin_operand( int a, int b ) {PTX_PARSE_DPRINTF(" ");}
+void add_memory_operand() {PTX_PARSE_DPRINTF(" ");}
+void change_memory_addr_space( const char *a ) {PTX_PARSE_DPRINTF(" ");}
+void add_literal_int( int a ) {PTX_PARSE_DPRINTF(" ");}
+void add_literal_float( float a ) {PTX_PARSE_DPRINTF(" ");}
+void add_literal_double( double a ) {PTX_PARSE_DPRINTF(" ");}
+void add_ptr_spec( enum _memory_space_t spec ) {PTX_PARSE_DPRINTF(" ");}
+void add_extern_spec() {PTX_PARSE_DPRINTF(" ");}
+void add_alignment_spec( int ) {PTX_PARSE_DPRINTF(" ");}
+void add_pragma( const char *a ) {PTX_PARSE_DPRINTF(" ");}
+void add_constptr(const char* identifier1, const char* identifier2, int offset) {PTX_PARSE_DPRINTF(" ");}
 
 /*non-dummy stuff below this point*/
 
@@ -127,7 +126,7 @@ bool inTexDirective = false;
 
 
 void add_identifier( const char *a, int b, unsigned c ) {
-	DPRINTF("name=%s", a);
+	PTX_PARSE_DPRINTF("name=%s", a);
 	if(inConstDirective){
 		//g_headerList->getListEnd()
 	}
@@ -135,7 +134,7 @@ void add_identifier( const char *a, int b, unsigned c ) {
 
 void add_function_name( const char *headerInput )
 {
-	DPRINTF("name=%s", headerInput);
+	PTX_PARSE_DPRINTF("name=%s", headerInput);
 	char* headerInfo = (char*) headerInput;
 	std::string compareString = g_headerList->getListEnd().getBase();
 
@@ -149,7 +148,7 @@ void add_function_name( const char *headerInput )
 //void add_space_spec(int headerInput)
 void add_space_spec( enum _memory_space_t spec, int value )
 {
-	DPRINTF("spec=%u", spec);
+	PTX_PARSE_DPRINTF("spec=%u", spec);
 	cuobjdumpInst *instEntry;
 	//static int constmemindex=1;
 	switch(spec)
@@ -187,7 +186,7 @@ void add_space_spec( enum _memory_space_t spec, int value )
 
 void add_scalar_type_spec( int headerInput )
 {
-	DPRINTF(" ");
+	PTX_PARSE_DPRINTF(" ");
 	//const char* compareString = g_headerList->getListEnd().getBase();
 
 	if( (inEntryDirective && inParamDirective) || inTexDirective || inConstDirective)
@@ -252,7 +251,7 @@ void add_scalar_type_spec( int headerInput )
 //void version_header(double versionNumber)
 void add_version_info( float versionNumber, unsigned ext)
 {
-	DPRINTF(" ");
+	PTX_PARSE_DPRINTF(" ");
 	cuobjdumpInst *instEntry = new cuobjdumpInst();
 	instEntry->setBase(".version");
 	g_headerList->add(instEntry);
@@ -269,7 +268,7 @@ void add_version_info( float versionNumber, unsigned ext)
 
 void target_header(char* firstTarget)
 {
-	DPRINTF("%s", firstTarget);
+	PTX_PARSE_DPRINTF("%s", firstTarget);
 	cuobjdumpInst *instEntry = new cuobjdumpInst();
 	instEntry->setBase(".target");
 	g_headerList->add(instEntry);	
@@ -279,7 +278,7 @@ void target_header(char* firstTarget)
 
 void target_header2(char* firstTarget, char* secondTarget)
 {
-	DPRINTF("%s, %s", firstTarget, secondTarget);
+	PTX_PARSE_DPRINTF("%s, %s", firstTarget, secondTarget);
 	cuobjdumpInst *instEntry = new cuobjdumpInst();
 	instEntry->setBase(".target");
 	g_headerList->add(instEntry);	
@@ -291,7 +290,7 @@ void target_header2(char* firstTarget, char* secondTarget)
 
 void target_header3(char* firstTarget, char* secondTarget, char* thirdTarget)
 {
-	DPRINTF("%s, %s, %s", firstTarget, secondTarget, thirdTarget);
+	PTX_PARSE_DPRINTF("%s, %s, %s", firstTarget, secondTarget, thirdTarget);
 	cuobjdumpInst *instEntry = new cuobjdumpInst();
 	instEntry->setBase(".target");
 	g_headerList->add(instEntry);
@@ -305,20 +304,20 @@ void target_header3(char* firstTarget, char* secondTarget, char* thirdTarget)
 
 void start_function( int a )
 {
-	DPRINTF(" ");
+	PTX_PARSE_DPRINTF(" ");
 	inEntryDirective = true;
 }
 
 void* reset_symtab()
 {
-	DPRINTF(" ");
+	PTX_PARSE_DPRINTF(" ");
 	inEntryDirective = false;
 	return (void*) NULL;
 }
 
 void func_header(const char* headerBase)
 {
-	DPRINTF("%s", headerBase);
+	PTX_PARSE_DPRINTF("%s", headerBase);
 	// If start of an entry
 	if((strcmp(headerBase, ".entry")==0)||(strcmp(headerBase, ".func")==0)) {
 		inEntryDirective = true;
@@ -332,7 +331,7 @@ void func_header(const char* headerBase)
 
 void func_header_info(const char* headerInfo)
 {
-	DPRINTF("%s", headerInfo);
+	PTX_PARSE_DPRINTF("%s", headerInfo);
 	//const char* compareString = g_headerList->getListEnd().getBase();
 
 	if(inEntryDirective && !inTexDirective) {
@@ -360,7 +359,7 @@ void func_header_info(const char* headerInfo)
 
 void func_header_info_int(const char* s, int i)
 {
-	DPRINTF("%s %d", s, i);
+	PTX_PARSE_DPRINTF("%s %d", s, i);
 	if(inEntryDirective && !inTexDirective) {
 		g_headerList->getListEnd().addOperand(s);
 		char *buff = (char*) malloc(30*sizeof(char));
