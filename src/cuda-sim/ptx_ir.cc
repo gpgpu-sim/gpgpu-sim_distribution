@@ -191,8 +191,23 @@ bool symbol_table::add_function_decl( const char *name, int entry_point, functio
    } else {
       assert( !prior_decl );
       *sym_table = new symbol_table( "", entry_point, this );
-      symbol *null_reg = (*sym_table)->add_variable("_",NULL,0,"",0); 
+      
+      // Initial setup code to support a register represented as "_".
+      // This register is used when an instruction operand is
+      // not read or written.  However, the parser must recognize it
+      // as a legitimate register but we do not want to pass
+      // it to the micro-architectural register to the performance simulator.
+      // For this purpose we add a symbol to the symbol table but
+      // mark it as a non_arch_reg so it does not effect the performance sim.
+      type_info_key null_key( reg_space, 0, 0, 0, 0, 0 );
+      null_key.set_is_non_arch_reg();
+      // First param is null - which is bad.
+      // However, the first parameter is actually unread in the constructor...
+      // TODO - remove the symbol_table* from type_info
+      type_info* null_type_info = new type_info( NULL, null_key );
+      symbol *null_reg = (*sym_table)->add_variable( "_", null_type_info, 0, "", 0 ); 
       null_reg->set_regno(0, 0);
+      
       (*sym_table)->set_name(name);
       (*func_info)->set_symtab(*sym_table);
       m_function_symtab_lookup[key] = *sym_table;

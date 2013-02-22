@@ -47,10 +47,12 @@ class type_info_key {
 public:
    type_info_key()
    {
+      m_is_non_arch_reg = false;
       m_init = false;
    }
    type_info_key( memory_space_t space_spec, int scalar_type_spec, int vector_spec, int alignment_spec, int extern_spec, int array_dim )
    {
+      m_is_non_arch_reg = false;
       m_init = true;
       m_space_spec = space_spec; 
       m_scalar_type_spec = scalar_type_spec;
@@ -75,7 +77,9 @@ public:
 
    void set_array_dim( int array_dim ) { m_array_dim = array_dim; }
    int get_array_dim() const { assert(m_init); return m_array_dim; }
+   void set_is_non_arch_reg() { m_is_non_arch_reg = true;  }
 
+   bool is_non_arch_reg() const { return m_is_non_arch_reg; }
    bool is_reg() const { return m_space_spec == reg_space;} 
    bool is_param_kernel() const { return m_space_spec == param_space_kernel;}
    bool is_param_local() const { return m_space_spec == param_space_local; }
@@ -99,6 +103,7 @@ private:
    int m_extern_spec;
    int m_array_dim;
    int m_is_function;
+   bool m_is_non_arch_reg;
 
    friend class type_info_key_compare;
 };
@@ -219,10 +224,19 @@ public:
    bool is_param_local() const { return m_is_param_local; }
    bool is_tex() const { return m_is_tex;}
    bool is_func_addr() const { return m_is_func_addr; }
-   bool is_reg() const {
-      if( m_type == NULL ) 
-         return false;
+   bool is_reg() const
+   {
+       if ( m_type == NULL ) {
+           return false;
+       }
       return m_type->get_key().is_reg(); 
+   }
+   bool is_non_arch_reg() const
+   {
+       if ( m_type == NULL ) {
+           return false;
+       }
+      return m_type->get_key().is_non_arch_reg(); 
    }
 
    void add_initializer( const std::list<operand_info> &init );
@@ -335,6 +349,7 @@ class operand_info {
 public:
    operand_info()
    {
+      m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
       m_double_operand_type = 0;
@@ -346,6 +361,7 @@ public:
    }
    operand_info( const symbol *addr )
    {
+      m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
       m_double_operand_type = 0;
@@ -374,6 +390,8 @@ public:
       } else {
          m_type = reg_t;
       }
+      
+      m_is_non_arch_reg = addr->is_non_arch_reg();
       m_value.m_symbolic = addr;
       m_addr_offset = 0;
       m_vector = false;
@@ -383,6 +401,7 @@ public:
    }
    operand_info( const symbol *addr1, const symbol *addr2 )
    {
+      m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
       m_double_operand_type = 0;
@@ -404,6 +423,7 @@ public:
    }
    operand_info( int builtin_id, int dim_mod )
    {
+      m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
       m_double_operand_type = 0;
@@ -421,6 +441,7 @@ public:
    }
    operand_info( const symbol *addr, int offset )
    {
+      m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
       m_double_operand_type = 0;
@@ -438,6 +459,7 @@ public:
    }
    operand_info( unsigned x )
    {
+      m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
       m_double_operand_type = 0;
@@ -455,6 +477,7 @@ public:
    }
    operand_info( int x )
    {
+      m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
       m_double_operand_type = 0;
@@ -472,6 +495,7 @@ public:
    }
    operand_info( float x )
    {
+      m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
       m_double_operand_type = 0;
@@ -489,6 +513,7 @@ public:
    }
    operand_info( double x )
    {
+      m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
       m_double_operand_type = 0;
@@ -506,6 +531,7 @@ public:
    }
    operand_info( const symbol *s1, const symbol *s2, const symbol *s3, const symbol *s4 )
    {
+      m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
       m_double_operand_type = 0;
@@ -688,6 +714,7 @@ public:
    bool get_operand_neg() const { return m_operand_neg; }
    void set_const_mem_offset(addr_t set_value) { m_const_mem_offset = set_value; }
    addr_t get_const_mem_offset() const { return m_const_mem_offset; }
+   bool is_non_arch_reg() const { return m_is_non_arch_reg; }
 
 private:
    unsigned m_uid;
@@ -717,6 +744,7 @@ private:
 
    bool m_neg_pred;
    bool m_is_return_var;
+   bool m_is_non_arch_reg;
 
    static unsigned sm_next_uid;
    unsigned get_uid();
