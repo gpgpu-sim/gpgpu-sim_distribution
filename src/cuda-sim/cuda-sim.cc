@@ -844,7 +844,8 @@ void ptx_instruction::pre_decode()
    for ( ; opr != op_iter_end(); opr++, n++ ) { //process operands
       const operand_info &o = *opr;
       if ( has_dst && n==0 ) {
-         if ( o.is_reg() ) {
+         // Do not set the null register "_" as an architectural register
+         if ( o.is_reg() && !o.is_non_arch_reg() ) {
             out[0] = o.reg_num();
             arch_reg.dst[0] = o.arch_reg_num();
          } else if ( o.is_vector() ) {
@@ -858,7 +859,7 @@ void ptx_instruction::pre_decode()
                arch_reg.dst[i] = o.arch_reg_num(i);
          }
       } else {
-         if ( o.is_reg() ) {
+         if ( o.is_reg() && !o.is_non_arch_reg() ) {
             int reg_num = o.reg_num();
             arch_reg.src[m] = o.arch_reg_num();
             switch ( m ) {
@@ -898,6 +899,8 @@ void ptx_instruction::pre_decode()
          const operand_info &o = *op;
 
          if(o.is_memory_operand()) {
+             // We do not support the null register as a memory operand
+             assert( !o.is_non_arch_reg() );
 
             // Check PTXPlus-type operand
             // memory operand with addressing (ex. s[0x4] or g[$r1])
