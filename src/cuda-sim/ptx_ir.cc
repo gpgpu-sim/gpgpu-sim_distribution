@@ -1183,6 +1183,8 @@ ptx_instruction::ptx_instruction( int opcode,
    m_source_file = file?file:"<unknown>";
    m_source_line = line;
    m_source = source;
+   // Trim tabs
+   m_source.erase( std::remove( m_source.begin(), m_source.end(), '\t' ), m_source.end() );
 
    if (opcode == CALL_OP) {
        const operand_info &target  = func_addr();
@@ -1211,21 +1213,18 @@ void ptx_instruction::print_insn( FILE *fp ) const
 
 std::string ptx_instruction::to_string() const
 {
-   std::string result( m_source );
-   unsigned semi_c_pos = result.find(";");
-   assert( semi_c_pos != std::string::npos );
+   char buf[ STR_SIZE ];
+   unsigned used_bytes = 0;
    if( !is_label() ) {
-      char buf[ STR_SIZE ];
-      buf[ STR_SIZE - 1 ] = '\0';
-      snprintf( buf, STR_SIZE, " PC=0x%03x ", m_PC );
-      result += std::string( buf );
-   } else
-      result += std::string("                ");
-   char buf[STR_SIZE];
-   buf[STR_SIZE - 1] = '\0';
-   snprintf( buf, STR_SIZE,
-            "(%s:%d) %s", m_source_file.c_str(), m_source_line, m_source.c_str() + semi_c_pos );
-   return result;
+      used_bytes += snprintf( buf + used_bytes, STR_SIZE - used_bytes, " PC=0x%03x ", m_PC );
+   } else {
+      used_bytes += snprintf( buf + used_bytes, STR_SIZE - used_bytes, "                " );
+   }
+   used_bytes += snprintf( buf + used_bytes, STR_SIZE - used_bytes,
+                           "(%s:%d) %s",
+                           m_source_file.c_str(), m_source_line,
+                           m_source.c_str() );
+   return std::string( buf );
 }
 
 unsigned function_info::sm_next_uid = 1;
