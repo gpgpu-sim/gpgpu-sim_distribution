@@ -31,6 +31,7 @@ Version 3.2.0+edits (development branch) versus 3.2.0
 - Added support in ptx_instruction to return a std::string which returns the ptx/ptxplus line.
 - Added a Greedy Then Oldest (GTO) warp scheduler
   as described by Rogers et al.(Cache-Conscious Wavefront Scheduling - MICRO 45).
+- Set the GTO scheduler as the default in the GTX480 configuration.
 - Bug Fixes:
     - Applied patch from Kito Cheng to update libopencl for checking NULL error
       code pointer. 
@@ -49,8 +50,6 @@ Version 3.2.0+edits (development branch) versus 3.2.0
       denoted by "_".  This has been fixed.
     - Fixed the implementation of the two level scheduler.
       Previously testing if an instruction was dependent on a long latency operation was broken
-    - Cleaned up some inefficent code in the ptx_instruction to_string()
-    - Fixed an error generted by valgrind due to forgetting to initialize a member variable
 
 Version 3.2.0 versus 3.1.2
 - Added GPUWattch GPGPU power model based on McPAT 0.8beta. 
