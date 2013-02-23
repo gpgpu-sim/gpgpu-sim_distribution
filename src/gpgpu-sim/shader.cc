@@ -786,7 +786,6 @@ void scheduler_unit::order_by_priority( std::vector< T >& result_list,
     result_list.clear();
     typename std::vector< T > temp = input_list;
 
-
     if ( ORDERING_GREEDY_THEN_PRIORITY_FUNC == ordering ) {
         T greedy_value = *last_issued_from_input;
         result_list.push_back( greedy_value );

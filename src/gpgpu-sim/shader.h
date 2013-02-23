@@ -101,6 +101,7 @@ public:
         assert( m_inst_in_pipeline==0);
         m_imiss_pending=false;
         m_warp_id=(unsigned)-1;
+        m_dynamic_warp_id = (unsigned)-1;
         n_completed = m_warp_size; 
         m_n_atomic=0;
         m_membar=false;
