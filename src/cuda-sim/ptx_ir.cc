@@ -1208,7 +1208,7 @@ void ptx_instruction::print_insn() const
 
 void ptx_instruction::print_insn( FILE *fp ) const
 {
-    fprintf( fp, to_string().c_str() );
+    fprintf( fp, "%s", to_string().c_str() );
 }
 
 std::string ptx_instruction::to_string() const
