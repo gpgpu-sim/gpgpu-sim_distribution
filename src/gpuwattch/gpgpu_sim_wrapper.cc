@@ -151,7 +151,6 @@ void gpgpu_sim_wrapper::init_mcpat(char* xmlfile, char* powerfilename, char* pow
        s++;
    }
 
-
    if(mcpat_init){
 	   g_power_filename = powerfilename;
 	   g_power_trace_filename =power_trace_filename;
@@ -174,9 +173,10 @@ void gpgpu_sim_wrapper::init_mcpat(char* xmlfile, char* powerfilename, char* pow
 	   metric_trace_file = NULL;
 	   steady_state_tacking_file = NULL;
 
+
 	   if (g_power_trace_enabled ){
-		   power_trace_file = gzopen(g_power_trace_filename, (mcpat_init)? "w" : "a");
-		   metric_trace_file = gzopen(g_metric_trace_filename, (mcpat_init)? "w" : "a");
+		   power_trace_file = gzopen(g_power_trace_filename, "w");
+		   metric_trace_file = gzopen(g_metric_trace_filename, "w");
 		   if ((power_trace_file == NULL) || (metric_trace_file == NULL)) {
 			   printf("error - could not open trace files \n");
 			   exit(1);
@@ -199,7 +199,7 @@ void gpgpu_sim_wrapper::init_mcpat(char* xmlfile, char* powerfilename, char* pow
 		   gzclose(metric_trace_file);
 	   }
 	   if(g_steady_power_levels_enabled){
-		   steady_state_tacking_file = gzopen(g_steady_state_tracking_filename, (mcpat_init)? "w" : "a");
+		   steady_state_tacking_file = gzopen(g_steady_state_tracking_filename, "w");
 		   if ((steady_state_tacking_file == NULL)) {
 			   printf("error - could not open trace files \n");
 			   exit(1);
@@ -222,6 +222,16 @@ void gpgpu_sim_wrapper::init_mcpat(char* xmlfile, char* powerfilename, char* pow
    sample_val = 0;
    init_inst_val=init_val;//gpu_tot_sim_insn+gpu_sim_insn;
 
+}
+
+void gpgpu_sim_wrapper::reset_perf_counters(bool do_print){
+	if(do_print)
+		print_trace_files();
+
+	for(unsigned i=0; i<num_per_counts; ++i){
+		perf_count[i] = 0;
+	}
+	return;
 }
 
 void gpgpu_sim_wrapper::set_inst_power(bool clk_gated_lanes, double tot_cycles, double busy_cycles, double tot_inst, double int_inst, double fp_inst, double load_inst, double store_inst, double committed_inst)

@@ -507,6 +507,9 @@ void gpgpu_sim::set_kernel_done( kernel_info_t *kernel )
             break;
         }
     }
+#ifdef GPGPUSIM_POWER_MODEL
+    mcpat_reset_perf_count(m_gpgpusim_wrapper, true);
+#endif
     assert( k != m_running_kernels.end() ); 
 }
 
