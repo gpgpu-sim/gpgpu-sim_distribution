@@ -34,7 +34,6 @@
 #include <stdlib.h>
 #include <math.h>
 #include <fenv.h>
-
 #include "cuda-math.h"
 #include "../abstract_hardware_model.h"
 #include "ptx_loader.h"
@@ -100,14 +99,15 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
 {
    ptx_reg_t result, tmp;
 
+
    if(op.get_double_operand_type() == 0) {
       if(((opType != BB128_TYPE) && (opType != BB64_TYPE) && (opType != FF64_TYPE)) || (op.get_addr_space() != undefined_space)) {
          if ( op.is_reg() ) {
             result = get_reg( op.get_symbol() );
          } else if ( op.is_builtin()) {
-            result = get_builtin( op.get_int(), op.get_addr_offset() );
+            result.u32 = get_builtin( op.get_int(), op.get_addr_offset() );
          } else  if(op.is_immediate_address()){
-    		 result = op.get_addr_offset();
+    		 result.u64 = op.get_addr_offset();
     	 } else if ( op.is_memory_operand() ) {
             // a few options here...
             const symbol *sym = op.get_symbol();
@@ -118,18 +118,18 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
                const symbol *name = op.get_symbol();
                result.u64 = get_reg(name).u64 + op.get_addr_offset(); 
             } else if ( info.is_param_kernel() ) {
-               result = sym->get_address() + op.get_addr_offset();
+               result.u64 = sym->get_address() + op.get_addr_offset();
             } else if ( info.is_param_local() ) {
-               result = sym->get_address() + op.get_addr_offset();
+               result.u64 = sym->get_address() + op.get_addr_offset();
             } else if ( info.is_global() ) {
                assert( op.get_addr_offset() == 0 );
-               result = sym->get_address();
+               result.u64 = sym->get_address();
             } else if ( info.is_local() ) {
-               result = sym->get_address() + op.get_addr_offset();
+               result.u64 = sym->get_address() + op.get_addr_offset();
             } else if ( info.is_const() ) {
-               result = sym->get_address() + op.get_addr_offset();
+               result.u64 = sym->get_address() + op.get_addr_offset();
             } else if ( op.is_shared() ) {
-               result = op.get_symbol()->get_address() + op.get_addr_offset();
+               result.u64 = op.get_symbol()->get_address() + op.get_addr_offset();
             } else {
                const char *name = op.name().c_str();
                printf("GPGPU-Sim PTX: ERROR ** get_operand_value : unknown memory operand type for %s\n", name );
@@ -139,15 +139,15 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
          } else if ( op.is_literal() ) {
             result = op.get_literal_value();
          } else if ( op.is_label() ) {
-            result = op.get_symbol()->get_address();
+            result.u64 = op.get_symbol()->get_address();
          } else if ( op.is_shared() ) {
-            result = op.get_symbol()->get_address();
+            result.u64 = op.get_symbol()->get_address();
          } else if ( op.is_const() ) {
-            result = op.get_symbol()->get_address();
+            result.u64 = op.get_symbol()->get_address();
          } else if ( op.is_global() ) {
-            result = op.get_symbol()->get_address();
+            result.u64 = op.get_symbol()->get_address();
          } else if ( op.is_local() ) {
-            result = op.get_symbol()->get_address();
+            result.u64 = op.get_symbol()->get_address();
          } else {
             const char *name = op.name().c_str();
             printf("GPGPU-Sim PTX: ERROR ** get_operand_value : unknown operand type for %s\n", name );
@@ -171,40 +171,40 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
       }
    } else if (op.get_double_operand_type() == 1) {
       ptx_reg_t firstHalf, secondHalf;
-      firstHalf = get_reg( op.vec_symbol(0) ).u64;
-      secondHalf = get_reg( op.vec_symbol(1) ).u64;
+      firstHalf.u64 = get_reg( op.vec_symbol(0) ).u64;
+      secondHalf.u64 = get_reg( op.vec_symbol(1) ).u64;
       if(op.get_operand_lohi() == 1)
            secondHalf.u64 = secondHalf.u64 & 0xFFFF;
       else if(op.get_operand_lohi() == 2)
            secondHalf.u64 = (secondHalf.u64>>16) & 0xFFFF;
-      result = firstHalf.u64 + secondHalf.u64;
+      result.u64 = firstHalf.u64 + secondHalf.u64;
    } else if (op.get_double_operand_type() == 2) {
       // s[reg1 += reg2]
       // reg1 is incremented after value is returned: the value returned is s[reg1]
       ptx_reg_t firstHalf, secondHalf;
-      firstHalf = get_reg(op.vec_symbol(0)).u64;
-      secondHalf = get_reg(op.vec_symbol(1)).u64;
+      firstHalf.u64 = get_reg(op.vec_symbol(0)).u64;
+      secondHalf.u64 = get_reg(op.vec_symbol(1)).u64;
       if(op.get_operand_lohi() == 1)
            secondHalf.u64 = secondHalf.u64 & 0xFFFF;
       else if(op.get_operand_lohi() == 2)
            secondHalf.u64 = (secondHalf.u64>>16) & 0xFFFF;
-      result = firstHalf.u64;
-      firstHalf = firstHalf.u64 + secondHalf.u64;
+      result.u64 = firstHalf.u64;
+      firstHalf.u64 = firstHalf.u64 + secondHalf.u64;
       set_reg(op.vec_symbol(0),firstHalf);
    } else if (op.get_double_operand_type() == 3) {
       // s[reg += immediate]
       // reg is incremented after value is returned: the value returned is s[reg]
       ptx_reg_t firstHalf;
-      firstHalf = get_reg(op.get_symbol()).u64;
-      result = firstHalf.u64;
-      firstHalf = firstHalf.u64 + op.get_addr_offset();
+      firstHalf.u64 = get_reg(op.get_symbol()).u64;
+      result.u64 = firstHalf.u64;
+      firstHalf.u64 = firstHalf.u64 + op.get_addr_offset();
       set_reg(op.get_symbol(),firstHalf);
    }
 
    ptx_reg_t finalResult;
    memory_space *mem = NULL;
-   size_t size;
-   int t;
+   size_t size=0;
+   int t=0;
    finalResult.u64=0;
 
    //complete other cases for reading from memory, such as reading from other const memory
