@@ -142,7 +142,7 @@ private:
 enum operand_type {
    reg_t, vector_t, builtin_t, address_t, memory_t, float_op_t, double_op_t, int_t, 
    unsigned_t, symbolic_t, label_t, v_reg_t, v_float_op_t, v_double_op_t,
-   v_int_t, v_unsigned_t
+   v_int_t, v_unsigned_t, undef_t
 };
 
 class operand_info;
@@ -349,6 +349,7 @@ class operand_info {
 public:
    operand_info()
    {
+      init();
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -358,9 +359,12 @@ public:
       m_uid = get_uid();
       m_valid = false;
       m_immediate_address=false;
+      m_addr_offset = 0;
+      m_value.m_symbolic=NULL;
    }
    operand_info( const symbol *addr )
    {
+      init();
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -401,6 +405,7 @@ public:
    }
    operand_info( const symbol *addr1, const symbol *addr2 )
    {
+      init();
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -423,6 +428,7 @@ public:
    }
    operand_info( int builtin_id, int dim_mod )
    {
+      init();
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -441,6 +447,7 @@ public:
    }
    operand_info( const symbol *addr, int offset )
    {
+      init();
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -459,6 +466,7 @@ public:
    }
    operand_info( unsigned x )
    {
+      init();
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -477,6 +485,7 @@ public:
    }
    operand_info( int x )
    {
+      init();
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -495,6 +504,7 @@ public:
    }
    operand_info( float x )
    {
+      init();
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -513,6 +523,7 @@ public:
    }
    operand_info( double x )
    {
+      init();
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -531,6 +542,7 @@ public:
    }
    operand_info( const symbol *s1, const symbol *s2, const symbol *s3, const symbol *s4 )
    {
+      init();
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -551,7 +563,36 @@ public:
       m_is_return_var = false;
       m_immediate_address=false;
    }
+   void init()
+   {
+       m_uid=(unsigned)-1;
+       m_valid=false;
+       m_vector=false;
+       m_type=undef_t;
+       m_immediate_address=false;
+       m_addr_space=undefined_space;
+       m_operand_lohi=0;
+       m_double_operand_type=0;
+       m_operand_neg=false;
+       m_const_mem_offset=(unsigned)-1;
+       m_value.m_int=0;
+       m_value.m_unsigned=(unsigned)-1;
+       m_value.m_float=0;
+       m_value.m_double=0;
+       for(unsigned i=0; i<4; i++){
+           m_value.m_vint[i]=0;
+           m_value.m_vunsigned[i]=0;
+           m_value.m_vfloat[i]=0;
+           m_value.m_vdouble[i]=0;
+       }
+       m_value.m_symbolic=NULL;
+       m_value.m_vector_symbolic=NULL;
+       m_addr_offset=0;
+       m_neg_pred=0;
+       m_is_return_var=0;
+       m_is_non_arch_reg=0;
 
+   }
    void make_memory_operand() { m_type = memory_t;}
    void set_return() { m_is_return_var = true; }
    void set_immediate_addr() {m_immediate_address=true;}

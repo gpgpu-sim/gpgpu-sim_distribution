@@ -57,11 +57,41 @@ union ptx_reg_t {
    ptx_reg_t() {
       bits.ms = 0;
       bits.ls = 0;
+      u128.low=0;
+      u128.lowest=0;
+      u128.highest=0;
+      u128.high=0;
+      s8=0;
+      s16=0;
+      s32=0;
+      s64=0;
+      u8=0;
+      u16=0;
+      u64=0;
+      f16=0;
+      f32=0;
+      f64=0;
+      pred=0;
    }
    ptx_reg_t(unsigned x) 
    {
       bits.ms = 0;
       bits.ls = 0;
+      u128.low=0;
+      u128.lowest=0;
+      u128.highest=0;
+      u128.high=0;
+      s8=0;
+      s16=0;
+      s32=0;
+      s64=0;
+      u8=0;
+      u16=0;
+      u64=0;
+      f16=0;
+      f32=0;
+      f64=0;
+      pred=0;
       u32 = x;
    }
    operator unsigned int() { return u32;}
