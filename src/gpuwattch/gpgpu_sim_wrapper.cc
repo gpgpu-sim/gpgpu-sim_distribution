@@ -231,6 +231,9 @@ void gpgpu_sim_wrapper::reset_perf_counters(bool do_print){
 	for(unsigned i=0; i<num_per_counts; ++i){
 		perf_count[i] = 0;
 	}
+	for(unsigned i=0; i<num_pwr_cmps; ++i){
+		pwr_cmp_avg[i]= 0;
+	}
 	return;
 }
 
