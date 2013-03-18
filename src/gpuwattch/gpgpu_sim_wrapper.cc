@@ -224,7 +224,7 @@ void gpgpu_sim_wrapper::init_mcpat(char* xmlfile, char* powerfilename, char* pow
 
 }
 
-void gpgpu_sim_wrapper::reset_perf_counters(bool do_print){
+void gpgpu_sim_wrapper::reset_counters(bool do_print){
 	if(do_print)
 		print_trace_files();
 
@@ -234,6 +234,27 @@ void gpgpu_sim_wrapper::reset_perf_counters(bool do_print){
 	for(unsigned i=0; i<num_pwr_cmps; ++i){
 		pwr_cmp_avg[i]= 0;
 	}
+
+	for(unsigned i=0; i<num_pwr_cmps; ++i){
+		pwr_cmp_max[i]= 0;
+	}
+
+	for(unsigned i=0; i<num_pwr_cmps; ++i){
+		pwr_cmp_min[i]= 0;
+	}
+
+	for(unsigned i=0; i<num_pwr_cmps; ++i){
+		perf_count_avg[i]= 0;
+	}
+
+	for(unsigned i=0; i<num_pwr_cmps; ++i){
+		perf_count_min[i]= 0;
+	}
+
+	for(unsigned i=0; i<num_pwr_cmps; ++i){
+		perf_count_max[i]= 0;
+	}
+
 	return;
 }
 

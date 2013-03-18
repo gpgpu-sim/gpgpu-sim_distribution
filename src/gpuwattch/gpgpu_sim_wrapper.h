@@ -61,7 +61,7 @@ public:
 	void print_trace_files();
 	void update_components_power();
 	void update_coefficients();
-	void reset_perf_counters(bool do_print);
+	void reset_counters(bool do_print);
 	void print_power_kernel_stats(double gpu_sim_cycle, double gpu_tot_sim_cycle, double init_value, const std::string & kernel_info_string);
 	void power_metrics_calculations();
 	void set_inst_power(bool clk_gated_lanes, double tot_cycles, double busy_cycles, double tot_inst, double int_inst, double fp_inst, double load_inst, double store_inst, double committed_inst);
