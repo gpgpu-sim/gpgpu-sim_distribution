@@ -67,6 +67,8 @@ Version 3.2.0+edits (development branch) versus 3.2.0
       GPGPUSIM_ROOT was not the first entry in the list;.
     - Fixed a GPUWattch bug where the performance counters were not being correctly
       reset when a kernel completes. 
+    - Fixed implementation for mov.pred with literal input (need to explicitly
+      treat zero as false and non-zero as true). 
 
 Version 3.2.0 versus 3.1.2
 - Added GPUWattch GPGPU power model based on McPAT 0.8beta. 
