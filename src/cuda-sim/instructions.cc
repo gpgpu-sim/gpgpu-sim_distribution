@@ -2574,6 +2574,14 @@ void mov_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       } else {
          thread->set_operand_value(dst,tmp_bits, i_type, thread, pI);
       }
+   } else if (i_type == PRED_TYPE and src1.is_literal() == true) {
+      // in ptx, literal input translate to predicate as 0 = false and 1 = true 
+      // we have adopted the opposite to simplify implementation of zero flags in ptxplus 
+      data = thread->get_operand_value(src1, dst, i_type, thread, 1);
+
+      ptx_reg_t finaldata; 
+      finaldata.pred = (data.u32 == 0)? 1 : 0;  // setting zero-flag in predicate 
+      thread->set_operand_value(dst, finaldata, i_type, thread, pI);
    } else {
 
       data = thread->get_operand_value(src1, dst, i_type, thread, 1);
