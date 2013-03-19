@@ -167,6 +167,10 @@ public:
       m_is_func_addr = false;
       m_reg_num_valid = false;
       m_function = NULL;
+      m_reg_num=(unsigned)-1;
+      m_arch_reg_num=(unsigned)-1;
+      m_address=(unsigned)-1;
+      m_initializer.clear();
       if ( type ) m_is_shared = type->get_key().is_shared();
       if ( type ) m_is_const = type->get_key().is_const();
       if ( type ) m_is_global = type->get_key().is_global();
@@ -1289,6 +1293,7 @@ public:
       m_is_reg=false;
       m_is_param=false;
       m_param_value=NULL;
+      m_reg_value=ptx_reg_t();
    }
    arg_buffer_t( const arg_buffer_t &another )
    {
@@ -1319,6 +1324,7 @@ public:
    arg_buffer_t( const symbol *dst_sym, const operand_info &src_op, ptx_reg_t source_value ) : m_src_op(src_op)
    {
       m_dst = dst_sym;
+      m_reg_value=ptx_reg_t();
       if( dst_sym->is_reg() ) {
          m_is_reg = true;
          m_is_param = false;
