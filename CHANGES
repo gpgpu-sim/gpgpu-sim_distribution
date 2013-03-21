@@ -69,7 +69,9 @@ Version 3.2.0+edits (development branch) versus 3.2.0
       reset when a kernel completes. 
     - Fixed implementation for mov.pred with literal input (need to explicitly
       treat zero as false and non-zero as true). 
-
+    - Fix for bug 47 - Issue with generating PTXPLUS with global __device__ 
+      variables: Expecting ".nv.global", provided ".nv.global.init". 
+        
 Version 3.2.0 versus 3.1.2
 - Added GPUWattch GPGPU power model based on McPAT 0.8beta. 
 
