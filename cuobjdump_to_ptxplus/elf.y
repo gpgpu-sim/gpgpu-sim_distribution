@@ -58,7 +58,7 @@ stcontent	:	stcontent stline
 			|	stline;
 
 stline	:	NUMBER NUMBER NUMBER NUMBER NUMBER NUMBER IDENTIFIER {
-				if (strcmp($7, ".nv.global")==0) {
+				if(strncmp( $7, ".nv.global", 10)==0) {
 					g_instList->setglobalVarShndx($6);
 				}
 				if (strcmp($4, "11")==0) {
