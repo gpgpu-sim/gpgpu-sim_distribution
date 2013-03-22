@@ -243,15 +243,15 @@ void gpgpu_sim_wrapper::reset_counters(bool do_print){
 		pwr_cmp_min[i]= 0;
 	}
 
-	for(unsigned i=0; i<num_pwr_cmps; ++i){
+	for(unsigned i=0; i<num_per_counts; ++i){
 		perf_count_avg[i]= 0;
 	}
 
-	for(unsigned i=0; i<num_pwr_cmps; ++i){
+	for(unsigned i=0; i<num_per_counts; ++i){
 		perf_count_min[i]= 0;
 	}
 
-	for(unsigned i=0; i<num_pwr_cmps; ++i){
+	for(unsigned i=0; i<num_per_counts; ++i){
 		perf_count_max[i]= 0;
 	}
 
