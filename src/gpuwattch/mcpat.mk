@@ -11,6 +11,17 @@ endif
 LIBS = 
 INCS = -lm
 
+CC=
+CXX=
+
+ifeq ($(shell getconf LONG_BIT),64) 
+	CXX = g++ -m64
+	CC  = gcc -m64
+else 
+	CXX = g++ -m32
+	CC  = gcc -m32
+endif 
+
 ifeq ($(TAG),dbg)
   DBG = -Wall 
   OPT = -ggdb -fPIC -g -O0 -DNTHREADS=1 -Icacti -lz
@@ -22,10 +33,9 @@ endif
 
 #CXXFLAGS = -Wall -Wno-unknown-pragmas -Winline $(DBG) $(OPT) 
 CXXFLAGS = -Wno-unknown-pragmas $(DBG) $(OPT) 
-#CXX = g++ -m32
-CXX = g++ -m64
-#CC  = gcc -m32
-CC  = gcc -m64
+
+
+
 
 VPATH = cacti
 
