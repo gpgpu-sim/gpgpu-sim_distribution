@@ -254,7 +254,7 @@ void gpgpu_sim_wrapper::reset_counters(bool do_print){
 	for(unsigned i=0; i<num_per_counts; ++i){
 		perf_count_max[i]= 0;
 	}
-
+	count=0;
 	return;
 }
 
