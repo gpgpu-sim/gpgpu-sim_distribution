@@ -45,7 +45,7 @@
 		<param name="SHRD_ACC" value="40" />
 		<param name="REG_RD" value="0.52" />
 		<param name="REG_WR" value="3.52" />
-		<param name="NON_REG_Ops" value="4.15" />
+		<param name="NON_REG_OPs" value="4.15" />
 		<param name="SP" value="2.38" />
 		<param name="SFU" value="0.51" />
 		<param name="FPU" value="0.64" />
