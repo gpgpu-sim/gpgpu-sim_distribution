@@ -1,5 +1,5 @@
 LOG:
-Version 3.2.0+edits (development branch) versus 3.2.0
+Version 3.2.1 versus 3.2.0
 - Added kernel name and launch uids to performance statistics log.
 - Added l2_cache_config class to extend baseline cache_config. Allows for
   custom, L2 cache specific functions (such as tag/set index
@@ -71,9 +71,9 @@ Version 3.2.0+edits (development branch) versus 3.2.0
       treat zero as false and non-zero as true). 
     - Fix for bug 47 - Issue with generating PTXPLUS with global __device__ 
       variables: Expecting ".nv.global", provided ".nv.global.init". 
-	- Fixing GPUWattch McPAT Makefile to use -m32 for 32 bit and -m64
+    - Fixing GPUWattch McPAT Makefile to use -m32 for 32 bit and -m64
       for 64 bit Linux. 
-	- Fix for [Bug 43] Incorrect power results - new gpuwattch_gtx480.xml file
+    - Fix for [Bug 43] Incorrect power results - new gpuwattch_gtx480.xml file
         
 Version 3.2.0 versus 3.1.2
 - Added GPUWattch GPGPU power model based on McPAT 0.8beta. 
