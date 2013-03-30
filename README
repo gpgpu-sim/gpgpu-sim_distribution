@@ -19,9 +19,10 @@ April 19-21, 2009.
 
 In addition, if you use the GPUWattch energy model in your research, please cite:
 
-Jingwen Leng, Syed Gilani, Ahmed ElTantawy, Tayler Hetherington, Nam Sung Kim,
-Tor M. Aamodt, Vijay Janapa Reddi, GPUWattch Energy Model Manual, 2013.
-http://gpgpu-sim.org/gpuwattch/
+Jingwen Leng, Syed Gilani, Tayler Hetherington, Ahmed ElTantawy, Nam Sung Kim,
+Tor M. Aamodt, Vijay Janapa Reddi, GPUWattch: Enabling Energy Optimizations in
+GPGPUs, In proceedings of the ACM/IEEE International Symposium on Computer
+Architecture (ISCA 2013), Tel-Aviv, Israel, June 23-27, 2013.
 
 If you use figures plotted using AerialVision in your publications, please cite:
 
