@@ -21,8 +21,15 @@ endif
 
 #CXXFLAGS = -Wall -Wno-unknown-pragmas -Winline $(DBG) $(OPT) 
 CXXFLAGS = -Wno-unknown-pragmas $(DBG) $(OPT) 
-CXX = g++ -m32
-CC  = gcc -m32
+
+ifeq ($(shell getconf LONG_BIT),64) 
+	CXX = g++ -m64
+	CC  = gcc -m64
+else 
+	CXX = g++ -m32
+	CC  = gcc -m32
+endif 
+
 
 SRCS  = area.cc bank.cc mat.cc main.cc Ucache.cc io.cc technology.cc basic_circuit.cc parameter.cc \
 		decoder.cc component.cc uca.cc subarray.cc wire.cc htree2.cc \
@@ -54,4 +61,4 @@ obj_$(TAG)/%.o : %.cc
 clean:
 	-rm -f *.o _cacti.so cacti.py $(TARGET)
 
-include ../Makefile.makedepend
+#include ../Makefile.makedepend
