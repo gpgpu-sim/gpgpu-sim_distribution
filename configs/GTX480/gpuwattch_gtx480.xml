@@ -30,36 +30,36 @@
 		<param name="virtual_memory_page_size" value="4096"/>
 		<param name="idle_core_power" value="1.59"/><!-- idle core power for GTX479 -->
 		<!--param name="scaling_coefficients" value="10,0.0884816,10,10,8,10,4.12782,10,2.48832,10,10,10,4.29982,0.387764,0.0714269,0.14302,0.01,0.546811,0.485351,0.806633,0.818073,1.9207,100,100,100,87.9303,100,10,4.3548,10"/-->
-		<param name="TOT_INST" value="2.03" />
-		<param name="FP_INT" value="4.98" />
-		<param name="IC_H" value="3.83" />
-		<param name="IC_M" value="27.64" />
-		<param name="DC_RH" value="40" />
-		<param name="DC_RM" value="40" />
-		<param name="DC_WH" value="2" />
-		<param name="DC_WM" value="40" />
-		<param name="TC_H" value="18.44" />
-		<param name="TC_M" value="40" />
-		<param name="CC_H" value="20" />
-		<param name="CC_M" value="20" />
-		<param name="SHRD_ACC" value="40" />
-		<param name="REG_RD" value="0.52" />
-		<param name="REG_WR" value="3.52" />
-		<param name="NON_REG_OPs" value="4.15" />
-		<param name="SP" value="2.38" />
-		<param name="SFU" value="0.51" />
-		<param name="FPU" value="0.64" />
+		<param name="TOT_INST" value="2.00" />
+		<param name="FP_INT" value="4.57" />
+		<param name="IC_H" value="2.14" />
+		<param name="IC_M" value="22.47" />
+		<param name="DC_RH" value="22.14" />
+		<param name="DC_RM" value="24.66" />
+		<param name="DC_WH" value="1.53" />
+		<param name="DC_WM" value="39.79" />
+		<param name="TC_H" value="10.21" />
+		<param name="TC_M" value="24.66" />
+		<param name="CC_H" value="11.07" />
+		<param name="CC_M" value="12.33" />
+		<param name="SHRD_ACC" value="7.04" />
+		<param name="REG_RD" value="0.14" />
+		<param name="REG_WR" value="0.21" />
+		<param name="NON_REG_OPs" value="2.11" />
+		<param name="SP_ACC" value="2.38" />
+		<param name="SFU_ACC" value="0.51" />
+		<param name="FPU_ACC" value="0.64" />
 		<param name="MEM_RD" value="0.33" />
-		<param name="MEM_WR" value="0.4" />
+		<param name="MEM_WR" value="0.40" />
 		<param name="MEM_PRE" value="0.11" />
-		<param name="L2_RH" value="38.3" />
-		<param name="L2_RM" value="38.3" />
-		<param name="L2_WH" value="38.3" />
-		<param name="L2_WM" value="29.37" />
-		<param name="NOC_A" value="600" />
+		<param name="L2_RH" value="13.79" />
+		<param name="L2_RM" value="35.18" />
+		<param name="L2_WH" value="43.07" />
+		<param name="L2_WM" value="28.72" />
+		<param name="NOC_A" value="305.48" />
 		<param name="PIPE_A" value="2.57" />
 		<param name="IDLE_CORE_N" value="1"/>
-		<param name="CONST" value="11" />
+		<param name="CONST_DYNAMICN" value="11" />
 		<stat name="num_idle_cores" value="0"/><!-- Average Number of idle cores during this period -->
 		<stat name="total_cycles" value="total_cycles_match_mcpat"/>
 		<stat name="idle_cycles" value="idle_cycles_match_mcpat"/>
