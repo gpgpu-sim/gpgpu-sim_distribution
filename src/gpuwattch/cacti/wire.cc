@@ -42,7 +42,7 @@ Wire::Wire(
     double _resistivity,
     TechnologyParameter::DeviceType *dt
     ):wt(wire_model), wire_length(wl*1e-6), nsense(n), w_scale(w_s), s_scale(s_s),
-    resistivity(resistivity), deviceType(dt)
+    resistivity(_resistivity), deviceType(dt)
 {
 
   wire_placement = wp;
