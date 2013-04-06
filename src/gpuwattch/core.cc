@@ -1627,6 +1627,7 @@ RegFU::RegFU(ParseXML* XML_interface, int ithCore_, InputParameter* interface_ip
 	//area.set_area(area.get_area()*cdb_overhead);
 	//output_data_csv(FRF.RF.local_result);
 	int_regfile_height= IRF->local_result.cache_ht*XML->sys.core[ithCore].number_hardware_threads*sqrt(cdb_overhead);
+	fp_regfile_height=0;
 	//fp_regfile_height = FRF->local_result.cache_ht*XML->sys.core[ithCore].number_hardware_threads*sqrt(cdb_overhead);
     //since a EXU is associated with each pipeline, the cdb should not have longer length.
 	if (coredynp.regWindowing)
@@ -1725,7 +1726,7 @@ EXECU::EXECU(ParseXML* XML_interface, int ithCore_, InputParameter* interface_ip
 	  		}
 
 	  if (coredynp.core_ty==Inorder)
-	  {
+	  {//
 		  int_bypass   = new interconnect("Int Bypass Data", Core_device, 1, 1, int(ceil(XML->sys.machine_bits/32.0)*32),
 				  rfu->int_regfile_height + exeu->FU_height + lsq_height, &interface_ip, 3,
 				  false, 1.0, coredynp.opt_local, coredynp.core_ty);
