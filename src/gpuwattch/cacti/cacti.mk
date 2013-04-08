@@ -49,11 +49,11 @@ obj_$(TAG)/$(TARGET) : $(OBJS)
 #obj_$(TAG)/%.o : %.cc
 #	$(CXX) -c $(CXXFLAGS) $(INCS) -o $@ $<
 
-../Makefile.makedepend: depend
+Makefile.makedepend: depend
 
 depend:
-	touch ../Makefile.makedepend
-	makedepend -f../Makefile.makedepend -pobj_$(TAG)/ -a $(SRCS) 2> /dev/null
+	touch Makefile.makedepend
+	makedepend -fMakefile.makedepend -pobj_$(TAG)/ -a $(SRCS) 2> /dev/null
 
 obj_$(TAG)/%.o : %.cc
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -61,4 +61,4 @@ obj_$(TAG)/%.o : %.cc
 clean:
 	-rm -f *.o _cacti.so cacti.py $(TARGET)
 
-#include ../Makefile.makedepend
+include Makefile.makedepend
