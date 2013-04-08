@@ -124,7 +124,8 @@ bool mem_fetch::isconst() const
 /// Returns number of flits traversing interconnect. simt_to_mem specifies the direction
 unsigned mem_fetch::get_num_flits(bool simt_to_mem){
 	unsigned sz=0;
-	if( (simt_to_mem && get_is_write()) || !(simt_to_mem || get_is_write()) )
+	// If atomic, write going to memory, or read coming back from memory, size = ctrl + data. Else, only ctrl
+	if( isatomic() || (simt_to_mem && get_is_write()) || !(simt_to_mem || get_is_write()) )
 		sz = size();
 	else
 		sz = get_ctrl_size();
