@@ -335,7 +335,6 @@ void baseline_cache::cycle(){
         if ( !m_memport->full(mf->get_data_size(),mf->get_is_write()) ) {
             m_miss_queue.pop_front();
             m_memport->push(mf);
-            n_simt_to_mem+=mf->get_num_flits(true); // Interconnect power stats
         }
     }
 }
@@ -711,7 +710,6 @@ void tex_cache::cycle(){
         if ( !m_memport->full(mf->get_ctrl_size(),false) ) {
             m_request_fifo.pop();
             m_memport->push(mf);
-            n_simt_to_mem+=mf->get_num_flits(true); // Interconnect power stats
         }
     }
     // read ready lines from cache

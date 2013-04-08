@@ -1179,23 +1179,6 @@ void ldst_unit::set_stats(){
 	}
 }
 
-void ldst_unit::set_icnt_power_stats(unsigned &simt_to_mem) const{
-	unsigned l1d=0;
-	unsigned tex=0;
-	unsigned l1c=0;
-
-	if( m_L1D ) {
-		m_L1D->set_icnt_power_stats(l1d);
-	}
-	if( m_L1T ){
-		m_L1T->set_icnt_power_stats(tex);
-	}
-	if( m_L1C ){
-		m_L1C->set_icnt_power_stats(l1c);
-	}
-	simt_to_mem = n_simt_to_mem+l1d+tex+l1c; // All components that push packets into the interconnect
-}
-
 void shader_core_ctx::warp_inst_complete(const warp_inst_t &inst)
 {
    #if 0
@@ -1383,7 +1366,6 @@ bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_rea
        } else {
            mem_fetch *mf = m_mf_allocator->alloc(inst,access);
            m_icnt->push(mf);
-           n_simt_to_mem+=mf->get_num_flits(true); // Interconnect power stats (# of flits sent to the memory partitions)
            inst.accessq_pop_back();
            //inst.clear_active( access.get_warp_mask() );
            if( inst.is_load() ) { 
@@ -1548,7 +1530,6 @@ void ldst_unit::init( mem_fetch_interface *icnt,
     m_mem_rc = NO_RC_FAIL;
     m_num_writeback_clients=5; // = shared memory, global/local (uncached), L1D, L1T, L1C
     m_writeback_arb = 0;
-    n_simt_to_mem = 0;
     m_next_global=NULL;
     m_last_inst_gpu_sim_cycle=0;
     m_last_inst_gpu_tot_sim_cycle=0;
@@ -2641,13 +2622,7 @@ void shader_core_ctx::get_cache_stats(unsigned &read_accesses, unsigned &write_a
 }
 
 void shader_core_ctx::set_icnt_power_stats(unsigned &n_simt_to_mem) const{
-	unsigned l1i=0;
-	if( m_L1I ){
-		m_L1I->set_icnt_power_stats(l1i);
-	}
-	m_ldst_unit->set_icnt_power_stats(n_simt_to_mem);
-
-	n_simt_to_mem+=l1i; // l1i + l1d + l1c + l1t + any non-cached access
+	n_simt_to_mem += m_stats->n_simt_to_mem[m_sid];
 }
 
 bool shd_warp_t::functional_done() const
