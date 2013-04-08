@@ -425,7 +425,6 @@ public:
         m_write_access=0;
         m_read_miss=0;
         m_write_miss=0;
-        n_simt_to_mem=0;
     }
 
     virtual ~baseline_cache()
@@ -458,10 +457,6 @@ public:
 
     void get_stats(unsigned &accesses, unsigned &misses) const {
     	m_tag_array->get_stats(accesses, misses);
-    }
-
-    void set_icnt_power_stats(unsigned &simt_to_mem) const{
-    	simt_to_mem = n_simt_to_mem;
     }
 
 protected:
@@ -524,8 +519,6 @@ protected:
     unsigned m_write_access;
     unsigned m_read_miss;
     unsigned m_write_miss;
-
-    unsigned n_simt_to_mem; // Interconnect power stats
 };
 
 /// Read only cache
@@ -703,7 +696,6 @@ public:
         m_cache = new data_block[ config.get_num_lines() ];
         m_request_queue_status = request_status;
         m_rob_status = rob_status;
-        n_simt_to_mem=0;
     }
 
     /// Access function for tex_cache
@@ -725,11 +717,7 @@ public:
     	m_tags.get_stats(accesses, misses);
     }
 
-    void set_icnt_power_stats(unsigned &simt_to_mem) const{
-    	simt_to_mem = n_simt_to_mem;
-    }
-
-    private:
+private:
     std::string m_name;
     const cache_config &m_config;
 
@@ -855,9 +843,6 @@ public:
     typedef std::map<mem_fetch*,extra_mf_fields> extra_mf_fields_lookup;
 
     extra_mf_fields_lookup m_extra_mf_fields;
-
-    // Interconnect power stats
-    unsigned n_simt_to_mem;
 };
 
 #endif

@@ -1082,8 +1082,6 @@ public:
     void get_cache_stats(unsigned &read_accesses, unsigned &write_accesses, unsigned &read_misses, unsigned &write_misses, unsigned cache_type);
     void set_stats();
 
-    void set_icnt_power_stats(unsigned &simt_to_mem) const;
-
 protected:
     ldst_unit( mem_fetch_interface *icnt,
                shader_core_mem_fetch_allocator *mf_allocator,
@@ -1148,9 +1146,6 @@ protected:
    // for debugging
    unsigned long long m_last_inst_gpu_sim_cycle;
    unsigned long long m_last_inst_gpu_tot_sim_cycle;
-
-   // Interconnect power stats
-   unsigned n_simt_to_mem;
 };
 
 enum pipeline_stage_name_t {
@@ -1380,6 +1375,8 @@ struct shader_core_stats_pod {
     unsigned *l1d_write_access;		// L1 Data cache write access
     unsigned *l1d_write_miss;		// L1 Data cache write miss
 
+    unsigned *n_simt_to_mem; // Interconnect power stats
+
 };
 
 class shader_core_stats : public shader_core_stats_pod {
@@ -1440,6 +1437,8 @@ public:
         l1d_read_miss = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
         l1d_write_access = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
         l1d_write_miss = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
+
+        n_simt_to_mem = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
 
         gpgpu_n_shmem_bank_access = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
 
@@ -1692,6 +1691,9 @@ public:
 	 void incsfuactivelanes_stat(unsigned active_count) {m_stats->m_active_sfu_lanes[m_sid]=m_stats->m_active_sfu_lanes[m_sid]+active_count;}
 	 void incfuactivelanes_stat(unsigned active_count) {m_stats->m_active_fu_lanes[m_sid]=m_stats->m_active_fu_lanes[m_sid]+active_count;}
 	 void incfumemactivelanes_stat(unsigned active_count) {m_stats->m_active_fu_mem_lanes[m_sid]=m_stats->m_active_fu_mem_lanes[m_sid]+active_count;}
+
+	 void inc_simt_to_mem(unsigned n_flits){ m_stats->n_simt_to_mem[m_sid] += n_flits; }
+
 private:
 	 unsigned inactive_lanes_accesses_sfu(unsigned active_count,double latency){
       return  ( ((32-active_count)>>1)*latency) + ( ((32-active_count)>>3)*latency) + ( ((32-active_count)>>3)*latency);
@@ -1852,6 +1854,7 @@ public:
     virtual void push(mem_fetch *mf) 
     {
         m_cluster->icnt_inject_request_packet(mf);
+        m_core->inc_simt_to_mem(mf->get_num_flits(true));
     }
 private:
     shader_core_ctx *m_core;
@@ -1872,6 +1875,7 @@ public:
         if ( mf && mf->isatomic() )
             mf->do_atomic(); // execute atomic inside the "memory subsystem"
         m_cluster->push_response_fifo(mf);
+        m_core->inc_simt_to_mem(mf->get_num_flits(true));
     }
 private:
     shader_core_ctx *m_core;
