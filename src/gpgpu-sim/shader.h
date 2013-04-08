@@ -1376,7 +1376,7 @@ struct shader_core_stats_pod {
     unsigned *l1d_write_miss;		// L1 Data cache write miss
 
     unsigned *n_simt_to_mem; // Interconnect power stats
-
+    unsigned *n_mem_to_simt;
 };
 
 class shader_core_stats : public shader_core_stats_pod {
@@ -1439,6 +1439,7 @@ public:
         l1d_write_miss = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
 
         n_simt_to_mem = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
+        n_mem_to_simt = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
 
         gpgpu_n_shmem_bank_access = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
 
@@ -1585,7 +1586,7 @@ public:
     void print_cache_stats( FILE *fp, unsigned& dl1_accesses, unsigned& dl1_misses );
     void get_cache_stats(unsigned &read_accesses, unsigned &write_accesses, unsigned &read_misses, unsigned &write_misses, unsigned cache_type);
 
-    void set_icnt_power_stats(unsigned &n_simt_to_mem) const;
+    void set_icnt_power_stats(unsigned &n_simt_to_mem, unsigned &n_mem_to_simt) const;
 
 // debug:
     void display_simt_state(FILE *fout, int mask ) const;
@@ -1829,7 +1830,7 @@ public:
     void print_cache_stats( FILE *fp, unsigned& dl1_accesses, unsigned& dl1_misses ) const;
     void get_cache_stats(unsigned &read_accesses, unsigned &write_accesses, unsigned &read_misses, unsigned &write_misses, unsigned cache_type) const;
 
-    void set_icnt_stats(unsigned &n_simt_to_mem) const;
+    void set_icnt_stats(unsigned &n_simt_to_mem, unsigned &n_mem_to_simt) const;
 
 private:
     unsigned m_cluster_id;
