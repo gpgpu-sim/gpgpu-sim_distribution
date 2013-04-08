@@ -824,18 +824,17 @@ void gpgpu_sim::gpu_print_stat()
    // Interconnect power stat print
    unsigned total_mem_to_simt=0;
    unsigned total_simt_to_mem=0;
-   for (unsigned i=0;i<m_memory_config->m_n_mem;i++){
-      unsigned temp=0;
-      m_memory_partition_unit[i]->set_icnt_power_stats(temp);
-      total_mem_to_simt += temp;
-   }
+
    for(unsigned i=0; i<m_config.num_cluster(); i++){
 	   unsigned temp=0;
-	   m_cluster[i]->set_icnt_stats(temp);
+	   unsigned temp2 = 0;
+	   m_cluster[i]->set_icnt_stats(temp, temp2);
 	   total_simt_to_mem += temp;
+	   total_mem_to_simt += temp2;
    }
    printf("\nicnt_total_pkts_mem_to_simt=%u\n", total_mem_to_simt);
    printf("icnt_total_pkts_simt_to_mem=%u\n\n", total_simt_to_mem);
+
 
    time_vector_print();
    fflush(stdout);
@@ -1053,8 +1052,6 @@ void gpgpu_sim::cycle()
           m_memory_partition_unit[i]->cache_cycle(gpu_sim_cycle+gpu_tot_sim_cycle);
           m_memory_partition_unit[i]->set_L2cache_power_stats(m_power_stats->pwr_mem_stat->n_l2_read_access[0][i], m_power_stats->pwr_mem_stat->n_l2_read_miss[0][i],
           m_power_stats->pwr_mem_stat->n_l2_write_access[0][i], m_power_stats->pwr_mem_stat->n_l2_write_miss[0][i]);
-
-          m_memory_partition_unit[i]->set_icnt_power_stats(m_power_stats->pwr_mem_stat->n_mem_to_simt[0][i]);
        }
    }
 
@@ -1070,7 +1067,8 @@ void gpgpu_sim::cycle()
                *active_sms+=m_cluster[i]->get_n_active_sms();
 
                // Interconnect power stats: SIMT->MEM
-               m_cluster[i]->set_icnt_stats(m_power_stats->pwr_mem_stat->n_simt_to_mem[0][i]);
+               m_cluster[i]->set_icnt_stats(m_power_stats->pwr_mem_stat->n_simt_to_mem[0][i],
+            		   m_power_stats->pwr_mem_stat->n_mem_to_simt[0][i]);
          }
       }
       float temp=0;

@@ -76,7 +76,6 @@ memory_partition_unit::memory_partition_unit( unsigned partition_id,
     if(!m_config->m_L2_config.disabled())
        m_L2cache = new l2_cache(L2c_name,m_config->m_L2_config,-1,-1,m_L2interface,m_mf_allocator,IN_PARTITION_L2_MISS_QUEUE);
 
-    n_mem_to_simt=0;
     unsigned int icnt_L2;
     unsigned int L2_dram;
     unsigned int dram_L2;
@@ -109,7 +108,6 @@ void memory_partition_unit::cache_cycle( unsigned cycle )
 				mf->set_reply();
 				mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
 				m_L2_icnt_queue->push(mf);
-				n_mem_to_simt+=mf->get_num_flits(false); // Interconnect power stats (# of flits sent to the SMs)
            }else{
 				m_request_tracker.erase(mf);
 				delete mf;
@@ -128,7 +126,6 @@ void memory_partition_unit::cache_cycle( unsigned cycle )
             mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
             m_L2_icnt_queue->push(mf);
             m_dram_L2_queue->pop();
-            n_mem_to_simt+=mf->get_num_flits(false); // Interconnect power stats (# of flits sent to the SMs)
         }
     }
 
@@ -160,7 +157,6 @@ void memory_partition_unit::cache_cycle( unsigned cycle )
                             mf->set_reply();
                             mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
                             m_L2_icnt_queue->push(mf);
-                            n_mem_to_simt+=mf->get_num_flits(false); // Interconnect power stats (# of flits sent to the SMs)
                         }
                         m_icnt_L2_queue->pop();
                     } else {
@@ -412,8 +408,4 @@ void memory_partition_unit::set_L2cache_power_stats(unsigned &n_read_access,
 												unsigned &n_write_access,
 												unsigned &n_write_miss) const{
 	m_L2cache->get_data_stats(n_read_access,n_read_miss,n_write_access,n_write_miss);
-}
-
-void memory_partition_unit::set_icnt_power_stats(unsigned &mem_to_simt) const{
-	mem_to_simt = n_mem_to_simt;
 }
