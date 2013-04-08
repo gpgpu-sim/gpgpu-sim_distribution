@@ -8,7 +8,7 @@ ifndef NTHREADS
 endif
 
 
-LIBS = 
+LIBS = -I/usr/lib/ -I/usr/lib64/
 INCS = -lm
 
 CC=
@@ -95,7 +95,7 @@ Makefile.makedepend: depend
 depend:
 	touch Makefile.makedepend
 	makedepend -fMakefile.makedepend -pobj_$(TAG)/ $(SRCS) 2> /dev/null
-	@$(MAKE) -C ./cacti/ depend
+	$(MAKE) -C ./cacti/ depend
 
 clean:
 	-rm -f *.o $(TARGET)
