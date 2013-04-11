@@ -1065,10 +1065,12 @@ void gpgpu_sim::cycle()
          if (m_cluster[i]->get_not_completed() || get_more_cta_left() ) {
                m_cluster[i]->core_cycle();
                *active_sms+=m_cluster[i]->get_n_active_sms();
-
+        	   unsigned temp=0;
+        	   unsigned temp2 = 0;
+        	   m_cluster[i]->set_icnt_stats(temp, temp2);
                // Interconnect power stats: SIMT->MEM
-               m_cluster[i]->set_icnt_stats(m_power_stats->pwr_mem_stat->n_simt_to_mem[0][i],
-            		   m_power_stats->pwr_mem_stat->n_mem_to_simt[0][i]);
+               m_power_stats->pwr_mem_stat->n_simt_to_mem[0][i]=temp;
+               m_power_stats->pwr_mem_stat->n_mem_to_simt[0][i]=temp2;
          }
       }
       float temp=0;
