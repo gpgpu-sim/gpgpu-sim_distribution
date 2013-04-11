@@ -540,6 +540,8 @@ enum mem_access_type {
    NUM_MEM_ACCESS_TYPE
 };
 
+const char * mem_access_type_str(enum mem_access_type access_type); 
+
 enum cache_operator_type {
     CACHE_UNDEFINED, 
 

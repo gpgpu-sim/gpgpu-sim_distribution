@@ -108,6 +108,28 @@ address_type line_size_based_tag_func(new_addr_type address, new_addr_type line_
    return address & ~(line_size-1);
 }
 
+const char * mem_access_type_str(enum mem_access_type access_type)
+{
+   static const char * access_type_str[] = {
+      "GLOBAL_ACC_R", 
+      "LOCAL_ACC_R", 
+      "CONST_ACC_R", 
+      "TEXTURE_ACC_R", 
+      "GLOBAL_ACC_W", 
+      "LOCAL_ACC_W",
+      "L1_WRBK_ACC",
+      "L2_WRBK_ACC", 
+      "INST_ACC_R",
+      "L2_WR_ALLOC_R"
+   }; 
+
+   assert(sizeof(access_type_str) / sizeof(const char*) == NUM_MEM_ACCESS_TYPE); 
+   assert(access_type < NUM_MEM_ACCESS_TYPE); 
+
+   return access_type_str[access_type]; 
+}
+
+
 void warp_inst_t::clear_active( const active_mask_t &inactive ) {
     active_mask_t test = m_warp_active_mask;
     test &= inactive;
