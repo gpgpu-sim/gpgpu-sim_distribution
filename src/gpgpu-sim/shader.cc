@@ -3146,9 +3146,13 @@ void simt_core_cluster::get_cache_stats(unsigned &read_accesses, unsigned &write
 }
 
 void simt_core_cluster::set_icnt_stats(unsigned &n_simt_to_mem, unsigned &n_mem_to_simt) const {
+	unsigned simt_to_mem=0;
+	unsigned mem_to_simt=0;
 	for ( unsigned i = 0; i < m_config->n_simt_cores_per_cluster; ++i ) {
-		m_core[i]->set_icnt_power_stats(n_simt_to_mem, n_mem_to_simt);
+		m_core[i]->set_icnt_power_stats(simt_to_mem, mem_to_simt);
 	}
+	n_simt_to_mem = simt_to_mem;
+	n_mem_to_simt = mem_to_simt;
 }
 
 void shader_core_ctx::checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned t, unsigned tid)
