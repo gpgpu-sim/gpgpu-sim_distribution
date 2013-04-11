@@ -96,8 +96,8 @@ void power_mem_stat_t::init(){
 
 	    // Interconnect stats
 	    //n_mem_to_simt[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned)); // Counted at memory partition
-		n_mem_to_simt[i] = (unsigned *)calloc(m_core_config->n_simt_clusters*m_core_config->n_simt_cores_per_cluster,sizeof(unsigned)); // Counted at SM
-	    n_simt_to_mem[i] = (unsigned *)calloc(m_core_config->n_simt_clusters*m_core_config->n_simt_cores_per_cluster,sizeof(unsigned)); // Counted at SM
+		n_mem_to_simt[i] = (unsigned *)calloc(m_core_config->n_simt_clusters,sizeof(unsigned)); // Counted at SM
+	    n_simt_to_mem[i] = (unsigned *)calloc(m_core_config->n_simt_clusters,sizeof(unsigned)); // Counted at SM
     }
 }
 
@@ -115,7 +115,7 @@ void power_mem_stat_t::save_stats(){
 		l1d_write_miss[1][i] = l1d_write_miss[0][i] ;
 		shmem_read_access[1][i] = shmem_read_access[0][i] ; 	// Shared memory access
 
-		n_simt_to_mem[1][i] = n_simt_to_mem[0][i]; // Interconnect
+
 	}
 
 	for(unsigned i=0; i<m_config->m_n_mem; ++i){
@@ -131,8 +131,12 @@ void power_mem_stat_t::save_stats(){
 		n_rd[1][i] = n_rd[0][i];
 		n_wr[1][i] = n_wr[0][i];
 		n_req[1][i] = n_req[0][i];
+	}
 
+	for(unsigned i=0; i<m_core_config->n_simt_clusters;i++){
+		n_simt_to_mem[1][i] = n_simt_to_mem[0][i]; // Interconnect
 		n_mem_to_simt[1][i] = n_mem_to_simt[0][i]; // Interconnect
+
 	}
 }
 

@@ -587,7 +587,7 @@ public:
 
    unsigned get_icnt_simt_to_mem(){
 	   unsigned total=0;
-	   for(unsigned i=0; i<m_config->num_shader(); ++i){
+	   for(unsigned i=0; i<m_config->n_simt_clusters; ++i){
 		   total += (pwr_mem_stat->n_simt_to_mem[0][i] - pwr_mem_stat->n_simt_to_mem[1][i]);
 	   }
 	   return total;
@@ -595,7 +595,7 @@ public:
 
    unsigned get_icnt_mem_to_simt(){
 	   unsigned total=0;
-	   for(unsigned i=0; i<m_mem_config->m_n_mem; ++i){
+	   for(unsigned i=0; i<m_config->n_simt_clusters; ++i){
 		   total += (pwr_mem_stat->n_mem_to_simt[0][i] - pwr_mem_stat->n_mem_to_simt[1][i]);
 	   }
 	   return total;
