@@ -45,10 +45,11 @@ enum cache_block_state {
 };
 
 enum cache_request_status {
-    HIT,
+    HIT = 0,
     HIT_RESERVED,
     MISS,
-    RESERVATION_FAIL
+    RESERVATION_FAIL, 
+    NUM_CACHE_REQUEST_STATUS
 };
 
 enum cache_event {
@@ -56,6 +57,8 @@ enum cache_event {
     READ_REQUEST_SENT,
     WRITE_REQUEST_SENT
 };
+
+const char * cache_request_status_str(enum cache_request_status status); 
 
 struct cache_block_t {
     cache_block_t()

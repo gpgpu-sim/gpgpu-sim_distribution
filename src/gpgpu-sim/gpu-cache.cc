@@ -29,6 +29,20 @@
 #include "stat-tool.h"
 #include <assert.h>
 
+const char * cache_request_status_str(enum cache_request_status status) 
+{
+   static const char * static_cache_request_status_str[] = {
+      "HIT",
+      "HIT_RESERVED",
+      "MISS",
+      "RESERVATION_FAIL"
+   }; 
+
+   assert(sizeof(static_cache_request_status_str) / sizeof(const char*) == NUM_CACHE_REQUEST_STATUS); 
+   assert(status < NUM_CACHE_REQUEST_STATUS); 
+
+   return static_cache_request_status_str[status]; 
+}
 
 void l2_cache_config::init(linear_to_raw_address_translation *address_mapping){
 	cache_config::init();
