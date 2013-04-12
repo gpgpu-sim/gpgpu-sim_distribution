@@ -686,7 +686,7 @@ clCreateContextFromType(const cl_context_properties * properties,
       break; // GPGPU-Sim qualifies as these types of device. 
    default: 
       printf("GPGPU-Sim OpenCL API: unsupported device type %lx\n", device_type );
-      exit(1);
+      abort(); 
       break; 
    }
    
@@ -886,8 +886,19 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
              if( global_work_size[d] <= command_queue->get_device()->the_device()->threads_per_core() ) {
                 _local_size[d] = global_work_size[d];
              } else { 
-                printf("GPGPU-Sim OpenCL API: ERROR clEnqueueNDRangeKernel does not know how to divide work\n" );
-                return CL_INVALID_WORK_GROUP_SIZE;
+                // start with the maximum number of thread that a core may hold, 
+                // and decrement by 64 threadsuntil there is a local_work_size 
+                // that can perfectly divide the global_work_size. 
+                unsigned n_thread_per_core = command_queue->get_device()->the_device()->threads_per_core();
+                size_t local_size_attempt = n_thread_per_core; 
+                while (local_size_attempt > 1 and (n_thread_per_core % 64 == 0)) {
+                   if (global_work_size[d] % local_size_attempt == 0) {
+                      break; 
+                   }
+                   local_size_attempt -= 64; 
+                }
+                if (local_size_attempt == 0) local_size_attempt = 1;
+                _local_size[d] = local_size_attempt;
              }
           } else {
              _local_size[d] = 1;
@@ -1029,10 +1040,20 @@ clGetPlatformIDs(cl_uint num_entries, cl_platform_id *platforms, cl_uint *num_pl
       if( param_value ) *((cl_int*)param_value) = (N); \
       if( param_value_size_ret ) *param_value_size_ret = sizeof(cl_int);
 
+#define CL_UINT_CASE( N ) \
+      if( param_value && param_value_size < sizeof(cl_uint) ) return CL_INVALID_VALUE; \
+      if( param_value ) *((cl_uint*)param_value) = (N); \
+      if( param_value_size_ret ) *param_value_size_ret = sizeof(cl_uint);
+
 #define CL_ULONG_CASE( N ) \
       if( param_value && param_value_size < sizeof(cl_ulong) ) return CL_INVALID_VALUE; \
       if( param_value ) *((cl_ulong*)param_value) = (N); \
       if( param_value_size_ret ) *param_value_size_ret = sizeof(cl_ulong);
+
+#define CL_BOOL_CASE( N ) \
+      if( param_value && param_value_size < sizeof(cl_bool) ) return CL_INVALID_VALUE; \
+      if( param_value ) *((cl_bool*)param_value) = (N); \
+      if( param_value_size_ret ) *param_value_size_ret = sizeof(cl_bool);
 
 #define CL_SIZE_CASE( N ) \
       if( param_value && param_value_size < sizeof(size_t) ) return CL_INVALID_VALUE; \
@@ -1113,11 +1134,12 @@ clGetDeviceInfo(cl_device_id    device,
    switch( param_name ) {
    case CL_DEVICE_NAME: CL_STRING_CASE( "GPGPU-Sim" ); break;
    case CL_DEVICE_GLOBAL_MEM_SIZE: CL_ULONG_CASE( 1024*1024*1024 ); break;
-   case CL_DEVICE_MAX_COMPUTE_UNITS: CL_INT_CASE( device->the_device()->get_config().num_shader() ); break;
-   case CL_DEVICE_MAX_CLOCK_FREQUENCY: CL_INT_CASE( device->the_device()->shader_clock() ); break;
+   case CL_DEVICE_MAX_COMPUTE_UNITS: CL_UINT_CASE( device->the_device()->get_config().num_shader() ); break;
+   case CL_DEVICE_MAX_CLOCK_FREQUENCY: CL_UINT_CASE( device->the_device()->shader_clock() ); break;
    case CL_DEVICE_VENDOR:CL_STRING_CASE("GPGPU-Sim.org"); break;
+   case CL_DEVICE_VERSION: CL_STRING_CASE("OpenCL 1.0"); break;
    case CL_DRIVER_VERSION: CL_STRING_CASE("1.0"); break;
-   case CL_DEVICE_TYPE: CL_INT_CASE(CL_DEVICE_TYPE_GPU); break;
+   case CL_DEVICE_TYPE: CL_CASE(cl_device_type, CL_DEVICE_TYPE_GPU); break;
    case CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS: CL_INT_CASE( 3 ); break;
    case CL_DEVICE_MAX_WORK_ITEM_SIZES: 
       if( param_value && param_value_size < 3*sizeof(size_t) ) return CL_INVALID_VALUE; \
@@ -1131,6 +1153,8 @@ clGetDeviceInfo(cl_device_id    device,
       break;
    case CL_DEVICE_MAX_WORK_GROUP_SIZE: CL_INT_CASE( device->the_device()->threads_per_core() ); break;
    case CL_DEVICE_ADDRESS_BITS: CL_INT_CASE( 32 ); break;
+   case CL_DEVICE_AVAILABLE: CL_BOOL_CASE( CL_TRUE ); break;
+   case CL_DEVICE_COMPILER_AVAILABLE: CL_BOOL_CASE( CL_TRUE ); break;
    case CL_DEVICE_IMAGE_SUPPORT: CL_INT_CASE( CL_TRUE ); break;
    case CL_DEVICE_MAX_READ_IMAGE_ARGS: CL_INT_CASE( 128 ); break;
    case CL_DEVICE_MAX_WRITE_IMAGE_ARGS: CL_INT_CASE( 8 ); break;
