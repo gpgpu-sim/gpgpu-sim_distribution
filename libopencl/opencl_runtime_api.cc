@@ -670,16 +670,24 @@ void opencl_not_finished( const char* func, unsigned line )
 }
 
 extern CL_API_ENTRY cl_context CL_API_CALL
-clCreateContextFromType(cl_context_properties * properties,
-                        cl_ulong          device_type,
+clCreateContextFromType(const cl_context_properties * properties,
+                        cl_device_type          device_type,
                         void (*pfn_notify)(const char *, const void *, size_t, void *),
                         void *                  user_data,
                         cl_int *                errcode_ret) CL_API_SUFFIX__VERSION_1_0
 {
    _cl_device_id *gpu = GPGPUSim_Init();
-   if( device_type != CL_DEVICE_TYPE_GPU ) {
+
+   switch (device_type) {
+   case CL_DEVICE_TYPE_GPU: 
+   case CL_DEVICE_TYPE_ACCELERATOR:
+   case CL_DEVICE_TYPE_DEFAULT:
+   case CL_DEVICE_TYPE_ALL:
+      break; // GPGPU-Sim qualifies as these types of device. 
+   default: 
       printf("GPGPU-Sim OpenCL API: unsupported device type %lx\n", device_type );
       exit(1);
+      break; 
    }
    
    if( properties != NULL ) {
