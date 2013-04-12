@@ -8,6 +8,9 @@ Version 3.2.1+edits (development branch) versus 3.2.1
     - Fix for Bug 55 - clCreateContextFromType() now accepts device type
       CL_DEVICE_TYPE_ALL, CL_DEVICE_TYPE_ACCELERATOR, CL_DEVICE_TYPE_DEFAULT
       and CL_DEVICE_TYPE_GPU.  Before only CL_DEVICE_TYPE_GPU is accepted. 
+    - Fix for Bug 53 - Returning the CL_DEVICE_TYPE property in proper size
+      from clGetDeviceInfo(...). 
+    - Fix for Bug 54 - Added code to automatically determine workgroup size.  
 Version 3.2.1 versus 3.2.0
 - Added kernel name and launch uids to performance statistics log.
 - Added l2_cache_config class to extend baseline cache_config. Allows for
