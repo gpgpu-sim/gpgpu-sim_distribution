@@ -3,6 +3,11 @@ Version 3.2.1+edits (development branch) versus 3.2.1
 - Replaced legacy L2 cache access statistics with more meaningful breakdown. 
 - Bug Fixes:
     - Fixed the flit count sent to GPUWattch for atomic operations. 
+    - Fix for Bug 51 - Updated the function declaration of
+      clCreateContextFromType(). 
+    - Fix for Bug 55 - clCreateContextFromType() now accepts device type
+      CL_DEVICE_TYPE_ALL, CL_DEVICE_TYPE_ACCELERATOR, CL_DEVICE_TYPE_DEFAULT
+      and CL_DEVICE_TYPE_GPU.  Before only CL_DEVICE_TYPE_GPU is accepted. 
 Version 3.2.1 versus 3.2.0
 - Added kernel name and launch uids to performance statistics log.
 - Added l2_cache_config class to extend baseline cache_config. Allows for
