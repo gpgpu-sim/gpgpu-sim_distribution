@@ -131,19 +131,21 @@ public:
         m_valid = false; 
         m_disabled = false;
         m_config_string = NULL; // set by option parser
+        m_config_stringPrefL1 = NULL;
+        m_config_stringPrefShared = NULL;
     }
-    void init()
+    void init(char * config)
     {
-        assert( m_config_string );
+        assert( config );
         char rp, wp, ap, mshr_type, wap;
 
-        int ntok = sscanf(m_config_string,"%u:%u:%u,%c:%c:%c:%c,%c:%u:%u,%u:%u",
+        int ntok = sscanf(config,"%u:%u:%u,%c:%c:%c:%c,%c:%u:%u,%u:%u",
                           &m_nset, &m_line_sz, &m_assoc, &rp, &wp, &ap, &wap,
                           &mshr_type, &m_mshr_entries,&m_mshr_max_merge,
                           &m_miss_queue_size,&m_result_fifo_entries);
 
-        if ( ntok < 10 ) {
-            if ( !strcmp(m_config_string,"none") ) {
+        if ( ntok < 11 ) {
+            if ( !strcmp(config,"none") ) {
                 m_disabled = true;
                 return;
             }
@@ -235,6 +237,8 @@ public:
     }
 
     char *m_config_string;
+    char *m_config_stringPrefL1;
+    char *m_config_stringPrefShared;
 
 protected:
     void exit_parse_error()
@@ -295,7 +299,7 @@ private:
 class tag_array {
 public:
     // Use this constructor
-    tag_array( const cache_config &config, int core_id, int type_id );
+    tag_array(cache_config &config, int core_id, int type_id );
     ~tag_array();
 
     enum cache_request_status probe( new_addr_type addr, unsigned &idx ) const;
@@ -314,12 +318,12 @@ public:
     void print( FILE *stream, unsigned &total_access, unsigned &total_misses ) const;
     float windowed_miss_rate( ) const;
     void get_stats(unsigned &total_access, unsigned &total_misses) const;
-
+	void update_cache_parameters(cache_config &config);
 protected:
     // This constructor is intended for use only from derived classes that wish to
     // avoid unnecessary memory allocation that takes place in the
     // other tag_array constructor
-    tag_array( const cache_config &config,
+    tag_array( cache_config &config,
                int core_id,
                int type_id,
                cache_block_t* new_lines );
@@ -327,7 +331,7 @@ protected:
 
 protected:
 
-    const cache_config &m_config;
+    cache_config &m_config;
 
     cache_block_t *m_lines; /* nbanks x nset x assoc lines in total */
 
@@ -372,6 +376,12 @@ public:
     mem_fetch *next_access();
     void display( FILE *fp ) const;
 
+    void check_mshr_parameters( unsigned num_entries, unsigned max_merged )
+    {
+    	assert(m_num_entries==num_entries && "Change of MSHR parameters between kernels is not allowed");
+    	assert(m_max_merged==max_merged && "Change of MSHR parameters between kernels is not allowed");
+    }
+
 private:
 
     // finite sized, fully associative table, with a finite maximum number of merged requests
@@ -408,7 +418,7 @@ bool was_read_sent( const std::list<cache_event> &events );
 /// Each subclass implements its own 'access' function
 class baseline_cache : public cache_t {
 public:
-    baseline_cache( const char *name, const cache_config &config, int core_id, int type_id, mem_fetch_interface *memport,
+    baseline_cache( const char *name, cache_config &config, int core_id, int type_id, mem_fetch_interface *memport,
                      enum mem_fetch_status status )
     : m_config(config), m_tag_array(new tag_array(config,core_id,type_id)), m_mshrs(config.m_mshr_entries,config.m_mshr_max_merge)
     {
@@ -434,6 +444,13 @@ public:
     {
         delete m_tag_array;
     }
+
+	void update_cache_parameters(cache_config &config)
+	{
+		m_config=config;
+		m_tag_array->update_cache_parameters(config);
+		m_mshrs.check_mshr_parameters(config.m_mshr_entries,config.m_mshr_max_merge);
+	}
 
     virtual enum cache_request_status access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ) =  0;
     /// Sends next request to lower level of memory
@@ -465,7 +482,7 @@ public:
 protected:
     // Constructor that can be used by derived classes with custom tag arrays
     baseline_cache( const char *name,
-                    const cache_config &config,
+                    cache_config &config,
                     int core_id,
                     int type_id,
                     mem_fetch_interface *memport,
@@ -480,7 +497,7 @@ protected:
 
 protected:
     std::string m_name;
-    const cache_config &m_config;
+    cache_config &m_config;
     tag_array*  m_tag_array;
     mshr_table m_mshrs;
     std::list<mem_fetch*> m_miss_queue;
@@ -527,7 +544,7 @@ protected:
 /// Read only cache
 class read_only_cache : public baseline_cache {
 public:
-    read_only_cache( const char *name, const cache_config &config, int core_id, int type_id, mem_fetch_interface *memport, enum mem_fetch_status status )
+    read_only_cache( const char *name, cache_config &config, int core_id, int type_id, mem_fetch_interface *memport, enum mem_fetch_status status )
     : baseline_cache(name,config,core_id,type_id,memport,status){}
 
     /// Access cache for read_only_cache: returns RESERVATION_FAIL if request could not be accepted (for any reason)
@@ -536,14 +553,14 @@ public:
     virtual ~read_only_cache(){}
 
 protected:
-    read_only_cache( const char *name, const cache_config &config, int core_id, int type_id, mem_fetch_interface *memport, enum mem_fetch_status status, tag_array* new_tag_array )
+    read_only_cache( const char *name, cache_config &config, int core_id, int type_id, mem_fetch_interface *memport, enum mem_fetch_status status, tag_array* new_tag_array )
     : baseline_cache(name,config,core_id,type_id,memport,status, new_tag_array){}
 };
 
 /// Data cache - Implements common functions for L1 and L2 data cache
 class data_cache : public baseline_cache {
 public:
-    data_cache( const char *name, const cache_config &config,
+    data_cache( const char *name, cache_config &config,
     			int core_id, int type_id, mem_fetch_interface *memport,
                 mem_fetch_allocator *mfcreator, enum mem_fetch_status status )
     			: baseline_cache(name,config,core_id,type_id,memport,status)
@@ -581,9 +598,10 @@ public:
         }
     }
 
+
 protected:
     data_cache( const char *name,
-                const cache_config &config,
+                cache_config &config,
     			int core_id,
                 int type_id,
                 mem_fetch_interface *memport,
@@ -636,7 +654,7 @@ protected:
 /// (the policy used in fermi according to the CUDA manual)
 class l1_cache : public data_cache {
 public:
-	l1_cache(const char *name, const cache_config &config,
+	l1_cache(const char *name, cache_config &config,
 			int core_id, int type_id, mem_fetch_interface *memport,
             mem_fetch_allocator *mfcreator, enum mem_fetch_status status )
 			: data_cache(name,config,core_id,type_id,memport,mfcreator,status){}
@@ -647,7 +665,7 @@ public:
 
 protected:
 	l1_cache( const char *name,
-              const cache_config &config,
+              cache_config &config,
 			  int core_id,
               int type_id,
               mem_fetch_interface *memport,
@@ -661,7 +679,7 @@ protected:
 /// Models second level shared cache with global write-back and write-allocate policies
 class l2_cache : public data_cache {
 public:
-	l2_cache(const char *name, const cache_config &config,
+	l2_cache(const char *name,  cache_config &config,
 			int core_id, int type_id, mem_fetch_interface *memport,
             mem_fetch_allocator *mfcreator, enum mem_fetch_status status )
 			: data_cache(name,config,core_id,type_id,memport,mfcreator,status){}
@@ -681,7 +699,7 @@ public:
 // http://www-graphics.stanford.edu/papers/texture_prefetch/
 class tex_cache : public cache_t {
 public:
-    tex_cache( const char *name, const cache_config &config, int core_id, int type_id, mem_fetch_interface *memport,
+    tex_cache( const char *name, cache_config &config, int core_id, int type_id, mem_fetch_interface *memport,
                enum mem_fetch_status request_status, 
                enum mem_fetch_status rob_status )
     : m_config(config), 

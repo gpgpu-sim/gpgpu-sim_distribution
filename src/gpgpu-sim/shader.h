@@ -1208,10 +1208,10 @@ struct shader_core_config : public core_config
         assert( !(n_thread_per_shader % warp_size) );
         max_sfu_latency = 512;
         max_sp_latency = 32;
-        m_L1I_config.init();
-        m_L1T_config.init();
-        m_L1C_config.init();
-        m_L1D_config.init();
+        m_L1I_config.init(m_L1I_config.m_config_string);
+        m_L1T_config.init(m_L1T_config.m_config_string);
+        m_L1C_config.init(m_L1C_config.m_config_string);
+        m_L1D_config.init(m_L1D_config.m_config_string);
         gpgpu_cache_texl1_linesize = m_L1T_config.get_line_sz();
         gpgpu_cache_constl1_linesize = m_L1C_config.get_line_sz();
         m_valid = true;
@@ -1239,10 +1239,10 @@ struct shader_core_config : public core_config
     char* pipeline_widths_string;
     int pipe_widths[N_PIPELINE_STAGES];
 
-    cache_config m_L1I_config;
-    cache_config m_L1T_config;
-    cache_config m_L1C_config;
-    cache_config m_L1D_config;
+    mutable cache_config m_L1I_config;
+    mutable cache_config m_L1T_config;
+    mutable cache_config m_L1C_config;
+    mutable cache_config m_L1D_config;
 
     bool gpgpu_dwf_reg_bankconflict;
 

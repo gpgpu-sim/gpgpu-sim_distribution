@@ -10,7 +10,17 @@ Version 3.2.1+edits (development branch) versus 3.2.1
       and CL_DEVICE_TYPE_GPU.  Before only CL_DEVICE_TYPE_GPU is accepted. 
     - Fix for Bug 53 - Returning the CL_DEVICE_TYPE property in proper size
       from clGetDeviceInfo(...). 
-    - Fix for Bug 54 - Added code to automatically determine workgroup size.  
+    - Fix for Bug 54 - Added code to automatically determine workgroup size.
+    - Adding support for cudaFuncSetCacheConfig API, that allows changing the 
+      L1 Cache and Shared Memory configurations across kernels. The support 
+      enable the user to specify two more configurations (Preferred L1) or
+      (Preferred Shared Memory) besides the default config. If the
+      cudaFuncSetCacheConfig API is used to set the cache configuration
+      of a specific kernel to either of these configuration (cudaFuncCachePreferShared,
+      cudaFuncCachePreferL1), the simulator will change the cache configuration
+      at kernel launch accordingly, if there is no alternative configurations
+      provided to the simulator it will use the default configurations with a 
+      warning message display        
 Version 3.2.1 versus 3.2.0
 - Added kernel name and launch uids to performance statistics log.
 - Added l2_cache_config class to extend baseline cache_config. Allows for
