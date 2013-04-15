@@ -47,6 +47,15 @@ enum _memory_space_t {
    instruction_space
 };
 
+
+enum FuncCache
+{
+  FuncCachePreferNone = 0,
+  FuncCachePreferShared = 1,
+  FuncCachePreferL1 = 2
+};
+
+
 #ifdef __cplusplus
 
 #include <string.h>

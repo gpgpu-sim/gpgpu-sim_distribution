@@ -134,8 +134,9 @@ public:
         m_config_stringPrefL1 = NULL;
         m_config_stringPrefShared = NULL;
     }
-    void init(char * config)
+    void init(char * config, FuncCache status)
     {
+    	cache_status= status;
         assert( config );
         char rp, wp, ap, mshr_type, wap;
 
@@ -235,10 +236,11 @@ public:
     {
         return addr & ~(m_line_sz-1);
     }
-
+    FuncCache get_cache_status() {return cache_status;}
     char *m_config_string;
     char *m_config_stringPrefL1;
     char *m_config_stringPrefShared;
+    FuncCache cache_status;
 
 protected:
     void exit_parse_error()

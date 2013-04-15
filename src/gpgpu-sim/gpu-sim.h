@@ -71,13 +71,6 @@ enum dram_ctrl_t {
    DRAM_FRFCFS=1
 };
 
-enum FuncCache
-{
-  FuncCachePreferNone = 0,
-  FuncCachePreferShared = 1,
-  FuncCachePreferL1 = 2
-};
-
 
 
 struct power_config {
