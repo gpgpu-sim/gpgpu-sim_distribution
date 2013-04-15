@@ -48,7 +48,7 @@ const char * cache_request_status_str(enum cache_request_status status)
 }
 
 void l2_cache_config::init(linear_to_raw_address_translation *address_mapping){
-	cache_config::init(m_config_string);
+	cache_config::init(m_config_string,FuncCachePreferNone);
 	m_address_mapping = address_mapping;
 }
 

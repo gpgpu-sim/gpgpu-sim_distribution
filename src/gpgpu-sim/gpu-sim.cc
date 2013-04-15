@@ -811,20 +811,27 @@ void gpgpu_sim::set_cache_config(std::string kernel_name)
 
 void gpgpu_sim::change_cache_config(FuncCache cache_config)
 {
+	if(cache_config != m_shader_config->m_L1D_config.get_cache_status()){
+		printf("FLUSH L1 Cache at configuration change between kernels\n");
+		for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) {
+			m_cluster[i]->cache_flush();
+	    }
+	}
+
 	switch(cache_config){
 	case FuncCachePreferNone:
-		m_shader_config->m_L1D_config.init(m_shader_config->m_L1D_config.m_config_string);
+		m_shader_config->m_L1D_config.init(m_shader_config->m_L1D_config.m_config_string, FuncCachePreferNone);
 		m_shader_config->gpgpu_shmem_size=m_shader_config->gpgpu_shmem_sizeDefault;
 		break;
 	case FuncCachePreferL1:
 		if((m_shader_config->m_L1D_config.m_config_stringPrefL1 == NULL) || (m_shader_config->gpgpu_shmem_sizePrefL1 == (unsigned)-1))
 		{
 			printf("WARNING: missing Preferred L1 configuration\n");
-			m_shader_config->m_L1D_config.init(m_shader_config->m_L1D_config.m_config_string);
+			m_shader_config->m_L1D_config.init(m_shader_config->m_L1D_config.m_config_string, FuncCachePreferNone);
 			m_shader_config->gpgpu_shmem_size=m_shader_config->gpgpu_shmem_sizeDefault;
 
 		}else{
-			m_shader_config->m_L1D_config.init(m_shader_config->m_L1D_config.m_config_stringPrefL1);
+			m_shader_config->m_L1D_config.init(m_shader_config->m_L1D_config.m_config_stringPrefL1, FuncCachePreferL1);
 			m_shader_config->gpgpu_shmem_size=m_shader_config->gpgpu_shmem_sizePrefL1;
 		}
 		break;
@@ -832,10 +839,10 @@ void gpgpu_sim::change_cache_config(FuncCache cache_config)
 		if((m_shader_config->m_L1D_config.m_config_stringPrefShared == NULL) || (m_shader_config->gpgpu_shmem_sizePrefShared == (unsigned)-1))
 		{
 			printf("WARNING: missing Preferred L1 configuration\n");
-			m_shader_config->m_L1D_config.init(m_shader_config->m_L1D_config.m_config_string);
+			m_shader_config->m_L1D_config.init(m_shader_config->m_L1D_config.m_config_string, FuncCachePreferNone);
 			m_shader_config->gpgpu_shmem_size=m_shader_config->gpgpu_shmem_sizeDefault;
 		}else{
-			m_shader_config->m_L1D_config.init(m_shader_config->m_L1D_config.m_config_stringPrefShared);
+			m_shader_config->m_L1D_config.init(m_shader_config->m_L1D_config.m_config_stringPrefShared, FuncCachePreferShared);
 			m_shader_config->gpgpu_shmem_size=m_shader_config->gpgpu_shmem_sizePrefShared;
 		}
 		break;
