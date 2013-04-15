@@ -787,12 +787,6 @@ __host__ cudaError_t CUDARTAPI cudaGetDevice(int *device)
 	return g_last_cudaError = cudaSuccess;
 }
 
-__host__ cudaError_t CUDARTAPI cudaFuncSetCacheConfig(const char *func, enum cudaFuncCache  cacheConfig )
-{
-	CUctx_st *context = GPGPUSim_Context();
-	context->get_device()->get_gpgpu()->set_cache_config(context->get_kernel(func)->get_name(), (FuncCache)cacheConfig);
-	return g_last_cudaError = cudaSuccess;
-}
 
 /*******************************************************************************
  *                                                                              *
@@ -1966,6 +1960,15 @@ cudaError_t CUDARTAPI cudaRuntimeGetVersion(int *runtimeVersion)
 	*runtimeVersion = CUDART_VERSION;
 	return g_last_cudaError = cudaErrorUnknown;
 }
+
+#if CUDART_VERSION >= 3000
+__host__ cudaError_t CUDARTAPI cudaFuncSetCacheConfig(const char *func, enum cudaFuncCache  cacheConfig )
+{
+	CUctx_st *context = GPGPUSim_Context();
+	context->get_device()->get_gpgpu()->set_cache_config(context->get_kernel(func)->get_name(), (FuncCache)cacheConfig);
+	return g_last_cudaError = cudaSuccess;
+}
+#endif
 
 #endif
 
