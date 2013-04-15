@@ -226,6 +226,9 @@ struct core_config {
         m_valid = false; 
         num_shmem_bank=16; 
         shmem_limited_broadcast = false; 
+        gpgpu_shmem_sizeDefault=(unsigned)-1;
+        gpgpu_shmem_sizePrefL1=(unsigned)-1;
+        gpgpu_shmem_sizePrefShared=(unsigned)-1;
     }
     virtual void init() = 0;
 
@@ -244,7 +247,10 @@ struct core_config {
         return ((addr/WORD_SIZE) % num_shmem_bank);
     }
     unsigned mem_warp_parts;  
-    unsigned gpgpu_shmem_size;
+    mutable unsigned gpgpu_shmem_size;
+    unsigned gpgpu_shmem_sizeDefault;
+    unsigned gpgpu_shmem_sizePrefL1;
+    unsigned gpgpu_shmem_sizePrefShared;
 
     // texture and constant cache line sizes (used to determine number of memory accesses)
     unsigned gpgpu_cache_texl1_linesize;

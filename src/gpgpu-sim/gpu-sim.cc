@@ -212,10 +212,19 @@ void shader_core_config::reg_options(class OptionParser * opp)
                    "shader L1 instruction cache config "
                    " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_alloc>,<mshr>:<N>:<merge>,<mq>} ",
                    "4:256:4,L:R:f:N,A:2:32,4" );
-    option_parser_register(opp, "-gpgpu_cache:dl1", OPT_CSTR, &m_L1D_config.m_config_string, 
+    option_parser_register(opp, "-gpgpu_cache:dl1", OPT_CSTR, &m_L1D_config.m_config_string,
                    "per-shader L1 data cache config "
                    " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_alloc>,<mshr>:<N>:<merge>,<mq> | none}",
                    "none" );
+    option_parser_register(opp, "-gpgpu_cache:dl1PrefL1", OPT_CSTR, &m_L1D_config.m_config_stringPrefL1,
+                   "per-shader L1 data cache config "
+                   " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_alloc>,<mshr>:<N>:<merge>,<mq> | none}",
+                   "none" );
+    option_parser_register(opp, "-gpgpu_cache:dl1PreShared", OPT_CSTR, &m_L1D_config.m_config_stringPrefShared,
+                   "per-shader L1 data cache config "
+                   " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_alloc>,<mshr>:<N>:<merge>,<mq> | none}",
+                   "none" );
+
     option_parser_register(opp, "-gpgpu_perfect_mem", OPT_BOOL, &gpgpu_perfect_mem, 
                  "enable perfect memory mode (no cache miss)",
                  "0");
@@ -246,7 +255,13 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_n_ldst_response_buffer_size", OPT_UINT32, &ldst_unit_response_queue_size, 
                  "number of response packets in ld/st unit ejection buffer",
                  "2");
-    option_parser_register(opp, "-gpgpu_shmem_size", OPT_UINT32, &gpgpu_shmem_size, 
+    option_parser_register(opp, "-gpgpu_shmem_size", OPT_UINT32, &gpgpu_shmem_sizeDefault,
+                 "Size of shared memory per shader core (default 16kB)",
+                 "16384");
+    option_parser_register(opp, "-gpgpu_shmem_size_PrefL1", OPT_UINT32, &gpgpu_shmem_sizePrefL1,
+                 "Size of shared memory per shader core (default 16kB)",
+                 "16384");
+    option_parser_register(opp, "-gpgpu_shmem_size_PrefShared", OPT_UINT32, &gpgpu_shmem_sizePrefShared,
                  "Size of shared memory per shader core (default 16kB)",
                  "16384");
     option_parser_register(opp, "-gpgpu_shmem_num_banks", OPT_UINT32, &num_shmem_bank, 
@@ -473,7 +488,6 @@ kernel_info_t *gpgpu_sim::select_kernel()
         unsigned idx = (n+m_last_issued_kernel+1)%m_config.max_concurrent_kernel;
         if( m_running_kernels[idx] && !m_running_kernels[idx]->no_more_ctas_to_run() ) {
             m_last_issued_kernel=idx;
-
             // record this kernel for stat print if it is the first time this kernel is selected for execution  
             unsigned launch_uid = m_running_kernels[idx]->get_uid(); 
             if (std::find(m_executed_kernel_uids.begin(), m_executed_kernel_uids.end(), launch_uid) == m_executed_kernel_uids.end()) {
@@ -754,13 +768,85 @@ std::string gpgpu_sim::executed_kernel_info_string()
 
    return statout.str(); 
 }
+void gpgpu_sim::set_cache_config(std::string kernel_name,  FuncCache cacheConfig )
+{
+	m_special_cache_config[kernel_name]=cacheConfig ;
+}
+
+FuncCache gpgpu_sim::get_cache_config(std::string kernel_name)
+{
+	for (	std::map<std::string, FuncCache>::iterator iter = m_special_cache_config.begin(); iter != m_special_cache_config.end(); iter++){
+		    std::string kernel= iter->first;
+			if (kernel_name.compare(kernel) == 0){
+				return iter->second;
+			}
+	}
+	return (FuncCache)0;
+}
+
+bool gpgpu_sim::has_special_cache_config(std::string kernel_name)
+{
+	for (	std::map<std::string, FuncCache>::iterator iter = m_special_cache_config.begin(); iter != m_special_cache_config.end(); iter++){
+	    	std::string kernel= iter->first;
+			if (kernel_name.compare(kernel) == 0){
+				return true;
+			}
+	}
+	return false;
+}
+
+
+void gpgpu_sim::set_cache_config(std::string kernel_name)
+{
+	if(has_special_cache_config(kernel_name)){
+		change_cache_config(get_cache_config(kernel_name));
+	}else{
+		change_cache_config(FuncCachePreferNone);
+	}
+}
+
+
+void gpgpu_sim::change_cache_config(FuncCache cache_config)
+{
+	switch(cache_config){
+	case FuncCachePreferNone:
+		m_shader_config->m_L1D_config.init(m_shader_config->m_L1D_config.m_config_string);
+		m_shader_config->gpgpu_shmem_size=m_shader_config->gpgpu_shmem_sizeDefault;
+		break;
+	case FuncCachePreferL1:
+		if((m_shader_config->m_L1D_config.m_config_stringPrefL1 == NULL) || (m_shader_config->gpgpu_shmem_sizePrefL1 == (unsigned)-1))
+		{
+			printf("WARNING: missing Preferred L1 configuration\n");
+			m_shader_config->m_L1D_config.init(m_shader_config->m_L1D_config.m_config_string);
+			m_shader_config->gpgpu_shmem_size=m_shader_config->gpgpu_shmem_sizeDefault;
+
+		}else{
+			m_shader_config->m_L1D_config.init(m_shader_config->m_L1D_config.m_config_stringPrefL1);
+			m_shader_config->gpgpu_shmem_size=m_shader_config->gpgpu_shmem_sizePrefL1;
+		}
+		break;
+	case FuncCachePreferShared:
+		if((m_shader_config->m_L1D_config.m_config_stringPrefShared == NULL) || (m_shader_config->gpgpu_shmem_sizePrefShared == (unsigned)-1))
+		{
+			printf("WARNING: missing Preferred L1 configuration\n");
+			m_shader_config->m_L1D_config.init(m_shader_config->m_L1D_config.m_config_string);
+			m_shader_config->gpgpu_shmem_size=m_shader_config->gpgpu_shmem_sizeDefault;
+		}else{
+			m_shader_config->m_L1D_config.init(m_shader_config->m_L1D_config.m_config_stringPrefShared);
+			m_shader_config->gpgpu_shmem_size=m_shader_config->gpgpu_shmem_sizePrefShared;
+		}
+		break;
+	default:
+		break;
+	}
+}
+
 
 void gpgpu_sim::clear_executed_kernel_info()
 {
-   m_executed_kernel_names.clear(); 
-   m_executed_kernel_uids.clear(); 
+   m_executed_kernel_names.clear();
+   m_executed_kernel_uids.clear();
 }
-
 void gpgpu_sim::gpu_print_stat() 
 {  
    FILE *statfout = stdout; 

@@ -35,7 +35,6 @@
 #include "shader.h"
 #include <iostream>
 #include <fstream>
-
 #include <list>
 #include <stdio.h>
 
@@ -71,6 +70,14 @@ enum dram_ctrl_t {
    DRAM_FIFO=0,
    DRAM_FRFCFS=1
 };
+
+enum FuncCache
+{
+  FuncCachePreferNone = 0,
+  FuncCachePreferShared = 1,
+  FuncCachePreferL1 = 2
+};
+
 
 
 struct power_config {
@@ -210,7 +217,7 @@ struct memory_config {
    void reg_options(class OptionParser * opp);
 
    bool m_valid;
-   l2_cache_config m_L2_config;
+   mutable l2_cache_config m_L2_config;
    bool m_L2_texure_only;
 
    char *gpgpu_dram_timing_opt;
@@ -461,6 +468,9 @@ private:
    unsigned long long  gpu_tot_issued_cta;
    unsigned long long  last_gpu_sim_insn;
 
+
+   std::map<std::string, FuncCache> m_special_cache_config;
+
    std::vector<std::string> m_executed_kernel_names; //< names of kernel for stat printout 
    std::vector<unsigned> m_executed_kernel_uids; //< uids of kernel launches for stat printout
    std::string executed_kernel_info_string(); //< format the kernel information into a string for stat printout
@@ -474,6 +484,11 @@ public:
 
 
 
+   FuncCache get_cache_config(std::string kernel_name);
+   void set_cache_config(std::string kernel_name, FuncCache cacheConfig );
+   bool has_special_cache_config(std::string kernel_name);
+   void change_cache_config(FuncCache cache_config);
+   void set_cache_config(std::string kernel_name);
 
 };
 

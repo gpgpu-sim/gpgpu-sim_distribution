@@ -29,6 +29,9 @@
 #include "stat-tool.h"
 #include <assert.h>
 
+#define MAX_DEFAULT_CACHE_SIZE_MULTIBLIER 4
+// used to allocate memory that is large enough to adapt the changes in cache size across kernels
+
 const char * cache_request_status_str(enum cache_request_status status) 
 {
    static const char * static_cache_request_status_str[] = {
@@ -45,7 +48,7 @@ const char * cache_request_status_str(enum cache_request_status status)
 }
 
 void l2_cache_config::init(linear_to_raw_address_translation *address_mapping){
-	cache_config::init();
+	cache_config::init(m_config_string);
 	m_address_mapping = address_mapping;
 }
 
@@ -64,7 +67,7 @@ tag_array::~tag_array()
     delete[] m_lines;
 }
 
-tag_array::tag_array( const cache_config &config,
+tag_array::tag_array( cache_config &config,
                       int core_id,
                       int type_id,
                       cache_block_t* new_lines)
@@ -74,13 +77,18 @@ tag_array::tag_array( const cache_config &config,
     init( core_id, type_id );
 }
 
-tag_array::tag_array( const cache_config &config,
+void tag_array::update_cache_parameters(cache_config &config)
+{
+	m_config=config;
+}
+
+tag_array::tag_array( cache_config &config,
                       int core_id,
                       int type_id )
     : m_config( config )
 {
     //assert( m_config.m_write_policy == READ_ONLY ); Old assert
-    m_lines = new cache_block_t[ config.get_num_lines()];
+    m_lines = new cache_block_t[MAX_DEFAULT_CACHE_SIZE_MULTIBLIER*config.get_num_lines()];
     init( core_id, type_id );
 }
 

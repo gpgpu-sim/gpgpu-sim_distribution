@@ -787,6 +787,13 @@ __host__ cudaError_t CUDARTAPI cudaGetDevice(int *device)
 	return g_last_cudaError = cudaSuccess;
 }
 
+__host__ cudaError_t CUDARTAPI cudaFuncSetCacheConfig(const char *func, enum cudaFuncCache  cacheConfig )
+{
+	CUctx_st *context = GPGPUSim_Context();
+	context->get_device()->get_gpgpu()->set_cache_config(context->get_kernel(func)->get_name(), (FuncCache)cacheConfig);
+	return g_last_cudaError = cudaSuccess;
+}
+
 /*******************************************************************************
  *                                                                              *
  *                                                                              *
