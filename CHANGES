@@ -21,6 +21,8 @@ Version 3.2.1+edits (development branch) versus 3.2.1
       at kernel launch accordingly, if there is no alternative configurations
       provided to the simulator it will use the default configurations with a 
       warning message display        
+    - Removed a spamming print at kernel finish that dumped a warp issuing
+      histogram.
 Version 3.2.1 versus 3.2.0
 - Added kernel name and launch uids to performance statistics log.
 - Added l2_cache_config class to extend baseline cache_config. Allows for
