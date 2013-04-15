@@ -877,7 +877,7 @@ void gpgpu_sim::gpu_print_stat()
    printf( "gpu_total_sim_rate=%u\n", (unsigned)( ( gpu_tot_sim_insn + gpu_sim_insn ) / elapsed_time ) );
 
    shader_print_l1_miss_stat( stdout );
-   shader_print_scheduler_stat( stdout, true );
+   shader_print_scheduler_stat( stdout, false );
 
    m_shader_stats->print(stdout);
 #ifdef GPGPUSIM_POWER_MODEL
