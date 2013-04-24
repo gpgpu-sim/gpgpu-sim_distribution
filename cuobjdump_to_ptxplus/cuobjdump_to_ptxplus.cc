@@ -38,13 +38,13 @@ cuobjdumpInstList *g_instList = new cuobjdumpInstList();
 cuobjdumpInstList *g_headerList = new cuobjdumpInstList();
 
 int sass_parse();
-extern "C" FILE *sass_in;
+extern FILE *sass_in;
 
 int ptx_parse();
-extern "C" FILE *ptx_in;
+extern FILE *ptx_in;
 
 int elf_parse();
-extern "C" FILE *elf_in;
+extern FILE *elf_in;
 
 extern int g_error_detected;
 

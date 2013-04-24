@@ -2,7 +2,6 @@ LEX			= flex
 LEXFLAGS	= -B 
 YACC		= bison
 YFLAGS		= -t -d --report=all --verbose
-CC			= gcc
 CCFLAGS		= -ggdb -fPIC -Wall -Wno-unused-function -Wno-sign-compare 
 CXX			= g++
 CXXFLAGS	= ${CCFLAGS}
@@ -61,7 +60,7 @@ $(OUTPUT_DIR)/%.o: %.cpp %.h
 	$(CXX) ${CXXFLAGS} -c -o $@ $<
 
 $(OUTPUT_DIR)/%.o: %.c %.h
-	${CC} ${CCFLAGS} -c -o $@ $<
+	${CXX} ${CCFLAGS} -c -o $@ $<
 
 SRCS = $(shell ls *.cc)
 
