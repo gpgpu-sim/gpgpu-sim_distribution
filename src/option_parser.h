@@ -47,10 +47,6 @@ enum option_dtype {
     OPT_CSTR
 };
 
-#ifdef __cplusplus
-extern "C" {
-#endif 
-
 // create and destroy option parser
 option_parser_t option_parser_create();
 void option_parser_destroy(option_parser_t opp);
@@ -80,8 +76,4 @@ void option_parser_delimited_string(option_parser_t opp,
 // print options
 void option_parser_print(option_parser_t opp, 
                          FILE *fout);
-
-#ifdef __cplusplus
-};
-#endif 
 

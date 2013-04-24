@@ -415,7 +415,7 @@ void register_ptx_function( const char *name, function_info *impl )
    sg_info->m_kernels[name] = impl;
 }
 
-extern "C" void ptxinfo_addinfo()
+ void ptxinfo_addinfo()
 {
    ptxinfo_opencl_addinfo( sg_info->m_kernels );
 }

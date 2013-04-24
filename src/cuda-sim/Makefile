@@ -33,7 +33,6 @@ DEBUG?=0
 TRACE?=0
 
 CPP = g++ $(SNOW)
-CC = gcc $(SNOW)
 ifeq ($(INTEL),1)
 	CPP = icpc
 	CC = icc
@@ -80,16 +79,16 @@ libgpgpu_ptx_sim.a: $(OBJS)
 	ar rcs $(OUTPUT_DIR)/libgpgpu_ptx_sim.a $(OUTPUT_DIR)/ptx.tab.o $(OUTPUT_DIR)/lex.ptx_.o $(OUTPUT_DIR)/ptxinfo.tab.o $(OUTPUT_DIR)/lex.ptxinfo_.o $(OBJS)
 
 $(OUTPUT_DIR)/ptx.tab.o: ptx.tab.c
-	$(CC) -c $(OPT) -DYYDEBUG ptx.tab.c -o $(OUTPUT_DIR)/ptx.tab.o
+	$(CPP) -c $(OPT) -DYYDEBUG ptx.tab.c -o $(OUTPUT_DIR)/ptx.tab.o
 
 $(OUTPUT_DIR)/lex.ptx_.o: lex.ptx_.c 
-	$(CC) -c $(OPT) lex.ptx_.c -o $(OUTPUT_DIR)/lex.ptx_.o
+	$(CPP) -c $(OPT) lex.ptx_.c -o $(OUTPUT_DIR)/lex.ptx_.o
 
 $(OUTPUT_DIR)/ptxinfo.tab.o: ptxinfo.tab.c
-	$(CC) -c $(OPT) -DYYDEBUG ptxinfo.tab.c -o $(OUTPUT_DIR)/ptxinfo.tab.o
+	$(CPP) -c $(OPT) -DYYDEBUG ptxinfo.tab.c -o $(OUTPUT_DIR)/ptxinfo.tab.o
 
 $(OUTPUT_DIR)/lex.ptxinfo_.o: lex.ptxinfo_.c
-	$(CC) -c $(OPT) lex.ptxinfo_.c -o $(OUTPUT_DIR)/lex.ptxinfo_.o
+	$(CPP) -c $(OPT) lex.ptxinfo_.c -o $(OUTPUT_DIR)/lex.ptxinfo_.o
 
 ptx.tab.c: ptx.y
 	bison --name-prefix=ptx_ -v -d ptx.y
@@ -112,7 +111,7 @@ clean:
 	rm -f Makefile.makedepend Makefile.makedepend.bak
 
 $(OUTPUT_DIR)/%.o: %.c
-	$(CC) -c $(OPT) $< -o $(OUTPUT_DIR)/$*.o
+	$(CPP) -c $(OPT) $< -o $(OUTPUT_DIR)/$*.o
 $(OUTPUT_DIR)/%.o: %.cc
 	$(CPP) -c $(CXX_OPT) $< -o $(OUTPUT_DIR)/$*.o
 
@@ -123,13 +122,7 @@ instructions.h: instructions.cc
 	@echo "#include \"ptx_ir.h\"" >> $*.h
 	@echo "#ifndef instructions_h_included" >> $*.h
 	@echo "#define instructions_h_included" >> $*.h
-	@echo "#ifdef __cplusplus" >> $*.h
-	@echo "extern \"C\" {" >> $*.h
-	@echo "#endif" >> $*.h
 	@cat $< | grep "_impl(" | sed 's/{.*//' | sed 's/$$/;/' >> $*.h
-	@echo "#ifdef __cplusplus" >> $*.h
-	@echo "}" >> $*.h
-	@echo "#endif" >> $*.h
 	@echo "#endif" >> $*.h
 	@chmod -w $*.h
 	@echo "created instructions.h"

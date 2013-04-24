@@ -30,7 +30,7 @@
 #include "ptx.tab.h"
 #include <stdarg.h>
 
-extern "C" int ptx_error( const char *s );
+extern int ptx_error( const char *s );
 extern int ptx_lineno;
 
 static const struct core_config *g_shader_core_config;
@@ -240,7 +240,7 @@ void parse_assert_impl( int test_value, const char *file, unsigned line, const c
       parse_error_impl(file,line, msg);
 }
 
-extern "C" char linebuf[1024];
+extern char linebuf[1024];
 
 
 void set_return()

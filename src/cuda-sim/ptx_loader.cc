@@ -43,13 +43,13 @@ bool g_override_embedded_ptx = false;
 
 /// extern prototypes
 
-extern "C" int ptx_parse();
-extern "C" int ptx__scan_string(const char*);
+extern int ptx_parse();
+extern int ptx__scan_string(const char*);
 
 const char *g_ptxinfo_filename;
-extern "C" int ptxinfo_parse();
-extern "C" int ptxinfo_debug;
-extern "C" FILE *ptxinfo_in;
+extern int ptxinfo_parse();
+extern int ptxinfo_debug;
+extern FILE *ptxinfo_in;
 
 static bool g_save_embedded_ptx;
 bool g_keep_intermediate_files;

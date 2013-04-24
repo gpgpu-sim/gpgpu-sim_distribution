@@ -344,7 +344,7 @@ static CUctx_st* GPGPUSim_Context()
 	return the_context;
 }
 
-extern "C" void ptxinfo_addinfo()
+ void ptxinfo_addinfo()
 {
 	if( !strcmp("__cuda_dummy_entry__",get_ptxinfo_kname()) ) {
 		// this string produced by ptxas for empty ptx files (e.g., bandwidth test)
@@ -1249,8 +1249,8 @@ void setCuobjdumpsassfilename(const char* filename){
 	}
 	(dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()))->setSASSfilename(filename);
 }
-extern "C" int cuobjdump_parse();
-extern "C" FILE *cuobjdump_in;
+extern int cuobjdump_parse();
+extern FILE *cuobjdump_in;
 
 //! Return the executable file of the process containing the PTX/SASS code 
 //!
@@ -2020,13 +2020,13 @@ int CUDARTAPI __cudaSynchronizeThreads(void**, void*)
 
 ////////
 
-extern "C" int ptx_parse();
-extern "C" int ptx__scan_string(const char*);
-extern "C" FILE *ptx_in;
+extern int ptx_parse();
+extern int ptx__scan_string(const char*);
+extern FILE *ptx_in;
 
-extern "C" int ptxinfo_parse();
-extern "C" int ptxinfo_debug;
-extern "C" FILE *ptxinfo_in;
+extern int ptxinfo_parse();
+extern int ptxinfo_debug;
+extern FILE *ptxinfo_in;
 
 /// static functions
 

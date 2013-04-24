@@ -1623,7 +1623,7 @@ void gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t co
 
 int g_ptx_sim_mode; // if non-zero run functional simulation only (i.e., no notion of a clock cycle)
 
-extern "C" int ptx_debug;
+extern int ptx_debug;
 
 bool g_cuda_launch_blocking = false;
 
@@ -1853,28 +1853,28 @@ struct gpgpu_ptx_sim_kernel_info get_ptxinfo_kinfo()
     return g_ptxinfo_kinfo;
 }
 
-extern "C" void ptxinfo_function(const char *fname )
+void ptxinfo_function(const char *fname )
 {
     clear_ptxinfo();
     g_ptxinfo_kname = strdup(fname);
 }
 
-extern "C" void ptxinfo_regs( unsigned nregs )
+void ptxinfo_regs( unsigned nregs )
 {
     g_ptxinfo_kinfo.regs=nregs;
 }
 
-extern "C" void ptxinfo_lmem( unsigned declared, unsigned system )
+void ptxinfo_lmem( unsigned declared, unsigned system )
 {
     g_ptxinfo_kinfo.lmem=declared+system;
 }
 
-extern "C" void ptxinfo_smem( unsigned declared, unsigned system )
+void ptxinfo_smem( unsigned declared, unsigned system )
 {
     g_ptxinfo_kinfo.smem=declared+system;
 }
 
-extern "C" void ptxinfo_cmem( unsigned nbytes, unsigned bank )
+void ptxinfo_cmem( unsigned nbytes, unsigned bank )
 {
     g_ptxinfo_kinfo.cmem+=nbytes;
 }
