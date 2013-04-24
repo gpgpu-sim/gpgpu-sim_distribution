@@ -26,6 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "gpgpu_sim_wrapper.h"
+#include <sys/stat.h>
 #define SP_BASE_POWER 0
 #define SFU_BASE_POWER  0
 #define NUM_COMPONENTS_MODELLED 18
@@ -217,7 +218,8 @@ void gpgpu_sim_wrapper::init_mcpat(char* xmlfile, char* powerfilename, char* pow
 	   mcpat_init = false;
 	   has_written_avg=false;
 	   powerfile.open(g_power_filename);
-
+       int flg=chmod(g_power_filename, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+       assert(flg==0);
    }
    sample_val = 0;
    init_inst_val=init_val;//gpu_tot_sim_insn+gpu_sim_insn;
