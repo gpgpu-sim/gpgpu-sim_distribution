@@ -92,8 +92,8 @@ public:
     }
     ~functionalCoreSim(){
         warp_exit(0);
-        delete m_liveThreadCount;
-        delete m_warpAtBarrier;
+        delete[] m_liveThreadCount;
+        delete[] m_warpAtBarrier;
     }
     //! executes all warps till completion 
     void execute();
