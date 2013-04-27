@@ -596,8 +596,10 @@ cl_kernel _cl_program::CreateKernel( const char *kernel_name, cl_int *errcode_re
 
    if( finfo == NULL ) 
       setErrCode( errcode_ret, CL_INVALID_PROGRAM_EXECUTABLE );
-   else 
+   else{ 
       result = new _cl_kernel(this,kernel_name,finfo);
+      *errcode_ret = CL_SUCCESS;
+   }
    return result;
 }
 
@@ -686,8 +688,8 @@ clCreateContextFromType(const cl_context_properties * properties,
       break; // GPGPU-Sim qualifies as these types of device. 
    default: 
       printf("GPGPU-Sim OpenCL API: unsupported device type %lx\n", device_type );
-      abort(); 
-      break; 
+      setErrCode( errcode_ret, CL_DEVICE_NOT_FOUND );
+      return NULL;
    }
    
    if( properties != NULL ) {
@@ -1104,7 +1106,9 @@ clGetDeviceIDs(cl_platform_id   platform,
 
    switch( device_type ) {
    case CL_DEVICE_TYPE_CPU: 
-      opencl_not_implemented(__my_func__,__LINE__);
+      // Some benchmarks (e.g. ComD benchmark from Mantevo package) looks for CPU and GPU to choose among, so it is not wise to abort execution because of GPGPUsim is not a CPU !.
+      printf("GPGPU-Sim OpenCL API: unsupported device type %lx\n", device_type );
+      return CL_DEVICE_NOT_FOUND;
       break;
    case CL_DEVICE_TYPE_DEFAULT:
    case CL_DEVICE_TYPE_GPU: 
