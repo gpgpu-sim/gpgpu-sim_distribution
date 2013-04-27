@@ -598,7 +598,7 @@ cl_kernel _cl_program::CreateKernel( const char *kernel_name, cl_int *errcode_re
       setErrCode( errcode_ret, CL_INVALID_PROGRAM_EXECUTABLE );
    else{ 
       result = new _cl_kernel(this,kernel_name,finfo);
-      *errcode_ret = CL_SUCCESS;
+      setErrCode( errcode_ret, CL_SUCCESS );
    }
    return result;
 }
@@ -690,6 +690,7 @@ clCreateContextFromType(const cl_context_properties * properties,
       printf("GPGPU-Sim OpenCL API: unsupported device type %lx\n", device_type );
       setErrCode( errcode_ret, CL_DEVICE_NOT_FOUND );
       return NULL;
+      break;
    }
    
    if( properties != NULL ) {
