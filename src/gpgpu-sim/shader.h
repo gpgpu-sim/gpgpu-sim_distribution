@@ -556,10 +556,10 @@ private:
           else if( m_cu ) return m_cu->get_active_mask();
           else abort();
       }
-      unsigned get_op3() const
+      unsigned get_sp_op() const
       {
-          if( m_warp ) return m_warp->op3;
-          else if( m_cu ) return m_cu->get_op3();
+          if( m_warp ) return m_warp->sp_op;
+          else if( m_cu ) return m_cu->get_sp_op();
           else abort();
       }
       unsigned get_oc_id() const { return m_cu->get_id(); }
@@ -754,7 +754,7 @@ private:
       unsigned get_warp_id() const { return m_warp_id; }
       unsigned get_active_count() const { return m_warp->active_count(); }
       const active_mask_t & get_active_mask() const { return m_warp->get_active_mask(); }
-      unsigned get_op3() const { return m_warp->op3; }
+      unsigned get_sp_op() const { return m_warp->sp_op; }
       unsigned get_id() const { return m_cuid; } // returns CU hw id
 
       // modifiers
@@ -1871,8 +1871,6 @@ public:
     }
     virtual void push(mem_fetch *mf)
     {
-        if( !mf->get_inst().empty() )
-            m_core->mem_instruction_stats(mf->get_inst()); // not I$-fetch
         if ( mf && mf->isatomic() )
             mf->do_atomic(); // execute atomic inside the "memory subsystem"
         m_cluster->push_response_fifo(mf);
