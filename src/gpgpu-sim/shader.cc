@@ -582,9 +582,9 @@ void shader_core_ctx::decode()
         m_warp[m_inst_fetch_buffer.m_warp_id].inc_inst_in_pipeline();
         if( pI1 ) {
             m_stats->m_num_decoded_insn[m_sid]++;
-            if(pI1->op2==INT_OP){
+            if(pI1->oprnd_type==INT_OP){
                 m_stats->m_num_INTdecoded_insn[m_sid]++;
-            }else if(pI1->op2==FP_OP) {
+            }else if(pI1->oprnd_type==FP_OP) {
             	m_stats->m_num_FPdecoded_insn[m_sid]++;
             }
            const warp_inst_t* pI2 = ptx_fetch_inst(pc+pI1->isize);
@@ -592,9 +592,9 @@ void shader_core_ctx::decode()
                m_warp[m_inst_fetch_buffer.m_warp_id].ibuffer_fill(1,pI2);
                m_warp[m_inst_fetch_buffer.m_warp_id].inc_inst_in_pipeline();
                m_stats->m_num_decoded_insn[m_sid]++;
-               if(pI2->op2==INT_OP){
+               if(pI2->oprnd_type==INT_OP){
                    m_stats->m_num_INTdecoded_insn[m_sid]++;
-               }else if(pI2->op2==FP_OP) {
+               }else if(pI2->oprnd_type==FP_OP) {
             	   m_stats->m_num_FPdecoded_insn[m_sid]++;
                }
            }
@@ -1185,11 +1185,11 @@ void shader_core_ctx::warp_inst_complete(const warp_inst_t &inst)
       printf("[warp_inst_complete] uid=%u core=%u warp=%u pc=%#x @ time=%llu issued@%llu\n", 
              inst.get_uid(), m_sid, inst.warp_id(), inst.pc, gpu_tot_sim_cycle + gpu_sim_cycle, inst.get_issue_cycle()); 
    #endif
-  if(inst.op4==SP__OP)
+  if(inst.op_pipe==SP__OP)
 	  m_stats->m_num_sp_committed[m_sid]++;
-  else if(inst.op4==SFU__OP)
+  else if(inst.op_pipe==SFU__OP)
 	  m_stats->m_num_sfu_committed[m_sid]++;
-  else if(inst.op4==MEM__OP)
+  else if(inst.op_pipe==MEM__OP)
 	  m_stats->m_num_mem_committed[m_sid]++;
 
   if(m_config->gpgpu_clock_gated_lanes==false)
@@ -1427,7 +1427,7 @@ void sfu::issue( register_set& source_reg )
     warp_inst_t** ready_reg = source_reg.get_ready();
 	//m_core->incexecstat((*ready_reg));
 
-	(*ready_reg)->op4=SFU__OP;
+	(*ready_reg)->op_pipe=SFU__OP;
 	m_core->incsfu_stat(m_core->get_config()->warp_size,(*ready_reg)->latency);
 	pipelined_simd_unit::issue(source_reg);
 }
@@ -1463,7 +1463,7 @@ void sp_unit :: issue(register_set& source_reg)
 {
     warp_inst_t** ready_reg = source_reg.get_ready();
 	//m_core->incexecstat((*ready_reg));
-	(*ready_reg)->op4=SP__OP;
+	(*ready_reg)->op_pipe=SP__OP;
 	m_core->incsp_stat(m_core->get_config()->warp_size,(*ready_reg)->latency);
 	pipelined_simd_unit::issue(source_reg);
 }
@@ -1598,8 +1598,6 @@ ldst_unit::ldst_unit( mem_fetch_interface *icnt,
 void ldst_unit:: issue( register_set &reg_set )
 {
 	warp_inst_t* inst = *(reg_set.get_ready());
-   // stat collection
-   m_core->mem_instruction_stats(*inst);
 
    // record how many pending register writes/memory accesses there are for this instruction
    assert(inst->empty() == false);
@@ -1615,7 +1613,8 @@ void ldst_unit:: issue( register_set &reg_set )
    }
 
 
-	inst->op4=MEM__OP;
+	inst->op_pipe=MEM__OP;
+	// stat collection
 	m_core->mem_instruction_stats(*inst);
 	m_core->incmem_stat(m_core->get_config()->warp_size,1);
 	pipelined_simd_unit::issue(reg_set);
@@ -2015,18 +2014,19 @@ void warp_inst_t::print( FILE *fout ) const
 }
 void shader_core_ctx::incexecstat(warp_inst_t *&inst)
 {
-	if(inst->op5==TEX)
+	if(inst->mem_op==TEX)
 		inctex_stat(inst->active_count(),1);
 
-	switch(inst->op3){
+    // Latency numbers for next operations are used to scale the power values
+    // for special operations, according observations from microbenchmarking
+    // TODO: put these numbers in the xml configuration
+
+	switch(inst->sp_op){
 	case INT__OP:
 		incialu_stat(inst->active_count(),25);
 		break;
 	case INT_MUL_OP:
-		if(m_config->gpgpu_shader_registers==32768) //i.e. FERMI
-			incimul_stat(inst->active_count(),7.2);
-		else
-			incimul_stat(inst->active_count(),16);
+		incimul_stat(inst->active_count(),7.2);
 		break;
 	case INT_MUL24_OP:
 		incimul24_stat(inst->active_count(),4.2);
@@ -2038,52 +2038,26 @@ void shader_core_ctx::incexecstat(warp_inst_t *&inst)
 		incidiv_stat(inst->active_count(),40);
 		break;
 	case FP__OP:
-		if(m_config->gpgpu_shader_registers==32768)
 		incfpalu_stat(inst->active_count(),1);
-		else
-		incfpalu_stat(inst->active_count(),1.7);
 		break;
 	case FP_MUL_OP:
-		if(m_config->gpgpu_shader_registers==32768)
-		incfpmul_stat(inst->active_count(),1.8);
-		else
 		incfpmul_stat(inst->active_count(),1.8);
 		break;
 	case FP_DIV_OP:
-		if(m_config->gpgpu_shader_registers==32768)
 		incfpdiv_stat(inst->active_count(),48);
-		else 
-		incfpdiv_stat(inst->active_count(),22);
 		break;
 	case FP_SQRT_OP:
-		if(m_config->gpgpu_shader_registers==32768)
 		inctrans_stat(inst->active_count(),25);
-		else
-		inctrans_stat(inst->active_count(),8);
-
 		break;
 	case FP_LG_OP:
-		if (m_config->gpgpu_shader_registers==32768)
 		inctrans_stat(inst->active_count(),35);
-		else
-		inctrans_stat(inst->active_count(),0.3);
 		break;
 	case FP_SIN_OP:
-		if(m_config->gpgpu_shader_registers==32768)
 		inctrans_stat(inst->active_count(),12);
-		else 
-		inctrans_stat(inst->active_count(),40);
-
 		break;
 	case FP_EXP_OP:
-		if(m_config->gpgpu_shader_registers==32768)
 		inctrans_stat(inst->active_count(),35);
-		else 
-		inctrans_stat(inst->active_count(),9);
-
 		break;
-
-
 	default:
 		break;
 	}

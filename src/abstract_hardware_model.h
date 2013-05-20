@@ -82,14 +82,14 @@ enum uarch_op_t {
 };
 typedef enum uarch_op_t op_type;
 
-enum uarch_op2_t {
+enum uarch_operand_type_t {
 	UN_OP=-1,
     INT_OP,
     FP_OP
 };
-typedef enum uarch_op2_t op_type2;
+typedef enum uarch_operand_type_t types_of_operands;
 
-enum uarch_op3_t {
+enum special_operations_t {
     OTHER_OP,
     INT__OP,
 	INT_MUL24_OP,
@@ -99,24 +99,24 @@ enum uarch_op3_t {
     FP_MUL_OP,
     FP_DIV_OP,
     FP__OP,
-	 FP_SQRT_OP,
-	 FP_LG_OP,
-	 FP_SIN_OP,
-	 FP_EXP_OP
+	FP_SQRT_OP,
+	FP_LG_OP,
+	FP_SIN_OP,
+	FP_EXP_OP
 };
-typedef enum uarch_op3_t op_type3;
-enum uarch_op4_t {
+typedef enum special_operations_t special_ops; // Required to identify for the power model
+enum operation_pipeline_t {
     UNKOWN_OP,
     SP__OP,
     SFU__OP,
     MEM__OP
 };
-typedef enum uarch_op4_t op_type4;
-enum uarch_op5_t {
+typedef enum operation_pipeline_t operation_pipeline;
+enum mem_operation_t {
     NOT_TEX,
     TEX
 };
-typedef enum uarch_op5_t op_type5;
+typedef enum mem_operation_t mem_operation;
 
 enum _memory_op_t {
 	no_memory_op = 0,
@@ -679,10 +679,10 @@ public:
         pc=(address_type)-1;
         reconvergence_pc=(address_type)-1;
         op=NO_OP; 
-        op2=UN_OP;
-        op3=OTHER_OP;
-        op4=UNKOWN_OP;
-        op5=NOT_TEX;
+        oprnd_type=UN_OP;
+        sp_op=OTHER_OP;
+        op_pipe=UNKOWN_OP;
+        mem_op=NOT_TEX;
         num_operands=0;
         num_regs=0;
         memset(out, 0, sizeof(unsigned)); 
@@ -714,10 +714,10 @@ public:
     address_type pc;        // program counter address of instruction
     unsigned isize;         // size of instruction in bytes 
     op_type op;             // opcode (uarch visible)
-    op_type2 op2;           // opcode (uarch visible) determine if the operation is an interger or a floating point
-    op_type3 op3;           // opcode (uarch visible) determine if int_alu, fp_alu, int_mul ....
-    op_type4 op4;
-    op_type5 op5;
+    types_of_operands oprnd_type;     // code (uarch visible) identify if the operation is an interger or a floating point
+    special_ops sp_op;           // code (uarch visible) identify if int_alu, fp_alu, int_mul ....
+    operation_pipeline op_pipe;  // code (uarch visible) identify the pipeline of the operation (SP, SFU or MEM)
+    mem_operation mem_op;        // code (uarch visible) identify memory type
     _memory_op_t memory_op; // memory_op used by ptxplus 
     unsigned num_operands;
     unsigned num_regs; // count vector operand as one register operand
