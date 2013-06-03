@@ -1,6 +1,7 @@
 LOG:
 Version 3.2.1+edits (development branch) versus 3.2.1
 - Replaced legacy L2 cache access statistics with more meaningful breakdown. 
+- Added NVIDIA Quadro FX5600 GPGPU-Sim and Quadro configuration files.
 - Bug Fixes:
     - Fixed the flit count sent to GPUWattch for atomic operations. 
     - Fix for Bug 51 - Updated the function declaration of
