@@ -66,9 +66,10 @@ gpgpu_sim_wrapper::gpgpu_sim_wrapper( bool power_simulation_enabled, char* xmlfi
 
 	   gpu_avg_power=0;
 	   gpu_tot_avg_power=0;
-
 	   gpu_max_power=0;
 	   gpu_tot_max_power=0;
+	   gpu_min_power=0;
+	   gpu_tot_min_power=0;
 
 	   num_pwr_cmps=NUM_COMPONENTS_MODELLED;
 	   num_per_counts=NUM_PERFORMANCE_COUNTERS;
@@ -84,8 +85,6 @@ gpgpu_sim_wrapper::gpgpu_sim_wrapper( bool power_simulation_enabled, char* xmlfi
 	   pwr_cmp_min=(double *)calloc(num_pwr_cmps,sizeof(double));
 	   pwr_cmp_max=(double *)calloc(num_pwr_cmps,sizeof(double));
 	   const_dynamic_power=0;
-	   gpu_min_power=0;
-	   gpu_tot_min_power=0;
 	   proc_power=0;
 
 	   g_power_filename = NULL;
@@ -256,7 +255,14 @@ void gpgpu_sim_wrapper::reset_counters(bool do_print){
 	for(unsigned i=0; i<num_per_counts; ++i){
 		perf_count_max[i]= 0;
 	}
-	count=0;
+
+	// Reset per-kernel counters
+	count = 0;
+	gpu_avg_power = 0;
+	gpu_max_power = 0;
+	gpu_min_power = 0;
+
+
 	return;
 }
 
@@ -413,7 +419,12 @@ void gpgpu_sim_wrapper::power_metrics_calculations()
 {
     gcount++;
     count++;
-	gpu_avg_power=(gpu_avg_power+ proc->rt_power.readOp.dynamic);
+
+    double total_power = proc->rt_power.readOp.dynamic + pwr_cmp[CONST_DYNAMICP];
+
+    // Average power
+    // Previous + new + constant dynamic power (e.g., dynamic clocking power)
+    gpu_avg_power += total_power;
 	for(unsigned ind=0; ind<num_pwr_cmps; ++ind){
 		pwr_cmp_avg[ind] += (double)pwr_cmp[ind];
 	}
@@ -422,10 +433,9 @@ void gpgpu_sim_wrapper::power_metrics_calculations()
 		perf_count_avg[ind] += (double)perf_count[ind];
 	}
 
-
-
-	if(proc->rt_power.readOp.dynamic>gpu_max_power){
-		gpu_max_power=proc->rt_power.readOp.dynamic;
+	// Max Power
+	if(total_power > gpu_max_power){
+		gpu_max_power = total_power;
 		for(unsigned ind=0; ind<num_pwr_cmps; ++ind){
 		  pwr_cmp_max[ind] = (double)pwr_cmp[ind];
 		}
@@ -434,8 +444,10 @@ void gpgpu_sim_wrapper::power_metrics_calculations()
 		}
 
 	}
-	if(proc->rt_power.readOp.dynamic<gpu_min_power ||(gpu_min_power==0) ){
-	  gpu_min_power=proc->rt_power.readOp.dynamic;
+
+	// Min Power
+	if(total_power < gpu_min_power ||(gpu_min_power==0) ){
+	  gpu_min_power = total_power;
 	  for(unsigned ind=0; ind<num_pwr_cmps; ++ind){
 		  pwr_cmp_min[ind] = (double)pwr_cmp[ind];
 	  }
@@ -444,9 +456,9 @@ void gpgpu_sim_wrapper::power_metrics_calculations()
 	  }
 	}
 
-	gpu_tot_avg_power=(gpu_tot_avg_power+ proc->rt_power.readOp.dynamic);
-	gpu_tot_max_power=(proc->rt_power.readOp.dynamic>gpu_tot_max_power)? proc->rt_power.readOp.dynamic:gpu_tot_max_power;
-	gpu_tot_min_power=((proc->rt_power.readOp.dynamic<gpu_tot_min_power)||(gpu_tot_min_power==0))? proc->rt_power.readOp.dynamic:gpu_tot_min_power;
+	gpu_tot_avg_power = (gpu_tot_avg_power + total_power);
+	gpu_tot_max_power = (total_power > gpu_tot_max_power) ? total_power : gpu_tot_max_power;
+	gpu_tot_min_power = ((total_power < gpu_tot_min_power) || (gpu_tot_min_power == 0)) ? total_power : gpu_tot_min_power;
 
 }
 
@@ -601,10 +613,14 @@ void gpgpu_sim_wrapper::update_components_power()
 
 	pwr_cmp[IDLE_COREP]=proc->cores[0]->IdleCoreEnergy/(proc->cores[0]->executionTime);
 
-	//this constant dynamic part is estimated via regression model
+	// This constant dynamic power (e.g., clock power) part is estimated via regression model.
 	pwr_cmp[CONST_DYNAMICP]=0;
-	pwr_cmp[CONST_DYNAMICP]=p->sys.scaling_coefficients[CONST_DYNAMICN]-proc->get_const_dynamic_power()/(proc->cores[0]->executionTime);
-	pwr_cmp[CONST_DYNAMICP]= (pwr_cmp[CONST_DYNAMICP]>0)? pwr_cmp[CONST_DYNAMICP]:0;
+	double cnst_dyn = proc->get_const_dynamic_power()/(proc->cores[0]->executionTime);
+	// If the regression scaling term is greater than the recorded constant dynamic power
+	// then use the difference (other portion already added to dynamic power). Else,
+	// all the constant dynamic power is accounted for, add nothing.
+	if(p->sys.scaling_coefficients[CONST_DYNAMICN] > cnst_dyn)
+		pwr_cmp[CONST_DYNAMICP] = (p->sys.scaling_coefficients[CONST_DYNAMICN]-cnst_dyn);
 
 	proc_power+=pwr_cmp[CONST_DYNAMICP];
 
@@ -626,7 +642,7 @@ void gpgpu_sim_wrapper::print_power_kernel_stats(double gpu_sim_cycle, double gp
 {
 	   detect_print_steady_state(1,init_value);
 	   if(g_power_simulation_enabled){
-         powerfile<<kernel_info_string<<std::endl; 
+		   powerfile<<kernel_info_string<<std::endl;
 		   powerfile<<"Kernel Average Power Data:"<<std::endl;
 		   powerfile<<"gpu_avg_power = "<< gpu_avg_power/ count<<std::endl;
 
