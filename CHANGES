@@ -29,6 +29,10 @@ Version 3.2.1+edits (development branch) versus 3.2.1
     - Removed the use of gcc in compilation and the need for a bunch of unnecessary
       'extern "c"' statements.
     - Fixed a mismatched new[] delete[]
+    - 'Constant dynamic' power not included in average/min/max power values.
+    - Average/min/max per-kernel powers not being reset at kernel boundaries causing 
+      incorrect per-kernel values.
+
 Version 3.2.1 versus 3.2.0
 - Added kernel name and launch uids to performance statistics log.
 - Added l2_cache_config class to extend baseline cache_config. Allows for
