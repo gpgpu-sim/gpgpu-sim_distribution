@@ -99,11 +99,8 @@ void mcpat_cycle(const gpgpu_sim_config &config, const struct shader_core_config
 				(power_stats->get_sfu_active_lanes())/stat_sample_freq);
 
 
-		//NoC stats (32/4)--> Number of 32 bit words in 32B block
-		//unsigned l2cache_tot_access = power_stats->get_l2_read_accesses() +  power_stats->get_l2_write_accesses();
-		unsigned n_icnt_simt_to_mem = power_stats->get_icnt_simt_to_mem(); // # flits from SIMT clusters to memory partitions
-		unsigned n_icnt_mem_to_simt = power_stats->get_icnt_mem_to_simt(); // # flits from memory partitions to SIMT clusters
-		//wrapper->set_NoC_power((double)(n_icnt_mem_to_simt + n_icnt_simt_to_mem)); // Number of flits traversing the interconnect
+		double n_icnt_simt_to_mem = (double)power_stats->get_icnt_simt_to_mem(); // # flits from SIMT clusters to memory partitions
+		double n_icnt_mem_to_simt = (double)power_stats->get_icnt_mem_to_simt(); // # flits from memory partitions to SIMT clusters
 		wrapper->set_NoC_power(n_icnt_mem_to_simt, n_icnt_simt_to_mem); // Number of flits traversing the interconnect
 
 		wrapper->compute();

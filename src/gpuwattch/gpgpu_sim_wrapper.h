@@ -77,7 +77,7 @@ public:
 	void set_mem_ctrl_power(double reads, double writes, double dram_precharge);
 	void set_exec_unit_power(double fpu_accesses, double ialu_accesses, double sfu_accesses);
 	void set_active_lanes_power(double sp_avg_active_lane, double sfu_avg_active_lane);
-	void set_NoC_power(double noc_tot_reads,double noc_tot_write);
+	void set_NoC_power(double noc_tot_reads, double noc_tot_write);
 	bool sanity_check(double a, double b);
 
 private:

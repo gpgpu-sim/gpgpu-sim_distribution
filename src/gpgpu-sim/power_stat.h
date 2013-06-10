@@ -112,8 +112,8 @@ struct mem_power_stats_pod{
     unsigned *n_req[2];
 
     // Interconnect stats
-    unsigned *n_simt_to_mem[2];
-    unsigned *n_mem_to_simt[2];
+    long *n_simt_to_mem[2];
+    long *n_mem_to_simt[2];
 };
 
 
@@ -585,16 +585,16 @@ public:
 	   return total;
    }
 
-   unsigned get_icnt_simt_to_mem(){
-	   unsigned total=0;
+   long get_icnt_simt_to_mem(){
+	   long total=0;
 	   for(unsigned i=0; i<m_config->n_simt_clusters; ++i){
 		   total += (pwr_mem_stat->n_simt_to_mem[0][i] - pwr_mem_stat->n_simt_to_mem[1][i]);
 	   }
 	   return total;
    }
 
-   unsigned get_icnt_mem_to_simt(){
-	   unsigned total=0;
+   long get_icnt_mem_to_simt(){
+	   long total=0;
 	   for(unsigned i=0; i<m_config->n_simt_clusters; ++i){
 		   total += (pwr_mem_stat->n_mem_to_simt[0][i] - pwr_mem_stat->n_mem_to_simt[1][i]);
 	   }

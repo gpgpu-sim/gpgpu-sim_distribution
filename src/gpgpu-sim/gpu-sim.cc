@@ -919,17 +919,17 @@ void gpgpu_sim::gpu_print_stat()
 
 
    // Interconnect power stat print
-   unsigned total_simt_to_mem=0;
-   unsigned total_mem_to_simt=0;
-   unsigned temp_stm=0;
-   unsigned temp_mts = 0;
+   long total_simt_to_mem=0;
+   long total_mem_to_simt=0;
+   long temp_stm=0;
+   long temp_mts = 0;
    for(unsigned i=0; i<m_config.num_cluster(); i++){
 	   m_cluster[i]->set_icnt_stats(temp_stm, temp_mts);
 	   total_simt_to_mem += temp_stm;
 	   total_mem_to_simt += temp_mts;
    }
-   printf("\nicnt_total_pkts_mem_to_simt=%u\n", total_mem_to_simt);
-   printf("icnt_total_pkts_simt_to_mem=%u\n\n", total_simt_to_mem);
+   printf("\nicnt_total_pkts_mem_to_simt=%ld\n", total_mem_to_simt);
+   printf("icnt_total_pkts_simt_to_mem=%ld\n", total_simt_to_mem);
 
 
    time_vector_print();
@@ -1161,7 +1161,7 @@ void gpgpu_sim::cycle()
          if (m_cluster[i]->get_not_completed() || get_more_cta_left() ) {
                m_cluster[i]->core_cycle();
                *active_sms+=m_cluster[i]->get_n_active_sms();
-        	   // Interconnect power stats: SIMT->MEM
+
         	   m_cluster[i]->set_icnt_stats(m_power_stats->pwr_mem_stat->n_simt_to_mem[0][i], m_power_stats->pwr_mem_stat->n_mem_to_simt[0][i]);
          }
       }
