@@ -87,7 +87,7 @@ $(OUTPUT_DIR)/lex.ptx_.o: lex.ptx_.c
 $(OUTPUT_DIR)/ptxinfo.tab.o: ptxinfo.tab.c
 	$(CPP) -c $(OPT) -DYYDEBUG ptxinfo.tab.c -o $(OUTPUT_DIR)/ptxinfo.tab.o
 
-$(OUTPUT_DIR)/lex.ptxinfo_.o: lex.ptxinfo_.c
+$(OUTPUT_DIR)/lex.ptxinfo_.o: lex.ptxinfo_.c ptxinfo.tab.c
 	$(CPP) -c $(OPT) lex.ptxinfo_.c -o $(OUTPUT_DIR)/lex.ptxinfo_.o
 
 ptx.tab.c: ptx.y
