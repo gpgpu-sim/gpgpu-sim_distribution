@@ -408,7 +408,7 @@ void gpgpu_sim_wrapper::set_active_lanes_power(double sp_avg_active_lane, double
 	p->sys.core[0].sfu_average_active_lanes = sfu_avg_active_lane;
 }
 
-void gpgpu_sim_wrapper::set_NoC_power(double noc_tot_reads,double noc_tot_writes )
+void gpgpu_sim_wrapper::set_NoC_power(double noc_tot_reads, double noc_tot_writes )
 {
 	p->sys.NoC[0].total_accesses = noc_tot_reads * p->sys.scaling_coefficients[NOC_A] + noc_tot_writes * p->sys.scaling_coefficients[NOC_A];
 	perf_count[NOC_A]=noc_tot_reads+noc_tot_writes;

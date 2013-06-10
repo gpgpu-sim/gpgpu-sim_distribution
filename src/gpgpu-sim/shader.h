@@ -1375,8 +1375,8 @@ struct shader_core_stats_pod {
     unsigned *l1d_write_access;		// L1 Data cache write access
     unsigned *l1d_write_miss;		// L1 Data cache write miss
 
-    unsigned *n_simt_to_mem; // Interconnect power stats
-    unsigned *n_mem_to_simt;
+    long *n_simt_to_mem; // Interconnect power stats
+    long *n_mem_to_simt;
 };
 
 class shader_core_stats : public shader_core_stats_pod {
@@ -1438,8 +1438,8 @@ public:
         l1d_write_access = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
         l1d_write_miss = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
 
-        n_simt_to_mem = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
-        n_mem_to_simt = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
+        n_simt_to_mem = (long *)calloc(config->num_shader(), sizeof(long));
+        n_mem_to_simt = (long *)calloc(config->num_shader(), sizeof(long));
 
         gpgpu_n_shmem_bank_access = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
 
@@ -1586,7 +1586,7 @@ public:
     void print_cache_stats( FILE *fp, unsigned& dl1_accesses, unsigned& dl1_misses );
     void get_cache_stats(unsigned &read_accesses, unsigned &write_accesses, unsigned &read_misses, unsigned &write_misses, unsigned cache_type);
 
-    void set_icnt_power_stats(unsigned &n_simt_to_mem, unsigned &n_mem_to_simt) const;
+    void set_icnt_power_stats(long &n_simt_to_mem, long &n_mem_to_simt) const;
 
 // debug:
     void display_simt_state(FILE *fout, int mask ) const;
@@ -1830,7 +1830,7 @@ public:
     void print_cache_stats( FILE *fp, unsigned& dl1_accesses, unsigned& dl1_misses ) const;
     void get_cache_stats(unsigned &read_accesses, unsigned &write_accesses, unsigned &read_misses, unsigned &write_misses, unsigned cache_type) const;
 
-    void set_icnt_stats(unsigned &n_simt_to_mem, unsigned &n_mem_to_simt) const;
+    void set_icnt_stats(long &n_simt_to_mem, long &n_mem_to_simt) const;
 
 private:
     unsigned m_cluster_id;
@@ -1854,8 +1854,8 @@ public:
     }
     virtual void push(mem_fetch *mf) 
     {
-        m_cluster->icnt_inject_request_packet(mf);
-        m_core->inc_simt_to_mem(mf->get_num_flits(true));
+    	m_core->inc_simt_to_mem(mf->get_num_flits(true));
+        m_cluster->icnt_inject_request_packet(mf);        
     }
 private:
     shader_core_ctx *m_core;
@@ -1873,8 +1873,8 @@ public:
     {
         if ( mf && mf->isatomic() )
             mf->do_atomic(); // execute atomic inside the "memory subsystem"
-        m_cluster->push_response_fifo(mf);
         m_core->inc_simt_to_mem(mf->get_num_flits(true));
+        m_cluster->push_response_fifo(mf);        
     }
 private:
     shader_core_ctx *m_core;

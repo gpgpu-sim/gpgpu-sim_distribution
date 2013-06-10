@@ -2595,7 +2595,7 @@ void shader_core_ctx::get_cache_stats(unsigned &read_accesses, unsigned &write_a
    m_ldst_unit->get_cache_stats(read_accesses, write_accesses, read_misses, write_misses, cache_type);
 }
 
-void shader_core_ctx::set_icnt_power_stats(unsigned &n_simt_to_mem, unsigned &n_mem_to_simt) const{
+void shader_core_ctx::set_icnt_power_stats(long &n_simt_to_mem, long &n_mem_to_simt) const{
 	n_simt_to_mem += m_stats->n_simt_to_mem[m_sid];
 	n_mem_to_simt += m_stats->n_mem_to_simt[m_sid];
 }
@@ -3084,7 +3084,7 @@ void simt_core_cluster::icnt_cycle()
         mf->set_status(IN_CLUSTER_TO_SHADER_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
         //m_memory_stats->memlatstat_read_done(mf,m_shader_config->max_warps_per_shader);
         m_response_fifo.push_back(mf);
-        m_stats->n_mem_to_simt[m_config->sid_to_cid(mf->get_sid())] += mf->get_num_flits(false);
+        m_stats->n_mem_to_simt[m_cluster_id] += mf->get_num_flits(false);
     }
 }
 
@@ -3119,9 +3119,9 @@ void simt_core_cluster::get_cache_stats(unsigned &read_accesses, unsigned &write
    }
 }
 
-void simt_core_cluster::set_icnt_stats(unsigned &n_simt_to_mem, unsigned &n_mem_to_simt) const {
-	unsigned simt_to_mem=0;
-	unsigned mem_to_simt=0;
+void simt_core_cluster::set_icnt_stats(long &n_simt_to_mem, long &n_mem_to_simt) const {
+	long simt_to_mem=0;
+	long mem_to_simt=0;
 	for ( unsigned i = 0; i < m_config->n_simt_cores_per_cluster; ++i ) {
 		m_core[i]->set_icnt_power_stats(simt_to_mem, mem_to_simt);
 	}
