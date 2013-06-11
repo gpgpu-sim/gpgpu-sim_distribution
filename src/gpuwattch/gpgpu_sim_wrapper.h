@@ -41,8 +41,14 @@
 
 using namespace std;
 
+template <typename T>
+struct avg_max_min_counters{
+	T avg;
+	T max;
+	T min;
 
-
+	avg_max_min_counters(){avg=0; max=0; min=0;}
+};
 
 class gpgpu_sim_wrapper {
 public:
@@ -61,8 +67,8 @@ public:
 	void print_trace_files();
 	void update_components_power();
 	void update_coefficients();
-	void reset_counters(bool do_print);
-	void print_power_kernel_stats(double gpu_sim_cycle, double gpu_tot_sim_cycle, double init_value, const std::string & kernel_info_string);
+	void reset_counters();
+	void print_power_kernel_stats(double gpu_sim_cycle, double gpu_tot_sim_cycle, double init_value, const std::string & kernel_info_string, bool print_trace);
 	void power_metrics_calculations();
 	void set_inst_power(bool clk_gated_lanes, double tot_cycles, double busy_cycles, double tot_inst, double int_inst, double fp_inst, double load_inst, double store_inst, double committed_inst);
 	void set_regfile_power(double reads, double writes, double ops);
@@ -88,37 +94,34 @@ private:
 	ParseXML * p;
     // power parameters
     double const_dynamic_power;
-    double * pwr_cmp;
     double proc_power;
-    double * pwr_cmp_avg;
-    double * pwr_cmp_max;
-    double * pwr_cmp_min;
-    double *   perf_count_avg;
-    double *   perf_count_min;
-    double *   perf_count_max;
-    double pavg;
-    int count;
-    unsigned num_per_counts;
-    unsigned num_pwr_cmps;
-    int gcount;
-    double gpu_avg_power;
-    double gpu_max_power;
-    double gpu_min_power;
-    double gpu_tot_avg_power;
-    double gpu_tot_min_power;
-    double gpu_tot_max_power;
+
+    unsigned num_perf_counters; // # of performance counters
+    unsigned num_pwr_cmps; // # of components modelled
+    int kernel_sample_count; // # of samples per kernel
+    int total_sample_count; // # of samples per benchmark
+
+    std::vector< avg_max_min_counters<double> > kernel_cmp_pwr; // Per-kernel component power avg/max/min values
+    std::vector< avg_max_min_counters<double> > kernel_cmp_perf_counters; // Per-kernel component avg/max/min performance counters
+
+    double kernel_tot_power; // Total per-kernel power
+    avg_max_min_counters<double> kernel_power; // Per-kernel power avg/max/min values
+    avg_max_min_counters<double> gpu_tot_power; // Global GPU power avg/max/min values (across kernels)
+
     bool has_written_avg;
 
-    double * perf_count;
-    double * initpower_coeff;
-    double * effpower_coeff;
+    std::vector<double> sample_cmp_pwr; // Current sample component powers
+    std::vector<double> sample_perf_counters; // Current sample component perf. counts
+    std::vector<double> initpower_coeff;
+    std::vector<double> effpower_coeff;
+
     // For calculating steady-state average
     unsigned sample_start;
     double sample_val;
     double init_inst_val;
     std::vector<double> samples;
-    std::vector< double > samples_counter;
-    std::vector< double > pwr_counter;
+    std::vector<double> samples_counter;
+    std::vector<double> pwr_counter;
 
     char *xml_filename;
     char *g_power_filename;

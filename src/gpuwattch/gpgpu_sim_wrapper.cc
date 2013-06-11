@@ -29,9 +29,6 @@
 #include <sys/stat.h>
 #define SP_BASE_POWER 0
 #define SFU_BASE_POWER  0
-#define NUM_COMPONENTS_MODELLED 18
-#define NUM_PERFORMANCE_COUNTERS 30
-
 
 
 static const char * pwr_cmp_label[] = {"IBP,", "ICP,", "DCP,", "TCP,", "CCP,", "SHRDP,", "RFP,", "SPP,",
@@ -56,34 +53,34 @@ enum pwr_cmp_t {
    DRAMP,
    PIPEP,
    IDLE_COREP,
-   CONST_DYNAMICP
+   CONST_DYNAMICP,
+   NUM_COMPONENTS_MODELLED
 };
 
 
 gpgpu_sim_wrapper::gpgpu_sim_wrapper( bool power_simulation_enabled, char* xmlfile) {
-	   count=0;
-	   gcount=0;
+	   kernel_sample_count=0;
+	   total_sample_count=0;
 
-	   gpu_avg_power=0;
-	   gpu_tot_avg_power=0;
-	   gpu_max_power=0;
-	   gpu_tot_max_power=0;
-	   gpu_min_power=0;
-	   gpu_tot_min_power=0;
+	   kernel_tot_power=0;
 
 	   num_pwr_cmps=NUM_COMPONENTS_MODELLED;
-	   num_per_counts=NUM_PERFORMANCE_COUNTERS;
-	   pavg=0;
-	   perf_count=(double *)calloc(num_per_counts,sizeof(double));
-	   initpower_coeff=(double *)calloc(num_per_counts,sizeof(double));
-	   effpower_coeff=(double *)calloc(num_per_counts,sizeof(double));
-	   perf_count_avg=(double *)calloc(num_per_counts,sizeof(double));
-	   perf_count_min=(double *)calloc(num_per_counts,sizeof(double));
-	   perf_count_max=(double *)calloc(num_per_counts,sizeof(double));
-	   pwr_cmp=(double *)calloc(num_pwr_cmps,sizeof(double));
-	   pwr_cmp_avg=(double *)calloc(num_pwr_cmps,sizeof(double));
-	   pwr_cmp_min=(double *)calloc(num_pwr_cmps,sizeof(double));
-	   pwr_cmp_max=(double *)calloc(num_pwr_cmps,sizeof(double));
+	   num_perf_counters=NUM_PERFORMANCE_COUNTERS;
+
+	   // Initialize per-component counter/power vectors
+	   avg_max_min_counters<double> init;
+	   kernel_cmp_pwr.resize(NUM_COMPONENTS_MODELLED, init);
+	   kernel_cmp_perf_counters.resize(NUM_PERFORMANCE_COUNTERS, init);
+
+	   kernel_power = init; // Per-kernel powers
+	   gpu_tot_power = init; // Global powers
+
+	   sample_cmp_pwr.resize(NUM_COMPONENTS_MODELLED, 0);
+
+	   sample_perf_counters.resize(NUM_PERFORMANCE_COUNTERS, 0);
+	   initpower_coeff.resize(NUM_PERFORMANCE_COUNTERS, 0);
+	   effpower_coeff.resize(NUM_PERFORMANCE_COUNTERS, 0);
+
 	   const_dynamic_power=0;
 	   proc_power=0;
 
@@ -131,13 +128,7 @@ void gpgpu_sim_wrapper::init_mcpat(char* xmlfile, char* powerfilename, char* pow
 								   double steady_min_period, int zlevel, double init_val,int stat_sample_freq ){
 	// Write File Headers for (-metrics trace, -power trace)
 
-    count=0;
-    gpu_avg_power=0;
-    gpu_max_power=0;
-
-    pavg=0;
-    gpu_min_power=0;
-
+	reset_counters();
    static bool mcpat_init=true;
 
    // initialize file name if it is not set
@@ -190,7 +181,7 @@ void gpgpu_sim_wrapper::init_mcpat(char* xmlfile, char* powerfilename, char* pow
 		   gzprintf(power_trace_file,"\n");
 
 		   gzsetparams(metric_trace_file, g_power_trace_zlevel, Z_DEFAULT_STRATEGY);
-		   for(unsigned i=0; i<num_per_counts; i++){
+		   for(unsigned i=0; i<num_perf_counters; i++){
 			   gzprintf(metric_trace_file,perf_count_label[i]);
 		   }
 		   gzprintf(metric_trace_file,"\n");
@@ -206,7 +197,7 @@ void gpgpu_sim_wrapper::init_mcpat(char* xmlfile, char* powerfilename, char* pow
 		   }
 		   gzsetparams(steady_state_tacking_file,g_power_trace_zlevel, Z_DEFAULT_STRATEGY);
 		   gzprintf(steady_state_tacking_file,"start,end,power,IPC,");
-		   for(unsigned i=0; i<num_per_counts; i++){
+		   for(unsigned i=0; i<num_perf_counters; i++){
 			   gzprintf(steady_state_tacking_file,perf_count_label[i]);
 		   }
 		   gzprintf(steady_state_tacking_file,"\n");
@@ -225,43 +216,22 @@ void gpgpu_sim_wrapper::init_mcpat(char* xmlfile, char* powerfilename, char* pow
 
 }
 
-void gpgpu_sim_wrapper::reset_counters(bool do_print){
-	if(do_print)
-		print_trace_files();
+void gpgpu_sim_wrapper::reset_counters(){
 
-	for(unsigned i=0; i<num_per_counts; ++i){
-		perf_count[i] = 0;
+	avg_max_min_counters<double> init;
+	for(unsigned i=0; i<num_perf_counters; ++i){
+		sample_perf_counters[i] = 0;
+		kernel_cmp_perf_counters[i] = init;
 	}
 	for(unsigned i=0; i<num_pwr_cmps; ++i){
-		pwr_cmp_avg[i]= 0;
-	}
-
-	for(unsigned i=0; i<num_pwr_cmps; ++i){
-		pwr_cmp_max[i]= 0;
-	}
-
-	for(unsigned i=0; i<num_pwr_cmps; ++i){
-		pwr_cmp_min[i]= 0;
-	}
-
-	for(unsigned i=0; i<num_per_counts; ++i){
-		perf_count_avg[i]= 0;
-	}
-
-	for(unsigned i=0; i<num_per_counts; ++i){
-		perf_count_min[i]= 0;
-	}
-
-	for(unsigned i=0; i<num_per_counts; ++i){
-		perf_count_max[i]= 0;
+		sample_cmp_pwr[i] = 0;
+		kernel_cmp_pwr[i] = init;
 	}
 
 	// Reset per-kernel counters
-	count = 0;
-	gpu_avg_power = 0;
-	gpu_max_power = 0;
-	gpu_min_power = 0;
-
+	kernel_sample_count = 0;
+	kernel_tot_power = 0;
+	kernel_power = init;
 
 	return;
 }
@@ -277,8 +247,8 @@ void gpgpu_sim_wrapper::set_inst_power(bool clk_gated_lanes, double tot_cycles, 
 	p->sys.core[0].load_instructions  = load_inst;
 	p->sys.core[0].store_instructions = store_inst;
 	p->sys.core[0].committed_instructions = committed_inst;
-	perf_count[FP_INT]=int_inst+fp_inst;
-	perf_count[TOT_INST]=tot_inst;
+	sample_perf_counters[FP_INT]=int_inst+fp_inst;
+	sample_perf_counters[TOT_INST]=tot_inst;
 }
 
 void gpgpu_sim_wrapper::set_regfile_power(double reads, double writes,double ops)
@@ -286,9 +256,9 @@ void gpgpu_sim_wrapper::set_regfile_power(double reads, double writes,double ops
 	p->sys.core[0].int_regfile_reads = reads * p->sys.scaling_coefficients[REG_RD];
 	p->sys.core[0].int_regfile_writes = writes * p->sys.scaling_coefficients[REG_WR];
 	p->sys.core[0].non_rf_operands =  ops *p->sys.scaling_coefficients[NON_REG_OPs];
-	perf_count[REG_RD]=reads;
-	perf_count[REG_WR]=writes;
-	perf_count[NON_REG_OPs]=ops;
+	sample_perf_counters[REG_RD]=reads;
+	sample_perf_counters[REG_WR]=writes;
+	sample_perf_counters[NON_REG_OPs]=ops;
 
 
 
@@ -298,8 +268,8 @@ void gpgpu_sim_wrapper::set_icache_power(double hits, double misses)
 {
 	p->sys.core[0].icache.read_accesses = hits * p->sys.scaling_coefficients[IC_H]+misses * p->sys.scaling_coefficients[IC_M];
 	p->sys.core[0].icache.read_misses = misses * p->sys.scaling_coefficients[IC_M];
-	perf_count[IC_H]=hits;
-	perf_count[IC_M]=misses;
+	sample_perf_counters[IC_H]=hits;
+	sample_perf_counters[IC_M]=misses;
 
 
 }
@@ -308,8 +278,8 @@ void gpgpu_sim_wrapper::set_ccache_power(double hits, double misses)
 {
 	p->sys.core[0].ccache.read_accesses = hits * p->sys.scaling_coefficients[CC_H]+misses * p->sys.scaling_coefficients[CC_M];
 	p->sys.core[0].ccache.read_misses = misses * p->sys.scaling_coefficients[CC_M];
-	perf_count[CC_H]=hits;
-	perf_count[CC_M]=misses;
+	sample_perf_counters[CC_H]=hits;
+	sample_perf_counters[CC_M]=misses;
 	// TODO: coalescing logic is counted as part of the caches power (this is not valid for no-caches architectures)
 
 }
@@ -318,15 +288,15 @@ void gpgpu_sim_wrapper::set_tcache_power(double hits, double misses)
 {
 	p->sys.core[0].tcache.read_accesses = hits * p->sys.scaling_coefficients[TC_H]+misses * p->sys.scaling_coefficients[TC_M];
 	p->sys.core[0].tcache.read_misses = misses* p->sys.scaling_coefficients[TC_M];
-	perf_count[TC_H]=hits;
-	perf_count[TC_M]=misses;
+	sample_perf_counters[TC_H]=hits;
+	sample_perf_counters[TC_M]=misses;
 	// TODO: coalescing logic is counted as part of the caches power (this is not valid for no-caches architectures)
 }
 
 void gpgpu_sim_wrapper::set_shrd_mem_power(double accesses)
 {
 	p->sys.core[0].sharedmemory.read_accesses = accesses * p->sys.scaling_coefficients[SHRD_ACC];
-	perf_count[SHRD_ACC]=accesses;
+	sample_perf_counters[SHRD_ACC]=accesses;
 
 
 }
@@ -337,10 +307,10 @@ void gpgpu_sim_wrapper::set_l1cache_power(double read_hits, double read_misses, 
 	p->sys.core[0].dcache.read_misses =  read_misses * p->sys.scaling_coefficients[DC_RM];
 	p->sys.core[0].dcache.write_accesses = write_hits * p->sys.scaling_coefficients[DC_WH]+write_misses * p->sys.scaling_coefficients[DC_WM];
 	p->sys.core[0].dcache.write_misses = write_misses * p->sys.scaling_coefficients[DC_WM];
-	perf_count[DC_RH]=read_hits;
-	perf_count[DC_RM]=read_misses;
-	perf_count[DC_WH]=write_hits;
-	perf_count[DC_WM]=write_misses;
+	sample_perf_counters[DC_RH]=read_hits;
+	sample_perf_counters[DC_RM]=read_misses;
+	sample_perf_counters[DC_WH]=write_hits;
+	sample_perf_counters[DC_WM]=write_misses;
 	// TODO: coalescing logic is counted as part of the caches power (this is not valid for no-caches architectures)
 
 
@@ -356,22 +326,22 @@ void gpgpu_sim_wrapper::set_l2cache_power(double read_hits, double read_misses, 
 	p->sys.l2.read_misses = read_misses  * p->sys.scaling_coefficients[L2_RM];
 	p->sys.l2.write_hits =write_hits * p->sys.scaling_coefficients[L2_WH];
 	p->sys.l2.write_misses = write_misses * p->sys.scaling_coefficients[L2_WM];
-	perf_count[L2_RH]=read_hits;
-	perf_count[L2_RM]=read_misses;
-	perf_count[L2_WH]=write_hits;
-	perf_count[L2_WM]=write_misses;
+	sample_perf_counters[L2_RH]=read_hits;
+	sample_perf_counters[L2_RM]=read_misses;
+	sample_perf_counters[L2_WH]=write_hits;
+	sample_perf_counters[L2_WM]=write_misses;
 }
 
 void gpgpu_sim_wrapper::set_idle_core_power(double num_idle_core)
 {
 	p->sys.num_idle_cores = num_idle_core;
-	perf_count[IDLE_CORE_N]=num_idle_core;
+	sample_perf_counters[IDLE_CORE_N]=num_idle_core;
 }
 
 void gpgpu_sim_wrapper::set_duty_cycle_power(double duty_cycle)
 {
 	p->sys.core[0].pipeline_duty_cycle = duty_cycle  * p->sys.scaling_coefficients[PIPE_A];
-	perf_count[PIPE_A]=duty_cycle;
+	sample_perf_counters[PIPE_A]=duty_cycle;
 
 }
 
@@ -381,9 +351,9 @@ void gpgpu_sim_wrapper::set_mem_ctrl_power(double reads, double writes, double d
 	p->sys.mc.memory_reads = reads *p->sys.scaling_coefficients[MEM_RD];
 	p->sys.mc.memory_writes = writes*p->sys.scaling_coefficients[MEM_WR];
 	p->sys.mc.dram_pre = dram_precharge*p->sys.scaling_coefficients[MEM_PRE];
-	perf_count[MEM_RD]=reads;
-	perf_count[MEM_WR]=writes;
-	perf_count[MEM_PRE]=dram_precharge;
+	sample_perf_counters[MEM_RD]=reads;
+	sample_perf_counters[MEM_WR]=writes;
+	sample_perf_counters[MEM_PRE]=dram_precharge;
 
 }
 
@@ -395,9 +365,9 @@ void gpgpu_sim_wrapper::set_exec_unit_power(double fpu_accesses, double ialu_acc
 	//Sfu accesses
 	p->sys.core[0].mul_accesses = sfu_accesses*p->sys.scaling_coefficients[SFU_ACC];
 
-	perf_count[SP_ACC]=ialu_accesses;
-	perf_count[SFU_ACC]=sfu_accesses;
-	perf_count[FPU_ACC]=fpu_accesses;
+	sample_perf_counters[SP_ACC]=ialu_accesses;
+	sample_perf_counters[SFU_ACC]=sfu_accesses;
+	sample_perf_counters[FPU_ACC]=fpu_accesses;
 
 
 }
@@ -411,54 +381,56 @@ void gpgpu_sim_wrapper::set_active_lanes_power(double sp_avg_active_lane, double
 void gpgpu_sim_wrapper::set_NoC_power(double noc_tot_reads, double noc_tot_writes )
 {
 	p->sys.NoC[0].total_accesses = noc_tot_reads * p->sys.scaling_coefficients[NOC_A] + noc_tot_writes * p->sys.scaling_coefficients[NOC_A];
-	perf_count[NOC_A]=noc_tot_reads+noc_tot_writes;
+	sample_perf_counters[NOC_A]=noc_tot_reads+noc_tot_writes;
 }
 
 
 void gpgpu_sim_wrapper::power_metrics_calculations()
 {
-    gcount++;
-    count++;
+    total_sample_count++;
+    kernel_sample_count++;
 
-    double total_power = proc->rt_power.readOp.dynamic + pwr_cmp[CONST_DYNAMICP];
+    // Current sample power
+    double sample_power = proc->rt_power.readOp.dynamic + sample_cmp_pwr[CONST_DYNAMICP];
 
     // Average power
     // Previous + new + constant dynamic power (e.g., dynamic clocking power)
-    gpu_avg_power += total_power;
+    kernel_tot_power += sample_power;
+    kernel_power.avg = kernel_tot_power / kernel_sample_count;
 	for(unsigned ind=0; ind<num_pwr_cmps; ++ind){
-		pwr_cmp_avg[ind] += (double)pwr_cmp[ind];
+		kernel_cmp_pwr[ind].avg += (double)sample_cmp_pwr[ind];
 	}
 
-	for(unsigned ind=0; ind<num_per_counts; ++ind){
-		perf_count_avg[ind] += (double)perf_count[ind];
+	for(unsigned ind=0; ind<num_perf_counters; ++ind){
+		kernel_cmp_perf_counters[ind].avg += (double)sample_perf_counters[ind];
 	}
 
 	// Max Power
-	if(total_power > gpu_max_power){
-		gpu_max_power = total_power;
+	if(sample_power > kernel_power.max){
+		kernel_power.max = sample_power;
 		for(unsigned ind=0; ind<num_pwr_cmps; ++ind){
-		  pwr_cmp_max[ind] = (double)pwr_cmp[ind];
+			kernel_cmp_pwr[ind].max = (double)sample_cmp_pwr[ind];
 		}
-		for(unsigned ind=0; ind<num_per_counts; ++ind){
-			perf_count_max[ind] = perf_count[ind];
+		for(unsigned ind=0; ind<num_perf_counters; ++ind){
+			kernel_cmp_perf_counters[ind].max = sample_perf_counters[ind];
 		}
 
 	}
 
 	// Min Power
-	if(total_power < gpu_min_power ||(gpu_min_power==0) ){
-	  gpu_min_power = total_power;
+	if(sample_power < kernel_power.min ||(kernel_power.min==0) ){
+	  kernel_power.min = sample_power;
 	  for(unsigned ind=0; ind<num_pwr_cmps; ++ind){
-		  pwr_cmp_min[ind] = (double)pwr_cmp[ind];
+		  kernel_cmp_pwr[ind].min = (double)sample_cmp_pwr[ind];
 	  }
-	  for(unsigned ind=0; ind<num_per_counts; ++ind){
-		  perf_count_min[ind] = perf_count[ind];
+	  for(unsigned ind=0; ind<num_perf_counters; ++ind){
+		  kernel_cmp_perf_counters[ind].min = sample_perf_counters[ind];
 	  }
 	}
 
-	gpu_tot_avg_power = (gpu_tot_avg_power + total_power);
-	gpu_tot_max_power = (total_power > gpu_tot_max_power) ? total_power : gpu_tot_max_power;
-	gpu_tot_min_power = ((total_power < gpu_tot_min_power) || (gpu_tot_min_power == 0)) ? total_power : gpu_tot_min_power;
+	gpu_tot_power.avg = (gpu_tot_power.avg + sample_power);
+	gpu_tot_power.max = (sample_power > gpu_tot_power.max) ? sample_power : gpu_tot_power.max;
+	gpu_tot_power.min = ((sample_power < gpu_tot_power.min) || (gpu_tot_power.min == 0)) ? sample_power : gpu_tot_power.min;
 
 }
 
@@ -467,14 +439,14 @@ void gpgpu_sim_wrapper::print_trace_files()
 {
 	open_files();
 
-	for(unsigned i=0; i<num_per_counts; ++i){
-		gzprintf(metric_trace_file,"%f,",perf_count[i]);
+	for(unsigned i=0; i<num_perf_counters; ++i){
+		gzprintf(metric_trace_file,"%f,",sample_perf_counters[i]);
 	}
 	gzprintf(metric_trace_file,"\n");
 
 	gzprintf(power_trace_file,"%f,",proc_power);
 	for(unsigned i=0; i<num_pwr_cmps; ++i){
-		gzprintf(power_trace_file,"%f,",pwr_cmp[i]);
+		gzprintf(power_trace_file,"%f,",sample_cmp_pwr[i]);
 	}
 	gzprintf(power_trace_file,"\n");
 
@@ -560,7 +532,7 @@ void gpgpu_sim_wrapper::update_coefficients()
 
 	const_dynamic_power=proc->get_const_dynamic_power()/(proc->cores[0]->executionTime);
 
-	for(unsigned i=0; i<num_per_counts; i++){
+	for(unsigned i=0; i<num_perf_counters; i++){
 		initpower_coeff[i]/=(proc->cores[0]->executionTime);
 		effpower_coeff[i]/=(proc->cores[0]->executionTime);
 	}
@@ -573,60 +545,60 @@ void gpgpu_sim_wrapper::update_components_power()
 
 	proc_power=proc->rt_power.readOp.dynamic;
 
-	pwr_cmp[IBP]=(proc->cores[0]->ifu->IB->rt_power.readOp.dynamic
+	sample_cmp_pwr[IBP]=(proc->cores[0]->ifu->IB->rt_power.readOp.dynamic
 			    +proc->cores[0]->ifu->IB->rt_power.writeOp.dynamic
 			    +proc->cores[0]->ifu->ID_misc->rt_power.readOp.dynamic
 			    +proc->cores[0]->ifu->ID_operand->rt_power.readOp.dynamic
 			    +proc->cores[0]->ifu->ID_inst->rt_power.readOp.dynamic)/(proc->cores[0]->executionTime);
 
-	pwr_cmp[ICP]=proc->cores[0]->ifu->icache.rt_power.readOp.dynamic/(proc->cores[0]->executionTime);
+	sample_cmp_pwr[ICP]=proc->cores[0]->ifu->icache.rt_power.readOp.dynamic/(proc->cores[0]->executionTime);
 
-	pwr_cmp[DCP]=proc->cores[0]->lsu->dcache.rt_power.readOp.dynamic/(proc->cores[0]->executionTime);
+	sample_cmp_pwr[DCP]=proc->cores[0]->lsu->dcache.rt_power.readOp.dynamic/(proc->cores[0]->executionTime);
 
-	pwr_cmp[TCP]=proc->cores[0]->lsu->tcache.rt_power.readOp.dynamic/(proc->cores[0]->executionTime);
+	sample_cmp_pwr[TCP]=proc->cores[0]->lsu->tcache.rt_power.readOp.dynamic/(proc->cores[0]->executionTime);
 
-	pwr_cmp[CCP]=proc->cores[0]->lsu->ccache.rt_power.readOp.dynamic/(proc->cores[0]->executionTime);
+	sample_cmp_pwr[CCP]=proc->cores[0]->lsu->ccache.rt_power.readOp.dynamic/(proc->cores[0]->executionTime);
 
-	pwr_cmp[SHRDP]=proc->cores[0]->lsu->sharedmemory.rt_power.readOp.dynamic/(proc->cores[0]->executionTime);
+	sample_cmp_pwr[SHRDP]=proc->cores[0]->lsu->sharedmemory.rt_power.readOp.dynamic/(proc->cores[0]->executionTime);
 
-	pwr_cmp[RFP]=(proc->cores[0]->exu->rfu->rt_power.readOp.dynamic/(proc->cores[0]->executionTime))
+	sample_cmp_pwr[RFP]=(proc->cores[0]->exu->rfu->rt_power.readOp.dynamic/(proc->cores[0]->executionTime))
 			   *(proc->cores[0]->exu->rf_fu_clockRate/proc->cores[0]->exu->clockRate);
 
-	pwr_cmp[SPP]=(proc->cores[0]->exu->exeu->rt_power.readOp.dynamic/(proc->cores[0]->executionTime))
+	sample_cmp_pwr[SPP]=(proc->cores[0]->exu->exeu->rt_power.readOp.dynamic/(proc->cores[0]->executionTime))
 			   *(proc->cores[0]->exu->rf_fu_clockRate/proc->cores[0]->exu->clockRate);
 
-	pwr_cmp[SFUP]=(proc->cores[0]->exu->mul->rt_power.readOp.dynamic/(proc->cores[0]->executionTime));
+	sample_cmp_pwr[SFUP]=(proc->cores[0]->exu->mul->rt_power.readOp.dynamic/(proc->cores[0]->executionTime));
 
-	pwr_cmp[FPUP]=(proc->cores[0]->exu->fp_u->rt_power.readOp.dynamic/(proc->cores[0]->executionTime));
+	sample_cmp_pwr[FPUP]=(proc->cores[0]->exu->fp_u->rt_power.readOp.dynamic/(proc->cores[0]->executionTime));
 
-	pwr_cmp[SCHEDP]=proc->cores[0]->exu->scheu->rt_power.readOp.dynamic/(proc->cores[0]->executionTime);
+	sample_cmp_pwr[SCHEDP]=proc->cores[0]->exu->scheu->rt_power.readOp.dynamic/(proc->cores[0]->executionTime);
 
-	pwr_cmp[L2CP]=(proc->XML->sys.number_of_L2s>0)? proc->l2array[0]->rt_power.readOp.dynamic/(proc->cores[0]->executionTime):0;
+	sample_cmp_pwr[L2CP]=(proc->XML->sys.number_of_L2s>0)? proc->l2array[0]->rt_power.readOp.dynamic/(proc->cores[0]->executionTime):0;
 
-	pwr_cmp[MCP]=(proc->mc->rt_power.readOp.dynamic-proc->mc->dram->rt_power.readOp.dynamic)/(proc->cores[0]->executionTime);
+	sample_cmp_pwr[MCP]=(proc->mc->rt_power.readOp.dynamic-proc->mc->dram->rt_power.readOp.dynamic)/(proc->cores[0]->executionTime);
 
-	pwr_cmp[NOCP]=proc->nocs[0]->rt_power.readOp.dynamic/(proc->cores[0]->executionTime);
+	sample_cmp_pwr[NOCP]=proc->nocs[0]->rt_power.readOp.dynamic/(proc->cores[0]->executionTime);
 
-	pwr_cmp[DRAMP]=proc->mc->dram->rt_power.readOp.dynamic/(proc->cores[0]->executionTime);
+	sample_cmp_pwr[DRAMP]=proc->mc->dram->rt_power.readOp.dynamic/(proc->cores[0]->executionTime);
 
-	pwr_cmp[PIPEP]=proc->cores[0]->Pipeline_energy/(proc->cores[0]->executionTime);
+	sample_cmp_pwr[PIPEP]=proc->cores[0]->Pipeline_energy/(proc->cores[0]->executionTime);
 
-	pwr_cmp[IDLE_COREP]=proc->cores[0]->IdleCoreEnergy/(proc->cores[0]->executionTime);
+	sample_cmp_pwr[IDLE_COREP]=proc->cores[0]->IdleCoreEnergy/(proc->cores[0]->executionTime);
 
 	// This constant dynamic power (e.g., clock power) part is estimated via regression model.
-	pwr_cmp[CONST_DYNAMICP]=0;
+	sample_cmp_pwr[CONST_DYNAMICP]=0;
 	double cnst_dyn = proc->get_const_dynamic_power()/(proc->cores[0]->executionTime);
 	// If the regression scaling term is greater than the recorded constant dynamic power
 	// then use the difference (other portion already added to dynamic power). Else,
 	// all the constant dynamic power is accounted for, add nothing.
 	if(p->sys.scaling_coefficients[CONST_DYNAMICN] > cnst_dyn)
-		pwr_cmp[CONST_DYNAMICP] = (p->sys.scaling_coefficients[CONST_DYNAMICN]-cnst_dyn);
+		sample_cmp_pwr[CONST_DYNAMICP] = (p->sys.scaling_coefficients[CONST_DYNAMICN]-cnst_dyn);
 
-	proc_power+=pwr_cmp[CONST_DYNAMICP];
+	proc_power+=sample_cmp_pwr[CONST_DYNAMICP];
 
 	double sum_pwr_cmp=0;
 	for(unsigned i=0; i<num_pwr_cmps; i++){
-		sum_pwr_cmp+=pwr_cmp[i];
+		sum_pwr_cmp+=sample_cmp_pwr[i];
 	}
 	bool check=false;
 	check=sanity_check(sum_pwr_cmp,proc_power);
@@ -638,45 +610,52 @@ void gpgpu_sim_wrapper::compute()
 {
 	proc->compute();
 }
-void gpgpu_sim_wrapper::print_power_kernel_stats(double gpu_sim_cycle, double gpu_tot_sim_cycle, double init_value, const std::string & kernel_info_string)
+void gpgpu_sim_wrapper::print_power_kernel_stats(double gpu_sim_cycle, double gpu_tot_sim_cycle, double init_value, const std::string & kernel_info_string, bool print_trace)
 {
 	   detect_print_steady_state(1,init_value);
 	   if(g_power_simulation_enabled){
+
 		   powerfile<<kernel_info_string<<std::endl;
+
+		   sanity_check((kernel_power.avg*kernel_sample_count), kernel_tot_power);
 		   powerfile<<"Kernel Average Power Data:"<<std::endl;
-		   powerfile<<"gpu_avg_power = "<< gpu_avg_power/ count<<std::endl;
+		   powerfile<<"kernel_avg_power = " << kernel_power.avg << std::endl;
 
 		   for(unsigned i=0; i<num_pwr_cmps; ++i){
-				powerfile<<"gpu_avg_"<<pwr_cmp_label[i]<<" = "<<pwr_cmp_avg[i]/count<<std::endl;
+				powerfile<<"gpu_avg_"<<pwr_cmp_label[i]<<" = "<<kernel_cmp_pwr[i].avg/kernel_sample_count<<std::endl;
 		   }
-		   for(unsigned i=0; i<num_per_counts; ++i){
-				powerfile<<"gpu_avg_"<<perf_count_label[i]<<" = "<<perf_count_avg[i]/count<<std::endl;
+		   for(unsigned i=0; i<num_perf_counters; ++i){
+				powerfile<<"gpu_avg_"<<perf_count_label[i]<<" = "<<kernel_cmp_perf_counters[i].avg/kernel_sample_count<<std::endl;
 		   }
 
 		   powerfile<<std::endl<<"Kernel Maximum Power Data:"<<std::endl;
-		   powerfile<<"gpu_max_power = "<< gpu_max_power<<std::endl;
+		   powerfile<<"kernel_max_power = "<< kernel_power.max<<std::endl;
 		   for(unsigned i=0; i<num_pwr_cmps; ++i){
-			   powerfile<<"gpu_max_"<<pwr_cmp_label[i]<<" = "<<pwr_cmp_max[i]<<std::endl;
+			   powerfile<<"gpu_max_"<<pwr_cmp_label[i]<<" = "<<kernel_cmp_pwr[i].max<<std::endl;
 		   }
-		   for(unsigned i=0; i<num_per_counts; ++i){
-				powerfile<<"gpu_max_"<<perf_count_label[i]<<" = "<<perf_count_max[i]<<std::endl;
+		   for(unsigned i=0; i<num_perf_counters; ++i){
+				powerfile<<"gpu_max_"<<perf_count_label[i]<<" = "<<kernel_cmp_perf_counters[i].max<<std::endl;
 		   }
 
 		   powerfile<<std::endl<<"Kernel Minimum Power Data:"<<std::endl;
-		   powerfile<<"gpu_min_power = "<< gpu_min_power<<std::endl;
+		   powerfile<<"kernel_min_power = "<< kernel_power.min<<std::endl;
 		   for(unsigned i=0; i<num_pwr_cmps; ++i){
-			   powerfile<<"gpu_min_"<<pwr_cmp_label[i]<<" = "<<pwr_cmp_min[i]<<std::endl;
+			   powerfile<<"gpu_min_"<<pwr_cmp_label[i]<<" = "<<kernel_cmp_pwr[i].min<<std::endl;
 		   }
-		   for(unsigned i=0; i<num_per_counts; ++i){
-				powerfile<<"gpu_min_"<<perf_count_label[i]<<" = "<<perf_count_min[i]<<std::endl;
+		   for(unsigned i=0; i<num_perf_counters; ++i){
+				powerfile<<"gpu_min_"<<perf_count_label[i]<<" = "<<kernel_cmp_perf_counters[i].min<<std::endl;
 		   }
 
 		   powerfile<<std::endl<<"Accumulative Power Statistics Over Previous Kernels:"<<std::endl;
-		   powerfile<<"gpu_tot_avg_power = "<< gpu_tot_avg_power/gcount<<std::endl;
-		   powerfile<<"gpu_tot_max_power = "<<gpu_tot_max_power<<std::endl;
-		   powerfile<<"gpu_tot_min_power = "<<gpu_tot_min_power<<std::endl;
+		   powerfile<<"gpu_tot_avg_power = "<< gpu_tot_power.avg/total_sample_count<<std::endl;
+		   powerfile<<"gpu_tot_max_power = "<<gpu_tot_power.max<<std::endl;
+		   powerfile<<"gpu_tot_min_power = "<<gpu_tot_power.min<<std::endl;
 		   powerfile<<std::endl<<std::endl;
 		   powerfile.flush();
+
+		   if(print_trace){
+			   print_trace_files();
+		   }
 	   }
 
 }
@@ -692,8 +671,8 @@ void gpgpu_sim_wrapper::print_steady_state(int position, double init_val){
 
 	if((samples.size() > gpu_steady_min_period)){ // If steady state occurred for some time, print to file
 		has_written_avg=true;
-		gzprintf(steady_state_tacking_file,"%u,%d,%f,%f,",sample_start,gcount,temp_avg,temp_ipc);
-		for(unsigned i=0; i<num_per_counts; ++i){
+		gzprintf(steady_state_tacking_file,"%u,%d,%f,%f,",sample_start,total_sample_count,temp_avg,temp_ipc);
+		for(unsigned i=0; i<num_perf_counters; ++i){
 			gzprintf(steady_state_tacking_file,"%f,", samples_counter.at(i)/((double)samples.size()));
 		}
 		gzprintf(steady_state_tacking_file,"\n");
@@ -704,7 +683,7 @@ void gpgpu_sim_wrapper::print_steady_state(int position, double init_val){
 
 	sample_start = 0;
 	sample_val = 0;
-	init_inst_val=init_val;//gpu_tot_sim_insn+gpu_sim_insn;
+	init_inst_val=init_val;
 	samples.clear();
 	samples_counter.clear();
 	pwr_counter.clear();
@@ -719,22 +698,22 @@ void gpgpu_sim_wrapper::detect_print_steady_state(int position, double init_val)
 		if(position==0){
 			if(samples.size() == 0){
 				// First sample
-				sample_start = gcount;
+				sample_start = total_sample_count;
 				sample_val = proc->rt_power.readOp.dynamic;
-				init_inst_val=init_val;//gpu_tot_sim_insn+gpu_sim_insn;
+				init_inst_val=init_val;
 				samples.push_back(proc->rt_power.readOp.dynamic);
 				assert(samples_counter.size() == 0);
 				assert(pwr_counter.size() == 0);
 
-				for(unsigned i=0; i<(num_per_counts); ++i){
-					samples_counter.push_back(perf_count[i]);
+				for(unsigned i=0; i<(num_perf_counters); ++i){
+					samples_counter.push_back(sample_perf_counters[i]);
 				}
 
 				for(unsigned i=0; i<(num_pwr_cmps); ++i){
-					pwr_counter.push_back(pwr_cmp[i]);
+					pwr_counter.push_back(sample_cmp_pwr[i]);
 				}
 				assert(pwr_counter.size() == (double)num_pwr_cmps);
-				assert(samples_counter.size() == (double)num_per_counts);
+				assert(samples_counter.size() == (double)num_perf_counters);
 			}else{
 				// Get current average
 				double temp_avg = sample_val / (double)samples.size() ;
@@ -743,12 +722,12 @@ void gpgpu_sim_wrapper::detect_print_steady_state(int position, double init_val)
 				if( abs(proc->rt_power.readOp.dynamic-temp_avg) < gpu_steady_power_deviation){ // Value is within threshold
 					sample_val += proc->rt_power.readOp.dynamic;
 					samples.push_back(proc->rt_power.readOp.dynamic);
-					for(unsigned i=0; i<(num_per_counts); ++i){
-						samples_counter.at(i) += perf_count[i];
+					for(unsigned i=0; i<(num_perf_counters); ++i){
+						samples_counter.at(i) += sample_perf_counters[i];
 					}
 
 					for(unsigned i=0; i<(num_pwr_cmps); ++i){
-						pwr_counter.at(i) += pwr_cmp[i];
+						pwr_counter.at(i) += sample_cmp_pwr[i];
 					}
 
 				}else{	// Value exceeds threshold, not considered steady state
