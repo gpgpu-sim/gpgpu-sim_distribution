@@ -96,7 +96,8 @@ enum perf_count_t {
    NOC_A,
    PIPE_A,
    IDLE_CORE_N,
-   CONST_DYNAMICN
+   CONST_DYNAMICN,
+   NUM_PERFORMANCE_COUNTERS
 };
 
 typedef struct{

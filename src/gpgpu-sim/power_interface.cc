@@ -120,6 +120,6 @@ void mcpat_cycle(const gpgpu_sim_config &config, const struct shader_core_config
 	//wrapper->close_files();
 }
 
-void mcpat_reset_perf_count(class gpgpu_sim_wrapper *wrapper, bool do_print){
-	wrapper->reset_counters(do_print);
+void mcpat_reset_perf_count(class gpgpu_sim_wrapper *wrapper){
+	wrapper->reset_counters();
 }
