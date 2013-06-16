@@ -53,91 +53,53 @@ power_mem_stat_t::power_mem_stat_t(const struct memory_config *mem_config, const
 }
 
 void power_mem_stat_t::init(){
-	inst_c_read_access[0] = m_core_stats->inst_c_read_access;
-	inst_c_read_miss[0] = m_core_stats->inst_c_read_miss;
-	const_c_read_access[0] = m_core_stats->const_c_read_access;
-	const_c_read_miss[0] = m_core_stats->const_c_read_miss;
-	text_c_read_access[0] = m_core_stats->text_c_read_access;
-	text_c_read_miss[0] = m_core_stats->text_c_read_miss;
-	l1d_read_access[0] = m_core_stats->l1d_read_access;
-	l1d_read_miss[0] = m_core_stats->l1d_read_miss;
-	l1d_write_access[0] = m_core_stats->l1d_write_access;
-	l1d_write_miss[0] = m_core_stats->l1d_write_miss;
 
-	shmem_read_access[0] = m_core_stats->gpgpu_n_shmem_bank_access; 	// Shared memory access
+    shmem_read_access[CURRENT_STAT_IDX] = m_core_stats->gpgpu_n_shmem_bank_access; 	// Shared memory access
+    shmem_read_access[PREV_STAT_IDX] = (unsigned *)calloc(m_core_config->num_shader(),sizeof(unsigned));
 
-	inst_c_read_access[1] = (unsigned *)calloc(m_core_config->num_shader(),sizeof(unsigned));
-	inst_c_read_miss[1] = (unsigned *)calloc(m_core_config->num_shader(),sizeof(unsigned));
-	const_c_read_access[1] = (unsigned *)calloc(m_core_config->num_shader(),sizeof(unsigned));
-	const_c_read_miss[1] = (unsigned *)calloc(m_core_config->num_shader(),sizeof(unsigned));
-	text_c_read_access[1] = (unsigned *)calloc(m_core_config->num_shader(),sizeof(unsigned));
-	text_c_read_miss[1] = (unsigned *)calloc(m_core_config->num_shader(),sizeof(unsigned));
-	l1d_read_access[1] = (unsigned *)calloc(m_core_config->num_shader(),sizeof(unsigned));
-	l1d_read_miss[1] = (unsigned *)calloc(m_core_config->num_shader(),sizeof(unsigned));
-	l1d_write_access[1] = (unsigned *)calloc(m_core_config->num_shader(),sizeof(unsigned));
-	l1d_write_miss[1] = (unsigned *)calloc(m_core_config->num_shader(),sizeof(unsigned));
+    for(unsigned i=0; i<NUM_STAT_IDX; ++i){
+        core_cache_stats[i].clear();
+        l2_cache_stats[i].clear();
 
-	shmem_read_access[1] = (unsigned *)calloc(m_core_config->num_shader(),sizeof(unsigned));
+        n_cmd[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned));
+        n_activity[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned));
+        n_nop[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned));
+        n_act[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned));
+        n_pre[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned));
+        n_rd[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned));
+        n_wr[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned));
+        n_req[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned));
 
-	// Low-level DRAM/L2-cache stats
-    for(unsigned i=0; i<2; ++i){
-    	n_l2_read_access[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned));
-        n_l2_read_miss[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned));
-        n_l2_write_access[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned));
-        n_l2_write_miss[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned));
-		n_cmd[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned));
-		n_activity[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned));
-		n_nop[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned));
-		n_act[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned));
-		n_pre[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned));
-		n_rd[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned));
-		n_wr[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned));
-		n_req[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned));
-
-	    // Interconnect stats
-	    //n_mem_to_simt[i] = (unsigned *)calloc(m_config->m_n_mem,sizeof(unsigned)); // Counted at memory partition
-		n_mem_to_simt[i] = (long *)calloc(m_core_config->n_simt_clusters,sizeof(long)); // Counted at SM
-	    n_simt_to_mem[i] = (long *)calloc(m_core_config->n_simt_clusters,sizeof(long)); // Counted at SM
+        // Interconnect stats
+        n_mem_to_simt[i] = (long *)calloc(m_core_config->n_simt_clusters,sizeof(long)); // Counted at SM
+        n_simt_to_mem[i] = (long *)calloc(m_core_config->n_simt_clusters,sizeof(long)); // Counted at SM
     }
 }
 
 void power_mem_stat_t::save_stats(){
-	for(unsigned i=0; i<m_core_config->num_shader(); ++i){
-		inst_c_read_access[1][i] = inst_c_read_access[0][i] ;
-		inst_c_read_miss[1][i] = inst_c_read_miss[0][i] ;
-		const_c_read_access[1][i] = const_c_read_access[0][i] ;
-		const_c_read_miss[1][i] = const_c_read_miss[0][i] ;
-		text_c_read_access[1][i] = text_c_read_access[0][i] ;
-		text_c_read_miss[1][i] = text_c_read_miss[0][i] ;
-		l1d_read_access[1][i] = l1d_read_access[0][i] ;
-		l1d_read_miss[1][i] = l1d_read_miss[0][i] ;
-		l1d_write_access[1][i] = l1d_write_access[0][i] ;
-		l1d_write_miss[1][i] = l1d_write_miss[0][i] ;
-		shmem_read_access[1][i] = shmem_read_access[0][i] ; 	// Shared memory access
 
+    core_cache_stats[PREV_STAT_IDX] = core_cache_stats[CURRENT_STAT_IDX];
+    l2_cache_stats[PREV_STAT_IDX] = l2_cache_stats[CURRENT_STAT_IDX];
 
-	}
+    for(unsigned i=0; i<m_core_config->num_shader(); ++i){
+        shmem_read_access[PREV_STAT_IDX][i] = shmem_read_access[CURRENT_STAT_IDX][i] ; 	// Shared memory access
+    }
 
-	for(unsigned i=0; i<m_config->m_n_mem; ++i){
-    	n_l2_read_access[1][i] = n_l2_read_access[0][i];
-        n_l2_read_miss[1][i] = n_l2_read_miss[0][i];
-        n_l2_write_access[1][i] = n_l2_write_access[0][i];
-        n_l2_write_miss[1][i] = n_l2_write_miss[0][i];
-		n_cmd[1][i] = n_cmd[0][i];
-		n_activity[1][i] = n_activity[0][i];
-		n_nop[1][i] = n_nop[0][i];
-		n_act[1][i] = n_act[0][i];
-		n_pre[1][i] = n_pre[0][i];
-		n_rd[1][i] = n_rd[0][i];
-		n_wr[1][i] = n_wr[0][i];
-		n_req[1][i] = n_req[0][i];
-	}
+    for(unsigned i=0; i<m_config->m_n_mem; ++i){
+        n_cmd[PREV_STAT_IDX][i] = n_cmd[CURRENT_STAT_IDX][i];
+        n_activity[PREV_STAT_IDX][i] = n_activity[CURRENT_STAT_IDX][i];
+        n_nop[PREV_STAT_IDX][i] = n_nop[CURRENT_STAT_IDX][i];
+        n_act[PREV_STAT_IDX][i] = n_act[CURRENT_STAT_IDX][i];
+        n_pre[PREV_STAT_IDX][i] = n_pre[CURRENT_STAT_IDX][i];
+        n_rd[PREV_STAT_IDX][i] = n_rd[CURRENT_STAT_IDX][i];
+        n_wr[PREV_STAT_IDX][i] = n_wr[CURRENT_STAT_IDX][i];
+        n_req[PREV_STAT_IDX][i] = n_req[CURRENT_STAT_IDX][i];
+    }
 
-	for(unsigned i=0; i<m_core_config->n_simt_clusters;i++){
-		n_simt_to_mem[1][i] = n_simt_to_mem[0][i]; // Interconnect
-		n_mem_to_simt[1][i] = n_mem_to_simt[0][i]; // Interconnect
-
-	}
+    for(unsigned i=0; i<m_core_config->n_simt_clusters;i++){
+        n_simt_to_mem[PREV_STAT_IDX][i] = n_simt_to_mem[CURRENT_STAT_IDX][i]; // Interconnect
+        n_mem_to_simt[PREV_STAT_IDX][i] = n_mem_to_simt[CURRENT_STAT_IDX][i]; // Interconnect
+    }
 }
 
 void power_mem_stat_t::visualizer_print( gzFile power_visualizer_file ){
@@ -146,29 +108,20 @@ void power_mem_stat_t::visualizer_print( gzFile power_visualizer_file ){
 
 void power_mem_stat_t::print (FILE *fout) const {
 	fprintf(fout, "\n\n==========Power Metrics -- Memory==========\n");
-	unsigned total_mem_reads=0;
-	unsigned total_mem_writes=0;
-	for(unsigned i=0; i<m_config->m_n_mem; ++i){
-		total_mem_reads += n_rd[0][i];
-		total_mem_writes += n_wr[0][i];
-	}
-	fprintf(fout, "Total memory controller accesses: %u\n", total_mem_reads+total_mem_writes);
-	fprintf(fout, "Total memory controller reads: %u\n", total_mem_reads);
-	fprintf(fout, "Total memory controller writes: %u\n", total_mem_writes);
-	for(unsigned i=0; i<m_core_config->num_shader(); ++i){
-		fprintf(fout, "Shader core %d\n", i);
-		fprintf(fout, "\tTotal instruction cache access: %u\n", inst_c_read_access[0][i]);
-		fprintf(fout, "\tTotal instruction cache miss: %u\n", inst_c_read_miss[0][i]);
-		fprintf(fout, "\tTotal constant cache access: %u\n", const_c_read_access[0][i]);
-		fprintf(fout, "\tTotal constant cache miss: %u\n", const_c_read_miss[0][i]);
-		fprintf(fout, "\tTotal texture cache access: %u\n", text_c_read_access[0][i]);
-		fprintf(fout, "\tTotal texture cache miss: %u\n", text_c_read_miss[0][i]);
-		fprintf(fout, "\tTotal l1d read access: %u\n", l1d_read_access[0][i]);
-		fprintf(fout, "\tTotal l1d read miss: %u\n", l1d_read_miss[0][i]);
-		fprintf(fout, "\tTotal l1d write access: %u\n", l1d_write_access[0][i]);
-		fprintf(fout, "\tTotal l1d write miss: %u\n", l1d_write_miss[0][i]);
-		fprintf(fout, "\tTotal shared memory access: %u\n", shmem_read_access[0][i]);
-	}
+    unsigned total_mem_reads=0;
+    unsigned total_mem_writes=0;
+    for(unsigned i=0; i<m_config->m_n_mem; ++i){
+        total_mem_reads += n_rd[CURRENT_STAT_IDX][i];
+        total_mem_writes += n_wr[CURRENT_STAT_IDX][i];
+    }
+    fprintf(fout, "Total memory controller accesses: %u\n", total_mem_reads+total_mem_writes);
+    fprintf(fout, "Total memory controller reads: %u\n", total_mem_reads);
+    fprintf(fout, "Total memory controller writes: %u\n", total_mem_writes);
+
+    fprintf(fout, "Core cache stats:\n");
+    core_cache_stats->print_stats(fout);
+    fprintf(fout, "L2 cache stats:\n");
+    l2_cache_stats->print_stats(fout);
 }
 
 
@@ -192,125 +145,125 @@ void power_core_stat_t::visualizer_print( gzFile visualizer_file )
 void power_core_stat_t::print (FILE *fout)
 {
 	// per core statistics
-	fprintf(fout,"Power Metrics: \n");
-	for(unsigned i=0; i<m_config->num_shader();i++){
-		fprintf(fout,"core %u:\n",i);
-		fprintf(fout,"\tpipeline duty cycle =%f\n",m_pipeline_duty_cycle[0][i]);
-		fprintf(fout,"\tTotal Deocded Instructions=%u\n",m_num_decoded_insn[0][i]);
-		fprintf(fout,"\tTotal FP Deocded Instructions=%u\n",m_num_FPdecoded_insn[0][i]);
-		fprintf(fout,"\tTotal INT Deocded Instructions=%u\n",m_num_INTdecoded_insn[0][i]);
-		fprintf(fout,"\tTotal LOAD Queued Instructions=%u\n",m_num_loadqueued_insn[0][i]);
-		fprintf(fout,"\tTotal STORE Queued Instructions=%u\n",m_num_storequeued_insn[0][i]);
-		fprintf(fout,"\tTotal IALU Acesses=%u\n",m_num_ialu_acesses[0][i]);
-		fprintf(fout,"\tTotal FP Acesses=%u\n",m_num_fp_acesses[0][i]);
-		fprintf(fout,"\tTotal IMUL Acesses=%u\n",m_num_imul_acesses[0][i]);
-		fprintf(fout,"\tTotal IMUL24 Acesses=%u\n",m_num_imul24_acesses[0][i]);
-		fprintf(fout,"\tTotal IMUL32 Acesses=%u\n",m_num_imul32_acesses[0][i]);
-		fprintf(fout,"\tTotal IDIV Acesses=%u\n",m_num_idiv_acesses[0][i]);
-		fprintf(fout,"\tTotal FPMUL Acesses=%u\n",m_num_fpmul_acesses[0][i]);
-		fprintf(fout,"\tTotal SFU Acesses=%u\n",m_num_trans_acesses[0][i]);
-		fprintf(fout,"\tTotal FPDIV Acesses=%u\n",m_num_fpdiv_acesses[0][i]);
-		fprintf(fout,"\tTotal SFU Acesses=%u\n",m_num_sfu_acesses[0][i]);
-		fprintf(fout,"\tTotal SP Acesses=%u\n",m_num_sp_acesses[0][i]);
-		fprintf(fout,"\tTotal MEM Acesses=%u\n",m_num_mem_acesses[0][i]);
-		fprintf(fout,"\tTotal SFU Commissions=%u\n",m_num_sfu_committed[0][i]);
-		fprintf(fout,"\tTotal SP Commissions=%u\n",m_num_sp_committed[0][i]);
-		fprintf(fout,"\tTotal MEM Commissions=%u\n",m_num_mem_committed[0][i]);
-		fprintf(fout,"\tTotal REG Reads=%u\n",m_read_regfile_acesses[0][i]);
-		fprintf(fout,"\tTotal REG Writes=%u\n",m_write_regfile_acesses[0][i]);
-		fprintf(fout,"\tTotal NON REG=%u\n",m_non_rf_operands[0][i]);
-	}
+    fprintf(fout,"Power Metrics: \n");
+    for(unsigned i=0; i<m_config->num_shader();i++){
+        fprintf(fout,"core %u:\n",i);
+        fprintf(fout,"\tpipeline duty cycle =%f\n",m_pipeline_duty_cycle[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal Deocded Instructions=%u\n",m_num_decoded_insn[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal FP Deocded Instructions=%u\n",m_num_FPdecoded_insn[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal INT Deocded Instructions=%u\n",m_num_INTdecoded_insn[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal LOAD Queued Instructions=%u\n",m_num_loadqueued_insn[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal STORE Queued Instructions=%u\n",m_num_storequeued_insn[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal IALU Acesses=%u\n",m_num_ialu_acesses[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal FP Acesses=%u\n",m_num_fp_acesses[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal IMUL Acesses=%u\n",m_num_imul_acesses[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal IMUL24 Acesses=%u\n",m_num_imul24_acesses[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal IMUL32 Acesses=%u\n",m_num_imul32_acesses[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal IDIV Acesses=%u\n",m_num_idiv_acesses[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal FPMUL Acesses=%u\n",m_num_fpmul_acesses[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal SFU Acesses=%u\n",m_num_trans_acesses[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal FPDIV Acesses=%u\n",m_num_fpdiv_acesses[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal SFU Acesses=%u\n",m_num_sfu_acesses[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal SP Acesses=%u\n",m_num_sp_acesses[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal MEM Acesses=%u\n",m_num_mem_acesses[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal SFU Commissions=%u\n",m_num_sfu_committed[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal SP Commissions=%u\n",m_num_sp_committed[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal MEM Commissions=%u\n",m_num_mem_committed[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal REG Reads=%u\n",m_read_regfile_acesses[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal REG Writes=%u\n",m_write_regfile_acesses[CURRENT_STAT_IDX][i]);
+        fprintf(fout,"\tTotal NON REG=%u\n",m_non_rf_operands[CURRENT_STAT_IDX][i]);
+    }
 }
 void power_core_stat_t::init()
 {
-	m_pipeline_duty_cycle[0]=m_core_stats->m_pipeline_duty_cycle;
-	m_num_decoded_insn[0]=m_core_stats->m_num_decoded_insn;
-	m_num_FPdecoded_insn[0]=m_core_stats->m_num_FPdecoded_insn;
-	m_num_INTdecoded_insn[0]=m_core_stats->m_num_INTdecoded_insn;
-	m_num_storequeued_insn[0]=m_core_stats->m_num_storequeued_insn;
-	m_num_loadqueued_insn[0]=m_core_stats->m_num_loadqueued_insn;
-    m_num_ialu_acesses[0]=m_core_stats->m_num_ialu_acesses;
-    m_num_fp_acesses[0]=m_core_stats->m_num_fp_acesses;
-    m_num_imul_acesses[0]=m_core_stats->m_num_imul_acesses;
-    m_num_imul24_acesses[0]=m_core_stats->m_num_imul24_acesses;
-    m_num_imul32_acesses[0]=m_core_stats->m_num_imul32_acesses;
-    m_num_fpmul_acesses[0]=m_core_stats->m_num_fpmul_acesses;
-    m_num_idiv_acesses[0]=m_core_stats->m_num_idiv_acesses;
-    m_num_fpdiv_acesses[0]=m_core_stats->m_num_fpdiv_acesses;
-    m_num_sp_acesses[0]=m_core_stats->m_num_sp_acesses;
-    m_num_sfu_acesses[0]=m_core_stats->m_num_sfu_acesses;
-    m_num_trans_acesses[0]=m_core_stats->m_num_trans_acesses;
-    m_num_mem_acesses[0]=m_core_stats->m_num_mem_acesses;
-    m_num_sp_committed[0]=m_core_stats->m_num_sp_committed;
-    m_num_sfu_committed[0]=m_core_stats->m_num_sfu_committed;
-    m_num_mem_committed[0]=m_core_stats->m_num_mem_committed;
-    m_read_regfile_acesses[0]=m_core_stats->m_read_regfile_acesses;
-    m_write_regfile_acesses[0]=m_core_stats->m_write_regfile_acesses;
-    m_non_rf_operands[0]=m_core_stats->m_non_rf_operands;
-    m_active_sp_lanes[0]=m_core_stats->m_active_sp_lanes;
-    m_active_sfu_lanes[0]=m_core_stats->m_active_sfu_lanes;
-    m_num_tex_inst[0]=m_core_stats->m_num_tex_inst;
+    m_pipeline_duty_cycle[CURRENT_STAT_IDX]=m_core_stats->m_pipeline_duty_cycle;
+    m_num_decoded_insn[CURRENT_STAT_IDX]=m_core_stats->m_num_decoded_insn;
+    m_num_FPdecoded_insn[CURRENT_STAT_IDX]=m_core_stats->m_num_FPdecoded_insn;
+    m_num_INTdecoded_insn[CURRENT_STAT_IDX]=m_core_stats->m_num_INTdecoded_insn;
+    m_num_storequeued_insn[CURRENT_STAT_IDX]=m_core_stats->m_num_storequeued_insn;
+    m_num_loadqueued_insn[CURRENT_STAT_IDX]=m_core_stats->m_num_loadqueued_insn;
+    m_num_ialu_acesses[CURRENT_STAT_IDX]=m_core_stats->m_num_ialu_acesses;
+    m_num_fp_acesses[CURRENT_STAT_IDX]=m_core_stats->m_num_fp_acesses;
+    m_num_imul_acesses[CURRENT_STAT_IDX]=m_core_stats->m_num_imul_acesses;
+    m_num_imul24_acesses[CURRENT_STAT_IDX]=m_core_stats->m_num_imul24_acesses;
+    m_num_imul32_acesses[CURRENT_STAT_IDX]=m_core_stats->m_num_imul32_acesses;
+    m_num_fpmul_acesses[CURRENT_STAT_IDX]=m_core_stats->m_num_fpmul_acesses;
+    m_num_idiv_acesses[CURRENT_STAT_IDX]=m_core_stats->m_num_idiv_acesses;
+    m_num_fpdiv_acesses[CURRENT_STAT_IDX]=m_core_stats->m_num_fpdiv_acesses;
+    m_num_sp_acesses[CURRENT_STAT_IDX]=m_core_stats->m_num_sp_acesses;
+    m_num_sfu_acesses[CURRENT_STAT_IDX]=m_core_stats->m_num_sfu_acesses;
+    m_num_trans_acesses[CURRENT_STAT_IDX]=m_core_stats->m_num_trans_acesses;
+    m_num_mem_acesses[CURRENT_STAT_IDX]=m_core_stats->m_num_mem_acesses;
+    m_num_sp_committed[CURRENT_STAT_IDX]=m_core_stats->m_num_sp_committed;
+    m_num_sfu_committed[CURRENT_STAT_IDX]=m_core_stats->m_num_sfu_committed;
+    m_num_mem_committed[CURRENT_STAT_IDX]=m_core_stats->m_num_mem_committed;
+    m_read_regfile_acesses[CURRENT_STAT_IDX]=m_core_stats->m_read_regfile_acesses;
+    m_write_regfile_acesses[CURRENT_STAT_IDX]=m_core_stats->m_write_regfile_acesses;
+    m_non_rf_operands[CURRENT_STAT_IDX]=m_core_stats->m_non_rf_operands;
+    m_active_sp_lanes[CURRENT_STAT_IDX]=m_core_stats->m_active_sp_lanes;
+    m_active_sfu_lanes[CURRENT_STAT_IDX]=m_core_stats->m_active_sfu_lanes;
+    m_num_tex_inst[CURRENT_STAT_IDX]=m_core_stats->m_num_tex_inst;
 
 
-	m_pipeline_duty_cycle[1]=(float*)calloc(m_config->num_shader(),sizeof(float));
-	m_num_decoded_insn[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-	m_num_FPdecoded_insn[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-	m_num_INTdecoded_insn[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-	m_num_storequeued_insn[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-	m_num_loadqueued_insn[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_num_ialu_acesses[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_num_fp_acesses[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_num_tex_inst[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_num_imul_acesses[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_num_imul24_acesses[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_num_imul32_acesses[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_num_fpmul_acesses[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_num_idiv_acesses[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_num_fpdiv_acesses[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_num_sp_acesses[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_num_sfu_acesses[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_num_trans_acesses[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_num_mem_acesses[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_num_sp_committed[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_num_sfu_committed[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_num_mem_committed[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_read_regfile_acesses[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_write_regfile_acesses[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_non_rf_operands[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_active_sp_lanes[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
-    m_active_sfu_lanes[1]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_pipeline_duty_cycle[PREV_STAT_IDX]=(float*)calloc(m_config->num_shader(),sizeof(float));
+    m_num_decoded_insn[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_num_FPdecoded_insn[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_num_INTdecoded_insn[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_num_storequeued_insn[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_num_loadqueued_insn[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_num_ialu_acesses[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_num_fp_acesses[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_num_tex_inst[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_num_imul_acesses[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_num_imul24_acesses[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_num_imul32_acesses[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_num_fpmul_acesses[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_num_idiv_acesses[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_num_fpdiv_acesses[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_num_sp_acesses[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_num_sfu_acesses[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_num_trans_acesses[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_num_mem_acesses[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_num_sp_committed[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_num_sfu_committed[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_num_mem_committed[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_read_regfile_acesses[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_write_regfile_acesses[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_non_rf_operands[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_active_sp_lanes[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
+    m_active_sfu_lanes[PREV_STAT_IDX]=(unsigned *)calloc(m_config->num_shader(),sizeof(unsigned));
 }
 
 void power_core_stat_t::save_stats(){
-	for(unsigned i=0; i<m_config->num_shader(); ++i){
-		m_pipeline_duty_cycle[1][i]=m_pipeline_duty_cycle[0][i];
-		m_num_decoded_insn[1][i]=	m_num_decoded_insn[0][i];
-		m_num_FPdecoded_insn[1][i]=m_num_FPdecoded_insn[0][i];
-		m_num_INTdecoded_insn[1][i]=m_num_INTdecoded_insn[0][i];
-		m_num_storequeued_insn[1][i]=m_num_storequeued_insn[0][i];
-		m_num_loadqueued_insn[1][i]=m_num_loadqueued_insn[0][i];
-		m_num_ialu_acesses[1][i]=m_num_ialu_acesses[0][i];
-		m_num_fp_acesses[1][i]=m_num_fp_acesses[0][i];
-		m_num_tex_inst[1][i]=m_num_tex_inst[0][i];
-		m_num_imul_acesses[1][i]=m_num_imul_acesses[0][i];
-		m_num_imul24_acesses[1][i]=m_num_imul24_acesses[0][i];
-		m_num_imul32_acesses[1][i]=m_num_imul32_acesses[0][i];
-		m_num_fpmul_acesses[1][i]=m_num_fpmul_acesses[0][i];
-		m_num_idiv_acesses[1][i]=m_num_idiv_acesses[0][i];
-		m_num_fpdiv_acesses[1][i]=m_num_fpdiv_acesses[0][i];
-		m_num_sp_acesses[1][i]=m_num_sp_acesses[0][i];
-		m_num_sfu_acesses[1][i]=m_num_sfu_acesses[0][i];
-		m_num_trans_acesses[1][i]=m_num_trans_acesses[0][i];
-		m_num_mem_acesses[1][i]=m_num_mem_acesses[0][i];
-		m_num_sp_committed[1][i]=m_num_sp_committed[0][i];
-		m_num_sfu_committed[1][i]=m_num_sfu_committed[0][i];
-		m_num_mem_committed[1][i]=m_num_mem_committed[0][i];
-		m_read_regfile_acesses[1][i]=m_read_regfile_acesses[0][i];
-		m_write_regfile_acesses[1][i]=m_write_regfile_acesses[0][i];
-		m_non_rf_operands[1][i]=m_non_rf_operands[0][i];
-	    m_active_sp_lanes[1][i]=m_active_sp_lanes[0][i];
-	    m_active_sfu_lanes[1][i]=m_active_sfu_lanes[0][i];
-	}
+for(unsigned i=0; i<m_config->num_shader(); ++i){
+    m_pipeline_duty_cycle[PREV_STAT_IDX][i]=m_pipeline_duty_cycle[CURRENT_STAT_IDX][i];
+    m_num_decoded_insn[PREV_STAT_IDX][i]=	m_num_decoded_insn[CURRENT_STAT_IDX][i];
+    m_num_FPdecoded_insn[PREV_STAT_IDX][i]=m_num_FPdecoded_insn[CURRENT_STAT_IDX][i];
+    m_num_INTdecoded_insn[PREV_STAT_IDX][i]=m_num_INTdecoded_insn[CURRENT_STAT_IDX][i];
+    m_num_storequeued_insn[PREV_STAT_IDX][i]=m_num_storequeued_insn[CURRENT_STAT_IDX][i];
+    m_num_loadqueued_insn[PREV_STAT_IDX][i]=m_num_loadqueued_insn[CURRENT_STAT_IDX][i];
+    m_num_ialu_acesses[PREV_STAT_IDX][i]=m_num_ialu_acesses[CURRENT_STAT_IDX][i];
+    m_num_fp_acesses[PREV_STAT_IDX][i]=m_num_fp_acesses[CURRENT_STAT_IDX][i];
+    m_num_tex_inst[PREV_STAT_IDX][i]=m_num_tex_inst[CURRENT_STAT_IDX][i];
+    m_num_imul_acesses[PREV_STAT_IDX][i]=m_num_imul_acesses[CURRENT_STAT_IDX][i];
+    m_num_imul24_acesses[PREV_STAT_IDX][i]=m_num_imul24_acesses[CURRENT_STAT_IDX][i];
+    m_num_imul32_acesses[PREV_STAT_IDX][i]=m_num_imul32_acesses[CURRENT_STAT_IDX][i];
+    m_num_fpmul_acesses[PREV_STAT_IDX][i]=m_num_fpmul_acesses[CURRENT_STAT_IDX][i];
+    m_num_idiv_acesses[PREV_STAT_IDX][i]=m_num_idiv_acesses[CURRENT_STAT_IDX][i];
+    m_num_fpdiv_acesses[PREV_STAT_IDX][i]=m_num_fpdiv_acesses[CURRENT_STAT_IDX][i];
+    m_num_sp_acesses[PREV_STAT_IDX][i]=m_num_sp_acesses[CURRENT_STAT_IDX][i];
+    m_num_sfu_acesses[PREV_STAT_IDX][i]=m_num_sfu_acesses[CURRENT_STAT_IDX][i];
+    m_num_trans_acesses[PREV_STAT_IDX][i]=m_num_trans_acesses[CURRENT_STAT_IDX][i];
+    m_num_mem_acesses[PREV_STAT_IDX][i]=m_num_mem_acesses[CURRENT_STAT_IDX][i];
+    m_num_sp_committed[PREV_STAT_IDX][i]=m_num_sp_committed[CURRENT_STAT_IDX][i];
+    m_num_sfu_committed[PREV_STAT_IDX][i]=m_num_sfu_committed[CURRENT_STAT_IDX][i];
+    m_num_mem_committed[PREV_STAT_IDX][i]=m_num_mem_committed[CURRENT_STAT_IDX][i];
+    m_read_regfile_acesses[PREV_STAT_IDX][i]=m_read_regfile_acesses[CURRENT_STAT_IDX][i];
+    m_write_regfile_acesses[PREV_STAT_IDX][i]=m_write_regfile_acesses[CURRENT_STAT_IDX][i];
+    m_non_rf_operands[PREV_STAT_IDX][i]=m_non_rf_operands[CURRENT_STAT_IDX][i];
+    m_active_sp_lanes[PREV_STAT_IDX][i]=m_active_sp_lanes[CURRENT_STAT_IDX][i];
+    m_active_sfu_lanes[PREV_STAT_IDX][i]=m_active_sfu_lanes[CURRENT_STAT_IDX][i];
+    }
 }
 
 power_stat_t::power_stat_t( const struct shader_core_config *shader_config,float * average_pipeline_duty_cycle,float *active_sms,shader_core_stats * shader_stats, const struct memory_config *mem_config,memory_stats_t * memory_stats)

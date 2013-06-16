@@ -883,7 +883,16 @@ void gpgpu_sim::gpu_print_stat()
    unsigned long long elapsed_time = MAX( curr_time - g_simulation_starttime, 1 );
    printf( "gpu_total_sim_rate=%u\n", (unsigned)( ( gpu_tot_sim_insn + gpu_sim_insn ) / elapsed_time ) );
 
-   shader_print_l1_miss_stat( stdout );
+   //shader_print_l1_miss_stat( stdout );
+   shader_print_cache_stats(stdout);
+
+   cache_stats core_cache_stats;
+   core_cache_stats.clear();
+   for(unsigned i=0; i<m_config.num_cluster(); i++){
+       m_cluster[i]->get_cache_stats(core_cache_stats);
+   }
+   printf("\nTotal_core_cache_stats:\n");
+   core_cache_stats.print_stats(stdout, "Total_core_cache_stats_breakdown");
    shader_print_scheduler_stat( stdout, false );
 
    m_shader_stats->print(stdout);
@@ -896,12 +905,38 @@ void gpgpu_sim::gpu_print_stat()
 
    // performance counter that are not local to one shader
    m_memory_stats->memlatstat_print(m_memory_config->m_n_mem,m_memory_config->nbk);
-   for (unsigned i=0;i<m_memory_config->m_n_mem;i++) 
+   for (unsigned i=0;i<m_memory_config->m_n_mem;i++)
       m_memory_partition_unit[i]->print(stdout);
-   if (!m_memory_config->m_L2_config.disabled() && m_memory_config->m_L2_config.get_num_lines()) {
-      L2c_print_cache_stat();
-      m_memory_stats->print_L2cache_stats(stdout);
+
+   // L2 cache stats
+   cache_stats l2_stats;
+   struct cache_sub_stats l2_css;
+   struct cache_sub_stats total_l2_css;
+   l2_stats.clear();
+   l2_css.clear();
+   total_l2_css.clear();
+
+   printf("\n========= L2 cache stats =========\n");
+   for (unsigned i=0;i<m_memory_config->m_n_mem;i++){
+       m_memory_partition_unit[i]->accumulate_L2cache_stats(l2_stats);
+       m_memory_partition_unit[i]->get_L2cache_sub_stats(l2_css);
+
+       fprintf( stdout, "L2_cache_bank[%d]: Access = %u, Miss = %u, Miss_rate = %.3lf, Pending_hits = %u, Reservation_fails = %u\n",
+                i, l2_css.accesses, l2_css.misses, (double)l2_css.misses / (double)l2_css.accesses, l2_css.pending_hits, l2_css.res_fails);
+
+       total_l2_css += l2_css;
    }
+   if (!m_memory_config->m_L2_config.disabled() && m_memory_config->m_L2_config.get_num_lines()) {
+      //L2c_print_cache_stat();
+      printf("L2_total_cache_accesses = %u\n", total_l2_css.accesses);
+      printf("L2_total_cache_misses = %u\n", total_l2_css.misses);
+      printf("L2_total_cache_miss_rate = %.4lf\n", (double)total_l2_css.misses/(double)total_l2_css.accesses);
+      printf("L2_total_cache_pending_hits = %u\n", total_l2_css.pending_hits);
+      printf("L2_total_cache_reservation_fails = %u\n", total_l2_css.res_fails);
+      printf("L2_total_cache_breakdown:\n");
+      l2_stats.print_stats(stdout, "L2_cache_stats_breakdown");
+   }
+
    if (m_config.gpgpu_cflog_interval != 0) {
       spill_log_to_file (stdout, 1, gpu_sim_cycle);
       insn_warp_occ_print(stdout);
@@ -924,13 +959,12 @@ void gpgpu_sim::gpu_print_stat()
    long temp_stm=0;
    long temp_mts = 0;
    for(unsigned i=0; i<m_config.num_cluster(); i++){
-	   m_cluster[i]->set_icnt_stats(temp_stm, temp_mts);
+	   m_cluster[i]->get_icnt_stats(temp_stm, temp_mts);
 	   total_simt_to_mem += temp_stm;
 	   total_mem_to_simt += temp_mts;
    }
    printf("\nicnt_total_pkts_mem_to_simt=%ld\n", total_mem_to_simt);
    printf("icnt_total_pkts_simt_to_mem=%ld\n", total_simt_to_mem);
-
 
    time_vector_print();
    fflush(stdout);
@@ -1128,14 +1162,15 @@ void gpgpu_sim::cycle()
       for (unsigned i=0;i<m_memory_config->m_n_mem;i++){
          m_memory_partition_unit[i]->dram_cycle(); // Issue the dram command (scheduler + delay model)
          // Update performance counters for DRAM
-         m_memory_partition_unit[i]->set_dram_power_stats(m_power_stats->pwr_mem_stat->n_cmd[0][i], m_power_stats->pwr_mem_stat->n_activity[0][i],
-                        m_power_stats->pwr_mem_stat->n_nop[0][i], m_power_stats->pwr_mem_stat->n_act[0][i], m_power_stats->pwr_mem_stat->n_pre[0][i],
-                        m_power_stats->pwr_mem_stat->n_rd[0][i], m_power_stats->pwr_mem_stat->n_wr[0][i], m_power_stats->pwr_mem_stat->n_req[0][i]);
+         m_memory_partition_unit[i]->set_dram_power_stats(m_power_stats->pwr_mem_stat->n_cmd[CURRENT_STAT_IDX][i], m_power_stats->pwr_mem_stat->n_activity[CURRENT_STAT_IDX][i],
+                        m_power_stats->pwr_mem_stat->n_nop[CURRENT_STAT_IDX][i], m_power_stats->pwr_mem_stat->n_act[CURRENT_STAT_IDX][i], m_power_stats->pwr_mem_stat->n_pre[CURRENT_STAT_IDX][i],
+                        m_power_stats->pwr_mem_stat->n_rd[CURRENT_STAT_IDX][i], m_power_stats->pwr_mem_stat->n_wr[CURRENT_STAT_IDX][i], m_power_stats->pwr_mem_stat->n_req[CURRENT_STAT_IDX][i]);
       }
    }
 
    // L2 operations follow L2 clock domain
    if (clock_mask & L2) {
+       m_power_stats->pwr_mem_stat->l2_cache_stats[CURRENT_STAT_IDX].clear();
       for (unsigned i=0;i<m_memory_config->m_n_mem;i++) {
           //move memory request from interconnect into memory partition (if not backed up)
           //Note:This needs to be called in DRAM clock domain if there is no L2 cache in the system
@@ -1146,8 +1181,7 @@ void gpgpu_sim::cycle()
               m_memory_partition_unit[i]->push( mf, gpu_sim_cycle + gpu_tot_sim_cycle );
           }
           m_memory_partition_unit[i]->cache_cycle(gpu_sim_cycle+gpu_tot_sim_cycle);
-          m_memory_partition_unit[i]->set_L2cache_power_stats(m_power_stats->pwr_mem_stat->n_l2_read_access[0][i], m_power_stats->pwr_mem_stat->n_l2_read_miss[0][i],
-          m_power_stats->pwr_mem_stat->n_l2_write_access[0][i], m_power_stats->pwr_mem_stat->n_l2_write_miss[0][i]);
+          m_memory_partition_unit[i]->accumulate_L2cache_stats(m_power_stats->pwr_mem_stat->l2_cache_stats[CURRENT_STAT_IDX]);
        }
    }
 
@@ -1156,14 +1190,16 @@ void gpgpu_sim::cycle()
    }
 
    if (clock_mask & CORE) {
-      // L1 cache + shader core pipeline stages 
+      // L1 cache + shader core pipeline stages
+      m_power_stats->pwr_mem_stat->core_cache_stats[CURRENT_STAT_IDX].clear();
       for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) {
          if (m_cluster[i]->get_not_completed() || get_more_cta_left() ) {
                m_cluster[i]->core_cycle();
                *active_sms+=m_cluster[i]->get_n_active_sms();
-
-        	   m_cluster[i]->set_icnt_stats(m_power_stats->pwr_mem_stat->n_simt_to_mem[0][i], m_power_stats->pwr_mem_stat->n_mem_to_simt[0][i]);
          }
+         // Update core icnt/cache stats for GPUWattch
+         m_cluster[i]->get_icnt_stats(m_power_stats->pwr_mem_stat->n_simt_to_mem[CURRENT_STAT_IDX][i], m_power_stats->pwr_mem_stat->n_mem_to_simt[CURRENT_STAT_IDX][i]);
+         m_cluster[i]->get_cache_stats(m_power_stats->pwr_mem_stat->core_cache_stats[CURRENT_STAT_IDX]);
       }
       float temp=0;
       for (unsigned i=0;i<m_shader_config->num_shader();i++){

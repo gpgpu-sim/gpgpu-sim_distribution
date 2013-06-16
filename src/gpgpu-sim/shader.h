@@ -1080,7 +1080,11 @@ public:
     void print(FILE *fout) const;
     void print_cache_stats( FILE *fp, unsigned& dl1_accesses, unsigned& dl1_misses );
     void get_cache_stats(unsigned &read_accesses, unsigned &write_accesses, unsigned &read_misses, unsigned &write_misses, unsigned cache_type);
-    void set_stats();
+    void get_cache_stats(cache_stats &cs);
+
+    void get_L1D_sub_stats(struct cache_sub_stats &css) const;
+    void get_L1C_sub_stats(struct cache_sub_stats &css) const;
+    void get_L1T_sub_stats(struct cache_sub_stats &css) const;
 
 protected:
     ldst_unit( mem_fetch_interface *icnt,
@@ -1362,19 +1366,7 @@ struct shader_core_stats_pod {
     unsigned made_write_mfs;
     unsigned made_read_mfs;
 
-    // Power stats
     unsigned *gpgpu_n_shmem_bank_access;
-    unsigned *inst_c_read_access;	// Instruction cache read access
-    unsigned *inst_c_read_miss;		// Instruction cache read miss
-    unsigned *const_c_read_access;	// Constant cache read access
-    unsigned *const_c_read_miss;		// Constant cache read miss
-    unsigned *text_c_read_access;	// Texture cache read access
-    unsigned *text_c_read_miss;		// Texture cache read miss
-    unsigned *l1d_read_access;		// L1 Data cache read access
-    unsigned *l1d_read_miss;			// L1 Data cache read miss
-    unsigned *l1d_write_access;		// L1 Data cache write access
-    unsigned *l1d_write_miss;		// L1 Data cache write miss
-
     long *n_simt_to_mem; // Interconnect power stats
     long *n_mem_to_simt;
 };
@@ -1425,18 +1417,6 @@ public:
         m_n_diverge = (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         shader_cycle_distro = (unsigned*) calloc(config->warp_size+3, sizeof(unsigned));
         last_shader_cycle_distro = (unsigned*) calloc(m_config->warp_size+3, sizeof(unsigned));
-
-        // Power stats
-        inst_c_read_access = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
-        inst_c_read_miss = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
-        const_c_read_access = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
-        const_c_read_miss = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
-        text_c_read_access = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
-        text_c_read_miss = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
-        l1d_read_access = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
-        l1d_read_miss = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
-        l1d_write_access = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
-        l1d_write_miss = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
 
         n_simt_to_mem = (long *)calloc(config->num_shader(), sizeof(long));
         n_mem_to_simt = (long *)calloc(config->num_shader(), sizeof(long));
@@ -1584,9 +1564,14 @@ public:
     std::list<unsigned> get_regs_written( const inst_t &fvt ) const;
     const shader_core_config *get_config() const { return m_config; }
     void print_cache_stats( FILE *fp, unsigned& dl1_accesses, unsigned& dl1_misses );
-    void get_cache_stats(unsigned &read_accesses, unsigned &write_accesses, unsigned &read_misses, unsigned &write_misses, unsigned cache_type);
 
-    void set_icnt_power_stats(long &n_simt_to_mem, long &n_mem_to_simt) const;
+    void get_cache_stats(cache_stats &cs);
+    void get_L1I_sub_stats(struct cache_sub_stats &css) const;
+    void get_L1D_sub_stats(struct cache_sub_stats &css) const;
+    void get_L1C_sub_stats(struct cache_sub_stats &css) const;
+    void get_L1T_sub_stats(struct cache_sub_stats &css) const;
+
+    void get_icnt_power_stats(long &n_simt_to_mem, long &n_mem_to_simt) const;
 
 // debug:
     void display_simt_state(FILE *fout, int mask ) const;
@@ -1828,9 +1813,14 @@ public:
 
     void display_pipeline( unsigned sid, FILE *fout, int print_mem, int mask );
     void print_cache_stats( FILE *fp, unsigned& dl1_accesses, unsigned& dl1_misses ) const;
-    void get_cache_stats(unsigned &read_accesses, unsigned &write_accesses, unsigned &read_misses, unsigned &write_misses, unsigned cache_type) const;
 
-    void set_icnt_stats(long &n_simt_to_mem, long &n_mem_to_simt) const;
+    void get_cache_stats(cache_stats &cs) const;
+    void get_L1I_sub_stats(struct cache_sub_stats &css) const;
+    void get_L1D_sub_stats(struct cache_sub_stats &css) const;
+    void get_L1C_sub_stats(struct cache_sub_stats &css) const;
+    void get_L1T_sub_stats(struct cache_sub_stats &css) const;
+
+    void get_icnt_stats(long &n_simt_to_mem, long &n_mem_to_simt) const;
 
 private:
     unsigned m_cluster_id;

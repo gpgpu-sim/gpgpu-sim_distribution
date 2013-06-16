@@ -1,7 +1,11 @@
 LOG:
 Version 3.2.1+edits (development branch) versus 3.2.1
-- Replaced legacy L2 cache access statistics with more meaningful breakdown. 
 - Added NVIDIA Quadro FX5600 GPGPU-Sim and GPUWattch configuration files.
+- Added cache_stats class to record all memory accesses and access outcomes 
+  for each cache. Switched from the legacy cache statistics recorded in 
+  the tag_array to the cache access functions. Updated the cache_statistic 
+  printing - providing a more meaningful breakdown. Cleaned up power_stats.cc/h
+  to reflect the changes in the cache statistics.
 - Bug Fixes:
     - Fixed the flit count sent to GPUWattch for atomic operations. 
     - Fix for Bug 51 - Updated the function declaration of
