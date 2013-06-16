@@ -414,10 +414,11 @@ private:
    void reinit_clock_domains(void);
    int  next_clock_domain(void);
    void issue_block2core();
-   void print_dram_L2_stats(FILE *fout) const;
+   void print_dram_stats(FILE *fout) const;
    void L2c_print_cache_stat() const;
    void shader_print_runtime_stat( FILE *fout );
    void shader_print_l1_miss_stat( FILE *fout ) const;
+   void shader_print_cache_stats( FILE *fout ) const;
    void shader_print_scheduler_stat( FILE* fout, bool print_dynamic_info ) const;
    void visualizer_printstat();
    void print_shader_cycle_distro( FILE *fout ) const;

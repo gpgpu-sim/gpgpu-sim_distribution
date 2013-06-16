@@ -171,7 +171,6 @@ void memory_partition_unit::cache_cycle( unsigned cycle )
                     assert(!read_sent);
                     // L2 cache lock-up: will try again next cycle
                 }
-                m_stats->memlatstat_L2cache_access(mf, status); 
             }
         } else {
             // L2 is disabled or non-texture access to texture-only L2
@@ -219,44 +218,6 @@ void memory_partition_unit::print( FILE *fp ) const
     m_dram->print(fp); 
 }
 
-void memory_stats_t::print_L2cache_stats( FILE *fp )
-{
-
-    // fprintf(fp,"gpgpu_l2_write_miss = %d\n", L2_write_miss);
-    // fprintf(fp,"gpgpu_l2_write_access = %d\n", L2_write_access);
-    // fprintf(fp,"gpgpu_l2_read_miss = %d\n", L2_read_miss);
-    // fprintf(fp,"gpgpu_l2_read_access = %d\n", L2_read_access);
-
-   unsigned total_L2_accesses = 0; 
-   unsigned total_L2_misses = 0; 
-
-   for (int type = 0; type < NUM_MEM_ACCESS_TYPE; type++) {
-      for (int status = 0; status < NUM_CACHE_REQUEST_STATUS; status++) {
-         if (m_L2CacheAccessBreakdown[type][status] > 0) {
-            fprintf(fp, "L2CacheAccessBreakdown[%s][%s] = %u\n", 
-                    mem_access_type_str((enum mem_access_type)type), 
-                    cache_request_status_str((enum cache_request_status)status), 
-                    m_L2CacheAccessBreakdown[type][status]); 
-            switch (status) {
-            case HIT:
-            case HIT_RESERVED:
-               total_L2_accesses += m_L2CacheAccessBreakdown[type][status]; 
-               break; 
-            case MISS:
-               total_L2_accesses += m_L2CacheAccessBreakdown[type][status]; 
-               total_L2_misses += m_L2CacheAccessBreakdown[type][status]; 
-               break; 
-            case RESERVATION_FAIL: break; 
-            default: assert(0); 
-            } 
-         }
-      }
-   }
-
-   fprintf(fp, "L2Cache_Total_Accesses = %u\n", total_L2_accesses); 
-   fprintf(fp, "L2Cache_Total_Misses = %u\n", total_L2_misses); 
-}
-
 void memory_stats_t::visualizer_print( gzFile visualizer_file )
 {
    // gzprintf(visualizer_file, "Ltwowritemiss: %d\n", L2_write_miss);
@@ -267,23 +228,8 @@ void memory_stats_t::visualizer_print( gzFile visualizer_file )
       gzprintf(visualizer_file, "averagemflatency: %lld\n", mf_total_lat/num_mfs);
 }
 
-// record the outcome of L2 cache access by this memory request 
-void memory_stats_t::memlatstat_L2cache_access(mem_fetch *mf, int access_outcome)
+void gpgpu_sim::print_dram_stats(FILE *fout) const
 {
-   switch(access_outcome) {
-   case HIT:
-   case HIT_RESERVED:
-   case MISS:
-   case RESERVATION_FAIL:
-      m_L2CacheAccessBreakdown[mf->get_access_type()][access_outcome] += 1; 
-   break; 
-   default: assert(0 && "Unknown cache access outcome"); break; 
-   }
-}
-
-void gpgpu_sim::print_dram_L2_stats(FILE *fout) const
-{
-
 	unsigned cmd=0;
 	unsigned activity=0;
 	unsigned nop=0;
@@ -292,10 +238,6 @@ void gpgpu_sim::print_dram_L2_stats(FILE *fout) const
 	unsigned rd=0;
 	unsigned wr=0;
 	unsigned req=0;
-	unsigned l2_read_access=0;
-	unsigned l2_read_miss=0;
-	unsigned l2_write_access=0;
-	unsigned l2_write_miss=0;
 	unsigned tot_cmd=0;
 	unsigned tot_nop=0;
 	unsigned tot_act=0;
@@ -303,14 +245,9 @@ void gpgpu_sim::print_dram_L2_stats(FILE *fout) const
 	unsigned tot_rd=0;
 	unsigned tot_wr=0;
 	unsigned tot_req=0;
-	unsigned tot_l2_read_access=0;
-	unsigned tot_l2_read_miss=0;
-	unsigned tot_l2_write_access=0;
-	unsigned tot_l2_write_miss=0;
 
 	for (unsigned i=0;i<m_memory_config->m_n_mem;i++){
 		m_memory_partition_unit[i]->set_dram_power_stats(cmd,activity,nop,act,pre,rd,wr,req);
-		m_memory_partition_unit[i]->set_L2cache_power_stats(l2_read_access,l2_read_miss,l2_write_access,l2_write_miss);
 		tot_cmd+=cmd;
 		tot_nop+=nop;
 		tot_act+=act;
@@ -318,19 +255,14 @@ void gpgpu_sim::print_dram_L2_stats(FILE *fout) const
 		tot_rd+=rd;
 		tot_wr+=wr;
 		tot_req+=req;
-		tot_l2_read_access+=l2_read_access;
-		tot_l2_read_miss+=l2_read_miss;
-		tot_l2_write_access+=l2_write_access;
-		tot_l2_write_miss+=l2_write_miss;
 	}
-	fprintf(fout,"gpgpu_n_l2_cache_read_access = %d\n",tot_l2_read_access );
-	fprintf(fout,"gpgpu_n_l2_cache_read_miss = %d\n",tot_l2_read_miss );
-	fprintf(fout,"gpgpu_n_l2_cache_write_access = %d\n",tot_l2_write_access );
-	fprintf(fout,"gpgpu_n_l2_cache_write_miss = %d\n",tot_l2_write_miss );
     fprintf(fout,"gpgpu_n_dram_reads = %d\n",tot_rd );
     fprintf(fout,"gpgpu_n_dram_writes = %d\n",tot_wr );
     fprintf(fout,"gpgpu_n_dram_activate = %d\n",tot_act );
-
+    fprintf(fout,"gpgpu_n_dram_commands = %d\n",tot_cmd);
+    fprintf(fout,"gpgpu_n_dram_noops = %d\n",tot_nop );
+    fprintf(fout,"gpgpu_n_dram_precharges = %d\n",tot_pre );
+    fprintf(fout,"gpgpu_n_dram_requests = %d\n",tot_req );
 }
 void gpgpu_sim::L2c_print_cache_stat() const
 {
@@ -446,9 +378,10 @@ void memory_partition_unit::set_dram_power_stats(unsigned &n_cmd,
 	m_dram->set_dram_power_stats(n_cmd, n_activity, n_nop, n_act, n_pre, n_rd, n_wr, n_req);
 }
 
-void memory_partition_unit::set_L2cache_power_stats(unsigned &n_read_access,
-												unsigned &n_read_miss,
-												unsigned &n_write_access,
-												unsigned &n_write_miss) const{
-	m_L2cache->get_data_stats(n_read_access,n_read_miss,n_write_access,n_write_miss);
+void memory_partition_unit::accumulate_L2cache_stats(class cache_stats &l2_stats) const {
+    l2_stats += m_L2cache->get_stats();
+}
+
+void memory_partition_unit::get_L2cache_sub_stats(struct cache_sub_stats &css) const{
+    m_L2cache->get_sub_stats(css);
 }

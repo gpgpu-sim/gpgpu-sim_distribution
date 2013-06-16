@@ -125,10 +125,6 @@ memory_stats_t::memory_stats_t( unsigned n_shader, const struct shader_core_conf
       }
    }
 
-   // L2_write_miss=0;
-   // L2_write_access=0;
-   // L2_read_access=0;
-   // L2_read_miss=0;
    L2_cbtoL2length = (unsigned int*) calloc(mem_config->m_n_mem, sizeof(unsigned int));
    L2_cbtoL2writelength = (unsigned int*) calloc(mem_config->m_n_mem, sizeof(unsigned int));
    L2_L2tocblength = (unsigned int*) calloc(mem_config->m_n_mem, sizeof(unsigned int));

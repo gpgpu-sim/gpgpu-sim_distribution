@@ -88,10 +88,8 @@ public:
 			unsigned &n_wr,
 			unsigned &n_req) const;
 
-   void set_L2cache_power_stats(unsigned &n_read_access,
-			unsigned &n_read_miss,
-			unsigned &n_write_access,
-			unsigned &n_write_miss) const;
+   void accumulate_L2cache_stats(class cache_stats &l2_stats) const;
+   void get_L2cache_sub_stats(struct cache_sub_stats &css) const;
 
 private:
 // data

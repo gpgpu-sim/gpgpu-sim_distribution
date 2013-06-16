@@ -40,13 +40,11 @@ public:
 
    unsigned memlatstat_done( class mem_fetch *mf );
    void memlatstat_read_done( class mem_fetch *mf );
-   void memlatstat_L2cache_access( class mem_fetch *mf, int access_outcome ); 
    void memlatstat_dram_access( class mem_fetch *mf );
    void memlatstat_icnt2mem_pop( class mem_fetch *mf);
    void memlatstat_lat_pw();
    void memlatstat_print(unsigned n_mem, unsigned gpu_mem_n_bk);
 
-   void print_L2cache_stats( FILE *fp );
    void visualizer_print( gzFile visualizer_file );
 
    unsigned m_n_shader;
@@ -84,12 +82,6 @@ public:
 
 
    // L2 cache stats
-   typedef std::map<int, std::map<int, unsigned> > L2CacheAccessBreakdown_t; // <access type, outcome, count>
-   L2CacheAccessBreakdown_t m_L2CacheAccessBreakdown; 
-   // unsigned L2_write_access;
-   // unsigned L2_write_miss;
-   // unsigned L2_read_access;
-   // unsigned L2_read_miss;
    unsigned int *L2_cbtoL2length;
    unsigned int *L2_cbtoL2writelength;
    unsigned int *L2_L2tocblength;
