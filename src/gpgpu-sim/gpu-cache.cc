@@ -364,8 +364,8 @@ void cache_stats::clear(){
     ///
     /// Zero out all current cache statistics
     ///
-    for(std::vector<unsigned> &stats_vec : m_stats){
-        std::fill(stats_vec.begin(), stats_vec.end(), 0);
+    for(unsigned i=0; i<NUM_MEM_ACCESS_TYPE; ++i){
+        std::fill(m_stats[i].begin(), m_stats[i].end(), 0);
     }
 }
 

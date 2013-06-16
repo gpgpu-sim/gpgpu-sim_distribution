@@ -472,7 +472,7 @@ public:
 private:
     bool check_valid(int type, int status) const;
 
-    std::vector<std::vector<unsigned>> m_stats;
+    std::vector< std::vector<unsigned> > m_stats;
 };
 
 class cache_t {
