@@ -460,6 +460,7 @@ public:
     cache_stats();
     void clear();
     void inc_stats(int access_type, int access_outcome);
+    enum cache_request_status select_stats_status(enum cache_request_status probe, enum cache_request_status access) const;
     unsigned &operator()(int access_type, int access_outcome);
     unsigned operator()(int access_type, int access_outcome) const;
     cache_stats operator+(const cache_stats &cs);

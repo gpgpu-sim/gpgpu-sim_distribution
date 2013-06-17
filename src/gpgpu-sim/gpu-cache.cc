@@ -379,6 +379,17 @@ void cache_stats::inc_stats(int access_type, int access_outcome){
     m_stats[access_type][access_outcome]++;
 }
 
+enum cache_request_status cache_stats::select_stats_status(enum cache_request_status probe, enum cache_request_status access) const {
+	///
+	/// This function selects how the cache access outcome should be counted. HIT_RESERVED is considered as a MISS
+	/// in the cores, however, it should be counted as a HIT_RESERVED in the caches.
+	///
+	if(probe == HIT_RESERVED && access != RESERVATION_FAIL)
+		return probe;
+	else
+		return access;
+}
+
 unsigned &cache_stats::operator()(int access_type, int access_outcome){
     ///
     /// Simple method to read/modify the stat corresponding to (access_type, access_outcome)
@@ -756,23 +767,25 @@ enum cache_request_status read_only_cache::access( new_addr_type addr, mem_fetch
     new_addr_type block_addr = m_config.block_addr(addr);
     unsigned cache_index = (unsigned)-1;
     enum cache_request_status status = m_tag_array->probe(block_addr,cache_index);
+    enum cache_request_status cache_status = RESERVATION_FAIL;
 
     if ( status == HIT ) {
-        m_tag_array->access(block_addr,time,cache_index); // update LRU state
+        cache_status = m_tag_array->access(block_addr,time,cache_index); // update LRU state
     }else if ( status != RESERVATION_FAIL ) {
         if(!miss_queue_full(0)){
             bool do_miss=false;
             send_read_request(addr, block_addr, cache_index, mf, time, do_miss, events, true, false);
             if(do_miss)
-                status = MISS;
+            	cache_status = MISS;
             else
-                status = RESERVATION_FAIL;
+            	cache_status = RESERVATION_FAIL;
         }else{
-            status = RESERVATION_FAIL;
+        	cache_status = RESERVATION_FAIL;
         }
     }
-    m_stats.inc_stats(mf->get_access_type(), status);
-    return status;
+
+    m_stats.inc_stats(mf->get_access_type(), m_stats.select_stats_status(status, cache_status));
+    return cache_status;
 }
 
 /// This is meant to model the first level data cache in Fermi.
@@ -802,7 +815,7 @@ enum cache_request_status l1_cache::access( new_addr_type addr, mem_fetch *mf, u
             cache_status = (this->*m_rd_miss)(addr, cache_index,  mf, time, events, status);
         }
     }
-    m_stats.inc_stats(mf->get_access_type(), cache_status);
+    m_stats.inc_stats(mf->get_access_type(), m_stats.select_stats_status(status, cache_status));
     return cache_status;
 }
 
@@ -832,7 +845,7 @@ enum cache_request_status l2_cache::access( new_addr_type addr, mem_fetch *mf, u
             cache_status = (this->*m_rd_miss)(addr, cache_index,  mf, time, events, status);
         }
     }
-    m_stats.inc_stats(mf->get_access_type(), cache_status);
+    m_stats.inc_stats(mf->get_access_type(), m_stats.select_stats_status(status, cache_status));
     return cache_status;
 }
 
@@ -869,7 +882,7 @@ enum cache_request_status tex_cache::access( new_addr_type addr, mem_fetch *mf, 
         // the value *will* *be* in the cache already
         cache_status = HIT_RESERVED;
     }
-    m_stats.inc_stats(mf->get_access_type(), cache_status);
+    m_stats.inc_stats(mf->get_access_type(), m_stats.select_stats_status(status, cache_status));
     return cache_status;
 }
 
