@@ -245,7 +245,7 @@ public:
     bool empty();
     void print( FILE *fp);
     void push( stream_operation op );
-    void operation(bool * sim);
+    bool operation(bool * sim);
 private:
     void print_impl( FILE *fp);
 
