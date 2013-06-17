@@ -115,14 +115,23 @@ void *gpgpu_sim_thread_concurrent(void*)
         g_the_gpu->init();
         do {
             // check if a kernel has completed
-			// launch operation on device if one is pending and can be run
-			g_stream_manager->operation(&sim_cycles);
-		    if( g_the_gpu->active() ) {
-		        g_the_gpu->cycle();
-		        sim_cycles = true;
-		        g_the_gpu->deadlock_check();
-		    }
-		    active=g_the_gpu->active() || !g_stream_manager->empty_protected();
+            // launch operation on device if one is pending and can be run
+
+            // Need to break this loop when a kernel completes. This was a
+            // source of non-deterministic behaviour in GPGPU-Sim (bug 147).
+            // If another stream operation is available, g_the_gpu remains active,
+            // causing this loop to not break. If the next operation happens to be
+            // another kernel, the gpu is not re-initialized and the inter-kernel
+            // behaviour may be incorrect.
+            if(g_stream_manager->operation(&sim_cycles))
+                break;
+
+            if( g_the_gpu->active() ) {
+                g_the_gpu->cycle();
+                sim_cycles = true;
+                g_the_gpu->deadlock_check();
+            }
+            active=g_the_gpu->active() || !g_stream_manager->empty_protected();
         } while( active );
         if(g_debug_execution >= 3) {
            printf("GPGPU-Sim: ** STOP simulation thread (no work) **\n");

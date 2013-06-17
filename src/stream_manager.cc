@@ -197,17 +197,17 @@ stream_manager::stream_manager( gpgpu_sim *gpu, bool cuda_launch_blocking )
     pthread_mutex_init(&m_lock,NULL);
 }
 
-void stream_manager::operation( bool * sim)
+bool stream_manager::operation( bool * sim)
 {
-	pthread_mutex_lock(&m_lock);
-	bool check=check_finished_kernel();
-	if(check) m_gpu->print_stats();
-	stream_operation op =front();
-	op.do_operation( m_gpu );
-	pthread_mutex_unlock(&m_lock);
-	//pthread_mutex_lock(&m_lock);
+    pthread_mutex_lock(&m_lock);
+    bool check=check_finished_kernel();
+    if(check)m_gpu->print_stats();
+    stream_operation op =front();
+    op.do_operation( m_gpu );
+    pthread_mutex_unlock(&m_lock);
+    //pthread_mutex_lock(&m_lock);
     // simulate a clock cycle on the GPU
-
+    return check;
 }
 
 bool stream_manager::check_finished_kernel()
