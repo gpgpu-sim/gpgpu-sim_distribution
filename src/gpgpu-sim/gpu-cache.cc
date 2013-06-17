@@ -765,9 +765,11 @@ enum cache_request_status read_only_cache::access( new_addr_type addr, mem_fetch
             send_read_request(addr, block_addr, cache_index, mf, time, do_miss, events, true, false);
             if(do_miss)
                 status = MISS;
+            else
+                status = RESERVATION_FAIL;
+        }else{
+            status = RESERVATION_FAIL;
         }
-    }else{
-        status = RESERVATION_FAIL;
     }
     m_stats.inc_stats(mf->get_access_type(), status);
     return status;
