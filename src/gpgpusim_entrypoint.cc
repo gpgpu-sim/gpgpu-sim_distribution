@@ -122,8 +122,9 @@ void *gpgpu_sim_thread_concurrent(void*)
             // If another stream operation is available, g_the_gpu remains active,
             // causing this loop to not break. If the next operation happens to be
             // another kernel, the gpu is not re-initialized and the inter-kernel
-            // behaviour may be incorrect.
-            if(g_stream_manager->operation(&sim_cycles))
+            // behaviour may be incorrect. Check that a kernel has finished and
+            // no other kernel is currently running.
+            if(g_stream_manager->operation(&sim_cycles) && !g_the_gpu->active())
                 break;
 
             if( g_the_gpu->active() ) {
