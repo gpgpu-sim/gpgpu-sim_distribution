@@ -1890,13 +1890,13 @@ void gpgpu_sim::shader_print_cache_stats( FILE *fout ) const{
             m_cluster[i]->get_L1I_sub_stats(css);
             total_css += css;
         }
-        fprintf(fout, "\tL1I_total_cache_accesses: %u\n", total_css.accesses);
-        fprintf(fout, "\tL1I_total_cache_misses: %u\n", total_css.misses);
+        fprintf(fout, "\tL1I_total_cache_accesses = %u\n", total_css.accesses);
+        fprintf(fout, "\tL1I_total_cache_misses = %u\n", total_css.misses);
         if(total_css.accesses > 0){
-            fprintf(fout, "\tL1I_total_cache_miss_rate: %.4lf\n", (double)total_css.misses / (double)total_css.accesses);
+            fprintf(fout, "\tL1I_total_cache_miss_rate = %.4lf\n", (double)total_css.misses / (double)total_css.accesses);
         }
-        fprintf(fout, "\tL1I_total_cache_pending_hits: %u\n", total_css.pending_hits);
-        fprintf(fout, "\tL1I_total_cache_reservation_fails: %u\n", total_css.res_fails);
+        fprintf(fout, "\tL1I_total_cache_pending_hits = %u\n", total_css.pending_hits);
+        fprintf(fout, "\tL1I_total_cache_reservation_fails = %u\n", total_css.res_fails);
     }
 
     // L1D
@@ -1912,13 +1912,13 @@ void gpgpu_sim::shader_print_cache_stats( FILE *fout ) const{
 
             total_css += css;
         }
-        fprintf(fout, "\tL1D_total_cache_accesses: %u\n", total_css.accesses);
-        fprintf(fout, "\tL1D_total_cache_misses: %u\n", total_css.misses);
+        fprintf(fout, "\tL1D_total_cache_accesses = %u\n", total_css.accesses);
+        fprintf(fout, "\tL1D_total_cache_misses = %u\n", total_css.misses);
         if(total_css.accesses > 0){
-            fprintf(fout, "\tL1D_total_cache_miss_rate: %.4lf\n", (double)total_css.misses / (double)total_css.accesses);
+            fprintf(fout, "\tL1D_total_cache_miss_rate = %.4lf\n", (double)total_css.misses / (double)total_css.accesses);
         }
-        fprintf(fout, "\tL1D_total_cache_pending_hits: %u\n", total_css.pending_hits);
-        fprintf(fout, "\tL1D_total_cache_reservation_fails: %u\n", total_css.res_fails);
+        fprintf(fout, "\tL1D_total_cache_pending_hits = %u\n", total_css.pending_hits);
+        fprintf(fout, "\tL1D_total_cache_reservation_fails = %u\n", total_css.res_fails);
     }
 
     // L1C
@@ -1930,13 +1930,13 @@ void gpgpu_sim::shader_print_cache_stats( FILE *fout ) const{
             m_cluster[i]->get_L1C_sub_stats(css);
             total_css += css;
         }
-        fprintf(fout, "\tL1C_total_cache_accesses: %u\n", total_css.accesses);
-        fprintf(fout, "\tL1C_total_cache_misses: %u\n", total_css.misses);
+        fprintf(fout, "\tL1C_total_cache_accesses = %u\n", total_css.accesses);
+        fprintf(fout, "\tL1C_total_cache_misses = %u\n", total_css.misses);
         if(total_css.accesses > 0){
-            fprintf(fout, "\tL1C_total_cache_miss_rate: %.4lf\n", (double)total_css.misses / (double)total_css.accesses);
+            fprintf(fout, "\tL1C_total_cache_miss_rate = %.4lf\n", (double)total_css.misses / (double)total_css.accesses);
         }
-        fprintf(fout, "\tL1C_total_cache_pending_hits: %u\n", total_css.pending_hits);
-        fprintf(fout, "\tL1C_total_cache_reservation_fails: %u\n", total_css.res_fails);
+        fprintf(fout, "\tL1C_total_cache_pending_hits = %u\n", total_css.pending_hits);
+        fprintf(fout, "\tL1C_total_cache_reservation_fails = %u\n", total_css.res_fails);
     }
 
     // L1T
@@ -1948,13 +1948,13 @@ void gpgpu_sim::shader_print_cache_stats( FILE *fout ) const{
             m_cluster[i]->get_L1T_sub_stats(css);
             total_css += css;
         }
-        fprintf(fout, "\tL1T_total_cache_accesses: %u\n", total_css.accesses);
-        fprintf(fout, "\tL1T_total_cache_misses: %u\n", total_css.misses);
+        fprintf(fout, "\tL1T_total_cache_accesses = %u\n", total_css.accesses);
+        fprintf(fout, "\tL1T_total_cache_misses = %u\n", total_css.misses);
         if(total_css.accesses > 0){
-            fprintf(fout, "\tL1T_total_cache_miss_rate: %.4lf\n", (double)total_css.misses / (double)total_css.accesses);
+            fprintf(fout, "\tL1T_total_cache_miss_rate = %.4lf\n", (double)total_css.misses / (double)total_css.accesses);
         }
-        fprintf(fout, "\tL1T_total_cache_pending_hits: %u\n", total_css.pending_hits);
-        fprintf(fout, "\tL1T_total_cache_reservation_fails: %u\n", total_css.res_fails);
+        fprintf(fout, "\tL1T_total_cache_pending_hits = %u\n", total_css.pending_hits);
+        fprintf(fout, "\tL1T_total_cache_reservation_fails = %u\n", total_css.res_fails);
     }
 }
 
