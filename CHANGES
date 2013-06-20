@@ -6,6 +6,19 @@ Version 3.2.1+edits (development branch) versus 3.2.1
   the tag_array to the cache access functions. Updated the cache_statistic 
   printing - providing a more meaningful breakdown. Cleaned up power_stats.cc/h
   to reflect the changes in the cache statistics.
+- Adding support for cudaFuncSetCacheConfig API, that allows changing the 
+  L1 Cache and Shared Memory configurations across kernels. The support 
+  enables the user to specify two more configurations (Preferred L1) or
+  (Preferred Shared Memory) besides the default config. If the
+  cudaFuncSetCacheConfig API is used to set the cache configuration
+  of a specific kernel to either of these configuration (cudaFuncCachePreferShared,
+  cudaFuncCachePreferL1), the simulator will change the cache configuration
+  at kernel launch accordingly, if there is no alternative configurations
+  provided to the simulator it will use the default configurations with a 
+  warning message display        
+- Removed the use of gcc in compilation and the need for a bunch of unnecessary
+  'extern "c"' statements.
+- Removed print at kernel finish that dumped a warp issue histogram.
 - Bug Fixes:
     - Fixed the flit count sent to GPUWattch for atomic operations. 
     - Fix for Bug 51 - Updated the function declaration of
@@ -16,29 +29,15 @@ Version 3.2.1+edits (development branch) versus 3.2.1
     - Fix for Bug 53 - Returning the CL_DEVICE_TYPE property in proper size
       from clGetDeviceInfo(...). 
     - Fix for Bug 54 - Added code to automatically determine workgroup size.
-    - Adding support for cudaFuncSetCacheConfig API, that allows changing the 
-      L1 Cache and Shared Memory configurations across kernels. The support 
-      enable the user to specify two more configurations (Preferred L1) or
-      (Preferred Shared Memory) besides the default config. If the
-      cudaFuncSetCacheConfig API is used to set the cache configuration
-      of a specific kernel to either of these configuration (cudaFuncCachePreferShared,
-      cudaFuncCachePreferL1), the simulator will change the cache configuration
-      at kernel launch accordingly, if there is no alternative configurations
-      provided to the simulator it will use the default configurations with a 
-      warning message display        
-    - Removed a spamming print at kernel finish that dumped a warp issuing
-      histogram.
     - Fixing OpenCL functional simulation. Now the functional simulation routine
       is called instead of mistakenly printing that the functional simulation
       is not implemented.
-    - Removed the use of gcc in compilation and the need for a bunch of unnecessary
-      'extern "c"' statements.
     - Fixed a mismatched new[] delete[]
     - 'Constant dynamic' power not included in average/min/max power values.
     - Average/min/max per-kernel powers not being reset at kernel boundaries causing 
       incorrect per-kernel values.
     - Fixed a dependency error in the src/cuda-sim Makefile.
-	- Fixing a source of non-determinism in GPGPU-Sim (Bug 147). 
+    - Fixing a source of non-determinism in GPGPU-Sim (Bug 147). 
 
 Version 3.2.1 versus 3.2.0
 - Added kernel name and launch uids to performance statistics log.
