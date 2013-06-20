@@ -378,6 +378,9 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
    option_parser_register(opp, "-gpgpu_runtime_stat", OPT_CSTR, &gpgpu_runtime_stat, 
                   "display runtime statistics such as dram utilization {<freq>:<flag>}",
                   "10000:0");
+   option_parser_register(opp, "-liveness_message_freq", OPT_INT64, &liveness_message_freq, 
+               "Minimum number of seconds between simulation liveness messages (0 = always print)",
+               "1");
    option_parser_register(opp, "-gpgpu_flush_l1_cache", OPT_BOOL, &gpgpu_flush_l1_cache,
                 "Flush L1 cache at the end of each kernel call",
                 "0");
@@ -571,6 +574,8 @@ gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config )
     m_last_cluster_issue = 0;
     *average_pipeline_duty_cycle=0;
     *active_sms=0;
+
+    last_liveness_message_time = 0;
 }
 
 int gpgpu_sim::shared_mem_size() const
@@ -1268,17 +1273,20 @@ void gpgpu_sim::cycle()
          time_t curr_time;
          time(&curr_time);
          unsigned long long  elapsed_time = MAX(curr_time - g_simulation_starttime, 1);
-         days    = elapsed_time/(3600*24);
-         hrs     = elapsed_time/3600 - 24*days;
-         minutes = elapsed_time/60 - 60*(hrs + 24*days);
-         sec = elapsed_time - 60*(minutes + 60*(hrs + 24*days));
-         printf("GPGPU-Sim uArch: cycles simulated: %lld  inst.: %lld (ipc=%4.1f) sim_rate=%u (inst/sec) elapsed = %u:%u:%02u:%02u / %s", 
-                gpu_tot_sim_cycle + gpu_sim_cycle, gpu_tot_sim_insn + gpu_sim_insn, 
-                (double)gpu_sim_insn/(double)gpu_sim_cycle,
-                (unsigned)((gpu_tot_sim_insn+gpu_sim_insn) / elapsed_time),
-                (unsigned)days,(unsigned)hrs,(unsigned)minutes,(unsigned)sec,
-                ctime(&curr_time));
-         fflush(stdout);
+         if ( (elapsed_time - last_liveness_message_time) >= m_config.liveness_message_freq ) {
+            days    = elapsed_time/(3600*24);
+            hrs     = elapsed_time/3600 - 24*days;
+            minutes = elapsed_time/60 - 60*(hrs + 24*days);
+            sec = elapsed_time - 60*(minutes + 60*(hrs + 24*days));
+            printf("GPGPU-Sim uArch: cycles simulated: %lld  inst.: %lld (ipc=%4.1f) sim_rate=%u (inst/sec) elapsed = %u:%u:%02u:%02u / %s", 
+                   gpu_tot_sim_cycle + gpu_sim_cycle, gpu_tot_sim_insn + gpu_sim_insn, 
+                   (double)gpu_sim_insn/(double)gpu_sim_cycle,
+                   (unsigned)((gpu_tot_sim_insn+gpu_sim_insn) / elapsed_time),
+                   (unsigned)days,(unsigned)hrs,(unsigned)minutes,(unsigned)sec,
+                   ctime(&curr_time));
+            fflush(stdout);
+            last_liveness_message_time = elapsed_time; 
+         }
          visualizer_printstat();
          m_memory_stats->memlatstat_lat_pw();
          if (m_config.gpgpu_runtime_stat && (m_config.gpu_runtime_stat_flag != 0) ) {

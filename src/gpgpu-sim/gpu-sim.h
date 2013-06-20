@@ -347,6 +347,7 @@ private:
 
 
 
+    unsigned long long liveness_message_freq; 
 
     friend class gpgpu_sim;
 };
@@ -462,6 +463,7 @@ private:
    unsigned long long  gpu_tot_issued_cta;
    unsigned long long  last_gpu_sim_insn;
 
+   unsigned long long  last_liveness_message_time; 
 
    std::map<std::string, FuncCache> m_special_cache_config;
 
