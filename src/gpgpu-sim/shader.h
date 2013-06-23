@@ -52,6 +52,7 @@
 #include "mem_fetch.h"
 #include "stats.h"
 #include "gpu-cache.h"
+#include "traffic_breakdown.h"
 
 
 
@@ -1421,10 +1422,24 @@ public:
         n_simt_to_mem = (long *)calloc(config->num_shader(), sizeof(long));
         n_mem_to_simt = (long *)calloc(config->num_shader(), sizeof(long));
 
+        m_outgoing_traffic_stats = new traffic_breakdown("coretomem"); 
+        m_incoming_traffic_stats = new traffic_breakdown("memtocore"); 
+
         gpgpu_n_shmem_bank_access = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
 
         m_shader_dynamic_warp_issue_distro.resize( config->num_shader() );
         m_shader_warp_slot_issue_distro.resize( config->num_shader() );
+    }
+
+    ~shader_core_stats()
+    {
+        delete m_outgoing_traffic_stats; 
+        delete m_incoming_traffic_stats; 
+        free(m_num_sim_insn); 
+        free(m_num_sim_winsn);
+        free(m_n_diverge); 
+        free(shader_cycle_distro);
+        free(last_shader_cycle_distro);
     }
 
     void new_grid()
@@ -1449,6 +1464,10 @@ public:
 
 private:
     const shader_core_config *m_config;
+
+    traffic_breakdown *m_outgoing_traffic_stats; // core to memory partitions
+    traffic_breakdown *m_incoming_traffic_stats; // memory partition to core 
+
     // Counts the instructions issued for each dynamic warp.
     std::vector< std::vector<unsigned> > m_shader_dynamic_warp_issue_distro;
     std::vector<unsigned> m_last_shader_dynamic_warp_issue_distro;

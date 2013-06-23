@@ -541,19 +541,28 @@ const unsigned MAX_MEMORY_ACCESS_SIZE = 128;
 typedef std::bitset<MAX_MEMORY_ACCESS_SIZE> mem_access_byte_mask_t;
 #define NO_PARTIAL_WRITE (mem_access_byte_mask_t())
 
-enum mem_access_type {
-   GLOBAL_ACC_R, 
-   LOCAL_ACC_R, 
-   CONST_ACC_R, 
-   TEXTURE_ACC_R, 
-   GLOBAL_ACC_W, 
-   LOCAL_ACC_W,
-   L1_WRBK_ACC,
-   L2_WRBK_ACC, 
-   INST_ACC_R,
-   L2_WR_ALLOC_R,
-   NUM_MEM_ACCESS_TYPE
-};
+#define MEM_ACCESS_TYPE_TUP_DEF \
+MA_TUP_BEGIN( mem_access_type ) \
+   MA_TUP( GLOBAL_ACC_R ), \
+   MA_TUP( LOCAL_ACC_R), \
+   MA_TUP( CONST_ACC_R), \
+   MA_TUP( TEXTURE_ACC_R), \
+   MA_TUP( GLOBAL_ACC_W), \
+   MA_TUP( LOCAL_ACC_W), \
+   MA_TUP( L1_WRBK_ACC), \
+   MA_TUP( L2_WRBK_ACC), \
+   MA_TUP( INST_ACC_R), \
+   MA_TUP( L2_WR_ALLOC_R), \
+   MA_TUP( NUM_MEM_ACCESS_TYPE) \
+MA_TUP_END( mem_access_type ) 
+
+#define MA_TUP_BEGIN(X) enum X {
+#define MA_TUP(X) X
+#define MA_TUP_END(X) };
+MEM_ACCESS_TYPE_TUP_DEF
+#undef MA_TUP_BEGIN
+#undef MA_TUP
+#undef MA_TUP_END
 
 const char * mem_access_type_str(enum mem_access_type access_type); 
 
