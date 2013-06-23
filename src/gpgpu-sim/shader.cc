@@ -45,6 +45,7 @@
 #include "icnt_wrapper.h"
 #include <string.h>
 #include <limits.h>
+#include "traffic_breakdown.h"
 #include "shader_trace.h"
 
 #define PRIORITIZE_MSHR_OVER_WB 1
@@ -425,6 +426,9 @@ void shader_core_stats::print( FILE* fout ) const
    for (unsigned i = 3; i < m_config->warp_size + 3; i++) 
       fprintf(fout, "\tW%d:%d", i-2, shader_cycle_distro[i]);
    fprintf(fout, "\n");
+
+   m_outgoing_traffic_stats->print(fout); 
+   m_incoming_traffic_stats->print(fout); 
 }
 
 void shader_core_stats::event_warp_issued( unsigned s_id, unsigned warp_id, unsigned num_issued, unsigned dynamic_warp_id ) {
@@ -3087,6 +3091,15 @@ void simt_core_cluster::icnt_inject_request_packet(class mem_fetch *mf)
     case L2_WR_ALLOC_R: m_stats->gpgpu_n_mem_l2_write_allocate++; break;
     default: assert(0);
     }
+
+   // The packet size varies depending on the type of request: 
+   // - For write request and atomic request, the packet contains the data 
+   // - For read request (i.e. not write nor atomic), the packet only has control metadata
+   unsigned int packet_size = mf->size(); 
+   if (!mf->get_is_write() && !mf->isatomic()) {
+      packet_size = mf->get_ctrl_size(); 
+   }
+   m_stats->m_outgoing_traffic_stats->record_traffic(mf, packet_size); 
    unsigned destination = mf->get_tlx_addr().chip;
    mf->set_status(IN_ICNT_TO_MEM,gpu_sim_cycle+gpu_tot_sim_cycle);
    if (!mf->get_is_write() && !mf->isatomic())
@@ -3121,6 +3134,12 @@ void simt_core_cluster::icnt_cycle()
             return;
         assert(mf->get_tpc() == m_cluster_id);
         assert(mf->get_type() == READ_REPLY || mf->get_type() == WRITE_ACK );
+
+        // The packet size varies depending on the type of request: 
+        // - For read request and atomic request, the packet contains the data 
+        // - For write-ack, the packet only has control metadata
+        unsigned int packet_size = (mf->get_is_write())? mf->get_ctrl_size() : mf->size(); 
+        m_stats->m_incoming_traffic_stats->record_traffic(mf, packet_size); 
         mf->set_status(IN_CLUSTER_TO_SHADER_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
         //m_memory_stats->memlatstat_read_done(mf,m_shader_config->max_warps_per_shader);
         m_response_fifo.push_back(mf);

@@ -22,6 +22,7 @@ Version 3.2.1+edits (development branch) versus 3.2.1
 - Added new option '-liveness_message_freq'.  It throttles the number of
   simulation liveness messages printed by the timing model (defaults to 
   1 message per second in wall clock time). 
+- Added breakdown for interconnection traffic based on memory access type. 
 - Bug Fixes:
     - Fixed the flit count sent to GPUWattch for atomic operations. 
     - Fix for Bug 51 - Updated the function declaration of

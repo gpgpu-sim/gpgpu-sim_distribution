@@ -110,20 +110,14 @@ address_type line_size_based_tag_func(new_addr_type address, new_addr_type line_
 
 const char * mem_access_type_str(enum mem_access_type access_type)
 {
-   static const char * access_type_str[] = {
-      "GLOBAL_ACC_R", 
-      "LOCAL_ACC_R", 
-      "CONST_ACC_R", 
-      "TEXTURE_ACC_R", 
-      "GLOBAL_ACC_W", 
-      "LOCAL_ACC_W",
-      "L1_WRBK_ACC",
-      "L2_WRBK_ACC", 
-      "INST_ACC_R",
-      "L2_WR_ALLOC_R"
-   }; 
+   #define MA_TUP_BEGIN(X) static const char* access_type_str[] = {
+   #define MA_TUP(X) #X
+   #define MA_TUP_END(X) };
+   MEM_ACCESS_TYPE_TUP_DEF
+   #undef MA_TUP_BEGIN
+   #undef MA_TUP
+   #undef MA_TUP_END
 
-   assert(sizeof(access_type_str) / sizeof(const char*) == NUM_MEM_ACCESS_TYPE); 
    assert(access_type < NUM_MEM_ACCESS_TYPE); 
 
    return access_type_str[access_type]; 
