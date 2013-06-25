@@ -72,11 +72,10 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                   const struct shader_core_config *config,
                                   const struct memory_config *mem_config,
                                   shader_core_stats *stats )
-   : m_barriers( config->max_warps_per_shader, config->max_cta_per_core ),
+   : core_t( gpu, NULL, config->warp_size, config->n_thread_per_shader ),
+     m_barriers( config->max_warps_per_shader, config->max_cta_per_core ),
      m_dynamic_warp_id(0)
 {
-    m_kernel = NULL;
-    m_gpu = gpu;
     m_cluster = cluster;
     m_config = config;
     m_memory_config = mem_config;
@@ -92,7 +91,6 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
     }
     
     m_threadState = (thread_ctx_t*) calloc(sizeof(thread_ctx_t), config->n_thread_per_shader);
-    m_thread = (ptx_thread_info**) calloc(sizeof(ptx_thread_info*), config->n_thread_per_shader);
     
     m_not_completed = 0;
     m_active_threads.reset();
@@ -122,7 +120,6 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
     m_L1I = new read_only_cache( name,m_config->m_L1I_config,m_sid,get_shader_instruction_cache_id(),m_icnt,IN_L1I_MISS_QUEUE);
     
     m_warp.resize(m_config->max_warps_per_shader, shd_warp_t(this, warp_size));
-    initilizeSIMTStack(config->max_warps_per_shader,this->get_config()->warp_size);
     m_scoreboard = new Scoreboard(m_sid, m_config->max_warps_per_shader);
     
     //scedulers
@@ -641,7 +638,7 @@ void shader_core_ctx::fetch()
 
 void shader_core_ctx::func_exec_inst( warp_inst_t &inst )
 {
-    execute_warp_inst_t(inst, m_config->warp_size);
+    execute_warp_inst_t(inst);
     if( inst.is_load() || inst.is_store() )
         inst.generate_mem_accesses();
 }
@@ -662,7 +659,7 @@ void shader_core_ctx::issue_warp( register_set& pipe_reg_set, const warp_inst_t*
     else if( next_inst->op == MEMORY_BARRIER_OP ) 
         m_warp[warp_id].set_membar();
 
-    updateSIMTStack(warp_id,m_config->warp_size,*pipe_reg);
+    updateSIMTStack(warp_id,*pipe_reg);
     m_scoreboard->reserveRegisters(*pipe_reg);
     m_warp[warp_id].set_next_pc(next_inst->pc + next_inst->isize);
 }

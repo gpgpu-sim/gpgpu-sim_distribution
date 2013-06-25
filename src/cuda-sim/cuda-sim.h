@@ -85,12 +85,13 @@ void set_param_gpgpu_num_shaders(int num_shaders);
 class functionalCoreSim: public core_t
 {    
 public:
-    functionalCoreSim(kernel_info_t * kernel, gpgpu_sim *g, unsigned maxwarpSize){
-        this->m_kernel=kernel;
-        m_gpu=g;
-        m_maxWarpSize = maxwarpSize;
+    functionalCoreSim(kernel_info_t * kernel, gpgpu_sim *g, unsigned warp_size)
+        : core_t( g, kernel, warp_size, kernel->threads_per_cta() )
+    {
+        m_warpAtBarrier =  new bool [m_warp_count];
+        m_liveThreadCount = new unsigned [m_warp_count];
     }
-    ~functionalCoreSim(){
+    virtual ~functionalCoreSim(){
         warp_exit(0);
         delete[] m_liveThreadCount;
         delete[] m_warpAtBarrier;
@@ -110,15 +111,13 @@ private:
     virtual void checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned t, unsigned tid)
     {
     if(m_thread[tid]==NULL || m_thread[tid]->is_done()){
-        m_liveThreadCount[tid/m_maxWarpSize]--;
+        m_liveThreadCount[tid/m_warp_size]--;
         }
     }
     
     // lunches the stack and set the threads count
     void  createWarp(unsigned warpId);
     
-    unsigned m_maxWarpSize;
-    unsigned m_warpsCount;
     //each warp live thread count and barrier indicator
     unsigned * m_liveThreadCount;
     bool* m_warpAtBarrier;

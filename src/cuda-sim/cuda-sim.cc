@@ -1702,7 +1702,11 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
 
     //we excute the kernel one CTA (Block) at the time, as synchronization functions work block wise
     while(!kernel.no_more_ctas_to_run()){
-        functionalCoreSim cta(&kernel, g_the_gpu, g_the_gpu->getShaderCoreConfig()->warp_size);
+        functionalCoreSim cta(
+            &kernel,
+            g_the_gpu,
+            g_the_gpu->getShaderCoreConfig()->warp_size
+        );
         cta.execute();
     }
     
@@ -1744,27 +1748,22 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
 void functionalCoreSim::initializeCTA()
 {
     int ctaLiveThreads=0;
-    m_warpsCount= ceil((double)m_kernel->threads_per_cta()/m_maxWarpSize);
-    initilizeSIMTStack(m_warpsCount,m_maxWarpSize);
-    m_warpAtBarrier =  new bool [m_warpsCount];
-    m_liveThreadCount = new unsigned [m_warpsCount];
-    m_thread = new ptx_thread_info*[m_warpsCount*m_maxWarpSize];
     
-    for(int i=0; i< m_warpsCount; i++){
+    for(int i=0; i< m_warp_count; i++){
         m_warpAtBarrier[i]=false;
         m_liveThreadCount[i]=0;
     }
-    for(int i=0; i< m_warpsCount*m_maxWarpSize;i++)
+    for(int i=0; i< m_warp_count*m_warp_size;i++)
         m_thread[i]=NULL;
     
     //get threads for a cta
     for(unsigned i=0; i<m_kernel->threads_per_cta();i++) {
-        ptx_sim_init_thread(*m_kernel,&m_thread[i],0,i,m_kernel->threads_per_cta()-i,m_kernel->threads_per_cta(),this,0,i/m_maxWarpSize,(gpgpu_t*)m_gpu, true);
+        ptx_sim_init_thread(*m_kernel,&m_thread[i],0,i,m_kernel->threads_per_cta()-i,m_kernel->threads_per_cta(),this,0,i/m_warp_size,(gpgpu_t*)m_gpu, true);
         assert(m_thread[i]!=NULL && !m_thread[i]->is_done());
         ctaLiveThreads++;
     }
     
-    for(int k=0;k<m_warpsCount;k++)
+    for(int k=0;k<m_warp_count;k++)
         createWarp(k);
 }
 
@@ -1773,13 +1772,13 @@ void  functionalCoreSim::createWarp(unsigned warpId)
    simt_mask_t initialMask;
    unsigned liveThreadsCount=0;
    initialMask.set();
-    for(int i=warpId*m_maxWarpSize; i<warpId*m_maxWarpSize+m_maxWarpSize;i++){
-        if(m_thread[i]==NULL) initialMask.reset(i-warpId*m_maxWarpSize);
+    for(int i=warpId*m_warp_size; i<warpId*m_warp_size+m_warp_size;i++){
+        if(m_thread[i]==NULL) initialMask.reset(i-warpId*m_warp_size);
         else liveThreadsCount++;
     }   
    
-   assert(m_thread[warpId*m_maxWarpSize]!=NULL);
-   m_simt_stack[warpId]->launch(m_thread[warpId*m_maxWarpSize]->get_pc(),initialMask);
+   assert(m_thread[warpId*m_warp_size]!=NULL);
+   m_simt_stack[warpId]->launch(m_thread[warpId*m_warp_size]->get_pc(),initialMask);
    m_liveThreadCount[warpId]= liveThreadsCount;
 }
 
@@ -1791,12 +1790,12 @@ void functionalCoreSim::execute()
     while(true){
         bool someOneLive= false;
         bool allAtBarrier = true;
-        for(unsigned i=0;i<m_warpsCount;i++){
+        for(unsigned i=0;i<m_warp_count;i++){
             executeWarp(i,allAtBarrier,someOneLive);
         }
         if(!someOneLive) break;
         if(allAtBarrier){
-             for(unsigned i=0;i<m_warpsCount;i++)
+             for(unsigned i=0;i<m_warp_count;i++)
                  m_warpAtBarrier[i]=false;
         }
     }
@@ -1806,10 +1805,10 @@ void functionalCoreSim::executeWarp(unsigned i, bool &allAtBarrier, bool & someO
 {
     if(!m_warpAtBarrier[i] && m_liveThreadCount[i]!=0){
         warp_inst_t inst =getExecuteWarp(i);
-        execute_warp_inst_t(inst,m_maxWarpSize,i);
+        execute_warp_inst_t(inst,i);
         if(inst.isatomic()) inst.do_atomic(true);
         if(inst.op==BARRIER_OP || inst.op==MEMORY_BARRIER_OP ) m_warpAtBarrier[i]=true;
-        updateSIMTStack(i,m_maxWarpSize,&inst);
+        updateSIMTStack( i, &inst );
     }
     if(m_liveThreadCount[i]>0) someOneLive=true;
     if(!m_warpAtBarrier[i]&& m_liveThreadCount[i]>0) allAtBarrier = false;
@@ -1989,7 +1988,7 @@ address_type get_converge_point( address_type pc )
 
 void functionalCoreSim::warp_exit( unsigned warp_id )
 {
-    for(int i=0;i<m_warpsCount*m_maxWarpSize;i++){
+    for(int i=0;i<m_warp_count*m_warp_size;i++){
         if(m_thread[i]!=NULL){
              m_thread[i]->m_cta_info->register_deleted_thread(m_thread[i]);
              delete m_thread[i];

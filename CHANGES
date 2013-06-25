@@ -25,6 +25,7 @@ Version 3.2.1+edits (development branch) versus 3.2.1
 - Added breakdown for interconnection traffic based on memory access type. 
 - Changes to the makefiles s.t. all intermediate files get output to the build
   directory, and nothing is written to the same directory as the source code
+- Implemented the WARPSZ query in CUDA.
 - Bug Fixes:
     - Fixed the flit count sent to GPUWattch for atomic operations. 
     - Fix for Bug 51 - Updated the function declaration of
@@ -43,7 +44,8 @@ Version 3.2.1+edits (development branch) versus 3.2.1
     - Average/min/max per-kernel powers not being reset at kernel boundaries causing 
       incorrect per-kernel values.
     - Fixed a dependency error in the src/cuda-sim Makefile.
-    - Fixing a source of non-determinism in GPGPU-Sim (Bug 147). 
+    - Fixing a source of non-determinism in GPGPU-Sim (Bug 147).
+    - Eliminated some memory leaks in the pure functional simulator
 
 Version 3.2.1 versus 3.2.0
 - Added kernel name and launch uids to performance statistics log.

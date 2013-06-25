@@ -270,7 +270,7 @@ unsigned ptx_thread_info::get_builtin( int builtin_id, unsigned dim_mod )
       if( dim_mod == 2 ) return m_tid.z;
       abort();
       break;
-   case WARPSZ_REG: feature_not_implemented( "WARP_SZ" ); return 0;
+   case WARPSZ_REG: return m_core->get_warp_size() ;
    default:
       assert(0);
    }
