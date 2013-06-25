@@ -1,6 +1,6 @@
 # see README before running this
 
-ps -p $$ | awk '/bash/ {exit 1;}' && echo "ERROR ** source setup_environment must be run in a bash shell; see README" && exit
+ps -p $$ | awk '/bash/ || / sh/ {exit 1;}' && echo "ERROR ** source setup_environment must be run in a bash or sh shell; see README" && exit
 
 export GPGPUSIM_SETUP_ENVIRONMENT_WAS_RUN=
 export GPGPUSIM_ROOT="$( cd "$( dirname "$BASH_SOURCE" )" && pwd )"
@@ -39,6 +39,8 @@ if [ $? = 1 ]; then
 	return;
 fi
 
+CC_VERSION=`gcc --version | head -1 | sed -re "s/gcc\s+\(.*\)\s+([0-9.]+)/\1/"`
+
 CUDA_VERSION_STRING=`$CUDA_INSTALL_PATH/bin/nvcc --version | awk '/release/ {print $5;}' | sed 's/,//'`;
 CUDA_VERSION_NUMBER=`echo $CUDA_VERSION_STRING | sed 's/\./ /' | awk '{printf("%02u%02u", 10*int($1), 10*$2);}'`
 if [ $CUDA_VERSION_NUMBER -gt 4020 -o $CUDA_VERSION_NUMBER -lt 2030  ]; then
@@ -48,9 +50,9 @@ fi
 
 if [ $# == '1' ] ;
 then
-    export GPGPUSIM_CONFIG=$CUDA_VERSION_NUMBER/$1
+    export GPGPUSIM_CONFIG=gcc-$CC_VERSION/cuda-$CUDA_VERSION_NUMBER/$1
 else
-    export GPGPUSIM_CONFIG=$CUDA_VERSION_NUMBER/release
+    export GPGPUSIM_CONFIG=gcc-$CC_VERSION/cuda-$CUDA_VERSION_NUMBER/release
 fi
 
 export QTINC=/usr/include

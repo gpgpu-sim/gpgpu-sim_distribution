@@ -7,7 +7,7 @@ CXX			= g++
 CXXFLAGS	= ${CCFLAGS}
 LD			= g++
 LDFLAGS		= ${CCFLAGS}
-OUTPUT_DIR=../$(SIM_OBJ_FILES_DIR)/cuobjdump_to_ptxplus
+OUTPUT_DIR=$(SIM_OBJ_FILES_DIR)/cuobjdump_to_ptxplus
 
 CXXFLAGS += -I $(OUTPUT_DIR) -I . -I ../src/cuda-sim/
 
@@ -64,11 +64,11 @@ $(OUTPUT_DIR)/%.o: %.c %.h
 
 SRCS = $(shell ls *.cc)
 
-Makefile.makedepend: depend
+$(OUTPUT_DIR)/Makefile.makedepend: depend
 
 depend:
-	touch Makefile.makedepend
-	makedepend -fMakefile.makedepend $(SRCS) 2> /dev/null
+	touch $(OUTPUT_DIR)/Makefile.makedepend
+	makedepend -f$(OUTPUT_DIR)/Makefile.makedepend $(SRCS) 2> /dev/null
 
 clean:
 	rm -f lex.ptx_.c ptx.tab.c ptx.tab.h ptx.output
@@ -76,7 +76,7 @@ clean:
 	rm -f sass_lexer.cc  sass_parser.cc  sass_parser.hh  sass_parser.output
 	rm -f header_lexer.cc  header_parser.cc  header_parser.hh  header_parser.output
 	rm -rf $(OUTPUT_DIR)
-	rm -f Makefile.makedepend Makefile.makedepend.bak
+	rm -f $(OUTPUT_DIR)/Makefile.makedepend $(OUTPUT_DIR)/Makefile.makedepend.bak
 
-include Makefile.makedepend
+include $(OUTPUT_DIR)/Makefile.makedepend
 

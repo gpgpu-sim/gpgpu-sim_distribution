@@ -96,7 +96,7 @@ YFLAGS		= -t -d -v --report=all
 
 .PHONY: clean
 
-OUTPUT_DIR=../$(SIM_OBJ_FILES_DIR)/libcuda
+OUTPUT_DIR=$(SIM_OBJ_FILES_DIR)/libcuda
 
 OBJS = $(CXX_SRCS:%.cc=$(OUTPUT_DIR)/%.o)
 OBJS += $(LEX_SRCS:%.l=$(OUTPUT_DIR)/%_lexer.o)
@@ -123,11 +123,11 @@ cuobjdump_lexer.c: cuobjdump.l cuobjdump_parser.h
 # in other words, get parser.c and do nothing to get parser.h
 %_parser.h: %_parser.c
 	:
-Makefile.makedepend: depend
+$(OUTPUT_DIR)/Makefile.makedepend: depend
 
 depend:
-	touch Makefile.makedepend
-	makedepend -fMakefile.makedepend -p$(OUTPUT_DIR)/ $(CXX_SRCS) 2> /dev/null
+	touch $(OUTPUT_DIR)/Makefile.makedepend
+	makedepend -f$(OUTPUT_DIR)/Makefile.makedepend -p$(OUTPUT_DIR)/ $(CXX_SRCS) 2> /dev/null
 
 clean:
 	rm -f $(PROG)
@@ -137,5 +137,5 @@ clean:
 	rm -f *_lexer.*
 	rm -f Makefile.makedepend Makefile.makedepend.bak
 
-include Makefile.makedepend
+include $(OUTPUT_DIR)/Makefile.makedepend
 
