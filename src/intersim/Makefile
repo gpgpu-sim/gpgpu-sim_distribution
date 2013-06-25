@@ -13,15 +13,18 @@ LEX    = flex
 PURIFY = /usr/bin/purify
 QUANT  = /usr/bin/quantify
 
+OUTPUT_DIR=$(SIM_OBJ_FILES_DIR)/intersim
 
 INTERFACE = interconnect_interface.cpp
 DEBUG = 0 
-CPPFLAGS = -g -Wall 
+CPPFLAGS = -g -Wall
 ifneq ($(DEBUG),1)
 CPPFLAGS = -O3 -g 
 else
 CPPFLAGS += 
 endif
+
+CPPFLAGS += -I$(OUTPUT_DIR) -I.
 
 TEST = -DUNIT_TEST 
 ifneq ($(UNIT_TEST),1)
@@ -32,7 +35,6 @@ endif
 
 PROG     = intersim
 
-OUTPUT_DIR=../../$(SIM_OBJ_FILES_DIR)/intersim
 
 CPP_SRCS = $(INTERFACE) \
 	config_utils.cpp \
@@ -69,23 +71,18 @@ CPP_SRCS = $(INTERFACE) \
 	rng_double_wrapper.cpp \
 	statwraper.cpp
 
-#LEX_OBJS  = $(OUTPUT_DIR)/configlex.o
-LEX_OBJS  = configlex.o
-#YACC_OBJS = $(OUTPUT_DIR)/config_tab.o
-YACC_OBJS = config_tab.o
+LEX_OBJS  = $(OUTPUT_DIR)/configlex.o
+YACC_OBJS = $(OUTPUT_DIR)/config_tab.o
 
 #--- Make rules ---
 
 OBJS = $(CPP_SRCS:%.cpp=$(OUTPUT_DIR)/%.o) $(LEX_OBJS) $(YACC_OBJS)
 
 .PHONY: clean
-.PRECIOUS: %_tab.cpp %_tab.hpp %lex.cpp
+.PRECIOUS: $(OUTPUT_DIR)/%_tab.cpp $(OUTPUT_DIR)/%_tab.hpp $(OUTPUT_DIR)/%lex.cpp
 
 lib$(PROG).a: $(OBJS)
 	ar rcs $(OUTPUT_DIR)/lib$(PROG).a $(OBJS)
-	mv $(LEX_OBJS) $(OUTPUT_DIR)/
-	mv $(YACC_OBJS) $(OUTPUT_DIR)/
-	
 
 purify: $(OBJS)
 	$(PURIFY) -always-use-cache-dir $(CPP) $(OBJS) -o $(PROG) -L/usr/lib
@@ -93,26 +90,29 @@ purify: $(OBJS)
 quantify: $(OBJS)
 	$(QUANT) -always-use-cache-dir $(CPP) $(OBJS) -o $(PROG) -L/usr/lib
 
-%lex.o: %lex.cpp %_tab.hpp
+$(OUTPUT_DIR)/%lex.o: $(OUTPUT_DIR)/%lex.cpp $(OUTPUT_DIR)/%_tab.hpp
 	$(CPP) $(CPPFLAGS) -c $< -o $@
 
 $(OUTPUT_DIR)/%.o: %.cpp
+	$(CPP) $(EXTRA) $(CPPFLAGS) $(TEST) -c $< -o $@
+
+$(OUTPUT_DIR)/%.o: $(OUTPUT_DIR)/%.cpp
 	$(CPP) $(EXTRA) $(CPPFLAGS) $(TEST) -c $< -o $@
  
 $(OUTPUT_DIR)/%.o: %.c
 	$(CPP) $(CPPFLAGS) $(TEST) $(VCSFLAGS) -c $< -o $@
 
-%_tab.cpp: %.y
-	$(YACC) -b$* -p$* $<
-	cp -f $*.tab.c $*_tab.cpp
+$(OUTPUT_DIR)/%_tab.cpp: %.y
+	$(YACC) -b$* -p$* $< --file-prefix=$(OUTPUT_DIR)/$*
+	cp -f $(OUTPUT_DIR)/$*.tab.c $(OUTPUT_DIR)/$*_tab.cpp
 
-%_tab.hpp: %_tab.cpp
-	cp -f $*.tab.h $*_tab.hpp
+$(OUTPUT_DIR)/%_tab.hpp: $(OUTPUT_DIR)/%_tab.cpp
+	cp -f $(OUTPUT_DIR)/$*.tab.h $(OUTPUT_DIR)/$*_tab.hpp
 
-%lex.cpp: %.l
-	$(LEX) -P$* -o$@ $<
-	cp configlex.cpp configlex.cpp.orig
-	awk '/configlineno = 1/ {if (line == 0) {line = 1; print} next;} //{print}' configlex.cpp.orig > configlex.cpp
+$(OUTPUT_DIR)/%lex.cpp: %.l
+	$(LEX) --outfile=$@ -P$* $<
+	cp $(OUTPUT_DIR)/configlex.cpp $(OUTPUT_DIR)/configlex.cpp.orig
+	awk '/configlineno = 1/ {if (line == 0) {line = 1; print} next;} //{print}' $(OUTPUT_DIR)/configlex.cpp.orig > $(OUTPUT_DIR)/configlex.cpp
 
 clean:
 	rm -f $(OBJS) *_tab.cpp *_tab.hpp *.tab.c *.tab.h *lex.cpp
@@ -121,7 +121,7 @@ clean:
 	rm -f lib$(PROG).so
 	rm -f $(OBJS) *.o 
 
-interconnect_interface.o: ../cuda-sim/ptx.tab.h
+$(OUTPUT_DIR)/interconnect_interface.o: $(OUTPUT_DIR)/../cuda-sim/ptx.tab.h
 
-../cuda-sim/ptx.tab.h:
-	        make -C ../cuda-sim/ ptx.tab.c
+$(OUTPUT_DIR)/../cuda-sim/ptx.tab.h:
+	        make -C ../cuda-sim/ $(OUTPUT_DIR)/../cuda-sim/ptx.tab.c

@@ -23,6 +23,8 @@ Version 3.2.1+edits (development branch) versus 3.2.1
   simulation liveness messages printed by the timing model (defaults to 
   1 message per second in wall clock time). 
 - Added breakdown for interconnection traffic based on memory access type. 
+- Changes to the makefiles s.t. all intermediate files get output to the build
+  directory, and nothing is written to the same directory as the source code
 - Bug Fixes:
     - Fixed the flit count sent to GPUWattch for atomic operations. 
     - Fix for Bug 51 - Updated the function declaration of

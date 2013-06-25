@@ -56,7 +56,7 @@ OPTFLAGS += -g3 -fPIC
 CPP = g++ $(SNOW)
 OEXT = o
 
-OUTPUT_DIR=../$(SIM_OBJ_FILES_DIR)
+OUTPUT_DIR=$(SIM_OBJ_FILES_DIR)
 SRCS = $(shell ls *.cc)
 OBJS = $(SRCS:%.cc=$(OUTPUT_DIR)/%.$(OEXT))
 
@@ -66,19 +66,19 @@ $(OUTPUT_DIR)/libgpgpusim.a:	$(OBJS) gpu_uarch_simlib
 gpu_uarch_simlib:
 	make   -C ./gpgpu-sim
 	
-Makefile.makedepend: depend
+$(OUTPUT_DIR)/Makefile.makedepend: depend
 
 depend:
-	touch Makefile.makedepend
-	makedepend -fMakefile.makedepend -p$(OUTPUT_DIR)/ $(SRCS) 2> /dev/null
-
-$(OUTPUT_DIR)/%.$(OEXT): %.cc
-	$(CPP) $(OPTFLAGS) $(CXXFLAGS) -o $(OUTPUT_DIR)/$*.$(OEXT) -c $*.cc
+	touch $(OUTPUT_DIR)/Makefile.makedepend
+	makedepend -f$(OUTPUT_DIR)/Makefile.makedepend -p$(OUTPUT_DIR)/ $(SRCS) 2> /dev/null
 
 clean:
 	rm -f *.o core *~ *.a Makefile.makedepend Makefile.makedepend.bak
 
+$(OUTPUT_DIR)/%.$(OEXT): %.cc
+	$(CPP) $(OPTFLAGS) $(CXXFLAGS) -o $(OUTPUT_DIR)/$*.$(OEXT) -c $*.cc
+
 option_parser.$(OEXT): option_parser.h
 
-include Makefile.makedepend
+include $(OUTPUT_DIR)/Makefile.makedepend
 

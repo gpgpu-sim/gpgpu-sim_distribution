@@ -31,22 +31,23 @@
 
 include version_detection.mk
 
-ifeq ($(GPGPUSIM_CONFIG), $(CUDART_VERSION)/debug)
+ifeq ($(GPGPUSIM_CONFIG), gcc-$(CC_VERSION)/cuda-$(CUDART_VERSION)/debug)
 	export DEBUG=1
 else
 	export DEBUG=0
 endif
 
+BUILD_ROOT?=$(shell pwd)
 export TRACE?=1
 
 NVCC_PATH=$(shellwhich nvcc)
 ifneq ($(shell which nvcc), "")
 	ifeq ($(DEBUG), 1)
-		export SIM_LIB_DIR=lib/$(CUDART_VERSION)/debug
-		export SIM_OBJ_FILES_DIR=build/$(CUDART_VERSION)/debug
+		export SIM_LIB_DIR=lib/gcc-$(CC_VERSION)/cuda-$(CUDART_VERSION)/debug
+		export SIM_OBJ_FILES_DIR=$(BUILD_ROOT)/build/gcc-$(CC_VERSION)/cuda-$(CUDART_VERSION)/debug
 	else
-		export SIM_LIB_DIR=lib/$(CUDART_VERSION)/release
-		export SIM_OBJ_FILES_DIR=build/$(CUDART_VERSION)/release
+		export SIM_LIB_DIR=lib/gcc-$(CC_VERSION)/cuda-$(CUDART_VERSION)/release
+		export SIM_OBJ_FILES_DIR=$(BUILD_ROOT)/build/gcc-$(CC_VERSION)/cuda-$(CUDART_VERSION)/release
 	endif
 endif
 
@@ -77,11 +78,10 @@ ifneq ($(GPGPUSIM_POWER_MODEL),)
 
 
 	ifeq ($(DEBUG), 1)
-		MCPAT_OBJ_DIR = $(GPGPUSIM_POWER_MODEL)/obj_dbg
 		MCPAT_DBG_FLAG = dbg
-	else
-		MCPAT_OBJ_DIR = $(GPGPUSIM_POWER_MODEL)/obj_opt
 	endif
+
+	MCPAT_OBJ_DIR = $(SIM_OBJ_FILES_DIR)/gpuwattch
 
 	MCPAT = $(MCPAT_OBJ_DIR)/*.o
 endif
@@ -136,7 +136,7 @@ check_power:
 no_opencl_support:
 	@echo "Warning: gpgpu-sim is building without opencl support. Make sure NVOPENCL_LIBDIR and NVOPENCL_INCDIR are set"
 
-$(SIM_LIB_DIR)/libcudart.so: $(LIBS) cudalib
+$(SIM_LIB_DIR)/libcudart.so: makedirs $(LIBS) cudalib
 	g++ -shared -Wl,-soname,libcudart.so \
 			$(SIM_OBJ_FILES_DIR)/libcuda/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/*.o \
@@ -150,7 +150,7 @@ $(SIM_LIB_DIR)/libcudart.so: $(LIBS) cudalib
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.3 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.3; fi
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.4 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.4; fi
 
-$(SIM_LIB_DIR)/libcudart.dylib: $(LIBS) cudalib
+$(SIM_LIB_DIR)/libcudart.dylib: makedirs $(LIBS) cudalib
 	g++ -dynamiclib -Wl,-headerpad_max_install_names,-undefined,dynamic_lookup,-compatibility_version,1.1,-current_version,1.1\
 			$(SIM_OBJ_FILES_DIR)/libcuda/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/*.o \
@@ -161,7 +161,7 @@ $(SIM_LIB_DIR)/libcudart.dylib: $(LIBS) cudalib
 			$(MCPAT) \
 			-o $(SIM_LIB_DIR)/libcudart.dylib
 
-$(SIM_LIB_DIR)/libOpenCL.so: $(LIBS) opencllib
+$(SIM_LIB_DIR)/libOpenCL.so: makedirs $(LIBS) opencllib
 	g++ -shared -Wl,-soname,libOpenCL.so \
 			$(SIM_OBJ_FILES_DIR)/libopencl/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/*.o \
@@ -174,37 +174,37 @@ $(SIM_LIB_DIR)/libOpenCL.so: $(LIBS) opencllib
 	if [ ! -f $(SIM_LIB_DIR)/libOpenCL.so.1 ]; then ln -s libOpenCL.so $(SIM_LIB_DIR)/libOpenCL.so.1; fi
 	if [ ! -f $(SIM_LIB_DIR)/libOpenCL.so.1.1 ]; then ln -s libOpenCL.so $(SIM_LIB_DIR)/libOpenCL.so.1.1; fi
 
-cudalib: cuda-sim
+cudalib: makedirs cuda-sim
 	$(MAKE) -C ./libcuda/ depend
 	$(MAKE) -C ./libcuda/
 
 ifneq ($(GPGPUSIM_POWER_MODEL),)
-mcpat:
+mcpat: makedirs
 	$(MAKE) -C $(GPGPUSIM_POWER_MODEL) depend
 	$(MAKE) -C $(GPGPUSIM_POWER_MODEL) $(MCPAT_DBG_FLAG)
 endif
 
-cuda-sim:
+cuda-sim: makedirs
 	$(MAKE) -C ./src/cuda-sim/ depend
 	$(MAKE) -C ./src/cuda-sim/
 
-gpgpu-sim_uarch: cuda-sim
+gpgpu-sim_uarch: makedirs cuda-sim
 	$(MAKE) -C ./src/gpgpu-sim/ depend
 	$(MAKE) -C ./src/gpgpu-sim/
 
-intersim: cuda-sim gpgpu-sim_uarch
+intersim: makedirs cuda-sim gpgpu-sim_uarch
 	$(MAKE) "CREATELIBRARY=1" "DEBUG=$(DEBUG)" -C ./src/intersim	
 
-gpgpusimlib: cuda-sim gpgpu-sim_uarch intersim
+gpgpusimlib: makedirs cuda-sim gpgpu-sim_uarch intersim
 	$(MAKE) -C ./src/ depend
 	$(MAKE) -C ./src/
 
-opencllib: cuda-sim
+opencllib: makedirs cuda-sim
 	$(MAKE) -C ./libopencl/ depend
 	$(MAKE) -C ./libopencl/
 
 .PHONY: cuobjdump_to_ptxplus/cuobjdump_to_ptxplus
-cuobjdump_to_ptxplus/cuobjdump_to_ptxplus:
+cuobjdump_to_ptxplus/cuobjdump_to_ptxplus: makedirs
 	$(MAKE) -C ./cuobjdump_to_ptxplus/ depend
 	$(MAKE) -C ./cuobjdump_to_ptxplus/
 
@@ -215,9 +215,11 @@ makedirs:
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/gpgpu-sim ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/gpgpu-sim; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/libopencl ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/libopencl; fi;
+	if [ ! -d $(SIM_OBJ_FILES_DIR)/libopencl/bin ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/libopencl/bin; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/intersim ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/intersim; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/cuobjdump_to_ptxplus ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/cuobjdump_to_ptxplus; fi;
-	if [ ! -d $(GPGPUSIM_POWER_MODEL)/obj_opt ] && [ ! -n $(GPGPUSIM_POWER_MODEL) ]; then mkdir -p $(GPGPUSIM_POWER_MODEL)/obj_opt; fi;
+	if [ ! -d $(SIM_OBJ_FILES_DIR)/gpuwattch ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/gpuwattch; fi;
+	if [ ! -d $(SIM_OBJ_FILES_DIR)/gpuwattch/cacti ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/gpuwattch/cacti; fi;
 
 all:
 	$(MAKE) gpgpusim
@@ -228,21 +230,9 @@ docs:
 cleandocs:
 	$(MAKE) clean -C doc/doxygen/
 
-clean: 
+clean: makedirs
 	$(MAKE) cleangpgpusim
 
 cleangpgpusim: cleandocs
-	$(MAKE) clean -C ./libcuda/
-ifneq  ($(NVOPENCL_LIBDIR),)
-	$(MAKE) clean -C ./libopencl/
-endif
-	$(MAKE) clean -C ./src/intersim/
-	$(MAKE) clean -C ./src/cuda-sim/
-	$(MAKE) clean -C ./src/gpgpu-sim/
-	$(MAKE) clean -C ./src/
-	$(MAKE) clean -C ./cuobjdump_to_ptxplus/
-ifneq ($(GPGPUSIM_POWER_MODEL),)
-	$(MAKE) clean -C $(GPGPUSIM_POWER_MODEL)
-endif
 	rm -rf $(SIM_LIB_DIR)
 	rm -rf $(SIM_OBJ_FILES_DIR)

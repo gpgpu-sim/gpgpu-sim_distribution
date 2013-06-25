@@ -67,7 +67,7 @@ OPTFLAGS += -g3 -fPIC
 CPP = g++ $(SNOW)
 OEXT = o
 
-OUTPUT_DIR=../../$(SIM_OBJ_FILES_DIR)/gpgpu-sim
+OUTPUT_DIR=$(SIM_OBJ_FILES_DIR)/gpgpu-sim
 
 SRCS = $(shell ls *.cc)
 
@@ -84,11 +84,11 @@ OBJS = $(CSRCS:%.cc=$(OUTPUT_DIR)/%.$(OEXT))
 libgpu_uarch_sim.a:$(OBJS)
 	ar rcs  $(OUTPUT_DIR)/libgpu_uarch_sim.a $(OBJS)
 
-Makefile.makedepend: depend
+$(OUTPUT_DIR)/Makefile.makedepend: depend
 
 depend:
-	touch Makefile.makedepend
-	makedepend -fMakefile.makedepend -p$(OUTPUT_DIR)/ $(CSRCS) 2> /dev/null
+	touch $(OUTPUT_DIR)/Makefile.makedepend
+	makedepend -f$(OUTPUT_DIR)/Makefile.makedepend -p$(OUTPUT_DIR)/ $(CSRCS) 2> /dev/null
 
 $(OUTPUT_DIR)/l2cache.$(OEXT): l2cache.cc
 	$(CPP) $(OPTFLAGS) $(CXXFLAGS_L2CACHE) -o $*.$(OEXT) -c l2cache.cc
@@ -102,10 +102,10 @@ clean:
 
 $(OUTPUT_DIR)/option_parser.$(OEXT): option_parser.h
 
-$(OUTPUT_DIR)/dram_sched.$(OEXT): ../cuda-sim/ptx.tab.h
+$(OUTPUT_DIR)/dram_sched.$(OEXT): $(OUTPUT_DIR)/../cuda-sim/ptx.tab.h
 
-../cuda-sim/ptx.tab.h:
-	make -C ../cuda-sim/ ptx.tab.c
+$(OUTPUT_DIR)/../cuda-sim/ptx.tab.h:
+	make -C ../cuda-sim/ $(OUTPUT_DIR)/../cuda-sim/ptx.tab.c
 
-include Makefile.makedepend
+include $(OUTPUT_DIR)/Makefile.makedepend
 

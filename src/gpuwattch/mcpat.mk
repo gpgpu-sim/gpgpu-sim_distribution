@@ -1,3 +1,5 @@
+
+OUTPUT_DIR=$(SIM_OBJ_FILES_DIR)/gpuwattch
 TARGET = mcpat
 SHELL = /bin/sh
 .PHONY: all depend clean
@@ -76,29 +78,28 @@ SRCS  = \
 
 
 
-OBJS = $(patsubst %.cc,obj_$(TAG)/%.o,$(SRCS))
+OBJS = $(patsubst %.cc,$(OUTPUT_DIR)/%.o,$(SRCS))
 
-all: obj_$(TAG)/$(TARGET)
-	cp -f obj_$(TAG)/$(TARGET) $(TARGET)
+all: $(OUTPUT_DIR)/$(TARGET)
 
-obj_$(TAG)/$(TARGET) : $(OBJS)
+$(OUTPUT_DIR)/$(TARGET) : $(OBJS)
 	$(CXX) $(OBJS) -o $@ $(INCS) $(CXXFLAGS) $(LIBS) -pthread
 
 #obj_$(TAG)/%.o : %.cc
 #	$(CXX) -c $(CXXFLAGS) $(INCS) -o $@ $<
 
-obj_$(TAG)/%.o : %.cc
+$(OUTPUT_DIR)/%.o : %.cc
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-Makefile.makedepend: depend
+$(OUTPUT_DIR)/Makefile.makedepend: depend
 
 depend:
-	touch Makefile.makedepend
-	makedepend -fMakefile.makedepend -pobj_$(TAG)/ $(SRCS) 2> /dev/null
+	touch $(OUTPUT_DIR)/Makefile.makedepend
+	makedepend -f$(OUTPUT_DIR)/Makefile.makedepend -p$(OUTPUT_DIR)/ $(SRCS) 2> /dev/null
 	$(MAKE) -C ./cacti/ depend
 
 clean:
 	-rm -f *.o $(TARGET)
 	rm -f Makefile.makedepend Makefile.makedepend.bak
 
-include Makefile.makedepend
+include $(OUTPUT_DIR)/Makefile.makedepend

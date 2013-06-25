@@ -87,28 +87,27 @@ CCFLAGS += -DCUDART_VERSION=$(CUDART_VERSION)
 
 .PHONY: clean
 
-OUTPUT_DIR=../$(SIM_OBJ_FILES_DIR)/libopencl
+OUTPUT_DIR=$(SIM_OBJ_FILES_DIR)/libopencl
 
 OBJS = $(CXX_SRCS:%.cc=$(OUTPUT_DIR)/%.o)
 
 #--- Make rules ---
 
-all: lib$(PROG).a nvopencl_wrapper
+all: lib$(PROG).a $(OUTPUT_DIR)/nvopencl_wrapper
 
 lib$(PROG).a: $(OBJS)
 	ar rcs $(OUTPUT_DIR)/lib$(PROG).a $(OBJS)
 
-Makefile.makedepend: depend
+$(OUTPUT_DIR)/Makefile.makedepend: depend
 
 depend:
-	touch Makefile.makedepend
-	makedepend -fMakefile.makedepend -p$(OUTPUT_DIR)/ $(CXX_SRCS) 2> /dev/null
+	touch $(OUTPUT_DIR)/Makefile.makedepend
+	makedepend -f$(OUTPUT_DIR)/Makefile.makedepend -p$(OUTPUT_DIR)/ $(CXX_SRCS) 2> /dev/null
 
-nvopencl_wrapper: nvopencl_wrapper.cc
+$(OUTPUT_DIR)/nvopencl_wrapper: nvopencl_wrapper.cc
 	if [ ! -d bin ]; then mkdir bin; fi
-	g++ $(CCFLAGS) nvopencl_wrapper.cc -I./ -I$(NVOPENCL_INCDIR)/ -L $(NVOPENCL_LIBDIR) -lOpenCL  -o bin/nvopencl_wrapper
+	g++ $(CCFLAGS) nvopencl_wrapper.cc -I./ -I$(NVOPENCL_INCDIR)/ -L $(NVOPENCL_LIBDIR) -lOpenCL  -o $(OUTPUT_DIR)/bin/nvopencl_wrapper
 	
-OUTPUT_DIR=../$(SIM_OBJ_FILES_DIR)/libopencl
 
 $(OUTPUT_DIR)/%.o: %.cc
 	$(CPP) $(CCFLAGS) -I./ -I$(CUDA_INSTALL_PATH)/include  -c $< -o $@
@@ -118,7 +117,7 @@ clean:
 	rm -f *.o
 	rm -f lib$(PROG).a
 	rm -f bin/nvopencl_wrapper
-	rm -f Makefile.makedepend Makefile.makedepend.bak
+	rm -f $(OUTPUT_DIR)/Makefile.makedepend $(OUTPUT_DIR)/Makefile.makedepend.bak
 
-include Makefile.makedepend
+include $(OUTPUT_DIR)/Makefile.makedepend
 
