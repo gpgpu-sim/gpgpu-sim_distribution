@@ -432,14 +432,15 @@ void _cl_program::Build(const char *options)
       char *use_extracted_ptx = getenv("PTX_SIM_USE_PTX_FILE");
       if( use_extracted_ptx == NULL ) {
          char *nvopencl_libdir = getenv("NVOPENCL_LIBDIR");
-         char *gpgpusim_opencl_path = getenv("GPGPUSIM_ROOT");
+         const std::string gpgpu_opencl_path_str = std::string(getenv("GPGPUSIM_ROOT"))
+            + "/build/" + std::string(getenv("GPGPUSIM_CONFIG"));
          bool error = false;
          if( nvopencl_libdir == NULL ) {
             printf("GPGPU-Sim OpenCL API: Please set your NVOPENCL_LIBDIR environment variable to\n"
                    "                      the location of NVIDIA's libOpenCL.so file on your system.\n");
             error = true;
          }
-         if( gpgpusim_opencl_path == NULL ) {
+         if( getenv("GPGPUSIM_ROOT") == NULL || getenv("GPGPUSIM_CONFIG") == NULL ) {
             fprintf(stderr,"GPGPU-Sim OpenCL API: Please set your GPGPUSIM_ROOT environment variable\n");
             fprintf(stderr,"                      to point to the location of your GPGPU-Sim installation\n");
             error = true;
@@ -495,7 +496,7 @@ void _cl_program::Build(const char *options)
             if( result ) { printf("GPGPU-Sim OpenCL API: ERROR (%d)\n", result ); exit(1); }
 
             // copy the nvopencl_wrapper file to the remote server
-            snprintf(commandline,1024,"rsync -t %s/libopencl/bin/nvopencl_wrapper %s:%s/nvopencl_wrapper", gpgpusim_opencl_path, remote_host, remote_dir );
+            snprintf(commandline,1024,"rsync -t %s/libopencl/bin/nvopencl_wrapper %s:%s/nvopencl_wrapper", gpgpu_opencl_path_str.c_str(), remote_host, remote_dir );
             printf("GPGPU-Sim OpenCL API: OpenCL wrapper command line \'%s\'\n", commandline);
             fflush(stdout);
             result = system(commandline);
@@ -518,7 +519,7 @@ void _cl_program::Build(const char *options)
          } else {
             setenv("LD_LIBRARY_PATH",nvopencl_libdir,1);
             snprintf(commandline,1024,"%s/libopencl/bin/nvopencl_wrapper %s %s %s", 
-                   gpgpusim_opencl_path, cl_fname, ptx_fname, opt );
+                   gpgpu_opencl_path_str.c_str(), cl_fname, ptx_fname, opt );
             printf("GPGPU-Sim OpenCL API: OpenCL wrapper command line \'%s\'\n", commandline);
             fflush(stdout);
             int result = system(commandline);
