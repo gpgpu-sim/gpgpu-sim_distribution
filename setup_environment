@@ -39,7 +39,7 @@ if [ $? = 1 ]; then
 	return;
 fi
 
-CC_VERSION=`gcc --version | head -1 | sed -re "s/gcc\s+\(.*\)\s+([0-9.]+)/\1/"`
+CC_VERSION=`gcc --version | head -1 | sed -re "s/gcc\s+\(.*\)\s+([0-9.]+).*/\1/"`
 
 CUDA_VERSION_STRING=`$CUDA_INSTALL_PATH/bin/nvcc --version | awk '/release/ {print $5;}' | sed 's/,//'`;
 CUDA_VERSION_NUMBER=`echo $CUDA_VERSION_STRING | sed 's/\./ /' | awk '{printf("%02u%02u", 10*int($1), 10*$2);}'`
