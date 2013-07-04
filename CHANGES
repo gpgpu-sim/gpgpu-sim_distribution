@@ -46,6 +46,8 @@ Version 3.2.1+edits (development branch) versus 3.2.1
     - Fixed a dependency error in the src/cuda-sim Makefile.
     - Fixing a source of non-determinism in GPGPU-Sim (Bug 147).
     - Eliminated some memory leaks in the pure functional simulator
+    - Added check to AerialVision to detect and warn about performance metric
+      entries with no data.  
 
 Version 3.2.1 versus 3.2.0
 - Added kernel name and launch uids to performance statistics log.
