@@ -212,12 +212,21 @@ def parseMe(filename):
     
     inputData = 'NULL'
 
+    # a table containing all the metrics that has received the missing data warning 
+    stat_missing_warned = {}
         
     def p_sentence(p):
         '''sentence : WORD NUMBERSEQUENCE'''
         #print p[0], p[1],p[2]
         num = p[2].split(" ")  
         
+        # detect empty data entry for particular metric and print a warning 
+        if p[2] == '': 
+            if not p[1] in stat_missing_warned: 
+                print "WARNING: Sample entry for metric '%s' has no data. Skipping..." % p[1]
+                stat_missing_warned[p[1]] = True
+            return
+
         lookup_input = p[1].lower()
         if (lookup_input  in stat_lookuptable):
             if (lookup_input == "globalcyclecount") and (int(num[0]) % 10000 == 0):
