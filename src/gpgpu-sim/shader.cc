@@ -465,18 +465,22 @@ void shader_core_stats::visualizer_print( gzFile visualizer_file )
 
     // warp issue breakdown
     unsigned sid = m_config->gpgpu_warp_issue_shader;
-    gzprintf(visualizer_file, "WarpIssueSlotBreakdown:");
     unsigned count = 0;
     unsigned warp_id_issued_sum = 0;
-    for ( std::vector<unsigned>::const_iterator iter = m_shader_warp_slot_issue_distro[ sid ].begin();
-          iter != m_shader_warp_slot_issue_distro[ sid ].end(); iter++, count++ ) {
-        unsigned diff = count < m_last_shader_warp_slot_issue_distro.size() ?
-                        *iter - m_last_shader_warp_slot_issue_distro[ count ] :
-                        *iter;
-        gzprintf( visualizer_file, " %d", diff );
-        warp_id_issued_sum += diff;
+    gzprintf(visualizer_file, "WarpIssueSlotBreakdown:");
+    if(m_shader_warp_slot_issue_distro[sid].size() > 0){
+        for ( std::vector<unsigned>::const_iterator iter = m_shader_warp_slot_issue_distro[ sid ].begin();
+              iter != m_shader_warp_slot_issue_distro[ sid ].end(); iter++, count++ ) {
+            unsigned diff = count < m_last_shader_warp_slot_issue_distro.size() ?
+                            *iter - m_last_shader_warp_slot_issue_distro[ count ] :
+                            *iter;
+            gzprintf( visualizer_file, " %d", diff );
+            warp_id_issued_sum += diff;
+        }
+        m_last_shader_warp_slot_issue_distro = m_shader_warp_slot_issue_distro[ sid ];
+    }else{
+        gzprintf( visualizer_file, " 0");
     }
-    m_last_shader_warp_slot_issue_distro = m_shader_warp_slot_issue_distro[ sid ];
     gzprintf(visualizer_file,"\n");
 
     #define DYNAMIC_WARP_PRINT_RESOLUTION 32
@@ -484,25 +488,29 @@ void shader_core_stats::visualizer_print( gzFile visualizer_file )
     unsigned dynamic_id_issued_sum = 0;
     count = 0;
     gzprintf(visualizer_file, "WarpIssueDynamicIdBreakdown:");
-    for ( std::vector<unsigned>::const_iterator iter = m_shader_dynamic_warp_issue_distro[ sid ].begin();
-          iter != m_shader_dynamic_warp_issue_distro[ sid ].end(); iter++, count++ ) {
-        unsigned diff = count < m_last_shader_dynamic_warp_issue_distro.size() ?
-                        *iter - m_last_shader_dynamic_warp_issue_distro[ count ] :
-                        *iter;
-        total_issued_this_resolution += diff;
-        if ( ( count + 1 ) % DYNAMIC_WARP_PRINT_RESOLUTION == 0 ) {
+    if(m_shader_dynamic_warp_issue_distro[sid].size() > 0){
+        for ( std::vector<unsigned>::const_iterator iter = m_shader_dynamic_warp_issue_distro[ sid ].begin();
+              iter != m_shader_dynamic_warp_issue_distro[ sid ].end(); iter++, count++ ) {
+            unsigned diff = count < m_last_shader_dynamic_warp_issue_distro.size() ?
+                            *iter - m_last_shader_dynamic_warp_issue_distro[ count ] :
+                            *iter;
+            total_issued_this_resolution += diff;
+            if ( ( count + 1 ) % DYNAMIC_WARP_PRINT_RESOLUTION == 0 ) {
+                gzprintf( visualizer_file, " %d", total_issued_this_resolution );
+                dynamic_id_issued_sum += total_issued_this_resolution;
+                total_issued_this_resolution = 0;
+            }
+        }
+        if ( count % DYNAMIC_WARP_PRINT_RESOLUTION != 0 ) {
             gzprintf( visualizer_file, " %d", total_issued_this_resolution );
             dynamic_id_issued_sum += total_issued_this_resolution;
-            total_issued_this_resolution = 0;
         }
+        m_last_shader_dynamic_warp_issue_distro = m_shader_dynamic_warp_issue_distro[ sid ];
+        assert( warp_id_issued_sum == dynamic_id_issued_sum );
+    }else{
+        gzprintf( visualizer_file, " 0");
     }
-    if ( count % DYNAMIC_WARP_PRINT_RESOLUTION != 0 ) {
-        gzprintf( visualizer_file, " %d", total_issued_this_resolution );
-        dynamic_id_issued_sum += total_issued_this_resolution;
-    }
-    m_last_shader_dynamic_warp_issue_distro = m_shader_dynamic_warp_issue_distro[ sid ];
     gzprintf(visualizer_file,"\n");
-    assert( warp_id_issued_sum == dynamic_id_issued_sum );
 
     // overall cache miss rates
     gzprintf(visualizer_file, "gpgpu_n_cache_bkconflict: %d\n", gpgpu_n_cache_bkconflict);
