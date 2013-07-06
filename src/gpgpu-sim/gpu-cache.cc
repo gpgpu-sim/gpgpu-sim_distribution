@@ -204,6 +204,10 @@ enum cache_request_status tag_array::access( new_addr_type addr, unsigned time, 
         m_res_fail++;
         shader_cache_access_log(m_core_id, m_type_id, 1); // log cache misses
         break;
+    default:
+        fprintf( stderr, "tag_array::access - Error: Unknown"
+            "cache_request_status %d\n", status );
+        abort();
     }
     return status;
 }
@@ -660,22 +664,30 @@ enum cache_request_status data_cache::wr_hit_global_we_local_wb(new_addr_type ad
 
 /****** Write-miss functions (Set by config file) ******/
 
-/// Write-allocate miss: Send write request to lower level memory and send a read request for the same block
-enum cache_request_status data_cache::wr_miss_wa(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events, enum cache_request_status status) {
-
+/// Write-allocate miss: Send write request to lower level memory
+// and send a read request for the same block
+enum cache_request_status
+data_cache::wr_miss_wa( new_addr_type addr,
+                        unsigned cache_index, mem_fetch *mf,
+                        unsigned time, std::list<cache_event> &events,
+                        enum cache_request_status status )
+{
     new_addr_type block_addr = m_config.block_addr(addr);
 
     // Write allocate, maximum 3 requests (write miss, read request, write back request)
     // Conservatively ensure the worst-case request can be handled this cycle
     bool mshr_hit = m_mshrs.probe(block_addr);
     bool mshr_avail = !m_mshrs.full(block_addr);
-    if(miss_queue_full(2) || (!(mshr_hit && mshr_avail) && !(!mshr_hit && mshr_avail && (m_miss_queue.size() < m_config.m_miss_queue_size))))
+    if(miss_queue_full(2) 
+        || (!(mshr_hit && mshr_avail) 
+        && !(!mshr_hit && mshr_avail 
+        && (m_miss_queue.size() < m_config.m_miss_queue_size))))
         return RESERVATION_FAIL;
 
     send_write_request(mf, WRITE_REQUEST_SENT, time, events);
     // Tries to send write allocate request, returns true on success and false on failure
     //if(!send_write_allocate(mf, addr, block_addr, cache_index, time, events))
-    //	return RESERVATION_FAIL;
+    //    return RESERVATION_FAIL;
 
     const mem_access_t *ma = new  mem_access_t( L2_WR_ALLOC_R,
                         mf->get_addr(),
@@ -697,11 +709,15 @@ enum cache_request_status data_cache::wr_miss_wa(new_addr_type addr, unsigned ca
     cache_block_t evicted;
 
     // Send read request resulting from write miss
-    send_read_request(addr, block_addr, cache_index, n_mf, time, do_miss, wb, evicted, events, false, true);
+    send_read_request(addr, block_addr, cache_index, n_mf, time, do_miss, wb,
+        evicted, events, false, true);
 
     if( do_miss ){
-        if( wb && (m_config.m_write_policy != WRITE_THROUGH) ) { // If evicted block is modified and not a write-through (already modified lower level)
-            mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,L2_WRBK_ACC,m_config.get_line_sz(),true);
+        // If evicted block is modified and not a write-through
+        // (already modified lower level)
+        if( wb && (m_config.m_write_policy != WRITE_THROUGH) ) { 
+            mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,
+                L2_WRBK_ACC,m_config.get_line_sz(),true);
             m_miss_queue.push_back(wb);
             wb->set_status(m_miss_queue_status,time);
         }
@@ -712,55 +728,93 @@ enum cache_request_status data_cache::wr_miss_wa(new_addr_type addr, unsigned ca
 }
 
 /// No write-allocate miss: Simply send write request to lower level memory
-enum cache_request_status data_cache::wr_miss_no_wa(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events, enum cache_request_status status ){
-	if(miss_queue_full(0))
-		return RESERVATION_FAIL; // cannot handle request this cycle
+enum cache_request_status
+data_cache::wr_miss_no_wa( new_addr_type addr,
+                           unsigned cache_index,
+                           mem_fetch *mf,
+                           unsigned time,
+                           std::list<cache_event> &events,
+                           enum cache_request_status status )
+{
+    if(miss_queue_full(0))
+        return RESERVATION_FAIL; // cannot handle request this cycle
 
-	// on miss, generate write through (no write buffering -- too many threads for that)
-	send_write_request(mf, WRITE_REQUEST_SENT, time, events);
+    // on miss, generate write through (no write buffering -- too many threads for that)
+    send_write_request(mf, WRITE_REQUEST_SENT, time, events);
 
-	return MISS;
+    return MISS;
 }
 
 /****** Read hit functions (Set by config file) ******/
 
-/// Baseline read hit: Update LRU status of block. Special case for atomic instructions -> Mark block as modified
-enum cache_request_status data_cache::rd_hit_base(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events, enum cache_request_status status ){
-	new_addr_type block_addr = m_config.block_addr(addr);
-	m_tag_array->access(block_addr,time,cache_index);
-	if(mf->isatomic()){ // Atomics treated as global read/write requests - Perform read, mark line as MODIFIED
-		assert(mf->get_access_type() == GLOBAL_ACC_R);
-		cache_block_t &block = m_tag_array->get_block(cache_index);
+/// Baseline read hit: Update LRU status of block.
+// Special case for atomic instructions -> Mark block as modified
+enum cache_request_status
+data_cache::rd_hit_base( new_addr_type addr,
+                         unsigned cache_index,
+                         mem_fetch *mf,
+                         unsigned time,
+                         std::list<cache_event> &events,
+                         enum cache_request_status status )
+{
+    new_addr_type block_addr = m_config.block_addr(addr);
+    m_tag_array->access(block_addr,time,cache_index);
+    // Atomics treated as global read/write requests - Perform read, mark line as
+    // MODIFIED
+    if(mf->isatomic()){ 
+        assert(mf->get_access_type() == GLOBAL_ACC_R);
+        cache_block_t &block = m_tag_array->get_block(cache_index);
         block.m_status = MODIFIED;  // mark line as dirty
-	}
-	return HIT;
+    }
+    return HIT;
 }
 
 /****** Read miss functions (Set by config file) ******/
 
-/// Baseline read miss: Send read request to lower level memory, perform write-back as necessary
-enum cache_request_status data_cache::rd_miss_base(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events, enum cache_request_status status ){
+/// Baseline read miss: Send read request to lower level memory,
+// perform write-back as necessary
+enum cache_request_status
+data_cache::rd_miss_base( new_addr_type addr,
+                          unsigned cache_index,
+                          mem_fetch *mf,
+                          unsigned time,
+                          std::list<cache_event> &events,
+                          enum cache_request_status status ){
     if(miss_queue_full(1))
-        return RESERVATION_FAIL; // cannot handle request this cycle (might need to generate two requests)
+        // cannot handle request this cycle
+        // (might need to generate two requests)
+        return RESERVATION_FAIL; 
 
     new_addr_type block_addr = m_config.block_addr(addr);
     bool do_miss = false;
     bool wb = false;
     cache_block_t evicted;
-    send_read_request(addr, block_addr, cache_index, mf, time, do_miss, wb, evicted, events, false, false);
+    send_read_request( addr,
+                       block_addr,
+                       cache_index,
+                       mf, time, do_miss, wb, evicted, events, false, false);
 
     if( do_miss ){
-        if(wb && (m_config.m_write_policy != WRITE_THROUGH) ){ // If evicted block is modified and not a write-through (already modified lower level)
-            mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr, L1_WRBK_ACC,m_config.get_line_sz(),true);
-            send_write_request(wb, WRITE_BACK_REQUEST_SENT, time, events);
-        }
+        // If evicted block is modified and not a write-through
+        // (already modified lower level)
+        if(wb && (m_config.m_write_policy != WRITE_THROUGH) ){ 
+            mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,
+                L1_WRBK_ACC,m_config.get_line_sz(),true);
+        send_write_request(wb, WRITE_BACK_REQUEST_SENT, time, events);
+    }
         return MISS;
     }
     return RESERVATION_FAIL;
 }
 
-/// Access cache for read_only_cache: returns RESERVATION_FAIL if request could not be accepted (for any reason)
-enum cache_request_status read_only_cache::access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ) {
+/// Access cache for read_only_cache: returns RESERVATION_FAIL if
+// request could not be accepted (for any reason)
+enum cache_request_status
+read_only_cache::access( new_addr_type addr,
+                         mem_fetch *mf,
+                         unsigned time,
+                         std::list<cache_event> &events )
+{
     assert( mf->get_data_size() <= m_config.get_line_sz());
     assert(m_config.m_write_policy == READ_ONLY);
     assert(!mf->get_is_write());
@@ -776,77 +830,107 @@ enum cache_request_status read_only_cache::access( new_addr_type addr, mem_fetch
             bool do_miss=false;
             send_read_request(addr, block_addr, cache_index, mf, time, do_miss, events, true, false);
             if(do_miss)
-            	cache_status = MISS;
+                cache_status = MISS;
             else
-            	cache_status = RESERVATION_FAIL;
+                cache_status = RESERVATION_FAIL;
         }else{
-        	cache_status = RESERVATION_FAIL;
+            cache_status = RESERVATION_FAIL;
         }
     }
 
     m_stats.inc_stats(mf->get_access_type(), m_stats.select_stats_status(status, cache_status));
     return cache_status;
+}
+
+//! A general function that takes the result of a tag_array probe
+//  and performs the correspding functions based on the cache configuration
+//  The access fucntion calls this function
+enum cache_request_status
+data_cache::process_tag_probe( bool wr,
+                               enum cache_request_status probe_status,
+                               new_addr_type addr,
+                               unsigned cache_index,
+                               mem_fetch* mf,
+                               unsigned time,
+                               std::list<cache_event>& events )
+{
+    // Each function pointer ( m_[rd/wr]_[hit/miss] ) is set in the
+    // data_cache constructor to reflect the corresponding cache configuration
+    // options. Function pointers were used to avoid many long conditional
+    // branches resulting from many cache configuration options.
+    cache_request_status access_status = probe_status;
+    if(wr){ // Write
+        if(probe_status == HIT){
+            access_status = (this->*m_wr_hit)( addr,
+                                      cache_index,
+                                      mf, time, events, probe_status );
+        }else if ( probe_status != RESERVATION_FAIL ) {
+            access_status = (this->*m_wr_miss)( addr,
+                                       cache_index,
+                                       mf, time, events, probe_status );
+        }
+    }else{ // Read
+        if(probe_status == HIT){
+            access_status = (this->*m_rd_hit)( addr,
+                                      cache_index,
+                                      mf, time, events, probe_status );
+        }else if ( probe_status != RESERVATION_FAIL ) {
+            access_status = (this->*m_rd_miss)( addr,
+                                       cache_index,
+                                       mf, time, events, probe_status );
+        }
+    }
+    return access_status;
+}
+
+// Both the L1 and L2 currently use the same access function.
+// Differentiation between the two caches is done through configuration
+// of caching policies.
+// Both the L1 and L2 override this function to provide a means of
+// performing actions specific to each cache when such actions are implemnted.
+enum cache_request_status
+data_cache::access( new_addr_type addr,
+                    mem_fetch *mf,
+                    unsigned time,
+                    std::list<cache_event> &events )
+{
+
+    assert( mf->get_data_size() <= m_config.get_line_sz());
+    bool wr = mf->get_is_write();
+    new_addr_type block_addr = m_config.block_addr(addr);
+    unsigned cache_index = (unsigned)-1;
+    enum cache_request_status probe_status
+        = m_tag_array->probe( block_addr, cache_index );
+    enum cache_request_status access_status
+        = process_tag_probe( wr, probe_status, addr, cache_index, mf, time, events );
+    m_stats.inc_stats(mf->get_access_type(),
+        m_stats.select_stats_status(probe_status, access_status));
+    return access_status;
 }
 
 /// This is meant to model the first level data cache in Fermi.
-/// It is write-evict (global) or write-back (local) at the granularity of individual blocks (Set by GPGPU-Sim configuration file)
+/// It is write-evict (global) or write-back (local) at the
+/// granularity of individual blocks (Set by GPGPU-Sim configuration file)
 /// (the policy used in fermi according to the CUDA manual)
-enum cache_request_status l1_cache::access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ){
-
-    assert( mf->get_data_size() <= m_config.get_line_sz());
-    bool wr = mf->get_is_write();
-    new_addr_type block_addr = m_config.block_addr(addr);
-    unsigned cache_index = (unsigned)-1;
-    enum cache_request_status status = m_tag_array->probe(block_addr,cache_index);
-    enum cache_request_status cache_status = RESERVATION_FAIL;
-
-    // Each function pointer ( m_[rd/wr]_[hit/miss] ) is set in the data_cache constructor to reflect the corresponding cache configuration options.
-    // Function pointers were used to avoid many long conditional branches resulting from many cache configuration options.
-    if(wr){	// Write
-        if(status == HIT){
-            cache_status = (this->*m_wr_hit)(addr, cache_index, mf, time, events, status);
-        }else if ( status != RESERVATION_FAIL ) {
-            cache_status = (this->*m_wr_miss)(addr, cache_index,  mf, time, events, status);
-        }
-    }else{ // Read
-        if(status == HIT){
-            cache_status = (this->*m_rd_hit)(addr, cache_index,  mf, time, events, status);
-        }else if ( status != RESERVATION_FAIL ) {
-            cache_status = (this->*m_rd_miss)(addr, cache_index,  mf, time, events, status);
-        }
-    }
-    m_stats.inc_stats(mf->get_access_type(), m_stats.select_stats_status(status, cache_status));
-    return cache_status;
+enum cache_request_status
+l1_cache::access( new_addr_type addr,
+                  mem_fetch *mf,
+                  unsigned time,
+                  std::list<cache_event> &events )
+{
+    return data_cache::access( addr, mf, time, events );
 }
 
-/// Models second level shared cache with global write-back and write-allocate policies
-/// Currently the same as l1_cache, but separated to allow for different implementations
-enum cache_request_status l2_cache::access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ){
-
-    assert( mf->get_data_size() <= m_config.get_line_sz());
-    bool wr = mf->get_is_write();
-    new_addr_type block_addr = m_config.block_addr(addr);
-    unsigned cache_index = (unsigned)-1;
-    enum cache_request_status status = m_tag_array->probe(block_addr,cache_index);
-    enum cache_request_status cache_status = RESERVATION_FAIL;
-
-    // Each function pointer ( m_[rd/wr]_[hit/miss] ) is set in the data_cache constructor to reflect the corresponding cache configuration options.
-    // Function pointers were used to avoid many long conditional branches resulting from many cache configuration options.
-    if(wr){ // Write
-        if(status == HIT){
-            cache_status = (this->*m_wr_hit)(addr, cache_index, mf, time, events, status);
-        }else if ( status != RESERVATION_FAIL ) {
-            cache_status = (this->*m_wr_miss)(addr, cache_index,  mf, time, events, status);
-        }
-    }else{ // Read
-        if(status == HIT){
-            cache_status = (this->*m_rd_hit)(addr, cache_index,  mf, time, events, status);
-        }else if ( status != RESERVATION_FAIL ) {
-            cache_status = (this->*m_rd_miss)(addr, cache_index,  mf, time, events, status);
-        }
-    }
-    m_stats.inc_stats(mf->get_access_type(), m_stats.select_stats_status(status, cache_status));
-    return cache_status;
+// The l2 cache access function calls the base data_cache access
+// implementation.  When the L2 needs to diverge from L1, L2 specific
+// changes should be made here.
+enum cache_request_status
+l2_cache::access( new_addr_type addr,
+                  mem_fetch *mf,
+                  unsigned time,
+                  std::list<cache_event> &events )
+{
+    return data_cache::access( addr, mf, time, events );
 }
 
 /// Access function for tex_cache
@@ -854,7 +938,9 @@ enum cache_request_status l2_cache::access( new_addr_type addr, mem_fetch *mf, u
 /// otherwise returns HIT_RESERVED or MISS; NOTE: *never* returns HIT
 /// since unlike a normal CPU cache, a "HIT" in texture cache does not
 /// mean the data is ready (still need to get through fragment fifo)
-enum cache_request_status tex_cache::access( new_addr_type addr, mem_fetch *mf, unsigned time, std::list<cache_event> &events ) {
+enum cache_request_status tex_cache::access( new_addr_type addr, mem_fetch *mf,
+    unsigned time, std::list<cache_event> &events )
+{
     if ( m_fragment_fifo.full() || m_request_fifo.full() || m_rob.full() )
         return RESERVATION_FAIL;
 
@@ -915,7 +1001,8 @@ void tex_cache::cycle(){
         } else {
             // hit:
             assert( m_cache[e.m_cache_index].m_valid );
-            assert( m_cache[e.m_cache_index].m_block_addr = m_config.block_addr(e.m_request->get_addr()) );
+            assert( m_cache[e.m_cache_index].m_block_addr
+                == m_config.block_addr(e.m_request->get_addr()) );
             m_result_fifo.push( e.m_request );
             m_fragment_fifo.pop();
         }
@@ -942,15 +1029,19 @@ void tex_cache::fill( mem_fetch *mf, unsigned time )
 void tex_cache::display_state( FILE *fp ) const
 {
     fprintf(fp,"%s (texture cache) state:\n", m_name.c_str() );
-    fprintf(fp,"fragment fifo entries  = %u / %u\n", m_fragment_fifo.size(), m_fragment_fifo.capacity() );
-    fprintf(fp,"reorder buffer entries = %u / %u\n", m_rob.size(), m_rob.capacity() );
-    fprintf(fp,"request fifo entries   = %u / %u\n", m_request_fifo.size(), m_request_fifo.capacity() );
+    fprintf(fp,"fragment fifo entries  = %u / %u\n",
+        m_fragment_fifo.size(), m_fragment_fifo.capacity() );
+    fprintf(fp,"reorder buffer entries = %u / %u\n",
+        m_rob.size(), m_rob.capacity() );
+    fprintf(fp,"request fifo entries   = %u / %u\n",
+        m_request_fifo.size(), m_request_fifo.capacity() );
     if ( !m_rob.empty() )
         fprintf(fp,"reorder buffer contents:\n");
     for ( int n=m_rob.size()-1; n>=0; n-- ) {
         unsigned index = (m_rob.next_pop_index() + n)%m_rob.capacity();
         const rob_entry &r = m_rob.peek(index);
-        fprintf(fp, "tex rob[%3d] : %s ", index, (r.m_ready?"ready  ":"pending") );
+        fprintf(fp, "tex rob[%3d] : %s ",
+            index, (r.m_ready?"ready  ":"pending") );
         if ( r.m_ready )
             fprintf(fp,"@%6u", r.m_time );
         else

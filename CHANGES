@@ -26,6 +26,9 @@ Version 3.2.1+edits (development branch) versus 3.2.1
 - Changes to the makefiles s.t. all intermediate files get output to the build
   directory, and nothing is written to the same directory as the source code
 - Implemented the WARPSZ query in CUDA.
+- Implemented a Static Warp Limiting Scheduler similar described in Rogers et. al.
+  (MICRO 2012).
+- Some whitespace cleanup.
 - Bug Fixes:
     - Fixed the flit count sent to GPUWattch for atomic operations. 
     - Fix for Bug 51 - Updated the function declaration of
