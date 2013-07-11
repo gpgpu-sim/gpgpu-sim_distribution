@@ -224,6 +224,9 @@ void shader_core_config::reg_options(class OptionParser * opp)
                    "per-shader L1 data cache config "
                    " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_alloc>,<mshr>:<N>:<merge>,<mq> | none}",
                    "none" );
+    option_parser_register(opp, "-gmem_skip_L1D", OPT_BOOL, &gmem_skip_L1D, 
+                   "global memory access skip L1D cache (implements -Xptxas -dlcm=cg, default=no skip)",
+                   "0");
 
     option_parser_register(opp, "-gpgpu_perfect_mem", OPT_BOOL, &gpgpu_perfect_mem, 
                  "enable perfect memory mode (no cache miss)",

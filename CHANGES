@@ -29,6 +29,9 @@ Version 3.2.1+edits (development branch) versus 3.2.1
 - Implemented a Static Warp Limiting Scheduler similar described in Rogers et. al.
   (MICRO 2012).
 - Some whitespace cleanup.
+- Adding an option to force global memory access to skip L1 data cache, while
+  local memory accesses can still be cached in L1 data cache.  This feature can
+  be used to emulate the behavior of '-Xptxas -dlcm=cg'.  
 - Bug Fixes:
     - Fixed the flit count sent to GPUWattch for atomic operations. 
     - Fix for Bug 51 - Updated the function declaration of
