@@ -1371,7 +1371,16 @@ bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_rea
    const mem_access_t &access = inst.accessq_back();
    unsigned size = access.get_size(); 
 
-   if( CACHE_GLOBAL == inst.cache_op || (m_L1D == NULL) ) {
+   bool bypassL1D = false; 
+   if ( CACHE_GLOBAL == inst.cache_op || (m_L1D == NULL) ) {
+       bypassL1D = true; 
+   } else if (inst.space.is_global()) { // global memory access 
+       // skip L1 cache if the option is enabled
+       if (m_core->get_config()->gmem_skip_L1D) 
+           bypassL1D = true; 
+   }
+
+   if( bypassL1D ) {
        // bypass L1 cache
        if( m_icnt->full(size, inst.is_store() || inst.isatomic()) ) {
            stall_cond = ICNT_RC_FAIL;
@@ -1775,13 +1784,23 @@ void ldst_unit::cycle()
                delete mf;
            } else {
                assert( !mf->get_is_write() ); // L1 cache is write evict, allocate line on load miss only
-               if( mf->get_inst().cache_op != CACHE_GLOBAL && m_L1D ) {
+
+               bool bypassL1D = false; 
+               if ( CACHE_GLOBAL == mf->get_inst().cache_op || (m_L1D == NULL) ) {
+                   bypassL1D = true; 
+               } else if (mf->get_access_type() == GLOBAL_ACC_R || mf->get_access_type() == GLOBAL_ACC_W) { // global memory access 
+                   if (m_core->get_config()->gmem_skip_L1D)
+                       bypassL1D = true; 
+               }
+               if( bypassL1D ) {
+                   if ( m_next_global == NULL ) {
+                       mf->set_status(IN_SHADER_FETCHED,gpu_sim_cycle+gpu_tot_sim_cycle);
+                       m_response_fifo.pop_front();
+                       m_next_global = mf;
+                   }
+               } else {
                    m_L1D->fill(mf,gpu_sim_cycle+gpu_tot_sim_cycle);
                    m_response_fifo.pop_front();
-               } else if( m_next_global == NULL ) {
-                   mf->set_status(IN_SHADER_FETCHED,gpu_sim_cycle+gpu_tot_sim_cycle);
-                   m_response_fifo.pop_front();
-                   m_next_global = mf;
                }
            }
        }

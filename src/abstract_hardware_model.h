@@ -533,6 +533,7 @@ public:
    void set_bank( unsigned b ) { m_bank = b; }
    bool is_const() const { return (m_type == const_space) || (m_type == param_space_kernel); }
    bool is_local() const { return (m_type == local_space) || (m_type == param_space_local); }
+   bool is_global() const { return (m_type == global_space); }
 
 private:
    enum _memory_space_t m_type;
