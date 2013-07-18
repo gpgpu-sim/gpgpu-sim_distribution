@@ -32,6 +32,10 @@ Version 3.2.1+edits (development branch) versus 3.2.1
 - Adding an option to force global memory access to skip L1 data cache, while
   local memory accesses can still be cached in L1 data cache.  This feature can
   be used to emulate the behavior of '-Xptxas -dlcm=cg'.  
+- Redesigned the memory partition microarchitecture model to allow multiple L2
+  cache banks (sub partitions) in each memory partition.  Each memory partition
+  contains a single DRAM scheduler, and one or more L2 cache banks.  Each L2
+  cache bank has an independent port to the interconnection network.  
 - Bug Fixes:
     - Fixed the flit count sent to GPUWattch for atomic operations. 
     - Fix for Bug 51 - Updated the function declaration of

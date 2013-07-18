@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2013, Tor M. Aamodt, Timothy Rogers,
+// Copyright (c) 2009-2011, Tor M. Aamodt, Tim Rogers, Wilson W. L. Fung 
 // The University of British Columbia
 // All rights reserved.
 //
@@ -25,32 +25,31 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "trace.h"
-#include "string.h"
+#pragma once 
 
-namespace Trace {
+#include "../trace.h"
 
+#if TRACING_ON
 
-#define TS_TUP_BEGIN(X) const char* trace_streams_str[] = {
-#define TS_TUP(X) #X
-#define TS_TUP_END(X) };
-#include "trace_streams.tup"
-#undef TS_TUP_BEGIN
-#undef TS_TUP
-#undef TS_TUP_END
+#define MEMPART_PRINT_STR SIM_PRINT_STR " %d - "
+#define MEMPART_DTRACE(x)  ( DTRACE(x) && (Trace::sampling_memory_partition == -1 || Trace::sampling_memory_partition == (int)get_mpid()) )
 
-    bool enabled = false;
-    int sampling_core = 0;
-    int sampling_memory_partition = -1;
-    bool trace_streams_enabled[NUM_TRACE_STREAMS] = {false};
-    const char* config_str;
+// Intended to be called from inside components of a memory partition
+// Depends on a get_mpid() function
+#define MEMPART_DPRINTF(...) do {\
+    if (MEMPART_DTRACE(MEMORY_PARTITION_UNIT)) {\
+        printf( MEMPART_PRINT_STR,\
+                gpu_sim_cycle + gpu_tot_sim_cycle,\
+                Trace::trace_streams_str[Trace::MEMORY_PARTITION_UNIT],\
+                get_mpid() );\
+        printf(__VA_ARGS__);\
+    }\
+} while (0)
 
-    void init()
-    {
-        for ( unsigned i = 0; i < NUM_TRACE_STREAMS; ++i ) {
-            if ( strstr( config_str, trace_streams_str[i] ) != NULL ) {
-                trace_streams_enabled[ i ] = true;
-            }
-        }
-    }
-} 
+#else
+
+#define MEMPART_DTRACE(x)  (false)
+#define MEMPART_DPRINTF(x, ...) do {} while (0)
+
+#endif
+

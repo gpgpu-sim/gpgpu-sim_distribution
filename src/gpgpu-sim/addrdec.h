@@ -43,13 +43,15 @@ struct addrdec_t {
    unsigned row;
    unsigned col;
    unsigned burst;
+
+   unsigned sub_partition; 
 };
 
 class linear_to_raw_address_translation {
 public:
    linear_to_raw_address_translation();
    void addrdec_setoption(option_parser_t opp);
-   void init(unsigned int nchips); 
+   void init(unsigned int n_channel, unsigned int n_sub_partition_in_channel); 
 
    // accessors
    void addrdec_tlx(new_addr_type addr, addrdec_t *tlx) const; 
@@ -78,7 +80,8 @@ private:
    new_addr_type addrdec_mask[N_ADDRDEC];
    
    unsigned int gap;
-   int Nchips;
+   int m_n_channel;
+   int m_n_sub_partition_in_channel; 
 };
 
 #endif

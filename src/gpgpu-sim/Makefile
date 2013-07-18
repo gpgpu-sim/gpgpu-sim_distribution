@@ -33,10 +33,8 @@ TRACE?=0
 
 ifeq ($(DEBUG),1)
 	CXXFLAGS = -Wall -DDEBUG
-	CXXFLAGS_L2CACHE = -Wall -DDEBUG
 else
 	CXXFLAGS = -Wall
-	CXXFLAGS_L2CACHE = -Wall
 endif
 
 ifeq ($(TRACE),1)
@@ -47,13 +45,11 @@ include ../../version_detection.mk
 
 ifeq ($(GNUC_CPP0X), 1)
     CXXFLAGS += -std=c++0x
-    CXXFLAGS_L2CACHE += -std=c++0x
 endif
 
 ifneq ($(DEBUG),1)
 	OPTFLAGS += -O3
 else
-	CXXFLAGS_L2CACHE += 
 	CXXFLAGS += 
 endif
 
@@ -89,9 +85,6 @@ $(OUTPUT_DIR)/Makefile.makedepend: depend
 depend:
 	touch $(OUTPUT_DIR)/Makefile.makedepend
 	makedepend -f$(OUTPUT_DIR)/Makefile.makedepend -p$(OUTPUT_DIR)/ $(CSRCS) 2> /dev/null
-
-$(OUTPUT_DIR)/l2cache.$(OEXT): l2cache.cc
-	$(CPP) $(OPTFLAGS) $(CXXFLAGS_L2CACHE) -o $*.$(OEXT) -c l2cache.cc
 
 $(OUTPUT_DIR)/%.$(OEXT): %.cc
 	$(CPP) $(OPTFLAGS) $(CXXFLAGS) $(POWER_FLAGS) -o $(OUTPUT_DIR)/$*.$(OEXT) -c $*.cc

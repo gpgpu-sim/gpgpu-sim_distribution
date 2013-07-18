@@ -71,7 +71,7 @@ new_addr_type linear_to_raw_address_translation::partition_address( new_addr_typ
    } else {
       // see addrdec_tlx for explanation 
       unsigned long long int partition_addr; 
-      partition_addr = ( (addr>>ADDR_CHIP_S) / Nchips) << ADDR_CHIP_S; 
+      partition_addr = ( (addr>>ADDR_CHIP_S) / m_n_channel) << ADDR_CHIP_S; 
       partition_addr |= addr & ((1 << ADDR_CHIP_S) - 1); 
       return partition_addr; 
    }
@@ -90,8 +90,8 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr, addrdec_
       // Split the given address at ADDR_CHIP_S into (MSBs,LSBs)
       // - extract chip address using modulus of MSBs
       // - recreate the rest of the address by stitching the quotient of MSBs and the LSBs 
-      addr_for_chip = (addr>>ADDR_CHIP_S) % Nchips; 
-      rest_of_addr = ( (addr>>ADDR_CHIP_S) / Nchips) << ADDR_CHIP_S; 
+      addr_for_chip = (addr>>ADDR_CHIP_S) % m_n_channel; 
+      rest_of_addr = ( (addr>>ADDR_CHIP_S) / m_n_channel) << ADDR_CHIP_S; 
       rest_of_addr |= addr & ((1 << ADDR_CHIP_S) - 1); 
 
       tlx->chip = addr_for_chip; 
@@ -100,6 +100,11 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr, addrdec_
       tlx->col  = addrdec_packbits(addrdec_mask[COL], rest_of_addr, addrdec_mkhigh[COL], addrdec_mklow[COL]);
       tlx->burst= addrdec_packbits(addrdec_mask[BURST], rest_of_addr, addrdec_mkhigh[BURST], addrdec_mklow[BURST]);
    }
+
+   // combine the chip address and the lower bits of DRAM bank address to form the subpartition ID
+   unsigned sub_partition_addr_mask = m_n_sub_partition_in_channel - 1; 
+   tlx->sub_partition = tlx->chip * m_n_sub_partition_in_channel
+                        + (tlx->bk & sub_partition_addr_mask); 
 }
 
 void linear_to_raw_address_translation::addrdec_parseoption(const char *option)
@@ -152,14 +157,15 @@ void linear_to_raw_address_translation::addrdec_parseoption(const char *option)
    }
 }
 
-void linear_to_raw_address_translation::init(unsigned int nchips) 
+void linear_to_raw_address_translation::init(unsigned int n_channel, unsigned int n_sub_partition_in_channel) 
 {
    unsigned i;
    unsigned long long int mask;
-   unsigned int nchipbits = ::LOGB2_32(nchips);
-   Nchips = nchips;
+   unsigned int nchipbits = ::LOGB2_32(n_channel);
+   m_n_channel = n_channel;
+   m_n_sub_partition_in_channel = n_sub_partition_in_channel; 
 
-   gap = (nchips - ::powli(2,nchipbits));
+   gap = (n_channel - ::powli(2,nchipbits));
    if (gap) {
       nchipbits++;
    }
@@ -280,9 +286,11 @@ void linear_to_raw_address_translation::init(unsigned int nchips)
          }
       } // otherwise, no need to change the masks
    } else {
-      // make sure nchips is power of two when explicit dram id mask is used
-      assert((nchips & (nchips - 1)) == 0); 
+      // make sure n_channel is power of two when explicit dram id mask is used
+      assert((n_channel & (n_channel - 1)) == 0); 
    }
+   // make sure m_n_sub_partition_in_channel is power of two 
+   assert((m_n_sub_partition_in_channel & (m_n_sub_partition_in_channel - 1)) == 0); 
 
    addrdec_getmasklimit(addrdec_mask[CHIP],  &addrdec_mkhigh[CHIP],  &addrdec_mklow[CHIP] );
    addrdec_getmasklimit(addrdec_mask[BK],    &addrdec_mkhigh[BK],    &addrdec_mklow[BK]   );
@@ -348,7 +356,7 @@ void linear_to_raw_address_translation::sweep_test() const
          printf("[AddrDec] ** Error: address decoding mapping aliases two addresses to same partition with same intra-partition address: %llx %llx\n", h->second, raw_addr); 
          abort(); 
       } else {
-         assert((int)tlx.chip < Nchips); 
+         assert((int)tlx.chip < m_n_channel); 
          // ensure that partition_address() returns the concatenated address 
          if ((ADDR_CHIP_S != -1 and raw_addr >= (1ULL << ADDR_CHIP_S)) or 
              (ADDR_CHIP_S == -1 and raw_addr >= (1ULL << addrdec_mklow[CHIP]))) {
@@ -363,11 +371,12 @@ void linear_to_raw_address_translation::sweep_test() const
 
 void addrdec_t::print( FILE *fp ) const
 {
-   if (chip) fprintf(fp,"\tchip:%x ", chip);
-   if (row) fprintf(fp,"\trow:%x ", row);
-   if (col) fprintf(fp,"\tcol:%x ", col);
-   if (bk) fprintf(fp,"\tbk:%x ", bk);
-   if (burst) fprintf(fp,"\tburst:%x ", burst);
+   fprintf(fp,"\tchip:%x ", chip);
+   fprintf(fp,"\trow:%x ", row);
+   fprintf(fp,"\tcol:%x ", col);
+   fprintf(fp,"\tbk:%x ", bk);
+   fprintf(fp,"\tburst:%x ", burst);
+   fprintf(fp,"\tsub_partition:%x ", sub_partition);
 } 
 
 

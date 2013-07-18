@@ -159,6 +159,9 @@ void memory_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_n_mem", OPT_UINT32, &m_n_mem, 
                  "number of memory modules (e.g. memory controllers) in gpu",
                  "8");
+    option_parser_register(opp, "-gpgpu_n_sub_partition_per_mchannel", OPT_UINT32, &m_n_sub_partition_per_memory_channel, 
+                 "number of memory subpartition in each memory module",
+                 "1");
     option_parser_register(opp, "-gpgpu_n_mem_per_ctrlr", OPT_UINT32, &gpu_n_mem_per_ctrlr, 
                  "number of memory chips per memory controller",
                  "1");
@@ -429,6 +432,9 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
     option_parser_register(opp, "-trace_sampling_core", OPT_INT32, 
                           &Trace::sampling_core, "The core which is printed using CORE_DPRINTF. Default 0",
                           "0");
+    option_parser_register(opp, "-trace_sampling_memory_partition", OPT_INT32, 
+                          &Trace::sampling_memory_partition, "The memory partition which is printed using MEMPART_DPRINTF. Default -1 (i.e. all)",
+                          "-1");
    ptx_file_line_stats_options(opp);
 }
 
@@ -564,10 +570,16 @@ gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config )
         m_cluster[i] = new simt_core_cluster(this,i,m_shader_config,m_memory_config,m_shader_stats,m_memory_stats);
 
     m_memory_partition_unit = new memory_partition_unit*[m_memory_config->m_n_mem];
-    for (unsigned i=0;i<m_memory_config->m_n_mem;i++) 
+    m_memory_sub_partition = new memory_sub_partition*[m_memory_config->m_n_mem_sub_partition];
+    for (unsigned i=0;i<m_memory_config->m_n_mem;i++) {
         m_memory_partition_unit[i] = new memory_partition_unit(i, m_memory_config, m_memory_stats);
+        for (unsigned p = 0; p < m_memory_config->m_n_sub_partition_per_memory_channel; p++) {
+            unsigned submpid = i * m_memory_config->m_n_sub_partition_per_memory_channel + p; 
+            m_memory_sub_partition[submpid] = m_memory_partition_unit[i]->get_sub_partition(p); 
+        }
+    }
 
-    icnt_init(m_shader_config->n_simt_clusters,m_memory_config->m_n_mem);
+    icnt_init(m_shader_config->n_simt_clusters,m_memory_config->m_n_mem_sub_partition);
 
     time_vector_create(NUM_MEM_REQ_STAT);
     fprintf(stdout, "GPGPU-Sim uArch: performance model initialization complete.\n");
@@ -926,9 +938,9 @@ void gpgpu_sim::gpu_print_stat()
        total_l2_css.clear();
 
        printf("\n========= L2 cache stats =========\n");
-       for (unsigned i=0;i<m_memory_config->m_n_mem;i++){
-           m_memory_partition_unit[i]->accumulate_L2cache_stats(l2_stats);
-           m_memory_partition_unit[i]->get_L2cache_sub_stats(l2_css);
+       for (unsigned i=0;i<m_memory_config->m_n_mem_sub_partition;i++){
+           m_memory_sub_partition[i]->accumulate_L2cache_stats(l2_stats);
+           m_memory_sub_partition[i]->get_L2cache_sub_stats(l2_css);
 
            fprintf( stdout, "L2_cache_bank[%d]: Access = %u, Miss = %u, Miss_rate = %.3lf, Pending_hits = %u, Reservation_fails = %u\n",
                     i, l2_css.accesses, l2_css.misses, (double)l2_css.misses / (double)l2_css.accesses, l2_css.pending_hits, l2_css.res_fails);
@@ -1150,8 +1162,8 @@ void gpgpu_sim::cycle()
    }
     if (clock_mask & ICNT) {
         // pop from memory controller to interconnect
-        for (unsigned i=0;i<m_memory_config->m_n_mem;i++) {
-            mem_fetch* mf = m_memory_partition_unit[i]->top();
+        for (unsigned i=0;i<m_memory_config->m_n_mem_sub_partition;i++) {
+            mem_fetch* mf = m_memory_sub_partition[i]->top();
             if (mf) {
                 unsigned response_size = mf->get_is_write()?mf->get_ctrl_size():mf->size();
                 if ( ::icnt_has_buffer( m_shader_config->mem2device(i), response_size ) ) {
@@ -1159,12 +1171,12 @@ void gpgpu_sim::cycle()
                        mf->set_return_timestamp(gpu_sim_cycle+gpu_tot_sim_cycle);
                     mf->set_status(IN_ICNT_TO_SHADER,gpu_sim_cycle+gpu_tot_sim_cycle);
                     ::icnt_push( m_shader_config->mem2device(i), mf->get_tpc(), mf, response_size );
-                    m_memory_partition_unit[i]->pop();
+                    m_memory_sub_partition[i]->pop();
                 } else {
                     gpu_stall_icnt2sh++;
                 }
             } else {
-               m_memory_partition_unit[i]->pop();
+               m_memory_sub_partition[i]->pop();
             }
         }
     }
@@ -1182,17 +1194,17 @@ void gpgpu_sim::cycle()
    // L2 operations follow L2 clock domain
    if (clock_mask & L2) {
        m_power_stats->pwr_mem_stat->l2_cache_stats[CURRENT_STAT_IDX].clear();
-      for (unsigned i=0;i<m_memory_config->m_n_mem;i++) {
+      for (unsigned i=0;i<m_memory_config->m_n_mem_sub_partition;i++) {
           //move memory request from interconnect into memory partition (if not backed up)
           //Note:This needs to be called in DRAM clock domain if there is no L2 cache in the system
-          if ( m_memory_partition_unit[i]->full() ) {
+          if ( m_memory_sub_partition[i]->full() ) {
              gpu_stall_dramfull++;
           } else {
               mem_fetch* mf = (mem_fetch*) icnt_pop( m_shader_config->mem2device(i) );
-              m_memory_partition_unit[i]->push( mf, gpu_sim_cycle + gpu_tot_sim_cycle );
+              m_memory_sub_partition[i]->push( mf, gpu_sim_cycle + gpu_tot_sim_cycle );
           }
-          m_memory_partition_unit[i]->cache_cycle(gpu_sim_cycle+gpu_tot_sim_cycle);
-          m_memory_partition_unit[i]->accumulate_L2cache_stats(m_power_stats->pwr_mem_stat->l2_cache_stats[CURRENT_STAT_IDX]);
+          m_memory_sub_partition[i]->cache_cycle(gpu_sim_cycle+gpu_tot_sim_cycle);
+          m_memory_sub_partition[i]->accumulate_L2cache_stats(m_power_stats->pwr_mem_stat->l2_cache_stats[CURRENT_STAT_IDX]);
        }
    }
 
@@ -1263,7 +1275,7 @@ void gpgpu_sim::cycle()
             if (m_memory_config->m_L2_config.get_num_lines()) {
                int dlc = 0;
                for (unsigned i=0;i<m_memory_config->m_n_mem;i++) {
-                  dlc = m_memory_partition_unit[i]->flushL2();
+                  dlc = m_memory_sub_partition[i]->flushL2();
                   assert (dlc == 0); // need to model actual writes to DRAM here
                   printf("Dirty lines flushed from L2 %d is %d\n", i, dlc  );
                }
@@ -1384,10 +1396,5 @@ const struct memory_config * gpgpu_sim::getMemoryConfig()
 simt_core_cluster * gpgpu_sim::getSIMTCluster()
 {
    return *m_cluster;
-}
-
-void memory_partition_unit::visualizer_print( gzFile visualizer_file )
-{
-   m_dram->visualizer_print(visualizer_file);
 }
 

@@ -104,7 +104,8 @@ public:
    unsigned int queue_limit() const;
    void visualizer_print( gzFile visualizer_file );
 
-   class mem_fetch* pop();
+   class mem_fetch* return_queue_pop();
+   class mem_fetch* return_queue_top();
    void push( class mem_fetch *data );
    void cycle();
    void dram_log (int task);
