@@ -83,6 +83,7 @@ public:
    void set_addr(new_addr_type addr) { m_access.set_addr(addr); }
    new_addr_type get_addr() const { return m_access.get_addr(); }
    new_addr_type get_partition_addr() const { return m_partition_addr; }
+   unsigned get_sub_partition_id() const { return m_raw_addr.sub_partition; }
    bool     get_is_write() const { return m_access.is_write(); }
    unsigned get_request_uid() const { return m_request_uid; }
    unsigned get_sid() const { return m_sid; }

@@ -190,20 +190,28 @@ struct memory_config {
          option_parser_destroy(dram_opp); 
       }
 
-        int nbkt = nbk/nbkgrp;
-        unsigned i;
-        for (i=0; nbkt>0; i++) {
-            nbkt = nbkt>>1;
-        }
-        bk_tag_length = i;
+      int nbkt = nbk/nbkgrp;
+      unsigned i;
+      for (i=0; nbkt>0; i++) {
+          nbkt = nbkt>>1;
+      }
+      bk_tag_length = i;
       assert(nbkgrp>0 && "Number of bank groups cannot be zero");
       tRCDWR = tRCD-(WL+1);
       tRTW = (CL+(BL/data_command_freq_ratio)+2-WL);
       tWTR = (WL+(BL/data_command_freq_ratio)+tCDLR); 
       tWTP = (WL+(BL/data_command_freq_ratio)+tWR);
       dram_atom_size = BL * busW * gpu_n_mem_per_ctrlr; // burst length x bus width x # chips per partition 
-      m_address_mapping.init(m_n_mem);
+
+      assert( m_n_sub_partition_per_memory_channel > 0 ); 
+      assert( (nbk % m_n_sub_partition_per_memory_channel == 0) 
+              && "Number of DRAM banks must be a perfect multiple of memory sub partition"); 
+      m_n_mem_sub_partition = m_n_mem * m_n_sub_partition_per_memory_channel; 
+      fprintf(stdout, "Total number of memory sub partition = %u\n", m_n_mem_sub_partition); 
+
+      m_address_mapping.init(m_n_mem, m_n_sub_partition_per_memory_channel);
       m_L2_config.init(&m_address_mapping);
+
       m_valid = true;
       icnt_flit_size = 32; // Default 32
    }
@@ -221,6 +229,8 @@ struct memory_config {
    enum dram_ctrl_t scheduler_type;
    bool gpgpu_memlatency_stat;
    unsigned m_n_mem;
+   unsigned m_n_sub_partition_per_memory_channel;
+   unsigned m_n_mem_sub_partition;
    unsigned gpu_n_mem_per_ctrlr;
 
    unsigned rop_latency;
@@ -416,7 +426,6 @@ private:
    int  next_clock_domain(void);
    void issue_block2core();
    void print_dram_stats(FILE *fout) const;
-   void L2c_print_cache_stat() const;
    void shader_print_runtime_stat( FILE *fout );
    void shader_print_l1_miss_stat( FILE *fout ) const;
    void shader_print_cache_stats( FILE *fout ) const;
@@ -430,6 +439,7 @@ private:
 
    class simt_core_cluster **m_cluster;
    class memory_partition_unit **m_memory_partition_unit;
+   class memory_sub_partition **m_memory_sub_partition;
 
    std::vector<kernel_info_t*> m_running_kernels;
    unsigned m_last_issued_kernel;

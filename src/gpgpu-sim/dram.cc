@@ -421,9 +421,14 @@ void dram_t::cycle()
 }
 
 //if mrq is being serviced by dram, gets popped after CL latency fulfilled
-class mem_fetch* dram_t::pop() 
+class mem_fetch* dram_t::return_queue_pop() 
 {
     return returnq->pop();
+}
+
+class mem_fetch* dram_t::return_queue_top() 
+{
+    return returnq->top();
 }
 
 void dram_t::print( FILE* simFile) const
