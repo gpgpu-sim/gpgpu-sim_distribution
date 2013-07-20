@@ -58,6 +58,8 @@ Version 3.2.1+edits (development branch) versus 3.2.1
     - Eliminated some memory leaks in the pure functional simulator
     - Added check to AerialVision to detect and warn about performance metric
       entries with no data.  
+    - Fix for Bug 63 - Changed bk[i]->n_idle++; to bk[j]->n_idle++; in
+      dram_t::cycle(). 
 
 Version 3.2.1 versus 3.2.0
 - Added kernel name and launch uids to performance statistics log.

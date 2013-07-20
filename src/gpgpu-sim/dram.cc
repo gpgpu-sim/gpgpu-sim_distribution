@@ -379,7 +379,7 @@ void dram_t::cycle()
       } else {
          if (!CCDc && !RRDc && !RTWc && !WTRc && !bk[j]->RCDc && !bk[j]->RASc
              && !bk[j]->RCc && !bk[j]->RPc  && !bk[j]->RCDWRc) k--;
-         bk[i]->n_idle++;
+         bk[j]->n_idle++;
       }
    }
    if (!issued) {
