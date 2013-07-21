@@ -233,7 +233,7 @@ void memory_partition_unit::dram_cycle()
                 dram_delay_t d;
                 d.req = mf;
                 d.ready_cycle = gpu_sim_cycle+gpu_tot_sim_cycle + m_config->dram_latency;
-                m_dram_latency_queue.push(d);
+                m_dram_latency_queue.push_back(d);
                 mf->set_status(IN_PARTITION_DRAM_LATENCY_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
                 m_arbitration_metadata.borrow_credit(spid); 
                 break;  // the DRAM should only accept one request per cycle 
@@ -244,7 +244,7 @@ void memory_partition_unit::dram_cycle()
     // DRAM latency queue
     if( !m_dram_latency_queue.empty() && ( (gpu_sim_cycle+gpu_tot_sim_cycle) >= m_dram_latency_queue.front().ready_cycle ) && !m_dram->full() ) {
         mem_fetch* mf = m_dram_latency_queue.front().req;
-        m_dram_latency_queue.pop();
+        m_dram_latency_queue.pop_front();
         m_dram->push(mf);
     }
 }
@@ -278,6 +278,16 @@ void memory_partition_unit::print( FILE *fp ) const
     fprintf(fp, "Memory Partition %u: \n", m_id); 
     for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel; p++) {
         m_sub_partition[p]->print(fp); 
+    }
+    fprintf(fp, "In Dram Latency Queue (total = %zd): \n", m_dram_latency_queue.size()); 
+    for (std::list<dram_delay_t>::const_iterator mf_dlq = m_dram_latency_queue.begin(); 
+         mf_dlq != m_dram_latency_queue.end(); ++mf_dlq) {
+        mem_fetch *mf = mf_dlq->req; 
+        fprintf(fp, "Ready @ %llu - ", mf_dlq->ready_cycle); 
+        if (mf) 
+            mf->print(fp); 
+        else 
+            fprintf(fp, " <NULL mem_fetch?>\n"); 
     }
     m_dram->print(fp); 
 }
