@@ -138,7 +138,7 @@ private:
       unsigned long long ready_cycle;
       class mem_fetch* req;
    };
-   std::queue<dram_delay_t> m_dram_latency_queue;
+   std::list<dram_delay_t> m_dram_latency_queue;
 };
 
 class memory_sub_partition

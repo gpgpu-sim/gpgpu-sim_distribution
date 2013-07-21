@@ -35,7 +35,10 @@ Version 3.2.1+edits (development branch) versus 3.2.1
 - Redesigned the memory partition microarchitecture model to allow multiple L2
   cache banks (sub partitions) in each memory partition.  Each memory partition
   contains a single DRAM scheduler, and one or more L2 cache banks.  Each L2
-  cache bank has an independent port to the interconnection network.  
+  cache bank has an independent port to the interconnection network.  The
+  configuration files are changes to have a larger DRAM return queue to allow
+  the credit-based arbiter between the sub partitions and the DRAM scheduler to
+  tolerate the minimum DRAM latency.  
 - Bug Fixes:
     - Fixed the flit count sent to GPUWattch for atomic operations. 
     - Fix for Bug 51 - Updated the function declaration of
