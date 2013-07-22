@@ -1,6 +1,6 @@
 # see README before running this
 
-ps -p $$ | awk '/bash/ || / sh/ {exit 1;}' && echo "ERROR ** source setup_environment must be run in a bash or sh shell; see README" && exit
+ps -p $$ | awk '/bash/ || / sh/ || /zsh/ {exit 1;}' && echo "ERROR ** source setup_environment must be run in a bash, zsh or sh shell; see README" && exit
 
 export GPGPUSIM_SETUP_ENVIRONMENT_WAS_RUN=
 export GPGPUSIM_ROOT="$( cd "$( dirname "$BASH_SOURCE" )" && pwd )"
@@ -39,7 +39,7 @@ if [ $? = 1 ]; then
 	return;
 fi
 
-CC_VERSION=`gcc --version | head -1 | sed -re "s/gcc\s+\(.*\)\s+([0-9.]+).*/\1/"`
+CC_VERSION=`gcc --version | head -1 | awk '{for(i=1;i<=NF;i++){ if(match($i,/[0-9]\.[0-9]\.[0-9]/))  {print $i}}}'`
 
 CUDA_VERSION_STRING=`$CUDA_INSTALL_PATH/bin/nvcc --version | awk '/release/ {print $5;}' | sed 's/,//'`;
 CUDA_VERSION_NUMBER=`echo $CUDA_VERSION_STRING | sed 's/\./ /' | awk '{printf("%02u%02u", 10*int($1), 10*$2);}'`
@@ -48,7 +48,7 @@ if [ $CUDA_VERSION_NUMBER -gt 4020 -o $CUDA_VERSION_NUMBER -lt 2030  ]; then
 	return;
 fi
 
-if [ $# == '1' ] ;
+if [ $# = '1' ] ;
 then
     export GPGPUSIM_CONFIG=gcc-$CC_VERSION/cuda-$CUDA_VERSION_NUMBER/$1
 else
@@ -88,17 +88,17 @@ fi
 # SSH to remote node to generate PTX for OpenCL kernels when running on 
 # a node that does not have an NVIDIA driver installed.
 # The remote node should have GPGPU-Sim installed at the same path 
-if [ `uname` == "Darwin" ]; then
+if [ `uname` = "Darwin" ]; then
 	HOSTNAME_PREFIX=`hostname -s`;
 	export HOSTNAME_DOMAIN=`hostname | sed s/$HOSTNAME_PREFIX\.//`;
 else
 	HOSTNAME_DOMAIN=`hostname -d`
 fi
-if [ "x$HOSTNAME_DOMAIN" == "xece.ubc.ca" -a "$OPENCL_REMOTE_GPU_HOST" == "" ]; then
+if [ "x$HOSTNAME_DOMAIN" = "xece.ubc.ca" -a "$OPENCL_REMOTE_GPU_HOST" = "" ]; then
 	export OPENCL_REMOTE_GPU_HOST=aamodt-pc05.ece.ubc.ca
 fi
 HOSTNAME_F=`hostname -f`
-if [ "x$HOSTNAME_F" == "x$OPENCL_REMOTE_GPU_HOST" ]; then
+if [ "x$HOSTNAME_F" = "x$OPENCL_REMOTE_GPU_HOST" ]; then
 	unset OPENCL_REMOTE_GPU_HOST
 fi
 

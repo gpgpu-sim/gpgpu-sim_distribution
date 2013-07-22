@@ -40,7 +40,7 @@ endif
 BUILD_ROOT?=$(shell pwd)
 export TRACE?=1
 
-NVCC_PATH=$(shellwhich nvcc)
+NVCC_PATH=$(shell which nvcc)
 ifneq ($(shell which nvcc), "")
 	ifeq ($(DEBUG), 1)
 		export SIM_LIB_DIR=lib/gcc-$(CC_VERSION)/cuda-$(CUDART_VERSION)/debug
