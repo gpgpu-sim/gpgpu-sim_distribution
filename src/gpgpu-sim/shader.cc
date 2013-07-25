@@ -400,8 +400,10 @@ void shader_core_stats::print( FILE* fout ) const
    fprintf(fout, "gpgpu_stall_shd_mem[c_mem][bk_conf] = %d\n", gpu_stall_shd_mem_breakdown[C_MEM][BK_CONF]);
    fprintf(fout, "gpgpu_stall_shd_mem[c_mem][mshr_rc] = %d\n", gpu_stall_shd_mem_breakdown[C_MEM][MSHR_RC_FAIL]);
    fprintf(fout, "gpgpu_stall_shd_mem[c_mem][icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[C_MEM][ICNT_RC_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[c_mem][data_port_stall] = %d\n", gpu_stall_shd_mem_breakdown[C_MEM][DATA_PORT_STALL]);
    fprintf(fout, "gpgpu_stall_shd_mem[t_mem][mshr_rc] = %d\n", gpu_stall_shd_mem_breakdown[T_MEM][MSHR_RC_FAIL]);
    fprintf(fout, "gpgpu_stall_shd_mem[t_mem][icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[T_MEM][ICNT_RC_FAIL]);
+   fprintf(fout, "gpgpu_stall_shd_mem[t_mem][data_port_stall] = %d\n", gpu_stall_shd_mem_breakdown[T_MEM][DATA_PORT_STALL]);
    fprintf(fout, "gpgpu_stall_shd_mem[s_mem][bk_conf] = %d\n", gpu_stall_shd_mem_breakdown[S_MEM][BK_CONF]);
    fprintf(fout, "gpgpu_stall_shd_mem[gl_mem][bk_conf] = %d\n", 
            gpu_stall_shd_mem_breakdown[G_MEM_LD][BK_CONF] + 
@@ -415,6 +417,12 @@ void shader_core_stats::print( FILE* fout ) const
            gpu_stall_shd_mem_breakdown[L_MEM_LD][COAL_STALL] + 
            gpu_stall_shd_mem_breakdown[L_MEM_ST][COAL_STALL]    
            ); // coalescing stall + bank conflict at data cache 
+   fprintf(fout, "gpgpu_stall_shd_mem[gl_mem][data_port_stall] = %d\n", 
+           gpu_stall_shd_mem_breakdown[G_MEM_LD][DATA_PORT_STALL] + 
+           gpu_stall_shd_mem_breakdown[G_MEM_ST][DATA_PORT_STALL] + 
+           gpu_stall_shd_mem_breakdown[L_MEM_LD][DATA_PORT_STALL] + 
+           gpu_stall_shd_mem_breakdown[L_MEM_ST][DATA_PORT_STALL]    
+           ); // data port stall at data cache 
    fprintf(fout, "gpgpu_stall_shd_mem[g_mem_ld][mshr_rc] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_LD][MSHR_RC_FAIL]);
    fprintf(fout, "gpgpu_stall_shd_mem[g_mem_ld][icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_LD][ICNT_RC_FAIL]);
    fprintf(fout, "gpgpu_stall_shd_mem[g_mem_ld][wb_icnt_rc] = %d\n", gpu_stall_shd_mem_breakdown[G_MEM_LD][WB_ICNT_RC_FAIL]);
@@ -1319,6 +1327,9 @@ mem_stage_stall_type ldst_unit::process_memory_access_queue( cache_t *cache, war
     if( inst.accessq_empty() )
         return result;
 
+    if( !cache->data_port_free() ) 
+        return DATA_PORT_STALL; 
+
     //const mem_access_t &access = inst.accessq_back();
     mem_fetch *mf = m_mf_allocator->alloc(inst,inst.accessq_back());
     std::list<cache_event> events;
@@ -1771,12 +1782,16 @@ void ldst_unit::cycle()
    if( !m_response_fifo.empty() ) {
        mem_fetch *mf = m_response_fifo.front();
        if (mf->istexture()) {
-           m_L1T->fill(mf,gpu_sim_cycle+gpu_tot_sim_cycle);
-           m_response_fifo.pop_front(); 
+           if (m_L1T->fill_port_free()) {
+               m_L1T->fill(mf,gpu_sim_cycle+gpu_tot_sim_cycle);
+               m_response_fifo.pop_front(); 
+           }
        } else if (mf->isconst())  {
-           mf->set_status(IN_SHADER_FETCHED,gpu_sim_cycle+gpu_tot_sim_cycle);
-           m_L1C->fill(mf,gpu_sim_cycle+gpu_tot_sim_cycle);
-           m_response_fifo.pop_front(); 
+           if (m_L1C->fill_port_free()) {
+               mf->set_status(IN_SHADER_FETCHED,gpu_sim_cycle+gpu_tot_sim_cycle);
+               m_L1C->fill(mf,gpu_sim_cycle+gpu_tot_sim_cycle);
+               m_response_fifo.pop_front(); 
+           }
        } else {
     	   if( mf->get_type() == WRITE_ACK || ( m_config->gpgpu_perfect_mem && mf->get_is_write() )) {
                m_core->store_ack(mf);
@@ -1799,8 +1814,10 @@ void ldst_unit::cycle()
                        m_next_global = mf;
                    }
                } else {
-                   m_L1D->fill(mf,gpu_sim_cycle+gpu_tot_sim_cycle);
-                   m_response_fifo.pop_front();
+                   if (m_L1D->fill_port_free()) {
+                       m_L1D->fill(mf,gpu_sim_cycle+gpu_tot_sim_cycle);
+                       m_response_fifo.pop_front();
+                   }
                }
            }
        }
@@ -2007,6 +2024,7 @@ void gpgpu_sim::shader_print_cache_stats( FILE *fout ) const{
         }
         fprintf(fout, "\tL1D_total_cache_pending_hits = %u\n", total_css.pending_hits);
         fprintf(fout, "\tL1D_total_cache_reservation_fails = %u\n", total_css.res_fails);
+        total_css.print_port_stats(fout, "\tL1D_cache"); 
     }
 
     // L1C
