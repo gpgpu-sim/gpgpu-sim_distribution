@@ -353,9 +353,11 @@ void memory_sub_partition::cache_cycle( unsigned cycle )
     if ( !m_dram_L2_queue->empty() ) {
         mem_fetch *mf = m_dram_L2_queue->top();
         if ( !m_config->m_L2_config.disabled() && m_L2cache->waiting_for_fill(mf) ) {
-            mf->set_status(IN_PARTITION_L2_FILL_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
-            m_L2cache->fill(mf,gpu_sim_cycle+gpu_tot_sim_cycle);
-            m_dram_L2_queue->pop();
+            if (m_L2cache->fill_port_free()) {
+                mf->set_status(IN_PARTITION_L2_FILL_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
+                m_L2cache->fill(mf,gpu_sim_cycle+gpu_tot_sim_cycle);
+                m_dram_L2_queue->pop();
+            }
         } else if ( !m_L2_icnt_queue->full() ) {
             mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
             m_L2_icnt_queue->push(mf);
@@ -374,7 +376,9 @@ void memory_sub_partition::cache_cycle( unsigned cycle )
               ( (m_config->m_L2_texure_only && mf->istexture()) || (!m_config->m_L2_texure_only) )
            ) {
             // L2 is enabled and access is for L2
-            if ( !m_L2_icnt_queue->full() ) {
+            bool output_full = m_L2_icnt_queue->full(); 
+            bool port_free = m_L2cache->data_port_free(); 
+            if ( !output_full && port_free ) {
                 std::list<cache_event> events;
                 enum cache_request_status status = m_L2cache->access(mf->get_addr(),mf,gpu_sim_cycle+gpu_tot_sim_cycle,events);
                 bool write_sent = was_write_sent(events);
@@ -525,7 +529,9 @@ void gpgpu_sim::print_dram_stats(FILE *fout) const
 
 unsigned memory_sub_partition::flushL2() 
 { 
-    m_L2cache->flush(); 
+    if (!m_config->m_L2_config.disabled()) {
+        m_L2cache->flush(); 
+    }
     return 0; // L2 is read only in this version
 }
 
@@ -583,11 +589,15 @@ void memory_sub_partition::set_done( mem_fetch *mf )
 }
 
 void memory_sub_partition::accumulate_L2cache_stats(class cache_stats &l2_stats) const {
-    l2_stats += m_L2cache->get_stats();
+    if (!m_config->m_L2_config.disabled()) {
+        l2_stats += m_L2cache->get_stats();
+    }
 }
 
 void memory_sub_partition::get_L2cache_sub_stats(struct cache_sub_stats &css) const{
-    m_L2cache->get_sub_stats(css);
+    if (!m_config->m_L2_config.disabled()) {
+        m_L2cache->get_sub_stats(css);
+    }
 }
 
 void memory_sub_partition::visualizer_print( gzFile visualizer_file )

@@ -957,6 +957,7 @@ void gpgpu_sim::gpu_print_stat()
           printf("L2_total_cache_reservation_fails = %u\n", total_l2_css.res_fails);
           printf("L2_total_cache_breakdown:\n");
           l2_stats.print_stats(stdout, "L2_cache_stats_breakdown");
+          total_l2_css.print_port_stats(stdout, "L2_cache");
        }
    }
 

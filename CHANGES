@@ -39,6 +39,10 @@ Version 3.2.1+edits (development branch) versus 3.2.1
   configuration files are changes to have a larger DRAM return queue to allow
   the credit-based arbiter between the sub partitions and the DRAM scheduler to
   tolerate the minimum DRAM latency.  
+- Added a bandwidth model to throttle the cache hit bandwidth.  Now accesses
+  that exceed the data port width (but still fit within a cache line) will
+  occupy the cache for multiple cycles.  This allows us to decouple the L2
+  cache bandwidth from the interconnect network port bandwidth.  
 - Bug Fixes:
     - Fixed the flit count sent to GPUWattch for atomic operations. 
     - Fix for Bug 51 - Updated the function declaration of
@@ -63,6 +67,8 @@ Version 3.2.1+edits (development branch) versus 3.2.1
       entries with no data.  
     - Fix for Bug 63 - Changed bk[i]->n_idle++; to bk[j]->n_idle++; in
       dram_t::cycle(). 
+    - Fixed the segmentation faults that occur when L2 cache is diabled.  The
+      bug was introduced when GPUWattch was integrated into GPGPU-Sim. 
 
 Version 3.2.1 versus 3.2.0
 - Added kernel name and launch uids to performance statistics log.
