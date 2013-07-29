@@ -813,7 +813,7 @@ data_cache::wr_miss_wa( new_addr_type addr,
     //if(!send_write_allocate(mf, addr, block_addr, cache_index, time, events))
     //    return RESERVATION_FAIL;
 
-    const mem_access_t *ma = new  mem_access_t( L2_WR_ALLOC_R,
+    const mem_access_t *ma = new  mem_access_t( m_wr_alloc_type,
                         mf->get_addr(),
                         mf->get_data_size(),
                         false, // Now performing a read
@@ -841,7 +841,7 @@ data_cache::wr_miss_wa( new_addr_type addr,
         // (already modified lower level)
         if( wb && (m_config.m_write_policy != WRITE_THROUGH) ) { 
             mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,
-                L2_WRBK_ACC,m_config.get_line_sz(),true);
+                m_wrbk_type,m_config.get_line_sz(),true);
             m_miss_queue.push_back(wb);
             wb->set_status(m_miss_queue_status,time);
         }
@@ -923,7 +923,7 @@ data_cache::rd_miss_base( new_addr_type addr,
         // (already modified lower level)
         if(wb && (m_config.m_write_policy != WRITE_THROUGH) ){ 
             mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,
-                L1_WRBK_ACC,m_config.get_line_sz(),true);
+                m_wrbk_type,m_config.get_line_sz(),true);
         send_write_request(wb, WRITE_BACK_REQUEST_SENT, time, events);
     }
         return MISS;
