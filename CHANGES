@@ -43,6 +43,12 @@ Version 3.2.1+edits (development branch) versus 3.2.1
   that exceed the data port width (but still fit within a cache line) will
   occupy the cache for multiple cycles.  This allows us to decouple the L2
   cache bandwidth from the interconnect network port bandwidth.  
+- Updated configurations for Geforce GTX 480 and Tesla C2050 to have two
+  sub-partitions in every memory partition.  The L2 cache bank in each
+  sub-partition has half the capacity of the original L2 cache bank.  Each L2
+  cache bank is configured to access at most 32B/cycle.  With twice the number
+  of connections to the memory partitions, the interconnection network now runs
+  at half of its original speed. 
 - Bug Fixes:
     - Fixed the flit count sent to GPUWattch for atomic operations. 
     - Fix for Bug 51 - Updated the function declaration of
