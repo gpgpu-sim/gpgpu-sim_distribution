@@ -1,6 +1,8 @@
+//18*1 fly with 32 flits per packet under gpgpusim injection mode
 use_map = 0;
 flit_size = 32; 
 
+// currently we donot use this, see subnets below
 network_count = 2;
 
 // Topology
@@ -9,41 +11,59 @@ k = 18;
 n = 1;
 
 // Routing
-routing_function = dest_tag;//dim_order;//min_adapt;//dim_order;//_ni;
+
+routing_function = dest_tag;
 
 // Flow control
-num_vcs     = 1; //4; 
-vc_buf_size = 8; //16;
+
+num_vcs     = 1;
+vc_buf_size = 8;
+
 wait_for_tail_credit = 0;
 
 // Router architecture
 
-vc_allocator = islip;//i1_pim; //islip; //pim
-sw_allocator = islip;//i1_pim;//islip; //pim
+vc_allocator = islip; //separable_input_first;
+sw_allocator = islip; //separable_input_first;
 alloc_iters  = 1;
 
 credit_delay   = 0;
 routing_delay  = 0;
-vc_alloc_delay = 0;
+vc_alloc_delay = 1;
+sw_alloc_delay = 1;
 
 input_speedup     = 2;
 output_speedup    = 1;
 internal_speedup  = 1.0;
 
-// Traffic (DO NOT CHANGE THIS)
-traffic = gpgpusim; 
+// Traffic, GPGPU-Sim does not use this
+traffic                = uniform;
+packet_size ={{1,2,3,4},{10,20}};
+packet_size_rate={{1,1,1,1},{2,1}};
 
-//not used in gpgpusim
-// const_flits_per_packet = 3;
-injection_process = gpgpu_injector;
-// Simulation 
-//not used in gpgpusim
-sim_type       = latency;
+// Simulation - Don't change
+sim_type       = gpgpusim;
+//sim_type = latency;
 injection_rate = 0.1;
 
 
-// Statistics for Interconnection (Added for GPGPU-Sim)
-MATLAB_OUTPUT = 1; // output data in MATLAB friendly format
-DISPLAY_LAT_DIST = 1; // distribution of packet latencies
-DISPLAY_HOP_DIST = 1; // distribution of hop counts
-DISPLAY_PAIR_LATENCY = 0;
+subnets = 2;
+
+// Always use read and write no matter following line
+//use_read_write = 1;
+
+
+read_request_subnet = 0;
+read_reply_subnet = 1;
+write_request_subnet = 0;
+write_reply_subnet = 1;
+
+read_request_begin_vc = 0;
+read_request_end_vc = 0;
+write_request_begin_vc = 0;
+write_request_end_vc = 0;
+read_reply_begin_vc = 0;
+read_reply_end_vc = 0;
+write_reply_begin_vc = 0;
+write_reply_end_vc = 0;
+

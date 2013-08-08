@@ -51,8 +51,7 @@
 #include "l2cache.h"
 
 #include "../cuda-sim/ptx-stats.h"
-#include "../intersim/statwraper.h"
-#include "../intersim/interconnect_interface.h"
+#include "../statwrapper.h"
 #include "../abstract_hardware_model.h"
 #include "../debug.h"
 #include "../gpgpusim_entrypoint.h"
@@ -579,7 +578,7 @@ gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config )
         }
     }
 
-    icnt_init(m_shader_config->n_simt_clusters,m_memory_config->m_n_mem_sub_partition);
+    icnt_wrapper_init(m_shader_config->n_simt_clusters,m_memory_config->m_n_mem_sub_partition);
 
     time_vector_create(NUM_MEM_REQ_STAT);
     fprintf(stdout, "GPGPU-Sim uArch: performance model initialization complete.\n");
@@ -702,8 +701,8 @@ void gpgpu_sim::init()
        set_spill_interval (m_config.gpgpu_cflog_interval * 40);
     }
 
-    if (g_network_mode) 
-       icnt_init_grid(); 
+    if (g_network_mode)
+       icnt_init();
 
     // McPAT initialization function. Called on first launch of GPU
 #ifdef GPGPUSIM_POWER_MODEL
@@ -721,15 +720,14 @@ void gpgpu_sim::update_stats() {
 
 void gpgpu_sim::print_stats()
 {
-
     ptx_file_line_stats_write_file();
     gpu_print_stat();
 
     if (g_network_mode) {
-       interconnect_stats();
-       printf("----------------------------Interconnect-DETAILS---------------------------------" );
-       icnt_overal_stat();
-       printf("----------------------------END-of-Interconnect-DETAILS-------------------------" );
+        printf("----------------------------Interconnect-DETAILS--------------------------------\n" );
+        icnt_display_stats();
+        icnt_display_overall_stats();
+        printf("----------------------------END-of-Interconnect-DETAILS-------------------------\n" );
     }
 }
 
@@ -765,7 +763,7 @@ void gpgpu_sim::deadlock_check()
       }
       if( icnt_busy() ) {
          printf("GPGPU-Sim uArch DEADLOCK:  iterconnect contains traffic\n");
-         display_icnt_state( stdout );
+         icnt_display_state( stdout );
       }
       printf("\nRe-run the simulator in gdb and use debug routines in .gdbinit to debug this\n");
       fflush(stdout);

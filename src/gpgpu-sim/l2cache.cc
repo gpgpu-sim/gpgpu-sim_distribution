@@ -38,7 +38,7 @@
 #include "gpu-cache.h"
 #include "histogram.h"
 #include "l2cache.h"
-#include "../intersim/statwraper.h"
+#include "../statwrapper.h"
 #include "../abstract_hardware_model.h"
 #include "gpu-sim.h"
 #include "shader.h"

@@ -40,8 +40,7 @@
 #include "mem_fetch.h"
 #include "mem_latency_stat.h"
 #include "visualizer.h"
-#include "../intersim/statwraper.h"
-#include "../intersim/interconnect_interface.h"
+#include "../statwrapper.h"
 #include "icnt_wrapper.h"
 #include <string.h>
 #include <limits.h>
