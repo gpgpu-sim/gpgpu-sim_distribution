@@ -29,6 +29,9 @@
 # comment out next line to disable OpenGL support
 # export OPENGL_SUPPORT=1
 
+# (Temp) Using intersim2 by deafult, to use intersim, type make INTERSIM=intersim
+INTERSIM ?= intersim2
+
 include version_detection.mk
 
 ifeq ($(GPGPUSIM_CONFIG), gcc-$(CC_VERSION)/cuda-$(CUDART_VERSION)/debug)
@@ -51,7 +54,7 @@ ifneq ($(shell which nvcc), "")
 	endif
 endif
 
-LIBS = cuda-sim gpgpu-sim_uarch intersim gpgpusimlib 
+LIBS = cuda-sim gpgpu-sim_uarch $(INTERSIM) gpgpusimlib 
 
 
 TARGETS =
@@ -142,7 +145,7 @@ $(SIM_LIB_DIR)/libcudart.so: makedirs $(LIBS) cudalib
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table/*.o \
 			$(SIM_OBJ_FILES_DIR)/gpgpu-sim/*.o \
-			$(SIM_OBJ_FILES_DIR)/intersim/*.o \
+			$(SIM_OBJ_FILES_DIR)/$(INTERSIM)/*.o \
 			$(SIM_OBJ_FILES_DIR)/*.o -lm -lz -lGL -pthread \
 			$(MCPAT) \
 			-o $(SIM_LIB_DIR)/libcudart.so
@@ -156,7 +159,7 @@ $(SIM_LIB_DIR)/libcudart.dylib: makedirs $(LIBS) cudalib
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table/*.o \
 			$(SIM_OBJ_FILES_DIR)/gpgpu-sim/*.o \
-			$(SIM_OBJ_FILES_DIR)/intersim/*.o \
+			$(SIM_OBJ_FILES_DIR)/$(INTERSIM)/*.o  \
 			$(SIM_OBJ_FILES_DIR)/*.o -lm -lz -pthread \
 			$(MCPAT) \
 			-o $(SIM_LIB_DIR)/libcudart.dylib
@@ -167,7 +170,7 @@ $(SIM_LIB_DIR)/libOpenCL.so: makedirs $(LIBS) opencllib
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table/*.o \
 			$(SIM_OBJ_FILES_DIR)/gpgpu-sim/*.o \
-			$(SIM_OBJ_FILES_DIR)/intersim/*.o \
+			$(SIM_OBJ_FILES_DIR)/$(INTERSIM)/*.o \
 			$(SIM_OBJ_FILES_DIR)/*.o -lm -lz -lGL -pthread \
 			$(MCPAT) \
 			-o $(SIM_LIB_DIR)/libOpenCL.so 
@@ -192,10 +195,10 @@ gpgpu-sim_uarch: makedirs cuda-sim
 	$(MAKE) -C ./src/gpgpu-sim/ depend
 	$(MAKE) -C ./src/gpgpu-sim/
 
-intersim: makedirs cuda-sim gpgpu-sim_uarch
-	$(MAKE) "CREATELIBRARY=1" "DEBUG=$(DEBUG)" -C ./src/intersim	
+$(INTERSIM): makedirs cuda-sim gpgpu-sim_uarch
+	$(MAKE) "CREATE_LIBRARY=1" "DEBUG=$(DEBUG)" -C ./src/$(INTERSIM)
 
-gpgpusimlib: makedirs cuda-sim gpgpu-sim_uarch intersim
+gpgpusimlib: makedirs cuda-sim gpgpu-sim_uarch $(INTERSIM)
 	$(MAKE) -C ./src/ depend
 	$(MAKE) -C ./src/
 
@@ -216,7 +219,7 @@ makedirs:
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/gpgpu-sim ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/gpgpu-sim; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/libopencl ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/libopencl; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/libopencl/bin ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/libopencl/bin; fi;
-	if [ ! -d $(SIM_OBJ_FILES_DIR)/intersim ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/intersim; fi;
+	if [ ! -d $(SIM_OBJ_FILES_DIR)/$(INTERSIM) ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/$(INTERSIM); fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/cuobjdump_to_ptxplus ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/cuobjdump_to_ptxplus; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/gpuwattch ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/gpuwattch; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/gpuwattch/cacti ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/gpuwattch/cacti; fi;

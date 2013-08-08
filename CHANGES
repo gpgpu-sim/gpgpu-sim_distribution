@@ -49,6 +49,9 @@ Version 3.2.1+edits (development branch) versus 3.2.1
   cache bank is configured to access at most 32B/cycle.  With twice the number
   of connections to the memory partitions, the interconnection network now runs
   at half of its original speed. 
+- Replaced intersim with intersim2. intersim is the original BookSim with 
+  extentions to interface with GPGPU-Sim. We applied similar changes to 
+  BookSim 2.0. 
 - Bug Fixes:
     - Fixed the flit count sent to GPUWattch for atomic operations. 
     - Fix for Bug 51 - Updated the function declaration of

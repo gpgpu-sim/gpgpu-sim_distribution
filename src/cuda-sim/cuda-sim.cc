@@ -35,7 +35,7 @@
 #include <stdio.h>
 
 #include "opcodes.h"
-#include "../intersim/statwraper.h"
+#include "../statwrapper.h"
 #include <set>
 #include <map>
 #include "../abstract_hardware_model.h"

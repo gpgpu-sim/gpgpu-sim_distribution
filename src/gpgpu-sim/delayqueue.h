@@ -32,7 +32,7 @@
 #ifndef DELAYQUEUE_H
 #define DELAYQUEUE_H
 
-#include "../intersim/statwraper.h"
+#include "../statwrapper.h"
 #include "gpu-misc.h"
 
 template <class T>
