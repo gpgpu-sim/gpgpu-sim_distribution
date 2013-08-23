@@ -46,21 +46,23 @@ class Stats;
 
 class InterconnectInterface {
 public:
-  InterconnectInterface(const char* const config_file, unsigned int n_shader,  unsigned int n_mem);
+  InterconnectInterface();
   virtual ~InterconnectInterface();
+  static InterconnectInterface* New(const char* const config_file);
+  virtual void CreateInterconnect(unsigned n_shader,  unsigned n_mem);
   
   //node side functions
-  void Init();
-  void Push(unsigned input_deviceID, unsigned output_deviceID, void* data, unsigned int size);
-  void* Pop(unsigned ouput_deviceID);
-  void Advance();
-  bool Busy() const;
-  bool HasBuffer(unsigned deviceID, unsigned int size) const;
-  void DisplayStats() const;
-  void DisplayOverallStats() const;
+  virtual void Init();
+  virtual void Push(unsigned input_deviceID, unsigned output_deviceID, void* data, unsigned int size);
+  virtual void* Pop(unsigned ouput_deviceID);
+  virtual void Advance();
+  virtual bool Busy() const;
+  virtual bool HasBuffer(unsigned deviceID, unsigned int size) const;
+  virtual void DisplayStats() const;
+  virtual void DisplayOverallStats() const;
   unsigned GetFlitSize() const;
   
-  void DisplayState(FILE* fp) const;
+  virtual void DisplayState(FILE* fp) const;
   
   //booksim side functions
   void WriteOutBuffer( int subnet, int output, Flit* flit );
@@ -72,8 +74,7 @@ public:
   
   Flit* GetEjectedFlit(int subnet, int node);
   
-  
-private:
+protected:
   
   class _BoundaryBufferItem {
   public:
@@ -92,7 +93,7 @@ private:
   typedef queue<Flit*> _EjectionBufferItem;
   
   void _CreateBuffer( );
-  void _CreateNodeMap(int n_shader, int n_mem, int n_node, int use_map);
+  void _CreateNodeMap(unsigned n_shader, unsigned n_mem, unsigned n_node, int use_map);
   void _DisplayMap(int dim,int count);
   
   // size: [subnets][nodes][vcs]
@@ -109,9 +110,9 @@ private:
   vector<vector<int> > _round_robin_turn; //keep track of _boundary_buffer last used in icnt_pop
   
   GPUTrafficManager* _traffic_manager;
-  unsigned int _flit_size;
+  unsigned _flit_size;
   IntersimConfig* _icnt_config;
-  const int _n_shader, _n_mem;
+  unsigned _n_shader, _n_mem;
   vector<Network *> _net;
   int _vcs;
   int _subnets;
@@ -119,10 +120,10 @@ private:
   //deviceID to icntID map
   //deviceID : Starts from 0 for shaders and then continues until mem nodes
   //which starts at location n_shader and then continues to n_shader+n_mem (last device)
-  map<int, int> _node_map;
+  map<unsigned, unsigned> _node_map;
   
   //icntID to deviceID map
-  map<int, int> _reverse_node_map;
+  map<unsigned, unsigned> _reverse_node_map;
 
 };
 

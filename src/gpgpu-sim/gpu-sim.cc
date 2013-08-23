@@ -578,7 +578,8 @@ gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config )
         }
     }
 
-    icnt_wrapper_init(m_shader_config->n_simt_clusters,m_memory_config->m_n_mem_sub_partition);
+    icnt_wrapper_init();
+    icnt_create(m_shader_config->n_simt_clusters,m_memory_config->m_n_mem_sub_partition);
 
     time_vector_create(NUM_MEM_REQ_STAT);
     fprintf(stdout, "GPGPU-Sim uArch: performance model initialization complete.\n");

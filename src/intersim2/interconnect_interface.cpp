@@ -43,15 +43,44 @@
 #include "intersim_config.hpp"
 #include "network.hpp"
 
-InterconnectInterface::InterconnectInterface(const char* const config_file,  unsigned int n_shader, unsigned int n_mem)
-:_n_shader(n_shader), _n_mem(n_mem)
+InterconnectInterface* InterconnectInterface::New(const char* const config_file)
 {
   if (! config_file ) {
     cout << "Interconnect Requires a configfile" << endl;
     exit (-1);
   }
-  _icnt_config = new IntersimConfig();
-  _icnt_config->ParseFile(config_file);
+  InterconnectInterface* icnt_interface = new InterconnectInterface();
+  icnt_interface->_icnt_config = new IntersimConfig();
+  icnt_interface->_icnt_config->ParseFile(config_file);
+  
+  return icnt_interface;
+}
+
+InterconnectInterface::InterconnectInterface()
+{
+  
+}
+
+InterconnectInterface::~InterconnectInterface()
+{
+  for (int i=0; i<_subnets; ++i) {
+    ///Power analysis
+    if(_icnt_config->GetInt("sim_power") > 0){
+      Power_Module pnet(_net[i], *_icnt_config);
+      pnet.run();
+    }
+    delete _net[i];
+  }
+  
+  delete _traffic_manager;
+  _traffic_manager = NULL;
+  delete _icnt_config;
+}
+
+void InterconnectInterface::CreateInterconnect(unsigned n_shader, unsigned n_mem)
+{
+  _n_shader = n_shader;
+  _n_mem = n_mem;
   
   InitializeRoutingMap(*_icnt_config);
   
@@ -103,23 +132,6 @@ InterconnectInterface::InterconnectInterface(const char* const config_file,  uns
   
   _CreateBuffer();
   _CreateNodeMap(_n_shader, _n_mem, _traffic_manager->_nodes, _icnt_config->GetInt("use_map"));
-  
-}
-
-InterconnectInterface::~InterconnectInterface()
-{
-  for (int i=0; i<_subnets; ++i) {
-    ///Power analysis
-    if(_icnt_config->GetInt("sim_power") > 0){
-      Power_Module pnet(_net[i], *_icnt_config);
-      pnet.run();
-    }
-    delete _net[i];
-  }
-  
-  delete _traffic_manager;
-  _traffic_manager = NULL;
-  delete _icnt_config;
 }
 
 void InterconnectInterface::Init()
@@ -145,13 +157,14 @@ void InterconnectInterface::Push(unsigned input_deviceID, unsigned output_device
   if (_subnets == 1) {
     subnet = 0;
   } else {
-    if (int(input_deviceID) < _n_shader ) {
+    if (input_deviceID < _n_shader ) {
       subnet = 0;
     } else {
       subnet = 1;
     }
   }
   
+  //TODO: Remove mem_fetch to reduce dependency
   Flit::FlitType packet_type;
   mem_fetch* mf = static_cast<mem_fetch*>(data);
   
@@ -209,10 +222,10 @@ void InterconnectInterface::Advance()
 
 bool InterconnectInterface::Busy() const
 {
-  bool busy = !_traffic_manager->_measured_in_flight_flits[0].empty();
+  bool busy = !_traffic_manager->_total_in_flight_flits[0].empty();
   if (!busy) {
     for (int s = 0; s < _subnets; ++s) {
-      for (int n = 0; n < _n_shader+_n_mem; ++n) {
+      for (unsigned n = 0; n < _n_shader+_n_mem; ++n) {
         //FIXME: if this cannot make sure _partial_packets is empty
         assert(_traffic_manager->_input_queue[s][n][0].empty());
       }
@@ -221,7 +234,7 @@ bool InterconnectInterface::Busy() const
   else
     return true;
   for (int s = 0; s < _subnets; ++s) {
-    for (int n=0; n < (_n_shader+_n_mem); ++n) {
+    for (unsigned n=0; n < (_n_shader+_n_mem); ++n) {
       for (int vc=0; vc<_vcs; ++vc) {
         if (_boundary_buffer[s][n][vc].HasPacket() ) {
           return true;
@@ -240,7 +253,7 @@ bool InterconnectInterface::HasBuffer(unsigned deviceID, unsigned int size) cons
   
   has_buffer = _traffic_manager->_input_queue[0][icntID][0].size() +n_flits <= _input_buffer_capacity;
   
-  if ((_subnets>1) && int(deviceID) >= _n_shader) // deviceID is memory node
+  if ((_subnets>1) && deviceID >= _n_shader) // deviceID is memory node
     has_buffer = _traffic_manager->_input_queue[1][icntID][0].size() +n_flits <= _input_buffer_capacity;
 
   return has_buffer;
@@ -346,7 +359,7 @@ Flit* InterconnectInterface::GetEjectedFlit(int subnet, int node)
 
 void InterconnectInterface::_CreateBuffer()
 {
-  int nodes = _n_shader + _n_mem;
+  unsigned nodes = _n_shader + _n_mem;
   
   _boundary_buffer.resize(_subnets);
   _ejection_buffer.resize(_subnets);
@@ -359,52 +372,52 @@ void InterconnectInterface::_CreateBuffer()
     _round_robin_turn[subnet].resize(nodes);
     _ejected_flit_queue[subnet].resize(nodes);
     
-    for (int node=0;node<nodes;++node){
+    for (unsigned node=0;node < nodes;++node){
       _ejection_buffer[subnet][node].resize(_vcs);
       _boundary_buffer[subnet][node].resize(_vcs);
     }
   }
 }
 
-void InterconnectInterface::_CreateNodeMap(int n_shader, int n_mem, int n_node, int use_map)
+void InterconnectInterface::_CreateNodeMap(unsigned n_shader, unsigned n_mem, unsigned n_node, int use_map)
 {
   if (use_map) {
-    map<int, vector<int> > preset_memory_map;
+    map<unsigned, vector<unsigned> > preset_memory_map;
     
     // good for 8 shaders and 8 memory cores
     {
-      int memory_node[] = {1, 3, 4, 6, 9, 11, 12, 14};
-      preset_memory_map[16] = vector<int>(memory_node, memory_node+8);
+      unsigned memory_node[] = {1, 3, 4, 6, 9, 11, 12, 14};
+      preset_memory_map[16] = vector<unsigned>(memory_node, memory_node+8);
     }
     
     // good for 28 shaders and 8 memory cores
     {
-      int memory_node[] = {3, 7, 10, 12, 23, 25, 28, 32};
-      preset_memory_map[36] = vector<int>(memory_node, memory_node+8);
+      unsigned memory_node[] = {3, 7, 10, 12, 23, 25, 28, 32};
+      preset_memory_map[36] = vector<unsigned>(memory_node, memory_node+8);
     }
     
     // good for 56 shaders and 8 memory cores
     {
-      int memory_node[] = {3, 15, 17, 29, 36, 47, 49, 61};
-      preset_memory_map[64] = vector<int>(memory_node, memory_node+sizeof(memory_node)/sizeof(int));
+      unsigned memory_node[] = {3, 15, 17, 29, 36, 47, 49, 61};
+      preset_memory_map[64] = vector<unsigned>(memory_node, memory_node+sizeof(memory_node)/sizeof(unsigned));
     }
     
     // good for 110 shaders and 11 memory cores
     {
-      int memory_node[] = {12, 20, 25, 28, 57, 60, 63, 92, 95,100,108};
-      preset_memory_map[121] = vector<int>(memory_node, memory_node+sizeof(memory_node)/sizeof(int));
+      unsigned memory_node[] = {12, 20, 25, 28, 57, 60, 63, 92, 95,100,108};
+      preset_memory_map[121] = vector<unsigned>(memory_node, memory_node+sizeof(memory_node)/sizeof(unsigned));
     }
 
-    const vector<int> &memory_node = preset_memory_map[n_node];
+    const vector<unsigned> &memory_node = preset_memory_map[n_node];
     if (memory_node.empty()) {
       cerr<<"ERROR!!! NO MAPPING IMPLEMENTED YET FOR THIS CONFIG"<<endl;
       assert(0);
     }
     
     // create node map
-    int next_node = 0;
-    int memory_node_index = 0;
-    for (int i = 0; i < n_shader; ++i) {
+    unsigned next_node = 0;
+    unsigned memory_node_index = 0;
+    for (unsigned i = 0; i < n_shader; ++i) {
       while (next_node == memory_node[memory_node_index]) {
         next_node += 1;
         memory_node_index += 1;
@@ -412,17 +425,17 @@ void InterconnectInterface::_CreateNodeMap(int n_shader, int n_mem, int n_node, 
       _node_map[i] = next_node;
       next_node += 1;
     }
-    for (int i = n_shader; i < n_shader+n_mem; ++i) {
+    for (unsigned i = n_shader; i < n_shader+n_mem; ++i) {
       _node_map[i] = memory_node[i-n_shader];
     }
   } else { //not use preset map
-    for (int i=0;i<n_node;i++) {
+    for (unsigned i=0;i<n_node;i++) {
       _node_map[i]=i;
     }
   }
   
-  for (int i = 0; i < n_node ; i++) {
-    for (int j = 0; j< n_node ; j++) {
+  for (unsigned i = 0; i < n_node ; i++) {
+    for (unsigned j = 0; j< n_node ; j++) {
       if ( _node_map[j] == i ) {
         _reverse_node_map[i]=j;
         break;
