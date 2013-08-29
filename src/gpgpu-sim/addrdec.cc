@@ -67,12 +67,14 @@ void linear_to_raw_address_translation::addrdec_setoption(option_parser_t opp)
 new_addr_type linear_to_raw_address_translation::partition_address( new_addr_type addr ) const 
 { 
    if (!gap) {
-      return addrdec_packbits( ~addrdec_mask[CHIP], addr, 64, 0 ); 
+      return addrdec_packbits( ~(addrdec_mask[CHIP] | sub_partition_id_mask), addr, 64, 0 ); 
    } else {
       // see addrdec_tlx for explanation 
       unsigned long long int partition_addr; 
       partition_addr = ( (addr>>ADDR_CHIP_S) / m_n_channel) << ADDR_CHIP_S; 
       partition_addr |= addr & ((1 << ADDR_CHIP_S) - 1); 
+      // remove the part of address that constributes to the sub partition ID
+      partition_addr = addrdec_packbits( ~sub_partition_id_mask, partition_addr, 64, 0); 
       return partition_addr; 
    }
 }
@@ -303,6 +305,22 @@ void linear_to_raw_address_translation::init(unsigned int n_channel, unsigned in
    printf("addr_dec_mask[ROW]   = %016llx \thigh:%d low:%d\n", addrdec_mask[ROW],   addrdec_mkhigh[ROW],   addrdec_mklow[ROW]  );
    printf("addr_dec_mask[COL]   = %016llx \thigh:%d low:%d\n", addrdec_mask[COL],   addrdec_mkhigh[COL],   addrdec_mklow[COL]  );
    printf("addr_dec_mask[BURST] = %016llx \thigh:%d low:%d\n", addrdec_mask[BURST], addrdec_mkhigh[BURST], addrdec_mklow[BURST]);
+
+   // create the sub partition ID mask (for removing the sub partition ID from the partition address)
+   sub_partition_id_mask = 0; 
+   if (m_n_sub_partition_in_channel > 1) {
+      unsigned n_sub_partition_log2 = LOGB2_32(m_n_sub_partition_in_channel); 
+      unsigned pos=0;
+      for (unsigned i=addrdec_mklow[BK];i<addrdec_mkhigh[BK];i++) {
+         if ((addrdec_mask[BK] & ((unsigned long long int)1<<i)) != 0) {
+            sub_partition_id_mask |= ((unsigned long long int)1<<i);
+            pos++;
+            if (pos >= n_sub_partition_log2) 
+               break; 
+         }
+      }
+   }
+   printf("sub_partition_id_mask = %016llx\n", sub_partition_id_mask);
 
    if (run_test) {
       sweep_test(); 

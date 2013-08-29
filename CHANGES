@@ -36,9 +36,10 @@ Version 3.2.1+edits (development branch) versus 3.2.1
   cache banks (sub partitions) in each memory partition.  Each memory partition
   contains a single DRAM scheduler, and one or more L2 cache banks.  Each L2
   cache bank has an independent port to the interconnection network.  The
-  configuration files are changes to have a larger DRAM return queue to allow
-  the credit-based arbiter between the sub partitions and the DRAM scheduler to
-  tolerate the minimum DRAM latency.  
+  address decoder is extended to use the DRAM bank ID to assign the L2 banks
+  within each memory partition.  The configuration files are changes to have a
+  larger DRAM return queue to allow the credit-based arbiter between the sub
+  partitions and the DRAM scheduler to tolerate the minimum DRAM latency.  
 - Added a bandwidth model to throttle the cache hit bandwidth.  Now accesses
   that exceed the data port width (but still fit within a cache line) will
   occupy the cache for multiple cycles.  This allows us to decouple the L2
