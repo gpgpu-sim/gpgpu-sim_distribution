@@ -78,7 +78,8 @@ private:
    unsigned char addrdec_mklow[N_ADDRDEC];
    unsigned char addrdec_mkhigh[N_ADDRDEC];
    new_addr_type addrdec_mask[N_ADDRDEC];
-   
+   new_addr_type sub_partition_id_mask; 
+
    unsigned int gap;
    int m_n_channel;
    int m_n_sub_partition_in_channel; 
