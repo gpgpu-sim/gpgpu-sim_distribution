@@ -80,6 +80,10 @@ Version 3.2.1+edits (development branch) versus 3.2.1
       dram_t::cycle(). 
     - Fixed the segmentation faults that occur when L2 cache is diabled.  The
       bug was introduced when GPUWattch was integrated into GPGPU-Sim. 
+    - Fixed the deadlock that occurs when L1 cache is configured with
+      write-back, write-allocate policy.  The fix involves generating different
+      types of write-allocation requests for L1 and L2 caches, so that
+      write-allocation requests from L1 cache are not consumed by the L2 cache. 
 
 Version 3.2.1 versus 3.2.0
 - Added kernel name and launch uids to performance statistics log.

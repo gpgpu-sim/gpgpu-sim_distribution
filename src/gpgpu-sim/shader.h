@@ -1387,6 +1387,7 @@ struct shader_core_stats_pod {
     int gpgpu_n_mem_read_inst;
     
     int gpgpu_n_mem_l2_writeback;
+    int gpgpu_n_mem_l1_write_allocate; 
     int gpgpu_n_mem_l2_write_allocate;
 
     unsigned made_write_mfs;
