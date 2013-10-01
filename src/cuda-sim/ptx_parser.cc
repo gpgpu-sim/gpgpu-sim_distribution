@@ -330,7 +330,7 @@ unsigned g_const_alloc = 1;
  * @param maximum alignment in bytes. i.e. if size is too big then align to this instead
  */
 int pad_address (new_addr_type address, unsigned size, unsigned maxalign) {
-    assert(size > 0);
+    assert(size >= 0);
     assert(maxalign > 0);
     int alignto = maxalign;
     if (size < maxalign &&
