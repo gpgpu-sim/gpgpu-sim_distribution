@@ -84,6 +84,8 @@ Version 3.2.1+edits (development branch) versus 3.2.1
       write-back, write-allocate policy.  The fix involves generating different
       types of write-allocation requests for L1 and L2 caches, so that
       write-allocation requests from L1 cache are not consumed by the L2 cache. 
+    - Fixed a bug that caused allocated local and stack memory to be not correctly
+      aligned.
 
 Version 3.2.1 versus 3.2.0
 - Added kernel name and launch uids to performance statistics log.
