@@ -109,11 +109,11 @@ symbol_table *init_parser( const char *ptx_filename )
 {
    g_filename = strdup(ptx_filename);
    if  (g_global_allfiles_symbol_table == NULL) {
-	   g_global_allfiles_symbol_table = new symbol_table("global_allfiles", 0, NULL);
-	   g_global_symbol_table = g_current_symbol_table = g_global_allfiles_symbol_table;
+       g_global_allfiles_symbol_table = new symbol_table("global_allfiles", 0, NULL);
+       g_global_symbol_table = g_current_symbol_table = g_global_allfiles_symbol_table;
    }
    else {
-	   g_global_symbol_table = g_current_symbol_table = new symbol_table("global",0,g_global_allfiles_symbol_table);
+       g_global_symbol_table = g_current_symbol_table = new symbol_table("global",0,g_global_allfiles_symbol_table);
    }
    ptx_lineno = 1;
 
@@ -323,6 +323,23 @@ int g_func_decl = 0;
 int g_ident_add_uid = 0;
 unsigned g_const_alloc = 1;
 
+// Returns padding that needs to be inserted ahead of address to make it aligned to min(size, maxalign)
+/*
+ * @param address the address in bytes
+ * @param size the size of the memory to be allocated in bytes
+ * @param maximum alignment in bytes. i.e. if size is too big then align to this instead
+ */
+int pad_address (new_addr_type address, unsigned size, unsigned maxalign) {
+    assert(size > 0);
+    assert(maxalign > 0);
+    int alignto = maxalign;
+    if (size < maxalign &&
+            (size & (size-1)) == 0) { //size is a power of 2
+        alignto = size;
+    }
+    return alignto ? ((alignto - (address % alignto)) % alignto) : 0;
+}
+
 void add_identifier( const char *identifier, int array_dim, unsigned array_ident ) 
 {
    if( g_func_decl && (g_func_info == NULL) ) {
@@ -340,7 +357,8 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
    int basic_type;
    int regnum;
    size_t num_bits;
-   unsigned addr, addr_pad;
+   unsigned addr_pad;
+   new_addr_type addr;
    ti.type_decode(num_bits,basic_type);
 
    bool duplicates = check_for_duplicates( identifier );
@@ -384,14 +402,16 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       g_last_symbol->set_regno(regnum, arch_regnum);
       } break;
    case shared_space:
-      printf("GPGPU-Sim PTX: allocating shared region for \"%s\" from 0x%x to 0x%lx (shared memory space)\n",
-             identifier,
-             g_current_symbol_table->get_shared_next(),
-             g_current_symbol_table->get_shared_next() + num_bits/8 );
+      printf("GPGPU-Sim PTX: allocating shared region for \"%s\" ",
+             identifier);
       fflush(stdout);
       assert( (num_bits%8) == 0  );
       addr = g_current_symbol_table->get_shared_next();
-      addr_pad = num_bits ? (((num_bits/8) - (addr % (num_bits/8))) % (num_bits/8)) : 0;
+      addr_pad = pad_address(addr, num_bits/8, 128);
+      printf("from 0x%x to 0x%lx (shared memory space)\n",
+              addr+addr_pad,
+              addr+addr_pad + num_bits/8);
+         fflush(stdout);
       g_last_symbol->set_address( addr+addr_pad );
       g_current_symbol_table->alloc_shared( num_bits/8 + addr_pad );
       break;
@@ -399,15 +419,17 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       if( array_ident == ARRAY_IDENTIFIER_NO_DIM ) {
          printf("GPGPU-Sim PTX: deferring allocation of constant region for \"%s\" (need size information)\n", identifier );
       } else {
-         printf("GPGPU-Sim PTX: allocating constant region for \"%s\" from 0x%x to 0x%lx (global memory space) %u\n",
-                identifier,
-                g_current_symbol_table->get_global_next(),
-                g_current_symbol_table->get_global_next() + num_bits/8,
-                g_const_alloc++ );
+         printf("GPGPU-Sim PTX: allocating constant region for \"%s\" ",
+                identifier);
          fflush(stdout);
          assert( (num_bits%8) == 0  ); 
          addr = g_current_symbol_table->get_global_next();
-         addr_pad = num_bits ? (((num_bits/8) - (addr % (num_bits/8))) % (num_bits/8)) : 0;
+         addr_pad = pad_address(addr, num_bits/8, 128);
+         printf("from 0x%x to 0x%lx (global memory space) %u\n",
+              addr+addr_pad,
+              addr+addr_pad + num_bits/8,
+              g_const_alloc++);
+         fflush(stdout);
          g_last_symbol->set_address( addr + addr_pad );
          g_current_symbol_table->alloc_global( num_bits/8 + addr_pad ); 
       }
@@ -418,14 +440,16 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       g_sym_name_to_symbol_table[ identifier ] = g_current_symbol_table;
       break;
    case global_space:
-      printf("GPGPU-Sim PTX: allocating global region for \"%s\" from 0x%x to 0x%lx (global memory space)\n",
-             identifier,
-             g_current_symbol_table->get_global_next(),
-             g_current_symbol_table->get_global_next() + num_bits/8 );
+      printf("GPGPU-Sim PTX: allocating global region for \"%s\" ",
+             identifier);
       fflush(stdout);
       assert( (num_bits%8) == 0  );
       addr = g_current_symbol_table->get_global_next();
-      addr_pad = num_bits ? (((num_bits/8) - (addr % (num_bits/8))) % (num_bits/8)) : 0;
+      addr_pad = pad_address(addr, num_bits/8, 128);
+      printf("from 0x%x to 0x%lx (global memory space)\n",
+              addr+addr_pad,
+              addr+addr_pad + num_bits/8);
+      fflush(stdout);
       g_last_symbol->set_address( addr+addr_pad );
       g_current_symbol_table->alloc_global( num_bits/8 + addr_pad );
       g_globals.insert( identifier );
@@ -434,25 +458,32 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       break;
    case local_space:
       if( g_func_info == NULL ) {
-	      printf("GPGPU-Sim PTX: allocating local region for \"%s\" from 0x%x to 0x%lx (local memory space)\n",
-             identifier,
-             g_current_symbol_table->get_local_next(),
-             g_current_symbol_table->get_local_next() + num_bits/8 );
+          printf("GPGPU-Sim PTX: allocating local region for \"%s\" ", identifier);
          fflush(stdout);
          assert( (num_bits%8) == 0  );
-         g_last_symbol->set_address( g_current_symbol_table->get_local_next() );
-         g_current_symbol_table->alloc_local( num_bits/8 );
-         break;
+         addr = g_current_symbol_table->get_local_next();
+         addr_pad = pad_address(addr, num_bits/8, 128);
+         printf("from 0x%x to 0x%lx (local memory space)\n",
+                 addr+addr_pad,
+                 addr+addr_pad + num_bits/8);
+         fflush(stdout);
+         g_last_symbol->set_address( addr+addr_pad);
+         g_current_symbol_table->alloc_local( num_bits/8 + addr_pad);
+      } else {
+        printf("GPGPU-Sim PTX: allocating stack frame region for .local \"%s\" ",
+               identifier);
+        fflush(stdout);
+        assert( (num_bits%8) == 0 );
+        addr = g_current_symbol_table->get_local_next();
+        addr_pad = pad_address(addr, num_bits/8, 128);
+        printf("from 0x%x to 0x%lx\n",
+                addr+addr_pad,
+                addr+addr_pad + num_bits/8);
+        fflush(stdout);
+        g_last_symbol->set_address( addr+addr_pad );
+        g_current_symbol_table->alloc_local( num_bits/8 + addr_pad);
+        g_func_info->set_framesize( g_current_symbol_table->get_local_next() );
       }
-      printf("GPGPU-Sim PTX: allocating stack frame region for .local \"%s\" from 0x%x to 0x%lx\n",
-             identifier,
-             g_current_symbol_table->get_local_next(),
-             g_current_symbol_table->get_local_next() + num_bits/8 );
-      fflush(stdout);
-      assert( (num_bits%8) == 0  );
-      g_last_symbol->set_address( g_current_symbol_table->get_local_next() );
-      g_current_symbol_table->alloc_local( num_bits/8 );
-      g_func_info->set_framesize( g_current_symbol_table->get_local_next() );
       break;
    case tex_space:
       printf("GPGPU-Sim PTX: encountered texture directive %s.\n", identifier);
@@ -733,9 +764,9 @@ void change_operand_lohi( int lohi )
 
 void set_immediate_operand_type ()
 {
-	 PTX_PARSE_DPRINTF("set_immediate_operand_type");
-	 assert( !g_operands.empty() );
-	 g_operands.back().set_immediate_addr();
+     PTX_PARSE_DPRINTF("set_immediate_operand_type");
+     assert( !g_operands.empty() );
+     g_operands.back().set_immediate_addr();
 }
 
 void change_double_operand_type( int operand_type )
