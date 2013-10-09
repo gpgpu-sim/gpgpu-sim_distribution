@@ -55,6 +55,7 @@ Version 3.2.1+edits (development branch) versus 3.2.1
   BookSim 2.0.
 - Added the ability to trace all the shader cores in the SHADER_DPRINTF
 - Bug Fixes:
+    - Fixed icnt::full() check using wrong mf size
     - Fixed the flit count sent to GPUWattch for atomic operations. 
     - Fix for Bug 51 - Updated the function declaration of
       clCreateContextFromType(). 

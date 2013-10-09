@@ -143,6 +143,9 @@ void InterconnectInterface::Init()
 
 void InterconnectInterface::Push(unsigned input_deviceID, unsigned output_deviceID, void *data, unsigned int size)
 {
+  // it should have free buffer
+  assert(HasBuffer(input_deviceID, size));
+  
   int output_icntID = _node_map[output_deviceID];
   int input_icntID = _node_map[input_deviceID];
   
