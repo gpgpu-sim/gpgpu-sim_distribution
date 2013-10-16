@@ -195,7 +195,7 @@ class Processor : public Component
 		value+=(mc->frontend->mcp.llcBlockSize*8.0/mc->mcp.dataBusWidth)*
 		  (mc->frontend->readBuffer->local_result.power.writeOp.dynamic);
 
-		value+=mc->dram->dramp.rd_coeff*cores[0]->executionTime;
+		value+=mc->dram->dramp.rd_coeff;
 		/*
 			value+=mc->frontend->PRT->local_result.power.readOp.dynamic;
 			value+=mc->frontend->threadMasks->local_result.power.readOp.dynamic;
@@ -239,7 +239,7 @@ class Processor : public Component
 		value+=(mc->frontend->mcp.llcBlockSize*8.0/mc->frontend->mcp.dataBusWidth)*
 		  (mc->frontend->writeBuffer->local_result.power.writeOp.dynamic);
 
-		value+=mc->dram->dramp.wr_coeff*cores[0]->executionTime;
+		value+=mc->dram->dramp.wr_coeff;
 		/*
 			value+=(mc->frontend->PRT->local_result.power.writeOp.dynamic);
 
@@ -273,7 +273,7 @@ class Processor : public Component
 	 double get_coefficient_mem_pre()
 	 {
 		double value=0;
-		value+=mc->dram->dramp.pre_coeff*cores[0]->executionTime;
+		value+=mc->dram->dramp.pre_coeff;
 		//return 0.4*value;
 		return value;
 		
