@@ -483,30 +483,18 @@ MCFrontEnd::MCFrontEnd(ParseXML *XML_interface,InputParameter* interface_ip_, co
 void DRAM::computeEnergy(bool is_tdp)
 {
 	if (is_tdp){
-			power.reset();
-
+		power.reset();
+		return; /// not supporting TDP calculation for DRAM
 	}
-	else{
-			rt_power.reset();
-			dramp.executionTim   = XML->sys.total_cycles/(XML->sys.target_core_clockrate*1e6);
-	}
+	rt_power.reset();
+	dramp.executionTime   = XML->sys.total_cycles/(XML->sys.target_core_clockrate*1e6);
 
 	power_t.reset();
-	power_t.readOp.dynamic+=XML->sys.mc.memory_reads*dramp.rd_coeff*dramp.executionTim;
-	power_t.readOp.dynamic+=XML->sys.mc.memory_writes*dramp.wr_coeff*dramp.executionTim;
-	power_t.readOp.dynamic+=XML->sys.mc.dram_pre*dramp.pre_coeff*dramp.executionTim;
-	if (is_tdp){
-			power.reset();
+	power_t.readOp.dynamic+=XML->sys.mc.memory_reads*dramp.rd_coeff;
+	power_t.readOp.dynamic+=XML->sys.mc.memory_writes*dramp.wr_coeff;
+	power_t.readOp.dynamic+=XML->sys.mc.dram_pre*dramp.pre_coeff;
 
-	}
-	else{
-			//rt_power.reset();
-			rt_power = rt_power + power_t ;
-			//printf("DRAM power: %f total_cycles: %f target_clock_rate: %f\n",rt_power.readOp.dynamic/dramp.executionTim,
-			//	XML->sys.total_cycles,(XML->sys.target_core_clockrate*1e6)	);
-	}
-
-
+	rt_power = rt_power + power_t ;
 }
 
 
@@ -914,43 +902,20 @@ void MemoryController::displayEnergy(uint32_t indent,int plevel,bool is_tdp)
 	}
 
 }
+
 void DRAM::set_dram_param()
 {
-	if (dram_type==GDDR5)
-	{
-	    dramp.clockRate=XML->sys.mc.mc_clock*2*1e6;
-	    dramp.executionTim=XML->sys.total_cycles/(XML->sys.target_core_clockrate*1e6);
-	    dramp.cmd_coeff=0;
-	    dramp.act_coeff=0;
-	    dramp.nop_coeff=0;
-	    dramp.activity_coeff=0;
-
-	    dramp.pre_coeff=0.81*0.0665;// 0.0383;//0.0395;//0.0401637266720557;//0.0092780790143343;//0.005;//*dramp.executionTim;
-	    dramp.rd_coeff= 0.81*0.1339;// 0.0653;//0.064;//0.0624228500824509;//0.0565534489065191;//0.0446;//*dramp.executionTim;
-	    dramp.wr_coeff=  0.81*0.0613;//0.0067;//0.006;//0.0251181528358946;//0.015;//0.0079;//*dramp.executionTim;
-	    dramp.req_coeff=0;
-	    dramp.const_coeff=0;
-
-	}else if (dram_type==GDDR3)
-	{
-	    dramp.clockRate=XML->sys.mc.mc_clock*2*1e6;
-	    dramp.executionTim=XML->sys.total_cycles/(XML->sys.target_core_clockrate*1e6);
-	    dramp.cmd_coeff=0;
-	    dramp.act_coeff=0;
-	    dramp.nop_coeff=0;
-	    dramp.activity_coeff=0;
-
-	    dramp.pre_coeff=0.020;//0.0665;// 0.0383;//0.0395;//0.0401637266720557;//0.0092780790143343;//0.005;//*dramp.executionTim;
-	    dramp.rd_coeff= 0.040;//0.1339;// 0.0653;//0.064;//0.0624228500824509;//0.0565534489065191;//0.0446;//*dramp.executionTim;
-	    dramp.wr_coeff=  0.017;//0.0213;//0.0067;//0.006;//0.0251181528358946;//0.015;//0.0079;//*dramp.executionTim;
-	    dramp.req_coeff=0;
-	    dramp.const_coeff=0;
-	}else
-	{
-		cout<<"Unknown DRAM type" <<endl;
-		exit(0);
-	}
+	dramp.cmd_coeff 		= XML->sys.mc.dram_rd_coeff;
+	dramp.act_coeff 		= XML->sys.mc.dram_act_coeff;
+	dramp.nop_coeff			= XML->sys.mc.dram_nop_coeff;
+	dramp.activity_coeff 	= XML->sys.mc.dram_activity_coeff;
+	dramp.pre_coeff			= XML->sys.mc.dram_pre_coeff;
+	dramp.rd_coeff			= XML->sys.mc.dram_rd_coeff;
+	dramp.wr_coeff			= XML->sys.mc.dram_wr_coeff;
+	dramp.req_coeff			= XML->sys.mc.dram_req_coeff;
+	dramp.const_coeff		= XML->sys.mc.dram_const_coeff;
 }
+
 void MemoryController::set_mc_param()
 {
 

@@ -1586,6 +1586,15 @@ void ParseXML::parse(char* filepath)
 				if (strcmp(xNode3.getChildNode("param",k).getAttribute("name"),"type")==0) {sys.mc.type=atoi(xNode3.getChildNode("param",k).getAttribute("value"));continue;}
 				if (strcmp(xNode3.getChildNode("param",k).getAttribute("name"),"withPHY")==0) {sys.mc.withPHY=(bool)atoi(xNode3.getChildNode("param",k).getAttribute("value"));continue;}
 
+        		if (strcmp(xNode3.getChildNode("param",k).getAttribute("name"),"dram_cmd_coeff")==0) {sys.mc.dram_cmd_coeff=atof(xNode3.getChildNode("param",k).getAttribute("value"));continue;}
+        		if (strcmp(xNode3.getChildNode("param",k).getAttribute("name"),"dram_act_coeff")==0) {sys.mc.dram_act_coeff=atof(xNode3.getChildNode("param",k).getAttribute("value"));continue;}
+        		if (strcmp(xNode3.getChildNode("param",k).getAttribute("name"),"dram_nop_coeff")==0) {sys.mc.dram_nop_coeff=atof(xNode3.getChildNode("param",k).getAttribute("value"));continue;}
+        		if (strcmp(xNode3.getChildNode("param",k).getAttribute("name"),"dram_activity_coeff")==0) {sys.mc.dram_activity_coeff=atof(xNode3.getChildNode("param",k).getAttribute("value"));continue;}
+        		if (strcmp(xNode3.getChildNode("param",k).getAttribute("name"),"dram_pre_coeff")==0) {sys.mc.dram_pre_coeff=atof(xNode3.getChildNode("param",k).getAttribute("value"));continue;}
+        		if (strcmp(xNode3.getChildNode("param",k).getAttribute("name"),"dram_rd_coeff")==0) {sys.mc.dram_rd_coeff=atof(xNode3.getChildNode("param",k).getAttribute("value"));continue;}
+        		if (strcmp(xNode3.getChildNode("param",k).getAttribute("name"),"dram_wr_coeff")==0) {sys.mc.dram_wr_coeff=atof(xNode3.getChildNode("param",k).getAttribute("value"));continue;}
+        		if (strcmp(xNode3.getChildNode("param",k).getAttribute("name"),"dram_req_coeff")==0) {sys.mc.dram_req_coeff=atof(xNode3.getChildNode("param",k).getAttribute("value"));continue;}
+        		if (strcmp(xNode3.getChildNode("param",k).getAttribute("name"),"dram_const_coeff")==0) {sys.mc.dram_const_coeff=atof(xNode3.getChildNode("param",k).getAttribute("value"));continue;}
 			}
 			itmp=xNode3.nChildNode("stat");
 			for(k=0; k<itmp; k++)
@@ -2069,6 +2078,7 @@ void ParseXML::initialize() //Initialize all
 	sys.mem.memory_accesses=1;
 	sys.mem.memory_reads=1;
 	sys.mem.memory_writes=1;
+
 	//system_mc
 	sys.mc.mc_clock =1;
 	sys.mc.number_mcs=1;
@@ -2084,6 +2094,7 @@ void ParseXML::initialize() //Initialize all
 	sys.mc.memory_writes=1;
 	sys.mc.LVDS=true;
 	sys.mc.type=1;
+
 	//system_niu
 	sys.niu.clockrate =1;
 	sys.niu.number_units=1;

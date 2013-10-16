@@ -87,6 +87,11 @@ Version 3.2.1+edits (development branch) versus 3.2.1
       write-allocation requests from L1 cache are not consumed by the L2 cache. 
     - Fixed a bug that caused allocated local and stack memory to be not correctly
       aligned.
+    - Fix for Bug 67 - updated the DRAM operaion coeff so that it adapts to different
+	  calculation interval. Moved the DRAM related coeffs in XML configuration. Both  
+	  gpuwattch_gtx480.xml and gpuwattch_quadrofx5600.xml are added with GDDR5/GDDR3
+	  coeffs.
+
 
 Version 3.2.1 versus 3.2.0
 - Added kernel name and launch uids to performance statistics log.

@@ -200,7 +200,7 @@ public:
 	DRAMParam(ParseXML *XML_interface, int ithCache_);
     string name;
     double  clockRate;
-    double executionTim;
+    double executionTime;
     double cmd_coeff;
     double activity_coeff;
     double nop_coeff;
@@ -210,6 +210,49 @@ public:
     double wr_coeff;
     double req_coeff;
     double const_coeff;
+
+	int detailed_dram_model; // 1 - to use newly added DRAM model (GDDR5 only), 0 - use empirical model
+	// the following are the current specified by DATA SHEET
+	// unit: mA
+	int idd0;
+	int idd1;
+	int idd2p;
+	int idd2n;
+	int idd3p;
+	int idd3n;
+	int idd4r;
+	int idd4w;
+	int idd5;
+	int idd6;
+	int idd7;
+
+	// the following are the vdd specified by DATA SHEET; NOT the actual VDD
+	double datasheet_vdd;
+	double actual_vdd;
+
+	// the following are the timing parameters specified by DATA SHEET
+	// unit: ns
+	int t_ccd;
+	int t_rrd;
+	int t_rcd;
+	int t_ras;
+	int t_rp;
+	int t_rc;
+	int t_cl;
+	int t_cdlr;
+	int t_wr;
+
+	// the following are the DRAM clocks
+	// unit: MHz
+	int datasheet_operating_clock; // this is specified by DATA SHEET. This is NOT the actual DRAM clock
+	int actual_operating_clock;
+
+	// the following are each DRAM bank's IO info
+	int bank_width; // in bits
+	int dqs_signal_width; // in bits
+	int extra_dq_write_signal_width; //in bits
+	int per_dq_read_power; // in mW
+	int per_dq_write_power; // in mW
 
     ~DRAMParam(){};
 };

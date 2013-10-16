@@ -524,6 +524,7 @@ typedef struct{
 	int output_width_of_DRAM_chip;
 	int page_size_of_DRAM_chip;
 	int burstlength_of_DRAM_chip;
+
 	//stats
 	double memory_accesses;
 	double memory_reads;
@@ -554,6 +555,17 @@ typedef struct{
 	int addressbus_width;
 	int PRT_entries;
 	bool LVDS;
+
+	// emprical DRAM coeff
+	double dram_cmd_coeff;
+	double dram_act_coeff;
+	double dram_nop_coeff;
+	double dram_activity_coeff;
+	double dram_pre_coeff;
+	double dram_rd_coeff;
+	double dram_wr_coeff;
+	double dram_req_coeff;
+	double dram_const_coeff;
 
 	//stats
 	double memory_accesses;

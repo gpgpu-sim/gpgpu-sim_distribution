@@ -474,6 +474,16 @@
 			<param name="databus_width" value="32"/>
 			<param name="addressbus_width" value="32"/>
 			<param name="PRT_entries" value="32"/>
+			<!-- # of empirical DRAM model parameter -->
+			<param name="dram_cmd_coeff" value="0"/>
+			<param name="dram_act_coeff" value="0"/>
+			<param name="dram_nop_coeff" value="0"/>
+			<param name="dram_activity_coeff" value="0"/>
+			<param name="dram_pre_coeff" value="1.53846154e-8f"/>
+			<param name="dram_rd_coeff" value="3.07692308e-8f"/>
+			<param name="dram_wr_coeff" value="1.30769231e-8f"/>
+			<param name="dram_req_coeff" value="0"/>
+			<param name="dram_const_coeff" value="0"/>
 
 			<!-- McPAT will add the control bus width to the addressbus width automatically -->
 			<stat name="memory_accesses" value="memory_accesses_match_mcpat"/>
