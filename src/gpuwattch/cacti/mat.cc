@@ -392,7 +392,6 @@ Mat::Mat(const DynamicParameter & dyn_p)
                                       sa_mux_lev_1_dec->area.get_area() +
                                       sa_mux_lev_2_dec->area.get_area()) * (RWP + ERP + EWP);
 
-  double area_efficiency_mat;
 
 //  if (!is_fa)
 //  {
@@ -400,7 +399,6 @@ Mat::Mat(const DynamicParameter & dyn_p)
     area.h = (num_subarrays_per_mat/num_subarrays_per_row)* subarray.area.h + h_non_cell_area;
     area.w = num_subarrays_per_row * subarray.area.get_w() + w_non_cell_area;
     area.w = (area.h*area.w + area_mat_center_circuitry) / area.h;
-    area_efficiency_mat = subarray.area.get_area() * num_subarrays_per_mat * 100.0 / area.get_area();
 
 //    cout<<"h_bit_mux_sense_amp_precharge_sa_mux_write_driver_write_mux"<<h_bit_mux_sense_amp_precharge_sa_mux_write_driver_write_mux<<endl;
 //    cout<<"h_comparators"<<h_comparators<<endl;
@@ -659,11 +657,8 @@ double Mat::compute_cam_delay(double inrisetime)
   double out_time_ramp, this_delay;
   double Rwire, tf, c_intrinsic, rd, Cwire, c_gate_load;
 
-
-  double Wdecdrivep, Wdecdriven, Wfadriven, Wfadrivep, Wfadrive2n, Wfadrive2p, Wfadecdrive1n, Wfadecdrive1p,
-    Wfadecdrive2n, Wfadecdrive2p, Wfadecdriven, Wfadecdrivep, Wfaprechn, Wfaprechp,
-    Wdummyn, Wdummyinvn, Wdummyinvp, Wfainvn, Wfainvp, Waddrnandn, Waddrnandp,
-    Wfanandn, Wfanandp, Wfanorn, Wfanorp, Wdecnandn, Wdecnandp, W_hit_miss_n, W_hit_miss_p;
+ double  Wfaprechp, Wdummyn, Wdummyinvn, Wdummyinvp, Waddrnandn, Waddrnandp,
+     Wfanorn, Wfanorp,W_hit_miss_n, W_hit_miss_p;
 
   double c_matchline_metal, r_matchline_metal, c_searchline_metal, r_searchline_metal,  dynSearchEng;
   int Htagbits;
@@ -696,25 +691,6 @@ double Mat::compute_cam_delay(double inrisetime)
 
   if (linear_scaling)
   {
-	  Wdecdrivep    =  450 * g_ip->F_sz_um;//this was 360 micron for the 0.8 micron process
-	  Wdecdriven    =  300 * g_ip->F_sz_um;//this was 240 micron for the 0.8 micron process
-	  Wfadriven     = 62.5 * g_ip->F_sz_um;//this was  50 micron for the 0.8 micron process
-	  Wfadrivep     =  125 * g_ip->F_sz_um;//this was 100 micron for the 0.8 micron process
-	  Wfadrive2n    =  250 * g_ip->F_sz_um;//this was 200 micron for the 0.8 micron process
-	  Wfadrive2p    =  500 * g_ip->F_sz_um;//this was 400 micron for the 0.8 micron process
-	  Wfadecdrive1n = 6.25 * g_ip->F_sz_um;//this was   5 micron for the 0.8 micron process
-	  Wfadecdrive1p = 12.5 * g_ip->F_sz_um;//this was  10 micron for the 0.8 micron process
-	  Wfadecdrive2n =   25 * g_ip->F_sz_um;//this was  20 micron for the 0.8 micron process
-	  Wfadecdrive2p =   50 * g_ip->F_sz_um;//this was  40 micron for the 0.8 micron process
-	  Wfadecdriven  = 62.5 * g_ip->F_sz_um;//this was  50 micron for the 0.8 micron process
-	  Wfadecdrivep  =  125 * g_ip->F_sz_um;//this was 100 micron for the 0.8 micron process
-	  Wfaprechn     =  7.5 * g_ip->F_sz_um;//this was   6 micron for the 0.8 micron process
-	  Wfainvn       = 12.5 * g_ip->F_sz_um;//this was  10 micron for the 0.8 micron process
-	  Wfainvp       =   25 * g_ip->F_sz_um;//this was  20 micron for the 0.8 micron process
-	  Wfanandn      =   25 * g_ip->F_sz_um;//this was  20 micron for the 0.8 micron process
-	  Wfanandp      = 37.5 * g_ip->F_sz_um;//this was  30 micron for the 0.8 micron process
-	  Wdecnandn     = 12.5 * g_ip->F_sz_um;//this was  10 micron for the 0.8 micron process
-	  Wdecnandp     = 37.5 * g_ip->F_sz_um;//this was  30 micron for the 0.8 micron process
 
 	  Wfaprechp     = 12.5 * g_ip->F_sz_um;//this was  10 micron for the 0.8 micron process
 	  Wdummyn       = 12.5 * g_ip->F_sz_um;//this was  10 micron for the 0.8 micron process
@@ -730,26 +706,6 @@ double Mat::compute_cam_delay(double inrisetime)
   }
   else
   {
-	  Wdecdrivep    =  450 * g_ip->F_sz_um;//this was 360 micron for the 0.8 micron process
-	  Wdecdriven    =  300 * g_ip->F_sz_um;//this was 240 micron for the 0.8 micron process
-	  Wfadriven     = 62.5 * g_ip->F_sz_um;//this was  50 micron for the 0.8 micron process
-	  Wfadrivep     =  125 * g_ip->F_sz_um;//this was 100 micron for the 0.8 micron process
-	  Wfadrive2n    =  250 * g_ip->F_sz_um;//this was 200 micron for the 0.8 micron process
-	  Wfadrive2p    =  500 * g_ip->F_sz_um;//this was 400 micron for the 0.8 micron process
-	  Wfadecdrive1n = 6.25 * g_ip->F_sz_um;//this was   5 micron for the 0.8 micron process
-	  Wfadecdrive1p = 12.5 * g_ip->F_sz_um;//this was  10 micron for the 0.8 micron process
-	  Wfadecdrive2n =   25 * g_ip->F_sz_um;//this was  20 micron for the 0.8 micron process
-	  Wfadecdrive2p =   50 * g_ip->F_sz_um;//this was  40 micron for the 0.8 micron process
-	  Wfadecdriven  = 62.5 * g_ip->F_sz_um;//this was  50 micron for the 0.8 micron process
-	  Wfadecdrivep  =  125 * g_ip->F_sz_um;//this was 100 micron for the 0.8 micron process
-	  Wfaprechn     =  7.5 * g_ip->F_sz_um;//this was   6 micron for the 0.8 micron process
-	  Wfainvn       = 12.5 * g_ip->F_sz_um;//this was  10 micron for the 0.8 micron process
-	  Wfainvp       =   25 * g_ip->F_sz_um;//this was  20 micron for the 0.8 micron process
-	  Wfanandn      =   25 * g_ip->F_sz_um;//this was  20 micron for the 0.8 micron process
-	  Wfanandp      = 37.5 * g_ip->F_sz_um;//this was  30 micron for the 0.8 micron process
-	  Wdecnandn     = 12.5 * g_ip->F_sz_um;//this was  10 micron for the 0.8 micron process
-	  Wdecnandp     = 37.5 * g_ip->F_sz_um;//this was  30 micron for the 0.8 micron process
-
 	  Wfaprechp     = g_tp.w_pmos_bl_precharge;//this was  10 micron for the 0.8 micron process
 	  Wdummyn       = g_tp.cam.cell_nmos_w;
 	  Wdummyinvn    =   75 * g_ip->F_sz_um;//this was  60 micron for the 0.8 micron process
