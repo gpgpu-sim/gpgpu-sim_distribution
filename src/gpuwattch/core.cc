@@ -718,7 +718,7 @@ LoadStoreU::LoadStoreU(ParseXML* XML_interface, int ithCore_, InputParameter* in
  exist(exist_)
 {
 	  if (!exist) return;
-	  int  idx, tag, data, size, line, assoc, banks;
+	  int  idx, tag, data, size, line, assoc;
 	  bool debug= false;
 	  int ldst_opcode = XML->sys.core[ithCore].opcode_width;//16;
 
@@ -750,7 +750,6 @@ LoadStoreU::LoadStoreU(ParseXML* XML_interface, int ithCore_, InputParameter* in
 	  size                             = (int)XML->sys.core[ithCore].sharedmemory.dcache_config[0];
 	  line                             = (int)XML->sys.core[ithCore].sharedmemory.dcache_config[1];
 	  assoc                            = (int)XML->sys.core[ithCore].sharedmemory.dcache_config[2];
-	  banks                            = (int)XML->sys.core[ithCore].sharedmemory.dcache_config[3];
 	  idx    					 	   = debug?9:int(ceil(log2(size/line/assoc)));
 	  tag							   = debug?51:XML->sys.physical_address_width-idx-int(ceil(log2(line))) + EXTRA_TAG_BITS;
 	  interface_ip.specific_tag        = 1;
@@ -891,7 +890,6 @@ LoadStoreU::LoadStoreU(ParseXML* XML_interface, int ithCore_, InputParameter* in
 	  size                             = (int)XML->sys.core[ithCore].ccache.dcache_config[0];
 	  line                             = (int)XML->sys.core[ithCore].ccache.dcache_config[1];
 	  assoc                            = (int)XML->sys.core[ithCore].ccache.dcache_config[2];
-	  banks                            = (int)XML->sys.core[ithCore].ccache.dcache_config[3];
 	  idx    					 	   = debug?9:int(ceil(log2(size/line/assoc)));
 	  tag							   = debug?51:XML->sys.physical_address_width-idx-int(ceil(log2(line))) + EXTRA_TAG_BITS;
 	  interface_ip.specific_tag        = 1;
@@ -1035,7 +1033,6 @@ LoadStoreU::LoadStoreU(ParseXML* XML_interface, int ithCore_, InputParameter* in
 	  size                             = (int)XML->sys.core[ithCore].tcache.dcache_config[0];
 	  line                             = (int)XML->sys.core[ithCore].tcache.dcache_config[1];
 	  assoc                            = (int)XML->sys.core[ithCore].tcache.dcache_config[2];
-	  banks                            = (int)XML->sys.core[ithCore].tcache.dcache_config[3];
 	  idx    					 	   = debug?9:int(ceil(log2(size/line/assoc)));
 	  tag							   = debug?51:XML->sys.physical_address_width-idx-int(ceil(log2(line))) + EXTRA_TAG_BITS;
 	  interface_ip.specific_tag        = 1;
@@ -1181,7 +1178,6 @@ LoadStoreU::LoadStoreU(ParseXML* XML_interface, int ithCore_, InputParameter* in
 	  size                             = (int)XML->sys.core[ithCore].dcache.dcache_config[0];
 	  line                             = (int)XML->sys.core[ithCore].dcache.dcache_config[1];
 	  assoc                            = (int)XML->sys.core[ithCore].dcache.dcache_config[2];
-	  banks                            = (int)XML->sys.core[ithCore].dcache.dcache_config[3];
 	  idx    					 	   = debug?9:int(ceil(log2(size/line/assoc)));
 	  tag							   = debug?51:XML->sys.physical_address_width-idx-int(ceil(log2(line))) + EXTRA_TAG_BITS;
 	  interface_ip.specific_tag        = 1;
@@ -4827,6 +4823,16 @@ void Core::computeEnergy(bool is_tdp)
     double num_units = 4.0;
     Pipeline_energy=0;
 
+    if (XML->sys.homogeneous_cores==1)
+    {
+       rtp_pipeline_coe = coredynp.pipeline_duty_cycle * XML->sys.total_cycles * XML->sys.number_of_cores;
+    }
+    else
+    {
+       rtp_pipeline_coe = coredynp.pipeline_duty_cycle * coredynp.total_cycles;
+    }
+ 
+
 	if (is_tdp)
 	{
 		ifu->computeEnergy(is_tdp);
@@ -4924,16 +4930,7 @@ void Core::computeEnergy(bool is_tdp)
 		else
 		{
 
-			if (XML->sys.homogeneous_cores==1)
-			{
-				rtp_pipeline_coe = coredynp.pipeline_duty_cycle * XML->sys.total_cycles * XML->sys.number_of_cores;
-
-			}
-			else
-			{
-				rtp_pipeline_coe = coredynp.pipeline_duty_cycle * coredynp.total_cycles;
-			}
-		set_pppm(pppm_t, coredynp.num_pipelines*rtp_pipeline_coe/num_units, coredynp.num_pipelines/num_units, coredynp.num_pipelines/num_units, coredynp.num_pipelines/num_units);
+		    set_pppm(pppm_t, coredynp.num_pipelines*rtp_pipeline_coe/num_units, coredynp.num_pipelines/num_units, coredynp.num_pipelines/num_units, coredynp.num_pipelines/num_units);
 		}
 
 		if (ifu->exist)

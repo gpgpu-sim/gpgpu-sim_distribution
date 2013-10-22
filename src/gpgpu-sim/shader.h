@@ -419,14 +419,18 @@ public:
                           int id,
                           char* config_str )
 	: scheduler_unit ( stats, shader, scoreboard, simt, warp, sp_out, sfu_out, mem_out, id ),
-	  m_pending_warps()
+	  m_pending_warps() 
     {
+        unsigned inner_level_readin;
+        unsigned outer_level_readin; 
         int ret = sscanf( config_str,
                           "two_level_active:%d:%d:%d",
                           &m_max_active_warps,
-                          (int*)&m_inner_level_prioritization,
-                          (int*)&m_outer_level_prioritization );
+                          &inner_level_readin,
+                          &outer_level_readin);
         assert( 3 == ret );
+        m_inner_level_prioritization=(scheduler_prioritization_type)inner_level_readin;
+        m_outer_level_prioritization=(scheduler_prioritization_type)outer_level_readin;
     }
 	virtual ~two_level_active_scheduler () {}
     virtual void order_warps();
@@ -447,7 +451,7 @@ protected:
                                     const std::vector< shd_warp_t* >::const_iterator& prioritized_iter );
 
 private:
-	std::deque< shd_warp_t* > m_pending_warps; 
+	std::deque< shd_warp_t* > m_pending_warps;
     scheduler_prioritization_type m_inner_level_prioritization;
     scheduler_prioritization_type m_outer_level_prioritization;
 	unsigned m_max_active_warps;

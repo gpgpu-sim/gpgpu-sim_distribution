@@ -1054,13 +1054,9 @@ inst_decoder::inst_decoder(
 void inst_decoder::inst_decoder_delay_power()
 {
 
-	double dec_outrisetime;
-	double inrisetime=0, outrisetime;
 	double pppm_t[4]    = {1,1,1,1};
 	double squencer_passes = x86?2:1;
 
-	outrisetime = pre_dec->compute_delays(inrisetime);
-	dec_outrisetime = final_dec->compute_delays(outrisetime);
 	set_pppm(pppm_t, squencer_passes*num_decoder_segments, num_decoder_segments, squencer_passes*num_decoder_segments, num_decoder_segments);
     power = power + pre_dec->power*pppm_t;
     set_pppm(pppm_t, squencer_passes*num_decoder_segments, num_decoder_segments*num_decoded_signals,

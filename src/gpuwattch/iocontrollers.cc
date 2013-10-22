@@ -75,9 +75,9 @@ NIUController::NIUController(ParseXML *XML_interface,InputParameter* interface_i
  {
 	  local_result = init_interface(&interface_ip);
 
-	  double frontend_area, phy_area, mac_area, SerDer_area;
+	  double frontend_area,mac_area, SerDer_area;
       double frontend_dyn, mac_dyn, SerDer_dyn;
-      double frontend_gates, mac_gates, SerDer_gates;
+      double frontend_gates, mac_gates;
 	  double pmos_to_nmos_sizing_r = pmos_to_nmos_sz_ratio();
 	  double NMOS_sizing, PMOS_sizing;
 
@@ -93,7 +93,6 @@ NIUController::NIUController(ParseXML *XML_interface,InputParameter* interface_i
 		  //Area estimation based on average of die photo from Niagara 2 and Cadence ChipEstimate hard IP @65nm.
 		  //SerDer is very hard to scale
 		  SerDer_area = (1.39 + 0.36) * (interface_ip.F_sz_um/0.065);//* (interface_ip.F_sz_um/0.065);
-		  phy_area = frontend_area + SerDer_area;
 		  //total area
 		  area.set_area((mac_area + frontend_area + SerDer_area)*1e6);
 		  //Power
@@ -109,7 +108,6 @@ NIUController::NIUController(ParseXML *XML_interface,InputParameter* interface_i
 		  //Cadence ChipEstimate using 65nm
 		  mac_gates       = 111700;
 		  frontend_gates  = 320000;
-		  SerDer_gates    = 200000;
 		  NMOS_sizing 	  = 5*g_tp.min_w_nmos_;
 		  PMOS_sizing	  = 5*g_tp.min_w_nmos_*pmos_to_nmos_sizing_r;
 
@@ -137,7 +135,6 @@ NIUController::NIUController(ParseXML *XML_interface,InputParameter* interface_i
 
 		  mac_gates       = 111700;
 		  frontend_gates  = 52000;
-		  SerDer_gates    = 199260;
 
 		  NMOS_sizing 	  = g_tp.min_w_nmos_;
 		  PMOS_sizing	  = g_tp.min_w_nmos_*pmos_to_nmos_sizing_r;
@@ -209,7 +206,7 @@ PCIeController::PCIeController(ParseXML *XML_interface,InputParameter* interface
  interface_ip(*interface_ip_)
  {
 	  local_result = init_interface(&interface_ip);
-	  double frontend_area, phy_area, ctrl_area, SerDer_area;
+      double ctrl_area, SerDer_area;
       double ctrl_dyn, SerDer_dyn;
       double ctrl_gates, SerDer_gates;
 	  double pmos_to_nmos_sizing_r = pmos_to_nmos_sz_ratio();
@@ -226,11 +223,9 @@ PCIeController::PCIeController(ParseXML *XML_interface,InputParameter* interface
 		  //Area estimation based on average of die photo from Niagara 2 and Cadence ChipEstimate @ 65nm.
 		  ctrl_area = (5.2 + 0.5)/2 * (interface_ip.F_sz_um/0.065)* (interface_ip.F_sz_um/0.065);
 		  //Area estimation based on average of die photo from Niagara 2, and Cadence ChipEstimate @ 65nm.
-		  frontend_area = (5.2 + 0.1)/2 * (interface_ip.F_sz_um/0.065)* (interface_ip.F_sz_um/0.065);
 		  //Area estimation based on average of die photo from Niagara 2 and Cadence ChipEstimate hard IP @65nm.
 		  //SerDer is very hard to scale
 		  SerDer_area = (3.03 + 0.36) * (interface_ip.F_sz_um/0.065);//* (interface_ip.F_sz_um/0.065);
-		  phy_area = frontend_area + SerDer_area;
 		  //total area
 		  //Power
 		  //Cadence ChipEstimate using 65nm the controller includes everything: the PHY, the data link and transaction layer

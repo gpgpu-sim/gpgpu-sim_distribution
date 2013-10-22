@@ -56,7 +56,7 @@ SharedCache::SharedCache(ParseXML* XML_interface, int ithCache_, InputParameter*
 {
   int idx;
   int tag, data;
-  bool is_default, debug;
+  bool debug; 
   enum Device_ty device_t;
   enum Core_type  core_t;
   double size, line, assoc, banks;
@@ -72,7 +72,6 @@ SharedCache::SharedCache(ParseXML* XML_interface, int ithCache_, InputParameter*
   }
 
   debug           = false;
-  is_default=true;//indication for default setup
   if (XML->sys.Embedded)
   		{
   		interface_ip.wt                  =Global_30;

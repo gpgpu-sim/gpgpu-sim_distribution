@@ -142,7 +142,7 @@ Nuca::sim_nuca()
   /* temp variables */
   int it, ro, wr;
   int num_cyc;
-  unsigned int i, j, k;
+  unsigned int i, j;
   unsigned int r, c;
   int l2_c;
   int bank_count = 0;
@@ -166,10 +166,9 @@ Nuca::sim_nuca()
   double avg_lat, avg_hop, avg_hhop, avg_vhop, avg_dyn_power,
          avg_leakage_power;
 
-  double opt_acclat = INF, opt_avg_lat = INF, opt_tot_lat = INF;
+  double opt_acclat = INF;
   int opt_rows = 0;
   int opt_columns = 0;
-  double opt_totno_hops = 0;
   double opt_avg_hop = 0;
   double opt_dyn_power = 0, opt_leakage_power = 0;
   min_values_t minval;
@@ -285,7 +284,7 @@ Nuca::sim_nuca()
            * count value.
            */
           totno_hops = totno_hhops = totno_vhops = tot_lat = 0;
-          k = 1;
+          
           for (i=0; i<r; i++) {
             for (j=0; j<c; j++) {
               /*
@@ -331,9 +330,6 @@ Nuca::sim_nuca()
 
           if (curr_acclat < opt_acclat) {
             opt_acclat = curr_acclat;
-            opt_tot_lat = tot_lat;
-            opt_avg_lat = avg_lat;
-            opt_totno_hops = totno_hops;
             opt_avg_hop = avg_hop;
             opt_rows = r;
             opt_columns = c;
