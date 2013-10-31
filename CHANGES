@@ -1,5 +1,5 @@
 LOG:
-Version 3.2.1+edits (development branch) versus 3.2.1
+Version 3.2.2 versus 3.2.1
 - Added NVIDIA Quadro FX5600 GPGPU-Sim and GPUWattch configuration files.
 - Added cache_stats class to record all memory accesses and access outcomes 
   for each cache. Switched from the legacy cache statistics recorded in 
@@ -93,7 +93,6 @@ Version 3.2.1+edits (development branch) versus 3.2.1
 	  gpuwattch_gtx480.xml and gpuwattch_quadrofx5600.xml are added with GDDR5/GDDR3
 	  coeffs.
 
-
 Version 3.2.1 versus 3.2.0
 - Added kernel name and launch uids to performance statistics log.
 - Added l2_cache_config class to extend baseline cache_config. Allows for
@@ -171,7 +170,7 @@ Version 3.2.1 versus 3.2.0
     - Fix for [Bug 43] Incorrect power results - new gpuwattch_gtx480.xml file
     - Fix incorrect initialization of wire_length variable in cacti/wire.cc. 
       Caused incorrect per-access cache energy.
-        
+       
 Version 3.2.0 versus 3.1.2
 - Added GPUWattch GPGPU power model based on McPAT 0.8beta. 
 
