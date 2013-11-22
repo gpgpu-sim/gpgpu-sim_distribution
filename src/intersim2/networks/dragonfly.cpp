@@ -217,12 +217,12 @@ void DragonFlyNew::_ComputeSize( const Configuration &config )
 void DragonFlyNew::_BuildNet( const Configuration &config )
 {
 
-  int _output;
-  int _input;
+  int _output=-1;
+  int _input=-1;
+  int _dim_ID=-1;
+  int _num_ports_per_switch=-1;
+  int _dim_size=-1;
   int c;
-  int _dim_ID;
-  int _num_ports_per_switch;
-  int _dim_size;
 
   ostringstream router_name;
 

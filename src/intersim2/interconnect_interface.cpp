@@ -30,6 +30,8 @@
 #include <sstream>
 #include <iomanip>
 #include <cmath>
+#include <utility>
+#include <algorithm>
 
 #include "interconnect_interface.hpp"
 #include "routefunc.hpp"
@@ -52,13 +54,13 @@ InterconnectInterface* InterconnectInterface::New(const char* const config_file)
   InterconnectInterface* icnt_interface = new InterconnectInterface();
   icnt_interface->_icnt_config = new IntersimConfig();
   icnt_interface->_icnt_config->ParseFile(config_file);
-  
+
   return icnt_interface;
 }
 
 InterconnectInterface::InterconnectInterface()
 {
-  
+
 }
 
 InterconnectInterface::~InterconnectInterface()
@@ -71,7 +73,7 @@ InterconnectInterface::~InterconnectInterface()
     }
     delete _net[i];
   }
-  
+
   delete _traffic_manager;
   _traffic_manager = NULL;
   delete _icnt_config;
@@ -81,12 +83,12 @@ void InterconnectInterface::CreateInterconnect(unsigned n_shader, unsigned n_mem
 {
   _n_shader = n_shader;
   _n_mem = n_mem;
-  
+
   InitializeRoutingMap(*_icnt_config);
-  
+
   gPrintActivity = (_icnt_config->GetInt("print_activity") > 0);
   gTrace = (_icnt_config->GetInt("viewer_trace") > 0);
-  
+
   string watch_out_file = _icnt_config->GetStr( "watch_out" );
   if(watch_out_file == "") {
     gWatchOut = NULL;
@@ -95,10 +97,10 @@ void InterconnectInterface::CreateInterconnect(unsigned n_shader, unsigned n_mem
   } else {
     gWatchOut = new ofstream(watch_out_file.c_str());
   }
-  
+
   _subnets = _icnt_config->GetInt("subnets");
   assert(_subnets);
-  
+
   /*To include a new network, must register the network here
    *add an else if statement with the name of the network
    */
@@ -108,19 +110,19 @@ void InterconnectInterface::CreateInterconnect(unsigned n_shader, unsigned n_mem
     name << "network_" << i;
     _net[i] = Network::New( *_icnt_config, name.str() );
   }
-  
+
   assert(_icnt_config->GetStr("sim_type") == "gpgpusim");
   _traffic_manager = static_cast<GPUTrafficManager*>(TrafficManager::New( *_icnt_config, _net )) ;
-  
+
   _flit_size = _icnt_config->GetInt( "flit_size" );
-  
+
   // Config for interface buffers
   if (_icnt_config->GetInt("ejection_buffer_size")) {
     _ejection_buffer_capacity = _icnt_config->GetInt( "ejection_buffer_size" ) ;
   } else {
     _ejection_buffer_capacity = _icnt_config->GetInt( "vc_buf_size" );
   }
-  
+
   _boundary_buffer_capacity = _icnt_config->GetInt( "boundary_buffer_size" ) ;
   assert(_boundary_buffer_capacity);
   if (_icnt_config->GetInt("input_buffer_size")) {
@@ -129,7 +131,7 @@ void InterconnectInterface::CreateInterconnect(unsigned n_shader, unsigned n_mem
     _input_buffer_capacity = 9;
   }
   _vcs = _icnt_config->GetInt("num_vcs");
-  
+
   _CreateBuffer();
   _CreateNodeMap(_n_shader, _n_mem, _traffic_manager->_nodes, _icnt_config->GetInt("use_map"));
 }
@@ -148,11 +150,11 @@ void InterconnectInterface::Push(unsigned input_deviceID, unsigned output_device
   
   int output_icntID = _node_map[output_deviceID];
   int input_icntID = _node_map[input_deviceID];
-  
+
 #if 0
   cout<<"Call interconnect push input: "<<input<<" output: "<<output<<endl;
 #endif
-  
+
   //TODO: move to _IssuePacket
   //TODO: create a Inject and wrap _IssuePacket and _GeneratePacket
   unsigned int n_flits = size / _flit_size + ((size % _flit_size)? 1:0);
@@ -166,11 +168,11 @@ void InterconnectInterface::Push(unsigned input_deviceID, unsigned output_device
       subnet = 1;
     }
   }
-  
+
   //TODO: Remove mem_fetch to reduce dependency
   Flit::FlitType packet_type;
   mem_fetch* mf = static_cast<mem_fetch*>(data);
-  
+
   switch (mf->get_type()) {
     case READ_REQUEST:  packet_type = Flit::READ_REQUEST   ;break;
     case WRITE_REQUEST: packet_type = Flit::WRITE_REQUEST  ;break;
@@ -178,10 +180,10 @@ void InterconnectInterface::Push(unsigned input_deviceID, unsigned output_device
     case WRITE_ACK:     packet_type = Flit::WRITE_REPLY    ;break;
     default: assert (0);
   }
-  
+
   //TODO: _include_queuing ?
   _traffic_manager->_GeneratePacket( input_icntID, -1, 0 /*class*/, _traffic_manager->_time, subnet, n_flits, packet_type, data, output_icntID);
-  
+
 #if DOUB
   cout <<"Traffic[" << subnet << "] (mapped) sending form "<< input_icntID << " to " << output_icntID << endl;
 #endif
@@ -194,14 +196,14 @@ void* InterconnectInterface::Pop(unsigned deviceID)
 #if DEBUG
   cout<<"Call interconnect POP  " << output<<endl;
 #endif
-  
+
   void* data = NULL;
-  
+
   // 0-_n_shader-1 indicates reply(network 1), otherwise request(network 0)
   int subnet = 0;
   if (deviceID < _n_shader)
     subnet = 1;
-  
+
   int turn = _round_robin_turn[subnet][icntID];
   for (int vc=0;(vc<_vcs) && (data==NULL);vc++) {
     if (_boundary_buffer[subnet][icntID][turn].HasPacket()) {
@@ -213,9 +215,9 @@ void* InterconnectInterface::Pop(unsigned deviceID)
   if (data) {
     _round_robin_turn[subnet][icntID] = turn;
   }
-  
+
   return data;
-  
+
 }
 
 void InterconnectInterface::Advance()
@@ -253,9 +255,9 @@ bool InterconnectInterface::HasBuffer(unsigned deviceID, unsigned int size) cons
   bool has_buffer = false;
   unsigned int n_flits = size / _flit_size + ((size % _flit_size)? 1:0);
   int icntID = _node_map.find(deviceID)->second;
-  
+
   has_buffer = _traffic_manager->_input_queue[0][icntID][0].size() +n_flits <= _input_buffer_capacity;
-  
+
   if ((_subnets>1) && deviceID >= _n_shader) // deviceID is memory node
     has_buffer = _traffic_manager->_input_queue[1][icntID][0].size() +n_flits <= _input_buffer_capacity;
 
@@ -279,7 +281,7 @@ void InterconnectInterface::DisplayOverallStats() const
   _traffic_manager->_drain_time = _traffic_manager->_time;
   // hack: also _total_sims equals to number of kernel calls
   _traffic_manager->_total_sims += 1;
-  
+
   _traffic_manager->_UpdateOverallStats();
   _traffic_manager->DisplayOverallStats();
   if(_traffic_manager->_print_csv_results) {
@@ -291,12 +293,12 @@ void InterconnectInterface::DisplayState(FILE *fp) const
 {
   fprintf(fp, "GPGPU-Sim uArch: ICNT:Display State: Under implementation\n");
 //  fprintf(fp,"GPGPU-Sim uArch: interconnect busy state\n");
-  
+
 //  for (unsigned i=0; i<net_c;i++) {
 //    if (traffic[i]->_measured_in_flight)
 //      fprintf(fp,"   Network %u has %u _measured_in_flight\n", i, traffic[i]->_measured_in_flight );
 //  }
-//  
+//
 //  for (unsigned i=0 ;i<(_n_shader+_n_mem);i++ ) {
 //    if( !traffic[0]->_partial_packets[i] [0].empty() )
 //      fprintf(fp,"   Network 0 has nonempty _partial_packets[%u][0]\n", i);
@@ -316,16 +318,16 @@ void InterconnectInterface::Transfer2BoundaryBuffer(int subnet, int output)
   Flit* flit;
   int vc;
   for (vc=0; vc<_vcs;vc++) {
-    
+
     if ( !_ejection_buffer[subnet][output][vc].empty() && _boundary_buffer[subnet][output][vc].Size() < _boundary_buffer_capacity ) {
       flit = _ejection_buffer[subnet][output][vc].front();
       assert(flit);
-      
+
       _ejection_buffer[subnet][output][vc].pop();
       _boundary_buffer[subnet][output][vc].PushFlitData( flit->data, flit->tail);
-      
+
       _ejected_flit_queue[subnet][output].push(flit); //indicate this flit is already popped from ejection buffer and ready for credit return
-      
+
       if ( flit->head ) {
         assert (flit->dest == output);
       }
@@ -363,18 +365,18 @@ Flit* InterconnectInterface::GetEjectedFlit(int subnet, int node)
 void InterconnectInterface::_CreateBuffer()
 {
   unsigned nodes = _n_shader + _n_mem;
-  
+
   _boundary_buffer.resize(_subnets);
   _ejection_buffer.resize(_subnets);
   _round_robin_turn.resize(_subnets);
   _ejected_flit_queue.resize(_subnets);
-  
+
   for (int subnet = 0; subnet < _subnets; ++subnet) {
     _ejection_buffer[subnet].resize(nodes);
     _boundary_buffer[subnet].resize(nodes);
     _round_robin_turn[subnet].resize(nodes);
     _ejected_flit_queue[subnet].resize(nodes);
-    
+
     for (unsigned node=0;node < nodes;++node){
       _ejection_buffer[subnet][node].resize(_vcs);
       _boundary_buffer[subnet][node].resize(_vcs);
@@ -385,38 +387,59 @@ void InterconnectInterface::_CreateBuffer()
 void InterconnectInterface::_CreateNodeMap(unsigned n_shader, unsigned n_mem, unsigned n_node, int use_map)
 {
   if (use_map) {
-    map<unsigned, vector<unsigned> > preset_memory_map;
-    
-    // good for 8 shaders and 8 memory cores
+    // The (<SM, Memory>, Memory Location Vector) map
+    map<pair<unsigned,unsigned>, vector<unsigned> > preset_memory_map;
+
+    // preset memory and shader map, optimized for mesh
+    // good for 8 SMs and 8 memory ports, the map is as follows:
+    // +--+--+--+--+
+    // |C0|M0|C1|M1|
+    // +--+--+--+--+
+    // |M2|C2|M3|C3|
+    // +--+--+--+--+
+    // |C4|M4|C5|M5|
+    // +--+--+--+--+
+    // |M6|C6|M7|C7|
+    // +--+--+--+--+
     {
       unsigned memory_node[] = {1, 3, 4, 6, 9, 11, 12, 14};
-      preset_memory_map[16] = vector<unsigned>(memory_node, memory_node+8);
-    }
-    
-    // good for 28 shaders and 8 memory cores
-    {
-      unsigned memory_node[] = {3, 7, 10, 12, 23, 25, 28, 32};
-      preset_memory_map[36] = vector<unsigned>(memory_node, memory_node+8);
-    }
-    
-    // good for 56 shaders and 8 memory cores
-    {
-      unsigned memory_node[] = {3, 15, 17, 29, 36, 47, 49, 61};
-      preset_memory_map[64] = vector<unsigned>(memory_node, memory_node+sizeof(memory_node)/sizeof(unsigned));
-    }
-    
-    // good for 110 shaders and 11 memory cores
-    {
-      unsigned memory_node[] = {12, 20, 25, 28, 57, 60, 63, 92, 95,100,108};
-      preset_memory_map[121] = vector<unsigned>(memory_node, memory_node+sizeof(memory_node)/sizeof(unsigned));
+      preset_memory_map[make_pair(8,8)] = vector<unsigned>(memory_node, memory_node+8);
     }
 
-    const vector<unsigned> &memory_node = preset_memory_map[n_node];
+    // good for 28 SMs and 8 memory ports
+    {
+      unsigned memory_node[] = {3, 7, 10, 12, 23, 25, 28, 32};
+      preset_memory_map[make_pair(28,8)] = vector<unsigned>(memory_node, memory_node+8);
+    }
+
+    // good for 56 SMs and 8 memory cores
+    {
+      unsigned memory_node[] = {3, 15, 17, 29, 36, 47, 49, 61};
+      preset_memory_map[make_pair(56,8)] = vector<unsigned>(memory_node, memory_node+sizeof(memory_node)/sizeof(unsigned));
+    }
+
+    // good for 110 SMs and 11 memory cores
+    {
+      unsigned memory_node[] = {12, 20, 25, 28, 57, 60, 63, 92, 95,100,108};
+      preset_memory_map[make_pair(110, 11)] = vector<unsigned>(memory_node, memory_node+sizeof(memory_node)/sizeof(unsigned));
+    }
+    const vector<int> config_memory_node(_icnt_config->GetIntArray("memory_node_map"));
+    if (!config_memory_node.empty()) {
+      if (config_memory_node.size() != _n_mem) {
+        cerr << "Number of memory nodes in memory_node_map should equal to memory ports" << endl;
+        assert( config_memory_node.size() == _n_mem);
+      }
+      vector<unsigned> t_memory_node(config_memory_node.size());
+      copy(config_memory_node.begin(), config_memory_node.end(), t_memory_node.begin());
+      preset_memory_map[make_pair(_n_shader, _n_mem)] = t_memory_node;
+    }
+    
+    const vector<unsigned> &memory_node = preset_memory_map[make_pair(_n_shader, _n_mem)];
     if (memory_node.empty()) {
       cerr<<"ERROR!!! NO MAPPING IMPLEMENTED YET FOR THIS CONFIG"<<endl;
       assert(0);
     }
-    
+
     // create node map
     unsigned next_node = 0;
     unsigned memory_node_index = 0;
@@ -436,7 +459,7 @@ void InterconnectInterface::_CreateNodeMap(unsigned n_shader, unsigned n_mem, un
       _node_map[i]=i;
     }
   }
-  
+
   for (unsigned i = 0; i < n_node ; i++) {
     for (unsigned j = 0; j< n_node ; j++) {
       if ( _node_map[j] == i ) {
@@ -445,10 +468,10 @@ void InterconnectInterface::_CreateNodeMap(unsigned n_shader, unsigned n_mem, un
       }
     }
   }
-  
-  //FIXME: should compatible with non-squre number
+
+  //FIXME: should compatible with non-square number
   _DisplayMap((int) sqrt(n_node), n_node);
-  
+
 }
 
 void InterconnectInterface::_DisplayMap(int dim,int count)
@@ -462,7 +485,7 @@ void InterconnectInterface::_DisplayMap(int dim,int count)
       cout << endl << "GPGPU-Sim uArch: ";
   }
   cout << endl;
-  
+
   cout << "GPGPU-Sim uArch: interconnect node reverse map (icntID to shaderID+MemID)" << endl;
   cout << "GPGPU-Sim uArch: Memory nodes start from ID: " << _n_shader << endl;
   cout << "GPGPU-Sim uArch: ";
@@ -503,7 +526,7 @@ void* InterconnectInterface::_BoundaryBufferItem::TopPacket() const
     assert(temp_d == _buffer.front()); //all flits must belong to the same packet
   }
   return data;
-  
+
 }
 
 void InterconnectInterface::_BoundaryBufferItem::PushFlitData(void* data,bool is_tail)
@@ -514,4 +537,3 @@ void InterconnectInterface::_BoundaryBufferItem::PushFlitData(void* data,bool is
     _packet_n++;
   }
 }
-

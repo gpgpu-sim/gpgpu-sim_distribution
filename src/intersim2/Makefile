@@ -173,4 +173,3 @@ y.tab.c y.tab.h: config.y
 
 lex.yy.c: config.l
 	$(LEX) $<
-# DO NOT DELETE
