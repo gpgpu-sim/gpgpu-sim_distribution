@@ -29,7 +29,7 @@
 # comment out next line to disable OpenGL support
 # export OPENGL_SUPPORT=1
 
-# (Temp) Using intersim2 by deafult, to use intersim, type make INTERSIM=intersim
+# Specify INTERSIM folder, the folder will be located at $GPGPUSIM_ROOT/src/$INTERSIM
 INTERSIM ?= intersim2
 
 include version_detection.mk
