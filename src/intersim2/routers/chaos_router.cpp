@@ -1,4 +1,4 @@
-// $Id: chaos_router.cpp 5188 2012-08-30 00:31:31Z dub $
+// $Id: chaos_router.cpp 5516 2013-10-06 02:14:48Z dub $
 
 /*
  Copyright (c) 2007-2012, Trustees of The Leland Stanford Junior University
@@ -589,13 +589,13 @@ void ChaosRouter::_OutputAdvance( )
 
   for ( int m = 0; m < _multi_queue_size; ++m ) {
     if ( _multi_match[m] != -1 ) {
-      if ( !_multi_queue[m].empty( ) ) {
-	f = _multi_queue[m].front( );
-	_multi_queue[m].pop( );
-      } else {
+      if ( _multi_queue[m].empty( ) ) {
 	cout << "State = " << _multi_state[m] << endl;
 	Error( "Multi queue empty, but matched!" );
       }
+      assert( !_multi_queue[m].empty( ) );
+      f = _multi_queue[m].front( );
+      _multi_queue[m].pop( );
 
       _crossbar_pipe->Write( f, _multi_match[m] );
 

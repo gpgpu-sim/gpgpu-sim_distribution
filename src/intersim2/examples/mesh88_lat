@@ -65,5 +65,4 @@ packet_size = 20;
 sim_type = latency;
 
 injection_rate = 0.005;
-watch_packets = {1,1,1};
 

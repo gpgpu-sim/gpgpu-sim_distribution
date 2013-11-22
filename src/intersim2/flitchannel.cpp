@@ -1,4 +1,4 @@
-// $Id: flitchannel.cpp 5188 2012-08-30 00:31:31Z dub $
+// $Id: flitchannel.cpp 5516 2013-10-06 02:14:48Z dub $
 
 /*
  Copyright (c) 2007-2012, Trustees of The Leland Stanford Junior University
@@ -43,11 +43,11 @@
 // ----------------------------------------------------------------------
 //  $Author: jbalfour $
 //  $Date: 2007/06/27 23:10:17 $
-//  $Id: flitchannel.cpp 5188 2012-08-30 00:31:31Z dub $
+//  $Id: flitchannel.cpp 5516 2013-10-06 02:14:48Z dub $
 // ----------------------------------------------------------------------
 FlitChannel::FlitChannel(Module * parent, string const & name, int classes)
 : Channel<Flit>(parent, name), _routerSource(NULL), _routerSourcePort(-1), 
-  _routerSink(NULL), _routerSinkPort(-1), _idle(0), _classes(classes) {
+  _routerSink(NULL), _routerSinkPort(-1), _idle(0) {
   _active.resize(classes, 0);
 }
 

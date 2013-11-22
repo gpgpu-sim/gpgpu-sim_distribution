@@ -1,4 +1,4 @@
-// $Id: flitchannel.hpp 5188 2012-08-30 00:31:31Z dub $
+// $Id: flitchannel.hpp 5516 2013-10-06 02:14:48Z dub $
 
 /*
  Copyright (c) 2007-2012, Trustees of The Leland Stanford Junior University
@@ -40,7 +40,7 @@
 // ----------------------------------------------------------------------
 //  $Author: jbalfour $
 //  $Date: 2007/06/27 23:10:17 $
-//  $Id: flitchannel.hpp 5188 2012-08-30 00:31:31Z dub $
+//  $Id: flitchannel.hpp 5516 2013-10-06 02:14:48Z dub $
 // ----------------------------------------------------------------------
 
 #include "channel.hpp"
@@ -94,7 +94,6 @@ private:
   // Statistics for Activity Factors
   vector<int> _active;
   int _idle;
-  int _classes;
 };
 
 #endif

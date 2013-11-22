@@ -1,4 +1,4 @@
-// $Id: kncube.cpp 5188 2012-08-30 00:31:31Z dub $
+// $Id: kncube.cpp 5516 2013-10-06 02:14:48Z dub $
 
 /*
  Copyright (c) 2007-2012, Trustees of The Leland Stanford Junior University
@@ -239,7 +239,7 @@ void KNCube::InsertRandomFaults( const Configuration &config )
 
   num_fails = config.GetInt( "link_failures" );
   
-  if ( num_fails ) {
+  if ( _size && num_fails ) {
     prev_seed = RandomIntLong( );
     RandomSeed( config.GetInt( "fail_seed" ) );
 
