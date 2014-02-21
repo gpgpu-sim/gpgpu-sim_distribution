@@ -1,4 +1,7 @@
 LOG:
+Version 3.2.3 versus 3.2.2
+- Fixed bug #78, added signed types to implementation of slct instruction.
+
 Version 3.2.2 versus 3.2.1
 - Added NVIDIA Quadro FX5600 GPGPU-Sim and GPUWattch configuration files.
 - Added cache_stats class to record all memory accesses and access outcomes 
