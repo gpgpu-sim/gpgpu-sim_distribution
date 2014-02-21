@@ -3498,13 +3498,16 @@ void slct_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    switch ( i_type ) {
    case B16_TYPE:
-   case U16_TYPE:              d.u16 = t?a.u16:b.u16; break;
+   case S16_TYPE:
+   case U16_TYPE: d.u16 = t?a.u16:b.u16; break;
    case F32_TYPE:
    case B32_TYPE:
+   case S32_TYPE:
    case U32_TYPE: d.u32 = t?a.u32:b.u32; break;
    case F64_TYPE:
    case FF64_TYPE:
    case B64_TYPE:
+   case S64_TYPE:
    case U64_TYPE: d.u64 = t?a.u64:b.u64; break;
    default: assert(0);
    }
