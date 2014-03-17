@@ -802,7 +802,7 @@ void add_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       carry = (data.u64 & 0x100000000)>>32;
       break;
    case U64_TYPE:
-      data.s64 = src1_data.s64 + src2_data.s64;
+      data.u64 = src1_data.u64 + src2_data.u64;
       break;
    case F16_TYPE: assert(0); break;
    case F32_TYPE: data.f32 = src1_data.f32 + src2_data.f32; break;
@@ -3031,8 +3031,8 @@ void sad_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    ptx_reg_t a, b, c, d;
    const operand_info &dst  = pI->dst();
    const operand_info &src1 = pI->src1();
-   const operand_info &src2 = pI->src1();
-   const operand_info &src3 = pI->src1();
+   const operand_info &src2 = pI->src2();
+   const operand_info &src3 = pI->src3();
 
    unsigned i_type = pI->get_type();
    a = thread->get_operand_value(src1, dst, i_type, thread, 1);
