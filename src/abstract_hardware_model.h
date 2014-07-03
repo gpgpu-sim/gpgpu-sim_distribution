@@ -283,7 +283,7 @@ public:
 
     void reset();
     void launch( address_type start_pc, const simt_mask_t &active_mask );
-    void update( simt_mask_t &thread_done, addr_vector_t &next_pc, address_type recvg_pc, op_type next_inst_op );
+    void update( simt_mask_t &thread_done, addr_vector_t &next_pc, address_type recvg_pc, op_type next_inst_op,unsigned next_inst_size, address_type next_inst_pc );
 
     const simt_mask_t &get_active_mask() const;
     void     get_pdom_stack_top_info( unsigned *pc, unsigned *rpc ) const;
