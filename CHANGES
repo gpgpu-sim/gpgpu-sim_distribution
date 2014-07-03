@@ -1,4 +1,7 @@
 LOG:
+Version 3.2.3+edits (development branch) versus 3.2.3
+- Fixed bug #81, fix ordering of pushing branch entries to the stack
+
 Version 3.2.3 versus 3.2.2
 - Fixed bug #78, added signed types to implementation of slct instruction.
 - Fixed bug #64, properly handing unsigned add.

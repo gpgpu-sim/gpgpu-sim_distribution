@@ -632,7 +632,7 @@ void simt_stack::print (FILE *fout) const
     }
 }
 
-void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, address_type recvg_pc, op_type next_inst_op )
+void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, address_type recvg_pc, op_type next_inst_op,unsigned next_inst_size, address_type next_inst_pc )
 {
     assert(m_stack.size() > 0);
 
@@ -642,12 +642,15 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
     address_type top_recvg_pc = m_stack.back().m_recvg_pc;
     address_type top_pc = m_stack.back().m_pc; // the pc of the instruction just executed
     stack_entry_type top_type = m_stack.back().m_type;
-
+    assert(top_pc==next_inst_pc);
     assert(top_active_mask.any());
 
     const address_type null_pc = -1;
     bool warp_diverged = false;
     address_type new_recvg_pc = null_pc;
+    unsigned num_divergent_paths=0;
+
+    std::map<address_type,simt_mask_t> divergent_paths;
     while (top_active_mask.any()) {
 
         // extract a group of threads with the same next PC among the active threads in the warp
@@ -673,35 +676,55 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
             continue;
         }
 
+        divergent_paths[tmp_next_pc]=tmp_active_mask;
+        num_divergent_paths++;
+    }
+
+
+    address_type not_taken_pc = next_inst_pc+next_inst_size;
+    assert(num_divergent_paths<=2);
+    for(unsigned i=0; i<num_divergent_paths; i++){
+    	address_type tmp_next_pc = null_pc;
+    	simt_mask_t tmp_active_mask;
+    	tmp_active_mask.reset();
+    	if(divergent_paths.find(not_taken_pc)!=divergent_paths.end()){
+    		assert(i==0);
+    		tmp_next_pc=not_taken_pc;
+    		tmp_active_mask=divergent_paths[tmp_next_pc];
+    		divergent_paths.erase(tmp_next_pc);
+    	}else{
+    		std::map<address_type,simt_mask_t>:: iterator it=divergent_paths.begin();
+    		tmp_next_pc=it->first;
+    		tmp_active_mask=divergent_paths[tmp_next_pc];
+    		divergent_paths.erase(tmp_next_pc);
+    	}
+
         // HANDLE THE SPECIAL CASES FIRST
-        if (next_inst_op== CALL_OPS)
-        {
-            // Since call is not a divergent instruction, all threads should have executed a call instruction
-            assert(top_active_mask.any() == false);
+    	if (next_inst_op== CALL_OPS){
+    		// Since call is not a divergent instruction, all threads should have executed a call instruction
+    		assert(num_divergent_paths == 1);
 
-            simt_stack_entry new_stack_entry;
-            new_stack_entry.m_pc = tmp_next_pc;
-            new_stack_entry.m_active_mask = tmp_active_mask;
-            new_stack_entry.m_branch_div_cycle = gpu_sim_cycle+gpu_tot_sim_cycle;
-            new_stack_entry.m_type = STACK_ENTRY_TYPE_CALL;
-            m_stack.push_back(new_stack_entry);
-            return;
+    		simt_stack_entry new_stack_entry;
+    		new_stack_entry.m_pc = tmp_next_pc;
+    		new_stack_entry.m_active_mask = tmp_active_mask;
+    		new_stack_entry.m_branch_div_cycle = gpu_sim_cycle+gpu_tot_sim_cycle;
+    		new_stack_entry.m_type = STACK_ENTRY_TYPE_CALL;
+    		m_stack.push_back(new_stack_entry);
+    		return;
+    	}else if(next_inst_op == RET_OPS && top_type==STACK_ENTRY_TYPE_CALL){
+    		// pop the CALL Entry
+    		assert(num_divergent_paths == 1);
+    		m_stack.pop_back();
 
-        } else if(next_inst_op == RET_OPS && top_type==STACK_ENTRY_TYPE_CALL) {
-            // pop the CALL Entry
-            assert(top_active_mask.any() == false);
-            m_stack.pop_back();
-
-            assert(m_stack.size() > 0);
-            m_stack.back().m_pc=tmp_next_pc;// set the PC of the stack top entry to return PC from  the call stack;
+    		assert(m_stack.size() > 0);
+    		m_stack.back().m_pc=tmp_next_pc;// set the PC of the stack top entry to return PC from  the call stack;
             // Check if the New top of the stack is reconverging
-            if (tmp_next_pc == m_stack.back().m_recvg_pc && m_stack.back().m_type!=STACK_ENTRY_TYPE_CALL)
-            {
-                assert(m_stack.back().m_type==STACK_ENTRY_TYPE_NORMAL);
-                m_stack.pop_back();
+            if (tmp_next_pc == m_stack.back().m_recvg_pc && m_stack.back().m_type!=STACK_ENTRY_TYPE_CALL){
+            	assert(m_stack.back().m_type==STACK_ENTRY_TYPE_NORMAL);
+            	m_stack.pop_back();
             }
             return;
-        }
+    	}
 
         // discard the new entry if its PC matches with reconvergence PC
         // that automatically reconverges the entry
@@ -710,7 +733,7 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
 
         // this new entry is not converging
         // if this entry does not include thread from the warp, divergence occurs
-        if (top_active_mask.any() && !warp_diverged ) {
+        if ((num_divergent_paths>1) && !warp_diverged ) {
             warp_diverged = true;
             // modify the existing top entry into a reconvergence entry in the pdom stack
             new_recvg_pc = recvg_pc;
@@ -781,7 +804,7 @@ void core_t::updateSIMTStack(unsigned warpId, warp_inst_t * inst)
             next_pc.push_back( m_thread[wtid+i]->get_pc() );
         }
     }
-    m_simt_stack[warpId]->update(thread_done,next_pc,inst->reconvergence_pc, inst->op);
+    m_simt_stack[warpId]->update(thread_done,next_pc,inst->reconvergence_pc, inst->op,inst->isize,inst->pc);
 }
 
 //! Get the warp to be executed using the data taken form the SIMT stack
