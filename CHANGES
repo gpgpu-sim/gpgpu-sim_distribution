@@ -1,11 +1,17 @@
 LOG:
 Version 3.2.3+edits (development branch) versus 3.2.3
-- Fixed bug #81, fix ordering of pushing branch entries to the stack
+- Added a parameter to the cache configuration to configure the set index 
+  function. Added a hash set index function to the Fermi L1 data cache for 
+  the two default cache sizes, 16KB/48KB with 32/64 sets.
+  
+- Bug fixes:
+    - Fixed bug #81, fix ordering of pushing branch entries to the stack
 
 Version 3.2.3 versus 3.2.2
-- Fixed bug #78, added signed types to implementation of slct instruction.
-- Fixed bug #64, properly handing unsigned add.
-- Fixed bug #80, sad instruction operands were not corret.
+- Bug fixes:
+    - Fixed bug #78, added signed types to implementation of slct instruction.
+    - Fixed bug #64, properly handing unsigned add.
+    - Fixed bug #80, sad instruction operands were not corret.
 
 Version 3.2.2 versus 3.2.1
 - Added NVIDIA Quadro FX5600 GPGPU-Sim and GPUWattch configuration files.

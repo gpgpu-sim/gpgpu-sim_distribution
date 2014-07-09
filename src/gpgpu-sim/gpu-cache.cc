@@ -47,6 +47,55 @@ const char * cache_request_status_str(enum cache_request_status status)
    return static_cache_request_status_str[status]; 
 }
 
+unsigned l1d_cache_config::set_index(new_addr_type addr) const{
+    unsigned set_index = m_nset; // Default to linear set index function
+    unsigned lower_xor = 0;
+    unsigned upper_xor = 0;
+
+    switch(m_set_index_function){
+    case FERMI_HASH_SET_FUNCTION:
+        /*
+        * Set Indexing function from "A Detailed GPU Cache Model Based on Reuse Distance Theory"
+        * Cedric Nugteren et al.
+        * ISCA 2014
+        */
+        if(m_nset == 32 || m_nset == 64){
+            // Lower xor value is bits 7-11
+            lower_xor = (addr >> m_line_sz_log2) & 0x1F;
+
+            // Upper xor value is bits 13, 14, 15, 17, and 19
+            upper_xor  = (addr & 0xE000)  >> 13; // Bits 13, 14, 15
+            upper_xor |= (addr & 0x20000) >> 14; // Bit 17
+            upper_xor |= (addr & 0x80000) >> 15; // Bit 19
+
+            set_index = (lower_xor ^ upper_xor);
+
+            // 48KB cache prepends the set_index with bit 12
+            if(m_nset == 64)
+                set_index |= (addr & 0x1000) >> 7;
+
+        }else{ /* Else incorrect number of sets for the hashing function */
+            assert("\nGPGPU-Sim cache configuration error: The number of sets should be "
+                    "32 or 64 for the hashing set index function.\n" && 0);
+        }
+        break;
+
+    case CUSTOM_SET_FUNCTION:
+        /* No custom set function implemented */
+        break;
+
+    case LINEAR_SET_FUNCTION:
+        set_index = (addr >> m_line_sz_log2) & (m_nset-1);
+        break;
+    }
+
+    // Linear function selected or custom set index function not implemented
+    assert((set_index < m_nset) && "\nError: Set index out of bounds. This is caused by "
+            "an incorrect or unimplemented custom set index function.\n");
+
+    return set_index;
+}
+
 void l2_cache_config::init(linear_to_raw_address_translation *address_mapping){
 	cache_config::init(m_config_string,FuncCachePreferNone);
 	m_address_mapping = address_mapping;
