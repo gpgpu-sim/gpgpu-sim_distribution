@@ -123,6 +123,11 @@ enum mshr_config_t {
     ASSOC // normal cache 
 };
 
+enum set_index_function{
+    FERMI_HASH_SET_FUNCTION = 0,
+    LINEAR_SET_FUNCTION,
+    CUSTOM_SET_FUNCTION
+};
 
 class cache_config {
 public:
@@ -133,18 +138,20 @@ public:
         m_config_string = NULL; // set by option parser
         m_config_stringPrefL1 = NULL;
         m_config_stringPrefShared = NULL;
-        m_data_port_width = 0; 
+        m_data_port_width = 0;
+        m_set_index_function = LINEAR_SET_FUNCTION;
     }
     void init(char * config, FuncCache status)
     {
     	cache_status= status;
         assert( config );
-        char rp, wp, ap, mshr_type, wap;
+        char rp, wp, ap, mshr_type, wap, sif;
 
-        int ntok = sscanf(config,"%u:%u:%u,%c:%c:%c:%c,%c:%u:%u,%u:%u,%u",
+
+        int ntok = sscanf(config,"%u:%u:%u,%c:%c:%c:%c:%c,%c:%u:%u,%u:%u,%u",
                           &m_nset, &m_line_sz, &m_assoc, &rp, &wp, &ap, &wap,
-                          &mshr_type, &m_mshr_entries,&m_mshr_max_merge,
-                          &m_miss_queue_size,&m_result_fifo_entries,
+                          &sif,&mshr_type,&m_mshr_entries,&m_mshr_max_merge,
+                          &m_miss_queue_size, &m_result_fifo_entries,
                           &m_data_port_width);
 
         if ( ntok < 11 ) {
@@ -173,7 +180,7 @@ public:
         default: exit_parse_error();
         }
         switch (mshr_type) {
-        case 'F': m_mshr_type = TEX_FIFO; assert(ntok==12); break;
+        case 'F': m_mshr_type = TEX_FIFO; assert(ntok==13); break;
         case 'A': m_mshr_type = ASSOC; break;
         default: exit_parse_error();
         }
@@ -206,6 +213,13 @@ public:
             m_data_port_width = m_line_sz; 
         }
         assert(m_line_sz % m_data_port_width == 0); 
+
+        switch(sif){
+        case 'H': m_set_index_function = FERMI_HASH_SET_FUNCTION; break;
+        case 'C': m_set_index_function = CUSTOM_SET_FUNCTION; break;
+        case 'L': m_set_index_function = LINEAR_SET_FUNCTION; break;
+        default: exit_parse_error();
+        }
     }
     bool disabled() const { return m_disabled;}
     unsigned get_line_sz() const
@@ -228,17 +242,24 @@ public:
 
     virtual unsigned set_index( new_addr_type addr ) const
     {
+        if(m_set_index_function != LINEAR_SET_FUNCTION){
+            printf("\nGPGPU-Sim cache configuration error: Hashing or "
+                    "custom set index function selected in configuration "
+                    "file for a cache that has not overloaded the set_index "
+                    "function\n");
+            abort();
+        }
         return(addr >> m_line_sz_log2) & (m_nset-1);
     }
 
     new_addr_type tag( new_addr_type addr ) const
     {
-    	// For generality, the tag includes both index and tag. This allows for more complex set index
-    	// calculations that can result in different indexes mapping to the same set, thus the full
-    	// tag + index is required to check for hit/miss. Tag is now identical to the block address.
+        // For generality, the tag includes both index and tag. This allows for more complex set index
+        // calculations that can result in different indexes mapping to the same set, thus the full
+        // tag + index is required to check for hit/miss. Tag is now identical to the block address.
 
         //return addr >> (m_line_sz_log2+m_nset_log2);
-    	return addr & ~(m_line_sz-1);
+        return addr & ~(m_line_sz-1);
     }
     new_addr_type block_addr( new_addr_type addr ) const
     {
@@ -285,8 +306,8 @@ protected:
         unsigned m_rob_entries;
     };
     unsigned m_result_fifo_entries;
-
     unsigned m_data_port_width; //< number of byte the cache can access per cycle 
+    enum set_index_function m_set_index_function; // Hash, linear, or custom set index function
 
     friend class tag_array;
     friend class baseline_cache;
@@ -297,6 +318,11 @@ protected:
     friend class l2_cache;
 };
 
+class l1d_cache_config : public cache_config{
+public:
+	l1d_cache_config() : cache_config(){}
+	virtual unsigned set_index(new_addr_type addr) const;
+};
 
 class l2_cache_config : public cache_config {
 public:
