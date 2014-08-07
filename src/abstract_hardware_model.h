@@ -28,10 +28,13 @@
 #ifndef ABSTRACT_HARDWARE_MODEL_INCLUDED
 #define ABSTRACT_HARDWARE_MODEL_INCLUDED
 
-
 // Forward declarations
 class gpgpu_sim;
 class kernel_info_t;
+
+//Set a hard limit of 32 CTAs per shader [cuda only has 8]
+#define MAX_CTA_PER_SHADER 32
+#define MAX_BARRIERS_PER_CTA 16
 
 enum _memory_space_t {
    undefined_space=0,
@@ -83,6 +86,24 @@ enum uarch_op_t {
    RET_OPS
 };
 typedef enum uarch_op_t op_type;
+
+
+enum uarch_bar_t {
+   NOT_BAR=-1,
+   SYNC=1,
+   ARRIVE,
+   RED
+};
+typedef enum uarch_bar_t barrier_type;
+
+enum uarch_red_t {
+   NOT_RED=-1,
+   POPC_RED=1,
+   AND_RED,
+   OR_RED
+};
+typedef enum uarch_red_t reduction_type;
+
 
 enum uarch_operand_type_t {
 	UN_OP=-1,
@@ -680,6 +701,7 @@ public:
 struct dram_callback_t {
    dram_callback_t() { function=NULL; instruction=NULL; thread=NULL; }
    void (*function)(const class inst_t*, class ptx_thread_info*);
+
    const class inst_t* instruction;
    class ptx_thread_info *thread;
 };
@@ -691,7 +713,11 @@ public:
         m_decoded=false;
         pc=(address_type)-1;
         reconvergence_pc=(address_type)-1;
-        op=NO_OP; 
+        op=NO_OP;
+        bar_type=NOT_BAR;
+        red_type=NOT_RED;
+        bar_id=(unsigned)-1;
+        bar_count=(unsigned)-1;
         oprnd_type=UN_OP;
         sp_op=OTHER_OP;
         op_pipe=UNKOWN_OP;
@@ -723,10 +749,18 @@ public:
     unsigned get_num_regs() const {return num_regs;}
     void set_num_regs(unsigned num) {num_regs=num;}
     void set_num_operands(unsigned num) {num_operands=num;}
+    void set_bar_id(unsigned id) {bar_id=id;}
+    void set_bar_count(unsigned count) {bar_count=count;}
 
     address_type pc;        // program counter address of instruction
     unsigned isize;         // size of instruction in bytes 
     op_type op;             // opcode (uarch visible)
+
+    barrier_type bar_type;
+    reduction_type red_type;
+    unsigned bar_id;
+    unsigned bar_count;
+
     types_of_operands oprnd_type;     // code (uarch visible) identify if the operation is an interger or a floating point
     special_ops sp_op;           // code (uarch visible) identify if int_alu, fp_alu, int_mul ....
     operation_pipeline op_pipe;  // code (uarch visible) identify the pipeline of the operation (SP, SFU or MEM)
@@ -793,6 +827,7 @@ public:
     }
 
     // modifiers
+    void broadcast_barrier_reduction( const active_mask_t& access_mask);
     void do_atomic(bool forceDo=false);
     void do_atomic( const active_mask_t& access_mask, bool forceDo=false );
     void clear() 
@@ -816,6 +851,7 @@ public:
     	return m_warp_active_mask;
     }
     void completed( unsigned long long cycle ) const;  // stat collection: called when the instruction is completed  
+
     void set_addr( unsigned n, new_addr_type addr ) 
     {
         if( !m_per_scalar_thread_valid ) {
@@ -856,12 +892,13 @@ public:
     void add_callback( unsigned lane_id, 
                        void (*function)(const class inst_t*, class ptx_thread_info*),
                        const inst_t *inst, 
-                       class ptx_thread_info *thread )
+                       class ptx_thread_info *thread,
+                       bool atomic)
     {
         if( !m_per_scalar_thread_valid ) {
             m_per_scalar_thread.resize(m_config->warp_size);
             m_per_scalar_thread_valid=true;
-            m_isatomic=true;
+            if(atomic) m_isatomic=true;
         }
         m_per_scalar_thread[lane_id].callback.function = function;
         m_per_scalar_thread[lane_id].callback.instruction = inst;
@@ -927,6 +964,7 @@ public:
     void print( FILE *fout ) const;
     unsigned get_uid() const { return m_uid; }
 
+
 protected:
 
     unsigned m_uid;
@@ -989,6 +1027,13 @@ class core_t {
                      calloc( m_warp_count * m_warp_size,
                              sizeof( ptx_thread_info* ) );
             initilizeSIMTStack(m_warp_count,m_warp_size);
+
+            for(unsigned i=0; i<MAX_CTA_PER_SHADER; i++){
+            	for(unsigned j=0; j<MAX_BARRIERS_PER_CTA; j++){
+            		reduction_storage[i][j]=0;
+            	}
+            }
+
         }
         virtual ~core_t() { free(m_thread); }
         virtual void warp_exit( unsigned warp_id ) = 0;
@@ -1004,6 +1049,10 @@ class core_t {
         void get_pdom_stack_top_info( unsigned warpId, unsigned *pc, unsigned *rpc ) const;
         kernel_info_t * get_kernel_info(){ return m_kernel;}
         unsigned get_warp_size() const { return m_warp_size; }
+        void and_reduction(unsigned ctaid, unsigned barid, bool value) { reduction_storage[ctaid][barid] &= value; }
+        void or_reduction(unsigned ctaid, unsigned barid, bool value) { reduction_storage[ctaid][barid] |= value; }
+        void popc_reduction(unsigned ctaid, unsigned barid, bool value) { reduction_storage[ctaid][barid] += value;}
+        unsigned get_reduction_value(unsigned ctaid, unsigned barid) {return reduction_storage[ctaid][barid];}
     protected:
         class gpgpu_sim *m_gpu;
         kernel_info_t *m_kernel;
@@ -1011,6 +1060,7 @@ class core_t {
         class ptx_thread_info ** m_thread;
         unsigned m_warp_size;
         unsigned m_warp_count;
+        unsigned reduction_storage[MAX_CTA_PER_SHADER][MAX_BARRIERS_PER_CTA];
 };
 
 

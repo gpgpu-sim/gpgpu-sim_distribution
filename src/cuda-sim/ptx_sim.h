@@ -413,6 +413,10 @@ public:
    }
    
    void registerExit(){m_cta_info->register_thread_exit(this);}
+   unsigned get_reduction_value(unsigned ctaid, unsigned barid) {return m_core->get_reduction_value(ctaid,barid);}
+   void and_reduction(unsigned ctaid, unsigned barid, bool value) {m_core->and_reduction(ctaid,barid,value);}
+   void or_reduction(unsigned ctaid, unsigned barid, bool value) {m_core->or_reduction(ctaid,barid,value);}
+   void popc_reduction(unsigned ctaid, unsigned barid, bool value) {m_core->popc_reduction(ctaid,barid,value);}
 
 public:
    addr_t         m_last_effective_address;

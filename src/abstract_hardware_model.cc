@@ -152,6 +152,7 @@ void warp_inst_t::do_atomic(bool forceDo) {
     do_atomic( m_warp_active_mask,forceDo );
 }
 
+
 void warp_inst_t::do_atomic( const active_mask_t& access_mask,bool forceDo ) {
     assert( m_isatomic && (!m_empty||forceDo) );
     for( unsigned i=0; i < m_config->warp_size; i++ )
@@ -161,6 +162,20 @@ void warp_inst_t::do_atomic( const active_mask_t& access_mask,bool forceDo ) {
             dram_callback_t &cb = m_per_scalar_thread[i].callback;
             if( cb.thread )
                 cb.function(cb.instruction, cb.thread);
+        }
+    }
+}
+
+void warp_inst_t::broadcast_barrier_reduction(const active_mask_t& access_mask)
+{
+	for( unsigned i=0; i < m_config->warp_size; i++ )
+    {
+        if( access_mask.test(i) )
+        {
+            dram_callback_t &cb = m_per_scalar_thread[i].callback;
+            if( cb.thread ){
+                cb.function(cb.instruction, cb.thread);
+            }
         }
     }
 }

@@ -73,7 +73,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                   const struct memory_config *mem_config,
                                   shader_core_stats *stats )
    : core_t( gpu, NULL, config->warp_size, config->n_thread_per_shader ),
-     m_barriers( config->max_warps_per_shader, config->max_cta_per_core ),
+     m_barriers( this, config->max_warps_per_shader, config->max_cta_per_core, config->max_barriers_per_cta, config->warp_size ),
      m_dynamic_warp_id(0)
 {
     m_cluster = cluster;
@@ -687,10 +687,13 @@ void shader_core_ctx::issue_warp( register_set& pipe_reg_set, const warp_inst_t*
     (*pipe_reg)->issue( active_mask, warp_id, gpu_tot_sim_cycle + gpu_sim_cycle, m_warp[warp_id].get_dynamic_warp_id() ); // dynamic instruction information
     m_stats->shader_cycle_distro[2+(*pipe_reg)->active_count()]++;
     func_exec_inst( **pipe_reg );
-    if( next_inst->op == BARRIER_OP ) 
-        m_barriers.warp_reaches_barrier(m_warp[warp_id].get_cta_id(),warp_id);
-    else if( next_inst->op == MEMORY_BARRIER_OP ) 
+    if( next_inst->op == BARRIER_OP ){
+    	m_warp[warp_id].store_info_of_last_inst_at_barrier(*pipe_reg);
+        m_barriers.warp_reaches_barrier(m_warp[warp_id].get_cta_id(),warp_id,const_cast<warp_inst_t*> (next_inst));
+
+    }else if( next_inst->op == MEMORY_BARRIER_OP ){
         m_warp[warp_id].set_membar();
+    }
 
     updateSIMTStack(warp_id,*pipe_reg);
     m_scoreboard->reserveRegisters(*pipe_reg);
@@ -865,8 +868,7 @@ void scheduler_unit::cycle()
                                     issued_inst=true;
                                     warp_inst_issued = true;
                                 }
-                            } 
-                        }
+                            }                         }
                     } else {
                         SCHED_DPRINTF( "Warp (warp_id %u, dynamic_warp_id %u) fails scoreboard\n",
                                        (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id() );
@@ -1153,7 +1155,7 @@ void shader_core_ctx::execute()
         m_fu[n]->active_lanes_in_pipeline();
         enum pipeline_stage_name_t issue_port = m_issue_port[n];
         register_set& issue_inst = m_pipeline_reg[ issue_port ];
-	warp_inst_t** ready_reg = issue_inst.get_ready();
+        warp_inst_t** ready_reg = issue_inst.get_ready();
         if( issue_inst.has_ready() && m_fu[n]->can_issue( **ready_reg ) ) {
             bool schedule_wb_now = !m_fu[n]->stallable();
             int resbus = -1;
@@ -1234,7 +1236,7 @@ void shader_core_ctx::writeback()
 
     warp_inst_t** preg = m_pipeline_reg[EX_WB].get_ready();
     warp_inst_t* pipe_reg = (preg==NULL)? NULL:*preg;
-    while( preg and !pipe_reg->empty() ) {
+    while( preg and !pipe_reg->empty()) {
     	/*
     	 * Right now, the writeback stage drains all waiting instructions
     	 * assuming there are enough ports in the register file or the
@@ -1251,6 +1253,7 @@ void shader_core_ctx::writeback()
     	 * To handle this case, we ignore the return value (thus allowing
     	 * no stalling).
     	 */
+
         m_operand_collector.writeback(*pipe_reg);
         unsigned warp_id = pipe_reg->warp_id();
         m_scoreboard->releaseRegisters( pipe_reg );
@@ -1512,6 +1515,22 @@ pipelined_simd_unit::pipelined_simd_unit( register_set* result_port, const shade
     for( unsigned i=0; i < m_pipeline_depth; i++ ) 
 	m_pipeline_reg[i] = new warp_inst_t( config );
     m_core=core;
+}
+
+void pipelined_simd_unit::cycle()
+{
+    if( !m_pipeline_reg[0]->empty() ){
+        m_result_port->move_in(m_pipeline_reg[0]);
+    }
+    for( unsigned stage=0; (stage+1)<m_pipeline_depth; stage++ )
+        move_warp(m_pipeline_reg[stage], m_pipeline_reg[stage+1]);
+    if( !m_dispatch_reg->empty() ) {
+        if( !m_dispatch_reg->dispatch_delay()){
+            int start_stage = m_dispatch_reg->latency - m_dispatch_reg->initiation_interval;
+            move_warp(m_pipeline_reg[start_stage],m_dispatch_reg);
+        }
+    }
+    occupied >>=1;
 }
 
 
@@ -2520,17 +2539,28 @@ std::list<opndcoll_rfu_t::op_t> opndcoll_rfu_t::arbiter_t::allocate_reads()
    return result;
 }
 
-barrier_set_t::barrier_set_t( unsigned max_warps_per_core, unsigned max_cta_per_core )
+barrier_set_t::barrier_set_t(shader_core_ctx *shader,unsigned max_warps_per_core, unsigned max_cta_per_core, unsigned max_barriers_per_cta, unsigned warp_size)
 {
    m_max_warps_per_core = max_warps_per_core;
    m_max_cta_per_core = max_cta_per_core;
+   m_max_barriers_per_cta = max_barriers_per_cta;
+   m_warp_size = warp_size;
+   m_shader = shader;
    if( max_warps_per_core > WARP_PER_CTA_MAX ) {
       printf("ERROR ** increase WARP_PER_CTA_MAX in shader.h from %u to >= %u or warps per cta in gpgpusim.config\n",
              WARP_PER_CTA_MAX, max_warps_per_core );
       exit(1);
    }
+   if(max_barriers_per_cta > MAX_BARRIERS_PER_CTA){
+	   printf("ERROR ** increase MAX_BARRIERS_PER_CTA in abstract_hardware_model.h from %u to >= %u or barriers per cta in gpgpusim.config\n",
+			   MAX_BARRIERS_PER_CTA, max_barriers_per_cta );
+	   exit(1);
+   }
    m_warp_active.reset();
    m_warp_at_barrier.reset();
+   for(unsigned i=0; i<max_barriers_per_cta; i++){
+	   m_bar_id_to_warps[i].reset();
+   }
 }
 
 // during cta allocation
@@ -2544,6 +2574,10 @@ void barrier_set_t::allocate_barrier( unsigned cta_id, warp_set_t warps )
   
    m_warp_active |= warps;
    m_warp_at_barrier &= ~warps;
+   for(unsigned i=0; i<m_max_barriers_per_cta; i++){
+	   m_bar_id_to_warps[i] &=~warps;
+   }
+
 }
 
 // during cta deallocation
@@ -2559,12 +2593,23 @@ void barrier_set_t::deallocate_barrier( unsigned cta_id )
    assert( active.any() == false ); // no warps in CTA still running
    m_warp_active &= ~warps;
    m_warp_at_barrier &= ~warps;
+
+   for(unsigned i=0; i<m_max_barriers_per_cta; i++){
+	   warp_set_t at_a_specific_barrier = warps & m_bar_id_to_warps[i];
+	   assert( at_a_specific_barrier.any() == false ); // no warps stuck at barrier
+	   m_bar_id_to_warps[i] &=~warps;
+   }
    m_cta_to_warps.erase(w);
 }
 
 // individual warp hits barrier
-void barrier_set_t::warp_reaches_barrier( unsigned cta_id, unsigned warp_id )
+void barrier_set_t::warp_reaches_barrier(unsigned cta_id,unsigned warp_id,warp_inst_t* inst)
 {
+	barrier_type bar_type = inst->bar_type;
+	reduction_type red_type = inst->red_type;
+	unsigned bar_id = inst->bar_id;
+	unsigned bar_count = inst->bar_count;
+	assert(bar_id!=(unsigned)-1);
    cta_to_warp_t::iterator w=m_cta_to_warps.find(cta_id);
 
    if( w == m_cta_to_warps.end() ) { // cta is active
@@ -2574,23 +2619,41 @@ void barrier_set_t::warp_reaches_barrier( unsigned cta_id, unsigned warp_id )
    }
    assert( w->second.test(warp_id) == true ); // warp is in cta
 
-   m_warp_at_barrier.set(warp_id);
-
-   warp_set_t warps_in_cta = w->second;
-   warp_set_t at_barrier = warps_in_cta & m_warp_at_barrier;
-   warp_set_t active = warps_in_cta & m_warp_active;
-
-   if( at_barrier == active ) {
-      // all warps have reached barrier, so release waiting warps...
-      m_warp_at_barrier &= ~at_barrier;
+   m_bar_id_to_warps[bar_id].set(warp_id);
+   if(bar_type==SYNC || bar_type==RED){
+	   m_warp_at_barrier.set(warp_id);
    }
+   warp_set_t warps_in_cta = w->second;
+   warp_set_t at_barrier = warps_in_cta & m_bar_id_to_warps[bar_id];
+   warp_set_t active = warps_in_cta & m_warp_active;
+   if(bar_count==(unsigned)-1){
+	   if( at_barrier == active ) {
+		   printf("Barrier should be released\n");
+		   // all warps have reached barrier, so release waiting warps...
+		   m_bar_id_to_warps[bar_id] &= ~at_barrier;
+		   m_warp_at_barrier &= ~at_barrier;
+		   if(bar_type==RED){
+			   printf("broadcast_barrier\n");
+			   m_shader->broadcast_barrier_reduction(cta_id, bar_id,at_barrier);
+		   }
+		   printf("warps at barrier = %u\n",m_warp_at_barrier.count());
+	   }
+  }else{
+	  // TODO: check on the hardware if the count should include warp that exited
+	  if ((at_barrier.count() * m_warp_size) == bar_count){
+		   // required number of warps have reached barrier, so release waiting warps...
+		   m_bar_id_to_warps[bar_id] &= ~at_barrier;
+		   m_warp_at_barrier &= ~at_barrier;
+		   if(bar_type==RED){
+			   printf("REDUCTION CALLED-2\n");
+			   m_shader->broadcast_barrier_reduction(cta_id, bar_id,at_barrier);
+		   }
+	  }
+  }
+
+
 }
 
-// fetching a warp
-bool barrier_set_t::available_for_fetch( unsigned warp_id ) const
-{
-   return m_warp_active.test(warp_id) && m_warp_at_barrier.test(warp_id);
-}
 
 // warp reaches exit 
 void barrier_set_t::warp_exit( unsigned warp_id )
@@ -2605,12 +2668,15 @@ void barrier_set_t::warp_exit( unsigned warp_id )
       if (w->second.test(warp_id) == true) break; 
    }
    warp_set_t warps_in_cta = w->second;
-   warp_set_t at_barrier = warps_in_cta & m_warp_at_barrier;
    warp_set_t active = warps_in_cta & m_warp_active;
 
-   if( at_barrier == active ) {
-      // all warps have reached barrier, so release waiting warps...
-      m_warp_at_barrier &= ~at_barrier;
+   for(unsigned i=0; i<m_max_barriers_per_cta; i++){
+	   warp_set_t at_a_specific_barrier = warps_in_cta & m_bar_id_to_warps[i];
+	   if( at_a_specific_barrier == active ) {
+	      // all warps have reached barrier, so release waiting warps...
+		   m_bar_id_to_warps[i] &= ~at_a_specific_barrier;
+		   m_warp_at_barrier &= ~at_a_specific_barrier;
+	   }
    }
 }
 
@@ -2620,11 +2686,12 @@ bool barrier_set_t::warp_waiting_at_barrier( unsigned warp_id ) const
    return m_warp_at_barrier.test(warp_id);
 }
 
-void barrier_set_t::dump() const
+void barrier_set_t::dump()
 {
    printf( "barrier set information\n");
    printf( "  m_max_cta_per_core = %u\n",  m_max_cta_per_core );
    printf( "  m_max_warps_per_core = %u\n", m_max_warps_per_core );
+   printf( " m_max_barriers_per_cta =%u\n", m_max_barriers_per_cta);
    printf( "  cta_to_warps:\n");
    
    cta_to_warp_t::const_iterator i;
@@ -2635,6 +2702,10 @@ void barrier_set_t::dump() const
    }
    printf("  warp_active: %s\n", m_warp_active.to_string().c_str() );
    printf("  warp_at_barrier: %s\n", m_warp_at_barrier.to_string().c_str() );
+   for( unsigned i=0; i<m_max_barriers_per_cta; i++){
+	   warp_set_t warps_reached_barrier = m_bar_id_to_warps[i];
+	   printf("  warp_at_barrier %u: %s\n", i, warps_reached_barrier.to_string().c_str() );
+   }
    fflush(stdout); 
 }
 
@@ -2656,6 +2727,18 @@ void shader_core_ctx::warp_exit( unsigned warp_id )
 	//if (this->m_simt_stack[warp_id]->get_num_entries() == 0)
 	if (done)
 		m_barriers.warp_exit( warp_id );
+}
+
+bool shader_core_ctx::check_if_non_released_reduction_barrier(warp_inst_t &inst)
+{
+	unsigned warp_id = inst.warp_id();
+	bool bar_red_op = (inst.op == BARRIER_OP) && (inst.bar_type == RED);
+    bool non_released_barrier_reduction = false;
+    bool warp_stucked_at_barrier = warp_waiting_at_barrier(warp_id);
+    bool single_inst_in_pipeline = (m_warp[warp_id].num_issued_inst_in_pipeline()==1);
+    non_released_barrier_reduction = single_inst_in_pipeline and warp_stucked_at_barrier and bar_red_op;
+    printf("non_released_barrier_reduction=%u\n",non_released_barrier_reduction);
+    return non_released_barrier_reduction;
 }
 
 bool shader_core_ctx::warp_waiting_at_barrier( unsigned warp_id ) const
@@ -2690,6 +2773,17 @@ void shader_core_ctx::decrement_atomic_count( unsigned wid, unsigned n )
    m_warp[wid].dec_n_atomic(n);
 }
 
+void shader_core_ctx::broadcast_barrier_reduction(unsigned cta_id,unsigned bar_id,warp_set_t warps)
+{
+	unsigned value = get_reduction_value(cta_id,bar_id);
+	for(unsigned i=0; i<m_config->max_warps_per_shader;i++){
+		if(warps.test(i)){
+			printf("braodcast for i=%u\n",i);
+			const warp_inst_t * inst = m_warp[i].restore_info_of_last_inst_at_barrier();
+			const_cast<warp_inst_t *> (inst)->broadcast_barrier_reduction(inst->get_active_mask());
+		}
+	}
+}
 
 bool shader_core_ctx::fetch_unit_response_buffer_full() const
 {
@@ -3340,7 +3434,7 @@ void simt_core_cluster::get_L1T_sub_stats(struct cache_sub_stats &css) const{
 
 void shader_core_ctx::checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned t, unsigned tid)
 {
-    if( inst.has_callback(t) ) 
+    if(inst.isatomic())
            m_warp[inst.warp_id()].inc_n_atomic();
         if (inst.space.is_local() && (inst.is_load() || inst.is_store())) {
             new_addr_type localaddrs[MAX_ACCESSES_PER_INSN_PER_THREAD];

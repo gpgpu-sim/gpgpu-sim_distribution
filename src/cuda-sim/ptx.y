@@ -155,6 +155,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token SAT_OPTION
 %token FTZ_OPTION
 %token NEG_OPTION
+%token SYNC_OPTION
+%token RED_OPTION
+%token POPC_REDUCTION
+%token AND_REDUCTION
+%token OR_REDUCTION
+%token ARRIVE_OPTION
 %token ATOMIC_AND
 %token ATOMIC_OR
 %token ATOMIC_XOR
@@ -408,6 +414,12 @@ option: type_spec
 	| compare_spec
 	| addressable_spec
 	| rounding_mode
+	| SYNC_OPTION { add_option(SYNC_OPTION); }	
+	| ARRIVE_OPTION { add_option(ARRIVE_OPTION); }
+	| RED_OPTION { add_option(RED_OPTION); }					
+	| POPC_REDUCTION { add_option(POPC_REDUCTION); }
+	| AND_REDUCTION { add_option(AND_REDUCTION); }
+	| OR_REDUCTION { add_option(OR_REDUCTION); }	
 	| UNI_OPTION { add_option(UNI_OPTION); }
 	| WIDE_OPTION { add_option(WIDE_OPTION); }
 	| ANY_OPTION { add_option(ANY_OPTION); }

@@ -248,6 +248,9 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_shader_cta", OPT_UINT32, &max_cta_per_core, 
                  "Maximum number of concurrent CTAs in shader (default 8)",
                  "8");
+    option_parser_register(opp, "-gpgpu_num_cta_barriers", OPT_UINT32, &max_barriers_per_cta,
+                 "Maximum number of named barriers per CTA (default 16)",
+                 "16");
     option_parser_register(opp, "-gpgpu_n_clusters", OPT_UINT32, &n_simt_clusters, 
                  "number of processing clusters",
                  "10");

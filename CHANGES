@@ -3,6 +3,8 @@ Version 3.2.3+edits (development branch) versus 3.2.3
 - Added a parameter to the cache configuration to configure the set index 
   function. Added a hash set index function to the Fermi L1 data cache for 
   the two default cache sizes, 16KB/48KB with 32/64 sets.
+- Added support for named barriers.
+- Added support for bar.arrive and bar.red instructions.
   
 - Bug fixes:
     - Fixed bug #81, fix ordering of pushing branch entries to the stack

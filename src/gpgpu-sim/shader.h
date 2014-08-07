@@ -70,8 +70,6 @@
 
 #define WRITE_MASK_SIZE 8
 
-//Set a hard limit of 32 CTAs per shader [cuda only has 8]
-#define MAX_CTA_PER_SHADER 32
 
 class thread_ctx_t {
 public:
@@ -109,6 +107,7 @@ public:
         m_done_exit=true;
         m_last_fetch=0;
         m_next=0;
+        m_inst_at_barrier=NULL;
     }
     void init( address_type start_pc,
                unsigned cta_id,
@@ -157,6 +156,9 @@ public:
     address_type get_pc() const { return m_next_pc; }
     void set_next_pc( address_type pc ) { m_next_pc = pc; }
 
+    void store_info_of_last_inst_at_barrier(const warp_inst_t *pI){ m_inst_at_barrier = pI;}
+    const warp_inst_t * restore_info_of_last_inst_at_barrier(){ return m_inst_at_barrier;}
+
     void ibuffer_fill( unsigned slot, const warp_inst_t *pI )
     {
        assert(slot < IBUFFER_SIZE );
@@ -201,6 +203,17 @@ public:
         m_stores_outstanding--;
     }
 
+    unsigned num_inst_in_buffer() const
+    {
+    	unsigned count=0;
+        for(unsigned i=0;i<IBUFFER_SIZE;i++) {
+            if( m_ibuffer[i].m_valid )
+            	count++;
+        }
+    	return count;
+    }
+    unsigned num_inst_in_pipeline() const { return m_inst_in_pipeline;}
+    unsigned num_issued_inst_in_pipeline() const {return (num_inst_in_pipeline()-num_inst_in_buffer());}
     bool inst_in_pipeline() const { return m_inst_in_pipeline > 0; }
     void inc_inst_in_pipeline() { m_inst_in_pipeline++; }
     void dec_inst_in_pipeline() 
@@ -233,6 +246,8 @@ private:
        const warp_inst_t *m_inst;
        bool m_valid;
     };
+
+    const warp_inst_t *m_inst_at_barrier;
     ibuffer_entry m_ibuffer[IBUFFER_SIZE]; 
     unsigned m_next;
                                    
@@ -879,7 +894,7 @@ private:
 
 class barrier_set_t {
 public:
-   barrier_set_t( unsigned max_warps_per_core, unsigned max_cta_per_core );
+   barrier_set_t(shader_core_ctx * shader, unsigned max_warps_per_core, unsigned max_cta_per_core, unsigned max_barriers_per_cta, unsigned warp_size);
 
    // during cta allocation
    void allocate_barrier( unsigned cta_id, warp_set_t warps );
@@ -888,12 +903,12 @@ public:
    void deallocate_barrier( unsigned cta_id );
 
    typedef std::map<unsigned, warp_set_t >  cta_to_warp_t;
+   typedef std::map<unsigned, warp_set_t >  bar_id_to_warp_t; /*set of warps reached a specific barrier id*/
+
 
    // individual warp hits barrier
-   void warp_reaches_barrier( unsigned cta_id, unsigned warp_id );
+   void warp_reaches_barrier( unsigned cta_id, unsigned warp_id, warp_inst_t* inst);
 
-   // fetching a warp
-   bool available_for_fetch( unsigned warp_id ) const;
 
    // warp reaches exit 
    void warp_exit( unsigned warp_id );
@@ -902,15 +917,19 @@ public:
    bool warp_waiting_at_barrier( unsigned warp_id ) const;
 
    // debug
-   void dump() const;
+   void dump();
 
 private:
    unsigned m_max_cta_per_core;
    unsigned m_max_warps_per_core;
-
-   cta_to_warp_t m_cta_to_warps; 
+   unsigned m_max_barriers_per_cta;
+   unsigned m_warp_size;
+   cta_to_warp_t m_cta_to_warps;
+   bar_id_to_warp_t m_bar_id_to_warps;
    warp_set_t m_warp_active;
    warp_set_t m_warp_at_barrier;
+   shader_core_ctx *m_shader;
+
 };
 
 struct insn_latency_info {
@@ -969,21 +988,7 @@ public:
     pipelined_simd_unit( register_set* result_port, const shader_core_config *config, unsigned max_latency, shader_core_ctx *core );
 
     //modifiers
-    virtual void cycle() 
-    {
-        if( !m_pipeline_reg[0]->empty() ){
-            m_result_port->move_in(m_pipeline_reg[0]);
-        }
-        for( unsigned stage=0; (stage+1)<m_pipeline_depth; stage++ ) 
-            move_warp(m_pipeline_reg[stage], m_pipeline_reg[stage+1]);
-        if( !m_dispatch_reg->empty() ) {
-            if( !m_dispatch_reg->dispatch_delay()) {
-                int start_stage = m_dispatch_reg->latency - m_dispatch_reg->initiation_interval;
-                move_warp(m_pipeline_reg[start_stage],m_dispatch_reg);
-            }
-        }
-        occupied >>=1;
-    }
+    virtual void cycle();
     virtual void issue( register_set& source_reg );
     virtual unsigned get_active_lanes_in_pipeline()
     {
@@ -1265,7 +1270,7 @@ struct shader_core_config : public core_config
     unsigned n_regfile_gating_group;
     unsigned max_warps_per_shader; 
     unsigned max_cta_per_core; //Limit on number of concurrent CTAs in shader core
-
+    unsigned max_barriers_per_cta;
     char * gpgpu_scheduler_string;
 
     char* pipeline_widths_string;
@@ -1572,6 +1577,7 @@ public:
     void cache_flush();
     void accept_fetch_response( mem_fetch *mf );
     void accept_ldst_unit_response( class mem_fetch * mf );
+    void broadcast_barrier_reduction(unsigned cta_id, unsigned bar_id,warp_set_t warps);
     void set_kernel( kernel_info_t *k ) 
     {
         assert(k);
@@ -1728,8 +1734,9 @@ public:
 	 void incfumemactivelanes_stat(unsigned active_count) {m_stats->m_active_fu_mem_lanes[m_sid]=m_stats->m_active_fu_mem_lanes[m_sid]+active_count;}
 
 	 void inc_simt_to_mem(unsigned n_flits){ m_stats->n_simt_to_mem[m_sid] += n_flits; }
+	 bool check_if_non_released_reduction_barrier(warp_inst_t &inst);
 
-private:
+	private:
 	 unsigned inactive_lanes_accesses_sfu(unsigned active_count,double latency){
       return  ( ((32-active_count)>>1)*latency) + ( ((32-active_count)>>3)*latency) + ( ((32-active_count)>>3)*latency);
 	 }

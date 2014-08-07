@@ -541,6 +541,40 @@ void ptx_instruction::set_mul_div_or_other_archop(){
 	}
 
 }
+
+
+
+void ptx_instruction::set_bar_type()
+{
+	   if(m_opcode==BAR_OP) {
+		   switch(m_barrier_op){
+		   	   case SYNC_OPTION:
+		   		   bar_type = SYNC;
+		   		   break;
+		   	   case ARRIVE_OPTION:
+		   		   bar_type = ARRIVE;
+		   		   break;
+		   	   case RED_OPTION:
+		   		   bar_type = RED;
+		   		   switch(m_reduction_op){
+		   		   	   case POPC_REDUCTION:
+				   		   red_type = POPC_RED;
+				   		   break;
+		   		   	   case AND_REDUCTION:
+				   		   red_type = AND_RED;
+				   		   break;
+		   		   	   case OR_REDUCTION:
+				   		   red_type = OR_RED;
+				   		   break;
+		   		   }
+		   		break;
+		   	   default:
+		   		   abort();
+		   }
+	   }
+}
+
+
 void ptx_instruction::set_opcode_and_latency()
 {
 	unsigned int_latency[5];
@@ -837,7 +871,7 @@ void ptx_instruction::pre_decode()
    }
 
    set_opcode_and_latency();
-
+   set_bar_type();
    // Get register operands
    int n=0,m=0;
    ptx_instruction::const_iterator opr=op_iter_begin();
@@ -1257,11 +1291,15 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
       insn_data_size = datatype2size(to_type);
       insn_memory_op = pI->has_memory_read() ? memory_load : memory_store;
    }
-   
+
+   if ( pI->get_opcode() == BAR_OP && pI->barrier_op() == RED_OPTION) {
+	   inst.add_callback( lane_id, last_callback().function, last_callback().instruction, this,false /*not atomic*/);
+   }
+
    if ( pI->get_opcode() == ATOM_OP ) {
       insn_memaddr = last_eaddr();
       insn_space = last_space();
-      inst.add_callback( lane_id, last_callback().function, last_callback().instruction, this );
+      inst.add_callback( lane_id, last_callback().function, last_callback().instruction, this,true /*atomic*/);
       unsigned to_type = pI->get_type();
       insn_data_size = datatype2size(to_type);
    }

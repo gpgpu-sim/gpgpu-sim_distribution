@@ -865,7 +865,19 @@ void andn_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->set_operand_value(dst,data, i_type, thread, pI);
 }
 
-void atom_callback( const inst_t* inst, ptx_thread_info* thread )
+void bar_callback( const inst_t* inst, ptx_thread_info* thread)
+{
+	unsigned ctaid = thread->get_cta_uid();
+	unsigned barid = inst->bar_id;
+	unsigned value = thread->get_reduction_value(ctaid,barid);
+	const ptx_instruction *pI = dynamic_cast<const ptx_instruction*>(inst);
+	const operand_info &dst  = pI->dst();
+	ptx_reg_t data;
+	data.u32 = value;
+	thread->set_operand_value(dst,value, U32_TYPE, thread, pI);
+}
+
+void atom_callback( const inst_t* inst, ptx_thread_info* thread)
 {
    const ptx_instruction *pI = dynamic_cast<const ptx_instruction*>(inst);
 
@@ -1221,11 +1233,107 @@ void atom_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->m_last_dram_callback.instruction = pI; 
 }
 
-void bar_sync_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
+void bar_impl( const ptx_instruction *pIin, ptx_thread_info *thread )
 { 
-   const operand_info &dst  = pI->dst();
-   ptx_reg_t b = thread->get_operand_value(dst, dst, U32_TYPE, thread, 1);
-   assert( b.u32 == 0 ); // support for bar.sync a{,b}; where a != 0 not yet implemented
+   ptx_instruction * pI = const_cast<ptx_instruction *>(pIin);
+   unsigned bar_op = pI->barrier_op();
+   unsigned red_op = pI->reduction_op();
+   unsigned ctaid = thread->get_cta_uid();
+
+   switch(bar_op){
+   	   case SYNC_OPTION:
+   	   {
+   		   if(pI->get_num_operands()>1){
+   			   const operand_info &op0 = pI->dst();
+   			   const operand_info &op1 = pI->src1();
+   			   ptx_reg_t op0_data;
+   			   ptx_reg_t op1_data;
+   			   op0_data = thread->get_operand_value(op0, op0, U32_TYPE, thread, 1);
+   			   op1_data = thread->get_operand_value(op1, op1, U32_TYPE, thread, 1);
+   			   pI->set_bar_id(op0_data.u32);
+   			   pI->set_bar_count(op1_data.u32);
+   		   }else{
+   			   const operand_info &op0 = pI->dst();
+   			   ptx_reg_t op0_data;
+   			   op0_data = thread->get_operand_value(op0, op0, U32_TYPE, thread, 1);
+   			   pI->set_bar_id(op0_data.u32);
+   		   }
+   		   break;
+   	   }
+   	   case ARRIVE_OPTION:
+   	   {
+			   const operand_info &op0 = pI->dst();
+			   const operand_info &op1 = pI->src1();
+			   ptx_reg_t op0_data;
+			   ptx_reg_t op1_data;
+			   op0_data = thread->get_operand_value(op0, op0, U32_TYPE, thread, 1);
+			   op1_data = thread->get_operand_value(op1, op1, U32_TYPE, thread, 1);
+   			   pI->set_bar_id(op0_data.u32);
+   			   pI->set_bar_count(op1_data.u32);
+   		   break;
+   	   }
+   	   case RED_OPTION:
+   	   {
+   		   if(pI->get_num_operands()>3){
+   			   const operand_info &op1 = pI->src1();
+   			   const operand_info &op2 = pI->src2();
+   			   const operand_info &op3 = pI->src3();
+   			   ptx_reg_t op1_data;
+   			   ptx_reg_t op2_data;
+   			   ptx_reg_t op3_data;
+   			   op1_data = thread->get_operand_value(op1, op1, U32_TYPE, thread, 1);
+   			   op2_data = thread->get_operand_value(op2, op2, U32_TYPE, thread, 1);
+   			   op3_data = thread->get_operand_value(op3, op3, PRED_TYPE, thread, 1);
+   			   op3_data.u32=!(op3_data.pred & 0x0001);
+   			   pI->set_bar_id(op1_data.u32);
+   			   pI->set_bar_count(op2_data.u32);
+   			   switch(red_op){
+   			   	   case POPC_REDUCTION:
+   			   		   thread->popc_reduction(ctaid,op1_data.u32,op3_data.u32);
+   			   		   break;
+   			   	   case AND_REDUCTION:
+   			   		   thread->and_reduction(ctaid,op1_data.u32,op3_data.u32);
+   			   		   break;
+   			   	   case OR_REDUCTION:
+   			   		   thread->or_reduction(ctaid,op1_data.u32,op3_data.u32);
+   			   		   break;
+   			   	   default:
+   			   		   abort();
+   			   		   break;
+   			   }
+   		   }else{
+   			   const operand_info &op1 = pI->src1();
+   			   const operand_info &op2 = pI->src2();
+   			   ptx_reg_t op1_data;
+   			   ptx_reg_t op2_data;
+   			   op1_data = thread->get_operand_value(op1, op1, U32_TYPE, thread, 1);
+   			   op2_data = thread->get_operand_value(op2, op2, PRED_TYPE, thread, 1);
+               op2_data.u32=!(op2_data.pred & 0x0001);
+   			   pI->set_bar_id(op1_data.u32);
+   			   switch(red_op){
+   			   	   case POPC_REDUCTION:
+   			   		   thread->popc_reduction(ctaid,op1_data.u32,op2_data.u32);
+   			   		   break;
+   			   	   case AND_REDUCTION:
+   			   		   thread->and_reduction(ctaid,op1_data.u32,op2_data.u32);
+   			   		   break;
+   			   	   case OR_REDUCTION:
+   			   		   thread->or_reduction(ctaid,op1_data.u32,op2_data.u32);
+   			   		   break;
+   			   	   default:
+   			   		   abort();
+   			   		   break;
+   			   }
+   		   }
+   		   break;
+   	   }
+   	   default:
+   		   abort();
+   		   break;
+   }
+
+   thread->m_last_dram_callback.function = bar_callback;
+   thread->m_last_dram_callback.instruction = pIin;
 }
 
 void bfe_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }

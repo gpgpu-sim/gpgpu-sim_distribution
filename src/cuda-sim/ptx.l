@@ -60,7 +60,7 @@ addc    TC; ptx_lval.int_value = ADDC_OP; return OPCODE;
 and	TC; ptx_lval.int_value = AND_OP; return OPCODE;
 andn	TC; ptx_lval.int_value = ANDN_OP; return OPCODE;
 atom	TC; ptx_lval.int_value = ATOM_OP; return OPCODE;
-bar.sync TC; ptx_lval.int_value = BAR_OP; return OPCODE;
+bar TC; ptx_lval.int_value = BAR_OP; return OPCODE;
 bfe     TC; ptx_lval.int_value = BFE_OP; return OPCODE;
 bfi     TC; ptx_lval.int_value = BFI_OP; return OPCODE;
 bfind   TC; ptx_lval.int_value = BFIND_OP; return OPCODE;
@@ -294,6 +294,14 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.wide  TC; return WIDE_OPTION;
 \.uni	TC; return UNI_OPTION;
 
+\.sync TC; return SYNC_OPTION;
+\.arrive TC; return ARRIVE_OPTION;
+\.red TC; return RED_OPTION;
+
+\.popc	TC; return POPC_REDUCTION;
+\.and	TC;	return AND_REDUCTION;
+\.or	TC; return OR_REDUCTION;
+
 \.approx TC; return APPROX_OPTION;
 \.full  TC; return FULL_OPTION;
 
@@ -329,6 +337,8 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.dec	TC; return ATOMIC_DEC;
 \.min	TC; return ATOMIC_MIN;
 \.max	TC; return ATOMIC_MAX;
+
+
 
 \.1d	TC; return GEOM_MODIFIER_1D;
 \.2d	TC; return GEOM_MODIFIER_2D;
