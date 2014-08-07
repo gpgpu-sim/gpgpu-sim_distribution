@@ -556,14 +556,14 @@ void ptx_instruction::set_bar_type()
 		   		   break;
 		   	   case RED_OPTION:
 		   		   bar_type = RED;
-		   		   switch(m_reduction_op){
-		   		   	   case POPC_REDUCTION:
+		   		   switch(m_atomic_spec){
+		   		   	   case ATOMIC_POPC:
 				   		   red_type = POPC_RED;
 				   		   break;
-		   		   	   case AND_REDUCTION:
+		   		   	   case ATOMIC_AND:
 				   		   red_type = AND_RED;
 				   		   break;
-		   		   	   case OR_REDUCTION:
+		   		   	   case ATOMIC_OR:
 				   		   red_type = OR_RED;
 				   		   break;
 		   		   }

@@ -993,7 +993,6 @@ public:
    unsigned saturation_mode() const { return m_saturation_mode;}
    unsigned dimension() const { return m_geom_spec;}
    unsigned barrier_op() const {return m_barrier_op;}
-   unsigned reduction_op() const {return m_reduction_op;}
    enum vote_mode_t { vote_any, vote_all, vote_uni, vote_ballot };
    enum vote_mode_t vote_mode() const { return m_vote_mode; }
 
@@ -1059,7 +1058,6 @@ private:
    unsigned            m_compare_op;
    unsigned            m_saturation_mode;
    unsigned 		   m_barrier_op;
-   unsigned			   m_reduction_op;
 
    std::list<int>          m_scalar_type;
    memory_space_t m_space_spec;

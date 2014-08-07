@@ -298,9 +298,6 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.arrive TC; return ARRIVE_OPTION;
 \.red TC; return RED_OPTION;
 
-\.popc	TC; return POPC_REDUCTION;
-\.and	TC;	return AND_REDUCTION;
-\.or	TC; return OR_REDUCTION;
 
 \.approx TC; return APPROX_OPTION;
 \.full  TC; return FULL_OPTION;
@@ -327,6 +324,7 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.wb	TC; return WB_OPTION;
 \.wt	TC; return WT_OPTION;
 
+\.popc	TC; return ATOMIC_POPC;
 \.and	TC; return ATOMIC_AND;
 \.or	TC; return ATOMIC_OR;
 \.xor	TC; return ATOMIC_XOR;

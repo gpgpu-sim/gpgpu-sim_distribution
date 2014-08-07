@@ -1237,7 +1237,7 @@ void bar_impl( const ptx_instruction *pIin, ptx_thread_info *thread )
 { 
    ptx_instruction * pI = const_cast<ptx_instruction *>(pIin);
    unsigned bar_op = pI->barrier_op();
-   unsigned red_op = pI->reduction_op();
+   unsigned red_op = pI->get_atomic();
    unsigned ctaid = thread->get_cta_uid();
 
    switch(bar_op){
@@ -1288,13 +1288,13 @@ void bar_impl( const ptx_instruction *pIin, ptx_thread_info *thread )
    			   pI->set_bar_id(op1_data.u32);
    			   pI->set_bar_count(op2_data.u32);
    			   switch(red_op){
-   			   	   case POPC_REDUCTION:
+   			   	   case ATOMIC_POPC:
    			   		   thread->popc_reduction(ctaid,op1_data.u32,op3_data.u32);
    			   		   break;
-   			   	   case AND_REDUCTION:
+   			   	   case ATOMIC_AND:
    			   		   thread->and_reduction(ctaid,op1_data.u32,op3_data.u32);
    			   		   break;
-   			   	   case OR_REDUCTION:
+   			   	   case ATOMIC_OR:
    			   		   thread->or_reduction(ctaid,op1_data.u32,op3_data.u32);
    			   		   break;
    			   	   default:
@@ -1311,13 +1311,13 @@ void bar_impl( const ptx_instruction *pIin, ptx_thread_info *thread )
                op2_data.u32=!(op2_data.pred & 0x0001);
    			   pI->set_bar_id(op1_data.u32);
    			   switch(red_op){
-   			   	   case POPC_REDUCTION:
+   			   	   case ATOMIC_POPC:
    			   		   thread->popc_reduction(ctaid,op1_data.u32,op2_data.u32);
    			   		   break;
-   			   	   case AND_REDUCTION:
+   			   	   case ATOMIC_AND:
    			   		   thread->and_reduction(ctaid,op1_data.u32,op2_data.u32);
    			   		   break;
-   			   	   case OR_REDUCTION:
+   			   	   case ATOMIC_OR:
    			   		   thread->or_reduction(ctaid,op1_data.u32,op2_data.u32);
    			   		   break;
    			   	   default:

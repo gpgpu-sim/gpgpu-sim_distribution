@@ -1049,11 +1049,6 @@ ptx_instruction::ptx_instruction( int opcode,
       case RED_OPTION:
           m_barrier_op = last_ptx_inst_option;
           break;
-      case OR_REDUCTION:
-      case AND_REDUCTION:
-      case POPC_REDUCTION:
-          m_reduction_op = last_ptx_inst_option;
-          break;
       case EQU_OPTION:
       case NEU_OPTION:
       case LTU_OPTION:
