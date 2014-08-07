@@ -446,6 +446,7 @@ option: type_spec
 	;
 
 atomic_operation_spec: ATOMIC_AND { add_option(ATOMIC_AND); } 
+	| ATOMIC_POPC { add_option(ATOMIC_POPC); }
 	| ATOMIC_OR { add_option(ATOMIC_OR); } 
 	| ATOMIC_XOR { add_option(ATOMIC_XOR); } 
 	| ATOMIC_CAS { add_option(ATOMIC_CAS); } 

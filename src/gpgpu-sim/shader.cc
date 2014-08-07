@@ -21,7 +21,7 @@
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
 // FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// SERVICES; LOSSp OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
@@ -2606,7 +2606,6 @@ void barrier_set_t::deallocate_barrier( unsigned cta_id )
 void barrier_set_t::warp_reaches_barrier(unsigned cta_id,unsigned warp_id,warp_inst_t* inst)
 {
 	barrier_type bar_type = inst->bar_type;
-	reduction_type red_type = inst->red_type;
 	unsigned bar_id = inst->bar_id;
 	unsigned bar_count = inst->bar_count;
 	assert(bar_id!=(unsigned)-1);
@@ -2628,15 +2627,12 @@ void barrier_set_t::warp_reaches_barrier(unsigned cta_id,unsigned warp_id,warp_i
    warp_set_t active = warps_in_cta & m_warp_active;
    if(bar_count==(unsigned)-1){
 	   if( at_barrier == active ) {
-		   printf("Barrier should be released\n");
 		   // all warps have reached barrier, so release waiting warps...
 		   m_bar_id_to_warps[bar_id] &= ~at_barrier;
 		   m_warp_at_barrier &= ~at_barrier;
 		   if(bar_type==RED){
-			   printf("broadcast_barrier\n");
 			   m_shader->broadcast_barrier_reduction(cta_id, bar_id,at_barrier);
 		   }
-		   printf("warps at barrier = %u\n",m_warp_at_barrier.count());
 	   }
   }else{
 	  // TODO: check on the hardware if the count should include warp that exited
@@ -2645,7 +2641,6 @@ void barrier_set_t::warp_reaches_barrier(unsigned cta_id,unsigned warp_id,warp_i
 		   m_bar_id_to_warps[bar_id] &= ~at_barrier;
 		   m_warp_at_barrier &= ~at_barrier;
 		   if(bar_type==RED){
-			   printf("REDUCTION CALLED-2\n");
 			   m_shader->broadcast_barrier_reduction(cta_id, bar_id,at_barrier);
 		   }
 	  }
@@ -2775,10 +2770,8 @@ void shader_core_ctx::decrement_atomic_count( unsigned wid, unsigned n )
 
 void shader_core_ctx::broadcast_barrier_reduction(unsigned cta_id,unsigned bar_id,warp_set_t warps)
 {
-	unsigned value = get_reduction_value(cta_id,bar_id);
 	for(unsigned i=0; i<m_config->max_warps_per_shader;i++){
 		if(warps.test(i)){
-			printf("braodcast for i=%u\n",i);
 			const warp_inst_t * inst = m_warp[i].restore_info_of_last_inst_at_barrier();
 			const_cast<warp_inst_t *> (inst)->broadcast_barrier_reduction(inst->get_active_mask());
 		}

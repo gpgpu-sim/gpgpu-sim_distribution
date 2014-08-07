@@ -239,3 +239,12 @@ clean: makedirs
 cleangpgpusim: cleandocs
 	rm -rf $(SIM_LIB_DIR)
 	rm -rf $(SIM_OBJ_FILES_DIR)
+	rm -f *~ *.o ./src/cuda-sim/*.gcda ./src/cuda-sim/*.gcno ./src/cuda-sim/*.gcov ./src/cuda-sim/libgpgpu_ptx_sim.a \
+                ./src/cuda-sim/ptx.tab.h ./src/cuda-sim/ptx.tab.c ./src/cuda-sim/ptx.output ./src/cuda-sim/lex.ptx_.c \
+                ./src/cuda-sim/ptxinfo.tab.h ./src/cuda-sim/ptxinfo.tab.c ./src/cuda-sim/ptxinfo.output ./src/cuda-sim/lex.ptxinfo_.c \
+                ./src/cuda-sim/instructions.h ./src/cuda-sim/ptx_parser_decode.def ./src/cuda-sim/directed_tests.log \
+		./cuobjdump_to_ptxplus/elf_lexer.cc ./cuobjdump_to_ptxplus/elf_parser.cc ./cuobjdump_to_ptxplus/elf_parser.hh \
+		./cuobjdump_to_ptxplus/header_lexer.cc ./cuobjdump_to_ptxplus/header_parser.cc ./cuobjdump_to_ptxplus/header_parser.hh \
+		./cuobjdump_to_ptxplus/lex.ptx_.c ./cuobjdump_to_ptxplus/ptx.output ./cuobjdump_to_ptxplus/ptx.tab.h cuobjdump_to_ptxplus/ptx.tab.h \
+		./cuobjdump_to_ptxplus/sass_lexer.cc ./cuobjdump_to_ptxplus/sass_parser.cc ./cuobjdump_to_ptxplus/sass_parser.hh
+
