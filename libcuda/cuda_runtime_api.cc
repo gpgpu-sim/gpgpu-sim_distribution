@@ -1519,7 +1519,7 @@ cuobjdumpELFSection* findELFSection(const std::string identifier){
 	if (sec!=NULL)return sec;
 	sec = findELFSectionInList(libSectionList, identifier);
 	if (sec!=NULL)return sec;
-	std::cout << "Cound not find " << identifier << std::endl;
+	std::cout << "Could not find " << identifier << std::endl;
 	assert(0 && "Could not find the required ELF section");
 	return NULL;
 }
@@ -1546,7 +1546,7 @@ cuobjdumpPTXSection* findPTXSection(const std::string identifier){
 	if (sec!=NULL)return sec;
 	sec = findPTXSectionInList(libSectionList, identifier);
 	if (sec!=NULL)return sec;
-	std::cout << "Cound not find " << identifier << std::endl;
+	std::cout << "Could not find " << identifier << std::endl;
 	assert(0 && "Could not find the required PTX section");
 	return NULL;
 }
