@@ -260,10 +260,20 @@ struct CUctx_st {
 	{
 		if( m_code.find(fat_cubin_handle) != m_code.end() ) {
 			symbol *s = m_code[fat_cubin_handle]->lookup(deviceFun);
-			assert( s != NULL );
-			function_info *f = s->get_pc();
-			assert( f != NULL );
-			m_kernel_lookup[hostFun] = f;
+			if(s != NULL) {
+				function_info *f = s->get_pc();
+				assert( f != NULL );
+				m_kernel_lookup[hostFun] = f;
+			}
+			else {
+				m_code[fat_cubin_handle]->dump();
+				printf("Warning: cannot find deviceFun %s\n", deviceFun);
+				m_kernel_lookup[hostFun] = NULL;
+			}
+	//		assert( s != NULL );
+	//		function_info *f = s->get_pc();
+	//		assert( f != NULL );
+	//		m_kernel_lookup[hostFun] = f;
 		} else {
 			m_kernel_lookup[hostFun] = NULL;
 		}
