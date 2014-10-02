@@ -266,7 +266,6 @@ struct CUctx_st {
 				m_kernel_lookup[hostFun] = f;
 			}
 			else {
-				m_code[fat_cubin_handle]->dump();
 				printf("Warning: cannot find deviceFun %s\n", deviceFun);
 				m_kernel_lookup[hostFun] = NULL;
 			}
