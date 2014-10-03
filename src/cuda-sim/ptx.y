@@ -270,8 +270,8 @@ statement_list: directive_statement { add_directive(); }
 	| instruction_statement { add_instruction(); }
 	| statement_list directive_statement { add_directive(); }
 	| statement_list instruction_statement { add_instruction(); }
-	| statement_list statement_block
-	| statement_block
+	| statement_list {start_inst_group();} statement_block {end_inst_group();}
+	| {start_inst_group();} statement_block {end_inst_group();}
 	;
 
 directive_statement: variable_declaration SEMI_COLON

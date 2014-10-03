@@ -187,6 +187,17 @@ void add_function_name( const char *name )
    g_global_symbol_table->add_function( g_func_info, g_filename, ptx_lineno );
 }
 
+//Jin: handle instruction group for cdp
+void start_inst_group() {
+   PTX_PARSE_DPRINTF("start_instruction_group");
+   g_current_symbol_table = g_current_symbol_table->start_inst_group();
+}
+
+void end_inst_group() {
+   PTX_PARSE_DPRINTF("end_instruction_group");
+   g_current_symbol_table = g_current_symbol_table->end_inst_group();
+}
+
 void add_directive() 
 {
    PTX_PARSE_DPRINTF("add_directive");
