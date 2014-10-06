@@ -470,7 +470,7 @@ private:
    std::list<reg_map_t> m_debug_trace_regs_read;
    bool m_enable_debug_trace;
 
-   std::stack<class operand_info> m_breakaddrs;
+   std::stack<class operand_info, std::vector<operand_info> > m_breakaddrs;
 };
 
 addr_t generic_to_local( unsigned smid, unsigned hwtid, addr_t addr );
