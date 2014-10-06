@@ -54,7 +54,7 @@ $(OUTPUT_DIR)/Makefile.makedepend: depend
 
 depend:
 	touch $(OUTPUT_DIR)/Makefile.makedepend
-	makedepend -f$(OUTPUT_DIR)/Makefile.makedepend -p$(OUTPUT_DIR)/ -a $(SRCS) 2> /dev/null
+	makedepend -f$(OUTPUT_DIR)/Makefile.makedepend -p$(OUTPUT_DIR)/ $(SRCS) 2> /dev/null
 
 $(OUTPUT_DIR)/%.o : %.cc
 	$(CXX) $(CXXFLAGS) -c $< -o $@
