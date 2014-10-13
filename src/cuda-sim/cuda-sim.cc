@@ -1065,6 +1065,16 @@ void function_info::add_param_data( unsigned argn, struct gpgpu_ptx_sim_arg *arg
    } 
 }
 
+unsigned function_info::get_args_aligned_size() {
+   unsigned int align_size = 4; // a word
+   unsigned int total_size = 0;
+   for(unsigned int i = 0; i < num_args(); i++) {
+       total_size += ((m_args[i]->get_size_in_bytes() + align_size - 1) / align_size) * align_size;
+   }
+   return total_size;
+}
+
+
 void function_info::finalize( memory_space *param_mem ) 
 {
    unsigned param_address = 0;

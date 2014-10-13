@@ -699,7 +699,7 @@ public:
    }
 
    bool is_immediate_address() const {
-	   return   m_immediate_address;
+       return   m_immediate_address;
    }
 
    bool is_literal() const { return m_type == int_t ||
@@ -1209,6 +1209,8 @@ public:
    {
       return m_args.size();
    }
+   unsigned get_args_aligned_size();
+
    const symbol* get_arg( unsigned n ) const
    {
       assert( n < m_args.size() );
