@@ -1762,8 +1762,13 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
    extern stream_manager *g_stream_manager;
    
    //openCL kernel simulation calls don't register the kernel so we don't register its exit
-   if(!openCL)
-   g_stream_manager->register_finished_kernel(kernel.get_uid());
+   if(!openCL) {
+
+       //Jin: for CDP, children should be finished first
+       if(kernel.is_finished()) {
+           g_stream_manager->register_finished_kernel(kernel.get_uid());
+       }
+   }
 
    //******PRINTING*******
    printf( "GPGPU-Sim: Done functional simulation (%u instructions simulated).\n", g_ptx_sim_num_insn );

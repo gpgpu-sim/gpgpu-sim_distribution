@@ -21,8 +21,7 @@
    }
 
 std::map<void *, kernel_info_t *> g_cuda_device_launch_map;
-struct CUstream_st * g_device_default_stream = NULL;
-extern stream_manager *g_stream_manager;
+extern stream_manager * g_stream_manager;
 
 //Handling device runtime api:
 //void * cudaGetParameterBufferV2(void *func, dim3 gridDimension, dim3 blockDimension, unsigned int sharedMemSize)
@@ -78,7 +77,13 @@ void gpgpusim_cuda_getParameterBufferV2(const ptx_instruction * pI, ptx_thread_i
 	DEV_RUNTIME_REPORT("child kernel arg size total " << child_kernel_arg_size << ", parameter buffer allocated at " << param_buffer);
 	
 	//create child kernel_info_t and index it with parameter_buffer address
-	kernel_info_t * child_grid = new kernel_info_t(gridDim, blockDim, child_kernel_entry); 
+	kernel_info_t * child_grid = new kernel_info_t(gridDim, blockDim, child_kernel_entry);
+    kernel_info_t & parent_grid = thread->get_kernel();
+	DEV_RUNTIME_REPORT("child kernel launched by " << parent_grid.name() << ", cta (" <<
+        thread->get_ctaid().x << ", " << thread->get_ctaid().y << ", " << thread->get_ctaid().z <<
+        "), thread (" << thread->get_tid().x << ", " << thread->get_tid().y << ", " << thread->get_tid().z <<
+        ")");
+    child_grid->set_parent(&parent_grid, thread->get_ctaid(), thread->get_tid());  
     assert(g_cuda_device_launch_map.find(param_buffer) == g_cuda_device_launch_map.end());
     g_cuda_device_launch_map[param_buffer] = child_grid;
 
@@ -137,28 +142,30 @@ void gpgpusim_cuda_launchDeviceV2(const ptx_instruction * pI, ptx_thread_info * 
             for(unsigned n = 0; n < child_kernel_arg_size; n++) {
                 unsigned char one_byte;
                 thread->get_gpu()->get_global_memory()->read((size_t)parameter_buffer + n, 1, &one_byte);
+                std::cout << "one byte " << std::hex << one_byte << "\n";
                 child_kernel_param_mem->write(param_start_address + n, 1, &one_byte, NULL, NULL); 
             }
         }
         else if(arg == 1) { //cudaStream for the child kernel
 			assert(size == sizeof(cudaStream_t));
             thread->m_local_mem->read(from_addr, size, &child_stream);
-            if(child_stream == 0) { //default stream on device
-                if(!g_device_default_stream) {
-                    //g_device_default_stream = new struct CUstream_st();
-                    //g_stream_manager->add_stream(g_device_default_stream);
-                }
-                child_stream = g_device_default_stream;
+
+            kernel_info_t & parent_kernel = thread->get_kernel();
+            if(child_stream == 0) { //default stream on device for current CTA
+                child_stream = parent_kernel.get_default_stream_cta(thread->get_ctaid()); 
             }
-//            DEV_RUNTIME_REPORT("launching child kernel to stream " << child_stream->get_uid());
+            else {
+               assert(parent_kernel.cta_has_stream(thread->get_ctaid(), child_stream)); 
+            }
+            DEV_RUNTIME_REPORT("launching child kernel to stream " << child_stream->get_uid() << " " << child_stream);
         }
         
     }
 
     //launch child kernel
     stream_operation op(child_grid, g_ptx_sim_mode, child_stream);
-//    g_stream_manager->push(op);
-//    g_cuda_device_launch_map.erase(parameter_buffer);
+    g_stream_manager->push(op);
+    g_cuda_device_launch_map.erase(parameter_buffer);
 
     //set retval0
     const operand_info &actual_return_op = pI->operand_lookup(0); //retval0

@@ -622,6 +622,10 @@ gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config )
     *active_sms=0;
 
     last_liveness_message_time = 0;
+   
+   //Jin: functional simulation for CDP
+   m_functional_sim = false;
+   m_functional_sim_kernel = NULL;
 }
 
 int gpgpu_sim::shared_mem_size() const

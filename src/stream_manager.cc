@@ -155,7 +155,7 @@ void stream_operation::do_operation( gpgpu_sim *gpu )
         	gpu->set_cache_config(m_kernel->name());
         	printf("kernel \'%s\' transfer to GPU hardware scheduler\n", m_kernel->name().c_str() );
             if( m_sim_mode )
-                gpgpu_cuda_ptx_sim_main_func( *m_kernel );
+                gpu->functional_launch( m_kernel );
             else
                 gpu->launch( m_kernel );
         }
@@ -212,11 +212,9 @@ bool stream_manager::operation( bool * sim)
 
 bool stream_manager::check_finished_kernel()
 {
-
-	unsigned grid_uid = m_gpu->finished_kernel();
-	bool check=register_finished_kernel(grid_uid);
-	return check;
-
+    unsigned grid_uid = m_gpu->finished_kernel();
+    bool check=register_finished_kernel(grid_uid);
+    return check;
 }
 
 bool stream_manager::register_finished_kernel(unsigned grid_uid)
@@ -226,13 +224,17 @@ bool stream_manager::register_finished_kernel(unsigned grid_uid)
         CUstream_st *stream = m_grid_id_to_stream[grid_uid];
         kernel_info_t *kernel = stream->front().get_kernel();
         assert( grid_uid == kernel->get_uid() );
-        stream->record_next_done();
-        m_grid_id_to_stream.erase(grid_uid);
-        delete kernel;
-        return true;
-    }else{
-    	return false;
+
+        //Jin: should check children kernels for CDP
+        if(kernel->is_finished()) {
+            stream->record_next_done();
+            m_grid_id_to_stream.erase(grid_uid);
+            kernel->notify_parent_finished();
+            delete kernel;
+            return true;
+        }
     }
+
     return false;
 }
 
@@ -259,21 +261,22 @@ stream_operation stream_manager::front()
 {
     // called by gpu simulation thread
     stream_operation result;
-    if( concurrent_streams_empty() )
-        m_service_stream_zero = true;
+//    if( concurrent_streams_empty() )
+    m_service_stream_zero = true;
     if( m_service_stream_zero ) {
-        if( !m_stream_zero.empty() ) {
-            if( !m_stream_zero.busy() ) {
+        if( !m_stream_zero.empty() && !m_stream_zero.busy() ) {
                 result = m_stream_zero.next();
                 if( result.is_kernel() ) {
                     unsigned grid_id = result.get_kernel()->get_uid();
                     m_grid_id_to_stream[grid_id] = &m_stream_zero;
                 }
-            }
         } else {
             m_service_stream_zero = false;
         }
-    } else {
+    }
+    
+    if(!m_service_stream_zero)
+    {
         std::list<struct CUstream_st*>::iterator s;
         for( s=m_streams.begin(); s != m_streams.end(); s++) {
             CUstream_st *stream = *s;

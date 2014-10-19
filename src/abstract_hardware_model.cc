@@ -565,6 +565,10 @@ kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *
     m_num_cores_running=0;
     m_uid = m_next_uid++;
     m_param_mem = new memory_space_impl<8192>("param",64*1024);
+
+    //Jin: parent and child kernel management for CDP
+    m_parent_kernel = NULL;
+   
 }
 
 kernel_info_t::~kernel_info_t()
@@ -577,6 +581,79 @@ std::string kernel_info_t::name() const
 {
     return m_kernel_entry->get_name();
 }
+
+//Jin: parent and child kernel management for CDP
+void kernel_info_t::set_parent(kernel_info_t * parent, 
+    dim3 parent_ctaid, dim3 parent_tid) {
+    m_parent_kernel = parent;
+    m_parent_ctaid = parent_ctaid;
+    m_parent_tid = parent_tid;
+    parent->set_child(this);
+}
+
+void kernel_info_t::set_child(kernel_info_t * child) {
+    m_child_kernels.push_back(child);
+}
+
+bool kernel_info_t::is_finished() {
+  if(done() && children_all_finished())
+     return true;
+  else
+     return false;
+}
+
+bool kernel_info_t::children_all_finished() {
+   for(auto child = m_child_kernels.begin(); child != m_child_kernels.end(); child++)
+   {
+       if(!(*child)->is_finished())
+         return false;
+   }
+   return true;
+}
+
+void kernel_info_t::notify_parent_finished() {
+   if(m_parent_kernel) {
+       g_stream_manager->register_finished_kernel(m_parent_kernel->get_uid());
+   }
+}
+
+CUstream_st * kernel_info_t::create_stream_cta(dim3 ctaid) {
+    assert(get_default_stream_cta(ctaid));
+    CUstream_st * stream = new CUstream_st();
+    g_stream_manager->add_stream(stream);
+    assert(m_cta_streams.find(ctaid) != m_cta_streams.end());
+    assert(m_cta_streams[ctaid].size() >= 1); //must have default stream
+    m_cta_streams[ctaid].push_back(stream);
+
+    return stream;
+}
+
+CUstream_st * kernel_info_t::get_default_stream_cta(dim3 ctaid) {
+    if(m_cta_streams.find(ctaid) != m_cta_streams.end()) {
+       assert(m_cta_streams[ctaid].size() >= 1); //already created, must have default stream
+       return *(m_cta_streams[ctaid].begin());
+    }
+    else {
+      m_cta_streams[ctaid] = std::list<CUstream_st *>();
+      CUstream_st * stream = new CUstream_st();
+      g_stream_manager->add_stream(stream);
+      m_cta_streams[ctaid].push_back(stream);
+      return stream;
+    }
+}
+
+bool kernel_info_t::cta_has_stream(dim3 ctaid, CUstream_st* stream) {
+    if(m_cta_streams.find(ctaid) == m_cta_streams.end())
+       return false;
+
+    std::list<CUstream_st *> &stream_list = m_cta_streams[ctaid];
+    if(std::find(stream_list.begin(), stream_list.end(), stream) 
+         == stream_list.end())
+       return false;
+    else
+       return true;
+}
+
 
 simt_stack::simt_stack( unsigned wid, unsigned warpSize)
 {

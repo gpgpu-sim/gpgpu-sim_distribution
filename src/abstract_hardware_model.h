@@ -154,14 +154,34 @@ enum _memory_op_t {
 #include <stdlib.h>
 #include <map>
 #include <deque>
+#include <algorithm>
 
 #if !defined(__VECTOR_TYPES_H__)
 struct dim3 {
    unsigned int x, y, z;
 };
 #endif
+struct dim3comp {
+    bool operator() (const dim3 & a, const dim3 & b) const
+    {    
+        if(a.z < b.z)
+            return true;
+        else if(a.y < b.y)
+            return true;
+        else if (a.x < b.x)
+            return true;
+        else
+            return false;
+    }
+};
 
 void increment_x_then_y_then_z( dim3 &i, const dim3 &bound);
+
+//Jin: child kernel information for CDP
+#include "stream_manager.h"
+class stream_manager;
+struct CUstream_st;
+extern stream_manager * g_stream_manager;
 
 class kernel_info_t {
 public:
@@ -250,6 +270,25 @@ private:
 
    std::list<class ptx_thread_info *> m_active_threads;
    class memory_space *m_param_mem;
+
+public:
+   //Jin: parent and child kernel management for CDP
+   void set_parent(kernel_info_t * parent, dim3 parent_ctaid, dim3 parent_tid);
+   void set_child(kernel_info_t * child);
+   bool is_finished();
+   bool children_all_finished();
+   void notify_parent_finished();
+   CUstream_st * create_stream_cta(dim3 ctaid);
+   CUstream_st * get_default_stream_cta(dim3 ctaid);
+   bool cta_has_stream(dim3 ctaid, CUstream_st* stream);
+
+private:
+   kernel_info_t * m_parent_kernel;
+   dim3 m_parent_ctaid;
+   dim3 m_parent_tid;
+   std::list<kernel_info_t *> m_child_kernels; //child kernel launched
+   std::map< dim3, std::list<CUstream_st *>, dim3comp > m_cta_streams; //streams created in each CTA
+
 };
 
 struct core_config {

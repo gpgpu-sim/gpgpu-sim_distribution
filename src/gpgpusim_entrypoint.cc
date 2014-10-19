@@ -127,6 +127,15 @@ void *gpgpu_sim_thread_concurrent(void*)
             if(g_stream_manager->operation(&sim_cycles) && !g_the_gpu->active())
                 break;
 
+            //functional simulation
+            if( g_the_gpu->is_functional_sim()) {
+                kernel_info_t * kernel = g_the_gpu->get_functional_kernel();
+                assert(kernel);
+                gpgpu_cuda_ptx_sim_main_func(*kernel);
+                g_the_gpu->finish_functional_sim(kernel);
+            }
+
+            //performance simulation
             if( g_the_gpu->active() ) {
                 g_the_gpu->cycle();
                 sim_cycles = true;
