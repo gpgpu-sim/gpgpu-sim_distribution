@@ -1066,12 +1066,24 @@ void function_info::add_param_data( unsigned argn, struct gpgpu_ptx_sim_arg *arg
 }
 
 unsigned function_info::get_args_aligned_size() {
-   unsigned int align_size = 4; // a word
+  
+   unsigned param_address = 0;
    unsigned int total_size = 0;
-   for(unsigned int i = 0; i < num_args(); i++) {
-       total_size += ((m_args[i]->get_size_in_bytes() + align_size - 1) / align_size) * align_size;
+   for( std::map<unsigned,param_info>::iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
+      param_info &p = i->second;
+      std::string name = p.get_name();
+      symbol *param = m_symtab->lookup(name.c_str());
+
+      size_t arg_size = p.get_size(); // size of param in bytes
+      total_size = (total_size + arg_size - 1) / arg_size * arg_size; //aligned
+      p.add_offset(total_size);
+      param_address += total_size;
+      param->set_address(param_address);
+      total_size += arg_size;
    }
-   return total_size;
+
+   return (total_size + 3) / 4; //final size aligned to word
+
 }
 
 
@@ -1097,13 +1109,17 @@ void function_info::finalize( memory_space *param_mem )
          size = (size<(p.get_size()/8))?size:(p.get_size()/8);
       } 
       // copy the parameter over word-by-word so that parameter that crosses a memory page can be copied over
+      //Jin: copy parameter using aligned rules
       const size_t word_size = 4; 
+      param_address = (param_address + size - 1) / size * size; //aligned with size 
       for (size_t idx = 0; idx < size; idx += word_size) {
          const char *pdata = reinterpret_cast<const char*>(param_value.pdata) + idx; // cast to char * for ptr arithmetic
          param_mem->write(param_address + idx, word_size, pdata,NULL,NULL); 
       }
+      unsigned offset = p.get_offset();
+      assert(offset == param_address);
       param->set_address(param_address);
-      param_address += size; 
+      param_address += size;
    }
 }
 

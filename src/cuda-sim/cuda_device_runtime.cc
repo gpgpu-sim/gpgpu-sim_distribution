@@ -142,7 +142,6 @@ void gpgpusim_cuda_launchDeviceV2(const ptx_instruction * pI, ptx_thread_info * 
             for(unsigned n = 0; n < child_kernel_arg_size; n++) {
                 unsigned char one_byte;
                 thread->get_gpu()->get_global_memory()->read((size_t)parameter_buffer + n, 1, &one_byte);
-                std::cout << "one byte " << std::hex << one_byte << "\n";
                 child_kernel_param_mem->write(param_start_address + n, 1, &one_byte, NULL, NULL); 
             }
         }
