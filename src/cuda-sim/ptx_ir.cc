@@ -1241,6 +1241,9 @@ ptx_instruction::ptx_instruction( int opcode,
        if (fname =="vprintf"){
            m_is_printf = true;
        }
+       if (fname == "cudaGetParameterBufferV2"
+        || fname == "cudaLaunchDeviceV2")
+           m_is_cdp = true;
 
    }
 }
