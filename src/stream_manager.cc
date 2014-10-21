@@ -153,7 +153,8 @@ void stream_operation::do_operation( gpgpu_sim *gpu )
     case stream_kernel_launch:
         if( gpu->can_start_kernel() ) {
         	gpu->set_cache_config(m_kernel->name());
-        	printf("kernel \'%s\' transfer to GPU hardware scheduler\n", m_kernel->name().c_str() );
+        	printf("kernel %d: \'%s\' transfer to GPU hardware scheduler\n", m_kernel->get_uid(), m_kernel->name().c_str() );
+            m_kernel->print_parent_info();
             if( m_sim_mode )
                 gpu->functional_launch( m_kernel );
             else

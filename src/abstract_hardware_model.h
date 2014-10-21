@@ -275,12 +275,14 @@ public:
    //Jin: parent and child kernel management for CDP
    void set_parent(kernel_info_t * parent, dim3 parent_ctaid, dim3 parent_tid);
    void set_child(kernel_info_t * child);
+   void remove_child(kernel_info_t * child);
    bool is_finished();
    bool children_all_finished();
    void notify_parent_finished();
    CUstream_st * create_stream_cta(dim3 ctaid);
    CUstream_st * get_default_stream_cta(dim3 ctaid);
    bool cta_has_stream(dim3 ctaid, CUstream_st* stream);
+   void print_parent_info();
 
 private:
    kernel_info_t * m_parent_kernel;

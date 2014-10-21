@@ -595,6 +595,12 @@ void kernel_info_t::set_child(kernel_info_t * child) {
     m_child_kernels.push_back(child);
 }
 
+void kernel_info_t::remove_child(kernel_info_t * child) {
+    assert(std::find(m_child_kernels.begin(), m_child_kernels.end(), child)
+        != m_child_kernels.end());
+    m_child_kernels.remove(child);
+}
+
 bool kernel_info_t::is_finished() {
   if(done() && children_all_finished())
      return true;
@@ -603,16 +609,15 @@ bool kernel_info_t::is_finished() {
 }
 
 bool kernel_info_t::children_all_finished() {
-   for(auto child = m_child_kernels.begin(); child != m_child_kernels.end(); child++)
-   {
-       if(!(*child)->is_finished())
+   if(!m_child_kernels.empty())
          return false;
-   }
+   
    return true;
 }
 
 void kernel_info_t::notify_parent_finished() {
    if(m_parent_kernel) {
+       m_parent_kernel->remove_child(this);
        g_stream_manager->register_finished_kernel(m_parent_kernel->get_uid());
    }
 }
@@ -652,6 +657,15 @@ bool kernel_info_t::cta_has_stream(dim3 ctaid, CUstream_st* stream) {
        return false;
     else
        return true;
+}
+
+void kernel_info_t::print_parent_info() {
+    if(m_parent_kernel) {
+        printf("Parent %d: \'%s\', Block (%d, %d, %d), Thread (%d, %d, %d)\n", 
+            m_parent_kernel->get_uid(), m_parent_kernel->name().c_str(), 
+            m_parent_ctaid.x, m_parent_ctaid.y, m_parent_ctaid.z,
+            m_parent_tid.x, m_parent_tid.y, m_parent_tid.z);
+    }
 }
 
 
