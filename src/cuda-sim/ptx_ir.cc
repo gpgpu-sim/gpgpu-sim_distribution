@@ -1242,7 +1242,8 @@ ptx_instruction::ptx_instruction( int opcode,
            m_is_printf = true;
        }
        if (fname == "cudaGetParameterBufferV2"
-        || fname == "cudaLaunchDeviceV2")
+        || fname == "cudaLaunchDeviceV2"
+        || fname == "cudaStreamCreateWithFlags")
            m_is_cdp = true;
 
    }
