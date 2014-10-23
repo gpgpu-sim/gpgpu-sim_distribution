@@ -95,6 +95,15 @@ stream_operation CUstream_st::next()
     return result;
 }
 
+void CUstream_st::cancel_front()
+{
+    pthread_mutex_lock(&m_lock);
+    assert(m_pending);
+    m_pending = false;
+    pthread_mutex_unlock(&m_lock);
+
+}
+
 void CUstream_st::print(FILE *fp)
 {
     pthread_mutex_lock(&m_lock);
@@ -111,10 +120,10 @@ void CUstream_st::print(FILE *fp)
 }
 
 
-void stream_operation::do_operation( gpgpu_sim *gpu )
+bool stream_operation::do_operation( gpgpu_sim *gpu )
 {
     if( is_noop() ) 
-        return;
+        return true;
 
     assert(!m_done && m_stream);
     if(g_debug_execution >= 3)
@@ -153,16 +162,23 @@ void stream_operation::do_operation( gpgpu_sim *gpu )
     case stream_kernel_launch:
         if( gpu->can_start_kernel() ) {
         	gpu->set_cache_config(m_kernel->name());
-        	printf("kernel %d: \'%s\' transfer to GPU hardware scheduler\n", m_kernel->get_uid(), m_kernel->name().c_str() );
+            if(g_debug_execution >= 3)
+        	    printf("kernel %d: \'%s\' transfer to GPU hardware scheduler\n", m_kernel->get_uid(), m_kernel->name().c_str() );
             m_kernel->print_parent_info();
             if( m_sim_mode )
                 gpu->functional_launch( m_kernel );
             else
                 gpu->launch( m_kernel );
         }
+        else {
+            if(g_debug_execution >= 3)
+        	    printf("kernel %d: \'%s\' not ready to transfer to GPU hardware scheduler\n", m_kernel->get_uid(), m_kernel->name().c_str() );
+            return false;    
+        }
         break;
     case stream_event: {
-        printf("event update\n");
+        if(g_debug_execution >= 3)
+            printf("event update\n");
         time_t wallclock = time((time_t *)NULL);
         m_event->update( gpu_tot_sim_cycle, wallclock );
         m_stream->record_next_done();
@@ -173,6 +189,7 @@ void stream_operation::do_operation( gpgpu_sim *gpu )
     }
     m_done=true;
     fflush(stdout);
+    return true;
 }
 
 void stream_operation::print( FILE *fp ) const
@@ -204,7 +221,16 @@ bool stream_manager::operation( bool * sim)
     bool check=check_finished_kernel();
     if(check)m_gpu->print_stats();
     stream_operation op =front();
-    op.do_operation( m_gpu );
+    if(!op.do_operation( m_gpu )) //not ready to execute
+    {
+        //cancel operation
+        if( op.is_kernel() ) {
+            unsigned grid_uid = op.get_kernel()->get_uid();
+            m_grid_id_to_stream.erase(grid_uid);
+        }
+        op.get_stream()->cancel_front();
+
+    }
     pthread_mutex_unlock(&m_lock);
     //pthread_mutex_lock(&m_lock);
     // simulate a clock cycle on the GPU
@@ -228,6 +254,7 @@ bool stream_manager::register_finished_kernel(unsigned grid_uid)
 
         //Jin: should check children kernels for CDP
         if(kernel->is_finished()) {
+            printf("kernel %d finishes, retires from stream %d\n", grid_uid, stream->get_uid());
             stream->record_next_done();
             m_grid_id_to_stream.erase(grid_uid);
             kernel->notify_parent_finished();

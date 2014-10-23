@@ -1934,7 +1934,8 @@ void shader_core_ctx::register_cta_thread_exit( unsigned cta_num )
                  m_kernel->name().c_str() );
           if( !m_gpu->kernel_more_cta_left(m_kernel) ) {
               if( !m_kernel->running() ) {
-                  printf("GPGPU-Sim uArch: GPU detected kernel \'%s\' finished on shader %u.\n", m_kernel->name().c_str(), m_sid );
+                  printf("GPGPU-Sim uArch: GPU detected kernel %u \'%s\' finished on shader %u.\n", m_kernel->get_uid(),
+                    m_kernel->name().c_str(), m_sid );
                   m_gpu->set_kernel_done( m_kernel );
               }
           }

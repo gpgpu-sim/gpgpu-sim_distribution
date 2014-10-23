@@ -122,7 +122,7 @@ void gpgpusim_cuda_launchDeviceV2(const ptx_instruction * pI, ptx_thread_info * 
         addr_t from_addr = actual_param_op.get_symbol()->get_address();
 
         if(arg == 0) {//paramter buffer for child kernel (in global memory)
-            //get parameter_buffer from the cudaDeviceLaunchV2_param0
+            //get parameter_buffer from the cudaLaunchDeviceV2_param0
 			assert(size == sizeof(void *));
             thread->m_local_mem->read(from_addr, size, &parameter_buffer);
             assert((size_t)parameter_buffer >= GLOBAL_HEAP_START);
@@ -152,11 +152,13 @@ void gpgpusim_cuda_launchDeviceV2(const ptx_instruction * pI, ptx_thread_info * 
             kernel_info_t & parent_kernel = thread->get_kernel();
             if(child_stream == 0) { //default stream on device for current CTA
                 child_stream = parent_kernel.get_default_stream_cta(thread->get_ctaid()); 
-                DEV_RUNTIME_REPORT("launching child kernel to default stream of the cta " << child_stream->get_uid() << ": " << child_stream);
+                DEV_RUNTIME_REPORT("launching child kernel " << child_grid->get_uid() << 
+                    " to default stream of the cta " << child_stream->get_uid() << ": " << child_stream);
             }
             else {
                assert(parent_kernel.cta_has_stream(thread->get_ctaid(), child_stream)); 
-                DEV_RUNTIME_REPORT("launching child kernel to stream " << child_stream->get_uid() << ": " << child_stream);
+                DEV_RUNTIME_REPORT("launching child kernel " << child_grid->get_uid() << 
+                " to stream " << child_stream->get_uid() << ": " << child_stream);
             }
         }
         
