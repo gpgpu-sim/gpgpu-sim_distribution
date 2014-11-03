@@ -2018,6 +2018,11 @@ __host__ cudaError_t CUDARTAPI cudaFuncSetCacheConfig(const char *func, enum cud
 	context->get_device()->get_gpgpu()->set_cache_config(context->get_kernel(func)->get_name(), (FuncCache)cacheConfig);
 	return g_last_cudaError = cudaSuccess;
 }
+
+//Jin: hack for cdp
+__host__ cudaError_t CUDARTAPI cudaDeviceSetLimit(enum cudaLimit limit, size_t value) {
+    return g_last_cudaError = cudaSuccess;
+}
 #endif
 
 #endif

@@ -1074,15 +1074,14 @@ unsigned function_info::get_args_aligned_size() {
       std::string name = p.get_name();
       symbol *param = m_symtab->lookup(name.c_str());
 
-      size_t arg_size = p.get_size(); // size of param in bytes
+      size_t arg_size = p.get_size() / 8; // size of param in bytes
       total_size = (total_size + arg_size - 1) / arg_size * arg_size; //aligned
       p.add_offset(total_size);
-      param_address += total_size;
-      param->set_address(param_address);
+      param->set_address(param_address + total_size);
       total_size += arg_size;
    }
 
-   return (total_size + 3) / 4; //final size aligned to word
+   return (total_size + 3) / 4 * 4; //final size aligned to word
 
 }
 
@@ -1219,8 +1218,6 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
    bool skip = false;
    int op_classification = 0;
    addr_t pc = next_instr();
-   if(pc == 440)
-    pc = 440;
    assert( pc == inst.pc ); // make sure timing model and functional model are in sync
    const ptx_instruction *pI = m_func_info->get_instruction(pc);
    set_npc( pc + pI->inst_size() );

@@ -139,10 +139,11 @@ void gpgpusim_cuda_launchDeviceV2(const ptx_instruction * pI, ptx_thread_info * 
             DEV_RUNTIME_REPORT("child_kernel_arg_size " << child_kernel_arg_size);
             memory_space *child_kernel_param_mem = child_grid->get_param_memory();
             size_t param_start_address = 0;
-            for(unsigned n = 0; n < child_kernel_arg_size; n++) {
-                unsigned char one_byte;
-                thread->get_gpu()->get_global_memory()->read((size_t)parameter_buffer + n, 1, &one_byte);
-                child_kernel_param_mem->write(param_start_address + n, 1, &one_byte, NULL, NULL); 
+            //copy in word
+            for(unsigned n = 0; n < child_kernel_arg_size; n += 4) {
+                unsigned int oneword;
+                thread->get_gpu()->get_global_memory()->read((size_t)parameter_buffer + n, 4, &oneword);
+                child_kernel_param_mem->write(param_start_address + n, 4, &oneword, NULL, NULL); 
             }
         }
         else if(arg == 1) { //cudaStream for the child kernel
