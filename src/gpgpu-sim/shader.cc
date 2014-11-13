@@ -296,6 +296,12 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
     
     m_last_inst_gpu_sim_cycle = 0;
     m_last_inst_gpu_tot_sim_cycle = 0;
+
+    //Jin: for concurrent kernels on a SM
+    m_occupied_n_threads = 0;
+    m_occupied_shmem = 0;
+    m_occupied_regs = 0;
+    m_occupied_ctas = 0;
 }
 
 void shader_core_ctx::reinit(unsigned start_thread, unsigned end_thread, bool reset_not_completed ) 
@@ -303,6 +309,13 @@ void shader_core_ctx::reinit(unsigned start_thread, unsigned end_thread, bool re
    if( reset_not_completed ) {
        m_not_completed = 0;
        m_active_threads.reset();
+
+       //Jin: for concurrent kernels on a SM
+       m_occupied_n_threads = 0;
+       m_occupied_shmem = 0;
+       m_occupied_regs = 0;
+       m_occupied_ctas = 0;
+
    }
    for (unsigned i = start_thread; i<end_thread; i++) {
       m_threadState[i].n_insn = 0;
@@ -620,7 +633,7 @@ void shader_core_ctx::fetch()
                         if( m_threadState[tid].m_active == true ) {
                             m_threadState[tid].m_active = false; 
                             unsigned cta_id = m_warp[warp_id].get_cta_id();
-                            register_cta_thread_exit(cta_id);
+                            register_cta_thread_exit(cta_id, &(m_thread[tid]->get_kernel()));
                             m_not_completed -= 1;
                             m_active_threads.reset(tid);
                             assert( m_thread[tid]!= NULL );
@@ -1917,7 +1930,7 @@ void ldst_unit::cycle()
    }
 }
 
-void shader_core_ctx::register_cta_thread_exit( unsigned cta_num )
+void shader_core_ctx::register_cta_thread_exit( unsigned cta_num, kernel_info_t * kernel)
 {
    assert( m_cta_status[cta_num] > 0 );
    m_cta_status[cta_num]--;
@@ -1925,23 +1938,33 @@ void shader_core_ctx::register_cta_thread_exit( unsigned cta_num )
       m_n_active_cta--;
       m_barriers.deallocate_barrier(cta_num);
       shader_CTA_count_unlog(m_sid, 1);
+
       printf("GPGPU-Sim uArch: Shader %d finished CTA #%d (%lld,%lld), %u CTAs running\n", m_sid, cta_num, gpu_sim_cycle, gpu_tot_sim_cycle,
              m_n_active_cta );
+
       if( m_n_active_cta == 0 ) {
-          assert( m_kernel != NULL );
-          m_kernel->dec_running();
-          printf("GPGPU-Sim uArch: Shader %u empty (release kernel %u \'%s\').\n", m_sid, m_kernel->get_uid(),
-                 m_kernel->name().c_str() );
-          if( !m_gpu->kernel_more_cta_left(m_kernel) ) {
-              if( !m_kernel->running() ) {
-                  printf("GPGPU-Sim uArch: GPU detected kernel %u \'%s\' finished on shader %u.\n", m_kernel->get_uid(),
-                    m_kernel->name().c_str(), m_sid );
-                  m_gpu->set_kernel_done( m_kernel );
-              }
-          }
-          m_kernel=NULL;
+          printf("GPGPU-Sim uArch: Shader %u empty (last released kernel %u \'%s\').\n", m_sid, kernel->get_uid(),
+                 kernel->name().c_str() );
           fflush(stdout);
+
+          //Shader can only be empty when no more cta are dispatched
+          assert(m_kernel == NULL || !m_gpu->kernel_more_cta_left(m_kernel));
+          m_kernel = NULL;
       }
+
+      //Jin: for concurrent kernels on sm
+      release_shader_resource_1block(*kernel);
+      kernel->dec_running();
+      if( !m_gpu->kernel_more_cta_left(kernel) ) {
+          if( !kernel->running() ) {
+              printf("GPGPU-Sim uArch: GPU detected kernel %u \'%s\' finished on shader %u.\n", kernel->get_uid(),
+                kernel->name().c_str(), m_sid );
+              if(m_kernel == kernel)
+                m_kernel = NULL;
+              m_gpu->set_kernel_done( kernel );
+          }
+      }
+
    }
 }
 
@@ -3239,15 +3262,27 @@ unsigned simt_core_cluster::issue_block2core()
     unsigned num_blocks_issued=0;
     for( unsigned i=0; i < m_config->n_simt_cores_per_cluster; i++ ) {
         unsigned core = (i+m_cta_issue_next_core+1)%m_config->n_simt_cores_per_cluster;
-        if( m_core[core]->get_not_completed() == 0 ) {
-            if( m_core[core]->get_kernel() == NULL ) {
-                kernel_info_t *k = m_gpu->select_kernel();
-                if( k ) 
-                    m_core[core]->set_kernel(k);
-            }
-        }
+
         kernel_info_t *kernel = m_core[core]->get_kernel();
-        if( m_gpu->kernel_more_cta_left(kernel) && (m_core[core]->get_n_active_cta() < m_config->max_cta(*kernel)) ) {
+
+        //Jin: check if to fetch the next kernel
+        if( !m_gpu->kernel_more_cta_left(kernel) ) {
+          if(m_config->gpgpu_concurrent_kernel_sm || //concurrent kernel on sm
+
+            //otherwise wait till current kernel finishes
+            (!m_config->gpgpu_concurrent_kernel_sm && 
+                m_core[core]->get_not_completed() == 0) ) 
+          {
+              kernel_info_t *k = m_gpu->select_kernel();
+              if( k ) 
+                  m_core[core]->set_kernel(k);
+          }
+        }
+
+        kernel = m_core[core]->get_kernel();
+        if( m_gpu->kernel_more_cta_left(kernel) && 
+//            (m_core[core]->get_n_active_cta() < m_config->max_cta(*kernel)) ) {
+            m_core[core]->can_issue_1block(*kernel)) {
             m_core[core]->issue_block2core(*kernel);
             num_blocks_issued++;
             m_cta_issue_next_core=core; 

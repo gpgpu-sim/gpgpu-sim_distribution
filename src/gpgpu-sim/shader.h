@@ -1327,6 +1327,9 @@ struct shader_core_config : public core_config
     int simt_core_sim_order; 
     
     unsigned mem2device(unsigned memid) const { return memid + n_simt_clusters; }
+
+    //Jin: concurrent kernel on sm
+    bool gpgpu_concurrent_kernel_sm;
 };
 
 struct shader_core_stats_pod {
@@ -1574,6 +1577,7 @@ public:
     void cycle();
     void reinit(unsigned start_thread, unsigned end_thread, bool reset_not_completed );
     void issue_block2core( class kernel_info_t &kernel );
+
     void cache_flush();
     void accept_fetch_response( mem_fetch *mf );
     void accept_ldst_unit_response( class mem_fetch * mf );
@@ -1582,7 +1586,7 @@ public:
     {
         assert(k);
         m_kernel=k; 
-        k->inc_running(); 
+//        k->inc_running(); 
         printf("GPGPU-Sim uArch: Shader %d bind to kernel %u \'%s\'\n", m_sid, m_kernel->get_uid(),
                  m_kernel->name().c_str() );
     }
@@ -1749,7 +1753,7 @@ public:
     virtual void checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned t, unsigned tid);
     address_type next_pc( int tid ) const;
     void fetch();
-    void register_cta_thread_exit( unsigned cta_num );
+    void register_cta_thread_exit( unsigned cta_num, kernel_info_t * kernel );
 
     void decode();
     
@@ -1831,6 +1835,20 @@ public:
     // is that the dynamic_warp_id is a running number unique to every warp
     // run on this shader, where the warp_id is the static warp slot.
     unsigned m_dynamic_warp_id;
+
+    //Jin: concurrent kernels on a sm
+public:
+    bool can_issue_1block(kernel_info_t & kernel);
+    bool occupy_shader_resource_1block(kernel_info_t & kernel, bool occupy);
+    void release_shader_resource_1block(kernel_info_t & kernel);
+    int find_available_hwtid(unsigned int cta_size);
+private:
+    unsigned int m_occupied_n_threads; 
+    unsigned int m_occupied_shmem; 
+    unsigned int m_occupied_regs;
+    unsigned int m_occupied_ctas;
+
+
 };
 
 class simt_core_cluster {
@@ -1850,6 +1868,7 @@ public:
     void cache_flush();
     bool icnt_injection_buffer_full(unsigned size, bool write);
     void icnt_inject_request_packet(class mem_fetch *mf);
+
 
     // for perfect memory interface
     bool response_queue_full() {
