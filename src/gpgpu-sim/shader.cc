@@ -3263,23 +3263,29 @@ unsigned simt_core_cluster::issue_block2core()
     for( unsigned i=0; i < m_config->n_simt_cores_per_cluster; i++ ) {
         unsigned core = (i+m_cta_issue_next_core+1)%m_config->n_simt_cores_per_cluster;
 
-        kernel_info_t *kernel = m_core[core]->get_kernel();
-
-        //Jin: check if to fetch the next kernel
-        if( !m_gpu->kernel_more_cta_left(kernel) ) {
-          if(m_config->gpgpu_concurrent_kernel_sm || //concurrent kernel on sm
-
-            //otherwise wait till current kernel finishes
-            (!m_config->gpgpu_concurrent_kernel_sm && 
-                m_core[core]->get_not_completed() == 0) ) 
-          {
-              kernel_info_t *k = m_gpu->select_kernel();
-              if( k ) 
-                  m_core[core]->set_kernel(k);
-          }
+        kernel_info_t * kernel;
+         //Jin: fetch kernel according to concurrent kernel setting
+        if(m_config->gpgpu_concurrent_kernel_sm) {//concurrent kernel on sm 
+            //always select latest issued kernel
+            kernel_info_t *k = m_gpu->select_kernel();
+            kernel = k;
+        }
+        else {
+            //first select core kernel, if no more cta, get a new kernel
+            //only when core completes
+            kernel = m_core[core]->get_kernel();
+            if( !m_gpu->kernel_more_cta_left(kernel) ) {
+              //wait till current kernel finishes
+              if(m_core[core]->get_not_completed() == 0)
+              {
+                  kernel_info_t *k = m_gpu->select_kernel();
+                  if( k ) 
+                      m_core[core]->set_kernel(k);
+                  kernel = k;
+              }
+            }
         }
 
-        kernel = m_core[core]->get_kernel();
         if( m_gpu->kernel_more_cta_left(kernel) && 
 //            (m_core[core]->get_n_active_cta() < m_config->max_cta(*kernel)) ) {
             m_core[core]->can_issue_1block(*kernel)) {
