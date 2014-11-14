@@ -841,6 +841,13 @@ void scheduler_unit::cycle()
         unsigned max_issue = m_shader->m_config->gpgpu_max_insn_issue_per_warp;
         while( !warp(warp_id).waiting() && !warp(warp_id).ibuffer_empty() && (checked < max_issue) && (checked <= issued) && (issued < max_issue) ) {
             const warp_inst_t *pI = warp(warp_id).ibuffer_next_inst();
+            //Jin: handle cdp latency;
+            if(pI->m_is_cdp && warp(warp_id).m_cdp_latency > 0) {
+                assert(warp(warp_id).m_cdp_dummy);
+                warp(warp_id).m_cdp_latency--;
+                break;
+            }
+
             bool valid = warp(warp_id).ibuffer_next_valid();
             bool warp_inst_issued = false;
             unsigned pc,rpc;
@@ -875,6 +882,25 @@ void scheduler_unit::cycle()
                             bool sp_pipe_avail = m_sp_out->has_free();
                             bool sfu_pipe_avail = m_sfu_out->has_free();
                             if( sp_pipe_avail && (pI->op != SFU_OP) ) {
+                                
+                                //Jin: special for CDP api
+                                if(pI->m_is_cdp && !warp(warp_id).m_cdp_dummy) {
+                                    assert(warp(warp_id).m_cdp_latency == 0);
+                                    
+                                    extern unsigned cdp_latency[3];
+                                    if(pI->m_is_cdp != 3)
+                                        warp(warp_id).m_cdp_latency = cdp_latency[pI->m_is_cdp - 1];
+                                    else //cudaLaunchDeviceV2
+                                        warp(warp_id).m_cdp_latency = cdp_latency[pI->m_is_cdp - 1]
+                                            + cdp_latency[pI->m_is_cdp] * active_mask.count();
+                                    warp(warp_id).m_cdp_dummy = true;
+                                    break;
+                                }
+                                else if(pI->m_is_cdp && warp(warp_id).m_cdp_dummy) {
+                                    assert(warp(warp_id).m_cdp_latency == 0);
+                                    warp(warp_id).m_cdp_dummy = false;
+                                }
+
                                 // always prefer SP pipe for operations that can use both SP and SFU pipelines
                                 m_shader->issue_warp(*m_sp_out,pI,active_mask,warp_id);
                                 issued++;

@@ -108,6 +108,10 @@ public:
         m_last_fetch=0;
         m_next=0;
         m_inst_at_barrier=NULL;
+
+        //Jin: cdp support
+        m_cdp_latency = 0;
+        m_cdp_dummy = false;
     }
     void init( address_type start_pc,
                unsigned cta_id,
@@ -124,6 +128,10 @@ public:
         n_completed   -= active.count(); // active threads are not yet completed
         m_active_threads = active;
         m_done_exit=false;
+
+        //Jin: cdp support
+        m_cdp_latency = 0;
+        m_cdp_dummy = false;
     }
 
     bool functional_done() const;
@@ -260,6 +268,11 @@ private:
 
     unsigned m_stores_outstanding; // number of store requests sent but not yet acknowledged
     unsigned m_inst_in_pipeline;
+
+    //Jin: cdp support
+public:
+    unsigned int m_cdp_latency;
+    bool m_cdp_dummy;
 };
 
 
