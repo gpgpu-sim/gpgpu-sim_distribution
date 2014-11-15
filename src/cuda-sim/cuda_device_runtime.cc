@@ -59,6 +59,8 @@ public:
 std::map<void *, device_launch_config_t> g_cuda_device_launch_param_map;
 std::list<device_launch_operation_t> g_cuda_device_launch_op;
 extern stream_manager *g_stream_manager;
+unsigned long long g_total_param_size = 0;
+unsigned long long g_max_total_param_size = 0;
 
 //Handling device runtime api:
 //void * cudaGetParameterBufferV2(void *func, dim3 gridDimension, dim3 blockDimension, unsigned int sharedMemSize)
@@ -111,7 +113,10 @@ void gpgpusim_cuda_getParameterBufferV2(const ptx_instruction * pI, ptx_thread_i
     //get total child kernel argument size and malloc buffer in global memory
     unsigned child_kernel_arg_size = child_kernel_entry->get_args_aligned_size();
     void * param_buffer = thread->get_gpu()->gpu_malloc(child_kernel_arg_size);
+    g_total_param_size += ((child_kernel_arg_size + 255) / 256 * 256);
     DEV_RUNTIME_REPORT("child kernel arg size total " << child_kernel_arg_size << ", parameter buffer allocated at " << param_buffer);
+    if(g_total_param_size > g_max_total_param_size)
+        g_max_total_param_size = g_total_param_size;
 
     //store param buffer address and launch config
     device_launch_config_t device_launch_config(grid_dim, block_dim, shared_mem, child_kernel_entry);
@@ -176,7 +181,7 @@ void gpgpusim_cuda_launchDeviceV2(const ptx_instruction * pI, ptx_thread_info * 
 
             //create child kernel_info_t and index it with parameter_buffer address
             device_grid = new kernel_info_t(config.grid_dim, config.block_dim, device_kernel_entry);
-            device_grid->launch_cycle = gpu_sim_cycle;
+            device_grid->launch_cycle = gpu_sim_cycle + gpu_tot_sim_cycle;
             kernel_info_t & parent_grid = thread->get_kernel();
             DEV_RUNTIME_REPORT("child kernel launched by " << parent_grid.name() << ", cta (" <<
                 thread->get_ctaid().x << ", " << thread->get_ctaid().y << ", " << thread->get_ctaid().z <<

@@ -219,7 +219,7 @@ bool stream_manager::operation( bool * sim)
 {
     bool check=check_finished_kernel();
     pthread_mutex_lock(&m_lock);
-    if(check)m_gpu->print_stats();
+//    if(check)m_gpu->print_stats();
     stream_operation op =front();
     if(!op.do_operation( m_gpu )) //not ready to execute
     {
@@ -260,8 +260,10 @@ bool stream_manager::register_finished_kernel(unsigned grid_uid)
 //                kernel_stat << ", parent " << kernel->get_parent()->get_uid() <<
 //                ", launch " << kernel->launch_cycle;
 //            kernel_stat<< ", start " << kernel->start_cycle <<
-//                ", end " << kernel->end_cycle << ", retire " << gpu_sim_cycle << "\n";
+//                ", end " << kernel->end_cycle << ", retire " << gpu_sim_cycle + gpu_tot_sim_cycle << "\n";
 //            printf("kernel %d finishes, retires from stream %d\n", grid_uid, stream->get_uid());
+//            kernel_stat.flush();
+//            kernel_stat.close();
             stream->record_next_done();
             m_grid_id_to_stream.erase(grid_uid);
             kernel->notify_parent_finished();

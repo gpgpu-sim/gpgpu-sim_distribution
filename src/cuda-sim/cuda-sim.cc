@@ -1499,7 +1499,8 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
    unsigned max_cta_per_sm = num_threads/cta_size; // e.g., 256 / 48 = 5 
    assert( max_cta_per_sm > 0 );
 
-   unsigned sm_idx = (tid/cta_size)*gpgpu_param_num_shaders + sid;
+   //unsigned sm_idx = (tid/cta_size)*gpgpu_param_num_shaders + sid;
+   unsigned sm_idx = hw_cta_id*gpgpu_param_num_shaders + sid;
 
    if ( shared_memory_lookup.find(sm_idx) == shared_memory_lookup.end() ) {
       if ( g_debug_execution >= 1 ) {

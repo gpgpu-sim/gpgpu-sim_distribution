@@ -524,20 +524,26 @@ bool gpgpu_sim::get_more_cta_left() const
 kernel_info_t *gpgpu_sim::select_kernel()
 {
     if(m_running_kernels[m_last_issued_kernel] &&
-        !m_running_kernels[m_last_issued_kernel]->no_more_ctas_to_run())
+        !m_running_kernels[m_last_issued_kernel]->no_more_ctas_to_run()) {
+        unsigned launch_uid = m_running_kernels[m_last_issued_kernel]->get_uid(); 
+        if(std::find(m_executed_kernel_uids.begin(), m_executed_kernel_uids.end(), launch_uid) == m_executed_kernel_uids.end()) {
+            m_running_kernels[m_last_issued_kernel]->start_cycle = gpu_sim_cycle + gpu_tot_sim_cycle;
+            m_executed_kernel_uids.push_back(launch_uid); 
+            m_executed_kernel_names.push_back(m_running_kernels[m_last_issued_kernel]->name()); 
+        }
         return m_running_kernels[m_last_issued_kernel];
+    }
 
     for(unsigned n=0; n < m_running_kernels.size(); n++ ) {
         unsigned idx = (n+m_last_issued_kernel+1)%m_config.max_concurrent_kernel;
         if( kernel_more_cta_left(m_running_kernels[idx]) ){
             m_last_issued_kernel=idx;
-            m_running_kernels[idx]->start_cycle = gpu_sim_cycle;
+            m_running_kernels[idx]->start_cycle = gpu_sim_cycle + gpu_tot_sim_cycle;
             // record this kernel for stat print if it is the first time this kernel is selected for execution  
             unsigned launch_uid = m_running_kernels[idx]->get_uid(); 
-            if (std::find(m_executed_kernel_uids.begin(), m_executed_kernel_uids.end(), launch_uid) == m_executed_kernel_uids.end()) {
-               m_executed_kernel_uids.push_back(launch_uid); 
-               m_executed_kernel_names.push_back(m_running_kernels[idx]->name()); 
-            }
+            assert(std::find(m_executed_kernel_uids.begin(), m_executed_kernel_uids.end(), launch_uid) == m_executed_kernel_uids.end());
+            m_executed_kernel_uids.push_back(launch_uid); 
+            m_executed_kernel_names.push_back(m_running_kernels[idx]->name()); 
 
             return m_running_kernels[idx];
         }
@@ -561,7 +567,7 @@ void gpgpu_sim::set_kernel_done( kernel_info_t *kernel )
     std::vector<kernel_info_t*>::iterator k;
     for( k=m_running_kernels.begin(); k!=m_running_kernels.end(); k++ ) {
         if( *k == kernel ) {
-            kernel->end_cycle = gpu_sim_cycle;
+            kernel->end_cycle = gpu_sim_cycle + gpu_tot_sim_cycle;
             *k = NULL;
             break;
         }
@@ -942,7 +948,8 @@ void gpgpu_sim::gpu_print_stat()
    printf("gpu_tot_ipc = %12.4f\n", (float)(gpu_tot_sim_insn+gpu_sim_insn) / (gpu_tot_sim_cycle+gpu_sim_cycle));
    printf("gpu_tot_issued_cta = %lld\n", gpu_tot_issued_cta + m_total_cta_launched);
 
-
+   extern unsigned long long g_max_total_param_size;
+   fprintf(statfout, "max_total_param_size = %llu\n", g_max_total_param_size);
 
    // performance counter for stalls due to congestion.
    printf("gpu_stall_dramfull = %d\n", gpu_stall_dramfull);
