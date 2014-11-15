@@ -1766,7 +1766,7 @@ public:
     virtual void checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned t, unsigned tid);
     address_type next_pc( int tid ) const;
     void fetch();
-    void register_cta_thread_exit( unsigned cta_num, kernel_info_t * kernel );
+    void register_cta_thread_exit(unsigned cta_num, kernel_info_t * kernel );
 
     void decode();
     
@@ -1853,13 +1853,15 @@ public:
 public:
     bool can_issue_1block(kernel_info_t & kernel);
     bool occupy_shader_resource_1block(kernel_info_t & kernel, bool occupy);
-    void release_shader_resource_1block(kernel_info_t & kernel);
-    int find_available_hwtid(unsigned int cta_size);
+    void release_shader_resource_1block(unsigned hw_ctaid, kernel_info_t & kernel);
+    int find_available_hwtid(unsigned int cta_size, bool occupy);
 private:
     unsigned int m_occupied_n_threads; 
     unsigned int m_occupied_shmem; 
     unsigned int m_occupied_regs;
     unsigned int m_occupied_ctas;
+    std::bitset<MAX_THREAD_PER_SM> m_occupied_hwtid;
+    std::map<unsigned int, unsigned int> m_occupied_cta_to_hwtid; 
 
 
 };

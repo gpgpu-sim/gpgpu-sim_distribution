@@ -302,6 +302,8 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
     m_occupied_shmem = 0;
     m_occupied_regs = 0;
     m_occupied_ctas = 0;
+    m_occupied_hwtid.reset();
+    m_occupied_cta_to_hwtid.clear();
 }
 
 void shader_core_ctx::reinit(unsigned start_thread, unsigned end_thread, bool reset_not_completed ) 
@@ -315,6 +317,8 @@ void shader_core_ctx::reinit(unsigned start_thread, unsigned end_thread, bool re
        m_occupied_shmem = 0;
        m_occupied_regs = 0;
        m_occupied_ctas = 0;
+       m_occupied_hwtid.reset();
+       m_occupied_cta_to_hwtid.clear();
 
    }
    for (unsigned i = start_thread; i<end_thread; i++) {
@@ -893,7 +897,6 @@ void scheduler_unit::cycle()
                                     else //cudaLaunchDeviceV2 and cudaGetParameterBufferV2
                                         warp(warp_id).m_cdp_latency = cdp_latency[pI->m_is_cdp - 1]
                                             + cdp_latency[pI->m_is_cdp] * active_mask.count();
-                                    printf("set latency %d\n", warp(warp_id).m_cdp_latency);
                                     warp(warp_id).m_cdp_dummy = true;
                                     break;
                                 }
@@ -1980,7 +1983,7 @@ void shader_core_ctx::register_cta_thread_exit( unsigned cta_num, kernel_info_t 
       }
 
       //Jin: for concurrent kernels on sm
-      release_shader_resource_1block(*kernel);
+      release_shader_resource_1block(cta_num, *kernel);
       kernel->dec_running();
       if( !m_gpu->kernel_more_cta_left(kernel) ) {
           if( !kernel->running() ) {
