@@ -284,6 +284,7 @@ public:
    bool cta_has_stream(dim3 ctaid, CUstream_st* stream);
    void destroy_cta_streams();
    void print_parent_info();
+   kernel_info_t * get_parent() { return m_parent_kernel; }
 
 private:
    kernel_info_t * m_parent_kernel;
@@ -292,6 +293,11 @@ private:
    std::list<kernel_info_t *> m_child_kernels; //child kernel launched
    std::map< dim3, std::list<CUstream_st *>, dim3comp > m_cta_streams; //streams created in each CTA
 
+//Jin: kernel timing
+public:
+   unsigned long long launch_cycle;
+   unsigned long long start_cycle;
+   unsigned long long end_cycle;
 };
 
 struct core_config {

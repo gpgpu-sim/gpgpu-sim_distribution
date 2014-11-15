@@ -531,6 +531,7 @@ kernel_info_t *gpgpu_sim::select_kernel()
         unsigned idx = (n+m_last_issued_kernel+1)%m_config.max_concurrent_kernel;
         if( kernel_more_cta_left(m_running_kernels[idx]) ){
             m_last_issued_kernel=idx;
+            m_running_kernels[idx]->start_cycle = gpu_sim_cycle;
             // record this kernel for stat print if it is the first time this kernel is selected for execution  
             unsigned launch_uid = m_running_kernels[idx]->get_uid(); 
             if (std::find(m_executed_kernel_uids.begin(), m_executed_kernel_uids.end(), launch_uid) == m_executed_kernel_uids.end()) {
@@ -560,6 +561,7 @@ void gpgpu_sim::set_kernel_done( kernel_info_t *kernel )
     std::vector<kernel_info_t*>::iterator k;
     for( k=m_running_kernels.begin(); k!=m_running_kernels.end(); k++ ) {
         if( *k == kernel ) {
+            kernel->end_cycle = gpu_sim_cycle;
             *k = NULL;
             break;
         }
