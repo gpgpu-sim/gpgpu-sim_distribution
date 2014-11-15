@@ -65,7 +65,7 @@ unsigned gpgpu_param_num_shaders = 0;
 char *opcode_latency_int, *opcode_latency_fp, *opcode_latency_dp;
 char *opcode_initiation_int, *opcode_initiation_fp, *opcode_initiation_dp;
 char *cdp_latency_str;
-unsigned cdp_latency[4];
+unsigned cdp_latency[5];
 
 void ptx_opcocde_latency_options (option_parser_t opp) {
 	option_parser_register(opp, "-ptx_opcode_latency_int", OPT_CSTR, &opcode_latency_int,
@@ -93,10 +93,11 @@ void ptx_opcocde_latency_options (option_parser_t opp) {
 			"Default 8,8,8,8,130",
 			"8,8,8,8,130");
 	option_parser_register(opp, "-cdp_latency", OPT_CSTR, &cdp_latency_str,
-			"CDP API latency <cudaGetParameterBufferV2, cudaStreamCreateWithFlags, \
-                cudaLaunchDeviceV2_initCTA, cudaLaunchDevicV2_perKernel>"
-			"Default 1,7200,19320,1680",
-			"1,7200,19320,1680");
+			"CDP API latency <cudaStreamCreateWithFlags, \
+cudaGetParameterBufferV2_init_perWarp, cudaGetParameterBufferV2_perKernel, \
+cudaLaunchDeviceV2_init_perWarp, cudaLaunchDevicV2_perKernel>"
+			"Default 7200,8000,100,12000,1600",
+			"7200,8000,100,12000,1600");
 }
 
 static address_type get_converge_point(address_type pc);
@@ -616,8 +617,9 @@ void ptx_instruction::set_opcode_and_latency()
 	sscanf(opcode_initiation_dp, "%u,%u,%u,%u,%u",
 			&dp_init[0],&dp_init[1],&dp_init[2],
 			&dp_init[3],&dp_init[4]);
-	sscanf(cdp_latency_str, "%u,%u,%u,%u",
-			&cdp_latency[0],&cdp_latency[1],&cdp_latency[2], &cdp_latency[3]);
+	sscanf(cdp_latency_str, "%u,%u,%u,%u,%u",
+			&cdp_latency[0],&cdp_latency[1],&cdp_latency[2], 
+            &cdp_latency[3],&cdp_latency[4]);
 
 	if(!m_operands.empty()){
 		std::vector<operand_info>::iterator it;
