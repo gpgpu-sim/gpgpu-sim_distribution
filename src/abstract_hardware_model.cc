@@ -550,6 +550,8 @@ void warp_inst_t::completed( unsigned long long cycle ) const
    ptx_file_line_stats_add_latency(pc, latency * active_count());  
 }
 
+//Jin: kernel launch latency
+unsigned g_kernel_launch_latency;
 
 unsigned kernel_info_t::m_next_uid = 1;
 
@@ -569,6 +571,8 @@ kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *
     //Jin: parent and child kernel management for CDP
     m_parent_kernel = NULL;
    
+    //Jin: launch latency management
+    m_launch_latency = g_kernel_launch_latency;
 }
 
 kernel_info_t::~kernel_info_t()

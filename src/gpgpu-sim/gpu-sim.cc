@@ -443,6 +443,12 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
                           &Trace::sampling_memory_partition, "The memory partition which is printed using MEMPART_DPRINTF. Default -1 (i.e. all)",
                           "-1");
    ptx_file_line_stats_options(opp);
+
+    //Jin: kernel launch latency
+    extern unsigned g_kernel_launch_latency;
+    option_parser_register(opp, "-gpgpu_kernel_launch_latency", OPT_INT32, 
+                          &g_kernel_launch_latency, "Kernel launch latency in cycles. Default: 0",
+                          "0");
 }
 
 /////////////////////////////////////////////////////////////////////////////

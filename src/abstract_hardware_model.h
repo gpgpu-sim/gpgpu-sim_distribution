@@ -298,6 +298,7 @@ public:
    unsigned long long launch_cycle;
    unsigned long long start_cycle;
    unsigned long long end_cycle;
+   unsigned m_launch_latency;
 };
 
 struct core_config {

@@ -160,20 +160,31 @@ bool stream_operation::do_operation( gpgpu_sim *gpu )
         m_stream->record_next_done();
         break;
     case stream_kernel_launch:
-        if( gpu->can_start_kernel() ) {
-        	gpu->set_cache_config(m_kernel->name());
-            if(g_debug_execution >= 3)
-        	    printf("kernel %d: \'%s\' transfer to GPU hardware scheduler\n", m_kernel->get_uid(), m_kernel->name().c_str() );
-            m_kernel->print_parent_info();
-            if( m_sim_mode )
-                gpu->functional_launch( m_kernel );
-            else
-                gpu->launch( m_kernel );
+        if( m_sim_mode ) { //Functional Sim
+            if(g_debug_execution >= 3) {
+                printf("kernel %d: \'%s\' transfer to GPU hardware scheduler\n", m_kernel->get_uid(), m_kernel->name().c_str() );
+                m_kernel->print_parent_info();
+            }
+            gpu->set_cache_config(m_kernel->name());
+            gpu->functional_launch( m_kernel );
         }
-        else {
-            if(g_debug_execution >= 3)
-        	    printf("kernel %d: \'%s\' not ready to transfer to GPU hardware scheduler\n", m_kernel->get_uid(), m_kernel->name().c_str() );
-            return false;    
+        else { //Performance Sim
+            if( gpu->can_start_kernel() && m_kernel->m_launch_latency == 0) {
+                if(g_debug_execution >= 3) {
+                    printf("kernel %d: \'%s\' transfer to GPU hardware scheduler\n", m_kernel->get_uid(), m_kernel->name().c_str() );
+                    m_kernel->print_parent_info();
+                }
+                gpu->set_cache_config(m_kernel->name());
+                gpu->launch( m_kernel );
+            }
+            else {
+                if(m_kernel->m_launch_latency)
+                    m_kernel->m_launch_latency--;
+                if(g_debug_execution >= 3)
+                    printf("kernel %d: \'%s\', latency %u not ready to transfer to GPU hardware scheduler\n", 
+                        m_kernel->get_uid(), m_kernel->name().c_str(), m_kernel->m_launch_latency);
+                return false;    
+            }
         }
         break;
     case stream_event: {
@@ -255,7 +266,7 @@ bool stream_manager::register_finished_kernel(unsigned grid_uid)
         //Jin: should check children kernels for CDP
         if(kernel->is_finished()) {
 //            std::ofstream kernel_stat("kernel_stat.txt", std::ofstream::out | std::ofstream::app);
-//            kernel_stat<< " kernel " << grid_uid;
+//            kernel_stat<< " kernel " << grid_uid << ": " << kernel->name();
 //            if(kernel->get_parent())
 //                kernel_stat << ", parent " << kernel->get_parent()->get_uid() <<
 //                ", launch " << kernel->launch_cycle;
