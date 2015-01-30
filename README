@@ -200,7 +200,6 @@ built. From the root directory of the simulator, type the following commands in
 a bash shell (you can check you are using a bash shell by running the command
 "echo $SHELL", which should print "/bin/bash"):
 
-cd v3.x
 source setup_environment <build_type>
 
 replace <build_type> with debug or release. Use release if you need faster
@@ -224,12 +223,12 @@ to clean the docs run
 
 make cleandocs
 
-The documentation resides at v3.x/doc/doxygen/html.
+The documentation resides at doc/doxygen/html.
 
 Step 3: Run
 ============
 
-Copy the contents of v3.x/configs/QuadroFX5800/ or v3.x/configs/GTX480/ to your
+Copy the contents of configs/QuadroFX5800/ or configs/GTX480/ to your
 application's working directory.  These files configure the microarchitecture
 models to resemble the respective GPGPU architectures.
 
@@ -275,10 +274,9 @@ If you need to run the set of applications in the NVIDIA CUDA SDK code
 samples then you will need to download, install and build the SDK.
 
 The CUDA applications from the ISPASS 2009 paper mentioned above are
-distributed separately on the git server under the directory
-ispass2009-benchmarks. The README.ISPASS-2009 file distributed with the
-benchmarks now contains updated instructions for running the benchmarks on
-GPGPU-Sim v3.x.
+distributed separately on github under the repo ispass2009-benchmarks.
+The README.ISPASS-2009 file distributed with the benchmarks now contains 
+updated instructions for running the benchmarks on GPGPU-Sim v3.x.
 
 
 3.  (OPTIONAL) Updating GPGPU-Sim (ADVANCED USERS ONLY)
