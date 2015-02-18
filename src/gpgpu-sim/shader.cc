@@ -595,81 +595,83 @@ void shader_core_ctx::decode()
 
 void shader_core_ctx::fetch()
 {
+
     if( !m_inst_fetch_buffer.m_valid ) {
-        // find an active warp with space in instruction buffer that is not already waiting on a cache miss
-        // and get next 1-2 instructions from i-cache...
-        for( unsigned i=0; i < m_config->max_warps_per_shader; i++ ) {
-            unsigned warp_id = (m_last_warp_fetched+1+i) % m_config->max_warps_per_shader;
+        if( m_L1I->access_ready() ) {
+            mem_fetch *mf = m_L1I->next_access();
+            m_warp[mf->get_wid()].clear_imiss_pending();
+            m_inst_fetch_buffer = ifetch_buffer_t(m_warp[mf->get_wid()].get_pc(), mf->get_access_size(), mf->get_wid());
+            m_inst_fetch_buffer.m_valid = true;
+            m_warp[mf->get_wid()].set_last_fetch(gpu_sim_cycle);
+            delete mf;
+        }
+        else {
+            // find an active warp with space in instruction buffer that is not already waiting on a cache miss
+            // and get next 1-2 instructions from i-cache...
+            for( unsigned i=0; i < m_config->max_warps_per_shader; i++ ) {
+                unsigned warp_id = (m_last_warp_fetched+1+i) % m_config->max_warps_per_shader;
 
-            // this code checks if this warp has finished executing and can be reclaimed
-            if( m_warp[warp_id].hardware_done() && !m_scoreboard->pendingWrites(warp_id) && !m_warp[warp_id].done_exit() ) {
-                bool did_exit=false;
-                for( unsigned t=0; t<m_config->warp_size;t++) {
-                    unsigned tid=warp_id*m_config->warp_size+t;
-                    if( m_threadState[tid].m_active == true ) {
-                        m_threadState[tid].m_active = false; 
-                        unsigned cta_id = m_warp[warp_id].get_cta_id();
-                        register_cta_thread_exit(cta_id);
-                        m_not_completed -= 1;
-                        m_active_threads.reset(tid);
-                        assert( m_thread[tid]!= NULL );
-                        did_exit=true;
+                // this code checks if this warp has finished executing and can be reclaimed
+                if( m_warp[warp_id].hardware_done() && !m_scoreboard->pendingWrites(warp_id) && !m_warp[warp_id].done_exit() ) {
+                    bool did_exit=false;
+                    for( unsigned t=0; t<m_config->warp_size;t++) {
+                        unsigned tid=warp_id*m_config->warp_size+t;
+                        if( m_threadState[tid].m_active == true ) {
+                            m_threadState[tid].m_active = false; 
+                            unsigned cta_id = m_warp[warp_id].get_cta_id();
+                            register_cta_thread_exit(cta_id);
+                            m_not_completed -= 1;
+                            m_active_threads.reset(tid);
+                            assert( m_thread[tid]!= NULL );
+                            did_exit=true;
+                        }
                     }
+                    if( did_exit ) 
+                        m_warp[warp_id].set_done_exit();
                 }
-                if( did_exit ) 
-                    m_warp[warp_id].set_done_exit();
-            }
 
-            // this code fetches instructions from the i-cache or generates memory requests
-            if( !m_warp[warp_id].functional_done() && !m_warp[warp_id].imiss_pending() && m_warp[warp_id].ibuffer_empty() ) {
-                address_type pc  = m_warp[warp_id].get_pc();
-                address_type ppc = pc + PROGRAM_MEM_START;
-                unsigned nbytes=16; 
-                unsigned offset_in_block = pc & (m_config->m_L1I_config.get_line_sz()-1);
-                if( (offset_in_block+nbytes) > m_config->m_L1I_config.get_line_sz() )
-                    nbytes = (m_config->m_L1I_config.get_line_sz()-offset_in_block);
+                // this code fetches instructions from the i-cache or generates memory requests
+                if( !m_warp[warp_id].functional_done() && !m_warp[warp_id].imiss_pending() && m_warp[warp_id].ibuffer_empty() ) {
+                    address_type pc  = m_warp[warp_id].get_pc();
+                    address_type ppc = pc + PROGRAM_MEM_START;
+                    unsigned nbytes=16; 
+                    unsigned offset_in_block = pc & (m_config->m_L1I_config.get_line_sz()-1);
+                    if( (offset_in_block+nbytes) > m_config->m_L1I_config.get_line_sz() )
+                        nbytes = (m_config->m_L1I_config.get_line_sz()-offset_in_block);
 
-                // TODO: replace with use of allocator
-                // mem_fetch *mf = m_mem_fetch_allocator->alloc()
-                mem_access_t acc(INST_ACC_R,ppc,nbytes,false);
-                mem_fetch *mf = new mem_fetch(acc,
-                        NULL/*we don't have an instruction yet*/,
-                        READ_PACKET_SIZE,
-                        warp_id,
-                        m_sid,
-                        m_tpc,
-                        m_memory_config );
-                std::list<cache_event> events;
-                enum cache_request_status status = m_L1I->access( (new_addr_type)ppc, mf, gpu_sim_cycle+gpu_tot_sim_cycle,events);
-                if( status == MISS ) {
-                    m_last_warp_fetched=warp_id;
-                    m_warp[warp_id].set_imiss_pending();
-                    m_warp[warp_id].set_last_fetch(gpu_sim_cycle);
-                } else if( status == HIT ) {
-                    m_last_warp_fetched=warp_id;
-                    m_inst_fetch_buffer = ifetch_buffer_t(pc,nbytes,warp_id);
-                    m_warp[warp_id].set_last_fetch(gpu_sim_cycle);
-                    delete mf;
-                } else {
-                    m_last_warp_fetched=warp_id;
-                    assert( status == RESERVATION_FAIL );
-                    delete mf;
+                    // TODO: replace with use of allocator
+                    // mem_fetch *mf = m_mem_fetch_allocator->alloc()
+                    mem_access_t acc(INST_ACC_R,ppc,nbytes,false);
+                    mem_fetch *mf = new mem_fetch(acc,
+                            NULL/*we don't have an instruction yet*/,
+                            READ_PACKET_SIZE,
+                            warp_id,
+                            m_sid,
+                            m_tpc,
+                            m_memory_config );
+                    std::list<cache_event> events;
+                    enum cache_request_status status = m_L1I->access( (new_addr_type)ppc, mf, gpu_sim_cycle+gpu_tot_sim_cycle,events);
+                    if( status == MISS ) {
+                        m_last_warp_fetched=warp_id;
+                        m_warp[warp_id].set_imiss_pending();
+                        m_warp[warp_id].set_last_fetch(gpu_sim_cycle);
+                    } else if( status == HIT ) {
+                        m_last_warp_fetched=warp_id;
+                        m_inst_fetch_buffer = ifetch_buffer_t(pc,nbytes,warp_id);
+                        m_warp[warp_id].set_last_fetch(gpu_sim_cycle);
+                        delete mf;
+                    } else {
+                        m_last_warp_fetched=warp_id;
+                        assert( status == RESERVATION_FAIL );
+                        delete mf;
+                    }
+                    break;
                 }
-                break;
             }
         }
     }
 
     m_L1I->cycle();
-
-    if( m_L1I->access_ready() ) {
-        mem_fetch *mf = m_L1I->next_access();
-        m_warp[mf->get_wid()].clear_imiss_pending();
-        m_inst_fetch_buffer = ifetch_buffer_t(m_warp[mf->get_wid()].get_pc(), mf->get_access_size(), mf->get_wid());
-        m_inst_fetch_buffer.m_valid = true;
-        m_warp[mf->get_wid()].set_last_fetch(gpu_sim_cycle);
-        delete mf;
-    }
 }
 
 void shader_core_ctx::func_exec_inst( warp_inst_t &inst )
@@ -767,13 +769,13 @@ void scheduler_unit::order_lrr( std::vector< T >& result_list,
  *                           with the oldest warps having the most priority, then the priority_function
  *                           would compare the age of the two warps.
  */
-template < class T >
+    template < class T >
 void scheduler_unit::order_by_priority( std::vector< T >& result_list,
-                                        const typename std::vector< T >& input_list,
-                                        const typename std::vector< T >::const_iterator& last_issued_from_input,
-                                        unsigned num_warps_to_add,
-                                        OrderingType ordering,
-                                        bool (*priority_func)(T lhs, T rhs) )
+        const typename std::vector< T >& input_list,
+        const typename std::vector< T >::const_iterator& last_issued_from_input,
+        unsigned num_warps_to_add,
+        OrderingType ordering,
+        bool (*priority_func)(T lhs, T rhs) )
 {
     assert( num_warps_to_add <= input_list.size() );
     result_list.clear();
