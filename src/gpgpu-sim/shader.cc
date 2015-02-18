@@ -633,12 +633,12 @@ void shader_core_ctx::fetch()
                 // mem_fetch *mf = m_mem_fetch_allocator->alloc()
                 mem_access_t acc(INST_ACC_R,ppc,nbytes,false);
                 mem_fetch *mf = new mem_fetch(acc,
-                                              NULL/*we don't have an instruction yet*/,
-                                              READ_PACKET_SIZE,
-                                              warp_id,
-                                              m_sid,
-                                              m_tpc,
-                                              m_memory_config );
+                        NULL/*we don't have an instruction yet*/,
+                        READ_PACKET_SIZE,
+                        warp_id,
+                        m_sid,
+                        m_tpc,
+                        m_memory_config );
                 std::list<cache_event> events;
                 enum cache_request_status status = m_L1I->access( (new_addr_type)ppc, mf, gpu_sim_cycle+gpu_tot_sim_cycle,events);
                 if( status == MISS ) {
@@ -665,6 +665,9 @@ void shader_core_ctx::fetch()
     if( m_L1I->access_ready() ) {
         mem_fetch *mf = m_L1I->next_access();
         m_warp[mf->get_wid()].clear_imiss_pending();
+        m_inst_fetch_buffer = ifetch_buffer_t(m_warp[mf->get_wid()].get_pc(), mf->get_access_size(), mf->get_wid());
+        m_inst_fetch_buffer.m_valid = true;
+        m_warp[mf->get_wid()].set_last_fetch(gpu_sim_cycle);
         delete mf;
     }
 }
@@ -680,7 +683,7 @@ void shader_core_ctx::issue_warp( register_set& pipe_reg_set, const warp_inst_t*
 {
     warp_inst_t** pipe_reg = pipe_reg_set.get_free();
     assert(pipe_reg);
-    
+
     m_warp[warp_id].ibuffer_free();
     assert(next_inst->valid());
     **pipe_reg = *next_inst; // static instruction information
@@ -688,7 +691,7 @@ void shader_core_ctx::issue_warp( register_set& pipe_reg_set, const warp_inst_t*
     m_stats->shader_cycle_distro[2+(*pipe_reg)->active_count()]++;
     func_exec_inst( **pipe_reg );
     if( next_inst->op == BARRIER_OP ){
-    	m_warp[warp_id].store_info_of_last_inst_at_barrier(*pipe_reg);
+        m_warp[warp_id].store_info_of_last_inst_at_barrier(*pipe_reg);
         m_barriers.warp_reaches_barrier(m_warp[warp_id].get_cta_id(),warp_id,const_cast<warp_inst_t*> (next_inst));
 
     }else if( next_inst->op == MEMORY_BARRIER_OP ){
@@ -731,21 +734,21 @@ shd_warp_t& scheduler_unit::warp(int i){
  *                          limit this number. If the number if < m_supervised_warps.size(), then only
  *                          the warps with highest RR priority will be placed in the result_list.
  */
-template < class T >
+    template < class T >
 void scheduler_unit::order_lrr( std::vector< T >& result_list,
-                                const typename std::vector< T >& input_list,
-                                const typename std::vector< T >::const_iterator& last_issued_from_input,
-                                unsigned num_warps_to_add )
+        const typename std::vector< T >& input_list,
+        const typename std::vector< T >::const_iterator& last_issued_from_input,
+        unsigned num_warps_to_add )
 {
     assert( num_warps_to_add <= input_list.size() );
     result_list.clear();
     typename std::vector< T >::const_iterator iter
         = ( last_issued_from_input ==  input_list.end() ) ? input_list.begin()
-                                                          : last_issued_from_input + 1;
+        : last_issued_from_input + 1;
 
     for ( unsigned count = 0;
-          count < num_warps_to_add;
-          ++iter, ++count) {
+            count < num_warps_to_add;
+            ++iter, ++count) {
         if ( iter ==  input_list.end() ) {
             iter = input_list.begin();
         }
