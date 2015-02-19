@@ -601,6 +601,7 @@ void shader_core_ctx::fetch()
             mem_fetch *mf = m_L1I->next_access();
             m_warp[mf->get_wid()].clear_imiss_pending();
             m_inst_fetch_buffer = ifetch_buffer_t(m_warp[mf->get_wid()].get_pc(), mf->get_access_size(), mf->get_wid());
+            assert( m_warp[mf->get_wid()].get_pc() == (mf->get_addr()-PROGRAM_MEM_START)); // Verify that we got the instruction we were expecting.
             m_inst_fetch_buffer.m_valid = true;
             m_warp[mf->get_wid()].set_last_fetch(gpu_sim_cycle);
             delete mf;
