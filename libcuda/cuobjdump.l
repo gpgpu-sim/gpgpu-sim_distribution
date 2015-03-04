@@ -103,6 +103,7 @@ newlines	{newline}+
 <header>"producer = "		return H_PRODUCER;
 <header>"host = "			return H_HOST;
 <header>"compile_size = "	return H_COMPILESIZE;
+<header>"compressed"{newline}
 <header>"identifier = "		BEGIN(endheader); return H_IDENTIFIER;
 <header>"has debug info"{newline}
 

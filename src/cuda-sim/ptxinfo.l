@@ -56,6 +56,7 @@ unsigned ptxinfo_col = 0;
 "lmem"		TC; return LMEM;
 "smem"		TC; return SMEM;
 "cmem"		TC; return CMEM;
+"gmem"		TC; return GMEM;
 "line"		TC; return LINE;
 "for"		TC; return FOR;
 

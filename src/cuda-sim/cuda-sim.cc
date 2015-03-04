@@ -1382,7 +1382,7 @@ void set_param_gpgpu_num_shaders(int num_shaders)
    gpgpu_param_num_shaders = num_shaders;
 }
 
-const struct gpgpu_ptx_sim_kernel_info* ptx_sim_kernel_info(const function_info *kernel) 
+const struct gpgpu_ptx_sim_info* ptx_sim_kernel_info(const function_info *kernel)
 {
    return kernel->get_kernel_info();
 }
@@ -1867,7 +1867,7 @@ unsigned translate_pc_to_ptxlineno(unsigned pc)
 int g_ptxinfo_error_detected;
 
 static char *g_ptxinfo_kname = NULL;
-static struct gpgpu_ptx_sim_kernel_info g_ptxinfo_kinfo;
+static struct gpgpu_ptx_sim_info g_ptxinfo;
 
 const char *get_ptxinfo_kname() 
 { 
@@ -1876,18 +1876,25 @@ const char *get_ptxinfo_kname()
 
 void print_ptxinfo()
 {
-    printf ("GPGPU-Sim PTX: Kernel \'%s\' : regs=%u, lmem=%u, smem=%u, cmem=%u\n", 
-            get_ptxinfo_kname(),
-            g_ptxinfo_kinfo.regs,
-            g_ptxinfo_kinfo.lmem,
-            g_ptxinfo_kinfo.smem,
-            g_ptxinfo_kinfo.cmem );
+    if(! get_ptxinfo_kname()){
+    	printf ("GPGPU-Sim PTX: Binary info : gmem=%u, cmem=%u\n",
+    			g_ptxinfo.gmem,
+    			g_ptxinfo.cmem);
+    }
+    if(get_ptxinfo_kname()){
+    	printf ("GPGPU-Sim PTX: Kernel \'%s\' : regs=%u, lmem=%u, smem=%u, cmem=%u\n",
+    			get_ptxinfo_kname(),
+    			g_ptxinfo.regs,
+    			g_ptxinfo.lmem,
+    			g_ptxinfo.smem,
+    			g_ptxinfo.cmem );
+    }
 }
 
 
-struct gpgpu_ptx_sim_kernel_info get_ptxinfo_kinfo()
+struct gpgpu_ptx_sim_info get_ptxinfo()
 {
-    return g_ptxinfo_kinfo;
+    return g_ptxinfo;
 }
 
 void ptxinfo_function(const char *fname )
@@ -1898,39 +1905,54 @@ void ptxinfo_function(const char *fname )
 
 void ptxinfo_regs( unsigned nregs )
 {
-    g_ptxinfo_kinfo.regs=nregs;
+    g_ptxinfo.regs=nregs;
 }
 
 void ptxinfo_lmem( unsigned declared, unsigned system )
 {
-    g_ptxinfo_kinfo.lmem=declared+system;
+    g_ptxinfo.lmem=declared+system;
+}
+
+void ptxinfo_gmem( unsigned declared, unsigned system )
+{
+    g_ptxinfo.gmem=declared+system;
 }
 
 void ptxinfo_smem( unsigned declared, unsigned system )
 {
-    g_ptxinfo_kinfo.smem=declared+system;
+    g_ptxinfo.smem=declared+system;
 }
 
 void ptxinfo_cmem( unsigned nbytes, unsigned bank )
 {
-    g_ptxinfo_kinfo.cmem+=nbytes;
+    g_ptxinfo.cmem+=nbytes;
 }
 
 void clear_ptxinfo()
 {
     free(g_ptxinfo_kname);
     g_ptxinfo_kname=NULL;
-    g_ptxinfo_kinfo.regs=0;
-    g_ptxinfo_kinfo.lmem=0;
-    g_ptxinfo_kinfo.smem=0;
-    g_ptxinfo_kinfo.cmem=0;
-    g_ptxinfo_kinfo.ptx_version=0;
-    g_ptxinfo_kinfo.sm_target=0;
+    g_ptxinfo.regs=0;
+    g_ptxinfo.lmem=0;
+    g_ptxinfo.smem=0;
+    g_ptxinfo.cmem=0;
+    g_ptxinfo.gmem=0;
+    g_ptxinfo.ptx_version=0;
+    g_ptxinfo.sm_target=0;
 }
 
 
 void ptxinfo_opencl_addinfo( std::map<std::string,function_info*> &kernels )
 {
+
+   if(! g_ptxinfo_kname) {
+	  printf ("GPGPU-Sim PTX: Binary info : gmem=%u, cmem=%u\n",
+			  g_ptxinfo.gmem,
+			  g_ptxinfo.cmem);
+	  clear_ptxinfo();
+	  return;
+   }
+
    if( !strcmp("__cuda_dummy_entry__",g_ptxinfo_kname) ) {
       // this string produced by ptxas for empty ptx files (e.g., bandwidth test)
       clear_ptxinfo();
@@ -1943,13 +1965,13 @@ void ptxinfo_opencl_addinfo( std::map<std::string,function_info*> &kernels )
    } else {
       printf ("GPGPU-Sim PTX: Kernel \'%s\' : regs=%u, lmem=%u, smem=%u, cmem=%u\n", 
               g_ptxinfo_kname,
-              g_ptxinfo_kinfo.regs,
-              g_ptxinfo_kinfo.lmem,
-              g_ptxinfo_kinfo.smem,
-              g_ptxinfo_kinfo.cmem );
+              g_ptxinfo.regs,
+              g_ptxinfo.lmem,
+              g_ptxinfo.smem,
+              g_ptxinfo.cmem );
       function_info *finfo = k->second;
       assert(finfo!=NULL);
-      finfo->set_kernel_info( g_ptxinfo_kinfo );
+      finfo->set_kernel_info( g_ptxinfo );
    }
    clear_ptxinfo();
 }
