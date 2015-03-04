@@ -443,6 +443,7 @@ private:
     unsigned m_texcache_linesize;
 };
 
+
 class gpgpu_t {
 public:
     gpgpu_t( const gpgpu_functional_sim_config &config );
@@ -497,7 +498,7 @@ protected:
     class memory_space *m_global_mem;
     class memory_space *m_tex_mem;
     class memory_space *m_surf_mem;
-    
+
     unsigned long long m_dev_malloc;
     
     std::map<std::string, const struct textureReference*> m_NameToTextureRef;
@@ -506,17 +507,19 @@ protected:
     std::map<const struct textureReference*, const struct textureReferenceAttr*> m_TextureRefToAttribute;
 };
 
-struct gpgpu_ptx_sim_kernel_info 
+struct gpgpu_ptx_sim_info
 {
    // Holds properties of the kernel (Kernel's resource use). 
    // These will be set to zero if a ptxinfo file is not present.
    int lmem;
    int smem;
    int cmem;
+   int gmem;
    int regs;
    unsigned ptx_version;
    unsigned sm_target;
 };
+
 
 struct gpgpu_ptx_sim_arg {
    gpgpu_ptx_sim_arg() { m_start=NULL; }

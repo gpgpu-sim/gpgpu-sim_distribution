@@ -5,7 +5,8 @@ Version 3.2.3+edits (development branch) versus 3.2.3
   the two default cache sizes, 16KB/48KB with 32/64 sets.
 - Added support for named barriers.
 - Added support for bar.arrive and bar.red instructions.
-  
+- Initial support for CUDA 5.0,5.5 and 6.0 to get template running.
+ 
 - Bug fixes:
     - Fixed bug #81, fix ordering of pushing branch entries to the stack
 

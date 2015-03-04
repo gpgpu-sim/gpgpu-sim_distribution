@@ -2392,7 +2392,7 @@ unsigned int shader_core_config::max_cta( const kernel_info_t &k ) const
    //Limit by n_threads/shader
    unsigned int result_thread = n_thread_per_shader / padded_cta_size;
 
-   const struct gpgpu_ptx_sim_kernel_info *kernel_info = ptx_sim_kernel_info(kernel);
+   const struct gpgpu_ptx_sim_info *kernel_info = ptx_sim_kernel_info(kernel);
 
    //Limit by shmem/shader
    unsigned int result_shmem = (unsigned)-1;
@@ -2412,7 +2412,7 @@ unsigned int shader_core_config::max_cta( const kernel_info_t &k ) const
    result = gs_min2(result, result_regs);
    result = gs_min2(result, result_cta);
 
-   static const struct gpgpu_ptx_sim_kernel_info* last_kinfo = NULL;
+   static const struct gpgpu_ptx_sim_info* last_kinfo = NULL;
    if (last_kinfo != kernel_info) {   //Only print out stats if kernel_info struct changes
       last_kinfo = kernel_info;
       printf ("GPGPU-Sim uArch: CTA/core = %u, limited by:", result);

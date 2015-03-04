@@ -239,6 +239,7 @@ function_ident_param: IDENTIFIER { add_function_name($1); } LEFT_PAREN {func_hea
 	;
 
 function_decl_header: ENTRY_DIRECTIVE { $$ = 1; g_func_decl=1; func_header(".entry"); }
+	| VISIBLE_DIRECTIVE ENTRY_DIRECTIVE { $$ = 1; g_func_decl=1; func_header(".entry"); }
 	| FUNC_DIRECTIVE { $$ = 0; g_func_decl=1; func_header(".func"); }
 	| VISIBLE_DIRECTIVE FUNC_DIRECTIVE { $$ = 0; g_func_decl=1; func_header(".func"); }
 	| EXTERN_DIRECTIVE FUNC_DIRECTIVE { $$ = 2; g_func_decl=1; func_header(".func"); }
@@ -279,6 +280,7 @@ directive_statement: variable_declaration SEMI_COLON
 	| TARGET_DIRECTIVE IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER { target_header3($2,$4,$6); }
 	| TARGET_DIRECTIVE IDENTIFIER { target_header($2); }
 	| FILE_DIRECTIVE INT_OPERAND STRING { add_file($2,$3); } 
+	| FILE_DIRECTIVE INT_OPERAND STRING COMMA INT_OPERAND COMMA INT_OPERAND { add_file($2,$3); } 	
 	| LOC_DIRECTIVE INT_OPERAND INT_OPERAND INT_OPERAND 
 	| PRAGMA_DIRECTIVE STRING SEMI_COLON { add_pragma($2); }
 	| function_decl SEMI_COLON {/*Do nothing*/}
