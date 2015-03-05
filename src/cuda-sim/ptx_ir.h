@@ -1229,12 +1229,12 @@ public:
    void param_to_shared( memory_space *shared_mem, symbol_table *symtab ); 
    void list_param( FILE *fout ) const;
 
-   const struct gpgpu_ptx_sim_kernel_info* get_kernel_info () const
+   const struct gpgpu_ptx_sim_info* get_kernel_info () const
    {
       return &m_kernel_info;
    }
 
-   const void set_kernel_info (const struct gpgpu_ptx_sim_kernel_info &info) {
+   const void set_kernel_info (const struct gpgpu_ptx_sim_info &info) {
       m_kernel_info = info;
       m_kernel_info.ptx_version = 10*get_ptx_version().ver();
       m_kernel_info.sm_target = get_ptx_version().target();
@@ -1282,7 +1282,7 @@ private:
    unsigned num_reconvergence_pairs;
 
    //Registers/shmem/etc. used (from ptxas -v), loaded from ___.ptxinfo along with ___.ptx
-   struct gpgpu_ptx_sim_kernel_info m_kernel_info;
+   struct gpgpu_ptx_sim_info m_kernel_info;
 
    symbol_table *m_symtab;
 

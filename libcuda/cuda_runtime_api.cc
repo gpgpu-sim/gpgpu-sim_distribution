@@ -227,7 +227,12 @@ private:
 };
 
 struct CUctx_st {
-	CUctx_st( _cuda_device_id *gpu ) { m_gpu = gpu; }
+	CUctx_st( _cuda_device_id *gpu )
+	{
+		m_gpu = gpu;
+		m_binary_info.cmem = 0;
+		m_binary_info.gmem = 0;
+	}
 
 	_cuda_device_id *get_device() { return m_gpu; }
 
@@ -237,13 +242,18 @@ struct CUctx_st {
 		m_last_fat_cubin_handle = fat_cubin_handle;
 	}
 
-	void add_ptxinfo( const char *deviceFun, const struct gpgpu_ptx_sim_kernel_info &info )
+	void add_ptxinfo( const char *deviceFun, const struct gpgpu_ptx_sim_info &info )
 	{
 		symbol *s = m_code[m_last_fat_cubin_handle]->lookup(deviceFun);
 		assert( s != NULL );
 		function_info *f = s->get_pc();
 		assert( f != NULL );
 		f->set_kernel_info(info);
+	}
+
+	void add_ptxinfo( const struct gpgpu_ptx_sim_info &info )
+	{
+		m_binary_info = info;
 	}
 
 	void register_function( unsigned fat_cubin_handle, const char *hostFun, const char *deviceFun )
@@ -271,6 +281,8 @@ private:
 	std::map<unsigned,symbol_table*> m_code; // fat binary handle => global symbol table
 	unsigned m_last_fat_cubin_handle;
 	std::map<const void*,function_info*> m_kernel_lookup; // unique id (CUDA app function address) => kernel entry point
+	struct gpgpu_ptx_sim_info m_binary_info;
+
 };
 
 class kernel_config {
@@ -346,14 +358,22 @@ static CUctx_st* GPGPUSim_Context()
 
  void ptxinfo_addinfo()
 {
-	if( !strcmp("__cuda_dummy_entry__",get_ptxinfo_kname()) ) {
+	 if(!get_ptxinfo_kname()){
+		 /* This info is not per kernel (since CUDA 5.0 some info (e.g. gmem, and cmem) is added at the beginning for the whole binary ) */
+		CUctx_st *context = GPGPUSim_Context();
+		print_ptxinfo();
+		context->add_ptxinfo(get_ptxinfo());
+		clear_ptxinfo();
+		return;
+	 }
+	 if( !strcmp("__cuda_dummy_entry__",get_ptxinfo_kname()) ) {
 		// this string produced by ptxas for empty ptx files (e.g., bandwidth test)
 		clear_ptxinfo();
 		return;
 	}
 	CUctx_st *context = GPGPUSim_Context();
 	print_ptxinfo();
-	context->add_ptxinfo( get_ptxinfo_kname(), get_ptxinfo_kinfo() );
+	context->add_ptxinfo( get_ptxinfo_kname(), get_ptxinfo() );
 	clear_ptxinfo();
 }
 
@@ -1307,7 +1327,6 @@ void extract_code_using_cuobjdump(){
 	system(command);
 	// Running cuobjdump using dynamic link to current process
 	snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass %s > %s", app_binary.c_str(), fname);
-	printf("Running cuobjdump using \"%s\"\n", command);
 	bool parse_output = true; 
 	int result = system(command);
 	if(result) {
@@ -1923,7 +1942,7 @@ cudaError_t CUDARTAPI cudaFuncGetAttributes(struct cudaFuncAttributes *attr, con
 	CUctx_st *context = GPGPUSim_Context();
 	function_info *entry = context->get_kernel(hostFun);
 	if( entry ) {
-		const struct gpgpu_ptx_sim_kernel_info *kinfo = entry->get_kernel_info();
+		const struct gpgpu_ptx_sim_info *kinfo = entry->get_kernel_info();
 		attr->sharedSizeBytes = kinfo->smem;
 		attr->constSizeBytes  = kinfo->cmem;
 		attr->localSizeBytes  = kinfo->lmem;

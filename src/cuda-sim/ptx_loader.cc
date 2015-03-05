@@ -232,12 +232,14 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
     ptxinfo_in = fopen(tempfile_ptxinfo,"r");
     g_ptxinfo_filename = tempfile_ptxinfo;
     ptxinfo_parse();
-    snprintf(commandline,1024,"rm -f %s %s %s", fname, fname2, tempfile_ptxinfo);
-    printf("GPGPU-Sim PTX: removing ptxinfo using \"%s\"\n", commandline);
-    result = system(commandline);
-    if( result != 0 ) {
-       printf("GPGPU-Sim PTX: ERROR ** while loading PTX (c) %d\n", result);
-       exit(1);
+    if( ! g_save_embedded_ptx ) {
+        snprintf(commandline,1024,"rm -f %s %s %s", fname, fname2, tempfile_ptxinfo);
+        printf("GPGPU-Sim PTX: removing ptxinfo using \"%s\"\n", commandline);
+        result = system(commandline);
+        if( result != 0 ) {
+    	    printf("GPGPU-Sim PTX: ERROR ** while loading PTX (c) %d\n", result);
+    	    exit(1);
+        }
     }
 }
 

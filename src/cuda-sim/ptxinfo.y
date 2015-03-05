@@ -42,6 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token LMEM
 %token SMEM
 %token CMEM
+%token GMEM
 %token <string_value> IDENTIFIER
 %token PLUS
 %token COMMA
@@ -65,6 +66,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	void ptxinfo_function(const char *fname );
 	void ptxinfo_regs( unsigned nregs );
 	void ptxinfo_lmem( unsigned declared, unsigned system );
+	void ptxinfo_gmem( unsigned declared, unsigned system );
 	void ptxinfo_smem( unsigned declared, unsigned system );
 	void ptxinfo_cmem( unsigned nbytes, unsigned bank );
 	int ptxinfo_error(const char*);
@@ -85,9 +87,10 @@ line_info: function_name
 	| function_info { ptxinfo_addinfo(); }
 	;
 
-function_name: FUNC QUOTE IDENTIFIER QUOTE { ptxinfo_function($3); }
-	|  FUNC QUOTE IDENTIFIER QUOTE FOR QUOTE IDENTIFIER QUOTE { ptxinfo_function($3); }
-
+function_name:	FUNC QUOTE IDENTIFIER QUOTE { ptxinfo_function($3); }
+	|  FUNC QUOTE IDENTIFIER QUOTE FOR QUOTE IDENTIFIER QUOTE {ptxinfo_function($3); }
+	;
+	
 function_info: info
 	| function_info COMMA info
 	;
@@ -96,6 +99,7 @@ info: 	  USED INT_OPERAND REGS { ptxinfo_regs($2); }
 	| tuple LMEM { ptxinfo_lmem(g_declared,g_system); }
 	| tuple SMEM { ptxinfo_smem(g_declared,g_system); }
 	| INT_OPERAND BYTES CMEM LEFT_SQUARE_BRACKET INT_OPERAND RIGHT_SQUARE_BRACKET { ptxinfo_cmem($1,$5); }
+	| INT_OPERAND BYTES GMEM { ptxinfo_gmem($1,0); }
 	| INT_OPERAND BYTES LMEM { ptxinfo_lmem($1,0); }
 	| INT_OPERAND BYTES SMEM { ptxinfo_smem($1,0); }
 	| INT_OPERAND BYTES CMEM { ptxinfo_cmem($1,0); }

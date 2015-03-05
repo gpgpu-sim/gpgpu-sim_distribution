@@ -843,14 +843,14 @@ void function_info::print_basic_block_dot()
 unsigned ptx_kernel_shmem_size( void *kernel_impl )
 {
    function_info *f = (function_info*)kernel_impl;
-   const struct gpgpu_ptx_sim_kernel_info *kernel_info = f->get_kernel_info();
+   const struct gpgpu_ptx_sim_info *kernel_info = f->get_kernel_info();
    return kernel_info->smem;
 }
 
 unsigned ptx_kernel_nregs( void *kernel_impl )
 {
    function_info *f = (function_info*)kernel_impl;
-   const struct gpgpu_ptx_sim_kernel_info *kernel_info = f->get_kernel_info();
+   const struct gpgpu_ptx_sim_info *kernel_info = f->get_kernel_info();
    return kernel_info->regs;
 }
 
