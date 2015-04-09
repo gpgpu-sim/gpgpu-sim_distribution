@@ -11,6 +11,7 @@ Version 3.2.3+edits (development branch) versus 3.2.3
 - Bug fixes:
     - Fixed bug #81, fix ordering of pushing branch entries to the stack
     - Fixed a bug where for each icache miss we also count a hit
+    - Fixed bug #88, Ejection buffer and Boundary buffer in Intersim2 initialization with a wrong node number
 
 Version 3.2.3 versus 3.2.2
 - Bug fixes:
