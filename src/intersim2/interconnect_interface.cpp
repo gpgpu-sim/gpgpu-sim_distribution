@@ -364,7 +364,7 @@ Flit* InterconnectInterface::GetEjectedFlit(int subnet, int node)
 
 void InterconnectInterface::_CreateBuffer()
 {
-  unsigned nodes = _n_shader + _n_mem;
+  unsigned nodes = _net[0]->NumNodes();
 
   _boundary_buffer.resize(_subnets);
   _ejection_buffer.resize(_subnets);
