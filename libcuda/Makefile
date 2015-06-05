@@ -108,20 +108,23 @@ lib$(PROG).a: $(OBJS)
 	ar rcs $(OUTPUT_DIR)/lib$(PROG).a $(OBJS)
 
 $(OUTPUT_DIR)/%.o: %.cc
-	$(CPP) $(CXXFLAGS) -I./ -I$(CUDA_INSTALL_PATH)/include  -c $< -o $@
+	$(CPP) $(CXXFLAGS) -I./ -I$(OUTPUT_DIR) -I$(CUDA_INSTALL_PATH)/include  -c $< -o $@
 
 $(OUTPUT_DIR)/%.o: %.c
-	$(CC) $(CCFLAGS) -I./ -I$(CUDA_INSTALL_PATH)/include  -c $< -o $@
+	$(CC) $(CCFLAGS) -I./ -I$(OUTPUT_DIR) -I$(CUDA_INSTALL_PATH)/include  -c $< -o $@
 
-cuobjdump_parser.c: cuobjdump.y
-	$(YACC) $(YFLAGS) -p cuobjdump_ -o$@ $<
+$(OUTPUT_DIR)/%.o: $(OUTPUT_DIR)/%.c
+	$(CC) $(CCFLAGS) -I./ -I$(OUTPUT_DIR) -I$(CUDA_INSTALL_PATH)/include  -c $< -o $@
 
-cuobjdump_lexer.c: cuobjdump.l cuobjdump_parser.h
+$(OUTPUT_DIR)/cuobjdump_parser.c: cuobjdump.y
+	$(YACC) $(YFLAGS) -p cuobjdump_  -o$@ $< --file-prefix=$(OUTPUT_DIR)/cuobjdump
+
+$(OUTPUT_DIR)/cuobjdump_lexer.c: cuobjdump.l $(OUTPUT_DIR)/cuobjdump_parser.h
 	$(LEX) $(LEXFLAGS) -P cuobjdump_ -o$@ $<
 	
 # The next rule means just get parser.c and you will get parser.h with it
 # in other words, get parser.c and do nothing to get parser.h
-%_parser.h: %_parser.c
+$(OUTPUT_DIR)/%_parser.h: $(OUTPUT_DIR)/%_parser.c
 	:
 $(OUTPUT_DIR)/Makefile.makedepend: depend
 
