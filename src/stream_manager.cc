@@ -223,17 +223,36 @@ bool stream_manager::register_finished_kernel(unsigned grid_uid)
 {
     // called by gpu simulation thread
     if(grid_uid > 0){
-    CUstream_st *stream = m_grid_id_to_stream[grid_uid];
-    kernel_info_t *kernel = stream->front().get_kernel();
-    assert( grid_uid == kernel->get_uid() );
-    stream->record_next_done();
-    m_grid_id_to_stream.erase(grid_uid);
-    delete kernel;
-    return true;
+        CUstream_st *stream = m_grid_id_to_stream[grid_uid];
+        kernel_info_t *kernel = stream->front().get_kernel();
+        assert( grid_uid == kernel->get_uid() );
+        stream->record_next_done();
+        m_grid_id_to_stream.erase(grid_uid);
+        delete kernel;
+        return true;
     }else{
     	return false;
     }
     return false;
+}
+
+void stream_manager::stop_all_running_kernels(){
+    pthread_mutex_lock(&m_lock);
+
+    // Signal m_gpu to stop all running kernels
+    m_gpu->stop_all_running_kernels();
+
+    // Clean up all streams waiting on running kernels
+    int count=0;
+    while(check_finished_kernel()){
+        count++;
+    }
+
+    // If any kernels completed, print out the current stats
+    if(count > 0)
+        m_gpu->print_stats();
+
+    pthread_mutex_unlock(&m_lock);
 }
 
 stream_operation stream_manager::front() 
@@ -366,11 +385,19 @@ void stream_manager::push( stream_operation op )
     };
 
     pthread_mutex_lock(&m_lock);
-    if( stream && !m_cuda_launch_blocking ) {
-        stream->push(op);
-    } else {
-        op.set_stream(&m_stream_zero);
-        m_stream_zero.push(op);
+    if(!m_gpu->cycle_insn_cta_max_hit()) {
+        // Accept the stream operation if the maximum cycle/instruction/cta counts are not triggered
+        if( stream && !m_cuda_launch_blocking ) {
+            stream->push(op);
+        } else {
+            op.set_stream(&m_stream_zero);
+            m_stream_zero.push(op);
+        }
+    }else {
+        // Otherwise, ignore operation and continue
+        printf("GPGPU-Sim API: Maximum cycle, instruction, or CTA count hit. Skipping:");
+        op.print(stdout);
+        printf("\n");
     }
     if(g_debug_execution >= 3)
        print_impl(stdout);

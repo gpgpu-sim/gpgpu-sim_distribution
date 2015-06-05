@@ -246,6 +246,7 @@ public:
     void print( FILE *fp);
     void push( stream_operation op );
     bool operation(bool * sim);
+    void stop_all_running_kernels();
 private:
     void print_impl( FILE *fp);
 

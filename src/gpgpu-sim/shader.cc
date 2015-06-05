@@ -21,7 +21,7 @@
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
 // FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSSp OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
@@ -1932,7 +1932,7 @@ void shader_core_ctx::register_cta_thread_exit( unsigned cta_num )
           m_kernel->dec_running();
           printf("GPGPU-Sim uArch: Shader %u empty (release kernel %u \'%s\').\n", m_sid, m_kernel->get_uid(),
                  m_kernel->name().c_str() );
-          if( m_kernel->no_more_ctas_to_run() ) {
+          if( !m_gpu->kernel_more_cta_left(m_kernel) ) {
               if( !m_kernel->running() ) {
                   printf("GPGPU-Sim uArch: GPU detected kernel \'%s\' finished on shader %u.\n", m_kernel->name().c_str(), m_sid );
                   m_gpu->set_kernel_done( m_kernel );
@@ -3246,7 +3246,7 @@ unsigned simt_core_cluster::issue_block2core()
             }
         }
         kernel_info_t *kernel = m_core[core]->get_kernel();
-        if( kernel && !kernel->no_more_ctas_to_run() && (m_core[core]->get_n_active_cta() < m_config->max_cta(*kernel)) ) {
+        if( m_gpu->kernel_more_cta_left(kernel) && (m_core[core]->get_n_active_cta() < m_config->max_cta(*kernel)) ) {
             m_core[core]->issue_block2core(*kernel);
             num_blocks_issued++;
             m_cta_issue_next_core=core; 

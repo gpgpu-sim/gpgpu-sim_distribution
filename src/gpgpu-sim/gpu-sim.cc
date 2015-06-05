@@ -486,12 +486,29 @@ bool gpgpu_sim::can_start_kernel()
    return false;
 }
 
+bool gpgpu_sim::hit_max_cta_count() const {
+   if (m_config.gpu_max_cta_opt != 0) {
+      if( (gpu_tot_issued_cta + m_total_cta_launched) >= m_config.gpu_max_cta_opt )
+          return true;
+   }
+   return false;
+}
+
+bool gpgpu_sim::kernel_more_cta_left(kernel_info_t *kernel) const {
+    if(hit_max_cta_count())
+       return false;
+
+    if(kernel && !kernel->no_more_ctas_to_run())
+        return true;
+
+    return false;
+}
+
 bool gpgpu_sim::get_more_cta_left() const
 { 
-   if (m_config.gpu_max_cta_opt != 0) {
-      if( m_total_cta_launched >= m_config.gpu_max_cta_opt )
-          return false;
-   }
+   if(hit_max_cta_count())
+      return false;
+
    for(unsigned n=0; n < m_running_kernels.size(); n++ ) {
        if( m_running_kernels[n] && !m_running_kernels[n]->no_more_ctas_to_run() ) 
            return true;
@@ -503,7 +520,7 @@ kernel_info_t *gpgpu_sim::select_kernel()
 {
     for(unsigned n=0; n < m_running_kernels.size(); n++ ) {
         unsigned idx = (n+m_last_issued_kernel+1)%m_config.max_concurrent_kernel;
-        if( m_running_kernels[idx] && !m_running_kernels[idx]->no_more_ctas_to_run() ) {
+        if( kernel_more_cta_left(m_running_kernels[idx] ){
             m_last_issued_kernel=idx;
             // record this kernel for stat print if it is the first time this kernel is selected for execution  
             unsigned launch_uid = m_running_kernels[idx]->get_uid(); 
@@ -541,6 +558,16 @@ void gpgpu_sim::set_kernel_done( kernel_info_t *kernel )
     assert( k != m_running_kernels.end() ); 
 }
 
+void gpgpu_sim::stop_all_running_kernels(){
+    std::vector<kernel_info_t *>::iterator k;
+    for(k = m_running_kernels.begin(); k != m_running_kernels.end(); ++k){
+        if(*k != NULL){ // If a kernel is active
+            set_kernel_done(*k); // Stop the kernel
+            assert(*k==NULL);
+        }
+    }
+}
+
 void set_ptx_warp_size(const struct core_config * warp_size);
 
 gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config ) 
@@ -564,6 +591,7 @@ gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config )
     gpu_sim_insn = 0;
     gpu_tot_sim_insn = 0;
     gpu_tot_issued_cta = 0;
+    m_total_cta_launched = 0;
     gpu_deadlock = false;
 
 
@@ -720,6 +748,7 @@ void gpgpu_sim::update_stats() {
     m_memory_stats->memlatstat_lat_pw();
     gpu_tot_sim_cycle += gpu_sim_cycle;
     gpu_tot_sim_insn += gpu_sim_insn;
+    gpu_tot_issued_cta += m_total_cta_launched;
 }
 
 void gpgpu_sim::print_stats()
@@ -892,7 +921,7 @@ void gpgpu_sim::gpu_print_stat()
    printf("gpu_tot_sim_cycle = %lld\n", gpu_tot_sim_cycle+gpu_sim_cycle);
    printf("gpu_tot_sim_insn = %lld\n", gpu_tot_sim_insn+gpu_sim_insn);
    printf("gpu_tot_ipc = %12.4f\n", (float)(gpu_tot_sim_insn+gpu_sim_insn) / (gpu_tot_sim_cycle+gpu_sim_cycle));
-   printf("gpu_tot_issued_cta = %lld\n", gpu_tot_issued_cta);
+   printf("gpu_tot_issued_cta = %lld\n", gpu_tot_issued_cta + m_total_cta_launched);
 
 
 
