@@ -1258,10 +1258,13 @@ unsigned function_info::print_insn( unsigned pc, FILE * fp ) const
    char buffer[1024];
    memset(command, 0, 1024);
    memset(buffer, 0, 1024);
-   snprintf(command,1024,"c++filt -p %s\n",m_name.c_str());
+   snprintf(command,1024,"c++filt -p %s",m_name.c_str());
    FILE *p = popen(command,"r");
    buffer[0]=0;
    fgets(buffer, 1023, p);
+   // Remove trailing "\n" in buffer
+   char *c;
+   if ((c=strchr(buffer, '\n')) != NULL) *c = '\0';
    fprintf(fp,"%s",buffer);
    if ( index >= m_instr_mem_size ) {
       fprintf(fp, "<past last instruction (max pc=%u)>", m_start_PC + m_instr_mem_size - 1 );
