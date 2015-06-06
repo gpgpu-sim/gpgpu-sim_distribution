@@ -96,10 +96,10 @@ void *gpgpu_sim_thread_concurrent(void*)
 {
     // concurrent kernel execution simulation thread
     do {
-       if(g_debug_execution >= 3) {
-          printf("GPGPU-Sim: *** simulation thread starting and spinning waiting for work ***\n");
-          fflush(stdout);
-       }
+        if(g_debug_execution >= 3) {
+           printf("GPGPU-Sim: *** simulation thread starting and spinning waiting for work ***\n");
+           fflush(stdout);
+        }
         while( g_stream_manager->empty_protected() && !g_sim_done )
             ;
         if(g_debug_execution >= 3) {
@@ -131,7 +131,13 @@ void *gpgpu_sim_thread_concurrent(void*)
                 g_the_gpu->cycle();
                 sim_cycles = true;
                 g_the_gpu->deadlock_check();
+            }else {
+                if(g_the_gpu->cycle_insn_cta_max_hit()){
+                    g_stream_manager->stop_all_running_kernels();
+                    g_sim_done = true;
+                }
             }
+
             active=g_the_gpu->active() || !g_stream_manager->empty_protected();
         } while( active );
         if(g_debug_execution >= 3) {
