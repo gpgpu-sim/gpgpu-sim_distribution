@@ -27,39 +27,50 @@ $(OUTPUT_DIR)/cuobjdump_to_ptxplus: $(OUTPUT_DIR)/cuobjdumpInst.o $(OUTPUT_DIR)/
 	${LD} ${LDFLAGS} -o $@ $(OUTPUT_DIR)/cuobjdumpInst.o $(OUTPUT_DIR)/cuobjdumpInstList.o $(OUTPUT_DIR)/cuobjdump_to_ptxplus.o $(PTX_PARSER_OBJECTS) $(SASS_PARSER_OBJECTS) $(ELF_PARSER_OBJECTS) $(HEADER_PARSER_OBJECTS)
 
 
-lex.ptx_.c : ../src/cuda-sim/ptx.l
-	${LEX} ${LEXFLAGS} ../src/cuda-sim/ptx.l 
+$(OUTPUT_DIR)/lex.ptx_.c : ../src/cuda-sim/ptx.l
+	${LEX} ${LEXFLAGS} -o$(OUTPUT_DIR)/lex.ptx_.c ../src/cuda-sim/ptx.l
 
-ptx.tab.c : ../src/cuda-sim/ptx.y
-	${YACC} ${YFLAGS} --name-prefix=ptx_ -v ../src/cuda-sim/ptx.y 
+$(OUTPUT_DIR)/ptx.tab.c : ../src/cuda-sim/ptx.y
+	${YACC} ${YFLAGS} --name-prefix=ptx_ -v ../src/cuda-sim/ptx.y  --file-prefix=$(OUTPUT_DIR)/ptx
 
-ptx.tab.h : ptx.tab.c
+$(OUTPUT_DIR)/ptx.tab.h :$(OUTPUT_DIR)/ptx.tab.c
 
-$(OUTPUT_DIR)/lex.ptx_.o : lex.ptx_.c ptx.tab.h
-	${CXX} ${CXXFLAGS} -c lex.ptx_.c -o $@
+$(OUTPUT_DIR)/lex.ptx_.o : $(OUTPUT_DIR)/lex.ptx_.c $(OUTPUT_DIR)/ptx.tab.h
+	${CXX} ${CXXFLAGS} -c $(OUTPUT_DIR)/lex.ptx_.c -o $@
 
-$(OUTPUT_DIR)/ptx.tab.o : ptx.tab.c ptx_parser.h
-	${CXX} ${CXXFLAGS} -c ptx.tab.c -o $@
+$(OUTPUT_DIR)/ptx.tab.o : $(OUTPUT_DIR)/ptx.tab.c ptx_parser.h
+	${CXX} ${CXXFLAGS} -c $(OUTPUT_DIR)/ptx.tab.c -o $@
 
-
-%_lexer.cc: %.l %_parser.hh
+$(OUTPUT_DIR)/%_lexer.cc: %.l $(OUTPUT_DIR)/%_parser.hh
 	$(LEX) $(LEXFLAGS) -P $*_ -o$@ $<
 
-%_parser.cc: %.y
-	$(YACC) $(YFLAGS) -p $*_ -o$@ $<
+$(OUTPUT_DIR)/%_parser.cc: %.y
+	$(YACC) $(YFLAGS) -p $*_ -o$@ $< --file-prefix=$(OUTPUT_DIR)/$@
 
 # The ':' is needed otherwise make gets confused and doesn't understand that it knows how to make %Parser.hpp from %Parser.cpp.
 # : in bash is equivalent to NOP (no operation)
-%_parser.hh: %_parser.cc
+$(OUTPUT_DIR)/%_parser.hh: $(OUTPUT_DIR)/%_parser.cc
+	:
+
+$(OUTPUT_DIR)/%_parser.hh: %_parser.cc
 	:
 
 $(OUTPUT_DIR)/%.o: %.cc
 	$(CXX) ${CXXFLAGS} -c -o $@ $<
 
+$(OUTPUT_DIR)/%.o: $(OUTPUT_DIR)/%.cc
+	$(CXX) ${CXXFLAGS} -c -o $@ $<
+
 $(OUTPUT_DIR)/%.o: %.cpp %.h
 	$(CXX) ${CXXFLAGS} -c -o $@ $<
 
+$(OUTPUT_DIR)/%.o: $(OUTPUT_DIR)/%.cpp $(OUTPUT_DIR)/%.h
+	$(CXX) ${CXXFLAGS} -c -o $@ $<
+
 $(OUTPUT_DIR)/%.o: %.c %.h
+	${CXX} ${CCFLAGS} -c -o $@ $<
+
+$(OUTPUT_DIR)/%.o: $(OUTPUT_DIR)/%.c $(OUTPUT_DIR)/%.h
 	${CXX} ${CCFLAGS} -c -o $@ $<
 
 SRCS = $(shell ls *.cc)
@@ -79,4 +90,3 @@ clean:
 	rm -f $(OUTPUT_DIR)/Makefile.makedepend $(OUTPUT_DIR)/Makefile.makedepend.bak
 
 include $(OUTPUT_DIR)/Makefile.makedepend
-

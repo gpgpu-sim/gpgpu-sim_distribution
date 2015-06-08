@@ -126,10 +126,10 @@ endif
 # rules to compile simulator
 
 
-${LEX_OBJS}: lex.yy.c y.tab.h
+${LEX_OBJS}: $(OBJDIR)/lex.yy.c $(OBJDIR)/y.tab.h
 	$(CC) $(CPPFLAGS) -c $< -o $@
 
-${YACC_OBJS}: y.tab.c y.tab.h
+${YACC_OBJS}: $(OBJDIR)/y.tab.c $(OBJDIR)/y.tab.h
 	$(CC) $(CPPFLAGS) -c $< -o $@
 
 ${OBJDIR}/%.o: %.cpp 
@@ -168,8 +168,8 @@ clean:
 	rm -f y.tab.c y.tab.h lex.yy.c
 	rm -f moc_bgui.cpp
 
-y.tab.c y.tab.h: config.y
-	$(YACC) -d $<
+$(OBJDIR)/y.tab.c $(OBJDIR)/y.tab.h: config.y
+	$(YACC) -d $< --file-prefix=$(OBJDIR)/y
 
-lex.yy.c: config.l
-	$(LEX) $<
+$(OBJDIR)/lex.yy.c: config.l
+	$(LEX) -o$@ $<
