@@ -240,7 +240,7 @@ void parse_assert_impl( int test_value, const char *file, unsigned line, const c
       parse_error_impl(file,line, msg);
 }
 
-extern char linebuf[1024];
+extern char linebuf[4096];
 
 
 void set_return()
