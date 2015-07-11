@@ -320,6 +320,7 @@ var_spec_list: var_spec
 var_spec: space_spec 
 	| type_spec
 	| align_spec
+	| VISIBLE_DIRECTIVE
 	| EXTERN_DIRECTIVE { add_extern_spec(); }
 	;
 
