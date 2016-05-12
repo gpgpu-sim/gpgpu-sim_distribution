@@ -39,6 +39,7 @@ void setCuobjdumpelffilename(const char* filename);
 void setCuobjdumpsassfilename(const char* filename);
 int elfserial = 1;
 int ptxserial = 1;
+int yydebug=1;
 FILE *ptxfile;
 FILE *elffile;
 FILE *sassfile;
@@ -47,7 +48,7 @@ char filename [1024];
 %union {
 	char* string_value;
 }
-%token <string_value> H_SEPARATOR H_ARCH H_CODEVERSION H_PRODUCER H_HOST H_COMPILESIZE H_IDENTIFIER
+%token <string_value> H_SEPARATOR H_ARCH H_CODEVERSION H_PRODUCER H_HOST H_COMPILESIZE H_IDENTIFIER H_UNKNOWN H_COMPRESSED
 %token <string_value> CODEVERSION
 %token <string_value> STRING
 %token <string_value> FILENAME
@@ -61,6 +62,7 @@ char filename [1024];
 
 %%
 
+
 program :	{printf("######### cuobjdump parser ########\n");}
 			emptylines section
 		|	program section;
@@ -73,7 +75,7 @@ section :	PTXHEADER {
 				snprintf(filename, 1024, "_cuobjdump_%d.ptx", ptxserial++);
 				ptxfile = fopen(filename, "w");
 				setCuobjdumpptxfilename(filename);
-			} headerinfo ptxcode {
+			} headerinfo identifier ptxcode {
 				fclose(ptxfile);
 			}
 		|	ELFHEADER {
@@ -81,7 +83,8 @@ section :	PTXHEADER {
 				snprintf(filename, 1024, "_cuobjdump_%d.elf", elfserial);
 				elffile = fopen(filename, "w");
 				setCuobjdumpelffilename(filename);
-			} headerinfo elfcode { 
+			} headerinfo identifier{
+			} elfcode {
 				fclose(elffile);
 				snprintf(filename, 1024, "_cuobjdump_%d.sass", elfserial++);
 				sassfile = fopen(filename, "w");
@@ -93,15 +96,30 @@ section :	PTXHEADER {
 headerinfo :	H_SEPARATOR NEWLINE
 				H_ARCH IDENTIFIER NEWLINE
 				H_CODEVERSION CODEVERSION NEWLINE
+				H_PRODUCER H_UNKNOWN NEWLINE
+				H_HOST IDENTIFIER NEWLINE
+				H_COMPILESIZE IDENTIFIER emptylines {setCuobjdumparch($4);};
+			|   H_SEPARATOR NEWLINE
+				H_ARCH IDENTIFIER NEWLINE
+				H_CODEVERSION CODEVERSION NEWLINE
 				H_PRODUCER IDENTIFIER NEWLINE
 				H_HOST IDENTIFIER NEWLINE
-				H_COMPILESIZE IDENTIFIER NEWLINE
-				H_IDENTIFIER FILENAME emptylines {setCuobjdumparch($4); setCuobjdumpidentifier($19);};
+				H_COMPILESIZE IDENTIFIER emptylines {setCuobjdumparch($4);};
+			|   H_SEPARATOR NEWLINE
+				H_ARCH IDENTIFIER NEWLINE
+				H_CODEVERSION CODEVERSION NEWLINE
+				H_PRODUCER IDENTIFIER NEWLINE
+				H_HOST IDENTIFIER NEWLINE
+				H_COMPILESIZE IDENTIFIER NEWLINE 
+				H_COMPRESSED  emptylines		{setCuobjdumparch($4);};		
+
+identifier : H_IDENTIFIER FILENAME {setCuobjdumpidentifier($2);};
+			 |	;
 
 ptxcode :	ptxcode PTXLINE {fprintf(ptxfile, "%s", $2);}
 		|	;
 
-elfcode :	elfcode ELFLINE {fprintf(elffile, "%s", $2);}
+elfcode :	elfcode ELFLINE {printf(elffile, "%s", $2);}
 		|	;
 
 sasscode :	sasscode SASSLINE {fprintf(sassfile, "%s", $2);}
