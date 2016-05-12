@@ -39,7 +39,7 @@ void setCuobjdumpelffilename(const char* filename);
 void setCuobjdumpsassfilename(const char* filename);
 int elfserial = 1;
 int ptxserial = 1;
-int yydebug=1;
+
 FILE *ptxfile;
 FILE *elffile;
 FILE *sassfile;

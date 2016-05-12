@@ -1484,6 +1484,8 @@ std::list<cuobjdumpSection*> pruneSectionList(std::list<cuobjdumpSection*> cuobj
 			delete *iter;
 		}
 	}
+
+	assert(!prunedList.empty() && "WARNING: Change -gpgpu_ptx_force_max_capability in gpgpusim.config to match the largest Gencode argument in the Makefile");
 	return prunedList;
 }
 
