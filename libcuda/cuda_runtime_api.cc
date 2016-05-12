@@ -1525,7 +1525,7 @@ cuobjdumpPTXSection* findPTXSectionInList(std::list<cuobjdumpSection*> sectionli
 	){
 		cuobjdumpPTXSection* ptxsection;
 		if((ptxsection=dynamic_cast<cuobjdumpPTXSection*>(*iter)) != NULL){
-			if(ptxsection->getIdentifier() == identifier)
+			//if(ptxsection->getIdentifier() == identifier)
 				return ptxsection;
 		}
 	}
