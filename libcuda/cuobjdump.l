@@ -52,8 +52,11 @@ void cuobjdump_error(const char*);
 %s ptxcode
 %s sasscode
 %s elfcode
-%s header
+%s elfheader
+%s ptxheader
 %s endheader
+%s identifier
+%s identifierF
 
 alpha		[a-zA-Z]
 numeric		[0-9]
@@ -67,16 +70,20 @@ newlines	{newline}+
 "ptxasOptions"{notnewline}*{newline}
 [1-9]{numeric}* yylval.string_value = strdup(yytext); return DECIMAL;
 
+"has debug info"{newline}
+
 
 "Fatbin ptx code:"{newline}	{
 	yy_push_state(ptxcode);
-	yy_push_state(header);
+	yy_push_state(identifier);
+	yy_push_state(ptxheader);
 	yylval.string_value = strdup(yytext);
 	return PTXHEADER;
 }
 "Fatbin elf code:"{newline}	{
 	yy_push_state(elfcode);
-	yy_push_state(header);
+	yy_push_state(identifier);
+	yy_push_state(elfheader);
 	yylval.string_value = strdup(yytext);
 	return ELFHEADER;
 }
@@ -94,22 +101,45 @@ newlines	{newline}+
 	/*SASS code tokens*/
 <sasscode>{notnewline}*{newline} yylval.string_value = strdup(yytext); return SASSLINE;
 
+<identifier>"identifier = "	BEGIN(identifierF); return H_IDENTIFIER;
+<identifier>"\n" yy_pop_state();
+
+<identifierF>{notnewline}+	yylval.string_value = strdup(yytext); yy_pop_state(); return FILENAME;
+
+
+
 	/*Header tokens*/
-<header>[[:alnum:]_]+ yylval.string_value = strdup(yytext); return IDENTIFIER;
-<header>"================"	return H_SEPARATOR;
-<header>"arch = "		return H_ARCH;
-<header>"code version = "	return H_CODEVERSION;
-<header>\[{numeric},{numeric}\]	return CODEVERSION;
-<header>"producer = "		return H_PRODUCER;
-<header>"host = "			return H_HOST;
-<header>"compile_size = "	return H_COMPILESIZE;
-<header>"compressed"{newline}
-<header>"identifier = "		BEGIN(endheader); return H_IDENTIFIER;
-<header>"has debug info"{newline}
+<elfheader>[[:alnum:]_]+ yylval.string_value = strdup(yytext); return IDENTIFIER;
+<elfheader>"================"	return H_SEPARATOR;
+<elfheader>"arch = "		return H_ARCH;
+<elfheader>"code version = "	return H_CODEVERSION;
+<elfheader>\[{numeric},{numeric}\]	return CODEVERSION;
+<elfheader>"producer = "		return H_PRODUCER;
+<elfheader>"<unknown>"			return H_UNKNOWN;
+<elfheader>"host = "			return H_HOST;
+<elfheader>"compile_size = "	BEGIN(endheader); return H_COMPILESIZE;
+
+
+	/*Header tokens*/
+<ptxheader>[[:alnum:]_]+ yylval.string_value = strdup(yytext); return IDENTIFIER;
+<ptxheader>"================"	return H_SEPARATOR;
+<ptxheader>"arch = "		return H_ARCH;
+<ptxheader>"code version = "	return H_CODEVERSION;
+<ptxheader>\[{numeric},{numeric}\]	return CODEVERSION;
+<ptxheader>"producer = "		return H_PRODUCER;
+<ptxheader>"host = "			return H_HOST;
+<ptxheader>"compile_size = "	return H_COMPILESIZE;
+<ptxheader>"compressed"{newline}		yy_pop_state(); return H_COMPRESSED;
+
+
+
+
+
 
 	/* Looking for the identifier (filename) then the header is done */
 	/* <endheader>[[:alnum:]_\./]+	yylval.string_value = strdup(yytext); yy_pop_state(); return FILENAME; */
-<endheader>{notnewline}+	yylval.string_value = strdup(yytext); yy_pop_state(); return FILENAME;
+<endheader>{notnewline}+	yylval.string_value = strdup(yytext); yy_pop_state(); return IDENTIFIER;
+
 
 
 {newline}	return NEWLINE;
