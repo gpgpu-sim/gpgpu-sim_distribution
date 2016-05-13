@@ -1457,18 +1457,22 @@ std::list<cuobjdumpSection*> pruneSectionList(std::list<cuobjdumpSection*> cuobj
 
 	std::list<cuobjdumpSection*> prunedList;
 
-	//Find the highest capability (that is lower than the forces maximum) for each cubin file
+	//Find the highest capability (that is lower than the forced maximum) for each cubin file
 	//and set it in cuobjdumpSectionMap. Do this only for ptx sections
 	std::map<std::string, unsigned> cuobjdumpSectionMap;
+	int min_ptx_capability_found=0;
 	for (	std::list<cuobjdumpSection*>::iterator iter = cuobjdumpSectionList.begin();
 			iter != cuobjdumpSectionList.end();
 			iter++){
 		unsigned capability = (*iter)->getArch();
-		if(dynamic_cast<cuobjdumpPTXSection*>(*iter) != NULL &&
-				(capability <= forced_max_capability ||
-						forced_max_capability==0)) {
-			if(cuobjdumpSectionMap[(*iter)->getIdentifier()] < capability)
-				cuobjdumpSectionMap[(*iter)->getIdentifier()] = capability;
+		if(dynamic_cast<cuobjdumpPTXSection*>(*iter) != NULL){
+			if(capability<min_ptx_capability_found || min_ptx_capability_found==0)
+				min_ptx_capability_found=capability;
+			if (capability <= forced_max_capability ||	forced_max_capability==0) {
+				if((cuobjdumpSectionMap[(*iter)->getIdentifier()] < capability) ||
+						(cuobjdumpSectionMap.find((*iter)->getIdentifier())==cuobjdumpSectionMap.end()))
+						cuobjdumpSectionMap[(*iter)->getIdentifier()] = capability;
+			}
 		}
 	}
 
@@ -1484,8 +1488,10 @@ std::list<cuobjdumpSection*> pruneSectionList(std::list<cuobjdumpSection*> cuobj
 			delete *iter;
 		}
 	}
-
-	assert(!prunedList.empty() && "WARNING: Change -gpgpu_ptx_force_max_capability in gpgpusim.config to match the largest Gencode argument in the Makefile");
+	if(prunedList.empty()){
+		printf("Error: No PTX sections found with sm capability that is lower than current forced maximum capability \n minimum ptx capability found = %u, maximum forced ptx capability = %u \n User might want to change either the forced maximum capability from gpgpusim configuration or update the compilation to generate the required PTX version",min_ptx_capability_found,forced_max_capability);
+		abort();
+	}
 	return prunedList;
 }
 

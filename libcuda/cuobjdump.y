@@ -39,7 +39,6 @@ void setCuobjdumpelffilename(const char* filename);
 void setCuobjdumpsassfilename(const char* filename);
 int elfserial = 1;
 int ptxserial = 1;
-int yydebug = 1;
 FILE *ptxfile;
 FILE *elffile;
 FILE *sassfile;
@@ -84,7 +83,6 @@ section :	PTXHEADER {
 				elffile = fopen(filename, "w");
 				setCuobjdumpelffilename(filename);
 			} headerinfo identifier{
-				printf("\nHeader Info and Identifier Parsed\n");
 			} elfcode {
 				fclose(elffile);
 				snprintf(filename, 1024, "_cuobjdump_%d.sass", elfserial++);
@@ -107,8 +105,8 @@ headerinfo :	H_SEPARATOR NEWLINE
 				H_HOST IDENTIFIER NEWLINE
 				H_COMPILESIZE IDENTIFIER {setCuobjdumparch($4);};
 
-identifier : H_IDENTIFIER FILENAME emptylines {setCuobjdumpidentifier($2);};
-			 |	;
+identifier : H_IDENTIFIER FILENAME emptylines {setCuobjdumpidentifier($2);}
+			 |	{setCuobjdumpidentifier("default");};
 
 compressedkeyword : H_COMPRESSED emptylines
                     | ;
