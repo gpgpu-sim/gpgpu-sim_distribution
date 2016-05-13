@@ -55,8 +55,9 @@ void cuobjdump_error(const char*);
 %s elfheader
 %s ptxheader
 %s endheader
-%s identifier
-%s identifierF
+%x identifier
+%x conidentifier
+%s endidentifier
 
 alpha		[a-zA-Z]
 numeric		[0-9]
@@ -101,10 +102,16 @@ newlines	{newline}+
 	/*SASS code tokens*/
 <sasscode>{notnewline}*{newline} yylval.string_value = strdup(yytext); return SASSLINE;
 
-<identifier>"identifier = "	BEGIN(identifierF); return H_IDENTIFIER;
-<identifier>"\n" yy_pop_state();
+<identifier>{newline}"compressed"{newline}	BEGIN(conidentifier); return H_COMPRESSED;
+<identifier>{newline}"identifier = "	BEGIN(endidentifier); return H_IDENTIFIER;
+<identifier>{newline}{newline} yy_pop_state();
 
-<identifierF>{notnewline}+	yylval.string_value = strdup(yytext); yy_pop_state(); return FILENAME;
+
+<conidentifier>"identifier = "	BEGIN(endidentifier); return H_IDENTIFIER;
+<conidentifier>{newline} yy_pop_state();
+
+
+<endidentifier>{notnewline}+	yylval.string_value = strdup(yytext); yy_pop_state(); return FILENAME;
 
 
 
@@ -128,8 +135,7 @@ newlines	{newline}+
 <ptxheader>\[{numeric},{numeric}\]	return CODEVERSION;
 <ptxheader>"producer = "		return H_PRODUCER;
 <ptxheader>"host = "			return H_HOST;
-<ptxheader>"compile_size = "	return H_COMPILESIZE;
-<ptxheader>"compressed"{newline}		yy_pop_state(); return H_COMPRESSED;
+<ptxheader>"compile_size = "	BEGIN(endheader); return H_COMPILESIZE;
 
 
 
