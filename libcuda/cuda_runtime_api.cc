@@ -1533,7 +1533,7 @@ cuobjdumpPTXSection* findPTXSectionInList(std::list<cuobjdumpSection*> sectionli
 	){
 		cuobjdumpPTXSection* ptxsection;
 		if((ptxsection=dynamic_cast<cuobjdumpPTXSection*>(*iter)) != NULL){
-			//if(ptxsection->getIdentifier() == identifier)
+			if(ptxsection->getIdentifier() == identifier)
 				return ptxsection;
 		}
 	}
@@ -1632,10 +1632,13 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 		// - Obtains the pointer to the actual fatbin structure from the FatBin handle (fatCubin).
 		// - An integer inside the fatbin structure contains the relative offset to the source code file name.
 		// - This offset differs among different CUDA and GCC versions. 
+		#if (CUDART_VERSION <= 6000)
 		char * pfatbin = (char*) fatDeviceText->d; 
 		int offset = *((int*)(pfatbin+48)); 
 		char * filename = (pfatbin+16+offset); 
-
+		#else
+		char * filename = "default";
+		#endif
 		// The extracted file name is associated with a fat_cubin_handle passed
 		// into cudaLaunch().  Inside cudaLaunch(), the associated file name is
 		// used to find the PTX/SASS section from cuobjdump, which contains the
