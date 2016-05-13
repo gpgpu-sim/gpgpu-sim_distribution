@@ -1469,8 +1469,8 @@ std::list<cuobjdumpSection*> pruneSectionList(std::list<cuobjdumpSection*> cuobj
 			if(capability<min_ptx_capability_found || min_ptx_capability_found==0)
 				min_ptx_capability_found=capability;
 			if (capability <= forced_max_capability ||	forced_max_capability==0) {
-				if((cuobjdumpSectionMap[(*iter)->getIdentifier()] < capability) ||
-						(cuobjdumpSectionMap.find((*iter)->getIdentifier())==cuobjdumpSectionMap.end()))
+				if((cuobjdumpSectionMap.find((*iter)->getIdentifier())==cuobjdumpSectionMap.end())
+						|| (cuobjdumpSectionMap[(*iter)->getIdentifier()] < capability))
 						cuobjdumpSectionMap[(*iter)->getIdentifier()] = capability;
 			}
 		}
@@ -1489,7 +1489,7 @@ std::list<cuobjdumpSection*> pruneSectionList(std::list<cuobjdumpSection*> cuobj
 		}
 	}
 	if(prunedList.empty()){
-		printf("Error: No PTX sections found with sm capability that is lower than current forced maximum capability \n minimum ptx capability found = %u, maximum forced ptx capability = %u \n User might want to change either the forced maximum capability from gpgpusim configuration or update the compilation to generate the required PTX version",min_ptx_capability_found,forced_max_capability);
+		printf("Error: No PTX sections found with sm capability that is lower than current forced maximum capability \n minimum ptx capability found = %u, maximum forced ptx capability = %u \n User might want to change either the forced maximum capability from gpgpusim configuration or update the compilation to generate the required PTX version\n",min_ptx_capability_found,forced_max_capability);
 		abort();
 	}
 	return prunedList;
@@ -1575,6 +1575,16 @@ void cuobjdumpParseBinary(unsigned int handle){
 	fatbin_registered[handle] = true;
 	CUctx_st *context = GPGPUSim_Context();
 
+	unsigned max_capability = 0;
+	for (	std::list<cuobjdumpSection*>::iterator iter = cuobjdumpSectionList.begin();
+			iter != cuobjdumpSectionList.end();
+			iter++){
+		unsigned capability = (*iter)->getArch();
+		if (capability > max_capability) max_capability = capability;
+	}
+
+	if (max_capability > 20) printf("WARNING: No guarantee that PTX will be parsed for SM version %u\n", max_capability);
+
 	std::string fname = fatbinmap[handle];
 	cuobjdumpPTXSection* ptx = findPTXSection(fname);
 
@@ -1597,13 +1607,13 @@ void cuobjdumpParseBinary(unsigned int handle){
 		symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str, handle);
 		printf("Adding %s with cubin handle %u\n", ptx->getPTXfilename().c_str(), handle);
 		context->add_binary(symtab, handle);
-		gpgpu_ptxinfo_load_from_string( ptxcode, handle);
+		gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability );
 		delete[] ptxplus_str;
 	} else {
 		symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxcode, handle);
 		printf("Adding %s with cubin handle %u\n", ptx->getPTXfilename().c_str(), handle);
 		context->add_binary(symtab, handle);
-		gpgpu_ptxinfo_load_from_string( ptxcode, handle);
+		gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability );
 	}
 	load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
 	load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
@@ -1704,7 +1714,7 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 			} else {
 				symtab=gpgpu_ptx_sim_load_ptx_from_string(ptx,source_num);
 				context->add_binary(symtab,fat_cubin_handle);
-				gpgpu_ptxinfo_load_from_string( ptx, source_num );
+				gpgpu_ptxinfo_load_from_string( ptx, source_num, max_capability );
 			}
 			source_num++;
 			load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
