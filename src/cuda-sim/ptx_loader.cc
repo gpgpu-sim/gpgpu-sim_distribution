@@ -182,7 +182,7 @@ symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source
     return symtab;
 }
 
-void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num )
+void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num, unsigned sm_version )
 {
     char fname[1024];
     snprintf(fname,1024,"_ptx_XXXXXX");
@@ -216,7 +216,8 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
     extra_flags[0]=0;
 
 #if CUDART_VERSION >= 3000
-    snprintf(extra_flags,1024,"--gpu-name=sm_20");
+    if (sm_version == 0) sm_version = 20;
+    snprintf(extra_flags,1024,"--gpu-name=sm_%u",sm_version);
 #endif
 
     snprintf(commandline,1024,"$CUDA_INSTALL_PATH/bin/ptxas %s -v %s --output-file  /dev/null 2> %s",
