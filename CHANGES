@@ -10,6 +10,7 @@ Version 3.2.3+edits (development branch) versus 3.2.3
 - Changed the makefile for cuobjdump_toptxplus,libcuda,intersim2 so that it outputs temporary files into the build directory
 - Branching config file for GeForceGTX750Ti
 - Branching correlation script for GeForceGTX750Ti. Modified config to fit Maxwell architecture. Modified shader.h to allow larger CTA per warp.
+- Additional changes to config file to reflect Maxwell uarch.
 - Bug fixes:
     - Fixed bug #81, fix ordering of pushing branch entries to the stack
     - Fixed a bug where for each icache miss we also count a hit
