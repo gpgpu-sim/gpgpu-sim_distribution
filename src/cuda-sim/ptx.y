@@ -103,6 +103,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token  COMMA
 %token  PRED
 %token  HALF_OPTION
+%token  EXTP_OPTION
 %token  EQ_OPTION
 %token  NE_OPTION
 %token  LT_OPTION
@@ -438,6 +439,7 @@ option: type_spec
 	| atomic_operation_spec ;
 	| TO_OPTION { add_option(TO_OPTION); }
 	| HALF_OPTION { add_option(HALF_OPTION); }
+	| EXTP_OPTION { add_option(EXTP_OPTION); }
 	| CA_OPTION { add_option(CA_OPTION); }
 	| CG_OPTION { add_option(CG_OPTION); }
 	| CS_OPTION { add_option(CS_OPTION); }

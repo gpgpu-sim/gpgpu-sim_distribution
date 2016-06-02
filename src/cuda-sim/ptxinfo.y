@@ -54,6 +54,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token LINE
 %token <string_value> WARNING
 %token FOR
+%token TEXTURES
 
 %{
 	#include <stdlib.h>
@@ -104,6 +105,7 @@ info: 	  USED INT_OPERAND REGS { ptxinfo_regs($2); }
 	| INT_OPERAND BYTES SMEM { ptxinfo_smem($1,0); }
 	| INT_OPERAND BYTES CMEM { ptxinfo_cmem($1,0); }
 	| INT_OPERAND REGS { ptxinfo_regs($1); }
+	| INT_OPERAND TEXTURES {}
 	;
 
 tuple: INT_OPERAND PLUS INT_OPERAND BYTES { g_declared=$1; g_system=$3; }

@@ -1167,6 +1167,8 @@ ptx_instruction::ptx_instruction( int opcode,
       case HALF_OPTION:
          m_inst_size = 4; // bytes
          break;
+	  case EXTP_OPTION:
+		 break;
       default:
          assert(0);
          break;
