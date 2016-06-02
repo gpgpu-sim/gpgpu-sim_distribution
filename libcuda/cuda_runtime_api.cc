@@ -109,6 +109,7 @@
 #include <stdarg.h>
 #include <iostream>
 #include <string>
+#include <regex>
 #include <sstream>
 #include <fstream>
 #ifdef OPENGL_SUPPORT
@@ -1816,10 +1817,15 @@ void __cudaRegisterTexture(
 		int ext
 ) //passes in a newly created textureReference
 {
+	std::string devStr (deviceName);
+	#if (CUDART_VERSION > 4020)
+	if (devStr.size() > 2 && devStr.data()[0] == ':' && devStr.data()[1] == ':')
+		devStr = devStr.replace(0, 2, "");
+	#endif
 	CUctx_st *context = GPGPUSim_Context();
 	gpgpu_t *gpu = context->get_device()->get_gpgpu();
 	printf("GPGPU-Sim PTX: in __cudaRegisterTexture:\n");
-	gpu->gpgpu_ptx_sim_bindNameToTexture(deviceName, hostVar, dim, norm, ext);
+	gpu->gpgpu_ptx_sim_bindNameToTexture(devStr.data(), hostVar, dim, norm, ext);
 	printf("GPGPU-Sim PTX:   int dim = %d\n", dim);
 	printf("GPGPU-Sim PTX:   int norm = %d\n", norm);
 	printf("GPGPU-Sim PTX:   int ext = %d\n", ext);

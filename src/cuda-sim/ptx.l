@@ -86,7 +86,7 @@ ldu     TC; ptx_lval.int_value = LDU_OP; return OPCODE;
 lg2	TC; ptx_lval.int_value = LG2_OP; return OPCODE;
 mad24   TC; ptx_lval.int_value = MAD24_OP; return OPCODE;
 mad     TC; ptx_lval.int_value = MAD_OP; return OPCODE;
-madp    TC; ptx_lval.int_value = MADP_OP; return OPCODE;
+madc	TC; ptx_lval.int_value = MADC_OP; return OPCODE;
 max     TC; ptx_lval.int_value = MAX_OP; return OPCODE;
 membar  TC; ptx_lval.int_value = MEMBAR_OP; return OPCODE;
 min     TC; ptx_lval.int_value = MIN_OP; return OPCODE;
@@ -249,6 +249,7 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.v4	TC; return V4_TYPE;
 
 \.half  TC; return HALF_OPTION; /* ptxplus */
+\.cc	TC; return EXTP_OPTION; /* extended precision option */
 
 \.equ	TC; return EQU_OPTION;
 \.neu	TC; return NEU_OPTION;

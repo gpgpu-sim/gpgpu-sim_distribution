@@ -59,6 +59,7 @@ unsigned ptxinfo_col = 0;
 "gmem"		TC; return GMEM;
 "line"		TC; return LINE;
 "for"		TC; return FOR;
+"textures"	TC; return TEXTURES;
 
 [_A-Za-z$%][_0-9A-Za-z$]*  TC; ptxinfo_lval.string_value = strdup(yytext); return IDENTIFIER;
 [-]{0,1}[0-9]+	 TC; ptxinfo_lval.int_value =  atoi(yytext); return INT_OPERAND;

@@ -2421,7 +2421,7 @@ void mad_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    mad_def(pI, thread, false);
 }
 
-void madp_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
+void madc_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 {
    mad_def(pI, thread, true);
 }
