@@ -1496,6 +1496,49 @@ std::list<cuobjdumpSection*> pruneSectionList(std::list<cuobjdumpSection*> cuobj
 	return prunedList;
 }
 
+//! Merge all remaining PTX sections in the section list into one PTX file
+// NOTE: this function needs some tweaking to deal with repeated fucntion/variable declarations/definitions
+std::list<cuobjdumpSection*> mergeSectionList(std::list<cuobjdumpSection*> cuobjdumpSectionList){
+	char *ptxcode = "";
+	std::list<cuobjdumpSection*>::iterator old_iter;
+	cuobjdumpPTXSection* old_ptxsection = NULL;
+	cuobjdumpPTXSection* ptxsection;
+	std::list<cuobjdumpSection*> mergedList;
+
+	for (	std::list<cuobjdumpSection*>::iterator iter = cuobjdumpSectionList.begin();
+			iter != cuobjdumpSectionList.end();
+			iter++){
+		if((ptxsection=dynamic_cast<cuobjdumpPTXSection*>(*iter)) != NULL){
+			// Read and remove the last PTX section
+			if (old_ptxsection != NULL) {
+				ptxcode = readfile(old_ptxsection->getPTXfilename());
+				// remove ptx file?
+				delete *old_iter;
+			}
+
+			// Append all the PTX from the last PTX section into the current PTX section
+			// Add 50 to ptxcode to ignore the information regarding version/target/address_size
+			if (strlen(ptxcode) >= 50) {
+				FILE *ptxfile = fopen((ptxsection->getPTXfilename()).c_str(), "a");
+				fprintf(ptxfile, "%s", ptxcode + 50);
+				fclose(ptxfile);
+			}
+
+			old_iter = iter;
+			old_ptxsection = ptxsection;
+		}
+		// Store all non-PTX sections
+		else {
+			mergedList.push_back(*iter);
+		}
+	}
+
+	// Store the final PTX section
+	mergedList.push_front(*old_iter);
+
+	return mergedList;
+}
+
 
 //! Within the section list, find the ELF section corresponding to a given identifier
 cuobjdumpELFSection* findELFSectionInList(std::list<cuobjdumpSection*> sectionlist, const std::string identifier){
@@ -1559,6 +1602,7 @@ void cuobjdumpInit(){
 	CUctx_st *context = GPGPUSim_Context();
 	extract_code_using_cuobjdump(); //extract all the output of cuobjdump to _cuobjdump_*.*
 	cuobjdumpSectionList = pruneSectionList(cuobjdumpSectionList, context);
+	cuobjdumpSectionList = mergeSectionList(cuobjdumpSectionList);
 }
 
 std::map<int, std::string> fatbinmap;

@@ -114,7 +114,7 @@ compressedkeyword : H_COMPRESSED emptylines
 ptxcode :	ptxcode PTXLINE {fprintf(ptxfile, "%s", $2);}
 		|	;
 
-elfcode :	elfcode ELFLINE {printf(elffile, "%s", $2);}
+elfcode :	elfcode ELFLINE {fprintf(elffile, "%s", $2);}
 		|	;
 
 sasscode :	sasscode SASSLINE {fprintf(sassfile, "%s", $2);}
