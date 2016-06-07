@@ -1169,6 +1169,8 @@ ptx_instruction::ptx_instruction( int opcode,
          break;
 	  case EXTP_OPTION:
 		 break;
+	  case NC_OPTION:
+		 break;
       default:
          assert(0);
          break;

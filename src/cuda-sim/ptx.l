@@ -326,6 +326,8 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.wb	TC; return WB_OPTION;
 \.wt	TC; return WT_OPTION;
 
+\.nc	TC; return NC_OPTION;
+
 \.popc	TC; return ATOMIC_POPC;
 \.and	TC; return ATOMIC_AND;
 \.or	TC; return ATOMIC_OR;
