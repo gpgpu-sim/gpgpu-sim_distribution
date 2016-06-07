@@ -1170,6 +1170,7 @@ clGetDeviceInfo(cl_device_id    device,
    case CL_DEVICE_GLOBAL_MEM_SIZE: CL_ULONG_CASE( 1024*1024*1024 ); break;
    case CL_DEVICE_MAX_COMPUTE_UNITS: CL_UINT_CASE( device->the_device()->get_config().num_shader() ); break;
    case CL_DEVICE_MAX_CLOCK_FREQUENCY: CL_UINT_CASE( device->the_device()->shader_clock() ); break;
+   case CL_DEVICE_PLATFORM: CL_STRING_CASE("GPGPU-Sim OpenCL platform"); break;
    case CL_DEVICE_VENDOR:CL_STRING_CASE("GPGPU-Sim.org"); break;
    case CL_DEVICE_VERSION: CL_STRING_CASE("OpenCL 1.0"); break;
    case CL_DRIVER_VERSION: CL_STRING_CASE("1.0"); break;
@@ -1224,6 +1225,30 @@ clGetDeviceInfo(cl_device_id    device,
 
 extern CL_API_ENTRY cl_int CL_API_CALL
 clFinish(cl_command_queue /* command_queue */) CL_API_SUFFIX__VERSION_1_0
+{
+   return CL_SUCCESS;
+}
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clRetainMemObject(cl_mem memobj) CL_API_SUFFIX__VERSION_1_0
+{
+   return CL_SUCCESS;
+}
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clRetainEvent(cl_event event) CL_API_SUFFIX__VERSION_1_0
+{
+   return CL_SUCCESS;
+}
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clRetainKernel(cl_kernel kernel) CL_API_SUFFIX__VERSION_1_0
+{
+   return CL_SUCCESS;
+}
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clRetainDevice(cl_device_id device) CL_API_SUFFIX__VERSION_1_0
 {
    return CL_SUCCESS;
 }
