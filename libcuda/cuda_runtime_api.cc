@@ -1513,9 +1513,8 @@ std::list<cuobjdumpSection*> pruneSectionList(std::list<cuobjdumpSection*> cuobj
 	return prunedList;
 }
 
-//! Merge all remaining PTX sections in the section list into one PTX file
-// NOTE: this function needs some tweaking to deal with repeated fucntion/variable declarations/definitions
-std::list<cuobjdumpSection*> mergeSectionList(std::list<cuobjdumpSection*> cuobjdumpSectionList){
+//! Merge all PTX sections that have a specific identifier into one file
+std::list<cuobjdumpSection*> mergeMatchingSections(std::list<cuobjdumpSection*> cuobjdumpSectionList, std::string identifier){
 	char *ptxcode = "";
 	std::list<cuobjdumpSection*>::iterator old_iter;
 	cuobjdumpPTXSection* old_ptxsection = NULL;
@@ -1525,7 +1524,8 @@ std::list<cuobjdumpSection*> mergeSectionList(std::list<cuobjdumpSection*> cuobj
 	for (	std::list<cuobjdumpSection*>::iterator iter = cuobjdumpSectionList.begin();
 			iter != cuobjdumpSectionList.end();
 			iter++){
-		if((ptxsection=dynamic_cast<cuobjdumpPTXSection*>(*iter)) != NULL){
+		if((ptxsection=dynamic_cast<cuobjdumpPTXSection*>(*iter)) != NULL &&
+			strcmp(ptxsection->getIdentifier().c_str(), identifier.c_str()) == 0){
 			// Read and remove the last PTX section
 			if (old_ptxsection != NULL) {
 				ptxcode = readfile(old_ptxsection->getPTXfilename());
@@ -1544,16 +1544,45 @@ std::list<cuobjdumpSection*> mergeSectionList(std::list<cuobjdumpSection*> cuobj
 			old_iter = iter;
 			old_ptxsection = ptxsection;
 		}
-		// Store all non-PTX sections
+		// Store all non-PTX sections and PTX sections with non-matching identifiers
 		else {
 			mergedList.push_back(*iter);
 		}
 	}
 
 	// Store the final PTX section
-	mergedList.push_front(*old_iter);
+	mergedList.push_back(*old_iter);
 
 	return mergedList;
+}
+
+//! Merge any PTX sections with matching identifiers
+std::list<cuobjdumpSection*> mergeSections(std::list<cuobjdumpSection*> cuobjdumpSectionList){
+	std::vector<std::string> identifier;
+	cuobjdumpPTXSection* ptxsection;
+
+	// Add all identifiers present in PTX sections to a vector
+	for (	std::list<cuobjdumpSection*>::iterator iter = cuobjdumpSectionList.begin();
+			iter != cuobjdumpSectionList.end();
+			iter++){
+		if((ptxsection=dynamic_cast<cuobjdumpPTXSection*>(*iter)) != NULL){
+			std::string current_id = ptxsection->getIdentifier();
+
+			// If we haven't yet seen a given identifier, add it to the vector
+			if (std::find(identifier.begin(), identifier.end(), current_id) == identifier.end()) {
+				identifier.push_back(current_id);
+			}
+		}
+	}
+
+	// Call mergeMatchingSections on all identifiers in the vector
+	for (	std::vector<std::string>::iterator iter = identifier.begin();
+			iter != identifier.end();
+			iter++) {
+		cuobjdumpSectionList = mergeMatchingSections(cuobjdumpSectionList, *iter);
+	}
+
+	return cuobjdumpSectionList;
 }
 
 
@@ -1619,7 +1648,7 @@ void cuobjdumpInit(){
 	CUctx_st *context = GPGPUSim_Context();
 	extract_code_using_cuobjdump(); //extract all the output of cuobjdump to _cuobjdump_*.*
 	cuobjdumpSectionList = pruneSectionList(cuobjdumpSectionList, context);
-	cuobjdumpSectionList = mergeSectionList(cuobjdumpSectionList);
+	cuobjdumpSectionList = mergeSections(cuobjdumpSectionList);
 }
 
 std::map<int, std::string> fatbinmap;
