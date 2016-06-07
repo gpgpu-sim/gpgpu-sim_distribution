@@ -134,6 +134,7 @@
 #include "../src/cuda-sim/ptx_parser.h"
 #include "../src/gpgpusim_entrypoint.h"
 #include "../src/stream_manager.h"
+#include "../src/abstract_hardware_model.h"
 
 #include <pthread.h>
 #include <semaphore.h>
@@ -320,9 +321,9 @@ class _cuda_device_id *GPGPUSim_Init()
 
 		cudaDeviceProp *prop = (cudaDeviceProp *) calloc(sizeof(cudaDeviceProp),1);
 		snprintf(prop->name,256,"GPGPU-Sim_v%s", g_gpgpusim_version_string );
-		prop->major = 2;
-		prop->minor = 0;
-		prop->totalGlobalMem = 0x40000000 /* 1 GB */;
+		prop->major = 5;
+		prop->minor = 2;
+		prop->totalGlobalMem = 0x80000000 /* 2 GB */;
 		prop->memPitch = 0;
 		prop->maxThreadsPerBlock = 512;
 		prop->maxThreadsDim[0] = 512;
@@ -533,6 +534,22 @@ __host__ cudaError_t CUDARTAPI cudaMemcpy(void *dst, const void *src, size_t cou
 		g_stream_manager->push( stream_operation((size_t)src,dst,count,0) );
 	else if( kind == cudaMemcpyDeviceToDevice )
 		g_stream_manager->push( stream_operation((size_t)src,(size_t)dst,count,0) );
+	else if ( kind == cudaMemcpyDefault ) {
+		if ((size_t)src >= GLOBAL_HEAP_START) {
+			if ((size_t)dst >= GLOBAL_HEAP_START)
+				g_stream_manager->push( stream_operation((size_t)src,(size_t)dst,count,0) ); // device to device
+			else
+				g_stream_manager->push( stream_operation((size_t)src,dst,count,0) ); // device to host
+		}
+		else {
+			if ((size_t)dst >= GLOBAL_HEAP_START)
+				g_stream_manager->push( stream_operation(src,(size_t)dst,count,0) );
+			else {
+				printf("GPGPU-Sim PTX: cudaMemcpy - ERROR : unsupported transfer: host to host\n");
+				abort();
+			}
+		}
+	}
 	else {
 		printf("GPGPU-Sim PTX: cudaMemcpy - ERROR : unsupported cudaMemcpyKind\n");
 		abort();
