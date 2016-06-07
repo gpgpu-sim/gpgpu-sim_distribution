@@ -97,6 +97,7 @@
 #define CL_USE_DEPRECATED_OPENCL_1_0_APIS
 #include <CL/cl.h>
 
+
 #include <map>
 #include <string>
 
@@ -268,7 +269,7 @@ cl_int _cl_kernel::bind_args( gpgpu_ptx_sim_arg_list_t &arg_list )
       if( i->first != k ) 
          return CL_INVALID_KERNEL_ARGS;
       arg_info arg = i->second;
-      gpgpu_ptx_sim_arg param( arg.m_arg_value, arg.m_arg_size, 0);
+      gpgpu_ptx_sim_arg param( arg.m_arg_value, arg.m_arg_size, 0 );
       arg_list.push_front( param );
       k++;
    }
@@ -574,8 +575,8 @@ void _cl_program::Build(const char *options)
          }
       }
       info.m_asm = tmp;
-      info.m_symtab = gpgpu_ptx_sim_load_ptx_from_string( tmp, source_num );
-      gpgpu_ptxinfo_load_from_string( tmp, source_num);
+      info.m_symtab = gpgpu_ptx_sim_load_ptx_from_string( tmp, source_num);
+      gpgpu_ptxinfo_load_from_string( tmp, source_num );
       free(tmp);
    }
    printf("GPGPU-Sim OpenCL API: finished compiling OpenCL kernels.\n"); 
@@ -1143,6 +1144,7 @@ clGetDeviceInfo(cl_device_id    device,
    case CL_DEVICE_MAX_COMPUTE_UNITS: CL_UINT_CASE( device->the_device()->get_config().num_shader() ); break;
    case CL_DEVICE_MAX_CLOCK_FREQUENCY: CL_UINT_CASE( device->the_device()->shader_clock() ); break;
    case CL_DEVICE_VENDOR:CL_STRING_CASE("GPGPU-Sim.org"); break;
+   case CL_DEVICE_PLATFORM: CL_STRING_CASE("GPGPU-Sim OpenCL platform"); break;
    case CL_DEVICE_VERSION: CL_STRING_CASE("OpenCL 1.0"); break;
    case CL_DRIVER_VERSION: CL_STRING_CASE("1.0"); break;
    case CL_DEVICE_TYPE: CL_CASE(cl_device_type, CL_DEVICE_TYPE_GPU); break;
@@ -1465,6 +1467,29 @@ clEnqueueMapBuffer(cl_command_queue command_queue,
    return mem->host_ptr();
 }
 
+extern CL_API_ENTRY cl_int CL_API_CALL
+clRetainMemObject(cl_mem memobj)
+{
+   return CL_SUCCESS;
+}
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clRetainEvent(cl_event event)
+{
+   return CL_SUCCESS;
+}
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clRetainKernel(cl_kernel kernel)
+{
+   return CL_SUCCESS;
+}
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clRetainDevice(cl_device_id device)
+{
+   return CL_SUCCESS;
+}
 
 extern CL_API_ENTRY cl_int CL_API_CALL
 clSetCommandQueueProperty( cl_command_queue command_queue,
