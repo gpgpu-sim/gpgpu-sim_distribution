@@ -440,6 +440,10 @@ extern "C" {
  *                                                                              *
  *                                                                              *
  *******************************************************************************/
+cudaError_t cudaPeekAtLastError(void)
+{
+	return g_last_cudaError;
+}
 
 __host__ cudaError_t CUDARTAPI cudaMalloc(void **devPtr, size_t size) 
 {
@@ -1000,7 +1004,8 @@ __host__ cudaError_t CUDARTAPI cudaStreamSynchronize(cudaStream_t stream)
 {
 #if (CUDART_VERSION >= 3000)
 	if( stream == NULL )
-		return g_last_cudaError = cudaErrorInvalidResourceHandle;
+		synchronize();
+		return g_last_cudaError = cudaSuccess;
 	stream->synchronize();
 #else
 	printf("GPGPU-Sim PTX: WARNING: Asynchronous kernel execution not supported (%s)\n", __my_func__);
