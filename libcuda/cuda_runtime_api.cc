@@ -1662,6 +1662,7 @@ void cuobjdumpInit(){
 
 std::map<int, std::string> fatbinmap;
 std::map<int, bool>fatbin_registered;
+std::map<std::string, symbol_table*> name_symtab;
 
 //! Keep track of the association between filename and cubin handle
 void cuobjdumpRegisterFatBinary(unsigned int handle, char* filename){
@@ -1674,6 +1675,13 @@ void cuobjdumpParseBinary(unsigned int handle){
 	if(fatbin_registered[handle]) return;
 	fatbin_registered[handle] = true;
 	CUctx_st *context = GPGPUSim_Context();
+	std::string fname = fatbinmap[handle];
+
+	if (name_symtab.find(fname) != name_symtab.end()) {
+		symbol_table *symtab = name_symtab[fname];
+		context->add_binary(symtab, handle);
+		return;
+	}
 
 	unsigned max_capability = 0;
 	for (	std::list<cuobjdumpSection*>::iterator iter = cuobjdumpSectionList.begin();
@@ -1682,16 +1690,13 @@ void cuobjdumpParseBinary(unsigned int handle){
 		unsigned capability = (*iter)->getArch();
 		if (capability > max_capability) max_capability = capability;
 	}
-
 	if (max_capability > 20) printf("WARNING: No guarantee that PTX will be parsed for SM version %u\n", max_capability);
 
-	std::string fname = fatbinmap[handle];
 	cuobjdumpPTXSection* ptx = findPTXSection(fname);
-
 	symbol_table *symtab;
 	char *ptxcode;
 	const char *override_ptx_name = getenv("PTX_SIM_KERNELFILE"); 
-   if (override_ptx_name == NULL or getenv("PTX_SIM_USE_PTX_FILE") == NULL) {
+	if (override_ptx_name == NULL or getenv("PTX_SIM_USE_PTX_FILE") == NULL) {
 		ptxcode = readfile(ptx->getPTXfilename());
 	} else {
 		printf("GPGPU-Sim PTX: overriding embedded ptx with '%s' (PTX_SIM_USE_PTX_FILE is set)\n", override_ptx_name);
@@ -1717,6 +1722,7 @@ void cuobjdumpParseBinary(unsigned int handle){
 	}
 	load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
 	load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
+	name_symtab[fname] = symtab;
 
 	//TODO: Remove temporarily files as per configurations
 }
