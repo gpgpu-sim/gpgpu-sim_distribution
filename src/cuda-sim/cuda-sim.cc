@@ -1864,10 +1864,14 @@ unsigned translate_pc_to_ptxlineno(unsigned pc)
 
 // ptxinfo parser
 
+extern std::map<unsigned,const char*> get_duplicate();
+
 int g_ptxinfo_error_detected;
 
 static char *g_ptxinfo_kname = NULL;
 static struct gpgpu_ptx_sim_info g_ptxinfo;
+static std::map<unsigned,const char*> g_duplicate;
+static const char *g_last_dup_type;
 
 const char *get_ptxinfo_kname() 
 { 
@@ -1895,6 +1899,21 @@ void print_ptxinfo()
 struct gpgpu_ptx_sim_info get_ptxinfo()
 {
     return g_ptxinfo;
+}
+
+std::map<unsigned,const char*> get_duplicate()
+{
+	return g_duplicate;
+}
+
+void ptxinfo_linenum( unsigned linenum )
+{
+	g_duplicate[linenum] = g_last_dup_type;
+}
+
+void ptxinfo_dup_type( const char *dup_type )
+{
+	g_last_dup_type = dup_type;
 }
 
 void ptxinfo_function(const char *fname )
