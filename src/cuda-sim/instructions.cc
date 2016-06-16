@@ -816,6 +816,11 @@ void add_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
 void addc_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 
+void ama_impl(  const ptx_instruction *pI, ptx_thread_info *thread )
+{
+	printf("AMA instruction found.\n");	
+}
+
 void and_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 
    ptx_reg_t src1_data, src2_data, data;
@@ -3696,6 +3701,11 @@ void slct_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    }
 
    thread->set_operand_value(dst,d, i_type, thread, pI);
+}
+
+void spr_impl( const ptx_instruction *pI, ptx_thread_info *thread )
+{
+	printf("SPR instruction found.\n");
 }
 
 void sqrt_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 

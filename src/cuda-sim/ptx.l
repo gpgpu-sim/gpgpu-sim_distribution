@@ -145,6 +145,8 @@ xor     TC; ptx_lval.int_value = XOR_OP; return OPCODE;
 nop     TC; ptx_lval.int_value = NOP_OP; return OPCODE;
 break  TC; ptx_lval.int_value = BREAK_OP; return OPCODE;
 breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
+spr TC; ptx_lval.int_value = SPR_OP; return OPCODE;
+ama TC; ptx_lval.int_value = AMA_OP; return OPCODE;
 
 <INITIAL,NOT_OPCODE,IN_INST,IN_FUNC_DECL>{
 
@@ -390,7 +392,9 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 }
 <IN_COMMENT>{
 "*/"      BEGIN(INITIAL);
-[^*\n]+   // eat comment in chunks
+"CPTX_BEGIN" printf("BEGINNING CUSTOM PTX.\n"); BEGIN(INITIAL);
+[^C*\n]+   // eat comment in chunks
+"C"
 "*"       // eat the lone star
 \n        TC; 
 }
