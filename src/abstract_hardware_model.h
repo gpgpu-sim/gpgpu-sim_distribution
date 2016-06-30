@@ -282,6 +282,7 @@ public:
    CUstream_st * create_stream_cta(dim3 ctaid);
    CUstream_st * get_default_stream_cta(dim3 ctaid);
    bool cta_has_stream(dim3 ctaid, CUstream_st* stream);
+   void destroy_cta_streams();
    void print_parent_info();
 
 private:

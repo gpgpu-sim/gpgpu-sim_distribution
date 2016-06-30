@@ -574,6 +574,7 @@ kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *
 kernel_info_t::~kernel_info_t()
 {
     assert( m_active_threads.empty() );
+    destroy_cta_streams();
     delete m_param_mem;
 }
 
@@ -668,6 +669,17 @@ void kernel_info_t::print_parent_info() {
     }
 }
 
+void kernel_info_t::destroy_cta_streams() {
+     printf("Destroy streams for kernel %d: ", get_uid()); size_t stream_size = 0;
+     for(auto s = m_cta_streams.begin(); s != m_cta_streams.end(); s++) {
+        stream_size += s->second.size();
+        for(auto ss = s->second.begin(); ss != s->second.end(); ss++)
+        g_stream_manager->destroy_stream(*ss);
+        s->second.clear();
+     }
+     printf("size %lu\n", stream_size);
+     m_cta_streams.clear();
+}
 
 simt_stack::simt_stack( unsigned wid, unsigned warpSize)
 {
