@@ -1066,7 +1066,10 @@ void function_info::add_param_data( unsigned argn, struct gpgpu_ptx_sim_arg *arg
 }
 
 unsigned function_info::get_args_aligned_size() {
-  
+ 
+   if(m_args_aligned_size >= 0)
+      return m_args_aligned_size;
+ 
    unsigned param_address = 0;
    unsigned int total_size = 0;
    for( std::map<unsigned,param_info>::iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
@@ -1081,7 +1084,9 @@ unsigned function_info::get_args_aligned_size() {
       total_size += arg_size;
    }
 
-   return (total_size + 3) / 4 * 4; //final size aligned to word
+   m_args_aligned_size = (total_size + 3) / 4 * 4; //final size aligned to word
+
+   return m_args_aligned_size;
 
 }
 

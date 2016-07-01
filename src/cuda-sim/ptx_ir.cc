@@ -1292,6 +1292,7 @@ function_info::function_info(int entry_point )
    m_kernel_info.regs = 0;
    m_kernel_info.smem = 0;
    m_local_mem_framesize = 0;
+   m_args_aligned_size = -1;
 }
 
 unsigned function_info::print_insn( unsigned pc, FILE * fp ) const
