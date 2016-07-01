@@ -48,6 +48,7 @@
 #include "../gpgpusim_entrypoint.h"
 #include "decuda_pred_table/decuda_pred_table.h"
 #include "../stream_manager.h"
+#include "cuda_device_runtime.h"
 
 int gpgpu_ptx_instruction_classification;
 void ** g_inst_classification_stat = NULL;
@@ -1776,13 +1777,15 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
             g_the_gpu->getShaderCoreConfig()->warp_size
         );
         cta.execute();
+
+	launch_all_device_kernels();
     }
     
    //registering this kernel as done      
-   extern stream_manager *g_stream_manager;
    
    //openCL kernel simulation calls don't register the kernel so we don't register its exit
    if(!openCL) {
+      extern stream_manager *g_stream_manager;
       g_stream_manager->register_finished_kernel(kernel.get_uid());
    }
 
