@@ -292,8 +292,6 @@ private:
    std::list<operand_info> m_initializer;
    static unsigned sm_next_uid;
    
-   //parameter size for device kernels
-   int m_args_aligned_size;
 };
 
 class symbol_table {
@@ -1302,6 +1300,9 @@ private:
 
    static std::vector<ptx_instruction*> s_g_pc_to_insn; // a direct mapping from PC to instruction
    static unsigned sm_next_uid;
+
+   //parameter size for device kernels
+   int m_args_aligned_size;
 };
 
 class arg_buffer_t {
