@@ -215,9 +215,9 @@ void gpgpusim_cuda_launchDeviceV2(const ptx_instruction * pI, ptx_thread_info * 
                 " to stream " << child_stream->get_uid() << ": " << child_stream);
             }
     
-                device_launch_op.stream = child_stream;
-            }
+            device_launch_op.stream = child_stream;
         }
+        
     }
 
   
