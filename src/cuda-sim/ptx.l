@@ -145,8 +145,6 @@ xor     TC; ptx_lval.int_value = XOR_OP; return OPCODE;
 nop     TC; ptx_lval.int_value = NOP_OP; return OPCODE;
 break  TC; ptx_lval.int_value = BREAK_OP; return OPCODE;
 breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
-spr TC; ptx_lval.int_value = SPR_OP; return OPCODE;
-ama TC; ptx_lval.int_value = AMA_OP; return OPCODE;
 
 <INITIAL,NOT_OPCODE,IN_INST,IN_FUNC_DECL>{
 
