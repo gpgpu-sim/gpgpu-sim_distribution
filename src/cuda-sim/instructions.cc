@@ -3734,6 +3734,11 @@ void sqrt_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->set_operand_value(dst,d, i_type, thread, pI);
 }
 
+void sst_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
+{
+	printf("SST instruction found.\n");
+}
+
 void ssy_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 {
    //printf("Execution Warning: unimplemented ssy instruction is treated as a nop\n");

@@ -120,6 +120,7 @@ shr     TC; ptx_lval.int_value = SHR_OP; return OPCODE;
 sin	TC; ptx_lval.int_value = SIN_OP; return OPCODE;
 slct	TC; ptx_lval.int_value = SLCT_OP; return OPCODE;
 sqrt	TC; ptx_lval.int_value = SQRT_OP; return OPCODE;
+sst	TC; ptx_lval.int_value = SST_OP; return OPCODE;
 ssy     TC; ptx_lval.int_value = SSY_OP; return OPCODE;
 st      TC; ptx_lval.int_value = ST_OP; return OPCODE;
 st.volatile TC; ptx_lval.int_value = ST_OP; return OPCODE;
