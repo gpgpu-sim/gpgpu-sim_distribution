@@ -240,7 +240,7 @@ unsigned ptx_thread_info::get_builtin( int builtin_id, unsigned dim_mod )
    }
    case GRIDID_REG:
       return m_gridid;
-   case LANEID_REG: feature_not_implemented( "%laneid" ); return 0;
+   case LANEID_REG: return get_hw_tid() % m_core->get_warp_size();
    case LANEMASK_EQ_REG: feature_not_implemented( "%lanemask_eq" ); return 0;
    case LANEMASK_LE_REG: feature_not_implemented( "%lanemask_le" ); return 0;
    case LANEMASK_LT_REG: feature_not_implemented( "%lanemask_lt" ); return 0;

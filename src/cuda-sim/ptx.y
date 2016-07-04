@@ -47,6 +47,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token  PTR_DIRECTIVE
 %token  ENTRY_DIRECTIVE
 %token  EXTERN_DIRECTIVE
+%token  WEAK_DIRECTIVE
 %token  FILE_DIRECTIVE
 %token  FUNC_DIRECTIVE
 %token  GLOBAL_DIRECTIVE
@@ -103,6 +104,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token  COMMA
 %token  PRED
 %token  HALF_OPTION
+%token  EXTP_OPTION
 %token  EQ_OPTION
 %token  NE_OPTION
 %token  LT_OPTION
@@ -191,6 +193,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token  CV_OPTION;
 %token  WB_OPTION;
 %token  WT_OPTION;
+%token	NC_OPTION;
 
 %type <int_value> function_decl_header
 %type <ptr_value> function_decl
@@ -242,6 +245,7 @@ function_decl_header: ENTRY_DIRECTIVE { $$ = 1; g_func_decl=1; func_header(".ent
 	| VISIBLE_DIRECTIVE ENTRY_DIRECTIVE { $$ = 1; g_func_decl=1; func_header(".entry"); }
 	| FUNC_DIRECTIVE { $$ = 0; g_func_decl=1; func_header(".func"); }
 	| VISIBLE_DIRECTIVE FUNC_DIRECTIVE { $$ = 0; g_func_decl=1; func_header(".func"); }
+	| WEAK_DIRECTIVE FUNC_DIRECTIVE { $$ = 0; g_func_decl=1; func_header(".func"); }
 	| EXTERN_DIRECTIVE FUNC_DIRECTIVE { $$ = 2; g_func_decl=1; func_header(".func"); }
 	;
 
@@ -438,6 +442,7 @@ option: type_spec
 	| atomic_operation_spec ;
 	| TO_OPTION { add_option(TO_OPTION); }
 	| HALF_OPTION { add_option(HALF_OPTION); }
+	| EXTP_OPTION { add_option(EXTP_OPTION); }
 	| CA_OPTION { add_option(CA_OPTION); }
 	| CG_OPTION { add_option(CG_OPTION); }
 	| CS_OPTION { add_option(CS_OPTION); }
@@ -445,6 +450,7 @@ option: type_spec
 	| CV_OPTION { add_option(CV_OPTION); }
 	| WB_OPTION { add_option(WB_OPTION); }
 	| WT_OPTION { add_option(WT_OPTION); }
+	| NC_OPTION { add_option(NC_OPTION); }
 	;
 
 atomic_operation_spec: ATOMIC_AND { add_option(ATOMIC_AND); } 

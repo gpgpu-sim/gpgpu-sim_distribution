@@ -54,11 +54,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token LINE
 %token <string_value> WARNING
 %token FOR
+%token TEXTURES
+%token DUPLICATE
+%token <string_value> FUNCTION
+%token <string_value> VARIABLE
+%token FATAL
 
 %{
 	#include <stdlib.h>
 	#include <string.h>
-
+	
 	static unsigned g_declared;
 	static unsigned g_system;
 	int ptxinfo_lex(void);
@@ -70,6 +75,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	void ptxinfo_smem( unsigned declared, unsigned system );
 	void ptxinfo_cmem( unsigned nbytes, unsigned bank );
 	int ptxinfo_error(const char*);
+	void ptxinfo_linenum( unsigned );
+	void ptxinfo_dup_type( const char* );
 %}
 
 %%
@@ -81,6 +88,8 @@ input:	/* empty */
 line: 	HEADER INFO COLON line_info
 	| HEADER IDENTIFIER COMMA LINE INT_OPERAND SEMICOLON WARNING
 	| HEADER WARNING { printf("GPGPU-Sim: ptxas %s\n", $2); }
+	| HEADER IDENTIFIER COMMA LINE INT_OPERAND SEMICOLON DUPLICATE duplicate { ptxinfo_linenum($5); }
+	| HEADER FATAL
 	;
 
 line_info: function_name
@@ -88,7 +97,7 @@ line_info: function_name
 	;
 
 function_name:	FUNC QUOTE IDENTIFIER QUOTE { ptxinfo_function($3); }
-	|  FUNC QUOTE IDENTIFIER QUOTE FOR QUOTE IDENTIFIER QUOTE {ptxinfo_function($3); }
+	|  FUNC QUOTE IDENTIFIER QUOTE FOR QUOTE IDENTIFIER QUOTE { ptxinfo_function($3); }
 	;
 	
 function_info: info
@@ -104,9 +113,14 @@ info: 	  USED INT_OPERAND REGS { ptxinfo_regs($2); }
 	| INT_OPERAND BYTES SMEM { ptxinfo_smem($1,0); }
 	| INT_OPERAND BYTES CMEM { ptxinfo_cmem($1,0); }
 	| INT_OPERAND REGS { ptxinfo_regs($1); }
+	| INT_OPERAND TEXTURES {}
 	;
 
 tuple: INT_OPERAND PLUS INT_OPERAND BYTES { g_declared=$1; g_system=$3; }
+
+duplicate:	FUNCTION QUOTE IDENTIFIER QUOTE { ptxinfo_dup_type($1); }
+	| VARIABLE QUOTE IDENTIFIER QUOTE { ptxinfo_dup_type($1); }
+	;
 
 %%
 
