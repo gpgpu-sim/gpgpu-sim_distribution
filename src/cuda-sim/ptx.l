@@ -148,6 +148,8 @@ nop     TC; ptx_lval.int_value = NOP_OP; return OPCODE;
 break  TC; ptx_lval.int_value = BREAK_OP; return OPCODE;
 breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 
+"CPTX_END"	printf("ENDING CUSTOM PTX.\n"); BEGIN(IN_COMMENT);
+
 <INITIAL,NOT_OPCODE,IN_INST,IN_FUNC_DECL>{
 
 \.align TC; return ALIGN_DIRECTIVE;
@@ -393,9 +395,9 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 <IN_COMMENT>{
 "*/"      BEGIN(INITIAL);
 "CPTX_BEGIN" printf("BEGINNING CUSTOM PTX.\n"); BEGIN(INITIAL);
-[^C*\n]+   // eat comment in chunks
-"C"
-"*"       // eat the lone star
+[^C*\n]+	// eat comment in chunks
+"C"			// eat the lone C 
+"*"			// eat the lone star
 \n        TC; 
 }
 
