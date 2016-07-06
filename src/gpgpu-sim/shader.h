@@ -1372,6 +1372,7 @@ struct shader_core_stats_pod {
     unsigned gpgpu_n_load_insn;
     unsigned gpgpu_n_store_insn;
     unsigned gpgpu_n_shmem_insn;
+    unsigned gpgpu_n_sstarr_insn;
     unsigned gpgpu_n_tex_insn;
     unsigned gpgpu_n_const_insn;
     unsigned gpgpu_n_param_insn;

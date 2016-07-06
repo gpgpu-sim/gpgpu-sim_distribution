@@ -1049,6 +1049,9 @@ void shader_core_ctx::mem_instruction_stats(const warp_inst_t &inst)
     case shared_space:
         m_stats->gpgpu_n_shmem_insn += active_count; 
         break;
+    case sstarr_space:
+    	m_stats->gpgpu_n_sstarr_insn += active_count;
+    	break;
     case const_space:
         m_stats->gpgpu_n_const_insn += active_count;
         break;

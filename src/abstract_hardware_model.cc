@@ -213,6 +213,7 @@ void warp_inst_t::generate_mem_accesses()
         access_type = is_write? LOCAL_ACC_W: LOCAL_ACC_R;   
         break;
     case shared_space: break;
+    case sstarr_space: break;
     default: assert(0); break; 
     }
 
@@ -220,7 +221,8 @@ void warp_inst_t::generate_mem_accesses()
     new_addr_type cache_block_size = 0; // in bytes 
 
     switch( space.get_type() ) {
-    case shared_space: {
+    case shared_space:
+    case sstarr_space: {
         unsigned subwarp_size = m_config->warp_size / m_config->mem_warp_parts;
         unsigned total_accesses=0;
         for( unsigned subwarp=0; subwarp <  m_config->mem_warp_parts; subwarp++ ) {
