@@ -550,7 +550,8 @@ void warp_inst_t::completed( unsigned long long cycle ) const
    ptx_file_line_stats_add_latency(pc, latency * active_count());  
 }
 
-//Jin: kernel launch latency
+//Jin: CDP support
+bool g_cdp_enabled;
 unsigned g_kernel_launch_latency;
 
 unsigned kernel_info_t::m_next_uid = 1;

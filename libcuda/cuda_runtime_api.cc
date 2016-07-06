@@ -1336,7 +1336,11 @@ void extract_code_using_cuobjdump(){
 	system(command);
 	// Running cuobjdump using dynamic link to current process
 	// Needs the option '-all' to extract PTX from CDP-enabled binary 
-	snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass -all %s > %s", app_binary.c_str(), fname);
+	extern bool g_cdp_enabled;
+	if(!g_cdp_enabled)
+	    snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass %s > %s", app_binary.c_str(), fname);
+	else
+	    snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass -all %s > %s", app_binary.c_str(), fname);
 	bool parse_output = true; 
 	int result = system(command);
 	if(result) {
@@ -1545,6 +1549,14 @@ cuobjdumpPTXSection* findPTXSectionInList(std::list<cuobjdumpSection*> sectionli
 		if((ptxsection=dynamic_cast<cuobjdumpPTXSection*>(*iter)) != NULL){
 			if(ptxsection->getIdentifier() == identifier)
 				return ptxsection;
+			else {
+				extern bool g_cdp_enabled;
+				if(g_cdp_enabled) {
+					printf("Warning: __cudaRegisterFatBinary needs %s, but find PTX section with %s\n",
+						identifier.c_str(), ptxsection->getIdentifier().c_str());
+					return ptxsection;
+				}
+			}
 		}
 	}
 	return NULL;

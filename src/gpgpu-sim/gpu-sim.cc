@@ -449,6 +449,10 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
     option_parser_register(opp, "-gpgpu_kernel_launch_latency", OPT_INT32, 
                           &g_kernel_launch_latency, "Kernel launch latency in cycles. Default: 0",
                           "0");
+    extern bool g_cdp_enabled;
+    option_parser_register(opp, "-gpgpu_cdp_enabled", OPT_BOOL, 
+                          &g_cdp_enabled, "Turn on CDP",
+                          "0");
 }
 
 /////////////////////////////////////////////////////////////////////////////
