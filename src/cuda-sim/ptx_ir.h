@@ -222,6 +222,7 @@ public:
 
    bool is_label() const { return m_is_label;}
    bool is_shared() const { return m_is_shared;}
+   bool is_sstarr() const { return m_is_sstarr;}
    bool is_const() const { return m_is_const;}
    bool is_global() const { return m_is_global;}
    bool is_local() const { return m_is_local;}
@@ -279,6 +280,7 @@ private:
    bool m_address_valid;
    bool m_is_label;
    bool m_is_shared;
+   bool m_is_sstarr;
    bool m_is_const;
    bool m_is_global;
    bool m_is_local;
@@ -313,10 +315,12 @@ public:
    void set_label_address( const symbol *label, unsigned addr );
    unsigned next_reg_num() { return ++m_reg_allocator;}
    addr_t get_shared_next() { return m_shared_next;}
+   addr_t get_sstarr_next() { return m_sstarr_next;}
    addr_t get_global_next() { return m_global_next;}
    addr_t get_local_next() { return m_local_next;}
    addr_t get_tex_next() { return m_tex_next;}
    void  alloc_shared( unsigned num_bytes ) { m_shared_next += num_bytes;}
+   void  alloc_sstarr( unsigned num_bytes ) { m_sstarr_next += num_bytes;}
    void  alloc_global( unsigned num_bytes ) { m_global_next += num_bytes;}
    void  alloc_local( unsigned num_bytes ) { m_local_next += num_bytes;}
    void  alloc_tex( unsigned num_bytes ) { m_tex_next += num_bytes;}
@@ -333,6 +337,7 @@ public:
 private:
    unsigned m_reg_allocator;
    unsigned m_shared_next;
+   unsigned m_sstarr_next;
    unsigned m_const_next;
    unsigned m_global_next;
    unsigned m_local_next;
@@ -703,6 +708,7 @@ public:
       }
       return  m_value.m_symbolic->is_shared();
    }
+   bool is_sstarr() const { return m_value.m_symbolic->is_sstarr();}
    bool is_const() const { return m_value.m_symbolic->is_const();}
    bool is_global() const { return m_value.m_symbolic->is_global();}
    bool is_local() const { return m_value.m_symbolic->is_local();}

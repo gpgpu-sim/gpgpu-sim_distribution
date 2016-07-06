@@ -1407,6 +1407,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
    std::list<ptx_thread_info *> &active_threads = kernel.active_threads();
 
    static std::map<unsigned,memory_space*> shared_memory_lookup;
+   static std::map<unsigned,memory_space*> sstarr_memory_lookup;
    static std::map<unsigned,ptx_cta_info*> ptx_cta_lookup;
    static std::map<unsigned,std::map<unsigned,memory_space*> > local_memory_lookup;
 
@@ -1450,6 +1451,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
    //initializing new CTA
    ptx_cta_info *cta_info = NULL;
    memory_space *shared_mem = NULL;
+   memory_space *sstarr_mem = NULL;
 
    unsigned cta_size = kernel.threads_per_cta();
    unsigned max_cta_per_sm = num_threads/cta_size; // e.g., 256 / 48 = 5 
@@ -1466,6 +1468,9 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
       snprintf(buf,512,"shared_%u", sid);
       shared_mem = new memory_space_impl<16*1024>(buf,4);
       shared_memory_lookup[sm_idx] = shared_mem;
+      snprintf(buf,512,"sstarr_%u", sid);
+      sstarr_mem = new memory_space_impl<16*1024>(buf,4);
+      sstarr_memory_lookup[sm_idx] = sstarr_mem;
       cta_info = new ptx_cta_info(sm_idx);
       ptx_cta_lookup[sm_idx] = cta_info;
    } else {
@@ -1474,6 +1479,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
                 sm_idx, sid, max_cta_per_sm );
       }
       shared_mem = shared_memory_lookup[sm_idx];
+      sstarr_mem = sstarr_memory_lookup[sm_idx];
       cta_info = ptx_cta_lookup[sm_idx];
       cta_info->check_cta_thread_status_and_reset();
    }
@@ -1506,9 +1512,11 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
          thd->cpy_tid_to_reg(tid3d);
       thd->set_valid();
       thd->m_shared_mem = shared_mem;
+      thd->m_sstarr_mem = sstarr_mem;
       function_info *finfo = thd->func_info();
       symbol_table *st = finfo->get_symtab();
       thd->func_info()->param_to_shared(thd->m_shared_mem,st);
+      thd->func_info()->param_to_shared(thd->m_sstarr_mem,st);
       thd->m_cta_info = cta_info;
       cta_info->add_thread(thd);
       thd->m_local_mem = local_mem;

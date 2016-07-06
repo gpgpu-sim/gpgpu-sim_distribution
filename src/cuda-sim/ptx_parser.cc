@@ -415,6 +415,20 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       g_last_symbol->set_address( addr+addr_pad );
       g_current_symbol_table->alloc_shared( num_bits/8 + addr_pad );
       break;
+   case sstarr_space:
+         printf("GPGPU-Sim PTX: allocating sstarr region for \"%s\" ",
+                identifier);
+         fflush(stdout);
+         assert( (num_bits%8) == 0  );
+         addr = g_current_symbol_table->get_sstarr_next();
+         addr_pad = pad_address(addr, num_bits/8, 128);
+         printf("from 0x%x to 0x%lx (sstarr memory space)\n",
+                 addr+addr_pad,
+                 addr+addr_pad + num_bits/8);
+            fflush(stdout);
+         g_last_symbol->set_address( addr+addr_pad );
+         g_current_symbol_table->alloc_sstarr( num_bits/8 + addr_pad );
+         break;
    case const_space:
       if( array_ident == ARRAY_IDENTIFIER_NO_DIM ) {
          printf("GPGPU-Sim PTX: deferring allocation of constant region for \"%s\" (need size information)\n", identifier );

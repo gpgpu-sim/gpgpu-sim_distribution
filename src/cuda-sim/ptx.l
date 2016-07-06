@@ -177,6 +177,7 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.section TC; return SECTION_DIRECTIVE;
 \.shared  TC; return SHARED_DIRECTIVE;
 \.sreg   TC; return SREG_DIRECTIVE;
+\.sstarr TC; return SSTARR_DIRECTIVE;
 \.struct TC; return STRUCT_DIRECTIVE;
 \.surf   TC; return SURF_DIRECTIVE;   /* not in PTX 2.1 */
 \.target  TC; return TARGET_DIRECTIVE;

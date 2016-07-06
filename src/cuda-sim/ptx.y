@@ -64,6 +64,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token  SECTION_DIRECTIVE
 %token  SHARED_DIRECTIVE
 %token  SREG_DIRECTIVE
+%token	SSTARR_DIRECTIVE
 %token  STRUCT_DIRECTIVE
 %token  SURF_DIRECTIVE
 %token  TARGET_DIRECTIVE
@@ -339,6 +340,7 @@ addressable_spec: CONST_DIRECTIVE {  add_space_spec(const_space,$1); }
 	| LOCAL_DIRECTIVE 	  {  add_space_spec(local_space,0); }
 	| PARAM_DIRECTIVE 	  {  add_space_spec(param_space_unclassified,0); }
 	| SHARED_DIRECTIVE 	  {  add_space_spec(shared_space,0); }
+	| SSTARR_DIRECTIVE    {  add_space_spec(sstarr_space,0); }
 	| SURF_DIRECTIVE 	  {  add_space_spec(surf_space,0); }
 	| TEX_DIRECTIVE 	  {  add_space_spec(tex_space,0); }
 	;

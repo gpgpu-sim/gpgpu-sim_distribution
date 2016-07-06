@@ -130,6 +130,8 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
                result.u64 = sym->get_address() + op.get_addr_offset();
             } else if ( op.is_shared() ) {
                result.u64 = op.get_symbol()->get_address() + op.get_addr_offset();
+            } else if ( op.is_sstarr() ) {
+               result.u64 = op.get_symbol()->get_address() + op.get_addr_offset();
             } else {
                const char *name = op.name().c_str();
                printf("GPGPU-Sim PTX: ERROR ** get_operand_value : unknown memory operand type for %s\n", name );
@@ -141,6 +143,8 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
          } else if ( op.is_label() ) {
             result.u64 = op.get_symbol()->get_address();
          } else if ( op.is_shared() ) {
+            result.u64 = op.get_symbol()->get_address();
+         } else if ( op.is_sstarr() ) {
             result.u64 = op.get_symbol()->get_address();
          } else if ( op.is_const() ) {
             result.u64 = op.get_symbol()->get_address();
@@ -2347,6 +2351,7 @@ void decode_space( memory_space_t &space, ptx_thread_info *thread, const operand
    case surf_space:   mem = thread->get_surf_memory(); break; 
    case param_space_kernel:  mem = thread->get_param_memory(); break;
    case shared_space:  mem = thread->m_shared_mem; break; 
+   case sstarr_space:	mem = thread->m_sstarr_mem; break;
    case const_space:  mem = thread->get_global_memory(); break;
    case generic_space:
       if( thread->get_ptx_version().ver() >= 2.0 ) {
@@ -3736,7 +3741,67 @@ void sqrt_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
 void sst_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 {
+	const operand_info &src1 = pI->src1();
+	const operand_info &src3 = pI->src3(); //may be scalar or vector of regs
+	unsigned type = pI->get_type();
+	ptx_reg_t addr_reg = thread->get_operand_value(src1, src1, type, thread, 1);
+	ptx_reg_t src3_data;
+	memory_space_t space = pI->get_space();
+
+	memory_space *mem = NULL;
+	addr_t addr = addr_reg.u32;
+
+	decode_space(space,thread,src1,mem,addr);
+
+	size_t size;
+	int t;
+	type_info_key::type_decode(type,size,t);
+
+	src3_data = thread->get_operand_value(src3, src1, type, thread, 1);
+	mem->write(addr,size/8,&src3_data.s64,thread,pI);
+	thread->m_last_effective_address = addr;
+	thread->m_last_memory_space = space;
+
+
 	printf("SST instruction found.\n");
+
+	/*const operand_info &dst = pI->dst();
+	const operand_info &src1 = pI->src1();
+	const operand_info &src2 = pI->src2();
+	const operand_info &src3 = pI->src3();
+
+	unsigned type = pI->get_type();
+	ptx_reg_t addr_reg = thread->get_operand_value(src1, src1, type, thread, 1);
+	memory_space_t space = pI->get_space();
+
+	memory_space *mem = NULL;
+	addr_t addr = addr_reg.u32;
+
+	decode_space(space,thread,src1,mem,addr);
+
+	size_t size;
+	int t;
+	type_info_key::type_decode(type,size,t);
+
+	ptx_reg_t src2_data = thread->get_operand_value(src2, src1, type, thread, 1);
+	ptx_reg_t src3_data = thread->get_operand_value(src3, src1, type, thread, 1);
+	mem->write(addr,size/8,&src3_data.s64,thread,pI);*/
+
+	/*
+	switch ( i_type ) {
+	case U32_TYPE:
+	  data.u64 = (src1_data.u64 & 0xFFFFFFFF) + (src2_data.u64 & 0xFFFFFFFF);
+	  carry = (data.u64 & 0x100000000)>>32;
+	  break;
+	case U64_TYPE:
+	  data.u64 = src1_data.u64 + src2_data.u64;
+	  break;
+	default: assert(0); break;
+	}*/
+
+	//thread->set_operand_value(dst, data, i_type, thread, pI, overflow, carry  );
+	//thread->m_last_effective_address = addr;
+	//thread->m_last_memory_space = space;
 }
 
 void ssy_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 

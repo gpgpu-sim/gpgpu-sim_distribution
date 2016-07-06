@@ -153,6 +153,7 @@ ptx_thread_info::ptx_thread_info( kernel_info_t &kernel )
    m_last_memory_space = undefined_space; 
    m_branch_taken = 0;
    m_shared_mem = NULL;
+   m_sstarr_mem = NULL;
    m_cta_info = NULL;
    m_local_mem = NULL;
    m_symbol_table = NULL;

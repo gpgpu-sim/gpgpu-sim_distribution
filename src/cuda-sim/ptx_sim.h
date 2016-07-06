@@ -424,6 +424,7 @@ public:
    memory_space_t m_last_memory_space;
    dram_callback_t   m_last_dram_callback; 
    memory_space   *m_shared_mem;
+   memory_space   *m_sstarr_mem;
    memory_space   *m_local_mem;
    ptx_cta_info   *m_cta_info;
    ptx_reg_t m_last_set_operand_value;
