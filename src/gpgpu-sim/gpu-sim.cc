@@ -1148,7 +1148,7 @@ bool shader_core_ctx::occupy_shader_resource_1block(kernel_info_t & k, bool occu
    if(find_available_hwtid(padded_cta_size, false) == -1)
      return false;
 
-   const struct gpgpu_ptx_sim_kernel_info *kernel_info = ptx_sim_kernel_info(kernel);
+   const struct gpgpu_ptx_sim_info *kernel_info = ptx_sim_kernel_info(kernel);
 
    if(m_occupied_shmem + kernel_info->smem > m_config->gpgpu_shmem_size)
      return false;
@@ -1191,7 +1191,7 @@ void shader_core_ctx::release_shader_resource_1block(unsigned hw_ctaid, kernel_i
        m_occupied_hwtid.reset(hwtid);
    m_occupied_cta_to_hwtid.erase(hw_ctaid);
 
-   const struct gpgpu_ptx_sim_kernel_info *kernel_info = ptx_sim_kernel_info(kernel);
+   const struct gpgpu_ptx_sim_info *kernel_info = ptx_sim_kernel_info(kernel);
 
    assert(m_occupied_shmem >= (unsigned int)kernel_info->smem);
    m_occupied_shmem -= kernel_info->smem;
