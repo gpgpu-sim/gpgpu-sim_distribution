@@ -1,5 +1,7 @@
 dist: trusty
 before_install: 
+        - git clone https://github.com/gpgpu-sim/setup_torque_on_ubuntu_14.04.git
+        - ./setup_torque_on_ubuntu_14.04/install_torque.sh
         - wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64/cuda-repo-ubuntu1404_7.5-18_amd64.deb		
         - sudo dpkg -i cuda-repo-ubuntu1404_7.5-18_amd64.deb 
         - sudo apt-get -qq update
