@@ -3802,6 +3802,11 @@ void sst_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 			}
 		}
 
+		// store the return address
+		data = thread->get_operand_value(src1, dst, type, thread, 1);
+		data.s64 += 4*(offset-1); // set address to the last spot in the sparse array
+		thread->set_operand_value(dst, data, type, thread, pI);
+
 		// fill the rest of the array with zeros (dst should always have a 0 in it)
 		while (offset < NUM_THREADS) {
 			mem->write(addr+(offset*4),size/8,&dst_data.s64,thread,pI);
@@ -3811,9 +3816,6 @@ void sst_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 		thread->m_last_effective_address = addr+(NUM_THREADS-1)*4;
 		thread->m_last_memory_space = space;
 	}
-
-	//if( type == S16_TYPE || type == S32_TYPE ) sign_extend(data,size,dst);
-	//thread->set_operand_value(dst,data, type, thread, pI);
 }
 
 void ssy_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
