@@ -3776,13 +3776,13 @@ void sst_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 	int NUM_THREADS = 8; // (how do you get this dynamically?)
 	if (src2_data.s64 == NUM_THREADS-1) {
 		// Step 3: pick only one thread to load all of the data back from sstarr memory
-		unsigned offset = 0;
+		long long offset = 0;
 		addr -= (NUM_THREADS-1)*4;
 		ptx_reg_t data;
 		float sstarr_fdata[NUM_THREADS];
 		signed long long sstarr_ldata[NUM_THREADS];
 		// loop through all of the threads
-		for (int tid = 0; tid < NUM_THREADS; tid++) {
+		for (short tid = 0; tid < NUM_THREADS; tid++) {
 			data.u64=0;
 			mem->read(addr+(tid*4),size/8,&data.s64);
 			sstarr_fdata[tid] = data.f32;
@@ -3794,22 +3794,26 @@ void sst_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 		addr = src1_data.u32;
 		space.set_type(global_space);
 		decode_space(space,thread,src1,mem,addr);
-		// store nonzero entries
+		// store nonzero entries and indices
 		for (int tid = 0; tid < NUM_THREADS; tid++) {
 			if (sstarr_fdata[tid] != 0) {
+				float ftid = (float)tid;
 				mem->write(addr+(offset*4),size/8,&sstarr_ldata[tid],thread,pI);
+				mem->write(addr+((NUM_THREADS+offset)*4),size/8,&ftid,thread,pI);
 				offset++;
 			}
 		}
 
 		// store the return address
-		data = thread->get_operand_value(src1, dst, type, thread, 1);
-		data.s64 += 4*(offset-1); // set address to the last spot in the sparse array
+		//data = thread->get_operand_value(src1, dst, type, thread, 1);
+		//data.s64 += 4*(offset-1); // set address to the last spot in the sparse array
+		data.s64 = offset-1;
 		thread->set_operand_value(dst, data, type, thread, pI);
 
 		// fill the rest of the array with zeros (dst should always have a 0 in it)
 		while (offset < NUM_THREADS) {
 			mem->write(addr+(offset*4),size/8,&dst_data.s64,thread,pI);
+			mem->write(addr+((NUM_THREADS+offset)*4),size/8,&dst_data.s64,thread,pI);
 			offset++;
 		}
 
