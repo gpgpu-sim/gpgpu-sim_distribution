@@ -3741,41 +3741,16 @@ void sqrt_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
 void sst_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 {
-	const operand_info &src1 = pI->src1();
-	const operand_info &src3 = pI->src3(); //may be scalar or vector of regs
-	unsigned type = pI->get_type();
-	ptx_reg_t addr_reg = thread->get_operand_value(src1, src1, type, thread, 1);
-	ptx_reg_t src3_data;
-	memory_space_t space = pI->get_space();
-
-	memory_space *mem = NULL;
-	addr_t addr = addr_reg.u32;
-
-	decode_space(space,thread,src1,mem,addr);
-
-	size_t size;
-	int t;
-	type_info_key::type_decode(type,size,t);
-
-	src3_data = thread->get_operand_value(src3, src1, type, thread, 1);
-	mem->write(addr,size/8,&src3_data.s64,thread,pI);
-	thread->m_last_effective_address = addr;
-	thread->m_last_memory_space = space;
-
-
-	printf("SST instruction found.\n");
-
-	/*const operand_info &dst = pI->dst();
+	// Step 1: store data in sstarr memory
 	const operand_info &src1 = pI->src1();
 	const operand_info &src2 = pI->src2();
 	const operand_info &src3 = pI->src3();
-
 	unsigned type = pI->get_type();
-	ptx_reg_t addr_reg = thread->get_operand_value(src1, src1, type, thread, 1);
+	ptx_reg_t src1_data = thread->get_operand_value(src1, src1, type, thread, 1);
+	ptx_reg_t src2_data, src3_data;
 	memory_space_t space = pI->get_space();
-
 	memory_space *mem = NULL;
-	addr_t addr = addr_reg.u32;
+	addr_t addr = src1_data.u32;
 
 	decode_space(space,thread,src1,mem,addr);
 
@@ -3783,25 +3758,57 @@ void sst_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 	int t;
 	type_info_key::type_decode(type,size,t);
 
-	ptx_reg_t src2_data = thread->get_operand_value(src2, src1, type, thread, 1);
-	ptx_reg_t src3_data = thread->get_operand_value(src3, src1, type, thread, 1);
-	mem->write(addr,size/8,&src3_data.s64,thread,pI);*/
+	src2_data = thread->get_operand_value(src2, src1, type, thread, 1);
+	src3_data = thread->get_operand_value(src3, src1, type, thread, 1);
+	mem->write(addr,size/8,&src3_data.s64,thread,pI);
 
-	/*
-	switch ( i_type ) {
-	case U32_TYPE:
-	  data.u64 = (src1_data.u64 & 0xFFFFFFFF) + (src2_data.u64 & 0xFFFFFFFF);
-	  carry = (data.u64 & 0x100000000)>>32;
-	  break;
-	case U64_TYPE:
-	  data.u64 = src1_data.u64 + src2_data.u64;
-	  break;
-	default: assert(0); break;
-	}*/
+	thread->m_last_effective_address = addr;
+	thread->m_last_memory_space = space;
 
-	//thread->set_operand_value(dst, data, i_type, thread, pI, overflow, carry  );
-	//thread->m_last_effective_address = addr;
-	//thread->m_last_memory_space = space;
+	// Step 2: __syncthreads() to make sure all data is stored in sstarr memory
+	// (function must be called with dst = 0 so that all threads execute bar.sync 0)
+	ptx_instruction * cpI = const_cast<ptx_instruction *>(pI);
+	const operand_info &dst = cpI->dst();
+	ptx_reg_t dst_data;
+	dst_data = thread->get_operand_value(dst, dst, U32_TYPE, thread, 1);
+	cpI->set_bar_id(dst_data.u32);
+
+	thread->m_last_dram_callback.function = bar_callback;
+	thread->m_last_dram_callback.instruction = pI;
+
+	// Step 3: pick only one thread to load all of the data back from sstarr memory
+	// rearrange the data so that zeros are at the end of the array
+	// store this data back in the original array (each thread can maybe do this after another sync?)
+	int NUM_THREADS = 8;
+	if (src2_data.s64 == NUM_THREADS-1) {
+		addr -= (NUM_THREADS-1)*4;
+		unsigned offset = 0;
+		ptx_reg_t data;
+		// loop through all of the threads (how do you do this dynamically?)
+		for (int tid = 0; tid < NUM_THREADS; tid++) {
+			data.u64=0;
+			mem->read(addr+(tid*4),size/8,&data.s64);
+
+			// store nonzero entries
+			if (data.s64 != 0) {
+				mem->write(addr+(offset*4),size/8,&data.s64,thread,pI);
+				thread->m_last_effective_address = addr+(offset*4);
+				offset++;
+			}
+		}
+		// fill the rest of the array with zeros
+		while (offset < NUM_THREADS) {
+			mem->write(addr+(offset*4),size/8,&src2_data.s64,thread,pI);
+			thread->m_last_effective_address = addr+(offset*4);
+			offset++;
+		}
+
+		// Step 4: load from sstarr memory and store data back into original array
+
+	}
+
+	//if( type == S16_TYPE || type == S32_TYPE ) sign_extend(data,size,dst);
+	//thread->set_operand_value(dst,data, type, thread, pI);
 }
 
 void ssy_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
