@@ -3747,10 +3747,11 @@ void sst_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 	const operand_info &src3 = pI->src3();
 	unsigned type = pI->get_type();
 	ptx_reg_t src1_data = thread->get_operand_value(src1, src1, type, thread, 1);
-	ptx_reg_t src2_data, src3_data;
+	ptx_reg_t src2_data = thread->get_operand_value(src2, src1, type, thread, 1);
+	ptx_reg_t src3_data = thread->get_operand_value(src3, src1, type, thread, 1);
 	memory_space_t space = pI->get_space();
 	memory_space *mem = NULL;
-	addr_t addr = src1_data.u32;
+	addr_t addr = src2_data.u32 * 4; // this assumes sstarr memory starts at address 0
 
 	decode_space(space,thread,src1,mem,addr);
 
@@ -3758,12 +3759,7 @@ void sst_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 	int t;
 	type_info_key::type_decode(type,size,t);
 
-	src2_data = thread->get_operand_value(src2, src1, type, thread, 1);
-	src3_data = thread->get_operand_value(src3, src1, type, thread, 1);
 	mem->write(addr,size/8,&src3_data.s64,thread,pI);
-
-	thread->m_last_effective_address = addr;
-	thread->m_last_memory_space = space;
 
 	// Step 2: __syncthreads() to make sure all data is stored in sstarr memory
 	// (function must be called with dst = 0 so that all threads execute bar.sync 0)
@@ -3776,35 +3772,44 @@ void sst_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 	thread->m_last_dram_callback.function = bar_callback;
 	thread->m_last_dram_callback.instruction = pI;
 
-	// Step 3: pick only one thread to load all of the data back from sstarr memory
-	// rearrange the data so that zeros are at the end of the array
-	// store this data back in the original array (each thread can maybe do this after another sync?)
-	int NUM_THREADS = 8;
+
+	int NUM_THREADS = 8; // (how do you get this dynamically?)
 	if (src2_data.s64 == NUM_THREADS-1) {
-		addr -= (NUM_THREADS-1)*4;
+		// Step 3: pick only one thread to load all of the data back from sstarr memory
 		unsigned offset = 0;
+		addr -= (NUM_THREADS-1)*4;
 		ptx_reg_t data;
-		// loop through all of the threads (how do you do this dynamically?)
+		float sstarr_fdata[NUM_THREADS];
+		signed long long sstarr_ldata[NUM_THREADS];
+		// loop through all of the threads
 		for (int tid = 0; tid < NUM_THREADS; tid++) {
 			data.u64=0;
 			mem->read(addr+(tid*4),size/8,&data.s64);
+			sstarr_fdata[tid] = data.f32;
+			sstarr_ldata[tid] = data.s64;
+		}
 
-			// store nonzero entries
-			if (data.s64 != 0) {
-				mem->write(addr+(offset*4),size/8,&data.s64,thread,pI);
-				thread->m_last_effective_address = addr+(offset*4);
+		// Step 4: squeeze the zeros out of the array and store data back into original array
+		mem = NULL;
+		addr = src1_data.u32;
+		space.set_type(global_space);
+		decode_space(space,thread,src1,mem,addr);
+		// store nonzero entries
+		for (int tid = 0; tid < NUM_THREADS; tid++) {
+			if (sstarr_fdata[tid] != 0) {
+				mem->write(addr+(offset*4),size/8,&sstarr_ldata[tid],thread,pI);
 				offset++;
 			}
 		}
-		// fill the rest of the array with zeros
+
+		// fill the rest of the array with zeros (dst should always have a 0 in it)
 		while (offset < NUM_THREADS) {
-			mem->write(addr+(offset*4),size/8,&src2_data.s64,thread,pI);
-			thread->m_last_effective_address = addr+(offset*4);
+			mem->write(addr+(offset*4),size/8,&dst_data.s64,thread,pI);
 			offset++;
 		}
 
-		// Step 4: load from sstarr memory and store data back into original array
-
+		thread->m_last_effective_address = addr+(NUM_THREADS-1)*4;
+		thread->m_last_memory_space = space;
 	}
 
 	//if( type == S16_TYPE || type == S32_TYPE ) sign_extend(data,size,dst);

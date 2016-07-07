@@ -554,6 +554,7 @@ public:
       return false;
    }
    enum _memory_space_t get_type() const { return m_type; }
+   void set_type( enum _memory_space_t t ) { m_type = t; }
    unsigned get_bank() const { return m_bank; }
    void set_bank( unsigned b ) { m_bank = b; }
    bool is_const() const { return (m_type == const_space) || (m_type == param_space_kernel); }
