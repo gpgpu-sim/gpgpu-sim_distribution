@@ -3741,7 +3741,8 @@ void sqrt_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
 void sst_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 {
-	const operand_info &dst = pI->dst();
+	ptx_instruction * cpI = const_cast<ptx_instruction *>(pI); // constant
+	const operand_info &dst = cpI->dst();
 	const operand_info &src1 = pI->src1();
 	const operand_info &src2 = pI->src2();
 	const operand_info &src3 = pI->src3();
@@ -3763,8 +3764,13 @@ void sst_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 	// store data in sstarr memory
 	mem->write(addr,size/8,&src3_data.s64,thread,pI);
 
+	// sync threads
+	cpI->set_bar_id(dst_data.u32);
+
 	thread->m_last_effective_address = addr;
 	thread->m_last_memory_space = space;
+	thread->m_last_dram_callback.function = bar_callback;
+	thread->m_last_dram_callback.instruction = cpI;
 
 	int NUM_THREADS = 8; // (how do you get this dynamically?)
 	if (src2_data.s64 == NUM_THREADS-1) {

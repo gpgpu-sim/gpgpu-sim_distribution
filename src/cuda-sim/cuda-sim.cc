@@ -572,6 +572,9 @@ void ptx_instruction::set_bar_type()
 		   		   abort();
 		   }
 	   }
+	   else if(m_opcode==SST_OP) {
+		   bar_type = SYNC;
+	   }
 }
 
 
@@ -635,6 +638,7 @@ void ptx_instruction::set_opcode_and_latency()
    case TEX_OP: op = LOAD_OP; mem_op=TEX; break;
    case ATOM_OP: op = LOAD_OP; break;
    case BAR_OP: op = BARRIER_OP; break;
+   case SST_OP: op = BARRIER_OP; break;
    case MEMBAR_OP: op = MEMORY_BARRIER_OP; break;
    case CALL_OP:
    {
