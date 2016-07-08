@@ -3772,7 +3772,7 @@ void sst_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 	thread->m_last_dram_callback.function = bar_callback;
 	thread->m_last_dram_callback.instruction = cpI;
 
-	int NUM_THREADS = 8; // (how do you get this dynamically?)
+	int NUM_THREADS = blockDim.x * blockDim.y * blockDim.z;
 	if (src2_data.s64 == NUM_THREADS-1) {
 		// pick only one thread to load all of the data back from sstarr memory
 		unsigned offset = 0;
@@ -3809,7 +3809,6 @@ void sst_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 		// fill the rest of the array with zeros (dst should always have a 0 in it)
 		while (offset < NUM_THREADS) {
 			mem->write(addr+(offset*4),size/8,&dst_data.s64,thread,pI);
-			mem->write(addr+((NUM_THREADS+offset)*4),size/8,&dst_data.s64,thread,pI);
 			offset++;
 		}
 
