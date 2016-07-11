@@ -3805,7 +3805,8 @@ void sst_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 			}
 		}
 		// store the number of nonzero elements in the array
-		data.s64 = offset-1;
+		data = thread->get_operand_value(src1, dst, type, thread, 1);
+		data.s64 += 4*(offset-1);
 		thread->set_operand_value(dst, data, type, thread, pI);
 
 		// fill the rest of the array with zeros (dst should always have a 0 in it)
