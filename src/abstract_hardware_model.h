@@ -162,9 +162,6 @@ struct dim3 {
 };
 #endif
 
-extern dim3 gridDim;
-extern dim3 blockDim;
-
 void increment_x_then_y_then_z( dim3 &i, const dim3 &bound);
 
 class kernel_info_t {

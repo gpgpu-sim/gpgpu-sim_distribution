@@ -158,8 +158,12 @@ public:
    void register_thread_exit( ptx_thread_info *thd );
    void register_deleted_thread( ptx_thread_info *thd );
    unsigned get_sm_idx() const;
+   unsigned get_bar_threads() const;
+   void inc_bar_threads();
+   void reset_bar_threads();
 
 private:
+   unsigned           m_bar_threads;
    unsigned long long         m_uid;
    unsigned                m_sm_idx;
    std::set<ptx_thread_info*>    m_threads_in_cta;

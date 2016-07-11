@@ -3754,6 +3754,7 @@ void sst_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 	memory_space_t space = pI->get_space();
 	memory_space *mem = NULL;
 	addr_t addr = src2_data.u32 * 4; // this assumes sstarr memory starts at address 0
+	ptx_cta_info *cta_info = thread->m_cta_info;
 
 	decode_space(space,thread,src1,mem,addr);
 
@@ -3765,18 +3766,19 @@ void sst_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 	mem->write(addr,size/8,&src3_data.s64,thread,pI);
 
 	// sync threads
-	cpI->set_bar_id(dst_data.u32);
+	cpI->set_bar_id(16); // use 16 for sst because bar uses an int from 0-15
 
 	thread->m_last_effective_address = addr;
 	thread->m_last_memory_space = space;
 	thread->m_last_dram_callback.function = bar_callback;
 	thread->m_last_dram_callback.instruction = cpI;
 
-	int NUM_THREADS = blockDim.x * blockDim.y * blockDim.z;
-	if (src2_data.s64 == NUM_THREADS-1) {
-		// pick only one thread to load all of the data back from sstarr memory
+	// the last thread that executes loads all of the data back from sstarr memory
+	int NUM_THREADS = cta_info->num_threads();
+	cta_info->inc_bar_threads();
+	if (NUM_THREADS == cta_info->get_bar_threads()) {
 		unsigned offset = 0;
-		addr -= (NUM_THREADS-1)*4;
+		addr = 0;
 		ptx_reg_t data;
 		float sstarr_fdata[NUM_THREADS];
 		signed long long sstarr_ldata[NUM_THREADS];
@@ -3812,6 +3814,7 @@ void sst_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 			offset++;
 		}
 
+		cta_info->reset_bar_threads();
 		thread->m_last_effective_address = addr+(NUM_THREADS-1)*4;
 		thread->m_last_memory_space = space;
 	}

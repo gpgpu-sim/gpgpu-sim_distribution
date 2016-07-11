@@ -44,6 +44,7 @@ ptx_cta_info::ptx_cta_info( unsigned sm_idx )
 
    m_sm_idx = sm_idx;
    m_uid = g_ptx_cta_info_uid++;
+   m_bar_threads = 0;
 }
 
 void ptx_cta_info::add_thread( ptx_thread_info *thd )
@@ -126,6 +127,21 @@ void ptx_cta_info::register_deleted_thread( ptx_thread_info *thd )
 unsigned ptx_cta_info::get_sm_idx() const
 {
    return m_sm_idx;
+}
+
+unsigned ptx_cta_info::get_bar_threads() const
+{
+   return m_bar_threads;
+}
+
+void ptx_cta_info::inc_bar_threads()
+{
+	m_bar_threads++;
+}
+
+void ptx_cta_info::reset_bar_threads()
+{
+	m_bar_threads = 0;
 }
 
 unsigned g_ptx_thread_info_uid_next=1;

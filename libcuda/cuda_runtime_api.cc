@@ -180,9 +180,6 @@ cudaError_t g_last_cudaError = cudaSuccess;
 
 extern stream_manager *g_stream_manager;
 
-dim3 gridDim = (dim3){1,1,1};
-dim3 blockDim = (dim3){1,1,1};
-
 void register_ptx_function( const char *name, function_info *impl )
 {
 	// no longer need this
@@ -962,8 +959,8 @@ __host__ cudaError_t CUDARTAPI cudaLaunch( const char *hostFun )
 			g_ptx_sim_mode?"functional simulation":"performance simulation", stream?stream->get_uid():0 );
 	kernel_info_t *grid = gpgpu_cuda_ptx_sim_init_grid(hostFun,config.get_args(),config.grid_dim(),config.block_dim(),context);
 	std::string kname = grid->name();
-	gridDim = config.grid_dim();
-	blockDim = config.block_dim();
+	dim3 gridDim = config.grid_dim();
+	dim3 blockDim = config.block_dim();
 	printf("GPGPU-Sim PTX: pushing kernel \'%s\' to stream %u, gridDim= (%u,%u,%u) blockDim = (%u,%u,%u) \n",
 			kname.c_str(), stream?stream->get_uid():0, gridDim.x,gridDim.y,gridDim.z,blockDim.x,blockDim.y,blockDim.z );
 	stream_operation op(grid,g_ptx_sim_mode,stream);
