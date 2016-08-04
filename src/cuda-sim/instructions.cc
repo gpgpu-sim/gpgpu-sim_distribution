@@ -47,8 +47,10 @@ unsigned ptx_instruction::g_num_ptx_inst_uid=0;
 
 const char *g_opcode_string[NUM_OPCODES] = {
 #define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) STR,
+#define OP_W_DEF(OP,FUNC,STR,DST,CLASSIFICATION) STR,
 #include "opcodes.def"
 #undef OP_DEF
+#undef OP_W_DEF
 };
 
 void inst_not_implemented( const ptx_instruction * pI ) ;
@@ -1455,6 +1457,162 @@ void breakaddr_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
 void brev_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 void brkpt_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+
+void bsmad_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
+{
+	for (int i = 0; i < core->get_warp_size() && inst.active(i); i++) {
+		const operand_info &dst = pI->dst();
+		unsigned type = pI->get_type();
+
+		int tid = inst.warp_id() * core->get_warp_size() + i;
+		ptx_thread_info *thread = core->get_thread_info()[tid];
+		ptx_reg_t data = thread->get_operand_value(dst, dst, type, thread, 1);
+		printf("BSMAD - DATA FROM THREAD %d: %d\n", i, data.u32);
+	}
+	printf("\n");
+	/*const unsigned OPERANDS = 9;
+	// 0 = output
+	// 1 = input precision
+	// 2 = output precision
+	// 3 = buffer0
+	// 4 = buffer1
+	// 5 = buffer2
+	// 6 = buffer3
+	// 7 = synapse value
+	// 8 = output value
+	// as a temporary solution, let 0 be the base address of output, which is an array of shared memory
+	// that will be filled when the last thread completes the bsmad instruction
+	// maybe you can store the addresses of other ptx_instruction in sstarr memory and then update dst later?
+	// not sure if that works
+
+	//ptx_instruction * cpI = const_cast<ptx_instruction *>(pI);
+	const operand_info &src[OPERANDS];
+	ptx_reg_t src_data[OPERANDS];
+	unsigned type = pI->get_type();
+
+	for (int i = 0; i < OPERANDS; i++) {
+		src[i] = pI->operand_lookup(i);
+		src_data[i] = thread->get_operand_value(src[i], src[0], type, thread, 1);
+	}
+
+	memory_space_t space = pI->get_space();
+	memory_space *mem = NULL;
+	addr_t addr = thread->get_tid().x * 24; // 4 bytes per register * 6 registers per thread = 24 bytes
+
+	decode_space(space,thread,src[0],mem,addr);
+
+	size_t size;
+	int t;
+	type_info_key::type_decode(type,size,t);
+
+	// store src_data[1:4] in sstarr memory
+	for (int i = 0; i < 6; i++) {
+		mem->write(addr + i*4,size/8,&src_data[i+3].s64,thread,pI);
+	}
+
+	// sync threads
+	//cpI->set_bar_id(16); // use 16 for sst because bar uses an int from 0-15
+
+	thread->m_last_effective_address = addr;
+	thread->m_last_memory_space = space;
+	thread->m_last_dram_callback.function = bar_callback;
+	thread->m_last_dram_callback.instruction = cpI;
+
+	// the last thread that executes loads all of the data back from sstarr memory
+	ptx_cta_info *cta_info = thread->m_cta_info;((32/ip)*4)/(32/op)
+	const int NUM_THREADS = cta_info->num_threads();
+	cta_info->inc_bar_threads();
+	if (NUM_THREADS == cta_info->get_bar_threads()) {
+		// load all things from sstarr memory
+		addr = 0;
+		ptx_reg_t data;
+		unsigned sstarr_data[NUM_THREADS*6];
+		for (int i = 0; i < NUM_THREADS*6; i++) {
+			data.u64 = 0;
+			mem->read(addr+(i*4),size/8,&data.s64);
+			sstarr_data[i] = data.u32;
+		}
+
+		// unpack registers, add data from across threads
+		unsigned ip = src_data[1].u32;
+		unsigned op = src_data[2].u32;
+		unsigned unpacked_output[(32/ip)*4];
+
+		for (unsigned i = 0; i < (32/ip)*4; i++) {
+			unsigned buf = i/(32/ip);
+			unsigned pos = i%(32/ip);
+
+			unsigned mask = 0;
+			for (int b = 0; b < ip; b++) {
+				mask |= (1 << b);
+			}
+			mask <<= (pos*ip);
+
+			int sum = 0;
+			for (int j = 0; j < NUM_THREADS; j++) {
+				sum += mask & sstarr_data[j*6 + buf];
+			}
+			unpacked_output[i] = sum;
+		}
+
+		// truncate result, repack, store in shared mem
+		unsigned output_regs[((32/ip)*4)/(32/op) + (((32/ip)*4)%(32/op) != 0)];
+
+
+
+		unsigned offset = 0;
+		addr = 0;
+		ptx_reg_t data;
+		float sstarr_fdata[NUM_THREADS];
+		signed long long sstarr_ldata[NUM_THREADS];
+		// loop through all of the threads
+		for (int tid = 0; tid < NUM_THREADS; tid++) {
+			data.u64=0;
+			mem->read(addr+(tid*4),size/8,&data.s64);
+			sstarr_fdata[tid] = data.f32;
+			sstarr_ldata[tid] = data.s64;
+		}
+
+		// squeeze the zeros out of the array and store data back into original array
+		mem = NULL;
+		addr = src1_data.u32;
+		space.set_type(global_space);
+		decode_space(space,thread,src1,mem,addr);
+		// store nonzero entries and indices
+		for (int tid = 0; tid < NUM_THREADS; tid++) {
+			if (sstarr_fdata[tid] != 0) {
+				float ftid = (float)tid;
+				mem->write(addr+(offset*4),size/8,&sstarr_ldata[tid],thread,pI);
+				mem->write(addr+((NUM_THREADS+offset)*4),size/8,&ftid,thread,pI);
+				offset++;
+			}
+		}
+		// store the number of nonzero elements in the array
+		data = thread->get_op((32/ip)*4)/(32/op)erand_value(src1, dst, type, thread, 1);
+		data.s64 += 4*(offset-1);
+		thread->set_operand_value(dst, data, type, thread, pI);
+
+		// fill the rest of the array with zeros (dst should always have a 0 in it)
+		while (offset < NUM_THREADS) {
+			mem->write(addr+(offset*4),size/8,&dst_data.s64,thread,pI);
+			offset++;
+		}
+
+		cta_info->reset_bar_threads();
+		thread->m_last_effective_address = addr+(NUM_THREADS-1)*4;
+		thread->m_last_memory_space = space;
+	}*/
+}
+
+void bsmul_impl( const ptx_instruction *pI, ptx_thread_info *thread )
+{
+	printf("BSMUL instruction found.\n");
+}
+
+void buf_impl( const ptx_instruction *pI, ptx_thread_info *thread )
+{
+	printf("BUF instruction found.\n");
+}
 
 void call_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 {
