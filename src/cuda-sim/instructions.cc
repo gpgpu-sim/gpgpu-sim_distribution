@@ -1460,17 +1460,7 @@ void brkpt_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not
 
 void bsmad_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 {
-	for (int i = 0; i < core->get_warp_size() && inst.active(i); i++) {
-		const operand_info &dst = pI->dst();
-		unsigned type = pI->get_type();
-
-		int tid = inst.warp_id() * core->get_warp_size() + i;
-		ptx_thread_info *thread = core->get_thread_info()[tid];
-		ptx_reg_t data = thread->get_operand_value(dst, dst, type, thread, 1);
-		printf("BSMAD - DATA FROM THREAD %d: %d\n", i, data.u32);
-	}
-	printf("\n");
-	/*const unsigned OPERANDS = 9;
+	// operands:
 	// 0 = output
 	// 1 = input precision
 	// 2 = output precision
@@ -1480,65 +1470,61 @@ void bsmad_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 	// 6 = buffer3
 	// 7 = synapse value
 	// 8 = output value
-	// as a temporary solution, let 0 be the base address of output, which is an array of shared memory
-	// that will be filled when the last thread completes the bsmad instruction
-	// maybe you can store the addresses of other ptx_instruction in sstarr memory and then update dst later?
-	// not sure if that works
 
-	//ptx_instruction * cpI = const_cast<ptx_instruction *>(pI);
-	const operand_info &src[OPERANDS];
-	ptx_reg_t src_data[OPERANDS];
-	unsigned type = pI->get_type();
-
-	for (int i = 0; i < OPERANDS; i++) {
-		src[i] = pI->operand_lookup(i);
-		src_data[i] = thread->get_operand_value(src[i], src[0], type, thread, 1);
-	}
-
-	memory_space_t space = pI->get_space();
-	memory_space *mem = NULL;
-	addr_t addr = thread->get_tid().x * 24; // 4 bytes per register * 6 registers per thread = 24 bytes
-
-	decode_space(space,thread,src[0],mem,addr);
-
-	size_t size;
-	int t;
-	type_info_key::type_decode(type,size,t);
-
-	// store src_data[1:4] in sstarr memory
-	for (int i = 0; i < 6; i++) {
-		mem->write(addr + i*4,size/8,&src_data[i+3].s64,thread,pI);
-	}
-
-	// sync threads
-	//cpI->set_bar_id(16); // use 16 for sst because bar uses an int from 0-15
-
-	thread->m_last_effective_address = addr;
-	thread->m_last_memory_space = space;
-	thread->m_last_dram_callback.function = bar_callback;
-	thread->m_last_dram_callback.instruction = cpI;
-
-	// the last thread that executes loads all of the data back from sstarr memory
-	ptx_cta_info *cta_info = thread->m_cta_info;((32/ip)*4)/(32/op)
+	// TODO: what should happen when the output precision is larger than the input precision?
+	// TODO: create a ptx_warp_info that can do the same thing that ptx_cta_info does here
+	ptx_cta_info *cta_info = core->get_thread_info()[inst.warp_id() * core->get_warp_size()]->m_cta_info;
 	const int NUM_THREADS = cta_info->num_threads();
+	const int NUM_BUFFERS = 4;
 	cta_info->inc_bar_threads();
-	if (NUM_THREADS == cta_info->get_bar_threads()) {
-		// load all things from sstarr memory
-		addr = 0;
-		ptx_reg_t data;
-		unsigned sstarr_data[NUM_THREADS*6];
-		for (int i = 0; i < NUM_THREADS*6; i++) {
-			data.u64 = 0;
-			mem->read(addr+(i*4),size/8,&data.s64);
-			sstarr_data[i] = data.u32;
+
+	// threads within the warp are executed sequentially by the simulator, store output in first four registers
+	if (cta_info->get_bar_threads() <= NUM_BUFFERS) {
+		unsigned ip, op; // only get these when i = 0
+		unsigned buffer[inst.active_count()][NUM_BUFFERS];
+		unsigned synapse[inst.active_count()];
+		unsigned output[NUM_BUFFERS];
+
+		// loop through all threads in the warp and get all data
+		for (unsigned i = 0, j = 0; i < core->get_warp_size(); i++) {
+			if (inst.active(i)) {
+				const operand_info dst = pI->dst();
+				const operand_info src1 = pI->operand_lookup(1);
+				const operand_info src2 = pI->operand_lookup(2);
+				const operand_info src3 = pI->operand_lookup(3);
+				const operand_info src4 = pI->operand_lookup(4);
+				const operand_info src5 = pI->operand_lookup(5);
+				const operand_info src6 = pI->operand_lookup(6);
+				const operand_info src7 = pI->operand_lookup(7);
+				const operand_info src8 = pI->operand_lookup(8);
+				unsigned type = pI->get_type();
+
+				int tid = inst.warp_id() * core->get_warp_size() + i;
+				ptx_thread_info *thread = core->get_thread_info()[tid];
+
+				// only get precision data once
+				if (j == 0) {
+					ip = (thread->get_operand_value(src1, dst, type, thread, 1)).u32;
+					op = (thread->get_operand_value(src2, dst, type, thread, 1)).u32;
+				}
+				// get buffer data and synapse data from each thread
+				buffer[j][0] = (thread->get_operand_value(src3, dst, type, thread, 1)).u32;
+				buffer[j][1] = (thread->get_operand_value(src4, dst, type, thread, 1)).u32;
+				buffer[j][2] = (thread->get_operand_value(src5, dst, type, thread, 1)).u32;
+				buffer[j][3] = (thread->get_operand_value(src6, dst, type, thread, 1)).u32;
+				synapse[j] = (thread->get_operand_value(src7, dst, type, thread, 1)).u32;
+				// get output data from the first 4 threads
+				if (j < NUM_BUFFERS) {
+					output[j] = (thread->get_operand_value(src8, dst, type, thread, 1)).u32;
+				}
+				j++;
+			}
 		}
 
-		// unpack registers, add data from across threads
-		unsigned ip = src_data[1].u32;
-		unsigned op = src_data[2].u32;
-		unsigned unpacked_output[(32/ip)*4];
-
-		for (unsigned i = 0; i < (32/ip)*4; i++) {
+		// unpack registers, compute enough outputs to fill an output register
+		unsigned *unpacked_output = (unsigned*)calloc(32/op,sizeof(unsigned));
+		unsigned buffer_data_start = (32/op)*(cta_info->get_bar_threads()-1);
+		for (unsigned i = buffer_data_start; i < (32/op + buffer_data_start) && i < (32/ip)*NUM_BUFFERS; i++) {
 			unsigned buf = i/(32/ip);
 			unsigned pos = i%(32/ip);
 
@@ -1550,68 +1536,61 @@ void bsmad_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 
 			int sum = 0;
 			for (int j = 0; j < NUM_THREADS; j++) {
-				sum += mask & sstarr_data[j*6 + buf];
+				sum += (mask & buffer[j][buf]) >> (pos*ip);
 			}
-			unpacked_output[i] = sum;
+			unpacked_output[i - buffer_data_start] = sum;
 		}
 
-		// truncate result, repack, store in shared mem
-		unsigned output_regs[((32/ip)*4)/(32/op) + (((32/ip)*4)%(32/op) != 0)];
-
-
-
-		unsigned offset = 0;
-		addr = 0;
-		ptx_reg_t data;
-		float sstarr_fdata[NUM_THREADS];
-		signed long long sstarr_ldata[NUM_THREADS];
-		// loop through all of the threads
-		for (int tid = 0; tid < NUM_THREADS; tid++) {
-			data.u64=0;
-			mem->read(addr+(tid*4),size/8,&data.s64);
-			sstarr_fdata[tid] = data.f32;
-			sstarr_ldata[tid] = data.s64;
-		}
-
-		// squeeze the zeros out of the array and store data back into original array
-		mem = NULL;
-		addr = src1_data.u32;
-		space.set_type(global_space);
-		decode_space(space,thread,src1,mem,addr);
-		// store nonzero entries and indices
-		for (int tid = 0; tid < NUM_THREADS; tid++) {
-			if (sstarr_fdata[tid] != 0) {
-				float ftid = (float)tid;
-				mem->write(addr+(offset*4),size/8,&sstarr_ldata[tid],thread,pI);
-				mem->write(addr+((NUM_THREADS+offset)*4),size/8,&ftid,thread,pI);
-				offset++;
+		// truncate output
+		for (unsigned i = 0; i < 32/op; i++) {
+			int mask = 1, latest_one = -1;
+			unsigned data = unpacked_output[i];
+			for (unsigned j = 0; j < sizeof(unsigned)*8; j++) {
+				int bit = data & mask;
+				if (bit == 1) latest_one = j;
+				data >>= 1;
+			}
+			if (latest_one >= op) {
+				// round_up is 1 if the most significant truncated digit is a 1, otherwise it is 0
+				int round_up = (unpacked_output[i] & (1 << (latest_one-op))) >> (latest_one-op);
+				unsigned shifted_output = unpacked_output[i] >> (latest_one-op+1);
+				// if shifted_output is a number like 1111, don't round up
+				if (shifted_output == (pow(2,op)-1)) round_up = 0;
+				unpacked_output[i] = shifted_output + round_up;
 			}
 		}
-		// store the number of nonzero elements in the array
-		data = thread->get_op((32/ip)*4)/(32/op)erand_value(src1, dst, type, thread, 1);
-		data.s64 += 4*(offset-1);
-		thread->set_operand_value(dst, data, type, thread, pI);
 
-		// fill the rest of the array with zeros (dst should always have a 0 in it)
-		while (offset < NUM_THREADS) {
-			mem->write(addr+(offset*4),size/8,&dst_data.s64,thread,pI);
-			offset++;
+		// create mask of 1s
+		unsigned mask = 0;
+		for (int b = 0; b < op; b++) {
+			mask |= (1 << b);
 		}
 
+		// pack the outputs into one register
+		unsigned output_data = 0;
+		for (int i = 0; i < 32/op; i++) {
+			output_data |= (unpacked_output[i] & mask) << (op*i);
+		}
+
+		// store the result in the correct thread's output register
+		for (unsigned i = 0, j = 0; i < core->get_warp_size(); i++) {
+			if (inst.active(i)) j++;
+			if (j == cta_info->get_bar_threads()) {
+				const operand_info &dst = pI->dst();
+				unsigned type = pI->get_type();
+				int tid = inst.warp_id() * core->get_warp_size() + i;
+				ptx_thread_info *thread = core->get_thread_info()[tid];
+				ptx_reg_t data;
+				data.u32 = output_data;
+				thread->set_operand_value(dst, data, type, thread, pI);
+				break;
+			}
+		}
+	}
+
+	if (cta_info->get_bar_threads() == NUM_THREADS)	{
 		cta_info->reset_bar_threads();
-		thread->m_last_effective_address = addr+(NUM_THREADS-1)*4;
-		thread->m_last_memory_space = space;
-	}*/
-}
-
-void bsmul_impl( const ptx_instruction *pI, ptx_thread_info *thread )
-{
-	printf("BSMUL instruction found.\n");
-}
-
-void buf_impl( const ptx_instruction *pI, ptx_thread_info *thread )
-{
-	printf("BUF instruction found.\n");
+	}
 }
 
 void call_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 

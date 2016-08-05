@@ -1244,16 +1244,6 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
          *((warp_inst_t*)pJ) = inst; // copy active mask information
          pI = pJ;
       }
-      /*const ptx_instruction **pA;
-      if( pI->get_opcode() == BSMAD_OP ) {
-    	  //pA = (const ptx_instruction**)malloc(get_core()->get_warp_size()*(sizeof(ptx_instruction*)));
-    	  pA = (const ptx_instruction**)malloc(8*(sizeof(ptx_instruction*)));
-    	  for (int i = 0; i < get_core()->get_warp_size() && inst.active(i); i++) {
-    		  //pA[i] = get_core()->get_thread_info()[inst.warp_id() * get_core()->get_warp_size() + i]->func_info()->get_instruction(pc+(i-lane_id)*(pI->inst_size()));
-    		  int tid = inst.warp_id() * get_core()->get_warp_size() + i;
-    		  pA[i] = get_core()->get_thread_info()[tid]->func_info()->get_instruction(pc);
-    	  }
-      }*/
       switch ( pI->get_opcode() ) {
 #define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,this); op_classification = CLASSIFICATION; break;
 #define OP_W_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,get_core(),inst); op_classification = CLASSIFICATION; break;
