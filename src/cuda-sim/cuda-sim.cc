@@ -1504,7 +1504,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
    
       ptx_warp_info *warp_info = NULL;
       if ( ptx_warp_lookup.find(hw_warp_id) == ptx_warp_lookup.end() ) {
-    	  warp_info = new ptx_warp_info(); // num_threads should be threads in the warp
+    	  warp_info = new ptx_warp_info();
     	  ptx_warp_lookup[hw_warp_id] = warp_info;
       } else {
     	  warp_info = ptx_warp_lookup[hw_warp_id];

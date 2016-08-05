@@ -1028,7 +1028,6 @@ class core_t {
                 m_warp_count += 1;
             }
             assert( m_warp_count * m_warp_size > 0 );
-            //m_warp = ( ptx_warp_info** )calloc( m_warp_count, sizeof( ptx_warp_info* ) );
             m_thread = ( ptx_thread_info** )
                      calloc( m_warp_count * m_warp_size,
                              sizeof( ptx_thread_info* ) );
@@ -1064,7 +1063,6 @@ class core_t {
         class gpgpu_sim *m_gpu;
         kernel_info_t *m_kernel;
         simt_stack  **m_simt_stack; // pdom based reconvergence context for each warp
-        //class ptx_warp_info ** m_warp;
         class ptx_thread_info ** m_thread;
         unsigned m_warp_size;
         unsigned m_warp_count;
