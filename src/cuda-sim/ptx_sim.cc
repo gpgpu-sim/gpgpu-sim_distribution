@@ -144,6 +144,26 @@ void ptx_cta_info::reset_bar_threads()
 	m_bar_threads = 0;
 }
 
+ptx_warp_info::ptx_warp_info()
+{
+	reset_done_threads();
+}
+
+unsigned ptx_warp_info::get_done_threads() const
+{
+	return m_done_threads;
+}
+
+void ptx_warp_info::inc_done_threads()
+{
+	m_done_threads++;
+}
+
+void ptx_warp_info::reset_done_threads()
+{
+	m_done_threads = 0;
+}
+
 unsigned g_ptx_thread_info_uid_next=1;
 unsigned g_ptx_thread_info_delete_count=0;
 
@@ -170,6 +190,7 @@ ptx_thread_info::ptx_thread_info( kernel_info_t &kernel )
    m_branch_taken = 0;
    m_shared_mem = NULL;
    m_sstarr_mem = NULL;
+   m_warp_info = NULL;
    m_cta_info = NULL;
    m_local_mem = NULL;
    m_symbol_table = NULL;

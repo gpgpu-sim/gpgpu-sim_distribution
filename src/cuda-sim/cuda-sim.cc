@@ -1417,6 +1417,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
    static std::map<unsigned,memory_space*> shared_memory_lookup;
    static std::map<unsigned,memory_space*> sstarr_memory_lookup;
    static std::map<unsigned,ptx_cta_info*> ptx_cta_lookup;
+   static std::map<unsigned,ptx_warp_info*> ptx_warp_lookup;
    static std::map<unsigned,std::map<unsigned,memory_space*> > local_memory_lookup;
 
    if ( *thread_info != NULL ) {
@@ -1501,6 +1502,15 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
       new_tid += tid;
       ptx_thread_info *thd = new ptx_thread_info(kernel);
    
+      ptx_warp_info *warp_info = NULL;
+      if ( ptx_warp_lookup.find(hw_warp_id) == ptx_warp_lookup.end() ) {
+    	  warp_info = new ptx_warp_info(); // num_threads should be threads in the warp
+    	  ptx_warp_lookup[hw_warp_id] = warp_info;
+      } else {
+    	  warp_info = ptx_warp_lookup[hw_warp_id];
+      }
+      thd->m_warp_info = warp_info;
+
       memory_space *local_mem = NULL;
       std::map<unsigned,memory_space*>::iterator l = local_mem_lookup.find(new_tid);
       if ( l != local_mem_lookup.end() ) {

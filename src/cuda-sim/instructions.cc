@@ -1471,74 +1471,81 @@ void bsmad_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 	// 7 = synapse value
 	// 8 = output value
 
-	// TODO: what should happen when the output precision is larger than the input precision?
-	// TODO: create a ptx_warp_info that can do the same thing that ptx_cta_info does here
-	ptx_cta_info *cta_info = core->get_thread_info()[inst.warp_id() * core->get_warp_size()]->m_cta_info;
-	const int NUM_THREADS = cta_info->num_threads();
-	const int NUM_BUFFERS = 4;
-	cta_info->inc_bar_threads();
+	const operand_info &dst = pI->dst();
+	const operand_info &src1 = pI->src1();
+	const operand_info &src2 = pI->src2();
+	unsigned type = pI->get_type();
+	int tid = inst.warp_id() * core->get_warp_size();
+	ptx_thread_info *thread = core->get_thread_info()[tid];
+	const int ip = (thread->get_operand_value(src1, dst, type, thread, 1)).u32;
+	const int op = (thread->get_operand_value(src2, dst, type, thread, 1)).u32;
+	const int THREADS = inst.active_count();
+	const int INBUFFERS = 4;
+	const int OUTBUFFERS = (((32/ip)*INBUFFERS) / (32/op)) + ((((32/ip)*INBUFFERS) % (32/op)) != 0);
+	if (OUTBUFFERS > THREADS) {
+		printf("GPGPU-Sim PTX: BSMAD ERROR - Number of output registers required (%d) is greater than the number available (%d)\n", OUTBUFFERS, THREADS);
+		abort();
+	}
+	ptx_warp_info *warp_info = core->get_thread_info()[inst.warp_id() * core->get_warp_size()]->m_warp_info;
+	warp_info->inc_done_threads();
 
 	// threads within the warp are executed sequentially by the simulator, store output in first four registers
-	if (cta_info->get_bar_threads() <= NUM_BUFFERS) {
-		unsigned ip, op; // only get these when i = 0
-		unsigned buffer[inst.active_count()][NUM_BUFFERS];
+	if (warp_info->get_done_threads() <= OUTBUFFERS) {
+		unsigned buffer[inst.active_count()][INBUFFERS];
 		unsigned synapse[inst.active_count()];
-		unsigned output[NUM_BUFFERS];
+		unsigned output;
 
 		// loop through all threads in the warp and get all data
 		for (unsigned i = 0, j = 0; i < core->get_warp_size(); i++) {
 			if (inst.active(i)) {
-				const operand_info dst = pI->dst();
-				const operand_info src1 = pI->operand_lookup(1);
-				const operand_info src2 = pI->operand_lookup(2);
-				const operand_info src3 = pI->operand_lookup(3);
-				const operand_info src4 = pI->operand_lookup(4);
-				const operand_info src5 = pI->operand_lookup(5);
-				const operand_info src6 = pI->operand_lookup(6);
-				const operand_info src7 = pI->operand_lookup(7);
-				const operand_info src8 = pI->operand_lookup(8);
-				unsigned type = pI->get_type();
+				const operand_info &src3 = pI->operand_lookup(3);
+				const operand_info &src4 = pI->operand_lookup(4);
+				const operand_info &src5 = pI->operand_lookup(5);
+				const operand_info &src6 = pI->operand_lookup(6);
+				const operand_info &src7 = pI->operand_lookup(7);
+				const operand_info &src8 = pI->operand_lookup(8);
 
-				int tid = inst.warp_id() * core->get_warp_size() + i;
-				ptx_thread_info *thread = core->get_thread_info()[tid];
-
-				// only get precision data once
-				if (j == 0) {
-					ip = (thread->get_operand_value(src1, dst, type, thread, 1)).u32;
-					op = (thread->get_operand_value(src2, dst, type, thread, 1)).u32;
-				}
+				thread = core->get_thread_info()[tid+i];
 				// get buffer data and synapse data from each thread
 				buffer[j][0] = (thread->get_operand_value(src3, dst, type, thread, 1)).u32;
 				buffer[j][1] = (thread->get_operand_value(src4, dst, type, thread, 1)).u32;
 				buffer[j][2] = (thread->get_operand_value(src5, dst, type, thread, 1)).u32;
 				buffer[j][3] = (thread->get_operand_value(src6, dst, type, thread, 1)).u32;
 				synapse[j] = (thread->get_operand_value(src7, dst, type, thread, 1)).u32;
-				// get output data from the first 4 threads
-				if (j < NUM_BUFFERS) {
-					output[j] = (thread->get_operand_value(src8, dst, type, thread, 1)).u32;
-				}
 				j++;
+				// get output data from the first 4 threads
+				if (j == warp_info->get_done_threads()) {
+					output = (thread->get_operand_value(src8, dst, type, thread, 1)).u32;
+				}
 			}
 		}
 
 		// unpack registers, compute enough outputs to fill an output register
 		unsigned *unpacked_output = (unsigned*)calloc(32/op,sizeof(unsigned));
-		unsigned buffer_data_start = (32/op)*(cta_info->get_bar_threads()-1);
-		for (unsigned i = buffer_data_start; i < (32/op + buffer_data_start) && i < (32/ip)*NUM_BUFFERS; i++) {
+		unsigned buffer_data_start = (32/op)*(warp_info->get_done_threads()-1);
+		for (unsigned i = buffer_data_start; i < (32/op + buffer_data_start) && i < (32/ip)*INBUFFERS; i++) {
 			unsigned buf = i/(32/ip);
 			unsigned pos = i%(32/ip);
-
 			unsigned mask = 0;
+			int sum = 0;
+			// sum values from the buffers
 			for (int b = 0; b < ip; b++) {
 				mask |= (1 << b);
 			}
 			mask <<= (pos*ip);
 
-			int sum = 0;
-			for (int j = 0; j < NUM_THREADS; j++) {
+			for (int j = 0; j < THREADS; j++) {
 				sum += (mask & buffer[j][buf]) >> (pos*ip);
 			}
-			unpacked_output[i - buffer_data_start] = sum;
+			// get the previous output
+			mask = 0;
+			for (int b = 0; b < op; b++) {
+				mask |= (1 << b);
+			}
+			mask <<= (op*(i-buffer_data_start));
+			int past_output = (mask & output) >> (op*(i-buffer_data_start));
+
+			unpacked_output[i-buffer_data_start] = sum + past_output;
 		}
 
 		// truncate output
@@ -1575,11 +1582,8 @@ void bsmad_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 		// store the result in the correct thread's output register
 		for (unsigned i = 0, j = 0; i < core->get_warp_size(); i++) {
 			if (inst.active(i)) j++;
-			if (j == cta_info->get_bar_threads()) {
-				const operand_info &dst = pI->dst();
-				unsigned type = pI->get_type();
-				int tid = inst.warp_id() * core->get_warp_size() + i;
-				ptx_thread_info *thread = core->get_thread_info()[tid];
+			if (j == warp_info->get_done_threads()) {
+				thread = core->get_thread_info()[tid+i];
 				ptx_reg_t data;
 				data.u32 = output_data;
 				thread->set_operand_value(dst, data, type, thread, pI);
@@ -1588,8 +1592,9 @@ void bsmad_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 		}
 	}
 
-	if (cta_info->get_bar_threads() == NUM_THREADS)	{
-		cta_info->reset_bar_threads();
+	// once the warp has finished, set the number of completed threads back to 0 for the next warp
+	if (warp_info->get_done_threads() == THREADS)	{
+		warp_info->reset_done_threads();
 	}
 }
 
