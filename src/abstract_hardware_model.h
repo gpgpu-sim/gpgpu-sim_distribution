@@ -788,7 +788,7 @@ public:
         int src[MAX_REG_OPERANDS];
     } arch_reg;
     //int arch_reg[MAX_REG_OPERANDS]; // register number for bank conflict evaluation
-    unsigned latency; // operation latency 
+    unsigned latency; // operation latency
     unsigned initiation_interval;
 
     unsigned data_size; // what is the size of the word being operated on?

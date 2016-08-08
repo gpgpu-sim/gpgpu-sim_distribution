@@ -1486,13 +1486,13 @@ void bsmad_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 		printf("GPGPU-Sim PTX: BSMAD ERROR - Number of output registers required (%d) is greater than the number available (%d)\n", OUTBUFFERS, THREADS);
 		abort();
 	}
-	ptx_warp_info *warp_info = core->get_thread_info()[inst.warp_id() * core->get_warp_size()]->m_warp_info;
+	ptx_warp_info *warp_info = thread->m_warp_info;
 	warp_info->inc_done_threads();
 
 	// threads within the warp are executed sequentially by the simulator, store output in first four registers
 	if (warp_info->get_done_threads() <= OUTBUFFERS) {
-		unsigned buffer[inst.active_count()][INBUFFERS];
-		unsigned synapse[inst.active_count()];
+		unsigned buffer[THREADS][INBUFFERS];
+		unsigned synapse[THREADS];
 		unsigned output;
 
 		// loop through all threads in the warp and get all data
@@ -1526,25 +1526,15 @@ void bsmad_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 		for (unsigned i = buffer_data_start; i < (32/op + buffer_data_start) && i < (32/ip)*INBUFFERS; i++) {
 			unsigned buf = i/(32/ip);
 			unsigned pos = i%(32/ip);
-			unsigned mask = 0;
-			int sum = 0;
 			// sum values from the buffers
-			for (int b = 0; b < ip; b++) {
-				mask |= (1 << b);
-			}
-			mask <<= (pos*ip);
-
+			int sum = 0;
+			unsigned mask = (unsigned)(pow(2,ip)-1) << (pos*ip);
 			for (int j = 0; j < THREADS; j++) {
-				sum += (mask & buffer[j][buf]) >> (pos*ip);
+				sum += ((mask & buffer[j][buf]) >> (pos*ip)) * synapse[j];
 			}
 			// get the previous output
-			mask = 0;
-			for (int b = 0; b < op; b++) {
-				mask |= (1 << b);
-			}
-			mask <<= (op*(i-buffer_data_start));
+			mask = (unsigned)(pow(2,op)-1) << (op*(i-buffer_data_start));
 			int past_output = (mask & output) >> (op*(i-buffer_data_start));
-
 			unpacked_output[i-buffer_data_start] = sum + past_output;
 		}
 
@@ -1567,13 +1557,8 @@ void bsmad_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			}
 		}
 
-		// create mask of 1s
-		unsigned mask = 0;
-		for (int b = 0; b < op; b++) {
-			mask |= (1 << b);
-		}
-
 		// pack the outputs into one register
+		unsigned mask = pow(2,op)-1;
 		unsigned output_data = 0;
 		for (int i = 0; i < 32/op; i++) {
 			output_data |= (unpacked_output[i] & mask) << (op*i);
@@ -1596,6 +1581,10 @@ void bsmad_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 	if (warp_info->get_done_threads() == THREADS)	{
 		warp_info->reset_done_threads();
 	}
+
+	// set the latency assuming 4 bits of each input get processed every cycle
+	// mutable latency variable???
+	//pI->latency = (ip+3)/4;
 }
 
 void call_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
