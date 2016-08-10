@@ -66,9 +66,9 @@ char *opcode_initiation_int, *opcode_initiation_fp, *opcode_initiation_dp;
 
 void ptx_opcocde_latency_options (option_parser_t opp) {
 	option_parser_register(opp, "-ptx_opcode_latency_int", OPT_CSTR, &opcode_latency_int,
-			"Opcode latencies for integers <ADD,MAX,MUL,MAD,DIV>"
-			"Default 1,1,19,25,145",
-			"1,1,19,25,145");
+			"Opcode latencies for integers <ADD,MAX,MUL,MAD,DIV,BSMAD>"
+			"Default 1,1,19,25,145,1",
+			"1,1,19,25,145,1");
 	option_parser_register(opp, "-ptx_opcode_latency_fp", OPT_CSTR, &opcode_latency_fp,
 			"Opcode latencies for single precision floating points <ADD,MAX,MUL,MAD,DIV>"
 			"Default 1,1,1,1,30",
@@ -78,9 +78,9 @@ void ptx_opcocde_latency_options (option_parser_t opp) {
 			"Default 8,8,8,8,335",
 			"8,8,8,8,335");
 	option_parser_register(opp, "-ptx_opcode_initiation_int", OPT_CSTR, &opcode_initiation_int,
-			"Opcode initiation intervals for integers <ADD,MAX,MUL,MAD,DIV>"
-			"Default 1,1,4,4,32",
-			"1,1,4,4,32");
+			"Opcode initiation intervals for integers <ADD,MAX,MUL,MAD,DIV,BSMAD>"
+			"Default 1,1,4,4,32,1",
+			"1,1,4,4,32,1");
 	option_parser_register(opp, "-ptx_opcode_initiation_fp", OPT_CSTR, &opcode_initiation_fp,
 			"Opcode initiation intervals for single precision floating points <ADD,MAX,MUL,MAD,DIV>"
 			"Default 1,1,1,1,5",
@@ -580,10 +580,10 @@ void ptx_instruction::set_bar_type()
 
 void ptx_instruction::set_opcode_and_latency()
 {
-	unsigned int_latency[5];
+	unsigned int_latency[6];
 	unsigned fp_latency[5];
 	unsigned dp_latency[5];
-	unsigned int_init[5];
+	unsigned int_init[6];
 	unsigned fp_init[5];
 	unsigned dp_init[5];
 	/*
@@ -592,19 +592,20 @@ void ptx_instruction::set_opcode_and_latency()
 	 * [2] MUL
 	 * [3] MAD
 	 * [4] DIV
+	 * [5] BSMAD
 	 */
-	sscanf(opcode_latency_int, "%u,%u,%u,%u,%u",
+	sscanf(opcode_latency_int, "%u,%u,%u,%u,%u,%u",
 			&int_latency[0],&int_latency[1],&int_latency[2],
-			&int_latency[3],&int_latency[4]);
+			&int_latency[3],&int_latency[4],&int_latency[5]);
 	sscanf(opcode_latency_fp, "%u,%u,%u,%u,%u",
 			&fp_latency[0],&fp_latency[1],&fp_latency[2],
 			&fp_latency[3],&fp_latency[4]);
 	sscanf(opcode_latency_dp, "%u,%u,%u,%u,%u",
 			&dp_latency[0],&dp_latency[1],&dp_latency[2],
 			&dp_latency[3],&dp_latency[4]);
-	sscanf(opcode_initiation_int, "%u,%u,%u,%u,%u",
+	sscanf(opcode_initiation_int, "%u,%u,%u,%u,%u,%u",
 			&int_init[0],&int_init[1],&int_init[2],
-			&int_init[3],&int_init[4]);
+			&int_init[3],&int_init[4],&int_init[5]);
 	sscanf(opcode_initiation_fp, "%u,%u,%u,%u,%u",
 			&fp_init[0],&fp_init[1],&fp_init[2],
 			&fp_init[3],&fp_init[4]);
@@ -773,6 +774,10 @@ void ptx_instruction::set_opcode_and_latency()
 	  initiation_interval = dp_init[2];
       op = SFU_OP;
       break;
+   case BSMAD_OP:
+	   latency = int_latency[5];
+	   initiation_interval = int_init[5];
+	   break;
    default: 
        break;
    }

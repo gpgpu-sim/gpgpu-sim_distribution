@@ -1458,6 +1458,26 @@ void breakaddr_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 void brev_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 void brkpt_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 
+unsigned trunc(unsigned num, unsigned precision) {
+	int mask = 1, latest_one = -1;
+	unsigned data = num;
+	for (unsigned j = 0; j < sizeof(unsigned)*8; j++) {
+		int bit = data & mask;
+		if (bit == 1) latest_one = j;
+		data >>= 1;
+	}
+	if (latest_one >= precision) {
+		// round_up is 1 if the most significant truncated digit is a 1, otherwise it is 0
+		//int round_up = (num & (1 << (latest_one-precision))) >> (latest_one-precision);
+		//unsigned shifted_output = num >> (latest_one-precision+1);
+		// if shifted_output is a number like 1111, don't round up
+		//if (shifted_output == (pow(2,precision)-1)) round_up = 0;
+		//num = shifted_output + round_up;
+		num >>= (latest_one-precision+1);
+	}
+	return num;
+}
+
 void bsmad_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 {
 	// operands:
@@ -1530,16 +1550,18 @@ void bsmad_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			int sum = 0;
 			unsigned mask = (unsigned)(pow(2,ip)-1) << (pos*ip);
 			for (int j = 0; j < THREADS; j++) {
-				sum += ((mask & buffer[j][buf]) >> (pos*ip)) * synapse[j];
+				//sum += ((mask & buffer[j][buf]) >> (pos*ip)) * synapse[j];
+				sum += trunc(((mask & buffer[j][buf]) >> (pos*ip)) * synapse[j], op);
 			}
 			// get the previous output
 			mask = (unsigned)(pow(2,op)-1) << (op*(i-buffer_data_start));
 			int past_output = (mask & output) >> (op*(i-buffer_data_start));
-			unpacked_output[i-buffer_data_start] = sum + past_output;
+			unpacked_output[i-buffer_data_start] = trunc(trunc(sum,op) + past_output,op);
+			// truncate sum, truncate (truncated sum + past_output)
 		}
 
 		// truncate output
-		for (unsigned i = 0; i < 32/op; i++) {
+		/*for (unsigned i = 0; i < 32/op; i++) {
 			int mask = 1, latest_one = -1;
 			unsigned data = unpacked_output[i];
 			for (unsigned j = 0; j < sizeof(unsigned)*8; j++) {
@@ -1555,7 +1577,7 @@ void bsmad_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 				if (shifted_output == (pow(2,op)-1)) round_up = 0;
 				unpacked_output[i] = shifted_output + round_up;
 			}
-		}
+		}*/
 
 		// pack the outputs into one register
 		unsigned mask = pow(2,op)-1;
