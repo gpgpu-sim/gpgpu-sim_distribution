@@ -3534,13 +3534,14 @@ void shfl_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 	int bval = (thread->get_operand_value(src2, dst, i_type, thread, 1)).u32;
 	int cval = (thread->get_operand_value(src3, dst, i_type, thread, 1)).u32;
 	int mask = cval >> 8;
+	bval &= 0x1F;
 	cval &= 0x1F;
 
 	int maxLane = (lane & mask) | (cval & ~mask);
 	int minLane = lane & mask;
 
 	int src_idx;
-	int p;
+	unsigned p;
 	switch(pI->shfl_op()) {
 	case UP_OPTION:
 		src_idx = lane - bval;
@@ -3559,22 +3560,31 @@ void shfl_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 		p = (src_idx <= maxLane);
 		break;
 	default:
-		printf("GPGPU-Sim PTX: ERROR: Unrecognized shfl option\n");
+		printf("GPGPU-Sim PTX: ERROR: Invalid shfl option\n");
 		assert(0);
 		break;
 	}
 	// copy from own lane
 	if (!p) src_idx = lane;
+
 	// copy input from lane src_idx
+	ptx_thread_info *source = core->get_thread_info()[tid + src_idx];
 	ptx_reg_t data;
 	if (inst.active(src_idx)) {
-		ptx_thread_info *source = core->get_thread_info()[tid + src_idx];
 		data = source->get_operand_value(src1, dst, i_type, source, 1);
-	}
-	if (i_type == PRED_TYPE) {
-		data.pred = p;
+	} else {
+		printf("GPGPU-Sim PTX: WARNING: shfl input value unpredictable for inactive threads in a warp\n");
+		data.u32 = 0;
 	}
 	thread->set_operand_value(dst, data, i_type, thread, pI);
+
+	/*
+	TODO: deal with predicates appropriately using the following pseudocode:
+	if (!isGuardPredicateTrue(src_idx)) {
+		printf("GPGPU-Sim PTX: WARNING: shfl input value unpredictable for predicated-off threads in a warp\n");
+	}
+	if (dest predicate selected) data.pred = p;
+	*/
 
 	// keep track of the number of threads that have executed in the warp
 	warp_info->inc_done_threads();
