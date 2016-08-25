@@ -3568,9 +3568,9 @@ void shfl_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 	if (!p) src_idx = lane;
 
 	// copy input from lane src_idx
-	ptx_thread_info *source = core->get_thread_info()[tid + src_idx];
 	ptx_reg_t data;
 	if (inst.active(src_idx)) {
+		ptx_thread_info *source = core->get_thread_info()[tid + src_idx];
 		data = source->get_operand_value(src1, dst, i_type, source, 1);
 	} else {
 		printf("GPGPU-Sim PTX: WARNING: shfl input value unpredictable for inactive threads in a warp\n");
