@@ -1513,8 +1513,10 @@ void gpgpu_sim::cycle()
       try_snap_shot(gpu_sim_cycle);
       spill_log_to_file (stdout, 0, gpu_sim_cycle);
 
+#if (CUDART_VERSION >= 5000)
       //launch device kernel
       launch_one_device_kernel();
+#endif
    }
 }
 

@@ -1,9 +1,15 @@
 //Jin: cuda_device_runtime.cc
 //Defines CUDA device runtime APIs for CDP support
 
+
 #include <iostream>
 #include <map>
 
+unsigned long long g_total_param_size = 0;
+unsigned long long g_max_total_param_size = 0;
+
+
+#if (CUDART_VERSION >= 5000)
 #define __CUDA_RUNTIME_API_H__
 
 #include <builtin_types.h>
@@ -59,8 +65,6 @@ public:
 std::map<void *, device_launch_config_t> g_cuda_device_launch_param_map;
 std::list<device_launch_operation_t> g_cuda_device_launch_op;
 extern stream_manager *g_stream_manager;
-unsigned long long g_total_param_size = 0;
-unsigned long long g_max_total_param_size = 0;
 
 //Handling device runtime api:
 //void * cudaGetParameterBufferV2(void *func, dim3 gridDimension, dim3 blockDimension, unsigned int sharedMemSize)
@@ -313,4 +317,4 @@ void launch_all_device_kernels() {
         launch_one_device_kernel();
     }
 }
-
+#endif

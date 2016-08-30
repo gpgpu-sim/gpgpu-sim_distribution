@@ -1414,6 +1414,7 @@ void call_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       return;
    }
 
+#if (CUDART_VERSION >= 5000)
    //Jin: handle device runtime apis for CDP
    else if(fname == "cudaGetParameterBufferV2") {
       gpgpusim_cuda_getParameterBufferV2(pI, thread, target_func);
@@ -1427,6 +1428,7 @@ void call_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       gpgpusim_cuda_streamCreateWithFlags(pI, thread, target_func);
 	  return;
    }
+#endif
 
    // read source arguements into register specified in declaration of function
    arg_buffer_list_t arg_values;

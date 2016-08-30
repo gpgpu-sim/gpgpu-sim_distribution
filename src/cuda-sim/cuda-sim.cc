@@ -1792,7 +1792,9 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
         );
         cta.execute();
 
+#if (CUDART_VERSION >= 5000)
 	launch_all_device_kernels();
+#endif
     }
     
    //registering this kernel as done      
