@@ -1978,7 +1978,9 @@ void shader_core_ctx::register_cta_thread_exit( unsigned cta_num, kernel_info_t 
           fflush(stdout);
 
           //Shader can only be empty when no more cta are dispatched
-          assert(m_kernel == NULL || !m_gpu->kernel_more_cta_left(m_kernel));
+          if(kernel != m_kernel) {
+              assert(m_kernel == NULL || !m_gpu->kernel_more_cta_left(m_kernel));
+          }
           m_kernel = NULL;
       }
 

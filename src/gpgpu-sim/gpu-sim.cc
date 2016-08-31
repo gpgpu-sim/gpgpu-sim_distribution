@@ -369,8 +369,8 @@ void shader_core_config::reg_options(class OptionParser * opp)
                                  "gto");
 
     option_parser_register(opp, "-gpgpu_concurrent_kernel_sm", OPT_BOOL, &gpgpu_concurrent_kernel_sm, 
-                "Support concurrent kernels on a SM (default = enabled)", 
-                "1");
+                "Support concurrent kernels on a SM (default = disabled)", 
+                "0");
 }
 
 void gpgpu_sim_config::reg_options(option_parser_t opp)
@@ -1102,13 +1102,18 @@ void shader_core_ctx::mem_instruction_stats(const warp_inst_t &inst)
         abort();
     }
 }
-//Jin: concurrent kernels on one SM
 bool shader_core_ctx::can_issue_1block(kernel_info_t & kernel) {
-    
-   if(m_config->max_cta(kernel) < 1)
-     return false;
 
-   return occupy_shader_resource_1block(kernel, false);
+   //Jin: concurrent kernels on one SM
+   if(m_config->gpgpu_concurrent_kernel_sm) {    
+      if(m_config->max_cta(kernel) < 1)
+           return false;
+
+      return occupy_shader_resource_1block(kernel, false);
+   }
+   else {
+      return (get_n_active_cta() < m_config->max_cta(kernel));
+   } 
 }
 
 int shader_core_ctx::find_available_hwtid(unsigned int cta_size, bool occupy) {
@@ -1178,34 +1183,37 @@ bool shader_core_ctx::occupy_shader_resource_1block(kernel_info_t & k, bool occu
 }
 
 void shader_core_ctx::release_shader_resource_1block(unsigned hw_ctaid, kernel_info_t & k) {
-   unsigned threads_per_cta  = k.threads_per_cta();
-   const class function_info *kernel = k.entry();
-   unsigned int padded_cta_size = threads_per_cta;
-   unsigned int warp_size = m_config->warp_size; 
-   if (padded_cta_size%warp_size) 
-      padded_cta_size = ((padded_cta_size/warp_size)+1)*(warp_size);
 
-   assert(m_occupied_n_threads >= padded_cta_size);
-   m_occupied_n_threads -= padded_cta_size;
-
-   int start_thread = m_occupied_cta_to_hwtid[hw_ctaid];
-
-   for(unsigned hwtid = start_thread; hwtid < start_thread + padded_cta_size;
-    hwtid++)
-       m_occupied_hwtid.reset(hwtid);
-   m_occupied_cta_to_hwtid.erase(hw_ctaid);
-
-   const struct gpgpu_ptx_sim_info *kernel_info = ptx_sim_kernel_info(kernel);
-
-   assert(m_occupied_shmem >= (unsigned int)kernel_info->smem);
-   m_occupied_shmem -= kernel_info->smem;
-
-   unsigned int used_regs = padded_cta_size * ((kernel_info->regs+3)&~3);
-   assert(m_occupied_regs >= used_regs);
-   m_occupied_regs -= used_regs;
-
-   assert(m_occupied_ctas >= 1);
-   m_occupied_ctas--;
+   if(m_config->gpgpu_concurrent_kernel_sm) {
+      unsigned threads_per_cta  = k.threads_per_cta();
+      const class function_info *kernel = k.entry();
+      unsigned int padded_cta_size = threads_per_cta;
+      unsigned int warp_size = m_config->warp_size; 
+      if (padded_cta_size%warp_size) 
+         padded_cta_size = ((padded_cta_size/warp_size)+1)*(warp_size);
+   
+      assert(m_occupied_n_threads >= padded_cta_size);
+      m_occupied_n_threads -= padded_cta_size;
+   
+      int start_thread = m_occupied_cta_to_hwtid[hw_ctaid];
+   
+      for(unsigned hwtid = start_thread; hwtid < start_thread + padded_cta_size;
+       hwtid++)
+          m_occupied_hwtid.reset(hwtid);
+      m_occupied_cta_to_hwtid.erase(hw_ctaid);
+   
+      const struct gpgpu_ptx_sim_info *kernel_info = ptx_sim_kernel_info(kernel);
+   
+      assert(m_occupied_shmem >= (unsigned int)kernel_info->smem);
+      m_occupied_shmem -= kernel_info->smem;
+   
+      unsigned int used_regs = padded_cta_size * ((kernel_info->regs+3)&~3);
+      assert(m_occupied_regs >= used_regs);
+      m_occupied_regs -= used_regs;
+   
+      assert(m_occupied_ctas >= 1);
+      m_occupied_ctas--;
+   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1219,14 +1227,23 @@ void shader_core_ctx::release_shader_resource_1block(unsigned hw_ctaid, kernel_i
 
 void shader_core_ctx::issue_block2core( kernel_info_t &kernel ) 
 {
-//    set_max_cta(kernel);
+
+    if(!m_config->gpgpu_concurrent_kernel_sm)
+        set_max_cta(kernel);
+    else
+        assert(occupy_shader_resource_1block(kernel, true));
+
     kernel.inc_running();
-    assert(occupy_shader_resource_1block(kernel, true));
 
     // find a free CTA context 
     unsigned free_cta_hw_id=(unsigned)-1;
-//    for (unsigned i=0;i<kernel_max_cta_per_shader;i++ ) {
-    for (unsigned i=0;i<m_config->max_cta_per_core;i++ ) {
+
+    unsigned max_cta_per_core;
+    if(!m_config->gpgpu_concurrent_kernel_sm)
+        max_cta_per_core = kernel_max_cta_per_shader;
+    else
+        max_cta_per_core = m_config->max_cta_per_core;
+    for (unsigned i=0;i<max_cta_per_core;i++ ) {
       if( m_cta_status[i]==0 ) {
          free_cta_hw_id=i;
          break;
@@ -1243,13 +1260,20 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
     int padded_cta_size = cta_size; 
     if (cta_size%m_config->warp_size)
       padded_cta_size = ((cta_size/m_config->warp_size)+1)*(m_config->warp_size);
-    unsigned int start_thread = find_available_hwtid(padded_cta_size, true);
-    assert((int)start_thread != -1);
-    unsigned int end_thread = start_thread + cta_size;
-    assert(m_occupied_cta_to_hwtid.find(free_cta_hw_id) == m_occupied_cta_to_hwtid.end());
-    m_occupied_cta_to_hwtid[free_cta_hw_id]= start_thread;
-//    unsigned start_thread = free_cta_hw_id * padded_cta_size;
-//    unsigned end_thread  = start_thread +  cta_size;
+
+    unsigned int start_thread, end_thread;
+
+    if(!m_config->gpgpu_concurrent_kernel_sm) {
+        start_thread = free_cta_hw_id * padded_cta_size;
+        end_thread  = start_thread +  cta_size;
+    }
+    else {
+        start_thread = find_available_hwtid(padded_cta_size, true);
+        assert((int)start_thread != -1);
+        end_thread = start_thread + cta_size;
+        assert(m_occupied_cta_to_hwtid.find(free_cta_hw_id) == m_occupied_cta_to_hwtid.end());
+        m_occupied_cta_to_hwtid[free_cta_hw_id]= start_thread;
+    }
 
     // reset the microarchitecture state of the selected hardware thread and warp contexts
     reinit(start_thread, end_thread,false);
