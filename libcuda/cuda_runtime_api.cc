@@ -262,10 +262,19 @@ struct CUctx_st {
 	{
 		if( m_code.find(fat_cubin_handle) != m_code.end() ) {
 			symbol *s = m_code[fat_cubin_handle]->lookup(deviceFun);
-			assert( s != NULL );
-			function_info *f = s->get_pc();
-			assert( f != NULL );
-			m_kernel_lookup[hostFun] = f;
+			if(s != NULL) {
+				function_info *f = s->get_pc();
+				assert( f != NULL );
+				m_kernel_lookup[hostFun] = f;
+			}
+			else {
+				printf("Warning: cannot find deviceFun %s\n", deviceFun);
+				m_kernel_lookup[hostFun] = NULL;
+			}
+	//		assert( s != NULL );
+	//		function_info *f = s->get_pc();
+	//		assert( f != NULL );
+	//		m_kernel_lookup[hostFun] = f;
 		} else {
 			m_kernel_lookup[hostFun] = NULL;
 		}
@@ -1353,7 +1362,12 @@ void extract_code_using_cuobjdump(){
 	printf("Running md5sum using \"%s\"\n", command);
 	system(command);
 	// Running cuobjdump using dynamic link to current process
-	snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass %s > %s", app_binary.c_str(), fname);
+	// Needs the option '-all' to extract PTX from CDP-enabled binary 
+	extern bool g_cdp_enabled;
+	if(!g_cdp_enabled)
+	    snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass %s > %s", app_binary.c_str(), fname);
+	else
+	    snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass -all %s > %s", app_binary.c_str(), fname);
 	bool parse_output = true; 
 	int result = system(command);
 	if(result) {
@@ -1618,7 +1632,7 @@ cuobjdumpELFSection* findELFSection(const std::string identifier){
 	if (sec!=NULL)return sec;
 	sec = findELFSectionInList(libSectionList, identifier);
 	if (sec!=NULL)return sec;
-	std::cout << "Cound not find " << identifier << std::endl;
+	std::cout << "Could not find " << identifier << std::endl;
 	assert(0 && "Could not find the required ELF section");
 	return NULL;
 }
@@ -1634,6 +1648,14 @@ cuobjdumpPTXSection* findPTXSectionInList(std::list<cuobjdumpSection*> sectionli
 		if((ptxsection=dynamic_cast<cuobjdumpPTXSection*>(*iter)) != NULL){
 			if(ptxsection->getIdentifier() == identifier)
 				return ptxsection;
+			else {
+				extern bool g_cdp_enabled;
+				if(g_cdp_enabled) {
+					printf("Warning: __cudaRegisterFatBinary needs %s, but find PTX section with %s\n",
+						identifier.c_str(), ptxsection->getIdentifier().c_str());
+					return ptxsection;
+				}
+			}
 		}
 	}
 	return NULL;
@@ -1645,7 +1667,7 @@ cuobjdumpPTXSection* findPTXSection(const std::string identifier){
 	if (sec!=NULL)return sec;
 	sec = findPTXSectionInList(libSectionList, identifier);
 	if (sec!=NULL)return sec;
-	std::cout << "Cound not find " << identifier << std::endl;
+	std::cout << "Could not find " << identifier << std::endl;
 	assert(0 && "Could not find the required PTX section");
 	return NULL;
 }
@@ -2118,6 +2140,11 @@ __host__ cudaError_t CUDARTAPI cudaFuncSetCacheConfig(const char *func, enum cud
 	CUctx_st *context = GPGPUSim_Context();
 	context->get_device()->get_gpgpu()->set_cache_config(context->get_kernel(func)->get_name(), (FuncCache)cacheConfig);
 	return g_last_cudaError = cudaSuccess;
+}
+
+//Jin: hack for cdp
+__host__ cudaError_t CUDARTAPI cudaDeviceSetLimit(enum cudaLimit limit, size_t value) {
+    return g_last_cudaError = cudaSuccess;
 }
 #endif
 
