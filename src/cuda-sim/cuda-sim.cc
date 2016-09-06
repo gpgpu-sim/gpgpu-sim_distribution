@@ -783,6 +783,10 @@ void ptx_instruction::set_opcode_and_latency()
 	  initiation_interval = dp_init[2];
       op = SFU_OP;
       break;
+   case SHFL_OP:
+	   latency = 32;
+	   initiation_interval = 15;
+	   break;
    default: 
        break;
    }
@@ -859,8 +863,10 @@ void ptx_instruction::pre_decode()
 
    switch ( get_opcode() ) {
 #define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: has_dst = (DST!=0); break;
+#define OP_W_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: has_dst = (DST!=0); break;
 #include "opcodes.def"
 #undef OP_DEF
+#undef OP_W_DEF
    default:
       printf( "Execution error: Invalid opcode (0x%x)\n", get_opcode() );
       break;
@@ -1284,8 +1290,10 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
       }
       switch ( pI->get_opcode() ) {
 #define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,this); op_classification = CLASSIFICATION; break;
+#define OP_W_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,get_core(),inst); op_classification = CLASSIFICATION; break;
 #include "opcodes.def"
 #undef OP_DEF
+#undef OP_W_DEF
       default: printf( "Execution error: Invalid opcode (0x%x)\n", pI->get_opcode() ); break;
       }
       delete pJ;
@@ -1452,6 +1460,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
 
    static std::map<unsigned,memory_space*> shared_memory_lookup;
    static std::map<unsigned,ptx_cta_info*> ptx_cta_lookup;
+   static std::map<unsigned,ptx_warp_info*> ptx_warp_lookup;
    static std::map<unsigned,std::map<unsigned,memory_space*> > local_memory_lookup;
 
    if ( *thread_info != NULL ) {
@@ -1531,7 +1540,16 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
       kernel.increment_thread_id();
       new_tid += tid;
       ptx_thread_info *thd = new ptx_thread_info(kernel);
-   
+
+      ptx_warp_info *warp_info = NULL;
+      if ( ptx_warp_lookup.find(hw_warp_id) == ptx_warp_lookup.end() ) {
+    	  warp_info = new ptx_warp_info();
+    	  ptx_warp_lookup[hw_warp_id] = warp_info;
+      } else {
+    	  warp_info = ptx_warp_lookup[hw_warp_id];
+      }
+      thd->m_warp_info = warp_info;
+
       memory_space *local_mem = NULL;
       std::map<unsigned,memory_space*>::iterator l = local_mem_lookup.find(new_tid);
       if ( l != local_mem_lookup.end() ) {

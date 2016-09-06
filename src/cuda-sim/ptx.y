@@ -195,6 +195,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token  WB_OPTION;
 %token  WT_OPTION;
 %token	NC_OPTION;
+%token	UP_OPTION;
+%token	DOWN_OPTION;
+%token	BFLY_OPTION;
+%token	IDX_OPTION;
 
 %type <int_value> function_decl_header
 %type <ptr_value> function_decl
@@ -455,6 +459,10 @@ option: type_spec
 	| WB_OPTION { add_option(WB_OPTION); }
 	| WT_OPTION { add_option(WT_OPTION); }
 	| NC_OPTION { add_option(NC_OPTION); }
+	| UP_OPTION { add_option(UP_OPTION); }
+	| DOWN_OPTION { add_option(DOWN_OPTION); }
+	| BFLY_OPTION { add_option(BFLY_OPTION); }
+	| IDX_OPTION { add_option(IDX_OPTION); }
 	;
 
 atomic_operation_spec: ATOMIC_AND { add_option(ATOMIC_AND); } 

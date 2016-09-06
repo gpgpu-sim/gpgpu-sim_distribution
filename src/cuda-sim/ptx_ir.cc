@@ -1211,6 +1211,12 @@ ptx_instruction::ptx_instruction( int opcode,
 		 break;
 	  case NC_OPTION:
 		 break;
+	  case UP_OPTION:
+	  case DOWN_OPTION:
+	  case BFLY_OPTION:
+	  case IDX_OPTION:
+		  m_shfl_op = last_ptx_inst_option;
+		  break;
       default:
          assert(0);
          break;
