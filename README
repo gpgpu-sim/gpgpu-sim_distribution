@@ -24,6 +24,12 @@ Tor M. Aamodt, Vijay Janapa Reddi, GPUWattch: Enabling Energy Optimizations in
 GPGPUs, In proceedings of the ACM/IEEE International Symposium on Computer
 Architecture (ISCA 2013), Tel-Aviv, Israel, June 23-27, 2013.
 
+If you use the support for CUDA dynamic parallelism in your research, please cite:
+
+Jin Wang and Sudhakar Yalamanchili, Characterization and Analysis of Dynamic 
+Parallelism in Unstructured GPU Applications, 2014 IEEE International Symposium 
+on Workload Characterization (IISWC), November 2014.
+
 If you use figures plotted using AerialVision in your publications, please cite:
 
 Aaron Ariel, Wilson W. L. Fung, Andrew Turner, Tor M. Aamodt, Visualizing
