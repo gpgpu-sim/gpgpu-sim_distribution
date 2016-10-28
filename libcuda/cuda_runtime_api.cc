@@ -125,7 +125,9 @@
 #include "host_defines.h"
 #include "builtin_types.h"
 #include "driver_types.h"
+#if (CUDART_VERSION < 8000)
 #include "__cudaFatFormat.h"
+#endif
 #include "../src/gpgpu-sim/gpu-sim.h"
 #include "../src/cuda-sim/ptx_loader.h"
 #include "../src/cuda-sim/cuda-sim.h"
@@ -1667,7 +1669,9 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 		cuobjdumpRegisterFatBinary(fat_cubin_handle, filename);
 
 		return (void**)fat_cubin_handle;
-	} else {
+	} 
+	#if (CUDART_VERSION < 8000)
+	else {
 		static unsigned source_num=1;
 		unsigned long long fat_cubin_handle = next_fat_bin_handle++;
 		__cudaFatCudaBinary *info =   (__cudaFatCudaBinary *)fatCubin;
@@ -1724,6 +1728,7 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 		}
 		return (void**)fat_cubin_handle;
 	}
+	#endif
 }
 
 void __cudaUnregisterFatBinary(void **fatCubinHandle)

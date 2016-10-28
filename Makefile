@@ -156,6 +156,8 @@ $(SIM_LIB_DIR)/libcudart.so: makedirs $(LIBS) cudalib
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.5.5 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.5.5; fi
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.6.0 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.6.0; fi
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.7.5 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.7.5; fi
+	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.8.0 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.8.0; fi
+
 $(SIM_LIB_DIR)/libcudart.dylib: makedirs $(LIBS) cudalib
 	g++ -dynamiclib -Wl,-headerpad_max_install_names,-undefined,dynamic_lookup,-compatibility_version,1.1,-current_version,1.1\
 			$(SIM_OBJ_FILES_DIR)/libcuda/*.o \
