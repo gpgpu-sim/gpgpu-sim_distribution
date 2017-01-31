@@ -1,3 +1,6 @@
+CUDA_INSTALL_PATH=/home/haeseunl/bin/cuda40/cuda
+NVIDIA_COMPUTE_SDK_LOCATION=/home/haeseunl/bin/cuda40/NVIDIA_GPU_Computing_SDK
+
 # see README before running this
 
 ps -p $$ | awk '/bash/ || / sh/ || /zsh/ {exit 1;}' && echo "ERROR ** source setup_environment must be run in a bash, zsh or sh shell; see README" && exit
