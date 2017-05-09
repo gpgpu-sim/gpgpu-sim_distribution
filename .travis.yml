@@ -6,6 +6,6 @@ before_install:
         - sudo apt-get install -y cuda
         - sudo apt-get install -y build-essential xutils-dev bison zlib1g-dev flex libglu1-mesa-dev
 env: 
-        - CUDA_INSTALL_PATH=/usr/local/cuda-7.5/
+        - CUDA_INSTALL_PATH=/usr/local/cuda-8.0/
 language: cpp
 script: source ./setup_environment && make
