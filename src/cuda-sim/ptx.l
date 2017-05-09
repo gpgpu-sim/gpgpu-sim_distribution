@@ -86,7 +86,8 @@ ldu     TC; ptx_lval.int_value = LDU_OP; return OPCODE;
 lg2	TC; ptx_lval.int_value = LG2_OP; return OPCODE;
 mad24   TC; ptx_lval.int_value = MAD24_OP; return OPCODE;
 mad     TC; ptx_lval.int_value = MAD_OP; return OPCODE;
-madp    TC; ptx_lval.int_value = MADP_OP; return OPCODE;
+madc	TC; ptx_lval.int_value = MADC_OP; return OPCODE;
+madp	TC; ptx_lval.int_value = MADP_OP; return OPCODE;
 max     TC; ptx_lval.int_value = MAX_OP; return OPCODE;
 membar  TC; ptx_lval.int_value = MEMBAR_OP; return OPCODE;
 min     TC; ptx_lval.int_value = MIN_OP; return OPCODE;
@@ -114,6 +115,7 @@ sad     TC; ptx_lval.int_value = SAD_OP; return OPCODE;
 selp	TC; ptx_lval.int_value = SELP_OP; return OPCODE;
 setp    TC; ptx_lval.int_value = SETP_OP; return OPCODE;
 set	TC; ptx_lval.int_value = SET_OP; return OPCODE;
+shfl	TC; ptx_lval.int_value = SHFL_OP; return OPCODE;
 shl     TC; ptx_lval.int_value = SHL_OP; return OPCODE;
 shr     TC; ptx_lval.int_value = SHR_OP; return OPCODE;
 sin	TC; ptx_lval.int_value = SIN_OP; return OPCODE;
@@ -180,7 +182,9 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.union  TC; return UNION_DIRECTIVE; /* not in PTX 2.1 */
 \.version TC; return VERSION_DIRECTIVE;
 \.visible TC; return VISIBLE_DIRECTIVE;
+\.weak TC; return WEAK_DIRECTIVE;
 \.address_size TC; return ADDRESS_SIZE_DIRECTIVE;
+\.weak	TC; return WEAK_DIRECTIVE;
 
 \.constptr TC; return CONSTPTR_DIRECTIVE; /* Ptx plus directive for pointer to constant memory */
 \.ptr TC; return PTR_DIRECTIVE; /* Added for new OpenCL genrated code */
@@ -249,6 +253,7 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.v4	TC; return V4_TYPE;
 
 \.half  TC; return HALF_OPTION; /* ptxplus */
+\.cc	TC; return EXTP_OPTION; /* extended precision option */
 
 \.equ	TC; return EQU_OPTION;
 \.neu	TC; return NEU_OPTION;
@@ -324,6 +329,13 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.wb	TC; return WB_OPTION;
 \.wt	TC; return WT_OPTION;
 
+\.nc	TC; return NC_OPTION;
+
+\.up	TC; return UP_OPTION;
+\.down	TC; return DOWN_OPTION;
+\.bfly	TC; return BFLY_OPTION;
+\.idx	TC; return IDX_OPTION;
+
 \.popc	TC; return ATOMIC_POPC;
 \.and	TC; return ATOMIC_AND;
 \.or	TC; return ATOMIC_OR;
@@ -386,7 +398,9 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 }
 <IN_COMMENT>{
 "*/"      BEGIN(INITIAL);
-[^*\n]+   // eat comment in chunks
+"CPTX_BEGIN" printf("BEGINNING CUSTOM PTX.\n"); BEGIN(INITIAL);
+[^C*\n]+   // eat comment in chunks
+"C"
 "*"       // eat the lone star
 \n        TC; 
 }

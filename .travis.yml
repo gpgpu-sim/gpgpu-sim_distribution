@@ -1,0 +1,11 @@
+dist: trusty
+before_install: 
+        - wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64/cuda-repo-ubuntu1404_7.5-18_amd64.deb		
+        - sudo dpkg -i cuda-repo-ubuntu1404_7.5-18_amd64.deb 
+        - sudo apt-get -qq update
+        - sudo apt-get install -y cuda
+        - sudo apt-get install -y build-essential xutils-dev bison zlib1g-dev flex libglu1-mesa-dev
+env: 
+        - CUDA_INSTALL_PATH=/usr/local/cuda-7.5/
+language: cpp
+script: source ./setup_environment && make

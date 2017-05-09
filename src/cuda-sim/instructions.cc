@@ -41,14 +41,19 @@
 #include "../gpgpu-sim/gpu-sim.h"
 #include "../gpgpu-sim/shader.h"
 
+//Jin: include device runtime for CDP
+#include "cuda_device_runtime.h"
+
 #include <stdarg.h>
 
 unsigned ptx_instruction::g_num_ptx_inst_uid=0;
 
 const char *g_opcode_string[NUM_OPCODES] = {
 #define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) STR,
+#define OP_W_DEF(OP,FUNC,STR,DST,CLASSIFICATION) STR,
 #include "opcodes.def"
 #undef OP_DEF
+#undef OP_W_DEF
 };
 
 void inst_not_implemented( const ptx_instruction * pI ) ;
@@ -148,6 +153,8 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
             result.u64 = op.get_symbol()->get_address();
          } else if ( op.is_local() ) {
             result.u64 = op.get_symbol()->get_address();
+         } else if ( op.is_function_address() ) {
+		 	result.u64 = (size_t)op.get_symbol()->get_pc();
          } else {
             const char *name = op.name().c_str();
             printf("GPGPU-Sim PTX: ERROR ** get_operand_value : unknown operand type for %s\n", name );
@@ -1336,7 +1343,82 @@ void bar_impl( const ptx_instruction *pIin, ptx_thread_info *thread )
    thread->m_last_dram_callback.instruction = pIin;
 }
 
-void bfe_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void bfe_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
+{
+	unsigned i_type = pI->get_type();
+	unsigned msb = (i_type == U32_TYPE || i_type == S32_TYPE) ? 31 : 63;
+    const operand_info &dst  = pI->dst();
+    const operand_info &src1 = pI->src1();
+    const operand_info &src2 = pI->src2();
+    const operand_info &src3 = pI->src3();
+    ptx_reg_t a = thread->get_operand_value(src1, dst, i_type, thread, 1);
+    ptx_reg_t b = thread->get_operand_value(src2, dst, i_type, thread, 1);
+    ptx_reg_t c = thread->get_operand_value(src3, dst, i_type, thread, 1);
+	unsigned pos = b.u32 & 0xFF;
+	unsigned len = c.u32 & 0xFF;
+	unsigned d = 0;
+	switch (i_type)
+	{
+		case U32_TYPE:
+		{
+			unsigned mask;
+			d = a.u32 >> pos;
+			mask = 0xFFFFFFFF >> (32 - len);
+			d &= mask;
+			break;
+		}
+		case U64_TYPE:
+		{
+			unsigned long mask;
+			d = a.u64 >> pos;	
+			mask = 0xFFFFFFFFFFFFFFFF >> (64 - len);
+			d &= mask;
+			break;
+		}
+		case S32_TYPE:
+		{
+			unsigned mask;
+			unsigned min = MY_MIN_I(pos + len - 1, msb);
+			unsigned sbit = len == 0 ? 0 : (a.s32 >> min) & 0x1;
+			d = a.s32 >> pos;
+			if (sbit > 0)
+			{
+				mask = 0xFFFFFFFF << len;
+				d |= mask;
+			}
+			else
+			{
+				mask = 0xFFFFFFFF >> (32 - len);
+				d &= mask;
+			}
+			break;
+		}
+		case S64_TYPE:
+		{
+			unsigned long mask;
+			unsigned min = MY_MIN_I(pos + len - 1, msb);
+			unsigned sbit = len == 0 ? 0 : (a.s64 >> min) & 0x1;
+			d = a.s64 >> pos;
+			if (sbit > 0)
+			{
+				mask = 0xFFFFFFFFFFFFFFFF << len;
+				d |= mask;
+			}
+			else
+			{
+				mask = 0xFFFFFFFFFFFFFFFF >> (64 - len);
+				d &= mask;
+			}
+			break;
+		}
+		default:
+		printf("Operand type not supported for BFE instruction.\n");
+		abort();
+		return;
+	}
+    thread->set_operand_value(dst,d, i_type, thread, pI);
+}
+
 void bfi_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 void bfind_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 
@@ -1407,7 +1489,23 @@ void call_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    if( fname == "vprintf" ) {
       gpgpusim_cuda_vprintf(pI, thread, target_func);
       return;
-   } 
+   }
+
+#if (CUDART_VERSION >= 5000)
+   //Jin: handle device runtime apis for CDP
+   else if(fname == "cudaGetParameterBufferV2") {
+      gpgpusim_cuda_getParameterBufferV2(pI, thread, target_func);
+	  return;
+   }
+   else if(fname == "cudaLaunchDeviceV2") {
+      gpgpusim_cuda_launchDeviceV2(pI, thread, target_func);
+	  return;
+   }
+   else if(fname == "cudaStreamCreateWithFlags") {
+      gpgpusim_cuda_streamCreateWithFlags(pI, thread, target_func);
+	  return;
+   }
+#endif
 
    // read source arguements into register specified in declaration of function
    arg_buffer_list_t arg_values;
@@ -2426,6 +2524,11 @@ void madp_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    mad_def(pI, thread, true);
 }
 
+void madc_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
+{
+   mad_def(pI, thread, true);
+}
+
 void mad_def( const ptx_instruction *pI, ptx_thread_info *thread, bool use_carry ) 
 { 
    const operand_info &dst  = pI->dst();
@@ -3434,6 +3537,81 @@ void set_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    thread->set_operand_value(dst, data, pI->get_type(), thread, pI);
 
+}
+
+void shfl_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
+{
+	unsigned i_type = pI->get_type();
+	int tid = inst.warp_id() * core->get_warp_size();
+	ptx_thread_info *thread = core->get_thread_info()[tid];
+	ptx_warp_info *warp_info = thread->m_warp_info;
+	int lane = warp_info->get_done_threads();
+	thread = core->get_thread_info()[tid + lane];
+
+	const operand_info &dst = pI->dst();
+	const operand_info &src1 = pI->src1();
+	const operand_info &src2 = pI->src2();
+	const operand_info &src3 = pI->src3();
+	int bval = (thread->get_operand_value(src2, dst, i_type, thread, 1)).u32;
+	int cval = (thread->get_operand_value(src3, dst, i_type, thread, 1)).u32;
+	int mask = cval >> 8;
+	bval &= 0x1F;
+	cval &= 0x1F;
+
+	int maxLane = (lane & mask) | (cval & ~mask);
+	int minLane = lane & mask;
+
+	int src_idx;
+	unsigned p;
+	switch(pI->shfl_op()) {
+	case UP_OPTION:
+		src_idx = lane - bval;
+		p = (src_idx >= maxLane);
+		break;
+	case DOWN_OPTION:
+		src_idx = lane + bval;
+		p = (src_idx <= maxLane);
+		break;
+	case BFLY_OPTION:
+		src_idx = lane ^ bval;
+		p = (src_idx <= maxLane);
+		break;
+	case IDX_OPTION:
+		src_idx = minLane | (bval & ~mask);
+		p = (src_idx <= maxLane);
+		break;
+	default:
+		printf("GPGPU-Sim PTX: ERROR: Invalid shfl option\n");
+		assert(0);
+		break;
+	}
+	// copy from own lane
+	if (!p) src_idx = lane;
+
+	// copy input from lane src_idx
+	ptx_reg_t data;
+	if (inst.active(src_idx)) {
+		ptx_thread_info *source = core->get_thread_info()[tid + src_idx];
+		data = source->get_operand_value(src1, dst, i_type, source, 1);
+	} else {
+		printf("GPGPU-Sim PTX: WARNING: shfl input value unpredictable for inactive threads in a warp\n");
+		data.u32 = 0;
+	}
+	thread->set_operand_value(dst, data, i_type, thread, pI);
+
+	/*
+	TODO: deal with predicates appropriately using the following pseudocode:
+	if (!isGuardPredicateTrue(src_idx)) {
+		printf("GPGPU-Sim PTX: WARNING: shfl input value unpredictable for predicated-off threads in a warp\n");
+	}
+	if (dest predicate selected) data.pred = p;
+	*/
+
+	// keep track of the number of threads that have executed in the warp
+	warp_info->inc_done_threads();
+	if (warp_info->get_done_threads() == inst.active_count()) {
+		warp_info->reset_done_threads();
+	}
 }
 
 void shl_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 

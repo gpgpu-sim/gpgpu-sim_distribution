@@ -110,6 +110,11 @@ void add_alignment_spec( int ) {PTX_PARSE_DPRINTF(" ");}
 void add_pragma( const char *a ) {PTX_PARSE_DPRINTF(" ");}
 void add_constptr(const char* identifier1, const char* identifier2, int offset) {PTX_PARSE_DPRINTF(" ");}
 
+//Jin: handle instructino group for cdp
+void start_inst_group(){PTX_PARSE_DPRINTF(" ");};
+void end_inst_group(){PTX_PARSE_DPRINTF(" ");};
+
+
 /*non-dummy stuff below this point*/
 
 extern cuobjdumpInstList *g_headerList;

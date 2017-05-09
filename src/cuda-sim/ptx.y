@@ -47,6 +47,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token  PTR_DIRECTIVE
 %token  ENTRY_DIRECTIVE
 %token  EXTERN_DIRECTIVE
+%token  WEAK_DIRECTIVE
 %token  FILE_DIRECTIVE
 %token  FUNC_DIRECTIVE
 %token  GLOBAL_DIRECTIVE
@@ -71,6 +72,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token  VERSION_DIRECTIVE
 %token  ADDRESS_SIZE_DIRECTIVE
 %token  VISIBLE_DIRECTIVE
+%token  WEAK_DIRECTIVE
 %token  <string_value> IDENTIFIER
 %token  <int_value> INT_OPERAND
 %token  <float_value> FLOAT_OPERAND
@@ -103,6 +105,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token  COMMA
 %token  PRED
 %token  HALF_OPTION
+%token  EXTP_OPTION
 %token  EQ_OPTION
 %token  NE_OPTION
 %token  LT_OPTION
@@ -191,6 +194,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token  CV_OPTION;
 %token  WB_OPTION;
 %token  WT_OPTION;
+%token	NC_OPTION;
+%token	UP_OPTION;
+%token	DOWN_OPTION;
+%token	BFLY_OPTION;
+%token	IDX_OPTION;
 
 %type <int_value> function_decl_header
 %type <ptr_value> function_decl
@@ -240,9 +248,12 @@ function_ident_param: IDENTIFIER { add_function_name($1); } LEFT_PAREN {func_hea
 
 function_decl_header: ENTRY_DIRECTIVE { $$ = 1; g_func_decl=1; func_header(".entry"); }
 	| VISIBLE_DIRECTIVE ENTRY_DIRECTIVE { $$ = 1; g_func_decl=1; func_header(".entry"); }
+	| WEAK_DIRECTIVE ENTRY_DIRECTIVE { $$ = 1; g_func_decl=1; func_header(".entry"); }
 	| FUNC_DIRECTIVE { $$ = 0; g_func_decl=1; func_header(".func"); }
 	| VISIBLE_DIRECTIVE FUNC_DIRECTIVE { $$ = 0; g_func_decl=1; func_header(".func"); }
+	| WEAK_DIRECTIVE FUNC_DIRECTIVE { $$ = 0; g_func_decl=1; func_header(".func"); }
 	| EXTERN_DIRECTIVE FUNC_DIRECTIVE { $$ = 2; g_func_decl=1; func_header(".func"); }
+	| WEAK_DIRECTIVE FUNC_DIRECTIVE { $$ = 0; g_func_decl=1; func_header(".func"); }
 	;
 
 param_list: /*empty*/
@@ -268,8 +279,8 @@ statement_list: directive_statement { add_directive(); }
 	| instruction_statement { add_instruction(); }
 	| statement_list directive_statement { add_directive(); }
 	| statement_list instruction_statement { add_instruction(); }
-	| statement_list statement_block
-	| statement_block
+	| statement_list {start_inst_group();} statement_block {end_inst_group();}
+	| {start_inst_group();} statement_block {end_inst_group();}
 	;
 
 directive_statement: variable_declaration SEMI_COLON
@@ -321,6 +332,7 @@ var_spec: space_spec
 	| type_spec
 	| align_spec
 	| EXTERN_DIRECTIVE { add_extern_spec(); }
+    | WEAK_DIRECTIVE
 	;
 
 align_spec: ALIGN_DIRECTIVE INT_OPERAND { add_alignment_spec($2); }
@@ -438,6 +450,7 @@ option: type_spec
 	| atomic_operation_spec ;
 	| TO_OPTION { add_option(TO_OPTION); }
 	| HALF_OPTION { add_option(HALF_OPTION); }
+	| EXTP_OPTION { add_option(EXTP_OPTION); }
 	| CA_OPTION { add_option(CA_OPTION); }
 	| CG_OPTION { add_option(CG_OPTION); }
 	| CS_OPTION { add_option(CS_OPTION); }
@@ -445,6 +458,11 @@ option: type_spec
 	| CV_OPTION { add_option(CV_OPTION); }
 	| WB_OPTION { add_option(WB_OPTION); }
 	| WT_OPTION { add_option(WT_OPTION); }
+	| NC_OPTION { add_option(NC_OPTION); }
+	| UP_OPTION { add_option(UP_OPTION); }
+	| DOWN_OPTION { add_option(DOWN_OPTION); }
+	| BFLY_OPTION { add_option(BFLY_OPTION); }
+	| IDX_OPTION { add_option(IDX_OPTION); }
 	;
 
 atomic_operation_spec: ATOMIC_AND { add_option(ATOMIC_AND); } 

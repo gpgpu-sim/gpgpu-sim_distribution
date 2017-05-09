@@ -82,8 +82,7 @@ section :	PTXHEADER {
 				snprintf(filename, 1024, "_cuobjdump_%d.elf", elfserial);
 				elffile = fopen(filename, "w");
 				setCuobjdumpelffilename(filename);
-			} headerinfo identifier{
-			} elfcode {
+			} headerinfo compressedkeyword identifier elfcode {
 				fclose(elffile);
 				snprintf(filename, 1024, "_cuobjdump_%d.sass", elfserial++);
 				sassfile = fopen(filename, "w");
