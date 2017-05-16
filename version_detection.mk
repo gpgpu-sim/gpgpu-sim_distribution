@@ -30,7 +30,13 @@
 ifeq ($(GPGPUSIM_ROOT),)
 else
 GPGPUSIM_VERSION=$(shell cat $(GPGPUSIM_ROOT)/version | awk '/Version/ {print $$8}' )
-GPGPUSIM_BUILD=$(shell cat $(GPGPUSIM_ROOT)/version | awk '/Change/ {print $$6}' )
+
+#Detect Git branch and commit #
+GIT_BRANCH := $(shell git branch | grep "\*" | sed -re 's/\*\s+(.*)/\1/')
+GIT_COMMIT := $(shell git log -n 1 | head -1 | sed -re 's/commit (.*)/\1/')
+GIT_FILES_CHANGED := $(shell git diff --numstat --cached && git diff --numstat | wc | sed -re 's/^\s+([0-9]+).*/\1/')
+GPGPUSIM_BUILD := "gpgpu-sim_$(GIT_BRANCH)_$(GIT_COMMIT)_modified_$(GIT_FILES_CHANGED)"
+$(shell mkdir -p $(SIM_OBJ_FILES_DIR)/libcuda && echo "const char *g_gpgpusim_build_string=\"$(GPGPUSIM_BUILD)\";" > $(SIM_OBJ_FILES_DIR)/detailed_version)
 endif
 
 # Detect CUDA Runtime Version 
@@ -42,4 +48,3 @@ CC_VERSION := $(shell gcc --version | head -1 | awk '{for(i=1;i<=NF;i++){ if(mat
 
 # Detect Support for C++11 (C++0x) from GCC Version 
 GNUC_CPP0X := $(shell gcc --version | perl -ne 'if (/gcc\s+\(.*\)\s+([0-9.]+)/){ if($$1 >= 4.3) {$$n=1} else {$$n=0;} } END { print $$n; }')
-
