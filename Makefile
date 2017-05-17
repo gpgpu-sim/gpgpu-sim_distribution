@@ -32,6 +32,7 @@
 # Specify INTERSIM folder, the folder will be located at $GPGPUSIM_ROOT/src/$INTERSIM
 INTERSIM ?= intersim2
 
+SHELL=/bin/bash
 include version_detection.mk
 
 ifeq ($(GPGPUSIM_CONFIG), gcc-$(CC_VERSION)/cuda-$(CUDART_VERSION)/debug)
@@ -140,7 +141,7 @@ no_opencl_support:
 	@echo "Warning: gpgpu-sim is building without opencl support. Make sure NVOPENCL_LIBDIR and NVOPENCL_INCDIR are set"
 
 $(SIM_LIB_DIR)/libcudart.so: makedirs $(LIBS) cudalib
-	g++ -shared -Wl,-soname,libcudart.so \
+	g++ -shared -Wl,-soname,libcudart.so.$(GPGPUSIM_BUILD) \
 			$(SIM_OBJ_FILES_DIR)/libcuda/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table/*.o \
