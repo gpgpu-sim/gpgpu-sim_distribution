@@ -1623,14 +1623,13 @@ kernel_info_t *gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
 }
 
 #include "../../version"
+#include "detailed_version"
 
 void print_splash()
 {
    static int splash_printed=0;
    if ( !splash_printed ) {
-      unsigned build=0;
-      sscanf(g_gpgpusim_build_string, "$Change"": %u $", &build);
-      fprintf(stdout, "\n\n        *** %s [build %u] ***\n\n\n", g_gpgpusim_version_string, build );
+      fprintf(stdout, "\n\n        *** %s [build %s] ***\n\n\n", g_gpgpusim_version_string, g_gpgpusim_build_string );
       splash_printed=1;
    }
 }
