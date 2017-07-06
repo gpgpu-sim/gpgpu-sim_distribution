@@ -142,7 +142,7 @@ $(OUTPUT_DIR)/ptx_parser.o: $(OUTPUT_DIR)/ptx.tab.c $(OUTPUT_DIR)/ptx_parser_dec
 $(OUTPUT_DIR)/ptxinfo.tab.o: $(OUTPUT_DIR)/ptx.tab.c
 $(OUTPUT_DIR)/ptx-stats.o: $(OUTPUT_DIR)/ptx.tab.c
 $(OUTPUT_DIR)/ptx_sim.o: $(OUTPUT_DIR)/ptx.tab.c
-$(OUTPUT_DIR)/cuda-sim.o: $(OUTPUT_DIR)/ptx.tab.c
+$(OUTPUT_DIR)/cuda-sim.o: $(OUTPUT_DIR)/ptx.tab.c $(SIM_OBJ_FILES_DIR)/detailed_version
 $(OUTPUT_DIR)/lex.ptxinfo_.o: $(OUTPUT_DIR)/ptx.tab.c
 $(OUTPUT_DIR)/lex.ptx_.o: $(OUTPUT_DIR)/ptx.tab.c
 $(OUTPUT_DIR)/cuda_device_runtime.o: $(OUTPUT_DIR)/ptx.tab.c
