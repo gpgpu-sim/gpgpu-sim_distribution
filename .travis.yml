@@ -5,7 +5,7 @@ services:
 
 before_install:
     - docker pull tgrogers/gpgpu-sim_regress:firsttry
-    - docker run tgrogers/gpgpu-sim_regress /bin/bash -c "pwd; ls"
+    - docker run tgrogers/gpgpu-sim_regress:firsttry /bin/bash -c "pwd; ls"
 
 language: cpp
 
