@@ -3,9 +3,10 @@ sudo: required
 services:
     - docker
 
-before_install: 
-    - docker pull tgrogers/gpgpu-sim_regress
-    - docker run tgrogers/gpgpu-sim_regress /bin/bash -c "pwd; ls"
+before_install:
+     ls
+#    - docker pull tgrogers/gpgpu-sim_regress
+#    - docker run tgrogers/gpgpu-sim_regress /bin/bash -c "pwd; ls"
 
 language: cpp
 
