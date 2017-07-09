@@ -5,9 +5,8 @@ services:
 
 before_install:
     - docker pull tgrogers/gpgpu-sim_regress:firsttry
-    - docker run tgrogers/gpgpu-sim_regress:firsttry /bin/bash -c "pwd; ls"
 
 language: cpp
 
 script:
-    ls && pwd && ls /
+    - docker run -v .:/home/runner/gpgpu-sim_distribution tgrogers/gpgpu-sim_regress:firsttry /bin/bash -c "./start_torque.sh; su - runner; cd gpgpu-sim_distribution; source setup_environment; make -j; cd ../gpgpu-sim_simulations/util/job_launching; ./run_simulations -N regress; ./monitor_fucn_test.py -N regress"
