@@ -9,4 +9,4 @@ before_install:
 language: cpp
 
 script:
-    - docker run -v `pwd`:/home/runner/gpgpu-sim_distribution tgrogers/gpgpu-sim_regress:firsttry /bin/bash -c "./start_torque.sh; su - runner; cd gpgpu-sim_distribution; source setup_environment; make -j; cd ../gpgpu-sim_simulations/util/job_launching; ./run_simulations -N regress; ./monitor_fucn_test.py -N regress"
+    - docker run -v `pwd`:/home/runner/gpgpu-sim_distribution tgrogers/gpgpu-sim_regress:firsttry /bin/bash -c "./start_torque.sh; su - runner -c 'source /home/runner/gpgpu-sim_distribution/setup_environment && make -j -C /home/runner/gpgpu-sim_distribution && cd /home/runner/gpgpu-sim_simulations/ && git pull && /home/runner/gpgpu-sim_simulations/util/job_launching/run_simulations.py -N regress && /home/runner/gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -N regress'"
