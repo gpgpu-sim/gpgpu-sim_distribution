@@ -195,7 +195,7 @@ struct memory_config {
       for (i=0; nbkt>0; i++) {
           nbkt = nbkt>>1;
       }
-      bk_tag_length = i;
+      bk_tag_length = i-1;
       assert(nbkgrp>0 && "Number of bank groups cannot be zero");
       tRCDWR = tRCD-(WL+1);
       tRTW = (CL+(BL/data_command_freq_ratio)+2-WL);
