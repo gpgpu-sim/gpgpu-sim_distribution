@@ -1,11 +1,23 @@
-dist: trusty
-before_install: 
-        - wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64/cuda-repo-ubuntu1404_7.5-18_amd64.deb		
-        - sudo dpkg -i cuda-repo-ubuntu1404_7.5-18_amd64.deb 
-        - sudo apt-get -qq update
-        - sudo apt-get install -y cuda
-        - sudo apt-get install -y build-essential xutils-dev bison zlib1g-dev flex libglu1-mesa-dev
-env: 
-        - CUDA_INSTALL_PATH=/usr/local/cuda-8.0/
+sudo: required
+
+before_install:
+    - docker pull tgrogers/gpgpu-sim_regress:latest
+
 language: cpp
-script: source ./setup_environment && make
+
+
+matrix:
+  include:
+    - services: docker
+      env: CONFIG=configs.gtx480.yml
+# This config is just taking far too long...
+#    - services: docker
+#      env: CONFIG=configs.gtx750ti.yml
+    - services: docker
+      env: CONFIG=configs.quadro5600.yml
+    - services: docker
+      env: CONFIG=configs.quadro5800.yml
+    - services: docker
+      env: CONFIG=configs.teslac2050.yml
+
+script: docker run -v `pwd`:/home/runner/gpgpu-sim_distribution:rw tgrogers/gpgpu-sim_regress:latest /bin/bash -c "./start_torque.sh; chown -R runner /home/runner/gpgpu-sim_distribution; su - runner -c 'source /home/runner/gpgpu-sim_distribution/setup_environment && make -j -C /home/runner/gpgpu-sim_distribution && cd /home/runner/gpgpu-sim_simulations/ && git pull && /home/runner/gpgpu-sim_simulations/util/job_launching/run_simulations.py -c /home/runner/gpgpu-sim_simulations/util/job_launching/regression_recipies/rodinia_2.0-ft/$CONFIG -N regress && /home/runner/gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress'"
