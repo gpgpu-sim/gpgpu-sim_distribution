@@ -10,8 +10,9 @@ matrix:
   include:
     - services: docker
       env: CONFIG=configs.gtx480.yml
-    - services: docker
-      env: CONFIG=configs.gtx750ti.yml
+# This config is just taking far too long...
+#    - services: docker
+#      env: CONFIG=configs.gtx750ti.yml
     - services: docker
       env: CONFIG=configs.quadro5600.yml
     - services: docker
