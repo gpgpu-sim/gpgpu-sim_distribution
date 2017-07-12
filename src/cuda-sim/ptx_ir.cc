@@ -498,7 +498,7 @@ void function_info::connect_basic_blocks( ) //iterate across m_basic_blocks of f
          if( pI->has_pred() ) {
             printf("GPGPU-Sim PTX: Warning detected predicated return/exit.\n");
             // if predicated, add link to next block
-            unsigned next_addr = pI->get_m_instr_mem_index() + 1;
+            unsigned next_addr = pI->get_m_instr_mem_index() + pI->inst_size();
             if( next_addr < m_instr_mem_size && m_instr_mem[next_addr] ) {
                basic_block_t *next_bb = m_instr_mem[next_addr]->get_bb();
                (*bb_itr)->successor_ids.insert(next_bb->bb_id);

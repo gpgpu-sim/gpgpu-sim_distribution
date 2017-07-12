@@ -1,5 +1,7 @@
 LOG:
 Version 3.2.3+edits (development branch) versus 3.2.3
+- Support for running regression tests using Travis
+- Support added for CUDA dynamic parallelism (courtesy of Jin Wang from Georgia Tech)
 - Added a parameter to the cache configuration to configure the set index 
   function. Added a hash set index function to the Fermi L1 data cache for 
   the two default cache sizes, 16KB/48KB with 32/64 sets.
