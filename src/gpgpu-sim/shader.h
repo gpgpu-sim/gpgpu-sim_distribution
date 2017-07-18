@@ -316,7 +316,7 @@ enum concrete_scheduler
     CONCRETE_SCHEDULER_GTO,
     CONCRETE_SCHEDULER_TWO_LEVEL_ACTIVE,
     CONCRETE_SCHEDULER_WARP_LIMITING,
-	CONCRETE_SCHEDULER_OLDEST_FIRST,
+    CONCRETE_SCHEDULER_OLDEST_FIRST,
     NUM_CONCRETE_SCHEDULERS
 };
 
@@ -456,7 +456,7 @@ public:
 	: scheduler_unit ( stats, shader, scoreboard, simt, warp, sp_out, sfu_out, mem_out, id ){}
 	virtual ~oldest_scheduler () {}
 	virtual void order_warps ();
-    virtual void done_adding_supervised_warps() {
+        virtual void done_adding_supervised_warps() {
         m_last_supervised_issued = m_supervised_warps.begin();
     }
 

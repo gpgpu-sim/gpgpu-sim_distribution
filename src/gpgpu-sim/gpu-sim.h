@@ -314,8 +314,6 @@ public:
     unsigned num_shader() const { return m_shader_config.num_shader(); }
     unsigned num_cluster() const { return m_shader_config.n_simt_clusters; }
     unsigned get_max_concurrent_kernel() const { return max_concurrent_kernel; }
-    unsigned get_gpu_max_cycle_opt() const { return gpu_max_cycle_opt; }
-    unsigned get_gpu_max_insn_opt() const { return gpu_max_insn_opt; }
 
 private:
     void init_clock_domains(void ); 

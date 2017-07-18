@@ -132,8 +132,8 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                          CONCRETE_SCHEDULER_TWO_LEVEL_ACTIVE :
                                          sched_config.find("gto") != std::string::npos ?
                                          CONCRETE_SCHEDULER_GTO :
-										 sched_config.find("old") != std::string::npos ?
-										 CONCRETE_SCHEDULER_OLDEST_FIRST :
+					 sched_config.find("old") != std::string::npos ?
+					 CONCRETE_SCHEDULER_OLDEST_FIRST :
                                          sched_config.find("warp_limiting") != std::string::npos ?
                                          CONCRETE_SCHEDULER_WARP_LIMITING:
                                          NUM_CONCRETE_SCHEDULERS;
@@ -187,16 +187,16 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                 break;
             case CONCRETE_SCHEDULER_OLDEST_FIRST:
 				schedulers.push_back(
-					new oldest_scheduler( m_stats,
-									   this,
-									   m_scoreboard,
-									   m_simt_stack,
-									   &m_warp,
-									   &m_pipeline_reg[ID_OC_SP],
-									   &m_pipeline_reg[ID_OC_SFU],
-									   &m_pipeline_reg[ID_OC_MEM],
-									   i
-									 )
+		    new oldest_scheduler( m_stats,
+					  this,
+					  m_scoreboard,
+					  m_simt_stack,
+					  &m_warp,
+					  &m_pipeline_reg[ID_OC_SP],
+					  &m_pipeline_reg[ID_OC_SFU],
+					  &m_pipeline_reg[ID_OC_MEM],
+					  i
+					 )
 				);
 				break;
             case CONCRETE_SCHEDULER_WARP_LIMITING:
@@ -750,12 +750,13 @@ void shader_core_ctx::issue_warp( register_set& pipe_reg_set, const warp_inst_t*
 
 void shader_core_ctx::issue(){
 
-	unsigned j;
-	for (unsigned i = 0; i < schedulers.size(); i++) {
-		j = (Issue_Prio + i) % schedulers.size();
-		schedulers[j]->cycle();
-	}
-	Issue_Prio = (Issue_Prio+1)% schedulers.size();
+     //Ensure fair round robin issu between schedulers 
+     unsigned j;
+     for (unsigned i = 0; i < schedulers.size(); i++) {
+	j = (Issue_Prio + i) % schedulers.size();
+	schedulers[j]->cycle();
+     }
+     Issue_Prio = (Issue_Prio+1)% schedulers.size();
 
     //really is issue;
     //for (unsigned i = 0; i < schedulers.size(); i++) {
@@ -876,8 +877,8 @@ void scheduler_unit::cycle()
         unsigned checked=0;
         unsigned issued=0;
         exec_unit_type_t previous_issued_inst_exec_type = exec_unit_type_t::NONE;
-		unsigned max_issue = m_shader->m_config->gpgpu_max_insn_issue_per_warp;
-		bool diff_exec_units = m_shader->m_config->gpgpu_dual_issue_diff_exec_units;
+	unsigned max_issue = m_shader->m_config->gpgpu_max_insn_issue_per_warp;
+	bool diff_exec_units = m_shader->m_config->gpgpu_dual_issue_diff_exec_units;
         while( !warp(warp_id).waiting() && !warp(warp_id).ibuffer_empty() && (checked < max_issue) && (checked <= issued) && (issued < max_issue) ) {
             const warp_inst_t *pI = warp(warp_id).ibuffer_next_inst();
             //Jin: handle cdp latency;
@@ -1062,7 +1063,7 @@ void oldest_scheduler::order_warps()
                        m_supervised_warps,
                        m_last_supervised_issued,
                        m_supervised_warps.size(),
-					   ORDERED_PRIORITY_FUNC_ONLY,
+		       ORDERED_PRIORITY_FUNC_ONLY,
                        scheduler_unit::sort_warps_by_oldest_dynamic_id );
 }
 

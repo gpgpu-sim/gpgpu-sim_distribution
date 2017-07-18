@@ -315,11 +315,11 @@ void warp_inst_t::generate_mem_accesses()
 
     case global_space: case local_space: case param_space_local:
     	 if( m_config->gpgpu_coalesce_arch == 13 || m_config->gpgpu_coalesce_arch == 20) {
-		   if(isatomic())
-			   memory_coalescing_arch_atomic(is_write, access_type);
-		   else
-			   memory_coalescing_arch(is_write, access_type);
-		} else abort();
+            if(isatomic())
+                memory_coalescing_arch_atomic(is_write, access_type);
+            else
+                memory_coalescing_arch(is_write, access_type);
+         } else abort();
 
         break;
 
@@ -358,7 +358,7 @@ void warp_inst_t::memory_coalescing_arch( bool is_write, mem_access_type access_
     unsigned segment_size = 0;
     unsigned warp_parts;
 
-    //TO DO: need to double check how double number are coalesced!
+    //TO DO: need to double check how doubles are coalesced!
     if(data_size == 1)
     {
     	//If it is byte data, then coalesce on the whole 32 threads, regardless the arch version
@@ -367,7 +367,7 @@ void warp_inst_t::memory_coalescing_arch( bool is_write, mem_access_type access_
     else if(m_config->gpgpu_coalesce_arch == 13)
     {
     	//mem_warp_parts should equal 2 for arch=13
-    	//we still use the parameter mem_warp_parts for arch=13 to ensure it is backward compatibility with older gpgpu config files
+    	//use the parameter mem_warp_parts for arch=13 to ensure it is backward compatibility with older gpgpu config files
     	warp_parts = m_config->mem_warp_parts;
     }
     else if(m_config->gpgpu_coalesce_arch == 20)

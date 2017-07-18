@@ -685,7 +685,7 @@ public:
                  bool wr, 
                  const active_mask_t &active_mask,
                  const mem_access_byte_mask_t &byte_mask,
-				 const mem_access_sector_mask_t &sector_mask)
+		 const mem_access_sector_mask_t &sector_mask)
     : m_warp_mask(active_mask), m_byte_mask(byte_mask), m_sector_mask(sector_mask)
    {
       init();

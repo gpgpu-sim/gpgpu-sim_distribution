@@ -868,7 +868,7 @@ data_cache::wr_miss_wa( new_addr_type addr,
                         false, // Now performing a read
                         mf->get_access_warp_mask(),
                         mf->get_access_byte_mask(),
-						mf->get_access_sector_mask());
+		        mf->get_access_sector_mask());
 
     mem_fetch *n_mf = new mem_fetch( *ma,
                     NULL,
