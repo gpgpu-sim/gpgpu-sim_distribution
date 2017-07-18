@@ -146,7 +146,16 @@ void InterconnectInterface::Init()
 void InterconnectInterface::Push(unsigned input_deviceID, unsigned output_deviceID, void *data, unsigned int size)
 {
   // it should have free buffer
-  assert(HasBuffer(input_deviceID, size));
+	bool hasBuffer = HasBuffer(input_deviceID, size);
+#if 0
+	if(!hasBuffer)
+	{
+		cout<<"No free buffer for input_deviceID: "<<input_deviceID;
+		cout<<", output_deviceID: "<<output_deviceID;
+		cout<<", size: "<<size<<endl;
+	}
+#endif
+    assert(hasBuffer);
   
   int output_icntID = _node_map[output_deviceID];
   int input_icntID = _node_map[input_deviceID];
