@@ -81,6 +81,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
     m_memory_config = mem_config;
     m_stats = stats;
     unsigned warp_size=config->warp_size;
+    Issue_Prio = 0;
     
     m_sid = shader_id;
     m_tpc = tpc_id;
@@ -131,6 +132,8 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                          CONCRETE_SCHEDULER_TWO_LEVEL_ACTIVE :
                                          sched_config.find("gto") != std::string::npos ?
                                          CONCRETE_SCHEDULER_GTO :
+					 sched_config.find("old") != std::string::npos ?
+					 CONCRETE_SCHEDULER_OLDEST_FIRST :
                                          sched_config.find("warp_limiting") != std::string::npos ?
                                          CONCRETE_SCHEDULER_WARP_LIMITING:
                                          NUM_CONCRETE_SCHEDULERS;
@@ -182,6 +185,20 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                      )
                 );
                 break;
+            case CONCRETE_SCHEDULER_OLDEST_FIRST:
+				schedulers.push_back(
+		    new oldest_scheduler( m_stats,
+					  this,
+					  m_scoreboard,
+					  m_simt_stack,
+					  &m_warp,
+					  &m_pipeline_reg[ID_OC_SP],
+					  &m_pipeline_reg[ID_OC_SFU],
+					  &m_pipeline_reg[ID_OC_MEM],
+					  i
+					 )
+				);
+				break;
             case CONCRETE_SCHEDULER_WARP_LIMITING:
                 schedulers.push_back(
                     new swl_scheduler( m_stats,
@@ -465,6 +482,14 @@ void shader_core_stats::print( FILE* fout ) const
    for (unsigned i = 3; i < m_config->warp_size + 3; i++) 
       fprintf(fout, "\tW%d:%d", i-2, shader_cycle_distro[i]);
    fprintf(fout, "\n");
+   fprintf(fout, "single_issue_nums: ");
+   for (unsigned i = 0; i < m_config->gpgpu_num_sched_per_core; i++)
+        fprintf(fout, "WS%d:%d\t", i, single_issue_nums[i]);
+   fprintf(fout, "\n");
+   fprintf(fout, "dual_issue_nums: ");
+   for (unsigned i = 0; i < m_config->gpgpu_num_sched_per_core; i++)
+          fprintf(fout, "WS%d:%d\t", i, dual_issue_nums[i]);
+   fprintf(fout, "\n");
 
    m_outgoing_traffic_stats->print(fout); 
    m_incoming_traffic_stats->print(fout); 
@@ -724,10 +749,19 @@ void shader_core_ctx::issue_warp( register_set& pipe_reg_set, const warp_inst_t*
 }
 
 void shader_core_ctx::issue(){
+
+     //Ensure fair round robin issu between schedulers 
+     unsigned j;
+     for (unsigned i = 0; i < schedulers.size(); i++) {
+	j = (Issue_Prio + i) % schedulers.size();
+	schedulers[j]->cycle();
+     }
+     Issue_Prio = (Issue_Prio+1)% schedulers.size();
+
     //really is issue;
-    for (unsigned i = 0; i < schedulers.size(); i++) {
-        schedulers[i]->cycle();
-    }
+    //for (unsigned i = 0; i < schedulers.size(); i++) {
+    //    schedulers[i]->cycle();
+    //}
 }
 
 shd_warp_t& scheduler_unit::warp(int i){
@@ -842,7 +876,9 @@ void scheduler_unit::cycle()
         unsigned warp_id = (*iter)->get_warp_id();
         unsigned checked=0;
         unsigned issued=0;
-        unsigned max_issue = m_shader->m_config->gpgpu_max_insn_issue_per_warp;
+        exec_unit_type_t previous_issued_inst_exec_type = exec_unit_type_t::NONE;
+	unsigned max_issue = m_shader->m_config->gpgpu_max_insn_issue_per_warp;
+	bool diff_exec_units = m_shader->m_config->gpgpu_dual_issue_diff_exec_units;
         while( !warp(warp_id).waiting() && !warp(warp_id).ibuffer_empty() && (checked < max_issue) && (checked <= issued) && (issued < max_issue) ) {
             const warp_inst_t *pI = warp(warp_id).ibuffer_next_inst();
             //Jin: handle cdp latency;
@@ -876,16 +912,17 @@ void scheduler_unit::cycle()
                         const active_mask_t &active_mask = m_simt_stack[warp_id]->get_active_mask();
                         assert( warp(warp_id).inst_in_pipeline() );
                         if ( (pI->op == LOAD_OP) || (pI->op == STORE_OP) || (pI->op == MEMORY_BARRIER_OP) ) {
-                            if( m_mem_out->has_free() ) {
+                        	if( m_mem_out->has_free() && (!diff_exec_units || previous_issued_inst_exec_type != exec_unit_type_t::MEM)) {
                                 m_shader->issue_warp(*m_mem_out,pI,active_mask,warp_id);
                                 issued++;
                                 issued_inst=true;
                                 warp_inst_issued = true;
+                                previous_issued_inst_exec_type = exec_unit_type_t::MEM;
                             }
                         } else {
                             bool sp_pipe_avail = m_sp_out->has_free();
                             bool sfu_pipe_avail = m_sfu_out->has_free();
-                            if( sp_pipe_avail && (pI->op != SFU_OP) ) {
+                            if( sp_pipe_avail && (pI->op != SFU_OP) && (!diff_exec_units || previous_issued_inst_exec_type != exec_unit_type_t::SP)) {
                                 
                                 //Jin: special for CDP api
                                 if(pI->m_is_cdp && !warp(warp_id).m_cdp_dummy) {
@@ -910,14 +947,17 @@ void scheduler_unit::cycle()
                                 issued++;
                                 issued_inst=true;
                                 warp_inst_issued = true;
-                            } else if ( (pI->op == SFU_OP) || (pI->op == ALU_SFU_OP) ) {
+                                previous_issued_inst_exec_type = exec_unit_type_t::SP;
+                            } else if ( (pI->op == SFU_OP) || (pI->op == ALU_SFU_OP) && (!diff_exec_units || previous_issued_inst_exec_type != exec_unit_type_t::SFU)) {
                                 if( sfu_pipe_avail ) {
                                     m_shader->issue_warp(*m_sfu_out,pI,active_mask,warp_id);
                                     issued++;
                                     issued_inst=true;
                                     warp_inst_issued = true;
+                                    previous_issued_inst_exec_type = exec_unit_type_t::SFU;
                                 }
-                            }                         }
+                            }
+                        }
                     } else {
                         SCHED_DPRINTF( "Warp (warp_id %u, dynamic_warp_id %u) fails scoreboard\n",
                                        (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id() );
@@ -952,6 +992,14 @@ void scheduler_unit::cycle()
                     m_last_supervised_issued = supervised_iter;
                 }
             }
+
+            if(issued == 1)
+            	m_stats->single_issue_nums[m_id]++;
+            else if(issued > 1)
+            	m_stats->dual_issue_nums[m_id]++;
+            else
+            	abort();   //issued should be > 0
+
             break;
         } 
     }
@@ -1006,6 +1054,16 @@ void gto_scheduler::order_warps()
                        m_last_supervised_issued,
                        m_supervised_warps.size(),
                        ORDERING_GREEDY_THEN_PRIORITY_FUNC,
+                       scheduler_unit::sort_warps_by_oldest_dynamic_id );
+}
+
+void oldest_scheduler::order_warps()
+{
+    order_by_priority( m_next_cycle_prioritized_warps,
+                       m_supervised_warps,
+                       m_last_supervised_issued,
+                       m_supervised_warps.size(),
+		       ORDERED_PRIORITY_FUNC_ONLY,
                        scheduler_unit::sort_warps_by_oldest_dynamic_id );
 }
 

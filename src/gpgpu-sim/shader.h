@@ -70,6 +70,14 @@
 
 #define WRITE_MASK_SIZE 8
 
+enum exec_unit_type_t
+{
+  NONE = 0,
+  SP = 1,
+  SFU = 2,
+  MEM = 3,
+  DP = 4
+};
 
 class thread_ctx_t {
 public:
@@ -308,6 +316,7 @@ enum concrete_scheduler
     CONCRETE_SCHEDULER_GTO,
     CONCRETE_SCHEDULER_TWO_LEVEL_ACTIVE,
     CONCRETE_SCHEDULER_WARP_LIMITING,
+    CONCRETE_SCHEDULER_OLDEST_FIRST,
     NUM_CONCRETE_SCHEDULERS
 };
 
@@ -435,6 +444,23 @@ public:
 
 };
 
+class oldest_scheduler : public scheduler_unit {
+public:
+	oldest_scheduler ( shader_core_stats* stats, shader_core_ctx* shader,
+                    Scoreboard* scoreboard, simt_stack** simt,
+                    std::vector<shd_warp_t>* warp,
+                    register_set* sp_out,
+                    register_set* sfu_out,
+                    register_set* mem_out,
+                    int id )
+	: scheduler_unit ( stats, shader, scoreboard, simt, warp, sp_out, sfu_out, mem_out, id ){}
+	virtual ~oldest_scheduler () {}
+	virtual void order_warps ();
+        virtual void done_adding_supervised_warps() {
+        m_last_supervised_issued = m_supervised_warps.begin();
+    }
+
+};
 
 class two_level_active_scheduler : public scheduler_unit {
 public:
@@ -1294,12 +1320,11 @@ struct shader_core_config : public core_config
     mutable cache_config m_L1C_config;
     mutable l1d_cache_config m_L1D_config;
 
-    bool gmem_skip_L1D; // on = global memory access always skip the L1 cache 
-    
     bool gpgpu_dwf_reg_bankconflict;
 
     int gpgpu_num_sched_per_core;
     int gpgpu_max_insn_issue_per_warp;
+    bool gpgpu_dual_issue_diff_exec_units;
 
     //op collector
     int gpgpu_operand_collector_num_units_sp;
@@ -1401,6 +1426,8 @@ struct shader_core_stats_pod {
     unsigned *last_shader_cycle_distro;
     unsigned *num_warps_issuable;
     unsigned gpgpu_n_stall_shd_mem;
+    unsigned* single_issue_nums;
+    unsigned* dual_issue_nums;
 
     //memory access classification
     int gpgpu_n_mem_read_local;
@@ -1469,6 +1496,8 @@ public:
         m_n_diverge = (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         shader_cycle_distro = (unsigned*) calloc(config->warp_size+3, sizeof(unsigned));
         last_shader_cycle_distro = (unsigned*) calloc(m_config->warp_size+3, sizeof(unsigned));
+        single_issue_nums = (unsigned*) calloc(config->gpgpu_num_sched_per_core,sizeof(unsigned));
+        dual_issue_nums = (unsigned*) calloc(config->gpgpu_num_sched_per_core, sizeof(unsigned));
 
         n_simt_to_mem = (long *)calloc(config->num_shader(), sizeof(long));
         n_mem_to_simt = (long *)calloc(config->num_shader(), sizeof(long));
@@ -1829,6 +1858,9 @@ public:
 
     //schedule
     std::vector<scheduler_unit*>  schedulers;
+
+    //issue
+    unsigned int Issue_Prio;
 
     // execute
     unsigned m_num_function_units;
