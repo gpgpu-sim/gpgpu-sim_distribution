@@ -285,6 +285,15 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_shmem_warp_parts", OPT_INT32, &mem_warp_parts,  
                  "Number of portions a warp is divided into for shared memory bank conflict check ",
                  "2");
+    option_parser_register(opp, "-gpgpu_L1_warp_parts_cached", OPT_INT32, &L1_warp_parts_cached,
+				 "Number of portions a warp is divided into when the request is cached",
+				 "2");
+    option_parser_register(opp, "-gpgpu_L1_warp_parts_cached", OPT_INT32, &L1_warp_parts_non_cached,
+				 "Number of portions a warp is divided into when the request is not cached",
+				 "4");
+    option_parser_register(opp, "-gpgpu_shmem_warp_parts", OPT_INT32, &mem_warp_parts,
+				 "Number of portions a warp is divided into for shared memory bank conflict check ",
+				 "2");
     option_parser_register(opp, "-gpgpu_warpdistro_shader", OPT_INT32, &gpgpu_warpdistro_shader, 
                 "Specify which shader core to collect the warp size distribution from", 
                 "-1");
@@ -293,7 +302,7 @@ void shader_core_config::reg_options(class OptionParser * opp)
                 "0");
     option_parser_register(opp, "-gpgpu_local_mem_map", OPT_BOOL, &gpgpu_local_mem_map, 
                 "Mapping from local memory space address to simulated GPU physical address space (default = enabled)", 
-                "1");
+				 "1");
     option_parser_register(opp, "-gpgpu_num_reg_banks", OPT_INT32, &gpgpu_num_reg_banks, 
                 "Number of register banks (default = 8)", 
                 "8");
@@ -337,14 +346,17 @@ void shader_core_config::reg_options(class OptionParser * opp)
                            "number of collector unit in ports (default = 0)", 
                            "0");
     option_parser_register(opp, "-gpgpu_coalesce_arch", OPT_INT32, &gpgpu_coalesce_arch, 
-                            "Coalescing arch (default = 13, anything else is off for now)", 
+    		                    "Coalescing arch (GT200 = 13, Fermi = 20)",
                             "13");
     option_parser_register(opp, "-gpgpu_num_sched_per_core", OPT_INT32, &gpgpu_num_sched_per_core, 
                             "Number of warp schedulers per core", 
                             "1");
     option_parser_register(opp, "-gpgpu_max_insn_issue_per_warp", OPT_INT32, &gpgpu_max_insn_issue_per_warp,
-                            "Max number of instructions that can be issued per warp in one cycle by scheduler",
-                            "2");
+    						"Max number of instructions that can be issued per warp in one cycle by scheduler (either 1 or 2)",
+							"2");
+    option_parser_register(opp, "-gpgpu_dual_issue_diff_exec_units", OPT_BOOL, &gpgpu_dual_issue_diff_exec_units,
+							"should dual issue use two different execution unit resources",
+							 "1");
     option_parser_register(opp, "-gpgpu_simt_core_sim_order", OPT_INT32, &simt_core_sim_order,
                             "Select the simulation order of cores in a cluster (0=Fix, 1=Round-Robin)",
                             "1");

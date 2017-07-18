@@ -332,12 +332,15 @@ struct core_config {
     unsigned gpgpu_shmem_sizeDefault;
     unsigned gpgpu_shmem_sizePrefL1;
     unsigned gpgpu_shmem_sizePrefShared;
+    unsigned L1_warp_parts_cached;
+    unsigned L1_warp_parts_non_cached;
 
     // texture and constant cache line sizes (used to determine number of memory accesses)
     unsigned gpgpu_cache_texl1_linesize;
     unsigned gpgpu_cache_constl1_linesize;
 
 	unsigned gpgpu_max_insn_issue_per_warp;
+	bool gmem_skip_L1D; // on = global memory access always skip the L1 cache
 };
 
 // bounded stack that implements simt reconvergence using pdom mechanism from MICRO'07 paper
@@ -615,6 +618,8 @@ private:
 
 const unsigned MAX_MEMORY_ACCESS_SIZE = 128;
 typedef std::bitset<MAX_MEMORY_ACCESS_SIZE> mem_access_byte_mask_t;
+const unsigned SECTOR_CHUNCK_SIZE = 4;
+typedef std::bitset<SECTOR_CHUNCK_SIZE> mem_access_sector_mask_t;
 #define NO_PARTIAL_WRITE (mem_access_byte_mask_t())
 
 #define MEM_ACCESS_TYPE_TUP_DEF \
@@ -679,8 +684,9 @@ public:
                  unsigned size, 
                  bool wr, 
                  const active_mask_t &active_mask,
-                 const mem_access_byte_mask_t &byte_mask )
-    : m_warp_mask(active_mask), m_byte_mask(byte_mask)
+                 const mem_access_byte_mask_t &byte_mask,
+				 const mem_access_sector_mask_t &sector_mask)
+    : m_warp_mask(active_mask), m_byte_mask(byte_mask), m_sector_mask(sector_mask)
    {
       init();
       m_type = type;
@@ -696,6 +702,7 @@ public:
    bool is_write() const { return m_write; }
    enum mem_access_type get_type() const { return m_type; }
    mem_access_byte_mask_t get_byte_mask() const { return m_byte_mask; }
+   mem_access_sector_mask_t get_sector_mask() const { return m_sector_mask; }
 
    void print(FILE *fp) const
    {
@@ -729,6 +736,7 @@ private:
    mem_access_type m_type;
    active_mask_t m_warp_mask;
    mem_access_byte_mask_t m_byte_mask;
+   mem_access_sector_mask_t m_sector_mask;
 
    static unsigned sm_next_access_uid;
 };
@@ -938,9 +946,9 @@ public:
     };
 
     void generate_mem_accesses();
-    void memory_coalescing_arch_13( bool is_write, mem_access_type access_type );
-    void memory_coalescing_arch_13_atomic( bool is_write, mem_access_type access_type );
-    void memory_coalescing_arch_13_reduce_and_send( bool is_write, mem_access_type access_type, const transaction_info &info, new_addr_type addr, unsigned segment_size );
+    void memory_coalescing_arch( bool is_write, mem_access_type access_type );
+    void memory_coalescing_arch_atomic( bool is_write, mem_access_type access_type );
+    void memory_coalescing_arch_reduce_and_send( bool is_write, mem_access_type access_type, const transaction_info &info, new_addr_type addr, unsigned segment_size );
 
     void add_callback( unsigned lane_id, 
                        void (*function)(const class inst_t*, class ptx_thread_info*),
