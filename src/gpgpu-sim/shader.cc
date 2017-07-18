@@ -482,11 +482,11 @@ void shader_core_stats::print( FILE* fout ) const
    for (unsigned i = 3; i < m_config->warp_size + 3; i++) 
       fprintf(fout, "\tW%d:%d", i-2, shader_cycle_distro[i]);
    fprintf(fout, "\n");
-   fprintf(fout, "single_issue_nums:");
+   fprintf(fout, "single_issue_nums: ");
    for (unsigned i = 0; i < m_config->gpgpu_num_sched_per_core; i++)
         fprintf(fout, "WS%d:%d\t", i, single_issue_nums[i]);
    fprintf(fout, "\n");
-   fprintf(fout, "dual_issue_nums:");
+   fprintf(fout, "dual_issue_nums: ");
    for (unsigned i = 0; i < m_config->gpgpu_num_sched_per_core; i++)
           fprintf(fout, "WS%d:%d\t", i, dual_issue_nums[i]);
    fprintf(fout, "\n");
@@ -911,8 +911,8 @@ void scheduler_unit::cycle()
                         ready_inst = true;
                         const active_mask_t &active_mask = m_simt_stack[warp_id]->get_active_mask();
                         assert( warp(warp_id).inst_in_pipeline() );
-                        if( m_mem_out->has_free() && (!diff_exec_units || previous_issued_inst_exec_type != exec_unit_type_t::MEM)) {
-                            if( m_mem_out->has_free() ) {
+                        if ( (pI->op == LOAD_OP) || (pI->op == STORE_OP) || (pI->op == MEMORY_BARRIER_OP) ) {
+                        	if( m_mem_out->has_free() && (!diff_exec_units || previous_issued_inst_exec_type != exec_unit_type_t::MEM)) {
                                 m_shader->issue_warp(*m_mem_out,pI,active_mask,warp_id);
                                 issued++;
                                 issued_inst=true;
