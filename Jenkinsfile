@@ -17,17 +17,7 @@ pipeline {
                 ./util/job_launching/run_simulations.py -N regress && \
                 ./util/job_launching/monitor_func_test.py -v -N regress'
 
-
-                step(def to = emailextrecipients([
-                    [$class: 'CulpritsRecipientProvider'],
-                    [$class: 'DevelopersRecipientProvider'],
-                    [$class: 'RequesterRecipientProvider']
-                ])
-
-                if(to != null && !to.isEmpty()) {
-                        mail to: to, subject: "[AALP Jenkins] Build ${currentBuild.result}!",
-                                    body: "See ${env.BUILD_URL}"
-                })
+            step([$class: 'Mailer', notifyEveryUnstableBuild: true, recipients: emailextrecipients([[$class: 'CulpritsRecipientProvider'], [$class: 'RequesterRecipientProvider']])])
             }
         }
     }
