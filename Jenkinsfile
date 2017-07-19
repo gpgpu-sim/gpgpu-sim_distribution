@@ -16,7 +16,19 @@ pipeline {
                 make -j -C ./benchmarks/src all && \
                 ./util/job_launching/run_simulations.py -N regress && \
                 ./util/job_launching/monitor_func_test.py -v -N regress'
+
+                emailex
+                body: '''$PROJECT_NAME - Build # $BUILD_NUMBER - $BUILD_STATUS:
+                Check console output at $BUILD_URL to view the results.''',
+                recipientProviders: [[$class: 'CulpritsRecipientProvider'],
+                [$class: 'RequesterRecipientProvider']],
+                replyTo: 'tgrogers@purdue.edu',
+                subject: '[AALP Jenkins]: $PROJECT_NAME - Build # $BUILD_NUMBER - $BUILD_STATUS!',
+                to: 'tgrogers@purdue.edu'
             }
         }
     }
+
+
+
 }
