@@ -18,7 +18,7 @@ pipeline {
                 ./util/job_launching/monitor_func_test.py -v -N regress'
 
 
-                def to = emailextrecipients([
+                step(def to = emailextrecipients([
                     [$class: 'CulpritsRecipientProvider'],
                     [$class: 'DevelopersRecipientProvider'],
                     [$class: 'RequesterRecipientProvider']
@@ -27,7 +27,7 @@ pipeline {
                 if(to != null && !to.isEmpty()) {
                         mail to: to, subject: "[AALP Jenkins] Build ${currentBuild.result}!",
                                     body: "See ${env.BUILD_URL}"
-                }
+                })
             }
         }
     }
