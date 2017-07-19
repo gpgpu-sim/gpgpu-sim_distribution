@@ -18,12 +18,12 @@ pipeline {
                 ./util/job_launching/monitor_func_test.py -v -N regress'
 
                 emailex
-                body: '''$JOB_NAME - $BRANCH_NAME - Build # currentBuild.number - currentBuild.result:
-                Check console output at $BUILD_URL to view the results.''',
-                recipientProviders: [[$class: 'CulpritsRecipientProvider'],
-                [$class: 'RequesterRecipientProvider']],
-                replyTo: 'tgrogers@purdue.edu',
-                subject: '[AALP Jenkins]: $JOB_NAME - Build # currentBuild.number - currentBuild.result!',
+                body: "$JOB_NAME - $BRANCH_NAME - Build # currentBuild.number - currentBuild.result:
+                Check console output at $BUILD_URL to view the results.",
+                recipientProviders: [[$class: "CulpritsRecipientProvider"],
+                [$class: "RequesterRecipientProvider"]],
+                replyTo: "tgrogers@purdue.edu",
+                subject: "[AALP Jenkins]: $JOB_NAME - Build # currentBuild.number - currentBuild.result!",
                 to: 'tgrogers@purdue.edu'
             }
         }
