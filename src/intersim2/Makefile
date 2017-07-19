@@ -125,6 +125,14 @@ endif
 
 # rules to compile simulator
 
+$(OBJDIR)/Makefile.makedepend: depend
+
+ALL_SRCS = $(CPP_SRCS)
+ALL_SRCS += $(shell ls **/*.cpp)
+
+depend:
+	touch $(OBJDIR)/Makefile.makedepend
+	makedepend -f$(OBJDIR)/Makefile.makedepend -I$(INCPATH) -p$(OBJDIR)/ $(ALL_SRCS) 2> /dev/null
 
 ${LEX_OBJS}: $(OBJDIR)/lex.yy.c $(OBJDIR)/y.tab.h
 	$(CC) $(CPPFLAGS) -c $< -o $@
@@ -173,3 +181,5 @@ $(OBJDIR)/y.tab.c $(OBJDIR)/y.tab.h: config.y
 
 $(OBJDIR)/lex.yy.c: config.l
 	$(LEX) -o$@ $<
+
+include $(OBJDIR)/Makefile.makedepend
