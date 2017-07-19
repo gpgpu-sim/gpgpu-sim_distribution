@@ -17,7 +17,11 @@ pipeline {
                 ./util/job_launching/run_simulations.py -N regress && \
                 ./util/job_launching/monitor_func_test.py -v -N regress'
 
-            step([$class: 'Mailer', notifyEveryUnstableBuild: true, recipients: emailextrecipients([[$class: 'CulpritsRecipientProvider'], [$class: 'RequesterRecipientProvider']])])
+                emailext body: 'See ${env.BUILD_URL}',
+                    recipientProviders: [[$class: 'CulpritsRecipientProvider'],
+                            [$class: 'RequesterRecipientProvider']],
+                        subject: '[AALP Jenkins] Build #${currentBuild.number} - ${currentBuild.result}',
+                        to: 'tgrogers@purdue.edu'
             }
         }
     }
