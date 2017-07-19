@@ -36,7 +36,7 @@ DEBUG ?= 0
 LEX = flex
 YACC   = bison -y
 DEFINE = #-DTRACK_STALLS -DTRACK_BUFFERS -DTRACK_FLOWS -DTRACK_CREDITS
-INCPATH = -I. -Iarbiters -Iallocators -Irouters -Inetworks -Ipower
+INCPATH = -I. -Iarbiters -Iallocators -Irouters -Inetworks -Ipower -I$(GPGPUSIM_ROOT)/src
 
 ifeq ($(CREATE_LIBRARY),1)
 INCPATH += -I$(GPGPUSIM_ROOT)/src/gpgpu-sim/
