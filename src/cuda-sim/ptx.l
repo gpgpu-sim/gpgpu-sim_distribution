@@ -182,6 +182,7 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.union  TC; return UNION_DIRECTIVE; /* not in PTX 2.1 */
 \.version TC; return VERSION_DIRECTIVE;
 \.visible TC; return VISIBLE_DIRECTIVE;
+\.weak TC; return WEAK_DIRECTIVE;
 \.address_size TC; return ADDRESS_SIZE_DIRECTIVE;
 \.weak	TC; return WEAK_DIRECTIVE;
 

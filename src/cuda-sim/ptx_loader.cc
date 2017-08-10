@@ -322,7 +322,11 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
 
 #if CUDART_VERSION >= 3000
     if (sm_version == 0) sm_version = 20;
-    snprintf(extra_flags,1024,"--gpu-name=sm_%u",sm_version);
+    extern bool g_cdp_enabled;
+    if(!g_cdp_enabled)
+        snprintf(extra_flags,1024,"--gpu-name=sm_%u",sm_version);
+    else
+        snprintf(extra_flags,1024,"--compile-only --gpu-name=sm_%u",sm_version);
 #endif
 
     snprintf(commandline,1024,"$CUDA_INSTALL_PATH/bin/ptxas %s -v %s --output-file  /dev/null 2> %s",

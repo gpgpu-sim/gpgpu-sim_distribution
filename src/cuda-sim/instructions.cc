@@ -41,6 +41,9 @@
 #include "../gpgpu-sim/gpu-sim.h"
 #include "../gpgpu-sim/shader.h"
 
+//Jin: include device runtime for CDP
+#include "cuda_device_runtime.h"
+
 #include <stdarg.h>
 
 unsigned ptx_instruction::g_num_ptx_inst_uid=0;
@@ -150,6 +153,8 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
             result.u64 = op.get_symbol()->get_address();
          } else if ( op.is_local() ) {
             result.u64 = op.get_symbol()->get_address();
+         } else if ( op.is_function_address() ) {
+		 	result.u64 = (size_t)op.get_symbol()->get_pc();
          } else {
             const char *name = op.name().c_str();
             printf("GPGPU-Sim PTX: ERROR ** get_operand_value : unknown operand type for %s\n", name );
@@ -1484,7 +1489,23 @@ void call_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    if( fname == "vprintf" ) {
       gpgpusim_cuda_vprintf(pI, thread, target_func);
       return;
-   } 
+   }
+
+#if (CUDART_VERSION >= 5000)
+   //Jin: handle device runtime apis for CDP
+   else if(fname == "cudaGetParameterBufferV2") {
+      gpgpusim_cuda_getParameterBufferV2(pI, thread, target_func);
+	  return;
+   }
+   else if(fname == "cudaLaunchDeviceV2") {
+      gpgpusim_cuda_launchDeviceV2(pI, thread, target_func);
+	  return;
+   }
+   else if(fname == "cudaStreamCreateWithFlags") {
+      gpgpusim_cuda_streamCreateWithFlags(pI, thread, target_func);
+	  return;
+   }
+#endif
 
    // read source arguements into register specified in declaration of function
    arg_buffer_list_t arg_values;
