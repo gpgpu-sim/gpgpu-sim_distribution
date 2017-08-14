@@ -4,18 +4,16 @@ pipeline {
         }
 
     stages {
-        stage('simulator-build') {
-        steps {
-            parallel "4.2": {
+        parallel stage('4.2 simulator-build') {
+            steps {
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
                 source `pwd`/setup_environment && \
                 make -j'
-            }, "8.0": {
+            }
+        }, stage('8..0 simulator-build') {
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/8.0_env_setup.sh &&\
                 source `pwd`/setup_environment && \
                 make -j'
-            }
-          }
         }
         stage('4.2-simulations-build'){
             steps{
