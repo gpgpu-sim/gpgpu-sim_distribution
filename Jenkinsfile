@@ -5,7 +5,7 @@ pipeline {
 
     stages {
         parallel (
-        "4.2 Tests" : {
+        4.2-Tests: {
         stage('4.2-simulator-build'){
             steps {
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
@@ -35,7 +35,7 @@ pipeline {
         }
         }
 
-        "8.0 Tests" : {
+        8.0-Tests : {
         stage('8.0-simulator-build'){
             steps {
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/8.0_env_setup.sh &&\
