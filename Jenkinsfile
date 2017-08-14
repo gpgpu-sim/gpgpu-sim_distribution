@@ -16,9 +16,10 @@ pipeline {
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
                 source `pwd`/setup_environment && \
                 rm -rf gpgpu-sim_simulations && \
-                git clone https://github.com/tgrogers/gpgpu-sim_simulations.git && \
+                git clone git@github.rcac.purdue.edu:TimRogersGroup/gpgpu-sim_simulations.git && \
                 cd gpgpu-sim_simulations && \
                 git checkout purdue-cluster && \
+                source ./benchmarks/src/setup_environment && \
                 make -j -C ./benchmarks/src all'
             }
         }
