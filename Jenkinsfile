@@ -1,25 +1,22 @@
 pipeline {
     agent {
         label "purdue-cluster"
-        }
+    }
 
     stages {
-        parallel stage('4.2 simulator-build') {
+        stage('set-env') {
+            sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
+            source `pwd`/setup_environment
+        }
+
+        stage('4.2 simulator-build') {
             steps {
-                sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
-                source `pwd`/setup_environment && \
-                make -j'
+                sh 'make -j'
             }
-        }, stage('8..0 simulator-build') {
-                sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/8.0_env_setup.sh &&\
-                source `pwd`/setup_environment && \
-                make -j'
         }
         stage('4.2-simulations-build'){
             steps{
-                sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
-                source `pwd`/setup_environment && \
-                rm -rf gpgpu-sim_simulations && \
+                sh 'rm -rf gpgpu-sim_simulations && \
                 git clone git@github.rcac.purdue.edu:TimRogersGroup/gpgpu-sim_simulations.git && \
                 cd gpgpu-sim_simulations && \
                 git checkout purdue-cluster && \
@@ -29,13 +26,11 @@ pipeline {
         }
         stage('4.2-rodinia-regress'){
             steps {
-                sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
-                source `pwd`/setup_environment && \
-                ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -N regress && \
+                sh './gpgpu-sim_simulations/util/job_launching/run_simulations.py -N regress && \
                 ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress'
             }
         }
-        }
+    }
     post {
         always{
             emailext body: "See ${BUILD_URL}",
