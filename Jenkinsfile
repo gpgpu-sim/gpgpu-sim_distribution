@@ -4,7 +4,7 @@ pipeline {
         }
 
     stages {
-        stage('4.2-simulator-build')
+        stage('4.2-simulator-build') {
         parallel 4.2: {
             steps {
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
@@ -17,6 +17,7 @@ pipeline {
                 source `pwd`/setup_environment && \
                 make -j'
             }
+        }
         }
         stage('4.2-simulations-build'){
             steps{
