@@ -6,7 +6,7 @@ pipeline {
     stages {
         stage('set-env') {
             sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
-            source `pwd`/setup_environment
+            source `pwd`/setup_environment'
         }
 
         stage('4.2 simulator-build') {
