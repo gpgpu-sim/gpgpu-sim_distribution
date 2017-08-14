@@ -19,7 +19,7 @@ pipeline {
                 git clone git@github.rcac.purdue.edu:TimRogersGroup/gpgpu-sim_simulations.git && \
                 cd gpgpu-sim_simulations && \
                 git checkout purdue-cluster && \
-                source `pwd`/setup_environment && \
+                source ./benchmarks/src/setup_environment && \
                 make -j -C ./benchmarks/src all'
             }
         }
