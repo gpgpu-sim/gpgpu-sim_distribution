@@ -41,6 +41,9 @@
 #include "../gpgpu-sim/gpu-sim.h"
 #include "../gpgpu-sim/shader.h"
 
+//Jin: include device runtime for CDP
+#include "cuda_device_runtime.h"
+
 #include <stdarg.h>
 
 unsigned ptx_instruction::g_num_ptx_inst_uid=0;
@@ -154,6 +157,8 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
             result.u64 = op.get_symbol()->get_address();
          } else if ( op.is_local() ) {
             result.u64 = op.get_symbol()->get_address();
+         } else if ( op.is_function_address() ) {
+		 	result.u64 = (size_t)op.get_symbol()->get_pc();
          } else {
             const char *name = op.name().c_str();
             printf("GPGPU-Sim PTX: ERROR ** get_operand_value : unknown operand type for %s\n", name );
@@ -1639,7 +1644,23 @@ void call_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    if( fname == "vprintf" ) {
       gpgpusim_cuda_vprintf(pI, thread, target_func);
       return;
-   } 
+   }
+
+#if (CUDART_VERSION >= 5000)
+   //Jin: handle device runtime apis for CDP
+   else if(fname == "cudaGetParameterBufferV2") {
+      gpgpusim_cuda_getParameterBufferV2(pI, thread, target_func);
+	  return;
+   }
+   else if(fname == "cudaLaunchDeviceV2") {
+      gpgpusim_cuda_launchDeviceV2(pI, thread, target_func);
+	  return;
+   }
+   else if(fname == "cudaStreamCreateWithFlags") {
+      gpgpusim_cuda_streamCreateWithFlags(pI, thread, target_func);
+	  return;
+   }
+#endif
 
    // read source arguements into register specified in declaration of function
    arg_buffer_list_t arg_values;
@@ -3672,6 +3693,81 @@ void set_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    thread->set_operand_value(dst, data, pI->get_type(), thread, pI);
 
+}
+
+void shfl_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
+{
+	unsigned i_type = pI->get_type();
+	int tid = inst.warp_id() * core->get_warp_size();
+	ptx_thread_info *thread = core->get_thread_info()[tid];
+	ptx_warp_info *warp_info = thread->m_warp_info;
+	int lane = warp_info->get_done_threads();
+	thread = core->get_thread_info()[tid + lane];
+
+	const operand_info &dst = pI->dst();
+	const operand_info &src1 = pI->src1();
+	const operand_info &src2 = pI->src2();
+	const operand_info &src3 = pI->src3();
+	int bval = (thread->get_operand_value(src2, dst, i_type, thread, 1)).u32;
+	int cval = (thread->get_operand_value(src3, dst, i_type, thread, 1)).u32;
+	int mask = cval >> 8;
+	bval &= 0x1F;
+	cval &= 0x1F;
+
+	int maxLane = (lane & mask) | (cval & ~mask);
+	int minLane = lane & mask;
+
+	int src_idx;
+	unsigned p;
+	switch(pI->shfl_op()) {
+	case UP_OPTION:
+		src_idx = lane - bval;
+		p = (src_idx >= maxLane);
+		break;
+	case DOWN_OPTION:
+		src_idx = lane + bval;
+		p = (src_idx <= maxLane);
+		break;
+	case BFLY_OPTION:
+		src_idx = lane ^ bval;
+		p = (src_idx <= maxLane);
+		break;
+	case IDX_OPTION:
+		src_idx = minLane | (bval & ~mask);
+		p = (src_idx <= maxLane);
+		break;
+	default:
+		printf("GPGPU-Sim PTX: ERROR: Invalid shfl option\n");
+		assert(0);
+		break;
+	}
+	// copy from own lane
+	if (!p) src_idx = lane;
+
+	// copy input from lane src_idx
+	ptx_reg_t data;
+	if (inst.active(src_idx)) {
+		ptx_thread_info *source = core->get_thread_info()[tid + src_idx];
+		data = source->get_operand_value(src1, dst, i_type, source, 1);
+	} else {
+		printf("GPGPU-Sim PTX: WARNING: shfl input value unpredictable for inactive threads in a warp\n");
+		data.u32 = 0;
+	}
+	thread->set_operand_value(dst, data, i_type, thread, pI);
+
+	/*
+	TODO: deal with predicates appropriately using the following pseudocode:
+	if (!isGuardPredicateTrue(src_idx)) {
+		printf("GPGPU-Sim PTX: WARNING: shfl input value unpredictable for predicated-off threads in a warp\n");
+	}
+	if (dest predicate selected) data.pred = p;
+	*/
+
+	// keep track of the number of threads that have executed in the warp
+	warp_info->inc_done_threads();
+	if (warp_info->get_done_threads() == inst.active_count()) {
+		warp_info->reset_done_threads();
+	}
 }
 
 void shl_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 

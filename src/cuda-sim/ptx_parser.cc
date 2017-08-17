@@ -120,6 +120,20 @@ symbol_table *init_parser( const char *ptx_filename )
 #define DEF(X,Y) g_ptx_token_decode[X] = Y;
 #include "ptx_parser_decode.def"
 #undef DEF
+   g_ptx_token_decode[undefined_space] = "undefined_space";
+   g_ptx_token_decode[undefined_space] = "undefined_space=0";
+   g_ptx_token_decode[reg_space] = "reg_space";
+   g_ptx_token_decode[local_space] = "local_space";
+   g_ptx_token_decode[shared_space] = "shared_space";
+   g_ptx_token_decode[param_space_unclassified] = "param_space_unclassified";
+   g_ptx_token_decode[param_space_kernel] = "param_space_kernel";
+   g_ptx_token_decode[param_space_local] = "param_space_local";
+   g_ptx_token_decode[const_space] = "const_space";
+   g_ptx_token_decode[tex_space] = "tex_space";
+   g_ptx_token_decode[surf_space] = "surf_space";
+   g_ptx_token_decode[global_space] = "global_space";
+   g_ptx_token_decode[generic_space] = "generic_space";
+   g_ptx_token_decode[instruction_space] = "instruction_space";
 
    return g_global_symbol_table;
 }
@@ -185,6 +199,17 @@ void add_function_name( const char *name )
       g_func_info->remove_args();
    }
    g_global_symbol_table->add_function( g_func_info, g_filename, ptx_lineno );
+}
+
+//Jin: handle instruction group for cdp
+void start_inst_group() {
+   PTX_PARSE_DPRINTF("start_instruction_group");
+   g_current_symbol_table = g_current_symbol_table->start_inst_group();
+}
+
+void end_inst_group() {
+   PTX_PARSE_DPRINTF("end_instruction_group");
+   g_current_symbol_table = g_current_symbol_table->end_inst_group();
 }
 
 void add_directive() 

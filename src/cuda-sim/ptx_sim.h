@@ -433,6 +433,9 @@ public:
    void or_reduction(unsigned ctaid, unsigned barid, bool value) {m_core->or_reduction(ctaid,barid,value);}
    void popc_reduction(unsigned ctaid, unsigned barid, bool value) {m_core->popc_reduction(ctaid,barid,value);}
 
+   //Jin: get corresponding kernel grid for CDP purpose
+   kernel_info_t & get_kernel() { return m_kernel; }
+
 public:
    addr_t         m_last_effective_address;
    bool        m_branch_taken;

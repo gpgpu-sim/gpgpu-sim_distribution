@@ -195,7 +195,7 @@ struct memory_config {
       for (i=0; nbkt>0; i++) {
           nbkt = nbkt>>1;
       }
-      bk_tag_length = i;
+      bk_tag_length = i-1;
       assert(nbkgrp>0 && "Number of bank groups cannot be zero");
       tRCDWR = tRCD-(WL+1);
       tRTW = (CL+(BL/data_command_freq_ratio)+2-WL);
@@ -492,6 +492,7 @@ private:
    std::string executed_kernel_info_string(); //< format the kernel information into a string for stat printout
    void clear_executed_kernel_info(); //< clear the kernel information after stat printout
 
+
 public:
    unsigned long long  gpu_sim_insn;
    unsigned long long  gpu_tot_sim_insn;
@@ -504,6 +505,25 @@ public:
    void change_cache_config(FuncCache cache_config);
    void set_cache_config(std::string kernel_name);
 
+   //Jin: functional simulation for CDP
+private:
+   //set by stream operation every time a functoinal simulation is done
+   bool m_functional_sim;
+   kernel_info_t * m_functional_sim_kernel;
+
+public:
+   bool is_functional_sim() { return m_functional_sim; }
+   kernel_info_t * get_functional_kernel() { return m_functional_sim_kernel; }
+   void functional_launch(kernel_info_t * k) {
+     m_functional_sim = true;
+     m_functional_sim_kernel = k;
+   }
+   void finish_functional_sim(kernel_info_t * k) {
+     assert(m_functional_sim);
+     assert(m_functional_sim_kernel == k);
+     m_functional_sim = false;
+     m_functional_sim_kernel = NULL;
+   }
 };
 
 #endif

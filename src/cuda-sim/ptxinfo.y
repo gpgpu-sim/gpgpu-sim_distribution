@@ -94,6 +94,7 @@ line: 	HEADER INFO COLON line_info
 
 line_info: function_name
 	| function_info { ptxinfo_addinfo(); }
+	| gmem_info
 	;
 
 function_name:	FUNC QUOTE IDENTIFIER QUOTE { ptxinfo_function($3); }
@@ -102,6 +103,9 @@ function_name:	FUNC QUOTE IDENTIFIER QUOTE { ptxinfo_function($3); }
 	
 function_info: info
 	| function_info COMMA info
+	;
+
+gmem_info: INT_OPERAND BYTES GMEM
 	;
 
 info: 	  USED INT_OPERAND REGS { ptxinfo_regs($2); }

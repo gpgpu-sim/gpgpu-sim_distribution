@@ -116,6 +116,7 @@ sad     TC; ptx_lval.int_value = SAD_OP; return OPCODE;
 selp	TC; ptx_lval.int_value = SELP_OP; return OPCODE;
 setp    TC; ptx_lval.int_value = SETP_OP; return OPCODE;
 set	TC; ptx_lval.int_value = SET_OP; return OPCODE;
+shfl	TC; ptx_lval.int_value = SHFL_OP; return OPCODE;
 shl     TC; ptx_lval.int_value = SHL_OP; return OPCODE;
 shr     TC; ptx_lval.int_value = SHR_OP; return OPCODE;
 sin	TC; ptx_lval.int_value = SIN_OP; return OPCODE;
@@ -186,6 +187,7 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.union  TC; return UNION_DIRECTIVE; /* not in PTX 2.1 */
 \.version TC; return VERSION_DIRECTIVE;
 \.visible TC; return VISIBLE_DIRECTIVE;
+\.weak TC; return WEAK_DIRECTIVE;
 \.address_size TC; return ADDRESS_SIZE_DIRECTIVE;
 \.weak	TC; return WEAK_DIRECTIVE;
 
@@ -333,6 +335,11 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.wt	TC; return WT_OPTION;
 
 \.nc	TC; return NC_OPTION;
+
+\.up	TC; return UP_OPTION;
+\.down	TC; return DOWN_OPTION;
+\.bfly	TC; return BFLY_OPTION;
+\.idx	TC; return IDX_OPTION;
 
 \.popc	TC; return ATOMIC_POPC;
 \.and	TC; return ATOMIC_AND;
