@@ -270,6 +270,10 @@ struct memory_config {
    linear_to_raw_address_translation m_address_mapping;
 
    unsigned icnt_flit_size;
+
+   unsigned dram_bnk_indexing_policy;
+   unsigned dram_bnkgrp_indexing_policy;
+   bool dual_bus_interface;
 };
 
 // global counters and flags (please try not to add to this list!!!)

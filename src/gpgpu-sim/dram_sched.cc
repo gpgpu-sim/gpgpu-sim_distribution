@@ -78,6 +78,9 @@ void frfcfs_scheduler::data_collection(unsigned int bank)
 
 dram_req_t *frfcfs_scheduler::schedule( unsigned bank, unsigned curr_row )
 {
+   //row
+   bool rowhit = true;
+
    if ( m_last_row[bank] == NULL ) {
       if ( m_queue[bank].empty() )
          return NULL;
@@ -89,11 +92,17 @@ dram_req_t *frfcfs_scheduler::schedule( unsigned bank, unsigned curr_row )
          assert( bin_ptr != m_bins[bank].end() ); // where did the request go???
          m_last_row[bank] = &(bin_ptr->second);
          data_collection(bank);
+         rowhit = false;
       } else {
          m_last_row[bank] = &(bin_ptr->second);
-
+         rowhit = true;
       }
    }
+   //rowblp
+  m_dram->access_num++;
+  if(rowhit)
+   m_dram->hits_num++;
+
    std::list<dram_req_t*>::iterator next = m_last_row[bank]->back();
    dram_req_t *req = (*next);
 

@@ -192,6 +192,15 @@ void memory_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-dram_latency", OPT_UINT32, &dram_latency,
                      "DRAM latency (default 30)",
                      "30");
+    option_parser_register(opp, "-dual_bus_interface", OPT_UINT32, &dual_bus_interface,
+                                        "dual_bus_interface",
+                                        "0");
+    option_parser_register(opp, "-dram_bnk_indexing_policy", OPT_UINT32, &dram_bnk_indexing_policy,
+                                            "dram_bnk_indexing_policy",
+                                            "0");
+    option_parser_register(opp, "-dram_bnkgrp_indexing_policy", OPT_UINT32, &dram_bnkgrp_indexing_policy,
+                                            "dram_bnkgrp_indexing_policy",
+                                            "0");
 
     m_address_mapping.addrdec_setoption(opp);
 }
