@@ -304,29 +304,29 @@ void dram_t::cycle()
 
    //collect row buffer locality, BLP and other statistics
    /////////////////////////////////////////////////////////////////////////
-   unsigned int memory_Pending=0;
+   unsigned int memory_pending=0;
    for (unsigned i=0;i<m_config->nbk;i++) {
 	   if (bk[i]->mrq)
-		   memory_Pending++;
+		   memory_pending++;
    }
-   banks_1time += memory_Pending;
-   if(memory_Pending >0)
+   banks_1time += memory_pending;
+   if(memory_pending >0)
 	   banks_acess_total++;
 
    unsigned int memory_pending_rw=0;
-   unsigned read_BLP_RW=0;
-   unsigned write_BLP_RW=0;
-   std::bitset<8> bnkgrp_RW_found;
-   //bool memory_pending_rw_found=false;
-     for (unsigned j=0;j<m_config->nbk;j++) {
+   unsigned read_blp_rw=0;
+   unsigned write_blp_rw=0;
+   std::bitset<8> bnkgrp_rw_found;  //assume max we have 8 bank groups
+
+   for (unsigned j=0;j<m_config->nbk;j++) {
   	   unsigned grp = get_bankgrp_number(j);
   	   if (bk[j]->mrq && (((bk[j]->curr_row == bk[j]->mrq->row) &&
   		  (bk[j]->mrq->rw == READ)  &&
   		  (bk[j]->state == BANK_ACTIVE))))
   	   {
   		    memory_pending_rw++;
-  		    read_BLP_RW++;
-  		    bnkgrp_RW_found.set(grp);
+  		    read_blp_rw++;
+  		    bnkgrp_rw_found.set(grp);
   	   }
   	   else if
   	        (bk[j]->mrq && (((bk[j]->curr_row == bk[j]->mrq->row)  &&
@@ -334,15 +334,15 @@ void dram_t::cycle()
   			 (bk[j]->state == BANK_ACTIVE))))
   	   {
   		     memory_pending_rw++;
-  		     write_BLP_RW++;
-  		     bnkgrp_RW_found.set(grp);
+  		     write_blp_rw++;
+  		     bnkgrp_rw_found.set(grp);
   	   }
      }
      banks_time_rw += memory_pending_rw;
-     bkgrp_parallsim_rw += bnkgrp_RW_found.count();
+     bkgrp_parallsim_rw += bnkgrp_rw_found.count();
      if(memory_pending_rw >0)
      {
-    	 write_to_read_ratio_blp_rw_average += (double)write_BLP_RW/(write_BLP_RW+read_BLP_RW);
+    	 write_to_read_ratio_blp_rw_average += (double)write_blp_rw/(write_blp_rw+read_blp_rw);
   	     banks_access_rw_total++;
      }
 
@@ -441,6 +441,10 @@ void dram_t::cycle()
    if(issued_col_cmd)  issued_total_col++;
    if(issued_row_cmd)  issued_total_row++;
 
+
+   //Collect some statistics
+   //check the limitation, see where BW is wasted?
+   /////////////////////////////////////////////////////////
    unsigned int memory_pending_found=0;
       for (unsigned i=0;i<m_config->nbk;i++) {
    	   if (bk[i]->mrq)
@@ -463,8 +467,7 @@ void dram_t::cycle()
      		  memory_pending_rw_found=true;
         }
 
-   //Collect some statistics
-   //check the limitation, why BW is wasted?
+
    if(issued_col_cmd  || CCDc)
 	   util_bw++;
    else if (memory_pending_rw_found)
@@ -506,6 +509,8 @@ void dram_t::cycle()
   	   idle_bw++;
    else
 	   assert(1);
+
+   /////////////////////////////////////////////////////////
 
    // decrements counters once for each time dram_issueCMD is called
    DEC2ZERO(RRDc);

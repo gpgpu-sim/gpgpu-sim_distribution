@@ -180,6 +180,7 @@ private:
    unsigned int n_req;
    unsigned int max_mrqs_temp;
 
+   //some statistics to collect to see where BW is wasted?
    unsigned wasted_bw_row;
    unsigned wasted_bw_col;
    unsigned util_bw;
