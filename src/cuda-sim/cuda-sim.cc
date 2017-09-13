@@ -678,6 +678,7 @@ void ptx_instruction::set_opcode_and_latency()
 	   case FF64_TYPE:
 		   latency = dp_latency[0];
 		   initiation_interval = dp_init[0];
+		   op = DP_OP;
 		   break;
 	   case B32_TYPE:
 	   case U32_TYPE:
@@ -699,6 +700,7 @@ void ptx_instruction::set_opcode_and_latency()
 	   case FF64_TYPE:
 		   latency = dp_latency[1];
 		   initiation_interval = dp_init[1];
+		   op = DP_OP;
 		   break;
 	   case B32_TYPE:
 	   case U32_TYPE:
@@ -721,7 +723,7 @@ void ptx_instruction::set_opcode_and_latency()
 	   case FF64_TYPE:
 		   latency = dp_latency[2];
 		   initiation_interval = dp_init[2];
-		   op = ALU_SFU_OP;
+		   op = DP_OP;
 		   break;
 	   case B32_TYPE:
 	   case U32_TYPE:
@@ -744,6 +746,7 @@ void ptx_instruction::set_opcode_and_latency()
 	   case FF64_TYPE:
 		   latency = dp_latency[3];
 		   initiation_interval = dp_init[3];
+		   op = DP_OP;
 		   break;
 	   case B32_TYPE:
 	   case U32_TYPE:
