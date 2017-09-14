@@ -33,7 +33,7 @@ pipeline {
                     source `pwd`/setup_environment &&\
                     cd gpgpu-sim_simulations && \
                     source ./benchmarks/src/setup_environment && \
-                    make -j -C ./benchmarks/src all'
+                    make -j -f Makefile.PTX5 ./benchmarks/src all'
             }
         }
         stage('rodinia-regress'){
