@@ -14,7 +14,7 @@ pipeline {
                 }, "8.0" : {
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/8.0_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
-                    make -j -C -f Makefile.PTX5'
+                    make -j -f Makefile.PTX5'
                 }
             }
         }
