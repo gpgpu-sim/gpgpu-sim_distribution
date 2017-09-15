@@ -193,13 +193,13 @@ void memory_config::reg_options(class OptionParser * opp)
                      "DRAM latency (default 30)",
                      "30");
     option_parser_register(opp, "-dual_bus_interface", OPT_UINT32, &dual_bus_interface,
-                                        "dual_bus_interface",
+                                        "dual_bus_interface (default = 0) ",
                                         "0");
     option_parser_register(opp, "-dram_bnk_indexing_policy", OPT_UINT32, &dram_bnk_indexing_policy,
-                                            "dram_bnk_indexing_policy",
+                                            "dram_bnk_indexing_policy (0 = normal indexing, 1 = Xoring with the higher bits) (Default = 0)",
                                             "0");
     option_parser_register(opp, "-dram_bnkgrp_indexing_policy", OPT_UINT32, &dram_bnkgrp_indexing_policy,
-                                            "dram_bnkgrp_indexing_policy",
+                                            "dram_bnkgrp_indexing_policy (0 = take higher bits, 1 = take lower bits) (Default = 0)",
                                             "0");
 
     m_address_mapping.addrdec_setoption(opp);
@@ -373,15 +373,15 @@ void shader_core_config::reg_options(class OptionParser * opp)
     		            "Max number of instructions that can be issued per warp in one cycle by scheduler (either 1 or 2)",
 			    "2");
     option_parser_register(opp, "-gpgpu_dual_issue_diff_exec_units", OPT_BOOL, &gpgpu_dual_issue_diff_exec_units,
-			    "should dual issue use two different execution unit resources",
+			    "should dual issue use two different execution unit resources (Default = 1)",
 			    "1");
     option_parser_register(opp, "-gpgpu_simt_core_sim_order", OPT_INT32, &simt_core_sim_order,
                             "Select the simulation order of cores in a cluster (0=Fix, 1=Round-Robin)",
                             "1");
     option_parser_register(opp, "-gpgpu_pipeline_widths", OPT_CSTR, &pipeline_widths_string,
                             "Pipeline widths "
-                            "ID_OC_SP,ID_OC_SFU,ID_OC_MEM,OC_EX_SP,OC_EX_SFU,OC_EX_MEM,EX_WB",
-                            "1,1,1,1,1,1,1" );
+                            "ID_OC_SP,ID_OC_DP,ID_OC_SFU,ID_OC_MEM,OC_EX_SP,OC_EX_DP,OC_EX_SFU,OC_EX_MEM,EX_WB",
+                            "1,1,1,1,1,1,1,1,1" );
     option_parser_register(opp, "-gpgpu_num_sp_units", OPT_INT32, &gpgpu_num_sp_units,
                             "Number of SP units (default=1)",
                             "1");
