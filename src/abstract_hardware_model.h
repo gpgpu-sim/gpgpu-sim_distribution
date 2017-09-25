@@ -980,6 +980,10 @@ public:
         assert( !m_empty );
         return m_warp_id; 
     }
+    unsigned warp_id_func() const // to be used in functional simulations only
+    { 
+        return m_warp_id; 
+    }
     unsigned dynamic_warp_id() const 
     { 
         assert( !m_empty );

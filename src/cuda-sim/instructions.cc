@@ -1500,7 +1500,7 @@ void bsmad_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 	const operand_info &src1 = pI->src1();
 	const operand_info &src2 = pI->src2();
 	unsigned type = pI->get_type();
-	int tid = inst.warp_id() * core->get_warp_size();
+	int tid = inst.warp_id_func() * core->get_warp_size();
 	ptx_thread_info *thread = core->get_thread_info()[tid];
 	const int ip = (thread->get_operand_value(src1, dst, type, thread, 1)).u32;
 	const int op = (thread->get_operand_value(src2, dst, type, thread, 1)).u32;
@@ -3698,7 +3698,7 @@ void set_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 void shfl_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 {
 	unsigned i_type = pI->get_type();
-	int tid = inst.warp_id() * core->get_warp_size();
+	int tid = inst.warp_id_func() * core->get_warp_size();
 	ptx_thread_info *thread = core->get_thread_info()[tid];
 	ptx_warp_info *warp_info = thread->m_warp_info;
 	int lane = warp_info->get_done_threads();
