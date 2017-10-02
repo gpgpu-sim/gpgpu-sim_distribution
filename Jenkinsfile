@@ -23,7 +23,8 @@ pipeline {
                 sh 'rm -rf gpgpu-sim_simulations'
                 sh 'git clone git@github.rcac.purdue.edu:TimRogersGroup/gpgpu-sim_simulations.git && \
                     cd gpgpu-sim_simulations && \
-                    git checkout purdue-cluster'
+                    git checkout purdue-cluster && \
+                    git pull'
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
                     cd gpgpu-sim_simulations && \
@@ -42,7 +43,7 @@ pipeline {
                 parallel "4.2-rodinia": {
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
-                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -N regress-$$ && \
+                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -b ./gpgpu-sim_simulations/util/job_launching/regression_recipies/rodinia_2.0-ft/benchmarks.yml -N regress-$$ && \
                     ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress-$$'
                 }, "8.0-rodinia": {
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/8.0_env_setup.sh &&\
