@@ -222,6 +222,7 @@ bool symbol_table::add_function_decl( const char *name, int entry_point, functio
    } else {
       *func_info = new function_info(entry_point);
       (*func_info)->set_name(name);
+      (*func_info)->set_maxnt_id(0);
       m_function_info_lookup[key] = *func_info;
    }
 
