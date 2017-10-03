@@ -373,4 +373,8 @@ void func_header_info_int(const char* s, int i)
 		g_headerList->getListEnd().addOperand(buff);
 	}
 }
+
+void maxnt_id(int x, int y, int z) {
+
+}
 #endif //_PTX_PARSER_H_
