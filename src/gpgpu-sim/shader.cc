@@ -235,7 +235,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
     //op collector configuration
     enum { SP_CUS, DP_CUS, SFU_CUS, MEM_CUS, GEN_CUS };
     m_operand_collector.add_cu_set(SP_CUS, m_config->gpgpu_operand_collector_num_units_sp, m_config->gpgpu_operand_collector_num_out_ports_sp);
-    m_operand_collector.add_cu_set(DP_CUS, m_config->gpgpu_operand_collector_num_units_sp, m_config->gpgpu_operand_collector_num_out_ports_dp);
+    m_operand_collector.add_cu_set(DP_CUS, m_config->gpgpu_operand_collector_num_units_dp, m_config->gpgpu_operand_collector_num_out_ports_dp);
     m_operand_collector.add_cu_set(SFU_CUS, m_config->gpgpu_operand_collector_num_units_sfu, m_config->gpgpu_operand_collector_num_out_ports_sfu);
     m_operand_collector.add_cu_set(MEM_CUS, m_config->gpgpu_operand_collector_num_units_mem, m_config->gpgpu_operand_collector_num_out_ports_mem);
     m_operand_collector.add_cu_set(GEN_CUS, m_config->gpgpu_operand_collector_num_units_gen, m_config->gpgpu_operand_collector_num_out_ports_gen);
