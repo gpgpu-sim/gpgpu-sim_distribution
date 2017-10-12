@@ -1483,7 +1483,7 @@ void tex_cache::cycle(){
             unsigned rob_index = m_rob.next_pop_index();
             const rob_entry &r = m_rob.peek(rob_index);
             assert( r.m_request == e.m_request );
-            assert( r.m_block_addr == m_config.block_addr(e.m_request->get_addr()) );
+            //assert( r.m_block_addr == m_config.block_addr(e.m_request->get_addr()) );
             if ( r.m_ready ) {
                 assert( r.m_index == e.m_cache_index );
                 m_cache[r.m_index].m_valid = true;

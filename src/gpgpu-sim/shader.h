@@ -1123,6 +1123,7 @@ public:
         case LOAD_OP: return false;
         case STORE_OP: return false;
         case MEMORY_BARRIER_OP: return false;
+        case DP_OP: return false;
         default: break;
         }
         return pipelined_simd_unit::can_issue(inst);
