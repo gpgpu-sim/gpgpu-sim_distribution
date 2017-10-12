@@ -1087,6 +1087,7 @@ public:
         switch(inst.op) {
         case SFU_OP: break;
         case ALU_SFU_OP: break;
+        case DP_OP: break;     //for compute <= 29 (i..e Fermi and GT200)
         default: return false;
         }
         return pipelined_simd_unit::can_issue(inst);

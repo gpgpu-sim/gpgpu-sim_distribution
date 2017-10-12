@@ -235,7 +235,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
     //op collector configuration
     enum { SP_CUS, DP_CUS, SFU_CUS, MEM_CUS, GEN_CUS };
     m_operand_collector.add_cu_set(SP_CUS, m_config->gpgpu_operand_collector_num_units_sp, m_config->gpgpu_operand_collector_num_out_ports_sp);
-    m_operand_collector.add_cu_set(DP_CUS, m_config->gpgpu_operand_collector_num_units_sp, m_config->gpgpu_operand_collector_num_out_ports_dp);
+    m_operand_collector.add_cu_set(DP_CUS, m_config->gpgpu_operand_collector_num_units_dp, m_config->gpgpu_operand_collector_num_out_ports_dp);
     m_operand_collector.add_cu_set(SFU_CUS, m_config->gpgpu_operand_collector_num_units_sfu, m_config->gpgpu_operand_collector_num_out_ports_sfu);
     m_operand_collector.add_cu_set(MEM_CUS, m_config->gpgpu_operand_collector_num_units_mem, m_config->gpgpu_operand_collector_num_out_ports_mem);
     m_operand_collector.add_cu_set(GEN_CUS, m_config->gpgpu_operand_collector_num_units_gen, m_config->gpgpu_operand_collector_num_out_ports_gen);
@@ -698,7 +698,7 @@ void shader_core_ctx::fetch()
                 if( !m_warp[warp_id].functional_done() && !m_warp[warp_id].imiss_pending() && m_warp[warp_id].ibuffer_empty() ) {
                     address_type pc  = m_warp[warp_id].get_pc();
                     address_type ppc = pc + PROGRAM_MEM_START;
-                    unsigned nbytes=16; 
+                    unsigned nbytes=16;
                     unsigned offset_in_block = pc & (m_config->m_L1I_config.get_line_sz()-1);
                     if( (offset_in_block+nbytes) > m_config->m_L1I_config.get_line_sz() )
                         nbytes = (m_config->m_L1I_config.get_line_sz()-offset_in_block);
@@ -979,7 +979,6 @@ void scheduler_unit::cycle()
                                     issued_inst=true;
                                     warp_inst_issued = true;
                                     previous_issued_inst_exec_type = exec_unit_type_t::DP;
-                                    std::cout<<"DP inst is issued"<<std::endl;
                                 }
                             }  //If the DP units = 0 (like in Fermi archi), then change DP inst to SFU inst
                             else if ( ((m_shader->m_config->gpgpu_num_dp_units == 0 && pI->op == DP_OP) || (pI->op == SFU_OP) || (pI->op == ALU_SFU_OP)) && (!diff_exec_units || previous_issued_inst_exec_type != exec_unit_type_t::SFU)) {
@@ -1440,8 +1439,14 @@ ldst_unit::process_cache_access( cache_t* cache,
     mem_stage_stall_type result = NO_RC_FAIL;
     bool write_sent = was_write_sent(events);
     bool read_sent = was_read_sent(events);
-    if( write_sent ) 
-        m_core->inc_store_req( inst.warp_id() );
+    if( write_sent ) {
+    	unsigned inc_ack = (m_config->m_L1D_config.get_mshr_type() == SECTOR_ASSOC)?
+    			(mf->get_data_size()/SECTOR_SIZE) : 1;
+
+		for(unsigned i=0; i< inc_ack; ++i)
+			m_core->inc_store_req( inst.warp_id() );
+
+    }
     if ( status == HIT ) {
         assert( !read_sent );
         inst.accessq_pop_back();
@@ -1965,12 +1970,12 @@ void ldst_unit::cycle()
 
    if( !m_response_fifo.empty() ) {
        mem_fetch *mf = m_response_fifo.front();
-       if (mf->istexture()) {
+       if (mf->get_access_type() == TEXTURE_ACC_R) {
            if (m_L1T->fill_port_free()) {
                m_L1T->fill(mf,gpu_sim_cycle+gpu_tot_sim_cycle);
                m_response_fifo.pop_front(); 
            }
-       } else if (mf->isconst())  {
+       } else if (mf->get_access_type() == CONST_ACC_R)  {
            if (m_L1C->fill_port_free()) {
                mf->set_status(IN_SHADER_FETCHED,gpu_sim_cycle+gpu_tot_sim_cycle);
                m_L1C->fill(mf,gpu_sim_cycle+gpu_tot_sim_cycle);
