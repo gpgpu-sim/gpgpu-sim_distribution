@@ -343,6 +343,13 @@ void memory_sub_partition::cache_cycle( unsigned cycle )
 				mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
 				m_L2_icnt_queue->push(mf);
            }else{
+        	    if(m_config->m_L2_config.m_write_alloc_policy == FETCH_ON_WRITE && mf->original_mf)
+        	    {
+			 		assert(mf->original_mf);
+			 		mf->original_mf->set_reply();
+			 		mf->original_mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
+			 		m_L2_icnt_queue->push(mf->original_mf);
+        	    }
 				m_request_tracker.erase(mf);
 				delete mf;
            }
@@ -359,6 +366,7 @@ void memory_sub_partition::cache_cycle( unsigned cycle )
                 m_dram_L2_queue->pop();
             }
         } else if ( !m_L2_icnt_queue->full() ) {
+        	if(mf->is_write() && mf->get_type() == WRITE_ACK)
             mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
             m_L2_icnt_queue->push(mf);
             m_dram_L2_queue->pop();
@@ -402,6 +410,11 @@ void memory_sub_partition::cache_cycle( unsigned cycle )
                         m_icnt_L2_queue->pop();
                     }
                 } else if ( status != RESERVATION_FAIL ) {
+                	if(mf->is_write() && m_config->m_L2_config.m_write_alloc_policy == FETCH_ON_WRITE && !was_writeallocate_sent(events)) {
+                		mf->set_reply();
+                		mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
+                		m_L2_icnt_queue->push(mf);
+                	}
                     // L2 cache accepted request
                     m_icnt_L2_queue->pop();
                 } else {
@@ -430,6 +443,11 @@ void memory_sub_partition::cache_cycle( unsigned cycle )
 bool memory_sub_partition::full() const
 {
     return m_icnt_L2_queue->full();
+}
+
+bool memory_sub_partition::full(unsigned size) const
+{
+    return m_icnt_L2_queue->is_avilable_size(size);
 }
 
 bool memory_sub_partition::L2_dram_queue_empty() const
@@ -540,21 +558,90 @@ bool memory_sub_partition::busy() const
     return !m_request_tracker.empty();
 }
 
-void memory_sub_partition::push( mem_fetch* req, unsigned long long cycle ) 
+std::vector<mem_fetch*> memory_sub_partition::breakdown_request_to_sector_requests(mem_fetch* mf)
 {
-    if (req) {
-        m_request_tracker.insert(req);
-        m_stats->memlatstat_icnt2mem_pop(req);
-        if( req->istexture() ) {
-            m_icnt_L2_queue->push(req);
-            req->set_status(IN_PARTITION_ICNT_TO_L2_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
-        } else {
-            rop_delay_t r;
-            r.req = req;
-            r.ready_cycle = cycle + m_config->rop_latency;
-            m_rop.push(r);
-            req->set_status(IN_PARTITION_ROP_DELAY,gpu_sim_cycle+gpu_tot_sim_cycle);
-        }
+	std::vector<mem_fetch*> result;
+
+	if(mf->get_data_size() == SECTOR_SIZE && mf->get_access_sector_mask().count() == 1) {
+		result.push_back(mf);
+	} else if (mf->get_data_size() == 128 || mf->get_data_size() == 64) {
+        //We only accept 32, 64 and 128 bytes reqs
+		unsigned start=0, end=0;
+		if(mf->get_data_size() == 128) {
+			start=0; end=3;
+		} else if (mf->get_data_size() == 64 && mf->get_access_sector_mask().to_string() == "1100") {
+			start=2; end=3;
+		} else if (mf->get_data_size() == 64 && mf->get_access_sector_mask().to_string() == "0011") {
+			start=0; end=1;
+		} else if (mf->get_data_size() == 64 && (mf->get_access_sector_mask().to_string() == "1111" || mf->get_access_sector_mask().to_string() == "0000")) {
+			if(mf->get_addr() % 128 == 0) {
+				start=0; end=1;
+			} else {
+				start=2; end=3;
+			}
+		} else
+			{
+			    printf("Invalid sector received, address = 0x%06x, sector mask = %s, data size = %d",
+			    		mf->get_addr(), mf->get_access_sector_mask(), mf->get_data_size(), mf->get_data_size());
+				assert(0 && "Undefined sector mask is received");
+			}
+
+		std::bitset<SECTOR_SIZE*SECTOR_CHUNCK_SIZE> byte_sector_mask;
+		byte_sector_mask.reset();
+		for(unsigned  k=start*SECTOR_SIZE; k< SECTOR_SIZE; ++k)
+			byte_sector_mask.set(k);
+
+		for(unsigned j=start, i=0; j<= end ; ++j, ++i){
+
+			const mem_access_t *ma = new  mem_access_t( mf->get_access_type(),
+									mf->get_addr() + SECTOR_SIZE*i,
+									SECTOR_SIZE,
+									mf->is_write(),
+									mf->get_access_warp_mask(),
+									mf->get_access_byte_mask() & byte_sector_mask,
+									std::bitset<SECTOR_CHUNCK_SIZE>().set(j));
+
+			 mem_fetch *n_mf = new mem_fetch( *ma,
+								NULL,
+								mf->get_ctrl_size(),
+								mf->get_wid(),
+								mf->get_sid(),
+								mf->get_tpc(),
+								mf->get_mem_config(),
+								mf);
+
+			 result.push_back(n_mf);
+			 byte_sector_mask <<= SECTOR_SIZE;
+		}
+	} else assert(0 && "Undefined data size is received");
+
+	return result;
+}
+
+void memory_sub_partition::push( mem_fetch* m_req, unsigned long long cycle )
+{
+    if (m_req) {
+    	std::vector<mem_fetch*> reqs;
+    	if(m_config->m_L2_config.m_cache_type == SECTOR)
+    		reqs = breakdown_request_to_sector_requests(m_req);
+    	else
+    		reqs.push_back(m_req);
+
+    	for(unsigned i=0; i<reqs.size(); ++i) {
+    		mem_fetch* req = reqs[i];
+			m_request_tracker.insert(req);
+			m_stats->memlatstat_icnt2mem_pop(req);
+			if( req->istexture() ) {
+				m_icnt_L2_queue->push(req);
+				req->set_status(IN_PARTITION_ICNT_TO_L2_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
+			} else {
+				rop_delay_t r;
+				r.req = req;
+				r.ready_cycle = cycle + m_config->rop_latency;
+				m_rop.push(r);
+				req->set_status(IN_PARTITION_ROP_DELAY,gpu_sim_cycle+gpu_tot_sim_cycle);
+			}
+    	}
     }
 }
 

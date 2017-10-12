@@ -356,37 +356,28 @@ void warp_inst_t::memory_coalescing_arch( bool is_write, mem_access_type access_
 {
     // see the CUDA manual where it discusses coalescing rules before reading this
     unsigned segment_size = 0;
-    unsigned warp_parts;
+    unsigned warp_parts = m_config->mem_warp_parts;
+    bool sector_segment_size = false;
 
-    //TO DO: need to double check how doubles are coalesced!
-    if(data_size == 1)
+    if(m_config->gpgpu_coalesce_arch >= 20 && m_config->gpgpu_coalesce_arch < 39)
     {
-    	//If it is byte data, then coalesce on the whole 32 threads, regardless the arch version
-    	warp_parts = 1;
-    }
-    else if(m_config->gpgpu_coalesce_arch == 13)
-    {
-    	//mem_warp_parts should equal 2 for arch=13
-    	//use the parameter mem_warp_parts for arch=13 to ensure it is backward compatibility with older gpgpu config files
-    	warp_parts = m_config->mem_warp_parts;
-    }
-    else if(m_config->gpgpu_coalesce_arch == 20)
-    {
-    	//It is expected that L1_warp_parts_non_cached = 4 and L1_warp_parts_cached = 1 for arch=20
-    	//non cached, coalesce on 8 threads to generate 32 bytes accesses
-    	//cached, coalesce on 32 threads to generate 128 bytes accesses
+    	//Fermi and Kepler, L1 is normal and L2 is sector
     	if(m_config->gmem_skip_L1D || cache_op == CACHE_GLOBAL)
-    		warp_parts = m_config->L1_warp_parts_non_cached;
+    		sector_segment_size = true;
     	else
-    		warp_parts = m_config->L1_warp_parts_cached;
+    		sector_segment_size = false;
     }
-    else
-    	abort();
+    else if(m_config->gpgpu_coalesce_arch >= 40)
+    {
+    	//Maxwell and Pascal, L1 and L2 are sectors
+    	//all requests should be 32 bytes
+    	sector_segment_size = true;
+    }
 
     switch( data_size ) {
     case 1: segment_size = 32; break;
-    case 2: segment_size = 64; break;
-    case 4: case 8: case 16: segment_size = 128; break;
+    case 2: segment_size = sector_segment_size? 32 : 64; break;
+    case 4: case 8: case 16: segment_size = sector_segment_size? 32 : 128; break;
     }
     unsigned subwarp_size = m_config->warp_size / warp_parts;
 

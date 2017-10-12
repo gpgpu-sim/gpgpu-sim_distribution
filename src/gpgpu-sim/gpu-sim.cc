@@ -294,12 +294,6 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_shmem_warp_parts", OPT_INT32, &mem_warp_parts,  
                  "Number of portions a warp is divided into for shared memory bank conflict check ",
                  "2");
-    option_parser_register(opp, "-gpgpu_L1_warp_parts_cached", OPT_INT32, &L1_warp_parts_cached,
-				 "Number of portions a warp is divided into when the request is cached",
-				 "2");
-    option_parser_register(opp, "-gpgpu_L1_warp_parts_cached", OPT_INT32, &L1_warp_parts_non_cached,
-				 "Number of portions a warp is divided into when the request is not cached",
-				 "4");
     option_parser_register(opp, "-gpgpu_shmem_warp_parts", OPT_INT32, &mem_warp_parts,
 				 "Number of portions a warp is divided into for shared memory bank conflict check ",
 				 "2");
@@ -1013,6 +1007,8 @@ void gpgpu_sim::gpu_print_stat()
    }
    printf("\nTotal_core_cache_stats:\n");
    core_cache_stats.print_stats(stdout, "Total_core_cache_stats_breakdown");
+   printf("\nTotal_core_cache_fail_stats:\n");
+   core_cache_stats.print_fail_stats(stdout, "Total_core_cache_fail_stats_breakdown");
    shader_print_scheduler_stat( stdout, false );
 
    m_shader_stats->print(stdout);
@@ -1057,6 +1053,8 @@ void gpgpu_sim::gpu_print_stat()
           printf("L2_total_cache_reservation_fails = %u\n", total_l2_css.res_fails);
           printf("L2_total_cache_breakdown:\n");
           l2_stats.print_stats(stdout, "L2_cache_stats_breakdown");
+          printf("L2_total_cache_reservation_fail_breakdown:\n");
+          l2_stats.print_fail_stats(stdout, "L2_cache_stats_fail_breakdown");
           total_l2_css.print_port_stats(stdout, "L2_cache");
        }
    }
@@ -1436,7 +1434,8 @@ void gpgpu_sim::cycle()
       for (unsigned i=0;i<m_memory_config->m_n_mem_sub_partition;i++) {
           //move memory request from interconnect into memory partition (if not backed up)
           //Note:This needs to be called in DRAM clock domain if there is no L2 cache in the system
-          if ( m_memory_sub_partition[i]->full() ) {
+    	  //In the worst case, we may need to push SECTOR_CHUNCK_SIZE requests, so ensure you have enough buffer for them
+          if ( m_memory_sub_partition[i]->full(SECTOR_CHUNCK_SIZE) ) {
              gpu_stall_dramfull++;
           } else {
               mem_fetch* mf = (mem_fetch*) icnt_pop( m_shader_config->mem2device(i) );
