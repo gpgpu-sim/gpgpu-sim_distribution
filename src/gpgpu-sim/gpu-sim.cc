@@ -671,7 +671,7 @@ gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config )
 
     m_running_kernels.resize( config.max_concurrent_kernel, NULL );
     m_last_issued_kernel = 0;
-    m_last_cluster_issue = 0;
+    m_last_cluster_issue = m_shader_config->n_simt_clusters-1; // this causes first launch to use simt cluster 0
     *average_pipeline_duty_cycle=0;
     *active_sms=0;
 
