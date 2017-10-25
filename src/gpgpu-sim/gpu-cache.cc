@@ -945,10 +945,9 @@ void baseline_cache::send_read_request(new_addr_type addr, new_addr_type block_a
         mf->set_addr( block_addr );
         m_miss_queue.push_back(mf);
         mf->set_status(m_miss_queue_status,time);
-        if(wa)
-        	events.push_back(cache_event(WRITE_ALLOCATE_SENT));
-        else
+        if(!wa)
         	events.push_back(cache_event(READ_REQUEST_SENT));
+
         do_miss = true;
     }
     else if(mshr_hit && !mshr_avail)
@@ -1087,6 +1086,8 @@ data_cache::wr_miss_wa_naive( new_addr_type addr,
     send_read_request(addr, block_addr, cache_index, n_mf, time, do_miss, wb,
         evicted, events, false, true);
 
+    events.push_back(cache_event(WRITE_ALLOCATE_SENT));
+
     if( do_miss ){
         // If evicted block is modified and not a write-through
         // (already modified lower level)
@@ -1111,7 +1112,7 @@ data_cache::wr_miss_wa_fetch_on_write( new_addr_type addr,
 {
 
 	new_addr_type block_addr = m_config.block_addr(addr);
-	new_addr_type mshr_addr = m_config.block_addr(mf->get_addr());
+    new_addr_type mshr_addr = m_config.mshr_addr(mf->get_addr());
 
 	if(mf->get_access_byte_mask().count() == m_config.get_atom_sz())
 	{
@@ -1147,10 +1148,23 @@ data_cache::wr_miss_wa_fetch_on_write( new_addr_type addr,
 	}
 	else
 	{
-		 if(miss_queue_full(1)) {
-			 m_stats.inc_fail_stats(mf->get_access_type(), MISS_QUEUE_FULL);
-			 return RESERVATION_FAIL;
-		 }
+		bool mshr_hit = m_mshrs.probe(mshr_addr);
+		bool mshr_avail = !m_mshrs.full(mshr_addr);
+		if(miss_queue_full(1)
+			|| (!(mshr_hit && mshr_avail)
+			&& !(!mshr_hit && mshr_avail && (m_miss_queue.size() < m_config.m_miss_queue_size)))) {
+			//check what is the exactly the failure reason
+			 if(miss_queue_full(1) )
+				 m_stats.inc_fail_stats(mf->get_access_type(), MISS_QUEUE_FULL);
+			 else if(mshr_hit && !mshr_avail)
+				  m_stats.inc_fail_stats(mf->get_access_type(), MSHR_MERGE_ENRTY_FAIL);
+			 else if (!mshr_hit && !mshr_avail)
+				m_stats.inc_fail_stats(mf->get_access_type(), MSHR_ENRTY_FAIL);
+			 else
+				 assert(0);
+
+			return RESERVATION_FAIL;
+		}
 
 
 		  //prevent Write - Read - Write in pending mshr
@@ -1177,7 +1191,9 @@ data_cache::wr_miss_wa_fetch_on_write( new_addr_type addr,
 								mf->get_sid(),
 								mf->get_tpc(),
 								mf->get_mem_config(),
+								NULL,
 								mf);
+
 
 			new_addr_type block_addr = m_config.block_addr(addr);
 			bool do_miss = false;
@@ -1190,6 +1206,8 @@ data_cache::wr_miss_wa_fetch_on_write( new_addr_type addr,
 
 			cache_block_t* block = m_tag_array->get_block(cache_index);
 			block->set_modified_on_fill(true, mf->get_access_sector_mask());
+
+			events.push_back(cache_event(WRITE_ALLOCATE_SENT));
 
 			if( do_miss ){
 				// If evicted block is modified and not a write-through

@@ -214,6 +214,9 @@ struct memory_config {
 
       m_valid = true;
       icnt_flit_size = 32; // Default 32
+
+      sscanf(write_queue_size_opt,"%d:%d:%d",
+                     &gpgpu_frfcfs_dram_write_queue_size,&write_high_watermark,&write_low_watermark);
    }
    void reg_options(class OptionParser * opp);
 
@@ -274,6 +277,12 @@ struct memory_config {
    unsigned dram_bnk_indexing_policy;
    unsigned dram_bnkgrp_indexing_policy;
    bool dual_bus_interface;
+
+   bool seperate_write_queue_enabled;
+   char *write_queue_size_opt;
+   unsigned gpgpu_frfcfs_dram_write_queue_size;
+   unsigned write_high_watermark;
+   unsigned write_low_watermark;
 };
 
 // global counters and flags (please try not to add to this list!!!)

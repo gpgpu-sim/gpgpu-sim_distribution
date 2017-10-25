@@ -149,11 +149,18 @@ dram_t::dram_t( unsigned int partition_id, const struct memory_config *config, m
 
 }
 
-bool dram_t::full() const 
+bool dram_t::full(bool is_write) const
 {
     if(m_config->scheduler_type == DRAM_FRFCFS){
         if(m_config->gpgpu_frfcfs_dram_sched_queue_size == 0 ) return false;
-        return m_frfcfs_scheduler->num_pending() >= m_config->gpgpu_frfcfs_dram_sched_queue_size;
+        if(m_config->seperate_write_queue_enabled){
+        	if(is_write)
+        		return m_frfcfs_scheduler->num_write_pending() >= m_config->gpgpu_frfcfs_dram_write_queue_size;
+        	else
+        		return m_frfcfs_scheduler->num_pending() >= m_config->gpgpu_frfcfs_dram_sched_queue_size;
+        }
+        else
+        	return m_frfcfs_scheduler->num_pending() >= m_config->gpgpu_frfcfs_dram_sched_queue_size;
     }
    else return mrqq->full();
 }

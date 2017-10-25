@@ -101,7 +101,7 @@ public:
    dram_t( unsigned int parition_id, const struct memory_config *config, class memory_stats_t *stats, 
            class memory_partition_unit *mp );
 
-   bool full() const;
+   bool full(bool is_write) const;
    void print( FILE* simFile ) const;
    void visualize() const;
    void print_stat( FILE* simFile );

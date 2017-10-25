@@ -201,7 +201,12 @@ void memory_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-dram_bnkgrp_indexing_policy", OPT_UINT32, &dram_bnkgrp_indexing_policy,
                                             "dram_bnkgrp_indexing_policy (0 = take higher bits, 1 = take lower bits) (Default = 0)",
                                             "0");
-
+    option_parser_register(opp, "-Seperate_Write_Queue_Enable", OPT_BOOL, &seperate_write_queue_enabled,
+                           "Seperate_Write_Queue_Enable",
+                           "0");
+    option_parser_register(opp, "-Write_Queue_Size", OPT_CSTR, &write_queue_size_opt,
+                                  "Write_Queue_Size",
+                                  "32:28:16");
     m_address_mapping.addrdec_setoption(opp);
 }
 
