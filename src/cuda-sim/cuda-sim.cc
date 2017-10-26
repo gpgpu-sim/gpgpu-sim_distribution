@@ -80,7 +80,7 @@ void ptx_opcocde_latency_options (option_parser_t opp) {
 			"Opcode latencies for double precision floating points <ADD,MAX,MUL,MAD,DIV>"
 			"Default 8,8,8,8,335",
 			"8,8,8,8,335");
-	option_parser_register(opp, "-opcode_latency_sfu", OPT_CSTR, &opcode_latency_sfu,
+	option_parser_register(opp, "-ptx_opcode_latency_sfu", OPT_CSTR, &opcode_latency_sfu,
 			"Opcode latencies for SFU instructions"
 			"Default 8",
 			"8");
