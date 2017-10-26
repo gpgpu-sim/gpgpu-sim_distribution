@@ -207,6 +207,9 @@ void memory_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-Write_Queue_Size", OPT_CSTR, &write_queue_size_opt,
                                   "Write_Queue_Size",
                                   "32:28:16");
+    option_parser_register(opp, "-icnt_flit_size", OPT_UINT32, &icnt_flit_size,
+                               "icnt_flit_size",
+                               "32");
     m_address_mapping.addrdec_setoption(opp);
 }
 
