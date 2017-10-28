@@ -53,11 +53,6 @@ pipeline {
                     source `pwd`/setup_environment &&\
                     ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -b ./gpgpu-sim_simulations/util/job_launching/apps/sdk.yml -c ./gpgpu-sim_simulations/util/job_launching/configs/all-ptx-only-post-fermi.yml -N regress-$$ && \
                     ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress-$$'
-                }, "8.0-sdk-4.2": {
-                    sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/8.0_env_setup.sh &&\
-                    source `pwd`/setup_environment &&\
-                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -b ./gpgpu-sim_simulations/util/job_launching/apps/sdk.yml -c ./gpgpu-sim_simulations/util/job_launching/configs/all-ptx-only-post-fermi.yml -N regress-$$ && \
-                    ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress-$$'
                 }
             }
         }
