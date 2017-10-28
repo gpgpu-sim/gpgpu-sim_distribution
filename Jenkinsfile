@@ -28,12 +28,12 @@ pipeline {
                     source `pwd`/setup_environment &&\
                     cd gpgpu-sim_simulations && \
                     source ./benchmarks/src/setup_environment && \
-                    make -C ./benchmarks/src all'
+                    make -j -C ./benchmarks/src all'
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/8.0_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
                     cd gpgpu-sim_simulations && \
                     source ./benchmarks/src/setup_environment && \
-                    make -f Makefile.PTX5 -C ./benchmarks/src/ all'
+                    make -j -f Makefile.PTX5 -C ./benchmarks/src/ all'
             }
         }
         stage('regress'){
