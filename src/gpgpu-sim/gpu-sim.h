@@ -199,7 +199,7 @@ struct memory_config {
       assert(nbkgrp>0 && "Number of bank groups cannot be zero");
       tRCDWR = tRCD-(WL+1);
       tRTW = (CL+(BL/data_command_freq_ratio)+2-WL);
-      tWTR = (WL+(BL/data_command_freq_ratio)+tCDLR); 
+      tWTR = (WL+(BL/data_command_freq_ratio)+tCDLR);
       tWTP = (WL+(BL/data_command_freq_ratio)+tWR);
       dram_atom_size = BL * busW * gpu_n_mem_per_ctrlr; // burst length x bus width x # chips per partition 
 

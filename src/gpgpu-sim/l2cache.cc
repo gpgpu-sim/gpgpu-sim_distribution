@@ -628,6 +628,7 @@ std::vector<mem_fetch*> memory_sub_partition::breakdown_request_to_sector_reques
 void memory_sub_partition::push( mem_fetch* m_req, unsigned long long cycle )
 {
     if (m_req) {
+    	m_stats->memlatstat_icnt2mem_pop(m_req);
     	std::vector<mem_fetch*> reqs;
     	if(m_config->m_L2_config.m_cache_type == SECTOR)
     		reqs = breakdown_request_to_sector_requests(m_req);
@@ -637,7 +638,6 @@ void memory_sub_partition::push( mem_fetch* m_req, unsigned long long cycle )
     	for(unsigned i=0; i<reqs.size(); ++i) {
     		mem_fetch* req = reqs[i];
 			m_request_tracker.insert(req);
-			m_stats->memlatstat_icnt2mem_pop(req);
 			if( req->istexture() ) {
 				m_icnt_L2_queue->push(req);
 				req->set_status(IN_PARTITION_ICNT_TO_L2_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);

@@ -1412,7 +1412,7 @@ void gpgpu_sim::cycle()
             if (mf) {
                 unsigned response_size = mf->get_is_write()?mf->get_ctrl_size():mf->size();
                 if ( ::icnt_has_buffer( m_shader_config->mem2device(i), response_size ) ) {
-                    if (!mf->get_is_write()) 
+                    //if (!mf->get_is_write())
                        mf->set_return_timestamp(gpu_sim_cycle+gpu_tot_sim_cycle);
                     mf->set_status(IN_ICNT_TO_SHADER,gpu_sim_cycle+gpu_tot_sim_cycle);
                     ::icnt_push( m_shader_config->mem2device(i), mf->get_tpc(), mf, response_size );

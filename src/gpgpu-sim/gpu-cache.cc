@@ -333,8 +333,10 @@ void tag_array::fill( unsigned index, unsigned time, mem_fetch* mf)
 void tag_array::flush() 
 {
     for (unsigned i=0; i < m_config.get_num_lines(); i++)
+    	if(m_lines[i]->is_modified_line()) {
     	for(unsigned j=0; j < SECTOR_CHUNCK_SIZE; j++)
     		m_lines[i]->set_status(INVALID, mem_access_sector_mask_t().set(j)) ;
+    	}
 }
 
 float tag_array::windowed_miss_rate( ) const

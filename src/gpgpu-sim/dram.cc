@@ -570,9 +570,10 @@ bool dram_t::issue_col_command(int j)
           bkgrp[grp]->RTPLc = m_config->tRTPL;
           issued = true;
           if(bk[j]->mrq->data->get_access_type() == L2_WR_ALLOC_R)
-                n_rd_L2_A++;
+        	  n_rd_L2_A++;
           else
                 n_rd++;
+
           bwutil += m_config->BL/m_config->data_command_freq_ratio;
           bwutil_partial += m_config->BL/m_config->data_command_freq_ratio;
           bk[j]->n_access++;

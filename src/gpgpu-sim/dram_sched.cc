@@ -220,6 +220,8 @@ void dram_t::scheduler_frfcfs()
             bk[b]->mrq = req;
             if (m_config->gpgpu_memlatency_stat) {
                mrq_latency = gpu_sim_cycle + gpu_tot_sim_cycle - bk[b]->mrq->timestamp;
+               m_stats->tot_mrq_latency += mrq_latency;
+               m_stats->tot_mrq_num++;
                bk[b]->mrq->timestamp = gpu_tot_sim_cycle + gpu_sim_cycle;
                m_stats->mrq_lat_table[LOGB2(mrq_latency)]++;
                if (mrq_latency > m_stats->max_mrq_latency) {

@@ -314,7 +314,7 @@ void warp_inst_t::generate_mem_accesses()
         break;
 
     case global_space: case local_space: case param_space_local:
-    	 if( m_config->gpgpu_coalesce_arch == 13 || m_config->gpgpu_coalesce_arch == 20) {
+    	 if( m_config->gpgpu_coalesce_arch >= 13 && m_config->gpgpu_coalesce_arch <= 62) {
             if(isatomic())
                 memory_coalescing_arch_atomic(is_write, access_type);
             else

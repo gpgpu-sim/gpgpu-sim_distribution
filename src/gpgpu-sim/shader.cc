@@ -1458,7 +1458,7 @@ ldst_unit::process_cache_access( cache_t* cache,
         if( !write_sent ) 
             delete mf;
     } else if ( status == RESERVATION_FAIL ) {
-        result = COAL_STALL;
+        result = BK_CONF;
         assert( !read_sent );
         assert( !write_sent );
         delete mf;
@@ -1467,8 +1467,8 @@ ldst_unit::process_cache_access( cache_t* cache,
         //inst.clear_active( access.get_warp_mask() ); // threads in mf writeback when mf returns
         inst.accessq_pop_back();
     }
-    if( !inst.accessq_empty() )
-        result = BK_CONF;
+    if( !inst.accessq_empty() && result == NO_RC_FAIL)
+        result = COAL_STALL;
     return result;
 }
 
@@ -1563,7 +1563,7 @@ bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_rea
        assert( CACHE_UNDEFINED != inst.cache_op );
        stall_cond = process_memory_access_queue(m_L1D,inst);
    }
-   if( !inst.accessq_empty() ) 
+   if( !inst.accessq_empty() && stall_cond == NO_RC_FAIL)
        stall_cond = COAL_STALL;
    if (stall_cond != NO_RC_FAIL) {
       stall_reason = stall_cond;
