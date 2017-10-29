@@ -33,7 +33,7 @@ pipeline {
                     source `pwd`/setup_environment &&\
                     cd gpgpu-sim_simulations && \
                     source ./benchmarks/src/setup_environment && \
-                    make -j -f Makefile.PTX5 -C ./benchmarks/src/ all'
+                    make -j -C ./benchmarks/src/ all'
             }
         }
         stage('regress'){
@@ -41,17 +41,17 @@ pipeline {
                 parallel "4.2-rodinia": {
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
-                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -b ./gpgpu-sim_simulations/util/job_launching/regression_recipies/rodinia_2.0-ft/benchmarks.yml -c ./gpgpu-sim_simulations/util/job_launching/regression_recipies/rodinia_2.0-ft/configs.yml -N regress-$$ && \
+                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -b rodinia_2.0-ft -c ./gpgpu-sim_simulations/util/job_launching/configs/run-fermi-and-up.yml -N regress-$$ && \
                     ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress-$$'
                 }, "8.0-rodinia": {
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/8.0_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
-                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -b ./gpgpu-sim_simulations/util/job_launching/regression_recipies/rodinia_2.0-ft/benchmarks-8.0.yml -c ./gpgpu-sim_simulations/util/job_launching/regression_recipies/rodinia_2.0-ft/configs-fermi-plus-only.yml -N regress-$$ && \
+                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -b rodinia_2.0-ft -c ./gpgpu-sim_simulations/util/job_launching/configs/run-fermi-and-up-noplus.yml -N regress-$$ && \
                     ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress-$$'
                 }, "4.2-sdk-4.2": {
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
-                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -b ./gpgpu-sim_simulations/util/job_launching/apps/sdk.yml -c ./gpgpu-sim_simulations/util/job_launching/configs/all-ptx-only-post-fermi.yml -N regress-$$ && \
+                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -b sdk-4.2 -c ./gpgpu-sim_simulations/util/job_launching/configs/run-fermi-and-up-noplus.yml -N regress-$$ && \
                     ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress-$$'
                 }
             }
