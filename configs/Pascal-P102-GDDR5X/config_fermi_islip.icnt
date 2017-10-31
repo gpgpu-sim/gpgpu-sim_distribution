@@ -18,6 +18,9 @@ routing_function = dest_tag;
 
 num_vcs     = 1;
 vc_buf_size = 32;
+input_buffer_size = 32;
+ejection_buffer_size = 32;
+boundary_buffer_size = 32;
 
 wait_for_tail_credit = 0;
 

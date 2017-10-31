@@ -198,8 +198,14 @@ struct memory_config {
       bk_tag_length = i-1;
       assert(nbkgrp>0 && "Number of bank groups cannot be zero");
       tRCDWR = tRCD-(WL+1);
+      if(elimnate_rw_turnaround)
+      {
+    	  tRTW = 0;
+    	  tWTR = 0;
+      } else {
       tRTW = (CL+(BL/data_command_freq_ratio)+2-WL);
       tWTR = (WL+(BL/data_command_freq_ratio)+tCDLR);
+      }
       tWTP = (WL+(BL/data_command_freq_ratio)+tWR);
       dram_atom_size = BL * busW * gpu_n_mem_per_ctrlr; // burst length x bus width x # chips per partition 
 
@@ -265,6 +271,8 @@ struct memory_config {
    unsigned bk_tag_length; //number of bits that define a bank inside a bank group
 
    unsigned nbk;
+
+   bool elimnate_rw_turnaround;
 
    unsigned data_command_freq_ratio; // frequency ratio between DRAM data bus and command bus (2 for GDDR3, 4 for GDDR5)
    unsigned dram_atom_size; // number of bytes transferred per read or write command 

@@ -52,6 +52,10 @@ dram_t::dram_t( unsigned int partition_id, const struct memory_config *config, m
    //rowblp
    access_num=0;
    hits_num=0;
+   read_num=0;
+   write_num=0;
+   hits_read_num=0;
+   hits_write_num=0;
    banks_1time=0;
    banks_acess_total=0;
    banks_acess_total_after=0;
@@ -718,6 +722,8 @@ void dram_t::print( FILE* simFile) const
    fprintf(simFile, "\n------------------------------------------------------------------------\n");
 
    printf("\nRow_Buffer_Locality = %.6f", (float)hits_num / access_num);
+   printf("\nRow_Buffer_Locality_read = %.6f", (float)hits_read_num / read_num);
+   printf("\nRow_Buffer_Locality_write = %.6f", (float)hits_write_num / write_num);
    printf("\nBank_Level_Parallism = %.6f", (float)banks_1time / banks_acess_total);
    printf("\nBank_Level_Parallism_Col = %.6f", (float)banks_time_rw / banks_access_rw_total);
    printf("\nBank_Level_Parallism_Ready = %.6f", (float)banks_time_ready /banks_access_ready_total);
@@ -735,7 +741,7 @@ void dram_t::print( FILE* simFile) const
    printf("RCDWRc_limit = %d \n", RCDWRc_limit);
    printf("WTRc_limit = %d \n", WTRc_limit);
    printf("RTWc_limit = %d \n", RTWc_limit);
-   printf("CCDLc_limit %d \n", CCDLc_limit);
+   printf("CCDLc_limit = %d \n", CCDLc_limit);
    printf("rwq = %d \n", rwq_limit);
    printf("CCDLc_limit_alone = %d \n", CCDLc_limit_alone);
    printf("WTRc_limit_alone = %d \n", WTRc_limit_alone);
@@ -751,15 +757,14 @@ void dram_t::print( FILE* simFile) const
    printf("n_pre = %d \n", n_pre);
    printf("n_ref = %d \n", n_ref);
    printf("n_req = %d \n", n_req );
-   printf("n_req4 = %d \n", n_req*4 );
    printf("total_req = %d \n\n", n_rd+n_wr+n_rd_L2_A+n_wr_WB);
 
    printf("issued_total_row = %lu \n", issued_total_row);
    printf("issued_total_col = %lu \n", issued_total_col);
    printf("Row_Bus_Util =  %.6f \n", (float)issued_total_row / n_cmd);
    printf("CoL_Bus_Util = %.6f \n", (float)issued_total_col / n_cmd);
-   printf("Either_Row_CoL_Bus_Util %.6f \n",  (float)issued_total / n_cmd);
-   printf("Issued_on_Two_Bus_Simul_Util %.6f \n",  (float)issued_two /n_cmd);
+   printf("Either_Row_CoL_Bus_Util = %.6f \n",  (float)issued_total / n_cmd);
+   printf("Issued_on_Two_Bus_Simul_Util = %.6f \n",  (float)issued_two /n_cmd);
    printf("issued_two_Eff = %.6f \n",  (float)issued_two /issued_total);
    printf("queue_avg = %.6f \n\n", (float)ave_mrqs/n_cmd );
 

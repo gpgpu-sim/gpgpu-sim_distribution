@@ -207,6 +207,9 @@ void memory_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-Write_Queue_Size", OPT_CSTR, &write_queue_size_opt,
                                   "Write_Queue_Size",
                                   "32:28:16");
+    option_parser_register(opp, "-Elimnate_rw_turnaround", OPT_BOOL, &elimnate_rw_turnaround,
+                               "elimnate_rw_turnaround i.e set tWTR and tRTW = 0",
+                               "0");
     option_parser_register(opp, "-icnt_flit_size", OPT_UINT32, &icnt_flit_size,
                                "icnt_flit_size",
                                "32");
@@ -435,7 +438,6 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
    option_parser_register(opp, "-gpgpu_flush_l2_cache", OPT_BOOL, &gpgpu_flush_l2_cache,
                    "Flush L2 cache at the end of each kernel call",
                    "0");
-
    option_parser_register(opp, "-gpgpu_deadlock_detect", OPT_BOOL, &gpu_deadlock_detect, 
                 "Stop the simulation at deadlock (1=on (default), 0=off)", 
                 "1");

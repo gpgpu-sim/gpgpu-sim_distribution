@@ -198,7 +198,11 @@ private:
 
    //row locality, BLP and other statistics
    unsigned long  access_num;
+   unsigned long  read_num;
+   unsigned long  write_num;
    unsigned long long hits_num;
+   unsigned long long hits_read_num;
+   unsigned long long hits_write_num;
    unsigned long long banks_1time;
    unsigned long long banks_acess_total;
    unsigned long long banks_acess_total_after;

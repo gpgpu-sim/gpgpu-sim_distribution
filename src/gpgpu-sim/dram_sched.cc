@@ -142,13 +142,24 @@ dram_req_t *frfcfs_scheduler::schedule( unsigned bank, unsigned curr_row )
          rowhit = true;
       }
    }
-   //rowblp
-  m_dram->access_num++;
-  if(rowhit)
-   m_dram->hits_num++;
-
    std::list<dram_req_t*>::iterator next = m_current_last_row[bank]->back();
    dram_req_t *req = (*next);
+
+   //rowblp stats
+    m_dram->access_num++;
+    bool is_write = req->data->is_write();
+    if(is_write)
+  	  m_dram->write_num++;
+    else
+  	  m_dram->read_num++;
+
+    if(rowhit) {
+     m_dram->hits_num++;
+     if(is_write)
+    	  m_dram->hits_write_num++;
+      else
+    	  m_dram->hits_read_num++;
+    }
 
    m_stats->concurrent_row_access[m_dram->id][bank]++;
    m_stats->row_access[m_dram->id][bank]++;
