@@ -125,11 +125,19 @@ endif
 
 # rules to compile simulator
 
+$(OBJDIR)/Makefile.makedepend: depend
 
-${LEX_OBJS}: lex.yy.c y.tab.h
+ALL_SRCS = $(CPP_SRCS)
+ALL_SRCS += $(shell ls **/*.cpp)
+
+depend:
+	touch $(OBJDIR)/Makefile.makedepend
+	makedepend -f$(OBJDIR)/Makefile.makedepend -I$(INCPATH) -p$(OBJDIR)/ $(ALL_SRCS) 2> /dev/null
+
+${LEX_OBJS}: $(OBJDIR)/lex.yy.c $(OBJDIR)/y.tab.h
 	$(CC) $(CPPFLAGS) -c $< -o $@
 
-${YACC_OBJS}: y.tab.c y.tab.h
+${YACC_OBJS}: $(OBJDIR)/y.tab.c $(OBJDIR)/y.tab.h
 	$(CC) $(CPPFLAGS) -c $< -o $@
 
 ${OBJDIR}/%.o: %.cpp 
@@ -168,8 +176,10 @@ clean:
 	rm -f y.tab.c y.tab.h lex.yy.c
 	rm -f moc_bgui.cpp
 
-y.tab.c y.tab.h: config.y
-	$(YACC) -d $<
+$(OBJDIR)/y.tab.c $(OBJDIR)/y.tab.h: config.y
+	$(YACC) -d $< --file-prefix=$(OBJDIR)/y
 
-lex.yy.c: config.l
-	$(LEX) $<
+$(OBJDIR)/lex.yy.c: config.l
+	$(LEX) -o$@ $<
+
+include $(OBJDIR)/Makefile.makedepend

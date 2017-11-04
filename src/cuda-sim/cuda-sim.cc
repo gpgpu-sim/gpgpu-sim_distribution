@@ -48,6 +48,7 @@
 #include "../gpgpusim_entrypoint.h"
 #include "decuda_pred_table/decuda_pred_table.h"
 #include "../stream_manager.h"
+#include "cuda_device_runtime.h"
 
 int gpgpu_ptx_instruction_classification;
 void ** g_inst_classification_stat = NULL;
@@ -63,6 +64,8 @@ unsigned gpgpu_param_num_shaders = 0;
 
 char *opcode_latency_int, *opcode_latency_fp, *opcode_latency_dp;
 char *opcode_initiation_int, *opcode_initiation_fp, *opcode_initiation_dp;
+char *cdp_latency_str;
+unsigned cdp_latency[5];
 
 void ptx_opcocde_latency_options (option_parser_t opp) {
 	option_parser_register(opp, "-ptx_opcode_latency_int", OPT_CSTR, &opcode_latency_int,
@@ -89,6 +92,12 @@ void ptx_opcocde_latency_options (option_parser_t opp) {
 			"Opcode initiation intervals for double precision floating points <ADD,MAX,MUL,MAD,DIV>"
 			"Default 8,8,8,8,130",
 			"8,8,8,8,130");
+	option_parser_register(opp, "-cdp_latency", OPT_CSTR, &cdp_latency_str,
+			"CDP API latency <cudaStreamCreateWithFlags, \
+cudaGetParameterBufferV2_init_perWarp, cudaGetParameterBufferV2_perKernel, \
+cudaLaunchDeviceV2_init_perWarp, cudaLaunchDevicV2_perKernel>"
+			"Default 7200,8000,100,12000,1600",
+			"7200,8000,100,12000,1600");
 }
 
 static address_type get_converge_point(address_type pc);
@@ -608,6 +617,9 @@ void ptx_instruction::set_opcode_and_latency()
 	sscanf(opcode_initiation_dp, "%u,%u,%u,%u,%u",
 			&dp_init[0],&dp_init[1],&dp_init[2],
 			&dp_init[3],&dp_init[4]);
+	sscanf(cdp_latency_str, "%u,%u,%u,%u,%u",
+			&cdp_latency[0],&cdp_latency[1],&cdp_latency[2], 
+            &cdp_latency[3],&cdp_latency[4]);
 
 	if(!m_operands.empty()){
 		std::vector<operand_info>::iterator it;
@@ -638,19 +650,21 @@ void ptx_instruction::set_opcode_and_latency()
    case MEMBAR_OP: op = MEMORY_BARRIER_OP; break;
    case CALL_OP:
    {
-       if(m_is_printf)
+       if(m_is_printf || m_is_cdp) {
            op = ALU_OP;
+       }
        else
            op = CALL_OPS;
        break;
    }
    case CALLP_OP:
    {
-       if(m_is_printf)
+       if(m_is_printf || m_is_cdp) {
                op = ALU_OP;
-           else
-               op = CALL_OPS;
-           break;
+       }
+       else
+           op = CALL_OPS;
+       break;
    }
    case RET_OP: case RETP_OP:  op = RET_OPS;break;
    case ADD_OP: case ADDP_OP: case ADDC_OP: case SUB_OP: case SUBC_OP:
@@ -719,7 +733,7 @@ void ptx_instruction::set_opcode_and_latency()
 		   break;
 	   }
 	   break;
-   case MAD_OP: case MADP_OP:
+   case MAD_OP: case MADC_OP: case MADP_OP:
 	   //MAD latency
 	   switch(get_type()){
 	   case F32_TYPE:
@@ -769,6 +783,10 @@ void ptx_instruction::set_opcode_and_latency()
 	  initiation_interval = dp_init[2];
       op = SFU_OP;
       break;
+   case SHFL_OP:
+	   latency = 32;
+	   initiation_interval = 15;
+	   break;
    default: 
        break;
    }
@@ -845,8 +863,10 @@ void ptx_instruction::pre_decode()
 
    switch ( get_opcode() ) {
 #define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: has_dst = (DST!=0); break;
+#define OP_W_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: has_dst = (DST!=0); break;
 #include "opcodes.def"
 #undef OP_DEF
+#undef OP_W_DEF
    default:
       printf( "Execution error: Invalid opcode (0x%x)\n", get_opcode() );
       break;
@@ -1065,6 +1085,32 @@ void function_info::add_param_data( unsigned argn, struct gpgpu_ptx_sim_arg *arg
    } 
 }
 
+unsigned function_info::get_args_aligned_size() {
+ 
+   if(m_args_aligned_size >= 0)
+      return m_args_aligned_size;
+ 
+   unsigned param_address = 0;
+   unsigned int total_size = 0;
+   for( std::map<unsigned,param_info>::iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
+      param_info &p = i->second;
+      std::string name = p.get_name();
+      symbol *param = m_symtab->lookup(name.c_str());
+
+      size_t arg_size = p.get_size() / 8; // size of param in bytes
+      total_size = (total_size + arg_size - 1) / arg_size * arg_size; //aligned
+      p.add_offset(total_size);
+      param->set_address(param_address + total_size);
+      total_size += arg_size;
+   }
+
+   m_args_aligned_size = (total_size + 3) / 4 * 4; //final size aligned to word
+
+   return m_args_aligned_size;
+
+}
+
+
 void function_info::finalize( memory_space *param_mem ) 
 {
    unsigned param_address = 0;
@@ -1087,13 +1133,17 @@ void function_info::finalize( memory_space *param_mem )
          size = (size<(p.get_size()/8))?size:(p.get_size()/8);
       } 
       // copy the parameter over word-by-word so that parameter that crosses a memory page can be copied over
+      //Jin: copy parameter using aligned rules
       const size_t word_size = 4; 
+      param_address = (param_address + size - 1) / size * size; //aligned with size 
       for (size_t idx = 0; idx < size; idx += word_size) {
          const char *pdata = reinterpret_cast<const char*>(param_value.pdata) + idx; // cast to char * for ptr arithmetic
          param_mem->write(param_address + idx, word_size, pdata,NULL,NULL); 
       }
+      unsigned offset = p.get_offset();
+      assert(offset == param_address);
       param->set_address(param_address);
-      param_address += size; 
+      param_address += size;
    }
 }
 
@@ -1240,8 +1290,10 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
       }
       switch ( pI->get_opcode() ) {
 #define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,this); op_classification = CLASSIFICATION; break;
+#define OP_W_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,get_core(),inst); op_classification = CLASSIFICATION; break;
 #include "opcodes.def"
 #undef OP_DEF
+#undef OP_W_DEF
       default: printf( "Execution error: Invalid opcode (0x%x)\n", pI->get_opcode() ); break;
       }
       delete pJ;
@@ -1382,7 +1434,7 @@ void set_param_gpgpu_num_shaders(int num_shaders)
    gpgpu_param_num_shaders = num_shaders;
 }
 
-const struct gpgpu_ptx_sim_kernel_info* ptx_sim_kernel_info(const function_info *kernel) 
+const struct gpgpu_ptx_sim_info* ptx_sim_kernel_info(const function_info *kernel)
 {
    return kernel->get_kernel_info();
 }
@@ -1408,6 +1460,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
 
    static std::map<unsigned,memory_space*> shared_memory_lookup;
    static std::map<unsigned,ptx_cta_info*> ptx_cta_lookup;
+   static std::map<unsigned,ptx_warp_info*> ptx_warp_lookup;
    static std::map<unsigned,std::map<unsigned,memory_space*> > local_memory_lookup;
 
    if ( *thread_info != NULL ) {
@@ -1455,7 +1508,8 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
    unsigned max_cta_per_sm = num_threads/cta_size; // e.g., 256 / 48 = 5 
    assert( max_cta_per_sm > 0 );
 
-   unsigned sm_idx = (tid/cta_size)*gpgpu_param_num_shaders + sid;
+   //unsigned sm_idx = (tid/cta_size)*gpgpu_param_num_shaders + sid;
+   unsigned sm_idx = hw_cta_id*gpgpu_param_num_shaders + sid;
 
    if ( shared_memory_lookup.find(sm_idx) == shared_memory_lookup.end() ) {
       if ( g_debug_execution >= 1 ) {
@@ -1486,7 +1540,16 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
       kernel.increment_thread_id();
       new_tid += tid;
       ptx_thread_info *thd = new ptx_thread_info(kernel);
-   
+
+      ptx_warp_info *warp_info = NULL;
+      if ( ptx_warp_lookup.find(hw_warp_id) == ptx_warp_lookup.end() ) {
+    	  warp_info = new ptx_warp_info();
+    	  ptx_warp_lookup[hw_warp_id] = warp_info;
+      } else {
+    	  warp_info = ptx_warp_lookup[hw_warp_id];
+      }
+      thd->m_warp_info = warp_info;
+
       memory_space *local_mem = NULL;
       std::map<unsigned,memory_space*>::iterator l = local_mem_lookup.find(new_tid);
       if ( l != local_mem_lookup.end() ) {
@@ -1560,14 +1623,13 @@ kernel_info_t *gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
 }
 
 #include "../../version"
+#include "detailed_version"
 
 void print_splash()
 {
    static int splash_printed=0;
    if ( !splash_printed ) {
-      unsigned build=0;
-      sscanf(g_gpgpusim_build_string, "$Change"": %u $", &build);
-      fprintf(stdout, "\n\n        *** %s [build %u] ***\n\n\n", g_gpgpusim_version_string, build );
+      fprintf(stdout, "\n\n        *** %s [build %s] ***\n\n\n", g_gpgpusim_version_string, g_gpgpusim_build_string );
       splash_printed=1;
    }
 }
@@ -1746,14 +1808,19 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
             g_the_gpu->getShaderCoreConfig()->warp_size
         );
         cta.execute();
+
+#if (CUDART_VERSION >= 5000)
+	launch_all_device_kernels();
+#endif
     }
     
    //registering this kernel as done      
-   extern stream_manager *g_stream_manager;
    
    //openCL kernel simulation calls don't register the kernel so we don't register its exit
-   if(!openCL)
-   g_stream_manager->register_finished_kernel(kernel.get_uid());
+   if(!openCL) {
+      extern stream_manager *g_stream_manager;
+      g_stream_manager->register_finished_kernel(kernel.get_uid());
+   }
 
    //******PRINTING*******
    printf( "GPGPU-Sim: Done functional simulation (%u instructions simulated).\n", g_ptx_sim_num_insn );
@@ -1864,10 +1931,14 @@ unsigned translate_pc_to_ptxlineno(unsigned pc)
 
 // ptxinfo parser
 
+extern std::map<unsigned,const char*> get_duplicate();
+
 int g_ptxinfo_error_detected;
 
 static char *g_ptxinfo_kname = NULL;
-static struct gpgpu_ptx_sim_kernel_info g_ptxinfo_kinfo;
+static struct gpgpu_ptx_sim_info g_ptxinfo;
+static std::map<unsigned,const char*> g_duplicate;
+static const char *g_last_dup_type;
 
 const char *get_ptxinfo_kname() 
 { 
@@ -1876,18 +1947,40 @@ const char *get_ptxinfo_kname()
 
 void print_ptxinfo()
 {
-    printf ("GPGPU-Sim PTX: Kernel \'%s\' : regs=%u, lmem=%u, smem=%u, cmem=%u\n", 
-            get_ptxinfo_kname(),
-            g_ptxinfo_kinfo.regs,
-            g_ptxinfo_kinfo.lmem,
-            g_ptxinfo_kinfo.smem,
-            g_ptxinfo_kinfo.cmem );
+    if(! get_ptxinfo_kname()){
+    	printf ("GPGPU-Sim PTX: Binary info : gmem=%u, cmem=%u\n",
+    			g_ptxinfo.gmem,
+    			g_ptxinfo.cmem);
+    }
+    if(get_ptxinfo_kname()){
+    	printf ("GPGPU-Sim PTX: Kernel \'%s\' : regs=%u, lmem=%u, smem=%u, cmem=%u\n",
+    			get_ptxinfo_kname(),
+    			g_ptxinfo.regs,
+    			g_ptxinfo.lmem,
+    			g_ptxinfo.smem,
+    			g_ptxinfo.cmem );
+    }
 }
 
 
-struct gpgpu_ptx_sim_kernel_info get_ptxinfo_kinfo()
+struct gpgpu_ptx_sim_info get_ptxinfo()
 {
-    return g_ptxinfo_kinfo;
+    return g_ptxinfo;
+}
+
+std::map<unsigned,const char*> get_duplicate()
+{
+	return g_duplicate;
+}
+
+void ptxinfo_linenum( unsigned linenum )
+{
+	g_duplicate[linenum] = g_last_dup_type;
+}
+
+void ptxinfo_dup_type( const char *dup_type )
+{
+	g_last_dup_type = dup_type;
 }
 
 void ptxinfo_function(const char *fname )
@@ -1898,39 +1991,54 @@ void ptxinfo_function(const char *fname )
 
 void ptxinfo_regs( unsigned nregs )
 {
-    g_ptxinfo_kinfo.regs=nregs;
+    g_ptxinfo.regs=nregs;
 }
 
 void ptxinfo_lmem( unsigned declared, unsigned system )
 {
-    g_ptxinfo_kinfo.lmem=declared+system;
+    g_ptxinfo.lmem=declared+system;
+}
+
+void ptxinfo_gmem( unsigned declared, unsigned system )
+{
+    g_ptxinfo.gmem=declared+system;
 }
 
 void ptxinfo_smem( unsigned declared, unsigned system )
 {
-    g_ptxinfo_kinfo.smem=declared+system;
+    g_ptxinfo.smem=declared+system;
 }
 
 void ptxinfo_cmem( unsigned nbytes, unsigned bank )
 {
-    g_ptxinfo_kinfo.cmem+=nbytes;
+    g_ptxinfo.cmem+=nbytes;
 }
 
 void clear_ptxinfo()
 {
     free(g_ptxinfo_kname);
     g_ptxinfo_kname=NULL;
-    g_ptxinfo_kinfo.regs=0;
-    g_ptxinfo_kinfo.lmem=0;
-    g_ptxinfo_kinfo.smem=0;
-    g_ptxinfo_kinfo.cmem=0;
-    g_ptxinfo_kinfo.ptx_version=0;
-    g_ptxinfo_kinfo.sm_target=0;
+    g_ptxinfo.regs=0;
+    g_ptxinfo.lmem=0;
+    g_ptxinfo.smem=0;
+    g_ptxinfo.cmem=0;
+    g_ptxinfo.gmem=0;
+    g_ptxinfo.ptx_version=0;
+    g_ptxinfo.sm_target=0;
 }
 
 
 void ptxinfo_opencl_addinfo( std::map<std::string,function_info*> &kernels )
 {
+
+   if(! g_ptxinfo_kname) {
+	  printf ("GPGPU-Sim PTX: Binary info : gmem=%u, cmem=%u\n",
+			  g_ptxinfo.gmem,
+			  g_ptxinfo.cmem);
+	  clear_ptxinfo();
+	  return;
+   }
+
    if( !strcmp("__cuda_dummy_entry__",g_ptxinfo_kname) ) {
       // this string produced by ptxas for empty ptx files (e.g., bandwidth test)
       clear_ptxinfo();
@@ -1943,13 +2051,13 @@ void ptxinfo_opencl_addinfo( std::map<std::string,function_info*> &kernels )
    } else {
       printf ("GPGPU-Sim PTX: Kernel \'%s\' : regs=%u, lmem=%u, smem=%u, cmem=%u\n", 
               g_ptxinfo_kname,
-              g_ptxinfo_kinfo.regs,
-              g_ptxinfo_kinfo.lmem,
-              g_ptxinfo_kinfo.smem,
-              g_ptxinfo_kinfo.cmem );
+              g_ptxinfo.regs,
+              g_ptxinfo.lmem,
+              g_ptxinfo.smem,
+              g_ptxinfo.cmem );
       function_info *finfo = k->second;
       assert(finfo!=NULL);
-      finfo->set_kernel_info( g_ptxinfo_kinfo );
+      finfo->set_kernel_info( g_ptxinfo );
    }
    clear_ptxinfo();
 }

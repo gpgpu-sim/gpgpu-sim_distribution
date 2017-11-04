@@ -167,6 +167,17 @@ private:
    std::set<ptx_thread_info*>  m_dangling_pointers;
 };
 
+class ptx_warp_info {
+public:
+	ptx_warp_info();
+	unsigned get_done_threads() const;
+	void inc_done_threads();
+	void reset_done_threads();
+
+private:
+	unsigned m_done_threads;
+};
+
 class symbol;
 
 struct stack_entry {
@@ -418,6 +429,9 @@ public:
    void or_reduction(unsigned ctaid, unsigned barid, bool value) {m_core->or_reduction(ctaid,barid,value);}
    void popc_reduction(unsigned ctaid, unsigned barid, bool value) {m_core->popc_reduction(ctaid,barid,value);}
 
+   //Jin: get corresponding kernel grid for CDP purpose
+   kernel_info_t & get_kernel() { return m_kernel; }
+
 public:
    addr_t         m_last_effective_address;
    bool        m_branch_taken;
@@ -425,6 +439,7 @@ public:
    dram_callback_t   m_last_dram_callback; 
    memory_space   *m_shared_mem;
    memory_space   *m_local_mem;
+   ptx_warp_info  *m_warp_info;
    ptx_cta_info   *m_cta_info;
    ptx_reg_t m_last_set_operand_value;
 

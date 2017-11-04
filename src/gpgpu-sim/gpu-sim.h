@@ -195,7 +195,7 @@ struct memory_config {
       for (i=0; nbkt>0; i++) {
           nbkt = nbkt>>1;
       }
-      bk_tag_length = i;
+      bk_tag_length = i-1;
       assert(nbkgrp>0 && "Number of bank groups cannot be zero");
       tRCDWR = tRCD-(WL+1);
       tRTW = (CL+(BL/data_command_freq_ratio)+2-WL);
@@ -372,10 +372,16 @@ public:
    bool can_start_kernel();
    unsigned finished_kernel();
    void set_kernel_done( kernel_info_t *kernel );
+   void stop_all_running_kernels();
 
    void init();
    void cycle();
    bool active(); 
+   bool cycle_insn_cta_max_hit() {
+       return (m_config.gpu_max_cycle_opt && (gpu_tot_sim_cycle + gpu_sim_cycle) >= m_config.gpu_max_cycle_opt) ||
+           (m_config.gpu_max_insn_opt && (gpu_tot_sim_insn + gpu_sim_insn) >= m_config.gpu_max_insn_opt) ||
+           (m_config.gpu_max_cta_opt && (gpu_tot_issued_cta >= m_config.gpu_max_cta_opt) );
+   }
    void print_stats();
    void update_stats();
    void deadlock_check();
@@ -391,6 +397,8 @@ public:
 
    unsigned threads_per_core() const;
    bool get_more_cta_left() const;
+   bool kernel_more_cta_left(kernel_info_t *kernel) const;
+   bool hit_max_cta_count() const;
    kernel_info_t *select_kernel();
 
    const gpgpu_sim_config &get_config() const { return m_config; }
@@ -445,7 +453,10 @@ private:
    unsigned m_last_issued_kernel;
 
    std::list<unsigned> m_finished_kernel;
-   unsigned m_total_cta_launched;
+   // m_total_cta_launched == per-kernel count. gpu_tot_issued_cta == global count.
+   unsigned long long m_total_cta_launched;
+   unsigned long long gpu_tot_issued_cta;
+
    unsigned m_last_cluster_issue;
    float * average_pipeline_duty_cycle;
    float * active_sms;
@@ -470,7 +481,6 @@ private:
    class memory_stats_t     *m_memory_stats;
    class power_stat_t *m_power_stats;
    class gpgpu_sim_wrapper *m_gpgpusim_wrapper;
-   unsigned long long  gpu_tot_issued_cta;
    unsigned long long  last_gpu_sim_insn;
 
    unsigned long long  last_liveness_message_time; 
@@ -482,13 +492,12 @@ private:
    std::string executed_kernel_info_string(); //< format the kernel information into a string for stat printout
    void clear_executed_kernel_info(); //< clear the kernel information after stat printout
 
+
 public:
    unsigned long long  gpu_sim_insn;
    unsigned long long  gpu_tot_sim_insn;
    unsigned long long  gpu_sim_insn_last_update;
    unsigned gpu_sim_insn_last_update_sid;
-
-
 
    FuncCache get_cache_config(std::string kernel_name);
    void set_cache_config(std::string kernel_name, FuncCache cacheConfig );
@@ -496,6 +505,25 @@ public:
    void change_cache_config(FuncCache cache_config);
    void set_cache_config(std::string kernel_name);
 
+   //Jin: functional simulation for CDP
+private:
+   //set by stream operation every time a functoinal simulation is done
+   bool m_functional_sim;
+   kernel_info_t * m_functional_sim_kernel;
+
+public:
+   bool is_functional_sim() { return m_functional_sim; }
+   kernel_info_t * get_functional_kernel() { return m_functional_sim_kernel; }
+   void functional_launch(kernel_info_t * k) {
+     m_functional_sim = true;
+     m_functional_sim_kernel = k;
+   }
+   void finish_functional_sim(kernel_info_t * k) {
+     assert(m_functional_sim);
+     assert(m_functional_sim_kernel == k);
+     m_functional_sim = false;
+     m_functional_sim_kernel = NULL;
+   }
 };
 
 #endif

@@ -154,14 +154,34 @@ enum _memory_op_t {
 #include <stdlib.h>
 #include <map>
 #include <deque>
+#include <algorithm>
 
 #if !defined(__VECTOR_TYPES_H__)
 struct dim3 {
    unsigned int x, y, z;
 };
 #endif
+struct dim3comp {
+    bool operator() (const dim3 & a, const dim3 & b) const
+    {    
+        if(a.z < b.z)
+            return true;
+        else if(a.y < b.y)
+            return true;
+        else if (a.x < b.x)
+            return true;
+        else
+            return false;
+    }
+};
 
 void increment_x_then_y_then_z( dim3 &i, const dim3 &bound);
+
+//Jin: child kernel information for CDP
+#include "stream_manager.h"
+class stream_manager;
+struct CUstream_st;
+extern stream_manager * g_stream_manager;
 
 class kernel_info_t {
 public:
@@ -250,6 +270,35 @@ private:
 
    std::list<class ptx_thread_info *> m_active_threads;
    class memory_space *m_param_mem;
+
+public:
+   //Jin: parent and child kernel management for CDP
+   void set_parent(kernel_info_t * parent, dim3 parent_ctaid, dim3 parent_tid);
+   void set_child(kernel_info_t * child);
+   void remove_child(kernel_info_t * child);
+   bool is_finished();
+   bool children_all_finished();
+   void notify_parent_finished();
+   CUstream_st * create_stream_cta(dim3 ctaid);
+   CUstream_st * get_default_stream_cta(dim3 ctaid);
+   bool cta_has_stream(dim3 ctaid, CUstream_st* stream);
+   void destroy_cta_streams();
+   void print_parent_info();
+   kernel_info_t * get_parent() { return m_parent_kernel; }
+
+private:
+   kernel_info_t * m_parent_kernel;
+   dim3 m_parent_ctaid;
+   dim3 m_parent_tid;
+   std::list<kernel_info_t *> m_child_kernels; //child kernel launched
+   std::map< dim3, std::list<CUstream_st *>, dim3comp > m_cta_streams; //streams created in each CTA
+
+//Jin: kernel timing
+public:
+   unsigned long long launch_cycle;
+   unsigned long long start_cycle;
+   unsigned long long end_cycle;
+   unsigned m_launch_latency;
 };
 
 struct core_config {
@@ -334,7 +383,7 @@ protected:
     std::deque<simt_stack_entry> m_stack;
 };
 
-#define GLOBAL_HEAP_START 0x80000000
+#define GLOBAL_HEAP_START 0x703E20000
    // start allocating from this address (lower values used for allocating globals in .ptx file)
 #define SHARED_MEM_SIZE_MAX (64*1024)
 #define LOCAL_MEM_SIZE_MAX (8*1024)
@@ -443,6 +492,7 @@ private:
     unsigned m_texcache_linesize;
 };
 
+
 class gpgpu_t {
 public:
     gpgpu_t( const gpgpu_functional_sim_config &config );
@@ -497,7 +547,7 @@ protected:
     class memory_space *m_global_mem;
     class memory_space *m_tex_mem;
     class memory_space *m_surf_mem;
-    
+
     unsigned long long m_dev_malloc;
     
     std::map<std::string, const struct textureReference*> m_NameToTextureRef;
@@ -506,17 +556,19 @@ protected:
     std::map<const struct textureReference*, const struct textureReferenceAttr*> m_TextureRefToAttribute;
 };
 
-struct gpgpu_ptx_sim_kernel_info 
+struct gpgpu_ptx_sim_info
 {
    // Holds properties of the kernel (Kernel's resource use). 
    // These will be set to zero if a ptxinfo file is not present.
    int lmem;
    int smem;
    int cmem;
+   int gmem;
    int regs;
    unsigned ptx_version;
    unsigned sm_target;
 };
+
 
 struct gpgpu_ptx_sim_arg {
    gpgpu_ptx_sim_arg() { m_start=NULL; }
@@ -822,6 +874,7 @@ public:
         m_mem_accesses_created=false;
         m_cache_hit=false;
         m_is_printf=false;
+        m_is_cdp = 0;
     }
     virtual ~warp_inst_t(){
     }
@@ -994,6 +1047,11 @@ protected:
     std::list<mem_access_t> m_accessq;
 
     static unsigned sm_next_uid;
+
+    //Jin: cdp support
+public:
+    int m_is_cdp;
+    
 };
 
 void move_warp( warp_inst_t *&dst, warp_inst_t *&src );
@@ -1048,6 +1106,7 @@ class core_t {
         warp_inst_t getExecuteWarp(unsigned warpId);
         void get_pdom_stack_top_info( unsigned warpId, unsigned *pc, unsigned *rpc ) const;
         kernel_info_t * get_kernel_info(){ return m_kernel;}
+        class ptx_thread_info ** get_thread_info() { return m_thread; }
         unsigned get_warp_size() const { return m_warp_size; }
         void and_reduction(unsigned ctaid, unsigned barid, bool value) { reduction_storage[ctaid][barid] &= value; }
         void or_reduction(unsigned ctaid, unsigned barid, bool value) { reduction_storage[ctaid][barid] |= value; }

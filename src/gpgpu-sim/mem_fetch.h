@@ -82,6 +82,7 @@ public:
    bool is_write() {return m_access.is_write();}
    void set_addr(new_addr_type addr) { m_access.set_addr(addr); }
    new_addr_type get_addr() const { return m_access.get_addr(); }
+   unsigned get_access_size() const { return m_access.get_size(); }
    new_addr_type get_partition_addr() const { return m_partition_addr; }
    unsigned get_sub_partition_id() const { return m_raw_addr.sub_partition; }
    bool     get_is_write() const { return m_access.is_write(); }

@@ -150,7 +150,7 @@ public:
     bool is_noop() const { return m_type == stream_no_op; }
     bool is_done() const { return m_done; }
     kernel_info_t *get_kernel() { return m_kernel; }
-    void do_operation( gpgpu_sim *gpu );
+    bool do_operation( gpgpu_sim *gpu );
     void print( FILE *fp ) const;
     struct CUstream_st *get_stream() { return m_stream; }
     void set_stream( CUstream_st *stream ) { m_stream = stream; }
@@ -218,6 +218,7 @@ public:
     void push( const stream_operation &op );
     void record_next_done();
     stream_operation next();
+    void cancel_front(); //front operation fails, cancle the pending status
     stream_operation &front() { return m_operations.front(); }
     void print( FILE *fp );
     unsigned get_uid() const { return m_uid; }
@@ -246,6 +247,7 @@ public:
     void print( FILE *fp);
     void push( stream_operation op );
     bool operation(bool * sim);
+    void stop_all_running_kernels();
 private:
     void print_impl( FILE *fp);
 
