@@ -140,6 +140,8 @@ void power_config::reg_options(class OptionParser * opp)
 
 void memory_config::reg_options(class OptionParser * opp)
 {
+    option_parser_register(opp, "-perf_sim_memcpy", OPT_BOOL, &m_perf_sim_memcpy, 
+                                "Fill the L2 cache on memcpy", "0");
     option_parser_register(opp, "-gpgpu_dram_scheduler", OPT_INT32, &scheduler_type, 
                                 "0 = fifo, 1 = FR-FCFS (defaul)", "1");
     option_parser_register(opp, "-gpgpu_dram_partition_queues", OPT_CSTR, &gpgpu_L2_queue_config, 
@@ -1598,17 +1600,20 @@ void shader_core_ctx::dump_warp_state( FILE *fout ) const
 
 void gpgpu_sim::memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t count )
 {
-    assert (dst_start_addr % 32 == 0);
-    // Right now - I am just going to assume you write the whole last cache line...
-//    assert (count % 128 == 0);
-    for ( unsigned counter = 0; counter < count; counter += 32 ) {
-        const size_t wr_addr = dst_start_addr + counter;
-        addrdec_t raw_addr;
-        mem_access_sector_mask_t mask;
-        mask.set(wr_addr % 128 / 32);
-        m_memory_config->m_address_mapping.addrdec_tlx( wr_addr, &raw_addr );
-        const unsigned partition_id = raw_addr.sub_partition / m_memory_config->m_n_sub_partition_per_memory_channel;
-        m_memory_partition_unit[ partition_id ]->handle_memcpy_to_gpu( wr_addr, raw_addr.sub_partition, mask );
+    if (m_memory_config->m_perf_sim_memcpy) {
+       assert (dst_start_addr % 32 == 0);
+       // Right now - I am just going to assume you write the whole last cache line...
+   //    assert (count % 128 == 0);
+       for ( unsigned counter = 0; counter < count; counter += 32 ) {
+           const size_t wr_addr = dst_start_addr + counter;
+           addrdec_t raw_addr;
+           mem_access_sector_mask_t mask;
+           mask.set(wr_addr % 128 / 32);
+           m_memory_config->m_address_mapping.addrdec_tlx( wr_addr, &raw_addr );
+           const unsigned partition_id = raw_addr.sub_partition / m_memory_config->m_n_sub_partition_per_memory_channel;
+           m_memory_partition_unit[ partition_id ]->handle_memcpy_to_gpu( wr_addr, raw_addr.sub_partition, mask );
+           gpu_sim_cycle += 1;
+       }
     }
 }
 

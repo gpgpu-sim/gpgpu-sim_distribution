@@ -324,7 +324,7 @@ void tag_array::fill( new_addr_type addr, unsigned time, mem_access_sector_mask_
     //assert( m_config.m_alloc_policy == ON_FILL );
     unsigned idx;
     enum cache_request_status status = probe(addr,idx,mask);
-    assert(status==MISS||status==SECTOR_MISS); // MSHR should have prevented redundant memory request
+    //assert(status==MISS||status==SECTOR_MISS); // MSHR should have prevented redundant memory request
     if(status==MISS)
     	m_lines[idx]->allocate( m_config.tag(addr), m_config.block_addr(addr), time, mask );
     else if (status==SECTOR_MISS) {
