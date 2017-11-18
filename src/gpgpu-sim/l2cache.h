@@ -154,6 +154,7 @@ public:
    void cache_cycle( unsigned cycle );
 
    bool full() const;
+   bool full(unsigned size) const;
    void push( class mem_fetch* mf, unsigned long long clock_cycle );
    class mem_fetch* pop(); 
    class mem_fetch* top();
@@ -207,6 +208,8 @@ private:
    std::set<mem_fetch*> m_request_tracker;
 
    friend class L2interface;
+
+   std::vector<mem_fetch*> breakdown_request_to_sector_requests(mem_fetch* mf);
 };
 
 class L2interface : public mem_fetch_interface {

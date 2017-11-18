@@ -198,8 +198,14 @@ struct memory_config {
       bk_tag_length = i-1;
       assert(nbkgrp>0 && "Number of bank groups cannot be zero");
       tRCDWR = tRCD-(WL+1);
+      if(elimnate_rw_turnaround)
+      {
+    	  tRTW = 0;
+    	  tWTR = 0;
+      } else {
       tRTW = (CL+(BL/data_command_freq_ratio)+2-WL);
-      tWTR = (WL+(BL/data_command_freq_ratio)+tCDLR); 
+      tWTR = (WL+(BL/data_command_freq_ratio)+tCDLR);
+      }
       tWTP = (WL+(BL/data_command_freq_ratio)+tWR);
       dram_atom_size = BL * busW * gpu_n_mem_per_ctrlr; // burst length x bus width x # chips per partition 
 
@@ -213,7 +219,9 @@ struct memory_config {
       m_L2_config.init(&m_address_mapping);
 
       m_valid = true;
-      icnt_flit_size = 32; // Default 32
+
+      sscanf(write_queue_size_opt,"%d:%d:%d",
+                     &gpgpu_frfcfs_dram_write_queue_size,&write_high_watermark,&write_low_watermark);
    }
    void reg_options(class OptionParser * opp);
 
@@ -264,12 +272,24 @@ struct memory_config {
 
    unsigned nbk;
 
+   bool elimnate_rw_turnaround;
+
    unsigned data_command_freq_ratio; // frequency ratio between DRAM data bus and command bus (2 for GDDR3, 4 for GDDR5)
    unsigned dram_atom_size; // number of bytes transferred per read or write command 
 
    linear_to_raw_address_translation m_address_mapping;
 
    unsigned icnt_flit_size;
+
+   unsigned dram_bnk_indexing_policy;
+   unsigned dram_bnkgrp_indexing_policy;
+   bool dual_bus_interface;
+
+   bool seperate_write_queue_enabled;
+   char *write_queue_size_opt;
+   unsigned gpgpu_frfcfs_dram_write_queue_size;
+   unsigned write_high_watermark;
+   unsigned write_low_watermark;
 };
 
 // global counters and flags (please try not to add to this list!!!)
