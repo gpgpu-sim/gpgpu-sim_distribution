@@ -1595,6 +1595,23 @@ void shader_core_ctx::dump_warp_state( FILE *fout ) const
        m_warp[w].print(fout);
 }
 
+
+void gpgpu_sim::memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t count )
+{
+    assert (dst_start_addr % 32 == 0);
+    // Right now - I am just going to assume you write the whole last cache line...
+//    assert (count % 128 == 0);
+    for ( unsigned counter = 0; counter < count; counter += 32 ) {
+        const size_t wr_addr = dst_start_addr + counter;
+        addrdec_t raw_addr;
+        mem_access_sector_mask_t mask;
+        mask.set(wr_addr % 128 / 32);
+        m_memory_config->m_address_mapping.addrdec_tlx( wr_addr, &raw_addr );
+        const unsigned partition_id = raw_addr.sub_partition / m_memory_config->m_n_sub_partition_per_memory_channel;
+        m_memory_partition_unit[ partition_id ]->handle_memcpy_to_gpu( wr_addr, raw_addr.sub_partition, mask );
+    }
+}
+
 void gpgpu_sim::dump_pipeline( int mask, int s, int m ) const
 {
 /*

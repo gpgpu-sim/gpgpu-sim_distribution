@@ -74,6 +74,15 @@ memory_partition_unit::memory_partition_unit( unsigned partition_id,
     }
 }
 
+void memory_partition_unit::handle_memcpy_to_gpu( size_t addr, unsigned global_subpart_id, mem_access_sector_mask_t mask )
+{
+    unsigned p = global_sub_partition_id_to_local_id(global_subpart_id);
+    std::string mystring =
+        mask.to_string<char,std::string::traits_type,std::string::allocator_type>();
+    MEMPART_DPRINTF("Copy Engine Request Received For Address=%zu, local_subpart=%u, sector_mask=%s \n", addr, p, mystring.c_str()); 
+    m_sub_partition[p]->force_l2_tag_update(addr,gpu_sim_cycle+gpu_tot_sim_cycle, mask);
+}
+
 memory_partition_unit::~memory_partition_unit() 
 {
     delete m_dram; 
