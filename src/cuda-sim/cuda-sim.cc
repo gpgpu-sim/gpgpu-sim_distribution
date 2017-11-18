@@ -404,7 +404,7 @@ void gpgpu_t::memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t coun
 
    // Copy into the performance model.
    extern gpgpu_sim* g_the_gpu; 
-   g_the_gpu->memcpy_to_gpu(dst_start_addr, src, count);
+   g_the_gpu->perf_memcpy_to_gpu(dst_start_addr, count);
    if(g_debug_execution >= 3) {
       printf( " done.\n");
       fflush(stdout);

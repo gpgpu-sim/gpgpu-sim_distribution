@@ -1598,7 +1598,7 @@ void shader_core_ctx::dump_warp_state( FILE *fout ) const
 }
 
 
-void gpgpu_sim::memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t count )
+void gpgpu_sim::perf_memcpy_to_gpu( size_t dst_start_addr, size_t count )
 {
     if (m_memory_config->m_perf_sim_memcpy) {
        assert (dst_start_addr % 32 == 0);

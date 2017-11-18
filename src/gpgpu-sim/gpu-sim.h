@@ -426,7 +426,7 @@ public:
    void gpu_print_stat();
    void dump_pipeline( int mask, int s, int m ) const;
 
-    void memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t count );
+    void perf_memcpy_to_gpu( size_t dst_start_addr, size_t count );
 
    //The next three functions added to be used by the functional simulation function
    
