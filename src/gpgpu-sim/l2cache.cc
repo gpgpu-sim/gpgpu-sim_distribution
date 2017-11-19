@@ -74,6 +74,15 @@ memory_partition_unit::memory_partition_unit( unsigned partition_id,
     }
 }
 
+void memory_partition_unit::handle_memcpy_to_gpu( size_t addr, unsigned global_subpart_id, mem_access_sector_mask_t mask )
+{
+    unsigned p = global_sub_partition_id_to_local_id(global_subpart_id);
+    std::string mystring =
+        mask.to_string<char,std::string::traits_type,std::string::allocator_type>();
+    MEMPART_DPRINTF("Copy Engine Request Received For Address=%llx, local_subpart=%u, global_subpart=%u, sector_mask=%s \n", addr, p, global_subpart_id, mystring.c_str()); 
+    m_sub_partition[p]->force_l2_tag_update(addr,gpu_sim_cycle+gpu_tot_sim_cycle, mask);
+}
+
 memory_partition_unit::~memory_partition_unit() 
 {
     delete m_dram; 
@@ -306,6 +315,7 @@ memory_sub_partition::memory_sub_partition( unsigned sub_partition_id,
     m_id = sub_partition_id;
     m_config=config;
     m_stats=stats;
+    m_memcpy_cycle_offset = 0;
 
     assert(m_id < m_config->m_n_mem_sub_partition); 
 
@@ -369,7 +379,7 @@ void memory_sub_partition::cache_cycle( unsigned cycle )
         if ( !m_config->m_L2_config.disabled() && m_L2cache->waiting_for_fill(mf) ) {
             if (m_L2cache->fill_port_free()) {
                 mf->set_status(IN_PARTITION_L2_FILL_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
-                m_L2cache->fill(mf,gpu_sim_cycle+gpu_tot_sim_cycle);
+                m_L2cache->fill(mf,gpu_sim_cycle+gpu_tot_sim_cycle+m_memcpy_cycle_offset);
                 m_dram_L2_queue->pop();
             }
         } else if ( !m_L2_icnt_queue->full() ) {
@@ -395,9 +405,10 @@ void memory_sub_partition::cache_cycle( unsigned cycle )
             bool port_free = m_L2cache->data_port_free(); 
             if ( !output_full && port_free ) {
                 std::list<cache_event> events;
-                enum cache_request_status status = m_L2cache->access(mf->get_addr(),mf,gpu_sim_cycle+gpu_tot_sim_cycle,events);
+                enum cache_request_status status = m_L2cache->access(mf->get_addr(),mf,gpu_sim_cycle+gpu_tot_sim_cycle+m_memcpy_cycle_offset,events);
                 bool write_sent = was_write_sent(events);
                 bool read_sent = was_read_sent(events);
+                MEM_SUBPART_DPRINTF("Probing L2 cache Address=%llx, status=%u\n", mf->get_addr(), status); 
 
                 if ( status == HIT ) {
                     if( !write_sent ) {

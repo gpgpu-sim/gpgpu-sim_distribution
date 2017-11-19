@@ -140,6 +140,8 @@ void power_config::reg_options(class OptionParser * opp)
 
 void memory_config::reg_options(class OptionParser * opp)
 {
+    option_parser_register(opp, "-perf_sim_memcpy", OPT_BOOL, &m_perf_sim_memcpy, 
+                                "Fill the L2 cache on memcpy", "1");
     option_parser_register(opp, "-gpgpu_dram_scheduler", OPT_INT32, &scheduler_type, 
                                 "0 = fifo, 1 = FR-FCFS (defaul)", "1");
     option_parser_register(opp, "-gpgpu_dram_partition_queues", OPT_CSTR, &gpgpu_L2_queue_config, 
@@ -1593,6 +1595,24 @@ void shader_core_ctx::dump_warp_state( FILE *fout ) const
    fprintf(fout, "per warp functional simulation status:\n");
    for (unsigned w=0; w < m_config->max_warps_per_shader; w++ ) 
        m_warp[w].print(fout);
+}
+
+
+void gpgpu_sim::perf_memcpy_to_gpu( size_t dst_start_addr, size_t count )
+{
+    if (m_memory_config->m_perf_sim_memcpy) {
+       assert (dst_start_addr % 32 == 0);
+
+       for ( unsigned counter = 0; counter < count; counter += 32 ) {
+           const unsigned wr_addr = dst_start_addr + counter;
+           addrdec_t raw_addr;
+           mem_access_sector_mask_t mask;
+           mask.set(wr_addr % 128 / 32);
+           m_memory_config->m_address_mapping.addrdec_tlx( wr_addr, &raw_addr );
+           const unsigned partition_id = raw_addr.sub_partition / m_memory_config->m_n_sub_partition_per_memory_channel;
+           m_memory_partition_unit[ partition_id ]->handle_memcpy_to_gpu( wr_addr, raw_addr.sub_partition, mask );
+       }
+    }
 }
 
 void gpgpu_sim::dump_pipeline( int mask, int s, int m ) const

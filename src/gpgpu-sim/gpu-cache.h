@@ -153,8 +153,8 @@ struct line_cache_block: public cache_block_t  {
 	    }
 		void fill( unsigned time, mem_access_sector_mask_t sector_mask )
 	    {
-	    	if(!m_ignore_on_fill_status)
-	    		assert( m_status == RESERVED );
+	    	//if(!m_ignore_on_fill_status)
+	    	//	assert( m_status == RESERVED );
 
 	    	m_status = m_set_modified_on_fill? MODIFIED : VALID;
 
@@ -292,8 +292,8 @@ struct sector_cache_block : public cache_block_t {
     {
     	unsigned sidx = get_sector_index(sector_mask);
 
-    	if(!m_ignore_on_fill_status[sidx])
-    	         assert( m_status[sidx] == RESERVED );
+    //	if(!m_ignore_on_fill_status[sidx])
+    //	         assert( m_status[sidx] == RESERVED );
 
     	m_status[sidx] = m_set_modified_on_fill[sidx]? MODIFIED : VALID;
 
@@ -690,11 +690,13 @@ public:
     ~tag_array();
 
     enum cache_request_status probe( new_addr_type addr, unsigned &idx, mem_fetch* mf ) const;
+    enum cache_request_status probe( new_addr_type addr, unsigned &idx, mem_access_sector_mask_t mask ) const;
     enum cache_request_status access( new_addr_type addr, unsigned time, unsigned &idx, mem_fetch* mf );
     enum cache_request_status access( new_addr_type addr, unsigned time, unsigned &idx, bool &wb, evicted_block_info &evicted, mem_fetch* mf );
 
     void fill( new_addr_type addr, unsigned time, mem_fetch* mf );
     void fill( unsigned idx, unsigned time, mem_fetch* mf );
+    void fill( new_addr_type addr, unsigned time, mem_access_sector_mask_t mask );
 
     unsigned size() const { return m_config.get_num_lines();}
     cache_block_t* get_block(unsigned idx) { return m_lines[idx];}
@@ -968,6 +970,15 @@ public:
     // accessors for cache bandwidth availability 
     bool data_port_free() const { return m_bandwidth_management.data_port_free(); } 
     bool fill_port_free() const { return m_bandwidth_management.fill_port_free(); } 
+
+    // This is a gapping hole we are poking in the system to quickly handle
+    // filling the cache on cudamemcopies. We don't care about anything other than
+    // L2 state after the memcopy - so just force the tag array to act as though
+    // something is read or written without doing anything else.
+    void force_tag_access( new_addr_type addr, unsigned time, mem_access_sector_mask_t mask )
+    {
+        m_tag_array->fill( addr, time, mask );
+    }
 
 protected:
     // Constructor that can be used by derived classes with custom tag arrays

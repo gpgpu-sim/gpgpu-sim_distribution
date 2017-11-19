@@ -290,6 +290,7 @@ struct memory_config {
    unsigned gpgpu_frfcfs_dram_write_queue_size;
    unsigned write_high_watermark;
    unsigned write_low_watermark;
+   bool m_perf_sim_memcpy;
 };
 
 // global counters and flags (please try not to add to this list!!!)
@@ -424,6 +425,8 @@ public:
    const gpgpu_sim_config &get_config() const { return m_config; }
    void gpu_print_stat();
    void dump_pipeline( int mask, int s, int m ) const;
+
+    void perf_memcpy_to_gpu( size_t dst_start_addr, size_t count );
 
    //The next three functions added to be used by the functional simulation function
    
