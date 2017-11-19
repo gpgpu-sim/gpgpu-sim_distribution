@@ -292,8 +292,8 @@ struct sector_cache_block : public cache_block_t {
     {
     	unsigned sidx = get_sector_index(sector_mask);
 
-    	if(!m_ignore_on_fill_status[sidx])
-    	         assert( m_status[sidx] == RESERVED );
+    //	if(!m_ignore_on_fill_status[sidx])
+    //	         assert( m_status[sidx] == RESERVED );
 
     	m_status[sidx] = m_set_modified_on_fill[sidx]? MODIFIED : VALID;
 
