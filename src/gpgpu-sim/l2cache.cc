@@ -79,7 +79,7 @@ void memory_partition_unit::handle_memcpy_to_gpu( size_t addr, unsigned global_s
     unsigned p = global_sub_partition_id_to_local_id(global_subpart_id);
     std::string mystring =
         mask.to_string<char,std::string::traits_type,std::string::allocator_type>();
-    MEMPART_DPRINTF("Copy Engine Request Received For Address=%zu, local_subpart=%u, sector_mask=%s \n", addr, p, mystring.c_str()); 
+    MEMPART_DPRINTF("Copy Engine Request Received For Address=%llx, local_subpart=%u, global_subpart=%u, sector_mask=%s \n", addr, p, global_subpart_id, mystring.c_str()); 
     m_sub_partition[p]->force_l2_tag_update(addr,gpu_sim_cycle+gpu_tot_sim_cycle, mask);
 }
 
@@ -407,6 +407,7 @@ void memory_sub_partition::cache_cycle( unsigned cycle )
                 enum cache_request_status status = m_L2cache->access(mf->get_addr(),mf,gpu_sim_cycle+gpu_tot_sim_cycle,events);
                 bool write_sent = was_write_sent(events);
                 bool read_sent = was_read_sent(events);
+                MEM_SUBPART_DPRINTF("Probing L2 cache Address=%llx, status=%u\n", mf->get_addr(), status); 
 
                 if ( status == HIT ) {
                     if( !write_sent ) {
