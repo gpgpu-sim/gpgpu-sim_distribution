@@ -17,10 +17,10 @@ routing_function = dest_tag;
 // Flow control
 
 num_vcs     = 1;
-vc_buf_size = 32;
-input_buffer_size = 32;
-ejection_buffer_size = 32;
-boundary_buffer_size = 32;
+vc_buf_size = 64;
+input_buffer_size = 256;
+ejection_buffer_size = 64;
+boundary_buffer_size = 64;
 
 wait_for_tail_credit = 0;
 
