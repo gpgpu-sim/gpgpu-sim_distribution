@@ -1605,7 +1605,7 @@ void gpgpu_sim::perf_memcpy_to_gpu( size_t dst_start_addr, size_t count )
        // Right now - I am just going to assume you write the whole last cache line...
    //    assert (count % 128 == 0);
        for ( unsigned counter = 0; counter < count; counter += 32 ) {
-           const size_t wr_addr = dst_start_addr + counter;
+           const unsigned wr_addr = dst_start_addr + counter;
            addrdec_t raw_addr;
            mem_access_sector_mask_t mask;
            mask.set(wr_addr % 128 / 32);
