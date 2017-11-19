@@ -181,7 +181,8 @@ public:
 
    void force_l2_tag_update(new_addr_type addr, unsigned time, mem_access_sector_mask_t mask)
    {
-        m_L2cache->force_tag_access( addr, time, mask );
+        m_L2cache->force_tag_access( addr, m_memcpy_cycle_offset + time, mask );
+        m_memcpy_cycle_offset += 1;
    }
 
 private:
@@ -216,6 +217,13 @@ private:
    friend class L2interface;
 
    std::vector<mem_fetch*> breakdown_request_to_sector_requests(mem_fetch* mf);
+
+   // This is a cycle offset that has to be applied to the l2 accesses to account for
+   // the cudamemcpy read/writes. We want GPGPU-Sim to only count cycles for kernel execution
+   // but we want cudamemcpy to go through the L2. Everytime an access is made from cudamemcpy
+   // this counter is incremented, and when the l2 is accessed (in both cudamemcpyies and otherwise)
+   // this value is added to the gpgpu-sim cycle counters.
+   unsigned m_memcpy_cycle_offset;
 };
 
 class L2interface : public mem_fetch_interface {

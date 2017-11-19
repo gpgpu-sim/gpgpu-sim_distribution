@@ -1602,8 +1602,7 @@ void gpgpu_sim::perf_memcpy_to_gpu( size_t dst_start_addr, size_t count )
 {
     if (m_memory_config->m_perf_sim_memcpy) {
        assert (dst_start_addr % 32 == 0);
-       // Right now - I am just going to assume you write the whole last cache line...
-   //    assert (count % 128 == 0);
+
        for ( unsigned counter = 0; counter < count; counter += 32 ) {
            const unsigned wr_addr = dst_start_addr + counter;
            addrdec_t raw_addr;
@@ -1612,7 +1611,6 @@ void gpgpu_sim::perf_memcpy_to_gpu( size_t dst_start_addr, size_t count )
            m_memory_config->m_address_mapping.addrdec_tlx( wr_addr, &raw_addr );
            const unsigned partition_id = raw_addr.sub_partition / m_memory_config->m_n_sub_partition_per_memory_channel;
            m_memory_partition_unit[ partition_id ]->handle_memcpy_to_gpu( wr_addr, raw_addr.sub_partition, mask );
-           gpu_sim_cycle += 1;
        }
     }
 }
