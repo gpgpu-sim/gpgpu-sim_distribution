@@ -141,7 +141,7 @@ void power_config::reg_options(class OptionParser * opp)
 void memory_config::reg_options(class OptionParser * opp)
 {
     option_parser_register(opp, "-perf_sim_memcpy", OPT_BOOL, &m_perf_sim_memcpy, 
-                                "Fill the L2 cache on memcpy", "0");
+                                "Fill the L2 cache on memcpy", "1");
     option_parser_register(opp, "-gpgpu_dram_scheduler", OPT_INT32, &scheduler_type, 
                                 "0 = fifo, 1 = FR-FCFS (defaul)", "1");
     option_parser_register(opp, "-gpgpu_dram_partition_queues", OPT_CSTR, &gpgpu_L2_queue_config, 
