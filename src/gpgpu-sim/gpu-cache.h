@@ -153,8 +153,8 @@ struct line_cache_block: public cache_block_t  {
 	    }
 		void fill( unsigned time, mem_access_sector_mask_t sector_mask )
 	    {
-	    	if(!m_ignore_on_fill_status)
-	    		assert( m_status == RESERVED );
+	    	//if(!m_ignore_on_fill_status)
+	    	//	assert( m_status == RESERVED );
 
 	    	m_status = m_set_modified_on_fill? MODIFIED : VALID;
 
