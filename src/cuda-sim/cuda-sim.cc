@@ -62,8 +62,8 @@ addr_t g_debug_pc = 0xBEEF1518;
 unsigned g_ptx_sim_num_insn = 0;
 unsigned gpgpu_param_num_shaders = 0;
 
-char *opcode_latency_int, *opcode_latency_fp, *opcode_latency_dp;
-char *opcode_initiation_int, *opcode_initiation_fp, *opcode_initiation_dp;
+char *opcode_latency_int, *opcode_latency_fp, *opcode_latency_dp,*opcode_latency_sfu;
+char *opcode_initiation_int, *opcode_initiation_fp, *opcode_initiation_dp,*opcode_initiation_sfu;
 char *cdp_latency_str;
 unsigned cdp_latency[5];
 
@@ -80,6 +80,10 @@ void ptx_opcocde_latency_options (option_parser_t opp) {
 			"Opcode latencies for double precision floating points <ADD,MAX,MUL,MAD,DIV>"
 			"Default 8,8,8,8,335",
 			"8,8,8,8,335");
+	option_parser_register(opp, "-ptx_opcode_latency_sfu", OPT_CSTR, &opcode_latency_sfu,
+			"Opcode latencies for SFU instructions"
+			"Default 8",
+			"8");
 	option_parser_register(opp, "-ptx_opcode_initiation_int", OPT_CSTR, &opcode_initiation_int,
 			"Opcode initiation intervals for integers <ADD,MAX,MUL,MAD,DIV>"
 			"Default 1,1,4,4,32",
@@ -92,6 +96,10 @@ void ptx_opcocde_latency_options (option_parser_t opp) {
 			"Opcode initiation intervals for double precision floating points <ADD,MAX,MUL,MAD,DIV>"
 			"Default 8,8,8,8,130",
 			"8,8,8,8,130");
+	option_parser_register(opp, "-ptx_opcode_initiation_sfu", OPT_CSTR, &opcode_initiation_sfu,
+			"Opcode initiation intervals for sfu instructions"
+			"Default 8",
+			"8");
 	option_parser_register(opp, "-cdp_latency", OPT_CSTR, &cdp_latency_str,
 			"CDP API latency <cudaStreamCreateWithFlags, \
 cudaGetParameterBufferV2_init_perWarp, cudaGetParameterBufferV2_perKernel, \
@@ -393,6 +401,10 @@ void gpgpu_t::memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t coun
    char *src_data = (char*)src;
    for (unsigned n=0; n < count; n ++ ) 
       m_global_mem->write(dst_start_addr+n,1, src_data+n,NULL,NULL);
+
+   // Copy into the performance model.
+   extern gpgpu_sim* g_the_gpu; 
+   g_the_gpu->perf_memcpy_to_gpu(dst_start_addr, count);
    if(g_debug_execution >= 3) {
       printf( " done.\n");
       fflush(stdout);
@@ -408,6 +420,10 @@ void gpgpu_t::memcpy_from_gpu( void *dst, size_t src_start_addr, size_t count )
    unsigned char *dst_data = (unsigned char*)dst;
    for (unsigned n=0; n < count; n ++ ) 
       m_global_mem->read(src_start_addr+n,1,dst_data+n);
+
+   // Copy into the performance model.
+   extern gpgpu_sim* g_the_gpu; 
+   g_the_gpu->perf_memcpy_to_gpu(src_start_addr, count);
    if(g_debug_execution >= 3) {
       printf( " done.\n");
       fflush(stdout);
@@ -589,9 +605,11 @@ void ptx_instruction::set_opcode_and_latency()
 	unsigned int_latency[5];
 	unsigned fp_latency[5];
 	unsigned dp_latency[5];
+	unsigned sfu_latency;
 	unsigned int_init[5];
 	unsigned fp_init[5];
 	unsigned dp_init[5];
+	unsigned sfu_init;
 	/*
 	 * [0] ADD,SUB
 	 * [1] MAX,Min
@@ -608,6 +626,8 @@ void ptx_instruction::set_opcode_and_latency()
 	sscanf(opcode_latency_dp, "%u,%u,%u,%u,%u",
 			&dp_latency[0],&dp_latency[1],&dp_latency[2],
 			&dp_latency[3],&dp_latency[4]);
+	sscanf(opcode_latency_sfu, "%u",
+			&sfu_latency);
 	sscanf(opcode_initiation_int, "%u,%u,%u,%u,%u",
 			&int_init[0],&int_init[1],&int_init[2],
 			&int_init[3],&int_init[4]);
@@ -617,8 +637,10 @@ void ptx_instruction::set_opcode_and_latency()
 	sscanf(opcode_initiation_dp, "%u,%u,%u,%u,%u",
 			&dp_init[0],&dp_init[1],&dp_init[2],
 			&dp_init[3],&dp_init[4]);
+	sscanf(opcode_initiation_sfu, "%u",
+			&sfu_init);
 	sscanf(cdp_latency_str, "%u,%u,%u,%u,%u",
-			&cdp_latency[0],&cdp_latency[1],&cdp_latency[2], 
+			&cdp_latency[0],&cdp_latency[1],&cdp_latency[2],
             &cdp_latency[3],&cdp_latency[4]);
 
 	if(!m_operands.empty()){
@@ -678,6 +700,7 @@ void ptx_instruction::set_opcode_and_latency()
 	   case FF64_TYPE:
 		   latency = dp_latency[0];
 		   initiation_interval = dp_init[0];
+		   op = DP_OP;
 		   break;
 	   case B32_TYPE:
 	   case U32_TYPE:
@@ -699,6 +722,7 @@ void ptx_instruction::set_opcode_and_latency()
 	   case FF64_TYPE:
 		   latency = dp_latency[1];
 		   initiation_interval = dp_init[1];
+		   op = DP_OP;
 		   break;
 	   case B32_TYPE:
 	   case U32_TYPE:
@@ -715,13 +739,12 @@ void ptx_instruction::set_opcode_and_latency()
 	   case F32_TYPE:
 		   latency = fp_latency[2];
 		   initiation_interval = fp_init[2];
-		   op = ALU_SFU_OP;
 		   break;
 	   case F64_TYPE:
 	   case FF64_TYPE:
 		   latency = dp_latency[2];
 		   initiation_interval = dp_init[2];
-		   op = ALU_SFU_OP;
+		   op = DP_OP;
 		   break;
 	   case B32_TYPE:
 	   case U32_TYPE:
@@ -744,6 +767,7 @@ void ptx_instruction::set_opcode_and_latency()
 	   case FF64_TYPE:
 		   latency = dp_latency[3];
 		   initiation_interval = dp_init[3];
+		   op = DP_OP;
 		   break;
 	   case B32_TYPE:
 	   case U32_TYPE:
@@ -779,13 +803,13 @@ void ptx_instruction::set_opcode_and_latency()
 	   break;
    case SQRT_OP: case SIN_OP: case COS_OP: case EX2_OP: case LG2_OP: case RSQRT_OP: case RCP_OP:
 	   //Using double to approximate those
-	  latency = dp_latency[2];
-	  initiation_interval = dp_init[2];
+	  latency = sfu_latency;
+	  initiation_interval = sfu_init;
       op = SFU_OP;
       break;
    case SHFL_OP:
 	   latency = 32;
-	   initiation_interval = 15;
+	   initiation_interval = 4;
 	   break;
    default: 
        break;
