@@ -816,6 +816,50 @@ __host__ cudaError_t CUDARTAPI cudaGetDeviceProperties(struct cudaDeviceProp *pr
 	}
 }
 
+__host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDeviceAttr attr, int device)
+{
+        const struct cudaDeviceProp *prop;
+        _cuda_device_id *dev = GPGPUSim_Init();
+        if (device <= dev->num_devices() )  {
+                prop = dev->get_prop();
+                switch (attr) {
+                case 5:
+                        *value= prop->maxGridSize[0];
+                        break;
+                case 6:
+                        *value= prop->maxGridSize[1];
+                        break;
+                case 7:
+                        *value= prop->maxGridSize[2];
+                        break;
+                case 10:
+                        *value= prop->warpSize;
+                        break;
+                case 12:
+                        *value= prop->regsPerBlock;
+                        break;
+                case 14:
+                        *value= prop->textureAlignment ;
+                        break;
+                case 16:
+                        *value= prop->multiProcessorCount ;
+                        break;
+                case 39:
+                        *value= dev->get_gpgpu()->threads_per_core();
+                        break;
+                case 75:
+                        *value= 8 ;
+                        break;
+                case 76:
+                        *value= 3 ;
+                        break;
+                }
+                return g_last_cudaError = cudaSuccess;
+        } else {
+                return g_last_cudaError = cudaErrorInvalidDevice;
+        }
+}
+
 __host__ cudaError_t CUDARTAPI cudaChooseDevice(int *device, const struct cudaDeviceProp *prop)
 {
 	_cuda_device_id *dev = GPGPUSim_Init();
