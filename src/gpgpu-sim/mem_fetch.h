@@ -55,7 +55,9 @@ public:
                unsigned wid,
                unsigned sid, 
                unsigned tpc, 
-               const class memory_config *config );
+               const class memory_config *config,
+			   mem_fetch *original_mf = NULL,
+			   mem_fetch *original_wr_mf = NULL);
    ~mem_fetch();
 
    void set_status( enum mem_fetch_status status, unsigned long long cycle );
@@ -113,6 +115,8 @@ public:
    const memory_config *get_mem_config(){return m_mem_config;}
 
    unsigned get_num_flits(bool simt_to_mem);
+   mem_fetch* original_mf;
+   mem_fetch* original_wr_mf;
 private:
    // request source information
    unsigned m_request_uid;

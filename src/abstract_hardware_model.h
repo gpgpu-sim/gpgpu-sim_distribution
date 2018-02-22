@@ -76,6 +76,7 @@ enum uarch_op_t {
    NO_OP=-1,
    ALU_OP=1,
    SFU_OP,
+   DP_OP,
    ALU_SFU_OP,
    LOAD_OP,
    STORE_OP,
@@ -131,6 +132,7 @@ typedef enum special_operations_t special_ops; // Required to identify for the p
 enum operation_pipeline_t {
     UNKOWN_OP,
     SP__OP,
+	DP__OP,
     SFU__OP,
     MEM__OP
 };
@@ -332,8 +334,6 @@ struct core_config {
     unsigned gpgpu_shmem_sizeDefault;
     unsigned gpgpu_shmem_sizePrefL1;
     unsigned gpgpu_shmem_sizePrefShared;
-    unsigned L1_warp_parts_cached;
-    unsigned L1_warp_parts_non_cached;
 
     // texture and constant cache line sizes (used to determine number of memory accesses)
     unsigned gpgpu_cache_texl1_linesize;
@@ -618,7 +618,8 @@ private:
 
 const unsigned MAX_MEMORY_ACCESS_SIZE = 128;
 typedef std::bitset<MAX_MEMORY_ACCESS_SIZE> mem_access_byte_mask_t;
-const unsigned SECTOR_CHUNCK_SIZE = 4;
+const unsigned SECTOR_CHUNCK_SIZE = 4;   //four sectors
+const unsigned SECTOR_SIZE = 32 ;        //sector is 32 bytes width
 typedef std::bitset<SECTOR_CHUNCK_SIZE> mem_access_sector_mask_t;
 #define NO_PARTIAL_WRITE (mem_access_byte_mask_t())
 
