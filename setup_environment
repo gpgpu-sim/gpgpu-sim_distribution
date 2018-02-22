@@ -46,7 +46,7 @@ CUDA_VERSION_NUMBER=`echo $CUDA_VERSION_STRING | sed 's/\./ /' | awk '{printf("%
 if [ $CUDA_VERSION_NUMBER -gt 9100 -o $CUDA_VERSION_NUMBER -lt 2030  ]; then
 	echo "ERROR ** GPGPU-Sim version $GPGPUSIM_VERSION_STRING not tested with CUDA version $CUDA_VERSION_STRING (please see README)";
 	return
-elif [ $CUDA_VERSION_NUMBER -gt 4020 ]; then
+elif [ $CUDA_VERSION_NUMBER -gt 9100 ]; then
 	echo "WARNING ** GPGPU-Sim version $GPGPUSIM_VERSION_STRING not fully tested with CUDA version $CUDA_VERSION_STRING (please see README)";
 fi
 
