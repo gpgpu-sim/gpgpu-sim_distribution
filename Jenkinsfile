@@ -10,8 +10,8 @@ pipeline {
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
                     make -j'
-                }, "8.0" : {
-                    sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/8.0_env_setup.sh &&\
+                }, "9.1" : {
+                    sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
                     make -j'
                 }
@@ -29,7 +29,7 @@ pipeline {
                     cd gpgpu-sim_simulations && \
                     source ./benchmarks/src/setup_environment && \
                     make -j -C ./benchmarks/src all'
-                sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/8.0_env_setup.sh &&\
+                sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
                     cd gpgpu-sim_simulations && \
                     source ./benchmarks/src/setup_environment && \
@@ -43,10 +43,10 @@ pipeline {
                     source `pwd`/setup_environment &&\
                     ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -B rodinia_2.0-ft -C GTX480,GTX480-PTXPLUS,PASCALTITANX,PASCALTITANX-PTXPLUS,TITANX-P102 -N regress-$$ && \
                     ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress-$$'
-                }, "8.0-rodinia": {
-                    sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/8.0_env_setup.sh &&\
+                }, "9.1-rodinia": {
+                    sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
-                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -B rodinia_2.0-ft -C GTX480,PASCALTITANX -N regress-$$ && \
+                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -B rodinia_2.0-ft -C PASCALTITANX -N regress-$$ && \
                     ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress-$$'
                 }, "4.2-sdk-4.2": {
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
