@@ -962,7 +962,7 @@ void baseline_cache::send_read_request(new_addr_type addr, new_addr_type block_a
         m_mshrs.add(mshr_addr,mf);
         m_extra_mf_fields[mf] = extra_mf_fields(mshr_addr,mf->get_addr(),cache_index, mf->get_data_size(), m_config);
         mf->set_data_size( m_config.get_atom_sz() );
-        mf->set_addr( block_addr );
+        mf->set_addr( mshr_addr );
         m_miss_queue.push_back(mf);
         mf->set_status(m_miss_queue_status,time);
         if(!wa)
@@ -1432,7 +1432,7 @@ data_cache::process_tag_probe( bool wr,
             access_status = (this->*m_wr_hit)( addr,
                                       cache_index,
                                       mf, time, events, probe_status );
-        }else if ( probe_status != RESERVATION_FAIL ) {
+        }else if ( (probe_status != RESERVATION_FAIL) || (probe_status == RESERVATION_FAIL && m_config.m_write_alloc_policy == NO_WRITE_ALLOCATE) ) {
             access_status = (this->*m_wr_miss)( addr,
                                        cache_index,
                                        mf, time, events, probe_status );
