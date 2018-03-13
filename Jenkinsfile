@@ -28,13 +28,13 @@ pipeline {
                     source `pwd`/setup_environment &&\
                     cd gpgpu-sim_simulations && \
                     source ./benchmarks/src/setup_environment && \
-                    make -j -C ./benchmarks/src all && \
+                    make -j -C ./benchmarks/src rodinia-2.0-ft sdk-4.2 && \
                     make -C ./benchmarks/src data'
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
                     cd gpgpu-sim_simulations && \
                     source ./benchmarks/src/setup_environment && \
-                    make -j -C ./benchmarks/src/ all && \
+                    make -j -C ./benchmarks/src/ rodinia-2.0-ft sdk-4.2 && \
                     make -C ./benchmarks/src data'
             }
         }
