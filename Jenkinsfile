@@ -41,22 +41,22 @@ pipeline {
                 parallel "4.2-rodinia": {
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
-                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -B rodinia_2.0-ft -C GTX480,GTX480-PTXPLUS,PASCALTITANX,PASCALTITANX-PTXPLUS,TITANX-P102 -N regress-$$ && \
+                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -B rodinia_2.0-ft -C GTX480,GTX480-PTXPLUS,TITANX-P102,TITANX-P102-L1ON,P100-HBM -N regress-$$ && \
                     ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress-$$'
                 }, "9.1-rodinia": {
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
-                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -B rodinia_2.0-ft -C PASCALTITANX,TITANX-P102 -N regress-$$ && \
+                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -B rodinia_2.0-ft -C GTX480,TITANX-P102,TITANX-P102-L1ON,P100-HBM -N regress-$$ && \
                     ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress-$$'
                 }, "4.2-sdk-4.2": {
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
-                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -B sdk-4.2 -C GTX480,PASCALTITANX,TITANX-P102 -N regress-$$ && \
+                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -B sdk-4.2 -C GTX480,TITANX-P102,TITANX-P102-L1ON,P100-HBM -N regress-$$ && \
                     ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress-$$'
                 }, "9.1-sdk-4.2": {
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
-                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -B sdk-4.2 -C PASCALTITANX,TITANX-P102 -N regress-$$ && \
+                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -B sdk-4.2 -C TITANX-P102,TITANX-P102-L1ON,P100-HBM -N regress-$$ && \
                     ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress-$$'
                 }
             }
