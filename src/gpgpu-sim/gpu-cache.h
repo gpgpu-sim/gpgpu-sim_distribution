@@ -39,7 +39,7 @@
 #include <iostream>
 
 enum cache_block_state {
-    INVALID,
+    INVALID=0,
     RESERVED,
     VALID,
     MODIFIED
@@ -125,6 +125,7 @@ struct cache_block_t {
     virtual unsigned get_modified_size() = 0;
     virtual void set_m_readable(bool readable, mem_access_sector_mask_t sector_mask)=0;
     virtual bool is_readable(mem_access_sector_mask_t sector_mask)=0;
+    virtual void print_status()=0;
     virtual ~cache_block_t() {}
 
 
@@ -144,7 +145,7 @@ struct line_cache_block: public cache_block_t  {
 	        m_set_modified_on_fill = false;
 	        m_readable = true;
 	    }
-	    void allocate( new_addr_type tag, new_addr_type block_addr, unsigned time, mem_access_sector_mask_t sector_mask )
+	    void allocate( new_addr_type tag, new_addr_type block_addr, unsigned time, mem_access_sector_mask_t sector_mask)
 	    {
 	        m_tag=tag;
 	        m_block_addr=block_addr;
@@ -219,6 +220,9 @@ struct line_cache_block: public cache_block_t  {
 		}
 		virtual bool is_readable(mem_access_sector_mask_t sector_mask) {
 			return m_readable;
+		}
+		virtual void print_status() {
+			 printf("m_block_addr is %u, status = %u\n", m_block_addr, m_status);
 		}
 
 
@@ -400,6 +404,11 @@ struct sector_cache_block : public cache_block_t {
 		}
 		return modified * SECTOR_SIZE;
 	}
+
+    virtual void print_status() {
+    	 printf("m_block_addr is %u, status = %u %u %u %u\n", m_block_addr, m_status[0], m_status[1], m_status[2], m_status[3]);
+    }
+
 
 private:
     unsigned m_sector_alloc_time[SECTOR_CHUNCK_SIZE];
@@ -1030,7 +1039,7 @@ protected:
     std::string m_name;
     cache_config &m_config;
     tag_array*  m_tag_array;
-    mshr_table m_mshrs;
+	mshr_table m_mshrs;
     std::list<mem_fetch*> m_miss_queue;
     enum mem_fetch_status m_miss_queue_status;
     mem_fetch_interface *m_memport;
