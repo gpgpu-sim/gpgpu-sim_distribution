@@ -24,7 +24,7 @@ pipeline {
                     cd gpgpu-sim_simulations && \
                     git checkout purdue-cluster && \
                     git pull && \
-                    ln -s /home/tgrogers-raid/a/common/data_dirs benchmarks/'
+                    rm -r ./benchmarks/data_dirs && ln -s /home/tgrogers-raid/a/common/data_dirs benchmarks/'
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
                     cd gpgpu-sim_simulations && \
