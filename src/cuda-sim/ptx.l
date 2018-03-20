@@ -162,7 +162,7 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.file	 TC; BEGIN(INITIAL); return FILE_DIRECTIVE;
 \.func   TC; BEGIN(IN_FUNC_DECL); return FUNC_DIRECTIVE; // blocking opcode parsing in case the function has the same name as an opcode (e.g. sin(), cos())
 \.global TC; return GLOBAL_DIRECTIVE;
-\.global.volatile TC; return GLOBAL_DIRECTIVE; //AMRUTH: TODO: fix this!
+\.global.volatile TC; return GLOBAL_DIRECTIVE; //TODO: fix this!
 \.local  TC; return LOCAL_DIRECTIVE;
 \.loc    TC; return LOC_DIRECTIVE;
 \.maxnctapersm TC; return MAXNCTAPERSM_DIRECTIVE;
@@ -234,7 +234,7 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.u32  TC;  return U32_TYPE;
 \.u64  TC;  return U64_TYPE;
 \.f16  TC;  return F16_TYPE;
-\.f16x2  TC;  return F16_TYPE; /* AMRUTH: TODO: figure out what this should really be */
+\.f16x2  TC;  return F16_TYPE; /* TODO: figure out what this should really be */
 \.f32  TC;  return F32_TYPE;
 \.f64  TC;  return F64_TYPE;
 \.ff64 TC;  return FF64_TYPE;

@@ -1393,13 +1393,17 @@ std::string get_app_binary(){
  *	It is also responsible for extracting the libraries linked to the binary if the option is
  *	enabled
  * */
+
 void extract_code_using_cuobjdump(){
-	CUctx_st *context = GPGPUSim_Context();
+    CUctx_st *context = GPGPUSim_Context();
+    //prevent the dumping by cuobjdump everytime we execute the code!
+    const char *override_cuobjdump = getenv("CUOBJDUMP_SIM_FILE"); 
+    
+    char fname[1024];
+    if (override_cuobjdump == NULL) {
 	char command[1000];
+   	std::string app_binary = get_app_binary(); 
 
-   std::string app_binary = get_app_binary(); 
-
-	char fname[1024];
 	snprintf(fname,1024,"_cuobjdump_complete_output_XXXXXX");
 	int fd=mkstemp(fname);
 	close(fd);
@@ -1410,10 +1414,11 @@ void extract_code_using_cuobjdump(){
 	// Running cuobjdump using dynamic link to current process
 	// Needs the option '-all' to extract PTX from CDP-enabled binary 
 	extern bool g_cdp_enabled;
+        //dump only for specific arch - TODO: will it save memory?
 	if(!g_cdp_enabled)
-	    snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass %s > %s", app_binary.c_str(), fname);
+	    snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass -arch=sm_60 %s > %s", app_binary.c_str(), fname);
 	else
-	    snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass -all %s > %s", app_binary.c_str(), fname);
+	    snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass -arch=sm_60 -all %s > %s", app_binary.c_str(), fname);
 	bool parse_output = true; 
 	int result = system(command);
 	if(result) {
@@ -1493,6 +1498,10 @@ void extract_code_using_cuobjdump(){
 		//Restore the original section list
 		cuobjdumpSectionList = tmpsl;
 	}
+    } else {
+	printf("GPGPU-Sim PTX: overriding cuobjdump with '%s' (CUOBJDUMP_SIM_FILE is set)\n", override_cuobjdump);
+	snprintf(fname,1024,override_cuobjdump);
+    }
 }
 
 //! Read file into char*
@@ -1724,8 +1733,10 @@ cuobjdumpPTXSection* findPTXSection(const std::string identifier){
 void cuobjdumpInit(){
 	CUctx_st *context = GPGPUSim_Context();
 	extract_code_using_cuobjdump(); //extract all the output of cuobjdump to _cuobjdump_*.*
-	cuobjdumpSectionList = pruneSectionList(cuobjdumpSectionList, context);
-	cuobjdumpSectionList = mergeSections(cuobjdumpSectionList);
+	if (getenv("CUOBJDUMP_SIM_FILE")==NULL){
+		cuobjdumpSectionList = pruneSectionList(cuobjdumpSectionList, context);
+		cuobjdumpSectionList = mergeSections(cuobjdumpSectionList);
+	}
 }
 
 std::map<int, std::string> fatbinmap;
@@ -1760,7 +1771,9 @@ void cuobjdumpParseBinary(unsigned int handle){
 	}
 	if (max_capability > 20) printf("WARNING: No guarantee that PTX will be parsed for SM version %u\n", max_capability);
 
-	cuobjdumpPTXSection* ptx = findPTXSection(fname);
+	cuobjdumpPTXSection* ptx = NULL;
+	if(getenv("CUOBJDUMP_SIM_FILE")==NULL)
+		ptx = findPTXSection(fname);
 	symbol_table *symtab;
 	char *ptxcode;
 	const char *override_ptx_name = getenv("PTX_SIM_KERNELFILE"); 
@@ -1784,7 +1797,8 @@ void cuobjdumpParseBinary(unsigned int handle){
 		delete[] ptxplus_str;
 	} else {
 		symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxcode, handle);
-		printf("Adding %s with cubin handle %u\n", ptx->getPTXfilename().c_str(), handle);
+		//if CUOBJDUMP_SIM_FILE is not set, ptx is NULL. So comment below.
+		//printf("Adding %s with cubin handle %u\n", ptx->getPTXfilename().c_str(), handle);
 		context->add_binary(symtab, handle);
 		gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability );
 	}

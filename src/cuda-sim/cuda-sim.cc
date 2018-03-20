@@ -212,7 +212,9 @@ void function_info::ptx_assemble()
    m_start_PC = PC;
 
    addr_t n=0; // offset in m_instr_mem
-   s_g_pc_to_insn.reserve(s_g_pc_to_insn.size() + MAX_INST_SIZE*m_instructions.size());
+   //Why s_g_pc_to_insn.size() is needed to reserve additional memory for insts? reserve is cumulative.
+   //s_g_pc_to_insn.reserve(s_g_pc_to_insn.size() + MAX_INST_SIZE*m_instructions.size());
+   s_g_pc_to_insn.reserve(MAX_INST_SIZE*m_instructions.size());
    for ( i=m_instructions.begin(); i != m_instructions.end(); i++ ) {
       ptx_instruction *pI = *i;
       if ( pI->is_label() ) {
