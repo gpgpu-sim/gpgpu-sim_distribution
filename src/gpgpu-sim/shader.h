@@ -1470,6 +1470,10 @@ struct shader_core_stats_pod {
     int gpgpu_n_mem_read_global;
     int gpgpu_n_mem_write_global;
     int gpgpu_n_mem_read_inst;
+
+    //warps memory divergence count
+    unsigned long long gpgpu_n_times_gmem_accesses_by_warps;
+    unsigned long long gpgpu_n_total_gmem_accesses_by_warps;
     
     int gpgpu_n_mem_l2_writeback;
     int gpgpu_n_mem_l1_write_allocate; 
