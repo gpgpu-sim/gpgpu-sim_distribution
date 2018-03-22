@@ -1331,8 +1331,10 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
       
       if ( gpgpu_ptx_instruction_classification ) {
          init_inst_classification_stat();
-         if (op_classification)
+         if (op_classification) {
             StatAddSample( g_inst_classification_stat[g_ptx_kernel_count],  op_classification);
+            inst.op_classification = op_classification;
+         }
          if (pI->get_space().get_type())
             StatAddSample( g_inst_mem_classification_stat[g_ptx_kernel_count], ( int )pI->get_space().get_type());
          StatAddSample( g_inst_op_classification_stat[g_ptx_kernel_count], (int)  pI->get_opcode() );

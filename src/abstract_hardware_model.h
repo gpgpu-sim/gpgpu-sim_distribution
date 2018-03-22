@@ -798,6 +798,7 @@ public:
             arch_reg.dst[i] = -1;
         }
         isize=0;
+        op_classification = 0;
     }
     bool valid() const { return m_decoded; }
     virtual void print_insn( FILE *fp ) const 
@@ -816,6 +817,7 @@ public:
     address_type pc;        // program counter address of instruction
     unsigned isize;         // size of instruction in bytes 
     op_type op;             // opcode (uarch visible)
+    int op_classification;  // classification of opcode for statistics purpopses
 
     barrier_type bar_type;
     reduction_type red_type;
@@ -1021,6 +1023,11 @@ public:
 
     bool has_dispatch_delay(){
     	return cycles > 0;
+    }
+
+    unsigned get_cycles()
+    {
+        return cycles;
     }
 
     void print( FILE *fout ) const;

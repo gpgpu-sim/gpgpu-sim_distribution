@@ -447,6 +447,12 @@ void shader_core_stats::print( FILE* fout ) const
     fprintf(fout,"gpgpu_gmem_st_divergence_hist ");
     gpgpu_gmem_st_divergence_hist->fprint(fout);
     fprintf(fout,"\n");
+    fprintf(fout,"gpgpu_shmem_divergence_hist ");
+    gpgpu_shmem_divergence_hist->fprint(fout);
+    fprintf(fout,"\n");
+    fprintf(fout,"warp_inst_classification ");
+    warp_inst_classification->fprint(fout);
+    fprintf(fout,"\n");
 
    fprintf(fout, "gpgpu_n_load_insn  = %d\n", gpgpu_n_load_insn);
    fprintf(fout, "gpgpu_n_store_insn = %d\n", gpgpu_n_store_insn);
@@ -752,6 +758,9 @@ void shader_core_ctx::func_exec_inst( warp_inst_t &inst )
 {
     unsigned starting_queue_size;
     execute_warp_inst_t(inst);
+    if (inst.op_classification) {
+        m_stats->warp_inst_classification->add2bin(inst.op_classification);
+    }
     if( inst.is_load() || inst.is_store() ) {
         starting_queue_size = inst.accessq_count();
         inst.generate_mem_accesses();
@@ -761,6 +770,10 @@ void shader_core_ctx::func_exec_inst( warp_inst_t &inst )
         	else if (inst.is_store())
         		m_stats->gpgpu_gmem_st_divergence_hist->add2bin(inst.accessq_count() - starting_queue_size);
         }
+        else if ( inst.space.get_type() == shared_space ) {
+            m_stats->gpgpu_shmem_divergence_hist->add2bin(inst.get_cycles());
+        }
+
         m_stats->gpgpu_mem_divergence_hist->add2bin(inst.accessq_count() - starting_queue_size);
     }
 }
