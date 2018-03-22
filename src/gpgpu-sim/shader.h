@@ -53,6 +53,8 @@
 #include "stats.h"
 #include "gpu-cache.h"
 #include "traffic_breakdown.h"
+#include "histogram.h"
+
 
 
 
@@ -1471,9 +1473,8 @@ struct shader_core_stats_pod {
     int gpgpu_n_mem_write_global;
     int gpgpu_n_mem_read_inst;
 
-    //warps memory divergence count
-    unsigned long long gpgpu_n_times_gmem_accesses_by_warps;
-    unsigned long long gpgpu_n_total_gmem_accesses_by_warps;
+    //warps combined memory divergence histogram
+    linear_histogram* gpgpu_mem_divergence_hist;
     
     int gpgpu_n_mem_l2_writeback;
     int gpgpu_n_mem_l1_write_allocate; 
@@ -1543,6 +1544,7 @@ public:
         m_incoming_traffic_stats = new traffic_breakdown("memtocore"); 
 
         gpgpu_n_shmem_bank_access = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
+        gpgpu_mem_divergence_hist = new linear_histogram(1, "", config->warp_size+1);
 
         m_shader_dynamic_warp_issue_distro.resize( config->num_shader() );
         m_shader_warp_slot_issue_distro.resize( config->num_shader() );
@@ -1557,6 +1559,7 @@ public:
         free(m_n_diverge); 
         free(shader_cycle_distro);
         free(last_shader_cycle_distro);
+        free(gpgpu_mem_divergence_hist);
     }
 
     void new_grid()
