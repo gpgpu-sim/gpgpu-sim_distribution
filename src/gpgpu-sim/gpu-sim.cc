@@ -445,7 +445,7 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
                 "1");
    option_parser_register(opp, "-gpgpu_ptx_instruction_classification", OPT_INT32, 
                &gpgpu_ptx_instruction_classification, 
-               "if enabled will classify ptx instruction types per kernel (Max 255 kernels now)", 
+               "if enabled will classify ptx instruction types per kernel (Max 1024 kernels now)", 
                "0");
    option_parser_register(opp, "-gpgpu_ptx_sim_mode", OPT_INT32, &g_ptx_sim_mode, 
                "Select between Performance (default) or Functional simulation (1)", 
@@ -1076,8 +1076,9 @@ void gpgpu_sim::gpu_print_stat()
       insn_warp_occ_print(stdout);
    }
    if ( gpgpu_ptx_instruction_classification ) {
-      StatDisp( g_inst_classification_stat[g_ptx_kernel_count]);
-      StatDisp( g_inst_op_classification_stat[g_ptx_kernel_count]);
+      StatDisp( g_inst_classification_stat[g_ptx_kernel_count_prev]);
+      StatDisp( g_inst_mem_classification_stat[g_ptx_kernel_count_prev]);
+      StatDisp( g_inst_op_classification_stat[g_ptx_kernel_count_prev]);
    }
 
 #ifdef GPGPUSIM_POWER_MODEL
