@@ -1475,7 +1475,9 @@ struct shader_core_stats_pod {
 
     //warps combined memory divergence histogram
     linear_histogram* gpgpu_mem_divergence_hist;
-    
+    linear_histogram* gpgpu_gmem_ld_divergence_hist;
+    linear_histogram* gpgpu_gmem_st_divergence_hist;
+
     int gpgpu_n_mem_l2_writeback;
     int gpgpu_n_mem_l1_write_allocate; 
     int gpgpu_n_mem_l2_write_allocate;
@@ -1545,6 +1547,8 @@ public:
 
         gpgpu_n_shmem_bank_access = (unsigned *)calloc(config->num_shader(), sizeof(unsigned));
         gpgpu_mem_divergence_hist = new linear_histogram(1, "", config->warp_size+1);
+        gpgpu_gmem_ld_divergence_hist = new linear_histogram(1, "", config->warp_size+1);
+        gpgpu_gmem_st_divergence_hist = new linear_histogram(1, "", config->warp_size+1);
 
         m_shader_dynamic_warp_issue_distro.resize( config->num_shader() );
         m_shader_warp_slot_issue_distro.resize( config->num_shader() );
@@ -1560,6 +1564,8 @@ public:
         free(shader_cycle_distro);
         free(last_shader_cycle_distro);
         free(gpgpu_mem_divergence_hist);
+        free(gpgpu_gmem_ld_divergence_hist);
+        free(gpgpu_gmem_st_divergence_hist);
     }
 
     void new_grid()
