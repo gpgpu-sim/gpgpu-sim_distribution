@@ -1013,7 +1013,16 @@ __host__ cudaError_t CUDARTAPI cudaLaunch( const char *hostFun )
 	printf("\nGPGPU-Sim PTX: cudaLaunch for 0x%p (mode=%s) on stream %u\n", hostFun,
 			g_ptx_sim_mode?"functional simulation":"performance simulation", stream?stream->get_uid():0 );
 	kernel_info_t *grid = gpgpu_cuda_ptx_sim_init_grid(hostFun,config.get_args(),config.grid_dim(),config.block_dim(),context);
+        //do dynamic PDOM analysis for performance simulation scenario
 	std::string kname = grid->name();
+	function_info *kernel_func_info = grid->entry();
+	if (kernel_func_info->is_pdom_set()) {
+    		printf("GPGPU-Sim PTX: PDOM analysis already done for %s \n", kname.c_str() );
+    	} else {
+    		printf("GPGPU-Sim PTX: finding reconvergence points for \'%s\'...\n", kname.c_str() );
+		kernel_func_info->do_pdom();
+		kernel_func_info->set_pdom();
+    	} 
 	dim3 gridDim = config.grid_dim();
 	dim3 blockDim = config.block_dim();
 	printf("GPGPU-Sim PTX: pushing kernel \'%s\' to stream %u, gridDim= (%u,%u,%u) blockDim = (%u,%u,%u) \n",
@@ -1400,7 +1409,7 @@ void extract_code_using_cuobjdump(){
     const char *override_cuobjdump = getenv("CUOBJDUMP_SIM_FILE"); 
     
     char fname[1024];
-    if (override_cuobjdump == NULL) {
+    if ((override_cuobjdump == NULL) || (strlen(override_cuobjdump)==0)) {
 	char command[1000];
    	std::string app_binary = get_app_binary(); 
 
@@ -1733,7 +1742,8 @@ cuobjdumpPTXSection* findPTXSection(const std::string identifier){
 void cuobjdumpInit(){
 	CUctx_st *context = GPGPUSim_Context();
 	extract_code_using_cuobjdump(); //extract all the output of cuobjdump to _cuobjdump_*.*
-	if (getenv("CUOBJDUMP_SIM_FILE")==NULL){
+	const char* pre_load = getenv("CUOBJDUMP_SIM_FILE");
+	if (pre_load ==NULL || strlen(pre_load)==0){
 		cuobjdumpSectionList = pruneSectionList(cuobjdumpSectionList, context);
 		cuobjdumpSectionList = mergeSections(cuobjdumpSectionList);
 	}
@@ -1772,12 +1782,13 @@ void cuobjdumpParseBinary(unsigned int handle){
 	if (max_capability > 20) printf("WARNING: No guarantee that PTX will be parsed for SM version %u\n", max_capability);
 
 	cuobjdumpPTXSection* ptx = NULL;
-	if(getenv("CUOBJDUMP_SIM_FILE")==NULL)
+	const char* pre_load = getenv("CUOBJDUMP_SIM_FILE");
+	if(pre_load==NULL || strlen(pre_load)==0)
 		ptx = findPTXSection(fname);
 	symbol_table *symtab;
 	char *ptxcode;
 	const char *override_ptx_name = getenv("PTX_SIM_KERNELFILE"); 
-	if (override_ptx_name == NULL or getenv("PTX_SIM_USE_PTX_FILE") == NULL) {
+	if (override_ptx_name == NULL or getenv("PTX_SIM_USE_PTX_FILE") == NULL or strlen(getenv("PTX_SIM_USE_PTX_FILE"))==0) {
 		ptxcode = readfile(ptx->getPTXfilename());
 	} else {
 		printf("GPGPU-Sim PTX: overriding embedded ptx with '%s' (PTX_SIM_USE_PTX_FILE is set)\n", override_ptx_name);

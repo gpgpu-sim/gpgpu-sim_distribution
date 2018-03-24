@@ -575,6 +575,31 @@ bool function_info::connect_break_targets() //connecting break instructions with
 
    return modified; 
 }
+void function_info::do_pdom() {
+    	create_basic_blocks();
+    	connect_basic_blocks();
+    	bool modified = false; 
+    	do {
+      		find_dominators();
+       		find_idominators();
+       		modified = connect_break_targets(); 
+    	} while (modified == true);
+
+    	if ( g_debug_execution>=50 ) {
+      		print_basic_blocks();
+       		print_basic_block_links();
+       		print_basic_block_dot();
+    	}
+    	if ( g_debug_execution>=2 ) {
+       		print_dominators();
+    	}
+    	find_postdominators();
+    	find_ipostdominators();
+    	if ( g_debug_execution>=50 ) {
+       		print_postdominators();
+       		print_ipostdominators();
+    	}
+}
 void intersect( std::set<int> &A, const std::set<int> &B )
 {
    // return intersection of A and B in A
@@ -1305,6 +1330,7 @@ function_info::function_info(int entry_point )
    m_kernel_info.smem = 0;
    m_local_mem_framesize = 0;
    m_args_aligned_size = -1;
+   pdom_done = false; //initialize it to false
 }
 
 unsigned function_info::print_insn( unsigned pc, FILE * fp ) const
