@@ -1178,7 +1178,7 @@ public:
    //Muchnick's Adv. Compiler Design & Implemmntation Fig 7.15 
    void find_ipostdominators( );
    void print_ipostdominators();
-
+   void do_pdom(); //function to call pdom analysis
 
    unsigned get_num_reconvergence_pairs();
 
@@ -1274,6 +1274,8 @@ public:
       m_local_mem_framesize = sz;
    }
    bool is_entry_point() const { return m_entry_point; }
+   bool is_pdom_set() const { return pdom_done; } //return pdom flag
+   void set_pdom() { pdom_done = true; } //set pdom flag
 
 private:
    unsigned m_uid;
@@ -1281,6 +1283,7 @@ private:
    bool m_entry_point;
    bool m_extern;
    bool m_assembled;
+   bool pdom_done; //flag to check whether pdom is completed or not
    std::string m_name;
    ptx_instruction **m_instr_mem;
    unsigned m_start_PC;

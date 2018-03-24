@@ -257,6 +257,8 @@ void function_info::ptx_assemble()
    fflush(stdout);
    printf("GPGPU-Sim PTX: finding reconvergence points for \'%s\'...\n", m_name.c_str() );
 
+   //disable pdom analysis  here and do it at runtime
+#if 0
    create_basic_blocks();
    connect_basic_blocks();
    bool modified = false; 
@@ -280,6 +282,7 @@ void function_info::ptx_assemble()
       print_postdominators();
       print_ipostdominators();
    }
+#endif
 
    printf("GPGPU-Sim PTX: pre-decoding instructions for \'%s\'...\n", m_name.c_str() );
    for ( unsigned ii=0; ii < n; ii += m_instr_mem[ii]->inst_size() ) { // handle branch instructions
@@ -1801,6 +1804,15 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
 
      //using a shader core object for book keeping, it is not needed but as most function built for performance simulation need it we use it here
     extern gpgpu_sim *g_the_gpu;
+    //before we execute, we should do PDOM analysis for functional simulation scenario.
+    function_info *kernel_func_info = kernel.entry();
+    if (kernel_func_info->is_pdom_set()) {
+    	printf("GPGPU-Sim PTX: PDOM analysis already done for %s \n", kernel.name().c_str() );
+    } else {
+	printf("GPGPU-Sim PTX: finding reconvergence points for \'%s\'...\n", kernel.name().c_str() );
+	kernel_func_info->do_pdom();
+	kernel_func_info->set_pdom();
+    }  
 
     //we excute the kernel one CTA (Block) at the time, as synchronization functions work block wise
     while(!kernel.no_more_ctas_to_run()){
