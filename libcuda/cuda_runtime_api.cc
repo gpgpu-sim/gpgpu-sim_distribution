@@ -336,10 +336,23 @@ class _cuda_device_id *GPGPUSim_Init()
 		prop->minor = 2;
 		prop->totalGlobalMem = 0x80000000 /* 2 GB */;
 		prop->memPitch = 0;
-		prop->maxThreadsPerBlock = 512;
-		prop->maxThreadsDim[0] = 512;
-		prop->maxThreadsDim[1] = 512;
-		prop->maxThreadsDim[2] = 512;
+
+        if(prop->major >= 2) {
+          prop->maxThreadsPerBlock = 1024;
+          prop->maxThreadsDim[0] = 1024;
+          prop->maxThreadsDim[1] = 1024;
+        }
+        else
+        {
+            prop->maxThreadsPerBlock = 512;
+            prop->maxThreadsDim[0] = 512;
+            prop->maxThreadsDim[1] = 512;
+        }
+
+         prop->maxThreadsDim[2] = 64;
+         prop->maxGridSize[0] = 0x40000000;
+         prop->maxGridSize[1] = 0x40000000;
+         prop->maxGridSize[2] = 0x40000000;
 		prop->maxGridSize[0] = 0x40000000;
 		prop->maxGridSize[1] = 0x40000000;
 		prop->maxGridSize[2] = 0x40000000;
@@ -351,6 +364,9 @@ class _cuda_device_id *GPGPUSim_Init()
 		prop->clockRate = the_gpu->shader_clock();
 #if (CUDART_VERSION >= 2010)
 		prop->multiProcessorCount = the_gpu->get_config().num_shader();
+#endif
+#if (CUDART_VERSION >= 4000)
+        prop->maxThreadsPerMultiProcessor = the_gpu->threads_per_core();
 #endif
 		the_gpu->set_prop(prop);
 		the_device = new _cuda_device_id(the_gpu);
