@@ -161,6 +161,7 @@ $(SIM_LIB_DIR)/libcudart.so: makedirs $(LIBS) cudalib
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.6.5 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.6.5; fi
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.7.5 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.7.5; fi
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.8.0 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.8.0; fi
+	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.9.0 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.9.0; fi
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.9.1 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.9.1; fi
 
 $(SIM_LIB_DIR)/libcudart.dylib: makedirs $(LIBS) cudalib
