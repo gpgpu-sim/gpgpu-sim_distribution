@@ -30,6 +30,7 @@
 #include <string>
 
 extern bool g_override_embedded_ptx;
+extern int no_of_ptx; //counter to track number of ptx files to be extracted in an application.
  
 class symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num );
 void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num, unsigned sm_version=20 );
