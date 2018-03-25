@@ -2104,8 +2104,14 @@ cudaError_t CUDARTAPI cudaSetValidDevices(int *device_arr, int len)
 
 cudaError_t CUDARTAPI cudaSetDeviceFlags( int flags )
 {
-	cuda_not_implemented(__my_func__,__LINE__);
-	return g_last_cudaError = cudaErrorUnknown;
+    // This flag is implicitly always on (unless you are using the driver API). It is safe for GPGPU-Sim to
+    // just ignore it.
+    if ( cudaDeviceMapHost == flags ) {
+		return g_last_cudaError = cudaSuccess;
+    } else {
+	    cuda_not_implemented(__my_func__,__LINE__);
+	    return g_last_cudaError = cudaErrorUnknown;
+    }
 }
 
 size_t getMaxThreadsPerBlock(struct cudaFuncAttributes *attr) {
