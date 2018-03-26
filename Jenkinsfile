@@ -73,7 +73,28 @@ pipeline {
                 }
             }
         }
-
+        stage('4.2-correlate'){
+            steps {
+                sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
+                    source `pwd`/setup_environment &&\
+                    ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B sdk-4.2,rodinia_2.0-ft -C TITANX-P102,P100-HBM > stats-4.2.csv && \
+                    PLOTDIR="jenkins/${JOB_NAME}/${BUILD_NUMBER}/correlate-4.2" && ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p /home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR && \
+                    sh ./gpgpu-sim_simulations/run_hw/get_hw_data.sh && rm -rf ./gpgpu-sim_simulations/util/plotting/correl-html &&\
+                    ./gpgpu-sim_simulations/util/plotting/plot-correlation.py -c stats-4.2.csv -H ./gpgpu-sim_simulations/run_hw/ &&\
+                    scp  ./gpgpu-sim_simulations/util/plotting/correl-html/* tgrogers@dynamo.ecn.purdue.edu:/home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR'
+            }
+        }
+        stage('9.1-correlate'){
+            steps {
+                sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
+                    source `pwd`/setup_environment &&\
+                    ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B sdk-4.2,rodinia_2.0-ft -C TITANX-P102,P100-HBM > stats-9.1.csv && \
+                    PLOTDIR="jenkins/${JOB_NAME}/${BUILD_NUMBER}/correlate-9.1" && ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p /home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR && \
+                    sh ./gpgpu-sim_simulations/run_hw/get_hw_data.sh && rm -rf ./gpgpu-sim_simulations/util/plotting/correl-html &&\
+                    ./gpgpu-sim_simulations/util/plotting/plot-correlation.py -c stats-9.1.csv -H ./gpgpu-sim_simulations/run_hw/ &&\
+                    scp  ./gpgpu-sim_simulations/util/plotting/correl-html/* tgrogers@dynamo.ecn.purdue.edu:/home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR'
+            }
+        }
     }
     post {
         success {
