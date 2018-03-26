@@ -513,7 +513,8 @@ compare_spec:EQ_OPTION { add_option(EQ_OPTION); }
 	| NAN_OPTION { add_option(NAN_OPTION); } 
 	;
 
-operand_list: operand
+operand_list: /* empty*/
+    | operand
 	| operand COMMA operand_list;
 
 operand: IDENTIFIER  { add_scalar_operand( $1 ); }
