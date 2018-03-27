@@ -2647,6 +2647,10 @@ unsigned int shader_core_config::max_cta( const kernel_info_t &k ) const
     assert( result <= MAX_CTA_PER_SHADER );
     if (result < 1) {
        printf ("GPGPU-Sim uArch: ERROR ** Kernel requires more resources than shader has.\n");
+       if(gpgpu_ignore_resources_limitation) {
+    	   printf ("GPGPU-Sim uArch: gpgpu_ignore_resources_limitation is set, ignore the ERROR!\n");
+    	   return 1;
+       }
        abort();
     }
 
