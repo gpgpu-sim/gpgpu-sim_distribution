@@ -280,8 +280,10 @@ type_info *symbol_table::get_array_type( type_info *base_type, unsigned array_di
 {
    type_info_key t = base_type->get_key();
    t.set_array_dim(array_dim);
-   type_info *pt;
-   pt = m_types[t] = new type_info(this,t);
+   type_info *pt = new type_info(this,t);
+   //Where else is m_types being used? As of now, I dont find any use of it and causing seg fault. So disabling m_types.
+   //TODO: find where m_types can be used in future and solve the seg fault.
+   //pt = m_types[t] = new type_info(this,t);
    return pt;
 }
 
