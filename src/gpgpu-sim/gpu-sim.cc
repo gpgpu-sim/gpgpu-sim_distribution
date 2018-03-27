@@ -245,7 +245,7 @@ void shader_core_config::reg_options(class OptionParser * opp)
                    "per-shader L1 data cache config "
                    " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_alloc>,<mshr>:<N>:<merge>,<mq> | none}",
                    "none" );
-    option_parser_register(opp, "-gpgpu_cache:dl1PreShared", OPT_CSTR, &m_L1D_config.m_config_stringPrefShared,
+    option_parser_register(opp, "-gpgpu_cache:dl1PrefShared", OPT_CSTR, &m_L1D_config.m_config_stringPrefShared,
                    "per-shader L1 data cache config "
                    " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_alloc>,<mshr>:<N>:<merge>,<mq> | none}",
                    "none" );
@@ -268,6 +268,9 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_shader_registers", OPT_UINT32, &gpgpu_shader_registers, 
                  "Number of registers per shader core. Limits number of concurrent CTAs. (default 8192)",
                  "8192");
+    option_parser_register(opp, "-gpgpu_ignore_resources_limitation", OPT_BOOL, &gpgpu_ignore_resources_limitation,
+                 "gpgpu_ignore_resources_limitation (default 0)",
+                 "0");
     option_parser_register(opp, "-gpgpu_shader_cta", OPT_UINT32, &max_cta_per_core, 
                  "Maximum number of concurrent CTAs in shader (default 8)",
                  "8");

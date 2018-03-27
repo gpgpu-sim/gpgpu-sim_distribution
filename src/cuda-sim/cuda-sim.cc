@@ -1161,13 +1161,13 @@ void function_info::finalize( memory_space *param_mem )
       // copy the parameter over word-by-word so that parameter that crosses a memory page can be copied over
       //Jin: copy parameter using aligned rules
       const size_t word_size = 4; 
-      param_address = (param_address + size - 1) / size * size; //aligned with size 
+      //param_address = (param_address + size - 1) / size * size; //aligned with size TODO: align not correct
       for (size_t idx = 0; idx < size; idx += word_size) {
          const char *pdata = reinterpret_cast<const char*>(param_value.pdata) + idx; // cast to char * for ptr arithmetic
          param_mem->write(param_address + idx, word_size, pdata,NULL,NULL); 
       }
       unsigned offset = p.get_offset();
-      assert(offset == param_address);
+      //assert(offset == param_address);
       param->set_address(param_address);
       param_address += size;
    }
