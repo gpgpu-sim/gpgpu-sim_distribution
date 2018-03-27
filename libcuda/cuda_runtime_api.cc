@@ -145,6 +145,8 @@
 #include <mach-o/dyld.h>
 #endif
 
+std::map<void *,void **> pinned_memory; //support for pinned memories added
+std::map<void *, size_t> pinned_memory_size;
 int no_of_ptx=0;
 
 extern void synchronize();
@@ -476,6 +478,8 @@ __host__ cudaError_t CUDARTAPI cudaMallocHost(void **ptr, size_t size)
 	GPGPUSim_Context();
 	*ptr = malloc(size);
 	if ( *ptr  ) {
+		//track pinned memory size allocated in the host so that same amount of memory is also allocated in GPU.
+		pinned_memory_size[*ptr]=size;
 		return g_last_cudaError = cudaSuccess;
 	} else {
 		return g_last_cudaError = cudaErrorMemoryAllocation;
@@ -766,6 +770,16 @@ __host__ cudaError_t CUDARTAPI cudaMemset(void *mem, int c, size_t count)
 	return g_last_cudaError = cudaSuccess;
 }
 
+//memset operation is done but i think its not async?
+__host__ cudaError_t CUDARTAPI cudaMemsetAsync(void *mem, int c, size_t count, 	cudaStream_t stream=0)
+{
+	printf("GPGPU-Sim PTX: WARNING: Asynchronous memset not supported (%s)\n", __my_func__);
+	CUctx_st *context = GPGPUSim_Context();
+	gpgpu_t *gpu = context->get_device()->get_gpgpu();
+	gpu->gpu_memset((size_t)mem, c, count);
+	return g_last_cudaError = cudaSuccess;
+}
+
 __host__ cudaError_t CUDARTAPI cudaMemset2D(void *mem, size_t pitch, int c, size_t width, size_t height)
 {
 	cuda_not_implemented(__my_func__,__LINE__);
@@ -855,6 +869,12 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDevic
                 case 76:
                         *value= 3 ;
                         break;
+                case 78:
+                        *value= 0 ; //TODO: as of now, we dont support stream priorities.
+                        break;
+		default:
+			printf("ERROR: implement the attribute numbered %d \n",attr);
+			abort();
                 }
                 return g_last_cudaError = cudaSuccess;
         } else {
@@ -1052,6 +1072,15 @@ __host__ cudaError_t CUDARTAPI cudaStreamCreate(cudaStream_t *stream)
 	printf("GPGPU-Sim PTX: WARNING: Asynchronous kernel execution not supported (%s)\n", __my_func__);
 #endif
 	return g_last_cudaError = cudaSuccess;
+}
+
+//TODO: introduce priorities
+__host__ __device__ cudaError_t CUDARTAPI cudaStreamCreateWithPriority(cudaStream_t *stream, unsigned int flags, int  priority) {
+        return cudaStreamCreate(stream);
+}
+
+__host__ __device__ cudaError_t CUDARTAPI cudaDeviceGetStreamPriorityRange(int* leastPriority, int* greatestPriority) {
+       	return cudaSuccess;	
 }
 
 __host__ __device__ cudaError_t CUDARTAPI cudaStreamCreateWithFlags(cudaStream_t *stream, unsigned int flags) {
@@ -2206,6 +2235,9 @@ cudaError_t cudaGLUnregisterBufferObject(GLuint bufferObj)
 cudaError_t CUDARTAPI cudaHostAlloc(void **pHost,  size_t bytes, unsigned int flags)
 {
 	*pHost = malloc(bytes);
+	//need to track the size allocated so that cudaHostGetDevicePointer() can function properly.
+	//TODO: vary this function behavior based on flags value (following nvidia documentation)
+	pinned_memory_size[*pHost]=bytes;
 	if( *pHost )
 		return g_last_cudaError = cudaSuccess;
 	else
@@ -2214,8 +2246,25 @@ cudaError_t CUDARTAPI cudaHostAlloc(void **pHost,  size_t bytes, unsigned int fl
 
 cudaError_t CUDARTAPI cudaHostGetDevicePointer(void **pDevice, void *pHost, unsigned int flags)
 {
-	cuda_not_implemented(__my_func__,__LINE__);
-	return g_last_cudaError = cudaErrorUnknown;
+	//only cpu memory allocation happens in cudaHostAlloc. Linking with device pointer to pinned memory happens here.
+	//TODO: once kernel is executed, the contents in global pointer of GPU must be copied back to CPU host pointer!
+	flags=0;
+	CUctx_st* context = GPGPUSim_Context();
+	gpgpu_t *gpu = context->get_device()->get_gpgpu();
+	std::map<void *, size_t>::const_iterator i = pinned_memory_size.find(pHost);
+	assert(i != pinned_memory_size.end());
+	size_t size = i->second;
+	*pDevice = gpu->gpu_malloc(size);
+	if(g_debug_execution >= 3)
+		printf("GPGPU-Sim PTX: cudaMallocing %zu bytes starting at 0x%llx..\n",size, (unsigned long long) *pDevice);
+	if ( *pDevice  ) {
+		pinned_memory[pHost]=pDevice;
+		//Copy contents in cpu to gpu
+		gpu->memcpy_to_gpu((size_t)*pDevice,pHost,size);
+		return g_last_cudaError = cudaSuccess;
+	} else {
+		return g_last_cudaError = cudaErrorMemoryAllocation;
+	}
 }
 
 cudaError_t CUDARTAPI cudaSetValidDevices(int *device_arr, int len)

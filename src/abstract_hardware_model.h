@@ -182,6 +182,9 @@ void increment_x_then_y_then_z( dim3 &i, const dim3 &bound);
 class stream_manager;
 struct CUstream_st;
 extern stream_manager * g_stream_manager;
+//support for pinned memories added
+extern std::map<void *,void **> pinned_memory;
+extern std::map<void *, size_t> pinned_memory_size;
 
 class kernel_info_t {
 public:
