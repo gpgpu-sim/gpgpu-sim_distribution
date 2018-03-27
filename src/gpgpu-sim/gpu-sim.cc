@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <signal.h>
 #include "zlib.h"
 
 
@@ -1440,7 +1441,7 @@ void gpgpu_sim::cycle()
 
 
       if( g_single_step && ((gpu_sim_cycle+gpu_tot_sim_cycle) >= g_single_step) ) {
-          asm("int $03");
+          raise(SIGTRAP); // Debug breakpoint
       }
       gpu_sim_cycle++;
       if( g_interactive_debugger_enabled ) 
