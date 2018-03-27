@@ -433,7 +433,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       assert( (num_bits%8) == 0  );
       addr = g_current_symbol_table->get_shared_next();
       addr_pad = pad_address(addr, num_bits/8, 128);
-      printf("from 0x%x to 0x%lx (shared memory space)\n",
+      printf("from 0x%llx to 0x%llx (shared memory space)\n",
               addr+addr_pad,
               addr+addr_pad + num_bits/8);
          fflush(stdout);
@@ -450,7 +450,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
          assert( (num_bits%8) == 0  ); 
          addr = g_current_symbol_table->get_global_next();
          addr_pad = pad_address(addr, num_bits/8, 128);
-         printf("from 0x%x to 0x%lx (global memory space) %u\n",
+         printf("from 0x%llx to 0x%llx (global memory space) %u\n",
               addr+addr_pad,
               addr+addr_pad + num_bits/8,
               g_const_alloc++);
@@ -471,7 +471,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       assert( (num_bits%8) == 0  );
       addr = g_current_symbol_table->get_global_next();
       addr_pad = pad_address(addr, num_bits/8, 128);
-      printf("from 0x%x to 0x%lx (global memory space)\n",
+      printf("from 0x%llx to 0x%llx (global memory space)\n",
               addr+addr_pad,
               addr+addr_pad + num_bits/8);
       fflush(stdout);
@@ -488,7 +488,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
          assert( (num_bits%8) == 0  );
          addr = g_current_symbol_table->get_local_next();
          addr_pad = pad_address(addr, num_bits/8, 128);
-         printf("from 0x%x to 0x%lx (local memory space)\n",
+         printf("from 0x%llx to 0x%llx (local memory space)\n",
                  addr+addr_pad,
                  addr+addr_pad + num_bits/8);
          fflush(stdout);
@@ -501,7 +501,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
         assert( (num_bits%8) == 0 );
         addr = g_current_symbol_table->get_local_next();
         addr_pad = pad_address(addr, num_bits/8, 128);
-        printf("from 0x%x to 0x%lx\n",
+        printf("from 0x%llx to 0x%llx\n",
                 addr+addr_pad,
                 addr+addr_pad + num_bits/8);
         fflush(stdout);
