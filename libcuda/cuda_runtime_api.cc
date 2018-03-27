@@ -1083,8 +1083,8 @@ __host__ __device__ cudaError_t CUDARTAPI cudaDeviceGetStreamPriorityRange(int* 
        	return cudaSuccess;	
 }
 
-__host__ __device__ cudaError_t CUDARTAPI cudaStreamCreateWithFlags(cudaStream_t *stream, unsigned int flags) {
-	return cudaStreamCreate(stream);
+__host__ __device__ cudaError_t CUDARTAPI cudaStreamCreateWithFlags(cudaStream_t *pStream, unsigned int flags) {
+	return cudaStreamCreate(pStream);
 }
 
 __host__ cudaError_t CUDARTAPI cudaStreamDestroy(cudaStream_t stream)
@@ -1496,14 +1496,16 @@ void extract_code_using_cuobjdump(){
                     fclose(fp);
         }
     }
-    //based on the list above, dump ptx files individually. Format of dumped ptx file is prog_name.unique_no.sm_<>.ptx
-    for (int index=1; index<= no_of_ptx; index++){
-        snprintf(ptx_file, 1000, "%s.%d.sm_%u.ptx", get_app_binary_name(app_binary), index, forced_max_capability);
-        printf("Extracting specific PTX file named %s \n",ptx_file);
-        snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -arch=sm_%u -xptx %s %s", forced_max_capability, ptx_file, app_binary.c_str());
-        if (system(command)!=0) {
-            printf("ERROR: command: %s failed \n",command);
-            exit(0);
+    if(!g_cdp_enabled) {
+        //based on the list above, dump ptx files individually. Format of dumped ptx file is prog_name.unique_no.sm_<>.ptx
+        for (int index=1; index<= no_of_ptx; index++){
+            snprintf(ptx_file, 1000, "%s.%d.sm_%u.ptx", get_app_binary_name(app_binary), index, forced_max_capability);
+            printf("Extracting specific PTX file named %s \n",ptx_file);
+            snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -arch=sm_%u -xptx %s %s", forced_max_capability, ptx_file, app_binary.c_str());
+            if (system(command)!=0) {
+                printf("ERROR: command: %s failed \n",command);
+                exit(0);
+            }
         }
     }
     //TODO: redundant to dump twice. how can it be prevented?
@@ -1516,7 +1518,7 @@ void extract_code_using_cuobjdump(){
 	if(!g_cdp_enabled)
             snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass -arch=sm_%u %s > %s", forced_max_capability, app_binary.c_str(), fname);
 	else
-            snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass -arch=sm_%u -all %s > %s", forced_max_capability, app_binary.c_str(), fname);
+            snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass -all %s > %s", app_binary.c_str(), fname);
 	bool parse_output = true; 
 	result = system(command);
 	if(result) {

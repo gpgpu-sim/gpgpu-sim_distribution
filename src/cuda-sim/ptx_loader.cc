@@ -319,7 +319,7 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
     //do ptxas for individual files instead of one big embedded ptx. This prevents the duplicate defs and declarations.
     char ptx_file[1000];
     char *name=get_app_binary_name();
-    char commandline[4096], fname[1024], fname2[1024];
+    char commandline[4096], fname[1024], fname2[1024], final_tempfile_ptxinfo[1024], tempfile_ptxinfo[1024];
     for (int index=1; index <= no_of_ptx; index++){
         snprintf(ptx_file, 1000, "%s.%d.sm_%u.ptx", name, index, sm_version);
         snprintf(fname,1024,"_ptx_XXXXXX");
@@ -347,7 +347,6 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
        	    exit(1);
     	}
 
-        char tempfile_ptxinfo[1024];
         snprintf(tempfile_ptxinfo,1024,"%sinfo",fname);
         char extra_flags[1024];
         extra_flags[0]=0;
@@ -385,23 +384,75 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
 	    }
     	}
     }
+
+    //TODO: duplicate code! move it into a function so that it can be reused!
+    if(no_of_ptx==0) {
+        //For CDP, we dump everything. So no_of_ptx will be 0.
+	snprintf(fname,1024,"_ptx_XXXXXX");
+	int fd=mkstemp(fname);
+	close(fd);
+
+	printf("GPGPU-Sim PTX: extracting embedded .ptx to temporary file \"%s\"\n", fname);
+	FILE *ptxfile = fopen(fname,"w");
+	fprintf(ptxfile,"%s", p_for_info);
+	fclose(ptxfile);
+
+	snprintf(fname2,1024,"_ptx2_XXXXXX");
+	fd=mkstemp(fname2);
+	close(fd);
+	char commandline2[4096];
+	snprintf(commandline2,4096,"cat %s | sed 's/.version 1.5/.version 1.4/' | sed 's/, texmode_independent//' | sed 's/\\(\\.extern \\.const\\[1\\] .b8 \\w\\+\\)\\[\\]/\\1\\[1\\]/' | sed 's/const\\[.\\]/const\\[0\\]/g' > %s", fname, fname2);
+	printf("Running: %s\n", commandline2);
+	int result = system(commandline2);
+	if( result != 0 ) {
+		printf("GPGPU-Sim PTX: ERROR ** while loading PTX (a) %d\n", result);
+		printf("               Ensure you have write access to simulation directory\n");
+		printf("               and have \'cat\' and \'sed\' in your path.\n");
+		exit(1);
+	}
+	char tempfile_ptxinfo[1024];
+	snprintf(tempfile_ptxinfo,1024,"%sinfo",fname);
+	char extra_flags[1024];
+	extra_flags[0]=0;
+#if CUDART_VERSION >= 3000
+	snprintf(extra_flags,1024,"--gpu-name=sm_%u",sm_version);
+#endif
+
+	snprintf(commandline,1024,"$CUDA_INSTALL_PATH/bin/ptxas %s -v %s --output-file  /dev/null 2> %s",
+			            extra_flags, fname2, tempfile_ptxinfo);
+	printf("GPGPU-Sim PTX: generating ptxinfo using \"%s\"\n", commandline);
+	result = system(commandline);
+	if( result != 0 ) {
+		printf("GPGPU-Sim PTX: ERROR ** while loading PTX (b) %d\n", result);
+		printf("               Ensure ptxas is in your path.\n");
+		exit(1);
+	}
+    }
+
     //Now that we got resource usage per kernel in a ptx file, we dump all into one file and pass it to rest of the code as usual.
-    char commandline3[4096];
-    char final_tempfile_ptxinfo[1024];
-    snprintf(final_tempfile_ptxinfo,1024,"f_tempfile_ptx");
-    snprintf(commandline3,4096, "cat *info > %s", final_tempfile_ptxinfo);
-    if (system(commandline3)!=0) {
-	printf("ERROR: Either we dont have info files or cat is not working \n");
-        printf("ERROR: %s command failed\n",commandline3);
-	exit(1);
-    }    
+    if(no_of_ptx>0){
+        char commandline3[4096];
+        snprintf(final_tempfile_ptxinfo,1024,"f_tempfile_ptx");
+        snprintf(commandline3,4096, "cat *info > %s", final_tempfile_ptxinfo);
+        if (system(commandline3)!=0) {
+	    printf("ERROR: Either we dont have info files or cat is not working \n");
+            printf("ERROR: %s command failed\n",commandline3);
+	    exit(1);
+        }
+    }	
 
     ptxinfo_in = fopen(final_tempfile_ptxinfo,"r");
-    g_ptxinfo_filename = final_tempfile_ptxinfo;
+    if(no_of_ptx>0)
+        g_ptxinfo_filename = final_tempfile_ptxinfo;
+    else
+	g_ptxinfo_filename = tempfile_ptxinfo;
     ptxinfo_parse();
 
     if( ! g_save_embedded_ptx ) {
-        snprintf(commandline,1024,"rm -f %s %s %s *info", fname, fname2, final_tempfile_ptxinfo);
+	if(no_of_ptx>0)
+            snprintf(commandline,1024,"rm -f %s %s %s *info", fname, fname2, final_tempfile_ptxinfo);
+	else
+            snprintf(commandline,1024,"rm -f %s %s %s *info", fname, fname2, tempfile_ptxinfo);
         printf("GPGPU-Sim PTX: removing ptxinfo using \"%s\"\n", commandline);
         if( system(commandline) != 0 ) {
     	    printf("GPGPU-Sim PTX: ERROR ** while removing temporary files\n");
