@@ -8,6 +8,7 @@ libcuda/cuobjdump_parser.h
 libcuda/cuobjdump_parser.output
 
 lib/*
+doc/doxygen/html
 
 cuobjdump_to_ptxplus/elf_lexer.cc
 cuobjdump_to_ptxplus/elf_parser.cc
@@ -27,3 +28,4 @@ cuobjdump_to_ptxplus/sass_parser.hh
 cuobjdump_to_ptxplus/sass_parser.output
 
 build/*
+*.swp

@@ -94,6 +94,10 @@ void change_operand_neg( );
 void set_immediate_operand_type( );
 void version_header(double a);
 
+//Jin: handle instructino group for cdp
+void start_inst_group();
+void end_inst_group();
+
 #define NON_ARRAY_IDENTIFIER 1
 #define ARRAY_IDENTIFIER_NO_DIM 2
 #define ARRAY_IDENTIFIER 3

@@ -5,7 +5,8 @@ AerialVision and a configurable and extensible energy model called GPUWattch.
 GPGPU-Sim and GPUWattch have been rigorously validated with performance and
 power measurements of real hardware GPUs. 
 
-This version of GPGPU-Sim has been tested with CUDA version 2.3, 3.1 and 4.0.
+This version of GPGPU-Sim has been tested with CUDA version 2.3, 3.1, 4.0, 
+5.0, 5.5, 6.0 and 7.5.
 
 Please see the copyright notice in the file COPYRIGHT distributed with this
 release in the same directory as this file.
@@ -23,6 +24,12 @@ Jingwen Leng, Tayler Hetherington, Ahmed ElTantawy, Syed Gilani, Nam Sung Kim,
 Tor M. Aamodt, Vijay Janapa Reddi, GPUWattch: Enabling Energy Optimizations in
 GPGPUs, In proceedings of the ACM/IEEE International Symposium on Computer
 Architecture (ISCA 2013), Tel-Aviv, Israel, June 23-27, 2013.
+
+If you use the support for CUDA dynamic parallelism in your research, please cite:
+
+Jin Wang and Sudhakar Yalamanchili, Characterization and Analysis of Dynamic 
+Parallelism in Unstructured GPU Applications, 2014 IEEE International Symposium 
+on Workload Characterization (IISWC), November 2014.
 
 If you use figures plotted using AerialVision in your publications, please cite:
 
