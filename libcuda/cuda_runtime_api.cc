@@ -832,6 +832,7 @@ __host__ cudaError_t CUDARTAPI cudaGetDeviceProperties(struct cudaDeviceProp *pr
 	}
 }
 
+#if (CUDART_VERSION > 5000)
 __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDeviceAttr attr, int device)
 {
         const struct cudaDeviceProp *prop;
@@ -881,6 +882,7 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDevic
                 return g_last_cudaError = cudaErrorInvalidDevice;
         }
 }
+#endif
 
 __host__ cudaError_t CUDARTAPI cudaChooseDevice(int *device, const struct cudaDeviceProp *prop)
 {
