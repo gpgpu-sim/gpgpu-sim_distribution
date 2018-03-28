@@ -159,8 +159,6 @@ newlines	{newline}+
 %%
 void cuobjdump_error(const char* message)
 {
-	printf("   "); printf(message); printf(" near \""); printf(yytext); printf("\"");
-	printf(" on line "); 
-	char line[5]; sprintf(line, "%i", yylineno); printf(line);
-	printf("\n");
+	printf("   %s near \"%s\"",message, yytext);
+	printf(" on line %i\n",yylineno); 
 }

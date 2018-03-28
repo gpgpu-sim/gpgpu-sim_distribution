@@ -46,7 +46,7 @@ OPT	:=  -O3 -g3 -Wall -Wno-unused-function -Wno-sign-compare
 ifeq ($(DEBUG),1)
 	OPT := -g3 -Wall  -Wno-unused-function -Wno-sign-compare
 endif
-OPT += -I$(CUDA_INSTALL_PATH)/include  -I$(OUTPUT_DIR)/ -I.
+OPT += -I$(CUDA_INSTALL_PATH)/include  -I$(OUTPUT_DIR)/ -I. -I$(SIM_OBJ_FILES_DIR)
 OPT += -fPIC 
 
 ifeq ($(TRACE),1)
@@ -62,7 +62,7 @@ ifeq ($(GNUC_CPP0X),1)
 endif
 endif
 
-OBJS	:= $(OUTPUT_DIR)/ptx_parser.o $(OUTPUT_DIR)/ptx_loader.o $(OUTPUT_DIR)/cuda_device_printf.o $(OUTPUT_DIR)/instructions.o $(OUTPUT_DIR)/cuda-sim.o $(OUTPUT_DIR)/ptx_ir.o $(OUTPUT_DIR)/ptx_sim.o  $(OUTPUT_DIR)/memory.o $(OUTPUT_DIR)/ptx-stats.o $(OUTPUT_DIR)/decuda_pred_table/decuda_pred_table.o $(OUTPUT_DIR)/ptx.tab.o $(OUTPUT_DIR)/lex.ptx_.o $(OUTPUT_DIR)/ptxinfo.tab.o $(OUTPUT_DIR)/lex.ptxinfo_.o
+OBJS	:= $(OUTPUT_DIR)/ptx_parser.o $(OUTPUT_DIR)/ptx_loader.o $(OUTPUT_DIR)/cuda_device_printf.o $(OUTPUT_DIR)/instructions.o $(OUTPUT_DIR)/cuda-sim.o $(OUTPUT_DIR)/ptx_ir.o $(OUTPUT_DIR)/ptx_sim.o  $(OUTPUT_DIR)/memory.o $(OUTPUT_DIR)/ptx-stats.o $(OUTPUT_DIR)/decuda_pred_table/decuda_pred_table.o $(OUTPUT_DIR)/ptx.tab.o $(OUTPUT_DIR)/lex.ptx_.o $(OUTPUT_DIR)/ptxinfo.tab.o $(OUTPUT_DIR)/lex.ptxinfo_.o $(OUTPUT_DIR)/cuda_device_runtime.o
 
 
 OPT += -DCUDART_VERSION=$(CUDART_VERSION)
@@ -142,8 +142,9 @@ $(OUTPUT_DIR)/ptx_parser.o: $(OUTPUT_DIR)/ptx.tab.c $(OUTPUT_DIR)/ptx_parser_dec
 $(OUTPUT_DIR)/ptxinfo.tab.o: $(OUTPUT_DIR)/ptx.tab.c
 $(OUTPUT_DIR)/ptx-stats.o: $(OUTPUT_DIR)/ptx.tab.c
 $(OUTPUT_DIR)/ptx_sim.o: $(OUTPUT_DIR)/ptx.tab.c
-$(OUTPUT_DIR)/cuda-sim.o: $(OUTPUT_DIR)/ptx.tab.c
+$(OUTPUT_DIR)/cuda-sim.o: $(OUTPUT_DIR)/ptx.tab.c $(SIM_OBJ_FILES_DIR)/detailed_version
 $(OUTPUT_DIR)/lex.ptxinfo_.o: $(OUTPUT_DIR)/ptx.tab.c
 $(OUTPUT_DIR)/lex.ptx_.o: $(OUTPUT_DIR)/ptx.tab.c
+$(OUTPUT_DIR)/cuda_device_runtime.o: $(OUTPUT_DIR)/ptx.tab.c
 
 include $(OUTPUT_DIR)/Makefile.makedepend
