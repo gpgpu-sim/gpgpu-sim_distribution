@@ -251,7 +251,7 @@ void shader_core_config::reg_options(class OptionParser * opp)
                    "per-shader L1 data cache config "
                    " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_alloc>,<mshr>:<N>:<merge>,<mq> | none}",
                    "none" );
-    option_parser_register(opp, "-gpgpu_cache:dl1PreShared", OPT_CSTR, &m_L1D_config.m_config_stringPrefShared,
+    option_parser_register(opp, "-gpgpu_cache:dl1PrefShared", OPT_CSTR, &m_L1D_config.m_config_stringPrefShared,
                    "per-shader L1 data cache config "
                    " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_alloc>,<mshr>:<N>:<merge>,<mq> | none}",
                    "none" );
