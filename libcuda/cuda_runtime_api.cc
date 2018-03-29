@@ -1520,10 +1520,15 @@ void extract_code_using_cuobjdump(){
 	snprintf(fname,1024,"_cuobjdump_complete_output_XXXXXX");
 	int fd=mkstemp(fname);
 	close(fd);
-	if(!g_cdp_enabled)
+	if(!g_cdp_enabled) {
+#if (CUDART_VERSION >= 6000)
             snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass -arch=sm_%u %s > %s", forced_max_capability, app_binary.c_str(), fname);
-	else
+#else
+            snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass %s > %s", app_binary.c_str(), fname);
+#endif
+	} else {
             snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass -all %s > %s", app_binary.c_str(), fname);
+	}
 	bool parse_output = true; 
 	result = system(command);
 	if(result) {
