@@ -1472,13 +1472,14 @@ void extract_code_using_cuobjdump(){
     extern bool g_cdp_enabled;
 
     //dump ptx for all individial ptx files into sepearte files which is later used by ptxas.
+    int result=0;
 #if (CUDART_VERSION >= 6000)
     char fname2[1024];
     snprintf(fname2,1024,"_cuobjdump_list_ptx_XXXXXX");
     int fd2=mkstemp(fname2);
     close(fd2);
     snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -lptx -arch=sm_%u %s > %s", forced_max_capability, app_binary.c_str(), fname2);
-    int result = system(command);
+    result = system(command);
     if( result != 0 ) {
         printf("WARNING: Failed to execute cuobjdump to get list of ptx files \n");
         exit(0);
