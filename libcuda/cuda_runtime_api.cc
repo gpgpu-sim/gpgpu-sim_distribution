@@ -1472,6 +1472,7 @@ void extract_code_using_cuobjdump(){
     extern bool g_cdp_enabled;
 
     //dump ptx for all individial ptx files into sepearte files which is later used by ptxas.
+#if (CUDART_VERSION >= 6000)
     char fname2[1024];
     snprintf(fname2,1024,"_cuobjdump_list_ptx_XXXXXX");
     int fd2=mkstemp(fname2);
@@ -1510,6 +1511,7 @@ void extract_code_using_cuobjdump(){
             }
         }
     }
+#endif
     //TODO: redundant to dump twice. how can it be prevented?
     //dump only for specific arch
     char fname[1024];
