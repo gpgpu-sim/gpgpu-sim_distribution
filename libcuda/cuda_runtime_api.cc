@@ -1856,11 +1856,12 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 		}
 		return (void**)fat_cubin_handle;
 	}
-	#endif
+#else
         else {
 		printf("ERROR **  __cudaRegisterFatBinary() needs to be updated\n");
 		abort();
         }
+#endif
 }
 
 void __cudaUnregisterFatBinary(void **fatCubinHandle)
