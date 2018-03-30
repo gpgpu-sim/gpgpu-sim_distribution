@@ -803,7 +803,6 @@ void gpgpu_sim::update_stats() {
     partiton_replys_in_parallel = 0;
     partiton_reqs_in_parallel_util = 0;
     gpu_sim_cycle_parition_util = 0;
-    gpu_tot_sim_cycle = 0;
     gpu_sim_insn = 0;
     m_total_cta_launched = 0;
 }
