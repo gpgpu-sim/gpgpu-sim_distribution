@@ -36,6 +36,7 @@
 
 
 #include "shader.h"
+#include "shader_trace.h"
 #include "dram.h"
 #include "mem_fetch.h"
 
@@ -1256,8 +1257,8 @@ bool shader_core_ctx::occupy_shader_resource_1block(kernel_info_t & k, bool occu
        m_occupied_regs += (padded_cta_size * ((kernel_info->regs+3)&~3));
        m_occupied_ctas++;
 
-       printf("GPGPU-Sim uArch: Shader %d occupied %d threads, %d shared mem, %d registers, %d ctas\n",
-            m_sid, m_occupied_n_threads, m_occupied_shmem, m_occupied_regs, m_occupied_ctas);  
+      SHADER_DPRINTF(LIVENESS, "GPGPU-Sim uArch: Occupied %d threads, %d shared mem, %d registers, %d ctas\n",
+            m_occupied_n_threads, m_occupied_shmem, m_occupied_regs, m_occupied_ctas);  
    }
 
    return true;
@@ -1382,8 +1383,8 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
     m_n_active_cta++;
 
     shader_CTA_count_log(m_sid, 1);
-    printf("GPGPU-Sim uArch: core:%3d, cta:%2u, start_tid:%4u, end_tid:%4u, initialized @(%lld,%lld)\n", 
-        m_sid, free_cta_hw_id, start_thread, end_thread, gpu_sim_cycle, gpu_tot_sim_cycle );
+    SHADER_DPRINTF(LIVENESS, "GPGPU-Sim uArch: cta:%2u, start_tid:%4u, end_tid:%4u, initialized @(%lld,%lld)\n", 
+        free_cta_hw_id, start_thread, end_thread, gpu_sim_cycle, gpu_tot_sim_cycle );
 
 }
 
@@ -1591,7 +1592,8 @@ void gpgpu_sim::cycle()
             hrs     = elapsed_time/3600 - 24*days;
             minutes = elapsed_time/60 - 60*(hrs + 24*days);
             sec = elapsed_time - 60*(minutes + 60*(hrs + 24*days));
-            printf("GPGPU-Sim uArch: cycles simulated: %lld  inst.: %lld (ipc=%4.1f) sim_rate=%u (inst/sec) elapsed = %u:%u:%02u:%02u / %s", 
+
+            DPRINTF(LIVENESS, "GPGPU-Sim uArch: cycles simulated: %lld  inst.: %lld (ipc=%4.1f) sim_rate=%u (inst/sec) elapsed = %u:%u:%02u:%02u / %s", 
                    gpu_tot_sim_cycle + gpu_sim_cycle, gpu_tot_sim_insn + gpu_sim_insn, 
                    (double)gpu_sim_insn/(double)gpu_sim_cycle,
                    (unsigned)((gpu_tot_sim_insn+gpu_sim_insn) / elapsed_time),
