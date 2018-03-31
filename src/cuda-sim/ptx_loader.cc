@@ -410,7 +410,7 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
 		printf("               and have \'cat\' and \'sed\' in your path.\n");
 		exit(1);
 	}
-	char tempfile_ptxinfo[1024];
+	//char tempfile_ptxinfo[1024];
 	snprintf(tempfile_ptxinfo,1024,"%sinfo",fname);
 	char extra_flags[1024];
 	extra_flags[0]=0;
