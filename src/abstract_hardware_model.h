@@ -517,7 +517,14 @@ public:
     const struct textureReference* get_texref(const std::string &texname) const
     {
         std::map<std::string, const struct textureReference*>::const_iterator t=m_NameToTextureRef.find(texname);
-        assert( t != m_NameToTextureRef.end() );
+        if( t == m_NameToTextureRef.end() ) {
+	  // search for :: prefixed names
+	  std::string temp("::" + texname);
+	  t=m_NameToTextureRef.find(temp);
+	}
+
+	assert(t != m_NameToTextureRef.end());
+
         return t->second;
     }
     const struct cudaArray* get_texarray( const struct textureReference *texref ) const
@@ -568,6 +575,7 @@ struct gpgpu_ptx_sim_info
    int cmem;
    int gmem;
    int regs;
+   unsigned maxthreads;
    unsigned ptx_version;
    unsigned sm_target;
 };

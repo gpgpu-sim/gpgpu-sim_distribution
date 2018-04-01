@@ -1388,6 +1388,7 @@ struct shader_core_config : public core_config
     unsigned gpgpu_num_reg_banks;
     bool gpgpu_reg_bank_use_warp_id;
     bool gpgpu_local_mem_map;
+    bool gpgpu_ignore_resources_limitation;
     
     unsigned max_sp_latency;
     unsigned max_sfu_latency;
