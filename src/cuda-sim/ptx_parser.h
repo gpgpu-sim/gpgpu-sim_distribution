@@ -93,6 +93,7 @@ void change_double_operand_type( int addr_type );
 void change_operand_neg( );
 void set_immediate_operand_type( );
 void version_header(double a);
+void maxnt_id(int x, int y, int z);
 
 //Jin: handle instructino group for cdp
 void start_inst_group();

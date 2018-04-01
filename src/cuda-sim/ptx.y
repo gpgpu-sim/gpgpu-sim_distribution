@@ -228,7 +228,8 @@ function_defn: function_decl { set_symtab($1); func_header(".skip"); } statement
 
 block_spec: MAXNTID_DIRECTIVE INT_OPERAND COMMA INT_OPERAND COMMA INT_OPERAND {func_header_info_int(".maxntid", $2);
 										func_header_info_int(",", $4);
-										func_header_info_int(",", $6); }
+										func_header_info_int(",", $6); 
+                                                                                maxnt_id($2, $4, $6);}
 	| MINNCTAPERSM_DIRECTIVE INT_OPERAND { func_header_info_int(".minnctapersm", $2); printf("GPGPU-Sim: Warning: .minnctapersm ignored. \n"); }
 	| MAXNCTAPERSM_DIRECTIVE INT_OPERAND { func_header_info_int(".maxnctapersm", $2); printf("GPGPU-Sim: Warning: .maxnctapersm ignored. \n"); }
 	;

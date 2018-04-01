@@ -157,7 +157,9 @@ void *gpgpu_sim_thread_concurrent(void*)
            fflush(stdout);
         }
         //g_the_gpu->print_stats();
+
         if(sim_cycles) {
+            g_the_gpu->print_stats();
             g_the_gpu->update_stats();
             print_simulation_time();
         }
