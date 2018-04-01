@@ -1466,7 +1466,14 @@ void call_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    const operand_info &target  = pI->func_addr();
    assert( target.is_function_address() );
    const symbol *func_addr = target.get_symbol();
-   const function_info *target_func = func_addr->get_pc();
+   function_info *target_func = func_addr->get_pc();
+   if (target_func->is_pdom_set()) {
+      printf("GPGPU-Sim PTX: PDOM analysis already done for %s \n", target_func->get_name().c_str() );
+   } else {
+      printf("GPGPU-Sim PTX: finding reconvergence points for \'%s\'...\n", target_func->get_name().c_str() );
+      target_func->do_pdom();
+      target_func->set_pdom();
+   }
 
    // check that number of args and return match function requirements
    if( pI->has_return() ^ target_func->has_return() ) {
