@@ -255,10 +255,10 @@ void function_info::ptx_assemble()
 
    printf("  done.\n");
    fflush(stdout);
-   printf("GPGPU-Sim PTX: finding reconvergence points for \'%s\'...\n", m_name.c_str() );
 
    //disable pdom analysis  here and do it at runtime
 #if 0
+   printf("GPGPU-Sim PTX: finding reconvergence points for \'%s\'...\n", m_name.c_str() );
    create_basic_blocks();
    connect_basic_blocks();
    bool modified = false; 
