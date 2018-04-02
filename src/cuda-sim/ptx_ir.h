@@ -1308,6 +1308,8 @@ private:
 
    //parameter size for device kernels
    int m_args_aligned_size;
+   
+   addr_t m_n;  // offset in m_instr_mem (used in do_pdom)
 };
 
 class arg_buffer_t {
