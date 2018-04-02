@@ -577,30 +577,39 @@ bool function_info::connect_break_targets() //connecting break instructions with
 
    return modified; 
 }
-void function_info::do_pdom() {
-    	create_basic_blocks();
-    	connect_basic_blocks();
-    	bool modified = false; 
-    	do {
-      		find_dominators();
-       		find_idominators();
-       		modified = connect_break_targets(); 
-    	} while (modified == true);
+void function_info::do_pdom() 
+{
+   create_basic_blocks();
+   connect_basic_blocks();
+   bool modified = false; 
+   do {
+      find_dominators();
+      find_idominators();
+      modified = connect_break_targets(); 
+   } while (modified == true);
 
-    	if ( g_debug_execution>=50 ) {
-      		print_basic_blocks();
-       		print_basic_block_links();
-       		print_basic_block_dot();
-    	}
-    	if ( g_debug_execution>=2 ) {
-       		print_dominators();
-    	}
-    	find_postdominators();
-    	find_ipostdominators();
-    	if ( g_debug_execution>=50 ) {
-       		print_postdominators();
-       		print_ipostdominators();
-    	}
+   if ( g_debug_execution>=50 ) {
+      print_basic_blocks();
+      print_basic_block_links();
+      print_basic_block_dot();
+   }
+   if ( g_debug_execution>=2 ) {
+      print_dominators();
+   }
+   find_postdominators();
+   find_ipostdominators();
+   if ( g_debug_execution>=50 ) {
+      print_postdominators();
+      print_ipostdominators();
+   }
+   printf("GPGPU-Sim PTX: pre-decoding instructions for \'%s\'...\n", m_name.c_str() );
+   for ( unsigned ii=0; ii < m_n; ii += m_instr_mem[ii]->inst_size() ) { // handle branch instructions
+      ptx_instruction *pI = m_instr_mem[ii];
+      pI->pre_decode();
+   }
+   printf("GPGPU-Sim PTX: ... done pre-decoding instructions for \'%s\'.\n", m_name.c_str() );
+   fflush(stdout);
+   m_assembled = true;
 }
 void intersect( std::set<int> &A, const std::set<int> &B )
 {

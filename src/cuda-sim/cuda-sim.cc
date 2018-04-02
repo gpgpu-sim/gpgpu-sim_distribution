@@ -252,7 +252,7 @@ void function_info::ptx_assemble()
          target.set_type(label_t);
       }
    }
-
+   m_n = n;
    printf("  done.\n");
    fflush(stdout);
 
@@ -282,7 +282,6 @@ void function_info::ptx_assemble()
       print_postdominators();
       print_ipostdominators();
    }
-#endif
 
    printf("GPGPU-Sim PTX: pre-decoding instructions for \'%s\'...\n", m_name.c_str() );
    for ( unsigned ii=0; ii < n; ii += m_instr_mem[ii]->inst_size() ) { // handle branch instructions
@@ -293,6 +292,7 @@ void function_info::ptx_assemble()
    fflush(stdout);
 
    m_assembled = true;
+#endif
 }
 
 addr_t shared_to_generic( unsigned smid, addr_t addr )
