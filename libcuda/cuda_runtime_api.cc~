@@ -1503,7 +1503,7 @@ void extract_code_using_cuobjdump(){
 		printf("WARNING: Number of ptx in the executable file are 0. One of the reasons might be\n");
 		printf("\t1. CDP is enabled\n");
 		printf("\t2. cuobjdump -lptx doesnt recognize sm_%u\n",forced_max_capability);
-		printf("\t3. the application was not compiled with nvcc flag sm_%u\n",forced_max_capability);
+		printf("\t3. the application was not compiled iwth nvcc flag sm_%u\n",forced_max_capability);
 	}
     }
     if(!g_cdp_enabled) {
