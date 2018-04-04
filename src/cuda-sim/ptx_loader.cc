@@ -448,6 +448,9 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
         g_ptxinfo_filename = final_tempfile_ptxinfo;
     else
 	g_ptxinfo_filename = tempfile_ptxinfo;
+
+    //The program might get stuck because the parser didnt receive a EOF.
+    printf("NOTE: If the program is stuck, please press ctrl+d for ubuntu and ctrl+z for windows users \n");
     ptxinfo_parse();
 
     snprintf(commandline,1024,"rm -f *info");
