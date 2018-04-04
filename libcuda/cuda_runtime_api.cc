@@ -1085,8 +1085,8 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetStreamPriorityRange(int* leastPriori
        	return cudaSuccess;	
 }
 
-__host__ __device__ cudaError_t CUDARTAPI cudaStreamCreateWithFlags(cudaStream_t *pStream, unsigned int flags) {
-	return cudaStreamCreate(pStream);
+__host__ __device__ cudaError_t CUDARTAPI cudaStreamCreateWithFlags(cudaStream_t *stream, unsigned int flags) {
+	return cudaStreamCreate(stream);
 }
 
 __host__ cudaError_t CUDARTAPI cudaStreamDestroy(cudaStream_t stream)
