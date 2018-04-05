@@ -423,6 +423,7 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
 	snprintf(commandline,1024,"$CUDA_INSTALL_PATH/bin/ptxas %s -v %s --output-file  /dev/null 2> %s",
 			            extra_flags, fname2, tempfile_ptxinfo);
 	printf("GPGPU-Sim PTX: generating ptxinfo using \"%s\"\n", commandline);
+	fflush(stdout);
 	result = system(commandline);
 	if( result != 0 ) {
 		printf("GPGPU-Sim PTX: ERROR ** while loading PTX (b) %d\n", result);
@@ -443,14 +444,12 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
         }
     }	
 
-    ptxinfo_in = fopen(final_tempfile_ptxinfo,"r");
     if(no_of_ptx>0)
         g_ptxinfo_filename = final_tempfile_ptxinfo;
     else
 	g_ptxinfo_filename = tempfile_ptxinfo;
+    ptxinfo_in = fopen(g_ptxinfo_filename,"r");
 
-    //The program might get stuck because the parser didnt receive a EOF.
-    printf("NOTE: If the program is stuck, please press ctrl+d for Ubuntu/Mac and ctrl+z for Windows users \n");
     ptxinfo_parse();
 
     snprintf(commandline,1024,"rm -f *info");
