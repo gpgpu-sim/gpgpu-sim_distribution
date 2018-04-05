@@ -2155,3 +2155,4 @@ void functionalCoreSim::warp_exit( unsigned warp_id )
         }
     }
 }
+
