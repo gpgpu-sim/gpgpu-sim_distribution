@@ -165,10 +165,10 @@ void *gpgpu_sim_thread_concurrent(void*)
         g_sim_active = false;
         pthread_mutex_unlock(&g_sim_lock);
     } while( !g_sim_done );
-    if(g_debug_execution >= 3) {
-       printf("GPGPU-Sim: *** simulation thread exiting ***\n");
-       fflush(stdout);
-    }
+    
+    printf("GPGPU-Sim: *** simulation thread exiting ***\n");
+    fflush(stdout);
+
     if(break_limit) {
     	printf("GPGPU-Sim: ** break due to reaching the maximum cycles (or instructions) **\n");
     	exit(1);
