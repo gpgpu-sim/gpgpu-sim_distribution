@@ -1085,8 +1085,8 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetStreamPriorityRange(int* leastPriori
        	return cudaSuccess;	
 }
 
-__host__ __device__ cudaError_t CUDARTAPI cudaStreamCreateWithFlags(cudaStream_t *pStream, unsigned int flags) {
-	return cudaStreamCreate(pStream);
+__host__ __device__ cudaError_t CUDARTAPI cudaStreamCreateWithFlags(cudaStream_t *stream, unsigned int flags) {
+	return cudaStreamCreate(stream);
 }
 
 __host__ cudaError_t CUDARTAPI cudaStreamDestroy(cudaStream_t stream)
@@ -1499,6 +1499,12 @@ void extract_code_using_cuobjdump(){
                     no_of_ptx = no_of_ptx + 1;
                     fclose(fp);
         }
+	if(no_of_ptx==0){
+		printf("WARNING: Number of ptx in the executable file are 0. One of the reasons might be\n");
+		printf("\t1. CDP is enabled\n");
+		printf("\t2. cuobjdump -lptx doesnt recognize sm_%u\n",forced_max_capability);
+		printf("\t3. the application was not compiled with nvcc flag sm_%u\n",forced_max_capability);
+	}
     }
     if(!g_cdp_enabled) {
         //based on the list above, dump ptx files individually. Format of dumped ptx file is prog_name.unique_no.sm_<>.ptx
@@ -1520,15 +1526,10 @@ void extract_code_using_cuobjdump(){
 	snprintf(fname,1024,"_cuobjdump_complete_output_XXXXXX");
 	int fd=mkstemp(fname);
 	close(fd);
-	if(!g_cdp_enabled) {
-#if (CUDART_VERSION >= 6000)
-            snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass -arch=sm_%u %s > %s", forced_max_capability, app_binary.c_str(), fname);
-#else
+	if(!g_cdp_enabled)
             snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass %s > %s", app_binary.c_str(), fname);
-#endif
-	} else {
+	else
             snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass -all %s > %s", app_binary.c_str(), fname);
-	}
 	bool parse_output = true; 
 	result = system(command);
 	if(result) {

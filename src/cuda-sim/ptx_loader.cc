@@ -353,11 +353,7 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
 
         #if CUDART_VERSION >= 3000
     	if (sm_version == 0) sm_version = 20;
-    	extern bool g_cdp_enabled;
-    	if(!g_cdp_enabled)
-        	snprintf(extra_flags,1024,"--gpu-name=sm_%u",sm_version);
-    	else
-        	snprintf(extra_flags,1024,"--compile-only --gpu-name=sm_%u",sm_version);
+        snprintf(extra_flags,1024,"--gpu-name=sm_%u",sm_version);
 	#endif
 
     	snprintf(commandline,1024,"$CUDA_INSTALL_PATH/bin/ptxas %s -v %s --output-file  /dev/null 2> %s",
@@ -414,9 +410,15 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
 	snprintf(tempfile_ptxinfo,1024,"%sinfo",fname);
 	char extra_flags[1024];
 	extra_flags[0]=0;
-#if CUDART_VERSION >= 3000
-	snprintf(extra_flags,1024,"--gpu-name=sm_%u",sm_version);
-#endif
+
+	#if CUDART_VERSION >= 3000
+	if (sm_version == 0) sm_version = 20;
+    	extern bool g_cdp_enabled;
+	if(!g_cdp_enabled)
+	       	snprintf(extra_flags,1024,"--gpu-name=sm_%u",sm_version);
+	else
+	       	snprintf(extra_flags,1024,"--compile-only --gpu-name=sm_%u",sm_version);
+	#endif
 
 	snprintf(commandline,1024,"$CUDA_INSTALL_PATH/bin/ptxas %s -v %s --output-file  /dev/null 2> %s",
 			            extra_flags, fname2, tempfile_ptxinfo);
@@ -446,13 +448,21 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
         g_ptxinfo_filename = final_tempfile_ptxinfo;
     else
 	g_ptxinfo_filename = tempfile_ptxinfo;
+
+    //The program might get stuck because the parser didnt receive a EOF.
+    printf("NOTE: If the program is stuck, please press ctrl+d for Ubuntu/Mac and ctrl+z for Windows users \n");
     ptxinfo_parse();
 
+    snprintf(commandline,1024,"rm -f *info");
+    if( system(commandline) != 0 ) {
+	    printf("GPGPU-Sim PTX: ERROR ** while removing temporary info files\n");
+	    exit(1);
+    }
     if( ! g_save_embedded_ptx ) {
 	if(no_of_ptx>0)
-            snprintf(commandline,1024,"rm -f %s %s %s *info", fname, fname2, final_tempfile_ptxinfo);
+            snprintf(commandline,1024,"rm -f %s %s %s", fname, fname2, final_tempfile_ptxinfo);
 	else
-            snprintf(commandline,1024,"rm -f %s %s %s *info", fname, fname2, tempfile_ptxinfo);
+            snprintf(commandline,1024,"rm -f %s %s %s", fname, fname2, tempfile_ptxinfo);
         printf("GPGPU-Sim PTX: removing ptxinfo using \"%s\"\n", commandline);
         if( system(commandline) != 0 ) {
     	    printf("GPGPU-Sim PTX: ERROR ** while removing temporary files\n");
