@@ -1471,7 +1471,12 @@ void call_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       printf("GPGPU-Sim PTX: PDOM analysis already done for %s \n", target_func->get_name().c_str() );
    } else {
       printf("GPGPU-Sim PTX: finding reconvergence points for \'%s\'...\n", target_func->get_name().c_str() );
-      target_func->do_pdom();
+      /*
+       * Some of the instructions like printf() gives the gpgpusim the wrong impression that it is a function call.
+       * As printf() doesnt have a body like functions do, doing pdom analysis for printf() causes a crash.
+       */
+      if (target_func->get_function_size() >0)
+          target_func->do_pdom();
       target_func->set_pdom();
    }
 
