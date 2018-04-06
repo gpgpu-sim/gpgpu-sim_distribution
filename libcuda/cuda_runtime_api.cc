@@ -1911,7 +1911,7 @@ void cuobjdumpParseBinary(unsigned int handle){
 		if (capability > max_capability) max_capability = capability;
 	}
 	if (max_capability > 20) printf("WARNING: No guarantee that PTX will be parsed for SM version %u\n", max_capability);
-	max_capability=context->get_device()->get_gpgpu()->get_config().get_forced_max_capability();
+	//max_capability=context->get_device()->get_gpgpu()->get_config().get_forced_max_capability();
 
 	cuobjdumpPTXSection* ptx = NULL;
 	const char* pre_load = getenv("CUOBJDUMP_SIM_FILE");
