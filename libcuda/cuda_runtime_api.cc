@@ -840,7 +840,16 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDevic
         if (device <= dev->num_devices() )  {
                 prop = dev->get_prop();
                 switch (attr) {
-                case 5:
+                case 2:
+                        *value= prop->maxThreadsDim[0];
+                        break;
+                case 3:
+                        *value= prop->maxThreadsDim[1];
+                        break;
+                case 4:
+                        *value= prop->maxThreadsDim[2];
+                        break; 
+		case 5:
                         *value= prop->maxGridSize[0];
                         break;
                 case 6:
@@ -848,6 +857,9 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDevic
                         break;
                 case 7:
                         *value= prop->maxGridSize[2];
+                        break;
+		case 8:
+                        *value= prop->sharedMemPerBlock;
                         break;
                 case 10:
                         *value= prop->warpSize;
@@ -872,6 +884,12 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDevic
                         break;
                 case 78:
                         *value= 0 ; //TODO: as of now, we dont support stream priorities.
+                        break;
+		case 81:
+                        *value= prop->sharedMemPerBlock;
+                        break;
+                case 82:
+                        *value= prop->regsPerBlock;
                         break;
 		default:
 			printf("ERROR: implement the attribute numbered %d \n",attr);
