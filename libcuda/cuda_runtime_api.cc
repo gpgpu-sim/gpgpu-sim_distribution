@@ -349,7 +349,24 @@ class _cuda_device_id *GPGPUSim_Init()
 		prop->maxGridSize[2] = 0x40000000;
 		prop->totalConstMem = 0x40000000;
 		prop->textureAlignment = 0;
-		prop->sharedMemPerBlock = the_gpu->shared_mem_size();
+       /*
+
+        * TODO: Update the .config and xml files of all GPU config files with new value of sharedMemPerBlock.
+
+        * Previously, this was thought as sharedMemPerMultiprocessor and is being used in many places.
+
+        * Check whether all the instances of shared_mem_size(), gpgpu_shmem_size or sharedMemPerBlock are meant to use sharedMemPerBlock or sharedMemPerMultiprocessor.
+
+       */
+
+	       prop->sharedMemPerBlock = the_gpu->shared_mem_per_block();
+
+		#if (CUDART_VERSION > 5000)
+
+	       prop->sharedMemPerMultiprocessor = the_gpu->shared_mem_size();
+
+		#endif	
+		
 		prop->regsPerBlock = the_gpu->num_registers_per_core();
 		prop->warpSize = the_gpu->wrp_size();
 		prop->clockRate = the_gpu->shader_clock();
@@ -861,6 +878,9 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDevic
 		case 8:
                         *value= prop->sharedMemPerBlock;
                         break;
+		case 9:
+                        *value= prop->totalConstMem;
+                        break;
                 case 10:
                         *value= prop->warpSize;
                         break;
@@ -873,11 +893,14 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDevic
                 case 16:
                         *value= prop->multiProcessorCount ;
                         break;
+		case 34:
+                        *value= 0;
+                        break;
                 case 39:
                         *value= dev->get_gpgpu()->threads_per_core();
                         break;
                 case 75:
-                        *value= 8 ;
+                        *value= 9 ;
                         break;
                 case 76:
                         *value= 3 ;
@@ -886,13 +909,13 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDevic
                         *value= 0 ; //TODO: as of now, we dont support stream priorities.
                         break;
 		case 81:
-                        *value= prop->sharedMemPerBlock;
+                        *value= prop->sharedMemPerMultiprocessor;
                         break;
                 case 82:
                         *value= prop->regsPerBlock;
                         break;
 		default:
-			printf("ERROR: implement the attribute numbered %d \n",attr);
+			printf("ERROR: Attribute number %d unimplemented \n",attr);
 			abort();
                 }
                 return g_last_cudaError = cudaSuccess;
