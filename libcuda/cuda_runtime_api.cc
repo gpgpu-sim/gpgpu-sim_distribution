@@ -5,7 +5,7 @@
 /* 
  * cuda_runtime_api.cc
  *
- * Copyright © 2009 by Tor M. Aamodt, Wilson W. L. Fung, Ali Bakhoda, 
+ * Copyright Â© 2009 by Tor M. Aamodt, Wilson W. L. Fung, Ali Bakhoda, 
  * George L. Yuan and the University of British Columbia, Vancouver, 
  * BC V6T 1Z4, All Rights Reserved.
  * 
