@@ -5,7 +5,7 @@
 /* 
  * cuda_runtime_api.cc
  *
- * Copyright Â© 2009 by Tor M. Aamodt, Wilson W. L. Fung, Ali Bakhoda, 
+ * Copyright © 2009 by Tor M. Aamodt, Wilson W. L. Fung, Ali Bakhoda, 
  * George L. Yuan and the University of British Columbia, Vancouver, 
  * BC V6T 1Z4, All Rights Reserved.
  * 
@@ -841,7 +841,7 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDevic
                 prop = dev->get_prop();
                 switch (attr) {
                 case 5:
-                        *value= prop->maxGridSize[1];
+                        *value= prop->maxGridSize[0];
                         break;
                 case 6:
                         *value= prop->maxGridSize[1];
