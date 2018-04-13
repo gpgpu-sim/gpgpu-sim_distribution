@@ -265,6 +265,9 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_n_ldst_response_buffer_size", OPT_UINT32, &ldst_unit_response_queue_size, 
                  "number of response packets in ld/st unit ejection buffer",
                  "2");
+    option_parser_register(opp, "-gpgpu_shmem_per_block", OPT_UINT32, &gpgpu_shmem_per_block,
+                 "Size of shared memory per thread block or CTA (default 48kB)",
+                 "49152");
     option_parser_register(opp, "-gpgpu_shmem_size", OPT_UINT32, &gpgpu_shmem_size,
                  "Size of shared memory per shader core (default 16kB)",
                  "16384");
@@ -659,6 +662,11 @@ gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config )
 int gpgpu_sim::shared_mem_size() const
 {
    return m_shader_config->gpgpu_shmem_size;
+}
+
+int gpgpu_sim::shared_mem_per_block() const
+{
+   return m_shader_config->gpgpu_shmem_per_block;
 }
 
 int gpgpu_sim::num_registers_per_core() const
