@@ -91,6 +91,7 @@ public:
    bool is_tex() const { return m_space_spec == tex_space;}
    bool is_func_addr() const { return m_is_function?true:false; }
    int  scalar_type() const { return m_scalar_type_spec;}
+   int  get_alignment_spec() const { return m_alignment_spec;}
    unsigned type_decode( size_t &size, int &t ) const;
    static unsigned type_decode( int type, size_t &size, int &t );
    memory_space_t get_memory_space() const { return m_space_spec; }
