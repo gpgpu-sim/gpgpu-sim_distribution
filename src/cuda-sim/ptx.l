@@ -36,7 +36,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ptx.tab.h"
 #include <string.h>
 
-char linebuf[1024];
+#define LINEBUF_SIZE (64*1024)
+char linebuf[LINEBUF_SIZE];
 unsigned col = 0;
 #define TC col+=strlen(ptx_text); 
 #define CHECK_UNSIGNED \
@@ -384,7 +385,7 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 
 "//"[^\n]* TC;	// eat single
 
-\n.*  col=0; strncpy(linebuf, yytext + 1, 1024); yyless( 1 );
+\n.*  col=0; strncpy(linebuf, yytext + 1, LINEBUF_SIZE); yyless( 1 );
 
 " " TC;
 "\t" TC;
