@@ -230,7 +230,9 @@ void memory_stats_t::memlatstat_print( unsigned n_mem, unsigned gpu_mem_n_bk )
       if (num_mfs) {
          printf("averagemflatency = %lld \n", mf_total_lat/num_mfs);
          printf("avg_icnt2mem_latency = %lld \n", tot_icnt2mem_latency/num_mfs);
-         printf("avg_mrq_latency = %lld \n", tot_mrq_latency/tot_mrq_num);
+         if(tot_mrq_num)
+        	 printf("avg_mrq_latency = %lld \n", tot_mrq_latency/tot_mrq_num);
+
          printf("avg_icnt2sh_latency = %lld \n", tot_icnt2sh_latency/num_mfs);
       }
       printf("mrq_lat_table:");
