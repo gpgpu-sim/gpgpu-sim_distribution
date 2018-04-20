@@ -235,6 +235,14 @@ The documentation resides at doc/doxygen/html.
 Step 3: Run
 ============
 
+Before we run, we need to make sure the application's executable file is dynamically linked to CUDA runtime library. This can be done during compilation of your program by introducing the nvcc flag "--cudart shared" in makefile (quotes should be excluded).
+
+To confirm the same, type the follwoing command:
+
+ldd <your_application_name>
+
+You should see that your application is using libcudart.so file in GPGPUSim directory.
+
 Copy the contents of configs/QuadroFX5800/ or configs/GTX480/ to your
 application's working directory.  These files configure the microarchitecture
 models to resemble the respective GPGPU architectures.
@@ -348,7 +356,24 @@ identify any compile time or runtime errors that occur due to the code merging
 process. 
 
 
-** Debugging failing GPGPU-Sim Regressions **
+4. MISCELLANEOUS
+
+4.1 Speeding up the execution
+
+Some applications take several hours to execute on GPGPUSim. This is because the simulator has to dump the PTX, analyze them and get resource usage statistics. This can be avoided everytime we execute the program in the following way:
+
+Step 1: Execute the program by enabling “-save_embedded_ptx 1” in config file, execute the code and let cuobjdump command dump all necessary files. After this process, you will get 2 new files namely:  _cuobjdump_complete_output_<some_random_name> and _1.ptx
+
+Step 2: Create new environment variables or include the below in your .bashrc file:
+	a. export PTX_SIM_USE_PTX_FILE=_1.ptx
+	b. export PTX_SIM_KERNELFILE=_1.ptx
+	c. export CUOBJDUMP_SIM_FILE=_cuobjdump_complete_output_<some_random_name>
+
+Step 3:  Disable -save_embedded_ptx flag, execute the code again. This will skip the dumping by cuobjdump and directly goes to executing the program thus saving time.
+
+
+4.2  Debugging failing GPGPU-Sim Regressions
+ 
 Credits: Tor M Aamodt
 
 To debug failing GPGPU-Sim regression tests you need to run them locally.  The fastest way to do this, assuming you are working with GPGPU-Sim versions more recent than the GPGPU-Sim dev branch circa March 28, 2018 (commit hash 2221d208a745a098a60b0d24c05007e92aaba092), is to install Docker.  The instructions below were tested with Docker CE version 18.03 on Ubuntu and Mac OS.  Docker will enable you to run the same set of regressions used by GPGPU-Sim when submitting a pull request to https://github.com/gpgpu-sim/gpgpu-sim_distribution and also allow you to log in and launch GPGPU-Sim in gdb so you can inspect failures.  

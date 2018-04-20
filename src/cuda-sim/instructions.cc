@@ -154,7 +154,9 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
          } else if ( op.is_local() ) {
             result.u64 = op.get_symbol()->get_address();
          } else if ( op.is_function_address() ) {
-		 	result.u64 = (size_t)op.get_symbol()->get_pc();
+            result.u64 = (size_t)op.get_symbol()->get_pc();
+	 } else if ( op.is_param_kernel()) {
+            result.u64 = op.get_symbol()->get_address();
          } else {
             const char *name = op.name().c_str();
             printf("GPGPU-Sim PTX: ERROR ** get_operand_value : unknown operand type for %s\n", name );
