@@ -33,7 +33,7 @@ DEBUG?=0
 TRACE?=0
 
 ifeq ($(INTEL),1)
-	CPP = icpc
+	CXX = icpc
 	CC = icc
 endif
 

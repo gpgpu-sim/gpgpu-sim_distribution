@@ -67,18 +67,18 @@ ifeq ($(OPENGL_SUPPORT),1)
 endif
 
 ifeq ($(GNUC_CPP0X), 1)
-    CXXFLAGS = -std=c++0x
+    CXXFLAGS += -std=c++0x
 endif
 
 
 CREATELIBRARY    =  1
 DEBUG ?= 0
 ifeq ($(DEBUG),1)
-	CXXFLAGS +=  -Wall -Wno-unused-function -Wno-sign-compare -g -fPIC $(GL)
-	CCFLAGS += -Wall -Wno-unused-function -Wno-sign-compare -ggdb -fPIC
+	CXXFLAGS +=   -g -fPIC $(GL)
+	CCFLAGS += -ggdb -fPIC
 else
-	CXXFLAGS += -O3 -g -Wall -Wno-unused-function -Wno-sign-compare -fPIC $(GL)
-	CCFLAGS += -Wall -Wno-unused-function -Wno-sign-compare -fPIC
+	CXXFLAGS += -O3 -g -fPIC $(GL)
+	CCFLAGS +=  -fPIC
 endif
 
 PROG     =cuda

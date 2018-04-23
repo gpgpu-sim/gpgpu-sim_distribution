@@ -9,7 +9,6 @@ ifndef NTHREADS
   NTHREADS = 8
 endif
 
-
 LIBS = 
 INCS = -lm
 
@@ -18,20 +17,11 @@ ifeq ($(TAG),dbg)
   OPT = -ggdb -g -O0 -DNTHREADS=1  -gstabs+
 else
   DBG = 
-  OPT = -O3 -msse2 -mfpmath=sse -DNTHREADS=$(NTHREADS)
+  OPT = -O3  -DNTHREADS=$(NTHREADS)
 endif
-
+LDFLAGS += -lc++
 #CXXFLAGS = -Wall -Wno-unknown-pragmas -Winline $(DBG) $(OPT) 
-CXXFLAGS = -Wno-unknown-pragmas $(DBG) $(OPT) 
-
-ifeq ($(shell getconf LONG_BIT),64) 
-	CXX = g++ -m64
-	CC  = gcc -m64
-else 
-	CXX = g++ -m32
-	CC  = gcc -m32
-endif 
-
+CXXFLAGS += -Wno-unknown-pragmas $(DBG) $(OPT) 
 
 SRCS  = area.cc bank.cc mat.cc main.cc Ucache.cc io.cc technology.cc basic_circuit.cc parameter.cc \
 		decoder.cc component.cc uca.cc subarray.cc wire.cc htree2.cc \
@@ -45,7 +35,7 @@ INCLUDES       = -I /usr/include/python2.4 -I /usr/lib/python2.4/config
 all: $(OUTPUT_DIR)/$(TARGET)
 
 $(OUTPUT_DIR)/$(TARGET) : $(OBJS)
-	$(CXX) $(OBJS) -o $@ $(INCS) $(CXXFLAGS) $(LIBS) -pthread
+	$(CXX) $(OBJS) -o $@ $(INCS) $(LDFLAGS) $(LIBS) -pthread
 
 #obj_$(TAG)/%.o : %.cc
 #	$(CXX) -c $(CXXFLAGS) $(INCS) -o $@ $<

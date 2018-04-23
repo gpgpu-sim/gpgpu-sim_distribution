@@ -32,9 +32,7 @@ DEBUG?=0
 TRACE?=0
 
 ifeq ($(DEBUG),1)
-	CXXFLAGS = -Wall -DDEBUG
-else
-	CXXFLAGS = -Wall
+	CXXFLAGS += -DDEBUG
 endif
 
 ifeq ($(TRACE),1)

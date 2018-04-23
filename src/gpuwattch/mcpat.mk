@@ -10,34 +10,20 @@ ifndef NTHREADS
 endif
 
 
-LIBS = -I/usr/lib/ -I/usr/lib64/
-INCS = -lm
-
-CC=
-CXX=
-
-ifeq ($(shell getconf LONG_BIT),64) 
-	CXX = g++ -m64
-	CC  = gcc -m64
-else 
-	CXX = g++ -m32
-	CC  = gcc -m32
-endif 
+INCS = -I/usr/lib/ -I/usr/lib64/
+LIBS = -lm -lz
 
 ifeq ($(TAG),dbg)
   DBG = -Wall 
-  OPT = -ggdb -fPIC -g -O0 -DNTHREADS=1 -Icacti -lz
+  OPT = -ggdb -fPIC -g -O0 -DNTHREADS=1 -Icacti
 else
   DBG = 
-  OPT = -O3 -fPIC -msse2 -mfpmath=sse -DNTHREADS=$(NTHREADS) -Icacti -lz
+  OPT = -O3 -fPIC -DNTHREADS=$(NTHREADS) -Icacti
   #OPT = -O0 -DNTHREADS=$(NTHREADS)
 endif
 
 #CXXFLAGS = -Wall -Wno-unknown-pragmas -Winline $(DBG) $(OPT) 
-CXXFLAGS = -Wno-unknown-pragmas $(DBG) $(OPT) 
-
-
-
+CXXFLAGS += -Wno-unknown-pragmas $(DBG) $(OPT) 
 
 VPATH = cacti
 
@@ -83,13 +69,13 @@ OBJS = $(patsubst %.cc,$(OUTPUT_DIR)/%.o,$(SRCS))
 all: $(OUTPUT_DIR)/$(TARGET)
 
 $(OUTPUT_DIR)/$(TARGET) : $(OBJS)
-	$(CXX) $(OBJS) -o $@ $(INCS) $(CXXFLAGS) $(LIBS) -pthread
+	$(CXX) $(LDFLAGS) $(OBJS) -o $@ $(LIBS) -pthread
 
 #obj_$(TAG)/%.o : %.cc
 #	$(CXX) -c $(CXXFLAGS) $(INCS) -o $@ $<
 
 $(OUTPUT_DIR)/%.o : %.cc
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(INCS) -c $< -o $@
 
 $(OUTPUT_DIR)/Makefile.makedepend: depend
 
