@@ -5,6 +5,11 @@ pipeline {
 
     options {
         disableConcurrentBuilds()
+        overrideIndexTriggers(true)
+    }
+
+    triggers {
+        pollSCM('0 1 * * *')
     }
 
     stages {
