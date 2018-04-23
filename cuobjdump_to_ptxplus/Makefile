@@ -79,7 +79,7 @@ depend:
 	makedepend -f$(OUTPUT_DIR)/Makefile.makedepend $(SRCS) 2> /dev/null
 
 clean:
-	rm -f lex.ptx_.c ptx.tab.c ptx.tab.h ptx.output
+	rm -f lex.ptx_.cc ptx.tab.cc ptx.tab.hpp ptx.output
 	rm -f elf_lexer.cc  elf_parser.cc  elf_parser.hh elf_parser.output
 	rm -f sass_lexer.cc  sass_parser.cc  sass_parser.hh  sass_parser.output
 	rm -f header_lexer.cc  header_parser.cc  header_parser.hh  header_parser.output
