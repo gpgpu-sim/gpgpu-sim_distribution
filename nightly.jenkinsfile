@@ -22,12 +22,12 @@ pipeline {
                     cd gpgpu-sim_simulations && \
                     git checkout purdue-cluster && \
                     git pull && \
-                    rm -r ./benchmarks/data_dirs && ln -s /home/tgrogers-raid/a/common/data_dirs benchmarks/'
+                    ln -s /home/tgrogers-raid/a/common/data_dirs benchmarks/'
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
                     cd gpgpu-sim_simulations && \
                     source ./benchmarks/src/setup_environment && \
-                    make -j -C ./benchmarks/src/ rodinia_2.0-ft sdk-4.2 && \
+                    make -i -j -C ./benchmarks/src/ all && \
                     make -C ./benchmarks/src data'
             }
         }
