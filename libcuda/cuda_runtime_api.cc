@@ -324,7 +324,7 @@ private:
 	gpgpu_ptx_sim_arg_list_t m_args;
 };
 
-class _cuda_device_id *GPGPUSim_Init()
+struct _cuda_device_id *GPGPUSim_Init()
 {
 	static _cuda_device_id *the_device = NULL;
 	if( !the_device ) {
