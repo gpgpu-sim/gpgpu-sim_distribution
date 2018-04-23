@@ -3,9 +3,7 @@ LEXFLAGS	= -B
 YACC		= bison
 YFLAGS		= -t -d --report=all --verbose
 CCFLAGS		= -ggdb -fPIC -Wall -Wno-unused-function -Wno-sign-compare 
-CXX			= g++
 CXXFLAGS	= ${CCFLAGS}
-LD			= g++
 LDFLAGS		= ${CCFLAGS}
 OUTPUT_DIR=$(SIM_OBJ_FILES_DIR)/cuobjdump_to_ptxplus
 

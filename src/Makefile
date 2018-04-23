@@ -53,7 +53,6 @@ endif
 
 OPTFLAGS += -g3 -fPIC
 
-CPP = g++ $(SNOW)
 OEXT = o
 
 OUTPUT_DIR=$(SIM_OBJ_FILES_DIR)
@@ -76,7 +75,7 @@ clean:
 	rm -f *.o core *~ *.a Makefile.makedepend Makefile.makedepend.bak
 
 $(OUTPUT_DIR)/%.$(OEXT): %.cc
-	$(CPP) $(OPTFLAGS) $(CXXFLAGS) -o $(OUTPUT_DIR)/$*.$(OEXT) -c $*.cc
+	$(CXX) $(OPTFLAGS) $(CXXFLAGS) -o $(OUTPUT_DIR)/$*.$(OEXT) -c $*.cc
 
 option_parser.$(OEXT): option_parser.h
 

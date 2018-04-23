@@ -61,7 +61,6 @@ endif
 OPTFLAGS += -g3 -fPIC
 OPTFLAGS += -DCUDART_VERSION=$(CUDART_VERSION)
 
-CPP = g++ $(SNOW)
 OEXT = o
 
 OUTPUT_DIR=$(SIM_OBJ_FILES_DIR)/gpgpu-sim
@@ -88,7 +87,7 @@ depend:
 	makedepend -f$(OUTPUT_DIR)/Makefile.makedepend -p$(OUTPUT_DIR)/ $(CSRCS) 2> /dev/null
 
 $(OUTPUT_DIR)/%.$(OEXT): %.cc
-	$(CPP) $(OPTFLAGS) $(CXXFLAGS) $(POWER_FLAGS) -o $(OUTPUT_DIR)/$*.$(OEXT) -c $*.cc
+	$(CXX) $(OPTFLAGS) $(CXXFLAGS) $(POWER_FLAGS) -o $(OUTPUT_DIR)/$*.$(OEXT) -c $*.cc
 
 clean:
 	rm -f *.o core *~ *.a 
