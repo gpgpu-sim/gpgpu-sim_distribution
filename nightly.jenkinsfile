@@ -3,8 +3,8 @@ pipeline {
         label "purdue-cluster"
     }
 
-    triggers {
-        chron('H H * * *')
+    options {
+        disableConcurrentBuilds()
     }
 
     stages {
