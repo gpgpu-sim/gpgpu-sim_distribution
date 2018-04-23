@@ -28,7 +28,7 @@
 #include "ptx_sim.h"
 #include <string>
 #include "ptx_ir.h"
-#include "ptx.tab.h"
+#include "ptx.tab.hpp"
 #include "../gpgpu-sim/gpu-sim.h"
 #include "../gpgpu-sim/shader.h"
 

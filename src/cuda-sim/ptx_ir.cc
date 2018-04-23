@@ -28,7 +28,7 @@
 
 #include "ptx_parser.h"
 #include "ptx_ir.h"
-#include "ptx.tab.h"
+#include "ptx.tab.hpp"
 #include "opcodes.h"
 #include <stdio.h>
 #include <stdlib.h>
