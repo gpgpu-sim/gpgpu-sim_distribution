@@ -286,7 +286,7 @@ typedef std::bitset<WARP_PER_CTA_MAX> warp_set_t;
 int register_bank(int regnum, int wid, unsigned num_banks, unsigned bank_warp_shift);
 
 class shader_core_ctx;
-class shader_core_config;
+struct shader_core_config;
 class shader_core_stats;
 
 enum scheduler_prioritization_type
@@ -967,7 +967,7 @@ struct ifetch_buffer_t {
     unsigned m_warp_id;
 };
 
-class shader_core_config;
+struct shader_core_config;
 
 class simd_function_unit {
 public:

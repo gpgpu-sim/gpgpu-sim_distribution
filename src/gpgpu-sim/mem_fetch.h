@@ -55,7 +55,7 @@ public:
                unsigned wid,
                unsigned sid, 
                unsigned tpc, 
-               const class memory_config *config );
+               const struct memory_config *config );
    ~mem_fetch();
 
    void set_status( enum mem_fetch_status status, unsigned long long cycle );
@@ -141,7 +141,7 @@ private:
 
    static unsigned sm_next_mf_request_uid;
 
-   const class memory_config *m_mem_config;
+   const struct memory_config *m_mem_config;
    unsigned icnt_flit_size;
 };
 
