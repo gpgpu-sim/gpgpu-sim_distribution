@@ -4,7 +4,6 @@ YACC		= bison
 YFLAGS		= -t -d --report=all --verbose
 CCFLAGS		= -ggdb -fPIC -Wall -Wno-unused-function -Wno-sign-compare 
 CXXFLAGS	= ${CCFLAGS}
-LDFLAGS		= ${CCFLAGS}
 OUTPUT_DIR=$(SIM_OBJ_FILES_DIR)/cuobjdump_to_ptxplus
 
 CXXFLAGS += -I $(OUTPUT_DIR) -I $(OUTPUT_DIR)/../cuda-sim/ -I . -I ../src/cuda-sim/
