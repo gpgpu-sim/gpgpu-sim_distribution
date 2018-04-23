@@ -24,16 +24,16 @@ $(OUTPUT_DIR)/cuobjdump_to_ptxplus: $(OUTPUT_DIR)/cuobjdumpInst.o $(OUTPUT_DIR)/
 	$(CXX) ${LDFLAGS} -o $@ $(OUTPUT_DIR)/cuobjdumpInst.o $(OUTPUT_DIR)/cuobjdumpInstList.o $(OUTPUT_DIR)/cuobjdump_to_ptxplus.o $(PTX_PARSER_OBJECTS) $(SASS_PARSER_OBJECTS) $(ELF_PARSER_OBJECTS) $(HEADER_PARSER_OBJECTS)
 
 
-$(OUTPUT_DIR)/lex.ptx_.c : ../src/cuda-sim/ptx.l
-	${LEX} ${LEXFLAGS} -o$(OUTPUT_DIR)/lex.ptx_.c ../src/cuda-sim/ptx.l
+$(OUTPUT_DIR)/lex.ptx_.cc : ../src/cuda-sim/ptx.l
+	${LEX} ${LEXFLAGS} -o$(OUTPUT_DIR)/lex.ptx_.cc ../src/cuda-sim/ptx.l
 
 $(OUTPUT_DIR)/ptx.tab.cpp : ../src/cuda-sim/ptx.ypp
 	${YACC} ${YFLAGS} --name-prefix=ptx_ -v ../src/cuda-sim/ptx.ypp  --file-prefix=$(OUTPUT_DIR)/ptx
 
 $(OUTPUT_DIR)/ptx.tab.hpp : $(OUTPUT_DIR)/ptx.tab.cpp
 
-$(OUTPUT_DIR)/lex.ptx_.o : $(OUTPUT_DIR)/lex.ptx_.c $(OUTPUT_DIR)/ptx.tab.hpp
-	${CXX} ${CXXFLAGS} -c $(OUTPUT_DIR)/lex.ptx_.c -o $@
+$(OUTPUT_DIR)/lex.ptx_.o : $(OUTPUT_DIR)/lex.ptx_.cc $(OUTPUT_DIR)/ptx.tab.hpp
+	${CXX} ${CXXFLAGS} -c $(OUTPUT_DIR)/lex.ptx_.cc -o $@
 
 $(OUTPUT_DIR)/ptx.tab.o : $(OUTPUT_DIR)/ptx.tab.cpp ptx_parser.h
 	${CXX} ${CXXFLAGS} -c $(OUTPUT_DIR)/ptx.tab.cpp -o $@

@@ -66,6 +66,7 @@
 
 #ifndef CUDA_MATH
 #define CUDA_MATH
+#include <cmath>
 
 // cuda math implementations
 #undef max
