@@ -33,7 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %option prefix="ptx_"
 %{
 #include "opcodes.h"
-#include "ptx.tab.h"
+#include "ptx.tab.hpp"
 #include <string.h>
 
 char linebuf[1024];

@@ -95,10 +95,10 @@ clean:
 
 $(OUTPUT_DIR)/option_parser.$(OEXT): option_parser.h
 
-$(OUTPUT_DIR)/dram_sched.$(OEXT): $(OUTPUT_DIR)/../cuda-sim/ptx.tab.h
+$(OUTPUT_DIR)/dram_sched.$(OEXT): $(OUTPUT_DIR)/../cuda-sim/ptx.tab.hpp
 
-$(OUTPUT_DIR)/../cuda-sim/ptx.tab.h:
-	make -C ../cuda-sim/ $(OUTPUT_DIR)/../cuda-sim/ptx.tab.c
+$(OUTPUT_DIR)/../cuda-sim/ptx.tab.hpp:
+	make -C ../cuda-sim/ $(OUTPUT_DIR)/../cuda-sim/ptx.tab.cpp
 
 include $(OUTPUT_DIR)/Makefile.makedepend
 

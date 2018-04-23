@@ -2209,10 +2209,16 @@ int CUDARTAPI __cudaSynchronizeThreads(void**, void*)
 ////////
 
 extern int ptx_parse();
+
 extern int ptx__scan_string(const char*);
 extern FILE *ptx_in;
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 extern int ptxinfo_parse();
+#ifdef __cplusplus
+}
+#endif
 extern int ptxinfo_debug;
 extern FILE *ptxinfo_in;
 
