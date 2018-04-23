@@ -45,7 +45,7 @@ pipeline {
             steps {
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
-                    ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B `cat ./gpgpu-sim_simulations/util/job_launching/apps/all-apps.txt` -C 2B-TITANX-P102,2B-TITANX-P102-L1ON,2B-P100-HBM > stats-9.1.csv && \
+                    ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B `cat ./gpgpu-sim_simulations/util/job_launching/apps/all-apps.list -C 2B-TITANX-P102,2B-TITANX-P102-L1ON,2B-P100-HBM > stats-9.1.csv && \
                     PLOTDIR="jenkins/${JOB_NAME}/${BUILD_NUMBER}/correlate-9.1" && ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p /home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR && \
                     sh ./gpgpu-sim_simulations/run_hw/get_hw_data.sh && rm -rf ./gpgpu-sim_simulations/util/plotting/correl-html &&\
                     ./gpgpu-sim_simulations/util/plotting/plot-correlation.py -c stats-9.1.csv -H ./gpgpu-sim_simulations/run_hw/ &&\
