@@ -66,13 +66,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	
 	static unsigned g_declared;
 	static unsigned g_system;
-#ifdef __cplusplus
-extern "C" {
-#endif
 	int ptxinfo_lex(void);
-#ifdef __cplusplus
-}
-#endif
 	void ptxinfo_addinfo();
 	void ptxinfo_function(const char *fname );
 	void ptxinfo_regs( unsigned nregs );

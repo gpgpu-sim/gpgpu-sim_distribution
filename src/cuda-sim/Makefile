@@ -86,8 +86,8 @@ $(OUTPUT_DIR)/lex.ptx_.o: $(OUTPUT_DIR)/lex.ptx_.cc
 $(OUTPUT_DIR)/ptxinfo.tab.o: $(OUTPUT_DIR)/ptxinfo.tab.cpp
 	$(CXX) -c $(OPT) -DYYDEBUG $(OUTPUT_DIR)/ptxinfo.tab.cpp -o $(OUTPUT_DIR)/ptxinfo.tab.o
 
-$(OUTPUT_DIR)/lex.ptxinfo_.o: $(OUTPUT_DIR)/lex.ptxinfo_.c $(OUTPUT_DIR)/ptxinfo.tab.cpp
-	$(CXX) -c $(OPT) $(OUTPUT_DIR)/lex.ptxinfo_.c -o $(OUTPUT_DIR)/lex.ptxinfo_.o
+$(OUTPUT_DIR)/lex.ptxinfo_.o: $(OUTPUT_DIR)/lex.ptxinfo_.cc $(OUTPUT_DIR)/ptxinfo.tab.cpp
+	$(CXX) -c $(OPT) $(OUTPUT_DIR)/lex.ptxinfo_.cc -o $(OUTPUT_DIR)/lex.ptxinfo_.o
 
 $(OUTPUT_DIR)/ptx.tab.cpp: ptx.ypp
 	bison --name-prefix=ptx_ -v -d ptx.ypp --file-prefix=$(OUTPUT_DIR)/ptx
@@ -98,13 +98,13 @@ $(OUTPUT_DIR)/ptxinfo.tab.cpp: ptxinfo.ypp
 $(OUTPUT_DIR)/lex.ptx_.cc: ptx.l
 	flex --outfile=$(OUTPUT_DIR)/lex.ptx_.cc ptx.l 
 
-$(OUTPUT_DIR)/lex.ptxinfo_.c: ptxinfo.l
-	flex --outfile=$(OUTPUT_DIR)/lex.ptxinfo_.c ptxinfo.l 
+$(OUTPUT_DIR)/lex.ptxinfo_.cc: ptxinfo.l
+	flex --outfile=$(OUTPUT_DIR)/lex.ptxinfo_.cc ptxinfo.l 
 
 clean:
 	rm -f *~ *.o *.gcda *.gcno *.gcov libgpgpu_ptx_sim.a \
 		ptx.tab.hpp ptx.tab.cpp ptx.output lex.ptx_.cc \
-		ptxinfo.tab.hpp ptxinfo.tab.cpp ptxinfo.output lex.ptxinfo_.c \
+		ptxinfo.tab.hpp ptxinfo.tab.cpp ptxinfo.output lex.ptxinfo_.cc \
 		instructions.h ptx_parser_decode.def directed_tests.log 
 	rm -f $(OUTPUT_DIR)/decuda_pred_table/*.o
 	rm -f $(OUTPUT_DIR)/Makefile.makedepend $(OUTPUT_DIR)/Makefile.makedepend.bak
