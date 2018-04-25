@@ -164,6 +164,7 @@ public:
       m_is_global = false;
       m_is_local = false;
       m_is_param_local = false;
+      m_is_param_kernel = false;
       m_is_tex = false;
       m_is_func_addr = false;
       m_reg_num_valid = false;
@@ -177,6 +178,7 @@ public:
       if ( type ) m_is_global = type->get_key().is_global();
       if ( type ) m_is_local = type->get_key().is_local();
       if ( type ) m_is_param_local = type->get_key().is_param_local();
+      if ( type ) m_is_param_kernel = type->get_key().is_param_kernel();
       if ( type ) m_is_tex = type->get_key().is_tex();
       if ( type ) m_is_func_addr = type->get_key().is_func_addr();
    }
@@ -227,6 +229,7 @@ public:
    bool is_global() const { return m_is_global;}
    bool is_local() const { return m_is_local;}
    bool is_param_local() const { return m_is_param_local; }
+   bool is_param_kernel() const { return m_is_param_kernel; }
    bool is_tex() const { return m_is_tex;}
    bool is_func_addr() const { return m_is_func_addr; }
    bool is_reg() const
@@ -284,6 +287,7 @@ private:
    bool m_is_global;
    bool m_is_local;
    bool m_is_param_local;
+   bool m_is_param_kernel;
    bool m_is_tex;
    bool m_is_func_addr;
    unsigned m_reg_num; 
@@ -399,6 +403,8 @@ public:
       } else if ( addr->is_local() ) {
          m_type = symbolic_t;
       } else if ( addr->is_param_local() ) {
+         m_type = symbolic_t;
+      } else if ( addr->is_param_kernel() ) {
          m_type = symbolic_t;
       } else if ( addr->is_tex() ) {
          m_type = symbolic_t;
@@ -674,6 +680,13 @@ public:
       if ( m_type != symbolic_t ) 
          return false;
       return m_value.m_symbolic->type()->get_key().is_param_local();
+   }
+
+   bool is_param_kernel() const
+   {
+      if ( m_type != symbolic_t ) 
+         return false;
+      return m_value.m_symbolic->type()->get_key().is_param_kernel();
    }
 
    bool is_vector() const
