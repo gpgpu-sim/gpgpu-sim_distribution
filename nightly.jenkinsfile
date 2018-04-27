@@ -51,7 +51,7 @@ pipeline {
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
                     PLOTDIR="jenkins/${JOB_NAME}" &&\
-                    ./gpgpu-sim_simulations/util/correlation/correlate_and_publish.sh TITANX_P102-2B,TITANX_P102-L1ON-2B,P100_HBM-2B $PLOTDIR ${BUILD_NUMBER}'
+                    ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh TITANX_P102-2B,TITANX_P102-L1ON-2B,P100_HBM-2B $PLOTDIR ${BUILD_NUMBER}'
             }
         }
     }
