@@ -67,7 +67,7 @@ pipeline {
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
                     PLOTDIR="jenkins/${JOB_NAME}" &&\
-                    ./gpgpu-sim_simulations/util/correlation/correlate_and_publish.sh  GTX480,GTX480-PTXPLUS $PLOTDIR ${BUILD_NUMBER}'
+                    ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh  GTX480,GTX480-PTXPLUS $PLOTDIR ${BUILD_NUMBER}'
             }
         }
         stage('9.1-correlate'){
@@ -75,7 +75,7 @@ pipeline {
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
                     PLOTDIR="jenkins/${JOB_NAME}" &&\
-                    ./gpgpu-sim_simulations/util/correlation/correlate_and_publish.sh TITANX_P102,TITANX_P102-L1ON,P100_HBM $PLOTDIR ${BUILD_NUMBER}'
+                    ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh TITANX_P102,TITANX_P102-L1ON,P100_HBM $PLOTDIR ${BUILD_NUMBER}'
             }
         }
     }
