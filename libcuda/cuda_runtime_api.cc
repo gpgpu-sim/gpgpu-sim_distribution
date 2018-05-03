@@ -112,6 +112,7 @@
 #include <regex>
 #include <sstream>
 #include <fstream>
+#include <memory>
 #ifdef OPENGL_SUPPORT
 #define GL_GLEXT_PROTOTYPES
 #ifdef __APPLE__
@@ -1453,7 +1454,7 @@ void extract_code_using_cuobjdump(){
 
 //! Read file into char*
 //TODO: convert this to C++ streams, will be way cleaner
-char* readfile (const std::string filename){
+std::unique_ptr<char[]> readfile (const std::string filename){
 	assert (filename != "");
 	FILE* fp = fopen(filename.c_str(),"r");
 	if (!fp) {
@@ -1467,8 +1468,8 @@ char* readfile (const std::string filename){
 	filesize = ftell (fp);
 	fseek (fp, 0, SEEK_SET);
 	// allocate and copy the entire ptx
-	char* ret = (char*)malloc((filesize +1)* sizeof(char));
-	fread(ret,1,filesize,fp);
+	std::unique_ptr<char[]> ret(new char[filesize +1]);
+	fread(ret.get(),1,filesize,fp);
 	ret[filesize]='\0';
 	fclose(fp);
 	return ret;
@@ -1540,7 +1541,7 @@ std::list<cuobjdumpSection*> pruneSectionList(std::list<cuobjdumpSection*> cuobj
 
 //! Merge all PTX sections that have a specific identifier into one file
 std::list<cuobjdumpSection*> mergeMatchingSections(std::list<cuobjdumpSection*> cuobjdumpSectionList, std::string identifier){
-	const char *ptxcode = "";
+	std::unique_ptr<char[]> ptxcode;
 	std::list<cuobjdumpSection*>::iterator old_iter;
 	cuobjdumpPTXSection* old_ptxsection = NULL;
 	cuobjdumpPTXSection* ptxsection;
@@ -1560,9 +1561,9 @@ std::list<cuobjdumpSection*> mergeMatchingSections(std::list<cuobjdumpSection*> 
 
 			// Append all the PTX from the last PTX section into the current PTX section
 			// Add 50 to ptxcode to ignore the information regarding version/target/address_size
-			if (strlen(ptxcode) >= 50) {
+			if ((ptxcode != NULL) && strlen(ptxcode.get()) >= 50) {
 				FILE *ptxfile = fopen((ptxsection->getPTXfilename()).c_str(), "a");
-				fprintf(ptxfile, "%s", ptxcode + 50);
+				fprintf(ptxfile, "%s", ptxcode.get() + 50);
 				fclose(ptxfile);
 			}
 
@@ -1718,7 +1719,7 @@ void cuobjdumpParseBinary(unsigned int handle){
 
 	cuobjdumpPTXSection* ptx = findPTXSection(fname);
 	symbol_table *symtab;
-	char *ptxcode;
+	std::unique_ptr<char[]> ptxcode;
 	const char *override_ptx_name = getenv("PTX_SIM_KERNELFILE"); 
 	if (override_ptx_name == NULL or getenv("PTX_SIM_USE_PTX_FILE") == NULL) {
 		ptxcode = readfile(ptx->getPTXfilename());
@@ -1731,25 +1732,23 @@ void cuobjdumpParseBinary(unsigned int handle){
         // Use override PTXPLUS file, perhaps with cuobjdumped PTX, perhaps with above overloaded PTX
         // This ignores .convert_to_ptxplus(), assuming that if the ENV variable is specified, then it should be used
         printf("GPGPU-Sim PTX: overriding ptxplus with '%s' (PTXPLUS_SIM_KERNELFILE is set)\n", override_ptxplus_name);
-        char *ptxplus_str = readfile(override_ptxplus_name);
-        symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str, handle);
-        free(ptxplus_str); 
+        std::unique_ptr<char[]> ptxplus_str = readfile(override_ptxplus_name);
+        symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str.get(), handle);
 	} else if(context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() ) {
 		cuobjdumpELFSection* elfsection = findELFSection(ptx->getIdentifier());
 		assert (elfsection!= NULL);
-		char *ptxplus_str = gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(
+	    std::string ptxplus_str = gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(
 				ptx->getPTXfilename(),
 				elfsection->getELFfilename(),
 				elfsection->getSASSfilename());
-		symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str, handle);
-		delete[] ptxplus_str;
+		symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str.c_str(), handle);
 	} else {
-		symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxcode, handle);
+		symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxcode.get(), handle);
 	}
     
     printf("Adding %s with cubin handle %u\n", ptx->getPTXfilename().c_str(), handle);
     context->add_binary(symtab, handle);
-    gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability );
+    gpgpu_ptxinfo_load_from_string( ptxcode.get(), handle, max_capability );
 
 	load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
 	load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());

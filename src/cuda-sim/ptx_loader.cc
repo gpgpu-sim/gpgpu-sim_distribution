@@ -99,7 +99,7 @@ void print_ptx_file( const char *p, unsigned source_num, const char *filename )
    fflush(stdout);
 }
 
-char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const std::string ptxfilename, const std::string elffilename, const std::string sassfilename)
+std::string gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const std::string ptxfilename, const std::string elffilename, const std::string sassfilename)
 {
 
 	printf("GPGPU-Sim PTX: converting EMBEDDED .ptx file to ptxplus \n");
@@ -131,8 +131,6 @@ char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const std::string ptxfilenam
 	}
 	fileStream.close();
 
-	char* ptxplus_str = new char [strlen(text.c_str())+1];
-	strcpy(ptxplus_str, text.c_str());
 
 	if (!m_ptx_save_converted_ptxplus){
 		char rm_commandline[1024];
@@ -148,7 +146,7 @@ char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const std::string ptxfilenam
 	}
 	printf("GPGPU-Sim PTX: DONE converting EMBEDDED .ptx file to ptxplus \n");
 
-	return ptxplus_str;
+	return text;
 }
 
 
