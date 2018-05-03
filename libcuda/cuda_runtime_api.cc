@@ -1561,7 +1561,7 @@ std::list<cuobjdumpSection*> mergeMatchingSections(std::list<cuobjdumpSection*> 
 
 			// Append all the PTX from the last PTX section into the current PTX section
 			// Add 50 to ptxcode to ignore the information regarding version/target/address_size
-			if ((ptxcode != NULL) && strlen(ptxcode.get()) >= 50) {
+			if ((ptxcode.get() != NULL) && strlen(ptxcode.get()) >= 50) {
 				FILE *ptxfile = fopen((ptxsection->getPTXfilename()).c_str(), "a");
 				fprintf(ptxfile, "%s", ptxcode.get() + 50);
 				fclose(ptxfile);
