@@ -1726,7 +1726,15 @@ void cuobjdumpParseBinary(unsigned int handle){
 		printf("GPGPU-Sim PTX: overriding embedded ptx with '%s' (PTX_SIM_USE_PTX_FILE is set)\n", override_ptx_name);
 		ptxcode = readfile(override_ptx_name);
 	}
-	if(context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() ) {
+    const char *override_ptxplus_name = getenv("PTXPLUS_SIM_KERNELFILE");
+    if((override_ptxplus_name != NULL) && (strlen(override_ptxplus_name) > 0)) {
+        // Use override PTXPLUS file, perhaps with cuobjdumped PTX, perhaps with above overloaded PTX
+        // This ignores .convert_to_ptxplus(), assuming that if the ENV variable is specified, then it should be used
+        printf("GPGPU-Sim PTX: overriding ptxplus with '%s' (PTXPLUS_SIM_KERNELFILE is set)\n", override_ptxplus_name);
+        char *ptxplus_str = readfile(override_ptxplus_name);
+        symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str, handle);
+        free(ptxplus_str); 
+	} else if(context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() ) {
 		cuobjdumpELFSection* elfsection = findELFSection(ptx->getIdentifier());
 		assert (elfsection!= NULL);
 		char *ptxplus_str = gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(
@@ -1734,16 +1742,15 @@ void cuobjdumpParseBinary(unsigned int handle){
 				elfsection->getELFfilename(),
 				elfsection->getSASSfilename());
 		symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str, handle);
-		printf("Adding %s with cubin handle %u\n", ptx->getPTXfilename().c_str(), handle);
-		context->add_binary(symtab, handle);
-		gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability );
 		delete[] ptxplus_str;
 	} else {
 		symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxcode, handle);
-		printf("Adding %s with cubin handle %u\n", ptx->getPTXfilename().c_str(), handle);
-		context->add_binary(symtab, handle);
-		gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability );
 	}
+    
+    printf("Adding %s with cubin handle %u\n", ptx->getPTXfilename().c_str(), handle);
+    context->add_binary(symtab, handle);
+    gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability );
+
 	load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
 	load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
 	name_symtab[fname] = symtab;
