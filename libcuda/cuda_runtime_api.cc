@@ -1504,7 +1504,7 @@ std::list<cuobjdumpSection*> pruneSectionList(std::list<cuobjdumpSection*> cuobj
 	//Find the highest capability (that is lower than the forced maximum) for each cubin file
 	//and set it in cuobjdumpSectionMap. Do this only for ptx sections
 	std::map<std::string, unsigned> cuobjdumpSectionMap;
-	int min_ptx_capability_found=0;
+	unsigned min_ptx_capability_found=0;
 	for (	std::list<cuobjdumpSection*>::iterator iter = cuobjdumpSectionList.begin();
 			iter != cuobjdumpSectionList.end();
 			iter++){
