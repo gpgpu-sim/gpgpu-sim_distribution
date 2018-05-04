@@ -67,6 +67,8 @@
 #ifndef CUDA_MATH
 #define CUDA_MATH
 
+#include <cmath>
+
 // cuda math implementations
 #undef max
 #undef min
@@ -147,6 +149,7 @@ float __ll2float_rd(long long int a) {
 // implementing int to float intrinsics with different rounding modes 
 #include <device_types.h>
 #include <fenv.h>
+
 
 // 32-bit integer to float
 float __int2float_rn(int a) {
