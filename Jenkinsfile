@@ -84,7 +84,7 @@ pipeline {
                     ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft -C GTX480,GTX480-PTXPLUS > stats-4.2.csv && \
                     PLOTDIR="jenkins/${JOB_NAME}/${BUILD_NUMBER}/correlate-4.2" && ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p /home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR && \
                     sh ./gpgpu-sim_simulations/run_hw/get_hw_data.sh && rm -rf ./gpgpu-sim_simulations/util/plotting/correl-html &&\
-                    ./gpgpu-sim_simulations/util/plotting/plot-correlation.py -c stats-4.2.csv -H ./gpgpu-sim_simulations/run_hw/ &&\
+                    ./gpgpu-sim_simulations/util/plotting/plot-correlation.py -c stats-4.2.csv -H ./gpgpu-sim_simulations/run_hw/ -B 4 &&\
                     scp  ./gpgpu-sim_simulations/util/plotting/correl-html/* tgrogers@dynamo.ecn.purdue.edu:/home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR'
             }
         }
@@ -95,7 +95,7 @@ pipeline {
                     ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B sdk-4.2,rodinia_2.0-ft -C GTX1080Ti > stats-9.1.csv && \
                     PLOTDIR="jenkins/${JOB_NAME}/${BUILD_NUMBER}/correlate-9.1" && ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p /home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR && \
                     sh ./gpgpu-sim_simulations/run_hw/get_hw_data.sh && rm -rf ./gpgpu-sim_simulations/util/plotting/correl-html &&\
-                    ./gpgpu-sim_simulations/util/plotting/plot-correlation.py -c stats-9.1.csv -H ./gpgpu-sim_simulations/run_hw/ &&\
+                    ./gpgpu-sim_simulations/util/plotting/plot-correlation.py -c stats-9.1.csv -H ./gpgpu-sim_simulations/run_hw/ -B 4 &&\
                     scp  ./gpgpu-sim_simulations/util/plotting/correl-html/* tgrogers@dynamo.ecn.purdue.edu:/home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR'
             }
         }
