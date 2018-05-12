@@ -750,7 +750,7 @@ public:
 };
 
 // the maximum number of destination, source, or address uarch operands in a instruction
-#define MAX_REG_OPERANDS 8
+#define MAX_REG_OPERANDS 32 
 
 struct dram_callback_t {
    dram_callback_t() { function=NULL; instruction=NULL; thread=NULL; }
@@ -825,8 +825,8 @@ public:
 
     address_type reconvergence_pc; // -1 => not a branch, -2 => use function return address
     
-    unsigned out[4];
-    unsigned in[4];
+    unsigned out[8];
+    unsigned in[8];
     unsigned char is_vectorin;
     unsigned char is_vectorout;
     int pred; // predicate register number

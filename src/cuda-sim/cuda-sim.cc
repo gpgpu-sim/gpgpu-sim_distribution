@@ -792,9 +792,9 @@ void ptx_instruction::set_opcode_and_latency()
 	  initiation_interval = dp_init[2];
       op = SFU_OP;
       break;
-   case BSMAD_OP:
-	   latency = int_precision/int_lane_width;
-	   initiation_interval = int_init_precision/int_init_lane_width;
+   case MMA_OP:
+	   latency = 64;
+	   initiation_interval = 64;
 	   break;
    case SHFL_OP:
 	   latency = 32;
@@ -1301,6 +1301,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
          *((warp_inst_t*)pJ) = inst; // copy active mask information
          pI = pJ;
       }
+      if((pI->get_opcode()!=MMA_OP)||((pI->get_opcode()==MMA_OP)&&(lane_id==0))){
       switch ( pI->get_opcode() ) {
 #define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,this); op_classification = CLASSIFICATION; break;
 #define OP_W_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,get_core(),inst); op_classification = CLASSIFICATION; break;
@@ -1308,7 +1309,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
 #undef OP_DEF
 #undef OP_W_DEF
       default: printf( "Execution error: Invalid opcode (0x%x)\n", pI->get_opcode() ); break;
-      }
+      }}
       delete pJ;
       pI = pI_saved;
       
@@ -1930,7 +1931,7 @@ void functionalCoreSim::executeWarp(unsigned i, bool &allAtBarrier, bool & someO
 {
     if(!m_warpAtBarrier[i] && m_liveThreadCount[i]!=0){
         warp_inst_t inst =getExecuteWarp(i);
-        execute_warp_inst_t(inst,i);
+	execute_warp_inst_t(inst,i);
         if(inst.isatomic()) inst.do_atomic(true);
         if(inst.op==BARRIER_OP || inst.op==MEMORY_BARRIER_OP ) m_warpAtBarrier[i]=true;
         updateSIMTStack( i, &inst );

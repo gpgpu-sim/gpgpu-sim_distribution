@@ -134,7 +134,6 @@ void *gpgpu_sim_thread_concurrent(void*)
                 gpgpu_cuda_ptx_sim_main_func(*kernel);
                 g_the_gpu->finish_functional_sim(kernel);
             }
-
             //performance simulation
             if( g_the_gpu->active() ) {
                 g_the_gpu->cycle();

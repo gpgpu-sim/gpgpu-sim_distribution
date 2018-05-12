@@ -771,6 +771,17 @@ void add_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    unsigned i_type = pI->get_type();
    src1_data = thread->get_operand_value(src1, dst, i_type, thread, 1);
    src2_data = thread->get_operand_value(src2, dst, i_type, thread, 1);
+   //unsigned warpId_aa,warp_size_aa;
+   //warpId_aa = pI->warp_id();
+   //warp_size_aa=32;
+   //dim3 t=thread->get_tid();
+   //unsigned tid_aa=warp_size_aa*warpId_aa;
+
+   ptx_thread_info *thread2;
+   thread2=thread; 
+   src1_data = thread2->get_operand_value(src1, dst, i_type, thread2, 1);
+   src2_data = thread2->get_operand_value(src2, dst, i_type, thread2, 1);
+
 
    unsigned rounding_mode = pI->rounding_mode();
    int orig_rm = fegetround();
@@ -1483,135 +1494,102 @@ unsigned trunc(unsigned num, unsigned precision) {
 	return num;
 }
 
-void bsmad_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
+void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 {
-	// operands:
-	// 0 = output
-	// 1 = input precision
-	// 2 = output precision
-	// 3 = buffer0
-	// 4 = buffer1
-	// 5 = buffer2
-	// 6 = buffer3
-	// 7 = synapse value
-	// 8 = output value
+	int i,j,k,thrd;
+	int row,offset;
+	printf("mmaWorld\n");
+   	ptx_reg_t matrix_a[16][16];
+   	ptx_reg_t matrix_b[16][16];
+   	ptx_reg_t matrix_c[16][16];
+   	ptx_reg_t matrix_d[16][16];
+   	ptx_reg_t src_data;
+	ptx_thread_info *thread;
 
-	const operand_info &dst = pI->dst();
-	const operand_info &src1 = pI->src1();
-	const operand_info &src2 = pI->src2();
 	unsigned type = pI->get_type();
 	int tid = inst.warp_id_func() * core->get_warp_size();
-	ptx_thread_info *thread = core->get_thread_info()[tid];
-	const int ip = (thread->get_operand_value(src1, dst, type, thread, 1)).u32;
-	const int op = (thread->get_operand_value(src2, dst, type, thread, 1)).u32;
-	const int THREADS = inst.active_count();
-	const int INBUFFERS = 4;
-	const int OUTBUFFERS = (((32/ip)*INBUFFERS) / (32/op)) + ((((32/ip)*INBUFFERS) % (32/op)) != 0);
-	if (OUTBUFFERS > THREADS) {
-		printf("GPGPU-Sim PTX: BSMAD ERROR - Number of output registers required (%d) is greater than the number available (%d)\n", OUTBUFFERS, THREADS);
-		abort();
-	}
-	ptx_warp_info *warp_info = thread->m_warp_info;
-	warp_info->inc_done_threads();
+	const operand_info &dst = pI->operand_lookup(0);
+	
+//NOT WOR	thread = core->get_thread_info()[tid];
+//NOT WOR	const operand_info &src_a=  pI->operand_lookup(1);
+//NOT WOR	src_data= (thread->get_operand_value(src_a, dst, type, thread, 1));
+//NOT WOR 	thread->set_operand_value(dst, src_data, type, thread, pI);
+	for (thrd=0; thrd < core->get_warp_size(); thrd++){
+		row=thrd/2;
+		offset=8*(thrd%2);
+		thread = core->get_thread_info()[tid+thrd];
+		printf("thread=%d:",thrd);
+		for(i=8;i<=31;i++){
+			const operand_info &src_a=  pI->operand_lookup(i);
+			src_data= (thread->get_operand_value(src_a, dst, type, thread, 1));
+			printf("%f ",src_data.f32);
+			if(i<=15)
+				matrix_a[row][offset+(i)%8]=src_data;
+			else if((i>15)&&(i<=23))
+				matrix_b[row][offset+(i)%8]=src_data;
+			else if(i>23)	 
+				matrix_c[row][offset+(i)%8]=src_data;
+			
 
-	// threads within the warp are executed sequentially by the simulator, store output in first four registers
-	if (warp_info->get_done_threads() <= OUTBUFFERS) {
-		unsigned buffer[THREADS][INBUFFERS];
-		unsigned synapse[THREADS];
-		unsigned output;
-
-		// loop through all threads in the warp and get all data
-		for (unsigned i = 0, j = 0; i < core->get_warp_size(); i++) {
-			if (inst.active(i)) {
-				const operand_info &src3 = pI->operand_lookup(3);
-				const operand_info &src4 = pI->operand_lookup(4);
-				const operand_info &src5 = pI->operand_lookup(5);
-				const operand_info &src6 = pI->operand_lookup(6);
-				const operand_info &src7 = pI->operand_lookup(7);
-				const operand_info &src8 = pI->operand_lookup(8);
-
-				thread = core->get_thread_info()[tid+i];
-				// get buffer data and synapse data from each thread
-				buffer[j][0] = (thread->get_operand_value(src3, dst, type, thread, 1)).u32;
-				buffer[j][1] = (thread->get_operand_value(src4, dst, type, thread, 1)).u32;
-				buffer[j][2] = (thread->get_operand_value(src5, dst, type, thread, 1)).u32;
-				buffer[j][3] = (thread->get_operand_value(src6, dst, type, thread, 1)).u32;
-				synapse[j] = (thread->get_operand_value(src7, dst, type, thread, 1)).u32;
-				j++;
-				// get output data from the first 4 threads
-				if (j == warp_info->get_done_threads()) {
-					output = (thread->get_operand_value(src8, dst, type, thread, 1)).u32;
-				}
-			}
 		}
-
-		// unpack registers, compute enough outputs to fill an output register
-		unsigned *unpacked_output = (unsigned*)calloc(32/op,sizeof(unsigned));
-		unsigned buffer_data_start = (32/op)*(warp_info->get_done_threads()-1);
-		for (unsigned i = buffer_data_start; i < (32/op + buffer_data_start) && i < (32/ip)*INBUFFERS; i++) {
-			unsigned buf = i/(32/ip);
-			unsigned pos = i%(32/ip);
-			// sum values from the buffers
-			int sum = 0;
-			unsigned mask = (unsigned)(pow(2,ip)-1) << (pos*ip);
-			for (int j = 0; j < THREADS; j++) {
-				//sum += ((mask & buffer[j][buf]) >> (pos*ip)) * synapse[j];
-				sum += trunc(((mask & buffer[j][buf]) >> (pos*ip)) * synapse[j], op);
-			}
-			// get the previous output
-			mask = (unsigned)(pow(2,op)-1) << (op*(i-buffer_data_start));
-			int past_output = (mask & output) >> (op*(i-buffer_data_start));
-			unpacked_output[i-buffer_data_start] = trunc(trunc(sum,op) + past_output,op);
-			// truncate sum, truncate (truncated sum + past_output)
-		}
-
-		// truncate output
-		/*for (unsigned i = 0; i < 32/op; i++) {
-			int mask = 1, latest_one = -1;
-			unsigned data = unpacked_output[i];
-			for (unsigned j = 0; j < sizeof(unsigned)*8; j++) {
-				int bit = data & mask;
-				if (bit == 1) latest_one = j;
-				data >>= 1;
-			}
-			if (latest_one >= op) {
-				// round_up is 1 if the most significant truncated digit is a 1, otherwise it is 0
-				int round_up = (unpacked_output[i] & (1 << (latest_one-op))) >> (latest_one-op);
-				unsigned shifted_output = unpacked_output[i] >> (latest_one-op+1);
-				// if shifted_output is a number like 1111, don't round up
-				if (shifted_output == (pow(2,op)-1)) round_up = 0;
-				unpacked_output[i] = shifted_output + round_up;
-			}
-		}*/
-
-		// pack the outputs into one register
-		unsigned mask = pow(2,op)-1;
-		unsigned output_data = 0;
-		for (int i = 0; i < 32/op; i++) {
-			output_data |= (unpacked_output[i] & mask) << (op*i);
-		}
-
-		// store the result in the correct thread's output register
-		for (unsigned i = 0, j = 0; i < core->get_warp_size(); i++) {
-			if (inst.active(i)) j++;
-			if (j == warp_info->get_done_threads()) {
-				thread = core->get_thread_info()[tid+i];
-				ptx_reg_t data;
-				data.u32 = output_data;
-				thread->set_operand_value(dst, data, type, thread, pI);
-				break;
-			}
-		}
+		printf("\n");
 	}
 
-	// once the warp has finished, set the number of completed threads back to 0 for the next warp
-	if (warp_info->get_done_threads() == THREADS)	{
-		warp_info->reset_done_threads();
+	printf("MATRIX_A\n");
+	for (i=0;i<16;i++){
+		for(j=0;j<16;j++){
+			printf("%f ",matrix_a[i][j].f32);
+		}
+		printf("\n");
+	}	
+	printf("MATRIX_B\n");
+	for (i=0;i<16;i++){
+		for(j=0;j<16;j++){
+			printf("%f ",matrix_b[i][j].f32);
+		}
+		printf("\n");
+	}	
+	printf("MATRIX_C\n");
+	for (i=0;i<16;i++){
+		for(j=0;j<16;j++){
+			printf("%f ",matrix_c[i][j].f32);
+		}
+		printf("\n");
+	}	
+	for (i=0;i<16;i++){
+		for(j=0;j<16;j++){
+				matrix_d[i][j].f32=0;
+		}
 	}
-
-	// set the latency assuming 4 bits of each input get processed every cycle
-	// mutable latency variable???
-	//pI->latency = (ip+3)/4;
+	
+	for (i=0;i<16;i++){
+		for(j=0;j<16;j++){
+			for(k=0;k<16;k++){
+				matrix_d[i][j].f32=matrix_d[i][j].f32+matrix_a[i][k].f32*matrix_b[j][k].f32;
+			}
+			matrix_d[i][j].f32+=matrix_c[i][j].f32;
+		}
+	}
+	printf("MATRIX_D\n");
+	for (i=0;i<16;i++){
+		for(j=0;j<16;j++){
+			printf("%f ",matrix_d[i][j].f32);
+		}
+		printf("\n");
+	}	
+	for (thrd=0; thrd < core->get_warp_size(); thrd++){
+		thread = core->get_thread_info()[tid+thrd];
+		row=thrd/2;
+		offset=8*(thrd%2);
+		for(i=0;i<8;i++){
+			const operand_info &dst = pI->operand_lookup(i);
+			const symbol *r2;
+			r2=dst.get_symbol();
+			printf("thrd=%d,i=%d,register%s, data=%f\n",thrd,i,(r2->name()).c_str(),matrix_d[row][offset+i].f32);
+			thread->set_operand_value(dst, matrix_d[row][offset+i], type, thread, pI);
+		}
+	}
+   
 }
 
 void call_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
@@ -4098,7 +4076,8 @@ void st_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    if (!vector_spec) {
       data = thread->get_operand_value(src1, dst, type, thread, 1);
       mem->write(addr,size/8,&data.s64,thread,pI);
-   } else {
+      printf("addr=%d data=%d\n",addr,data.s64);
+    } else {
       if (vector_spec == V2_TYPE) {
          ptx_reg_t* ptx_regs = new ptx_reg_t[2]; 
          thread->get_vector_operand_values(src1, ptx_regs, 2); 

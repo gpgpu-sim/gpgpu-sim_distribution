@@ -948,6 +948,31 @@ public:
       assert( m_operands.size() > 3 );
       return m_operands[3];
    }
+   const operand_info &src4() const 
+   { 
+      assert( m_operands.size() > 4 );
+      return m_operands[4];
+   }
+   const operand_info &src5() const 
+   { 
+      assert( m_operands.size() > 5 );
+      return m_operands[5];
+   }
+   const operand_info &src6() const 
+   { 
+      assert( m_operands.size() > 6 );
+      return m_operands[6];
+   }
+   const operand_info &src7() const 
+   { 
+      assert( m_operands.size() > 7 );
+      return m_operands[7];
+   }
+   const operand_info &src8() const 
+   { 
+      assert( m_operands.size() > 8 );
+      return m_operands[8];
+   }
 
    const operand_info &operand_lookup( unsigned n ) const
    {
