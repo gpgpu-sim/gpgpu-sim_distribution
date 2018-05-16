@@ -29,3 +29,7 @@ cuobjdump_to_ptxplus/sass_parser.output
 
 build/*
 *.swp
+*~
+cscope*
+tags
+
