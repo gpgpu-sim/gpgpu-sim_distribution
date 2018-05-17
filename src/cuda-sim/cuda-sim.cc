@@ -140,6 +140,36 @@ unsigned int intLOGB2( unsigned int v ) {
 
 void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, const struct cudaArray* array)
 {
+   //   counts number of matches
+//   int                           normalized;
+//   enum cudaTextureFilterMode    filterMode;
+//   enum cudaTextureAddressMode   addressMode[3];
+//   struct cudaChannelFormatDesc  channelDesc;
+//   int                        x;
+//   int                        y;
+//   int                        z;
+//   int                        w;
+//   enum cudaChannelFormatKind f;
+//   int trMatches = 0;
+//   for (auto& kv : m_NameToTextureRef){
+//      const struct textureReference* tr = kv.second;
+//      if (tr->normalized==texref->normalized&&
+//            tr->filterMode==texref->filterMode&&
+//            tr->addressMode[0]==texref->addressMode[0]&&
+//            tr->addressMode[1]==texref->addressMode[1]&&
+//            tr->addressMode[2]==texref->addressMode[2]&&
+//            tr->channelDesc.x==texref->channelDesc.x&&
+//            tr->channelDesc.y==texref->channelDesc.y&&
+//            tr->channelDesc.z==texref->channelDesc.z&&
+//            tr->channelDesc.w==texref->channelDesc.w&&
+//            tr->channelDesc.f==texref->channelDesc.f){
+//
+//         m_TextureRefToCudaArray[tr] = array;
+//         trMatches++;
+//      }
+//   }
+//   printf("GPGPU-Sim PTX:   matches to texref = %d\n", trMatches);
+//   assert(trMatches==1);
    m_TextureRefToCudaArray[texref] = array;
    unsigned int texel_size_bits = array->desc.w + array->desc.x + array->desc.y + array->desc.z;
    unsigned int texel_size = texel_size_bits/8;

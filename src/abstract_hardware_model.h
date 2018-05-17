@@ -522,22 +522,77 @@ public:
     }
     const struct cudaArray* get_texarray( const struct textureReference *texref ) const
     {
-        std::map<const struct textureReference*,const struct cudaArray*>::const_iterator t=m_TextureRefToCudaArray.find(texref);
-        assert(t != m_TextureRefToCudaArray.end());
-        return t->second;
+        
+        for (std::map<const struct textureReference*, const struct cudaArray*>::const_iterator kv = m_TextureRefToCudaArray.begin(); kv!= m_TextureRefToCudaArray.end(); kv ++){
+           const struct textureReference* tr = kv->first;
+           if (tr->normalized==texref->normalized&&
+                 tr->filterMode==texref->filterMode&&
+                 tr->addressMode[0]==texref->addressMode[0]&&
+                 tr->addressMode[1]==texref->addressMode[1]&&
+                 tr->addressMode[2]==texref->addressMode[2]&&
+                 tr->channelDesc.x==texref->channelDesc.x&&
+                 tr->channelDesc.y==texref->channelDesc.y&&
+                 tr->channelDesc.z==texref->channelDesc.z&&
+                 tr->channelDesc.w==texref->channelDesc.w&&
+                 tr->channelDesc.f==texref->channelDesc.f){
+
+                 return kv->second;
+           }
+        }
+
+        assert(false);
+//        std::map<const struct textureReference*,const struct cudaArray*>::const_iterator t=m_TextureRefToCudaArray.find(texref);
+//        assert(t != m_TextureRefToCudaArray.end());
+//        return t->second;
     }
     const struct textureInfo* get_texinfo( const struct textureReference *texref ) const
     {
-        std::map<const struct textureReference*, const struct textureInfo*>::const_iterator t=m_TextureRefToTexureInfo.find(texref);
-        assert(t != m_TextureRefToTexureInfo.end());
-        return t->second;
+        for (std::map<const struct textureReference*, const struct textureInfo*>::const_iterator kv = m_TextureRefToTexureInfo.begin(); kv!= m_TextureRefToTexureInfo.end(); kv ++){
+           const struct textureReference* tr = kv->first;
+           if (tr->normalized==texref->normalized&&
+                 tr->filterMode==texref->filterMode&&
+                 tr->addressMode[0]==texref->addressMode[0]&&
+                 tr->addressMode[1]==texref->addressMode[1]&&
+                 tr->addressMode[2]==texref->addressMode[2]&&
+                 tr->channelDesc.x==texref->channelDesc.x&&
+                 tr->channelDesc.y==texref->channelDesc.y&&
+                 tr->channelDesc.z==texref->channelDesc.z&&
+                 tr->channelDesc.w==texref->channelDesc.w&&
+                 tr->channelDesc.f==texref->channelDesc.f){
+
+                 return kv->second;
+           }
+        }
+
+        assert(false);
+//        std::map<const struct textureReference*, const struct textureInfo*>::const_iterator t=m_TextureRefToTexureInfo.find(texref);
+//        assert(t != m_TextureRefToTexureInfo.end());
+//        return t->second;
     }
 
     const struct textureReferenceAttr* get_texattr( const struct textureReference *texref ) const
     {
-        std::map<const struct textureReference*, const struct textureReferenceAttr*>::const_iterator t=m_TextureRefToAttribute.find(texref);
-        assert(t != m_TextureRefToAttribute.end());
-        return t->second;
+        for (std::map<const struct textureReference*, const struct textureReferenceAttr*>::const_iterator kv = m_TextureRefToAttribute.begin(); kv!= m_TextureRefToAttribute.end(); kv ++){
+           const struct textureReference* tr = kv->first;
+           if (tr->normalized==texref->normalized&&
+                 tr->filterMode==texref->filterMode&&
+                 tr->addressMode[0]==texref->addressMode[0]&&
+                 tr->addressMode[1]==texref->addressMode[1]&&
+                 tr->addressMode[2]==texref->addressMode[2]&&
+                 tr->channelDesc.x==texref->channelDesc.x&&
+                 tr->channelDesc.y==texref->channelDesc.y&&
+                 tr->channelDesc.z==texref->channelDesc.z&&
+                 tr->channelDesc.w==texref->channelDesc.w&&
+                 tr->channelDesc.f==texref->channelDesc.f){
+
+                 return kv->second;
+           }
+        }
+
+        assert(false);
+//        std::map<const struct textureReference*, const struct textureReferenceAttr*>::const_iterator t=m_TextureRefToAttribute.find(texref);
+//        assert(t != m_TextureRefToAttribute.end());
+//        return t->second;
     }
 
     const gpgpu_functional_sim_config &get_config() const { return m_function_model_config; }
