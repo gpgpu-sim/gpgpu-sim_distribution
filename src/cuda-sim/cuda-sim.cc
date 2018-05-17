@@ -186,11 +186,11 @@ void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* te
    
    //tests if texref pointer matches any pointer in m_NameToTextureRef map
    int trMatches = 0;
-   for (auto& kv : m_NameToTextureRef){
-      const struct textureReference* tr = kv.second;
+        for (std::map<std::string,const struct textureReference*>::const_iterator kv = m_NameToTextureRef.begin(); kv!= m_NameToTextureRef.end(); kv ++){
+      const struct textureReference* tr = kv->second;
       if (tr==texref){
          m_TextureRefToCudaArray[tr] = array;
-         //printf("%s\n", kv.first);
+         printf("%s\n", kv->first.c_str());
          trMatches++;
       }
    }
