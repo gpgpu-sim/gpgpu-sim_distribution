@@ -26,6 +26,10 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#ifndef VERSION_EIGHT
+#define VERSION_EIGHT
+#endif
+
 #include "cuda-sim.h"
 
 #include "instructions.h"
@@ -104,6 +108,16 @@ static address_type get_converge_point(address_type pc);
 
 void gpgpu_t::gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref, int dim, int readmode, int ext)
 {
+
+//#ifdef VERSION_EIGHT
+//   int i;
+//   printf("%s  ", name);
+//   printf("__cudaReserved:");
+//   for (i = 0; i<15; i++){
+//      printf("  %i", texref->__cudaReserved[i]);
+//   }
+//   printf("\n");
+//#endif
    std::string texname(name);
    m_NameToTextureRef[texname] = texref;
    const textureReferenceAttr *texAttr = new textureReferenceAttr(texref, dim, (enum cudaTextureReadMode)readmode, ext); 
@@ -140,16 +154,15 @@ unsigned int intLOGB2( unsigned int v ) {
 
 void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, const struct cudaArray* array)
 {
+//#ifdef VERSION_EIGHT
+//   int i;
+//   printf("__cudaReserved:");
+//   for (i = 0; i<15; i++){
+//      printf("  %i", texref->__cudaReserved[i]);
+//   }
+//   printf("\n");
+//#endif
    //   counts number of matches
-//   int                           normalized;
-//   enum cudaTextureFilterMode    filterMode;
-//   enum cudaTextureAddressMode   addressMode[3];
-//   struct cudaChannelFormatDesc  channelDesc;
-//   int                        x;
-//   int                        y;
-//   int                        z;
-//   int                        w;
-//   enum cudaChannelFormatKind f;
 //   int trMatches = 0;
 //   for (auto& kv : m_NameToTextureRef){
 //      const struct textureReference* tr = kv.second;
@@ -170,7 +183,21 @@ void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* te
 //   }
 //   printf("GPGPU-Sim PTX:   matches to texref = %d\n", trMatches);
 //   assert(trMatches==1);
-   m_TextureRefToCudaArray[texref] = array;
+   
+   //tests if texref pointer matches any pointer in m_NameToTextureRef map
+   int trMatches = 0;
+   for (auto& kv : m_NameToTextureRef){
+      const struct textureReference* tr = kv.second;
+      if (tr==texref){
+         m_TextureRefToCudaArray[tr] = array;
+         //printf("%s\n", kv.first);
+         trMatches++;
+      }
+   }
+   printf("GPGPU-Sim PTX:   matches to texref = %d\n", trMatches);
+   //assert(trMatches==1);
+
+   //m_TextureRefToCudaArray[texref] = array;
    unsigned int texel_size_bits = array->desc.w + array->desc.x + array->desc.y + array->desc.z;
    unsigned int texel_size = texel_size_bits/8;
    unsigned int Tx, Ty;
