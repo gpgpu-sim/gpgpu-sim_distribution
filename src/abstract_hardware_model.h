@@ -544,6 +544,7 @@ public:
     class memory_space *get_surf_memory() { return m_surf_mem; }
 
     void gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, const struct cudaArray* array);
+    void gpgpu_ptx_sim_unbindTexture(const struct textureReference* texref);
     void gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref, int dim, int readmode, int ext);
     const char* gpgpu_ptx_sim_findNamefromTexture(const struct textureReference* texref);
 
