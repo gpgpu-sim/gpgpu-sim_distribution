@@ -183,6 +183,11 @@ void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* te
    m_TextureRefToTexureInfo[texref] = texInfo;
 }
 
+void gpgpu_t::gpgpu_ptx_sim_unbindTexture(const struct textureReference* texref)
+{
+   m_TextureRefToCudaArray.erase(texref);
+}
+
 unsigned g_assemble_code_next_pc=0; 
 std::map<unsigned,function_info*> g_pc_to_finfo;
 std::vector<ptx_instruction*> function_info::s_g_pc_to_insn;
