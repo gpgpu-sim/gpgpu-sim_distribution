@@ -1002,6 +1002,14 @@ __host__ cudaError_t CUDARTAPI cudaBindTextureToArray(const struct textureRefere
 
 __host__ cudaError_t CUDARTAPI cudaUnbindTexture(const struct textureReference *texref)
 {
+	CUctx_st *context = GPGPUSim_Context();
+	gpgpu_t *gpu = context->get_device()->get_gpgpu();
+	printf("GPGPU-Sim PTX: in cudaUnbindTexture: sizeof(struct textureReference) = %zu\n", sizeof(struct textureReference));
+	printf("GPGPU-Sim PTX:   Name corresponding to textureReference: %s\n", gpu->gpgpu_ptx_sim_findNamefromTexture(texref));
+   const struct cudaArray* array = gpu->get_texarray(texref);
+   printf("GPGPU-Sim PTX:   texref = %p, array = %p\n", texref, array);
+
+	gpu->gpgpu_ptx_sim_unbindTexture(texref);
 	return g_last_cudaError = cudaSuccess;
 }
 
@@ -2084,10 +2092,12 @@ void __cudaUnregisterFatBinary(void **fatCubinHandle)
 
 cudaError_t cudaDeviceReset ( void ) {
 	// Should reset the simulated GPU
+   // TODO: Implement
 	return g_last_cudaError = cudaSuccess;
 }
 cudaError_t CUDARTAPI cudaDeviceSynchronize(void){
 	// I don't know what this should do
+   // TODO: Implement
 	return g_last_cudaError = cudaSuccess;
 }
 
@@ -2189,6 +2199,7 @@ typedef unsigned long GLuint;
 cudaError_t cudaGLRegisterBufferObject(GLuint bufferObj)
 {
 	printf("GPGPU-Sim PTX: Execution warning: ignoring call to \"%s\"\n", __my_func__ );
+   // TODO: Implement
 	return g_last_cudaError = cudaSuccess;
 }
 
