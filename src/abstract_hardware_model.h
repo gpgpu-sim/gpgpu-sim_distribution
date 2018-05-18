@@ -556,106 +556,115 @@ public:
     }
     const struct cudaArray* get_texarray( const struct textureReference *texref ) const
     {
-        int matches = 0;
-        const struct cudaArray* t = NULL;
-        for (std::map<const struct textureReference*, const struct cudaArray*>::const_iterator kv = m_TextureRefToCudaArray.begin(); kv!= m_TextureRefToCudaArray.end(); kv ++){
-           const struct textureReference* tr = kv->first;
-           if (tr->normalized==texref->normalized&&
-                 tr->filterMode==texref->filterMode&&
-                 tr->addressMode[0]==texref->addressMode[0]&&
-                 tr->addressMode[1]==texref->addressMode[1]&&
-                 tr->addressMode[2]==texref->addressMode[2]&&
-                 tr->channelDesc.x==texref->channelDesc.x&&
-                 tr->channelDesc.y==texref->channelDesc.y&&
-                 tr->channelDesc.z==texref->channelDesc.z&&
-                 tr->channelDesc.w==texref->channelDesc.w&&
-                 tr->channelDesc.f==texref->channelDesc.f 
-                 //following commented section applies only to CUDA_VERSION 8+
-                 /*
-                 &&
-                 tr->sRGB==texref->sRGB&&
-                 tr->maxAnisotropy==texref->maxAnisotropy&&
-                 tr->mipmapFilterMode==texref->mipmapFilterMode&&
-                 tr->mipmapLevelBias==texref->mipmapLevelBias&&
-                 tr->minMipmapLevelClamp==texref->minMipmapLevelClamp&&
-                 tr->maxMipmapLevelClamp==texref->maxMipmapLevelClamp&&
-                 tr->__cudaReserved[0] ==texref->__cudaReserved[0]&&
-                 tr->__cudaReserved[1] ==texref->__cudaReserved[1]&&
-                 tr->__cudaReserved[2] ==texref->__cudaReserved[2]&&
-                 tr->__cudaReserved[3] ==texref->__cudaReserved[3]&&
-                 tr->__cudaReserved[4] ==texref->__cudaReserved[4]&&
-                 tr->__cudaReserved[5] ==texref->__cudaReserved[5]&&
-                 tr->__cudaReserved[6] ==texref->__cudaReserved[6]&&
-                 tr->__cudaReserved[7] ==texref->__cudaReserved[7]&&
-                 tr->__cudaReserved[8] ==texref->__cudaReserved[8]&&
-                 tr->__cudaReserved[9] ==texref->__cudaReserved[9]&&
-                 tr->__cudaReserved[10]==texref->__cudaReserved[10]&&
-                 tr->__cudaReserved[11]==texref->__cudaReserved[11]&&
-                 tr->__cudaReserved[12]==texref->__cudaReserved[12]&&
-                 tr->__cudaReserved[13]==texref->__cudaReserved[13]&&
-                 tr->__cudaReserved[14]==texref->__cudaReserved[14]
-                 */
-                 ){
-                 matches++;
-                 t = kv->second;
-                 //return kv->second;
+       
+        std::map<const struct textureReference*,const struct cudaArray*>::const_iterator t=m_TextureRefToCudaArray.find(texref);
+        if(t != m_TextureRefToCudaArray.end()){
+           return t->second;
+        } else{
+           int matches = 0;
+           const struct cudaArray* t = NULL;
+           for (std::map<const struct textureReference*, const struct cudaArray*>::const_iterator kv = m_TextureRefToCudaArray.begin(); 
+                 kv!= m_TextureRefToCudaArray.end(); kv ++){
+              const struct textureReference* tr = kv->first;
+              if (tr->normalized==texref->normalized&&
+                    tr->filterMode==texref->filterMode&&
+                    tr->addressMode[0]==texref->addressMode[0]&&
+                    tr->addressMode[1]==texref->addressMode[1]&&
+                    tr->addressMode[2]==texref->addressMode[2]&&
+                    tr->channelDesc.x==texref->channelDesc.x&&
+                    tr->channelDesc.y==texref->channelDesc.y&&
+                    tr->channelDesc.z==texref->channelDesc.z&&
+                    tr->channelDesc.w==texref->channelDesc.w&&
+                    tr->channelDesc.f==texref->channelDesc.f 
+                    //following commented section applies only to CUDA_VERSION 8+
+                    /*
+                    &&
+                    tr->sRGB==texref->sRGB&&
+                    tr->maxAnisotropy==texref->maxAnisotropy&&
+                    tr->mipmapFilterMode==texref->mipmapFilterMode&&
+                    tr->mipmapLevelBias==texref->mipmapLevelBias&&
+                    tr->minMipmapLevelClamp==texref->minMipmapLevelClamp&&
+                    tr->maxMipmapLevelClamp==texref->maxMipmapLevelClamp&&
+                    tr->__cudaReserved[0] ==texref->__cudaReserved[0]&&
+                    tr->__cudaReserved[1] ==texref->__cudaReserved[1]&&
+                    tr->__cudaReserved[2] ==texref->__cudaReserved[2]&&
+                    tr->__cudaReserved[3] ==texref->__cudaReserved[3]&&
+                    tr->__cudaReserved[4] ==texref->__cudaReserved[4]&&
+                    tr->__cudaReserved[5] ==texref->__cudaReserved[5]&&
+                    tr->__cudaReserved[6] ==texref->__cudaReserved[6]&&
+                    tr->__cudaReserved[7] ==texref->__cudaReserved[7]&&
+                    tr->__cudaReserved[8] ==texref->__cudaReserved[8]&&
+                    tr->__cudaReserved[9] ==texref->__cudaReserved[9]&&
+                    tr->__cudaReserved[10]==texref->__cudaReserved[10]&&
+                    tr->__cudaReserved[11]==texref->__cudaReserved[11]&&
+                    tr->__cudaReserved[12]==texref->__cudaReserved[12]&&
+                    tr->__cudaReserved[13]==texref->__cudaReserved[13]&&
+                    tr->__cudaReserved[14]==texref->__cudaReserved[14]
+                    */
+                    ){
+                    matches++;
+                    t = kv->second;
+              }
            }
+           
+           //assert(matches==1);
+           return t;
         }
-
-        //printf("matches (texarray) = %d\n", matches);
-        assert(matches==1);
-        return t;
     }
     const struct textureInfo* get_texinfo( const struct textureReference *texref ) const
     {
-        int matches = 0;
-        const struct textureInfo* t = NULL;
-        for (std::map<const struct textureReference*, const struct textureInfo*>::const_iterator kv = m_TextureRefToTexureInfo.begin(); kv!= m_TextureRefToTexureInfo.end(); kv ++){
-           const struct textureReference* tr = kv->first;
-           if (tr->normalized==texref->normalized&&
-                 tr->filterMode==texref->filterMode&&
-                 tr->addressMode[0]==texref->addressMode[0]&&
-                 tr->addressMode[1]==texref->addressMode[1]&&
-                 tr->addressMode[2]==texref->addressMode[2]&&
-                 tr->channelDesc.x==texref->channelDesc.x&&
-                 tr->channelDesc.y==texref->channelDesc.y&&
-                 tr->channelDesc.z==texref->channelDesc.z&&
-                 tr->channelDesc.w==texref->channelDesc.w&&
-                 tr->channelDesc.f==texref->channelDesc.f
-                 //following commented section applies only to CUDA_VERSION 8+
-                 /*
-                 &&
-                 tr->sRGB==texref->sRGB&&
-                 tr->maxAnisotropy==texref->maxAnisotropy&&
-                 tr->mipmapFilterMode==texref->mipmapFilterMode&&
-                 tr->mipmapLevelBias==texref->mipmapLevelBias&&
-                 tr->minMipmapLevelClamp==texref->minMipmapLevelClamp&&
-                 tr->maxMipmapLevelClamp==texref->maxMipmapLevelClamp&&
-                 tr->__cudaReserved[0] ==texref->__cudaReserved[0]&&
-                 tr->__cudaReserved[1] ==texref->__cudaReserved[1]&&
-                 tr->__cudaReserved[2] ==texref->__cudaReserved[2]&&
-                 tr->__cudaReserved[3] ==texref->__cudaReserved[3]&&
-                 tr->__cudaReserved[4] ==texref->__cudaReserved[4]&&
-                 tr->__cudaReserved[5] ==texref->__cudaReserved[5]&&
-                 tr->__cudaReserved[6] ==texref->__cudaReserved[6]&&
-                 tr->__cudaReserved[7] ==texref->__cudaReserved[7]&&
-                 tr->__cudaReserved[8] ==texref->__cudaReserved[8]&&
-                 tr->__cudaReserved[9] ==texref->__cudaReserved[9]&&
-                 tr->__cudaReserved[10]==texref->__cudaReserved[10]&&
-                 tr->__cudaReserved[11]==texref->__cudaReserved[11]&&
-                 tr->__cudaReserved[12]==texref->__cudaReserved[12]&&
-                 tr->__cudaReserved[13]==texref->__cudaReserved[13]&&
-                 tr->__cudaReserved[14]==texref->__cudaReserved[14]
-                 */
-                 ){
-                 matches++;
-                 t = kv->second;
+        std::map<const struct textureReference*, const struct textureInfo*>::const_iterator t=m_TextureRefToTexureInfo.find(texref);
+        if(t != m_TextureRefToTexureInfo.end()){
+           return t->second;
+        }else{
+           int matches = 0;
+           const struct textureInfo* t = NULL;
+           for (std::map<const struct textureReference*, const struct textureInfo*>::const_iterator kv = m_TextureRefToTexureInfo.begin();
+                 kv!= m_TextureRefToTexureInfo.end(); kv ++){
+              const struct textureReference* tr = kv->first;
+              if (tr->normalized==texref->normalized&&
+                    tr->filterMode==texref->filterMode&&
+                    tr->addressMode[0]==texref->addressMode[0]&&
+                    tr->addressMode[1]==texref->addressMode[1]&&
+                    tr->addressMode[2]==texref->addressMode[2]&&
+                    tr->channelDesc.x==texref->channelDesc.x&&
+                    tr->channelDesc.y==texref->channelDesc.y&&
+                    tr->channelDesc.z==texref->channelDesc.z&&
+                    tr->channelDesc.w==texref->channelDesc.w&&
+                    tr->channelDesc.f==texref->channelDesc.f
+                    //following commented section applies only to CUDA_VERSION 8+
+                    /*
+                    &&
+                    tr->sRGB==texref->sRGB&&
+                    tr->maxAnisotropy==texref->maxAnisotropy&&
+                    tr->mipmapFilterMode==texref->mipmapFilterMode&&
+                    tr->mipmapLevelBias==texref->mipmapLevelBias&&
+                    tr->minMipmapLevelClamp==texref->minMipmapLevelClamp&&
+                    tr->maxMipmapLevelClamp==texref->maxMipmapLevelClamp&&
+                    tr->__cudaReserved[0] ==texref->__cudaReserved[0]&&
+                    tr->__cudaReserved[1] ==texref->__cudaReserved[1]&&
+                    tr->__cudaReserved[2] ==texref->__cudaReserved[2]&&
+                    tr->__cudaReserved[3] ==texref->__cudaReserved[3]&&
+                    tr->__cudaReserved[4] ==texref->__cudaReserved[4]&&
+                    tr->__cudaReserved[5] ==texref->__cudaReserved[5]&&
+                    tr->__cudaReserved[6] ==texref->__cudaReserved[6]&&
+                    tr->__cudaReserved[7] ==texref->__cudaReserved[7]&&
+                    tr->__cudaReserved[8] ==texref->__cudaReserved[8]&&
+                    tr->__cudaReserved[9] ==texref->__cudaReserved[9]&&
+                    tr->__cudaReserved[10]==texref->__cudaReserved[10]&&
+                    tr->__cudaReserved[11]==texref->__cudaReserved[11]&&
+                    tr->__cudaReserved[12]==texref->__cudaReserved[12]&&
+                    tr->__cudaReserved[13]==texref->__cudaReserved[13]&&
+                    tr->__cudaReserved[14]==texref->__cudaReserved[14]
+                    */
+                    ){
+                    matches++;
+                    t = kv->second;
+              }
            }
+           //assert(matches==1);
+           return t;
         }
-
-        //printf("matches (texinfo) = %d\n", matches);
-        assert(matches==1);
-        return t;
     }
 
     const struct textureReferenceAttr* get_texattr( const struct textureReference *texref ) const
