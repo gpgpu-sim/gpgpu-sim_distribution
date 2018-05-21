@@ -2368,7 +2368,11 @@ void decode_space( memory_space_t &space, ptx_thread_info *thread, const operand
          space = param_space_kernel;
       else if( ti.is_param_local() ) {
          space = param_space_local;
-      } else {
+      } 
+      else if( ti.is_reg() ) {
+         space = param_space_kernel;
+      }	
+      else {
          printf("GPGPU-Sim PTX: ERROR ** cannot resolve .param space for '%s'\n", s->name().c_str() );
          abort(); 
       }
