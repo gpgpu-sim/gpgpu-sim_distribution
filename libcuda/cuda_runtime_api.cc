@@ -989,9 +989,14 @@ __host__ cudaError_t CUDARTAPI cudaBindTextureToArray(const struct textureRefere
 	return g_last_cudaError = cudaSuccess;
 }
 
-__host__ cudaError_t CUDARTAPI cudaUnbindTexture(const struct textureReference *texref)
-{
-	return g_last_cudaError = cudaSuccess;
+__host__ cudaError_t CUDARTAPI cudaUnbindTexture(const struct textureReference *texref)                                                                               {
+   CUctx_st *context = GPGPUSim_Context();
+   gpgpu_t *gpu = context->get_device()->get_gpgpu();
+   printf("GPGPU-Sim PTX: in cudaUnbindTexture: sizeof(struct textureReference) = %zu\n", sizeof(struct textureReference));
+   printf("GPGPU-Sim PTX:   Name corresponding to textureReference: %s\n", gpu->gpgpu_ptx_sim_findNamefromTexture(texref));
+
+   gpu->gpgpu_ptx_sim_unbindTexture(texref);
+   return g_last_cudaError = cudaSuccess;
 }
 
 __host__ cudaError_t CUDARTAPI cudaGetTextureAlignmentOffset(size_t *offset, const struct textureReference *texref)
