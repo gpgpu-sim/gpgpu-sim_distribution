@@ -140,7 +140,6 @@ unsigned int intLOGB2( unsigned int v ) {
 
 void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, const struct cudaArray* array)
 {
-   printf("GPGPU-Simm PTX:  name from texture = %s\n", gpgpu_ptx_sim_findNamefromTexture(texref)); 
    m_TextureRefToCudaArray[texref] = array;
    unsigned int texel_size_bits = array->desc.w + array->desc.x + array->desc.y + array->desc.z;
    unsigned int texel_size = texel_size_bits/8;
@@ -182,12 +181,6 @@ void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* te
    texInfo->texel_size = texel_size;
    texInfo->texel_size_numbits = intLOGB2(texel_size);
    m_TextureRefToTexureInfo[texref] = texInfo;
-}
-
-void gpgpu_t::gpgpu_ptx_sim_unbindTexture(const struct textureReference* texref)
-{
-   m_TextureRefToCudaArray.erase(texref);
-   m_TextureRefToTexureInfo.erase(texref);
 }
 
 unsigned g_assemble_code_next_pc=0; 
