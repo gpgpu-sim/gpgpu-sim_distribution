@@ -65,6 +65,7 @@ enum FuncCache
 
 #include <string.h>
 #include <stdio.h>
+#include <set>
 
 typedef unsigned long long new_addr_type;
 typedef unsigned address_type;
@@ -515,29 +516,31 @@ public:
     void gpgpu_ptx_sim_unbindTexture(const struct textureReference* texref);
     const char* gpgpu_ptx_sim_findNamefromTexture(const struct textureReference* texref);
 
-    const struct textureReference* get_texref(const std::string &texname) const
+    const struct textureReference* get_texref( const std::string &texname ) const
     {
-        std::map<std::string, const struct textureReference*>::const_iterator t=m_NameToTextureRef.find(texname);
+        std::map<std::string, std::set<const struct textureReference*> >::const_iterator t=m_NameToTextureRef.find(texname);
         assert( t != m_NameToTextureRef.end() );
-        return t->second;
+        return *(t->second.begin());
     }
-    const struct cudaArray* get_texarray( const struct textureReference *texref ) const
+
+    const struct cudaArray* get_texarray( const std::string &texname ) const
     {
-        std::map<const struct textureReference*,const struct cudaArray*>::const_iterator t=m_TextureRefToCudaArray.find(texref);
-        assert(t != m_TextureRefToCudaArray.end());
-        return t->second;
-    }
-    const struct textureInfo* get_texinfo( const struct textureReference *texref ) const
-    {
-        std::map<const struct textureReference*, const struct textureInfo*>::const_iterator t=m_TextureRefToTexureInfo.find(texref);
-        assert(t != m_TextureRefToTexureInfo.end());
+        std::map<std::string,const struct cudaArray*>::const_iterator t=m_NameToCudaArray.find(texname);
+        assert(t != m_NameToCudaArray.end());
         return t->second;
     }
 
-    const struct textureReferenceAttr* get_texattr( const struct textureReference *texref ) const
+    const struct textureInfo* get_texinfo( const std::string &texname ) const
     {
-        std::map<const struct textureReference*, const struct textureReferenceAttr*>::const_iterator t=m_TextureRefToAttribute.find(texref);
-        assert(t != m_TextureRefToAttribute.end());
+        std::map<std::string, const struct textureInfo*>::const_iterator t=m_NameToTexureInfo.find(texname);
+        assert(t != m_NameToTexureInfo.end());
+        return t->second;
+    }
+
+    const struct textureReferenceAttr* get_texattr( const std::string &texname ) const
+    {
+        std::map<std::string, const struct textureReferenceAttr*>::const_iterator t=m_NameToAttribute.find(texname);
+        assert(t != m_NameToAttribute.end());
         return t->second;
     }
 
@@ -554,10 +557,11 @@ protected:
 
     unsigned long long m_dev_malloc;
     
-    std::map<std::string, const struct textureReference*> m_NameToTextureRef;
-    std::map<const struct textureReference*,const struct cudaArray*> m_TextureRefToCudaArray;
-    std::map<const struct textureReference*, const struct textureInfo*> m_TextureRefToTexureInfo;
-    std::map<const struct textureReference*, const struct textureReferenceAttr*> m_TextureRefToAttribute;
+    std::map<std::string, std::set<const struct textureReference*> > m_NameToTextureRef;
+    std::map<const struct textureReference*, std::string> m_TextureRefToName;
+    std::map<std::string, const struct cudaArray*> m_NameToCudaArray;
+    std::map<std::string, const struct textureInfo*> m_NameToTexureInfo;
+    std::map<std::string, const struct textureReferenceAttr*> m_NameToAttribute;
 };
 
 struct gpgpu_ptx_sim_info
