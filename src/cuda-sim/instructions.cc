@@ -4098,9 +4098,9 @@ void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    gpgpu_t *gpu = thread->get_gpu();
    const struct textureReference* texref = gpu->get_texref(texname);
-   const struct cudaArray* cuArray = gpu->get_texarray(texref); 
-   const struct textureInfo* texInfo = gpu->get_texinfo(texref);
-   const struct textureReferenceAttr* texAttr = gpu->get_texattr(texref);
+   const struct cudaArray* cuArray = gpu->get_texarray(texname); 
+   const struct textureInfo* texInfo = gpu->get_texinfo(texname);
+   const struct textureReferenceAttr* texAttr = gpu->get_texattr(texname);
 
    //assume always 2D f32 input
    //access array with src2 coordinates

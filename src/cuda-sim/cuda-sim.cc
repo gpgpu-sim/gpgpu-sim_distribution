@@ -105,22 +105,36 @@ static address_type get_converge_point(address_type pc);
 void gpgpu_t::gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref, int dim, int readmode, int ext)
 {
    std::string texname(name);
-   m_NameToTextureRef[texname] = texref;
+   if (m_NameToTextureRef.find(texname)==m_NameToTextureRef.end()){
+      m_NameToTextureRef[texname] = std::set<const struct textureReference*>();
+      m_NameToTextureRef[texname].insert(texref);
+   }else{
+     const struct textureReference* tr = *m_NameToTextureRef[texname].begin();
+     assert(tr!=NULL);
+     //asserts that all texrefs in set have same fields
+     assert(tr->normalized==texref->normalized&&
+            tr->filterMode==texref->filterMode&&
+            tr->addressMode[0]==texref->addressMode[0]&&
+            tr->addressMode[1]==texref->addressMode[1]&&
+            tr->addressMode[2]==texref->addressMode[2]&&
+            tr->channelDesc.x==texref->channelDesc.x&&
+            tr->channelDesc.y==texref->channelDesc.y&&
+            tr->channelDesc.z==texref->channelDesc.z&&
+            tr->channelDesc.w==texref->channelDesc.w&&
+            tr->channelDesc.f==texref->channelDesc.f  
+           );
+      m_NameToTextureRef[texname].insert(texref);
+   }
+   m_TextureRefToName[texref] = texname;
    const textureReferenceAttr *texAttr = new textureReferenceAttr(texref, dim, (enum cudaTextureReadMode)readmode, ext); 
-   m_TextureRefToAttribute[texref] = texAttr; 
+   m_NameToAttribute[texname] = texAttr; 
 }
 
 const char* gpgpu_t::gpgpu_ptx_sim_findNamefromTexture(const struct textureReference* texref)
 {
-   std::map<std::string, const struct textureReference*>::iterator itr = m_NameToTextureRef.begin();
-   while (itr != m_NameToTextureRef.end()) {
-      if ((*itr).second == texref) {
-         const char *p = ((*itr).first).c_str();
-         return p;
-      }
-      itr++;
-   }
-   return NULL;
+   std::map<const struct textureReference*, std::string>::const_iterator t=m_TextureRefToName.find(texref);
+   assert( t != m_TextureRefToName.end() );
+   return t->second.c_str();
 }
 
 unsigned int intLOGB2( unsigned int v ) {
@@ -140,7 +154,8 @@ unsigned int intLOGB2( unsigned int v ) {
 
 void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, const struct cudaArray* array)
 {
-   m_TextureRefToCudaArray[texref] = array;
+   std::string texname = gpgpu_ptx_sim_findNamefromTexture(texref);
+   m_NameToCudaArray[texname] = array;
    unsigned int texel_size_bits = array->desc.w + array->desc.x + array->desc.y + array->desc.z;
    unsigned int texel_size = texel_size_bits/8;
    unsigned int Tx, Ty;
@@ -180,13 +195,14 @@ void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* te
    texInfo->Ty_numbits = intLOGB2(Ty);
    texInfo->texel_size = texel_size;
    texInfo->texel_size_numbits = intLOGB2(texel_size);
-   m_TextureRefToTexureInfo[texref] = texInfo;
+   m_NameToTexureInfo[texname] = texInfo;
 }
 
 void gpgpu_t::gpgpu_ptx_sim_unbindTexture(const struct textureReference* texref)
 {
-   m_TextureRefToCudaArray.erase(texref);
-   m_TextureRefToTexureInfo.erase(texref);
+   std::string texname = gpgpu_ptx_sim_findNamefromTexture(texref);
+   m_NameToCudaArray.erase(texname);
+   m_NameToTexureInfo.erase(texname);
 }
 
 unsigned g_assemble_code_next_pc=0; 
@@ -1246,8 +1262,7 @@ static unsigned get_tex_datasize( const ptx_instruction *pI, ptx_thread_info *th
    std::string texname = src1.name();
 
    gpgpu_t *gpu = thread->get_gpu();
-   const struct textureReference* texref = gpu->get_texref(texname);
-   const struct textureInfo* texInfo = gpu->get_texinfo(texref);
+   const struct textureInfo* texInfo = gpu->get_texinfo(texname);
 
    unsigned data_size = texInfo->texel_size;
    return data_size; 
