@@ -512,6 +512,7 @@ public:
 
     void gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, const struct cudaArray* array);
     void gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref, int dim, int readmode, int ext);
+    void gpgpu_ptx_sim_unbindTexture(const struct textureReference* texref);
     const char* gpgpu_ptx_sim_findNamefromTexture(const struct textureReference* texref);
 
     const struct textureReference* get_texref(const std::string &texname) const
