@@ -154,6 +154,10 @@ unsigned int intLOGB2( unsigned int v ) {
 void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, const struct cudaArray* array)
 {
    std::string texname = gpgpu_ptx_sim_findNamefromTexture(texref);
+
+   std::map<std::string,const struct cudaArray*>::const_iterator t=m_NameToCudaArray.find(texname);
+   //check that there's nothing there first
+   assert(t == m_NameToCudaArray.end());
    m_NameToCudaArray[texname] = array;
    unsigned int texel_size_bits = array->desc.w + array->desc.x + array->desc.y + array->desc.z;
    unsigned int texel_size = texel_size_bits/8;
@@ -199,6 +203,7 @@ void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* te
 
 void gpgpu_t::gpgpu_ptx_sim_unbindTexture(const struct textureReference* texref)
 {
+   //assumes bind-use-unbind-bind-use-unbind pattern
    std::string texname = gpgpu_ptx_sim_findNamefromTexture(texref);
    m_NameToCudaArray.erase(texname);
    m_NameToTexureInfo.erase(texname);
