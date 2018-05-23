@@ -107,7 +107,6 @@ void gpgpu_t::gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct tex
    std::string texname(name);
    if (m_NameToTextureRef.find(texname)==m_NameToTextureRef.end()){
       m_NameToTextureRef[texname] = std::set<const struct textureReference*>();
-      m_NameToTextureRef[texname].insert(texref);
    }else{
      const struct textureReference* tr = *m_NameToTextureRef[texname].begin();
      assert(tr!=NULL);
@@ -123,8 +122,8 @@ void gpgpu_t::gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct tex
             tr->channelDesc.w==texref->channelDesc.w&&
             tr->channelDesc.f==texref->channelDesc.f  
            );
-      m_NameToTextureRef[texname].insert(texref);
    }
+   m_NameToTextureRef[texname].insert(texref);
    m_TextureRefToName[texref] = texname;
    const textureReferenceAttr *texAttr = new textureReferenceAttr(texref, dim, (enum cudaTextureReadMode)readmode, ext); 
    m_NameToAttribute[texname] = texAttr; 
