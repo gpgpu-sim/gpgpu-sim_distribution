@@ -1170,22 +1170,8 @@ __host__ cudaError_t CUDARTAPI cudaStreamQuery(cudaStream_t stream)
 
 __host__ cudaError_t CUDARTAPI cudaStreamWaitEvent(cudaStream_t stream, cudaEvent_t event, unsigned int flags)
 {
-
-#if (CUDART_VERSION >= 3000)
-	if( stream == NULL )
-		return g_last_cudaError = cudaErrorInvalidResourceHandle;
-	return g_last_cudaError = stream->empty()?cudaSuccess:cudaErrorNotReady;
-#else
-	printf("GPGPU-Sim API: cudaStreamWaitEvent ** waiting for event\n");
-	fflush(stdout);
-	CUevent_st *e = (CUevent_st*) event;
-	while( !e->done() )
-		;
-	printf("GPGPU-Sim API: cudaStreamWaitEvent ** event detected\n");
-	fflush(stdout);
-	printf("GPGPU-Sim PTX: WARNING: Asynchronous kernel execution not supported (%s)\n", __my_func__);
-	return g_last_cudaError = cudaSuccess; // it is always success because all cuda calls are synchronous
-#endif
+	cuda_not_implemented(__my_func__,__LINE__);
+	return g_last_cudaError = cudaErrorUnknown;
 }
 
 /*******************************************************************************
