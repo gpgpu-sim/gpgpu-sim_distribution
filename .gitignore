@@ -32,4 +32,5 @@ build/*
 *~
 cscope*
 tags
+regression.sh
 
