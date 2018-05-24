@@ -157,7 +157,9 @@ void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* te
 
    std::map<std::string,const struct cudaArray*>::const_iterator t=m_NameToCudaArray.find(texname);
    //check that there's nothing there first
-   assert(t == m_NameToCudaArray.end());
+   if(t != m_NameToCudaArray.end()){
+      printf("GPGPU-Sim PTX:   Warning: binding to texref associated with %s, which was previously bound.\nImplicitly unbinding texref associated to %s first\n", texname.c_str(), texname.c_str());
+   }
    m_NameToCudaArray[texname] = array;
    unsigned int texel_size_bits = array->desc.w + array->desc.x + array->desc.y + array->desc.z;
    unsigned int texel_size = texel_size_bits/8;
