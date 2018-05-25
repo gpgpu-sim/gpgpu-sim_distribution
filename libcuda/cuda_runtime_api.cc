@@ -989,7 +989,7 @@ __host__ cudaError_t CUDARTAPI cudaBindTextureToArray(const struct textureRefere
 	return g_last_cudaError = cudaSuccess;
 }
 
-__host__ cudaError_t CUDARTAPI cudaUnbindTexture(const struct textureReference *texref)                                                                               {
+__host__ cudaError_t CUDARTAPI cudaUnbindTexture(const struct textureReference *texref){
    CUctx_st *context = GPGPUSim_Context();
    gpgpu_t *gpu = context->get_device()->get_gpgpu();
    printf("GPGPU-Sim PTX: in cudaUnbindTexture: sizeof(struct textureReference) = %zu\n", sizeof(struct textureReference));
