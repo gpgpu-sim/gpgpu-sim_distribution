@@ -1157,12 +1157,6 @@ __host__ cudaError_t CUDARTAPI cudaStreamQuery(cudaStream_t stream)
 #endif
 }
 
-__host__ cudaError_t CUDARTAPI cudaStreamWaitEvent(cudaStream_t stream, cudaEvent_t event, unsigned int flags)
-{
-   stream->push(stream_operation(stream, event, flags));
-	return g_last_cudaError = cudaSuccess;
-}
-
 /*******************************************************************************
  *                                                                              *
  *                                                                              *
@@ -1201,6 +1195,16 @@ __host__ cudaError_t CUDARTAPI cudaEventRecord(cudaEvent_t event, cudaStream_t s
 	if( !e ) return g_last_cudaError = cudaErrorUnknown;
 	struct CUstream_st *s = (struct CUstream_st *)stream;
 	stream_operation op(e,s);
+	g_stream_manager->push(op);
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaStreamWaitEvent(cudaStream_t stream, cudaEvent_t event, unsigned int flags)
+{
+	CUevent_st *e = get_event(event);
+	if( !e ) return g_last_cudaError = cudaErrorUnknown;
+	struct CUstream_st *s = (struct CUstream_st *)stream;
+	stream_operation op(s,e,flags);
 	g_stream_manager->push(op);
 	return g_last_cudaError = cudaSuccess;
 }
