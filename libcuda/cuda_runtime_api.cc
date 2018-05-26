@@ -1159,8 +1159,8 @@ __host__ cudaError_t CUDARTAPI cudaStreamQuery(cudaStream_t stream)
 
 __host__ cudaError_t CUDARTAPI cudaStreamWaitEvent(cudaStream_t stream, cudaEvent_t event, unsigned int flags)
 {
-	cuda_not_implemented(__my_func__,__LINE__);
-	return g_last_cudaError = cudaErrorUnknown;
+   stream->push(stream_operation(stream, event, flags));
+	return g_last_cudaError = cudaSuccess;
 }
 
 /*******************************************************************************
