@@ -195,6 +195,13 @@ bool stream_operation::do_operation( gpgpu_sim *gpu )
         m_stream->record_next_done();
         } 
         break;
+    case stream_wait_event: {
+        if(g_debug_execution >= 3)
+            printf("stream wait event\n");
+        if(m_event->done())
+            m_stream->record_next_done();
+        }
+        break;
     default:
         abort();
     }
