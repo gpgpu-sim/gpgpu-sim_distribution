@@ -199,6 +199,7 @@ bool stream_operation::do_operation( gpgpu_sim *gpu )
         if(g_debug_execution >= 3)
             printf("stream wait event\n");
         if(m_event->done())
+            printf("stream wait event done\n");
             m_stream->record_next_done();
         }
         break;
