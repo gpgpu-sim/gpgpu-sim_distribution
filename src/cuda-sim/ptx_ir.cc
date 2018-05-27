@@ -995,7 +995,7 @@ static std::list<operand_info> check_operands( int opcode,
                                         const std::list<operand_info> &operands )
 {
    static int g_warn_literal_operands_two_type_inst;
-    if( (opcode == CVT_OP) || (opcode == SET_OP) || (opcode == SLCT_OP) || (opcode == TEX_OP) ) {
+    if( (opcode == CVT_OP) || (opcode == SET_OP) || (opcode == SLCT_OP) || (opcode == TEX_OP) || (opcode==MMA_OP)) {
         // just make sure these do not have have const operands... 
         if( !g_warn_literal_operands_two_type_inst ) {
             std::list<operand_info>::const_iterator o;
@@ -1043,6 +1043,7 @@ ptx_instruction::ptx_instruction( int opcode,
                                   const std::list<operand_info> &operands, 
                                   const operand_info &return_var,
                                   const std::list<int> &options, 
+                                  const std::list<int> &wmma_options, 
                                   const std::list<int> &scalar_type,
                                   memory_space_t space_spec,
                                   const char *file, 
@@ -1061,6 +1062,7 @@ ptx_instruction::ptx_instruction( int opcode,
    m_operands.insert(m_operands.begin(), checked_operands.begin(), checked_operands.end() );
    m_return_var = return_var;
    m_options = options;
+   m_wmma_options = wmma_options;
    m_wide = false;
    m_hi = false;
    m_lo = false;
@@ -1078,7 +1080,7 @@ ptx_instruction::ptx_instruction( int opcode,
    m_atomic_spec = 0;
    m_membar_level = 0;
    m_inst_size = 8; // bytes
-
+   int rr=0;
    std::list<int>::const_iterator i;
    unsigned n=1;
    for ( i=options.begin(); i!= options.end(); i++, n++ ) {

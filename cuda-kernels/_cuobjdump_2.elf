@@ -1,0 +1,494 @@
+64bit elf: type=2, abi=7, sm=70, toolkit=90, flags = 0x460546
+Sections:
+Index Offset   Size ES Align   Type   Flags Link     Info Name
+    1     40    21b  0  1    STRTAB       0    0        0 .shstrtab
+    2    25b    273  0  1    STRTAB       0    0        0 .strtab
+    3    4d0    108 18  8    SYMTAB       0    2        7 .symtab
+    4    5d8     e0  0  1  PROGBITS       0    0        0 .debug_frame
+    5    6b8     48  0  4 CUDA_INFO       0    3        0 .nv.info
+    6    700     50  0  4 CUDA_INFO       0    3        d .nv.info._Z17convertFp32ToFp16P6__halfPfi
+    7    750     ac  0  4 CUDA_INFO       0    3        e .nv.info._Z12wmma_exampleP6__halfS0_Pfiiiff
+    8    800     30 10  8       REL       0    3        e .rel.text._Z12wmma_exampleP6__halfS0_Pfiiiff
+    9    830     30 18  8      RELA       0    3        e .rela.text._Z12wmma_exampleP6__halfS0_Pfiiiff
+    a    860     20 10  8       REL       0    3        4 .rel.debug_frame
+    b    880    174  0  4  PROGBITS       2    0        d .nv.constant0._Z17convertFp32ToFp16P6__halfPfi
+    c    9f4    18c  0  4  PROGBITS       2    0        e .nv.constant0._Z12wmma_exampleP6__halfS0_Pfiiiff
+    d    b80    100  0 80  PROGBITS       6    3  9000008 .text._Z17convertFp32ToFp16P6__halfPfi
+    e    c80    980  0 80  PROGBITS       6    3 20000009 .text._Z12wmma_exampleP6__halfS0_Pfiiiff
+    f   1600      9  0 10  PROGBITS       3    0        0 .nv.global.init
+
+.section .strtab
+
+.section .shstrtab
+
+.section .symtab
+ index           value           size      info    other  shndx    name  
+   0               0               0        0        0      0     (null)
+   1               0               0        3        0      d     .text._Z17convertFp32ToFp16P6__halfPfi
+   2               0               0        3        0      f     .nv.global.init
+   3               0               9        1        0      f     $str
+   4               0               0        3        0      b     .nv.constant0._Z17convertFp32ToFp16P6__halfPfi
+   5               0               0        3        0      e     .text._Z12wmma_exampleP6__halfS0_Pfiiiff
+   6               0               0        3        0      c     .nv.constant0._Z12wmma_exampleP6__halfS0_Pfiiiff
+   7               0               0        3        0      4     .debug_frame
+   8               0             256       12       10      d     _Z17convertFp32ToFp16P6__halfPfi
+   9               0            2432       12       10      e     _Z12wmma_exampleP6__halfS0_Pfiiiff
+  10               0               0       12        0      0     vprintf
+
+
+.nv.constant0._Z17convertFp32ToFp16P6__halfPfi
+0x00000000  0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+
+
+
+.nv.constant0._Z12wmma_exampleP6__halfS0_Pfiiiff
+0x00000000  0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  
+
+
+.nv.global.init
+0x636f6c63  0x64253d6b   0 
+
+
+.nv.info
+	<0x1>
+	Attribute:	EIATTR_MAX_STACK_SIZE
+	Format:	EIFMT_SVAL
+	Value:	0x9 0x0 
+	<0x2>
+	Attribute:	EIATTR_MIN_STACK_SIZE
+	Format:	EIFMT_SVAL
+	Value:	function: _Z12wmma_exampleP6__halfS0_Pfiiiff(0x9)	min stack size: 0x8
+	<0x3>
+	Attribute:	EIATTR_FRAME_SIZE
+	Format:	EIFMT_SVAL
+	Value:	function: _Z12wmma_exampleP6__halfS0_Pfiiiff(0x9)	frame size: 0x8
+	<0x4>
+	Attribute:	EIATTR_MAX_STACK_SIZE
+	Format:	EIFMT_SVAL
+	Value:	0x8 0x0 
+	<0x5>
+	Attribute:	EIATTR_MIN_STACK_SIZE
+	Format:	EIFMT_SVAL
+	Value:	function: _Z17convertFp32ToFp16P6__halfPfi(0x8)	min stack size: 0x0
+	<0x6>
+	Attribute:	EIATTR_FRAME_SIZE
+	Format:	EIFMT_SVAL
+	Value:	function: _Z17convertFp32ToFp16P6__halfPfi(0x8)	frame size: 0x0
+
+
+.nv.info._Z17convertFp32ToFp16P6__halfPfi
+	<0x1>
+	Attribute:	EIATTR_PARAM_CBANK
+	Format:	EIFMT_SVAL
+	Value:	0x4 0x140160 
+	<0x2>
+	Attribute:	EIATTR_CBANK_PARAM_SIZE
+	Format:	EIFMT_HVAL
+	Value:	0x14
+	<0x3>
+	Attribute:	EIATTR_KPARAM_INFO
+	Format:	EIFMT_SVAL
+	Value:	Index : 0x0	Ordinal : 0x2	Offset  : 0x10	Size    : 0x4
+		Pointee's logAlignment : 0x0	Space : 0x0	cbank : 0x1f	Parameter Space : CBANK	
+	<0x4>
+	Attribute:	EIATTR_KPARAM_INFO
+	Format:	EIFMT_SVAL
+	Value:	Index : 0x0	Ordinal : 0x1	Offset  : 0x8	Size    : 0x8
+		Pointee's logAlignment : 0x0	Space : 0x0	cbank : 0x1f	Parameter Space : CBANK	
+	<0x5>
+	Attribute:	EIATTR_KPARAM_INFO
+	Format:	EIFMT_SVAL
+	Value:	Index : 0x0	Ordinal : 0x0	Offset  : 0x0	Size    : 0x8
+		Pointee's logAlignment : 0x0	Space : 0x0	cbank : 0x1f	Parameter Space : CBANK	
+	<0x6>
+	Attribute:	EIATTR_MAXREG_COUNT
+	Format:	EIFMT_HVAL
+	Value:	0xff
+	<0x7>
+	Attribute:	EIATTR_EXIT_INSTR_OFFSETS
+	Format:	EIFMT_SVAL
+	Value:	0x60 0xe0 
+
+
+.nv.info._Z12wmma_exampleP6__halfS0_Pfiiiff
+	<0x1>
+	Attribute:	EIATTR_PARAM_CBANK
+	Format:	EIFMT_SVAL
+	Value:	0x6 0x2c0160 
+	<0x2>
+	Attribute:	EIATTR_CBANK_PARAM_SIZE
+	Format:	EIFMT_HVAL
+	Value:	0x2c
+	<0x3>
+	Attribute:	EIATTR_KPARAM_INFO
+	Format:	EIFMT_SVAL
+	Value:	Index : 0x0	Ordinal : 0x7	Offset  : 0x28	Size    : 0x4
+		Pointee's logAlignment : 0x0	Space : 0x0	cbank : 0x1f	Parameter Space : CBANK	
+	<0x4>
+	Attribute:	EIATTR_KPARAM_INFO
+	Format:	EIFMT_SVAL
+	Value:	Index : 0x0	Ordinal : 0x6	Offset  : 0x24	Size    : 0x4
+		Pointee's logAlignment : 0x0	Space : 0x0	cbank : 0x1f	Parameter Space : CBANK	
+	<0x5>
+	Attribute:	EIATTR_KPARAM_INFO
+	Format:	EIFMT_SVAL
+	Value:	Index : 0x0	Ordinal : 0x5	Offset  : 0x20	Size    : 0x4
+		Pointee's logAlignment : 0x0	Space : 0x0	cbank : 0x1f	Parameter Space : CBANK	
+	<0x6>
+	Attribute:	EIATTR_KPARAM_INFO
+	Format:	EIFMT_SVAL
+	Value:	Index : 0x0	Ordinal : 0x4	Offset  : 0x1c	Size    : 0x4
+		Pointee's logAlignment : 0x0	Space : 0x0	cbank : 0x1f	Parameter Space : CBANK	
+	<0x7>
+	Attribute:	EIATTR_KPARAM_INFO
+	Format:	EIFMT_SVAL
+	Value:	Index : 0x0	Ordinal : 0x3	Offset  : 0x18	Size    : 0x4
+		Pointee's logAlignment : 0x0	Space : 0x0	cbank : 0x1f	Parameter Space : CBANK	
+	<0x8>
+	Attribute:	EIATTR_KPARAM_INFO
+	Format:	EIFMT_SVAL
+	Value:	Index : 0x0	Ordinal : 0x2	Offset  : 0x10	Size    : 0x8
+		Pointee's logAlignment : 0x0	Space : 0x0	cbank : 0x1f	Parameter Space : CBANK	
+	<0x9>
+	Attribute:	EIATTR_KPARAM_INFO
+	Format:	EIFMT_SVAL
+	Value:	Index : 0x0	Ordinal : 0x1	Offset  : 0x8	Size    : 0x8
+		Pointee's logAlignment : 0x0	Space : 0x0	cbank : 0x1f	Parameter Space : CBANK	
+	<0x10>
+	Attribute:	EIATTR_KPARAM_INFO
+	Format:	EIFMT_SVAL
+	Value:	Index : 0x0	Ordinal : 0x0	Offset  : 0x0	Size    : 0x8
+		Pointee's logAlignment : 0x0	Space : 0x0	cbank : 0x1f	Parameter Space : CBANK	
+	<0x11>
+	Attribute:	EIATTR_MAXREG_COUNT
+	Format:	EIFMT_HVAL
+	Value:	0xff
+	<0x12>
+	Attribute:	EIATTR_EXIT_INSTR_OFFSETS
+	Format:	EIFMT_SVAL
+	Value:	0x940 
+	<0x13>
+	Attribute:	EIATTR_EXTERNS
+	Format:	EIFMT_SVAL
+	Value:	externs:	vprintf(0xa)	
+	<0x14>
+	Attribute:	EIATTR_CRS_STACK_SIZE
+	Format:	EIFMT_SVAL
+	Value:	0x0 
+
+
+.text._Z17convertFp32ToFp16P6__halfPfi
+bar = 0	reg = 9	lmem=0	smem=0
+0xfffff389  0x000000ff  0x000e00ff  0x000fe200  
+0x00017a02  0x00000a00  0x00000f00  0x000fd000  
+0x00047919  0x00000000  0x00002500  0x000e2200  
+0x00027919  0x00000000  0x00002100  0x000e2400  
+0x04047a24  0x00000000  0x078e0202  0x001fca00  
+0x04007a0c  0x00005c00  0x03f062f0  0x000fd800  
+0x0000094d  0x00000000  0x03800000  0x000fea00  
+0x00027802  0x00000004  0x00000f00  0x000fca00  
+0x04027625  0x00005a00  0x078e0202  0x000fd400  
+0x02027381  0x00000000  0x001ee900  0x000e2200  
+0x00057802  0x00000002  0x00000f00  0x000fca00  
+0x04047625  0x00005800  0x078e0205  0x000fe200  
+0x00067304  0x00000002  0x00200800  0x001e3200  
+0x04007386  0x00000006  0x0010e500  0x0011e200  
+0x0000794d  0x00000000  0x03800000  0x000fea00  
+0x00007947  0xfffffff0  0x0383ffff  0x000fc000  
+
+
+
+.text._Z12wmma_exampleP6__halfS0_Pfiiiff
+bar = 0	reg = 32	lmem=0	smem=0
+0xfffff389  0x000000ff  0x000e00ff  0x000fe200  
+0xff017624  0x00000a00  0x078e00ff  0x000fd000  
+0x01017810  0xfffffff8  0x07ffe0ff  0x000fc800  
+0x01027a10  0x00000800  0x07f1e0ff  0x000fca00  
+0xff007624  0x00000900  0x000e06ff  0x000fd000  
+0x00037805  0x00000000  0x00005000  0x000fd000  
+0x00077906  0x00000020  0x00209000  0x000e2400  
+0x00077308  0x00000007  0x00001000  0x001e2200  
+0x00067919  0x00000000  0x00002500  0x000e6200  
+0x00097919  0x00000000  0x00002100  0x000e6200  
+0x07087810  0x0ffffffe  0x07ffe0ff  0x001fcc00  
+0x00057305  0x00000008  0x0021f000  0x0000a200  
+0xff047224  0x000000ff  0x078e00ff  0x000fe400  
+0x06067a24  0x00000000  0x078e0209  0x002fe400  
+0x050a7824  0xffffffe0  0x078e00ff  0x004fc800  
+0x05047225  0x0000000a  0x078e0004  0x000fd000  
+0x05047225  0x00000006  0x078e00ff  0x000fcc00  
+0xff047224  0x000000ff  0x078e0a05  0x000fc800  
+0x04067824  0x00000020  0x078e0206  0x000fca00  
+0x0600780c  0x00000020  0x03f060f0  0x040fe200  
+0x001c7919  0x00000000  0x00002600  0x000e2200  
+0x00077919  0x00000000  0x00002200  0x000e3400  
+0x06060810  0xffffffe0  0x07ffe0ff  0x000fc800  
+0x0600780c  0x00000020  0x03f260f0  0x000fe400  
+0x05050810  0x00000001  0x07ffe0ff  0x000fe400  
+0xff007a0c  0x00006000  0x03f012f0  0x000fd000  
+0x05051810  0x00000001  0x07ffe0ff  0x000fe200  
+0x1c1c7a24  0x00000100  0x078e0207  0x001fc600  
+0x051d7819  0x00000004  0x000006ff  0x000fe200  
+0x1c1c7824  0x00000010  0x078e00ff  0x000fc600  
+0x1d007a0c  0x00005e00  0x007012f0  0x000fc800  
+0x1c007a0c  0x00005f00  0x007012f0  0x000fe200  
+0x00007945  0x000003a0  0x03800000  0x000fe200  
+0xff077224  0x000000ff  0x078e00ff  0x000fe200  
+0x000b7202  0x000000ff  0x00000f00  0x000fe200  
+0xff067224  0x000000ff  0x078e00ff  0x000fe400  
+0xff057224  0x000000ff  0x078e00ff  0x000fe400  
+0xff047224  0x000000ff  0x078e00ff  0x000fe400  
+0xff0a7224  0x000000ff  0x078e00ff  0x000fc400  
+0xff097224  0x000000ff  0x078e00ff  0x000fe400  
+0xff087224  0x000000ff  0x078e00ff  0x000fe200  
+0x00008947  0x00000300  0x03800000  0x000fee00  
+0x00067919  0x00000000  0x00000000  0x000e2200  
+0xff0a7424  0x00000002  0x078e00ff  0x000fc800  
+0x1d107625  0x00005800  0x078e020a  0x000fe200  
+0xff047819  0x00000002  0x00011606  0x001fc800  
+0x04057812  0x00000003  0x078ec0ff  0x000fe400  
+0x06047812  0x00000003  0x078ec0ff  0x000fe400  
+0x05077812  0x00000001  0x078ec0ff  0x000fe400  
+0xff067819  0x00000004  0x00011606  0x000fe400  
+0xff057819  0x00000001  0x00011605  0x000fe200  
+0x07077824  0x00000008  0x078e0204  0x000fe200  
+0x06067812  0x00000001  0x078ec0ff  0x000fc400  
+0x05047211  0x00000004  0x078e18ff  0x000fe200  
+0x1c0c7625  0x00005a00  0x078e020a  0x000fe400  
+0x06077824  0x00000004  0x078e0207  0x040fe400  
+0x06047824  0x00000004  0x078e0204  0x000fe400  
+0x07077824  0x00000002  0x078e00ff  0x000fe400  
+0x04057824  0x00000002  0x078e00ff  0x000fe400  
+0x07107a25  0x00005e00  0x078e0010  0x000fc400  
+0x050c7a25  0x00006000  0x078e000c  0x000fd000  
+0x10187980  0x00000000  0x0010ed00  0x00006400  
+0x0c147980  0x00000000  0x0010ed00  0x00046200  
+0x10107980  0x00000010  0x0010ed00  0x001e2200  
+0x0c0c7980  0x00000010  0x0010ed00  0x004e2200  
+0xff087224  0x000000ff  0x078e00ff  0x000fe200  
+0x00097202  0x000000ff  0x00000f00  0x000fe200  
+0xff0a7224  0x000000ff  0x078e00ff  0x000fe400  
+0xff0b7224  0x000000ff  0x078e00ff  0x000fe200  
+0x00077202  0x000000ff  0x00000f00  0x000fe200  
+0xff047224  0x000000ff  0x078e00ff  0x000fc400  
+0xff057224  0x000000ff  0x078e00ff  0x000fe400  
+0xff067224  0x000000ff  0x078e00ff  0x000fe200  
+0x00007948  0xffffffff  0x03800000  0x000fe200  
+0x18087236  0x00000014  0x00005408  0x0c226400  
+0x180a7236  0x00000014  0x0000d40a  0x0c04a400  
+0x18047236  0x00000014  0x00015404  0x0c06e400  
+0x18067236  0x00000014  0x0001d406  0x00092800  
+0x1a087236  0x00000016  0x00005408  0x0c202400  
+0x1a0a7236  0x00000016  0x0000d40a  0x0c426400  
+0x1a047236  0x00000016  0x00015404  0x0c84a400  
+0x1a067236  0x00000016  0x0001d406  0x0106e800  
+0x10087236  0x0000000c  0x00005408  0x0c102400  
+0x100a7236  0x0000000c  0x0000d40a  0x0c226400  
+0x10047236  0x0000000c  0x00015404  0x0c44a400  
+0x10067236  0x0000000c  0x0001d406  0x0086e800  
+0x12087236  0x0000000e  0x00005408  0x0c102400  
+0x120a7236  0x0000000e  0x0000d40a  0x0c202400  
+0x12047236  0x0000000e  0x00015404  0x0c402400  
+0x12067236  0x0000000e  0x0001d406  0x00803400  
+0x00007941  0x00000000  0x03800000  0x001fea00  
+0x000c7919  0x00000000  0x00000000  0x000e2200  
+0x1c1c7a24  0x00005e00  0x078e02ff  0x000fe200  
+0xff0e7819  0x00000004  0x0001160c  0x001fc400  
+0xff0d7819  0x00000002  0x0001160c  0x000fe400  
+0x0c0c7812  0x00000003  0x078ec0ff  0x000fe400  
+0x0e0e7812  0x00000001  0x078ec0ff  0x000fe400  
+0x0d0d7812  0x00000003  0x078ec0ff  0x000fc600  
+0x0e0c7824  0x00000004  0x078e020c  0x000fe200  
+0x0d0f7812  0x00000001  0x078ec0ff  0x000fe400  
+0xff107819  0x00000001  0x0001160d  0x000fe400  
+0x0c0d7812  0x00000005  0x078ec0ff  0x040fe400  
+0x0c0e7812  0x00000002  0x078ec0ff  0x000fc600  
+0x0f0c7824  0x00000008  0x078e020d  0x000fe200  
+0xff0f7819  0x0000001f  0x0001141d  0x000fe200  
+0x100e7824  0x00000008  0x078e020e  0x000fe200  
+0x1d117210  0x0000001c  0x07f1e0ff  0x000fe200  
+0xff0d7224  0x000000ff  0x078e00ff  0x000fc600  
+0x1c0f7211  0x0000000f  0x000f0eff  0x000fe200  
+0x0e0c7a25  0x00005e00  0x078e000c  0x000fe200  
+0x110e7a11  0x00005c00  0x078010ff  0x000fe200  
+0xff127624  0x00005e00  0x078e00ff  0x000fc600  
+0x11117a11  0x00005d00  0x000f140f  0x000fe400  
+0x0c107211  0x0000000e  0x078010ff  0x000fe400  
+0x120e7819  0x00000002  0x000006ff  0x000fe400  
+0xff0f7819  0x0000001e  0x00011612  0x000fe400  
+0x0c0d7211  0x00000011  0x000f140d  0x000fe400  
+0x0e127211  0x00000010  0x078210ff  0x000fc400  
+0x0e117210  0x00000010  0x07f1e0ff  0x040fe400  
+0x0e137211  0x0000000d  0x008f140f  0x040fe400  
+0x0e157210  0x00000012  0x07f3e0ff  0x000fe200  
+0x0f147824  0x00000001  0x000e060d  0x040fe400  
+0xff0c7224  0x000000ff  0x078e0010  0x000fe400  
+0x0f167824  0x00000001  0x008e0613  0x000fe400  
+0xff0e7224  0x000000ff  0x078e0011  0x000fc400  
+0xff0f7224  0x000000ff  0x078e0014  0x000fe200  
+0x00107202  0x00000015  0x00000f00  0x000fe200  
+0xff117224  0x000000ff  0x078e0016  0x000fe200  
+0x0c007385  0x00000000  0x0010e908  0x0001e200  
+0x0c007385  0x00000008  0x0010e90a  0x0003e800  
+0x0e007385  0x00000000  0x0010e909  0x0003e200  
+0x0e007385  0x00000008  0x0010e90b  0x0003e200  
+0x12007385  0x00000000  0x0010e904  0x0003e200  
+0x12007385  0x00000008  0x0010e906  0x0003e200  
+0x10007385  0x00000000  0x0010e905  0x0003e200  
+0x10007385  0x00000008  0x0010e907  0x0003e200  
+0x00007948  0xffffffff  0x03800000  0x000fe200  
+0x02087a10  0x80000800  0x07ffe0ff  0x001fd000  
+0x00047805  0x00000000  0x00005000  0x002fd000  
+0x04037824  0x00000001  0x078e0a03  0x000fd000  
+0x08007387  0x00000003  0x00100800  0x0001e200  
+0xff067224  0x000000ff  0x078e0002  0x000fe200  
+0x00047802  0x00000000  0x00000f00  0x000fe200  
+0xff077224  0x000000ff  0x078e0000  0x000fe200  
+0x00057802  0x00000000  0x00000f00  0x000fe400  
+0x00147802  0x00000000  0x00000f00  0x000fe400  
+0x00157802  0x00000000  0x00000f00  0x000fd000  
+0x00007943  0x00000000  0x03c00000  0x001fea00  
+0x0000794d  0x00000000  0x03800000  0x000fea00  
+0x00007947  0xfffffff0  0x0383ffff  0x000fc000  
+0x00007918  0x00000000  0x00000000  0x000fc000  
+0x00007918  0x00000000  0x00000000  0x000fc000  
+
+
+.section .rel.text._Z12wmma_exampleP6__halfS0_Pfiiiff	REL
+2272    $str    R_CUDA_ABS32_LO_32
+2304    $str    R_CUDA_ABS32_HI_32
+2352    vprintf    R_CUDA_ABS47_34
+
+.section .rela.text._Z12wmma_exampleP6__halfS0_Pfiiiff	RELA
+2320    _Z12wmma_exampleP6__halfS0_Pfiiiff    R_CUDA_ABS32_LO_32    2368
+2336    _Z12wmma_exampleP6__halfS0_Pfiiiff    R_CUDA_ABS32_HI_32    2368
+
+.section .debug_frame
+decodeDebugFrame, frameBuf 0xffffffff, total_length 224
+CIE length 40, cie_id -1
+version 3
+augmentation slen 1
+augmentation 
+code_align_factor slen 1
+data_align_factor slen 1
+ Debug Frame Common Information Entry
+  length:                 40
+  CIE_id :                -1
+  version:                3
+  augmentation:           
+  code align factor:      4
+  data align factor:      -4
+  return address register 16777215
+  initial instructions: 23 bytes, ptr = 0x8080810c, frameBuf = 0xffffffff
+  DW_CFA_def_cfa register R1, offset 0
+  DW_CFA_same_value R255
+  DW_CFA_same_value R1
+  DW_CFA_nop
+  DW_CFA_nop
+  DW_CFA_nop
+  DW_CFA_nop
+  DW_CFA_nop
+  DW_CFA_nop
+  DW_CFA_nop
+ Debug Frame Description Entry
+  length:                 48
+  CIE_pointer:            0
+  initial_location:       0x0
+  address_range:          0x100
+  instructions: 24 bytes
+  DW_CFA_advance_loc4 delta 4
+  DW_CFA_advance_loc4 delta 0
+  DW_CFA_def_cfa register R1, offset 0
+  DW_CFA_advance_loc4 delta 52
+  DW_CFA_nop
+  DW_CFA_nop
+  DW_CFA_nop
+CIE length 40, cie_id -1
+version 3
+augmentation slen 1
+augmentation 
+code_align_factor slen 1
+data_align_factor slen 1
+ Debug Frame Common Information Entry
+  length:                 40
+  CIE_id :                -1
+  version:                3
+  augmentation:           
+  code align factor:      4
+  data align factor:      -4
+  return address register 16777215
+  initial instructions: 23 bytes, ptr = 0x8080810c, frameBuf = 0xffffffff
+  DW_CFA_def_cfa register R1, offset 0
+  DW_CFA_same_value R255
+  DW_CFA_same_value R1
+  DW_CFA_nop
+  DW_CFA_nop
+  DW_CFA_nop
+  DW_CFA_nop
+  DW_CFA_nop
+  DW_CFA_nop
+  DW_CFA_nop
+ Debug Frame Description Entry
+  length:                 48
+  CIE_pointer:            0
+  initial_location:       0x0
+  address_range:          0x970
+  instructions: 24 bytes
+  DW_CFA_advance_loc4 delta 4
+  DW_CFA_advance_loc4 delta 2
+  DW_CFA_def_cfa register R1, offset 8
+  DW_CFA_advance_loc4 delta 586
+  DW_CFA_nop
+  DW_CFA_nop
+  DW_CFA_nop
+
+.section .rel.debug_frame	REL
+72    _Z17convertFp32ToFp16P6__halfPfi    R_NV_64
+184    _Z12wmma_exampleP6__halfS0_Pfiiiff    R_NV_64
+

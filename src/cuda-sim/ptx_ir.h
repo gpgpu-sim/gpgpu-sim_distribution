@@ -582,6 +582,34 @@ public:
       m_is_return_var = false;
       m_immediate_address=false;
    }
+   operand_info( const symbol *s1, const symbol *s2, const symbol *s3, const symbol *s4 ,const symbol *s5,const symbol *s6,const symbol *s7, const symbol *s8)
+   {
+      init();
+      m_is_non_arch_reg = false;
+      m_addr_space = undefined_space;
+      m_operand_lohi = 0;
+      m_double_operand_type = 0;
+      m_operand_neg = false;
+      m_const_mem_offset = 0;
+      m_uid = get_uid();
+      m_valid = true;
+      m_vector = true;
+      m_type = vector_t;
+      m_value.m_vector_symbolic = new const symbol*[8];
+      m_value.m_vector_symbolic[0] = s1;
+      m_value.m_vector_symbolic[1] = s2;
+      m_value.m_vector_symbolic[2] = s3;
+      m_value.m_vector_symbolic[3] = s4;
+      m_value.m_vector_symbolic[4] = s5;
+      m_value.m_vector_symbolic[5] = s6;
+      m_value.m_vector_symbolic[6] = s7;
+      m_value.m_vector_symbolic[7] = s8;
+      m_addr_offset = 0;
+      m_neg_pred = false;
+      m_is_return_var = false;
+      m_immediate_address=false;
+   }
+
    void init()
    {
        m_uid=(unsigned)-1;
@@ -866,6 +894,7 @@ public:
                     const std::list<operand_info> &operands, 
                     const operand_info &return_var,
                     const std::list<int> &options, 
+                    const std::list<int> &wmma_options, 
                     const std::list<int> &scalar_type,
                     memory_space_t space_spec,
                     const char *file, 
@@ -1087,6 +1116,7 @@ private:
    operand_info m_return_var;
 
    std::list<int>          m_options;
+   std::list<int>          m_wmma_options;
    bool                m_wide;
    bool                m_hi;
    bool                m_lo;
@@ -1096,6 +1126,9 @@ private:
    bool                m_uni; //if branch instruction, this evaluates to true for uniform branches (ie jumps)
    bool                m_to_option;
    unsigned            m_cache_option;
+   unsigned	       m_wmma_type;
+   unsigned 	       m_wmma_layout[2];
+   unsigned            m_wmma_configuration;
    unsigned            m_rounding_mode;
    unsigned            m_compare_op;
    unsigned            m_saturation_mode;

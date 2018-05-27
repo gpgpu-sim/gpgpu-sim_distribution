@@ -37,6 +37,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 %token <string_value> STRING
 %token <int_value>  OPCODE
+%token <int_value>  WMMA_DIRECTIVE
+%token <int_value>  LAYOUT 
+%token <int_value>  CONFIGURATION 
 %token  ALIGN_DIRECTIVE
 %token  BRANCHTARGETS_DIRECTIVE
 %token  BYTE_DIRECTIVE
@@ -428,6 +431,7 @@ option: type_spec
 	| compare_spec
 	| addressable_spec
 	| rounding_mode
+	| wmma_spec 
 	| SYNC_OPTION { add_option(SYNC_OPTION); }	
 	| ARRIVE_OPTION { add_option(ARRIVE_OPTION); }
 	| RED_OPTION { add_option(RED_OPTION); }	
@@ -483,6 +487,7 @@ atomic_operation_spec: ATOMIC_AND { add_option(ATOMIC_AND); }
 rounding_mode: floating_point_rounding_mode
 	| integer_rounding_mode;
 
+
 floating_point_rounding_mode: RN_OPTION { add_option(RN_OPTION); } 
  	| RZ_OPTION { add_option(RZ_OPTION); } 
  	| RM_OPTION { add_option(RM_OPTION); } 
@@ -515,6 +520,10 @@ compare_spec:EQ_OPTION { add_option(EQ_OPTION); }
 	| NAN_OPTION { add_option(NAN_OPTION); } 
 	;
 
+wmma_spec: WMMA_DIRECTIVE LAYOUT CONFIGURATION{add_wmma_option($1);add_wmma_option($2);add_wmma_option($3);}
+	| WMMA_DIRECTIVE LAYOUT LAYOUT CONFIGURATION{add_wmma_option($1);add_wmma_option($2),add_wmma_option($3),add_wmma_option($4)}
+	;
+
 operand_list: operand
 	| operand COMMA operand_list;
 
@@ -543,6 +552,7 @@ operand: IDENTIFIER  { add_scalar_operand( $1 ); }
 vector_operand: LEFT_BRACE IDENTIFIER COMMA IDENTIFIER RIGHT_BRACE { add_2vector_operand($2,$4); }
 		| LEFT_BRACE IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER RIGHT_BRACE { add_3vector_operand($2,$4,$6); }
 		| LEFT_BRACE IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER RIGHT_BRACE { add_4vector_operand($2,$4,$6,$8); }
+		| LEFT_BRACE IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER RIGHT_BRACE { add_8vector_operand($2,$4,$6,$8,$10,$12,$14,$16); }
 		| LEFT_BRACE IDENTIFIER RIGHT_BRACE { add_1vector_operand($2); }
 	;
 

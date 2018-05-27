@@ -1493,6 +1493,12 @@ unsigned trunc(unsigned num, unsigned precision) {
 	}
 	return num;
 }
+void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
+{
+}
+void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
+{
+}
 
 void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 {
@@ -1565,7 +1571,7 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 	for (i=0;i<16;i++){
 		for(j=0;j<16;j++){
 			for(k=0;k<16;k++){
-				matrix_d[i][j].f32=matrix_d[i][j].f32+matrix_a[i][k].f32*matrix_b[k][j].f32;
+				matrix_d[i][j].f32=matrix_d[i][j].f32+matrix_a[i][k].f32*matrix_b[j][k].f32;
 			}
 			matrix_d[i][j].f32+=matrix_c[i][j].f32;
 		}
