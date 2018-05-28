@@ -188,16 +188,14 @@ bool stream_operation::do_operation( gpgpu_sim *gpu )
         }
         break;
     case stream_event: {
-        if(g_debug_execution >= 3)
-            printf("event update\n");
+        printf("event update\n");
         time_t wallclock = time((time_t *)NULL);
         m_event->update( gpu_tot_sim_cycle, wallclock );
         m_stream->record_next_done();
         } 
         break;
     case stream_wait_event: {
-        if(g_debug_execution >= 3)
-            printf("stream wait event\n");
+        printf("stream wait event processing...\n");
         if(m_event->done())
             printf("stream wait event done\n");
             m_stream->record_next_done();
