@@ -478,3 +478,10 @@ void stream_manager::push( stream_operation op )
     }
 }
 
+void stream_manager::pushCudaStreamWaitEventToAllStreams( CUevent_st *e, unsigned int flags ){
+    std::list<CUstream_st *>::iterator s;
+    for( s=m_streams.begin(); s != m_streams.end(); s++ ) {
+        stream_operation op(*s,e,flags);
+        push(op);
+    }
+}

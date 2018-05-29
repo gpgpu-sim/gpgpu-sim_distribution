@@ -1201,18 +1201,19 @@ __host__ cudaError_t CUDARTAPI cudaEventRecord(cudaEvent_t event, cudaStream_t s
 
 __host__ cudaError_t CUDARTAPI cudaStreamWaitEvent(cudaStream_t stream, cudaEvent_t event, unsigned int flags)
 {
+   //reference: https://www.cs.cmu.edu/afs/cs/academic/class/15668-s11/www/cuda-doc/html/group__CUDART__STREAM_gfe68d207dc965685d92d3f03d77b0876.html 
 	CUevent_st *e = get_event(event);
 	if( !e ){
-	   printf("GPGPU-Sim API: ERROR: Must call cudaEventRecord on event before calling cudaStreamWaitEvent.\n");
-      return g_last_cudaError = cudaErrorInvalidValue;
+	   printf("GPGPU-Sim API: Warning: cudaEventRecord has not been called on event before calling cudaStreamWaitEvent.\nNothing to be done.\n");
+      return g_last_cudaError = cudaSuccess;
    }
    if (!stream){
-	   printf("GPGPU-Sim API: ERROR: cudaStreamWaitEvent on NULL stream not currently supported.\n");
-		return g_last_cudaError = cudaErrorInvalidValue;
+      g_stream_manager->pushCudaStreamWaitEventToAllStreams(e, flags);
+   } else {
+	   struct CUstream_st *s = (struct CUstream_st *)stream;
+	   stream_operation op(s,e,flags);
+	   g_stream_manager->push(op);
    }
-	struct CUstream_st *s = (struct CUstream_st *)stream;
-	stream_operation op(s,e,flags);
-	g_stream_manager->push(op);
 	return g_last_cudaError = cudaSuccess;
 }
 
