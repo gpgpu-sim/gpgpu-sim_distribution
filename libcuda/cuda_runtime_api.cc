@@ -1203,6 +1203,10 @@ __host__ cudaError_t CUDARTAPI cudaStreamWaitEvent(cudaStream_t stream, cudaEven
 {
 	CUevent_st *e = get_event(event);
 	if( !e ) return g_last_cudaError = cudaErrorUnknown;
+   if (!stream){
+	   printf("GPGPU-Sim API: Warning: cudaStreamWaitEvent on NULL stream not currently supported.\n");
+		return g_last_cudaError = cudaErrorInvalidValue;
+   }
 	struct CUstream_st *s = (struct CUstream_st *)stream;
 	stream_operation op(s,e,flags);
 	g_stream_manager->push(op);
