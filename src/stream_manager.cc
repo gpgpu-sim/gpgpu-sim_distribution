@@ -375,6 +375,8 @@ void stream_manager::destroy_stream( CUstream_st *stream )
 bool stream_manager::concurrent_streams_empty()
 {
     bool result = true;
+    if (m_streams.empty())
+       return true;
     // called by gpu simulation thread
     std::list<struct CUstream_st *>::iterator s;
     for( s=m_streams.begin(); s!=m_streams.end();++s ) {
@@ -382,6 +384,7 @@ bool stream_manager::concurrent_streams_empty()
         if( !stream->empty() ) {
             //stream->print(stdout);
             result = false;
+            break;
         }
     }
     return result;
