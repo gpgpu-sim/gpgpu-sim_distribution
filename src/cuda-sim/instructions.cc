@@ -643,6 +643,33 @@ void ptx_thread_info::set_vector_operand_values( const operand_info &dst,
 
    m_last_set_operand_value = data1;
 }
+void ptx_thread_info::set_wmma_vector_operand_values( const operand_info &dst, 
+                                                 const ptx_reg_t &data1, 
+                                                 const ptx_reg_t &data2, 
+                                                 const ptx_reg_t &data3, 
+                                                 const ptx_reg_t &data4, 
+                                                 const ptx_reg_t &data5, 
+                                                 const ptx_reg_t &data6, 
+                                                 const ptx_reg_t &data7, 
+                                                 const ptx_reg_t &data8 )
+{
+   unsigned num_elements = dst.get_vect_nelem(); 
+   if (num_elements > 7) {
+       set_reg(dst.vec_symbol(0), data1);
+       set_reg(dst.vec_symbol(1), data2);
+       set_reg(dst.vec_symbol(2), data3);
+       set_reg(dst.vec_symbol(3), data4);
+       set_reg(dst.vec_symbol(4), data5);
+       set_reg(dst.vec_symbol(5), data6);
+       set_reg(dst.vec_symbol(6), data7);
+       set_reg(dst.vec_symbol(7), data8);
+   }
+   else{
+	printf("error:set_wmma_vector_operands");
+   }
+
+   m_last_set_operand_value = data1;
+}
 
 #define my_abs(a) (((a)<0)?(-a):(a))
 
@@ -1492,9 +1519,6 @@ unsigned trunc(unsigned num, unsigned precision) {
 		num >>= (latest_one-precision+1);
 	}
 	return num;
-}
-void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
-{
 }
 void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 {
@@ -2594,6 +2618,48 @@ void ld_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 void ldu_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 
    ld_exec(pI,thread);
+}
+void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
+{
+   const operand_info &dst = pI->dst();
+   const operand_info &src1 = pI->src1();
+   const operand_info &src2 = pI->src2();
+
+   unsigned type = pI->get_type();
+
+   int tid = inst.warp_id_func() * core->get_warp_size();
+   int thrd;
+   ptx_thread_info *thread;
+   thread = core->get_thread_info()[tid];
+
+   ptx_reg_t src1_data = thread->get_operand_value(src1, dst, type, thread, 1);
+
+   ptx_reg_t data;
+   memory_space_t space = pI->get_space();
+
+   memory_space *mem = NULL;
+   addr_t addr = src1_data.u32;
+
+   decode_space(space,thread,src1,mem,addr);
+
+   size_t size;
+   int t;
+   data.u64=0;
+   type_info_key::type_decode(type,size,t);
+   ptx_reg_t data1, data2, data3, data4;
+   ptx_reg_t data5, data6, data7, data8;
+   mem->read(addr,size/8,&data1.s64);
+   mem->read(addr+size/8,size/8,&data2.s64);
+   mem->read(addr+2*size/8,size/8,&data3.s64);
+   mem->read(addr+3*size/8,size/8,&data4.s64);
+   mem->read(addr+4*size/8,size/8,&data5.s64);
+   mem->read(addr+5*size/8,size/8,&data6.s64);
+   mem->read(addr+6*size/8,size/8,&data7.s64);
+   mem->read(addr+7*size/8,size/8,&data8.s64);
+   thread->set_wmma_vector_operand_values(dst,data1,data2,data3,data4,data5,data6,data7,data8);
+   
+   thread->m_last_effective_address = addr;
+   thread->m_last_memory_space = space; 
 }
 
 void lg2_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 

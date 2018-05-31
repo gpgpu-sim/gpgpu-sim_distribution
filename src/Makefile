@@ -46,7 +46,7 @@ ifeq ($(TRACE),1)
 endif
 
 ifneq ($(DEBUG),1)
-	OPTFLAGS += -O3
+	OPTFLAGS += -O0
 else
 	CXXFLAGS += 
 endif

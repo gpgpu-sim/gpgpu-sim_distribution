@@ -1,5 +1,6 @@
 all: tensor_core.cu
-	nvcc -arch=sm_70 -lcudart -g -o tensor_core tensor_core.cu
+	nvcc --gpu-architecture=compute_70 --gpu-code=compute_70 -lcudart -g -o tensor_core tensor_core.cu
+#	nvcc -arch=sm_70 -lcudart -g -o tensor_core tensor_core.cu
 
 .PHONY:
 clean:
