@@ -665,7 +665,7 @@ public:
 
    const symbol* vec_symbol(int idx) const 
    {
-      assert(idx < 4);
+      assert(idx < 8);
       const symbol *result = m_value.m_vector_symbolic[idx];
       assert( result != NULL );
       return result;
