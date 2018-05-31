@@ -852,8 +852,10 @@ void ptx_instruction::pre_decode()
 {
    pc = m_PC;
    isize = m_inst_size;
-   for( unsigned i=0; i<4; i++) {
+   for(unsigned i=0; i<8; i++) {
        out[i] = 0;
+   }
+   for(unsigned i=0; i<24; i++) {
        in[i] = 0;
    }
    is_vectorin = 0;
@@ -922,6 +924,10 @@ void ptx_instruction::pre_decode()
             if( num_elem >= 2 ) out[1] = o.reg2_num();
             if( num_elem >= 3 ) out[2] = o.reg3_num();
             if( num_elem >= 4 ) out[3] = o.reg4_num();
+            if( num_elem >= 5 ) out[4] = o.reg5_num();
+            if( num_elem >= 6 ) out[5] = o.reg6_num();
+            if( num_elem >= 7 ) out[6] = o.reg7_num();
+            if( num_elem >= 8 ) out[7] = o.reg8_num();
             for (int i = 0; i < num_elem; i++) 
                arch_reg.dst[i] = o.arch_reg_num(i);
          }
@@ -940,13 +946,17 @@ void ptx_instruction::pre_decode()
             //assert(m == 0); //only support 1 vector operand (for textures) right now
             is_vectorout = 1;
             unsigned num_elem = o.get_vect_nelem();
-            if( num_elem >= 1 ) in[0] = o.reg1_num();
-            if( num_elem >= 2 ) in[1] = o.reg2_num();
-            if( num_elem >= 3 ) in[2] = o.reg3_num();
-            if( num_elem >= 4 ) in[3] = o.reg4_num();
+            if( num_elem >= 1 ) in[m+0] = o.reg1_num();
+            if( num_elem >= 2 ) in[m+1] = o.reg2_num();
+            if( num_elem >= 3 ) in[m+2] = o.reg3_num();
+            if( num_elem >= 4 ) in[m+3] = o.reg4_num();
+            if( num_elem >= 5 ) in[m+4] = o.reg5_num();
+            if( num_elem >= 6 ) in[m+5] = o.reg6_num();
+            if( num_elem >= 7 ) in[m+6] = o.reg7_num();
+            if( num_elem >= 8 ) in[m+7] = o.reg8_num();
             for (int i = 0; i < num_elem; i++) 
-               arch_reg.src[i] = o.arch_reg_num(i);
-            m+=4;
+               arch_reg.src[m+i] = o.arch_reg_num(i);
+            m+=num_elem;
          }
       }
    }

@@ -826,7 +826,7 @@ public:
     address_type reconvergence_pc; // -1 => not a branch, -2 => use function return address
     
     unsigned out[8];
-    unsigned in[8];
+    unsigned in[24];
     unsigned char is_vectorin;
     unsigned char is_vectorout;
     int pred; // predicate register number

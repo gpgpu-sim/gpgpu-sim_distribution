@@ -748,7 +748,7 @@ void addp_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    case U64_TYPE:
       data.s64 = src1_data.s64 + src2_data.s64 + (src3_data.pred & 0x4);
       break;
-   case F16_TYPE: assert(0); break;
+   case F16_TYPE: data.f16=src1_data.f16+src2_data.f16; break;//assert(0); break;
    case F32_TYPE: data.f32 = src1_data.f32 + src2_data.f32; break;
    case F64_TYPE: case FF64_TYPE: data.f64 = src1_data.f64 + src2_data.f64; break;
    default: assert(0); break;
@@ -826,7 +826,7 @@ void add_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    case U64_TYPE:
       data.u64 = src1_data.u64 + src2_data.u64;
       break;
-   case F16_TYPE: assert(0); break;
+   case F16_TYPE: data.f16=src1_data.f16+src2_data.f16; break;//assert(0); break;
    case F32_TYPE: data.f32 = src1_data.f32 + src2_data.f32; break;
    case F64_TYPE: case FF64_TYPE: data.f64 = src1_data.f64 + src2_data.f64; break;
    default: assert(0); break;
@@ -1878,7 +1878,9 @@ ptx_reg_t f2x( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
       }
    } else {
       switch ( to_width ) {
-      case 16: assert(0); break;
+      case 16: //assert(0); break;
+	 y.f16 = x.f32;
+ 	 break;
       case 32: assert(0); break; // handled by f2f
       case 64: 
          y.f64 = x.f32; 
@@ -2140,7 +2142,7 @@ void ptx_round(ptx_reg_t& data, int rounding_mode, int type)
       case U32_TYPE:
       case U64_TYPE:
          printf("Trying to round an integer??\n"); assert(0); break;
-      case F16_TYPE: assert(0); break;
+      case F16_TYPE: data.f16=truncf(data.f16);break;//assert(0); break;
       case F32_TYPE:
          data.f32 = truncf(data.f32); 
          break;          
@@ -2163,7 +2165,13 @@ void ptx_round(ptx_reg_t& data, int rounding_mode, int type)
       case U32_TYPE:
       case U64_TYPE:
          printf("Trying to round an integer??\n"); assert(0); break;
-      case F16_TYPE: assert(0); break;
+      case F16_TYPE:// assert(0); break;
+#if CUDART_VERSION >= 3000
+         data.f16 = nearbyintf(data.f16); 
+#else
+         data.f16 = cuda_math::__cuda_nearbyintf(data.f16); 
+#endif
+         break;          
       case F32_TYPE: 
 #if CUDART_VERSION >= 3000
          data.f32 = nearbyintf(data.f32); 
@@ -2186,7 +2194,7 @@ void ptx_round(ptx_reg_t& data, int rounding_mode, int type)
       case U32_TYPE:
       case U64_TYPE:
          printf("Trying to round an integer??\n"); assert(0); break;
-      case F16_TYPE: assert(0); break;
+      case F16_TYPE: data.f16=floorf(data.f16);break;//assert(0); break;
       case F32_TYPE: 
          data.f32 = floorf(data.f32); 
          break;          
@@ -2205,7 +2213,7 @@ void ptx_round(ptx_reg_t& data, int rounding_mode, int type)
       case U32_TYPE:
       case U64_TYPE:
          printf("Trying to round an integer??\n"); assert(0); break;
-      case F16_TYPE: assert(0); break;
+      case F16_TYPE: data.f16 = ceilf(data.f16); break;  //assert(0); break;
       case F32_TYPE: data.f32 = ceilf(data.f32); break;          
       case F64_TYPE: case FF64_TYPE: data.f64 = ceil(data.f64); break; 
       default: assert(0); break;
@@ -2246,7 +2254,10 @@ void ptx_saturate(ptx_reg_t& data, int saturation_mode, int type)
    case U32_TYPE:
    case U64_TYPE:
       printf("Trying to clamp an integer to 1??\n"); assert(0); break;
-   case F16_TYPE: assert(0); break;
+   case F16_TYPE: //assert(0); break;
+      if (data.f16 > 1.0f) data.f16 = 1.0f; //negative
+      if (data.f16 < 0.0f) data.f16 = 0.0f; //positive
+      break;          
    case F32_TYPE:
       if (data.f32 > 1.0f) data.f32 = 1.0f; //negative
       if (data.f32 < 0.0f) data.f32 = 0.0f; //positive
@@ -2270,8 +2281,8 @@ void cvt_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    unsigned rounding_mode = pI->rounding_mode();
    unsigned saturation_mode = pI->saturation_mode();
 
-   if ( to_type == F16_TYPE || from_type == F16_TYPE )
-      abort();
+//   if ( to_type == F16_TYPE || from_type == F16_TYPE )
+//      abort();
 
    int to_sign, from_sign;
    size_t from_width, to_width;
@@ -2406,7 +2417,7 @@ void div_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       data.u32 = src1_data.u32 / src2_data.u32; break;
    case B64_TYPE:
       data.u64 = src1_data.u64 / src2_data.u64; break;
-   case F16_TYPE: assert(0); break;
+   case F16_TYPE: data.f16 = src1_data.f16 / src2_data.f16; break;//assert(0); break;
    case F32_TYPE: data.f32 = src1_data.f32 / src2_data.f32; break;
    case F64_TYPE: case FF64_TYPE: data.f64 = src1_data.f64 / src2_data.f64; break;
    default: assert(0); break;
@@ -2744,9 +2755,24 @@ void mad_def( const ptx_instruction *pI, ptx_thread_info *thread, bool use_carry
       if ( pI->is_lo() ) d.u64 = t.u64 + c.u64 + carry_bit.pred;
       else assert(0);
       break;
-   case F16_TYPE: 
-      assert(0); 
-      break;
+   case F16_TYPE:{ 
+     // assert(0); 
+     // break;
+         assert( use_carry == false); 
+         int orig_rm = fegetround();
+         switch ( rounding_mode ) {
+         case RN_OPTION: break;
+         case RZ_OPTION: fesetround( FE_TOWARDZERO ); break;
+         default: assert(0); break;
+         }
+         d.f16 = a.f16 * b.f16 + c.f16;
+         if ( pI->saturation_mode() ) {
+            if ( d.f16 < 0 ) d.f16 = 0;
+            else if ( d.f16 > 1.0f ) d.f16 = 1.0f;
+         }
+         fesetround( orig_rm );
+         break;
+      }  
    case F32_TYPE: {
          assert( use_carry == false); 
          int orig_rm = fegetround();
@@ -3046,9 +3072,25 @@ void mul_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       if ( pI->is_lo() ) d.u64 = t.u64;
       else assert(0);
       break;
-   case F16_TYPE: 
-      assert(0); 
-      break;
+   case F16_TYPE:{ 
+      //assert(0); 
+      //break;
+         int orig_rm = fegetround();
+         switch ( rounding_mode ) {
+         case RN_OPTION: break;
+         case RZ_OPTION: fesetround( FE_TOWARDZERO ); break;
+         default: assert(0); break;
+         }
+
+         d.f16 = a.f16 * b.f16;
+
+         if ( pI->saturation_mode() ) {
+            if ( d.f16 < 0 ) d.f16 = 0;
+            else if ( d.f16 > 1.0f ) d.f16 = 1.0f;
+         }
+         fesetround( orig_rm );
+         break;
+      }  
    case F32_TYPE: {
          int orig_rm = fegetround();
          switch ( rounding_mode ) {
@@ -3111,7 +3153,7 @@ void neg_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    case U32_TYPE:
    case U64_TYPE: 
       assert(0); break;
-   case F16_TYPE: assert(0); break;
+   case F16_TYPE: data.f16 =0.0f  - src1_data.f16; break;//assert(0); break;
    case F32_TYPE: data.f32 = 0.0f - src1_data.f32; break;
    case F64_TYPE: case FF64_TYPE: data.f64 = 0.0f - src1_data.f64; break;
    default: assert(0); break;
@@ -4165,7 +4207,7 @@ void sub_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    case B64_TYPE:
    case U64_TYPE: 
       data.u64 = src1_data.u64 - src2_data.u64; break;
-   case F16_TYPE: assert(0); break;
+   case F16_TYPE: data.f16 = src1_data.f16 - src2_data.f16; break;//assert(0); break;
    case F32_TYPE: data.f32 = src1_data.f32 - src2_data.f32; break;
    case F64_TYPE: case FF64_TYPE: data.f64 = src1_data.f64 - src2_data.f64; break;
    default: assert(0); break;

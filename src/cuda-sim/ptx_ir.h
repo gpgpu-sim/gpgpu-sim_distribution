@@ -656,7 +656,11 @@ public:
       if( !m_value.m_vector_symbolic[1] ) return 1;
       if( !m_value.m_vector_symbolic[2] ) return 2;
       if( !m_value.m_vector_symbolic[3] ) return 3;
-      return 4;
+      if( !m_value.m_vector_symbolic[4] ) return 4;
+      if( !m_value.m_vector_symbolic[5] ) return 5;
+      if( !m_value.m_vector_symbolic[6] ) return 6;
+      if( !m_value.m_vector_symbolic[7] ) return 7;
+      return 8;
    }
 
    const symbol* vec_symbol(int idx) const 
@@ -718,6 +722,10 @@ public:
    int reg2_num() const { return m_value.m_vector_symbolic[1]->reg_num();}
    int reg3_num() const { return m_value.m_vector_symbolic[2]?m_value.m_vector_symbolic[2]->reg_num():0; }
    int reg4_num() const { return m_value.m_vector_symbolic[3]?m_value.m_vector_symbolic[3]->reg_num():0; }
+   int reg5_num() const { return m_value.m_vector_symbolic[4]?m_value.m_vector_symbolic[4]->reg_num():0; }
+   int reg6_num() const { return m_value.m_vector_symbolic[5]?m_value.m_vector_symbolic[5]->reg_num():0; }
+   int reg7_num() const { return m_value.m_vector_symbolic[6]?m_value.m_vector_symbolic[6]->reg_num():0; }
+   int reg8_num() const { return m_value.m_vector_symbolic[7]?m_value.m_vector_symbolic[7]->reg_num():0; }
    int arch_reg_num() const { return m_value.m_symbolic->arch_reg_num(); }
    int arch_reg_num(unsigned n) const { return (m_value.m_vector_symbolic[n])? m_value.m_vector_symbolic[n]->arch_reg_num() : -1; }
    bool is_label() const { return m_type == label_t;}
