@@ -1611,61 +1611,70 @@ void extract_code_using_cuobjdump(){
             printf("Parsing skipped for %s\n", fname); 
         }
 
-        if (context->get_device()->get_gpgpu()->get_config().experimental_lib_support()){
-            //Experimental library support
-            //Currently only for cufft
-
-            std::stringstream cmd;
-            cmd << "ldd " << app_binary << " | grep $CUDA_INSTALL_PATH | awk \'{print $3}\' > _tempfile_.txt";
-            int result = system(cmd.str().c_str());
-            if(result){
-                std::cout << "Failed to execute: " << cmd.str() << std::endl;
-                exit(1);
-            }
-            std::ifstream libsf;
-            libsf.open("_tempfile_.txt");
-            if(!libsf.is_open()) {
-                std::cout << "Failed to open: _tempfile_.txt" << std::endl;
-                exit(1);
-            }
-
-            //Save the original section list
-            std::list<cuobjdumpSection*> tmpsl = cuobjdumpSectionList;
-            cuobjdumpSectionList.clear();
-
-            std::string line;
-            std::getline(libsf, line);
-            std::cout << "DOING: " << line << std::endl;
-            int cnt=1;
-            while(libsf.good()){
-                std::stringstream libcodfn;
-                libcodfn << "_cuobjdump_complete_lib_" << cnt << "_";
-                cmd.str(""); //resetting
-                cmd << "$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass ";
-                cmd << line;
-                cmd << " > ";
-                cmd << libcodfn.str();
-                std::cout << "Running cuobjdump on " << line << std::endl;
-                std::cout << "Using command: " << cmd.str() << std::endl;
-                result = system(cmd.str().c_str());
-                if(result) {printf("ERROR: Failed to execute: %s\n", command); exit(1);}
-                    std::cout << "Done" << std::endl;
-
-                    std::cout << "Trying to parse " << libcodfn.str() << std::endl;
-                    cuobjdump_in = fopen(libcodfn.str().c_str(), "r");
-                    cuobjdump_parse();
-                    fclose(cuobjdump_in);
-                    std::getline(libsf, line);
-            }
-            libSectionList = cuobjdumpSectionList;
-
-            //Restore the original section list
-            cuobjdumpSectionList = tmpsl;
-        }
     } else {
         printf("GPGPU-Sim PTX: overriding cuobjdump with '%s' (CUOBJDUMP_SIM_FILE is set)\n", override_cuobjdump);
         snprintf(fname,1024, "%s",override_cuobjdump);
+
+        printf("Parsing file %s\n", override_cuobjdump);
+        cuobjdump_in = fopen(override_cuobjdump, "r");
+
+        cuobjdump_parse();
+        fclose(cuobjdump_in);
+        printf("Done parsing!!!\n");
     }
+
+   if (context->get_device()->get_gpgpu()->get_config().experimental_lib_support()){
+       //Experimental library support
+       //Currently only for cufft
+
+       std::stringstream cmd;
+       cmd << "ldd " << app_binary << " | grep $CUDA_INSTALL_PATH | awk \'{print $3}\' > _tempfile_.txt";
+       int result = system(cmd.str().c_str());
+       if(result){
+           std::cout << "Failed to execute: " << cmd.str() << std::endl;
+           exit(1);
+       }
+       std::ifstream libsf;
+       libsf.open("_tempfile_.txt");
+       if(!libsf.is_open()) {
+           std::cout << "Failed to open: _tempfile_.txt" << std::endl;
+           exit(1);
+       }
+
+       //Save the original section list
+       std::list<cuobjdumpSection*> tmpsl = cuobjdumpSectionList;
+       cuobjdumpSectionList.clear();
+
+       std::string line;
+       std::getline(libsf, line);
+       std::cout << "DOING: " << line << std::endl;
+       int cnt=1;
+       while(libsf.good()){
+           std::stringstream libcodfn;
+           libcodfn << "_cuobjdump_complete_lib_" << cnt << "_";
+           cmd.str(""); //resetting
+           cmd << "$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass ";
+           cmd << line;
+           cmd << " > ";
+           cmd << libcodfn.str();
+           std::cout << "Running cuobjdump on " << line << std::endl;
+           std::cout << "Using command: " << cmd.str() << std::endl;
+           result = system(cmd.str().c_str());
+           if(result) {printf("ERROR: Failed to execute: %s\n", command); exit(1);}
+               std::cout << "Done" << std::endl;
+
+               std::cout << "Trying to parse " << libcodfn.str() << std::endl;
+               cuobjdump_in = fopen(libcodfn.str().c_str(), "r");
+               cuobjdump_parse();
+               fclose(cuobjdump_in);
+               std::getline(libsf, line);
+       }
+       libSectionList = cuobjdumpSectionList;
+
+       //Restore the original section list
+       cuobjdumpSectionList = tmpsl;
+   }
+
 }
 
 //! Read file into char*
@@ -1898,10 +1907,10 @@ void cuobjdumpInit(){
 	CUctx_st *context = GPGPUSim_Context();
 	extract_code_using_cuobjdump(); //extract all the output of cuobjdump to _cuobjdump_*.*
 	const char* pre_load = getenv("CUOBJDUMP_SIM_FILE");
-	if (pre_load ==NULL || strlen(pre_load)==0){
+	//if (pre_load ==NULL || strlen(pre_load)==0){
 		cuobjdumpSectionList = pruneSectionList(cuobjdumpSectionList, context);
 		cuobjdumpSectionList = mergeSections(cuobjdumpSectionList);
-	}
+	//}
 }
 
 std::map<int, std::string> fatbinmap;
@@ -1939,17 +1948,18 @@ void cuobjdumpParseBinary(unsigned int handle){
 
 	cuobjdumpPTXSection* ptx = NULL;
 	const char* pre_load = getenv("CUOBJDUMP_SIM_FILE");
-	if(pre_load==NULL || strlen(pre_load)==0)
+	//if(pre_load==NULL || strlen(pre_load)==0)
 		ptx = findPTXSection(fname);
 	symbol_table *symtab;
 	char *ptxcode;
-	const char *override_ptx_name = getenv("PTX_SIM_KERNELFILE"); 
-	if (override_ptx_name == NULL or getenv("PTX_SIM_USE_PTX_FILE") == NULL or strlen(getenv("PTX_SIM_USE_PTX_FILE"))==0) {
+	//const char *override_ptx_name = getenv("PTX_SIM_KERNELFILE"); 
+	//if (override_ptx_name == NULL or getenv("PTX_SIM_USE_PTX_FILE") == NULL or strlen(getenv("PTX_SIM_USE_PTX_FILE"))==0) {
 		ptxcode = readfile(ptx->getPTXfilename());
-	} else {
-		printf("GPGPU-Sim PTX: overriding embedded ptx with '%s' (PTX_SIM_USE_PTX_FILE is set)\n", override_ptx_name);
-		ptxcode = readfile(override_ptx_name);
-	}
+//	}
+//   else {
+//		printf("GPGPU-Sim PTX: overriding embedded ptx with '%s' (PTX_SIM_USE_PTX_FILE is set)\n", override_ptx_name);
+//		ptxcode = readfile(override_ptx_name);
+//	}
 	if(context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() ) {
 		cuobjdumpELFSection* elfsection = findELFSection(ptx->getIdentifier());
 		assert (elfsection!= NULL);
