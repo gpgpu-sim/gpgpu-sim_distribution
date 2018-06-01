@@ -112,6 +112,7 @@
 #include <regex>
 #include <sstream>
 #include <fstream>
+#include <queue>
 #ifdef OPENGL_SUPPORT
 #define GL_GLEXT_PROTOTYPES
 #ifdef __APPLE__
@@ -148,6 +149,10 @@
 std::map<void *,void **> pinned_memory; //support for pinned memories added
 std::map<void *, size_t> pinned_memory_size;
 int no_of_ptx=0;
+char ptx_list_file_name[1024];
+std::map<int, std::string> fatbinmap;
+std::map<int, bool>fatbin_registered;
+std::map<std::string, symbol_table*> name_symtab;
 
 extern void synchronize();
 extern void exit_simulation();
@@ -1500,6 +1505,145 @@ char* get_app_binary_name(std::string abs_path){
    return self_exe_path;
 }
 
+//extracts all ptx files from binary and dumps into prog_name.unique_no.sm_<>.ptx files
+void extract_ptx_files_using_cuobjdump(bool g_cdp_enabled){
+    char command[1000];
+    std::string app_binary = get_app_binary(); 
+
+    snprintf(ptx_list_file_name,1024,"_cuobjdump_list_ptx_XXXXXX");
+    int fd2=mkstemp(ptx_list_file_name);
+    close(fd2);
+    //only want file names
+    snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -lptx %s  | cut -d \":\" -f 2 | awk '{$1=$1}1' > %s", app_binary.c_str(), ptx_list_file_name);
+    if( system(command) != 0 ) {
+        printf("WARNING: Failed to execute cuobjdump to get list of ptx files \n");
+        exit(0);
+    }   
+    if(!g_cdp_enabled) {
+        //based on the list above, dump ptx files individually. Format of dumped ptx file is prog_name.unique_no.sm_<>.ptx
+
+       std::ifstream infile(ptx_list_file_name);
+       std::string line;
+       while (std::getline(infile, line))
+       {
+            //int pos = line.find(std::string(get_app_binary_name(app_binary)));
+            const char *ptx_file = line.c_str();
+            printf("Extracting specific PTX file named %s \n",ptx_file);
+            snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -xptx %s %s", ptx_file, app_binary.c_str());
+            if (system(command)!=0) {
+                printf("ERROR: command: %s failed \n",command);
+                exit(0);
+            }
+            no_of_ptx++;
+       }
+    }
+
+	 if(!no_of_ptx){
+	 	printf("WARNING: Number of ptx in the executable file are 0. One of the reasons might be\n");
+	 	printf("\t1. CDP is enabled\n");
+	 }
+}
+
+void cuobjdumpParseBinary(unsigned int handle){
+
+
+	if(fatbin_registered[handle]) return;
+	fatbin_registered[handle] = true;
+	CUctx_st *context = GPGPUSim_Context();
+	std::string fname = fatbinmap[handle];
+
+	if (name_symtab.find(fname) != name_symtab.end()) {
+		symbol_table *symtab = name_symtab[fname];
+		context->add_binary(symtab, handle);
+		return;
+	}
+
+   std::map<int, std::set<std::string> > version_filename;
+
+   std::ifstream infile(ptx_list_file_name);
+   std::string line;
+   while (std::getline(infile, line))
+   {
+        //int pos = line.find(std::string(get_app_binary_name(app_binary)));
+        const char *ptx_file = line.c_str();
+        int pos1 = line.find("sm_");
+        int pos2 = line.find_last_of(".");
+        if (pos1==std::string::npos&&pos2==std::string::npos){
+            printf("ERROR: PTX list is not in correct format");
+            exit(0);
+        }
+        std::string vstr = line.substr(pos1+3,pos2-pos1-3);
+        int version = atoi(vstr.c_str());
+        if (version_filename.find(version)==version_filename.end()){
+           version_filename[version] = std::set<std::string>();
+        }
+        version_filename[version].insert(line);
+   }
+
+	symbol_table *symtab;
+   //loops through all ptx files from smallest sm version to largest
+   std::map<int,std::set<std::string> >::iterator itr_m;
+   for (itr_m = version_filename.begin(); itr_m!=version_filename.end(); itr_m++){
+      std::set<std::string>::iterator itr_s;
+      for (itr_s = itr_m->second.begin(); itr_s!=itr_m->second.end(); itr_s++){
+          std::string ptx_filename = *itr_s;
+          printf("GPGPU-Sim PTX: Parsing %s\n",ptx_filename.c_str());
+          symtab = gpgpu_ptx_sim_load_ptx_from_filename( ptx_filename.c_str() );
+      }
+   }
+	name_symtab[fname] = symtab;
+	context->add_binary(symtab, handle);
+
+
+//	unsigned max_capability = 0;
+//	for (	std::list<cuobjdumpSection*>::iterator iter = cuobjdumpSectionList.begin();
+//			iter != cuobjdumpSectionList.end();
+//			iter++){
+//		unsigned capability = (*iter)->getArch();
+//		if (capability > max_capability) max_capability = capability;
+//	}
+//	if (max_capability > 20) printf("WARNING: No guarantee that PTX will be parsed for SM version %u\n", max_capability);
+//	if (max_capability == 0) max_capability=context->get_device()->get_gpgpu()->get_config().get_forced_max_capability();
+//
+//	cuobjdumpPTXSection* ptx = NULL;
+//	const char* pre_load = getenv("CUOBJDUMP_SIM_FILE");
+//	if(pre_load==NULL || strlen(pre_load)==0)
+//		ptx = findPTXSection(fname);
+//	symbol_table *symtab;
+//	char *ptxcode;
+//	const char *override_ptx_name = getenv("PTX_SIM_KERNELFILE"); 
+//	if (override_ptx_name == NULL or getenv("PTX_SIM_USE_PTX_FILE") == NULL or strlen(getenv("PTX_SIM_USE_PTX_FILE"))==0) {
+//		ptxcode = readfile(ptx->getPTXfilename());
+//	} else {
+//		printf("GPGPU-Sim PTX: overriding embedded ptx with '%s' (PTX_SIM_USE_PTX_FILE is set)\n", override_ptx_name);
+//		ptxcode = readfile(override_ptx_name);
+//	}
+//	if(context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() ) {
+//		cuobjdumpELFSection* elfsection = findELFSection(ptx->getIdentifier());
+//		assert (elfsection!= NULL);
+//		char *ptxplus_str = gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(
+//				ptx->getPTXfilename(),
+//				elfsection->getELFfilename(),
+//				elfsection->getSASSfilename());
+//		symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str, handle);
+//		printf("Adding %s with cubin handle %u\n", ptx->getPTXfilename().c_str(), handle);
+//		context->add_binary(symtab, handle);
+//		gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability );
+//		delete[] ptxplus_str;
+//	} else {
+//		symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxcode, handle);
+//		//if CUOBJDUMP_SIM_FILE is not set, ptx is NULL. So comment below.
+//		//printf("Adding %s with cubin handle %u\n", ptx->getPTXfilename().c_str(), handle);
+//		context->add_binary(symtab, handle);
+//		gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability );
+//	}
+	load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
+	load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
+//	name_symtab[fname] = symtab;
+
+	//TODO: Remove temporarily files as per configurations
+}
+
 //! Call cuobjdump to extract everything (-elf -sass -ptx)
 /*!
  *	This Function extract the whole PTX (for all the files) using cuobjdump
@@ -1514,7 +1658,7 @@ void extract_code_using_cuobjdump(){
 
     //prevent the dumping by cuobjdump everytime we execute the code!
     const char *override_cuobjdump = getenv("CUOBJDUMP_SIM_FILE"); 
-    char command[1000], ptx_file[1000];
+    char command[1000];
     std::string app_binary = get_app_binary(); 
     //Running cuobjdump using dynamic link to current process
     snprintf(command,1000,"md5sum %s ", app_binary.c_str());
@@ -1527,50 +1671,8 @@ void extract_code_using_cuobjdump(){
     //dump ptx for all individial ptx files into sepearte files which is later used by ptxas.
     int result=0;
 #if (CUDART_VERSION >= 6000)
-    char fname2[1024];
-    snprintf(fname2,1024,"_cuobjdump_list_ptx_XXXXXX");
-    int fd2=mkstemp(fname2);
-    close(fd2);
-    snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -lptx -arch=sm_%u %s > %s", forced_max_capability, app_binary.c_str(), fname2);
-    result = system(command);
-    if( result != 0 ) {
-        printf("WARNING: Failed to execute cuobjdump to get list of ptx files \n");
-        exit(0);
-    } else {
-	/*
-          as we got list of ptx files, we need to extract one by one into seperate files so that ptxas can understand it. 
-          In this way, the duplicate definitions in a single embedded file can be prevented. 
-          No of lines in the file is equal to no of ptx fileis available.
-        */
-        FILE *fp = fopen(fname2,"r");
-        if (fp==NULL) {
-            printf("WARNING: cuobjdump file error! Could not open file %s \n", fname2);
-            exit(0);
-        } else {
-            for (char c = getc(fp); c != EOF; c = getc(fp))
-                if (c == '\n')
-                    no_of_ptx = no_of_ptx + 1;
-                    fclose(fp);
-        }
-	if(no_of_ptx==0){
-		printf("WARNING: Number of ptx in the executable file are 0. One of the reasons might be\n");
-		printf("\t1. CDP is enabled\n");
-		printf("\t2. cuobjdump -lptx doesnt recognize sm_%u\n",forced_max_capability);
-		printf("\t3. the application was not compiled with nvcc flag sm_%u\n",forced_max_capability);
-	}
-    }
-    if(!g_cdp_enabled) {
-        //based on the list above, dump ptx files individually. Format of dumped ptx file is prog_name.unique_no.sm_<>.ptx
-        for (int index=1; index<= no_of_ptx; index++){
-            snprintf(ptx_file, 1000, "%s.%d.sm_%u.ptx", get_app_binary_name(app_binary), index, forced_max_capability);
-            printf("Extracting specific PTX file named %s \n",ptx_file);
-            snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -arch=sm_%u -xptx %s %s", forced_max_capability, ptx_file, app_binary.c_str());
-            if (system(command)!=0) {
-                printf("ERROR: command: %s failed \n",command);
-                exit(0);
-            }
-        }
-    }
+    extract_ptx_files_using_cuobjdump(g_cdp_enabled);
+    cuobjdumpParseBinary(1);
 #endif
     //TODO: redundant to dump twice. how can it be prevented?
     //dump only for specific arch
@@ -1904,77 +2006,12 @@ void cuobjdumpInit(){
 	}
 }
 
-std::map<int, std::string> fatbinmap;
-std::map<int, bool>fatbin_registered;
-std::map<std::string, symbol_table*> name_symtab;
 
 //! Keep track of the association between filename and cubin handle
 void cuobjdumpRegisterFatBinary(unsigned int handle, const char* filename){
 	fatbinmap[handle] = filename;
 }
 
-//! Either submit PTX for simulation or convert SASS to PTXPlus and submit it
-void cuobjdumpParseBinary(unsigned int handle){
-
-	if(fatbin_registered[handle]) return;
-	fatbin_registered[handle] = true;
-	CUctx_st *context = GPGPUSim_Context();
-	std::string fname = fatbinmap[handle];
-
-	if (name_symtab.find(fname) != name_symtab.end()) {
-		symbol_table *symtab = name_symtab[fname];
-		context->add_binary(symtab, handle);
-		return;
-	}
-
-	unsigned max_capability = 0;
-	for (	std::list<cuobjdumpSection*>::iterator iter = cuobjdumpSectionList.begin();
-			iter != cuobjdumpSectionList.end();
-			iter++){
-		unsigned capability = (*iter)->getArch();
-		if (capability > max_capability) max_capability = capability;
-	}
-	if (max_capability > 20) printf("WARNING: No guarantee that PTX will be parsed for SM version %u\n", max_capability);
-	if (max_capability == 0) max_capability=context->get_device()->get_gpgpu()->get_config().get_forced_max_capability();
-
-	cuobjdumpPTXSection* ptx = NULL;
-	const char* pre_load = getenv("CUOBJDUMP_SIM_FILE");
-	if(pre_load==NULL || strlen(pre_load)==0)
-		ptx = findPTXSection(fname);
-	symbol_table *symtab;
-	char *ptxcode;
-	const char *override_ptx_name = getenv("PTX_SIM_KERNELFILE"); 
-	if (override_ptx_name == NULL or getenv("PTX_SIM_USE_PTX_FILE") == NULL or strlen(getenv("PTX_SIM_USE_PTX_FILE"))==0) {
-		ptxcode = readfile(ptx->getPTXfilename());
-	} else {
-		printf("GPGPU-Sim PTX: overriding embedded ptx with '%s' (PTX_SIM_USE_PTX_FILE is set)\n", override_ptx_name);
-		ptxcode = readfile(override_ptx_name);
-	}
-	if(context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() ) {
-		cuobjdumpELFSection* elfsection = findELFSection(ptx->getIdentifier());
-		assert (elfsection!= NULL);
-		char *ptxplus_str = gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(
-				ptx->getPTXfilename(),
-				elfsection->getELFfilename(),
-				elfsection->getSASSfilename());
-		symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str, handle);
-		printf("Adding %s with cubin handle %u\n", ptx->getPTXfilename().c_str(), handle);
-		context->add_binary(symtab, handle);
-		gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability );
-		delete[] ptxplus_str;
-	} else {
-		symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxcode, handle);
-		//if CUOBJDUMP_SIM_FILE is not set, ptx is NULL. So comment below.
-		//printf("Adding %s with cubin handle %u\n", ptx->getPTXfilename().c_str(), handle);
-		context->add_binary(symtab, handle);
-		gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability );
-	}
-	load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
-	load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
-	name_symtab[fname] = symtab;
-
-	//TODO: Remove temporarily files as per configurations
-}
 
 void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 {
