@@ -1311,7 +1311,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
          *((warp_inst_t*)pJ) = inst; // copy active mask information
          pI = pJ;
       }
-      if((pI->get_opcode()!=MMA_OP)||((pI->get_opcode()==MMA_OP)&&(lane_id==0))){
+      if(((pI->get_opcode()!=MMA_OP)&&(pI->get_opcode()!=MMA_LD_OP)&&(pI->get_opcode()!=MMA_ST_OP))||((pI->get_opcode()==MMA_OP||pI->get_opcode()==MMA_LD_OP||pI->get_opcode()==MMA_ST_OP)&&(lane_id==0))){
       switch ( pI->get_opcode() ) {
 #define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,this); op_classification = CLASSIFICATION; break;
 #define OP_W_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,get_core(),inst); op_classification = CLASSIFICATION; break;

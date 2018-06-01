@@ -25,7 +25,7 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+#include "half.hpp"
 #include "instructions.h"
 #include "ptx_ir.h"
 #include "opcodes.h"
@@ -45,6 +45,7 @@
 #include "cuda_device_runtime.h"
 
 #include <stdarg.h>
+using half_float::half;
 
 unsigned ptx_instruction::g_num_ptx_inst_uid=0;
 
@@ -1549,10 +1550,11 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 		offset=8*(thrd%2);
 		thread = core->get_thread_info()[tid+thrd];
 		printf("thread=%d:",thrd);
-		for(i=8;i<=31;i++){
+		//for(i=8;i<=31;i++){
+		for(i=0;i<=0;i++){
 			const operand_info &src_a=  pI->operand_lookup(i);
 			src_data= (thread->get_operand_value(src_a, dst, type, thread, 1));
-			printf("%f ",src_data.f32);
+			printf("%x ",src_data.f16);
 			if(i<=15)
 				matrix_a[row][offset+(i)%8]=src_data;
 			else if((i>15)&&(i<=23))
@@ -1568,27 +1570,27 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 	printf("MATRIX_A\n");
 	for (i=0;i<16;i++){
 		for(j=0;j<16;j++){
-			printf("%f ",matrix_a[i][j].f32);
+			printf("%x ",matrix_a[i][j].f16);
 		}
 		printf("\n");
 	}	
 	printf("MATRIX_B\n");
 	for (i=0;i<16;i++){
 		for(j=0;j<16;j++){
-			printf("%f ",matrix_b[i][j].f32);
+			printf("%x ",matrix_b[i][j].f16);
 		}
 		printf("\n");
 	}	
 	printf("MATRIX_C\n");
 	for (i=0;i<16;i++){
 		for(j=0;j<16;j++){
-			printf("%f ",matrix_c[i][j].f32);
+			printf("%x ",matrix_c[i][j].f16);
 		}
 		printf("\n");
 	}	
 	for (i=0;i<16;i++){
 		for(j=0;j<16;j++){
-				matrix_d[i][j].f32=0;
+				matrix_d[i][j].f16=0;
 		}
 	}
 	
@@ -1860,6 +1862,8 @@ unsigned int saturatei(unsigned int a, unsigned int max)
 
 ptx_reg_t f2x( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign, int rounding_mode, int saturation_mode )
 {
+ half mytemp;
+ float myfloat;
    assert( from_width == 32); 
 
    enum cuda_math::cudaRoundMode mode = cuda_math::cudaRoundZero;
@@ -1903,7 +1907,11 @@ ptx_reg_t f2x( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
    } else {
       switch ( to_width ) {
       case 16: //assert(0); break;
-	 y.f16 = x.f32;
+	 mytemp=half(x.f32);
+	 myfloat=mytemp;
+	 y.f16 =mytemp;
+	 //y.f16 = half(x.f32);
+	 printf("f2x: %f\n",myfloat);
  	 break;
       case 32: assert(0); break; // handled by f2f
       case 64: 
@@ -2621,45 +2629,51 @@ void ldu_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 }
 void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 {
+   size_t size;
+   int t;
    const operand_info &dst = pI->dst();
    const operand_info &src1 = pI->src1();
    const operand_info &src2 = pI->src2();
 
    unsigned type = pI->get_type();
 
-   int tid = inst.warp_id_func() * core->get_warp_size();
-   int thrd;
+   int tid = inst.warp_id_func()*core->get_warp_size();
+   int thrd,odd,inx;
    ptx_thread_info *thread;
-   thread = core->get_thread_info()[tid];
+   for (thrd=0; thrd < core->get_warp_size(); thrd++){
+   	thread = core->get_thread_info()[tid+thrd];
+	odd=thrd%2;
+	inx=thrd/2;
+   	ptx_reg_t src1_data = thread->get_operand_value(src1, dst, type, thread, 1);
+   	ptx_reg_t src2_data = thread->get_operand_value(src2, dst, type, thread, 1);
 
-   ptx_reg_t src1_data = thread->get_operand_value(src1, dst, type, thread, 1);
+   	ptx_reg_t data;
+   	memory_space_t space = pI->get_space();
 
-   ptx_reg_t data;
-   memory_space_t space = pI->get_space();
+   	memory_space *mem = NULL;
+   	addr_t addr = src1_data.u32;
 
-   memory_space *mem = NULL;
-   addr_t addr = src1_data.u32;
+   	decode_space(space,thread,src1,mem,addr);
 
-   decode_space(space,thread,src1,mem,addr);
+   	data.u64=0;
+   	type_info_key::type_decode(type,size,t);
+   	ptx_reg_t data1, data2, data3, data4;
+   	ptx_reg_t data5, data6, data7, data8;
+   	printf("mma_ld: thrd=%d,addr=%d, fp16(size=%d), stride=%d\n",thrd,src1_data.u32,size,src2_data.u32);
+   	mem->read(addr+inx*2*src2_data.u32+odd*16,size/8,&data1.s64);
+   	mem->read(addr+inx*2*src2_data.u32+odd*16+size/8,size/8,&data2.s64);
+   	mem->read(addr+inx*2*src2_data.u32+odd*16+2*size/8,size/8,&data3.s64);
+   	mem->read(addr+inx*2*src2_data.u32+odd*16+3*size/8,size/8,&data4.s64);
+   	mem->read(addr+inx*2*src2_data.u32+odd*16+4*size/8,size/8,&data5.s64);
+   	mem->read(addr+inx*2*src2_data.u32+odd*16+5*size/8,size/8,&data6.s64);
+   	mem->read(addr+inx*2*src2_data.u32+odd*16+6*size/8,size/8,&data7.s64);
+   	mem->read(addr+inx*2*src2_data.u32+odd*16+7*size/8,size/8,&data8.s64);
+   	thread->set_wmma_vector_operand_values(dst,data1,data2,data3,data4,data5,data6,data7,data8);
+   	printf("thread%d=%x,%x,%x,%x,%x,%x,%x,%x\n",0,data1.s64,data2.s64,data3.s64,data4.s64,data5.s64,data6.s64,data7.s64,data8.s64);   
 
-   size_t size;
-   int t;
-   data.u64=0;
-   type_info_key::type_decode(type,size,t);
-   ptx_reg_t data1, data2, data3, data4;
-   ptx_reg_t data5, data6, data7, data8;
-   mem->read(addr,size/8,&data1.s64);
-   mem->read(addr+size/8,size/8,&data2.s64);
-   mem->read(addr+2*size/8,size/8,&data3.s64);
-   mem->read(addr+3*size/8,size/8,&data4.s64);
-   mem->read(addr+4*size/8,size/8,&data5.s64);
-   mem->read(addr+5*size/8,size/8,&data6.s64);
-   mem->read(addr+6*size/8,size/8,&data7.s64);
-   mem->read(addr+7*size/8,size/8,&data8.s64);
-   thread->set_wmma_vector_operand_values(dst,data1,data2,data3,data4,data5,data6,data7,data8);
-   
-   thread->m_last_effective_address = addr;
-   thread->m_last_memory_space = space; 
+   	thread->m_last_effective_address = addr;
+   	thread->m_last_memory_space = space;
+   } 
 }
 
 void lg2_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
@@ -4190,7 +4204,7 @@ void st_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    if (!vector_spec) {
       data = thread->get_operand_value(src1, dst, type, thread, 1);
       mem->write(addr,size/8,&data.s64,thread,pI);
-      printf("addr=%d data=%d\n",addr,data.s64);
+      printf("st:addr=%x data=%x\n",addr,data.s64);
     } else {
       if (vector_spec == V2_TYPE) {
          ptx_reg_t* ptx_regs = new ptx_reg_t[2]; 

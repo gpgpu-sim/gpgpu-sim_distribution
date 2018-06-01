@@ -28,7 +28,7 @@
 #define ptx_sim_h_INCLUDED
 
 #include <stdlib.h>
-
+#include "half.hpp"
 #include "../abstract_hardware_model.h"
 #include "../tr1_hash_map.h" 
 
@@ -52,6 +52,8 @@ struct param_t {
 #include <stack>
 
 #include "memory.h"
+
+using half_float::half;
 
 union ptx_reg_t {
    ptx_reg_t() {
@@ -126,7 +128,7 @@ union ptx_reg_t {
    unsigned short    u16;
    unsigned int      u32;
    unsigned long long   u64;
-   float             f16; 
+   half 		f16; 
    float          f32;
    double            f64;
    struct {
