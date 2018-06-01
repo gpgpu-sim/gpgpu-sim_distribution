@@ -185,6 +185,26 @@ symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source
     return symtab;
 }
 
+symbol_table *gpgpu_ptx_sim_load_ptx_from_filename( const char *filename )
+{
+    symbol_table *symtab=init_parser(filename);
+    int errors = ptx_parse ();
+    if ( errors ) {
+        char fname[1024];
+        snprintf(fname,1024,"_ptx_errors_XXXXXX");
+        int fd=mkstemp(fname); 
+        close(fd);
+        printf("GPGPU-Sim PTX: parser error detected, exiting... but first extracting .ptx to \"%s\"\n", fname);
+        FILE *ptxfile = fopen(fname,"w");
+        fclose(ptxfile);
+        abort();
+        exit(40);
+    }
+
+    printf("GPGPU-Sim PTX: finished parsing EMBEDDED .ptx file %s\n",filename);
+    return symtab;
+}
+
 void fix_duplicate_errors(char fname2[1024]) {
 	char tempfile[1024] = "_temp_ptx";
 	char commandline[1024];
