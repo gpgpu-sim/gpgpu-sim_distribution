@@ -156,14 +156,14 @@ int main(int argc, char* argv[]) {
 //   printf("a_fp32\n");
    for(int m=0;m<MATRIX_M;m++){
 	for(int n=0;n<MATRIX_K;n++){
-		a_host_wmma[m*MATRIX_K+n]=m*MATRIX_K+n;
+		a_host_wmma[m*MATRIX_K+n]=(m*MATRIX_K+n)%10;
 	}
 	//printf(";\n");
    }
   // printf("b_fp32\n");
    for(int m=0;m<MATRIX_K;m++){
 	for(int n=0;n<MATRIX_N;n++){
-		b_host_wmma[m*MATRIX_N+n]=m*MATRIX_N+n;
+		b_host_wmma[m*MATRIX_N+n]=(m*MATRIX_N+n)%10;
 //		printf("%f ",b_host_wmma[m*MATRIX_N+n]);
 	}
 //	printf(";\n");
@@ -177,7 +177,7 @@ int main(int argc, char* argv[]) {
 
    for(int m=0;m<MATRIX_M;m++){
 	for(int n=0;n<MATRIX_N;n++){
-		c_init_host_wmma[m*MATRIX_N+n]=0;
+		c_init_host_wmma[m*MATRIX_N+n]=(m*MATRIX_M+n)%10;
 	}
    }
    cudaErrCheck(cudaMemcpy(c, c_init_host_wmma,  MATRIX_M * MATRIX_N * sizeof(float), cudaMemcpyHostToDevice));
