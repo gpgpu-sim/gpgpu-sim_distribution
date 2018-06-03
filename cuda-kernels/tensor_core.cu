@@ -132,11 +132,7 @@ int main(int argc, char* argv[]) {
    cudaErrCheck(cudaEventCreate(&startWMMA));
    cudaErrCheck(cudaEventCreate(&stopWMMA));
    
-   
-   
-   
    // Use tensor cores
-  
  
    cudaErrCheck(cudaMalloc((void**)&a_fp32, MATRIX_M * MATRIX_K * sizeof(float)));
    cudaErrCheck(cudaMalloc((void**)&b_fp32, MATRIX_K * MATRIX_N * sizeof(float)));
@@ -151,8 +147,6 @@ int main(int argc, char* argv[]) {
    a_host_wmma      = (float*)malloc(MATRIX_M * MATRIX_K * sizeof(float));
    b_host_wmma      = (float*)malloc(MATRIX_K * MATRIX_N * sizeof(float));
 
-
-   
 //   printf("a_fp32\n");
    for(int m=0;m<MATRIX_M;m++){
 	for(int n=0;n<MATRIX_K;n++){
@@ -160,13 +154,14 @@ int main(int argc, char* argv[]) {
 	}
 	//printf(";\n");
    }
+
   // printf("b_fp32\n");
    for(int m=0;m<MATRIX_K;m++){
 	for(int n=0;n<MATRIX_N;n++){
 		b_host_wmma[m*MATRIX_N+n]=(m*MATRIX_N+n)%10;
-//		printf("%f ",b_host_wmma[m*MATRIX_N+n]);
+  //	printf("%f ",b_host_wmma[m*MATRIX_N+n]);
 	}
-//	printf(";\n");
+  //	printf(";\n");
    }
    cudaErrCheck(cudaMemcpy(a_fp32,a_host_wmma,  MATRIX_M * MATRIX_K * sizeof(float), cudaMemcpyHostToDevice));
    cudaErrCheck(cudaMemcpy(b_fp32,b_host_wmma,  MATRIX_K * MATRIX_N * sizeof(float), cudaMemcpyHostToDevice));
@@ -215,36 +210,36 @@ int main(int argc, char* argv[]) {
    cudaErrCheck(cudaMemcpy(c_host_wmma, c_wmma, MATRIX_M * MATRIX_N * sizeof(float), cudaMemcpyDeviceToHost));
   // printf("c_host\n");
   // for(int m=0;m<MATRIX_M;m++){
-//	for(int n=0;n<MATRIX_N;n++){
-//	printf("%f ",c_host_wmma[m*MATRIX_N+n]);
-//	}
-//	printf(";\n");
+  //for(int n=0;n<MATRIX_N;n++){
+  //printf("%f ",c_host_wmma[m*MATRIX_N+n]);
+  //}
+  //printf(";\n");
   // }
    
-      float wmmaTime;
-      cudaErrCheck(cudaEventSynchronize(stopWMMA));
-      cudaErrCheck(cudaEventElapsedTime(&wmmaTime, startWMMA, stopWMMA));
-      printf("wmma took %fms\n", wmmaTime);
-      //printf("Clock=%d",stopWMMA-startWMMA);
-      printf("\nFor a faster code using wmma you should check out the cudaTensorCoreGemm sample in the CUDA Toolkit.\nThis code was written as a demo only!\n\n");
+  float wmmaTime;
+  cudaErrCheck(cudaEventSynchronize(stopWMMA));
+  cudaErrCheck(cudaEventElapsedTime(&wmmaTime, startWMMA, stopWMMA));
+  printf("wmma took %fms\n", wmmaTime);
+  //printf("Clock=%d",stopWMMA-startWMMA);
+  printf("\nFor a faster code using wmma you should check out the cudaTensorCoreGemm sample in the CUDA Toolkit.\nThis code was written as a demo only!\n\n");
    
    
-   cudaErrCheck(cudaEventDestroy(startWMMA));
-   cudaErrCheck(cudaEventDestroy(stopWMMA));
+  cudaErrCheck(cudaEventDestroy(startWMMA));
+  cudaErrCheck(cudaEventDestroy(stopWMMA));
 
-   
-   cudaErrCheck(cudaFree(a_fp32));
-   cudaErrCheck(cudaFree(b_fp32));
-   cudaErrCheck(cudaFree(a_fp16));
-   cudaErrCheck(cudaFree(b_fp16));
+  
+  cudaErrCheck(cudaFree(a_fp32));
+  cudaErrCheck(cudaFree(b_fp32));
+  cudaErrCheck(cudaFree(a_fp16));
+  cudaErrCheck(cudaFree(b_fp16));
 
-   cudaErrCheck(cudaFree(c));
-   cudaErrCheck(cudaFree(c_wmma));
-   
-   free(c_host_wmma);
+  cudaErrCheck(cudaFree(c));
+  cudaErrCheck(cudaFree(c_wmma));
+  
+  free(c_host_wmma);
 
-   cudaErrCheck(cudaDeviceReset());
-   return 0;
+  cudaErrCheck(cudaDeviceReset());
+  return 0;
 }
 
 
