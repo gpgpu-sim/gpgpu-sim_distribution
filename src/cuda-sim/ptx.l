@@ -77,6 +77,7 @@ cos	TC; ptx_lval.int_value = COS_OP; return OPCODE;
 cvt	TC; ptx_lval.int_value = CVT_OP; return OPCODE;
 cvta	TC; ptx_lval.int_value = CVTA_OP; return OPCODE;
 div	TC; ptx_lval.int_value = DIV_OP; return OPCODE;
+dp4a	TC; ptx_lval.int_value = DP4A_OP; return OPCODE;
 ex2	TC; ptx_lval.int_value = EX2_OP; return OPCODE;
 exit	TC; ptx_lval.int_value = EXIT_OP; return OPCODE;
 fma     TC; ptx_lval.int_value = FMA_OP; return OPCODE;

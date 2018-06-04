@@ -32,6 +32,8 @@
 
 extern int ptx_error( const char *s );
 extern int ptx_lineno;
+extern int ptx_parse();
+extern FILE *ptx_in;
 
 static const struct core_config *g_shader_core_config;
 void set_ptx_warp_size(const struct core_config * warp_size)
@@ -135,6 +137,10 @@ symbol_table *init_parser( const char *ptx_filename )
    g_ptx_token_decode[generic_space] = "generic_space";
    g_ptx_token_decode[instruction_space] = "instruction_space";
 
+
+   ptx_in = fopen(ptx_filename, "r");
+   ptx_parse();
+   fclose(ptx_in);
    return g_global_symbol_table;
 }
 
