@@ -2289,6 +2289,13 @@ void div_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->set_operand_value(dst,data, i_type, thread,pI);
 }
 
+void dp4a_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
+{ 
+   printf("instruction not implemented yet");
+   assert(0);
+
+}
+
 void ex2_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 
    ptx_reg_t src1_data, src2_data, data;

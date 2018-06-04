@@ -1546,7 +1546,6 @@ void extract_ptx_files_using_cuobjdump(bool g_cdp_enabled){
 
 void cuobjdumpParseBinary(unsigned int handle){
 
-
 	if(fatbin_registered[handle]) return;
 	fatbin_registered[handle] = true;
 	CUctx_st *context = GPGPUSim_Context();
