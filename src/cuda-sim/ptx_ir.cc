@@ -1083,6 +1083,27 @@ ptx_instruction::ptx_instruction( int opcode,
    int rr=0;
    std::list<int>::const_iterator i;
    unsigned n=1;
+   for ( i=wmma_options.begin(); i!= wmma_options.end(); i++, n++ ) {
+      int last_ptx_inst_option = *i;
+      switch ( last_ptx_inst_option ) {
+      		case SYNC_OPTION:
+      		case LOAD_A:
+      		case LOAD_B:
+      		case LOAD_C:
+      		case STORE_D:
+      		case MMA:
+      		  m_wmma_type=last_ptx_inst_option;
+      		  break;
+      		case ROW:
+      		case COL:
+      		case M16N16K16:
+			break;
+      		default:
+      		   assert(0);
+      		   break;
+	}
+   }
+   n=1;
    for ( i=options.begin(); i!= options.end(); i++, n++ ) {
       int last_ptx_inst_option = *i;
       switch ( last_ptx_inst_option ) {

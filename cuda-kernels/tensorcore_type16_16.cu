@@ -30,14 +30,14 @@ const int WMMA_M = 16;
 const int WMMA_N = 16;
 const int WMMA_K = 16;
 
-__global__ void wmma_example(half *a, half *b, float *c,float *d_fp16, int M, int N, int K) {
+__global__ void wmma_example(half *a, half *b, half *c,half *d_fp16, int M, int N, int K) {
    //unsigned int start_time=0,end_time=0;
    //start_time=clock();
 
    // Declare the fragments
    wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> a_frag;
    wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> b_frag;
-   wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> c_frag;
+   wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, half> c_frag;
 
    // Bounds checking
    wmma::load_matrix_sync(a_frag, a, K);
@@ -70,8 +70,8 @@ int main(int argc, char* argv[]) {
 
    half *a_fp16;
    half *b_fp16;
-   // half *c_fp16;
-   // half *d_fp16;
+   half *c_fp16;
+   half *d_fp16;
    
    float *a_host_wmma;
    float *b_host_wmma;
@@ -93,8 +93,8 @@ int main(int argc, char* argv[]) {
    cudaErrCheck(cudaMalloc((void**)&d_fp32, MATRIX_K * MATRIX_N * sizeof(float)));
    cudaErrCheck(cudaMalloc((void**)&a_fp16, MATRIX_M * MATRIX_K * sizeof(half)));
    cudaErrCheck(cudaMalloc((void**)&b_fp16, MATRIX_K * MATRIX_N * sizeof(half)));
-   //cudaErrCheck(cudaMalloc((void**)&c_fp16, MATRIX_K * MATRIX_N * sizeof(half)));
-   //cudaErrCheck(cudaMalloc((void**)&d_fp16, MATRIX_K * MATRIX_N * sizeof(half)));
+   cudaErrCheck(cudaMalloc((void**)&c_fp16, MATRIX_K * MATRIX_N * sizeof(half)));
+   cudaErrCheck(cudaMalloc((void**)&d_fp16, MATRIX_K * MATRIX_N * sizeof(half)));
 
 
    a_host_wmma      = (float*)malloc(MATRIX_M * MATRIX_K * sizeof(float));
@@ -145,16 +145,17 @@ int main(int argc, char* argv[]) {
 
    convertFp32ToFp16 <<< (MATRIX_M * MATRIX_K + 255) / 256, 256 >>> (a_fp16, a_fp32, MATRIX_M * MATRIX_K);
    convertFp32ToFp16 <<< (MATRIX_K * MATRIX_N + 255) / 256, 256 >>> (b_fp16, b_fp32, MATRIX_K * MATRIX_N);
-   //convertFp32ToFp16 <<< (MATRIX_M * MATRIX_N + 255) / 256, 256 >>> (c_fp16, c_fp32, MATRIX_K * MATRIX_N);
+   convertFp32ToFp16 <<< (MATRIX_M * MATRIX_N + 255) / 256, 256 >>> (c_fp16, c_fp32, MATRIX_K * MATRIX_N);
 
    printf("\nM = %d, N = %d, K = %d. \n", MATRIX_M, MATRIX_N, MATRIX_K);
    
    printf("Running with wmma...\n");
    cudaErrCheck(cudaEventRecord(startWMMA));
-   wmma_example <<< 1, 32>>> (a_fp16, b_fp16, c_fp32, d_fp32 , MATRIX_M, MATRIX_N, MATRIX_K);
+   wmma_example <<< 1, 32>>> (a_fp16, b_fp16, c_fp16, d_fp16 , MATRIX_M, MATRIX_N, MATRIX_K);
    cudaErrCheck(cudaEventRecord(stopWMMA));
    cudaErrCheck(cudaEventSynchronize(stopWMMA));
 
+   convertFp16ToFp32 <<< (MATRIX_M * MATRIX_N + 255) / 256, 256 >>> (d_fp32, d_fp16, MATRIX_K * MATRIX_N);
    // Error checking
    printf("\nChecking results...\n");
    cudaErrCheck(cudaMemcpy(d_host_wmma, d_fp32, MATRIX_M * MATRIX_N * sizeof(float), cudaMemcpyDeviceToHost));
@@ -170,7 +171,6 @@ int main(int argc, char* argv[]) {
    int t=200000;
    while(t-->0);
    printf("D_CALCULATED\n");
-
    for(int m=0;m<MATRIX_M;m++){
 	for(int n=0;n<MATRIX_N;n++){
 		printf("%.2f,",d_cal_host_wmma[m*MATRIX_N+n]);
@@ -203,8 +203,8 @@ int main(int argc, char* argv[]) {
    cudaErrCheck(cudaFree(d_fp32));
    cudaErrCheck(cudaFree(a_fp16));
    cudaErrCheck(cudaFree(b_fp16));
-   //cudaErrCheck(cudaFree(c_fp16));
-   //cudaErrCheck(cudaFree(d_fp16));
+   cudaErrCheck(cudaFree(c_fp16));
+   cudaErrCheck(cudaFree(d_fp16));
 
    free(a_host_wmma);
    free(b_host_wmma);

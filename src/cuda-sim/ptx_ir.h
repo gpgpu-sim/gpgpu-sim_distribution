@@ -1025,6 +1025,9 @@ public:
    unsigned get_vector() const { return m_vector_spec;}
    unsigned get_atomic() const { return m_atomic_spec;}
 
+   int get_wmma_type() const {
+      return m_wmma_type;
+   }
    int get_type() const 
    {
       assert( !m_scalar_type.empty() );
@@ -1134,9 +1137,9 @@ private:
    bool                m_uni; //if branch instruction, this evaluates to true for uniform branches (ie jumps)
    bool                m_to_option;
    unsigned            m_cache_option;
-   unsigned	       m_wmma_type;
-   unsigned 	       m_wmma_layout[2];
-   unsigned            m_wmma_configuration;
+   int      m_wmma_type;
+   int      m_wmma_layout[2];
+   int      m_wmma_configuration;
    unsigned            m_rounding_mode;
    unsigned            m_compare_op;
    unsigned            m_saturation_mode;
