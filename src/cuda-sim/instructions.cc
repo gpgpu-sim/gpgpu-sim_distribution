@@ -2291,7 +2291,7 @@ void div_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
 void dp4a_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 
-   printf("instruction not implemented yet");
+   printf("DP4A instruction not implemented yet");
    assert(0);
 
 }
