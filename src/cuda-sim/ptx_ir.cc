@@ -1031,7 +1031,7 @@ static std::list<operand_info> check_operands( int opcode,
                                         const std::list<operand_info> &operands )
 {
    static int g_warn_literal_operands_two_type_inst;
-    if( (opcode == CVT_OP) || (opcode == SET_OP) || (opcode == SLCT_OP) || (opcode == TEX_OP) ) {
+    if( (opcode == CVT_OP) || (opcode == SET_OP) || (opcode == SLCT_OP) || (opcode == TEX_OP) || (opcode == DP4A_OP) ) {
         // just make sure these do not have have const operands... 
         if( !g_warn_literal_operands_two_type_inst ) {
             std::list<operand_info>::const_iterator o;
