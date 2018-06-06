@@ -322,7 +322,7 @@ float __internal_accurate_fdividef(float a, float b)
 float __saturatef(float a)
 {
    float b; 
-   if (isnan(a)) b = 0.0f; 
+   if (std::isnan(a)) b = 0.0f; 
    else if (a >= 1.0f) b = 1.0f;
    else if (a <= 0.0f) b = 0.0f; 
    else b = a; 
@@ -358,7 +358,7 @@ int __signbitd(double d)
 #ifdef __APPLE__
 int isnanf(float a) 
 {
-   return (isnan(a)); 
+   return (std::isnan(a)); 
 }
 #endif 
 

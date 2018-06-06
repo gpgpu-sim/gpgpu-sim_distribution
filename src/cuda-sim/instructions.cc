@@ -1644,9 +1644,9 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 				
 					for(k=0;k<8;k++){
 						if(k%2==0)
-							hex_val=((v[k/2].s64&0xffff0000)>>16);
-						else
 							hex_val=(v[k/2].s64&0xffff);
+						else
+							hex_val=((v[k/2].s64&0xffff0000)>>16);
 						nw_v[k].f16 =*((half *)&hex_val); 
 					 	matrix_c[row+k][offset]=nw_v[k];
 					}
@@ -1767,10 +1767,10 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
        		}
 		else if(type==F16_TYPE){
 			ptx_reg_t nw_data1, nw_data2, nw_data3, nw_data4;
-			nw_data1.s64=((matrix_d[row][offset].s64 & 0xffff)<<16)|((matrix_d[row+1][offset].s64&0xffff));
-			nw_data2.s64=((matrix_d[row+2][offset].s64 & 0xffff)<<16)|((matrix_d[row+3][offset].s64&0xffff));
-			nw_data3.s64=((matrix_d[row+4][offset].s64 & 0xffff)<<16)|((matrix_d[row+5][offset].s64&0xffff));
-			nw_data4.s64=((matrix_d[row+6][offset].s64 & 0xffff)<<16)|((matrix_d[row+7][offset].s64&0xffff));
+			nw_data1.s64=((matrix_d[row][offset].s64   & 0xffff))|((matrix_d[row+1][offset].s64&0xffff)<<16);
+			nw_data2.s64=((matrix_d[row+2][offset].s64 & 0xffff))|((matrix_d[row+3][offset].s64&0xffff)<<16);
+			nw_data3.s64=((matrix_d[row+4][offset].s64 & 0xffff))|((matrix_d[row+5][offset].s64&0xffff)<<16);
+			nw_data4.s64=((matrix_d[row+6][offset].s64 & 0xffff))|((matrix_d[row+7][offset].s64&0xffff)<<16);
    			thread->set_vector_operand_values(dst,nw_data1,nw_data2,nw_data3,nw_data4);
 		 	printf("thread%d=%x,%x,%x,%x",thrd,nw_data1.s64,nw_data2.s64,nw_data3.s64,nw_data4.s64);
 		
@@ -2295,7 +2295,7 @@ ptx_reg_t d2d( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
       y.f64 = x.f64;
       break; 
    }
-   if (isnan(y.f64)) {
+   if (std::isnan(y.f64)) {
       y.u64 = 0xfff8000000000000ull;
    } else if (saturation_mode) {
       y.f64 = cuda_math::__saturatef(y.f64); 
@@ -2426,7 +2426,7 @@ void ptx_round(ptx_reg_t& data, int rounding_mode, int type)
       }
    }
    if ((type == F64_TYPE)||(type == FF64_TYPE)) {
-      if (isnan(data.f64)) {
+      if (std::isnan(data.f64)) {
          data.u64 = 0xfff8000000000000ull;
       }
    }
@@ -2828,9 +2828,9 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 	ptx_reg_t nw_v[8];
 	for(k=0;k<8;k++){
 		if(k%2==0)
-			nw_v[k].s64=((v[k/2].s64&0xffff0000)>>16);
-		else
 			nw_v[k].s64=(v[k/2].s64&0xffff);
+		else
+			nw_v[k].s64=((v[k/2].s64&0xffff0000)>>16);
 	}
 
 	for(k=0;k<8;k++){
@@ -2905,10 +2905,10 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 	}
 	else{
 		ptx_reg_t nw_data1, nw_data2, nw_data3, nw_data4;
-		nw_data1.s64=((data1.s64 & 0xffff)<<16)|((data2.s64&0xffff));
-		nw_data2.s64=((data3.s64 & 0xffff)<<16)|((data4.s64&0xffff));
-		nw_data3.s64=((data5.s64 & 0xffff)<<16)|((data6.s64&0xffff));
-		nw_data4.s64=((data7.s64 & 0xffff)<<16)|((data8.s64&0xffff));
+		nw_data1.s64=((data1.s64 & 0xffff))|((data2.s64&0xffff)<<16);
+		nw_data2.s64=((data3.s64 & 0xffff))|((data4.s64&0xffff)<<16);
+		nw_data3.s64=((data5.s64 & 0xffff))|((data6.s64&0xffff)<<16);
+		nw_data4.s64=((data7.s64 & 0xffff))|((data8.s64&0xffff)<<16);
 		printf("wmma_load:data1.s64=%x,data2.s64=%x,new_data1.s64=%x\n",data1.s64,data2.s64,nw_data1.s64);	
 		printf("wmma_load:data3.s64=%x,data4.s64=%x,new_data2.s64=%x\n",data3.s64,data4.s64,nw_data2.s64);	
 		printf("wmma_load:data5.s64=%x,data6.s64=%x,new_data3.s64=%x\n",data5.s64,data6.s64,nw_data3.s64);	
@@ -3139,12 +3139,12 @@ void mad_def( const ptx_instruction *pI, ptx_thread_info *thread, bool use_carry
 
 bool isNaN(float x)
 {
-   return isnan(x);
+   return std::isnan(x);
 }
 
 bool isNaN(double x)
 {
-   return isnan(x);
+   return std::isnan(x);
 }
 
 void max_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 

@@ -42,6 +42,12 @@
 
 #include "memory.h"
 
+#define GCC_VERSION (__GNUC__ * 10000 \
+                     + __GNUC_MINOR__ * 100 \
+                     + __GNUC_PATCHLEVEL__)
+
+
+
 struct param_t {
    const void *pdata;
    int type;
@@ -128,7 +134,12 @@ union ptx_reg_t {
    unsigned short    u16;
    unsigned int      u32;
    unsigned long long   u64;
+   //gcc 4.7.0
+   #if GCC_VERSION >= 40700
    half 		f16; 
+   #else
+   float 		f16; 
+   #endif
    float          f32;
    double            f64;
    struct {
