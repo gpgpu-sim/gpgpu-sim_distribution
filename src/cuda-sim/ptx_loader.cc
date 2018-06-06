@@ -152,39 +152,6 @@ char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const std::string ptxfilenam
 	return ptxplus_str;
 }
 
-
-symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num )
-{
-    char buf[1024];
-    snprintf(buf,1024,"_%u.ptx", source_num );
-    if( g_save_embedded_ptx ) {
-       FILE *fp = fopen(buf,"w");
-       fprintf(fp,"%s",p);
-       fclose(fp);
-    }
-    symbol_table *symtab=init_parser(buf);
-    ptx__scan_string(p);
-    int errors = ptx_parse ();
-    if ( errors ) {
-        char fname[1024];
-        snprintf(fname,1024,"_ptx_errors_XXXXXX");
-        int fd=mkstemp(fname); 
-        close(fd);
-        printf("GPGPU-Sim PTX: parser error detected, exiting... but first extracting .ptx to \"%s\"\n", fname);
-        FILE *ptxfile = fopen(fname,"w");
-        fprintf(ptxfile,"%s", p );
-        fclose(ptxfile);
-        abort();
-        exit(40);
-    }
-
-    if ( g_debug_execution >= 100 ) 
-       print_ptx_file(p,source_num,buf);
-
-    printf("GPGPU-Sim PTX: finished parsing EMBEDDED .ptx file %s\n",buf);
-    return symtab;
-}
-
 symbol_table *gpgpu_ptx_sim_load_ptx_from_filename( const char *filename )
 {
     symbol_table *symtab=init_parser(filename);
@@ -319,6 +286,10 @@ char* get_app_binary_name(){
    self_exe_path = strtok(self_exe_path, ".");
    printf("self exe links to: %s\n", self_exe_path);
    return self_exe_path;
+}
+
+void gpgpu_ptx_info_load_from_filename( const char *filename )
+{
 }
 
 void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num, unsigned sm_version )

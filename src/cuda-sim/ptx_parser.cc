@@ -142,9 +142,7 @@ symbol_table *init_parser( const char *ptx_filename )
        g_global_allfiles_symbol_table = new symbol_table("global_allfiles", 0, NULL);
        g_global_symbol_table = g_current_symbol_table = g_global_allfiles_symbol_table;
    }
-//   else {
-//       g_global_symbol_table = g_current_symbol_table = new symbol_table("global",0,g_global_allfiles_symbol_table);
-//   }
+
    ptx_lineno = 1;
 
 #define DEF(X,Y) g_ptx_token_decode[X] = Y;
@@ -164,6 +162,7 @@ symbol_table *init_parser( const char *ptx_filename )
    g_ptx_token_decode[global_space] = "global_space";
    g_ptx_token_decode[generic_space] = "generic_space";
    g_ptx_token_decode[instruction_space] = "instruction_space";
+
    init_directive_state();
    init_instruction_state();
 
