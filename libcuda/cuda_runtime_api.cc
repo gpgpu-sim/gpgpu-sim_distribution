@@ -112,7 +112,6 @@
 #include <regex>
 #include <sstream>
 #include <fstream>
-#include <queue>
 #ifdef OPENGL_SUPPORT
 #define GL_GLEXT_PROTOTYPES
 #ifdef __APPLE__
@@ -149,7 +148,7 @@
 std::map<void *,void **> pinned_memory; //support for pinned memories added
 std::map<void *, size_t> pinned_memory_size;
 int no_of_ptx=0;
-char ptx_list_file_name[1024];
+std::map<int, std::set<std::string> > version_filename;
 std::map<int, std::string> fatbinmap;
 std::map<int, bool>fatbin_registered;
 std::map<std::string, symbol_table*> name_symtab;
@@ -1510,6 +1509,7 @@ void extract_ptx_files_using_cuobjdump(bool g_cdp_enabled){
     char command[1000];
     std::string app_binary = get_app_binary(); 
 
+    char ptx_list_file_name[1024];
     snprintf(ptx_list_file_name,1024,"_cuobjdump_list_ptx_XXXXXX");
     int fd2=mkstemp(ptx_list_file_name);
     close(fd2);
@@ -1542,6 +1542,27 @@ void extract_ptx_files_using_cuobjdump(bool g_cdp_enabled){
 	 	printf("WARNING: Number of ptx in the executable file are 0. One of the reasons might be\n");
 	 	printf("\t1. CDP is enabled\n");
 	 }
+
+    std::ifstream infile(ptx_list_file_name);
+    std::string line;
+    while (std::getline(infile, line))
+    {
+         //int pos = line.find(std::string(get_app_binary_name(app_binary)));
+         const char *ptx_file = line.c_str();
+         int pos1 = line.find("sm_");
+         int pos2 = line.find_last_of(".");
+         if (pos1==std::string::npos&&pos2==std::string::npos){
+             printf("ERROR: PTX list is not in correct format");
+             exit(0);
+         }
+         std::string vstr = line.substr(pos1+3,pos2-pos1-3);
+         int version = atoi(vstr.c_str());
+         if (version_filename.find(version)==version_filename.end()){
+            version_filename[version] = std::set<std::string>();
+         }
+         version_filename[version].insert(line);
+    }
+
 }
 
 void cuobjdumpParseBinary(unsigned int handle){
@@ -1556,28 +1577,6 @@ void cuobjdumpParseBinary(unsigned int handle){
 		context->add_binary(symtab, handle);
 		return;
 	}
-
-   std::map<int, std::set<std::string> > version_filename;
-
-   std::ifstream infile(ptx_list_file_name);
-   std::string line;
-   while (std::getline(infile, line))
-   {
-        //int pos = line.find(std::string(get_app_binary_name(app_binary)));
-        const char *ptx_file = line.c_str();
-        int pos1 = line.find("sm_");
-        int pos2 = line.find_last_of(".");
-        if (pos1==std::string::npos&&pos2==std::string::npos){
-            printf("ERROR: PTX list is not in correct format");
-            exit(0);
-        }
-        std::string vstr = line.substr(pos1+3,pos2-pos1-3);
-        int version = atoi(vstr.c_str());
-        if (version_filename.find(version)==version_filename.end()){
-           version_filename[version] = std::set<std::string>();
-        }
-        version_filename[version].insert(line);
-   }
 
 	symbol_table *symtab;
    //loops through all ptx files from smallest sm version to largest
@@ -1671,7 +1670,6 @@ void extract_code_using_cuobjdump(){
     int result=0;
 #if (CUDART_VERSION >= 6000)
     extract_ptx_files_using_cuobjdump(g_cdp_enabled);
-    cuobjdumpParseBinary(1);
 #endif
     //TODO: redundant to dump twice. how can it be prevented?
     //dump only for specific arch
