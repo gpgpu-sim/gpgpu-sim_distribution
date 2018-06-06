@@ -521,7 +521,7 @@ compare_spec:EQ_OPTION { add_option(EQ_OPTION); }
 	;
 
 wmma_spec: WMMA_DIRECTIVE LAYOUT CONFIGURATION{add_space_spec(global_space,0);add_ptr_spec(global_space); add_wmma_option($1);add_wmma_option($2);add_wmma_option($3);}
-	| WMMA_DIRECTIVE LAYOUT LAYOUT CONFIGURATION{add_wmma_option($1);add_wmma_option($2),add_wmma_option($3),add_wmma_option($4)}
+	| WMMA_DIRECTIVE LAYOUT LAYOUT CONFIGURATION{add_wmma_option($1);add_wmma_option($2);add_wmma_option($3);add_wmma_option($4);}
 	;
 
 operand_list: operand
