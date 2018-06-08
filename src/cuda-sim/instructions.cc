@@ -835,17 +835,6 @@ void add_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    unsigned i_type = pI->get_type();
    src1_data = thread->get_operand_value(src1, dst, i_type, thread, 1);
    src2_data = thread->get_operand_value(src2, dst, i_type, thread, 1);
-   //unsigned warpId_aa,warp_size_aa;
-   //warpId_aa = pI->warp_id();
-   //warp_size_aa=32;
-   //dim3 t=thread->get_tid();
-   //unsigned tid_aa=warp_size_aa*warpId_aa;
-
-   ptx_thread_info *thread2;
-   thread2=thread; 
-   src1_data = thread2->get_operand_value(src1, dst, i_type, thread2, 1);
-   src2_data = thread2->get_operand_value(src2, dst, i_type, thread2, 1);
-
 
    unsigned rounding_mode = pI->rounding_mode();
    int orig_rm = fegetround();

@@ -68,7 +68,7 @@ bra     TC; ptx_lval.int_value = BRA_OP; return OPCODE;
 brx     TC; ptx_lval.int_value = BRX_OP; return OPCODE;
 brev    TC; ptx_lval.int_value = BREV_OP; return OPCODE;
 brkpt   TC; ptx_lval.int_value = BRKPT_OP; return OPCODE;
-wmma\.mma	TC; ptx_lval.int_value = MMA_OP; return OPCODE;
+wmma	TC; ptx_lval.int_value = MMA_OP; return OPCODE;
 wmma\.load	TC; ptx_lval.int_value = MMA_LD_OP; return OPCODE;
 wmma\.store 	TC; ptx_lval.int_value = MMA_ST_OP; return OPCODE;
 
@@ -160,7 +160,7 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.b\.sync TC; ptx_lval.int_value = LOAD_B; return WMMA_DIRECTIVE;
 \.c\.sync TC; ptx_lval.int_value = LOAD_C; return WMMA_DIRECTIVE;
 \.d\.sync TC; ptx_lval.int_value = STORE_D; return WMMA_DIRECTIVE;
-\.sync TC;ptx_lval.int_value=MMA; return WMMA_DIRECTIVE;
+\.mma\.sync TC;ptx_lval.int_value=MMA; return WMMA_DIRECTIVE;
 \.row TC; ptx_lval.int_value = ROW; return LAYOUT;
 \.col TC; ptx_lval.int_value = COL; return LAYOUT;
 \.m16n16k16 TC; ptx_lval.int_value = M16N16K16; return CONFIGURATION;
