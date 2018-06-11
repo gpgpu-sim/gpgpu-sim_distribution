@@ -1096,6 +1096,8 @@ ptx_instruction::ptx_instruction( int opcode,
       		  break;
       		case ROW:
       		case COL:
+      		  m_wmma_layout[rr++]=last_ptx_inst_option;
+      		  break;
       		case M16N16K16:
 			break;
       		default:
@@ -1103,6 +1105,7 @@ ptx_instruction::ptx_instruction( int opcode,
       		   break;
 	}
    }
+   rr=0;
    n=1;
    for ( i=options.begin(); i!= options.end(); i++, n++ ) {
       int last_ptx_inst_option = *i;

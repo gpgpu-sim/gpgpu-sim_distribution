@@ -1028,6 +1028,9 @@ public:
    int get_wmma_type() const {
       return m_wmma_type;
    }
+   int get_wmma_layout(int index) const {
+      return m_wmma_layout[index];//0->Matrix D,1->Matrix C
+   }
    int get_type() const 
    {
       assert( !m_scalar_type.empty() );
