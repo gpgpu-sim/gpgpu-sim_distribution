@@ -1701,7 +1701,7 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 
 			if(!((i==3)&&(type2==F32_TYPE))){
 				for(k=0;k<2*nelem;k++){
-					if(k%2==0)
+					if(k%2==1)
 						hex_val=(v[k/2].s64&0xffff);
 					else
 						hex_val=((v[k/2].s64&0xffff0000)>>16);
@@ -3094,7 +3094,7 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			num_reg=8;
 
 		for(i=0;i<num_reg;i++){
-			nw_data[i].s64= ((data[2*i].s64 & 0xffff))| ((data[2*i+1].s64 & 0xffff)<<16);
+			nw_data[i].s64= ((data[2*i].s64 & 0xffff)<<16)| ((data[2*i+1].s64 & 0xffff));
 		}
 
 		if(wmma_type==LOAD_C)

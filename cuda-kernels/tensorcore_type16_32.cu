@@ -179,13 +179,6 @@ int main(int argc, char* argv[]) {
    int t=600000;
    while(t-->0);
 
-   printf("D_CALCULATED\n");
-   for(int m=0;m<MATRIX_M;m++){
-	for(int n=0;n<MATRIX_N;n++){
-		printf("%.2f,",d_cal_host_wmma[m*MATRIX_N+n]);
-	}
-	printf("\n");
-   }
    printf("D_WMMA\n");
    for(int m=0;m<MATRIX_M;m++){
 	for(int n=0;n<MATRIX_N;n++){
@@ -193,19 +186,7 @@ int main(int argc, char* argv[]) {
 	}
 	printf("\n");
    }
-   int suc=1;
-   for(int m=0;m<MATRIX_M;m++){
-	for(int n=0;n<MATRIX_N;n++){
- 		if(abs(d_cal_host_wmma[m*MATRIX_N+n]-d_host_wmma[m*MATRIX_N+n])>1) 
-		{	
-			printf("ERROR:\n");
-			suc=0;
-		}
-	}
-   }
-   if(suc==1)
-	printf("COMPLETED_SUCCESSFULLY\n");
-   
+   printf("Check the result by executing the kernel on volta\n"); 
    cudaErrCheck(cudaFree(a_fp32));
    cudaErrCheck(cudaFree(b_fp32));
    cudaErrCheck(cudaFree(c_fp32));
