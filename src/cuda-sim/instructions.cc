@@ -48,6 +48,8 @@
 using half_float::half;
 
 unsigned ptx_instruction::g_num_ptx_inst_uid=0;
+bool g_debug_instruction = 0;
+
 
 const char *g_opcode_string[NUM_OPCODES] = {
 #define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) STR,
@@ -1666,7 +1668,6 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 {
 	int i,j,k,thrd;
 	int row,col,offset;
-	printf("mmaWorld\n");
    	ptx_reg_t matrix_a[16][16];
    	ptx_reg_t matrix_b[16][16];
    	ptx_reg_t matrix_c[16][16];
@@ -1688,19 +1689,20 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 	 	
 	for (thrd=0; thrd < core->get_warp_size(); thrd++){
 		thread = core->get_thread_info()[tid+thrd];
-		printf("THREAD=%d\n:",thrd);
+		if(g_debug_instruction)
+			printf("THREAD=%d\n:",thrd);
 		for(i=1;i<=3;i++){
 			const operand_info &src_a=  pI->operand_lookup(i);
          		unsigned nelem = src_a.get_vect_nelem();
          		ptx_reg_t v[8];
          		thread->get_vector_operand_values( src_a, v, nelem );
-
-			printf("Thread%d_Iteration=%d\n:",thrd,i);
-			for(k=0;k<nelem;k++){
-				printf("%x ",v[k].u64);
+			if(g_debug_instruction){
+				printf("Thread%d_Iteration=%d\n:",thrd,i);
+				for(k=0;k<nelem;k++){
+					printf("%x ",v[k].u64);
+				}
+				printf("\n");
 			}
-			printf("\n");
-
 			ptx_reg_t nw_v[16];
 			int hex_val;
 
@@ -1716,20 +1718,25 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			if(!((i==3)&&(type2==F32_TYPE))){
 				for(k=0;k<2*nelem;k++){
 					temp=nw_v[k].f16;
-					printf("%f ",temp);
+					if(g_debug_instruction)
+						printf("%f ",temp);
 				}
-				printf("\n");
+				if(g_debug_instruction)
+					printf("\n");
 			}
 			else{
-				for(k=0;k<8;k++){
-					printf("%f ",v[k].f32);
+				if(g_debug_instruction){
+					for(k=0;k<8;k++){
+						printf("%f ",v[k].f32);
+					}
+					printf("\n");
 				}
-				printf("\n");
 			}
 			switch(i) {
 			      case 1 ://operand 1
 				for(k=0;k<8;k++){
 					mapping(thrd,LOAD_A,a_layout,F16_TYPE,k,16,row,col,offset);
+					if(g_debug_instruction)
 					printf("A:thread=%d,row=%d,col=%d,offset=%d\n",thrd,row,col,offset);
 				 	matrix_a[row][col]=nw_v[offset];
 			        }
@@ -1737,6 +1744,7 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			      case 2 ://operand 2
 				for(k=0;k<8;k++){
 					mapping(thrd,LOAD_B,b_layout,F16_TYPE,k,16,row,col,offset);
+					if(g_debug_instruction)
 					printf("B:thread=%d,row=%d,col=%d,offset=%d\n",thrd,row,col,offset);
 				 	matrix_b[row][col]=nw_v[offset];
 				}	
@@ -1744,6 +1752,7 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			      case 3 ://operand 3
 				for(k=0;k<8;k++){
 					mapping(thrd,LOAD_C,ROW,type2,k,16,row,col,offset);
+					if(g_debug_instruction)
 					printf("C:thread=%d,row=%d,col=%d,offset=%d\n",thrd,row,col,offset);
 					if(type2!=F16_TYPE){
 					 	matrix_c[row][col]=v[offset];
@@ -1757,56 +1766,45 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			         printf("Invalid Operand Index\n" );
 			}
 		}
+		if(g_debug_instruction)
 		printf("\n");
 	}
-
-	printf("MATRIX_A\n");
-	for (i=0;i<16;i++){
-		for(j=0;j<16;j++){
-			temp=matrix_a[i][j].f16;
-			printf("%f ",temp);
-		}
-		printf("\n");
-	}
-	printf("MATRIX_B\n");
-	for (i=0;i<16;i++){
-		for(j=0;j<16;j++){
-			temp=matrix_b[i][j].f16;
-			printf("%f ",temp);
-		}
-		printf("\n");
-	}	
-	printf("MATRIX_C\n");
-	for (i=0;i<16;i++){
-		for(j=0;j<16;j++){
-			if(type2==F16_TYPE){
-				temp=matrix_c[i][j].f16;
+	if(g_debug_instruction){
+		printf("MATRIX_A\n");
+		for (i=0;i<16;i++){
+			for(j=0;j<16;j++){
+				temp=matrix_a[i][j].f16;
 				printf("%f ",temp);
 			}
-			else
-				printf("%f ",matrix_c[i][j].f32);
+			printf("\n");
 		}
-		printf("\n");
-	}	
+		printf("MATRIX_B\n");
+		for (i=0;i<16;i++){
+			for(j=0;j<16;j++){
+				temp=matrix_b[i][j].f16;
+				printf("%f ",temp);
+			}
+			printf("\n");
+		}	
+		printf("MATRIX_C\n");
+		for (i=0;i<16;i++){
+			for(j=0;j<16;j++){
+				if(type2==F16_TYPE){
+					temp=matrix_c[i][j].f16;
+					printf("%f ",temp);
+				}
+				else
+					printf("%f ",matrix_c[i][j].f32);
+			}
+			printf("\n");
+		}	
+	}
 	for (i=0;i<16;i++){
 		for(j=0;j<16;j++){
 				matrix_d[i][j].f16=0;
 		}
 	}
 	
-	printf("MATRIX_D\n");
-	for (i=0;i<16;i++){
-		for(j=0;j<16;j++){
-			if(type==F16_TYPE){
-				temp=matrix_d[i][j].f16;
-				printf("%f ",temp);
-			}
-			else
-			printf("%.2f ",matrix_d[i][j].f32);
-	
-		}
-		printf("\n");
-	}	
 	for (i=0;i<16;i++){
 		for(j=0;j<16;j++){
 			for(k=0;k<16;k++){
@@ -1831,23 +1829,26 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			}
 		}
 	}
-	printf("MATRIX_D\n");
-	for (i=0;i<16;i++){
-		for(j=0;j<16;j++){
-			if(type==F16_TYPE){
-				temp=matrix_d[i][j].f16;
-				printf("%f ",temp);
+	if(g_debug_instruction){
+		printf("MATRIX_D\n");
+		for (i=0;i<16;i++){
+			for(j=0;j<16;j++){
+				if(type==F16_TYPE){
+					temp=matrix_d[i][j].f16;
+					printf("%f ",temp);
+				}
+				else
+					printf("%.2f ",matrix_d[i][j].f32);
 			}
-			else
-				printf("%.2f ",matrix_d[i][j].f32);
-		}
-		printf("\n");
-	}	
+			printf("\n");
+		}	
+	}
 	for (thrd=0; thrd < core->get_warp_size(); thrd++){
 		int row_t[8];
 		int col_t[8];	
 		for(k=0;k<8;k++){
 			mapping(thrd,LOAD_C,ROW,type,k,16,row_t[k],col_t[k],offset);
+			if(g_debug_instruction)
 			printf("mma:store:row:%d,col%d\n",row_t[k],col_t[k]);
 		}
 		thread = core->get_thread_info()[tid+thrd];
@@ -1856,33 +1857,37 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 		if(type==F32_TYPE){
 			thread->set_wmma_vector_operand_values(dst,matrix_d[row_t[0]][col_t[0]],matrix_d[row_t[1]][col_t[1]],matrix_d[row_t[2]][col_t[2]],matrix_d[row_t[3]][col_t[3]],matrix_d[row_t[4]][col_t[4]],matrix_d[row_t[5]][col_t[5]],matrix_d[row_t[6]][col_t[6]],matrix_d[row_t[7]][col_t[7]]);
 		
-			printf("thread%d:",thrd);
-			for(k=0;k<8;k++){
-				printf("%f ",matrix_d[row_t[k]][col_t[k]].f32);
+			if(g_debug_instruction)
+			{
+				printf("thread%d:",thrd);
+				for(k=0;k<8;k++){
+					printf("%f ",matrix_d[row_t[k]][col_t[k]].f32);
+				}
+				printf("\n");
 			}
-			printf("\n");
 		}
 		else if(type==F16_TYPE){
-		
-			printf("thread%d:",thrd);
-			for(k=0;k<8;k++){
-				temp=matrix_d[row_t[k]][col_t[k]].f16;
-				printf("%f ",temp);
-			}
-			printf("\n");
+			if(g_debug_instruction){	
+				printf("thread%d:",thrd);
+				for(k=0;k<8;k++){
+					temp=matrix_d[row_t[k]][col_t[k]].f16;
+					printf("%f ",temp);
+				}
+				printf("\n");
 
-			printf("thread%d:",thrd);
-			for(k=0;k<8;k++){
-				printf("%x ",matrix_d[row_t[k]][col_t[k]].f16);
+				printf("thread%d:",thrd);
+				for(k=0;k<8;k++){
+					printf("%x ",matrix_d[row_t[k]][col_t[k]].f16);
+				}
+				printf("\n");
 			}
-			printf("\n");
-		
 			ptx_reg_t nw_data1, nw_data2, nw_data3, nw_data4;
 			nw_data1.s64=((matrix_d[row_t[0]][col_t[0]].s64   & 0xffff))|((matrix_d[row_t[1]][col_t[1]].s64&0xffff)<<16);
 			nw_data2.s64=((matrix_d[row_t[2]][col_t[2]].s64   & 0xffff))|((matrix_d[row_t[3]][col_t[3]].s64&0xffff)<<16);
 			nw_data3.s64=((matrix_d[row_t[4]][col_t[4]].s64   & 0xffff))|((matrix_d[row_t[5]][col_t[5]].s64&0xffff)<<16);
 			nw_data4.s64=((matrix_d[row_t[6]][col_t[6]].s64   & 0xffff))|((matrix_d[row_t[7]][col_t[7]].s64&0xffff)<<16);
    			thread->set_vector_operand_values(dst,nw_data1,nw_data2,nw_data3,nw_data4);
+			if(g_debug_instruction)
 		 	printf("thread%d=%x,%x,%x,%x",thrd,nw_data1.s64,nw_data2.s64,nw_data3.s64,nw_data4.s64);
 		
 		}
@@ -2935,7 +2940,8 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
    	decode_space(space,thread,src1,mem,addr);
 
    	type_info_key::type_decode(type,size,t);
-   	printf("mma_st: thrd=%d,addr=%d, fp(size=%d), stride=%d\n",thrd,addr_reg.u32,size,src2_data.u32);
+   	if(g_debug_instruction)
+		printf("mma_st: thrd=%d,addr=%d, fp(size=%d), stride=%d\n",thrd,addr_reg.u32,size,src2_data.u32);
 	addr_t new_addr = addr+thread_group_offset(thrd,wmma_type,wmma_layout,type,stride)*size/8;  
 
 	ptx_reg_t nw_v[8];
@@ -2949,16 +2955,17 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 	for(k=0;k<8;k++){
 		if(type==F32_TYPE){
        			mem->write(new_addr+4*acc_float_offset(k,wmma_layout,stride),size/8,&v[k].s64,thread,pI);
-
-			printf("wmma:store:thread%d=%x,%x,%x,%x,%x,%x,%x,%x\n",thrd,v[0].s64,v[1].s64,v[2].s64,v[3].s64,v[4].s64,v[5].s64,v[6].s64,v[7].s64);   
-			float temp;
-			int l;
-			printf("thread=%d:",thrd);
-			for(l=0;l<8;l++){
-				temp=v[0].f32;
-				printf("%f",temp);	
+			if(g_debug_instruction){
+				printf("wmma:store:thread%d=%x,%x,%x,%x,%x,%x,%x,%x\n",thrd,v[0].s64,v[1].s64,v[2].s64,v[3].s64,v[4].s64,v[5].s64,v[6].s64,v[7].s64);   
+				float temp;
+				int l;
+				printf("thread=%d:",thrd);
+				for(l=0;l<8;l++){
+					temp=v[0].f32;
+					printf("%f",temp);	
+				}
+				printf("\n");
 			}
-			printf("\n");
 	
 		}
 		else if(type==F16_TYPE){
@@ -2966,7 +2973,8 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
        				mem->write(new_addr+k*2,size/8,&nw_v[k].s64,thread,pI);
 			else if(wmma_layout==COL)
        				mem->write(new_addr+k*2*stride,size/8,&nw_v[k].s64,thread,pI);
-			printf("wmma:store:thread%d=%x,%x,%x,%x,%x,%x,%x,%x\n",thrd,nw_v[0].s64,nw_v[1].s64,nw_v[2].s64,nw_v[3].s64,nw_v[4].s64,nw_v[5].s64,nw_v[6].s64,nw_v[7].s64);   
+			if(g_debug_instruction)
+				printf("wmma:store:thread%d=%x,%x,%x,%x,%x,%x,%x,%x\n",thrd,nw_v[0].s64,nw_v[1].s64,nw_v[2].s64,nw_v[3].s64,nw_v[4].s64,nw_v[5].s64,nw_v[6].s64,nw_v[7].s64);   
 		}
 	}
    	
@@ -3004,7 +3012,9 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
    	type_info_key::type_decode(type,size,t);
    	
 	ptx_reg_t data[16];
-   	printf("mma_ld: thrd=%d,addr=%d, fpsize=%d, stride=%d\n",thrd,src1_data.u32,size,src2_data.u32);
+   	if(g_debug_instruction)	
+		printf("mma_ld: thrd=%d,addr=%d, fpsize=%d, stride=%d\n",thrd,src1_data.u32,size,src2_data.u32);
+	
 	addr_t new_addr = addr+thread_group_offset(thrd,wmma_type,wmma_layout,type,stride)*size/8;  
 
 	if(wmma_type==LOAD_A){
@@ -3058,33 +3068,34 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 		printf("wrong wmma type\n");;
 		abort();
 	}
-	
-	if(type==F16_TYPE){
-		printf("\nthread%d= ",thrd);
-		for(i=0;i<16;i++){
-			printf("%x ",data[i].u64);
+	if(g_debug_instruction){
+		if(type==F16_TYPE){
+			printf("\nthread%d= ",thrd);
+			for(i=0;i<16;i++){
+				printf("%x ",data[i].u64);
+			}
+			printf("\n");
+			
+			printf("\nthread%d= ",thrd);
+			float temp;
+			for(i=0;i<16;i++){
+				temp=data[i].f16;
+				printf("%f ",temp);
+			}
+			printf("\n");
 		}
-		printf("\n");
-		
-		printf("\nthread%d= ",thrd);
-		float temp;
-		for(i=0;i<16;i++){
-			temp=data[i].f16;
-			printf("%f ",temp);
+		else{
+			printf("\nthread%d= ",thrd);
+			for(i=0;i<8;i++){
+				printf("%f ",data[i].f32);
+			}
+			printf("\n");
+			printf("\nthread%d= ",thrd);
+			for(i=0;i<8;i++){
+				printf("%x ",data[i].u64);
+			}
+			printf("\n");
 		}
-		printf("\n");
-	}
-	else{
-		printf("\nthread%d= ",thrd);
-		for(i=0;i<8;i++){
-			printf("%f ",data[i].f32);
-		}
-		printf("\n");
-		printf("\nthread%d= ",thrd);
-		for(i=0;i<8;i++){
-			printf("%x ",data[i].u64);
-		}
-		printf("\n");
 	}
 
 	if((wmma_type==LOAD_C)&&(type==F32_TYPE)){
@@ -3107,16 +3118,17 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
    			thread->set_vector_operand_values(dst,nw_data[0],nw_data[1],nw_data[2],nw_data[3]);
 		else
    			thread->set_wmma_vector_operand_values(dst,nw_data[0],nw_data[1],nw_data[2],nw_data[3],nw_data[4],nw_data[5],nw_data[6],nw_data[7]);
-		
-		printf("wmma_load:data[0].s64=%x,data[1].s64=%x,new_data[0].s64=%x\n",data[0].u64,data[1].u64,nw_data[0].u64);	
-		printf("wmma_load:data[2].s64=%x,data[3].s64=%x,new_data[1].s64=%x\n",data[2].u64,data[3].u64,nw_data[1].u64);	
-		printf("wmma_load:data[4].s64=%x,data[5].s64=%x,new_data[2].s64=%x\n",data[4].u64,data[5].u64,nw_data[2].u64);	
-		printf("wmma_load:data[6].s64=%x,data[7].s64=%x,new_data[3].s64=%x\n",data[6].u64,data[7].u64,nw_data[3].u64);	
-		if(wmma_type!=LOAD_C){
-		printf("wmma_load:data[8].s64=%x,data[9].s64=%x,new_data[4].s64=%x\n",data[8].u64,data[9].u64,nw_data[4].s64);	
-		printf("wmma_load:data[10].s64=%x,data[11].s64=%x,new_data[5].s64=%x\n",data[10].u64,data[11].u64,nw_data[5].u64);	
-		printf("wmma_load:data[12].s64=%x,data[13].s64=%x,new_data[6].s64=%x\n",data[12].u64,data[13].u64,nw_data[6].u64);	
-		printf("wmma_load:data[14].s64=%x,data[15].s64=%x,new_data[7].s64=%x\n",data[14].u64,data[15].u64,nw_data[3].u64);	
+		if(g_debug_instruction){	
+			printf("wmma_load:data[0].s64=%x,data[1].s64=%x,new_data[0].s64=%x\n",data[0].u64,data[1].u64,nw_data[0].u64);	
+			printf("wmma_load:data[2].s64=%x,data[3].s64=%x,new_data[1].s64=%x\n",data[2].u64,data[3].u64,nw_data[1].u64);	
+			printf("wmma_load:data[4].s64=%x,data[5].s64=%x,new_data[2].s64=%x\n",data[4].u64,data[5].u64,nw_data[2].u64);	
+			printf("wmma_load:data[6].s64=%x,data[7].s64=%x,new_data[3].s64=%x\n",data[6].u64,data[7].u64,nw_data[3].u64);	
+			if(wmma_type!=LOAD_C){
+			printf("wmma_load:data[8].s64=%x,data[9].s64=%x,new_data[4].s64=%x\n",data[8].u64,data[9].u64,nw_data[4].s64);	
+			printf("wmma_load:data[10].s64=%x,data[11].s64=%x,new_data[5].s64=%x\n",data[10].u64,data[11].u64,nw_data[5].u64);	
+			printf("wmma_load:data[12].s64=%x,data[13].s64=%x,new_data[6].s64=%x\n",data[12].u64,data[13].u64,nw_data[6].u64);	
+			printf("wmma_load:data[14].s64=%x,data[15].s64=%x,new_data[7].s64=%x\n",data[14].u64,data[15].u64,nw_data[3].u64);	
+			}
 		}
 	}
 
