@@ -745,7 +745,7 @@ public:
    {
       ptx_reg_t result;
       switch ( m_type ) {
-      case int_t:         result.s32 = m_value.m_int; break;
+      case int_t:         result.s64 = m_value.m_int; break;
       case float_op_t:    result.f32 = m_value.m_float; break;
       case double_op_t:   result.f64 = m_value.m_double; break; 
       case unsigned_t:    result.u32 = m_value.m_unsigned; break;

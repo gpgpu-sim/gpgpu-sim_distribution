@@ -1353,45 +1353,45 @@ void bfe_impl( const ptx_instruction *pI, ptx_thread_info *thread )
     const operand_info &src1 = pI->src1();
     const operand_info &src2 = pI->src2();
     const operand_info &src3 = pI->src3();
-    ptx_reg_t a = thread->get_operand_value(src1, dst, i_type, thread, 1);
+    ptx_reg_t src = thread->get_operand_value(src1, dst, i_type, thread, 1);
     ptx_reg_t b = thread->get_operand_value(src2, dst, i_type, thread, 1);
     ptx_reg_t c = thread->get_operand_value(src3, dst, i_type, thread, 1);
+    ptx_reg_t data;
 	unsigned pos = b.u32 & 0xFF;
 	unsigned len = c.u32 & 0xFF;
-	unsigned d = 0;
 	switch (i_type)
 	{
 		case U32_TYPE:
 		{
 			unsigned mask;
-			d = a.u32 >> pos;
+			data.u32 = src.u32 >> pos;
 			mask = 0xFFFFFFFF >> (32 - len);
-			d &= mask;
+			data.u32 &= mask;
 			break;
 		}
 		case U64_TYPE:
 		{
 			unsigned long mask;
-			d = a.u64 >> pos;	
+			data.u64 = src.u64 >> pos;	
 			mask = 0xFFFFFFFFFFFFFFFF >> (64 - len);
-			d &= mask;
+			data.u64 &= mask;
 			break;
 		}
 		case S32_TYPE:
 		{
 			unsigned mask;
 			unsigned min = MY_MIN_I(pos + len - 1, msb);
-			unsigned sbit = len == 0 ? 0 : (a.s32 >> min) & 0x1;
-			d = a.s32 >> pos;
+			unsigned sbit = len == 0 ? 0 : (src.s32 >> min) & 0x1;
+			data.s32 = src.s32 >> pos;
 			if (sbit > 0)
 			{
 				mask = 0xFFFFFFFF << len;
-				d |= mask;
+				data.s32 |= mask;
 			}
 			else
 			{
 				mask = 0xFFFFFFFF >> (32 - len);
-				d &= mask;
+				data.s32 &= mask;
 			}
 			break;
 		}
@@ -1399,17 +1399,17 @@ void bfe_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 		{
 			unsigned long mask;
 			unsigned min = MY_MIN_I(pos + len - 1, msb);
-			unsigned sbit = len == 0 ? 0 : (a.s64 >> min) & 0x1;
-			d = a.s64 >> pos;
+			unsigned sbit = len == 0 ? 0 : (src.s64 >> min) & 0x1;
+			data.s64 = src.s64 >> pos;
 			if (sbit > 0)
 			{
 				mask = 0xFFFFFFFFFFFFFFFF << len;
-				d |= mask;
+				data.s64 |= mask;
 			}
 			else
 			{
 				mask = 0xFFFFFFFFFFFFFFFF >> (64 - len);
-				d &= mask;
+				data.s64 &= mask;
 			}
 			break;
 		}
@@ -1418,7 +1418,7 @@ void bfe_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 		abort();
 		return;
 	}
-    thread->set_operand_value(dst,d, i_type, thread, pI);
+    thread->set_operand_value(dst, data, i_type, thread, pI);
 }
 
 void bfi_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
