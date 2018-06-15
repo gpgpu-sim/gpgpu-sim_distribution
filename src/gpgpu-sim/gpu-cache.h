@@ -464,8 +464,10 @@ enum mshr_config_t {
 };
 
 enum set_index_function{
-    FERMI_HASH_SET_FUNCTION = 0,
-    LINEAR_SET_FUNCTION,
+	LINEAR_SET_FUNCTION = 0,
+	BITWISE_XORING_FUNCTION,
+	HASH_IPOLY_FUNCTION,
+	FERMI_HASH_SET_FUNCTION,
     CUSTOM_SET_FUNCTION
 };
 
@@ -587,6 +589,7 @@ public:
 
         switch(sif){
         case 'H': m_set_index_function = FERMI_HASH_SET_FUNCTION; break;
+        case 'P': m_set_index_function = HASH_IPOLY_FUNCTION; break;
         case 'C': m_set_index_function = CUSTOM_SET_FUNCTION; break;
         case 'L': m_set_index_function = LINEAR_SET_FUNCTION; break;
         default: exit_parse_error();

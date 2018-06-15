@@ -74,7 +74,7 @@ unsigned l1d_cache_config::set_index(new_addr_type addr) const{
         /*
         * Set Indexing function from "A Detailed GPU Cache Model Based on Reuse Distance Theory"
         * Cedric Nugteren et al.
-        * ISCA 2014
+        * HPCA 2014
         */
         if(m_nset == 32 || m_nset == 64){
             // Lower xor value is bits 7-11
@@ -97,6 +97,36 @@ unsigned l1d_cache_config::set_index(new_addr_type addr) const{
         }
         break;
 
+    case HASH_IPOLY_FUNCTION:
+    	/*
+		* Set Indexing function from "Pseudo-randomly interleaved memory."
+		* Rau, B. R et al.
+		* ISCA 1991
+		*
+		* "Sacat: streaming-aware conflict-avoiding thrashing-resistant gpgpu cache management scheme."
+		* Khairy et al.
+		* IEEE TPDS 2017.
+    	*/
+    	if(m_nset == 32 || m_nset == 64){
+		std::bitset<64> a(addr);
+		std::bitset<6> index;
+		index[0] = a[25]^a[24]^a[23]^a[22]^a[21]^a[18]^a[17]^a[15]^a[12]^a[7]; //10
+		index[1] = a[26]^a[25]^a[24]^a[23]^a[22]^a[19]^a[18]^a[16]^a[13]^a[8]; //10
+		index[2] = a[26]^a[22]^a[21]^a[20]^a[19]^a[18]^a[15]^a[14]^a[12]^a[9]; //10
+		index[3] = a[23]^a[22]^a[21]^a[20]^a[19]^a[16]^a[15]^a[13]^a[10]; //9
+		index[4] = a[24]^a[23]^a[22]^a[21]^a[20]^a[17]^a[16]^a[14]^a[11]; //9
+
+		 if(m_nset == 64)
+			 index[5] = a[12];
+
+		set_index = index.to_ulong();
+
+    	}else{ /* Else incorrect number of sets for the hashing function */
+    	            assert("\nGPGPU-Sim cache configuration error: The number of sets should be "
+    	                    "32 or 64 for the hashing set index function.\n" && 0);
+    	 }
+        break;
+
     case CUSTOM_SET_FUNCTION:
         /* No custom set function implemented */
         break;
@@ -104,6 +134,10 @@ unsigned l1d_cache_config::set_index(new_addr_type addr) const{
     case LINEAR_SET_FUNCTION:
         set_index = (addr >> m_line_sz_log2) & (m_nset-1);
         break;
+
+    default:
+    	 assert("\nUndefined set index function.\n" && 0);
+    	 break;
     }
 
     // Linear function selected or custom set index function not implemented
