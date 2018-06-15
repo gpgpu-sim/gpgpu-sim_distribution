@@ -34,3 +34,8 @@ cscope*
 tags
 regression.sh
 
+#gcov
+*.gcov
+*.gcda
+*.gcno
+
