@@ -520,7 +520,7 @@ void ptx_instruction::set_mul_div_or_other_archop(){
 				    sp_op=FP_EXP_OP;
 					break;
 				default:
-					if(op==ALU_OP)
+					if((op==ALU_OP)||(op==TENSOR_CORE_OP))
 					    sp_op=FP__OP;
 					break;
 
@@ -542,7 +542,7 @@ void ptx_instruction::set_mul_div_or_other_archop(){
 				    sp_op=INT_DIV_OP;
 				break;
 				default:
-					if(op==ALU_OP)
+					if((op==ALU_OP)||(op==TENSOR_CORE_OP))
 					    sp_op=INT__OP;
 					break;
 			}
@@ -795,6 +795,7 @@ void ptx_instruction::set_opcode_and_latency()
    case MMA_OP:
 	   latency = 64;
 	   initiation_interval = 64;
+           op=TENSOR_CORE_OP;
 	   break;
    case SHFL_OP:
 	   latency = 32;
