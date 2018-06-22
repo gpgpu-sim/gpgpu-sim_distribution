@@ -204,7 +204,7 @@ dram_req_t::dram_req_t( class mem_fetch *mf, unsigned banks, unsigned dram_bnk_i
    }
     else if(dram_bnk_indexing_policy == 1) {
     	 int lbank = log2(banks);
-    	 bk  = tlx.bk ^ (((1<<lbank)-1) & tlx.row);
+    	 bk  = tlx.bk ^ (tlx.row & ((1<<lbank)-1));
     }
     else
     	assert(1);
