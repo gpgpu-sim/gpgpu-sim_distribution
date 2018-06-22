@@ -74,7 +74,7 @@ unsigned l1d_cache_config::set_index(new_addr_type addr) const{
         /*
         * Set Indexing function from "A Detailed GPU Cache Model Based on Reuse Distance Theory"
         * Cedric Nugteren et al.
-        * ISCA 2014
+        * HPCA 2014
         */
         if(m_nset == 32 || m_nset == 64){
             // Lower xor value is bits 7-11
@@ -97,6 +97,36 @@ unsigned l1d_cache_config::set_index(new_addr_type addr) const{
         }
         break;
 
+    case HASH_IPOLY_FUNCTION:
+    	/*
+		* Set Indexing function from "Pseudo-randomly interleaved memory."
+		* Rau, B. R et al.
+		* ISCA 1991
+		*
+		* "Sacat: streaming-aware conflict-avoiding thrashing-resistant gpgpu cache management scheme."
+		* Khairy et al.
+		* IEEE TPDS 2017.
+    	*/
+    	if(m_nset == 32 || m_nset == 64){
+		std::bitset<64> a(addr);
+		std::bitset<6> index;
+		index[0] = a[25]^a[24]^a[23]^a[22]^a[21]^a[18]^a[17]^a[15]^a[12]^a[7]; //10
+		index[1] = a[26]^a[25]^a[24]^a[23]^a[22]^a[19]^a[18]^a[16]^a[13]^a[8]; //10
+		index[2] = a[26]^a[22]^a[21]^a[20]^a[19]^a[18]^a[15]^a[14]^a[12]^a[9]; //10
+		index[3] = a[23]^a[22]^a[21]^a[20]^a[19]^a[16]^a[15]^a[13]^a[10]; //9
+		index[4] = a[24]^a[23]^a[22]^a[21]^a[20]^a[17]^a[16]^a[14]^a[11]; //9
+
+		 if(m_nset == 64)
+			 index[5] = a[12];
+
+		set_index = index.to_ulong();
+
+    	}else{ /* Else incorrect number of sets for the hashing function */
+    	            assert("\nGPGPU-Sim cache configuration error: The number of sets should be "
+    	                    "32 or 64 for the hashing set index function.\n" && 0);
+    	 }
+        break;
+
     case CUSTOM_SET_FUNCTION:
         /* No custom set function implemented */
         break;
@@ -104,6 +134,10 @@ unsigned l1d_cache_config::set_index(new_addr_type addr) const{
     case LINEAR_SET_FUNCTION:
         set_index = (addr >> m_line_sz_log2) & (m_nset-1);
         break;
+
+    default:
+    	 assert("\nUndefined set index function.\n" && 0);
+    	 break;
     }
 
     // Linear function selected or custom set index function not implemented
@@ -658,15 +692,13 @@ void cache_stats::print_stats(FILE *fout, const char *cache_name) const{
     std::string m_cache_name = cache_name;
     for (unsigned type = 0; type < NUM_MEM_ACCESS_TYPE; ++type) {
         for (unsigned status = 0; status < NUM_CACHE_REQUEST_STATUS; ++status) {
-            if(m_stats[type][status] > 0){
-                fprintf(fout, "\t%s[%s][%s] = %u\n",
-                    m_cache_name.c_str(),
-                    mem_access_type_str((enum mem_access_type)type),
-                    cache_request_status_str((enum cache_request_status)status),
-                    m_stats[type][status]);
-                if(status != RESERVATION_FAIL)
-                	 total_access[type]+= m_stats[type][status];
-            }
+            fprintf(fout, "\t%s[%s][%s] = %u\n",
+                m_cache_name.c_str(),
+                mem_access_type_str((enum mem_access_type)type),
+                cache_request_status_str((enum cache_request_status)status),
+                m_stats[type][status]);
+            if(status != RESERVATION_FAIL)
+            	 total_access[type]+= m_stats[type][status];
         }
     }
     for (unsigned type = 0; type < NUM_MEM_ACCESS_TYPE; ++type) {
@@ -962,7 +994,7 @@ void baseline_cache::send_read_request(new_addr_type addr, new_addr_type block_a
         m_mshrs.add(mshr_addr,mf);
         m_extra_mf_fields[mf] = extra_mf_fields(mshr_addr,mf->get_addr(),cache_index, mf->get_data_size(), m_config);
         mf->set_data_size( m_config.get_atom_sz() );
-        mf->set_addr( block_addr );
+        mf->set_addr( mshr_addr );
         m_miss_queue.push_back(mf);
         mf->set_status(m_miss_queue_status,time);
         if(!wa)
@@ -1432,7 +1464,7 @@ data_cache::process_tag_probe( bool wr,
             access_status = (this->*m_wr_hit)( addr,
                                       cache_index,
                                       mf, time, events, probe_status );
-        }else if ( probe_status != RESERVATION_FAIL ) {
+        }else if ( (probe_status != RESERVATION_FAIL) || (probe_status == RESERVATION_FAIL && m_config.m_write_alloc_policy == NO_WRITE_ALLOCATE) ) {
             access_status = (this->*m_wr_miss)( addr,
                                        cache_index,
                                        mf, time, events, probe_status );
