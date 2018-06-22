@@ -2753,6 +2753,7 @@ void mov_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    const operand_info &dst  = pI->dst();
    const operand_info &src1 = pI->src1();
    unsigned i_type = pI->get_type();
+   assert( src1.is_param_local() == 0 );
 
    if( (src1.is_vector() || dst.is_vector()) && (i_type != BB64_TYPE) && (i_type != BB128_TYPE) && (i_type != FF64_TYPE) ) {
       // pack or unpack operation

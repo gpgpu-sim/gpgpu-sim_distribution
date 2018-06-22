@@ -257,6 +257,14 @@ bool symbol_table::add_function_decl( const char *name, int entry_point, functio
    return prior_decl;
 }
 
+function_info *symbol_table::lookup_function( std::string name )
+{
+   std::string key = std::string(name);
+   std::map<std::string,function_info*>::iterator it = m_function_info_lookup.find(key);
+   assert ( it != m_function_info_lookup.end() );
+   return it->second;
+}
+
 type_info *symbol_table::add_type( memory_space_t space_spec, int scalar_type_spec, int vector_spec, int alignment_spec, int extern_spec )
 {
    if( space_spec == param_space_unclassified ) 

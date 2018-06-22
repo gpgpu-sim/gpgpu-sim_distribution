@@ -126,6 +126,9 @@
 #include "host_defines.h"
 #include "builtin_types.h"
 #include "driver_types.h"
+#if (CUDART_VERSION >= 8000)
+#include "cuda.h"
+#endif
 #if (CUDART_VERSION < 8000)
 #include "__cudaFatFormat.h"
 #endif
@@ -287,6 +290,34 @@ struct CUctx_st {
 		}
 	}
 
+    void register_hostFun_function( const char*hostFun, function_info* f){
+        m_kernel_lookup[hostFun] = f;
+    }
+
+	dim3 get_blockdim(const char *hostFun)
+	{
+		std::map<const char*,dim3>::iterator i=m_hostFun_blockdim.find(hostFun);
+		assert( i != m_hostFun_blockdim.end() );
+        return i->second;
+	}
+
+	dim3 get_griddim(const char *hostFun)
+	{
+		std::map<const char*,dim3>::iterator i=m_hostFun_griddim.find(hostFun);
+		assert( i != m_hostFun_griddim.end() );
+        return i->second;
+	}
+
+	void set_blockdim(const char *hostFun, dim3 dims)
+	{
+		m_hostFun_blockdim[hostFun] = dims;
+	}
+
+	void set_griddim(const char *hostFun, dim3 dims)
+	{
+		m_hostFun_griddim[hostFun] = dims;
+	}
+
 	function_info *get_kernel(const char *hostFun)
 	{
 		std::map<const void*,function_info*>::iterator i=m_kernel_lookup.find(hostFun);
@@ -298,6 +329,8 @@ private:
 	_cuda_device_id *m_gpu; // selected gpu
 	std::map<unsigned,symbol_table*> m_code; // fat binary handle => global symbol table
 	unsigned m_last_fat_cubin_handle;
+    std::map<const char*, dim3> m_hostFun_blockdim;
+    std::map<const char*, dim3> m_hostFun_griddim;
 	std::map<const void*,function_info*> m_kernel_lookup; // unique id (CUDA app function address) => kernel entry point
 	struct gpgpu_ptx_sim_info m_binary_info;
 
@@ -1300,16 +1333,15 @@ int CUDARTAPI __cudaSynchronizeThreads(void**, void*)
  *                                                                              *
  *******************************************************************************/
 
-#if (CUDART_VERSION >= 3010)
+#if (CUDART_VERSION >= 3010 && CUDART_VERSION < 8000)
 
 typedef struct CUuuid_st {                                /**< CUDA definition of UUID */
     char bytes[16];
 } CUuuid;
 
-/**
- * CUDA UUID types
- */
-// typedef __device_builtin__ struct CUuuid_st cudaUUID_t;
+#endif
+
+#if (CUDART_VERSION >= 3010)
 
 __host__ cudaError_t CUDARTAPI cudaGetExportTable(const void **ppExportTable, const cudaUUID_t *pExportTableId)
 {
@@ -1958,10 +1990,10 @@ void cuobjdumpParseBinary(unsigned int handle){
           symtab = gpgpu_ptx_sim_load_ptx_from_filename( ptx_filename.c_str() );
       }
    }
-	name_symtab[fname] = symtab;
-	context->add_binary(symtab, handle);
-	load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
-	load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
+   name_symtab[fname] = symtab;
+   context->add_binary(symtab, handle);
+   load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
+   load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
    return;
 #endif
 
@@ -2602,5 +2634,123 @@ kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *hostFun,
 	g_ptx_kernel_count++;
 	fflush(stdout);
 
+	if(g_debug_execution >= 3){
+        entry->debug_param();
+    }
+
 	return result;
+}
+
+CUresult CUDAAPI cuLinkCreate(unsigned int numOptions, CUjit_option *options, void **optionValues, CUlinkState *stateOut)
+{
+    //currently do not support options or multiple CUlinkStates
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuLinkAddData(CUlinkState state, CUjitInputType type, void *data, size_t size, const char *name,
+    unsigned int numOptions, CUjit_option *options, void **optionValues)
+{
+    assert(type==CU_JIT_INPUT_PTX);
+	cuda_not_implemented(__my_func__,__LINE__);
+	return CUDA_ERROR_UNKNOWN;
+}
+
+CUresult CUDAAPI cuLinkAddFile(CUlinkState state, CUjitInputType type, const char *path,
+    unsigned int numOptions, CUjit_option *options, void **optionValues)
+{
+    static bool addedFile = false;
+    if (addedFile){
+        printf("GPGPU-Sim PTX: ERROR: cuLinkAddFile does not support multiple file");
+        abort();
+    }
+
+    //blocking
+    assert(type==CU_JIT_INPUT_PTX);
+	CUctx_st *context = GPGPUSim_Context();
+    char *file = getenv("PTX_JIT_PATH");
+    if(file==NULL){
+        printf("GPGPU-Sim PTX: ERROR: PTX_JIT_PATH has not been set");
+        abort();
+    }
+    strcat(file,path);
+	symbol_table *symtab = gpgpu_ptx_sim_load_ptx_from_filename( file );
+    std::string fname(path);
+    name_symtab[fname] = symtab;
+    context->add_binary(symtab, 1);
+    load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
+    load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
+    addedFile = true;
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuLinkComplete(CUlinkState state, void **cubinOut, size_t *sizeOut)
+{
+    //all cuLink* function are implemented to block until completion so nothing to do here
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuLinkDestroy(CUlinkState state)
+{
+    //currently do not support options or multiple CUlinkStates
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuModuleLoadData(CUmodule *module, const void *image)
+{
+    //Currently do not support multiple modules
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuModuleGetFunction(CUfunction *hfunc, CUmodule hmod, const char *name)
+{
+	CUctx_st* context = GPGPUSim_Context();
+    std::string key(name);
+    //only support one file
+    assert(name_symtab.size()==1);
+    symbol_table* symtab = name_symtab.begin()->second;
+    function_info* f = symtab->lookup_function( std::string(name) );
+    //just need to add given pointer to map for cudaLaunch
+    context->register_hostFun_function( (const char*) hfunc, f);
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuModuleUnload(CUmodule hmod)
+{
+    //Currently do not support multiple modules
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuFuncSetBlockShape(CUfunction hfunc, int x, int y, int z)
+{
+	CUctx_st* context = GPGPUSim_Context();
+    dim3 dims(x,y,z);
+    context->set_blockdim((const char *)hfunc, dims);
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuParamSetSize(CUfunction hfunc, unsigned int numbytes)
+{
+    //Nothing to do
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuParamSetv(CUfunction hfunc, int offset, void *ptr, unsigned int numbytes)
+{
+	cuda_not_implemented(__my_func__,__LINE__);
+	return CUDA_ERROR_UNKNOWN;
+}
+
+CUresult CUDAAPI cuLaunchGrid(CUfunction f, int grid_width, int grid_height)
+{
+	cuda_not_implemented(__my_func__,__LINE__);
+	return CUDA_ERROR_UNKNOWN;
+
+	CUctx_st* context = GPGPUSim_Context();
+    const char *hostFun = (const char*) f;
+    dim3 dims(grid_width,grid_height,1);
+    context->set_griddim((const char *)f, dims);
+    cudaConfigureCall(context->get_griddim(hostFun), context->get_blockdim(hostFun), 0, NULL);
+
+    cudaLaunch(hostFun);
+	return CUDA_SUCCESS;
 }
