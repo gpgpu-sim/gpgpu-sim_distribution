@@ -313,6 +313,7 @@ public:
    symbol *add_variable( const char *identifier, const type_info *type, unsigned size, const char *filename, unsigned line );
    void add_function( function_info *func, const char *filename, unsigned linenumber );
    bool add_function_decl( const char *name, int entry_point, function_info **func_info, symbol_table **symbol_table );
+   function_info *lookup_function(std::string name);
    type_info *add_type( memory_space_t space_spec, int scalar_type_spec, int vector_spec, int alignment_spec, int extern_spec );
    type_info *add_type( function_info *func );
    type_info *get_array_type( type_info *base_type, unsigned array_dim ); 
@@ -1256,6 +1257,7 @@ public:
    void finalize( memory_space *param_mem );
    void param_to_shared( memory_space *shared_mem, symbol_table *symtab ); 
    void list_param( FILE *fout ) const;
+   void debug_param() const;
 
    const struct gpgpu_ptx_sim_info* get_kernel_info () const
    {

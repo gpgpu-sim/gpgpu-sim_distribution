@@ -32,6 +32,7 @@
 #include"../gpgpu-sim/shader.h"
 #include <stdlib.h>
 #include <map>
+#include <vector>
 #include <string>
 #include"ptx_sim.h"
 
