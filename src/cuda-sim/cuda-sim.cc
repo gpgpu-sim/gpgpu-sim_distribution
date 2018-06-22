@@ -1272,12 +1272,12 @@ void function_info::debug_param( ) const
 
       symbol *param = m_symtab->lookup(name.c_str());
       addr_t param_addr = param->get_address();
-      fprintf(fout, "%s: %#08x, ", name.c_str(), param_addr);
+      fprintf(fout, "%s: %#08x, pdata = %p\n", name.c_str(), param_addr, param_value.pdata);
 
       if(params[i->first].find("int")!=std::string::npos){
          size_t len = param_value.size/sizeof(int);
          int val[len];
-         memcpy((void*) val, param_value.pdata+param_value.offset, param_value.size);
+         memcpy((void*) val, (void*)((char*)param_value.pdata+param_value.offset), param_value.size);
          fprintf(fout, "val (int) = ");
          for (unsigned i = 0; i<len; i++){
              fprintf(fout, "%d ", val[i]);
@@ -1286,7 +1286,7 @@ void function_info::debug_param( ) const
       } else if(params[i->first].find("float")!=std::string::npos){
          size_t len = param_value.size/sizeof(float);
          float val[len];
-         memcpy((void*) val, param_value.pdata+param_value.offset, param_value.size);
+         memcpy((void*) val, (void*)((char*)param_value.pdata+param_value.offset), param_value.size);
          fprintf(fout, "val (float) = ");
          for (unsigned i = 0; i<len; i++){
              fprintf(fout, "%f ", val[i]);
@@ -1295,7 +1295,7 @@ void function_info::debug_param( ) const
       }else{
          size_t len = param_value.size/sizeof(char);
          char val[len];
-         memcpy((void*) val, param_value.pdata+param_value.offset, param_value.size);
+         memcpy((void*) val, (void*)((char*)param_value.pdata+param_value.offset), param_value.size);
          fprintf(fout, "val (char) = ");
          for (unsigned i = 0; i<len; i++){
              fprintf(fout, "%c ", val[i]);
