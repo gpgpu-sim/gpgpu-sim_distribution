@@ -218,7 +218,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
     enum { SP_CUS, SFU_CUS, TENSOR_CORE_CUS, MEM_CUS, GEN_CUS };
     m_operand_collector.add_cu_set(SP_CUS, m_config->gpgpu_operand_collector_num_units_sp, m_config->gpgpu_operand_collector_num_out_ports_sp);
     m_operand_collector.add_cu_set(SFU_CUS, m_config->gpgpu_operand_collector_num_units_sfu, m_config->gpgpu_operand_collector_num_out_ports_sfu);
-    m_operand_collector.add_cu_set(TENSOR_CORE_CUS, m_config->gpgpu_operand_collector_num_units_tensor_core, m_config->gpgpu_operand_collector_num_out_ports_tensor_core);
+    m_operand_collector.add_cu_set(TENSOR_CORE_CUS, config->gpgpu_operand_collector_num_units_tensor_core, config->gpgpu_operand_collector_num_out_ports_tensor_core);
     m_operand_collector.add_cu_set(MEM_CUS, m_config->gpgpu_operand_collector_num_units_mem, m_config->gpgpu_operand_collector_num_out_ports_mem);
     m_operand_collector.add_cu_set(GEN_CUS, m_config->gpgpu_operand_collector_num_units_gen, m_config->gpgpu_operand_collector_num_out_ports_gen);
     
@@ -243,7 +243,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
         in_ports.clear(),out_ports.clear(),cu_sets.clear();
     }
 
-    for (unsigned i = 0; i < m_config->gpgpu_operand_collector_num_in_ports_tensor_core; i++) {
+    for (unsigned i = 0; i < config->gpgpu_operand_collector_num_in_ports_tensor_core; i++) {
         in_ports.push_back(&m_pipeline_reg[ID_OC_TENSOR_CORE]);
         out_ports.push_back(&m_pipeline_reg[OC_EX_TENSOR_CORE]);
         cu_sets.push_back((unsigned)TENSOR_CORE_CUS);
@@ -280,7 +280,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
     m_operand_collector.init( m_config->gpgpu_num_reg_banks, this );
     
     // execute
-    m_num_function_units = m_config->gpgpu_num_sp_units + m_config->gpgpu_num_sfu_units + m_config->gpgpu_num_tensor_core_units + 1; // sp_unit, sfu, ldst_unit
+    m_num_function_units = m_config->gpgpu_num_sp_units + m_config->gpgpu_num_sfu_units + config->gpgpu_num_tensor_core_units + 1; // sp_unit, sfu, ldst_unit
     //m_dispatch_port = new enum pipeline_stage_name_t[ m_num_function_units ];
     //m_issue_port = new enum pipeline_stage_name_t[ m_num_function_units ];
     
@@ -298,7 +298,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
         m_issue_port.push_back(OC_EX_SFU);
     }
 
-    for (int k = 0; k < m_config->gpgpu_num_tensor_core_units; k++) {
+    for (int k = 0; k < config->gpgpu_num_tensor_core_units; k++) {
         m_fu.push_back(new tensor_core( &m_pipeline_reg[EX_WB], m_config, this ));
         m_dispatch_port.push_back(ID_OC_TENSOR_CORE);
         m_issue_port.push_back(OC_EX_TENSOR_CORE);
