@@ -39,3 +39,13 @@ regression.sh
 *.gcda
 *.gcno
 
+#debug_tools
+debug_tools/WatchYourStep/data/*
+debug_tools/WatchYourStep/ptxjitplus/bin/*
+*log
+*.o
+debug_tools/WatchYourStep/ptxjitplus/config*
+debug_tools/WatchYourStep/ptxjitplus/*.xml
+debug_tools/WatchYourStep/ptxjitplus/*.icnt
+debug_tools/WatchYourStep/ptxjitplus/gpgpu*
+debug_tools/WatchYourStep/ptxjitplus/*.old

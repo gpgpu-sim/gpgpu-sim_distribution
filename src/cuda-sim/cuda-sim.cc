@@ -1226,85 +1226,37 @@ void function_info::list_param( FILE *fout ) const
    fflush(fout);
 }
 
-void function_info::debug_param( ) const
+void function_info::debug_param() const
 {
-   char filename[] = "params.txt";
-   char buff[1024];
-   snprintf(buff,1024,"c++filt %s > %s", get_name().c_str(), filename);
-   system(buff);
-   FILE *fp = fopen(filename, "r");
-   fgets(buff, 1024, fp);
-   fclose(fp);
+    static unsigned long counter = 0;
+    std::string gpgpusim_path(getenv("GPGPUSIM_ROOT"));
+    assert(!gpgpusim_path.empty());
+    std::string command = "mkdir " + gpgpusim_path + "/debug_tools/WatchYourStep/data";
+    system(command.c_str());
 
-   std::string fn(buff);
-   size_t pos1, pos2;
-   pos1 = fn.find("(");
-   pos2 = fn.find(")");
-   assert(pos2>pos1&&pos1>0);
-   strcpy(buff, fn.substr(pos1 + 1, pos2 - pos1 - 1).c_str());
-   printf("params: %s\n", buff);
-   char *tok;
-   std::vector<std::string> params;
-   tok = strtok(buff, ",");
-   while(tok!=NULL){
-       std::string param(tok);
-       param.erase(0, param.find_first_not_of(" "));
-       param.erase(param.find_last_not_of(" ")+1);
-       params.push_back(param);
-       tok = strtok(NULL, ",");
-   }
-   for (auto const& it : params){
-      std::cout<<it<<std::endl;
-   }
+    std::string filename(gpgpusim_path + "/debug_tools/WatchYourStep/data/params.config" + std::to_string(counter++));
+    std::vector< std::pair<size_t, unsigned char*> > param_data;
 
-   FILE *fout  = fopen (filename, "w");
-   fprintf(fout, "Name of function:%s\n", fn.c_str());
+    for( std::map<unsigned,param_info>::const_iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
+        const param_info &p = i->second;
+        param_t param_value = p.get_value();
+        unsigned char val[param_value.size];
+        memcpy((void*) val, (void*)((char*)param_value.pdata+param_value.offset), param_value.size);
+        param_data.push_back(std::pair<size_t, unsigned char*>(param_value.size,val));
+    }
 
-   for( std::map<unsigned,param_info>::const_iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
-      const param_info &p = i->second;
-      std::string name = p.get_name();
-      param_t param_value = p.get_value();
-      if(params[i->first].find("const")!=std::string::npos){
-         fprintf(fout, "Input: ");
-      } else {
-         fprintf(fout, "Input/output: ");
-      }
-
-      symbol *param = m_symtab->lookup(name.c_str());
-      addr_t param_addr = param->get_address();
-      fprintf(fout, "%s: %#08x, pdata = %p\n", name.c_str(), param_addr, param_value.pdata);
-
-      if(params[i->first].find("int")!=std::string::npos){
-         size_t len = param_value.size/sizeof(int);
-         int val[len];
-         memcpy((void*) val, (void*)((char*)param_value.pdata+param_value.offset), param_value.size);
-         fprintf(fout, "val (int) = ");
-         for (unsigned i = 0; i<len; i++){
-             fprintf(fout, "%d ", val[i]);
-         }
-         fprintf(fout, "\n");
-      } else if(params[i->first].find("float")!=std::string::npos){
-         size_t len = param_value.size/sizeof(float);
-         float val[len];
-         memcpy((void*) val, (void*)((char*)param_value.pdata+param_value.offset), param_value.size);
-         fprintf(fout, "val (float) = ");
-         for (unsigned i = 0; i<len; i++){
-             fprintf(fout, "%f ", val[i]);
-         }
-         fprintf(fout, "\n");
-      }else{
-         size_t len = param_value.size/sizeof(char);
-         char val[len];
-         memcpy((void*) val, (void*)((char*)param_value.pdata+param_value.offset), param_value.size);
-         fprintf(fout, "val (char) = ");
-         for (unsigned i = 0; i<len; i++){
-             fprintf(fout, "%c ", val[i]);
-         }
-         fprintf(fout, "\n");
-      }
-   }
-   fflush(fout);
-   fclose(fout);
+    FILE *fout  = fopen (filename.c_str(), "w");
+    fprintf(fout, "%s\n", get_name().c_str());
+    for( std::vector< std::pair<size_t,unsigned char*> >::const_iterator i=param_data.begin(); i!=param_data.end(); i++ ) {
+        fprintf(fout, "%lu :", i->first);
+        for (size_t j = 0; j<i->first; j++){
+            fprintf(fout, " %u", i->second[j]);
+        }
+        fprintf(fout, "\n");
+    }
+    fflush(fout);
+    fclose(fout);
+    exit(0);
 }
 
 template<int activate_level> 
