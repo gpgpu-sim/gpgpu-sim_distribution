@@ -49,3 +49,4 @@ debug_tools/WatchYourStep/ptxjitplus/*.xml
 debug_tools/WatchYourStep/ptxjitplus/*.icnt
 debug_tools/WatchYourStep/ptxjitplus/gpgpu*
 debug_tools/WatchYourStep/ptxjitplus/*.old
+debug_tools/WatchYourStep/ptxjitplus/ptxjitplus
