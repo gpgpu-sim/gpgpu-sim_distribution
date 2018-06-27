@@ -1226,33 +1226,72 @@ void function_info::list_param( FILE *fout ) const
    fflush(fout);
 }
 
-void function_info::debug_param() const
+void function_info::debug_param(std::map<void *, size_t> devPtr_Size, memory_space *param_mem) const
 {
     static unsigned long counter = 0;
-    std::string gpgpusim_path(getenv("GPGPUSIM_ROOT"));
-    assert(!gpgpusim_path.empty());
-    std::string command = "mkdir " + gpgpusim_path + "/debug_tools/WatchYourStep/data";
-    system(command.c_str());
-
-    std::string filename(gpgpusim_path + "/debug_tools/WatchYourStep/data/params.config" + std::to_string(counter++));
     std::vector< std::pair<size_t, unsigned char*> > param_data;
+    std::vector<bool> paramIsPointer;
+
+    char * gpgpusim_path = getenv("GPGPUSIM_ROOT");
+    assert(gpgpusim_path!=NULL);
+    std::string command = std::string("mkdir ") + gpgpusim_path + "/debug_tools/WatchYourStep/data";
+    system(command.c_str());
+    std::string filename(std::string(gpgpusim_path) + "/debug_tools/WatchYourStep/data/params.config" + std::to_string(counter++));
+
+    //initialize paramList
+    char buff[1024];
+    std::string filename_c(filename+"_c");
+    snprintf(buff,1024,"c++filt %s > %s", get_name().c_str(), filename_c.c_str());
+    system(buff);
+    FILE *fp = fopen(filename_c.c_str(), "r");
+    fgets(buff, 1024, fp);
+    fclose(fp);
+    std::string fn(buff);
+    size_t pos1, pos2;
+    pos1 = fn.find("(");
+    pos2 = fn.find(")");
+    assert(pos2>pos1&&pos1>0);
+    strcpy(buff, fn.substr(pos1 + 1, pos2 - pos1 - 1).c_str());
+    char *tok;
+    tok = strtok(buff, ",");
+    while(tok!=NULL){
+        std::string param(tok);
+        if(param.find("*")!=std::string::npos){
+            paramIsPointer.push_back(true);
+        }else{
+            paramIsPointer.push_back(false);
+        }
+        tok = strtok(NULL, ",");
+    }
 
     for( std::map<unsigned,param_info>::const_iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
         const param_info &p = i->second;
+        std::string name = p.get_name();
+        symbol *param = m_symtab->lookup(name.c_str());
+        addr_t param_addr = param->get_address();
         param_t param_value = p.get_value();
-        unsigned char val[param_value.size];
-        memcpy((void*) val, (void*)((char*)param_value.pdata+param_value.offset), param_value.size);
-        param_data.push_back(std::pair<size_t, unsigned char*>(param_value.size,val));
+//        if (paramIsPointer[i->first]){
+//            assert(param_value.size==8);
+//        }else{
+            unsigned char val[param_value.size];
+            param_mem->read(param_addr,param_value.size,(void*)val);
+            param_data.push_back(std::pair<size_t, unsigned char*>(param_value.size,val));
+        //}
     }
 
     FILE *fout  = fopen (filename.c_str(), "w");
     fprintf(fout, "%s\n", get_name().c_str());
+    size_t index = 0;
     for( std::vector< std::pair<size_t,unsigned char*> >::const_iterator i=param_data.begin(); i!=param_data.end(); i++ ) {
+        if (paramIsPointer[index]){
+            fprintf(fout, "*");
+        }
         fprintf(fout, "%lu :", i->first);
         for (size_t j = 0; j<i->first; j++){
             fprintf(fout, " %u", i->second[j]);
         }
         fprintf(fout, "\n");
+        index++;
     }
     fflush(fout);
     fclose(fout);
