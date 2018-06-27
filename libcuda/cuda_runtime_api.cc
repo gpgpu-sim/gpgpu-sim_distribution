@@ -150,6 +150,7 @@
 
 std::map<void *,void **> pinned_memory; //support for pinned memories added
 std::map<void *, size_t> pinned_memory_size;
+std::map<void *, size_t> g_devPtr_Size;
 int no_of_ptx=0;
 std::map<int, std::set<std::string> > version_filename;
 
@@ -487,8 +488,10 @@ __host__ cudaError_t CUDARTAPI cudaMalloc(void **devPtr, size_t size)
 {
 	CUctx_st* context = GPGPUSim_Context();
 	*devPtr = context->get_device()->get_gpgpu()->gpu_malloc(size);
-	if(g_debug_execution >= 3)
+	if(g_debug_execution >= 3){
 		printf("GPGPU-Sim PTX: cudaMallocing %zu bytes starting at 0x%llx..\n",size, (unsigned long long) *devPtr);
+        g_devPtr_Size[*devPtr] = size;
+    }
 	if ( *devPtr  ) {
 		return g_last_cudaError = cudaSuccess;
 	} else {
@@ -2374,8 +2377,10 @@ cudaError_t CUDARTAPI cudaHostGetDevicePointer(void **pDevice, void *pHost, unsi
 	assert(i != pinned_memory_size.end());
 	size_t size = i->second;
 	*pDevice = gpu->gpu_malloc(size);
-	if(g_debug_execution >= 3)
+	if(g_debug_execution >= 3){
 		printf("GPGPU-Sim PTX: cudaMallocing %zu bytes starting at 0x%llx..\n",size, (unsigned long long) *pDevice);
+        g_devPtr_Size[*pDevice] = size;
+    }
 	if ( *pDevice  ) {
 		pinned_memory[pHost]=pDevice;
 		//Copy contents in cpu to gpu
@@ -2617,8 +2622,9 @@ kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *hostFun,
 	g_ptx_kernel_count++;
 	fflush(stdout);
 
+	
 	if(g_debug_execution >= 3){
-        entry->debug_param();
+        entry->debug_param(g_devPtr_Size, result->get_param_memory());
     }
 
 	return result;

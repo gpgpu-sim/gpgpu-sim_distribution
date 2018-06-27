@@ -111,6 +111,87 @@ void ptxJIT(int argc, char **argv, CUmodule *phModule, CUfunction *phKernel, CUl
     checkCudaErrors(cuLinkDestroy(*lState));
 }
 
+void function_info::debug_param( ) const
+{
+   char filename[] = "params.txt";
+   char buff[1024];
+   snprintf(buff,1024,"c++filt %s > %s", get_name().c_str(), filename);
+   system(buff);
+   FILE *fp = fopen(filename, "r");
+   fgets(buff, 1024, fp);
+   fclose(fp);
+
+   std::string fn(buff);
+   size_t pos1, pos2;
+   pos1 = fn.find("(");
+   pos2 = fn.find(")");
+   assert(pos2>pos1&&pos1>0);
+   strcpy(buff, fn.substr(pos1 + 1, pos2 - pos1 - 1).c_str());
+   printf("params: %s\n", buff);
+   char *tok;
+   std::vector<std::string> params;
+   tok = strtok(buff, ",");
+   while(tok!=NULL){
+       std::string param(tok);
+       param.erase(0, param.find_first_not_of(" "));
+       param.erase(param.find_last_not_of(" ")+1);
+       params.push_back(param);
+       tok = strtok(NULL, ",");
+   }
+   for (auto const& it : params){
+      std::cout<<it<<std::endl;
+   }
+
+   FILE *fout  = fopen (filename, "w");
+   fprintf(fout, "Name of function:%s\n", fn.c_str());
+
+   for( std::map<unsigned,param_info>::const_iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
+      const param_info &p = i->second;
+      std::string name = p.get_name();
+      param_t param_value = p.get_value();
+      if(params[i->first].find("const")!=std::string::npos){
+         fprintf(fout, "Input: ");
+      } else {
+         fprintf(fout, "Input/output: ");
+      }
+
+      symbol *param = m_symtab->lookup(name.c_str());
+      addr_t param_addr = param->get_address();
+      fprintf(fout, "%s: %#08x, ", name.c_str(), param_addr);
+
+      if(params[i->first].find("int")!=std::string::npos){
+         size_t len = param_value.size/sizeof(int);
+         int val[len];
+         memcpy((void*) val, param_value.pdata+param_value.offset, param_value.size);
+         fprintf(fout, "val (int) = ");
+         for (unsigned i = 0; i<len; i++){
+             fprintf(fout, "%d ", val[i]);
+         }
+         fprintf(fout, "\n");
+      } else if(params[i->first].find("float")!=std::string::npos){
+         size_t len = param_value.size/sizeof(float);
+         float val[len];
+         memcpy((void*) val, param_value.pdata+param_value.offset, param_value.size);
+         fprintf(fout, "val (float) = ");
+         for (unsigned i = 0; i<len; i++){
+             fprintf(fout, "%f ", val[i]);
+         }
+         fprintf(fout, "\n");
+      }else{
+         size_t len = param_value.size/sizeof(char);
+         char val[len];
+         memcpy((void*) val, param_value.pdata+param_value.offset, param_value.size);
+         fprintf(fout, "val (char) = ");
+         for (unsigned i = 0; i<len; i++){
+             fprintf(fout, "%c ", val[i]);
+         }
+         fprintf(fout, "\n");
+      }
+   }
+   fflush(fout);
+   fclose(fout);
+}
+
 void* initializeData(std::vector< std::pair<size_t, unsigned char*> >& param_data)
 {
     char *wys_exec_path = getenv("WYS_EXEC_PATH");
@@ -160,19 +241,17 @@ int main(int argc, char **argv)
 {
     const unsigned int nThreads = 256;
     const unsigned int nBlocks  = 64;
-    const size_t memSize = nThreads * nBlocks * sizeof(int);
 
     CUmodule     hModule  = 0;
     CUfunction   hKernel  = 0;
     CUlinkState  lState;
-    int         *d_data   = 0;
-    int         *h_data   = 0;
 
     int cuda_device = 0;
     cudaDeviceProp deviceProp;
 
     printf("[%s] - Starting...\n", sSDKname);
     std::vector< std::pair<size_t, unsigned char*> > param_data;
+    std::vector< std::pair<size_t, unsigned char*> > device_data;
     void* storedReg = initializeData(param_data);
 
     if (checkCmdLineFlag(argc, (const char **)argv, "device"))
@@ -213,15 +292,7 @@ int main(int argc, char **argv)
         exit(EXIT_WAIVED);
     }
 
-    // Allocate memory on host and device (Runtime API)
-    // NOTE: The runtime API will create the GPU Context implicitly here
-    if ((h_data = (int *)malloc(memSize)) == NULL)
-    {
-        std::cerr << "Could not allocate host memory" << std::endl;
-        exit(EXIT_FAILURE);
-    }
 
-    checkCudaErrors(cudaMalloc(&d_data, memSize));
 
     // JIT Compile the Kernel from PTX and get the Handles (Driver API)
     ptxJIT(argc, argv, &hModule, &hKernel, &lState);
@@ -229,16 +300,29 @@ int main(int argc, char **argv)
     // Set the kernel parameters (Driver API)
 
     checkCudaErrors(cuFuncSetBlockShape(hKernel, nThreads, 1, 1));
-    //param_data
+
+    //Initialize param_data for kernel
     int paramOffset = 0;
-    checkCudaErrors(cuParamSetv(hKernel, paramOffset, &d_data, sizeof(d_data)));
-    paramOffset += sizeof(d_data);
+    for( std::vector< std::pair<size_t,unsigned char*> >::const_iterator i=param_data.begin(); i!=param_data.end(); i++ ) {
+        size_t memSize = nThreads * nBlocks * i->first;
+        unsigned char *d_data   = 0;
+        checkCudaErrors(cudaMalloc((void**)&d_data, memSize));
+        checkCudaErrors(cudaMemcpy(d_data,i->first,cudaMemcpyHostToDevice));
+        checkCudaErrors(cuParamSetv(hKernel, paramOffset, &d_data, memSize));
+        paramOffset += i->first;
+    }
     checkCudaErrors(cuParamSetSize(hKernel, paramOffset));
 
     // Launch the kernel (Driver API_)
     checkCudaErrors(cuLaunchGrid(hKernel, nBlocks, 1));
     std::cout << "CUDA kernel launched" << std::endl;
 
+    int         *h_data   = 0;
+    if ((h_data = (int *)malloc(memSize)) == NULL)
+    {
+        std::cerr << "Could not allocate host memory" << std::endl;
+        exit(EXIT_FAILURE);
+    }
     // Copy the result back to the host
     checkCudaErrors(cudaMemcpy(h_data, d_data, memSize, cudaMemcpyDeviceToHost));
 
