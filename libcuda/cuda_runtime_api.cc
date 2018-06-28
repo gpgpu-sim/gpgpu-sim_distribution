@@ -150,7 +150,7 @@
 
 std::map<void *,void **> pinned_memory; //support for pinned memories added
 std::map<void *, size_t> pinned_memory_size;
-std::map<void *, size_t> g_devPtr_Size;
+std::map<unsigned long long, size_t> g_mallocPtr_Size;
 int no_of_ptx=0;
 std::map<int, std::set<std::string> > version_filename;
 
@@ -322,8 +322,8 @@ public:
 	}
 	kernel_config()
 	{
-		m_GridDim=NULL;
-		m_BlockDim=NULL;
+		m_GridDim=dim3(-1,-1,-1);
+		m_BlockDim=dim3(-1,-1,-1);
 		m_sharedMem=0;
 		m_stream =NULL;
 	}
@@ -490,7 +490,7 @@ __host__ cudaError_t CUDARTAPI cudaMalloc(void **devPtr, size_t size)
 	*devPtr = context->get_device()->get_gpgpu()->gpu_malloc(size);
 	if(g_debug_execution >= 3){
 		printf("GPGPU-Sim PTX: cudaMallocing %zu bytes starting at 0x%llx..\n",size, (unsigned long long) *devPtr);
-        g_devPtr_Size[*devPtr] = size;
+        g_mallocPtr_Size[(unsigned long long)*devPtr] = size;
     }
 	if ( *devPtr  ) {
 		return g_last_cudaError = cudaSuccess;
@@ -1075,6 +1075,9 @@ __host__ cudaError_t CUDARTAPI cudaSetupArgument(const void *arg, size_t size, s
 	gpgpusim_ptx_assert( !g_cuda_launch_stack.empty(), "empty launch stack" );
 	kernel_config &config = g_cuda_launch_stack.back();
 	config.set_arg(arg,size,offset);
+	printf("GPGPU-Sim PTX: Setting up arguments for %zu bytes starting at 0x%llx..\n",size, (unsigned long long) arg);
+    assert(size!=8||g_mallocPtr_Size.find(*(long long*)arg)!=g_mallocPtr_Size.end());
+    //assert((*(long long*)arg)==0||g_mallocPtr_Size.find(*(long long*)arg)!=g_mallocPtr_Size.end());
 
 	return g_last_cudaError = cudaSuccess;
 }
@@ -2379,7 +2382,7 @@ cudaError_t CUDARTAPI cudaHostGetDevicePointer(void **pDevice, void *pHost, unsi
 	*pDevice = gpu->gpu_malloc(size);
 	if(g_debug_execution >= 3){
 		printf("GPGPU-Sim PTX: cudaMallocing %zu bytes starting at 0x%llx..\n",size, (unsigned long long) *pDevice);
-        g_devPtr_Size[*pDevice] = size;
+        g_mallocPtr_Size[(unsigned long long)*pDevice] = size;
     }
 	if ( *pDevice  ) {
 		pinned_memory[pHost]=pDevice;
@@ -2624,7 +2627,7 @@ kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *hostFun,
 
 	
 	if(g_debug_execution >= 3){
-        entry->debug_param(g_devPtr_Size, result->get_param_memory());
+        entry->debug_param(g_mallocPtr_Size, result->get_param_memory());
     }
 
 	return result;
