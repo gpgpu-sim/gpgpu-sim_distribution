@@ -22,6 +22,7 @@
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
+#include <map>
 
 // CUDA driver & runtime
 #include <cuda.h>
@@ -111,88 +112,7 @@ void ptxJIT(int argc, char **argv, CUmodule *phModule, CUfunction *phKernel, CUl
     checkCudaErrors(cuLinkDestroy(*lState));
 }
 
-void function_info::debug_param( ) const
-{
-   char filename[] = "params.txt";
-   char buff[1024];
-   snprintf(buff,1024,"c++filt %s > %s", get_name().c_str(), filename);
-   system(buff);
-   FILE *fp = fopen(filename, "r");
-   fgets(buff, 1024, fp);
-   fclose(fp);
-
-   std::string fn(buff);
-   size_t pos1, pos2;
-   pos1 = fn.find("(");
-   pos2 = fn.find(")");
-   assert(pos2>pos1&&pos1>0);
-   strcpy(buff, fn.substr(pos1 + 1, pos2 - pos1 - 1).c_str());
-   printf("params: %s\n", buff);
-   char *tok;
-   std::vector<std::string> params;
-   tok = strtok(buff, ",");
-   while(tok!=NULL){
-       std::string param(tok);
-       param.erase(0, param.find_first_not_of(" "));
-       param.erase(param.find_last_not_of(" ")+1);
-       params.push_back(param);
-       tok = strtok(NULL, ",");
-   }
-   for (auto const& it : params){
-      std::cout<<it<<std::endl;
-   }
-
-   FILE *fout  = fopen (filename, "w");
-   fprintf(fout, "Name of function:%s\n", fn.c_str());
-
-   for( std::map<unsigned,param_info>::const_iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
-      const param_info &p = i->second;
-      std::string name = p.get_name();
-      param_t param_value = p.get_value();
-      if(params[i->first].find("const")!=std::string::npos){
-         fprintf(fout, "Input: ");
-      } else {
-         fprintf(fout, "Input/output: ");
-      }
-
-      symbol *param = m_symtab->lookup(name.c_str());
-      addr_t param_addr = param->get_address();
-      fprintf(fout, "%s: %#08x, ", name.c_str(), param_addr);
-
-      if(params[i->first].find("int")!=std::string::npos){
-         size_t len = param_value.size/sizeof(int);
-         int val[len];
-         memcpy((void*) val, param_value.pdata+param_value.offset, param_value.size);
-         fprintf(fout, "val (int) = ");
-         for (unsigned i = 0; i<len; i++){
-             fprintf(fout, "%d ", val[i]);
-         }
-         fprintf(fout, "\n");
-      } else if(params[i->first].find("float")!=std::string::npos){
-         size_t len = param_value.size/sizeof(float);
-         float val[len];
-         memcpy((void*) val, param_value.pdata+param_value.offset, param_value.size);
-         fprintf(fout, "val (float) = ");
-         for (unsigned i = 0; i<len; i++){
-             fprintf(fout, "%f ", val[i]);
-         }
-         fprintf(fout, "\n");
-      }else{
-         size_t len = param_value.size/sizeof(char);
-         char val[len];
-         memcpy((void*) val, param_value.pdata+param_value.offset, param_value.size);
-         fprintf(fout, "val (char) = ");
-         for (unsigned i = 0; i<len; i++){
-             fprintf(fout, "%c ", val[i]);
-         }
-         fprintf(fout, "\n");
-      }
-   }
-   fflush(fout);
-   fclose(fout);
-}
-
-void* initializeData(std::vector< std::pair<size_t, unsigned char*> >& param_data)
+void initializeData(std::vector<unsigned char*>& param_data, std::vector< std::pair<size_t, bool> >& param_info)
 {
     char *wys_exec_path = getenv("WYS_EXEC_PATH");
     assert(wys_exec_path!=NULL);
@@ -208,33 +128,41 @@ void* initializeData(std::vector< std::pair<size_t, unsigned char*> >& param_dat
     assert(fin);
     char buff[1024];
     fscanf(fin, "%s\n", buff);
-    //void *retval = instrument_ptx_from_function(std::string(buff), path_to_search);
-    void *retval = NULL;
-    printf("%s\n", buff);
+    printf("Processing :%s ...\n", buff);
+    fflush(stdout);
     //fill data structure to pass in params later
     while (!feof(fin)){
+        std::pair<size_t, bool> info;
         int err;
         size_t len;
         unsigned val;
+        int start = fgetc(fin);
+        if (start == '*'){
+            info.second=true;
+        }else{
+            info.second=false;
+            int c = ungetc(start,fin);
+            assert(c==start&&"Couldn't ungetc\n");
+        }
         err = fscanf(fin, "%lu : ", &len);
+        info.first = len;
         assert( err==1 );
-        printf("%lu : ", len);
+        //printf("%lu : ", len);
         unsigned char params[len];
         for (size_t i=0; i<len; i++)
         {
             err = fscanf(fin, "%u ", &val);
             assert( err==1 );
-            printf("%u ", val);
+            //printf("%u ", val);
             params[i] = (unsigned char) val;
         }
-        param_data.push_back(std::pair<size_t, unsigned char*>(len, params));
+        param_info.push_back(info);
+        param_data.push_back(params);
         err = fscanf(fin, "\n");
         assert(err==0);
-        printf("\n");
+        //printf("\n");
     }
-    
     fclose(fin);
-    return retval;
 }
 
 int main(int argc, char **argv)
@@ -250,9 +178,9 @@ int main(int argc, char **argv)
     cudaDeviceProp deviceProp;
 
     printf("[%s] - Starting...\n", sSDKname);
-    std::vector< std::pair<size_t, unsigned char*> > param_data;
-    std::vector< std::pair<size_t, unsigned char*> > device_data;
-    void* storedReg = initializeData(param_data);
+    std::vector<unsigned char*> param_data;
+    std::vector< std::pair<size_t, bool> > param_info;
+    initializeData(param_data,param_info);
 
     if (checkCmdLineFlag(argc, (const char **)argv, "device"))
     {
@@ -302,14 +230,20 @@ int main(int argc, char **argv)
     checkCudaErrors(cuFuncSetBlockShape(hKernel, nThreads, 1, 1));
 
     //Initialize param_data for kernel
+    std::map< size_t, unsigned char* > m_device_data;
     int paramOffset = 0;
-    for( std::vector< std::pair<size_t,unsigned char*> >::const_iterator i=param_data.begin(); i!=param_data.end(); i++ ) {
-        size_t memSize = nThreads * nBlocks * i->first;
-        unsigned char *d_data   = 0;
-        checkCudaErrors(cudaMalloc((void**)&d_data, memSize));
-        checkCudaErrors(cudaMemcpy(d_data,i->first,cudaMemcpyHostToDevice));
-        checkCudaErrors(cuParamSetv(hKernel, paramOffset, &d_data, memSize));
-        paramOffset += i->first;
+    for( size_t i = 0; i<param_data.size(); i++){
+        if(param_info[i].second){
+            unsigned char *d_data = 0;
+            checkCudaErrors(cudaMalloc((void**)&d_data, param_info[i].first));
+            checkCudaErrors(cudaMemcpy((void*)d_data,(void*)param_data[i],param_info[i].first,cudaMemcpyHostToDevice));
+            checkCudaErrors(cuParamSetv(hKernel, paramOffset, &d_data, sizeof(d_data)));
+            m_device_data[i]=d_data;
+            paramOffset += 8;
+        }else{
+            checkCudaErrors(cuParamSetv(hKernel, paramOffset, param_data[i], param_info[i].first));
+            paramOffset += param_info[i].first;
+        }
     }
     checkCudaErrors(cuParamSetSize(hKernel, paramOffset));
 
@@ -317,15 +251,24 @@ int main(int argc, char **argv)
     checkCudaErrors(cuLaunchGrid(hKernel, nBlocks, 1));
     std::cout << "CUDA kernel launched" << std::endl;
 
-    int         *h_data   = 0;
-    if ((h_data = (int *)malloc(memSize)) == NULL)
-    {
-        std::cerr << "Could not allocate host memory" << std::endl;
-        exit(EXIT_FAILURE);
+    std::map< size_t, unsigned char* > m_output_data;
+    for(std::map< size_t, unsigned char* >::iterator i = m_device_data.begin(); i!=m_device_data.begin(); i++){
+        unsigned char *h_data   = 0;
+        if ((h_data = (unsigned char *)malloc(param_info[i->first].first)) == NULL)
+        {
+            std::cerr << "Could not allocate host memory" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        // Copy the result back to the host
+        checkCudaErrors(cudaMemcpy(h_data, i->second, param_info[i->first].first, cudaMemcpyDeviceToHost));
+        m_output_data[i->first] = h_data;
     }
-    // Copy the result back to the host
-    checkCudaErrors(cudaMemcpy(h_data, d_data, memSize, cudaMemcpyDeviceToHost));
 
+    for(std::map< size_t, unsigned char* >::iterator i = m_output_data.begin(); i!=m_output_data.begin(); i++){
+        //print data out to file
+    }
+
+    int* h_data;
     // Check the result
     bool dataGood = true;
 
@@ -338,17 +281,20 @@ int main(int argc, char **argv)
         }
     }
 
-    // Cleanup
-    if (d_data)
-    {
-        checkCudaErrors(cudaFree(d_data));
-        d_data = 0;
+    //Cleanup
+    for(std::map< size_t, unsigned char* >::iterator i = m_device_data.begin(); i!=m_device_data.begin(); i++){
+        if (i->second){
+            checkCudaErrors(cudaFree(i->second));
+            i->second = 0;
+        }
     }
 
-    if (h_data)
-    {
-        free(h_data);
-        h_data = 0;
+    for(std::map< size_t, unsigned char* >::iterator i = m_output_data.begin(); i!=m_output_data.begin(); i++){
+        if (i->second)
+        {
+            free(i->second);
+            i->second = 0;
+        }
     }
 
     if (hModule)
