@@ -1226,7 +1226,7 @@ void function_info::list_param( FILE *fout ) const
    fflush(fout);
 }
 
-void function_info::debug_param(std::map<unsigned long long, size_t> mallocPtr_Size, memory_space *param_mem) const
+void function_info::debug_param(std::map<unsigned long long, size_t> mallocPtr_Size, memory_space *param_mem, gpgpu_t* gpu) const
 {
     static unsigned long counter = 0;
     std::vector< std::pair<size_t, unsigned char*> > param_data;
@@ -1234,35 +1234,9 @@ void function_info::debug_param(std::map<unsigned long long, size_t> mallocPtr_S
 
     char * gpgpusim_path = getenv("GPGPUSIM_ROOT");
     assert(gpgpusim_path!=NULL);
-    std::string command = std::string("mkdir ") + gpgpusim_path + "/debug_tools/WatchYourStep/data";
-    system(command.c_str());
+//    std::string command = std::string("mkdir ") + gpgpusim_path + "/debug_tools/WatchYourStep/data";
+//    system(command.c_str());
     std::string filename(std::string(gpgpusim_path) + "/debug_tools/WatchYourStep/data/params.config" + std::to_string(counter++));
-
-    //initialize paramList
-    char buff[1024];
-    std::string filename_c(filename+"_c");
-    snprintf(buff,1024,"c++filt %s > %s", get_name().c_str(), filename_c.c_str());
-    system(buff);
-    FILE *fp = fopen(filename_c.c_str(), "r");
-    fgets(buff, 1024, fp);
-    fclose(fp);
-    std::string fn(buff);
-    size_t pos1, pos2;
-    pos1 = fn.find_last_of("(");
-    pos2 = fn.find(")", pos1);
-    assert(pos2>pos1&&pos1>0);
-    strcpy(buff, fn.substr(pos1 + 1, pos2 - pos1 - 1).c_str());
-    char *tok;
-    tok = strtok(buff, ",");
-    while(tok!=NULL){
-        std::string param(tok);
-        if(param.find("*")!=std::string::npos){
-            paramIsPointer.push_back(true);
-        }else{
-            paramIsPointer.push_back(false);
-        }
-        tok = strtok(NULL, ",");
-    }
 
     for( std::map<unsigned,param_info>::const_iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
         const param_info &p = i->second;
@@ -1271,30 +1245,22 @@ void function_info::debug_param(std::map<unsigned long long, size_t> mallocPtr_S
         addr_t param_addr = param->get_address();
         param_t param_value = p.get_value();
 
-        if (paramIsPointer[i->first]){
-            assert(param_value.size==8&&mallocPtr_Size.find(*(long long*)param_value.pdata)!=mallocPtr_Size.end());
+        if(param_value.size==8&&mallocPtr_Size.find(*(unsigned long long*)param_value.pdata)!=mallocPtr_Size.end()){
+            size_t array_size = mallocPtr_Size[*(unsigned long long*)param_value.pdata];
+            unsigned char val[array_size];
+            gpu->get_global_memory()->read(param_addr,array_size,(void*)val);
+            param_data.push_back(std::pair<size_t, unsigned char*>(array_size,val));
+            paramIsPointer.push_back(true);
         }else{
-            assert(!(param_value.size==8&&mallocPtr_Size.find(*(long long*)param_value.pdata)!=mallocPtr_Size.end()));
-        }
-//        if (paramIsPointer[i->first]){
-//            assert(param_value.size==8);
-//            void *array_pointer = (void*)*val;
-//            assert(devPtr_Size.find(array_pointer)!=devPtr_Size.end());
-//            size_t array_size = devPtr_Size[array_pointer];
-//            unsigned char array_val[array_size];
-//            memcpy((void*) array_val, array_pointer, array_size);
-//            param_data.push_back(std::pair<size_t, unsigned char*>(array_size,array_val));
-//
-//            assert(size!=8||g_mallocPtr_Size.find(*(long long*)arg)!=g_mallocPtr_Size.end());
-//
-//        }else{
             unsigned char val[param_value.size];
             param_mem->read(param_addr,param_value.size,(void*)val);
             param_data.push_back(std::pair<size_t, unsigned char*>(param_value.size,val));
-        //}
+            paramIsPointer.push_back(false);
+        }
     }
 
     FILE *fout  = fopen (filename.c_str(), "w");
+    printf("Writing data to %s ...\n", filename.c_str());
     fprintf(fout, "%s\n", get_name().c_str());
     size_t index = 0;
     for( std::vector< std::pair<size_t,unsigned char*> >::const_iterator i=param_data.begin(); i!=param_data.end(); i++ ) {
@@ -1310,7 +1276,6 @@ void function_info::debug_param(std::map<unsigned long long, size_t> mallocPtr_S
     }
     fflush(fout);
     fclose(fout);
-    //exit(0);
 }
 
 template<int activate_level> 

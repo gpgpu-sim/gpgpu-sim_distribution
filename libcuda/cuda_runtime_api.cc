@@ -1077,7 +1077,6 @@ __host__ cudaError_t CUDARTAPI cudaSetupArgument(const void *arg, size_t size, s
 	config.set_arg(arg,size,offset);
 	printf("GPGPU-Sim PTX: Setting up arguments for %zu bytes starting at 0x%llx..\n",size, (unsigned long long) arg);
     assert(size!=8||g_mallocPtr_Size.find(*(long long*)arg)!=g_mallocPtr_Size.end());
-    //assert((*(long long*)arg)==0||g_mallocPtr_Size.find(*(long long*)arg)!=g_mallocPtr_Size.end());
 
 	return g_last_cudaError = cudaSuccess;
 }
@@ -2624,10 +2623,9 @@ kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *hostFun,
 	entry->finalize(result->get_param_memory());
 	g_ptx_kernel_count++;
 	fflush(stdout);
-
 	
 	if(g_debug_execution >= 3){
-        entry->debug_param(g_mallocPtr_Size, result->get_param_memory());
+        entry->debug_param(g_mallocPtr_Size, result->get_param_memory(), (gpgpu_t *) context->get_device()->get_gpgpu());
     }
 
 	return result;
