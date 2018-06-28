@@ -1226,7 +1226,7 @@ void function_info::list_param( FILE *fout ) const
    fflush(fout);
 }
 
-void function_info::debug_param(std::map<void *, size_t> devPtr_Size, memory_space *param_mem) const
+void function_info::debug_param(std::map<unsigned long long, size_t> mallocPtr_Size, memory_space *param_mem) const
 {
     static unsigned long counter = 0;
     std::vector< std::pair<size_t, unsigned char*> > param_data;
@@ -1248,8 +1248,8 @@ void function_info::debug_param(std::map<void *, size_t> devPtr_Size, memory_spa
     fclose(fp);
     std::string fn(buff);
     size_t pos1, pos2;
-    pos1 = fn.find("(");
-    pos2 = fn.find(")");
+    pos1 = fn.find_last_of("(");
+    pos2 = fn.find(")", pos1);
     assert(pos2>pos1&&pos1>0);
     strcpy(buff, fn.substr(pos1 + 1, pos2 - pos1 - 1).c_str());
     char *tok;
@@ -1270,8 +1270,23 @@ void function_info::debug_param(std::map<void *, size_t> devPtr_Size, memory_spa
         symbol *param = m_symtab->lookup(name.c_str());
         addr_t param_addr = param->get_address();
         param_t param_value = p.get_value();
+
+        if (paramIsPointer[i->first]){
+            assert(param_value.size==8&&mallocPtr_Size.find(*(long long*)param_value.pdata)!=mallocPtr_Size.end());
+        }else{
+            assert(!(param_value.size==8&&mallocPtr_Size.find(*(long long*)param_value.pdata)!=mallocPtr_Size.end()));
+        }
 //        if (paramIsPointer[i->first]){
 //            assert(param_value.size==8);
+//            void *array_pointer = (void*)*val;
+//            assert(devPtr_Size.find(array_pointer)!=devPtr_Size.end());
+//            size_t array_size = devPtr_Size[array_pointer];
+//            unsigned char array_val[array_size];
+//            memcpy((void*) array_val, array_pointer, array_size);
+//            param_data.push_back(std::pair<size_t, unsigned char*>(array_size,array_val));
+//
+//            assert(size!=8||g_mallocPtr_Size.find(*(long long*)arg)!=g_mallocPtr_Size.end());
+//
 //        }else{
             unsigned char val[param_value.size];
             param_mem->read(param_addr,param_value.size,(void*)val);
@@ -1295,7 +1310,7 @@ void function_info::debug_param(std::map<void *, size_t> devPtr_Size, memory_spa
     }
     fflush(fout);
     fclose(fout);
-    exit(0);
+    //exit(0);
 }
 
 template<int activate_level> 
