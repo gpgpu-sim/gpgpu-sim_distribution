@@ -1714,6 +1714,7 @@ void cuobjdumpParseBinary(unsigned int handle){
 		unsigned capability = (*iter)->getArch();
 		if (capability > max_capability) max_capability = capability;
 	}
+    printf("Using PTX version = %u\n", max_capability);
 	if (max_capability > 20) printf("WARNING: No guarantee that PTX will be parsed for SM version %u\n", max_capability);
 
 	cuobjdumpPTXSection* ptx = findPTXSection(fname);
