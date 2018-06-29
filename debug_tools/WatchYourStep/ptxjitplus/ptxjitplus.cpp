@@ -37,7 +37,9 @@
 #include "ptxinst.h"
 
 const char *sSDKname = "PTX Just In Time (JIT) Compilation (no-qatest)";
-
+char *wys_exec_path;
+char *wys_exec_name;
+char *wys_launch_num;
 
 void ptxJIT(int argc, char **argv, CUmodule *phModule, CUfunction *phKernel, CUlinkState *lState)
 {
@@ -114,12 +116,12 @@ void ptxJIT(int argc, char **argv, CUmodule *phModule, CUfunction *phKernel, CUl
 
 void initializeData(std::vector<unsigned char*>& param_data, std::vector< std::pair<size_t, bool> >& param_info)
 {
-    char *wys_exec_path = getenv("WYS_EXEC_PATH");
+    wys_exec_path = getenv("WYS_EXEC_PATH");
     assert(wys_exec_path!=NULL);
-    char *wys_exec_name = getenv("WYS_EXEC_NAME");
+    wys_exec_name = getenv("WYS_EXEC_NAME");
     assert(wys_exec_name!=NULL);
     std::string path_to_search = std::string(wys_exec_path) + "/" + wys_exec_name + ".*.ptx";
-    char* wys_launch_num(getenv("WYS_LAUNCH_NUM"));
+    wys_launch_num = getenv("WYS_LAUNCH_NUM");
     assert(wys_launch_num!=NULL);
     std::string filename = std::string("../data/params.config") + wys_launch_num;
 
@@ -178,7 +180,9 @@ int main(int argc, char **argv)
     cudaDeviceProp deviceProp;
 
     printf("[%s] - Starting...\n", sSDKname);
+    //parameter data
     std::vector<unsigned char*> param_data;
+    //parameter data size and isPointer
     std::vector< std::pair<size_t, bool> > param_info;
     initializeData(param_data,param_info);
 
@@ -229,8 +233,9 @@ int main(int argc, char **argv)
 
     checkCudaErrors(cuFuncSetBlockShape(hKernel, nThreads, 1, 1));
 
-    //Initialize param_data for kernel
+    //maps param number to pointer to device data
     std::map< size_t, unsigned char* > m_device_data;
+    //Initialize param_data for kernel
     int paramOffset = 0;
     for( size_t i = 0; i<param_data.size(); i++){
         if(param_info[i].second){
@@ -251,6 +256,7 @@ int main(int argc, char **argv)
     checkCudaErrors(cuLaunchGrid(hKernel, nBlocks, 1));
     std::cout << "CUDA kernel launched" << std::endl;
 
+    //maps param number to pointer to output data
     std::map< size_t, unsigned char* > m_output_data;
     for(std::map< size_t, unsigned char* >::iterator i = m_device_data.begin(); i!=m_device_data.begin(); i++){
         unsigned char *h_data   = 0;
@@ -264,8 +270,15 @@ int main(int argc, char **argv)
         m_output_data[i->first] = h_data;
     }
 
+    std::string filename = std::string("../data/wys.out") + wys_launch_num;
+    FILE *fout = fopen(filename.c_str(), "w");
+    assert(fout);
     for(std::map< size_t, unsigned char* >::iterator i = m_output_data.begin(); i!=m_output_data.begin(); i++){
-        //print data out to file
+        fprintf(fout, "param %zu: size = %zu, data = ", i->first,param_info[i->first].first);
+        for (size_t j = 0; j<param_info[i->first].first; j++){
+            fprintf(fout, " %u", i->second[j]);
+        }
+        fprintf(fout, "\n");
     }
 
     int* h_data;
