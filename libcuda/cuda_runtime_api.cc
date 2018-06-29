@@ -1350,39 +1350,52 @@ std::string get_app_binary(){
  *	enabled
  * */
 void extract_code_using_cuobjdump(){
-	CUctx_st *context = GPGPUSim_Context();
-	char command[1000];
+    CUctx_st *context = GPGPUSim_Context();
+    std::string command;
 
-   std::string app_binary = get_app_binary(); 
+    std::string app_binary = get_app_binary(); 
 
 	char fname[1024];
 	snprintf(fname,1024,"_cuobjdump_complete_output_XXXXXX");
 	int fd=mkstemp(fname);
 	close(fd);
 	// Running cuobjdump using dynamic link to current process
-	snprintf(command,1000,"md5sum %s ", app_binary.c_str());
-	printf("Running md5sum using \"%s\"\n", command);
-	system(command);
+    command = "md5sum " + app_binary;
+	printf("Running md5sum using \"%s\"\n", command.c_str());
+	system(command.c_str());
 	// Running cuobjdump using dynamic link to current process
 	// Needs the option '-all' to extract PTX from CDP-enabled binary 
 	extern bool g_cdp_enabled;
+    const int current_cuda = atoi(getenv("CUDA_VERSION_NUMBER"));
+    if ( context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() && current_cuda > 42 ) {
+        const char* cuda_42_path = getenv("CUDA_42_INSTALL_PATH");
+        if ( NULL == cuda_42_path ) {
+            printf("You are using a new version of CUDA and PTXPLUS. You are required to have CUDA SDK 4.2 and explicitly "
+                   "point to it via the environment variable $CUDA_42_INSTALL_PATH.");
+            exit(1);
+        } else {
+            command = "$CUDA_42_INSTALL_PATH/bin/cuobjdump";
+        }
+    } else {
+        command = "$CUDA_INSTALL_PATH/bin/cuobjdump";
+    }
 	if(!g_cdp_enabled)
-	    snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass %s > %s", app_binary.c_str(), fname);
+        command += " -ptx -elf -sass " + app_binary + " > " + fname;
 	else
-	    snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass -all %s > %s", app_binary.c_str(), fname);
+        command += " -ptx -elf -sass -all " + app_binary + " > " + fname;
 	bool parse_output = true; 
-	int result = system(command);
+	int result = system(command.c_str());
 	if(result) {
 		if (context->get_device()->get_gpgpu()->get_config().experimental_lib_support() && (result == 65280)) {  
 			// Some CUDA application may exclusively use kernels provided by CUDA
 			// libraries (e.g. CUBLAS).  Skipping cuobjdump extraction from the
 			// executable for this case. 
 			// 65280 is the return code from cuobjdump denoting the specific error (tested on CUDA 4.0/4.1/4.2)
-			printf("WARNING: Failed to execute: %s\n", command); 
+			printf("WARNING: Failed to execute: %s\n", command.c_str()); 
 			printf("         Executable binary does not contain any GPU kernel.\n"); 
 			parse_output = false; 
 		} else {
-			printf("ERROR: Failed to execute: %s\n", command); 
+			printf("ERROR: Failed to execute: %s\n", command.c_str()); 
 			exit(1);
 		}
 	}
@@ -1435,7 +1448,7 @@ void extract_code_using_cuobjdump(){
 			std::cout << "Running cuobjdump on " << line << std::endl;
 			std::cout << "Using command: " << cmd.str() << std::endl;
 			result = system(cmd.str().c_str());
-			if(result) {printf("ERROR: Failed to execute: %s\n", command); exit(1);}
+			if(result) {printf("ERROR: Failed to execute: %s\n", command.c_str()); exit(1);}
 			std::cout << "Done" << std::endl;
 
 			std::cout << "Trying to parse " << libcodfn.str() << std::endl;
@@ -1737,13 +1750,13 @@ void cuobjdumpParseBinary(unsigned int handle){
         symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str, handle);
         printf("Adding %s with cubin handle %u\n", ptx->getPTXfilename().c_str(), handle);
         context->add_binary(symtab, handle);
-        gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability );
+        gpgpu_ptxinfo_load_from_string( ptxcode, handle );
         delete[] ptxplus_str;
     } else {
         symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxcode, handle);
         printf("Adding %s with cubin handle %u\n", ptx->getPTXfilename().c_str(), handle);
         context->add_binary(symtab, handle);
-        gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability );
+        gpgpu_ptxinfo_load_from_string( ptxcode, handle );
     }
     load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
     load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
@@ -1847,7 +1860,7 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 			} else {
 				symtab=gpgpu_ptx_sim_load_ptx_from_string(ptx,source_num);
 				context->add_binary(symtab,fat_cubin_handle);
-				gpgpu_ptxinfo_load_from_string( ptx, source_num, max_capability );
+				gpgpu_ptxinfo_load_from_string( ptx, source_num );
 			}
 			source_num++;
 			load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
