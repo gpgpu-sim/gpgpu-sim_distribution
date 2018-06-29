@@ -1234,8 +1234,8 @@ void function_info::debug_param(std::map<unsigned long long, size_t> mallocPtr_S
 
     char * gpgpusim_path = getenv("GPGPUSIM_ROOT");
     assert(gpgpusim_path!=NULL);
-//    std::string command = std::string("mkdir ") + gpgpusim_path + "/debug_tools/WatchYourStep/data";
-//    system(command.c_str());
+    std::string command = std::string("mkdir ") + gpgpusim_path + "/debug_tools/WatchYourStep/data";
+    system(command.c_str());
     std::string filename(std::string(gpgpusim_path) + "/debug_tools/WatchYourStep/data/params.config" + std::to_string(counter++));
 
     for( std::map<unsigned,param_info>::const_iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
@@ -1245,11 +1245,14 @@ void function_info::debug_param(std::map<unsigned long long, size_t> mallocPtr_S
         addr_t param_addr = param->get_address();
         param_t param_value = p.get_value();
 
-        if(param_value.size==8&&mallocPtr_Size.find(*(unsigned long long*)param_value.pdata)!=mallocPtr_Size.end()){
+        if(param_value.size==sizeof(void*) && mallocPtr_Size.find(*(unsigned long long*)param_value.pdata)!=mallocPtr_Size.end()){
+            //is pointer
             size_t array_size = mallocPtr_Size[*(unsigned long long*)param_value.pdata];
-            unsigned char val[array_size];
-            gpu->get_global_memory()->read(param_addr,array_size,(void*)val);
-            param_data.push_back(std::pair<size_t, unsigned char*>(array_size,val));
+            unsigned char val[param_value.size];
+            param_mem->read(param_addr,param_value.size,(void*)val);
+            unsigned char array_val[array_size];
+            gpu->get_global_memory()->read(*(unsigned*)((void*)val),array_size,(void*)array_val);
+            param_data.push_back(std::pair<size_t, unsigned char*>(array_size,array_val));
             paramIsPointer.push_back(true);
         }else{
             unsigned char val[param_value.size];
