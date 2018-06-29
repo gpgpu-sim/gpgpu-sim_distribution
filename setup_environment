@@ -53,6 +53,8 @@ if [ $CUDA_VERSION_NUMBER -gt 9100 -o $CUDA_VERSION_NUMBER -lt 2030  ]; then
 	return
 fi
 
+
+
 if [ $# = '1' ] ;
 then
     export GPGPUSIM_CONFIG=gcc-$CC_VERSION/cuda-$CUDA_VERSION_NUMBER/$1
@@ -133,5 +135,16 @@ else
 fi
 
 echo "setup_environment succeeded";
+
+if [ $CUDA_VERSION_NUMBER -gt 4200 ]; then
+    echo ""
+    echo "----------------------------------------------------------------------------"
+    echo "WARNING - If you only care about PTX execution, ignore this warning.";
+    echo "If you are using PTXPLUS, only sm_13 is supported and it requires that the app binaries are compiled in CUDA 4.2 or less.";
+    echo "New versions of CUDA tools have dropped parsing support for sm_1x - therefore to use PTXPLUS with a modern card configuration, you must";
+    echo "have both CUDA 4.2 and a modern CUDA installed. When running PTXPLUS under a CUDA version >= 4.2, the simulator will fail unless \$CUDA_42_INSTALL_PATH";
+    echo "has been set properly. You must set this manually.";
+    echo "----------------------------------------------------------------------------"
+fi
 
 export GPGPUSIM_SETUP_ENVIRONMENT_WAS_RUN=1
