@@ -137,7 +137,9 @@ else
 	echo "configured without a power model.";
 fi
 
-export PTXAS_CUDA_INSTALL_PATH=$CUDA_INSTALL_PATH
+if [ ! -z "$PTXAS_CUDA_INSTALL_PATH" ]; then
+    export PTXAS_CUDA_INSTALL_PATH=$CUDA_INSTALL_PATH;
+fi
 echo "";
 echo "----------------------------------------------------------------------------";
 echo "INFO - If you only care about PTX execution, ignore this message. GPGPU-Sim supports PTX execution in modern CUDA."
