@@ -47,7 +47,7 @@ fi
 CC_VERSION=`gcc --version | head -1 | awk '{for(i=1;i<=NF;i++){ if(match($i,/^[0-9]\.[0-9]\.[0-9]$/))  {print $i; exit 0}}}'`
 
 CUDA_VERSION_STRING=`$CUDA_INSTALL_PATH/bin/nvcc --version | awk '/release/ {print $5;}' | sed 's/,//'`;
-CUDA_VERSION_NUMBER=`echo $CUDA_VERSION_STRING | sed 's/\./ /' | awk '{printf("%02u%02u", 10*int($1), 10*$2);}'`
+export CUDA_VERSION_NUMBER=`echo $CUDA_VERSION_STRING | sed 's/\./ /' | awk '{printf("%02u%02u", 10*int($1), 10*$2);}'`
 if [ $CUDA_VERSION_NUMBER -gt 9100 -o $CUDA_VERSION_NUMBER -lt 2030  ]; then
 	echo "ERROR ** GPGPU-Sim version $GPGPUSIM_VERSION_STRING not tested with CUDA version $CUDA_VERSION_STRING (please see README)";
 	return
@@ -134,17 +134,19 @@ else
 	echo "configured without a power model.";
 fi
 
-echo "setup_environment succeeded";
-
 if [ $CUDA_VERSION_NUMBER -gt 4200 ]; then
-    echo ""
-    echo "----------------------------------------------------------------------------"
-    echo "WARNING - If you only care about PTX execution, ignore this warning.";
-    echo "If you are using PTXPLUS, only sm_13 is supported and it requires that the app binaries are compiled in CUDA 4.2 or less.";
+    echo "";
+    echo "----------------------------------------------------------------------------";
+    echo "WARNING - If you only care about PTX execution, ignore this warning. GPGPU-Sim supports PTX execution in modern CUDA."
+    echo "If you want to run PTXPLUS, download SDK 4.2 (in addition to your modern CUDA) and set \$CUDA_42_INSTALL_PATH."
+    echo "The following text describes why:";
+    echo "If you are using PTXPLUS, only sm_1x is supported and it requires that the app binaries are compiled in CUDA 4.2 or less.";
     echo "New versions of CUDA tools have dropped parsing support for sm_1x - therefore to use PTXPLUS with a modern card configuration, you must";
     echo "have both CUDA 4.2 and a modern CUDA installed. When running PTXPLUS under a CUDA version >= 4.2, the simulator will fail unless \$CUDA_42_INSTALL_PATH";
     echo "has been set properly. You must set this manually.";
     echo "----------------------------------------------------------------------------"
 fi
+
+echo "setup_environment succeeded";
 
 export GPGPUSIM_SETUP_ENVIRONMENT_WAS_RUN=1
