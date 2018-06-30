@@ -339,7 +339,7 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
         snprintf(extra_flags,1024,"--compile-only --gpu-name=sm_%u",g_occupancy_sm_number);
 #endif
 
-    snprintf(commandline,1024,"$CUDA_INSTALL_PATH/bin/ptxas %s -v %s --output-file  /dev/null 2> %s",
+    snprintf(commandline,1024,"$PTXAS_CUDA_INSTALL_PATH/bin/ptxas %s -v %s --output-file  /dev/null 2> %s",
              extra_flags, fname2, tempfile_ptxinfo);
     printf("GPGPU-Sim PTX: generating ptxinfo using \"%s\"\n", commandline);
     result = system(commandline);
