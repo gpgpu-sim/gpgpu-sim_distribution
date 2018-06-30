@@ -73,7 +73,7 @@ void ptx_reg_options(option_parser_t opp)
                 "Saved converted ptxplus to a file",
                 "0");
    option_parser_register(opp, "-gpgpu_occupancy_sm_number", OPT_INT32, &g_occupancy_sm_number,
-                "The SM number to pass to ptxas when getting register usage for computing GPU occupancy."
+                "The SM number to pass to ptxas when getting register usage for computing GPU occupancy. "
                 "This parameter is required in the config.",
                 "0");
 }
@@ -327,8 +327,8 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
 
 #if CUDART_VERSION >= 3000
     if ( g_occupancy_sm_number == 0 ) {
-        printf( "gpgpusim.config must specify the sm version for the GPU that you use to compute occupancy.\n"
-                "The register file size is specifically tied to the sm version used to querry ptxas for register usage."
+        printf( "gpgpusim.config must specify the sm version for the GPU that you use to compute occupancy \"-gpgpu_occupancy_sm_number XX\".\n"
+                "The register file size is specifically tied to the sm version used to querry ptxas for register usage.\n"
                 "A register size/SM mismatch may result in occupancy differences." );
         exit(1);
     }
