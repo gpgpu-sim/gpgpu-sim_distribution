@@ -125,7 +125,7 @@ char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const std::string ptxfilenam
 	fflush(stdout);
 	printf("GPGPU-Sim PTX: calling cuobjdump_to_ptxplus\ncommandline: %s\n", commandline);
 	result = system(commandline);
-	if(result){printf("GPGPU-Sim PTX: ERROR ** could not execute %s\n", commandline); exit(1);}
+	if(result){fprintf(stderr, "GPGPU-Sim PTX: ERROR ** could not execute %s\n", commandline); exit(1);}
 
 
 	// Get ptxplus from file
@@ -147,7 +147,7 @@ char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const std::string ptxfilenam
 		printf("GPGPU-Sim PTX: removing temporary files using \"%s\"\n", rm_commandline);
 		int rm_result = system(rm_commandline);
 		if( rm_result != 0 ) {
-			printf("GPGPU-Sim PTX: ERROR ** while removing temporary files %d\n", rm_result);
+			fprintf(stderr, "GPGPU-Sim PTX: ERROR ** while removing temporary files %d\n", rm_result);
 			exit(1);
 		}
 	}
@@ -198,7 +198,7 @@ void fix_duplicate_errors(char fname2[1024]) {
 	printf("Running: %s\n", commandline);
 	int result = system(commandline);
 	if (result != 0) {
-		printf("GPGPU-Sim PTX: ERROR ** while changing filename from %s to %s", fname2, tempfile);
+		fprintf(stderr, "GPGPU-Sim PTX: ERROR ** while changing filename from %s to %s", fname2, tempfile);
 		exit(1);
 	}
 
@@ -287,7 +287,7 @@ void fix_duplicate_errors(char fname2[1024]) {
 	printf("Running: %s\n", commandline);
 	result = system(commandline);
 	if (result != 0) {
-		printf("GPGPU-Sim PTX: ERROR ** while deleting %s", tempfile);
+		fprintf(stderr, "GPGPU-Sim PTX: ERROR ** while deleting %s", tempfile);
 		exit(1);
 	}
 }
@@ -313,9 +313,9 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
     printf("Running: %s\n", commandline2);
     int result = system(commandline2);
     if( result != 0 ) {
-       printf("GPGPU-Sim PTX: ERROR ** while loading PTX (a) %d\n", result);
-       printf("               Ensure you have write access to simulation directory\n");
-       printf("               and have \'cat\' and \'sed\' in your path.\n");
+       fprintf(stderr, "GPGPU-Sim PTX: ERROR ** while loading PTX (a) %d\n", result);
+       fprintf(stderr, "               Ensure you have write access to simulation directory\n");
+       fprintf(stderr, "               and have \'cat\' and \'sed\' in your path.\n");
        exit(1);
     }
 
@@ -327,9 +327,9 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
 
 #if CUDART_VERSION >= 3000
     if ( g_occupancy_sm_number == 0 ) {
-        printf( "gpgpusim.config must specify the sm version for the GPU that you use to compute occupancy \"-gpgpu_occupancy_sm_number XX\".\n"
-                "The register file size is specifically tied to the sm version used to querry ptxas for register usage.\n"
-                "A register size/SM mismatch may result in occupancy differences." );
+        fprintf( stderr, "gpgpusim.config must specify the sm version for the GPU that you use to compute occupancy \"-gpgpu_occupancy_sm_number XX\".\n"
+                         "The register file size is specifically tied to the sm version used to querry ptxas for register usage.\n"
+                         "A register size/SM mismatch may result in occupancy differences." );
         exit(1);
     }
     extern bool g_cdp_enabled;
@@ -357,8 +357,8 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
     		result = system(commandline);
 	}
 	if (result != 0) {
-		printf("GPGPU-Sim PTX: ERROR ** while loading PTX (b) %d\n", result);
-		printf("               Ensure ptxas is in your path.\n");
+		fprintf(stderr, "GPGPU-Sim PTX: ERROR ** while loading PTX (b) %d\n", result);
+		fprintf(stderr, "               Ensure ptxas is in your path.\n");
 		exit(1);
 	}
     }
@@ -372,7 +372,7 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
         printf("GPGPU-Sim PTX: removing ptxinfo using \"%s\"\n", commandline);
         result = system(commandline);
         if( result != 0 ) {
-    	    printf("GPGPU-Sim PTX: ERROR ** while loading PTX (c) %d\n", result);
+    	    fprintf(stderr, "GPGPU-Sim PTX: ERROR ** while loading PTX (c) %d\n", result);
     	    exit(1);
         }
     }
