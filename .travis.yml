@@ -20,7 +20,8 @@ matrix:
     - services: docker
       env: CONFIG=configs.teslac2050.yml
     - services: docker
-      env: CONFIG=configs.gtx1080ti.yml
-      env: PTXAS_CUDA_INSTALL_PATH=/usr/local/cuda-9.2/
+      env:
+        - CONFIG=configs.gtx1080ti.yml
+        - PTXAS_CUDA_INSTALL_PATH=/usr/local/cuda-9.2/
 
 script: docker run -v `pwd`:/home/runner/gpgpu-sim_distribution:rw tgrogers/gpgpu-sim_regress:latest /bin/bash -c "./start_torque.sh; chown -R runner /home/runner/gpgpu-sim_distribution; su - runner -c 'source /home/runner/gpgpu-sim_distribution/setup_environment && make -j -C /home/runner/gpgpu-sim_distribution && cd /home/runner/gpgpu-sim_simulations/ && git pull && /home/runner/gpgpu-sim_simulations/util/job_launching/run_simulations.py -c /home/runner/gpgpu-sim_simulations/util/job_launching/regression_recipies/rodinia_2.0-ft/$CONFIG -N regress && /home/runner/gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress'"
