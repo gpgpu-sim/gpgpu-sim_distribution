@@ -140,7 +140,7 @@ fi
 export PTXAS_CUDA_INSTALL_PATH=$CUDA_INSTALL_PATH
 echo "";
 echo "----------------------------------------------------------------------------";
-echo "WARNING - If you only care about PTX execution, ignore this warning. GPGPU-Sim supports PTX execution in modern CUDA."
+echo "INFO - If you only care about PTX execution, ignore this message. GPGPU-Sim supports PTX execution in modern CUDA."
 if [ $CUDA_VERSION_NUMBER -gt 4200 ]; then
     echo "If you want to run PTXPLUS (sm_1x SASS) with a modern card configuration, the apps and simulator must be compiled with CUDA 4.2."
     echo "You can still run a PASCAL configuration when compiling with 4.2 by setting the \$PTXAS_CUDA_INSTALL_PATH directory environment variable."
