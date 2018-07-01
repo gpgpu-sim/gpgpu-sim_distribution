@@ -9,7 +9,9 @@ language: cpp
 matrix:
   include:
     - services: docker
-      env: CONFIG=configs.gtx480.yml
+      env:
+        - CONFIG=configs.gtx480.yml
+        - CUDA_INSTALL_PATH=/usr/local/cuda-4.2/
 # This config is just taking far too long...
 #    - services: docker
 #      env:
