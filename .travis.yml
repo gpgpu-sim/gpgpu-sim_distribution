@@ -14,7 +14,7 @@ matrix:
 #    - services: docker
 #      env:
 #       - CONFIG=configs.gtx750ti.yml
-        - CUDA_INSTALL_PATH=/usr/local/cuda-4.2/
+#       - CUDA_INSTALL_PATH=/usr/local/cuda-4.2/
     - services: docker
       env:
         - CONFIG=configs.quadro5600.yml
