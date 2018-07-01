@@ -137,7 +137,7 @@ else
 	echo "configured without a power model.";
 fi
 
-if [ ! -z "$PTXAS_CUDA_INSTALL_PATH" ]; then
+if [ -z "$PTXAS_CUDA_INSTALL_PATH" ]; then
     export PTXAS_CUDA_INSTALL_PATH=$CUDA_INSTALL_PATH;
 fi
 echo "";
