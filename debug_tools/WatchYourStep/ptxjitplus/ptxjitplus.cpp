@@ -150,7 +150,7 @@ void initializeData(std::vector<unsigned char*>& param_data, std::vector< std::p
         info.first = len;
         assert( err==1 );
         //printf("%lu : ", len);
-        unsigned char params[len];
+        unsigned char* params = (unsigned char*) malloc(len*sizeof(unsigned char));
         for (size_t i=0; i<len; i++)
         {
             err = fscanf(fin, "%u ", &val);
@@ -165,6 +165,16 @@ void initializeData(std::vector<unsigned char*>& param_data, std::vector< std::p
         //printf("\n");
     }
     fclose(fin);
+    //filename = std::string("../data/wys.out") + wys_launch_num + "_param";
+    //fout = fopen(filename.c_str(), "w");
+    //assert(fout);
+    //fprintf(fout, "param %zu: size = %zu, data = ", 0,param_info[0].first);
+    //for (size_t j = 0; j<param_info[0].first; j++){
+    //    fprintf(fout, " %u", i->second[j]);
+    //}
+    //fprintf(fout, "\n");
+    //fflush(fout);
+    //fclose(fout);
 }
 
 int main(int argc, char **argv)
@@ -185,6 +195,8 @@ int main(int argc, char **argv)
     //parameter data size and isPointer
     std::vector< std::pair<size_t, bool> > param_info;
     initializeData(param_data,param_info);
+
+
 
     if (checkCmdLineFlag(argc, (const char **)argv, "device"))
     {
