@@ -258,7 +258,7 @@ int main(int argc, char **argv)
 
     //maps param number to pointer to output data
     std::map< size_t, unsigned char* > m_output_data;
-    for(std::map< size_t, unsigned char* >::iterator i = m_device_data.begin(); i!=m_device_data.begin(); i++){
+    for(std::map< size_t, unsigned char* >::iterator i = m_device_data.begin(); i!=m_device_data.end(); i++){
         unsigned char *h_data   = 0;
         if ((h_data = (unsigned char *)malloc(param_info[i->first].first)) == NULL)
         {
@@ -273,15 +273,17 @@ int main(int argc, char **argv)
     std::string filename = std::string("../data/wys.out") + wys_launch_num;
     FILE *fout = fopen(filename.c_str(), "w");
     assert(fout);
-    for(std::map< size_t, unsigned char* >::iterator i = m_output_data.begin(); i!=m_output_data.begin(); i++){
+    for(std::map< size_t, unsigned char* >::iterator i = m_output_data.begin(); i!=m_output_data.end(); i++){
         fprintf(fout, "param %zu: size = %zu, data = ", i->first,param_info[i->first].first);
         for (size_t j = 0; j<param_info[i->first].first; j++){
             fprintf(fout, " %u", i->second[j]);
         }
         fprintf(fout, "\n");
     }
+    fflush(fout);
+    fclose(fout);
 
-    int* h_data;
+    int* h_data = (int*) m_output_data[0];
     // Check the result
     bool dataGood = true;
 
@@ -293,9 +295,12 @@ int main(int argc, char **argv)
             dataGood = false;
         }
     }
+    if(dataGood){
+        std::cout<<"OK!"<<std::endl;
+    }
 
     //Cleanup
-    for(std::map< size_t, unsigned char* >::iterator i = m_device_data.begin(); i!=m_device_data.begin(); i++){
+    for(std::map< size_t, unsigned char* >::iterator i = m_device_data.begin(); i!=m_device_data.end(); i++){
         if (i->second){
             checkCudaErrors(cudaFree(i->second));
             i->second = 0;
