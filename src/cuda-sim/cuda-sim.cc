@@ -1248,9 +1248,9 @@ void function_info::debug_param(std::map<unsigned long long, size_t> mallocPtr_S
         if(param_value.size==sizeof(void*) && mallocPtr_Size.find(*(unsigned long long*)param_value.pdata)!=mallocPtr_Size.end()){
             //is pointer
             size_t array_size = mallocPtr_Size[*(unsigned long long*)param_value.pdata];
-            unsigned char val[param_value.size];
+            unsigned char* val = (unsigned char*) malloc(param_value.size);
             param_mem->read(param_addr,param_value.size,(void*)val);
-            unsigned char array_val[array_size];
+            unsigned char* array_val = (unsigned char*) malloc(array_size);
             gpu->get_global_memory()->read(*(unsigned*)((void*)val),array_size,(void*)array_val);
             param_data.push_back(std::pair<size_t, unsigned char*>(array_size,array_val));
             paramIsPointer.push_back(true);

@@ -1076,7 +1076,6 @@ __host__ cudaError_t CUDARTAPI cudaSetupArgument(const void *arg, size_t size, s
 	kernel_config &config = g_cuda_launch_stack.back();
 	config.set_arg(arg,size,offset);
 	printf("GPGPU-Sim PTX: Setting up arguments for %zu bytes starting at 0x%llx..\n",size, (unsigned long long) arg);
-    assert(size!=8||g_mallocPtr_Size.find(*(long long*)arg)!=g_mallocPtr_Size.end());
 
 	return g_last_cudaError = cudaSuccess;
 }
@@ -2631,6 +2630,7 @@ kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *hostFun,
 	return result;
 }
 
+#if (CUDART_VERSION >= 8000)
 CUresult CUDAAPI cuLinkCreate(unsigned int numOptions, CUjit_option *options, void **optionValues, CUlinkState *stateOut)
 {
     //currently do not support options or multiple CUlinkStates
@@ -2754,3 +2754,4 @@ CUresult CUDAAPI cuLaunchGrid(CUfunction f, int grid_width, int grid_height)
     cudaLaunch(hostFun);
 	return CUDA_SUCCESS;
 }
+#endif

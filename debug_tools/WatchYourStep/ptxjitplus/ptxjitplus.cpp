@@ -40,6 +40,7 @@ const char *sSDKname = "PTX Just In Time (JIT) Compilation (no-qatest)";
 char *wys_exec_path;
 char *wys_exec_name;
 char *wys_launch_num;
+std::string kernelName;
 
 void ptxJIT(int argc, char **argv, CUmodule *phModule, CUfunction *phKernel, CUlinkState *lState)
 {
@@ -108,7 +109,7 @@ void ptxJIT(int argc, char **argv, CUmodule *phModule, CUfunction *phKernel, CUl
     checkCudaErrors(cuModuleLoadData(phModule, cuOut));
 
     // Locate the kernel entry poin
-    checkCudaErrors(cuModuleGetFunction(phKernel, *phModule, "_Z8myKernelPi"));
+    checkCudaErrors(cuModuleGetFunction(phKernel, *phModule, kernelName.c_str()));
 
     // Destroy the linker invocation
     checkCudaErrors(cuLinkDestroy(*lState));
@@ -125,13 +126,13 @@ void initializeData(std::vector<unsigned char*>& param_data, std::vector< std::p
     assert(wys_launch_num!=NULL);
     std::string filename = std::string("../data/params.config") + wys_launch_num;
 
-    //instrument ptx
     FILE *fin = fopen(filename.c_str(), "r");
     assert(fin);
     char buff[1024];
     fscanf(fin, "%s\n", buff);
     printf("Processing :%s ...\n", buff);
     fflush(stdout);
+    kernelName = std::string(buff);
     //fill data structure to pass in params later
     while (!feof(fin)){
         std::pair<size_t, bool> info;
@@ -179,8 +180,8 @@ void initializeData(std::vector<unsigned char*>& param_data, std::vector< std::p
 
 int main(int argc, char **argv)
 {
-    const unsigned int nThreads = 256;
-    const unsigned int nBlocks  = 64;
+    const unsigned int nThreads = 2;
+    const unsigned int nBlocks  = 2;
 
     CUmodule     hModule  = 0;
     CUfunction   hKernel  = 0;
@@ -238,12 +239,20 @@ int main(int argc, char **argv)
 
 
 
+    // Allocate memory on host and device (Runtime API)
+    // NOTE: The runtime API will create the GPU Context implicitly here
+    int         *d_tmp   = 0;
+    checkCudaErrors(cudaMalloc(&d_tmp, 1));
+
     // JIT Compile the Kernel from PTX and get the Handles (Driver API)
     ptxJIT(argc, argv, &hModule, &hKernel, &lState);
+    checkCudaErrors(cudaFree(d_tmp));
+
 
     // Set the kernel parameters (Driver API)
 
-    checkCudaErrors(cuFuncSetBlockShape(hKernel, nThreads, 1, 1));
+    // TODO: automatically load these values in
+    checkCudaErrors(cuFuncSetBlockShape(hKernel, 128, 1, 1));
 
     //maps param number to pointer to device data
     std::map< size_t, unsigned char* > m_device_data;
@@ -265,7 +274,8 @@ int main(int argc, char **argv)
     checkCudaErrors(cuParamSetSize(hKernel, paramOffset));
 
     // Launch the kernel (Driver API_)
-    checkCudaErrors(cuLaunchGrid(hKernel, nBlocks, 1));
+    // TODO: automatically load these values in
+    checkCudaErrors(cuLaunchGrid(hKernel, 1, 20));
     std::cout << "CUDA kernel launched" << std::endl;
 
     //maps param number to pointer to output data
@@ -295,21 +305,21 @@ int main(int argc, char **argv)
     fflush(fout);
     fclose(fout);
 
-    int* h_data = (int*) m_output_data[0];
-    // Check the result
-    bool dataGood = true;
-
-    for (unsigned int i = 0 ; dataGood && i < nBlocks * nThreads ; i++)
-    {
-        if (h_data[i] != (int)i)
-        {
-            std::cerr << "Error at " << i << std::endl;
-            dataGood = false;
-        }
-    }
-    if(dataGood){
-        std::cout<<"OK!"<<std::endl;
-    }
+//    int* h_data = (int*) m_output_data[0];
+//    // Check the result
+//    bool dataGood = true;
+//
+//    for (unsigned int i = 0 ; dataGood && i < nBlocks * nThreads ; i++)
+//    {
+//        if (h_data[i] != (int)i)
+//        {
+//            std::cerr << "Error at " << i << std::endl;
+//            dataGood = false;
+//        }
+//    }
+//    if(dataGood){
+//        std::cout<<"OK!"<<std::endl;
+//    }
 
     //Cleanup
     for(std::map< size_t, unsigned char* >::iterator i = m_device_data.begin(); i!=m_device_data.end(); i++){
@@ -333,5 +343,5 @@ int main(int argc, char **argv)
         hModule = 0;
     }
 
-    return dataGood ? EXIT_SUCCESS : EXIT_FAILURE;
+    //return dataGood ? EXIT_SUCCESS : EXIT_FAILURE;
 }
