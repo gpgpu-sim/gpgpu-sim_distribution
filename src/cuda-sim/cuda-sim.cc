@@ -1226,7 +1226,7 @@ void function_info::list_param( FILE *fout ) const
    fflush(fout);
 }
 
-void function_info::debug_param(std::map<unsigned long long, size_t> mallocPtr_Size, memory_space *param_mem, gpgpu_t* gpu, dim3 gridDim, dim3 blockDim) const
+void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPtr_Size, memory_space *param_mem, gpgpu_t* gpu, dim3 gridDim, dim3 blockDim) const
 {
     static unsigned long counter = 0;
     std::vector< std::pair<size_t, unsigned char*> > param_data;
@@ -1236,7 +1236,7 @@ void function_info::debug_param(std::map<unsigned long long, size_t> mallocPtr_S
     assert(gpgpusim_path!=NULL);
     std::string command = std::string("mkdir ") + gpgpusim_path + "/debug_tools/WatchYourStep/data";
     system(command.c_str());
-    std::string filename(std::string(gpgpusim_path) + "/debug_tools/WatchYourStep/data/params.config" + std::to_string(counter++));
+    std::string filename(std::string(gpgpusim_path) + "/debug_tools/WatchYourStep/data/params.config" + std::to_string(counter));
 
     for( std::map<unsigned,param_info>::const_iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
         const param_info &p = i->second;
@@ -1280,6 +1280,39 @@ void function_info::debug_param(std::map<unsigned long long, size_t> mallocPtr_S
     }
     fflush(fout);
     fclose(fout);
+    
+    //ptx config
+    char buff[1024];
+    std::string ptx_config_fn(std::string(gpgpusim_path) + "/debug_tools/WatchYourStep/data/ptx.config" + std::to_string(counter));
+    snprintf(buff, 1024, "grep -rn \".entry %s\" *.ptx | cut -d \":\" -f 1-2 > %s", get_name().c_str(), ptx_config_fn.c_str());
+    system(buff);
+    FILE *fin = fopen(ptx_config_fn.c_str(), "r");
+    char ptx_source[256];
+    unsigned line_number;
+    int numscanned = fscanf(fin, "%[^:]:%u", ptx_source, &line_number);
+    assert(numscanned == 2);
+    fclose(fin);
+    snprintf(buff, 1024, "grep -rn \".version\" %s | cut -d \":\" -f 1 | xargs -I \"{}\" awk \"NR>={}&&NR<={}+2\" %s > %s", ptx_source, ptx_source, ptx_config_fn.c_str());
+    system(buff);
+    fin = fopen(ptx_source, "r");
+    assert(fin!=NULL);
+    fout = fopen(ptx_config_fn.c_str(), "a");
+    assert(fout!=NULL);
+    for (unsigned i = 0; i<line_number; i++){
+        fgets(buff, 1024, fin);
+        assert(!feof(fin));
+    }
+    fprintf(fout, "\n\n");
+    do{
+        fprintf(fout, "%s", buff);
+        fgets(buff, 1024, fin);
+        assert(!feof(fin));
+    } while(strstr(buff, "entry")==NULL);
+
+    fclose(fin);
+    fflush(fout);
+    fclose(fout);
+    counter++;
 }
 
 template<int activate_level> 
