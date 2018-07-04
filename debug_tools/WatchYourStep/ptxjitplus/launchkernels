@@ -1,0 +1,3 @@
+#Launches kernels from $1 to $2
+#Note must source this script
+for num in $(eval echo {$1..$2}); do export WYS_LAUNCH_NUM=$num; echo Launching kernel $num...; ./ptxjitplus; done

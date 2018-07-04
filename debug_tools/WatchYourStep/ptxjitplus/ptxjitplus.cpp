@@ -81,18 +81,16 @@ void ptxJIT(int argc, char **argv, CUmodule *phModule, CUfunction *phKernel, CUl
     if (sizeof(void *)==4)
     {
         // Load the PTX from the string myPtx32
-        printf("Loading myPtx32[] program\n");
-        // PTX May also be loaded from file, as per below.
-        myErr = cuLinkAddData(*lState, CU_JIT_INPUT_PTX, (void *)myPtx32, strlen(myPtx32)+1, 0, 0, 0, 0);
+        printf("Loading myPtx32[] program...\n");
+        printf("WARNING: 32-bit execution is untested");
     }
     else
     {
         // Load the PTX from the string myPtx (64-bit)
         printf("Loading myPtx[] program\n");
-        //myErr = cuLinkAddData(*lState, CU_JIT_INPUT_PTX, (void *)myPtx64, strlen(myPtx64)+1, 0, 0, 0, 0);
-        // PTX May also be loaded from file, as per below.
-        myErr = cuLinkAddFile(*lState, CU_JIT_INPUT_PTX, "myPtx64.ptx",0,0,0);
     }
+    std::string ptx_file (std::string("../data/ptx.config") + wys_launch_num);
+    myErr = cuLinkAddFile(*lState, CU_JIT_INPUT_PTX, ptx_file.c_str(),0,0,0);
 
     if (myErr != CUDA_SUCCESS)
     {
