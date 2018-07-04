@@ -1226,7 +1226,7 @@ void function_info::list_param( FILE *fout ) const
    fflush(fout);
 }
 
-void function_info::debug_param(std::map<unsigned long long, size_t> mallocPtr_Size, memory_space *param_mem, gpgpu_t* gpu) const
+void function_info::debug_param(std::map<unsigned long long, size_t> mallocPtr_Size, memory_space *param_mem, gpgpu_t* gpu, dim3 gridDim, dim3 blockDim) const
 {
     static unsigned long counter = 0;
     std::vector< std::pair<size_t, unsigned char*> > param_data;
@@ -1265,6 +1265,7 @@ void function_info::debug_param(std::map<unsigned long long, size_t> mallocPtr_S
     FILE *fout  = fopen (filename.c_str(), "w");
     printf("Writing data to %s ...\n", filename.c_str());
     fprintf(fout, "%s\n", get_name().c_str());
+    fprintf(fout, "%u,%u,%u %u,%u,%u\n", gridDim.x, gridDim.y, gridDim.z, blockDim.x, blockDim.y, blockDim.z);
     size_t index = 0;
     for( std::vector< std::pair<size_t,unsigned char*> >::const_iterator i=param_data.begin(); i!=param_data.end(); i++ ) {
         if (paramIsPointer[index]){

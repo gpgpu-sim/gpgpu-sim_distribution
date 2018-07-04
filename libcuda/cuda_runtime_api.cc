@@ -2624,7 +2624,7 @@ kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *hostFun,
 	fflush(stdout);
 	
 	if(g_debug_execution >= 3){
-        entry->debug_param(g_mallocPtr_Size, result->get_param_memory(), (gpgpu_t *) context->get_device()->get_gpgpu());
+        entry->debug_param(g_mallocPtr_Size, result->get_param_memory(), (gpgpu_t *) context->get_device()->get_gpgpu(), gridDim, blockDim);
     }
 
 	return result;
@@ -2744,7 +2744,6 @@ CUresult CUDAAPI cuParamSetv(CUfunction hfunc, int offset, void *ptr, unsigned i
 
 CUresult CUDAAPI cuLaunchGrid(CUfunction f, int grid_width, int grid_height)
 {
-	CUctx_st* context = GPGPUSim_Context();
     const char *hostFun = (const char*) f;
 	gpgpusim_ptx_assert( !g_cuda_launch_stack.empty(), "empty launch stack" );
 	kernel_config &config = g_cuda_launch_stack.back();
@@ -2754,4 +2753,25 @@ CUresult CUDAAPI cuLaunchGrid(CUfunction f, int grid_width, int grid_height)
     cudaLaunch(hostFun);
 	return CUDA_SUCCESS;
 }
+
+
+CUresult CUDAAPI cuLaunchKernel(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, 
+        unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, 
+        unsigned int sharedMemBytes, CUstream hStream, void **kernelParams, void **extra)
+{
+    if (sharedMemBytes!=0||hStream!=NULL||kernelParams!=NULL||extra!=NULL){
+	    printf("GPGPU-Sim CUDA DRIVER API: Warning: Currently do not support \nsharedMemBytes, hStream, kernelParams, and extra parameters.\n");
+    }
+    const char *hostFun = (const char*) f;
+	gpgpusim_ptx_assert( !g_cuda_launch_stack.empty(), "empty launch stack" );
+	kernel_config &config = g_cuda_launch_stack.back();
+    dim3 *d_b = new dim3(blockDimX, blockDimY, blockDimZ);
+	config.set_block_dim(d_b);
+    dim3 *d_g = new dim3(gridDimX, gridDimY, gridDimZ);
+	config.set_grid_dim(d_g);
+
+    cudaLaunch(hostFun);
+	return CUDA_SUCCESS;
+}
+
 #endif
