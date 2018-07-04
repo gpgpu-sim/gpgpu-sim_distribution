@@ -1257,7 +1257,7 @@ public:
    void finalize( memory_space *param_mem );
    void param_to_shared( memory_space *shared_mem, symbol_table *symtab ); 
    void list_param( FILE *fout ) const;
-   void debug_param(std::map<unsigned long long, size_t> mallocPtr_Size, memory_space *param_mem, gpgpu_t* gpu) const;
+   void debug_param(std::map<unsigned long long, size_t> mallocPtr_Size, memory_space *param_mem, gpgpu_t* gpu, dim3 gridDim, dim3 blockDim) const;
 
    const struct gpgpu_ptx_sim_info* get_kernel_info () const
    {

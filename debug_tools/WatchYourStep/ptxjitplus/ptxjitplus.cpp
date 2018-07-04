@@ -40,6 +40,7 @@ const char *sSDKname = "PTX Just In Time (JIT) Compilation (no-qatest)";
 char *wys_exec_path;
 char *wys_exec_name;
 char *wys_launch_num;
+dim3 gridDim, blockDim;
 std::string kernelName;
 
 void ptxJIT(int argc, char **argv, CUmodule *phModule, CUfunction *phKernel, CUlinkState *lState)
@@ -133,6 +134,7 @@ void initializeData(std::vector<unsigned char*>& param_data, std::vector< std::p
     printf("Processing :%s ...\n", buff);
     fflush(stdout);
     kernelName = std::string(buff);
+    fscanf(fin, "%u,%u,%u %u,%u,%u\n", &gridDim.x, &gridDim.y, &gridDim.z, &blockDim.x, &blockDim.y, &blockDim.z);
     //fill data structure to pass in params later
     while (!feof(fin)){
         std::pair<size_t, bool> info;
@@ -248,12 +250,6 @@ int main(int argc, char **argv)
     ptxJIT(argc, argv, &hModule, &hKernel, &lState);
     checkCudaErrors(cudaFree(d_tmp));
 
-
-    // Set the kernel parameters (Driver API)
-
-    // TODO: automatically load these values in
-    checkCudaErrors(cuFuncSetBlockShape(hKernel, 128, 1, 1));
-
     //maps param number to pointer to device data
     std::map< size_t, unsigned char* > m_device_data;
     //Initialize param_data for kernel
@@ -275,7 +271,8 @@ int main(int argc, char **argv)
 
     // Launch the kernel (Driver API_)
     // TODO: automatically load these values in
-    checkCudaErrors(cuLaunchGrid(hKernel, 1, 20));
+    CUDAAPI cuLaunchKernel(hKernel, gridDim.x, gridDim.y, gridDim.z, blockDim.x, blockDim.y, blockDim.z, 
+        0, NULL, NULL, NULL);
     std::cout << "CUDA kernel launched" << std::endl;
 
     //maps param number to pointer to output data
@@ -299,6 +296,9 @@ int main(int argc, char **argv)
         fprintf(fout, "param %zu: size = %zu, data = ", i->first,param_info[i->first].first);
         for (size_t j = 0; j<param_info[i->first].first; j++){
             fprintf(fout, " %u", i->second[j]);
+            if (j&&(!(j%20))){
+                fprintf(fout, "\n");
+            }
         }
         fprintf(fout, "\n");
     }
