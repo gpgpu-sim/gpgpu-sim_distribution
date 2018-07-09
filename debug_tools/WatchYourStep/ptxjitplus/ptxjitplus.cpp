@@ -254,11 +254,12 @@ int main(int argc, char **argv)
     int paramOffset = 0;
     for( size_t i = 0; i<param_data.size(); i++){
         if(param_info[i].second){
-            unsigned char *d_data = 0;
-            checkCudaErrors(cudaMalloc((void**)&d_data, param_info[i].first));
-            checkCudaErrors(cudaMemcpy((void*)d_data,(void*)param_data[i],param_info[i].first,cudaMemcpyHostToDevice));
-            checkCudaErrors(cuParamSetv(hKernel, paramOffset, &d_data, sizeof(d_data)));
-            m_device_data[i]=d_data;
+            unsigned char **d_data = (unsigned char **) malloc(sizeof(unsigned char **));
+            *d_data = (unsigned char *) malloc(sizeof(unsigned char *));
+            checkCudaErrors(cudaMalloc((void**)d_data, param_info[i].first));
+            checkCudaErrors(cudaMemcpy((void*)*d_data,(void*)param_data[i],param_info[i].first,cudaMemcpyHostToDevice));
+            checkCudaErrors(cuParamSetv(hKernel, paramOffset, d_data, sizeof(*d_data)));
+            m_device_data[i]=*d_data;
             paramOffset += 8;
         }else{
             checkCudaErrors(cuParamSetv(hKernel, paramOffset, param_data[i], param_info[i].first));
