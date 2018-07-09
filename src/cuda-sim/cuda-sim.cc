@@ -1296,6 +1296,7 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
     system(buff);
     fin = fopen(ptx_source, "r");
     assert(fin!=NULL);
+    printf("Writing data to %s ...\n", ptx_config_fn.c_str());
     fout = fopen(ptx_config_fn.c_str(), "a");
     assert(fout!=NULL);
     for (unsigned i = 0; i<line_number; i++){
