@@ -1234,6 +1234,8 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
 
     char * gpgpusim_path = getenv("GPGPUSIM_ROOT");
     assert(gpgpusim_path!=NULL);
+    char * wys_exec_path = getenv("WYS_EXEC_PATH");
+    assert(wys_exec_path!=NULL);
     std::string command = std::string("mkdir ") + gpgpusim_path + "/debug_tools/WatchYourStep/data";
     system(command.c_str());
     std::string filename(std::string(gpgpusim_path) + "/debug_tools/WatchYourStep/data/params.config" + std::to_string(counter));
@@ -1284,7 +1286,7 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
     //ptx config
     char buff[1024];
     std::string ptx_config_fn(std::string(gpgpusim_path) + "/debug_tools/WatchYourStep/data/ptx.config" + std::to_string(counter));
-    snprintf(buff, 1024, "grep -rn \".entry %s\" *.ptx | cut -d \":\" -f 1-2 > %s", get_name().c_str(), ptx_config_fn.c_str());
+    snprintf(buff, 1024, "grep -rn \".entry %s\" %s/*.ptx | cut -d \":\" -f 1-2 > %s", get_name().c_str(), wys_exec_path, ptx_config_fn.c_str());
     system(buff);
     FILE *fin = fopen(ptx_config_fn.c_str(), "r");
     char ptx_source[256];
@@ -1314,6 +1316,7 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
     fflush(fout);
     fclose(fout);
     counter++;
+    //TODO: Free param_data
 }
 
 template<int activate_level> 
