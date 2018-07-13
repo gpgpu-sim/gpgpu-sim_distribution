@@ -315,13 +315,10 @@ endif
 ptxjitplus.o:ptxjitplus.cpp
 	$(EXEC) $(NVCC) $(INCLUDES)  --cudart shared $(ALL_CCFLAGS) $(GENCODE_FLAGS) -g -o $@ -c $<
 
-ptxjitplus: ptxjitplus.o ptxinst.o
+ptxjitplus: ptxjitplus.o 
 	$(EXEC) $(NVCC) $(ALL_LDFLAGS) --cudart shared $(GENCODE_FLAGS) -g -o $@ $+ $(LIBRARIES)
 	$(EXEC) mkdir -p ./bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)
 	$(EXEC) cp $@ ./bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)
-
-ptxinst.o:ptxinst.cpp
-	$(EXEC) $(NVCC) $(INCLUDES)  --cudart shared $(ALL_CCFLAGS) $(GENCODE_FLAGS) -g -o $@ -c $<
 
 run: build
 	$(EXEC) ./ptxjitplus

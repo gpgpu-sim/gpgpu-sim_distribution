@@ -1,5 +1,4 @@
-/**
- * Copyright 1993-2015 NVIDIA Corporation.  All rights reserved.
+/** Copyright 1993-2015 NVIDIA Corporation.  All rights reserved.
  *
  * Please refer to the NVIDIA end user license agreement (EULA) associated
  * with this source code for terms and conditions that govern your use of
@@ -7,14 +6,37 @@
  * this software and related documentation outside the terms of the EULA
  * is strictly prohibited.
  *
- */
-
-/*
  * This sample uses the Driver API to just-in-time compile (JIT) a Kernel from PTX code.
  * Additionally, this sample demonstrates the seamless interoperability capability of CUDA runtime
  * Runtime and CUDA Driver API calls.
  * This sample requires Compute Capability 2.0 and higher.
  *
+ */
+
+/**
+ * Modified by: Jonathan Lew
+ * PTX JIT PLUS
+ * 
+ * **********
+ * User Guide
+ * **********
+ *
+ * Welcome to WatchYourStep, a debugging tool that allows you launch individual
+ * kernels using parameters captured from cudaLaunch and outputs the values in 
+ * the arrays from the kernel. It allows you to watch each step you program takes, 
+ * kernel by kernel. 
+ *
+ * 1. Set environment variables to create params.config* and ptx.config* files. 
+ *      a)export PTX_SIM_DEBUG=4
+ *      b)export PTX_JIT_PATH=[path to this file]
+ *      c)export WYS_EXEC_PATH=[path to executable (program to debug)]
+ *      d)export WYS_EXEC_NAME=[name of executable (program to debug)]
+ *      e)Make sure all GPGPU-Sim path variables are set (see GPGPU-Sim documentation)
+ * 2. Run executable (program to debug) using GPGPU-Sim 
+ * 3. export PTX_SIM_DEBUG=[less than 4 to not dump config files again]
+ * 4-1. Run one kernel at a time: export WYS_LAUNCH_NUM=[kernel to launch] and compile ptxjitplus and run ptxjitplus
+ * 4-2. Run all kernels: compile and run ". launchkernels 0 [max number of kernels]" in terminal
+ * 5. Find output in ../data/wys.out* where * is the launch number
  */
 
 // System includes
@@ -34,12 +56,12 @@
 
 // sample include
 #include "ptxjitplus.h"
-#include "ptxinst.h"
 
-const char *sSDKname = "PTX Just In Time (JIT) Compilation (no-qatest)";
+const char *sSDKname = "PTX Just In Time (JIT) Compilation Plus";
 char *wys_exec_path;
 char *wys_exec_name;
 char *wys_launch_num;
+bool gpgpusim = false;
 dim3 gridDim, blockDim;
 std::string kernelName;
 
@@ -116,6 +138,10 @@ void ptxJIT(int argc, char **argv, CUmodule *phModule, CUfunction *phKernel, CUl
 
 void initializeData(std::vector<unsigned char*>& param_data, std::vector< std::pair<size_t, bool> >& param_info)
 {
+    char *gpgpusim_env = getenv("GPGPUSIM_SETUP_ENVIRONMENT_WAS_RUN");
+    if (gpgpusim_env!=NULL&&gpgpusim_env[0] == '1'){
+        gpgpusim=true;
+    }
     wys_exec_path = getenv("WYS_EXEC_PATH");
     assert(wys_exec_path!=NULL);
     wys_exec_name = getenv("WYS_EXEC_NAME");
@@ -150,32 +176,19 @@ void initializeData(std::vector<unsigned char*>& param_data, std::vector< std::p
         err = fscanf(fin, "%lu : ", &len);
         info.first = len;
         assert( err==1 );
-        //printf("%lu : ", len);
         unsigned char* params = (unsigned char*) malloc(len*sizeof(unsigned char));
         for (size_t i=0; i<len; i++)
         {
             err = fscanf(fin, "%u ", &val);
             assert( err==1 );
-            //printf("%u ", val);
             params[i] = (unsigned char) val;
         }
         param_info.push_back(info);
         param_data.push_back(params);
         err = fscanf(fin, "\n");
         assert(err==0);
-        //printf("\n");
     }
     fclose(fin);
-    //filename = std::string("../data/wys.out") + wys_launch_num + "_param";
-    //fout = fopen(filename.c_str(), "w");
-    //assert(fout);
-    //fprintf(fout, "param %zu: size = %zu, data = ", 0,param_info[0].first);
-    //for (size_t j = 0; j<param_info[0].first; j++){
-    //    fprintf(fout, " %u", i->second[j]);
-    //}
-    //fprintf(fout, "\n");
-    //fflush(fout);
-    //fclose(fout);
 }
 
 int main(int argc, char **argv)
@@ -249,20 +262,28 @@ int main(int argc, char **argv)
     checkCudaErrors(cudaFree(d_tmp));
 
     //maps param number to pointer to device data
-    std::map< size_t, unsigned char* > m_device_data;
+    std::map< size_t, void* > m_device_data;
+    std::map< size_t, void* > m_cleanup;
+    void * paramKernels[param_data.size()];
     //Initialize param_data for kernel
     int paramOffset = 0;
     for( size_t i = 0; i<param_data.size(); i++){
         if(param_info[i].second){
             unsigned char **d_data = (unsigned char **) malloc(sizeof(unsigned char **));
-            *d_data = (unsigned char *) malloc(sizeof(unsigned char *));
             checkCudaErrors(cudaMalloc((void**)d_data, param_info[i].first));
             checkCudaErrors(cudaMemcpy((void*)*d_data,(void*)param_data[i],param_info[i].first,cudaMemcpyHostToDevice));
-            checkCudaErrors(cuParamSetv(hKernel, paramOffset, d_data, sizeof(*d_data)));
+            if (gpgpusim){
+                checkCudaErrors(cuParamSetv(hKernel, paramOffset, d_data, sizeof(*d_data)));
+            }
+            paramKernels[i] = (void*)d_data;
             m_device_data[i]=*d_data;
+            m_cleanup[i]=d_data;
             paramOffset += 8;
         }else{
-            checkCudaErrors(cuParamSetv(hKernel, paramOffset, param_data[i], param_info[i].first));
+            if (gpgpusim){
+                checkCudaErrors(cuParamSetv(hKernel, paramOffset, param_data[i], param_info[i].first));
+            }
+            paramKernels[i] = (void*)param_data[i];
             paramOffset += param_info[i].first;
         }
     }
@@ -271,12 +292,12 @@ int main(int argc, char **argv)
     // Launch the kernel (Driver API_)
     // TODO: automatically load these values in
     CUDAAPI cuLaunchKernel(hKernel, gridDim.x, gridDim.y, gridDim.z, blockDim.x, blockDim.y, blockDim.z, 
-        0, NULL, NULL, NULL);
+        0, NULL, paramKernels, NULL);
     std::cout << "CUDA kernel launched" << std::endl;
 
     //maps param number to pointer to output data
     std::map< size_t, unsigned char* > m_output_data;
-    for(std::map< size_t, unsigned char* >::iterator i = m_device_data.begin(); i!=m_device_data.end(); i++){
+    for(std::map< size_t, void* >::iterator i = m_device_data.begin(); i!=m_device_data.end(); i++){
         unsigned char *h_data   = 0;
         if ((h_data = (unsigned char *)malloc(param_info[i->first].first)) == NULL)
         {
@@ -294,36 +315,28 @@ int main(int argc, char **argv)
     for(std::map< size_t, unsigned char* >::iterator i = m_output_data.begin(); i!=m_output_data.end(); i++){
         fprintf(fout, "param %zu: size = %zu, data = ", i->first,param_info[i->first].first);
         for (size_t j = 0; j<param_info[i->first].first; j++){
-            fprintf(fout, " %u", i->second[j]);
-            if (j&&(!(j%20))){
+            if (!(j%24)){ 
                 fprintf(fout, "\n");
             }
+            fprintf(fout, " %u", i->second[j]);
         }
         fprintf(fout, "\n");
     }
     fflush(fout);
     fclose(fout);
 
-//    int* h_data = (int*) m_output_data[0];
-//    // Check the result
-//    bool dataGood = true;
-//
-//    for (unsigned int i = 0 ; dataGood && i < nBlocks * nThreads ; i++)
-//    {
-//        if (h_data[i] != (int)i)
-//        {
-//            std::cerr << "Error at " << i << std::endl;
-//            dataGood = false;
-//        }
-//    }
-//    if(dataGood){
-//        std::cout<<"OK!"<<std::endl;
-//    }
 
     //Cleanup
-    for(std::map< size_t, unsigned char* >::iterator i = m_device_data.begin(); i!=m_device_data.end(); i++){
+    for(std::map< size_t, void* >::iterator i = m_device_data.begin(); i!=m_device_data.end(); i++){
         if (i->second){
             checkCudaErrors(cudaFree(i->second));
+            i->second = 0;
+        }
+    }
+
+    for(std::map< size_t, void* >::iterator i = m_cleanup.begin(); i!=m_cleanup.end(); i++){
+        if (i->second){
+            free(i->second);
             i->second = 0;
         }
     }
@@ -342,5 +355,5 @@ int main(int argc, char **argv)
         hModule = 0;
     }
 
-    //return dataGood ? EXIT_SUCCESS : EXIT_FAILURE;
+    return 0;
 }
