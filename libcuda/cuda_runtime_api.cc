@@ -2347,11 +2347,17 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 
 void __cudaUnregisterFatBinary(void **fatCubinHandle)
 {
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
 	;
 }
 
 cudaError_t cudaDeviceReset ( void ) {
 	// Should reset the simulated GPU
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
 	return g_last_cudaError = cudaSuccess;
 }
 cudaError_t CUDARTAPI cudaDeviceSynchronize(void){
@@ -2397,6 +2403,9 @@ extern void __cudaRegisterVar(
 		int constant,
 		int global )
 {
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
 	printf("GPGPU-Sim PTX: __cudaRegisterVar: hostVar = %p; deviceAddress = %s; deviceName = %s\n", hostVar, deviceAddress, deviceName);
 	printf("GPGPU-Sim PTX: __cudaRegisterVar: Registering const memory space of %d bytes\n", size);
 	if(GPGPUSim_Context()->get_device()->get_gpgpu()->get_config().use_cuobjdump())
@@ -2415,6 +2424,9 @@ void __cudaRegisterShared(
 		void **devicePtr
 )
 {
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
 	// we don't do anything here
 	printf("GPGPU-Sim PTX: __cudaRegisterShared\n" );
 }
@@ -2444,6 +2456,9 @@ void __cudaRegisterTexture(
 		int ext
 ) //passes in a newly created textureReference
 {
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
 	std::string devStr (deviceName);
 	#if (CUDART_VERSION > 4020)
 	if (devStr.size() > 2 && devStr.data()[0] == ':' && devStr.data()[1] == ':')
@@ -2465,6 +2480,9 @@ typedef unsigned long GLuint;
 
 cudaError_t cudaGLRegisterBufferObject(GLuint bufferObj)
 {
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
 	printf("GPGPU-Sim PTX: Execution warning: ignoring call to \"%s\"\n", __my_func__ );
 	return g_last_cudaError = cudaSuccess;
 }
@@ -2481,6 +2499,9 @@ glbmap_entry_t* g_glbmap = NULL;
 
 cudaError_t cudaGLMapBufferObject(void** devPtr, GLuint bufferObj) 
 {
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
 #ifdef OPENGL_SUPPORT
 	GLint buffer_size=0;
 	CUctx_st* ctx = GPGPUSim_Context();
@@ -2534,6 +2555,9 @@ cudaError_t cudaGLMapBufferObject(void** devPtr, GLuint bufferObj)
 
 cudaError_t cudaGLUnmapBufferObject(GLuint bufferObj)
 {
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
 #ifdef OPENGL_SUPPORT
 	glbmap_entry_t *p = g_glbmap;
 	while ( p && p->m_bufferObj != bufferObj )
@@ -2558,6 +2582,9 @@ cudaError_t cudaGLUnmapBufferObject(GLuint bufferObj)
 
 cudaError_t cudaGLUnregisterBufferObject(GLuint bufferObj) 
 {
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
 	printf("GPGPU-Sim PTX: Execution warning: ignoring call to \"%s\"\n", __my_func__ );
 	return g_last_cudaError = cudaSuccess;
 }
@@ -2783,6 +2810,9 @@ extern FILE *ptxinfo_in;
 
 static int load_static_globals( symbol_table *symtab, unsigned min_gaddr, unsigned max_gaddr, gpgpu_t *gpu ) 
 {
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
 	printf( "GPGPU-Sim PTX: loading globals with explicit initializers... \n" );
 	fflush(stdout);
 	int ng_bytes=0;
@@ -2819,6 +2849,9 @@ static int load_static_globals( symbol_table *symtab, unsigned min_gaddr, unsign
 
 static int load_constants( symbol_table *symtab, addr_t min_gaddr, gpgpu_t *gpu ) 
 {
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
 	printf( "GPGPU-Sim PTX: loading constants with explicit initializers... " );
 	fflush(stdout);
 	int nc_bytes = 0;
@@ -2866,6 +2899,9 @@ kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *hostFun,
 		struct dim3 blockDim,
 		CUctx_st* context )
 {
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
 	function_info *entry = context->get_kernel(hostFun);
 	kernel_info_t *result = new kernel_info_t(gridDim,blockDim,entry);
 	if( entry == NULL ) {

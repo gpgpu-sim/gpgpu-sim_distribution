@@ -3190,7 +3190,21 @@ void rem_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    src1_data = thread->get_operand_value(src1, dst, i_type, thread, 1);
    src2_data = thread->get_operand_value(src2, dst, i_type, thread, 1);
 
-   data.u64 = src1_data.u64 % src2_data.u64;
+   switch ( i_type ) {
+   case S32_TYPE:
+      data.s32 = src1_data.s32 % src2_data.s32;
+      break;
+   case S64_TYPE:
+      data.s64 = src1_data.s64 % src2_data.s64;
+      break;
+   case U32_TYPE:
+      data.u32 = src1_data.u32 % src2_data.u32;
+      break;
+   case U64_TYPE:
+      data.u64 = src1_data.u64 % src2_data.u64;
+      break;
+   default: assert(0); break;
+   }
 
    thread->set_operand_value(dst,data, i_type, thread, pI);
 }

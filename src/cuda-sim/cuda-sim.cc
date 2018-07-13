@@ -1309,7 +1309,9 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
     do{
         fprintf(fout, "%s", buff);
         fgets(buff, 1024, fin);
-        assert(!feof(fin));
+        if(feof(fin)){
+            break;
+        }
     } while(strstr(buff, "entry")==NULL);
 
     fclose(fin);
