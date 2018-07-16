@@ -26,6 +26,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include "half.hpp"
 #include "instructions.h"
 #include "ptx_ir.h"
 #include "opcodes.h"
@@ -1711,7 +1712,7 @@ unsigned int saturatei(unsigned int a, unsigned int max)
 
 ptx_reg_t f2x( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign, int rounding_mode, int saturation_mode )
 {
-   assert( from_width == 32); 
+   half_float::half tmp_h;
 
    enum cuda_math::cudaRoundMode mode = cuda_math::cudaRoundZero;
    switch (rounding_mode) {
@@ -1753,7 +1754,10 @@ ptx_reg_t f2x( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
       }
    } else {
       switch ( to_width ) {
-      case 16: assert(0); break;
+      case 16:
+          tmp_h = half_float::half(x.f32);
+          y.f16 = tmp_h;
+          break;
       case 32: assert(0); break; // handled by f2f
       case 64: 
          y.f64 = x.f32; 
@@ -1904,48 +1908,53 @@ ptx_reg_t u2f( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
 ptx_reg_t f2f( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign, int rounding_mode, int saturation_mode )
 {
    ptx_reg_t y;
-   switch ( rounding_mode ) {
-   case RZI_OPTION: 
-      y.f32 = truncf(x.f32); 
-      break;          
-   case RNI_OPTION: 
-#if CUDART_VERSION >= 3000
-      y.f32 = nearbyintf(x.f32); 
-#else
-      y.f32 = cuda_math::__internal_nearbyintf(x.f32); 
-#endif
-      break;          
-   case RMI_OPTION: 
-      if ((x.u32 & 0x7f800000) == 0) {
-         y.u32 = x.u32 & 0x80000000; // round denorm. FP to 0, keeping sign
-      } else {
-         y.f32 = floorf(x.f32); 
-      }
-      break;          
-   case RPI_OPTION: 
-      if ((x.u32 & 0x7f800000) == 0) {
-         y.u32 = x.u32 & 0x80000000; // round denorm. FP to 0, keeping sign
-      } else {
-         y.f32 = ceilf(x.f32); 
-      }
-      break;          
-   default: 
-      if ((x.u32 & 0x7f800000) == 0) {
-         y.u32 = x.u32 & 0x80000000; // round denorm. FP to 0, keeping sign
-      } else {
-         y.f32 = x.f32;
-      }
-      break; 
-   }
-#if CUDART_VERSION >= 3000
-   if (isnanf(y.f32)) 
-#else
-   if (cuda_math::__cuda___isnanf(y.f32)) 
-#endif
-   {
-      y.u32 = 0x7fffffff;
-   } else if (saturation_mode) {
-      y.f32 = cuda_math::__saturatef(y.f32);
+   if (from_width == 16){
+       half_float::detail::uint16 val = x.u16;
+       y.f32 = half_float::detail::half2float<float>(val);
+   }else{
+       switch ( rounding_mode ) {
+       case RZI_OPTION: 
+          y.f32 = truncf(x.f32); 
+          break;          
+       case RNI_OPTION: 
+    #if CUDART_VERSION >= 3000
+          y.f32 = nearbyintf(x.f32); 
+    #else
+          y.f32 = cuda_math::__internal_nearbyintf(x.f32); 
+    #endif
+          break;          
+       case RMI_OPTION: 
+          if ((x.u32 & 0x7f800000) == 0) {
+             y.u32 = x.u32 & 0x80000000; // round denorm. FP to 0, keeping sign
+          } else {
+             y.f32 = floorf(x.f32); 
+          }
+          break;          
+       case RPI_OPTION: 
+          if ((x.u32 & 0x7f800000) == 0) {
+             y.u32 = x.u32 & 0x80000000; // round denorm. FP to 0, keeping sign
+          } else {
+             y.f32 = ceilf(x.f32); 
+          }
+          break;          
+       default: 
+          if ((x.u32 & 0x7f800000) == 0) {
+             y.u32 = x.u32 & 0x80000000; // round denorm. FP to 0, keeping sign
+          } else {
+             y.f32 = x.f32;
+          }
+          break; 
+       }
+    #if CUDART_VERSION >= 3000
+       if (isnanf(y.f32)) 
+    #else
+       if (cuda_math::__cuda___isnanf(y.f32)) 
+    #endif
+       {
+          y.u32 = 0x7fffffff;
+       } else if (saturation_mode) {
+          y.f32 = cuda_math::__saturatef(y.f32);
+       }
    }
 
    return y;
@@ -1993,7 +2002,7 @@ ptx_reg_t (*g_cvt_fn[11][11])( ptx_reg_t x, unsigned from_width, unsigned to_wid
    { chop, NULL, zext, zext, chop, NULL, zext, zext, u2f, u2f, u2f}, 
    { chop, chop, NULL, zext, chop, chop, NULL, zext, u2f, u2f, u2f}, 
    { chop, chop, chop, NULL, chop, chop, chop, NULL, u2f, u2f, u2f}, 
-   { f2x , f2x , f2x , f2x , f2x , f2x , f2x , f2x , NULL,f2x, f2x}, 
+   { f2x , f2x , f2x , f2x , f2x , f2x , f2x , f2x , NULL,f2f, f2x}, 
    { f2x , f2x , f2x , f2x , f2x , f2x , f2x , f2x , f2x, f2f, f2x},
    { d2x , d2x , d2x , d2x , d2x , d2x , d2x , d2x , d2x, d2x, d2d} 
 };
@@ -2145,9 +2154,6 @@ void cvt_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    unsigned rounding_mode = pI->rounding_mode();
    unsigned saturation_mode = pI->saturation_mode();
 
-   if ( to_type == F16_TYPE || from_type == F16_TYPE )
-      abort();
-
    int to_sign, from_sign;
    size_t from_width, to_width;
    unsigned src_fmt = type_info_key::type_decode(from_type, from_width, from_sign);
@@ -2194,7 +2200,6 @@ void cvt_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       }
 
    }
-
 
    if ( g_cvt_fn[src_fmt][dst_fmt] != NULL ) {
       ptx_reg_t result = g_cvt_fn[src_fmt][dst_fmt](data,from_width,to_width,to_sign, rounding_mode, saturation_mode);
