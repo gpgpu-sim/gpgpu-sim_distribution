@@ -648,8 +648,10 @@ void ptx_instruction::set_opcode_and_latency()
        if ( has_memory_write() ) op = STORE_OP;
        break;
    case LD_OP: op = LOAD_OP; break;
+   case MMA_LD_OP: op = LOAD_OP; break;
    case LDU_OP: op = LOAD_OP; break;
    case ST_OP: op = STORE_OP; break;
+   case MMA_ST_OP: op = STORE_OP; break;
    case BRA_OP: op = BRANCH_OP; break;
    case BREAKADDR_OP: op = BRANCH_OP; break;
    case TEX_OP: op = LOAD_OP; mem_op=TEX; break;
@@ -897,9 +899,11 @@ void ptx_instruction::pre_decode()
    case WB_OPTION: cache_op = CACHE_WRITE_BACK; break;
    case WT_OPTION: cache_op = CACHE_WRITE_THROUGH; break;
    default: 
-      if( m_opcode == LD_OP || m_opcode == LDU_OP ) 
+      //if( m_opcode == LD_OP || m_opcode == LDU_OP ) 
+      if(  m_opcode == MMA_LD_OP || m_opcode == LD_OP || m_opcode == LDU_OP ) 
          cache_op = CACHE_ALL;
-      else if( m_opcode == ST_OP ) 
+      //else if( m_opcode == ST_OP ) 
+      else if( m_opcode == ST_OP || m_opcode == ST_OP ) 
          cache_op = CACHE_WRITE_BACK;
       else if( m_opcode == ATOM_OP ) 
          cache_op = CACHE_GLOBAL;

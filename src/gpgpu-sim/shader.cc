@@ -1387,7 +1387,7 @@ ldst_unit::process_cache_access( cache_t* cache,
         assert( !read_sent );
         inst.accessq_pop_back();
         if ( inst.is_load() ) {
-            for ( unsigned r=0; r < 4; r++)
+            for ( unsigned r=0; r < 8; r++)
                 if (inst.out[r] > 0)
                     m_pending_writes[inst.warp_id()][inst.out[r]]--; 
         }
@@ -1489,7 +1489,7 @@ bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_rea
            inst.accessq_pop_back();
            //inst.clear_active( access.get_warp_mask() );
            if( inst.is_load() ) { 
-              for( unsigned r=0; r < 4; r++) 
+              for( unsigned r=0; r < 8; r++) 
                   if(inst.out[r] > 0) 
                       assert( m_pending_writes[inst.warp_id()][inst.out[r]] > 0 );
            } else if( inst.is_store() ) 
@@ -1767,7 +1767,7 @@ void ldst_unit:: issue( register_set &reg_set )
    if (inst->is_load() and inst->space.get_type() != shared_space) {
       unsigned warp_id = inst->warp_id();
       unsigned n_accesses = inst->accessq_count();
-      for (unsigned r = 0; r < 4; r++) {
+      for (unsigned r = 0; r < 8; r++) {
          unsigned reg_id = inst->out[r];
          if (reg_id > 0) {
             m_pending_writes[warp_id][reg_id] += n_accesses;
@@ -1789,7 +1789,7 @@ void ldst_unit::writeback()
     if( !m_next_wb.empty() ) {
         if( m_operand_collector->writeback(m_next_wb) ) {
             bool insn_completed = false; 
-            for( unsigned r=0; r < 4; r++ ) {
+            for( unsigned r=0; r < 8; r++ ) {
                 if( m_next_wb.out[r] > 0 ) {
                     if( m_next_wb.space.get_type() != shared_space ) {
                         assert( m_pending_writes[m_next_wb.warp_id()][m_next_wb.out[r]] > 0 );
@@ -1991,7 +1991,7 @@ void ldst_unit::cycle()
                //} 
 
                bool pending_requests=false;
-               for( unsigned r=0; r<4; r++ ) {
+               for( unsigned r=0; r<8; r++ ) {
                    unsigned reg_id = pipe_reg.out[r];
                    if( reg_id > 0 ) {
                        if( m_pending_writes[warp_id].find(reg_id) != m_pending_writes[warp_id].end() ) {

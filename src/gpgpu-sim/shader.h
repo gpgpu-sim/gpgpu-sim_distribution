@@ -1224,13 +1224,13 @@ protected:
 enum pipeline_stage_name_t {
     ID_OC_SP=0,
     ID_OC_SFU,  
+    ID_OC_TENSOR_CORE,  
     ID_OC_MEM,  
     OC_EX_SP,
     OC_EX_SFU,
+    OC_EX_TENSOR_CORE,
     OC_EX_MEM,
     EX_WB,
-    ID_OC_TENSOR_CORE,  
-    OC_EX_TENSOR_CORE,
     N_PIPELINE_STAGES 
     };
 
@@ -1268,9 +1268,9 @@ struct shader_core_config : public core_config
 	strcpy(toks,pipeline_widths_string);
                                   
 	toks = strtok(toks,",");
-        pipe_widths[OC_EX_TENSOR_CORE]=1;
-        pipe_widths[ID_OC_TENSOR_CORE]=1;
-	for (unsigned i = 0; i < N_PIPELINE_STAGES-2; i++) { 
+    //    pipe_widths[OC_EX_TENSOR_CORE]=1;
+    //   pipe_widths[ID_OC_TENSOR_CORE]=1;
+	for (unsigned i = 0; i < N_PIPELINE_STAGES; i++) { 
 	    assert(toks);
 	    ntok = sscanf(toks,"%d", &pipe_widths[i]);
 	    assert(ntok == 1); 
@@ -1286,12 +1286,12 @@ struct shader_core_config : public core_config
         max_warps_per_shader =  n_thread_per_shader/warp_size;
         assert( !(n_thread_per_shader % warp_size) );
         max_sfu_latency = 512;
-        max_tensor_core_latency = 512;
+        max_tensor_core_latency = 64;
         max_sp_latency = 32;
-        gpgpu_num_tensor_core_units=1;
+        gpgpu_num_tensor_core_units=8;
         gpgpu_operand_collector_num_units_tensor_core=24;
-        gpgpu_operand_collector_num_in_ports_tensor_core=1;
-        gpgpu_operand_collector_num_out_ports_tensor_core=1;
+        gpgpu_operand_collector_num_in_ports_tensor_core=8;
+        gpgpu_operand_collector_num_out_ports_tensor_core=8;
         m_L1I_config.init(m_L1I_config.m_config_string,FuncCachePreferNone);
         m_L1T_config.init(m_L1T_config.m_config_string,FuncCachePreferNone);
         m_L1C_config.init(m_L1C_config.m_config_string,FuncCachePreferNone);
