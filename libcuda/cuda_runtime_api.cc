@@ -1797,7 +1797,10 @@ void extract_code_using_cuobjdump(){
     //Running cuobjdump using dynamic link to current process
     snprintf(command,1000,"md5sum %s ", app_binary.c_str());
     printf("Running md5sum using \"%s\"\n", command);
-    system(command);
+    if(system(command)){
+        std::cout << "Failed to execute: " << command << std::endl;
+        exit(1);
+    }
     // Running cuobjdump using dynamic link to current process
     // Needs the option '-all' to extract PTX from CDP-enabled binary 
     extern bool g_cdp_enabled;
