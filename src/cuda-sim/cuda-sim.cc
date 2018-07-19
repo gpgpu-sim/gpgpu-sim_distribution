@@ -1226,10 +1226,11 @@ void function_info::list_param( FILE *fout ) const
    fflush(fout);
 }
 
-void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPtr_Size, memory_space *param_mem, gpgpu_t* gpu, dim3 gridDim, dim3 blockDim) const
+void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPtr_Size, memory_space *param_mem, gpgpu_t* gpu, dim3 gridDim, dim3 blockDim) 
 {
     static unsigned long counter = 0;
     std::vector< std::pair<size_t, unsigned char*> > param_data;
+    std::vector<unsigned> offsets;
     std::vector<bool> paramIsPointer;
 
     char * gpgpusim_path = getenv("GPGPUSIM_ROOT");
@@ -1237,18 +1238,67 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
     char * wys_exec_path = getenv("WYS_EXEC_PATH");
     assert(wys_exec_path!=NULL);
     std::string command = std::string("mkdir ") + gpgpusim_path + "/debug_tools/WatchYourStep/data";
-    system(command.c_str());
+    if(system(command.c_str())!=0){
+        printf("WARNING: Failed to execute mkdir \n");
+        printf("Problematic call: %s", command.c_str());
+        abort();
+    }
     std::string filename(std::string(gpgpusim_path) + "/debug_tools/WatchYourStep/data/params.config" + std::to_string(counter));
 
-    for( std::map<unsigned,param_info>::const_iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
-        const param_info &p = i->second;
+    //initialize paramList
+    char buff[1024];
+    std::string filename_c(filename+"_c");
+    snprintf(buff,1024,"c++filt %s > %s", get_name().c_str(), filename_c.c_str());
+    system(buff);
+    FILE *fp = fopen(filename_c.c_str(), "r");
+    fgets(buff, 1024, fp);
+    fclose(fp);
+    std::string fn(buff);
+    size_t pos1, pos2;
+    pos1 = fn.find_last_of("(");
+    pos2 = fn.find(")", pos1);
+    assert(pos2>pos1&&pos1>0);
+    strcpy(buff, fn.substr(pos1 + 1, pos2 - pos1 - 1).c_str());
+    char *tok;
+    tok = strtok(buff, ",");
+    std::string tmp;
+    while(tok!=NULL){
+        std::string param(tok);
+        if(param.find("<")!=std::string::npos){
+            assert(param.find(">")==std::string::npos);
+            assert(param.find("*")==std::string::npos);
+            tmp = param;
+        } else {
+            if (tmp.length()>0){
+                tmp = ""; 
+                assert(param.find(">")!=std::string::npos);
+                assert(param.find("<")==std::string::npos);
+                assert(param.find("*")==std::string::npos);
+            }   
+            if(param.find("*")!=std::string::npos){
+                paramIsPointer.push_back(true);
+            }else{                                                                                 
+                paramIsPointer.push_back(false);
+            }   
+        }
+        tok = strtok(NULL, ",");
+    }
+
+
+    for( std::map<unsigned,param_info>::iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
+        param_info &p = i->second;
         std::string name = p.get_name();
         symbol *param = m_symtab->lookup(name.c_str());
         addr_t param_addr = param->get_address();
         param_t param_value = p.get_value();
+        offsets.push_back((unsigned)p.get_offset());
 
-        if(param_value.size==sizeof(void*) && mallocPtr_Size.find(*(unsigned long long*)param_value.pdata)!=mallocPtr_Size.end()){
+        if (paramIsPointer[i->first]){
             //is pointer
+            assert(param_value.size==8);
+            assert(param_value.size==sizeof(void*) && mallocPtr_Size.find(*(unsigned long long*)param_value.pdata)!=mallocPtr_Size.end());
+            //TODO: check in middle of malloc'd memory for pointer
+
             size_t array_size = mallocPtr_Size[*(unsigned long long*)param_value.pdata];
             unsigned char* val = (unsigned char*) malloc(param_value.size);
             param_mem->read(param_addr,param_value.size,(void*)val);
@@ -1257,7 +1307,7 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
             param_data.push_back(std::pair<size_t, unsigned char*>(array_size,array_val));
             paramIsPointer.push_back(true);
         }else{
-            unsigned char val[param_value.size];
+            unsigned char* val = (unsigned char*) malloc(param_value.size);
             param_mem->read(param_addr,param_value.size,(void*)val);
             param_data.push_back(std::pair<size_t, unsigned char*>(param_value.size,val));
             paramIsPointer.push_back(false);
@@ -1277,6 +1327,8 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
         for (size_t j = 0; j<i->first; j++){
             fprintf(fout, " %u", i->second[j]);
         }
+        fprintf(fout, " : %u", offsets[index]);
+        free (i->second);
         fprintf(fout, "\n");
         index++;
     }
@@ -1284,10 +1336,13 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
     fclose(fout);
     
     //ptx config
-    char buff[1024];
     std::string ptx_config_fn(std::string(gpgpusim_path) + "/debug_tools/WatchYourStep/data/ptx.config" + std::to_string(counter));
     snprintf(buff, 1024, "grep -rn \".entry %s\" %s/*.ptx | cut -d \":\" -f 1-2 > %s", get_name().c_str(), wys_exec_path, ptx_config_fn.c_str());
-    system(buff);
+    if (system(buff)!=0){
+        printf("WARNING: Failed to execute grep to find ptx source \n");
+        printf("Problematic call: %s", buff);
+        abort();
+    }
     FILE *fin = fopen(ptx_config_fn.c_str(), "r");
     char ptx_source[256];
     unsigned line_number;
@@ -1295,7 +1350,11 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
     assert(numscanned == 2);
     fclose(fin);
     snprintf(buff, 1024, "grep -rn \".version\" %s | cut -d \":\" -f 1 | xargs -I \"{}\" awk \"NR>={}&&NR<={}+2\" %s > %s", ptx_source, ptx_source, ptx_config_fn.c_str());
-    system(buff);
+    if (system(buff)!=0){
+        printf("WARNING: Failed to execute grep to find ptx header \n");
+        printf("Problematic call: %s", buff);
+        abort();
+    }
     fin = fopen(ptx_source, "r");
     assert(fin!=NULL);
     printf("Writing data to %s ...\n", ptx_config_fn.c_str());
@@ -1318,7 +1377,6 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
     fflush(fout);
     fclose(fout);
     counter++;
-    //TODO: Free param_data
 }
 
 template<int activate_level> 

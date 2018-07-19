@@ -183,6 +183,7 @@ void initializeData(std::vector<unsigned char*>& param_data, std::vector< std::p
             assert( err==1 );
             params[i] = (unsigned char) val;
         }
+        //TODO: parse param offset
         param_info.push_back(info);
         param_data.push_back(params);
         err = fscanf(fin, "\n");
@@ -290,7 +291,6 @@ int main(int argc, char **argv)
     checkCudaErrors(cuParamSetSize(hKernel, paramOffset));
 
     // Launch the kernel (Driver API_)
-    // TODO: automatically load these values in
     CUDAAPI cuLaunchKernel(hKernel, gridDim.x, gridDim.y, gridDim.z, blockDim.x, blockDim.y, blockDim.z, 
         0, NULL, paramKernels, NULL);
     std::cout << "CUDA kernel launched" << std::endl;
