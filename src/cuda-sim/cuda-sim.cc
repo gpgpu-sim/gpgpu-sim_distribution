@@ -1238,11 +1238,6 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
     char * wys_exec_path = getenv("WYS_EXEC_PATH");
     assert(wys_exec_path!=NULL);
     std::string command = std::string("mkdir ") + gpgpusim_path + "/debug_tools/WatchYourStep/data";
-    if(system(command.c_str())!=0){
-        printf("WARNING: Failed to execute mkdir \n");
-        printf("Problematic call: %s", command.c_str());
-        abort();
-    }
     std::string filename(std::string(gpgpusim_path) + "/debug_tools/WatchYourStep/data/params.config" + std::to_string(counter));
 
     //initialize paramList
@@ -1295,11 +1290,21 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
 
         if (paramIsPointer[i->first]){
             //is pointer
-            assert(param_value.size==8);
-            assert(param_value.size==sizeof(void*) && mallocPtr_Size.find(*(unsigned long long*)param_value.pdata)!=mallocPtr_Size.end());
-            //TODO: check in middle of malloc'd memory for pointer
+            assert(param_value.size==sizeof(void*)&&"MisID'd this param as pointer");
+            size_t array_size = 0;
+            unsigned long long param_pointer = *(unsigned long long*)param_value.pdata;
+            if(mallocPtr_Size.find(param_pointer)!=mallocPtr_Size.end()){
+                array_size = mallocPtr_Size[param_pointer];
+            }else{
+                for( std::map<unsigned long long, size_t>::iterator j=mallocPtr_Size.begin(); j!=mallocPtr_Size.end(); j++ ) {
+                    if(param_pointer>j->first&&param_pointer<j->first + j->second){
+                        array_size = j->first + j->second - param_pointer;
+                        break;
+                    }
+                }
+                assert(array_size>0&&"pointer was not previously malloc'd");
+            }
 
-            size_t array_size = mallocPtr_Size[*(unsigned long long*)param_value.pdata];
             unsigned char* val = (unsigned char*) malloc(param_value.size);
             param_mem->read(param_addr,param_value.size,(void*)val);
             unsigned char* array_val = (unsigned char*) malloc(array_size);

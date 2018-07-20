@@ -136,7 +136,7 @@ void ptxJIT(int argc, char **argv, CUmodule *phModule, CUfunction *phKernel, CUl
     checkCudaErrors(cuLinkDestroy(*lState));
 }
 
-void initializeData(std::vector<unsigned char*>& param_data, std::vector< std::pair<size_t, bool> >& param_info)
+void initializeData(std::vector<param>& v_params)
 {
     char *gpgpusim_env = getenv("GPGPUSIM_SETUP_ENVIRONMENT_WAS_RUN");
     if (gpgpusim_env!=NULL&&gpgpusim_env[0] == '1'){
@@ -161,21 +161,21 @@ void initializeData(std::vector<unsigned char*>& param_data, std::vector< std::p
     fscanf(fin, "%u,%u,%u %u,%u,%u\n", &gridDim.x, &gridDim.y, &gridDim.z, &blockDim.x, &blockDim.y, &blockDim.z);
     //fill data structure to pass in params later
     while (!feof(fin)){
-        std::pair<size_t, bool> info;
+        param p;
         int err;
         size_t len;
         unsigned val;
         int start = fgetc(fin);
         if (start == '*'){
-            info.second=true;
+            p.isPointer = true;
         }else{
-            info.second=false;
+            p.isPointer = false;
             int c = ungetc(start,fin);
             assert(c==start&&"Couldn't ungetc\n");
         }
         err = fscanf(fin, "%lu : ", &len);
-        info.first = len;
         assert( err==1 );
+        p.size = len;
         unsigned char* params = (unsigned char*) malloc(len*sizeof(unsigned char));
         for (size_t i=0; i<len; i++)
         {
@@ -183,9 +183,12 @@ void initializeData(std::vector<unsigned char*>& param_data, std::vector< std::p
             assert( err==1 );
             params[i] = (unsigned char) val;
         }
-        //TODO: parse param offset
-        param_info.push_back(info);
-        param_data.push_back(params);
+        p.data = params;
+        unsigned offset;
+        err = fscanf(fin, " : %u", &offset);
+        assert( err==1 );
+        p.offset = offset;
+        v_params.push_back(p);
         err = fscanf(fin, "\n");
         assert(err==0);
     }
@@ -206,12 +209,8 @@ int main(int argc, char **argv)
 
     printf("[%s] - Starting...\n", sSDKname);
     //parameter data
-    std::vector<unsigned char*> param_data;
-    //parameter data size and isPointer
-    std::vector< std::pair<size_t, bool> > param_info;
-    initializeData(param_data,param_info);
-
-
+    std::vector<param> v_params;
+    initializeData(v_params);
 
     if (checkCmdLineFlag(argc, (const char **)argv, "device"))
     {
@@ -251,8 +250,6 @@ int main(int argc, char **argv)
         exit(EXIT_WAIVED);
     }
 
-
-
     // Allocate memory on host and device (Runtime API)
     // NOTE: The runtime API will create the GPU Context implicitly here
     int         *d_tmp   = 0;
@@ -265,28 +262,31 @@ int main(int argc, char **argv)
     //maps param number to pointer to device data
     std::map< size_t, void* > m_device_data;
     std::map< size_t, void* > m_cleanup;
-    void * paramKernels[param_data.size()];
-    //Initialize param_data for kernel
+    void * paramKernels[v_params.size()];
+    //Initialize param data for kernel
     int paramOffset = 0;
-    for( size_t i = 0; i<param_data.size(); i++){
-        if(param_info[i].second){
+
+    int index = 0;
+    for(std::vector<param>::iterator p = v_params.begin(); p!=v_params.end(); p++){
+        if(p->isPointer){
             unsigned char **d_data = (unsigned char **) malloc(sizeof(unsigned char **));
-            checkCudaErrors(cudaMalloc((void**)d_data, param_info[i].first));
-            checkCudaErrors(cudaMemcpy((void*)*d_data,(void*)param_data[i],param_info[i].first,cudaMemcpyHostToDevice));
+            checkCudaErrors(cudaMalloc((void**)d_data, p->size));
+            checkCudaErrors(cudaMemcpy((void*)*d_data,(void*)p->data,p->size,cudaMemcpyHostToDevice));
             if (gpgpusim){
-                checkCudaErrors(cuParamSetv(hKernel, paramOffset, d_data, sizeof(*d_data)));
+                checkCudaErrors(cuParamSetv(hKernel, p->offset, d_data, sizeof(*d_data)));
             }
-            paramKernels[i] = (void*)d_data;
-            m_device_data[i]=*d_data;
-            m_cleanup[i]=d_data;
-            paramOffset += 8;
+            paramKernels[index] = (void*)d_data;
+            m_device_data[index]=*d_data;
+            m_cleanup[index]=d_data;
+            paramOffset = p->offset + 8;
         }else{
             if (gpgpusim){
-                checkCudaErrors(cuParamSetv(hKernel, paramOffset, param_data[i], param_info[i].first));
+                checkCudaErrors(cuParamSetv(hKernel, p->offset, p->data, p->size));
             }
-            paramKernels[i] = (void*)param_data[i];
-            paramOffset += param_info[i].first;
+            paramKernels[index] = (void*)p->data;
+            paramOffset = p->offset + p->size;
         }
+        index ++;
     }
     checkCudaErrors(cuParamSetSize(hKernel, paramOffset));
 
@@ -299,13 +299,13 @@ int main(int argc, char **argv)
     std::map< size_t, unsigned char* > m_output_data;
     for(std::map< size_t, void* >::iterator i = m_device_data.begin(); i!=m_device_data.end(); i++){
         unsigned char *h_data   = 0;
-        if ((h_data = (unsigned char *)malloc(param_info[i->first].first)) == NULL)
+        if ((h_data = (unsigned char *)malloc(v_params[i->first].size)) == NULL)
         {
             std::cerr << "Could not allocate host memory" << std::endl;
             exit(EXIT_FAILURE);
         }
         // Copy the result back to the host
-        checkCudaErrors(cudaMemcpy(h_data, i->second, param_info[i->first].first, cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaMemcpy(h_data, i->second, v_params[i->first].size, cudaMemcpyDeviceToHost));
         m_output_data[i->first] = h_data;
     }
 
@@ -313,8 +313,8 @@ int main(int argc, char **argv)
     FILE *fout = fopen(filename.c_str(), "w");
     assert(fout);
     for(std::map< size_t, unsigned char* >::iterator i = m_output_data.begin(); i!=m_output_data.end(); i++){
-        fprintf(fout, "param %zu: size = %zu, data = ", i->first,param_info[i->first].first);
-        for (size_t j = 0; j<param_info[i->first].first; j++){
+        fprintf(fout, "param %zu: size = %zu, data = ", i->first, v_params[i->first].size);
+        for (size_t j = 0; j<v_params[i->first].size; j++){
             if (!(j%24)){ 
                 fprintf(fout, "\n");
             }
@@ -324,7 +324,6 @@ int main(int argc, char **argv)
     }
     fflush(fout);
     fclose(fout);
-
 
     //Cleanup
     for(std::map< size_t, void* >::iterator i = m_device_data.begin(); i!=m_device_data.end(); i++){
