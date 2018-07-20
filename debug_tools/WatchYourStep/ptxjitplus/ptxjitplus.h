@@ -12,6 +12,13 @@
 #ifndef _PTXJIT_H_
 #define _PTXJIT_H_
 
+struct param{
+    bool isPointer;
+    size_t size;
+    unsigned char *data;
+    unsigned offset;
+};
+
 /*
  * PTX is equivalent to the following kernel:
  *
