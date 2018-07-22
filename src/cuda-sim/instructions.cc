@@ -48,7 +48,7 @@
 using half_float::half;
 
 unsigned ptx_instruction::g_num_ptx_inst_uid=0;
-bool g_debug_instruction = 0;
+bool g_debug_instruction = 1;
 
 
 const char *g_opcode_string[NUM_OPCODES] = {
@@ -239,9 +239,9 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
             } else if ( op.is_sstarr() ) {
                result.u64 = op.get_symbol()->get_address() + op.get_addr_offset();
             } else {
-               const char *name = op.name().c_str();
-               printf("GPGPU-Sim PTX: ERROR ** get_operand_value : unknown memory operand type for %s\n", name );
-               abort();
+                 const char *name = op.name().c_str();
+	    	printf("GPGPU-Sim PTX: ERROR ** get_operand_value : unknown memory operand type for %s\n", name );
+            	abort();
             }
 
          } else if ( op.is_literal() ) {
@@ -260,10 +260,18 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
             result.u64 = op.get_symbol()->get_address();
          } else if ( op.is_function_address() ) {
 		 	result.u64 = (size_t)op.get_symbol()->get_pc();
-         } else {
+         }else {
             const char *name = op.name().c_str();
-            printf("GPGPU-Sim PTX: ERROR ** get_operand_value : unknown operand type for %s\n", name );
-            assert(0);
+            const symbol *sym2 = op.get_symbol();
+            const type_info *type2 = sym2->type();
+            const type_info_key &info2 = type2->get_key();
+            if ( info2.is_param_kernel() ) {
+               result.u64 = sym2->get_address()+ op.get_addr_offset();
+            }
+	    else{ 
+             printf("GPGPU-Sim PTX: ERROR ** get_operand_value : unknown operand type for %s\n", name );
+             assert(0);
+	    }
          }
 
          if(op.get_operand_lohi() == 1) 
@@ -1551,7 +1559,44 @@ void bfe_impl( const ptx_instruction *pI, ptx_thread_info *thread )
     thread->set_operand_value(dst,d, i_type, thread, pI);
 }
 
-void bfi_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void bfi_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { 
+   int i,max;
+   ptx_reg_t src1_data, src2_data;
+   ptx_reg_t src3_data, src4_data, data;
+
+   const operand_info &dst  = pI->dst();  //get operand info of sources and destination 
+   const operand_info &src1 = pI->src1(); //use them to determine that they are of type 'register'
+   const operand_info &src2 = pI->src2();
+   const operand_info &src3 = pI->src3();
+   const operand_info &src4 = pI->src4();
+
+   unsigned i_type = pI->get_type();
+   src1_data = thread->get_operand_value(src1, dst, i_type, thread, 1);
+   src2_data = thread->get_operand_value(src2, dst, i_type, thread, 1);
+   src3_data = thread->get_operand_value(src3, dst, i_type, thread, 1);
+   src4_data = thread->get_operand_value(src4, dst, i_type, thread, 1);
+
+   switch ( i_type ) {
+   case B32_TYPE:
+      max = 32;
+      break;
+   case B64_TYPE:
+      max = 64;
+      break;
+   default:
+      printf("Execution error: type mismatch with instruction\n");
+      assert(0);
+      break;
+   }
+   data=src2_data;
+   unsigned pos = src3_data.u32 & 0xFF;
+   unsigned len = src4_data.u32 & 0xFF;
+   for(i=0;i<len && pos+i<max;i++){
+	data.u32=(~((0x00000001)<<(pos+i)))&data.u32;
+	data.u32=data.u32|(src1_data.u32&((0x00000001)<<(pos+i)));
+   }
+   thread->set_operand_value(dst, data, i_type, thread, pI);
+}
 void bfind_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 
 void bra_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
@@ -2180,16 +2225,19 @@ ptx_reg_t f2x( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
       }
    } else {
       switch ( to_width ) {
-      case 16: //assert(0); break;
+      case 16: 
 	 mytemp=half(x.f32);
 	 myfloat=mytemp;
 	 y.f16 =mytemp;
-	 //y.f16 = half(x.f32);
+	 #if 0
 	 printf("f2x: %f\n",myfloat);
+	 #endif 
  	 break;
       case 32: 
-	y.f32=float(x.f16);
-	
+	 y.f32=float(x.f16);
+	 #if 0
+	 printf("f2xnew:%x:my%f:%f\n",x.f16,y.f32,half_float::detail::half2float<float>(x.u16));
+	 #endif 
 	 break; // handled by f2f
       case 64: 
          y.f64 = x.f32; 
@@ -2813,7 +2861,12 @@ void decode_space( memory_space_t &space, ptx_thread_info *thread, const operand
          space = param_space_kernel;
       else if( ti.is_param_local() ) {
          space = param_space_local;
-      } else {
+      }
+      //mov r1, param-label
+      else if (ti.is_reg() ){
+         space = param_space_kernel;
+      }
+      else {
          printf("GPGPU-Sim PTX: ERROR ** cannot resolve .param space for '%s'\n", s->name().c_str() );
          abort(); 
       }
@@ -2908,6 +2961,7 @@ void ldu_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 {
    size_t size;
+   unsigned smid;
    int t;
    int thrd,odd,inx,k;
    ptx_thread_info *thread;
@@ -2936,7 +2990,12 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 
    	memory_space *mem = NULL;
    	addr_t addr = addr_reg.u32;
-
+        
+        smid = thread->get_hw_sid();
+   	if( whichspace(addr) == shared_space ) {
+          addr= generic_to_shared(smid,addr);
+          space = shared_space;
+	}
    	decode_space(space,thread,src1,mem,addr);
 
    	type_info_key::type_decode(type,size,t);
@@ -2961,7 +3020,7 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 				int l;
 				printf("thread=%d:",thrd);
 				for(l=0;l<8;l++){
-					temp=v[0].f32;
+					temp=v[l].f32;
 					printf("%f",temp);	
 				}
 				printf("\n");
@@ -2988,6 +3047,7 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 {
    size_t size;
    int t,i;
+   unsigned smid;
    const operand_info &dst = pI->dst();
    const operand_info &src1 = pI->src1();
    const operand_info &src2 = pI->src2();
@@ -3008,9 +3068,16 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 
    	memory_space *mem = NULL;
    	addr_t addr = src1_data.u32;
-   	decode_space(space,thread,src1,mem,addr);
-   	type_info_key::type_decode(type,size,t);
    	
+        smid = thread->get_hw_sid();
+        if( whichspace(addr) == shared_space ) {
+          addr= generic_to_shared(smid,addr);
+          space = shared_space;
+	}
+
+	decode_space(space,thread,src1,mem,addr);
+   	type_info_key::type_decode(type,size,t);
+	
 	ptx_reg_t data[16];
    	if(g_debug_instruction)	
 		printf("mma_ld: thrd=%d,addr=%d, fpsize=%d, stride=%d\n",thrd,src1_data.u32,size,src2_data.u32);
@@ -3070,13 +3137,13 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 	}
 	if(g_debug_instruction){
 		if(type==F16_TYPE){
-			printf("\nthread%d= ",thrd);
+			printf("\nmma_ld:thread%d= ",thrd);
 			for(i=0;i<16;i++){
 				printf("%x ",data[i].u64);
 			}
 			printf("\n");
 			
-			printf("\nthread%d= ",thrd);
+			printf("\nmma_ld:thread%d= ",thrd);
 			float temp;
 			for(i=0;i<16;i++){
 				temp=data[i].f16;
@@ -3085,12 +3152,12 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			printf("\n");
 		}
 		else{
-			printf("\nthread%d= ",thrd);
+			printf("\nmma_ld:thread%d= ",thrd);
 			for(i=0;i<8;i++){
 				printf("%f ",data[i].f32);
 			}
 			printf("\n");
-			printf("\nthread%d= ",thrd);
+			printf("\nmma_ld:thread%d= ",thrd);
 			for(i=0;i<8;i++){
 				printf("%x ",data[i].u64);
 			}
@@ -3119,15 +3186,15 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 		else
    			thread->set_wmma_vector_operand_values(dst,nw_data[0],nw_data[1],nw_data[2],nw_data[3],nw_data[4],nw_data[5],nw_data[6],nw_data[7]);
 		if(g_debug_instruction){	
-			printf("wmma_load:data[0].s64=%x,data[1].s64=%x,new_data[0].s64=%x\n",data[0].u64,data[1].u64,nw_data[0].u64);	
-			printf("wmma_load:data[2].s64=%x,data[3].s64=%x,new_data[1].s64=%x\n",data[2].u64,data[3].u64,nw_data[1].u64);	
-			printf("wmma_load:data[4].s64=%x,data[5].s64=%x,new_data[2].s64=%x\n",data[4].u64,data[5].u64,nw_data[2].u64);	
-			printf("wmma_load:data[6].s64=%x,data[7].s64=%x,new_data[3].s64=%x\n",data[6].u64,data[7].u64,nw_data[3].u64);	
+			printf("mma_ld:data[0].s64=%x,data[1].s64=%x,new_data[0].s64=%x\n",data[0].u64,data[1].u64,nw_data[0].u64);	
+			printf("mma_ld:data[2].s64=%x,data[3].s64=%x,new_data[1].s64=%x\n",data[2].u64,data[3].u64,nw_data[1].u64);	
+			printf("mma_ld:data[4].s64=%x,data[5].s64=%x,new_data[2].s64=%x\n",data[4].u64,data[5].u64,nw_data[2].u64);	
+			printf("mma_ld:data[6].s64=%x,data[7].s64=%x,new_data[3].s64=%x\n",data[6].u64,data[7].u64,nw_data[3].u64);	
 			if(wmma_type!=LOAD_C){
-			printf("wmma_load:data[8].s64=%x,data[9].s64=%x,new_data[4].s64=%x\n",data[8].u64,data[9].u64,nw_data[4].s64);	
-			printf("wmma_load:data[10].s64=%x,data[11].s64=%x,new_data[5].s64=%x\n",data[10].u64,data[11].u64,nw_data[5].u64);	
-			printf("wmma_load:data[12].s64=%x,data[13].s64=%x,new_data[6].s64=%x\n",data[12].u64,data[13].u64,nw_data[6].u64);	
-			printf("wmma_load:data[14].s64=%x,data[15].s64=%x,new_data[7].s64=%x\n",data[14].u64,data[15].u64,nw_data[3].u64);	
+			printf("mma_ld:data[8].s64=%x,data[9].s64=%x,new_data[4].s64=%x\n",data[8].u64,data[9].u64,nw_data[4].s64);	
+			printf("mma_ld:data[10].s64=%x,data[11].s64=%x,new_data[5].s64=%x\n",data[10].u64,data[11].u64,nw_data[5].u64);	
+			printf("mma_ld:data[12].s64=%x,data[13].s64=%x,new_data[6].s64=%x\n",data[12].u64,data[13].u64,nw_data[6].u64);	
+			printf("mma_ld:data[14].s64=%x,data[15].s64=%x,new_data[7].s64=%x\n",data[14].u64,data[15].u64,nw_data[3].u64);	
 			}
 		}
 	}
