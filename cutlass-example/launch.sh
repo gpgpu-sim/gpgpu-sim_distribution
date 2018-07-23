@@ -1,0 +1,39 @@
+#!/bin/bash
+make clean
+make CFLAGS=-DWMMA_GEMM_16x16x16_NT
+./myprog>LOG_WMMA_GEMM_16x16x16_NT
+make clean
+make CFLAGS=-DWMMA_GEMM_16x16x32_NT
+./myprog>LOG_WMMA_GEMM_16x16x32_NT
+make clean
+make CFLAGS=-DWMMA_GEMM_16x16x16_NN
+./myprog>LOG_WMMA_GEMM_16x16x16_NN
+make clean
+make CFLAGS=-DWMMA_GEMM_16x16x32_NN
+./myprog>LOG_WMMA_GEMM_16x16x32_NN
+make clean
+make CFLAGS=-DWMMA_GEMM_16x16x16_TT
+./myprog>LOG_WMMA_GEMM_16x16x16_TT
+make clean
+make CFLAGS=-DWMMA_GEMM_16x16x32_TT
+./myprog>LOG_WMMA_GEMM_16x16x32_TT
+make clean
+make CFLAGS=-DWMMA_GEMM_16x16x16_TN
+./myprog>LOG_WMMA_GEMM_16x16x16_TN
+make clean
+make CFLAGS=-DWMMA_GEMM_16x16x32_TN
+./myprog>LOG_WMMA_GEMM_16x16x32_TN
+make clean
+make CFLAGS=-DWMMA_16x16x16_GEMM_256x256x128_NT
+./myprog>LOG_WMMA_16x16x16_GEMM_256x256x128_NT
+make clean
+make CFLAGS=-DWMMA_16x16x16_GEMM_256x256x128_NN
+./myprog>LOG_WMMA_16x16x16_GEMM_256x256x128_NN
+make clean
+make CFLAGS=-DWMMA_16x16x16_GEMM_256x256x128_TT
+./myprog>LOG_WMMA_16x16x16_GEMM_256x256x128_TT
+make clean
+make CFLAGS=-DWMMA_16x16x16_GEMM_256x256x128_TN
+./myprog>LOG_WMMA_16x16x16_GEMM_256x256x128_TN
+make clean
+grep "Result Verifier" LOG_* | wc -l

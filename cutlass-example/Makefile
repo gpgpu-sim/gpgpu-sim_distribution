@@ -34,4 +34,13 @@ INC_DIR = ./
 LDFLAGS = --gpu-architecture=compute_70 --gpu-code=compute_70 -lcudart -I$(INC_DIR)
 
 myprog: $(obj)
-	$(CC) -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+clean: 
+	rm -rf gemm_tt_*
+	rm -rf host_results_*
+	rm -rf gpgpusim_power_report__*
+	rm -rf _cuobjdump*
+	rm -rf gpgpu_inst_stats.txt
+	rm -rf myprog
+	echo Clean done
