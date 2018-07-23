@@ -152,7 +152,8 @@ std::map<void *,void **> pinned_memory; //support for pinned memories added
 std::map<void *, size_t> pinned_memory_size;
 std::map<unsigned long long, size_t> g_mallocPtr_Size;
 int no_of_ptx=0;
-std::map<int, std::set<std::string> > version_filename;
+//maps sm version number to set of filenames
+std::map<unsigned, std::set<std::string> > version_filename;
 
 extern void synchronize();
 extern void exit_simulation();
@@ -1718,7 +1719,8 @@ char* get_app_binary_name(std::string abs_path){
 }
 
 //extracts all ptx files from binary and dumps into prog_name.unique_no.sm_<>.ptx files
-void extract_ptx_files_using_cuobjdump(bool g_cdp_enabled){
+void extract_ptx_files_using_cuobjdump(){
+    extern bool g_cdp_enabled;
     char command[1000];
     std::string app_binary = get_app_binary(); 
 
@@ -1808,7 +1810,8 @@ void extract_code_using_cuobjdump(){
     //dump ptx for all individial ptx files into sepearte files which is later used by ptxas.
     int result=0;
 #if (CUDART_VERSION >= 6000)
-    extract_ptx_files_using_cuobjdump(g_cdp_enabled);
+    extract_ptx_files_using_cuobjdump();
+    return;
 #endif
     //TODO: redundant to dump twice. how can it be prevented?
     //dump only for specific arch
@@ -2168,7 +2171,7 @@ void cuobjdumpParseBinary(unsigned int handle){
 
 #if (CUDART_VERSION >= 6000)
    //loops through all ptx files from smallest sm version to largest
-   std::map<int,std::set<std::string> >::iterator itr_m;
+   std::map<unsigned,std::set<std::string> >::iterator itr_m;
    for (itr_m = version_filename.begin(); itr_m!=version_filename.end(); itr_m++){
       std::set<std::string>::iterator itr_s;
       for (itr_s = itr_m->second.begin(); itr_s!=itr_m->second.end(); itr_s++){
@@ -2181,6 +2184,14 @@ void cuobjdumpParseBinary(unsigned int handle){
    context->add_binary(symtab, handle);
    load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
    load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
+   for (itr_m = version_filename.begin(); itr_m!=version_filename.end(); itr_m++){
+      std::set<std::string>::iterator itr_s;
+      for (itr_s = itr_m->second.begin(); itr_s!=itr_m->second.end(); itr_s++){
+          std::string ptx_filename = *itr_s;
+          printf("GPGPU-Sim PTX: Loading PTXInfo from %s\n",ptx_filename.c_str());
+          gpgpu_ptx_info_load_from_filename( ptx_filename.c_str(), itr_m->first );
+      }
+   }
    return;
 #endif
 

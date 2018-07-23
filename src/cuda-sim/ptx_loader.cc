@@ -320,8 +320,29 @@ char* get_app_binary_name(){
    return self_exe_path;
 }
 
-void gpgpu_ptx_info_load_from_filename( const char *filename )
+void gpgpu_ptx_info_load_from_filename( const char *filename, unsigned sm_version)
 {
+    std::string ptxas_filename(std::string(filename) + "as");
+    char buff[1024], extra_flags[256];
+	extra_flags[0]=0;
+    extern bool g_cdp_enabled;
+	if(!g_cdp_enabled)
+	       	snprintf(extra_flags,1024,"--gpu-name=sm_%u",sm_version);
+	else
+	       	snprintf(extra_flags,1024,"--compile-only --gpu-name=sm_%u",sm_version);
+   	snprintf(buff,1024,"$CUDA_INSTALL_PATH/bin/ptxas %s -v %s --output-file  /dev/null 2> %s",
+         extra_flags, filename, ptxas_filename.c_str());
+	int result = system(buff);
+	if( result != 0 ) {
+		printf("GPGPU-Sim PTX: ERROR ** while loading PTX (b) %d\n", result);
+		printf("               Ensure ptxas is in your path.\n");
+		exit(1);
+	}
+
+	g_ptxinfo_filename = strdup(ptxas_filename.c_str());
+    ptxinfo_in = fopen(g_ptxinfo_filename,"r");
+    ptxinfo_parse();
+    fclose(ptxinfo_in);
 }
 
 void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num, unsigned sm_version )
