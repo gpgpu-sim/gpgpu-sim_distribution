@@ -224,7 +224,6 @@ void * calc_time_mt_wrapper(void * void_obj)
   data_arr.pop_back();
   tag_arr.pop_back();
 
-  pthread_exit(NULL);
 }
 
 

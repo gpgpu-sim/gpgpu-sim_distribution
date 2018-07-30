@@ -1066,6 +1066,40 @@ __host__ cudaError_t CUDARTAPI cudaGetDevice(int *device)
 	return g_last_cudaError = cudaSuccess;
 }
 
+__host__ cudaError_t CUDARTAPI cudaDeviceGetPCIBusId (
+		char *pciBusId,
+		int len,
+		int device
+) 
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	cuda_not_implemented(__my_func__,__LINE__);
+	return g_last_cudaError = cudaErrorUnknown;
+}
+
+__host__ cudaError_t CUDARTAPI cudaIpcGetMemHandle( cudaIpcMemHandle_t* handle, void* devPtr )
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	cuda_not_implemented(__my_func__,__LINE__);
+	return g_last_cudaError = cudaErrorUnknown;
+}
+
+__host__ cudaError_t cudaIpcOpenMemHandle(
+		void **devPtr,
+		cudaIpcMemHandle_t handle,
+		unsigned int flags
+)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	cuda_not_implemented(__my_func__,__LINE__);
+	return g_last_cudaError = cudaErrorUnknown;
+}
 
 /*******************************************************************************
  *                                                                              *
@@ -1184,6 +1218,15 @@ __host__ cudaError_t CUDARTAPI cudaGetLastError(void)
 	    announce_call(__my_func__);
     }
 	return g_last_cudaError;
+}
+
+__host__ const char *cudaGetErrorName(cudaError_t error)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	cuda_not_implemented(__my_func__,__LINE__);
+	return NULL;
 }
 
 __host__ const char* CUDARTAPI cudaGetErrorString(cudaError_t error)
@@ -1722,12 +1765,19 @@ char* get_app_binary_name(std::string abs_path){
 void extract_ptx_files_using_cuobjdump(){
     extern bool g_cdp_enabled;
     char command[1000];
+    char *pytorch_path = getenv("PYTORCH_PATH");
     std::string app_binary = get_app_binary(); 
+
 
     char ptx_list_file_name[1024];
     snprintf(ptx_list_file_name,1024,"_cuobjdump_list_ptx_XXXXXX");
     int fd2=mkstemp(ptx_list_file_name);
     close(fd2);
+
+    if (pytorch_path!=NULL){
+        app_binary = std::string(std::string(pytorch_path) + "/libATen.so");
+    }
+
     //only want file names
     snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -lptx %s  | cut -d \":\" -f 2 | awk '{$1=$1}1' > %s", app_binary.c_str(), ptx_list_file_name);
     if( system(command) != 0 ) {
@@ -2488,6 +2538,19 @@ void __cudaRegisterTexture(
 	printf("GPGPU-Sim PTX:   Execution warning: Not finished implementing \"%s\"\n", __my_func__ );
 }
 
+
+char __cudaInitModule(
+		void **fatCubinHandle
+)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	cuda_not_implemented(__my_func__,__LINE__);
+	return g_last_cudaError = cudaErrorUnknown;
+}
+
+
 #ifndef OPENGL_SUPPORT
 typedef unsigned long GLuint;
 #endif
@@ -2646,6 +2709,43 @@ cudaError_t CUDARTAPI cudaHostGetDevicePointer(void **pDevice, void *pHost, unsi
 	} else {
 		return g_last_cudaError = cudaErrorMemoryAllocation;
 	}
+}
+
+__host__ cudaError_t CUDARTAPI cudaPointerGetAttributes(
+		cudaPointerAttributes *attributes, 
+		const void *ptr
+)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	cuda_not_implemented(__my_func__,__LINE__);
+	return g_last_cudaError = cudaErrorUnknown;
+}
+
+__host__ cudaError_t CUDARTAPI cudaDeviceCanAccessPeer(
+		int *canAccessPeer,
+		int device,
+		int peerDevice
+)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	cuda_not_implemented(__my_func__,__LINE__);
+	return g_last_cudaError = cudaErrorUnknown;
+}
+
+__host__ cudaError_t CUDARTAPI cudaDeviceEnablePeerAccess(
+		int peerDevice,
+		unsigned int flags
+)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	cuda_not_implemented(__my_func__,__LINE__);
+	return g_last_cudaError = cudaErrorUnknown;
 }
 
 cudaError_t CUDARTAPI cudaSetValidDevices(int *device_arr, int len)
