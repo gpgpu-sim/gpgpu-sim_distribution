@@ -61,6 +61,7 @@ memory_space_t g_ptr_spec = undefined_space;
 int g_scalar_type_spec = -1;
 int g_vector_spec = -1;
 int g_alignment_spec = -1;
+int g_size = -1;
 int g_extern_spec = 0;
 
 // variable declaration stuff:
@@ -116,6 +117,7 @@ void init_directive_state()
    g_vector_spec=-1;
    g_opcode=-1;
    g_alignment_spec = -1;
+   g_size = -1;
    g_extern_spec = 0;
    g_scalar_type.clear();
    g_operands.clear();
@@ -373,6 +375,9 @@ int pad_address (new_addr_type address, unsigned size, unsigned maxalign) {
 
 void add_identifier( const char *identifier, int array_dim, unsigned array_ident ) 
 {
+   if(array_ident==ARRAY_IDENTIFIER){
+       g_size *= array_dim;
+   }
    if( g_func_decl && (g_func_info == NULL) ) {
       // return variable decl...
       assert( g_add_identifier_cached__identifier == NULL );
@@ -562,10 +567,13 @@ void add_constptr(const char* identifier1, const char* identifier2, int offset)
 
 void add_function_arg()
 {
+   assert(g_size>0);
    if( g_func_info ) {
       PTX_PARSE_DPRINTF("add_function_arg \"%s\"", g_last_symbol->name().c_str() );
       g_func_info->add_arg(g_last_symbol);
+      g_func_info->add_config_param( g_size, g_alignment_spec );
    }
+
 }
 
 void add_extern_spec() 
@@ -617,6 +625,32 @@ void add_vector_spec(int spec )
 
 void add_scalar_type_spec( int type_spec ) 
 {
+   //save size of parameter
+   switch ( type_spec ) {
+      case B8_TYPE:
+      case S8_TYPE:
+      case U8_TYPE: 
+         g_size = 1; break;
+      case B16_TYPE:
+      case S16_TYPE:
+      case U16_TYPE:
+      case F16_TYPE: 
+         g_size = 2; break;
+      case B32_TYPE:
+      case S32_TYPE:
+      case U32_TYPE:
+      case F32_TYPE: 
+         g_size = 4; break;
+      case B64_TYPE:
+      case BB64_TYPE:
+      case S64_TYPE:
+      case U64_TYPE:
+      case F64_TYPE: 
+      case FF64_TYPE:
+         g_size = 8; break;
+      case BB128_TYPE: 
+         g_size = 16; break;
+   }
    PTX_PARSE_DPRINTF("add_scalar_type_spec \"%s\"", g_ptx_token_decode[type_spec].c_str());
    g_scalar_type.push_back( type_spec );
    if ( g_scalar_type.size() > 1 ) {
