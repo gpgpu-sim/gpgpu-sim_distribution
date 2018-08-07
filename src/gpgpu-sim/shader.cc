@@ -3034,6 +3034,12 @@ bool opndcoll_rfu_t::writeback( const warp_inst_t &inst )
    for( r=regs.begin(); r!=regs.end();r++,n++ ) {
       unsigned reg = *r;
       unsigned bank = register_bank(reg,inst.warp_id(),m_num_banks,m_bank_warp_shift);
+      unsigned count = 0;
+      while( !m_arbiter.bank_idle(bank) ) {
+          assert((++count)<m_num_banks);
+          bank++;
+          bank %= m_num_banks;
+      }
       if( m_arbiter.bank_idle(bank) ) {
           m_arbiter.allocate_bank_for_write(bank,op_t(&inst,reg,m_num_banks,m_bank_warp_shift));
       } else {
