@@ -3133,7 +3133,6 @@ CUresult CUDAAPI cuModuleGetFunction(CUfunction *hfunc, CUmodule hmod, const cha
     function_info* f = symtab->lookup_function( std::string(name) );
     //just need to add given pointer to map for cudaLaunch
     context->register_hostFun_function( (const char*) hfunc, f);
-	g_cuda_launch_stack.push_back( kernel_config() );
     *hfunc = (CUfunction)hfunc;
 	return CUDA_SUCCESS;
 }
@@ -3147,60 +3146,6 @@ CUresult CUDAAPI cuModuleUnload(CUmodule hmod)
 	return CUDA_SUCCESS;
 }
 
-CUresult CUDAAPI cuFuncSetBlockShape(CUfunction hfunc, int x, int y, int z)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	gpgpusim_ptx_assert( !g_cuda_launch_stack.empty(), "empty launch stack" );
-	kernel_config &config = g_cuda_launch_stack.back();
-    dim3 *d = new dim3(x,y,z);
-	config.set_block_dim(d);
-
-	return CUDA_SUCCESS;
-}
-
-CUresult CUDAAPI cuParamSetSize(CUfunction hfunc, unsigned int numbytes)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-    //check if size matches given args
-	gpgpusim_ptx_assert( !g_cuda_launch_stack.empty(), "empty launch stack" );
-	kernel_config &config = g_cuda_launch_stack.back();
-	gpgpu_ptx_sim_arg_list_t args = config.get_args();
-    size_t total_size = 0;
-	for( gpgpu_ptx_sim_arg_list_t::iterator a = args.begin(); a != args.end(); a++ ) {
-        total_size += a->m_nbytes;
-	}
-    return (numbytes==total_size) ? CUDA_SUCCESS : CUDA_ERROR_INVALID_VALUE;
-}
-
-CUresult CUDAAPI cuParamSetv(CUfunction hfunc, int offset, void *ptr, unsigned int numbytes)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-    cudaSetupArgument((const void *) ptr, (size_t) numbytes, (size_t) offset);
-	return CUDA_SUCCESS;
-}
-
-CUresult CUDAAPI cuLaunchGrid(CUfunction f, int grid_width, int grid_height)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-    const char *hostFun = (const char*) f;
-	gpgpusim_ptx_assert( !g_cuda_launch_stack.empty(), "empty launch stack" );
-	kernel_config &config = g_cuda_launch_stack.back();
-    dim3 *d = new dim3(grid_width,grid_height,1);
-	config.set_grid_dim(d);
-
-    cudaLaunch(hostFun);
-	return CUDA_SUCCESS;
-}
-
-
 CUresult CUDAAPI cuLaunchKernel(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, 
         unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, 
         unsigned int sharedMemBytes, CUstream hStream, void **kernelParams, void **extra)
@@ -3208,17 +3153,18 @@ CUresult CUDAAPI cuLaunchKernel(CUfunction f, unsigned int gridDimX, unsigned in
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     }
-    if (sharedMemBytes!=0||hStream!=NULL||kernelParams!=NULL||extra!=NULL){
-	    printf("GPGPU-Sim CUDA DRIVER API: Warning: Currently do not support \nsharedMemBytes, hStream, kernelParams, and extra parameters.\n");
+    if (extra!=NULL){
+	    printf("GPGPU-Sim CUDA DRIVER API: ERROR: Currently do not support void** extra.\n");
+        abort();
     }
     const char *hostFun = (const char*) f;
-	gpgpusim_ptx_assert( !g_cuda_launch_stack.empty(), "empty launch stack" );
-	kernel_config &config = g_cuda_launch_stack.back();
-    dim3 *d_b = new dim3(blockDimX, blockDimY, blockDimZ);
-	config.set_block_dim(d_b);
-    dim3 *d_g = new dim3(gridDimX, gridDimY, gridDimZ);
-	config.set_grid_dim(d_g);
-
+	CUctx_st *context = GPGPUSim_Context();
+	function_info *entry = context->get_kernel(hostFun);
+    cudaConfigureCall(dim3(gridDimX, gridDimY, gridDimZ), dim3(blockDimX, blockDimY, blockDimZ), sharedMemBytes, (cudaStream_t) hStream);
+    for(unsigned i = 0; i < entry->num_args(); i++){
+        std::pair<size_t, unsigned> p = entry->get_param_config(i);
+        cudaSetupArgument(kernelParams[i], p.first, p.second);
+    }
     cudaLaunch(hostFun);
 	return CUDA_SUCCESS;
 }
