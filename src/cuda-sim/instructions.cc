@@ -1459,7 +1459,34 @@ void breakaddr_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    assert(pI->has_pred() == false); // pdom analysis cannot handle if this instruction is predicated 
 }
 
-void brev_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void brev_impl( const ptx_instruction *pI, ptx_thread_info *thread )
+{
+    ptx_reg_t src1_data, data;
+    const operand_info &dst  = pI->dst();
+    const operand_info &src1 = pI->src1();
+	unsigned i_type = pI->get_type();
+    src1_data = thread->get_operand_value(src1, dst, i_type, thread, 1);
+
+    unsigned msb;
+    switch(i_type){
+        case B32_TYPE:
+            msb = 31;
+	        for (unsigned i=0; i<=msb; i++) {
+                if((src1_data.u32 & (1 << i)))
+                    data.u32 |= 1 << (msb - i);
+	        }
+            break;
+        case B64_TYPE:
+            msb = 63;
+	        for (unsigned i=0; i<=msb; i++) {
+                if((src1_data.u64 & (1 << i)))
+                    data.u64 |= 1 << (msb - i);
+	        }
+            break;
+        default: assert(0);
+    }
+    thread->set_operand_value(dst,data, i_type, thread, pI);
+}
 void brkpt_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 
 void call_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
