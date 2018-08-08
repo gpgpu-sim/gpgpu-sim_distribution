@@ -48,7 +48,7 @@
 using half_float::half;
 
 unsigned ptx_instruction::g_num_ptx_inst_uid=0;
-bool g_debug_instruction = 1;
+bool g_debug_instruction = 0;
 
 
 const char *g_opcode_string[NUM_OPCODES] = {
@@ -3911,7 +3911,94 @@ void popc_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 }
 void prefetch_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 void prefetchu_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
-void prmt_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+
+int prmt_mode_present(int mode)
+{
+	int returnval=0;
+	switch(mode){
+		case PRMT_F4E_MODE:
+		case PRMT_B4E_MODE:
+		case PRMT_RC8_MODE:
+		case PRMT_RC16_MODE:
+		case PRMT_ECL_MODE:
+		case PRMT_ECR_MODE:	
+			returnval=1;
+			break;
+		default:	
+			break;
+	}
+	return returnval;
+}
+int read_byte(int mode,int control,int d_sel_index,signed long long value){
+
+	int returnval;
+	int prmt_f4e_mode[4][4]={{0,1,2,3},{1,2,3,4},{2,3,4,5},{3,4,5,6}};
+	int prmt_b4e_mode[4][4]={{0,7,6,5},{1,0,7,6},{2,1,0,7},{3,2,1,0}};
+	int prmt_rc8_mode[4][4]={{0,0,0,0},{1,1,1,1},{2,2,2,2},{3,3,3,3}};
+	int prmt_ecl_mode[4][4]={{0,1,2,3},{1,1,2,3},{2,2,2,3},{3,3,3,3}};
+	int prmt_ecr_mode[4][4]={{0,0,0,0},{0,1,1,1},{0,1,2,2},{0,1,2,3}};
+	int prmt_rc16_mode[4][4]={{0,1,0,1},{2,3,2,3},{0,1,0,1},{2,3,2,3}};
+
+	if(!prmt_mode_present(mode)){
+		if(control&0x8){
+			returnval=0xff;
+		}
+		else{
+			returnval= (value>>(8*control)) & 0xff;
+		}
+	}
+	else{
+		switch(mode){
+			case PRMT_F4E_MODE:	returnval=prmt_f4e_mode[control][d_sel_index];break;
+			case PRMT_B4E_MODE:	returnval=prmt_b4e_mode[control][d_sel_index];break;
+			case PRMT_RC8_MODE:	returnval=prmt_rc8_mode[control][d_sel_index];break;
+			case PRMT_ECL_MODE:	returnval=prmt_ecl_mode[control][d_sel_index];break;
+			case PRMT_ECR_MODE:	returnval=prmt_ecr_mode[control][d_sel_index];break;
+			case PRMT_RC16_MODE:	returnval=prmt_rc16_mode[control][d_sel_index];break;
+			default: printf("ERROR\n");break;
+		}
+	}	
+	return (returnval<<8*d_sel_index);
+}
+
+void prmt_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { 
+   
+   ptx_reg_t src1_data, src2_data, src3_data,tmpdata,data;
+   const operand_info &dst  = pI->dst();  
+   const operand_info &src1 = pI->src1();
+   const operand_info &src2 = pI->src2();
+   const operand_info &src3 = pI->src3();
+
+   unsigned mode   = pI->prmt_op();
+   unsigned i_type = pI->get_type();
+
+   src1_data = thread->get_operand_value(src1, dst, i_type, thread, 1);
+   src2_data = thread->get_operand_value(src2, dst, i_type, thread, 1);
+   src3_data = thread->get_operand_value(src3, dst, i_type, thread, 1);
+
+   tmpdata.s64=src1_data.s32|(src2_data.s64<<32);
+   int ctl[4];
+
+   if(!prmt_mode_present(mode)){
+	ctl[0]=(src3_data.s32>>0)&0xf;
+	ctl[1]=(src3_data.s32>>4)&0xf;
+	ctl[2]=(src3_data.s32>>8)&0xf;
+	ctl[3]=(src3_data.s32>>12)&0xf;
+   }
+   else{
+	ctl[0]=ctl[1]=ctl[2]=ctl[3]=(src3_data.s32>>0)&0x3;	
+   }
+   
+   data.s32=0;
+   data.s32=data.s32|read_byte(mode,ctl[0],0,tmpdata.s64);   //First byte-0
+   data.s32=data.s32|read_byte(mode,ctl[1],1,tmpdata.s64);   //Second byte-1
+   data.s32=data.s32|read_byte(mode,ctl[2],2,tmpdata.s64);   //Third byte-2
+   data.s32=data.s32|read_byte(mode,ctl[3],3,tmpdata.s64);   //Fourth byte-3
+	
+   thread->set_operand_value(dst,data, i_type, thread, pI);
+
+
+}
 
 void rcp_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 

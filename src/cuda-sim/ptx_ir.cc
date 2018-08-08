@@ -1233,15 +1233,24 @@ ptx_instruction::ptx_instruction( int opcode,
       case HALF_OPTION:
          m_inst_size = 4; // bytes
          break;
-	  case EXTP_OPTION:
-		 break;
-	  case NC_OPTION:
-		 break;
-	  case UP_OPTION:
-	  case DOWN_OPTION:
-	  case BFLY_OPTION:
-	  case IDX_OPTION:
+      case EXTP_OPTION:
+	 break;
+      case NC_OPTION:
+	 break;
+      case UP_OPTION:
+      case DOWN_OPTION:
+      case BFLY_OPTION:
+      case IDX_OPTION:
 		  m_shfl_op = last_ptx_inst_option;
+		  break;
+
+      case PRMT_F4E_MODE:
+      case PRMT_B4E_MODE:
+      case PRMT_RC8_MODE:
+      case PRMT_ECL_MODE:
+      case PRMT_ECR_MODE:
+      case PRMT_RC16_MODE:
+		  m_prmt_op = last_ptx_inst_option;
 		  break;
       default:
          assert(0);

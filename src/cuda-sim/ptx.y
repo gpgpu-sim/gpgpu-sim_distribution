@@ -50,7 +50,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token  PTR_DIRECTIVE
 %token  ENTRY_DIRECTIVE
 %token  EXTERN_DIRECTIVE
-%token  WEAK_DIRECTIVE
 %token  FILE_DIRECTIVE
 %token  FUNC_DIRECTIVE
 %token  GLOBAL_DIRECTIVE
@@ -203,6 +202,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token	DOWN_OPTION;
 %token	BFLY_OPTION;
 %token	IDX_OPTION;
+%token	PRMT_F4E_MODE;
+%token	PRMT_B4E_MODE;
+%token	PRMT_RC8_MODE;
+%token	PRMT_RC16_MODE;
+%token	PRMT_ECL_MODE;
+%token	PRMT_ECR_MODE;
 
 %type <int_value> function_decl_header
 %type <ptr_value> function_decl
@@ -432,6 +437,7 @@ option: type_spec
 	| addressable_spec
 	| rounding_mode
 	| wmma_spec 
+	| prmt_spec 
 	| SYNC_OPTION { add_option(SYNC_OPTION); }	
 	| ARRIVE_OPTION { add_option(ARRIVE_OPTION); }
 	| RED_OPTION { add_option(RED_OPTION); }	
@@ -518,6 +524,14 @@ compare_spec:EQ_OPTION { add_option(EQ_OPTION); }
 	| GEU_OPTION { add_option(GEU_OPTION); } 
 	| NUM_OPTION { add_option(NUM_OPTION); } 
 	| NAN_OPTION { add_option(NAN_OPTION); } 
+	;
+
+prmt_spec: PRMT_F4E_MODE { add_option( PRMT_F4E_MODE); }
+	|  PRMT_B4E_MODE { add_option( PRMT_B4E_MODE); }
+	|  PRMT_RC8_MODE { add_option( PRMT_RC8_MODE); }
+	|  PRMT_RC16_MODE{ add_option( PRMT_RC16_MODE);}
+	|  PRMT_ECL_MODE { add_option( PRMT_ECL_MODE); }
+	|  PRMT_ECR_MODE { add_option( PRMT_ECR_MODE); }
 	;
 
 wmma_spec: WMMA_DIRECTIVE LAYOUT CONFIGURATION{add_space_spec(global_space,0);add_ptr_spec(global_space); add_wmma_option($1);add_wmma_option($2);add_wmma_option($3);}
