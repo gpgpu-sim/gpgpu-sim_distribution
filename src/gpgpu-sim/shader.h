@@ -525,7 +525,7 @@ public:
    void init( unsigned num_banks, shader_core_ctx *shader );
 
    // modifiers
-   bool writeback( const warp_inst_t &warp ); // might cause stall 
+   bool writeback( warp_inst_t &warp ); 
 
    void step()
    {
