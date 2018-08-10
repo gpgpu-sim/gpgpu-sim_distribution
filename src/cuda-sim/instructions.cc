@@ -1599,7 +1599,7 @@ void bfi_impl( const ptx_instruction *pI, ptx_thread_info *thread ) {
    unsigned len = src4_data.u32 & 0xFF;
    for(i=0;i<len && pos+i<max;i++){
 	data.u32=(~((0x00000001)<<(pos+i)))&data.u32;
-	data.u32=data.u32|(src1_data.u32&((0x00000001)<<(pos+i)));
+	data.u32=data.u32|((src1_data.u32&((0x00000001)<<(i)))<<(pos));
    }
    thread->set_operand_value(dst, data, i_type, thread, pI);
 }

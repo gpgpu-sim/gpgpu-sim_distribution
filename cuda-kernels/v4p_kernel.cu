@@ -74,7 +74,6 @@ __global__ void convertInt32ToInt4 (int *out, int *in, int n) {
    if (idx < n/8) {
       		out[idx] =(in[8*idx]&0xf)|(in[8*idx+1]&0xf)<<4|(in[8*idx+2]&0xf)<<8|(in[8*idx+3]&0xf)<<12|
       			  (in[8*idx+4]&0xf)<<16|(in[8*idx+5]&0xf)<<20|(in[8*idx+6]&0xf)<<24|(in[8*idx+7]&0xf)<<28;
-//		printf("thread%d:%x\n",idx,out[idx]);
    }
 }
 __global__ void convertInt32ToInt8 (int *out, int *in, int n) {
@@ -163,7 +162,7 @@ int main(int argc, char* argv[]) {
    printf("a_int32\n");
    for(int m=0;m<MATRIX_M;m++){
 	for(int n=0;n<MATRIX_K;n++){
-		a_host_wmma[m*MATRIX_K+n]=(m*MATRIX_K+n)%16;
+		a_host_wmma[m*MATRIX_K+n]=(m*MATRIX_K+n)%4;
 		printf("%d ",a_host_wmma[m*MATRIX_K+n]);
 	}
 	printf(";\n");
@@ -172,7 +171,7 @@ int main(int argc, char* argv[]) {
    printf("b_int32\n");
    for(int m=0;m<MATRIX_K;m++){
 	for(int n=0;n<MATRIX_N;n++){
-		b_host_wmma[m*MATRIX_N+n]=(m*MATRIX_N+n)%2;
+		b_host_wmma[m*MATRIX_N+n]=(m*MATRIX_N+n)%4;
 		printf("%d ",b_host_wmma[m*MATRIX_N+n]);
 	}
 		printf(";\n");
@@ -181,7 +180,7 @@ int main(int argc, char* argv[]) {
    printf("c_int32\n");
    for(int m=0;m<MATRIX_M;m++){
 	for(int n=0;n<MATRIX_N;n++){
-		c_host_wmma[m*MATRIX_N+n]=(m*MATRIX_N+n)%2;
+		c_host_wmma[m*MATRIX_N+n]=(m*MATRIX_N+n)%4;
 		d_cal_host_wmma[m*MATRIX_N+n]=0;
 		printf("%d ",c_host_wmma[m*MATRIX_N+n]);
 	}
@@ -201,7 +200,7 @@ int main(int argc, char* argv[]) {
    cudaErrCheck(cudaMemcpy(b_int32,b_host_wmma,  MATRIX_K * MATRIX_N * sizeof(int), cudaMemcpyHostToDevice));
    cudaErrCheck(cudaMemcpy(c_int32,c_host_wmma,  MATRIX_M * MATRIX_N * sizeof(int), cudaMemcpyHostToDevice));
 
-   #define TEST8
+   #define TEST4
    #ifdef TEST16
    	convertInt32ToInt16 <<< (MATRIX_M * MATRIX_K + 255) / 256, 256 >>> (a_int16, a_int32, MATRIX_M * MATRIX_K);
    	convertInt16ToInt32 <<< (MATRIX_M * MATRIX_K + 255) / 256, 256 >>> (d_int32, a_int16, MATRIX_M * MATRIX_K);
@@ -255,7 +254,7 @@ int main(int argc, char* argv[]) {
    printf("D_WMMA\n");
    for(int m=0;m<MATRIX_M;m++){
 	for(int n=0;n<MATRIX_N;n++){
-		printf("%d,",d_host_wmma[m*MATRIX_N+n]);
+		printf("%x,",d_host_wmma[m*MATRIX_N+n]);
 	}
 	printf("\n");
     }
