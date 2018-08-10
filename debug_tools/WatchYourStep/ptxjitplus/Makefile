@@ -34,7 +34,6 @@
 ################################################################################
 
 # Location of the CUDA Toolkit
-CUDA_PATH ?= "/home/jonathan/cuda8"
 
 ##############################
 # start deprecated interface #
@@ -148,7 +147,7 @@ else ifneq ($(TARGET_ARCH),$(HOST_ARCH))
     endif
 endif
 HOST_COMPILER ?= g++
-NVCC          := $(CUDA_PATH)/bin/nvcc -ccbin $(HOST_COMPILER)
+NVCC          := $(CUDA_INSTALL_PATH)/bin/nvcc -ccbin $(HOST_COMPILER)
 
 # internal flags
 NVCCFLAGS   := -m${TARGET_SIZE}
@@ -157,7 +156,7 @@ LDFLAGS     :=
 
 # build flags
 ifeq ($(TARGET_OS),darwin)
-    LDFLAGS += -rpath $(CUDA_PATH)/lib
+    LDFLAGS += -rpath $(CUDA_INSTALL_PATH)/lib
     CCFLAGS += -arch $(HOST_ARCH)
 else ifeq ($(HOST_ARCH)-$(TARGET_ARCH)-$(TARGET_OS),x86_64-armv7l-linux)
     LDFLAGS += --dynamic-linker=/lib/ld-linux-armhf.so.3
@@ -241,20 +240,20 @@ else
         CUDA_SEARCH_PATH += $(TARGET_FS)/usr/lib
         CUDA_SEARCH_PATH += $(TARGET_FS)/usr/lib/arm-linux-gnueabihf
       endif
-      CUDA_SEARCH_PATH += $(CUDA_PATH)/targets/armv7-linux-gnueabihf/lib/stubs
+      CUDA_SEARCH_PATH += $(CUDA_INSTALL_PATH)/targets/armv7-linux-gnueabihf/lib/stubs
       CUDA_SEARCH_PATH += /usr/arm-linux-gnueabihf/lib
     else ifeq ($(TARGET_ARCH)-$(TARGET_OS),aarch64-linux)
-      CUDA_SEARCH_PATH += $(CUDA_PATH)/targets/aarch64-linux/lib/stubs
+      CUDA_SEARCH_PATH += $(CUDA_INSTALL_PATH)/targets/aarch64-linux/lib/stubs
     else ifeq ($(TARGET_ARCH)-$(TARGET_OS),armv7l-android)
-      CUDA_SEARCH_PATH += $(CUDA_PATH)/targets/armv7-linux-androideabi/lib/stubs
+      CUDA_SEARCH_PATH += $(CUDA_INSTALL_PATH)/targets/armv7-linux-androideabi/lib/stubs
     else ifeq ($(TARGET_ARCH)-$(TARGET_OS),aarch64-android)
-      CUDA_SEARCH_PATH += $(CUDA_PATH)/targets/aarch64-linux-androideabi/lib/stubs
+      CUDA_SEARCH_PATH += $(CUDA_INSTALL_PATH)/targets/aarch64-linux-androideabi/lib/stubs
     else ifeq ($(TARGET_ARCH)-$(TARGET_OS),armv7l-qnx)
-      CUDA_SEARCH_PATH += $(CUDA_PATH)/targets/ARMv7-linux-QNX/lib/stubs
+      CUDA_SEARCH_PATH += $(CUDA_INSTALL_PATH)/targets/ARMv7-linux-QNX/lib/stubs
     else ifeq ($(TARGET_ARCH)-$(TARGET_OS),aarch64-qnx)
-      CUDA_SEARCH_PATH += $(CUDA_PATH)/targets/aarch64-qnx/lib/stubs
+      CUDA_SEARCH_PATH += $(CUDA_INSTALL_PATH)/targets/aarch64-qnx/lib/stubs
     else ifeq ($(TARGET_ARCH)-$(TARGET_OS),ppc64le-linux)
-      CUDA_SEARCH_PATH += $(CUDA_PATH)/targets/ppc64le-linux/lib/stubs
+      CUDA_SEARCH_PATH += $(CUDA_INSTALL_PATH)/targets/ppc64le-linux/lib/stubs
     endif
   else
     ifneq ($(UBUNTU),)
@@ -264,21 +263,21 @@ else
     endif
 
     ifeq ($(TARGET_ARCH),x86_64)
-      CUDA_SEARCH_PATH += $(CUDA_PATH)/lib64/stubs
+      CUDA_SEARCH_PATH += $(CUDA_INSTALL_PATH)/lib64/stubs
     endif
 
     ifeq ($(TARGET_ARCH),armv7l)
-      CUDA_SEARCH_PATH += $(CUDA_PATH)/targets/armv7-linux-gnueabihf/lib/stubs
+      CUDA_SEARCH_PATH += $(CUDA_INSTALL_PATH)/targets/armv7-linux-gnueabihf/lib/stubs
       CUDA_SEARCH_PATH += /usr/lib/arm-linux-gnueabihf
     endif
 
     ifeq ($(TARGET_ARCH),aarch64)
       CUDA_SEARCH_PATH += /usr/lib
-      CUDA_SEARCH_PATH += $(CUDA_PATH)/targets/aarch64-linux/lib/stubs
+      CUDA_SEARCH_PATH += $(CUDA_INSTALL_PATH)/targets/aarch64-linux/lib/stubs
     endif
 
     ifeq ($(TARGET_ARCH),ppc64le)
-      CUDA_SEARCH_PATH += $(CUDA_PATH)/targets/ppc64le-linux/lib/stubs
+      CUDA_SEARCH_PATH += $(CUDA_INSTALL_PATH)/targets/ppc64le-linux/lib/stubs
       CUDA_SEARCH_PATH += /usr/lib/powerpc64le-linux-gnu
     endif
   endif
