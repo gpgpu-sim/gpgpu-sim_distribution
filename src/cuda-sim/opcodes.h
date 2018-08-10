@@ -63,9 +63,13 @@ enum special_regs {
 enum wmma_type{
 	LOAD_A,
 	LOAD_B,
+	LOAD_B4,//vp
+	LOAD_B8,//vp
+	LOAD_B16,//vp
 	LOAD_C,
 	STORE_D,
 	MMA,
+	VP_MMA,
 	ROW,
 	COL,
 	M16N16K16

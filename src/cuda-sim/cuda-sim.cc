@@ -1323,8 +1323,11 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
          *((warp_inst_t*)pJ) = inst; // copy active mask information
          pI = pJ;
       }
-      if(((pI->get_opcode()!=MMA_OP)&&(pI->get_opcode()!=MMA_LD_OP)&&(pI->get_opcode()!=MMA_ST_OP))||((pI->get_opcode()==MMA_OP||pI->get_opcode()==MMA_LD_OP||pI->get_opcode()==MMA_ST_OP)&&(lane_id==0))){
-      switch ( pI->get_opcode() ) {
+     
+      int inst_opcode=pI->get_opcode();
+
+      if(((inst_opcode!=MMA_OP)&&(inst_opcode!=MMA_LD_OP)&&(inst_opcode!=MMA_ST_OP)&&(inst_opcode!=VP_LD_OP)&&(inst_opcode!=VP_ST_OP)&&(inst_opcode!=VP_MMA_OP))||((inst_opcode==MMA_OP||inst_opcode==MMA_LD_OP||inst_opcode==MMA_ST_OP||inst_opcode==VP_MMA_OP||inst_opcode==VP_LD_OP||inst_opcode==VP_ST_OP)&&(lane_id==0))){
+      switch ( inst_opcode ) {
 #define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,this); op_classification = CLASSIFICATION; break;
 #define OP_W_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,get_core(),inst); op_classification = CLASSIFICATION; break;
 #include "opcodes.def"

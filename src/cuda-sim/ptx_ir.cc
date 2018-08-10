@@ -1089,9 +1089,13 @@ ptx_instruction::ptx_instruction( int opcode,
       		case SYNC_OPTION:
       		case LOAD_A:
       		case LOAD_B:
+      		case LOAD_B4:
+      		case LOAD_B8:
+      		case LOAD_B16:
       		case LOAD_C:
       		case STORE_D:
       		case MMA:
+      		case VP_MMA:
       		  m_wmma_type=last_ptx_inst_option;
       		  break;
       		case ROW:

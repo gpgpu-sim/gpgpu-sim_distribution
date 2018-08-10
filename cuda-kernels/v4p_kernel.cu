@@ -30,23 +30,30 @@ const int WMMA_M = 16;
 const int WMMA_N = 16;
 const int WMMA_K = 16;
 
-__global__ void wmma_example(half *a, half *b, float *c,float *d_fp16, int M, int N, int K) {
-   //unsigned int start_time=0,end_time=0;
-   //start_time=clock();
+__global__ void v4p_example(int *a_int32, int *b_int8, int *c,int *d_int32, int M, int N, int K) {
+	
+	int registers_a[8];
+	int register_b;		//contains 8 4bit b elements
+   	int idx = blockDim.x * blockIdx.x + threadIdx.x;
+	
+	asm("/*");
+	asm("CPTX_BEGIN");
+	asm("vp.load.b4.sync.row.m16n16k16.s32 {%0,%1,%2,%3,%4,%5,%6,%7},[%8],%9;" : 
+	"=r"(registers_a[0]), "=r"(registers_a[1]),"=r"(registers_a[2]),"=r"(registers_a[3]),
+	"=r"(registers_a[4]),"=r"(registers_a[5]),"=r"(registers_a[6]),"=r"(registers_a[7]):
+	"l"(b_int8),"r"(M)
+	);
+	asm("CPTX_END");
+	asm("*/");
 
-   // Declare the fragments
-   wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> a_frag;
-   wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> b_frag;
-   wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> c_frag;
-
-   // Bounds checking
-   wmma::load_matrix_sync(a_frag, a, K);
-   wmma::load_matrix_sync(b_frag, b, K);
-   wmma::load_matrix_sync(c_frag, c, N,wmma::mem_col_major);
-   wmma::mma_sync(c_frag, a_frag, b_frag, c_frag);
-
-   wmma::store_matrix_sync(d_fp16, c_frag, N, wmma::mem_col_major);
-   //printf("clock=%d",end_time-start_time);
+	b_int8[0]=registers_a[7];
+	b_int8[1]=registers_a[7];
+	b_int8[2]=registers_a[7];
+	b_int8[3]=registers_a[7];
+	b_int8[4]=registers_a[7];
+	b_int8[5]=registers_a[7];
+	b_int8[6]=registers_a[7];
+	b_int8[7]=registers_a[7];
 }
 
 __global__ void convertFp32ToFp16 (half *out, float *in, int n) {
@@ -62,19 +69,49 @@ __global__ void convertFp16ToFp32 (float *out, half *in, int n) {
    }
 }
 
+__global__ void convertInt32ToInt4 (int *out, int *in, int n) {
+   int idx = blockDim.x * blockIdx.x + threadIdx.x;
+   if (idx < n/8) {
+      		out[idx] =(in[8*idx]&0xf)|(in[8*idx+1]&0xf)<<4|(in[8*idx+2]&0xf)<<8|(in[8*idx+3]&0xf)<<12|
+      			  (in[8*idx+4]&0xf)<<16|(in[8*idx+5]&0xf)<<20|(in[8*idx+6]&0xf)<<24|(in[8*idx+7]&0xf)<<28;
+//		printf("thread%d:%x\n",idx,out[idx]);
+   }
+}
 __global__ void convertInt32ToInt8 (int *out, int *in, int n) {
    int idx = blockDim.x * blockIdx.x + threadIdx.x;
    if (idx < n/4) {
       		out[idx] =(in[4*idx]&0xff)|(in[4*idx+1]&0xff)<<8|(in[4*idx+2]&0xff)<<16|(in[4*idx+3]&0xff)<<24;
    }
 }
+__global__ void convertInt32ToInt16 (int *out, int *in, int n) {
+   int idx = blockDim.x * blockIdx.x + threadIdx.x;
+   if (idx < n/2) {
+      		out[idx] =(in[2*idx]&0xffff)|(in[2*idx+1]&0xffff)<<16;
+   }
+}
 
+__global__ void convertInt4ToInt32 (int *out, int *in, int n) {
+   int idx = blockDim.x * blockIdx.x + threadIdx.x;
+   int shft_amt=4*(idx%8);
+   int shft_mask=0xf<<shft_amt;
+   if (idx < n) {
+      	out[idx]= (in[idx/8]&shft_mask)>>shft_amt;
+   }
+}
 __global__ void convertInt8ToInt32 (int *out, int *in, int n) {
    int idx = blockDim.x * blockIdx.x + threadIdx.x;
    int shft_amt=8*(idx%4);
    int shft_mask=0xff<<shft_amt;
    if (idx < n) {
       	out[idx]= (in[idx/4]&shft_mask)>>shft_amt;
+   }
+}
+__global__ void convertInt16ToInt32 (int *out, int *in, int n) {
+   int idx = blockDim.x * blockIdx.x + threadIdx.x;
+   int shft_amt=16*(idx%2);
+   int shft_mask=0xffff<<shft_amt;
+   if (idx < n) {
+      	out[idx]= (in[idx/2]&shft_mask)>>shft_amt;
    }
 }
 
@@ -84,8 +121,12 @@ int main(int argc, char* argv[]) {
    int *c_int32;
    int *d_int32;
 
+   int *a_int4;
+   int *b_int4;
    int *a_int8;
    int *b_int8;
+   int *a_int16;
+   int *b_int16;
    
    int  *a_host_wmma;
    int  *b_host_wmma;
@@ -105,15 +146,19 @@ int main(int argc, char* argv[]) {
    cudaErrCheck(cudaMalloc((void**)&b_int32, MATRIX_K * MATRIX_N * sizeof(int)));
    cudaErrCheck(cudaMalloc((void**)&c_int32, MATRIX_K * MATRIX_N * sizeof(int)));
    cudaErrCheck(cudaMalloc((void**)&d_int32, MATRIX_K * MATRIX_N * sizeof(int)));
+   cudaErrCheck(cudaMalloc((void**)&a_int4, MATRIX_M * MATRIX_K * sizeof(int)/8));
+   cudaErrCheck(cudaMalloc((void**)&b_int4, MATRIX_K * MATRIX_N * sizeof(int)/8));
    cudaErrCheck(cudaMalloc((void**)&a_int8, MATRIX_M * MATRIX_K * sizeof(int)/4));
    cudaErrCheck(cudaMalloc((void**)&b_int8, MATRIX_K * MATRIX_N * sizeof(int)/4));
+   cudaErrCheck(cudaMalloc((void**)&a_int16, MATRIX_M * MATRIX_K * sizeof(int)/2));
+   cudaErrCheck(cudaMalloc((void**)&b_int16, MATRIX_K * MATRIX_N * sizeof(int)/2));
 
 
    a_host_wmma      = (int *)malloc(MATRIX_M * MATRIX_K * sizeof(int));
    b_host_wmma      = (int *)malloc(MATRIX_K * MATRIX_N * sizeof(int));
    c_host_wmma      = (int *)malloc(MATRIX_M * MATRIX_N * sizeof(int));
    d_host_wmma      = (int *)malloc(MATRIX_M * MATRIX_N * sizeof(int));
-   d_cal_host_wmma      = (int *)malloc(MATRIX_M * MATRIX_N * sizeof(int));
+   d_cal_host_wmma  = (int *)malloc(MATRIX_M * MATRIX_N * sizeof(int));
 
    printf("a_int32\n");
    for(int m=0;m<MATRIX_M;m++){
@@ -156,20 +201,34 @@ int main(int argc, char* argv[]) {
    cudaErrCheck(cudaMemcpy(b_int32,b_host_wmma,  MATRIX_K * MATRIX_N * sizeof(int), cudaMemcpyHostToDevice));
    cudaErrCheck(cudaMemcpy(c_int32,c_host_wmma,  MATRIX_M * MATRIX_N * sizeof(int), cudaMemcpyHostToDevice));
 
-   convertInt32ToInt8 <<< (MATRIX_M * MATRIX_K + 255) / 256, 256 >>> (a_int8, a_int32, MATRIX_M * MATRIX_K);
-   convertInt8ToInt32 <<< (MATRIX_M * MATRIX_K + 255) / 256, 256 >>> (d_int32, a_int8, MATRIX_M * MATRIX_K);
+   #define TEST8
+   #ifdef TEST16
+   	convertInt32ToInt16 <<< (MATRIX_M * MATRIX_K + 255) / 256, 256 >>> (a_int16, a_int32, MATRIX_M * MATRIX_K);
+   	convertInt16ToInt32 <<< (MATRIX_M * MATRIX_K + 255) / 256, 256 >>> (d_int32, a_int16, MATRIX_M * MATRIX_K);
+   	cudaErrCheck(cudaMemcpy(d_host_wmma, d_int32, MATRIX_M * MATRIX_N * sizeof(int), cudaMemcpyDeviceToHost));
+   #endif
+   #ifdef TEST8
+   	convertInt32ToInt8 <<< (MATRIX_M * MATRIX_K + 255) / 256, 256 >>> (a_int8, a_int32, MATRIX_M * MATRIX_K);
+  	convertInt8ToInt32 <<< (MATRIX_M * MATRIX_K + 255) / 256, 256 >>> (d_int32, a_int8, MATRIX_M * MATRIX_K);
+ 	cudaErrCheck(cudaMemcpy(d_host_wmma, d_int32, MATRIX_M * MATRIX_N * sizeof(int), cudaMemcpyDeviceToHost));
+   #endif
+   #ifdef TEST4
+   	convertInt32ToInt4 <<< (MATRIX_M * MATRIX_K + 255) / 256, 256 >>> (a_int4, a_int32, MATRIX_M * MATRIX_K);
+  	convertInt4ToInt32 <<< (MATRIX_M * MATRIX_K + 255) / 256, 256 >>> (d_int32, a_int4, MATRIX_M * MATRIX_K);
+ 	cudaErrCheck(cudaMemcpy(d_host_wmma, d_int32, MATRIX_M * MATRIX_N * sizeof(int), cudaMemcpyDeviceToHost));
+   #endif
    //convertFp32ToFp16 <<< (MATRIX_K * MATRIX_N + 255) / 256, 256 >>> (b_fp16, b_fp32, MATRIX_K * MATRIX_N);
    //convertFp32ToFp16 <<< (MATRIX_M * MATRIX_N + 255) / 256, 256 >>> (c_fp16, c_fp32, MATRIX_K * MATRIX_N);
-   cudaErrCheck(cudaMemcpy(d_host_wmma, d_int32, MATRIX_M * MATRIX_N * sizeof(float), cudaMemcpyDeviceToHost));
 
 
 //AAMIR   printf("\nM = %d, N = %d, K = %d. \n", MATRIX_M, MATRIX_N, MATRIX_K);
 //AAMIR   
 //AAMIR   printf("Running with wmma...\n");
-//AAMIR   cudaErrCheck(cudaEventRecord(startWMMA));
-//AAMIR   wmma_example <<< 1, 32>>> (a_fp16, b_fp16, c_fp32, d_fp32 , MATRIX_M, MATRIX_N, MATRIX_K);
-//AAMIR   cudaErrCheck(cudaEventRecord(stopWMMA));
-//AAMIR   cudaErrCheck(cudaEventSynchronize(stopWMMA));
+   //cudaErrCheck(cudaEventRecord(startWMMA));
+   //v4p_example <<< 1, 32>>> (a_int32, a_int8, a_int32, d_int32, MATRIX_M, MATRIX_N, MATRIX_K);
+   //cudaErrCheck(cudaEventRecord(stopWMMA));
+   //cudaErrCheck(cudaEventSynchronize(stopWMMA));
+
 //AAMIR
 //AAMIR   // Error checking
 //AAMIR   printf("\nChecking results...\n");

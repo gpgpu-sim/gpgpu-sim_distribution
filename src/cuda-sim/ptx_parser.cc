@@ -39,7 +39,7 @@ void set_ptx_warp_size(const struct core_config * warp_size)
    g_shader_core_config=warp_size;
 }
 
-static bool g_debug_ir_generation=false;
+static bool g_debug_ir_generation=true;
 const char *g_filename;
 unsigned g_max_regs_per_thread = 0;
 
