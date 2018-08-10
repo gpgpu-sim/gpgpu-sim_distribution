@@ -61,7 +61,6 @@ const char *sSDKname = "PTX Just In Time (JIT) Compilation Plus";
 char *wys_exec_path;
 char *wys_exec_name;
 char *wys_launch_num;
-bool gpgpusim = false;
 dim3 gridDim, blockDim;
 std::string kernelName;
 
@@ -138,10 +137,6 @@ void ptxJIT(int argc, char **argv, CUmodule *phModule, CUfunction *phKernel, CUl
 
 void initializeData(std::vector<param>& v_params)
 {
-    char *gpgpusim_env = getenv("GPGPUSIM_SETUP_ENVIRONMENT_WAS_RUN");
-    if (gpgpusim_env!=NULL&&gpgpusim_env[0] == '1'){
-        gpgpusim=true;
-    }
     wys_exec_path = getenv("WYS_EXEC_PATH");
     assert(wys_exec_path!=NULL);
     wys_exec_name = getenv("WYS_EXEC_NAME");
@@ -272,23 +267,16 @@ int main(int argc, char **argv)
             unsigned char **d_data = (unsigned char **) malloc(sizeof(unsigned char **));
             checkCudaErrors(cudaMalloc((void**)d_data, p->size));
             checkCudaErrors(cudaMemcpy((void*)*d_data,(void*)p->data,p->size,cudaMemcpyHostToDevice));
-            if (gpgpusim){
-                checkCudaErrors(cuParamSetv(hKernel, p->offset, d_data, sizeof(*d_data)));
-            }
             paramKernels[index] = (void*)d_data;
             m_device_data[index]=*d_data;
             m_cleanup[index]=d_data;
             paramOffset = p->offset + 8;
         }else{
-            if (gpgpusim){
-                checkCudaErrors(cuParamSetv(hKernel, p->offset, p->data, p->size));
-            }
             paramKernels[index] = (void*)p->data;
             paramOffset = p->offset + p->size;
         }
         index ++;
     }
-    checkCudaErrors(cuParamSetSize(hKernel, paramOffset));
 
     // Launch the kernel (Driver API_)
     CUDAAPI cuLaunchKernel(hKernel, gridDim.x, gridDim.y, gridDim.z, blockDim.x, blockDim.y, blockDim.z, 
