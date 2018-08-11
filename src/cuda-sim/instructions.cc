@@ -1703,6 +1703,12 @@ void mapping(int thread,int wmma_type,int wmma_layout,int type,int index,int str
 		}
 		assg_offset=index;
 	}
+	else if( wmma_type==VP_MMA){
+		row=c_row_offset[thread/4]+thread%4;	
+		col=c_col_offset[thread/4]+index;
+		assg_offset=index;
+	}
+
 	if(wmma_type==LOAD_A||wmma_type==LOAD_B){	
 		if(wmma_layout==ROW){
 			row=offset/16;
@@ -1717,11 +1723,142 @@ void mapping(int thread,int wmma_type,int wmma_layout,int type,int index,int str
 
 void vp_mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 {
+	int i,j,k,thrd;
+	int row,col,offset;
+   	ptx_reg_t matrix_a[16][16];
+   	ptx_reg_t matrix_b[16][16];
+   	ptx_reg_t matrix_c[16][16];
+   	ptx_reg_t matrix_d[16][16];
+   	ptx_reg_t src_data;
+	ptx_thread_info *thread;
+	int stride;
 	unsigned wmma_type = pI->get_wmma_type();
 	unsigned a_layout = pI->get_wmma_layout(0);
 	unsigned b_layout = pI->get_wmma_layout(1);
+	unsigned type = pI->get_type();
+	int tid = inst.warp_id_func() * core->get_warp_size();
+	const operand_info &dst = pI->operand_lookup(0);
 	
-
+	unsigned thread_group_index;
+	 	
+	for (thrd=0; thrd < core->get_warp_size(); thrd++){
+		thread = core->get_thread_info()[tid+thrd];
+		if(g_debug_instruction)
+			printf("THREAD=%d\n:",thrd);
+		for(i=1;i<=3;i++){
+			const operand_info &src_a=  pI->operand_lookup(i);
+         		unsigned nelem = src_a.get_vect_nelem();
+         		ptx_reg_t v[8];
+         		thread->get_vector_operand_values( src_a, v, nelem );
+			if(g_debug_instruction){
+				printf("Thread%d_Iteration=%d:",thrd,i);
+				for(k=0;k<nelem;k++){
+					printf("%x ",v[k].u64);
+				}
+				printf("\n");
+			}
+			int hex_val;
+			switch(i) {
+			      case 1 ://operand 1
+				for(k=0;k<8;k++){
+					mapping(thrd,VP_MMA,a_layout,S32_TYPE,k,16,row,col,offset);
+					if(g_debug_instruction)
+					printf("A:thread=%d,row=%d,col=%d,offset=%d\n",thrd,row,col,offset);
+				 	matrix_a[row][col]=v[offset];
+			        }
+			      break;
+			      case 2 ://operand 2
+				for(k=0;k<8;k++){
+					mapping(thrd,VP_MMA,b_layout,S32_TYPE,k,16,row,col,offset);
+					if(g_debug_instruction)
+					printf("B:thread=%d,row=%d,col=%d,offset=%d\n",thrd,row,col,offset);
+					if(nelem==1){
+				 		matrix_b[row][col].s32=((v[0].u32&(0xf<<4*k))>>4*k);
+				}	}
+			      break;
+			      case 3 ://operand 3
+				for(k=0;k<8;k++){
+					mapping(thrd,VP_MMA,ROW,S32_TYPE,k,16,row,col,offset);
+					if(g_debug_instruction)
+					printf("C:thread=%d,row=%d,col=%d,offset=%d\n",thrd,row,col,offset);
+				 	matrix_c[row][col]=v[offset];
+			        }
+				break;
+			      default :
+			         printf("Invalid Operand Index\n" );
+			}
+		}
+		if(g_debug_instruction)
+		printf("\n");
+	}
+	if(g_debug_instruction){
+		printf("MATRIX_A\n");
+		for (i=0;i<16;i++){
+			for(j=0;j<16;j++){
+				printf("%d ",matrix_a[i][j].s32);
+			}
+		printf("\n");
+		}
+	}
+	printf("MATRIX_B\n");
+	for (i=0;i<16;i++){
+		for(j=0;j<16;j++){
+			printf("%x ",matrix_b[i][j].s32);
+		}
+		printf("\n");
+	}	
+	printf("MATRIX_C\n");
+	for (i=0;i<16;i++){
+		for(j=0;j<16;j++){
+			printf("%d ",matrix_c[i][j].s32);
+		}
+		printf("\n");
+	}
+	for (i=0;i<16;i++){
+		for(j=0;j<16;j++){
+				matrix_d[i][j].f16=0;
+		}
+	}
+	
+	for (i=0;i<16;i++){
+		for(j=0;j<16;j++){
+			for(k=0;k<16;k++){
+				matrix_d[i][j].s32=matrix_d[i][j].s32+matrix_a[i][k].s32*matrix_b[k][j].s32;
+			}
+			matrix_d[i][j].s32+=matrix_c[i][j].s32;
+		}
+	}
+	if(g_debug_instruction){
+		printf("MATRIX_D\n");
+		for (i=0;i<16;i++){
+			for(j=0;j<16;j++){
+				printf("%d ",matrix_d[i][j].s32);
+			}
+			printf("\n");
+		}
+	}
+	for (thrd=0; thrd < core->get_warp_size(); thrd++){
+		int row_t[8];
+		int col_t[8];	
+		for(k=0;k<8;k++){
+			mapping(thrd,VP_MMA,ROW,type,k,16,row_t[k],col_t[k],offset);
+			if(g_debug_instruction)
+			printf("mma:store:row:%d,col%d\n",row_t[k],col_t[k]);
+		}
+		thread = core->get_thread_info()[tid+thrd];
+		
+	
+		thread->set_wmma_vector_operand_values(dst,matrix_d[row_t[0]][col_t[0]],matrix_d[row_t[1]][col_t[1]],matrix_d[row_t[2]][col_t[2]],matrix_d[row_t[3]][col_t[3]],matrix_d[row_t[4]][col_t[4]],matrix_d[row_t[5]][col_t[5]],matrix_d[row_t[6]][col_t[6]],matrix_d[row_t[7]][col_t[7]]);
+		
+		if(g_debug_instruction)
+		{
+			printf("thread%d:",thrd);
+			for(k=0;k<8;k++){
+				printf("%d ",matrix_d[row_t[k]][col_t[k]].s32);
+			}
+			printf("\n");
+		}
+	}
 }
 void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 {
@@ -1744,8 +1881,8 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 	
 	unsigned thread_group_index;
 	float temp;
-	half temp2;
-	 	
+	half temp2; 	
+	
 	for (thrd=0; thrd < core->get_warp_size(); thrd++){
 		thread = core->get_thread_info()[tid+thrd];
 		if(g_debug_instruction)
@@ -2974,9 +3111,61 @@ void ldu_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
 void vp_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 {
+   size_t size;
+   unsigned smid;
+   int t;
+   int thrd,odd,inx,k;
+   ptx_thread_info *thread;
+   
    const operand_info &src  = pI->operand_lookup(1);
    const operand_info &src1 = pI->operand_lookup(0);
    const operand_info &src2 = pI->operand_lookup(2);
+   int tid = inst.warp_id_func()*core->get_warp_size();
+   unsigned type = pI->get_type();
+   unsigned wmma_type = pI->get_wmma_type();
+   unsigned wmma_layout = pI->get_wmma_layout(0);
+   int stride; 
+   for (thrd=0; thrd < core->get_warp_size(); thrd++) {
+	thread = core->get_thread_info()[tid+thrd];
+	odd=thrd%2;
+	inx=thrd/2;
+    	ptx_reg_t addr_reg = thread->get_operand_value(src1, src, type, thread, 1);
+   	ptx_reg_t src2_data = thread->get_operand_value(src2, src, type, thread, 1);
+	const operand_info &src_a=  pI->operand_lookup(1);
+        unsigned nelem = src_a.get_vect_nelem();
+        ptx_reg_t* v= new ptx_reg_t[8]; 
+       	thread->get_vector_operand_values( src_a, v, nelem );
+  	stride=src2_data.u32;
+ 
+   	memory_space_t space = pI->get_space();
+
+   	memory_space *mem = NULL;
+   	addr_t addr = addr_reg.u32;
+        
+        smid = thread->get_hw_sid();
+   	if( whichspace(addr) == shared_space ) {
+          addr= generic_to_shared(smid,addr);
+          space = shared_space;
+	}
+   	decode_space(space,thread,src1,mem,addr);
+
+   	type_info_key::type_decode(type,size,t);
+   	if(g_debug_instruction)
+		printf("mma_st: thrd=%d,addr=%x, fp(size=%d), stride=%d\n",thrd,addr_reg.u32,size,src2_data.u32);
+	addr_t new_addr = addr+thread_group_offset(thrd,wmma_type,wmma_layout,type,stride)*size/8;  
+
+	for(k=0;k<8;k++){
+       		mem->write(new_addr+4*acc_float_offset(k,wmma_layout,stride),size/8,&v[k].s64,thread,pI);
+		if(g_debug_instruction){
+			printf("wmma:store:thread%d=%d,%d,%d,%d,%d,%d,%d,%d\n",thrd,v[0].s32,v[1].s32,v[2].s32,v[3].s32,v[4].s32,v[5].s32,v[6].s32,v[7].s32);   
+		}
+
+	}
+    }
+   	
+   delete [] v;
+   thread->m_last_effective_address = addr;
+   thread->m_last_memory_space = space;
 }
 void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 {
@@ -3163,7 +3352,7 @@ void vp_ld_impl(const ptx_instruction *pI, core_t *core, warp_inst_t inst)
    		thread->set_wmma_vector_operand_values(dst,data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7]);
 	}
 	else if(wmma_type==LOAD_B4){
-      		thread->set_operand_value(dst,data[0], type, thread, pI);
+   		thread->set_vector_operand_values(dst,data[0],data[0],data[0],data[0]);
 	}
 	else if(wmma_type==LOAD_B8){
    		thread->set_vector_operand_values(dst,data[0],data[1],data[1],data[1]);
