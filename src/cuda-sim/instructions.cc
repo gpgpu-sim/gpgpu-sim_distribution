@@ -1774,7 +1774,14 @@ void vp_mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 					printf("B:thread=%d,row=%d,col=%d,offset=%d\n",thrd,row,col,offset);
 					if(nelem==1){
 				 		matrix_b[row][col].s32=((v[0].u32&(0xf<<4*k))>>4*k);
-				}	}
+					}
+					if(nelem==2){
+				 		matrix_b[row][col].s32=((v[k/4].u32&(0xff<<8*(k%4)))>>8*(k%4));
+					}
+					if(nelem==4){
+				 		matrix_b[row][col].s32=((v[k/2].u32&(0xffff<<16*(k%2)))>>16*(k%2));
+					}
+				}
 			      break;
 			      case 3 ://operand 3
 				for(k=0;k<8;k++){
@@ -1843,7 +1850,7 @@ void vp_mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 		for(k=0;k<8;k++){
 			mapping(thrd,VP_MMA,ROW,type,k,16,row_t[k],col_t[k],offset);
 			if(g_debug_instruction)
-			printf("mma:store:row:%d,col%d\n",row_t[k],col_t[k]);
+			printf("vp_mma:row:%d,col%d\n",row_t[k],col_t[k]);
 		}
 		thread = core->get_thread_info()[tid+thrd];
 		
@@ -3151,21 +3158,20 @@ void vp_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 
    	type_info_key::type_decode(type,size,t);
    	if(g_debug_instruction)
-		printf("mma_st: thrd=%d,addr=%x, fp(size=%d), stride=%d\n",thrd,addr_reg.u32,size,src2_data.u32);
-	addr_t new_addr = addr+thread_group_offset(thrd,wmma_type,wmma_layout,type,stride)*size/8;  
+		printf("vp_st: thrd=%d,addr=%x, fp(size=%d), stride=%d\n",thrd,addr_reg.u32,size,src2_data.u32);
+	addr_t new_addr = addr+thread_group_offset(thrd,VP_MMA,wmma_layout,type,stride)*size/8;  
 
-	for(k=0;k<8;k++){
-       		mem->write(new_addr+4*acc_float_offset(k,wmma_layout,stride),size/8,&v[k].s64,thread,pI);
-		if(g_debug_instruction){
-			printf("wmma:store:thread%d=%d,%d,%d,%d,%d,%d,%d,%d\n",thrd,v[0].s32,v[1].s32,v[2].s32,v[3].s32,v[4].s32,v[5].s32,v[6].s32,v[7].s32);   
-		}
-
+	if(g_debug_instruction){
+		printf("vp:store:thread%d=%d,%d,%d,%d,%d,%d,%d,%d\n",thrd,v[0].s32,v[1].s32,v[2].s32,v[3].s32,v[4].s32,v[5].s32,v[6].s32,v[7].s32);   
 	}
-    }
+	for(k=0;k<8;k++){
+       		mem->write(new_addr+4*k,size/8,&v[k].s64,thread,pI);
+	}
    	
-   delete [] v;
-   thread->m_last_effective_address = addr;
-   thread->m_last_memory_space = space;
+   	delete [] v;
+   	thread->m_last_effective_address = addr;
+   	thread->m_last_memory_space = space;
+    }
 }
 void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 {
@@ -3291,13 +3297,13 @@ void vp_ld_impl(const ptx_instruction *pI, core_t *core, warp_inst_t inst)
 		 new_addr = addr+thread_group_offset(thrd,VP_MMA,wmma_layout,type,stride)*size/8;  
 	}
 	else if(wmma_type==LOAD_B4){
-		new_addr = addr+thread_group_offset(thrd,VP_MMA,wmma_layout,type,stride)/8;  
+		new_addr = addr+thread_group_offset(thrd,VP_MMA,wmma_layout,type,stride)/2;  
 	}
 	else if (wmma_type==LOAD_B8){
-		new_addr = addr+thread_group_offset(thrd,VP_MMA,wmma_layout,type,stride)/4;  
+		new_addr = addr+thread_group_offset(thrd,VP_MMA,wmma_layout,type,stride);  
 	}
 	else if (wmma_type==LOAD_B16){
-		new_addr = addr+thread_group_offset(thrd,VP_MMA,wmma_layout,type,stride)/2;  
+		new_addr = addr+thread_group_offset(thrd,VP_MMA,wmma_layout,type,stride)*2;  
 	}
 
    	if(g_debug_instruction)	
@@ -3316,6 +3322,7 @@ void vp_ld_impl(const ptx_instruction *pI, core_t *core, warp_inst_t inst)
 			mem->read(new_addr+4,size/8,&data[1].s64);
 	}
 	else if(wmma_type==LOAD_B16){
+			printf("LOADB16_MODE");
 			mem->read(new_addr,size/8,&data[0].s64);
 			mem->read(new_addr+4,size/8,&data[1].s64);
 			mem->read(new_addr+8,size/8,&data[2].s64);
