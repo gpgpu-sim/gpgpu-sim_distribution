@@ -20,9 +20,9 @@ void curandErrCheck_(curandStatus_t stat, const char *file, int line) {
 using namespace nvcuda;
 
 // Must be multiples of 16 for wmma code to work
-#define MATRIX_M (1024)
-#define MATRIX_N (1024)
-#define MATRIX_K (1024)
+#define MATRIX_M (32)
+#define MATRIX_N (32)
+#define MATRIX_K (32)
 
 
 // The only dimensions currently supported by WMMA
@@ -81,9 +81,9 @@ __global__ void vp_example(int *a, int *b, int *c, int M, int N, int K ) {
         //vp::load_matrix_sync(b_frag, b + bRow * ldb+ bCol , ldb);
 	asm("/*");
 	asm("CPTX_BEGIN");
-	asm("vp.load.b4.sync.row.m16n16k16.s32 {%0},[%1],%2;" : 
-	"=r"(b_frag[0]):
-	"l"(b+bRow*ldb/8+bCol),"r"(ldb/8)
+	asm("vp.load.b8.sync.row.m16n16k16.s32 {%0,%1},[%2],%3;" : 
+	"=r"(b_frag[0]),"=r"(b_frag[1]):
+	"l"(b+bRow*ldb/4+bCol),"r"(ldb/4)
 	);
 	asm("CPTX_END");
 	asm("*/");
@@ -92,12 +92,12 @@ __global__ void vp_example(int *a, int *b, int *c, int M, int N, int K ) {
          //vp::mma_sync(acc_frag, a_frag, b_frag, acc_frag);
 	asm("/*");
 	asm("CPTX_BEGIN");
-	asm("vp.mma.sync.row.row.m16n16k16.s32 {%0, %1, %2, %3, %4, %5, %6, %7}, {%8, %9, %10, %11, %12, %13, %14, %15}, {%16}, {%17, %18, %19, %20, %21, %22, %23, %24};" : 
+	asm("vp.mma.sync.row.row.m16n16k16.s32 {%0, %1, %2, %3, %4, %5, %6, %7}, {%8, %9, %10, %11, %12, %13, %14, %15}, {%16, %17}, {%18, %19, %20, %21, %22, %23, %24, %25};" : 
 	"=r"(acc_frag[0]), "=r"(acc_frag[1]),"=r"(acc_frag[2]),"=r"(acc_frag[3]),
 	"=r"(acc_frag[4]),"=r"(acc_frag[5]),"=r"(acc_frag[6]),"=r"(acc_frag[7]):
 	"r"(a_frag[0]),"r"(a_frag[1]),"r"(a_frag[2]),"r"(a_frag[3]),
 	"r"(a_frag[4]),"r"(a_frag[5]),"r"(a_frag[6]),"r"(a_frag[7]),
-	"r"(b_frag[0]),
+	"r"(b_frag[0]),"r"(b_frag[1]),
 	"r"(acc_frag[0]),"r"(acc_frag[1]),"r"(acc_frag[2]),"r"(acc_frag[3]),
 	"r"(acc_frag[4]),"r"(acc_frag[5]),"r"(acc_frag[6]),"r"(acc_frag[7])
 	);
@@ -302,7 +302,7 @@ int main(int argc, char* argv[]) {
   	convertInt4ToInt32 <<< (MATRIX_M * MATRIX_K + 255) / 256, 256 >>> (d_int32, b_int4, MATRIX_M * MATRIX_K);
  	cudaErrCheck(cudaMemcpy(d_host_wmma, d_int32, MATRIX_M * MATRIX_N * sizeof(int), cudaMemcpyDeviceToHost));
    #endif
-   convertInt32ToInt4 <<< (MATRIX_M * MATRIX_K + 255) / 256, 256 >>> (b_int4, b_int32, MATRIX_M * MATRIX_K);
+   convertInt32ToInt8 <<< (MATRIX_M * MATRIX_K + 255) / 256, 256 >>> (b_int8, b_int32, MATRIX_M * MATRIX_K);
 
    dim3 gridDim;
    dim3 blockDim;
@@ -320,7 +320,7 @@ int main(int argc, char* argv[]) {
   
    printf("Running with wmma...\n");
    cudaErrCheck(cudaEventRecord(startWMMA));
-   vp_example <<< gridDim, blockDim >>> (a_int32, b_int4, c_int32, MATRIX_M, MATRIX_N, MATRIX_K);
+   vp_example <<< gridDim, blockDim >>> (a_int32, b_int8, c_int32, MATRIX_M, MATRIX_N, MATRIX_K);
    cudaErrCheck(cudaEventRecord(stopWMMA));
    cudaErrCheck(cudaEventSynchronize(stopWMMA));
 

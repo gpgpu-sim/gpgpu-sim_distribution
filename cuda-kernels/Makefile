@@ -4,5 +4,7 @@ all: tensorcore_type32_32.cu
 
 .PHONY:
 clean:
-	rm tensorcore 
+	rm _cuob*
+	rm gpgpusim_power* 
+	rm gpgpu_inst_stats.txt
 #	nvcc -arch=sm_70 --gpu-architecture=compute_50 --gpu-code=compute_50 -lcudart -g -o tensor_core tensor_core.cu
