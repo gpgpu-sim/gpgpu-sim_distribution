@@ -63,8 +63,10 @@ LIBS = cuda-sim gpgpu-sim_uarch $(INTERSIM) gpgpusimlib
 TARGETS =
 ifeq ($(shell uname),Linux)
 	TARGETS += $(SIM_LIB_DIR)/libcudart.so
+	TARGETS += $(SIM_LIB_DIR)/libcuda.so
 else # MAC
 	TARGETS += $(SIM_LIB_DIR)/libcudart.dylib
+	TARGETS += $(SIM_LIB_DIR)/libcuda.dylib
 endif
 
 ifeq  ($(NVOPENCL_LIBDIR),)
@@ -164,7 +166,30 @@ $(SIM_LIB_DIR)/libcudart.so: makedirs $(LIBS) cudalib
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.9.0 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.9.0; fi
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.9.1 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.9.1; fi
 
-$(SIM_LIB_DIR)/libcudart.dylib: makedirs $(LIBS) cudalib
+$(SIM_LIB_DIR)/libcuda.so: makedirs $(LIBS) cudalib
+	g++ -shared -Wl,-soname,libcuda_$(GPGPUSIM_BUILD).so -Wl,--version-script=linux-so-version.txt\
+			$(SIM_OBJ_FILES_DIR)/libcuda/*.o \
+			$(SIM_OBJ_FILES_DIR)/cuda-sim/*.o \
+			$(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table/*.o \
+			$(SIM_OBJ_FILES_DIR)/gpgpu-sim/*.o \
+			$(SIM_OBJ_FILES_DIR)/$(INTERSIM)/*.o \
+			$(SIM_OBJ_FILES_DIR)/*.o -lm -lz -lGL -pthread \
+			$(MCPAT) \
+			-o $(SIM_LIB_DIR)/libcuda.so
+	if [ ! -f $(SIM_LIB_DIR)/libcuda.so.1 ]; then ln -s libcuda.so $(SIM_LIB_DIR)/libcuda.so.1; fi
+	if [ ! -f $(SIM_LIB_DIR)/libcuda.so.2 ]; then ln -s libcuda.so $(SIM_LIB_DIR)/libcuda.so.2; fi
+	if [ ! -f $(SIM_LIB_DIR)/libcuda.so.3 ]; then ln -s libcuda.so $(SIM_LIB_DIR)/libcuda.so.3; fi
+	if [ ! -f $(SIM_LIB_DIR)/libcuda.so.4 ]; then ln -s libcuda.so $(SIM_LIB_DIR)/libcuda.so.4; fi
+	if [ ! -f $(SIM_LIB_DIR)/libcuda.so.5.0 ]; then ln -s libcuda.so $(SIM_LIB_DIR)/libcuda.so.5.0; fi
+	if [ ! -f $(SIM_LIB_DIR)/libcuda.so.5.5 ]; then ln -s libcuda.so $(SIM_LIB_DIR)/libcuda.so.5.5; fi
+	if [ ! -f $(SIM_LIB_DIR)/libcuda.so.6.0 ]; then ln -s libcuda.so $(SIM_LIB_DIR)/libcuda.so.6.0; fi
+	if [ ! -f $(SIM_LIB_DIR)/libcuda.so.6.5 ]; then ln -s libcuda.so $(SIM_LIB_DIR)/libcuda.so.6.5; fi
+	if [ ! -f $(SIM_LIB_DIR)/libcuda.so.7.5 ]; then ln -s libcuda.so $(SIM_LIB_DIR)/libcuda.so.7.5; fi
+	if [ ! -f $(SIM_LIB_DIR)/libcuda.so.8.0 ]; then ln -s libcuda.so $(SIM_LIB_DIR)/libcuda.so.8.0; fi
+	if [ ! -f $(SIM_LIB_DIR)/libcuda.so.9.0 ]; then ln -s libcuda.so $(SIM_LIB_DIR)/libcuda.so.9.0; fi
+	if [ ! -f $(SIM_LIB_DIR)/libcuda.so.9.1 ]; then ln -s libcuda.so $(SIM_LIB_DIR)/libcuda.so.9.1; fi
+
+$(SIM_LIB_DIR)/libcuda.dylib: makedirs $(LIBS) cudalib
 	g++ -dynamiclib -Wl,-headerpad_max_install_names,-undefined,dynamic_lookup,-compatibility_version,1.1,-current_version,1.1\
 			$(SIM_OBJ_FILES_DIR)/libcuda/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/*.o \
@@ -173,7 +198,7 @@ $(SIM_LIB_DIR)/libcudart.dylib: makedirs $(LIBS) cudalib
 			$(SIM_OBJ_FILES_DIR)/$(INTERSIM)/*.o  \
 			$(SIM_OBJ_FILES_DIR)/*.o -lm -lz -pthread \
 			$(MCPAT) \
-			-o $(SIM_LIB_DIR)/libcudart.dylib
+			-o $(SIM_LIB_DIR)/libcuda.dylib
 
 $(SIM_LIB_DIR)/libOpenCL.so: makedirs $(LIBS) opencllib
 	g++ -shared -Wl,-soname,libOpenCL_$(GPGPUSIM_BUILD).so \
