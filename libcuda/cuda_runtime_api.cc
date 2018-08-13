@@ -126,9 +126,7 @@
 #include "host_defines.h"
 #include "builtin_types.h"
 #include "driver_types.h"
-#if (CUDART_VERSION >= 8000)
 #include "cuda.h"
-#endif
 #if (CUDART_VERSION < 8000)
 #include "__cudaFatFormat.h"
 #endif
@@ -1774,7 +1772,7 @@ void extract_ptx_files_using_cuobjdump(){
     int fd2=mkstemp(ptx_list_file_name);
     close(fd2);
 
-    if (pytorch_path!=NULL){
+    if (pytorch_path!=NULL && strlen(pytorch_path)!=0){
         app_binary = std::string(std::string(pytorch_path) + "/libATen.so");
     }
 
@@ -2809,7 +2807,7 @@ cudaError_t CUDARTAPI cudaDriverGetVersion(int *driverVersion)
 	    announce_call(__my_func__);
     }
 	*driverVersion = CUDART_VERSION;
-	return g_last_cudaError = cudaErrorUnknown;
+	return g_last_cudaError = cudaSuccess;
 }
 
 cudaError_t CUDARTAPI cudaRuntimeGetVersion(int *runtimeVersion)
@@ -2818,7 +2816,7 @@ cudaError_t CUDARTAPI cudaRuntimeGetVersion(int *runtimeVersion)
 	    announce_call(__my_func__);
     }
 	*runtimeVersion = CUDART_VERSION;
-	return g_last_cudaError = cudaErrorUnknown;
+	return g_last_cudaError = cudaSuccess;
 }
 
 #if CUDART_VERSION >= 3000
@@ -3040,8 +3038,434 @@ kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *hostFun,
 	return result;
 }
 
-#if (CUDART_VERSION >= 8000)
-CUresult CUDAAPI cuLinkCreate(unsigned int numOptions, CUjit_option *options, void **optionValues, CUlinkState *stateOut)
+/*******************************************************************************
+ *                                                                              *
+ *                                                                              *
+ *                                                                              *
+ *******************************************************************************/
+//***extra api for pytorch***
+
+CUresult CUDAAPI cuGetErrorString(CUresult error, const char **pStr)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuGetErrorName(CUresult error, const char **pStr)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuInit(unsigned int Flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuDriverGetVersion(int *driverVersion)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+    cudaError_t e = cudaDriverGetVersion(driverVersion);
+    assert(e == cudaSuccess);
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuDeviceGet(CUdevice *device, int ordinal)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	CUctx_st* context = GPGPUSim_Context();
+    *device = context->get_device()->get_id();
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuDeviceGetCount(int *count)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+    cudaError_t e = cudaGetDeviceCount(count);
+    assert(e == cudaSuccess);
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuDeviceGetName(char *name, int len, CUdevice dev)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#if CUDART_VERSION >= 3020
+CUresult CUDAAPI cuDeviceTotalMem(size_t *bytes, CUdevice dev)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 3020 */
+
+CUresult CUDAAPI cuDeviceGetAttribute(int *pi, CUdevice_attribute attrib, CUdevice dev)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuDeviceGetProperties(CUdevprop *prop, CUdevice dev)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuDeviceComputeCapability(int *major, int *minor, CUdevice dev)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#if CUDART_VERSION >= 7000
+
+CUresult CUDAAPI cuDevicePrimaryCtxRetain(CUcontext *pctx, CUdevice dev)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuDevicePrimaryCtxRelease(CUdevice dev)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuDevicePrimaryCtxSetFlags(CUdevice dev, unsigned int flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuDevicePrimaryCtxGetState(CUdevice dev, unsigned int *flags, int *active)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuDevicePrimaryCtxReset(CUdevice dev)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#endif /* CUDART_VERSION >= 7000 */
+
+#if CUDART_VERSION >= 3020
+CUresult CUDAAPI cuCtxCreate(CUcontext *pctx, unsigned int flags, CUdevice dev)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 3020 */
+
+#if CUDART_VERSION >= 4000
+CUresult CUDAAPI cuCtxDestroy(CUcontext ctx)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 4000 */
+
+#if CUDART_VERSION >= 4000
+CUresult CUDAAPI cuCtxPushCurrent(CUcontext ctx)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuCtxPopCurrent(CUcontext *pctx)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuCtxSetCurrent(CUcontext ctx)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuCtxGetCurrent(CUcontext *pctx)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 4000 */
+
+CUresult CUDAAPI cuCtxGetDevice(CUdevice *device)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#if CUDART_VERSION >= 7000
+CUresult CUDAAPI cuCtxGetFlags(unsigned int *flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 7000 */
+
+CUresult CUDAAPI cuCtxSynchronize(void)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuCtxSetLimit(CUlimit limit, size_t value)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuCtxGetLimit(size_t *pvalue, CUlimit limit)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuCtxGetCacheConfig(CUfunc_cache *pconfig)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuCtxSetCacheConfig(CUfunc_cache config)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#if CUDART_VERSION >= 4020
+CUresult CUDAAPI cuCtxGetSharedMemConfig(CUsharedconfig *pConfig)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuCtxSetSharedMemConfig(CUsharedconfig config)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif
+
+CUresult CUDAAPI cuCtxGetApiVersion(CUcontext ctx, unsigned int *version)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuCtxGetStreamPriorityRange(int *leastPriority, int *greatestPriority)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuCtxAttach(CUcontext *pctx, unsigned int flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuCtxDetach(CUcontext ctx)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuModuleLoad(CUmodule *module, const char *fname)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuModuleLoadData(CUmodule *module, const void *image)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuModuleLoadDataEx(CUmodule *module, const void *image, unsigned int numOptions, CUjit_option *options, void **optionValues)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuModuleLoadFatBinary(CUmodule *module, const void *fatCubin)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuModuleUnload(CUmodule hmod)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuModuleGetFunction(CUfunction *hfunc, CUmodule hmod, const char *name)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#if CUDART_VERSION >= 3020
+CUresult CUDAAPI cuModuleGetGlobal(CUdeviceptr *dptr, size_t *bytes, CUmodule hmod, const char *name)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 3020 */
+
+CUresult CUDAAPI cuModuleGetTexRef(CUtexref *pTexRef, CUmodule hmod, const char *name)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuModuleGetSurfRef(CUsurfref *pSurfRef, CUmodule hmod, const char *name)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#if CUDART_VERSION >= 5050
+
+CUresult CUDAAPI
+cuLinkCreate(unsigned int numOptions, CUjit_option *options, void **optionValues, CUlinkState *stateOut)
 {
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
@@ -3050,7 +3474,8 @@ CUresult CUDAAPI cuLinkCreate(unsigned int numOptions, CUjit_option *options, vo
 	return CUDA_SUCCESS;
 }
 
-CUresult CUDAAPI cuLinkAddData(CUlinkState state, CUjitInputType type, void *data, size_t size, const char *name,
+CUresult CUDAAPI
+cuLinkAddData(CUlinkState state, CUjitInputType type, void *data, size_t size, const char *name,
     unsigned int numOptions, CUjit_option *options, void **optionValues)
 {
 	if(g_debug_execution >= 3){
@@ -3061,7 +3486,8 @@ CUresult CUDAAPI cuLinkAddData(CUlinkState state, CUjitInputType type, void *dat
 	return CUDA_ERROR_UNKNOWN;
 }
 
-CUresult CUDAAPI cuLinkAddFile(CUlinkState state, CUjitInputType type, const char *path,
+CUresult CUDAAPI
+cuLinkAddFile(CUlinkState state, CUjitInputType type, const char *path,
     unsigned int numOptions, CUjit_option *options, void **optionValues)
 {
 	if(g_debug_execution >= 3){
@@ -3093,7 +3519,8 @@ CUresult CUDAAPI cuLinkAddFile(CUlinkState state, CUjitInputType type, const cha
 	return CUDA_SUCCESS;
 }
 
-CUresult CUDAAPI cuLinkComplete(CUlinkState state, void **cubinOut, size_t *sizeOut)
+CUresult CUDAAPI
+cuLinkComplete(CUlinkState state, void **cubinOut, size_t *sizeOut)
 {
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
@@ -3102,7 +3529,8 @@ CUresult CUDAAPI cuLinkComplete(CUlinkState state, void **cubinOut, size_t *size
 	return CUDA_SUCCESS;
 }
 
-CUresult CUDAAPI cuLinkDestroy(CUlinkState state)
+CUresult CUDAAPI
+cuLinkDestroy(CUlinkState state)
 {
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
@@ -3111,44 +3539,924 @@ CUresult CUDAAPI cuLinkDestroy(CUlinkState state)
 	return CUDA_SUCCESS;
 }
 
-CUresult CUDAAPI cuModuleLoadData(CUmodule *module, const void *image)
+#endif /* CUDART_VERSION >= 5050 */
+
+#if CUDART_VERSION >= 3020
+CUresult CUDAAPI cuMemGetInfo(size_t *free, size_t *total)
 {
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     }
-    //Currently do not support multiple modules
+	printf("WARNING: this function has not been implemented yet.");
 	return CUDA_SUCCESS;
 }
 
-CUresult CUDAAPI cuModuleGetFunction(CUfunction *hfunc, CUmodule hmod, const char *name)
+CUresult CUDAAPI cuMemAlloc(CUdeviceptr *dptr, size_t bytesize)
 {
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     }
-	CUctx_st* context = GPGPUSim_Context();
-    std::string key(name);
-    //only support one file
-    assert(name_symtab.size()==1);
-    symbol_table* symtab = name_symtab.begin()->second;
-    function_info* f = symtab->lookup_function( std::string(name) );
-    //just need to add given pointer to map for cudaLaunch
-    context->register_hostFun_function( (const char*) hfunc, f);
-    *hfunc = (CUfunction)hfunc;
+	printf("WARNING: this function has not been implemented yet.");
 	return CUDA_SUCCESS;
 }
 
-CUresult CUDAAPI cuModuleUnload(CUmodule hmod)
+CUresult CUDAAPI cuMemAllocPitch(CUdeviceptr *dptr, size_t *pPitch, size_t WidthInBytes, size_t Height, unsigned int ElementSizeBytes)
 {
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     }
-    //Currently do not support multiple modules
+	printf("WARNING: this function has not been implemented yet.");
 	return CUDA_SUCCESS;
 }
 
-CUresult CUDAAPI cuLaunchKernel(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, 
-        unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, 
-        unsigned int sharedMemBytes, CUstream hStream, void **kernelParams, void **extra)
+CUresult CUDAAPI cuMemFree(CUdeviceptr dptr)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemGetAddressRange(CUdeviceptr *pbase, size_t *psize, CUdeviceptr dptr)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemAllocHost(void **pp, size_t bytesize)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 3020 */
+
+CUresult CUDAAPI cuMemFreeHost(void *p)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemHostAlloc(void **pp, size_t bytesize, unsigned int Flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#if CUDART_VERSION >= 3020
+CUresult CUDAAPI cuMemHostGetDevicePointer(CUdeviceptr *pdptr, void *p, unsigned int Flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 3020 */
+
+CUresult CUDAAPI cuMemHostGetFlags(unsigned int *pFlags, void *p)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#if CUDART_VERSION >= 6000
+
+CUresult CUDAAPI cuMemAllocManaged(CUdeviceptr *dptr, size_t bytesize, unsigned int flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#endif /* CUDART_VERSION >= 6000 */
+
+#if CUDART_VERSION >= 4010
+
+CUresult CUDAAPI cuDeviceGetByPCIBusId(CUdevice *dev, const char *pciBusId)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuDeviceGetPCIBusId(char *pciBusId, int len, CUdevice dev)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuIpcGetEventHandle(CUipcEventHandle *pHandle, CUevent event)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuIpcOpenEventHandle(CUevent *phEvent, CUipcEventHandle handle)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuIpcGetMemHandle(CUipcMemHandle *pHandle, CUdeviceptr dptr)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuIpcOpenMemHandle(CUdeviceptr *pdptr, CUipcMemHandle handle, unsigned int Flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuIpcCloseMemHandle(CUdeviceptr dptr)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#endif /* CUDART_VERSION >= 4010 */
+
+#if CUDART_VERSION >= 4000
+CUresult CUDAAPI cuMemHostRegister(void *p, size_t bytesize, unsigned int Flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemHostUnregister(void *p)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemcpy(CUdeviceptr dst, CUdeviceptr src, size_t ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemcpyPeer(CUdeviceptr dstDevice, CUcontext dstContext, CUdeviceptr srcDevice, CUcontext srcContext, size_t ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#endif /* CUDART_VERSION >= 4000 */
+
+#if CUDART_VERSION >= 3020
+CUresult CUDAAPI cuMemcpyHtoD(CUdeviceptr dstDevice, const void *srcHost, size_t ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemcpyDtoH(void *dstHost, CUdeviceptr srcDevice, size_t ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemcpyDtoD(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemcpyDtoA(CUarray dstArray, size_t dstOffset, CUdeviceptr srcDevice, size_t ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemcpyAtoD(CUdeviceptr dstDevice, CUarray srcArray, size_t srcOffset, size_t ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemcpyHtoA(CUarray dstArray, size_t dstOffset, const void *srcHost, size_t ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemcpyAtoH(void *dstHost, CUarray srcArray, size_t srcOffset, size_t ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemcpyAtoA(CUarray dstArray, size_t dstOffset, CUarray srcArray, size_t srcOffset, size_t ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemcpy2D(const CUDA_MEMCPY2D *pCopy)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemcpy2DUnaligned(const CUDA_MEMCPY2D *pCopy)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemcpy3D(const CUDA_MEMCPY3D *pCopy)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 3020 */
+
+#if CUDART_VERSION >= 4000
+CUresult CUDAAPI cuMemcpy3DPeer(const CUDA_MEMCPY3D_PEER *pCopy)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemcpyAsync(CUdeviceptr dst, CUdeviceptr src, size_t ByteCount, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemcpyPeerAsync(CUdeviceptr dstDevice, CUcontext dstContext, CUdeviceptr srcDevice, CUcontext srcContext, size_t ByteCount, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 4000 */
+
+#if CUDART_VERSION >= 3020
+CUresult CUDAAPI cuMemcpyHtoDAsync(CUdeviceptr dstDevice, const void *srcHost, size_t ByteCount, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemcpyDtoHAsync(void *dstHost, CUdeviceptr srcDevice, size_t ByteCount, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemcpyDtoDAsync(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t ByteCount, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemcpyHtoAAsync(CUarray dstArray, size_t dstOffset, const void *srcHost, size_t ByteCount, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemcpyAtoHAsync(void *dstHost, CUarray srcArray, size_t srcOffset, size_t ByteCount, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemcpy2DAsync(const CUDA_MEMCPY2D *pCopy, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemcpy3DAsync(const CUDA_MEMCPY3D *pCopy, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 3020 */
+
+#if CUDART_VERSION >= 4000
+CUresult CUDAAPI cuMemcpy3DPeerAsync(const CUDA_MEMCPY3D_PEER *pCopy, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 4000 */
+
+#if CUDART_VERSION >= 3020
+CUresult CUDAAPI cuMemsetD8(CUdeviceptr dstDevice, unsigned char uc, size_t N)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemsetD16(CUdeviceptr dstDevice, unsigned short us, size_t N)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemsetD32(CUdeviceptr dstDevice, unsigned int ui, size_t N)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemsetD2D8(CUdeviceptr dstDevice, size_t dstPitch, unsigned char uc, size_t Width, size_t Height)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemsetD2D16(CUdeviceptr dstDevice, size_t dstPitch, unsigned short us, size_t Width, size_t Height)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemsetD2D32(CUdeviceptr dstDevice, size_t dstPitch, unsigned int ui, size_t Width, size_t Height)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemsetD8Async(CUdeviceptr dstDevice, unsigned char uc, size_t N, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemsetD16Async(CUdeviceptr dstDevice, unsigned short us, size_t N, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemsetD32Async(CUdeviceptr dstDevice, unsigned int ui, size_t N, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemsetD2D8Async(CUdeviceptr dstDevice, size_t dstPitch, unsigned char uc, size_t Width, size_t Height, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemsetD2D16Async(CUdeviceptr dstDevice, size_t dstPitch, unsigned short us, size_t Width, size_t Height, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemsetD2D32Async(CUdeviceptr dstDevice, size_t dstPitch, unsigned int ui, size_t Width, size_t Height, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuArrayCreate(CUarray *pHandle, const CUDA_ARRAY_DESCRIPTOR *pAllocateArray)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuArrayGetDescriptor(CUDA_ARRAY_DESCRIPTOR *pArrayDescriptor, CUarray hArray)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 3020 */
+
+
+CUresult CUDAAPI cuArrayDestroy(CUarray hArray)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#if CUDART_VERSION >= 3020
+CUresult CUDAAPI cuArray3DCreate(CUarray *pHandle, const CUDA_ARRAY3D_DESCRIPTOR *pAllocateArray)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuArray3DGetDescriptor(CUDA_ARRAY3D_DESCRIPTOR *pArrayDescriptor, CUarray hArray)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 3020 */
+
+#if CUDART_VERSION >= 5000
+
+CUresult CUDAAPI cuMipmappedArrayCreate(CUmipmappedArray *pHandle, const CUDA_ARRAY3D_DESCRIPTOR *pMipmappedArrayDesc, unsigned int numMipmapLevels)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMipmappedArrayGetLevel(CUarray *pLevelArray, CUmipmappedArray hMipmappedArray, unsigned int level)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMipmappedArrayDestroy(CUmipmappedArray hMipmappedArray)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#endif /* CUDART_VERSION >= 5000 */
+
+/** @} */ /* END CUDA_MEM */
+
+
+#if CUDART_VERSION >= 4000
+CUresult CUDAAPI cuPointerGetAttribute(void *data, CUpointer_attribute attribute, CUdeviceptr ptr)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 4000 */
+
+#if CUDART_VERSION >= 8000
+CUresult CUDAAPI cuMemPrefetchAsync(CUdeviceptr devPtr, size_t count, CUdevice dstDevice, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemAdvise(CUdeviceptr devPtr, size_t count, CUmem_advise advice, CUdevice device)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemRangeGetAttribute(void *data, size_t dataSize, CUmem_range_attribute attribute, CUdeviceptr devPtr, size_t count)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuMemRangeGetAttributes(void **data, size_t *dataSizes, CUmem_range_attribute *attributes, size_t numAttributes, CUdeviceptr devPtr, size_t count)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 8000 */
+
+#if CUDART_VERSION >= 6000
+CUresult CUDAAPI cuPointerSetAttribute(const void *value, CUpointer_attribute attribute, CUdeviceptr ptr)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 6000 */
+
+#if CUDART_VERSION >= 7000
+CUresult CUDAAPI cuPointerGetAttributes(unsigned int numAttributes, CUpointer_attribute *attributes, void **data, CUdeviceptr ptr)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 7000 */
+
+/** @} */ /* END CUDA_UNIFIED */
+
+
+CUresult CUDAAPI cuStreamCreate(CUstream *phStream, unsigned int Flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuStreamCreateWithPriority(CUstream *phStream, unsigned int flags, int priority)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+
+CUresult CUDAAPI cuStreamGetPriority(CUstream hStream, int *priority)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuStreamGetFlags(CUstream hStream, unsigned int *flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+
+CUresult CUDAAPI cuStreamWaitEvent(CUstream hStream, CUevent hEvent, unsigned int Flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuStreamAddCallback(CUstream hStream, CUstreamCallback callback, void *userData, unsigned int flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#if CUDART_VERSION >= 6000
+
+CUresult CUDAAPI cuStreamAttachMemAsync(CUstream hStream, CUdeviceptr dptr, size_t length, unsigned int flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#endif /* CUDART_VERSION >= 6000 */
+
+CUresult CUDAAPI cuStreamQuery(CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuStreamSynchronize(CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#if CUDART_VERSION >= 4000
+CUresult CUDAAPI cuStreamDestroy(CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 4000 */
+
+/** @} */ /* END CUDA_STREAM */
+
+
+
+CUresult CUDAAPI cuEventCreate(CUevent *phEvent, unsigned int Flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuEventRecord(CUevent hEvent, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuEventQuery(CUevent hEvent)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuEventSynchronize(CUevent hEvent)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#if CUDART_VERSION >= 4000
+CUresult CUDAAPI cuEventDestroy(CUevent hEvent)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 4000 */
+
+CUresult CUDAAPI cuEventElapsedTime(float *pMilliseconds, CUevent hStart, CUevent hEnd)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#if CUDART_VERSION >= 8000
+CUresult CUDAAPI cuStreamWaitValue32(CUstream stream, CUdeviceptr addr, cuuint32_t value, unsigned int flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuStreamWriteValue32(CUstream stream, CUdeviceptr addr, cuuint32_t value, unsigned int flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuStreamBatchMemOp(CUstream stream, unsigned int count, CUstreamBatchMemOpParams *paramArray, unsigned int flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 8000 */
+
+/** @} */ /* END CUDA_EVENT */
+
+
+CUresult CUDAAPI cuFuncGetAttribute(int *pi, CUfunction_attribute attrib, CUfunction hfunc)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuFuncSetCacheConfig(CUfunction hfunc, CUfunc_cache config)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#if CUDART_VERSION >= 4020
+CUresult CUDAAPI cuFuncSetSharedMemConfig(CUfunction hfunc, CUsharedconfig config)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif
+
+#if CUDART_VERSION >= 4000
+CUresult CUDAAPI cuLaunchKernel(CUfunction f,
+                                unsigned int gridDimX,
+                                unsigned int gridDimY,
+                                unsigned int gridDimZ,
+                                unsigned int blockDimX,
+                                unsigned int blockDimY,
+                                unsigned int blockDimZ,
+                                unsigned int sharedMemBytes,
+                                CUstream hStream,
+                                void **kernelParams,
+                                void **extra)
 {
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
@@ -3168,5 +4476,1455 @@ CUresult CUDAAPI cuLaunchKernel(CUfunction f, unsigned int gridDimX, unsigned in
     cudaLaunch(hostFun);
 	return CUDA_SUCCESS;
 }
+#endif /* CUDART_VERSION >= 4000 */
 
+/** @} */ /* END CUDA_EXEC */
+
+
+CUresult CUDAAPI cuFuncSetBlockShape(CUfunction hfunc, int x, int y, int z)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuFuncSetSharedSize(CUfunction hfunc, unsigned int bytes)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuParamSetSize(CUfunction hfunc, unsigned int numbytes)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuParamSeti(CUfunction hfunc, int offset, unsigned int value)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuParamSetf(CUfunction hfunc, int offset, float value)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuParamSetv(CUfunction hfunc, int offset, void *ptr, unsigned int numbytes)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuLaunch(CUfunction f)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuLaunchGrid(CUfunction f, int grid_width, int grid_height)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuLaunchGridAsync(CUfunction f, int grid_width, int grid_height, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+
+CUresult CUDAAPI cuParamSetTexRef(CUfunction hfunc, int texunit, CUtexref hTexRef)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+/** @} */ /* END CUDA_EXEC_DEPRECATED */
+
+
+#if CUDART_VERSION >= 6050
+
+CUresult CUDAAPI cuOccupancyMaxActiveBlocksPerMultiprocessor(int *numBlocks, CUfunction func, int blockSize, size_t dynamicSMemSize)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(int *numBlocks, CUfunction func, int blockSize, size_t dynamicSMemSize, unsigned int flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    
+CUresult CUDAAPI cuOccupancyMaxPotentialBlockSize(int *minGridSize, int *blockSize, CUfunction func, CUoccupancyB2DSize blockSizeToDynamicSMemSize, size_t dynamicSMemSize, int blockSizeLimit)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuOccupancyMaxPotentialBlockSizeWithFlags(int *minGridSize, int *blockSize, CUfunction func, CUoccupancyB2DSize blockSizeToDynamicSMemSize, size_t dynamicSMemSize, int blockSizeLimit, unsigned int flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+/** @} */ /* END CUDA_OCCUPANCY */
+#endif /* CUDART_VERSION >= 6050 */
+
+CUresult CUDAAPI cuTexRefSetArray(CUtexref hTexRef, CUarray hArray, unsigned int Flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefSetMipmappedArray(CUtexref hTexRef, CUmipmappedArray hMipmappedArray, unsigned int Flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#if CUDART_VERSION >= 3020
+CUresult CUDAAPI cuTexRefSetAddress(size_t *ByteOffset, CUtexref hTexRef, CUdeviceptr dptr, size_t bytes)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefSetAddress2D(CUtexref hTexRef, const CUDA_ARRAY_DESCRIPTOR *desc, CUdeviceptr dptr, size_t Pitch)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 3020 */
+
+CUresult CUDAAPI cuTexRefSetFormat(CUtexref hTexRef, CUarray_format fmt, int NumPackedComponents)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefSetAddressMode(CUtexref hTexRef, int dim, CUaddress_mode am)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefSetFilterMode(CUtexref hTexRef, CUfilter_mode fm)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefSetMipmapFilterMode(CUtexref hTexRef, CUfilter_mode fm)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefSetMipmapLevelBias(CUtexref hTexRef, float bias)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefSetMipmapLevelClamp(CUtexref hTexRef, float minMipmapLevelClamp, float maxMipmapLevelClamp)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefSetMaxAnisotropy(CUtexref hTexRef, unsigned int maxAniso)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefSetBorderColor(CUtexref hTexRef, float *pBorderColor)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefSetFlags(CUtexref hTexRef, unsigned int Flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#if CUDART_VERSION >= 3020
+CUresult CUDAAPI cuTexRefGetAddress(CUdeviceptr *pdptr, CUtexref hTexRef)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 3020 */
+
+CUresult CUDAAPI cuTexRefGetArray(CUarray *phArray, CUtexref hTexRef)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefGetMipmappedArray(CUmipmappedArray *phMipmappedArray, CUtexref hTexRef)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefGetAddressMode(CUaddress_mode *pam, CUtexref hTexRef, int dim)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefGetFilterMode(CUfilter_mode *pfm, CUtexref hTexRef)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefGetFormat(CUarray_format *pFormat, int *pNumChannels, CUtexref hTexRef)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefGetMipmapFilterMode(CUfilter_mode *pfm, CUtexref hTexRef)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefGetMipmapLevelBias(float *pbias, CUtexref hTexRef)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefGetMipmapLevelClamp(float *pminMipmapLevelClamp, float *pmaxMipmapLevelClamp, CUtexref hTexRef)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefGetMaxAnisotropy(int *pmaxAniso, CUtexref hTexRef)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefGetBorderColor(float *pBorderColor, CUtexref hTexRef)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+} 
+
+CUresult CUDAAPI cuTexRefGetFlags(unsigned int *pFlags, CUtexref hTexRef)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefCreate(CUtexref *pTexRef)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexRefDestroy(CUtexref hTexRef)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuSurfRefSetArray(CUsurfref hSurfRef, CUarray hArray, unsigned int Flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuSurfRefGetArray(CUarray *phArray, CUsurfref hSurfRef)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+/** @} */ /* END CUDA_SURFREF */
+
+#if CUDART_VERSION >= 5000
+CUresult CUDAAPI cuTexObjectCreate(CUtexObject *pTexObject, const CUDA_RESOURCE_DESC *pResDesc, const CUDA_TEXTURE_DESC *pTexDesc, const CUDA_RESOURCE_VIEW_DESC *pResViewDesc)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexObjectDestroy(CUtexObject texObject)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexObjectGetResourceDesc(CUDA_RESOURCE_DESC *pResDesc, CUtexObject texObject)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexObjectGetTextureDesc(CUDA_TEXTURE_DESC *pTexDesc, CUtexObject texObject)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuTexObjectGetResourceViewDesc(CUDA_RESOURCE_VIEW_DESC *pResViewDesc, CUtexObject texObject)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+/** @} */ /* END CUDA_TEXOBJECT */
+
+
+CUresult CUDAAPI cuSurfObjectCreate(CUsurfObject *pSurfObject, const CUDA_RESOURCE_DESC *pResDesc)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuSurfObjectDestroy(CUsurfObject surfObject)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuSurfObjectGetResourceDesc(CUDA_RESOURCE_DESC *pResDesc, CUsurfObject surfObject)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#endif /* CUDART_VERSION >= 5000 */
+
+#if CUDART_VERSION >= 4000
+CUresult CUDAAPI cuDeviceCanAccessPeer(int *canAccessPeer, CUdevice dev, CUdevice peerDev)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuDeviceGetP2PAttribute(int* value, CUdevice_P2PAttribute attrib, CUdevice srcDevice, CUdevice dstDevice)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuCtxEnablePeerAccess(CUcontext peerContext, unsigned int Flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuCtxDisablePeerAccess(CUcontext peerContext)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+/** @} */ /* END CUDA_PEER_ACCESS */
+#endif /* CUDART_VERSION >= 4000 */
+
+
+CUresult CUDAAPI cuGraphicsUnregisterResource(CUgraphicsResource resource)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuGraphicsSubResourceGetMappedArray(CUarray *pArray, CUgraphicsResource resource, unsigned int arrayIndex, unsigned int mipLevel)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#if CUDART_VERSION >= 5000
+
+CUresult CUDAAPI cuGraphicsResourceGetMappedMipmappedArray(CUmipmappedArray *pMipmappedArray, CUgraphicsResource resource)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+#endif /* CUDART_VERSION >= 5000 */
+
+#if CUDART_VERSION >= 3020
+CUresult CUDAAPI cuGraphicsResourceGetMappedPointer(CUdeviceptr *pDevPtr, size_t *pSize, CUgraphicsResource resource)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 3020 */
+
+CUresult CUDAAPI cuGraphicsResourceSetMapFlags(CUgraphicsResource resource, unsigned int flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuGraphicsMapResources(unsigned int count, CUgraphicsResource *resources, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+CUresult CUDAAPI cuGraphicsUnmapResources(unsigned int count, CUgraphicsResource *resources, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+/** @} */ /* END CUDA_GRAPHICS */
+
+CUresult CUDAAPI cuGetExportTable(const void **ppExportTable, const CUuuid *pExportTableId)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+    cudaError_t e = cudaGetExportTable(ppExportTable, pExportTableId);
+    assert(e == cudaSuccess);
+	return CUDA_SUCCESS;
+}
+
+
+#if defined(CUDART_VERSION_INTERNAL) || (CUDART_VERSION >= 4000 && CUDART_VERSION < 6050)
+CUresult CUDAAPI cuMemHostRegister(void *p, size_t bytesize, unsigned int Flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* defined(CUDART_VERSION_INTERNAL) || (CUDART_VERSION >= 4000 && CUDART_VERSION < 6050) */
+
+#if defined(CUDART_VERSION_INTERNAL) || (CUDART_VERSION >= 5050 && CUDART_VERSION < 6050)
+CUresult CUDAAPI cuLinkCreate(unsigned int numOptions, CUjit_option *options, void **optionValues, CUlinkState *stateOut)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuLinkAddData(CUlinkState state, CUjitInputType type, void *data, size_t size, const char *name,
+    unsigned int numOptions, CUjit_option *options, void **optionValues)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuLinkAddFile(CUlinkState state, CUjitInputType type, const char *path,
+    unsigned int numOptions, CUjit_option *options, void **optionValues)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION_INTERNAL || (CUDART_VERSION >= 5050 && CUDART_VERSION < 6050) */
+
+#if defined(CUDART_VERSION_INTERNAL) || (CUDART_VERSION >= 3020 && CUDART_VERSION < 4010)
+CUresult CUDAAPI cuTexRefSetAddress2D_v2(CUtexref hTexRef, const CUDA_ARRAY_DESCRIPTOR *desc, CUdeviceptr dptr, size_t Pitch)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION_INTERNAL || (CUDART_VERSION >= 3020 && CUDART_VERSION < 4010) */
+
+#if defined(CUDART_VERSION_INTERNAL) || CUDART_VERSION < 3020
+
+CUresult CUDAAPI cuDeviceTotalMem(unsigned int *bytes, CUdevice dev)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuCtxCreate(CUcontext *pctx, unsigned int flags, CUdevice dev)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuModuleGetGlobal(CUdeviceptr *dptr, unsigned int *bytes, CUmodule hmod, const char *name)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemGetInfo(unsigned int *free, unsigned int *total)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemAlloc(CUdeviceptr *dptr, unsigned int bytesize)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemAllocPitch(CUdeviceptr *dptr, unsigned int *pPitch, unsigned int WidthInBytes, unsigned int Height, unsigned int ElementSizeBytes)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemFree(CUdeviceptr dptr)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemGetAddressRange(CUdeviceptr *pbase, unsigned int *psize, CUdeviceptr dptr)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemAllocHost(void **pp, unsigned int bytesize)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemHostGetDevicePointer(CUdeviceptr *pdptr, void *p, unsigned int Flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemcpyHtoD(CUdeviceptr dstDevice, const void *srcHost, unsigned int ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemcpyDtoH(void *dstHost, CUdeviceptr srcDevice, unsigned int ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemcpyDtoD(CUdeviceptr dstDevice, CUdeviceptr srcDevice, unsigned int ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemcpyDtoA(CUarray dstArray, unsigned int dstOffset, CUdeviceptr srcDevice, unsigned int ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemcpyAtoD(CUdeviceptr dstDevice, CUarray srcArray, unsigned int srcOffset, unsigned int ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemcpyHtoA(CUarray dstArray, unsigned int dstOffset, const void *srcHost, unsigned int ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemcpyAtoH(void *dstHost, CUarray srcArray, unsigned int srcOffset, unsigned int ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemcpyAtoA(CUarray dstArray, unsigned int dstOffset, CUarray srcArray, unsigned int srcOffset, unsigned int ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemcpyHtoAAsync(CUarray dstArray, unsigned int dstOffset, const void *srcHost, unsigned int ByteCount, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemcpyAtoHAsync(void *dstHost, CUarray srcArray, unsigned int srcOffset, unsigned int ByteCount, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemcpy2D(const CUDA_MEMCPY2D *pCopy)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemcpy2DUnaligned(const CUDA_MEMCPY2D *pCopy)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemcpy3D(const CUDA_MEMCPY3D *pCopy)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemcpyHtoDAsync(CUdeviceptr dstDevice, const void *srcHost, unsigned int ByteCount, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemcpyDtoHAsync(void *dstHost, CUdeviceptr srcDevice, unsigned int ByteCount, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemcpyDtoDAsync(CUdeviceptr dstDevice, CUdeviceptr srcDevice, unsigned int ByteCount, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemcpy2DAsync(const CUDA_MEMCPY2D *pCopy, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemcpy3DAsync(const CUDA_MEMCPY3D *pCopy, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemsetD8(CUdeviceptr dstDevice, unsigned char uc, unsigned int N)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemsetD16(CUdeviceptr dstDevice, unsigned short us, unsigned int N)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemsetD32(CUdeviceptr dstDevice, unsigned int ui, unsigned int N)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemsetD2D8(CUdeviceptr dstDevice, unsigned int dstPitch, unsigned char uc, unsigned int Width, unsigned int Height)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemsetD2D16(CUdeviceptr dstDevice, unsigned int dstPitch, unsigned short us, unsigned int Width, unsigned int Height)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuMemsetD2D32(CUdeviceptr dstDevice, unsigned int dstPitch, unsigned int ui, unsigned int Width, unsigned int Height)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuArrayCreate(CUarray *pHandle, const CUDA_ARRAY_DESCRIPTOR *pAllocateArray)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuArrayGetDescriptor(CUDA_ARRAY_DESCRIPTOR *pArrayDescriptor, CUarray hArray)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuArray3DCreate(CUarray *pHandle, const CUDA_ARRAY3D_DESCRIPTOR *pAllocateArray)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuArray3DGetDescriptor(CUDA_ARRAY3D_DESCRIPTOR *pArrayDescriptor, CUarray hArray)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuTexRefSetAddress(unsigned int *ByteOffset, CUtexref hTexRef, CUdeviceptr dptr, unsigned int bytes)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuTexRefSetAddress2D(CUtexref hTexRef, const CUDA_ARRAY_DESCRIPTOR *desc, CUdeviceptr dptr, unsigned int Pitch)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuTexRefGetAddress(CUdeviceptr *pdptr, CUtexref hTexRef)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuGraphicsResourceGetMappedPointer(CUdeviceptr *pDevPtr, unsigned int *pSize, CUgraphicsResource resource)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION_INTERNAL || CUDART_VERSION < 3020 */
+#if defined(CUDART_VERSION_INTERNAL) || CUDART_VERSION < 4000
+CUresult CUDAAPI cuCtxDestroy(CUcontext ctx)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuCtxPopCurrent(CUcontext *pctx)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuCtxPushCurrent(CUcontext ctx)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuStreamDestroy(CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+CUresult CUDAAPI cuEventDestroy(CUevent hEvent)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION_INTERNAL || CUDART_VERSION < 4000 */
+
+#if defined(CUDART_VERSION_INTERNAL)
+    CUresult CUDAAPI cuMemcpyHtoD_v2(CUdeviceptr dstDevice, const void *srcHost, size_t ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpyDtoH_v2(void *dstHost, CUdeviceptr srcDevice, size_t ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpyDtoD_v2(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpyDtoA_v2(CUarray dstArray, size_t dstOffset, CUdeviceptr srcDevice, size_t ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpyAtoD_v2(CUdeviceptr dstDevice, CUarray srcArray, size_t srcOffset, size_t ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpyHtoA_v2(CUarray dstArray, size_t dstOffset, const void *srcHost, size_t ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpyAtoH_v2(void *dstHost, CUarray srcArray, size_t srcOffset, size_t ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpyAtoA_v2(CUarray dstArray, size_t dstOffset, CUarray srcArray, size_t srcOffset, size_t ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpyHtoAAsync_v2(CUarray dstArray, size_t dstOffset, const void *srcHost, size_t ByteCount, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpyAtoHAsync_v2(void *dstHost, CUarray srcArray, size_t srcOffset, size_t ByteCount, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpy2D_v2(const CUDA_MEMCPY2D *pCopy)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpy2DUnaligned_v2(const CUDA_MEMCPY2D *pCopy)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpy3D_v2(const CUDA_MEMCPY3D *pCopy)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpyHtoDAsync_v2(CUdeviceptr dstDevice, const void *srcHost, size_t ByteCount, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpyDtoHAsync_v2(void *dstHost, CUdeviceptr srcDevice, size_t ByteCount, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpyDtoDAsync_v2(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t ByteCount, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpy2DAsync_v2(const CUDA_MEMCPY2D *pCopy, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpy3DAsync_v2(const CUDA_MEMCPY3D *pCopy, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemsetD8_v2(CUdeviceptr dstDevice, unsigned char uc, size_t N)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemsetD16_v2(CUdeviceptr dstDevice, unsigned short us, size_t N)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemsetD32_v2(CUdeviceptr dstDevice, unsigned int ui, size_t N)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemsetD2D8_v2(CUdeviceptr dstDevice, size_t dstPitch, unsigned char uc, size_t Width, size_t Height)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemsetD2D16_v2(CUdeviceptr dstDevice, size_t dstPitch, unsigned short us, size_t Width, size_t Height)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemsetD2D32_v2(CUdeviceptr dstDevice, size_t dstPitch, unsigned int ui, size_t Width, size_t Height)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpy(CUdeviceptr dst, CUdeviceptr src, size_t ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpyAsync(CUdeviceptr dst, CUdeviceptr src, size_t ByteCount, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpyPeer(CUdeviceptr dstDevice, CUcontext dstContext, CUdeviceptr srcDevice, CUcontext srcContext, size_t ByteCount)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpyPeerAsync(CUdeviceptr dstDevice, CUcontext dstContext, CUdeviceptr srcDevice, CUcontext srcContext, size_t ByteCount, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpy3DPeer(const CUDA_MEMCPY3D_PEER *pCopy)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemcpy3DPeerAsync(const CUDA_MEMCPY3D_PEER *pCopy, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+    CUresult CUDAAPI cuMemsetD8Async(CUdeviceptr dstDevice, unsigned char uc, size_t N, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemsetD16Async(CUdeviceptr dstDevice, unsigned short us, size_t N, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemsetD32Async(CUdeviceptr dstDevice, unsigned int ui, size_t N, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemsetD2D8Async(CUdeviceptr dstDevice, size_t dstPitch, unsigned char uc, size_t Width, size_t Height, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemsetD2D16Async(CUdeviceptr dstDevice, size_t dstPitch, unsigned short us, size_t Width, size_t Height, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemsetD2D32Async(CUdeviceptr dstDevice, size_t dstPitch, unsigned int ui, size_t Width, size_t Height, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+
+    CUresult CUDAAPI cuStreamGetPriority(CUstream hStream, int *priority)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuStreamGetFlags(CUstream hStream, unsigned int *flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuStreamWaitEvent(CUstream hStream, CUevent hEvent, unsigned int Flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuStreamAddCallback(CUstream hStream, CUstreamCallback callback, void *userData, unsigned int flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuStreamAttachMemAsync(CUstream hStream, CUdeviceptr dptr, size_t length, unsigned int flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuStreamQuery(CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuStreamSynchronize(CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuEventRecord(CUevent hEvent, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuLaunchKernel(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, CUstream hStream, void **kernelParams, void **extra)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuGraphicsMapResources(unsigned int count, CUgraphicsResource *resources, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuGraphicsUnmapResources(unsigned int count, CUgraphicsResource *resources, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuMemPrefetchAsync(CUdeviceptr devPtr, size_t count, CUdevice dstDevice, CUstream hStream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuStreamWriteValue32(CUstream stream, CUdeviceptr addr, cuuint32_t value, unsigned int flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuStreamWaitValue32(CUstream stream, CUdeviceptr addr, cuuint32_t value, unsigned int flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
+    CUresult CUDAAPI cuStreamBatchMemOp(CUstream stream, unsigned int count, CUstreamBatchMemOpParams *paramArray, unsigned int flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return CUDA_SUCCESS;
+}
 #endif
