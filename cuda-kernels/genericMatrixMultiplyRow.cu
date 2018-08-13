@@ -62,8 +62,8 @@ __global__ void wmma_example(half *a, half *b, float *c, int M, int N, int K, fl
    int warpN = (blockIdx.y * blockDim.y + threadIdx.y);
  
    // Declare the fragments
-   wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> a_frag;
-   wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::col_major> b_frag;
+   wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::row_major> a_frag;
+   wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::row_major> b_frag;
    wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> acc_frag;
    wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> c_frag;
 
@@ -80,8 +80,8 @@ __global__ void wmma_example(half *a, half *b, float *c, int M, int N, int K, fl
       // Bounds checking
       if (aRow < M && aCol < K && bRow < K && bCol < N) {
          // Load the inputs
-         wmma::load_matrix_sync(a_frag, a + aRow + aCol * lda, lda);
-         wmma::load_matrix_sync(b_frag, b + bRow + bCol * ldb, ldb);
+         wmma::load_matrix_sync(a_frag, a + aRow * lda+ aCol , lda);
+         wmma::load_matrix_sync(b_frag, b + bRow * ldb+ bCol , ldb);
  
          // Perform the matrix multiplication
          wmma::mma_sync(acc_frag, a_frag, b_frag, acc_frag);
@@ -94,7 +94,7 @@ __global__ void wmma_example(half *a, half *b, float *c, int M, int N, int K, fl
    int cCol = warpN * WMMA_N;
 
    if (cRow < M && cCol < N) {
-      wmma::load_matrix_sync(c_frag, c + cRow + cCol * ldc, ldc, wmma::mem_col_major);
+      wmma::load_matrix_sync(c_frag, c + cRow*ldc + cCol , ldc, wmma::mem_row_major);
 
 
       for(int i=0; i < c_frag.num_elements; i++) {
@@ -102,7 +102,7 @@ __global__ void wmma_example(half *a, half *b, float *c, int M, int N, int K, fl
       }
 
       // Store the output
-      wmma::store_matrix_sync(c + cRow + cCol * ldc, c_frag, ldc, wmma::mem_col_major);
+      wmma::store_matrix_sync(c + cRow *ldc + cCol , c_frag, ldc, wmma::mem_row_major);
    }
 }
 
@@ -215,15 +215,16 @@ int main(int argc, char* argv[]) {
    printf("\nChecking results...\n");
    cudaErrCheck(cudaMemcpy(d_host_wmma, c_wmma, MATRIX_M * MATRIX_N * sizeof(float), cudaMemcpyDeviceToHost));
    
-   int t=200000000;
+   int t=200000000;  
    while(t-->0);
+ 
    for(int m=0;m<MATRIX_M;m++){
 	for(int n=0;n<MATRIX_N;n++){
-		d_cal_host_wmma[n*MATRIX_N+m]=0;
+		d_cal_host_wmma[m*MATRIX_N+n]=0;
 		for(int k=0;k<MATRIX_K;k++){
-			d_cal_host_wmma[n*MATRIX_N+m]+=	a_host_wmma[k*MATRIX_K+m]*b_host_wmma[n*MATRIX_K+k];
+			d_cal_host_wmma[m*MATRIX_N+n]+=	a_host_wmma[m*MATRIX_K+k]*b_host_wmma[k*MATRIX_K+n];
 		}
-		d_cal_host_wmma[n*MATRIX_N+m]+=c_host_wmma[n*MATRIX_N+m];
+		d_cal_host_wmma[m*MATRIX_N+n]+=c_host_wmma[m*MATRIX_N+n];
 	}
    }
    printf("cal:d\n"); 

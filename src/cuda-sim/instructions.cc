@@ -133,7 +133,7 @@ unsigned thread_group_offset(int thread,unsigned  wmma_type,unsigned wmma_layout
 				if(wmma_layout==ROW)
 					offset=load_c_float_row[thread_group]+16*in_tg_index;
 				else	
-					offset=load_c_float_col[thread_group]+16*in_tg_index;
+					offset=load_c_float_col[thread_group]+in_tg_index;
 			break;	
 
          	default:
@@ -1810,7 +1810,7 @@ void vp_mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 	printf("MATRIX_B\n");
 	for (i=0;i<16;i++){
 		for(j=0;j<16;j++){
-			printf("%x ",matrix_b[i][j].s32);
+			printf("%d ",matrix_b[i][j].s32);
 		}
 		printf("\n");
 	}	
@@ -1922,7 +1922,7 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 				for(k=0;k<2*nelem;k++){
 					temp=nw_v[k].f16;
 					if(g_debug_instruction)
-						printf("%f ",temp);
+						printf("%.2f ",temp);
 				}
 				if(g_debug_instruction)
 					printf("\n");
@@ -1930,7 +1930,7 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			else{
 				if(g_debug_instruction){
 					for(k=0;k<8;k++){
-						printf("%f ",v[k].f32);
+						printf("%.2f ",v[k].f32);
 					}
 					printf("\n");
 				}
@@ -1977,7 +1977,7 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 		for (i=0;i<16;i++){
 			for(j=0;j<16;j++){
 				temp=matrix_a[i][j].f16;
-				printf("%f ",temp);
+				printf("%.2f ",temp);
 			}
 			printf("\n");
 		}
@@ -1985,7 +1985,7 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 		for (i=0;i<16;i++){
 			for(j=0;j<16;j++){
 				temp=matrix_b[i][j].f16;
-				printf("%f ",temp);
+				printf("%.2f ",temp);
 			}
 			printf("\n");
 		}	
@@ -1994,10 +1994,10 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			for(j=0;j<16;j++){
 				if(type2==F16_TYPE){
 					temp=matrix_c[i][j].f16;
-					printf("%f ",temp);
+					printf("%.2f ",temp);
 				}
 				else
-					printf("%f ",matrix_c[i][j].f32);
+					printf("%.2f ",matrix_c[i][j].f32);
 			}
 			printf("\n");
 		}	
@@ -2038,7 +2038,7 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			for(j=0;j<16;j++){
 				if(type==F16_TYPE){
 					temp=matrix_d[i][j].f16;
-					printf("%f ",temp);
+					printf("%.2f ",temp);
 				}
 				else
 					printf("%.2f ",matrix_d[i][j].f32);
@@ -2064,7 +2064,7 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			{
 				printf("thread%d:",thrd);
 				for(k=0;k<8;k++){
-					printf("%f ",matrix_d[row_t[k]][col_t[k]].f32);
+					printf("%.2f ",matrix_d[row_t[k]][col_t[k]].f32);
 				}
 				printf("\n");
 			}
@@ -2074,7 +2074,7 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 				printf("thread%d:",thrd);
 				for(k=0;k<8;k++){
 					temp=matrix_d[row_t[k]][col_t[k]].f16;
-					printf("%f ",temp);
+					printf("%.2f ",temp);
 				}
 				printf("\n");
 
@@ -3162,10 +3162,14 @@ void vp_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 	addr_t new_addr = addr+thread_group_offset(thrd,VP_MMA,wmma_layout,type,stride)*size/8;  
 
 	if(g_debug_instruction){
-		printf("vp:store:thread%d=%d,%d,%d,%d,%d,%d,%d,%d\n",thrd,v[0].s32,v[1].s32,v[2].s32,v[3].s32,v[4].s32,v[5].s32,v[6].s32,v[7].s32);   
+		printf("vp_st:thread%d=%d,%d,%d,%d,%d,%d,%d,%d\n",thrd,v[0].s32,v[1].s32,v[2].s32,v[3].s32,v[4].s32,v[5].s32,v[6].s32,v[7].s32);   
 	}
+	
 	for(k=0;k<8;k++){
-       		mem->write(new_addr+4*k,size/8,&v[k].s64,thread,pI);
+		if(wmma_layout==ROW)
+       			mem->write(new_addr+4*k,size/8,&v[k].s64,thread,pI);
+		else if(wmma_layout==COL)
+       			mem->write(new_addr+k*4*stride,size/8,&v[k].s64,thread,pI);
 	}
    	
    	delete [] v;
@@ -3236,7 +3240,7 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 				printf("thread=%d:",thrd);
 				for(l=0;l<8;l++){
 					temp=v[l].f32;
-					printf("%f",temp);	
+					printf("%.2f",temp);	
 				}
 				printf("\n");
 			}
@@ -3292,6 +3296,7 @@ void vp_ld_impl(const ptx_instruction *pI, core_t *core, warp_inst_t inst)
 	
 	ptx_reg_t data[8];
 	addr_t new_addr;	
+	
 	//note we are using distribution of VP_MMA for every type of load!
 	if(wmma_type==LOAD_A||wmma_type==LOAD_C){
 		 new_addr = addr+thread_group_offset(thrd,VP_MMA,wmma_layout,type,stride)*size/8;  
@@ -3311,22 +3316,40 @@ void vp_ld_impl(const ptx_instruction *pI, core_t *core, warp_inst_t inst)
 
 	if(wmma_type==LOAD_A||wmma_type==LOAD_C){
 		for(i=0;i<8;i++){
-			mem->read(new_addr+4*i,size/8,&data[i].s64);
+			if(wmma_layout==ROW)
+				mem->read(new_addr+4*i,size/8,&data[i].s64);
+			else if(wmma_layout==COL)
+				mem->read(new_addr+4*stride*i,size/8,&data[i].s64);
 		}
 	}
 	else if(wmma_type==LOAD_B4){
-			mem->read(new_addr,size/8,&data[0].s64);
+			if(wmma_layout==ROW){
+				mem->read(new_addr,size/8,&data[0].s64);
+			}
+			else if(wmma_layout==COL){
+	
+			}
 	}
 	else if(wmma_type==LOAD_B8){
-			mem->read(new_addr,size/8,&data[0].s64);
-			mem->read(new_addr+4,size/8,&data[1].s64);
+			if(wmma_layout==ROW){
+				mem->read(new_addr,size/8,&data[0].s64);
+				mem->read(new_addr+4,size/8,&data[1].s64);
+			}
+			else if(wmma_layout==COL){
+	
+			}
 	}
 	else if(wmma_type==LOAD_B16){
 			printf("LOADB16_MODE");
-			mem->read(new_addr,size/8,&data[0].s64);
-			mem->read(new_addr+4,size/8,&data[1].s64);
-			mem->read(new_addr+8,size/8,&data[2].s64);
-			mem->read(new_addr+12,size/8,&data[3].s64);
+			if(wmma_layout==ROW){
+				mem->read(new_addr,size/8,&data[0].s64);
+				mem->read(new_addr+4,size/8,&data[1].s64);
+				mem->read(new_addr+8,size/8,&data[2].s64);
+				mem->read(new_addr+12,size/8,&data[3].s64);
+			}
+			else if(wmma_layout==COL){
+	
+			}
 	}
 	else{
 		printf("wrong vp_load type\n");;
@@ -3490,14 +3513,14 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			float temp;
 			for(i=0;i<16;i++){
 				temp=data[i].f16;
-				printf("%f ",temp);
+				printf("%.2f ",temp);
 			}
 			printf("\n");
 		}
 		else{
 			printf("\nmma_ld:thread%d= ",thrd);
 			for(i=0;i<8;i++){
-				printf("%f ",data[i].f32);
+				printf("%.2f ",data[i].f32);
 			}
 			printf("\n");
 			printf("\nmma_ld:thread%d= ",thrd);
