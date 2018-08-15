@@ -70,6 +70,9 @@ enum wmma_type{
 	STORE_D,
 	MMA,
 	VP_MMA,
+	VP_MMA4,
+	VP_MMA8,
+	VP_MMA16,
 	ROW,
 	COL,
 	M16N16K16

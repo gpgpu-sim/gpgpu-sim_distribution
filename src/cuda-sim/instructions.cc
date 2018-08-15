@@ -130,6 +130,9 @@ unsigned thread_group_offset(int thread,unsigned  wmma_type,unsigned wmma_layout
 			}
 			break;	
 		case VP_MMA:
+		case VP_MMA4:
+		case VP_MMA8:
+		case VP_MMA16:
 				if(wmma_layout==ROW)
 					offset=load_c_float_row[thread_group]+16*in_tg_index;
 				else	
@@ -1703,7 +1706,7 @@ void mapping(int thread,int wmma_type,int wmma_layout,int type,int index,int str
 		}
 		assg_offset=index;
 	}
-	else if( wmma_type==VP_MMA){
+	else if(wmma_type==VP_MMA || wmma_type==VP_MMA4 || wmma_type==VP_MMA8 || wmma_type==VP_MMA16){
 		row=c_row_offset[thread/4]+thread%4;	
 		col=c_col_offset[thread/4]+index;
 		assg_offset=index;
@@ -1761,7 +1764,7 @@ void vp_mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			switch(i) {
 			      case 1 ://operand 1
 				for(k=0;k<8;k++){
-					mapping(thrd,VP_MMA,a_layout,S32_TYPE,k,16,row,col,offset);
+					mapping(thrd,wmma_type,a_layout,S32_TYPE,k,16,row,col,offset);
 					if(g_debug_instruction)
 					printf("A:thread=%d,row=%d,col=%d,offset=%d\n",thrd,row,col,offset);
 				 	matrix_a[row][col]=v[offset];
@@ -1769,7 +1772,7 @@ void vp_mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			      break;
 			      case 2 ://operand 2
 				for(k=0;k<8;k++){
-					mapping(thrd,VP_MMA,b_layout,S32_TYPE,k,16,row,col,offset);
+					mapping(thrd,wmma_type,b_layout,S32_TYPE,k,16,row,col,offset);
 					if(g_debug_instruction)
 					printf("B:thread=%d,row=%d,col=%d,offset=%d\n",thrd,row,col,offset);
 					if(nelem==1){
@@ -1785,7 +1788,7 @@ void vp_mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			      break;
 			      case 3 ://operand 3
 				for(k=0;k<8;k++){
-					mapping(thrd,VP_MMA,ROW,S32_TYPE,k,16,row,col,offset);
+					mapping(thrd,wmma_type,ROW,S32_TYPE,k,16,row,col,offset);
 					if(g_debug_instruction)
 					printf("C:thread=%d,row=%d,col=%d,offset=%d\n",thrd,row,col,offset);
 				 	matrix_c[row][col]=v[offset];
@@ -1848,7 +1851,7 @@ void vp_mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 		int row_t[8];
 		int col_t[8];	
 		for(k=0;k<8;k++){
-			mapping(thrd,VP_MMA,ROW,type,k,16,row_t[k],col_t[k],offset);
+			mapping(thrd,wmma_type,ROW,type,k,16,row_t[k],col_t[k],offset);
 			if(g_debug_instruction)
 			printf("vp_mma:row:%d,col%d\n",row_t[k],col_t[k]);
 		}

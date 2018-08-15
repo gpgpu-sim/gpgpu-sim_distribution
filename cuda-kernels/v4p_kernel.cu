@@ -70,7 +70,7 @@ __global__ void v4p_example(int *a_int32, int *b_int4, int *c,int *d_int32, int 
 	//B4
 	asm("/*");
 	asm("CPTX_BEGIN");
-	asm("vp.mma.sync.row.row.m16n16k16.s32 {%0, %1, %2, %3, %4, %5, %6, %7}, {%8, %9, %10, %11, %12, %13, %14, %15}, {%16}, {%17, %18, %19, %20, %21, %22, %23, %24};" : 
+	asm("vp.mma4.sync.row.row.m16n16k16.s32 {%0, %1, %2, %3, %4, %5, %6, %7}, {%8, %9, %10, %11, %12, %13, %14, %15}, {%16}, {%17, %18, %19, %20, %21, %22, %23, %24};" : 
 	"=r"(registers_d[0]), "=r"(registers_d[1]),"=r"(registers_d[2]),"=r"(registers_d[3]),
 	"=r"(registers_d[4]),"=r"(registers_d[5]),"=r"(registers_d[6]),"=r"(registers_d[7]):
 	"r"(registers_a[0]),"r"(registers_a[1]),"r"(registers_a[2]),"r"(registers_a[3]),

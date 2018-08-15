@@ -20,9 +20,9 @@ void curandErrCheck_(curandStatus_t stat, const char *file, int line) {
 using namespace nvcuda;
 
 // Must be multiples of 16 for wmma code to work
-#define MATRIX_M (1024)
-#define MATRIX_N (1024)
-#define MATRIX_K (1024)
+#define MATRIX_M (32)
+#define MATRIX_N (32)
+#define MATRIX_K (32)
 
 
 // The only dimensions currently supported by WMMA
@@ -92,7 +92,7 @@ __global__ void vp_example(int *a, int *b, int *c, int M, int N, int K ) {
          //vp::mma_sync(acc_frag, a_frag, b_frag, acc_frag);
 	asm("/*");
 	asm("CPTX_BEGIN");
-	asm("vp.mma.sync.row.row.m16n16k16.s32 {%0, %1, %2, %3, %4, %5, %6, %7}, {%8, %9, %10, %11, %12, %13, %14, %15}, {%16}, {%17, %18, %19, %20, %21, %22, %23, %24};" : 
+	asm("vp.mma4.sync.row.row.m16n16k16.s32 {%0, %1, %2, %3, %4, %5, %6, %7}, {%8, %9, %10, %11, %12, %13, %14, %15}, {%16}, {%17, %18, %19, %20, %21, %22, %23, %24};" : 
 	"=r"(acc_frag[0]), "=r"(acc_frag[1]),"=r"(acc_frag[2]),"=r"(acc_frag[3]),
 	"=r"(acc_frag[4]),"=r"(acc_frag[5]),"=r"(acc_frag[6]),"=r"(acc_frag[7]):
 	"r"(a_frag[0]),"r"(a_frag[1]),"r"(a_frag[2]),"r"(a_frag[3]),

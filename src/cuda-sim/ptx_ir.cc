@@ -1095,7 +1095,9 @@ ptx_instruction::ptx_instruction( int opcode,
       		case LOAD_C:
       		case STORE_D:
       		case MMA:
-      		case VP_MMA:
+      		case VP_MMA4:
+      		case VP_MMA8:
+      		case VP_MMA16:
       		  m_wmma_type=last_ptx_inst_option;
       		  break;
       		case ROW:
