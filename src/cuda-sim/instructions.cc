@@ -1471,17 +1471,17 @@ void brev_impl( const ptx_instruction *pI, ptx_thread_info *thread )
     switch(i_type){
         case B32_TYPE:
             msb = 31;
-	        for (unsigned i=0; i<=msb; i++) {
+            for (unsigned i=0; i<=msb; i++) {
                 if((src1_data.u32 & (1 << i)))
                     data.u32 |= 1 << (msb - i);
-	        }
+            }
             break;
         case B64_TYPE:
             msb = 63;
-	        for (unsigned i=0; i<=msb; i++) {
+            for (unsigned i=0; i<=msb; i++) {
                 if((src1_data.u64 & (1 << i)))
                     data.u64 |= 1 << (msb - i);
-	        }
+            }
             break;
         default: assert(0);
     }
