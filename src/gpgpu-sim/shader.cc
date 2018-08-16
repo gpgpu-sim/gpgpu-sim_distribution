@@ -149,6 +149,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                        &m_pipeline_reg[ID_OC_SP],
                                        &m_pipeline_reg[ID_OC_SFU],
                                        &m_pipeline_reg[ID_OC_TENSOR_CORE],
+                                       &m_pipeline_reg[ID_OC_VP_CORE],
                                        &m_pipeline_reg[ID_OC_MEM],
                                        i
                                      )
@@ -164,6 +165,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                                     &m_pipeline_reg[ID_OC_SP],
                                                     &m_pipeline_reg[ID_OC_SFU],
                                                     &m_pipeline_reg[ID_OC_TENSOR_CORE],
+                                                    &m_pipeline_reg[ID_OC_VP_CORE],
                                                     &m_pipeline_reg[ID_OC_MEM],
                                                     i,
                                                     config->gpgpu_scheduler_string
@@ -180,6 +182,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                        &m_pipeline_reg[ID_OC_SP],
                                        &m_pipeline_reg[ID_OC_SFU],
                                        &m_pipeline_reg[ID_OC_TENSOR_CORE],
+                                       &m_pipeline_reg[ID_OC_VP_CORE],
                                        &m_pipeline_reg[ID_OC_MEM],
                                        i
                                      )
@@ -195,6 +198,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                        &m_pipeline_reg[ID_OC_SP],
                                        &m_pipeline_reg[ID_OC_SFU],
                                        &m_pipeline_reg[ID_OC_TENSOR_CORE],
+                                       &m_pipeline_reg[ID_OC_VP_CORE],
                                        &m_pipeline_reg[ID_OC_MEM],
                                        i,
                                        config->gpgpu_scheduler_string
@@ -215,10 +219,11 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
     }
     
     //op collector configuration
-    enum { SP_CUS, SFU_CUS, TENSOR_CORE_CUS, MEM_CUS, GEN_CUS };
+    enum { SP_CUS, SFU_CUS, TENSOR_CORE_CUS, VP_CORE_CUS, MEM_CUS, GEN_CUS };
     m_operand_collector.add_cu_set(SP_CUS, m_config->gpgpu_operand_collector_num_units_sp, m_config->gpgpu_operand_collector_num_out_ports_sp);
     m_operand_collector.add_cu_set(SFU_CUS, m_config->gpgpu_operand_collector_num_units_sfu, m_config->gpgpu_operand_collector_num_out_ports_sfu);
     m_operand_collector.add_cu_set(TENSOR_CORE_CUS, config->gpgpu_operand_collector_num_units_tensor_core, config->gpgpu_operand_collector_num_out_ports_tensor_core);
+    m_operand_collector.add_cu_set(VP_CORE_CUS, config->gpgpu_operand_collector_num_units_vp_core, config->gpgpu_operand_collector_num_out_ports_vp_core);
     m_operand_collector.add_cu_set(MEM_CUS, m_config->gpgpu_operand_collector_num_units_mem, m_config->gpgpu_operand_collector_num_out_ports_mem);
     m_operand_collector.add_cu_set(GEN_CUS, m_config->gpgpu_operand_collector_num_units_gen, m_config->gpgpu_operand_collector_num_out_ports_gen);
     
@@ -252,6 +257,14 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
         in_ports.clear(),out_ports.clear(),cu_sets.clear();
     }
     
+    for (unsigned i = 0; i < config->gpgpu_operand_collector_num_in_ports_vp_core; i++) {
+        in_ports.push_back(&m_pipeline_reg[ID_OC_VP_CORE]);
+        out_ports.push_back(&m_pipeline_reg[OC_EX_VP_CORE]);
+        cu_sets.push_back((unsigned)VP_CORE_CUS);
+        cu_sets.push_back((unsigned)GEN_CUS);
+        m_operand_collector.add_port(in_ports,out_ports,cu_sets);
+        in_ports.clear(),out_ports.clear(),cu_sets.clear();
+    }
 
     for (unsigned i = 0; i < m_config->gpgpu_operand_collector_num_in_ports_mem; i++) {
         in_ports.push_back(&m_pipeline_reg[ID_OC_MEM]);
@@ -267,10 +280,12 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
         in_ports.push_back(&m_pipeline_reg[ID_OC_SP]);
         in_ports.push_back(&m_pipeline_reg[ID_OC_SFU]);
         in_ports.push_back(&m_pipeline_reg[ID_OC_TENSOR_CORE]);
+        in_ports.push_back(&m_pipeline_reg[ID_OC_VP_CORE]);
         in_ports.push_back(&m_pipeline_reg[ID_OC_MEM]);
         out_ports.push_back(&m_pipeline_reg[OC_EX_SP]);
         out_ports.push_back(&m_pipeline_reg[OC_EX_SFU]);
         out_ports.push_back(&m_pipeline_reg[OC_EX_TENSOR_CORE]);
+        out_ports.push_back(&m_pipeline_reg[OC_EX_VP_CORE]);
         out_ports.push_back(&m_pipeline_reg[OC_EX_MEM]);
         cu_sets.push_back((unsigned)GEN_CUS);   
         m_operand_collector.add_port(in_ports,out_ports,cu_sets);
@@ -280,7 +295,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
     m_operand_collector.init( m_config->gpgpu_num_reg_banks, this );
     
     // execute
-    m_num_function_units = m_config->gpgpu_num_sp_units + m_config->gpgpu_num_sfu_units + config->gpgpu_num_tensor_core_units + 1; // sp_unit, sfu, ldst_unit
+    m_num_function_units = m_config->gpgpu_num_sp_units + m_config->gpgpu_num_sfu_units + config->gpgpu_num_tensor_core_units + config->gpgpu_num_vp_core_units + 1; // sp_unit, sfu, ldst_unit
     //m_dispatch_port = new enum pipeline_stage_name_t[ m_num_function_units ];
     //m_issue_port = new enum pipeline_stage_name_t[ m_num_function_units ];
     
@@ -302,6 +317,12 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
         m_fu.push_back(new tensor_core( &m_pipeline_reg[EX_WB], m_config, this ));
         m_dispatch_port.push_back(ID_OC_TENSOR_CORE);
         m_issue_port.push_back(OC_EX_TENSOR_CORE);
+    }
+    
+    for (int k = 0; k < config->gpgpu_num_vp_core_units; k++) {
+        m_fu.push_back(new vp_core( &m_pipeline_reg[EX_WB], m_config, this ));
+        m_dispatch_port.push_back(ID_OC_VP_CORE);
+        m_issue_port.push_back(OC_EX_VP_CORE);
     }
     
     m_ldst_unit = new ldst_unit( m_icnt, m_mem_fetch_allocator, this, &m_operand_collector, m_scoreboard, config, mem_config, stats, shader_id, tpc_id );
@@ -910,7 +931,8 @@ void scheduler_unit::cycle()
                             bool sp_pipe_avail = m_sp_out->has_free();
                             bool sfu_pipe_avail = m_sfu_out->has_free();
                             bool tensor_core_pipe_avail = m_tensor_core_out->has_free();
-                            if( sp_pipe_avail && (pI->op != SFU_OP) && (pI->op != TENSOR_CORE_OP)) {
+                            bool vp_core_pipe_avail = m_vp_core_out->has_free();
+                            if( sp_pipe_avail && (pI->op != SFU_OP) && (pI->op != TENSOR_CORE_OP) && (pI->op !=VP_CORE_OP)) {
                                 
                                 //Jin: special for CDP api
                                 if(pI->m_is_cdp && !warp(warp_id).m_cdp_dummy) {
@@ -946,6 +968,14 @@ void scheduler_unit::cycle()
                              else if ( (pI->op == TENSOR_CORE_OP) ) {
                                 if( tensor_core_pipe_avail ) {
                                     m_shader->issue_warp(*m_tensor_core_out,pI,active_mask,warp_id);
+                                    issued++;
+                                    issued_inst=true;
+                                    warp_inst_issued = true;
+                                }
+				}
+                             else if ( (pI->op == VP_CORE_OP) ) {
+                                if( vp_core_pipe_avail ) {
+                                    m_shader->issue_warp(*m_vp_core_out,pI,active_mask,warp_id);
                                     issued++;
                                     issued_inst=true;
                                     warp_inst_issued = true;
@@ -1116,10 +1146,11 @@ swl_scheduler::swl_scheduler ( shader_core_stats* stats, shader_core_ctx* shader
                                register_set* sp_out,
                                register_set* sfu_out,
                                register_set* tensor_core_out,
+                               register_set* vp_core_out,
                                register_set* mem_out,
                                int id,
                                char* config_string )
-    : scheduler_unit ( stats, shader, scoreboard, simt, warp, sp_out, sfu_out, tensor_core_out, mem_out, id )
+    : scheduler_unit ( stats, shader, scoreboard, simt, warp, sp_out, sfu_out, tensor_core_out, vp_core_out, mem_out, id )
 {
     unsigned m_prioritization_readin;
     int ret = sscanf( config_string,
@@ -1548,6 +1579,12 @@ tensor_core:: tensor_core(  register_set* result_port, const shader_core_config 
     m_name = "TENSOR_CORE"; 
 }
 
+vp_core:: vp_core(  register_set* result_port, const shader_core_config *config,shader_core_ctx *core  )
+    : pipelined_simd_unit(result_port,config,config->max_vp_core_latency,core)
+{ 
+    m_name = "VP_CORE"; 
+}
+
 
 void sfu::issue( register_set& source_reg )
 {
@@ -1565,6 +1602,16 @@ void tensor_core::issue( register_set& source_reg )
 	//m_core->incexecstat((*ready_reg));
 
 	(*ready_reg)->op_pipe= TENSOR_CORE__OP;
+	m_core->incsfu_stat(m_core->get_config()->warp_size,(*ready_reg)->latency);
+	pipelined_simd_unit::issue(source_reg);
+}
+
+void vp_core::issue( register_set& source_reg )
+{
+    warp_inst_t** ready_reg = source_reg.get_ready();
+	//m_core->incexecstat((*ready_reg));
+
+	(*ready_reg)->op_pipe= VP_CORE__OP;
 	m_core->incsfu_stat(m_core->get_config()->warp_size,(*ready_reg)->latency);
 	pipelined_simd_unit::issue(source_reg);
 }
@@ -1599,6 +1646,13 @@ void tensor_core::active_lanes_in_pipeline(){
 	m_core->incfumemactivelanes_stat(active_count);
 }
 
+void vp_core::active_lanes_in_pipeline(){
+	unsigned active_count=pipelined_simd_unit::get_active_lanes_in_pipeline();
+	assert(active_count<=m_core->get_config()->warp_size);
+	m_core->incsfuactivelanes_stat(active_count);
+	m_core->incfuactivelanes_stat(active_count);
+	m_core->incfumemactivelanes_stat(active_count);
+}
 
 sp_unit::sp_unit( register_set* result_port, const shader_core_config *config,shader_core_ctx *core)
     : pipelined_simd_unit(result_port,config,config->max_sp_latency,core)

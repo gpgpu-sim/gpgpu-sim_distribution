@@ -78,6 +78,7 @@ enum uarch_op_t {
    ALU_OP=1,
    SFU_OP,
    TENSOR_CORE_OP,
+   VP_CORE_OP,
    ALU_SFU_OP,
    LOAD_OP,
    STORE_OP,
@@ -135,6 +136,7 @@ enum operation_pipeline_t {
     SP__OP,
     SFU__OP,
     TENSOR_CORE__OP,
+    VP_CORE__OP,
     MEM__OP
 };
 typedef enum operation_pipeline_t operation_pipeline;

@@ -1093,7 +1093,7 @@ public:
    int membar_level() const { return m_membar_level; }
 
    bool has_memory_read() const {
-      if( m_opcode == LD_OP || m_opcode == LDU_OP || m_opcode == TEX_OP|| m_opcode==MMA_LD_OP) 
+      if( m_opcode == LD_OP || m_opcode == LDU_OP || m_opcode == TEX_OP|| m_opcode==MMA_LD_OP || m_opcode==VP_LD_OP) 
          return true;
       // Check PTXPlus operand type below
       // Source operands are memory operands
@@ -1105,7 +1105,7 @@ public:
       return false;
    }
    bool has_memory_write() const {
-      if( m_opcode == ST_OP || m_opcode==MMA_ST_OP ) return true;
+      if( m_opcode == ST_OP || m_opcode==MMA_ST_OP || m_opcode==VP_ST_OP ) return true;
       // Check PTXPlus operand type below
       // Destination operand is a memory operand
       ptx_instruction::const_iterator op=op_iter_begin();

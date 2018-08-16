@@ -319,11 +319,12 @@ public:
                    register_set* sp_out,
                    register_set* sfu_out,
                    register_set* tensor_core_out,
+                   register_set* vp_core_out,
                    register_set* mem_out,
                    int id) 
         : m_supervised_warps(), m_stats(stats), m_shader(shader),
         m_scoreboard(scoreboard), m_simt_stack(simt), /*m_pipeline_reg(pipe_regs),*/ m_warp(warp),
-        m_sp_out(sp_out),m_sfu_out(sfu_out),m_tensor_core_out(tensor_core_out),m_mem_out(mem_out), m_id(id){}
+        m_sp_out(sp_out),m_sfu_out(sfu_out),m_tensor_core_out(tensor_core_out),m_vp_core_out(vp_core_out),m_mem_out(mem_out), m_id(id){}
     virtual ~scheduler_unit(){}
     virtual void add_supervised_warp_id(int i) {
         m_supervised_warps.push_back(&warp(i));
@@ -397,6 +398,7 @@ protected:
     register_set* m_sp_out;
     register_set* m_sfu_out;
     register_set* m_tensor_core_out;
+    register_set* m_vp_core_out;
     register_set* m_mem_out;
 
     int m_id;
@@ -410,9 +412,10 @@ public:
                     register_set* sp_out,
                     register_set* sfu_out,
                     register_set* tensor_core_out,
+                    register_set* vp_core_out,
                     register_set* mem_out,
                     int id )
-	: scheduler_unit ( stats, shader, scoreboard, simt, warp, sp_out, sfu_out, tensor_core_out, mem_out, id ){}
+	: scheduler_unit ( stats, shader, scoreboard, simt, warp, sp_out, sfu_out, tensor_core_out, vp_core_out, mem_out, id ){}
 	virtual ~lrr_scheduler () {}
 	virtual void order_warps ();
     virtual void done_adding_supervised_warps() {
@@ -428,9 +431,10 @@ public:
                     register_set* sp_out,
                     register_set* sfu_out,
                     register_set* tensor_core_out,
+                    register_set* vp_core_out,
                     register_set* mem_out,
                     int id )
-	: scheduler_unit ( stats, shader, scoreboard, simt, warp, sp_out, sfu_out, tensor_core_out, mem_out, id ){}
+	: scheduler_unit ( stats, shader, scoreboard, simt, warp, sp_out, sfu_out, tensor_core_out,vp_core_out, mem_out, id ){}
 	virtual ~gto_scheduler () {}
 	virtual void order_warps ();
     virtual void done_adding_supervised_warps() {
@@ -448,10 +452,11 @@ public:
                           register_set* sp_out,
                           register_set* sfu_out,
                           register_set* tensor_core_out,
+                          register_set* vp_core_out,
                           register_set* mem_out,
                           int id,
                           char* config_str )
-	: scheduler_unit ( stats, shader, scoreboard, simt, warp, sp_out, sfu_out, tensor_core_out, mem_out, id ),
+	: scheduler_unit ( stats, shader, scoreboard, simt, warp, sp_out, sfu_out, tensor_core_out, vp_core_out, mem_out, id ),
 	  m_pending_warps() 
     {
         unsigned inner_level_readin;
@@ -499,6 +504,7 @@ public:
                     register_set* sp_out,
                     register_set* sfu_out,
                     register_set* tensor_core_out,
+                    register_set* vp_core_out,
                     register_set* mem_out,
                     int id,
                     char* config_string );
@@ -1083,6 +1089,22 @@ public:
     virtual void active_lanes_in_pipeline();
     virtual void issue(  register_set& source_reg );
 };
+class vp_core : public pipelined_simd_unit
+{
+public:
+    vp_core( register_set* result_port, const shader_core_config *config, shader_core_ctx *core );
+    virtual bool can_issue( const warp_inst_t &inst ) const
+    {
+        switch(inst.op) {
+        case VP_CORE_OP: break;
+        default: return false;
+        }
+        return pipelined_simd_unit::can_issue(inst);
+    }
+    virtual void active_lanes_in_pipeline();
+    virtual void issue(  register_set& source_reg );
+};
+
 
 
 class sp_unit : public pipelined_simd_unit
@@ -1225,10 +1247,12 @@ enum pipeline_stage_name_t {
     ID_OC_SP=0,
     ID_OC_SFU,  
     ID_OC_TENSOR_CORE,  
+    ID_OC_VP_CORE,  
     ID_OC_MEM,  
     OC_EX_SP,
     OC_EX_SFU,
     OC_EX_TENSOR_CORE,
+    OC_EX_VP_CORE,
     OC_EX_MEM,
     EX_WB,
     N_PIPELINE_STAGES 
@@ -1238,10 +1262,12 @@ const char* const pipeline_stage_name_decode[] = {
     "ID_OC_SP",
     "ID_OC_SFU",  
     "ID_OC_TENSOR_CORE",  
+    "ID_OC_VP_CORE",  
     "ID_OC_MEM",  
     "OC_EX_SP",
     "OC_EX_SFU",
     "OC_EX_TENSOR_CORE",
+    "OC_EX_VP_CORE",
     "OC_EX_MEM",
     "EX_WB",
     "N_PIPELINE_STAGES" 
@@ -1286,13 +1312,21 @@ struct shader_core_config : public core_config
         max_warps_per_shader =  n_thread_per_shader/warp_size;
         assert( !(n_thread_per_shader % warp_size) );
         max_sfu_latency = 512;
-        max_tensor_core_latency = 64;
         max_sp_latency = 32;
+        
+	max_tensor_core_latency = 64;
         gpgpu_num_tensor_core_units=8;
         gpgpu_operand_collector_num_units_tensor_core=24;
         gpgpu_operand_collector_num_in_ports_tensor_core=8;
         gpgpu_operand_collector_num_out_ports_tensor_core=8;
-        m_L1I_config.init(m_L1I_config.m_config_string,FuncCachePreferNone);
+        
+	max_vp_core_latency = 64;
+        gpgpu_num_vp_core_units=8;
+        gpgpu_operand_collector_num_units_vp_core=24;
+        gpgpu_operand_collector_num_in_ports_vp_core=8;
+        gpgpu_operand_collector_num_out_ports_vp_core=8;
+        
+	m_L1I_config.init(m_L1I_config.m_config_string,FuncCachePreferNone);
         m_L1T_config.init(m_L1T_config.m_config_string,FuncCachePreferNone);
         m_L1C_config.init(m_L1C_config.m_config_string,FuncCachePreferNone);
         m_L1D_config.init(m_L1D_config.m_config_string,FuncCachePreferNone);
@@ -1339,24 +1373,28 @@ struct shader_core_config : public core_config
     int gpgpu_operand_collector_num_units_sp;
     int gpgpu_operand_collector_num_units_sfu;
     int gpgpu_operand_collector_num_units_tensor_core;
+    int gpgpu_operand_collector_num_units_vp_core;
     int gpgpu_operand_collector_num_units_mem;
     int gpgpu_operand_collector_num_units_gen;
 
     unsigned int gpgpu_operand_collector_num_in_ports_sp;
     unsigned int gpgpu_operand_collector_num_in_ports_sfu;
     unsigned int gpgpu_operand_collector_num_in_ports_tensor_core;
+    unsigned int gpgpu_operand_collector_num_in_ports_vp_core;
     unsigned int gpgpu_operand_collector_num_in_ports_mem;
     unsigned int gpgpu_operand_collector_num_in_ports_gen;
 
     unsigned int gpgpu_operand_collector_num_out_ports_sp;
     unsigned int gpgpu_operand_collector_num_out_ports_sfu;
     unsigned int gpgpu_operand_collector_num_out_ports_tensor_core;
+    unsigned int gpgpu_operand_collector_num_out_ports_vp_core;
     unsigned int gpgpu_operand_collector_num_out_ports_mem;
     unsigned int gpgpu_operand_collector_num_out_ports_gen;
 
     int gpgpu_num_sp_units;
     int gpgpu_num_sfu_units;
     int gpgpu_num_tensor_core_units;
+    int gpgpu_num_vp_core_units;
     int gpgpu_num_mem_units;
 
     //Shader core resources
@@ -1370,6 +1408,7 @@ struct shader_core_config : public core_config
     unsigned max_sp_latency;
     unsigned max_sfu_latency;
     unsigned max_tensor_core_latency;
+    unsigned max_vp_core_latency;
     
     unsigned n_simt_cores_per_cluster;
     unsigned n_simt_clusters;
@@ -1408,6 +1447,7 @@ struct shader_core_stats_pod {
     unsigned *m_num_sp_acesses;
     unsigned *m_num_sfu_acesses;
     unsigned *m_num_tensor_core_acesses;
+    unsigned *m_num_vp_core_acesses;
     unsigned *m_num_trans_acesses;
     unsigned *m_num_mem_acesses;
     unsigned *m_num_sp_committed;
@@ -1415,6 +1455,7 @@ struct shader_core_stats_pod {
     unsigned *m_num_tlb_accesses;
     unsigned *m_num_sfu_committed;
     unsigned *m_num_tensor_core_committed;
+    unsigned *m_num_vp_core_committed;
     unsigned *m_num_mem_committed;
     unsigned *m_read_regfile_acesses;
     unsigned *m_write_regfile_acesses;
@@ -1424,6 +1465,7 @@ struct shader_core_stats_pod {
     unsigned *m_active_sp_lanes;
     unsigned *m_active_sfu_lanes;
     unsigned *m_active_tensor_core_lanes;
+    unsigned *m_active_vp_core_lanes;
     unsigned *m_active_fu_lanes;
     unsigned *m_active_fu_mem_lanes;
     unsigned *m_n_diverge;    // number of divergence occurring in this shader
@@ -1496,6 +1538,7 @@ public:
         m_num_sp_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         m_num_sfu_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         m_num_tensor_core_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_vp_core_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         m_num_trans_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         m_num_mem_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         m_num_sp_committed= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
@@ -1504,10 +1547,12 @@ public:
         m_active_sp_lanes= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         m_active_sfu_lanes= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         m_active_tensor_core_lanes= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_active_vp_core_lanes= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         m_active_fu_lanes= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         m_active_fu_mem_lanes= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         m_num_sfu_committed= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         m_num_tensor_core_committed= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
+        m_num_vp_core_committed= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         m_num_mem_committed= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         m_read_regfile_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));
         m_write_regfile_acesses= (unsigned*) calloc(config->num_shader(),sizeof(unsigned));

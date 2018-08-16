@@ -542,7 +542,7 @@ void ptx_instruction::set_mul_div_or_other_archop(){
 				    sp_op=INT_DIV_OP;
 				break;
 				default:
-					if((op==ALU_OP)||(op==TENSOR_CORE_OP))
+					if((op==ALU_OP)||(op==VP_CORE_OP))
 					    sp_op=INT__OP;
 					break;
 			}
@@ -649,9 +649,11 @@ void ptx_instruction::set_opcode_and_latency()
        break;
    case LD_OP: op = LOAD_OP; break;
    case MMA_LD_OP: op = LOAD_OP; break;
+   case VP_LD_OP: op = LOAD_OP; break;
    case LDU_OP: op = LOAD_OP; break;
    case ST_OP: op = STORE_OP; break;
    case MMA_ST_OP: op = STORE_OP; break;
+   case VP_ST_OP: op = STORE_OP; break;
    case BRA_OP: op = BRANCH_OP; break;
    case BREAKADDR_OP: op = BRANCH_OP; break;
    case TEX_OP: op = LOAD_OP; mem_op=TEX; break;
@@ -799,6 +801,26 @@ void ptx_instruction::set_opcode_and_latency()
 	   initiation_interval = 64;
            op=TENSOR_CORE_OP;
 	   break;
+   case VP_MMA_OP:
+	   if(get_wmma_type()==VP_MMA4)
+           {
+	   latency = 5;
+	   initiation_interval = 5;
+           }
+	   if(get_wmma_type()==VP_MMA8)
+           {
+	   latency = 5;
+	   initiation_interval = 5;
+           }
+	   if(get_wmma_type()==VP_MMA16)
+           {
+	   latency = 5;
+	   initiation_interval = 5;
+           }
+           op=VP_CORE_OP;
+           op=VP_CORE_OP;
+           op=VP_CORE_OP;
+	   break;
    case SHFL_OP:
 	   latency = 32;
 	   initiation_interval = 15;
@@ -900,10 +922,10 @@ void ptx_instruction::pre_decode()
    case WT_OPTION: cache_op = CACHE_WRITE_THROUGH; break;
    default: 
       //if( m_opcode == LD_OP || m_opcode == LDU_OP ) 
-      if(  m_opcode == MMA_LD_OP || m_opcode == LD_OP || m_opcode == LDU_OP ) 
+      if( m_opcode ==VP_LD_OP || m_opcode == MMA_LD_OP || m_opcode == LD_OP || m_opcode == LDU_OP ) 
          cache_op = CACHE_ALL;
       //else if( m_opcode == ST_OP ) 
-      else if( m_opcode == ST_OP || m_opcode == ST_OP ) 
+      else if( m_opcode == VP_ST_OP ||m_opcode == MMA_ST_OP || m_opcode == ST_OP ) 
          cache_op = CACHE_WRITE_BACK;
       else if( m_opcode == ATOM_OP ) 
          cache_op = CACHE_GLOBAL;
