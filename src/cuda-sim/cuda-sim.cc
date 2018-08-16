@@ -1232,7 +1232,6 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
     std::vector< std::pair<size_t, unsigned char*> > param_data;
     std::vector<unsigned> offsets;
     std::vector<bool> paramIsPointer;
-    char buff[1024];
 
     char * gpgpusim_path = getenv("GPGPUSIM_ROOT");
     assert(gpgpusim_path!=NULL);
@@ -1240,6 +1239,47 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
     assert(wys_exec_path!=NULL);
     std::string command = std::string("mkdir ") + gpgpusim_path + "/debug_tools/WatchYourStep/data";
     std::string filename(std::string(gpgpusim_path) + "/debug_tools/WatchYourStep/data/params.config" + std::to_string(counter));
+
+    //initialize paramList
+    char buff[1024];
+    std::string filename_c(filename+"_c");
+    snprintf(buff,1024,"c++filt %s > %s", get_name().c_str(), filename_c.c_str());
+    system(buff);
+    FILE *fp = fopen(filename_c.c_str(), "r");
+    fgets(buff, 1024, fp);
+    fclose(fp);
+    std::string fn(buff);
+    size_t pos1, pos2;
+    pos1 = fn.find_last_of("(");
+    pos2 = fn.find(")", pos1);
+    assert(pos2>pos1&&pos1>0);
+    strcpy(buff, fn.substr(pos1 + 1, pos2 - pos1 - 1).c_str());
+    char *tok;
+    tok = strtok(buff, ",");
+    std::string tmp;
+    while(tok!=NULL){
+        std::string param(tok);
+        if(param.find("<")!=std::string::npos){
+            assert(param.find(">")==std::string::npos);
+            assert(param.find("*")==std::string::npos);
+            tmp = param;
+        } else {
+            if (tmp.length()>0){
+                tmp = ""; 
+                assert(param.find(">")!=std::string::npos);
+                assert(param.find("<")==std::string::npos);
+                assert(param.find("*")==std::string::npos);
+            }   
+            printf("%s\n", param.c_str());
+            if(param.find("*")!=std::string::npos){
+                paramIsPointer.push_back(true);
+            }else{                                                                                 
+                paramIsPointer.push_back(false);
+            }   
+        }
+        tok = strtok(NULL, ",");
+    }
+
 
     for( std::map<unsigned,param_info>::iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
         param_info &p = i->second;
@@ -1249,8 +1289,9 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
         param_t param_value = p.get_value();
         offsets.push_back((unsigned)p.get_offset());
 
-        if(param_value.size==sizeof(void*) && mallocPtr_Size.find(*(unsigned long long*)param_value.pdata)!=mallocPtr_Size.end()){
+        if (paramIsPointer[i->first] && (*(unsigned long long*)param_value.pdata != 0)){
             //is pointer
+            assert(param_value.size==sizeof(void*)&&"MisID'd this param as pointer");
             size_t array_size = 0;
             unsigned long long param_pointer = *(unsigned long long*)param_value.pdata;
             if(mallocPtr_Size.find(param_pointer)!=mallocPtr_Size.end()){
