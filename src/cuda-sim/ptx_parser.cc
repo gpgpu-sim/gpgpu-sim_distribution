@@ -571,7 +571,9 @@ void add_function_arg()
    if( g_func_info ) {
       PTX_PARSE_DPRINTF("add_function_arg \"%s\"", g_last_symbol->name().c_str() );
       g_func_info->add_arg(g_last_symbol);
-      g_func_info->add_config_param( g_size, g_alignment_spec );
+      unsigned alignment = (g_alignment_spec==-1) ? g_size : g_alignment_spec;
+      assert(alignment==1||alignment==2||alignment==4||alignment==8||alignment==16);//known valid alignment values
+      g_func_info->add_config_param( g_size,  alignment);
    }
 
 }

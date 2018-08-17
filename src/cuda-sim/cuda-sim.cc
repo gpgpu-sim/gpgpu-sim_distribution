@@ -1270,6 +1270,7 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
                 assert(param.find("<")==std::string::npos);
                 assert(param.find("*")==std::string::npos);
             }   
+            printf("%s\n", param.c_str());
             if(param.find("*")!=std::string::npos){
                 paramIsPointer.push_back(true);
             }else{                                                                                 
@@ -1288,7 +1289,7 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
         param_t param_value = p.get_value();
         offsets.push_back((unsigned)p.get_offset());
 
-        if (paramIsPointer[i->first]){
+        if (paramIsPointer[i->first] && (*(unsigned long long*)param_value.pdata != 0)){
             //is pointer
             assert(param_value.size==sizeof(void*)&&"MisID'd this param as pointer");
             size_t array_size = 0;

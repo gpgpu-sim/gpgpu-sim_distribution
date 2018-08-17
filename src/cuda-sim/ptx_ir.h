@@ -1297,6 +1297,7 @@ public:
       unsigned offset = 0;
       if (m_param_configs.size()>0){
           unsigned offset_nom = m_param_configs.back().first + m_param_configs.back().second;
+          //ensure offset matches alignment requirements
           offset = offset_nom%alignment ? (offset_nom/alignment + 1) * alignment : offset_nom;
       }
       m_param_configs.push_back(std::pair<size_t,unsigned>(size, offset));
