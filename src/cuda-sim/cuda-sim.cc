@@ -804,18 +804,18 @@ void ptx_instruction::set_opcode_and_latency()
    case VP_MMA_OP:
 	   if(get_wmma_type()==VP_MMA4)
            {
-	   latency = 5;
-	   initiation_interval = 5;
+	   latency = 64;
+	   initiation_interval = 64;
            }
 	   if(get_wmma_type()==VP_MMA8)
            {
-	   latency = 5;
-	   initiation_interval = 5;
+	   latency = 128;
+	   initiation_interval = 128;
            }
 	   if(get_wmma_type()==VP_MMA16)
            {
-	   latency = 5;
-	   initiation_interval = 5;
+	   latency = 256;
+	   initiation_interval = 256;
            }
            op=VP_CORE_OP;
            op=VP_CORE_OP;
