@@ -780,7 +780,16 @@ __host__ cudaError_t CUDARTAPI cudaMemcpyFromSymbol(void *dst, const char *symbo
 	return g_last_cudaError = cudaSuccess;
 }
 
+__host__ cudaError_t CUDARTAPI cudaMemGetInfo (size_t *free, size_t *total){
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	//placeholder; should interact with cudaMalloc and cudaFree?
+	*free = 10000000000;
+	*total = 10000000000;
 
+	return g_last_cudaError = cudaSuccess;
+}
 
 /*******************************************************************************
  *                                                                              *
@@ -1893,7 +1902,7 @@ char* get_app_binary_name(std::string abs_path){
 void extract_ptx_files_using_cuobjdump(){
     extern bool g_cdp_enabled;
     char command[1000];
-    char *pytorch_path = getenv("PYTORCH_PATH");
+    char *pytorch_bin = getenv("PYTORCH_BIN");
     std::string app_binary = get_app_binary(); 
 
 
@@ -1902,8 +1911,8 @@ void extract_ptx_files_using_cuobjdump(){
     int fd2=mkstemp(ptx_list_file_name);
     close(fd2);
 
-    if (pytorch_path!=NULL && strlen(pytorch_path)!=0){
-        app_binary = std::string(std::string(pytorch_path) + "/vectorAdd");
+    if (pytorch_bin!=NULL && strlen(pytorch_bin)!=0){
+        app_binary = std::string(pytorch_bin);
     }
 
     //only want file names
@@ -1934,6 +1943,7 @@ void extract_ptx_files_using_cuobjdump(){
 	 if(!no_of_ptx){
 	 	printf("WARNING: Number of ptx in the executable file are 0. One of the reasons might be\n");
 	 	printf("\t1. CDP is enabled\n");
+	 	printf("\t2. When using PyTorch, PYTORCH_BIN is not set correctly\n");
 	 }
 
     std::ifstream infile(ptx_list_file_name);
