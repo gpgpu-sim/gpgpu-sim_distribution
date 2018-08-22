@@ -1593,6 +1593,11 @@ void ldst_unit::flush(){
 	m_L1D->flush();
 }
 
+void ldst_unit::invalidate(){
+	// Flush L1D cache
+	m_L1D->invalidate();
+}
+
 simd_function_unit::simd_function_unit( const shader_core_config *config )
 { 
     m_config=config;
@@ -2644,6 +2649,11 @@ void shader_core_ctx::cache_flush()
    m_ldst_unit->flush();
 }
 
+void shader_core_ctx::cache_invalidate()
+{
+   m_ldst_unit->invalidate();
+}
+
 // modifiers
 std::list<opndcoll_rfu_t::op_t> opndcoll_rfu_t::arbiter_t::allocate_reads() 
 {
@@ -3459,6 +3469,12 @@ void simt_core_cluster::cache_flush()
 {
     for( unsigned i=0; i < m_config->n_simt_cores_per_cluster; i++ ) 
         m_core[i]->cache_flush();
+}
+
+void simt_core_cluster::cache_invalidate()
+{
+    for( unsigned i=0; i < m_config->n_simt_cores_per_cluster; i++ )
+        m_core[i]->cache_invalidate();
 }
 
 bool simt_core_cluster::icnt_injection_buffer_full(unsigned size, bool write)
