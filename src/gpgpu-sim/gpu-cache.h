@@ -454,7 +454,8 @@ enum allocation_policy_t {
 enum write_allocate_policy_t {
 	NO_WRITE_ALLOCATE,
 	WRITE_ALLOCATE,
-	FETCH_ON_WRITE
+	FETCH_ON_WRITE,
+	LAZY_FETCH_ON_READ
 };
 
 enum mshr_config_t {
@@ -555,6 +556,7 @@ public:
         case 'N': m_write_alloc_policy = NO_WRITE_ALLOCATE; break;
         case 'W': m_write_alloc_policy = WRITE_ALLOCATE; break;
         case 'F': m_write_alloc_policy = FETCH_ON_WRITE; break;
+        case 'L': m_write_alloc_policy = LAZY_FETCH_ON_READ; break;
 		default: exit_parse_error();
         }
 
@@ -572,9 +574,9 @@ public:
             assert(0 && "Invalid cache configuration: Writeback cache cannot allocate new line on fill. "); 
         }
 
-        if(m_write_alloc_policy == FETCH_ON_WRITE && m_alloc_policy == ON_FILL)
+        if((m_write_alloc_policy == FETCH_ON_WRITE || m_write_alloc_policy == LAZY_FETCH_ON_READ )&& m_alloc_policy == ON_FILL)
 		{
-			assert(0 && "Invalid cache configuration: FETCH_ON_WRITE cannot work properly with ON_FILL policy. Cache must be ON_MISS. ");
+			assert(0 && "Invalid cache configuration: FETCH_ON_WRITE and LAZY_FETCH_ON_READ cannot work properly with ON_FILL policy. Cache must be ON_MISS. ");
 		}
         if(m_cache_type == SECTOR)
 		{
@@ -742,7 +744,8 @@ public:
     unsigned size() const { return m_config.get_num_lines();}
     cache_block_t* get_block(unsigned idx) { return m_lines[idx];}
 
-    void flush(); // flash invalidate all entries
+    void flush(); // flush all written entries
+    void invalidate(); // invalidate all entries
     void new_window();
 
     void print( FILE *stream, unsigned &total_access, unsigned &total_misses ) const;
@@ -994,6 +997,7 @@ public:
     mem_fetch *next_access(){return m_mshrs.next_access();}
     // flash invalidate all entries in cache
     void flush(){m_tag_array->flush();}
+    void invalidate(){m_tag_array->invalidate();}
     void print(FILE *fp, unsigned &accesses, unsigned &misses) const;
     void display_state( FILE *fp ) const;
 
@@ -1179,6 +1183,7 @@ public:
         case NO_WRITE_ALLOCATE: m_wr_miss = &data_cache::wr_miss_no_wa; break;
 		case WRITE_ALLOCATE: m_wr_miss = &data_cache::wr_miss_wa_naive; break;
 		case FETCH_ON_WRITE: m_wr_miss = &data_cache::wr_miss_wa_fetch_on_write; break;
+		case LAZY_FETCH_ON_READ: m_wr_miss = &data_cache::wr_miss_wa_lazy_fetch_on_read; break;
         default:
             assert(0 && "Error: Must set valid cache write miss policy\n");
             break; // Need to set a write miss function
@@ -1299,7 +1304,14 @@ protected:
 							mem_fetch *mf,
 							unsigned time,
 							std::list<cache_event> &events,
-							enum cache_request_status status ); // write-allocate with read-fetch-only
+							enum cache_request_status status ); // write-allocate with fetch-on-every-write
+	enum cache_request_status
+				   wr_miss_wa_lazy_fetch_on_read( new_addr_type addr,
+								unsigned cache_index,
+								mem_fetch *mf,
+								unsigned time,
+								std::list<cache_event> &events,
+								enum cache_request_status status ); // write-allocate with read-fetch-only
 	enum cache_request_status
 				wr_miss_wa_write_validate( new_addr_type addr,
 							unsigned cache_index,

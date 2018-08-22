@@ -428,7 +428,7 @@ void memory_sub_partition::cache_cycle( unsigned cycle )
                         m_icnt_L2_queue->pop();
                     }
                 } else if ( status != RESERVATION_FAIL ) {
-                	if(mf->is_write() && m_config->m_L2_config.m_write_alloc_policy == FETCH_ON_WRITE && !was_writeallocate_sent(events)) {
+                	if(mf->is_write() && (m_config->m_L2_config.m_write_alloc_policy == FETCH_ON_WRITE || m_config->m_L2_config.m_write_alloc_policy == LAZY_FETCH_ON_READ) && !was_writeallocate_sent(events)) {
                 		mf->set_reply();
                 		mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
                 		m_L2_icnt_queue->push(mf);
@@ -568,7 +568,15 @@ unsigned memory_sub_partition::flushL2()
     if (!m_config->m_L2_config.disabled()) {
         m_L2cache->flush(); 
     }
-    return 0; // L2 is read only in this version
+    return 0;   //TODO: write the flushed data to the main memory
+}
+
+unsigned memory_sub_partition::invalidateL2()
+{
+    if (!m_config->m_L2_config.disabled()) {
+        m_L2cache->invalidate();
+    }
+    return 0;
 }
 
 bool memory_sub_partition::busy() const 

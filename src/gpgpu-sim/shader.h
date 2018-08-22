@@ -1155,6 +1155,7 @@ public:
      
     void fill( mem_fetch *mf );
     void flush();
+    void invalidate();
     void writeback();
 
     // accessors
@@ -1655,6 +1656,7 @@ public:
     void issue_block2core( class kernel_info_t &kernel );
 
     void cache_flush();
+    void cache_invalidate();
     void accept_fetch_response( mem_fetch *mf );
     void accept_ldst_unit_response( class mem_fetch * mf );
     void broadcast_barrier_reduction(unsigned cta_id, unsigned bar_id,warp_set_t warps);
@@ -1947,6 +1949,7 @@ public:
     void reinit();
     unsigned issue_block2core();
     void cache_flush();
+    void cache_invalidate();
     bool icnt_injection_buffer_full(unsigned size, bool write);
     void icnt_inject_request_packet(class mem_fetch *mf);
 

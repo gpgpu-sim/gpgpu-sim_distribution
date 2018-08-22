@@ -1548,12 +1548,12 @@ void gpgpu_sim::cycle()
 
       issue_block2core();
       
-      // Depending on configuration, flush the caches once all of threads are completed.
+      // Depending on configuration, invalidate the caches once all of threads are completed.
       int all_threads_complete = 1;
       if (m_config.gpgpu_flush_l1_cache) {
          for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) {
             if (m_cluster[i]->get_not_completed() == 0)
-                m_cluster[i]->cache_flush();
+                m_cluster[i]->cache_invalidate();
             else
                all_threads_complete = 0 ;
          }
@@ -1575,7 +1575,7 @@ void gpgpu_sim::cycle()
                int dlc = 0;
                for (unsigned i=0;i<m_memory_config->m_n_mem;i++) {
                   dlc = m_memory_sub_partition[i]->flushL2();
-                  assert (dlc == 0); // need to model actual writes to DRAM here
+                  assert (dlc == 0); // TODO: need to model actual writes to DRAM here
                   printf("Dirty lines flushed from L2 %d is %d\n", i, dlc  );
                }
             }
