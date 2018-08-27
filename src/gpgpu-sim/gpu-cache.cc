@@ -916,8 +916,8 @@ void baseline_cache::cycle(){
 void baseline_cache::fill(mem_fetch *mf, unsigned time){
 
 	if(m_config.m_mshr_type == SECTOR_ASSOC) {
-	assert(mf->original_mf);
-	extra_mf_fields_lookup::iterator e = m_extra_mf_fields.find(mf->original_mf);
+	assert(mf->get_original_mf());
+	extra_mf_fields_lookup::iterator e = m_extra_mf_fields.find(mf->get_original_mf());
     assert( e != m_extra_mf_fields.end() );
     e->second.pending_read--;
 
@@ -927,7 +927,7 @@ void baseline_cache::fill(mem_fetch *mf, unsigned time){
     	return;
       } else {
     	mem_fetch *temp = mf;
-    	mf = mf->original_mf;
+    	mf = mf->get_original_mf();
     	delete temp;
       }
 	}
@@ -1294,45 +1294,45 @@ data_cache::wr_miss_wa_lazy_fetch_on_read( new_addr_type addr,
 	    new_addr_type mshr_addr = m_config.mshr_addr(mf->get_addr());
 
 
-			//if the request writes to the whole cache line/sector, then, write and set cache line Modified.
-			//and no need to send read request to memory or reserve mshr
+		//if the request writes to the whole cache line/sector, then, write and set cache line Modified.
+		//and no need to send read request to memory or reserve mshr
 
-			if(miss_queue_full(0)) {
-				m_stats.inc_fail_stats(mf->get_access_type(), MISS_QUEUE_FULL);
-				return RESERVATION_FAIL; // cannot handle request this cycle
-			}
+		if(miss_queue_full(0)) {
+			m_stats.inc_fail_stats(mf->get_access_type(), MISS_QUEUE_FULL);
+			return RESERVATION_FAIL; // cannot handle request this cycle
+		}
 
-			bool wb = false;
-			evicted_block_info evicted;
+		bool wb = false;
+		evicted_block_info evicted;
 
-			cache_request_status m_status =  m_tag_array->access(block_addr,time,cache_index,wb,evicted,mf);
-			assert(m_status != HIT);
-			cache_block_t* block = m_tag_array->get_block(cache_index);
-			block->set_status(MODIFIED, mf->get_access_sector_mask());
-			if(m_status == HIT_RESERVED) {
-				block->set_ignore_on_fill(true, mf->get_access_sector_mask());
-				block->set_modified_on_fill(true, mf->get_access_sector_mask());
-			}
+		cache_request_status m_status =  m_tag_array->access(block_addr,time,cache_index,wb,evicted,mf);
+		assert(m_status != HIT);
+		cache_block_t* block = m_tag_array->get_block(cache_index);
+		block->set_status(MODIFIED, mf->get_access_sector_mask());
+		if(m_status == HIT_RESERVED) {
+			block->set_ignore_on_fill(true, mf->get_access_sector_mask());
+			block->set_modified_on_fill(true, mf->get_access_sector_mask());
+		}
 
-			if(mf->get_access_byte_mask().count() == m_config.get_atom_sz())
-			{
-				block->set_m_readable(true, mf->get_access_sector_mask());
-			} else
-			{
-				block->set_m_readable(false, mf->get_access_sector_mask());
-			}
+		if(mf->get_access_byte_mask().count() == m_config.get_atom_sz())
+		{
+			block->set_m_readable(true, mf->get_access_sector_mask());
+		} else
+		{
+			block->set_m_readable(false, mf->get_access_sector_mask());
+		}
 
-			if( m_status != RESERVATION_FAIL ){
-				   // If evicted block is modified and not a write-through
-				   // (already modified lower level)
-				   if( wb && (m_config.m_write_policy != WRITE_THROUGH) ) {
-					   mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,
-						   m_wrbk_type,evicted.m_modified_size,true);
-					   send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted), time, events);
-				   }
-				   return MISS;
+		if( m_status != RESERVATION_FAIL ){
+			   // If evicted block is modified and not a write-through
+			   // (already modified lower level)
+			   if( wb && (m_config.m_write_policy != WRITE_THROUGH) ) {
+				   mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,
+					   m_wrbk_type,evicted.m_modified_size,true);
+				   send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted), time, events);
 			   }
-			return RESERVATION_FAIL;
+			   return MISS;
+		   }
+		return RESERVATION_FAIL;
 }
 
 /// No write-allocate miss: Simply send write request to lower level memory
