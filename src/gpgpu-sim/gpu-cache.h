@@ -355,15 +355,18 @@ struct sector_cache_block : public cache_block_t {
 
 		return m_status[sidx];
 	}
+
     virtual void set_status(enum cache_block_state status, mem_access_sector_mask_t sector_mask)
 	{
 		unsigned sidx = get_sector_index(sector_mask);
 		m_status[sidx] = status;
 	}
+
     virtual unsigned get_last_access_time()
 	{
 		return m_line_last_access_time;
 	}
+
     virtual void set_last_access_time(unsigned time, mem_access_sector_mask_t sector_mask)
 	{
 		unsigned sidx = get_sector_index(sector_mask);
@@ -371,25 +374,30 @@ struct sector_cache_block : public cache_block_t {
 		m_last_sector_access_time[sidx] = time;
 		m_line_last_access_time = time;
 	}
+
     virtual unsigned get_alloc_time()
 	{
 		return m_line_alloc_time;
 	}
+
     virtual void set_ignore_on_fill(bool m_ignore, mem_access_sector_mask_t sector_mask)
 	{
 		unsigned sidx = get_sector_index(sector_mask);
 		m_ignore_on_fill_status[sidx] = m_ignore;
 	}
+
     virtual void set_modified_on_fill(bool m_modified, mem_access_sector_mask_t sector_mask)
 	{
 		unsigned sidx = get_sector_index(sector_mask);
 		m_set_modified_on_fill[sidx] = m_modified;
 	}
+
     virtual void set_m_readable(bool readable, mem_access_sector_mask_t sector_mask)
     {
     	unsigned sidx = get_sector_index(sector_mask);
     	m_readable[sidx] = readable;
     }
+
     virtual bool is_readable(mem_access_sector_mask_t sector_mask) {
     	unsigned sidx = get_sector_index(sector_mask);
     	return m_readable[sidx];
