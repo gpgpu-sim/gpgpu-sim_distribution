@@ -109,12 +109,14 @@ dram_req_t *frfcfs_scheduler::schedule( unsigned bank, unsigned curr_row )
    if(m_config->seperate_write_queue_enabled) {
 	   if(m_mode == READ_MODE &&
 			  ((m_num_write_pending >= m_config->write_high_watermark )
-			   || (m_queue[bank].empty() && !m_write_queue[bank].empty()))) {
+			  // || (m_queue[bank].empty() && !m_write_queue[bank].empty())
+			   )) {
 		   m_mode = WRITE_MODE;
 	   }
 	   else if(m_mode == WRITE_MODE &&
 				  (( m_num_write_pending < m_config->write_low_watermark )
-				   || (!m_queue[bank].empty() && m_write_queue[bank].empty()))){
+				 //  || (!m_queue[bank].empty() && m_write_queue[bank].empty())
+				   )){
 		   m_mode = READ_MODE;
 	   }
    }
