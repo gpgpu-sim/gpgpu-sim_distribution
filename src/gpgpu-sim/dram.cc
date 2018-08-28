@@ -730,13 +730,15 @@ void dram_t::print( FILE* simFile) const
    printf("\nwrite_to_read_ratio_blp_rw_average = %.6f", write_to_read_ratio_blp_rw_average /banks_access_rw_total);
    printf("\nGrpLevelPara = %.6f \n", (float)bkgrp_parallsim_rw /banks_access_rw_total);
 
-   printf("\nbwutil = %.6f \n", (float)bwutil/n_cmd);
+   printf("\nBW Util details:\n");
+   printf("bwutil = %.6f \n", (float)bwutil/n_cmd);
    printf("total_CMD = %d \n", n_cmd);
    printf("util_bw = %d \n", util_bw);
    printf("Wasted_Col = %d \n", wasted_bw_col);
-   printf("Wasted_Row %d \n", wasted_bw_row);
-   printf("Idle = %d \n\n", idle_bw);
+   printf("Wasted_Row = %d \n", wasted_bw_row);
+   printf("Idle = %d \n", idle_bw);
 
+   printf("\nBW Util Bottlenecks: \n");
    printf("RCDc_limit = %d \n", RCDc_limit);
    printf("RCDWRc_limit = %d \n", RCDWRc_limit);
    printf("WTRc_limit = %d \n", WTRc_limit);
@@ -747,6 +749,7 @@ void dram_t::print( FILE* simFile) const
    printf("WTRc_limit_alone = %d \n", WTRc_limit_alone);
    printf("RTWc_limit_alone = %d \n", RTWc_limit_alone);
 
+   printf("\nCommands details: \n");
    printf("total_CMD = %d \n", n_cmd);
    printf("n_nop = %d \n", n_nop);
    printf("Read = %d \n", n_rd);
@@ -757,8 +760,9 @@ void dram_t::print( FILE* simFile) const
    printf("n_pre = %d \n", n_pre);
    printf("n_ref = %d \n", n_ref);
    printf("n_req = %d \n", n_req );
-   printf("total_req = %d \n\n", n_rd+n_wr+n_rd_L2_A+n_wr_WB);
+   printf("total_req = %d \n", n_rd+n_wr+n_rd_L2_A+n_wr_WB);
 
+   printf("\nDual Bus Interface Util: \n");
    printf("issued_total_row = %lu \n", issued_total_row);
    printf("issued_total_col = %lu \n", issued_total_col);
    printf("Row_Bus_Util =  %.6f \n", (float)issued_total_row / n_cmd);
