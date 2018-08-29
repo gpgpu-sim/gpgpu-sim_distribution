@@ -199,15 +199,28 @@ dram_req_t::dram_req_t( class mem_fetch *mf, unsigned banks, unsigned dram_bnk_i
 
    const addrdec_t &tlx = mf->get_tlx_addr();
 
-   if(dram_bnk_indexing_policy == 0) {
-	   bk = tlx.bk;
-   }
-    else if(dram_bnk_indexing_policy == 1) {
-    	 int lbank = log2(banks);
-    	 bk  = tlx.bk ^ (tlx.row & ((1<<lbank)-1));
-    }
-    else
-    	assert(1);
+    switch(dram_bnk_indexing_policy){
+		case LINEAR_BK_INDEX:
+		{
+			bk = tlx.bk;
+			break;
+		}
+		case BITWISE_XORING_BK_INDEX:
+		{
+			//xoring bank bits with lower bits of the page
+			int lbank = log2(banks);
+			bk  = tlx.bk ^ (tlx.row & ((1<<lbank)-1));
+			break;
+		}
+		case CUSTOM_BK_INDEX:
+	        /* No custom set function implemented */
+			//Do you custom index here
+			break;
+		default:
+			 assert("\nUndefined bank index function.\n" && 0);
+			 break;
+	}
+
 
    row = tlx.row; 
    col = tlx.col; 
@@ -883,10 +896,10 @@ void dram_t::set_dram_power_stats(	unsigned &cmd,
 
 unsigned dram_t::get_bankgrp_number(unsigned i)
 {
-	if(m_config->dram_bnkgrp_indexing_policy == 0) { //higher bits
+	if(m_config->dram_bnkgrp_indexing_policy == HIGHER_BITS) { //higher bits
 		return i>>m_config->bk_tag_length;
 	}
-	else if (m_config->dram_bnkgrp_indexing_policy == 1) { //lower bits
+	else if (m_config->dram_bnkgrp_indexing_policy == LOWER_BITS) { //lower bits
 		return i&((m_config->nbkgrp-1));
 	}
 	else {

@@ -111,11 +111,14 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr, addrdec_
 			//Do nothing
 			break;
 		case BITWISE_PERMUTATION:
+		{
 			assert(!gap);
 			tlx->chip = (tlx->chip) ^ (tlx->row & (m_n_channel-1));
 			assert(tlx->chip < m_n_channel);
 			break;
+		}
 		case IPOLY:
+		{
 		    /*
 			* Set Indexing function from "Pseudo-randomly interleaved memory."
 			* Rau, B. R et al.
@@ -143,22 +146,29 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr, addrdec_
 			}
 			assert(tlx->chip < m_n_channel);
 			break;
-		case CUSTOM:
+		}
+		case PAE:
 		{
-			//random selected bits
-			//do you custom hashing function here, similar to
+			//Page Address Entropy
+			//random selected bits from the page and bank bits
+			//similar to
 			//Liu, Yuxi, et al. "Get Out of the Valley: Power-Efficient Address Mapping for GPUs." ISCA 2018
-			std::bitset<64> b(tlx->row);
+			std::bitset<64> a(tlx->row);
 			std::bitset<5> chip(tlx->chip);
-			chip[0] = b[13]^b[10]^b[9]^b[5]^b[0]^chip[0];
-			chip[1] = b[12]^b[11]^b[6]^b[1]^chip[1];
-			chip[2] = b[14]^b[9]^b[8]^b[7]^b[2]^chip[2];
-			chip[3] = b[11]^b[10]^b[8]^b[3]^chip[3];
-			chip[4] = b[12]^b[9]^b[8]^b[5]^b[4]^chip[4];
+			std::bitset<4> b(tlx->bk);
+			chip[0] = a[13]^a[10]^a[9]^a[5]^a[0]^b[3]^b[0]^chip[0];
+			chip[1] = a[12]^a[11]^a[6]^a[1]^b[3]^b[2]^b[1]^chip[1];
+			chip[2] = a[14]^a[9]^a[8]^a[7]^a[2]^b[1]^chip[2];
+			chip[3] = a[11]^a[10]^a[8]^a[3]^b[2]^b[3]^chip[3];
+			chip[4] = a[12]^a[9]^a[8]^a[5]^a[4]^b[1]^b[0]^chip[4];
 			tlx->chip = chip.to_ulong();
 			assert(tlx->chip < m_n_channel);
 			break;
 		}
+		case CUSTOM:
+			/* No custom set function implemented */
+			//Do you custom index here
+			break;
 		default:
 			 assert("\nUndefined set index function.\n" && 0);
 			 break;

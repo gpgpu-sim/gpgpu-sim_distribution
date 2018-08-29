@@ -39,6 +39,7 @@ enum partition_index_function{
 	CONSECUTIVE = 0,
 	BITWISE_PERMUTATION,
 	IPOLY,
+	PAE,
     CUSTOM
 };
 
