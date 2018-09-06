@@ -664,6 +664,7 @@ enum cache_operator_type {
     CACHE_ALL,          // .ca
     CACHE_LAST_USE,     // .lu
     CACHE_VOLATILE,     // .cv
+    CACHE_L1,     // .nc
                        
     // loads and stores 
     CACHE_STREAMING,    // .cs
