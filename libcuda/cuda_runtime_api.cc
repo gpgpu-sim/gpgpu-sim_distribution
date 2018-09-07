@@ -1538,6 +1538,27 @@ std::list<cuobjdumpSection*> pruneSectionList(std::list<cuobjdumpSection*> cuobj
 	return prunedList;
 }
 
+static const char *
+findPtxBody(const char *ptxcode)
+{
+	const char	*line_head;
+
+	line_head = ptxcode;
+	while (line_head) {
+		const char	*line_next;
+
+		line_next = strchr(line_head, '\n');
+		if (line_next == NULL)
+			return NULL;
+		line_next++;
+		if (strncmp(line_head, ".address_size", 13) == 0)
+			return line_next;
+		line_head = line_next;
+	}
+
+	return NULL;
+}
+
 //! Merge all PTX sections that have a specific identifier into one file
 std::list<cuobjdumpSection*> mergeMatchingSections(std::list<cuobjdumpSection*> cuobjdumpSectionList, std::string identifier){
 	const char *ptxcode = "";
@@ -1559,13 +1580,13 @@ std::list<cuobjdumpSection*> mergeMatchingSections(std::list<cuobjdumpSection*> 
 			}
 
 			// Append all the PTX from the last PTX section into the current PTX section
-			// Add 50 to ptxcode to ignore the information regarding version/target/address_size
-			if (strlen(ptxcode) >= 50) {
+			// Find the line after ".address_size" to ignore the information regarding version/target/address_size
+			ptxcode = findPtxBody(ptxcode);
+			if (ptxcode != NULL) {
 				FILE *ptxfile = fopen((ptxsection->getPTXfilename()).c_str(), "a");
-				fprintf(ptxfile, "%s", ptxcode + 50);
+				fprintf(ptxfile, "%s", ptxcode);
 				fclose(ptxfile);
 			}
-
 			old_iter = iter;
 			old_ptxsection = ptxsection;
 		}
