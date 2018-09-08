@@ -898,6 +898,7 @@ void ptx_instruction::pre_decode()
 
    switch( m_cache_option ) {
    case CA_OPTION: cache_op = CACHE_ALL; break;
+   case NC_OPTION: cache_op = CACHE_L1; break;
    case CG_OPTION: cache_op = CACHE_GLOBAL; break;
    case CS_OPTION: cache_op = CACHE_STREAMING; break;
    case LU_OPTION: cache_op = CACHE_LAST_USE; break;
