@@ -71,6 +71,7 @@ unsigned l1d_cache_config::set_index(new_addr_type addr) const{
 
     switch(m_set_index_function){
     case FERMI_HASH_SET_FUNCTION:
+    case BITWISE_XORING_FUNCTION:
         /*
         * Set Indexing function from "A Detailed GPU Cache Model Based on Reuse Distance Theory"
         * Cedric Nugteren et al.
@@ -1581,7 +1582,7 @@ enum cache_request_status tex_cache::access( new_addr_type addr, mem_fetch *mf,
     if ( status == MISS ) {
         // we need to send a memory request...
         unsigned rob_index = m_rob.push( rob_entry(cache_index, mf, block_addr) );
-        m_extra_mf_fields[mf] = extra_mf_fields(rob_index);
+        m_extra_mf_fields[mf] = extra_mf_fields(rob_index, m_config);
         mf->set_data_size(m_config.get_line_sz());
         m_tags.fill(cache_index,time,mf); // mark block as valid
         m_request_fifo.push(mf);
@@ -1636,6 +1637,23 @@ void tex_cache::cycle(){
 /// Place returning cache block into reorder buffer
 void tex_cache::fill( mem_fetch *mf, unsigned time )
 {
+	if(m_config.m_mshr_type == SECTOR_TEX_FIFO) {
+	assert(mf->get_original_mf());
+	extra_mf_fields_lookup::iterator e = m_extra_mf_fields.find(mf->get_original_mf());
+    assert( e != m_extra_mf_fields.end() );
+    e->second.pending_read--;
+
+    if(e->second.pending_read > 0) {
+    	//wait for the other requests to come back
+    	delete mf;
+    	return;
+      } else {
+    	mem_fetch *temp = mf;
+    	mf = mf->get_original_mf();
+    	delete temp;
+      }
+	}
+
     extra_mf_fields_lookup::iterator e = m_extra_mf_fields.find(mf);
     assert( e != m_extra_mf_fields.end() );
     assert( e->second.m_valid );

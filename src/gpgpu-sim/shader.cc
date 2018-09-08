@@ -1488,6 +1488,111 @@ mem_stage_stall_type ldst_unit::process_memory_access_queue( cache_t *cache, war
     return process_cache_access( cache, mf->get_addr(), inst, events, mf, status );
 }
 
+mem_stage_stall_type ldst_unit::process_memory_access_queue_l1cache( l1_cache *cache, warp_inst_t &inst )
+{
+    mem_stage_stall_type result = NO_RC_FAIL;
+    if( inst.accessq_empty() )
+        return result;
+
+    mem_fetch *mf = m_mf_allocator->alloc(inst,inst.accessq_back());
+
+    if(m_config->m_L1D_config.l1_latency > 0)
+	{
+    	if((l1_latency_queue[m_config->m_L1D_config.l1_latency-1]) == NULL)
+    	{
+    		l1_latency_queue[m_config->m_L1D_config.l1_latency-1] = mf;
+
+    		if( mf->get_inst().is_store() ) {
+				unsigned inc_ack = (m_config->m_L1D_config.get_mshr_type() == SECTOR_ASSOC)?
+						(mf->get_data_size()/SECTOR_SIZE) : 1;
+
+				for(unsigned i=0; i< inc_ack; ++i)
+					m_core->inc_store_req( inst.warp_id() );
+			}
+
+    		inst.accessq_pop_back();
+    	}
+    	else
+        {
+        	result = BK_CONF;
+        	delete mf;
+        }
+        if( !inst.accessq_empty() &&  result !=BK_CONF)
+		   result = COAL_STALL;
+	   return result;
+	}
+    else
+    {
+		std::list<cache_event> events;
+		enum cache_request_status status = cache->access(mf->get_addr(),mf,gpu_sim_cycle+gpu_tot_sim_cycle,events);
+		return process_cache_access( cache, mf->get_addr(), inst, events, mf, status );
+    }
+}
+
+void ldst_unit::L1_latency_queue_cycle()
+{
+	//std::deque< std::pair<mem_fetch*,bool> >::iterator it = m_latency_queue.begin();
+	if((l1_latency_queue[0]) != NULL)
+    {
+		    mem_fetch* mf_next = l1_latency_queue[0];
+			std::list<cache_event> events;
+			enum cache_request_status status = m_L1D->access(mf_next->get_addr(),mf_next,gpu_sim_cycle+gpu_tot_sim_cycle,events);
+
+		   bool write_sent = was_write_sent(events);
+		   bool read_sent = was_read_sent(events);
+
+		   if ( status == HIT ) {
+			   assert( !read_sent );
+			   l1_latency_queue[0] = NULL;
+			   if ( mf_next->get_inst().is_load() ) {
+				   for ( unsigned r=0; r < 4; r++)
+					   if (mf_next->get_inst().out[r] > 0)
+					   {
+						   assert(m_pending_writes[mf_next->get_inst().warp_id()][mf_next->get_inst().out[r]]>0);
+						   unsigned still_pending = --m_pending_writes[mf_next->get_inst().warp_id()][mf_next->get_inst().out[r]];
+						   if(!still_pending)
+						   {
+							m_pending_writes[mf_next->get_inst().warp_id()].erase(mf_next->get_inst().out[r]);
+							m_scoreboard->releaseRegister(mf_next->get_inst().warp_id(),mf_next->get_inst().out[r]);
+							m_core->warp_inst_complete(mf_next->get_inst());
+						   }
+					   }
+			   }
+
+			   //For write hit in WB policy
+			   if(mf_next->get_inst().is_store() && !write_sent)
+			   {
+				   unsigned dec_ack = (m_config->m_L1D_config.get_mshr_type() == SECTOR_ASSOC)?
+				   						(mf_next->get_data_size()/SECTOR_SIZE) : 1;
+
+				   mf_next->set_reply();
+
+				   for(unsigned i=0; i< dec_ack; ++i)
+				      m_core->store_ack(mf_next);
+			   }
+
+			   if( !write_sent )
+				   delete mf_next;
+
+		   } else if ( status == RESERVATION_FAIL ) {
+			   assert( !read_sent );
+			   assert( !write_sent );
+		   } else {
+			   assert( status == MISS || status == HIT_RESERVED );
+			   l1_latency_queue[0] = NULL;
+	   }
+    }
+
+	 for( unsigned stage = 0; stage<m_config->m_L1D_config.l1_latency-1; ++stage)
+	  if( l1_latency_queue[stage] == NULL) {
+		   l1_latency_queue[stage] = l1_latency_queue[stage+1] ;
+		   l1_latency_queue[stage+1] = NULL;
+	   }
+
+}
+
+
+
 bool ldst_unit::constant_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, mem_stage_access_type &fail_type)
 {
    if( inst.empty() || ((inst.space.get_type() != const_space) && (inst.space.get_type() != param_space_kernel)) )
@@ -1561,7 +1666,7 @@ bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_rea
        }
    } else {
        assert( CACHE_UNDEFINED != inst.cache_op );
-       stall_cond = process_memory_access_queue(m_L1D,inst);
+       stall_cond = process_memory_access_queue_l1cache(m_L1D,inst);
    }
    if( !inst.accessq_empty() && stall_cond == NO_RC_FAIL)
        stall_cond = COAL_STALL;
@@ -1771,8 +1876,9 @@ ldst_unit::ldst_unit( mem_fetch_interface *icnt,
                       const memory_config *mem_config,  
                       shader_core_stats *stats,
                       unsigned sid,
-                      unsigned tpc ) : pipelined_simd_unit(NULL,config,3,core), m_next_wb(config)
+                      unsigned tpc ) : pipelined_simd_unit(NULL,config,config->smem_latency,core), m_next_wb(config)
 {
+	assert(config->smem_latency > 1);
     init( icnt,
           mf_allocator,
           core, 
@@ -1793,6 +1899,12 @@ ldst_unit::ldst_unit( mem_fetch_interface *icnt,
                               m_icnt,
                               m_mf_allocator,
                               IN_L1D_MISS_QUEUE );
+
+        if(m_config->m_L1D_config.l1_latency > 0)
+	    {
+        	for(int i=0; i<m_config->m_L1D_config.l1_latency; i++ )
+        		l1_latency_queue.push_back((mem_fetch*)NULL);
+	    }
     }
 }
 
@@ -2019,7 +2131,11 @@ void ldst_unit::cycle()
 
    m_L1T->cycle();
    m_L1C->cycle();
-   if( m_L1D ) m_L1D->cycle();
+   if( m_L1D ) {
+	   m_L1D->cycle();
+	   if(m_config->m_L1D_config.l1_latency > 0)
+	   		L1_latency_queue_cycle();
+   }
 
    warp_inst_t &pipe_reg = *m_dispatch_reg;
    enum mem_stage_stall_type rc_fail = NO_RC_FAIL;
@@ -2042,9 +2158,9 @@ void ldst_unit::cycle()
        unsigned warp_id = pipe_reg.warp_id();
        if( pipe_reg.is_load() ) {
            if( pipe_reg.space.get_type() == shared_space ) {
-               if( m_pipeline_reg[2]->empty() ) {
+               if( m_pipeline_reg[m_config->smem_latency-1]->empty() ) {
                    // new shared memory request
-                   move_warp(m_pipeline_reg[2],m_dispatch_reg);
+                   move_warp(m_pipeline_reg[m_config->smem_latency-1],m_dispatch_reg);
                    m_dispatch_reg->clear();
                }
            } else {

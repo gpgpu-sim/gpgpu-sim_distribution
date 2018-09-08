@@ -455,7 +455,8 @@ enum write_policy_t {
 
 enum allocation_policy_t {
     ON_MISS,
-    ON_FILL
+    ON_FILL,
+	STREAMING
 };
 
 
@@ -467,8 +468,9 @@ enum write_allocate_policy_t {
 };
 
 enum mshr_config_t {
-    TEX_FIFO,
+    TEX_FIFO, // Tex cache
     ASSOC, // normal cache
+	SECTOR_TEX_FIFO,  //Tex cache sends requests to high-level sector cache
 	SECTOR_ASSOC // normal cache sends requests to high-level sector cache
 };
 
@@ -484,6 +486,12 @@ enum cache_type{
     NORMAL = 0,
     SECTOR
 };
+
+#define MAX_WARP_PER_SHADER 64
+#define INCT_TOTAL_BUFFER 64
+#define L2_TOTAL 64
+#define MAX_WARP_PER_SHADER 64
+#define MAX_WARP_PER_SHADER 64
 
 class cache_config {
 public:
@@ -544,10 +552,27 @@ public:
         switch (ap) {
         case 'm': m_alloc_policy = ON_MISS; break;
         case 'f': m_alloc_policy = ON_FILL; break;
+        case 's': m_alloc_policy = STREAMING; break;
         default: exit_parse_error();
+        }
+        if(m_alloc_policy == STREAMING) {
+        	//For streaming cache, we set the alloc policy to be on-fill to remove all line_alloc_fail stalls
+        	//we set the MSHRs to be equal to the cache line. This is possible by moving TAG to be shared between cache line and MSHR enrty (i.e. for each cache line, there is an MSHR rntey associated with it)
+        	// This is the easiest think we can think about to model (mimics) L1 streaming cache in Pascal and Volta
+        	//Based on our microbenchmakrs, MSHRs entries have been increasing substantially in Pascal and Volta
+        	//For more information about streaming cache, see:
+        	// http://on-demand.gputechconf.com/gtc/2017/presentation/s7798-luke-durant-inside-volta.pdf
+        	// https://ieeexplore.ieee.org/document/8344474/
+
+			m_alloc_policy = ON_FILL;
+			m_mshr_entries = m_nset*m_assoc;
+			if(m_cache_type == SECTOR)
+				m_mshr_entries *=  SECTOR_CHUNCK_SIZE;
+			m_mshr_max_merge = MAX_WARP_PER_SM;
         }
         switch (mshr_type) {
         case 'F': m_mshr_type = TEX_FIFO; assert(ntok==14); break;
+        case 'T': m_mshr_type = SECTOR_TEX_FIFO; assert(ntok==14); break;
         case 'A': m_mshr_type = ASSOC; break;
         case 'S' : m_mshr_type = SECTOR_ASSOC; break;
         default: exit_parse_error();
@@ -722,6 +747,7 @@ class l1d_cache_config : public cache_config{
 public:
 	l1d_cache_config() : cache_config(){}
 	virtual unsigned set_index(new_addr_type addr) const;
+	unsigned l1_latency;
 };
 
 class l2_cache_config : public cache_config {
@@ -1442,7 +1468,7 @@ public:
     m_result_fifo(config.m_result_fifo_entries)
     {
         m_name = name;
-        assert(config.m_mshr_type == TEX_FIFO);
+        assert(config.m_mshr_type == TEX_FIFO || config.m_mshr_type == SECTOR_TEX_FIFO );
         assert(config.m_write_policy == READ_ONLY);
         assert(config.m_alloc_policy == ON_MISS);
         m_memport=memport;
@@ -1595,13 +1621,15 @@ private:
 
     struct extra_mf_fields {
         extra_mf_fields()  { m_valid = false;}
-        extra_mf_fields( unsigned i ) 
+        extra_mf_fields( unsigned i, const cache_config &m_config )
         {
             m_valid = true;
             m_rob_index = i;
+            pending_read = m_config.m_mshr_type == SECTOR_TEX_FIFO? m_config.m_line_sz/SECTOR_SIZE : 0;
         }
         bool m_valid;
         unsigned m_rob_index;
+        unsigned pending_read;
     };
 
     cache_stats m_stats;
