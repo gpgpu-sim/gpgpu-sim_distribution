@@ -1220,6 +1220,7 @@ protected:
                                                       mem_fetch *mf,
                                                       enum cache_request_status status );
    mem_stage_stall_type process_memory_access_queue( cache_t *cache, warp_inst_t &inst );
+   mem_stage_stall_type process_memory_access_queue_l1cache( l1_cache *cache, warp_inst_t &inst );
 
    const memory_config *m_memory_config;
    class mem_fetch_interface *m_icnt;
@@ -1248,6 +1249,9 @@ protected:
    // for debugging
    unsigned long long m_last_inst_gpu_sim_cycle;
    unsigned long long m_last_inst_gpu_tot_sim_cycle;
+
+   std::deque<mem_fetch* > l1_latency_queue;
+   void L1_latency_queue_cycle();
 };
 
 enum pipeline_stage_name_t {
@@ -1399,6 +1403,8 @@ struct shader_core_config : public core_config
 
     int simt_core_sim_order; 
     
+    unsigned smem_latency;
+
     unsigned mem2device(unsigned memid) const { return memid + n_simt_clusters; }
 
     //Jin: concurrent kernel on sm
