@@ -920,7 +920,7 @@ void scheduler_unit::cycle()
                         ready_inst = true;
                         const active_mask_t &active_mask = m_simt_stack[warp_id]->get_active_mask();
                         assert( warp(warp_id).inst_in_pipeline() );
-                        if ( (pI->op == LOAD_OP) || (pI->op == STORE_OP) || (pI->op == MEMORY_BARRIER_OP) ) {
+                        if ( (pI->op == LOAD_OP)||(pI->op ==TENSOR_CORE_LOAD_OP)||(pI->op ==VP_LOAD_OP)|| (pI->op == STORE_OP)|| (pI->op==TENSOR_CORE_STORE_OP) ||(pI->op==VP_STORE_OP) || (pI->op == MEMORY_BARRIER_OP) ) {
                             if( m_mem_out->has_free() ) {
                                 m_shader->issue_warp(*m_mem_out,pI,active_mask,warp_id);
                                 issued++;

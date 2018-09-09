@@ -648,12 +648,12 @@ void ptx_instruction::set_opcode_and_latency()
        if ( has_memory_write() ) op = STORE_OP;
        break;
    case LD_OP: op = LOAD_OP; break;
-   case MMA_LD_OP: op = LOAD_OP; break;
-   case VP_LD_OP: op = LOAD_OP; break;
+   case MMA_LD_OP: op = TENSOR_CORE_LOAD_OP; break;
+   case VP_LD_OP: op = VP_LOAD_OP; break;
    case LDU_OP: op = LOAD_OP; break;
    case ST_OP: op = STORE_OP; break;
-   case MMA_ST_OP: op = STORE_OP; break;
-   case VP_ST_OP: op = STORE_OP; break;
+   case MMA_ST_OP: op = TENSOR_CORE_STORE_OP; break;
+   case VP_ST_OP: op = VP_STORE_OP; break;
    case BRA_OP: op = BRANCH_OP; break;
    case BREAKADDR_OP: op = BRANCH_OP; break;
    case TEX_OP: op = LOAD_OP; mem_op=TEX; break;
@@ -1334,6 +1334,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
             skip = !pred_lookup(pI->get_pred_mod(), pred_value.pred & 0x000F);
       }
    }
+   int inst_opcode=pI->get_opcode();
    
    if( skip ) {
       inst.set_not_active(lane_id);
@@ -1346,17 +1347,21 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
          pI = pJ;
       }
      
-      int inst_opcode=pI->get_opcode();
+      if(((inst_opcode==MMA_OP||inst_opcode==MMA_LD_OP||inst_opcode==MMA_ST_OP||inst_opcode==VP_MMA_OP||inst_opcode==VP_LD_OP||inst_opcode==VP_ST_OP))){
+      		if(inst.active_count()!=MAX_WARP_SIZE)
+			while(1); 
+      }
 
       if(((inst_opcode!=MMA_OP)&&(inst_opcode!=MMA_LD_OP)&&(inst_opcode!=MMA_ST_OP)&&(inst_opcode!=VP_LD_OP)&&(inst_opcode!=VP_ST_OP)&&(inst_opcode!=VP_MMA_OP))||((inst_opcode==MMA_OP||inst_opcode==MMA_LD_OP||inst_opcode==MMA_ST_OP||inst_opcode==VP_MMA_OP||inst_opcode==VP_LD_OP||inst_opcode==VP_ST_OP)&&(lane_id==0))){
-      switch ( inst_opcode ) {
-#define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,this); op_classification = CLASSIFICATION; break;
-#define OP_W_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,get_core(),inst); op_classification = CLASSIFICATION; break;
-#include "opcodes.def"
-#undef OP_DEF
-#undef OP_W_DEF
-      default: printf( "Execution error: Invalid opcode (0x%x)\n", pI->get_opcode() ); break;
-      }}
+	      switch ( inst_opcode ) {
+	#define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,this); op_classification = CLASSIFICATION; break;
+	#define OP_W_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,get_core(),inst); op_classification = CLASSIFICATION; break;
+	#include "opcodes.def"
+	#undef OP_DEF
+	#undef OP_W_DEF
+	      default: printf( "Execution error: Invalid opcode (0x%x)\n", pI->get_opcode() ); break;
+	      }
+      }
       delete pJ;
       pI = pI_saved;
       
@@ -1398,13 +1403,17 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
    _memory_op_t insn_memory_op = no_memory_op;
    unsigned insn_data_size = 0;
    if ( (pI->has_memory_read()  || pI->has_memory_write()) ) {
-      insn_memaddr = last_eaddr();
-      insn_space = last_space();
-      unsigned to_type = pI->get_type();
-      insn_data_size = datatype2size(to_type);
-      insn_memory_op = pI->has_memory_read() ? memory_load : memory_store;
+      //if(!((inst_opcode==MMA_LD_OP||inst_opcode==MMA_ST_OP||inst_opcode==VP_LD_OP||inst_opcode==VP_ST_OP)))
+      //if(!((inst_opcode==MMA_LD_OP||inst_opcode==VP_LD_OP)))
+      //{
+        insn_memaddr = last_eaddr();
+        insn_space = last_space();
+        unsigned to_type = pI->get_type();
+        insn_data_size = datatype2size(to_type);
+        insn_memory_op = pI->has_memory_read() ? memory_load : memory_store;
+      //}	
    }
-
+  
    if ( pI->get_opcode() == BAR_OP && pI->barrier_op() == RED_OPTION) {
 	   inst.add_callback( lane_id, last_callback().function, last_callback().instruction, this,false /*not atomic*/);
    }
@@ -1476,12 +1485,16 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
    
    // "Return values"
    if(!skip) {
-      inst.space = insn_space;
-      inst.set_addr(lane_id, insn_memaddr);
-      inst.data_size = insn_data_size; // simpleAtomicIntrinsics
-      assert( inst.memory_op == insn_memory_op );
-   } 
-
+      //if(!((inst_opcode==MMA_LD_OP||inst_opcode==MMA_ST_OP||inst_opcode==VP_LD_OP||inst_opcode==VP_ST_OP)))
+      //if(!((inst_opcode==MMA_LD_OP||inst_opcode==VP_LD_OP)))
+      //{
+   	  inst.space = insn_space;
+          inst.set_addr(lane_id, insn_memaddr);
+          inst.data_size = insn_data_size; // simpleAtomicIntrinsics
+          assert( inst.memory_op == insn_memory_op );
+      //} 
+   }
+ 
    } catch ( int x  ) {
       printf("GPGPU-Sim PTX: ERROR (%d) executing intruction (%s:%u)\n", x, pI->source_file(), pI->source_line() );
       printf("GPGPU-Sim PTX:       '%s'\n", pI->get_source() );

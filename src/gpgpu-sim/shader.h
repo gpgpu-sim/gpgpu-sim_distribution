@@ -1116,7 +1116,11 @@ public:
         switch(inst.op) {
         case SFU_OP: return false; 
         case LOAD_OP: return false;
+        case TENSOR_CORE_LOAD_OP: return false;
+        case VP_LOAD_OP: return false;
         case STORE_OP: return false;
+        case TENSOR_CORE_STORE_OP: return false;
+        case VP_STORE_OP: return false;
         case MEMORY_BARRIER_OP: return false;
         default: break;
         }
@@ -1158,7 +1162,11 @@ public:
     {
         switch(inst.op) {
         case LOAD_OP: break;
+        case TENSOR_CORE_LOAD_OP: break;
+        case VP_LOAD_OP: break;
         case STORE_OP: break;
+        case TENSOR_CORE_STORE_OP: break;
+        case VP_STORE_OP: break;
         case MEMORY_BARRIER_OP: break;
         default: return false;
         }

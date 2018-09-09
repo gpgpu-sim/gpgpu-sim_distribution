@@ -81,6 +81,10 @@ enum uarch_op_t {
    VP_CORE_OP,
    ALU_SFU_OP,
    LOAD_OP,
+   VP_LOAD_OP,
+   TENSOR_CORE_LOAD_OP,
+   TENSOR_CORE_STORE_OP,
+   VP_STORE_OP,
    STORE_OP,
    BRANCH_OP,
    BARRIER_OP,
@@ -801,8 +805,8 @@ public:
     {
         fprintf(fp," [inst @ pc=0x%04x] ", pc );
     }
-    bool is_load() const { return (op == LOAD_OP || memory_op == memory_load); }
-    bool is_store() const { return (op == STORE_OP || memory_op == memory_store); }
+    bool is_load() const { return (op == LOAD_OP ||op==TENSOR_CORE_LOAD_OP||op==VP_LOAD_OP || memory_op == memory_load); }
+    bool is_store() const { return (op == STORE_OP ||op==TENSOR_CORE_STORE_OP||op==VP_STORE_OP || memory_op == memory_store); }
     unsigned get_num_operands() const {return num_operands;}
     unsigned get_num_regs() const {return num_regs;}
     void set_num_regs(unsigned num) {num_regs=num;}
