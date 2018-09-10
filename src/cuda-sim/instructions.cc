@@ -3180,7 +3180,7 @@ void vp_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
    	thread->m_last_memory_space = space;
     }
 }
-void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
+void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
 {
    size_t size;
    unsigned smid;
@@ -3213,6 +3213,9 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 
    	memory_space *mem = NULL;
    	addr_t addr = addr_reg.u32;
+	
+	new_addr_type mem_txn_addr[MAX_ACCESSES_PER_INSN_PER_THREAD];
+	int num_mem_txn=0;
         
         smid = thread->get_hw_sid();
    	if( whichspace(addr) == shared_space ) {
@@ -3240,7 +3243,8 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
        			//mem->write(new_addr+4*acc_float_offset(k,wmma_layout,stride),size/8,&v[k].s64,thread,pI);
        			push_addr=new_addr+4*acc_float_offset(k,wmma_layout,stride);
        			mem->write(push_addr,size/8,&v[k].s64,thread,pI);
-
+			mem_txn_addr[num_mem_txn++]=push_addr;
+	
 			if(g_debug_instruction){
 				printf("wmma:store:thread%d=%x,%x,%x,%x,%x,%x,%x,%x\n",thrd,v[0].s64,v[1].s64,v[2].s64,v[3].s64,v[4].s64,v[5].s64,v[6].s64,v[7].s64);   
 				float temp;
@@ -3252,7 +3256,6 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 				}
 				printf("\n");
 			}
-	
 		}
 		else if(type==F16_TYPE){
 			if(wmma_layout==ROW){
@@ -3265,14 +3268,21 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
        				push_addr=new_addr+k*2*stride;
        				mem->write(push_addr,size/8,&nw_v[k].s64,thread,pI);
 			}
+			if(k%2==0)
+				mem_txn_addr[num_mem_txn++]=push_addr;
+	
 			if(g_debug_instruction)
 				printf("wmma:store:thread%d=%x,%x,%x,%x,%x,%x,%x,%x\n",thrd,nw_v[0].s64,nw_v[1].s64,nw_v[2].s64,nw_v[3].s64,nw_v[4].s64,nw_v[5].s64,nw_v[6].s64,nw_v[7].s64);   
 		}
 	}
    	
 	delete [] v;
-   	thread->m_last_effective_address = addr;
-   	thread->m_last_memory_space = space;
+   	inst.space = space;
+   	inst.set_addr(thrd, (new_addr_type *)mem_txn_addr , num_mem_txn);
+   	inst.data_size = 4; // 4 byte transaction 
+   	assert( inst.memory_op == insn_memory_op );
+   	//thread->m_last_effective_address = addr;
+   	//thread->m_last_memory_space = space;
    } 
 }
 void vp_ld_impl(const ptx_instruction *pI, core_t *core, warp_inst_t inst)
@@ -3423,7 +3433,7 @@ void vp_ld_impl(const ptx_instruction *pI, core_t *core, warp_inst_t inst)
 
 }
 
-void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
+void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
 {
    size_t size;
    int t,i;
@@ -3465,6 +3475,9 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 	
 	addr_t new_addr = addr+thread_group_offset(thrd,wmma_type,wmma_layout,type,stride)*size/8;  
 	addr_t fetch_addr;
+	new_addr_type mem_txn_addr[MAX_ACCESSES_PER_INSN_PER_THREAD];
+	int num_mem_txn=0;
+
 	if(wmma_type==LOAD_A){
 		for(i=0;i<16;i++){
 			if(wmma_layout==ROW){
@@ -3480,7 +3493,10 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			else{
 				printf("mma_ld:wrong_layout_type\n");
 				abort();
+			
 			}
+			if(i%2==0)
+				mem_txn_addr[num_mem_txn++]=fetch_addr;	
 		}
 	}
 	else if(wmma_type==LOAD_B){
@@ -3499,6 +3515,8 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 				printf("mma_ld:wrong_layout_type\n");
 				abort();
 			}
+			if(i%2==0)
+				mem_txn_addr[num_mem_txn++]=fetch_addr;	
 		}
 	}
 	else if(wmma_type==LOAD_C){
@@ -3518,11 +3536,14 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 					printf("mma_ld:wrong_type\n");
 					abort();
 				}
+				if(i%2==0)
+					mem_txn_addr[num_mem_txn++]=fetch_addr;	
 			}
 			else if(type==F32_TYPE){
 				//mem->read(new_addr+4*acc_float_offset(i,wmma_layout,stride),size/8,&data[i].s64);
 				fetch_addr=new_addr+4*acc_float_offset(i,wmma_layout,stride);
 				mem->read(fetch_addr,size/8,&data[i].s64);
+				mem_txn_addr[num_mem_txn++]=fetch_addr;	
 			}
 			else{
 				printf("wrong type");
@@ -3534,6 +3555,12 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 		printf("wrong wmma type\n");;
 		abort();
 	}
+	//generate timing memory request
+   	inst.space = space;
+   	inst.set_addr(thrd, (new_addr_type *)mem_txn_addr , num_mem_txn);
+   	inst.data_size = 4; // 4 byte transaction 
+   	assert( inst.memory_op == insn_memory_op );
+
 	if(g_debug_instruction){
 		if(type==F16_TYPE){
 			printf("\nmma_ld:thread%d= ",thrd);
@@ -3598,8 +3625,8 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 		}
 	}
 
-   	thread->m_last_effective_address = addr;
-   	thread->m_last_memory_space = space;
+   	//thread->m_last_effective_address = addr;
+   	//thread->m_last_memory_space = space;
    } 
 }
 
