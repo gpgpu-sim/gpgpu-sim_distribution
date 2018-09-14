@@ -1961,7 +1961,7 @@ ptx_reg_t d2d( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
       y.f64 = x.f64;
       break; 
    }
-   if (isnan(y.f64)) {
+   if (std::isnan(y.f64)) {
       y.u64 = 0xfff8000000000000ull;
    } else if (saturation_mode) {
       y.f64 = cuda_math::__saturatef(y.f64); 
@@ -2086,7 +2086,7 @@ void ptx_round(ptx_reg_t& data, int rounding_mode, int type)
       }
    }
    if ((type == F64_TYPE)||(type == FF64_TYPE)) {
-      if (isnan(data.f64)) {
+      if (std::isnan(data.f64)) {
          data.u64 = 0xfff8000000000000ull;
       }
    }
@@ -2648,12 +2648,12 @@ void mad_def( const ptx_instruction *pI, ptx_thread_info *thread, bool use_carry
 
 bool isNaN(float x)
 {
-   return isnan(x);
+   return std::isnan(x);
 }
 
 bool isNaN(double x)
 {
-   return isnan(x);
+   return std::isnan(x);
 }
 
 void max_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 

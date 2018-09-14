@@ -1969,12 +1969,12 @@ void shader_core_ctx::register_cta_thread_exit( unsigned cta_num, kernel_info_t 
       m_barriers.deallocate_barrier(cta_num);
       shader_CTA_count_unlog(m_sid, 1);
 
-      printf("GPGPU-Sim uArch: Shader %d finished CTA #%d (%lld,%lld), %u CTAs running\n", m_sid, cta_num, gpu_sim_cycle, gpu_tot_sim_cycle,
-             m_n_active_cta );
+     SHADER_DPRINTF(LIVENESS, "GPGPU-Sim uArch: Finished CTA #%d (%lld,%lld), %u CTAs running\n",
+        cta_num, gpu_sim_cycle, gpu_tot_sim_cycle, m_n_active_cta);
 
       if( m_n_active_cta == 0 ) {
-          printf("GPGPU-Sim uArch: Shader %u empty (last released kernel %u \'%s\').\n", m_sid, kernel->get_uid(),
-                 kernel->name().c_str() );
+        SHADER_DPRINTF(LIVENESS, "GPGPU-Sim uArch: Empty (last released kernel %u \'%s\').\n",
+            kernel->get_uid(), kernel->name().c_str());
           fflush(stdout);
 
           //Shader can only be empty when no more cta are dispatched
@@ -1989,8 +1989,10 @@ void shader_core_ctx::register_cta_thread_exit( unsigned cta_num, kernel_info_t 
       kernel->dec_running();
       if( !m_gpu->kernel_more_cta_left(kernel) ) {
           if( !kernel->running() ) {
-              printf("GPGPU-Sim uArch: GPU detected kernel %u \'%s\' finished on shader %u.\n", kernel->get_uid(),
-                kernel->name().c_str(), m_sid );
+              SHADER_DPRINTF(LIVENESS,
+                "GPGPU-Sim uArch: GPU detected kernel %u \'%s\' finished on shader %u.\n", kernel->get_uid(),
+                kernel->name().c_str(), m_sid);
+
               if(m_kernel == kernel)
                 m_kernel = NULL;
               m_gpu->set_kernel_done( kernel );

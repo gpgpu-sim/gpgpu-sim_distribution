@@ -32,10 +32,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <signal.h>
 #include "zlib.h"
 
 
 #include "shader.h"
+#include "shader_trace.h"
 #include "dram.h"
 #include "mem_fetch.h"
 
@@ -87,6 +89,14 @@ unsigned long long  gpu_tot_sim_cycle = 0;
 // performance counter for stalls due to congestion.
 unsigned int gpu_stall_dramfull = 0; 
 unsigned int gpu_stall_icnt2sh = 0;
+unsigned long long partiton_reqs_in_parallel = 0;
+unsigned long long partiton_reqs_in_parallel_total = 0;
+unsigned long long partiton_reqs_in_parallel_util = 0;
+unsigned long long partiton_reqs_in_parallel_util_total = 0;
+unsigned long long  gpu_sim_cycle_parition_util = 0;
+unsigned long long  gpu_tot_sim_cycle_parition_util = 0;
+unsigned long long partiton_replys_in_parallel = 0;
+unsigned long long partiton_replys_in_parallel_total = 0;
 
 /* Clock Domains */
 
@@ -223,7 +233,7 @@ void shader_core_config::reg_options(class OptionParser * opp)
                    "per-shader L1 data cache config "
                    " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_alloc>,<mshr>:<N>:<merge>,<mq> | none}",
                    "none" );
-    option_parser_register(opp, "-gpgpu_cache:dl1PreShared", OPT_CSTR, &m_L1D_config.m_config_stringPrefShared,
+    option_parser_register(opp, "-gpgpu_cache:dl1PrefShared", OPT_CSTR, &m_L1D_config.m_config_stringPrefShared,
                    "per-shader L1 data cache config "
                    " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_alloc>,<mshr>:<N>:<merge>,<mq> | none}",
                    "none" );
@@ -744,6 +754,10 @@ void gpgpu_sim::init()
     gpu_sim_insn = 0;
     last_gpu_sim_insn = 0;
     m_total_cta_launched=0;
+    partiton_reqs_in_parallel = 0;
+    partiton_replys_in_parallel = 0;
+    partiton_reqs_in_parallel_util = 0;
+    gpu_sim_cycle_parition_util = 0;
 
     reinit_clock_domains();
     set_param_gpgpu_num_shaders(m_config.num_shader());
@@ -780,8 +794,16 @@ void gpgpu_sim::update_stats() {
     gpu_tot_sim_cycle += gpu_sim_cycle;
     gpu_tot_sim_insn += gpu_sim_insn;
     gpu_tot_issued_cta += m_total_cta_launched;
+    partiton_reqs_in_parallel_total += partiton_reqs_in_parallel;
+    partiton_replys_in_parallel_total += partiton_replys_in_parallel;
+    partiton_reqs_in_parallel_util_total += partiton_reqs_in_parallel_util;
+    gpu_tot_sim_cycle_parition_util += gpu_sim_cycle_parition_util ;
 
     gpu_sim_cycle = 0;
+    partiton_reqs_in_parallel = 0;
+    partiton_replys_in_parallel = 0;
+    partiton_reqs_in_parallel_util = 0;
+    gpu_sim_cycle_parition_util = 0;
     gpu_sim_insn = 0;
     m_total_cta_launched = 0;
 }
@@ -964,6 +986,21 @@ void gpgpu_sim::gpu_print_stat()
    // performance counter for stalls due to congestion.
    printf("gpu_stall_dramfull = %d\n", gpu_stall_dramfull);
    printf("gpu_stall_icnt2sh    = %d\n", gpu_stall_icnt2sh );
+
+   printf("partiton_reqs_in_parallel = %lld\n", partiton_reqs_in_parallel);
+   printf("partiton_reqs_in_parallel_total    = %lld\n", partiton_reqs_in_parallel_total );
+   printf("partiton_level_parallism = %12.4f\n", (float)partiton_reqs_in_parallel / gpu_sim_cycle);
+   printf("partiton_level_parallism_total  = %12.4f\n", (float)(partiton_reqs_in_parallel+partiton_reqs_in_parallel_total) / (gpu_tot_sim_cycle+gpu_sim_cycle) );
+   printf("partiton_reqs_in_parallel_util = %lld\n", partiton_reqs_in_parallel_util);
+   printf("partiton_reqs_in_parallel_util_total    = %lld\n", partiton_reqs_in_parallel_util_total );
+   printf("gpu_sim_cycle_parition_util = %lld\n", gpu_sim_cycle_parition_util);
+   printf("gpu_tot_sim_cycle_parition_util    = %lld\n", gpu_tot_sim_cycle_parition_util );
+   printf("partiton_level_parallism_util = %12.4f\n", (float)partiton_reqs_in_parallel_util / gpu_sim_cycle_parition_util);
+   printf("partiton_level_parallism_util_total  = %12.4f\n", (float)(partiton_reqs_in_parallel_util+partiton_reqs_in_parallel_util_total) / (gpu_sim_cycle_parition_util+gpu_tot_sim_cycle_parition_util) );
+   printf("partiton_replys_in_parallel = %lld\n", partiton_replys_in_parallel);
+   printf("partiton_replys_in_parallel_total    = %lld\n", partiton_replys_in_parallel_total );
+   printf("L2_BW  = %12.4f GB/Sec\n", ((float)(partiton_replys_in_parallel * 32) / (gpu_sim_cycle * m_config.icnt_period)) / 1000000000);
+   printf("L2_BW_total  = %12.4f GB/Sec\n", ((float)((partiton_replys_in_parallel+partiton_replys_in_parallel_total) * 32) / ((gpu_tot_sim_cycle+gpu_sim_cycle) * m_config.icnt_period)) / 1000000000 );
 
    time_t curr_time;
    time(&curr_time);
@@ -1175,8 +1212,8 @@ bool shader_core_ctx::occupy_shader_resource_1block(kernel_info_t & k, bool occu
        m_occupied_regs += (padded_cta_size * ((kernel_info->regs+3)&~3));
        m_occupied_ctas++;
 
-       printf("GPGPU-Sim uArch: Shader %d occupied %d threads, %d shared mem, %d registers, %d ctas\n",
-            m_sid, m_occupied_n_threads, m_occupied_shmem, m_occupied_regs, m_occupied_ctas);  
+      SHADER_DPRINTF(LIVENESS, "GPGPU-Sim uArch: Occupied %d threads, %d shared mem, %d registers, %d ctas\n",
+            m_occupied_n_threads, m_occupied_shmem, m_occupied_regs, m_occupied_ctas);  
    }
 
    return true;
@@ -1301,8 +1338,8 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
     m_n_active_cta++;
 
     shader_CTA_count_log(m_sid, 1);
-    printf("GPGPU-Sim uArch: core:%3d, cta:%2u, start_tid:%4u, end_tid:%4u, initialized @(%lld,%lld)\n", 
-        m_sid, free_cta_hw_id, start_thread, end_thread, gpu_sim_cycle, gpu_tot_sim_cycle );
+    SHADER_DPRINTF(LIVENESS, "GPGPU-Sim uArch: cta:%2u, start_tid:%4u, end_tid:%4u, initialized @(%lld,%lld)\n", 
+        free_cta_hw_id, start_thread, end_thread, gpu_sim_cycle, gpu_tot_sim_cycle );
 
 }
 
@@ -1366,6 +1403,7 @@ void gpgpu_sim::cycle()
       for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) 
          m_cluster[i]->icnt_cycle(); 
    }
+    unsigned partiton_replys_in_parallel_per_cycle = 0;
     if (clock_mask & ICNT) {
         // pop from memory controller to interconnect
         for (unsigned i=0;i<m_memory_config->m_n_mem_sub_partition;i++) {
@@ -1378,6 +1416,7 @@ void gpgpu_sim::cycle()
                     mf->set_status(IN_ICNT_TO_SHADER,gpu_sim_cycle+gpu_tot_sim_cycle);
                     ::icnt_push( m_shader_config->mem2device(i), mf->get_tpc(), mf, response_size );
                     m_memory_sub_partition[i]->pop();
+                    partiton_replys_in_parallel_per_cycle++;
                 } else {
                     gpu_stall_icnt2sh++;
                 }
@@ -1386,6 +1425,7 @@ void gpgpu_sim::cycle()
             }
         }
     }
+    partiton_replys_in_parallel += partiton_replys_in_parallel_per_cycle;
 
    if (clock_mask & DRAM) {
       for (unsigned i=0;i<m_memory_config->m_n_mem;i++){
@@ -1398,6 +1438,7 @@ void gpgpu_sim::cycle()
    }
 
    // L2 operations follow L2 clock domain
+   unsigned partiton_reqs_in_parallel_per_cycle = 0;
    if (clock_mask & L2) {
        m_power_stats->pwr_mem_stat->l2_cache_stats[CURRENT_STAT_IDX].clear();
       for (unsigned i=0;i<m_memory_config->m_n_mem_sub_partition;i++) {
@@ -1408,10 +1449,16 @@ void gpgpu_sim::cycle()
           } else {
               mem_fetch* mf = (mem_fetch*) icnt_pop( m_shader_config->mem2device(i) );
               m_memory_sub_partition[i]->push( mf, gpu_sim_cycle + gpu_tot_sim_cycle );
+              partiton_reqs_in_parallel_per_cycle++;
           }
           m_memory_sub_partition[i]->cache_cycle(gpu_sim_cycle+gpu_tot_sim_cycle);
           m_memory_sub_partition[i]->accumulate_L2cache_stats(m_power_stats->pwr_mem_stat->l2_cache_stats[CURRENT_STAT_IDX]);
        }
+   }
+   partiton_reqs_in_parallel += partiton_reqs_in_parallel_per_cycle;
+   if(partiton_reqs_in_parallel_per_cycle > 0){
+	   partiton_reqs_in_parallel_util += partiton_reqs_in_parallel_per_cycle;
+	   gpu_sim_cycle_parition_util++;
    }
 
    if (clock_mask & ICNT) {
@@ -1440,7 +1487,7 @@ void gpgpu_sim::cycle()
 
 
       if( g_single_step && ((gpu_sim_cycle+gpu_tot_sim_cycle) >= g_single_step) ) {
-          asm("int $03");
+          raise(SIGTRAP); // Debug breakpoint
       }
       gpu_sim_cycle++;
       if( g_interactive_debugger_enabled ) 
@@ -1499,7 +1546,8 @@ void gpgpu_sim::cycle()
             hrs     = elapsed_time/3600 - 24*days;
             minutes = elapsed_time/60 - 60*(hrs + 24*days);
             sec = elapsed_time - 60*(minutes + 60*(hrs + 24*days));
-            printf("GPGPU-Sim uArch: cycles simulated: %lld  inst.: %lld (ipc=%4.1f) sim_rate=%u (inst/sec) elapsed = %u:%u:%02u:%02u / %s", 
+
+            DPRINTF(LIVENESS, "GPGPU-Sim uArch: cycles simulated: %lld  inst.: %lld (ipc=%4.1f) sim_rate=%u (inst/sec) elapsed = %u:%u:%02u:%02u / %s", 
                    gpu_tot_sim_cycle + gpu_sim_cycle, gpu_tot_sim_insn + gpu_sim_insn, 
                    (double)gpu_sim_insn/(double)gpu_sim_cycle,
                    (unsigned)((gpu_tot_sim_insn+gpu_sim_insn) / elapsed_time),
