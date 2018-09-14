@@ -3363,7 +3363,7 @@ void vp_ld_impl(const ptx_instruction *pI, core_t *core, warp_inst_t &inst)
 			else if(wmma_layout==COL){
 				//mem->read(new_addr+4*stride*i,size/8,&data[i].s64);
 				mem->read(new_addr+4*stride*i,size/8,&data[i].s64);
-				mem_txn_addr[num_mem_txn++]=new_addr+4*i;			
+				mem_txn_addr[num_mem_txn++]=new_addr+4*stride*i;			
 			}
 		}
 	}
@@ -3410,7 +3410,13 @@ void vp_ld_impl(const ptx_instruction *pI, core_t *core, warp_inst_t &inst)
    	inst.set_addr(thrd, (new_addr_type *)mem_txn_addr , num_mem_txn);
    	inst.data_size = 4; // 4 byte transaction 
    	assert( inst.memory_op == insn_memory_op );
-
+	printf("\nVPLOAD_THREAD%d:",thrd);
+	for(int lll=0;lll<num_mem_txn;lll++)
+	{
+		printf("%x ",mem_txn_addr[lll]);
+	}
+	printf("\n");
+	
 	int num_reg;
 	if(g_debug_instruction){
 		printf("\nvp_ld:thread%d= ",thrd);

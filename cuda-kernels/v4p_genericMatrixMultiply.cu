@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <curand.h>
+#include<stdlib.h>
 
 // Define some error checking macros.
 #define cudaErrCheck(stat) { cudaErrCheck_((stat), __FILE__, __LINE__); }
@@ -20,9 +21,9 @@ void curandErrCheck_(curandStatus_t stat, const char *file, int line) {
 using namespace nvcuda;
 
 // Must be multiples of 16 for wmma code to work
-#define MATRIX_M (32)
-#define MATRIX_N (32)
-#define MATRIX_K (32)
+#define MATRIX_M (SIZE)
+#define MATRIX_N (SIZE)
+#define MATRIX_K (SIZE)
 
 
 // The only dimensions currently supported by WMMA
@@ -83,7 +84,7 @@ __global__ void vp_example(int *a, int *b, int *c, int M, int N, int K ) {
 	asm("CPTX_BEGIN");
 	asm("vp.load.b4.sync.row.m16n16k16.s32 {%0},[%1],%2;" : 
 	"=r"(b_frag[0]):
-	"l"(b+bRow*ldb/8+bCol),"r"(ldb/8)
+	"l"(b+bRow*ldb/8+bCol/8),"r"(ldb)
 	);
 	asm("CPTX_END");
 	asm("*/");
@@ -118,7 +119,7 @@ __global__ void vp_example(int *a, int *b, int *c, int M, int N, int K ) {
 	asm("vp.load.c.sync.row.m16n16k16.s32 {%0,%1,%2,%3,%4,%5,%6,%7},[%8],%9;" : 
 	"=r"(c_frag[0]), "=r"(c_frag[1]),"=r"(c_frag[2]),"=r"(c_frag[3]),
 	"=r"(c_frag[4]),"=r"(c_frag[5]),"=r"(c_frag[6]),"=r"(c_frag[7]):
-	"l"(c+cRow*ldc),"r"(ldc)
+	"l"(c+cRow*ldc+cCol),"r"(ldc)
 	);
 	asm("CPTX_END");
 	asm("*/");
@@ -223,7 +224,8 @@ int main(int argc, char* argv[]) {
    cudaEvent_t startWMMA;
    cudaEvent_t stopWMMA;
    
-   
+  
+   srand (time(NULL));
    cudaErrCheck(cudaEventCreate(&startWMMA));
    cudaErrCheck(cudaEventCreate(&stopWMMA));
    
@@ -249,7 +251,8 @@ int main(int argc, char* argv[]) {
    printf("a_int32\n");
    for(int m=0;m<MATRIX_M;m++){
 	for(int n=0;n<MATRIX_K;n++){
-		a_host_wmma[m*MATRIX_K+n]=(m*MATRIX_K+n)%1024;
+		a_host_wmma[m*MATRIX_K+n]= random()%4;
+		//a_host_wmma[m*MATRIX_K+n]=m*MATRIX_K+n; 
 		printf("%d ",a_host_wmma[m*MATRIX_K+n]);
 	}
 	printf(";\n");
@@ -258,7 +261,7 @@ int main(int argc, char* argv[]) {
    printf("b_int32\n");
    for(int m=0;m<MATRIX_K;m++){
 	for(int n=0;n<MATRIX_N;n++){
-		b_host_wmma[m*MATRIX_N+n]=(m*MATRIX_N+n)%4;
+		b_host_wmma[m*MATRIX_N+n]=random()%2;
 		printf("%d ",b_host_wmma[m*MATRIX_N+n]);
 	}
 		printf(";\n");
@@ -267,7 +270,7 @@ int main(int argc, char* argv[]) {
    printf("c_int32\n");
    for(int m=0;m<MATRIX_M;m++){
 	for(int n=0;n<MATRIX_N;n++){
-		c_host_wmma[m*MATRIX_N+n]=(m*MATRIX_N+n)%4;
+		c_host_wmma[m*MATRIX_N+n]= random()%64;
 		d_cal_host_wmma[m*MATRIX_N+n]=0;
 		printf("%d ",c_host_wmma[m*MATRIX_N+n]);
 	}
@@ -335,7 +338,7 @@ int main(int argc, char* argv[]) {
    cudaErrCheck(cudaEventDestroy(startWMMA));
    cudaErrCheck(cudaEventDestroy(stopWMMA));
 
-   int t=200000;
+   int t=1000000;
    while(t-->0);
    printf("D_CALCULATED\n");
 

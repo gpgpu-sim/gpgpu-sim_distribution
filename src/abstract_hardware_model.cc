@@ -389,7 +389,8 @@ void warp_inst_t::memory_coalescing_arch_13( bool is_write, mem_access_type acce
 
             assert(num_accesses <= MAX_ACCESSES_PER_INSN_PER_THREAD);
 
-            for(unsigned access=0; access<num_accesses; access++) {
+//            for(unsigned access=0; access<num_accesses; access++) {
+            for(unsigned access=0; (access<MAX_ACCESSES_PER_INSN_PER_THREAD)&&(m_per_scalar_thread[thread].memreqaddr[access]!=0); access++) {
                 new_addr_type addr = m_per_scalar_thread[thread].memreqaddr[access];
                 unsigned block_address = line_size_based_tag_func(addr,segment_size);
                 unsigned chunk = (addr&127)/32; // which 32-byte chunk within in a 128-byte chunk does this thread access?
