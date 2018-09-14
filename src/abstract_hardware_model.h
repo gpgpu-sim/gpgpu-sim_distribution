@@ -383,7 +383,7 @@ protected:
     std::deque<simt_stack_entry> m_stack;
 };
 
-#define GLOBAL_HEAP_START 0x703E20000
+#define GLOBAL_HEAP_START 0xC0000000
    // start allocating from this address (lower values used for allocating globals in .ptx file)
 #define SHARED_MEM_SIZE_MAX (64*1024)
 #define LOCAL_MEM_SIZE_MAX (8*1024)
