@@ -1,0 +1,55 @@
+#!/bin/bash
+nvcc --gpu-architecture=compute_70 --gpu-code=compute_70 -lcudart -g -o vp4_16   v4p_genericMatrixMultiply.cu   -DSIZE=16
+nvcc --gpu-architecture=compute_70 --gpu-code=compute_70 -lcudart -g -o vp4_32   v4p_genericMatrixMultiply.cu   -DSIZE=32
+nvcc --gpu-architecture=compute_70 --gpu-code=compute_70 -lcudart -g -o vp4_64   v4p_genericMatrixMultiply.cu   -DSIZE=64
+nvcc --gpu-architecture=compute_70 --gpu-code=compute_70 -lcudart -g -o vp4_128  v4p_genericMatrixMultiply.cu   -DSIZE=128
+nvcc --gpu-architecture=compute_70 --gpu-code=compute_70 -lcudart -g -o vp4_256  v4p_genericMatrixMultiply.cu   -DSIZE=256
+./vp4_16>vp4_log16
+./vp4_32>vp4_log32
+./vp4_64>vp4_log64
+./vp4_128>vp4_log128
+./vp4_256>vp4_log256
+
+grep "kernel_name.*vp_example" -A 589 vp4_log16   >vp4_16_summary
+grep "kernel_name.*vp_example" -A 589 vp4_log32   >vp4_32_summary
+grep "kernel_name.*vp_example" -A 589 vp4_log64   >vp4_64_summary
+grep "kernel_name.*vp_example" -A 589 vp4_log128  >vp4_128_summary
+grep "kernel_name.*vp_example" -A 589 vp4_log256  >vp4_256_summary
+
+
+nvcc --gpu-architecture=compute_70 --gpu-code=compute_70 -lcudart -g -o vp8_16   v8p_genericMatrixMultiply.cu   -DSIZE=16
+nvcc --gpu-architecture=compute_70 --gpu-code=compute_70 -lcudart -g -o vp8_32   v8p_genericMatrixMultiply.cu   -DSIZE=32
+nvcc --gpu-architecture=compute_70 --gpu-code=compute_70 -lcudart -g -o vp8_64   v8p_genericMatrixMultiply.cu   -DSIZE=64
+nvcc --gpu-architecture=compute_70 --gpu-code=compute_70 -lcudart -g -o vp8_128  v8p_genericMatrixMultiply.cu   -DSIZE=128
+nvcc --gpu-architecture=compute_70 --gpu-code=compute_70 -lcudart -g -o vp8_256  v8p_genericMatrixMultiply.cu   -DSIZE=256
+./vp8_16 >vp8_log16
+./vp8_32 >vp8_log32
+./vp8_64 >vp8_log64
+./vp8_128>vp8_log128
+./vp8_256>vp8_log256
+
+grep "kernel_name.*vp_example" -A 589 vp8_log16   >vp8_16_summary
+grep "kernel_name.*vp_example" -A 589 vp8_log32   >vp8_32_summary
+grep "kernel_name.*vp_example" -A 589 vp8_log64   >vp8_64_summary
+grep "kernel_name.*vp_example" -A 589 vp8_log128  >vp8_128_summary
+grep "kernel_name.*vp_example" -A 589 vp8_log256  >vp8_256_summary
+
+nvcc --gpu-architecture=compute_70 --gpu-code=compute_70 -lcudart -g -o vp16_16  v16p_genericMatrixMultiply.cu   -DSIZE=16
+nvcc --gpu-architecture=compute_70 --gpu-code=compute_70 -lcudart -g -o vp16_32  v16p_genericMatrixMultiply.cu   -DSIZE=32
+nvcc --gpu-architecture=compute_70 --gpu-code=compute_70 -lcudart -g -o vp16_64  v16p_genericMatrixMultiply.cu   -DSIZE=64
+nvcc --gpu-architecture=compute_70 --gpu-code=compute_70 -lcudart -g -o vp16_128  v16p_genericMatrixMultiply.cu   -DSIZE=128
+nvcc --gpu-architecture=compute_70 --gpu-code=compute_70 -lcudart -g -o vp16_256  v16p_genericMatrixMultiply.cu   -DSIZE=256
+./vp16_16>vp16_log16
+./vp16_32>vp16_log32
+./vp16_64>vp16_log64
+./vp16_128>vp16_log128
+./vp16_256>vp16_log256
+
+grep "kernel_name.*vp_example" -A 589 vp16_log16   >vp16_16_summary
+grep "kernel_name.*vp_example" -A 589 vp16_log32   >vp16_32_summary
+grep "kernel_name.*vp_example" -A 589 vp16_log64   >vp16_64_summary
+grep "kernel_name.*vp_example" -A 589 vp16_log128  >vp16_128_summary
+grep "kernel_name.*vp_example" -A 589 vp16_log256  >vp16_256_summary
+
+mv vp* VPlog/
+make clean
