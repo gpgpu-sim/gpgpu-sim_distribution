@@ -46,6 +46,7 @@ std::string traffic_breakdown::classify_memfetch(class mem_fetch * mf)
       break; 
    default: assert(0 && "Unknown traffic type"); 
    }
+   printf("%s:Icnt:%s:Request: %x,Size%d,DataSize:%d,CntrlSize%d:\n",m_network_name.c_str(),traffic_name.c_str(),mf->get_addr(),mf->size(),mf->get_data_size(),mf->get_ctrl_size());
    return traffic_name; 
 }
 

@@ -933,7 +933,18 @@ public:
         for(unsigned i=0; i<num_addrs; i++)
             m_per_scalar_thread[n].memreqaddr[i] = addr[i];
     }
-
+    void print_m_accessq(){
+    		
+		if(accessq_empty())
+			return;
+		else{
+			printf("Printing mem access generated\n");
+			std::list<mem_access_t>::iterator it;	
+			for (it = m_accessq.begin(); it != m_accessq.end(); ++it){
+   				 printf("MEM_TXN_GEN:%s:%x, Size:%d \n",mem_access_type_str(it->get_type()), it->get_addr(),it->get_size());
+			}	
+		}
+    }   
     struct transaction_info {
         std::bitset<4> chunks; // bitmask: 32-byte chunks accessed
         mem_access_byte_mask_t bytes;

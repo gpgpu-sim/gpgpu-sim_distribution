@@ -3354,31 +3354,41 @@ void vp_ld_impl(const ptx_instruction *pI, core_t *core, warp_inst_t &inst)
 		printf("vp_ld: thrx=%d,addr=%x, base_addr=%x, size=%d, stride=%d\n",thrd,new_addr,addr,size,src2_data.u32);
 
 	if(wmma_type==LOAD_A||wmma_type==LOAD_C){
+			printf("lda/c:");
 		for(i=0;i<8;i++){
 			if(wmma_layout==ROW){
 				//mem->read(new_addr+4*i,size/8,&data[i].s64);
 				mem->read(new_addr+4*i,size/8,&data[i].s64);
+				printf("%x ", new_addr+4*i);
 				mem_txn_addr[num_mem_txn++]=new_addr+4*i;			
 			}
 			else if(wmma_layout==COL){
 				//mem->read(new_addr+4*stride*i,size/8,&data[i].s64);
+				printf("%x ", new_addr+4*stride*i);
 				mem->read(new_addr+4*stride*i,size/8,&data[i].s64);
 				mem_txn_addr[num_mem_txn++]=new_addr+4*stride*i;			
 			}
 		}
+	
 	}
+	
 	else if(wmma_type==LOAD_B4){
+			printf("ldb4:");
 			if(wmma_layout==ROW){
 				mem->read(new_addr,size/8,&data[0].s64);
+				printf("%x ",new_addr);
 				mem_txn_addr[num_mem_txn++]=new_addr;			
 			}
 			else if(wmma_layout==COL){
 			}
 	}
 	else if(wmma_type==LOAD_B8){
+			printf("ldb8:");
 			if(wmma_layout==ROW){
 				mem->read(new_addr,size/8,&data[0].s64);
 				mem->read(new_addr+4,size/8,&data[1].s64);
+				printf("%x ",new_addr,new_addr+4);
+			
 				mem_txn_addr[num_mem_txn++]=new_addr;			
 				mem_txn_addr[num_mem_txn++]=new_addr+4;			
 			}
@@ -3387,12 +3397,13 @@ void vp_ld_impl(const ptx_instruction *pI, core_t *core, warp_inst_t &inst)
 			}
 	}
 	else if(wmma_type==LOAD_B16){
-			printf("LOADB16_MODE");
+			printf("ldb16:");
 			if(wmma_layout==ROW){
 				mem->read(new_addr,size/8,&data[0].s64);
 				mem->read(new_addr+4,size/8,&data[1].s64);
 				mem->read(new_addr+8,size/8,&data[2].s64);
 				mem->read(new_addr+12,size/8,&data[3].s64);
+				printf("%x ",new_addr,new_addr+4,new_addr+8,new_addr+12);
 				mem_txn_addr[num_mem_txn++]=new_addr;			
 				mem_txn_addr[num_mem_txn++]=new_addr+4;			
 				mem_txn_addr[num_mem_txn++]=new_addr+8;			
@@ -3405,6 +3416,8 @@ void vp_ld_impl(const ptx_instruction *pI, core_t *core, warp_inst_t &inst)
 		printf("wrong vp_load type\n");;
 		abort();
 	}
+	printf("\n");
+
 	//generate timing memory request
    	inst.space = space;
    	inst.set_addr(thrd, (new_addr_type *)mem_txn_addr , num_mem_txn);

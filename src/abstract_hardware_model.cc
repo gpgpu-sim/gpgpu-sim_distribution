@@ -352,6 +352,7 @@ void warp_inst_t::generate_mem_accesses()
         ptx_file_line_stats_add_uncoalesced_gmem( pc, m_accessq.size() - starting_queue_size );
     }
     m_mem_accesses_created=true;
+    print_m_accessq();
 }
 
 void warp_inst_t::memory_coalescing_arch_13( bool is_write, mem_access_type access_type )
