@@ -1211,6 +1211,7 @@ ptx_instruction::ptx_instruction( int opcode,
 	  case EXTP_OPTION:
 		 break;
 	  case NC_OPTION:
+		 m_cache_option = last_ptx_inst_option;
 		 break;
 	  case UP_OPTION:
 	  case DOWN_OPTION:
