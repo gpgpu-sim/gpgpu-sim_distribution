@@ -1321,10 +1321,16 @@ void ldst_unit::get_L1T_sub_stats(struct cache_sub_stats &css) const{
 
 void shader_core_ctx::warp_inst_complete(const warp_inst_t &inst)
 {
-   #if 0
-      printf("[warp_inst_complete] uid=%u core=%u warp=%u pc=%#x @ time=%llu issued@%llu\n", 
-             inst.get_uid(), m_sid, inst.warp_id(), inst.pc, gpu_tot_sim_cycle + gpu_sim_cycle, inst.get_issue_cycle()); 
-   #endif
+   //#if 0
+      //printf("[warp_inst_complete] uid=%u core=%u warp=%u pc=%#x @ time=%llu issued@%llu\n", 
+      //const ptx_instruction *pI = m_func_info->get_instruction(inst.pc);
+      printf("[warp_inst_complete] uid=%u core=%u warp=%u pc=%d @ time=%llu \n", 
+             inst.get_uid(), m_sid, inst.warp_id(), inst.pc, gpu_sim_cycle);
+	//printf("^instruction:%s",(pI->m_source).c_str()); 
+             //inst.get_uid(), m_sid, inst.warp_id(), inst.pc, gpu_tot_sim_cycle + gpu_sim_cycle, inst.get_issue_cycle()); 
+   //#endif
+
+
   if(inst.op_pipe==SP__OP)
 	  m_stats->m_num_sp_committed[m_sid]++;
   else if(inst.op_pipe==SFU__OP)
@@ -1510,7 +1516,6 @@ bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_rea
        if (m_core->get_config()->gmem_skip_L1D) 
            bypassL1D = true; 
    }
-
    if( bypassL1D ) {
        // bypass L1 cache
        unsigned control_size = inst.is_store() ? WRITE_PACKET_SIZE : READ_PACKET_SIZE;
@@ -3472,6 +3477,7 @@ void simt_core_cluster::icnt_inject_request_packet(class mem_fetch *mf)
     case CONST_ACC_R: m_stats->gpgpu_n_mem_const++; break;
     case TEXTURE_ACC_R: m_stats->gpgpu_n_mem_texture++; break;
     case GLOBAL_ACC_R: m_stats->gpgpu_n_mem_read_global++; break;
+    //case GLOBAL_ACC_R: m_stats->gpgpu_n_mem_read_global++; printf("read_global%d\n",m_stats->gpgpu_n_mem_read_global); break;
     case GLOBAL_ACC_W: m_stats->gpgpu_n_mem_write_global++; break;
     case LOCAL_ACC_R: m_stats->gpgpu_n_mem_read_local++; break;
     case LOCAL_ACC_W: m_stats->gpgpu_n_mem_write_local++; break;

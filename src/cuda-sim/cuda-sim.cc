@@ -809,7 +809,7 @@ void ptx_instruction::set_opcode_and_latency()
            }
 	   if(get_wmma_type()==VP_MMA8)
            {
-	   latency = 128;
+	   latency =128;
 	   initiation_interval = 128;
            }
 	   if(get_wmma_type()==VP_MMA16)
@@ -1295,12 +1295,14 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
    addr_t pc = next_instr();
    assert( pc == inst.pc ); // make sure timing model and functional model are in sync
    const ptx_instruction *pI = m_func_info->get_instruction(pc);
-   #if 0
+   //#if 0
    if(lane_id==0){
+   	//printf("EXECUTION_FLOW:LINE_NUM:%d\n",pI->source_line());
    	printf("EXECUTION_FLOW:LINE_NUM:%d\n",pI->source_line());
    	printf("EXECUTION_FLOW:INST:%s\n",pI->get_source());
+   	printf("EXECUTION_FLOW:PC%d\n",pc);
    }
-   #endif
+   //#endif
    
    set_npc( pc + pI->inst_size() );
    

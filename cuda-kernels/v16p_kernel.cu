@@ -31,7 +31,7 @@ const int WMMA_M = 16;
 const int WMMA_N = 16;
 const int WMMA_K = 16;
 
-__global__ void v4p_example(int *a_int32, int *b_int4, int *c,int *d_int32, int M, int N, int K) {
+__global__ void v16p_example(int *a_int32, int *b_int4, int *c,int *d_int32, int M, int N, int K) {
 	
 	int registers_a[8];
 	int registers_b[8];
@@ -294,7 +294,7 @@ int main(int argc, char* argv[]) {
 //AAMIR   
 //AAMIR   printf("Running with wmma...\n");
    cudaErrCheck(cudaEventRecord(startWMMA));
-   v4p_example <<< 1, 32>>> (a_int32, b_int16, c_int32, d_int32, MATRIX_M, MATRIX_N, MATRIX_K);
+   v16p_example <<< 1, 32>>> (a_int32, b_int16, c_int32, d_int32, MATRIX_M, MATRIX_N, MATRIX_K);
    cudaErrCheck(cudaEventRecord(stopWMMA));
    cudaErrCheck(cudaEventSynchronize(stopWMMA));
 

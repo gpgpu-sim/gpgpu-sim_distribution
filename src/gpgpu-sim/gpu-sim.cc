@@ -1469,7 +1469,9 @@ void gpgpu_sim::cycle()
       if( g_single_step && ((gpu_sim_cycle+gpu_tot_sim_cycle) >= g_single_step) ) {
           asm("int $03");
       }
-      gpu_sim_cycle++;
+	printf("gpu_sim_cycle=%d\n",gpu_sim_cycle);
+	 gpu_sim_cycle++;
+	
       if( g_interactive_debugger_enabled ) 
          gpgpu_debug();
 

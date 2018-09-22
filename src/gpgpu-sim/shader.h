@@ -1328,7 +1328,7 @@ struct shader_core_config : public core_config
         gpgpu_operand_collector_num_in_ports_tensor_core=8;
         gpgpu_operand_collector_num_out_ports_tensor_core=8;
         
-	max_vp_core_latency = 64;
+	max_vp_core_latency = 512;
         gpgpu_num_vp_core_units=8;
         gpgpu_operand_collector_num_units_vp_core=24;
         gpgpu_operand_collector_num_in_ports_vp_core=8;

@@ -40,9 +40,9 @@ void cudaErrCheck_(cudaError_t stat, const char *file, int line) {
 using namespace nvcuda;
 
 // Must be multiples of 16 for wmma code to work
-#define MATRIX_M (32)
-#define MATRIX_N (32)
-#define MATRIX_K (32)
+#define MATRIX_M (64)
+#define MATRIX_N (64)
+#define MATRIX_K (64)
 
 
 
