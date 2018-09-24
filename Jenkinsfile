@@ -84,20 +84,14 @@ pipeline {
             steps {
                     sh 'rm -rf gpgpu-sim-results-repo'
                     sh 'git clone git@github.com:purdue-aalp/gpgpu-sim-results-repo.git'
-
-                    # Merge previous mainline with this new result on a per-app basis and plot everything
                     sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/jenkins/AALP/gpgpu-sim_distribution/dev-purdue-integration/stats-per-app-4.2.csv,./stats-per-app-4.2.csv -R > per-app-merge-4.2.csv'
                     sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/jenkins/AALP/gpgpu-sim_distribution/dev-purdue-integration/stats-per-app-9.1.csv,./stats-per-app-9.1.csv -R > per-app-merge-9.1.csv'
                     sh './gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c per-app-merge-4.2.csv -p tgrogers@dynamo.ecn.purdue.edu:~/website/gpgpu-sim-plots/$PLOTDIR/deltas -w https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR -n $PLOTDIR/deltas'
                     sh './gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c per-app-merge-9.1.csv -p tgrogers@dynamo.ecn.purdue.edu:~/website/gpgpu-sim-plots/$PLOTDIR/deltas -w https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/deltas -n $PLOTDIR/deltas'
-
-                    # Merge previous mailine with this new result on a per-kernel basis and correlate.
                     sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/jenkins/AALP/gpgpu-sim_distribution/dev-purdue-integration/stats-per-kernel-4.2.csv,./stats-per-kernel-4.2.csv -R > per-kernel-merge-4.2.csv'
                     sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/jenkins/AALP/gpgpu-sim_distribution/dev-purdue-integration/stats-per-kernel-9.1.csv,./stats-per-kernel-9.1.csv -R > per-kernel-merge-9.1.csv'
                     sh ' ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh per-kernel-merge-4.2.csv $PLOTDIR ${BUILD_NUMBER} &&\
                          ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh per-kernel-merge-9.1.csv $PLOTDIR ${BUILD_NUMBER}'
-
-
                     sh 'mkdir -p ./jenkins/quick-regress/${JOB_NAME}/ && cp stats-per-*.csv ./jenkins/quick-regress/${JOB_NAME}/'
                     sh 'cd ./gpgpu-sim-results-repo &&\
                         git add ./jenkins/quick-regress/${JOB_NAME}/* &&\
