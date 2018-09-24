@@ -58,7 +58,7 @@ pipeline {
                     ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -B rodinia_2.0-ft,sdk-4.2 -C TITANX,TITANX-L1ON,P100,TITANV -N regress-$$ && \
                     PLOTDIR="jenkins/${JOB_NAME}/${BUILD_NUMBER}/9.1-rodinia" && ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p /home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR && \
                     ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v  -s stats-per-app-9.1.csv -N regress-$$ && \
-                    ../gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c stats-per-app-9.1.csv -p tgrogers@dynamo.ecn.purdue.edu:~/website/gpgpu-sim-plots/$PLOTDIR -w https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR -n $PLOTDIR'
+                    ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c stats-per-app-9.1.csv -p tgrogers@dynamo.ecn.purdue.edu:~/website/gpgpu-sim-plots/$PLOTDIR -w https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR -n $PLOTDIR'
                 }
             }
         }
