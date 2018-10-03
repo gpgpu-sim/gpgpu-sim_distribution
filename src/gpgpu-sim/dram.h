@@ -93,6 +93,17 @@ struct bank_t
    unsigned int bkgrpindex;
 };
 
+enum bank_index_function{
+	LINEAR_BK_INDEX = 0,
+	BITWISE_XORING_BK_INDEX,
+    CUSTOM_BK_INDEX
+};
+
+enum bank_grp_bits_position{
+	HIGHER_BITS = 0,
+	LOWER_BITS
+};
+
 struct mem_fetch;
 
 class dram_t 

@@ -355,15 +355,18 @@ struct sector_cache_block : public cache_block_t {
 
 		return m_status[sidx];
 	}
+
     virtual void set_status(enum cache_block_state status, mem_access_sector_mask_t sector_mask)
 	{
 		unsigned sidx = get_sector_index(sector_mask);
 		m_status[sidx] = status;
 	}
+
     virtual unsigned get_last_access_time()
 	{
 		return m_line_last_access_time;
 	}
+
     virtual void set_last_access_time(unsigned time, mem_access_sector_mask_t sector_mask)
 	{
 		unsigned sidx = get_sector_index(sector_mask);
@@ -371,25 +374,30 @@ struct sector_cache_block : public cache_block_t {
 		m_last_sector_access_time[sidx] = time;
 		m_line_last_access_time = time;
 	}
+
     virtual unsigned get_alloc_time()
 	{
 		return m_line_alloc_time;
 	}
+
     virtual void set_ignore_on_fill(bool m_ignore, mem_access_sector_mask_t sector_mask)
 	{
 		unsigned sidx = get_sector_index(sector_mask);
 		m_ignore_on_fill_status[sidx] = m_ignore;
 	}
+
     virtual void set_modified_on_fill(bool m_modified, mem_access_sector_mask_t sector_mask)
 	{
 		unsigned sidx = get_sector_index(sector_mask);
 		m_set_modified_on_fill[sidx] = m_modified;
 	}
+
     virtual void set_m_readable(bool readable, mem_access_sector_mask_t sector_mask)
     {
     	unsigned sidx = get_sector_index(sector_mask);
     	m_readable[sidx] = readable;
     }
+
     virtual bool is_readable(mem_access_sector_mask_t sector_mask) {
     	unsigned sidx = get_sector_index(sector_mask);
     	return m_readable[sidx];
@@ -447,25 +455,30 @@ enum write_policy_t {
 
 enum allocation_policy_t {
     ON_MISS,
-    ON_FILL
+    ON_FILL,
+	STREAMING
 };
 
 
 enum write_allocate_policy_t {
 	NO_WRITE_ALLOCATE,
 	WRITE_ALLOCATE,
-	FETCH_ON_WRITE
+	FETCH_ON_WRITE,
+	LAZY_FETCH_ON_READ
 };
 
 enum mshr_config_t {
-    TEX_FIFO,
+    TEX_FIFO, // Tex cache
     ASSOC, // normal cache
+	SECTOR_TEX_FIFO,  //Tex cache sends requests to high-level sector cache
 	SECTOR_ASSOC // normal cache sends requests to high-level sector cache
 };
 
 enum set_index_function{
-    FERMI_HASH_SET_FUNCTION = 0,
-    LINEAR_SET_FUNCTION,
+	LINEAR_SET_FUNCTION = 0,
+	BITWISE_XORING_FUNCTION,
+	HASH_IPOLY_FUNCTION,
+	FERMI_HASH_SET_FUNCTION,
     CUSTOM_SET_FUNCTION
 };
 
@@ -473,6 +486,12 @@ enum cache_type{
     NORMAL = 0,
     SECTOR
 };
+
+#define MAX_WARP_PER_SHADER 64
+#define INCT_TOTAL_BUFFER 64
+#define L2_TOTAL 64
+#define MAX_WARP_PER_SHADER 64
+#define MAX_WARP_PER_SHADER 64
 
 class cache_config {
 public:
@@ -533,10 +552,27 @@ public:
         switch (ap) {
         case 'm': m_alloc_policy = ON_MISS; break;
         case 'f': m_alloc_policy = ON_FILL; break;
+        case 's': m_alloc_policy = STREAMING; break;
         default: exit_parse_error();
+        }
+        if(m_alloc_policy == STREAMING) {
+        	//For streaming cache, we set the alloc policy to be on-fill to remove all line_alloc_fail stalls
+        	//we set the MSHRs to be equal to the cache line. This is possible by moving TAG to be shared between cache line and MSHR enrty (i.e. for each cache line, there is an MSHR rntey associated with it)
+        	// This is the easiest think we can think about to model (mimics) L1 streaming cache in Pascal and Volta
+        	//Based on our microbenchmakrs, MSHRs entries have been increasing substantially in Pascal and Volta
+        	//For more information about streaming cache, see:
+        	// http://on-demand.gputechconf.com/gtc/2017/presentation/s7798-luke-durant-inside-volta.pdf
+        	// https://ieeexplore.ieee.org/document/8344474/
+
+			m_alloc_policy = ON_FILL;
+			m_mshr_entries = m_nset*m_assoc;
+			if(m_cache_type == SECTOR)
+				m_mshr_entries *=  SECTOR_CHUNCK_SIZE;
+			m_mshr_max_merge = MAX_WARP_PER_SM;
         }
         switch (mshr_type) {
         case 'F': m_mshr_type = TEX_FIFO; assert(ntok==14); break;
+        case 'T': m_mshr_type = SECTOR_TEX_FIFO; assert(ntok==14); break;
         case 'A': m_mshr_type = ASSOC; break;
         case 'S' : m_mshr_type = SECTOR_ASSOC; break;
         default: exit_parse_error();
@@ -553,6 +589,7 @@ public:
         case 'N': m_write_alloc_policy = NO_WRITE_ALLOCATE; break;
         case 'W': m_write_alloc_policy = WRITE_ALLOCATE; break;
         case 'F': m_write_alloc_policy = FETCH_ON_WRITE; break;
+        case 'L': m_write_alloc_policy = LAZY_FETCH_ON_READ; break;
 		default: exit_parse_error();
         }
 
@@ -570,9 +607,9 @@ public:
             assert(0 && "Invalid cache configuration: Writeback cache cannot allocate new line on fill. "); 
         }
 
-        if(m_write_alloc_policy == FETCH_ON_WRITE && m_alloc_policy == ON_FILL)
+        if((m_write_alloc_policy == FETCH_ON_WRITE || m_write_alloc_policy == LAZY_FETCH_ON_READ )&& m_alloc_policy == ON_FILL)
 		{
-			assert(0 && "Invalid cache configuration: FETCH_ON_WRITE cannot work properly with ON_FILL policy. Cache must be ON_MISS. ");
+			assert(0 && "Invalid cache configuration: FETCH_ON_WRITE and LAZY_FETCH_ON_READ cannot work properly with ON_FILL policy. Cache must be ON_MISS. ");
 		}
         if(m_cache_type == SECTOR)
 		{
@@ -587,6 +624,7 @@ public:
 
         switch(sif){
         case 'H': m_set_index_function = FERMI_HASH_SET_FUNCTION; break;
+        case 'P': m_set_index_function = HASH_IPOLY_FUNCTION; break;
         case 'C': m_set_index_function = CUSTOM_SET_FUNCTION; break;
         case 'L': m_set_index_function = LINEAR_SET_FUNCTION; break;
         default: exit_parse_error();
@@ -709,6 +747,7 @@ class l1d_cache_config : public cache_config{
 public:
 	l1d_cache_config() : cache_config(){}
 	virtual unsigned set_index(new_addr_type addr) const;
+	unsigned l1_latency;
 };
 
 class l2_cache_config : public cache_config {
@@ -739,7 +778,8 @@ public:
     unsigned size() const { return m_config.get_num_lines();}
     cache_block_t* get_block(unsigned idx) { return m_lines[idx];}
 
-    void flush(); // flash invalidate all entries
+    void flush(); // flush all written entries
+    void invalidate(); // invalidate all entries
     void new_window();
 
     void print( FILE *stream, unsigned &total_access, unsigned &total_misses ) const;
@@ -991,6 +1031,7 @@ public:
     mem_fetch *next_access(){return m_mshrs.next_access();}
     // flash invalidate all entries in cache
     void flush(){m_tag_array->flush();}
+    void invalidate(){m_tag_array->invalidate();}
     void print(FILE *fp, unsigned &accesses, unsigned &misses) const;
     void display_state( FILE *fp ) const;
 
@@ -1176,6 +1217,7 @@ public:
         case NO_WRITE_ALLOCATE: m_wr_miss = &data_cache::wr_miss_no_wa; break;
 		case WRITE_ALLOCATE: m_wr_miss = &data_cache::wr_miss_wa_naive; break;
 		case FETCH_ON_WRITE: m_wr_miss = &data_cache::wr_miss_wa_fetch_on_write; break;
+		case LAZY_FETCH_ON_READ: m_wr_miss = &data_cache::wr_miss_wa_lazy_fetch_on_read; break;
         default:
             assert(0 && "Error: Must set valid cache write miss policy\n");
             break; // Need to set a write miss function
@@ -1296,7 +1338,14 @@ protected:
 							mem_fetch *mf,
 							unsigned time,
 							std::list<cache_event> &events,
-							enum cache_request_status status ); // write-allocate with read-fetch-only
+							enum cache_request_status status ); // write-allocate with fetch-on-every-write
+	enum cache_request_status
+				   wr_miss_wa_lazy_fetch_on_read( new_addr_type addr,
+								unsigned cache_index,
+								mem_fetch *mf,
+								unsigned time,
+								std::list<cache_event> &events,
+								enum cache_request_status status ); // write-allocate with read-fetch-only
 	enum cache_request_status
 				wr_miss_wa_write_validate( new_addr_type addr,
 							unsigned cache_index,
@@ -1419,7 +1468,7 @@ public:
     m_result_fifo(config.m_result_fifo_entries)
     {
         m_name = name;
-        assert(config.m_mshr_type == TEX_FIFO);
+        assert(config.m_mshr_type == TEX_FIFO || config.m_mshr_type == SECTOR_TEX_FIFO );
         assert(config.m_write_policy == READ_ONLY);
         assert(config.m_alloc_policy == ON_MISS);
         m_memport=memport;
@@ -1572,13 +1621,15 @@ private:
 
     struct extra_mf_fields {
         extra_mf_fields()  { m_valid = false;}
-        extra_mf_fields( unsigned i ) 
+        extra_mf_fields( unsigned i, const cache_config &m_config )
         {
             m_valid = true;
             m_rob_index = i;
+            pending_read = m_config.m_mshr_type == SECTOR_TEX_FIFO? m_config.m_line_sz/SECTOR_SIZE : 0;
         }
         bool m_valid;
         unsigned m_rob_index;
+        unsigned pending_read;
     };
 
     cache_stats m_stats;

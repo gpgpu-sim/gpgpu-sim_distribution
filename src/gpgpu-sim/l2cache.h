@@ -162,6 +162,7 @@ public:
    void set_done( mem_fetch *mf );
 
    unsigned flushL2();
+   unsigned invalidateL2();
 
    // interface to L2_dram_queue
    bool L2_dram_queue_empty() const; 
