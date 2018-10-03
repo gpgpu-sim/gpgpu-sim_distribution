@@ -71,10 +71,11 @@ unsigned l1d_cache_config::set_index(new_addr_type addr) const{
 
     switch(m_set_index_function){
     case FERMI_HASH_SET_FUNCTION:
+    case BITWISE_XORING_FUNCTION:
         /*
         * Set Indexing function from "A Detailed GPU Cache Model Based on Reuse Distance Theory"
         * Cedric Nugteren et al.
-        * ISCA 2014
+        * HPCA 2014
         */
         if(m_nset == 32 || m_nset == 64){
             // Lower xor value is bits 7-11
@@ -97,6 +98,36 @@ unsigned l1d_cache_config::set_index(new_addr_type addr) const{
         }
         break;
 
+    case HASH_IPOLY_FUNCTION:
+    	/*
+		* Set Indexing function from "Pseudo-randomly interleaved memory."
+		* Rau, B. R et al.
+		* ISCA 1991
+		*
+		* "Sacat: streaming-aware conflict-avoiding thrashing-resistant gpgpu cache management scheme."
+		* Khairy et al.
+		* IEEE TPDS 2017.
+    	*/
+    	if(m_nset == 32 || m_nset == 64){
+		std::bitset<64> a(addr);
+		std::bitset<6> index;
+		index[0] = a[25]^a[24]^a[23]^a[22]^a[21]^a[18]^a[17]^a[15]^a[12]^a[7]; //10
+		index[1] = a[26]^a[25]^a[24]^a[23]^a[22]^a[19]^a[18]^a[16]^a[13]^a[8]; //10
+		index[2] = a[26]^a[22]^a[21]^a[20]^a[19]^a[18]^a[15]^a[14]^a[12]^a[9]; //10
+		index[3] = a[23]^a[22]^a[21]^a[20]^a[19]^a[16]^a[15]^a[13]^a[10]; //9
+		index[4] = a[24]^a[23]^a[22]^a[21]^a[20]^a[17]^a[16]^a[14]^a[11]; //9
+
+		 if(m_nset == 64)
+			 index[5] = a[12];
+
+		set_index = index.to_ulong();
+
+    	}else{ /* Else incorrect number of sets for the hashing function */
+    	            assert("\nGPGPU-Sim cache configuration error: The number of sets should be "
+    	                    "32 or 64 for the hashing set index function.\n" && 0);
+    	 }
+        break;
+
     case CUSTOM_SET_FUNCTION:
         /* No custom set function implemented */
         break;
@@ -104,6 +135,10 @@ unsigned l1d_cache_config::set_index(new_addr_type addr) const{
     case LINEAR_SET_FUNCTION:
         set_index = (addr >> m_line_sz_log2) & (m_nset-1);
         break;
+
+    default:
+    	 assert("\nUndefined set index function.\n" && 0);
+    	 break;
     }
 
     // Linear function selected or custom set index function not implemented
@@ -348,6 +383,8 @@ void tag_array::fill( unsigned index, unsigned time, mem_fetch* mf)
     m_lines[index]->fill(time, mf->get_access_sector_mask());
 }
 
+
+//TODO: we need write back the flushed data to the upper level
 void tag_array::flush() 
 {
     for (unsigned i=0; i < m_config.get_num_lines(); i++)
@@ -355,6 +392,13 @@ void tag_array::flush()
     	for(unsigned j=0; j < SECTOR_CHUNCK_SIZE; j++)
     		m_lines[i]->set_status(INVALID, mem_access_sector_mask_t().set(j)) ;
     	}
+}
+
+void tag_array::invalidate()
+{
+    for (unsigned i=0; i < m_config.get_num_lines(); i++)
+    	for(unsigned j=0; j < SECTOR_CHUNCK_SIZE; j++)
+    		m_lines[i]->set_status(INVALID, mem_access_sector_mask_t().set(j)) ;
 }
 
 float tag_array::windowed_miss_rate( ) const
@@ -873,8 +917,8 @@ void baseline_cache::cycle(){
 void baseline_cache::fill(mem_fetch *mf, unsigned time){
 
 	if(m_config.m_mshr_type == SECTOR_ASSOC) {
-	assert(mf->original_mf);
-	extra_mf_fields_lookup::iterator e = m_extra_mf_fields.find(mf->original_mf);
+	assert(mf->get_original_mf());
+	extra_mf_fields_lookup::iterator e = m_extra_mf_fields.find(mf->get_original_mf());
     assert( e != m_extra_mf_fields.end() );
     e->second.pending_read--;
 
@@ -884,7 +928,7 @@ void baseline_cache::fill(mem_fetch *mf, unsigned time){
     	return;
       } else {
     	mem_fetch *temp = mf;
-    	mf = mf->original_mf;
+    	mf = mf->get_original_mf();
     	delete temp;
       }
 	}
@@ -1128,52 +1172,7 @@ data_cache::wr_miss_wa_fetch_on_write( new_addr_type addr,
                         unsigned time, std::list<cache_event> &events,
                         enum cache_request_status status )
 {
-
-	new_addr_type block_addr = m_config.block_addr(addr);
-	    new_addr_type mshr_addr = m_config.mshr_addr(mf->get_addr());
-
-
-			//if the request writes to the whole cache line/sector, then, write and set cache line Modified.
-			//and no need to send read request to memory or reserve mshr
-
-			if(miss_queue_full(0)) {
-				m_stats.inc_fail_stats(mf->get_access_type(), MISS_QUEUE_FULL);
-				return RESERVATION_FAIL; // cannot handle request this cycle
-			}
-
-			bool wb = false;
-			evicted_block_info evicted;
-
-			cache_request_status m_status =  m_tag_array->access(block_addr,time,cache_index,wb,evicted,mf);
-			assert(m_status != HIT);
-			cache_block_t* block = m_tag_array->get_block(cache_index);
-			block->set_status(MODIFIED, mf->get_access_sector_mask());
-			if(m_status == HIT_RESERVED) {
-				block->set_ignore_on_fill(true, mf->get_access_sector_mask());
-				block->set_modified_on_fill(true, mf->get_access_sector_mask());
-			}
-
-			if(mf->get_access_byte_mask().count() == m_config.get_atom_sz())
-			{
-				block->set_m_readable(true, mf->get_access_sector_mask());
-			} else
-			{
-				block->set_m_readable(false, mf->get_access_sector_mask());
-			}
-
-			if( m_status != RESERVATION_FAIL ){
-				   // If evicted block is modified and not a write-through
-				   // (already modified lower level)
-				   if( wb && (m_config.m_write_policy != WRITE_THROUGH) ) {
-					   mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,
-						   m_wrbk_type,evicted.m_modified_size,true);
-					   send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted), time, events);
-				   }
-				   return MISS;
-			   }
-			return RESERVATION_FAIL;
-
-	/*new_addr_type block_addr = m_config.block_addr(addr);
+    new_addr_type block_addr = m_config.block_addr(addr);
     new_addr_type mshr_addr = m_config.mshr_addr(mf->get_addr());
 
 	if(mf->get_access_byte_mask().count() == m_config.get_atom_sz())
@@ -1282,7 +1281,59 @@ data_cache::wr_miss_wa_fetch_on_write( new_addr_type addr,
 				return MISS;
 			}
 	   return RESERVATION_FAIL;
-	}*/
+	}
+}
+
+enum cache_request_status
+data_cache::wr_miss_wa_lazy_fetch_on_read( new_addr_type addr,
+                        unsigned cache_index, mem_fetch *mf,
+                        unsigned time, std::list<cache_event> &events,
+                        enum cache_request_status status )
+{
+
+	    new_addr_type block_addr = m_config.block_addr(addr);
+	    new_addr_type mshr_addr = m_config.mshr_addr(mf->get_addr());
+
+
+		//if the request writes to the whole cache line/sector, then, write and set cache line Modified.
+		//and no need to send read request to memory or reserve mshr
+
+		if(miss_queue_full(0)) {
+			m_stats.inc_fail_stats(mf->get_access_type(), MISS_QUEUE_FULL);
+			return RESERVATION_FAIL; // cannot handle request this cycle
+		}
+
+		bool wb = false;
+		evicted_block_info evicted;
+
+		cache_request_status m_status =  m_tag_array->access(block_addr,time,cache_index,wb,evicted,mf);
+		assert(m_status != HIT);
+		cache_block_t* block = m_tag_array->get_block(cache_index);
+		block->set_status(MODIFIED, mf->get_access_sector_mask());
+		if(m_status == HIT_RESERVED) {
+			block->set_ignore_on_fill(true, mf->get_access_sector_mask());
+			block->set_modified_on_fill(true, mf->get_access_sector_mask());
+		}
+
+		if(mf->get_access_byte_mask().count() == m_config.get_atom_sz())
+		{
+			block->set_m_readable(true, mf->get_access_sector_mask());
+		} else
+		{
+			block->set_m_readable(false, mf->get_access_sector_mask());
+		}
+
+		if( m_status != RESERVATION_FAIL ){
+			   // If evicted block is modified and not a write-through
+			   // (already modified lower level)
+			   if( wb && (m_config.m_write_policy != WRITE_THROUGH) ) {
+				   mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,
+					   m_wrbk_type,evicted.m_modified_size,true);
+				   send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted), time, events);
+			   }
+			   return MISS;
+		   }
+		return RESERVATION_FAIL;
 }
 
 /// No write-allocate miss: Simply send write request to lower level memory
@@ -1531,7 +1582,7 @@ enum cache_request_status tex_cache::access( new_addr_type addr, mem_fetch *mf,
     if ( status == MISS ) {
         // we need to send a memory request...
         unsigned rob_index = m_rob.push( rob_entry(cache_index, mf, block_addr) );
-        m_extra_mf_fields[mf] = extra_mf_fields(rob_index);
+        m_extra_mf_fields[mf] = extra_mf_fields(rob_index, m_config);
         mf->set_data_size(m_config.get_line_sz());
         m_tags.fill(cache_index,time,mf); // mark block as valid
         m_request_fifo.push(mf);
@@ -1586,6 +1637,23 @@ void tex_cache::cycle(){
 /// Place returning cache block into reorder buffer
 void tex_cache::fill( mem_fetch *mf, unsigned time )
 {
+	if(m_config.m_mshr_type == SECTOR_TEX_FIFO) {
+	assert(mf->get_original_mf());
+	extra_mf_fields_lookup::iterator e = m_extra_mf_fields.find(mf->get_original_mf());
+    assert( e != m_extra_mf_fields.end() );
+    e->second.pending_read--;
+
+    if(e->second.pending_read > 0) {
+    	//wait for the other requests to come back
+    	delete mf;
+    	return;
+      } else {
+    	mem_fetch *temp = mf;
+    	mf = mf->get_original_mf();
+    	delete temp;
+      }
+	}
+
     extra_mf_fields_lookup::iterator e = m_extra_mf_fields.find(mf);
     assert( e != m_extra_mf_fields.end() );
     assert( e->second.m_valid );

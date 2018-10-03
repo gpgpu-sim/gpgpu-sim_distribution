@@ -199,15 +199,28 @@ dram_req_t::dram_req_t( class mem_fetch *mf, unsigned banks, unsigned dram_bnk_i
 
    const addrdec_t &tlx = mf->get_tlx_addr();
 
-   if(dram_bnk_indexing_policy == 0) {
-	   bk = tlx.bk;
-   }
-    else if(dram_bnk_indexing_policy == 1) {
-    	 int lbank = log2(banks);
-    	 bk  = tlx.bk ^ (((1<<lbank)-1) & tlx.row);
-    }
-    else
-    	assert(1);
+    switch(dram_bnk_indexing_policy){
+		case LINEAR_BK_INDEX:
+		{
+			bk = tlx.bk;
+			break;
+		}
+		case BITWISE_XORING_BK_INDEX:
+		{
+			//xoring bank bits with lower bits of the page
+			int lbank = log2(banks);
+			bk  = tlx.bk ^ (tlx.row & ((1<<lbank)-1));
+			break;
+		}
+		case CUSTOM_BK_INDEX:
+	        /* No custom set function implemented */
+			//Do you custom index here
+			break;
+		default:
+			 assert("\nUndefined bank index function.\n" && 0);
+			 break;
+	}
+
 
    row = tlx.row; 
    col = tlx.col; 
@@ -730,13 +743,15 @@ void dram_t::print( FILE* simFile) const
    printf("\nwrite_to_read_ratio_blp_rw_average = %.6f", write_to_read_ratio_blp_rw_average /banks_access_rw_total);
    printf("\nGrpLevelPara = %.6f \n", (float)bkgrp_parallsim_rw /banks_access_rw_total);
 
-   printf("\nbwutil = %.6f \n", (float)bwutil/n_cmd);
+   printf("\nBW Util details:\n");
+   printf("bwutil = %.6f \n", (float)bwutil/n_cmd);
    printf("total_CMD = %d \n", n_cmd);
    printf("util_bw = %d \n", util_bw);
    printf("Wasted_Col = %d \n", wasted_bw_col);
-   printf("Wasted_Row %d \n", wasted_bw_row);
-   printf("Idle = %d \n\n", idle_bw);
+   printf("Wasted_Row = %d \n", wasted_bw_row);
+   printf("Idle = %d \n", idle_bw);
 
+   printf("\nBW Util Bottlenecks: \n");
    printf("RCDc_limit = %d \n", RCDc_limit);
    printf("RCDWRc_limit = %d \n", RCDWRc_limit);
    printf("WTRc_limit = %d \n", WTRc_limit);
@@ -747,6 +762,7 @@ void dram_t::print( FILE* simFile) const
    printf("WTRc_limit_alone = %d \n", WTRc_limit_alone);
    printf("RTWc_limit_alone = %d \n", RTWc_limit_alone);
 
+   printf("\nCommands details: \n");
    printf("total_CMD = %d \n", n_cmd);
    printf("n_nop = %d \n", n_nop);
    printf("Read = %d \n", n_rd);
@@ -757,8 +773,9 @@ void dram_t::print( FILE* simFile) const
    printf("n_pre = %d \n", n_pre);
    printf("n_ref = %d \n", n_ref);
    printf("n_req = %d \n", n_req );
-   printf("total_req = %d \n\n", n_rd+n_wr+n_rd_L2_A+n_wr_WB);
+   printf("total_req = %d \n", n_rd+n_wr+n_rd_L2_A+n_wr_WB);
 
+   printf("\nDual Bus Interface Util: \n");
    printf("issued_total_row = %lu \n", issued_total_row);
    printf("issued_total_col = %lu \n", issued_total_col);
    printf("Row_Bus_Util =  %.6f \n", (float)issued_total_row / n_cmd);
@@ -879,10 +896,10 @@ void dram_t::set_dram_power_stats(	unsigned &cmd,
 
 unsigned dram_t::get_bankgrp_number(unsigned i)
 {
-	if(m_config->dram_bnkgrp_indexing_policy == 0) { //higher bits
+	if(m_config->dram_bnkgrp_indexing_policy == HIGHER_BITS) { //higher bits
 		return i>>m_config->bk_tag_length;
 	}
-	else if (m_config->dram_bnkgrp_indexing_policy == 1) { //lower bits
+	else if (m_config->dram_bnkgrp_indexing_policy == LOWER_BITS) { //lower bits
 		return i&((m_config->nbkgrp-1));
 	}
 	else {

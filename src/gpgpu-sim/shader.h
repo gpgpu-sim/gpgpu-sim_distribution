@@ -1155,6 +1155,7 @@ public:
      
     void fill( mem_fetch *mf );
     void flush();
+    void invalidate();
     void writeback();
 
     // accessors
@@ -1219,6 +1220,7 @@ protected:
                                                       mem_fetch *mf,
                                                       enum cache_request_status status );
    mem_stage_stall_type process_memory_access_queue( cache_t *cache, warp_inst_t &inst );
+   mem_stage_stall_type process_memory_access_queue_l1cache( l1_cache *cache, warp_inst_t &inst );
 
    const memory_config *m_memory_config;
    class mem_fetch_interface *m_icnt;
@@ -1247,6 +1249,9 @@ protected:
    // for debugging
    unsigned long long m_last_inst_gpu_sim_cycle;
    unsigned long long m_last_inst_gpu_tot_sim_cycle;
+
+   std::deque<mem_fetch* > l1_latency_queue;
+   void L1_latency_queue_cycle();
 };
 
 enum pipeline_stage_name_t {
@@ -1398,6 +1403,8 @@ struct shader_core_config : public core_config
 
     int simt_core_sim_order; 
     
+    unsigned smem_latency;
+
     unsigned mem2device(unsigned memid) const { return memid + n_simt_clusters; }
 
     //Jin: concurrent kernel on sm
@@ -1655,6 +1662,7 @@ public:
     void issue_block2core( class kernel_info_t &kernel );
 
     void cache_flush();
+    void cache_invalidate();
     void accept_fetch_response( mem_fetch *mf );
     void accept_ldst_unit_response( class mem_fetch * mf );
     void broadcast_barrier_reduction(unsigned cta_id, unsigned bar_id,warp_set_t warps);
@@ -1947,6 +1955,7 @@ public:
     void reinit();
     unsigned issue_block2core();
     void cache_flush();
+    void cache_invalidate();
     bool icnt_injection_buffer_full(unsigned size, bool write);
     void icnt_inject_request_packet(class mem_fetch *mf);
 

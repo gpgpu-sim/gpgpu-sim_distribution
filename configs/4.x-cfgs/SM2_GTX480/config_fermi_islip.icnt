@@ -1,6 +1,6 @@
 //21*1 fly with 32 flits per packet under gpgpusim injection mode
 use_map = 0;
-flit_size = 32; 
+flit_size = 40; 
 
 // currently we do not use this, see subnets below
 network_count = 2;
@@ -17,7 +17,7 @@ routing_function = dest_tag;
 // Flow control
 
 num_vcs     = 1;
-vc_buf_size = 8;
+vc_buf_size = 64;
 
 wait_for_tail_credit = 0;
 
@@ -32,9 +32,9 @@ routing_delay  = 0;
 vc_alloc_delay = 1;
 sw_alloc_delay = 1;
 
-input_speedup     = 2;
+input_speedup     = 1;
 output_speedup    = 1;
-internal_speedup  = 1.0;
+internal_speedup  = 2.0;
 
 // Traffic, GPGPU-Sim does not use this
 
