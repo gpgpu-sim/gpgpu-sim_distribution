@@ -32,9 +32,8 @@ INTEL=0
 DEBUG?=0
 TRACE?=0
 
-CPP = g++ $(SNOW)
 ifeq ($(INTEL),1)
-	CPP = icpc
+	CXX = icpc
 	CC = icc
 endif
 
@@ -78,42 +77,42 @@ depend:
 libgpgpu_ptx_sim.a: $(OBJS) 
 	ar rcs $(OUTPUT_DIR)/libgpgpu_ptx_sim.a $(OUTPUT_DIR)/ptx.tab.o $(OUTPUT_DIR)/lex.ptx_.o $(OUTPUT_DIR)/ptxinfo.tab.o $(OUTPUT_DIR)/lex.ptxinfo_.o $(OBJS)
 
-$(OUTPUT_DIR)/ptx.tab.o: $(OUTPUT_DIR)/ptx.tab.c
-	$(CPP) -c $(OPT) -DYYDEBUG $(OUTPUT_DIR)/ptx.tab.c -o $(OUTPUT_DIR)/ptx.tab.o
+$(OUTPUT_DIR)/ptx.tab.o: $(OUTPUT_DIR)/ptx.tab.cpp
+	$(CXX) -c $(OPT) -DYYDEBUG $(OUTPUT_DIR)/ptx.tab.cpp -o $(OUTPUT_DIR)/ptx.tab.o
 
-$(OUTPUT_DIR)/lex.ptx_.o: $(OUTPUT_DIR)/lex.ptx_.c 
-	$(CPP) -c $(OPT) $(OUTPUT_DIR)/lex.ptx_.c -o $(OUTPUT_DIR)/lex.ptx_.o
+$(OUTPUT_DIR)/lex.ptx_.o: $(OUTPUT_DIR)/lex.ptx_.cc 
+	$(CXX) -c $(OPT) $(OUTPUT_DIR)/lex.ptx_.cc -o $(OUTPUT_DIR)/lex.ptx_.o
 
-$(OUTPUT_DIR)/ptxinfo.tab.o: $(OUTPUT_DIR)/ptxinfo.tab.c
-	$(CPP) -c $(OPT) -DYYDEBUG $(OUTPUT_DIR)/ptxinfo.tab.c -o $(OUTPUT_DIR)/ptxinfo.tab.o
+$(OUTPUT_DIR)/ptxinfo.tab.o: $(OUTPUT_DIR)/ptxinfo.tab.cpp
+	$(CXX) -c $(OPT) -DYYDEBUG $(OUTPUT_DIR)/ptxinfo.tab.cpp -o $(OUTPUT_DIR)/ptxinfo.tab.o
 
-$(OUTPUT_DIR)/lex.ptxinfo_.o: $(OUTPUT_DIR)/lex.ptxinfo_.c $(OUTPUT_DIR)/ptxinfo.tab.c
-	$(CPP) -c $(OPT) $(OUTPUT_DIR)/lex.ptxinfo_.c -o $(OUTPUT_DIR)/lex.ptxinfo_.o
+$(OUTPUT_DIR)/lex.ptxinfo_.o: $(OUTPUT_DIR)/lex.ptxinfo_.cc $(OUTPUT_DIR)/ptxinfo.tab.cpp
+	$(CXX) -c $(OPT) $(OUTPUT_DIR)/lex.ptxinfo_.cc -o $(OUTPUT_DIR)/lex.ptxinfo_.o
 
-$(OUTPUT_DIR)/ptx.tab.c: ptx.y
-	bison --name-prefix=ptx_ -v -d ptx.y --file-prefix=$(OUTPUT_DIR)/ptx
+$(OUTPUT_DIR)/ptx.tab.cpp: ptx.ypp
+	bison --name-prefix=ptx_ -v -d ptx.ypp --file-prefix=$(OUTPUT_DIR)/ptx
 
-$(OUTPUT_DIR)/ptxinfo.tab.c: ptxinfo.y
-	bison --name-prefix=ptxinfo_ -v -d ptxinfo.y --file-prefix=$(OUTPUT_DIR)/ptxinfo
+$(OUTPUT_DIR)/ptxinfo.tab.cpp: ptxinfo.ypp
+	bison --name-prefix=ptxinfo_ -v -d ptxinfo.ypp --file-prefix=$(OUTPUT_DIR)/ptxinfo
 
-$(OUTPUT_DIR)/lex.ptx_.c: ptx.l
-	flex --outfile=$(OUTPUT_DIR)/lex.ptx_.c ptx.l 
+$(OUTPUT_DIR)/lex.ptx_.cc: ptx.l
+	flex --outfile=$(OUTPUT_DIR)/lex.ptx_.cc ptx.l 
 
-$(OUTPUT_DIR)/lex.ptxinfo_.c: ptxinfo.l
-	flex --outfile=$(OUTPUT_DIR)/lex.ptxinfo_.c ptxinfo.l 
+$(OUTPUT_DIR)/lex.ptxinfo_.cc: ptxinfo.l
+	flex --outfile=$(OUTPUT_DIR)/lex.ptxinfo_.cc ptxinfo.l 
 
 clean:
 	rm -f *~ *.o *.gcda *.gcno *.gcov libgpgpu_ptx_sim.a \
-		ptx.tab.h ptx.tab.c ptx.output lex.ptx_.c \
-		ptxinfo.tab.h ptxinfo.tab.c ptxinfo.output lex.ptxinfo_.c \
+		ptx.tab.hpp ptx.tab.cpp ptx.output lex.ptx_.cc \
+		ptxinfo.tab.hpp ptxinfo.tab.cpp ptxinfo.output lex.ptxinfo_.cc \
 		instructions.h ptx_parser_decode.def directed_tests.log 
 	rm -f $(OUTPUT_DIR)/decuda_pred_table/*.o
 	rm -f $(OUTPUT_DIR)/Makefile.makedepend $(OUTPUT_DIR)/Makefile.makedepend.bak
 
 $(OUTPUT_DIR)/%.o: %.c
-	$(CPP) -c $(OPT) $< -o $(OUTPUT_DIR)/$*.o
+	$(CXX) -c $(OPT) $< -o $(OUTPUT_DIR)/$*.o
 $(OUTPUT_DIR)/%.o: %.cc
-	$(CPP) -c $(CXX_OPT) $< -o $(OUTPUT_DIR)/$*.o
+	$(CXX) -c $(CXX_OPT) $< -o $(OUTPUT_DIR)/$*.o
 
 $(OUTPUT_DIR)/instructions.h: instructions.cc
 	@touch $*.h
@@ -127,24 +126,24 @@ $(OUTPUT_DIR)/instructions.h: instructions.cc
 	@chmod -w $*.h
 	@echo "created $(OUTPUT_DIR)/instructions.h"
 
-$(OUTPUT_DIR)/ptx_parser_decode.def: $(OUTPUT_DIR)/ptx.tab.c
+$(OUTPUT_DIR)/ptx_parser_decode.def: $(OUTPUT_DIR)/ptx.tab.cpp
 ifeq ($(shell uname),Linux)
-	cat $(OUTPUT_DIR)/ptx.tab.h | grep "=" | sed 's/^[ ]\+//' | sed 's/[=,]//g' | sed 's/\([_A-Z1-9]\+\)[ ]\+\([0-9]\+\)/\1 \1/' | sed 's/^/DEF(/' | sed 's/ /,"/' | sed 's/$$/")/' > $(OUTPUT_DIR)/ptx_parser_decode.def
+	cat $(OUTPUT_DIR)/ptx.tab.hpp | grep "=" | sed 's/^[ ]\+//' | sed 's/[=,]//g' | sed 's/\([_A-Z1-9]\+\)[ ]\+\([0-9]\+\)/\1 \1/' | sed 's/^/DEF(/' | sed 's/ /,"/' | sed 's/$$/")/' > $(OUTPUT_DIR)/ptx_parser_decode.def
 else
-	cat $(OUTPUT_DIR)/ptx.tab.h | grep "=" | sed -E 's/^ +//' | sed 's/[=,]//g' | sed -E 's/([_A-Z1-9]+).*/\1 \1/' | sed 's/^/DEF(/' | sed 's/ /,"/' | sed 's/$$/")/' > $(OUTPUT_DIR)/ptx_parser_decode.def
+	cat $(OUTPUT_DIR)/ptx.tab.hpp | grep "=" | sed -E 's/^ +//' | sed 's/[=,]//g' | sed -E 's/([_A-Z1-9]+).*/\1 \1/' | sed 's/^/DEF(/' | sed 's/ /,"/' | sed 's/$$/")/' > $(OUTPUT_DIR)/ptx_parser_decode.def
 endif
 
-$(OUTPUT_DIR)/instructions.o: $(OUTPUT_DIR)/instructions.h $(OUTPUT_DIR)/ptx.tab.c
-$(OUTPUT_DIR)/cuda_device_printf.o: $(OUTPUT_DIR)/ptx.tab.c
-$(OUTPUT_DIR)/ptx_ir.o: $(OUTPUT_DIR)/ptx.tab.c $(OUTPUT_DIR)/ptx_parser_decode.def
-$(OUTPUT_DIR)/ptx_loader.o: $(OUTPUT_DIR)/ptx.tab.c $(OUTPUT_DIR)/ptx_parser_decode.def
-$(OUTPUT_DIR)/ptx_parser.o: $(OUTPUT_DIR)/ptx.tab.c $(OUTPUT_DIR)/ptx_parser_decode.def
-$(OUTPUT_DIR)/ptxinfo.tab.o: $(OUTPUT_DIR)/ptx.tab.c
-$(OUTPUT_DIR)/ptx-stats.o: $(OUTPUT_DIR)/ptx.tab.c
-$(OUTPUT_DIR)/ptx_sim.o: $(OUTPUT_DIR)/ptx.tab.c
-$(OUTPUT_DIR)/cuda-sim.o: $(OUTPUT_DIR)/ptx.tab.c $(SIM_OBJ_FILES_DIR)/detailed_version
-$(OUTPUT_DIR)/lex.ptxinfo_.o: $(OUTPUT_DIR)/ptx.tab.c
-$(OUTPUT_DIR)/lex.ptx_.o: $(OUTPUT_DIR)/ptx.tab.c
-$(OUTPUT_DIR)/cuda_device_runtime.o: $(OUTPUT_DIR)/ptx.tab.c
+$(OUTPUT_DIR)/instructions.o: $(OUTPUT_DIR)/instructions.h $(OUTPUT_DIR)/ptx.tab.cpp
+$(OUTPUT_DIR)/cuda_device_printf.o: $(OUTPUT_DIR)/ptx.tab.cpp
+$(OUTPUT_DIR)/ptx_ir.o: $(OUTPUT_DIR)/ptx.tab.cpp $(OUTPUT_DIR)/ptx_parser_decode.def
+$(OUTPUT_DIR)/ptx_loader.o: $(OUTPUT_DIR)/ptx.tab.cpp $(OUTPUT_DIR)/ptx_parser_decode.def
+$(OUTPUT_DIR)/ptx_parser.o: $(OUTPUT_DIR)/ptx.tab.cpp $(OUTPUT_DIR)/ptx_parser_decode.def
+$(OUTPUT_DIR)/ptxinfo.tab.o: $(OUTPUT_DIR)/ptx.tab.cpp
+$(OUTPUT_DIR)/ptx-stats.o: $(OUTPUT_DIR)/ptx.tab.cpp
+$(OUTPUT_DIR)/ptx_sim.o: $(OUTPUT_DIR)/ptx.tab.cpp
+$(OUTPUT_DIR)/cuda-sim.o: $(OUTPUT_DIR)/ptx.tab.cpp $(SIM_OBJ_FILES_DIR)/detailed_version
+$(OUTPUT_DIR)/lex.ptxinfo_.o: $(OUTPUT_DIR)/ptx.tab.cpp
+$(OUTPUT_DIR)/lex.ptx_.o: $(OUTPUT_DIR)/ptx.tab.cpp
+$(OUTPUT_DIR)/cuda_device_runtime.o: $(OUTPUT_DIR)/ptx.tab.cpp
 
 include $(OUTPUT_DIR)/Makefile.makedepend

@@ -45,7 +45,6 @@ bool g_override_embedded_ptx = false;
 
 extern int ptx_parse();
 extern int ptx__scan_string(const char*);
-
 extern std::map<unsigned,const char*> get_duplicate();
 
 const char *g_ptxinfo_filename;

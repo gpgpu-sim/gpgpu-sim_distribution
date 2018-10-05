@@ -32,9 +32,7 @@ DEBUG?=0
 TRACE?=0
 
 ifeq ($(DEBUG),1)
-	CXXFLAGS = -Wall -DDEBUG
-else
-	CXXFLAGS = -Wall
+	CXXFLAGS += -DDEBUG
 endif
 
 ifeq ($(TRACE),1)
@@ -61,7 +59,6 @@ endif
 OPTFLAGS += -g3 -fPIC
 OPTFLAGS += -DCUDART_VERSION=$(CUDART_VERSION)
 
-CPP = g++ $(SNOW)
 OEXT = o
 
 OUTPUT_DIR=$(SIM_OBJ_FILES_DIR)/gpgpu-sim
@@ -88,7 +85,7 @@ depend:
 	makedepend -f$(OUTPUT_DIR)/Makefile.makedepend -p$(OUTPUT_DIR)/ $(CSRCS) 2> /dev/null
 
 $(OUTPUT_DIR)/%.$(OEXT): %.cc
-	$(CPP) $(OPTFLAGS) $(CXXFLAGS) $(POWER_FLAGS) -o $(OUTPUT_DIR)/$*.$(OEXT) -c $*.cc
+	$(CXX) $(OPTFLAGS) $(CXXFLAGS) $(POWER_FLAGS) -o $(OUTPUT_DIR)/$*.$(OEXT) -c $*.cc
 
 clean:
 	rm -f *.o core *~ *.a 
@@ -96,10 +93,10 @@ clean:
 
 $(OUTPUT_DIR)/option_parser.$(OEXT): option_parser.h
 
-$(OUTPUT_DIR)/dram_sched.$(OEXT): $(OUTPUT_DIR)/../cuda-sim/ptx.tab.h
+$(OUTPUT_DIR)/dram_sched.$(OEXT): $(OUTPUT_DIR)/../cuda-sim/ptx.tab.hpp
 
-$(OUTPUT_DIR)/../cuda-sim/ptx.tab.h:
-	make -C ../cuda-sim/ $(OUTPUT_DIR)/../cuda-sim/ptx.tab.c
+$(OUTPUT_DIR)/../cuda-sim/ptx.tab.hpp:
+	make -C ../cuda-sim/ $(OUTPUT_DIR)/../cuda-sim/ptx.tab.cpp
 
 include $(OUTPUT_DIR)/Makefile.makedepend
 

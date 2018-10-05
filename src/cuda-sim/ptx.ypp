@@ -207,8 +207,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	#include <stdlib.h>
 	#include <string.h>
 	#include <math.h>
-	void syntax_not_implemented();
 	extern int g_func_decl;
+	void syntax_not_implemented();
 	int ptx_lex(void);
 	int ptx_error(const char *);
 %}

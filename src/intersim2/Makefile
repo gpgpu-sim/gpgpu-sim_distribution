@@ -27,8 +27,6 @@
 #
 # Makefile
 #
-CXX = g++
-CC = gcc
 CREATE_LIBRARY ?= 0
 INTERFACE = interconnect_interface.cpp
 DEBUG ?= 0
@@ -42,12 +40,12 @@ ifeq ($(CREATE_LIBRARY),1)
 INCPATH += -I$(GPGPUSIM_ROOT)/src/gpgpu-sim/
 endif
 
-CPPFLAGS += -Wall $(INCPATH) $(DEFINE)
+CXXFLAGS += -Wall $(INCPATH) $(DEFINE)
 ifneq ($(DEBUG),1)
-CPPFLAGS += -O3
+CXXFLAGS += -O3
 endif
-CPPFLAGS += -g
-CPPFLAGS += -fPIC
+CXXFLAGS += -g
+CXXFLAGS += -fPIC
 LFLAGS +=
 
 
@@ -135,33 +133,33 @@ depend:
 	makedepend -f$(OBJDIR)/Makefile.makedepend -I$(INCPATH) -p$(OBJDIR)/ $(ALL_SRCS) 2> /dev/null
 
 ${LEX_OBJS}: $(OBJDIR)/lex.yy.c $(OBJDIR)/y.tab.h
-	$(CC) $(CPPFLAGS) -c $< -o $@
+	$(CC) $(CXXFLAGS) -c $< -o $@
 
 ${YACC_OBJS}: $(OBJDIR)/y.tab.c $(OBJDIR)/y.tab.h
-	$(CC) $(CPPFLAGS) -c $< -o $@
+	$(CC) $(CXXFLAGS) -c $< -o $@
 
 ${OBJDIR}/%.o: %.cpp 
-	$(CXX) $(CPPFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # rules to compile networks
 ${OBJDIR}/%.o: networks/%.cpp 
-	$(CXX) $(CPPFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # rules to compile arbiters
 ${OBJDIR}/%.o: arbiters/%.cpp 
-	$(CXX) $(CPPFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # rules to compile allocators
 ${OBJDIR}/%.o: allocators/%.cpp 
-	$(CXX) $(CPPFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # rules to compile routers
 ${OBJDIR}/%.o: routers/%.cpp 
-	$(CXX) $(CPPFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # rules to compile power classes
 ${OBJDIR}/%.o: power/%.cpp
-	$(CXX) $(CPPFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	rm -f $(OBJS) 

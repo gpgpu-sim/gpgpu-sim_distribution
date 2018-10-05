@@ -67,20 +67,18 @@ ifeq ($(OPENGL_SUPPORT),1)
 endif
 
 ifeq ($(GNUC_CPP0X), 1)
-    CXXFLAGS = -std=c++0x
+    CXXFLAGS += -std=c++0x
 endif
 
 
-CPP = g++ $(SNOW)
-CC = gcc $(SNOW)
 CREATELIBRARY    =  1
 DEBUG ?= 0
 ifeq ($(DEBUG),1)
-	CXXFLAGS +=  -Wall -Wno-unused-function -Wno-sign-compare -g -fPIC $(GL)
-	CCFLAGS += -Wall -Wno-unused-function -Wno-sign-compare -ggdb -fPIC
+	CXXFLAGS +=   -g -fPIC $(GL)
+	CCFLAGS += -ggdb -fPIC
 else
-	CXXFLAGS += -O3 -g -Wall -Wno-unused-function -Wno-sign-compare -fPIC $(GL)
-	CCFLAGS += -Wall -Wno-unused-function -Wno-sign-compare -fPIC
+	CXXFLAGS += -O3 -g -fPIC $(GL)
+	CCFLAGS +=  -fPIC
 endif
 
 PROG     =cuda
@@ -108,7 +106,7 @@ lib$(PROG).a: $(OBJS)
 	ar rcs $(OUTPUT_DIR)/lib$(PROG).a $(OBJS)
 
 $(OUTPUT_DIR)/%.o: %.cc
-	$(CPP) $(CXXFLAGS) -I./ -I$(OUTPUT_DIR) -I$(CUDA_INSTALL_PATH)/include  -c $< -o $@
+	$(CXX) $(CXXFLAGS) -I./ -I$(OUTPUT_DIR) -I$(CUDA_INSTALL_PATH)/include  -c $< -o $@
 
 $(OUTPUT_DIR)/%.o: %.c
 	$(CC) $(CCFLAGS) -I./ -I$(OUTPUT_DIR) -I$(CUDA_INSTALL_PATH)/include  -c $< -o $@

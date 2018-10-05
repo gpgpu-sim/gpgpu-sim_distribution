@@ -32,7 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %option yylineno
 %option prefix="ptxinfo_"
 %{
-#include "ptxinfo.tab.h"
+#include "ptxinfo.tab.hpp"
 #include <string.h>
 
 #define LINEBUF_SIZE 1024
