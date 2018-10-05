@@ -2067,7 +2067,7 @@ struct rec_pts {
    int s_num_recon;
 };
 
-struct std::map<function_info*,rec_pts> g_rpts;
+class std::map<function_info*,rec_pts> g_rpts;
 
 struct rec_pts find_reconvergence_points( function_info *finfo )
 {

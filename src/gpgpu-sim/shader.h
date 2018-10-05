@@ -286,7 +286,7 @@ typedef std::bitset<WARP_PER_CTA_MAX> warp_set_t;
 int register_bank(int regnum, int wid, unsigned num_banks, unsigned bank_warp_shift);
 
 class shader_core_ctx;
-class shader_core_config;
+struct shader_core_config;
 class shader_core_stats;
 
 enum scheduler_prioritization_type
@@ -967,7 +967,7 @@ struct ifetch_buffer_t {
     unsigned m_warp_id;
 };
 
-class shader_core_config;
+struct shader_core_config;
 
 class simd_function_unit {
 public:
@@ -1347,7 +1347,7 @@ struct shader_core_config : public core_config
 
 struct shader_core_stats_pod {
 
-	void* shader_core_stats_pod_start[]; // DO NOT MOVE FROM THE TOP - spaceless pointer to the start of this structure
+	void* shader_core_stats_pod_start[0]; // DO NOT MOVE FROM THE TOP - spaceless pointer to the start of this structure
 	unsigned long long *shader_cycles;
     unsigned *m_num_sim_insn; // number of scalar thread instructions committed by this shader core
     unsigned *m_num_sim_winsn; // number of warp instructions committed by this shader core
