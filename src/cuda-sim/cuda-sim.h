@@ -73,7 +73,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
                               gpgpu_t *gpu,
                               bool functionalSimulationMode = false);
 const warp_inst_t *ptx_fetch_inst( address_type pc );
-const struct gpgpu_ptx_sim_kernel_info* ptx_sim_kernel_info(const class function_info *kernel);
+const struct gpgpu_ptx_sim_info* ptx_sim_kernel_info(const class function_info *kernel);
 void ptx_print_insn( address_type pc, FILE *fp );
 std::string ptx_get_insn_str( address_type pc );
 void set_param_gpgpu_num_shaders(int num_shaders);
@@ -129,6 +129,6 @@ address_type get_return_pc( void *thd );
 const char *get_ptxinfo_kname();
 void print_ptxinfo();
 void clear_ptxinfo();
-struct gpgpu_ptx_sim_kernel_info get_ptxinfo_kinfo();
+struct gpgpu_ptx_sim_info get_ptxinfo();
 
 #endif

@@ -47,7 +47,7 @@ char filename [1024];
 %union {
 	char* string_value;
 }
-%token <string_value> H_SEPARATOR H_ARCH H_CODEVERSION H_PRODUCER H_HOST H_COMPILESIZE H_IDENTIFIER
+%token <string_value> H_SEPARATOR H_ARCH H_CODEVERSION H_PRODUCER H_HOST H_COMPILESIZE H_IDENTIFIER H_UNKNOWN H_COMPRESSED
 %token <string_value> CODEVERSION
 %token <string_value> STRING
 %token <string_value> FILENAME
@@ -61,6 +61,7 @@ char filename [1024];
 
 %%
 
+
 program :	{printf("######### cuobjdump parser ########\n");}
 			emptylines section
 		|	program section;
@@ -73,7 +74,7 @@ section :	PTXHEADER {
 				snprintf(filename, 1024, "_cuobjdump_%d.ptx", ptxserial++);
 				ptxfile = fopen(filename, "w");
 				setCuobjdumpptxfilename(filename);
-			} headerinfo ptxcode {
+			} headerinfo compressedkeyword identifier ptxcode {
 				fclose(ptxfile);
 			}
 		|	ELFHEADER {
@@ -81,7 +82,7 @@ section :	PTXHEADER {
 				snprintf(filename, 1024, "_cuobjdump_%d.elf", elfserial);
 				elffile = fopen(filename, "w");
 				setCuobjdumpelffilename(filename);
-			} headerinfo elfcode { 
+			} headerinfo compressedkeyword identifier elfcode {
 				fclose(elffile);
 				snprintf(filename, 1024, "_cuobjdump_%d.sass", elfserial++);
 				sassfile = fopen(filename, "w");
@@ -93,10 +94,21 @@ section :	PTXHEADER {
 headerinfo :	H_SEPARATOR NEWLINE
 				H_ARCH IDENTIFIER NEWLINE
 				H_CODEVERSION CODEVERSION NEWLINE
+				H_PRODUCER H_UNKNOWN NEWLINE
+				H_HOST IDENTIFIER NEWLINE
+				H_COMPILESIZE IDENTIFIER  {setCuobjdumparch($4);};
+			|   H_SEPARATOR NEWLINE
+				H_ARCH IDENTIFIER NEWLINE
+				H_CODEVERSION CODEVERSION NEWLINE
 				H_PRODUCER IDENTIFIER NEWLINE
 				H_HOST IDENTIFIER NEWLINE
-				H_COMPILESIZE IDENTIFIER NEWLINE
-				H_IDENTIFIER FILENAME emptylines {setCuobjdumparch($4); setCuobjdumpidentifier($19);};
+				H_COMPILESIZE IDENTIFIER {setCuobjdumparch($4);};
+
+identifier : H_IDENTIFIER FILENAME emptylines {setCuobjdumpidentifier($2);}
+			 |	{setCuobjdumpidentifier("default");};
+
+compressedkeyword : H_COMPRESSED emptylines
+                    | ;
 
 ptxcode :	ptxcode PTXLINE {fprintf(ptxfile, "%s", $2);}
 		|	;

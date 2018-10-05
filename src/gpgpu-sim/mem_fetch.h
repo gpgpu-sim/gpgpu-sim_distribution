@@ -55,7 +55,7 @@ public:
                unsigned wid,
                unsigned sid, 
                unsigned tpc, 
-               const class memory_config *config );
+               const struct memory_config *config );
    ~mem_fetch();
 
    void set_status( enum mem_fetch_status status, unsigned long long cycle );
@@ -82,6 +82,7 @@ public:
    bool is_write() {return m_access.is_write();}
    void set_addr(new_addr_type addr) { m_access.set_addr(addr); }
    new_addr_type get_addr() const { return m_access.get_addr(); }
+   unsigned get_access_size() const { return m_access.get_size(); }
    new_addr_type get_partition_addr() const { return m_partition_addr; }
    unsigned get_sub_partition_id() const { return m_raw_addr.sub_partition; }
    bool     get_is_write() const { return m_access.is_write(); }
@@ -140,7 +141,7 @@ private:
 
    static unsigned sm_next_mf_request_uid;
 
-   const class memory_config *m_mem_config;
+   const struct memory_config *m_mem_config;
    unsigned icnt_flit_size;
 };
 

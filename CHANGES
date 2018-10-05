@@ -1,13 +1,24 @@
 LOG:
 Version 3.2.3+edits (development branch) versus 3.2.3
+- Support for running regression tests using Travis
+- Support added for CUDA dynamic parallelism (courtesy of Jin Wang from Georgia Tech)
 - Added a parameter to the cache configuration to configure the set index 
   function. Added a hash set index function to the Fermi L1 data cache for 
   the two default cache sizes, 16KB/48KB with 32/64 sets.
 - Added support for named barriers.
 - Added support for bar.arrive and bar.red instructions.
-  
+- Initial support for CUDA 5.0,5.5,6.0 and 7.5 to get basic sdk running (e.g., template, vectorAdd, ...). The issues required for CUDA 5.5 support were identified by the loneStarGPU group at The University of Texas at Austin and Texas State University.
+- Removed intersim2 svn repository files
+- Changed the makefile for cuobjdump_toptxplus,libcuda,intersim2 so that it outputs temporary files into the build directory
+- Branching config file for GeForceGTX750Ti
+- Branching correlation script for GeForceGTX750Ti. Modified config to fit Maxwell architecture. Modified shader.h to allow larger CTA per warp.
+- Additional changes to config file to reflect Maxwell uarch.
 - Bug fixes:
     - Fixed bug #81, fix ordering of pushing branch entries to the stack
+    - Fixed a bug where for each icache miss we also count a hit
+    - Fixed bug #88, Ejection buffer and Boundary buffer in Intersim2 initialization with a wrong node number
+    - Fixed a bug where sm_version was hard coded to sm_20. Now, it extracts the highest sm version that is lower than
+      the forced_max_capability configuration in GPGPUSim. 
 
 Version 3.2.3 versus 3.2.2
 - Bug fixes:

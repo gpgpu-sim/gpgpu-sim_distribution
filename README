@@ -5,7 +5,8 @@ AerialVision and a configurable and extensible energy model called GPUWattch.
 GPGPU-Sim and GPUWattch have been rigorously validated with performance and
 power measurements of real hardware GPUs. 
 
-This version of GPGPU-Sim has been tested with CUDA version 2.3, 3.1 and 4.0.
+This version of GPGPU-Sim has been tested with CUDA version 2.3, 3.1, 4.0, 
+5.0, 5.5, 6.0 and 7.5.
 
 Please see the copyright notice in the file COPYRIGHT distributed with this
 release in the same directory as this file.
@@ -23,6 +24,12 @@ Jingwen Leng, Tayler Hetherington, Ahmed ElTantawy, Syed Gilani, Nam Sung Kim,
 Tor M. Aamodt, Vijay Janapa Reddi, GPUWattch: Enabling Energy Optimizations in
 GPGPUs, In proceedings of the ACM/IEEE International Symposium on Computer
 Architecture (ISCA 2013), Tel-Aviv, Israel, June 23-27, 2013.
+
+If you use the support for CUDA dynamic parallelism in your research, please cite:
+
+Jin Wang and Sudhakar Yalamanchili, Characterization and Analysis of Dynamic 
+Parallelism in Unstructured GPU Applications, 2014 IEEE International Symposium 
+on Workload Characterization (IISWC), November 2014.
 
 If you use figures plotted using AerialVision in your publications, please cite:
 
@@ -339,30 +346,3 @@ the applications you care about (implying these applications worked for you
 before you did the merge). You want to do this before making further changes to
 identify any compile time or runtime errors that occur due to the code merging
 process. 
-
-3.2 (OPTIONAL) Updating Intersim2 (ADVANCED USERS ONLY)
-
-Booksim 2.0 is maintained by the Concurrent VLSI Architecture group at Stanford
-(https://nocs.stanford.edu/cgi-bin/trac.cgi/wiki/Resources/BookSim). Intersim2 
-is Booksim 2.0 with extentions. Booksim 2.0 is still under active development, 
-with updates that usually bring cutting edge features and bug fixes. If you want
-these new features or bug fixes, it is possible to pull updates from Booksim 2.0
- server and apply the updates to Intersim2. You can follow the instructions 
-below to update Intersim2 with the new Booksim 2.0.
-
-As above, YOU SHOULD BACKUP YOUR CHANGES BEFORE PROCEEDING.
-
-The Booksim 2.0 uses svn source control. First, go to the Intersim2 root 
-directory($GPGPUSIM_ROOT/src/intersim2) in the terminal. Then, run the 
-following command in terminal:
-
-svn update
-
-While svn is updating your local copy of Intersim2 with the latest changes from
-the Booksim 2.0 svn server, conflicts might arise due to changes that either we
-or you made that conflict with the latest updates. In this case, svn will prompt
-you to edit conflict files using default text editor or you can postpone it and 
-then using your favorite merge tool to resolve conflict files.
-
-After you updated Intersim2, you should test the merged version through the 
-instructions described in Section 3.1.

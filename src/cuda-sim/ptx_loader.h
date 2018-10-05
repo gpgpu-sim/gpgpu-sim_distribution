@@ -32,7 +32,7 @@
 extern bool g_override_embedded_ptx;
  
 class symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num );
-void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num );
+void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num, unsigned sm_version=20 );
 char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const std::string ptx_str, const std::string sass_str, const std::string elf_str);
 bool keep_intermediate_files();
 

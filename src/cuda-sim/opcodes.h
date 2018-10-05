@@ -30,9 +30,11 @@
 
 enum opcode_t {
 #define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) OP,
+#define OP_W_DEF(OP,FUNC,STR,DST,CLASSIFICATION) OP,
 #include "opcodes.def"
-   NUM_OPCODES
+	NUM_OPCODES
 #undef OP_DEF
+#undef OP_W_DEF
 };
 
 enum special_regs {

@@ -128,6 +128,26 @@ unsigned ptx_cta_info::get_sm_idx() const
    return m_sm_idx;
 }
 
+ptx_warp_info::ptx_warp_info()
+{
+	reset_done_threads();
+}
+
+unsigned ptx_warp_info::get_done_threads() const
+{
+	return m_done_threads;
+}
+
+void ptx_warp_info::inc_done_threads()
+{
+	m_done_threads++;
+}
+
+void ptx_warp_info::reset_done_threads()
+{
+	m_done_threads = 0;
+}
+
 unsigned g_ptx_thread_info_uid_next=1;
 unsigned g_ptx_thread_info_delete_count=0;
 
@@ -153,6 +173,7 @@ ptx_thread_info::ptx_thread_info( kernel_info_t &kernel )
    m_last_memory_space = undefined_space; 
    m_branch_taken = 0;
    m_shared_mem = NULL;
+   m_warp_info = NULL;
    m_cta_info = NULL;
    m_local_mem = NULL;
    m_symbol_table = NULL;
@@ -240,7 +261,7 @@ unsigned ptx_thread_info::get_builtin( int builtin_id, unsigned dim_mod )
    }
    case GRIDID_REG:
       return m_gridid;
-   case LANEID_REG: feature_not_implemented( "%laneid" ); return 0;
+   case LANEID_REG: return get_hw_tid() % m_core->get_warp_size();
    case LANEMASK_EQ_REG: feature_not_implemented( "%lanemask_eq" ); return 0;
    case LANEMASK_LE_REG: feature_not_implemented( "%lanemask_le" ); return 0;
    case LANEMASK_LT_REG: feature_not_implemented( "%lanemask_lt" ); return 0;

@@ -91,16 +91,24 @@ void *gpgpu_sim_thread_sequential(void*)
 pthread_mutex_t g_sim_lock = PTHREAD_MUTEX_INITIALIZER;
 bool g_sim_active = false;
 bool g_sim_done = true;
+bool break_limit = false;
+
+static void termination_callback()
+{
+    printf("GPGPU-Sim: *** exit detected ***\n");
+    fflush(stdout);
+}
 
 void *gpgpu_sim_thread_concurrent(void*)
 {
+    atexit(termination_callback);
     // concurrent kernel execution simulation thread
     do {
-       if(g_debug_execution >= 3) {
-          printf("GPGPU-Sim: *** simulation thread starting and spinning waiting for work ***\n");
-          fflush(stdout);
-       }
-        while( g_stream_manager->empty_protected() && !g_sim_done )
+        if(g_debug_execution >= 3) {
+           printf("GPGPU-Sim: *** simulation thread starting and spinning waiting for work ***\n");
+           fflush(stdout);
+        }
+        while( g_stream_manager->empty() && !g_sim_done )
             ;
         if(g_debug_execution >= 3) {
            printf("GPGPU-Sim: ** START simulation thread (detected work) **\n");
@@ -127,18 +135,36 @@ void *gpgpu_sim_thread_concurrent(void*)
             if(g_stream_manager->operation(&sim_cycles) && !g_the_gpu->active())
                 break;
 
+            //functional simulation
+            if( g_the_gpu->is_functional_sim()) {
+                kernel_info_t * kernel = g_the_gpu->get_functional_kernel();
+                assert(kernel);
+                gpgpu_cuda_ptx_sim_main_func(*kernel);
+                g_the_gpu->finish_functional_sim(kernel);
+            }
+
+            //performance simulation
             if( g_the_gpu->active() ) {
                 g_the_gpu->cycle();
                 sim_cycles = true;
                 g_the_gpu->deadlock_check();
+            }else {
+                if(g_the_gpu->cycle_insn_cta_max_hit()){
+                    g_stream_manager->stop_all_running_kernels();
+                    g_sim_done = true;
+                    break_limit = true;
+                }
             }
+
             active=g_the_gpu->active() || !g_stream_manager->empty_protected();
-        } while( active );
+
+        } while( active && !g_sim_done);
         if(g_debug_execution >= 3) {
            printf("GPGPU-Sim: ** STOP simulation thread (no work) **\n");
            fflush(stdout);
         }
         if(sim_cycles) {
+            g_the_gpu->print_stats();
             g_the_gpu->update_stats();
             print_simulation_time();
         }
@@ -146,10 +172,14 @@ void *gpgpu_sim_thread_concurrent(void*)
         g_sim_active = false;
         pthread_mutex_unlock(&g_sim_lock);
     } while( !g_sim_done );
-    if(g_debug_execution >= 3) {
-       printf("GPGPU-Sim: *** simulation thread exiting ***\n");
-       fflush(stdout);
+    printf("GPGPU-Sim: *** simulation thread exiting ***\n");
+    fflush(stdout);
+
+    if(break_limit) {
+    	printf("GPGPU-Sim: ** break due to reaching the maximum cycles (or instructions) **\n");
+    	exit(1);
     }
+
     sem_post(&g_sim_signal_exit);
     return NULL;
 }
@@ -163,7 +193,7 @@ void synchronize()
     bool done = false;
     do {
         pthread_mutex_lock(&g_sim_lock);
-        done = g_stream_manager->empty() && !g_sim_active;
+        done = ( g_stream_manager->empty() && !g_sim_active ) || g_sim_done;
         pthread_mutex_unlock(&g_sim_lock);
     } while (!done);
     printf("GPGPU-Sim: detected inactive GPU simulation thread\n");

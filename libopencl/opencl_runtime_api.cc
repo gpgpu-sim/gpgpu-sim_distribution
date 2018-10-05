@@ -74,7 +74,9 @@
 #define __CUDA_RUNTIME_API_H__
 #include "host_defines.h"
 #include "builtin_types.h"
+#if (CUDART_VERSION < 8000)
 #include "__cudaFatFormat.h"
+#endif
 #include "../src/abstract_hardware_model.h"
 #include "../src/cuda-sim/cuda-sim.h"
 #include "../src/cuda-sim/ptx_loader.h"
@@ -268,7 +270,7 @@ cl_int _cl_kernel::bind_args( gpgpu_ptx_sim_arg_list_t &arg_list )
       if( i->first != k ) 
          return CL_INVALID_KERNEL_ARGS;
       arg_info arg = i->second;
-      gpgpu_ptx_sim_arg param( arg.m_arg_value, arg.m_arg_size, 0 );
+      gpgpu_ptx_sim_arg param( arg.m_arg_value, arg.m_arg_size, 0);
       arg_list.push_front( param );
       k++;
    }
@@ -575,7 +577,7 @@ void _cl_program::Build(const char *options)
       }
       info.m_asm = tmp;
       info.m_symtab = gpgpu_ptx_sim_load_ptx_from_string( tmp, source_num );
-      gpgpu_ptxinfo_load_from_string( tmp, source_num );
+      gpgpu_ptxinfo_load_from_string( tmp, source_num);
       free(tmp);
    }
    printf("GPGPU-Sim OpenCL API: finished compiling OpenCL kernels.\n"); 

@@ -95,6 +95,15 @@ stream_operation CUstream_st::next()
     return result;
 }
 
+void CUstream_st::cancel_front()
+{
+    pthread_mutex_lock(&m_lock);
+    assert(m_pending);
+    m_pending = false;
+    pthread_mutex_unlock(&m_lock);
+
+}
+
 void CUstream_st::print(FILE *fp)
 {
     pthread_mutex_lock(&m_lock);
@@ -111,10 +120,10 @@ void CUstream_st::print(FILE *fp)
 }
 
 
-void stream_operation::do_operation( gpgpu_sim *gpu )
+bool stream_operation::do_operation( gpgpu_sim *gpu )
 {
     if( is_noop() ) 
-        return;
+        return true;
 
     assert(!m_done && m_stream);
     if(g_debug_execution >= 3)
@@ -151,17 +160,36 @@ void stream_operation::do_operation( gpgpu_sim *gpu )
         m_stream->record_next_done();
         break;
     case stream_kernel_launch:
-        if( gpu->can_start_kernel() ) {
-        	gpu->set_cache_config(m_kernel->name());
-        	printf("kernel \'%s\' transfer to GPU hardware scheduler\n", m_kernel->name().c_str() );
-            if( m_sim_mode )
-                gpgpu_cuda_ptx_sim_main_func( *m_kernel );
-            else
+        if( m_sim_mode ) { //Functional Sim
+            if(g_debug_execution >= 3) {
+                printf("kernel %d: \'%s\' transfer to GPU hardware scheduler\n", m_kernel->get_uid(), m_kernel->name().c_str() );
+                m_kernel->print_parent_info();
+            }
+            gpu->set_cache_config(m_kernel->name());
+            gpu->functional_launch( m_kernel );
+        }
+        else { //Performance Sim
+            if( gpu->can_start_kernel() && m_kernel->m_launch_latency == 0) {
+                if(g_debug_execution >= 3) {
+                    printf("kernel %d: \'%s\' transfer to GPU hardware scheduler\n", m_kernel->get_uid(), m_kernel->name().c_str() );
+                    m_kernel->print_parent_info();
+                }
+                gpu->set_cache_config(m_kernel->name());
                 gpu->launch( m_kernel );
+            }
+            else {
+                if(m_kernel->m_launch_latency)
+                    m_kernel->m_launch_latency--;
+                if(g_debug_execution >= 3)
+                    printf("kernel %d: \'%s\', latency %u not ready to transfer to GPU hardware scheduler\n", 
+                        m_kernel->get_uid(), m_kernel->name().c_str(), m_kernel->m_launch_latency);
+                return false;    
+            }
         }
         break;
     case stream_event: {
-        printf("event update\n");
+        if(g_debug_execution >= 3)
+            printf("event update\n");
         time_t wallclock = time((time_t *)NULL);
         m_event->update( gpu_tot_sim_cycle, wallclock );
         m_stream->record_next_done();
@@ -172,6 +200,7 @@ void stream_operation::do_operation( gpgpu_sim *gpu )
     }
     m_done=true;
     fflush(stdout);
+    return true;
 }
 
 void stream_operation::print( FILE *fp ) const
@@ -199,11 +228,20 @@ stream_manager::stream_manager( gpgpu_sim *gpu, bool cuda_launch_blocking )
 
 bool stream_manager::operation( bool * sim)
 {
-    pthread_mutex_lock(&m_lock);
     bool check=check_finished_kernel();
-    if(check)m_gpu->print_stats();
+    pthread_mutex_lock(&m_lock);
+//    if(check)m_gpu->print_stats();
     stream_operation op =front();
-    op.do_operation( m_gpu );
+    if(!op.do_operation( m_gpu )) //not ready to execute
+    {
+        //cancel operation
+        if( op.is_kernel() ) {
+            unsigned grid_uid = op.get_kernel()->get_uid();
+            m_grid_id_to_stream.erase(grid_uid);
+        }
+        op.get_stream()->cancel_front();
+
+    }
     pthread_mutex_unlock(&m_lock);
     //pthread_mutex_lock(&m_lock);
     // simulate a clock cycle on the GPU
@@ -212,49 +250,81 @@ bool stream_manager::operation( bool * sim)
 
 bool stream_manager::check_finished_kernel()
 {
-
-	unsigned grid_uid = m_gpu->finished_kernel();
-	bool check=register_finished_kernel(grid_uid);
-	return check;
-
+    unsigned grid_uid = m_gpu->finished_kernel();
+    bool check=register_finished_kernel(grid_uid);
+    return check;
 }
 
 bool stream_manager::register_finished_kernel(unsigned grid_uid)
 {
     // called by gpu simulation thread
     if(grid_uid > 0){
-    CUstream_st *stream = m_grid_id_to_stream[grid_uid];
-    kernel_info_t *kernel = stream->front().get_kernel();
-    assert( grid_uid == kernel->get_uid() );
-    stream->record_next_done();
-    m_grid_id_to_stream.erase(grid_uid);
-    delete kernel;
-    return true;
-    }else{
-    	return false;
+        CUstream_st *stream = m_grid_id_to_stream[grid_uid];
+        kernel_info_t *kernel = stream->front().get_kernel();
+        assert( grid_uid == kernel->get_uid() );
+
+        //Jin: should check children kernels for CDP
+        if(kernel->is_finished()) {
+//            std::ofstream kernel_stat("kernel_stat.txt", std::ofstream::out | std::ofstream::app);
+//            kernel_stat<< " kernel " << grid_uid << ": " << kernel->name();
+//            if(kernel->get_parent())
+//                kernel_stat << ", parent " << kernel->get_parent()->get_uid() <<
+//                ", launch " << kernel->launch_cycle;
+//            kernel_stat<< ", start " << kernel->start_cycle <<
+//                ", end " << kernel->end_cycle << ", retire " << gpu_sim_cycle + gpu_tot_sim_cycle << "\n";
+//            printf("kernel %d finishes, retires from stream %d\n", grid_uid, stream->get_uid());
+//            kernel_stat.flush();
+//            kernel_stat.close();
+            stream->record_next_done();
+            m_grid_id_to_stream.erase(grid_uid);
+            kernel->notify_parent_finished();
+            delete kernel;
+            return true;
+        }
     }
+
     return false;
+}
+
+void stream_manager::stop_all_running_kernels(){
+    pthread_mutex_lock(&m_lock);
+
+    // Signal m_gpu to stop all running kernels
+    m_gpu->stop_all_running_kernels();
+
+    // Clean up all streams waiting on running kernels
+    int count=0;
+    while(check_finished_kernel()){
+        count++;
+    }
+
+    // If any kernels completed, print out the current stats
+    if(count > 0)
+        m_gpu->print_stats();
+
+    pthread_mutex_unlock(&m_lock);
 }
 
 stream_operation stream_manager::front() 
 {
     // called by gpu simulation thread
     stream_operation result;
-    if( concurrent_streams_empty() )
-        m_service_stream_zero = true;
+//    if( concurrent_streams_empty() )
+    m_service_stream_zero = true;
     if( m_service_stream_zero ) {
-        if( !m_stream_zero.empty() ) {
-            if( !m_stream_zero.busy() ) {
+        if( !m_stream_zero.empty() && !m_stream_zero.busy() ) {
                 result = m_stream_zero.next();
                 if( result.is_kernel() ) {
                     unsigned grid_id = result.get_kernel()->get_uid();
                     m_grid_id_to_stream[grid_id] = &m_stream_zero;
                 }
-            }
         } else {
             m_service_stream_zero = false;
         }
-    } else {
+    }
+    
+    if(!m_service_stream_zero)
+    {
         std::list<struct CUstream_st*>::iterator s;
         for( s=m_streams.begin(); s != m_streams.end(); s++) {
             CUstream_st *stream = *s;
@@ -366,11 +436,19 @@ void stream_manager::push( stream_operation op )
     };
 
     pthread_mutex_lock(&m_lock);
-    if( stream && !m_cuda_launch_blocking ) {
-        stream->push(op);
-    } else {
-        op.set_stream(&m_stream_zero);
-        m_stream_zero.push(op);
+    if(!m_gpu->cycle_insn_cta_max_hit()) {
+        // Accept the stream operation if the maximum cycle/instruction/cta counts are not triggered
+        if( stream && !m_cuda_launch_blocking ) {
+            stream->push(op);
+        } else {
+            op.set_stream(&m_stream_zero);
+            m_stream_zero.push(op);
+        }
+    }else {
+        // Otherwise, ignore operation and continue
+        printf("GPGPU-Sim API: Maximum cycle, instruction, or CTA count hit. Skipping:");
+        op.print(stdout);
+        printf("\n");
     }
     if(g_debug_execution >= 3)
        print_impl(stdout);

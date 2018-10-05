@@ -120,6 +120,20 @@ symbol_table *init_parser( const char *ptx_filename )
 #define DEF(X,Y) g_ptx_token_decode[X] = Y;
 #include "ptx_parser_decode.def"
 #undef DEF
+   g_ptx_token_decode[undefined_space] = "undefined_space";
+   g_ptx_token_decode[undefined_space] = "undefined_space=0";
+   g_ptx_token_decode[reg_space] = "reg_space";
+   g_ptx_token_decode[local_space] = "local_space";
+   g_ptx_token_decode[shared_space] = "shared_space";
+   g_ptx_token_decode[param_space_unclassified] = "param_space_unclassified";
+   g_ptx_token_decode[param_space_kernel] = "param_space_kernel";
+   g_ptx_token_decode[param_space_local] = "param_space_local";
+   g_ptx_token_decode[const_space] = "const_space";
+   g_ptx_token_decode[tex_space] = "tex_space";
+   g_ptx_token_decode[surf_space] = "surf_space";
+   g_ptx_token_decode[global_space] = "global_space";
+   g_ptx_token_decode[generic_space] = "generic_space";
+   g_ptx_token_decode[instruction_space] = "instruction_space";
 
    return g_global_symbol_table;
 }
@@ -185,6 +199,17 @@ void add_function_name( const char *name )
       g_func_info->remove_args();
    }
    g_global_symbol_table->add_function( g_func_info, g_filename, ptx_lineno );
+}
+
+//Jin: handle instruction group for cdp
+void start_inst_group() {
+   PTX_PARSE_DPRINTF("start_instruction_group");
+   g_current_symbol_table = g_current_symbol_table->start_inst_group();
+}
+
+void end_inst_group() {
+   PTX_PARSE_DPRINTF("end_instruction_group");
+   g_current_symbol_table = g_current_symbol_table->end_inst_group();
 }
 
 void add_directive() 
@@ -408,7 +433,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       assert( (num_bits%8) == 0  );
       addr = g_current_symbol_table->get_shared_next();
       addr_pad = pad_address(addr, num_bits/8, 128);
-      printf("from 0x%x to 0x%lx (shared memory space)\n",
+      printf("from 0x%llx to 0x%llx (shared memory space)\n",
               addr+addr_pad,
               addr+addr_pad + num_bits/8);
          fflush(stdout);
@@ -425,7 +450,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
          assert( (num_bits%8) == 0  ); 
          addr = g_current_symbol_table->get_global_next();
          addr_pad = pad_address(addr, num_bits/8, 128);
-         printf("from 0x%x to 0x%lx (global memory space) %u\n",
+         printf("from 0x%llx to 0x%llx (global memory space) %u\n",
               addr+addr_pad,
               addr+addr_pad + num_bits/8,
               g_const_alloc++);
@@ -446,7 +471,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       assert( (num_bits%8) == 0  );
       addr = g_current_symbol_table->get_global_next();
       addr_pad = pad_address(addr, num_bits/8, 128);
-      printf("from 0x%x to 0x%lx (global memory space)\n",
+      printf("from 0x%llx to 0x%llx (global memory space)\n",
               addr+addr_pad,
               addr+addr_pad + num_bits/8);
       fflush(stdout);
@@ -463,7 +488,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
          assert( (num_bits%8) == 0  );
          addr = g_current_symbol_table->get_local_next();
          addr_pad = pad_address(addr, num_bits/8, 128);
-         printf("from 0x%x to 0x%lx (local memory space)\n",
+         printf("from 0x%llx to 0x%llx (local memory space)\n",
                  addr+addr_pad,
                  addr+addr_pad + num_bits/8);
          fflush(stdout);
@@ -476,7 +501,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
         assert( (num_bits%8) == 0 );
         addr = g_current_symbol_table->get_local_next();
         addr_pad = pad_address(addr, num_bits/8, 128);
-        printf("from 0x%x to 0x%lx\n",
+        printf("from 0x%llx to 0x%llx\n",
                 addr+addr_pad,
                 addr+addr_pad + num_bits/8);
         fflush(stdout);

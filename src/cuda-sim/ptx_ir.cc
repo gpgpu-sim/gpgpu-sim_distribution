@@ -90,6 +90,11 @@ symbol_table::symbol_table( const char *scope_name, unsigned entry_point, symbol
    m_const_next  = 0;
    m_global_next = 0x100;
    m_local_next  = 0;
+   m_tex_next = 0;
+
+   //Jin: handle instruction group for cdp
+   m_inst_group_id = 0;
+
    m_parent = parent;
    if ( m_parent ) {
       m_shared_next = m_parent->m_shared_next;
@@ -168,6 +173,41 @@ void symbol_table::add_function( function_info *func, const char *filename, unsi
    symbol *s = new symbol(func->get_name().c_str(),type,buf,0);
    s->set_function(func);
    m_symbols[ func->get_name() ] = s;
+}
+
+//Jin: handle instruction group for cdp
+symbol_table* symbol_table::start_inst_group() {
+   char inst_group_name[1024];
+   snprintf(inst_group_name, 1024, "%s_inst_group_%u", m_scope_name.c_str(), m_inst_group_id);
+
+   //previous added
+   assert(m_inst_group_symtab.find(std::string(inst_group_name)) == m_inst_group_symtab.end());
+   symbol_table *sym_table = new symbol_table(inst_group_name, 3/*inst group*/, this );
+ 
+   sym_table->m_global_next = m_global_next;
+   sym_table->m_shared_next = m_shared_next;
+   sym_table->m_local_next = m_local_next;
+   sym_table->m_reg_allocator = m_reg_allocator;
+   sym_table->m_tex_next = m_tex_next;
+   sym_table->m_const_next = m_const_next;
+
+   m_inst_group_symtab[std::string(inst_group_name)] = sym_table;
+
+   return sym_table;
+}
+
+symbol_table * symbol_table::end_inst_group() {
+   symbol_table * sym_table = m_parent;
+   
+   sym_table->m_global_next = m_global_next;
+   sym_table->m_shared_next = m_shared_next;
+   sym_table->m_local_next = m_local_next;
+   sym_table->m_reg_allocator = m_reg_allocator;
+   sym_table->m_tex_next = m_tex_next;
+   sym_table->m_const_next = m_const_next;
+   sym_table->m_inst_group_id++;
+
+   return sym_table;
 }
 
 void register_ptx_function( const char *name, function_info *impl ); // either libcuda or libopencl
@@ -458,7 +498,7 @@ void function_info::connect_basic_blocks( ) //iterate across m_basic_blocks of f
          if( pI->has_pred() ) {
             printf("GPGPU-Sim PTX: Warning detected predicated return/exit.\n");
             // if predicated, add link to next block
-            unsigned next_addr = pI->get_m_instr_mem_index() + 1;
+            unsigned next_addr = pI->get_m_instr_mem_index() + pI->inst_size();
             if( next_addr < m_instr_mem_size && m_instr_mem[next_addr] ) {
                basic_block_t *next_bb = m_instr_mem[next_addr]->get_bb();
                (*bb_itr)->successor_ids.insert(next_bb->bb_id);
@@ -843,14 +883,14 @@ void function_info::print_basic_block_dot()
 unsigned ptx_kernel_shmem_size( void *kernel_impl )
 {
    function_info *f = (function_info*)kernel_impl;
-   const struct gpgpu_ptx_sim_kernel_info *kernel_info = f->get_kernel_info();
+   const struct gpgpu_ptx_sim_info *kernel_info = f->get_kernel_info();
    return kernel_info->smem;
 }
 
 unsigned ptx_kernel_nregs( void *kernel_impl )
 {
    function_info *f = (function_info*)kernel_impl;
-   const struct gpgpu_ptx_sim_kernel_info *kernel_info = f->get_kernel_info();
+   const struct gpgpu_ptx_sim_info *kernel_info = f->get_kernel_info();
    return kernel_info->regs;
 }
 
@@ -1167,6 +1207,16 @@ ptx_instruction::ptx_instruction( int opcode,
       case HALF_OPTION:
          m_inst_size = 4; // bytes
          break;
+	  case EXTP_OPTION:
+		 break;
+	  case NC_OPTION:
+		 break;
+	  case UP_OPTION:
+	  case DOWN_OPTION:
+	  case BFLY_OPTION:
+	  case IDX_OPTION:
+		  m_shfl_op = last_ptx_inst_option;
+		  break;
       default:
          assert(0);
          break;
@@ -1201,6 +1251,12 @@ ptx_instruction::ptx_instruction( int opcode,
        if (fname =="vprintf"){
            m_is_printf = true;
        }
+       if(fname == "cudaStreamCreateWithFlags")
+           m_is_cdp = 1;
+       if(fname == "cudaGetParameterBufferV2")
+           m_is_cdp = 2;
+       if(fname == "cudaLaunchDeviceV2")
+           m_is_cdp = 4;
 
    }
 }
@@ -1248,6 +1304,7 @@ function_info::function_info(int entry_point )
    m_kernel_info.regs = 0;
    m_kernel_info.smem = 0;
    m_local_mem_framesize = 0;
+   m_args_aligned_size = -1;
 }
 
 unsigned function_info::print_insn( unsigned pc, FILE * fp ) const
@@ -1256,10 +1313,15 @@ unsigned function_info::print_insn( unsigned pc, FILE * fp ) const
    unsigned index = pc - m_start_PC;
    char command[1024];
    char buffer[1024];
+   memset(command, 0, 1024);
+   memset(buffer, 0, 1024);
    snprintf(command,1024,"c++filt -p %s",m_name.c_str());
    FILE *p = popen(command,"r");
    buffer[0]=0;
-   fscanf(p,"%1023s",buffer);
+   fgets(buffer, 1023, p);
+   // Remove trailing "\n" in buffer
+   char *c;
+   if ((c=strchr(buffer, '\n')) != NULL) *c = '\0';
    fprintf(fp,"%s",buffer);
    if ( index >= m_instr_mem_size ) {
       fprintf(fp, "<past last instruction (max pc=%u)>", m_start_PC + m_instr_mem_size - 1 );
