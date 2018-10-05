@@ -222,7 +222,7 @@ void gpgpu_sim::gpgpu_debug()
    }
 }
 
-bool thread_at_brkpt( ptx_thread_info *thread, const struct brk_pt &b )
+bool thread_at_brkpt( ptx_thread_info *thread, const class brk_pt &b )
 {
    return b.is_equal(thread->get_location(),thread->get_uid());
 }
