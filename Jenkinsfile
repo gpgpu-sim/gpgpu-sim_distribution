@@ -97,8 +97,9 @@ pipeline {
                         ./gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/jenkins/quick-regress/AALP/gpgpu-sim_distribution/dev-purdue-integration/stats-per-kernel-4.2-ptx.csv,./stats-per-kernel-4.2-ptx.csv -R > per-kernel-merge-4.2-ptx.csv &&\
                         ./gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/jenkins/quick-regress/AALP/gpgpu-sim_distribution/dev-purdue-integration/stats-per-kernel-4.2-ptxplus.csv,./stats-per-kernel-4.2-ptxplus.csv -R > per-kernel-merge-4.2-ptxplus.csv &&\
                         ./gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/jenkins/quick-regress/AALP/gpgpu-sim_distribution/dev-purdue-integration/stats-per-kernel-9.1-titanx.csv,./stats-per-kernel-9.1-titanx.csv -R > per-kernel-merge-9.1-titanx.csv &&\
-                        ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh per-kernel-merge-4.2.csv $PLOTDIR ${BUILD_NUMBER} &&\
-                        ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh per-kernel-merge-9.1.csv $PLOTDIR ${BUILD_NUMBER} &&\
+                        ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh per-kernel-merge-4.2-ptx.csv $PLOTDIR ${BUILD_NUMBER} &&\
+                        ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh per-kernel-merge-4.2-ptxplus.csv $PLOTDIR ${BUILD_NUMBER} &&\
+                        ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh per-kernel-merge-9.1-titanx.csv $PLOTDIR ${BUILD_NUMBER} &&\
                         mkdir -p ./jenkins/quick-regress/${JOB_NAME}/ && cp stats-per-*.csv ./jenkins/quick-regress/${JOB_NAME}/ &&\
                         cd ./gpgpu-sim-results-repo &&\
                         git diff --quiet && git diff --staged --quiet || git commit -am "Jenkins automated checkin ${BUILD_NUMBER}" &&\
