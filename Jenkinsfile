@@ -84,8 +84,10 @@ pipeline {
             steps {
                     sh 'rm -rf gpgpu-sim-results-repo'
                     sh 'git clone git@github.com:purdue-aalp/gpgpu-sim-results-repo.git'
-                    sh './gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_4.0-ft -C GTX480-PTXPLUS > stats-per-kernel-4.2-ptxplus.csv &&\
-                    ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft -C GTX480 > stats-per-kernel-4.2-ptx.csv &&\
+                    sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
+                    ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft -C GTX480-PTXPLUS > stats-per-kernel-4.2-ptxplus.csv &&\
+                    ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft -C GTX480 > stats-per-kernel-4.2-ptx.csv'
+                    sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
                     ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft,sdk-4.2 -C TITANX > stats-per-kernel-9.1-titanx.csv'
                     sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/jenkins/quick-regress/AALP/gpgpu-sim_distribution/dev-purdue-integration/stats-per-app-4.2.csv,./stats-per-app-4.2.csv -R > per-app-merge-4.2.csv'
                     sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/jenkins/quick-regress/AALP/gpgpu-sim_distribution/dev-purdue-integration/stats-per-app-9.1.csv,./stats-per-app-9.1.csv -R > per-app-merge-9.1.csv'
@@ -121,4 +123,3 @@ pipeline {
         }
     }
 }
-
