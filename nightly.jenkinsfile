@@ -51,7 +51,8 @@ pipeline {
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
                     PLOTDIR="jenkins/${JOB_NAME}" &&\
-                    ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh TITANX-2B,TITANX-L1ON-2B,P100-2B,TITANV-2B $PLOTDIR ${BUILD_NUMBER}'
+                    ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B `cat ./gpgpu-sim_simulations/util/job_launching/apps/all-apps.list` -C TITANX-2B,TITANX-L1ON-2B,P100-2B,TITANV-2B > nightly-stats-per-kernel-9.1.csv &&\
+                    ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh nightly-stats-per-kernel-9.1.csv $PLOTDIR ${BUILD_NUMBER}'
             }
         }
     }
