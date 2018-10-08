@@ -52,8 +52,10 @@
 
 int gpgpu_ptx_instruction_classification;
 void ** g_inst_classification_stat = NULL;
+void ** g_inst_mem_classification_stat = NULL;
 void ** g_inst_op_classification_stat= NULL;
 int g_ptx_kernel_count = -1; // used for classification stat collection purposes 
+int g_ptx_kernel_count_prev = -1; // used for classification stat collection purposes 
 int g_debug_execution = 0;
 int g_debug_thread_uid = 0;
 addr_t g_debug_pc = 0xBEEF1518;
@@ -1241,12 +1243,16 @@ void init_inst_classification_stat()
    #define MAX_CLASS_KER 1024
    char kernelname[MAX_CLASS_KER] ="";
    if (!g_inst_classification_stat) g_inst_classification_stat = (void**)calloc(MAX_CLASS_KER, sizeof(void*));
-   snprintf(kernelname, MAX_CLASS_KER, "Kernel %d Classification\n",g_ptx_kernel_count  );         
+   snprintf(kernelname, MAX_CLASS_KER, "Kernel %d INST Classification",g_ptx_kernel_count  );         
    assert( g_ptx_kernel_count < MAX_CLASS_KER ) ; // a static limit on number of kernels increase it if it fails! 
    g_inst_classification_stat[g_ptx_kernel_count] = StatCreate(kernelname,1,20);
+   if (!g_inst_mem_classification_stat) g_inst_mem_classification_stat = (void**)calloc(MAX_CLASS_KER, sizeof(void*));
+   snprintf(kernelname, MAX_CLASS_KER, "Kernel %d MEM Classification",g_ptx_kernel_count  );         
+   g_inst_mem_classification_stat[g_ptx_kernel_count] = StatCreate(kernelname,1,20);
    if (!g_inst_op_classification_stat) g_inst_op_classification_stat = (void**)calloc(MAX_CLASS_KER, sizeof(void*));
-   snprintf(kernelname, MAX_CLASS_KER, "Kernel %d OP Classification\n",g_ptx_kernel_count  );         
+   snprintf(kernelname, MAX_CLASS_KER, "Kernel %d OP Classification",g_ptx_kernel_count  );         
    g_inst_op_classification_stat[g_ptx_kernel_count] = StatCreate(kernelname,1,100);
+   g_ptx_kernel_count_prev++;
 }
 
 static unsigned get_tex_datasize( const ptx_instruction *pI, ptx_thread_info *thread )
@@ -1324,6 +1330,17 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
       delete pJ;
       pI = pI_saved;
       
+      if ( gpgpu_ptx_instruction_classification ) {
+         init_inst_classification_stat();
+         if (op_classification) {
+            StatAddSample( g_inst_classification_stat[g_ptx_kernel_count],  op_classification);
+            inst.op_classification = op_classification;
+         }
+         if (pI->get_space().get_type())
+            StatAddSample( g_inst_mem_classification_stat[g_ptx_kernel_count], ( int )pI->get_space().get_type());
+         StatAddSample( g_inst_op_classification_stat[g_ptx_kernel_count], (int)  pI->get_opcode() );
+      }
+
       // Run exit instruction if exit option included
       if(pI->is_exit())
          exit_impl(pI,this);
@@ -1409,27 +1426,6 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
    if(!(this->m_functionalSimulationMode))
        ptx_file_line_stats_add_exec_count(pI);
    
-   if ( gpgpu_ptx_instruction_classification ) {
-      init_inst_classification_stat();
-      unsigned space_type=0;
-      switch ( pI->get_space().get_type() ) {
-      case global_space: space_type = 10; break;
-      case local_space:  space_type = 11; break; 
-      case tex_space:    space_type = 12; break; 
-      case surf_space:   space_type = 13; break; 
-      case param_space_kernel:
-      case param_space_local:
-                         space_type = 14; break; 
-      case shared_space: space_type = 15; break; 
-      case const_space:  space_type = 16; break;
-      default: 
-         space_type = 0 ;
-         break;
-      }
-      StatAddSample( g_inst_classification_stat[g_ptx_kernel_count],  op_classification);
-      if (space_type) StatAddSample( g_inst_classification_stat[g_ptx_kernel_count], ( int )space_type);
-      StatAddSample( g_inst_op_classification_stat[g_ptx_kernel_count], (int)  pI->get_opcode() );
-   }
    if ( (g_ptx_sim_num_insn % 100000) == 0 ) {
       dim3 ctaid = get_ctaid();
       dim3 tid = get_tid();
@@ -1849,8 +1845,10 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
 
    //******PRINTING*******
    printf( "GPGPU-Sim: Done functional simulation (%u instructions simulated).\n", g_ptx_sim_num_insn );
+   fflush(stdout); 
    if ( gpgpu_ptx_instruction_classification ) {
-      StatDisp( g_inst_classification_stat[g_ptx_kernel_count]);
+      StatDisp ( g_inst_classification_stat[g_ptx_kernel_count]);
+      StatDisp ( g_inst_mem_classification_stat[g_ptx_kernel_count]);
       StatDisp ( g_inst_op_classification_stat[g_ptx_kernel_count]);
    }
 
