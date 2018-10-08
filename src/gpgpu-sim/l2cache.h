@@ -58,7 +58,7 @@ private:
 class memory_partition_unit
 {
 public: 
-   memory_partition_unit( unsigned partition_id, const struct memory_config *config, class memory_stats_t *stats );
+   memory_partition_unit( unsigned partition_id, const struct memory_config *config, class memory_stats_t *stats , class gpgpu_sim *gpu);
    ~memory_partition_unit(); 
 
    bool busy() const;
@@ -92,6 +92,8 @@ public:
    int global_sub_partition_id_to_local_id(int global_sub_partition_id) const; 
 
    unsigned get_mpid() const { return m_id; }
+
+   gpgpu_sim *m_gpu;
 
 private: 
 
@@ -145,7 +147,7 @@ private:
 class memory_sub_partition
 {
 public:
-   memory_sub_partition( unsigned sub_partition_id, const struct memory_config *config, class memory_stats_t *stats );
+   memory_sub_partition( unsigned sub_partition_id, const struct memory_config *config, class memory_stats_t *stats, class gpgpu_sim *gpu);
    ~memory_sub_partition(); 
 
    unsigned get_id() const { return m_id; } 
@@ -185,6 +187,8 @@ public:
         m_L2cache->force_tag_access( addr, m_memcpy_cycle_offset + time, mask );
         m_memcpy_cycle_offset += 1;
    }
+
+   gpgpu_sim *m_gpu;
 
 private:
 // data
