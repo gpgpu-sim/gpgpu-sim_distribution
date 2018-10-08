@@ -222,7 +222,7 @@ struct line_cache_block: public cache_block_t  {
 			return m_readable;
 		}
 		virtual void print_status() {
-			 printf("m_block_addr is %u, status = %u\n", m_block_addr, m_status);
+			 printf("m_block_addr is %llu, status = %u\n", m_block_addr, m_status);
 		}
 
 
