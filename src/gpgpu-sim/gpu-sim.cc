@@ -463,7 +463,7 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
                 "1");
    option_parser_register(opp, "-gpgpu_ptx_instruction_classification", OPT_INT32, 
                &gpgpu_ptx_instruction_classification, 
-               "if enabled will classify ptx instruction types per kernel (Max 255 kernels now)", 
+               "if enabled will classify ptx instruction types per kernel (Max 1024 kernels now)", 
                "0");
    option_parser_register(opp, "-gpgpu_ptx_sim_mode", OPT_INT32, &g_ptx_sim_mode, 
                "Select between Performance (default) or Functional simulation (1)", 
@@ -686,7 +686,7 @@ gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config )
     m_memory_partition_unit = new memory_partition_unit*[m_memory_config->m_n_mem];
     m_memory_sub_partition = new memory_sub_partition*[m_memory_config->m_n_mem_sub_partition];
     for (unsigned i=0;i<m_memory_config->m_n_mem;i++) {
-        m_memory_partition_unit[i] = new memory_partition_unit(i, m_memory_config, m_memory_stats);
+        m_memory_partition_unit[i] = new memory_partition_unit(i, m_memory_config, m_memory_stats, this);
         for (unsigned p = 0; p < m_memory_config->m_n_sub_partition_per_memory_channel; p++) {
             unsigned submpid = i * m_memory_config->m_n_sub_partition_per_memory_channel + p; 
             m_memory_sub_partition[submpid] = m_memory_partition_unit[i]->get_sub_partition(p); 
@@ -1069,6 +1069,7 @@ void gpgpu_sim::gpu_print_stat()
    shader_print_scheduler_stat( stdout, false );
 
    m_shader_stats->print(stdout);
+   m_power_stats->print(stdout);
 #ifdef GPGPUSIM_POWER_MODEL
    if(m_config.g_power_simulation_enabled){
 	   m_gpgpusim_wrapper->print_power_kernel_stats(gpu_sim_cycle, gpu_tot_sim_cycle, gpu_tot_sim_insn + gpu_sim_insn, kernel_info_str, true );
@@ -1121,8 +1122,9 @@ void gpgpu_sim::gpu_print_stat()
       insn_warp_occ_print(stdout);
    }
    if ( gpgpu_ptx_instruction_classification ) {
-      StatDisp( g_inst_classification_stat[g_ptx_kernel_count]);
-      StatDisp( g_inst_op_classification_stat[g_ptx_kernel_count]);
+      StatDisp( g_inst_classification_stat[g_ptx_kernel_count_prev]);
+      StatDisp( g_inst_mem_classification_stat[g_ptx_kernel_count_prev]);
+      StatDisp( g_inst_op_classification_stat[g_ptx_kernel_count_prev]);
    }
 
 #ifdef GPGPUSIM_POWER_MODEL

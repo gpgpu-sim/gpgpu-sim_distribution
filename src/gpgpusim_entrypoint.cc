@@ -163,6 +163,8 @@ void *gpgpu_sim_thread_concurrent(void*)
            printf("GPGPU-Sim: ** STOP simulation thread (no work) **\n");
            fflush(stdout);
         }
+        //g_the_gpu->print_stats();
+
         if(sim_cycles) {
             g_the_gpu->print_stats();
             g_the_gpu->update_stats();
@@ -270,6 +272,7 @@ void print_simulation_time()
    s = difference - 60*(m + 60*(h + 24*d));
 
    fflush(stderr);
+   printf("gpgpu_data_footprint = %u requests at L2\n", g_the_gpu->data_footprint_stats.size());
    printf("\n\ngpgpu_simulation_time = %u days, %u hrs, %u min, %u sec (%u sec)\n",
           (unsigned)d, (unsigned)h, (unsigned)m, (unsigned)s, (unsigned)difference );
    printf("gpgpu_simulation_rate = %u (inst/sec)\n", (unsigned)(g_the_gpu->gpu_tot_sim_insn / difference) );
