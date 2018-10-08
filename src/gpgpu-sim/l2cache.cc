@@ -62,16 +62,15 @@ mem_fetch * partition_mf_allocator::alloc(new_addr_type addr, mem_access_type ty
 
 memory_partition_unit::memory_partition_unit( unsigned partition_id, 
                                               const struct memory_config *config,
-                                              class memory_stats_t *stats,
-                                              class gpgpu_sim *gpu)
-: m_id(partition_id), m_config(config), m_stats(stats), m_arbitration_metadata(config), m_gpu(gpu)
+                                              class memory_stats_t *stats )
+: m_id(partition_id), m_config(config), m_stats(stats), m_arbitration_metadata(config) 
 {
     m_dram = new dram_t(m_id,m_config,m_stats,this);
 
     m_sub_partition = new memory_sub_partition*[m_config->m_n_sub_partition_per_memory_channel]; 
     for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel; p++) {
         unsigned sub_partition_id = m_id * m_config->m_n_sub_partition_per_memory_channel + p; 
-        m_sub_partition[p] = new memory_sub_partition(sub_partition_id, m_config, stats, m_gpu); 
+        m_sub_partition[p] = new memory_sub_partition(sub_partition_id, m_config, stats); 
     }
 }
 
@@ -311,13 +310,11 @@ void memory_partition_unit::print( FILE *fp ) const
 
 memory_sub_partition::memory_sub_partition( unsigned sub_partition_id, 
                                             const struct memory_config *config,
-                                            class memory_stats_t *stats ,
-                                            class gpgpu_sim *gpu)
+                                            class memory_stats_t *stats )
 {
     m_id = sub_partition_id;
     m_config=config;
     m_stats=stats;
-    m_gpu=gpu;
     m_memcpy_cycle_offset = 0;
 
     assert(m_id < m_config->m_n_mem_sub_partition); 
@@ -413,15 +410,6 @@ void memory_sub_partition::cache_cycle( unsigned cycle )
                 bool write_sent = was_write_sent(events);
                 bool read_sent = was_read_sent(events);
                 MEM_SUBPART_DPRINTF("Probing L2 cache Address=%llx, status=%u\n", mf->get_addr(), status); 
-
-                if ( (mf->get_access_type() == GLOBAL_ACC_R) ||
-                     (mf->get_access_type() == GLOBAL_ACC_W) ||
-                     (mf->get_access_type() == LOCAL_ACC_R)  ||
-                     (mf->get_access_type() == LOCAL_ACC_W)  ||
-                     (mf->get_access_type() == CONST_ACC_R) ) {
-                    if (!m_gpu->data_footprint_stats.count(mf->get_addr()))
-                        m_gpu->data_footprint_stats.insert(mf->get_addr());
-                }
 
                 if ( status == HIT ) {
                     if( !write_sent ) {

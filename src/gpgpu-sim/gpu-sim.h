@@ -36,7 +36,6 @@
 #include <iostream>
 #include <fstream>
 #include <list>
-#include <unordered_set>
 #include <stdio.h>
 
 
@@ -428,8 +427,6 @@ public:
    void dump_pipeline( int mask, int s, int m ) const;
 
     void perf_memcpy_to_gpu( size_t dst_start_addr, size_t count );
-
-   std::unordered_set<unsigned long long> data_footprint_stats;
 
    //The next three functions added to be used by the functional simulation function
    
