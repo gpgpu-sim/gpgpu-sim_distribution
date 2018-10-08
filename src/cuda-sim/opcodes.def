@@ -35,7 +35,9 @@ SFU 4
 Mem(except Tex) 5
 Tex 6
 Nop 7
+Breakpoint 9
 Other 10
+Scalar video 11
 */
 OP_DEF(ABS_OP,abs_impl,"abs",1,1)
 OP_DEF(ADD_OP,add_impl,"add",1,1)
