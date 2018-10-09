@@ -1691,6 +1691,7 @@ public:
     // accessors
     virtual bool warp_waiting_at_barrier( unsigned warp_id ) const;
     void get_pdom_stack_top_info( unsigned tid, unsigned *pc, unsigned *rpc ) const;
+    float get_current_occupancy( unsigned long long & active, unsigned long long & total ) const;
 
 // used by pipeline timing model components:
     // modifiers
@@ -1897,6 +1898,7 @@ public:
     std::vector<register_set> m_pipeline_reg;
     Scoreboard               *m_scoreboard;
     opndcoll_rfu_t            m_operand_collector;
+    int m_active_warps;
 
     //schedule
     std::vector<scheduler_unit*>  schedulers;
@@ -1986,6 +1988,7 @@ public:
     void get_L1T_sub_stats(struct cache_sub_stats &css) const;
 
     void get_icnt_stats(long &n_simt_to_mem, long &n_mem_to_simt) const;
+    float get_current_occupancy( unsigned long long& active, unsigned long long & total ) const;
 
 private:
     unsigned m_cluster_id;
