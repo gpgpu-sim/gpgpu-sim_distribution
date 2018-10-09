@@ -29,7 +29,6 @@
 #include "stat-tool.h"
 #include <assert.h>
 
-#define MAX_DEFAULT_CACHE_SIZE_MULTIBLIER 4
 // used to allocate memory that is large enough to adapt the changes in cache size across kernels
 
 const char * cache_request_status_str(enum cache_request_status status) 
@@ -165,7 +164,7 @@ unsigned l2_cache_config::set_index(new_addr_type addr) const{
 
 tag_array::~tag_array() 
 {
-	unsigned cache_lines_num = MAX_DEFAULT_CACHE_SIZE_MULTIBLIER*m_config.get_num_lines();
+	unsigned cache_lines_num = m_config.get_max_num_lines();
 	for(unsigned i=0; i<cache_lines_num; ++i)
 		delete m_lines[i];
     delete[] m_lines;
@@ -192,7 +191,7 @@ tag_array::tag_array( cache_config &config,
     : m_config( config )
 {
     //assert( m_config.m_write_policy == READ_ONLY ); Old assert
-	unsigned cache_lines_num = MAX_DEFAULT_CACHE_SIZE_MULTIBLIER*config.get_num_lines();
+	unsigned cache_lines_num = config.get_max_num_lines();
 	m_lines = new cache_block_t*[cache_lines_num];
 	if(config.m_cache_type == NORMAL)
 	{
@@ -387,7 +386,7 @@ void tag_array::fill( unsigned index, unsigned time, mem_fetch* mf)
 //TODO: we need write back the flushed data to the upper level
 void tag_array::flush() 
 {
-    for (unsigned i=0; i < m_config.get_num_lines(); i++)
+    for (unsigned i=0; i < m_config.get_max_num_lines(); i++)
     	if(m_lines[i]->is_modified_line()) {
     	for(unsigned j=0; j < SECTOR_CHUNCK_SIZE; j++)
     		m_lines[i]->set_status(INVALID, mem_access_sector_mask_t().set(j)) ;
@@ -396,7 +395,7 @@ void tag_array::flush()
 
 void tag_array::invalidate()
 {
-    for (unsigned i=0; i < m_config.get_num_lines(); i++)
+    for (unsigned i=0; i < m_config.get_max_num_lines(); i++)
     	for(unsigned j=0; j < SECTOR_CHUNCK_SIZE; j++)
     		m_lines[i]->set_status(INVALID, mem_access_sector_mask_t().set(j)) ;
 }
