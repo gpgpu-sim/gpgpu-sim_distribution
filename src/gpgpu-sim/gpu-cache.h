@@ -38,6 +38,8 @@
 #include "addrdec.h"
 #include <iostream>
 
+#define MAX_DEFAULT_CACHE_SIZE_MULTIBLIER 4
+
 enum cache_block_state {
     INVALID=0,
     RESERVED,
@@ -557,15 +559,15 @@ public:
         }
         if(m_alloc_policy == STREAMING) {
         	//For streaming cache, we set the alloc policy to be on-fill to remove all line_alloc_fail stalls
-        	//we set the MSHRs to be equal to the cache line. This is possible by moving TAG to be shared between cache line and MSHR enrty (i.e. for each cache line, there is an MSHR rntey associated with it)
-        	// This is the easiest think we can think about to model (mimics) L1 streaming cache in Pascal and Volta
+        	//we set the MSHRs to be equal to max allocated cache lines. This is possible by moving TAG to be shared between cache line and MSHR enrty (i.e. for each cache line, there is an MSHR rntey associated with it)
+        	//This is the easiest think we can think about to model (mimic) L1 streaming cache in Pascal and Volta
         	//Based on our microbenchmakrs, MSHRs entries have been increasing substantially in Pascal and Volta
         	//For more information about streaming cache, see:
         	// http://on-demand.gputechconf.com/gtc/2017/presentation/s7798-luke-durant-inside-volta.pdf
         	// https://ieeexplore.ieee.org/document/8344474/
 
 			m_alloc_policy = ON_FILL;
-			m_mshr_entries = m_nset*m_assoc;
+			m_mshr_entries = m_nset*m_assoc*MAX_DEFAULT_CACHE_SIZE_MULTIBLIER;
 			if(m_cache_type == SECTOR)
 				m_mshr_entries *=  SECTOR_CHUNCK_SIZE;
 			m_mshr_max_merge = MAX_WARP_PER_SM;
@@ -581,6 +583,7 @@ public:
         m_nset_log2 = LOGB2(m_nset);
         m_valid = true;
         m_atom_sz = (m_cache_type == SECTOR)? SECTOR_SIZE : m_line_sz;
+        original_m_assoc = m_assoc;
 
         //For more details about difference between FETCH_ON_WRITE and WRITE VALIDAE policies
         //Read: Jouppi, Norman P. "Cache write policies and performance". ISCA 93.
@@ -646,7 +649,11 @@ public:
         assert( m_valid );
         return m_nset * m_assoc;
     }
-
+    unsigned get_max_num_lines() const
+    {
+        assert( m_valid );
+        return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER * m_nset * original_m_assoc;
+    }
     void print( FILE *fp ) const
     {
         fprintf( fp, "Size = %d B (%d Set x %d-way x %d byte line)\n", 
@@ -687,6 +694,21 @@ public:
 	{
     	return m_mshr_type;
 	}
+    void set_assoc(unsigned n)
+	{
+    	//set new assoc. L1 cache dynamically resized in Volta
+    	m_assoc = n;
+	}
+    unsigned get_nset() const
+	{
+		assert( m_valid );
+		return m_nset;
+	}
+    unsigned get_total_size_inKB() const
+	{
+		assert( m_valid );
+		return (m_assoc*m_nset*m_line_sz)/1024;
+	}
     FuncCache get_cache_status() {return cache_status;}
     char *m_config_string;
     char *m_config_stringPrefL1;
@@ -708,6 +730,7 @@ protected:
     unsigned m_nset_log2;
     unsigned m_assoc;
     unsigned m_atom_sz;
+    unsigned original_m_assoc;
 
     enum replacement_policy_t m_replacement_policy; // 'L' = LRU, 'F' = FIFO
     enum write_policy_t m_write_policy;             // 'T' = write through, 'B' = write back, 'R' = read only
