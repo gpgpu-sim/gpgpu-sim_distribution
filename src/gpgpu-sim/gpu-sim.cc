@@ -845,6 +845,7 @@ void gpgpu_sim::update_stats() {
     partiton_replys_in_parallel_total += partiton_replys_in_parallel;
     partiton_reqs_in_parallel_util_total += partiton_reqs_in_parallel_util;
     gpu_tot_sim_cycle_parition_util += gpu_sim_cycle_parition_util ;
+    gpu_tot_occupancy += gpu_occupancy;
 
     gpu_sim_cycle = 0;
     partiton_reqs_in_parallel = 0;
@@ -853,6 +854,7 @@ void gpgpu_sim::update_stats() {
     gpu_sim_cycle_parition_util = 0;
     gpu_sim_insn = 0;
     m_total_cta_launched = 0;
+    gpu_occupancy = occupancy_stats();
 }
 
 void gpgpu_sim::print_stats()
@@ -1026,6 +1028,9 @@ void gpgpu_sim::gpu_print_stat()
    printf("gpu_tot_sim_insn = %lld\n", gpu_tot_sim_insn+gpu_sim_insn);
    printf("gpu_tot_ipc = %12.4f\n", (float)(gpu_tot_sim_insn+gpu_sim_insn) / (gpu_tot_sim_cycle+gpu_sim_cycle));
    printf("gpu_tot_issued_cta = %lld\n", gpu_tot_issued_cta + m_total_cta_launched);
+   printf("gpu_occupancy = %.4f\% \n", gpu_occupancy.get_occ_fraction() * 100);
+   printf("gpu_tot_occupancy = %.4f\% \n", (gpu_occupancy + gpu_tot_occupancy).get_occ_fraction() * 100);
+
 
    extern unsigned long long g_max_total_param_size;
    fprintf(statfout, "max_total_param_size = %llu\n", g_max_total_param_size);
@@ -1529,6 +1534,8 @@ void gpgpu_sim::cycle()
          // Update core icnt/cache stats for GPUWattch
          m_cluster[i]->get_icnt_stats(m_power_stats->pwr_mem_stat->n_simt_to_mem[CURRENT_STAT_IDX][i], m_power_stats->pwr_mem_stat->n_mem_to_simt[CURRENT_STAT_IDX][i]);
          m_cluster[i]->get_cache_stats(m_power_stats->pwr_mem_stat->core_cache_stats[CURRENT_STAT_IDX]);
+         m_cluster[i]->get_current_occupancy(gpu_occupancy.aggregate_warp_slot_filled, gpu_occupancy.aggregate_theoretical_warp_slots);
+
       }
       float temp=0;
       for (unsigned i=0;i<m_shader_config->num_shader();i++){
@@ -1594,15 +1601,20 @@ void gpgpu_sim::cycle()
          time_t curr_time;
          time(&curr_time);
          unsigned long long  elapsed_time = MAX(curr_time - g_simulation_starttime, 1);
-         if ( (elapsed_time - last_liveness_message_time) >= m_config.liveness_message_freq ) {
+         if ( (elapsed_time - last_liveness_message_time) >= m_config.liveness_message_freq && DTRACE(LIVENESS) ) {
             days    = elapsed_time/(3600*24);
             hrs     = elapsed_time/3600 - 24*days;
             minutes = elapsed_time/60 - 60*(hrs + 24*days);
             sec = elapsed_time - 60*(minutes + 60*(hrs + 24*days));
-
-            DPRINTF(LIVENESS, "GPGPU-Sim uArch: cycles simulated: %lld  inst.: %lld (ipc=%4.1f) sim_rate=%u (inst/sec) elapsed = %u:%u:%02u:%02u / %s", 
-                   gpu_tot_sim_cycle + gpu_sim_cycle, gpu_tot_sim_insn + gpu_sim_insn, 
+            
+            unsigned long long active = 0, total = 0;
+            for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) {
+                m_cluster[i]->get_current_occupancy(active, total);
+            }
+            DPRINTF(LIVENESS, "uArch: inst.: %lld (ipc=%4.1f, occ=%0.4f\% [%llu / %llu]) sim_rate=%u (inst/sec) elapsed = %u:%u:%02u:%02u / %s", 
+                   gpu_tot_sim_insn + gpu_sim_insn, 
                    (double)gpu_sim_insn/(double)gpu_sim_cycle,
+                   float(active)/float(total) * 100, active, total,
                    (unsigned)((gpu_tot_sim_insn+gpu_sim_insn) / elapsed_time),
                    (unsigned)days,(unsigned)hrs,(unsigned)minutes,(unsigned)sec,
                    ctime(&curr_time));

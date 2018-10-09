@@ -74,7 +74,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                   shader_core_stats *stats )
    : core_t( gpu, NULL, config->warp_size, config->n_thread_per_shader ),
      m_barriers( this, config->max_warps_per_shader, config->max_cta_per_core, config->max_barriers_per_cta, config->warp_size ),
-     m_dynamic_warp_id(0)
+     m_dynamic_warp_id(0), m_active_warps(0)
 {
     m_cluster = cluster;
     m_config = config;
@@ -357,6 +357,7 @@ void shader_core_ctx::reinit(unsigned start_thread, unsigned end_thread, bool re
        m_occupied_ctas = 0;
        m_occupied_hwtid.reset();
        m_occupied_cta_to_hwtid.clear();
+       m_active_warps = 0;
 
    }
    for (unsigned i = start_thread; i<end_thread; i++) {
@@ -391,6 +392,7 @@ void shader_core_ctx::init_warps( unsigned cta_id, unsigned start_thread, unsign
             m_warp[i].init(start_pc,cta_id,i,active_threads, m_dynamic_warp_id);
             ++m_dynamic_warp_id;
             m_not_completed += n_active;
+            ++m_active_warps;
       }
    }
 }
@@ -416,6 +418,18 @@ void shader_core_ctx::get_pdom_stack_top_info( unsigned tid, unsigned *pc, unsig
 {
     unsigned warp_id = tid/m_config->warp_size;
     m_simt_stack[warp_id]->get_pdom_stack_top_info(pc,rpc);
+}
+
+float shader_core_ctx::get_current_occupancy( unsigned long long & active, unsigned long long & total ) const
+{
+    // To match the achieved_occupancy in nvprof, only SMs that are active are counted toward the occupancy.
+    if ( m_active_warps > 0 ) {
+        total += m_warp.size();
+        active += m_active_warps;
+        return float(active) / float(total);
+    } else {
+        return 0;
+    }
 }
 
 void shader_core_stats::print( FILE* fout ) const
@@ -692,6 +706,8 @@ void shader_core_ctx::fetch()
                     }
                     if( did_exit ) 
                         m_warp[warp_id].set_done_exit();
+                        --m_active_warps;
+                        assert(m_active_warps >= 0);
                 }
 
                 // this code fetches instructions from the i-cache or generates memory requests
@@ -3522,6 +3538,15 @@ void simt_core_cluster::print_not_completed( FILE *fp ) const
         unsigned sid=m_config->cid_to_sid(i,m_cluster_id);
         fprintf(fp,"%u(%u) ", sid, not_completed );
     }
+}
+
+
+float simt_core_cluster::get_current_occupancy( unsigned long long& active, unsigned long long& total ) const {
+    float aggregate = 0.f;
+    for( unsigned i=0; i < m_config->n_simt_cores_per_cluster; i++ ) {
+        aggregate+=m_core[i]->get_current_occupancy( active, total );
+    }
+    return aggregate / m_config->n_simt_cores_per_cluster;
 }
 
 unsigned simt_core_cluster::get_n_active_cta() const
