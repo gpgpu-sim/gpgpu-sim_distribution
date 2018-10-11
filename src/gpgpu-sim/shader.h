@@ -1409,6 +1409,8 @@ struct shader_core_config : public core_config
 
     //Jin: concurrent kernel on sm
     bool gpgpu_concurrent_kernel_sm;
+
+    bool adpative_volta_cache_config;
 };
 
 struct shader_core_stats_pod {

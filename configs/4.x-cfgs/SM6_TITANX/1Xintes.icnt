@@ -7,21 +7,20 @@ network_count = 2;
 
 // Topology
 topology = fly;
-k = 64;
+k = 52;
 n = 1;
 
 // Routing
 
 routing_function = dest_tag;
 
-
 // Flow control
 
 num_vcs     = 1;
-vc_buf_size = 256;
+vc_buf_size = 64;
 input_buffer_size = 256;
-ejection_buffer_size = 256;
-boundary_buffer_size = 256;
+ejection_buffer_size = 64;
+boundary_buffer_size = 64;
 
 wait_for_tail_credit = 0;
 
@@ -38,7 +37,7 @@ sw_alloc_delay = 1;
 
 input_speedup     = 1;
 output_speedup    = 1;
-internal_speedup  = 2.0;
+internal_speedup  = 1.0;
 
 // Traffic, GPGPU-Sim does not use this
 

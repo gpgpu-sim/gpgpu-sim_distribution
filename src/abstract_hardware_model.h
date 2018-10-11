@@ -301,6 +301,8 @@ public:
    unsigned long long start_cycle;
    unsigned long long end_cycle;
    unsigned m_launch_latency;
+
+   mutable bool volta_cache_config_set;
 };
 
 struct core_config {

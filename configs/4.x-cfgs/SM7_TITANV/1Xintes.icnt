@@ -38,7 +38,7 @@ sw_alloc_delay = 1;
 
 input_speedup     = 1;
 output_speedup    = 1;
-internal_speedup  = 2.0;
+internal_speedup  = 1.0;
 
 // Traffic, GPGPU-Sim does not use this
 

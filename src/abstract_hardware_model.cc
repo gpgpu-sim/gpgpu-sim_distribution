@@ -591,6 +591,8 @@ kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *
    
     //Jin: launch latency management
     m_launch_latency = g_kernel_launch_latency;
+
+    volta_cache_config_set=false;
 }
 
 kernel_info_t::~kernel_info_t()
