@@ -839,6 +839,8 @@ protected:
 
     int m_core_id; // which shader core is using this
     int m_type_id; // what kind of cache is this (normal, texture, constant)
+
+    bool is_used;  //a flag if the whole cache has ever been accessed before
 };
 
 class mshr_table {
