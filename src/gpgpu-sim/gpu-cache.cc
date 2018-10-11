@@ -29,7 +29,6 @@
 #include "stat-tool.h"
 #include <assert.h>
 
-#define MAX_DEFAULT_CACHE_SIZE_MULTIBLIER 4
 // used to allocate memory that is large enough to adapt the changes in cache size across kernels
 
 const char * cache_request_status_str(enum cache_request_status status) 
@@ -165,7 +164,7 @@ unsigned l2_cache_config::set_index(new_addr_type addr) const{
 
 tag_array::~tag_array() 
 {
-	unsigned cache_lines_num = MAX_DEFAULT_CACHE_SIZE_MULTIBLIER*m_config.get_num_lines();
+	unsigned cache_lines_num = m_config.get_max_num_lines();
 	for(unsigned i=0; i<cache_lines_num; ++i)
 		delete m_lines[i];
     delete[] m_lines;
@@ -192,7 +191,7 @@ tag_array::tag_array( cache_config &config,
     : m_config( config )
 {
     //assert( m_config.m_write_policy == READ_ONLY ); Old assert
-	unsigned cache_lines_num = MAX_DEFAULT_CACHE_SIZE_MULTIBLIER*config.get_num_lines();
+	unsigned cache_lines_num = config.get_max_num_lines();
 	m_lines = new cache_block_t*[cache_lines_num];
 	if(config.m_cache_type == NORMAL)
 	{
@@ -223,6 +222,7 @@ void tag_array::init( int core_id, int type_id )
     m_prev_snapshot_pending_hit = 0;
     m_core_id = core_id; 
     m_type_id = type_id;
+    is_used = false;
 }
 
 
@@ -317,6 +317,7 @@ enum cache_request_status tag_array::access( new_addr_type addr, unsigned time, 
 enum cache_request_status tag_array::access( new_addr_type addr, unsigned time, unsigned &idx, bool &wb, evicted_block_info &evicted, mem_fetch* mf )
 {
     m_access++;
+    is_used = true;
     shader_cache_access_log(m_core_id, m_type_id, 0); // log accesses to cache
     enum cache_request_status status = probe(addr,idx,mf);
     switch (status) {
@@ -387,18 +388,28 @@ void tag_array::fill( unsigned index, unsigned time, mem_fetch* mf)
 //TODO: we need write back the flushed data to the upper level
 void tag_array::flush() 
 {
+	if(!is_used)
+		return;
+
     for (unsigned i=0; i < m_config.get_num_lines(); i++)
     	if(m_lines[i]->is_modified_line()) {
     	for(unsigned j=0; j < SECTOR_CHUNCK_SIZE; j++)
     		m_lines[i]->set_status(INVALID, mem_access_sector_mask_t().set(j)) ;
     	}
+
+    is_used = false;
 }
 
 void tag_array::invalidate()
 {
+	if(!is_used)
+		return;
+
     for (unsigned i=0; i < m_config.get_num_lines(); i++)
     	for(unsigned j=0; j < SECTOR_CHUNCK_SIZE; j++)
     		m_lines[i]->set_status(INVALID, mem_access_sector_mask_t().set(j)) ;
+
+    is_used = false;
 }
 
 float tag_array::windowed_miss_rate( ) const
