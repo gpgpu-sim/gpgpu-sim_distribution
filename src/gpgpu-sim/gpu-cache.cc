@@ -222,6 +222,7 @@ void tag_array::init( int core_id, int type_id )
     m_prev_snapshot_pending_hit = 0;
     m_core_id = core_id; 
     m_type_id = type_id;
+    is_used = false;
 }
 
 
@@ -316,6 +317,7 @@ enum cache_request_status tag_array::access( new_addr_type addr, unsigned time, 
 enum cache_request_status tag_array::access( new_addr_type addr, unsigned time, unsigned &idx, bool &wb, evicted_block_info &evicted, mem_fetch* mf )
 {
     m_access++;
+    is_used = true;
     shader_cache_access_log(m_core_id, m_type_id, 0); // log accesses to cache
     enum cache_request_status status = probe(addr,idx,mf);
     switch (status) {
@@ -386,18 +388,28 @@ void tag_array::fill( unsigned index, unsigned time, mem_fetch* mf)
 //TODO: we need write back the flushed data to the upper level
 void tag_array::flush() 
 {
-    for (unsigned i=0; i < m_config.get_max_num_lines(); i++)
+	if(!is_used)
+		return;
+
+    for (unsigned i=0; i < m_config.get_num_lines(); i++)
     	if(m_lines[i]->is_modified_line()) {
     	for(unsigned j=0; j < SECTOR_CHUNCK_SIZE; j++)
     		m_lines[i]->set_status(INVALID, mem_access_sector_mask_t().set(j)) ;
     	}
+
+    is_used = false;
 }
 
 void tag_array::invalidate()
 {
-    for (unsigned i=0; i < m_config.get_max_num_lines(); i++)
+	if(!is_used)
+		return;
+
+    for (unsigned i=0; i < m_config.get_num_lines(); i++)
     	for(unsigned j=0; j < SECTOR_CHUNCK_SIZE; j++)
     		m_lines[i]->set_status(INVALID, mem_access_sector_mask_t().set(j)) ;
+
+    is_used = false;
 }
 
 float tag_array::windowed_miss_rate( ) const
