@@ -224,7 +224,7 @@ struct line_cache_block: public cache_block_t  {
 			return m_readable;
 		}
 		virtual void print_status() {
-			 printf("m_block_addr is %u, status = %u\n", m_block_addr, m_status);
+			 printf("m_block_addr is %llu, status = %u\n", m_block_addr, m_status);
 		}
 
 
@@ -416,7 +416,7 @@ struct sector_cache_block : public cache_block_t {
 	}
 
     virtual void print_status() {
-    	 printf("m_block_addr is %u, status = %u %u %u %u\n", m_block_addr, m_status[0], m_status[1], m_status[2], m_status[3]);
+    	 printf("m_block_addr is %llu, status = %u %u %u %u\n", m_block_addr, m_status[0], m_status[1], m_status[2], m_status[3]);
     }
 
 

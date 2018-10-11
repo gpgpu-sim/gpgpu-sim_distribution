@@ -383,6 +383,32 @@ private:
     friend class gpgpu_sim;
 };
 
+struct occupancy_stats {
+    occupancy_stats() : aggregate_warp_slot_filled(0), aggregate_theoretical_warp_slots(0){}
+    occupancy_stats( unsigned long long wsf, unsigned long long tws )
+        : aggregate_warp_slot_filled(wsf), aggregate_theoretical_warp_slots(tws){}
+
+    unsigned long long aggregate_warp_slot_filled;
+    unsigned long long aggregate_theoretical_warp_slots;
+
+    float get_occ_fraction() const {
+        return float(aggregate_warp_slot_filled) / float(aggregate_theoretical_warp_slots);
+    }
+
+    occupancy_stats& operator+=(const occupancy_stats& rhs) {
+        aggregate_warp_slot_filled += rhs.aggregate_warp_slot_filled;
+        aggregate_theoretical_warp_slots += rhs.aggregate_theoretical_warp_slots;
+        return *this;
+    }
+
+    occupancy_stats operator+(const occupancy_stats& rhs) const{
+        return occupancy_stats( aggregate_warp_slot_filled + rhs.aggregate_warp_slot_filled,
+                                aggregate_theoretical_warp_slots + rhs.aggregate_theoretical_warp_slots
+                               );
+    }
+};
+
+
 class gpgpu_sim : public gpgpu_t {
 public:
    gpgpu_sim( const gpgpu_sim_config &config );
@@ -521,6 +547,9 @@ public:
    unsigned long long  gpu_tot_sim_insn;
    unsigned long long  gpu_sim_insn_last_update;
    unsigned gpu_sim_insn_last_update_sid;
+   occupancy_stats gpu_occupancy;
+   occupancy_stats gpu_tot_occupancy;
+
 
    FuncCache get_cache_config(std::string kernel_name);
    void set_cache_config(std::string kernel_name, FuncCache cacheConfig );
@@ -548,5 +577,6 @@ public:
      m_functional_sim_kernel = NULL;
    }
 };
+
 
 #endif
