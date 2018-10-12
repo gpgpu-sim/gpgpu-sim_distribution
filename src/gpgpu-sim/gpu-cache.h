@@ -506,6 +506,7 @@ public:
         m_config_stringPrefShared = NULL;
         m_data_port_width = 0;
         m_set_index_function = LINEAR_SET_FUNCTION;
+        m_is_streaming = false;
     }
     void init(char * config, FuncCache status)
     {
@@ -565,7 +566,7 @@ public:
         	//For more information about streaming cache, see:
         	// http://on-demand.gputechconf.com/gtc/2017/presentation/s7798-luke-durant-inside-volta.pdf
         	// https://ieeexplore.ieee.org/document/8344474/
-
+        	m_is_streaming = true;
 			m_alloc_policy = ON_FILL;
 			m_mshr_entries = m_nset*m_assoc*MAX_DEFAULT_CACHE_SIZE_MULTIBLIER;
 			if(m_cache_type == SECTOR)
@@ -709,6 +710,9 @@ public:
 		assert( m_valid );
 		return (m_assoc*m_nset*m_line_sz)/1024;
 	}
+    bool is_streaming() {
+    	return m_is_streaming;
+    }
     FuncCache get_cache_status() {return cache_status;}
     char *m_config_string;
     char *m_config_stringPrefL1;
@@ -731,6 +735,7 @@ protected:
     unsigned m_assoc;
     unsigned m_atom_sz;
     unsigned original_m_assoc;
+    bool m_is_streaming;
 
     enum replacement_policy_t m_replacement_policy; // 'L' = LRU, 'F' = FIFO
     enum write_policy_t m_write_policy;             // 'T' = write through, 'B' = write back, 'R' = read only
@@ -789,8 +794,8 @@ public:
     tag_array(cache_config &config, int core_id, int type_id );
     ~tag_array();
 
-    enum cache_request_status probe( new_addr_type addr, unsigned &idx, mem_fetch* mf ) const;
-    enum cache_request_status probe( new_addr_type addr, unsigned &idx, mem_access_sector_mask_t mask ) const;
+    enum cache_request_status probe( new_addr_type addr, unsigned &idx, mem_fetch* mf, bool probe_mode=false ) const;
+    enum cache_request_status probe( new_addr_type addr, unsigned &idx, mem_access_sector_mask_t mask, bool probe_mode=false, mem_fetch* mf = NULL ) const;
     enum cache_request_status access( new_addr_type addr, unsigned time, unsigned &idx, mem_fetch* mf );
     enum cache_request_status access( new_addr_type addr, unsigned time, unsigned &idx, bool &wb, evicted_block_info &evicted, mem_fetch* mf );
 
@@ -810,6 +815,8 @@ public:
     void get_stats(unsigned &total_access, unsigned &total_misses, unsigned &total_hit_res, unsigned &total_res_fail) const;
 
 	void update_cache_parameters(cache_config &config);
+	void add_pending_line(mem_fetch *mf);
+	void remove_pending_line(mem_fetch *mf);
 protected:
     // This constructor is intended for use only from derived classes that wish to
     // avoid unnecessary memory allocation that takes place in the
@@ -841,6 +848,9 @@ protected:
     int m_type_id; // what kind of cache is this (normal, texture, constant)
 
     bool is_used;  //a flag if the whole cache has ever been accessed before
+
+    typedef tr1_hash_map<new_addr_type,unsigned> line_table;
+    line_table pending_lines;
 };
 
 class mshr_table {
@@ -890,7 +900,9 @@ private:
         mshr_entry() : m_has_atomic(false) { }
     }; 
     typedef tr1_hash_map<new_addr_type,mshr_entry> table;
+    typedef tr1_hash_map<new_addr_type,mshr_entry> line_table;
     table m_data;
+    line_table pending_lines;
 
     // it may take several cycles to process the merged requests
     bool m_current_response_ready;
