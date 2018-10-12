@@ -225,14 +225,31 @@ void tag_array::init( int core_id, int type_id )
     is_used = false;
 }
 
+void tag_array::add_pending_line(mem_fetch *mf){
+	assert(mf);
+	new_addr_type addr = m_config.block_addr(mf->get_addr());
+	line_table::const_iterator i = pending_lines.find(addr);
+	if ( i == pending_lines.end() ) {
+		pending_lines[addr] = mf->get_inst().get_uid();
+	}
+}
 
-enum cache_request_status tag_array::probe( new_addr_type addr, unsigned &idx, mem_fetch* mf) const {
+void tag_array::remove_pending_line(mem_fetch *mf){
+	assert(mf);
+	new_addr_type addr = m_config.block_addr(mf->get_addr());
+	line_table::const_iterator i = pending_lines.find(addr);
+	if ( i != pending_lines.end() ) {
+		pending_lines.erase(addr);
+	}
+}
+
+enum cache_request_status tag_array::probe( new_addr_type addr, unsigned &idx, mem_fetch* mf, bool probe_mode) const {
     mem_access_sector_mask_t mask = mf->get_access_sector_mask();
-    return probe(addr, idx, mask);
+    return probe(addr, idx, mask, probe_mode, mf);
 }
 
 
-enum cache_request_status tag_array::probe( new_addr_type addr, unsigned &idx, mem_access_sector_mask_t mask) const {
+enum cache_request_status tag_array::probe( new_addr_type addr, unsigned &idx, mem_access_sector_mask_t mask, bool probe_mode, mem_fetch* mf) const {
     //assert( m_config.m_write_policy == READ_ONLY );
     unsigned set_index = m_config.set_index(addr);
     new_addr_type tag = m_config.tag(addr);
@@ -301,6 +318,16 @@ enum cache_request_status tag_array::probe( new_addr_type addr, unsigned &idx, m
     } else if ( valid_line != (unsigned)-1) {
         idx = valid_line;
     } else abort(); // if an unreserved block exists, it is either invalid or replaceable 
+
+
+    if(probe_mode && m_config.is_streaming()){
+		line_table::const_iterator i = pending_lines.find(m_config.block_addr(addr));
+		assert(mf);
+		if ( !mf->is_write() && i != pending_lines.end() ) {
+			 if(i->second != mf->get_inst().get_uid())
+				 return SECTOR_MISS;
+		}
+    }
 
     return MISS;
 }
@@ -951,8 +978,11 @@ void baseline_cache::fill(mem_fetch *mf, unsigned time){
     mf->set_addr( e->second.m_addr );
     if ( m_config.m_alloc_policy == ON_MISS )
         m_tag_array->fill(e->second.m_cache_index,time,mf);
-    else if ( m_config.m_alloc_policy == ON_FILL )
+    else if ( m_config.m_alloc_policy == ON_FILL ) {
         m_tag_array->fill(e->second.m_block_addr,time,mf);
+        if(m_config.is_streaming())
+        	m_tag_array->remove_pending_line(mf);
+    }
     else abort();
     bool has_atomic = false;
     m_mshrs.mark_ready(e->second.m_block_addr, has_atomic);
@@ -1006,6 +1036,7 @@ void baseline_cache::send_read_request(new_addr_type addr, new_addr_type block_a
 
         m_mshrs.add(mshr_addr,mf);
         do_miss = true;
+
     } else if ( !mshr_hit && mshr_avail && (m_miss_queue.size() < m_config.m_miss_queue_size) ) {
     	if(read_only)
     		m_tag_array->access(block_addr,time,cache_index,mf);
@@ -1013,6 +1044,9 @@ void baseline_cache::send_read_request(new_addr_type addr, new_addr_type block_a
     		m_tag_array->access(block_addr,time,cache_index,wb,evicted,mf);
 
         m_mshrs.add(mshr_addr,mf);
+        if(m_config.is_streaming() && m_config.m_cache_type == SECTOR){
+			m_tag_array->add_pending_line(mf);
+		}
         m_extra_mf_fields[mf] = extra_mf_fields(mshr_addr,mf->get_addr(),cache_index, mf->get_data_size(), m_config);
         mf->set_data_size( m_config.get_atom_sz() );
         mf->set_addr( mshr_addr );
@@ -1536,7 +1570,7 @@ data_cache::access( new_addr_type addr,
     new_addr_type block_addr = m_config.block_addr(addr);
     unsigned cache_index = (unsigned)-1;
     enum cache_request_status probe_status
-        = m_tag_array->probe( block_addr, cache_index, mf );
+        = m_tag_array->probe( block_addr, cache_index, mf, true);
     enum cache_request_status access_status
         = process_tag_probe( wr, probe_status, addr, cache_index, mf, time, events );
     m_stats.inc_stats(mf->get_access_type(),
