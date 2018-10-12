@@ -708,8 +708,8 @@ void cache_stats::print_stats(FILE *fout, const char *cache_name) const{
     /// the provided name is used.
     /// The printed format is "<cache_name>[<request_type>][<request_status>] = <stat_value>"
     ///
-	std::vector< unsigned > total_access;
-	total_access.resize(NUM_MEM_ACCESS_TYPE, 0);
+    std::vector< unsigned > total_access;
+    total_access.resize(NUM_MEM_ACCESS_TYPE, 0);
     std::string m_cache_name = cache_name;
     for (unsigned type = 0; type < NUM_MEM_ACCESS_TYPE; ++type) {
         for (unsigned status = 0; status < NUM_CACHE_REQUEST_STATUS; ++status) {

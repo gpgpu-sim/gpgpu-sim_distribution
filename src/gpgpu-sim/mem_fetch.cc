@@ -39,9 +39,10 @@ mem_fetch::mem_fetch( const mem_access_t &access,
                       unsigned wid,
                       unsigned sid, 
                       unsigned tpc, 
-                      const class memory_config *config,
+                      const struct memory_config *config,
 					  mem_fetch *m_original_mf,
 					  mem_fetch *m_original_wr_mf)
+
 {
    m_request_uid = sm_next_mf_request_uid++;
    m_access = access;

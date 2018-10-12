@@ -104,7 +104,7 @@ enum bank_grp_bits_position{
 	LOWER_BITS
 };
 
-struct mem_fetch;
+class mem_fetch;
 
 class dram_t 
 {
@@ -243,7 +243,7 @@ private:
    unsigned int ave_mrqs_partial;
    unsigned int bwutil_partial;
 
-   struct memory_stats_t *m_stats;
+   class memory_stats_t *m_stats;
    class Stats* mrqq_Dist; //memory request queue inside DRAM  
 
    friend class frfcfs_scheduler;

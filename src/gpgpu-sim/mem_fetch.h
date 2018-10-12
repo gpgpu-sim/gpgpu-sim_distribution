@@ -55,7 +55,7 @@ public:
                unsigned wid,
                unsigned sid, 
                unsigned tpc, 
-               const class memory_config *config,
+               const struct memory_config *config,
 			   mem_fetch *original_mf = NULL,
 			   mem_fetch *original_wr_mf = NULL);
    ~mem_fetch();
@@ -148,7 +148,7 @@ private:
 
    static unsigned sm_next_mf_request_uid;
 
-   const class memory_config *m_mem_config;
+   const struct memory_config *m_mem_config;
    unsigned icnt_flit_size;
 
    mem_fetch* original_mf;  //this pointer is set up when a request is divided into sector requests at L2 cache (if the req size > L2 sector size), so the pointer refers to the original request

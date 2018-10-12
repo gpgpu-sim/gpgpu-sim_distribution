@@ -2083,7 +2083,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 	else
 	{
 		printf("Unknown Instruction: ");
-		printf(m_base.c_str());
+		printf("%s",m_base.c_str());
 		printf("\n");
 		output("Unknown Instruction: ");
 		output(m_base);
