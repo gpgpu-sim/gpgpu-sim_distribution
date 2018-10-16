@@ -39,7 +39,10 @@ mem_fetch::mem_fetch( const mem_access_t &access,
                       unsigned wid,
                       unsigned sid, 
                       unsigned tpc, 
-                      const class memory_config *config )
+                      const struct memory_config *config,
+					  mem_fetch *m_original_mf,
+					  mem_fetch *m_original_wr_mf)
+
 {
    m_request_uid = sm_next_mf_request_uid++;
    m_access = access;
@@ -61,6 +64,8 @@ mem_fetch::mem_fetch( const mem_access_t &access,
    m_status_change = gpu_sim_cycle + gpu_tot_sim_cycle;
    m_mem_config = config;
    icnt_flit_size = config->icnt_flit_size;
+   original_mf = m_original_mf;
+   original_wr_mf = m_original_wr_mf;
 }
 
 mem_fetch::~mem_fetch()
