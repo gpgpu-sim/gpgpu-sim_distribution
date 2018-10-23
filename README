@@ -5,8 +5,8 @@ AerialVision and a configurable and extensible energy model called GPUWattch.
 GPGPU-Sim and GPUWattch have been rigorously validated with performance and
 power measurements of real hardware GPUs. 
 
-This version of GPGPU-Sim has been tested with CUDA version 2.3, 3.1, 4.0, 
-5.0, 5.5, 6.0 and 7.5.
+This version of GPGPU-Sim has been tested with CUDA version 4.2,
+5.0, 5.5, 6.0 and 7.5, 8.0, 9.0, 9.1
 
 Please see the copyright notice in the file COPYRIGHT distributed with this
 release in the same directory as this file.
@@ -18,9 +18,10 @@ Analyzing CUDA Workloads Using a Detailed GPU Simulator, in IEEE International
 Symposium on Performance Analysis of Systems and Software (ISPASS), Boston, MA,
 April 19-21, 2009.
 
-If you use GPGPU-Sim version 3.3 with Volta model in your research, please cite:
+If you use the memory system in GPGPU-Sim, or the Volta/Pascal models,
+please cite:
 Mahmoud Khairy, Jain Akshay, Tor Aamodt, Timothy G Rogers,
-" Exploring Modern GPU Memory System Design Challenges through Accurate Modeling", arXiv:1810.07269, 
+Exploring Modern GPU Memory System Design Challenges through Accurate Modeling, arXiv:1810.07269, 
 https://arxiv.org/abs/1810.07269
 
 If you use the GPUWattch energy model in your research, please cite:
