@@ -2,7 +2,7 @@ LOG:
 Version 4.0.0 (development branch) versus 3.2.3
 -Front-End:
 1- Support .nc cache modifier and __ldg function to access the read-only L1D cache
-2- Partially-support some SASS_60 in the PTXP_PLUs (not completede yet)
+2- Partially-support some SASS_60 in the PTXP_PLUS (not completede yet)
 -GPU Core:
 1- Fermi/Pascal coalescer: coalescing on 32-bytes sectors.
 2- Adding separate dp, int and tenssor unit  pipeline.
