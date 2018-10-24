@@ -5,7 +5,7 @@ Version 4.0.0 (development branch) versus 3.2.3
 2- Partially-support some SASS_60 in the PTXP_PLUS (not completede yet)
 -GPU Core:
 1- Fermi/Pascal coalescer: coalescing on 32-bytes sectors.
-2- Adding separate dp, int and tenssor unit  pipeline.
+2- Adding separate dp and int units pipeline.
 3- diff dual issue: allow scheduler to issue diff insts at a time
 4- Fair memory issue from multiple schedulers.
 -Cache System:
