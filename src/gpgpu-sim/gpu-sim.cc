@@ -316,6 +316,9 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_operand_collector_num_units_sfu", OPT_INT32, &gpgpu_operand_collector_num_units_sfu,
                 "number of collector units (default = 4)", 
                 "4");
+    option_parser_register(opp, "-gpgpu_operand_collector_num_units_tensor_core", OPT_INT32, &gpgpu_operand_collector_num_units_tensor_core,
+                "number of collector units (default = 4)", 
+                "4");
     option_parser_register(opp, "-gpgpu_operand_collector_num_units_mem", OPT_INT32, &gpgpu_operand_collector_num_units_mem,
                 "number of collector units (default = 2)", 
                 "2");
@@ -328,6 +331,9 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_operand_collector_num_in_ports_sfu", OPT_INT32, &gpgpu_operand_collector_num_in_ports_sfu,
                            "number of collector unit in ports (default = 1)", 
                            "1");
+    option_parser_register(opp, "-gpgpu_operand_collector_num_in_ports_tensor_core", OPT_INT32, &gpgpu_operand_collector_num_in_ports_tensor_core,
+                           "number of collector unit in ports (default = 1)", 
+                           "1");
     option_parser_register(opp, "-gpgpu_operand_collector_num_in_ports_mem", OPT_INT32, &gpgpu_operand_collector_num_in_ports_mem,
                            "number of collector unit in ports (default = 1)", 
                            "1");
@@ -338,6 +344,9 @@ void shader_core_config::reg_options(class OptionParser * opp)
                            "number of collector unit in ports (default = 1)", 
                            "1");
     option_parser_register(opp, "-gpgpu_operand_collector_num_out_ports_sfu", OPT_INT32, &gpgpu_operand_collector_num_out_ports_sfu,
+                           "number of collector unit in ports (default = 1)", 
+                           "1");
+    option_parser_register(opp, "-gpgpu_operand_collector_num_out_ports_tensor_core", OPT_INT32, &gpgpu_operand_collector_num_out_ports_tensor_core,
                            "number of collector unit in ports (default = 1)", 
                            "1");
     option_parser_register(opp, "-gpgpu_operand_collector_num_out_ports_mem", OPT_INT32, &gpgpu_operand_collector_num_out_ports_mem,
@@ -360,13 +369,16 @@ void shader_core_config::reg_options(class OptionParser * opp)
                             "1");
     option_parser_register(opp, "-gpgpu_pipeline_widths", OPT_CSTR, &pipeline_widths_string,
                             "Pipeline widths "
-                            "ID_OC_SP,ID_OC_SFU,ID_OC_MEM,OC_EX_SP,OC_EX_SFU,OC_EX_MEM,EX_WB",
-                            "1,1,1,1,1,1,1" );
+                            "ID_OC_SP,ID_OC_SFU,ID_OC_TENSOR_CORE,ID_OC_MEM,OC_EX_SP,OC_EX_SFU,OC_EX_TENSOR_CORE,OC_EX_TENSOR_CORE,OC_EX_MEM,EX_WB",
+                            "1,1,1,1,1,1,1,1,1,1" );
     option_parser_register(opp, "-gpgpu_num_sp_units", OPT_INT32, &gpgpu_num_sp_units,
                             "Number of SP units (default=1)",
                             "1");
     option_parser_register(opp, "-gpgpu_num_sfu_units", OPT_INT32, &gpgpu_num_sfu_units,
                             "Number of SF units (default=1)",
+                            "1");
+    option_parser_register(opp, "-gpgpu_num_tensor_core_units", OPT_INT32, &gpgpu_num_tensor_core_units,
+                            "Number of tensor_core units (default=1)",
                             "1");
     option_parser_register(opp, "-gpgpu_num_mem_units", OPT_INT32, &gpgpu_num_mem_units,
                             "Number if ldst units (default=1) WARNING: not hooked up to anything",
@@ -1118,6 +1130,9 @@ void shader_core_ctx::mem_instruction_stats(const warp_inst_t &inst)
     case shared_space:
         m_stats->gpgpu_n_shmem_insn += active_count; 
         break;
+    case sstarr_space:
+    	m_stats->gpgpu_n_sstarr_insn += active_count;
+    	break;
     case const_space:
         m_stats->gpgpu_n_const_insn += active_count;
         break;
@@ -1489,7 +1504,8 @@ void gpgpu_sim::cycle()
       if( g_single_step && ((gpu_sim_cycle+gpu_tot_sim_cycle) >= g_single_step) ) {
           raise(SIGTRAP); // Debug breakpoint
       }
-      gpu_sim_cycle++;
+	 gpu_sim_cycle++;
+	
       if( g_interactive_debugger_enabled ) 
          gpgpu_debug();
 
@@ -1574,7 +1590,7 @@ void gpgpu_sim::cycle()
          }
       }
 
-      if (!(gpu_sim_cycle % 20000)) {
+      if (!(gpu_sim_cycle % 50000)) {
          // deadlock detection 
          if (m_config.gpu_deadlock_detect && gpu_sim_insn == last_gpu_sim_insn) {
             gpu_deadlock = true;

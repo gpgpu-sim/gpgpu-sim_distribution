@@ -41,6 +41,7 @@ enum _memory_space_t {
    reg_space,
    local_space,
    shared_space,
+   sstarr_space,
    param_space_unclassified,
    param_space_kernel,  /* global to all threads in a kernel : read-only */
    param_space_local,   /* local to a thread : read-writable */
@@ -76,8 +77,11 @@ enum uarch_op_t {
    NO_OP=-1,
    ALU_OP=1,
    SFU_OP,
+   TENSOR_CORE_OP,
    ALU_SFU_OP,
    LOAD_OP,
+   TENSOR_CORE_LOAD_OP,
+   TENSOR_CORE_STORE_OP,
    STORE_OP,
    BRANCH_OP,
    BARRIER_OP,
@@ -132,6 +136,7 @@ enum operation_pipeline_t {
     UNKOWN_OP,
     SP__OP,
     SFU__OP,
+    TENSOR_CORE__OP,
     MEM__OP
 };
 typedef enum operation_pipeline_t operation_pipeline;
@@ -602,6 +607,7 @@ public:
       return false;
    }
    enum _memory_space_t get_type() const { return m_type; }
+   void set_type( enum _memory_space_t t ) { m_type = t; }
    unsigned get_bank() const { return m_bank; }
    void set_bank( unsigned b ) { m_bank = b; }
    bool is_const() const { return (m_type == const_space) || (m_type == param_space_kernel); }
@@ -748,7 +754,7 @@ public:
 };
 
 // the maximum number of destination, source, or address uarch operands in a instruction
-#define MAX_REG_OPERANDS 8
+#define MAX_REG_OPERANDS 32 
 
 struct dram_callback_t {
    dram_callback_t() { function=NULL; instruction=NULL; thread=NULL; }
@@ -795,8 +801,8 @@ public:
     {
         fprintf(fp," [inst @ pc=0x%04x] ", pc );
     }
-    bool is_load() const { return (op == LOAD_OP || memory_op == memory_load); }
-    bool is_store() const { return (op == STORE_OP || memory_op == memory_store); }
+    bool is_load() const { return (op == LOAD_OP ||op==TENSOR_CORE_LOAD_OP || memory_op == memory_load); }
+    bool is_store() const { return (op == STORE_OP ||op==TENSOR_CORE_STORE_OP || memory_op == memory_store); }
     unsigned get_num_operands() const {return num_operands;}
     unsigned get_num_regs() const {return num_regs;}
     void set_num_regs(unsigned num) {num_regs=num;}
@@ -823,8 +829,8 @@ public:
 
     address_type reconvergence_pc; // -1 => not a branch, -2 => use function return address
     
-    unsigned out[4];
-    unsigned in[4];
+    unsigned out[8];
+    unsigned in[24];
     unsigned char is_vectorin;
     unsigned char is_vectorout;
     int pred; // predicate register number
@@ -835,7 +841,7 @@ public:
         int src[MAX_REG_OPERANDS];
     } arch_reg;
     //int arch_reg[MAX_REG_OPERANDS]; // register number for bank conflict evaluation
-    unsigned latency; // operation latency 
+    unsigned latency; // operation latency
     unsigned initiation_interval;
 
     unsigned data_size; // what is the size of the word being operated on?
@@ -923,7 +929,18 @@ public:
         for(unsigned i=0; i<num_addrs; i++)
             m_per_scalar_thread[n].memreqaddr[i] = addr[i];
     }
-
+    void print_m_accessq(){
+    		
+		if(accessq_empty())
+			return;
+		else{
+			printf("Printing mem access generated\n");
+			std::list<mem_access_t>::iterator it;	
+			for (it = m_accessq.begin(); it != m_accessq.end(); ++it){
+   				 printf("MEM_TXN_GEN:%s:%x, Size:%d \n",mem_access_type_str(it->get_type()), it->get_addr(),it->get_size());
+			}	
+		}
+    }   
     struct transaction_info {
         std::bitset<4> chunks; // bitmask: 32-byte chunks accessed
         mem_access_byte_mask_t bytes;
@@ -976,6 +993,10 @@ public:
     unsigned warp_id() const 
     { 
         assert( !m_empty );
+        return m_warp_id; 
+    }
+    unsigned warp_id_func() const // to be used in functional simulations only
+    { 
         return m_warp_id; 
     }
     unsigned dynamic_warp_id() const 

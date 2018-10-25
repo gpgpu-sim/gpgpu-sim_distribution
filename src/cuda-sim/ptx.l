@@ -60,7 +60,7 @@ addc    TC; ptx_lval.int_value = ADDC_OP; return OPCODE;
 and	TC; ptx_lval.int_value = AND_OP; return OPCODE;
 andn	TC; ptx_lval.int_value = ANDN_OP; return OPCODE;
 atom	TC; ptx_lval.int_value = ATOM_OP; return OPCODE;
-bar TC; ptx_lval.int_value = BAR_OP; return OPCODE;
+bar 	TC; ptx_lval.int_value = BAR_OP; return OPCODE;
 bfe     TC; ptx_lval.int_value = BFE_OP; return OPCODE;
 bfi     TC; ptx_lval.int_value = BFI_OP; return OPCODE;
 bfind   TC; ptx_lval.int_value = BFIND_OP; return OPCODE;
@@ -68,8 +68,13 @@ bra     TC; ptx_lval.int_value = BRA_OP; return OPCODE;
 brx     TC; ptx_lval.int_value = BRX_OP; return OPCODE;
 brev    TC; ptx_lval.int_value = BREV_OP; return OPCODE;
 brkpt   TC; ptx_lval.int_value = BRKPT_OP; return OPCODE;
+
+wmma	TC; ptx_lval.int_value = MMA_OP; return OPCODE;
+wmma\.load	TC; ptx_lval.int_value = MMA_LD_OP; return OPCODE;
+wmma\.store 	TC; ptx_lval.int_value = MMA_ST_OP; return OPCODE;
+
 call	TC; BEGIN(NOT_OPCODE); ptx_lval.int_value = CALL_OP; return OPCODE; // blocking opcode token in case the callee has the same name as an opcode
-callp    TC; BEGIN(NOT_OPCODE); ptx_lval.int_value = CALLP_OP; return OPCODE;
+callp   TC; BEGIN(NOT_OPCODE); ptx_lval.int_value = CALLP_OP; return OPCODE;
 clz	TC; ptx_lval.int_value = CLZ_OP; return OPCODE;
 cnot	TC; ptx_lval.int_value = CNOT_OP; return OPCODE;
 cos	TC; ptx_lval.int_value = COS_OP; return OPCODE;
@@ -121,6 +126,7 @@ shr     TC; ptx_lval.int_value = SHR_OP; return OPCODE;
 sin	TC; ptx_lval.int_value = SIN_OP; return OPCODE;
 slct	TC; ptx_lval.int_value = SLCT_OP; return OPCODE;
 sqrt	TC; ptx_lval.int_value = SQRT_OP; return OPCODE;
+sst	TC; ptx_lval.int_value = SST_OP; return OPCODE;
 ssy     TC; ptx_lval.int_value = SSY_OP; return OPCODE;
 st      TC; ptx_lval.int_value = ST_OP; return OPCODE;
 st.volatile TC; ptx_lval.int_value = ST_OP; return OPCODE;
@@ -148,7 +154,24 @@ nop     TC; ptx_lval.int_value = NOP_OP; return OPCODE;
 break  TC; ptx_lval.int_value = BREAK_OP; return OPCODE;
 breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 
+"CPTX_END"	printf("ENDING CUSTOM PTX.\n"); BEGIN(IN_COMMENT);
+
 <INITIAL,NOT_OPCODE,IN_INST,IN_FUNC_DECL>{
+\.a\.sync TC; ptx_lval.int_value = LOAD_A; return WMMA_DIRECTIVE;
+\.b\.sync TC; ptx_lval.int_value = LOAD_B; return WMMA_DIRECTIVE;
+\.c\.sync TC; ptx_lval.int_value = LOAD_C; return WMMA_DIRECTIVE;
+\.d\.sync TC; ptx_lval.int_value = STORE_D; return WMMA_DIRECTIVE;
+\.mma\.sync TC;ptx_lval.int_value=MMA; return WMMA_DIRECTIVE;
+
+\.row TC; ptx_lval.int_value = ROW; return LAYOUT;
+\.col TC; ptx_lval.int_value = COL; return LAYOUT;
+\.m16n16k16 TC; ptx_lval.int_value = M16N16K16; return CONFIGURATION;
+\.f4e TC;  return PRMT_F4E_MODE;
+\.b4e TC;  return PRMT_B4E_MODE;
+\.rc8 TC;  return PRMT_RC8_MODE;
+\.ecl TC;  return PRMT_ECL_MODE;
+\.ecr TC;  return PRMT_ECR_MODE;
+\.rc16 TC; return PRMT_RC16_MODE;
 
 \.align TC; return ALIGN_DIRECTIVE;
 \.branchtargets TC; return BRANCHTARGETS_DIRECTIVE;
@@ -175,6 +198,7 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.section TC; return SECTION_DIRECTIVE;
 \.shared  TC; return SHARED_DIRECTIVE;
 \.sreg   TC; return SREG_DIRECTIVE;
+\.sstarr TC; return SSTARR_DIRECTIVE;
 \.struct TC; return STRUCT_DIRECTIVE;
 \.surf   TC; return SURF_DIRECTIVE;   /* not in PTX 2.1 */
 \.target  TC; return TARGET_DIRECTIVE;
@@ -399,9 +423,9 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 <IN_COMMENT>{
 "*/"      BEGIN(INITIAL);
 "CPTX_BEGIN" printf("BEGINNING CUSTOM PTX.\n"); BEGIN(INITIAL);
-[^C*\n]+   // eat comment in chunks
-"C"
-"*"       // eat the lone star
+[^C*\n]+	// eat comment in chunks
+"C"			// eat the lone C 
+"*"			// eat the lone star
 \n        TC; 
 }
 
