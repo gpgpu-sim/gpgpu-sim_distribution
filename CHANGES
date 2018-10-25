@@ -2,7 +2,7 @@ LOG:
 Version 4.0.0 (development branch) versus 3.2.3
 -Front-End:
 1- Support .nc cache modifier and __ldg function to access the read-only L1D cache
-2- Partially-support some SASS_60 in the PTXP_PLUS (not completede yet)
+2- Partially-support some SASS_60 in the PTXP_PLUS (not completed yet)
 -GPU Core:
 1- Fermi/Pascal coalescer: coalescing on 32-bytes sectors.
 2- Adding separate dp unit pipeline.
@@ -22,7 +22,7 @@ Version 4.0.0 (development branch) versus 3.2.3
 -Statistics:
 1- Adding more detailed cache statistics to define and analyze cache bottlenecks.
 2- Adding more detailed memory statistics (BLP, RBL, etc) to define and analyze memory bottlenecks.
-3- Addig new stats: gpu occupance, L2BW, etc
+3- Addig new system stats: gpu occupancy, L2BW, etc
 -Configs:
 Adding the Pascal and Volta config files that has been correlated against real hardware.
 See the correlation website here: 
