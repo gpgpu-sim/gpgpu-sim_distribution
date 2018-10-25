@@ -39,7 +39,7 @@ void set_ptx_warp_size(const struct core_config * warp_size)
    g_shader_core_config=warp_size;
 }
 
-static bool g_debug_ir_generation=false;
+static bool g_debug_ir_generation=true;
 const char *g_filename;
 unsigned g_max_regs_per_thread = 0;
 
@@ -72,6 +72,7 @@ symbol *g_label;
 int g_opcode = -1;
 std::list<operand_info> g_operands;
 std::list<int> g_options;
+std::list<int> g_wmma_options;
 std::list<int> g_scalar_type;
 
 #define PTX_PARSE_DPRINTF(...) \
@@ -162,6 +163,7 @@ void init_instruction_state()
    g_label = NULL;
    g_opcode = -1;
    g_options.clear();
+   g_wmma_options.clear();
    g_return_var = operand_info();
    init_directive_state();
 }
@@ -300,6 +302,7 @@ void add_instruction()
                                              g_operands,
                                              g_return_var,
                                              g_options, 
+                                             g_wmma_options, 
                                              g_scalar_type,
                                              g_space_spec,
                                              g_filename,
@@ -440,6 +443,20 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       g_last_symbol->set_address( addr+addr_pad );
       g_current_symbol_table->alloc_shared( num_bits/8 + addr_pad );
       break;
+   case sstarr_space:
+         printf("GPGPU-Sim PTX: allocating sstarr region for \"%s\" ",
+                identifier);
+         fflush(stdout);
+         assert( (num_bits%8) == 0  );
+         addr = g_current_symbol_table->get_sstarr_next();
+         addr_pad = pad_address(addr, num_bits/8, 128);
+         printf("from 0x%x to 0x%lx (sstarr memory space)\n",
+                 addr+addr_pad,
+                 addr+addr_pad + num_bits/8);
+            fflush(stdout);
+         g_last_symbol->set_address( addr+addr_pad );
+         g_current_symbol_table->alloc_sstarr( num_bits/8 + addr_pad );
+         break;
    case const_space:
       if( array_ident == ARRAY_IDENTIFIER_NO_DIM ) {
          printf("GPGPU-Sim PTX: deferring allocation of constant region for \"%s\" (need size information)\n", identifier );
@@ -615,7 +632,7 @@ void add_scalar_type_spec( int type_spec )
    g_scalar_type.push_back( type_spec );
    if ( g_scalar_type.size() > 1 ) {
       parse_assert( (g_opcode == -1) || (g_opcode == CVT_OP) || (g_opcode == SET_OP) || (g_opcode == SLCT_OP)
-                    || (g_opcode == TEX_OP), 
+                    || (g_opcode == TEX_OP)|| (g_opcode==MMA_OP),
                     "only cvt, set, slct, and tex can have more than one type specifier.");
    }
    g_scalar_type_spec = type_spec;
@@ -655,7 +672,11 @@ void add_option( int option )
    PTX_PARSE_DPRINTF("add_option");
    g_options.push_back( option );
 }
-
+void add_wmma_option( int option ) 
+{
+   PTX_PARSE_DPRINTF("add_option");
+   g_wmma_options.push_back( option );
+}
 void add_double_operand( const char *d1, const char *d2 )
 {
    //operands that access two variables.
@@ -710,6 +731,28 @@ void add_4vector_operand( const char *d1, const char *d2, const char *d3, const 
    if ( s3 == null_op ) s3 = NULL;
    if ( s4 == null_op ) s4 = NULL;
    g_operands.push_back( operand_info(s1,s2,s3,s4) );
+}
+void add_8vector_operand( const char *d1, const char *d2, const char *d3, const char *d4,const char *d5,const char *d6,const char *d7,const char *d8 ) 
+{
+   PTX_PARSE_DPRINTF("add_8vector_operand");
+   const symbol *s1 = g_current_symbol_table->lookup(d1);
+   const symbol *s2 = g_current_symbol_table->lookup(d2);
+   const symbol *s3 = g_current_symbol_table->lookup(d3);
+   const symbol *s4 = g_current_symbol_table->lookup(d4);
+   const symbol *s5 = g_current_symbol_table->lookup(d5);
+   const symbol *s6 = g_current_symbol_table->lookup(d6);
+   const symbol *s7 = g_current_symbol_table->lookup(d7);
+   const symbol *s8 = g_current_symbol_table->lookup(d8);
+   parse_assert( s1 != NULL && s2 != NULL && s3 != NULL && s4 != NULL && s5 !=NULL && s6 !=NULL && s7 !=NULL && s8 !=NULL, "v4 component(s) missing declarations.");
+   const symbol *null_op = g_current_symbol_table->lookup("_");
+   if ( s2 == null_op ) s2 = NULL;
+   if ( s3 == null_op ) s3 = NULL;
+   if ( s4 == null_op ) s4 = NULL;
+   if ( s5 == null_op ) s5 = NULL;
+   if ( s6 == null_op ) s6 = NULL;
+   if ( s7 == null_op ) s7 = NULL;
+   if ( s8 == null_op ) s8 = NULL;
+   g_operands.push_back( operand_info(s1,s2,s3,s4,s5,s6,s7,s8) );
 }
 
 void add_builtin_operand( int builtin, int dim_modifier ) 
