@@ -1228,26 +1228,26 @@ protected:
 enum pipeline_stage_name_t {
     ID_OC_SP=0,
     ID_OC_SFU,  
-    ID_OC_TENSOR_CORE,  
     ID_OC_MEM,  
     OC_EX_SP,
     OC_EX_SFU,
-    OC_EX_TENSOR_CORE,
     OC_EX_MEM,
     EX_WB,
+    ID_OC_TENSOR_CORE,  
+    OC_EX_TENSOR_CORE,
     N_PIPELINE_STAGES 
     };
 
 const char* const pipeline_stage_name_decode[] = {
     "ID_OC_SP",
     "ID_OC_SFU",  
-    "ID_OC_TENSOR_CORE",  
     "ID_OC_MEM",  
     "OC_EX_SP",
     "OC_EX_SFU",
-    "OC_EX_TENSOR_CORE",
     "OC_EX_MEM",
     "EX_WB",
+    "ID_OC_TENSOR_CORE",  
+    "OC_EX_TENSOR_CORE",
     "N_PIPELINE_STAGES" 
 };
 
@@ -1272,16 +1272,22 @@ struct shader_core_config : public core_config
 	strcpy(toks,pipeline_widths_string);
                                   
 	toks = strtok(toks,",");
-    //    pipe_widths[OC_EX_TENSOR_CORE]=1;
-    //   pipe_widths[ID_OC_TENSOR_CORE]=1;
-	for (unsigned i = 0; i < N_PIPELINE_STAGES; i++) { 
+
+	/*	Removing the tensorcore pipeline while reading the config files if the tensor core is not available.
+	 	If we won't remove it, old regression will be broken.
+		So to support the legacy config files it's best to handle in this way.
+         */  
+	int num_config_to_read=N_PIPELINE_STAGES-2*(!gpgpu_tensor_core_avail);
+
+        for (unsigned i = 0; i <num_config_to_read; i++) { 
 	    assert(toks);
 	    ntok = sscanf(toks,"%d", &pipe_widths[i]);
 	    assert(ntok == 1); 
 	    toks = strtok(NULL,",");
 	}
-	delete[] tokd;
 
+	delete[] tokd;
+	
         if (n_thread_per_shader > MAX_THREAD_PER_SM) {
            printf("GPGPU-Sim uArch: Error ** increase MAX_THREAD_PER_SM in abstract_hardware_model.h from %u to %u\n", 
                   MAX_THREAD_PER_SM, n_thread_per_shader);
@@ -1361,6 +1367,7 @@ struct shader_core_config : public core_config
     unsigned int gpgpu_operand_collector_num_out_ports_gen;
 
     int gpgpu_num_sp_units;
+    int gpgpu_tensor_core_avail;
     int gpgpu_num_sfu_units;
     int gpgpu_num_tensor_core_units;
     int gpgpu_num_mem_units;
