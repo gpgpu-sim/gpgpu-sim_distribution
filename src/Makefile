@@ -38,7 +38,7 @@ CXXFLAGS = -Wall -DDEBUG
 CXXFLAGS += -DCUDART_VERSION=$(CUDART_VERSION)
 
 ifeq ($(GNUC_CPP0X), 1)
-    CXXFLAGS += -std=c++0x
+    
 endif
 
 ifeq ($(TRACE),1)

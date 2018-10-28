@@ -1344,7 +1344,7 @@ void extract_code_using_cuobjdump(){
 		cmd << "ldd " << app_binary << " | grep $CUDA_INSTALL_PATH | awk \'{print $3}\' > _tempfile_.txt";
 		int result = system(cmd.str().c_str());
 		if(result){
-			std::cout << "Failed to execute: " << cmd << std::endl;
+			std::cout << "Failed to execute: " << cmd.str() << std::endl;
 			exit(1);
 		}
 		std::ifstream libsf;
@@ -1376,7 +1376,7 @@ void extract_code_using_cuobjdump(){
 			if(result) {printf("ERROR: Failed to execute: %s\n", command); exit(1);}
 			std::cout << "Done" << std::endl;
 
-			std::cout << "Trying to parse " << libcodfn << std::endl;
+			std::cout << "Trying to parse " << libcodfn.str() << std::endl;
 			cuobjdump_in = fopen(libcodfn.str().c_str(), "r");
 			cuobjdump_parse();
 			fclose(cuobjdump_in);
