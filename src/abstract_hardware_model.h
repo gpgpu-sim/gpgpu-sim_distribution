@@ -76,6 +76,7 @@ enum uarch_op_t {
    NO_OP=-1,
    ALU_OP=1,
    SFU_OP,
+   DP_OP,
    ALU_SFU_OP,
    LOAD_OP,
    STORE_OP,
@@ -131,6 +132,7 @@ typedef enum special_operations_t special_ops; // Required to identify for the p
 enum operation_pipeline_t {
     UNKOWN_OP,
     SP__OP,
+	DP__OP,
     SFU__OP,
     MEM__OP
 };
@@ -299,6 +301,8 @@ public:
    unsigned long long start_cycle;
    unsigned long long end_cycle;
    unsigned m_launch_latency;
+
+   mutable bool volta_cache_config_set;
 };
 
 struct core_config {
@@ -338,6 +342,7 @@ struct core_config {
     unsigned gpgpu_cache_constl1_linesize;
 
 	unsigned gpgpu_max_insn_issue_per_warp;
+	bool gmem_skip_L1D; // on = global memory access always skip the L1 cache
 };
 
 // bounded stack that implements simt reconvergence using pdom mechanism from MICRO'07 paper
@@ -389,6 +394,7 @@ protected:
 #define LOCAL_MEM_SIZE_MAX (8*1024)
 #define MAX_STREAMING_MULTIPROCESSORS 64
 #define MAX_THREAD_PER_SM 2048
+#define MAX_WARP_PER_SM 64
 #define TOTAL_LOCAL_MEM_PER_SM (MAX_THREAD_PER_SM*LOCAL_MEM_SIZE_MAX)
 #define TOTAL_SHARED_MEM (MAX_STREAMING_MULTIPROCESSORS*SHARED_MEM_SIZE_MAX)
 #define TOTAL_LOCAL_MEM (MAX_STREAMING_MULTIPROCESSORS*MAX_THREAD_PER_SM*LOCAL_MEM_SIZE_MAX)
@@ -514,7 +520,14 @@ public:
     const struct textureReference* get_texref(const std::string &texname) const
     {
         std::map<std::string, const struct textureReference*>::const_iterator t=m_NameToTextureRef.find(texname);
-        assert( t != m_NameToTextureRef.end() );
+        if( t == m_NameToTextureRef.end() ) {
+	  // search for :: prefixed names
+	  std::string temp("::" + texname);
+	  t=m_NameToTextureRef.find(temp);
+	}
+
+	assert(t != m_NameToTextureRef.end());
+
         return t->second;
     }
     const struct cudaArray* get_texarray( const struct textureReference *texref ) const
@@ -565,6 +578,7 @@ struct gpgpu_ptx_sim_info
    int cmem;
    int gmem;
    int regs;
+   unsigned maxthreads;
    unsigned ptx_version;
    unsigned sm_target;
 };
@@ -615,6 +629,9 @@ private:
 
 const unsigned MAX_MEMORY_ACCESS_SIZE = 128;
 typedef std::bitset<MAX_MEMORY_ACCESS_SIZE> mem_access_byte_mask_t;
+const unsigned SECTOR_CHUNCK_SIZE = 4;   //four sectors
+const unsigned SECTOR_SIZE = 32 ;        //sector is 32 bytes width
+typedef std::bitset<SECTOR_CHUNCK_SIZE> mem_access_sector_mask_t;
 #define NO_PARTIAL_WRITE (mem_access_byte_mask_t())
 
 #define MEM_ACCESS_TYPE_TUP_DEF \
@@ -650,6 +667,7 @@ enum cache_operator_type {
     CACHE_ALL,          // .ca
     CACHE_LAST_USE,     // .lu
     CACHE_VOLATILE,     // .cv
+    CACHE_L1,     // .nc
                        
     // loads and stores 
     CACHE_STREAMING,    // .cs
@@ -679,8 +697,9 @@ public:
                  unsigned size, 
                  bool wr, 
                  const active_mask_t &active_mask,
-                 const mem_access_byte_mask_t &byte_mask )
-    : m_warp_mask(active_mask), m_byte_mask(byte_mask)
+                 const mem_access_byte_mask_t &byte_mask,
+		 const mem_access_sector_mask_t &sector_mask)
+    : m_warp_mask(active_mask), m_byte_mask(byte_mask), m_sector_mask(sector_mask)
    {
       init();
       m_type = type;
@@ -696,6 +715,7 @@ public:
    bool is_write() const { return m_write; }
    enum mem_access_type get_type() const { return m_type; }
    mem_access_byte_mask_t get_byte_mask() const { return m_byte_mask; }
+   mem_access_sector_mask_t get_sector_mask() const { return m_sector_mask; }
 
    void print(FILE *fp) const
    {
@@ -729,6 +749,7 @@ private:
    mem_access_type m_type;
    active_mask_t m_warp_mask;
    mem_access_byte_mask_t m_byte_mask;
+   mem_access_sector_mask_t m_sector_mask;
 
    static unsigned sm_next_access_uid;
 };
@@ -938,9 +959,9 @@ public:
     };
 
     void generate_mem_accesses();
-    void memory_coalescing_arch_13( bool is_write, mem_access_type access_type );
-    void memory_coalescing_arch_13_atomic( bool is_write, mem_access_type access_type );
-    void memory_coalescing_arch_13_reduce_and_send( bool is_write, mem_access_type access_type, const transaction_info &info, new_addr_type addr, unsigned segment_size );
+    void memory_coalescing_arch( bool is_write, mem_access_type access_type );
+    void memory_coalescing_arch_atomic( bool is_write, mem_access_type access_type );
+    void memory_coalescing_arch_reduce_and_send( bool is_write, mem_access_type access_type, const transaction_info &info, new_addr_type addr, unsigned segment_size );
 
     void add_callback( unsigned lane_id, 
                        void (*function)(const class inst_t*, class ptx_thread_info*),

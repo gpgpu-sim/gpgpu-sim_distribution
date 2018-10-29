@@ -1245,6 +1245,7 @@ public:
 
    const struct gpgpu_ptx_sim_info* get_kernel_info () const
    {
+      assert (m_kernel_info.maxthreads == maxnt_id);
       return &m_kernel_info;
    }
 
@@ -1252,6 +1253,8 @@ public:
       m_kernel_info = info;
       m_kernel_info.ptx_version = 10*get_ptx_version().ver();
       m_kernel_info.sm_target = get_ptx_version().target();
+      // THIS DEPENDS ON ptxas being called after the PTX is parsed.
+      m_kernel_info.maxthreads = maxnt_id;
    }
    symbol_table *get_symtab()
    {
@@ -1275,7 +1278,11 @@ public:
    }
    bool is_entry_point() const { return m_entry_point; }
 
+   void set_maxnt_id(unsigned maxthreads) { maxnt_id = maxthreads;}
+   unsigned get_maxnt_id() { return maxnt_id;}
+
 private:
+   unsigned maxnt_id;
    unsigned m_uid;
    unsigned m_local_mem_framesize;
    bool m_entry_point;
