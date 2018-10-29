@@ -1,0 +1,49 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "(gdb) Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/mnt/d/linux/git/gpgpu-sim_distribution/project/ptxtest/a.out",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "/mnt/d/linux/git/gpgpu-sim_distribution/project/ptxtest/",
+            "environment": [],
+            "externalConsole": true,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "C++ Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceRoot}/project/ptxtest/a.out",
+            "miDebuggerServerAddress": "localhost:9091",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceRoot}",
+            "environment": [],
+            "externalConsole": true,
+            "linux": {
+              "MIMode": "gdb"
+            },
+            "osx": {
+              "MIMode": "gdb"
+            },
+            "windows": {
+              "MIMode": "gdb"
+            }
+        }
+    ]
+}

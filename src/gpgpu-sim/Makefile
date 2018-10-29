@@ -44,7 +44,7 @@ endif
 include ../../version_detection.mk
 
 ifeq ($(GNUC_CPP0X), 1)
-    CXXFLAGS += -std=c++11
+    CXXFLAGS += -std=c++0x
 endif
 
 ifneq ($(DEBUG),1)
