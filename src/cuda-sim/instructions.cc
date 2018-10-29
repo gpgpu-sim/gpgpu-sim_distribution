@@ -33,6 +33,7 @@
 #include "ptx.tab.h"
 #include <stdlib.h>
 #include <math.h>
+#include <cmath>
 #include <fenv.h>
 #include "cuda-math.h"
 #include "../abstract_hardware_model.h"
