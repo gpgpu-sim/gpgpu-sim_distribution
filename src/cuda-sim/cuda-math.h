@@ -318,6 +318,9 @@ float __internal_accurate_fdividef(float a, float b)
 }
 
 // intrinsic for saturate  (clamp values beyond 0 and 1)
+#if __GNUC__ >=5
+#define isnan(x) std::isnan(x)
+#endif
 float __saturatef(float a)
 {
    float b; 
