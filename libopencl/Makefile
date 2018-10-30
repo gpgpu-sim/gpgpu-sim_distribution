@@ -76,7 +76,10 @@ ifeq ($(DEBUG),1)
 endif
 
 ifeq ($(GNUC_CPP0X), 1)
-    CCFLAGS += -std=c++0x
+	ifeq ($(GNUC_CPP11), 1)
+		CXXFLAGS += -std=c++11
+	else
+        CXXFLAGS += -std=c++0x
 endif
 
 

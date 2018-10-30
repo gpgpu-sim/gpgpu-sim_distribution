@@ -57,9 +57,14 @@ CXX_OPT = $(OPT)
 ifeq ($(INTEL),1)
     CXX_OPT += -std=c++0x
 else 
-ifeq ($(GNUC_CPP0X),1)
-    CXX_OPT += -std=c++0x
+
+ifeq ($(GNUC_CPP0X), 1)
+	ifeq ($(GNUC_CPP11), 1)
+		CXX_OPT += -std=c++11
+	else
+        CXX_OPT += -std=c++0x
 endif
+
 endif
 
 OBJS	:= $(OUTPUT_DIR)/ptx_parser.o $(OUTPUT_DIR)/ptx_loader.o $(OUTPUT_DIR)/cuda_device_printf.o $(OUTPUT_DIR)/instructions.o $(OUTPUT_DIR)/cuda-sim.o $(OUTPUT_DIR)/ptx_ir.o $(OUTPUT_DIR)/ptx_sim.o  $(OUTPUT_DIR)/memory.o $(OUTPUT_DIR)/ptx-stats.o $(OUTPUT_DIR)/decuda_pred_table/decuda_pred_table.o $(OUTPUT_DIR)/ptx.tab.o $(OUTPUT_DIR)/lex.ptx_.o $(OUTPUT_DIR)/ptxinfo.tab.o $(OUTPUT_DIR)/lex.ptxinfo_.o
