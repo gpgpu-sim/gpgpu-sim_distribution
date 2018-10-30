@@ -1043,18 +1043,18 @@ void gpgpu_sim::gpu_print_stat()
    printf("gpu_stall_dramfull = %d\n", gpu_stall_dramfull);
    printf("gpu_stall_icnt2sh    = %d\n", gpu_stall_icnt2sh );
 
-   printf("partiton_reqs_in_parallel = %lld\n", partiton_reqs_in_parallel);
-   printf("partiton_reqs_in_parallel_total    = %lld\n", partiton_reqs_in_parallel_total );
+   //printf("partiton_reqs_in_parallel = %lld\n", partiton_reqs_in_parallel);
+   //printf("partiton_reqs_in_parallel_total    = %lld\n", partiton_reqs_in_parallel_total );
    printf("partiton_level_parallism = %12.4f\n", (float)partiton_reqs_in_parallel / gpu_sim_cycle);
    printf("partiton_level_parallism_total  = %12.4f\n", (float)(partiton_reqs_in_parallel+partiton_reqs_in_parallel_total) / (gpu_tot_sim_cycle+gpu_sim_cycle) );
-   printf("partiton_reqs_in_parallel_util = %lld\n", partiton_reqs_in_parallel_util);
-   printf("partiton_reqs_in_parallel_util_total    = %lld\n", partiton_reqs_in_parallel_util_total );
-   printf("gpu_sim_cycle_parition_util = %lld\n", gpu_sim_cycle_parition_util);
-   printf("gpu_tot_sim_cycle_parition_util    = %lld\n", gpu_tot_sim_cycle_parition_util );
+   //printf("partiton_reqs_in_parallel_util = %lld\n", partiton_reqs_in_parallel_util);
+   //printf("partiton_reqs_in_parallel_util_total    = %lld\n", partiton_reqs_in_parallel_util_total );
+   //printf("gpu_sim_cycle_parition_util = %lld\n", gpu_sim_cycle_parition_util);
+   // printf("gpu_tot_sim_cycle_parition_util    = %lld\n", gpu_tot_sim_cycle_parition_util );
    printf("partiton_level_parallism_util = %12.4f\n", (float)partiton_reqs_in_parallel_util / gpu_sim_cycle_parition_util);
    printf("partiton_level_parallism_util_total  = %12.4f\n", (float)(partiton_reqs_in_parallel_util+partiton_reqs_in_parallel_util_total) / (gpu_sim_cycle_parition_util+gpu_tot_sim_cycle_parition_util) );
-   printf("partiton_replys_in_parallel = %lld\n", partiton_replys_in_parallel);
-   printf("partiton_replys_in_parallel_total    = %lld\n", partiton_replys_in_parallel_total );
+   //printf("partiton_replys_in_parallel = %lld\n", partiton_replys_in_parallel);
+   //printf("partiton_replys_in_parallel_total    = %lld\n", partiton_replys_in_parallel_total );
    printf("L2_BW  = %12.4f GB/Sec\n", ((float)(partiton_replys_in_parallel * 32) / (gpu_sim_cycle * m_config.icnt_period)) / 1000000000);
    printf("L2_BW_total  = %12.4f GB/Sec\n", ((float)((partiton_replys_in_parallel+partiton_replys_in_parallel_total) * 32) / ((gpu_tot_sim_cycle+gpu_sim_cycle) * m_config.icnt_period)) / 1000000000 );
 
