@@ -48,6 +48,7 @@ ifeq ($(GNUC_CPP0X), 1)
 		CXXFLAGS += -std=c++11
 	else
         CXXFLAGS += -std=c++0x
+		endif
 endif
 
 ifneq ($(DEBUG),1)
