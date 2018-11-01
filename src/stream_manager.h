@@ -93,7 +93,7 @@ public:
         m_stream=stream;
         m_done=false;
     }
-    stream_operation( class CUevent_st *e, struct CUstream_st *stream )
+    stream_operation( struct CUevent_st *e, struct CUstream_st *stream )
     {
         m_kernel=NULL;
         m_type=stream_event;
@@ -172,10 +172,10 @@ private:
 
     bool m_sim_mode;
     kernel_info_t *m_kernel;
-    class CUevent_st *m_event;
+    struct CUevent_st *m_event;
 };
 
-class CUevent_st {
+struct CUevent_st {
 public:
    CUevent_st( bool blocking )
    {

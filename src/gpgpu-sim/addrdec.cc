@@ -62,6 +62,9 @@ void linear_to_raw_address_translation::addrdec_setoption(option_parser_t opp)
    option_parser_register(opp, "-gpgpu_mem_address_mask", OPT_INT32, &gpgpu_mem_address_mask, 
                "0 = old addressing mask, 1 = new addressing mask, 2 = new add. mask + flipped bank sel and chip sel bits",
                "0");
+   option_parser_register(opp, "-memory_partition_indexing", OPT_UINT32, &memory_partition_indexing,
+                  "0 = no indexing, 1 = bitwise xoring, 2 = IPoly, 3 = custom indexing",
+                  "0");
 }
 
 new_addr_type linear_to_raw_address_translation::partition_address( new_addr_type addr ) const 
@@ -102,6 +105,74 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr, addrdec_
       tlx->col  = addrdec_packbits(addrdec_mask[COL], rest_of_addr, addrdec_mkhigh[COL], addrdec_mklow[COL]);
       tlx->burst= addrdec_packbits(addrdec_mask[BURST], rest_of_addr, addrdec_mkhigh[BURST], addrdec_mklow[BURST]);
    }
+
+    switch(memory_partition_indexing){
+		case CONSECUTIVE:
+			//Do nothing
+			break;
+		case BITWISE_PERMUTATION:
+		{
+			assert(!gap);
+			tlx->chip = (tlx->chip) ^ (tlx->row & (m_n_channel-1));
+			assert(tlx->chip < m_n_channel);
+			break;
+		}
+		case IPOLY:
+		{
+		    /*
+			* Set Indexing function from "Pseudo-randomly interleaved memory."
+			* Rau, B. R et al.
+			* ISCA 1991
+			*
+			* equations are adopted from:
+			* "Sacat: streaming-aware conflict-avoiding thrashing-resistant gpgpu cache management scheme."
+			* Khairy et al.
+			* IEEE TPDS 2017.
+			*/
+			if(m_n_channel == 32) {
+				std::bitset<64> a(tlx->row);
+				std::bitset<5> chip(tlx->chip);
+				chip[0] = a[13]^a[12]^a[11]^a[10]^a[9]^a[6]^a[5]^a[3]^a[0]^chip[0];
+				chip[1] = a[14]^a[13]^a[12]^a[11]^a[10]^a[7]^a[6]^a[4]^a[1]^chip[1];
+				chip[2] = a[14]^a[10]^a[9]^a[8]^a[7]^a[6]^a[3]^a[2]^a[0]^chip[2];
+				chip[3] = a[11]^a[10]^a[9]^a[8]^a[7]^a[4]^a[3]^a[1]^chip[3];
+				chip[4] = a[12]^a[11]^a[10]^a[9]^a[8]^a[5]^a[4]^a[2]^chip[4];
+				tlx->chip = chip.to_ulong();
+				
+			}
+			else{ /* Else incorrect number of channels for the hashing function */
+            assert("\nGPGPU-Sim memory_partition_indexing error: The number of channels should be "
+                    "32 for the hashing IPOLY index function.\n" && 0);
+			}
+			assert(tlx->chip < m_n_channel);
+			break;
+		}
+		case PAE:
+		{
+			//Page Address Entropy
+			//random selected bits from the page and bank bits
+			//similar to
+			//Liu, Yuxi, et al. "Get Out of the Valley: Power-Efficient Address Mapping for GPUs." ISCA 2018
+			std::bitset<64> a(tlx->row);
+			std::bitset<5> chip(tlx->chip);
+			std::bitset<4> b(tlx->bk);
+			chip[0] = a[13]^a[10]^a[9]^a[5]^a[0]^b[3]^b[0]^chip[0];
+			chip[1] = a[12]^a[11]^a[6]^a[1]^b[3]^b[2]^b[1]^chip[1];
+			chip[2] = a[14]^a[9]^a[8]^a[7]^a[2]^b[1]^chip[2];
+			chip[3] = a[11]^a[10]^a[8]^a[3]^b[2]^b[3]^chip[3];
+			chip[4] = a[12]^a[9]^a[8]^a[5]^a[4]^b[1]^b[0]^chip[4];
+			tlx->chip = chip.to_ulong();
+			assert(tlx->chip < m_n_channel);
+			break;
+		}
+		case CUSTOM:
+			/* No custom set function implemented */
+			//Do you custom index here
+			break;
+		default:
+			 assert("\nUndefined set index function.\n" && 0);
+			 break;
+	}
 
    // combine the chip address and the lower bits of DRAM bank address to form the subpartition ID
    unsigned sub_partition_addr_mask = m_n_sub_partition_in_channel - 1; 

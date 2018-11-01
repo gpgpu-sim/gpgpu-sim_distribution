@@ -143,7 +143,6 @@ newlines	{newline}+
 
 
 	/* Looking for the identifier (filename) then the header is done */
-	/* <endheader>[[:alnum:]_\./]+	yylval.string_value = strdup(yytext); yy_pop_state(); return FILENAME; */
 <endheader>{notnewline}+	yylval.string_value = strdup(yytext); yy_pop_state(); return IDENTIFIER;
 
 
@@ -159,8 +158,6 @@ newlines	{newline}+
 %%
 void cuobjdump_error(const char* message)
 {
-	printf("   "); printf(message); printf(" near \""); printf(yytext); printf("\"");
-	printf(" on line "); 
-	char line[5]; sprintf(line, "%i", yylineno); printf(line);
-	printf("\n");
+	printf("   %s near \"%s\"",message, yytext);
+	printf(" on line %i\n",yylineno); 
 }

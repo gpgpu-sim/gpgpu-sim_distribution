@@ -75,6 +75,10 @@ memory_stats_t::memory_stats_t( unsigned n_shader, const struct shader_core_conf
    max_mf_latency = 0;
    max_icnt2mem_latency = 0;
    max_icnt2sh_latency = 0;
+   tot_icnt2mem_latency = 0;
+   tot_icnt2sh_latency = 0;
+   tot_mrq_num = 0;
+   tot_mrq_latency = 0;
    memset(mrq_lat_table, 0, sizeof(unsigned)*32);
    memset(dq_lat_table, 0, sizeof(unsigned)*32);
    memset(mf_lat_table, 0, sizeof(unsigned)*32);
@@ -158,6 +162,7 @@ void memory_stats_t::memlatstat_read_done(mem_fetch *mf)
          mf_max_lat_table[mf->get_tlx_addr().chip][mf->get_tlx_addr().bk] = mf_latency;
       unsigned icnt2sh_latency;
       icnt2sh_latency = (gpu_tot_sim_cycle+gpu_sim_cycle) - mf->get_return_timestamp();
+      tot_icnt2sh_latency += icnt2sh_latency;
       icnt2sh_lat_table[LOGB2(icnt2sh_latency)]++;
       if (icnt2sh_latency > max_icnt2sh_latency)
          max_icnt2sh_latency = icnt2sh_latency;
@@ -191,6 +196,7 @@ void memory_stats_t::memlatstat_icnt2mem_pop(mem_fetch *mf)
    if (m_memory_config->gpgpu_memlatency_stat) {
       unsigned icnt2mem_latency;
       icnt2mem_latency = (gpu_tot_sim_cycle+gpu_sim_cycle) - mf->get_timestamp();
+      tot_icnt2mem_latency += icnt2mem_latency;
       icnt2mem_lat_table[LOGB2(icnt2mem_latency)]++;
       if (icnt2mem_latency > max_icnt2mem_latency)
          max_icnt2mem_latency = icnt2mem_latency;
@@ -216,14 +222,19 @@ void memory_stats_t::memlatstat_print( unsigned n_mem, unsigned gpu_mem_n_bk )
    unsigned max_bank_accesses, min_bank_accesses, max_chip_accesses, min_chip_accesses;
 
    if (m_memory_config->gpgpu_memlatency_stat) {
+	   printf("maxmflatency = %d \n", max_mf_latency);
+	   printf("max_icnt2mem_latency = %d \n", max_icnt2mem_latency);
       printf("maxmrqlatency = %d \n", max_mrq_latency);
-      printf("maxdqlatency = %d \n", max_dq_latency);
-      printf("maxmflatency = %d \n", max_mf_latency);
+      //printf("maxdqlatency = %d \n", max_dq_latency);
+      printf("max_icnt2sh_latency = %d \n", max_icnt2sh_latency);
       if (num_mfs) {
          printf("averagemflatency = %lld \n", mf_total_lat/num_mfs);
+         printf("avg_icnt2mem_latency = %lld \n", tot_icnt2mem_latency/num_mfs);
+         if(tot_mrq_num)
+        	 printf("avg_mrq_latency = %lld \n", tot_mrq_latency/tot_mrq_num);
+
+         printf("avg_icnt2sh_latency = %lld \n", tot_icnt2sh_latency/num_mfs);
       }
-      printf("max_icnt2mem_latency = %d \n", max_icnt2mem_latency);
-      printf("max_icnt2sh_latency = %d \n", max_icnt2sh_latency);
       printf("mrq_lat_table:");
       for (i=0; i< 32; i++) {
          printf("%d \t", mrq_lat_table[i]);

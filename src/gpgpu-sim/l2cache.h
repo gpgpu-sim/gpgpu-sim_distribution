@@ -72,6 +72,7 @@ public:
    void print_stat( FILE *fp ) { m_dram->print_stat(fp); }
    void visualize() const { m_dram->visualize(); }
    void print( FILE *fp ) const;
+   void handle_memcpy_to_gpu( size_t dst_start_addr, unsigned subpart_id, mem_access_sector_mask_t mask );
 
    class memory_sub_partition * get_sub_partition(int sub_partition_id) 
    {
@@ -154,12 +155,14 @@ public:
    void cache_cycle( unsigned cycle );
 
    bool full() const;
+   bool full(unsigned size) const;
    void push( class mem_fetch* mf, unsigned long long clock_cycle );
    class mem_fetch* pop(); 
    class mem_fetch* top();
    void set_done( mem_fetch *mf );
 
    unsigned flushL2();
+   unsigned invalidateL2();
 
    // interface to L2_dram_queue
    bool L2_dram_queue_empty() const; 
@@ -176,6 +179,12 @@ public:
 
    void accumulate_L2cache_stats(class cache_stats &l2_stats) const;
    void get_L2cache_sub_stats(struct cache_sub_stats &css) const;
+
+   void force_l2_tag_update(new_addr_type addr, unsigned time, mem_access_sector_mask_t mask)
+   {
+        m_L2cache->force_tag_access( addr, m_memcpy_cycle_offset + time, mask );
+        m_memcpy_cycle_offset += 1;
+   }
 
 private:
 // data
@@ -207,6 +216,15 @@ private:
    std::set<mem_fetch*> m_request_tracker;
 
    friend class L2interface;
+
+   std::vector<mem_fetch*> breakdown_request_to_sector_requests(mem_fetch* mf);
+
+   // This is a cycle offset that has to be applied to the l2 accesses to account for
+   // the cudamemcpy read/writes. We want GPGPU-Sim to only count cycles for kernel execution
+   // but we want cudamemcpy to go through the L2. Everytime an access is made from cudamemcpy
+   // this counter is incremented, and when the l2 is accessed (in both cudamemcpyies and otherwise)
+   // this value is added to the gpgpu-sim cycle counters.
+   unsigned m_memcpy_cycle_offset;
 };
 
 class L2interface : public mem_fetch_interface {
