@@ -11,10 +11,10 @@ opt: $(TAR).mk obj_opt
 	@$(MAKE) TAG=opt -C . -f $(TAR).mk
 
 obj_dbg:
-	mkdir $@
+	mkdir -p $@
 
 obj_opt:
-	mkdir $@
+	mkdir -p $@
 
 depend:
 	@$(MAKE) TAG=opt -C . -f $(TAR).mk depend

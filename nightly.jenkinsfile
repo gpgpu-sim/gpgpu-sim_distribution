@@ -1,0 +1,75 @@
+pipeline {
+    agent {
+        label "purdue-cluster"
+    }
+
+    options {
+        disableConcurrentBuilds()
+        overrideIndexTriggers(true)
+    }
+
+    triggers {
+        pollSCM('0 1 * * *')
+    }
+
+    stages {
+        stage('nightly-simulator-build') {
+            steps {
+                sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
+                source `pwd`/setup_environment &&\
+                make -j'
+            }
+        }
+        stage('nightly-simulations-build'){
+            steps{
+                sh 'rm -rf gpgpu-sim_simulations'
+                sh 'git clone git@github.rcac.purdue.edu:TimRogersGroup/gpgpu-sim_simulations.git && \
+                    cd gpgpu-sim_simulations && \
+                    git checkout purdue-cluster && \
+                    git pull && \
+                    ln -s /home/tgrogers-raid/a/common/data_dirs benchmarks/'
+                sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
+                    source `pwd`/setup_environment &&\
+                    cd gpgpu-sim_simulations && \
+                    source ./benchmarks/src/setup_environment && \
+                    make -i -j -C ./benchmarks/src/ all && \
+                    make -C ./benchmarks/src data'
+            }
+        }
+        stage('nightly-2B-insn-run'){
+            steps {
+                    sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
+                    source `pwd`/setup_environment &&\
+                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -B `cat ./gpgpu-sim_simulations/util/job_launching/apps/all-apps.list` -C TITANX-2B,TITANX-L1ON-2B,P100-2B,TITANV-2B -N nightly-$$ && \
+                    PLOTDIR="jenkins/${JOB_NAME}/${BUILD_NUMBER}/getstats" && ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p /home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR && \
+                    ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -I -S 1800 -v  -s stats-$$.csv -N nightly-$$ && \
+                    ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c stats-$$.csv -p tgrogers@dynamo.ecn.purdue.edu:~/website/gpgpu-sim-plots/$PLOTDIR -w https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR -n $PLOTDIR'
+            }
+        }
+        stage('nightly-correlate'){
+            steps {
+                sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
+                    source `pwd`/setup_environment &&\
+                    PLOTDIR="jenkins/${JOB_NAME}" &&\
+                    ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B `cat ./gpgpu-sim_simulations/util/job_launching/apps/all-apps.list` -C TITANX-2B,TITANX-L1ON-2B,P100-2B,TITANV-2B > nightly-stats-per-kernel-9.1.csv &&\
+                    ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh nightly-stats-per-kernel-9.1.csv $PLOTDIR ${BUILD_NUMBER}'
+            }
+        }
+    }
+    post {
+        success {
+            emailext body: "See ${BUILD_URL}",
+                recipientProviders: [[$class: 'CulpritsRecipientProvider'],
+                    [$class: 'RequesterRecipientProvider']],
+                subject: "[AALP Jenkins] Build #${BUILD_NUMBER} - Success!",
+                to: 'tgrogers@purdue.edu'
+        }
+        failure {
+            emailext body: "See ${BUILD_URL}",
+                recipientProviders: [[$class: 'CulpritsRecipientProvider'],
+                    [$class: 'RequesterRecipientProvider']],
+                subject: "[AALP Jenkins] Build #${BUILD_NUMBER} - ${currentBuild.result}",
+                to: 'tgrogers@purdue.edu'
+        }
+    }
+}

@@ -47,7 +47,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token  PTR_DIRECTIVE
 %token  ENTRY_DIRECTIVE
 %token  EXTERN_DIRECTIVE
-%token  WEAK_DIRECTIVE
 %token  FILE_DIRECTIVE
 %token  FUNC_DIRECTIVE
 %token  GLOBAL_DIRECTIVE
@@ -228,7 +227,8 @@ function_defn: function_decl { set_symtab($1); func_header(".skip"); } statement
 
 block_spec: MAXNTID_DIRECTIVE INT_OPERAND COMMA INT_OPERAND COMMA INT_OPERAND {func_header_info_int(".maxntid", $2);
 										func_header_info_int(",", $4);
-										func_header_info_int(",", $6); }
+										func_header_info_int(",", $6); 
+                                                                                maxnt_id($2, $4, $6);}
 	| MINNCTAPERSM_DIRECTIVE INT_OPERAND { func_header_info_int(".minnctapersm", $2); printf("GPGPU-Sim: Warning: .minnctapersm ignored. \n"); }
 	| MAXNCTAPERSM_DIRECTIVE INT_OPERAND { func_header_info_int(".maxnctapersm", $2); printf("GPGPU-Sim: Warning: .maxnctapersm ignored. \n"); }
 	;
@@ -270,6 +270,7 @@ ptr_spec: /*empty*/
 ptr_space_spec: GLOBAL_DIRECTIVE { add_ptr_spec(global_space); }
               | LOCAL_DIRECTIVE  { add_ptr_spec(local_space); }
               | SHARED_DIRECTIVE { add_ptr_spec(shared_space); }
+			  | CONST_DIRECTIVE { add_ptr_spec(global_space); }
 
 ptr_align_spec: ALIGN_DIRECTIVE INT_OPERAND
 
@@ -331,6 +332,7 @@ var_spec_list: var_spec
 var_spec: space_spec 
 	| type_spec
 	| align_spec
+	| VISIBLE_DIRECTIVE
 	| EXTERN_DIRECTIVE { add_extern_spec(); }
     | WEAK_DIRECTIVE
 	;
@@ -513,7 +515,8 @@ compare_spec:EQ_OPTION { add_option(EQ_OPTION); }
 	| NAN_OPTION { add_option(NAN_OPTION); } 
 	;
 
-operand_list: operand
+operand_list: /* empty*/
+    | operand
 	| operand COMMA operand_list;
 
 operand: IDENTIFIER  { add_scalar_operand( $1 ); }

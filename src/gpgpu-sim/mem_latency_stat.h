@@ -56,6 +56,10 @@ public:
    unsigned max_dq_latency;
    unsigned max_mf_latency;
    unsigned max_icnt2mem_latency;
+   unsigned long long int tot_icnt2mem_latency;
+   unsigned long long int tot_icnt2sh_latency;
+   unsigned long long int tot_mrq_latency;
+   unsigned long long int tot_mrq_num;
    unsigned max_icnt2sh_latency;
    unsigned mrq_lat_table[32];
    unsigned dq_lat_table[32];
