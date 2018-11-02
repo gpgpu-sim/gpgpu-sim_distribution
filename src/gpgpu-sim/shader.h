@@ -71,6 +71,7 @@
 #define WRITE_MASK_SIZE 8
 
 enum bypassType{
+    INIT,
     ALL_BYPASS,
     ALL_CACHE,
     DIVERGENCY,

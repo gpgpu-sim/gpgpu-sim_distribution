@@ -1371,9 +1371,31 @@ bool ldst_unit::texture_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail,
    }
    return inst.accessq_empty(); //done if empty.
 }
+std::map<warp_inst_t*,bypassType> bypass_divergency_stat;
+void changeStats(bool bypass,std::map<warp_inst_t*,bypassType> & stat,warp_inst_t * p_inst){
+    assert(stat.find(p_inst)!=stat.end());
+    switch(stat[p_inst]){
+        case INIT:
+            stat[p_inst]=bypass?ALL_BYPASS:ALL_CACHE;
+            break;
+        case ALL_BYPASS:
+            stat[p_inst]=bypass?ALL_BYPASS:DIVERGENCY;
+            break;
+        case ALL_CACHE:
+            stat[p_inst]=bypass?DIVERGENCY:ALL_CACHE;
+            break;
+        case DIVERGENCY:
+            stat[p_inst]=DIVERGENCY;
+            break;
+    }
 
+}
 bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_reason, mem_stage_access_type &access_type )
 {
+    if(bypass_divergency_stat.find(&inst)==bypass_divergency_stat.end()){
+        bypass_divergency_stat[&inst]=INIT;
+    }
+     
    if( inst.empty() || 
        ((inst.space.get_type() != global_space) &&
         (inst.space.get_type() != local_space) &&
@@ -1398,8 +1420,10 @@ bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_rea
    if(m_L1D->is_set_conflict(access.get_addr())){
        bypassL1D=true;
    }
-
+    changeStats(bypassL1D,bypass_divergency_stat,&inst);
    if( bypassL1D ) {
+
+       
        // bypass L1 cache
        unsigned control_size = inst.is_store() ? WRITE_PACKET_SIZE : READ_PACKET_SIZE;
        unsigned size = access.get_size() + control_size;
@@ -1430,6 +1454,9 @@ bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_rea
          access_type = (iswrite)?L_MEM_ST:L_MEM_LD;
       else 
          access_type = (iswrite)?G_MEM_ST:G_MEM_LD;
+   }
+   if(inst.accessq_empty()&&bypass_divergency_stat.find(&inst)!=bypass_divergency_stat.end()){
+       bypass_divergency_stat.erase(&inst);
    }
    return inst.accessq_empty(); 
 }
