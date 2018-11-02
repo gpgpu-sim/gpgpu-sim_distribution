@@ -1385,6 +1385,7 @@ bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_rea
    mem_stage_stall_type stall_cond = NO_RC_FAIL;
    const mem_access_t &access = inst.accessq_back();
 
+    
    bool bypassL1D = false; 
    if ( CACHE_GLOBAL == inst.cache_op || (m_L1D == NULL) ) {
        bypassL1D = true; 
@@ -1392,6 +1393,10 @@ bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_rea
        // skip L1 cache if the option is enabled
        if (m_core->get_config()->gmem_skip_L1D) 
            bypassL1D = true; 
+   }
+    static warp_inst_t* current_inst=(warp_inst_t*)0;
+   if(m_L1D->is_set_conflict(access.get_addr())){
+       bypassL1D=true;
    }
 
    if( bypassL1D ) {
@@ -1408,13 +1413,13 @@ bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_rea
            if( inst.is_load() ) { 
               for( unsigned r=0; r < 4; r++) 
                   if(inst.out[r] > 0) 
-                      assert( m_pending_writes[inst.warp_id()][inst.out[r]] > 0 );
+                      assert( m_pending_writes[inst.warp_id()][inst.out[r]] > 0 );//was set when this instruction was issued
            } else if( inst.is_store() ) 
               m_core->inc_store_req( inst.warp_id() );
        }
-   } else {
+   } else {//not bypass
        assert( CACHE_UNDEFINED != inst.cache_op );
-       stall_cond = process_memory_access_queue(m_L1D,inst);
+       stall_cond = process_memory_access_queue(m_L1D,inst);//to cache
    }
    if( !inst.accessq_empty() ) 
        stall_cond = COAL_STALL;
@@ -1828,6 +1833,10 @@ void ldst_unit::cycle()
                    if (m_core->get_config()->gmem_skip_L1D)
                        bypassL1D = true; 
                }
+               if(mf->bypassL1cache&&mf->bypassL1Mshr){
+                   
+                    bypassL1D=true;//true means it will go to global field
+               }
                if( bypassL1D ) {
                    if ( m_next_global == NULL ) {
                        mf->set_status(IN_SHADER_FETCHED,gpu_sim_cycle+gpu_tot_sim_cycle);
@@ -1846,7 +1855,7 @@ void ldst_unit::cycle()
 
    m_L1T->cycle();
    m_L1C->cycle();
-   if( m_L1D ) m_L1D->cycle();
+   if( m_L1D ) m_L1D->cycle();/// Sends next request to lower level of memory
 
    warp_inst_t &pipe_reg = *m_dispatch_reg;
    enum mem_stage_stall_type rc_fail = NO_RC_FAIL;
@@ -1874,7 +1883,7 @@ void ldst_unit::cycle()
                    move_warp(m_pipeline_reg[2],m_dispatch_reg);
                    m_dispatch_reg->clear();
                }
-           } else {
+           } else {//not shared
                //if( pipe_reg.active_count() > 0 ) {
                //    if( !m_operand_collector->writeback(pipe_reg) ) 
                //        return;

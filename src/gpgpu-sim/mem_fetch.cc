@@ -39,28 +39,29 @@ mem_fetch::mem_fetch( const mem_access_t &access,
                       unsigned wid,
                       unsigned sid, 
                       unsigned tpc, 
-                      const class memory_config *config )
+                      const class memory_config *config ):bypassL1cache(false),bypassL1Mshr(false),bypassL2cache(false),bypassL2Mshr(false)
 {
-   m_request_uid = sm_next_mf_request_uid++;
-   m_access = access;
-   if( inst ) { 
-       m_inst = *inst;
-       assert( wid == m_inst.warp_id() );
-   }
-   m_data_size = access.get_size();
-   m_ctrl_size = ctrl_size;
-   m_sid = sid;
-   m_tpc = tpc;
-   m_wid = wid;
-   config->m_address_mapping.addrdec_tlx(access.get_addr(),&m_raw_addr);
-   m_partition_addr = config->m_address_mapping.partition_address(access.get_addr());
-   m_type = m_access.is_write()?WRITE_REQUEST:READ_REQUEST;
-   m_timestamp = gpu_sim_cycle + gpu_tot_sim_cycle;
-   m_timestamp2 = 0;
-   m_status = MEM_FETCH_INITIALIZED;
-   m_status_change = gpu_sim_cycle + gpu_tot_sim_cycle;
-   m_mem_config = config;
-   icnt_flit_size = config->icnt_flit_size;
+    m_request_uid = sm_next_mf_request_uid++;
+    m_access = access;
+    if (inst)
+    {
+        m_inst = *inst;
+        assert(wid == m_inst.warp_id());
+    }
+    m_data_size = access.get_size();
+    m_ctrl_size = ctrl_size;
+    m_sid = sid;
+    m_tpc = tpc;
+    m_wid = wid;
+    config->m_address_mapping.addrdec_tlx(access.get_addr(), &m_raw_addr);
+    m_partition_addr = config->m_address_mapping.partition_address(access.get_addr());
+    m_type = m_access.is_write() ? WRITE_REQUEST : READ_REQUEST;
+    m_timestamp = gpu_sim_cycle + gpu_tot_sim_cycle;
+    m_timestamp2 = 0;
+    m_status = MEM_FETCH_INITIALIZED;
+    m_status_change = gpu_sim_cycle + gpu_tot_sim_cycle;
+    m_mem_config = config;
+    icnt_flit_size = config->icnt_flit_size;
 }
 
 mem_fetch::~mem_fetch()
@@ -76,20 +77,23 @@ mem_fetch::~mem_fetch()
 #undef MF_TUP
 #undef MF_TUP_END
 
-void mem_fetch::print( FILE *fp, bool print_inst ) const
+void mem_fetch::print(FILE *fp, bool print_inst) const
 {
-    if( this == NULL ) {
-        fprintf(fp," <NULL mem_fetch pointer>\n");
+    if (this == NULL)
+    {
+        fprintf(fp, " <NULL mem_fetch pointer>\n");
         return;
     }
-    fprintf(fp,"  mf: uid=%6u, sid%02u:w%02u, part=%u, ", m_request_uid, m_sid, m_wid, m_raw_addr.chip );
+    fprintf(fp, "  mf: uid=%6u, sid%02u:w%02u, part=%u, ", m_request_uid, m_sid, m_wid, m_raw_addr.chip);
     m_access.print(fp);
-    if( (unsigned)m_status < NUM_MEM_REQ_STAT ) 
-       fprintf(fp," status = %s (%llu), ", Status_str[m_status], m_status_change );
+    if ((unsigned)m_status < NUM_MEM_REQ_STAT)
+        fprintf(fp, " status = %s (%llu), ", Status_str[m_status], m_status_change);
     else
-       fprintf(fp," status = %u??? (%llu), ", m_status, m_status_change );
-    if( !m_inst.empty() && print_inst ) m_inst.print(fp);
-    else fprintf(fp,"\n");
+        fprintf(fp, " status = %u??? (%llu), ", m_status, m_status_change);
+    if (!m_inst.empty() && print_inst)
+        m_inst.print(fp);
+    else
+        fprintf(fp, "\n");
 }
 
 void mem_fetch::set_status( enum mem_fetch_status status, unsigned long long cycle ) 

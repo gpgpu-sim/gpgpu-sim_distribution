@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "cmath": "cpp"
+        "cmath": "cpp",
+        "*.tup": "cpp"
     }
 }

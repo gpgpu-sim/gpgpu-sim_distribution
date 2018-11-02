@@ -697,6 +697,7 @@ void baseline_cache::cycle(){
 
 /// Interface for response from lower memory level (model bandwidth restictions in caller)
 void baseline_cache::fill(mem_fetch *mf, unsigned time){
+
     extra_mf_fields_lookup::iterator e = m_extra_mf_fields.find(mf);
     assert( e != m_extra_mf_fields.end() );
     assert( e->second.m_valid );

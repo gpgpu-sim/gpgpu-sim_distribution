@@ -558,6 +558,11 @@ public:
         init( name, config, memport, status );
     }
 
+   virtual ~baseline_cache()
+    {
+        delete m_tag_array;
+    } 
+
     void init( const char *name,
                const cache_config &config,
                mem_fetch_interface *memport,
@@ -569,10 +574,6 @@ public:
         m_miss_queue_status = status;
     }
 
-    virtual ~baseline_cache()
-    {
-        delete m_tag_array;
-    }
 
 	void update_cache_parameters(cache_config &config)
 	{
@@ -611,7 +612,9 @@ public:
     // accessors for cache bandwidth availability 
     bool data_port_free() const { return m_bandwidth_management.data_port_free(); } 
     bool fill_port_free() const { return m_bandwidth_management.fill_port_free(); } 
-
+    bool mshr_have_addr(new_addr_type addr){
+        return m_mshrs.probe(addr);
+    }
 protected:
     // Constructor that can be used by derived classes with custom tag arrays
     baseline_cache( const char *name,
@@ -728,7 +731,13 @@ public:
         m_wr_alloc_type = wr_alloc_type;
         m_wrbk_type = wrbk_type;
     }
-
+    bool is_set_conflict(new_addr_type addr){
+        unsigned int idx;
+        return m_tag_array->probe(addr,idx)==RESERVATION_FAIL;
+    }
+    bool is_mshr_confilict(new_addr_type addr){
+        return m_mshrs.full(m_config.block_addr(addr));
+    }
     virtual ~data_cache() {}
 
     virtual void init( mem_fetch_allocator *mfcreator )

@@ -57,6 +57,10 @@ public:
                unsigned tpc, 
                const class memory_config *config );
    ~mem_fetch();
+    bool bypassL1cache;
+    bool bypassL2cache;
+    bool bypassL1Mshr;
+    bool bypassL2Mshr;
 
    void set_status( enum mem_fetch_status status, unsigned long long cycle );
    void set_reply() 

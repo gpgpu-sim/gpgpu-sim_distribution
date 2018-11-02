@@ -70,7 +70,11 @@
 
 #define WRITE_MASK_SIZE 8
 
-
+enum bypassType{
+    ALL_BYPASS,
+    ALL_CACHE,
+    DIVERGENCY,
+};
 class thread_ctx_t {
 public:
    unsigned m_cta_id; // hardware CTA this thread belongs
