@@ -1341,7 +1341,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
       }
       
       //Tensorcore is warp synchronous operation. So these instructions needs to be executed only once. To make the simulation faster removing the redundant tensorcore operation
-      if(!tensorcore_op(inst_opcode)||(tensorcore_op)&&(lane_id==0)){
+      if(!tensorcore_op(inst_opcode)||(tensorcore_op(inst_opcode))&&(lane_id==0)){
 	      switch ( inst_opcode ) {
 	#define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,this); op_classification = CLASSIFICATION; break;
 	#define OP_W_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,get_core(),inst); op_classification = CLASSIFICATION; break;
