@@ -1271,6 +1271,13 @@ static unsigned get_tex_datasize( const ptx_instruction *pI, ptx_thread_info *th
    return data_size; 
 }
 
+int tensorcore_op(int inst_opcode){
+	
+       if((inst_opcode==MMA_OP)&&(inst_opcode==MMA_LD_OP)&&(inst_opcode==MMA_ST_OP))
+		return 1;
+       else	
+		return 0;
+}
 void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
 {
     
@@ -1332,8 +1339,9 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
 			assert(0);
 		}
       }
-
-      if(((inst_opcode!=MMA_OP)&&(inst_opcode!=MMA_LD_OP)&&(inst_opcode!=MMA_ST_OP))||((inst_opcode==MMA_OP||inst_opcode==MMA_LD_OP||inst_opcode==MMA_ST_OP)&&(lane_id==0))){
+      
+      //Tensorcore is warp synchronous operation. So these instructions needs to be executed only once. To make the simulation faster removing the redundant tensorcore operation
+      if(!tensorcore_op(inst_opcode)||(tensorcore_op)&&(lane_id==0)){
 	      switch ( inst_opcode ) {
 	#define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,this); op_classification = CLASSIFICATION; break;
 	#define OP_W_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,get_core(),inst); op_classification = CLASSIFICATION; break;
