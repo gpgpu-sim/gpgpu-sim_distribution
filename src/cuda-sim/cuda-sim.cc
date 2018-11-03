@@ -602,7 +602,7 @@ void ptx_instruction::set_opcode_and_latency()
 	 * [3] MAD
 	 * [4] DIV
 	 */
-	sscanf(opcode_latency_int, "%u,%u,%u,%u,%u,%u,%u",
+	sscanf(opcode_latency_int, "%u,%u,%u,%u,%u",
 			&int_latency[0],&int_latency[1],&int_latency[2],
 			&int_latency[3],&int_latency[4]);
 	sscanf(opcode_latency_fp, "%u,%u,%u,%u,%u",
@@ -850,12 +850,14 @@ void ptx_instruction::pre_decode()
 {
    pc = m_PC;
    isize = m_inst_size;
-   for(unsigned i=0; i<8; i++) {
+   for(unsigned i=0; i<MAX_OUTPUT_VALUES; i++) {
        out[i] = 0;
    }
-   for(unsigned i=0; i<24; i++) {
+   for(unsigned i=0; i<MAX_INPUT_VALUES; i++) {
        in[i] = 0;
    }
+   incount=0;
+   outcount=0;
    is_vectorin = 0;
    is_vectorout = 0;
    std::fill_n(arch_reg.src, MAX_REG_OPERANDS, -1);
@@ -960,6 +962,15 @@ void ptx_instruction::pre_decode()
          }
       }
    }
+   
+   //Setting number of input and output operands which is required for scoreboard check
+   for(int i=0;i<MAX_OUTPUT_VALUES;i++)
+	if(out[i]>0)
+		outcount++;   
+ 
+   for(int i=0;i<MAX_INPUT_VALUES;i++)
+	if(in[i]>0)
+		incount++;   
 
    // Get predicate
    if(has_pred()) {
@@ -1316,7 +1327,10 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
      
       if(((inst_opcode==MMA_OP||inst_opcode==MMA_LD_OP||inst_opcode==MMA_ST_OP))){
       		if(inst.active_count()!=MAX_WARP_SIZE)
-			while(1); 
+		{	
+			printf("Tensor Core operation are warp synchronous operation. All the threads needs to be active.");
+			assert(0);
+		}
       }
 
       if(((inst_opcode!=MMA_OP)&&(inst_opcode!=MMA_LD_OP)&&(inst_opcode!=MMA_ST_OP))||((inst_opcode==MMA_OP||inst_opcode==MMA_LD_OP||inst_opcode==MMA_ST_OP)&&(lane_id==0))){

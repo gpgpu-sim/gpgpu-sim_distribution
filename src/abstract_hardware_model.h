@@ -36,6 +36,10 @@ class kernel_info_t;
 #define MAX_CTA_PER_SHADER 32
 #define MAX_BARRIERS_PER_CTA 16
 
+//After expanding the vector input and output operands 
+#define MAX_INPUT_VALUES 24
+#define MAX_OUTPUT_VALUES 8
+
 enum _memory_space_t {
    undefined_space=0,
    reg_space,
@@ -830,7 +834,9 @@ public:
     address_type reconvergence_pc; // -1 => not a branch, -2 => use function return address
     
     unsigned out[8];
+    unsigned outcount;
     unsigned in[24];
+    unsigned incount;
     unsigned char is_vectorin;
     unsigned char is_vectorout;
     int pred; // predicate register number

@@ -82,7 +82,7 @@ const bool Scoreboard::islongop (unsigned warp_id,unsigned regnum) {
 
 void Scoreboard::reserveRegisters(const class warp_inst_t* inst) 
 {
-    for( unsigned r=0; r < 8; r++) {
+    for( unsigned r=0; r < MAX_OUTPUT_VALUES; r++) {
         if(inst->out[r] > 0) {
             reserveRegister(inst->warp_id(), inst->out[r]);
             SHADER_DPRINTF( SCOREBOARD,
@@ -100,7 +100,7 @@ void Scoreboard::reserveRegisters(const class warp_inst_t* inst)
                 inst->space.get_type() == param_space_local ||
                 inst->space.get_type() == param_space_unclassified ||
     			inst->space.get_type() == tex_space)){
-    	for ( unsigned r=0; r<8; r++) {
+    	for ( unsigned r=0; r<MAX_OUTPUT_VALUES; r++) {
     		if(inst->out[r] > 0) {
                 SHADER_DPRINTF( SCOREBOARD,
                                 "New longopreg marked - warp:%d, reg: %d\n",
@@ -115,7 +115,7 @@ void Scoreboard::reserveRegisters(const class warp_inst_t* inst)
 // Release registers for an instruction
 void Scoreboard::releaseRegisters(const class warp_inst_t *inst) 
 {
-    for( unsigned r=0; r < 8; r++) {
+    for( unsigned r=0; r < MAX_OUTPUT_VALUES; r++) {
         if(inst->out[r] > 0) {
             SHADER_DPRINTF( SCOREBOARD,
                             "Register Released - warp:%d, reg: %d\n",
@@ -138,39 +138,11 @@ bool Scoreboard::checkCollision( unsigned wid, const class inst_t *inst ) const
 	// Get list of all input and output registers
 	std::set<int> inst_regs;
 
-	if(inst->out[0] > 0) inst_regs.insert(inst->out[0]);
-	if(inst->out[1] > 0) inst_regs.insert(inst->out[1]);
-	if(inst->out[2] > 0) inst_regs.insert(inst->out[2]);
-	if(inst->out[3] > 0) inst_regs.insert(inst->out[3]);
-	if(inst->out[4] > 0) inst_regs.insert(inst->out[4]);
-	if(inst->out[5] > 0) inst_regs.insert(inst->out[5]);
-	if(inst->out[6] > 0) inst_regs.insert(inst->out[6]);
-	if(inst->out[7] > 0) inst_regs.insert(inst->out[7]);
+	for(int iii=0;iii<inst->outcount;iii++)
+		inst_regs.insert(inst->out[iii]);
 
-        if(inst->in[0] > 0) inst_regs.insert(inst->in[0]);
-	if(inst->in[1] > 0) inst_regs.insert(inst->in[1]);
-	if(inst->in[2] > 0) inst_regs.insert(inst->in[2]);
-	if(inst->in[3] > 0) inst_regs.insert(inst->in[3]);
-	if(inst->in[4] > 0) inst_regs.insert(inst->in[4]);
-	if(inst->in[5] > 0) inst_regs.insert(inst->in[5]);
-	if(inst->in[6] > 0) inst_regs.insert(inst->in[6]);
-	if(inst->in[7] > 0) inst_regs.insert(inst->in[7]);
-        if(inst->in[8] > 0) inst_regs.insert(inst->in[8]);
-	if(inst->in[9] > 0) inst_regs.insert(inst->in[9]);
-	if(inst->in[10] > 0) inst_regs.insert(inst->in[10]);
-	if(inst->in[11] > 0) inst_regs.insert(inst->in[11]);
-        if(inst->in[12] > 0) inst_regs.insert(inst->in[12]);
-	if(inst->in[13] > 0) inst_regs.insert(inst->in[13]);
-	if(inst->in[14] > 0) inst_regs.insert(inst->in[14]);
-	if(inst->in[15] > 0) inst_regs.insert(inst->in[15]);
-	if(inst->in[16] > 0) inst_regs.insert(inst->in[16]);
-	if(inst->in[17] > 0) inst_regs.insert(inst->in[17]);
-	if(inst->in[18] > 0) inst_regs.insert(inst->in[18]);
-	if(inst->in[19] > 0) inst_regs.insert(inst->in[19]);
-        if(inst->in[20] > 0) inst_regs.insert(inst->in[20]);
-	if(inst->in[21] > 0) inst_regs.insert(inst->in[21]);
-        if(inst->in[22] > 0) inst_regs.insert(inst->in[22]);
-	if(inst->in[23] > 0) inst_regs.insert(inst->in[23]);
+	for(int jjj=0;jjj<inst->incount;jjj++)
+		inst_regs.insert(inst->in[jjj]);
 
         if(inst->pred > 0) inst_regs.insert(inst->pred);
 	if(inst->ar1 > 0) inst_regs.insert(inst->ar1);

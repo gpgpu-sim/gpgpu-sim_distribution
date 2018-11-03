@@ -1726,7 +1726,7 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 	unsigned b_layout = pI->get_wmma_layout(1);
 	unsigned type = pI->get_type();
 	unsigned type2 = pI->get_type2();
-	int tid = inst.warp_id_func() * core->get_warp_size();
+	int tid = inst.warp_id() * core->get_warp_size();
 	const operand_info &dst = pI->operand_lookup(0);
 	
 	unsigned thread_group_index;
@@ -2962,7 +2962,7 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
    const operand_info &src  = pI->operand_lookup(1);
    const operand_info &src1 = pI->operand_lookup(0);
    const operand_info &src2 = pI->operand_lookup(2);
-   int tid = inst.warp_id_func()*core->get_warp_size();
+   int tid = inst.warp_id()*core->get_warp_size();
    unsigned type = pI->get_type();
    unsigned wmma_type = pI->get_wmma_type();
    unsigned wmma_layout = pI->get_wmma_layout(0);
@@ -3069,7 +3069,7 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
    unsigned type = pI->get_type();
    unsigned wmma_type = pI->get_wmma_type();
    unsigned wmma_layout = pI->get_wmma_layout(0);
-   int tid = inst.warp_id_func()*core->get_warp_size();
+   int tid = inst.warp_id()*core->get_warp_size();
    int thrd,stride;
    ptx_thread_info *thread;
    _memory_op_t insn_memory_op = pI->has_memory_read() ? memory_load : memory_store;
@@ -4469,7 +4469,13 @@ void set_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 void shfl_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 {
 	unsigned i_type = pI->get_type();
-	int tid = inst.warp_id_func() * core->get_warp_size();
+  	int tid;
+
+  	if(core->get_gpu()->is_functional_sim())
+    		tid = inst.warp_id_func() * core->get_warp_size();
+  	else
+	 	tid = inst.warp_id() * core->get_warp_size();
+	
 	ptx_thread_info *thread = core->get_thread_info()[tid];
 	ptx_warp_info *warp_info = thread->m_warp_info;
 	int lane = warp_info->get_done_threads();
