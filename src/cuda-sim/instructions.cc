@@ -48,7 +48,7 @@
 using half_float::half;
 
 unsigned ptx_instruction::g_num_ptx_inst_uid=0;
-bool g_debug_instruction = 0;
+bool debug_tensorcore = 0;
 
 
 const char *g_opcode_string[NUM_OPCODES] = {
@@ -70,8 +70,8 @@ unsigned thread_group_offset(int thread,unsigned  wmma_type,unsigned wmma_layout
 	unsigned load_c_float_col[8]={0,8,128,136,4,12,132,140};	
 	unsigned load_c_half_row[8]={0,128,8,136,64,192,72,200};	
 	unsigned load_c_half_col[8]={0,8,128,136,4,12,132,140};	
-	unsigned thread_group=thread/4;
-	unsigned in_tg_index=thread%4;
+	unsigned thread_group =	thread/4;
+	unsigned in_tg_index  =	thread%4;
 
 	switch(wmma_type){
 		case LOAD_A:
@@ -447,7 +447,7 @@ unsigned get_operand_nbits( const operand_info &op )
 void ptx_thread_info::get_vector_operand_values( const operand_info &op, ptx_reg_t* ptx_regs, unsigned num_elements )
 {
    assert( op.is_vector() );
-   assert( num_elements <= 8 ); // max 4 elements in a vector
+   assert( num_elements <= 8 );
 
    for (int idx = num_elements - 1; idx >= 0; --idx) {
       const symbol *sym = NULL;
@@ -1735,15 +1735,15 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 	
 	for (thrd=0; thrd < core->get_warp_size(); thrd++){
 		thread = core->get_thread_info()[tid+thrd];
-		if(g_debug_instruction)
+		if(debug_tensorcore)
 			printf("THREAD=%d\n:",thrd);
-		for(i=1;i<=3;i++){
-			const operand_info &src_a=  pI->operand_lookup(i);
+		for(int operand_num=1;operand_num<=3;operand_num++){
+			const operand_info &src_a=  pI->operand_lookup(operand_num);
          		unsigned nelem = src_a.get_vect_nelem();
          		ptx_reg_t v[8];
          		thread->get_vector_operand_values( src_a, v, nelem );
-			if(g_debug_instruction){
-				printf("Thread%d_Iteration=%d\n:",thrd,i);
+			if(debug_tensorcore){
+				printf("Thread%d_Iteration=%d\n:",thrd,operand_num);
 				for(k=0;k<nelem;k++){
 					printf("%x ",v[k].u64);
 				}
@@ -1752,7 +1752,7 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			ptx_reg_t nw_v[16];
 			int hex_val;
 
-			if(!((i==3)&&(type2==F32_TYPE))){
+			if(!((operand_num==3)&&(type2==F32_TYPE))){
 					for(k=0;k<2*nelem;k++){
 					if(k%2==1)
 						hex_val=(v[k/2].s64&0xffff);
@@ -1761,45 +1761,45 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 					nw_v[k].f16 =*((half *)&hex_val); 
 				}
 			}
-			if(!((i==3)&&(type2==F32_TYPE))){
+			if(!((operand_num==3)&&(type2==F32_TYPE))){
 				for(k=0;k<2*nelem;k++){
 					temp=nw_v[k].f16;
-					if(g_debug_instruction)
+					if(debug_tensorcore)
 						printf("%.2f ",temp);
 				}
-				if(g_debug_instruction)
+				if(debug_tensorcore)
 					printf("\n");
 			}
 			else{
-				if(g_debug_instruction){
+				if(debug_tensorcore){
 					for(k=0;k<8;k++){
 						printf("%.2f ",v[k].f32);
 					}
 					printf("\n");
 				}
 			}
-			switch(i) {
+			switch(operand_num) {
 			      case 1 ://operand 1
 				for(k=0;k<8;k++){
 					mapping(thrd,LOAD_A,a_layout,F16_TYPE,k,16,row,col,offset);
-					if(g_debug_instruction)
-					printf("A:thread=%d,row=%d,col=%d,offset=%d\n",thrd,row,col,offset);
+					if(debug_tensorcore)
+						printf("A:thread=%d,row=%d,col=%d,offset=%d\n",thrd,row,col,offset);
 				 	matrix_a[row][col]=nw_v[offset];
 			        }
 			      break;
 			      case 2 ://operand 2
 				for(k=0;k<8;k++){
 					mapping(thrd,LOAD_B,b_layout,F16_TYPE,k,16,row,col,offset);
-					if(g_debug_instruction)
-					printf("B:thread=%d,row=%d,col=%d,offset=%d\n",thrd,row,col,offset);
+					if(debug_tensorcore)
+						printf("B:thread=%d,row=%d,col=%d,offset=%d\n",thrd,row,col,offset);
 				 	matrix_b[row][col]=nw_v[offset];
 				}	
 			      break;
 			      case 3 ://operand 3
 				for(k=0;k<8;k++){
 					mapping(thrd,LOAD_C,ROW,type2,k,16,row,col,offset);
-					if(g_debug_instruction)
-					printf("C:thread=%d,row=%d,col=%d,offset=%d\n",thrd,row,col,offset);
+					if(debug_tensorcore)
+						printf("C:thread=%d,row=%d,col=%d,offset=%d\n",thrd,row,col,offset);
 					if(type2!=F16_TYPE){
 					 	matrix_c[row][col]=v[offset];
 					}
@@ -1812,10 +1812,10 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			         printf("Invalid Operand Index\n" );
 			}
 		}
-		if(g_debug_instruction)
-		printf("\n");
+		if(debug_tensorcore)
+			printf("\n");
 	}
-	if(g_debug_instruction){
+	if(debug_tensorcore){
 		printf("MATRIX_A\n");
 		for (i=0;i<16;i++){
 			for(j=0;j<16;j++){
@@ -1875,7 +1875,7 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			}
 		}
 	}
-	if(g_debug_instruction){
+	if(debug_tensorcore){
 		printf("MATRIX_D\n");
 		for (i=0;i<16;i++){
 			for(j=0;j<16;j++){
@@ -1894,8 +1894,8 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 		int col_t[8];	
 		for(k=0;k<8;k++){
 			mapping(thrd,LOAD_C,ROW,type,k,16,row_t[k],col_t[k],offset);
-			if(g_debug_instruction)
-			printf("mma:store:row:%d,col%d\n",row_t[k],col_t[k]);
+			if(debug_tensorcore)
+				printf("mma:store:row:%d,col%d\n",row_t[k],col_t[k]);
 		}
 		thread = core->get_thread_info()[tid+thrd];
 		
@@ -1903,7 +1903,7 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 		if(type==F32_TYPE){
 			thread->set_wmma_vector_operand_values(dst,matrix_d[row_t[0]][col_t[0]],matrix_d[row_t[1]][col_t[1]],matrix_d[row_t[2]][col_t[2]],matrix_d[row_t[3]][col_t[3]],matrix_d[row_t[4]][col_t[4]],matrix_d[row_t[5]][col_t[5]],matrix_d[row_t[6]][col_t[6]],matrix_d[row_t[7]][col_t[7]]);
 		
-			if(g_debug_instruction)
+			if(debug_tensorcore)
 			{
 				printf("thread%d:",thrd);
 				for(k=0;k<8;k++){
@@ -1913,7 +1913,7 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			}
 		}
 		else if(type==F16_TYPE){
-			if(g_debug_instruction){	
+			if(debug_tensorcore){	
 				printf("thread%d:",thrd);
 				for(k=0;k<8;k++){
 					temp=matrix_d[row_t[k]][col_t[k]].f16;
@@ -1933,8 +1933,8 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			nw_data3.s64=((matrix_d[row_t[4]][col_t[4]].s64   & 0xffff))|((matrix_d[row_t[5]][col_t[5]].s64&0xffff)<<16);
 			nw_data4.s64=((matrix_d[row_t[6]][col_t[6]].s64   & 0xffff))|((matrix_d[row_t[7]][col_t[7]].s64&0xffff)<<16);
    			thread->set_vector_operand_values(dst,nw_data1,nw_data2,nw_data3,nw_data4);
-			if(g_debug_instruction)
-		 	printf("thread%d=%x,%x,%x,%x",thrd,nw_data1.s64,nw_data2.s64,nw_data3.s64,nw_data4.s64);
+			if(debug_tensorcore)
+		 		printf("thread%d=%x,%x,%x,%x",thrd,nw_data1.s64,nw_data2.s64,nw_data3.s64,nw_data4.s64);
 		
 		}
 		else{
@@ -2996,7 +2996,7 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
    	decode_space(space,thread,src1,mem,addr);
 
    	type_info_key::type_decode(type,size,t);
-   	if(g_debug_instruction)
+   	if(debug_tensorcore)
 		printf("mma_st: thrd=%d,addr=%x, fp(size=%d), stride=%d\n",thrd,addr_reg.u32,size,src2_data.u32);
 	addr_t new_addr = addr+thread_group_offset(thrd,wmma_type,wmma_layout,type,stride)*size/8;  
 	addr_t push_addr;
@@ -3016,7 +3016,7 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
        			mem->write(push_addr,size/8,&v[k].s64,thread,pI);
 			mem_txn_addr[num_mem_txn++]=push_addr;
 	
-			if(g_debug_instruction){
+			if(debug_tensorcore){
 				printf("wmma:store:thread%d=%x,%x,%x,%x,%x,%x,%x,%x\n",thrd,v[0].s64,v[1].s64,v[2].s64,v[3].s64,v[4].s64,v[5].s64,v[6].s64,v[7].s64);   
 				float temp;
 				int l;
@@ -3042,7 +3042,7 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
 			if(k%2==0)
 				mem_txn_addr[num_mem_txn++]=push_addr;
 	
-			if(g_debug_instruction)
+			if(debug_tensorcore)
 				printf("wmma:store:thread%d=%x,%x,%x,%x,%x,%x,%x,%x\n",thrd,nw_v[0].s64,nw_v[1].s64,nw_v[2].s64,nw_v[3].s64,nw_v[4].s64,nw_v[5].s64,nw_v[6].s64,nw_v[7].s64);   
 		}
 	}
@@ -3094,7 +3094,7 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
    	type_info_key::type_decode(type,size,t);
 	
 	ptx_reg_t data[16];
-   	if(g_debug_instruction)	
+   	if(debug_tensorcore)	
 		printf("mma_ld: thrd=%d,addr=%x, fpsize=%d, stride=%d\n",thrd,src1_data.u32,size,src2_data.u32);
 	
 	addr_t new_addr = addr+thread_group_offset(thrd,wmma_type,wmma_layout,type,stride)*size/8;  
@@ -3185,7 +3185,7 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
    	inst.data_size = 4; // 4 byte transaction 
    	assert( inst.memory_op == insn_memory_op );
 
-	if(g_debug_instruction){
+	if(debug_tensorcore){
 		if(type==F16_TYPE){
 			printf("\nmma_ld:thread%d= ",thrd);
 			for(i=0;i<16;i++){
@@ -3235,7 +3235,7 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
    			thread->set_vector_operand_values(dst,nw_data[0],nw_data[1],nw_data[2],nw_data[3]);
 		else
    			thread->set_wmma_vector_operand_values(dst,nw_data[0],nw_data[1],nw_data[2],nw_data[3],nw_data[4],nw_data[5],nw_data[6],nw_data[7]);
-		if(g_debug_instruction){	
+		if(debug_tensorcore){	
 			printf("mma_ld:data[0].s64=%x,data[1].s64=%x,new_data[0].s64=%x\n",data[0].u64,data[1].u64,nw_data[0].u64);	
 			printf("mma_ld:data[2].s64=%x,data[3].s64=%x,new_data[1].s64=%x\n",data[2].u64,data[3].u64,nw_data[1].u64);	
 			printf("mma_ld:data[4].s64=%x,data[5].s64=%x,new_data[2].s64=%x\n",data[4].u64,data[5].u64,nw_data[2].u64);	
