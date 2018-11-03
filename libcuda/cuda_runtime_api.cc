@@ -986,7 +986,6 @@ __host__ cudaError_t CUDARTAPI cudaLaunchKernel ( const char* hostFun, dim3 grid
 	struct CUstream_st *s = (struct CUstream_st *)stream;
 	g_cuda_launch_stack.push_back( kernel_config(gridDim,blockDim,sharedMem,s) );
 
-
 	//printf("cudaLaunchKernel:sizeof(Arg[0])=%d)\n ",sizeof(args[0]));
 	kernel_config &config = g_cuda_launch_stack.back();
 	config.set_arg(args[0],432,0);//standard interface for cutlass library #TODO Implementing a generalized kernel
@@ -1006,12 +1005,15 @@ __host__ cudaError_t CUDARTAPI cudaLaunchKernel ( const char* hostFun, dim3 grid
 	dim3 blockDim1 = config1.block_dim();
 	printf("GPGPU-Sim PTX: pushing kernel \'%s\' to stream %u, gridDim= (%u,%u,%u) blockDim = (%u,%u,%u) \n",
 			kname.c_str(), stream1?stream1->get_uid():0, gridDim1.x,gridDim1.y,gridDim1.z,blockDim1.x,blockDim1.y,blockDim1.z );
+
+	/*Kernel is hardcoded to enable the cutlass library*/
+	std::string cutlass("cutlass");
+	assert(kname.find(cutlass) != std::string::npos);
+
 	stream_operation op(grid,g_ptx_sim_mode,stream1);
 	g_stream_manager->push(op);
 	g_cuda_launch_stack.pop_back();
 	return g_last_cudaError = cudaSuccess;
-
-
 }
 
 /*******************************************************************************

@@ -425,7 +425,7 @@ void shader_core_stats::print( FILE* fout ) const
    fprintf(fout, "gpgpu_n_load_insn  = %d\n", gpgpu_n_load_insn);
    fprintf(fout, "gpgpu_n_store_insn = %d\n", gpgpu_n_store_insn);
    fprintf(fout, "gpgpu_n_shmem_insn = %d\n", gpgpu_n_shmem_insn);
-   fprintf(fout, "gpgpu_n_shmem_insn = %d\n", gpgpu_n_sstarr_insn);
+   fprintf(fout, "gpgpu_n_sstarr_insn = %d\n", gpgpu_n_sstarr_insn);
    fprintf(fout, "gpgpu_n_tex_insn = %d\n", gpgpu_n_tex_insn);
    fprintf(fout, "gpgpu_n_const_mem_insn = %d\n", gpgpu_n_const_insn);
    fprintf(fout, "gpgpu_n_param_mem_insn = %d\n", gpgpu_n_param_insn);
@@ -1290,6 +1290,12 @@ void ldst_unit::get_L1T_sub_stats(struct cache_sub_stats &css) const{
 
 void shader_core_ctx::warp_inst_complete(const warp_inst_t &inst)
 {
+
+  #if 0
+      printf("[warp_inst_complete] uid=%u core=%u warp=%u pc=%#x @ time=%llu issued@%llu\n",
+             inst.get_uid(), m_sid, inst.warp_id(), inst.pc, gpu_tot_sim_cycle + gpu_sim_cycle, inst.get_issue_cycle());
+  #endif
+
   if(inst.op_pipe==SP__OP)
 	  m_stats->m_num_sp_committed[m_sid]++;
   else if(inst.op_pipe==SFU__OP)
@@ -1386,7 +1392,7 @@ ldst_unit::process_cache_access( cache_t* cache,
         assert( !read_sent );
         inst.accessq_pop_back();
         if ( inst.is_load() ) {
-            for ( unsigned r=0; r < 8; r++)
+            for ( unsigned r=0; r < MAX_OUTPUT_VALUES; r++)
                 if (inst.out[r] > 0)
                     m_pending_writes[inst.warp_id()][inst.out[r]]--; 
         }
@@ -1488,7 +1494,7 @@ bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_rea
            inst.accessq_pop_back();
            //inst.clear_active( access.get_warp_mask() );
            if( inst.is_load() ) { 
-              for( unsigned r=0; r < 8; r++) 
+              for( unsigned r=0; r < MAX_OUTPUT_VALUES; r++) 
                   if(inst.out[r] > 0) 
                       assert( m_pending_writes[inst.warp_id()][inst.out[r]] > 0 );
            } else if( inst.is_store() ) 
@@ -1765,7 +1771,7 @@ void ldst_unit:: issue( register_set &reg_set )
    if (inst->is_load() and inst->space.get_type() != shared_space) {
       unsigned warp_id = inst->warp_id();
       unsigned n_accesses = inst->accessq_count();
-      for (unsigned r = 0; r < 8; r++) {
+      for (unsigned r = 0; r < MAX_OUTPUT_VALUES; r++) {
          unsigned reg_id = inst->out[r];
          if (reg_id > 0) {
             m_pending_writes[warp_id][reg_id] += n_accesses;
@@ -1787,7 +1793,7 @@ void ldst_unit::writeback()
     if( !m_next_wb.empty() ) {
         if( m_operand_collector->writeback(m_next_wb) ) {
             bool insn_completed = false; 
-            for( unsigned r=0; r < 8; r++ ) {
+            for( unsigned r=0; r < MAX_OUTPUT_VALUES; r++ ) {
                 if( m_next_wb.out[r] > 0 ) {
                     if( m_next_wb.space.get_type() != shared_space ) {
                         assert( m_pending_writes[m_next_wb.warp_id()][m_next_wb.out[r]] > 0 );
@@ -1989,7 +1995,7 @@ void ldst_unit::cycle()
                //} 
 
                bool pending_requests=false;
-               for( unsigned r=0; r<8; r++ ) {
+               for( unsigned r=0; r<MAX_OUTPUT_VALUES; r++ ) {
                    unsigned reg_id = pipe_reg.out[r];
                    if( reg_id > 0 ) {
                        if( m_pending_writes[warp_id].find(reg_id) != m_pending_writes[warp_id].end() ) {
