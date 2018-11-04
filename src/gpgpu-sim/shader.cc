@@ -1478,10 +1478,12 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst, mem_stage_stall_type &stall_reas
         if (m_core->get_config()->gmem_skip_L1D)
             bypassL1D = true;
     }
-
+    bool isConflictBypass=false;
     if (m_L1D->is_set_conflict(access.get_addr()))
     {
+        
         bypassL1D = true;
+        isConflictBypass=true;
     }
     changeStats(bypassL1D, bypass_divergency_stat, &inst); //sjq change divegency_stats;
     if (bypassL1D)
@@ -1498,6 +1500,13 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst, mem_stage_stall_type &stall_reas
         else
         {
             mem_fetch *mf = m_mf_allocator->alloc(inst, access);
+
+            if (mf && isConflictBypass)
+            { //bypass because set conflict sjq
+                mf->bypassL1cache = true;
+                mf->bypassL1Mshr = true;
+            } //end sjq
+
             m_icnt->push(mf);
             inst.accessq_pop_back();
             //inst.clear_active( access.get_warp_mask() );
@@ -1945,19 +1954,25 @@ void ldst_unit::cycle()
                m_core->store_ack(mf);
                m_response_fifo.pop_front();
                delete mf;
-           } else {
-               assert( !mf->get_is_write() ); // L1 cache is write evict, allocate line on load miss only
+           }
+           else
+           {
+               assert(!mf->get_is_write()); // L1 cache is write evict, allocate line on load miss only
 
-               bool bypassL1D = false; 
-               if ( CACHE_GLOBAL == mf->get_inst().cache_op || (m_L1D == NULL) ) {
-                   bypassL1D = true; 
-               } else if (mf->get_access_type() == GLOBAL_ACC_R || mf->get_access_type() == GLOBAL_ACC_W) { // global memory access 
-                   if (m_core->get_config()->gmem_skip_L1D)
-                       bypassL1D = true; 
+               bool bypassL1D = false;
+               if (CACHE_GLOBAL == mf->get_inst().cache_op || (m_L1D == NULL))
+               {
+                   bypassL1D = true;
                }
-               if(mf->bypassL1cache&&mf->bypassL1Mshr){
-                   
-                    bypassL1D=true;//true means it will go to global field
+               else if (mf->get_access_type() == GLOBAL_ACC_R || mf->get_access_type() == GLOBAL_ACC_W)
+               { // global memory access
+                   if (m_core->get_config()->gmem_skip_L1D)
+                       bypassL1D = true;
+               }
+               if (mf->bypassL1cache && mf->bypassL1Mshr)
+               {
+
+                   bypassL1D = true; //true means it will go to global field
                }
                if( bypassL1D ) {
                    if ( m_next_global == NULL ) {
