@@ -1722,14 +1722,19 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
    	ptx_reg_t src_data;
 	ptx_thread_info *thread;
 	int stride;
+
 	unsigned wmma_type = pI->get_wmma_type();
 	unsigned a_layout = pI->get_wmma_layout(0);
 	unsigned b_layout = pI->get_wmma_layout(1);
 	unsigned type = pI->get_type();
 	unsigned type2 = pI->get_type2();
-	int tid = inst.warp_id() * core->get_warp_size();
+	int tid ;
 	const operand_info &dst = pI->operand_lookup(0);
 	
+        if(core->get_gpu()->is_functional_sim())
+         	tid= inst.warp_id_func()*core->get_warp_size();
+        else
+         	tid= inst.warp_id()*core->get_warp_size();
 	unsigned thread_group_index;
 	float temp;
 	half temp2; 	
@@ -2963,11 +2968,17 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
    const operand_info &src  = pI->operand_lookup(1);
    const operand_info &src1 = pI->operand_lookup(0);
    const operand_info &src2 = pI->operand_lookup(2);
-   int tid = inst.warp_id()*core->get_warp_size();
+   int tid ;
    unsigned type = pI->get_type();
    unsigned wmma_type = pI->get_wmma_type();
    unsigned wmma_layout = pI->get_wmma_layout(0);
    int stride; 
+
+   if(core->get_gpu()->is_functional_sim())
+    	tid= inst.warp_id_func()*core->get_warp_size();
+   else
+    	tid= inst.warp_id()*core->get_warp_size();
+
    _memory_op_t insn_memory_op = pI->has_memory_read() ? memory_load : memory_store;
    for (thrd=0; thrd < core->get_warp_size(); thrd++) {
 	thread = core->get_thread_info()[tid+thrd];
@@ -3034,14 +3045,15 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
        				//mem->write(new_addr+k*2,size/8,&nw_v[k].s64,thread,pI);
        				push_addr=new_addr+k*2;
        				mem->write(push_addr,size/8,&nw_v[k].s64,thread,pI);
+				if(k%2==0)
+					mem_txn_addr[num_mem_txn++]=push_addr;
 			}
 			else if(wmma_layout==COL){
        				//mem->write(new_addr+k*2*stride,size/8,&nw_v[k].s64,thread,pI);
        				push_addr=new_addr+k*2*stride;
        				mem->write(push_addr,size/8,&nw_v[k].s64,thread,pI);
-			}
-			if(k%2==0)
 				mem_txn_addr[num_mem_txn++]=push_addr;
+			}
 	
 			if(debug_tensorcore)
 				printf("wmma:store:thread%d=%x,%x,%x,%x,%x,%x,%x,%x\n",thrd,nw_v[0].s64,nw_v[1].s64,nw_v[2].s64,nw_v[3].s64,nw_v[4].s64,nw_v[5].s64,nw_v[6].s64,nw_v[7].s64);   
@@ -3051,7 +3063,12 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
 	delete [] v;
    	inst.space = space;
    	inst.set_addr(thrd, (new_addr_type *)mem_txn_addr , num_mem_txn);
-   	inst.data_size = 4; // 4 byte transaction 
+
+	if((type==F16_TYPE)&&(wmma_layout==COL))//check the profiling xls for details
+   		inst.data_size = 2; // 2 byte transaction 
+   	else
+		inst.data_size = 4; // 4 byte transaction 
+
    	assert( inst.memory_op == insn_memory_op );
    	//thread->m_last_effective_address = addr;
    	//thread->m_last_memory_space = space;
@@ -3070,9 +3087,16 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
    unsigned type = pI->get_type();
    unsigned wmma_type = pI->get_wmma_type();
    unsigned wmma_layout = pI->get_wmma_layout(0);
-   int tid = inst.warp_id()*core->get_warp_size();
+   int tid;
    int thrd,stride;
    ptx_thread_info *thread;
+ 
+
+   if(core->get_gpu()->is_functional_sim())
+    	tid= inst.warp_id_func()*core->get_warp_size();
+   else
+    	tid= inst.warp_id()*core->get_warp_size();
+
    _memory_op_t insn_memory_op = pI->has_memory_read() ? memory_load : memory_store;
    
    for (thrd=0; thrd < core->get_warp_size(); thrd++){
@@ -3151,18 +3175,19 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
 					//mem->read(new_addr+2*i,size/8,&data[i].s64);
 					fetch_addr=new_addr+2*i;
 					mem->read(fetch_addr,size/8,&data[i].s64);
+					if(i%2==0)
+						mem_txn_addr[num_mem_txn++]=fetch_addr;	
 				}
 				else if(wmma_layout==COL){
 					//mem->read(new_addr+2*stride*i,size/8,&data[i].s64);
 					fetch_addr=new_addr+2*stride*i;
 					mem->read(fetch_addr,size/8,&data[i].s64);
+					mem_txn_addr[num_mem_txn++]=fetch_addr;	
 				}
 				else{
 					printf("mma_ld:wrong_type\n");
 					abort();
 				}
-				if(i%2==0)
-					mem_txn_addr[num_mem_txn++]=fetch_addr;	
 			}
 			else if(type==F32_TYPE){
 				//mem->read(new_addr+4*acc_float_offset(i,wmma_layout,stride),size/8,&data[i].s64);
@@ -3183,7 +3208,11 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
 	//generate timing memory request
    	inst.space = space;
    	inst.set_addr(thrd, (new_addr_type *)mem_txn_addr , num_mem_txn);
-   	inst.data_size = 4; // 4 byte transaction 
+
+	if((wmma_type==LOAD_C)&&(type==F16_TYPE)&&(wmma_layout==COL))//memory address is scattered, check the profiling xls for more detail.
+   		inst.data_size = 2; // 2 byte transaction 
+	else	
+   		inst.data_size = 4; // 4 byte transaction 
    	assert( inst.memory_op == insn_memory_op );
 
 	if(debug_tensorcore){
@@ -3197,7 +3226,7 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
 			printf("\nmma_ld:thread%d= ",thrd);
 			float temp;
 			for(i=0;i<16;i++){
-				temp=data[i].f16;
+			temp=data[i].f16;
 				printf("%.2f ",temp);
 			}
 			printf("\n");
