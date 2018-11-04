@@ -1447,23 +1447,32 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst, mem_stage_stall_type &stall_reas
         return true;
     assert(!inst.accessq_empty());
 
-    if (bypass_divergency_stat.find(&inst) == bypass_divergency_stat.end())
-    {
-        bypass_divergency_stat[&inst] = INIT;
-    }
-    if (current_access_num.find(&inst) == current_access_num.end())
-    {
-        current_access_num[&inst] = 1;
-    }
-    else
-    {
-        current_access_num[&inst]++;
-    }
-    if (current_bypass_num.find(&inst) == current_bypass_num.end())
-    {
-        current_bypass_num[&inst] = 0;
-    }
 
+    switch (m_config->m_bypass_policy_config.bypass_policy)//sjq
+    {
+    case 0:
+        break;
+    case 1:
+        if (bypass_divergency_stat.find(&inst) == bypass_divergency_stat.end())
+        {
+            bypass_divergency_stat[&inst] = INIT;
+        }
+        if (current_access_num.find(&inst) == current_access_num.end())
+        {
+            current_access_num[&inst] = 0;
+        }
+        //else
+        //{
+        //    current_access_num[&inst]++;
+        //}
+        if (current_bypass_num.find(&inst) == current_bypass_num.end())
+        {
+            current_bypass_num[&inst] = 0;
+        }
+        break;
+    default:
+        break;
+    }
     mem_stage_stall_type stall_cond = NO_RC_FAIL;
     const mem_access_t &access = inst.accessq_back();
 
@@ -1479,16 +1488,23 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst, mem_stage_stall_type &stall_reas
             bypassL1D = true;
     }
     bool isConflictBypass=false;
-    if (m_L1D->is_set_conflict(access.get_addr()))
+    switch (m_config->m_bypass_policy_config.bypass_policy)//sjq
     {
-        
-        bypassL1D = true;
-        isConflictBypass=true;
+    case 0:
+        break;
+    case 1:
+        if (m_L1D->is_set_conflict(access.get_addr()))
+        {
+
+            bypassL1D = true;
+            isConflictBypass = true;
+        }
+       
+        break;
     }
-    changeStats(bypassL1D, bypass_divergency_stat, &inst); //sjq change divegency_stats;
     if (bypassL1D)
     {
-        current_bypass_num[&inst]++; //sjq;;; to know this inst 's bypass number
+        
 
         // bypass L1 cache
         unsigned control_size = inst.is_store() ? WRITE_PACKET_SIZE : READ_PACKET_SIZE;
@@ -1496,16 +1512,39 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst, mem_stage_stall_type &stall_reas
         if (m_icnt->full(size, inst.is_store() || inst.isatomic()))
         {
             stall_cond = ICNT_RC_FAIL;
+            //sjq
+            //do nothing
         }
-        else
+        else//icnt not full
         {
+            switch (m_config->m_bypass_policy_config.bypass_policy) //sjq
+            {
+            case 0:
+                break;
+            case 1:
+                current_bypass_num[&inst]++; //sjq;;; to know this inst 's bypass number
+                current_access_num[&inst]++;
+                changeStats(bypassL1D, bypass_divergency_stat, &inst);
+                break;
+            default:
+                break;
+            }
             mem_fetch *mf = m_mf_allocator->alloc(inst, access);
+            switch (m_config->m_bypass_policy_config.bypass_policy)
+            {
+            case 0:
+                break;
+            case 1:
+                if (mf && isConflictBypass)
+                { //bypass because set conflict sjq//bug fixed at nov 4 2018//I need a new keyboard!!
+                    mf->bypassL1cache = true;
+                    mf->bypassL1Mshr = true;
+                } //end sjq
+                break;
 
-            if (mf && isConflictBypass)
-            { //bypass because set conflict sjq//bug fixed at nov 4 2018//I need a new keyboard!!
-                mf->bypassL1cache = true;
-                mf->bypassL1Mshr = true;
-            } //end sjq
+            default:
+                break;
+            }
 
             m_icnt->push(mf);
             inst.accessq_pop_back();
@@ -1524,6 +1563,22 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst, mem_stage_stall_type &stall_reas
     { //not bypass
         assert(CACHE_UNDEFINED != inst.cache_op);
         stall_cond = process_memory_access_queue(m_L1D, inst); //to cache
+        if(stall_cond==NO_RC_FAIL){
+            switch (m_config->m_bypass_policy_config.bypass_policy)
+            {
+            case 0:
+                break;
+            case 1:
+               // current_bypass_num[&inst]++; //sjq;;; to know this inst 's bypass number
+                current_access_num[&inst]++;
+                changeStats(bypassL1D, bypass_divergency_stat, &inst);
+                break;
+                
+
+            default:
+                break;
+            }
+        }
     }
     if (!inst.accessq_empty())
         stall_cond = COAL_STALL;
@@ -1536,34 +1591,48 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst, mem_stage_stall_type &stall_reas
         else
             access_type = (iswrite) ? G_MEM_ST : G_MEM_LD;
     }
-    if (inst.accessq_empty())
+    switch (m_config->m_bypass_policy_config.bypass_policy)//when bypass happens
     {
-
-        all_inst++;
-        switch (bypass_divergency_stat[&inst])
+    case 0:
+        break;
+    case 1:
+        if (inst.accessq_empty())
         {
-        case ALL_BYPASS:
-            all_bypass++;
-            break;
-        case ALL_CACHE:
-            all_cache++;
-            break;
-        case DIVERGENCY:
-            cache_and_bypass++;
-            break;
-        default:
-            abort();
+
+            all_inst++;
+            switch (bypass_divergency_stat[&inst])
+            {
+            case ALL_BYPASS:
+                all_bypass++;
+                break;
+            case ALL_CACHE:
+                all_cache++;
+                break;
+            case DIVERGENCY:
+                cache_and_bypass++;
+                break;
+            default:
+                abort();
+            }
+            detailed_access_number[current_access_num[&inst]]++;
+            detailed_divergency_stat[current_access_num[&inst]][current_bypass_num[&inst]]++;
+
+            //TODO
+            bypass_divergency_stat.erase(&inst);
+
+            current_access_num.erase(&inst);
+            current_bypass_num.erase(&inst);
         }
-        detailed_access_number[current_access_num[&inst]]++;
-        detailed_divergency_stat[current_access_num[&inst]][current_bypass_num[&inst]]++;
-
-        //TODO
-        bypass_divergency_stat.erase(&inst);
-
-        current_access_num.erase(&inst);
-        current_bypass_num.erase(&inst);
+        break;
+    default:
+        break;
     }
+
     return inst.accessq_empty();
+}
+void bypass_policy_config::reg_options(OptionParser * opp){
+    option_parser_register(opp, "-bypass_policy", OPT_INT32, &bypass_policy, 
+                   "0=no bypass;1=bypass set conflict", "0");
 }
 
 bool ldst_unit::response_buffer_full() const
@@ -1969,11 +2038,21 @@ void ldst_unit::cycle()
                    if (m_core->get_config()->gmem_skip_L1D)
                        bypassL1D = true;
                }
-               if (mf->bypassL1cache && mf->bypassL1Mshr)
+               switch (m_config->m_bypass_policy_config.bypass_policy)//sjq
                {
+               case 0:
+                   break;
+               case 1:
+                   if (mf->bypassL1cache && mf->bypassL1Mshr)
+                   {
 
-                   bypassL1D = true; //true means it will go to global field
+                       bypassL1D = true; //true means it will go to global field
+                   }
+                   break;
+               default:
+                   break;
                }
+              
                if( bypassL1D ) {
                    if ( m_next_global == NULL ) {
                        mf->set_status(IN_SHADER_FETCHED,gpu_sim_cycle+gpu_tot_sim_cycle);

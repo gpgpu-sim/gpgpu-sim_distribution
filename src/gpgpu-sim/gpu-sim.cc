@@ -197,6 +197,10 @@ void memory_config::reg_options(class OptionParser * opp)
 
 void shader_core_config::reg_options(class OptionParser * opp)
 {
+    //sjq
+    m_bypass_policy_config.reg_options(opp);
+    //sjq
+
     option_parser_register(opp, "-gpgpu_simd_model", OPT_INT32, &model, 
                    "1 = post-dominator", "1");
     option_parser_register(opp, "-gpgpu_shader_core_pipeline", OPT_CSTR, &gpgpu_shader_core_pipeline_opt, 

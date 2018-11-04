@@ -1221,7 +1221,13 @@ const char* const pipeline_stage_name_decode[] = {
     "EX_WB",
     "N_PIPELINE_STAGES" 
 };
+struct bypass_policy_config{
+    bypass_policy_config():bypass_policy(0){
 
+    }
+    void reg_options(class OptionParser * opp);
+    int bypass_policy;
+};
 struct shader_core_config : public core_config
 {
     shader_core_config(){
@@ -1342,6 +1348,8 @@ struct shader_core_config : public core_config
     int simt_core_sim_order; 
     
     unsigned mem2device(unsigned memid) const { return memid + n_simt_clusters; }
+
+    bypass_policy_config m_bypass_policy_config;
 };
 
 struct shader_core_stats_pod {
