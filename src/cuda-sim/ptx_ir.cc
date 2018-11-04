@@ -222,6 +222,7 @@ bool symbol_table::add_function_decl( const char *name, int entry_point, functio
    } else {
       *func_info = new function_info(entry_point);
       (*func_info)->set_name(name);
+      (*func_info)->set_maxnt_id(0);
       m_function_info_lookup[key] = *func_info;
    }
 
@@ -1234,16 +1235,16 @@ ptx_instruction::ptx_instruction( int opcode,
          m_inst_size = 4; // bytes
          break;
       case EXTP_OPTION:
-	 break;
+             break;
       case NC_OPTION:
-	 break;
+             m_cache_option = last_ptx_inst_option;
+             break;
       case UP_OPTION:
       case DOWN_OPTION:
       case BFLY_OPTION:
       case IDX_OPTION:
 		  m_shfl_op = last_ptx_inst_option;
 		  break;
-
       case PRMT_F4E_MODE:
       case PRMT_B4E_MODE:
       case PRMT_RC8_MODE:

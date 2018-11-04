@@ -316,12 +316,12 @@ void warp_inst_t::generate_mem_accesses()
         break;
 
     case global_space: case local_space: case param_space_local:
-        if( m_config->gpgpu_coalesce_arch == 13 ) {
-           if(isatomic())
-               memory_coalescing_arch_13_atomic(is_write, access_type);
-           else
-               memory_coalescing_arch_13(is_write, access_type);
-        } else abort();
+    	 if( m_config->gpgpu_coalesce_arch >= 13 && m_config->gpgpu_coalesce_arch <= 62) {
+            if(isatomic())
+                memory_coalescing_arch_atomic(is_write, access_type);
+            else
+                memory_coalescing_arch(is_write, access_type);
+         } else abort();
 
         break;
 
@@ -345,7 +345,7 @@ void warp_inst_t::generate_mem_accesses()
                 byte_mask.set(idx+i);
         }
         for( a=accesses.begin(); a != accesses.end(); ++a ) 
-            m_accessq.push_back( mem_access_t(access_type,a->first,cache_block_size,is_write,a->second,byte_mask) );
+            m_accessq.push_back( mem_access_t(access_type,a->first,cache_block_size,is_write,a->second, byte_mask, mem_access_sector_mask_t()));
     }
 
     if ( space.get_type() == global_space ) {
@@ -354,15 +354,32 @@ void warp_inst_t::generate_mem_accesses()
     m_mem_accesses_created=true;
 }
 
-void warp_inst_t::memory_coalescing_arch_13( bool is_write, mem_access_type access_type )
+void warp_inst_t::memory_coalescing_arch( bool is_write, mem_access_type access_type )
 {
     // see the CUDA manual where it discusses coalescing rules before reading this
     unsigned segment_size = 0;
     unsigned warp_parts = m_config->mem_warp_parts;
+    bool sector_segment_size = false;
+
+    if(m_config->gpgpu_coalesce_arch >= 20 && m_config->gpgpu_coalesce_arch < 39)
+    {
+    	//Fermi and Kepler, L1 is normal and L2 is sector
+    	if(m_config->gmem_skip_L1D || cache_op == CACHE_GLOBAL)
+    		sector_segment_size = true;
+    	else
+    		sector_segment_size = false;
+    }
+    else if(m_config->gpgpu_coalesce_arch >= 40)
+    {
+    	//Maxwell and Pascal, L1 and L2 are sectors
+    	//all requests should be 32 bytes
+    	sector_segment_size = true;
+    }
+
     switch( data_size ) {
     case 1: segment_size = 32; break;
-    case 2: segment_size = 64; break;
-    case 4: case 8: case 16: segment_size = 128; break;
+    case 2: segment_size = sector_segment_size? 32 : 64; break;
+    case 4: case 8: case 16: segment_size = sector_segment_size? 32 : 128; break;
     }
     unsigned subwarp_size = m_config->warp_size / warp_parts;
 
@@ -413,13 +430,13 @@ void warp_inst_t::memory_coalescing_arch_13( bool is_write, mem_access_type acce
             new_addr_type addr = t->first;
             const transaction_info &info = t->second;
 
-            memory_coalescing_arch_13_reduce_and_send(is_write, access_type, info, addr, segment_size);
+            memory_coalescing_arch_reduce_and_send(is_write, access_type, info, addr, segment_size);
 
         }
     }
 }
 
-void warp_inst_t::memory_coalescing_arch_13_atomic( bool is_write, mem_access_type access_type )
+void warp_inst_t::memory_coalescing_arch_atomic( bool is_write, mem_access_type access_type )
 {
 
    assert(space.get_type() == global_space); // Atomics allowed only for global memory
@@ -488,13 +505,13 @@ void warp_inst_t::memory_coalescing_arch_13_atomic( bool is_write, mem_access_ty
            for(t=transaction_list.begin(); t!=transaction_list.end(); t++) {
                // For each transaction
                const transaction_info &info = *t;
-               memory_coalescing_arch_13_reduce_and_send(is_write, access_type, info, addr, segment_size);
+               memory_coalescing_arch_reduce_and_send(is_write, access_type, info, addr, segment_size);
            }
        }
    }
 }
 
-void warp_inst_t::memory_coalescing_arch_13_reduce_and_send( bool is_write, mem_access_type access_type, const transaction_info &info, new_addr_type addr, unsigned segment_size )
+void warp_inst_t::memory_coalescing_arch_reduce_and_send( bool is_write, mem_access_type access_type, const transaction_info &info, new_addr_type addr, unsigned segment_size )
 {
    assert( (addr & (segment_size-1)) == 0 );
 
@@ -543,7 +560,7 @@ void warp_inst_t::memory_coalescing_arch_13_reduce_and_send( bool is_write, mem_
            assert(lower_half_used && upper_half_used);
        }
    }
-   m_accessq.push_back( mem_access_t(access_type,addr,size,is_write,info.active,info.bytes) );
+   m_accessq.push_back( mem_access_t(access_type,addr,size,is_write,info.active,info.bytes, info.chunks) );
 }
 
 void warp_inst_t::completed( unsigned long long cycle ) const 
@@ -577,6 +594,8 @@ kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *
    
     //Jin: launch latency management
     m_launch_latency = g_kernel_launch_latency;
+
+    volta_cache_config_set=false;
 }
 
 kernel_info_t::~kernel_info_t()
