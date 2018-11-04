@@ -8,7 +8,11 @@ libcuda/cuobjdump_parser.h
 libcuda/cuobjdump_parser.output
 
 lib/*
-
+*.ptx
+*.elf
+*.sass
+_cuobj*
+gpgpusim_power*.log
 cuobjdump_to_ptxplus/elf_lexer.cc
 cuobjdump_to_ptxplus/elf_parser.cc
 cuobjdump_to_ptxplus/elf_parser.hh
