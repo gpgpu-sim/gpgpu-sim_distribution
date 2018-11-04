@@ -1405,15 +1405,15 @@ void printBypassStat()
     std::ofstream out("bypass_stat.txt");
     if (!out)
     {
-       out << "*********sjq*********" << endl;
+        out << "*********sjq*********" << endl;
         out << "can't open bypass_stat.txt" << endl;
         out << "*********sjq*********" << endl;
     }
 
     //out put to file;
     out << endl
-              << endl
-              << "*********sjq*********" << std::endl;
+        << endl
+        << "*********sjq*********" << std::endl;
     out << "all inst; all cached;all bypass;divengency;detailed divergency;detail access" << endl;
     out << all_inst << " " << all_cache << " " << all_bypass << " " << cache_and_bypass << endl;
     for (int i = 1; i <= 32; i++)
@@ -1429,9 +1429,9 @@ void printBypassStat()
         }
     }
     out << endl
-              << endl
-              << "*********sjq*********" << std::endl
-              << endl;
+        << endl
+        << "*********sjq*********" << std::endl
+        << endl;
 
     out.close();
 }
