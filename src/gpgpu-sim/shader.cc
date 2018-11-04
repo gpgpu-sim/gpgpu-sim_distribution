@@ -1405,30 +1405,30 @@ void printBypassStat()
     std::ofstream out("bypass_stat.txt");
     if (!out)
     {
-        std::cout << "*********sjq*********" << std::endl;
-        cout << "can't open bypass_stat.txt" << endl;
-        cout << "*********sjq*********" << endl;
+       out << "*********sjq*********" << endl;
+        out << "can't open bypass_stat.txt" << endl;
+        out << "*********sjq*********" << endl;
     }
 
     //out put to file;
-    std::cout << endl
+    out << endl
               << endl
               << "*********sjq*********" << std::endl;
-    cout << "all inst; all cached;all bypass;divengency;detailed divergency;detail access" << endl;
-    cout << all_inst << " " << all_cache << " " << all_bypass << " " << cache_and_bypass << endl;
+    out << "all inst; all cached;all bypass;divengency;detailed divergency;detail access" << endl;
+    out << all_inst << " " << all_cache << " " << all_bypass << " " << cache_and_bypass << endl;
     for (int i = 1; i <= 32; i++)
     {
-        cout << i << " " << detailed_access_number[i] << endl;
+        out << i << " " << detailed_access_number[i] << endl;
     }
-    cout << endl;
+    out << endl;
     for (int i = 1; i <= 32; i++)
     {
         for (int j = 0; j <= i; j++)
         {
-            cout << i << " " << j << " " << detailed_divergency_stat[i][j] << endl;
+            out << i << " " << j << " " << detailed_divergency_stat[i][j] << endl;
         }
     }
-    std::cout << endl
+    out << endl
               << endl
               << "*********sjq*********" << std::endl
               << endl;
