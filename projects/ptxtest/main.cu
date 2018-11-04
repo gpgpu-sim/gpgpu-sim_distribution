@@ -4,7 +4,7 @@ __global__ void add(int *a, int *b, int *c, int N)
 {
     int idx = threadIdx.x + blockDim.x * blockIdx.x;
     if (idx < N)
-        for(int i=0;i<1000;i++){
+        for(int i=0;i<10;i++){
             c[idx] = a[idx] + b[idx]+1+c[idx];
         }
 }
