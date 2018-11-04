@@ -35,6 +35,14 @@
 
 #include "../abstract_hardware_model.h"
 
+enum partition_index_function{
+	CONSECUTIVE = 0,
+	BITWISE_PERMUTATION,
+	IPOLY,
+	PAE,
+    CUSTOM
+};
+
 struct addrdec_t {
    void print( FILE *fp ) const;
     
@@ -72,6 +80,7 @@ private:
 
    const char *addrdec_option;
    int gpgpu_mem_address_mask;
+   partition_index_function memory_partition_indexing;
    bool run_test; 
 
    int ADDR_CHIP_S;
