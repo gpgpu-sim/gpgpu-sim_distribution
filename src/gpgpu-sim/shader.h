@@ -53,9 +53,24 @@
 #include "stats.h"
 #include "gpu-cache.h"
 #include "traffic_breakdown.h"
+#include<fstream>
+#include<iostream>
+//sjq
+//sjq stat
+enum bypassType{
+    INIT,
+    ALL_BYPASS,
+    ALL_CACHE,
+    DIVERGENCY,
+};
+
+//sjq
+using std::cout;
+using std::endl;
+void printBypassStat();
 
 
-
+//sjq
 #define NO_OP_FLAG            0xFF
 
 /* READ_PACKET_SIZE:
@@ -70,12 +85,7 @@
 
 #define WRITE_MASK_SIZE 8
 
-enum bypassType{
-    INIT,
-    ALL_BYPASS,
-    ALL_CACHE,
-    DIVERGENCY,
-};
+
 class thread_ctx_t {
 public:
    unsigned m_cta_id; // hardware CTA this thread belongs

@@ -1372,17 +1372,7 @@ bool ldst_unit::texture_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail,
    return inst.accessq_empty(); //done if empty.
 }
 
-//sjq stat
-std::map<warp_inst_t*,bypassType> bypass_divergency_stat;
-unsigned long long all_inst=0;
-unsigned long long all_cache=0;
-unsigned long long all_bypass=0;
-unsigned long long cache_and_bypass=0;
-std::map<int,std::map<int,unsigned long long> > detailed_divergency_stat;
-std::map<int,unsigned long long> detailed_access_number;
-std::map<warp_inst_t* ,int > current_bypass_num;
-std::map<warp_inst_t*,int > current_access_num;
-//sjq
+
 void changeStats(bool bypass,std::map<warp_inst_t*,bypassType> & stat,warp_inst_t * p_inst){
     assert(stat.find(p_inst)!=stat.end());
     switch(stat[p_inst]){
@@ -1401,114 +1391,171 @@ void changeStats(bool bypass,std::map<warp_inst_t*,bypassType> & stat,warp_inst_
     }
 
 }
-bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_reason, mem_stage_access_type &access_type )
+std::map<warp_inst_t *, bypassType> bypass_divergency_stat;
+unsigned long long all_inst = 0;
+unsigned long long all_cache = 0;
+unsigned long long all_bypass = 0;
+unsigned long long cache_and_bypass = 0;
+std::map<int, std::map<int, unsigned long long>> detailed_divergency_stat;
+std::map<int, unsigned long long> detailed_access_number;
+std::map<warp_inst_t *, int> current_bypass_num;
+std::map<warp_inst_t *, int> current_access_num;
+void printBypassStat()
 {
-    
-    
-   if( inst.empty() || 
-       ((inst.space.get_type() != global_space) &&
-        (inst.space.get_type() != local_space) &&
-        (inst.space.get_type() != param_space_local)) ) 
-       return true;
-   if( inst.active_count() == 0 ) 
-       return true;
-   assert( !inst.accessq_empty() );
-
-   if(bypass_divergency_stat.find(&inst)==bypass_divergency_stat.end()){
-        bypass_divergency_stat[&inst]=INIT;
+    std::ofstream out("bypass_stat.txt");
+    if (!out)
+    {
+        std::cout << "*********sjq*********" << std::endl;
+        cout << "can't open bypass_stat.txt" << endl;
+        cout << "*********sjq*********" << endl;
     }
-    if(current_access_num.find(&inst)==current_access_num.end()){
-        current_access_num[&inst]=1;
-    }else{
+
+    //out put to file;
+    std::cout << endl
+              << endl
+              << "*********sjq*********" << std::endl;
+    cout << "all inst; all cached;all bypass;divengency;detailed divergency;detail access" << endl;
+    cout << all_inst << " " << all_cache << " " << all_bypass << " " << cache_and_bypass << endl;
+    for (int i = 1; i <= 32; i++)
+    {
+        cout << i << " " << detailed_access_number[i] << endl;
+    }
+    cout << endl;
+    for (int i = 1; i <= 32; i++)
+    {
+        for (int j = 0; j <= i; j++)
+        {
+            cout << i << " " << j << " " << detailed_divergency_stat[i][j] << endl;
+        }
+    }
+    std::cout << endl
+              << endl
+              << "*********sjq*********" << std::endl
+              << endl;
+
+    out.close();
+}
+bool ldst_unit::memory_cycle(warp_inst_t &inst, mem_stage_stall_type &stall_reason, mem_stage_access_type &access_type)
+{
+
+    if (inst.empty() ||
+        ((inst.space.get_type() != global_space) &&
+         (inst.space.get_type() != local_space) &&
+         (inst.space.get_type() != param_space_local)))
+        return true;
+    if (inst.active_count() == 0)
+        return true;
+    assert(!inst.accessq_empty());
+
+    if (bypass_divergency_stat.find(&inst) == bypass_divergency_stat.end())
+    {
+        bypass_divergency_stat[&inst] = INIT;
+    }
+    if (current_access_num.find(&inst) == current_access_num.end())
+    {
+        current_access_num[&inst] = 1;
+    }
+    else
+    {
         current_access_num[&inst]++;
     }
-    if(current_bypass_num.find(&inst)==current_bypass_num.end()){
-        current_bypass_num[&inst]=0;
+    if (current_bypass_num.find(&inst) == current_bypass_num.end())
+    {
+        current_bypass_num[&inst] = 0;
     }
 
+    mem_stage_stall_type stall_cond = NO_RC_FAIL;
+    const mem_access_t &access = inst.accessq_back();
 
-   mem_stage_stall_type stall_cond = NO_RC_FAIL;
-   const mem_access_t &access = inst.accessq_back();
+    bool bypassL1D = false;
+    if (CACHE_GLOBAL == inst.cache_op || (m_L1D == NULL))
+    {
+        bypassL1D = true;
+    }
+    else if (inst.space.is_global())
+    { // global memory access
+        // skip L1 cache if the option is enabled
+        if (m_core->get_config()->gmem_skip_L1D)
+            bypassL1D = true;
+    }
 
-    
-   bool bypassL1D = false; 
-   if ( CACHE_GLOBAL == inst.cache_op || (m_L1D == NULL) ) {
-       bypassL1D = true; 
-   } else if (inst.space.is_global()) { // global memory access 
-       // skip L1 cache if the option is enabled
-       if (m_core->get_config()->gmem_skip_L1D) 
-           bypassL1D = true; 
-   }
-    
-   if(m_L1D->is_set_conflict(access.get_addr())){
-       bypassL1D=true;
-   }
-    changeStats(bypassL1D,bypass_divergency_stat,&inst);//sjq change divegency_stats;
-   if( bypassL1D ) {
-       current_bypass_num[&inst]++;//sjq;;; to know this inst 's bypass number
-       
-       // bypass L1 cache
-       unsigned control_size = inst.is_store() ? WRITE_PACKET_SIZE : READ_PACKET_SIZE;
-       unsigned size = access.get_size() + control_size;
-       if( m_icnt->full(size, inst.is_store() || inst.isatomic()) ) {
-           stall_cond = ICNT_RC_FAIL;
-       } else {
-           mem_fetch *mf = m_mf_allocator->alloc(inst,access);
-           m_icnt->push(mf);
-           inst.accessq_pop_back();
-           //inst.clear_active( access.get_warp_mask() );
-           if( inst.is_load() ) { 
-              for( unsigned r=0; r < 4; r++) 
-                  if(inst.out[r] > 0) 
-                      assert( m_pending_writes[inst.warp_id()][inst.out[r]] > 0 );//was set when this instruction was issued
-           } else if( inst.is_store() ) 
-              m_core->inc_store_req( inst.warp_id() );
-       }
-   } else {//not bypass
-       assert( CACHE_UNDEFINED != inst.cache_op );
-       stall_cond = process_memory_access_queue(m_L1D,inst);//to cache
-   }
-   if( !inst.accessq_empty() ) 
-       stall_cond = COAL_STALL;
-   if (stall_cond != NO_RC_FAIL) {
-      stall_reason = stall_cond;
-      bool iswrite = inst.is_store();
-      if (inst.space.is_local()) 
-         access_type = (iswrite)?L_MEM_ST:L_MEM_LD;
-      else 
-         access_type = (iswrite)?G_MEM_ST:G_MEM_LD;
-   }
-   if(inst.accessq_empty()){
+    if (m_L1D->is_set_conflict(access.get_addr()))
+    {
+        bypassL1D = true;
+    }
+    changeStats(bypassL1D, bypass_divergency_stat, &inst); //sjq change divegency_stats;
+    if (bypassL1D)
+    {
+        current_bypass_num[&inst]++; //sjq;;; to know this inst 's bypass number
 
-       all_inst++;
-       switch (bypass_divergency_stat[&inst])
-       {
-       case ALL_BYPASS:
-           all_bypass++;
-           break;
-       case ALL_CACHE:
-           all_cache++;
-           break;
-       case DIVERGENCY:
-           cache_and_bypass++;
-           break;
-       default:
-           abort();
-       }
+        // bypass L1 cache
+        unsigned control_size = inst.is_store() ? WRITE_PACKET_SIZE : READ_PACKET_SIZE;
+        unsigned size = access.get_size() + control_size;
+        if (m_icnt->full(size, inst.is_store() || inst.isatomic()))
+        {
+            stall_cond = ICNT_RC_FAIL;
+        }
+        else
+        {
+            mem_fetch *mf = m_mf_allocator->alloc(inst, access);
+            m_icnt->push(mf);
+            inst.accessq_pop_back();
+            //inst.clear_active( access.get_warp_mask() );
+            if (inst.is_load())
+            {
+                for (unsigned r = 0; r < 4; r++)
+                    if (inst.out[r] > 0)
+                        assert(m_pending_writes[inst.warp_id()][inst.out[r]] > 0); //was set when this instruction was issued
+            }
+            else if (inst.is_store())
+                m_core->inc_store_req(inst.warp_id());
+        }
+    }
+    else
+    { //not bypass
+        assert(CACHE_UNDEFINED != inst.cache_op);
+        stall_cond = process_memory_access_queue(m_L1D, inst); //to cache
+    }
+    if (!inst.accessq_empty())
+        stall_cond = COAL_STALL;
+    if (stall_cond != NO_RC_FAIL)
+    {
+        stall_reason = stall_cond;
+        bool iswrite = inst.is_store();
+        if (inst.space.is_local())
+            access_type = (iswrite) ? L_MEM_ST : L_MEM_LD;
+        else
+            access_type = (iswrite) ? G_MEM_ST : G_MEM_LD;
+    }
+    if (inst.accessq_empty())
+    {
+
+        all_inst++;
+        switch (bypass_divergency_stat[&inst])
+        {
+        case ALL_BYPASS:
+            all_bypass++;
+            break;
+        case ALL_CACHE:
+            all_cache++;
+            break;
+        case DIVERGENCY:
+            cache_and_bypass++;
+            break;
+        default:
+            abort();
+        }
         detailed_access_number[current_access_num[&inst]]++;
         detailed_divergency_stat[current_access_num[&inst]][current_bypass_num[&inst]]++;
 
-       //TODO
-       bypass_divergency_stat.erase(&inst);
-       
-       current_access_num.erase(&inst);
-       current_bypass_num.erase(&inst);
+        //TODO
+        bypass_divergency_stat.erase(&inst);
 
-
-   }
-   return inst.accessq_empty(); 
+        current_access_num.erase(&inst);
+        current_bypass_num.erase(&inst);
+    }
+    return inst.accessq_empty();
 }
-
 
 bool ldst_unit::response_buffer_full() const
 {
