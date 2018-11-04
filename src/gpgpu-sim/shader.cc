@@ -1502,7 +1502,7 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst, mem_stage_stall_type &stall_reas
             mem_fetch *mf = m_mf_allocator->alloc(inst, access);
 
             if (mf && isConflictBypass)
-            { //bypass because set conflict sjq
+            { //bypass because set conflict sjq//bug fixed at nov 4 2018//I need a new keyboard!!
                 mf->bypassL1cache = true;
                 mf->bypassL1Mshr = true;
             } //end sjq
