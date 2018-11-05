@@ -311,7 +311,6 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
     
     m_operand_collector.init( m_config->gpgpu_num_reg_banks, this );
     
-    // execute
     m_num_function_units = m_config->gpgpu_num_sp_units + m_config->gpgpu_num_dp_units + m_config->gpgpu_num_sfu_units + m_config->gpgpu_num_tensor_core_units + 1; // sp_unit, sfu, ldst_unit
     //m_dispatch_port = new enum pipeline_stage_name_t[ m_num_function_units ];
     //m_issue_port = new enum pipeline_stage_name_t[ m_num_function_units ];
@@ -335,13 +334,12 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
         m_dispatch_port.push_back(ID_OC_SFU);
         m_issue_port.push_back(OC_EX_SFU);
     }
-
+       
     for (int k = 0; k < config->gpgpu_num_tensor_core_units; k++) {
         m_fu.push_back(new tensor_core( &m_pipeline_reg[EX_WB], m_config, this ));
         m_dispatch_port.push_back(ID_OC_TENSOR_CORE);
         m_issue_port.push_back(OC_EX_TENSOR_CORE);
     }
-    
     m_ldst_unit = new ldst_unit( m_icnt, m_mem_fetch_allocator, this, &m_operand_collector, m_scoreboard, config, mem_config, stats, shader_id, tpc_id );
     m_fu.push_back(m_ldst_unit);
     m_dispatch_port.push_back(ID_OC_MEM);
@@ -1044,6 +1042,7 @@ void scheduler_unit::cycle()
 			    }
                          }//end of else
                    } else {
+
                         SCHED_DPRINTF( "Warp (warp_id %u, dynamic_warp_id %u) fails scoreboard\n",
                                        (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id() );
                    }
