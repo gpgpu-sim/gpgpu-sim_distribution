@@ -234,52 +234,12 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
     
     //op collector configuration
     enum { SP_CUS, DP_CUS, SFU_CUS, MEM_CUS, GEN_CUS };
-    m_operand_collector.add_cu_set(SP_CUS, m_config->gpgpu_operand_collector_num_units_sp, m_config->gpgpu_operand_collector_num_out_ports_sp);
-    m_operand_collector.add_cu_set(DP_CUS, m_config->gpgpu_operand_collector_num_units_dp, m_config->gpgpu_operand_collector_num_out_ports_dp);
-    m_operand_collector.add_cu_set(SFU_CUS, m_config->gpgpu_operand_collector_num_units_sfu, m_config->gpgpu_operand_collector_num_out_ports_sfu);
-    m_operand_collector.add_cu_set(MEM_CUS, m_config->gpgpu_operand_collector_num_units_mem, m_config->gpgpu_operand_collector_num_out_ports_mem);
-    m_operand_collector.add_cu_set(GEN_CUS, m_config->gpgpu_operand_collector_num_units_gen, m_config->gpgpu_operand_collector_num_out_ports_gen);
-    
     opndcoll_rfu_t::port_vector_t in_ports;
     opndcoll_rfu_t::port_vector_t out_ports;
     opndcoll_rfu_t::uint_vector_t cu_sets;
-    for (unsigned i = 0; i < m_config->gpgpu_operand_collector_num_in_ports_sp; i++) {
-        in_ports.push_back(&m_pipeline_reg[ID_OC_SP]);
-        out_ports.push_back(&m_pipeline_reg[OC_EX_SP]);
-        cu_sets.push_back((unsigned)SP_CUS);
-        cu_sets.push_back((unsigned)GEN_CUS);
-        m_operand_collector.add_port(in_ports,out_ports,cu_sets);
-        in_ports.clear(),out_ports.clear(),cu_sets.clear();
-    }
-    
-    for (unsigned i = 0; i < m_config->gpgpu_operand_collector_num_in_ports_dp; i++) {
-            in_ports.push_back(&m_pipeline_reg[ID_OC_DP]);
-            out_ports.push_back(&m_pipeline_reg[OC_EX_DP]);
-            cu_sets.push_back((unsigned)DP_CUS);
-            cu_sets.push_back((unsigned)GEN_CUS);
-            m_operand_collector.add_port(in_ports,out_ports,cu_sets);
-            in_ports.clear(),out_ports.clear(),cu_sets.clear();
-        }
 
-    for (unsigned i = 0; i < m_config->gpgpu_operand_collector_num_in_ports_sfu; i++) {
-        in_ports.push_back(&m_pipeline_reg[ID_OC_SFU]);
-        out_ports.push_back(&m_pipeline_reg[OC_EX_SFU]);
-        cu_sets.push_back((unsigned)SFU_CUS);
-        cu_sets.push_back((unsigned)GEN_CUS);
-        m_operand_collector.add_port(in_ports,out_ports,cu_sets);
-        in_ports.clear(),out_ports.clear(),cu_sets.clear();
-    }
-    
-    for (unsigned i = 0; i < m_config->gpgpu_operand_collector_num_in_ports_mem; i++) {
-        in_ports.push_back(&m_pipeline_reg[ID_OC_MEM]);
-        out_ports.push_back(&m_pipeline_reg[OC_EX_MEM]);
-        cu_sets.push_back((unsigned)MEM_CUS);
-        cu_sets.push_back((unsigned)GEN_CUS);                       
-        m_operand_collector.add_port(in_ports,out_ports,cu_sets);
-        in_ports.clear(),out_ports.clear(),cu_sets.clear();
-    }   
-    
-    
+    //configure generic collectors
+    m_operand_collector.add_cu_set(GEN_CUS, m_config->gpgpu_operand_collector_num_units_gen, m_config->gpgpu_operand_collector_num_out_ports_gen);
     for (unsigned i = 0; i < m_config->gpgpu_operand_collector_num_in_ports_gen; i++) {
         in_ports.push_back(&m_pipeline_reg[ID_OC_SP]);
         in_ports.push_back(&m_pipeline_reg[ID_OC_SFU]);
@@ -287,9 +247,56 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
         out_ports.push_back(&m_pipeline_reg[OC_EX_SP]);
         out_ports.push_back(&m_pipeline_reg[OC_EX_SFU]);
         out_ports.push_back(&m_pipeline_reg[OC_EX_MEM]);
-        cu_sets.push_back((unsigned)GEN_CUS);   
+        if(m_config->gpgpu_num_dp_units > 0) {
+			in_ports.push_back(&m_pipeline_reg[ID_OC_DP]);
+			out_ports.push_back(&m_pipeline_reg[OC_EX_DP]);
+        }
+        cu_sets.push_back((unsigned)GEN_CUS);
         m_operand_collector.add_port(in_ports,out_ports,cu_sets);
         in_ports.clear(),out_ports.clear(),cu_sets.clear();
+    }
+
+    if(m_config->enable_specialized_operand_collector) {
+		m_operand_collector.add_cu_set(SP_CUS, m_config->gpgpu_operand_collector_num_units_sp, m_config->gpgpu_operand_collector_num_out_ports_sp);
+		m_operand_collector.add_cu_set(DP_CUS, m_config->gpgpu_operand_collector_num_units_dp, m_config->gpgpu_operand_collector_num_out_ports_dp);
+		m_operand_collector.add_cu_set(SFU_CUS, m_config->gpgpu_operand_collector_num_units_sfu, m_config->gpgpu_operand_collector_num_out_ports_sfu);
+		m_operand_collector.add_cu_set(MEM_CUS, m_config->gpgpu_operand_collector_num_units_mem, m_config->gpgpu_operand_collector_num_out_ports_mem);
+
+		for (unsigned i = 0; i < m_config->gpgpu_operand_collector_num_in_ports_sp; i++) {
+			in_ports.push_back(&m_pipeline_reg[ID_OC_SP]);
+			out_ports.push_back(&m_pipeline_reg[OC_EX_SP]);
+			cu_sets.push_back((unsigned)SP_CUS);
+			cu_sets.push_back((unsigned)GEN_CUS);
+			m_operand_collector.add_port(in_ports,out_ports,cu_sets);
+			in_ports.clear(),out_ports.clear(),cu_sets.clear();
+		}
+
+		for (unsigned i = 0; i < m_config->gpgpu_operand_collector_num_in_ports_dp; i++) {
+				in_ports.push_back(&m_pipeline_reg[ID_OC_DP]);
+				out_ports.push_back(&m_pipeline_reg[OC_EX_DP]);
+				cu_sets.push_back((unsigned)DP_CUS);
+				cu_sets.push_back((unsigned)GEN_CUS);
+				m_operand_collector.add_port(in_ports,out_ports,cu_sets);
+				in_ports.clear(),out_ports.clear(),cu_sets.clear();
+			}
+
+		for (unsigned i = 0; i < m_config->gpgpu_operand_collector_num_in_ports_sfu; i++) {
+			in_ports.push_back(&m_pipeline_reg[ID_OC_SFU]);
+			out_ports.push_back(&m_pipeline_reg[OC_EX_SFU]);
+			cu_sets.push_back((unsigned)SFU_CUS);
+			cu_sets.push_back((unsigned)GEN_CUS);
+			m_operand_collector.add_port(in_ports,out_ports,cu_sets);
+			in_ports.clear(),out_ports.clear(),cu_sets.clear();
+		}
+
+		for (unsigned i = 0; i < m_config->gpgpu_operand_collector_num_in_ports_mem; i++) {
+			in_ports.push_back(&m_pipeline_reg[ID_OC_MEM]);
+			out_ports.push_back(&m_pipeline_reg[OC_EX_MEM]);
+			cu_sets.push_back((unsigned)MEM_CUS);
+			cu_sets.push_back((unsigned)GEN_CUS);
+			m_operand_collector.add_port(in_ports,out_ports,cu_sets);
+			in_ports.clear(),out_ports.clear(),cu_sets.clear();
+		}
     }
     
     m_operand_collector.init( m_config->gpgpu_num_reg_banks, this );
@@ -761,15 +768,19 @@ void shader_core_ctx::func_exec_inst( warp_inst_t &inst )
         inst.generate_mem_accesses();
 }
 
-void shader_core_ctx::issue_warp( register_set& pipe_reg_set, const warp_inst_t* next_inst, const active_mask_t &active_mask, unsigned warp_id )
+void shader_core_ctx::issue_warp( register_set& pipe_reg_set, const warp_inst_t* next_inst, const active_mask_t &active_mask, unsigned warp_id, unsigned sch_id )
 {
-    warp_inst_t** pipe_reg = pipe_reg_set.get_free();
+	warp_inst_t** pipe_reg;
+	if(m_config->sub_core_model)
+		 pipe_reg = pipe_reg_set.get_free(sch_id);
+	else
+		pipe_reg = pipe_reg_set.get_free();
     assert(pipe_reg);
 
     m_warp[warp_id].ibuffer_free();
     assert(next_inst->valid());
     **pipe_reg = *next_inst; // static instruction information
-    (*pipe_reg)->issue( active_mask, warp_id, gpu_tot_sim_cycle + gpu_sim_cycle, m_warp[warp_id].get_dynamic_warp_id() ); // dynamic instruction information
+    (*pipe_reg)->issue( active_mask, warp_id, gpu_tot_sim_cycle + gpu_sim_cycle, m_warp[warp_id].get_dynamic_warp_id(), sch_id ); // dynamic instruction information
     m_stats->shader_cycle_distro[2+(*pipe_reg)->active_count()]++;
     func_exec_inst( **pipe_reg );
     if( next_inst->op == BARRIER_OP ){
@@ -950,8 +961,8 @@ void scheduler_unit::cycle()
                         const active_mask_t &active_mask = m_simt_stack[warp_id]->get_active_mask();
                         assert( warp(warp_id).inst_in_pipeline() );
                         if ( (pI->op == LOAD_OP) || (pI->op == STORE_OP) || (pI->op == MEMORY_BARRIER_OP) ) {
-                        	if( m_mem_out->has_free() && (!diff_exec_units || previous_issued_inst_exec_type != exec_unit_type_t::MEM)) {
-                                m_shader->issue_warp(*m_mem_out,pI,active_mask,warp_id);
+                        	if( m_mem_out->has_free(m_id) && (!diff_exec_units || previous_issued_inst_exec_type != exec_unit_type_t::MEM)) {
+                                m_shader->issue_warp(*m_mem_out,pI,active_mask,warp_id,m_id);
                                 issued++;
                                 issued_inst=true;
                                 warp_inst_issued = true;
@@ -959,9 +970,9 @@ void scheduler_unit::cycle()
                             }
                         } else {
 
-                            bool sp_pipe_avail = m_sp_out->has_free();
-                            bool sfu_pipe_avail = m_sfu_out->has_free();
-                            bool dp_pipe_avail = m_dp_out->has_free();
+                            bool sp_pipe_avail = m_sp_out->has_free(m_id);
+                            bool sfu_pipe_avail = m_sfu_out->has_free(m_id);
+                            bool dp_pipe_avail = m_dp_out->has_free(m_id);
                             if( sp_pipe_avail && (pI->op != SFU_OP && pI->op != DP_OP) && (!diff_exec_units || previous_issued_inst_exec_type != exec_unit_type_t::SP)) {
                                 
                                 //Jin: special for CDP api
@@ -983,14 +994,14 @@ void scheduler_unit::cycle()
                                 }
 
                                 // always prefer SP pipe for operations that can use both SP and SFU pipelines
-                                m_shader->issue_warp(*m_sp_out,pI,active_mask,warp_id);
+                                m_shader->issue_warp(*m_sp_out,pI,active_mask,warp_id,m_id);
                                 issued++;
                                 issued_inst=true;
                                 warp_inst_issued = true;
                                 previous_issued_inst_exec_type = exec_unit_type_t::SP;
                             } else if ( (m_shader->m_config->gpgpu_num_dp_units != 0) && (pI->op == DP_OP) && (!diff_exec_units || previous_issued_inst_exec_type != exec_unit_type_t::DP)) {
                                 if( dp_pipe_avail ) {
-                                    m_shader->issue_warp(*m_dp_out,pI,active_mask,warp_id);
+                                    m_shader->issue_warp(*m_dp_out,pI,active_mask,warp_id,m_id);
                                     issued++;
                                     issued_inst=true;
                                     warp_inst_issued = true;
@@ -999,7 +1010,7 @@ void scheduler_unit::cycle()
                             }  //If the DP units = 0 (like in Fermi archi), then change DP inst to SFU inst
                             else if ( ((m_shader->m_config->gpgpu_num_dp_units == 0 && pI->op == DP_OP) || (pI->op == SFU_OP) || (pI->op == ALU_SFU_OP)) && (!diff_exec_units || previous_issued_inst_exec_type != exec_unit_type_t::SFU)) {
                                 if( sfu_pipe_avail ) {
-                                    m_shader->issue_warp(*m_sfu_out,pI,active_mask,warp_id);
+                                    m_shader->issue_warp(*m_sfu_out,pI,active_mask,warp_id,m_id);
                                     issued++;
                                     issued_inst=true;
                                     warp_inst_issued = true;
@@ -2068,7 +2079,11 @@ void ldst_unit::writeback()
 
 unsigned ldst_unit::clock_multiplier() const
 { 
-    return m_config->mem_warp_parts; 
+	//to model multiple read port, we give multiple cycles for the memory units
+	if(m_config->mem_unit_ports)
+		return m_config->mem_unit_ports;
+	else
+		return m_config->mem_warp_parts;
 }
 /*
 void ldst_unit::issue( register_set &reg_set )
@@ -3305,18 +3320,34 @@ void opndcoll_rfu_t::init( unsigned num_banks, shader_core_ctx *shader )
    m_bank_warp_shift = (unsigned)(int) (log(m_warp_size+0.5) / log(2.0));
    assert( (m_bank_warp_shift == 5) || (m_warp_size != 32) );
 
+   sub_core_model = shader->get_config()->sub_core_model;
+   m_num_warp_sceds = shader->get_config()->gpgpu_num_sched_per_core;
+   if(sub_core_model)
+	   assert(num_banks % shader->get_config()->gpgpu_num_sched_per_core == 0);
+   m_num_banks_per_sched = num_banks / shader->get_config()->gpgpu_num_sched_per_core;
+
    for( unsigned j=0; j<m_cu.size(); j++) {
-       m_cu[j]->init(j,num_banks,m_bank_warp_shift,shader->get_config(),this);
+       m_cu[j]->init(j,num_banks,m_bank_warp_shift,shader->get_config(),this, sub_core_model, m_num_banks_per_sched );
    }
    m_initialized=true;
+
+
+
+
 }
 
-int register_bank(int regnum, int wid, unsigned num_banks, unsigned bank_warp_shift)
+int register_bank(int regnum, int wid, unsigned num_banks, unsigned bank_warp_shift, bool sub_core_model, unsigned banks_per_sched, unsigned sched_id)
 {
    int bank = regnum;
    if (bank_warp_shift)
       bank += wid;
-   return bank % num_banks;
+   if(sub_core_model) {
+	   unsigned bank_num  = (bank % banks_per_sched) + (sched_id * banks_per_sched);
+	   assert(bank_num < num_banks);
+	   return bank_num;
+   }
+   else
+	   return bank % num_banks;
 }
 
 bool opndcoll_rfu_t::writeback( const warp_inst_t &inst )
@@ -3327,9 +3358,9 @@ bool opndcoll_rfu_t::writeback( const warp_inst_t &inst )
    unsigned n=0;
    for( r=regs.begin(); r!=regs.end();r++,n++ ) {
       unsigned reg = *r;
-      unsigned bank = register_bank(reg,inst.warp_id(),m_num_banks,m_bank_warp_shift);
+      unsigned bank = register_bank(reg,inst.warp_id(),m_num_banks,m_bank_warp_shift, sub_core_model, m_num_banks_per_sched, inst.get_schd_id());
       if( m_arbiter.bank_idle(bank) ) {
-          m_arbiter.allocate_bank_for_write(bank,op_t(&inst,reg,m_num_banks,m_bank_warp_shift));
+          m_arbiter.allocate_bank_for_write(bank,op_t(&inst,reg,m_num_banks,m_bank_warp_shift, sub_core_model, m_num_banks_per_sched, inst.get_schd_id()));
       } else {
           return false;
       }
@@ -3413,7 +3444,7 @@ void opndcoll_rfu_t::allocate_reads()
       const op_t &rr = *r;
       unsigned reg = rr.get_reg();
       unsigned wid = rr.get_wid();
-      unsigned bank = register_bank(reg,wid,m_num_banks,m_bank_warp_shift);
+      unsigned bank = register_bank(reg,wid,m_num_banks,m_bank_warp_shift,sub_core_model, m_num_banks_per_sched, rr.get_sid());
       m_arbiter.allocate_for_read(bank,rr);
       read_ops[bank] = rr;
    }
@@ -3464,7 +3495,9 @@ void opndcoll_rfu_t::collector_unit_t::init( unsigned n,
                                              unsigned num_banks, 
                                              unsigned log2_warp_size,
                                              const core_config *config,
-                                             opndcoll_rfu_t *rfu ) 
+                                             opndcoll_rfu_t *rfu,
+											 bool sub_core_model,
+											 unsigned banks_per_sched)
 { 
    m_rfu=rfu;
    m_cuid=n; 
@@ -3472,6 +3505,8 @@ void opndcoll_rfu_t::collector_unit_t::init( unsigned n,
    assert(m_warp==NULL); 
    m_warp = new warp_inst_t(config);
    m_bank_warp_shift=log2_warp_size;
+   m_sub_core_model = sub_core_model;
+   m_num_banks_per_sched = banks_per_sched;
 }
 
 bool opndcoll_rfu_t::collector_unit_t::allocate( register_set* pipeline_reg_set, register_set* output_reg_set ) 
@@ -3486,7 +3521,7 @@ bool opndcoll_rfu_t::collector_unit_t::allocate( register_set* pipeline_reg_set,
       for( unsigned op=0; op < MAX_REG_OPERANDS; op++ ) {
          int reg_num = (*pipeline_reg)->arch_reg.src[op]; // this math needs to match that used in function_info::ptx_decode_inst
          if( reg_num >= 0 ) { // valid register
-            m_src_op[op] = op_t( this, op, reg_num, m_num_banks, m_bank_warp_shift );
+            m_src_op[op] = op_t( this, op, reg_num, m_num_banks, m_bank_warp_shift, m_sub_core_model, m_num_banks_per_sched, (*pipeline_reg)->get_schd_id() );
             m_not_ready.set(op);
          } else 
             m_src_op[op] = op_t();

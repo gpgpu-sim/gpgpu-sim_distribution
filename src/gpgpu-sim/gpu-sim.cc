@@ -329,6 +329,9 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_shmem_warp_parts", OPT_INT32, &mem_warp_parts,  
                  "Number of portions a warp is divided into for shared memory bank conflict check ",
                  "2");
+    option_parser_register(opp, "-mem_unit_ports", OPT_INT32, &mem_unit_ports,
+                 "The number of memory transactions allowed per core cycle",
+                 "1");
     option_parser_register(opp, "-gpgpu_shmem_warp_parts", OPT_INT32, &mem_warp_parts,
 				 "Number of portions a warp is divided into for shared memory bank conflict check ",
 				 "2");
@@ -347,8 +350,14 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_reg_bank_use_warp_id", OPT_BOOL, &gpgpu_reg_bank_use_warp_id,
              "Use warp ID in mapping registers to banks (default = off)",
              "0");
+    option_parser_register(opp, "-sub_core_model", OPT_BOOL, &sub_core_model,
+             "Sub Core Volta/Pascal model (default = off)",
+             "0");
+    option_parser_register(opp, "-enable_specialized_operand_collector", OPT_BOOL, &enable_specialized_operand_collector,
+                "enable_specialized_operand_collector",
+                "1");
     option_parser_register(opp, "-gpgpu_operand_collector_num_units_sp", OPT_INT32, &gpgpu_operand_collector_num_units_sp,
-                "number of collector units (default = 4)", 
+                "number of collector units (default = 4)",
                 "4");
     option_parser_register(opp, "-gpgpu_operand_collector_num_units_dp", OPT_INT32, &gpgpu_operand_collector_num_units_dp,
                    "number of collector units (default = 0)",

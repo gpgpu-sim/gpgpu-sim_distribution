@@ -291,7 +291,7 @@ inline unsigned wid_from_hw_tid(unsigned tid, unsigned warp_size){return tid/war
 const unsigned WARP_PER_CTA_MAX = 64;
 typedef std::bitset<WARP_PER_CTA_MAX> warp_set_t;
 
-int register_bank(int regnum, int wid, unsigned num_banks, unsigned bank_warp_shift);
+int register_bank(int regnum, int wid, unsigned num_banks, unsigned bank_warp_shift, bool sub_core_model, unsigned banks_per_sched, unsigned sched_id );
 
 class shader_core_ctx;
 struct shader_core_config;
@@ -377,6 +377,8 @@ public:
     // Derived classes can override this function to populate
     // m_supervised_warps with their scheduling policies
     virtual void order_warps() = 0;
+
+    int get_schd_id() const {return m_id;}
 
 protected:
     virtual void do_on_warp_issued( unsigned warp_id,
@@ -601,23 +603,25 @@ private:
    public:
 
       op_t() { m_valid = false; }
-      op_t( collector_unit_t *cu, unsigned op, unsigned reg, unsigned num_banks, unsigned bank_warp_shift )
+      op_t( collector_unit_t *cu, unsigned op, unsigned reg, unsigned num_banks, unsigned bank_warp_shift, bool sub_core_model, unsigned banks_per_sched, unsigned sched_id )
       {
          m_valid = true;
          m_warp=NULL;
          m_cu = cu;
          m_operand = op;
          m_register = reg;
-         m_bank = register_bank(reg,cu->get_warp_id(),num_banks,bank_warp_shift);
+         m_shced_id = sched_id;
+         m_bank = register_bank(reg,cu->get_warp_id(),num_banks,bank_warp_shift, sub_core_model, banks_per_sched, sched_id);
       }
-      op_t( const warp_inst_t *warp, unsigned reg, unsigned num_banks, unsigned bank_warp_shift )
+      op_t( const warp_inst_t *warp, unsigned reg, unsigned num_banks, unsigned bank_warp_shift, bool sub_core_model, unsigned banks_per_sched, unsigned sched_id )
       {
          m_valid=true;
          m_warp=warp;
          m_register=reg;
          m_cu=NULL;
          m_operand = -1;
-         m_bank = register_bank(reg,warp->warp_id(),num_banks,bank_warp_shift);
+         m_shced_id = sched_id;
+         m_bank = register_bank(reg,warp->warp_id(),num_banks,bank_warp_shift, sub_core_model, banks_per_sched, sched_id);
       }
 
       // accessors
@@ -633,6 +637,10 @@ private:
           else if( m_cu ) return m_cu->get_warp_id();
           else abort();
       }
+      unsigned get_sid() const
+	  {
+		 return m_shced_id;
+	  }
       unsigned get_active_count() const
       {
           if( m_warp ) return m_warp->active_count();
@@ -677,6 +685,7 @@ private:
       unsigned  m_operand; // operand offset in instruction. e.g., add r1,r2,r3; r2 is oprd 0, r3 is 1 (r1 is dst)
       unsigned  m_register;
       unsigned  m_bank;
+      unsigned  m_shced_id; //scheduler id that has issued this inst
    };
 
    enum alloc_t {
@@ -697,7 +706,7 @@ private:
          else if( m_allocation == WRITE_ALLOC ) { fprintf(fp,"wr: "); m_op.dump(fp); }
          fprintf(fp,"\n");
       }
-      void alloc_read( const op_t &op )  { assert(is_free()); m_allocation=READ_ALLOC; m_op=op; }
+      void alloc_read( const op_t &op )  { assert(is_free()); m_allocation=READ_ALLOC; m_op=op;  }
       void alloc_write( const op_t &op ) { assert(is_free()); m_allocation=WRITE_ALLOC; m_op=op; }
       void reset() { m_allocation = NO_ALLOC; }
    private:
@@ -851,7 +860,9 @@ private:
                 unsigned num_banks, 
                 unsigned log2_warp_size,
                 const core_config *config,
-                opndcoll_rfu_t *rfu ); 
+                opndcoll_rfu_t *rfu,
+				bool m_sub_core_model,
+				unsigned num_banks_per_sched);
       bool allocate( register_set* pipeline_reg, register_set* output_reg );
 
       void collect_operand( unsigned op )
@@ -878,6 +889,9 @@ private:
       unsigned m_num_banks;
       unsigned m_bank_warp_shift;
       opndcoll_rfu_t *m_rfu;
+
+      unsigned m_num_banks_per_sched;
+      bool m_sub_core_model;
 
    };
 
@@ -920,6 +934,10 @@ private:
    unsigned m_warp_size;
    std::vector<collector_unit_t *> m_cu;
    arbiter_t m_arbiter;
+
+   unsigned m_num_banks_per_sched;
+   unsigned m_num_warp_sceds;
+   bool sub_core_model;
 
    //unsigned m_num_ports;
    //std::vector<warp_inst_t**> m_input;
@@ -1361,6 +1379,7 @@ struct shader_core_config : public core_config
     bool gpgpu_dual_issue_diff_exec_units;
 
     //op collector
+    bool enable_specialized_operand_collector;
     int gpgpu_operand_collector_num_units_sp;
     int gpgpu_operand_collector_num_units_dp;
     int gpgpu_operand_collector_num_units_sfu;
@@ -1392,6 +1411,7 @@ struct shader_core_config : public core_config
     bool gpgpu_reg_bank_use_warp_id;
     bool gpgpu_local_mem_map;
     bool gpgpu_ignore_resources_limitation;
+    bool sub_core_model;
     
     unsigned max_sp_latency;
     unsigned max_sfu_latency;
@@ -1848,7 +1868,7 @@ public:
     friend class scheduler_unit; //this is needed to use private issue warp.
     friend class TwoLevelScheduler;
     friend class LooseRoundRobbinScheduler;
-    void issue_warp( register_set& warp, const warp_inst_t *pI, const active_mask_t &active_mask, unsigned warp_id );
+    void issue_warp( register_set& warp, const warp_inst_t *pI, const active_mask_t &active_mask, unsigned warp_id, unsigned sch_id );
     void func_exec_inst( warp_inst_t &inst );
 
      // Returns numbers of addresses in translated_addrs
