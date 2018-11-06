@@ -1179,7 +1179,7 @@ void two_level_active_scheduler::order_warps()
     for (   std::vector< shd_warp_t* >::iterator iter = m_next_cycle_prioritized_warps.begin();
             iter != m_next_cycle_prioritized_warps.end(); ) {
         bool waiting = (*iter)->waiting();
-        for (int i=0; i<4; i++){
+        for (int i=0; i<MAX_INPUT_VALUES; i++){
             const warp_inst_t* inst = (*iter)->ibuffer_next_inst();
             //Is the instruction waiting on a long operation?
             if ( inst && inst->in[i] > 0 && this->m_scoreboard->islongop((*iter)->get_warp_id(), inst->in[i])){
@@ -1599,7 +1599,7 @@ void ldst_unit::L1_latency_queue_cycle()
 			   assert( !read_sent );
 			   l1_latency_queue[0] = NULL;
 			   if ( mf_next->get_inst().is_load() ) {
-				   for ( unsigned r=0; r < 4; r++)
+				   for ( unsigned r=0; r < MAX_OUTPUT_VALUES; r++)
 					   if (mf_next->get_inst().out[r] > 0)
 					   {
 						   assert(m_pending_writes[mf_next->get_inst().warp_id()][mf_next->get_inst().out[r]]>0);
@@ -2146,7 +2146,7 @@ void ldst_unit::issue( register_set &reg_set )
    if (inst->is_load() and inst->space.get_type() != shared_space) {
       unsigned warp_id = inst->warp_id(); 
       unsigned n_accesses = inst->accessq_count(); 
-      for (unsigned r = 0; r < 4; r++) {
+      for (unsigned r = 0; r < MAX_OUTPUT_VALUES; r++) {
          unsigned reg_id = inst->out[r]; 
          if (reg_id > 0) {
             m_pending_writes[warp_id][reg_id] += n_accesses; 

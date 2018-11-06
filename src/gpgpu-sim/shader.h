@@ -1360,7 +1360,7 @@ struct shader_core_config : public core_config
         max_sp_latency = 32;
         
 	max_tensor_core_latency = 64;
-        gpgpu_num_tensor_core_units=8;
+        gpgpu_num_tensor_core_units=4;//It will be (#TENSORCORE INSIDE SM)/2 (One warp is allocated to 2 Tensor Core)
         gpgpu_operand_collector_num_units_tensor_core=24;
         gpgpu_operand_collector_num_in_ports_tensor_core=8;
         gpgpu_operand_collector_num_out_ports_tensor_core=8;
