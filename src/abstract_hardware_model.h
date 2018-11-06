@@ -1166,7 +1166,11 @@ public:
 		}
 		return false;
 	}
-	bool has_free(unsigned reg_id){
+	bool has_free(bool sub_core_model, unsigned reg_id){
+		//in subcore model, each sched has a one specific reg to use (based on sched id)
+		if(!sub_core_model)
+			return has_free();
+
 		assert(reg_id < regs.size());
 		return regs[reg_id]->empty();
 	}
@@ -1225,7 +1229,11 @@ public:
 		return NULL;
 	}
 
-	warp_inst_t ** get_free(unsigned reg_id){
+	warp_inst_t ** get_free(bool sub_core_model, unsigned reg_id){
+		//in subcore model, each sched has a one specific reg to use (based on sched id)
+		if(!sub_core_model)
+			return get_free();
+
 		assert(reg_id < regs.size());
 		if( regs[reg_id]->empty() ) {
 			return &regs[reg_id];

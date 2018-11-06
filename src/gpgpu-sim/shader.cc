@@ -770,11 +770,7 @@ void shader_core_ctx::func_exec_inst( warp_inst_t &inst )
 
 void shader_core_ctx::issue_warp( register_set& pipe_reg_set, const warp_inst_t* next_inst, const active_mask_t &active_mask, unsigned warp_id, unsigned sch_id )
 {
-	warp_inst_t** pipe_reg;
-	if(m_config->sub_core_model)
-		 pipe_reg = pipe_reg_set.get_free(sch_id);
-	else
-		pipe_reg = pipe_reg_set.get_free();
+	warp_inst_t** pipe_reg = pipe_reg = pipe_reg_set.get_free(m_config->sub_core_model, sch_id);
     assert(pipe_reg);
 
     m_warp[warp_id].ibuffer_free();
@@ -961,7 +957,7 @@ void scheduler_unit::cycle()
                         const active_mask_t &active_mask = m_simt_stack[warp_id]->get_active_mask();
                         assert( warp(warp_id).inst_in_pipeline() );
                         if ( (pI->op == LOAD_OP) || (pI->op == STORE_OP) || (pI->op == MEMORY_BARRIER_OP) ) {
-                        	if( m_mem_out->has_free(m_id) && (!diff_exec_units || previous_issued_inst_exec_type != exec_unit_type_t::MEM)) {
+                        	if( m_mem_out->has_free(m_shader->m_config->sub_core_model, m_id) && (!diff_exec_units || previous_issued_inst_exec_type != exec_unit_type_t::MEM)) {
                                 m_shader->issue_warp(*m_mem_out,pI,active_mask,warp_id,m_id);
                                 issued++;
                                 issued_inst=true;
@@ -970,9 +966,9 @@ void scheduler_unit::cycle()
                             }
                         } else {
 
-                            bool sp_pipe_avail = m_sp_out->has_free(m_id);
-                            bool sfu_pipe_avail = m_sfu_out->has_free(m_id);
-                            bool dp_pipe_avail = m_dp_out->has_free(m_id);
+                            bool sp_pipe_avail = m_sp_out->has_free(m_shader->m_config->sub_core_model, m_id);
+                            bool sfu_pipe_avail = m_sfu_out->has_free(m_shader->m_config->sub_core_model, m_id);
+                            bool dp_pipe_avail = m_dp_out->has_free(m_shader->m_config->sub_core_model, m_id);
                             if( sp_pipe_avail && (pI->op != SFU_OP && pI->op != DP_OP) && (!diff_exec_units || previous_issued_inst_exec_type != exec_unit_type_t::SP)) {
                                 
                                 //Jin: special for CDP api
