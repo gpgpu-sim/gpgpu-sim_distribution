@@ -536,7 +536,7 @@ void ptx_instruction::set_mul_div_or_other_archop(){
 				    sp_op=FP_EXP_OP;
 					break;
 				default:
-					if(op==ALU_OP)
+					if((op==ALU_OP)||(op==TENSOR_CORE_OP))
 					    sp_op=FP__OP;
 					break;
 
@@ -558,7 +558,7 @@ void ptx_instruction::set_mul_div_or_other_archop(){
 				    sp_op=INT_DIV_OP;
 				break;
 				default:
-					if(op==ALU_OP)
+					if((op==ALU_OP))
 					    sp_op=INT__OP;
 					break;
 			}
@@ -596,6 +596,9 @@ void ptx_instruction::set_bar_type()
 		   	   default:
 		   		   abort();
 		   }
+	   }
+	   else if(m_opcode==SST_OP) {
+		   bar_type = SYNC;
 	   }
 }
 
@@ -662,13 +665,16 @@ void ptx_instruction::set_opcode_and_latency()
        if ( has_memory_write() ) op = STORE_OP;
        break;
    case LD_OP: op = LOAD_OP; break;
+   case MMA_LD_OP: op = TENSOR_CORE_LOAD_OP; break;
    case LDU_OP: op = LOAD_OP; break;
    case ST_OP: op = STORE_OP; break;
+   case MMA_ST_OP: op = TENSOR_CORE_STORE_OP; break;
    case BRA_OP: op = BRANCH_OP; break;
    case BREAKADDR_OP: op = BRANCH_OP; break;
    case TEX_OP: op = LOAD_OP; mem_op=TEX; break;
    case ATOM_OP: op = LOAD_OP; break;
    case BAR_OP: op = BARRIER_OP; break;
+   case SST_OP: op = BARRIER_OP; break;
    case MEMBAR_OP: op = MEMORY_BARRIER_OP; break;
    case CALL_OP:
    {
@@ -807,6 +813,11 @@ void ptx_instruction::set_opcode_and_latency()
 	  initiation_interval = sfu_init;
       op = SFU_OP;
       break;
+   case MMA_OP:
+	   latency = 64;
+	   initiation_interval = 64;
+           op=TENSOR_CORE_OP;
+	   break;
    case SHFL_OP:
 	   latency = 32;
 	   initiation_interval = 4;
@@ -863,10 +874,14 @@ void ptx_instruction::pre_decode()
 {
    pc = m_PC;
    isize = m_inst_size;
-   for( unsigned i=0; i<4; i++) {
+   for(unsigned i=0; i<MAX_OUTPUT_VALUES; i++) {
        out[i] = 0;
+   }
+   for(unsigned i=0; i<MAX_INPUT_VALUES; i++) {
        in[i] = 0;
    }
+   incount=0;
+   outcount=0;
    is_vectorin = 0;
    is_vectorout = 0;
    std::fill_n(arch_reg.src, MAX_REG_OPERANDS, -1);
@@ -906,9 +921,11 @@ void ptx_instruction::pre_decode()
    case WB_OPTION: cache_op = CACHE_WRITE_BACK; break;
    case WT_OPTION: cache_op = CACHE_WRITE_THROUGH; break;
    default: 
-      if( m_opcode == LD_OP || m_opcode == LDU_OP ) 
+      //if( m_opcode == LD_OP || m_opcode == LDU_OP ) 
+      if(  m_opcode == MMA_LD_OP || m_opcode == LD_OP || m_opcode == LDU_OP ) 
          cache_op = CACHE_ALL;
-      else if( m_opcode == ST_OP ) 
+      //else if( m_opcode == ST_OP ) 
+      else if( m_opcode == MMA_ST_OP || m_opcode == ST_OP ) 
          cache_op = CACHE_WRITE_BACK;
       else if( m_opcode == ATOM_OP ) 
          cache_op = CACHE_GLOBAL;
@@ -934,6 +951,10 @@ void ptx_instruction::pre_decode()
             if( num_elem >= 2 ) out[1] = o.reg2_num();
             if( num_elem >= 3 ) out[2] = o.reg3_num();
             if( num_elem >= 4 ) out[3] = o.reg4_num();
+            if( num_elem >= 5 ) out[4] = o.reg5_num();
+            if( num_elem >= 6 ) out[5] = o.reg6_num();
+            if( num_elem >= 7 ) out[6] = o.reg7_num();
+            if( num_elem >= 8 ) out[7] = o.reg8_num();
             for (int i = 0; i < num_elem; i++) 
                arch_reg.dst[i] = o.arch_reg_num(i);
          }
@@ -952,16 +973,29 @@ void ptx_instruction::pre_decode()
             //assert(m == 0); //only support 1 vector operand (for textures) right now
             is_vectorout = 1;
             unsigned num_elem = o.get_vect_nelem();
-            if( num_elem >= 1 ) in[0] = o.reg1_num();
-            if( num_elem >= 2 ) in[1] = o.reg2_num();
-            if( num_elem >= 3 ) in[2] = o.reg3_num();
-            if( num_elem >= 4 ) in[3] = o.reg4_num();
+            if( num_elem >= 1 ) in[m+0] = o.reg1_num();
+            if( num_elem >= 2 ) in[m+1] = o.reg2_num();
+            if( num_elem >= 3 ) in[m+2] = o.reg3_num();
+            if( num_elem >= 4 ) in[m+3] = o.reg4_num();
+            if( num_elem >= 5 ) in[m+4] = o.reg5_num();
+            if( num_elem >= 6 ) in[m+5] = o.reg6_num();
+            if( num_elem >= 7 ) in[m+6] = o.reg7_num();
+            if( num_elem >= 8 ) in[m+7] = o.reg8_num();
             for (int i = 0; i < num_elem; i++) 
-               arch_reg.src[i] = o.arch_reg_num(i);
-            m+=4;
+               arch_reg.src[m+i] = o.arch_reg_num(i);
+            m+=num_elem;
          }
       }
    }
+   
+   //Setting number of input and output operands which is required for scoreboard check
+   for(int i=0;i<MAX_OUTPUT_VALUES;i++)
+	if(out[i]>0)
+		outcount++;   
+ 
+   for(int i=0;i<MAX_INPUT_VALUES;i++)
+	if(in[i]>0)
+		incount++;   
 
    // Get predicate
    if(has_pred()) {
@@ -1262,6 +1296,13 @@ static unsigned get_tex_datasize( const ptx_instruction *pI, ptx_thread_info *th
    return data_size; 
 }
 
+int tensorcore_op(int inst_opcode){
+	
+       if((inst_opcode==MMA_OP)||(inst_opcode==MMA_LD_OP)||(inst_opcode==MMA_ST_OP))
+		return 1;
+       else	
+		return 0;
+}
 void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
 {
     
@@ -1270,6 +1311,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
    addr_t pc = next_instr();
    assert( pc == inst.pc ); // make sure timing model and functional model are in sync
    const ptx_instruction *pI = m_func_info->get_instruction(pc);
+   
    set_npc( pc + pI->inst_size() );
    
 
@@ -1302,6 +1344,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
             skip = !pred_lookup(pI->get_pred_mod(), pred_value.pred & 0x000F);
       }
    }
+   int inst_opcode=pI->get_opcode();
    
    if( skip ) {
       inst.set_not_active(lane_id);
@@ -1313,13 +1356,25 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
          *((warp_inst_t*)pJ) = inst; // copy active mask information
          pI = pJ;
       }
-      switch ( pI->get_opcode() ) {
-#define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,this); op_classification = CLASSIFICATION; break;
-#define OP_W_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,get_core(),inst); op_classification = CLASSIFICATION; break;
-#include "opcodes.def"
-#undef OP_DEF
-#undef OP_W_DEF
-      default: printf( "Execution error: Invalid opcode (0x%x)\n", pI->get_opcode() ); break;
+     
+      if(((inst_opcode==MMA_OP||inst_opcode==MMA_LD_OP||inst_opcode==MMA_ST_OP))){
+      		if(inst.active_count()!=MAX_WARP_SIZE)
+		{	
+			printf("Tensor Core operation are warp synchronous operation. All the threads needs to be active.");
+			assert(0);
+		}
+      }
+      
+      //Tensorcore is warp synchronous operation. So these instructions needs to be executed only once. To make the simulation faster removing the redundant tensorcore operation
+      if(!tensorcore_op(inst_opcode)||(tensorcore_op(inst_opcode))&&(lane_id==0)){
+	      switch ( inst_opcode ) {
+	#define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,this); op_classification = CLASSIFICATION; break;
+	#define OP_W_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,get_core(),inst); op_classification = CLASSIFICATION; break;
+	#include "opcodes.def"
+	#undef OP_DEF
+	#undef OP_W_DEF
+	      default: printf( "Execution error: Invalid opcode (0x%x)\n", pI->get_opcode() ); break;
+	      }
       }
       delete pJ;
       pI = pI_saved;
@@ -1362,13 +1417,16 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
    _memory_op_t insn_memory_op = no_memory_op;
    unsigned insn_data_size = 0;
    if ( (pI->has_memory_read()  || pI->has_memory_write()) ) {
-      insn_memaddr = last_eaddr();
-      insn_space = last_space();
-      unsigned to_type = pI->get_type();
-      insn_data_size = datatype2size(to_type);
-      insn_memory_op = pI->has_memory_read() ? memory_load : memory_store;
+      if(!((inst_opcode==MMA_LD_OP||inst_opcode==MMA_ST_OP)))
+      {
+        insn_memaddr = last_eaddr();
+        insn_space = last_space();
+        unsigned to_type = pI->get_type();
+        insn_data_size = datatype2size(to_type);
+        insn_memory_op = pI->has_memory_read() ? memory_load : memory_store;
+      }	
    }
-
+  
    if ( pI->get_opcode() == BAR_OP && pI->barrier_op() == RED_OPTION) {
 	   inst.add_callback( lane_id, last_callback().function, last_callback().instruction, this,false /*not atomic*/);
    }
@@ -1440,12 +1498,15 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
    
    // "Return values"
    if(!skip) {
-      inst.space = insn_space;
-      inst.set_addr(lane_id, insn_memaddr);
-      inst.data_size = insn_data_size; // simpleAtomicIntrinsics
-      assert( inst.memory_op == insn_memory_op );
-   } 
-
+      if(!((inst_opcode==MMA_LD_OP||inst_opcode==MMA_ST_OP)))
+      {
+   	  inst.space = insn_space;
+          inst.set_addr(lane_id, insn_memaddr);
+          inst.data_size = insn_data_size; // simpleAtomicIntrinsics
+          assert( inst.memory_op == insn_memory_op );
+      } 
+   }
+ 
    } catch ( int x  ) {
       printf("GPGPU-Sim PTX: ERROR (%d) executing intruction (%s:%u)\n", x, pI->source_file(), pI->source_line() );
       printf("GPGPU-Sim PTX:       '%s'\n", pI->get_source() );
@@ -1484,6 +1545,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
    std::list<ptx_thread_info *> &active_threads = kernel.active_threads();
 
    static std::map<unsigned,memory_space*> shared_memory_lookup;
+   static std::map<unsigned,memory_space*> sstarr_memory_lookup;
    static std::map<unsigned,ptx_cta_info*> ptx_cta_lookup;
    static std::map<unsigned,ptx_warp_info*> ptx_warp_lookup;
    static std::map<unsigned,std::map<unsigned,memory_space*> > local_memory_lookup;
@@ -1528,6 +1590,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
    //initializing new CTA
    ptx_cta_info *cta_info = NULL;
    memory_space *shared_mem = NULL;
+   memory_space *sstarr_mem = NULL;
 
    unsigned cta_size = kernel.threads_per_cta();
    unsigned max_cta_per_sm = num_threads/cta_size; // e.g., 256 / 48 = 5 
@@ -1545,6 +1608,9 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
       snprintf(buf,512,"shared_%u", sid);
       shared_mem = new memory_space_impl<16*1024>(buf,4);
       shared_memory_lookup[sm_idx] = shared_mem;
+      snprintf(buf,512,"sstarr_%u", sid);
+      sstarr_mem = new memory_space_impl<16*1024>(buf,4);
+      sstarr_memory_lookup[sm_idx] = sstarr_mem;
       cta_info = new ptx_cta_info(sm_idx);
       ptx_cta_lookup[sm_idx] = cta_info;
    } else {
@@ -1553,6 +1619,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
                 sm_idx, sid, max_cta_per_sm );
       }
       shared_mem = shared_memory_lookup[sm_idx];
+      sstarr_mem = sstarr_memory_lookup[sm_idx];
       cta_info = ptx_cta_lookup[sm_idx];
       cta_info->check_cta_thread_status_and_reset();
    }
@@ -1565,7 +1632,6 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
       kernel.increment_thread_id();
       new_tid += tid;
       ptx_thread_info *thd = new ptx_thread_info(kernel);
-
       ptx_warp_info *warp_info = NULL;
       if ( ptx_warp_lookup.find(hw_warp_id) == ptx_warp_lookup.end() ) {
     	  warp_info = new ptx_warp_info();
@@ -1594,9 +1660,11 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
          thd->cpy_tid_to_reg(tid3d);
       thd->set_valid();
       thd->m_shared_mem = shared_mem;
+      thd->m_sstarr_mem = sstarr_mem;
       function_info *finfo = thd->func_info();
       symbol_table *st = finfo->get_symtab();
       thd->func_info()->param_to_shared(thd->m_shared_mem,st);
+      thd->func_info()->param_to_shared(thd->m_sstarr_mem,st);
       thd->m_cta_info = cta_info;
       cta_info->add_thread(thd);
       thd->m_local_mem = local_mem;
@@ -1935,7 +2003,7 @@ void functionalCoreSim::executeWarp(unsigned i, bool &allAtBarrier, bool & someO
 {
     if(!m_warpAtBarrier[i] && m_liveThreadCount[i]!=0){
         warp_inst_t inst =getExecuteWarp(i);
-        execute_warp_inst_t(inst,i);
+	execute_warp_inst_t(inst,i);
         if(inst.isatomic()) inst.do_atomic(true);
         if(inst.op==BARRIER_OP || inst.op==MEMORY_BARRIER_OP ) m_warpAtBarrier[i]=true;
         updateSIMTStack( i, &inst );

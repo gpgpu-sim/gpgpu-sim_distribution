@@ -82,7 +82,7 @@ const bool Scoreboard::islongop (unsigned warp_id,unsigned regnum) {
 
 void Scoreboard::reserveRegisters(const class warp_inst_t* inst) 
 {
-    for( unsigned r=0; r < 4; r++) {
+    for( unsigned r=0; r < MAX_OUTPUT_VALUES; r++) {
         if(inst->out[r] > 0) {
             reserveRegister(inst->warp_id(), inst->out[r]);
             SHADER_DPRINTF( SCOREBOARD,
@@ -100,7 +100,7 @@ void Scoreboard::reserveRegisters(const class warp_inst_t* inst)
                 inst->space.get_type() == param_space_local ||
                 inst->space.get_type() == param_space_unclassified ||
     			inst->space.get_type() == tex_space)){
-    	for ( unsigned r=0; r<4; r++) {
+    	for ( unsigned r=0; r<MAX_OUTPUT_VALUES; r++) {
     		if(inst->out[r] > 0) {
                 SHADER_DPRINTF( SCOREBOARD,
                                 "New longopreg marked - warp:%d, reg: %d\n",
@@ -115,7 +115,7 @@ void Scoreboard::reserveRegisters(const class warp_inst_t* inst)
 // Release registers for an instruction
 void Scoreboard::releaseRegisters(const class warp_inst_t *inst) 
 {
-    for( unsigned r=0; r < 4; r++) {
+    for( unsigned r=0; r < MAX_OUTPUT_VALUES; r++) {
         if(inst->out[r] > 0) {
             SHADER_DPRINTF( SCOREBOARD,
                             "Register Released - warp:%d, reg: %d\n",
@@ -138,15 +138,13 @@ bool Scoreboard::checkCollision( unsigned wid, const class inst_t *inst ) const
 	// Get list of all input and output registers
 	std::set<int> inst_regs;
 
-	if(inst->out[0] > 0) inst_regs.insert(inst->out[0]);
-	if(inst->out[1] > 0) inst_regs.insert(inst->out[1]);
-	if(inst->out[2] > 0) inst_regs.insert(inst->out[2]);
-	if(inst->out[3] > 0) inst_regs.insert(inst->out[3]);
-	if(inst->in[0] > 0) inst_regs.insert(inst->in[0]);
-	if(inst->in[1] > 0) inst_regs.insert(inst->in[1]);
-	if(inst->in[2] > 0) inst_regs.insert(inst->in[2]);
-	if(inst->in[3] > 0) inst_regs.insert(inst->in[3]);
-	if(inst->pred > 0) inst_regs.insert(inst->pred);
+	for(int iii=0;iii<inst->outcount;iii++)
+		inst_regs.insert(inst->out[iii]);
+
+	for(int jjj=0;jjj<inst->incount;jjj++)
+		inst_regs.insert(inst->in[jjj]);
+
+        if(inst->pred > 0) inst_regs.insert(inst->pred);
 	if(inst->ar1 > 0) inst_regs.insert(inst->ar1);
 	if(inst->ar2 > 0) inst_regs.insert(inst->ar2);
 

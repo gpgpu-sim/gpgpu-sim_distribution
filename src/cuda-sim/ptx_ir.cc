@@ -996,7 +996,7 @@ static std::list<operand_info> check_operands( int opcode,
                                         const std::list<operand_info> &operands )
 {
    static int g_warn_literal_operands_two_type_inst;
-    if( (opcode == CVT_OP) || (opcode == SET_OP) || (opcode == SLCT_OP) || (opcode == TEX_OP) ) {
+    if( (opcode == CVT_OP) || (opcode == SET_OP) || (opcode == SLCT_OP) || (opcode == TEX_OP) || (opcode==MMA_OP)) {
         // just make sure these do not have have const operands... 
         if( !g_warn_literal_operands_two_type_inst ) {
             std::list<operand_info>::const_iterator o;
@@ -1044,6 +1044,7 @@ ptx_instruction::ptx_instruction( int opcode,
                                   const std::list<operand_info> &operands, 
                                   const operand_info &return_var,
                                   const std::list<int> &options, 
+                                  const std::list<int> &wmma_options, 
                                   const std::list<int> &scalar_type,
                                   memory_space_t space_spec,
                                   const char *file, 
@@ -1062,6 +1063,7 @@ ptx_instruction::ptx_instruction( int opcode,
    m_operands.insert(m_operands.begin(), checked_operands.begin(), checked_operands.end() );
    m_return_var = return_var;
    m_options = options;
+   m_wmma_options = wmma_options;
    m_wide = false;
    m_hi = false;
    m_lo = false;
@@ -1079,9 +1081,33 @@ ptx_instruction::ptx_instruction( int opcode,
    m_atomic_spec = 0;
    m_membar_level = 0;
    m_inst_size = 8; // bytes
-
+   int rr=0;
    std::list<int>::const_iterator i;
    unsigned n=1;
+   for ( i=wmma_options.begin(); i!= wmma_options.end(); i++, n++ ) {
+      int last_ptx_inst_option = *i;
+      switch ( last_ptx_inst_option ) {
+      		case SYNC_OPTION:
+      		case LOAD_A:
+      		case LOAD_B:
+      		case LOAD_C:
+      		case STORE_D:
+      		case MMA:
+      		  m_wmma_type=last_ptx_inst_option;
+      		  break;
+      		case ROW:
+      		case COL:
+      		  m_wmma_layout[rr++]=last_ptx_inst_option;
+      		  break;
+      		case M16N16K16:
+			break;
+      		default:
+      		   assert(0);
+      		   break;
+	}
+   }
+   rr=0;
+   n=1;
    for ( i=options.begin(); i!= options.end(); i++, n++ ) {
       int last_ptx_inst_option = *i;
       switch ( last_ptx_inst_option ) {
@@ -1208,16 +1234,24 @@ ptx_instruction::ptx_instruction( int opcode,
       case HALF_OPTION:
          m_inst_size = 4; // bytes
          break;
-	  case EXTP_OPTION:
-		 break;
-	  case NC_OPTION:
-		 m_cache_option = last_ptx_inst_option;
-		 break;
-	  case UP_OPTION:
-	  case DOWN_OPTION:
-	  case BFLY_OPTION:
-	  case IDX_OPTION:
+      case EXTP_OPTION:
+             break;
+      case NC_OPTION:
+             m_cache_option = last_ptx_inst_option;
+             break;
+      case UP_OPTION:
+      case DOWN_OPTION:
+      case BFLY_OPTION:
+      case IDX_OPTION:
 		  m_shfl_op = last_ptx_inst_option;
+		  break;
+      case PRMT_F4E_MODE:
+      case PRMT_B4E_MODE:
+      case PRMT_RC8_MODE:
+      case PRMT_ECL_MODE:
+      case PRMT_ECR_MODE:
+      case PRMT_RC16_MODE:
+		  m_prmt_op = last_ptx_inst_option;
 		  break;
       default:
          assert(0);
