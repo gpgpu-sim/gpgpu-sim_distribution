@@ -64,6 +64,7 @@
  * the above Disclaimer and U.S. Government End Users Notice.
  */
 
+
 #ifndef CUDA_MATH
 #define CUDA_MATH
 
@@ -360,7 +361,7 @@ int __signbitd(double d)
 #ifdef __APPLE__
 int isnanf(float a) 
 {
-   return (isnan(a)); 
+   return (std::isnan(a)); 
 }
 #endif 
 
