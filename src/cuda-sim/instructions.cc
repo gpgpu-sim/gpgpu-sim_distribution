@@ -25,7 +25,7 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+#include "half.h"
 #include "instructions.h"
 #include "ptx_ir.h"
 #include "opcodes.h"
@@ -46,8 +46,11 @@
 #include "cuda_device_runtime.h"
 
 #include <stdarg.h>
+using half_float::half;
 
 unsigned ptx_instruction::g_num_ptx_inst_uid=0;
+bool debug_tensorcore = 0;
+
 
 const char *g_opcode_string[NUM_OPCODES] = {
 #define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) STR,
@@ -56,6 +59,104 @@ const char *g_opcode_string[NUM_OPCODES] = {
 #undef OP_DEF
 #undef OP_W_DEF
 };
+//Using profiled information::check the TensorCoreMatrixArrangement.xls for details
+unsigned thread_group_offset(int thread,unsigned  wmma_type,unsigned wmma_layout,unsigned type,int stride){
+
+	unsigned offset;
+	unsigned load_a_row[8]={0,128,0,128,64,192,64,192};
+	unsigned load_a_col[8]={0,8,0,8,4,12,4,12};
+	unsigned load_b_row[8]={0,8,0,8,4,12,4,12};
+	unsigned load_b_col[8]={0,128,0,128,64,192,64,192};
+	unsigned load_c_float_row[8]={0,128,8,136,64,192,72,200};	
+	unsigned load_c_float_col[8]={0,8,128,136,4,12,132,140};	
+	unsigned load_c_half_row[8]={0,128,8,136,64,192,72,200};	
+	unsigned load_c_half_col[8]={0,8,128,136,4,12,132,140};	
+	unsigned thread_group =	thread/4;
+	unsigned in_tg_index  =	thread%4;
+
+	switch(wmma_type){
+		case LOAD_A:
+				if(wmma_layout==ROW)
+					offset=load_a_row[thread_group]+16*in_tg_index;
+				else
+					offset=load_a_col[thread_group]+16*in_tg_index;
+			break;
+
+
+		case LOAD_B:
+				if(wmma_layout==ROW)
+					offset=load_b_row[thread_group]+16*in_tg_index;
+				else	
+					offset=load_b_col[thread_group]+16*in_tg_index;
+			break;	
+
+		case LOAD_C:
+		case STORE_D:
+			if(type==F16_TYPE){
+				if(wmma_layout==ROW)
+					offset=load_c_half_row[thread_group]+16*in_tg_index;
+				else
+					offset=load_c_half_col[thread_group]+in_tg_index;
+			}
+			else{
+				if(wmma_layout==ROW)
+					offset=load_c_float_row[thread_group];
+				else
+					offset=load_c_float_col[thread_group];
+
+				switch(in_tg_index){
+					case 0:
+						break;
+					case 1:
+						if(wmma_layout==ROW)
+							offset+=16;
+						else
+							offset+=1;
+						break;
+					case 2:
+						if(wmma_layout==ROW)
+							offset+=2;
+						else
+							offset+=32;
+						break;
+					case 3:
+						if(wmma_layout==ROW)
+							offset+=18;
+						else
+							offset+=33;
+						break;
+					default:
+						abort();
+				}
+			}
+			break;	
+
+         	default:
+         	   abort();
+		
+	}
+	offset = (offset/16)*stride+offset%16;
+	return offset;
+}
+
+int acc_float_offset(int index,int wmma_layout,int stride){
+
+	int c_row_offset[]={0,1,32,33,4,5,36,37};
+	int c_col_offset[]={0,16,2,18,64,80,66,82};
+	int offset;
+	
+	
+	if(wmma_layout==ROW)
+		offset=c_row_offset[index];
+	else if(wmma_layout==COL)
+		offset=c_col_offset[index];
+	else{
+		printf("wrong layout");
+		abort();
+	}
+	offset = (offset/16)*stride+offset%16;
+	return offset;
+}
 
 void inst_not_implemented( const ptx_instruction * pI ) ;
 ptx_reg_t srcOperandModifiers(ptx_reg_t opData, operand_info opInfo, operand_info dstInfo, unsigned type, ptx_thread_info *thread);
@@ -136,10 +237,12 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
                result.u64 = sym->get_address() + op.get_addr_offset();
             } else if ( op.is_shared() ) {
                result.u64 = op.get_symbol()->get_address() + op.get_addr_offset();
+            } else if ( op.is_sstarr() ) {
+               result.u64 = op.get_symbol()->get_address() + op.get_addr_offset();
             } else {
-               const char *name = op.name().c_str();
-               printf("GPGPU-Sim PTX: ERROR ** get_operand_value : unknown memory operand type for %s\n", name );
-               abort();
+                 const char *name = op.name().c_str();
+	    	printf("GPGPU-Sim PTX: ERROR ** get_operand_value : unknown memory operand type for %s\n", name );
+            	abort();
             }
 
          } else if ( op.is_literal() ) {
@@ -147,6 +250,8 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
          } else if ( op.is_label() ) {
             result.u64 = op.get_symbol()->get_address();
          } else if ( op.is_shared() ) {
+            result.u64 = op.get_symbol()->get_address();
+         } else if ( op.is_sstarr() ) {
             result.u64 = op.get_symbol()->get_address();
          } else if ( op.is_const() ) {
             result.u64 = op.get_symbol()->get_address();
@@ -156,10 +261,18 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
             result.u64 = op.get_symbol()->get_address();
          } else if ( op.is_function_address() ) {
 		 	result.u64 = (size_t)op.get_symbol()->get_pc();
-         } else {
+         }else {
             const char *name = op.name().c_str();
-            printf("GPGPU-Sim PTX: ERROR ** get_operand_value : unknown operand type for %s\n", name );
-            assert(0);
+            const symbol *sym2 = op.get_symbol();
+            const type_info *type2 = sym2->type();
+            const type_info_key &info2 = type2->get_key();
+            if ( info2.is_param_kernel() ) {
+               result.u64 = sym2->get_address()+ op.get_addr_offset();
+            }
+	    else{ 
+             printf("GPGPU-Sim PTX: ERROR ** get_operand_value : unknown operand type for %s\n", name );
+             assert(0);
+	    }
          }
 
          if(op.get_operand_lohi() == 1) 
@@ -335,7 +448,7 @@ unsigned get_operand_nbits( const operand_info &op )
 void ptx_thread_info::get_vector_operand_values( const operand_info &op, ptx_reg_t* ptx_regs, unsigned num_elements )
 {
    assert( op.is_vector() );
-   assert( num_elements <= 4 ); // max 4 elements in a vector
+   assert( num_elements <= 8 );
 
    for (int idx = num_elements - 1; idx >= 0; --idx) {
       const symbol *sym = NULL;
@@ -640,6 +753,33 @@ void ptx_thread_info::set_vector_operand_values( const operand_info &dst,
 
    m_last_set_operand_value = data1;
 }
+void ptx_thread_info::set_wmma_vector_operand_values( const operand_info &dst, 
+                                                 const ptx_reg_t &data1, 
+                                                 const ptx_reg_t &data2, 
+                                                 const ptx_reg_t &data3, 
+                                                 const ptx_reg_t &data4, 
+                                                 const ptx_reg_t &data5, 
+                                                 const ptx_reg_t &data6, 
+                                                 const ptx_reg_t &data7, 
+                                                 const ptx_reg_t &data8 )
+{
+   unsigned num_elements = dst.get_vect_nelem(); 
+   if (num_elements == 8) {
+       set_reg(dst.vec_symbol(0), data1);
+       set_reg(dst.vec_symbol(1), data2);
+       set_reg(dst.vec_symbol(2), data3);
+       set_reg(dst.vec_symbol(3), data4);
+       set_reg(dst.vec_symbol(4), data5);
+       set_reg(dst.vec_symbol(5), data6);
+       set_reg(dst.vec_symbol(6), data7);
+       set_reg(dst.vec_symbol(7), data8);
+   }
+   else{
+	printf("error:set_wmma_vector_operands");
+   }
+
+   m_last_set_operand_value = data8;
+}
 
 #define my_abs(a) (((a)<0)?(-a):(a))
 
@@ -745,7 +885,7 @@ void addp_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    case U64_TYPE:
       data.s64 = src1_data.s64 + src2_data.s64 + (src3_data.pred & 0x4);
       break;
-   case F16_TYPE: assert(0); break;
+   case F16_TYPE: data.f16=src1_data.f16+src2_data.f16; break;//assert(0); break;
    case F32_TYPE: data.f32 = src1_data.f32 + src2_data.f32; break;
    case F64_TYPE: case FF64_TYPE: data.f64 = src1_data.f64 + src2_data.f64; break;
    default: assert(0); break;
@@ -812,7 +952,7 @@ void add_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    case U64_TYPE:
       data.u64 = src1_data.u64 + src2_data.u64;
       break;
-   case F16_TYPE: assert(0); break;
+   case F16_TYPE: data.f16=src1_data.f16+src2_data.f16; break;//assert(0); break;
    case F32_TYPE: data.f32 = src1_data.f32 + src2_data.f32; break;
    case F64_TYPE: case FF64_TYPE: data.f64 = src1_data.f64 + src2_data.f64; break;
    default: assert(0); break;
@@ -1420,7 +1560,44 @@ void bfe_impl( const ptx_instruction *pI, ptx_thread_info *thread )
     thread->set_operand_value(dst,d, i_type, thread, pI);
 }
 
-void bfi_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void bfi_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { 
+   int i,max;
+   ptx_reg_t src1_data, src2_data;
+   ptx_reg_t src3_data, src4_data, data;
+
+   const operand_info &dst  = pI->dst();  //get operand info of sources and destination 
+   const operand_info &src1 = pI->src1(); //use them to determine that they are of type 'register'
+   const operand_info &src2 = pI->src2();
+   const operand_info &src3 = pI->src3();
+   const operand_info &src4 = pI->src4();
+
+   unsigned i_type = pI->get_type();
+   src1_data = thread->get_operand_value(src1, dst, i_type, thread, 1);
+   src2_data = thread->get_operand_value(src2, dst, i_type, thread, 1);
+   src3_data = thread->get_operand_value(src3, dst, i_type, thread, 1);
+   src4_data = thread->get_operand_value(src4, dst, i_type, thread, 1);
+
+   switch ( i_type ) {
+   case B32_TYPE:
+      max = 32;
+      break;
+   case B64_TYPE:
+      max = 64;
+      break;
+   default:
+      printf("Execution error: type mismatch with instruction\n");
+      assert(0);
+      break;
+   }
+   data=src2_data;
+   unsigned pos = src3_data.u32 & 0xFF;
+   unsigned len = src4_data.u32 & 0xFF;
+   for(i=0;i<len && pos+i<max;i++){
+	data.u32=(~((0x00000001)<<(pos+i)))&data.u32;
+	data.u32=data.u32|((src1_data.u32&((0x00000001)<<(i)))<<(pos));
+   }
+   thread->set_operand_value(dst, data, i_type, thread, pI);
+}
 void bfind_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 
 void bra_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
@@ -1459,6 +1636,319 @@ void breakaddr_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
 void brev_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 void brkpt_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+
+unsigned trunc(unsigned num, unsigned precision) {
+	int mask = 1, latest_one = -1;
+	unsigned data = num;
+	for (unsigned j = 0; j < sizeof(unsigned)*8; j++) {
+		int bit = data & mask;
+		if (bit == 1) latest_one = j;
+		data >>= 1;
+	}
+	if (latest_one >= precision) {
+		// round_up is 1 if the most significant truncated digit is a 1, otherwise it is 0
+		//int round_up = (num & (1 << (latest_one-precision))) >> (latest_one-precision);
+		//unsigned shifted_output = num >> (latest_one-precision+1);
+		// if shifted_output is a number like 1111, don't round up
+		//if (shifted_output == (pow(2,precision)-1)) round_up = 0;
+		//num = shifted_output + round_up;
+		num >>= (latest_one-precision+1);
+	}
+	return num;
+}
+void mapping(int thread,int wmma_type,int wmma_layout,int type,int index,int stride,int &row,int &col,int &assg_offset){
+	int offset;
+	int c_row_offset[]={0,8,0,8,4,12,4,12};
+	int c_col_offset[]={0,0,8,8,0,0,8,8};
+	int c_tg_inside_row_offset[]={0,1,0,1};	
+	int c_tg_inside_col_offset[]={0,0,2,2};	
+	int c_inside_row_offset[]={0,0,2,2,0,0,2,2};
+	int c_inside_col_offset[]={0,1,0,1,4,5,4,5};
+
+	offset=thread_group_offset(thread,wmma_type,wmma_layout,type,stride);
+
+	if(wmma_type==LOAD_A){
+		if(wmma_layout==ROW){
+			offset+=index+8*((thread%16)/8);
+		}
+		else{
+			offset+=64*(index/4)+index%4+128*((thread%16)/8);	
+		}
+		offset=(offset/16)*stride+offset%16;
+		assg_offset=index+8*((thread%16)/8);
+	}
+	else if(wmma_type==LOAD_B){
+		if(wmma_layout==ROW){
+			offset+=64*(index/4)+index%4+128*((thread%16)/8);	
+		}
+		else{
+			offset+=index+8*((thread%16)/8);
+		}
+		offset=(offset/16)*stride+offset%16;
+		assg_offset=index+8*((thread%16)/8);
+	}
+	else if( wmma_type==LOAD_C){
+		if(type==F16_TYPE){
+			row=c_row_offset[thread/4]+thread%4;	
+			col=c_col_offset[thread/4]+index;
+		}
+		else{
+			row=c_row_offset[thread/4]+c_tg_inside_row_offset[thread%4]+c_inside_row_offset[index];
+			col=c_col_offset[thread/4]+c_tg_inside_col_offset[thread%4]+c_inside_col_offset[index];
+		}
+		assg_offset=index;
+	}
+
+	if(wmma_type==LOAD_A||wmma_type==LOAD_B){	
+		if(wmma_layout==ROW){
+			row=offset/16;
+			col=offset%16;
+		}
+		else{
+			col=offset/16;
+			row=offset%16;
+		}
+	}
+}
+
+void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
+{
+	int i,j,k,thrd;
+	int row,col,offset;
+   	ptx_reg_t matrix_a[16][16];
+   	ptx_reg_t matrix_b[16][16];
+   	ptx_reg_t matrix_c[16][16];
+   	ptx_reg_t matrix_d[16][16];
+   	ptx_reg_t src_data;
+	ptx_thread_info *thread;
+	int stride;
+
+	unsigned wmma_type = pI->get_wmma_type();
+	unsigned a_layout = pI->get_wmma_layout(0);
+	unsigned b_layout = pI->get_wmma_layout(1);
+	unsigned type = pI->get_type();
+	unsigned type2 = pI->get_type2();
+	int tid ;
+	const operand_info &dst = pI->operand_lookup(0);
+	
+        if(core->get_gpu()->is_functional_sim())
+         	tid= inst.warp_id_func()*core->get_warp_size();
+        else
+         	tid= inst.warp_id()*core->get_warp_size();
+	unsigned thread_group_index;
+	float temp;
+	half temp2; 	
+	
+	for (thrd=0; thrd < core->get_warp_size(); thrd++){
+		thread = core->get_thread_info()[tid+thrd];
+		if(debug_tensorcore)
+			printf("THREAD=%d\n:",thrd);
+		for(int operand_num=1;operand_num<=3;operand_num++){
+			const operand_info &src_a=  pI->operand_lookup(operand_num);
+         		unsigned nelem = src_a.get_vect_nelem();
+         		ptx_reg_t v[8];
+         		thread->get_vector_operand_values( src_a, v, nelem );
+			if(debug_tensorcore){
+				printf("Thread%d_Iteration=%d\n:",thrd,operand_num);
+				for(k=0;k<nelem;k++){
+					printf("%x ",v[k].u64);
+				}
+				printf("\n");
+			}
+			ptx_reg_t nw_v[16];
+			int hex_val;
+
+			if(!((operand_num==3)&&(type2==F32_TYPE))){
+					for(k=0;k<2*nelem;k++){
+					if(k%2==1)
+						hex_val=(v[k/2].s64&0xffff);
+					else
+						hex_val=((v[k/2].s64&0xffff0000)>>16);
+					nw_v[k].f16 =*((half *)&hex_val); 
+				}
+			}
+			if(!((operand_num==3)&&(type2==F32_TYPE))){
+				for(k=0;k<2*nelem;k++){
+					temp=nw_v[k].f16;
+					if(debug_tensorcore)
+						printf("%.2f ",temp);
+				}
+				if(debug_tensorcore)
+					printf("\n");
+			}
+			else{
+				if(debug_tensorcore){
+					for(k=0;k<8;k++){
+						printf("%.2f ",v[k].f32);
+					}
+					printf("\n");
+				}
+			}
+			switch(operand_num) {
+			      case 1 ://operand 1
+				for(k=0;k<8;k++){
+					mapping(thrd,LOAD_A,a_layout,F16_TYPE,k,16,row,col,offset);
+					if(debug_tensorcore)
+						printf("A:thread=%d,row=%d,col=%d,offset=%d\n",thrd,row,col,offset);
+				 	matrix_a[row][col]=nw_v[offset];
+			        }
+			      break;
+			      case 2 ://operand 2
+				for(k=0;k<8;k++){
+					mapping(thrd,LOAD_B,b_layout,F16_TYPE,k,16,row,col,offset);
+					if(debug_tensorcore)
+						printf("B:thread=%d,row=%d,col=%d,offset=%d\n",thrd,row,col,offset);
+				 	matrix_b[row][col]=nw_v[offset];
+				}	
+			      break;
+			      case 3 ://operand 3
+				for(k=0;k<8;k++){
+					mapping(thrd,LOAD_C,ROW,type2,k,16,row,col,offset);
+					if(debug_tensorcore)
+						printf("C:thread=%d,row=%d,col=%d,offset=%d\n",thrd,row,col,offset);
+					if(type2!=F16_TYPE){
+					 	matrix_c[row][col]=v[offset];
+					}
+					else {
+				 		matrix_c[row][col]=nw_v[offset];
+					}
+				}
+			        break;
+			      default :
+			         printf("Invalid Operand Index\n" );
+			}
+		}
+		if(debug_tensorcore)
+			printf("\n");
+	}
+	if(debug_tensorcore){
+		printf("MATRIX_A\n");
+		for (i=0;i<16;i++){
+			for(j=0;j<16;j++){
+				temp=matrix_a[i][j].f16;
+				printf("%.2f ",temp);
+			}
+			printf("\n");
+		}
+		printf("MATRIX_B\n");
+		for (i=0;i<16;i++){
+			for(j=0;j<16;j++){
+				temp=matrix_b[i][j].f16;
+				printf("%.2f ",temp);
+			}
+			printf("\n");
+		}	
+		printf("MATRIX_C\n");
+		for (i=0;i<16;i++){
+			for(j=0;j<16;j++){
+				if(type2==F16_TYPE){
+					temp=matrix_c[i][j].f16;
+					printf("%.2f ",temp);
+				}
+				else
+					printf("%.2f ",matrix_c[i][j].f32);
+			}
+			printf("\n");
+		}	
+	}
+	for (i=0;i<16;i++){
+		for(j=0;j<16;j++){
+				matrix_d[i][j].f16=0;
+		}
+	}
+	
+	for (i=0;i<16;i++){
+		for(j=0;j<16;j++){
+			for(k=0;k<16;k++){
+				matrix_d[i][j].f16=matrix_d[i][j].f16+matrix_a[i][k].f16*matrix_b[k][j].f16;
+			}
+			if((type==F16_TYPE)&&(type2==F16_TYPE))
+				matrix_d[i][j].f16+=matrix_c[i][j].f16;
+			else if((type==F32_TYPE)&&(type2==F16_TYPE)){
+				temp2=matrix_d[i][j].f16+matrix_c[i][j].f16;
+				temp=temp2;
+				matrix_d[i][j].f32=temp;
+			}
+			else if((type==F16_TYPE)&&(type2==F32_TYPE)){
+				temp=matrix_d[i][j].f16;
+				temp+=matrix_c[i][j].f32;
+				matrix_d[i][j].f16=half(temp);
+			}
+			else{
+				temp=matrix_d[i][j].f16;
+				temp+=matrix_c[i][j].f32;
+				matrix_d[i][j].f32=temp;
+			}
+		}
+	}
+	if(debug_tensorcore){
+		printf("MATRIX_D\n");
+		for (i=0;i<16;i++){
+			for(j=0;j<16;j++){
+				if(type==F16_TYPE){
+					temp=matrix_d[i][j].f16;
+					printf("%.2f ",temp);
+				}
+				else
+					printf("%.2f ",matrix_d[i][j].f32);
+			}
+			printf("\n");
+		}	
+	}
+	for (thrd=0; thrd < core->get_warp_size(); thrd++){
+		int row_t[8];
+		int col_t[8];	
+		for(k=0;k<8;k++){
+			mapping(thrd,LOAD_C,ROW,type,k,16,row_t[k],col_t[k],offset);
+			if(debug_tensorcore)
+				printf("mma:store:row:%d,col%d\n",row_t[k],col_t[k]);
+		}
+		thread = core->get_thread_info()[tid+thrd];
+		
+	
+		if(type==F32_TYPE){
+			thread->set_wmma_vector_operand_values(dst,matrix_d[row_t[0]][col_t[0]],matrix_d[row_t[1]][col_t[1]],matrix_d[row_t[2]][col_t[2]],matrix_d[row_t[3]][col_t[3]],matrix_d[row_t[4]][col_t[4]],matrix_d[row_t[5]][col_t[5]],matrix_d[row_t[6]][col_t[6]],matrix_d[row_t[7]][col_t[7]]);
+		
+			if(debug_tensorcore)
+			{
+				printf("thread%d:",thrd);
+				for(k=0;k<8;k++){
+					printf("%.2f ",matrix_d[row_t[k]][col_t[k]].f32);
+				}
+				printf("\n");
+			}
+		}
+		else if(type==F16_TYPE){
+			if(debug_tensorcore){	
+				printf("thread%d:",thrd);
+				for(k=0;k<8;k++){
+					temp=matrix_d[row_t[k]][col_t[k]].f16;
+					printf("%.2f ",temp);
+				}
+				printf("\n");
+
+				printf("thread%d:",thrd);
+				for(k=0;k<8;k++){
+					printf("%x ",matrix_d[row_t[k]][col_t[k]].f16);
+				}
+				printf("\n");
+			}
+			ptx_reg_t nw_data1, nw_data2, nw_data3, nw_data4;
+			nw_data1.s64=((matrix_d[row_t[0]][col_t[0]].s64   & 0xffff))|((matrix_d[row_t[1]][col_t[1]].s64&0xffff)<<16);
+			nw_data2.s64=((matrix_d[row_t[2]][col_t[2]].s64   & 0xffff))|((matrix_d[row_t[3]][col_t[3]].s64&0xffff)<<16);
+			nw_data3.s64=((matrix_d[row_t[4]][col_t[4]].s64   & 0xffff))|((matrix_d[row_t[5]][col_t[5]].s64&0xffff)<<16);
+			nw_data4.s64=((matrix_d[row_t[6]][col_t[6]].s64   & 0xffff))|((matrix_d[row_t[7]][col_t[7]].s64&0xffff)<<16);
+   			thread->set_vector_operand_values(dst,nw_data1,nw_data2,nw_data3,nw_data4);
+			if(debug_tensorcore)
+		 		printf("thread%d=%x,%x,%x,%x",thrd,nw_data1.s64,nw_data2.s64,nw_data3.s64,nw_data4.s64);
+		
+		}
+		else{
+			printf("wmma:mma:wrong type\n");
+			abort();
+		}
+	}
+}
 
 void call_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 {
@@ -1698,7 +2188,9 @@ unsigned int saturatei(unsigned int a, unsigned int max)
 
 ptx_reg_t f2x( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign, int rounding_mode, int saturation_mode )
 {
-   assert( from_width == 32); 
+ half mytemp;
+ float myfloat;
+   //assert( from_width == 32); 
 
    enum cuda_math::cudaRoundMode mode = cuda_math::cudaRoundZero;
    switch (rounding_mode) {
@@ -1740,8 +2232,12 @@ ptx_reg_t f2x( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
       }
    } else {
       switch ( to_width ) {
-      case 16: assert(0); break;
-      case 32: assert(0); break; // handled by f2f
+      case 16: 
+	 y.f16 =half_float::half_cast<half,std::numeric_limits<float>::round_style>(x.f32);//mytemp;
+ 	 break;
+      case 32: 
+	 y.f32=float(x.f16);
+	 break; // handled by f2f
       case 64: 
          y.f64 = x.f32; 
          break;
@@ -2002,7 +2498,7 @@ void ptx_round(ptx_reg_t& data, int rounding_mode, int type)
       case U32_TYPE:
       case U64_TYPE:
          printf("Trying to round an integer??\n"); assert(0); break;
-      case F16_TYPE: assert(0); break;
+      case F16_TYPE: data.f16=truncf(data.f16);break;//assert(0); break;
       case F32_TYPE:
          data.f32 = truncf(data.f32); 
          break;          
@@ -2025,7 +2521,13 @@ void ptx_round(ptx_reg_t& data, int rounding_mode, int type)
       case U32_TYPE:
       case U64_TYPE:
          printf("Trying to round an integer??\n"); assert(0); break;
-      case F16_TYPE: assert(0); break;
+      case F16_TYPE:// assert(0); break;
+#if CUDART_VERSION >= 3000
+         data.f16 = nearbyintf(data.f16); 
+#else
+         data.f16 = cuda_math::__cuda_nearbyintf(data.f16); 
+#endif
+         break;          
       case F32_TYPE: 
 #if CUDART_VERSION >= 3000
          data.f32 = nearbyintf(data.f32); 
@@ -2048,7 +2550,7 @@ void ptx_round(ptx_reg_t& data, int rounding_mode, int type)
       case U32_TYPE:
       case U64_TYPE:
          printf("Trying to round an integer??\n"); assert(0); break;
-      case F16_TYPE: assert(0); break;
+      case F16_TYPE: data.f16=floorf(data.f16);break;//assert(0); break;
       case F32_TYPE: 
          data.f32 = floorf(data.f32); 
          break;          
@@ -2067,7 +2569,7 @@ void ptx_round(ptx_reg_t& data, int rounding_mode, int type)
       case U32_TYPE:
       case U64_TYPE:
          printf("Trying to round an integer??\n"); assert(0); break;
-      case F16_TYPE: assert(0); break;
+      case F16_TYPE: data.f16 = ceilf(data.f16); break;  //assert(0); break;
       case F32_TYPE: data.f32 = ceilf(data.f32); break;          
       case F64_TYPE: case FF64_TYPE: data.f64 = ceil(data.f64); break; 
       default: assert(0); break;
@@ -2108,7 +2610,10 @@ void ptx_saturate(ptx_reg_t& data, int saturation_mode, int type)
    case U32_TYPE:
    case U64_TYPE:
       printf("Trying to clamp an integer to 1??\n"); assert(0); break;
-   case F16_TYPE: assert(0); break;
+   case F16_TYPE: //assert(0); break;
+      if (data.f16 > 1.0f) data.f16 = 1.0f; //negative
+      if (data.f16 < 0.0f) data.f16 = 0.0f; //positive
+      break;          
    case F32_TYPE:
       if (data.f32 > 1.0f) data.f32 = 1.0f; //negative
       if (data.f32 < 0.0f) data.f32 = 0.0f; //positive
@@ -2132,8 +2637,8 @@ void cvt_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    unsigned rounding_mode = pI->rounding_mode();
    unsigned saturation_mode = pI->saturation_mode();
 
-   if ( to_type == F16_TYPE || from_type == F16_TYPE )
-      abort();
+//   if ( to_type == F16_TYPE || from_type == F16_TYPE )
+//      abort();
 
    int to_sign, from_sign;
    size_t from_width, to_width;
@@ -2268,7 +2773,7 @@ void div_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       data.u32 = src1_data.u32 / src2_data.u32; break;
    case B64_TYPE:
       data.u64 = src1_data.u64 / src2_data.u64; break;
-   case F16_TYPE: assert(0); break;
+   case F16_TYPE: data.f16 = src1_data.f16 / src2_data.f16; break;//assert(0); break;
    case F32_TYPE: data.f32 = src1_data.f32 / src2_data.f32; break;
    case F64_TYPE: case FF64_TYPE: data.f64 = src1_data.f64 / src2_data.f64; break;
    default: assert(0); break;
@@ -2355,7 +2860,12 @@ void decode_space( memory_space_t &space, ptx_thread_info *thread, const operand
          space = param_space_kernel;
       else if( ti.is_param_local() ) {
          space = param_space_local;
-      } else {
+      }
+      //mov r1, param-label
+      else if (ti.is_reg() ){
+         space = param_space_kernel;
+      }
+      else {
          printf("GPGPU-Sim PTX: ERROR ** cannot resolve .param space for '%s'\n", s->name().c_str() );
          abort(); 
       }
@@ -2371,6 +2881,7 @@ void decode_space( memory_space_t &space, ptx_thread_info *thread, const operand
    case surf_space:   mem = thread->get_surf_memory(); break; 
    case param_space_kernel:  mem = thread->get_param_memory(); break;
    case shared_space:  mem = thread->m_shared_mem; break; 
+   case sstarr_space:	mem = thread->m_sstarr_mem; break;
    case const_space:  mem = thread->get_global_memory(); break;
    case generic_space:
       if( thread->get_ptx_version().ver() >= 2.0 ) {
@@ -2444,6 +2955,333 @@ void ld_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 void ldu_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 
    ld_exec(pI,thread);
+}
+
+void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
+{
+   size_t size;
+   unsigned smid;
+   int t;
+   int thrd,odd,inx,k;
+   ptx_thread_info *thread;
+   
+   const operand_info &src  = pI->operand_lookup(1);
+   const operand_info &src1 = pI->operand_lookup(0);
+   const operand_info &src2 = pI->operand_lookup(2);
+   int tid ;
+   unsigned type = pI->get_type();
+   unsigned wmma_type = pI->get_wmma_type();
+   unsigned wmma_layout = pI->get_wmma_layout(0);
+   int stride; 
+
+   if(core->get_gpu()->is_functional_sim())
+    	tid= inst.warp_id_func()*core->get_warp_size();
+   else
+    	tid= inst.warp_id()*core->get_warp_size();
+
+   _memory_op_t insn_memory_op = pI->has_memory_read() ? memory_load : memory_store;
+   for (thrd=0; thrd < core->get_warp_size(); thrd++) {
+	thread = core->get_thread_info()[tid+thrd];
+	odd=thrd%2;
+	inx=thrd/2;
+    	ptx_reg_t addr_reg = thread->get_operand_value(src1, src, type, thread, 1);
+   	ptx_reg_t src2_data = thread->get_operand_value(src2, src, type, thread, 1);
+	const operand_info &src_a=  pI->operand_lookup(1);
+        unsigned nelem = src_a.get_vect_nelem();
+        ptx_reg_t* v= new ptx_reg_t[8]; 
+       	thread->get_vector_operand_values( src_a, v, nelem );
+  	stride=src2_data.u32;
+ 
+   	memory_space_t space = pI->get_space();
+
+   	memory_space *mem = NULL;
+   	addr_t addr = addr_reg.u32;
+	
+	new_addr_type mem_txn_addr[MAX_ACCESSES_PER_INSN_PER_THREAD];
+	int num_mem_txn=0;
+        
+        smid = thread->get_hw_sid();
+   	if( whichspace(addr) == shared_space ) {
+          addr= generic_to_shared(smid,addr);
+          space = shared_space;
+	}
+   	decode_space(space,thread,src1,mem,addr);
+
+   	type_info_key::type_decode(type,size,t);
+   	if(debug_tensorcore)
+		printf("mma_st: thrd=%d,addr=%x, fp(size=%d), stride=%d\n",thrd,addr_reg.u32,size,src2_data.u32);
+	addr_t new_addr = addr+thread_group_offset(thrd,wmma_type,wmma_layout,type,stride)*size/8;  
+	addr_t push_addr;
+
+	ptx_reg_t nw_v[8];
+	for(k=0;k<8;k++){
+		if(k%2==0)
+			nw_v[k].s64=(v[k/2].s64&0xffff);
+		else
+			nw_v[k].s64=((v[k/2].s64&0xffff0000)>>16);
+	}
+
+	for(k=0;k<8;k++){
+		if(type==F32_TYPE){
+       			//mem->write(new_addr+4*acc_float_offset(k,wmma_layout,stride),size/8,&v[k].s64,thread,pI);
+       			push_addr=new_addr+4*acc_float_offset(k,wmma_layout,stride);
+       			mem->write(push_addr,size/8,&v[k].s64,thread,pI);
+			mem_txn_addr[num_mem_txn++]=push_addr;
+	
+			if(debug_tensorcore){
+				printf("wmma:store:thread%d=%x,%x,%x,%x,%x,%x,%x,%x\n",thrd,v[0].s64,v[1].s64,v[2].s64,v[3].s64,v[4].s64,v[5].s64,v[6].s64,v[7].s64);   
+				float temp;
+				int l;
+				printf("thread=%d:",thrd);
+				for(l=0;l<8;l++){
+					temp=v[l].f32;
+					printf("%.2f",temp);	
+				}
+				printf("\n");
+			}
+		}
+		else if(type==F16_TYPE){
+			if(wmma_layout==ROW){
+       				//mem->write(new_addr+k*2,size/8,&nw_v[k].s64,thread,pI);
+       				push_addr=new_addr+k*2;
+       				mem->write(push_addr,size/8,&nw_v[k].s64,thread,pI);
+				if(k%2==0)
+					mem_txn_addr[num_mem_txn++]=push_addr;
+			}
+			else if(wmma_layout==COL){
+       				//mem->write(new_addr+k*2*stride,size/8,&nw_v[k].s64,thread,pI);
+       				push_addr=new_addr+k*2*stride;
+       				mem->write(push_addr,size/8,&nw_v[k].s64,thread,pI);
+				mem_txn_addr[num_mem_txn++]=push_addr;
+			}
+	
+			if(debug_tensorcore)
+				printf("wmma:store:thread%d=%x,%x,%x,%x,%x,%x,%x,%x\n",thrd,nw_v[0].s64,nw_v[1].s64,nw_v[2].s64,nw_v[3].s64,nw_v[4].s64,nw_v[5].s64,nw_v[6].s64,nw_v[7].s64);   
+		}
+	}
+   	
+	delete [] v;
+   	inst.space = space;
+   	inst.set_addr(thrd, (new_addr_type *)mem_txn_addr , num_mem_txn);
+
+	if((type==F16_TYPE)&&(wmma_layout==COL))//check the profiling xls for details
+   		inst.data_size = 2; // 2 byte transaction 
+   	else
+		inst.data_size = 4; // 4 byte transaction 
+
+   	assert( inst.memory_op == insn_memory_op );
+   	//thread->m_last_effective_address = addr;
+   	//thread->m_last_memory_space = space;
+   } 
+}
+
+void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
+{
+   size_t size;
+   int t,i;
+   unsigned smid;
+   const operand_info &dst = pI->dst();
+   const operand_info &src1 = pI->src1();
+   const operand_info &src2 = pI->src2();
+
+   unsigned type = pI->get_type();
+   unsigned wmma_type = pI->get_wmma_type();
+   unsigned wmma_layout = pI->get_wmma_layout(0);
+   int tid;
+   int thrd,stride;
+   ptx_thread_info *thread;
+ 
+
+   if(core->get_gpu()->is_functional_sim())
+    	tid= inst.warp_id_func()*core->get_warp_size();
+   else
+    	tid= inst.warp_id()*core->get_warp_size();
+
+   _memory_op_t insn_memory_op = pI->has_memory_read() ? memory_load : memory_store;
+   
+   for (thrd=0; thrd < core->get_warp_size(); thrd++){
+   	thread = core->get_thread_info()[tid+thrd];
+   	ptx_reg_t src1_data = thread->get_operand_value(src1, dst, U32_TYPE, thread, 1);
+   	ptx_reg_t src2_data = thread->get_operand_value(src2, dst, U32_TYPE, thread, 1);
+	stride=src2_data.u32;
+   	memory_space_t space = pI->get_space();
+
+   	memory_space *mem = NULL;
+   	addr_t addr = src1_data.u32;
+   	
+        smid = thread->get_hw_sid();
+        if( whichspace(addr) == shared_space ) {
+          addr= generic_to_shared(smid,addr);
+          space = shared_space;
+	}
+
+	decode_space(space,thread,src1,mem,addr);
+   	type_info_key::type_decode(type,size,t);
+	
+	ptx_reg_t data[16];
+   	if(debug_tensorcore)	
+		printf("mma_ld: thrd=%d,addr=%x, fpsize=%d, stride=%d\n",thrd,src1_data.u32,size,src2_data.u32);
+	
+	addr_t new_addr = addr+thread_group_offset(thrd,wmma_type,wmma_layout,type,stride)*size/8;  
+	addr_t fetch_addr;
+	new_addr_type mem_txn_addr[MAX_ACCESSES_PER_INSN_PER_THREAD];
+	int num_mem_txn=0;
+
+	if(wmma_type==LOAD_A){
+		for(i=0;i<16;i++){
+			if(wmma_layout==ROW){
+				//mem->read(new_addr+2*i,size/8,&data[i].s64);
+				fetch_addr=new_addr+2*i;
+				mem->read(fetch_addr,size/8,&data[i].s64);
+			}
+			else if(wmma_layout==COL){
+				//mem->read(new_addr+2*(i%4)+2*stride*4*(i/4),size/8,&data[i].s64);
+				fetch_addr=new_addr+2*(i%4)+2*stride*4*(i/4);
+				mem->read(fetch_addr,size/8,&data[i].s64);
+			}
+			else{
+				printf("mma_ld:wrong_layout_type\n");
+				abort();
+			
+			}
+			if(i%2==0)
+				mem_txn_addr[num_mem_txn++]=fetch_addr;	
+		}
+	}
+	else if(wmma_type==LOAD_B){
+		for(i=0;i<16;i++){
+			if(wmma_layout==COL){
+				//mem->read(new_addr+2*i,size/8,&data[i].s64);
+				fetch_addr=new_addr+2*i;
+				mem->read(fetch_addr,size/8,&data[i].s64);
+			}
+			else if(wmma_layout==ROW){
+				//mem->read(new_addr+2*(i%4)+2*stride*4*(i/4),size/8,&data[i].s64);
+				fetch_addr=new_addr+2*(i%4)+2*stride*4*(i/4);
+				mem->read(fetch_addr,size/8,&data[i].s64);
+			}
+			else{
+				printf("mma_ld:wrong_layout_type\n");
+				abort();
+			}
+			if(i%2==0)
+				mem_txn_addr[num_mem_txn++]=fetch_addr;	
+		}
+	}
+	else if(wmma_type==LOAD_C){
+		for(i=0;i<8;i++){
+			if(type==F16_TYPE){
+				if(wmma_layout==ROW){
+					//mem->read(new_addr+2*i,size/8,&data[i].s64);
+					fetch_addr=new_addr+2*i;
+					mem->read(fetch_addr,size/8,&data[i].s64);
+					if(i%2==0)
+						mem_txn_addr[num_mem_txn++]=fetch_addr;	
+				}
+				else if(wmma_layout==COL){
+					//mem->read(new_addr+2*stride*i,size/8,&data[i].s64);
+					fetch_addr=new_addr+2*stride*i;
+					mem->read(fetch_addr,size/8,&data[i].s64);
+					mem_txn_addr[num_mem_txn++]=fetch_addr;	
+				}
+				else{
+					printf("mma_ld:wrong_type\n");
+					abort();
+				}
+			}
+			else if(type==F32_TYPE){
+				//mem->read(new_addr+4*acc_float_offset(i,wmma_layout,stride),size/8,&data[i].s64);
+				fetch_addr=new_addr+4*acc_float_offset(i,wmma_layout,stride);
+				mem->read(fetch_addr,size/8,&data[i].s64);
+				mem_txn_addr[num_mem_txn++]=fetch_addr;	
+			}
+			else{
+				printf("wrong type");
+				abort();
+			}
+		}
+	}
+	else{
+		printf("wrong wmma type\n");;
+		abort();
+	}
+	//generate timing memory request
+   	inst.space = space;
+   	inst.set_addr(thrd, (new_addr_type *)mem_txn_addr , num_mem_txn);
+
+	if((wmma_type==LOAD_C)&&(type==F16_TYPE)&&(wmma_layout==COL))//memory address is scattered, check the profiling xls for more detail.
+   		inst.data_size = 2; // 2 byte transaction 
+	else	
+   		inst.data_size = 4; // 4 byte transaction 
+   	assert( inst.memory_op == insn_memory_op );
+
+	if(debug_tensorcore){
+		if(type==F16_TYPE){
+			printf("\nmma_ld:thread%d= ",thrd);
+			for(i=0;i<16;i++){
+				printf("%x ",data[i].u64);
+			}
+			printf("\n");
+			
+			printf("\nmma_ld:thread%d= ",thrd);
+			float temp;
+			for(i=0;i<16;i++){
+			temp=data[i].f16;
+				printf("%.2f ",temp);
+			}
+			printf("\n");
+		}
+		else{
+			printf("\nmma_ld:thread%d= ",thrd);
+			for(i=0;i<8;i++){
+				printf("%.2f ",data[i].f32);
+			}
+			printf("\n");
+			printf("\nmma_ld:thread%d= ",thrd);
+			for(i=0;i<8;i++){
+				printf("%x ",data[i].u64);
+			}
+			printf("\n");
+		}
+	}
+
+	if((wmma_type==LOAD_C)&&(type==F32_TYPE)){
+   		thread->set_wmma_vector_operand_values(dst,data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7]);
+	}
+	else{
+		ptx_reg_t nw_data[8];
+		int num_reg;
+		
+		if(wmma_type==LOAD_C)
+			num_reg=4;
+		else
+			num_reg=8;
+
+		for(i=0;i<num_reg;i++){
+			nw_data[i].s64= ((data[2*i].s64 & 0xffff)<<16)| ((data[2*i+1].s64 & 0xffff));
+		}
+
+		if(wmma_type==LOAD_C)
+   			thread->set_vector_operand_values(dst,nw_data[0],nw_data[1],nw_data[2],nw_data[3]);
+		else
+   			thread->set_wmma_vector_operand_values(dst,nw_data[0],nw_data[1],nw_data[2],nw_data[3],nw_data[4],nw_data[5],nw_data[6],nw_data[7]);
+		if(debug_tensorcore){	
+			printf("mma_ld:data[0].s64=%x,data[1].s64=%x,new_data[0].s64=%x\n",data[0].u64,data[1].u64,nw_data[0].u64);	
+			printf("mma_ld:data[2].s64=%x,data[3].s64=%x,new_data[1].s64=%x\n",data[2].u64,data[3].u64,nw_data[1].u64);	
+			printf("mma_ld:data[4].s64=%x,data[5].s64=%x,new_data[2].s64=%x\n",data[4].u64,data[5].u64,nw_data[2].u64);	
+			printf("mma_ld:data[6].s64=%x,data[7].s64=%x,new_data[3].s64=%x\n",data[6].u64,data[7].u64,nw_data[3].u64);	
+			if(wmma_type!=LOAD_C){
+			printf("mma_ld:data[8].s64=%x,data[9].s64=%x,new_data[4].s64=%x\n",data[8].u64,data[9].u64,nw_data[4].s64);	
+			printf("mma_ld:data[10].s64=%x,data[11].s64=%x,new_data[5].s64=%x\n",data[10].u64,data[11].u64,nw_data[5].u64);	
+			printf("mma_ld:data[12].s64=%x,data[13].s64=%x,new_data[6].s64=%x\n",data[12].u64,data[13].u64,nw_data[6].u64);	
+			printf("mma_ld:data[14].s64=%x,data[15].s64=%x,new_data[7].s64=%x\n",data[14].u64,data[15].u64,nw_data[3].u64);	
+			}
+		}
+	}
+
+   	//thread->m_last_effective_address = addr;
+   	//thread->m_last_memory_space = space;
+   } 
 }
 
 void lg2_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
@@ -2605,9 +3443,24 @@ void mad_def( const ptx_instruction *pI, ptx_thread_info *thread, bool use_carry
       if ( pI->is_lo() ) d.u64 = t.u64 + c.u64 + carry_bit.pred;
       else assert(0);
       break;
-   case F16_TYPE: 
-      assert(0); 
-      break;
+   case F16_TYPE:{ 
+     // assert(0); 
+     // break;
+         assert( use_carry == false); 
+         int orig_rm = fegetround();
+         switch ( rounding_mode ) {
+         case RN_OPTION: break;
+         case RZ_OPTION: fesetround( FE_TOWARDZERO ); break;
+         default: assert(0); break;
+         }
+         d.f16 = a.f16 * b.f16 + c.f16;
+         if ( pI->saturation_mode() ) {
+            if ( d.f16 < 0 ) d.f16 = 0;
+            else if ( d.f16 > 1.0f ) d.f16 = 1.0f;
+         }
+         fesetround( orig_rm );
+         break;
+      }  
    case F32_TYPE: {
          assert( use_carry == false); 
          int orig_rm = fegetround();
@@ -2907,9 +3760,25 @@ void mul_impl( const ptx_instruction *pI, ptx_thread_info *thread )
       if ( pI->is_lo() ) d.u64 = t.u64;
       else assert(0);
       break;
-   case F16_TYPE: 
-      assert(0); 
-      break;
+   case F16_TYPE:{ 
+      //assert(0); 
+      //break;
+         int orig_rm = fegetround();
+         switch ( rounding_mode ) {
+         case RN_OPTION: break;
+         case RZ_OPTION: fesetround( FE_TOWARDZERO ); break;
+         default: assert(0); break;
+         }
+
+         d.f16 = a.f16 * b.f16;
+
+         if ( pI->saturation_mode() ) {
+            if ( d.f16 < 0 ) d.f16 = 0;
+            else if ( d.f16 > 1.0f ) d.f16 = 1.0f;
+         }
+         fesetround( orig_rm );
+         break;
+      }  
    case F32_TYPE: {
          int orig_rm = fegetround();
          switch ( rounding_mode ) {
@@ -2972,7 +3841,7 @@ void neg_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    case U32_TYPE:
    case U64_TYPE: 
       assert(0); break;
-   case F16_TYPE: assert(0); break;
+   case F16_TYPE: data.f16 =0.0f  - src1_data.f16; break;//assert(0); break;
    case F32_TYPE: data.f32 = 0.0f - src1_data.f32; break;
    case F64_TYPE: case FF64_TYPE: data.f64 = 0.0f - src1_data.f64; break;
    default: assert(0); break;
@@ -3122,7 +3991,94 @@ void popc_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 }
 void prefetch_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 void prefetchu_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
-void prmt_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+
+int prmt_mode_present(int mode)
+{
+	int returnval=0;
+	switch(mode){
+		case PRMT_F4E_MODE:
+		case PRMT_B4E_MODE:
+		case PRMT_RC8_MODE:
+		case PRMT_RC16_MODE:
+		case PRMT_ECL_MODE:
+		case PRMT_ECR_MODE:	
+			returnval=1;
+			break;
+		default:	
+			break;
+	}
+	return returnval;
+}
+int read_byte(int mode,int control,int d_sel_index,signed long long value){
+
+	int returnval;
+	int prmt_f4e_mode[4][4]={{0,1,2,3},{1,2,3,4},{2,3,4,5},{3,4,5,6}};
+	int prmt_b4e_mode[4][4]={{0,7,6,5},{1,0,7,6},{2,1,0,7},{3,2,1,0}};
+	int prmt_rc8_mode[4][4]={{0,0,0,0},{1,1,1,1},{2,2,2,2},{3,3,3,3}};
+	int prmt_ecl_mode[4][4]={{0,1,2,3},{1,1,2,3},{2,2,2,3},{3,3,3,3}};
+	int prmt_ecr_mode[4][4]={{0,0,0,0},{0,1,1,1},{0,1,2,2},{0,1,2,3}};
+	int prmt_rc16_mode[4][4]={{0,1,0,1},{2,3,2,3},{0,1,0,1},{2,3,2,3}};
+
+	if(!prmt_mode_present(mode)){
+		if(control&0x8){
+			returnval=0xff;
+		}
+		else{
+			returnval= (value>>(8*control)) & 0xff;
+		}
+	}
+	else{
+		switch(mode){
+			case PRMT_F4E_MODE:	returnval=prmt_f4e_mode[control][d_sel_index];break;
+			case PRMT_B4E_MODE:	returnval=prmt_b4e_mode[control][d_sel_index];break;
+			case PRMT_RC8_MODE:	returnval=prmt_rc8_mode[control][d_sel_index];break;
+			case PRMT_ECL_MODE:	returnval=prmt_ecl_mode[control][d_sel_index];break;
+			case PRMT_ECR_MODE:	returnval=prmt_ecr_mode[control][d_sel_index];break;
+			case PRMT_RC16_MODE:	returnval=prmt_rc16_mode[control][d_sel_index];break;
+			default: printf("ERROR\n");break;
+		}
+	}	
+	return (returnval<<8*d_sel_index);
+}
+
+void prmt_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { 
+   
+   ptx_reg_t src1_data, src2_data, src3_data,tmpdata,data;
+   const operand_info &dst  = pI->dst();  
+   const operand_info &src1 = pI->src1();
+   const operand_info &src2 = pI->src2();
+   const operand_info &src3 = pI->src3();
+
+   unsigned mode   = pI->prmt_op();
+   unsigned i_type = pI->get_type();
+
+   src1_data = thread->get_operand_value(src1, dst, i_type, thread, 1);
+   src2_data = thread->get_operand_value(src2, dst, i_type, thread, 1);
+   src3_data = thread->get_operand_value(src3, dst, i_type, thread, 1);
+
+   tmpdata.s64=src1_data.s32|(src2_data.s64<<32);
+   int ctl[4];
+
+   if(!prmt_mode_present(mode)){
+	ctl[0]=(src3_data.s32>>0)&0xf;
+	ctl[1]=(src3_data.s32>>4)&0xf;
+	ctl[2]=(src3_data.s32>>8)&0xf;
+	ctl[3]=(src3_data.s32>>12)&0xf;
+   }
+   else{
+	ctl[0]=ctl[1]=ctl[2]=ctl[3]=(src3_data.s32>>0)&0x3;	
+   }
+   
+   data.s32=0;
+   data.s32=data.s32|read_byte(mode,ctl[0],0,tmpdata.s64);   //First byte-0
+   data.s32=data.s32|read_byte(mode,ctl[1],1,tmpdata.s64);   //Second byte-1
+   data.s32=data.s32|read_byte(mode,ctl[2],2,tmpdata.s64);   //Third byte-2
+   data.s32=data.s32|read_byte(mode,ctl[3],3,tmpdata.s64);   //Fourth byte-3
+	
+   thread->set_operand_value(dst,data, i_type, thread, pI);
+
+
+}
 
 void rcp_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 { 
@@ -3543,7 +4499,13 @@ void set_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 void shfl_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 {
 	unsigned i_type = pI->get_type();
-	int tid = inst.warp_id() * core->get_warp_size();
+  	int tid;
+
+  	if(core->get_gpu()->is_functional_sim())
+    		tid = inst.warp_id_func() * core->get_warp_size();
+  	else
+	 	tid = inst.warp_id() * core->get_warp_size();
+	
 	ptx_thread_info *thread = core->get_thread_info()[tid];
 	ptx_warp_info *warp_info = thread->m_warp_info;
 	int lane = warp_info->get_done_threads();
@@ -3833,6 +4795,88 @@ void sqrt_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->set_operand_value(dst,d, i_type, thread, pI);
 }
 
+void sst_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
+{
+	ptx_instruction * cpI = const_cast<ptx_instruction *>(pI); // constant
+	const operand_info &dst = cpI->dst();
+	const operand_info &src1 = pI->src1();
+	const operand_info &src2 = pI->src2();
+	const operand_info &src3 = pI->src3();
+	unsigned type = pI->get_type();
+	ptx_reg_t dst_data = thread->get_operand_value(dst, dst, type, thread, 1);
+	ptx_reg_t src1_data = thread->get_operand_value(src1, src1, type, thread, 1);
+	ptx_reg_t src2_data = thread->get_operand_value(src2, src1, type, thread, 1);
+	ptx_reg_t src3_data = thread->get_operand_value(src3, src1, type, thread, 1);
+	memory_space_t space = pI->get_space();
+	memory_space *mem = NULL;
+	addr_t addr = src2_data.u32 * 4; // this assumes sstarr memory starts at address 0
+	ptx_cta_info *cta_info = thread->m_cta_info;
+
+	decode_space(space,thread,src1,mem,addr);
+
+	size_t size;
+	int t;
+	type_info_key::type_decode(type,size,t);
+
+	// store data in sstarr memory
+	mem->write(addr,size/8,&src3_data.s64,thread,pI);
+
+	// sync threads
+	cpI->set_bar_id(16); // use 16 for sst because bar uses an int from 0-15
+
+	thread->m_last_effective_address = addr;
+	thread->m_last_memory_space = space;
+	thread->m_last_dram_callback.function = bar_callback;
+	thread->m_last_dram_callback.instruction = cpI;
+
+	// the last thread that executes loads all of the data back from sstarr memory
+	int NUM_THREADS = cta_info->num_threads();
+	cta_info->inc_bar_threads();
+	if (NUM_THREADS == cta_info->get_bar_threads()) {
+		unsigned offset = 0;
+		addr = 0;
+		ptx_reg_t data;
+		float sstarr_fdata[NUM_THREADS];
+		signed long long sstarr_ldata[NUM_THREADS];
+		// loop through all of the threads
+		for (int tid = 0; tid < NUM_THREADS; tid++) {
+			data.u64=0;
+			mem->read(addr+(tid*4),size/8,&data.s64);
+			sstarr_fdata[tid] = data.f32;
+			sstarr_ldata[tid] = data.s64;
+		}
+
+		// squeeze the zeros out of the array and store data back into original array
+		mem = NULL;
+		addr = src1_data.u32;
+		space.set_type(global_space);
+		decode_space(space,thread,src1,mem,addr);
+		// store nonzero entries and indices
+		for (int tid = 0; tid < NUM_THREADS; tid++) {
+			if (sstarr_fdata[tid] != 0) {
+				float ftid = (float)tid;
+				mem->write(addr+(offset*4),size/8,&sstarr_ldata[tid],thread,pI);
+				mem->write(addr+((NUM_THREADS+offset)*4),size/8,&ftid,thread,pI);
+				offset++;
+			}
+		}
+		// store the number of nonzero elements in the array
+		data = thread->get_operand_value(src1, dst, type, thread, 1);
+		data.s64 += 4*(offset-1);
+		thread->set_operand_value(dst, data, type, thread, pI);
+
+		// fill the rest of the array with zeros (dst should always have a 0 in it)
+		while (offset < NUM_THREADS) {
+			mem->write(addr+(offset*4),size/8,&dst_data.s64,thread,pI);
+			offset++;
+		}
+
+		cta_info->reset_bar_threads();
+		thread->m_last_effective_address = addr+(NUM_THREADS-1)*4;
+		thread->m_last_memory_space = space;
+	}
+}
+
 void ssy_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
 {
    //printf("Execution Warning: unimplemented ssy instruction is treated as a nop\n");
@@ -3861,7 +4905,7 @@ void st_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    if (!vector_spec) {
       data = thread->get_operand_value(src1, dst, type, thread, 1);
       mem->write(addr,size/8,&data.s64,thread,pI);
-   } else {
+    } else {
       if (vector_spec == V2_TYPE) {
          ptx_reg_t* ptx_regs = new ptx_reg_t[2]; 
          thread->get_vector_operand_values(src1, ptx_regs, 2); 
@@ -3943,7 +4987,7 @@ void sub_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    case B64_TYPE:
    case U64_TYPE: 
       data.u64 = src1_data.u64 - src2_data.u64; break;
-   case F16_TYPE: assert(0); break;
+   case F16_TYPE: data.f16 = src1_data.f16 - src2_data.f16; break;//assert(0); break;
    case F32_TYPE: data.f32 = src1_data.f32 - src2_data.f32; break;
    case F64_TYPE: case FF64_TYPE: data.f64 = src1_data.f64 - src2_data.f64; break;
    default: assert(0); break;

@@ -184,7 +184,7 @@ void warp_inst_t::generate_mem_accesses()
 {
     if( empty() || op == MEMORY_BARRIER_OP || m_mem_accesses_created ) 
         return;
-    if ( !((op == LOAD_OP) || (op == STORE_OP)) )
+    if (!((op == LOAD_OP) || (op==TENSOR_CORE_LOAD_OP)   || (op == STORE_OP)||(op==TENSOR_CORE_STORE_OP)))
         return; 
     if( m_warp_active_mask.count() == 0 ) 
         return; // predicated off
@@ -213,6 +213,7 @@ void warp_inst_t::generate_mem_accesses()
         access_type = is_write? LOCAL_ACC_W: LOCAL_ACC_R;   
         break;
     case shared_space: break;
+    case sstarr_space: break;
     default: assert(0); break; 
     }
 
@@ -220,7 +221,8 @@ void warp_inst_t::generate_mem_accesses()
     new_addr_type cache_block_size = 0; // in bytes 
 
     switch( space.get_type() ) {
-    case shared_space: {
+    case shared_space:
+    case sstarr_space: {
         unsigned subwarp_size = m_config->warp_size / m_config->mem_warp_parts;
         unsigned total_accesses=0;
         for( unsigned subwarp=0; subwarp <  m_config->mem_warp_parts; subwarp++ ) {
@@ -404,7 +406,8 @@ void warp_inst_t::memory_coalescing_arch( bool is_write, mem_access_type access_
 
             assert(num_accesses <= MAX_ACCESSES_PER_INSN_PER_THREAD);
 
-            for(unsigned access=0; access<num_accesses; access++) {
+//            for(unsigned access=0; access<num_accesses; access++) {
+            for(unsigned access=0; (access<MAX_ACCESSES_PER_INSN_PER_THREAD)&&(m_per_scalar_thread[thread].memreqaddr[access]!=0); access++) {
                 new_addr_type addr = m_per_scalar_thread[thread].memreqaddr[access];
                 unsigned block_address = line_size_based_tag_func(addr,segment_size);
                 unsigned chunk = (addr&127)/32; // which 32-byte chunk within in a 128-byte chunk does this thread access?

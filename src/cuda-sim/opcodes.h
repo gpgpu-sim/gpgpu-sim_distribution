@@ -60,5 +60,14 @@ enum special_regs {
    WARPID_REG,
    WARPSZ_REG
 };
-
+enum wmma_type{
+	LOAD_A,
+	LOAD_B,
+	LOAD_C,
+	STORE_D,
+	MMA,
+	ROW,
+	COL,
+	M16N16K16
+};
 #endif
