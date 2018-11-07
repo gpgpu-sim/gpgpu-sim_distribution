@@ -90,6 +90,15 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
     for (int j = 0; j<N_PIPELINE_STAGES; j++) {
         m_pipeline_reg.push_back(register_set(m_config->pipe_widths[j],pipeline_stage_name_decode[j]));
     }
+    if(m_config->sub_core_model) {
+    	//in subcore model, each scheduler should has its own issue register, so num scheduler = reg width
+    	assert(m_config->gpgpu_num_sched_per_core == m_pipeline_reg[ID_OC_SP].get_size() );
+    	if(m_config->gpgpu_num_dp_units > 0)
+    		assert(m_config->gpgpu_num_sched_per_core == m_pipeline_reg[ID_OC_DP].get_size() );
+    	assert(m_config->gpgpu_num_sched_per_core == m_pipeline_reg[ID_OC_SFU].get_size() );
+    	assert(m_config->gpgpu_num_sched_per_core == m_pipeline_reg[ID_OC_MEM].get_size() );
+    	assert(m_config->gpgpu_num_sched_per_core == m_pipeline_reg[ID_OC_TENSOR_CORE].get_size() );
+    }
     
     m_threadState = (thread_ctx_t*) calloc(sizeof(thread_ctx_t), config->n_thread_per_shader);
     
@@ -1045,7 +1054,7 @@ void scheduler_unit::cycle()
                             }                         
                              else if ( (pI->op == TENSOR_CORE_OP) ) {
                                 if( tensor_core_pipe_avail ) {
-                                    m_shader->issue_warp(*m_tensor_core_out,pI,active_mask,warp_id);
+                                    m_shader->issue_warp(*m_tensor_core_out,pI,active_mask,warp_id,m_id);
                                     issued++;
                                     issued_inst=true;
                                     warp_inst_issued = true;
