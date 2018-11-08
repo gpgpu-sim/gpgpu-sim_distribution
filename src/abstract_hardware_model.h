@@ -83,6 +83,8 @@ enum uarch_op_t {
    SFU_OP,
    TENSOR_CORE_OP,
    DP_OP,
+   SP_OP,
+   INTP_OP,
    ALU_SFU_OP,
    LOAD_OP,
    TENSOR_CORE_LOAD_OP,
@@ -141,6 +143,7 @@ enum operation_pipeline_t {
     UNKOWN_OP,
     SP__OP,
 	DP__OP,
+	INTP__OP,
     SFU__OP,
     TENSOR_CORE__OP,
     MEM__OP
