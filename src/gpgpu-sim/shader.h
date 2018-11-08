@@ -76,7 +76,9 @@ enum exec_unit_type_t
   SP = 1,
   SFU = 2,
   MEM = 3,
-  DP = 4
+  DP = 4,
+  INT = 5,
+  TENSOR = 6
 };
 
 class thread_ctx_t {
@@ -328,12 +330,13 @@ public:
                    register_set* sp_out,
 				   register_set* dp_out,
                    register_set* sfu_out,
+				   register_set* int_out,
                    register_set* tensor_core_out,
                    register_set* mem_out,
                    int id) 
         : m_supervised_warps(), m_stats(stats), m_shader(shader),
         m_scoreboard(scoreboard), m_simt_stack(simt), /*m_pipeline_reg(pipe_regs),*/ m_warp(warp),
-        m_sp_out(sp_out),m_dp_out(dp_out),m_sfu_out(sfu_out),m_tensor_core_out(tensor_core_out),m_mem_out(mem_out), m_id(id){}
+        m_sp_out(sp_out),m_dp_out(dp_out),m_sfu_out(sfu_out),m_int_out(int_out),m_tensor_core_out(tensor_core_out),m_mem_out(mem_out), m_id(id){}
     virtual ~scheduler_unit(){}
     virtual void add_supervised_warp_id(int i) {
         m_supervised_warps.push_back(&warp(i));
@@ -409,6 +412,7 @@ protected:
     register_set* m_sp_out;
     register_set* m_dp_out;
     register_set* m_sfu_out;
+    register_set* m_int_out;
     register_set* m_tensor_core_out;
     register_set* m_mem_out;
 
@@ -423,10 +427,11 @@ public:
                     register_set* sp_out,
 					register_set* dp_out,
                     register_set* sfu_out,
+					register_set* int_out,
                     register_set* tensor_core_out,
                     register_set* mem_out,
                     int id )
-	: scheduler_unit ( stats, shader, scoreboard, simt, warp, sp_out, dp_out, sfu_out,tensor_core_out, mem_out, id ){}
+	: scheduler_unit ( stats, shader, scoreboard, simt, warp, sp_out, dp_out, sfu_out, int_out, tensor_core_out, mem_out, id ){}
 	virtual ~lrr_scheduler () {}
 	virtual void order_warps ();
     virtual void done_adding_supervised_warps() {
@@ -442,10 +447,11 @@ public:
                     register_set* sp_out,
 					register_set* dp_out,
                     register_set* sfu_out,
+					register_set* int_out,
                     register_set* tensor_core_out,
                     register_set* mem_out,
                     int id )
-	: scheduler_unit ( stats, shader, scoreboard, simt, warp, sp_out, dp_out, sfu_out,tensor_core_out, mem_out, id ){}
+	: scheduler_unit ( stats, shader, scoreboard, simt, warp, sp_out, dp_out, sfu_out, int_out, tensor_core_out, mem_out, id ){}
 	virtual ~gto_scheduler () {}
 	virtual void order_warps ();
     virtual void done_adding_supervised_warps() {
@@ -462,10 +468,11 @@ public:
                     register_set* sp_out,
 					register_set* dp_out,
                     register_set* sfu_out,
-                          register_set* tensor_core_out,
+					register_set* int_out,
+                    register_set* tensor_core_out,
                     register_set* mem_out,
                     int id )
-	: scheduler_unit ( stats, shader, scoreboard, simt, warp, sp_out, dp_out, sfu_out,tensor_core_out, mem_out, id ){}
+	: scheduler_unit ( stats, shader, scoreboard, simt, warp, sp_out, dp_out, sfu_out, int_out, tensor_core_out, mem_out, id ){}
 	virtual ~oldest_scheduler () {}
 	virtual void order_warps ();
         virtual void done_adding_supervised_warps() {
@@ -482,11 +489,12 @@ public:
                           register_set* sp_out,
 						  register_set* dp_out,
                           register_set* sfu_out,
+						  register_set* int_out,
                           register_set* tensor_core_out,
                           register_set* mem_out,
                           int id,
                           char* config_str )
-	: scheduler_unit ( stats, shader, scoreboard, simt, warp, sp_out, dp_out, sfu_out,tensor_core_out, mem_out, id ),
+	: scheduler_unit ( stats, shader, scoreboard, simt, warp, sp_out, dp_out, sfu_out, int_out, tensor_core_out, mem_out, id ),
 	  m_pending_warps() 
     {
         unsigned inner_level_readin;
@@ -534,6 +542,7 @@ public:
                     register_set* sp_out,
 					register_set* dp_out,
                     register_set* sfu_out,
+					register_set* int_out,
                     register_set* tensor_core_out,
                     register_set* mem_out,
                     int id,
@@ -1046,6 +1055,9 @@ public:
         fprintf(fp,"%s dispatch= ", m_name.c_str() );
         m_dispatch_reg->print(fp);
     }
+    const char* get_name() {
+    	return m_name.c_str();
+    }
 protected:
     std::string m_name;
     const shader_core_config *m_config;
@@ -1153,6 +1165,29 @@ public:
     virtual void issue(  register_set& source_reg );
 };
 
+
+class int_unit : public pipelined_simd_unit
+{
+public:
+	int_unit( register_set* result_port, const shader_core_config *config, shader_core_ctx *core );
+    virtual bool can_issue( const warp_inst_t &inst ) const
+    {
+        switch(inst.op) {
+        case SFU_OP: return false;
+	    case LOAD_OP: return false;
+	    case TENSOR_CORE_LOAD_OP: return false;
+		case STORE_OP: return false;
+		case TENSOR_CORE_STORE_OP: return false;
+		case MEMORY_BARRIER_OP: return false;
+	    case SP_OP: return false;
+	    case DP_OP: return false;
+        default: break;
+        }
+        return pipelined_simd_unit::can_issue(inst);
+    }
+    virtual void active_lanes_in_pipeline();
+    virtual void issue(  register_set& source_reg );
+};
 
 class sp_unit : public pipelined_simd_unit
 {
@@ -1303,10 +1338,12 @@ protected:
 enum pipeline_stage_name_t {
     ID_OC_SP=0,
 	ID_OC_DP,
+	ID_OC_INT,
     ID_OC_SFU,  
     ID_OC_MEM,  
     OC_EX_SP,
 	OC_EX_DP,
+	OC_EX_INT,
     OC_EX_SFU,
     OC_EX_MEM,
     EX_WB,
@@ -1318,10 +1355,12 @@ enum pipeline_stage_name_t {
 const char* const pipeline_stage_name_decode[] = {
     "ID_OC_SP",
 	"ID_OC_DP",
+	"ID_OC_INT",
     "ID_OC_SFU",  
     "ID_OC_MEM",  
     "OC_EX_SP",
 	"OC_EX_DP",
+	"OC_EX_INT",
     "OC_EX_SFU",
     "OC_EX_MEM",
     "EX_WB",
@@ -1429,6 +1468,7 @@ struct shader_core_config : public core_config
     int gpgpu_operand_collector_num_units_tensor_core;
     int gpgpu_operand_collector_num_units_mem;
     int gpgpu_operand_collector_num_units_gen;
+    int gpgpu_operand_collector_num_units_int;
 
     unsigned int gpgpu_operand_collector_num_in_ports_sp;
     unsigned int gpgpu_operand_collector_num_in_ports_dp;
@@ -1436,6 +1476,7 @@ struct shader_core_config : public core_config
     unsigned int gpgpu_operand_collector_num_in_ports_tensor_core;
     unsigned int gpgpu_operand_collector_num_in_ports_mem;
     unsigned int gpgpu_operand_collector_num_in_ports_gen;
+    unsigned int gpgpu_operand_collector_num_in_ports_int;
 
     unsigned int gpgpu_operand_collector_num_out_ports_sp;
     unsigned int gpgpu_operand_collector_num_out_ports_dp;
@@ -1443,6 +1484,7 @@ struct shader_core_config : public core_config
     unsigned int gpgpu_operand_collector_num_out_ports_tensor_core;
     unsigned int gpgpu_operand_collector_num_out_ports_mem;
     unsigned int gpgpu_operand_collector_num_out_ports_gen;
+    unsigned int gpgpu_operand_collector_num_out_ports_int;
 
     int gpgpu_num_sp_units;
     int gpgpu_tensor_core_avail;
@@ -1450,6 +1492,7 @@ struct shader_core_config : public core_config
     int gpgpu_num_sfu_units;
     int gpgpu_num_tensor_core_units;
     int gpgpu_num_mem_units;
+    int gpgpu_num_int_units;
 
     //Shader core resources
     unsigned gpgpu_shader_registers;

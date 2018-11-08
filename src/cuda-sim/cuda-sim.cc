@@ -62,8 +62,8 @@ addr_t g_debug_pc = 0xBEEF1518;
 unsigned g_ptx_sim_num_insn = 0;
 unsigned gpgpu_param_num_shaders = 0;
 
-char *opcode_latency_int, *opcode_latency_fp, *opcode_latency_dp,*opcode_latency_sfu;
-char *opcode_initiation_int, *opcode_initiation_fp, *opcode_initiation_dp,*opcode_initiation_sfu;
+char *opcode_latency_int, *opcode_latency_fp, *opcode_latency_dp,*opcode_latency_sfu,*opcode_latency_tensor;
+char *opcode_initiation_int, *opcode_initiation_fp, *opcode_initiation_dp,*opcode_initiation_sfu,*opcode_initiation_tensor;
 char *cdp_latency_str;
 unsigned cdp_latency[5];
 
@@ -84,6 +84,10 @@ void ptx_opcocde_latency_options (option_parser_t opp) {
 			"Opcode latencies for SFU instructions"
 			"Default 8",
 			"8");
+	option_parser_register(opp, "-ptx_opcode_latency_tesnor", OPT_CSTR, &opcode_latency_tensor,
+			"Opcode latencies for Tensor instructions"
+			"Default 64",
+			"64");
 	option_parser_register(opp, "-ptx_opcode_initiation_int", OPT_CSTR, &opcode_initiation_int,
 			"Opcode initiation intervals for integers <ADD,MAX,MUL,MAD,DIV>"
 			"Default 1,1,4,4,32",
@@ -100,6 +104,10 @@ void ptx_opcocde_latency_options (option_parser_t opp) {
 			"Opcode initiation intervals for sfu instructions"
 			"Default 8",
 			"8");
+	option_parser_register(opp, "-ptx_opcode_initiation_tensor", OPT_CSTR, &opcode_initiation_tensor,
+			"Opcode initiation intervals for tensor instructions"
+			"Default 64",
+			"64");
 	option_parser_register(opp, "-cdp_latency", OPT_CSTR, &cdp_latency_str,
 			"CDP API latency <cudaStreamCreateWithFlags, \
 cudaGetParameterBufferV2_init_perWarp, cudaGetParameterBufferV2_perKernel, \
@@ -609,10 +617,12 @@ void ptx_instruction::set_opcode_and_latency()
 	unsigned fp_latency[5];
 	unsigned dp_latency[5];
 	unsigned sfu_latency;
+	unsigned tensor_latency;
 	unsigned int_init[5];
 	unsigned fp_init[5];
 	unsigned dp_init[5];
 	unsigned sfu_init;
+	unsigned tensor_init;
 	/*
 	 * [0] ADD,SUB
 	 * [1] MAX,Min
@@ -631,6 +641,8 @@ void ptx_instruction::set_opcode_and_latency()
 			&dp_latency[3],&dp_latency[4]);
 	sscanf(opcode_latency_sfu, "%u",
 			&sfu_latency);
+	sscanf(opcode_latency_tensor, "%u",
+			&tensor_latency);
 	sscanf(opcode_initiation_int, "%u,%u,%u,%u,%u",
 			&int_init[0],&int_init[1],&int_init[2],
 			&int_init[3],&int_init[4]);
@@ -642,6 +654,8 @@ void ptx_instruction::set_opcode_and_latency()
 			&dp_init[3],&dp_init[4]);
 	sscanf(opcode_initiation_sfu, "%u",
 			&sfu_init);
+	sscanf(opcode_initiation_tensor, "%u",
+			&tensor_init);
 	sscanf(cdp_latency_str, "%u,%u,%u,%u,%u",
 			&cdp_latency[0],&cdp_latency[1],&cdp_latency[2],
             &cdp_latency[3],&cdp_latency[4]);
@@ -701,6 +715,7 @@ void ptx_instruction::set_opcode_and_latency()
 	   case F32_TYPE:
 		   latency = fp_latency[0];
 		   initiation_interval = fp_init[0];
+		   op = SP_OP;
 		   break;
 	   case F64_TYPE:
 	   case FF64_TYPE:
@@ -714,6 +729,7 @@ void ptx_instruction::set_opcode_and_latency()
 	   default: //Use int settings for default
 		   latency = int_latency[0];
 		   initiation_interval = int_init[0];
+		   op = INTP_OP;
 		   break;
 	   }
 	   break;
@@ -723,6 +739,7 @@ void ptx_instruction::set_opcode_and_latency()
 	   case F32_TYPE:
 		   latency = fp_latency[1];
 		   initiation_interval = fp_init[1];
+		   op = SP_OP;
 		   break;
 	   case F64_TYPE:
 	   case FF64_TYPE:
@@ -736,6 +753,7 @@ void ptx_instruction::set_opcode_and_latency()
 	   default: //Use int settings for default
 		   latency = int_latency[1];
 		   initiation_interval = int_init[1];
+		   op = INTP_OP;
 		   break;
 	   }
 	   break;
@@ -745,6 +763,7 @@ void ptx_instruction::set_opcode_and_latency()
 	   case F32_TYPE:
 		   latency = fp_latency[2];
 		   initiation_interval = fp_init[2];
+		   op = SP_OP;
 		   break;
 	   case F64_TYPE:
 	   case FF64_TYPE:
@@ -758,7 +777,7 @@ void ptx_instruction::set_opcode_and_latency()
 	   default: //Use int settings for default
 		   latency = int_latency[2];
 		   initiation_interval = int_init[2];
-		   op = SFU_OP;
+		   op = INTP_OP;
 		   break;
 	   }
 	   break;
@@ -768,6 +787,7 @@ void ptx_instruction::set_opcode_and_latency()
 	   case F32_TYPE:
 		   latency = fp_latency[3];
 		   initiation_interval = fp_init[3];
+		   op = SP_OP;
 		   break;
 	   case F64_TYPE:
 	   case FF64_TYPE:
@@ -781,7 +801,7 @@ void ptx_instruction::set_opcode_and_latency()
 	   default: //Use int settings for default
 		   latency = int_latency[3];
 		   initiation_interval = int_init[3];
-		   op = SFU_OP;
+		   op = INTP_OP;
 		   break;
 	   }
 	   break;
@@ -808,15 +828,14 @@ void ptx_instruction::set_opcode_and_latency()
 	   }
 	   break;
    case SQRT_OP: case SIN_OP: case COS_OP: case EX2_OP: case LG2_OP: case RSQRT_OP: case RCP_OP:
-	   //Using double to approximate those
 	  latency = sfu_latency;
 	  initiation_interval = sfu_init;
       op = SFU_OP;
       break;
    case MMA_OP:
-	   latency = 64;
-	   initiation_interval = 64;
-           op=TENSOR_CORE_OP;
+	   latency = tensor_latency;
+	   initiation_interval = tensor_init;
+       op=TENSOR_CORE_OP;
 	   break;
    case SHFL_OP:
 	   latency = 32;
