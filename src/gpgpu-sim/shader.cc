@@ -3383,19 +3383,20 @@ int register_bank(int regnum, int wid, unsigned num_banks, unsigned bank_warp_sh
    return bank % num_banks;
 }
 
-bool opndcoll_rfu_t::writeback( const warp_inst_t &inst )
+bool opndcoll_rfu_t::writeback( warp_inst_t &inst )
 {
    assert( !inst.empty() );
    std::list<unsigned> regs = m_shader->get_regs_written(inst);
-   std::list<unsigned>::iterator r;
-   unsigned n=0;
-   for( r=regs.begin(); r!=regs.end();r++,n++ ) {
-      unsigned reg = *r;
-      unsigned bank = register_bank(reg,inst.warp_id(),m_num_banks,m_bank_warp_shift);
-      if( m_arbiter.bank_idle(bank) ) {
-          m_arbiter.allocate_bank_for_write(bank,op_t(&inst,reg,m_num_banks,m_bank_warp_shift));
-      } else {
-          return false;
+   for( unsigned op=0; op < MAX_REG_OPERANDS; op++ ) {
+      int reg_num = inst.arch_reg.dst[op]; // this math needs to match that used in function_info::ptx_decode_inst
+      if( reg_num >= 0 ){ // valid register
+         unsigned bank = register_bank(reg_num,inst.warp_id(),m_num_banks,m_bank_warp_shift);
+         if( m_arbiter.bank_idle(bank) ) {
+             m_arbiter.allocate_bank_for_write(bank,op_t(&inst,reg_num,m_num_banks,m_bank_warp_shift));
+             inst.arch_reg.dst[op] = -1;
+         } else {
+             return false;
+         }
       }
    }
    for(unsigned i=0;i<(unsigned)regs.size();i++){
