@@ -1425,7 +1425,40 @@ __host__ cudaError_t CUDARTAPI cudaLaunch( const char *hostFun )
 	dim3 gridDim = config.grid_dim();
 	dim3 blockDim = config.block_dim();
 		
-	
+	gpgpu_t *gpu = context->get_device()->get_gpgpu();
+	checkpoint *g_checkpoint;
+	g_checkpoint = new checkpoint();
+	class memory_space *global_mem;
+	global_mem = gpu->get_global_memory();
+
+	if(gpu->resume_option ==1 && (grid->get_uid()==gpu->resume_kernel))
+	{
+		
+	    char f1name[2048];
+	    snprintf(f1name,2048,"checkpoint_files/global_mem_%d.txt", grid->get_uid());
+
+	    g_checkpoint->load_global_mem(global_mem, f1name);	
+		for (int i=0;i<gpu->resume_CTA;i++)
+			grid->increment_cta_id();
+	}
+	if(gpu->resume_option==1 && (grid->get_uid()<gpu->resume_kernel))
+	{
+		char f1name[2048];
+	    snprintf(f1name,2048,"checkpoint_files/global_mem_%d.txt", grid->get_uid());
+
+	    g_checkpoint->load_global_mem(global_mem, f1name);	
+		printf("Skipping kernel %d as resuming from kernel %d\n",grid->get_uid(),gpu->resume_kernel );
+		g_cuda_launch_stack.pop_back();
+		return g_last_cudaError = cudaSuccess;
+		
+	}
+	if(gpu->checkpoint_option==1 && (grid->get_uid()>gpu->checkpoint_kernel))
+	{
+		printf("Skipping kernel %d as checkpoint from kernel %d\n",grid->get_uid(),gpu->checkpoint_kernel );
+		g_cuda_launch_stack.pop_back();
+		return g_last_cudaError = cudaSuccess;
+		
+	}
 	printf("GPGPU-Sim PTX: pushing kernel \'%s\' to stream %u, gridDim= (%u,%u,%u) blockDim = (%u,%u,%u) \n",
 			kname.c_str(), stream?stream->get_uid():0, gridDim.x,gridDim.y,gridDim.z,blockDim.x,blockDim.y,blockDim.z );
 	stream_operation op(grid,g_ptx_sim_mode,stream);
