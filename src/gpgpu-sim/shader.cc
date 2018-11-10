@@ -391,11 +391,12 @@ void shader_core_ctx::reinit(unsigned start_thread, unsigned end_thread, bool re
    }
 }
 
-void shader_core_ctx::init_warps( unsigned cta_id, unsigned start_thread, unsigned end_thread )
+void shader_core_ctx::init_warps( unsigned cta_id, unsigned start_thread, unsigned end_thread, unsigned ctaid, int cta_size, unsigned kernel_id )
 {
     address_type start_pc = next_pc(start_thread);
     if (m_config->model == POST_DOMINATOR) {
         unsigned start_warp = start_thread / m_config->warp_size;
+        unsigned warp_per_cta =  cta_size / m_config->warp_size;
         unsigned end_warp = end_thread / m_config->warp_size + ((end_thread % m_config->warp_size)? 1 : 0);
         for (unsigned i = start_warp; i < end_warp; ++i) {
             unsigned n_active=0;
@@ -410,6 +411,21 @@ void shader_core_ctx::init_warps( unsigned cta_id, unsigned start_thread, unsign
                 }
             }
             m_simt_stack[i]->launch(start_pc,active_threads);
+
+              if(m_gpu->resume_option==1 && kernel_id==m_gpu->resume_kernel && ctaid>=m_gpu->resume_CTA && ctaid<m_gpu->checkpoint_CTA_t )
+               { 
+                char fname[2048];
+                snprintf(fname,2048,"checkpoint_files/warp_%d_%d_simt.txt",i%warp_per_cta,ctaid );
+                unsigned pc,rpc;
+                m_simt_stack[i]->resume(fname);
+                m_simt_stack[i]->get_pdom_stack_top_info(&pc,&rpc);
+                for (unsigned t = 0; t < m_config->warp_size; t++) {
+                  m_thread[i * m_config->warp_size + t]->set_npc(pc);
+                  m_thread[i * m_config->warp_size + t]->update_pc();
+                }   
+                start_pc=pc;
+              }
+               
             m_warp[i].init(start_pc,cta_id,i,active_threads, m_dynamic_warp_id);
             ++m_dynamic_warp_id;
             m_not_completed += n_active;

@@ -1897,7 +1897,7 @@ public:
 	 }
 
     int test_res_bus(int latency);
-    void init_warps(unsigned cta_id, unsigned start_thread, unsigned end_thread);
+    void init_warps(unsigned cta_id, unsigned start_thread, unsigned end_thread,unsigned ctaid, int cta_size, unsigned kernel_id);
     virtual void checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned t, unsigned tid);
     address_type next_pc( int tid ) const;
     void fetch();
