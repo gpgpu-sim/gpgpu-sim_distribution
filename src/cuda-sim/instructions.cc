@@ -183,63 +183,7 @@ void ptx_thread_info::set_reg( const symbol *reg, const ptx_reg_t &value )
    m_last_set_operand_value = value;
 }
 
-void ptx_thread_info::print_reg_thread(char * fname)
-{
 
-  FILE *fp= fopen(fname,"w");
-  assert(fp!=NULL);
-
-  int size = m_regs.size();
-  
-  if(size>0)
-  {  
-  reg_map_t reg = m_regs.back();
-  
-      typename reg_map_t::const_iterator it;
-      for (it = reg.begin(); it != reg.end(); ++it) 
-        {
-          const std::string &name = it->first->name();
-          const std::string &dec= it->first->decl_location();
-          unsigned size = it->first->get_size_in_bytes();
-          fprintf(fp,"%s %llu %s %d\n",name.c_str(),it->second, dec.c_str(),size );
-          
-        }
-   //m_regs.pop_back();     
-  }
-  fclose(fp);
-
-  }
-
-void ptx_thread_info::resume_reg_thread(char * fname, symbol_table * symtab)
-{
-
-
-      FILE * fp2 = fopen(fname, "r");
-      assert(fp2!=NULL);
-      //m_regs.push_back( reg_map_t() );
-      char line [ 200 ];
-      while ( fgets ( line, sizeof line, fp2 ) != NULL )
-      {
-          symbol *reg;
-          char * pch;
-          unsigned size;
-          pch = strtok (line," ");
-          char * name =pch;
-          reg= symtab->lookup(name);
-          ptx_reg_t data;
-          pch = strtok (NULL," "); 
-          data = atoi(pch);
-          pch = strtok (NULL," ");
-          char * decl= pch;
-          pch = strtok (NULL," ");
-          size = atoi(pch);
-
-
-          m_regs.back()[reg] = data;
-      }
-      fclose ( fp2 );
-}
-    
 
 ptx_reg_t ptx_thread_info::get_reg( const symbol *reg )
 {

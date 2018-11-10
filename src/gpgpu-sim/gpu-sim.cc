@@ -1414,38 +1414,19 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
     // bind functional simulation state of threads to hardware resources (simulation) 
     warp_set_t warps;
     unsigned nthreads_in_block= 0;
-    function_info *kernel_func_info = kernel.entry();
-    symbol_table * symtab= kernel_func_info->get_symtab();
-    unsigned ctaid= kernel.get_next_cta_id_single();
-    checkpoint *g_checkpoint=  new checkpoint();
+
     for (unsigned i = start_thread; i<end_thread; i++) {
         m_threadState[i].m_cta_id = free_cta_hw_id;
         unsigned warp_id = i/m_config->warp_size;
         nthreads_in_block += ptx_sim_init_thread(kernel,&m_thread[i],m_sid,i,cta_size-(i-start_thread),m_config->n_thread_per_shader,this,free_cta_hw_id,warp_id,m_cluster->get_gpu());
         m_threadState[i].m_active = true; 
-        // load thread local memory and register file
-        if(m_gpu->resume_option==1 && kernel.get_uid()==m_gpu->resume_kernel && ctaid>=m_gpu->resume_CTA && ctaid<m_gpu->checkpoint_CTA_t )
-        {
-            char fname[2048];
-            snprintf(fname,2048,"checkpoint_files/thread_%d_%d_reg.txt",i%cta_size,ctaid );
-            m_thread[i]->resume_reg_thread(fname,symtab);
-            char f1name[2048];
-            snprintf(f1name,2048,"checkpoint_files/local_mem_thread_%d_%d_reg.txt",i%cta_size,ctaid);
-            g_checkpoint->load_global_mem(m_thread[i]->m_local_mem, f1name); 
-        }
-        //
+ 
         warps.set( warp_id );
     }
     assert( nthreads_in_block > 0 && nthreads_in_block <= m_config->n_thread_per_shader); // should be at least one, but less than max
     m_cta_status[free_cta_hw_id]=nthreads_in_block;
 
-    if(m_gpu->resume_option==1 && kernel.get_uid()==m_gpu->resume_kernel && ctaid>=m_gpu->resume_CTA && ctaid<m_gpu->checkpoint_CTA_t )
-    {
-        char f1name[2048];
-        snprintf(f1name,2048,"checkpoint_files/shared_mem_%d.txt", ctaid);
-        
-        g_checkpoint->load_global_mem(m_thread[start_thread]->m_shared_mem, f1name);  
-    }
+
     // now that we know which warps are used in this CTA, we can allocate
     // resources for use in CTA-wide barrier operations
     m_barriers.allocate_barrier(free_cta_hw_id,warps);

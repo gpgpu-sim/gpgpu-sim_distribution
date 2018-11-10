@@ -381,8 +381,7 @@ public:
     void     get_pdom_stack_top_info( unsigned *pc, unsigned *rpc ) const;
     unsigned get_rp() const;
     void     print(FILE *fp) const;
-    void     resume(char * fname) ;
-    void    print_checkpoint (FILE *fout) const;
+
 
 protected:
     unsigned m_warp_id;
@@ -502,28 +501,14 @@ public:
     const char* get_ptx_inst_debug_file() const  { return g_ptx_inst_debug_file; }
     int         get_ptx_inst_debug_thread_uid() const { return g_ptx_inst_debug_thread_uid; }
     unsigned    get_texcache_linesize() const { return m_texcache_linesize; }
-    int get_checkpoint_option() const {return checkpoint_option; }
-    int get_checkpoint_kernel() const {return checkpoint_kernel; }
-    int get_checkpoint_CTA() const {return checkpoint_CTA; }
-    int get_resume_option() const {return resume_option; }
-    int get_resume_kernel() const {return resume_kernel; }
-    int get_resume_CTA() const {return resume_CTA; }
-    int get_checkpoint_CTA_t() const {return checkpoint_CTA_t; }
-    int get_checkpoint_insn_Y() const {return checkpoint_insn_Y; }
+
 private:
     // PTX options
     int m_ptx_convert_to_ptxplus;
     int m_ptx_use_cuobjdump;
     int m_experimental_lib_support;
     unsigned m_ptx_force_max_capability;
-    int checkpoint_option;
-    int checkpoint_kernel;
-    int checkpoint_CTA;
-    int resume_option;
-    int resume_kernel;
-    int resume_CTA;
-    int checkpoint_CTA_t;
-    int checkpoint_insn_Y;
+
     int   g_ptx_inst_debug_to_file;
     char* g_ptx_inst_debug_file;
     int   g_ptx_inst_debug_thread_uid;
@@ -535,14 +520,7 @@ private:
 class gpgpu_t {
 public:
     gpgpu_t( const gpgpu_functional_sim_config &config );
-    int checkpoint_option;
-    int checkpoint_kernel;
-    int checkpoint_CTA;
-    int resume_option;
-    int resume_kernel;
-    int resume_CTA;
-    int checkpoint_CTA_t;
-    int checkpoint_insn_Y;
+
     void* gpu_malloc( size_t size );
     void* gpu_mallocarray( size_t count );
     void  gpu_memset( size_t dst_start_addr, int c, size_t count );
