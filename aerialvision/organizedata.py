@@ -97,7 +97,7 @@ def organizedata(fileVars):
         'sparse':OrganizeSparse,        # Vector data with 2D index  (used by DRAM access stats)
         'custom':0
     }
-    data_type_char = {int:'I', float:'f'}
+       data_type_char = {int:'I', float:'f'}
 
     print "Organizing data into internal format..."
 
