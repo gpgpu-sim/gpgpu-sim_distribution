@@ -565,7 +565,7 @@ public:
    void init( unsigned num_banks, shader_core_ctx *shader );
 
    // modifiers
-   bool writeback( const warp_inst_t &warp ); // might cause stall 
+   bool writeback( warp_inst_t &warp ); 
 
    void step()
    {
@@ -1392,7 +1392,8 @@ struct shader_core_config : public core_config
     unsigned max_cta_per_core; //Limit on number of concurrent CTAs in shader core
     unsigned max_barriers_per_cta;
     char * gpgpu_scheduler_string;
-
+    unsigned gpgpu_shmem_per_block;
+    unsigned gpgpu_registers_per_block;
     char* pipeline_widths_string;
     int pipe_widths[N_PIPELINE_STAGES];
 

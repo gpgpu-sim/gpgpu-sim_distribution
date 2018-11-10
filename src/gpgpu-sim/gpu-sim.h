@@ -436,7 +436,9 @@ public:
    void get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc );
 
    int shared_mem_size() const;
+   int shared_mem_per_block() const;
    int num_registers_per_core() const;
+   int num_registers_per_block() const;
    int wrp_size() const;
    int shader_clock() const;
    const struct cudaDeviceProp *get_prop() const;
