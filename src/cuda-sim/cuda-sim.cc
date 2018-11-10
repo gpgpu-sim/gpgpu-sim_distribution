@@ -2125,8 +2125,7 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
     //before we execute, we should do PDOM analysis for functional simulation scenario.
     function_info *kernel_func_info = kernel.entry();
     const struct gpgpu_ptx_sim_info *kernel_info = ptx_sim_kernel_info(kernel_func_info);
-    checkpoint *g_checkpoint;
-    g_checkpoint = new checkpoint();
+
 
     if (kernel_func_info->is_pdom_set()) {
     	printf("GPGPU-Sim PTX: PDOM analysis already done for %s \n", kernel.name().c_str() );
@@ -2143,21 +2142,12 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
 
 
       
-    int inst_count=50;
-    int cp_op= g_the_gpu->checkpoint_option;
-    int cp_CTA = g_the_gpu->checkpoint_CTA;
-    int cp_kernel= g_the_gpu->checkpoint_kernel;
-    cp_count= g_the_gpu->checkpoint_insn_Y;
-    cp_cta_resume= g_the_gpu->checkpoint_CTA_t;
-    int cta_launched =0;
 
     //we excute the kernel one CTA (Block) at the time, as synchronization functions work block wise
     while(!kernel.no_more_ctas_to_run()){
         unsigned temp=kernel.get_next_cta_id_single();
         
 
-        if(cp_op==0 || (cp_op==1 && cta_launched<cp_cta_resume && kernel.get_uid()==cp_kernel) || kernel.get_uid()< cp_kernel) // just fro testing
-        {
            functionalCoreSim cta(
                &kernel,
                g_the_gpu,
@@ -2168,22 +2158,12 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
             #if (CUDART_VERSION >= 5000)
             	launch_all_device_kernels();
             #endif
-         }
-         else
-         {
-            kernel.increment_cta_id();
-         }
-    cta_launched++;
+         
     }
 
       
       
-     if(cp_op==1)
-	{
-      char f1name[2048];
-      snprintf(f1name,2048,"checkpoint_files/global_mem_%d.txt", kernel.get_uid() );
-      g_checkpoint->store_global_mem(g_the_gpu->get_global_memory(), f1name , "%08x");
-	}
+   
 
 
       
@@ -2227,7 +2207,6 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
 void functionalCoreSim::initializeCTA(unsigned ctaid_cp)
 {
     int ctaLiveThreads=0;
-    symbol_table * symtab= m_kernel->entry()->get_symtab();
     
     for(int i=0; i< m_warp_count; i++){
         m_warpAtBarrier[i]=false;
@@ -2240,10 +2219,7 @@ void functionalCoreSim::initializeCTA(unsigned ctaid_cp)
     for(unsigned i=0; i<m_kernel->threads_per_cta();i++) {
         ptx_sim_init_thread(*m_kernel,&m_thread[i],0,i,m_kernel->threads_per_cta()-i,m_kernel->threads_per_cta(),this,0,i/m_warp_size,(gpgpu_t*)m_gpu, true);
         assert(m_thread[i]!=NULL && !m_thread[i]->is_done());
-        char fname[2048];
-        snprintf(fname,2048,"checkpoint_files/thread_%d_0_reg.txt",i );
-        if(cp_cta_resume==1)
-            m_thread[i]->resume_reg_thread(fname,symtab);
+
         ctaLiveThreads++;
     }
 
@@ -2266,40 +2242,25 @@ void  functionalCoreSim::createWarp(unsigned warpId)
    char fname[2048];
    snprintf(fname,2048,"checkpoint_files/warp_%d_0_simt.txt",warpId );
 
-   if(cp_cta_resume==1)
-   {
-      unsigned pc,rpc;
-      m_simt_stack[warpId]->resume(fname);
-      m_simt_stack[warpId]->get_pdom_stack_top_info(&pc,&rpc);
-      for(int i=warpId*m_warp_size; i<warpId*m_warp_size+m_warp_size;i++){
-        m_thread[i]->set_npc(pc);
-        m_thread[i]->update_pc();
-    }   
 
-   }
    m_liveThreadCount[warpId]= liveThreadsCount;
 }
 
 void functionalCoreSim::execute(int inst_count, unsigned ctaid_cp)
  {
-   cp_count= m_gpu->checkpoint_insn_Y;
-    cp_cta_resume= m_gpu->checkpoint_CTA_t;
+
     initializeCTA(ctaid_cp);
     
-    int count=0;
+
     while(true){
         bool someOneLive= false;
         bool allAtBarrier = true;
         for(unsigned i=0;i<m_warp_count;i++){
             executeWarp(i,allAtBarrier,someOneLive);
-            count++;
+
         }
         
-        if(inst_count>0 && count>inst_count && (m_kernel->get_uid()==m_gpu->checkpoint_kernel) && (ctaid_cp>=m_gpu->checkpoint_CTA) && (ctaid_cp<m_gpu->checkpoint_CTA_t) && m_gpu->checkpoint_option==1) 
-         {
-            someOneLive=false;
-            break;
-         }
+        
         if(!someOneLive) break;
         if(allAtBarrier){
              for(unsigned i=0;i<m_warp_count;i++)
@@ -2307,45 +2268,6 @@ void functionalCoreSim::execute(int inst_count, unsigned ctaid_cp)
         }
     }
 
-    checkpoint *g_checkpoint;
-    g_checkpoint = new checkpoint();
-    
-    symbol * sym;
-    ptx_reg_t regval;
-    regval.u64= 123;
-    symbol_table * symtab= m_kernel->entry()->get_symtab();
-
-
-    unsigned ctaid =m_kernel->get_next_cta_id_single();
-    if(m_gpu->checkpoint_option==1 && (m_kernel->get_uid()==m_gpu->checkpoint_kernel) && (ctaid_cp>=m_gpu->checkpoint_CTA) && (ctaid_cp<m_gpu->checkpoint_CTA_t))
-   {
-       char fname[2048];
-       snprintf(fname,2048,"checkpoint_files/shared_mem_%d.txt",ctaid-1 );
-       g_checkpoint->store_global_mem(m_thread[0]->m_shared_mem, fname , "%08x");
-      for(int i=0; i<32*m_warp_count;i++)
-      {
-         char fname[2048];
-         snprintf(fname,2048,"checkpoint_files/thread_%d_%d_reg.txt",i,ctaid-1 );
-          m_thread[i]->print_reg_thread(fname);
-          char f1name[2048];
-         snprintf(f1name,2048,"checkpoint_files/local_mem_thread_%d_%d_reg.txt",i,ctaid-1 );
-         g_checkpoint->store_global_mem(m_thread[i]->m_local_mem, f1name , "%08x");
-         m_thread[i]->set_done();
-         m_thread[i]->exitCore();
-         m_thread[i]->registerExit();
-      }
-   
-      for(int i=0;i<m_warp_count;i++)
-      {
-         
-         char fname[2048];
-         snprintf(fname,2048,"checkpoint_files/warp_%d_%d_simt.txt",i,ctaid-1 );
-         FILE * fp = fopen(fname,"w");
-         assert(fp!=NULL);
-         m_simt_stack[i]->print_checkpoint(fp);
-         fclose(fp);
-      }
-   }
 
 }
 
