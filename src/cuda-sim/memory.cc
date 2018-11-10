@@ -44,9 +44,16 @@ template<unsigned BSIZE> memory_space_impl<BSIZE>::memory_space_impl( std::strin
    assert( m_log2_block_size != (unsigned)-1 );
 }
 
+template<unsigned BSIZE> void memory_space_impl<BSIZE>::write_only( mem_addr_t offset, mem_addr_t index, size_t length, const void *data)
+{
+   m_data[index].write(offset,length,(const unsigned char*)data);
+}
+
 template<unsigned BSIZE> void memory_space_impl<BSIZE>::write( mem_addr_t addr, size_t length, const void *data, class ptx_thread_info *thd, const ptx_instruction *pI)
 {
+
    mem_addr_t index = addr >> m_log2_block_size;
+
    if ( (addr+length) <= (index+1)*BSIZE ) {
       // fast route for intra-block access 
       unsigned offset = addr & (BSIZE-1);
@@ -142,8 +149,9 @@ template<unsigned BSIZE> void memory_space_impl<BSIZE>::read( mem_addr_t addr, s
 template<unsigned BSIZE> void memory_space_impl<BSIZE>::print( const char *format, FILE *fout ) const
 {
    typename map_t::const_iterator i_page;
-   for (i_page = m_data.begin(); i_page != m_data.end(); ++i_page) {
-      fprintf(fout, "%s - %#x:", m_name.c_str(), i_page->first);
+
+   for ( i_page = m_data.begin(); i_page != m_data.end(); ++i_page) {
+      fprintf(fout, "%s %08x:", m_name.c_str(), i_page->first);
       i_page->second.print(format, fout);
    }
 }
