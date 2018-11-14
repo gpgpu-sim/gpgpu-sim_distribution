@@ -199,6 +199,8 @@ void shader_core_config::reg_options(class OptionParser * opp)
 {
     //sjq
     m_bypass_policy_config.reg_options(opp);
+    option_parser_register(opp,"-ideal_mem_divergency",OPT_BOOL,&ideal_mem_divergency,
+                    "0=not ideal;1=ideal","0");
     //sjq
 
     option_parser_register(opp, "-gpgpu_simd_model", OPT_INT32, &model, 

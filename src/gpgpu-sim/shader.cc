@@ -1372,24 +1372,24 @@ bool ldst_unit::texture_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail,
    return inst.accessq_empty(); //done if empty.
 }
 
-
-void changeStats(bool bypass,std::map<warp_inst_t*,bypassType> & stat,warp_inst_t * p_inst){
-    assert(stat.find(p_inst)!=stat.end());
-    switch(stat[p_inst]){
-        case INIT:
-            stat[p_inst]=bypass?ALL_BYPASS:ALL_CACHE;
-            break;
-        case ALL_BYPASS:
-            stat[p_inst]=bypass?ALL_BYPASS:DIVERGENCY;
-            break;
-        case ALL_CACHE:
-            stat[p_inst]=bypass?DIVERGENCY:ALL_CACHE;
-            break;
-        case DIVERGENCY:
-            stat[p_inst]=DIVERGENCY;
-            break;
+void changeStats(bool bypass, std::map<warp_inst_t *, bypassType> &stat, warp_inst_t *p_inst)
+{
+    assert(stat.find(p_inst) != stat.end());
+    switch (stat[p_inst])
+    {
+    case INIT:
+        stat[p_inst] = bypass ? ALL_BYPASS : ALL_CACHE;
+        break;
+    case ALL_BYPASS:
+        stat[p_inst] = bypass ? ALL_BYPASS : DIVERGENCY;
+        break;
+    case ALL_CACHE:
+        stat[p_inst] = bypass ? DIVERGENCY : ALL_CACHE;
+        break;
+    case DIVERGENCY:
+        stat[p_inst] = DIVERGENCY;
+        break;
     }
-
 }
 std::map<warp_inst_t *, bypassType> bypass_divergency_stat;
 unsigned long long all_inst = 0;
@@ -1447,8 +1447,7 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst, mem_stage_stall_type &stall_reas
         return true;
     assert(!inst.accessq_empty());
 
-
-    switch (m_config->m_bypass_policy_config.bypass_policy)//sjq
+    switch (m_config->m_bypass_policy_config.bypass_policy) //sjq
     {
     case 0:
         break;
@@ -1487,8 +1486,8 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst, mem_stage_stall_type &stall_reas
         if (m_core->get_config()->gmem_skip_L1D)
             bypassL1D = true;
     }
-    bool isConflictBypass=false;
-    switch (m_config->m_bypass_policy_config.bypass_policy)//sjq
+    bool isConflictBypass = false;
+    switch (m_config->m_bypass_policy_config.bypass_policy) //sjq
     {
     case 0:
         break;
@@ -1499,12 +1498,11 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst, mem_stage_stall_type &stall_reas
             bypassL1D = true;
             isConflictBypass = true;
         }
-       
+
         break;
     }
     if (bypassL1D)
     {
-        
 
         // bypass L1 cache
         unsigned control_size = inst.is_store() ? WRITE_PACKET_SIZE : READ_PACKET_SIZE;
@@ -1515,7 +1513,7 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst, mem_stage_stall_type &stall_reas
             //sjq
             //do nothing
         }
-        else//icnt not full
+        else //icnt not full
         {
             switch (m_config->m_bypass_policy_config.bypass_policy) //sjq
             {
@@ -1563,23 +1561,32 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst, mem_stage_stall_type &stall_reas
     { //not bypass
         assert(CACHE_UNDEFINED != inst.cache_op);
         stall_cond = process_memory_access_queue(m_L1D, inst); //to cache
-        if(stall_cond==NO_RC_FAIL){
+        if (stall_cond == NO_RC_FAIL)
+        {
             switch (m_config->m_bypass_policy_config.bypass_policy)
             {
             case 0:
                 break;
             case 1:
-               // current_bypass_num[&inst]++; //sjq;;; to know this inst 's bypass number
+                // current_bypass_num[&inst]++; //sjq;;; to know this inst 's bypass number
                 current_access_num[&inst]++;
                 changeStats(bypassL1D, bypass_divergency_stat, &inst);
                 break;
-                
 
             default:
                 break;
             }
         }
     }
+    if(!inst.accessq_empty())
+    {
+        if(m_config->ideal_mem_divergency){
+            
+        }
+    }
+
+
+
     if (!inst.accessq_empty())
         stall_cond = COAL_STALL;
     if (stall_cond != NO_RC_FAIL)
@@ -1591,7 +1598,7 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst, mem_stage_stall_type &stall_reas
         else
             access_type = (iswrite) ? G_MEM_ST : G_MEM_LD;
     }
-    switch (m_config->m_bypass_policy_config.bypass_policy)//when bypass happens
+    switch (m_config->m_bypass_policy_config.bypass_policy) //when bypass happens
     {
     case 0:
         break;
@@ -1630,9 +1637,10 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst, mem_stage_stall_type &stall_reas
 
     return inst.accessq_empty();
 }
-void bypass_policy_config::reg_options(OptionParser * opp){
-    option_parser_register(opp, "-bypass_policy", OPT_INT32, &bypass_policy, 
-                   "0=no bypass;1=bypass set conflict", "0");
+void bypass_policy_config::reg_options(OptionParser *opp)
+{
+    option_parser_register(opp, "-bypass_policy", OPT_INT32, &bypass_policy,
+                           "0=no bypass;1=bypass set conflict", "0");
 }
 
 bool ldst_unit::response_buffer_full() const

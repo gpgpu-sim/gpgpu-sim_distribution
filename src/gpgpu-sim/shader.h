@@ -1350,6 +1350,8 @@ struct shader_core_config : public core_config
     unsigned mem2device(unsigned memid) const { return memid + n_simt_clusters; }
 
     bypass_policy_config m_bypass_policy_config;
+
+    bool ideal_mem_divergency;
 };
 
 struct shader_core_stats_pod {
