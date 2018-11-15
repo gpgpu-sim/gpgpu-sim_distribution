@@ -1578,14 +1578,29 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst, mem_stage_stall_type &stall_reas
             }
         }
     }
-    if(!inst.accessq_empty())
+    //start sjq /add feature to enable ideal memory divergency
+    if (m_config->ideal_mem_divergency)
     {
-        if(m_config->ideal_mem_divergency){
-            
+        if (!inst.accessq_empty()) //if inst.accessq is not empty ,we let it empty
+        {
+
+            while (!inst.accessq_empty())
+            {
+                inst.accessq_pop_back();
+                if (inst.is_load())
+                {
+                    //let core know that all the data is returned
+                    for (unsigned r = 0; r < 4; r++)
+                        if (inst.out[r] > 0)
+                            m_pending_writes[inst.warp_id()][inst.out[r]]--;
+                }
+            }
+        }
+        else
+        {
+            //nothing to do
         }
     }
-
-
 
     if (!inst.accessq_empty())
         stall_cond = COAL_STALL;

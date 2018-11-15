@@ -2,8 +2,8 @@
 
 *********sjq*********
 all inst; all cached;all bypass;divengency;detailed divergency;detail access
-9703 9703 0 0
-1 9703
+0 0 0 0
+1 0
 2 0
 3 0
 4 0
@@ -36,7 +36,7 @@ all inst; all cached;all bypass;divengency;detailed divergency;detail access
 31 0
 32 0
 
-1 0 9703
+1 0 0
 1 1 0
 2 0 0
 2 1 0
