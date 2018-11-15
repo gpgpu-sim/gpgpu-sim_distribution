@@ -12,7 +12,9 @@
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/projects/ptxtest",
-            "environment": [],
+            "environment": [
+                
+            ],
             "externalConsole": true,
             "MIMode": "gdb",
             "setupCommands": [
