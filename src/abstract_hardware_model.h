@@ -70,6 +70,7 @@ enum FuncCache
 
 #include <string.h>
 #include <stdio.h>
+#include <set>
 
 typedef unsigned long long new_addr_type;
 typedef unsigned address_type;
@@ -193,6 +194,9 @@ void increment_x_then_y_then_z( dim3 &i, const dim3 &bound);
 class stream_manager;
 struct CUstream_st;
 extern stream_manager * g_stream_manager;
+//support for pinned memories added
+extern std::map<void *,void **> pinned_memory;
+extern std::map<void *, size_t> pinned_memory_size;
 
 class kernel_info_t {
 public:
@@ -242,6 +246,10 @@ public:
       m_next_tid.z=0;
    }
    dim3 get_next_cta_id() const { return m_next_cta; }
+   unsigned get_next_cta_id_single() const 
+   {
+      return m_next_cta.x + m_grid_dim.x*m_next_cta.y + m_grid_dim.x*m_grid_dim.y*m_next_cta.z;
+    }
    bool no_more_ctas_to_run() const 
    {
       return (m_next_cta.x >= m_grid_dim.x || m_next_cta.y >= m_grid_dim.y || m_next_cta.z >= m_grid_dim.z );
@@ -372,7 +380,9 @@ public:
     const simt_mask_t &get_active_mask() const;
     void     get_pdom_stack_top_info( unsigned *pc, unsigned *rpc ) const;
     unsigned get_rp() const;
-    void     print(FILE*fp) const;
+    void     print(FILE *fp) const;
+    void     resume(char * fname) ;
+    void    print_checkpoint (FILE *fout) const;
 
 protected:
     unsigned m_warp_id;
@@ -492,14 +502,28 @@ public:
     const char* get_ptx_inst_debug_file() const  { return g_ptx_inst_debug_file; }
     int         get_ptx_inst_debug_thread_uid() const { return g_ptx_inst_debug_thread_uid; }
     unsigned    get_texcache_linesize() const { return m_texcache_linesize; }
-
+    int get_checkpoint_option() const {return checkpoint_option; }
+    int get_checkpoint_kernel() const {return checkpoint_kernel; }
+    int get_checkpoint_CTA() const {return checkpoint_CTA; }
+    int get_resume_option() const {return resume_option; }
+    int get_resume_kernel() const {return resume_kernel; }
+    int get_resume_CTA() const {return resume_CTA; }
+    int get_checkpoint_CTA_t() const {return checkpoint_CTA_t; }
+    int get_checkpoint_insn_Y() const {return checkpoint_insn_Y; }
 private:
     // PTX options
     int m_ptx_convert_to_ptxplus;
     int m_ptx_use_cuobjdump;
     int m_experimental_lib_support;
     unsigned m_ptx_force_max_capability;
-
+    int checkpoint_option;
+    int checkpoint_kernel;
+    int checkpoint_CTA;
+    int resume_option;
+    int resume_kernel;
+    int resume_CTA;
+    int checkpoint_CTA_t;
+    int checkpoint_insn_Y;
     int   g_ptx_inst_debug_to_file;
     char* g_ptx_inst_debug_file;
     int   g_ptx_inst_debug_thread_uid;
@@ -511,6 +535,14 @@ private:
 class gpgpu_t {
 public:
     gpgpu_t( const gpgpu_functional_sim_config &config );
+    int checkpoint_option;
+    int checkpoint_kernel;
+    int checkpoint_CTA;
+    int resume_option;
+    int resume_kernel;
+    int resume_CTA;
+    int checkpoint_CTA_t;
+    int checkpoint_insn_Y;
     void* gpu_malloc( size_t size );
     void* gpu_mallocarray( size_t count );
     void  gpu_memset( size_t dst_start_addr, int c, size_t count );
@@ -524,38 +556,34 @@ public:
 
     void gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, const struct cudaArray* array);
     void gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref, int dim, int readmode, int ext);
+    void gpgpu_ptx_sim_unbindTexture(const struct textureReference* texref);
     const char* gpgpu_ptx_sim_findNamefromTexture(const struct textureReference* texref);
 
-    const struct textureReference* get_texref(const std::string &texname) const
+    const struct textureReference* get_texref( const std::string &texname ) const
     {
-        std::map<std::string, const struct textureReference*>::const_iterator t=m_NameToTextureRef.find(texname);
-        if( t == m_NameToTextureRef.end() ) {
-	  // search for :: prefixed names
-	  std::string temp("::" + texname);
-	  t=m_NameToTextureRef.find(temp);
-	}
-
-	assert(t != m_NameToTextureRef.end());
-
-        return t->second;
+        std::map<std::string, std::set<const struct textureReference*> >::const_iterator t=m_NameToTextureRef.find(texname);
+        assert( t != m_NameToTextureRef.end() );
+        return *(t->second.begin());
     }
-    const struct cudaArray* get_texarray( const struct textureReference *texref ) const
+
+    const struct cudaArray* get_texarray( const std::string &texname ) const
     {
-        std::map<const struct textureReference*,const struct cudaArray*>::const_iterator t=m_TextureRefToCudaArray.find(texref);
-        assert(t != m_TextureRefToCudaArray.end());
-        return t->second;
-    }
-    const struct textureInfo* get_texinfo( const struct textureReference *texref ) const
-    {
-        std::map<const struct textureReference*, const struct textureInfo*>::const_iterator t=m_TextureRefToTexureInfo.find(texref);
-        assert(t != m_TextureRefToTexureInfo.end());
+        std::map<std::string,const struct cudaArray*>::const_iterator t=m_NameToCudaArray.find(texname);
+        assert(t != m_NameToCudaArray.end());
         return t->second;
     }
 
-    const struct textureReferenceAttr* get_texattr( const struct textureReference *texref ) const
+    const struct textureInfo* get_texinfo( const std::string &texname ) const
     {
-        std::map<const struct textureReference*, const struct textureReferenceAttr*>::const_iterator t=m_TextureRefToAttribute.find(texref);
-        assert(t != m_TextureRefToAttribute.end());
+        std::map<std::string, const struct textureInfo*>::const_iterator t=m_NameToTexureInfo.find(texname);
+        assert(t != m_NameToTexureInfo.end());
+        return t->second;
+    }
+
+    const struct textureReferenceAttr* get_texattr( const std::string &texname ) const
+    {
+        std::map<std::string, const struct textureReferenceAttr*>::const_iterator t=m_NameToAttribute.find(texname);
+        assert(t != m_NameToAttribute.end());
         return t->second;
     }
 
@@ -572,10 +600,11 @@ protected:
 
     unsigned long long m_dev_malloc;
     
-    std::map<std::string, const struct textureReference*> m_NameToTextureRef;
-    std::map<const struct textureReference*,const struct cudaArray*> m_TextureRefToCudaArray;
-    std::map<const struct textureReference*, const struct textureInfo*> m_TextureRefToTexureInfo;
-    std::map<const struct textureReference*, const struct textureReferenceAttr*> m_TextureRefToAttribute;
+    std::map<std::string, std::set<const struct textureReference*> > m_NameToTextureRef;
+    std::map<const struct textureReference*, std::string> m_TextureRefToName;
+    std::map<std::string, const struct cudaArray*> m_NameToCudaArray;
+    std::map<std::string, const struct textureInfo*> m_NameToTexureInfo;
+    std::map<std::string, const struct textureReferenceAttr*> m_NameToAttribute;
 };
 
 struct gpgpu_ptx_sim_info
@@ -1105,7 +1134,21 @@ public:
 void move_warp( warp_inst_t *&dst, warp_inst_t *&src );
 
 size_t get_kernel_code_size( class function_info *entry );
+class checkpoint
+{    
+public:
 
+     checkpoint();
+    ~checkpoint(){
+      printf("clasfsfss destructed\n");
+    }
+
+    void load_global_mem(class memory_space *temp_mem, char * f1name);
+    void store_global_mem(class memory_space *mem, char * fname , char * format);
+    unsigned radnom;
+
+
+};
 /*
  * This abstract class used as a base for functional and performance and simulation, it has basic functional simulation
  * data structures and procedures. 

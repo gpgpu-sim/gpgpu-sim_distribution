@@ -35,9 +35,69 @@
 #include "gpgpu-sim/gpu-sim.h"
 #include "option_parser.h"
 #include <algorithm>
+#include <sys/stat.h>
+#include <sstream>
+#include <iostream>
 
 unsigned mem_access_t::sm_next_access_uid = 0;   
 unsigned warp_inst_t::sm_next_uid = 0;
+
+checkpoint::checkpoint()
+{
+
+    struct stat st = {0};
+
+    if (stat("checkpoint_files", &st) == -1) {
+        mkdir("checkpoint_files", 0777);
+    }
+
+}
+void checkpoint::load_global_mem(class memory_space *temp_mem, char * f1name)
+{
+
+    FILE * fp2 = fopen(f1name, "r");
+    assert(fp2!=NULL);
+      char line [ 128 ]; /* or other suitable maximum line size */
+      unsigned int offset ;
+      while ( fgets ( line, sizeof line, fp2 ) != NULL ) /* read a line */
+      {
+         unsigned int index;
+         char * pch;
+         pch = strtok (line," ");
+         if (pch[0]=='g' || pch[0]=='s' || pch[0]=='l')
+         {
+
+           pch = strtok (NULL, " ");
+           
+           std::stringstream ss;
+            ss << std::hex << pch;
+            ss >> index;
+
+           offset=0;
+         }
+         else {
+            unsigned int  data;
+            std::stringstream ss;
+            ss << std::hex << pch;
+            ss >> data;
+            temp_mem->write_only(offset,index, 4,&data);
+            offset= offset+4;
+         }
+         //fputs ( line, stdout ); /* write the line */
+      }
+      fclose ( fp2 );
+}
+
+
+
+void checkpoint::store_global_mem(class memory_space * mem, char *fname, char * format)
+{
+
+      FILE * fp3 = fopen(fname, "w");
+      assert(fp3!=NULL);
+      mem->print(format,fp3);
+      fclose(fp3);
+}
 
 void move_warp( warp_inst_t *&dst, warp_inst_t *&src )
 {
@@ -64,6 +124,31 @@ void gpgpu_functional_sim_config::reg_options(class OptionParser * opp)
 	                 &m_experimental_lib_support,
 	                 "Try to extract code from cuda libraries [Broken because of unknown cudaGetExportTable]",
 	                 "0");
+  option_parser_register(opp, "-checkpoint_option", OPT_INT32, &checkpoint_option, 
+               " checkpointing flag (0 = no checkpoint)",
+               "0");
+  option_parser_register(opp, "-checkpoint_kernel", OPT_INT32, &checkpoint_kernel, 
+               " checkpointing during execution of which kernel (1- 1st kernel)",
+               "1");
+  option_parser_register(opp, "-checkpoint_CTA", OPT_INT32, &checkpoint_CTA, 
+               " checkpointing after # of CTA (< less than total CTA)",
+               "0");
+  option_parser_register(opp, "-resume_option", OPT_INT32, &resume_option, 
+               " resume flag (0 = no resume)",
+               "0");
+  option_parser_register(opp, "-resume_kernel", OPT_INT32, &resume_kernel, 
+               " Resume from which kernel (1= 1st kernel)",
+               "0");
+   option_parser_register(opp, "-resume_CTA", OPT_INT32, &resume_CTA, 
+               " resume from which CTA ",
+               "0");
+      option_parser_register(opp, "-checkpoint_CTA_t", OPT_INT32, &checkpoint_CTA_t, 
+               " resume from which CTA ",
+               "0");
+         option_parser_register(opp, "-checkpoint_insn_Y", OPT_INT32, &checkpoint_insn_Y, 
+               " resume from which CTA ",
+               "0");
+
     option_parser_register(opp, "-gpgpu_ptx_convert_to_ptxplus", OPT_BOOL,
                  &m_ptx_convert_to_ptxplus,
                  "Convert SASS (native ISA) to ptxplus and run ptxplus",
@@ -93,10 +178,20 @@ gpgpu_t::gpgpu_t( const gpgpu_functional_sim_config &config )
     : m_function_model_config(config)
 {
    m_global_mem = new memory_space_impl<8192>("global",64*1024);
+   
    m_tex_mem = new memory_space_impl<8192>("tex",64*1024);
    m_surf_mem = new memory_space_impl<8192>("surf",64*1024);
 
    m_dev_malloc=GLOBAL_HEAP_START; 
+   checkpoint_option = m_function_model_config.get_checkpoint_option();
+   checkpoint_kernel = m_function_model_config.get_checkpoint_kernel();
+   checkpoint_CTA = m_function_model_config.get_checkpoint_CTA();
+   resume_option = m_function_model_config.get_resume_option();
+   resume_kernel = m_function_model_config.get_resume_kernel();
+   resume_CTA = m_function_model_config.get_resume_CTA();
+   checkpoint_CTA_t = m_function_model_config.get_checkpoint_CTA_t();
+   checkpoint_insn_Y = m_function_model_config.get_checkpoint_insn_Y();
+
 
    if(m_function_model_config.get_ptx_inst_debug_to_file() != 0) 
       ptx_inst_debug_file = fopen(m_function_model_config.get_ptx_inst_debug_file(), "w");
@@ -733,6 +828,51 @@ void simt_stack::launch( address_type start_pc, const simt_mask_t &active_mask )
     m_stack.push_back(new_stack_entry);
 }
 
+void simt_stack::resume( char * fname )
+{
+    reset();    
+
+
+
+      FILE * fp2 = fopen(fname, "r");
+      assert(fp2!=NULL);
+
+      char line [ 200 ]; /* or other suitable maximum line size */
+
+      while ( fgets ( line, sizeof line, fp2 ) != NULL ) /* read a line */
+      {
+          simt_stack_entry new_stack_entry;
+          char * pch;
+          pch = strtok (line," ");
+          for (unsigned j=0; j<m_warp_size; j++)
+          {
+                if (pch[0]=='1')
+                    new_stack_entry.m_active_mask.set(j);
+                else
+                    new_stack_entry.m_active_mask.reset(j);
+                pch = strtok (NULL," ");
+                
+          }  
+          
+         new_stack_entry.m_pc=atoi(pch);
+         pch = strtok (NULL," "); 
+         new_stack_entry.m_calldepth=atoi(pch);
+         pch = strtok (NULL," "); 
+         new_stack_entry.m_recvg_pc=atoi(pch);
+         pch = strtok (NULL," "); 
+         new_stack_entry.m_branch_div_cycle=atoi(pch);
+         pch = strtok (NULL," "); 
+         if(pch[0]=='0')
+            new_stack_entry.m_type= STACK_ENTRY_TYPE_NORMAL;
+         else
+            new_stack_entry.m_type= STACK_ENTRY_TYPE_CALL;
+         m_stack.push_back(new_stack_entry);
+      }
+      fclose ( fp2 );
+
+    
+}
+
 const simt_mask_t &simt_stack::get_active_mask() const
 {
     assert(m_stack.size() > 0);
@@ -776,6 +916,20 @@ void simt_stack::print (FILE *fout) const
         }
         ptx_print_insn( stack_entry.m_pc, fout );
         fprintf(fout,"\n");
+    }
+
+}
+
+void simt_stack::print_checkpoint (FILE *fout) const
+{
+    for ( unsigned k=0; k < m_stack.size(); k++ ) {
+        simt_stack_entry stack_entry = m_stack[k];
+       
+        for (unsigned j=0; j<m_warp_size; j++)
+            fprintf(fout, "%c ", (stack_entry.m_active_mask.test(j)?'1':'0') );
+        fprintf(fout, "%d %d %d %lld %d ", stack_entry.m_pc,stack_entry.m_calldepth,stack_entry.m_recvg_pc,stack_entry.m_branch_div_cycle,stack_entry.m_type );
+        fprintf(fout, "%d %d\n",m_warp_id, m_warp_size );
+        
     }
 }
 

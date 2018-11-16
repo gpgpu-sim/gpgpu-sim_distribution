@@ -188,12 +188,20 @@ bool stream_operation::do_operation( gpgpu_sim *gpu )
         }
         break;
     case stream_event: {
-        if(g_debug_execution >= 3)
-            printf("event update\n");
+        printf("event update\n");
         time_t wallclock = time((time_t *)NULL);
         m_event->update( gpu_tot_sim_cycle, wallclock );
         m_stream->record_next_done();
         } 
+        break;
+    case stream_wait_event: {
+        //only allows next op to go if event is done
+        //otherwise stays in the stream queue
+        printf("stream wait event processing...\n");
+        if(m_event->done())
+            printf("stream wait event done\n");
+            m_stream->record_next_done();
+        }
         break;
     default:
         abort();
@@ -369,6 +377,8 @@ void stream_manager::destroy_stream( CUstream_st *stream )
 bool stream_manager::concurrent_streams_empty()
 {
     bool result = true;
+    if (m_streams.empty())
+       return true;
     // called by gpu simulation thread
     std::list<struct CUstream_st *>::iterator s;
     for( s=m_streams.begin(); s!=m_streams.end();++s ) {
@@ -376,6 +386,7 @@ bool stream_manager::concurrent_streams_empty()
         if( !stream->empty() ) {
             //stream->print(stdout);
             result = false;
+            break;
         }
     }
     return result;
@@ -467,3 +478,10 @@ void stream_manager::push( stream_operation op )
     }
 }
 
+void stream_manager::pushCudaStreamWaitEventToAllStreams( CUevent_st *e, unsigned int flags ){
+    std::list<CUstream_st *>::iterator s;
+    for( s=m_streams.begin(); s != m_streams.end(); s++ ) {
+        stream_operation op(*s,e,flags);
+        push(op);
+    }
+}

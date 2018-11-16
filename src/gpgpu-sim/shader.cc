@@ -391,11 +391,12 @@ void shader_core_ctx::reinit(unsigned start_thread, unsigned end_thread, bool re
    }
 }
 
-void shader_core_ctx::init_warps( unsigned cta_id, unsigned start_thread, unsigned end_thread )
+void shader_core_ctx::init_warps( unsigned cta_id, unsigned start_thread, unsigned end_thread, unsigned ctaid, int cta_size, unsigned kernel_id )
 {
     address_type start_pc = next_pc(start_thread);
     if (m_config->model == POST_DOMINATOR) {
         unsigned start_warp = start_thread / m_config->warp_size;
+        unsigned warp_per_cta =  cta_size / m_config->warp_size;
         unsigned end_warp = end_thread / m_config->warp_size + ((end_thread % m_config->warp_size)? 1 : 0);
         for (unsigned i = start_warp; i < end_warp; ++i) {
             unsigned n_active=0;
@@ -410,6 +411,21 @@ void shader_core_ctx::init_warps( unsigned cta_id, unsigned start_thread, unsign
                 }
             }
             m_simt_stack[i]->launch(start_pc,active_threads);
+
+              if(m_gpu->resume_option==1 && kernel_id==m_gpu->resume_kernel && ctaid>=m_gpu->resume_CTA && ctaid<m_gpu->checkpoint_CTA_t )
+               { 
+                char fname[2048];
+                snprintf(fname,2048,"checkpoint_files/warp_%d_%d_simt.txt",i%warp_per_cta,ctaid );
+                unsigned pc,rpc;
+                m_simt_stack[i]->resume(fname);
+                m_simt_stack[i]->get_pdom_stack_top_info(&pc,&rpc);
+                for (unsigned t = 0; t < m_config->warp_size; t++) {
+                  m_thread[i * m_config->warp_size + t]->set_npc(pc);
+                  m_thread[i * m_config->warp_size + t]->update_pc();
+                }   
+                start_pc=pc;
+              }
+               
             m_warp[i].init(start_pc,cta_id,i,active_threads, m_dynamic_warp_id);
             ++m_dynamic_warp_id;
             m_not_completed += n_active;
@@ -3383,19 +3399,20 @@ int register_bank(int regnum, int wid, unsigned num_banks, unsigned bank_warp_sh
    return bank % num_banks;
 }
 
-bool opndcoll_rfu_t::writeback( const warp_inst_t &inst )
+bool opndcoll_rfu_t::writeback( warp_inst_t &inst )
 {
    assert( !inst.empty() );
    std::list<unsigned> regs = m_shader->get_regs_written(inst);
-   std::list<unsigned>::iterator r;
-   unsigned n=0;
-   for( r=regs.begin(); r!=regs.end();r++,n++ ) {
-      unsigned reg = *r;
-      unsigned bank = register_bank(reg,inst.warp_id(),m_num_banks,m_bank_warp_shift);
-      if( m_arbiter.bank_idle(bank) ) {
-          m_arbiter.allocate_bank_for_write(bank,op_t(&inst,reg,m_num_banks,m_bank_warp_shift));
-      } else {
-          return false;
+   for( unsigned op=0; op < MAX_REG_OPERANDS; op++ ) {
+      int reg_num = inst.arch_reg.dst[op]; // this math needs to match that used in function_info::ptx_decode_inst
+      if( reg_num >= 0 ){ // valid register
+         unsigned bank = register_bank(reg_num,inst.warp_id(),m_num_banks,m_bank_warp_shift);
+         if( m_arbiter.bank_idle(bank) ) {
+             m_arbiter.allocate_bank_for_write(bank,op_t(&inst,reg_num,m_num_banks,m_bank_warp_shift));
+             inst.arch_reg.dst[op] = -1;
+         } else {
+             return false;
+         }
       }
    }
    for(unsigned i=0;i<(unsigned)regs.size();i++){

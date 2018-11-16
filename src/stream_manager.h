@@ -51,7 +51,8 @@ enum stream_operation_type {
     stream_memcpy_to_symbol,
     stream_memcpy_from_symbol,
     stream_kernel_launch,
-    stream_event
+    stream_event,
+    stream_wait_event
 };
 
 class stream_operation {
@@ -97,6 +98,14 @@ public:
     {
         m_kernel=NULL;
         m_type=stream_event;
+        m_event=e;
+        m_stream=stream;
+        m_done=false;
+    }
+    stream_operation( struct CUstream_st *stream, class CUevent_st *e, unsigned int flags )
+    {
+        m_kernel=NULL;
+        m_type=stream_wait_event;
         m_event=e;
         m_stream=stream;
         m_done=false;
@@ -246,6 +255,7 @@ public:
     bool empty();
     void print( FILE *fp);
     void push( stream_operation op );
+    void pushCudaStreamWaitEventToAllStreams( CUevent_st *e, unsigned int flags );
     bool operation(bool * sim);
     void stop_all_running_kernels();
 private:

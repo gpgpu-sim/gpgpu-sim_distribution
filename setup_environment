@@ -4,6 +4,9 @@ ps -p $$ | awk '/bash/ || / sh/ || /zsh/ {exit 1;}' && echo "WARNING ** source s
 
 export GPGPUSIM_SETUP_ENVIRONMENT_WAS_RUN=
 export GPGPUSIM_ROOT="$( cd "$( dirname "$BASH_SOURCE" )" && pwd )"
+export PTX_SIM_USE_PTX_FILE=1.ptx
+export PTX_SIM_KERNELFILE=_1.ptx
+export CUOBJDUMP_SIM_FILE=jj
 
 GPGPUSIM_VERSION_STRING=`cat $GPGPUSIM_ROOT/version | awk '/Version/ {print $8}'`
 #Detect Git branch and commit #

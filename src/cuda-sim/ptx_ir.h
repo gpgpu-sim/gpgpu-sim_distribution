@@ -91,6 +91,7 @@ public:
    bool is_tex() const { return m_space_spec == tex_space;}
    bool is_func_addr() const { return m_is_function?true:false; }
    int  scalar_type() const { return m_scalar_type_spec;}
+   int  get_alignment_spec() const { return m_alignment_spec;}
    unsigned type_decode( size_t &size, int &t ) const;
    static unsigned type_decode( int type, size_t &size, int &t );
    memory_space_t get_memory_space() const { return m_space_spec; }
@@ -163,6 +164,7 @@ public:
       m_is_global = false;
       m_is_local = false;
       m_is_param_local = false;
+      m_is_param_kernel = false;
       m_is_tex = false;
       m_is_func_addr = false;
       m_reg_num_valid = false;
@@ -176,6 +178,7 @@ public:
       if ( type ) m_is_global = type->get_key().is_global();
       if ( type ) m_is_local = type->get_key().is_local();
       if ( type ) m_is_param_local = type->get_key().is_param_local();
+      if ( type ) m_is_param_kernel = type->get_key().is_param_kernel();
       if ( type ) m_is_tex = type->get_key().is_tex();
       if ( type ) m_is_func_addr = type->get_key().is_func_addr();
    }
@@ -227,6 +230,7 @@ public:
    bool is_global() const { return m_is_global;}
    bool is_local() const { return m_is_local;}
    bool is_param_local() const { return m_is_param_local; }
+   bool is_param_kernel() const { return m_is_param_kernel; }
    bool is_tex() const { return m_is_tex;}
    bool is_func_addr() const { return m_is_func_addr; }
    bool is_reg() const
@@ -285,6 +289,7 @@ private:
    bool m_is_global;
    bool m_is_local;
    bool m_is_param_local;
+   bool m_is_param_kernel;
    bool m_is_tex;
    bool m_is_func_addr;
    unsigned m_reg_num; 
@@ -310,6 +315,7 @@ public:
    symbol *add_variable( const char *identifier, const type_info *type, unsigned size, const char *filename, unsigned line );
    void add_function( function_info *func, const char *filename, unsigned linenumber );
    bool add_function_decl( const char *name, int entry_point, function_info **func_info, symbol_table **symbol_table );
+   function_info *lookup_function(std::string name);
    type_info *add_type( memory_space_t space_spec, int scalar_type_spec, int vector_spec, int alignment_spec, int extern_spec );
    type_info *add_type( function_info *func );
    type_info *get_array_type( type_info *base_type, unsigned array_dim ); 
@@ -403,6 +409,8 @@ public:
       } else if ( addr->is_local() ) {
          m_type = symbolic_t;
       } else if ( addr->is_param_local() ) {
+         m_type = symbolic_t;
+      } else if ( addr->is_param_kernel() ) {
          m_type = symbolic_t;
       } else if ( addr->is_tex() ) {
          m_type = symbolic_t;
@@ -720,6 +728,13 @@ public:
       return m_value.m_symbolic->type()->get_key().is_param_local();
    }
 
+   bool is_param_kernel() const
+   {
+      if ( m_type != symbolic_t ) 
+         return false;
+      return m_value.m_symbolic->type()->get_key().is_param_kernel();
+   }
+
    bool is_vector() const
    {
       if ( m_vector) return true;
@@ -781,7 +796,7 @@ public:
    {
       ptx_reg_t result;
       switch ( m_type ) {
-      case int_t:         result.s32 = m_value.m_int; break;
+      case int_t:         result.s64 = m_value.m_int; break;
       case float_op_t:    result.f32 = m_value.m_float; break;
       case double_op_t:   result.f64 = m_value.m_double; break; 
       case unsigned_t:    result.u32 = m_value.m_unsigned; break;
@@ -1266,7 +1281,7 @@ public:
    //Muchnick's Adv. Compiler Design & Implemmntation Fig 7.15 
    void find_ipostdominators( );
    void print_ipostdominators();
-
+   void do_pdom(); //function to call pdom analysis
 
    unsigned get_num_reconvergence_pairs();
 
@@ -1330,6 +1345,7 @@ public:
    void finalize( memory_space *param_mem );
    void param_to_shared( memory_space *shared_mem, symbol_table *symtab ); 
    void list_param( FILE *fout ) const;
+   void ptx_jit_config(std::map<unsigned long long, size_t> mallocPtr_Size, memory_space *param_mem, gpgpu_t* gpu, dim3 gridDim, dim3 blockDim) ;
 
    const struct gpgpu_ptx_sim_info* get_kernel_info () const
    {
@@ -1365,6 +1381,20 @@ public:
       m_local_mem_framesize = sz;
    }
    bool is_entry_point() const { return m_entry_point; }
+   bool is_pdom_set() const { return pdom_done; } //return pdom flag
+   void set_pdom() { pdom_done = true; } //set pdom flag
+
+   void add_config_param( size_t size, unsigned alignment ){
+      unsigned offset = 0;
+      if (m_param_configs.size()>0){
+          unsigned offset_nom = m_param_configs.back().first + m_param_configs.back().second;
+          //ensure offset matches alignment requirements
+          offset = offset_nom%alignment ? (offset_nom/alignment + 1) * alignment : offset_nom;
+      }
+      m_param_configs.push_back(std::pair<size_t,unsigned>(size, offset));
+   }
+
+   std::pair<size_t, unsigned> get_param_config(unsigned param_num) const { return m_param_configs[param_num]; }
 
    void set_maxnt_id(unsigned maxthreads) { maxnt_id = maxthreads;}
    unsigned get_maxnt_id() { return maxnt_id;}
@@ -1376,12 +1406,14 @@ private:
    bool m_entry_point;
    bool m_extern;
    bool m_assembled;
+   bool pdom_done; //flag to check whether pdom is completed or not
    std::string m_name;
    ptx_instruction **m_instr_mem;
    unsigned m_start_PC;
    unsigned m_instr_mem_size;
    std::map<std::string,param_t> m_kernel_params;
    std::map<unsigned,param_info> m_ptx_kernel_param_info;
+   std::vector< std::pair<size_t, unsigned> > m_param_configs;
    const symbol *m_return_var_sym;
    std::vector<const symbol*> m_args;
    std::list<ptx_instruction*> m_instructions;
@@ -1400,6 +1432,8 @@ private:
 
    //parameter size for device kernels
    int m_args_aligned_size;
+   
+   addr_t m_n;  // offset in m_instr_mem (used in do_pdom)
 };
 
 class arg_buffer_t {
