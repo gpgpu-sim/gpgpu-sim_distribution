@@ -974,7 +974,7 @@ __host__ cudaError_t CUDARTAPI cudaGetDeviceProperties(struct cudaDeviceProp *pr
 	}
 }
 
-#if (CUDART_VERSION > 5050)
+#if (CUDART_VERSION > 5000)
 __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDeviceAttr attr, int device)
 {
 	if(g_debug_execution >= 3){
@@ -1135,12 +1135,14 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDevic
                 case 80:
                         *value= 0;
                         break;
+		#if (CUDART_VERSION > 5050)
 		case 81:
                         *value= prop->sharedMemPerMultiprocessor;
                         break;
                 case 82:
                         *value= prop->regsPerMultiprocessor;
                         break;
+		#endif
                 case 83:
                 case 84:
                 case 85:
@@ -3395,7 +3397,7 @@ CUresult CUDAAPI cuDeviceTotalMem(size_t *bytes, CUdevice dev)
 	return CUDA_SUCCESS;
 }
 #endif /* CUDART_VERSION >= 3020 */
-#if (CUDART_VERSION > 5050)
+#if (CUDART_VERSION > 5000)
 CUresult CUDAAPI cuDeviceGetAttribute(int *pi, CUdevice_attribute attrib, CUdevice dev)
 {
 	if(g_debug_execution >= 3){
