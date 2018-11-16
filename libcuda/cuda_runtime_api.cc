@@ -3395,7 +3395,7 @@ CUresult CUDAAPI cuDeviceTotalMem(size_t *bytes, CUdevice dev)
 	return CUDA_SUCCESS;
 }
 #endif /* CUDART_VERSION >= 3020 */
-#if (CUDART_VERSION > 5000)
+#if (CUDART_VERSION > 5050)
 CUresult CUDAAPI cuDeviceGetAttribute(int *pi, CUdevice_attribute attrib, CUdevice dev)
 {
 	if(g_debug_execution >= 3){
