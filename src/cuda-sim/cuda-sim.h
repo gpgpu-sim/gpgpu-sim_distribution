@@ -32,6 +32,7 @@
 #include"../gpgpu-sim/shader.h"
 #include <stdlib.h>
 #include <map>
+#include <vector>
 #include <string>
 #include"ptx_sim.h"
 
@@ -97,7 +98,7 @@ public:
         delete[] m_warpAtBarrier;
     }
     //! executes all warps till completion 
-    void execute();
+    void execute(int inst_count, unsigned ctaid_cp);
     virtual void warp_exit( unsigned warp_id );
     virtual bool warp_waiting_at_barrier( unsigned warp_id ) const  
     {
@@ -107,7 +108,7 @@ public:
 private:
     void executeWarp(unsigned, bool &, bool &);
     //initializes threads in the CTA block which we are executing
-    void initializeCTA();
+    void initializeCTA(unsigned ctaid_cp);
     virtual void checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned t, unsigned tid)
     {
     if(m_thread[tid]==NULL || m_thread[tid]->is_done()){

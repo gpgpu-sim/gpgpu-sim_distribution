@@ -26,6 +26,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "half.h"
+#include "half.hpp"
 #include "instructions.h"
 #include "ptx_ir.h"
 #include "opcodes.h"
@@ -41,6 +42,13 @@
 #include "cuda_device_printf.h"
 #include "../gpgpu-sim/gpu-sim.h"
 #include "../gpgpu-sim/shader.h"
+#include <assert.h>
+#include <string.h>
+#include <sstream>
+#include <stdio.h>
+#include <string>
+#include <map>
+#include <stdlib.h>
 
 //Jin: include device runtime for CDP
 #include "cuda_device_runtime.h"
@@ -175,6 +183,64 @@ void ptx_thread_info::set_reg( const symbol *reg, const ptx_reg_t &value )
    m_last_set_operand_value = value;
 }
 
+void ptx_thread_info::print_reg_thread(char * fname)
+{
+
+  FILE *fp= fopen(fname,"w");
+  assert(fp!=NULL);
+
+  int size = m_regs.size();
+  
+  if(size>0)
+  {  
+  reg_map_t reg = m_regs.back();
+  
+      typename reg_map_t::const_iterator it;
+      for (it = reg.begin(); it != reg.end(); ++it) 
+        {
+          const std::string &name = it->first->name();
+          const std::string &dec= it->first->decl_location();
+          unsigned size = it->first->get_size_in_bytes();
+          fprintf(fp,"%s %llu %s %d\n",name.c_str(),it->second, dec.c_str(),size );
+          
+        }
+   //m_regs.pop_back();     
+  }
+  fclose(fp);
+
+  }
+
+void ptx_thread_info::resume_reg_thread(char * fname, symbol_table * symtab)
+{
+
+
+      FILE * fp2 = fopen(fname, "r");
+      assert(fp2!=NULL);
+      //m_regs.push_back( reg_map_t() );
+      char line [ 200 ];
+      while ( fgets ( line, sizeof line, fp2 ) != NULL )
+      {
+          symbol *reg;
+          char * pch;
+          unsigned size;
+          pch = strtok (line," ");
+          char * name =pch;
+          reg= symtab->lookup(name);
+          ptx_reg_t data;
+          pch = strtok (NULL," "); 
+          data = atoi(pch);
+          pch = strtok (NULL," ");
+          char * decl= pch;
+          pch = strtok (NULL," ");
+          size = atoi(pch);
+
+
+          m_regs.back()[reg] = data;
+      }
+      fclose ( fp2 );
+}
+    
+
 ptx_reg_t ptx_thread_info::get_reg( const symbol *reg )
 {
    static bool unfound_register_warned = false;
@@ -260,7 +326,9 @@ ptx_reg_t ptx_thread_info::get_operand_value( const operand_info &op, operand_in
          } else if ( op.is_local() ) {
             result.u64 = op.get_symbol()->get_address();
          } else if ( op.is_function_address() ) {
-		 	result.u64 = (size_t)op.get_symbol()->get_pc();
+            result.u64 = (size_t)op.get_symbol()->get_pc();
+	 } else if ( op.is_param_kernel()) {
+            result.u64 = op.get_symbol()->get_address();
          }else {
             const char *name = op.name().c_str();
             const symbol *sym2 = op.get_symbol();
@@ -1492,45 +1560,45 @@ void bfe_impl( const ptx_instruction *pI, ptx_thread_info *thread )
     const operand_info &src1 = pI->src1();
     const operand_info &src2 = pI->src2();
     const operand_info &src3 = pI->src3();
-    ptx_reg_t a = thread->get_operand_value(src1, dst, i_type, thread, 1);
+    ptx_reg_t src = thread->get_operand_value(src1, dst, i_type, thread, 1);
     ptx_reg_t b = thread->get_operand_value(src2, dst, i_type, thread, 1);
     ptx_reg_t c = thread->get_operand_value(src3, dst, i_type, thread, 1);
+    ptx_reg_t data;
 	unsigned pos = b.u32 & 0xFF;
 	unsigned len = c.u32 & 0xFF;
-	unsigned d = 0;
 	switch (i_type)
 	{
 		case U32_TYPE:
 		{
 			unsigned mask;
-			d = a.u32 >> pos;
+			data.u32 = src.u32 >> pos;
 			mask = 0xFFFFFFFF >> (32 - len);
-			d &= mask;
+			data.u32 &= mask;
 			break;
 		}
 		case U64_TYPE:
 		{
 			unsigned long mask;
-			d = a.u64 >> pos;	
+			data.u64 = src.u64 >> pos;	
 			mask = 0xFFFFFFFFFFFFFFFF >> (64 - len);
-			d &= mask;
+			data.u64 &= mask;
 			break;
 		}
 		case S32_TYPE:
 		{
 			unsigned mask;
 			unsigned min = MY_MIN_I(pos + len - 1, msb);
-			unsigned sbit = len == 0 ? 0 : (a.s32 >> min) & 0x1;
-			d = a.s32 >> pos;
+			unsigned sbit = len == 0 ? 0 : (src.s32 >> min) & 0x1;
+			data.s32 = src.s32 >> pos;
 			if (sbit > 0)
 			{
 				mask = 0xFFFFFFFF << len;
-				d |= mask;
+				data.s32 |= mask;
 			}
 			else
 			{
 				mask = 0xFFFFFFFF >> (32 - len);
-				d &= mask;
+				data.s32 &= mask;
 			}
 			break;
 		}
@@ -1538,17 +1606,17 @@ void bfe_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 		{
 			unsigned long mask;
 			unsigned min = MY_MIN_I(pos + len - 1, msb);
-			unsigned sbit = len == 0 ? 0 : (a.s64 >> min) & 0x1;
-			d = a.s64 >> pos;
+			unsigned sbit = len == 0 ? 0 : (src.s64 >> min) & 0x1;
+			data.s64 = src.s64 >> pos;
 			if (sbit > 0)
 			{
 				mask = 0xFFFFFFFFFFFFFFFF << len;
-				d |= mask;
+				data.s64 |= mask;
 			}
 			else
 			{
 				mask = 0xFFFFFFFFFFFFFFFF >> (64 - len);
-				d &= mask;
+				data.s64 &= mask;
 			}
 			break;
 		}
@@ -1557,7 +1625,7 @@ void bfe_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 		abort();
 		return;
 	}
-    thread->set_operand_value(dst,d, i_type, thread, pI);
+    thread->set_operand_value(dst, data, i_type, thread, pI);
 }
 
 void bfi_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { 
@@ -1634,7 +1702,34 @@ void breakaddr_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    assert(pI->has_pred() == false); // pdom analysis cannot handle if this instruction is predicated 
 }
 
-void brev_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
+void brev_impl( const ptx_instruction *pI, ptx_thread_info *thread )
+{
+    ptx_reg_t src1_data, data;
+    const operand_info &dst  = pI->dst();
+    const operand_info &src1 = pI->src1();
+	unsigned i_type = pI->get_type();
+    src1_data = thread->get_operand_value(src1, dst, i_type, thread, 1);
+
+    unsigned msb;
+    switch(i_type){
+        case B32_TYPE:
+            msb = 31;
+            for (unsigned i=0; i<=msb; i++) {
+                if((src1_data.u32 & (1 << i)))
+                    data.u32 |= 1 << (msb - i);
+            }
+            break;
+        case B64_TYPE:
+            msb = 63;
+            for (unsigned i=0; i<=msb; i++) {
+                if((src1_data.u64 & (1 << i)))
+                    data.u64 |= 1 << (msb - i);
+            }
+            break;
+        default: assert(0);
+    }
+    thread->set_operand_value(dst,data, i_type, thread, pI);
+}
 void brkpt_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { inst_not_implemented(pI); }
 
 unsigned trunc(unsigned num, unsigned precision) {
@@ -1957,7 +2052,19 @@ void call_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    const operand_info &target  = pI->func_addr();
    assert( target.is_function_address() );
    const symbol *func_addr = target.get_symbol();
-   const function_info *target_func = func_addr->get_pc();
+   function_info *target_func = func_addr->get_pc();
+   if (target_func->is_pdom_set()) {
+      printf("GPGPU-Sim PTX: PDOM analysis already done for %s \n", target_func->get_name().c_str() );
+   } else {
+      printf("GPGPU-Sim PTX: finding reconvergence points for \'%s\'...\n", target_func->get_name().c_str() );
+      /*
+       * Some of the instructions like printf() gives the gpgpusim the wrong impression that it is a function call.
+       * As printf() doesnt have a body like functions do, doing pdom analysis for printf() causes a crash.
+       */
+      if (target_func->get_function_size() >0)
+          target_func->do_pdom();
+      target_func->set_pdom();
+   }
 
    // check that number of args and return match function requirements
    if( pI->has_return() ^ target_func->has_return() ) {
@@ -2190,6 +2297,7 @@ ptx_reg_t f2x( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
 {
  half mytemp;
  float myfloat;
+  half_float::half tmp_h;
    //assert( from_width == 32); 
 
    enum cuda_math::cudaRoundMode mode = cuda_math::cudaRoundZero;
@@ -2387,48 +2495,53 @@ ptx_reg_t u2f( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
 ptx_reg_t f2f( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign, int rounding_mode, int saturation_mode )
 {
    ptx_reg_t y;
-   switch ( rounding_mode ) {
-   case RZI_OPTION: 
-      y.f32 = truncf(x.f32); 
-      break;          
-   case RNI_OPTION: 
-#if CUDART_VERSION >= 3000
-      y.f32 = nearbyintf(x.f32); 
-#else
-      y.f32 = cuda_math::__internal_nearbyintf(x.f32); 
-#endif
-      break;          
-   case RMI_OPTION: 
-      if ((x.u32 & 0x7f800000) == 0) {
-         y.u32 = x.u32 & 0x80000000; // round denorm. FP to 0, keeping sign
-      } else {
-         y.f32 = floorf(x.f32); 
-      }
-      break;          
-   case RPI_OPTION: 
-      if ((x.u32 & 0x7f800000) == 0) {
-         y.u32 = x.u32 & 0x80000000; // round denorm. FP to 0, keeping sign
-      } else {
-         y.f32 = ceilf(x.f32); 
-      }
-      break;          
-   default: 
-      if ((x.u32 & 0x7f800000) == 0) {
-         y.u32 = x.u32 & 0x80000000; // round denorm. FP to 0, keeping sign
-      } else {
-         y.f32 = x.f32;
-      }
-      break; 
-   }
-#if CUDART_VERSION >= 3000
-   if (isnanf(y.f32)) 
-#else
-   if (cuda_math::__cuda___isnanf(y.f32)) 
-#endif
-   {
-      y.u32 = 0x7fffffff;
-   } else if (saturation_mode) {
-      y.f32 = cuda_math::__saturatef(y.f32);
+   if (from_width == 16){
+       half_float::detail::uint16 val = x.u16;
+       y.f32 = half_float::detail::half2float<float>(val);
+   }else{
+       switch ( rounding_mode ) {
+       case RZI_OPTION: 
+          y.f32 = truncf(x.f32); 
+          break;          
+       case RNI_OPTION: 
+    #if CUDART_VERSION >= 3000
+          y.f32 = nearbyintf(x.f32); 
+    #else
+          y.f32 = cuda_math::__internal_nearbyintf(x.f32); 
+    #endif
+          break;          
+       case RMI_OPTION: 
+          if ((x.u32 & 0x7f800000) == 0) {
+             y.u32 = x.u32 & 0x80000000; // round denorm. FP to 0, keeping sign
+          } else {
+             y.f32 = floorf(x.f32); 
+          }
+          break;          
+       case RPI_OPTION: 
+          if ((x.u32 & 0x7f800000) == 0) {
+             y.u32 = x.u32 & 0x80000000; // round denorm. FP to 0, keeping sign
+          } else {
+             y.f32 = ceilf(x.f32); 
+          }
+          break;          
+       default: 
+          if ((x.u32 & 0x7f800000) == 0) {
+             y.u32 = x.u32 & 0x80000000; // round denorm. FP to 0, keeping sign
+          } else {
+             y.f32 = x.f32;
+          }
+          break; 
+       }
+    #if CUDART_VERSION >= 3000
+       if (isnanf(y.f32)) 
+    #else
+       if (cuda_math::__cuda___isnanf(y.f32)) 
+    #endif
+       {
+          y.u32 = 0x7fffffff;
+       } else if (saturation_mode) {
+          y.f32 = cuda_math::__saturatef(y.f32);
+       }
    }
 
    return y;
@@ -2476,7 +2589,7 @@ ptx_reg_t (*g_cvt_fn[11][11])( ptx_reg_t x, unsigned from_width, unsigned to_wid
    { chop, NULL, zext, zext, chop, NULL, zext, zext, u2f, u2f, u2f}, 
    { chop, chop, NULL, zext, chop, chop, NULL, zext, u2f, u2f, u2f}, 
    { chop, chop, chop, NULL, chop, chop, chop, NULL, u2f, u2f, u2f}, 
-   { f2x , f2x , f2x , f2x , f2x , f2x , f2x , f2x , NULL,f2x, f2x}, 
+   { f2x , f2x , f2x , f2x , f2x , f2x , f2x , f2x , NULL,f2f, f2x}, 
    { f2x , f2x , f2x , f2x , f2x , f2x , f2x , f2x , f2x, f2f, f2x},
    { d2x , d2x , d2x , d2x , d2x , d2x , d2x , d2x , d2x, d2x, d2d} 
 };
@@ -2779,6 +2892,13 @@ void div_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    default: assert(0); break;
    }
    thread->set_operand_value(dst,data, i_type, thread,pI);
+}
+
+void dp4a_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
+{ 
+   printf("DP4A instruction not implemented yet");
+   assert(0);
+
 }
 
 void ex2_impl( const ptx_instruction *pI, ptx_thread_info *thread ) 
@@ -3108,7 +3228,6 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
 
    	memory_space *mem = NULL;
    	addr_t addr = src1_data.u32;
-   	
         smid = thread->get_hw_sid();
         if( whichspace(addr) == shared_space ) {
           addr= generic_to_shared(smid,addr);
@@ -3582,6 +3701,7 @@ void mov_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    const operand_info &dst  = pI->dst();
    const operand_info &src1 = pI->src1();
    unsigned i_type = pI->get_type();
+   assert( src1.is_param_local() == 0 );
 
    if( (src1.is_vector() || dst.is_vector()) && (i_type != BB64_TYPE) && (i_type != BB128_TYPE) && (i_type != FF64_TYPE) ) {
       // pack or unpack operation
@@ -4121,7 +4241,21 @@ void rem_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    src1_data = thread->get_operand_value(src1, dst, i_type, thread, 1);
    src2_data = thread->get_operand_value(src2, dst, i_type, thread, 1);
 
-   data.u64 = src1_data.u64 % src2_data.u64;
+   switch ( i_type ) {
+   case S32_TYPE:
+      data.s32 = src1_data.s32 % src2_data.s32;
+      break;
+   case S64_TYPE:
+      data.s64 = src1_data.s64 % src2_data.s64;
+      break;
+   case U32_TYPE:
+      data.u32 = src1_data.u32 % src2_data.u32;
+      break;
+   case U64_TYPE:
+      data.u64 = src1_data.u64 % src2_data.u64;
+      break;
+   default: assert(0); break;
+   }
 
    thread->set_operand_value(dst,data, i_type, thread, pI);
 }
@@ -5127,9 +5261,9 @@ void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 
    gpgpu_t *gpu = thread->get_gpu();
    const struct textureReference* texref = gpu->get_texref(texname);
-   const struct cudaArray* cuArray = gpu->get_texarray(texref); 
-   const struct textureInfo* texInfo = gpu->get_texinfo(texref);
-   const struct textureReferenceAttr* texAttr = gpu->get_texattr(texref);
+   const struct cudaArray* cuArray = gpu->get_texarray(texname); 
+   const struct textureInfo* texInfo = gpu->get_texinfo(texname);
+   const struct textureReferenceAttr* texAttr = gpu->get_texattr(texname);
 
    //assume always 2D f32 input
    //access array with src2 coordinates
