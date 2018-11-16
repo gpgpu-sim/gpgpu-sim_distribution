@@ -3738,7 +3738,7 @@ CUresult CUDAAPI cuModuleGetSurfRef(CUsurfref *pSurfRef, CUmodule hmod, const ch
 	return CUDA_SUCCESS;
 }
 
-#if CUDART_VERSION >= 5050
+#if CUDART_VERSION >= 6050
 
 CUresult CUDAAPI
 cuLinkCreate(unsigned int numOptions, CUjit_option *options, void **optionValues, CUlinkState *stateOut)
@@ -3794,6 +3794,9 @@ cuLinkAddFile(CUlinkState state, CUjitInputType type, const char *path,
     addedFile = true;
 	return CUDA_SUCCESS;
 }
+#endif
+
+#if CUDART_VERSION >= 5050
 
 CUresult CUDAAPI
 cuLinkComplete(CUlinkState state, void **cubinOut, size_t *sizeOut)
