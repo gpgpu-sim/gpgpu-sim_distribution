@@ -378,7 +378,7 @@ struct _cuda_device_id *GPGPUSim_Init()
 		prop->textureAlignment = 0;
 //        * TODO: Update the .config and xml files of all GPU config files with new value of sharedMemPerBlock and regsPerBlock 
 	        prop->sharedMemPerBlock = the_gpu->shared_mem_per_block();
-#if (CUDART_VERSION > 5000)
+#if (CUDART_VERSION > 5050)
 		prop->regsPerMultiprocessor = the_gpu->num_registers_per_core();
   	        prop->sharedMemPerMultiprocessor = the_gpu->shared_mem_size();
 #endif	
@@ -974,7 +974,7 @@ __host__ cudaError_t CUDARTAPI cudaGetDeviceProperties(struct cudaDeviceProp *pr
 	}
 }
 
-#if (CUDART_VERSION > 5000)
+#if (CUDART_VERSION > 5050)
 __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDeviceAttr attr, int device)
 {
 	if(g_debug_execution >= 3){
