@@ -378,7 +378,7 @@ struct _cuda_device_id *GPGPUSim_Init()
 		prop->textureAlignment = 0;
 //        * TODO: Update the .config and xml files of all GPU config files with new value of sharedMemPerBlock and regsPerBlock 
 	        prop->sharedMemPerBlock = the_gpu->shared_mem_per_block();
-#if (CUDART_VERSION > 5000)
+#if (CUDART_VERSION > 5050)
 		prop->regsPerMultiprocessor = the_gpu->num_registers_per_core();
   	        prop->sharedMemPerMultiprocessor = the_gpu->shared_mem_size();
 #endif	
@@ -1135,12 +1135,14 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDevic
                 case 80:
                         *value= 0;
                         break;
+		#if (CUDART_VERSION > 5050)
 		case 81:
                         *value= prop->sharedMemPerMultiprocessor;
                         break;
                 case 82:
                         *value= prop->regsPerMultiprocessor;
                         break;
+		#endif
                 case 83:
                 case 84:
                 case 85:
@@ -1760,14 +1762,6 @@ int CUDARTAPI __cudaSynchronizeThreads(void**, void*)
  *                                                                              *
  *                                                                              *
  *******************************************************************************/
-
-#if (CUDART_VERSION >= 3010 && CUDART_VERSION < 8000)
-
-typedef struct CUuuid_st {                                /**< CUDA definition of UUID */
-    char bytes[16];
-} CUuuid;
-
-#endif
 
 #if (CUDART_VERSION >= 3010)
 int dummy0() {
@@ -3403,7 +3397,7 @@ CUresult CUDAAPI cuDeviceTotalMem(size_t *bytes, CUdevice dev)
 	return CUDA_SUCCESS;
 }
 #endif /* CUDART_VERSION >= 3020 */
-
+#if (CUDART_VERSION > 5000)
 CUresult CUDAAPI cuDeviceGetAttribute(int *pi, CUdevice_attribute attrib, CUdevice dev)
 {
 	if(g_debug_execution >= 3){
@@ -3414,7 +3408,7 @@ CUresult CUDAAPI cuDeviceGetAttribute(int *pi, CUdevice_attribute attrib, CUdevi
 
 	return CUDA_SUCCESS;
 }
-
+#endif
 CUresult CUDAAPI cuDeviceGetProperties(CUdevprop *prop, CUdevice dev)
 {
 	if(g_debug_execution >= 3){
@@ -3746,7 +3740,7 @@ CUresult CUDAAPI cuModuleGetSurfRef(CUsurfref *pSurfRef, CUmodule hmod, const ch
 	return CUDA_SUCCESS;
 }
 
-#if CUDART_VERSION >= 5050
+#if CUDART_VERSION >= 6050
 
 CUresult CUDAAPI
 cuLinkCreate(unsigned int numOptions, CUjit_option *options, void **optionValues, CUlinkState *stateOut)
@@ -3802,6 +3796,9 @@ cuLinkAddFile(CUlinkState state, CUjitInputType type, const char *path,
     addedFile = true;
 	return CUDA_SUCCESS;
 }
+#endif
+
+#if CUDART_VERSION >= 5050
 
 CUresult CUDAAPI
 cuLinkComplete(CUlinkState state, void **cubinOut, size_t *sizeOut)
@@ -3999,7 +3996,7 @@ CUresult CUDAAPI cuIpcCloseMemHandle(CUdeviceptr dptr)
 
 #endif /* CUDART_VERSION >= 4010 */
 
-#if CUDART_VERSION >= 4000
+#if CUDART_VERSION >= 6050
 CUresult CUDAAPI cuMemHostRegister(void *p, size_t bytesize, unsigned int Flags)
 {
 	if(g_debug_execution >= 3){
@@ -4008,6 +4005,8 @@ CUresult CUDAAPI cuMemHostRegister(void *p, size_t bytesize, unsigned int Flags)
 	printf("WARNING: this function has not been implemented yet.");
 	return CUDA_SUCCESS;
 }
+#endif
+#if CUDART_VERSION >= 4000
 
 CUresult CUDAAPI cuMemHostUnregister(void *p)
 {
