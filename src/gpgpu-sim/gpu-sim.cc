@@ -58,6 +58,7 @@
 #include "../debug.h"
 #include "../gpgpusim_entrypoint.h"
 #include "../cuda-sim/cuda-sim.h"
+#include "../cuda-sim/ptx_ir.h"
 #include "../trace.h"
 #include "mem_latency_stat.h"
 #include "power_stat.h"
@@ -284,6 +285,9 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_shader_registers", OPT_UINT32, &gpgpu_shader_registers, 
                  "Number of registers per shader core. Limits number of concurrent CTAs. (default 8192)",
                  "8192");
+    option_parser_register(opp, "-gpgpu_registers_per_block", OPT_UINT32, &gpgpu_registers_per_block,
+                 "Maximum number of registers per CTA. (default 8192)",
+                 "8192");
     option_parser_register(opp, "-gpgpu_ignore_resources_limitation", OPT_BOOL, &gpgpu_ignore_resources_limitation,
                  "gpgpu_ignore_resources_limitation (default 0)",
                  "0");
@@ -305,6 +309,9 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_n_ldst_response_buffer_size", OPT_UINT32, &ldst_unit_response_queue_size, 
                  "number of response packets in ld/st unit ejection buffer",
                  "2");
+    option_parser_register(opp, "-gpgpu_shmem_per_block", OPT_UINT32, &gpgpu_shmem_per_block,
+                 "Size of shared memory per thread block or CTA (default 48kB)",
+                 "49152");
     option_parser_register(opp, "-gpgpu_shmem_size", OPT_UINT32, &gpgpu_shmem_size,
                  "Size of shared memory per shader core (default 16kB)",
                  "16384");
@@ -757,9 +764,19 @@ int gpgpu_sim::shared_mem_size() const
    return m_shader_config->gpgpu_shmem_size;
 }
 
+int gpgpu_sim::shared_mem_per_block() const
+{
+   return m_shader_config->gpgpu_shmem_per_block;
+}
+
 int gpgpu_sim::num_registers_per_core() const
 {
    return m_shader_config->gpgpu_shader_registers;
+}
+
+int gpgpu_sim::num_registers_per_block() const
+{
+   return m_shader_config->gpgpu_registers_per_block;
 }
 
 int gpgpu_sim::wrp_size() const
@@ -1418,22 +1435,44 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
     // bind functional simulation state of threads to hardware resources (simulation) 
     warp_set_t warps;
     unsigned nthreads_in_block= 0;
+    function_info *kernel_func_info = kernel.entry();
+    symbol_table * symtab= kernel_func_info->get_symtab();
+    unsigned ctaid= kernel.get_next_cta_id_single();
+    checkpoint *g_checkpoint=  new checkpoint();
     for (unsigned i = start_thread; i<end_thread; i++) {
         m_threadState[i].m_cta_id = free_cta_hw_id;
         unsigned warp_id = i/m_config->warp_size;
         nthreads_in_block += ptx_sim_init_thread(kernel,&m_thread[i],m_sid,i,cta_size-(i-start_thread),m_config->n_thread_per_shader,this,free_cta_hw_id,warp_id,m_cluster->get_gpu());
         m_threadState[i].m_active = true; 
+        // load thread local memory and register file
+        if(m_gpu->resume_option==1 && kernel.get_uid()==m_gpu->resume_kernel && ctaid>=m_gpu->resume_CTA && ctaid<m_gpu->checkpoint_CTA_t )
+        {
+            char fname[2048];
+            snprintf(fname,2048,"checkpoint_files/thread_%d_%d_reg.txt",i%cta_size,ctaid );
+            m_thread[i]->resume_reg_thread(fname,symtab);
+            char f1name[2048];
+            snprintf(f1name,2048,"checkpoint_files/local_mem_thread_%d_%d_reg.txt",i%cta_size,ctaid);
+            g_checkpoint->load_global_mem(m_thread[i]->m_local_mem, f1name); 
+        }
+        //
         warps.set( warp_id );
     }
     assert( nthreads_in_block > 0 && nthreads_in_block <= m_config->n_thread_per_shader); // should be at least one, but less than max
     m_cta_status[free_cta_hw_id]=nthreads_in_block;
 
+    if(m_gpu->resume_option==1 && kernel.get_uid()==m_gpu->resume_kernel && ctaid>=m_gpu->resume_CTA && ctaid<m_gpu->checkpoint_CTA_t )
+    {
+        char f1name[2048];
+        snprintf(f1name,2048,"checkpoint_files/shared_mem_%d.txt", ctaid);
+        
+        g_checkpoint->load_global_mem(m_thread[start_thread]->m_shared_mem, f1name);  
+    }
     // now that we know which warps are used in this CTA, we can allocate
     // resources for use in CTA-wide barrier operations
     m_barriers.allocate_barrier(free_cta_hw_id,warps);
 
     // initialize the SIMT stacks and fetch hardware
-    init_warps( free_cta_hw_id, start_thread, end_thread);
+    init_warps( free_cta_hw_id, start_thread, end_thread, ctaid, cta_size, kernel.get_uid());
     m_n_active_cta++;
 
     shader_CTA_count_log(m_sid, 1);

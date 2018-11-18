@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <fstream>
+#include <sstream>
 
 /// globals
 
@@ -189,6 +190,13 @@ symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source
     return symtab;
 }
 
+symbol_table *gpgpu_ptx_sim_load_ptx_from_filename( const char *filename )
+{
+    symbol_table *symtab=init_parser(filename);
+    printf("GPGPU-Sim PTX: finished parsing EMBEDDED .ptx file %s\n",filename);
+    return symtab;
+}
+
 void fix_duplicate_errors(char fname2[1024]) {
 	char tempfile[1024] = "_temp_ptx";
 	char commandline[1024];
@@ -292,38 +300,94 @@ void fix_duplicate_errors(char fname2[1024]) {
 	}
 }
 
-void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num )
+
+//we need the application name here too.
+char* get_app_binary_name(){
+   char exe_path[1025];
+   char *self_exe_path;
+#ifdef __APPLE__
+   //AMRUTH:  get apple device and check the result.
+   printf("WARNING: not tested for Apple-mac devices \n");
+   abort();
+#else
+   std::stringstream exec_link;
+   exec_link << "/proc/self/exe";
+   ssize_t path_length = readlink(exec_link.str().c_str(), exe_path, 1024);
+   assert(path_length != -1);
+   exe_path[path_length] = '\0';
+
+   char *token = strtok(exe_path, "/");
+   while(token !=NULL){
+        self_exe_path = token;
+        token = strtok(NULL,"/");
+   }
+#endif
+   self_exe_path = strtok(self_exe_path, ".");
+   printf("self exe links to: %s\n", self_exe_path);
+   return self_exe_path;
+}
+
+void gpgpu_ptx_info_load_from_filename( const char *filename, unsigned sm_version)
 {
-    char fname[1024];
-    snprintf(fname,1024,"_ptx_XXXXXX");
-    int fd=mkstemp(fname); 
-    close(fd);
+    std::string ptxas_filename(std::string(filename) + "as");
+    char buff[1024], extra_flags[1024];
+	extra_flags[0]=0;
+    extern bool g_cdp_enabled;
+	if(!g_cdp_enabled)
+	       	snprintf(extra_flags,1024,"--gpu-name=sm_%u",sm_version);
+	else
+	       	snprintf(extra_flags,1024,"--compile-only --gpu-name=sm_%u",sm_version);
+   	snprintf(buff,1024,"$CUDA_INSTALL_PATH/bin/ptxas %s -v %s --output-file  /dev/null 2> %s",
+         extra_flags, filename, ptxas_filename.c_str());
+	int result = system(buff);
+	if( result != 0 ) {
+		printf("GPGPU-Sim PTX: ERROR ** while loading PTX (b) %d\n", result);
+		printf("               Ensure ptxas is in your path.\n");
+		exit(1);
+	}
 
-    printf("GPGPU-Sim PTX: extracting embedded .ptx to temporary file \"%s\"\n", fname);
-    FILE *ptxfile = fopen(fname,"w");
-    fprintf(ptxfile,"%s", p_for_info);
-    fclose(ptxfile);
+	g_ptxinfo_filename = strdup(ptxas_filename.c_str());
+    ptxinfo_in = fopen(g_ptxinfo_filename,"r");
+    ptxinfo_parse();
+    fclose(ptxinfo_in);
+}
 
-    char fname2[1024];
-    snprintf(fname2,1024,"_ptx2_XXXXXX");
-    fd=mkstemp(fname2); 
-    close(fd);
-    char commandline2[4096];
-    snprintf(commandline2,4096,"cat %s | sed 's/.version 1.5/.version 1.4/' | sed 's/, texmode_independent//' | sed 's/\\(\\.extern \\.const\\[1\\] .b8 \\w\\+\\)\\[\\]/\\1\\[1\\]/' | sed 's/const\\[.\\]/const\\[0\\]/g' > %s", fname, fname2);
-    printf("Running: %s\n", commandline2);
-    int result = system(commandline2);
-    if( result != 0 ) {
-       fprintf(stderr, "GPGPU-Sim PTX: ERROR ** while loading PTX (a) %d\n", result);
-       fprintf(stderr, "               Ensure you have write access to simulation directory\n");
-       fprintf(stderr, "               and have \'cat\' and \'sed\' in your path.\n");
-       exit(1);
-    }
+void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num, unsigned sm_version )
+{
+    //do ptxas for individual files instead of one big embedded ptx. This prevents the duplicate defs and declarations.
+    char ptx_file[1000];
+    char *name=get_app_binary_name();
+    char commandline[4096], fname[1024], fname2[1024], final_tempfile_ptxinfo[1024], tempfile_ptxinfo[1024];
+    for (int index=1; index <= no_of_ptx; index++){
+        snprintf(ptx_file, 1000, "%s.%d.sm_%u.ptx", name, index, sm_version);
+        snprintf(fname,1024,"_ptx_XXXXXX");
+        int fd=mkstemp(fname); 
+        close(fd);
 
-    char tempfile_ptxinfo[1024];
-    snprintf(tempfile_ptxinfo,1024,"%sinfo",fname);
-    char commandline[1024];
-    char extra_flags[1024];
-    extra_flags[0]=0;
+        printf("GPGPU-Sim PTX: extracting embedded .ptx to temporary file \"%s\"\n", fname);
+        snprintf(commandline,4096,"cat %s > %s",ptx_file, fname);
+        if (system(commandline) !=0) {
+            printf("ERROR: %s command failed\n", commandline);
+            exit(0);
+        }
+	
+        snprintf(fname2,1024,"_ptx2_XXXXXX");
+        fd=mkstemp(fname2); 
+        close(fd);
+        char commandline2[4096];
+        snprintf(commandline2,4096,"cat %s | sed 's/.version 1.5/.version 1.4/' | sed 's/, texmode_independent//' | sed 's/\\(\\.extern \\.const\\[1\\] .b8 \\w\\+\\)\\[\\]/\\1\\[1\\]/' | sed 's/const\\[.\\]/const\\[0\\]/g' > %s", fname, fname2);
+        printf("Running: %s\n", commandline2);
+        int result = system(commandline2);
+        if( result != 0 ) {
+       	    printf("GPGPU-Sim PTX: ERROR ** while loading PTX (a) %d\n", result);
+       	    printf("               Ensure you have write access to simulation directory\n");
+       	    printf("               and have \'cat\' and \'sed\' in your path.\n");
+       	    exit(1);
+    	}
+
+        snprintf(tempfile_ptxinfo,1024,"%sinfo",fname);
+        char extra_flags[1024];
+        extra_flags[0]=0;
 
 #if CUDART_VERSION >= 3000
     if ( g_occupancy_sm_number == 0 ) {
@@ -355,26 +419,100 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
     			 extra_flags, fname2, tempfile_ptxinfo);
     		printf("GPGPU-Sim PTX: regenerating ptxinfo using \"%s\"\n", commandline);
     		result = system(commandline);
+	    }
+	    if (result != 0) {
+		printf("GPGPU-Sim PTX: ERROR ** while loading PTX (b) %d\n", result);
+		printf("               Ensure ptxas is in your path.\n");
+		exit(1);
+	    }
+    	}
+    }
+
+    //TODO: duplicate code! move it into a function so that it can be reused!
+    if(no_of_ptx==0) {
+        //For CDP, we dump everything. So no_of_ptx will be 0.
+	snprintf(fname,1024,"_ptx_XXXXXX");
+	int fd=mkstemp(fname);
+	close(fd);
+
+	printf("GPGPU-Sim PTX: extracting embedded .ptx to temporary file \"%s\"\n", fname);
+	FILE *ptxfile = fopen(fname,"w");
+	fprintf(ptxfile,"%s", p_for_info);
+	fclose(ptxfile);
+
+	snprintf(fname2,1024,"_ptx2_XXXXXX");
+	fd=mkstemp(fname2);
+	close(fd);
+	char commandline2[4096];
+	snprintf(commandline2,4096,"cat %s | sed 's/.version 1.5/.version 1.4/' | sed 's/, texmode_independent//' | sed 's/\\(\\.extern \\.const\\[1\\] .b8 \\w\\+\\)\\[\\]/\\1\\[1\\]/' | sed 's/const\\[.\\]/const\\[0\\]/g' > %s", fname, fname2);
+	printf("Running: %s\n", commandline2);
+	int result = system(commandline2);
+	if( result != 0 ) {
+		printf("GPGPU-Sim PTX: ERROR ** while loading PTX (a) %d\n", result);
+		printf("               Ensure you have write access to simulation directory\n");
+		printf("               and have \'cat\' and \'sed\' in your path.\n");
+		exit(1);
 	}
-	if (result != 0) {
-		fprintf(stderr, "GPGPU-Sim PTX: ERROR ** while loading PTX (b) %d\n", result);
-		fprintf(stderr, "               Ensure ptxas is in your path.\n");
+	//char tempfile_ptxinfo[1024];
+	snprintf(tempfile_ptxinfo,1024,"%sinfo",fname);
+	char extra_flags[1024];
+	extra_flags[0]=0;
+
+	#if CUDART_VERSION >= 3000
+	if (sm_version == 0) sm_version = 20;
+    	extern bool g_cdp_enabled;
+	if(!g_cdp_enabled)
+	       	snprintf(extra_flags,1024,"--gpu-name=sm_%u",sm_version);
+	else
+	       	snprintf(extra_flags,1024,"--compile-only --gpu-name=sm_%u",sm_version);
+	#endif
+
+	snprintf(commandline,1024,"$CUDA_INSTALL_PATH/bin/ptxas %s -v %s --output-file  /dev/null 2> %s",
+			            extra_flags, fname2, tempfile_ptxinfo);
+	printf("GPGPU-Sim PTX: generating ptxinfo using \"%s\"\n", commandline);
+	fflush(stdout);
+	result = system(commandline);
+	if( result != 0 ) {
+		printf("GPGPU-Sim PTX: ERROR ** while loading PTX (b) %d\n", result);
+		printf("               Ensure ptxas is in your path.\n");
 		exit(1);
 	}
     }
 
-    ptxinfo_in = fopen(tempfile_ptxinfo,"r");
-    g_ptxinfo_filename = tempfile_ptxinfo;
+    //Now that we got resource usage per kernel in a ptx file, we dump all into one file and pass it to rest of the code as usual.
+    if(no_of_ptx>0){
+        char commandline3[4096];
+        snprintf(final_tempfile_ptxinfo,1024,"f_tempfile_ptx");
+        snprintf(commandline3,4096, "cat *info > %s", final_tempfile_ptxinfo);
+        if (system(commandline3)!=0) {
+	    printf("ERROR: Either we dont have info files or cat is not working \n");
+            printf("ERROR: %s command failed\n",commandline3);
+	    exit(1);
+        }
+    }	
+
+    if(no_of_ptx>0)
+        g_ptxinfo_filename = final_tempfile_ptxinfo;
+    else
+	g_ptxinfo_filename = tempfile_ptxinfo;
+    ptxinfo_in = fopen(g_ptxinfo_filename,"r");
+
     ptxinfo_parse();
 
+    snprintf(commandline,1024,"rm -f *info");
+    if( system(commandline) != 0 ) {
+	    printf("GPGPU-Sim PTX: ERROR ** while removing temporary info files\n");
+	    exit(1);
+    }
     if( ! g_save_embedded_ptx ) {
-        snprintf(commandline,1024,"rm -f %s %s %s", fname, fname2, tempfile_ptxinfo);
+	if(no_of_ptx>0)
+            snprintf(commandline,1024,"rm -f %s %s %s", fname, fname2, final_tempfile_ptxinfo);
+	else
+            snprintf(commandline,1024,"rm -f %s %s %s", fname, fname2, tempfile_ptxinfo);
         printf("GPGPU-Sim PTX: removing ptxinfo using \"%s\"\n", commandline);
-        result = system(commandline);
-        if( result != 0 ) {
-    	    fprintf(stderr, "GPGPU-Sim PTX: ERROR ** while loading PTX (c) %d\n", result);
+        if( system(commandline) != 0 ) {
+    	    printf("GPGPU-Sim PTX: ERROR ** while removing temporary files\n");
     	    exit(1);
         }
     }
 }
-
