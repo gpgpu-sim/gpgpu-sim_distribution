@@ -258,6 +258,14 @@ bool symbol_table::add_function_decl( const char *name, int entry_point, functio
    return prior_decl;
 }
 
+function_info *symbol_table::lookup_function( std::string name )
+{
+   std::string key = std::string(name);
+   std::map<std::string,function_info*>::iterator it = m_function_info_lookup.find(key);
+   assert ( it != m_function_info_lookup.end() );
+   return it->second;
+}
+
 type_info *symbol_table::add_type( memory_space_t space_spec, int scalar_type_spec, int vector_spec, int alignment_spec, int extern_spec )
 {
    if( space_spec == param_space_unclassified ) 
@@ -281,8 +289,10 @@ type_info *symbol_table::get_array_type( type_info *base_type, unsigned array_di
 {
    type_info_key t = base_type->get_key();
    t.set_array_dim(array_dim);
-   type_info *pt;
-   pt = m_types[t] = new type_info(this,t);
+   type_info *pt = new type_info(this,t);
+   //Where else is m_types being used? As of now, I dont find any use of it and causing seg fault. So disabling m_types.
+   //TODO: find where m_types can be used in future and solve the seg fault.
+   //pt = m_types[t] = new type_info(this,t);
    return pt;
 }
 
@@ -575,6 +585,40 @@ bool function_info::connect_break_targets() //connecting break instructions with
    }
 
    return modified; 
+}
+void function_info::do_pdom() 
+{
+   create_basic_blocks();
+   connect_basic_blocks();
+   bool modified = false; 
+   do {
+      find_dominators();
+      find_idominators();
+      modified = connect_break_targets(); 
+   } while (modified == true);
+
+   if ( g_debug_execution>=50 ) {
+      print_basic_blocks();
+      print_basic_block_links();
+      print_basic_block_dot();
+   }
+   if ( g_debug_execution>=2 ) {
+      print_dominators();
+   }
+   find_postdominators();
+   find_ipostdominators();
+   if ( g_debug_execution>=50 ) {
+      print_postdominators();
+      print_ipostdominators();
+   }
+   printf("GPGPU-Sim PTX: pre-decoding instructions for \'%s\'...\n", m_name.c_str() );
+   for ( unsigned ii=0; ii < m_n; ii += m_instr_mem[ii]->inst_size() ) { // handle branch instructions
+      ptx_instruction *pI = m_instr_mem[ii];
+      pI->pre_decode();
+   }
+   printf("GPGPU-Sim PTX: ... done pre-decoding instructions for \'%s\'.\n", m_name.c_str() );
+   fflush(stdout);
+   m_assembled = true;
 }
 void intersect( std::set<int> &A, const std::set<int> &B )
 {
@@ -996,7 +1040,7 @@ static std::list<operand_info> check_operands( int opcode,
                                         const std::list<operand_info> &operands )
 {
    static int g_warn_literal_operands_two_type_inst;
-    if( (opcode == CVT_OP) || (opcode == SET_OP) || (opcode == SLCT_OP) || (opcode == TEX_OP) || (opcode==MMA_OP)) {
+    if( (opcode == CVT_OP) || (opcode == SET_OP) || (opcode == SLCT_OP) || (opcode == TEX_OP) || (opcode==MMA_OP) || (opcode == DP4A_OP)) {
         // just make sure these do not have have const operands... 
         if( !g_warn_literal_operands_two_type_inst ) {
             std::list<operand_info>::const_iterator o;
@@ -1341,6 +1385,7 @@ function_info::function_info(int entry_point )
    m_kernel_info.smem = 0;
    m_local_mem_framesize = 0;
    m_args_aligned_size = -1;
+   pdom_done = false; //initialize it to false
 }
 
 unsigned function_info::print_insn( unsigned pc, FILE * fp ) const

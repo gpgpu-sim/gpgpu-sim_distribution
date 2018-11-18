@@ -245,6 +245,14 @@ The documentation resides at doc/doxygen/html.
 Step 3: Run
 ============
 
+Before we run, we need to make sure the application's executable file is dynamically linked to CUDA runtime library. This can be done during compilation of your program by introducing the nvcc flag "--cudart shared" in makefile (quotes should be excluded).
+
+To confirm the same, type the follwoing command:
+
+ldd <your_application_name>
+
+You should see that your application is using libcudart.so file in GPGPUSim directory.
+
 Copy the contents of configs/QuadroFX5800/ or configs/GTX480/ to your
 application's working directory.  These files configure the microarchitecture
 models to resemble the respective GPGPU architectures.
@@ -356,3 +364,87 @@ the applications you care about (implying these applications worked for you
 before you did the merge). You want to do this before making further changes to
 identify any compile time or runtime errors that occur due to the code merging
 process. 
+
+
+4. MISCELLANEOUS
+
+4.1 Speeding up the execution
+
+Some applications take several hours to execute on GPGPUSim. This is because the simulator has to dump the PTX, analyze them and get resource usage statistics. This can be avoided everytime we execute the program in the following way:
+
+Step 1: Execute the program by enabling “-save_embedded_ptx 1” in config file, execute the code and let cuobjdump command dump all necessary files. After this process, you will get 2 new files namely:  _cuobjdump_complete_output_<some_random_name> and _1.ptx
+
+Step 2: Create new environment variables or include the below in your .bashrc file:
+	a. export PTX_SIM_USE_PTX_FILE=_1.ptx
+	b. export PTX_SIM_KERNELFILE=_1.ptx
+	c. export CUOBJDUMP_SIM_FILE=_cuobjdump_complete_output_<some_random_name>
+
+Step 3:  Disable -save_embedded_ptx flag, execute the code again. This will skip the dumping by cuobjdump and directly goes to executing the program thus saving time.
+
+
+4.2  Debugging failing GPGPU-Sim Regressions
+ 
+Credits: Tor M Aamodt
+
+To debug failing GPGPU-Sim regression tests you need to run them locally.  The fastest way to do this, assuming you are working with GPGPU-Sim versions more recent than the GPGPU-Sim dev branch circa March 28, 2018 (commit hash 2221d208a745a098a60b0d24c05007e92aaba092), is to install Docker.  The instructions below were tested with Docker CE version 18.03 on Ubuntu and Mac OS.  Docker will enable you to run the same set of regressions used by GPGPU-Sim when submitting a pull request to https://github.com/gpgpu-sim/gpgpu-sim_distribution and also allow you to log in and launch GPGPU-Sim in gdb so you can inspect failures.  
+
+1. Install Docker.  On Ubuntu 14.04 and 16.04 the following instructions work:  https://docs.docker.com/install/linux/docker-ce/ubuntu/#uninstall-old-versions 
+
+2. Clone GPGPU-Sim from your fork of GPGPU-Sim. For example:
+
+	git clone https://github.com/<YOUR GITHUB USERNAME>/gpgpu-sim_distribution.git
+
+
+3. Run the following command (this is all one line) to run the regressions in docker:
+
+	docker run --privileged -v `pwd`:/home/runner/gpgpu-sim_distribution:rw aamodt/gpgpu-sim_regress:latest /bin/bash -c "./start_torque.sh; chown -R runner /home/runner/gpgpu-sim_distribution; su - runner -c 'source /home/runner/gpgpu-sim_distribution/setup_environment && make -j -C /home/runner/gpgpu-sim_distribution && cd /home/runner/gpgpu-sim_simulations/ && git pull && /home/runner/gpgpu-sim_simulations/util/job_launching/run_simulations.py -c /home/runner/gpgpu-sim_simulations/util/job_launching/regression_recipies/rodinia_2.0-ft/configs.gtx1080ti.yml -N regress && /home/runner/gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress’; tail -f /dev/null"
+
+Explanation: The last part of this command, "tail -f /dev/null" will keep the docker container running after the regressions finish.  This enables you to log into the container to run the same tests inside gdb so you can debug.   The "--privileged" part enables you to use breakpoints inside gdb in a container.  The "-v" part maps the current directory (with the GPGPU-Sim source code you want to test) into the container. The string "aamodt/gpgpu-sim_regress:latest" is a tag for a container setup to run regressions which will be downloaded from docker hub.  The portion starting with /bin/bash is a set of commands run inside a bash shell inside the container.  E.g., the command start_torque.sh starts up a queue manager inside the container.  
+
+If the above command stops with the message "fatal: unable to access 'https://github.com/tgrogers/gpgpu-sim_simulations.git/': Could not resolve host: github.com" this likely means your computer sits behind a firewall which is blocking access to Google's name servers (e.g., 8.8.8.8).  To get around this you will need to modify th above command to point to your local DNS server.  Lookup your DNS server IP address which we will call <DNS_IP_ADDRESS> below.  On Ubuntu run "ifconfig" to lookup the network interface connecting your computer to the network.  Then run "nmcli device show <interface name>" to find the IP address of your DNS server.  Modify the above command to include "--dns <DNS_IP_ADDRESS>" after "run", E.g.,
+
+	docker run --dns <DNS_IP_ADDRESS> --privileged -v `pwd`:/home/runner/gpgpu-sim_distribution:rw aamodt/gpgpu-sim_regress:latest /bin/bash -c "./start_torque.sh; chown -R runner /home/runner/gpgpu-sim_distribution; su - runner -c 'source /home/runner/gpgpu-sim_distribution/setup_environment && make -j -C /home/runner/gpgpu-sim_distribution && cd /home/runner/gpgpu-sim_simulations/ && git pull && /home/runner/gpgpu-sim_simulations/util/job_launching/run_simulations.py -c /home/runner/gpgpu-sim_simulations/util/job_launching/regression_recipies/rodinia_2.0-ft/configs.gtx1080ti.yml -N regress && /home/runner/gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress’; tail -f /dev/null"
+
+4. Find the CONTAINER ID associated with your docker container by running "docker ps". 
+
+5. Log into the container by running the command:
+
+	docker exec -it <CONTAINER_ID> /bin/bash -c "su -l runner"
+
+The container is running Ubuntu 16.04 and has screen, cscope and vim installed (if you find a favorite Linux tool missing, it is fairly easy to create derived containers that have additional tools).
+
+6. Lookup the directory of the regression test you want to debug by going to the regression log file directory:
+
+	cd /home/runner/gpgpu-sim_simulations/util/job_launching/logfiles
+
+7.  The file "failed_job_log_sim_log.regress.<DATE>.txt" includes information about the failed test including its simulation directory.  For the following example, I'll assume the first failing test was "hotspot-rodinia-2.0-ft-30_6_40___data_result_30_6_40_txt--GTX1080Ti" for which the simulation directory is /home/runner/gpgpu-sim_simulations/util/job_launching/../../sim_run_4.2/hotspot-rodinia-2.0-ft/30_6_40___data_result_30_6_40_txt/GTX1080Ti/
+
+8.  Change to the simulation directory using:
+
+	cd <simulation_directory>
+
+E.g., "cd /home/runner/gpgpu-sim_simulations/util/job_launching/../../sim_run_4.2/hotspot-rodinia-2.0-ft/30_6_40___data_result_30_6_40_txt/GTX1080Ti/"
+
+This directory should contain a file called "torque.sim" that contains commands used to launch the simulation during regression tests.  We will modify this file to enable us to re-run the regression test in gdb.   This directory should also contain a file containing the standard output during the regression test.  This file will end in .o<number> where <number> is the torque queue manager job number.  For the running example for me this file is called "hotspot-rodinia-2.0-ft-30_6_40___data_result_30_6_40_txt.o2".  Open this file to determine the LD_LIBRARY_PATH settings used when launching the simulation.  Look for a line that starts "doing: export LD_LIBRARY_PATH" and copy the entire line starting with "export LD_LIBRARY_PATH ..."
+
+9. Paste the "export LD_LIBRARY_PATH ..." line into the bash shell to set LD_LIBRARY_PATH.  E.g.,
+
+	export LD_LIBRARY_PATH=/home/runner/gpgpu-sim_simulations/util/job_launching/../../sim_run_4.2/gpgpu-sim-builds/libcudart_gpgpu-sim_git-commit-177d02254ae38b6331b17dd6cd139b570a03c589_modified_0.so:/gpgpu-sim/usr/local/gcc-4.5.4/lib64:/gpgpu-sim/usr/local/gcc-4.5.4/lib:/gpgpu-sim/usr/local/gcc-4.5.4/lib/gcc/x86_64-unknown-linux-gnu/lib64/:/gpgpu-sim/usr/local/gcc-4.5.4/lib/gcc/x86_64-unknown-linux-gnu/4.5.4/:/usr/lib/x86_64-linux-gnu:/home/runner/gpgpu-sim_distribution/lib/gcc-4.5.4/cuda-4020/release:/gpgpu-sim/usr/local/gcc-4.5.4/lib64:/gpgpu-sim/usr/local/gcc-4.5.4/lib:/gpgpu-sim/usr/local/gcc-4.5.4/lib/gcc/x86_64-unknown-linux-gnu/lib64/:/gpgpu-sim/usr/local/gcc-4.5.4/lib/gcc/x86_64-unknown-linux-gnu/4.5.4/:/usr/lib/x86_64-linux-gnu:
+
+10. In the same shell, build the debug version of GPGPU-Sim then return to the directory above:
+
+	pushd ~/gpgpu-sim_distribution/
+	source setup_environment debug
+	make
+	popd
+
+11. Open and edit torque.sim and preface the very last line with "gdb --args ".  After editing the last line in torque.sim should look something like:
+
+	gdb --args /home/runner/gpgpu-sim_simulations/util/job_launching/../../benchmarks/bin/4.2/release/hotspot-rodinia-2.0-ft 30 6 40 ./data/result_30_6_40.txt
+
+12. Re-run the regression test in gdb by sourcing the torque.sim file:
+
+	. torque.sim
+
+This will put you in at the (gdb) prompt.  Setup any breakpoints needed and run.  
+

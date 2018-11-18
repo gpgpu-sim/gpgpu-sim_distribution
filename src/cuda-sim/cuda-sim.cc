@@ -33,7 +33,7 @@
 #include "ptx.tab.h"
 #include "ptx_sim.h"
 #include <stdio.h>
-
+#include <sstream>
 #include "opcodes.h"
 #include "../statwrapper.h"
 #include <set>
@@ -58,6 +58,8 @@ int g_debug_execution = 0;
 int g_debug_thread_uid = 0;
 addr_t g_debug_pc = 0xBEEF1518;
 // Output debug information to file options
+int cp_count;
+int cp_cta_resume;
 
 unsigned g_ptx_sim_num_insn = 0;
 unsigned gpgpu_param_num_shaders = 0;
@@ -121,22 +123,35 @@ static address_type get_converge_point(address_type pc);
 void gpgpu_t::gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref, int dim, int readmode, int ext)
 {
    std::string texname(name);
-   m_NameToTextureRef[texname] = texref;
+   if (m_NameToTextureRef.find(texname)==m_NameToTextureRef.end()){
+      m_NameToTextureRef[texname] = std::set<const struct textureReference*>();
+   }else{
+     const struct textureReference* tr = *m_NameToTextureRef[texname].begin();
+     assert(tr!=NULL);
+     //asserts that all texrefs in set have same fields
+     assert(tr->normalized==texref->normalized&&
+            tr->filterMode==texref->filterMode&&
+            tr->addressMode[0]==texref->addressMode[0]&&
+            tr->addressMode[1]==texref->addressMode[1]&&
+            tr->addressMode[2]==texref->addressMode[2]&&
+            tr->channelDesc.x==texref->channelDesc.x&&
+            tr->channelDesc.y==texref->channelDesc.y&&
+            tr->channelDesc.z==texref->channelDesc.z&&
+            tr->channelDesc.w==texref->channelDesc.w&&
+            tr->channelDesc.f==texref->channelDesc.f  
+           );
+   }
+   m_NameToTextureRef[texname].insert(texref);
+   m_TextureRefToName[texref] = texname;
    const textureReferenceAttr *texAttr = new textureReferenceAttr(texref, dim, (enum cudaTextureReadMode)readmode, ext); 
-   m_TextureRefToAttribute[texref] = texAttr; 
+   m_NameToAttribute[texname] = texAttr; 
 }
 
 const char* gpgpu_t::gpgpu_ptx_sim_findNamefromTexture(const struct textureReference* texref)
 {
-   std::map<std::string, const struct textureReference*>::iterator itr = m_NameToTextureRef.begin();
-   while (itr != m_NameToTextureRef.end()) {
-      if ((*itr).second == texref) {
-         const char *p = ((*itr).first).c_str();
-         return p;
-      }
-      itr++;
-   }
-   return NULL;
+   std::map<const struct textureReference*, std::string>::const_iterator t=m_TextureRefToName.find(texref);
+   assert( t != m_TextureRefToName.end() );
+   return t->second.c_str();
 }
 
 unsigned int intLOGB2( unsigned int v ) {
@@ -156,7 +171,14 @@ unsigned int intLOGB2( unsigned int v ) {
 
 void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* texref, const struct cudaArray* array)
 {
-   m_TextureRefToCudaArray[texref] = array;
+   std::string texname = gpgpu_ptx_sim_findNamefromTexture(texref);
+
+   std::map<std::string,const struct cudaArray*>::const_iterator t=m_NameToCudaArray.find(texname);
+   //check that there's nothing there first
+   if(t != m_NameToCudaArray.end()){
+      printf("GPGPU-Sim PTX:   Warning: binding to texref associated with %s, which was previously bound.\nImplicitly unbinding texref associated to %s first\n", texname.c_str(), texname.c_str());
+   }
+   m_NameToCudaArray[texname] = array;
    unsigned int texel_size_bits = array->desc.w + array->desc.x + array->desc.y + array->desc.z;
    unsigned int texel_size = texel_size_bits/8;
    unsigned int Tx, Ty;
@@ -196,7 +218,15 @@ void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* te
    texInfo->Ty_numbits = intLOGB2(Ty);
    texInfo->texel_size = texel_size;
    texInfo->texel_size_numbits = intLOGB2(texel_size);
-   m_TextureRefToTexureInfo[texref] = texInfo;
+   m_NameToTexureInfo[texname] = texInfo;
+}
+
+void gpgpu_t::gpgpu_ptx_sim_unbindTexture(const struct textureReference* texref)
+{
+   //assumes bind-use-unbind-bind-use-unbind pattern
+   std::string texname = gpgpu_ptx_sim_findNamefromTexture(texref);
+   m_NameToCudaArray.erase(texname);
+   m_NameToTexureInfo.erase(texname);
 }
 
 unsigned g_assemble_code_next_pc=0; 
@@ -228,7 +258,9 @@ void function_info::ptx_assemble()
    m_start_PC = PC;
 
    addr_t n=0; // offset in m_instr_mem
-   s_g_pc_to_insn.reserve(s_g_pc_to_insn.size() + MAX_INST_SIZE*m_instructions.size());
+   //Why s_g_pc_to_insn.size() is needed to reserve additional memory for insts? reserve is cumulative.
+   //s_g_pc_to_insn.reserve(s_g_pc_to_insn.size() + MAX_INST_SIZE*m_instructions.size());
+   s_g_pc_to_insn.reserve(MAX_INST_SIZE*m_instructions.size());
    for ( i=m_instructions.begin(); i != m_instructions.end(); i++ ) {
       ptx_instruction *pI = *i;
       if ( pI->is_label() ) {
@@ -266,11 +298,13 @@ void function_info::ptx_assemble()
          target.set_type(label_t);
       }
    }
-
+   m_n = n;
    printf("  done.\n");
    fflush(stdout);
-   printf("GPGPU-Sim PTX: finding reconvergence points for \'%s\'...\n", m_name.c_str() );
 
+   //disable pdom analysis  here and do it at runtime
+#if 0
+   printf("GPGPU-Sim PTX: finding reconvergence points for \'%s\'...\n", m_name.c_str() );
    create_basic_blocks();
    connect_basic_blocks();
    bool modified = false; 
@@ -304,6 +338,7 @@ void function_info::ptx_assemble()
    fflush(stdout);
 
    m_assembled = true;
+#endif
 }
 
 addr_t shared_to_generic( unsigned smid, addr_t addr )
@@ -1212,14 +1247,19 @@ void function_info::finalize( memory_space *param_mem )
       } 
       // copy the parameter over word-by-word so that parameter that crosses a memory page can be copied over
       //Jin: copy parameter using aligned rules
+      const type_info *paramtype = param->type();
+      int align_amount = paramtype->get_key().get_alignment_spec();
+      align_amount = (align_amount == -1) ? size : align_amount;
+      param_address = (param_address + align_amount - 1) / align_amount * align_amount; //aligned
+
       const size_t word_size = 4; 
-      //param_address = (param_address + size - 1) / size * size; //aligned with size TODO: align not correct
+      //param_address = (param_address + size - 1) / size * size; //aligned with size 
       for (size_t idx = 0; idx < size; idx += word_size) {
          const char *pdata = reinterpret_cast<const char*>(param_value.pdata) + idx; // cast to char * for ptr arithmetic
          param_mem->write(param_address + idx, word_size, pdata,NULL,NULL); 
       }
       unsigned offset = p.get_offset();
-      //assert(offset == param_address);
+      assert(offset == param_address);
       param->set_address(param_address);
       param_address += size;
    }
@@ -1266,6 +1306,165 @@ void function_info::list_param( FILE *fout ) const
    fflush(fout);
 }
 
+void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPtr_Size, memory_space *param_mem, gpgpu_t* gpu, dim3 gridDim, dim3 blockDim) 
+{
+    static unsigned long counter = 0;
+    std::vector< std::pair<size_t, unsigned char*> > param_data;
+    std::vector<unsigned> offsets;
+    std::vector<bool> paramIsPointer;
+
+    char * gpgpusim_path = getenv("GPGPUSIM_ROOT");
+    assert(gpgpusim_path!=NULL);
+    char * wys_exec_path = getenv("WYS_EXEC_PATH");
+    assert(wys_exec_path!=NULL);
+    std::string command = std::string("mkdir ") + gpgpusim_path + "/debug_tools/WatchYourStep/data";
+    std::string filename(std::string(gpgpusim_path) + "/debug_tools/WatchYourStep/data/params.config" + std::to_string(counter));
+
+    //initialize paramList
+    char buff[1024];
+    std::string filename_c(filename+"_c");
+    snprintf(buff,1024,"c++filt %s > %s", get_name().c_str(), filename_c.c_str());
+    system(buff);
+    FILE *fp = fopen(filename_c.c_str(), "r");
+    fgets(buff, 1024, fp);
+    fclose(fp);
+    std::string fn(buff);
+    size_t pos1, pos2;
+    pos1 = fn.find_last_of("(");
+    pos2 = fn.find(")", pos1);
+    assert(pos2>pos1&&pos1>0);
+    strcpy(buff, fn.substr(pos1 + 1, pos2 - pos1 - 1).c_str());
+    char *tok;
+    tok = strtok(buff, ",");
+    std::string tmp;
+    while(tok!=NULL){
+        std::string param(tok);
+        if(param.find("<")!=std::string::npos){
+            assert(param.find(">")==std::string::npos);
+            assert(param.find("*")==std::string::npos);
+            tmp = param;
+        } else {
+            if (tmp.length()>0){
+                tmp = ""; 
+                assert(param.find(">")!=std::string::npos);
+                assert(param.find("<")==std::string::npos);
+                assert(param.find("*")==std::string::npos);
+            }   
+            printf("%s\n", param.c_str());
+            if(param.find("*")!=std::string::npos){
+                paramIsPointer.push_back(true);
+            }else{                                                                                 
+                paramIsPointer.push_back(false);
+            }   
+        }
+        tok = strtok(NULL, ",");
+    }
+
+
+    for( std::map<unsigned,param_info>::iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
+        param_info &p = i->second;
+        std::string name = p.get_name();
+        symbol *param = m_symtab->lookup(name.c_str());
+        addr_t param_addr = param->get_address();
+        param_t param_value = p.get_value();
+        offsets.push_back((unsigned)p.get_offset());
+
+        if (paramIsPointer[i->first] && (*(unsigned long long*)param_value.pdata != 0)){
+            //is pointer
+            assert(param_value.size==sizeof(void*)&&"MisID'd this param as pointer");
+            size_t array_size = 0;
+            unsigned long long param_pointer = *(unsigned long long*)param_value.pdata;
+            if(mallocPtr_Size.find(param_pointer)!=mallocPtr_Size.end()){
+                array_size = mallocPtr_Size[param_pointer];
+            }else{
+                for( std::map<unsigned long long, size_t>::iterator j=mallocPtr_Size.begin(); j!=mallocPtr_Size.end(); j++ ) {
+                    if(param_pointer>j->first&&param_pointer<j->first + j->second){
+                        array_size = j->first + j->second - param_pointer;
+                        break;
+                    }
+                }
+                assert(array_size>0&&"pointer was not previously malloc'd");
+            }
+
+            unsigned char* val = (unsigned char*) malloc(param_value.size);
+            param_mem->read(param_addr,param_value.size,(void*)val);
+            unsigned char* array_val = (unsigned char*) malloc(array_size);
+            gpu->get_global_memory()->read(*(unsigned*)((void*)val),array_size,(void*)array_val);
+            param_data.push_back(std::pair<size_t, unsigned char*>(array_size,array_val));
+            paramIsPointer.push_back(true);
+        }else{
+            unsigned char* val = (unsigned char*) malloc(param_value.size);
+            param_mem->read(param_addr,param_value.size,(void*)val);
+            param_data.push_back(std::pair<size_t, unsigned char*>(param_value.size,val));
+            paramIsPointer.push_back(false);
+        }
+    }
+
+    FILE *fout  = fopen (filename.c_str(), "w");
+    printf("Writing data to %s ...\n", filename.c_str());
+    fprintf(fout, "%s\n", get_name().c_str());
+    fprintf(fout, "%u,%u,%u %u,%u,%u\n", gridDim.x, gridDim.y, gridDim.z, blockDim.x, blockDim.y, blockDim.z);
+    size_t index = 0;
+    for( std::vector< std::pair<size_t,unsigned char*> >::const_iterator i=param_data.begin(); i!=param_data.end(); i++ ) {
+        if (paramIsPointer[index]){
+            fprintf(fout, "*");
+        }
+        fprintf(fout, "%lu :", i->first);
+        for (size_t j = 0; j<i->first; j++){
+            fprintf(fout, " %u", i->second[j]);
+        }
+        fprintf(fout, " : %u", offsets[index]);
+        free (i->second);
+        fprintf(fout, "\n");
+        index++;
+    }
+    fflush(fout);
+    fclose(fout);
+    
+    //ptx config
+    std::string ptx_config_fn(std::string(gpgpusim_path) + "/debug_tools/WatchYourStep/data/ptx.config" + std::to_string(counter));
+    snprintf(buff, 1024, "grep -rn \".entry %s\" %s/*.ptx | cut -d \":\" -f 1-2 > %s", get_name().c_str(), wys_exec_path, ptx_config_fn.c_str());
+    if (system(buff)!=0){
+        printf("WARNING: Failed to execute grep to find ptx source \n");
+        printf("Problematic call: %s", buff);
+        abort();
+    }
+    FILE *fin = fopen(ptx_config_fn.c_str(), "r");
+    char ptx_source[256];
+    unsigned line_number;
+    int numscanned = fscanf(fin, "%[^:]:%u", ptx_source, &line_number);
+    assert(numscanned == 2);
+    fclose(fin);
+    snprintf(buff, 1024, "grep -rn \".version\" %s | cut -d \":\" -f 1 | xargs -I \"{}\" awk \"NR>={}&&NR<={}+2\" %s > %s", ptx_source, ptx_source, ptx_config_fn.c_str());
+    if (system(buff)!=0){
+        printf("WARNING: Failed to execute grep to find ptx header \n");
+        printf("Problematic call: %s", buff);
+        abort();
+    }
+    fin = fopen(ptx_source, "r");
+    assert(fin!=NULL);
+    printf("Writing data to %s ...\n", ptx_config_fn.c_str());
+    fout = fopen(ptx_config_fn.c_str(), "a");
+    assert(fout!=NULL);
+    for (unsigned i = 0; i<line_number; i++){
+        fgets(buff, 1024, fin);
+        assert(!feof(fin));
+    }
+    fprintf(fout, "\n\n");
+    do{
+        fprintf(fout, "%s", buff);
+        fgets(buff, 1024, fin);
+        if(feof(fin)){
+            break;
+        }
+    } while(strstr(buff, "entry")==NULL);
+
+    fclose(fin);
+    fflush(fout);
+    fclose(fout);
+    counter++;
+}
+
 template<int activate_level> 
 bool ptx_debug_exec_dump_cond(int thd_uid, addr_t pc)
 {
@@ -1308,8 +1507,7 @@ static unsigned get_tex_datasize( const ptx_instruction *pI, ptx_thread_info *th
    std::string texname = src1.name();
 
    gpgpu_t *gpu = thread->get_gpu();
-   const struct textureReference* texref = gpu->get_texref(texname);
-   const struct textureInfo* texInfo = gpu->get_texinfo(texref);
+   const struct textureInfo* texInfo = gpu->get_texinfo(texname);
 
    unsigned data_size = texInfo->texel_size;
    return data_size; 
@@ -1901,6 +2099,38 @@ ptx_cta_info *g_func_cta_info = NULL;
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
+unsigned max_cta (const struct gpgpu_ptx_sim_info *kernel_info, unsigned threads_per_cta, unsigned int warp_size, unsigned int n_thread_per_shader, unsigned int gpgpu_shmem_size, unsigned int gpgpu_shader_registers, unsigned int max_cta_per_core)
+{
+   
+    unsigned int padded_cta_size = threads_per_cta;
+    if (padded_cta_size%warp_size) 
+        padded_cta_size = ((padded_cta_size/warp_size)+1)*(warp_size);
+     unsigned int result_thread = n_thread_per_shader / padded_cta_size;
+
+     unsigned int result_shmem = (unsigned)-1;
+     if (kernel_info->smem > 0)
+        result_shmem = gpgpu_shmem_size / kernel_info->smem;
+     unsigned int result_regs = (unsigned)-1;
+     if (kernel_info->regs > 0)
+        result_regs = gpgpu_shader_registers / (padded_cta_size * ((kernel_info->regs+3)&~3));
+     printf("padded cta size is %d and %d and %d",padded_cta_size, kernel_info->regs, ((kernel_info->regs+3)&~3) );
+     //Limit by CTA
+     unsigned int result_cta = max_cta_per_core;
+
+     unsigned result = result_thread;
+     result = gs_min2(result, result_shmem);
+     result = gs_min2(result, result_regs);
+     result = gs_min2(result, result_cta);
+
+     printf ("GPGPU-Sim uArch: CTA/core = %u, limited by:", result);
+     if (result == result_thread) printf (" threads");
+     if (result == result_shmem) printf (" shmem");
+     if (result == result_regs) printf (" regs");
+     if (result == result_cta) printf (" cta_limit");
+     printf ("\n");
+
+     return result;
+}
 /*!
 This function simulates the CUDA code functionally, it takes a kernel_info_t parameter 
 which holds the data for the CUDA kernel to be executed
@@ -1911,20 +2141,71 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
 
      //using a shader core object for book keeping, it is not needed but as most function built for performance simulation need it we use it here
     extern gpgpu_sim *g_the_gpu;
+    //before we execute, we should do PDOM analysis for functional simulation scenario.
+    function_info *kernel_func_info = kernel.entry();
+    const struct gpgpu_ptx_sim_info *kernel_info = ptx_sim_kernel_info(kernel_func_info);
+    checkpoint *g_checkpoint;
+    g_checkpoint = new checkpoint();
+
+    if (kernel_func_info->is_pdom_set()) {
+    	printf("GPGPU-Sim PTX: PDOM analysis already done for %s \n", kernel.name().c_str() );
+    } else {
+	 printf("GPGPU-Sim PTX: finding reconvergence points for \'%s\'...\n", kernel.name().c_str() );
+	 kernel_func_info->do_pdom();
+	 kernel_func_info->set_pdom();
+    }
+
+    unsigned max_cta_tot = max_cta(kernel_info,kernel.threads_per_cta(), g_the_gpu->getShaderCoreConfig()->warp_size, g_the_gpu->getShaderCoreConfig()->n_thread_per_shader, g_the_gpu->getShaderCoreConfig()->gpgpu_shmem_size, g_the_gpu->getShaderCoreConfig()->gpgpu_shader_registers, g_the_gpu->getShaderCoreConfig()->max_cta_per_core);
+    printf("Max CTA : %d\n",max_cta_tot);
+
+    
+
+
+      
+    int inst_count=50;
+    int cp_op= g_the_gpu->checkpoint_option;
+    int cp_CTA = g_the_gpu->checkpoint_CTA;
+    int cp_kernel= g_the_gpu->checkpoint_kernel;
+    cp_count= g_the_gpu->checkpoint_insn_Y;
+    cp_cta_resume= g_the_gpu->checkpoint_CTA_t;
+    int cta_launched =0;
 
     //we excute the kernel one CTA (Block) at the time, as synchronization functions work block wise
     while(!kernel.no_more_ctas_to_run()){
-        functionalCoreSim cta(
-            &kernel,
-            g_the_gpu,
-            g_the_gpu->getShaderCoreConfig()->warp_size
-        );
-        cta.execute();
+        unsigned temp=kernel.get_next_cta_id_single();
+        
 
-#if (CUDART_VERSION >= 5000)
-	launch_all_device_kernels();
-#endif
+        if(cp_op==0 || (cp_op==1 && cta_launched<cp_cta_resume && kernel.get_uid()==cp_kernel) || kernel.get_uid()< cp_kernel) // just fro testing
+        {
+           functionalCoreSim cta(
+               &kernel,
+               g_the_gpu,
+               g_the_gpu->getShaderCoreConfig()->warp_size
+           );
+           cta.execute(cp_count,temp);
+
+            #if (CUDART_VERSION >= 5000)
+            	launch_all_device_kernels();
+            #endif
+         }
+         else
+         {
+            kernel.increment_cta_id();
+         }
+    cta_launched++;
     }
+
+      
+      
+     if(cp_op==1)
+	{
+      char f1name[2048];
+      snprintf(f1name,2048,"checkpoint_files/global_mem_%d.txt", kernel.get_uid() );
+      g_checkpoint->store_global_mem(g_the_gpu->get_global_memory(), f1name , "%08x");
+	}
+
+
+      
     
    //registering this kernel as done      
    
@@ -1962,9 +2243,10 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
    fflush(stdout); 
 }
 
-void functionalCoreSim::initializeCTA()
+void functionalCoreSim::initializeCTA(unsigned ctaid_cp)
 {
     int ctaLiveThreads=0;
+    symbol_table * symtab= m_kernel->entry()->get_symtab();
     
     for(int i=0; i< m_warp_count; i++){
         m_warpAtBarrier[i]=false;
@@ -1977,9 +2259,13 @@ void functionalCoreSim::initializeCTA()
     for(unsigned i=0; i<m_kernel->threads_per_cta();i++) {
         ptx_sim_init_thread(*m_kernel,&m_thread[i],0,i,m_kernel->threads_per_cta()-i,m_kernel->threads_per_cta(),this,0,i/m_warp_size,(gpgpu_t*)m_gpu, true);
         assert(m_thread[i]!=NULL && !m_thread[i]->is_done());
+        char fname[2048];
+        snprintf(fname,2048,"checkpoint_files/thread_%d_0_reg.txt",i );
+        if(cp_cta_resume==1)
+            m_thread[i]->resume_reg_thread(fname,symtab);
         ctaLiveThreads++;
     }
-    
+
     for(int k=0;k<m_warp_count;k++)
         createWarp(k);
 }
@@ -1996,33 +2282,97 @@ void  functionalCoreSim::createWarp(unsigned warpId)
    
    assert(m_thread[warpId*m_warp_size]!=NULL);
    m_simt_stack[warpId]->launch(m_thread[warpId*m_warp_size]->get_pc(),initialMask);
+   char fname[2048];
+   snprintf(fname,2048,"checkpoint_files/warp_%d_0_simt.txt",warpId );
+
+   if(cp_cta_resume==1)
+   {
+      unsigned pc,rpc;
+      m_simt_stack[warpId]->resume(fname);
+      m_simt_stack[warpId]->get_pdom_stack_top_info(&pc,&rpc);
+      for(int i=warpId*m_warp_size; i<warpId*m_warp_size+m_warp_size;i++){
+        m_thread[i]->set_npc(pc);
+        m_thread[i]->update_pc();
+    }   
+
+   }
    m_liveThreadCount[warpId]= liveThreadsCount;
 }
 
-void functionalCoreSim::execute()
+void functionalCoreSim::execute(int inst_count, unsigned ctaid_cp)
  {
-    initializeCTA();
+   cp_count= m_gpu->checkpoint_insn_Y;
+    cp_cta_resume= m_gpu->checkpoint_CTA_t;
+    initializeCTA(ctaid_cp);
     
-    //start executing the CTA
+    int count=0;
     while(true){
         bool someOneLive= false;
         bool allAtBarrier = true;
         for(unsigned i=0;i<m_warp_count;i++){
             executeWarp(i,allAtBarrier,someOneLive);
+            count++;
         }
+        
+        if(inst_count>0 && count>inst_count && (m_kernel->get_uid()==m_gpu->checkpoint_kernel) && (ctaid_cp>=m_gpu->checkpoint_CTA) && (ctaid_cp<m_gpu->checkpoint_CTA_t) && m_gpu->checkpoint_option==1) 
+         {
+            someOneLive=false;
+            break;
+         }
         if(!someOneLive) break;
         if(allAtBarrier){
              for(unsigned i=0;i<m_warp_count;i++)
                  m_warpAtBarrier[i]=false;
         }
     }
- }
+
+    checkpoint *g_checkpoint;
+    g_checkpoint = new checkpoint();
+    
+    symbol * sym;
+    ptx_reg_t regval;
+    regval.u64= 123;
+    symbol_table * symtab= m_kernel->entry()->get_symtab();
+
+
+    unsigned ctaid =m_kernel->get_next_cta_id_single();
+    if(m_gpu->checkpoint_option==1 && (m_kernel->get_uid()==m_gpu->checkpoint_kernel) && (ctaid_cp>=m_gpu->checkpoint_CTA) && (ctaid_cp<m_gpu->checkpoint_CTA_t))
+   {
+       char fname[2048];
+       snprintf(fname,2048,"checkpoint_files/shared_mem_%d.txt",ctaid-1 );
+       g_checkpoint->store_global_mem(m_thread[0]->m_shared_mem, fname , "%08x");
+      for(int i=0; i<32*m_warp_count;i++)
+      {
+         char fname[2048];
+         snprintf(fname,2048,"checkpoint_files/thread_%d_%d_reg.txt",i,ctaid-1 );
+          m_thread[i]->print_reg_thread(fname);
+          char f1name[2048];
+         snprintf(f1name,2048,"checkpoint_files/local_mem_thread_%d_%d_reg.txt",i,ctaid-1 );
+         g_checkpoint->store_global_mem(m_thread[i]->m_local_mem, f1name , "%08x");
+         m_thread[i]->set_done();
+         m_thread[i]->exitCore();
+         m_thread[i]->registerExit();
+      }
+   
+      for(int i=0;i<m_warp_count;i++)
+      {
+         
+         char fname[2048];
+         snprintf(fname,2048,"checkpoint_files/warp_%d_%d_simt.txt",i,ctaid-1 );
+         FILE * fp = fopen(fname,"w");
+         assert(fp!=NULL);
+         m_simt_stack[i]->print_checkpoint(fp);
+         fclose(fp);
+      }
+   }
+
+}
 
 void functionalCoreSim::executeWarp(unsigned i, bool &allAtBarrier, bool & someOneLive)
 {
     if(!m_warpAtBarrier[i] && m_liveThreadCount[i]!=0){
         warp_inst_t inst =getExecuteWarp(i);
-	execute_warp_inst_t(inst,i);
+        execute_warp_inst_t(inst,i);
         if(inst.isatomic()) inst.do_atomic(true);
         if(inst.op==BARRIER_OP || inst.op==MEMORY_BARRIER_OP ) m_warpAtBarrier[i]=true;
         updateSIMTStack( i, &inst );

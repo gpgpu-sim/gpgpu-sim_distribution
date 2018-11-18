@@ -108,7 +108,7 @@ void *gpgpu_sim_thread_concurrent(void*)
            printf("GPGPU-Sim: *** simulation thread starting and spinning waiting for work ***\n");
            fflush(stdout);
         }
-        while( g_stream_manager->empty() && !g_sim_done )
+        while( g_stream_manager->empty_protected() && !g_sim_done )
             ;
         if(g_debug_execution >= 3) {
            printf("GPGPU-Sim: ** START simulation thread (detected work) **\n");

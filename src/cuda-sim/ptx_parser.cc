@@ -32,6 +32,8 @@
 
 extern int ptx_error( const char *s );
 extern int ptx_lineno;
+extern int ptx_parse();
+extern FILE *ptx_in;
 
 static const struct core_config *g_shader_core_config;
 void set_ptx_warp_size(const struct core_config * warp_size)
@@ -59,6 +61,7 @@ memory_space_t g_ptr_spec = undefined_space;
 int g_scalar_type_spec = -1;
 int g_vector_spec = -1;
 int g_alignment_spec = -1;
+int g_size = -1;
 int g_extern_spec = 0;
 
 // variable declaration stuff:
@@ -106,6 +109,36 @@ void read_parser_environment_variables()
    }
 }
 
+void init_directive_state()
+{
+   PTX_PARSE_DPRINTF("init_directive_state");
+   g_space_spec=undefined_space;
+   g_ptr_spec=undefined_space;
+   g_scalar_type_spec=-1;
+   g_vector_spec=-1;
+   g_opcode=-1;
+   g_alignment_spec = -1;
+   g_size = -1;
+   g_extern_spec = 0;
+   g_scalar_type.clear();
+   g_operands.clear();
+   g_last_symbol = NULL;
+}
+
+void init_instruction_state()
+{
+   PTX_PARSE_DPRINTF("init_instruction_state");
+   g_pred = NULL;
+   g_neg_pred = 0;
+   g_pred_mod = -1;
+   g_label = NULL;
+   g_opcode = -1;
+   g_options.clear();
+   g_wmma_options.clear();
+   g_return_var = operand_info();
+   init_directive_state();
+}
+
 symbol_table *init_parser( const char *ptx_filename )
 {
    g_filename = strdup(ptx_filename);
@@ -113,9 +146,9 @@ symbol_table *init_parser( const char *ptx_filename )
        g_global_allfiles_symbol_table = new symbol_table("global_allfiles", 0, NULL);
        g_global_symbol_table = g_current_symbol_table = g_global_allfiles_symbol_table;
    }
-   else {
+   /*else {
        g_global_symbol_table = g_current_symbol_table = new symbol_table("global",0,g_global_allfiles_symbol_table);
-   }
+   }*/
    ptx_lineno = 1;
 
 #define DEF(X,Y) g_ptx_token_decode[X] = Y;
@@ -136,36 +169,13 @@ symbol_table *init_parser( const char *ptx_filename )
    g_ptx_token_decode[generic_space] = "generic_space";
    g_ptx_token_decode[instruction_space] = "instruction_space";
 
-   return g_global_symbol_table;
-}
-
-void init_directive_state()
-{
-   PTX_PARSE_DPRINTF("init_directive_state");
-   g_space_spec=undefined_space;
-   g_ptr_spec=undefined_space;
-   g_scalar_type_spec=-1;
-   g_vector_spec=-1;
-   g_opcode=-1;
-   g_alignment_spec = -1;
-   g_extern_spec = 0;
-   g_scalar_type.clear();
-   g_operands.clear();
-   g_last_symbol = NULL;
-}
-
-void init_instruction_state()
-{
-   PTX_PARSE_DPRINTF("init_instruction_state");
-   g_pred = NULL;
-   g_neg_pred = 0;
-   g_pred_mod = -1;
-   g_label = NULL;
-   g_opcode = -1;
-   g_options.clear();
-   g_wmma_options.clear();
-   g_return_var = operand_info();
    init_directive_state();
+   init_instruction_state();
+
+   ptx_in = fopen(ptx_filename, "r");
+   ptx_parse();
+   fclose(ptx_in);
+   return g_global_symbol_table;
 }
 
 static int g_entry_point;
@@ -370,6 +380,9 @@ int pad_address (new_addr_type address, unsigned size, unsigned maxalign) {
 
 void add_identifier( const char *identifier, int array_dim, unsigned array_ident ) 
 {
+   if(array_ident==ARRAY_IDENTIFIER){
+       g_size *= array_dim;
+   }
    if( g_func_decl && (g_func_info == NULL) ) {
       // return variable decl...
       assert( g_add_identifier_cached__identifier == NULL );
@@ -573,10 +586,15 @@ void add_constptr(const char* identifier1, const char* identifier2, int offset)
 
 void add_function_arg()
 {
+   assert(g_size>0);
    if( g_func_info ) {
       PTX_PARSE_DPRINTF("add_function_arg \"%s\"", g_last_symbol->name().c_str() );
       g_func_info->add_arg(g_last_symbol);
+      unsigned alignment = (g_alignment_spec==-1) ? g_size : g_alignment_spec;
+      assert(alignment==1||alignment==2||alignment==4||alignment==8||alignment==16);//known valid alignment values
+      g_func_info->add_config_param( g_size,  alignment);
    }
+
 }
 
 void add_extern_spec() 
@@ -628,12 +646,38 @@ void add_vector_spec(int spec )
 
 void add_scalar_type_spec( int type_spec ) 
 {
+   //save size of parameter
+   switch ( type_spec ) {
+      case B8_TYPE:
+      case S8_TYPE:
+      case U8_TYPE: 
+         g_size = 1; break;
+      case B16_TYPE:
+      case S16_TYPE:
+      case U16_TYPE:
+      case F16_TYPE: 
+         g_size = 2; break;
+      case B32_TYPE:
+      case S32_TYPE:
+      case U32_TYPE:
+      case F32_TYPE: 
+         g_size = 4; break;
+      case B64_TYPE:
+      case BB64_TYPE:
+      case S64_TYPE:
+      case U64_TYPE:
+      case F64_TYPE: 
+      case FF64_TYPE:
+         g_size = 8; break;
+      case BB128_TYPE: 
+         g_size = 16; break;
+   }
    PTX_PARSE_DPRINTF("add_scalar_type_spec \"%s\"", g_ptx_token_decode[type_spec].c_str());
    g_scalar_type.push_back( type_spec );
    if ( g_scalar_type.size() > 1 ) {
       parse_assert( (g_opcode == -1) || (g_opcode == CVT_OP) || (g_opcode == SET_OP) || (g_opcode == SLCT_OP)
-                    || (g_opcode == TEX_OP)|| (g_opcode==MMA_OP),
-                    "only cvt, set, slct, and tex can have more than one type specifier.");
+                    || (g_opcode == TEX_OP)|| (g_opcode==MMA_OP)|| (g_opcode == DP4A_OP),
+                    "only cvt, set, slct, tex and dp4a can have more than one type specifier.");
    }
    g_scalar_type_spec = type_spec;
 }
