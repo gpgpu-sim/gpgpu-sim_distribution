@@ -19,7 +19,7 @@ Version 4.0.0 (development branch) versus 3.2.3
 4- Fair memory issue from multiple schedulers.
 5- Added tensorcore unit pipeline.
 6- Corrected the bug in vector load instruction
-7- model sub-core model (scheduler isolation)
+7- Volta sub-core model (scheduler isolation)
 -Cache System:
 1- Sector L1/L2 cache
 2- Fetch-on-write and lazy-fetch-on-read write allocation policy.
