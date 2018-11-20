@@ -411,7 +411,7 @@ void warp_inst_t::generate_mem_accesses()
         break;
 
     case global_space: case local_space: case param_space_local:
-    	 if( m_config->gpgpu_coalesce_arch >= 13 && m_config->gpgpu_coalesce_arch <= 62) {
+    	 if( m_config->gpgpu_coalesce_arch >= 13) {
             if(isatomic())
                 memory_coalescing_arch_atomic(is_write, access_type);
             else
@@ -466,7 +466,7 @@ void warp_inst_t::memory_coalescing_arch( bool is_write, mem_access_type access_
     }
     else if(m_config->gpgpu_coalesce_arch >= 40)
     {
-    	//Maxwell and Pascal, L1 and L2 are sectors
+    	//Maxwell, Pascal and Volta, L1 and L2 are sectors
     	//all requests should be 32 bytes
     	sector_segment_size = true;
     }
@@ -538,11 +538,28 @@ void warp_inst_t::memory_coalescing_arch_atomic( bool is_write, mem_access_type 
 
    // see the CUDA manual where it discusses coalescing rules before reading this
    unsigned segment_size = 0;
-   unsigned warp_parts = 2;
+   unsigned warp_parts = m_config->mem_warp_parts;
+   bool sector_segment_size = false;
+
+   if(m_config->gpgpu_coalesce_arch >= 20 && m_config->gpgpu_coalesce_arch < 39)
+   {
+	//Fermi and Kepler, L1 is normal and L2 is sector
+	if(m_config->gmem_skip_L1D || cache_op == CACHE_GLOBAL)
+		sector_segment_size = true;
+	else
+		sector_segment_size = false;
+   }
+   else if(m_config->gpgpu_coalesce_arch >= 40)
+   {
+	//Maxwell, Pascal and Volta, L1 and L2 are sectors
+	//all requests should be 32 bytes
+	sector_segment_size = true;
+   }
+
    switch( data_size ) {
    case 1: segment_size = 32; break;
-   case 2: segment_size = 64; break;
-   case 4: case 8: case 16: segment_size = 128; break;
+   case 2: segment_size = sector_segment_size? 32 : 64; break;
+   case 4: case 8: case 16: segment_size = sector_segment_size? 32 : 128; break;
    }
    unsigned subwarp_size = m_config->warp_size / warp_parts;
 

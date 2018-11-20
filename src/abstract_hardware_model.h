@@ -84,6 +84,8 @@ enum uarch_op_t {
    SFU_OP,
    TENSOR_CORE_OP,
    DP_OP,
+   SP_OP,
+   INTP_OP,
    ALU_SFU_OP,
    LOAD_OP,
    TENSOR_CORE_LOAD_OP,
@@ -142,6 +144,7 @@ enum operation_pipeline_t {
     UNKOWN_OP,
     SP__OP,
 	DP__OP,
+	INTP__OP,
     SFU__OP,
     TENSOR_CORE__OP,
     MEM__OP
@@ -353,6 +356,7 @@ struct core_config {
     unsigned gpgpu_shmem_sizeDefault;
     unsigned gpgpu_shmem_sizePrefL1;
     unsigned gpgpu_shmem_sizePrefShared;
+    unsigned mem_unit_ports;
 
     // texture and constant cache line sizes (used to determine number of memory accesses)
     unsigned gpgpu_cache_texl1_linesize;
@@ -949,7 +953,7 @@ public:
     { 
         m_empty=true; 
     }
-    void issue( const active_mask_t &mask, unsigned warp_id, unsigned long long cycle, int dynamic_warp_id ) 
+    void issue( const active_mask_t &mask, unsigned warp_id, unsigned long long cycle, int dynamic_warp_id, int sch_id )
     {
         m_warp_active_mask = mask;
         m_warp_issued_mask = mask; 
@@ -960,6 +964,7 @@ public:
         cycles = initiation_interval;
         m_cache_hit=false;
         m_empty=false;
+        m_scheduler_id=sch_id;
     }
     const active_mask_t & get_active_mask() const
     {
@@ -1093,6 +1098,7 @@ public:
 
     void print( FILE *fout ) const;
     unsigned get_uid() const { return m_uid; }
+    unsigned get_schd_id() const { return m_scheduler_id; }
 
 
 protected:
@@ -1124,6 +1130,8 @@ protected:
     std::list<mem_access_t> m_accessq;
 
     static unsigned sm_next_uid;
+
+    unsigned m_scheduler_id;  //the scheduler that issues this inst
 
     //Jin: cdp support
 public:
@@ -1231,6 +1239,14 @@ public:
 		}
 		return false;
 	}
+	bool has_free(bool sub_core_model, unsigned reg_id){
+		//in subcore model, each sched has a one specific reg to use (based on sched id)
+		if(!sub_core_model)
+			return has_free();
+
+		assert(reg_id < regs.size());
+		return regs[reg_id]->empty();
+	}
 	bool has_ready(){
 		for( unsigned i = 0; i < regs.size(); i++ ) {
 			if( not regs[i]->empty() ) {
@@ -1284,6 +1300,23 @@ public:
 		}
 		assert(0 && "No free registers found");
 		return NULL;
+	}
+
+	warp_inst_t ** get_free(bool sub_core_model, unsigned reg_id){
+		//in subcore model, each sched has a one specific reg to use (based on sched id)
+		if(!sub_core_model)
+			return get_free();
+
+		assert(reg_id < regs.size());
+		if( regs[reg_id]->empty() ) {
+			return &regs[reg_id];
+		}
+		assert(0 && "No free register found");
+		return NULL;
+	}
+
+	unsigned get_size(){
+		return regs.size();
 	}
 
 private:
