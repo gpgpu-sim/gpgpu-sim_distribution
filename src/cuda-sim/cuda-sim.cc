@@ -1308,7 +1308,7 @@ void function_info::list_param( FILE *fout ) const
 
 void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPtr_Size, memory_space *param_mem, gpgpu_t* gpu, dim3 gridDim, dim3 blockDim) 
 {
-    static unsigned long counter = 0;
+    static unsigned long long counter = 0;
     std::vector< std::pair<size_t, unsigned char*> > param_data;
     std::vector<unsigned> offsets;
     std::vector<bool> paramIsPointer;
