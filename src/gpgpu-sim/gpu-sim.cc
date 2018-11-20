@@ -336,6 +336,9 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_shmem_warp_parts", OPT_INT32, &mem_warp_parts,  
                  "Number of portions a warp is divided into for shared memory bank conflict check ",
                  "2");
+    option_parser_register(opp, "-mem_unit_ports", OPT_INT32, &mem_unit_ports,
+                 "The number of memory transactions allowed per core cycle",
+                 "1");
     option_parser_register(opp, "-gpgpu_shmem_warp_parts", OPT_INT32, &mem_warp_parts,
 				 "Number of portions a warp is divided into for shared memory bank conflict check ",
 				 "2");
@@ -354,8 +357,14 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_reg_bank_use_warp_id", OPT_BOOL, &gpgpu_reg_bank_use_warp_id,
              "Use warp ID in mapping registers to banks (default = off)",
              "0");
+    option_parser_register(opp, "-sub_core_model", OPT_BOOL, &sub_core_model,
+             "Sub Core Volta/Pascal model (default = off)",
+             "0");
+    option_parser_register(opp, "-enable_specialized_operand_collector", OPT_BOOL, &enable_specialized_operand_collector,
+                "enable_specialized_operand_collector",
+                "1");
     option_parser_register(opp, "-gpgpu_operand_collector_num_units_sp", OPT_INT32, &gpgpu_operand_collector_num_units_sp,
-                "number of collector units (default = 4)", 
+                "number of collector units (default = 4)",
                 "4");
     option_parser_register(opp, "-gpgpu_operand_collector_num_units_dp", OPT_INT32, &gpgpu_operand_collector_num_units_dp,
                    "number of collector units (default = 0)",
@@ -363,6 +372,9 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_operand_collector_num_units_sfu", OPT_INT32, &gpgpu_operand_collector_num_units_sfu,
                 "number of collector units (default = 4)", 
                 "4");
+    option_parser_register(opp, "-gpgpu_operand_collector_num_units_int", OPT_INT32, &gpgpu_operand_collector_num_units_int,
+                "number of collector units (default = 0)",
+                "0");
     option_parser_register(opp, "-gpgpu_operand_collector_num_units_tensor_core", OPT_INT32, &gpgpu_operand_collector_num_units_tensor_core,
                 "number of collector units (default = 4)", 
                 "4");
@@ -381,6 +393,9 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_operand_collector_num_in_ports_sfu", OPT_INT32, &gpgpu_operand_collector_num_in_ports_sfu,
                            "number of collector unit in ports (default = 1)", 
                            "1");
+    option_parser_register(opp, "-gpgpu_operand_collector_num_in_ports_int", OPT_INT32, &gpgpu_operand_collector_num_in_ports_int,
+                           "number of collector unit in ports (default = 0)",
+                           "0");
     option_parser_register(opp, "-gpgpu_operand_collector_num_in_ports_tensor_core", OPT_INT32, &gpgpu_operand_collector_num_in_ports_tensor_core,
                            "number of collector unit in ports (default = 1)", 
                            "1");
@@ -399,6 +414,9 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_operand_collector_num_out_ports_sfu", OPT_INT32, &gpgpu_operand_collector_num_out_ports_sfu,
                            "number of collector unit in ports (default = 1)", 
                            "1");
+    option_parser_register(opp, "-gpgpu_operand_collector_num_out_ports_int", OPT_INT32, &gpgpu_operand_collector_num_out_ports_int,
+                           "number of collector unit in ports (default = 0)",
+                           "0");
     option_parser_register(opp, "-gpgpu_operand_collector_num_out_ports_tensor_core", OPT_INT32, &gpgpu_operand_collector_num_out_ports_tensor_core,
                            "number of collector unit in ports (default = 1)", 
                            "1");
@@ -425,8 +443,8 @@ void shader_core_config::reg_options(class OptionParser * opp)
                             "1");
     option_parser_register(opp, "-gpgpu_pipeline_widths", OPT_CSTR, &pipeline_widths_string,
                             "Pipeline widths "
-                            "ID_OC_SP,ID_OC_DP,ID_OC_SFU,ID_OC_MEM,OC_EX_SP,OC_EX_DP,OC_EX_SFU,OC_EX_MEM,EX_WB,ID_OC_TENSOR_CORE,OC_EX_TENSOR_CORE",
-                            "1,1,1,1,1,1,1,1,1,1,1" );
+                            "ID_OC_SP,ID_OC_DP,ID_OC_INT,ID_OC_SFU,ID_OC_MEM,OC_EX_SP,OC_EX_DP,OC_EX_INT,OC_EX_SFU,OC_EX_MEM,EX_WB,ID_OC_TENSOR_CORE,OC_EX_TENSOR_CORE",
+                            "1,1,1,1,1,1,1,1,1,1,1,1,1" );
     option_parser_register(opp, "-gpgpu_tensor_core_avail", OPT_INT32, &gpgpu_tensor_core_avail,
                             "Tensor Core Available (default=0)",
                             "0");
@@ -435,6 +453,9 @@ void shader_core_config::reg_options(class OptionParser * opp)
                             "1");
     option_parser_register(opp, "-gpgpu_num_dp_units", OPT_INT32, &gpgpu_num_dp_units,
                             "Number of DP units (default=0)",
+                            "0");
+    option_parser_register(opp, "-gpgpu_num_int_units", OPT_INT32, &gpgpu_num_int_units,
+                            "Number of INT units (default=0)",
                             "0");
     option_parser_register(opp, "-gpgpu_num_sfu_units", OPT_INT32, &gpgpu_num_sfu_units,
                             "Number of SF units (default=1)",
@@ -1075,18 +1096,18 @@ void gpgpu_sim::gpu_print_stat()
    printf("gpu_stall_dramfull = %d\n", gpu_stall_dramfull);
    printf("gpu_stall_icnt2sh    = %d\n", gpu_stall_icnt2sh );
 
-   printf("partiton_reqs_in_parallel = %lld\n", partiton_reqs_in_parallel);
-   printf("partiton_reqs_in_parallel_total    = %lld\n", partiton_reqs_in_parallel_total );
+   //printf("partiton_reqs_in_parallel = %lld\n", partiton_reqs_in_parallel);
+   //printf("partiton_reqs_in_parallel_total    = %lld\n", partiton_reqs_in_parallel_total );
    printf("partiton_level_parallism = %12.4f\n", (float)partiton_reqs_in_parallel / gpu_sim_cycle);
    printf("partiton_level_parallism_total  = %12.4f\n", (float)(partiton_reqs_in_parallel+partiton_reqs_in_parallel_total) / (gpu_tot_sim_cycle+gpu_sim_cycle) );
-   printf("partiton_reqs_in_parallel_util = %lld\n", partiton_reqs_in_parallel_util);
-   printf("partiton_reqs_in_parallel_util_total    = %lld\n", partiton_reqs_in_parallel_util_total );
-   printf("gpu_sim_cycle_parition_util = %lld\n", gpu_sim_cycle_parition_util);
-   printf("gpu_tot_sim_cycle_parition_util    = %lld\n", gpu_tot_sim_cycle_parition_util );
+   //printf("partiton_reqs_in_parallel_util = %lld\n", partiton_reqs_in_parallel_util);
+   //printf("partiton_reqs_in_parallel_util_total    = %lld\n", partiton_reqs_in_parallel_util_total );
+   //printf("gpu_sim_cycle_parition_util = %lld\n", gpu_sim_cycle_parition_util);
+   // printf("gpu_tot_sim_cycle_parition_util    = %lld\n", gpu_tot_sim_cycle_parition_util );
    printf("partiton_level_parallism_util = %12.4f\n", (float)partiton_reqs_in_parallel_util / gpu_sim_cycle_parition_util);
    printf("partiton_level_parallism_util_total  = %12.4f\n", (float)(partiton_reqs_in_parallel_util+partiton_reqs_in_parallel_util_total) / (gpu_sim_cycle_parition_util+gpu_tot_sim_cycle_parition_util) );
-   printf("partiton_replys_in_parallel = %lld\n", partiton_replys_in_parallel);
-   printf("partiton_replys_in_parallel_total    = %lld\n", partiton_replys_in_parallel_total );
+   //printf("partiton_replys_in_parallel = %lld\n", partiton_replys_in_parallel);
+   //printf("partiton_replys_in_parallel_total    = %lld\n", partiton_replys_in_parallel_total );
    printf("L2_BW  = %12.4f GB/Sec\n", ((float)(partiton_replys_in_parallel * 32) / (gpu_sim_cycle * m_config.icnt_period)) / 1000000000);
    printf("L2_BW_total  = %12.4f GB/Sec\n", ((float)((partiton_replys_in_parallel+partiton_replys_in_parallel_total) * 32) / ((gpu_tot_sim_cycle+gpu_sim_cycle) * m_config.icnt_period)) / 1000000000 );
 
