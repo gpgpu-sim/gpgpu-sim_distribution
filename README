@@ -24,9 +24,11 @@ Mahmoud Khairy, Jain Akshay, Tor Aamodt, Timothy G Rogers,
 Exploring Modern GPU Memory System Design Challenges through Accurate Modeling, arXiv:1810.07269, 
 https://arxiv.org/abs/1810.07269
 
-If you use the tensorcore in GPGPU-Sim or CUTLASS Library in your research
+If you use the Tensor Core in GPGPU-Sim or CUTLASS Library for your research
 please cite:
-	add the arxiv link here
+Md Aamir Raihan, Negar Goli, Tor Aamodt,
+Modeling Deep Learning Accelerator Enabled GPUs, arXiv:1811.08309, 
+https://arxiv.org/abs/1811.08309
 
 If you use the GPUWattch energy model in your research, please cite:
 
