@@ -18,7 +18,7 @@ Analyzing CUDA Workloads Using a Detailed GPU Simulator, in IEEE International
 Symposium on Performance Analysis of Systems and Software (ISPASS), Boston, MA,
 April 19-21, 2009.
 
-If you use cuDNN and Pytorch support in GPGPU-Sim, the Checkpoint function or the Debigging tool for functional simulation error in GPGPU-Sim for your research
+If you use cuDNN and Pytorch support, the Checkpoint function or the Debigging tool for functional simulation error in GPGPU-Sim for your research,
 please cite:
 Jonathan Lew, Deval Shah, Suchita Pati, Shaylin Cattell, Mengchi Zhang, Amruth Sandhupatla, Christopher Ng, Negar Goli, Matthew D. Sinclair, Timothy G. Rogers, Tor Aamodt
 Analyzing Machine Learning Workloads Using a Detailed GPU Simulator, arXiv:1811.08933,
