@@ -710,7 +710,26 @@ public:
       assert( m_type == vector_t);
       return m_value.m_vector_symbolic[3]->name();
    }
-
+   const std::string &vec_name5() const
+   {
+      assert( m_type == vector_t);
+      return m_value.m_vector_symbolic[4]->name();
+   }
+   const std::string &vec_name6() const
+   {
+      assert( m_type == vector_t);
+      return m_value.m_vector_symbolic[5]->name();
+   }
+   const std::string &vec_name7() const
+   {
+      assert( m_type == vector_t);
+      return m_value.m_vector_symbolic[6]->name();
+   }
+   const std::string &vec_name8() const
+   {
+      assert( m_type == vector_t);
+      return m_value.m_vector_symbolic[7]->name();
+   }
    bool is_reg() const
    {
       if ( m_type == reg_t ) {

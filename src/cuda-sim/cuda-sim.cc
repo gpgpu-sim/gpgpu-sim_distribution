@@ -68,6 +68,8 @@ char *opcode_latency_int, *opcode_latency_fp, *opcode_latency_dp,*opcode_latency
 char *opcode_initiation_int, *opcode_initiation_fp, *opcode_initiation_dp,*opcode_initiation_sfu,*opcode_initiation_tensor;
 char *cdp_latency_str;
 unsigned cdp_latency[5];
+const char *type_store;
+
 
 void ptx_opcocde_latency_options (option_parser_t opp) {
 	option_parser_register(opp, "-ptx_opcode_latency_int", OPT_CSTR, &opcode_latency_int,
@@ -301,7 +303,6 @@ void function_info::ptx_assemble()
    m_n = n;
    printf("  done.\n");
    fflush(stdout);
-
    //disable pdom analysis  here and do it at runtime
 #if 0
    printf("GPGPU-Sim PTX: finding reconvergence points for \'%s\'...\n", m_name.c_str() );
@@ -998,17 +999,138 @@ void ptx_instruction::pre_decode()
          if ( o.is_reg() && !o.is_non_arch_reg() ) {
             out[0] = o.reg_num();
             arch_reg.dst[0] = o.arch_reg_num();
+            switch (get_type()) {
+                     case S8_TYPE:  type_store=".s8 ";  break;
+                     case S16_TYPE: type_store=".s16 "; break;
+                     case S32_TYPE: type_store=".s32 "; break;
+                     case S64_TYPE: type_store=".s64 "; break;
+                     case U16_TYPE: type_store=".u16 "; break;
+                     case U8_TYPE:  type_store=".u8  "; break;
+                     case U32_TYPE: type_store=".u32 "; break;
+                     case U64_TYPE: type_store=".u64 "; break;
+                     case F16_TYPE: type_store=".f16 "; break;
+                     case F32_TYPE: type_store=".f32 "; break;
+                     case F64_TYPE: type_store=".f64 "; break;
+                     case B8_TYPE:  type_store=".b8  "; break;
+                     case B16_TYPE: type_store=".b16 "; break;
+                     case B32_TYPE: type_store=".b32 "; break;
+                     case B64_TYPE: type_store=".b64 "; break;
+                     case PRED_TYPE:type_store=".pred "; break;
+                     default:
+                      type_store= "non-scalar type"; 
+                      break;
+
+           }
+           if(inst_counter>argument_counter) 
+   	   {
+	     fprintf(ptxdebug,"     st.global"); 
+	     fprintf(ptxdebug,"%s [%rd%d] %s;\n",type_store,(store_counter+3),o.name().c_str()); 
+             fprintf(ptxdebug,"     add.u64 %rd%d, %rd%d, 4;\n",(store_counter+3),(store_counter+3));
+	   }
          } else if ( o.is_vector() ) {
             is_vectorin = 1;
+            switch (get_type()) {
+                      case S8_TYPE:  type_store=".s8 ";  break;
+                      case S16_TYPE: type_store=".s16 "; break;
+                      case S32_TYPE: type_store=".s32 "; break;
+                      case S64_TYPE: type_store=".s64 "; break;
+                      case U16_TYPE: type_store=".u16 "; break;
+                      case U8_TYPE:  type_store=".u8  "; break;
+                      case U32_TYPE: type_store=".u32 "; break;
+                      case U64_TYPE: type_store=".u64 "; break;
+                      case F16_TYPE: type_store=".f16 "; break;
+                      case F32_TYPE: type_store=".f32 "; break;
+                      case F64_TYPE: type_store=".f64 "; break;
+                      case B8_TYPE:  type_store=".b8  "; break;
+                      case B16_TYPE: type_store=".b16 "; break;
+                      case B32_TYPE: type_store=".b32 "; break;
+                      case B64_TYPE: type_store=".b64 "; break;
+                      case PRED_TYPE:type_store=".pred "; break;
+                      default:
+                              type_store= "non-scalar type";
+                             break;
+                           }          
             unsigned num_elem = o.get_vect_nelem();
-            if( num_elem >= 1 ) out[0] = o.reg1_num();
-            if( num_elem >= 2 ) out[1] = o.reg2_num();
-            if( num_elem >= 3 ) out[2] = o.reg3_num();
-            if( num_elem >= 4 ) out[3] = o.reg4_num();
-            if( num_elem >= 5 ) out[4] = o.reg5_num();
-            if( num_elem >= 6 ) out[5] = o.reg6_num();
-            if( num_elem >= 7 ) out[6] = o.reg7_num();
-            if( num_elem >= 8 ) out[7] = o.reg8_num();
+            if( num_elem >= 1 )
+            {
+              out[0] = o.reg1_num();
+              if(inst_counter>argument_counter)
+                      {
+		       fprintf(ptxdebug,"      st.global"); 
+		       fprintf(ptxdebug,"%s [%rd%d] %s;\n",type_store,(store_counter+3),o.vec_name1().c_str()); 
+                       fprintf(ptxdebug,"      add.u64 %rd%d, %rd%d, 4;\n",(store_counter+3),(store_counter+3));
+                      }
+            }  
+            if( num_elem >= 2 )
+            { 
+              out[1] = o.reg2_num();
+              if(inst_counter>argument_counter)
+              {
+	            fprintf(ptxdebug,"     st.global"); 
+	            fprintf(ptxdebug,"%s [%rd%d] %s;\n",type_store,(store_counter+3),o.vec_name2().c_str()); 
+                    fprintf(ptxdebug,"     add.u64 %rd%d, %rd%d, 4;\n",(store_counter+3),(store_counter+3));
+              }
+            }
+            if( num_elem >= 3 ) 
+            {
+              out[2] = o.reg3_num();
+              if(inst_counter>argument_counter)
+              {
+	            fprintf(ptxdebug,"     st.global"); 
+	            fprintf(ptxdebug,"%s [%rd%d] %s;\n",type_store,(store_counter+3),o.vec_name3().c_str()); 
+                    fprintf(ptxdebug,"     add.u64 %rd%d, %rd%d, 4;\n",(store_counter+3),(store_counter+3));
+              }
+            }
+            if( num_elem >= 4 )
+            { 
+              out[3] = o.reg4_num();
+              if(inst_counter>argument_counter)
+              {
+	             fprintf(ptxdebug,"     st.global"); 
+	             fprintf(ptxdebug,"%s [%rd%d] %s;\n",type_store,(store_counter+3),o.vec_name4().c_str()); 
+                     fprintf(ptxdebug,"     add.u64 %rd%d, %rd%d, 4;\n",(store_counter+3),(store_counter+3));
+               }
+           }
+           if( num_elem >= 5 ) 
+           {
+             out[4] = o.reg5_num();
+             if(inst_counter>argument_counter)
+             {
+	             fprintf(ptxdebug,"     st.global"); 
+	             fprintf(ptxdebug,"%s [%rd%d] %s;\n",type_store,(store_counter+3),o.vec_name5().c_str()); 
+                     fprintf(ptxdebug,"     add.u64 %rd%d, %rd%d, 4;\n",(store_counter+3),(store_counter+3));
+             }
+           }
+           if( num_elem >= 6 )
+           {
+              out[5] = o.reg6_num();
+              if(inst_counter>argument_counter)
+              {
+	             fprintf(ptxdebug,"     st.global"); 
+	             fprintf(ptxdebug,"%s [%rd%d] %s;\n",type_store,(store_counter+3),o.vec_name6().c_str()); 
+                     fprintf(ptxdebug,"     add.u64 %rd%d, %rd%d, 4;\n",(store_counter+3),(store_counter+3));
+               }
+           }
+           if( num_elem >= 7 )
+           {
+              out[6] = o.reg7_num();
+              if(inst_counter>argument_counter)
+              {
+	             fprintf(ptxdebug,"     st.global"); 
+	             fprintf(ptxdebug,"%s [%rd%d] %s;\n",type_store,(store_counter+3),o.vec_name7().c_str()); 
+                     fprintf(ptxdebug,"     add.u64 %rd%d, %rd%d, 4;\n",(store_counter+3),(store_counter+3));
+              }
+           }
+           if( num_elem >= 8 )
+           {
+              out[7] = o.reg8_num();
+              if(inst_counter>argument_counter)
+              {
+	            fprintf(ptxdebug,"     st.global"); 
+	            fprintf(ptxdebug,"%s [%rd%d] %s;\n",type_store,(store_counter+3),o.vec_name8().c_str()); 
+                    fprintf(ptxdebug,"     add.u64 %rd%d, %rd%d, 4;\n",(store_counter+3),(store_counter+3));
+              }
+            }
             for (int i = 0; i < num_elem; i++) 
                arch_reg.dst[i] = o.arch_reg_num(i);
          }

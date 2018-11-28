@@ -614,6 +614,25 @@ void function_info::do_pdom()
    printf("GPGPU-Sim PTX: pre-decoding instructions for \'%s\'...\n", m_name.c_str() );
    for ( unsigned ii=0; ii < m_n; ii += m_instr_mem[ii]->inst_size() ) { // handle branch instructions
       ptx_instruction *pI = m_instr_mem[ii];
+      if((inst_counter-1)< argument_counter)  
+        {    
+        	inst_counter++;
+        }
+      if((inst_counter-1) == argument_counter)
+      	{
+		fprintf(ptxdebug,"     ld.param.u64 %rd%d, [%s_param_%d];\n",store_counter,m_name.c_str(),argument_counter);  
+		fprintf(ptxdebug,"     cvta.to.global.u64  %rd%d, %rd%d;\n",(store_counter+1),(store_counter));  
+		fprintf(ptxdebug,"     move.u32 %r%d,tid.x;\n",(u32_counter));  
+		fprintf(ptxdebug,"     move.u32 %r%d,ctaid.x;\n",(u32_counter+1));  
+		fprintf(ptxdebug,"     move.u32 %r%d,ntid.x;\n",(u32_counter+2));  
+		fprintf(ptxdebug,"     mad.lo.s32 %r%d, %r%d, %r%d, %r%d;\n",(u32_counter+3),(u32_counter+2),(u32_counter+1),(u32_counter));  
+		fprintf(ptxdebug,"     mul.wide.s32 %rd%d,%r%d,4;\n",(store_counter+2),(u32_counter+3));  
+		fprintf(ptxdebug,"     add.s64 %rd%d,%rd%d,%rd%d;\n",(store_counter+3),(store_counter+2),(store_counter+1));  
+        	inst_counter++;
+        } 
+      fprintf(ptxdebug,"     %s \n", pI->get_source());
+      if(!strcmp(pI->get_source(),"ret;")){
+      fprintf(ptxdebug," }\n "); }
       pI->pre_decode();
    }
    printf("GPGPU-Sim PTX: ... done pre-decoding instructions for \'%s\'.\n", m_name.c_str() );
