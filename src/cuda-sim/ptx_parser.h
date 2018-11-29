@@ -32,6 +32,15 @@
 extern const char *g_filename;
 extern int g_error_detected;
 
+extern FILE *ptxdebug;
+extern int argument_counter;
+extern int inst_counter;
+extern int identifier_counter;
+extern int counter;
+extern int store_counter;
+extern int u32_counter;
+
+
 #ifdef __cplusplus 
 class symbol_table* init_parser(const char*);
 const class ptx_instruction *ptx_instruction_lookup( const char *filename, unsigned linenumber );
