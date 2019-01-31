@@ -1209,15 +1209,6 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetLimit ( size_t* pValue, cudaLimit li
 
 }
 
-__host__ cudaError_t CUDARTAPI cudaCreateTextureObject ( cudaTextureObject_t* pTexObject, const cudaResourceDesc* pResDesc, const cudaTextureDesc* pTexDesc, const cudaResourceViewDesc* pResViewDesc )
-{
-	 if(g_debug_execution >= 3){
-            announce_call(__my_func__);
-    	}
-        cuda_not_implemented(__my_func__,__LINE__);
-        return g_last_cudaError = cudaSuccess;
-
-}
 
 __host__ cudaError_t CUDARTAPI cudaStreamGetPriority ( cudaStream_t hStream, int* priority )
 {
@@ -4486,6 +4477,16 @@ CUresult CUDAAPI cuPointerGetAttribute(void *data, CUpointer_attribute attribute
 #endif /* CUDART_VERSION >= 4000 */
 
 #if CUDART_VERSION >= 8000
+__host__ cudaError_t CUDARTAPI cudaCreateTextureObject ( cudaTextureObject_t* pTexObject, const cudaResourceDesc* pResDesc, const cudaTextureDesc* pTexDesc, const cudaResourceViewDesc* pResViewDesc )
+{
+         if(g_debug_execution >= 3){
+            announce_call(__my_func__);
+        }
+        cuda_not_implemented(__my_func__,__LINE__);
+        return g_last_cudaError = cudaSuccess;
+
+}
+
 CUresult CUDAAPI cuMemPrefetchAsync(CUdeviceptr devPtr, size_t count, CUdevice dstDevice, CUstream hStream)
 {
 	if(g_debug_execution >= 3){
