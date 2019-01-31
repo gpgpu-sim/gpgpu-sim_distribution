@@ -195,7 +195,7 @@ void ptx_thread_info::print_reg_thread(char * fname)
   {  
   reg_map_t reg = m_regs.back();
   
-      typename reg_map_t::const_iterator it;
+      reg_map_t::const_iterator it;
       for (it = reg.begin(); it != reg.end(); ++it) 
         {
           const std::string &name = it->first->name();
