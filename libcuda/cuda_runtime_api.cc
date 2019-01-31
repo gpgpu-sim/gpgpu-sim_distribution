@@ -1199,6 +1199,35 @@ __host__ cudaError_t CUDARTAPI cudaGetDevice(int *device)
 	*device = g_active_device;
 	return g_last_cudaError = cudaSuccess;
 }
+__host__ cudaError_t CUDARTAPI cudaDeviceGetLimit ( size_t* pValue, cudaLimit limit )
+{
+	if(g_debug_execution >= 3){
+            announce_call(__my_func__);
+   	 }
+        cuda_not_implemented(__my_func__,__LINE__);
+        return g_last_cudaError = cudaSuccess;
+
+}
+
+__host__ cudaError_t CUDARTAPI cudaCreateTextureObject ( cudaTextureObject_t* pTexObject, const cudaResourceDesc* pResDesc, const cudaTextureDesc* pTexDesc, const cudaResourceViewDesc* pResViewDesc )
+{
+	 if(g_debug_execution >= 3){
+            announce_call(__my_func__);
+    	}
+        cuda_not_implemented(__my_func__,__LINE__);
+        return g_last_cudaError = cudaSuccess;
+
+}
+
+__host__ cudaError_t CUDARTAPI cudaStreamGetPriority ( cudaStream_t hStream, int* priority )
+{
+        if(g_debug_execution >= 3){
+            announce_call(__my_func__);
+   	 }
+        cuda_not_implemented(__my_func__,__LINE__);
+        return g_last_cudaError = cudaSuccess;
+
+}
 
 __host__ cudaError_t CUDARTAPI cudaDeviceGetPCIBusId (
 		char *pciBusId,
@@ -1234,6 +1263,16 @@ __host__ cudaError_t cudaIpcOpenMemHandle(
 	cuda_not_implemented(__my_func__,__LINE__);
 	return g_last_cudaError = cudaErrorUnknown;
 }
+
+__host__ cudaError_t CUDARTAPI cudaDestroyTextureObject(cudaTextureObject_t texObject)
+{
+        if(g_debug_execution >= 3){
+            announce_call(__my_func__);
+   	 }
+        cuda_not_implemented(__my_func__,__LINE__);
+        return g_last_cudaError = cudaErrorUnknown;
+}
+
 
 /*******************************************************************************
  *                                                                              *
