@@ -2583,10 +2583,10 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
         // with a newer version of CUDA to run apps compiled with older versions of
         // CUDA. This is especially useful for PTXPLUS execution.
         //Skip cuda version check for pytorch application
-	std::string app_binary_path = "ldd " + get_app_binary();
+	std::string app_binary_path =  get_app_binary();
         int pos = app_binary_path.find("python");
         if (pos==std::string::npos){
-        	printf("Not pytorch app : checking cuda version");
+        	// Not pytorch app : checking cuda version
 		int app_cuda_version = get_app_cuda_version();
         	assert( app_cuda_version == CUDART_VERSION / 1000  && "The app must be compiled with same major version as the simulator." );
         }
