@@ -73,6 +73,7 @@ enum FuncCache
 #include <set>
 
 typedef unsigned long long new_addr_type;
+typedef unsigned long long cudaTextureObject_t;
 typedef unsigned address_type;
 typedef unsigned addr_t;
 
