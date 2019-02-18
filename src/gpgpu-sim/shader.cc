@@ -2949,7 +2949,7 @@ unsigned int shader_core_config::max_cta( const kernel_info_t &k ) const
        abort();
     }
 
-    if(adpative_volta_cache_config && !k.volta_cache_config_set) {
+    if(adaptive_volta_cache_config && !k.volta_cache_config_set) {
     	//For Volta, we assign the remaining shared memory to L1 cache
     	//For more info, see https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#shared-memory-7-x
     	unsigned total_shmed = kernel_info->smem * result;
