@@ -718,6 +718,11 @@ void memory_sub_partition::get_L2cache_sub_stats(struct cache_sub_stats &css) co
     }
 }
 
+void memory_sub_partition::get_L2cache_sub_stats_pw(struct cache_sub_stats &css) const{
+    if (!m_config->m_L2_config.disabled()) {
+        m_L2cache->get_sub_stats_pw(css);
+    }
+}
 void memory_sub_partition::visualizer_print( gzFile visualizer_file )
 {
     // TODO: Add visualizer stats for L2 cache 
