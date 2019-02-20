@@ -741,7 +741,8 @@ void memory_sub_partition::clear_L2cache_stats_pw() {
 
 void memory_sub_partition::visualizer_print( gzFile visualizer_file )
 {
-    // TODO: Add visualizer stats for L2 cache
+    // Support for L2 AerialVision stats
+    // Per-sub-partition stats would be trivial to extend from this
     cache_sub_stats_pw temp_sub_stats;
     get_L2cache_sub_stats_pw(temp_sub_stats);
 
