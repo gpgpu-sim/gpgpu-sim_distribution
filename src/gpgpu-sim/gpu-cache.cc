@@ -769,11 +769,7 @@ void cache_stats::print_stats(FILE *fout, const char *cache_name) const{
                 mem_access_type_str((enum mem_access_type)type),
                 cache_request_status_str((enum cache_request_status)status),
                 m_stats[type][status]);
-            fprintf(fout, "\t%s[%s][%s] = %u\n",
-                m_cache_name.c_str(),
-                mem_access_type_str((enum mem_access_type)type),
-                cache_request_status_str((enum cache_request_status)status),
-                m_stats_pw[type][status]);
+
             if(status != RESERVATION_FAIL)
             	 total_access[type]+= m_stats[type][status];
         }
@@ -834,23 +830,6 @@ unsigned cache_stats::get_stats(enum mem_access_type *access_type, unsigned num_
     return total;
 }
 
-unsigned cache_stats::get_stats_pw(enum mem_access_type *access_type, unsigned num_access_type, enum cache_request_status *access_status, unsigned num_access_status) const{
-    ///
-    /// Returns a sum of the stats corresponding to each "access_type" and "access_status" pair.
-    /// "access_type" is an array of "num_access_type" mem_access_types.
-    /// "access_status" is an array of "num_access_status" cache_request_statuses.
-    ///
-    unsigned total=0;
-    for(unsigned type =0; type < num_access_type; ++type){
-        for(unsigned status=0; status < num_access_status; ++status){
-            if(!check_valid((int)access_type[type], (int)access_status[status]))
-                assert(0 && "Unknown cache access type or access outcome");
-            total += m_stats_pw[access_type[type]][access_status[status]];
-        }
-    }
-    return total;
-}
-
 void cache_stats::get_sub_stats(struct cache_sub_stats &css) const{
     ///
     /// Overwrites "css" with the appropriate statistics from this cache.
@@ -881,11 +860,11 @@ void cache_stats::get_sub_stats(struct cache_sub_stats &css) const{
     css = t_css;
 }
 
-void cache_stats::get_sub_stats_pw(struct cache_sub_stats &css) const{
+void cache_stats::get_sub_stats_pw(struct cache_sub_stats_pw &css) const{
     ///
     /// Overwrites "css" with the appropriate statistics from this cache.
     ///
-    struct cache_sub_stats t_css;
+    struct cache_sub_stats_pw t_css;
     t_css.clear();
 
     for (unsigned type = 0; type < NUM_MEM_ACCESS_TYPE; ++type) {
@@ -893,23 +872,43 @@ void cache_stats::get_sub_stats_pw(struct cache_sub_stats &css) const{
             if(status == HIT || status == MISS || status == SECTOR_MISS || status == HIT_RESERVED)
                 t_css.accesses += m_stats_pw[type][status];
 
-            if(status == MISS || status == SECTOR_MISS)
-                t_css.misses += m_stats_pw[type][status];
+            if(status == HIT){
+                if(type == GLOBAL_ACC_R || type == CONST_ACC_R || type == INST_ACC_R){
+                    t_css.read_hits += m_stats_pw[type][status];
+                } else if(type == GLOBAL_ACC_W){
+                    t_css.write_hits += m_stats_pw[type][status];
+                }
+            }
 
-            if(status == HIT_RESERVED)
-                t_css.pending_hits += m_stats_pw[type][status];
+            if(status == MISS || status == SECTOR_MISS){
+                if(type == GLOBAL_ACC_R || type == CONST_ACC_R || type == INST_ACC_R){
+                    t_css.read_misses += m_stats_pw[type][status];
+                } else if(type == GLOBAL_ACC_W){
+                    t_css.write_misses += m_stats_pw[type][status];
+                }
+            }
 
-            if(status == RESERVATION_FAIL)
-                t_css.res_fails += m_stats_pw[type][status];
+            if(status == HIT_RESERVED){
+                if(type == GLOBAL_ACC_R || type == CONST_ACC_R || type == INST_ACC_R){
+                    t_css.read_pending_hits += m_stats_pw[type][status];
+                } else if(type == GLOBAL_ACC_W){
+                    t_css.write_pending_hits += m_stats_pw[type][status];
+                }
+            }
+
+            if(status == RESERVATION_FAIL){
+                if(type == GLOBAL_ACC_R || type == CONST_ACC_R || type == INST_ACC_R){
+                    t_css.read_res_fails += m_stats_pw[type][status];
+                } else if(type == GLOBAL_ACC_W){
+                    t_css.write_res_fails += m_stats_pw[type][status];
+                }
+            }
         }
     }
 
-    t_css.port_available_cycles = m_cache_port_available_cycles; 
-    t_css.data_port_busy_cycles = m_cache_data_port_busy_cycles; 
-    t_css.fill_port_busy_cycles = m_cache_fill_port_busy_cycles; 
-
     css = t_css;
 }
+
 bool cache_stats::check_valid(int type, int status) const{
     ///
     /// Verify a valid access_type/access_status
