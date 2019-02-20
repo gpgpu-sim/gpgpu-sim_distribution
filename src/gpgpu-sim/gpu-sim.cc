@@ -917,7 +917,6 @@ void gpgpu_sim::update_stats() {
 void gpgpu_sim::print_stats()
 {
     ptx_file_line_stats_write_file();
-    visualizer_printstat();
     gpu_print_stat();
 
     if (g_network_mode) {
