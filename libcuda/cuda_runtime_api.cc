@@ -1199,6 +1199,26 @@ __host__ cudaError_t CUDARTAPI cudaGetDevice(int *device)
 	*device = g_active_device;
 	return g_last_cudaError = cudaSuccess;
 }
+__host__ cudaError_t CUDARTAPI cudaDeviceGetLimit ( size_t* pValue, cudaLimit limit )
+{
+	if(g_debug_execution >= 3){
+            announce_call(__my_func__);
+   	 }
+        cuda_not_implemented(__my_func__,__LINE__);
+        return g_last_cudaError = cudaSuccess;
+
+}
+
+
+__host__ cudaError_t CUDARTAPI cudaStreamGetPriority ( cudaStream_t hStream, int* priority )
+{
+        if(g_debug_execution >= 3){
+            announce_call(__my_func__);
+   	 }
+        cuda_not_implemented(__my_func__,__LINE__);
+        return g_last_cudaError = cudaSuccess;
+
+}
 
 __host__ cudaError_t CUDARTAPI cudaDeviceGetPCIBusId (
 		char *pciBusId,
@@ -1234,6 +1254,16 @@ __host__ cudaError_t cudaIpcOpenMemHandle(
 	cuda_not_implemented(__my_func__,__LINE__);
 	return g_last_cudaError = cudaErrorUnknown;
 }
+
+__host__ cudaError_t CUDARTAPI cudaDestroyTextureObject(cudaTextureObject_t texObject)
+{
+        if(g_debug_execution >= 3){
+            announce_call(__my_func__);
+   	 }
+        cuda_not_implemented(__my_func__,__LINE__);
+        return g_last_cudaError = cudaErrorUnknown;
+}
+
 
 /*******************************************************************************
  *                                                                              *
@@ -1469,41 +1499,25 @@ __host__ cudaError_t CUDARTAPI cudaLaunch( const char *hostFun )
 	return g_last_cudaError = cudaSuccess;
 }
 
-
 __host__ cudaError_t CUDARTAPI cudaLaunchKernel ( const char* hostFun, dim3 gridDim, dim3 blockDim, const void** args, size_t sharedMem, cudaStream_t stream )
 {
-	struct CUstream_st *s = (struct CUstream_st *)stream;
-	g_cuda_launch_stack.push_back( kernel_config(gridDim,blockDim,sharedMem,s) );
 
-	//printf("cudaLaunchKernel:sizeof(Arg[0])=%d)\n ",sizeof(args[0]));
-	kernel_config &config = g_cuda_launch_stack.back();
-	config.set_arg(args[0],432,0);//standard interface for cutlass library #TODO Implementing a generalized kernel
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    	}
+        CUctx_st *context = GPGPUSim_Context();
+        function_info *entry = context->get_kernel(hostFun);
+    
+	cudaConfigureCall(gridDim, blockDim, sharedMem, stream);
+    	for(unsigned i = 0; i < entry->num_args(); i++){
+        	std::pair<size_t, unsigned> p = entry->get_param_config(i);
+        	cudaSetupArgument(args[i], p.first, p.second);
+    	}  
 
-	CUctx_st* context = GPGPUSim_Context();
-	char *mode = getenv("PTX_SIM_MODE_FUNC");
-	if( mode )
-		sscanf(mode,"%u", &g_ptx_sim_mode);
-	gpgpusim_ptx_assert( !g_cuda_launch_stack.empty(), "empty launch stack" );
-	kernel_config config1 = g_cuda_launch_stack.back();
-	struct CUstream_st *stream1 = config1.get_stream();
-	printf("\nGPGPU-Sim PTX: cudaLaunch for 0x%p (mode=%s) on stream %u\n", hostFun,
-			g_ptx_sim_mode?"functional simulation":"performance simulation", stream1?stream1->get_uid():0 );
-	kernel_info_t *grid = gpgpu_cuda_ptx_sim_init_grid(hostFun,config1.get_args(),config1.grid_dim(),config1.block_dim(),context);
-	std::string kname = grid->name();
-	dim3 gridDim1 = config1.grid_dim();
-	dim3 blockDim1 = config1.block_dim();
-	printf("GPGPU-Sim PTX: pushing kernel \'%s\' to stream %u, gridDim= (%u,%u,%u) blockDim = (%u,%u,%u) \n",
-			kname.c_str(), stream1?stream1->get_uid():0, gridDim1.x,gridDim1.y,gridDim1.z,blockDim1.x,blockDim1.y,blockDim1.z );
-
-	/*Kernel is hardcoded to enable the cutlass library*/
-	std::string cutlass("cutlass");
-	assert(kname.find(cutlass) != std::string::npos);
-
-	stream_operation op(grid,g_ptx_sim_mode,stream1);
-	g_stream_manager->push(op);
-	g_cuda_launch_stack.pop_back();
+	cudaLaunch(hostFun);
 	return g_last_cudaError = cudaSuccess;
 }
+
 
 /*******************************************************************************
  *                                                                              *
@@ -2552,8 +2566,17 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
         // Making this a runtime variable based on the app, enables GPGPU-Sim compiled
         // with a newer version of CUDA to run apps compiled with older versions of
         // CUDA. This is especially useful for PTXPLUS execution.
-        int app_cuda_version = get_app_cuda_version();
-        assert( app_cuda_version == CUDART_VERSION / 1000  && "The app must be compiled with same major version as the simulator." );
+        //Skip cuda version check for pytorch application
+	std::string app_binary_path =  get_app_binary();
+        int pos = app_binary_path.find("python");
+        if (pos==std::string::npos){
+        	// Not pytorch app : checking cuda version
+		int app_cuda_version = get_app_cuda_version();
+        	assert( app_cuda_version == CUDART_VERSION / 1000  && "The app must be compiled with same major version as the simulator." );
+        }
+
+	//int app_cuda_version = get_app_cuda_version();
+        //assert( app_cuda_version == CUDART_VERSION / 1000  && "The app must be compiled with same major version as the simulator." );
         const char* filename;
 #if CUDART_VERSION < 6000
             // FatBin handle from the .fatbin.c file (one of the intermediate files generated by NVCC)
@@ -4447,6 +4470,16 @@ CUresult CUDAAPI cuPointerGetAttribute(void *data, CUpointer_attribute attribute
 #endif /* CUDART_VERSION >= 4000 */
 
 #if CUDART_VERSION >= 8000
+__host__ cudaError_t CUDARTAPI cudaCreateTextureObject ( cudaTextureObject_t* pTexObject, const cudaResourceDesc* pResDesc, const cudaTextureDesc* pTexDesc, const cudaResourceViewDesc* pResViewDesc )
+{
+         if(g_debug_execution >= 3){
+            announce_call(__my_func__);
+        }
+        cuda_not_implemented(__my_func__,__LINE__);
+        return g_last_cudaError = cudaSuccess;
+
+}
+
 CUresult CUDAAPI cuMemPrefetchAsync(CUdeviceptr devPtr, size_t count, CUdevice dstDevice, CUstream hStream)
 {
 	if(g_debug_execution >= 3){

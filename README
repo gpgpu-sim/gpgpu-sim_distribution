@@ -18,15 +18,23 @@ Analyzing CUDA Workloads Using a Detailed GPU Simulator, in IEEE International
 Symposium on Performance Analysis of Systems and Software (ISPASS), Boston, MA,
 April 19-21, 2009.
 
+If you use cuDNN and Pytorch support, the Checkpoint function or the Debigging tool for functional simulation error in GPGPU-Sim for your research,
+please cite:
+Jonathan Lew, Deval Shah, Suchita Pati, Shaylin Cattell, Mengchi Zhang, Amruth Sandhupatla, Christopher Ng, Negar Goli, Matthew D. Sinclair, Timothy G. Rogers, Tor M. Aamodt
+Analyzing Machine Learning Workloads Using a Detailed GPU Simulator, arXiv:1811.08933,
+https://arxiv.org/abs/1811.08933
+
 If you use the memory system in GPGPU-Sim, or the Volta/Pascal models,
 please cite:
 Mahmoud Khairy, Jain Akshay, Tor Aamodt, Timothy G Rogers,
 Exploring Modern GPU Memory System Design Challenges through Accurate Modeling, arXiv:1810.07269, 
 https://arxiv.org/abs/1810.07269
 
-If you use the tensorcore in GPGPU-Sim or CUTLASS Library in your research
+If you use the Tensor Core in GPGPU-Sim or CUTLASS Library for your research
 please cite:
-	add the arxiv link here
+Md Aamir Raihan, Negar Goli, Tor Aamodt,
+Modeling Deep Learning Accelerator Enabled GPUs, arXiv:1811.08309, 
+https://arxiv.org/abs/1811.08309
 
 If you use the GPUWattch energy model in your research, please cite:
 
