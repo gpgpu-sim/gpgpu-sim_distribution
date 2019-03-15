@@ -1569,7 +1569,8 @@ __host__ cudaError_t CUDARTAPI cudaStreamDestroy(cudaStream_t stream)
 	    announce_call(__my_func__);
     }
 #if (CUDART_VERSION >= 3000)
-	//synchronization required to avoid the stream_manager from spinning forever to destroy non-empty streams without making any forward progress.
+	//synchronization required for application using external libraries without explicit synchronization in the code to 
+	//avoid the stream_manager from spinning forever to destroy non-empty streams without making any forward progress. 
 	synchronize();
 	g_stream_manager->destroy_stream(stream);
 #endif
