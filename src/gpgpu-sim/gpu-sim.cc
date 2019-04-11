@@ -476,6 +476,10 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_concurrent_kernel_sm", OPT_BOOL, &gpgpu_concurrent_kernel_sm, 
                 "Support concurrent kernels on a SM (default = disabled)", 
                 "0");
+
+    option_parser_register(opp, "-fast_execution_mode", OPT_BOOL, &fast_execution_mode,
+                "fast_execution_mode (default = disabled)",
+                "0");
 }
 
 void gpgpu_sim_config::reg_options(option_parser_t opp)

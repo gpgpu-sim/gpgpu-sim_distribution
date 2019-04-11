@@ -1893,6 +1893,17 @@ void tensor_core::issue( register_set& source_reg )
 	pipelined_simd_unit::issue(source_reg);
 }
 
+unsigned pipelined_simd_unit::get_active_lanes_in_pipeline(){
+	active_mask_t active_lanes;
+	active_lanes.reset();
+	 if(!m_config->fast_execution_mode || active_insts_in_pipeline){
+		for( unsigned stage=0; (stage+1)<m_pipeline_depth; stage++ ){
+			if( !m_pipeline_reg[stage]->empty() )
+				active_lanes|=m_pipeline_reg[stage]->get_active_mask();
+		}
+	 }
+	return active_lanes.count();
+}
 
 void ldst_unit::active_lanes_in_pipeline(){
 	unsigned active_count=pipelined_simd_unit::get_active_lanes_in_pipeline();
@@ -1946,13 +1957,13 @@ sp_unit::sp_unit( register_set* result_port, const shader_core_config *config,sh
 }
 
 dp_unit::dp_unit( register_set* result_port, const shader_core_config *config,shader_core_ctx *core)
-    : pipelined_simd_unit(result_port,config,config->max_sfu_latency,core)
+    : pipelined_simd_unit(result_port,config,config->max_dp_latency,core)
 {
     m_name = "DP ";
 }
 
 int_unit::int_unit( register_set* result_port, const shader_core_config *config,shader_core_ctx *core)
-    : pipelined_simd_unit(result_port,config,config->max_sp_latency,core)
+    : pipelined_simd_unit(result_port,config,config->max_int_latency,core)
 {
     m_name = "INT ";
 }
@@ -1993,19 +2004,25 @@ pipelined_simd_unit::pipelined_simd_unit( register_set* result_port, const shade
     for( unsigned i=0; i < m_pipeline_depth; i++ ) 
 	m_pipeline_reg[i] = new warp_inst_t( config );
     m_core=core;
+    active_insts_in_pipeline=0;
 }
 
 void pipelined_simd_unit::cycle()
 {
     if( !m_pipeline_reg[0]->empty() ){
         m_result_port->move_in(m_pipeline_reg[0]);
+        assert(active_insts_in_pipeline > 0);
+        active_insts_in_pipeline--;
     }
-    for( unsigned stage=0; (stage+1)<m_pipeline_depth; stage++ )
-        move_warp(m_pipeline_reg[stage], m_pipeline_reg[stage+1]);
+    if(!m_config->fast_execution_mode || active_insts_in_pipeline){
+		for( unsigned stage=0; (stage+1)<m_pipeline_depth; stage++ )
+			move_warp(m_pipeline_reg[stage], m_pipeline_reg[stage+1]);
+    }
     if( !m_dispatch_reg->empty() ) {
         if( !m_dispatch_reg->dispatch_delay()){
             int start_stage = m_dispatch_reg->latency - m_dispatch_reg->initiation_interval;
             move_warp(m_pipeline_reg[start_stage],m_dispatch_reg);
+            active_insts_in_pipeline++;
         }
     }
     occupied >>=1;
@@ -2981,8 +2998,61 @@ unsigned int shader_core_config::max_cta( const kernel_info_t &k ) const
     return result;
 }
 
+void shader_core_config::set_pipeline_latency() {
+
+    if(fast_execution_mode) {
+		//calculate the max latency  based on the input
+
+		unsigned int_latency[5];
+		unsigned fp_latency[5];
+		unsigned dp_latency[5];
+		unsigned sfu_latency;
+		unsigned tensor_latency;
+
+			/*
+			 * [0] ADD,SUB
+			 * [1] MAX,Min
+			 * [2] MUL
+			 * [3] MAD
+			 * [4] DIV
+			 */
+			sscanf(opcode_latency_int, "%u,%u,%u,%u,%u",
+					&int_latency[0],&int_latency[1],&int_latency[2],
+					&int_latency[3],&int_latency[4]);
+			sscanf(opcode_latency_fp, "%u,%u,%u,%u,%u",
+					&fp_latency[0],&fp_latency[1],&fp_latency[2],
+					&fp_latency[3],&fp_latency[4]);
+			sscanf(opcode_latency_dp, "%u,%u,%u,%u,%u",
+					&dp_latency[0],&dp_latency[1],&dp_latency[2],
+					&dp_latency[3],&dp_latency[4]);
+			sscanf(opcode_latency_sfu, "%u",
+					&sfu_latency);
+			sscanf(opcode_latency_tensor, "%u",
+					&tensor_latency);
+
+		//all div operation are executed on sfu
+		//assume that the max latency are dp div or normal sfu_latency
+		max_sfu_latency = std::max(dp_latency[4],sfu_latency);
+		//assume that the max operation has the max latency
+		max_sp_latency = fp_latency[1];
+		max_int_latency = int_latency[1];
+		max_dp_latency = dp_latency[1];
+		max_tensor_core_latency = tensor_latency;
+    } else {
+    	max_sfu_latency = 512;
+		max_sp_latency = 32;
+		max_int_latency = 32;
+		max_dp_latency = 512;
+		max_tensor_core_latency = 64;
+    }
+
+}
+
 void shader_core_ctx::cycle()
 {
+	if(m_config->fast_execution_mode && !isactive() && get_not_completed() == 0)
+		return;
+
 	m_stats->shader_cycles[m_sid]++;
     writeback();
     execute();
