@@ -5260,9 +5260,10 @@ void tex_impl( const ptx_instruction *pI, ptx_thread_info *thread )
    thread->get_vector_operand_values(src2, ptx_tex_regs, nelem); //ptx_reg should be 4 entry vector type...coordinates into texture
 
    gpgpu_t *gpu = thread->get_gpu();
+   kernel_info_t &k = thread->get_kernel();
    const struct textureReference* texref = gpu->get_texref(texname);
-   const struct cudaArray* cuArray = gpu->get_texarray(texname); 
-   const struct textureInfo* texInfo = gpu->get_texinfo(texname);
+   const struct cudaArray* cuArray = k.get_texarray(texname); 
+   const struct textureInfo* texInfo = k.get_texinfo(texname);
    const struct textureReferenceAttr* texAttr = gpu->get_texattr(texname);
 
    //assume always 2D f32 input

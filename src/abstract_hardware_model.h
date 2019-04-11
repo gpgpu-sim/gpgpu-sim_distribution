@@ -212,7 +212,7 @@ public:
 //      m_num_cores_running=0;
 //      m_param_mem=NULL;
 //   }
-   kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry );
+   kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry, std::map<std::string, const struct cudaArray*> m_NameToCudaArray, std::map<std::string, const struct textureInfo*> m_NameToTexureInfo);
    ~kernel_info_t();
 
    void inc_running() { m_num_cores_running++; }
@@ -275,6 +275,20 @@ public:
    std::list<class ptx_thread_info *> &active_threads() { return m_active_threads; }
    class memory_space *get_param_memory() { return m_param_mem; }
 
+   const struct cudaArray* get_texarray( const std::string &texname ) const
+    {
+        std::map<std::string,const struct cudaArray*>::const_iterator t=m_NameToCudaArray.find(texname);
+        assert(t != m_NameToCudaArray.end());
+        return t->second;
+    }
+
+    const struct textureInfo* get_texinfo( const std::string &texname ) const
+    {
+        std::map<std::string, const struct textureInfo*>::const_iterator t=m_NameToTexureInfo.find(texname);
+        assert(t != m_NameToTexureInfo.end());
+        return t->second;
+    }
+
 private:
    kernel_info_t( const kernel_info_t & ); // disable copy constructor
    void operator=( const kernel_info_t & ); // disable copy operator
@@ -283,6 +297,9 @@ private:
 
    unsigned m_uid;
    static unsigned m_next_uid;
+
+   std::map<std::string, const struct cudaArray*> m_NameToCudaArray;
+   std::map<std::string, const struct textureInfo*> m_NameToTexureInfo;
 
    dim3 m_grid_dim;
    dim3 m_block_dim;
@@ -594,6 +611,9 @@ public:
 
     const gpgpu_functional_sim_config &get_config() const { return m_function_model_config; }
     FILE* get_ptx_inst_debug_file() { return ptx_inst_debug_file; }
+
+    std::map<std::string, const struct cudaArray*> getNameArrayMapping() {return m_NameToCudaArray;}
+    std::map<std::string, const struct textureInfo*> getNameInfoMapping() {return m_NameToTexureInfo;}
 
 protected:
     const gpgpu_functional_sim_config &m_function_model_config;

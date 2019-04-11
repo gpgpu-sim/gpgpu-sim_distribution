@@ -1204,8 +1204,24 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetLimit ( size_t* pValue, cudaLimit li
 	if(g_debug_execution >= 3){
             announce_call(__my_func__);
    	 }
-        cuda_not_implemented(__my_func__,__LINE__);
-        return g_last_cudaError = cudaSuccess;
+        switch(limit) {
+        case 0:
+                                 *pValue=1024;
+                                 break;
+        case 2:
+                                 *pValue=8388608;
+                                 break;
+        case 3:
+                                 *pValue=2;
+                                 break;
+        case 4:
+                                 *pValue=2048;
+                                 break;
+        default:
+                        printf("ERROR:Limit %s unimplemented \n",limit);
+                        abort();
+        }
+	return g_last_cudaError = cudaSuccess;
 
 }
 
@@ -1571,7 +1587,7 @@ __host__ cudaError_t CUDARTAPI cudaStreamDestroy(cudaStream_t stream)
 #if (CUDART_VERSION >= 3000)
 	//synchronization required for application using external libraries without explicit synchronization in the code to 
 	//avoid the stream_manager from spinning forever to destroy non-empty streams without making any forward progress. 
-	synchronize();
+	stream->synchronize();
 	g_stream_manager->destroy_stream(stream);
 #endif
 	return g_last_cudaError = cudaSuccess;
@@ -2702,6 +2718,7 @@ cudaError_t CUDARTAPI cudaDeviceSynchronize(void){
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     }
+	synchronize();
 	return g_last_cudaError = cudaSuccess;
 }
 
@@ -3135,6 +3152,8 @@ __host__ cudaError_t CUDARTAPI cudaDeviceSetLimit(enum cudaLimit limit, size_t v
     }
     return g_last_cudaError = cudaSuccess;
 }
+
+
 #endif
 
 #endif
@@ -3313,7 +3332,8 @@ kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *hostFun,
 	    announce_call(__my_func__);
     }
 	function_info *entry = context->get_kernel(hostFun);
-	kernel_info_t *result = new kernel_info_t(gridDim,blockDim,entry);
+	gpgpu_t* gpu= context->get_device()->get_gpgpu();
+	kernel_info_t *result = new kernel_info_t(gridDim,blockDim,entry,gpu->getNameArrayMapping(),gpu->getNameInfoMapping());
 	if( entry == NULL ) {
 		printf("GPGPU-Sim PTX: ERROR launching kernel -- no PTX implementation found for %p\n", hostFun);
 		abort();

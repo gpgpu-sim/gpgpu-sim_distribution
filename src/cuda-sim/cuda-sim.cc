@@ -1507,7 +1507,8 @@ static unsigned get_tex_datasize( const ptx_instruction *pI, ptx_thread_info *th
    std::string texname = src1.name();
 
    gpgpu_t *gpu = thread->get_gpu();
-   const struct textureInfo* texInfo = gpu->get_texinfo(texname);
+   kernel_info_t& k = thread->get_kernel();
+   const struct textureInfo* texInfo = k.get_texinfo(texname);
 
    unsigned data_size = texInfo->texel_size;
    return data_size; 
@@ -1918,7 +1919,7 @@ kernel_info_t *gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
                                              struct dim3 blockDim,
                                              gpgpu_t *gpu )
 {
-   kernel_info_t *result = new kernel_info_t(gridDim,blockDim,entry);
+   kernel_info_t *result = new kernel_info_t(gridDim,blockDim,entry,gpu->getNameArrayMapping(),gpu->getNameInfoMapping());
    unsigned argcount=args.size();
    unsigned argn=1;
    for( gpgpu_ptx_sim_arg_list_t::iterator a = args.begin(); a != args.end(); a++ ) {

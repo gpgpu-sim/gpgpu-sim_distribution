@@ -688,7 +688,7 @@ unsigned g_kernel_launch_latency;
 
 unsigned kernel_info_t::m_next_uid = 1;
 
-kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry )
+kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry, std::map<std::string, const struct cudaArray*> NameToCudaArray, std::map<std::string, const struct textureInfo*> NameToTexureInfo)
 {
     m_kernel_entry=entry;
     m_grid_dim=gridDim;
@@ -708,6 +708,8 @@ kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *
     m_launch_latency = g_kernel_launch_latency;
 
     volta_cache_config_set=false;
+    m_NameToCudaArray = NameToCudaArray;
+    m_NameToTexureInfo = NameToTexureInfo;
 }
 
 kernel_info_t::~kernel_info_t()
