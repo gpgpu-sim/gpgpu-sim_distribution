@@ -44,22 +44,29 @@ struct inct_config
 	unsigned   subnets;
 };
 
+enum Interconnect_type {
+	REQ_NET=0,
+	REPLY_NET=1
+};
 class xbar_router {
 
 public:
-  xbar_router(unsigned router_id, unsigned n_shader, unsigned n_mem, unsigned m_in_buffer_limit, unsigned m_out_buffer_limit);
+  xbar_router(unsigned router_id, enum Interconnect_type m_type, unsigned n_shader, unsigned n_mem, unsigned m_in_buffer_limit, unsigned m_out_buffer_limit);
   ~xbar_router();
    void Push(unsigned input_deviceID, unsigned output_deviceID, void* data, unsigned int size);
    void* Pop(unsigned ouput_deviceID);
    void Advance();
    bool Busy() const;
-   bool Has_Buffer_In(unsigned input_deviceID, unsigned size) const;
-   bool Has_Buffer_Out(unsigned output_deviceID, unsigned size) const;
+   bool Has_Buffer_In(unsigned input_deviceID, unsigned size, bool update_counter=false);
+   bool Has_Buffer_Out(unsigned output_deviceID, unsigned size);
 
    //some stats
    unsigned long long cycles;
    unsigned long long conflicts;
    unsigned long long out_buffer_full;
+   unsigned long long out_buffer_util;
+   unsigned long long in_buffer_full;
+   unsigned long long in_buffer_util;
    unsigned long long packets_num;
 
 private:
@@ -77,6 +84,10 @@ private:
   unsigned in_buffer_limit, out_buffer_limit;
   unsigned next_node;
   unsigned m_id;
+  enum Interconnect_type router_type;
+  unsigned active_in_buffers,active_out_buffers;
+
+  friend class LocalInterconnect;
 
 };
 

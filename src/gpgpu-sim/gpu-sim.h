@@ -62,8 +62,7 @@
 #define SAMPLELOG 222
 #define DUMPLOG 333
 
-
-
+extern tr1_hash_map<new_addr_type,unsigned> address_random_interleaving;
 
 
 enum dram_ctrl_t {

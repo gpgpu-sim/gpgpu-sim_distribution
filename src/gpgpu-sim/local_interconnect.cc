@@ -36,9 +36,10 @@
 #include "local_interconnect.h"
 #include "mem_fetch.h"
 
-xbar_router::xbar_router(unsigned router_id, unsigned n_shader, unsigned n_mem, unsigned m_in_buffer_limit, unsigned m_out_buffer_limit)
+xbar_router::xbar_router(unsigned router_id, enum Interconnect_type m_type, unsigned n_shader, unsigned n_mem, unsigned m_in_buffer_limit, unsigned m_out_buffer_limit)
 {
 	m_id=router_id;
+	router_type=m_type;
    _n_mem = n_mem;
    _n_shader = n_shader;
    total_nodes = n_shader+n_mem;
@@ -47,10 +48,21 @@ xbar_router::xbar_router(unsigned router_id, unsigned n_shader, unsigned n_mem, 
    next_node=0;
    in_buffer_limit = m_in_buffer_limit;
    out_buffer_limit = m_out_buffer_limit;
+   if(m_type == REQ_NET) {
+	   active_in_buffers=n_shader;
+	   active_out_buffers=n_mem;
+   }
+   else if(m_type == REPLY_NET) {
+	   active_in_buffers=n_mem;
+	   active_out_buffers=n_shader;
+   }
 
    cycles = 0;
    conflicts= 0;
    out_buffer_full=0;
+   in_buffer_full=0;
+   out_buffer_util=0;
+   in_buffer_util=0;
    packets_num=0;
 }
 
@@ -81,14 +93,19 @@ void* xbar_router::Pop(unsigned ouput_deviceID)
 }
 
 
-bool xbar_router::Has_Buffer_In(unsigned input_deviceID, unsigned size) const{
+bool xbar_router::Has_Buffer_In(unsigned input_deviceID, unsigned size, bool update_counter){
 
 	assert(input_deviceID < total_nodes);
-	return (in_buffers[input_deviceID].size() + size <= in_buffer_limit);
+
+	bool has_buffer = (in_buffers[input_deviceID].size() + size <= in_buffer_limit);
+	if(update_counter && !has_buffer)
+		in_buffer_full++;
+
+	return has_buffer;
 
 }
 
-bool xbar_router::Has_Buffer_Out(unsigned output_deviceID, unsigned size) const{
+bool xbar_router::Has_Buffer_Out(unsigned output_deviceID, unsigned size){
 	return (out_buffers[output_deviceID].size() + size <= out_buffer_limit);
 }
 
@@ -118,6 +135,12 @@ void xbar_router::Advance() {
 	}
 
 	next_node = (++next_node % total_nodes);
+
+	//collect some stats about buffer util
+	for(unsigned i=0; i<total_nodes; ++i){
+		in_buffer_util+=in_buffers[i].size();
+		out_buffer_util+=out_buffers[i].size();
+	}
 }
 
 bool xbar_router::Busy() const {
@@ -169,7 +192,7 @@ void LocalInterconnect::CreateInterconnect(unsigned m_n_shader, unsigned m_n_mem
 
   net.resize(n_subnets);
   for (unsigned i = 0; i < n_subnets; ++i) {
-    net[i] = new xbar_router( i, m_n_shader, m_n_mem, m_inct_config.in_buffer_limit, m_inct_config.out_buffer_limit );
+    net[i] = new xbar_router( i, static_cast<Interconnect_type>(i), m_n_shader, m_n_mem, m_inct_config.in_buffer_limit, m_inct_config.out_buffer_limit );
   }
 
 }
@@ -236,10 +259,10 @@ bool  LocalInterconnect::HasBuffer(unsigned deviceID, unsigned int size) const{
 
 	 bool has_buffer = false;
 
-	 has_buffer = net[0]->Has_Buffer_In(deviceID, size);
-
 	  if ((n_subnets>1) && deviceID >= n_shader) // deviceID is memory node
-			 has_buffer = net[1]->Has_Buffer_In(deviceID, size);
+		  has_buffer = net[REPLY_NET]->Has_Buffer_In(deviceID, 1, true);
+	  else
+		  has_buffer = net[REQ_NET]->Has_Buffer_In(deviceID, 1, true);
 
 	  return has_buffer;
 
@@ -247,18 +270,24 @@ bool  LocalInterconnect::HasBuffer(unsigned deviceID, unsigned int size) const{
 
 void  LocalInterconnect::DisplayStats() const{
 
-	cout<<"Req_Network_injected_packets_num = "<<net[0]->packets_num<<endl;
-	cout<<"Req_Network_cycles = "<<net[0]->cycles<<endl;
-	cout<<"Req_Network_injected_packets_per_cycle = "<<(float)(net[0]->packets_num) / (net[0]->cycles)<<endl;
-	cout<<"Req_Network_conflicts_per_cycle = "<<(float)(net[0]->conflicts) / (net[0]->cycles)<<endl;
-	cout<<"Req_Network_out_buffer_full_per_cycle = "<<(float)(net[0]->out_buffer_full) / (net[0]->cycles)<<endl;
+	cout<<"Req_Network_injected_packets_num = "<<net[REQ_NET]->packets_num<<endl;
+	cout<<"Req_Network_cycles = "<<net[REQ_NET]->cycles<<endl;
+	cout<<"Req_Network_injected_packets_per_cycle = "<<(float)(net[REQ_NET]->packets_num) / (net[REQ_NET]->cycles)<<endl;
+	cout<<"Req_Network_conflicts_per_cycle = "<<(float)(net[REQ_NET]->conflicts) / (net[REQ_NET]->cycles)<<endl;
+	cout<<"Req_Network_in_buffer_full_per_cycle = "<<(float)(net[REQ_NET]->in_buffer_full) / (net[REQ_NET]->cycles)<<endl;
+	cout<<"Req_Network_in_buffer_avg_util = "<<((float)(net[REQ_NET]->in_buffer_util) / (net[REQ_NET]->cycles) / net[REQ_NET]->active_in_buffers)<<endl;
+	cout<<"Req_Network_out_buffer_full_per_cycle = "<<(float)(net[REQ_NET]->out_buffer_full) / (net[REQ_NET]->cycles)<<endl;
+	cout<<"Req_Network_out_buffer_avg_util = "<<((float)(net[REQ_NET]->out_buffer_util) / (net[REQ_NET]->cycles) / net[REQ_NET]->active_out_buffers)<<endl;
 
 	cout<<endl;
-	cout<<"Reply_Network_injected_packets_num = "<<net[1]->packets_num<<endl;
-	cout<<"ReplyNetwork_cycles = "<<net[1]->cycles<<endl;
-	cout<<"ReplyNetwork_injected_packets_per_cycle = "<<(float)(net[1]->packets_num) / (net[1]->cycles)<<endl;
-	cout<<"ReplyNetwork_conflicts_per_cycle = "<<(float)(net[1]->conflicts) / (net[1]->cycles)<<endl;
-	cout<<"ReplyNetwork_out_buffer_full_per_cycle = "<<(float)(net[1]->out_buffer_full) / (net[1]->cycles)<<endl;
+	cout<<"Reply_Network_injected_packets_num = "<<net[REPLY_NET]->packets_num<<endl;
+	cout<<"Reply_Network_cycles = "<<net[REPLY_NET]->cycles<<endl;
+	cout<<"Reply_Network_injected_packets_per_cycle = "<<(float)(net[REPLY_NET]->packets_num) / (net[REPLY_NET]->cycles)<<endl;
+	cout<<"Reply_Network_conflicts_per_cycle = "<<(float)(net[REPLY_NET]->conflicts) / (net[REPLY_NET]->cycles)<<endl;
+	cout<<"Reply_Network_in_buffer_full_per_cycle = "<<(float)(net[REPLY_NET]->in_buffer_full) / (net[REPLY_NET]->cycles)<<endl;
+	cout<<"Reply_Network_in_buffer_avg_util = "<<((float)(net[REPLY_NET]->in_buffer_util) / (net[REPLY_NET]->cycles) / net[REPLY_NET]->active_in_buffers)<<endl;
+	cout<<"Reply_Network_out_buffer_full_per_cycle = "<<(float)(net[REPLY_NET]->out_buffer_full) / (net[REPLY_NET]->cycles)<<endl;
+	cout<<"Reply_Network_out_buffer_avg_util= "<<((float)(net[REPLY_NET]->out_buffer_util) / (net[REPLY_NET]->cycles) / net[REPLY_NET]->active_out_buffers)<<endl;
 
 }
 
