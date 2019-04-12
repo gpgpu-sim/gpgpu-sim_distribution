@@ -99,6 +99,8 @@ unsigned long long  gpu_tot_sim_cycle_parition_util = 0;
 unsigned long long partiton_replys_in_parallel = 0;
 unsigned long long partiton_replys_in_parallel_total = 0;
 
+tr1_hash_map<new_addr_type,unsigned> address_random_interleaving;
+
 /* Clock Domains */
 
 #define  CORE  0x01
