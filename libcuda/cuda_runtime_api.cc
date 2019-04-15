@@ -1501,7 +1501,6 @@ __host__ cudaError_t CUDARTAPI cudaLaunch( const char *hostFun )
 
 __host__ cudaError_t CUDARTAPI cudaLaunchKernel ( const char* hostFun, dim3 gridDim, dim3 blockDim, const void** args, size_t sharedMem, cudaStream_t stream )
 {
-
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     	}
@@ -1993,73 +1992,85 @@ char* get_app_binary_name(std::string abs_path){
 }
 
 //extracts all ptx files from binary and dumps into prog_name.unique_no.sm_<>.ptx files
-void extract_ptx_files_using_cuobjdump(){
-    extern bool g_cdp_enabled;
-    char command[1000];
-    char *pytorch_bin = getenv("PYTORCH_BIN");
-    std::string app_binary = get_app_binary(); 
+void __extract_ptx_files_using_cuobjdump(std::string binary_filename){
+  extern bool g_cdp_enabled;
+  char command[1000];
 
+  char ptx_list_file_name[1024];
+  snprintf(ptx_list_file_name,1024,"_cuobjdump_list_ptx_XXXXXX");
+  int fd2=mkstemp(ptx_list_file_name);
+  close(fd2);
 
-    char ptx_list_file_name[1024];
-    snprintf(ptx_list_file_name,1024,"_cuobjdump_list_ptx_XXXXXX");
-    int fd2=mkstemp(ptx_list_file_name);
-    close(fd2);
-
-    if (pytorch_bin!=NULL && strlen(pytorch_bin)!=0){
-        app_binary = std::string(pytorch_bin);
-    }
-
-    //only want file names
-    snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -lptx %s  | cut -d \":\" -f 2 | awk '{$1=$1}1' > %s", app_binary.c_str(), ptx_list_file_name);
-    if( system(command) != 0 ) {
-        printf("WARNING: Failed to execute cuobjdump to get list of ptx files \n");
-        exit(0);
-    }   
-    if(!g_cdp_enabled) {
-        //based on the list above, dump ptx files individually. Format of dumped ptx file is prog_name.unique_no.sm_<>.ptx
-
-       std::ifstream infile(ptx_list_file_name);
-       std::string line;
-       while (std::getline(infile, line))
-       {
-            //int pos = line.find(std::string(get_app_binary_name(app_binary)));
-            const char *ptx_file = line.c_str();
-            printf("Extracting specific PTX file named %s \n",ptx_file);
-            snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -xptx %s %s", ptx_file, app_binary.c_str());
-            if (system(command)!=0) {
-                printf("ERROR: command: %s failed \n",command);
-                exit(0);
-            }
-            no_of_ptx++;
-       }
-    }
-
-	 if(!no_of_ptx){
-	 	printf("WARNING: Number of ptx in the executable file are 0. One of the reasons might be\n");
-	 	printf("\t1. CDP is enabled\n");
-	 	printf("\t2. When using PyTorch, PYTORCH_BIN is not set correctly\n");
-	 }
+  //only want file names
+  snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -lptx %s  | cut -d \":\" -f 2 | awk '{$1=$1}1' > %s", binary_filename.c_str(), ptx_list_file_name);
+  if( system(command) != 0 ) {
+    printf("WARNING: Failed to execute cuobjdump to get list of ptx files \n");
+    exit(0);
+  }   
+  if(!g_cdp_enabled) {
+    //based on the list above, dump ptx files individually. Format of dumped ptx file is prog_name.unique_no.sm_<>.ptx
 
     std::ifstream infile(ptx_list_file_name);
     std::string line;
     while (std::getline(infile, line))
     {
-         //int pos = line.find(std::string(get_app_binary_name(app_binary)));
-         const char *ptx_file = line.c_str();
-         int pos1 = line.find("sm_");
-         int pos2 = line.find_last_of(".");
-         if (pos1==std::string::npos&&pos2==std::string::npos){
-             printf("ERROR: PTX list is not in correct format");
-             exit(0);
-         }
-         std::string vstr = line.substr(pos1+3,pos2-pos1-3);
-         int version = atoi(vstr.c_str());
-         if (version_filename.find(version)==version_filename.end()){
-            version_filename[version] = std::set<std::string>();
-         }
-         version_filename[version].insert(line);
+      //int pos = line.find(std::string(get_app_binary_name(binary_filename)));
+      const char *ptx_file = line.c_str();
+      printf("Extracting specific PTX file named %s \n",ptx_file);
+      snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -xptx %s %s", ptx_file, binary_filename.c_str());
+      if (system(command)!=0) {
+        printf("ERROR: command: %s failed \n",command);
+        exit(0);
+      }
+      no_of_ptx++;
     }
+  }
 
+  if(!no_of_ptx){
+    printf("WARNING: Number of ptx in the executable file are 0. One of the reasons might be\n");
+    printf("\t1. CDP is enabled\n");
+    printf("\t2. When using PyTorch, PYTORCH_BIN is not set correctly\n");
+  }
+
+  std::ifstream infile(ptx_list_file_name);
+  std::string line;
+  while (std::getline(infile, line))
+  {
+    //int pos = line.find(std::string(get_app_binary_name(binary_filename)));
+    const char *ptx_file = line.c_str();
+    int pos1 = line.find("sm_");
+    int pos2 = line.find_last_of(".");
+    if (pos1==std::string::npos&&pos2==std::string::npos){
+      printf("ERROR: PTX list is not in correct format");
+      exit(0);
+    }
+    std::string vstr = line.substr(pos1+3,pos2-pos1-3);
+    int version = atoi(vstr.c_str());
+    if (version_filename.find(version)==version_filename.end()){
+      version_filename[version] = std::set<std::string>();
+    }
+    version_filename[version].insert(line);
+  }
+}
+
+void extract_ptx_files_using_cuobjdump(){
+  // Select library files to load
+  char *pytorch_bin = getenv("PYTORCH_BIN");
+  std::string app_binary;
+
+  if (pytorch_bin == NULL || strlen(pytorch_bin) == 0){
+    app_binary = get_app_binary();
+  } else {
+    char *token = pytorch_bin;
+    token = strtok(token, ":");
+    int i = 0;
+    while(token) {
+      std::cout << "Target binary " << (++i) << ": " << token << std::endl;
+      std::string binary_filename = std::string(token);
+      token = strtok(NULL, ":");
+      __extract_ptx_files_using_cuobjdump(binary_filename);
+    }
+  }
 }
 
 static int get_app_cuda_version() {
@@ -2094,124 +2105,125 @@ static int get_app_cuda_version() {
  *	enabled
  * */
 void extract_code_using_cuobjdump(){
-    CUctx_st *context = GPGPUSim_Context();
-    unsigned forced_max_capability = context->get_device()->get_gpgpu()->get_config().get_forced_max_capability();
+  CUctx_st *context = GPGPUSim_Context();
+  unsigned forced_max_capability = context->get_device()->get_gpgpu()->get_config().get_forced_max_capability();
 
-    //prevent the dumping by cuobjdump everytime we execute the code!
-    const char *override_cuobjdump = getenv("CUOBJDUMP_SIM_FILE"); 
-    char command[1000], ptx_file[1000];
-    std::string app_binary = get_app_binary(); 
-    //Running cuobjdump using dynamic link to current process
-    snprintf(command,1000,"md5sum %s ", app_binary.c_str());
-    printf("Running md5sum using \"%s\"\n", command);
-    if(system(command)){
-        std::cout << "Failed to execute: " << command << std::endl;
-        exit(1);
-    }
-    // Running cuobjdump using dynamic link to current process
-    // Needs the option '-all' to extract PTX from CDP-enabled binary 
-    extern bool g_cdp_enabled;
+  //prevent the dumping by cuobjdump everytime we execute the code!
+  const char *override_cuobjdump = getenv("CUOBJDUMP_SIM_FILE"); 
+  char command[1000], ptx_file[1000];
+  std::string app_binary = get_app_binary(); 
+  //Running cuobjdump using dynamic link to current process
+  snprintf(command,1000,"md5sum %s ", app_binary.c_str());
+  printf("Running md5sum using \"%s\"\n", command);
+  if(system(command)){
+    std::cout << "Failed to execute: " << command << std::endl;
+    exit(1);
+  }
+  // Running cuobjdump using dynamic link to current process
+  // Needs the option '-all' to extract PTX from CDP-enabled binary 
+  extern bool g_cdp_enabled;
 
-    //dump ptx for all individial ptx files into sepearte files which is later used by ptxas.
-    int result=0;
+  //dump ptx for all individial ptx files into sepearte files which is later used by ptxas.
+  int result=0;
 #if (CUDART_VERSION >= 6000)
-    extract_ptx_files_using_cuobjdump();
-    return;
-#endif
-    //TODO: redundant to dump twice. how can it be prevented?
-    //dump only for specific arch
-    char fname[1024];
-    if ((override_cuobjdump == NULL) || (strlen(override_cuobjdump)==0)) {
-	snprintf(fname,1024,"_cuobjdump_complete_output_XXXXXX");
-	int fd=mkstemp(fname);
-	close(fd);
-	if(!g_cdp_enabled)
-            snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass %s > %s", app_binary.c_str(), fname);
-	else
-            snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass -all %s > %s", app_binary.c_str(), fname);
-	bool parse_output = true; 
-	result = system(command);
-	if(result) {
-            if (context->get_device()->get_gpgpu()->get_config().experimental_lib_support() && (result == 65280)) {  
-                // Some CUDA application may exclusively use kernels provided by CUDA
-                // libraries (e.g. CUBLAS).  Skipping cuobjdump extraction from the
-                // executable for this case. 
-                // 65280 is the return code from cuobjdump denoting the specific error (tested on CUDA 4.0/4.1/4.2)
-                printf("WARNING: Failed to execute: %s\n", command); 
-                printf("         Executable binary does not contain any GPU kernel.\n"); 
-                parse_output = false; 
-            } else {
-                printf("ERROR: Failed to execute: %s\n", command); 
-                exit(1);
-            }
-        }
-
-        if (parse_output) {
-            printf("Parsing file %s\n", fname);
-            cuobjdump_in = fopen(fname, "r");
-
-            cuobjdump_parse();
-            fclose(cuobjdump_in);
-            printf("Done parsing!!!\n");
-        } else {
-            printf("Parsing skipped for %s\n", fname); 
-        }
-
-        if (context->get_device()->get_gpgpu()->get_config().experimental_lib_support()){
-            //Experimental library support
-            //Currently only for cufft
-
-            std::stringstream cmd;
-            cmd << "ldd " << app_binary << " | grep $CUDA_INSTALL_PATH | awk \'{print $3}\' > _tempfile_.txt";
-            int result = system(cmd.str().c_str());
-            if(result){
-                std::cout << "Failed to execute: " << cmd.str() << std::endl;
-                exit(1);
-            }
-            std::ifstream libsf;
-            libsf.open("_tempfile_.txt");
-            if(!libsf.is_open()) {
-                std::cout << "Failed to open: _tempfile_.txt" << std::endl;
-                exit(1);
-            }
-
-            //Save the original section list
-            std::list<cuobjdumpSection*> tmpsl = cuobjdumpSectionList;
-            cuobjdumpSectionList.clear();
-
-            std::string line;
-            std::getline(libsf, line);
-            std::cout << "DOING: " << line << std::endl;
-            int cnt=1;
-            while(libsf.good()){
-                std::stringstream libcodfn;
-                libcodfn << "_cuobjdump_complete_lib_" << cnt << "_";
-                cmd.str(""); //resetting
-                cmd << "$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass ";
-                cmd << line;
-                cmd << " > ";
-                cmd << libcodfn.str();
-                std::cout << "Running cuobjdump on " << line << std::endl;
-                std::cout << "Using command: " << cmd.str() << std::endl;
-                result = system(cmd.str().c_str());
-                if(result) {printf("ERROR: Failed to execute: %s\n", command); exit(1);}
-                    std::cout << "Done" << std::endl;
-
-                    std::cout << "Trying to parse " << libcodfn.str() << std::endl;
-                    cuobjdump_in = fopen(libcodfn.str().c_str(), "r");
-                    cuobjdump_parse();
-                    fclose(cuobjdump_in);
-                    std::getline(libsf, line);
-            }
-            libSectionList = cuobjdumpSectionList;
-
-            //Restore the original section list
-            cuobjdumpSectionList = tmpsl;
-        }
-    } else {
-        printf("GPGPU-Sim PTX: overriding cuobjdump with '%s' (CUOBJDUMP_SIM_FILE is set)\n", override_cuobjdump);
-        snprintf(fname,1024, "%s",override_cuobjdump);
+  extract_ptx_files_using_cuobjdump();
+  return;
+#else
+  //TODO: redundant to dump twice. how can it be prevented?
+  //dump only for specific arch
+  char fname[1024];
+  if ((override_cuobjdump == NULL) || (strlen(override_cuobjdump)==0)) {
+    snprintf(fname,1024,"_cuobjdump_complete_output_XXXXXX");
+    int fd=mkstemp(fname);
+    close(fd);
+    if(!g_cdp_enabled)
+      snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass %s > %s", app_binary.c_str(), fname);
+    else
+      snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass -all %s > %s", app_binary.c_str(), fname);
+    bool parse_output = true; 
+    result = system(command);
+    if(result) {
+      if (context->get_device()->get_gpgpu()->get_config().experimental_lib_support() && (result == 65280)) {  
+        // Some CUDA application may exclusively use kernels provided by CUDA
+        // libraries (e.g. CUBLAS).  Skipping cuobjdump extraction from the
+        // executable for this case. 
+        // 65280 is the return code from cuobjdump denoting the specific error (tested on CUDA 4.0/4.1/4.2)
+        printf("WARNING: Failed to execute: %s\n", command); 
+        printf("         Executable binary does not contain any GPU kernel.\n"); 
+        parse_output = false; 
+      } else {
+        printf("ERROR: Failed to execute: %s\n", command); 
+        exit(1);
+      }
     }
+
+    if (parse_output) {
+      printf("Parsing file %s\n", fname);
+      cuobjdump_in = fopen(fname, "r");
+
+      cuobjdump_parse();
+      fclose(cuobjdump_in);
+      printf("Done parsing!!!\n");
+    } else {
+      printf("Parsing skipped for %s\n", fname); 
+    }
+
+    if (context->get_device()->get_gpgpu()->get_config().experimental_lib_support()){
+      //Experimental library support
+      //Currently only for cufft
+
+      std::stringstream cmd;
+      cmd << "ldd " << app_binary << " | grep $CUDA_INSTALL_PATH | awk \'{print $3}\' > _tempfile_.txt";
+      int result = system(cmd.str().c_str());
+      if(result){
+        std::cout << "Failed to execute: " << cmd.str() << std::endl;
+        exit(1);
+      }
+      std::ifstream libsf;
+      libsf.open("_tempfile_.txt");
+      if(!libsf.is_open()) {
+        std::cout << "Failed to open: _tempfile_.txt" << std::endl;
+        exit(1);
+      }
+
+      //Save the original section list
+      std::list<cuobjdumpSection*> tmpsl = cuobjdumpSectionList;
+      cuobjdumpSectionList.clear();
+
+      std::string line;
+      std::getline(libsf, line);
+      std::cout << "DOING: " << line << std::endl;
+      int cnt=1;
+      while(libsf.good()){
+        std::stringstream libcodfn;
+        libcodfn << "_cuobjdump_complete_lib_" << cnt << "_";
+        cmd.str(""); //resetting
+        cmd << "$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass ";
+        cmd << line;
+        cmd << " > ";
+        cmd << libcodfn.str();
+        std::cout << "Running cuobjdump on " << line << std::endl;
+        std::cout << "Using command: " << cmd.str() << std::endl;
+        result = system(cmd.str().c_str());
+        if(result) {printf("ERROR: Failed to execute: %s\n", command); exit(1);}
+        std::cout << "Done" << std::endl;
+
+        std::cout << "Trying to parse " << libcodfn.str() << std::endl;
+        cuobjdump_in = fopen(libcodfn.str().c_str(), "r");
+        cuobjdump_parse();
+        fclose(cuobjdump_in);
+        std::getline(libsf, line);
+      }
+      libSectionList = cuobjdumpSectionList;
+
+      //Restore the original section list
+      cuobjdumpSectionList = tmpsl;
+    }
+  } else {
+    printf("GPGPU-Sim PTX: overriding cuobjdump with '%s' (CUOBJDUMP_SIM_FILE is set)\n", override_cuobjdump);
+    snprintf(fname,1024, "%s",override_cuobjdump);
+  }
+#endif
 }
 
 //! Read file into char*
@@ -2250,11 +2262,12 @@ void printSectionList(std::list<cuobjdumpSection*> sl) {
 
 //! Remove unecessary sm versions from the section list
 std::list<cuobjdumpSection*> pruneSectionList(std::list<cuobjdumpSection*> cuobjdumpSectionList, CUctx_st *context) {
+  std::cout << "pruneSectionList(): input size=" << cuobjdumpSectionList.size() << std::endl;
 	unsigned forced_max_capability = context->get_device()->get_gpgpu()->get_config().get_forced_max_capability();
 
 	//For ptxplus, force the max capability to 19 if it's higher or unspecified(0)
 	if (context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus()){
-		if (	(forced_max_capability == 0) ||
+		if ((forced_max_capability == 0) ||
 				(forced_max_capability >= 20)){
 			printf("GPGPU-Sim: WARNING: Capability >= 20 are not supported in PTXPlus\n\tSetting forced_max_capability to 19\n");
 			forced_max_capability = 19;
@@ -2267,7 +2280,7 @@ std::list<cuobjdumpSection*> pruneSectionList(std::list<cuobjdumpSection*> cuobj
 	//and set it in cuobjdumpSectionMap. Do this only for ptx sections
 	std::map<std::string, unsigned> cuobjdumpSectionMap;
 	int min_ptx_capability_found=0;
-	for (	std::list<cuobjdumpSection*>::iterator iter = cuobjdumpSectionList.begin();
+	for (std::list<cuobjdumpSection*>::iterator iter = cuobjdumpSectionList.begin();
 			iter != cuobjdumpSectionList.end();
 			iter++){
 		unsigned capability = (*iter)->getArch();
@@ -2291,6 +2304,7 @@ std::list<cuobjdumpSection*> pruneSectionList(std::list<cuobjdumpSection*> cuobj
 		if(capability == cuobjdumpSectionMap[(*iter)->getIdentifier()]){
 			prunedList.push_back(*iter);
 		} else {
+			std::cout << "cap disagree: lhs=" << capability << " != rhs=" << cuobjdumpSectionMap[(*iter)->getIdentifier()] << std::endl;
 			delete *iter;
 		}
 	}
@@ -2443,11 +2457,13 @@ cuobjdumpPTXSection* findPTXSection(const std::string identifier){
 void cuobjdumpInit(){
 	CUctx_st *context = GPGPUSim_Context();
 	extract_code_using_cuobjdump(); //extract all the output of cuobjdump to _cuobjdump_*.*
+#if (CUDART_VERSION < 6000)
 	const char* pre_load = getenv("CUOBJDUMP_SIM_FILE");
 	if (pre_load ==NULL || strlen(pre_load)==0){
 		cuobjdumpSectionList = pruneSectionList(cuobjdumpSectionList, context);
 		cuobjdumpSectionList = mergeSections(cuobjdumpSectionList);
 	}
+#endif
 }
 
 std::map<int, std::string> fatbinmap;
@@ -2511,9 +2527,11 @@ void cuobjdumpParseBinary(unsigned int handle){
 	if (max_capability == 0) max_capability=context->get_device()->get_gpgpu()->get_config().get_forced_max_capability();
 
 	cuobjdumpPTXSection* ptx = NULL;
+#if (CUDART_VERSION < 6000)
 	const char* pre_load = getenv("CUOBJDUMP_SIM_FILE");
 	if(pre_load==NULL || strlen(pre_load)==0)
 		ptx = findPTXSection(fname);
+#endif
 	char *ptxcode;
 	const char *override_ptx_name = getenv("PTX_SIM_KERNELFILE"); 
 	if (override_ptx_name == NULL or getenv("PTX_SIM_USE_PTX_FILE") == NULL or strlen(getenv("PTX_SIM_USE_PTX_FILE"))==0) {
@@ -2571,12 +2589,12 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
         // CUDA. This is especially useful for PTXPLUS execution.
         //Skip cuda version check for pytorch application
 	std::string app_binary_path =  get_app_binary();
-        int pos = app_binary_path.find("python");
-        if (pos==std::string::npos){
-        	// Not pytorch app : checking cuda version
-		int app_cuda_version = get_app_cuda_version();
-        	assert( app_cuda_version == CUDART_VERSION / 1000  && "The app must be compiled with same major version as the simulator." );
-        }
+//        int pos = app_binary_path.find("python");
+//        if (pos==std::string::npos){
+//        	// Not pytorch app : checking cuda version
+//		int app_cuda_version = get_app_cuda_version();
+//        	assert( app_cuda_version == CUDART_VERSION / 1000  && "The app must be compiled with same major version as the simulator." );
+//        }
 
 	//int app_cuda_version = get_app_cuda_version();
         //assert( app_cuda_version == CUDART_VERSION / 1000  && "The app must be compiled with same major version as the simulator." );

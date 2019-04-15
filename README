@@ -311,6 +311,11 @@ distributed separately on github under the repo ispass2009-benchmarks.
 The README.ISPASS-2009 file distributed with the benchmarks now contains 
 updated instructions for running the benchmarks on GPGPU-Sim v3.x.
 
+If you want to use the simulator to run cuDNN program, you should set following
+PYTORCH_BIN environment variable. If you want to use kernels embedded in multiple
+libraries, you can write the libraries' path separated by colons(:).
+
+export PYTORCH_BIN=/usr/local/cuda/lib64/libcudnn.so:/usr/local/cuda/lib64/libcublas.so
 
 3.  (OPTIONAL) Updating GPGPU-Sim (ADVANCED USERS ONLY)
 
