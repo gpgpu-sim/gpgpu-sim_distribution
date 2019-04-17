@@ -192,6 +192,9 @@ gpgpu_t::gpgpu_t( const gpgpu_functional_sim_config &config )
    checkpoint_CTA_t = m_function_model_config.get_checkpoint_CTA_t();
    checkpoint_insn_Y = m_function_model_config.get_checkpoint_insn_Y();
 
+   // initialize texture mappings to empty
+   m_NameToTextureInfo.clear();
+   m_NameToCudaArray.clear();
 
    if(m_function_model_config.get_ptx_inst_debug_to_file() != 0) 
       ptx_inst_debug_file = fopen(m_function_model_config.get_ptx_inst_debug_file(), "w");
@@ -688,7 +691,11 @@ unsigned g_kernel_launch_latency;
 
 unsigned kernel_info_t::m_next_uid = 1;
 
-kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry, std::map<std::string, const struct cudaArray*> NameToCudaArray, std::map<std::string, const struct textureInfo*> NameToTexureInfo)
+/*A snapshot of the texture mappings needs to be stored in the kernel's info as 
+kernels should use the texture bindings seen at the time of launch and textures
+ can be bound/unbound asynchronously with respect to streams. */
+
+kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry, std::map<std::string, const struct cudaArray*> nameToCudaArray, std::map<std::string, const struct textureInfo*> nameToTexureInfo)   
 {
     m_kernel_entry=entry;
     m_grid_dim=gridDim;
@@ -708,8 +715,8 @@ kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *
     m_launch_latency = g_kernel_launch_latency;
 
     volta_cache_config_set=false;
-    m_NameToCudaArray = NameToCudaArray;
-    m_NameToTexureInfo = NameToTexureInfo;
+    m_NameToCudaArray = nameToCudaArray;
+    m_NameToTexureInfo = nameToTexureInfo;
 }
 
 kernel_info_t::~kernel_info_t()
