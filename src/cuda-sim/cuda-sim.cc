@@ -1507,6 +1507,13 @@ static unsigned get_tex_datasize( const ptx_instruction *pI, ptx_thread_info *th
    std::string texname = src1.name();
 
    gpgpu_t *gpu = thread->get_gpu();
+   /*
+     For programs with many streams, textures can be bound and unbound
+     asynchronously.  This means we need to use the kernel's "snapshot" of
+     the state of the texture mappings when it was launched (so that we
+     don't try to access the incorrect texture mapping if it's been updated,
+     or that we don't access a mapping that has been unbound).
+    */
    kernel_info_t& k = thread->get_kernel();
    const struct textureInfo* texInfo = k.get_texinfo(texname);
 
