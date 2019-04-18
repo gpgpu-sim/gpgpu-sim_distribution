@@ -337,6 +337,11 @@ public:
     unsigned get_max_concurrent_kernel() const { return max_concurrent_kernel; }
     unsigned checkpoint_option;
 
+    size_t stack_limit() const {return stack_size_limit; }
+    size_t heap_limit() const {return heap_size_limit; }
+    size_t sync_depth_limit() const {return runtime_sync_depth_limit; }
+    size_t pending_launch_count_limit() const {return runtime_pending_launch_count_limit;}
+
 private:
     void init_clock_domains(void ); 
 
@@ -377,7 +382,11 @@ private:
     int gpu_stat_sample_freq;
     int gpu_runtime_stat_flag;
 
-
+    // Device Limits
+    size_t stack_size_limit;
+    size_t heap_size_limit;
+    size_t runtime_sync_depth_limit;
+    size_t runtime_pending_launch_count_limit;	
 
     unsigned long long liveness_message_freq; 
 

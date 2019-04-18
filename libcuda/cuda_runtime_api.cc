@@ -1121,10 +1121,10 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDevic
                         *value= 0;
                         break;
                 case 75:
-                        *value= 9 ;
+                        *value= 7 ;  //cudaDevAttrComputeCapabilityMajor for Volta architecture	
                         break;
                 case 76:
-                        *value= 3 ;
+                        *value= 0 ;  //cudaDevAttrComputeCapabilityMinor for Volta architecture
                         break;
                 case 78:
                         *value= 0 ; //TODO: as of now, we dont support stream priorities.
@@ -1199,24 +1199,42 @@ __host__ cudaError_t CUDARTAPI cudaGetDevice(int *device)
 	*device = g_active_device;
 	return g_last_cudaError = cudaSuccess;
 }
+
 __host__ cudaError_t CUDARTAPI cudaDeviceGetLimit ( size_t* pValue, cudaLimit limit )
 {
 	if(g_debug_execution >= 3){
             announce_call(__my_func__);
    	 }
+        _cuda_device_id *dev = GPGPUSim_Init();
+	const struct cudaDeviceProp *prop = dev->get_prop();
+	const gpgpu_sim_config& config=dev->get_gpgpu()->get_config();
         switch(limit) {
-        case 0:
-                                 *pValue=1024;
-                                 break;
-        case 2:
-                                 *pValue=8388608;
-                                 break;
-        case 3:
-                                 *pValue=2;
-                                 break;
-        case 4:
-                                 *pValue=2048;
-                                 break;
+        case 0:  // cudaLimitStackSize
+        	*pValue=config.stack_limit();
+                break;
+        case 2:  // cudaLimitMallocHeapSize
+                *pValue=config.heap_limit();
+                break;
+#if (CUDART_VERSION > 5050)
+        case 3: // cudaLimitDevRuntimeSyncDepth
+		if(prop->major > 2){
+			*pValue=config.sync_depth_limit();
+	                break;
+		}
+		else{
+			printf("ERROR:Limit %s is not supported on this architecture \n",limit);
+			abort();
+		}
+        case 4: // cudaLimitDevRuntimePendingLaunchCount
+		if(prop->major > 2){
+     	        	*pValue=config.pending_launch_count_limit();
+	                break;
+		}
+		else{
+			printf("ERROR:Limit %s is not supported on this architecture \n",limit);
+			abort();
+		}
+#endif
         default:
                         printf("ERROR:Limit %s unimplemented \n",limit);
                         abort();
@@ -1224,7 +1242,6 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetLimit ( size_t* pValue, cudaLimit li
 	return g_last_cudaError = cudaSuccess;
 
 }
-
 
 __host__ cudaError_t CUDARTAPI cudaStreamGetPriority ( cudaStream_t hStream, int* priority )
 {
@@ -1585,7 +1602,7 @@ __host__ cudaError_t CUDARTAPI cudaStreamDestroy(cudaStream_t stream)
 	    announce_call(__my_func__);
     }
 #if (CUDART_VERSION >= 3000)
-	//synchronization required for application using external libraries without explicit synchronization in the code to 
+	//per-stream synchronization required for application using external libraries without explicit synchronization in the code to 
 	//avoid the stream_manager from spinning forever to destroy non-empty streams without making any forward progress. 
 	stream->synchronize();
 	g_stream_manager->destroy_stream(stream);
@@ -2714,14 +2731,13 @@ cudaError_t cudaDeviceReset ( void ) {
 	return g_last_cudaError = cudaSuccess;
 }
 cudaError_t CUDARTAPI cudaDeviceSynchronize(void){
-	// I don't know what this should do
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     }
+	//Blocks until the device has completed all preceding requested tasks
 	synchronize();
 	return g_last_cudaError = cudaSuccess;
 }
-
 
 void CUDARTAPI __cudaRegisterFunction(
 		void   **fatCubinHandle,
@@ -3333,6 +3349,10 @@ kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *hostFun,
     }
 	function_info *entry = context->get_kernel(hostFun);
 	gpgpu_t* gpu= context->get_device()->get_gpgpu();
+	/*
+	Passing a snapshot of the GPU's current texture mapping to the kernel's info
+	as kernels should use texture bindings present at the time of their launch.
+	*/
 	kernel_info_t *result = new kernel_info_t(gridDim,blockDim,entry,gpu->getNameArrayMapping(),gpu->getNameInfoMapping());
 	if( entry == NULL ) {
 		printf("GPGPU-Sim PTX: ERROR launching kernel -- no PTX implementation found for %p\n", hostFun);

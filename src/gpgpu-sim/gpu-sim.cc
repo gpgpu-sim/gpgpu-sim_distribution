@@ -532,6 +532,14 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
    option_parser_register(opp, "-visualizer_zlevel", OPT_INT32,
                           &g_visualizer_zlevel, "Compression level of the visualizer output log (0=no comp, 9=highest)",
                           "6");
+   option_parser_register(opp, "-gpgpu_stack_size_limit", OPT_INT32, &stack_size_limit,
+                          "GPU thread stack size", "1024" );
+   option_parser_register(opp, "-gpgpu_heap_size_limit", OPT_INT32, &heap_size_limit,
+                          "GPU malloc heap size ", "8388608" );
+   option_parser_register(opp, "-gpgpu_runtime_sync_depth_limit", OPT_INT32, &runtime_sync_depth_limit,
+                          "GPU device runtime synchronize depth", "2" );
+   option_parser_register(opp, "-gpgpu_runtime_pending_launch_count_limit", OPT_INT32, &runtime_pending_launch_count_limit,
+                          "GPU device runtime pending launch count", "2048" );
     option_parser_register(opp, "-trace_enabled", OPT_BOOL, 
                           &Trace::enabled, "Turn on traces",
                           "0");
