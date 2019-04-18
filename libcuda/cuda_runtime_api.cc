@@ -1205,18 +1205,20 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetLimit ( size_t* pValue, cudaLimit li
 	if(g_debug_execution >= 3){
             announce_call(__my_func__);
    	 }
+        _cuda_device_id *dev = GPGPUSim_Init();
+	const gpgpu_sim_config& config=dev->get_gpgpu()->get_config();
         switch(limit) {
         case 0:  // cudaLimitStackSize
-                                 *pValue=1024;
+                                 *pValue=config.stack_limit();
                                  break;
         case 2:  // cudaLimitMallocHeapSize
-                                 *pValue=8388608;
+                                 *pValue=config.heap_limit();
                                  break;
         case 3: // cudaLimitDevRuntimeSyncDepth
-                                 *pValue=2;
+                                 *pValue=config.sync_depth_limit();
                                  break;
         case 4: // cudaLimitDevRuntimePendingLaunchCount
-                                 *pValue=2048;
+                                 *pValue=config.pending_launch_count_limit();
                                  break;
         default:
                         printf("ERROR:Limit %s unimplemented \n",limit);
@@ -2717,6 +2719,7 @@ cudaError_t CUDARTAPI cudaDeviceSynchronize(void){
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     }
+	//Blocks until the device has completed all preceding requested tasks
 	synchronize();
 	return g_last_cudaError = cudaSuccess;
 }

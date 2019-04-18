@@ -212,7 +212,7 @@ public:
 //      m_num_cores_running=0;
 //      m_param_mem=NULL;
 //   }
-   kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry, std::map<std::string, const struct cudaArray*> nameToCudaArray, std::map<std::string, const struct textureInfo*> nameToTexureInfo);
+   kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry, std::map<std::string, const struct cudaArray*> nameToCudaArray, std::map<std::string, const struct textureInfo*> nameToTextureInfo);
    ~kernel_info_t();
 
    void inc_running() { m_num_cores_running++; }
@@ -287,8 +287,8 @@ public:
 
    const struct textureInfo* get_texinfo( const std::string &texname ) const
    {
-      std::map<std::string, const struct textureInfo*>::const_iterator t=m_NameToTexureInfo.find(texname);
-      assert(t != m_NameToTexureInfo.end());
+      std::map<std::string, const struct textureInfo*>::const_iterator t=m_NameToTextureInfo.find(texname);
+      assert(t != m_NameToTextureInfo.end());
       return t->second;
    }
 
@@ -303,7 +303,7 @@ private:
    
    //These maps contain the snapshot of the texture mappings at kernel launch
    std::map<std::string, const struct cudaArray*> m_NameToCudaArray;
-   std::map<std::string, const struct textureInfo*> m_NameToTexureInfo;
+   std::map<std::string, const struct textureInfo*> m_NameToTextureInfo;
 
    dim3 m_grid_dim;
    dim3 m_block_dim;
@@ -601,8 +601,8 @@ public:
 
     const struct textureInfo* get_texinfo( const std::string &texname ) const
     {
-        std::map<std::string, const struct textureInfo*>::const_iterator t=m_NameToTexureInfo.find(texname);
-        assert(t != m_NameToTexureInfo.end());
+        std::map<std::string, const struct textureInfo*>::const_iterator t=m_NameToTextureInfo.find(texname);
+        assert(t != m_NameToTextureInfo.end());
         return t->second;
     }
 
@@ -617,9 +617,8 @@ public:
     FILE* get_ptx_inst_debug_file() { return ptx_inst_debug_file; }
     
     //  These maps return the current texture mappings for the GPU at any given time.
-    
     std::map<std::string, const struct cudaArray*> getNameArrayMapping() {return m_NameToCudaArray;}
-    std::map<std::string, const struct textureInfo*> getNameInfoMapping() {return m_NameToTexureInfo;}
+    std::map<std::string, const struct textureInfo*> getNameInfoMapping() {return m_NameToTextureInfo;}
 
 protected:
     const gpgpu_functional_sim_config &m_function_model_config;
@@ -634,7 +633,7 @@ protected:
     std::map<std::string, std::set<const struct textureReference*> > m_NameToTextureRef;
     std::map<const struct textureReference*, std::string> m_TextureRefToName;
     std::map<std::string, const struct cudaArray*> m_NameToCudaArray;
-    std::map<std::string, const struct textureInfo*> m_NameToTexureInfo;
+    std::map<std::string, const struct textureInfo*> m_NameToTextureInfo;
     std::map<std::string, const struct textureReferenceAttr*> m_NameToAttribute;
 };
 

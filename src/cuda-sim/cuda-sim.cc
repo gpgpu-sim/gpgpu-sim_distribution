@@ -218,7 +218,7 @@ void gpgpu_t::gpgpu_ptx_sim_bindTextureToArray(const struct textureReference* te
    texInfo->Ty_numbits = intLOGB2(Ty);
    texInfo->texel_size = texel_size;
    texInfo->texel_size_numbits = intLOGB2(texel_size);
-   m_NameToTexureInfo[texname] = texInfo;
+   m_NameToTextureInfo[texname] = texInfo;
 }
 
 void gpgpu_t::gpgpu_ptx_sim_unbindTexture(const struct textureReference* texref)
@@ -226,7 +226,7 @@ void gpgpu_t::gpgpu_ptx_sim_unbindTexture(const struct textureReference* texref)
    //assumes bind-use-unbind-bind-use-unbind pattern
    std::string texname = gpgpu_ptx_sim_findNamefromTexture(texref);
    m_NameToCudaArray.erase(texname);
-   m_NameToTexureInfo.erase(texname);
+   m_NameToTextureInfo.erase(texname);
 }
 
 unsigned g_assemble_code_next_pc=0; 
