@@ -354,8 +354,8 @@ struct _cuda_device_id *GPGPUSim_Init()
 
 		cudaDeviceProp *prop = (cudaDeviceProp *) calloc(sizeof(cudaDeviceProp),1);
 		snprintf(prop->name,256,"GPGPU-Sim_v%s", g_gpgpusim_version_string );
-		prop->major = 5;
-		prop->minor = 2;
+		prop->major = the_gpu->compute_capability_major();
+		prop->minor = the_gpu->compute_capability_minor();
 		prop->totalGlobalMem = 0x80000000 /* 2 GB */;
 		prop->memPitch = 0;
 		if(prop->major >= 2) {
@@ -1120,11 +1120,11 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDevic
                 case 41:
                         *value= 0;
                         break;
-                case 75:
-                        *value= 7 ;  //cudaDevAttrComputeCapabilityMajor for Volta architecture	
+                case 75:// Major compute capability version number 
+                        *value= prop->major ;
                         break;
-                case 76:
-                        *value= 0 ;  //cudaDevAttrComputeCapabilityMinor for Volta architecture
+                case 76:// Minor compute capability version number
+                        *value= prop->minor ;
                         break;
                 case 78:
                         *value= 0 ; //TODO: as of now, we dont support stream priorities.
