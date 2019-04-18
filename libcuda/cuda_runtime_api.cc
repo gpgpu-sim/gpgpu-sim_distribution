@@ -1121,10 +1121,10 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDevic
                         *value= 0;
                         break;
                 case 75:
-                        *value= 7 ;
+                        *value= 7 ;  //cudaDevAttrComputeCapabilityMajor for Volta architecture	
                         break;
                 case 76:
-                        *value= 0 ;
+                        *value= 0 ;  //cudaDevAttrComputeCapabilityMinor for Volta architecture
                         break;
                 case 78:
                         *value= 0 ; //TODO: as of now, we dont support stream priorities.
@@ -1206,20 +1206,35 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetLimit ( size_t* pValue, cudaLimit li
             announce_call(__my_func__);
    	 }
         _cuda_device_id *dev = GPGPUSim_Init();
+	const struct cudaDeviceProp *prop = dev->get_prop();
 	const gpgpu_sim_config& config=dev->get_gpgpu()->get_config();
         switch(limit) {
         case 0:  // cudaLimitStackSize
-                                 *pValue=config.stack_limit();
-                                 break;
+        	*pValue=config.stack_limit();
+                break;
         case 2:  // cudaLimitMallocHeapSize
-                                 *pValue=config.heap_limit();
-                                 break;
+                *pValue=config.heap_limit();
+                break;
+#if (CUDART_VERSION > 5050)
         case 3: // cudaLimitDevRuntimeSyncDepth
-                                 *pValue=config.sync_depth_limit();
-                                 break;
+		if(prop->major > 2){
+			*pValue=config.sync_depth_limit();
+	                break;
+		}
+		else{
+			printf("ERROR:Limit %s is not supported on this architecture \n",limit);
+			abort();
+		}
         case 4: // cudaLimitDevRuntimePendingLaunchCount
-                                 *pValue=config.pending_launch_count_limit();
-                                 break;
+		if(prop->major > 2){
+     	        	*pValue=config.pending_launch_count_limit();
+	                break;
+		}
+		else{
+			printf("ERROR:Limit %s is not supported on this architecture \n",limit);
+			abort();
+		}
+#endif
         default:
                         printf("ERROR:Limit %s unimplemented \n",limit);
                         abort();
