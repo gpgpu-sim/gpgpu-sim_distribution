@@ -499,6 +499,12 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
    option_parser_register(opp, "-liveness_message_freq", OPT_INT64, &liveness_message_freq, 
                "Minimum number of seconds between simulation liveness messages (0 = always print)",
                "1");
+   option_parser_register(opp, "-gpgpu_compute_capability_major", OPT_UINT32, &gpgpu_compute_capability_major,
+                 "Major compute capability version number",
+                 "7");
+   option_parser_register(opp, "-gpgpu_compute_capability_minor", OPT_UINT32, &gpgpu_compute_capability_minor,
+                 "Minor compute capability version number",
+                 "0");
    option_parser_register(opp, "-gpgpu_flush_l1_cache", OPT_BOOL, &gpgpu_flush_l1_cache,
                 "Flush L1 cache at the end of each kernel call",
                 "0");
@@ -800,6 +806,16 @@ int gpgpu_sim::shader_clock() const
 void gpgpu_sim::set_prop( cudaDeviceProp *prop )
 {
    m_cuda_properties = prop;
+}
+
+int gpgpu_sim::compute_capability_major() const
+{
+   return m_config.gpgpu_compute_capability_major;
+}
+
+int gpgpu_sim::compute_capability_minor() const
+{
+   return m_config.gpgpu_compute_capability_minor;
 }
 
 const struct cudaDeviceProp *gpgpu_sim::get_prop() const
