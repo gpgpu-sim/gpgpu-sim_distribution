@@ -388,6 +388,10 @@ private:
     size_t runtime_sync_depth_limit;
     size_t runtime_pending_launch_count_limit;	
 
+ //gpu compute capability options
+    unsigned int gpgpu_compute_capability_major;
+    unsigned int gpgpu_compute_capability_minor;
+
     unsigned long long liveness_message_freq; 
 
     friend class gpgpu_sim;
@@ -447,6 +451,10 @@ public:
 
    int shared_mem_size() const;
    int shared_mem_per_block() const;
+   int compute_capability_major() const;
+   int compute_capability_minor() const;
+
+   
    int num_registers_per_core() const;
    int num_registers_per_block() const;
    int wrp_size() const;
