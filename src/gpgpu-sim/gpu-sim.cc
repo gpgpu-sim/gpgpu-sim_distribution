@@ -810,7 +810,6 @@ void gpgpu_sim::set_prop( cudaDeviceProp *prop )
 
 int gpgpu_sim::compute_capability_major() const
 {
-   printf("Everything works %d\n", m_config.gpgpu_compute_capability_major);
    return m_config.gpgpu_compute_capability_major;
 }
 
