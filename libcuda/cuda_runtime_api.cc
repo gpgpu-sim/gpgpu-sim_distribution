@@ -1120,10 +1120,10 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDevic
                 case 41:
                         *value= 0;
                         break;
-                case 75:// Major compute capability version number 
+                case 75://cudaDevAttrComputeCapabilityMajor
                         *value= prop->major ;
                         break;
-                case 76:// Minor compute capability version number
+                case 76://cudaDevAttrComputeCapabilityMinor
                         *value= prop->minor ;
                         break;
                 case 78:
