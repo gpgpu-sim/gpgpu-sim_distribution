@@ -1935,7 +1935,10 @@ void setCuobjdumpsassfilename(const char* filename){
 	}
 	(dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()))->setSASSfilename(filename);
 }
-extern int cuobjdump_parse();
+typedef void * yyscan_t;
+extern int cuobjdump_lex_init(yyscan_t* scanner);
+extern int cuobjdump_parse(yyscan_t scanner);
+extern int cuobjdump_lex_destroy(yyscan_t scanner);
 extern FILE *cuobjdump_in;
 
 //! Return the executable file of the process containing the PTX/SASS code 
@@ -2147,7 +2150,10 @@ void extract_code_using_cuobjdump(){
             printf("Parsing file %s\n", fname);
             cuobjdump_in = fopen(fname, "r");
 
-            cuobjdump_parse();
+	    yyscan_t scanner;
+	    cuobjdump_lex_init(&scanner);
+	    cuobjdump_parse(scanner);
+	    cuobjdump_lex_destroy(scanner);
             fclose(cuobjdump_in);
             printf("Done parsing!!!\n");
         } else {
@@ -2196,7 +2202,10 @@ void extract_code_using_cuobjdump(){
 
                     std::cout << "Trying to parse " << libcodfn.str() << std::endl;
                     cuobjdump_in = fopen(libcodfn.str().c_str(), "r");
-                    cuobjdump_parse();
+		    yyscan_t scanner;
+		    cuobjdump_lex_init(&scanner);
+		    cuobjdump_parse(scanner);
+		    cuobjdump_lex_destroy(scanner);
                     fclose(cuobjdump_in);
                     std::getline(libsf, line);
             }
