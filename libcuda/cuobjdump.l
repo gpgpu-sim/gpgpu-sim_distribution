@@ -38,9 +38,7 @@
 
 #define YYDEBUG 1
 
-#define yylval cuobjdump_lval
-
-void cuobjdump_error(const char*);
+void print_error(const char*, const char*, int);
 %}
 
 %option stack
@@ -48,6 +46,8 @@ void cuobjdump_error(const char*);
 %option yylineno
 %option nounput
 
+%option bison-bridge
+%option reentrant
 
 %s ptxcode
 %s sasscode
@@ -69,54 +69,54 @@ newlines	{newline}+
 
 
 "ptxasOptions"{notnewline}*{newline}
-[1-9]{numeric}* yylval.string_value = strdup(yytext); return DECIMAL;
+[1-9]{numeric}* yylval->string_value = strdup(yytext); return DECIMAL;
 
 "has debug info"{newline}
 
 
 "Fatbin ptx code:"{newline}	{
-	yy_push_state(ptxcode);
-	yy_push_state(identifier);
-	yy_push_state(ptxheader);
-	yylval.string_value = strdup(yytext);
+	yy_push_state(ptxcode, yyscanner);
+	yy_push_state(identifier, yyscanner);
+	yy_push_state(ptxheader, yyscanner);
+	yylval->string_value = strdup(yytext);
 	return PTXHEADER;
 }
 "Fatbin elf code:"{newline}	{
-	yy_push_state(elfcode);
-	yy_push_state(identifier);
-	yy_push_state(elfheader);
-	yylval.string_value = strdup(yytext);
+	yy_push_state(elfcode, yyscanner);
+	yy_push_state(identifier, yyscanner);
+	yy_push_state(elfheader, yyscanner);
+	yylval->string_value = strdup(yytext);
 	return ELFHEADER;
 }
 	/*PTX code tokens*/
-<ptxcode>{notnewline}*{newline}	yylval.string_value = strdup(yytext); return PTXLINE;
+<ptxcode>{notnewline}*{newline}	yylval->string_value = strdup(yytext); return PTXLINE;
 
 	/*ELF code tokens*/
 <elfcode>{whitespace}*"code for sm_"{numeric}+{newline}	{
 	BEGIN(sasscode); 
-	yylval.string_value = strdup(yytext); 
+	yylval->string_value = strdup(yytext);
 	return SASSLINE;
 }
-<elfcode>{notnewline}*{newline} yylval.string_value = strdup(yytext); return ELFLINE;
+<elfcode>{notnewline}*{newline} yylval->string_value = strdup(yytext); return ELFLINE;
 
 	/*SASS code tokens*/
-<sasscode>{notnewline}*{newline} yylval.string_value = strdup(yytext); return SASSLINE;
+<sasscode>{notnewline}*{newline} yylval->string_value = strdup(yytext); return SASSLINE;
 
 <identifier>{newline}"compressed"{newline}	BEGIN(conidentifier); return H_COMPRESSED;
 <identifier>{newline}"identifier = "	BEGIN(endidentifier); return H_IDENTIFIER;
-<identifier>{newline}{newline} yy_pop_state();
+<identifier>{newline}{newline} yy_pop_state(yyscanner);
 
 
 <conidentifier>"identifier = "	BEGIN(endidentifier); return H_IDENTIFIER;
-<conidentifier>{newline} yy_pop_state();
+<conidentifier>{newline} yy_pop_state(yyscanner);
 
 
-<endidentifier>{notnewline}+	yylval.string_value = strdup(yytext); yy_pop_state(); return FILENAME;
+<endidentifier>{notnewline}+	yylval->string_value = strdup(yytext); yy_pop_state(yyscanner); return FILENAME;
 
 
 
 	/*Header tokens*/
-<elfheader>[[:alnum:]_]+ yylval.string_value = strdup(yytext); return IDENTIFIER;
+<elfheader>[[:alnum:]_]+ yylval->string_value = strdup(yytext); return IDENTIFIER;
 <elfheader>"================"	return H_SEPARATOR;
 <elfheader>"arch = "		return H_ARCH;
 <elfheader>"code version = "	return H_CODEVERSION;
@@ -128,7 +128,7 @@ newlines	{newline}+
 
 
 	/*Header tokens*/
-<ptxheader>[[:alnum:]_]+ yylval.string_value = strdup(yytext); return IDENTIFIER;
+<ptxheader>[[:alnum:]_]+ yylval->string_value = strdup(yytext); return IDENTIFIER;
 <ptxheader>"================"	return H_SEPARATOR;
 <ptxheader>"arch = "		return H_ARCH;
 <ptxheader>"code version = "	return H_CODEVERSION;
@@ -143,7 +143,7 @@ newlines	{newline}+
 
 
 	/* Looking for the identifier (filename) then the header is done */
-<endheader>{notnewline}+	yylval.string_value = strdup(yytext); yy_pop_state(); return IDENTIFIER;
+<endheader>{notnewline}+	yylval->string_value = strdup(yytext); yy_pop_state(yyscanner); return IDENTIFIER;
 
 
 
@@ -153,11 +153,11 @@ newlines	{newline}+
 <<EOF>> BEGIN(INITIAL);return 0;
 
 	/*No other rule matched. Throw an error*/
-.	cuobjdump_error("Invalid token");
+.	print_error("Invalid token", yytext, yylineno);
 
 %%
-void cuobjdump_error(const char* message)
+void print_error(const char* message, const char* text, int lineno)
 {
-	printf("   %s near \"%s\"",message, yytext);
-	printf(" on line %i\n",yylineno); 
+	printf("   %s near \"%s\"",message, text);
+	printf(" on line %i\n",lineno);
 }

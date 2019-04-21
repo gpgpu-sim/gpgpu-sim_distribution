@@ -29,8 +29,8 @@
 %{
 #include <stdio.h>
 
-int yylex(void);
-void yyerror(const char*);
+typedef void * yyscan_t;
+
 extern void addCuobjdumpSection(int sectiontype);
 void setCuobjdumparch(const char* arch);
 void setCuobjdumpidentifier(const char* identifier);
@@ -44,6 +44,10 @@ FILE *elffile;
 FILE *sassfile;
 char filename [1024];
 %}
+%define api.pure full
+%parse-param {yyscan_t scanner}
+%lex-param {yyscan_t scanner}
+
 %union {
 	char* string_value;
 }
