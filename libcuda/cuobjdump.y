@@ -53,7 +53,7 @@ char filename [1024];
 }
 %{
 int yylex(YYSTYPE * yylval_param, yyscan_t yyscanner);
-int yyerror(yyscan_t yyscanner, const char* msg);
+void yyerror(yyscan_t yyscanner, const char* msg);
 %}
 %token <string_value> H_SEPARATOR H_ARCH H_CODEVERSION H_PRODUCER H_HOST H_COMPILESIZE H_IDENTIFIER H_UNKNOWN H_COMPRESSED
 %token <string_value> CODEVERSION
