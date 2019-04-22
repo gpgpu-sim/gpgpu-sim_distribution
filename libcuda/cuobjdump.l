@@ -38,7 +38,7 @@
 
 #define YYDEBUG 1
 
-void print_error(const char*, const char*, int);
+void cuobjdump_error(yyscan_t yyscanner, const char* msg);
 %}
 
 %option stack
@@ -153,11 +153,12 @@ newlines	{newline}+
 <<EOF>> BEGIN(INITIAL);return 0;
 
 	/*No other rule matched. Throw an error*/
-.	print_error("Invalid token", yytext, yylineno);
+.	cuobjdump_error(yyscanner, "Invalid token");
 
 %%
-void print_error(const char* message, const char* text, int lineno)
+void cuobjdump_error(yyscan_t yyscanner, const char* msg)
 {
-	printf("   %s near \"%s\"",message, text);
-	printf(" on line %i\n",lineno);
+    struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
+	printf("   %s near \"%s\"",msg, yytext);
+	printf(" on line %i\n",yylineno);
 }
