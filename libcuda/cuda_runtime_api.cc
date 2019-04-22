@@ -2153,8 +2153,8 @@ void extract_code_using_cuobjdump(){
 
 	    yyscan_t scanner;
 	    cuobjdump_lex_init(&scanner);
-	    cuobjdump_parse(scanner);
 	    cuobjdump_set_in(cuobjdump_in, scanner);
+	    cuobjdump_parse(scanner);
 	    cuobjdump_lex_destroy(scanner);
             fclose(cuobjdump_in);
             printf("Done parsing!!!\n");
