@@ -419,7 +419,7 @@ void linear_to_raw_address_translation::init(unsigned int n_channel, unsigned in
    }
 
    if(memory_partition_indexing == RANDOM)
-	   srand (time(NULL));
+     srand (1);
 
 }
 
