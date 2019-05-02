@@ -14,11 +14,12 @@ Version 4.0.0 (development branch) versus 3.2.3
 4- debug support for wmma instruction using debug_tensorcore flag
 -GPU Core Performance Simulation:
 1- Fermi/Pascal coalescer: coalescing on 32-bytes sectors.
-2- Adding separate dp unit pipeline.
+2- Adding separate int and dp units pipeline.
 3- diff dual issue: allow scheduler to issue diff insts at a time
 4- Fair memory issue from multiple schedulers.
 5- Added tensorcore unit pipeline.
 6- Corrected the bug in vector load instruction
+7- Volta sub-core model (scheduler isolation)
 -Cache System:
 1- Sector L1/L2 cache
 2- Fetch-on-write and lazy-fetch-on-read write allocation policy.
