@@ -24,9 +24,8 @@ pipeline {
         stage('simulations-build'){
             steps{
                 sh 'rm -rf gpgpu-sim_simulations'
-                sh 'git clone git@github.rcac.purdue.edu:TimRogersGroup/gpgpu-sim_simulations.git && \
+                sh 'git clone git@github.com:gpgpu-sim/gpgpu-sim_simulations.git && \
                     cd gpgpu-sim_simulations && \
-                    git checkout purdue-cluster && \
                     git pull && \
                     ln -s /home/tgrogers-raid/a/common/data_dirs benchmarks/'
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
