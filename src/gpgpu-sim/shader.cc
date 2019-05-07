@@ -1896,7 +1896,7 @@ void tensor_core::issue( register_set& source_reg )
 unsigned pipelined_simd_unit::get_active_lanes_in_pipeline(){
 	active_mask_t active_lanes;
 	active_lanes.reset();
-	 if(!m_config->fast_execution_mode || active_insts_in_pipeline){
+	 if(m_core->get_gpu()->get_config().g_power_simulation_enabled){
 		for( unsigned stage=0; (stage+1)<m_pipeline_depth; stage++ ){
 			if( !m_pipeline_reg[stage]->empty() )
 				active_lanes|=m_pipeline_reg[stage]->get_active_mask();
@@ -2014,7 +2014,7 @@ void pipelined_simd_unit::cycle()
         assert(active_insts_in_pipeline > 0);
         active_insts_in_pipeline--;
     }
-    if(!m_config->fast_execution_mode || active_insts_in_pipeline){
+    if(active_insts_in_pipeline){
 		for( unsigned stage=0; (stage+1)<m_pipeline_depth; stage++ )
 			move_warp(m_pipeline_reg[stage], m_pipeline_reg[stage+1]);
     }
@@ -3000,7 +3000,6 @@ unsigned int shader_core_config::max_cta( const kernel_info_t &k ) const
 
 void shader_core_config::set_pipeline_latency() {
 
-    if(fast_execution_mode) {
 		//calculate the max latency  based on the input
 
 		unsigned int_latency[5];
@@ -3038,19 +3037,12 @@ void shader_core_config::set_pipeline_latency() {
 		max_int_latency = int_latency[1];
 		max_dp_latency = dp_latency[1];
 		max_tensor_core_latency = tensor_latency;
-    } else {
-    	max_sfu_latency = 512;
-		max_sp_latency = 32;
-		max_int_latency = 32;
-		max_dp_latency = 512;
-		max_tensor_core_latency = 64;
-    }
 
 }
 
 void shader_core_ctx::cycle()
 {
-	if(m_config->fast_execution_mode && !isactive() && get_not_completed() == 0)
+	if(!isactive() && get_not_completed() == 0)
 		return;
 
 	m_stats->shader_cycles[m_sid]++;
