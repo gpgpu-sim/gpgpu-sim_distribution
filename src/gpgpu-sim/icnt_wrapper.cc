@@ -116,12 +116,12 @@ static unsigned intersim2_get_flit_size()
 
 static void LocalInterconnect_create(unsigned int n_shader, unsigned int n_mem)
 {
-	g_localicnt_interface->CreateInterconnect(n_shader, n_mem);
+   g_localicnt_interface->CreateInterconnect(n_shader, n_mem);
 }
 
 static void LocalInterconnect_init()
 {
-	g_localicnt_interface->Init();
+   g_localicnt_interface->Init();
 }
 
 static bool LocalInterconnect_has_buffer(unsigned input, unsigned int size)
@@ -131,7 +131,7 @@ static bool LocalInterconnect_has_buffer(unsigned input, unsigned int size)
 
 static void LocalInterconnect_push(unsigned input, unsigned output, void* data, unsigned int size)
 {
-	g_localicnt_interface->Push(input, output, data, size);
+   g_localicnt_interface->Push(input, output, data, size);
 }
 
 static void* LocalInterconnect_pop(unsigned output)
@@ -141,7 +141,7 @@ static void* LocalInterconnect_pop(unsigned output)
 
 static void LocalInterconnect_transfer()
 {
-	g_localicnt_interface->Advance();
+   g_localicnt_interface->Advance();
 }
 
 static bool LocalInterconnect_busy()
@@ -151,17 +151,17 @@ static bool LocalInterconnect_busy()
 
 static void LocalInterconnect_display_stats()
 {
-	g_localicnt_interface->DisplayStats();
+   g_localicnt_interface->DisplayStats();
 }
 
 static void LocalInterconnect_display_overall_stats()
 {
-	g_localicnt_interface->DisplayOverallStats();
+   g_localicnt_interface->DisplayOverallStats();
 }
 
 static void LocalInterconnect_display_state(FILE *fp)
 {
-	g_localicnt_interface->DisplayState(fp);
+   g_localicnt_interface->DisplayState(fp);
 }
 
 static unsigned LocalInterconnect_get_flit_size()
