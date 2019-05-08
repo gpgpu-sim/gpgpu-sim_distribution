@@ -1,5 +1,5 @@
-// Copyright (c) 2009-2013, Tor M. Aamodt, Dongdong Li, Ali Bakhoda
-// The University of British Columbia
+// Copyright (c) 2019, Mahmoud Khairy
+// Purdue University
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -51,74 +51,74 @@ enum Interconnect_type {
 class xbar_router {
 
 public:
-  xbar_router(unsigned router_id, enum Interconnect_type m_type, unsigned n_shader, unsigned n_mem, unsigned m_in_buffer_limit, unsigned m_out_buffer_limit);
-  ~xbar_router();
-   void Push(unsigned input_deviceID, unsigned output_deviceID, void* data, unsigned int size);
-   void* Pop(unsigned ouput_deviceID);
-   void Advance();
-   bool Busy() const;
-   bool Has_Buffer_In(unsigned input_deviceID, unsigned size, bool update_counter=false);
-   bool Has_Buffer_Out(unsigned output_deviceID, unsigned size);
+	xbar_router(unsigned router_id, enum Interconnect_type m_type, unsigned n_shader, unsigned n_mem, unsigned m_in_buffer_limit, unsigned m_out_buffer_limit);
+	~xbar_router();
+	void Push(unsigned input_deviceID, unsigned output_deviceID, void* data, unsigned int size);
+	void* Pop(unsigned ouput_deviceID);
+	void Advance();
+	bool Busy() const;
+	bool Has_Buffer_In(unsigned input_deviceID, unsigned size, bool update_counter=false);
+	bool Has_Buffer_Out(unsigned output_deviceID, unsigned size);
 
-   //some stats
-   unsigned long long cycles;
-   unsigned long long conflicts;
-   unsigned long long out_buffer_full;
-   unsigned long long out_buffer_util;
-   unsigned long long in_buffer_full;
-   unsigned long long in_buffer_util;
-   unsigned long long packets_num;
+	//some stats
+	unsigned long long cycles;
+	unsigned long long conflicts;
+	unsigned long long out_buffer_full;
+	unsigned long long out_buffer_util;
+	unsigned long long in_buffer_full;
+	unsigned long long in_buffer_util;
+	unsigned long long packets_num;
 
 private:
-  struct Packet{
-	  Packet(void* m_data, unsigned m_output_deviceID) {
-		  data = m_data;
-		  output_deviceID = m_output_deviceID;
-	  }
-	  void* data;
-	  unsigned output_deviceID;
-  };
-  vector<queue<Packet> > in_buffers;
-  vector<queue<Packet> > out_buffers;
-  unsigned _n_shader, _n_mem, total_nodes;
-  unsigned in_buffer_limit, out_buffer_limit;
-  unsigned next_node;
-  unsigned m_id;
-  enum Interconnect_type router_type;
-  unsigned active_in_buffers,active_out_buffers;
+	struct Packet{
+		Packet(void* m_data, unsigned m_output_deviceID) {
+			data = m_data;
+			output_deviceID = m_output_deviceID;
+		}
+		void* data;
+		unsigned output_deviceID;
+	};
+	vector<queue<Packet> > in_buffers;
+	vector<queue<Packet> > out_buffers;
+	unsigned _n_shader, _n_mem, total_nodes;
+	unsigned in_buffer_limit, out_buffer_limit;
+	unsigned next_node;
+	unsigned m_id;
+	enum Interconnect_type router_type;
+	unsigned active_in_buffers,active_out_buffers;
 
-  friend class LocalInterconnect;
+	friend class LocalInterconnect;
 
 };
 
 class LocalInterconnect {
 public:
-  LocalInterconnect(const struct inct_config& m_localinct_config);
-  ~LocalInterconnect();
-  static LocalInterconnect* New(const struct inct_config& m_inct_config);
-  void CreateInterconnect(unsigned n_shader, unsigned n_mem);
-  
-  //node side functions
-  void Init();
-  void Push(unsigned input_deviceID, unsigned output_deviceID, void* data, unsigned int size);
-  void* Pop(unsigned ouput_deviceID);
-  void Advance();
-  bool Busy() const;
-  bool HasBuffer(unsigned deviceID, unsigned int size) const;
-  void DisplayStats() const;
-  void DisplayOverallStats() const;
-  unsigned GetFlitSize() const;
-  
-  void DisplayState(FILE* fp) const;
-  
-  
+	LocalInterconnect(const struct inct_config& m_localinct_config);
+	~LocalInterconnect();
+	static LocalInterconnect* New(const struct inct_config& m_inct_config);
+	void CreateInterconnect(unsigned n_shader, unsigned n_mem);
+
+	//node side functions
+	void Init();
+	void Push(unsigned input_deviceID, unsigned output_deviceID, void* data, unsigned int size);
+	void* Pop(unsigned ouput_deviceID);
+	void Advance();
+	bool Busy() const;
+	bool HasBuffer(unsigned deviceID, unsigned int size) const;
+	void DisplayStats() const;
+	void DisplayOverallStats() const;
+	unsigned GetFlitSize() const;
+
+	void DisplayState(FILE* fp) const;
+
+
 protected:
 
-  const inct_config& m_inct_config;
-  
-  unsigned n_shader, n_mem;
-  unsigned n_subnets;
-  vector<xbar_router *> net;
+	const inct_config& m_inct_config;
+
+	unsigned n_shader, n_mem;
+	unsigned n_subnets;
+	vector<xbar_router *> net;
 
 };
 
