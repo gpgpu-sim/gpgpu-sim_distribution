@@ -1,5 +1,5 @@
-// Copyright (c) 2009-2013, Tor M. Aamodt, Dongdong Li, Ali Bakhoda
-// The University of British Columbia
+// Copyright (c) 2019, Mahmoud Khairy
+// Purdue University
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -40,30 +40,30 @@ xbar_router::xbar_router(unsigned router_id, enum Interconnect_type m_type, unsi
 {
 	m_id=router_id;
 	router_type=m_type;
-   _n_mem = n_mem;
-   _n_shader = n_shader;
-   total_nodes = n_shader+n_mem;
-   in_buffers.resize(total_nodes);
-   out_buffers.resize(total_nodes);
-   next_node=0;
-   in_buffer_limit = m_in_buffer_limit;
-   out_buffer_limit = m_out_buffer_limit;
-   if(m_type == REQ_NET) {
-	   active_in_buffers=n_shader;
-	   active_out_buffers=n_mem;
-   }
-   else if(m_type == REPLY_NET) {
-	   active_in_buffers=n_mem;
-	   active_out_buffers=n_shader;
-   }
+	_n_mem = n_mem;
+	_n_shader = n_shader;
+	total_nodes = n_shader+n_mem;
+	in_buffers.resize(total_nodes);
+	out_buffers.resize(total_nodes);
+	next_node=0;
+	in_buffer_limit = m_in_buffer_limit;
+	out_buffer_limit = m_out_buffer_limit;
+	if(m_type == REQ_NET) {
+		active_in_buffers=n_shader;
+		active_out_buffers=n_mem;
+	}
+	else if(m_type == REPLY_NET) {
+		active_in_buffers=n_mem;
+		active_out_buffers=n_shader;
+	}
 
-   cycles = 0;
-   conflicts= 0;
-   out_buffer_full=0;
-   in_buffer_full=0;
-   out_buffer_util=0;
-   in_buffer_util=0;
-   packets_num=0;
+	cycles = 0;
+	conflicts= 0;
+	out_buffer_full=0;
+	in_buffer_full=0;
+	out_buffer_util=0;
+	in_buffer_util=0;
+	packets_num=0;
 }
 
 
@@ -165,41 +165,36 @@ bool xbar_router::Busy() const {
 LocalInterconnect* LocalInterconnect::New(const struct inct_config& m_localinct_config)
 {
 
-  LocalInterconnect* icnt_interface = new LocalInterconnect(m_localinct_config);
+	LocalInterconnect* icnt_interface = new LocalInterconnect(m_localinct_config);
 
-  return icnt_interface;
+	return icnt_interface;
 }
 
-LocalInterconnect::LocalInterconnect(const struct inct_config& m_localinct_config): m_inct_config(m_localinct_config)
-{
+LocalInterconnect::LocalInterconnect(const struct inct_config& m_localinct_config): m_inct_config(m_localinct_config){
 	n_shader=0;
 	n_mem=0;
 	n_subnets = m_localinct_config.subnets;
-
 }
 
-LocalInterconnect::~LocalInterconnect()
-{
-  for (int i=0; i<m_inct_config.subnets; ++i) {
-    delete net[i];
-  }
+LocalInterconnect::~LocalInterconnect(){
+	for (int i=0; i<m_inct_config.subnets; ++i) {
+		delete net[i];
+	}
 }
 
-void LocalInterconnect::CreateInterconnect(unsigned m_n_shader, unsigned m_n_mem)
-{
-  n_shader = m_n_shader;
-  n_mem = m_n_mem;
+void LocalInterconnect::CreateInterconnect(unsigned m_n_shader, unsigned m_n_mem){
+	n_shader = m_n_shader;
+	n_mem = m_n_mem;
 
-  net.resize(n_subnets);
-  for (unsigned i = 0; i < n_subnets; ++i) {
-    net[i] = new xbar_router( i, static_cast<Interconnect_type>(i), m_n_shader, m_n_mem, m_inct_config.in_buffer_limit, m_inct_config.out_buffer_limit );
-  }
+	net.resize(n_subnets);
+	for (unsigned i = 0; i < n_subnets; ++i) {
+		net[i] = new xbar_router( i, static_cast<Interconnect_type>(i), m_n_shader, m_n_mem, m_inct_config.in_buffer_limit, m_inct_config.out_buffer_limit );
+	}
 
 }
 
 
 void LocalInterconnect::Init() {
-
 	//empty
 	//there is nothing to do
 
@@ -208,63 +203,63 @@ void LocalInterconnect::Init() {
 void LocalInterconnect::Push(unsigned input_deviceID, unsigned output_deviceID, void* data, unsigned int size){
 
 	unsigned subnet;
-	  if (n_subnets == 1) {
+	if (n_subnets == 1) {
 		subnet = 0;
-	  } else {
+	} else {
 		if (input_deviceID < n_shader ) {
-		  subnet = 0;
+			subnet = 0;
 		} else {
-		  subnet = 1;
+			subnet = 1;
 		}
-	  }
+	}
 
-	 // it should have free buffer
-	  //assume all the packets have size of one
-	  //no flits are implemented
-	  assert(net[subnet]->Has_Buffer_In(input_deviceID, 1));
+	// it should have free buffer
+	//assume all the packets have size of one
+	//no flits are implemented
+	assert(net[subnet]->Has_Buffer_In(input_deviceID, 1));
 
-	  net[subnet]->Push(input_deviceID, output_deviceID, data, size);
+	net[subnet]->Push(input_deviceID, output_deviceID, data, size);
 
 }
 
 void* LocalInterconnect::Pop(unsigned ouput_deviceID){
 
 	// 0-_n_shader-1 indicates reply(network 1), otherwise request(network 0)
-	  int subnet = 0;
-	  if (ouput_deviceID < n_shader)
-	    subnet = 1;
+	int subnet = 0;
+	if (ouput_deviceID < n_shader)
+		subnet = 1;
 
-	  return net[subnet]->Pop(ouput_deviceID);
+	return net[subnet]->Pop(ouput_deviceID);
 
 }
 
 void LocalInterconnect::Advance(){
 
 	for (unsigned i = 0; i < n_subnets; ++i) {
-	    net[i]->Advance();
-	  }
+		net[i]->Advance();
+	}
 
 }
 
 bool  LocalInterconnect::Busy() const{
 
 	for (unsigned i = 0; i < n_subnets; ++i) {
-		 if(net[i]->Busy())
-			 return true;
+		if(net[i]->Busy())
+			return true;
 	}
 	return false;
 }
 
 bool  LocalInterconnect::HasBuffer(unsigned deviceID, unsigned int size) const{
 
-	 bool has_buffer = false;
+	bool has_buffer = false;
 
-	  if ((n_subnets>1) && deviceID >= n_shader) // deviceID is memory node
-		  has_buffer = net[REPLY_NET]->Has_Buffer_In(deviceID, 1, true);
-	  else
-		  has_buffer = net[REQ_NET]->Has_Buffer_In(deviceID, 1, true);
+	if ((n_subnets>1) && deviceID >= n_shader) // deviceID is memory node
+		has_buffer = net[REPLY_NET]->Has_Buffer_In(deviceID, 1, true);
+	else
+		has_buffer = net[REQ_NET]->Has_Buffer_In(deviceID, 1, true);
 
-	  return has_buffer;
+	return has_buffer;
 
 }
 
@@ -301,6 +296,6 @@ unsigned  LocalInterconnect::GetFlitSize() const{
 
 void  LocalInterconnect::DisplayState(FILE* fp) const{
 
-	  fprintf(fp, "GPGPU-Sim uArch: ICNT:Display State: Under implementation\n");
+	fprintf(fp, "GPGPU-Sim uArch: ICNT:Display State: Under implementation\n");
 }
 

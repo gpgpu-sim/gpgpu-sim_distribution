@@ -915,10 +915,10 @@ private:
 /// Simple struct to maintain cache accesses, misses, pending hits, and reservation fails.
 ///
 struct cache_sub_stats{
-	unsigned long long accesses;
-	unsigned long long misses;
-	unsigned long long pending_hits;
-	unsigned long long res_fails;
+    unsigned long long accesses;
+    unsigned long long misses;
+    unsigned long long pending_hits;
+    unsigned long long res_fails;
 
     unsigned long long port_available_cycles; 
     unsigned long long data_port_busy_cycles; 
