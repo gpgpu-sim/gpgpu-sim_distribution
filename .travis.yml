@@ -18,5 +18,10 @@ matrix:
         - CONFIG=TITANV
         - CUDA_INSTALL_PATH=/usr/local/cuda-9.1/
         - PTXAS_CUDA_INSTALL_PATH=/usr/local/cuda-9.1/
+    - services: docker
+      env:
+        - CONFIG=TITANV-LOCALXBAR
+        - CUDA_INSTALL_PATH=/usr/local/cuda-9.1/
+        - PTXAS_CUDA_INSTALL_PATH=/usr/local/cuda-9.1/
 
 script: docker run -v `pwd`:/home/runner/gpgpu-sim_distribution:rw tgrogers/gpgpu-sim_regress:volta_update /bin/bash -c "./start_torque.sh; chown -R runner /home/runner/gpgpu-sim_distribution; su - runner -c 'export CUDA_INSTALL_PATH=$CUDA_INSTALL_PATH && export PTXAS_CUDA_INSTALL_PATH=$PTXAS_CUDA_INSTALL_PATH && source /home/runner/gpgpu-sim_distribution/setup_environment && make -j -C /home/runner/gpgpu-sim_distribution && cd /home/runner/gpgpu-sim_simulations/ && git pull && /home/runner/gpgpu-sim_simulations/util/job_launching/run_simulations.py -C $CONFIG -B rodinia_2.0-ft -N regress && /home/runner/gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress'"
