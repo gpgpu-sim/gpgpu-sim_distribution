@@ -178,39 +178,39 @@ private:
    unsigned int dram_eff_bins[10];
    unsigned int last_n_cmd, last_n_activity, last_bwutil;
 
-   unsigned int n_cmd;
-   unsigned int n_activity;
-   unsigned int n_nop;
-   unsigned int n_act;
-   unsigned int n_pre;
-   unsigned int n_ref;
-   unsigned int n_rd;
-   unsigned int n_rd_L2_A;
-   unsigned int n_wr;
-   unsigned int n_wr_WB;
-   unsigned int n_req;
-   unsigned int max_mrqs_temp;
+   unsigned long long n_cmd;
+   unsigned long long n_activity;
+   unsigned long long n_nop;
+   unsigned long long n_act;
+   unsigned long long n_pre;
+   unsigned long long n_ref;
+   unsigned long long n_rd;
+   unsigned long long n_rd_L2_A;
+   unsigned long long n_wr;
+   unsigned long long n_wr_WB;
+   unsigned long long n_req;
+   unsigned long long max_mrqs_temp;
 
-   //some statistics to collect to see where BW is wasted?
-   unsigned wasted_bw_row;
-   unsigned wasted_bw_col;
-   unsigned util_bw;
-   unsigned idle_bw;
-   unsigned RCDc_limit;
-   unsigned CCDLc_limit;
-   unsigned CCDLc_limit_alone;
-   unsigned CCDc_limit;
-   unsigned WTRc_limit;
-   unsigned WTRc_limit_alone;
-   unsigned RCDWRc_limit;
-   unsigned RTWc_limit;
-   unsigned RTWc_limit_alone;
-   unsigned rwq_limit;
+   //some statistics to see where BW is wasted?
+   unsigned long long wasted_bw_row;
+   unsigned long long wasted_bw_col;
+   unsigned long long util_bw;
+   unsigned long long idle_bw;
+   unsigned long long RCDc_limit;
+   unsigned long long CCDLc_limit;
+   unsigned long long CCDLc_limit_alone;
+   unsigned long long CCDc_limit;
+   unsigned long long WTRc_limit;
+   unsigned long long WTRc_limit_alone;
+   unsigned long long RCDWRc_limit;
+   unsigned long long RTWc_limit;
+   unsigned long long RTWc_limit_alone;
+   unsigned long long rwq_limit;
 
    //row locality, BLP and other statistics
-   unsigned long  access_num;
-   unsigned long  read_num;
-   unsigned long  write_num;
+   unsigned long long access_num;
+   unsigned long long read_num;
+   unsigned long long write_num;
    unsigned long long hits_num;
    unsigned long long hits_read_num;
    unsigned long long hits_write_num;

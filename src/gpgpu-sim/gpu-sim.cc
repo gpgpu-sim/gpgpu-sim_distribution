@@ -99,6 +99,8 @@ unsigned long long  gpu_tot_sim_cycle_parition_util = 0;
 unsigned long long partiton_replys_in_parallel = 0;
 unsigned long long partiton_replys_in_parallel_total = 0;
 
+tr1_hash_map<new_addr_type,unsigned> address_random_interleaving;
+
 /* Clock Domains */
 
 #define  CORE  0x01
@@ -476,6 +478,7 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_concurrent_kernel_sm", OPT_BOOL, &gpgpu_concurrent_kernel_sm, 
                 "Support concurrent kernels on a SM (default = disabled)", 
                 "0");
+
 }
 
 void gpgpu_sim_config::reg_options(option_parser_t opp)
@@ -1181,19 +1184,19 @@ void gpgpu_sim::gpu_print_stat()
            m_memory_sub_partition[i]->accumulate_L2cache_stats(l2_stats);
            m_memory_sub_partition[i]->get_L2cache_sub_stats(l2_css);
 
-           fprintf( stdout, "L2_cache_bank[%d]: Access = %u, Miss = %u, Miss_rate = %.3lf, Pending_hits = %u, Reservation_fails = %u\n",
+           fprintf( stdout, "L2_cache_bank[%d]: Access = %llu, Miss = %llu, Miss_rate = %.3lf, Pending_hits = %llu, Reservation_fails = %llu\n",
                     i, l2_css.accesses, l2_css.misses, (double)l2_css.misses / (double)l2_css.accesses, l2_css.pending_hits, l2_css.res_fails);
 
            total_l2_css += l2_css;
        }
        if (!m_memory_config->m_L2_config.disabled() && m_memory_config->m_L2_config.get_num_lines()) {
           //L2c_print_cache_stat();
-          printf("L2_total_cache_accesses = %u\n", total_l2_css.accesses);
-          printf("L2_total_cache_misses = %u\n", total_l2_css.misses);
+          printf("L2_total_cache_accesses = %llu\n", total_l2_css.accesses);
+          printf("L2_total_cache_misses = %llu\n", total_l2_css.misses);
           if(total_l2_css.accesses > 0)
               printf("L2_total_cache_miss_rate = %.4lf\n", (double)total_l2_css.misses/(double)total_l2_css.accesses);
-          printf("L2_total_cache_pending_hits = %u\n", total_l2_css.pending_hits);
-          printf("L2_total_cache_reservation_fails = %u\n", total_l2_css.res_fails);
+          printf("L2_total_cache_pending_hits = %llu\n", total_l2_css.pending_hits);
+          printf("L2_total_cache_reservation_fails = %llu\n", total_l2_css.res_fails);
           printf("L2_total_cache_breakdown:\n");
           l2_stats.print_stats(stdout, "L2_cache_stats_breakdown");
           printf("L2_total_cache_reservation_fail_breakdown:\n");
