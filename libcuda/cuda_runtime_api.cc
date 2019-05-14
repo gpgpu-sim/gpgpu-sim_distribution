@@ -354,8 +354,8 @@ struct _cuda_device_id *GPGPUSim_Init()
 
 		cudaDeviceProp *prop = (cudaDeviceProp *) calloc(sizeof(cudaDeviceProp),1);
 		snprintf(prop->name,256,"GPGPU-Sim_v%s", g_gpgpusim_version_string );
-		prop->major = 5;
-		prop->minor = 2;
+		prop->major = the_gpu->compute_capability_major();
+		prop->minor = the_gpu->compute_capability_minor();
 		prop->totalGlobalMem = 0x80000000 /* 2 GB */;
 		prop->memPitch = 0;
 		if(prop->major >= 2) {
@@ -1120,11 +1120,11 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDevic
                 case 41:
                         *value= 0;
                         break;
-                case 75:
-                        *value= 9 ;
+                case 75://cudaDevAttrComputeCapabilityMajor
+                        *value= prop->major ;
                         break;
-                case 76:
-                        *value= 3 ;
+                case 76://cudaDevAttrComputeCapabilityMinor
+                        *value= prop->minor ;
                         break;
                 case 78:
                         *value= 0 ; //TODO: as of now, we dont support stream priorities.
@@ -1199,16 +1199,49 @@ __host__ cudaError_t CUDARTAPI cudaGetDevice(int *device)
 	*device = g_active_device;
 	return g_last_cudaError = cudaSuccess;
 }
+
 __host__ cudaError_t CUDARTAPI cudaDeviceGetLimit ( size_t* pValue, cudaLimit limit )
 {
 	if(g_debug_execution >= 3){
             announce_call(__my_func__);
    	 }
-        cuda_not_implemented(__my_func__,__LINE__);
-        return g_last_cudaError = cudaSuccess;
+        _cuda_device_id *dev = GPGPUSim_Init();
+	const struct cudaDeviceProp *prop = dev->get_prop();
+	const gpgpu_sim_config& config=dev->get_gpgpu()->get_config();
+        switch(limit) {
+        case 0:  // cudaLimitStackSize
+        	*pValue=config.stack_limit();
+                break;
+        case 2:  // cudaLimitMallocHeapSize
+                *pValue=config.heap_limit();
+                break;
+#if (CUDART_VERSION > 5050)
+        case 3: // cudaLimitDevRuntimeSyncDepth
+		if(prop->major > 2){
+			*pValue=config.sync_depth_limit();
+	                break;
+		}
+		else{
+			printf("ERROR:Limit %s is not supported on this architecture \n",limit);
+			abort();
+		}
+        case 4: // cudaLimitDevRuntimePendingLaunchCount
+		if(prop->major > 2){
+     	        	*pValue=config.pending_launch_count_limit();
+	                break;
+		}
+		else{
+			printf("ERROR:Limit %s is not supported on this architecture \n",limit);
+			abort();
+		}
+#endif
+        default:
+                        printf("ERROR:Limit %s unimplemented \n",limit);
+                        abort();
+        }
+	return g_last_cudaError = cudaSuccess;
 
 }
-
 
 __host__ cudaError_t CUDARTAPI cudaStreamGetPriority ( cudaStream_t hStream, int* priority )
 {
@@ -1499,41 +1532,25 @@ __host__ cudaError_t CUDARTAPI cudaLaunch( const char *hostFun )
 	return g_last_cudaError = cudaSuccess;
 }
 
-
 __host__ cudaError_t CUDARTAPI cudaLaunchKernel ( const char* hostFun, dim3 gridDim, dim3 blockDim, const void** args, size_t sharedMem, cudaStream_t stream )
 {
-	struct CUstream_st *s = (struct CUstream_st *)stream;
-	g_cuda_launch_stack.push_back( kernel_config(gridDim,blockDim,sharedMem,s) );
 
-	//printf("cudaLaunchKernel:sizeof(Arg[0])=%d)\n ",sizeof(args[0]));
-	kernel_config &config = g_cuda_launch_stack.back();
-	config.set_arg(args[0],432,0);//standard interface for cutlass library #TODO Implementing a generalized kernel
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    	}
+        CUctx_st *context = GPGPUSim_Context();
+        function_info *entry = context->get_kernel(hostFun);
+    
+	cudaConfigureCall(gridDim, blockDim, sharedMem, stream);
+    	for(unsigned i = 0; i < entry->num_args(); i++){
+        	std::pair<size_t, unsigned> p = entry->get_param_config(i);
+        	cudaSetupArgument(args[i], p.first, p.second);
+    	}  
 
-	CUctx_st* context = GPGPUSim_Context();
-	char *mode = getenv("PTX_SIM_MODE_FUNC");
-	if( mode )
-		sscanf(mode,"%u", &g_ptx_sim_mode);
-	gpgpusim_ptx_assert( !g_cuda_launch_stack.empty(), "empty launch stack" );
-	kernel_config config1 = g_cuda_launch_stack.back();
-	struct CUstream_st *stream1 = config1.get_stream();
-	printf("\nGPGPU-Sim PTX: cudaLaunch for 0x%p (mode=%s) on stream %u\n", hostFun,
-			g_ptx_sim_mode?"functional simulation":"performance simulation", stream1?stream1->get_uid():0 );
-	kernel_info_t *grid = gpgpu_cuda_ptx_sim_init_grid(hostFun,config1.get_args(),config1.grid_dim(),config1.block_dim(),context);
-	std::string kname = grid->name();
-	dim3 gridDim1 = config1.grid_dim();
-	dim3 blockDim1 = config1.block_dim();
-	printf("GPGPU-Sim PTX: pushing kernel \'%s\' to stream %u, gridDim= (%u,%u,%u) blockDim = (%u,%u,%u) \n",
-			kname.c_str(), stream1?stream1->get_uid():0, gridDim1.x,gridDim1.y,gridDim1.z,blockDim1.x,blockDim1.y,blockDim1.z );
-
-	/*Kernel is hardcoded to enable the cutlass library*/
-	std::string cutlass("cutlass");
-	assert(kname.find(cutlass) != std::string::npos);
-
-	stream_operation op(grid,g_ptx_sim_mode,stream1);
-	g_stream_manager->push(op);
-	g_cuda_launch_stack.pop_back();
+	cudaLaunch(hostFun);
 	return g_last_cudaError = cudaSuccess;
 }
+
 
 /*******************************************************************************
  *                                                                              *
@@ -1585,6 +1602,9 @@ __host__ cudaError_t CUDARTAPI cudaStreamDestroy(cudaStream_t stream)
 	    announce_call(__my_func__);
     }
 #if (CUDART_VERSION >= 3000)
+	//per-stream synchronization required for application using external libraries without explicit synchronization in the code to 
+	//avoid the stream_manager from spinning forever to destroy non-empty streams without making any forward progress. 
+	stream->synchronize();
 	g_stream_manager->destroy_stream(stream);
 #endif
 	return g_last_cudaError = cudaSuccess;
@@ -2711,13 +2731,13 @@ cudaError_t cudaDeviceReset ( void ) {
 	return g_last_cudaError = cudaSuccess;
 }
 cudaError_t CUDARTAPI cudaDeviceSynchronize(void){
-	// I don't know what this should do
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     }
+	//Blocks until the device has completed all preceding requested tasks
+	synchronize();
 	return g_last_cudaError = cudaSuccess;
 }
-
 
 void CUDARTAPI __cudaRegisterFunction(
 		void   **fatCubinHandle,
@@ -3148,6 +3168,8 @@ __host__ cudaError_t CUDARTAPI cudaDeviceSetLimit(enum cudaLimit limit, size_t v
     }
     return g_last_cudaError = cudaSuccess;
 }
+
+
 #endif
 
 #endif
@@ -3326,7 +3348,12 @@ kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *hostFun,
 	    announce_call(__my_func__);
     }
 	function_info *entry = context->get_kernel(hostFun);
-	kernel_info_t *result = new kernel_info_t(gridDim,blockDim,entry);
+	gpgpu_t* gpu= context->get_device()->get_gpgpu();
+	/*
+	Passing a snapshot of the GPU's current texture mapping to the kernel's info
+	as kernels should use texture bindings present at the time of their launch.
+	*/
+	kernel_info_t *result = new kernel_info_t(gridDim,blockDim,entry,gpu->getNameArrayMapping(),gpu->getNameInfoMapping());
 	if( entry == NULL ) {
 		printf("GPGPU-Sim PTX: ERROR launching kernel -- no PTX implementation found for %p\n", hostFun);
 		abort();

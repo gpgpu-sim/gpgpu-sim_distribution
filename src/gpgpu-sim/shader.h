@@ -55,7 +55,6 @@
 #include "traffic_breakdown.h"
 
 
-
 #define NO_OP_FLAG            0xFF
 
 /* READ_PACKET_SIZE:
@@ -1073,16 +1072,8 @@ public:
     //modifiers
     virtual void cycle();
     virtual void issue( register_set& source_reg );
-    virtual unsigned get_active_lanes_in_pipeline()
-    {
-    	active_mask_t active_lanes;
-    	active_lanes.reset();
-        for( unsigned stage=0; (stage+1)<m_pipeline_depth; stage++ ){
-        	if( !m_pipeline_reg[stage]->empty() )
-        		active_lanes|=m_pipeline_reg[stage]->get_active_mask();
-        }
-        return active_lanes.count();
-    }
+    virtual unsigned get_active_lanes_in_pipeline();
+
     virtual void active_lanes_in_pipeline() = 0;
 /*
     virtual void issue( register_set& source_reg )
@@ -1113,6 +1104,9 @@ protected:
     warp_inst_t **m_pipeline_reg;
     register_set *m_result_port;
     class shader_core_ctx *m_core;
+
+    unsigned active_insts_in_pipeline;
+
 };
 
 class sfu : public pipelined_simd_unit
@@ -1413,10 +1407,8 @@ struct shader_core_config : public core_config
         }
         max_warps_per_shader =  n_thread_per_shader/warp_size;
         assert( !(n_thread_per_shader % warp_size) );
-        max_sfu_latency = 512;
-        max_sp_latency = 32;
-        
-	max_tensor_core_latency = 64;
+
+        set_pipeline_latency();
         
 	m_L1I_config.init(m_L1I_config.m_config_string,FuncCachePreferNone);
         m_L1T_config.init(m_L1T_config.m_config_string,FuncCachePreferNone);
@@ -1432,6 +1424,7 @@ struct shader_core_config : public core_config
     unsigned sid_to_cluster( unsigned sid ) const { return sid / n_simt_cores_per_cluster; }
     unsigned sid_to_cid( unsigned sid )     const { return sid % n_simt_cores_per_cluster; }
     unsigned cid_to_sid( unsigned cid, unsigned cluster_id ) const { return cluster_id*n_simt_cores_per_cluster + cid; }
+    void set_pipeline_latency();
 
 // data
     char *gpgpu_shader_core_pipeline_opt;
@@ -1506,7 +1499,9 @@ struct shader_core_config : public core_config
     bool sub_core_model;
     
     unsigned max_sp_latency;
+    unsigned max_int_latency;
     unsigned max_sfu_latency;
+    unsigned max_dp_latency;
     unsigned max_tensor_core_latency;
     
     unsigned n_simt_cores_per_cluster;
@@ -1524,6 +1519,7 @@ struct shader_core_config : public core_config
     bool gpgpu_concurrent_kernel_sm;
 
     bool adpative_volta_cache_config;
+
 };
 
 struct shader_core_stats_pod {
