@@ -82,7 +82,7 @@ class  gpgpu_sim_wrapper {};
 
 
 bool g_interactive_debugger_enabled=false;
-
+tr1_hash_map<new_addr_type,unsigned> address_random_interleaving;
 
 /* Clock Domains */
 
@@ -93,8 +93,6 @@ bool g_interactive_debugger_enabled=false;
 
 
 #define MEM_LATENCY_STAT_IMPL
-
-
 
 
 #include "mem_latency_stat.h"
