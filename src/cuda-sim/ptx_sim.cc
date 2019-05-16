@@ -222,7 +222,7 @@ void ptx_thread_info::set_done()
 {
    assert( !m_at_barrier );
    m_thread_done = true;
-   m_cycle_done = gpu_sim_cycle; 
+   m_cycle_done = m_gpu->gpu_sim_cycle;
 }
 
 unsigned ptx_thread_info::get_builtin( int builtin_id, unsigned dim_mod ) 
@@ -230,15 +230,15 @@ unsigned ptx_thread_info::get_builtin( int builtin_id, unsigned dim_mod )
    assert( m_valid );
    switch ((builtin_id&0xFFFF)) {
    case CLOCK_REG:
-      return (unsigned)(gpu_sim_cycle + gpu_tot_sim_cycle);
+      return (unsigned)(m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
    case CLOCK64_REG:
       abort(); // change return value to unsigned long long?
 	  // GPGPUSim clock is 4 times slower - multiply by 4
-	   return (gpu_sim_cycle + gpu_tot_sim_cycle)*4;
+	   return (m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle)*4;
    case HALFCLOCK_ID:
       // GPGPUSim clock is 4 times slower - multiply by 4
 	  // Hardware clock counter is incremented at half the shader clock frequency - divide by 2 (Henry '10)
-      return (gpu_sim_cycle + gpu_tot_sim_cycle)*2;
+      return (m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle)*2;
    case CTAID_REG:
       assert( dim_mod < 3 );
       if( dim_mod == 0 ) return m_ctaid.x;

@@ -83,23 +83,6 @@ class  gpgpu_sim_wrapper {};
 
 bool g_interactive_debugger_enabled=false;
 
-unsigned long long  gpu_sim_cycle = 0;
-unsigned long long  gpu_tot_sim_cycle = 0;
-
-
-// performance counter for stalls due to congestion.
-unsigned int gpu_stall_dramfull = 0; 
-unsigned int gpu_stall_icnt2sh = 0;
-unsigned long long partiton_reqs_in_parallel = 0;
-unsigned long long partiton_reqs_in_parallel_total = 0;
-unsigned long long partiton_reqs_in_parallel_util = 0;
-unsigned long long partiton_reqs_in_parallel_util_total = 0;
-unsigned long long  gpu_sim_cycle_parition_util = 0;
-unsigned long long  gpu_tot_sim_cycle_parition_util = 0;
-unsigned long long partiton_replys_in_parallel = 0;
-unsigned long long partiton_replys_in_parallel_total = 0;
-
-tr1_hash_map<new_addr_type,unsigned> address_random_interleaving;
 
 /* Clock Domains */
 
@@ -731,7 +714,7 @@ gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config )
 #endif
 
     m_shader_stats = new shader_core_stats(m_shader_config);
-    m_memory_stats = new memory_stats_t(m_config.num_shader(),m_shader_config,m_memory_config);
+    m_memory_stats = new memory_stats_t(m_config.num_shader(),m_shader_config,m_memory_config,this);
     average_pipeline_duty_cycle = (float *)malloc(sizeof(float));
     active_sms=(float *)malloc(sizeof(float));
     m_power_stats = new power_stat_t(m_shader_config,average_pipeline_duty_cycle,active_sms,m_shader_stats,m_memory_config,m_memory_stats);
@@ -742,6 +725,16 @@ gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config )
     m_total_cta_launched = 0;
     gpu_deadlock = false;
 
+    gpu_stall_dramfull = 0;
+    gpu_stall_icnt2sh = 0;
+    partiton_reqs_in_parallel = 0;
+    partiton_reqs_in_parallel_total = 0;
+    partiton_reqs_in_parallel_util = 0;
+    partiton_reqs_in_parallel_util_total = 0;
+    gpu_sim_cycle_parition_util = 0;
+    gpu_tot_sim_cycle_parition_util = 0;
+    partiton_replys_in_parallel = 0;
+    partiton_replys_in_parallel_total = 0;
 
     m_cluster = new simt_core_cluster*[m_shader_config->n_simt_clusters];
     for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) 
@@ -750,7 +743,7 @@ gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config )
     m_memory_partition_unit = new memory_partition_unit*[m_memory_config->m_n_mem];
     m_memory_sub_partition = new memory_sub_partition*[m_memory_config->m_n_mem_sub_partition];
     for (unsigned i=0;i<m_memory_config->m_n_mem;i++) {
-        m_memory_partition_unit[i] = new memory_partition_unit(i, m_memory_config, m_memory_stats);
+        m_memory_partition_unit[i] = new memory_partition_unit(i, m_memory_config, m_memory_stats, this);
         for (unsigned p = 0; p < m_memory_config->m_n_sub_partition_per_memory_channel; p++) {
             unsigned submpid = i * m_memory_config->m_n_sub_partition_per_memory_channel + p; 
             m_memory_sub_partition[submpid] = m_memory_partition_unit[i]->get_sub_partition(p); 
@@ -1504,7 +1497,7 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
 
     shader_CTA_count_log(m_sid, 1);
     SHADER_DPRINTF(LIVENESS, "GPGPU-Sim uArch: cta:%2u, start_tid:%4u, end_tid:%4u, initialized @(%lld,%lld)\n", 
-        free_cta_hw_id, start_thread, end_thread, gpu_sim_cycle, gpu_tot_sim_cycle );
+        free_cta_hw_id, start_thread, end_thread, m_gpu->gpu_sim_cycle, m_gpu->gpu_tot_sim_cycle );
 
 }
 
@@ -1721,7 +1714,7 @@ void gpgpu_sim::cycle()
             for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) {
                 m_cluster[i]->get_current_occupancy(active, total);
             }
-            DPRINTF(LIVENESS, "uArch: inst.: %lld (ipc=%4.1f, occ=%0.4f\% [%llu / %llu]) sim_rate=%u (inst/sec) elapsed = %u:%u:%02u:%02u / %s", 
+            DPRINTFG(LIVENESS, "uArch: inst.: %lld (ipc=%4.1f, occ=%0.4f\% [%llu / %llu]) sim_rate=%u (inst/sec) elapsed = %u:%u:%02u:%02u / %s",
                    gpu_tot_sim_insn + gpu_sim_insn, 
                    (double)gpu_sim_insn/(double)gpu_sim_cycle,
                    float(active)/float(total) * 100, active, total,

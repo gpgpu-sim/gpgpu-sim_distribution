@@ -1730,7 +1730,7 @@ public:
     	m_cluster_id = cluster_id;
     	m_memory_config = config;
     }
-    mem_fetch *alloc( new_addr_type addr, mem_access_type type, unsigned size, bool wr ) const 
+    mem_fetch *alloc( new_addr_type addr, mem_access_type type, unsigned size, bool wr, unsigned long long cycle ) const
     {
     	mem_access_t access( type, addr, size, wr );
     	mem_fetch *mf = new mem_fetch( access, 
@@ -1739,11 +1739,12 @@ public:
     				       -1, 
     				       m_core_id, 
     				       m_cluster_id,
-    				       m_memory_config );
+    				       m_memory_config,
+						   cycle);
     	return mf;
     }
     
-    mem_fetch *alloc( const warp_inst_t &inst, const mem_access_t &access ) const
+    mem_fetch *alloc( const warp_inst_t &inst, const mem_access_t &access, unsigned long long cycle ) const
     {
         warp_inst_t inst_copy = inst;
         mem_fetch *mf = new mem_fetch(access, 
@@ -1752,7 +1753,8 @@ public:
                                       inst.warp_id(),
                                       m_core_id, 
                                       m_cluster_id, 
-                                      m_memory_config);
+                                      m_memory_config,
+									  cycle);
         return mf;
     }
 

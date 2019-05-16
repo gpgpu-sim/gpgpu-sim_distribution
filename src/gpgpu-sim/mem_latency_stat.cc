@@ -42,7 +42,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-memory_stats_t::memory_stats_t( unsigned n_shader, const struct shader_core_config *shader_config, const struct memory_config *mem_config )
+memory_stats_t::memory_stats_t( unsigned n_shader, const struct shader_core_config *shader_config, const struct memory_config *mem_config, const class gpgpu_sim* gpu )
 {
    assert( mem_config->m_valid );
    assert( shader_config->m_valid );
@@ -67,6 +67,7 @@ memory_stats_t::memory_stats_t( unsigned n_shader, const struct shader_core_conf
 
    m_n_shader=n_shader;
    m_memory_config=mem_config;
+   m_gpu=gpu;
    total_n_access=0;
    total_n_reads=0;
    total_n_writes=0;
@@ -141,7 +142,7 @@ memory_stats_t::memory_stats_t( unsigned n_shader, const struct shader_core_conf
 unsigned memory_stats_t::memlatstat_done(mem_fetch *mf )
 {
    unsigned mf_latency;
-   mf_latency = (gpu_sim_cycle+gpu_tot_sim_cycle) - mf->get_timestamp();
+   mf_latency = (m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle) - mf->get_timestamp();
    mf_num_lat_pw++;
    mf_tot_lat_pw += mf_latency;
    unsigned idx = LOGB2(mf_latency);
@@ -161,7 +162,7 @@ void memory_stats_t::memlatstat_read_done(mem_fetch *mf)
       if (mf_latency > mf_max_lat_table[mf->get_tlx_addr().chip][mf->get_tlx_addr().bk]) 
          mf_max_lat_table[mf->get_tlx_addr().chip][mf->get_tlx_addr().bk] = mf_latency;
       unsigned icnt2sh_latency;
-      icnt2sh_latency = (gpu_tot_sim_cycle+gpu_sim_cycle) - mf->get_return_timestamp();
+      icnt2sh_latency = (m_gpu->gpu_tot_sim_cycle+m_gpu->gpu_sim_cycle) - mf->get_return_timestamp();
       tot_icnt2sh_latency += icnt2sh_latency;
       icnt2sh_lat_table[LOGB2(icnt2sh_latency)]++;
       if (icnt2sh_latency > max_icnt2sh_latency)
@@ -195,7 +196,7 @@ void memory_stats_t::memlatstat_icnt2mem_pop(mem_fetch *mf)
 {
    if (m_memory_config->gpgpu_memlatency_stat) {
       unsigned icnt2mem_latency;
-      icnt2mem_latency = (gpu_tot_sim_cycle+gpu_sim_cycle) - mf->get_timestamp();
+      icnt2mem_latency = (m_gpu->gpu_tot_sim_cycle+m_gpu->gpu_sim_cycle) - mf->get_timestamp();
       tot_icnt2mem_latency += icnt2mem_latency;
       icnt2mem_lat_table[LOGB2(icnt2mem_latency)]++;
       if (icnt2mem_latency > max_icnt2mem_latency)

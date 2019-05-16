@@ -26,6 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "gpu-cache.h"
+#include "gpu-sim.h"
 #include "stat-tool.h"
 #include <assert.h>
 
@@ -1183,7 +1184,8 @@ data_cache::wr_miss_wa_naive( new_addr_type addr,
                     mf->get_wid(),
                     mf->get_sid(),
                     mf->get_tpc(),
-                    mf->get_mem_config());
+                    mf->get_mem_config(),
+					m_gpu->gpu_tot_sim_cycle+m_gpu->gpu_sim_cycle);
 
     bool do_miss = false;
     bool wb = false;
@@ -1201,7 +1203,7 @@ data_cache::wr_miss_wa_naive( new_addr_type addr,
         if( wb && (m_config.m_write_policy != WRITE_THROUGH) ) { 
         	assert(status == MISS);   //SECTOR_MISS and HIT_RESERVED should not send write back
             mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,
-                m_wrbk_type,evicted.m_modified_size,true);
+                m_wrbk_type,evicted.m_modified_size,true,m_gpu->gpu_tot_sim_cycle+m_gpu->gpu_sim_cycle);
             send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted), time, events);
         }
         return MISS;
@@ -1245,7 +1247,7 @@ data_cache::wr_miss_wa_fetch_on_write( new_addr_type addr,
 			   // (already modified lower level)
 			   if( wb && (m_config.m_write_policy != WRITE_THROUGH) ) {
 				   mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,
-					   m_wrbk_type,evicted.m_modified_size,true);
+					   m_wrbk_type,evicted.m_modified_size,true,m_gpu->gpu_tot_sim_cycle+m_gpu->gpu_sim_cycle);
 				   send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted), time, events);
 			   }
 			   return MISS;
@@ -1297,6 +1299,7 @@ data_cache::wr_miss_wa_fetch_on_write( new_addr_type addr,
 								mf->get_sid(),
 								mf->get_tpc(),
 								mf->get_mem_config(),
+								m_gpu->gpu_tot_sim_cycle+m_gpu->gpu_sim_cycle,
 								NULL,
 								mf);
 
@@ -1320,7 +1323,7 @@ data_cache::wr_miss_wa_fetch_on_write( new_addr_type addr,
 				// (already modified lower level)
 				if(wb && (m_config.m_write_policy != WRITE_THROUGH) ){
 					mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,
-						m_wrbk_type,evicted.m_modified_size,true);
+						m_wrbk_type,evicted.m_modified_size,true,m_gpu->gpu_tot_sim_cycle+m_gpu->gpu_sim_cycle);
 					send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted), time, events);
 			}
 				return MISS;
@@ -1373,7 +1376,7 @@ data_cache::wr_miss_wa_lazy_fetch_on_read( new_addr_type addr,
 			   // (already modified lower level)
 			   if( wb && (m_config.m_write_policy != WRITE_THROUGH) ) {
 				   mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,
-					   m_wrbk_type,evicted.m_modified_size,true);
+					   m_wrbk_type,evicted.m_modified_size,true,m_gpu->gpu_tot_sim_cycle+m_gpu->gpu_sim_cycle);
 				   send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted), time, events);
 			   }
 			   return MISS;
@@ -1458,7 +1461,7 @@ data_cache::rd_miss_base( new_addr_type addr,
         // (already modified lower level)
         if(wb && (m_config.m_write_policy != WRITE_THROUGH) ){ 
             mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,
-                m_wrbk_type,evicted.m_modified_size,true);
+                m_wrbk_type,evicted.m_modified_size,true,m_gpu->gpu_tot_sim_cycle+m_gpu->gpu_sim_cycle);
         send_write_request(wb, WRITE_BACK_REQUEST_SENT, time, events);
     }
         return MISS;

@@ -48,7 +48,7 @@
 
 class dram_req_t {
 public:
-   dram_req_t( class mem_fetch *data , unsigned banks, unsigned dram_bnk_indexing_policy);
+   dram_req_t( class mem_fetch *data , unsigned banks, unsigned dram_bnk_indexing_policy, class gpgpu_sim* gpu);
 
    unsigned int row;
    unsigned int col;
@@ -62,6 +62,7 @@ public:
    unsigned long long int addr;
    unsigned int insertion_time;
    class mem_fetch * data;
+   class gpgpu_sim * m_gpu;
 };
 
 struct bankgrp_t
@@ -110,7 +111,7 @@ class dram_t
 {
 public:
    dram_t( unsigned int parition_id, const struct memory_config *config, class memory_stats_t *stats, 
-           class memory_partition_unit *mp );
+           class memory_partition_unit *mp, class gpgpu_sim* gpu );
 
    bool full(bool is_write) const;
    void print( FILE* simFile ) const;
@@ -129,6 +130,7 @@ public:
    void dram_log (int task);
 
    class memory_partition_unit *m_memory_partition_unit;
+   class gpgpu_sim* m_gpu;
    unsigned int id;
 
    // Power Model
