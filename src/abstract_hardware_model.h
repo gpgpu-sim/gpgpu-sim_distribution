@@ -399,7 +399,7 @@ typedef std::vector<address_type> addr_vector_t;
 
 class simt_stack {
 public:
-    simt_stack( unsigned wid,  unsigned warpSize);
+    simt_stack( unsigned wid,  unsigned warpSize, class gpgpu_sim * gpu);
 
     void reset();
     void launch( address_type start_pc, const simt_mask_t &active_mask );
@@ -415,6 +415,7 @@ public:
 protected:
     unsigned m_warp_id;
     unsigned m_warp_size;
+
 
     enum stack_entry_type {
         STACK_ENTRY_TYPE_NORMAL = 0,
@@ -433,6 +434,8 @@ protected:
     };
 
     std::deque<simt_stack_entry> m_stack;
+
+    class gpgpu_sim * m_gpu;
 };
 
 #define GLOBAL_HEAP_START 0xC0000000
@@ -571,6 +574,12 @@ public:
     int resume_CTA;
     int checkpoint_CTA_t;
     int checkpoint_insn_Y;
+
+    //Move some cycle core stats here instead of being global
+    unsigned long long  gpu_sim_cycle;
+    unsigned long long  gpu_tot_sim_cycle;
+
+
     void* gpu_malloc( size_t size );
     void* gpu_mallocarray( size_t count );
     void  gpu_memset( size_t dst_start_addr, int c, size_t count );
@@ -835,8 +844,8 @@ public:
 
 class mem_fetch_allocator {
 public:
-    virtual mem_fetch *alloc( new_addr_type addr, mem_access_type type, unsigned size, bool wr ) const = 0;
-    virtual mem_fetch *alloc( const class warp_inst_t &inst, const mem_access_t &access ) const = 0;
+    virtual mem_fetch *alloc( new_addr_type addr, mem_access_type type, unsigned size, bool wr, unsigned long long cycle ) const = 0;
+    virtual mem_fetch *alloc( const class warp_inst_t &inst, const mem_access_t &access, unsigned long long cycle ) const = 0;
 };
 
 // the maximum number of destination, source, or address uarch operands in a instruction

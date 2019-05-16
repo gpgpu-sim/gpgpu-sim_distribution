@@ -42,12 +42,12 @@ public:
     {
         m_memory_config = config;
     }
-    virtual mem_fetch * alloc(const class warp_inst_t &inst, const mem_access_t &access) const 
+    virtual mem_fetch * alloc(const class warp_inst_t &inst, const mem_access_t &access, unsigned long long cycle) const
     {
         abort();
         return NULL;
     }
-    virtual mem_fetch * alloc(new_addr_type addr, mem_access_type type, unsigned size, bool wr) const;
+    virtual mem_fetch * alloc(new_addr_type addr, mem_access_type type, unsigned size, bool wr, unsigned long long cycle) const;
 private:
     const memory_config *m_memory_config;
 };
@@ -58,7 +58,7 @@ private:
 class memory_partition_unit
 {
 public: 
-   memory_partition_unit( unsigned partition_id, const struct memory_config *config, class memory_stats_t *stats );
+   memory_partition_unit( unsigned partition_id, const struct memory_config *config, class memory_stats_t *stats, class gpgpu_sim* gpu );
    ~memory_partition_unit(); 
 
    bool busy() const;
@@ -92,6 +92,8 @@ public:
    int global_sub_partition_id_to_local_id(int global_sub_partition_id) const; 
 
    unsigned get_mpid() const { return m_id; }
+
+   class gpgpu_sim* get_mgpu() const { return m_gpu; }
 
 private: 
 
@@ -140,12 +142,14 @@ private:
       class mem_fetch* req;
    };
    std::list<dram_delay_t> m_dram_latency_queue;
+
+   class gpgpu_sim* m_gpu;
 };
 
 class memory_sub_partition
 {
 public:
-   memory_sub_partition( unsigned sub_partition_id, const struct memory_config *config, class memory_stats_t *stats );
+   memory_sub_partition( unsigned sub_partition_id, const struct memory_config *config, class memory_stats_t *stats, class gpgpu_sim* gpu );
    ~memory_sub_partition(); 
 
    unsigned get_id() const { return m_id; } 
@@ -192,6 +196,7 @@ private:
    const struct memory_config *m_config;
    class l2_cache *m_L2cache;
    class L2interface *m_L2interface;
+   class gpgpu_sim* m_gpu;
    partition_mf_allocator *m_mf_allocator;
 
    // model delay of ROP units with a fixed latency

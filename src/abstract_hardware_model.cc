@@ -198,6 +198,9 @@ gpgpu_t::gpgpu_t( const gpgpu_functional_sim_config &config )
 
    if(m_function_model_config.get_ptx_inst_debug_to_file() != 0) 
       ptx_inst_debug_file = fopen(m_function_model_config.get_ptx_inst_debug_file(), "w");
+
+   gpu_sim_cycle=0;
+   gpu_tot_sim_cycle=0;
 }
 
 address_type line_size_based_tag_func(new_addr_type address, new_addr_type line_size)
@@ -830,10 +833,11 @@ void kernel_info_t::destroy_cta_streams() {
      m_cta_streams.clear();
 }
 
-simt_stack::simt_stack( unsigned wid, unsigned warpSize)
+simt_stack::simt_stack( unsigned wid, unsigned warpSize,  class gpgpu_sim * gpu)
 {
     m_warp_id=wid;
     m_warp_size = warpSize;
+    m_gpu=gpu;
     reset();
 }
 
@@ -1033,7 +1037,7 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
     		simt_stack_entry new_stack_entry;
     		new_stack_entry.m_pc = tmp_next_pc;
     		new_stack_entry.m_active_mask = tmp_active_mask;
-    		new_stack_entry.m_branch_div_cycle = gpu_sim_cycle+gpu_tot_sim_cycle;
+    		new_stack_entry.m_branch_div_cycle = m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle;
     		new_stack_entry.m_type = STACK_ENTRY_TYPE_CALL;
     		m_stack.push_back(new_stack_entry);
     		return;
@@ -1065,7 +1069,7 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
             new_recvg_pc = recvg_pc;
             if (new_recvg_pc != top_recvg_pc) {
                 m_stack.back().m_pc = new_recvg_pc;
-                m_stack.back().m_branch_div_cycle = gpu_sim_cycle+gpu_tot_sim_cycle;
+                m_stack.back().m_branch_div_cycle = m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle;
 
                 m_stack.push_back(simt_stack_entry());
             }
@@ -1157,7 +1161,7 @@ void core_t::initilizeSIMTStack(unsigned warp_count, unsigned warp_size)
 { 
     m_simt_stack = new simt_stack*[warp_count];
     for (unsigned i = 0; i < warp_count; ++i) 
-        m_simt_stack[i] = new simt_stack(i,warp_size);
+        m_simt_stack[i] = new simt_stack(i,warp_size,m_gpu);
     m_warp_size = warp_size;
     m_warp_count = warp_count;
 }
