@@ -33,6 +33,7 @@ typedef void * yyscan_t;
 #include <stdarg.h>
 
 extern int ptx_get_lineno (yyscan_t yyscanner );
+extern YYSTYPE* ptx_get_lval (yyscan_t yyscanner );
 extern int ptx_error( yyscan_t yyscanner, const char *s );
 extern int ptx_lex_init(yyscan_t* scanner);
 extern void ptx_set_in(FILE * _in_str ,yyscan_t yyscanner );
@@ -285,7 +286,6 @@ void ptx_recognizer::parse_assert_impl( int test_value, const char *file, unsign
       parse_error_impl(file,line, msg);
 }
 
-extern char linebuf[4096];
 
 
 void ptx_recognizer::set_return()
@@ -325,7 +325,7 @@ void ptx_recognizer::add_instruction()
                                              g_space_spec,
                                              g_filename,
                                              ptx_get_lineno(scanner),
-                                             linebuf,
+                                             ptx_get_lval(scanner)->linebuf,
                                              g_shader_core_config );
    g_instructions.push_back(i);
    g_inst_lookup[g_filename][ptx_get_lineno(scanner)] = i;
