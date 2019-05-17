@@ -41,10 +41,8 @@ class ptx_recognizer;
 #include "ptx.tab.h"
 #include <string.h>
 
-#define LINEBUF_SIZE (64*1024)
-char linebuf[LINEBUF_SIZE];
-unsigned col = 0;
-#define TC col+=strlen(yytext);
+#define LINEBUF_SIZE (4*1024)
+#define TC yylval->col+=strlen(yytext);
 #define CHECK_UNSIGNED \
 	if( yytext[strlen(yytext)-1]=='U' ) { \
 		printf("GPGPU-Sim: ERROR ** U modifier not implemented\n"); \
@@ -416,7 +414,7 @@ breakaddr  TC; yylval->int_value = BREAKADDR_OP; return OPCODE;
 
 "//"[^\n]* TC;	// eat single
 
-\n.*  col=0; strncpy(linebuf, yytext + 1, LINEBUF_SIZE); yyless( 1 );
+\n.*  yylval->col=0; strncpy(yylval->linebuf, yytext + 1, LINEBUF_SIZE); yyless( 1 );
 
 " " TC;
 "\t" TC;
@@ -464,10 +462,10 @@ int ptx_error( yyscan_t yyscanner, ptx_recognizer* recognizer, const char *s )
 	fflush(stdout);
 	if( s != NULL )
 		printf("%s:%u Syntax error:\n\n", g_filename, yylineno );
-	printf("   %s\n", linebuf );
+	printf("   %s\n", yylval->linebuf );
 	printf("   ");
-	for( i=0; i < col-1; i++ ) {
-		if( linebuf[i] == '\t' ) printf("\t");
+	for( i=0; i < yylval->col-1; i++ ) {
+		if( yylval->linebuf[i] == '\t' ) printf("\t");
 		else printf(" ");
 	}
 			

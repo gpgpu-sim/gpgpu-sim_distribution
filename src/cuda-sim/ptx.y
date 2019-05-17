@@ -43,6 +43,9 @@ class ptx_recognizer;
   int    int_value;
   char * string_value;
   void * ptr_value;
+#define LINEBUF_SIZE (4*1024)
+  char linebuf[LINEBUF_SIZE];
+  unsigned col;
 }
 
 %token <string_value> STRING
