@@ -3261,7 +3261,6 @@ extern int ptx__scan_string(const char*);
 extern FILE *ptx_in;
 
 extern int ptxinfo_parse();
-extern int ptxinfo_debug;
 extern FILE *ptxinfo_in;
 
 /// static functions
