@@ -39,7 +39,7 @@ pipeline {
             steps {
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
-                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -B `cat ./gpgpu-sim_simulations/util/job_launching/apps/all-apps.list` -C TITANX-2B,TITANX-L1ON-2B,P100-2B,TITANV-2B -N nightly-$$ && \
+                    ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -B `cat ./gpgpu-sim_simulations/util/job_launching/apps/all-apps.list` -C TITANV-2B -N nightly-$$ && \
                     PLOTDIR="jenkins/${JOB_NAME}/${BUILD_NUMBER}/getstats" && ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p /home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR && \
                     ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -I -S 1800 -v  -s stats-$$.csv -N nightly-$$ && \
                     ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c stats-$$.csv -p tgrogers@dynamo.ecn.purdue.edu:~/website/gpgpu-sim-plots/$PLOTDIR -w https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR -n $PLOTDIR'
@@ -50,7 +50,7 @@ pipeline {
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
                     PLOTDIR="jenkins/${JOB_NAME}" &&\
-                    ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B `cat ./gpgpu-sim_simulations/util/job_launching/apps/all-apps.list` -C TITANX-2B,TITANX-L1ON-2B,P100-2B,TITANV-2B > nightly-stats-per-kernel-9.1.csv &&\
+                    ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B `cat ./gpgpu-sim_simulations/util/job_launching/apps/all-apps.list` -C TITANV-2B > nightly-stats-per-kernel-9.1.csv &&\
                     ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh nightly-stats-per-kernel-9.1.csv $PLOTDIR ${BUILD_NUMBER}'
             }
         }
