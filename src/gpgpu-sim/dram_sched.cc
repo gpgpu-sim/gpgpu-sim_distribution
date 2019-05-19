@@ -84,13 +84,13 @@ void frfcfs_scheduler::add_req( dram_req_t *req )
 
 void frfcfs_scheduler::data_collection(unsigned int bank)
 {
-   if (gpu_sim_cycle > row_service_timestamp[bank]) {
-      curr_row_service_time[bank] = gpu_sim_cycle - row_service_timestamp[bank];
+   if (m_dram->m_gpu->gpu_sim_cycle > row_service_timestamp[bank]) {
+      curr_row_service_time[bank] = m_dram->m_gpu->gpu_sim_cycle - row_service_timestamp[bank];
       if (curr_row_service_time[bank] > m_stats->max_servicetime2samerow[m_dram->id][bank])
          m_stats->max_servicetime2samerow[m_dram->id][bank] = curr_row_service_time[bank];
    }
    curr_row_service_time[bank] = 0;
-   row_service_timestamp[bank] = gpu_sim_cycle;
+   row_service_timestamp[bank] = m_dram->m_gpu->gpu_sim_cycle;
    if (m_stats->concurrent_row_access[m_dram->id][bank] > m_stats->max_conc_access2samerow[m_dram->id][bank]) {
       m_stats->max_conc_access2samerow[m_dram->id][bank] = m_stats->concurrent_row_access[m_dram->id][bank];
    }
@@ -215,7 +215,7 @@ void dram_t::scheduler_frfcfs()
     	  m_stats->total_n_reads++;
       }
 
-      req->data->set_status(IN_PARTITION_MC_INPUT_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
+      req->data->set_status(IN_PARTITION_MC_INPUT_QUEUE,m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle);
       sched->add_req(req);
    }
 
@@ -228,14 +228,14 @@ void dram_t::scheduler_frfcfs()
          req = sched->schedule(b, bk[b]->curr_row);
 
          if ( req ) {
-            req->data->set_status(IN_PARTITION_MC_BANK_ARB_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
+            req->data->set_status(IN_PARTITION_MC_BANK_ARB_QUEUE,m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle);
             prio = (prio+1)%m_config->nbk;
             bk[b]->mrq = req;
             if (m_config->gpgpu_memlatency_stat) {
-               mrq_latency = gpu_sim_cycle + gpu_tot_sim_cycle - bk[b]->mrq->timestamp;
+               mrq_latency = m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle - bk[b]->mrq->timestamp;
                m_stats->tot_mrq_latency += mrq_latency;
                m_stats->tot_mrq_num++;
-               bk[b]->mrq->timestamp = gpu_tot_sim_cycle + gpu_sim_cycle;
+               bk[b]->mrq->timestamp =m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle;
                m_stats->mrq_lat_table[LOGB2(mrq_latency)]++;
                if (mrq_latency > m_stats->max_mrq_latency) {
                   m_stats->max_mrq_latency = mrq_latency;

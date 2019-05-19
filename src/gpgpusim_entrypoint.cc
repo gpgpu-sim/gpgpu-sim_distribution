@@ -222,10 +222,12 @@ gpgpu_sim *gpgpu_ptx_sim_init_perf()
    read_parser_environment_variables();
    option_parser_t opp = option_parser_create();
 
-   icnt_reg_options(opp);
-   g_the_gpu_config.reg_options(opp); // register GPU microrachitecture options
    ptx_reg_options(opp);
    ptx_opcocde_latency_options(opp);
+
+   icnt_reg_options(opp);
+   g_the_gpu_config.reg_options(opp); // register GPU microrachitecture options
+
    option_parser_cmdline(opp, sg_argc, sg_argv); // parse configuration options
    fprintf(stdout, "GPGPU-Sim: Configuration options:\n\n");
    option_parser_print(opp, stdout);
@@ -273,7 +275,7 @@ void print_simulation_time()
    printf("\n\ngpgpu_simulation_time = %u days, %u hrs, %u min, %u sec (%u sec)\n",
           (unsigned)d, (unsigned)h, (unsigned)m, (unsigned)s, (unsigned)difference );
    printf("gpgpu_simulation_rate = %u (inst/sec)\n", (unsigned)(g_the_gpu->gpu_tot_sim_insn / difference) );
-   printf("gpgpu_simulation_rate = %u (cycle/sec)\n", (unsigned)(gpu_tot_sim_cycle / difference) );
+   printf("gpgpu_simulation_rate = %u (cycle/sec)\n", (unsigned)(g_the_gpu->gpu_tot_sim_cycle / difference) );
    fflush(stdout);
 }
 

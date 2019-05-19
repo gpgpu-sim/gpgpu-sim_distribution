@@ -62,9 +62,7 @@
 #define SAMPLELOG 222
 #define DUMPLOG 333
 
-
-
-
+extern tr1_hash_map<new_addr_type,unsigned> address_random_interleaving;
 
 enum dram_ctrl_t {
    DRAM_FIFO=0,
@@ -293,9 +291,6 @@ struct memory_config {
    bool m_perf_sim_memcpy;
 };
 
-// global counters and flags (please try not to add to this list!!!)
-extern unsigned long long  gpu_sim_cycle;
-extern unsigned long long  gpu_tot_sim_cycle;
 extern bool g_interactive_debugger_enabled;
 
 class gpgpu_sim_config : public power_config, public gpgpu_functional_sim_config {
@@ -337,6 +332,11 @@ public:
     unsigned get_max_concurrent_kernel() const { return max_concurrent_kernel; }
     unsigned checkpoint_option;
 
+    size_t stack_limit() const {return stack_size_limit; }
+    size_t heap_limit() const {return heap_size_limit; }
+    size_t sync_depth_limit() const {return runtime_sync_depth_limit; }
+    size_t pending_launch_count_limit() const {return runtime_pending_launch_count_limit;}
+
 private:
     void init_clock_domains(void ); 
 
@@ -377,8 +377,15 @@ private:
     int gpu_stat_sample_freq;
     int gpu_runtime_stat_flag;
 
+    // Device Limits
+    size_t stack_size_limit;
+    size_t heap_size_limit;
+    size_t runtime_sync_depth_limit;
+    size_t runtime_pending_launch_count_limit;	
 
-
+ //gpu compute capability options
+    unsigned int gpgpu_compute_capability_major;
+    unsigned int gpgpu_compute_capability_minor;
     unsigned long long liveness_message_freq; 
 
     friend class gpgpu_sim;
@@ -438,6 +445,8 @@ public:
 
    int shared_mem_size() const;
    int shared_mem_per_block() const;
+   int compute_capability_major() const;
+   int compute_capability_minor() const;
    int num_registers_per_core() const;
    int num_registers_per_block() const;
    int wrp_size() const;
@@ -552,6 +561,18 @@ public:
    unsigned gpu_sim_insn_last_update_sid;
    occupancy_stats gpu_occupancy;
    occupancy_stats gpu_tot_occupancy;
+
+   // performance counter for stalls due to congestion.
+   unsigned int gpu_stall_dramfull;
+   unsigned int gpu_stall_icnt2sh;
+   unsigned long long partiton_reqs_in_parallel;
+   unsigned long long partiton_reqs_in_parallel_total;
+   unsigned long long partiton_reqs_in_parallel_util;
+   unsigned long long partiton_reqs_in_parallel_util_total;
+   unsigned long long  gpu_sim_cycle_parition_util;
+   unsigned long long  gpu_tot_sim_cycle_parition_util;
+   unsigned long long partiton_replys_in_parallel;
+   unsigned long long partiton_replys_in_parallel_total;
 
 
    FuncCache get_cache_config(std::string kernel_name);

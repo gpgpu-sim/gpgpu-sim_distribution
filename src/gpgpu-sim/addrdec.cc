@@ -165,6 +165,27 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr, addrdec_
 			assert(tlx->chip < m_n_channel);
 			break;
 		}
+		case RANDOM:
+		{
+			new_addr_type chip_address = (addr>>ADDR_CHIP_S);
+			tr1_hash_map<new_addr_type,unsigned>::const_iterator got = address_random_interleaving.find (chip_address);
+			  if ( got == address_random_interleaving.end() ) {
+				  unsigned new_chip_id = rand() % (m_n_channel*m_n_sub_partition_in_channel);
+				  address_random_interleaving[chip_address] = new_chip_id;
+				  tlx->chip = new_chip_id/m_n_sub_partition_in_channel;
+				  tlx->sub_partition = new_chip_id;
+			  }
+			  else {
+				  unsigned new_chip_id = got->second;
+				  tlx->chip = new_chip_id/m_n_sub_partition_in_channel;
+				  tlx->sub_partition = new_chip_id;
+			  }
+
+			  assert(tlx->chip < m_n_channel);
+			  assert(tlx->sub_partition < m_n_channel*m_n_sub_partition_in_channel);
+			  return;
+			break;
+		}
 		case CUSTOM:
 			/* No custom set function implemented */
 			//Do you custom index here
@@ -175,9 +196,9 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr, addrdec_
 	}
 
    // combine the chip address and the lower bits of DRAM bank address to form the subpartition ID
-   unsigned sub_partition_addr_mask = m_n_sub_partition_in_channel - 1; 
+   unsigned sub_partition_addr_mask = m_n_sub_partition_in_channel - 1;
    tlx->sub_partition = tlx->chip * m_n_sub_partition_in_channel
-                        + (tlx->bk & sub_partition_addr_mask); 
+                        + (tlx->bk & sub_partition_addr_mask);
 }
 
 void linear_to_raw_address_translation::addrdec_parseoption(const char *option)
@@ -396,6 +417,10 @@ void linear_to_raw_address_translation::init(unsigned int n_channel, unsigned in
    if (run_test) {
       sweep_test(); 
    }
+
+   if(memory_partition_indexing == RANDOM)
+     srand (1);
+
 }
 
 #include "../tr1_hash_map.h" 

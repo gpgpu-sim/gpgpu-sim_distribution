@@ -27,9 +27,20 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+%{
+typedef void * yyscan_t;
+%}
+
+%define api.pure full
+%parse-param {yyscan_t scanner}
+%lex-param {yyscan_t scanner}
+
 %union {
+#define LINEBUF_SIZE 1024
   int    int_value;
   char * string_value;
+  char linebuf[LINEBUF_SIZE];
+  unsigned col;
 }
 
 %token <int_value> INT_OPERAND
@@ -66,7 +77,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	
 	static unsigned g_declared;
 	static unsigned g_system;
-	int ptxinfo_lex(void);
+	int ptxinfo_lex(YYSTYPE * yylval_param, yyscan_t yyscanner);
+	void yyerror(yyscan_t yyscanner, const char* msg);
 	void ptxinfo_addinfo();
 	void ptxinfo_function(const char *fname );
 	void ptxinfo_regs( unsigned nregs );
@@ -74,7 +86,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	void ptxinfo_gmem( unsigned declared, unsigned system );
 	void ptxinfo_smem( unsigned declared, unsigned system );
 	void ptxinfo_cmem( unsigned nbytes, unsigned bank );
-	int ptxinfo_error(const char*);
 	void ptxinfo_linenum( unsigned );
 	void ptxinfo_dup_type( const char* );
 %}

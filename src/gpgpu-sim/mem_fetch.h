@@ -56,6 +56,7 @@ public:
                unsigned sid, 
                unsigned tpc, 
                const struct memory_config *config,
+			   unsigned long long cycle,
 			   mem_fetch *original_mf = NULL,
 			   mem_fetch *original_wr_mf = NULL);
    ~mem_fetch();
