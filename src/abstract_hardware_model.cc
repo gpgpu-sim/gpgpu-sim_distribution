@@ -88,8 +88,6 @@ void checkpoint::load_global_mem(class memory_space *temp_mem, char * f1name)
       fclose ( fp2 );
 }
 
-
-
 void checkpoint::store_global_mem(class memory_space * mem, char *fname, char * format)
 {
 
@@ -192,9 +190,17 @@ gpgpu_t::gpgpu_t( const gpgpu_functional_sim_config &config )
    checkpoint_CTA_t = m_function_model_config.get_checkpoint_CTA_t();
    checkpoint_insn_Y = m_function_model_config.get_checkpoint_insn_Y();
 
+   // initialize texture mappings to empty
+   m_NameToTextureInfo.clear();
+   m_NameToCudaArray.clear();
+   m_TextureRefToName.clear();
+   m_NameToAttribute.clear();
 
    if(m_function_model_config.get_ptx_inst_debug_to_file() != 0) 
       ptx_inst_debug_file = fopen(m_function_model_config.get_ptx_inst_debug_file(), "w");
+
+   gpu_sim_cycle=0;
+   gpu_tot_sim_cycle=0;
 }
 
 address_type line_size_based_tag_func(new_addr_type address, new_addr_type line_size)
@@ -688,7 +694,10 @@ unsigned g_kernel_launch_latency;
 
 unsigned kernel_info_t::m_next_uid = 1;
 
-kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry )
+/*A snapshot of the texture mappings needs to be stored in the kernel's info as 
+kernels should use the texture bindings seen at the time of launch and textures
+ can be bound/unbound asynchronously with respect to streams. */
+kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry, std::map<std::string, const struct cudaArray*> nameToCudaArray, std::map<std::string, const struct textureInfo*> nameToTextureInfo)   
 {
     m_kernel_entry=entry;
     m_grid_dim=gridDim;
@@ -708,6 +717,8 @@ kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *
     m_launch_latency = g_kernel_launch_latency;
 
     volta_cache_config_set=false;
+    m_NameToCudaArray = nameToCudaArray;
+    m_NameToTextureInfo = nameToTextureInfo;
 }
 
 kernel_info_t::~kernel_info_t()
@@ -822,10 +833,11 @@ void kernel_info_t::destroy_cta_streams() {
      m_cta_streams.clear();
 }
 
-simt_stack::simt_stack( unsigned wid, unsigned warpSize)
+simt_stack::simt_stack( unsigned wid, unsigned warpSize,  class gpgpu_sim * gpu)
 {
     m_warp_id=wid;
     m_warp_size = warpSize;
+    m_gpu=gpu;
     reset();
 }
 
@@ -1025,7 +1037,7 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
     		simt_stack_entry new_stack_entry;
     		new_stack_entry.m_pc = tmp_next_pc;
     		new_stack_entry.m_active_mask = tmp_active_mask;
-    		new_stack_entry.m_branch_div_cycle = gpu_sim_cycle+gpu_tot_sim_cycle;
+    		new_stack_entry.m_branch_div_cycle = m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle;
     		new_stack_entry.m_type = STACK_ENTRY_TYPE_CALL;
     		m_stack.push_back(new_stack_entry);
     		return;
@@ -1057,7 +1069,7 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
             new_recvg_pc = recvg_pc;
             if (new_recvg_pc != top_recvg_pc) {
                 m_stack.back().m_pc = new_recvg_pc;
-                m_stack.back().m_branch_div_cycle = gpu_sim_cycle+gpu_tot_sim_cycle;
+                m_stack.back().m_branch_div_cycle = m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle;
 
                 m_stack.push_back(simt_stack_entry());
             }
@@ -1149,7 +1161,7 @@ void core_t::initilizeSIMTStack(unsigned warp_count, unsigned warp_size)
 { 
     m_simt_stack = new simt_stack*[warp_count];
     for (unsigned i = 0; i < warp_count; ++i) 
-        m_simt_stack[i] = new simt_stack(i,warp_size);
+        m_simt_stack[i] = new simt_stack(i,warp_size,m_gpu);
     m_warp_size = warp_size;
     m_warp_count = warp_count;
 }

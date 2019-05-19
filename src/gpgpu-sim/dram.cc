@@ -42,12 +42,13 @@ template class fifo_pipeline<mem_fetch>;
 template class fifo_pipeline<dram_req_t>;
 
 dram_t::dram_t( unsigned int partition_id, const struct memory_config *config, memory_stats_t *stats,
-                memory_partition_unit *mp )
+                memory_partition_unit *mp, gpgpu_sim* gpu )
 {
    id = partition_id;
    m_memory_partition_unit = mp;
    m_stats = stats;
    m_config = config;
+   m_gpu = gpu;
 
    //rowblp
    access_num=0;
@@ -191,11 +192,12 @@ unsigned int dram_t::queue_limit() const
 }
 
 
-dram_req_t::dram_req_t( class mem_fetch *mf, unsigned banks, unsigned dram_bnk_indexing_policy)
+dram_req_t::dram_req_t( class mem_fetch *mf, unsigned banks, unsigned dram_bnk_indexing_policy, class gpgpu_sim* gpu)
 {
    txbytes = 0;
    dqbytes = 0;
    data = mf;
+   m_gpu = gpu;
 
    const addrdec_t &tlx = mf->get_tlx_addr();
 
@@ -226,9 +228,9 @@ dram_req_t::dram_req_t( class mem_fetch *mf, unsigned banks, unsigned dram_bnk_i
    col = tlx.col; 
    nbytes = mf->get_data_size();
 
-   timestamp = gpu_tot_sim_cycle + gpu_sim_cycle;
+   timestamp = m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle;
    addr = mf->get_addr();
-   insertion_time = (unsigned) gpu_sim_cycle;
+   insertion_time = (unsigned) m_gpu->gpu_sim_cycle;
    rw = data->get_is_write()?WRITE:READ;
 }
 
@@ -236,9 +238,9 @@ void dram_t::push( class mem_fetch *data )
 {
    assert(id == data->get_tlx_addr().chip); // Ensure request is in correct memory partition
 
-   dram_req_t *mrq = new dram_req_t(data,m_config->nbk,m_config->dram_bnk_indexing_policy);
+   dram_req_t *mrq = new dram_req_t(data,m_config->nbk,m_config->dram_bnk_indexing_policy,m_memory_partition_unit->get_mgpu());
 
-   data->set_status(IN_PARTITION_MC_INTERFACE_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
+   data->set_status(IN_PARTITION_MC_INTERFACE_QUEUE,m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle);
 	   mrqq->push(mrq);
 
    // stats...
@@ -259,7 +261,7 @@ void dram_t::scheduler_fifo()
    if (!mrqq->empty()) {
       unsigned int bkn;
       dram_req_t *head_mrqq = mrqq->top();
-      head_mrqq->data->set_status(IN_PARTITION_MC_BANK_ARB_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
+      head_mrqq->data->set_status(IN_PARTITION_MC_BANK_ARB_QUEUE,m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle);
       bkn = head_mrqq->bk;
       if (!bk[bkn]->mrq) 
          bk[bkn]->mrq = mrqq->pop();
@@ -283,7 +285,7 @@ void dram_t::cycle()
 
            if (cmd->dqbytes >= cmd->nbytes) {
               mem_fetch *data = cmd->data; 
-              data->set_status(IN_PARTITION_MC_RETURNQ,gpu_sim_cycle+gpu_tot_sim_cycle); 
+              data->set_status(IN_PARTITION_MC_RETURNQ,m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle);
               if( data->get_access_type() != L1_WRBK_ACC && data->get_access_type() != L2_WRBK_ACC ) {
                  data->set_reply();
                  returnq->push(data);
@@ -566,7 +568,7 @@ bool dram_t::issue_col_command(int j)
 	bool issued = false;
 	unsigned grp = get_bankgrp_number(j);
     if (bk[j]->mrq) { //if currently servicing a memory request
-        bk[j]->mrq->data->set_status(IN_PARTITION_DRAM,gpu_sim_cycle+gpu_tot_sim_cycle);
+        bk[j]->mrq->data->set_status(IN_PARTITION_DRAM,m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle);
        // correct row activated for a READ
        if ( !issued && !CCDc && !bk[j]->RCDc &&
             !(bkgrp[grp]->CCDLc) &&
@@ -654,7 +656,7 @@ bool dram_t::issue_row_command(int j)
 	bool issued = false;
 	unsigned grp = get_bankgrp_number(j);
     if (bk[j]->mrq) { //if currently servicing a memory request
-        bk[j]->mrq->data->set_status(IN_PARTITION_DRAM,gpu_sim_cycle+gpu_tot_sim_cycle);
+        bk[j]->mrq->data->set_status(IN_PARTITION_DRAM,m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle);
       //     bank is idle
     //else
   	  if ( !issued && !RRDc &&
@@ -723,10 +725,10 @@ void dram_t::print( FILE* simFile) const
            id, m_config->nbk, m_config->busW, m_config->BL, m_config->CL );
    fprintf(simFile,"tRRD=%d tCCD=%d, tRCD=%d tRAS=%d tRP=%d tRC=%d\n",
            m_config->tRRD, m_config->tCCD, m_config->tRCD, m_config->tRAS, m_config->tRP, m_config->tRC );
-   fprintf(simFile,"n_cmd=%d n_nop=%d n_act=%d n_pre=%d n_ref_event=%d n_req=%d n_rd=%d n_rd_L2_A=%d n_write=%d n_wr_bk=%d bw_util=%.4g\n",
+   fprintf(simFile,"n_cmd=%llu n_nop=%llu n_act=%llu n_pre=%llu n_ref_event=%llu n_req=%llu n_rd=%llu n_rd_L2_A=%llu n_write=%llu n_wr_bk=%llu bw_util=%.4g\n",
            n_cmd, n_nop, n_act, n_pre, n_ref, n_req, n_rd, n_rd_L2_A, n_wr, n_wr_WB,
            (float)bwutil/n_cmd);
-   fprintf(simFile,"n_activity=%d dram_eff=%.4g\n",
+   fprintf(simFile,"n_activity=%llu dram_eff=%.4g\n",
            n_activity, (float)bwutil/n_activity);
    for (i=0;i<m_config->nbk;i++) {
       fprintf(simFile, "bk%d: %da %di ",i,bk[i]->n_access,bk[i]->n_idle);
@@ -745,39 +747,39 @@ void dram_t::print( FILE* simFile) const
 
    printf("\nBW Util details:\n");
    printf("bwutil = %.6f \n", (float)bwutil/n_cmd);
-   printf("total_CMD = %d \n", n_cmd);
-   printf("util_bw = %d \n", util_bw);
-   printf("Wasted_Col = %d \n", wasted_bw_col);
-   printf("Wasted_Row = %d \n", wasted_bw_row);
-   printf("Idle = %d \n", idle_bw);
+   printf("total_CMD = %llu \n", n_cmd);
+   printf("util_bw = %llu \n", util_bw);
+   printf("Wasted_Col = %llu \n", wasted_bw_col);
+   printf("Wasted_Row = %llu \n", wasted_bw_row);
+   printf("Idle = %llu \n", idle_bw);
 
    printf("\nBW Util Bottlenecks: \n");
-   printf("RCDc_limit = %d \n", RCDc_limit);
-   printf("RCDWRc_limit = %d \n", RCDWRc_limit);
-   printf("WTRc_limit = %d \n", WTRc_limit);
-   printf("RTWc_limit = %d \n", RTWc_limit);
-   printf("CCDLc_limit = %d \n", CCDLc_limit);
-   printf("rwq = %d \n", rwq_limit);
-   printf("CCDLc_limit_alone = %d \n", CCDLc_limit_alone);
-   printf("WTRc_limit_alone = %d \n", WTRc_limit_alone);
-   printf("RTWc_limit_alone = %d \n", RTWc_limit_alone);
+   printf("RCDc_limit = %llu \n", RCDc_limit);
+   printf("RCDWRc_limit = %llu \n", RCDWRc_limit);
+   printf("WTRc_limit = %llu \n", WTRc_limit);
+   printf("RTWc_limit = %llu \n", RTWc_limit);
+   printf("CCDLc_limit = %llu \n", CCDLc_limit);
+   printf("rwq = %llu \n", rwq_limit);
+   printf("CCDLc_limit_alone = %llu \n", CCDLc_limit_alone);
+   printf("WTRc_limit_alone = %llu \n", WTRc_limit_alone);
+   printf("RTWc_limit_alone = %llu \n", RTWc_limit_alone);
 
    printf("\nCommands details: \n");
-   printf("total_CMD = %d \n", n_cmd);
-   printf("n_nop = %d \n", n_nop);
-   printf("Read = %d \n", n_rd);
-   printf("Write = %d \n",n_wr);
-   printf("L2_Alloc = %d \n", n_rd_L2_A);
-   printf("L2_WB = %d \n", n_wr_WB);
-   printf("n_act = %d \n", n_act);
-   printf("n_pre = %d \n", n_pre);
-   printf("n_ref = %d \n", n_ref);
-   printf("n_req = %d \n", n_req );
-   printf("total_req = %d \n", n_rd+n_wr+n_rd_L2_A+n_wr_WB);
+   printf("total_CMD = %llu \n", n_cmd);
+   printf("n_nop = %llu \n", n_nop);
+   printf("Read = %llu \n", n_rd);
+   printf("Write = %llu \n",n_wr);
+   printf("L2_Alloc = %llu \n", n_rd_L2_A);
+   printf("L2_WB = %llu \n", n_wr_WB);
+   printf("n_act = %llu \n", n_act);
+   printf("n_pre = %llu \n", n_pre);
+   printf("n_ref = %llu \n", n_ref);
+   printf("n_req = %llu \n", n_req );
+   printf("total_req = %llu \n", n_rd+n_wr+n_rd_L2_A+n_wr_WB);
 
    printf("\nDual Bus Interface Util: \n");
-   printf("issued_total_row = %lu \n", issued_total_row);
-   printf("issued_total_col = %lu \n", issued_total_col);
+   printf("issued_total_row = %llu \n", issued_total_row);
+   printf("issued_total_col = %llu \n", issued_total_col);
    printf("Row_Bus_Util =  %.6f \n", (float)issued_total_row / n_cmd);
    printf("CoL_Bus_Util = %.6f \n", (float)issued_total_col / n_cmd);
    printf("Either_Row_CoL_Bus_Util = %.6f \n",  (float)issued_total / n_cmd);
@@ -815,7 +817,7 @@ void dram_t::visualize() const
 
 void dram_t::print_stat( FILE* simFile ) 
 {
-   fprintf(simFile,"DRAM (%d): n_cmd=%d n_nop=%d n_act=%d n_pre=%d n_ref=%d n_req=%d n_rd=%d n_write=%d bw_util=%.4g ",
+   fprintf(simFile,"DRAM (%llu): n_cmd=%llu n_nop=%llu n_act=%llu n_pre=%llu n_ref=%llu n_req=%llu n_rd=%llu n_write=%llu bw_util=%.4g ",
            id, n_cmd, n_nop, n_act, n_pre, n_ref, n_req, n_rd, n_wr,
            (float)bwutil/n_cmd);
    fprintf(simFile, "mrqq: %d %.4g mrqsmax=%d ", max_mrqs, (float)ave_mrqs/n_cmd, max_mrqs_temp);
