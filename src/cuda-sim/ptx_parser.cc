@@ -37,6 +37,7 @@ extern YYSTYPE* ptx_get_lval (yyscan_t yyscanner );
 extern int ptx_error( yyscan_t yyscanner, const char *s );
 extern int ptx_lex_init(yyscan_t* scanner);
 extern void ptx_set_in(FILE * _in_str ,yyscan_t yyscanner );
+extern FILE *ptx_get_in (yyscan_t yyscanner );
 extern int ptx_parse(yyscan_t scanner, ptx_recognizer* recognizer);
 extern int ptx_lex_destroy(yyscan_t scanner);
 
@@ -182,6 +183,7 @@ symbol_table *init_parser( const char *ptx_filename )
    ptx_in = fopen(ptx_filename, "r");
    ptx_set_in(ptx_in, recognizer.scanner);
    ptx_parse(recognizer.scanner, &recognizer);
+   ptx_in = ptx_get_in(recognizer.scanner);
    ptx_lex_destroy(recognizer.scanner);
    fclose(ptx_in);
    return g_global_symbol_table;
@@ -325,7 +327,7 @@ void ptx_recognizer::add_instruction()
                                              g_space_spec,
                                              g_filename,
                                              ptx_get_lineno(scanner),
-                                             ptx_get_lval(scanner)->linebuf,
+                                             linebuf,
                                              g_shader_core_config );
    g_instructions.push_back(i);
    g_inst_lookup[g_filename][ptx_get_lineno(scanner)] = i;

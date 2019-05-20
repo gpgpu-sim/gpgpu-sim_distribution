@@ -37,17 +37,19 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 %{
 #include "opcodes.h"
-class ptx_recognizer;
+#include "ptx_parser.h"
 #include "ptx.tab.h"
 #include <string.h>
 
 #define LINEBUF_SIZE (4*1024)
-#define TC yylval->col+=strlen(yytext);
+#define TC recognizer->col+=strlen(yytext);
 #define CHECK_UNSIGNED \
 	if( yytext[strlen(yytext)-1]=='U' ) { \
 		printf("GPGPU-Sim: ERROR ** U modifier not implemented\n"); \
 		abort(); \
 	}
+#define YY_DECL int ptx_lex \
+	       (YYSTYPE * yylval_param , yyscan_t yyscanner, ptx_recognizer* recognizer)
 int ptx_error( yyscan_t yyscanner, ptx_recognizer* recognizer, const char *s );
 %}
 
@@ -414,7 +416,7 @@ breakaddr  TC; yylval->int_value = BREAKADDR_OP; return OPCODE;
 
 "//"[^\n]* TC;	// eat single
 
-\n.*  yylval->col=0; strncpy(yylval->linebuf, yytext + 1, LINEBUF_SIZE); yyless( 1 );
+\n.*  recognizer->col=0; strncpy(recognizer->linebuf, yytext + 1, LINEBUF_SIZE); yyless( 1 );
 
 " " TC;
 "\t" TC;
@@ -447,9 +449,8 @@ breakaddr  TC; yylval->int_value = BREAKADDR_OP; return OPCODE;
 
 <*>\t@@DWARF.*\n
 
-<INITIAL,NOT_OPCODE,IN_FUNC_DECL>.  TC;
+<INITIAL,NOT_OPCODE,IN_FUNC_DECL>.  TC; ptx_error(yyscanner, recognizer, (const char*)NULL);
 %%
-//ptx_error(yyscanner, (const char*)NULL);
 
 extern int g_error_detected;
 extern const char *g_filename;
@@ -462,10 +463,10 @@ int ptx_error( yyscan_t yyscanner, ptx_recognizer* recognizer, const char *s )
 	fflush(stdout);
 	if( s != NULL )
 		printf("%s:%u Syntax error:\n\n", g_filename, yylineno );
-	printf("   %s\n", yylval->linebuf );
+	printf("   %s\n", recognizer->linebuf );
 	printf("   ");
-	for( i=0; i < yylval->col-1; i++ ) {
-		if( yylval->linebuf[i] == '\t' ) printf("\t");
+	for( i=0; i < recognizer->col-1; i++ ) {
+		if( recognizer->linebuf[i] == '\t' ) printf("\t");
 		else printf(" ");
 	}
 			
