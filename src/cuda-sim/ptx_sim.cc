@@ -28,6 +28,8 @@
 #include "ptx_sim.h"
 #include <string>
 #include "ptx_ir.h"
+class ptx_recognizer;
+typedef void * yyscan_t;
 #include "ptx.tab.h"
 #include "../gpgpu-sim/gpu-sim.h"
 #include "../gpgpu-sim/shader.h"

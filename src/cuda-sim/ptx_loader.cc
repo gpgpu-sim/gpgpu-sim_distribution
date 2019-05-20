@@ -44,8 +44,12 @@ bool g_override_embedded_ptx = false;
 
 /// extern prototypes
 
-extern int ptx_parse();
-extern int ptx__scan_string(const char*);
+extern int ptx_error( yyscan_t yyscanner, const char *s );
+extern int ptx_lex_init(yyscan_t* scanner);
+extern void ptx_set_in(FILE * _in_str ,yyscan_t yyscanner );
+extern int ptx_parse(yyscan_t scanner, ptx_recognizer* recognizer);
+extern int ptx_lex_destroy(yyscan_t scanner);
+extern int ptx__scan_string(const char*, yyscan_t scanner);
 
 extern std::map<unsigned,const char*> get_duplicate();
 
@@ -171,8 +175,10 @@ symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source
        fclose(fp);
     }
     symbol_table *symtab=init_parser(buf);
-    ptx__scan_string(p);
-    int errors = ptx_parse ();
+    ptx_recognizer recognizer;
+    ptx_lex_init(&(recognizer.scanner));
+    ptx__scan_string(p, recognizer.scanner);
+    int errors = ptx_parse (recognizer.scanner, &recognizer);
     if ( errors ) {
         char fname[1024];
         snprintf(fname,1024,"_ptx_errors_XXXXXX");
@@ -185,6 +191,7 @@ symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source
         abort();
         exit(40);
     }
+    ptx_lex_destroy(recognizer.scanner);
 
     if ( g_debug_execution >= 100 ) 
        print_ptx_file(p,source_num,buf);
