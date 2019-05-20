@@ -28,6 +28,7 @@
 
 #include "ptx_parser.h"
 #include "ptx_ir.h"
+typedef void * yyscan_t;
 #include "ptx.tab.h"
 #include "opcodes.h"
 #include <stdio.h>

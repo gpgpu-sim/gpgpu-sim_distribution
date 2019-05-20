@@ -31,6 +31,8 @@
 #include "ptx_ir.h"
 #include "opcodes.h"
 #include "ptx_sim.h"
+typedef void * yyscan_t;
+class ptx_recognizer;
 #include "ptx.tab.h"
 #include <stdlib.h>
 #include <math.h>
