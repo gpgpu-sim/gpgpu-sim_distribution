@@ -44,6 +44,9 @@ class ptx_recognizer {
 	    scanner = NULL;
 	}
 	yyscan_t scanner;
+#define LINEBUF_SIZE (4*1024)
+	char linebuf[LINEBUF_SIZE];
+	unsigned col;
 	void init_directive_state();
 	void init_instruction_state();
 	void start_function( int entry_point );

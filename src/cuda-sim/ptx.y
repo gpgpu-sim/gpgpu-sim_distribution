@@ -36,6 +36,7 @@ class ptx_recognizer;
 %parse-param {yyscan_t scanner}
 %parse-param {ptx_recognizer* recognizer}
 %lex-param {yyscan_t scanner}
+%lex-param {ptx_recognizer* recognizer}
 
 %union {
   double double_value;
@@ -43,9 +44,6 @@ class ptx_recognizer;
   int    int_value;
   char * string_value;
   void * ptr_value;
-#define LINEBUF_SIZE (4*1024)
-  char linebuf[LINEBUF_SIZE];
-  unsigned col;
 }
 
 %token <string_value> STRING
@@ -232,7 +230,7 @@ class ptx_recognizer;
 	#include <math.h>
 	void syntax_not_implemented(yyscan_t yyscanner, ptx_recognizer* recognizer);
 	extern int g_func_decl;
-	int ptx_lex(YYSTYPE * yylval_param, yyscan_t yyscanner);
+	int ptx_lex(YYSTYPE * yylval_param, yyscan_t yyscanner, ptx_recognizer* recognizer);
 	int ptx_error( yyscan_t yyscanner, ptx_recognizer* recognizer, const char *s );
 %}
 
