@@ -1734,12 +1734,11 @@ void ldst_unit::L1_latency_queue_cycle()
 	   }
     }
 
-	 for( unsigned stage = 0; stage<m_config->m_L1D_config.l1_latency-1; ++stage)
-	  if( l1_latency_queue[stage] == NULL) {
-		   l1_latency_queue[stage] = l1_latency_queue[stage+1] ;
-		   l1_latency_queue[stage+1] = NULL;
-	   }
-
+    if (l1_latency_queue[0] == NULL)
+    {                                 //the first element has been consumed
+        l1_latency_queue.pop_front(); //all elements' inext -1
+    }
+    l1_latency_queue.push_back((mem_fetch *)NULL); //set tail to be NULL
 }
 
 
