@@ -58,7 +58,7 @@ const char *g_ptxinfo_filename;
 typedef void * yyscan_t;
 extern int ptxinfo_lex_init(yyscan_t* scanner);
 extern void ptxinfo_set_in  (FILE * _in_str ,yyscan_t yyscanner );
-extern int ptxinfo_parse(yyscan_t scanner);
+extern int ptxinfo_parse(yyscan_t scanner, ptxinfo_data* ptxinfo);
 extern int ptxinfo_lex_destroy(yyscan_t scanner);
 
 static bool g_save_embedded_ptx;
@@ -359,11 +359,11 @@ void gpgpu_ptx_info_load_from_filename( const char *filename, unsigned sm_versio
 	g_ptxinfo_filename = strdup(ptxas_filename.c_str());
     FILE *ptxinfo_in;
     ptxinfo_in = fopen(g_ptxinfo_filename,"r");
-    yyscan_t scanner;
-    ptxinfo_lex_init(&scanner);
-    ptxinfo_set_in(ptxinfo_in, scanner);
-    ptxinfo_parse(scanner);
-    ptxinfo_lex_destroy(scanner);
+    ptxinfo_data ptxinfo;
+    ptxinfo_lex_init(&(ptxinfo.scanner));
+    ptxinfo_set_in(ptxinfo_in, ptxinfo.scanner);
+    ptxinfo_parse(ptxinfo.scanner, &ptxinfo);
+    ptxinfo_lex_destroy(ptxinfo.scanner);
     fclose(ptxinfo_in);
 }
 
@@ -428,11 +428,11 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
 		FILE *ptxinfo_in;
     		ptxinfo_in = fopen(tempfile_ptxinfo,"r");
 		g_ptxinfo_filename = tempfile_ptxinfo;
-		yyscan_t scanner;
-		ptxinfo_lex_init(&scanner);
-		ptxinfo_set_in(ptxinfo_in, scanner);
-		ptxinfo_parse(scanner);
-		ptxinfo_lex_destroy(scanner);
+		ptxinfo_data ptxinfo;
+		ptxinfo_lex_init(&(ptxinfo.scanner));
+		ptxinfo_set_in(ptxinfo_in, ptxinfo.scanner);
+		ptxinfo_parse(ptxinfo.scanner, &ptxinfo);
+		ptxinfo_lex_destroy(ptxinfo.scanner);
 		fclose(ptxinfo_in);
 
     		fix_duplicate_errors(fname2);
@@ -519,11 +519,11 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
     FILE *ptxinfo_in;
     ptxinfo_in = fopen(g_ptxinfo_filename,"r");
 
-    yyscan_t scanner;
-    ptxinfo_lex_init(&scanner);
-    ptxinfo_set_in(ptxinfo_in, scanner);
-    ptxinfo_parse(scanner);
-    ptxinfo_lex_destroy(scanner);
+    ptxinfo_data ptxinfo;
+    ptxinfo_lex_init(&(ptxinfo.scanner));
+    ptxinfo_set_in(ptxinfo_in, ptxinfo.scanner);
+    ptxinfo_parse(ptxinfo.scanner, &ptxinfo);
+    ptxinfo_lex_destroy(ptxinfo.scanner);
     fclose(ptxinfo_in);
 
     snprintf(commandline,1024,"rm -f *info");
