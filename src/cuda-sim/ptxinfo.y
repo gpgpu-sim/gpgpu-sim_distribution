@@ -29,18 +29,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 %{
 typedef void * yyscan_t;
+class ptxinfo_data;
 %}
 
 %define api.pure full
 %parse-param {yyscan_t scanner}
+%parse-param {ptxinfo_data* ptxinfo}
 %lex-param {yyscan_t scanner}
+%lex-param {ptxinfo_data* ptxinfo}
 
 %union {
-#define LINEBUF_SIZE 1024
   int    int_value;
   char * string_value;
-  char linebuf[LINEBUF_SIZE];
-  unsigned col;
 }
 
 %token <int_value> INT_OPERAND
@@ -77,8 +77,8 @@ typedef void * yyscan_t;
 	
 	static unsigned g_declared;
 	static unsigned g_system;
-	int ptxinfo_lex(YYSTYPE * yylval_param, yyscan_t yyscanner);
-	void yyerror(yyscan_t yyscanner, const char* msg);
+	int ptxinfo_lex(YYSTYPE * yylval_param, yyscan_t yyscanner, ptxinfo_data* ptxinfo);
+	void yyerror(yyscan_t yyscanner, ptxinfo_data* ptxinfo, const char* msg);
 	void ptxinfo_addinfo();
 	void ptxinfo_function(const char *fname );
 	void ptxinfo_regs( unsigned nregs );

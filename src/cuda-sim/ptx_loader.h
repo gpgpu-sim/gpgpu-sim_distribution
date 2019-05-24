@@ -29,6 +29,16 @@
 #define PTX_LOADER_H_INCLUDED
 #include <string>
 
+#define LINEBUF_SIZE 1024
+typedef void * yyscan_t;
+class ptxinfo_data{
+    public:
+	yyscan_t scanner;
+	char linebuf[LINEBUF_SIZE];
+	unsigned col;
+};
+
+
 extern bool g_override_embedded_ptx;
 extern int no_of_ptx; //counter to track number of ptx files to be extracted in an application.
  
