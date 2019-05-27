@@ -41,16 +41,16 @@ void setCuobjdumpsassfilename(const char* filename);
 %}
 %define api.pure full
 %parse-param {yyscan_t scanner}
-%parse-param {cuobjdump_parser* parser}
+%parse-param {struct cuobjdump_parser* parser}
 %lex-param {yyscan_t scanner}
-%lex-param {cuobjdump_parser* parser}
+%lex-param {struct cuobjdump_parser* parser}
 
 %union {
 	char* string_value;
 }
 %{
-int yylex(YYSTYPE * yylval_param, yyscan_t yyscanner, cuobjdump_parser* parser);
-void yyerror(yyscan_t yyscanner, cuobjdump_parser* parser, const char* msg);
+int yylex(YYSTYPE * yylval_param, yyscan_t yyscanner, struct cuobjdump_parser* parser);
+void yyerror(yyscan_t yyscanner, struct cuobjdump_parser* parser, const char* msg);
 %}
 %token <string_value> H_SEPARATOR H_ARCH H_CODEVERSION H_PRODUCER H_HOST H_COMPILESIZE H_IDENTIFIER H_UNKNOWN H_COMPRESSED
 %token <string_value> CODEVERSION
