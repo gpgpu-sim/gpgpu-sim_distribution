@@ -172,9 +172,11 @@ symbol_table *init_parser( const char *ptx_filename )
    init_directive_state();
    init_instruction_state();
 
+#if (CUDART_VERSION >= 6000)
    ptx_in = fopen(ptx_filename, "r");
    ptx_parse();
    fclose(ptx_in);
+#endif
    return g_global_symbol_table;
 }
 
