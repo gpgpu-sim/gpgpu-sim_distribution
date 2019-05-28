@@ -483,6 +483,130 @@ event_tracker_t g_timer_events;
 int g_active_device = 0; //active gpu that runs the code
 std::list<kernel_config> g_cuda_launch_stack;
 
+typedef void * yyscan_t;
+#include "cuobjdump.h"
+extern int cuobjdump_lex_init(yyscan_t* scanner);
+extern void cuobjdump_set_in  (FILE * _in_str ,yyscan_t yyscanner );
+extern int cuobjdump_parse(yyscan_t scanner, struct cuobjdump_parser* parser);
+extern int cuobjdump_lex_destroy(yyscan_t scanner);
+
+enum cuobjdumpSectionType {
+	PTXSECTION=0,
+	ELFSECTION
+};
+
+
+class cuobjdumpSection {
+public:
+	//Constructor
+	cuobjdumpSection() {
+		arch = 0;
+		identifier = "";
+	}
+	virtual ~cuobjdumpSection() {}
+	unsigned getArch() {return arch;}
+	void setArch(unsigned a) {arch = a;}
+	std::string getIdentifier() {return identifier;}
+	void setIdentifier(std::string i) {identifier = i;}
+	virtual void print(){std::cout << "cuobjdump Section: unknown type" << std::endl;}
+private:
+	unsigned arch;
+	std::string identifier;
+};
+
+class cuobjdumpELFSection : public cuobjdumpSection
+{
+public:
+	cuobjdumpELFSection() {}
+	virtual ~cuobjdumpELFSection() {
+		elffilename = "";
+		sassfilename = "";
+	}
+	std::string getELFfilename() {return elffilename;}
+	void setELFfilename(std::string f) {elffilename = f;}
+	std::string getSASSfilename() {return sassfilename;}
+	void setSASSfilename(std::string f) {sassfilename = f;}
+	virtual void print() {
+		std::cout << "ELF Section:" << std::endl;
+		std::cout << "arch: sm_" << getArch() << std::endl;
+		std::cout << "identifier: " << getIdentifier() << std::endl;
+		std::cout << "elf filename: " << getELFfilename() << std::endl;
+		std::cout << "sass filename: " << getSASSfilename() << std::endl;
+		std::cout << std::endl;
+	}
+private:
+	std::string elffilename;
+	std::string sassfilename;
+};
+
+class cuobjdumpPTXSection : public cuobjdumpSection
+{
+public:
+	cuobjdumpPTXSection(){
+		ptxfilename = "";
+	}
+	std::string getPTXfilename() {return ptxfilename;}
+	void setPTXfilename(std::string f) {ptxfilename = f;}
+	virtual void print() {
+		std::cout << "PTX Section:" << std::endl;
+		std::cout << "arch: sm_" << getArch() << std::endl;
+		std::cout << "identifier: " << getIdentifier() << std::endl;
+		std::cout << "ptx filename: " << getPTXfilename() << std::endl;
+		std::cout << std::endl;
+	}
+private:
+	std::string ptxfilename;
+};
+
+
+std::list<cuobjdumpSection*> cuobjdumpSectionList;
+std::list<cuobjdumpSection*> libSectionList;
+
+// sectiontype: 0 for ptx, 1 for elf
+void addCuobjdumpSection(int sectiontype){
+	if (sectiontype)
+		cuobjdumpSectionList.push_front(new cuobjdumpELFSection());
+	else
+		cuobjdumpSectionList.push_front(new cuobjdumpPTXSection());
+	printf("## Adding new section %s\n", sectiontype?"ELF":"PTX");
+}
+
+void setCuobjdumparch(const char* arch){
+	unsigned archnum;
+	sscanf(arch, "sm_%u", &archnum);
+	assert (archnum && "cannot have sm_0");
+	printf("Adding arch: %s\n", arch);
+	cuobjdumpSectionList.front()->setArch(archnum);
+}
+
+void setCuobjdumpidentifier(const char* identifier){
+	printf("Adding identifier: %s\n", identifier);
+	cuobjdumpSectionList.front()->setIdentifier(identifier);
+}
+
+void setCuobjdumpptxfilename(const char* filename){
+	printf("Adding ptx filename: %s\n", filename);
+	cuobjdumpSection* x = cuobjdumpSectionList.front();
+	if (dynamic_cast<cuobjdumpPTXSection*>(x) == NULL){
+		assert (0 && "You shouldn't be trying to add a ptxfilename to an elf section");
+	}
+	(dynamic_cast<cuobjdumpPTXSection*>(x))->setPTXfilename(filename);
+}
+
+void setCuobjdumpelffilename(const char* filename){
+	if (dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()) == NULL){
+		assert (0 && "You shouldn't be trying to add a elffilename to an ptx section");
+	}
+	(dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()))->setELFfilename(filename);
+}
+
+void setCuobjdumpsassfilename(const char* filename){
+	if (dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()) == NULL){
+		assert (0 && "You shouldn't be trying to add a sassfilename to an ptx section");
+	}
+	(dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()))->setSASSfilename(filename);
+}
+
 /*******************************************************************************
  *                                                                              *
  *                                                                              *
@@ -1855,128 +1979,6 @@ __host__ cudaError_t CUDARTAPI cudaGetExportTable(const void **ppExportTable, co
  *******************************************************************************/
 
 //#include "../../cuobjdump_to_ptxplus/cuobjdump_parser.h"
-
-enum cuobjdumpSectionType {
-	PTXSECTION=0,
-	ELFSECTION
-};
-
-
-class cuobjdumpSection {
-public:
-	//Constructor
-	cuobjdumpSection() {
-		arch = 0;
-		identifier = "";
-	}
-	virtual ~cuobjdumpSection() {}
-	unsigned getArch() {return arch;}
-	void setArch(unsigned a) {arch = a;}
-	std::string getIdentifier() {return identifier;}
-	void setIdentifier(std::string i) {identifier = i;}
-	virtual void print(){std::cout << "cuobjdump Section: unknown type" << std::endl;}
-private:
-	unsigned arch;
-	std::string identifier;
-};
-
-class cuobjdumpELFSection : public cuobjdumpSection
-{
-public:
-	cuobjdumpELFSection() {}
-	virtual ~cuobjdumpELFSection() {
-		elffilename = "";
-		sassfilename = "";
-	}
-	std::string getELFfilename() {return elffilename;}
-	void setELFfilename(std::string f) {elffilename = f;}
-	std::string getSASSfilename() {return sassfilename;}
-	void setSASSfilename(std::string f) {sassfilename = f;}
-	virtual void print() {
-		std::cout << "ELF Section:" << std::endl;
-		std::cout << "arch: sm_" << getArch() << std::endl;
-		std::cout << "identifier: " << getIdentifier() << std::endl;
-		std::cout << "elf filename: " << getELFfilename() << std::endl;
-		std::cout << "sass filename: " << getSASSfilename() << std::endl;
-		std::cout << std::endl;
-	}
-private:
-	std::string elffilename;
-	std::string sassfilename;
-};
-
-class cuobjdumpPTXSection : public cuobjdumpSection
-{
-public:
-	cuobjdumpPTXSection(){
-		ptxfilename = "";
-	}
-	std::string getPTXfilename() {return ptxfilename;}
-	void setPTXfilename(std::string f) {ptxfilename = f;}
-	virtual void print() {
-		std::cout << "PTX Section:" << std::endl;
-		std::cout << "arch: sm_" << getArch() << std::endl;
-		std::cout << "identifier: " << getIdentifier() << std::endl;
-		std::cout << "ptx filename: " << getPTXfilename() << std::endl;
-		std::cout << std::endl;
-	}
-private:
-	std::string ptxfilename;
-};
-
-std::list<cuobjdumpSection*> cuobjdumpSectionList;
-std::list<cuobjdumpSection*> libSectionList;
-
-// sectiontype: 0 for ptx, 1 for elf
-void addCuobjdumpSection(int sectiontype){
-	if (sectiontype)
-		cuobjdumpSectionList.push_front(new cuobjdumpELFSection());
-	else
-		cuobjdumpSectionList.push_front(new cuobjdumpPTXSection());
-	printf("## Adding new section %s\n", sectiontype?"ELF":"PTX");
-}
-
-void setCuobjdumparch(const char* arch){
-	unsigned archnum;
-	sscanf(arch, "sm_%u", &archnum);
-	assert (archnum && "cannot have sm_0");
-	printf("Adding arch: %s\n", arch);
-	cuobjdumpSectionList.front()->setArch(archnum);
-}
-
-void setCuobjdumpidentifier(const char* identifier){
-	printf("Adding identifier: %s\n", identifier);
-	cuobjdumpSectionList.front()->setIdentifier(identifier);
-}
-
-void setCuobjdumpptxfilename(const char* filename){
-	printf("Adding ptx filename: %s\n", filename);
-	cuobjdumpSection* x = cuobjdumpSectionList.front();
-	if (dynamic_cast<cuobjdumpPTXSection*>(x) == NULL){
-		assert (0 && "You shouldn't be trying to add a ptxfilename to an elf section");
-	}
-	(dynamic_cast<cuobjdumpPTXSection*>(x))->setPTXfilename(filename);
-}
-
-void setCuobjdumpelffilename(const char* filename){
-	if (dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()) == NULL){
-		assert (0 && "You shouldn't be trying to add a elffilename to an ptx section");
-	}
-	(dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()))->setELFfilename(filename);
-}
-
-void setCuobjdumpsassfilename(const char* filename){
-	if (dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()) == NULL){
-		assert (0 && "You shouldn't be trying to add a sassfilename to an ptx section");
-	}
-	(dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()))->setSASSfilename(filename);
-}
-typedef void * yyscan_t;
-#include "cuobjdump.h"
-extern int cuobjdump_lex_init(yyscan_t* scanner);
-extern void cuobjdump_set_in  (FILE * _in_str ,yyscan_t yyscanner );
-extern int cuobjdump_parse(yyscan_t scanner, struct cuobjdump_parser* parser);
-extern int cuobjdump_lex_destroy(yyscan_t scanner);
 
 //! Return the executable file of the process containing the PTX/SASS code 
 //!
