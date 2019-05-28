@@ -1972,9 +1972,10 @@ void setCuobjdumpsassfilename(const char* filename){
 	(dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()))->setSASSfilename(filename);
 }
 typedef void * yyscan_t;
+#include "cuobjdump.h"
 extern int cuobjdump_lex_init(yyscan_t* scanner);
 extern void cuobjdump_set_in  (FILE * _in_str ,yyscan_t yyscanner );
-extern int cuobjdump_parse(yyscan_t scanner);
+extern int cuobjdump_parse(yyscan_t scanner, struct cuobjdump_parser* parser);
 extern int cuobjdump_lex_destroy(yyscan_t scanner);
 
 //! Return the executable file of the process containing the PTX/SASS code 
@@ -2187,11 +2188,13 @@ void extract_code_using_cuobjdump(){
 	    FILE *cuobjdump_in;
             cuobjdump_in = fopen(fname, "r");
 
-	    yyscan_t scanner;
-	    cuobjdump_lex_init(&scanner);
-	    cuobjdump_set_in(cuobjdump_in, scanner);
-	    cuobjdump_parse(scanner);
-	    cuobjdump_lex_destroy(scanner);
+	    struct cuobjdump_parser parser;
+	    parser.elfserial = 1;
+	    parser.ptxserial = 1;
+	    cuobjdump_lex_init(&(parser.scanner));
+	    cuobjdump_set_in(cuobjdump_in, (parser.scanner));
+	    cuobjdump_parse(parser.scanner, &parser);
+	    cuobjdump_lex_destroy(parser.scanner);
             fclose(cuobjdump_in);
             printf("Done parsing!!!\n");
         } else {
@@ -2241,11 +2244,13 @@ void extract_code_using_cuobjdump(){
                     std::cout << "Trying to parse " << libcodfn.str() << std::endl;
 		    FILE *cuobjdump_in;
                     cuobjdump_in = fopen(libcodfn.str().c_str(), "r");
-		    yyscan_t scanner;
-		    cuobjdump_lex_init(&scanner);
-		    cuobjdump_set_in(cuobjdump_in, scanner);
-		    cuobjdump_parse(scanner);
-		    cuobjdump_lex_destroy(scanner);
+		    struct cuobjdump_parser parser;
+		    parser.elfserial = 1;
+		    parser.ptxserial = 1;
+		    cuobjdump_lex_init(&(parser.scanner));
+		    cuobjdump_set_in(cuobjdump_in, (parser.scanner));
+		    cuobjdump_parse(parser.scanner, &parser);
+		    cuobjdump_lex_destroy(parser.scanner);
                     fclose(cuobjdump_in);
                     std::getline(libsf, line);
             }
