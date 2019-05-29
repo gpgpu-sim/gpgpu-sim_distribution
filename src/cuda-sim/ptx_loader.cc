@@ -367,7 +367,7 @@ void gpgpu_ptx_info_load_from_filename( const char *filename, unsigned sm_versio
     fclose(ptxinfo_in);
 }
 
-void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num, unsigned sm_version )
+void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num, unsigned sm_version, int no_of_ptx )
 {
     //do ptxas for individual files instead of one big embedded ptx. This prevents the duplicate defs and declarations.
     char ptx_file[1000];
