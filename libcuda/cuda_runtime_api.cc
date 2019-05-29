@@ -305,6 +305,8 @@ struct CUctx_st {
 	}
 
 	std::list<cuobjdumpSection*> cuobjdumpSectionList;
+	std::list<cuobjdumpSection*> libSectionList;
+
 private:
 	_cuda_device_id *m_gpu; // selected gpu
 	std::map<unsigned,symbol_table*> m_code; // fat binary handle => global symbol table
@@ -496,8 +498,6 @@ enum cuobjdumpSectionType {
 	ELFSECTION
 };
 
-
-std::list<cuobjdumpSection*> libSectionList;
 
 // sectiontype: 0 for ptx, 1 for elf
 void addCuobjdumpSection(int sectiontype, std::list<cuobjdumpSection*> &cuobjdumpSectionList){
@@ -2193,7 +2193,7 @@ void extract_code_using_cuobjdump(std::list<cuobjdumpSection*> &cuobjdumpSection
                     fclose(cuobjdump_in);
                     std::getline(libsf, line);
             }
-            libSectionList = cuobjdumpSectionList;
+            context->libSectionList = cuobjdumpSectionList;
 
             //Restore the original section list
             cuobjdumpSectionList = tmpsl;
@@ -2382,7 +2382,7 @@ cuobjdumpELFSection* findELFSectionInList(std::list<cuobjdumpSection*> sectionli
 }
 
 //! Find an ELF section in all the known lists
-cuobjdumpELFSection* findELFSection(const std::string identifier, std::list<cuobjdumpSection*> cuobjdumpSectionList){
+cuobjdumpELFSection* findELFSection(const std::string identifier, std::list<cuobjdumpSection*> cuobjdumpSectionList, std::list<cuobjdumpSection*> &libSectionList){
 	cuobjdumpELFSection* sec = findELFSectionInList(cuobjdumpSectionList, identifier);
 	if (sec!=NULL)return sec;
 	sec = findELFSectionInList(libSectionList, identifier);
@@ -2417,7 +2417,7 @@ cuobjdumpPTXSection* findPTXSectionInList(std::list<cuobjdumpSection*> sectionli
 }
 
 //! Find an PTX section in all the known lists
-cuobjdumpPTXSection* findPTXSection(const std::string identifier, std::list<cuobjdumpSection*> cuobjdumpSectionList){
+cuobjdumpPTXSection* findPTXSection(const std::string identifier, std::list<cuobjdumpSection*> cuobjdumpSectionList, std::list<cuobjdumpSection*> &libSectionList){
 	cuobjdumpPTXSection* sec = findPTXSectionInList(cuobjdumpSectionList, identifier);
 	if (sec!=NULL)return sec;
 	sec = findPTXSectionInList(libSectionList, identifier);
@@ -2503,7 +2503,7 @@ void cuobjdumpParseBinary(unsigned int handle, std::list<cuobjdumpSection*> &cuo
 	cuobjdumpPTXSection* ptx = NULL;
 	const char* pre_load = getenv("CUOBJDUMP_SIM_FILE");
 	if(pre_load==NULL || strlen(pre_load)==0)
-		ptx = findPTXSection(fname, context->cuobjdumpSectionList);
+		ptx = findPTXSection(fname, context->cuobjdumpSectionList, context->libSectionList);
 	char *ptxcode;
 	const char *override_ptx_name = getenv("PTX_SIM_KERNELFILE"); 
 	if (override_ptx_name == NULL or getenv("PTX_SIM_USE_PTX_FILE") == NULL or strlen(getenv("PTX_SIM_USE_PTX_FILE"))==0) {
@@ -2513,7 +2513,7 @@ void cuobjdumpParseBinary(unsigned int handle, std::list<cuobjdumpSection*> &cuo
 		ptxcode = readfile(override_ptx_name);
 	}
 	if(context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() ) {
-		cuobjdumpELFSection* elfsection = findELFSection(ptx->getIdentifier(), context->cuobjdumpSectionList);
+		cuobjdumpELFSection* elfsection = findELFSection(ptx->getIdentifier(), context->cuobjdumpSectionList, context->libSectionList);
 		assert (elfsection!= NULL);
 		char *ptxplus_str = gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(
 				ptx->getPTXfilename(),
