@@ -39,9 +39,9 @@
 
 #define YYDEBUG 1
 
-void cuobjdump_error(yyscan_t yyscanner, struct cuobjdump_parser* parser, const char* msg);
+void cuobjdump_error(yyscan_t yyscanner, struct cuobjdump_parser* parser, std::list<cuobjdumpSection*> &cuobjdumpSectionList, const char* msg);
 #define YY_DECL int cuobjdump_lex \
-	       (YYSTYPE * yylval_param , yyscan_t yyscanner, struct cuobjdump_parser* parser)
+	       (YYSTYPE * yylval_param , yyscan_t yyscanner, struct cuobjdump_parser* parser, std::list<cuobjdumpSection*> &cuobjdumpSectionList)
 %}
 
 %option stack
@@ -156,10 +156,10 @@ newlines	{newline}+
 <<EOF>> BEGIN(INITIAL);return 0;
 
 	/*No other rule matched. Throw an error*/
-.	cuobjdump_error(yyscanner, parser, "Invalid token");
+.	cuobjdump_error(yyscanner, parser, cuobjdumpSectionList, "Invalid token");
 
 %%
-void cuobjdump_error(yyscan_t yyscanner, struct cuobjdump_parser* parser, const char* msg)
+void cuobjdump_error(yyscan_t yyscanner, struct cuobjdump_parser* parser, std::list<cuobjdumpSection*> &cuobjdumpSectionList, const char* msg)
 {
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
 	printf("   %s near \"%s\"",msg, yytext);
