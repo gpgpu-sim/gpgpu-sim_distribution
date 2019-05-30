@@ -41,14 +41,22 @@
 
 struct GPGPUsim_ctx* the_gpgpusim =  NULL;
 
-static void print_simulation_time();
-
 struct GPGPUsim_ctx* GPGPUsim_ctx_ptr(){
 	if(the_gpgpusim == NULL)
 		the_gpgpusim = new GPGPUsim_ctx();
 
 	return the_gpgpusim;
 }
+
+class gpgpu_sim* g_the_gpu() {
+	return GPGPUsim_ctx_ptr()->g_the_gpu;
+}
+
+class stream_manager* g_stream_manager()  {
+	return GPGPUsim_ctx_ptr()->g_stream_manager;
+}
+
+static void print_simulation_time();
 
 void *gpgpu_sim_thread_sequential(void*)
 {

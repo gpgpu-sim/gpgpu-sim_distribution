@@ -185,7 +185,7 @@ struct cudaArray
 
 cudaError_t g_last_cudaError = cudaSuccess;
 
-extern stream_manager *g_stream_manager;
+//extern stream_manager *g_stream_manager();
 
 void register_ptx_function( const char *name, function_info *impl )
 {
@@ -375,7 +375,8 @@ private:
 
 struct _cuda_device_id *GPGPUSim_Init()
 {
-	static _cuda_device_id *the_device = NULL;
+	//static _cuda_device_id *the_device = NULL;
+	_cuda_device_id *the_device = GPGPUsim_ctx_ptr()->the_cude_device;
 	if( !the_device ) {
 		gpgpu_sim *the_gpu = gpgpu_ptx_sim_init_perf();
 
@@ -428,7 +429,8 @@ struct _cuda_device_id *GPGPUSim_Init()
 
 static CUctx_st* GPGPUSim_Context()
 {
-	static CUctx_st *the_context = NULL;
+	//static CUctx_st *the_context = NULL;
+	CUctx_st *the_context = GPGPUsim_ctx_ptr()->the_context;
 	if( the_context == NULL ) {
 		_cuda_device_id *the_gpu = GPGPUSim_Init();
 		the_context = new CUctx_st(the_gpu);
@@ -699,21 +701,21 @@ __host__ cudaError_t CUDARTAPI cudaMemcpy(void *dst, const void *src, size_t cou
 	if(g_debug_execution >= 3)
 		printf("GPGPU-Sim PTX: cudaMemcpy(): devPtr = %p\n", dst);
 	if( kind == cudaMemcpyHostToDevice )
-		g_stream_manager->push( stream_operation(src,(size_t)dst,count,0) );
+		g_stream_manager()->push( stream_operation(src,(size_t)dst,count,0) );
 	else if( kind == cudaMemcpyDeviceToHost )
-		g_stream_manager->push( stream_operation((size_t)src,dst,count,0) );
+		g_stream_manager()->push( stream_operation((size_t)src,dst,count,0) );
 	else if( kind == cudaMemcpyDeviceToDevice )
-		g_stream_manager->push( stream_operation((size_t)src,(size_t)dst,count,0) );
+		g_stream_manager()->push( stream_operation((size_t)src,(size_t)dst,count,0) );
 	else if ( kind == cudaMemcpyDefault ) {
 		if ((size_t)src >= GLOBAL_HEAP_START) {
 			if ((size_t)dst >= GLOBAL_HEAP_START)
-				g_stream_manager->push( stream_operation((size_t)src,(size_t)dst,count,0) ); // device to device
+				g_stream_manager()->push( stream_operation((size_t)src,(size_t)dst,count,0) ); // device to device
 			else
-				g_stream_manager->push( stream_operation((size_t)src,dst,count,0) ); // device to host
+				g_stream_manager()->push( stream_operation((size_t)src,dst,count,0) ); // device to host
 		}
 		else {
 			if ((size_t)dst >= GLOBAL_HEAP_START)
-				g_stream_manager->push( stream_operation(src,(size_t)dst,count,0) );
+				g_stream_manager()->push( stream_operation(src,(size_t)dst,count,0) );
 			else {
 				printf("GPGPU-Sim PTX: cudaMemcpy - ERROR : unsupported transfer: host to host\n");
 				abort();
@@ -855,7 +857,7 @@ __host__ cudaError_t CUDARTAPI cudaMemcpyToSymbol(const char *symbol, const void
 	assert(kind == cudaMemcpyHostToDevice);
 	printf("GPGPU-Sim PTX: cudaMemcpyToSymbol: symbol = %p\n", symbol);
 	//stream_operation( const char *symbol, const void *src, size_t count, size_t offset )
-	g_stream_manager->push( stream_operation(src,symbol,count,offset,0) );
+	g_stream_manager()->push( stream_operation(src,symbol,count,offset,0) );
 	//gpgpu_ptx_sim_memcpy_symbol(symbol,src,count,offset,1,context->get_device()->get_gpgpu());
 	return g_last_cudaError = cudaSuccess;
 }
@@ -869,7 +871,7 @@ __host__ cudaError_t CUDARTAPI cudaMemcpyFromSymbol(void *dst, const char *symbo
 	//CUctx_st *context = GPGPUSim_Context();
 	assert(kind == cudaMemcpyDeviceToHost);
 	printf("GPGPU-Sim PTX: cudaMemcpyFromSymbol: symbol = %p\n", symbol);
-	g_stream_manager->push( stream_operation(symbol,dst,count,offset,0) );
+	g_stream_manager()->push( stream_operation(symbol,dst,count,offset,0) );
 	//gpgpu_ptx_sim_memcpy_symbol(symbol,dst,count,offset,0,context->get_device()->get_gpgpu());
 	return g_last_cudaError = cudaSuccess;
 }
@@ -898,9 +900,9 @@ __host__ cudaError_t CUDARTAPI cudaMemcpyAsync(void *dst, const void *src, size_
     }
 	struct CUstream_st *s = (struct CUstream_st *)stream;
 	switch( kind ) {
-	case cudaMemcpyHostToDevice: g_stream_manager->push( stream_operation(src,(size_t)dst,count,s) ); break;
-	case cudaMemcpyDeviceToHost: g_stream_manager->push( stream_operation((size_t)src,dst,count,s) ); break;
-	case cudaMemcpyDeviceToDevice: g_stream_manager->push( stream_operation((size_t)src,(size_t)dst,count,s) ); break;
+	case cudaMemcpyHostToDevice: g_stream_manager()->push( stream_operation(src,(size_t)dst,count,s) ); break;
+	case cudaMemcpyDeviceToHost: g_stream_manager()->push( stream_operation((size_t)src,dst,count,s) ); break;
+	case cudaMemcpyDeviceToDevice: g_stream_manager()->push( stream_operation((size_t)src,(size_t)dst,count,s) ); break;
 	default:
 		abort();
 	}
@@ -1611,7 +1613,7 @@ __host__ cudaError_t CUDARTAPI cudaLaunch( const char *hostFun )
 	printf("GPGPU-Sim PTX: pushing kernel \'%s\' to stream %u, gridDim= (%u,%u,%u) blockDim = (%u,%u,%u) \n",
 			kname.c_str(), stream?stream->get_uid():0, gridDim.x,gridDim.y,gridDim.z,blockDim.x,blockDim.y,blockDim.z );
 	stream_operation op(grid,g_ptx_sim_mode,stream);
-	g_stream_manager->push(op);
+	g_stream_manager()->push(op);
 	context->g_cuda_launch_stack.pop_back();
 	return g_last_cudaError = cudaSuccess;
 }
@@ -1650,7 +1652,7 @@ __host__ cudaError_t CUDARTAPI cudaStreamCreate(cudaStream_t *stream)
 	printf("GPGPU-Sim PTX: cudaStreamCreate\n");
 #if (CUDART_VERSION >= 3000)
 	*stream = new struct CUstream_st();
-	g_stream_manager->add_stream(*stream);
+	g_stream_manager()->add_stream(*stream);
 #else
 	*stream = 0;
 	printf("GPGPU-Sim PTX: WARNING: Asynchronous kernel execution not supported (%s)\n", __my_func__);
@@ -1689,7 +1691,7 @@ __host__ cudaError_t CUDARTAPI cudaStreamDestroy(cudaStream_t stream)
 	//per-stream synchronization required for application using external libraries without explicit synchronization in the code to 
 	//avoid the stream_manager from spinning forever to destroy non-empty streams without making any forward progress. 
 	stream->synchronize();
-	g_stream_manager->destroy_stream(stream);
+	g_stream_manager()->destroy_stream(stream);
 #endif
 	return g_last_cudaError = cudaSuccess;
 }
@@ -1769,7 +1771,7 @@ __host__ cudaError_t CUDARTAPI cudaEventRecord(cudaEvent_t event, cudaStream_t s
 	if( !e ) return g_last_cudaError = cudaErrorUnknown;
 	struct CUstream_st *s = (struct CUstream_st *)stream;
 	stream_operation op(e,s);
-	g_stream_manager->push(op);
+	g_stream_manager()->push(op);
 	return g_last_cudaError = cudaSuccess;
 }
 
@@ -1785,11 +1787,11 @@ __host__ cudaError_t CUDARTAPI cudaStreamWaitEvent(cudaStream_t stream, cudaEven
       return g_last_cudaError = cudaSuccess;
    }
    if (!stream){
-      g_stream_manager->pushCudaStreamWaitEventToAllStreams(e, flags);
+      g_stream_manager()->pushCudaStreamWaitEventToAllStreams(e, flags);
    } else {
 	   struct CUstream_st *s = (struct CUstream_st *)stream;
 	   stream_operation op(s,e,flags);
-	   g_stream_manager->push(op);
+	   g_stream_manager()->push(op);
    }
 	return g_last_cudaError = cudaSuccess;
 }

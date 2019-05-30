@@ -448,8 +448,8 @@ void gpgpu_t::memcpy_to_gpu( size_t dst_start_addr, const void *src, size_t coun
       m_global_mem->write(dst_start_addr+n,1, src_data+n,NULL,NULL);
 
    // Copy into the performance model.
-   extern gpgpu_sim* g_the_gpu; 
-   g_the_gpu->perf_memcpy_to_gpu(dst_start_addr, count);
+   //extern gpgpu_sim* g_the_gpu;
+   g_the_gpu()->perf_memcpy_to_gpu(dst_start_addr, count);
    if(g_debug_execution >= 3) {
       printf( " done.\n");
       fflush(stdout);
@@ -467,8 +467,8 @@ void gpgpu_t::memcpy_from_gpu( void *dst, size_t src_start_addr, size_t count )
       m_global_mem->read(src_start_addr+n,1,dst_data+n);
 
    // Copy into the performance model.
-   extern gpgpu_sim* g_the_gpu; 
-   g_the_gpu->perf_memcpy_to_gpu(src_start_addr, count);
+   //extern gpgpu_sim* g_the_gpu;
+   g_the_gpu()->perf_memcpy_to_gpu(src_start_addr, count);
    if(g_debug_execution >= 3) {
       printf( " done.\n");
       fflush(stdout);
@@ -1270,8 +1270,8 @@ void function_info::finalize( memory_space *param_mem )
 void function_info::param_to_shared( memory_space *shared_mem, symbol_table *symtab ) 
 {
    // TODO: call this only for PTXPlus with GT200 models 
-   extern gpgpu_sim* g_the_gpu; 
-   if (not g_the_gpu->get_config().convert_to_ptxplus()) return; 
+   //extern gpgpu_sim* g_the_gpu;
+   if (not g_the_gpu()->get_config().convert_to_ptxplus()) return;
 
    // copies parameters into simulated shared memory
    for( std::map<unsigned,param_info>::iterator i=m_ptx_kernel_param_info.begin(); i!=m_ptx_kernel_param_info.end(); i++ ) {
@@ -2150,7 +2150,7 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
      printf("GPGPU-Sim: Performing Functional Simulation, executing kernel %s...\n",kernel.name().c_str());
 
      //using a shader core object for book keeping, it is not needed but as most function built for performance simulation need it we use it here
-    extern gpgpu_sim *g_the_gpu;
+    //extern gpgpu_sim *g_the_gpu;
     //before we execute, we should do PDOM analysis for functional simulation scenario.
     function_info *kernel_func_info = kernel.entry();
     const struct gpgpu_ptx_sim_info *kernel_info = ptx_sim_kernel_info(kernel_func_info);
@@ -2165,7 +2165,7 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
 	 kernel_func_info->set_pdom();
     }
 
-    unsigned max_cta_tot = max_cta(kernel_info,kernel.threads_per_cta(), g_the_gpu->getShaderCoreConfig()->warp_size, g_the_gpu->getShaderCoreConfig()->n_thread_per_shader, g_the_gpu->getShaderCoreConfig()->gpgpu_shmem_size, g_the_gpu->getShaderCoreConfig()->gpgpu_shader_registers, g_the_gpu->getShaderCoreConfig()->max_cta_per_core);
+    unsigned max_cta_tot = max_cta(kernel_info,kernel.threads_per_cta(), g_the_gpu()->getShaderCoreConfig()->warp_size, g_the_gpu()->getShaderCoreConfig()->n_thread_per_shader, g_the_gpu()->getShaderCoreConfig()->gpgpu_shmem_size, g_the_gpu()->getShaderCoreConfig()->gpgpu_shader_registers, g_the_gpu()->getShaderCoreConfig()->max_cta_per_core);
     printf("Max CTA : %d\n",max_cta_tot);
 
     
@@ -2173,11 +2173,11 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
 
       
     int inst_count=50;
-    int cp_op= g_the_gpu->checkpoint_option;
-    int cp_CTA = g_the_gpu->checkpoint_CTA;
-    int cp_kernel= g_the_gpu->checkpoint_kernel;
-    cp_count= g_the_gpu->checkpoint_insn_Y;
-    cp_cta_resume= g_the_gpu->checkpoint_CTA_t;
+    int cp_op= g_the_gpu()->checkpoint_option;
+    int cp_CTA = g_the_gpu()->checkpoint_CTA;
+    int cp_kernel= g_the_gpu()->checkpoint_kernel;
+    cp_count= g_the_gpu()->checkpoint_insn_Y;
+    cp_cta_resume= g_the_gpu()->checkpoint_CTA_t;
     int cta_launched =0;
 
     //we excute the kernel one CTA (Block) at the time, as synchronization functions work block wise
@@ -2189,8 +2189,8 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
         {
            functionalCoreSim cta(
                &kernel,
-               g_the_gpu,
-               g_the_gpu->getShaderCoreConfig()->warp_size
+               g_the_gpu(),
+               g_the_gpu()->getShaderCoreConfig()->warp_size
            );
            cta.execute(cp_count,temp);
 
@@ -2211,7 +2211,7 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
 	{
       char f1name[2048];
       snprintf(f1name,2048,"checkpoint_files/global_mem_%d.txt", kernel.get_uid() );
-      g_checkpoint->store_global_mem(g_the_gpu->get_global_memory(), f1name , "%08x");
+      g_checkpoint->store_global_mem(g_the_gpu()->get_global_memory(), f1name , "%08x");
 	}
 
 
@@ -2221,8 +2221,8 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
    
    //openCL kernel simulation calls don't register the kernel so we don't register its exit
    if(!openCL) {
-      extern stream_manager *g_stream_manager;
-      g_stream_manager->register_finished_kernel(kernel.get_uid());
+      //extern stream_manager *g_stream_manager;
+      g_stream_manager()->register_finished_kernel(kernel.get_uid());
    }
 
    //******PRINTING*******
