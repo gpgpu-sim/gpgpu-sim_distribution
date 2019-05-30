@@ -119,9 +119,9 @@ struct cache_block_t {
     virtual enum cache_block_state get_status( mem_access_sector_mask_t sector_mask) = 0;
     virtual void set_status(enum cache_block_state m_status, mem_access_sector_mask_t sector_mask) = 0;
 
-    virtual unsigned get_last_access_time() = 0;
-    virtual void set_last_access_time(unsigned time, mem_access_sector_mask_t sector_mask) = 0;
-    virtual unsigned get_alloc_time() = 0;
+    virtual unsigned long long get_last_access_time() = 0;
+    virtual void set_last_access_time(unsigned long long time, mem_access_sector_mask_t sector_mask) = 0;
+    virtual unsigned long long get_alloc_time() = 0;
     virtual void set_ignore_on_fill(bool m_ignore, mem_access_sector_mask_t sector_mask) = 0;
     virtual void set_modified_on_fill(bool m_modified, mem_access_sector_mask_t sector_mask) = 0;
     virtual unsigned get_modified_size() = 0;
@@ -192,15 +192,15 @@ struct line_cache_block: public cache_block_t  {
 	    {
 	    	m_status = status;
 	    }
-		virtual unsigned get_last_access_time()
+		virtual unsigned long long get_last_access_time()
 		{
 			return m_last_access_time;
 		}
-		virtual void set_last_access_time(unsigned time, mem_access_sector_mask_t sector_mask)
+		virtual void set_last_access_time(unsigned long long time, mem_access_sector_mask_t sector_mask)
 	    {
 	    	m_last_access_time = time;
 	    }
-		virtual unsigned get_alloc_time()
+		virtual unsigned long long get_alloc_time()
 	    {
 	    	return m_alloc_time;
 	    }
@@ -229,9 +229,9 @@ struct line_cache_block: public cache_block_t  {
 
 
 private:
-	    unsigned         m_alloc_time;
-	    unsigned         m_last_access_time;
-	    unsigned         m_fill_time;
+	    unsigned long long     m_alloc_time;
+	    unsigned long long     m_last_access_time;
+	    unsigned long long     m_fill_time;
 	    cache_block_state    m_status;
 	    bool m_ignore_on_fill_status;
 	    bool m_set_modified_on_fill;
@@ -364,12 +364,12 @@ struct sector_cache_block : public cache_block_t {
 		m_status[sidx] = status;
 	}
 
-    virtual unsigned get_last_access_time()
+    virtual unsigned long long get_last_access_time()
 	{
 		return m_line_last_access_time;
 	}
 
-    virtual void set_last_access_time(unsigned time, mem_access_sector_mask_t sector_mask)
+    virtual void set_last_access_time(unsigned long long time, mem_access_sector_mask_t sector_mask)
 	{
 		unsigned sidx = get_sector_index(sector_mask);
 
@@ -377,7 +377,7 @@ struct sector_cache_block : public cache_block_t {
 		m_line_last_access_time = time;
 	}
 
-    virtual unsigned get_alloc_time()
+    virtual unsigned long long get_alloc_time()
 	{
 		return m_line_alloc_time;
 	}
@@ -681,15 +681,15 @@ public:
         // tag + index is required to check for hit/miss. Tag is now identical to the block address.
 
         //return addr >> (m_line_sz_log2+m_nset_log2);
-        return addr & ~(m_line_sz-1);
+        return addr & ~(new_addr_type)(m_line_sz-1);
     }
     new_addr_type block_addr( new_addr_type addr ) const
     {
-        return addr & ~(m_line_sz-1);
+        return addr & ~(new_addr_type)(m_line_sz-1);
     }
     new_addr_type mshr_addr( new_addr_type addr ) const
 	{
-    	return addr & ~(m_atom_sz-1);
+    	return addr & ~(new_addr_type)(m_atom_sz-1);
 	}
     enum mshr_config_t get_mshr_type() const
 	{
@@ -915,10 +915,10 @@ private:
 /// Simple struct to maintain cache accesses, misses, pending hits, and reservation fails.
 ///
 struct cache_sub_stats{
-    unsigned accesses;
-    unsigned misses;
-    unsigned pending_hits;
-    unsigned res_fails;
+    unsigned long long accesses;
+    unsigned long long misses;
+    unsigned long long pending_hits;
+    unsigned long long res_fails;
 
     unsigned long long port_available_cycles; 
     unsigned long long data_port_busy_cycles; 
@@ -981,14 +981,14 @@ public:
     void inc_stats(int access_type, int access_outcome);
     void inc_fail_stats(int access_type, int fail_outcome);
     enum cache_request_status select_stats_status(enum cache_request_status probe, enum cache_request_status access) const;
-    unsigned &operator()(int access_type, int access_outcome, bool fail_outcome);
-    unsigned operator()(int access_type, int access_outcome, bool fail_outcome) const;
+    unsigned long long &operator()(int access_type, int access_outcome, bool fail_outcome);
+    unsigned long long operator()(int access_type, int access_outcome, bool fail_outcome) const;
     cache_stats operator+(const cache_stats &cs);
     cache_stats &operator+=(const cache_stats &cs);
     void print_stats(FILE *fout, const char *cache_name = "Cache_stats") const;
     void print_fail_stats(FILE *fout, const char *cache_name = "Cache_fail_stats") const;
 
-    unsigned get_stats(enum mem_access_type *access_type, unsigned num_access_type, enum cache_request_status *access_status, unsigned num_access_status)  const;
+    unsigned long long get_stats(enum mem_access_type *access_type, unsigned num_access_type, enum cache_request_status *access_status, unsigned num_access_status)  const;
     void get_sub_stats(struct cache_sub_stats &css) const;
 
     void sample_cache_port_utility(bool data_port_busy, bool fill_port_busy); 
@@ -996,8 +996,8 @@ private:
     bool check_valid(int type, int status) const;
     bool check_fail_valid(int type, int fail) const;
 
-    std::vector< std::vector<unsigned> > m_stats;
-    std::vector< std::vector<unsigned> > m_fail_stats;
+    std::vector< std::vector<unsigned long long> > m_stats;
+    std::vector< std::vector<unsigned long long> > m_fail_stats;
 
     unsigned long long m_cache_port_available_cycles; 
     unsigned long long m_cache_data_port_busy_cycles; 

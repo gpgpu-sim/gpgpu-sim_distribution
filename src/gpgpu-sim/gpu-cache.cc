@@ -256,7 +256,7 @@ enum cache_request_status tag_array::probe( new_addr_type addr, unsigned &idx, m
 
     unsigned invalid_line = (unsigned)-1;
     unsigned valid_line = (unsigned)-1;
-    unsigned valid_timestamp = (unsigned)-1;
+    unsigned long long valid_timestamp = (unsigned)-1;
 
     bool all_reserved = true;
 
@@ -654,7 +654,7 @@ enum cache_request_status cache_stats::select_stats_status(enum cache_request_st
 		return access;
 }
 
-unsigned &cache_stats::operator()(int access_type, int access_outcome, bool fail_outcome){
+unsigned long long &cache_stats::operator()(int access_type, int access_outcome, bool fail_outcome){
     ///
     /// Simple method to read/modify the stat corresponding to (access_type, access_outcome)
     /// Used overloaded () to avoid the need for separate read/write member functions
@@ -673,7 +673,7 @@ unsigned &cache_stats::operator()(int access_type, int access_outcome, bool fail
 	}
 }
 
-unsigned cache_stats::operator()(int access_type, int access_outcome, bool fail_outcome) const{
+unsigned long long cache_stats::operator()(int access_type, int access_outcome, bool fail_outcome) const{
     ///
     /// Const accessor into m_stats.
     ///
@@ -740,7 +740,7 @@ void cache_stats::print_stats(FILE *fout, const char *cache_name) const{
     std::string m_cache_name = cache_name;
     for (unsigned type = 0; type < NUM_MEM_ACCESS_TYPE; ++type) {
         for (unsigned status = 0; status < NUM_CACHE_REQUEST_STATUS; ++status) {
-            fprintf(fout, "\t%s[%s][%s] = %u\n",
+            fprintf(fout, "\t%s[%s][%s] = %llu\n",
                 m_cache_name.c_str(),
                 mem_access_type_str((enum mem_access_type)type),
                 cache_request_status_str((enum cache_request_status)status),
@@ -751,7 +751,7 @@ void cache_stats::print_stats(FILE *fout, const char *cache_name) const{
     }
     for (unsigned type = 0; type < NUM_MEM_ACCESS_TYPE; ++type) {
     	 if(total_access[type] > 0)
-    	  fprintf(fout, "\t%s[%s][%s] = %u\n",
+    	  fprintf(fout, "\t%s[%s][%s] = %llu\n",
 				m_cache_name.c_str(),
 				mem_access_type_str((enum mem_access_type)type),
 				"TOTAL_ACCESS",
@@ -788,13 +788,13 @@ void cache_sub_stats::print_port_stats(FILE *fout, const char *cache_name) const
     fprintf(fout, "%s_fill_port_util = %.3f\n", cache_name, fill_port_util); 
 }
 
-unsigned cache_stats::get_stats(enum mem_access_type *access_type, unsigned num_access_type, enum cache_request_status *access_status, unsigned num_access_status) const{
+unsigned long long cache_stats::get_stats(enum mem_access_type *access_type, unsigned num_access_type, enum cache_request_status *access_status, unsigned num_access_status) const{
     ///
     /// Returns a sum of the stats corresponding to each "access_type" and "access_status" pair.
     /// "access_type" is an array of "num_access_type" mem_access_types.
     /// "access_status" is an array of "num_access_status" cache_request_statuses.
     ///
-    unsigned total=0;
+    unsigned long long total=0;
     for(unsigned type =0; type < num_access_type; ++type){
         for(unsigned status=0; status < num_access_status; ++status){
             if(!check_valid((int)access_type[type], (int)access_status[status]))
