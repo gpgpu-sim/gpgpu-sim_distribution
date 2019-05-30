@@ -36,11 +36,37 @@
 extern time_t g_simulation_starttime;
 
 
-struct GPU_ctx {
+struct GPGPUsim_ctx {
+
+	GPGPUsim_ctx() {
+		g_sim_active = false;
+		g_sim_done = true;
+		break_limit = false;
+		g_sim_lock = PTHREAD_MUTEX_INITIALIZER;
+
+		sg_argc = 3;
+		sg_argv = {"", "-config","gpgpusim.config"};
+	}
 
 	struct gpgpu_ptx_sim_arg *grid_params;
 
+	sem_t g_sim_signal_start;
+	sem_t g_sim_signal_finish;
+	sem_t g_sim_signal_exit;
+	time_t g_simulation_starttime;
+	pthread_t g_simulation_thread;
 
+	class gpgpu_sim_config *g_the_gpu_config;
+	class gpgpu_sim *g_the_gpu;
+	class stream_manager *g_stream_manager;
+
+	 int sg_argc;
+	 const char *sg_argv[3];
+
+	pthread_mutex_t g_sim_lock;
+	bool g_sim_active;
+	bool g_sim_done;
+	bool break_limit;
 
 };
 
