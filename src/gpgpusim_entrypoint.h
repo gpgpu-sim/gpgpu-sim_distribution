@@ -29,11 +29,20 @@
 #define GPGPUSIM_ENTRYPOINT_H_INCLUDED
 
 #include "abstract_hardware_model.h"
-
+#include <pthread.h>
+#include <semaphore.h>
 #include <time.h>
+
 extern time_t g_simulation_starttime;
 
 
+struct GPU_ctx {
+
+	struct gpgpu_ptx_sim_arg *grid_params;
+
+
+
+};
 
 class gpgpu_sim *gpgpu_ptx_sim_init_perf();
 void start_sim_thread(int api);
