@@ -18,6 +18,7 @@ unsigned long long g_max_total_param_size = 0;
 #include "cuda-sim.h"
 #include "ptx_ir.h"
 #include "../stream_manager.h"
+#include "../gpgpusim_entrypoint.h"
 #include "cuda_device_runtime.h"
 
 #define DEV_RUNTIME_REPORT(a) \
@@ -64,7 +65,7 @@ public:
 
 std::map<void *, device_launch_config_t> g_cuda_device_launch_param_map;
 std::list<device_launch_operation_t> g_cuda_device_launch_op;
-extern stream_manager *g_stream_manager;
+//extern stream_manager *g_stream_manager();
 
 //Handling device runtime api:
 //void * cudaGetParameterBufferV2(void *func, dim3 gridDimension, dim3 blockDimension, unsigned int sharedMemSize)
@@ -322,7 +323,7 @@ void launch_one_device_kernel() {
         device_launch_operation_t &op = g_cuda_device_launch_op.front();
 
         stream_operation stream_op = stream_operation(op.grid, g_ptx_sim_mode, op.stream);
-        g_stream_manager->push(stream_op);
+        g_stream_manager()->push(stream_op);
         g_cuda_device_launch_op.pop_front();
     }
 }
