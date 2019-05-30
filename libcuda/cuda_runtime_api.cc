@@ -149,10 +149,6 @@ typedef void * yyscan_t;
 #include <mach-o/dyld.h>
 #endif
 
-std::map<void *,void **> pinned_memory; //support for pinned memories added
-std::map<void *, size_t> pinned_memory_size;
-std::map<unsigned long long, size_t> g_mallocPtr_Size;
-int no_of_ptx=0;
 
 extern void synchronize();
 extern void exit_simulation();
@@ -241,12 +237,25 @@ private:
 
 class kernel_config;
 
+#ifndef OPENGL_SUPPORT
+typedef unsigned long GLuint;
+#endif
+
+struct glbmap_entry {
+	GLuint m_bufferObj;
+	void *m_devPtr;
+	size_t m_size;
+	struct glbmap_entry *m_next;
+};
+
 struct CUctx_st {
 	CUctx_st( _cuda_device_id *gpu )
 	{
 		m_gpu = gpu;
 		m_binary_info.cmem = 0;
 		m_binary_info.gmem = 0;
+		no_of_ptx=0;
+		g_glbmap = NULL;
 	}
 
 	_cuda_device_id *get_device() { return m_gpu; }
@@ -309,6 +318,16 @@ struct CUctx_st {
 	//maps sm version number to set of filenames
 	std::map<unsigned, std::set<std::string> > version_filename;
 	std::list<kernel_config> g_cuda_launch_stack;
+	std::map<int, bool>fatbin_registered;
+	std::map<int, std::string> fatbinmap;
+	std::map<unsigned long long, size_t> g_mallocPtr_Size;
+	std::map<std::string, symbol_table*> name_symtab;
+	std::map<void *,void **> pinned_memory; //support for pinned memories added
+	std::map<void *, size_t> pinned_memory_size;
+	int no_of_ptx;
+	typedef struct glbmap_entry glbmap_entry_t;
+
+	glbmap_entry_t* g_glbmap;
 
 private:
 	_cuda_device_id *m_gpu; // selected gpu
@@ -573,7 +592,7 @@ __host__ cudaError_t CUDARTAPI cudaMalloc(void **devPtr, size_t size)
 	*devPtr = context->get_device()->get_gpgpu()->gpu_malloc(size);
 	if(g_debug_execution >= 3){
 		printf("GPGPU-Sim PTX: cudaMallocing %zu bytes starting at 0x%llx..\n",size, (unsigned long long) *devPtr);
-        g_mallocPtr_Size[(unsigned long long)*devPtr] = size;
+        context->g_mallocPtr_Size[(unsigned long long)*devPtr] = size;
     }
 	if ( *devPtr  ) {
 		return g_last_cudaError = cudaSuccess;
@@ -587,11 +606,11 @@ __host__ cudaError_t CUDARTAPI cudaMallocHost(void **ptr, size_t size)
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     }
-	GPGPUSim_Context();
+	CUctx_st* context = GPGPUSim_Context();
 	*ptr = malloc(size);
 	if ( *ptr  ) {
 		//track pinned memory size allocated in the host so that same amount of memory is also allocated in GPU.
-		pinned_memory_size[*ptr]=size;
+		context->pinned_memory_size[*ptr]=size;
 		return g_last_cudaError = cudaSuccess;
 	} else {
 		return g_last_cudaError = cudaErrorMemoryAllocation;
@@ -2010,11 +2029,11 @@ void extract_ptx_files_using_cuobjdump(CUctx_st *context){
                 printf("ERROR: command: %s failed \n",command);
                 exit(0);
             }
-            no_of_ptx++;
+            context->no_of_ptx++;
        }
     }
 
-	 if(!no_of_ptx){
+	 if(!context->no_of_ptx){
 	 	printf("WARNING: Number of ptx in the executable file are 0. One of the reasons might be\n");
 	 	printf("\t1. CDP is enabled\n");
 	 	printf("\t2. When using PyTorch, PYTORCH_BIN is not set correctly\n");
@@ -2444,25 +2463,22 @@ void cuobjdumpInit(std::list<cuobjdumpSection*> &cuobjdumpSectionList){
 	}
 }
 
-std::map<int, std::string> fatbinmap;
-std::map<int, bool>fatbin_registered;
-std::map<std::string, symbol_table*> name_symtab;
 
 //! Keep track of the association between filename and cubin handle
-void cuobjdumpRegisterFatBinary(unsigned int handle, const char* filename){
-	fatbinmap[handle] = filename;
+void cuobjdumpRegisterFatBinary(unsigned int handle, const char* filename, CUctx_st *context){
+	context->fatbinmap[handle] = filename;
 }
 
 //! Either submit PTX for simulation or convert SASS to PTXPlus and submit it
 void cuobjdumpParseBinary(unsigned int handle){
 
-	if(fatbin_registered[handle]) return;
-	fatbin_registered[handle] = true;
 	CUctx_st *context = GPGPUSim_Context();
-	std::string fname = fatbinmap[handle];
+	if(context->fatbin_registered[handle]) return;
+	context->fatbin_registered[handle] = true;
+	std::string fname = context->fatbinmap[handle];
 
-	if (name_symtab.find(fname) != name_symtab.end()) {
-		symbol_table *symtab = name_symtab[fname];
+	if (context->name_symtab.find(fname) != context->name_symtab.end()) {
+		symbol_table *symtab = context->name_symtab[fname];
 		context->add_binary(symtab, handle);
 		return;
 	}
@@ -2479,7 +2495,7 @@ void cuobjdumpParseBinary(unsigned int handle){
           symtab = gpgpu_ptx_sim_load_ptx_from_filename( ptx_filename.c_str() );
       }
    }
-   name_symtab[fname] = symtab;
+   context->name_symtab[fname] = symtab;
    context->add_binary(symtab, handle);
    load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
    load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
@@ -2526,18 +2542,18 @@ void cuobjdumpParseBinary(unsigned int handle){
 		symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str, handle);
 		printf("Adding %s with cubin handle %u\n", ptx->getPTXfilename().c_str(), handle);
 		context->add_binary(symtab, handle);
-		gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability );
+		gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability, context->no_of_ptx );
 		delete[] ptxplus_str;
 	} else {
 		symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxcode, handle);
 		//if CUOBJDUMP_SIM_FILE is not set, ptx is NULL. So comment below.
 		//printf("Adding %s with cubin handle %u\n", ptx->getPTXfilename().c_str(), handle);
 		context->add_binary(symtab, handle);
-		gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability );
+		gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability, context->no_of_ptx );
 	}
 	load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
 	load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
-	name_symtab[fname] = symtab;
+	context->name_symtab[fname] = symtab;
 
 	//TODO: Remove temporarily files as per configurations
 }
@@ -2606,7 +2622,7 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 		 */
 		assert(fat_cubin_handle >= 1);
 		if (fat_cubin_handle==1) cuobjdumpInit(context->cuobjdumpSectionList);
-		cuobjdumpRegisterFatBinary(fat_cubin_handle, filename);
+		cuobjdumpRegisterFatBinary(fat_cubin_handle, filename, context);
 
 		return (void**)fat_cubin_handle;
 	} 
@@ -2658,7 +2674,7 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 			} else {
 				symtab=gpgpu_ptx_sim_load_ptx_from_string(ptx,source_num);
 				context->add_binary(symtab,fat_cubin_handle);
-				gpgpu_ptxinfo_load_from_string( ptx, source_num, max_capability );
+				gpgpu_ptxinfo_load_from_string( ptx, source_num, max_capability, context->no_of_ptx );
 			}
 			source_num++;
 			load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
@@ -2818,10 +2834,6 @@ char __cudaInitModule(
 }
 
 
-#ifndef OPENGL_SUPPORT
-typedef unsigned long GLuint;
-#endif
-
 cudaError_t cudaGLRegisterBufferObject(GLuint bufferObj)
 {
 	if(g_debug_execution >= 3){
@@ -2830,16 +2842,6 @@ cudaError_t cudaGLRegisterBufferObject(GLuint bufferObj)
 	printf("GPGPU-Sim PTX: Execution warning: ignoring call to \"%s\"\n", __my_func__ );
 	return g_last_cudaError = cudaSuccess;
 }
-
-struct glbmap_entry {
-	GLuint m_bufferObj;
-	void *m_devPtr;
-	size_t m_size;
-	struct glbmap_entry *m_next;
-};
-typedef struct glbmap_entry glbmap_entry_t;
-
-glbmap_entry_t* g_glbmap = NULL;
 
 cudaError_t cudaGLMapBufferObject(void** devPtr, GLuint bufferObj) 
 {
@@ -2850,7 +2852,7 @@ cudaError_t cudaGLMapBufferObject(void** devPtr, GLuint bufferObj)
 	GLint buffer_size=0;
 	CUctx_st* ctx = GPGPUSim_Context();
 
-	glbmap_entry_t *p = g_glbmap;
+	glbmap_entry_t *p = ctx->g_glbmap;
 	while ( p && p->m_bufferObj != bufferObj )
 		p = p->m_next;
 	if ( p == NULL ) {
@@ -2861,8 +2863,8 @@ cudaError_t cudaGLMapBufferObject(void** devPtr, GLuint bufferObj)
 
 		// create entry and insert to front of list
 		glbmap_entry_t *n = (glbmap_entry_t *) calloc(1,sizeof(glbmap_entry_t));
-		n->m_next = g_glbmap;
-		g_glbmap = n;
+		n->m_next = ctx->g_glbmap;
+		ctx->g_glbmap = n;
 
 		// initialize entry
 		n->m_bufferObj = bufferObj;
@@ -2903,7 +2905,8 @@ cudaError_t cudaGLUnmapBufferObject(GLuint bufferObj)
 	    announce_call(__my_func__);
     }
 #ifdef OPENGL_SUPPORT
-	glbmap_entry_t *p = g_glbmap;
+	CUctx_st* ctx = GPGPUSim_Context();
+	glbmap_entry_t *p = ctx->g_glbmap;
 	while ( p && p->m_bufferObj != bufferObj )
 		p = p->m_next;
 	if ( p == NULL )
@@ -2943,7 +2946,8 @@ cudaError_t CUDARTAPI cudaHostAlloc(void **pHost,  size_t bytes, unsigned int fl
 	*pHost = malloc(bytes);
 	//need to track the size allocated so that cudaHostGetDevicePointer() can function properly.
 	//TODO: vary this function behavior based on flags value (following nvidia documentation)
-	pinned_memory_size[*pHost]=bytes;
+	CUctx_st* context = GPGPUSim_Context();
+	context->pinned_memory_size[*pHost]=bytes;
 	if( *pHost )
 		return g_last_cudaError = cudaSuccess;
 	else
@@ -2960,16 +2964,16 @@ cudaError_t CUDARTAPI cudaHostGetDevicePointer(void **pDevice, void *pHost, unsi
 	flags=0;
 	CUctx_st* context = GPGPUSim_Context();
 	gpgpu_t *gpu = context->get_device()->get_gpgpu();
-	std::map<void *, size_t>::const_iterator i = pinned_memory_size.find(pHost);
-	assert(i != pinned_memory_size.end());
+	std::map<void *, size_t>::const_iterator i = context->pinned_memory_size.find(pHost);
+	assert(i != context->pinned_memory_size.end());
 	size_t size = i->second;
 	*pDevice = gpu->gpu_malloc(size);
 	if(g_debug_execution >= 3){
 		printf("GPGPU-Sim PTX: cudaMallocing %zu bytes starting at 0x%llx..\n",size, (unsigned long long) *pDevice);
-        g_mallocPtr_Size[(unsigned long long)*pDevice] = size;
+        context->g_mallocPtr_Size[(unsigned long long)*pDevice] = size;
     }
 	if ( *pDevice  ) {
-		pinned_memory[pHost]=pDevice;
+		context->pinned_memory[pHost]=pDevice;
 		//Copy contents in cpu to gpu
 		gpu->memcpy_to_gpu((size_t)*pDevice,pHost,size);
 		return g_last_cudaError = cudaSuccess;
@@ -3204,13 +3208,6 @@ int CUDARTAPI __cudaSynchronizeThreads(void**, void*)
 
 ////////
 
-extern int ptx_parse();
-extern int ptx__scan_string(const char*);
-extern FILE *ptx_in;
-
-extern int ptxinfo_parse();
-extern FILE *ptxinfo_in;
-
 /// static functions
 
 static int load_static_globals( symbol_table *symtab, unsigned min_gaddr, unsigned max_gaddr, gpgpu_t *gpu ) 
@@ -3330,7 +3327,7 @@ kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *hostFun,
 	fflush(stdout);
 	
 	if(g_debug_execution >= 4){
-        entry->ptx_jit_config(g_mallocPtr_Size, result->get_param_memory(), (gpgpu_t *) context->get_device()->get_gpgpu(), gridDim, blockDim);
+        entry->ptx_jit_config(context->g_mallocPtr_Size, result->get_param_memory(), (gpgpu_t *) context->get_device()->get_gpgpu(), gridDim, blockDim);
     }
 
 	return result;
@@ -3815,7 +3812,7 @@ cuLinkAddFile(CUlinkState state, CUjitInputType type, const char *path,
     strcat(file,path);
 	symbol_table *symtab = gpgpu_ptx_sim_load_ptx_from_filename( file );
     std::string fname(path);
-    name_symtab[fname] = symtab;
+    context->name_symtab[fname] = symtab;
     context->add_binary(symtab, 1);
     load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
     load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
