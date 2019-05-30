@@ -36,31 +36,21 @@
 #include "gpgpu-sim/icnt_wrapper.h"
 #include "stream_manager.h"
 
-#include <pthread.h>
-#include <semaphore.h>
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
+	sem_t g_sim_signal_start;
+	sem_t g_sim_signal_finish;
+	sem_t g_sim_signal_exit;
+	time_t g_simulation_starttime;
+	pthread_t g_simulation_thread;
 
+	class gpgpu_sim_config *g_the_gpu_config;
+	class gpgpu_sim *g_the_gpu;
+	class stream_manager *g_stream_manager;
 
-struct gpgpu_ptx_sim_arg *grid_params;
-
-sem_t g_sim_signal_start;
-sem_t g_sim_signal_finish;
-sem_t g_sim_signal_exit;
-time_t g_simulation_starttime;
-pthread_t g_simulation_thread;
-
-gpgpu_sim_config g_the_gpu_config;
-gpgpu_sim *g_the_gpu;
-stream_manager *g_stream_manager;
-
-
-
-static int sg_argc = 3;
-static const char *sg_argv[] = {"", "-config","gpgpusim.config"};
-
-
+	static int sg_argc = 3;
+	static const char *sg_argv[] = {"", "-config","gpgpusim.config"};
 
 static void print_simulation_time();
 
@@ -226,7 +216,8 @@ gpgpu_sim *gpgpu_ptx_sim_init_perf()
    ptx_opcocde_latency_options(opp);
 
    icnt_reg_options(opp);
-   g_the_gpu_config.reg_options(opp); // register GPU microrachitecture options
+   g_the_gpu_config = new gpgpu_sim_config();
+   g_the_gpu_config->reg_options(opp); // register GPU microrachitecture options
 
    option_parser_cmdline(opp, sg_argc, sg_argv); // parse configuration options
    fprintf(stdout, "GPGPU-Sim: Configuration options:\n\n");
@@ -234,9 +225,9 @@ gpgpu_sim *gpgpu_ptx_sim_init_perf()
    // Set the Numeric locale to a standard locale where a decimal point is a "dot" not a "comma"
    // so it does the parsing correctly independent of the system environment variables
    assert(setlocale(LC_NUMERIC,"C"));
-   g_the_gpu_config.init();
+   g_the_gpu_config->init();
 
-   g_the_gpu = new gpgpu_sim(g_the_gpu_config);
+   g_the_gpu = new gpgpu_sim(*g_the_gpu_config);
    g_stream_manager = new stream_manager(g_the_gpu,g_cuda_launch_blocking);
 
    g_simulation_starttime = time((time_t *)NULL);
