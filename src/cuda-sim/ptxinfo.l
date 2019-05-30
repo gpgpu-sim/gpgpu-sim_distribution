@@ -36,14 +36,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %option reentrant
 
 %{
+#include "ptx_loader.h"
 #include "ptxinfo.tab.h"
 #include <string.h>
 
 #define LINEBUF_SIZE 1024
-#define TC if( (yylineno == 1) && (yylval->col + strlen(yytext) < LINEBUF_SIZE) ) { \
-		strncpy(yylval->linebuf+yylval->col,yytext,strlen(yytext)); \
+#define TC if( (yylineno == 1) && (ptxinfo->col + strlen(yytext) < LINEBUF_SIZE) ) { \
+		strncpy(ptxinfo->linebuf+ptxinfo->col,yytext,strlen(yytext)); \
 	   } \
-	   yylval->col+=strlen(yytext);
+	   ptxinfo->col+=strlen(yytext);
+#define YY_DECL int ptxinfo_lex \
+	       (YYSTYPE * yylval_param , yyscan_t yyscanner, ptxinfo_data* ptxinfo)
 %}
 
 %%
@@ -80,7 +83,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 " " TC;
 "\t" TC;
 
-\n.*  yylval->col=0; strncpy(yylval->linebuf, yytext + 1, 1024); yyless( 1 );
+\n.*  ptxinfo->col=0; strncpy(ptxinfo->linebuf, yytext + 1, 1024); yyless( 1 );
 
 %%
 
@@ -88,7 +91,7 @@ extern int g_ptxinfo_error_detected;
 extern const char *g_filename;
 extern const char *g_ptxinfo_filename;
 
-int ptxinfo_error(yyscan_t yyscanner, const char* msg)
+int ptxinfo_error(yyscan_t yyscanner, ptxinfo_data* ptxinfo, const char* msg)
 {
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
 	int i;
@@ -97,10 +100,10 @@ int ptxinfo_error(yyscan_t yyscanner, const char* msg)
 	printf("GPGPU-Sim: ERROR while parsing output of ptxas (used to capture resource usage information)\n");
 	if( msg != NULL )
 		printf("GPGPU-Sim:     %s (%s:%u) Syntax error:\n\n", g_filename, g_ptxinfo_filename, yylineno );
-	printf("   %s\n", yylval->linebuf );
+	printf("   %s\n", ptxinfo->linebuf );
 	printf("   ");
-	for( i=0; i < yylval->col-1; i++ ) {
-		if( yylval->linebuf[i] == '\t' ) printf("\t");
+	for( i=0; i < ptxinfo->col-1; i++ ) {
+		if( ptxinfo->linebuf[i] == '\t' ) printf("\t");
 		else printf(" ");
 	}
 			

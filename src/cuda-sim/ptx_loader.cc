@@ -44,8 +44,12 @@ bool g_override_embedded_ptx = false;
 
 /// extern prototypes
 
-extern int ptx_parse();
-extern int ptx__scan_string(const char*);
+extern int ptx_error( yyscan_t yyscanner, const char *s );
+extern int ptx_lex_init(yyscan_t* scanner);
+extern void ptx_set_in(FILE * _in_str ,yyscan_t yyscanner );
+extern int ptx_parse(yyscan_t scanner, ptx_recognizer* recognizer);
+extern int ptx_lex_destroy(yyscan_t scanner);
+extern int ptx__scan_string(const char*, yyscan_t scanner);
 
 extern std::map<unsigned,const char*> get_duplicate();
 
@@ -54,7 +58,7 @@ const char *g_ptxinfo_filename;
 typedef void * yyscan_t;
 extern int ptxinfo_lex_init(yyscan_t* scanner);
 extern void ptxinfo_set_in  (FILE * _in_str ,yyscan_t yyscanner );
-extern int ptxinfo_parse(yyscan_t scanner);
+extern int ptxinfo_parse(yyscan_t scanner, ptxinfo_data* ptxinfo);
 extern int ptxinfo_lex_destroy(yyscan_t scanner);
 
 static bool g_save_embedded_ptx;
@@ -171,8 +175,10 @@ symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source
        fclose(fp);
     }
     symbol_table *symtab=init_parser(buf);
-    ptx__scan_string(p);
-    int errors = ptx_parse ();
+    ptx_recognizer recognizer;
+    ptx_lex_init(&(recognizer.scanner));
+    ptx__scan_string(p, recognizer.scanner);
+    int errors = ptx_parse (recognizer.scanner, &recognizer);
     if ( errors ) {
         char fname[1024];
         snprintf(fname,1024,"_ptx_errors_XXXXXX");
@@ -185,6 +191,7 @@ symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source
         abort();
         exit(40);
     }
+    ptx_lex_destroy(recognizer.scanner);
 
     if ( g_debug_execution >= 100 ) 
        print_ptx_file(p,source_num,buf);
@@ -352,15 +359,15 @@ void gpgpu_ptx_info_load_from_filename( const char *filename, unsigned sm_versio
 	g_ptxinfo_filename = strdup(ptxas_filename.c_str());
     FILE *ptxinfo_in;
     ptxinfo_in = fopen(g_ptxinfo_filename,"r");
-    yyscan_t scanner;
-    ptxinfo_lex_init(&scanner);
-    ptxinfo_set_in(ptxinfo_in, scanner);
-    ptxinfo_parse(scanner);
-    ptxinfo_lex_destroy(scanner);
+    ptxinfo_data ptxinfo;
+    ptxinfo_lex_init(&(ptxinfo.scanner));
+    ptxinfo_set_in(ptxinfo_in, ptxinfo.scanner);
+    ptxinfo_parse(ptxinfo.scanner, &ptxinfo);
+    ptxinfo_lex_destroy(ptxinfo.scanner);
     fclose(ptxinfo_in);
 }
 
-void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num, unsigned sm_version )
+void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num, unsigned sm_version, int no_of_ptx )
 {
     //do ptxas for individual files instead of one big embedded ptx. This prevents the duplicate defs and declarations.
     char ptx_file[1000];
@@ -421,11 +428,11 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
 		FILE *ptxinfo_in;
     		ptxinfo_in = fopen(tempfile_ptxinfo,"r");
 		g_ptxinfo_filename = tempfile_ptxinfo;
-		yyscan_t scanner;
-		ptxinfo_lex_init(&scanner);
-		ptxinfo_set_in(ptxinfo_in, scanner);
-		ptxinfo_parse(scanner);
-		ptxinfo_lex_destroy(scanner);
+		ptxinfo_data ptxinfo;
+		ptxinfo_lex_init(&(ptxinfo.scanner));
+		ptxinfo_set_in(ptxinfo_in, ptxinfo.scanner);
+		ptxinfo_parse(ptxinfo.scanner, &ptxinfo);
+		ptxinfo_lex_destroy(ptxinfo.scanner);
 		fclose(ptxinfo_in);
 
     		fix_duplicate_errors(fname2);
@@ -512,11 +519,11 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
     FILE *ptxinfo_in;
     ptxinfo_in = fopen(g_ptxinfo_filename,"r");
 
-    yyscan_t scanner;
-    ptxinfo_lex_init(&scanner);
-    ptxinfo_set_in(ptxinfo_in, scanner);
-    ptxinfo_parse(scanner);
-    ptxinfo_lex_destroy(scanner);
+    ptxinfo_data ptxinfo;
+    ptxinfo_lex_init(&(ptxinfo.scanner));
+    ptxinfo_set_in(ptxinfo_in, ptxinfo.scanner);
+    ptxinfo_parse(ptxinfo.scanner, &ptxinfo);
+    ptxinfo_lex_destroy(ptxinfo.scanner);
     fclose(ptxinfo_in);
 
     snprintf(commandline,1024,"rm -f *info");

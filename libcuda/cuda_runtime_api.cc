@@ -139,6 +139,8 @@
 #include "../src/gpgpusim_entrypoint.h"
 #include "../src/stream_manager.h"
 #include "../src/abstract_hardware_model.h"
+typedef void * yyscan_t;
+#include "cuobjdump.h"
 
 #include <pthread.h>
 #include <semaphore.h>
@@ -147,12 +149,6 @@
 #include <mach-o/dyld.h>
 #endif
 
-std::map<void *,void **> pinned_memory; //support for pinned memories added
-std::map<void *, size_t> pinned_memory_size;
-std::map<unsigned long long, size_t> g_mallocPtr_Size;
-int no_of_ptx=0;
-//maps sm version number to set of filenames
-std::map<unsigned, std::set<std::string> > version_filename;
 
 extern void synchronize();
 extern void exit_simulation();
@@ -239,12 +235,27 @@ private:
 	struct _cuda_device_id *m_next;
 };
 
+class kernel_config;
+
+#ifndef OPENGL_SUPPORT
+typedef unsigned long GLuint;
+#endif
+
+struct glbmap_entry {
+	GLuint m_bufferObj;
+	void *m_devPtr;
+	size_t m_size;
+	struct glbmap_entry *m_next;
+};
+
 struct CUctx_st {
 	CUctx_st( _cuda_device_id *gpu )
 	{
 		m_gpu = gpu;
 		m_binary_info.cmem = 0;
 		m_binary_info.gmem = 0;
+		no_of_ptx=0;
+		g_glbmap = NULL;
 	}
 
 	_cuda_device_id *get_device() { return m_gpu; }
@@ -301,6 +312,22 @@ struct CUctx_st {
 		assert( i != m_kernel_lookup.end() );
 		return i->second;
 	}
+
+	std::list<cuobjdumpSection*> cuobjdumpSectionList;
+	std::list<cuobjdumpSection*> libSectionList;
+	//maps sm version number to set of filenames
+	std::map<unsigned, std::set<std::string> > version_filename;
+	std::list<kernel_config> g_cuda_launch_stack;
+	std::map<int, bool>fatbin_registered;
+	std::map<int, std::string> fatbinmap;
+	std::map<unsigned long long, size_t> g_mallocPtr_Size;
+	std::map<std::string, symbol_table*> name_symtab;
+	std::map<void *,void **> pinned_memory; //support for pinned memories added
+	std::map<void *, size_t> pinned_memory_size;
+	int no_of_ptx;
+	typedef struct glbmap_entry glbmap_entry_t;
+
+	glbmap_entry_t* g_glbmap;
 
 private:
 	_cuda_device_id *m_gpu; // selected gpu
@@ -481,7 +508,62 @@ typedef std::map<unsigned,CUevent_st*> event_tracker_t;
 int CUevent_st::m_next_event_uid;
 event_tracker_t g_timer_events;
 int g_active_device = 0; //active gpu that runs the code
-std::list<kernel_config> g_cuda_launch_stack;
+
+extern int cuobjdump_lex_init(yyscan_t* scanner);
+extern void cuobjdump_set_in  (FILE * _in_str ,yyscan_t yyscanner );
+extern int cuobjdump_parse(yyscan_t scanner, struct cuobjdump_parser* parser, std::list<cuobjdumpSection*> &cuobjdumpSectionList);
+extern int cuobjdump_lex_destroy(yyscan_t scanner);
+
+enum cuobjdumpSectionType {
+	PTXSECTION=0,
+	ELFSECTION
+};
+
+
+// sectiontype: 0 for ptx, 1 for elf
+void addCuobjdumpSection(int sectiontype, std::list<cuobjdumpSection*> &cuobjdumpSectionList){
+	if (sectiontype)
+		cuobjdumpSectionList.push_front(new cuobjdumpELFSection());
+	else
+		cuobjdumpSectionList.push_front(new cuobjdumpPTXSection());
+	printf("## Adding new section %s\n", sectiontype?"ELF":"PTX");
+}
+
+void setCuobjdumparch(const char* arch, std::list<cuobjdumpSection*> &cuobjdumpSectionList){
+	unsigned archnum;
+	sscanf(arch, "sm_%u", &archnum);
+	assert (archnum && "cannot have sm_0");
+	printf("Adding arch: %s\n", arch);
+	cuobjdumpSectionList.front()->setArch(archnum);
+}
+
+void setCuobjdumpidentifier(const char* identifier, std::list<cuobjdumpSection*> &cuobjdumpSectionList){
+	printf("Adding identifier: %s\n", identifier);
+	cuobjdumpSectionList.front()->setIdentifier(identifier);
+}
+
+void setCuobjdumpptxfilename(const char* filename, std::list<cuobjdumpSection*> &cuobjdumpSectionList){
+	printf("Adding ptx filename: %s\n", filename);
+	cuobjdumpSection* x = cuobjdumpSectionList.front();
+	if (dynamic_cast<cuobjdumpPTXSection*>(x) == NULL){
+		assert (0 && "You shouldn't be trying to add a ptxfilename to an elf section");
+	}
+	(dynamic_cast<cuobjdumpPTXSection*>(x))->setPTXfilename(filename);
+}
+
+void setCuobjdumpelffilename(const char* filename, std::list<cuobjdumpSection*> &cuobjdumpSectionList){
+	if (dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()) == NULL){
+		assert (0 && "You shouldn't be trying to add a elffilename to an ptx section");
+	}
+	(dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()))->setELFfilename(filename);
+}
+
+void setCuobjdumpsassfilename(const char* filename, std::list<cuobjdumpSection*> &cuobjdumpSectionList){
+	if (dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()) == NULL){
+		assert (0 && "You shouldn't be trying to add a sassfilename to an ptx section");
+	}
+	(dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()))->setSASSfilename(filename);
+}
 
 /*******************************************************************************
  *                                                                              *
@@ -510,7 +592,7 @@ __host__ cudaError_t CUDARTAPI cudaMalloc(void **devPtr, size_t size)
 	*devPtr = context->get_device()->get_gpgpu()->gpu_malloc(size);
 	if(g_debug_execution >= 3){
 		printf("GPGPU-Sim PTX: cudaMallocing %zu bytes starting at 0x%llx..\n",size, (unsigned long long) *devPtr);
-        g_mallocPtr_Size[(unsigned long long)*devPtr] = size;
+        context->g_mallocPtr_Size[(unsigned long long)*devPtr] = size;
     }
 	if ( *devPtr  ) {
 		return g_last_cudaError = cudaSuccess;
@@ -524,11 +606,11 @@ __host__ cudaError_t CUDARTAPI cudaMallocHost(void **ptr, size_t size)
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     }
-	GPGPUSim_Context();
+	CUctx_st* context = GPGPUSim_Context();
 	*ptr = malloc(size);
 	if ( *ptr  ) {
 		//track pinned memory size allocated in the host so that same amount of memory is also allocated in GPU.
-		pinned_memory_size[*ptr]=size;
+		context->pinned_memory_size[*ptr]=size;
 		return g_last_cudaError = cudaSuccess;
 	} else {
 		return g_last_cudaError = cudaErrorMemoryAllocation;
@@ -1444,7 +1526,8 @@ __host__ cudaError_t CUDARTAPI cudaConfigureCall(dim3 gridDim, dim3 blockDim, si
 	    announce_call(__my_func__);
     }
 	struct CUstream_st *s = (struct CUstream_st *)stream;
-	g_cuda_launch_stack.push_back( kernel_config(gridDim,blockDim,sharedMem,s) );
+	CUctx_st *context = GPGPUSim_Context();
+	context->g_cuda_launch_stack.push_back( kernel_config(gridDim,blockDim,sharedMem,s) );
 	return g_last_cudaError = cudaSuccess;
 }
 
@@ -1453,8 +1536,9 @@ __host__ cudaError_t CUDARTAPI cudaSetupArgument(const void *arg, size_t size, s
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     }
-	gpgpusim_ptx_assert( !g_cuda_launch_stack.empty(), "empty launch stack" );
-	kernel_config &config = g_cuda_launch_stack.back();
+	CUctx_st *context = GPGPUSim_Context();
+	gpgpusim_ptx_assert( !context->g_cuda_launch_stack.empty(), "empty launch stack" );
+	kernel_config &config = context->g_cuda_launch_stack.back();
 	config.set_arg(arg,size,offset);
 	printf("GPGPU-Sim PTX: Setting up arguments for %zu bytes starting at 0x%llx..\n",size, (unsigned long long) arg);
 
@@ -1471,8 +1555,8 @@ __host__ cudaError_t CUDARTAPI cudaLaunch( const char *hostFun )
 	char *mode = getenv("PTX_SIM_MODE_FUNC");
 	if( mode )
 		sscanf(mode,"%u", &g_ptx_sim_mode);
-	gpgpusim_ptx_assert( !g_cuda_launch_stack.empty(), "empty launch stack" );
-	kernel_config config = g_cuda_launch_stack.back();
+	gpgpusim_ptx_assert( !context->g_cuda_launch_stack.empty(), "empty launch stack" );
+	kernel_config config = context->g_cuda_launch_stack.back();
 	struct CUstream_st *stream = config.get_stream();
 	printf("\nGPGPU-Sim PTX: cudaLaunch for 0x%p (mode=%s) on stream %u\n", hostFun,
 			g_ptx_sim_mode?"functional simulation":"performance simulation", stream?stream->get_uid():0 );
@@ -1513,14 +1597,14 @@ __host__ cudaError_t CUDARTAPI cudaLaunch( const char *hostFun )
 
 	    g_checkpoint->load_global_mem(global_mem, f1name);	
 		printf("Skipping kernel %d as resuming from kernel %d\n",grid->get_uid(),gpu->resume_kernel );
-		g_cuda_launch_stack.pop_back();
+		context->g_cuda_launch_stack.pop_back();
 		return g_last_cudaError = cudaSuccess;
 		
 	}
 	if(gpu->checkpoint_option==1 && (grid->get_uid()>gpu->checkpoint_kernel))
 	{
 		printf("Skipping kernel %d as checkpoint from kernel %d\n",grid->get_uid(),gpu->checkpoint_kernel );
-		g_cuda_launch_stack.pop_back();
+		context->g_cuda_launch_stack.pop_back();
 		return g_last_cudaError = cudaSuccess;
 		
 	}
@@ -1528,7 +1612,7 @@ __host__ cudaError_t CUDARTAPI cudaLaunch( const char *hostFun )
 			kname.c_str(), stream?stream->get_uid():0, gridDim.x,gridDim.y,gridDim.z,blockDim.x,blockDim.y,blockDim.z );
 	stream_operation op(grid,g_ptx_sim_mode,stream);
 	g_stream_manager->push(op);
-	g_cuda_launch_stack.pop_back();
+	context->g_cuda_launch_stack.pop_back();
 	return g_last_cudaError = cudaSuccess;
 }
 
@@ -1856,127 +1940,6 @@ __host__ cudaError_t CUDARTAPI cudaGetExportTable(const void **ppExportTable, co
 
 //#include "../../cuobjdump_to_ptxplus/cuobjdump_parser.h"
 
-enum cuobjdumpSectionType {
-	PTXSECTION=0,
-	ELFSECTION
-};
-
-
-class cuobjdumpSection {
-public:
-	//Constructor
-	cuobjdumpSection() {
-		arch = 0;
-		identifier = "";
-	}
-	virtual ~cuobjdumpSection() {}
-	unsigned getArch() {return arch;}
-	void setArch(unsigned a) {arch = a;}
-	std::string getIdentifier() {return identifier;}
-	void setIdentifier(std::string i) {identifier = i;}
-	virtual void print(){std::cout << "cuobjdump Section: unknown type" << std::endl;}
-private:
-	unsigned arch;
-	std::string identifier;
-};
-
-class cuobjdumpELFSection : public cuobjdumpSection
-{
-public:
-	cuobjdumpELFSection() {}
-	virtual ~cuobjdumpELFSection() {
-		elffilename = "";
-		sassfilename = "";
-	}
-	std::string getELFfilename() {return elffilename;}
-	void setELFfilename(std::string f) {elffilename = f;}
-	std::string getSASSfilename() {return sassfilename;}
-	void setSASSfilename(std::string f) {sassfilename = f;}
-	virtual void print() {
-		std::cout << "ELF Section:" << std::endl;
-		std::cout << "arch: sm_" << getArch() << std::endl;
-		std::cout << "identifier: " << getIdentifier() << std::endl;
-		std::cout << "elf filename: " << getELFfilename() << std::endl;
-		std::cout << "sass filename: " << getSASSfilename() << std::endl;
-		std::cout << std::endl;
-	}
-private:
-	std::string elffilename;
-	std::string sassfilename;
-};
-
-class cuobjdumpPTXSection : public cuobjdumpSection
-{
-public:
-	cuobjdumpPTXSection(){
-		ptxfilename = "";
-	}
-	std::string getPTXfilename() {return ptxfilename;}
-	void setPTXfilename(std::string f) {ptxfilename = f;}
-	virtual void print() {
-		std::cout << "PTX Section:" << std::endl;
-		std::cout << "arch: sm_" << getArch() << std::endl;
-		std::cout << "identifier: " << getIdentifier() << std::endl;
-		std::cout << "ptx filename: " << getPTXfilename() << std::endl;
-		std::cout << std::endl;
-	}
-private:
-	std::string ptxfilename;
-};
-
-std::list<cuobjdumpSection*> cuobjdumpSectionList;
-std::list<cuobjdumpSection*> libSectionList;
-
-// sectiontype: 0 for ptx, 1 for elf
-void addCuobjdumpSection(int sectiontype){
-	if (sectiontype)
-		cuobjdumpSectionList.push_front(new cuobjdumpELFSection());
-	else
-		cuobjdumpSectionList.push_front(new cuobjdumpPTXSection());
-	printf("## Adding new section %s\n", sectiontype?"ELF":"PTX");
-}
-
-void setCuobjdumparch(const char* arch){
-	unsigned archnum;
-	sscanf(arch, "sm_%u", &archnum);
-	assert (archnum && "cannot have sm_0");
-	printf("Adding arch: %s\n", arch);
-	cuobjdumpSectionList.front()->setArch(archnum);
-}
-
-void setCuobjdumpidentifier(const char* identifier){
-	printf("Adding identifier: %s\n", identifier);
-	cuobjdumpSectionList.front()->setIdentifier(identifier);
-}
-
-void setCuobjdumpptxfilename(const char* filename){
-	printf("Adding ptx filename: %s\n", filename);
-	cuobjdumpSection* x = cuobjdumpSectionList.front();
-	if (dynamic_cast<cuobjdumpPTXSection*>(x) == NULL){
-		assert (0 && "You shouldn't be trying to add a ptxfilename to an elf section");
-	}
-	(dynamic_cast<cuobjdumpPTXSection*>(x))->setPTXfilename(filename);
-}
-
-void setCuobjdumpelffilename(const char* filename){
-	if (dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()) == NULL){
-		assert (0 && "You shouldn't be trying to add a elffilename to an ptx section");
-	}
-	(dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()))->setELFfilename(filename);
-}
-
-void setCuobjdumpsassfilename(const char* filename){
-	if (dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()) == NULL){
-		assert (0 && "You shouldn't be trying to add a sassfilename to an ptx section");
-	}
-	(dynamic_cast<cuobjdumpELFSection*>(cuobjdumpSectionList.front()))->setSASSfilename(filename);
-}
-typedef void * yyscan_t;
-extern int cuobjdump_lex_init(yyscan_t* scanner);
-extern void cuobjdump_set_in  (FILE * _in_str ,yyscan_t yyscanner );
-extern int cuobjdump_parse(yyscan_t scanner);
-extern int cuobjdump_lex_destroy(yyscan_t scanner);
-
 //! Return the executable file of the process containing the PTX/SASS code 
 //!
 //! This Function returns the executable file ran by the process.  This
@@ -2029,7 +1992,7 @@ char* get_app_binary_name(std::string abs_path){
 }
 
 //extracts all ptx files from binary and dumps into prog_name.unique_no.sm_<>.ptx files
-void extract_ptx_files_using_cuobjdump(){
+void extract_ptx_files_using_cuobjdump(CUctx_st *context){
     extern bool g_cdp_enabled;
     char command[1000];
     char *pytorch_bin = getenv("PYTORCH_BIN");
@@ -2066,11 +2029,11 @@ void extract_ptx_files_using_cuobjdump(){
                 printf("ERROR: command: %s failed \n",command);
                 exit(0);
             }
-            no_of_ptx++;
+            context->no_of_ptx++;
        }
     }
 
-	 if(!no_of_ptx){
+	 if(!context->no_of_ptx){
 	 	printf("WARNING: Number of ptx in the executable file are 0. One of the reasons might be\n");
 	 	printf("\t1. CDP is enabled\n");
 	 	printf("\t2. When using PyTorch, PYTORCH_BIN is not set correctly\n");
@@ -2090,10 +2053,10 @@ void extract_ptx_files_using_cuobjdump(){
          }
          std::string vstr = line.substr(pos1+3,pos2-pos1-3);
          int version = atoi(vstr.c_str());
-         if (version_filename.find(version)==version_filename.end()){
-            version_filename[version] = std::set<std::string>();
+         if (context->version_filename.find(version)==context->version_filename.end()){
+            context->version_filename[version] = std::set<std::string>();
          }
-         version_filename[version].insert(line);
+         context->version_filename[version].insert(line);
     }
 
 }
@@ -2129,7 +2092,7 @@ static int get_app_cuda_version() {
  *	It is also responsible for extracting the libraries linked to the binary if the option is
  *	enabled
  * */
-void extract_code_using_cuobjdump(){
+void extract_code_using_cuobjdump(std::list<cuobjdumpSection*> &cuobjdumpSectionList){
     CUctx_st *context = GPGPUSim_Context();
     unsigned forced_max_capability = context->get_device()->get_gpgpu()->get_config().get_forced_max_capability();
 
@@ -2151,7 +2114,7 @@ void extract_code_using_cuobjdump(){
     //dump ptx for all individial ptx files into sepearte files which is later used by ptxas.
     int result=0;
 #if (CUDART_VERSION >= 6000)
-    extract_ptx_files_using_cuobjdump();
+    extract_ptx_files_using_cuobjdump(context);
     return;
 #endif
     //TODO: redundant to dump twice. how can it be prevented?
@@ -2187,11 +2150,13 @@ void extract_code_using_cuobjdump(){
 	    FILE *cuobjdump_in;
             cuobjdump_in = fopen(fname, "r");
 
-	    yyscan_t scanner;
-	    cuobjdump_lex_init(&scanner);
-	    cuobjdump_set_in(cuobjdump_in, scanner);
-	    cuobjdump_parse(scanner);
-	    cuobjdump_lex_destroy(scanner);
+	    struct cuobjdump_parser parser;
+	    parser.elfserial = 1;
+	    parser.ptxserial = 1;
+	    cuobjdump_lex_init(&(parser.scanner));
+	    cuobjdump_set_in(cuobjdump_in, (parser.scanner));
+	    cuobjdump_parse(parser.scanner, &parser, cuobjdumpSectionList);
+	    cuobjdump_lex_destroy(parser.scanner);
             fclose(cuobjdump_in);
             printf("Done parsing!!!\n");
         } else {
@@ -2241,15 +2206,17 @@ void extract_code_using_cuobjdump(){
                     std::cout << "Trying to parse " << libcodfn.str() << std::endl;
 		    FILE *cuobjdump_in;
                     cuobjdump_in = fopen(libcodfn.str().c_str(), "r");
-		    yyscan_t scanner;
-		    cuobjdump_lex_init(&scanner);
-		    cuobjdump_set_in(cuobjdump_in, scanner);
-		    cuobjdump_parse(scanner);
-		    cuobjdump_lex_destroy(scanner);
+		    struct cuobjdump_parser parser;
+		    parser.elfserial = 1;
+		    parser.ptxserial = 1;
+		    cuobjdump_lex_init(&(parser.scanner));
+		    cuobjdump_set_in(cuobjdump_in, (parser.scanner));
+		    cuobjdump_parse(parser.scanner, &parser, cuobjdumpSectionList);
+		    cuobjdump_lex_destroy(parser.scanner);
                     fclose(cuobjdump_in);
                     std::getline(libsf, line);
             }
-            libSectionList = cuobjdumpSectionList;
+            context->libSectionList = cuobjdumpSectionList;
 
             //Restore the original section list
             cuobjdumpSectionList = tmpsl;
@@ -2438,7 +2405,7 @@ cuobjdumpELFSection* findELFSectionInList(std::list<cuobjdumpSection*> sectionli
 }
 
 //! Find an ELF section in all the known lists
-cuobjdumpELFSection* findELFSection(const std::string identifier){
+cuobjdumpELFSection* findELFSection(const std::string identifier, std::list<cuobjdumpSection*> cuobjdumpSectionList, std::list<cuobjdumpSection*> &libSectionList){
 	cuobjdumpELFSection* sec = findELFSectionInList(cuobjdumpSectionList, identifier);
 	if (sec!=NULL)return sec;
 	sec = findELFSectionInList(libSectionList, identifier);
@@ -2473,7 +2440,7 @@ cuobjdumpPTXSection* findPTXSectionInList(std::list<cuobjdumpSection*> sectionli
 }
 
 //! Find an PTX section in all the known lists
-cuobjdumpPTXSection* findPTXSection(const std::string identifier){
+cuobjdumpPTXSection* findPTXSection(const std::string identifier, std::list<cuobjdumpSection*> cuobjdumpSectionList, std::list<cuobjdumpSection*> &libSectionList){
 	cuobjdumpPTXSection* sec = findPTXSectionInList(cuobjdumpSectionList, identifier);
 	if (sec!=NULL)return sec;
 	sec = findPTXSectionInList(libSectionList, identifier);
@@ -2486,9 +2453,9 @@ cuobjdumpPTXSection* findPTXSection(const std::string identifier){
 
 
 //! Extract the code using cuobjdump and remove unnecessary sections
-void cuobjdumpInit(){
+void cuobjdumpInit(std::list<cuobjdumpSection*> &cuobjdumpSectionList){
 	CUctx_st *context = GPGPUSim_Context();
-	extract_code_using_cuobjdump(); //extract all the output of cuobjdump to _cuobjdump_*.*
+	extract_code_using_cuobjdump(cuobjdumpSectionList); //extract all the output of cuobjdump to _cuobjdump_*.*
 	const char* pre_load = getenv("CUOBJDUMP_SIM_FILE");
 	if (pre_load ==NULL || strlen(pre_load)==0){
 		cuobjdumpSectionList = pruneSectionList(cuobjdumpSectionList, context);
@@ -2496,25 +2463,22 @@ void cuobjdumpInit(){
 	}
 }
 
-std::map<int, std::string> fatbinmap;
-std::map<int, bool>fatbin_registered;
-std::map<std::string, symbol_table*> name_symtab;
 
 //! Keep track of the association between filename and cubin handle
-void cuobjdumpRegisterFatBinary(unsigned int handle, const char* filename){
-	fatbinmap[handle] = filename;
+void cuobjdumpRegisterFatBinary(unsigned int handle, const char* filename, CUctx_st *context){
+	context->fatbinmap[handle] = filename;
 }
 
 //! Either submit PTX for simulation or convert SASS to PTXPlus and submit it
 void cuobjdumpParseBinary(unsigned int handle){
 
-	if(fatbin_registered[handle]) return;
-	fatbin_registered[handle] = true;
 	CUctx_st *context = GPGPUSim_Context();
-	std::string fname = fatbinmap[handle];
+	if(context->fatbin_registered[handle]) return;
+	context->fatbin_registered[handle] = true;
+	std::string fname = context->fatbinmap[handle];
 
-	if (name_symtab.find(fname) != name_symtab.end()) {
-		symbol_table *symtab = name_symtab[fname];
+	if (context->name_symtab.find(fname) != context->name_symtab.end()) {
+		symbol_table *symtab = context->name_symtab[fname];
 		context->add_binary(symtab, handle);
 		return;
 	}
@@ -2523,7 +2487,7 @@ void cuobjdumpParseBinary(unsigned int handle){
 #if (CUDART_VERSION >= 6000)
    //loops through all ptx files from smallest sm version to largest
    std::map<unsigned,std::set<std::string> >::iterator itr_m;
-   for (itr_m = version_filename.begin(); itr_m!=version_filename.end(); itr_m++){
+   for (itr_m = context->version_filename.begin(); itr_m!=context->version_filename.end(); itr_m++){
       std::set<std::string>::iterator itr_s;
       for (itr_s = itr_m->second.begin(); itr_s!=itr_m->second.end(); itr_s++){
           std::string ptx_filename = *itr_s;
@@ -2531,11 +2495,11 @@ void cuobjdumpParseBinary(unsigned int handle){
           symtab = gpgpu_ptx_sim_load_ptx_from_filename( ptx_filename.c_str() );
       }
    }
-   name_symtab[fname] = symtab;
+   context->name_symtab[fname] = symtab;
    context->add_binary(symtab, handle);
    load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
    load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
-   for (itr_m = version_filename.begin(); itr_m!=version_filename.end(); itr_m++){
+   for (itr_m = context->version_filename.begin(); itr_m!=context->version_filename.end(); itr_m++){
       std::set<std::string>::iterator itr_s;
       for (itr_s = itr_m->second.begin(); itr_s!=itr_m->second.end(); itr_s++){
           std::string ptx_filename = *itr_s;
@@ -2547,8 +2511,8 @@ void cuobjdumpParseBinary(unsigned int handle){
 #endif
 
 	unsigned max_capability = 0;
-	for (	std::list<cuobjdumpSection*>::iterator iter = cuobjdumpSectionList.begin();
-			iter != cuobjdumpSectionList.end();
+	for (	std::list<cuobjdumpSection*>::iterator iter = context->cuobjdumpSectionList.begin();
+			iter != context->cuobjdumpSectionList.end();
 			iter++){
 		unsigned capability = (*iter)->getArch();
 		if (capability > max_capability) max_capability = capability;
@@ -2559,7 +2523,7 @@ void cuobjdumpParseBinary(unsigned int handle){
 	cuobjdumpPTXSection* ptx = NULL;
 	const char* pre_load = getenv("CUOBJDUMP_SIM_FILE");
 	if(pre_load==NULL || strlen(pre_load)==0)
-		ptx = findPTXSection(fname);
+		ptx = findPTXSection(fname, context->cuobjdumpSectionList, context->libSectionList);
 	char *ptxcode;
 	const char *override_ptx_name = getenv("PTX_SIM_KERNELFILE"); 
 	if (override_ptx_name == NULL or getenv("PTX_SIM_USE_PTX_FILE") == NULL or strlen(getenv("PTX_SIM_USE_PTX_FILE"))==0) {
@@ -2569,7 +2533,7 @@ void cuobjdumpParseBinary(unsigned int handle){
 		ptxcode = readfile(override_ptx_name);
 	}
 	if(context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() ) {
-		cuobjdumpELFSection* elfsection = findELFSection(ptx->getIdentifier());
+		cuobjdumpELFSection* elfsection = findELFSection(ptx->getIdentifier(), context->cuobjdumpSectionList, context->libSectionList);
 		assert (elfsection!= NULL);
 		char *ptxplus_str = gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(
 				ptx->getPTXfilename(),
@@ -2578,18 +2542,18 @@ void cuobjdumpParseBinary(unsigned int handle){
 		symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxplus_str, handle);
 		printf("Adding %s with cubin handle %u\n", ptx->getPTXfilename().c_str(), handle);
 		context->add_binary(symtab, handle);
-		gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability );
+		gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability, context->no_of_ptx );
 		delete[] ptxplus_str;
 	} else {
 		symtab=gpgpu_ptx_sim_load_ptx_from_string(ptxcode, handle);
 		//if CUOBJDUMP_SIM_FILE is not set, ptx is NULL. So comment below.
 		//printf("Adding %s with cubin handle %u\n", ptx->getPTXfilename().c_str(), handle);
 		context->add_binary(symtab, handle);
-		gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability );
+		gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability, context->no_of_ptx );
 	}
 	load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
 	load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
-	name_symtab[fname] = symtab;
+	context->name_symtab[fname] = symtab;
 
 	//TODO: Remove temporarily files as per configurations
 }
@@ -2657,8 +2621,8 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 		 * then for next calls, only returns the appropriate number
 		 */
 		assert(fat_cubin_handle >= 1);
-		if (fat_cubin_handle==1) cuobjdumpInit();
-		cuobjdumpRegisterFatBinary(fat_cubin_handle, filename);
+		if (fat_cubin_handle==1) cuobjdumpInit(context->cuobjdumpSectionList);
+		cuobjdumpRegisterFatBinary(fat_cubin_handle, filename, context);
 
 		return (void**)fat_cubin_handle;
 	} 
@@ -2710,7 +2674,7 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 			} else {
 				symtab=gpgpu_ptx_sim_load_ptx_from_string(ptx,source_num);
 				context->add_binary(symtab,fat_cubin_handle);
-				gpgpu_ptxinfo_load_from_string( ptx, source_num, max_capability );
+				gpgpu_ptxinfo_load_from_string( ptx, source_num, max_capability, context->no_of_ptx );
 			}
 			source_num++;
 			load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
@@ -2870,10 +2834,6 @@ char __cudaInitModule(
 }
 
 
-#ifndef OPENGL_SUPPORT
-typedef unsigned long GLuint;
-#endif
-
 cudaError_t cudaGLRegisterBufferObject(GLuint bufferObj)
 {
 	if(g_debug_execution >= 3){
@@ -2882,16 +2842,6 @@ cudaError_t cudaGLRegisterBufferObject(GLuint bufferObj)
 	printf("GPGPU-Sim PTX: Execution warning: ignoring call to \"%s\"\n", __my_func__ );
 	return g_last_cudaError = cudaSuccess;
 }
-
-struct glbmap_entry {
-	GLuint m_bufferObj;
-	void *m_devPtr;
-	size_t m_size;
-	struct glbmap_entry *m_next;
-};
-typedef struct glbmap_entry glbmap_entry_t;
-
-glbmap_entry_t* g_glbmap = NULL;
 
 cudaError_t cudaGLMapBufferObject(void** devPtr, GLuint bufferObj) 
 {
@@ -2902,7 +2852,7 @@ cudaError_t cudaGLMapBufferObject(void** devPtr, GLuint bufferObj)
 	GLint buffer_size=0;
 	CUctx_st* ctx = GPGPUSim_Context();
 
-	glbmap_entry_t *p = g_glbmap;
+	glbmap_entry_t *p = ctx->g_glbmap;
 	while ( p && p->m_bufferObj != bufferObj )
 		p = p->m_next;
 	if ( p == NULL ) {
@@ -2913,8 +2863,8 @@ cudaError_t cudaGLMapBufferObject(void** devPtr, GLuint bufferObj)
 
 		// create entry and insert to front of list
 		glbmap_entry_t *n = (glbmap_entry_t *) calloc(1,sizeof(glbmap_entry_t));
-		n->m_next = g_glbmap;
-		g_glbmap = n;
+		n->m_next = ctx->g_glbmap;
+		ctx->g_glbmap = n;
 
 		// initialize entry
 		n->m_bufferObj = bufferObj;
@@ -2955,7 +2905,8 @@ cudaError_t cudaGLUnmapBufferObject(GLuint bufferObj)
 	    announce_call(__my_func__);
     }
 #ifdef OPENGL_SUPPORT
-	glbmap_entry_t *p = g_glbmap;
+	CUctx_st* ctx = GPGPUSim_Context();
+	glbmap_entry_t *p = ctx->g_glbmap;
 	while ( p && p->m_bufferObj != bufferObj )
 		p = p->m_next;
 	if ( p == NULL )
@@ -2995,7 +2946,8 @@ cudaError_t CUDARTAPI cudaHostAlloc(void **pHost,  size_t bytes, unsigned int fl
 	*pHost = malloc(bytes);
 	//need to track the size allocated so that cudaHostGetDevicePointer() can function properly.
 	//TODO: vary this function behavior based on flags value (following nvidia documentation)
-	pinned_memory_size[*pHost]=bytes;
+	CUctx_st* context = GPGPUSim_Context();
+	context->pinned_memory_size[*pHost]=bytes;
 	if( *pHost )
 		return g_last_cudaError = cudaSuccess;
 	else
@@ -3012,16 +2964,16 @@ cudaError_t CUDARTAPI cudaHostGetDevicePointer(void **pDevice, void *pHost, unsi
 	flags=0;
 	CUctx_st* context = GPGPUSim_Context();
 	gpgpu_t *gpu = context->get_device()->get_gpgpu();
-	std::map<void *, size_t>::const_iterator i = pinned_memory_size.find(pHost);
-	assert(i != pinned_memory_size.end());
+	std::map<void *, size_t>::const_iterator i = context->pinned_memory_size.find(pHost);
+	assert(i != context->pinned_memory_size.end());
 	size_t size = i->second;
 	*pDevice = gpu->gpu_malloc(size);
 	if(g_debug_execution >= 3){
 		printf("GPGPU-Sim PTX: cudaMallocing %zu bytes starting at 0x%llx..\n",size, (unsigned long long) *pDevice);
-        g_mallocPtr_Size[(unsigned long long)*pDevice] = size;
+        context->g_mallocPtr_Size[(unsigned long long)*pDevice] = size;
     }
 	if ( *pDevice  ) {
-		pinned_memory[pHost]=pDevice;
+		context->pinned_memory[pHost]=pDevice;
 		//Copy contents in cpu to gpu
 		gpu->memcpy_to_gpu((size_t)*pDevice,pHost,size);
 		return g_last_cudaError = cudaSuccess;
@@ -3256,14 +3208,6 @@ int CUDARTAPI __cudaSynchronizeThreads(void**, void*)
 
 ////////
 
-extern int ptx_parse();
-extern int ptx__scan_string(const char*);
-extern FILE *ptx_in;
-
-extern int ptxinfo_parse();
-extern int ptxinfo_debug;
-extern FILE *ptxinfo_in;
-
 /// static functions
 
 static int load_static_globals( symbol_table *symtab, unsigned min_gaddr, unsigned max_gaddr, gpgpu_t *gpu ) 
@@ -3383,7 +3327,7 @@ kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *hostFun,
 	fflush(stdout);
 	
 	if(g_debug_execution >= 4){
-        entry->ptx_jit_config(g_mallocPtr_Size, result->get_param_memory(), (gpgpu_t *) context->get_device()->get_gpgpu(), gridDim, blockDim);
+        entry->ptx_jit_config(context->g_mallocPtr_Size, result->get_param_memory(), (gpgpu_t *) context->get_device()->get_gpgpu(), gridDim, blockDim);
     }
 
 	return result;
@@ -3868,7 +3812,7 @@ cuLinkAddFile(CUlinkState state, CUjitInputType type, const char *path,
     strcat(file,path);
 	symbol_table *symtab = gpgpu_ptx_sim_load_ptx_from_filename( file );
     std::string fname(path);
-    name_symtab[fname] = symtab;
+    context->name_symtab[fname] = symtab;
     context->add_binary(symtab, 1);
     load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
     load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
