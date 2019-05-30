@@ -30,6 +30,8 @@
 
 #include "instructions.h"
 #include "ptx_ir.h"
+class ptx_recognizer;
+typedef void * yyscan_t;
 #include "ptx.tab.h"
 #include "ptx_sim.h"
 #include <stdio.h>

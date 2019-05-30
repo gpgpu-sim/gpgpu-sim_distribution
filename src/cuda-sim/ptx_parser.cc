@@ -27,13 +27,19 @@
 
 #include "ptx_parser.h"
 #include "ptx_ir.h"
+
+typedef void * yyscan_t;
 #include "ptx.tab.h"
 #include <stdarg.h>
 
-extern int ptx_error( const char *s );
-extern int ptx_lineno;
-extern int ptx_parse();
-extern FILE *ptx_in;
+extern int ptx_get_lineno (yyscan_t yyscanner );
+extern YYSTYPE* ptx_get_lval (yyscan_t yyscanner );
+extern int ptx_error( yyscan_t yyscanner, const char *s );
+extern int ptx_lex_init(yyscan_t* scanner);
+extern void ptx_set_in(FILE * _in_str ,yyscan_t yyscanner );
+extern FILE *ptx_get_in (yyscan_t yyscanner );
+extern int ptx_parse(yyscan_t scanner, ptx_recognizer* recognizer);
+extern int ptx_lex_destroy(yyscan_t scanner);
 
 static const struct core_config *g_shader_core_config;
 void set_ptx_warp_size(const struct core_config * warp_size)
@@ -80,7 +86,7 @@ std::list<int> g_scalar_type;
 
 #define PTX_PARSE_DPRINTF(...) \
    if( g_debug_ir_generation ) { \
-      printf(" %s:%u => ",g_filename,ptx_lineno); \
+      printf(" %s:%u => ",g_filename,ptx_get_lineno(scanner)); \
       printf("   (%s:%u) ", __FILE__, __LINE__); \
       printf(__VA_ARGS__); \
       printf("\n"); \
@@ -109,7 +115,7 @@ void read_parser_environment_variables()
    }
 }
 
-void init_directive_state()
+void ptx_recognizer::init_directive_state()
 {
    PTX_PARSE_DPRINTF("init_directive_state");
    g_space_spec=undefined_space;
@@ -125,7 +131,7 @@ void init_directive_state()
    g_last_symbol = NULL;
 }
 
-void init_instruction_state()
+void ptx_recognizer::init_instruction_state()
 {
    PTX_PARSE_DPRINTF("init_instruction_state");
    g_pred = NULL;
@@ -149,7 +155,6 @@ symbol_table *init_parser( const char *ptx_filename )
    /*else {
        g_global_symbol_table = g_current_symbol_table = new symbol_table("global",0,g_global_allfiles_symbol_table);
    }*/
-   ptx_lineno = 1;
 
 #define DEF(X,Y) g_ptx_token_decode[X] = Y;
 #include "ptx_parser_decode.def"
@@ -169,18 +174,24 @@ symbol_table *init_parser( const char *ptx_filename )
    g_ptx_token_decode[generic_space] = "generic_space";
    g_ptx_token_decode[instruction_space] = "instruction_space";
 
-   init_directive_state();
-   init_instruction_state();
+   ptx_recognizer recognizer;
+   ptx_lex_init(&(recognizer.scanner));
+   recognizer.init_directive_state();
+   recognizer.init_instruction_state();
 
+   FILE *ptx_in;
    ptx_in = fopen(ptx_filename, "r");
-   ptx_parse();
+   ptx_set_in(ptx_in, recognizer.scanner);
+   ptx_parse(recognizer.scanner, &recognizer);
+   ptx_in = ptx_get_in(recognizer.scanner);
+   ptx_lex_destroy(recognizer.scanner);
    fclose(ptx_in);
    return g_global_symbol_table;
 }
 
 static int g_entry_point;
 
-void start_function( int entry_point ) 
+void ptx_recognizer::start_function( int entry_point )
 {
    PTX_PARSE_DPRINTF("start_function");
    init_directive_state();
@@ -194,7 +205,7 @@ char *g_add_identifier_cached__identifier = NULL;
 int g_add_identifier_cached__array_dim;
 int g_add_identifier_cached__array_ident;
 
-void add_function_name( const char *name ) 
+void ptx_recognizer::add_function_name( const char *name )
 {
    PTX_PARSE_DPRINTF("add_function_name %s %s", name,  ((g_entry_point==1)?"(entrypoint)":((g_entry_point==2)?"(extern)":"")));
    bool prior_decl = g_global_symbol_table->add_function_decl( name, g_entry_point, &g_func_info, &g_current_symbol_table );
@@ -210,21 +221,21 @@ void add_function_name( const char *name )
    if( prior_decl ) {
       g_func_info->remove_args();
    }
-   g_global_symbol_table->add_function( g_func_info, g_filename, ptx_lineno );
+   g_global_symbol_table->add_function( g_func_info, g_filename, ptx_get_lineno(scanner) );
 }
 
 //Jin: handle instruction group for cdp
-void start_inst_group() {
+void ptx_recognizer::start_inst_group() {
    PTX_PARSE_DPRINTF("start_instruction_group");
    g_current_symbol_table = g_current_symbol_table->start_inst_group();
 }
 
-void end_inst_group() {
+void ptx_recognizer::end_inst_group() {
    PTX_PARSE_DPRINTF("end_instruction_group");
    g_current_symbol_table = g_current_symbol_table->end_inst_group();
 }
 
-void add_directive() 
+void ptx_recognizer::add_directive()
 {
    PTX_PARSE_DPRINTF("add_directive");
    init_directive_state();
@@ -232,7 +243,7 @@ void add_directive()
 
 #define mymax(a,b) ((a)>(b)?(a):(b))
 
-void end_function() 
+void ptx_recognizer::end_function()
 {
    PTX_PARSE_DPRINTF("end_function");
 
@@ -250,7 +261,7 @@ void end_function()
 #define parse_error(msg, ...) parse_error_impl(__FILE__,__LINE__, msg, ##__VA_ARGS__)
 #define parse_assert(cond,msg, ...) parse_assert_impl((cond),__FILE__,__LINE__, msg, ##__VA_ARGS__)
 
-void parse_error_impl( const char *file, unsigned line, const char *msg, ... )
+void ptx_recognizer::parse_error_impl( const char *file, unsigned line, const char *msg, ... )
 {
    va_list ap;
    char buf[1024];
@@ -259,13 +270,13 @@ void parse_error_impl( const char *file, unsigned line, const char *msg, ... )
    va_end(ap);
 
    g_error_detected = 1;
-   printf("%s:%u: Parse error: %s (%s:%u)\n\n", g_filename, ptx_lineno, buf, file, line);
-   ptx_error(NULL);
+   printf("%s:%u: Parse error: %s (%s:%u)\n\n", g_filename, ptx_get_lineno(scanner), buf, file, line);
+   ptx_error(scanner, NULL);
    abort();
    exit(1);
 }
 
-void parse_assert_impl( int test_value, const char *file, unsigned line, const char *msg, ... )
+void ptx_recognizer::parse_assert_impl( int test_value, const char *file, unsigned line, const char *msg, ... )
 {
    va_list ap;
    char buf[1024];
@@ -277,10 +288,9 @@ void parse_assert_impl( int test_value, const char *file, unsigned line, const c
       parse_error_impl(file,line, msg);
 }
 
-extern char linebuf[4096];
 
 
-void set_return()
+void ptx_recognizer::set_return()
 {
    parse_assert( (g_opcode == CALL_OP || g_opcode == CALLP_OP), "only call can have return value");
    g_operands.front().set_return();
@@ -300,7 +310,7 @@ const ptx_instruction *ptx_instruction_lookup( const char *filename, unsigned li
    return l->second; 
 }
 
-void add_instruction() 
+void ptx_recognizer::add_instruction()
 {
    PTX_PARSE_DPRINTF("add_instruction: %s", ((g_opcode>0)?g_opcode_string[g_opcode]:"<label>") );
    assert( g_shader_core_config != 0 );
@@ -316,15 +326,15 @@ void add_instruction()
                                              g_scalar_type,
                                              g_space_spec,
                                              g_filename,
-                                             ptx_lineno,
+                                             ptx_get_lineno(scanner),
                                              linebuf,
                                              g_shader_core_config );
    g_instructions.push_back(i);
-   g_inst_lookup[g_filename][ptx_lineno] = i;
+   g_inst_lookup[g_filename][ptx_get_lineno(scanner)] = i;
    init_instruction_state();
 }
 
-void add_variables() 
+void ptx_recognizer::add_variables()
 {
    PTX_PARSE_DPRINTF("add_variables");
    if ( !g_operands.empty() ) {
@@ -334,7 +344,7 @@ void add_variables()
    init_directive_state();
 }
 
-void set_variable_type()
+void ptx_recognizer::set_variable_type()
 {
    PTX_PARSE_DPRINTF("set_variable_type space_spec=%s scalar_type_spec=%s", 
            g_ptx_token_decode[g_space_spec.get_type()].c_str(), 
@@ -378,7 +388,7 @@ int pad_address (new_addr_type address, unsigned size, unsigned maxalign) {
     return alignto ? ((alignto - (address % alignto)) % alignto) : 0;
 }
 
-void add_identifier( const char *identifier, int array_dim, unsigned array_ident ) 
+void ptx_recognizer::add_identifier( const char *identifier, int array_dim, unsigned array_ident )
 {
    if(array_ident==ARRAY_IDENTIFIER){
        g_size *= array_dim;
@@ -426,7 +436,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
    default:
       break;
    }
-   g_last_symbol = g_current_symbol_table->add_variable(identifier,type,num_bits/8,g_filename,ptx_lineno);
+   g_last_symbol = g_current_symbol_table->add_variable(identifier,type,num_bits/8,g_filename,ptx_get_lineno(scanner));
    switch ( ti.get_memory_space().get_type() ) {
    case reg_space: {
       regnum = g_current_symbol_table->next_reg_num();
@@ -569,7 +579,7 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
    }
 }
 
-void add_constptr(const char* identifier1, const char* identifier2, int offset)
+void ptx_recognizer::add_constptr(const char* identifier1, const char* identifier2, int offset)
 {
    symbol *s1 = g_current_symbol_table->lookup(identifier1);
    const symbol *s2 = g_current_symbol_table->lookup(identifier2);
@@ -584,7 +594,7 @@ void add_constptr(const char* identifier1, const char* identifier2, int offset)
    s1->set_address( addr + offset );
 }
 
-void add_function_arg()
+void ptx_recognizer::add_function_arg()
 {
    assert(g_size>0);
    if( g_func_info ) {
@@ -597,20 +607,20 @@ void add_function_arg()
 
 }
 
-void add_extern_spec() 
+void ptx_recognizer::add_extern_spec()
 {
    PTX_PARSE_DPRINTF("add_extern_spec");
    g_extern_spec = 1;
 }
 
-void add_alignment_spec( int spec )
+void ptx_recognizer::add_alignment_spec( int spec )
 {
    PTX_PARSE_DPRINTF("add_alignment_spec");
    parse_assert( g_alignment_spec == -1, "multiple .align specifiers per variable declaration not allowed." );
    g_alignment_spec = spec;
 }
 
-void add_ptr_spec( enum _memory_space_t spec ) 
+void ptx_recognizer::add_ptr_spec( enum _memory_space_t spec )
 {
    PTX_PARSE_DPRINTF("add_ptr_spec \"%s\"", g_ptx_token_decode[spec].c_str() );
    parse_assert( g_ptr_spec == undefined_space, "multiple ptr space specifiers not allowed." );
@@ -618,7 +628,7 @@ void add_ptr_spec( enum _memory_space_t spec )
    g_ptr_spec = spec; 
 }
 
-void add_space_spec( enum _memory_space_t spec, int value ) 
+void ptx_recognizer::add_space_spec( enum _memory_space_t spec, int value )
 {
    PTX_PARSE_DPRINTF("add_space_spec \"%s\"", g_ptx_token_decode[spec].c_str() );
    parse_assert( g_space_spec == undefined_space, "multiple space specifiers not allowed." );
@@ -637,14 +647,14 @@ void add_space_spec( enum _memory_space_t spec, int value )
    }
 }
 
-void add_vector_spec(int spec ) 
+void ptx_recognizer::add_vector_spec(int spec )
 {
    PTX_PARSE_DPRINTF("add_vector_spec");
    parse_assert( g_vector_spec == -1, "multiple vector specifiers not allowed." );
    g_vector_spec = spec;
 }
 
-void add_scalar_type_spec( int type_spec ) 
+void ptx_recognizer::add_scalar_type_spec( int type_spec )
 {
    //save size of parameter
    switch ( type_spec ) {
@@ -682,23 +692,23 @@ void add_scalar_type_spec( int type_spec )
    g_scalar_type_spec = type_spec;
 }
 
-void add_label( const char *identifier ) 
+void ptx_recognizer::add_label( const char *identifier )
 {
    PTX_PARSE_DPRINTF("add_label");
    symbol *s = g_current_symbol_table->lookup(identifier);
    if ( s != NULL ) {
       g_label = s;
    } else {
-      g_label = g_current_symbol_table->add_variable(identifier,NULL,0,g_filename,ptx_lineno);
+      g_label = g_current_symbol_table->add_variable(identifier,NULL,0,g_filename,ptx_get_lineno(scanner));
    }
 }
 
-void add_opcode( int opcode ) 
+void ptx_recognizer::add_opcode( int opcode )
 {
    g_opcode = opcode;
 }
 
-void add_pred( const char *identifier, int neg, int predModifier ) 
+void ptx_recognizer::add_pred( const char *identifier, int neg, int predModifier )
 {
    PTX_PARSE_DPRINTF("add_pred");
    const symbol *s = g_current_symbol_table->lookup(identifier);
@@ -711,17 +721,17 @@ void add_pred( const char *identifier, int neg, int predModifier )
    g_pred_mod = predModifier;
 }
 
-void add_option( int option ) 
+void ptx_recognizer::add_option( int option )
 {
    PTX_PARSE_DPRINTF("add_option");
    g_options.push_back( option );
 }
-void add_wmma_option( int option ) 
+void ptx_recognizer::add_wmma_option( int option )
 {
    PTX_PARSE_DPRINTF("add_option");
    g_wmma_options.push_back( option );
 }
-void add_double_operand( const char *d1, const char *d2 )
+void ptx_recognizer::add_double_operand( const char *d1, const char *d2 )
 {
    //operands that access two variables.
    //eg. s[$ofs1+$r0], g[$ofs1+=$r0]
@@ -734,7 +744,7 @@ void add_double_operand( const char *d1, const char *d2 )
    g_operands.push_back( operand_info(s1,s2) );
 }
 
-void add_1vector_operand( const char *d1 ) 
+void ptx_recognizer::add_1vector_operand( const char *d1 )
 {
    // handles the single element vector operand ({%v1}) found in tex.1d instructions
    PTX_PARSE_DPRINTF("add_1vector_operand");
@@ -743,7 +753,7 @@ void add_1vector_operand( const char *d1 )
    g_operands.push_back( operand_info(s1,NULL,NULL,NULL) );
 }
 
-void add_2vector_operand( const char *d1, const char *d2 ) 
+void ptx_recognizer::add_2vector_operand( const char *d1, const char *d2 )
 {
    PTX_PARSE_DPRINTF("add_2vector_operand");
    const symbol *s1 = g_current_symbol_table->lookup(d1);
@@ -752,7 +762,7 @@ void add_2vector_operand( const char *d1, const char *d2 )
    g_operands.push_back( operand_info(s1,s2,NULL,NULL) );
 }
 
-void add_3vector_operand( const char *d1, const char *d2, const char *d3 ) 
+void ptx_recognizer::add_3vector_operand( const char *d1, const char *d2, const char *d3 )
 {
    PTX_PARSE_DPRINTF("add_3vector_operand");
    const symbol *s1 = g_current_symbol_table->lookup(d1);
@@ -762,7 +772,7 @@ void add_3vector_operand( const char *d1, const char *d2, const char *d3 )
    g_operands.push_back( operand_info(s1,s2,s3,NULL) );
 }
 
-void add_4vector_operand( const char *d1, const char *d2, const char *d3, const char *d4 ) 
+void ptx_recognizer::add_4vector_operand( const char *d1, const char *d2, const char *d3, const char *d4 )
 {
    PTX_PARSE_DPRINTF("add_4vector_operand");
    const symbol *s1 = g_current_symbol_table->lookup(d1);
@@ -776,7 +786,7 @@ void add_4vector_operand( const char *d1, const char *d2, const char *d3, const 
    if ( s4 == null_op ) s4 = NULL;
    g_operands.push_back( operand_info(s1,s2,s3,s4) );
 }
-void add_8vector_operand( const char *d1, const char *d2, const char *d3, const char *d4,const char *d5,const char *d6,const char *d7,const char *d8 ) 
+void ptx_recognizer::add_8vector_operand( const char *d1, const char *d2, const char *d3, const char *d4,const char *d5,const char *d6,const char *d7,const char *d8 )
 {
    PTX_PARSE_DPRINTF("add_8vector_operand");
    const symbol *s1 = g_current_symbol_table->lookup(d1);
@@ -799,13 +809,13 @@ void add_8vector_operand( const char *d1, const char *d2, const char *d3, const 
    g_operands.push_back( operand_info(s1,s2,s3,s4,s5,s6,s7,s8) );
 }
 
-void add_builtin_operand( int builtin, int dim_modifier ) 
+void ptx_recognizer::add_builtin_operand( int builtin, int dim_modifier )
 {
    PTX_PARSE_DPRINTF("add_builtin_operand");
    g_operands.push_back( operand_info(builtin,dim_modifier) );
 }
 
-void add_memory_operand() 
+void ptx_recognizer::add_memory_operand()
 {
    PTX_PARSE_DPRINTF("add_memory_operand");
    assert( !g_operands.empty() );
@@ -813,7 +823,7 @@ void add_memory_operand()
 }
 
 /*TODO: add other memory locations*/
-void change_memory_addr_space(const char *identifier) 
+void ptx_recognizer::change_memory_addr_space(const char *identifier)
 {
    /*0 = N/A, not reading from memory
     *1 = global memory
@@ -860,7 +870,7 @@ void change_memory_addr_space(const char *identifier)
    parse_assert(recognizedType, "Error: unrecognized memory type.");
 }
 
-void change_operand_lohi( int lohi )
+void ptx_recognizer::change_operand_lohi( int lohi )
 {
    /*0 = N/A, read entire operand
     *1 = lo, reading from lowest bits
@@ -874,14 +884,14 @@ void change_operand_lohi( int lohi )
 
 }
 
-void set_immediate_operand_type ()
+void ptx_recognizer::set_immediate_operand_type ()
 {
      PTX_PARSE_DPRINTF("set_immediate_operand_type");
      assert( !g_operands.empty() );
      g_operands.back().set_immediate_addr();
 }
 
-void change_double_operand_type( int operand_type )
+void ptx_recognizer::change_double_operand_type( int operand_type )
 {
    /*
     *-3 = reg / reg (set instruction, but both get same value)
@@ -913,7 +923,7 @@ void change_double_operand_type( int operand_type )
 
 }
 
-void change_operand_neg( )
+void ptx_recognizer::change_operand_neg( )
 {
    PTX_PARSE_DPRINTF("change_operand_neg");
    assert( !g_operands.empty() );
@@ -922,32 +932,32 @@ void change_operand_neg( )
 
 }
 
-void add_literal_int( int value ) 
+void ptx_recognizer::add_literal_int( int value )
 {
    PTX_PARSE_DPRINTF("add_literal_int");
    g_operands.push_back( operand_info(value) );
 }
 
-void add_literal_float( float value ) 
+void ptx_recognizer::add_literal_float( float value )
 {
    PTX_PARSE_DPRINTF("add_literal_float");
    g_operands.push_back( operand_info(value) );
 }
 
-void add_literal_double( double value ) 
+void ptx_recognizer::add_literal_double( double value )
 {
    PTX_PARSE_DPRINTF("add_literal_double");
    g_operands.push_back( operand_info(value) );
 }
 
-void add_scalar_operand( const char *identifier ) 
+void ptx_recognizer::add_scalar_operand( const char *identifier )
 {
    PTX_PARSE_DPRINTF("add_scalar_operand");
    const symbol *s = g_current_symbol_table->lookup(identifier);
    if ( s == NULL ) {
       if ( g_opcode == BRA_OP || g_opcode == CALLP_OP) {
          // forward branch target...
-         s = g_current_symbol_table->add_variable(identifier,NULL,0,g_filename,ptx_lineno);
+         s = g_current_symbol_table->add_variable(identifier,NULL,0,g_filename,ptx_get_lineno(scanner));
       } else {
          std::string msg = std::string("operand \"") + identifier + "\" has no declaration.";
          parse_error( msg.c_str() );
@@ -956,19 +966,19 @@ void add_scalar_operand( const char *identifier )
    g_operands.push_back( operand_info(s) );
 }
 
-void add_neg_pred_operand( const char *identifier ) 
+void ptx_recognizer::add_neg_pred_operand( const char *identifier )
 {
    PTX_PARSE_DPRINTF("add_neg_pred_operand");
    const symbol *s = g_current_symbol_table->lookup(identifier);
    if ( s == NULL ) {
-       s = g_current_symbol_table->add_variable(identifier,NULL,1,g_filename,ptx_lineno);
+       s = g_current_symbol_table->add_variable(identifier,NULL,1,g_filename,ptx_get_lineno(scanner));
    }
    operand_info op(s);
    op.set_neg_pred();
    g_operands.push_back( op );
 }
 
-void add_address_operand( const char *identifier, int offset ) 
+void ptx_recognizer::add_address_operand( const char *identifier, int offset )
 {
    PTX_PARSE_DPRINTF("add_address_operand");
    const symbol *s = g_current_symbol_table->lookup(identifier);
@@ -979,23 +989,23 @@ void add_address_operand( const char *identifier, int offset )
    g_operands.push_back( operand_info(s,offset) );
 }
 
-void add_address_operand2( int offset )
+void ptx_recognizer::add_address_operand2( int offset )
 {
    PTX_PARSE_DPRINTF("add_address_operand");
    g_operands.push_back( operand_info((unsigned)offset) );
 }
 
-void add_array_initializer()
+void ptx_recognizer::add_array_initializer()
 {
    g_last_symbol->add_initializer(g_operands);
 }
 
-void add_version_info( float ver, unsigned ext )
+void ptx_recognizer::add_version_info( float ver, unsigned ext )
 {
    g_global_symbol_table->set_ptx_version(ver,ext);
 }
 
-void add_file( unsigned num, const char *filename )
+void ptx_recognizer::add_file( unsigned num, const char *filename )
 {
    if( g_filename == NULL ) {
       char *b = strdup(filename);
@@ -1022,44 +1032,44 @@ void add_file( unsigned num, const char *filename )
    g_current_symbol_table = g_global_symbol_table;
 }
 
-void *reset_symtab()
+void * ptx_recognizer::reset_symtab()
 {
    void *result = g_current_symbol_table;
    g_current_symbol_table = g_global_symbol_table;
    return result;
 }
 
-void set_symtab(void*symtab)
+void ptx_recognizer::set_symtab(void*symtab)
 {
    g_current_symbol_table = (symbol_table*)symtab;
 }
 
-void add_pragma( const char *str )
+void ptx_recognizer::add_pragma( const char *str )
 {
    printf("GPGPU-Sim PTX: Warning -- ignoring pragma '%s'\n", str );
 }
 
-void version_header(double a) {}  //intentional dummy function
+void ptx_recognizer::version_header(double a) {}  //intentional dummy function
 
-void target_header(char* a) 
+void ptx_recognizer::target_header(char* a)
 {
    g_global_symbol_table->set_sm_target(a,NULL,NULL);
 }
 
-void target_header2(char* a, char* b) 
+void ptx_recognizer::target_header2(char* a, char* b)
 {
    g_global_symbol_table->set_sm_target(a,b,NULL);
 }
 
-void target_header3(char* a, char* b, char* c) 
+void ptx_recognizer::target_header3(char* a, char* b, char* c)
 {
    g_global_symbol_table->set_sm_target(a,b,c);
 }
 
-void maxnt_id(int x, int y, int z) {
+void ptx_recognizer::maxnt_id(int x, int y, int z) {
   g_func_info->set_maxnt_id(x * y * z);
 }
 
-void func_header(const char* a) {} //intentional dummy function
-void func_header_info(const char* a) {} //intentional dummy function
-void func_header_info_int(const char* a, int b) {} //intentional dummy function
+void ptx_recognizer::func_header(const char* a) {} //intentional dummy function
+void ptx_recognizer::func_header_info(const char* a) {} //intentional dummy function
+void ptx_recognizer::func_header_info_int(const char* a, int b) {} //intentional dummy function

@@ -111,10 +111,10 @@ $(OUTPUT_DIR)/%.o: %.cc
 	$(CPP) $(CXXFLAGS) -I./ -I$(OUTPUT_DIR) -I$(CUDA_INSTALL_PATH)/include  -c $< -o $@
 
 $(OUTPUT_DIR)/%.o: %.c
-	$(CC) $(CCFLAGS) -I./ -I$(OUTPUT_DIR) -I$(CUDA_INSTALL_PATH)/include  -c $< -o $@
+	$(CPP) $(CCFLAGS) -I./ -I$(OUTPUT_DIR) -I$(CUDA_INSTALL_PATH)/include  -c $< -o $@
 
 $(OUTPUT_DIR)/%.o: $(OUTPUT_DIR)/%.c
-	$(CC) $(CCFLAGS) -I./ -I$(OUTPUT_DIR) -I$(CUDA_INSTALL_PATH)/include  -c $< -o $@
+	$(CPP) $(CCFLAGS) -I./ -I$(OUTPUT_DIR) -I$(CUDA_INSTALL_PATH)/include  -c $< -o $@
 
 $(OUTPUT_DIR)/cuobjdump_parser.c: cuobjdump.y
 	$(YACC) $(YFLAGS) -p cuobjdump_  -o$@ $< --file-prefix=$(OUTPUT_DIR)/cuobjdump

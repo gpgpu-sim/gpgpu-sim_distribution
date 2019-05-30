@@ -681,15 +681,15 @@ public:
         // tag + index is required to check for hit/miss. Tag is now identical to the block address.
 
         //return addr >> (m_line_sz_log2+m_nset_log2);
-        return addr & ~(m_line_sz-1);
+        return addr & ~(new_addr_type)(m_line_sz-1);
     }
     new_addr_type block_addr( new_addr_type addr ) const
     {
-        return addr & ~(m_line_sz-1);
+        return addr & ~(new_addr_type)(m_line_sz-1);
     }
     new_addr_type mshr_addr( new_addr_type addr ) const
 	{
-    	return addr & ~(m_atom_sz-1);
+    	return addr & ~(new_addr_type)(m_atom_sz-1);
 	}
     enum mshr_config_t get_mshr_type() const
 	{
