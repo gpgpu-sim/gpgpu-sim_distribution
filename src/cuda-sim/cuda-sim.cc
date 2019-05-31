@@ -2237,7 +2237,7 @@ void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
    //g_simulation_starttime is initilized by gpgpu_ptx_sim_init_perf() in gpgpusim_entrypoint.cc upon starting gpgpu-sim
    time_t end_time, elapsed_time, days, hrs, minutes, sec;
    end_time = time((time_t *)NULL);
-   elapsed_time = MAX(end_time - g_simulation_starttime, 1);
+   elapsed_time = MAX(end_time - GPGPUsim_ctx_ptr()->g_simulation_starttime, 1);
 	
 
    //calculating and printing simulation time in terms of days, hours, minutes and seconds
