@@ -421,7 +421,8 @@ struct _cuda_device_id *GPGPUSim_Init()
 		prop->maxThreadsPerMultiProcessor = the_gpu->threads_per_core();
 #endif
 		the_gpu->set_prop(prop);
-		the_device = new _cuda_device_id(the_gpu);
+		GPGPUsim_ctx_ptr()->the_cude_device = new _cuda_device_id(the_gpu);
+		the_device = GPGPUsim_ctx_ptr()->the_cude_device;
 	}
 	start_sim_thread(1);
 	return the_device;
@@ -433,7 +434,8 @@ static CUctx_st* GPGPUSim_Context()
 	CUctx_st *the_context = GPGPUsim_ctx_ptr()->the_context;
 	if( the_context == NULL ) {
 		_cuda_device_id *the_gpu = GPGPUSim_Init();
-		the_context = new CUctx_st(the_gpu);
+		GPGPUsim_ctx_ptr()->the_context = new CUctx_st(the_gpu);
+		the_context = GPGPUsim_ctx_ptr()->the_context;
 	}
 	return the_context;
 }
