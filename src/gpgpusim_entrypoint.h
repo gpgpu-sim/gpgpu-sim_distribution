@@ -33,7 +33,7 @@
 #include <semaphore.h>
 #include <time.h>
 
-extern time_t g_simulation_starttime;
+//extern time_t g_simulation_starttime;
 
 
 struct GPGPUsim_ctx {
