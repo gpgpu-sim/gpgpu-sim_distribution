@@ -90,6 +90,7 @@ pipeline {
                     ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft,sdk-4.2 -C TITANV > stats-per-kernel-9.1.csv'
                     sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-app-4.2.csv,./stats-per-app-4.2.csv -R > per-app-merge-4.2.csv'
                     sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-app-9.1.csv,./stats-per-app-9.1.csv -R > per-app-merge-9.1.csv'
+                    sh 'ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p ~/website/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas'
                     sh 'PLOTDIR="jenkins/${JOB_NAME}" &&\
                         ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c per-app-merge-4.2.csv -p tgrogers@dynamo.ecn.purdue.edu:~/website/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas -w https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER} -n $PLOTDIR/${BUILD_NUMBER}/deltas &&\
                         ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c per-app-merge-9.1.csv -p tgrogers@dynamo.ecn.purdue.edu:~/website/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas -w https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas -n $PLOTDIR/${BUILD_NUMBER}/deltas &&\
