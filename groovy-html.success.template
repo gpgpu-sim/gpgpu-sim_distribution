@@ -60,6 +60,8 @@
     def JOB_NAME= build.getEnvVars()["JOB_NAME"];
     def BUILD_NUMBER= build.getEnvVars()["BUILD_NUMBER"];
     def BUILD_URL= build.getEnvVars()["BUILD_URL"];
+    def CORREL_42 = build.getEnvVars()["CORREL_42"];
+    def CORREL_91 = build.getEnvVars()["CORREL_91"];
 %>
 
   <!-- BUILD RESULT -->
@@ -70,14 +72,14 @@
         
         Correlation:
             4.2:
-                $CORREL_4.2
+                ${CORREL_42}
                 
                 https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.html
                 https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.appincluded.txt
 
             9.1:
 
-                $CORREL_9.1
+                ${CORREL_91}
 
                 https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.html.TITANV.html
                 https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.html.TITANV.appincluded.txt
