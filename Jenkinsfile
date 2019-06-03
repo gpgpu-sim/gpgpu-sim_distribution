@@ -91,9 +91,10 @@ pipeline {
                     sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-app-4.2.csv,./stats-per-app-4.2.csv -R > per-app-merge-4.2.csv'
                     sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-app-9.1.csv,./stats-per-app-9.1.csv -R > per-app-merge-9.1.csv'
                     sh 'PLOTDIR="jenkins/${JOB_NAME}" &&\
-                        ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p /home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas && \
-                        ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c per-app-merge-4.2.csv -p tgrogers@dynamo.ecn.purdue.edu:~/website/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas -w https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER} -n $PLOTDIR/${BUILD_NUMBER}/deltas &&\
-                        ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c per-app-merge-9.1.csv -p tgrogers@dynamo.ecn.purdue.edu:~/website/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas -w https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas -n $PLOTDIR/${BUILD_NUMBER}/deltas &&\
+                        ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p /home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas/4.2 && \
+                        ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p /home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas/9.1 && \
+                        ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c per-app-merge-4.2.csv -p tgrogers@dynamo.ecn.purdue.edu:~/website/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas/4.2 -w https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas/4.2 -n $PLOTDIR/${BUILD_NUMBER}/deltas/4.2 &&\
+                        ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c per-app-merge-9.1.csv -p tgrogers@dynamo.ecn.purdue.edu:~/website/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas/9.1 -w https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas/9.1 -n $PLOTDIR/${BUILD_NUMBER}/deltas/9.1 &&\
                         ./gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-kernel-4.2-ptx.csv,./stats-per-kernel-4.2-ptx.csv -R > per-kernel-merge-4.2-ptx.csv &&\
                         ./gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-kernel-4.2-ptxplus.csv,./stats-per-kernel-4.2-ptxplus.csv -R > per-kernel-merge-4.2-ptxplus.csv &&\
                         ./gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-kernel-9.1.csv,./stats-per-kernel-9.1.csv -R > per-kernel-merge-9.1.csv &&\
@@ -109,7 +110,7 @@ pipeline {
     }
     post {
         success {
-            emailext body: "See ${BUILD_URL}",
+            emailext body:'''${SCRIPT, template="groovy-html.success.template"}''',
                 recipientProviders: [[$class: 'CulpritsRecipientProvider'],
                     [$class: 'RequesterRecipientProvider']],
                 subject: "[AALP Jenkins] Build #${BUILD_NUMBER} - Success!",
