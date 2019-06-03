@@ -1,0 +1,108 @@
+<STYLE>
+  BODY, TABLE, TD, TH, P {
+    font-family: Calibri, Verdana, Helvetica, sans serif;
+    font-size: 12px;
+    color: black;
+  }
+  .console {
+    font-family: Courier New;
+  }
+  .filesChanged {
+    width: 10%;
+    padding-left: 10px;
+  }
+  .section {
+    width: 100%;
+    border: thin black dotted;
+  }
+  .td-title-main {
+    color: white;
+    font-size: 200%;
+    padding-left: 5px;
+    font-weight: bold;
+  }
+  .td-title {
+    color: white;
+    font-size: 120%;
+    font-weight: bold;
+    padding-left: 5px;
+    text-transform: uppercase;
+  }
+  .td-title-tests {
+    font-weight: bold;
+    font-size: 120%;
+  }
+  .td-header-maven-module {
+    font-weight: bold;
+    font-size: 120%;    
+  }
+  .td-maven-artifact {
+    padding-left: 5px;
+  }
+  .tr-title {
+    background-color: <%= (build.result == null || build.result.toString() == 'SUCCESS') ? '#27AE60' : build.result.toString() == 'FAILURE' ? '#E74C3C' : '#f4e242' %>;
+  }
+  .test {
+    padding-left: 20px;
+  }
+  .test-fixed {
+    color: #27AE60;
+  }
+  .test-failed {
+    color: #E74C3C;
+  }
+</STYLE>
+<BODY>
+  <!-- BUILD RESULT -->
+  <table class="section">
+    <tr class="tr-title">
+      <td class="td-title-main" colspan=2>
+        BUILD ${build.result ?: 'COMPLETED'}
+      </td>
+    </tr>
+    <tr>
+      <td>URL:</td>
+      <td><A href="${rooturl}${build.url}">${rooturl}${build.url}</A></td>
+    </tr>
+    <tr>
+      <td>Project:</td>
+      <td>${project.name}</td>
+    </tr>
+    <tr>
+      <td>Date:</td>
+      <td>${it.timestampString}</td>
+    </tr>
+    <tr>
+      <td>Duration:</td>
+      <td>${build.durationString}</td>
+    </tr>
+    <tr>
+      <td>Cause:</td>
+      <td><% build.causes.each() { cause -> %> ${cause.shortDescription} <%  } %></td>
+    </tr>
+  </table>
+  <br/>
+  <!--
+            Changes since last commit:
+
+            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas/9.1
+            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas/4.2
+
+            Correlation:
+                4.2:
+
+                    $CORREL_4.2
+
+                    https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.html
+                    https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.appincluded.txt
+
+                9.1:
+
+                    $CORREL_9.1
+
+                    https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/titanv-cycles.html.TITANV.html
+                    https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/titanv-cycles.html.TITANV.appincluded.txt
+
+            See ${BUILD_URL} for full build detials.
+  -->
+</BODY>
