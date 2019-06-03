@@ -53,6 +53,15 @@
   }
 </STYLE>
 <BODY>
+
+<%
+    import hudson.model.*
+
+    def JOB_NAME= build.getEnvVars()["JOB_NAME"];
+    def BUILD_NUMBER= build.getEnvVars()["BUILD_NUMBER"];
+    def BUILD_URL= build.getEnvVars()["BUILD_URL"];
+%>
+
   <!-- BUILD RESULT -->
   <p>
     Changes since last commit:
