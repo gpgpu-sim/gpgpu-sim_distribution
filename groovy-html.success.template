@@ -63,25 +63,19 @@
     def CORREL_42 = build.getEnvVars()["CORREL_42"];
     def CORREL_91 = build.getEnvVars()["CORREL_91"];
 %>
-
-  <!-- BUILD RESULT -->
-    Changes since last commit:<br>
-        https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/deltas/9.1<br>
-        https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/deltas/4.2<br>
-        <br>
-        Correlation:<br>
-            4.2:<br>
-                ${CORREL_42}<br>
-                <br>
-                https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.html<br>
-                https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.appincluded.txt<br>
-        <br>
-            9.1:<br>
-            <br>
-                ${CORREL_91}<br>
-        <br>
-                https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.html.TITANV.html<br>
-                https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.html.TITANV.appincluded.txt<br>
+Statistics changes since last commit:<br>
+<pre>    https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/deltas/9.1
+<pre>    https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/deltas/4.2
+<br>
+<pre>        Correlation:
+<pre>            4.2:
+<pre>                ${CORREL_42}<br>
+<pre>            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.html
+<pre>            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.appincluded.txt<br>
+<pre>            9.1:
+<pre>                ${CORREL_91}<br>
+<pre>            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.html.TITANV.html
+<pre>            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.html.TITANV.appincluded.txt
 <br><br>
-    See ${BUILD_URL} for full build detials.
+See ${BUILD_URL} for full build detials.
 </BODY>
