@@ -56,22 +56,22 @@
   <!-- BUILD RESULT -->
   <p>
     Changes since last commit:
-        https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas/9.1
-        https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas/4.2
+        https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/deltas/9.1
+        https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/deltas/4.2
         
         Correlation:
             4.2:
                 $CORREL_4.2
                 
-                https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.html
-                https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.appincluded.txt
+                https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.html
+                https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.appincluded.txt
 
             9.1:
 
                 $CORREL_9.1
 
-                https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/titanv-cycles.html.TITANV.html
-                https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/titanv-cycles.html.TITANV.appincluded.txt
+                https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.html.TITANV.html
+                https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.html.TITANV.appincluded.txt
 
     See ${BUILD_URL} for full build detials.
     </p>
