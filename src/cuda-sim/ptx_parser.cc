@@ -67,7 +67,6 @@ memory_space_t g_ptr_spec = undefined_space;
 int g_scalar_type_spec = -1;
 int g_vector_spec = -1;
 int g_alignment_spec = -1;
-int g_size = -1;
 int g_extern_spec = 0;
 
 // variable declaration stuff:
@@ -200,10 +199,6 @@ void ptx_recognizer::start_function( int entry_point )
    g_func_info = NULL;
    g_entry_func_param_index=0;
 }
-
-char *g_add_identifier_cached__identifier = NULL;
-int g_add_identifier_cached__array_dim;
-int g_add_identifier_cached__array_ident;
 
 void ptx_recognizer::add_function_name( const char *name )
 {
