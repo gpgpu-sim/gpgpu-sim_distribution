@@ -1,7 +1,7 @@
 <STYLE>
   BODY, TABLE, TD, TH, P {
-    font-family: Calibri, Verdana, Helvetica, sans serif;
-    font-size: 14px;
+    font-family: Courier New, Verdana, Helvetica, sans serif;
+    font-size: 10px;
     color: black;
   }
   .console {
@@ -60,22 +60,16 @@
     def JOB_NAME= build.getEnvVars()["JOB_NAME"];
     def BUILD_NUMBER= build.getEnvVars()["BUILD_NUMBER"];
     def BUILD_URL= build.getEnvVars()["BUILD_URL"];
-
-    def CORREL_42 = readFile("correl.4.2.txt")
-    def CORREL_91 = readFile("correl.9.1.txt")
 %>
 
 Statistics changes since last commit:<br>
 <pre>    https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/deltas/9.1
 <pre>    https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/deltas/4.2
-<br>
 <pre>        Correlation:
 <pre>            4.2:
-<pre>                ${CORREL_42}<br>
 <pre>            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.html
-<pre>            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.appincluded.txt<br>
+<pre>            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.appincluded.txt
 <pre>            9.1:
-<pre>                ${CORREL_91}<br>
 <pre>            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.html.TITANV.html
 <pre>            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.html.TITANV.appincluded.txt
 <br><br>

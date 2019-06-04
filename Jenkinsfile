@@ -114,6 +114,7 @@ pipeline {
                 recipientProviders: [[$class: 'CulpritsRecipientProvider'],
                     [$class: 'RequesterRecipientProvider']],
                 subject: "[AALP Jenkins] Build #${BUILD_NUMBER} - Success!",
+                attachmentsPattern: 'correl.*.txt',
                 to: 'tgrogers@purdue.edu'
         }
         failure {
