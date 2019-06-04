@@ -68,7 +68,7 @@ pipeline {
                     PLOTDIR="jenkins/${JOB_NAME}" &&\
                     ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft -C GTX480,GTX480-PTXPLUS > stats-per-kernel-4.2.csv &&\
                     ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh stats-per-kernel-4.2.csv $PLOTDIR ${BUILD_NUMBER} | grep "Correl=" | tee correl.4.2.txt &&\
-                    export CORREL_42=`sed "s/$/<br>/" correl.4.2.txt`"'
+                    export CORREL_42=`sed "s/$/<br>/" correl.4.2.txt`'
             }
         }
         stage('9.1-correlate'){
@@ -78,7 +78,7 @@ pipeline {
                     PLOTDIR="jenkins/${JOB_NAME}" &&\
                     ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft,sdk-4.2 -C TITANV > stats-per-kernel-9.1.csv &&\
                     ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh stats-per-kernel-9.1.csv $PLOTDIR ${BUILD_NUMBER} | grep "Correl=" | tee correl.9.1.txt &&\
-                    export CORREL_91=`sed "s/$/<br>/" correl.9.1.txt`"'
+                    export CORREL_91=`sed "s/$/<br>/" correl.9.1.txt`'
             }
         }
         stage('archive-and-delta') {
