@@ -67,7 +67,8 @@ pipeline {
                     source `pwd`/setup_environment &&\
                     PLOTDIR="jenkins/${JOB_NAME}" &&\
                     ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft -C GTX480,GTX480-PTXPLUS > stats-per-kernel-4.2.csv &&\
-                    ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh stats-per-kernel-4.2.csv $PLOTDIR ${BUILD_NUMBER}'
+                    ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh stats-per-kernel-4.2.csv $PLOTDIR ${BUILD_NUMBER} | grep "Correl=" | tee correl.4.2.txt &&\
+                    export CORREL_42=`sed "s/$/<br>/" correl.4.2.txt`'
             }
         }
         stage('9.1-correlate'){
@@ -76,7 +77,8 @@ pipeline {
                     source `pwd`/setup_environment &&\
                     PLOTDIR="jenkins/${JOB_NAME}" &&\
                     ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft,sdk-4.2 -C TITANV > stats-per-kernel-9.1.csv &&\
-                    ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh stats-per-kernel-9.1.csv $PLOTDIR ${BUILD_NUMBER}'
+                    ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh stats-per-kernel-9.1.csv $PLOTDIR ${BUILD_NUMBER} | grep "Correl=" | tee correl.9.1.txt &&\
+                    export CORREL_91=`sed "s/$/<br>/" correl.9.1.txt`'
             }
         }
         stage('archive-and-delta') {
@@ -87,19 +89,21 @@ pipeline {
                     ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft -C GTX480-PTXPLUS > stats-per-kernel-4.2-ptxplus.csv &&\
                     ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft -C GTX480 > stats-per-kernel-4.2-ptx.csv'
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
-                    ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft,sdk-4.2 -C TITANV > stats-per-kernel-9.1-titanx.csv'
-                    sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/jenkins/quick-regress/AALP/gpgpu-sim_distribution/dev-purdue-integration/stats-per-app-4.2.csv,./stats-per-app-4.2.csv -R > per-app-merge-4.2.csv'
-                    sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/jenkins/quick-regress/AALP/gpgpu-sim_distribution/dev-purdue-integration/stats-per-app-9.1.csv,./stats-per-app-9.1.csv -R > per-app-merge-9.1.csv'
+                    ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft,sdk-4.2 -C TITANV > stats-per-kernel-9.1.csv'
+                    sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-app-4.2.csv,./stats-per-app-4.2.csv -R > per-app-merge-4.2.csv'
+                    sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-app-9.1.csv,./stats-per-app-9.1.csv -R > per-app-merge-9.1.csv'
                     sh 'PLOTDIR="jenkins/${JOB_NAME}" &&\
-                        ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c per-app-merge-4.2.csv -p tgrogers@dynamo.ecn.purdue.edu:~/website/gpgpu-sim-plots/$PLOTDIR/deltas -w https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR -n $PLOTDIR/deltas &&\
-                        ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c per-app-merge-9.1.csv -p tgrogers@dynamo.ecn.purdue.edu:~/website/gpgpu-sim-plots/$PLOTDIR/deltas -w https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/deltas -n $PLOTDIR/deltas &&\
-                        ./gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/jenkins/quick-regress/AALP/gpgpu-sim_distribution/dev-purdue-integration/stats-per-kernel-4.2-ptx.csv,./stats-per-kernel-4.2-ptx.csv -R > per-kernel-merge-4.2-ptx.csv &&\
-                        ./gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/jenkins/quick-regress/AALP/gpgpu-sim_distribution/dev-purdue-integration/stats-per-kernel-4.2-ptxplus.csv,./stats-per-kernel-4.2-ptxplus.csv -R > per-kernel-merge-4.2-ptxplus.csv &&\
-                        ./gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/jenkins/quick-regress/AALP/gpgpu-sim_distribution/dev-purdue-integration/stats-per-kernel-9.1-titanx.csv,./stats-per-kernel-9.1-titanx.csv -R > per-kernel-merge-9.1-titanx.csv &&\
+                        ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p /home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas/4.2 && \
+                        ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p /home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas/9.1 && \
+                        ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c per-app-merge-4.2.csv -p tgrogers@dynamo.ecn.purdue.edu:~/website/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas/4.2 -w https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas/4.2 -n $PLOTDIR/${BUILD_NUMBER}/deltas/4.2 &&\
+                        ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c per-app-merge-9.1.csv -p tgrogers@dynamo.ecn.purdue.edu:~/website/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas/9.1 -w https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/deltas/9.1 -n $PLOTDIR/${BUILD_NUMBER}/deltas/9.1 &&\
+                        ./gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-kernel-4.2-ptx.csv,./stats-per-kernel-4.2-ptx.csv -R > per-kernel-merge-4.2-ptx.csv &&\
+                        ./gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-kernel-4.2-ptxplus.csv,./stats-per-kernel-4.2-ptxplus.csv -R > per-kernel-merge-4.2-ptxplus.csv &&\
+                        ./gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-kernel-9.1.csv,./stats-per-kernel-9.1.csv -R > per-kernel-merge-9.1.csv &&\
                         ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh per-kernel-merge-4.2-ptx.csv $PLOTDIR ${BUILD_NUMBER} &&\
                         ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh per-kernel-merge-4.2-ptxplus.csv $PLOTDIR ${BUILD_NUMBER} &&\
-                        ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh per-kernel-merge-9.1-titanx.csv $PLOTDIR ${BUILD_NUMBER} &&\
-                        mkdir -p ./jenkins/quick-regress/${JOB_NAME}/ && cp stats-per-*.csv ./jenkins/quick-regress/${JOB_NAME}/ &&\
+                        ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh per-kernel-merge-9.1.csv $PLOTDIR ${BUILD_NUMBER} &&\
+                        mkdir -p ./gpgpu-sim-results-repo/${JOB_NAME}/ && cp stats-per-*.csv ./gpgpu-sim-results-repo/${JOB_NAME}/ &&\
                         cd ./gpgpu-sim-results-repo &&\
                         git diff --quiet && git diff --staged --quiet || git commit -am "Jenkins automated checkin ${BUILD_NUMBER}" &&\
                         git push'
@@ -108,10 +112,11 @@ pipeline {
     }
     post {
         success {
-            emailext body: "See ${BUILD_URL}",
+            emailext body:'''${SCRIPT, template="groovy-html.success.template"}''',
                 recipientProviders: [[$class: 'CulpritsRecipientProvider'],
                     [$class: 'RequesterRecipientProvider']],
                 subject: "[AALP Jenkins] Build #${BUILD_NUMBER} - Success!",
+                attachmentsPattern: 'correl.*.txt',
                 to: 'tgrogers@purdue.edu'
         }
         failure {
