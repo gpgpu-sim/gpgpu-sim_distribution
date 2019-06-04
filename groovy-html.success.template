@@ -61,8 +61,8 @@
     def BUILD_NUMBER= build.getEnvVars()["BUILD_NUMBER"];
     def BUILD_URL= build.getEnvVars()["BUILD_URL"];
 
-    def CORREL_42 = new File("${Jenkins.instance.getJob('JobName').workspace}/correl.4.2.txt").text
-    def CORREL_42 = new File("${Jenkins.instance.getJob('JobName').workspace}/correl.9.1.txt").text
+    def CORREL_42 = readFile("correl.4.2.txt")
+    def CORREL_91 = readFile("correl.9.1.txt")
 %>
 
 Statistics changes since last commit:<br>
