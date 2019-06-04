@@ -131,6 +131,7 @@
 #if (CUDART_VERSION < 8000)
 #include "__cudaFatFormat.h"
 #endif
+#include "gpgpu_context.h"
 #include "../src/gpgpu-sim/gpu-sim.h"
 #include "../src/cuda-sim/ptx_loader.h"
 #include "../src/cuda-sim/cuda-sim.h"
@@ -313,7 +314,6 @@ struct CUctx_st {
 		return i->second;
 	}
 
-	std::list<cuobjdumpSection*> cuobjdumpSectionList;
 	std::list<cuobjdumpSection*> libSectionList;
 	//maps sm version number to set of filenames
 	std::map<unsigned, std::set<std::string> > version_filename;
@@ -438,6 +438,15 @@ static CUctx_st* GPGPUSim_Context()
 		the_context = GPGPUsim_ctx_ptr()->the_context;
 	}
 	return the_context;
+}
+
+static gpgpu_context* GPGPU_Context()
+{
+	static gpgpu_context *gpgpu_ctx = NULL;
+	if( gpgpu_ctx == NULL ) {
+	    gpgpu_ctx = new gpgpu_context();
+	}
+	return gpgpu_ctx;
 }
 
  void ptxinfo_addinfo()
@@ -2096,7 +2105,7 @@ static int get_app_cuda_version() {
  *	It is also responsible for extracting the libraries linked to the binary if the option is
  *	enabled
  * */
-void extract_code_using_cuobjdump(std::list<cuobjdumpSection*> &cuobjdumpSectionList){
+void gpgpu_context::extract_code_using_cuobjdump(){
     CUctx_st *context = GPGPUSim_Context();
     unsigned forced_max_capability = context->get_device()->get_gpgpu()->get_config().get_forced_max_capability();
 
@@ -2266,7 +2275,7 @@ void printSectionList(std::list<cuobjdumpSection*> sl) {
 }
 
 //! Remove unecessary sm versions from the section list
-std::list<cuobjdumpSection*> pruneSectionList(std::list<cuobjdumpSection*> cuobjdumpSectionList, CUctx_st *context) {
+std::list<cuobjdumpSection*> gpgpu_context::pruneSectionList(CUctx_st *context) {
 	unsigned forced_max_capability = context->get_device()->get_gpgpu()->get_config().get_forced_max_capability();
 
 	//For ptxplus, force the max capability to 19 if it's higher or unspecified(0)
@@ -2319,7 +2328,7 @@ std::list<cuobjdumpSection*> pruneSectionList(std::list<cuobjdumpSection*> cuobj
 }
 
 //! Merge all PTX sections that have a specific identifier into one file
-std::list<cuobjdumpSection*> mergeMatchingSections(std::list<cuobjdumpSection*> cuobjdumpSectionList, std::string identifier){
+std::list<cuobjdumpSection*> gpgpu_context::mergeMatchingSections(std::string identifier){
 	const char *ptxcode = "";
 	std::list<cuobjdumpSection*>::iterator old_iter;
 	cuobjdumpPTXSection* old_ptxsection = NULL;
@@ -2362,7 +2371,7 @@ std::list<cuobjdumpSection*> mergeMatchingSections(std::list<cuobjdumpSection*> 
 }
 
 //! Merge any PTX sections with matching identifiers
-std::list<cuobjdumpSection*> mergeSections(std::list<cuobjdumpSection*> cuobjdumpSectionList){
+std::list<cuobjdumpSection*> gpgpu_context::mergeSections(){
 	std::vector<std::string> identifier;
 	cuobjdumpPTXSection* ptxsection;
 
@@ -2384,7 +2393,7 @@ std::list<cuobjdumpSection*> mergeSections(std::list<cuobjdumpSection*> cuobjdum
 	for (	std::vector<std::string>::iterator iter = identifier.begin();
 			iter != identifier.end();
 			iter++) {
-		cuobjdumpSectionList = mergeMatchingSections(cuobjdumpSectionList, *iter);
+		cuobjdumpSectionList = mergeMatchingSections(*iter);
 	}
 
 	return cuobjdumpSectionList;
@@ -2409,7 +2418,7 @@ cuobjdumpELFSection* findELFSectionInList(std::list<cuobjdumpSection*> sectionli
 }
 
 //! Find an ELF section in all the known lists
-cuobjdumpELFSection* findELFSection(const std::string identifier, std::list<cuobjdumpSection*> cuobjdumpSectionList, std::list<cuobjdumpSection*> &libSectionList){
+cuobjdumpELFSection* gpgpu_context::findELFSection(const std::string identifier, std::list<cuobjdumpSection*> &libSectionList){
 	cuobjdumpELFSection* sec = findELFSectionInList(cuobjdumpSectionList, identifier);
 	if (sec!=NULL)return sec;
 	sec = findELFSectionInList(libSectionList, identifier);
@@ -2420,7 +2429,7 @@ cuobjdumpELFSection* findELFSection(const std::string identifier, std::list<cuob
 }
 
 //! Within the section list, find the PTX section corresponding to a given identifier
-cuobjdumpPTXSection* findPTXSectionInList(std::list<cuobjdumpSection*> sectionlist, const std::string identifier){
+cuobjdumpPTXSection* findPTXSectionInList(std::list<cuobjdumpSection*> &sectionlist, const std::string identifier){
 	std::list<cuobjdumpSection*>::iterator iter;
 	for (	iter = sectionlist.begin();
 			iter != sectionlist.end();
@@ -2444,7 +2453,7 @@ cuobjdumpPTXSection* findPTXSectionInList(std::list<cuobjdumpSection*> sectionli
 }
 
 //! Find an PTX section in all the known lists
-cuobjdumpPTXSection* findPTXSection(const std::string identifier, std::list<cuobjdumpSection*> cuobjdumpSectionList, std::list<cuobjdumpSection*> &libSectionList){
+cuobjdumpPTXSection* gpgpu_context::findPTXSection(const std::string identifier, std::list<cuobjdumpSection*> &libSectionList){
 	cuobjdumpPTXSection* sec = findPTXSectionInList(cuobjdumpSectionList, identifier);
 	if (sec!=NULL)return sec;
 	sec = findPTXSectionInList(libSectionList, identifier);
@@ -2457,13 +2466,13 @@ cuobjdumpPTXSection* findPTXSection(const std::string identifier, std::list<cuob
 
 
 //! Extract the code using cuobjdump and remove unnecessary sections
-void cuobjdumpInit(std::list<cuobjdumpSection*> &cuobjdumpSectionList){
+void gpgpu_context::cuobjdumpInit(){
 	CUctx_st *context = GPGPUSim_Context();
-	extract_code_using_cuobjdump(cuobjdumpSectionList); //extract all the output of cuobjdump to _cuobjdump_*.*
+	extract_code_using_cuobjdump(); //extract all the output of cuobjdump to _cuobjdump_*.*
 	const char* pre_load = getenv("CUOBJDUMP_SIM_FILE");
 	if (pre_load ==NULL || strlen(pre_load)==0){
-		cuobjdumpSectionList = pruneSectionList(cuobjdumpSectionList, context);
-		cuobjdumpSectionList = mergeSections(cuobjdumpSectionList);
+		cuobjdumpSectionList = pruneSectionList(context);
+		cuobjdumpSectionList = mergeSections();
 	}
 }
 
@@ -2474,7 +2483,7 @@ void cuobjdumpRegisterFatBinary(unsigned int handle, const char* filename, CUctx
 }
 
 //! Either submit PTX for simulation or convert SASS to PTXPlus and submit it
-void cuobjdumpParseBinary(unsigned int handle){
+void gpgpu_context::cuobjdumpParseBinary(unsigned int handle){
 
 	CUctx_st *context = GPGPUSim_Context();
 	if(context->fatbin_registered[handle]) return;
@@ -2515,8 +2524,8 @@ void cuobjdumpParseBinary(unsigned int handle){
 #endif
 
 	unsigned max_capability = 0;
-	for (	std::list<cuobjdumpSection*>::iterator iter = context->cuobjdumpSectionList.begin();
-			iter != context->cuobjdumpSectionList.end();
+	for (	std::list<cuobjdumpSection*>::iterator iter = cuobjdumpSectionList.begin();
+			iter != cuobjdumpSectionList.end();
 			iter++){
 		unsigned capability = (*iter)->getArch();
 		if (capability > max_capability) max_capability = capability;
@@ -2527,7 +2536,7 @@ void cuobjdumpParseBinary(unsigned int handle){
 	cuobjdumpPTXSection* ptx = NULL;
 	const char* pre_load = getenv("CUOBJDUMP_SIM_FILE");
 	if(pre_load==NULL || strlen(pre_load)==0)
-		ptx = findPTXSection(fname, context->cuobjdumpSectionList, context->libSectionList);
+		ptx = findPTXSection(fname, context->libSectionList);
 	char *ptxcode;
 	const char *override_ptx_name = getenv("PTX_SIM_KERNELFILE"); 
 	if (override_ptx_name == NULL or getenv("PTX_SIM_USE_PTX_FILE") == NULL or strlen(getenv("PTX_SIM_USE_PTX_FILE"))==0) {
@@ -2537,7 +2546,7 @@ void cuobjdumpParseBinary(unsigned int handle){
 		ptxcode = readfile(override_ptx_name);
 	}
 	if(context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() ) {
-		cuobjdumpELFSection* elfsection = findELFSection(ptx->getIdentifier(), context->cuobjdumpSectionList, context->libSectionList);
+		cuobjdumpELFSection* elfsection = findELFSection(ptx->getIdentifier(), context->libSectionList);
 		assert (elfsection!= NULL);
 		char *ptxplus_str = gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(
 				ptx->getPTXfilename(),
@@ -2561,9 +2570,16 @@ void cuobjdumpParseBinary(unsigned int handle){
 
 	//TODO: Remove temporarily files as per configurations
 }
+}
 
-void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
+void** cudaRegisterFatBinary( void *fatCubin, gpgpu_context* gpgpu_ctx = NULL)
 {
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     }
@@ -2625,7 +2641,7 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 		 * then for next calls, only returns the appropriate number
 		 */
 		assert(fat_cubin_handle >= 1);
-		if (fat_cubin_handle==1) cuobjdumpInit(context->cuobjdumpSectionList);
+		if (fat_cubin_handle==1) ctx->cuobjdumpInit();
 		cuobjdumpRegisterFatBinary(fat_cubin_handle, filename, context);
 
 		return (void**)fat_cubin_handle;
@@ -2696,6 +2712,121 @@ void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 #endif
 }
 
+void cudaRegisterFunction(
+		void   **fatCubinHandle,
+		const char    *hostFun,
+		char    *deviceFun,
+		const char    *deviceName,
+		int      thread_limit,
+		uint3   *tid,
+		uint3   *bid,
+		dim3    *bDim,
+		dim3    *gDim,
+		gpgpu_context *gpgpu_ctx = NULL
+)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	CUctx_st *context = GPGPUSim_Context();
+	unsigned fat_cubin_handle = (unsigned)(unsigned long long)fatCubinHandle;
+	printf("GPGPU-Sim PTX: __cudaRegisterFunction %s : hostFun 0x%p, fat_cubin_handle = %u\n",
+			deviceFun, hostFun, fat_cubin_handle);
+	if(context->get_device()->get_gpgpu()->get_config().use_cuobjdump())
+		ctx->cuobjdumpParseBinary(fat_cubin_handle);
+	context->register_function( fat_cubin_handle, hostFun, deviceFun );
+}
+
+void cudaRegisterVar(
+		void **fatCubinHandle,
+		char *hostVar, //pointer to...something
+		char *deviceAddress, //name of variable
+		const char *deviceName, //name of variable (same as above)
+		int ext,
+		int size,
+		int constant,
+		int global,
+		gpgpu_context *gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("GPGPU-Sim PTX: __cudaRegisterVar: hostVar = %p; deviceAddress = %s; deviceName = %s\n", hostVar, deviceAddress, deviceName);
+	printf("GPGPU-Sim PTX: __cudaRegisterVar: Registering const memory space of %d bytes\n", size);
+	if(GPGPUSim_Context()->get_device()->get_gpgpu()->get_config().use_cuobjdump())
+		ctx->cuobjdumpParseBinary((unsigned)(unsigned long long)fatCubinHandle);
+	fflush(stdout);
+	if ( constant && !global && !ext ) {
+		gpgpu_ptx_sim_register_const_variable(hostVar,deviceName,size);
+	} else if ( !constant && !global && !ext ) {
+		gpgpu_ptx_sim_register_global_variable(hostVar,deviceName,size);
+	} else cuda_not_implemented(__my_func__,__LINE__);
+}
+
+extern "C" {
+
+void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
+{
+    return cudaRegisterFatBinary(fatCubin);
+}
+
+void CUDARTAPI __cudaRegisterFunction(
+		void   **fatCubinHandle,
+		const char    *hostFun,
+		char    *deviceFun,
+		const char    *deviceName,
+		int      thread_limit,
+		uint3   *tid,
+		uint3   *bid,
+		dim3    *bDim,
+		dim3    *gDim
+) {
+    cudaRegisterFunction(
+	    fatCubinHandle,
+	    hostFun,
+	    deviceFun,
+	    deviceName,
+	    thread_limit,
+	    tid,
+	    bid,
+	    bDim,
+	    gDim
+	    );
+
+}
+
+extern void __cudaRegisterVar(
+		void **fatCubinHandle,
+		char *hostVar, //pointer to...something
+		char *deviceAddress, //name of variable
+		const char *deviceName, //name of variable (same as above)
+		int ext,
+		int size,
+		int constant,
+		int global )
+{
+    cudaRegisterVar(
+	    fatCubinHandle,
+	    hostVar,
+	    deviceAddress,
+	    deviceName,
+	    ext,
+	    size,
+	    constant,
+	    global );
+}
 void __cudaUnregisterFatBinary(void **fatCubinHandle)
 {
 	if(g_debug_execution >= 3){
@@ -2718,55 +2849,6 @@ cudaError_t CUDARTAPI cudaDeviceSynchronize(void){
 	//Blocks until the device has completed all preceding requested tasks
 	synchronize();
 	return g_last_cudaError = cudaSuccess;
-}
-
-void CUDARTAPI __cudaRegisterFunction(
-		void   **fatCubinHandle,
-		const char    *hostFun,
-		char    *deviceFun,
-		const char    *deviceName,
-		int      thread_limit,
-		uint3   *tid,
-		uint3   *bid,
-		dim3    *bDim,
-		dim3    *gDim
-)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	CUctx_st *context = GPGPUSim_Context();
-	unsigned fat_cubin_handle = (unsigned)(unsigned long long)fatCubinHandle;
-	printf("GPGPU-Sim PTX: __cudaRegisterFunction %s : hostFun 0x%p, fat_cubin_handle = %u\n",
-			deviceFun, hostFun, fat_cubin_handle);
-	if(context->get_device()->get_gpgpu()->get_config().use_cuobjdump())
-		cuobjdumpParseBinary(fat_cubin_handle);
-	context->register_function( fat_cubin_handle, hostFun, deviceFun );
-}
-
-extern void __cudaRegisterVar(
-		void **fatCubinHandle,
-		char *hostVar, //pointer to...something
-		char *deviceAddress, //name of variable
-		const char *deviceName, //name of variable (same as above)
-		int ext,
-		int size,
-		int constant,
-		int global )
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	printf("GPGPU-Sim PTX: __cudaRegisterVar: hostVar = %p; deviceAddress = %s; deviceName = %s\n", hostVar, deviceAddress, deviceName);
-	printf("GPGPU-Sim PTX: __cudaRegisterVar: Registering const memory space of %d bytes\n", size);
-	if(GPGPUSim_Context()->get_device()->get_gpgpu()->get_config().use_cuobjdump())
-		cuobjdumpParseBinary((unsigned)(unsigned long long)fatCubinHandle);
-	fflush(stdout);
-	if ( constant && !global && !ext ) {
-		gpgpu_ptx_sim_register_const_variable(hostVar,deviceName,size);
-	} else if ( !constant && !global && !ext ) {
-		gpgpu_ptx_sim_register_global_variable(hostVar,deviceName,size);
-	} else cuda_not_implemented(__my_func__,__LINE__);
 }
 
 
