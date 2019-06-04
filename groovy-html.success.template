@@ -68,10 +68,10 @@ Statistics changes since last commit:<br>
 <pre>        Correlation:
 <pre>            4.2:
 <pre>            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.html
-<pre>            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.appincluded.txt
+<pre>            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.appsincluded.txt
 <pre>            9.1:
 <pre>            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.html.TITANV.html
-<pre>            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.html.TITANV.appincluded.txt
+<pre>            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.html.TITANV.appsincluded.txt
 <br><br>
 See ${BUILD_URL} for full build detials.
 </BODY>
