@@ -67,7 +67,7 @@ pipeline {
                     source `pwd`/setup_environment &&\
                     PLOTDIR="jenkins/${JOB_NAME}" &&\
                     ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft -C GTX480,GTX480-PTXPLUS > stats-per-kernel-4.2.csv &&\
-                    ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh stats-per-kernel-4.2.csv $PLOTDIR ${BUILD_NUMBER} | correl.4.2.txt'
+                    ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh stats-per-kernel-4.2.csv $PLOTDIR ${BUILD_NUMBER} | tee correl.4.2.txt'
             }
         }
         stage('9.1-correlate'){
