@@ -806,6 +806,16 @@ int gpgpu_sim::shader_clock() const
    return m_config.core_freq/1000;
 }
 
+int gpgpu_sim::max_cta_per_core() const
+{
+   return m_shader_config->max_cta_per_core;
+}
+
+int gpgpu_sim::get_max_cta( const kernel_info_t &k ) const
+{
+   return m_shader_config->max_cta(k);
+}
+
 void gpgpu_sim::set_prop( cudaDeviceProp *prop )
 {
    m_cuda_properties = prop;

@@ -974,6 +974,30 @@ __host__ cudaError_t CUDARTAPI cudaGetDeviceProperties(struct cudaDeviceProp *pr
 	}
 }
 
+#if (CUDART_VERSION >= 8000)
+cudaError_t CUDARTAPI cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(int* numBlocks, const char *hostFunc, int blockSize, size_t dynamicSMemSize, unsigned int flags)
+{
+	printf("GPGPU-Sim PTX: cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags %p\n", hostFunc);
+	CUctx_st *context = GPGPUSim_Context();
+	function_info *entry = context->get_kernel(hostFunc);
+	printf("Calculate Maxium Active Block with function ptr=%p, blockSize=%d, SMemSize=%d\n", hostFunc, blockSize, dynamicSMemSize);
+	if (flags == cudaOccupancyDefault) {
+		//create kernel_info based on entry
+		dim3 gridDim(context->get_device()->get_gpgpu()->max_cta_per_core()
+                        * context->get_device()->get_gpgpu()->get_config().num_shader());
+		dim3 blockDim(blockSize);
+		kernel_info_t result(gridDim, blockDim, entry);
+		*numBlocks = context->get_device()->get_gpgpu()->get_max_cta(result);
+		printf("Maximum size is %d with gridDim %d and blockDim %d\n", *numBlocks, gridDim.x, blockDim.x);
+		return g_last_cudaError = cudaSuccess;
+	} else {
+		cuda_not_implemented(__my_func__,__LINE__);
+		return g_last_cudaError = cudaErrorUnknown;
+	}
+}
+
+#endif
+
 #if (CUDART_VERSION > 5000)
 __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDeviceAttr attr, int device)
 {
@@ -3169,6 +3193,23 @@ __host__ cudaError_t CUDARTAPI cudaDeviceSetLimit(enum cudaLimit limit, size_t v
     return g_last_cudaError = cudaSuccess;
 }
 
+#if CUDART_VERSION >= 9000
+__host__  cudaError_t cudaFuncSetAttribute ( const void* func, enum cudaFuncAttribute attr, int value ) {
+
+	//ignore this Attribute for now, and the default is that carveout = cudaSharedmemCarveoutDefault;   //  (-1)
+	return g_last_cudaError = cudaSuccess;
+}
+
+#if CUDART_VERSION >= 9020
+__host__ __device__ unsigned __cudaPushCallConfiguration(dim3 gridDim, dim3 blockDim,
+                                                size_t sharedMem = 0,
+                                                void *stream = 0) {
+
+	return 1;
+}
+#endif
+
+#endif
 
 #endif
 
@@ -4071,6 +4112,33 @@ CUresult CUDAAPI cuMemHostRegister(void *p, size_t bytesize, unsigned int Flags)
 	printf("WARNING: this function has not been implemented yet.");
 	return CUDA_SUCCESS;
 }
+__host__ cudaError_t cudaHostRegister(void* ptr, size_t size, unsigned int flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t cudaProfilerStart ( )
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t cudaProfilerStop ( )
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return g_last_cudaError = cudaSuccess;
+}
+
 #endif
 #if CUDART_VERSION >= 4000
 
@@ -4952,7 +5020,7 @@ CUresult CUDAAPI cuOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(int *numBl
 	printf("WARNING: this function has not been implemented yet.");
 	return CUDA_SUCCESS;
 }
-    
+
 CUresult CUDAAPI cuOccupancyMaxPotentialBlockSize(int *minGridSize, int *blockSize, CUfunction func, CUoccupancyB2DSize blockSizeToDynamicSMemSize, size_t dynamicSMemSize, int blockSizeLimit)
 {
 	if(g_debug_execution >= 3){

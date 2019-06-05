@@ -691,6 +691,28 @@ unsigned g_kernel_launch_latency;
 
 unsigned kernel_info_t::m_next_uid = 1;
 
+kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry)
+{
+    m_kernel_entry=entry;
+    m_grid_dim=gridDim;
+    m_block_dim=blockDim;
+    m_next_cta.x=0;
+    m_next_cta.y=0;
+    m_next_cta.z=0;
+    m_next_tid=m_next_cta;
+    m_num_cores_running=0;
+    m_uid = m_next_uid++;
+    m_param_mem = new memory_space_impl<8192>("param",64*1024);
+
+    //Jin: parent and child kernel management for CDP
+    m_parent_kernel = NULL;
+
+    //Jin: launch latency management
+    m_launch_latency = g_kernel_launch_latency;
+
+    volta_cache_config_set=false;
+}
+
 /*A snapshot of the texture mappings needs to be stored in the kernel's info as 
 kernels should use the texture bindings seen at the time of launch and textures
  can be bound/unbound asynchronously with respect to streams. */
