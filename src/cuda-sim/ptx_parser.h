@@ -42,11 +42,18 @@ class ptx_recognizer {
     public:
 	ptx_recognizer() {
 	    scanner = NULL;
+	    g_size = -1;
+	    g_add_identifier_cached__identifier = NULL;
 	}
 	yyscan_t scanner;
 #define LINEBUF_SIZE (4*1024)
 	char linebuf[LINEBUF_SIZE];
 	unsigned col;
+	int g_size;
+	char *g_add_identifier_cached__identifier;
+	int g_add_identifier_cached__array_dim;
+	int g_add_identifier_cached__array_ident;
+
 	void init_directive_state();
 	void init_instruction_state();
 	void start_function( int entry_point );
