@@ -212,6 +212,7 @@ public:
 //      m_num_cores_running=0;
 //      m_param_mem=NULL;
 //   }
+   kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry);
    kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry, std::map<std::string, const struct cudaArray*> nameToCudaArray, std::map<std::string, const struct textureInfo*> nameToTextureInfo);
    ~kernel_info_t();
 
