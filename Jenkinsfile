@@ -8,7 +8,7 @@ pipeline {
     }
 
     stages {
-/*        stage('simulator-build') {
+        stage('simulator-build') {
             steps {
                 parallel "4.2": {
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
@@ -79,7 +79,6 @@ pipeline {
                     ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh stats-per-kernel-9.1.csv $PLOTDIR ${BUILD_NUMBER} | grep "Correl=" | tee correl.9.1.txt &&\
             }
         }
-        */
         stage('archive-and-delta') {
             steps {
                     sh 'rm -rf gpgpu-sim-results-repo'
