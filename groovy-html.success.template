@@ -61,8 +61,8 @@
     def BUILD_NUMBER= build.getEnvVars()["BUILD_NUMBER"];
     def BUILD_URL= build.getEnvVars()["BUILD_URL"];
     
-    def CORREL_42= build.getEnvVars()["CORREL_42"];
-    def CORREL_91= build.getEnvVars()["CORREL_91"];
+    def CORREL_42= readFile('correl.4.2.txt').trim()
+    def CORREL_91= readFile('correl.9.1.txt').trim()
 %>
 
 Statistics changes since last commit:<br>
