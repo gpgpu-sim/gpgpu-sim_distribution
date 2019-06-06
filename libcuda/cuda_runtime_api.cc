@@ -313,10 +313,7 @@ struct CUctx_st {
 		return i->second;
 	}
 
-	std::map<int, bool>fatbin_registered;
-	std::map<int, std::string> fatbinmap;
 	std::map<unsigned long long, size_t> g_mallocPtr_Size;
-	std::map<std::string, symbol_table*> name_symtab;
 	std::map<void *,void **> pinned_memory; //support for pinned memories added
 	std::map<void *, size_t> pinned_memory_size;
 	int no_of_ptx;
@@ -647,8 +644,8 @@ static int get_app_cuda_version() {
 }
 
 //! Keep track of the association between filename and cubin handle
-void cuobjdumpRegisterFatBinary(unsigned int handle, const char* filename, CUctx_st *context){
-	context->fatbinmap[handle] = filename;
+void gpgpu_context::cuobjdumpRegisterFatBinary(unsigned int handle, const char* filename, CUctx_st *context){
+	fatbinmap[handle] = filename;
 }
 
 /*******************************************************************************
@@ -725,7 +722,7 @@ void** cudaRegisterFatBinaryInternal( void *fatCubin, gpgpu_context* gpgpu_ctx =
 		 */
 		assert(fat_cubin_handle >= 1);
 		if (fat_cubin_handle==1) ctx->cuobjdumpInit();
-		cuobjdumpRegisterFatBinary(fat_cubin_handle, filename, context);
+		ctx->cuobjdumpRegisterFatBinary(fat_cubin_handle, filename, context);
 
 		return (void**)fat_cubin_handle;
 	} 
@@ -969,6 +966,46 @@ cudaError_t cudaLaunchInternal( const char *hostFun, gpgpu_context* gpgpu_ctx = 
 	return g_last_cudaError = cudaSuccess;
 }
 
+#if CUDART_VERSION >= 6050
+CUresult
+cuLinkAddFileInternal(CUlinkState state, CUjitInputType type, const char *path,
+    unsigned int numOptions, CUjit_option *options, void **optionValues, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+    static bool addedFile = false;
+    if (addedFile){
+        printf("GPGPU-Sim PTX: ERROR: cuLinkAddFile does not support multiple files\n");
+        abort();
+    }
+
+    //blocking
+    assert(type==CU_JIT_INPUT_PTX);
+	CUctx_st *context = GPGPUSim_Context();
+    char *file = getenv("PTX_JIT_PATH");
+    if(file==NULL){
+        printf("GPGPU-Sim PTX: ERROR: PTX_JIT_PATH has not been set\n");
+        abort();
+    }
+    strcat(file,"/");
+    strcat(file,path);
+	symbol_table *symtab = gpgpu_ptx_sim_load_ptx_from_filename( file );
+    std::string fname(path);
+    ctx->name_symtab[fname] = symtab;
+    context->add_binary(symtab, 1);
+    load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
+    load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
+    addedFile = true;
+	return CUDA_SUCCESS;
+}
+#endif
 
 /*******************************************************************************
  *                                                                              *
@@ -2715,12 +2752,12 @@ void gpgpu_context::cuobjdumpInit(){
 void gpgpu_context::cuobjdumpParseBinary(unsigned int handle){
 
 	CUctx_st *context = GPGPUSim_Context();
-	if(context->fatbin_registered[handle]) return;
-	context->fatbin_registered[handle] = true;
-	std::string fname = context->fatbinmap[handle];
+	if(fatbin_registered[handle]) return;
+	fatbin_registered[handle] = true;
+	std::string fname = fatbinmap[handle];
 
-	if (context->name_symtab.find(fname) != context->name_symtab.end()) {
-		symbol_table *symtab = context->name_symtab[fname];
+	if (name_symtab.find(fname) != name_symtab.end()) {
+		symbol_table *symtab = name_symtab[fname];
 		context->add_binary(symtab, handle);
 		return;
 	}
@@ -2737,7 +2774,7 @@ void gpgpu_context::cuobjdumpParseBinary(unsigned int handle){
           symtab = gpgpu_ptx_sim_load_ptx_from_filename( ptx_filename.c_str() );
       }
    }
-   context->name_symtab[fname] = symtab;
+   name_symtab[fname] = symtab;
    context->add_binary(symtab, handle);
    load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
    load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
@@ -2795,7 +2832,7 @@ void gpgpu_context::cuobjdumpParseBinary(unsigned int handle){
 	}
 	load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
 	load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
-	context->name_symtab[fname] = symtab;
+	name_symtab[fname] = symtab;
 
 	//TODO: Remove temporarily files as per configurations
 }
@@ -3909,33 +3946,8 @@ CUresult CUDAAPI
 cuLinkAddFile(CUlinkState state, CUjitInputType type, const char *path,
     unsigned int numOptions, CUjit_option *options, void **optionValues)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-    static bool addedFile = false;
-    if (addedFile){
-        printf("GPGPU-Sim PTX: ERROR: cuLinkAddFile does not support multiple files\n");
-        abort();
-    }
-
-    //blocking
-    assert(type==CU_JIT_INPUT_PTX);
-	CUctx_st *context = GPGPUSim_Context();
-    char *file = getenv("PTX_JIT_PATH");
-    if(file==NULL){
-        printf("GPGPU-Sim PTX: ERROR: PTX_JIT_PATH has not been set\n");
-        abort();
-    }
-    strcat(file,"/");
-    strcat(file,path);
-	symbol_table *symtab = gpgpu_ptx_sim_load_ptx_from_filename( file );
-    std::string fname(path);
-    context->name_symtab[fname] = symtab;
-    context->add_binary(symtab, 1);
-    load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
-    load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
-    addedFile = true;
-	return CUDA_SUCCESS;
+    return cuLinkAddFileInternal(state, type, path,
+	    numOptions, options, optionValues)
 }
 #endif
 
