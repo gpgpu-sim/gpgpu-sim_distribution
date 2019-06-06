@@ -10,6 +10,10 @@ class cuobjdumpSection;
 class cuobjdumpELFSection;
 class cuobjdumpPTXSection;
 class symbol_table;
+class gpgpu_ptx_sim_arg;
+class kernel_info_t;
+
+typedef std::list<gpgpu_ptx_sim_arg> gpgpu_ptx_sim_arg_list_t;
 
 class gpgpu_context {
     public:
@@ -21,6 +25,7 @@ class gpgpu_context {
 	std::map<int, bool>fatbin_registered;
 	std::map<int, std::string> fatbinmap;
 	std::map<std::string, symbol_table*> name_symtab;
+	std::map<unsigned long long, size_t> g_mallocPtr_Size;
 	//maps sm version number to set of filenames
 	std::map<unsigned, std::set<std::string> > version_filename;
 	cuda_runtime_api* api;
@@ -35,5 +40,11 @@ class gpgpu_context {
 	cuobjdumpPTXSection* findPTXSection(const std::string identifier);
 	void extract_ptx_files_using_cuobjdump(CUctx_st *context);
 	void cuobjdumpRegisterFatBinary(unsigned int handle, const char* filename, CUctx_st *context);
+	kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *kernel_key,
+		gpgpu_ptx_sim_arg_list_t args,
+		struct dim3 gridDim,
+		struct dim3 blockDim,
+		struct CUctx_st* context );
+
 };
 #endif /* __gpgpu_context_h__ */

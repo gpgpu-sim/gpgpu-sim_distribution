@@ -158,11 +158,11 @@ extern void exit_simulation();
 static int load_static_globals( symbol_table *symtab, unsigned min_gaddr, unsigned max_gaddr, gpgpu_t *gpu );
 static int load_constants( symbol_table *symtab, addr_t min_gaddr, gpgpu_t *gpu );
 
-static kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *kernel_key, 
-		gpgpu_ptx_sim_arg_list_t args,
-		struct dim3 gridDim,
-		struct dim3 blockDim,
-		struct CUctx_st* context );
+//static kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *kernel_key,
+//		gpgpu_ptx_sim_arg_list_t args,
+//		struct dim3 gridDim,
+//		struct dim3 blockDim,
+//		struct CUctx_st* context );
 
 /*DEVICE_BUILTIN*/
 struct cudaArray
@@ -313,7 +313,6 @@ struct CUctx_st {
 		return i->second;
 	}
 
-	std::map<unsigned long long, size_t> g_mallocPtr_Size;
 	std::map<void *,void **> pinned_memory; //support for pinned memories added
 	std::map<void *, size_t> pinned_memory_size;
 	int no_of_ptx;
@@ -910,7 +909,7 @@ cudaError_t cudaLaunchInternal( const char *hostFun, gpgpu_context* gpgpu_ctx = 
 	struct CUstream_st *stream = config.get_stream();
 	printf("\nGPGPU-Sim PTX: cudaLaunch for 0x%p (mode=%s) on stream %u\n", hostFun,
 			g_ptx_sim_mode?"functional simulation":"performance simulation", stream?stream->get_uid():0 );
-	kernel_info_t *grid = gpgpu_cuda_ptx_sim_init_grid(hostFun,config.get_args(),config.grid_dim(),config.block_dim(),context);
+	kernel_info_t *grid = ctx->gpgpu_cuda_ptx_sim_init_grid(hostFun,config.get_args(),config.grid_dim(),config.block_dim(),context);
         //do dynamic PDOM analysis for performance simulation scenario
 	std::string kname = grid->name();
 	function_info *kernel_func_info = grid->entry();
@@ -966,6 +965,66 @@ cudaError_t cudaLaunchInternal( const char *hostFun, gpgpu_context* gpgpu_ctx = 
 	return g_last_cudaError = cudaSuccess;
 }
 
+cudaError_t cudaMallocInternal(void **devPtr, size_t size, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	CUctx_st* context = GPGPUSim_Context();
+	*devPtr = context->get_device()->get_gpgpu()->gpu_malloc(size);
+	if(g_debug_execution >= 3){
+		printf("GPGPU-Sim PTX: cudaMallocing %zu bytes starting at 0x%llx..\n",size, (unsigned long long) *devPtr);
+        ctx->g_mallocPtr_Size[(unsigned long long)*devPtr] = size;
+    }
+	if ( *devPtr  ) {
+		return g_last_cudaError = cudaSuccess;
+	} else {
+		return g_last_cudaError = cudaErrorMemoryAllocation;
+	}
+}
+
+cudaError_t cudaHostGetDevicePointerInternal(void **pDevice, void *pHost, unsigned int flags, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	//only cpu memory allocation happens in cudaHostAlloc. Linking with device pointer to pinned memory happens here.
+	//TODO: once kernel is executed, the contents in global pointer of GPU must be copied back to CPU host pointer!
+	flags=0;
+	CUctx_st* context = GPGPUSim_Context();
+	gpgpu_t *gpu = context->get_device()->get_gpgpu();
+	std::map<void *, size_t>::const_iterator i = context->pinned_memory_size.find(pHost);
+	assert(i != context->pinned_memory_size.end());
+	size_t size = i->second;
+	*pDevice = gpu->gpu_malloc(size);
+	if(g_debug_execution >= 3){
+		printf("GPGPU-Sim PTX: cudaMallocing %zu bytes starting at 0x%llx..\n",size, (unsigned long long) *pDevice);
+        ctx->g_mallocPtr_Size[(unsigned long long)*pDevice] = size;
+    }
+	if ( *pDevice  ) {
+		context->pinned_memory[pHost]=pDevice;
+		//Copy contents in cpu to gpu
+		gpu->memcpy_to_gpu((size_t)*pDevice,pHost,size);
+		return g_last_cudaError = cudaSuccess;
+	} else {
+		return g_last_cudaError = cudaErrorMemoryAllocation;
+	}
+}
 #if CUDART_VERSION >= 6050
 CUresult
 cuLinkAddFileInternal(CUlinkState state, CUjitInputType type, const char *path,
@@ -1027,20 +1086,7 @@ cudaError_t cudaPeekAtLastError(void)
 
 __host__ cudaError_t CUDARTAPI cudaMalloc(void **devPtr, size_t size) 
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	CUctx_st* context = GPGPUSim_Context();
-	*devPtr = context->get_device()->get_gpgpu()->gpu_malloc(size);
-	if(g_debug_execution >= 3){
-		printf("GPGPU-Sim PTX: cudaMallocing %zu bytes starting at 0x%llx..\n",size, (unsigned long long) *devPtr);
-        context->g_mallocPtr_Size[(unsigned long long)*devPtr] = size;
-    }
-	if ( *devPtr  ) {
-		return g_last_cudaError = cudaSuccess;
-	} else {
-		return g_last_cudaError = cudaErrorMemoryAllocation;
-	}
+    return cudaMallocInternal(devPtr, size);
 }
 
 __host__ cudaError_t CUDARTAPI cudaMallocHost(void **ptr, size_t size)
@@ -3111,30 +3157,7 @@ cudaError_t CUDARTAPI cudaHostAlloc(void **pHost,  size_t bytes, unsigned int fl
 
 cudaError_t CUDARTAPI cudaHostGetDevicePointer(void **pDevice, void *pHost, unsigned int flags)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	//only cpu memory allocation happens in cudaHostAlloc. Linking with device pointer to pinned memory happens here.
-	//TODO: once kernel is executed, the contents in global pointer of GPU must be copied back to CPU host pointer!
-	flags=0;
-	CUctx_st* context = GPGPUSim_Context();
-	gpgpu_t *gpu = context->get_device()->get_gpgpu();
-	std::map<void *, size_t>::const_iterator i = context->pinned_memory_size.find(pHost);
-	assert(i != context->pinned_memory_size.end());
-	size_t size = i->second;
-	*pDevice = gpu->gpu_malloc(size);
-	if(g_debug_execution >= 3){
-		printf("GPGPU-Sim PTX: cudaMallocing %zu bytes starting at 0x%llx..\n",size, (unsigned long long) *pDevice);
-        context->g_mallocPtr_Size[(unsigned long long)*pDevice] = size;
-    }
-	if ( *pDevice  ) {
-		context->pinned_memory[pHost]=pDevice;
-		//Copy contents in cpu to gpu
-		gpu->memcpy_to_gpu((size_t)*pDevice,pHost,size);
-		return g_last_cudaError = cudaSuccess;
-	} else {
-		return g_last_cudaError = cudaErrorMemoryAllocation;
-	}
+    return cudaHostGetDevicePointerInternal(pDevice, pHost, flags);
 }
 
 __host__ cudaError_t CUDARTAPI cudaPointerGetAttributes(
@@ -3450,7 +3473,7 @@ static int load_constants( symbol_table *symtab, addr_t min_gaddr, gpgpu_t *gpu 
 	return nc_bytes;
 }
 
-kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *hostFun, 
+kernel_info_t * gpgpu_context::gpgpu_cuda_ptx_sim_init_grid( const char *hostFun,
 		gpgpu_ptx_sim_arg_list_t args,
 		struct dim3 gridDim,
 		struct dim3 blockDim,
@@ -3482,7 +3505,7 @@ kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *hostFun,
 	fflush(stdout);
 	
 	if(g_debug_execution >= 4){
-        entry->ptx_jit_config(context->g_mallocPtr_Size, result->get_param_memory(), (gpgpu_t *) context->get_device()->get_gpgpu(), gridDim, blockDim);
+        entry->ptx_jit_config(g_mallocPtr_Size, result->get_param_memory(), (gpgpu_t *) context->get_device()->get_gpgpu(), gridDim, blockDim);
     }
 
 	return result;
