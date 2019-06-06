@@ -3947,7 +3947,7 @@ cuLinkAddFile(CUlinkState state, CUjitInputType type, const char *path,
     unsigned int numOptions, CUjit_option *options, void **optionValues)
 {
     return cuLinkAddFileInternal(state, type, path,
-	    numOptions, options, optionValues)
+	    numOptions, options, optionValues);
 }
 #endif
 
