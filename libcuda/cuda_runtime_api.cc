@@ -132,6 +132,7 @@
 #include "__cudaFatFormat.h"
 #endif
 #include "gpgpu_context.h"
+#include "cuda_api_object.h"
 #include "../src/gpgpu-sim/gpu-sim.h"
 #include "../src/cuda-sim/ptx_loader.h"
 #include "../src/cuda-sim/cuda-sim.h"
@@ -314,9 +315,6 @@ struct CUctx_st {
 		return i->second;
 	}
 
-	std::list<cuobjdumpSection*> libSectionList;
-	//maps sm version number to set of filenames
-	std::map<unsigned, std::set<std::string> > version_filename;
 	std::list<kernel_config> g_cuda_launch_stack;
 	std::map<int, bool>fatbin_registered;
 	std::map<int, std::string> fatbinmap;
@@ -2005,7 +2003,7 @@ char* get_app_binary_name(std::string abs_path){
 }
 
 //extracts all ptx files from binary and dumps into prog_name.unique_no.sm_<>.ptx files
-void extract_ptx_files_using_cuobjdump(CUctx_st *context){
+void gpgpu_context::extract_ptx_files_using_cuobjdump(CUctx_st *context){
     extern bool g_cdp_enabled;
     char command[1000];
     char *pytorch_bin = getenv("PYTORCH_BIN");
@@ -2066,10 +2064,10 @@ void extract_ptx_files_using_cuobjdump(CUctx_st *context){
          }
          std::string vstr = line.substr(pos1+3,pos2-pos1-3);
          int version = atoi(vstr.c_str());
-         if (context->version_filename.find(version)==context->version_filename.end()){
-            context->version_filename[version] = std::set<std::string>();
+         if (version_filename.find(version)==version_filename.end()){
+            version_filename[version] = std::set<std::string>();
          }
-         context->version_filename[version].insert(line);
+         version_filename[version].insert(line);
     }
 
 }
@@ -2229,7 +2227,7 @@ void gpgpu_context::extract_code_using_cuobjdump(){
                     fclose(cuobjdump_in);
                     std::getline(libsf, line);
             }
-            context->libSectionList = cuobjdumpSectionList;
+            api->libSectionList = cuobjdumpSectionList;
 
             //Restore the original section list
             cuobjdumpSectionList = tmpsl;
@@ -2418,10 +2416,10 @@ cuobjdumpELFSection* findELFSectionInList(std::list<cuobjdumpSection*> sectionli
 }
 
 //! Find an ELF section in all the known lists
-cuobjdumpELFSection* gpgpu_context::findELFSection(const std::string identifier, std::list<cuobjdumpSection*> &libSectionList){
+cuobjdumpELFSection* gpgpu_context::findELFSection(const std::string identifier){
 	cuobjdumpELFSection* sec = findELFSectionInList(cuobjdumpSectionList, identifier);
 	if (sec!=NULL)return sec;
-	sec = findELFSectionInList(libSectionList, identifier);
+	sec = findELFSectionInList(api->libSectionList, identifier);
 	if (sec!=NULL)return sec;
 	std::cout << "Could not find " << identifier << std::endl;
 	assert(0 && "Could not find the required ELF section");
@@ -2453,10 +2451,10 @@ cuobjdumpPTXSection* findPTXSectionInList(std::list<cuobjdumpSection*> &sectionl
 }
 
 //! Find an PTX section in all the known lists
-cuobjdumpPTXSection* gpgpu_context::findPTXSection(const std::string identifier, std::list<cuobjdumpSection*> &libSectionList){
+cuobjdumpPTXSection* gpgpu_context::findPTXSection(const std::string identifier){
 	cuobjdumpPTXSection* sec = findPTXSectionInList(cuobjdumpSectionList, identifier);
 	if (sec!=NULL)return sec;
-	sec = findPTXSectionInList(libSectionList, identifier);
+	sec = findPTXSectionInList(api->libSectionList, identifier);
 	if (sec!=NULL)return sec;
 	std::cout << "Could not find " << identifier << std::endl;
 	assert(0 && "Could not find the required PTX section");
@@ -2500,7 +2498,7 @@ void gpgpu_context::cuobjdumpParseBinary(unsigned int handle){
 #if (CUDART_VERSION >= 6000)
    //loops through all ptx files from smallest sm version to largest
    std::map<unsigned,std::set<std::string> >::iterator itr_m;
-   for (itr_m = context->version_filename.begin(); itr_m!=context->version_filename.end(); itr_m++){
+   for (itr_m = version_filename.begin(); itr_m!=version_filename.end(); itr_m++){
       std::set<std::string>::iterator itr_s;
       for (itr_s = itr_m->second.begin(); itr_s!=itr_m->second.end(); itr_s++){
           std::string ptx_filename = *itr_s;
@@ -2512,7 +2510,7 @@ void gpgpu_context::cuobjdumpParseBinary(unsigned int handle){
    context->add_binary(symtab, handle);
    load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
    load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
-   for (itr_m = context->version_filename.begin(); itr_m!=context->version_filename.end(); itr_m++){
+   for (itr_m = version_filename.begin(); itr_m!=version_filename.end(); itr_m++){
       std::set<std::string>::iterator itr_s;
       for (itr_s = itr_m->second.begin(); itr_s!=itr_m->second.end(); itr_s++){
           std::string ptx_filename = *itr_s;
@@ -2536,7 +2534,7 @@ void gpgpu_context::cuobjdumpParseBinary(unsigned int handle){
 	cuobjdumpPTXSection* ptx = NULL;
 	const char* pre_load = getenv("CUOBJDUMP_SIM_FILE");
 	if(pre_load==NULL || strlen(pre_load)==0)
-		ptx = findPTXSection(fname, context->libSectionList);
+		ptx = findPTXSection(fname);
 	char *ptxcode;
 	const char *override_ptx_name = getenv("PTX_SIM_KERNELFILE"); 
 	if (override_ptx_name == NULL or getenv("PTX_SIM_USE_PTX_FILE") == NULL or strlen(getenv("PTX_SIM_USE_PTX_FILE"))==0) {
@@ -2546,7 +2544,7 @@ void gpgpu_context::cuobjdumpParseBinary(unsigned int handle){
 		ptxcode = readfile(override_ptx_name);
 	}
 	if(context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() ) {
-		cuobjdumpELFSection* elfsection = findELFSection(ptx->getIdentifier(), context->libSectionList);
+		cuobjdumpELFSection* elfsection = findELFSection(ptx->getIdentifier());
 		assert (elfsection!= NULL);
 		char *ptxplus_str = gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(
 				ptx->getPTXfilename(),
