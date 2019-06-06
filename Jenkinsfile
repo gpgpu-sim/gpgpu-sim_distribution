@@ -90,6 +90,7 @@ pipeline {
                     ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft -C GTX480 > stats-per-kernel-4.2-ptx.csv'
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
                     ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft,sdk-4.2 -C TITANV > stats-per-kernel-9.1.csv'
+                    sh 'if [ ! -d ./gpgpu-sim-results-repo/${JOB_NAME} ]; then mkdir -p ./gpgpu-sim-results-repo/${JOB_NAME}/ ; cp ./gpgpu-sim-results-repo/purdue-aalp/gpgpu-sim_distribution/dev/* ./gpgpu-sim-results-repo/${JOB_NAME}/ ; fi'
                     sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-app-4.2.csv,./stats-per-app-4.2.csv -R > per-app-merge-4.2.csv'
                     sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-app-9.1.csv,./stats-per-app-9.1.csv -R > per-app-merge-9.1.csv'
                     sh 'PLOTDIR="jenkins/${JOB_NAME}" &&\
