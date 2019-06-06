@@ -60,28 +60,18 @@
     def JOB_NAME= build.getEnvVars()["JOB_NAME"];
     def BUILD_NUMBER= build.getEnvVars()["BUILD_NUMBER"];
     def BUILD_URL= build.getEnvVars()["BUILD_URL"];
-    
-    def CORREL_42= readFile('correl.4.2.txt').trim()
-    def CORREL_91= readFile('correl.9.1.txt').trim()
 %>
 
-Statistics changes since last commit:<br>
+See ${BUILD_URL} for full build detials.
+
+<pre>Statistics changes since last commit:
 <pre>    https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/deltas/9.1
 <pre>    https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/deltas/4.2
 <pre>        Correlation:
-<pre>            4.2:<br>
-
-${CORREL_42}
-
-<pre>            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.html
-<pre>            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.appsincluded.txt
-<pre>            9.1:<br>
-
-
-${CORREL_91}
-
-<pre>            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.html.TITANV.html
-<pre>            https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.html.TITANV.appsincluded.txt
-<br><br>
-See ${BUILD_URL} for full build detials.
+<pre>            4.2:
+<pre>               https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.html
+<pre>               https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/gtx480-cycles.html.GTX480-PTXPLUS.GTX480.appsincluded.txt
+<pre>            9.1:
+<pre>               https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.html.TITANV.html
+<pre>               https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.html.TITANV.appsincluded.txt
 </BODY>
