@@ -313,8 +313,6 @@ struct CUctx_st {
 		return i->second;
 	}
 
-	std::map<void *,void **> pinned_memory; //support for pinned memories added
-	std::map<void *, size_t> pinned_memory_size;
 	int no_of_ptx;
 	typedef struct glbmap_entry glbmap_entry_t;
 
@@ -989,6 +987,27 @@ cudaError_t cudaMallocInternal(void **devPtr, size_t size, gpgpu_context* gpgpu_
 	}
 }
 
+cudaError_t cudaMallocHostInternal(void **ptr, size_t size, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	*ptr = malloc(size);
+	if ( *ptr  ) {
+		//track pinned memory size allocated in the host so that same amount of memory is also allocated in GPU.
+		ctx->pinned_memory_size[*ptr]=size;
+		return g_last_cudaError = cudaSuccess;
+	} else {
+		return g_last_cudaError = cudaErrorMemoryAllocation;
+	}
+}
+
 cudaError_t cudaHostGetDevicePointerInternal(void **pDevice, void *pHost, unsigned int flags, gpgpu_context* gpgpu_ctx = NULL)
 {
     gpgpu_context *ctx;
@@ -1008,8 +1027,8 @@ cudaError_t cudaHostGetDevicePointerInternal(void **pDevice, void *pHost, unsign
 	flags=0;
 	CUctx_st* context = GPGPUSim_Context();
 	gpgpu_t *gpu = context->get_device()->get_gpgpu();
-	std::map<void *, size_t>::const_iterator i = context->pinned_memory_size.find(pHost);
-	assert(i != context->pinned_memory_size.end());
+	std::map<void *, size_t>::const_iterator i = ctx->pinned_memory_size.find(pHost);
+	assert(i != ctx->pinned_memory_size.end());
 	size_t size = i->second;
 	*pDevice = gpu->gpu_malloc(size);
 	if(g_debug_execution >= 3){
@@ -1017,7 +1036,7 @@ cudaError_t cudaHostGetDevicePointerInternal(void **pDevice, void *pHost, unsign
         ctx->g_mallocPtr_Size[(unsigned long long)*pDevice] = size;
     }
 	if ( *pDevice  ) {
-		context->pinned_memory[pHost]=pDevice;
+		ctx->pinned_memory[pHost]=pDevice;
 		//Copy contents in cpu to gpu
 		gpu->memcpy_to_gpu((size_t)*pDevice,pHost,size);
 		return g_last_cudaError = cudaSuccess;
@@ -1066,6 +1085,31 @@ cuLinkAddFileInternal(CUlinkState state, CUjitInputType type, const char *path,
 }
 #endif
 
+#if (CUDART_VERSION >= 2010)
+
+cudaError_t cudaHostAllocInternal(void **pHost,  size_t bytes, unsigned int flags, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	*pHost = malloc(bytes);
+	//need to track the size allocated so that cudaHostGetDevicePointer() can function properly.
+	//TODO: vary this function behavior based on flags value (following nvidia documentation)
+	ctx->pinned_memory_size[*pHost]=bytes;
+	if( *pHost )
+		return g_last_cudaError = cudaSuccess;
+	else
+		return g_last_cudaError = cudaErrorMemoryAllocation;
+}
+
+#endif
+
 /*******************************************************************************
  *                                                                              *
  *                                                                              *
@@ -1091,18 +1135,7 @@ __host__ cudaError_t CUDARTAPI cudaMalloc(void **devPtr, size_t size)
 
 __host__ cudaError_t CUDARTAPI cudaMallocHost(void **ptr, size_t size)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	CUctx_st* context = GPGPUSim_Context();
-	*ptr = malloc(size);
-	if ( *ptr  ) {
-		//track pinned memory size allocated in the host so that same amount of memory is also allocated in GPU.
-		context->pinned_memory_size[*ptr]=size;
-		return g_last_cudaError = cudaSuccess;
-	} else {
-		return g_last_cudaError = cudaErrorMemoryAllocation;
-	}
+    return cudaMallocHostInternal(ptr, size);
 }
 __host__ cudaError_t CUDARTAPI cudaMallocPitch(void **devPtr, size_t *pitch, size_t width, size_t height)
 {
@@ -3141,18 +3174,7 @@ cudaError_t cudaGLUnregisterBufferObject(GLuint bufferObj)
 
 cudaError_t CUDARTAPI cudaHostAlloc(void **pHost,  size_t bytes, unsigned int flags)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	*pHost = malloc(bytes);
-	//need to track the size allocated so that cudaHostGetDevicePointer() can function properly.
-	//TODO: vary this function behavior based on flags value (following nvidia documentation)
-	CUctx_st* context = GPGPUSim_Context();
-	context->pinned_memory_size[*pHost]=bytes;
-	if( *pHost )
-		return g_last_cudaError = cudaSuccess;
-	else
-		return g_last_cudaError = cudaErrorMemoryAllocation;
+    return cudaHostAllocInternal(pHost, bytes, flags);
 }
 
 cudaError_t CUDARTAPI cudaHostGetDevicePointer(void **pDevice, void *pHost, unsigned int flags)

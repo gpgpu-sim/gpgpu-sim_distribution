@@ -28,6 +28,9 @@ class gpgpu_context {
 	std::map<unsigned long long, size_t> g_mallocPtr_Size;
 	//maps sm version number to set of filenames
 	std::map<unsigned, std::set<std::string> > version_filename;
+	std::map<void *,void **> pinned_memory; //support for pinned memories added
+	std::map<void *, size_t> pinned_memory_size;
+	// objects pointers for each file
 	cuda_runtime_api* api;
 	// member function list
 	void cuobjdumpInit();
