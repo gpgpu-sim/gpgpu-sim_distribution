@@ -237,17 +237,6 @@ private:
 	struct _cuda_device_id *m_next;
 };
 
-#ifndef OPENGL_SUPPORT
-typedef unsigned long GLuint;
-#endif
-
-struct glbmap_entry {
-	GLuint m_bufferObj;
-	void *m_devPtr;
-	size_t m_size;
-	struct glbmap_entry *m_next;
-};
-
 struct CUctx_st {
 	CUctx_st( _cuda_device_id *gpu )
 	{
@@ -255,7 +244,6 @@ struct CUctx_st {
 		m_binary_info.cmem = 0;
 		m_binary_info.gmem = 0;
 		no_of_ptx=0;
-		g_glbmap = NULL;
 	}
 
 	_cuda_device_id *get_device() { return m_gpu; }
@@ -313,12 +301,7 @@ struct CUctx_st {
 		return i->second;
 	}
 
-	std::map<void *,void **> pinned_memory; //support for pinned memories added
-	std::map<void *, size_t> pinned_memory_size;
 	int no_of_ptx;
-	typedef struct glbmap_entry glbmap_entry_t;
-
-	glbmap_entry_t* g_glbmap;
 
 private:
 	_cuda_device_id *m_gpu; // selected gpu
@@ -989,6 +972,27 @@ cudaError_t cudaMallocInternal(void **devPtr, size_t size, gpgpu_context* gpgpu_
 	}
 }
 
+cudaError_t cudaMallocHostInternal(void **ptr, size_t size, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	*ptr = malloc(size);
+	if ( *ptr  ) {
+		//track pinned memory size allocated in the host so that same amount of memory is also allocated in GPU.
+		ctx->pinned_memory_size[*ptr]=size;
+		return g_last_cudaError = cudaSuccess;
+	} else {
+		return g_last_cudaError = cudaErrorMemoryAllocation;
+	}
+}
+
 cudaError_t cudaHostGetDevicePointerInternal(void **pDevice, void *pHost, unsigned int flags, gpgpu_context* gpgpu_ctx = NULL)
 {
     gpgpu_context *ctx;
@@ -1008,8 +1012,8 @@ cudaError_t cudaHostGetDevicePointerInternal(void **pDevice, void *pHost, unsign
 	flags=0;
 	CUctx_st* context = GPGPUSim_Context();
 	gpgpu_t *gpu = context->get_device()->get_gpgpu();
-	std::map<void *, size_t>::const_iterator i = context->pinned_memory_size.find(pHost);
-	assert(i != context->pinned_memory_size.end());
+	std::map<void *, size_t>::const_iterator i = ctx->pinned_memory_size.find(pHost);
+	assert(i != ctx->pinned_memory_size.end());
 	size_t size = i->second;
 	*pDevice = gpu->gpu_malloc(size);
 	if(g_debug_execution >= 3){
@@ -1017,7 +1021,7 @@ cudaError_t cudaHostGetDevicePointerInternal(void **pDevice, void *pHost, unsign
         ctx->g_mallocPtr_Size[(unsigned long long)*pDevice] = size;
     }
 	if ( *pDevice  ) {
-		context->pinned_memory[pHost]=pDevice;
+		ctx->pinned_memory[pHost]=pDevice;
 		//Copy contents in cpu to gpu
 		gpu->memcpy_to_gpu((size_t)*pDevice,pHost,size);
 		return g_last_cudaError = cudaSuccess;
@@ -1025,6 +1029,72 @@ cudaError_t cudaHostGetDevicePointerInternal(void **pDevice, void *pHost, unsign
 		return g_last_cudaError = cudaErrorMemoryAllocation;
 	}
 }
+
+cudaError_t cudaGLMapBufferObjectInternal(void** devPtr, GLuint bufferObj, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+#ifdef OPENGL_SUPPORT
+	GLint buffer_size=0;
+	CUctx_st* context = GPGPUSim_Context();
+
+	glbmap_entry_t *p = ctx->g_glbmap;
+	while ( p && p->m_bufferObj != bufferObj )
+		p = p->m_next;
+	if ( p == NULL ) {
+		glBindBuffer(GL_ARRAY_BUFFER,bufferObj);
+		glGetBufferParameteriv(GL_ARRAY_BUFFER,GL_BUFFER_SIZE,&buffer_size);
+		assert( buffer_size != 0 );
+		*devPtr = context->get_device()->get_gpgpu()->gpu_malloc(buffer_size);
+
+		// create entry and insert to front of list
+		glbmap_entry_t *n = (glbmap_entry_t *) calloc(1,sizeof(glbmap_entry_t));
+		n->m_next = ctx->g_glbmap;
+		ctx->g_glbmap = n;
+
+		// initialize entry
+		n->m_bufferObj = bufferObj;
+		n->m_devPtr = *devPtr;
+		n->m_size = buffer_size;
+
+		p = n;
+	} else {
+		buffer_size = p->m_size;
+		*devPtr = p->m_devPtr;
+	}
+
+	if ( *devPtr  ) {
+		char *data = (char *) calloc(p->m_size,1);
+		glGetBufferSubData(GL_ARRAY_BUFFER,0,buffer_size,data);
+		memcpy_to_gpu( (size_t) *devPtr, data, buffer_size );
+		free(data);
+		printf("GPGPU-Sim PTX: cudaGLMapBufferObject %zu bytes starting at 0x%llx..\n", (size_t)buffer_size,
+				(unsigned long long) *devPtr);
+		return g_last_cudaError = cudaSuccess;
+	} else {
+		return g_last_cudaError = cudaErrorMemoryAllocation;
+	}
+
+	return g_last_cudaError = cudaSuccess;
+#else
+	fflush(stdout);
+	fflush(stderr);
+	printf("GPGPU-Sim PTX: GPGPU-Sim support for OpenGL integration disabled -- exiting\n");
+	fflush(stdout);
+	exit(50);
+#endif
+}
+
 #if CUDART_VERSION >= 6050
 CUresult
 cuLinkAddFileInternal(CUlinkState state, CUjitInputType type, const char *path,
@@ -1066,6 +1136,31 @@ cuLinkAddFileInternal(CUlinkState state, CUjitInputType type, const char *path,
 }
 #endif
 
+#if (CUDART_VERSION >= 2010)
+
+cudaError_t cudaHostAllocInternal(void **pHost,  size_t bytes, unsigned int flags, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	*pHost = malloc(bytes);
+	//need to track the size allocated so that cudaHostGetDevicePointer() can function properly.
+	//TODO: vary this function behavior based on flags value (following nvidia documentation)
+	ctx->pinned_memory_size[*pHost]=bytes;
+	if( *pHost )
+		return g_last_cudaError = cudaSuccess;
+	else
+		return g_last_cudaError = cudaErrorMemoryAllocation;
+}
+
+#endif
+
 /*******************************************************************************
  *                                                                              *
  *                                                                              *
@@ -1091,18 +1186,7 @@ __host__ cudaError_t CUDARTAPI cudaMalloc(void **devPtr, size_t size)
 
 __host__ cudaError_t CUDARTAPI cudaMallocHost(void **ptr, size_t size)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	CUctx_st* context = GPGPUSim_Context();
-	*ptr = malloc(size);
-	if ( *ptr  ) {
-		//track pinned memory size allocated in the host so that same amount of memory is also allocated in GPU.
-		context->pinned_memory_size[*ptr]=size;
-		return g_last_cudaError = cudaSuccess;
-	} else {
-		return g_last_cudaError = cudaErrorMemoryAllocation;
-	}
+    return cudaMallocHostInternal(ptr, size);
 }
 __host__ cudaError_t CUDARTAPI cudaMallocPitch(void **devPtr, size_t *pitch, size_t width, size_t height)
 {
@@ -3046,58 +3130,7 @@ cudaError_t cudaGLRegisterBufferObject(GLuint bufferObj)
 
 cudaError_t cudaGLMapBufferObject(void** devPtr, GLuint bufferObj) 
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-#ifdef OPENGL_SUPPORT
-	GLint buffer_size=0;
-	CUctx_st* ctx = GPGPUSim_Context();
-
-	glbmap_entry_t *p = ctx->g_glbmap;
-	while ( p && p->m_bufferObj != bufferObj )
-		p = p->m_next;
-	if ( p == NULL ) {
-		glBindBuffer(GL_ARRAY_BUFFER,bufferObj);
-		glGetBufferParameteriv(GL_ARRAY_BUFFER,GL_BUFFER_SIZE,&buffer_size);
-		assert( buffer_size != 0 );
-		*devPtr = ctx->get_device()->get_gpgpu()->gpu_malloc(buffer_size);
-
-		// create entry and insert to front of list
-		glbmap_entry_t *n = (glbmap_entry_t *) calloc(1,sizeof(glbmap_entry_t));
-		n->m_next = ctx->g_glbmap;
-		ctx->g_glbmap = n;
-
-		// initialize entry
-		n->m_bufferObj = bufferObj;
-		n->m_devPtr = *devPtr;
-		n->m_size = buffer_size;
-
-		p = n;
-	} else {
-		buffer_size = p->m_size;
-		*devPtr = p->m_devPtr;
-	}
-
-	if ( *devPtr  ) {
-		char *data = (char *) calloc(p->m_size,1);
-		glGetBufferSubData(GL_ARRAY_BUFFER,0,buffer_size,data);
-		memcpy_to_gpu( (size_t) *devPtr, data, buffer_size );
-		free(data);
-		printf("GPGPU-Sim PTX: cudaGLMapBufferObject %zu bytes starting at 0x%llx..\n", (size_t)buffer_size,
-				(unsigned long long) *devPtr);
-		return g_last_cudaError = cudaSuccess;
-	} else {
-		return g_last_cudaError = cudaErrorMemoryAllocation;
-	}
-
-	return g_last_cudaError = cudaSuccess;
-#else
-	fflush(stdout);
-	fflush(stderr);
-	printf("GPGPU-Sim PTX: GPGPU-Sim support for OpenGL integration disabled -- exiting\n");
-	fflush(stdout);
-	exit(50);
-#endif
+    return cudaGLMapBufferObjectInternal(devPtr, bufferObj);
 }
 
 cudaError_t cudaGLUnmapBufferObject(GLuint bufferObj)
@@ -3141,18 +3174,7 @@ cudaError_t cudaGLUnregisterBufferObject(GLuint bufferObj)
 
 cudaError_t CUDARTAPI cudaHostAlloc(void **pHost,  size_t bytes, unsigned int flags)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	*pHost = malloc(bytes);
-	//need to track the size allocated so that cudaHostGetDevicePointer() can function properly.
-	//TODO: vary this function behavior based on flags value (following nvidia documentation)
-	CUctx_st* context = GPGPUSim_Context();
-	context->pinned_memory_size[*pHost]=bytes;
-	if( *pHost )
-		return g_last_cudaError = cudaSuccess;
-	else
-		return g_last_cudaError = cudaErrorMemoryAllocation;
+    return cudaHostAllocInternal(pHost, bytes, flags);
 }
 
 cudaError_t CUDARTAPI cudaHostGetDevicePointer(void **pDevice, void *pHost, unsigned int flags)
