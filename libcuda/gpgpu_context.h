@@ -15,10 +15,24 @@ class kernel_info_t;
 
 typedef std::list<gpgpu_ptx_sim_arg> gpgpu_ptx_sim_arg_list_t;
 
+#ifndef OPENGL_SUPPORT
+typedef unsigned long GLuint;
+#endif
+
+struct glbmap_entry {
+	GLuint m_bufferObj;
+	void *m_devPtr;
+	size_t m_size;
+	struct glbmap_entry *m_next;
+};
+
+typedef struct glbmap_entry glbmap_entry_t;
+
 class gpgpu_context {
     public:
 	gpgpu_context() {
 	    api = new cuda_runtime_api();
+	    g_glbmap = NULL;
 	}
 	// global list
 	std::list<cuobjdumpSection*> cuobjdumpSectionList;
@@ -28,6 +42,10 @@ class gpgpu_context {
 	std::map<unsigned long long, size_t> g_mallocPtr_Size;
 	//maps sm version number to set of filenames
 	std::map<unsigned, std::set<std::string> > version_filename;
+	std::map<void *,void **> pinned_memory; //support for pinned memories added
+	std::map<void *, size_t> pinned_memory_size;
+	glbmap_entry_t* g_glbmap;
+	// objects pointers for each file
 	cuda_runtime_api* api;
 	// member function list
 	void cuobjdumpInit();
