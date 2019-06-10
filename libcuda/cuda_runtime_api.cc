@@ -630,6 +630,8 @@ void gpgpu_context::cuobjdumpRegisterFatBinary(unsigned int handle, const char* 
 	fatbinmap[handle] = filename;
 }
 
+
+
 /*******************************************************************************
  * Add internal cuda runtime API call to accept gpgpu_context                   *
  *******************************************************************************/
@@ -2973,6 +2975,29 @@ extern "C" {
 void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 {
     return cudaRegisterFatBinaryInternal(fatCubin);
+}
+
+void CUDARTAPI __cudaRegisterFatBinaryEnd( void **fatCubinHandle )
+{
+
+}
+
+unsigned CUDARTAPI __cudaPushCallConfiguration(dim3 gridDim,
+                                      dim3 blockDim, 
+                                      size_t sharedMem = 0, 
+                                      struct CUstream_st *stream = 0)
+{
+
+}
+
+cudaError_t CUDARTAPI __cudaPopCallConfiguration(
+  dim3         *gridDim,
+  dim3         *blockDim,
+  size_t       *sharedMem,
+  void         *stream
+)
+{
+    return g_last_cudaError = cudaSuccess;
 }
 
 void CUDARTAPI __cudaRegisterFunction(
