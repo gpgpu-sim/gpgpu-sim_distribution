@@ -49,7 +49,6 @@ void set_ptx_warp_size(const struct core_config * warp_size)
 
 static bool g_debug_ir_generation=false;
 const char *g_filename;
-unsigned g_max_regs_per_thread = 0;
 
 // the program intermediate representation...
 static symbol_table *g_global_allfiles_symbol_table = NULL;
@@ -340,10 +339,6 @@ bool check_for_duplicates( const char *identifier )
 
 extern std::set<std::string>   g_globals;
 extern std::set<std::string>   g_constants;
-
-int g_func_decl = 0;
-int g_ident_add_uid = 0;
-unsigned g_const_alloc = 1;
 
 // Returns padding that needs to be inserted ahead of address to make it aligned to min(size, maxalign)
 /*
