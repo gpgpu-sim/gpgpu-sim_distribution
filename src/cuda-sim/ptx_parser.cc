@@ -61,27 +61,6 @@ static symbol *g_last_symbol = NULL;
 
 int g_error_detected = 0;
 
-// type specifier stuff:
-memory_space_t g_space_spec = undefined_space;
-memory_space_t g_ptr_spec = undefined_space;
-int g_scalar_type_spec = -1;
-int g_vector_spec = -1;
-int g_alignment_spec = -1;
-int g_extern_spec = 0;
-
-// variable declaration stuff:
-type_info *g_var_type = NULL;
-
-// instruction definition stuff:
-const symbol *g_pred;
-int g_neg_pred;
-int g_pred_mod;
-symbol *g_label;
-int g_opcode = -1;
-std::list<operand_info> g_operands;
-std::list<int> g_options;
-std::list<int> g_wmma_options;
-std::list<int> g_scalar_type;
 
 #define PTX_PARSE_DPRINTF(...) \
    if( g_debug_ir_generation ) { \
