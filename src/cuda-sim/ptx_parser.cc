@@ -49,7 +49,6 @@ void set_ptx_warp_size(const struct core_config * warp_size)
 
 static bool g_debug_ir_generation=false;
 const char *g_filename;
-unsigned g_max_regs_per_thread = 0;
 
 // the program intermediate representation...
 static symbol_table *g_global_allfiles_symbol_table = NULL;
@@ -61,27 +60,6 @@ static symbol *g_last_symbol = NULL;
 
 int g_error_detected = 0;
 
-// type specifier stuff:
-memory_space_t g_space_spec = undefined_space;
-memory_space_t g_ptr_spec = undefined_space;
-int g_scalar_type_spec = -1;
-int g_vector_spec = -1;
-int g_alignment_spec = -1;
-int g_extern_spec = 0;
-
-// variable declaration stuff:
-type_info *g_var_type = NULL;
-
-// instruction definition stuff:
-const symbol *g_pred;
-int g_neg_pred;
-int g_pred_mod;
-symbol *g_label;
-int g_opcode = -1;
-std::list<operand_info> g_operands;
-std::list<int> g_options;
-std::list<int> g_wmma_options;
-std::list<int> g_scalar_type;
 
 #define PTX_PARSE_DPRINTF(...) \
    if( g_debug_ir_generation ) { \
@@ -361,10 +339,6 @@ bool check_for_duplicates( const char *identifier )
 
 extern std::set<std::string>   g_globals;
 extern std::set<std::string>   g_constants;
-
-int g_func_decl = 0;
-int g_ident_add_uid = 0;
-unsigned g_const_alloc = 1;
 
 // Returns padding that needs to be inserted ahead of address to make it aligned to min(size, maxalign)
 /*
