@@ -48,6 +48,7 @@ CPPFLAGS += -O3
 endif
 CPPFLAGS += -g
 CPPFLAGS += -fPIC
+CPPFLAGS += -I$(CUDA_INSTALL_PATH)/include
 LFLAGS +=
 
 
