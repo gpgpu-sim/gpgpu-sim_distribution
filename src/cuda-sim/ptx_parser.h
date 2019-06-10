@@ -29,6 +29,7 @@
 #define ptx_parser_INCLUDED
 
 #include "../abstract_hardware_model.h"
+#include "ptx_ir.h"
 extern const char *g_filename;
 extern int g_error_detected;
 
@@ -44,7 +45,16 @@ class ptx_recognizer {
 	    scanner = NULL;
 	    g_size = -1;
 	    g_add_identifier_cached__identifier = NULL;
+	    g_alignment_spec = -1;
+	    g_var_type = NULL;
+	    g_opcode = -1;
+	    g_space_spec = undefined_space;
+	    g_ptr_spec = undefined_space;
+	    g_scalar_type_spec = -1;
+	    g_vector_spec = -1;
+	    g_extern_spec = 0;
 	}
+	// global list
 	yyscan_t scanner;
 #define LINEBUF_SIZE (4*1024)
 	char linebuf[LINEBUF_SIZE];
@@ -53,7 +63,27 @@ class ptx_recognizer {
 	char *g_add_identifier_cached__identifier;
 	int g_add_identifier_cached__array_dim;
 	int g_add_identifier_cached__array_ident;
+	int g_alignment_spec;
+	// variable declaration stuff:
+	type_info *g_var_type;
+	// instruction definition stuff:
+	const symbol *g_pred;
+	int g_neg_pred;
+	int g_pred_mod;
+	symbol *g_label;
+	int g_opcode;
+	std::list<operand_info> g_operands;
+	std::list<int> g_options;
+	std::list<int> g_wmma_options;
+	std::list<int> g_scalar_type;
+	// type specifier stuff:
+	memory_space_t g_space_spec;
+	memory_space_t g_ptr_spec;
+	int g_scalar_type_spec;
+	int g_vector_spec;
+	int g_extern_spec;
 
+	// member function list
 	void init_directive_state();
 	void init_instruction_state();
 	void start_function( int entry_point );
