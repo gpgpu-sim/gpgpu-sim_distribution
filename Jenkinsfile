@@ -85,7 +85,7 @@ pipeline {
                     sh 'rm -rf gpgpu-sim-results-repo'
                     sh 'git clone git@github.com:purdue-aalp/gpgpu-sim-results-repo.git'
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
-                    ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft -C TITANV-PTXPLUS > stats-per-kernel-4.2-ptxplus.csv &&\
+                    ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft -C TITANV-PTXPLUS > stats-per-kernel-4.2-ptxplus.csv'
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/10.1_env_setup.sh &&\
                     ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft,sdk-4.2 -C TITANV > stats-per-kernel-10.1.csv'
                     sh 'if [ ! -d ./gpgpu-sim-results-repo/${JOB_NAME} ]; then mkdir -p ./gpgpu-sim-results-repo/${JOB_NAME}/ ; cp ./gpgpu-sim-results-repo/purdue-aalp/gpgpu-sim_distribution/dev/* ./gpgpu-sim-results-repo/${JOB_NAME}/ ; fi'
