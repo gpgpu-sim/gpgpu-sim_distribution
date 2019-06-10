@@ -2108,20 +2108,21 @@ __host__ cudaError_t CUDARTAPI cudaLaunch( const char *hostFun )
 __host__ cudaError_t CUDARTAPI cudaLaunchKernel ( const char* hostFun, dim3 gridDim, dim3 blockDim, const void** args, size_t sharedMem, cudaStream_t stream )
 {
 
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    	}
-        CUctx_st *context = GPGPUSim_Context();
-        function_info *entry = context->get_kernel(hostFun);
-    
-	cudaConfigureCallInternal(gridDim, blockDim, sharedMem, stream);
-    	for(unsigned i = 0; i < entry->num_args(); i++){
-        	std::pair<size_t, unsigned> p = entry->get_param_config(i);
-        	cudaSetupArgumentInternal(args[i], p.first, p.second);
-    	}  
+    if(g_debug_execution >= 3){
+        announce_call(__my_func__);
+    }
+    CUctx_st *context = GPGPUSim_Context();
+    function_info *entry = context->get_kernel(hostFun);
+#if CUDART_VERSION < 10000
+    cudaConfigureCallInternal(gridDim, blockDim, sharedMem, stream);
+#endif
+    for(unsigned i = 0; i < entry->num_args(); i++){
+        std::pair<size_t, unsigned> p = entry->get_param_config(i);
+        cudaSetupArgumentInternal(args[i], p.first, p.second);
+    }
 
-	cudaLaunchInternal(hostFun);
-	return g_last_cudaError = cudaSuccess;
+    cudaLaunchInternal(hostFun);
+    return g_last_cudaError = cudaSuccess;
 }
 
 
@@ -2974,12 +2975,17 @@ extern "C" {
 
 void** CUDARTAPI __cudaRegisterFatBinary( void *fatCubin )
 {
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
     return cudaRegisterFatBinaryInternal(fatCubin);
 }
 
 void CUDARTAPI __cudaRegisterFatBinaryEnd( void **fatCubinHandle )
 {
-
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
 }
 
 unsigned CUDARTAPI __cudaPushCallConfiguration(dim3 gridDim,
@@ -2987,7 +2993,10 @@ unsigned CUDARTAPI __cudaPushCallConfiguration(dim3 gridDim,
                                       size_t sharedMem = 0, 
                                       struct CUstream_st *stream = 0)
 {
-
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+    cudaConfigureCallInternal(gridDim, blockDim, sharedMem, stream);
 }
 
 cudaError_t CUDARTAPI __cudaPopCallConfiguration(
@@ -2997,6 +3006,9 @@ cudaError_t CUDARTAPI __cudaPopCallConfiguration(
   void         *stream
 )
 {
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
     return g_last_cudaError = cudaSuccess;
 }
 
@@ -3056,7 +3068,6 @@ void __cudaUnregisterFatBinary(void **fatCubinHandle)
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     }
-	;
 }
 
 cudaError_t cudaDeviceReset ( void ) {
