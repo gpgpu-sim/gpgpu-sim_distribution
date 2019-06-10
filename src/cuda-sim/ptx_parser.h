@@ -53,6 +53,10 @@ class ptx_recognizer {
 	    g_scalar_type_spec = -1;
 	    g_vector_spec = -1;
 	    g_extern_spec = 0;
+	    g_func_decl = 0;
+	    g_ident_add_uid = 0;
+	    g_const_alloc = 1;
+	    g_max_regs_per_thread = 0;
 	}
 	// global list
 	yyscan_t scanner;
@@ -82,6 +86,10 @@ class ptx_recognizer {
 	int g_scalar_type_spec;
 	int g_vector_spec;
 	int g_extern_spec;
+	int g_func_decl;
+	int g_ident_add_uid;
+	unsigned g_const_alloc;
+	unsigned g_max_regs_per_thread;
 
 	// member function list
 	void init_directive_state();
