@@ -1498,6 +1498,9 @@ __host__ cudaError_t CUDARTAPI cudaLaunch( const char *hostFun )
 	gpgpusim_ptx_assert( !g_cuda_launch_stack.empty(), "empty launch stack" );
 	kernel_config config = g_cuda_launch_stack.back();
 	struct CUstream_st *stream = config.get_stream();
+	if(g_stream_manager->is_blocking())
+		stream = 0;
+
 	printf("\nGPGPU-Sim PTX: cudaLaunch for 0x%p (mode=%s) on stream %u\n", hostFun,
 			g_ptx_sim_mode?"functional simulation":"performance simulation", stream?stream->get_uid():0 );
 	kernel_info_t *grid = gpgpu_cuda_ptx_sim_init_grid(hostFun,config.get_args(),config.grid_dim(),config.block_dim(),context);
