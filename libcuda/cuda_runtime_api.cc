@@ -2763,6 +2763,29 @@ cudaError_t CUDARTAPI cudaDeviceSynchronize(void){
 	return g_last_cudaError = cudaSuccess;
 }
 
+void CUDARTAPI __cudaRegisterFatBinaryEnd( void **fatCubinHandle )
+{
+
+}
+
+unsigned CUDARTAPI __cudaPushCallConfiguration(dim3 gridDim,
+                                      dim3 blockDim, 
+                                      size_t sharedMem = 0, 
+                                      struct CUstream_st *stream = 0)
+{
+
+}
+
+cudaError_t CUDARTAPI __cudaPopCallConfiguration(
+  dim3         *gridDim,
+  dim3         *blockDim,
+  size_t       *sharedMem,
+  void         *stream
+)
+{
+    return g_last_cudaError = cudaSuccess;
+}
+
 void CUDARTAPI __cudaRegisterFunction(
 		void   **fatCubinHandle,
 		const char    *hostFun,
