@@ -169,6 +169,8 @@ breakaddr  TC; ptx_lval.int_value = BREAKADDR_OP; return OPCODE;
 \.row TC; ptx_lval.int_value = ROW; return LAYOUT;
 \.col TC; ptx_lval.int_value = COL; return LAYOUT;
 \.m16n16k16 TC; ptx_lval.int_value = M16N16K16; return CONFIGURATION;
+\.m32n8k16 TC; ptx_lval.int_value = M32N8K16; return CONFIGURATION;
+\.m8n32k16 TC; ptx_lval.int_value = M8N32K16; return CONFIGURATION;
 \.f4e TC;  return PRMT_F4E_MODE;
 \.b4e TC;  return PRMT_B4E_MODE;
 \.rc8 TC;  return PRMT_RC8_MODE;
