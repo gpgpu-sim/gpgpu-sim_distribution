@@ -229,7 +229,6 @@ class ptx_recognizer;
 	#include <string.h>
 	#include <math.h>
 	void syntax_not_implemented(yyscan_t yyscanner, ptx_recognizer* recognizer);
-	extern int g_func_decl;
 	int ptx_lex(YYSTYPE * yylval_param, yyscan_t yyscanner, ptx_recognizer* recognizer);
 	int ptx_error( yyscan_t yyscanner, ptx_recognizer* recognizer, const char *s );
 %}
@@ -260,21 +259,21 @@ block_spec_list: block_spec
 
 function_decl: function_decl_header LEFT_PAREN { recognizer->start_function($1); recognizer->func_header_info("(");} param_entry RIGHT_PAREN {recognizer->func_header_info(")");} function_ident_param { $$ = recognizer->reset_symtab(); }
 	| function_decl_header { recognizer->start_function($1); } function_ident_param { $$ = recognizer->reset_symtab(); }
-	| function_decl_header { recognizer->start_function($1); recognizer->add_function_name(""); g_func_decl=0; $$ = recognizer->reset_symtab(); }
+	| function_decl_header { recognizer->start_function($1); recognizer->add_function_name(""); recognizer->g_func_decl=0; $$ = recognizer->reset_symtab(); }
 	;
 
-function_ident_param: IDENTIFIER { recognizer->add_function_name($1); } LEFT_PAREN {recognizer->func_header_info("(");} param_list RIGHT_PAREN { g_func_decl=0; recognizer->func_header_info(")"); }
-	| IDENTIFIER { recognizer->add_function_name($1); g_func_decl=0; }
+function_ident_param: IDENTIFIER { recognizer->add_function_name($1); } LEFT_PAREN {recognizer->func_header_info("(");} param_list RIGHT_PAREN { recognizer->g_func_decl=0; recognizer->func_header_info(")"); }
+	| IDENTIFIER { recognizer->add_function_name($1); recognizer->g_func_decl=0; }
 	;
 
-function_decl_header: ENTRY_DIRECTIVE { $$ = 1; g_func_decl=1; recognizer->func_header(".entry"); }
-	| VISIBLE_DIRECTIVE ENTRY_DIRECTIVE { $$ = 1; g_func_decl=1; recognizer->func_header(".entry"); }
-	| WEAK_DIRECTIVE ENTRY_DIRECTIVE { $$ = 1; g_func_decl=1; recognizer->func_header(".entry"); }
-	| FUNC_DIRECTIVE { $$ = 0; g_func_decl=1; recognizer->func_header(".func"); }
-	| VISIBLE_DIRECTIVE FUNC_DIRECTIVE { $$ = 0; g_func_decl=1; recognizer->func_header(".func"); }
-	| WEAK_DIRECTIVE FUNC_DIRECTIVE { $$ = 0; g_func_decl=1; recognizer->func_header(".func"); }
-	| EXTERN_DIRECTIVE FUNC_DIRECTIVE { $$ = 2; g_func_decl=1; recognizer->func_header(".func"); }
-	| WEAK_DIRECTIVE FUNC_DIRECTIVE { $$ = 0; g_func_decl=1; recognizer->func_header(".func"); }
+function_decl_header: ENTRY_DIRECTIVE { $$ = 1; recognizer->g_func_decl=1; recognizer->func_header(".entry"); }
+	| VISIBLE_DIRECTIVE ENTRY_DIRECTIVE { $$ = 1; recognizer->g_func_decl=1; recognizer->func_header(".entry"); }
+	| WEAK_DIRECTIVE ENTRY_DIRECTIVE { $$ = 1; recognizer->g_func_decl=1; recognizer->func_header(".entry"); }
+	| FUNC_DIRECTIVE { $$ = 0; recognizer->g_func_decl=1; recognizer->func_header(".func"); }
+	| VISIBLE_DIRECTIVE FUNC_DIRECTIVE { $$ = 0; recognizer->g_func_decl=1; recognizer->func_header(".func"); }
+	| WEAK_DIRECTIVE FUNC_DIRECTIVE { $$ = 0; recognizer->g_func_decl=1; recognizer->func_header(".func"); }
+	| EXTERN_DIRECTIVE FUNC_DIRECTIVE { $$ = 2; recognizer->g_func_decl=1; recognizer->func_header(".func"); }
+	| WEAK_DIRECTIVE FUNC_DIRECTIVE { $$ = 0; recognizer->g_func_decl=1; recognizer->func_header(".func"); }
 	;
 
 param_list: /*empty*/
