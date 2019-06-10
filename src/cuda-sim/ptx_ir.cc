@@ -1144,6 +1144,8 @@ ptx_instruction::ptx_instruction( int opcode,
       		  m_wmma_layout[rr++]=last_ptx_inst_option;
       		  break;
       		case M16N16K16:
+      		case M32N8K16:
+      		case M8N32K16:
 			break;
       		default:
       		   assert(0);
