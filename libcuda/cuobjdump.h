@@ -4,6 +4,7 @@
 #include <list>
 #include <iostream>
 
+typedef void * yyscan_t;
 struct cuobjdump_parser {
     yyscan_t scanner;
     int elfserial;
