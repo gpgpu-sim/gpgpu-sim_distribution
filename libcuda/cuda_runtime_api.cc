@@ -273,7 +273,7 @@ static CUctx_st* GPGPUSim_Context()
 	return the_context;
 }
 
-static gpgpu_context* GPGPU_Context()
+gpgpu_context* GPGPU_Context()
 {
 	static gpgpu_context *gpgpu_ctx = NULL;
 	if( gpgpu_ctx == NULL ) {
