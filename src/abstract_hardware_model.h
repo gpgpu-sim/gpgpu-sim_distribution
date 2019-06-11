@@ -174,9 +174,6 @@ enum _memory_op_t {
 
 #if !defined(__VECTOR_TYPES_H__)
 #include "vector_types.h"
-//struct dim3 {
-//   unsigned int x, y, z;
-//};
 #endif
 struct dim3comp {
     bool operator() (const dim3 & a, const dim3 & b) const
@@ -457,20 +454,6 @@ protected:
 
 #include "builtin_types.h"
 
-//enum cudaChannelFormatKind {
-//   cudaChannelFormatKindSigned,
-//   cudaChannelFormatKindUnsigned,
-//   cudaChannelFormatKindFloat
-//};
-
-//struct cudaChannelFormatDesc {
-//   int                        x;
-//   int                        y;
-//   int                        z;
-//   int                        w;
-//   enum cudaChannelFormatKind f;
-//};
-
 struct cudaArray {
    void *devPtr;
    int devPtr32;
@@ -480,28 +463,6 @@ struct cudaArray {
    int size; //in bytes
    unsigned dimensions;
 };
-
-//enum cudaTextureAddressMode {
-//   cudaAddressModeWrap,
-//   cudaAddressModeClamp
-//};
-
-//enum cudaTextureFilterMode {
-//   cudaFilterModePoint,
-//   cudaFilterModeLinear
-//};
-
-//enum cudaTextureReadMode {
-//   cudaReadModeElementType,
-//   cudaReadModeNormalizedFloat
-//};
-
-//struct textureReference {
-//   int                           normalized;
-//   enum cudaTextureFilterMode    filterMode;
-//   enum cudaTextureAddressMode   addressMode[3];
-//   struct cudaChannelFormatDesc  channelDesc;
-//};
 
 #endif
 
