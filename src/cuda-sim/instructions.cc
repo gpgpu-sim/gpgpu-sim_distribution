@@ -2302,12 +2302,12 @@ ptx_reg_t f2x( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
   half_float::half tmp_h;
    //assert( from_width == 32); 
 
-   enum cuda_math::cudaRoundMode mode = cuda_math::cudaRoundZero;
+   enum cudaRoundMode mode = cudaRoundZero;
    switch (rounding_mode) {
-   case RZI_OPTION: mode = cuda_math::cudaRoundZero;    break;
-   case RNI_OPTION: mode = cuda_math::cudaRoundNearest; break;
-   case RMI_OPTION: mode = cuda_math::cudaRoundMinInf;  break;
-   case RPI_OPTION: mode = cuda_math::cudaRoundPosInf;  break;
+   case RZI_OPTION: mode = cudaRoundZero;    break;
+   case RNI_OPTION: mode = cudaRoundNearest; break;
+   case RMI_OPTION: mode = cudaRoundMinInf;  break;
+   case RPI_OPTION: mode = cudaRoundPosInf;  break;
    default: break; 
    }
 
