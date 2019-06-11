@@ -68,7 +68,7 @@ pipeline {
                     source `pwd`/setup_environment &&\
                     PLOTDIR="jenkins/${JOB_NAME}/4.2" &&\
                     ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft -C TITANV-PTXPLUS > stats-per-kernel-4.2.csv &&\
-                    ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh stats-per-kernel-4.2.csv $PLOTDIR ${BUILD_NUMBER} | grep "Correl=" | tee correl.4.2.txt'
+                    ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh stats-per-kernel-4.2.csv $PLOTDIR ${BUILD_NUMBER}/4.2 | grep "Correl=" | tee correl.4.2.txt'
             }
         }
         stage('10.1-correlate'){
@@ -77,7 +77,7 @@ pipeline {
                     source `pwd`/setup_environment &&\
                     PLOTDIR="jenkins/${JOB_NAME}/10.1" &&\
                     ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft,sdk-4.2 -C TITANV > stats-per-kernel-10.1.csv &&\
-                    ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh stats-per-kernel-10.1.csv $PLOTDIR ${BUILD_NUMBER} | grep "Correl=" | tee correl.10.1.txt'
+                    ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh stats-per-kernel-10.1.csv $PLOTDIR ${BUILD_NUMBER}/10.1 | grep "Correl=" | tee correl.10.1.txt'
             }
         }
         stage('archive-and-delta') {
@@ -98,8 +98,8 @@ pipeline {
                         ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c per-app-merge-10.1.csv -p tgrogers@dynamo.ecn.purdue.edu:~/website/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/10.1/deltas -w https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/$PLOTDIR/${BUILD_NUMBER}/10.1/deltas -n $PLOTDIR/${BUILD_NUMBER}/10.1/deltas &&\
                         ./gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-kernel-4.2-ptxplus.csv,./stats-per-kernel-4.2-ptxplus.csv -R > per-kernel-merge-4.2-ptxplus.csv &&\
                         ./gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-kernel-10.1.csv,./stats-per-kernel-10.1.csv -R > per-kernel-merge-10.1.csv &&\
-                        ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh per-kernel-merge-4.2-ptxplus.csv $PLOTDIR ${BUILD_NUMBER} &&\
-                        ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh per-kernel-merge-10.1.csv $PLOTDIR ${BUILD_NUMBER} &&\
+                        ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh per-kernel-merge-4.2-ptxplus.csv $PLOTDIR ${BUILD_NUMBER}/4.2 &&\
+                        ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh per-kernel-merge-10.1.csv $PLOTDIR ${BUILD_NUMBER}/10.1 &&\
                         mkdir -p ./gpgpu-sim-results-repo/${JOB_NAME}/ && cp stats-per-*.csv ./gpgpu-sim-results-repo/${JOB_NAME}/ &&\
                         cd ./gpgpu-sim-results-repo &&\
                         git diff --quiet && git diff --staged --quiet || git commit -am "Jenkins automated checkin ${BUILD_NUMBER}" &&\
