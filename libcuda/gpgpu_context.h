@@ -12,4 +12,6 @@ class gpgpu_context {
 	cuda_runtime_api* api;
 	// member function list
 };
+gpgpu_context* GPGPU_Context();
+
 #endif /* __gpgpu_context_h__ */
