@@ -66,7 +66,7 @@ pipeline {
             steps {
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
-                    PLOTDIR="jenkins/${JOB_NAME}/4.2" &&\
+                    PLOTDIR="jenkins/${JOB_NAME}" &&\
                     ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft -C TITANV-PTXPLUS > stats-per-kernel-4.2.csv &&\
                     ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh stats-per-kernel-4.2.csv $PLOTDIR ${BUILD_NUMBER}/4.2 | grep "Correl=" | tee correl.4.2.txt'
             }
@@ -75,7 +75,7 @@ pipeline {
             steps {
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/10.1_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
-                    PLOTDIR="jenkins/${JOB_NAME}/10.1" &&\
+                    PLOTDIR="jenkins/${JOB_NAME}" &&\
                     ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft,sdk-4.2 -C TITANV > stats-per-kernel-10.1.csv &&\
                     ./gpgpu-sim_simulations/util/plotting/correlate_and_publish.sh stats-per-kernel-10.1.csv $PLOTDIR ${BUILD_NUMBER}/10.1 | grep "Correl=" | tee correl.10.1.txt'
             }
