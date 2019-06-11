@@ -69,9 +69,9 @@ See ${BUILD_URL} for full build detials.
 <pre>    https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/4.2/deltas
 <pre>        Correlation:
 <pre>            4.2:
-<pre>               https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/4.2/titanv-cycles.html.TITANV.html.html
-<pre>               https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/4.2/titanv-cycles.html.TITANV.appsincluded.txt
+<pre>               https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/4.2/titanv-cycles.html.TITANV-PTXPLUS.html.html
+<pre>               https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/4.2/titanv-cycles.html.TITANV-PTXPLUS.appsincluded.txt.apps.txt
 <pre>            10.1:
-<pre>               https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}//10.1/titanv-cycles.html.TITANV.html
-<pre>               https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/10.1/titanv-cycles.html.TITANV.appsincluded.txt
+<pre>               https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/10.1/titanv-cycles.html.TITANV.html.html
+<pre>               https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/10.1/titanv-cycles.html.TITANV.appsincluded.txt.apps.txt
 </BODY>
