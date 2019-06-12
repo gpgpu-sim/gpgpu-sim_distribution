@@ -81,7 +81,7 @@ void ptx_reg_options(option_parser_t opp)
                 "0");
 }
 
-void print_ptx_file( const char *p, unsigned source_num, const char *filename )
+void gpgpu_context::print_ptx_file( const char *p, unsigned source_num, const char *filename )
 {
    printf("\nGPGPU-Sim PTX: file _%u.ptx contents:\n\n", source_num );
    char *s = strdup(p);
