@@ -29,12 +29,12 @@
 #define PTX_LOADER_H_INCLUDED
 #include <string>
 
-#define LINEBUF_SIZE 1024
+#define PTXINFO_LINEBUF_SIZE 1024
 typedef void * yyscan_t;
 class ptxinfo_data{
     public:
 	yyscan_t scanner;
-	char linebuf[LINEBUF_SIZE];
+	char linebuf[PTXINFO_LINEBUF_SIZE];
 	unsigned col;
 	const char *g_ptxinfo_filename;
 

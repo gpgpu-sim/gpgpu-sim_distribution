@@ -58,14 +58,15 @@ class ptx_recognizer {
 	    g_max_regs_per_thread = 0;
 	    g_global_symbol_table = NULL;
 	    g_current_symbol_table = NULL;
-	    symbol *g_last_symbol = NULL;
+	    g_last_symbol = NULL;
 	    g_error_detected = 0;
 	    g_entry_func_param_index=0;
+	    g_func_info = NULL;
 	}
 	// global list
 	yyscan_t scanner;
-#define LINEBUF_SIZE (4*1024)
-	char linebuf[LINEBUF_SIZE];
+#define PTX_LINEBUF_SIZE (4*1024)
+	char linebuf[PTX_LINEBUF_SIZE];
 	unsigned col;
 	int g_size;
 	char *g_add_identifier_cached__identifier;
@@ -100,6 +101,8 @@ class ptx_recognizer {
 	std::list<ptx_instruction*> g_instructions;
 	int g_error_detected;
 	unsigned g_entry_func_param_index;
+	function_info *g_func_info;
+	operand_info g_return_var;
 
 	// member function list
 	void init_directive_state();
