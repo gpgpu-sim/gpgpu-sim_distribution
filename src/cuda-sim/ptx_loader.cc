@@ -37,10 +37,6 @@
 
 /// globals
 
-memory_space *g_global_mem;
-memory_space *g_tex_mem;
-memory_space *g_surf_mem;
-memory_space *g_param_mem;
 bool g_override_embedded_ptx = false;
 
 /// extern prototypes
