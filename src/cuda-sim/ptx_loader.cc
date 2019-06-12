@@ -33,13 +33,10 @@
 #include <dirent.h>
 #include <fstream>
 #include <sstream>
+#include "../../libcuda/gpgpu_context.h"
 
 /// globals
 
-memory_space *g_global_mem;
-memory_space *g_tex_mem;
-memory_space *g_surf_mem;
-memory_space *g_param_mem;
 bool g_override_embedded_ptx = false;
 
 /// extern prototypes
@@ -52,8 +49,6 @@ extern int ptx_lex_destroy(yyscan_t scanner);
 extern int ptx__scan_string(const char*, yyscan_t scanner);
 
 extern std::map<unsigned,const char*> get_duplicate();
-
-const char *g_ptxinfo_filename;
 
 typedef void * yyscan_t;
 extern int ptxinfo_lex_init(yyscan_t* scanner);
@@ -165,7 +160,7 @@ char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const std::string ptxfilenam
 }
 
 
-symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num )
+symbol_table *gpgpu_context::gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num )
 {
     char buf[1024];
     snprintf(buf,1024,"_%u.ptx", source_num );
@@ -200,7 +195,7 @@ symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source
     return symtab;
 }
 
-symbol_table *gpgpu_ptx_sim_load_ptx_from_filename( const char *filename )
+symbol_table *gpgpu_context::gpgpu_ptx_sim_load_ptx_from_filename( const char *filename )
 {
     symbol_table *symtab=init_parser(filename);
     printf("GPGPU-Sim PTX: finished parsing EMBEDDED .ptx file %s\n",filename);
@@ -356,10 +351,10 @@ void gpgpu_ptx_info_load_from_filename( const char *filename, unsigned sm_versio
 		exit(1);
 	}
 
-	g_ptxinfo_filename = strdup(ptxas_filename.c_str());
     FILE *ptxinfo_in;
-    ptxinfo_in = fopen(g_ptxinfo_filename,"r");
     ptxinfo_data ptxinfo;
+    ptxinfo.g_ptxinfo_filename = strdup(ptxas_filename.c_str());
+    ptxinfo_in = fopen(ptxinfo.g_ptxinfo_filename,"r");
     ptxinfo_lex_init(&(ptxinfo.scanner));
     ptxinfo_set_in(ptxinfo_in, ptxinfo.scanner);
     ptxinfo_parse(ptxinfo.scanner, &ptxinfo);
@@ -425,10 +420,10 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
     if( result != 0 ) {
     	// 65280 = duplicate errors
     	if (result == 65280) {
+		ptxinfo_data ptxinfo;
 		FILE *ptxinfo_in;
     		ptxinfo_in = fopen(tempfile_ptxinfo,"r");
-		g_ptxinfo_filename = tempfile_ptxinfo;
-		ptxinfo_data ptxinfo;
+		ptxinfo.g_ptxinfo_filename = tempfile_ptxinfo;
 		ptxinfo_lex_init(&(ptxinfo.scanner));
 		ptxinfo_set_in(ptxinfo_in, ptxinfo.scanner);
 		ptxinfo_parse(ptxinfo.scanner, &ptxinfo);
@@ -512,14 +507,14 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
         }
     }	
 
-    if(no_of_ptx>0)
-        g_ptxinfo_filename = final_tempfile_ptxinfo;
-    else
-	g_ptxinfo_filename = tempfile_ptxinfo;
-    FILE *ptxinfo_in;
-    ptxinfo_in = fopen(g_ptxinfo_filename,"r");
-
     ptxinfo_data ptxinfo;
+    if(no_of_ptx>0)
+        ptxinfo.g_ptxinfo_filename = final_tempfile_ptxinfo;
+    else
+	ptxinfo.g_ptxinfo_filename = tempfile_ptxinfo;
+    FILE *ptxinfo_in;
+    ptxinfo_in = fopen(ptxinfo.g_ptxinfo_filename,"r");
+
     ptxinfo_lex_init(&(ptxinfo.scanner));
     ptxinfo_set_in(ptxinfo_in, ptxinfo.scanner);
     ptxinfo_parse(ptxinfo.scanner, &ptxinfo);
