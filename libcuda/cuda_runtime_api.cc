@@ -153,15 +153,6 @@
 extern void synchronize();
 extern void exit_simulation();
 
-static int load_static_globals( symbol_table *symtab, unsigned min_gaddr, unsigned max_gaddr, gpgpu_t *gpu );
-static int load_constants( symbol_table *symtab, addr_t min_gaddr, gpgpu_t *gpu );
-
-//static kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *kernel_key,
-//		gpgpu_ptx_sim_arg_list_t args,
-//		struct dim3 gridDim,
-//		struct dim3 blockDim,
-//		struct CUctx_st* context );
-
 /*DEVICE_BUILTIN*/
 struct cudaArray
 {
@@ -273,7 +264,7 @@ static CUctx_st* GPGPUSim_Context()
 	return the_context;
 }
 
-static gpgpu_context* GPGPU_Context()
+gpgpu_context* GPGPU_Context()
 {
 	static gpgpu_context *gpgpu_ctx = NULL;
 	if( gpgpu_ctx == NULL ) {
@@ -353,7 +344,6 @@ typedef std::map<unsigned,CUevent_st*> event_tracker_t;
 
 int CUevent_st::m_next_event_uid;
 event_tracker_t g_timer_events;
-int g_active_device = 0; //active gpu that runs the code
 
 extern int cuobjdump_lex_init(yyscan_t* scanner);
 extern void cuobjdump_set_in  (FILE * _in_str ,yyscan_t yyscanner );
@@ -494,6 +484,41 @@ void cuda_runtime_api::cuobjdumpRegisterFatBinary(unsigned int handle, const cha
 /*******************************************************************************
  * Add internal cuda runtime API call to accept gpgpu_context                   *
  *******************************************************************************/
+cudaError_t cudaSetDeviceInternal(int device, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	//set the active device to run cuda
+	if ( device <= GPGPUSim_Init()->num_devices() ) {
+		ctx->api->g_active_device = device;
+		return g_last_cudaError = cudaSuccess;
+	} else {
+		return g_last_cudaError = cudaErrorInvalidDevice;
+	}
+}
+
+cudaError_t cudaGetDeviceInternal(int *device, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	*device = ctx->api->g_active_device;
+	return g_last_cudaError = cudaSuccess;
+}
+
 
 void** cudaRegisterFatBinaryInternal( void *fatCubin, gpgpu_context* gpgpu_ctx = NULL)
 {
@@ -615,13 +640,13 @@ void** cudaRegisterFatBinaryInternal( void *fatCubin, gpgpu_context* gpgpu_ctx =
 						"\tEither enable cuobjdump or disable PTXPlus in your configuration file\n");
 				exit(1);
 			} else {
-				symtab=gpgpu_ptx_sim_load_ptx_from_string(ptx,source_num);
+				symtab=ctx->gpgpu_ptx_sim_load_ptx_from_string(ptx,source_num);
 				context->add_binary(symtab,fat_cubin_handle);
 				gpgpu_ptxinfo_load_from_string( ptx, source_num, max_capability, context->no_of_ptx );
 			}
 			source_num++;
-			load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
-			load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
+			ctx->api->load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
+			ctx->api->load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
 		} else {
 			printf("GPGPU-Sim PTX: warning -- did not find an appropriate PTX in cubin\n");
 		}
@@ -662,7 +687,7 @@ void cudaRegisterFunctionInternal(
 	printf("GPGPU-Sim PTX: __cudaRegisterFunction %s : hostFun 0x%p, fat_cubin_handle = %u\n",
 			deviceFun, hostFun, fat_cubin_handle);
 	if(context->get_device()->get_gpgpu()->get_config().use_cuobjdump())
-		ctx->api->cuobjdumpParseBinary(fat_cubin_handle);
+		ctx->cuobjdumpParseBinary(fat_cubin_handle);
 	context->register_function( fat_cubin_handle, hostFun, deviceFun );
 }
 
@@ -689,7 +714,7 @@ void cudaRegisterVarInternal(
 	printf("GPGPU-Sim PTX: __cudaRegisterVar: hostVar = %p; deviceAddress = %s; deviceName = %s\n", hostVar, deviceAddress, deviceName);
 	printf("GPGPU-Sim PTX: __cudaRegisterVar: Registering const memory space of %d bytes\n", size);
 	if(GPGPUSim_Context()->get_device()->get_gpgpu()->get_config().use_cuobjdump())
-		ctx->api->cuobjdumpParseBinary((unsigned)(unsigned long long)fatCubinHandle);
+		ctx->cuobjdumpParseBinary((unsigned)(unsigned long long)fatCubinHandle);
 	fflush(stdout);
 	if ( constant && !global && !ext ) {
 		gpgpu_ptx_sim_register_const_variable(hostVar,deviceName,size);
@@ -986,12 +1011,12 @@ cuLinkAddFileInternal(CUlinkState state, CUjitInputType type, const char *path,
     }
     strcat(file,"/");
     strcat(file,path);
-	symbol_table *symtab = gpgpu_ptx_sim_load_ptx_from_filename( file );
+	symbol_table *symtab = ctx->gpgpu_ptx_sim_load_ptx_from_filename( file );
     std::string fname(path);
     ctx->api->name_symtab[fname] = symtab;
     context->add_binary(symtab, 1);
-    load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
-    load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
+    ctx->api->load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
+    ctx->api->load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
     addedFile = true;
 	return CUDA_SUCCESS;
 }
@@ -1694,25 +1719,12 @@ __host__ cudaError_t CUDARTAPI cudaChooseDevice(int *device, const struct cudaDe
 
 __host__ cudaError_t CUDARTAPI cudaSetDevice(int device)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	//set the active device to run cuda
-	if ( device <= GPGPUSim_Init()->num_devices() ) {
-		g_active_device = device;
-		return g_last_cudaError = cudaSuccess;
-	} else {
-		return g_last_cudaError = cudaErrorInvalidDevice;
-	}
+    return cudaSetDeviceInternal(device);
 }
 
 __host__ cudaError_t CUDARTAPI cudaGetDevice(int *device)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	*device = g_active_device;
-	return g_last_cudaError = cudaSuccess;
+    return cudaGetDeviceInternal(device);
 }
 
 __host__ cudaError_t CUDARTAPI cudaDeviceGetLimit ( size_t* pValue, cudaLimit limit )
@@ -2741,15 +2753,15 @@ void cuda_runtime_api::cuobjdumpInit(){
 
 
 //! Either submit PTX for simulation or convert SASS to PTXPlus and submit it
-void cuda_runtime_api::cuobjdumpParseBinary(unsigned int handle){
+void gpgpu_context::cuobjdumpParseBinary(unsigned int handle){
 
 	CUctx_st *context = GPGPUSim_Context();
-	if(fatbin_registered[handle]) return;
-	fatbin_registered[handle] = true;
-	std::string fname = fatbinmap[handle];
+	if(api->fatbin_registered[handle]) return;
+	api->fatbin_registered[handle] = true;
+	std::string fname = api->fatbinmap[handle];
 
-	if (name_symtab.find(fname) != name_symtab.end()) {
-		symbol_table *symtab = name_symtab[fname];
+	if (api->name_symtab.find(fname) != api->name_symtab.end()) {
+		symbol_table *symtab = api->name_symtab[fname];
 		context->add_binary(symtab, handle);
 		return;
 	}
@@ -2758,7 +2770,7 @@ void cuda_runtime_api::cuobjdumpParseBinary(unsigned int handle){
 #if (CUDART_VERSION >= 6000)
    //loops through all ptx files from smallest sm version to largest
    std::map<unsigned,std::set<std::string> >::iterator itr_m;
-   for (itr_m = version_filename.begin(); itr_m!=version_filename.end(); itr_m++){
+   for (itr_m = api->version_filename.begin(); itr_m!=api->version_filename.end(); itr_m++){
       std::set<std::string>::iterator itr_s;
       for (itr_s = itr_m->second.begin(); itr_s!=itr_m->second.end(); itr_s++){
           std::string ptx_filename = *itr_s;
@@ -2766,11 +2778,11 @@ void cuda_runtime_api::cuobjdumpParseBinary(unsigned int handle){
           symtab = gpgpu_ptx_sim_load_ptx_from_filename( ptx_filename.c_str() );
       }
    }
-   name_symtab[fname] = symtab;
+   api->name_symtab[fname] = symtab;
    context->add_binary(symtab, handle);
-   load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
-   load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
-   for (itr_m = version_filename.begin(); itr_m!=version_filename.end(); itr_m++){
+   api->load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
+   api->load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
+   for (itr_m = api->version_filename.begin(); itr_m!=api->version_filename.end(); itr_m++){
       std::set<std::string>::iterator itr_s;
       for (itr_s = itr_m->second.begin(); itr_s!=itr_m->second.end(); itr_s++){
           std::string ptx_filename = *itr_s;
@@ -2782,8 +2794,8 @@ void cuda_runtime_api::cuobjdumpParseBinary(unsigned int handle){
 #endif
 
 	unsigned max_capability = 0;
-	for (	std::list<cuobjdumpSection*>::iterator iter = cuobjdumpSectionList.begin();
-			iter != cuobjdumpSectionList.end();
+	for (	std::list<cuobjdumpSection*>::iterator iter = api->cuobjdumpSectionList.begin();
+			iter != api->cuobjdumpSectionList.end();
 			iter++){
 		unsigned capability = (*iter)->getArch();
 		if (capability > max_capability) max_capability = capability;
@@ -2794,7 +2806,7 @@ void cuda_runtime_api::cuobjdumpParseBinary(unsigned int handle){
 	cuobjdumpPTXSection* ptx = NULL;
 	const char* pre_load = getenv("CUOBJDUMP_SIM_FILE");
 	if(pre_load==NULL || strlen(pre_load)==0)
-		ptx = findPTXSection(fname);
+		ptx = api->findPTXSection(fname);
 	char *ptxcode;
 	const char *override_ptx_name = getenv("PTX_SIM_KERNELFILE"); 
 	if (override_ptx_name == NULL or getenv("PTX_SIM_USE_PTX_FILE") == NULL or strlen(getenv("PTX_SIM_USE_PTX_FILE"))==0) {
@@ -2804,7 +2816,7 @@ void cuda_runtime_api::cuobjdumpParseBinary(unsigned int handle){
 		ptxcode = readfile(override_ptx_name);
 	}
 	if(context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() ) {
-		cuobjdumpELFSection* elfsection = findELFSection(ptx->getIdentifier());
+		cuobjdumpELFSection* elfsection = api->findELFSection(ptx->getIdentifier());
 		assert (elfsection!= NULL);
 		char *ptxplus_str = gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(
 				ptx->getPTXfilename(),
@@ -2822,9 +2834,9 @@ void cuda_runtime_api::cuobjdumpParseBinary(unsigned int handle){
 		context->add_binary(symtab, handle);
 		gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability, context->no_of_ptx );
 	}
-	load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
-	load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
-	name_symtab[fname] = symtab;
+	api->load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
+	api->load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
+	api->name_symtab[fname] = symtab;
 
 	//TODO: Remove temporarily files as per configurations
 }
@@ -3305,7 +3317,7 @@ int CUDARTAPI __cudaSynchronizeThreads(void**, void*)
 
 /// static functions
 
-static int load_static_globals( symbol_table *symtab, unsigned min_gaddr, unsigned max_gaddr, gpgpu_t *gpu ) 
+int cuda_runtime_api::load_static_globals( symbol_table *symtab, unsigned min_gaddr, unsigned max_gaddr, gpgpu_t *gpu ) 
 {
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
@@ -3344,7 +3356,7 @@ static int load_static_globals( symbol_table *symtab, unsigned min_gaddr, unsign
 	return ng_bytes;
 }
 
-static int load_constants( symbol_table *symtab, addr_t min_gaddr, gpgpu_t *gpu ) 
+int cuda_runtime_api::load_constants( symbol_table *symtab, addr_t min_gaddr, gpgpu_t *gpu ) 
 {
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
