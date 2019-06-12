@@ -11,6 +11,9 @@ class gpgpu_context {
 	// objects pointers for each file
 	cuda_runtime_api* api;
 	// member function list
+	void cuobjdumpParseBinary(unsigned int handle);
+	class symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num );
+	class symbol_table *gpgpu_ptx_sim_load_ptx_from_filename( const char *filename );
 };
 gpgpu_context* GPGPU_Context();
 
