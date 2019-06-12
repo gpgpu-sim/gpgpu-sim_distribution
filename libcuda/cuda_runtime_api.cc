@@ -638,7 +638,7 @@ void** cudaRegisterFatBinaryInternal( void *fatCubin, gpgpu_context* gpgpu_ctx =
 						"\tEither enable cuobjdump or disable PTXPlus in your configuration file\n");
 				exit(1);
 			} else {
-				symtab=gpgpu_ptx_sim_load_ptx_from_string(ptx,source_num);
+				symtab=ctx->gpgpu_ptx_sim_load_ptx_from_string(ptx,source_num);
 				context->add_binary(symtab,fat_cubin_handle);
 				gpgpu_ptxinfo_load_from_string( ptx, source_num, max_capability, context->no_of_ptx );
 			}
