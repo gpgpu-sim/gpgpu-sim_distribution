@@ -59,6 +59,8 @@ class ptx_recognizer {
 	    g_global_symbol_table = NULL;
 	    g_current_symbol_table = NULL;
 	    symbol *g_last_symbol = NULL;
+	    g_error_detected = 0;
+	    g_entry_func_param_index=0;
 	}
 	// global list
 	yyscan_t scanner;
@@ -95,6 +97,9 @@ class ptx_recognizer {
 	symbol_table *g_global_symbol_table;
 	symbol_table *g_current_symbol_table;
 	symbol *g_last_symbol;
+	std::list<ptx_instruction*> g_instructions;
+	int g_error_detected;
+	unsigned g_entry_func_param_index;
 
 	// member function list
 	void init_directive_state();
