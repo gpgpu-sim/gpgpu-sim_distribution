@@ -1,19 +1,24 @@
 #ifndef __gpgpu_context_h__
 #define __gpgpu_context_h__
 #include "cuda_api_object.h"
+#include "../src/cuda-sim/ptx_loader.h"
 
 class gpgpu_context {
     public:
 	gpgpu_context() {
 	    api = new cuda_runtime_api();
+	    ptxinfo = new ptxinfo_data();
 	}
 	// global list
 	// objects pointers for each file
 	cuda_runtime_api* api;
+	ptxinfo_data* ptxinfo;
 	// member function list
 	void cuobjdumpParseBinary(unsigned int handle);
 	class symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num );
 	class symbol_table *gpgpu_ptx_sim_load_ptx_from_filename( const char *filename );
+	void gpgpu_ptx_info_load_from_filename( const char *filename, unsigned sm_version);
+	void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num, unsigned sm_version=20, int no_of_ptx=0 );
 };
 gpgpu_context* GPGPU_Context();
 
