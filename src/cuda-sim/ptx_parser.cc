@@ -52,12 +52,8 @@ static bool g_debug_ir_generation=false;
 const char *g_filename;
 
 // the program intermediate representation...
-static symbol_table *g_global_allfiles_symbol_table = NULL;
-static symbol_table *g_global_symbol_table = NULL;
 std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
-static symbol_table *g_current_symbol_table = NULL;
 static std::list<ptx_instruction*> g_instructions;
-static symbol *g_last_symbol = NULL;
 
 int g_error_detected = 0;
 
@@ -128,7 +124,7 @@ symbol_table * gpgpu_context::init_parser( const char *ptx_filename )
    g_filename = strdup(ptx_filename);
    if  (g_global_allfiles_symbol_table == NULL) {
        g_global_allfiles_symbol_table = new symbol_table("global_allfiles", 0, NULL);
-       g_global_symbol_table = g_current_symbol_table = g_global_allfiles_symbol_table;
+       ptx_parser->g_global_symbol_table = ptx_parser->g_current_symbol_table = g_global_allfiles_symbol_table;
    }
    /*else {
        g_global_symbol_table = g_current_symbol_table = new symbol_table("global",0,g_global_allfiles_symbol_table);
@@ -163,7 +159,7 @@ symbol_table * gpgpu_context::init_parser( const char *ptx_filename )
    ptx_in = ptx_get_in(ptx_parser->scanner);
    ptx_lex_destroy(ptx_parser->scanner);
    fclose(ptx_in);
-   return g_global_symbol_table;
+   return ptx_parser->g_global_symbol_table;
 }
 
 static int g_entry_point;
@@ -331,7 +327,7 @@ void ptx_recognizer::set_variable_type()
                                                   g_extern_spec );
 }
 
-bool check_for_duplicates( const char *identifier )
+bool ptx_recognizer::check_for_duplicates( const char *identifier )
 {
    const symbol *s = g_current_symbol_table->lookup(identifier);
    return ( s != NULL );

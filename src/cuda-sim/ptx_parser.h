@@ -56,6 +56,9 @@ class ptx_recognizer {
 	    g_ident_add_uid = 0;
 	    g_const_alloc = 1;
 	    g_max_regs_per_thread = 0;
+	    g_global_symbol_table = NULL;
+	    g_current_symbol_table = NULL;
+	    symbol *g_last_symbol = NULL;
 	}
 	// global list
 	yyscan_t scanner;
@@ -89,6 +92,9 @@ class ptx_recognizer {
 	int g_ident_add_uid;
 	unsigned g_const_alloc;
 	unsigned g_max_regs_per_thread;
+	symbol_table *g_global_symbol_table;
+	symbol_table *g_current_symbol_table;
+	symbol *g_last_symbol;
 
 	// member function list
 	void init_directive_state();
@@ -154,6 +160,7 @@ class ptx_recognizer {
 	//Jin: handle instructino group for cdp
 	void start_inst_group();
 	void end_inst_group();
+	bool check_for_duplicates( const char *identifier );
 
 };
 
