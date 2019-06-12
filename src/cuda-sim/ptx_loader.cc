@@ -50,8 +50,6 @@ extern int ptx__scan_string(const char*, yyscan_t scanner);
 
 extern std::map<unsigned,const char*> get_duplicate();
 
-const char *g_ptxinfo_filename;
-
 typedef void * yyscan_t;
 extern int ptxinfo_lex_init(yyscan_t* scanner);
 extern void ptxinfo_set_in  (FILE * _in_str ,yyscan_t yyscanner );
@@ -353,10 +351,10 @@ void gpgpu_ptx_info_load_from_filename( const char *filename, unsigned sm_versio
 		exit(1);
 	}
 
-	g_ptxinfo_filename = strdup(ptxas_filename.c_str());
     FILE *ptxinfo_in;
-    ptxinfo_in = fopen(g_ptxinfo_filename,"r");
     ptxinfo_data ptxinfo;
+    ptxinfo.g_ptxinfo_filename = strdup(ptxas_filename.c_str());
+    ptxinfo_in = fopen(ptxinfo.g_ptxinfo_filename,"r");
     ptxinfo_lex_init(&(ptxinfo.scanner));
     ptxinfo_set_in(ptxinfo_in, ptxinfo.scanner);
     ptxinfo_parse(ptxinfo.scanner, &ptxinfo);
@@ -422,10 +420,10 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
     if( result != 0 ) {
     	// 65280 = duplicate errors
     	if (result == 65280) {
+		ptxinfo_data ptxinfo;
 		FILE *ptxinfo_in;
     		ptxinfo_in = fopen(tempfile_ptxinfo,"r");
-		g_ptxinfo_filename = tempfile_ptxinfo;
-		ptxinfo_data ptxinfo;
+		ptxinfo.g_ptxinfo_filename = tempfile_ptxinfo;
 		ptxinfo_lex_init(&(ptxinfo.scanner));
 		ptxinfo_set_in(ptxinfo_in, ptxinfo.scanner);
 		ptxinfo_parse(ptxinfo.scanner, &ptxinfo);
@@ -509,14 +507,14 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
         }
     }	
 
-    if(no_of_ptx>0)
-        g_ptxinfo_filename = final_tempfile_ptxinfo;
-    else
-	g_ptxinfo_filename = tempfile_ptxinfo;
-    FILE *ptxinfo_in;
-    ptxinfo_in = fopen(g_ptxinfo_filename,"r");
-
     ptxinfo_data ptxinfo;
+    if(no_of_ptx>0)
+        ptxinfo.g_ptxinfo_filename = final_tempfile_ptxinfo;
+    else
+	ptxinfo.g_ptxinfo_filename = tempfile_ptxinfo;
+    FILE *ptxinfo_in;
+    ptxinfo_in = fopen(ptxinfo.g_ptxinfo_filename,"r");
+
     ptxinfo_lex_init(&(ptxinfo.scanner));
     ptxinfo_set_in(ptxinfo_in, ptxinfo.scanner);
     ptxinfo_parse(ptxinfo.scanner, &ptxinfo);
