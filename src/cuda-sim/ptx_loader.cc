@@ -332,7 +332,7 @@ char* get_app_binary_name(){
    return self_exe_path;
 }
 
-void gpgpu_ptx_info_load_from_filename( const char *filename, unsigned sm_version)
+void gpgpu_context::gpgpu_ptx_info_load_from_filename( const char *filename, unsigned sm_version)
 {
     std::string ptxas_filename(std::string(filename) + "as");
     char buff[1024], extra_flags[1024];
@@ -352,17 +352,16 @@ void gpgpu_ptx_info_load_from_filename( const char *filename, unsigned sm_versio
 	}
 
     FILE *ptxinfo_in;
-    ptxinfo_data ptxinfo;
-    ptxinfo.g_ptxinfo_filename = strdup(ptxas_filename.c_str());
-    ptxinfo_in = fopen(ptxinfo.g_ptxinfo_filename,"r");
-    ptxinfo_lex_init(&(ptxinfo.scanner));
-    ptxinfo_set_in(ptxinfo_in, ptxinfo.scanner);
-    ptxinfo_parse(ptxinfo.scanner, &ptxinfo);
-    ptxinfo_lex_destroy(ptxinfo.scanner);
+    ptxinfo->g_ptxinfo_filename = strdup(ptxas_filename.c_str());
+    ptxinfo_in = fopen(ptxinfo->g_ptxinfo_filename,"r");
+    ptxinfo_lex_init(&(ptxinfo->scanner));
+    ptxinfo_set_in(ptxinfo_in, ptxinfo->scanner);
+    ptxinfo_parse(ptxinfo->scanner, ptxinfo);
+    ptxinfo_lex_destroy(ptxinfo->scanner);
     fclose(ptxinfo_in);
 }
 
-void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num, unsigned sm_version, int no_of_ptx )
+void gpgpu_context::gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num, unsigned sm_version, int no_of_ptx )
 {
     //do ptxas for individual files instead of one big embedded ptx. This prevents the duplicate defs and declarations.
     char ptx_file[1000];
@@ -420,14 +419,13 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
     if( result != 0 ) {
     	// 65280 = duplicate errors
     	if (result == 65280) {
-		ptxinfo_data ptxinfo;
 		FILE *ptxinfo_in;
     		ptxinfo_in = fopen(tempfile_ptxinfo,"r");
-		ptxinfo.g_ptxinfo_filename = tempfile_ptxinfo;
-		ptxinfo_lex_init(&(ptxinfo.scanner));
-		ptxinfo_set_in(ptxinfo_in, ptxinfo.scanner);
-		ptxinfo_parse(ptxinfo.scanner, &ptxinfo);
-		ptxinfo_lex_destroy(ptxinfo.scanner);
+		ptxinfo->g_ptxinfo_filename = tempfile_ptxinfo;
+		ptxinfo_lex_init(&(ptxinfo->scanner));
+		ptxinfo_set_in(ptxinfo_in, ptxinfo->scanner);
+		ptxinfo_parse(ptxinfo->scanner, ptxinfo);
+		ptxinfo_lex_destroy(ptxinfo->scanner);
 		fclose(ptxinfo_in);
 
     		fix_duplicate_errors(fname2);
@@ -507,18 +505,17 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
         }
     }	
 
-    ptxinfo_data ptxinfo;
     if(no_of_ptx>0)
-        ptxinfo.g_ptxinfo_filename = final_tempfile_ptxinfo;
+        ptxinfo->g_ptxinfo_filename = final_tempfile_ptxinfo;
     else
-	ptxinfo.g_ptxinfo_filename = tempfile_ptxinfo;
+	ptxinfo->g_ptxinfo_filename = tempfile_ptxinfo;
     FILE *ptxinfo_in;
-    ptxinfo_in = fopen(ptxinfo.g_ptxinfo_filename,"r");
+    ptxinfo_in = fopen(ptxinfo->g_ptxinfo_filename,"r");
 
-    ptxinfo_lex_init(&(ptxinfo.scanner));
-    ptxinfo_set_in(ptxinfo_in, ptxinfo.scanner);
-    ptxinfo_parse(ptxinfo.scanner, &ptxinfo);
-    ptxinfo_lex_destroy(ptxinfo.scanner);
+    ptxinfo_lex_init(&(ptxinfo->scanner));
+    ptxinfo_set_in(ptxinfo_in, ptxinfo->scanner);
+    ptxinfo_parse(ptxinfo->scanner, ptxinfo);
+    ptxinfo_lex_destroy(ptxinfo->scanner);
     fclose(ptxinfo_in);
 
     snprintf(commandline,1024,"rm -f *info");
