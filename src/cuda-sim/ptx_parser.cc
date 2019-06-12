@@ -53,10 +53,6 @@ const char *g_filename;
 
 // the program intermediate representation...
 std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
-static std::list<ptx_instruction*> g_instructions;
-
-int g_error_detected = 0;
-
 
 #define PTX_PARSE_DPRINTF(...) \
    if( g_debug_ir_generation ) { \
@@ -67,7 +63,6 @@ int g_error_detected = 0;
       fflush(stdout); \
    }
 
-static unsigned g_entry_func_param_index=0;
 static function_info *g_func_info = NULL;
 static std::map<unsigned,std::string> g_ptx_token_decode;
 static operand_info g_return_var;
