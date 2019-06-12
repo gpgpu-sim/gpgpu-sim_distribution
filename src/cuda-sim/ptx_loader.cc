@@ -170,10 +170,9 @@ symbol_table *gpgpu_context::gpgpu_ptx_sim_load_ptx_from_string( const char *p, 
        fclose(fp);
     }
     symbol_table *symtab=init_parser(buf);
-    ptx_recognizer recognizer;
-    ptx_lex_init(&(recognizer.scanner));
-    ptx__scan_string(p, recognizer.scanner);
-    int errors = ptx_parse (recognizer.scanner, &recognizer);
+    ptx_lex_init(&(ptx_parser->scanner));
+    ptx__scan_string(p, ptx_parser->scanner);
+    int errors = ptx_parse (ptx_parser->scanner, ptx_parser);
     if ( errors ) {
         char fname[1024];
         snprintf(fname,1024,"_ptx_errors_XXXXXX");
@@ -186,7 +185,7 @@ symbol_table *gpgpu_context::gpgpu_ptx_sim_load_ptx_from_string( const char *p, 
         abort();
         exit(40);
     }
-    ptx_lex_destroy(recognizer.scanner);
+    ptx_lex_destroy(ptx_parser->scanner);
 
     if ( g_debug_execution >= 100 ) 
        print_ptx_file(p,source_num,buf);

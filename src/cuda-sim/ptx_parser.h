@@ -34,7 +34,6 @@ extern const char *g_filename;
 extern int g_error_detected;
 
 #ifdef __cplusplus 
-class symbol_table* init_parser(const char*);
 const class ptx_instruction *ptx_instruction_lookup( const char *filename, unsigned linenumber );
 #endif
 

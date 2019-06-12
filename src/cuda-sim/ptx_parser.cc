@@ -27,6 +27,7 @@
 
 #include "ptx_parser.h"
 #include "ptx_ir.h"
+#include "../../libcuda/gpgpu_context.h"
 
 typedef void * yyscan_t;
 #include "ptx.tab.h"
@@ -122,7 +123,7 @@ void ptx_recognizer::init_instruction_state()
    init_directive_state();
 }
 
-symbol_table *init_parser( const char *ptx_filename )
+symbol_table * gpgpu_context::init_parser( const char *ptx_filename )
 {
    g_filename = strdup(ptx_filename);
    if  (g_global_allfiles_symbol_table == NULL) {
@@ -151,17 +152,16 @@ symbol_table *init_parser( const char *ptx_filename )
    g_ptx_token_decode[generic_space] = "generic_space";
    g_ptx_token_decode[instruction_space] = "instruction_space";
 
-   ptx_recognizer recognizer;
-   ptx_lex_init(&(recognizer.scanner));
-   recognizer.init_directive_state();
-   recognizer.init_instruction_state();
+   ptx_lex_init(&(ptx_parser->scanner));
+   ptx_parser->init_directive_state();
+   ptx_parser->init_instruction_state();
 
    FILE *ptx_in;
    ptx_in = fopen(ptx_filename, "r");
-   ptx_set_in(ptx_in, recognizer.scanner);
-   ptx_parse(recognizer.scanner, &recognizer);
-   ptx_in = ptx_get_in(recognizer.scanner);
-   ptx_lex_destroy(recognizer.scanner);
+   ptx_set_in(ptx_in, ptx_parser->scanner);
+   ptx_parse(ptx_parser->scanner, ptx_parser);
+   ptx_in = ptx_get_in(ptx_parser->scanner);
+   ptx_lex_destroy(ptx_parser->scanner);
    fclose(ptx_in);
    return g_global_symbol_table;
 }
