@@ -7,11 +7,13 @@
 class gpgpu_context {
     public:
 	gpgpu_context() {
+	    g_global_allfiles_symbol_table = NULL;
 	    api = new cuda_runtime_api();
 	    ptxinfo = new ptxinfo_data();
 	    ptx_parser = new ptx_recognizer();
 	}
 	// global list
+	symbol_table *g_global_allfiles_symbol_table;
 	// objects pointers for each file
 	cuda_runtime_api* api;
 	ptxinfo_data* ptxinfo;
