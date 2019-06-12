@@ -63,9 +63,7 @@ std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
       fflush(stdout); \
    }
 
-static function_info *g_func_info = NULL;
 static std::map<unsigned,std::string> g_ptx_token_decode;
-static operand_info g_return_var;
 
 const char *decode_token( int type )
 {
