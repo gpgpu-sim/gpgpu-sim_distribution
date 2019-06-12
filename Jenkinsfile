@@ -62,13 +62,13 @@ pipeline {
         }
         stage('correlate-delta-and-archive') {
             steps {
-                    sh './gpgpu-sim_simulations/run_hw/get_hw_data.sh && '
+                    sh './gpgpu-sim_simulations/run_hw/get_hw_data.sh'
                     sh 'rm -rf ./gpgpu-sim_simulations/util/plotting/correl-html && rm -rf gpgpu-sim-results-repo && rm -rf ./gpgpu-sim_simulations/util/plotting/htmls'
                     sh 'git clone git@github.com:purdue-aalp/gpgpu-sim-results-repo.git'
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
-                    ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft -C TITANV-PTXPLUS > stats-per-kernel-4.2-ptxplus.csv'
+                    ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft -C TITANV-PTXPLUS -A > stats-per-kernel-4.2-ptxplus.csv'
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/10.1_env_setup.sh &&\
-                    ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft,sdk-4.2 -C TITANV > stats-per-kernel-10.1.csv'
+                    ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft,sdk-4.2 -C TITANV -A > stats-per-kernel-10.1.csv'
                     sh 'if [ ! -d ./gpgpu-sim-results-repo/${JOB_NAME} ]; then mkdir -p ./gpgpu-sim-results-repo/${JOB_NAME}/ ; cp ./gpgpu-sim-results-repo/purdue-aalp/gpgpu-sim_distribution/dev/* ./gpgpu-sim-results-repo/${JOB_NAME}/ ; fi'
                     sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-app-4.2.csv,./stats-per-app-4.2.csv -R > per-app-merge-4.2.csv'
                     sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-app-10.1.csv,./stats-per-app-10.1.csv -R > per-app-merge-10.1.csv'
