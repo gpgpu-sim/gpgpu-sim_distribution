@@ -84,6 +84,7 @@
 #include "../src/gpgpusim_entrypoint.h"
 #include "../src/gpgpu-sim/gpu-sim.h"
 #include "../src/gpgpu-sim/shader.h"
+#include "../libcuda/gpgpu_context.h"
 
 //#   define __my_func__    __PRETTY_FUNCTION__
 # if defined __cplusplus ? __GNUC_PREREQ (2, 6) : __GNUC_PREREQ (2, 4)
@@ -424,6 +425,8 @@ void register_ptx_function( const char *name, function_info *impl )
 
 void _cl_program::Build(const char *options)
 {
+    gpgpu_context *ctx;
+    ctx = GPGPU_Context();
    printf("GPGPU-Sim OpenCL API: compiling OpenCL kernels...\n"); 
    std::map<cl_uint,pgm_info>::iterator i;
    for( i = m_pgm.begin(); i!= m_pgm.end(); i++ ) {
@@ -576,7 +579,7 @@ void _cl_program::Build(const char *options)
          }
       }
       info.m_asm = tmp;
-      info.m_symtab = gpgpu_ptx_sim_load_ptx_from_string( tmp, source_num );
+      info.m_symtab = ctx->gpgpu_ptx_sim_load_ptx_from_string( tmp, source_num );
       gpgpu_ptxinfo_load_from_string( tmp, source_num );
       free(tmp);
    }

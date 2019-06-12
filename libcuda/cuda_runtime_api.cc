@@ -685,7 +685,7 @@ void cudaRegisterFunctionInternal(
 	printf("GPGPU-Sim PTX: __cudaRegisterFunction %s : hostFun 0x%p, fat_cubin_handle = %u\n",
 			deviceFun, hostFun, fat_cubin_handle);
 	if(context->get_device()->get_gpgpu()->get_config().use_cuobjdump())
-		ctx->api->cuobjdumpParseBinary(fat_cubin_handle);
+		ctx->cuobjdumpParseBinary(fat_cubin_handle);
 	context->register_function( fat_cubin_handle, hostFun, deviceFun );
 }
 
@@ -712,7 +712,7 @@ void cudaRegisterVarInternal(
 	printf("GPGPU-Sim PTX: __cudaRegisterVar: hostVar = %p; deviceAddress = %s; deviceName = %s\n", hostVar, deviceAddress, deviceName);
 	printf("GPGPU-Sim PTX: __cudaRegisterVar: Registering const memory space of %d bytes\n", size);
 	if(GPGPUSim_Context()->get_device()->get_gpgpu()->get_config().use_cuobjdump())
-		ctx->api->cuobjdumpParseBinary((unsigned)(unsigned long long)fatCubinHandle);
+		ctx->cuobjdumpParseBinary((unsigned)(unsigned long long)fatCubinHandle);
 	fflush(stdout);
 	if ( constant && !global && !ext ) {
 		gpgpu_ptx_sim_register_const_variable(hostVar,deviceName,size);
@@ -1009,7 +1009,7 @@ cuLinkAddFileInternal(CUlinkState state, CUjitInputType type, const char *path,
     }
     strcat(file,"/");
     strcat(file,path);
-	symbol_table *symtab = gpgpu_ptx_sim_load_ptx_from_filename( file );
+	symbol_table *symtab = ctx->gpgpu_ptx_sim_load_ptx_from_filename( file );
     std::string fname(path);
     ctx->api->name_symtab[fname] = symtab;
     context->add_binary(symtab, 1);
@@ -2750,15 +2750,15 @@ void cuda_runtime_api::cuobjdumpInit(){
 
 
 //! Either submit PTX for simulation or convert SASS to PTXPlus and submit it
-void cuda_runtime_api::cuobjdumpParseBinary(unsigned int handle){
+void gpgpu_context::cuobjdumpParseBinary(unsigned int handle){
 
 	CUctx_st *context = GPGPUSim_Context();
-	if(fatbin_registered[handle]) return;
-	fatbin_registered[handle] = true;
-	std::string fname = fatbinmap[handle];
+	if(api->fatbin_registered[handle]) return;
+	api->fatbin_registered[handle] = true;
+	std::string fname = api->fatbinmap[handle];
 
-	if (name_symtab.find(fname) != name_symtab.end()) {
-		symbol_table *symtab = name_symtab[fname];
+	if (api->name_symtab.find(fname) != api->name_symtab.end()) {
+		symbol_table *symtab = api->name_symtab[fname];
 		context->add_binary(symtab, handle);
 		return;
 	}
@@ -2767,7 +2767,7 @@ void cuda_runtime_api::cuobjdumpParseBinary(unsigned int handle){
 #if (CUDART_VERSION >= 6000)
    //loops through all ptx files from smallest sm version to largest
    std::map<unsigned,std::set<std::string> >::iterator itr_m;
-   for (itr_m = version_filename.begin(); itr_m!=version_filename.end(); itr_m++){
+   for (itr_m = api->version_filename.begin(); itr_m!=api->version_filename.end(); itr_m++){
       std::set<std::string>::iterator itr_s;
       for (itr_s = itr_m->second.begin(); itr_s!=itr_m->second.end(); itr_s++){
           std::string ptx_filename = *itr_s;
@@ -2775,11 +2775,11 @@ void cuda_runtime_api::cuobjdumpParseBinary(unsigned int handle){
           symtab = gpgpu_ptx_sim_load_ptx_from_filename( ptx_filename.c_str() );
       }
    }
-   name_symtab[fname] = symtab;
+   api->name_symtab[fname] = symtab;
    context->add_binary(symtab, handle);
-   load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
-   load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
-   for (itr_m = version_filename.begin(); itr_m!=version_filename.end(); itr_m++){
+   api->load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
+   api->load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
+   for (itr_m = api->version_filename.begin(); itr_m!=api->version_filename.end(); itr_m++){
       std::set<std::string>::iterator itr_s;
       for (itr_s = itr_m->second.begin(); itr_s!=itr_m->second.end(); itr_s++){
           std::string ptx_filename = *itr_s;
@@ -2791,8 +2791,8 @@ void cuda_runtime_api::cuobjdumpParseBinary(unsigned int handle){
 #endif
 
 	unsigned max_capability = 0;
-	for (	std::list<cuobjdumpSection*>::iterator iter = cuobjdumpSectionList.begin();
-			iter != cuobjdumpSectionList.end();
+	for (	std::list<cuobjdumpSection*>::iterator iter = api->cuobjdumpSectionList.begin();
+			iter != api->cuobjdumpSectionList.end();
 			iter++){
 		unsigned capability = (*iter)->getArch();
 		if (capability > max_capability) max_capability = capability;
@@ -2803,7 +2803,7 @@ void cuda_runtime_api::cuobjdumpParseBinary(unsigned int handle){
 	cuobjdumpPTXSection* ptx = NULL;
 	const char* pre_load = getenv("CUOBJDUMP_SIM_FILE");
 	if(pre_load==NULL || strlen(pre_load)==0)
-		ptx = findPTXSection(fname);
+		ptx = api->findPTXSection(fname);
 	char *ptxcode;
 	const char *override_ptx_name = getenv("PTX_SIM_KERNELFILE"); 
 	if (override_ptx_name == NULL or getenv("PTX_SIM_USE_PTX_FILE") == NULL or strlen(getenv("PTX_SIM_USE_PTX_FILE"))==0) {
@@ -2813,7 +2813,7 @@ void cuda_runtime_api::cuobjdumpParseBinary(unsigned int handle){
 		ptxcode = readfile(override_ptx_name);
 	}
 	if(context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() ) {
-		cuobjdumpELFSection* elfsection = findELFSection(ptx->getIdentifier());
+		cuobjdumpELFSection* elfsection = api->findELFSection(ptx->getIdentifier());
 		assert (elfsection!= NULL);
 		char *ptxplus_str = gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(
 				ptx->getPTXfilename(),
@@ -2831,9 +2831,9 @@ void cuda_runtime_api::cuobjdumpParseBinary(unsigned int handle){
 		context->add_binary(symtab, handle);
 		gpgpu_ptxinfo_load_from_string( ptxcode, handle, max_capability, context->no_of_ptx );
 	}
-	load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
-	load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
-	name_symtab[fname] = symtab;
+	api->load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());
+	api->load_constants(symtab,STATIC_ALLOC_LIMIT,context->get_device()->get_gpgpu());
+	api->name_symtab[fname] = symtab;
 
 	//TODO: Remove temporarily files as per configurations
 }

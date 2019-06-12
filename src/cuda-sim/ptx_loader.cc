@@ -33,6 +33,7 @@
 #include <dirent.h>
 #include <fstream>
 #include <sstream>
+#include "../../libcuda/gpgpu_context.h"
 
 /// globals
 
@@ -165,7 +166,7 @@ char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const std::string ptxfilenam
 }
 
 
-symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num )
+symbol_table *gpgpu_context::gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num )
 {
     char buf[1024];
     snprintf(buf,1024,"_%u.ptx", source_num );
@@ -200,7 +201,7 @@ symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source
     return symtab;
 }
 
-symbol_table *gpgpu_ptx_sim_load_ptx_from_filename( const char *filename )
+symbol_table *gpgpu_context::gpgpu_ptx_sim_load_ptx_from_filename( const char *filename )
 {
     symbol_table *symtab=init_parser(filename);
     printf("GPGPU-Sim PTX: finished parsing EMBEDDED .ptx file %s\n",filename);
