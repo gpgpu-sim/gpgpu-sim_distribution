@@ -36,6 +36,8 @@ class ptxinfo_data{
 	yyscan_t scanner;
 	char linebuf[LINEBUF_SIZE];
 	unsigned col;
+	const char *g_ptxinfo_filename;
+
 };
 
 
