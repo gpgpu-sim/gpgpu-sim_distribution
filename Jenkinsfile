@@ -73,12 +73,12 @@ pipeline {
                     sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-app-4.2.csv,./stats-per-app-4.2.csv -R > per-app-merge-4.2.csv'
                     sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-app-10.1.csv,./stats-per-app-10.1.csv -R > per-app-merge-10.1.csv'
                     sh 'PLOTDIR="jenkins/${JOB_NAME}" &&\
-                        ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c per-app-merge-4.2.csv -p cuda-4.2 &&\
-                        ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c per-app-merge-10.1.csv -p cuda-10.1 &&\
+                        ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c per-app-merge-4.2.csv -P cuda-4.2 &&\
+                        ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c per-app-merge-10.1.csv -P cuda-10.1 &&\
                         ./gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-kernel-4.2-ptxplus.csv,./stats-per-kernel-4.2-ptxplus.csv -R > per-kernel-merge-4.2-ptxplus.csv &&\
                         ./gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-kernel-10.1.csv,./stats-per-kernel-10.1.csv -R > per-kernel-merge-10.1.csv &&\
                         ./gpgpu-sim_simulations/util/plotting/plot-correlation.py -c per-kernel-merge-4.2-ptxplus.csv -p cuda-4.2 | grep "Correl=" | tee correl.4.2.txt &&\
-                        ./gpgpu-sim_simulations/util/plotting/plot-correlation.py -c per-kernel-merge-10.1-ptxplus.csv -p cuda-10.1 | grep "Correl=" | tee correl.10.1.txt &&\
+                        ./gpgpu-sim_simulations/util/plotting/plot-correlation.py -c per-kernel-merge-10.1.csv -p cuda-10.1 | grep "Correl=" | tee correl.10.1.txt &&\
                         mkdir -p ./gpgpu-sim-results-repo/${JOB_NAME}/ && cp stats-per-*.csv ./gpgpu-sim-results-repo/${JOB_NAME}/ &&\
                         cd ./gpgpu-sim-results-repo &&\
                         git diff --quiet && git diff --staged --quiet || git commit -am "Jenkins automated checkin ${BUILD_NUMBER}" &&\
@@ -88,7 +88,7 @@ pipeline {
                         ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p $PLOTDIR/${BUILD_NUMBER} && \
                         scp  ./gpgpu-sim_simulations/util/plotting/correl-html/* tgrogers@dynamo.ecn.purdue.edu:$PLOTDIR/${BUILD_NUMBER} &&\
                         scp  ./gpgpu-sim_simulations/util/plotting/htmls/* tgrogers@dynamo.ecn.purdue.edu:$PLOTDIR/${BUILD_NUMBER} &&\
-                        ssh tgrogers@dynamo.ecn.purdue.edu "cd $PLOTDIR && rm -rf latest && cp -r ${BUILD_NUMBER} latest'
+                        ssh tgrogers@dynamo.ecn.purdue.edu "cd $PLOTDIR && rm -rf latest && cp -r ${BUILD_NUMBER} latest"'
             }
         }
     }
