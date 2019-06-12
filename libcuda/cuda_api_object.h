@@ -171,6 +171,7 @@ class cuda_runtime_api {
     public:
 	cuda_runtime_api() {
 	    g_glbmap = NULL;
+	    g_active_device = 0; //active gpu that runs the code
 	}
 	// global list
 	std::list<cuobjdumpSection*> cuobjdumpSectionList;
@@ -185,6 +186,7 @@ class cuda_runtime_api {
 	std::map<void *,void **> pinned_memory; //support for pinned memories added
 	std::map<void *, size_t> pinned_memory_size;
 	glbmap_entry_t* g_glbmap;
+	int g_active_device; //active gpu that runs the code
 	// member function list
 	void cuobjdumpInit();
 	void extract_code_using_cuobjdump();
@@ -201,5 +203,8 @@ class cuda_runtime_api {
 		struct dim3 gridDim,
 		struct dim3 blockDim,
 		struct CUctx_st* context );
+	int load_static_globals( symbol_table *symtab, unsigned min_gaddr, unsigned max_gaddr, gpgpu_t *gpu );
+	int load_constants( symbol_table *symtab, addr_t min_gaddr, gpgpu_t *gpu );
+
 };
 #endif /* __cuda_api_object_h__ */
