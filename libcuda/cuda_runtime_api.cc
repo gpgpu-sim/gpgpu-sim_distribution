@@ -642,7 +642,7 @@ void** cudaRegisterFatBinaryInternal( void *fatCubin, gpgpu_context* gpgpu_ctx =
 			} else {
 				symtab=ctx->gpgpu_ptx_sim_load_ptx_from_string(ptx,source_num);
 				context->add_binary(symtab,fat_cubin_handle);
-				gpgpu_ptxinfo_load_from_string( ptx, source_num, max_capability, context->no_of_ptx );
+				ctx->gpgpu_ptxinfo_load_from_string( ptx, source_num, max_capability, context->no_of_ptx );
 			}
 			source_num++;
 			ctx->api->load_static_globals(symtab,STATIC_ALLOC_LIMIT,0xFFFFFFFF,context->get_device()->get_gpgpu());

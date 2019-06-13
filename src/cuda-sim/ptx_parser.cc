@@ -27,6 +27,7 @@
 
 #include "ptx_parser.h"
 #include "ptx_ir.h"
+#include "../../libcuda/gpgpu_context.h"
 
 typedef void * yyscan_t;
 #include "ptx.tab.h"
@@ -51,15 +52,7 @@ static bool g_debug_ir_generation=false;
 const char *g_filename;
 
 // the program intermediate representation...
-static symbol_table *g_global_allfiles_symbol_table = NULL;
-static symbol_table *g_global_symbol_table = NULL;
 std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
-static symbol_table *g_current_symbol_table = NULL;
-static std::list<ptx_instruction*> g_instructions;
-static symbol *g_last_symbol = NULL;
-
-int g_error_detected = 0;
-
 
 #define PTX_PARSE_DPRINTF(...) \
    if( g_debug_ir_generation ) { \
@@ -70,10 +63,7 @@ int g_error_detected = 0;
       fflush(stdout); \
    }
 
-static unsigned g_entry_func_param_index=0;
-static function_info *g_func_info = NULL;
 static std::map<unsigned,std::string> g_ptx_token_decode;
-static operand_info g_return_var;
 
 const char *decode_token( int type )
 {
@@ -122,12 +112,12 @@ void ptx_recognizer::init_instruction_state()
    init_directive_state();
 }
 
-symbol_table *init_parser( const char *ptx_filename )
+symbol_table * gpgpu_context::init_parser( const char *ptx_filename )
 {
    g_filename = strdup(ptx_filename);
    if  (g_global_allfiles_symbol_table == NULL) {
        g_global_allfiles_symbol_table = new symbol_table("global_allfiles", 0, NULL);
-       g_global_symbol_table = g_current_symbol_table = g_global_allfiles_symbol_table;
+       ptx_parser->g_global_symbol_table = ptx_parser->g_current_symbol_table = g_global_allfiles_symbol_table;
    }
    /*else {
        g_global_symbol_table = g_current_symbol_table = new symbol_table("global",0,g_global_allfiles_symbol_table);
@@ -151,19 +141,18 @@ symbol_table *init_parser( const char *ptx_filename )
    g_ptx_token_decode[generic_space] = "generic_space";
    g_ptx_token_decode[instruction_space] = "instruction_space";
 
-   ptx_recognizer recognizer;
-   ptx_lex_init(&(recognizer.scanner));
-   recognizer.init_directive_state();
-   recognizer.init_instruction_state();
+   ptx_lex_init(&(ptx_parser->scanner));
+   ptx_parser->init_directive_state();
+   ptx_parser->init_instruction_state();
 
    FILE *ptx_in;
    ptx_in = fopen(ptx_filename, "r");
-   ptx_set_in(ptx_in, recognizer.scanner);
-   ptx_parse(recognizer.scanner, &recognizer);
-   ptx_in = ptx_get_in(recognizer.scanner);
-   ptx_lex_destroy(recognizer.scanner);
+   ptx_set_in(ptx_in, ptx_parser->scanner);
+   ptx_parse(ptx_parser->scanner, ptx_parser);
+   ptx_in = ptx_get_in(ptx_parser->scanner);
+   ptx_lex_destroy(ptx_parser->scanner);
    fclose(ptx_in);
-   return g_global_symbol_table;
+   return ptx_parser->g_global_symbol_table;
 }
 
 static int g_entry_point;
@@ -331,7 +320,7 @@ void ptx_recognizer::set_variable_type()
                                                   g_extern_spec );
 }
 
-bool check_for_duplicates( const char *identifier )
+bool ptx_recognizer::check_for_duplicates( const char *identifier )
 {
    const symbol *s = g_current_symbol_table->lookup(identifier);
    return ( s != NULL );

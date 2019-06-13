@@ -34,7 +34,6 @@ extern const char *g_filename;
 extern int g_error_detected;
 
 #ifdef __cplusplus 
-class symbol_table* init_parser(const char*);
 const class ptx_instruction *ptx_instruction_lookup( const char *filename, unsigned linenumber );
 #endif
 
@@ -57,11 +56,17 @@ class ptx_recognizer {
 	    g_ident_add_uid = 0;
 	    g_const_alloc = 1;
 	    g_max_regs_per_thread = 0;
+	    g_global_symbol_table = NULL;
+	    g_current_symbol_table = NULL;
+	    g_last_symbol = NULL;
+	    g_error_detected = 0;
+	    g_entry_func_param_index=0;
+	    g_func_info = NULL;
 	}
 	// global list
 	yyscan_t scanner;
-#define LINEBUF_SIZE (4*1024)
-	char linebuf[LINEBUF_SIZE];
+#define PTX_LINEBUF_SIZE (4*1024)
+	char linebuf[PTX_LINEBUF_SIZE];
 	unsigned col;
 	int g_size;
 	char *g_add_identifier_cached__identifier;
@@ -90,6 +95,14 @@ class ptx_recognizer {
 	int g_ident_add_uid;
 	unsigned g_const_alloc;
 	unsigned g_max_regs_per_thread;
+	symbol_table *g_global_symbol_table;
+	symbol_table *g_current_symbol_table;
+	symbol *g_last_symbol;
+	std::list<ptx_instruction*> g_instructions;
+	int g_error_detected;
+	unsigned g_entry_func_param_index;
+	function_info *g_func_info;
+	operand_info g_return_var;
 
 	// member function list
 	void init_directive_state();
@@ -155,6 +168,7 @@ class ptx_recognizer {
 	//Jin: handle instructino group for cdp
 	void start_inst_group();
 	void end_inst_group();
+	bool check_for_duplicates( const char *identifier );
 
 };
 

@@ -452,14 +452,13 @@ breakaddr  TC; yylval->int_value = BREAKADDR_OP; return OPCODE;
 <INITIAL,NOT_OPCODE,IN_FUNC_DECL>.  TC; ptx_error(yyscanner, recognizer, (const char*)NULL);
 %%
 
-extern int g_error_detected;
 extern const char *g_filename;
 
 int ptx_error( yyscan_t yyscanner, ptx_recognizer* recognizer, const char *s )
 {
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
 	int i;
-	g_error_detected = 1;
+	recognizer->g_error_detected = 1;
 	fflush(stdout);
 	if( s != NULL )
 		printf("%s:%u Syntax error:\n\n", g_filename, yylineno );

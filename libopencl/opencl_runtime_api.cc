@@ -580,7 +580,7 @@ void _cl_program::Build(const char *options)
       }
       info.m_asm = tmp;
       info.m_symtab = ctx->gpgpu_ptx_sim_load_ptx_from_string( tmp, source_num );
-      gpgpu_ptxinfo_load_from_string( tmp, source_num );
+      ctx->gpgpu_ptxinfo_load_from_string( tmp, source_num );
       free(tmp);
    }
    printf("GPGPU-Sim OpenCL API: finished compiling OpenCL kernels.\n"); 

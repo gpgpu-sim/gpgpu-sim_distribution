@@ -81,7 +81,7 @@ void ptx_reg_options(option_parser_t opp)
                 "0");
 }
 
-void print_ptx_file( const char *p, unsigned source_num, const char *filename )
+void gpgpu_context::print_ptx_file( const char *p, unsigned source_num, const char *filename )
 {
    printf("\nGPGPU-Sim PTX: file _%u.ptx contents:\n\n", source_num );
    char *s = strdup(p);
@@ -170,10 +170,9 @@ symbol_table *gpgpu_context::gpgpu_ptx_sim_load_ptx_from_string( const char *p, 
        fclose(fp);
     }
     symbol_table *symtab=init_parser(buf);
-    ptx_recognizer recognizer;
-    ptx_lex_init(&(recognizer.scanner));
-    ptx__scan_string(p, recognizer.scanner);
-    int errors = ptx_parse (recognizer.scanner, &recognizer);
+    ptx_lex_init(&(ptx_parser->scanner));
+    ptx__scan_string(p, ptx_parser->scanner);
+    int errors = ptx_parse (ptx_parser->scanner, ptx_parser);
     if ( errors ) {
         char fname[1024];
         snprintf(fname,1024,"_ptx_errors_XXXXXX");
@@ -186,7 +185,7 @@ symbol_table *gpgpu_context::gpgpu_ptx_sim_load_ptx_from_string( const char *p, 
         abort();
         exit(40);
     }
-    ptx_lex_destroy(recognizer.scanner);
+    ptx_lex_destroy(ptx_parser->scanner);
 
     if ( g_debug_execution >= 100 ) 
        print_ptx_file(p,source_num,buf);
@@ -332,7 +331,7 @@ char* get_app_binary_name(){
    return self_exe_path;
 }
 
-void gpgpu_ptx_info_load_from_filename( const char *filename, unsigned sm_version)
+void gpgpu_context::gpgpu_ptx_info_load_from_filename( const char *filename, unsigned sm_version)
 {
     std::string ptxas_filename(std::string(filename) + "as");
     char buff[1024], extra_flags[1024];
@@ -352,17 +351,16 @@ void gpgpu_ptx_info_load_from_filename( const char *filename, unsigned sm_versio
 	}
 
     FILE *ptxinfo_in;
-    ptxinfo_data ptxinfo;
-    ptxinfo.g_ptxinfo_filename = strdup(ptxas_filename.c_str());
-    ptxinfo_in = fopen(ptxinfo.g_ptxinfo_filename,"r");
-    ptxinfo_lex_init(&(ptxinfo.scanner));
-    ptxinfo_set_in(ptxinfo_in, ptxinfo.scanner);
-    ptxinfo_parse(ptxinfo.scanner, &ptxinfo);
-    ptxinfo_lex_destroy(ptxinfo.scanner);
+    ptxinfo->g_ptxinfo_filename = strdup(ptxas_filename.c_str());
+    ptxinfo_in = fopen(ptxinfo->g_ptxinfo_filename,"r");
+    ptxinfo_lex_init(&(ptxinfo->scanner));
+    ptxinfo_set_in(ptxinfo_in, ptxinfo->scanner);
+    ptxinfo_parse(ptxinfo->scanner, ptxinfo);
+    ptxinfo_lex_destroy(ptxinfo->scanner);
     fclose(ptxinfo_in);
 }
 
-void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num, unsigned sm_version, int no_of_ptx )
+void gpgpu_context::gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num, unsigned sm_version, int no_of_ptx )
 {
     //do ptxas for individual files instead of one big embedded ptx. This prevents the duplicate defs and declarations.
     char ptx_file[1000];
@@ -420,14 +418,13 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
     if( result != 0 ) {
     	// 65280 = duplicate errors
     	if (result == 65280) {
-		ptxinfo_data ptxinfo;
 		FILE *ptxinfo_in;
     		ptxinfo_in = fopen(tempfile_ptxinfo,"r");
-		ptxinfo.g_ptxinfo_filename = tempfile_ptxinfo;
-		ptxinfo_lex_init(&(ptxinfo.scanner));
-		ptxinfo_set_in(ptxinfo_in, ptxinfo.scanner);
-		ptxinfo_parse(ptxinfo.scanner, &ptxinfo);
-		ptxinfo_lex_destroy(ptxinfo.scanner);
+		ptxinfo->g_ptxinfo_filename = tempfile_ptxinfo;
+		ptxinfo_lex_init(&(ptxinfo->scanner));
+		ptxinfo_set_in(ptxinfo_in, ptxinfo->scanner);
+		ptxinfo_parse(ptxinfo->scanner, ptxinfo);
+		ptxinfo_lex_destroy(ptxinfo->scanner);
 		fclose(ptxinfo_in);
 
     		fix_duplicate_errors(fname2);
@@ -507,18 +504,17 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
         }
     }	
 
-    ptxinfo_data ptxinfo;
     if(no_of_ptx>0)
-        ptxinfo.g_ptxinfo_filename = final_tempfile_ptxinfo;
+        ptxinfo->g_ptxinfo_filename = final_tempfile_ptxinfo;
     else
-	ptxinfo.g_ptxinfo_filename = tempfile_ptxinfo;
+	ptxinfo->g_ptxinfo_filename = tempfile_ptxinfo;
     FILE *ptxinfo_in;
-    ptxinfo_in = fopen(ptxinfo.g_ptxinfo_filename,"r");
+    ptxinfo_in = fopen(ptxinfo->g_ptxinfo_filename,"r");
 
-    ptxinfo_lex_init(&(ptxinfo.scanner));
-    ptxinfo_set_in(ptxinfo_in, ptxinfo.scanner);
-    ptxinfo_parse(ptxinfo.scanner, &ptxinfo);
-    ptxinfo_lex_destroy(ptxinfo.scanner);
+    ptxinfo_lex_init(&(ptxinfo->scanner));
+    ptxinfo_set_in(ptxinfo_in, ptxinfo->scanner);
+    ptxinfo_parse(ptxinfo->scanner, ptxinfo);
+    ptxinfo_lex_destroy(ptxinfo->scanner);
     fclose(ptxinfo_in);
 
     snprintf(commandline,1024,"rm -f *info");
