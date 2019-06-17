@@ -45,7 +45,7 @@ pipeline {
                         ./gpgpu-sim_simulations/util/job_launching/run_simulations.py \
                             -B `cat ./gpgpu-sim_simulations/util/job_launching/apps/all-apps.list` -C TITANV-2B -N nightly-$$ && \
                         ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -I -S 1800 -v \
-                            -s stats-per-app-9.1.csv -T 12 -N nightly-$$ && \
+                            -s stats-per-app-9.1.csv -T 12 -K -N nightly-$$ && \
                         ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c stats-per-app-9.1.csv -P cuda-9.1.nightly'
             }
         }
@@ -76,7 +76,7 @@ pipeline {
                         | grep "Correl=" | tee correl.9.1.txt &&\
                     cp stats-per-*.csv ./gpgpu-sim-results-repo/${JOB_NAME}/ &&\
                     cd ./gpgpu-sim-results-repo &&\
-                    git diff --quiet && git diff --staged --quiet || git commit -am "Jenkins automated checkin ${BUILD_NUMBER}" &&\
+                    git diff --quiet && git diff --staged --quiet || git commit -am "Jenkins automated checkin ${JOB_NAME} Build:${BUILD_NUMBER}" &&\
                     git push'
 
                 sh 'PLOTDIR="/home/dynamo/a/tgrogers/website/gpgpu-sim-plots/jenkins/${JOB_NAME}" &&\
