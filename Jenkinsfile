@@ -81,7 +81,7 @@ pipeline {
                         ./gpgpu-sim_simulations/util/plotting/plot-correlation.py -c per-kernel-merge-10.1.csv -p cuda-10.1 | grep "Correl=" | tee correl.10.1.txt &&\
                         mkdir -p ./gpgpu-sim-results-repo/${JOB_NAME}/ && cp stats-per-*.csv ./gpgpu-sim-results-repo/${JOB_NAME}/ &&\
                         cd ./gpgpu-sim-results-repo &&\
-                        git diff --quiet && git diff --staged --quiet || git commit -am "Jenkins automated checkin ${BUILD_NUMBER}" &&\
+                        git diff --quiet && git diff --staged --quiet || git commit -am "Jenkins automated checkin ${JOB_NAME} Build:${BUILD_NUMBER}" &&\
                         git push'
 
                     sh 'PLOTDIR="/home/dynamo/a/tgrogers/website/gpgpu-sim-plots/jenkins/${JOB_NAME}" &&\
