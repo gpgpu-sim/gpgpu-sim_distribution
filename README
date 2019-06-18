@@ -177,7 +177,7 @@ GPGPU-Sim dependencies:
 * flex
 * zlib
 * CUDA Toolkit
-	
+
 GPGPU-Sim documentation dependencies:
 * doxygen
 * graphvi
@@ -208,6 +208,9 @@ python-matplotlib"
 CUDA SDK dependencies:
 "sudo apt-get install libxi-dev libxmu-dev libglut3-dev"
 
+If you are running applications which use NVIDIA libraries such as cuDNN and 
+cuBLAS, install them too.
+
 Finally, ensure CUDA_INSTALL_PATH is set to the location where you installed
 the CUDA Toolkit (e.g., /usr/local/cuda) and that $CUDA_INSTALL_PATH/bin is in
 your PATH.  You probably want to modify your .bashrc file to incude the
@@ -216,6 +219,10 @@ following (this assumes the CUDA Toolkit was installed in /usr/local/cuda):
 	export CUDA_INSTALL_PATH=/usr/local/cuda
 	export PATH=$CUDA_INSTALL_PATH/bin
 
+If running applications which use cuDNN or cuBLAS:
+	export CUDNN_PATH=<Path To cuDNN Directory>
+	export LD_LIBRARY_PATH=$CUDA_INSTALL_PATH/lib64:$CUDA_INSTALL_PATH/lib:$CUDNN_PATH/lib64
+	
 
 Step 2: Build
 =============
@@ -260,6 +267,23 @@ To confirm the same, type the follwoing command:
 ldd <your_application_name>
 
 You should see that your application is using libcudart.so file in GPGPUSim directory.
+
+If running applications which use cuDNN or cuBLAS:
+
+ * Modify the Makefile or the compilation command of the application to change 
+   all the dynamic links to static ones, for example:
+	* -L$(CUDA_PATH)/lib64 -lcublas to
+	  -L$(CUDA_PATH)/lib64 -lcublas_static
+
+	* -L$(CUDNN_PATH)/lib64 -lcudnn to
+	  -L$(CUDNN_PATH)/lib64 -lcudnn_static
+
+ * Modify the Makefile or the compilation command such that the following 
+   flags are used by the nvcc compiler:
+	-gencode arch=compute_61,code=compute_61
+
+   (the number 61 refers to the SM version. You would need to set it based 
+   on the GPGPU-Sim config "-gpgpu ptx force max capability" you use)
 
 Copy the contents of configs/QuadroFX5800/ or configs/GTX480/ to your
 application's working directory.  These files configure the microarchitecture
