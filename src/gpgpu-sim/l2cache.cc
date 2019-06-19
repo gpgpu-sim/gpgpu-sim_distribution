@@ -519,12 +519,21 @@ void memory_sub_partition::print( FILE *fp ) const
 
 void memory_stats_t::visualizer_print( gzFile visualizer_file )
 {
-   // gzprintf(visualizer_file, "Ltwowritemiss: %d\n", L2_write_miss);
-   // gzprintf(visualizer_file, "Ltwowritehit: %d\n",  L2_write_access-L2_write_miss);
-   // gzprintf(visualizer_file, "Ltworeadmiss: %d\n", L2_read_miss);
-   // gzprintf(visualizer_file, "Ltworeadhit: %d\n", L2_read_access-L2_read_miss);
+   gzprintf(visualizer_file, "Ltwowritemiss: %d\n", L2_write_miss);
+   gzprintf(visualizer_file, "Ltwowritehit: %d\n",  L2_write_hit);
+   gzprintf(visualizer_file, "Ltworeadmiss: %d\n", L2_read_miss);
+   gzprintf(visualizer_file, "Ltworeadhit: %d\n", L2_read_hit);
+   clear_L2_stats_pw();
+
    if (num_mfs)
       gzprintf(visualizer_file, "averagemflatency: %lld\n", mf_total_lat/num_mfs);
+}
+
+void memory_stats_t::clear_L2_stats_pw(){
+    L2_write_miss = 0;
+    L2_write_hit = 0;
+    L2_read_miss = 0;
+    L2_read_hit = 0;
 }
 
 void gpgpu_sim::print_dram_stats(FILE *fout) const
@@ -718,8 +727,29 @@ void memory_sub_partition::get_L2cache_sub_stats(struct cache_sub_stats &css) co
     }
 }
 
-void memory_sub_partition::visualizer_print( gzFile visualizer_file )
-{
-    // TODO: Add visualizer stats for L2 cache 
+void memory_sub_partition::get_L2cache_sub_stats_pw(struct cache_sub_stats_pw &css) const{
+    if (!m_config->m_L2_config.disabled()) {
+        m_L2cache->get_sub_stats_pw(css);
+    }
 }
 
+void memory_sub_partition::clear_L2cache_stats_pw() {
+    if (!m_config->m_L2_config.disabled()) {
+        m_L2cache->clear_pw();
+    }
+}
+
+void memory_sub_partition::visualizer_print( gzFile visualizer_file )
+{
+    // Support for L2 AerialVision stats
+    // Per-sub-partition stats would be trivial to extend from this
+    cache_sub_stats_pw temp_sub_stats;
+    get_L2cache_sub_stats_pw(temp_sub_stats);
+
+    m_stats->L2_read_miss += temp_sub_stats.read_misses;
+    m_stats->L2_write_miss += temp_sub_stats.write_misses;
+    m_stats->L2_read_hit += temp_sub_stats.read_hits;
+    m_stats->L2_write_hit += temp_sub_stats.write_hits;
+
+    clear_L2cache_stats_pw();
+}
