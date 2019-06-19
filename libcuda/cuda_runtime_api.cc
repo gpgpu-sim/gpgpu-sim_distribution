@@ -3252,6 +3252,8 @@ __host__ cudaError_t CUDARTAPI cudaDeviceSetLimit(enum cudaLimit limit, size_t v
 
 #endif
 
+
+#if CUDART_VERSION >= 9000
 /**
  * \brief Set attributes for a given function
  *
@@ -3294,6 +3296,7 @@ cudaError_t CUDARTAPI cudaFuncSetAttribute(const void *func, enum cudaFuncAttrib
         __my_func__, func, attr, value );
     return g_last_cudaError = cudaSuccess;
 }
+#endif
 
 cudaError_t CUDARTAPI cudaGLSetGLDevice(int device)
 {
