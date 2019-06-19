@@ -1694,6 +1694,12 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDevic
                         break;
                 case 88:
                 case 89:
+                case 90:
+                case 91:
+                case 92:
+                case 93:
+                case 94:
+                case 95:
                         *value= 0;
                         break;
 		default:
@@ -3245,6 +3251,49 @@ __host__ cudaError_t CUDARTAPI cudaDeviceSetLimit(enum cudaLimit limit, size_t v
 #endif
 
 #endif
+
+/**
+ * \brief Set attributes for a given function
+ *
+ * This function sets the attributes of a function specified via \p entry.
+ * The parameter \p entry must be a pointer to a function that executes
+ * on the device. The parameter specified by \p entry must be declared as a \p __global__
+ * function. The enumeration defined by \p attr is set to the value defined by \p value
+ * If the specified function does not exist, then ::cudaErrorInvalidDeviceFunction is returned.
+ * If the specified attribute cannot be written, or if the value is incorrect, 
+ * then ::cudaErrorInvalidValue is returned.
+ *
+ * Valid values for \p attr are:
+ * ::cuFuncAttrMaxDynamicSharedMem - Maximum size of dynamic shared memory per block
+ * ::cudaFuncAttributePreferredSharedMemoryCarveout - Preferred shared memory-L1 cache split ratio
+ *
+ * \param entry - Function to get attributes of
+ * \param attr  - Attribute to set
+ * \param value - Value to set
+ *
+ * \return
+ * ::cudaSuccess,
+ * ::cudaErrorInitializationError,
+ * ::cudaErrorInvalidDeviceFunction,
+ * ::cudaErrorInvalidValue
+ * \notefnerr
+ *
+ * \ref ::cudaLaunchKernel(const T *func, dim3 gridDim, dim3 blockDim, void **args, size_t sharedMem, cudaStream_t stream) "cudaLaunchKernel (C++ API)",
+ * \ref ::cudaFuncSetCacheConfig(T*, enum cudaFuncCache) "cudaFuncSetCacheConfig (C++ API)",
+ * \ref ::cudaFuncGetAttributes(struct cudaFuncAttributes*, const void*) "cudaFuncGetAttributes (C API)",
+ * ::cudaSetDoubleForDevice,
+ * ::cudaSetDoubleForHost,
+ * \ref ::cudaSetupArgument(T, size_t) "cudaSetupArgument (C++ API)"
+ */
+cudaError_t CUDARTAPI cudaFuncSetAttribute(const void *func, enum cudaFuncAttribute attr, int value)
+{
+   	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("GPGPU-Sim PTX: Execution warning: ignoring call to \"%s ( func=%p, attr=%d, value=%d )\"\n",
+        __my_func__, func, attr, value );
+    return g_last_cudaError = cudaSuccess;
+}
 
 cudaError_t CUDARTAPI cudaGLSetGLDevice(int device)
 {
