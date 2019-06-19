@@ -1473,6 +1473,17 @@ __host__ cudaError_t CUDARTAPI cudaLaunch( const char *hostFun )
 		sscanf(mode,"%u", &g_ptx_sim_mode);
 	gpgpusim_ptx_assert( !g_cuda_launch_stack.empty(), "empty launch stack" );
 	kernel_config config = g_cuda_launch_stack.back();
+	{
+		dim3 gridDim = config.grid_dim();
+		dim3 blockDim = config.block_dim();
+		if (gridDim.x * gridDim.y * gridDim.z == 0 || blockDim.x * blockDim.y * blockDim.z == 0)
+		{
+			//can't launch
+			printf("can't launch a empty kernel\n");
+			g_cuda_launch_stack.pop_back();
+			return g_last_cudaError = cudaErrorInvalidConfiguration;
+		}
+	}
 	struct CUstream_st *stream = config.get_stream();
 	printf("\nGPGPU-Sim PTX: cudaLaunch for 0x%p (mode=%s) on stream %u\n", hostFun,
 			g_ptx_sim_mode?"functional simulation":"performance simulation", stream?stream->get_uid():0 );
