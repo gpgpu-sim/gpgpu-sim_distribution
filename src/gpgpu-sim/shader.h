@@ -116,7 +116,6 @@ public:
         m_done_exit=true;
         m_last_fetch=0;
         m_next=0;
-        m_inst_at_barrier=NULL;
 
         //Jin: cdp support
         m_cdp_latency = 0;
@@ -173,8 +172,8 @@ public:
     address_type get_pc() const { return m_next_pc; }
     void set_next_pc( address_type pc ) { m_next_pc = pc; }
 
-    void store_info_of_last_inst_at_barrier(const warp_inst_t *pI){ m_inst_at_barrier = pI;}
-    const warp_inst_t * restore_info_of_last_inst_at_barrier(){ return m_inst_at_barrier;}
+    void store_info_of_last_inst_at_barrier(const warp_inst_t *pI){ m_inst_at_barrier = *pI;}
+    warp_inst_t * restore_info_of_last_inst_at_barrier(){ return &m_inst_at_barrier;}
 
     void ibuffer_fill( unsigned slot, const warp_inst_t *pI )
     {
@@ -264,7 +263,7 @@ private:
        bool m_valid;
     };
 
-    const warp_inst_t *m_inst_at_barrier;
+    warp_inst_t m_inst_at_barrier;
     ibuffer_entry m_ibuffer[IBUFFER_SIZE]; 
     unsigned m_next;
                                    
