@@ -1528,6 +1528,7 @@ void bar_impl( const ptx_instruction *pIin, ptx_thread_info *thread )
    			   op2_data = thread->get_operand_value(op2, op2, PRED_TYPE, thread, 1);
                op2_data.u32=!(op2_data.pred & 0x0001);
    			   pI->set_bar_id(op1_data.u32);
+			   pI->set_bar_count(thread->get_ntid().x * thread->get_ntid().y * thread->get_ntid().z);
    			   switch(red_op){
    			   	   case ATOMIC_POPC:
    			   		   thread->popc_reduction(ctaid,op1_data.u32,op2_data.u32);
