@@ -44,9 +44,6 @@ struct GPGPUsim_ctx {
 		break_limit = false;
 		g_sim_lock = PTHREAD_MUTEX_INITIALIZER;
 
-		sg_argc = 3;
-		sg_argv = {"", "-config","gpgpusim.config"};
-
 		g_the_gpu_config=NULL;
 		g_the_gpu=NULL;
 		g_stream_manager=NULL;
@@ -69,9 +66,6 @@ struct GPGPUsim_ctx {
 	struct _cuda_device_id *the_cude_device;
 	struct CUctx_st* the_context;
 
-
-	 int sg_argc;
-	 const char *sg_argv[3];
 
 	 pthread_mutex_t g_sim_lock;
 	 bool g_sim_active;

@@ -38,6 +38,9 @@
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
+static int sg_argc = 3;
+static const char *sg_argv[] = {"", "-config","gpgpusim.config"};
+
 
 struct GPGPUsim_ctx* the_gpgpusim =  NULL;
 
@@ -220,7 +223,7 @@ gpgpu_sim *gpgpu_ptx_sim_init_perf()
    GPGPUsim_ctx_ptr()->g_the_gpu_config = new gpgpu_sim_config();
    GPGPUsim_ctx_ptr()->g_the_gpu_config->reg_options(opp); // register GPU microrachitecture options
 
-   option_parser_cmdline(opp, GPGPUsim_ctx_ptr()->sg_argc, GPGPUsim_ctx_ptr()->sg_argv); // parse configuration options
+   option_parser_cmdline(opp, sg_argc, sg_argv); // parse configuration options
    fprintf(stdout, "GPGPU-Sim: Configuration options:\n\n");
    option_parser_print(opp, stdout);
    // Set the Numeric locale to a standard locale where a decimal point is a "dot" not a "comma"
