@@ -177,8 +177,8 @@ void symbol_table::add_function( function_info *func, const char *filename, unsi
 
 //Jin: handle instruction group for cdp
 symbol_table* symbol_table::start_inst_group() {
-   char inst_group_name[1024];
-   snprintf(inst_group_name, 1024, "%s_inst_group_%u", m_scope_name.c_str(), m_inst_group_id);
+   char inst_group_name[2048];
+   snprintf(inst_group_name, 2048, "%s_inst_group_%u", m_scope_name.c_str(), m_inst_group_id);
 
    //previous added
    assert(m_inst_group_symtab.find(std::string(inst_group_name)) == m_inst_group_symtab.end());
