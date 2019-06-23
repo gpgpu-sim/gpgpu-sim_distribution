@@ -987,6 +987,10 @@ cudaError_t CUDARTAPI cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(int
                         * context->get_device()->get_gpgpu()->get_config().num_shader());
 		dim3 blockDim(blockSize);
 		kernel_info_t result(gridDim, blockDim, entry);
+		//if(entry == NULL){
+		//	*numBlocks = 1;
+		//	return g_last_cudaError = cudaErrorUnknown;
+		//}
 		*numBlocks = context->get_device()->get_gpgpu()->get_max_cta(result);
 		printf("Maximum size is %d with gridDim %d and blockDim %d\n", *numBlocks, gridDim.x, blockDim.x);
 		return g_last_cudaError = cudaSuccess;
