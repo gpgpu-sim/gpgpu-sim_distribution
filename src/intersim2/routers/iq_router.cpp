@@ -306,7 +306,7 @@ bool IQRouter::_ReceiveFlits( )
 
       if(f->watch) {
 	*gWatchOut << GetSimTime() << " | " << FullName() << " | "
-		   << "Received flit " << f->id
+		   << "Received flit " << (unsigned) f->id
 		   << " from channel at input " << input
 		   << "." << endl;
       }
