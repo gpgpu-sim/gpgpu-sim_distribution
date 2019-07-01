@@ -74,7 +74,6 @@ struct GPGPUsim_ctx {
 
 };
 
-class gpgpu_sim *gpgpu_ptx_sim_init_perf();
 void start_sim_thread(int api);
 
 class gpgpu_sim* g_the_gpu();

@@ -48,7 +48,6 @@ void set_ptx_warp_size(const struct core_config * warp_size)
    g_shader_core_config=warp_size;
 }
 
-static bool g_debug_ir_generation=false;
 const char *g_filename;
 
 // the program intermediate representation...
@@ -70,7 +69,7 @@ const char *decode_token( int type )
    return g_ptx_token_decode[type].c_str();
 }
 
-void read_parser_environment_variables() 
+void ptx_recognizer::read_parser_environment_variables() 
 {
    g_filename = getenv("PTX_SIM_KERNELFILE"); 
    char *dbg_level = getenv("PTX_SIM_DEBUG");

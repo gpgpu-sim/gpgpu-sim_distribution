@@ -35,6 +35,7 @@
 #include "gpgpu-sim/gpu-sim.h"
 #include "gpgpu-sim/icnt_wrapper.h"
 #include "stream_manager.h"
+#include "../libcuda/gpgpu_context.h"
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
@@ -208,12 +209,12 @@ void exit_simulation()
 
 extern bool g_cuda_launch_blocking;
 
-gpgpu_sim *gpgpu_ptx_sim_init_perf()
+gpgpu_sim *gpgpu_context::gpgpu_ptx_sim_init_perf()
 {
    srand(1);
    print_splash();
    read_sim_environment_variables();
-   read_parser_environment_variables();
+   ptx_parser->read_parser_environment_variables();
    option_parser_t opp = option_parser_create();
 
    ptx_reg_options(opp);

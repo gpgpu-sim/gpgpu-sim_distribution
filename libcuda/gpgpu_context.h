@@ -26,6 +26,8 @@ class gpgpu_context {
 	void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num, unsigned sm_version=20, int no_of_ptx=0 );
 	void print_ptx_file( const char *p, unsigned source_num, const char *filename );
 	class symbol_table* init_parser(const char*);
+	class gpgpu_sim *gpgpu_ptx_sim_init_perf();
+	struct _cuda_device_id *GPGPUSim_Init();
 };
 gpgpu_context* GPGPU_Context();
 

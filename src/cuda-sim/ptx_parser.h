@@ -62,6 +62,7 @@ class ptx_recognizer {
 	    g_error_detected = 0;
 	    g_entry_func_param_index=0;
 	    g_func_info = NULL;
+	    g_debug_ir_generation=false;
 	}
 	// global list
 	yyscan_t scanner;
@@ -103,6 +104,7 @@ class ptx_recognizer {
 	unsigned g_entry_func_param_index;
 	function_info *g_func_info;
 	operand_info g_return_var;
+	bool g_debug_ir_generation;
 
 	// member function list
 	void init_directive_state();
@@ -169,6 +171,7 @@ class ptx_recognizer {
 	void start_inst_group();
 	void end_inst_group();
 	bool check_for_duplicates( const char *identifier );
+	void read_parser_environment_variables(); 
 
 };
 
