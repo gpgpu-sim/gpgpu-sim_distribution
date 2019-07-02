@@ -274,7 +274,7 @@ gpgpu_context* GPGPU_Context()
 	return gpgpu_ctx;
 }
 
- void ptxinfo_addinfo()
+ void ptxinfo_data::ptxinfo_addinfo()
 {
 	 if(!get_ptxinfo_kname()){
 		 /* This info is not per kernel (since CUDA 5.0 some info (e.g. gmem, and cmem) is added at the beginning for the whole binary ) */
