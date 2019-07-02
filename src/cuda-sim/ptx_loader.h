@@ -37,7 +37,7 @@ class ptxinfo_data{
 	char linebuf[PTXINFO_LINEBUF_SIZE];
 	unsigned col;
 	const char *g_ptxinfo_filename;
-
+	void ptxinfo_addinfo();
 };
 
 
