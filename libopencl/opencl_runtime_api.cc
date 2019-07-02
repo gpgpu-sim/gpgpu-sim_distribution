@@ -648,7 +648,9 @@ class _cl_device_id *GPGPUSim_Init()
 {
    static _cl_device_id *the_device = NULL;
    if( !the_device ) { 
-      gpgpu_sim *the_gpu = gpgpu_ptx_sim_init_perf(); 
+       gpgpu_context *ctx;
+       ctx = GPGPU_Context();
+      gpgpu_sim *the_gpu = ctx->gpgpu_ptx_sim_init_perf(); 
       the_device = new _cl_device_id(the_gpu);
    } 
    start_sim_thread(2);

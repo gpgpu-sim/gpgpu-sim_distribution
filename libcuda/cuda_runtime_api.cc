@@ -197,7 +197,7 @@ void register_ptx_function( const char *name, function_info *impl )
 # endif
 #endif
 
-struct _cuda_device_id *GPGPUSim_Init()
+struct _cuda_device_id *gpgpu_context::GPGPUSim_Init()
 {
 	//static _cuda_device_id *the_device = NULL;
 	_cuda_device_id *the_device = GPGPUsim_ctx_ptr()->the_cude_device;
@@ -255,9 +255,10 @@ struct _cuda_device_id *GPGPUSim_Init()
 static CUctx_st* GPGPUSim_Context()
 {
 	//static CUctx_st *the_context = NULL;
+	gpgpu_context *cur_ctx = GPGPU_Context();
 	CUctx_st *the_context = GPGPUsim_ctx_ptr()->the_context;
 	if( the_context == NULL ) {
-		_cuda_device_id *the_gpu = GPGPUSim_Init();
+		_cuda_device_id *the_gpu = cur_ctx->GPGPUSim_Init();
 		GPGPUsim_ctx_ptr()->the_context = new CUctx_st(the_gpu);
 		the_context = GPGPUsim_ctx_ptr()->the_context;
 	}
@@ -273,7 +274,7 @@ gpgpu_context* GPGPU_Context()
 	return gpgpu_ctx;
 }
 
- void ptxinfo_addinfo()
+ void ptxinfo_data::ptxinfo_addinfo()
 {
 	 if(!get_ptxinfo_kname()){
 		 /* This info is not per kernel (since CUDA 5.0 some info (e.g. gmem, and cmem) is added at the beginning for the whole binary ) */
@@ -496,7 +497,7 @@ cudaError_t cudaSetDeviceInternal(int device, gpgpu_context* gpgpu_ctx = NULL)
 	    announce_call(__my_func__);
     }
 	//set the active device to run cuda
-	if ( device <= GPGPUSim_Init()->num_devices() ) {
+	if ( device <= ctx->GPGPUSim_Init()->num_devices() ) {
 		ctx->api->g_active_device = device;
 		return g_last_cudaError = cudaSuccess;
 	} else {
@@ -517,6 +518,55 @@ cudaError_t cudaGetDeviceInternal(int *device, gpgpu_context* gpgpu_ctx = NULL)
     }
 	*device = ctx->api->g_active_device;
 	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaDeviceGetLimitInternal( size_t* pValue, cudaLimit limit, gpgpu_context* gpgpu_ctx = NULL )
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+    if(g_debug_execution >= 3){
+	announce_call(__my_func__);
+    }
+    _cuda_device_id *dev = ctx->GPGPUSim_Init();
+    const struct cudaDeviceProp *prop = dev->get_prop();
+    const gpgpu_sim_config& config=dev->get_gpgpu()->get_config();
+    switch(limit) {
+	case 0:  // cudaLimitStackSize
+	    *pValue=config.stack_limit();
+	    break;
+	case 2:  // cudaLimitMallocHeapSize
+	    *pValue=config.heap_limit();
+	    break;
+#if (CUDART_VERSION > 5050)
+	case 3: // cudaLimitDevRuntimeSyncDepth
+	    if(prop->major > 2){
+		*pValue=config.sync_depth_limit();
+		break;
+	    }
+	    else{
+		printf("ERROR:Limit %s is not supported on this architecture \n",limit);
+		abort();
+	    }
+	case 4: // cudaLimitDevRuntimePendingLaunchCount
+	    if(prop->major > 2){
+		*pValue=config.pending_launch_count_limit();
+		break;
+	    }
+	    else{
+		printf("ERROR:Limit %s is not supported on this architecture \n",limit);
+		abort();
+	    }
+#endif
+	default:
+	    printf("ERROR:Limit %s unimplemented \n",limit);
+	    abort();
+    }
+    return g_last_cudaError = cudaSuccess;
+
 }
 
 
@@ -736,6 +786,260 @@ cudaError_t cudaConfigureCallInternal(dim3 gridDim, dim3 blockDim, size_t shared
     }
 	struct CUstream_st *s = (struct CUstream_st *)stream;
 	ctx->api->g_cuda_launch_stack.push_back( kernel_config(gridDim,blockDim,sharedMem,s) );
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaGetDeviceCountInternal(int *count, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+    if(g_debug_execution >= 3){
+	announce_call(__my_func__);
+    }
+    _cuda_device_id *dev = ctx->GPGPUSim_Init();
+    *count = dev->num_devices();
+    return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaGetDevicePropertiesInternal(struct cudaDeviceProp *prop, int device, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+    if(g_debug_execution >= 3){
+	announce_call(__my_func__);
+    }
+    _cuda_device_id *dev = ctx->GPGPUSim_Init();
+    if (device <= dev->num_devices() )  {
+	*prop= *dev->get_prop();
+	return g_last_cudaError = cudaSuccess;
+    } else {
+	return g_last_cudaError = cudaErrorInvalidDevice;
+    }
+}
+
+#if (CUDART_VERSION > 5000)
+__host__ cudaError_t CUDARTAPI cudaDeviceGetAttributeInternal(int *value, enum cudaDeviceAttr attr, int device, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+        const struct cudaDeviceProp *prop;
+        _cuda_device_id *dev = ctx->GPGPUSim_Init();
+        if (device <= dev->num_devices() )  {
+                prop = dev->get_prop();
+                switch (attr) {
+                case 1:
+                        *value= prop->maxThreadsDim[0] * prop->maxThreadsDim[1] * prop->maxThreadsDim[2] * prop->maxGridSize[0] * prop->maxGridSize[1] * prop->maxGridSize[2];
+                        break;
+                case 2:
+                        *value= prop->maxThreadsDim[0];
+                        break;
+                case 3:
+                        *value= prop->maxThreadsDim[1];
+                        break;
+                case 4:
+                        *value= prop->maxThreadsDim[2];
+                        break; 
+		case 5:
+                        *value= prop->maxGridSize[0];
+                        break;
+                case 6:
+                        *value= prop->maxGridSize[1];
+                        break;
+                case 7:
+                        *value= prop->maxGridSize[2];
+                        break;
+		case 8:
+                        *value= prop->sharedMemPerBlock;
+                        break;
+		case 9:
+                        *value= prop->totalConstMem;
+                        break;
+                case 10:
+                        *value= prop->warpSize;
+                        break;
+                case 11:
+                        *value= 16;//dummy value
+                        break;
+                case 12:
+                        *value= prop->regsPerBlock;
+                        break;
+                case 13:
+                        *value= 1480000;//for 1080ti
+                        break;
+                case 14:
+                        *value= prop->textureAlignment ;
+                        break;
+                case 15:
+                        *value = 0;
+                        break;
+                case 16:
+                        *value= prop->multiProcessorCount ;
+                        break;
+                case 17:
+                case 18:
+                case 19:
+                        *value = 0;
+                        break;
+                case 21:
+                case 22:
+                case 23:
+                case 24:
+                case 25:
+                case 26:
+                case 27:
+                case 28:
+                case 42:
+                case 45:
+                case 46:
+                case 47:
+                case 48:
+                case 49:
+                case 52:
+                case 53:
+                case 55:
+                case 56:
+                case 57:
+                case 58:
+                case 59:
+                case 60:
+                case 61:
+                case 62:
+                case 63:
+                case 64:
+                case 66:
+                case 67:
+                case 69:
+                case 70:
+                case 71:
+                case 73:
+                case 74:
+                case 77:
+                        *value = 1000;//dummy value
+                        break;
+                case 29:
+                case 43:
+                case 54:
+                case 65:
+                case 68:
+                case 72:
+                        *value = 10;//dummy value
+                        break;
+                case 30:
+                case 51:
+                        *value = 128;//dummy value
+                        break;
+                case 31:
+                        *value = 1;
+                        break;
+                case 32:
+                        *value = 0;
+                        break;
+                case 33:
+                case 50:
+                        *value = 0;//dummy value
+                        break;
+		        case 34:
+                        *value= 0;
+                        break;
+                case 35:
+                        *value = 0;
+                        break;
+                case 36:
+                        *value = 1250000;//CK value for 1080ti
+                        break;
+                case 37:
+                        *value = 352;//value for 1080ti
+                        break;
+                case 38:
+                        *value = 3000000;//value for 1080ti
+                        break;
+                case 39:
+                        *value= dev->get_gpgpu()->threads_per_core();
+                        break;
+                case 40:
+                        *value= 0;
+                        break;
+                case 41:
+                        *value= 0;
+                        break;
+                case 75://cudaDevAttrComputeCapabilityMajor
+                        *value= prop->major ;
+                        break;
+                case 76://cudaDevAttrComputeCapabilityMinor
+                        *value= prop->minor ;
+                        break;
+                case 78:
+                        *value= 0 ; //TODO: as of now, we dont support stream priorities.
+                        break;
+                case 79:
+                        *value= 0;
+                        break;
+                case 80:
+                        *value= 0;
+                        break;
+		#if (CUDART_VERSION > 5050)
+		case 81:
+                        *value= prop->sharedMemPerMultiprocessor;
+                        break;
+                case 82:
+                        *value= prop->regsPerMultiprocessor;
+                        break;
+		#endif
+                case 83:
+                case 84:
+                case 85:
+                case 86:
+                        *value= 0;
+                        break;
+                case 87:
+                        *value= 4;//dummy value
+                        break;
+                case 88:
+                case 89:
+                case 90:
+                case 91:
+                case 95:
+                        *value= 0;
+                        break;
+		default:
+			printf("ERROR: Attribute number %d unimplemented \n",attr);
+			abort();
+                }
+                return g_last_cudaError = cudaSuccess;
+        } else {
+                return g_last_cudaError = cudaErrorInvalidDevice;
+        }
+}
+#endif
+
+__host__ cudaError_t CUDARTAPI cudaChooseDeviceInternal(int *device, const struct cudaDeviceProp *prop, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	_cuda_device_id *dev = ctx->GPGPUSim_Init();
+	*device = dev->get_id();
 	return g_last_cudaError = cudaSuccess;
 }
 
@@ -1057,6 +1361,52 @@ cudaError_t cudaHostAllocInternal(void **pHost,  size_t bytes, unsigned int flag
 }
 
 #endif
+
+size_t getMaxThreadsPerBlock(struct cudaFuncAttributes *attr, gpgpu_context *ctx) {
+  _cuda_device_id *dev = ctx->GPGPUSim_Init();
+  struct cudaDeviceProp prop;
+
+  prop = *dev->get_prop();
+
+  size_t max = prop.maxThreadsPerBlock;
+
+  if ((prop.regsPerBlock / attr->numRegs) < max)
+    max = prop.regsPerBlock / attr->numRegs;
+
+  return max;
+}
+
+cudaError_t CUDARTAPI cudaFuncGetAttributesInternal(struct cudaFuncAttributes *attr, const char *hostFun, gpgpu_context* gpgpu_ctx = NULL )
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	CUctx_st *context = GPGPUSim_Context();
+	function_info *entry = context->get_kernel(hostFun);
+	if( entry ) {
+		const struct gpgpu_ptx_sim_info *kinfo = entry->get_kernel_info();
+		attr->sharedSizeBytes = kinfo->smem;
+		attr->constSizeBytes  = kinfo->cmem;
+		attr->localSizeBytes  = kinfo->lmem;
+		attr->numRegs         = kinfo->regs;
+		if(kinfo->maxthreads > 0)
+		  attr->maxThreadsPerBlock = kinfo->maxthreads;
+		else
+		  attr->maxThreadsPerBlock = getMaxThreadsPerBlock(attr, ctx);
+#if CUDART_VERSION >= 3000
+		attr->ptxVersion      = kinfo->ptx_version;
+		attr->binaryVersion   = kinfo->sm_target;
+#endif
+	}
+	return g_last_cudaError = cudaSuccess;
+}
+
 
 /*******************************************************************************
  *                                                                              *
@@ -1503,235 +1853,24 @@ __host__ cudaError_t CUDARTAPI cudaGetSymbolSize(size_t *size, const char *symbo
  *******************************************************************************/
 __host__ cudaError_t CUDARTAPI cudaGetDeviceCount(int *count)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	_cuda_device_id *dev = GPGPUSim_Init();
-	*count = dev->num_devices();
-	return g_last_cudaError = cudaSuccess;
+    return cudaGetDeviceCountInternal(count);
 }
 
 __host__ cudaError_t CUDARTAPI cudaGetDeviceProperties(struct cudaDeviceProp *prop, int device)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	_cuda_device_id *dev = GPGPUSim_Init();
-	if (device <= dev->num_devices() )  {
-		*prop= *dev->get_prop();
-		return g_last_cudaError = cudaSuccess;
-	} else {
-		return g_last_cudaError = cudaErrorInvalidDevice;
-	}
+    return cudaGetDevicePropertiesInternal(prop, device);
 }
 
 #if (CUDART_VERSION > 5000)
 __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDeviceAttr attr, int device)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-        const struct cudaDeviceProp *prop;
-        _cuda_device_id *dev = GPGPUSim_Init();
-        if (device <= dev->num_devices() )  {
-                prop = dev->get_prop();
-                switch (attr) {
-                case 1:
-                        *value= prop->maxThreadsDim[0] * prop->maxThreadsDim[1] * prop->maxThreadsDim[2] * prop->maxGridSize[0] * prop->maxGridSize[1] * prop->maxGridSize[2];
-                        break;
-                case 2:
-                        *value= prop->maxThreadsDim[0];
-                        break;
-                case 3:
-                        *value= prop->maxThreadsDim[1];
-                        break;
-                case 4:
-                        *value= prop->maxThreadsDim[2];
-                        break; 
-		case 5:
-                        *value= prop->maxGridSize[0];
-                        break;
-                case 6:
-                        *value= prop->maxGridSize[1];
-                        break;
-                case 7:
-                        *value= prop->maxGridSize[2];
-                        break;
-		case 8:
-                        *value= prop->sharedMemPerBlock;
-                        break;
-		case 9:
-                        *value= prop->totalConstMem;
-                        break;
-                case 10:
-                        *value= prop->warpSize;
-                        break;
-                case 11:
-                        *value= 16;//dummy value
-                        break;
-                case 12:
-                        *value= prop->regsPerBlock;
-                        break;
-                case 13:
-                        *value= 1480000;//for 1080ti
-                        break;
-                case 14:
-                        *value= prop->textureAlignment ;
-                        break;
-                case 15:
-                        *value = 0;
-                        break;
-                case 16:
-                        *value= prop->multiProcessorCount ;
-                        break;
-                case 17:
-                case 18:
-                case 19:
-                        *value = 0;
-                        break;
-                case 21:
-                case 22:
-                case 23:
-                case 24:
-                case 25:
-                case 26:
-                case 27:
-                case 28:
-                case 42:
-                case 45:
-                case 46:
-                case 47:
-                case 48:
-                case 49:
-                case 52:
-                case 53:
-                case 55:
-                case 56:
-                case 57:
-                case 58:
-                case 59:
-                case 60:
-                case 61:
-                case 62:
-                case 63:
-                case 64:
-                case 66:
-                case 67:
-                case 69:
-                case 70:
-                case 71:
-                case 73:
-                case 74:
-                case 77:
-                        *value = 1000;//dummy value
-                        break;
-                case 29:
-                case 43:
-                case 54:
-                case 65:
-                case 68:
-                case 72:
-                        *value = 10;//dummy value
-                        break;
-                case 30:
-                case 51:
-                        *value = 128;//dummy value
-                        break;
-                case 31:
-                        *value = 1;
-                        break;
-                case 32:
-                        *value = 0;
-                        break;
-                case 33:
-                case 50:
-                        *value = 0;//dummy value
-                        break;
-		        case 34:
-                        *value= 0;
-                        break;
-                case 35:
-                        *value = 0;
-                        break;
-                case 36:
-                        *value = 1250000;//CK value for 1080ti
-                        break;
-                case 37:
-                        *value = 352;//value for 1080ti
-                        break;
-                case 38:
-                        *value = 3000000;//value for 1080ti
-                        break;
-                case 39:
-                        *value= dev->get_gpgpu()->threads_per_core();
-                        break;
-                case 40:
-                        *value= 0;
-                        break;
-                case 41:
-                        *value= 0;
-                        break;
-                case 75://cudaDevAttrComputeCapabilityMajor
-                        *value= prop->major ;
-                        break;
-                case 76://cudaDevAttrComputeCapabilityMinor
-                        *value= prop->minor ;
-                        break;
-                case 78:
-                        *value= 0 ; //TODO: as of now, we dont support stream priorities.
-                        break;
-                case 79:
-                        *value= 0;
-                        break;
-                case 80:
-                        *value= 0;
-                        break;
-		#if (CUDART_VERSION > 5050)
-		case 81:
-                        *value= prop->sharedMemPerMultiprocessor;
-                        break;
-                case 82:
-                        *value= prop->regsPerMultiprocessor;
-                        break;
-		#endif
-                case 83:
-                case 84:
-                case 85:
-                case 86:
-                        *value= 0;
-                        break;
-                case 87:
-                        *value= 4;//dummy value
-                        break;
-                case 88:
-                case 89:
-                case 90:
-                case 91:
-                case 92:
-                case 93:
-                case 94:
-                case 95:
-                        *value= 0;
-                        break;
-		default:
-			printf("ERROR: Attribute number %d unimplemented \n",attr);
-			abort();
-                }
-                return g_last_cudaError = cudaSuccess;
-        } else {
-                return g_last_cudaError = cudaErrorInvalidDevice;
-        }
+    return cudaDeviceGetAttributeInternal(value, attr, device);
 }
 #endif
 
 __host__ cudaError_t CUDARTAPI cudaChooseDevice(int *device, const struct cudaDeviceProp *prop)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	_cuda_device_id *dev = GPGPUSim_Init();
-	*device = dev->get_id();
-	return g_last_cudaError = cudaSuccess;
+    return cudaChooseDeviceInternal(device, prop);
 }
 
 __host__ cudaError_t CUDARTAPI cudaSetDevice(int device)
@@ -1744,47 +1883,9 @@ __host__ cudaError_t CUDARTAPI cudaGetDevice(int *device)
     return cudaGetDeviceInternal(device);
 }
 
-__host__ cudaError_t CUDARTAPI cudaDeviceGetLimit ( size_t* pValue, cudaLimit limit )
+__host__ cudaError_t CUDARTAPI cudaDeviceGetLimit( size_t* pValue, cudaLimit limit )
 {
-	if(g_debug_execution >= 3){
-            announce_call(__my_func__);
-   	 }
-        _cuda_device_id *dev = GPGPUSim_Init();
-	const struct cudaDeviceProp *prop = dev->get_prop();
-	const gpgpu_sim_config& config=dev->get_gpgpu()->get_config();
-        switch(limit) {
-        case 0:  // cudaLimitStackSize
-        	*pValue=config.stack_limit();
-                break;
-        case 2:  // cudaLimitMallocHeapSize
-                *pValue=config.heap_limit();
-                break;
-#if (CUDART_VERSION > 5050)
-        case 3: // cudaLimitDevRuntimeSyncDepth
-		if(prop->major > 2){
-			*pValue=config.sync_depth_limit();
-	                break;
-		}
-		else{
-			printf("ERROR:Limit %s is not supported on this architecture \n",limit);
-			abort();
-		}
-        case 4: // cudaLimitDevRuntimePendingLaunchCount
-		if(prop->major > 2){
-     	        	*pValue=config.pending_launch_count_limit();
-	                break;
-		}
-		else{
-			printf("ERROR:Limit %s is not supported on this architecture \n",limit);
-			abort();
-		}
-#endif
-        default:
-                        printf("ERROR:Limit %s unimplemented \n",limit);
-                        abort();
-        }
-	return g_last_cudaError = cudaSuccess;
-
+    return cudaDeviceGetLimitInternal( pValue, limit );
 }
 
 __host__ cudaError_t CUDARTAPI cudaStreamGetPriority ( cudaStream_t hStream, int* priority )
@@ -3167,58 +3268,9 @@ cudaError_t CUDARTAPI cudaSetDeviceFlags( int flags )
     }
 }
 
-size_t getMaxThreadsPerBlock(struct cudaFuncAttributes *attr) {
-  _cuda_device_id *dev = GPGPUSim_Init();
-  struct cudaDeviceProp prop;
-
-  prop = *dev->get_prop();
-
-  size_t max = prop.maxThreadsPerBlock;
-
-  if ((prop.regsPerBlock / attr->numRegs) < max)
-    max = prop.regsPerBlock / attr->numRegs;
-
-  return max;
-}
-
 cudaError_t CUDARTAPI cudaFuncGetAttributes(struct cudaFuncAttributes *attr, const char *hostFun )
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	CUctx_st *context = GPGPUSim_Context();
-	function_info *entry = context->get_kernel(hostFun);
-	if( entry ) {
-		const struct gpgpu_ptx_sim_info *kinfo = entry->get_kernel_info();
-		attr->sharedSizeBytes = kinfo->smem;
-		attr->constSizeBytes  = kinfo->cmem;
-		attr->localSizeBytes  = kinfo->lmem;
-		attr->numRegs         = kinfo->regs;
-		if(kinfo->maxthreads > 0)
-		  attr->maxThreadsPerBlock = kinfo->maxthreads;
-		else
-		  attr->maxThreadsPerBlock = getMaxThreadsPerBlock(attr);
-#if CUDART_VERSION >= 3000
-		attr->ptxVersion      = kinfo->ptx_version;
-		attr->binaryVersion   = kinfo->sm_target;
-#endif
-	}
-	return g_last_cudaError = cudaSuccess;
-}
-
-cudaError_t CUDARTAPI cudaEventCreateWithFlags(cudaEvent_t *event, int flags)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	CUevent_st *e = new CUevent_st(flags==cudaEventBlockingSync);
-	g_timer_events[e->get_uid()] = e;
-#if CUDART_VERSION >= 3000
-	*event = e;
-#else
-	*event = e->get_uid();
-#endif
-	return g_last_cudaError = cudaSuccess;
+    return cudaFuncGetAttributesInternal(attr, hostFun );
 }
 
 cudaError_t CUDARTAPI cudaDriverGetVersion(int *driverVersion)
