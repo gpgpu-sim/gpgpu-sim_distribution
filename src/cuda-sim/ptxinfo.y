@@ -29,7 +29,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 %{
 typedef void * yyscan_t;
-class ptxinfo_data;
+#include "ptx_loader.h"
 %}
 
 %define api.pure full
@@ -79,7 +79,6 @@ class ptxinfo_data;
 	static unsigned g_system;
 	int ptxinfo_lex(YYSTYPE * yylval_param, yyscan_t yyscanner, ptxinfo_data* ptxinfo);
 	void yyerror(yyscan_t yyscanner, ptxinfo_data* ptxinfo, const char* msg);
-	void ptxinfo_addinfo();
 	void ptxinfo_function(const char *fname );
 	void ptxinfo_regs( unsigned nregs );
 	void ptxinfo_lmem( unsigned declared, unsigned system );
@@ -104,7 +103,7 @@ line: 	HEADER INFO COLON line_info
 	;
 
 line_info: function_name
-	| function_info { ptxinfo_addinfo(); }
+	| function_info { ptxinfo->ptxinfo_addinfo(); }
 	| gmem_info
 	;
 

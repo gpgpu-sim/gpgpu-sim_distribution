@@ -35,8 +35,12 @@
 #include "gpgpu-sim/gpu-sim.h"
 #include "gpgpu-sim/icnt_wrapper.h"
 #include "stream_manager.h"
+#include "../libcuda/gpgpu_context.h"
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
+
+static int sg_argc = 3;
+static const char *sg_argv[] = {"", "-config","gpgpusim.config"};
 
 
 struct GPGPUsim_ctx* the_gpgpusim =  NULL;
@@ -205,12 +209,12 @@ void exit_simulation()
 
 extern bool g_cuda_launch_blocking;
 
-gpgpu_sim *gpgpu_ptx_sim_init_perf()
+gpgpu_sim *gpgpu_context::gpgpu_ptx_sim_init_perf()
 {
    srand(1);
    print_splash();
    read_sim_environment_variables();
-   read_parser_environment_variables();
+   ptx_parser->read_parser_environment_variables();
    option_parser_t opp = option_parser_create();
 
    ptx_reg_options(opp);
@@ -220,7 +224,7 @@ gpgpu_sim *gpgpu_ptx_sim_init_perf()
    GPGPUsim_ctx_ptr()->g_the_gpu_config = new gpgpu_sim_config();
    GPGPUsim_ctx_ptr()->g_the_gpu_config->reg_options(opp); // register GPU microrachitecture options
 
-   option_parser_cmdline(opp, GPGPUsim_ctx_ptr()->sg_argc, GPGPUsim_ctx_ptr()->sg_argv); // parse configuration options
+   option_parser_cmdline(opp, sg_argc, sg_argv); // parse configuration options
    fprintf(stdout, "GPGPU-Sim: Configuration options:\n\n");
    option_parser_print(opp, stdout);
    // Set the Numeric locale to a standard locale where a decimal point is a "dot" not a "comma"
