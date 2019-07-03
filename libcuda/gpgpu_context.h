@@ -3,6 +3,7 @@
 #include "cuda_api_object.h"
 #include "../src/cuda-sim/ptx_loader.h"
 #include "../src/cuda-sim/ptx_parser.h"
+#include "../src/gpgpusim_entrypoint.h"
 
 class gpgpu_context {
     public:
@@ -11,6 +12,7 @@ class gpgpu_context {
 	    api = new cuda_runtime_api();
 	    ptxinfo = new ptxinfo_data();
 	    ptx_parser = new ptx_recognizer();
+	    the_gpgpusim = new GPGPUsim_ctx(this);
 	}
 	// global list
 	symbol_table *g_global_allfiles_symbol_table;
@@ -18,6 +20,7 @@ class gpgpu_context {
 	cuda_runtime_api* api;
 	ptxinfo_data* ptxinfo;
 	ptx_recognizer* ptx_parser;
+	GPGPUsim_ctx* the_gpgpusim;
 	// member function list
 	void cuobjdumpParseBinary(unsigned int handle);
 	class symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num );

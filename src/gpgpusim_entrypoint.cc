@@ -43,11 +43,11 @@ static int sg_argc = 3;
 static const char *sg_argv[] = {"", "-config","gpgpusim.config"};
 
 
-struct GPGPUsim_ctx* the_gpgpusim =  NULL;
+GPGPUsim_ctx* the_gpgpusim =  NULL;
 
-struct GPGPUsim_ctx* GPGPUsim_ctx_ptr(){
+GPGPUsim_ctx* GPGPUsim_ctx_ptr(){
 	if(the_gpgpusim == NULL)
-		the_gpgpusim = new GPGPUsim_ctx();
+		the_gpgpusim = GPGPU_Context()->the_gpgpusim;
 
 	return the_gpgpusim;
 }
