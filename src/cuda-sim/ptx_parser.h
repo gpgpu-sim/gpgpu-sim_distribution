@@ -105,6 +105,8 @@ class ptx_recognizer {
 	function_info *g_func_info;
 	operand_info g_return_var;
 	bool g_debug_ir_generation;
+	int g_entry_point;
+	const struct core_config *g_shader_core_config;
 
 	// member function list
 	void init_directive_state();
@@ -172,6 +174,7 @@ class ptx_recognizer {
 	void end_inst_group();
 	bool check_for_duplicates( const char *identifier );
 	void read_parser_environment_variables(); 
+	void set_ptx_warp_size(const struct core_config * warp_size);
 
 };
 
