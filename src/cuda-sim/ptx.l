@@ -40,6 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ptx_parser.h"
 #include "ptx.tab.h"
 #include <string.h>
+#include "../../libcuda/gpgpu_context.h"
 
 #define LINEBUF_SIZE (4*1024)
 #define TC recognizer->col+=strlen(yytext);
@@ -452,8 +453,6 @@ breakaddr  TC; yylval->int_value = BREAKADDR_OP; return OPCODE;
 <INITIAL,NOT_OPCODE,IN_FUNC_DECL>.  TC; ptx_error(yyscanner, recognizer, (const char*)NULL);
 %%
 
-extern const char *g_filename;
-
 int ptx_error( yyscan_t yyscanner, ptx_recognizer* recognizer, const char *s )
 {
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
@@ -461,7 +460,7 @@ int ptx_error( yyscan_t yyscanner, ptx_recognizer* recognizer, const char *s )
 	recognizer->g_error_detected = 1;
 	fflush(stdout);
 	if( s != NULL )
-		printf("%s:%u Syntax error:\n\n", g_filename, yylineno );
+		printf("%s:%u Syntax error:\n\n", recognizer->gpgpu_ctx->g_filename, yylineno );
 	printf("   %s\n", recognizer->linebuf );
 	printf("   ");
 	for( i=0; i < recognizer->col-1; i++ ) {
