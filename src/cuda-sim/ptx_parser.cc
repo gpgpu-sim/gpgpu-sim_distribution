@@ -42,8 +42,7 @@ extern FILE *ptx_get_in (yyscan_t yyscanner );
 extern int ptx_parse(yyscan_t scanner, ptx_recognizer* recognizer);
 extern int ptx_lex_destroy(yyscan_t scanner);
 
-static const struct core_config *g_shader_core_config;
-void set_ptx_warp_size(const struct core_config * warp_size)
+void ptx_recognizer::set_ptx_warp_size(const struct core_config * warp_size)
 {
    g_shader_core_config=warp_size;
 }
@@ -154,7 +153,6 @@ symbol_table * gpgpu_context::init_parser( const char *ptx_filename )
    return ptx_parser->g_global_symbol_table;
 }
 
-static int g_entry_point;
 
 void ptx_recognizer::start_function( int entry_point )
 {
