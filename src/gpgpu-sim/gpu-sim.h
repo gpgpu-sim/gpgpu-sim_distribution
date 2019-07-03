@@ -506,6 +506,7 @@ private:
    void gpgpu_debug();
 
 ///// data /////
+// backward pointer
    class gpgpu_context* gpgpu_ctx;
 
    class simt_core_cluster **m_cluster;

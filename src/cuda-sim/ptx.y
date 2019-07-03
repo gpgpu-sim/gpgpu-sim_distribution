@@ -30,6 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %{
 typedef void * yyscan_t;
 class ptx_recognizer;
+#include "../../libcuda/gpgpu_context.h"
 %}
 
 %define api.pure full
@@ -628,11 +629,9 @@ address_expression: IDENTIFIER { recognizer->add_address_operand($1,0); }
 
 %%
 
-extern const char *g_filename;
-
 void syntax_not_implemented(yyscan_t yyscanner, ptx_recognizer* recognizer)
 {
-	printf("Parse error (%s): this syntax is not (yet) implemented:\n",g_filename);
+	printf("Parse error (%s): this syntax is not (yet) implemented:\n", recognizer->gpgpu_ctx->g_filename);
 	ptx_error(yyscanner, recognizer, NULL);
 	abort();
 }
