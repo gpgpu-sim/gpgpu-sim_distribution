@@ -699,9 +699,10 @@ void gpgpu_sim::stop_all_running_kernels(){
 
 void set_ptx_warp_size(const struct core_config * warp_size);
 
-gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config ) 
+gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config, gpgpu_context* ctx )
     : gpgpu_t(config), m_config(config)
-{ 
+{
+    gpgpu_ctx = ctx;
     m_shader_config = &m_config.m_shader_config;
     m_memory_config = &m_config.m_memory_config;
     set_ptx_warp_size(m_shader_config);

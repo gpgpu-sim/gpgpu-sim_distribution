@@ -232,7 +232,7 @@ gpgpu_sim *gpgpu_context::gpgpu_ptx_sim_init_perf()
    assert(setlocale(LC_NUMERIC,"C"));
    GPGPUsim_ctx_ptr()->g_the_gpu_config->init();
 
-   GPGPUsim_ctx_ptr()->g_the_gpu = new gpgpu_sim(*(GPGPUsim_ctx_ptr()->g_the_gpu_config));
+   GPGPUsim_ctx_ptr()->g_the_gpu = new gpgpu_sim(*(GPGPUsim_ctx_ptr()->g_the_gpu_config), this);
    GPGPUsim_ctx_ptr()->g_stream_manager = new stream_manager((GPGPUsim_ctx_ptr()->g_the_gpu),g_cuda_launch_blocking);
 
    GPGPUsim_ctx_ptr()->g_simulation_starttime = time((time_t *)NULL);
