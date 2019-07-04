@@ -416,10 +416,11 @@ struct occupancy_stats {
     }
 };
 
+class gpgpu_context;
 
 class gpgpu_sim : public gpgpu_t {
 public:
-   gpgpu_sim( const gpgpu_sim_config &config );
+   gpgpu_sim( const gpgpu_sim_config &config, gpgpu_context* ctx );
 
    void set_prop( struct cudaDeviceProp *prop );
 
@@ -505,6 +506,8 @@ private:
    void gpgpu_debug();
 
 ///// data /////
+// backward pointer
+   class gpgpu_context* gpgpu_ctx;
 
    class simt_core_cluster **m_cluster;
    class memory_partition_unit **m_memory_partition_unit;

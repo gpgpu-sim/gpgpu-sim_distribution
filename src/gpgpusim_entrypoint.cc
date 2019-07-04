@@ -43,11 +43,11 @@ static int sg_argc = 3;
 static const char *sg_argv[] = {"", "-config","gpgpusim.config"};
 
 
-struct GPGPUsim_ctx* the_gpgpusim =  NULL;
+GPGPUsim_ctx* the_gpgpusim =  NULL;
 
-struct GPGPUsim_ctx* GPGPUsim_ctx_ptr(){
+GPGPUsim_ctx* GPGPUsim_ctx_ptr(){
 	if(the_gpgpusim == NULL)
-		the_gpgpusim = new GPGPUsim_ctx();
+		the_gpgpusim = GPGPU_Context()->the_gpgpusim;
 
 	return the_gpgpusim;
 }
@@ -232,7 +232,7 @@ gpgpu_sim *gpgpu_context::gpgpu_ptx_sim_init_perf()
    assert(setlocale(LC_NUMERIC,"C"));
    GPGPUsim_ctx_ptr()->g_the_gpu_config->init();
 
-   GPGPUsim_ctx_ptr()->g_the_gpu = new gpgpu_sim(*(GPGPUsim_ctx_ptr()->g_the_gpu_config));
+   GPGPUsim_ctx_ptr()->g_the_gpu = new gpgpu_sim(*(GPGPUsim_ctx_ptr()->g_the_gpu_config), this);
    GPGPUsim_ctx_ptr()->g_stream_manager = new stream_manager((GPGPUsim_ctx_ptr()->g_the_gpu),g_cuda_launch_blocking);
 
    GPGPUsim_ctx_ptr()->g_simulation_starttime = time((time_t *)NULL);

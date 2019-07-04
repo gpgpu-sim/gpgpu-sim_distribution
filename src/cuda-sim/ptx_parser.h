@@ -30,17 +30,17 @@
 
 #include "../abstract_hardware_model.h"
 #include "ptx_ir.h"
-extern const char *g_filename;
 extern int g_error_detected;
 
 #ifdef __cplusplus 
 const class ptx_instruction *ptx_instruction_lookup( const char *filename, unsigned linenumber );
 #endif
 
+class gpgpu_context;
 typedef void * yyscan_t;
 class ptx_recognizer {
     public:
-	ptx_recognizer() {
+	ptx_recognizer( gpgpu_context* ctx ) {
 	    scanner = NULL;
 	    g_size = -1;
 	    g_add_identifier_cached__identifier = NULL;
@@ -63,6 +63,7 @@ class ptx_recognizer {
 	    g_entry_func_param_index=0;
 	    g_func_info = NULL;
 	    g_debug_ir_generation=false;
+	    gpgpu_ctx = ctx;
 	}
 	// global list
 	yyscan_t scanner;
@@ -105,6 +106,10 @@ class ptx_recognizer {
 	function_info *g_func_info;
 	operand_info g_return_var;
 	bool g_debug_ir_generation;
+	int g_entry_point;
+	const struct core_config *g_shader_core_config;
+	// backward pointer
+	class gpgpu_context* gpgpu_ctx;
 
 	// member function list
 	void init_directive_state();
@@ -172,6 +177,7 @@ class ptx_recognizer {
 	void end_inst_group();
 	bool check_for_duplicates( const char *identifier );
 	void read_parser_environment_variables(); 
+	void set_ptx_warp_size(const struct core_config * warp_size);
 
 };
 
