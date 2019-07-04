@@ -30,13 +30,18 @@
 #include <string>
 
 #define PTXINFO_LINEBUF_SIZE 1024
+class gpgpu_context;
 typedef void * yyscan_t;
 class ptxinfo_data{
     public:
+	ptxinfo_data(gpgpu_context* ctx) {
+	    gpgpu_ctx = ctx;
+	}
 	yyscan_t scanner;
 	char linebuf[PTXINFO_LINEBUF_SIZE];
 	unsigned col;
 	const char *g_ptxinfo_filename;
+	class gpgpu_context* gpgpu_ctx;
 	void ptxinfo_addinfo();
 };
 

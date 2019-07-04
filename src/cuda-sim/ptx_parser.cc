@@ -42,20 +42,17 @@ extern FILE *ptx_get_in (yyscan_t yyscanner );
 extern int ptx_parse(yyscan_t scanner, ptx_recognizer* recognizer);
 extern int ptx_lex_destroy(yyscan_t scanner);
 
-static const struct core_config *g_shader_core_config;
-void set_ptx_warp_size(const struct core_config * warp_size)
+void ptx_recognizer::set_ptx_warp_size(const struct core_config * warp_size)
 {
    g_shader_core_config=warp_size;
 }
-
-const char *g_filename;
 
 // the program intermediate representation...
 std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
 
 #define PTX_PARSE_DPRINTF(...) \
    if( g_debug_ir_generation ) { \
-      printf(" %s:%u => ",g_filename,ptx_get_lineno(scanner)); \
+      printf(" %s:%u => ",gpgpu_ctx->g_filename,ptx_get_lineno(scanner)); \
       printf("   (%s:%u) ", __FILE__, __LINE__); \
       printf(__VA_ARGS__); \
       printf("\n"); \
@@ -71,7 +68,7 @@ const char *decode_token( int type )
 
 void ptx_recognizer::read_parser_environment_variables() 
 {
-   g_filename = getenv("PTX_SIM_KERNELFILE"); 
+   gpgpu_ctx->g_filename = getenv("PTX_SIM_KERNELFILE");
    char *dbg_level = getenv("PTX_SIM_DEBUG");
    if ( dbg_level && strlen(dbg_level) ) {
       int debug_execution=0;
@@ -154,7 +151,6 @@ symbol_table * gpgpu_context::init_parser( const char *ptx_filename )
    return ptx_parser->g_global_symbol_table;
 }
 
-static int g_entry_point;
 
 void ptx_recognizer::start_function( int entry_point )
 {
@@ -182,7 +178,7 @@ void ptx_recognizer::add_function_name( const char *name )
    if( prior_decl ) {
       g_func_info->remove_args();
    }
-   g_global_symbol_table->add_function( g_func_info, g_filename, ptx_get_lineno(scanner) );
+   g_global_symbol_table->add_function( g_func_info, gpgpu_ctx->g_filename, ptx_get_lineno(scanner) );
 }
 
 //Jin: handle instruction group for cdp
@@ -231,7 +227,7 @@ void ptx_recognizer::parse_error_impl( const char *file, unsigned line, const ch
    va_end(ap);
 
    g_error_detected = 1;
-   printf("%s:%u: Parse error: %s (%s:%u)\n\n", g_filename, ptx_get_lineno(scanner), buf, file, line);
+   printf("%s:%u: Parse error: %s (%s:%u)\n\n", gpgpu_ctx->g_filename, ptx_get_lineno(scanner), buf, file, line);
    ptx_error(scanner, NULL);
    abort();
    exit(1);
@@ -286,12 +282,12 @@ void ptx_recognizer::add_instruction()
                                              g_wmma_options, 
                                              g_scalar_type,
                                              g_space_spec,
-                                             g_filename,
+                                             gpgpu_ctx->g_filename,
                                              ptx_get_lineno(scanner),
                                              linebuf,
                                              g_shader_core_config );
    g_instructions.push_back(i);
-   g_inst_lookup[g_filename][ptx_get_lineno(scanner)] = i;
+   g_inst_lookup[gpgpu_ctx->g_filename][ptx_get_lineno(scanner)] = i;
    init_instruction_state();
 }
 
@@ -393,7 +389,7 @@ void ptx_recognizer::add_identifier( const char *identifier, int array_dim, unsi
    default:
       break;
    }
-   g_last_symbol = g_current_symbol_table->add_variable(identifier,type,num_bits/8,g_filename,ptx_get_lineno(scanner));
+   g_last_symbol = g_current_symbol_table->add_variable(identifier,type,num_bits/8,gpgpu_ctx->g_filename,ptx_get_lineno(scanner));
    switch ( ti.get_memory_space().get_type() ) {
    case reg_space: {
       regnum = g_current_symbol_table->next_reg_num();
@@ -656,7 +652,7 @@ void ptx_recognizer::add_label( const char *identifier )
    if ( s != NULL ) {
       g_label = s;
    } else {
-      g_label = g_current_symbol_table->add_variable(identifier,NULL,0,g_filename,ptx_get_lineno(scanner));
+      g_label = g_current_symbol_table->add_variable(identifier,NULL,0,gpgpu_ctx->g_filename,ptx_get_lineno(scanner));
    }
 }
 
@@ -914,7 +910,7 @@ void ptx_recognizer::add_scalar_operand( const char *identifier )
    if ( s == NULL ) {
       if ( g_opcode == BRA_OP || g_opcode == CALLP_OP) {
          // forward branch target...
-         s = g_current_symbol_table->add_variable(identifier,NULL,0,g_filename,ptx_get_lineno(scanner));
+         s = g_current_symbol_table->add_variable(identifier,NULL,0,gpgpu_ctx->g_filename,ptx_get_lineno(scanner));
       } else {
          std::string msg = std::string("operand \"") + identifier + "\" has no declaration.";
          parse_error( msg.c_str() );
@@ -928,7 +924,7 @@ void ptx_recognizer::add_neg_pred_operand( const char *identifier )
    PTX_PARSE_DPRINTF("add_neg_pred_operand");
    const symbol *s = g_current_symbol_table->lookup(identifier);
    if ( s == NULL ) {
-       s = g_current_symbol_table->add_variable(identifier,NULL,1,g_filename,ptx_get_lineno(scanner));
+       s = g_current_symbol_table->add_variable(identifier,NULL,1,gpgpu_ctx->g_filename,ptx_get_lineno(scanner));
    }
    operand_info op(s);
    op.set_neg_pred();
@@ -964,7 +960,7 @@ void ptx_recognizer::add_version_info( float ver, unsigned ext )
 
 void ptx_recognizer::add_file( unsigned num, const char *filename )
 {
-   if( g_filename == NULL ) {
+   if( gpgpu_ctx->g_filename == NULL ) {
       char *b = strdup(filename);
       char *l=b;
       char *n=b;
@@ -980,7 +976,7 @@ void ptx_recognizer::add_file( unsigned num, const char *filename )
 
       char *q = strtok(NULL,".");
       if( q && !strcmp(q,"cu") ) {
-          g_filename = strdup(buf);
+          gpgpu_ctx->g_filename = strdup(buf);
       }
 
       free( b );

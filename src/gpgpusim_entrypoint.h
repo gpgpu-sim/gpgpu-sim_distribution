@@ -34,11 +34,11 @@
 #include <time.h>
 
 //extern time_t g_simulation_starttime;
+class gpgpu_context;
 
-
-struct GPGPUsim_ctx {
-
-	GPGPUsim_ctx() {
+class GPGPUsim_ctx {
+    public:
+	GPGPUsim_ctx(gpgpu_context* ctx) {
 		g_sim_active = false;
 		g_sim_done = true;
 		break_limit = false;
@@ -49,6 +49,7 @@ struct GPGPUsim_ctx {
 		g_stream_manager=NULL;
 		the_cude_device=NULL;
 		the_context=NULL;
+		gpgpu_ctx = ctx;
 	}
 
 	//struct gpgpu_ptx_sim_arg *grid_params;
@@ -65,6 +66,7 @@ struct GPGPUsim_ctx {
 
 	struct _cuda_device_id *the_cude_device;
 	struct CUctx_st* the_context;
+	gpgpu_context* gpgpu_ctx;
 
 
 	 pthread_mutex_t g_sim_lock;

@@ -65,6 +65,7 @@
 #include "visualizer.h"
 #include "stats.h"
 #include "../cuda-sim/cuda_device_runtime.h"
+#include "../../libcuda/gpgpu_context.h"
 
 #ifdef GPGPUSIM_POWER_MODEL
 #include "power_interface.h"
@@ -697,14 +698,13 @@ void gpgpu_sim::stop_all_running_kernels(){
     }
 }
 
-void set_ptx_warp_size(const struct core_config * warp_size);
-
-gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config ) 
+gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config, gpgpu_context* ctx )
     : gpgpu_t(config), m_config(config)
-{ 
+{
+    gpgpu_ctx = ctx;
     m_shader_config = &m_config.m_shader_config;
     m_memory_config = &m_config.m_memory_config;
-    set_ptx_warp_size(m_shader_config);
+    ctx->ptx_parser->set_ptx_warp_size(m_shader_config);
     ptx_file_line_stats_create_exposed_latency_tracker(m_config.num_shader());
 
 #ifdef GPGPUSIM_POWER_MODEL

@@ -39,6 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ptx_loader.h"
 #include "ptxinfo.tab.h"
 #include <string.h>
+#include "../../libcuda/gpgpu_context.h"
 
 #define LINEBUF_SIZE 1024
 #define TC if( (yylineno == 1) && (ptxinfo->col + strlen(yytext) < LINEBUF_SIZE) ) { \
@@ -88,7 +89,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %%
 
 extern int g_ptxinfo_error_detected;
-extern const char *g_filename;
 
 int ptxinfo_error(yyscan_t yyscanner, ptxinfo_data* ptxinfo, const char* msg)
 {
@@ -98,7 +98,7 @@ int ptxinfo_error(yyscan_t yyscanner, ptxinfo_data* ptxinfo, const char* msg)
 	fflush(stdout);
 	printf("GPGPU-Sim: ERROR while parsing output of ptxas (used to capture resource usage information)\n");
 	if( msg != NULL )
-		printf("GPGPU-Sim:     %s (%s:%u) Syntax error:\n\n", g_filename, ptxinfo->g_ptxinfo_filename, yylineno );
+		printf("GPGPU-Sim:     %s (%s:%u) Syntax error:\n\n", ptxinfo->gpgpu_ctx->g_filename, ptxinfo->g_ptxinfo_filename, yylineno );
 	printf("   %s\n", ptxinfo->linebuf );
 	printf("   ");
 	for( i=0; i < ptxinfo->col-1; i++ ) {
