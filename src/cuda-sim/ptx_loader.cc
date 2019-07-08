@@ -58,17 +58,16 @@ extern int ptxinfo_lex_destroy(yyscan_t scanner);
 
 static bool g_save_embedded_ptx;
 static int g_occupancy_sm_number;
-bool g_keep_intermediate_files;
 bool m_ptx_save_converted_ptxplus;
 
-bool keep_intermediate_files() {return g_keep_intermediate_files;}
+bool ptxinfo_data::keep_intermediate_files() {return g_keep_intermediate_files;}
 
-void ptx_reg_options(option_parser_t opp)
+void gpgpu_context::ptx_reg_options(option_parser_t opp)
 {
    option_parser_register(opp, "-save_embedded_ptx", OPT_BOOL, &g_save_embedded_ptx, 
                 "saves ptx files embedded in binary as <n>.ptx",
                 "0");
-   option_parser_register(opp, "-keep", OPT_BOOL, &g_keep_intermediate_files, 
+   option_parser_register(opp, "-keep", OPT_BOOL, &(ptxinfo->g_keep_intermediate_files),
                 "keep intermediate files created by GPGPU-Sim when interfacing with external programs",
                 "0");
    option_parser_register(opp, "-gpgpu_ptx_save_converted_ptxplus", OPT_BOOL,
