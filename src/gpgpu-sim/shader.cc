@@ -46,6 +46,7 @@
 #include <limits.h>
 #include "traffic_breakdown.h"
 #include "shader_trace.h"
+#include "../../libcuda/gpgpu_context.h"
 
 #define PRIORITIZE_MSHR_OVER_WB 1
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -69,7 +70,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                   class simt_core_cluster *cluster,
                                   unsigned shader_id,
                                   unsigned tpc_id,
-                                  const struct shader_core_config *config,
+                                  const shader_core_config *config,
                                   const struct memory_config *mem_config,
                                   shader_core_stats *stats )
    : core_t( gpu, NULL, config->warp_size, config->n_thread_per_shader ),
@@ -3018,7 +3019,7 @@ void shader_core_config::set_pipeline_latency() {
 			 * [3] MAD
 			 * [4] DIV
 			 */
-			sscanf(opcode_latency_int, "%u,%u,%u,%u,%u",
+			sscanf(gpgpu_ctx->func_sim->opcode_latency_int, "%u,%u,%u,%u,%u",
 					&int_latency[0],&int_latency[1],&int_latency[2],
 					&int_latency[3],&int_latency[4]);
 			sscanf(opcode_latency_fp, "%u,%u,%u,%u,%u",
@@ -3786,7 +3787,7 @@ void opndcoll_rfu_t::collector_unit_t::dispatch()
 
 simt_core_cluster::simt_core_cluster( class gpgpu_sim *gpu, 
                                       unsigned cluster_id, 
-                                      const struct shader_core_config *config, 
+                                      const shader_core_config *config, 
                                       const struct memory_config *mem_config,
                                       shader_core_stats *stats, 
                                       class memory_stats_t *mstats )

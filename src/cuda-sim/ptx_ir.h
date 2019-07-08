@@ -43,6 +43,8 @@
 
 #include "memory.h"
 
+class gpgpu_context;
+
 class type_info_key {
 public:
    type_info_key()
@@ -931,7 +933,8 @@ public:
                     const char *file, 
                     unsigned line,
                     const char *source,
-                    const core_config *config );
+                    const core_config *config,
+		    gpgpu_context* ctx);
 
    void print_insn() const;
    virtual void print_insn( FILE *fp ) const;
@@ -1187,6 +1190,8 @@ private:
    virtual void pre_decode();
    friend class function_info;
    static unsigned g_num_ptx_inst_uid;
+   // backward pointer
+   class gpgpu_context* gpgpu_ctx;
 };
 
 class param_info {

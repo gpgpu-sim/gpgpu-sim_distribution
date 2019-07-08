@@ -1826,7 +1826,7 @@ void gpgpu_sim::dump_pipeline( int mask, int s, int m ) const
    fflush(stdout);
 }
 
-const struct shader_core_config * gpgpu_sim::getShaderCoreConfig()
+const shader_core_config * gpgpu_sim::getShaderCoreConfig()
 {
    return m_shader_config;
 }

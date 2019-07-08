@@ -42,7 +42,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-memory_stats_t::memory_stats_t( unsigned n_shader, const struct shader_core_config *shader_config, const struct memory_config *mem_config, const class gpgpu_sim* gpu )
+memory_stats_t::memory_stats_t( unsigned n_shader, const shader_core_config *shader_config, const struct memory_config *mem_config, const class gpgpu_sim* gpu )
 {
    assert( mem_config->m_valid );
    assert( shader_config->m_valid );
