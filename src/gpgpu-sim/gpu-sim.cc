@@ -699,7 +699,7 @@ void gpgpu_sim::stop_all_running_kernels(){
 }
 
 gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config, gpgpu_context* ctx )
-    : gpgpu_t(config), m_config(config)
+    : gpgpu_t(config, ctx), m_config(config)
 {
     gpgpu_ctx = ctx;
     m_shader_config = &m_config.m_shader_config;
