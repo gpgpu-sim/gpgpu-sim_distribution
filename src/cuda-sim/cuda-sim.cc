@@ -2404,8 +2404,6 @@ unsigned translate_pc_to_ptxlineno(unsigned pc)
 
 extern std::map<unsigned,const char*> get_duplicate();
 
-int g_ptxinfo_error_detected;
-
 static char *g_ptxinfo_kname = NULL;
 static struct gpgpu_ptx_sim_info g_ptxinfo;
 static std::map<unsigned,const char*> g_duplicate;

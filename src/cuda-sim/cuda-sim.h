@@ -138,6 +138,7 @@ class cuda_sim {
 	char *opcode_latency_int;
 	int cp_count;
 	int cp_cta_resume;
+	int g_ptxinfo_error_detected;
 	//global functions
 	void ptx_opcocde_latency_options (option_parser_t opp);
 	void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL = false );
