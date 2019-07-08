@@ -61,7 +61,6 @@ int g_debug_execution = 0;
 int g_debug_thread_uid = 0;
 addr_t g_debug_pc = 0xBEEF1518;
 // Output debug information to file options
-int cp_count;
 int cp_cta_resume;
 
 unsigned g_ptx_sim_num_insn = 0;
@@ -2146,7 +2145,7 @@ unsigned max_cta (const struct gpgpu_ptx_sim_info *kernel_info, unsigned threads
 This function simulates the CUDA code functionally, it takes a kernel_info_t parameter 
 which holds the data for the CUDA kernel to be executed
 !*/
-void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
+void cuda_sim::gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
 {
      printf("GPGPU-Sim: Performing Functional Simulation, executing kernel %s...\n",kernel.name().c_str());
 
@@ -2312,7 +2311,7 @@ void  functionalCoreSim::createWarp(unsigned warpId)
 
 void functionalCoreSim::execute(int inst_count, unsigned ctaid_cp)
  {
-   cp_count= m_gpu->checkpoint_insn_Y;
+     m_gpu->gpgpu_ctx->func_sim->cp_count= m_gpu->checkpoint_insn_Y;
     cp_cta_resume= m_gpu->checkpoint_CTA_t;
     initializeCTA(ctaid_cp);
     

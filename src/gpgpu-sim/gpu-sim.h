@@ -494,6 +494,8 @@ public:
     */
     simt_core_cluster * getSIMTCluster();
 
+    // backward pointer
+    class gpgpu_context* gpgpu_ctx;
 
 private:
    // clocks
@@ -511,8 +513,6 @@ private:
    void gpgpu_debug();
 
 ///// data /////
-// backward pointer
-   class gpgpu_context* gpgpu_ctx;
 
    class simt_core_cluster **m_cluster;
    class memory_partition_unit **m_memory_partition_unit;
