@@ -134,11 +134,15 @@ struct gpgpu_ptx_sim_info get_ptxinfo();
 
 class cuda_sim {
     public:
+	cuda_sim() {
+	    g_ptx_sim_num_insn = 0;
+	}
 	//global variables
 	char *opcode_latency_int;
 	int cp_count;
 	int cp_cta_resume;
 	int g_ptxinfo_error_detected;
+	unsigned g_ptx_sim_num_insn;
 	//global functions
 	void ptx_opcocde_latency_options (option_parser_t opp);
 	void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL = false );

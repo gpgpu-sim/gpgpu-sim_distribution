@@ -62,7 +62,6 @@ int g_debug_thread_uid = 0;
 addr_t g_debug_pc = 0xBEEF1518;
 // Output debug information to file options
 
-unsigned g_ptx_sim_num_insn = 0;
 unsigned gpgpu_param_num_shaders = 0;
 
 char *opcode_latency_fp, *opcode_latency_dp,*opcode_latency_sfu,*opcode_latency_tensor;
@@ -1629,7 +1628,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
       dim3 ctaid = get_ctaid();
       dim3 tid = get_tid();
       printf("%u [thd=%u][i=%u] : ctaid=(%u,%u,%u) tid=(%u,%u,%u) icount=%u [pc=%u] (%s:%u - %s)  [0x%llx]\n", 
-             g_ptx_sim_num_insn, 
+             m_gpu->gpgpu_ctx->func_sim->g_ptx_sim_num_insn,
              get_uid(),
              pI->uid(), ctaid.x,ctaid.y,ctaid.z,tid.x,tid.y,tid.z,
              get_icount(),
@@ -1687,7 +1686,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
          dump_regs(stdout);
    }
    update_pc();
-   g_ptx_sim_num_insn++;
+   m_gpu->gpgpu_ctx->func_sim->g_ptx_sim_num_insn++;
    
    //not using it with functional simulation mode
    if(!(this->m_functionalSimulationMode))
@@ -1714,11 +1713,11 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
       if (space_type) StatAddSample( g_inst_classification_stat[g_ptx_kernel_count], ( int )space_type);
       StatAddSample( g_inst_op_classification_stat[g_ptx_kernel_count], (int)  pI->get_opcode() );
    }
-   if ( (g_ptx_sim_num_insn % 100000) == 0 ) {
+   if ( (m_gpu->gpgpu_ctx->func_sim->g_ptx_sim_num_insn % 100000) == 0 ) {
       dim3 ctaid = get_ctaid();
       dim3 tid = get_tid();
       DPRINTF(LIVENESS, "GPGPU-Sim PTX: %u instructions simulated : ctaid=(%u,%u,%u) tid=(%u,%u,%u)\n",
-             g_ptx_sim_num_insn, ctaid.x,ctaid.y,ctaid.z,tid.x,tid.y,tid.z );
+             m_gpu->gpgpu_ctx->func_sim->g_ptx_sim_num_insn, ctaid.x,ctaid.y,ctaid.z,tid.x,tid.y,tid.z );
       fflush(stdout);
    }
    
