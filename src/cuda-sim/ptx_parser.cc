@@ -285,7 +285,8 @@ void ptx_recognizer::add_instruction()
                                              gpgpu_ctx->g_filename,
                                              ptx_get_lineno(scanner),
                                              linebuf,
-                                             g_shader_core_config );
+                                             g_shader_core_config,
+					     gpgpu_ctx );
    g_instructions.push_back(i);
    g_inst_lookup[gpgpu_ctx->g_filename][ptx_get_lineno(scanner)] = i;
    init_instruction_state();

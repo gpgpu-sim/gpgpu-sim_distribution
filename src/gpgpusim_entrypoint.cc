@@ -218,10 +218,10 @@ gpgpu_sim *gpgpu_context::gpgpu_ptx_sim_init_perf()
    option_parser_t opp = option_parser_create();
 
    ptx_reg_options(opp);
-   ptx_opcocde_latency_options(opp);
+   func_sim->ptx_opcocde_latency_options(opp);
 
    icnt_reg_options(opp);
-   GPGPUsim_ctx_ptr()->g_the_gpu_config = new gpgpu_sim_config();
+   GPGPUsim_ctx_ptr()->g_the_gpu_config = new gpgpu_sim_config(this);
    GPGPUsim_ctx_ptr()->g_the_gpu_config->reg_options(opp); // register GPU microrachitecture options
 
    option_parser_cmdline(opp, sg_argc, sg_argv); // parse configuration options

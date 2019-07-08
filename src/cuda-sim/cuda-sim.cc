@@ -51,6 +51,7 @@ typedef void * yyscan_t;
 #include "decuda_pred_table/decuda_pred_table.h"
 #include "../stream_manager.h"
 #include "cuda_device_runtime.h"
+#include "../../libcuda/gpgpu_context.h"
 
 int gpgpu_ptx_instruction_classification;
 void ** g_inst_classification_stat = NULL;
@@ -66,12 +67,12 @@ int cp_cta_resume;
 unsigned g_ptx_sim_num_insn = 0;
 unsigned gpgpu_param_num_shaders = 0;
 
-char *opcode_latency_int, *opcode_latency_fp, *opcode_latency_dp,*opcode_latency_sfu,*opcode_latency_tensor;
+char *opcode_latency_fp, *opcode_latency_dp,*opcode_latency_sfu,*opcode_latency_tensor;
 char *opcode_initiation_int, *opcode_initiation_fp, *opcode_initiation_dp,*opcode_initiation_sfu,*opcode_initiation_tensor;
 char *cdp_latency_str;
 unsigned cdp_latency[5];
 
-void ptx_opcocde_latency_options (option_parser_t opp) {
+void cuda_sim::ptx_opcocde_latency_options (option_parser_t opp) {
 	option_parser_register(opp, "-ptx_opcode_latency_int", OPT_CSTR, &opcode_latency_int,
 			"Opcode latencies for integers <ADD,MAX,MUL,MAD,DIV>"
 			"Default 1,1,19,25,145",
@@ -667,7 +668,7 @@ void ptx_instruction::set_opcode_and_latency()
 	 * [3] MAD
 	 * [4] DIV
 	 */
-	sscanf(opcode_latency_int, "%u,%u,%u,%u,%u",
+	sscanf(gpgpu_ctx->func_sim->opcode_latency_int, "%u,%u,%u,%u,%u",
 			&int_latency[0],&int_latency[1],&int_latency[2],
 			&int_latency[3],&int_latency[4]);
 	sscanf(opcode_latency_fp, "%u,%u,%u,%u,%u",
