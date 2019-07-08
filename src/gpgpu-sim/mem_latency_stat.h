@@ -35,7 +35,7 @@
 class memory_stats_t {
 public:
    memory_stats_t( unsigned n_shader, 
-                   const struct shader_core_config *shader_config, 
+                   const class shader_core_config *shader_config, 
                    const struct memory_config *mem_config,
 				   const class gpgpu_sim* gpu);
 
@@ -53,7 +53,7 @@ public:
 
    unsigned m_n_shader;
 
-   const struct shader_core_config *m_shader_config;
+   const shader_core_config *m_shader_config;
    const struct memory_config *m_memory_config;
    const class gpgpu_sim* m_gpu;
 

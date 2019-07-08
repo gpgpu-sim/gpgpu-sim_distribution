@@ -1095,8 +1095,10 @@ ptx_instruction::ptx_instruction( int opcode,
                                   const char *file, 
                                   unsigned line,
                                   const char *source,
-                                  const core_config *config ) : warp_inst_t(config)
+                                  const core_config *config,
+				  gpgpu_context* ctx ) : warp_inst_t(config)
 {
+   gpgpu_ctx = ctx;
    m_uid = ++g_num_ptx_inst_uid;
    m_PC = 0;
    m_opcode = opcode;

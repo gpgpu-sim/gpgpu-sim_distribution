@@ -295,7 +295,10 @@ extern bool g_interactive_debugger_enabled;
 
 class gpgpu_sim_config : public power_config, public gpgpu_functional_sim_config {
 public:
-    gpgpu_sim_config() { m_valid = false; }
+    gpgpu_sim_config(gpgpu_context* ctx): m_shader_config(ctx) {
+	m_valid = false;
+	gpgpu_ctx = ctx;
+    }
     void reg_options(class OptionParser * opp);
     void init() 
     {
@@ -341,6 +344,8 @@ private:
     void init_clock_domains(void ); 
 
 
+    // backward pointer
+    class gpgpu_context* gpgpu_ctx;
     bool m_valid;
     shader_core_config m_shader_config;
     memory_config m_memory_config;
@@ -473,7 +478,7 @@ public:
    /*!
     * Returning the configuration of the shader core, used by the functional simulation only so far
     */
-   const struct shader_core_config * getShaderCoreConfig();
+   const shader_core_config * getShaderCoreConfig();
    
    
    //! Get shader core Memory Configuration
@@ -537,7 +542,7 @@ private:
    const gpgpu_sim_config &m_config;
   
    const struct cudaDeviceProp     *m_cuda_properties;
-   const struct shader_core_config *m_shader_config;
+   const shader_core_config *m_shader_config;
    const struct memory_config      *m_memory_config;
 
    // stats
