@@ -537,7 +537,7 @@ void _cl_program::Build(const char *options)
                exit(1);
             }
          }
-         if( !g_keep_intermediate_files ) {
+         if( !ctx->ptxinfo->g_keep_intermediate_files ) {
             // clean up files...
             snprintf(commandline,1024,"rm -f %s", cl_fname );
             int result = system(commandline);

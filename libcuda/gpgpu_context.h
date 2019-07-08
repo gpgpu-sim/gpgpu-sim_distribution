@@ -32,6 +32,7 @@ class gpgpu_context {
 	class symbol_table* init_parser(const char*);
 	class gpgpu_sim *gpgpu_ptx_sim_init_perf();
 	struct _cuda_device_id *GPGPUSim_Init();
+	void ptx_reg_options(option_parser_t opp);
 };
 gpgpu_context* GPGPU_Context();
 
