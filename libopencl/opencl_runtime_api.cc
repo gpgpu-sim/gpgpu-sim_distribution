@@ -877,6 +877,8 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
                        const cl_event * event_wait_list,
                        cl_event *       event) CL_API_SUFFIX__VERSION_1_0
 {
+    gpgpu_context *ctx;
+    ctx = GPGPU_Context();
    int _global_size[3];
    int zeros[3] = { 0, 0, 0};
    printf("\n\n\n");
@@ -956,7 +958,7 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
    }
    kernel_info_t *grid = gpgpu_opencl_ptx_sim_init_grid(kernel->get_implementation(),params,GridDim,BlockDim,gpu);
    if ( g_ptx_sim_mode )
-      gpgpu_opencl_ptx_sim_main_func( grid );
+      ctx->func_sim->gpgpu_opencl_ptx_sim_main_func( grid );
    else
       gpgpu_opencl_ptx_sim_main_perf( grid );
    return CL_SUCCESS;

@@ -55,7 +55,6 @@ extern class kernel_info_t *gpgpu_opencl_ptx_sim_init_grid(class function_info *
                                             struct dim3 gridDim, 
                                             struct dim3 blockDim, 
                                                           class gpgpu_t *gpu );
-extern void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL = false );
 extern void   print_splash();
 extern void   gpgpu_ptx_sim_register_const_variable(void*, const char *deviceName, size_t size );
 extern void   gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size );
@@ -137,8 +136,11 @@ class cuda_sim {
     public:
 	//global variables
 	char *opcode_latency_int;
+	int cp_count;
 	//global functions
 	void ptx_opcocde_latency_options (option_parser_t opp);
+	void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL = false );
+	int gpgpu_opencl_ptx_sim_main_func( kernel_info_t *grid );
 };
 
 #endif
