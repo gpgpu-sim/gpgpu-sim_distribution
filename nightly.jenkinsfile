@@ -22,7 +22,7 @@ pipeline {
         }
         stage('nightly-simulations-build'){
             steps{
-                sh 'cp -r ./gpgpu-sim_simulations ./gpgpu-sim_simulations_bak'
+                sh 'if [ -d "./gpgpu-sim_simulations" ]; then cp -r ./gpgpu-sim_simulations ./gpgpu-sim_simulations_bak fi'
                 sh 'rm -rf gpgpu-sim_simulations'
                 sh 'git clone git@github.com:purdue-aalp/gpgpu-sim_simulations.git && \
                     cd gpgpu-sim_simulations && \
