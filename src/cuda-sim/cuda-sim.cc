@@ -61,7 +61,6 @@ int g_debug_execution = 0;
 int g_debug_thread_uid = 0;
 addr_t g_debug_pc = 0xBEEF1518;
 // Output debug information to file options
-int cp_cta_resume;
 
 unsigned g_ptx_sim_num_insn = 0;
 unsigned gpgpu_param_num_shaders = 0;
@@ -2271,7 +2270,7 @@ void functionalCoreSim::initializeCTA(unsigned ctaid_cp)
         assert(m_thread[i]!=NULL && !m_thread[i]->is_done());
         char fname[2048];
         snprintf(fname,2048,"checkpoint_files/thread_%d_0_reg.txt",i );
-        if(cp_cta_resume==1)
+        if(m_gpu->gpgpu_ctx->func_sim->cp_cta_resume==1)
             m_thread[i]->resume_reg_thread(fname,symtab);
         ctaLiveThreads++;
     }
@@ -2295,7 +2294,7 @@ void  functionalCoreSim::createWarp(unsigned warpId)
    char fname[2048];
    snprintf(fname,2048,"checkpoint_files/warp_%d_0_simt.txt",warpId );
 
-   if(cp_cta_resume==1)
+   if(m_gpu->gpgpu_ctx->func_sim->cp_cta_resume==1)
    {
       unsigned pc,rpc;
       m_simt_stack[warpId]->resume(fname);
@@ -2312,7 +2311,7 @@ void  functionalCoreSim::createWarp(unsigned warpId)
 void functionalCoreSim::execute(int inst_count, unsigned ctaid_cp)
  {
      m_gpu->gpgpu_ctx->func_sim->cp_count= m_gpu->checkpoint_insn_Y;
-    cp_cta_resume= m_gpu->checkpoint_CTA_t;
+     m_gpu->gpgpu_ctx->func_sim->cp_cta_resume= m_gpu->checkpoint_CTA_t;
     initializeCTA(ctaid_cp);
     
     int count=0;
