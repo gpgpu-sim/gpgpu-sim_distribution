@@ -69,6 +69,8 @@
 
 #define WRITE_MASK_SIZE 8
 
+class gpgpu_context;
+
 enum exec_unit_type_t
 {
   NONE = 0,
@@ -294,7 +296,7 @@ typedef std::bitset<WARP_PER_CTA_MAX> warp_set_t;
 int register_bank(int regnum, int wid, unsigned num_banks, unsigned bank_warp_shift, bool sub_core_model, unsigned banks_per_sched, unsigned sched_id );
 
 class shader_core_ctx;
-struct shader_core_config;
+class shader_core_config;
 class shader_core_stats;
 
 enum scheduler_prioritization_type
@@ -1032,7 +1034,7 @@ struct ifetch_buffer_t {
     unsigned m_warp_id;
 };
 
-struct shader_core_config;
+class shader_core_config;
 
 class simd_function_unit {
 public:
@@ -1362,10 +1364,12 @@ const char* const pipeline_stage_name_decode[] = {
     "N_PIPELINE_STAGES" 
 };
 
-struct shader_core_config : public core_config
+class shader_core_config : public core_config
 {
-    shader_core_config(){
+    public:
+    shader_core_config(gpgpu_context* ctx){
 	pipeline_widths_string = NULL;
+	gpgpu_ctx = ctx;
     }
 
     void init()
@@ -1425,6 +1429,8 @@ struct shader_core_config : public core_config
     unsigned cid_to_sid( unsigned cid, unsigned cluster_id ) const { return cluster_id*n_simt_cores_per_cluster + cid; }
     void set_pipeline_latency();
 
+    // backward pointer
+    class gpgpu_context* gpgpu_ctx;
 // data
     char *gpgpu_shader_core_pipeline_opt;
     bool gpgpu_perfect_mem;
@@ -1770,7 +1776,7 @@ public:
                      class simt_core_cluster *cluster,
                      unsigned shader_id,
                      unsigned tpc_id,
-                     const struct shader_core_config *config,
+                     const shader_core_config *config,
                      const struct memory_config *mem_config,
                      shader_core_stats *stats );
 
@@ -2065,7 +2071,7 @@ class simt_core_cluster {
 public:
     simt_core_cluster( class gpgpu_sim *gpu, 
                        unsigned cluster_id, 
-                       const struct shader_core_config *config, 
+                       const shader_core_config *config, 
                        const struct memory_config *mem_config,
                        shader_core_stats *stats,
                        memory_stats_t *mstats );

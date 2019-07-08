@@ -43,6 +43,8 @@
 
 #include "memory.h"
 
+class gpgpu_context;
+
 class type_info_key {
 public:
    type_info_key()
@@ -931,7 +933,8 @@ public:
                     const char *file, 
                     unsigned line,
                     const char *source,
-                    const core_config *config );
+                    const core_config *config,
+		    gpgpu_context* ctx);
 
    void print_insn() const;
    virtual void print_insn( FILE *fp ) const;
@@ -1187,6 +1190,8 @@ private:
    virtual void pre_decode();
    friend class function_info;
    static unsigned g_num_ptx_inst_uid;
+   // backward pointer
+   class gpgpu_context* gpgpu_ctx;
 };
 
 class param_info {
@@ -1575,11 +1580,8 @@ struct textureInfo {
 extern std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
 
 
-extern bool g_keep_intermediate_files;
-
 void gpgpu_ptx_assemble( std::string kname, void *kinfo );
 #include "../option_parser.h"
-void ptx_reg_options(option_parser_t opp);
 unsigned ptx_kernel_shmem_size( void *kernel_impl );
 unsigned ptx_kernel_nregs( void *kernel_impl );
 
