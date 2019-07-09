@@ -767,9 +767,9 @@ void cudaRegisterVarInternal(
 		ctx->cuobjdumpParseBinary((unsigned)(unsigned long long)fatCubinHandle);
 	fflush(stdout);
 	if ( constant && !global && !ext ) {
-		gpgpu_ptx_sim_register_const_variable(hostVar,deviceName,size);
+		ctx->func_sim->gpgpu_ptx_sim_register_const_variable(hostVar,deviceName,size);
 	} else if ( !constant && !global && !ext ) {
-		gpgpu_ptx_sim_register_global_variable(hostVar,deviceName,size);
+		ctx->func_sim->gpgpu_ptx_sim_register_global_variable(hostVar,deviceName,size);
 	} else cuda_not_implemented(__my_func__,__LINE__);
 }
 

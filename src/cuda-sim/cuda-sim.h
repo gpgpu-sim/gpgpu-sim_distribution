@@ -48,8 +48,6 @@ extern void ** g_inst_classification_stat;
 extern void ** g_inst_op_classification_stat;
 
 extern void   print_splash();
-extern void   gpgpu_ptx_sim_register_const_variable(void*, const char *deviceName, size_t size );
-extern void   gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size );
 extern void   gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t count, size_t offset, int to, gpgpu_t *gpu );
 
 extern void read_sim_environment_variables();
@@ -147,6 +145,8 @@ class cuda_sim {
 	unsigned g_ptx_sim_num_insn;
 	char *cdp_latency_str;
 	int g_ptx_kernel_count; // used for classification stat collection purposes
+	std::map<const void*,std::string>   g_global_name_lookup; // indexed by hostVar
+	std::map<const void*,std::string>   g_const_name_lookup; // indexed by hostVar
 	//global functions
 	void ptx_opcocde_latency_options (option_parser_t opp);
 	void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL = false );
@@ -157,6 +157,8 @@ class cuda_sim {
 		struct dim3 gridDim,
 		struct dim3 blockDim,
 		gpgpu_t *gpu );
+	void   gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size );
+	void   gpgpu_ptx_sim_register_const_variable(void*, const char *deviceName, size_t size );
 };
 
 #endif
