@@ -1948,18 +1948,16 @@ void print_splash()
    }
 }
 
-std::map<const void*,std::string>   g_const_name_lookup; // indexed by hostVar
-std::map<const void*,std::string>   g_global_name_lookup; // indexed by hostVar
 std::set<std::string>   g_globals;
 std::set<std::string>   g_constants;
 
-void gpgpu_ptx_sim_register_const_variable(void *hostVar, const char *deviceName, size_t size )
+void cuda_sim::gpgpu_ptx_sim_register_const_variable(void *hostVar, const char *deviceName, size_t size )
 {
    printf("GPGPU-Sim PTX registering constant %s (%zu bytes) to name mapping\n", deviceName, size );
    g_const_name_lookup[hostVar] = deviceName;
 }
 
-void gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size )
+void cuda_sim::gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size )
 {
    printf("GPGPU-Sim PTX registering global %s hostVar to name mapping\n", deviceName );
    g_global_name_lookup[hostVar] = deviceName;
@@ -1972,14 +1970,14 @@ void gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t co
    memory_space_t mem_region = undefined_space;
    std::string sym_name;
 
-   std::map<const void*,std::string>::iterator c=g_const_name_lookup.find(hostVar);
-   if ( c!=g_const_name_lookup.end() ) {
+   std::map<const void*,std::string>::iterator c=gpu->gpgpu_ctx->func_sim->g_const_name_lookup.find(hostVar);
+   if ( c!=gpu->gpgpu_ctx->func_sim->g_const_name_lookup.end() ) {
       found_sym = true;
       sym_name = c->second;
       mem_region = const_space;
    }
-   std::map<const void*,std::string>::iterator g=g_global_name_lookup.find(hostVar);
-   if ( g!=g_global_name_lookup.end() ) {
+   std::map<const void*,std::string>::iterator g=gpu->gpgpu_ctx->func_sim->g_global_name_lookup.find(hostVar);
+   if ( g!=gpu->gpgpu_ctx->func_sim->g_global_name_lookup.end() ) {
       if ( found_sym ) {
          printf("Execution error: PTX symbol \"%s\" w/ hostVar=0x%Lx is declared both const and global?\n", 
                 sym_name.c_str(), (unsigned long long)hostVar );
