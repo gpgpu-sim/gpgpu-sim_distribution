@@ -46,19 +46,8 @@ extern int g_debug_execution;
 extern int g_debug_thread_uid;
 extern void ** g_inst_classification_stat;
 extern void ** g_inst_op_classification_stat;
-extern int g_ptx_kernel_count; // used for classification stat collection purposes 
-extern char *opcode_latency_fp, *opcode_latency_dp,*opcode_latency_sfu,*opcode_latency_tensor;
 
-
-extern class kernel_info_t *gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
-                                            gpgpu_ptx_sim_arg_list_t args, 
-                                            struct dim3 gridDim, 
-                                            struct dim3 blockDim, 
-                                                          class gpgpu_t *gpu );
-extern void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL = false );
 extern void   print_splash();
-extern void   gpgpu_ptx_sim_register_const_variable(void*, const char *deviceName, size_t size );
-extern void   gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size );
 extern void   gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t count, size_t offset, int to, gpgpu_t *gpu );
 
 extern void read_sim_environment_variables();
@@ -135,10 +124,41 @@ struct gpgpu_ptx_sim_info get_ptxinfo();
 
 class cuda_sim {
     public:
+	cuda_sim() {
+	    g_ptx_sim_num_insn = 0;
+	    g_ptx_kernel_count = -1; // used for classification stat collection purposes
+	}
 	//global variables
 	char *opcode_latency_int;
+	char *opcode_latency_fp;
+	char *opcode_latency_dp;
+	char *opcode_latency_sfu;
+	char *opcode_latency_tensor;
+	char *opcode_initiation_int;
+	char *opcode_initiation_fp;
+	char *opcode_initiation_dp;
+	char *opcode_initiation_sfu;
+	char *opcode_initiation_tensor;
+	int cp_count;
+	int cp_cta_resume;
+	int g_ptxinfo_error_detected;
+	unsigned g_ptx_sim_num_insn;
+	char *cdp_latency_str;
+	int g_ptx_kernel_count; // used for classification stat collection purposes
+	std::map<const void*,std::string>   g_global_name_lookup; // indexed by hostVar
+	std::map<const void*,std::string>   g_const_name_lookup; // indexed by hostVar
 	//global functions
 	void ptx_opcocde_latency_options (option_parser_t opp);
+	void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL = false );
+	int gpgpu_opencl_ptx_sim_main_func( kernel_info_t *grid );
+	void init_inst_classification_stat();
+	kernel_info_t *gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
+		gpgpu_ptx_sim_arg_list_t args,
+		struct dim3 gridDim,
+		struct dim3 blockDim,
+		gpgpu_t *gpu );
+	void   gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size );
+	void   gpgpu_ptx_sim_register_const_variable(void*, const char *deviceName, size_t size );
 };
 
 #endif

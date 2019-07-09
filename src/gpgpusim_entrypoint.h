@@ -83,6 +83,5 @@ struct GPGPUsim_ctx* GPGPUsim_ctx_ptr();
 class stream_manager* g_stream_manager();
 
 int gpgpu_opencl_ptx_sim_main_perf( kernel_info_t *grid );
-int gpgpu_opencl_ptx_sim_main_func( kernel_info_t *grid );
 
 #endif

@@ -173,9 +173,10 @@ void gpgpu_functional_sim_config::ptx_set_tex_cache_linesize(unsigned linesize)
    m_texcache_linesize = linesize;
 }
 
-gpgpu_t::gpgpu_t( const gpgpu_functional_sim_config &config )
+gpgpu_t::gpgpu_t( const gpgpu_functional_sim_config &config, gpgpu_context* ctx )
     : m_function_model_config(config)
 {
+   gpgpu_ctx = ctx;
    m_global_mem = new memory_space_impl<8192>("global",64*1024);
    
    m_tex_mem = new memory_space_impl<8192>("tex",64*1024);
