@@ -30,7 +30,6 @@
 
 #include "../abstract_hardware_model.h"
 #include "ptx_ir.h"
-extern int g_error_detected;
 
 #ifdef __cplusplus 
 const class ptx_instruction *ptx_instruction_lookup( const char *filename, unsigned linenumber );

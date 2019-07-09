@@ -64,7 +64,6 @@ addr_t g_debug_pc = 0xBEEF1518;
 
 unsigned gpgpu_param_num_shaders = 0;
 
-char *cdp_latency_str;
 unsigned cdp_latency[5];
 
 void cuda_sim::ptx_opcocde_latency_options (option_parser_t opp) {
@@ -689,7 +688,7 @@ void ptx_instruction::set_opcode_and_latency()
 			&sfu_init);
 	sscanf(gpgpu_ctx->func_sim->opcode_initiation_tensor, "%u",
 			&tensor_init);
-	sscanf(cdp_latency_str, "%u,%u,%u,%u,%u",
+	sscanf(gpgpu_ctx->func_sim->cdp_latency_str, "%u,%u,%u,%u,%u",
 			&cdp_latency[0],&cdp_latency[1],&cdp_latency[2],
             &cdp_latency[3],&cdp_latency[4]);
 
@@ -2100,8 +2099,6 @@ void read_sim_environment_variables()
       ptx_debug = 1;
    }
 }
-
-ptx_cta_info *g_func_cta_info = NULL;
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
