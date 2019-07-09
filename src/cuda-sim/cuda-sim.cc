@@ -56,7 +56,6 @@ typedef void * yyscan_t;
 int gpgpu_ptx_instruction_classification;
 void ** g_inst_classification_stat = NULL;
 void ** g_inst_op_classification_stat= NULL;
-int g_ptx_kernel_count = -1; // used for classification stat collection purposes 
 int g_debug_execution = 0;
 int g_debug_thread_uid = 0;
 addr_t g_debug_pc = 0xBEEF1518;
@@ -1480,7 +1479,7 @@ bool ptx_debug_exec_dump_cond(int thd_uid, addr_t pc)
    return false;
 }
 
-void init_inst_classification_stat() 
+void cuda_sim::init_inst_classification_stat()
 {
    static std::set<unsigned> init;
    if( init.find(g_ptx_kernel_count) != init.end() ) 
@@ -1690,7 +1689,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
        ptx_file_line_stats_add_exec_count(pI);
    
    if ( gpgpu_ptx_instruction_classification ) {
-      init_inst_classification_stat();
+      m_gpu->gpgpu_ctx->func_sim->init_inst_classification_stat();
       unsigned space_type=0;
       switch ( pI->get_space().get_type() ) {
       case global_space: space_type = 10; break;
@@ -1706,9 +1705,9 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
          space_type = 0 ;
          break;
       }
-      StatAddSample( g_inst_classification_stat[g_ptx_kernel_count],  op_classification);
-      if (space_type) StatAddSample( g_inst_classification_stat[g_ptx_kernel_count], ( int )space_type);
-      StatAddSample( g_inst_op_classification_stat[g_ptx_kernel_count], (int)  pI->get_opcode() );
+      StatAddSample( g_inst_classification_stat[m_gpu->gpgpu_ctx->func_sim->g_ptx_kernel_count],  op_classification);
+      if (space_type) StatAddSample( g_inst_classification_stat[m_gpu->gpgpu_ctx->func_sim->g_ptx_kernel_count], ( int )space_type);
+      StatAddSample( g_inst_op_classification_stat[m_gpu->gpgpu_ctx->func_sim->g_ptx_kernel_count], (int)  pI->get_opcode() );
    }
    if ( (m_gpu->gpgpu_ctx->func_sim->g_ptx_sim_num_insn % 100000) == 0 ) {
       dim3 ctaid = get_ctaid();
@@ -1917,7 +1916,7 @@ size_t get_kernel_code_size( class function_info *entry )
 }
 
 
-kernel_info_t *gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
+kernel_info_t *cuda_sim::gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
                                              gpgpu_ptx_sim_arg_list_t args, 
                                              struct dim3 gridDim,
                                              struct dim3 blockDim,

@@ -46,13 +46,7 @@ extern int g_debug_execution;
 extern int g_debug_thread_uid;
 extern void ** g_inst_classification_stat;
 extern void ** g_inst_op_classification_stat;
-extern int g_ptx_kernel_count; // used for classification stat collection purposes 
 
-extern class kernel_info_t *gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
-                                            gpgpu_ptx_sim_arg_list_t args, 
-                                            struct dim3 gridDim, 
-                                            struct dim3 blockDim, 
-                                                          class gpgpu_t *gpu );
 extern void   print_splash();
 extern void   gpgpu_ptx_sim_register_const_variable(void*, const char *deviceName, size_t size );
 extern void   gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size );
@@ -134,6 +128,7 @@ class cuda_sim {
     public:
 	cuda_sim() {
 	    g_ptx_sim_num_insn = 0;
+	    g_ptx_kernel_count = -1; // used for classification stat collection purposes
 	}
 	//global variables
 	char *opcode_latency_int;
@@ -151,10 +146,17 @@ class cuda_sim {
 	int g_ptxinfo_error_detected;
 	unsigned g_ptx_sim_num_insn;
 	char *cdp_latency_str;
+	int g_ptx_kernel_count; // used for classification stat collection purposes
 	//global functions
 	void ptx_opcocde_latency_options (option_parser_t opp);
 	void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL = false );
 	int gpgpu_opencl_ptx_sim_main_func( kernel_info_t *grid );
+	void init_inst_classification_stat();
+	kernel_info_t *gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
+		gpgpu_ptx_sim_arg_list_t args,
+		struct dim3 gridDim,
+		struct dim3 blockDim,
+		gpgpu_t *gpu );
 };
 
 #endif
