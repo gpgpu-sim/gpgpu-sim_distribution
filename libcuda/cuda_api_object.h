@@ -169,9 +169,10 @@ private:
 
 class cuda_runtime_api {
     public:
-	cuda_runtime_api() {
+	cuda_runtime_api( gpgpu_context* ctx ) {
 	    g_glbmap = NULL;
 	    g_active_device = 0; //active gpu that runs the code
+	    gpgpu_ctx = ctx;
 	}
 	// global list
 	std::list<cuobjdumpSection*> cuobjdumpSectionList;
@@ -187,6 +188,8 @@ class cuda_runtime_api {
 	std::map<void *, size_t> pinned_memory_size;
 	glbmap_entry_t* g_glbmap;
 	int g_active_device; //active gpu that runs the code
+	// backward pointer
+	class gpgpu_context* gpgpu_ctx;
 	// member function list
 	void cuobjdumpInit();
 	void extract_code_using_cuobjdump();

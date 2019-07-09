@@ -3545,7 +3545,7 @@ kernel_info_t * cuda_runtime_api::gpgpu_cuda_ptx_sim_init_grid( const char *host
 	}
 
 	entry->finalize(result->get_param_memory());
-	g_ptx_kernel_count++;
+	gpgpu_ctx->func_sim->g_ptx_kernel_count++;
 	fflush(stdout);
 	
 	if(g_debug_execution >= 4){

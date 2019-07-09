@@ -1201,8 +1201,8 @@ void gpgpu_sim::gpu_print_stat()
       insn_warp_occ_print(stdout);
    }
    if ( gpgpu_ptx_instruction_classification ) {
-      StatDisp( g_inst_classification_stat[g_ptx_kernel_count]);
-      StatDisp( g_inst_op_classification_stat[g_ptx_kernel_count]);
+      StatDisp( g_inst_classification_stat[gpgpu_ctx->func_sim->g_ptx_kernel_count]);
+      StatDisp( g_inst_op_classification_stat[gpgpu_ctx->func_sim->g_ptx_kernel_count]);
    }
 
 #ifdef GPGPUSIM_POWER_MODEL
