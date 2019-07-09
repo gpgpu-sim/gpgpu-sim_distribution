@@ -31,6 +31,8 @@
 // Forward declarations
 class gpgpu_sim;
 class kernel_info_t;
+class gpgpu_context;
+
 
 //Set a hard limit of 32 CTAs per shader [cuda only has 8]
 #define MAX_CTA_PER_SHADER 32
@@ -529,7 +531,9 @@ private:
 
 class gpgpu_t {
 public:
-    gpgpu_t( const gpgpu_functional_sim_config &config );
+    gpgpu_t( const gpgpu_functional_sim_config &config, gpgpu_context* ctx );
+    // backward pointer
+    class gpgpu_context* gpgpu_ctx;
     int checkpoint_option;
     int checkpoint_kernel;
     int checkpoint_CTA;

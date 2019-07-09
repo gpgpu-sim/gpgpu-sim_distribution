@@ -134,7 +134,7 @@ void *gpgpu_sim_thread_concurrent(void*)
             if( GPGPUsim_ctx_ptr()->g_the_gpu->is_functional_sim()) {
                 kernel_info_t * kernel = GPGPUsim_ctx_ptr()->g_the_gpu->get_functional_kernel();
                 assert(kernel);
-                gpgpu_cuda_ptx_sim_main_func(*kernel);
+                GPGPUsim_ctx_ptr()->gpgpu_ctx->func_sim->gpgpu_cuda_ptx_sim_main_func(*kernel);
                 GPGPUsim_ctx_ptr()->g_the_gpu->finish_functional_sim(kernel);
             }
 
@@ -287,7 +287,7 @@ int gpgpu_opencl_ptx_sim_main_perf( kernel_info_t *grid )
 /*!
  * This function call the CUDA PTX functional simulator
  */
-int gpgpu_opencl_ptx_sim_main_func( kernel_info_t *grid )
+int cuda_sim::gpgpu_opencl_ptx_sim_main_func( kernel_info_t *grid )
 {
     //calling the CUDA PTX simulator, sending the kernel by reference and a flag set to true,
     //the flag used by the function to distinguish OpenCL calls from the CUDA simulation calls which

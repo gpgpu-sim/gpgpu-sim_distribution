@@ -88,13 +88,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 %%
 
-extern int g_ptxinfo_error_detected;
-
 int ptxinfo_error(yyscan_t yyscanner, ptxinfo_data* ptxinfo, const char* msg)
 {
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
 	int i;
-	g_ptxinfo_error_detected = 1;
+	ptxinfo->gpgpu_ctx->func_sim->g_ptxinfo_error_detected = 1;
 	fflush(stdout);
 	printf("GPGPU-Sim: ERROR while parsing output of ptxas (used to capture resource usage information)\n");
 	if( msg != NULL )

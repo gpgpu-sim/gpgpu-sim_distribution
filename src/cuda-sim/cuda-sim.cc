@@ -56,20 +56,13 @@ typedef void * yyscan_t;
 int gpgpu_ptx_instruction_classification;
 void ** g_inst_classification_stat = NULL;
 void ** g_inst_op_classification_stat= NULL;
-int g_ptx_kernel_count = -1; // used for classification stat collection purposes 
 int g_debug_execution = 0;
 int g_debug_thread_uid = 0;
 addr_t g_debug_pc = 0xBEEF1518;
 // Output debug information to file options
-int cp_count;
-int cp_cta_resume;
 
-unsigned g_ptx_sim_num_insn = 0;
 unsigned gpgpu_param_num_shaders = 0;
 
-char *opcode_latency_fp, *opcode_latency_dp,*opcode_latency_sfu,*opcode_latency_tensor;
-char *opcode_initiation_int, *opcode_initiation_fp, *opcode_initiation_dp,*opcode_initiation_sfu,*opcode_initiation_tensor;
-char *cdp_latency_str;
 unsigned cdp_latency[5];
 
 void cuda_sim::ptx_opcocde_latency_options (option_parser_t opp) {
@@ -671,30 +664,30 @@ void ptx_instruction::set_opcode_and_latency()
 	sscanf(gpgpu_ctx->func_sim->opcode_latency_int, "%u,%u,%u,%u,%u",
 			&int_latency[0],&int_latency[1],&int_latency[2],
 			&int_latency[3],&int_latency[4]);
-	sscanf(opcode_latency_fp, "%u,%u,%u,%u,%u",
+	sscanf(gpgpu_ctx->func_sim->opcode_latency_fp, "%u,%u,%u,%u,%u",
 			&fp_latency[0],&fp_latency[1],&fp_latency[2],
 			&fp_latency[3],&fp_latency[4]);
-	sscanf(opcode_latency_dp, "%u,%u,%u,%u,%u",
+	sscanf(gpgpu_ctx->func_sim->opcode_latency_dp, "%u,%u,%u,%u,%u",
 			&dp_latency[0],&dp_latency[1],&dp_latency[2],
 			&dp_latency[3],&dp_latency[4]);
-	sscanf(opcode_latency_sfu, "%u",
+	sscanf(gpgpu_ctx->func_sim->opcode_latency_sfu, "%u",
 			&sfu_latency);
-	sscanf(opcode_latency_tensor, "%u",
+	sscanf(gpgpu_ctx->func_sim->opcode_latency_tensor, "%u",
 			&tensor_latency);
-	sscanf(opcode_initiation_int, "%u,%u,%u,%u,%u",
+	sscanf(gpgpu_ctx->func_sim->opcode_initiation_int, "%u,%u,%u,%u,%u",
 			&int_init[0],&int_init[1],&int_init[2],
 			&int_init[3],&int_init[4]);
-	sscanf(opcode_initiation_fp, "%u,%u,%u,%u,%u",
+	sscanf(gpgpu_ctx->func_sim->opcode_initiation_fp, "%u,%u,%u,%u,%u",
 			&fp_init[0],&fp_init[1],&fp_init[2],
 			&fp_init[3],&fp_init[4]);
-	sscanf(opcode_initiation_dp, "%u,%u,%u,%u,%u",
+	sscanf(gpgpu_ctx->func_sim->opcode_initiation_dp, "%u,%u,%u,%u,%u",
 			&dp_init[0],&dp_init[1],&dp_init[2],
 			&dp_init[3],&dp_init[4]);
-	sscanf(opcode_initiation_sfu, "%u",
+	sscanf(gpgpu_ctx->func_sim->opcode_initiation_sfu, "%u",
 			&sfu_init);
-	sscanf(opcode_initiation_tensor, "%u",
+	sscanf(gpgpu_ctx->func_sim->opcode_initiation_tensor, "%u",
 			&tensor_init);
-	sscanf(cdp_latency_str, "%u,%u,%u,%u,%u",
+	sscanf(gpgpu_ctx->func_sim->cdp_latency_str, "%u,%u,%u,%u,%u",
 			&cdp_latency[0],&cdp_latency[1],&cdp_latency[2],
             &cdp_latency[3],&cdp_latency[4]);
 
@@ -1486,7 +1479,7 @@ bool ptx_debug_exec_dump_cond(int thd_uid, addr_t pc)
    return false;
 }
 
-void init_inst_classification_stat() 
+void cuda_sim::init_inst_classification_stat()
 {
    static std::set<unsigned> init;
    if( init.find(g_ptx_kernel_count) != init.end() ) 
@@ -1631,7 +1624,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
       dim3 ctaid = get_ctaid();
       dim3 tid = get_tid();
       printf("%u [thd=%u][i=%u] : ctaid=(%u,%u,%u) tid=(%u,%u,%u) icount=%u [pc=%u] (%s:%u - %s)  [0x%llx]\n", 
-             g_ptx_sim_num_insn, 
+             m_gpu->gpgpu_ctx->func_sim->g_ptx_sim_num_insn,
              get_uid(),
              pI->uid(), ctaid.x,ctaid.y,ctaid.z,tid.x,tid.y,tid.z,
              get_icount(),
@@ -1689,14 +1682,14 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
          dump_regs(stdout);
    }
    update_pc();
-   g_ptx_sim_num_insn++;
+   m_gpu->gpgpu_ctx->func_sim->g_ptx_sim_num_insn++;
    
    //not using it with functional simulation mode
    if(!(this->m_functionalSimulationMode))
        ptx_file_line_stats_add_exec_count(pI);
    
    if ( gpgpu_ptx_instruction_classification ) {
-      init_inst_classification_stat();
+      m_gpu->gpgpu_ctx->func_sim->init_inst_classification_stat();
       unsigned space_type=0;
       switch ( pI->get_space().get_type() ) {
       case global_space: space_type = 10; break;
@@ -1712,15 +1705,15 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
          space_type = 0 ;
          break;
       }
-      StatAddSample( g_inst_classification_stat[g_ptx_kernel_count],  op_classification);
-      if (space_type) StatAddSample( g_inst_classification_stat[g_ptx_kernel_count], ( int )space_type);
-      StatAddSample( g_inst_op_classification_stat[g_ptx_kernel_count], (int)  pI->get_opcode() );
+      StatAddSample( g_inst_classification_stat[m_gpu->gpgpu_ctx->func_sim->g_ptx_kernel_count],  op_classification);
+      if (space_type) StatAddSample( g_inst_classification_stat[m_gpu->gpgpu_ctx->func_sim->g_ptx_kernel_count], ( int )space_type);
+      StatAddSample( g_inst_op_classification_stat[m_gpu->gpgpu_ctx->func_sim->g_ptx_kernel_count], (int)  pI->get_opcode() );
    }
-   if ( (g_ptx_sim_num_insn % 100000) == 0 ) {
+   if ( (m_gpu->gpgpu_ctx->func_sim->g_ptx_sim_num_insn % 100000) == 0 ) {
       dim3 ctaid = get_ctaid();
       dim3 tid = get_tid();
       DPRINTF(LIVENESS, "GPGPU-Sim PTX: %u instructions simulated : ctaid=(%u,%u,%u) tid=(%u,%u,%u)\n",
-             g_ptx_sim_num_insn, ctaid.x,ctaid.y,ctaid.z,tid.x,tid.y,tid.z );
+             m_gpu->gpgpu_ctx->func_sim->g_ptx_sim_num_insn, ctaid.x,ctaid.y,ctaid.z,tid.x,tid.y,tid.z );
       fflush(stdout);
    }
    
@@ -1923,7 +1916,7 @@ size_t get_kernel_code_size( class function_info *entry )
 }
 
 
-kernel_info_t *gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
+kernel_info_t *cuda_sim::gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
                                              gpgpu_ptx_sim_arg_list_t args, 
                                              struct dim3 gridDim,
                                              struct dim3 blockDim,
@@ -1955,18 +1948,16 @@ void print_splash()
    }
 }
 
-std::map<const void*,std::string>   g_const_name_lookup; // indexed by hostVar
-std::map<const void*,std::string>   g_global_name_lookup; // indexed by hostVar
 std::set<std::string>   g_globals;
 std::set<std::string>   g_constants;
 
-void gpgpu_ptx_sim_register_const_variable(void *hostVar, const char *deviceName, size_t size )
+void cuda_sim::gpgpu_ptx_sim_register_const_variable(void *hostVar, const char *deviceName, size_t size )
 {
    printf("GPGPU-Sim PTX registering constant %s (%zu bytes) to name mapping\n", deviceName, size );
    g_const_name_lookup[hostVar] = deviceName;
 }
 
-void gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size )
+void cuda_sim::gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size )
 {
    printf("GPGPU-Sim PTX registering global %s hostVar to name mapping\n", deviceName );
    g_global_name_lookup[hostVar] = deviceName;
@@ -1979,14 +1970,14 @@ void gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t co
    memory_space_t mem_region = undefined_space;
    std::string sym_name;
 
-   std::map<const void*,std::string>::iterator c=g_const_name_lookup.find(hostVar);
-   if ( c!=g_const_name_lookup.end() ) {
+   std::map<const void*,std::string>::iterator c=gpu->gpgpu_ctx->func_sim->g_const_name_lookup.find(hostVar);
+   if ( c!=gpu->gpgpu_ctx->func_sim->g_const_name_lookup.end() ) {
       found_sym = true;
       sym_name = c->second;
       mem_region = const_space;
    }
-   std::map<const void*,std::string>::iterator g=g_global_name_lookup.find(hostVar);
-   if ( g!=g_global_name_lookup.end() ) {
+   std::map<const void*,std::string>::iterator g=gpu->gpgpu_ctx->func_sim->g_global_name_lookup.find(hostVar);
+   if ( g!=gpu->gpgpu_ctx->func_sim->g_global_name_lookup.end() ) {
       if ( found_sym ) {
          printf("Execution error: PTX symbol \"%s\" w/ hostVar=0x%Lx is declared both const and global?\n", 
                 sym_name.c_str(), (unsigned long long)hostVar );
@@ -2106,8 +2097,6 @@ void read_sim_environment_variables()
    }
 }
 
-ptx_cta_info *g_func_cta_info = NULL;
-
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
 unsigned max_cta (const struct gpgpu_ptx_sim_info *kernel_info, unsigned threads_per_cta, unsigned int warp_size, unsigned int n_thread_per_shader, unsigned int gpgpu_shmem_size, unsigned int gpgpu_shader_registers, unsigned int max_cta_per_core)
@@ -2146,7 +2135,7 @@ unsigned max_cta (const struct gpgpu_ptx_sim_info *kernel_info, unsigned threads
 This function simulates the CUDA code functionally, it takes a kernel_info_t parameter 
 which holds the data for the CUDA kernel to be executed
 !*/
-void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
+void cuda_sim::gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL )
 {
      printf("GPGPU-Sim: Performing Functional Simulation, executing kernel %s...\n",kernel.name().c_str());
 
@@ -2272,7 +2261,7 @@ void functionalCoreSim::initializeCTA(unsigned ctaid_cp)
         assert(m_thread[i]!=NULL && !m_thread[i]->is_done());
         char fname[2048];
         snprintf(fname,2048,"checkpoint_files/thread_%d_0_reg.txt",i );
-        if(cp_cta_resume==1)
+        if(m_gpu->gpgpu_ctx->func_sim->cp_cta_resume==1)
             m_thread[i]->resume_reg_thread(fname,symtab);
         ctaLiveThreads++;
     }
@@ -2296,7 +2285,7 @@ void  functionalCoreSim::createWarp(unsigned warpId)
    char fname[2048];
    snprintf(fname,2048,"checkpoint_files/warp_%d_0_simt.txt",warpId );
 
-   if(cp_cta_resume==1)
+   if(m_gpu->gpgpu_ctx->func_sim->cp_cta_resume==1)
    {
       unsigned pc,rpc;
       m_simt_stack[warpId]->resume(fname);
@@ -2312,8 +2301,8 @@ void  functionalCoreSim::createWarp(unsigned warpId)
 
 void functionalCoreSim::execute(int inst_count, unsigned ctaid_cp)
  {
-   cp_count= m_gpu->checkpoint_insn_Y;
-    cp_cta_resume= m_gpu->checkpoint_CTA_t;
+     m_gpu->gpgpu_ctx->func_sim->cp_count= m_gpu->checkpoint_insn_Y;
+     m_gpu->gpgpu_ctx->func_sim->cp_cta_resume= m_gpu->checkpoint_CTA_t;
     initializeCTA(ctaid_cp);
     
     int count=0;
@@ -2405,8 +2394,6 @@ unsigned translate_pc_to_ptxlineno(unsigned pc)
 // ptxinfo parser
 
 extern std::map<unsigned,const char*> get_duplicate();
-
-int g_ptxinfo_error_detected;
 
 static char *g_ptxinfo_kname = NULL;
 static struct gpgpu_ptx_sim_info g_ptxinfo;

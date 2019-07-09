@@ -10,7 +10,7 @@ class gpgpu_context {
     public:
 	gpgpu_context() {
 	    g_global_allfiles_symbol_table = NULL;
-	    api = new cuda_runtime_api();
+	    api = new cuda_runtime_api(this);
 	    ptxinfo = new ptxinfo_data(this);
 	    ptx_parser = new ptx_recognizer(this);
 	    the_gpgpusim = new GPGPUsim_ctx(this);

@@ -3022,15 +3022,15 @@ void shader_core_config::set_pipeline_latency() {
 			sscanf(gpgpu_ctx->func_sim->opcode_latency_int, "%u,%u,%u,%u,%u",
 					&int_latency[0],&int_latency[1],&int_latency[2],
 					&int_latency[3],&int_latency[4]);
-			sscanf(opcode_latency_fp, "%u,%u,%u,%u,%u",
+			sscanf(gpgpu_ctx->func_sim->opcode_latency_fp, "%u,%u,%u,%u,%u",
 					&fp_latency[0],&fp_latency[1],&fp_latency[2],
 					&fp_latency[3],&fp_latency[4]);
-			sscanf(opcode_latency_dp, "%u,%u,%u,%u,%u",
+			sscanf(gpgpu_ctx->func_sim->opcode_latency_dp, "%u,%u,%u,%u,%u",
 					&dp_latency[0],&dp_latency[1],&dp_latency[2],
 					&dp_latency[3],&dp_latency[4]);
-			sscanf(opcode_latency_sfu, "%u",
+			sscanf(gpgpu_ctx->func_sim->opcode_latency_sfu, "%u",
 					&sfu_latency);
-			sscanf(opcode_latency_tensor, "%u",
+			sscanf(gpgpu_ctx->func_sim->opcode_latency_tensor, "%u",
 					&tensor_latency);
 
 		//all div operation are executed on sfu

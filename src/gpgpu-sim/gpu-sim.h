@@ -62,6 +62,8 @@
 #define SAMPLELOG 222
 #define DUMPLOG 333
 
+class gpgpu_context;
+
 extern tr1_hash_map<new_addr_type,unsigned> address_random_interleaving;
 
 enum dram_ctrl_t {
@@ -494,6 +496,8 @@ public:
     */
     simt_core_cluster * getSIMTCluster();
 
+    // backward pointer
+    class gpgpu_context* gpgpu_ctx;
 
 private:
    // clocks
@@ -511,8 +515,6 @@ private:
    void gpgpu_debug();
 
 ///// data /////
-// backward pointer
-   class gpgpu_context* gpgpu_ctx;
 
    class simt_core_cluster **m_cluster;
    class memory_partition_unit **m_memory_partition_unit;
