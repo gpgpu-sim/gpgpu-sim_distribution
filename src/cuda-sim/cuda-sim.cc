@@ -64,7 +64,6 @@ addr_t g_debug_pc = 0xBEEF1518;
 
 unsigned gpgpu_param_num_shaders = 0;
 
-char *opcode_latency_fp, *opcode_latency_dp,*opcode_latency_sfu,*opcode_latency_tensor;
 char *opcode_initiation_int, *opcode_initiation_fp, *opcode_initiation_dp,*opcode_initiation_sfu,*opcode_initiation_tensor;
 char *cdp_latency_str;
 unsigned cdp_latency[5];
@@ -668,15 +667,15 @@ void ptx_instruction::set_opcode_and_latency()
 	sscanf(gpgpu_ctx->func_sim->opcode_latency_int, "%u,%u,%u,%u,%u",
 			&int_latency[0],&int_latency[1],&int_latency[2],
 			&int_latency[3],&int_latency[4]);
-	sscanf(opcode_latency_fp, "%u,%u,%u,%u,%u",
+	sscanf(gpgpu_ctx->func_sim->opcode_latency_fp, "%u,%u,%u,%u,%u",
 			&fp_latency[0],&fp_latency[1],&fp_latency[2],
 			&fp_latency[3],&fp_latency[4]);
-	sscanf(opcode_latency_dp, "%u,%u,%u,%u,%u",
+	sscanf(gpgpu_ctx->func_sim->opcode_latency_dp, "%u,%u,%u,%u,%u",
 			&dp_latency[0],&dp_latency[1],&dp_latency[2],
 			&dp_latency[3],&dp_latency[4]);
-	sscanf(opcode_latency_sfu, "%u",
+	sscanf(gpgpu_ctx->func_sim->opcode_latency_sfu, "%u",
 			&sfu_latency);
-	sscanf(opcode_latency_tensor, "%u",
+	sscanf(gpgpu_ctx->func_sim->opcode_latency_tensor, "%u",
 			&tensor_latency);
 	sscanf(opcode_initiation_int, "%u,%u,%u,%u,%u",
 			&int_init[0],&int_init[1],&int_init[2],
