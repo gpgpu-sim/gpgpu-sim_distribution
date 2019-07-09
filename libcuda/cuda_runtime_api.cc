@@ -2936,7 +2936,7 @@ void gpgpu_context::cuobjdumpParseBinary(unsigned int handle){
 	if(context->get_device()->get_gpgpu()->get_config().convert_to_ptxplus() ) {
 		cuobjdumpELFSection* elfsection = api->findELFSection(ptx->getIdentifier());
 		assert (elfsection!= NULL);
-		char *ptxplus_str = gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(
+		char *ptxplus_str = ptxinfo->gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(
 				ptx->getPTXfilename(),
 				elfsection->getELFfilename(),
 				elfsection->getSASSfilename());

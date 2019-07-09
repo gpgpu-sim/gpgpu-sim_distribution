@@ -58,7 +58,6 @@ extern int ptxinfo_lex_destroy(yyscan_t scanner);
 
 static bool g_save_embedded_ptx;
 static int g_occupancy_sm_number;
-bool m_ptx_save_converted_ptxplus;
 
 bool ptxinfo_data::keep_intermediate_files() {return g_keep_intermediate_files;}
 
@@ -71,7 +70,7 @@ void gpgpu_context::ptx_reg_options(option_parser_t opp)
                 "keep intermediate files created by GPGPU-Sim when interfacing with external programs",
                 "0");
    option_parser_register(opp, "-gpgpu_ptx_save_converted_ptxplus", OPT_BOOL,
-                &m_ptx_save_converted_ptxplus,
+                &(ptxinfo->m_ptx_save_converted_ptxplus),
                 "Saved converted ptxplus to a file",
                 "0");
    option_parser_register(opp, "-gpgpu_occupancy_sm_number", OPT_INT32, &g_occupancy_sm_number,
@@ -106,7 +105,7 @@ void gpgpu_context::print_ptx_file( const char *p, unsigned source_num, const ch
    fflush(stdout);
 }
 
-char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const std::string ptxfilename, const std::string elffilename, const std::string sassfilename)
+char* ptxinfo_data::gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const std::string ptxfilename, const std::string elffilename, const std::string sassfilename)
 {
 
 	printf("GPGPU-Sim PTX: converting EMBEDDED .ptx file to ptxplus \n");
