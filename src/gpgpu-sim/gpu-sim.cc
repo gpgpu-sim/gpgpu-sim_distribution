@@ -499,8 +499,8 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
    option_parser_register(opp, "-gpgpu_deadlock_detect", OPT_BOOL, &gpu_deadlock_detect, 
                 "Stop the simulation at deadlock (1=on (default), 0=off)", 
                 "1");
-   option_parser_register(opp, "-gpgpu_ptx_instruction_classification", OPT_INT32, 
-               &gpgpu_ptx_instruction_classification, 
+   option_parser_register(opp, "-gpgpu_ptx_instruction_classification", OPT_INT32,
+               &(gpgpu_ctx->func_sim->gpgpu_ptx_instruction_classification),
                "if enabled will classify ptx instruction types per kernel (Max 255 kernels now)", 
                "0");
    option_parser_register(opp, "-gpgpu_ptx_sim_mode", OPT_INT32, &(gpgpu_ctx->func_sim->g_ptx_sim_mode),
@@ -1200,7 +1200,7 @@ void gpgpu_sim::gpu_print_stat()
       spill_log_to_file (stdout, 1, gpu_sim_cycle);
       insn_warp_occ_print(stdout);
    }
-   if ( gpgpu_ptx_instruction_classification ) {
+   if ( gpgpu_ctx->func_sim->gpgpu_ptx_instruction_classification ) {
       StatDisp( gpgpu_ctx->func_sim->g_inst_classification_stat[gpgpu_ctx->func_sim->g_ptx_kernel_count]);
       StatDisp( gpgpu_ctx->func_sim->g_inst_op_classification_stat[gpgpu_ctx->func_sim->g_ptx_kernel_count]);
    }

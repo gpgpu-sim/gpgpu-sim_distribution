@@ -161,6 +161,7 @@ class cuda_sim {
 	std::set<std::string>   g_globals;
 	std::set<std::string>   g_constants;
 	std::map<unsigned,function_info*> g_pc_to_finfo;
+	int gpgpu_ptx_instruction_classification;
 	// backward pointer
 	class gpgpu_context* gpgpu_ctx;
 	//global functions

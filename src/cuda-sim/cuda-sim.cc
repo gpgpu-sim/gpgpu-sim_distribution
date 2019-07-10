@@ -53,7 +53,6 @@ typedef void * yyscan_t;
 #include "cuda_device_runtime.h"
 #include "../../libcuda/gpgpu_context.h"
 
-int gpgpu_ptx_instruction_classification;
 int g_debug_execution = 0;
 int g_debug_thread_uid = 0;
 addr_t g_debug_pc = 0xBEEF1518;
@@ -1681,7 +1680,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
    if(!(this->m_functionalSimulationMode))
        ptx_file_line_stats_add_exec_count(pI);
    
-   if ( gpgpu_ptx_instruction_classification ) {
+   if ( m_gpu->gpgpu_ctx->func_sim->gpgpu_ptx_instruction_classification ) {
       m_gpu->gpgpu_ctx->func_sim->init_inst_classification_stat();
       unsigned space_type=0;
       switch ( pI->get_space().get_type() ) {
