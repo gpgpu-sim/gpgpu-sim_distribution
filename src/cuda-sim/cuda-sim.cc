@@ -58,7 +58,6 @@ int g_debug_thread_uid = 0;
 addr_t g_debug_pc = 0xBEEF1518;
 // Output debug information to file options
 
-unsigned cdp_latency[5];
 
 void cuda_sim::ptx_opcocde_latency_options (option_parser_t opp) {
 	option_parser_register(opp, "-ptx_opcode_latency_int", OPT_CSTR, &opcode_latency_int,
@@ -680,8 +679,11 @@ void ptx_instruction::set_opcode_and_latency()
 	sscanf(gpgpu_ctx->func_sim->opcode_initiation_tensor, "%u",
 			&tensor_init);
 	sscanf(gpgpu_ctx->func_sim->cdp_latency_str, "%u,%u,%u,%u,%u",
-			&cdp_latency[0],&cdp_latency[1],&cdp_latency[2],
-            &cdp_latency[3],&cdp_latency[4]);
+			&gpgpu_ctx->func_sim->cdp_latency[0],
+			&gpgpu_ctx->func_sim->cdp_latency[1],
+			&gpgpu_ctx->func_sim->cdp_latency[2],
+			&gpgpu_ctx->func_sim->cdp_latency[3],
+			&gpgpu_ctx->func_sim->cdp_latency[4]);
 
 	if(!m_operands.empty()){
 		std::vector<operand_info>::iterator it;
