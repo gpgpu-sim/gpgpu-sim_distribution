@@ -882,7 +882,7 @@ void gpgpu_sim::init()
     gpu_sim_cycle_parition_util = 0;
 
     reinit_clock_domains();
-    set_param_gpgpu_num_shaders(m_config.num_shader());
+    gpgpu_ctx->func_sim->set_param_gpgpu_num_shaders(m_config.num_shader());
     for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) 
        m_cluster[i]->reinit();
     m_shader_stats->new_grid();

@@ -61,8 +61,6 @@ int g_debug_thread_uid = 0;
 addr_t g_debug_pc = 0xBEEF1518;
 // Output debug information to file options
 
-unsigned gpgpu_param_num_shaders = 0;
-
 unsigned cdp_latency[5];
 
 void cuda_sim::ptx_opcocde_latency_options (option_parser_t opp) {
@@ -1736,7 +1734,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
       
 }
 
-void set_param_gpgpu_num_shaders(int num_shaders)
+void cuda_sim::set_param_gpgpu_num_shaders(int num_shaders)
 {
    gpgpu_param_num_shaders = num_shaders;
 }
@@ -1818,7 +1816,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
    assert( max_cta_per_sm > 0 );
 
    //unsigned sm_idx = (tid/cta_size)*gpgpu_param_num_shaders + sid;
-   unsigned sm_idx = hw_cta_id*gpgpu_param_num_shaders + sid;
+   unsigned sm_idx = hw_cta_id*gpu->gpgpu_ctx->func_sim->gpgpu_param_num_shaders + sid;
 
    if ( shared_memory_lookup.find(sm_idx) == shared_memory_lookup.end() ) {
       if ( g_debug_execution >= 1 ) {
