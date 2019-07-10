@@ -503,7 +503,7 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
                &gpgpu_ptx_instruction_classification, 
                "if enabled will classify ptx instruction types per kernel (Max 255 kernels now)", 
                "0");
-   option_parser_register(opp, "-gpgpu_ptx_sim_mode", OPT_INT32, &g_ptx_sim_mode, 
+   option_parser_register(opp, "-gpgpu_ptx_sim_mode", OPT_INT32, &(gpgpu_ctx->func_sim->g_ptx_sim_mode),
                "Select between Performance (default) or Functional simulation (1)", 
                "0");
    option_parser_register(opp, "-gpgpu_clock_domains", OPT_CSTR, &gpgpu_clock_domains, 
@@ -1753,7 +1753,7 @@ void gpgpu_sim::cycle()
 
 #if (CUDART_VERSION >= 5000)
       //launch device kernel
-      launch_one_device_kernel();
+      gpgpu_ctx->device_runtime->launch_one_device_kernel();
 #endif
    }
 }

@@ -36,12 +36,12 @@
 #include <string>
 #include"ptx_sim.h"
 
+class gpgpu_context;
 class memory_space;
 class function_info;
 class symbol_table;
 
 extern const char *g_gpgpusim_version_string;
-extern int g_ptx_sim_mode;
 extern int g_debug_execution;
 extern int g_debug_thread_uid;
 extern void ** g_inst_classification_stat;
@@ -50,7 +50,6 @@ extern void ** g_inst_op_classification_stat;
 extern void   print_splash();
 extern void   gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t count, size_t offset, int to, gpgpu_t *gpu );
 
-extern void read_sim_environment_variables();
 extern void ptxinfo_opencl_addinfo( std::map<std::string,function_info*> &kernels );
 unsigned ptx_sim_init_thread( kernel_info_t &kernel,
                               class ptx_thread_info** thread_info,
@@ -124,9 +123,10 @@ struct gpgpu_ptx_sim_info get_ptxinfo();
 
 class cuda_sim {
     public:
-	cuda_sim() {
+	cuda_sim( gpgpu_context* ctx ) {
 	    g_ptx_sim_num_insn = 0;
 	    g_ptx_kernel_count = -1; // used for classification stat collection purposes
+	    gpgpu_ctx = ctx;
 	}
 	//global variables
 	char *opcode_latency_int;
@@ -147,6 +147,9 @@ class cuda_sim {
 	int g_ptx_kernel_count; // used for classification stat collection purposes
 	std::map<const void*,std::string>   g_global_name_lookup; // indexed by hostVar
 	std::map<const void*,std::string>   g_const_name_lookup; // indexed by hostVar
+	int g_ptx_sim_mode; // if non-zero run functional simulation only (i.e., no notion of a clock cycle)
+	// backward pointer
+	class gpgpu_context* gpgpu_ctx;
 	//global functions
 	void ptx_opcocde_latency_options (option_parser_t opp);
 	void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL = false );
@@ -159,6 +162,7 @@ class cuda_sim {
 		gpgpu_t *gpu );
 	void   gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size );
 	void   gpgpu_ptx_sim_register_const_variable(void*, const char *deviceName, size_t size );
+	void read_sim_environment_variables();
 };
 
 #endif
