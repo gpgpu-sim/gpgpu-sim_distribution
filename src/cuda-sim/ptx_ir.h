@@ -306,7 +306,7 @@ private:
 class symbol_table {
 public:
    symbol_table();
-   symbol_table( const char *scope_name, unsigned entry_point, symbol_table *parent );
+   symbol_table( const char *scope_name, unsigned entry_point, symbol_table *parent, gpgpu_context* ctx);
    void set_name( const char *name );
    const ptx_version &get_ptx_version() const;
    unsigned get_sm_target() const;
@@ -347,6 +347,9 @@ public:
    //Jin: handle instruction group for cdp
    symbol_table* start_inst_group();
    symbol_table* end_inst_group();
+
+   // backward pointer
+   class gpgpu_context* gpgpu_ctx;
 
 private:
    unsigned m_reg_allocator;
@@ -1233,7 +1236,7 @@ private:
 
 class function_info {
 public:
-   function_info(int entry_point );
+   function_info(int entry_point, gpgpu_context* ctx );
    const ptx_version &get_ptx_version() const { return m_symtab->get_ptx_version(); }
    unsigned get_sm_target() const { return m_symtab->get_sm_target(); }
    bool is_extern() const { return m_extern; }
@@ -1403,6 +1406,8 @@ public:
 
    void set_maxnt_id(unsigned maxthreads) { maxnt_id = maxthreads;}
    unsigned get_maxnt_id() { return maxnt_id;}
+   // backward pointer
+   class gpgpu_context* gpgpu_ctx;
 
 private:
    unsigned maxnt_id;

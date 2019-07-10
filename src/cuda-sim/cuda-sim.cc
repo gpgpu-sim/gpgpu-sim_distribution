@@ -220,7 +220,6 @@ void gpgpu_t::gpgpu_ptx_sim_unbindTexture(const struct textureReference* texref)
 }
 
 unsigned g_assemble_code_next_pc=0; 
-std::map<unsigned,function_info*> g_pc_to_finfo;
 std::vector<ptx_instruction*> function_info::s_g_pc_to_insn;
 
 #define MAX_INST_SIZE 8 /*bytes*/
@@ -257,7 +256,7 @@ void function_info::ptx_assemble()
          const symbol *l = pI->get_label();
          labels[l->name()] = n;
       } else {
-         g_pc_to_finfo[PC] = this;
+         gpgpu_ctx->func_sim->g_pc_to_finfo[PC] = this;
          m_instr_mem[n] = pI;
          s_g_pc_to_insn.push_back(pI);
          assert(pI == s_g_pc_to_insn[PC]);
@@ -497,7 +496,7 @@ void gpgpu_t::gpu_memset( size_t dst_start_addr, int c, size_t count )
    }
 }
 
-void ptx_print_insn( address_type pc, FILE *fp )
+void cuda_sim::ptx_print_insn( address_type pc, FILE *fp )
 {
    std::map<unsigned,function_info*>::iterator f = g_pc_to_finfo.find(pc);
    if( f == g_pc_to_finfo.end() ) {
@@ -509,7 +508,7 @@ void ptx_print_insn( address_type pc, FILE *fp )
    finfo->print_insn(pc,fp);
 }
 
-std::string ptx_get_insn_str( address_type pc )
+std::string cuda_sim::ptx_get_insn_str( address_type pc )
 {
    std::map<unsigned,function_info*>::iterator f = g_pc_to_finfo.find(pc);
    if( f == g_pc_to_finfo.end() ) {

@@ -83,8 +83,9 @@ symbol_table::symbol_table()
    assert(0); 
 }
 
-symbol_table::symbol_table( const char *scope_name, unsigned entry_point, symbol_table *parent )
+symbol_table::symbol_table( const char *scope_name, unsigned entry_point, symbol_table *parent, gpgpu_context* ctx )
 {
+   gpgpu_ctx = ctx;
    m_scope_name = std::string(scope_name);
    m_reg_allocator=0;
    m_shared_next = 0;
@@ -183,7 +184,7 @@ symbol_table* symbol_table::start_inst_group() {
 
    //previous added
    assert(m_inst_group_symtab.find(std::string(inst_group_name)) == m_inst_group_symtab.end());
-   symbol_table *sym_table = new symbol_table(inst_group_name, 3/*inst group*/, this );
+   symbol_table *sym_table = new symbol_table(inst_group_name, 3/*inst group*/, this, gpgpu_ctx );
  
    sym_table->m_global_next = m_global_next;
    sym_table->m_shared_next = m_shared_next;
@@ -221,7 +222,7 @@ bool symbol_table::add_function_decl( const char *name, int entry_point, functio
       *func_info = m_function_info_lookup[key];
       prior_decl = true;
    } else {
-      *func_info = new function_info(entry_point);
+      *func_info = new function_info(entry_point, gpgpu_ctx);
       (*func_info)->set_name(name);
       (*func_info)->set_maxnt_id(0);
       m_function_info_lookup[key] = *func_info;
@@ -232,7 +233,7 @@ bool symbol_table::add_function_decl( const char *name, int entry_point, functio
       *sym_table = m_function_symtab_lookup[key];
    } else {
       assert( !prior_decl );
-      *sym_table = new symbol_table( "", entry_point, this );
+      *sym_table = new symbol_table( "", entry_point, this, gpgpu_ctx );
       
       // Initial setup code to support a register represented as "_".
       // This register is used when an instruction operand is
@@ -1373,8 +1374,9 @@ std::string ptx_instruction::to_string() const
 
 unsigned function_info::sm_next_uid = 1;
 
-function_info::function_info(int entry_point ) 
+function_info::function_info(int entry_point, gpgpu_context* ctx )
 {
+   gpgpu_ctx = ctx;
    m_uid = sm_next_uid++;
    m_entry_point = (entry_point==1)?true:false;
    m_extern = (entry_point==2)?true:false;
