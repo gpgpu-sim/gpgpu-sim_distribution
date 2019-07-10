@@ -163,6 +163,7 @@ class cuda_sim {
 	std::map<unsigned,function_info*> g_pc_to_finfo;
 	int gpgpu_ptx_instruction_classification;
 	// backward pointer
+	unsigned cdp_latency[5];
 	class gpgpu_context* gpgpu_ctx;
 	//global functions
 	void ptx_opcocde_latency_options (option_parser_t opp);

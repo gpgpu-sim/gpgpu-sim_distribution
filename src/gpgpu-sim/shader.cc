@@ -1084,12 +1084,11 @@ void scheduler_unit::cycle()
 										if(pI->m_is_cdp && !warp(warp_id).m_cdp_dummy) {
 											assert(warp(warp_id).m_cdp_latency == 0);
 
-											extern unsigned cdp_latency[5];
 											if(pI->m_is_cdp == 1)
-												warp(warp_id).m_cdp_latency = cdp_latency[pI->m_is_cdp - 1];
+												warp(warp_id).m_cdp_latency = m_shader->m_config->gpgpu_ctx->func_sim->cdp_latency[pI->m_is_cdp - 1];
 											else //cudaLaunchDeviceV2 and cudaGetParameterBufferV2
-												warp(warp_id).m_cdp_latency = cdp_latency[pI->m_is_cdp - 1]
-													+ cdp_latency[pI->m_is_cdp] * active_mask.count();
+												warp(warp_id).m_cdp_latency = m_shader->m_config->gpgpu_ctx->func_sim->cdp_latency[pI->m_is_cdp - 1]
+													+ m_shader->m_config->gpgpu_ctx->func_sim->cdp_latency[pI->m_is_cdp] * active_mask.count();
 											warp(warp_id).m_cdp_dummy = true;
 											break;
 										}
