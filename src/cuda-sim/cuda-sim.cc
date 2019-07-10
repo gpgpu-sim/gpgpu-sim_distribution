@@ -2033,13 +2033,11 @@ void gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t co
    fflush(stdout);
 }
 
-int g_ptx_sim_mode; // if non-zero run functional simulation only (i.e., no notion of a clock cycle)
-
 extern int ptx_debug;
 
 bool g_cuda_launch_blocking = false;
 
-void read_sim_environment_variables() 
+void cuda_sim::read_sim_environment_variables()
 {
    ptx_debug = 0;
    g_debug_execution = 0;
@@ -2185,7 +2183,7 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL 
            cta.execute(cp_count,temp);
 
             #if (CUDART_VERSION >= 5000)
-            	launch_all_device_kernels();
+               gpgpu_ctx->device_runtime->launch_all_device_kernels();
             #endif
          }
          else

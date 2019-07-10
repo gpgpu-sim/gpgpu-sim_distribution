@@ -884,9 +884,9 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
    printf("\n\n\n");
    char *mode = getenv("PTX_SIM_MODE_FUNC");
    if ( mode )
-      sscanf(mode,"%u", &g_ptx_sim_mode);
+      sscanf(mode,"%u", &(ctx->func_sim->g_ptx_sim_mode));
    printf("GPGPU-Sim OpenCL API: clEnqueueNDRangeKernel '%s' (mode=%s)\n", kernel->name().c_str(),
-          g_ptx_sim_mode?"functional simulation":"performance simulation");
+          (ctx->func_sim->g_ptx_sim_mode)?"functional simulation":"performance simulation");
    if ( !work_dim || work_dim > 3 ) return CL_INVALID_WORK_DIMENSION;
    size_t _local_size[3];
    if( local_work_size != NULL ) {
@@ -957,7 +957,7 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
 	   gpgpu_ptx_sim_memcpy_symbol( "%_global_block_offset", zeros, 3 * sizeof(int), 0, 1, gpu );
    }
    kernel_info_t *grid = ctx->func_sim->gpgpu_opencl_ptx_sim_init_grid(kernel->get_implementation(),params,GridDim,BlockDim,gpu);
-   if ( g_ptx_sim_mode )
+   if ( ctx->func_sim->g_ptx_sim_mode )
       ctx->func_sim->gpgpu_opencl_ptx_sim_main_func( grid );
    else
       gpgpu_opencl_ptx_sim_main_perf( grid );
