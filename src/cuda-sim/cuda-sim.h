@@ -66,7 +66,6 @@ const warp_inst_t *ptx_fetch_inst( address_type pc );
 const struct gpgpu_ptx_sim_info* ptx_sim_kernel_info(const class function_info *kernel);
 void ptx_print_insn( address_type pc, FILE *fp );
 std::string ptx_get_insn_str( address_type pc );
-void set_param_gpgpu_num_shaders(int num_shaders);
 
 
 /*!
@@ -126,6 +125,7 @@ class cuda_sim {
 	cuda_sim( gpgpu_context* ctx ) {
 	    g_ptx_sim_num_insn = 0;
 	    g_ptx_kernel_count = -1; // used for classification stat collection purposes
+	    gpgpu_param_num_shaders = 0;
 	    gpgpu_ctx = ctx;
 	}
 	//global variables
@@ -148,6 +148,7 @@ class cuda_sim {
 	std::map<const void*,std::string>   g_global_name_lookup; // indexed by hostVar
 	std::map<const void*,std::string>   g_const_name_lookup; // indexed by hostVar
 	int g_ptx_sim_mode; // if non-zero run functional simulation only (i.e., no notion of a clock cycle)
+	unsigned gpgpu_param_num_shaders;
 	// backward pointer
 	class gpgpu_context* gpgpu_ctx;
 	//global functions
@@ -163,6 +164,7 @@ class cuda_sim {
 	void   gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size );
 	void   gpgpu_ptx_sim_register_const_variable(void*, const char *deviceName, size_t size );
 	void read_sim_environment_variables();
+	void set_param_gpgpu_num_shaders(int num_shaders);
 };
 
 #endif
