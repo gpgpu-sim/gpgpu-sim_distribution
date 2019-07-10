@@ -83,8 +83,6 @@ private:
    unsigned     m_value;
 };
 
-extern int gpgpu_ptx_instruction_classification ;
-
 class ptx_thread_info;
 class ptx_instruction;
 bool thread_at_brkpt( ptx_thread_info *thd_info, const class brk_pt &b );
