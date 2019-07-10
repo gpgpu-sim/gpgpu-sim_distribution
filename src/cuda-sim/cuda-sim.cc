@@ -54,7 +54,6 @@ typedef void * yyscan_t;
 #include "../../libcuda/gpgpu_context.h"
 
 int g_debug_execution = 0;
-int g_debug_thread_uid = 0;
 addr_t g_debug_pc = 0xBEEF1518;
 // Output debug information to file options
 
@@ -1455,7 +1454,7 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
 }
 
 template<int activate_level> 
-bool ptx_debug_exec_dump_cond(int thd_uid, addr_t pc)
+bool cuda_sim::ptx_debug_exec_dump_cond(int thd_uid, addr_t pc)
 {
    if (g_debug_execution >= activate_level) {
       // check each type of debug dump constraint to filter out dumps
@@ -1541,7 +1540,8 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
    }
    
    if ( g_debug_execution >= 6 || m_gpu->get_config().get_ptx_inst_debug_to_file()) {
-      if ( (g_debug_thread_uid==0) || (get_uid() == (unsigned)g_debug_thread_uid) ) {
+      if ( (m_gpu->gpgpu_ctx->func_sim->g_debug_thread_uid==0)
+	      || (get_uid() == (unsigned)(m_gpu->gpgpu_ctx->func_sim->g_debug_thread_uid)) ) {
         
           clear_modifiedregs();
          enable_debug_trace();
@@ -1613,7 +1613,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
       fflush(m_gpu->get_ptx_inst_debug_file());
    }
 
-   if ( ptx_debug_exec_dump_cond<5>(get_uid(), pc) ) {
+   if ( m_gpu->gpgpu_ctx->func_sim->ptx_debug_exec_dump_cond<5>(get_uid(), pc) ) {
       dim3 ctaid = get_ctaid();
       dim3 tid = get_tid();
       printf("%u [thd=%u][i=%u] : ctaid=(%u,%u,%u) tid=(%u,%u,%u) icount=%u [pc=%u] (%s:%u - %s)  [0x%llx]\n", 
@@ -1667,11 +1667,11 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
    }
 
    if ( g_debug_execution >= 6 ) {
-      if ( ptx_debug_exec_dump_cond<6>(get_uid(), pc) )
+      if ( m_gpu->gpgpu_ctx->func_sim->ptx_debug_exec_dump_cond<6>(get_uid(), pc) )
          dump_modifiedregs(stdout);
    }
    if ( g_debug_execution >= 10 ) {
-      if ( ptx_debug_exec_dump_cond<10>(get_uid(), pc) )
+      if ( m_gpu->gpgpu_ctx->func_sim->ptx_debug_exec_dump_cond<10>(get_uid(), pc) )
          dump_regs(stdout);
    }
    update_pc();

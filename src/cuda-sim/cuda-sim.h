@@ -43,7 +43,6 @@ class symbol_table;
 
 extern const char *g_gpgpusim_version_string;
 extern int g_debug_execution;
-extern int g_debug_thread_uid;
 
 extern void   print_splash();
 
@@ -132,6 +131,7 @@ class cuda_sim {
 	    g_inst_classification_stat = NULL;
 	    g_inst_op_classification_stat= NULL;
 	    g_assemble_code_next_pc=0;
+	    g_debug_thread_uid = 0;
 	    gpgpu_ctx = ctx;
 	}
 	//global variables
@@ -165,6 +165,7 @@ class cuda_sim {
 	int gpgpu_ptx_instruction_classification;
 	unsigned cdp_latency[5];
 	unsigned g_assemble_code_next_pc;
+	int g_debug_thread_uid;
 	// backward pointer
 	class gpgpu_context* gpgpu_ctx;
 	//global functions
@@ -186,6 +187,7 @@ class cuda_sim {
 	void   gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t count, size_t offset, int to, gpgpu_t *gpu );
 	void ptx_print_insn( address_type pc, FILE *fp );
 	std::string ptx_get_insn_str( address_type pc );
+	template<int activate_level> bool ptx_debug_exec_dump_cond(int thd_uid, addr_t pc);
 };
 
 #endif
