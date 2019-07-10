@@ -112,8 +112,6 @@ cudaLaunchDeviceV2_init_perWarp, cudaLaunchDevicV2_perKernel>"
 			"7200,8000,100,12000,1600");
 }
 
-static address_type get_converge_point(address_type pc);
-
 void gpgpu_t::gpgpu_ptx_sim_bindNameToTexture(const char* name, const struct textureReference* texref, int dim, int readmode, int ext)
 {
    std::string texname(name);
@@ -1096,7 +1094,7 @@ void ptx_instruction::pre_decode()
    }
 
    // get reconvergence pc
-   reconvergence_pc = get_converge_point(pc);
+   reconvergence_pc = gpgpu_ctx->func_sim->get_converge_point(pc);
 
    m_decoded=true;
 }
@@ -2518,14 +2516,7 @@ void ptxinfo_opencl_addinfo( std::map<std::string,function_info*> &kernels )
    clear_ptxinfo();
 }
 
-struct rec_pts {
-   gpgpu_recon_t *s_kernel_recon_points;
-   int s_num_recon;
-};
-
-class std::map<function_info*,rec_pts> g_rpts;
-
-struct rec_pts find_reconvergence_points( function_info *finfo )
+struct rec_pts cuda_sim::find_reconvergence_points( function_info *finfo )
 {
    rec_pts tmp;
    std::map<function_info*,rec_pts>::iterator r=g_rpts.find(finfo);
@@ -2564,7 +2555,7 @@ address_type get_return_pc( void *thd )
     return the_thread->get_return_PC();
 }
 
-address_type get_converge_point( address_type pc ) 
+address_type cuda_sim::get_converge_point( address_type pc )
 {
    // the branch could encode the reconvergence point and/or a bit that indicates the 
    // reconvergence point is the return PC on the call stack in the case the branch has 

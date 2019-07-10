@@ -120,6 +120,13 @@ void print_ptxinfo();
 void clear_ptxinfo();
 struct gpgpu_ptx_sim_info get_ptxinfo();
 
+class gpgpu_recon_t;
+struct rec_pts {
+   gpgpu_recon_t *s_kernel_recon_points;
+   int s_num_recon;
+};
+
+
 class cuda_sim {
     public:
 	cuda_sim( gpgpu_context* ctx ) {
@@ -149,6 +156,7 @@ class cuda_sim {
 	std::map<const void*,std::string>   g_const_name_lookup; // indexed by hostVar
 	int g_ptx_sim_mode; // if non-zero run functional simulation only (i.e., no notion of a clock cycle)
 	unsigned gpgpu_param_num_shaders;
+	class std::map<function_info*,rec_pts> g_rpts;
 	// backward pointer
 	class gpgpu_context* gpgpu_ctx;
 	//global functions
@@ -165,6 +173,8 @@ class cuda_sim {
 	void   gpgpu_ptx_sim_register_const_variable(void*, const char *deviceName, size_t size );
 	void read_sim_environment_variables();
 	void set_param_gpgpu_num_shaders(int num_shaders);
+	struct rec_pts find_reconvergence_points( function_info *finfo );
+	address_type get_converge_point( address_type pc );
 };
 
 #endif
