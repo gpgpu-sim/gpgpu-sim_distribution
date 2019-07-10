@@ -112,7 +112,7 @@ symbol_table * gpgpu_context::init_parser( const char *ptx_filename )
 {
    g_filename = strdup(ptx_filename);
    if  (g_global_allfiles_symbol_table == NULL) {
-       g_global_allfiles_symbol_table = new symbol_table("global_allfiles", 0, NULL);
+       g_global_allfiles_symbol_table = new symbol_table("global_allfiles", 0, NULL, this);
        ptx_parser->g_global_symbol_table = ptx_parser->g_current_symbol_table = g_global_allfiles_symbol_table;
    }
    /*else {

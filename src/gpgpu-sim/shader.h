@@ -1367,7 +1367,7 @@ const char* const pipeline_stage_name_decode[] = {
 class shader_core_config : public core_config
 {
     public:
-    shader_core_config(gpgpu_context* ctx){
+    shader_core_config(gpgpu_context* ctx):core_config(ctx){
 	pipeline_widths_string = NULL;
 	gpgpu_ctx = ctx;
     }
