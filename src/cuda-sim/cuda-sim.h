@@ -133,6 +133,7 @@ class cuda_sim {
 	    g_ptx_sim_num_insn = 0;
 	    g_ptx_kernel_count = -1; // used for classification stat collection purposes
 	    gpgpu_param_num_shaders = 0;
+	    g_cuda_launch_blocking = false;
 	    gpgpu_ctx = ctx;
 	}
 	//global variables
@@ -157,6 +158,7 @@ class cuda_sim {
 	int g_ptx_sim_mode; // if non-zero run functional simulation only (i.e., no notion of a clock cycle)
 	unsigned gpgpu_param_num_shaders;
 	class std::map<function_info*,rec_pts> g_rpts;
+	bool g_cuda_launch_blocking;
 	// backward pointer
 	class gpgpu_context* gpgpu_ctx;
 	//global functions
