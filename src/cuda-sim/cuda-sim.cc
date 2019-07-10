@@ -2031,8 +2031,6 @@ void gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t co
 
 extern int ptx_debug;
 
-bool g_cuda_launch_blocking = false;
-
 void cuda_sim::read_sim_environment_variables()
 {
    ptx_debug = 0;
