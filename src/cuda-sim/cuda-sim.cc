@@ -1942,9 +1942,6 @@ void print_splash()
    }
 }
 
-std::set<std::string>   g_globals;
-std::set<std::string>   g_constants;
-
 void cuda_sim::gpgpu_ptx_sim_register_const_variable(void *hostVar, const char *deviceName, size_t size )
 {
    printf("GPGPU-Sim PTX registering constant %s (%zu bytes) to name mapping\n", deviceName, size );
@@ -1957,7 +1954,7 @@ void cuda_sim::gpgpu_ptx_sim_register_global_variable(void *hostVar, const char 
    g_global_name_lookup[hostVar] = deviceName;
 }
 
-void gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t count, size_t offset, int to, gpgpu_t *gpu )
+void cuda_sim::gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t count, size_t offset, int to, gpgpu_t *gpu )
 {
    printf("GPGPU-Sim PTX: starting gpgpu_ptx_sim_memcpy_symbol with hostVar 0x%p\n", hostVar);
    bool found_sym = false;

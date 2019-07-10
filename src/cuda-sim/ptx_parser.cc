@@ -322,9 +322,6 @@ bool ptx_recognizer::check_for_duplicates( const char *identifier )
    return ( s != NULL );
 }
 
-extern std::set<std::string>   g_globals;
-extern std::set<std::string>   g_constants;
-
 // Returns padding that needs to be inserted ahead of address to make it aligned to min(size, maxalign)
 /*
  * @param address the address in bytes
@@ -453,7 +450,7 @@ void ptx_recognizer::add_identifier( const char *identifier, int array_dim, unsi
          g_current_symbol_table->alloc_global( num_bits/8 + addr_pad ); 
       }
       if( g_current_symbol_table == g_global_symbol_table ) { 
-         g_constants.insert( identifier ); 
+         gpgpu_ctx->func_sim->g_constants.insert( identifier );
       }
       assert( g_current_symbol_table != NULL );
       g_sym_name_to_symbol_table[ identifier ] = g_current_symbol_table;
@@ -471,7 +468,7 @@ void ptx_recognizer::add_identifier( const char *identifier, int array_dim, unsi
       fflush(stdout);
       g_last_symbol->set_address( addr+addr_pad );
       g_current_symbol_table->alloc_global( num_bits/8 + addr_pad );
-      g_globals.insert( identifier );
+      gpgpu_ctx->func_sim->g_globals.insert( identifier );
       assert( g_current_symbol_table != NULL );
       g_sym_name_to_symbol_table[ identifier ] = g_current_symbol_table;
       break;
