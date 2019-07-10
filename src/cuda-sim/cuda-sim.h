@@ -46,7 +46,6 @@ extern int g_debug_execution;
 extern int g_debug_thread_uid;
 
 extern void   print_splash();
-extern void   gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t count, size_t offset, int to, gpgpu_t *gpu );
 
 extern void ptxinfo_opencl_addinfo( std::map<std::string,function_info*> &kernels );
 unsigned ptx_sim_init_thread( kernel_info_t &kernel,
@@ -161,6 +160,8 @@ class cuda_sim {
 	bool g_cuda_launch_blocking;
 	void ** g_inst_classification_stat;
 	void ** g_inst_op_classification_stat;
+	std::set<std::string>   g_globals;
+	std::set<std::string>   g_constants;
 	// backward pointer
 	class gpgpu_context* gpgpu_ctx;
 	//global functions
@@ -179,6 +180,7 @@ class cuda_sim {
 	void set_param_gpgpu_num_shaders(int num_shaders);
 	struct rec_pts find_reconvergence_points( function_info *finfo );
 	address_type get_converge_point( address_type pc );
+	void   gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t count, size_t offset, int to, gpgpu_t *gpu );
 };
 
 #endif
