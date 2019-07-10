@@ -131,6 +131,7 @@ class cuda_sim {
 	    g_cuda_launch_blocking = false;
 	    g_inst_classification_stat = NULL;
 	    g_inst_op_classification_stat= NULL;
+	    g_assemble_code_next_pc=0;
 	    gpgpu_ctx = ctx;
 	}
 	//global variables
@@ -162,8 +163,9 @@ class cuda_sim {
 	std::set<std::string>   g_constants;
 	std::map<unsigned,function_info*> g_pc_to_finfo;
 	int gpgpu_ptx_instruction_classification;
-	// backward pointer
 	unsigned cdp_latency[5];
+	unsigned g_assemble_code_next_pc;
+	// backward pointer
 	class gpgpu_context* gpgpu_ctx;
 	//global functions
 	void ptx_opcocde_latency_options (option_parser_t opp);
