@@ -217,7 +217,6 @@ void gpgpu_t::gpgpu_ptx_sim_unbindTexture(const struct textureReference* texref)
    m_NameToTextureInfo.erase(texname);
 }
 
-unsigned g_assemble_code_next_pc=0; 
 std::vector<ptx_instruction*> function_info::s_g_pc_to_insn;
 
 #define MAX_INST_SIZE 8 /*bytes*/
@@ -237,7 +236,7 @@ void function_info::ptx_assemble()
    fflush(stdout);
    std::list<ptx_instruction*>::iterator i;
 
-   addr_t PC = g_assemble_code_next_pc; // globally unique address (across functions)
+   addr_t PC = gpgpu_ctx->func_sim->g_assemble_code_next_pc; // globally unique address (across functions)
    // start function on an aligned address
    for( unsigned i=0; i < (PC%MAX_INST_SIZE); i++ ) 
       s_g_pc_to_insn.push_back((ptx_instruction*)NULL);
@@ -269,7 +268,7 @@ void function_info::ptx_assemble()
          PC += pI->inst_size();
       }
    }
-   g_assemble_code_next_pc=PC;
+   gpgpu_ctx->func_sim->g_assemble_code_next_pc=PC;
    for ( unsigned ii=0; ii < n; ii += m_instr_mem[ii]->inst_size() ) { // handle branch instructions
       ptx_instruction *pI = m_instr_mem[ii];
       if ( pI->get_opcode() == BRA_OP || pI->get_opcode() == BREAKADDR_OP  || pI->get_opcode() == CALLP_OP) {
