@@ -44,8 +44,6 @@ class symbol_table;
 extern const char *g_gpgpusim_version_string;
 extern int g_debug_execution;
 extern int g_debug_thread_uid;
-extern void ** g_inst_classification_stat;
-extern void ** g_inst_op_classification_stat;
 
 extern void   print_splash();
 extern void   gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t count, size_t offset, int to, gpgpu_t *gpu );
@@ -134,6 +132,8 @@ class cuda_sim {
 	    g_ptx_kernel_count = -1; // used for classification stat collection purposes
 	    gpgpu_param_num_shaders = 0;
 	    g_cuda_launch_blocking = false;
+	    g_inst_classification_stat = NULL;
+	    g_inst_op_classification_stat= NULL;
 	    gpgpu_ctx = ctx;
 	}
 	//global variables
@@ -159,6 +159,8 @@ class cuda_sim {
 	unsigned gpgpu_param_num_shaders;
 	class std::map<function_info*,rec_pts> g_rpts;
 	bool g_cuda_launch_blocking;
+	void ** g_inst_classification_stat;
+	void ** g_inst_op_classification_stat;
 	// backward pointer
 	class gpgpu_context* gpgpu_ctx;
 	//global functions

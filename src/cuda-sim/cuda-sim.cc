@@ -54,8 +54,6 @@ typedef void * yyscan_t;
 #include "../../libcuda/gpgpu_context.h"
 
 int gpgpu_ptx_instruction_classification;
-void ** g_inst_classification_stat = NULL;
-void ** g_inst_op_classification_stat= NULL;
 int g_debug_execution = 0;
 int g_debug_thread_uid = 0;
 addr_t g_debug_pc = 0xBEEF1518;
@@ -1701,9 +1699,9 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
          space_type = 0 ;
          break;
       }
-      StatAddSample( g_inst_classification_stat[m_gpu->gpgpu_ctx->func_sim->g_ptx_kernel_count],  op_classification);
-      if (space_type) StatAddSample( g_inst_classification_stat[m_gpu->gpgpu_ctx->func_sim->g_ptx_kernel_count], ( int )space_type);
-      StatAddSample( g_inst_op_classification_stat[m_gpu->gpgpu_ctx->func_sim->g_ptx_kernel_count], (int)  pI->get_opcode() );
+      StatAddSample( m_gpu->gpgpu_ctx->func_sim->g_inst_classification_stat[m_gpu->gpgpu_ctx->func_sim->g_ptx_kernel_count],  op_classification);
+      if (space_type) StatAddSample( m_gpu->gpgpu_ctx->func_sim->g_inst_classification_stat[m_gpu->gpgpu_ctx->func_sim->g_ptx_kernel_count], ( int )space_type);
+      StatAddSample( m_gpu->gpgpu_ctx->func_sim->g_inst_op_classification_stat[m_gpu->gpgpu_ctx->func_sim->g_ptx_kernel_count], (int)  pI->get_opcode() );
    }
    if ( (m_gpu->gpgpu_ctx->func_sim->g_ptx_sim_num_insn % 100000) == 0 ) {
       dim3 ctaid = get_ctaid();
