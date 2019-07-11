@@ -1025,7 +1025,7 @@ void scheduler_unit::cycle()
             m_simt_stack[warp_id]->get_pdom_stack_top_info(&pc,&rpc);
             SCHED_DPRINTF( "Warp (warp_id %u, dynamic_warp_id %u) has valid instruction (%s)\n",
                            (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id(),
-                           ptx_get_insn_str( pc).c_str() );
+                           m_shader->m_config->gpgpu_ctx->func_sim->ptx_get_insn_str( pc).c_str() );
             if( pI ) {
                 assert(valid);
                 if( pc != pI->pc ) {
@@ -1084,12 +1084,11 @@ void scheduler_unit::cycle()
 										if(pI->m_is_cdp && !warp(warp_id).m_cdp_dummy) {
 											assert(warp(warp_id).m_cdp_latency == 0);
 
-											extern unsigned cdp_latency[5];
 											if(pI->m_is_cdp == 1)
-												warp(warp_id).m_cdp_latency = cdp_latency[pI->m_is_cdp - 1];
+												warp(warp_id).m_cdp_latency = m_shader->m_config->gpgpu_ctx->func_sim->cdp_latency[pI->m_is_cdp - 1];
 											else //cudaLaunchDeviceV2 and cudaGetParameterBufferV2
-												warp(warp_id).m_cdp_latency = cdp_latency[pI->m_is_cdp - 1]
-													+ cdp_latency[pI->m_is_cdp] * active_mask.count();
+												warp(warp_id).m_cdp_latency = m_shader->m_config->gpgpu_ctx->func_sim->cdp_latency[pI->m_is_cdp - 1]
+													+ m_shader->m_config->gpgpu_ctx->func_sim->cdp_latency[pI->m_is_cdp] * active_mask.count();
 											warp(warp_id).m_cdp_dummy = true;
 											break;
 										}
@@ -2690,7 +2689,7 @@ void warp_inst_t::print( FILE *fout ) const
     for (unsigned j=0; j<m_config->warp_size; j++)
         fprintf(fout, "%c", (active(j)?'1':'0') );
     fprintf(fout, "]: ");
-    ptx_print_insn( pc, fout );
+    m_config->gpgpu_ctx->func_sim->ptx_print_insn( pc, fout );
     fprintf(fout, "\n");
 }
 void shader_core_ctx::incexecstat(warp_inst_t *&inst)
