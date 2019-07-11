@@ -134,6 +134,7 @@ class cuda_sim {
 	    g_debug_thread_uid = 0;
 	    g_override_embedded_ptx = false;
 	    ptx_tex_regs = NULL;
+	    g_ptx_thread_info_delete_count=0;
 	    gpgpu_ctx = ctx;
 	}
 	//global variables
@@ -171,6 +172,7 @@ class cuda_sim {
 	bool g_override_embedded_ptx;
 	std::set<unsigned long long> g_ptx_cta_info_sm_idx_used;
 	ptx_reg_t* ptx_tex_regs;
+	unsigned g_ptx_thread_info_delete_count;
 	// backward pointer
 	class gpgpu_context* gpgpu_ctx;
 	//global functions

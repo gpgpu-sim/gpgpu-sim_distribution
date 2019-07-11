@@ -168,11 +168,10 @@ void ptx_warp_info::reset_done_threads()
 }
 
 unsigned g_ptx_thread_info_uid_next=1;
-unsigned g_ptx_thread_info_delete_count=0;
 
 ptx_thread_info::~ptx_thread_info()
 {
-   g_ptx_thread_info_delete_count++;
+   m_gpu->gpgpu_ctx->func_sim->g_ptx_thread_info_delete_count++;
 }
 
 ptx_thread_info::ptx_thread_info( kernel_info_t &kernel )
