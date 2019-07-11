@@ -104,6 +104,8 @@ class ptx_recognizer {
 	int g_entry_point;
 	const struct core_config *g_shader_core_config;
 	std::map<std::string,std::map<unsigned,const ptx_instruction*> > g_inst_lookup;
+	// the program intermediate representation...
+	std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
 	// backward pointer
 	class gpgpu_context* gpgpu_ctx;
 

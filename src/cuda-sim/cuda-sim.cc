@@ -1995,8 +1995,8 @@ void cuda_sim::gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src,
    const char *mem_name = NULL;
    memory_space *mem = NULL;
 
-   std::map<std::string,symbol_table*>::iterator st = g_sym_name_to_symbol_table.find(sym_name.c_str());
-   assert( st != g_sym_name_to_symbol_table.end() );
+   std::map<std::string,symbol_table*>::iterator st = gpgpu_ctx->ptx_parser->g_sym_name_to_symbol_table.find(sym_name.c_str());
+   assert( st != gpgpu_ctx->ptx_parser->g_sym_name_to_symbol_table.end() );
    symbol_table *symtab = st->second;
 
    symbol *sym = symtab->lookup(sym_name.c_str());

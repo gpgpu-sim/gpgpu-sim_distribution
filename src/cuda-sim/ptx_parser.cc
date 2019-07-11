@@ -47,8 +47,6 @@ void ptx_recognizer::set_ptx_warp_size(const struct core_config * warp_size)
    g_shader_core_config=warp_size;
 }
 
-// the program intermediate representation...
-std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
 
 #define PTX_PARSE_DPRINTF(...) \
    if( g_debug_ir_generation ) { \
