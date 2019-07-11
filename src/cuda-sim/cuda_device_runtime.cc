@@ -5,7 +5,6 @@
 #include <iostream>
 #include <map>
 
-unsigned long long g_total_param_size = 0;
 unsigned long long g_max_total_param_size = 0;
 
 
@@ -70,7 +69,7 @@ std::list<device_launch_operation_t> g_cuda_device_launch_op;
 
 //Handling device runtime api:
 //void * cudaGetParameterBufferV2(void *func, dim3 gridDimension, dim3 blockDimension, unsigned int sharedMemSize)
-void gpgpusim_cuda_getParameterBufferV2(const ptx_instruction * pI, ptx_thread_info * thread, const function_info * target_func)
+void cuda_device_runtime::gpgpusim_cuda_getParameterBufferV2(const ptx_instruction * pI, ptx_thread_info * thread, const function_info * target_func)
 {
     DEV_RUNTIME_REPORT("Calling cudaGetParameterBufferV2");
       

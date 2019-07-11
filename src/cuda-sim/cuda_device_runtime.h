@@ -3,7 +3,6 @@
 #if (CUDART_VERSION >= 5000)
 #pragma once
 
-void gpgpusim_cuda_getParameterBufferV2(const ptx_instruction * pI, ptx_thread_info * thread, const function_info * target_func);
 void gpgpusim_cuda_launchDeviceV2(const ptx_instruction * pI, ptx_thread_info * thread, const function_info * target_func);
 void gpgpusim_cuda_streamCreateWithFlags(const ptx_instruction * pI, ptx_thread_info * thread, const function_info * target_func);
 #endif
@@ -14,10 +13,13 @@ class gpgpu_context;
 class cuda_device_runtime {
     public:
 	cuda_device_runtime( gpgpu_context* ctx ) {
+	    g_total_param_size = 0;
 	    gpgpu_ctx = ctx;
 	}
+	unsigned long long g_total_param_size;
 	// backward pointer
 	class gpgpu_context* gpgpu_ctx;
+	void gpgpusim_cuda_getParameterBufferV2(const ptx_instruction * pI, ptx_thread_info * thread, const function_info * target_func);
 	void launch_all_device_kernels();
 	void launch_one_device_kernel();
 };

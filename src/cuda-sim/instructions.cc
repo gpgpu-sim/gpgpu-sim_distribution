@@ -56,6 +56,8 @@ class ptx_recognizer;
 #include "cuda_device_runtime.h"
 
 #include <stdarg.h>
+#include "../../libcuda/gpgpu_context.h"
+
 using half_float::half;
 
 unsigned ptx_instruction::g_num_ptx_inst_uid=0;
@@ -2095,7 +2097,7 @@ void call_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 #if (CUDART_VERSION >= 5000)
    //Jin: handle device runtime apis for CDP
    else if(fname == "cudaGetParameterBufferV2") {
-      gpgpusim_cuda_getParameterBufferV2(pI, thread, target_func);
+      target_func->gpgpu_ctx->device_runtime->gpgpusim_cuda_getParameterBufferV2(pI, thread, target_func);
 	  return;
    }
    else if(fname == "cudaLaunchDeviceV2") {
