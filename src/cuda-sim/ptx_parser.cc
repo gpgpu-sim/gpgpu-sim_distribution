@@ -254,9 +254,8 @@ void ptx_recognizer::set_return()
    g_return_var = g_operands.front();
 }
 
-std::map<std::string,std::map<unsigned,const ptx_instruction*> > g_inst_lookup;
 
-const ptx_instruction *ptx_instruction_lookup( const char *filename, unsigned linenumber )
+const ptx_instruction *ptx_recognizer::ptx_instruction_lookup( const char *filename, unsigned linenumber )
 {
    std::map<std::string,std::map<unsigned,const ptx_instruction*> >::iterator f=g_inst_lookup.find(filename);
    if( f == g_inst_lookup.end() ) 

@@ -90,7 +90,7 @@ void gpgpu_context::print_ptx_file( const char *p, unsigned source_num, const ch
       while ( (*u != '\n') && (*u != '\0') ) u++;
       unsigned last = (*u == '\0');
       *u = '\0';
-      const ptx_instruction *pI = ptx_instruction_lookup(filename,n);
+      const ptx_instruction *pI = ptx_parser->ptx_instruction_lookup(filename,n);
       char pc[64];
       if( pI && pI->get_PC() )
          snprintf(pc,64,"%4u", pI->get_PC() );
