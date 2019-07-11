@@ -1825,7 +1825,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
       snprintf(buf,512,"sstarr_%u", sid);
       sstarr_mem = new memory_space_impl<16*1024>(buf,4);
       sstarr_memory_lookup[sm_idx] = sstarr_mem;
-      cta_info = new ptx_cta_info(sm_idx);
+      cta_info = new ptx_cta_info(sm_idx, gpu->gpgpu_ctx);
       ptx_cta_lookup[sm_idx] = cta_info;
    } else {
       if ( g_debug_execution >= 1 ) {

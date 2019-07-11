@@ -168,6 +168,7 @@ class cuda_sim {
 	unsigned g_assemble_code_next_pc;
 	int g_debug_thread_uid;
 	bool g_override_embedded_ptx;
+	std::set<unsigned long long> g_ptx_cta_info_sm_idx_used;
 	// backward pointer
 	class gpgpu_context* gpgpu_ctx;
 	//global functions
