@@ -771,8 +771,7 @@ bool kernel_info_t::children_all_finished() {
 
 void kernel_info_t::notify_parent_finished() {
    if(m_parent_kernel) {
-       extern unsigned long long g_total_param_size;
-       g_total_param_size -= ((m_kernel_entry->get_args_aligned_size() + 255)/256*256);
+       m_kernel_entry->gpgpu_ctx->device_runtime->g_total_param_size -= ((m_kernel_entry->get_args_aligned_size() + 255)/256*256);
        m_parent_kernel->remove_child(this);
        g_stream_manager()->register_finished_kernel(m_parent_kernel->get_uid());
    }
