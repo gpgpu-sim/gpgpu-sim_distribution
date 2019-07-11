@@ -1076,7 +1076,7 @@ cudaError_t cudaLaunchInternal( const char *hostFun, gpgpu_context* gpgpu_ctx = 
 	CUctx_st* context = GPGPUSim_Context();
 	char *mode = getenv("PTX_SIM_MODE_FUNC");
 	if( mode )
-		sscanf(mode,"%u", &g_ptx_sim_mode);
+		sscanf(mode,"%u", &(ctx->func_sim->g_ptx_sim_mode));
 	gpgpusim_ptx_assert( !ctx->api->g_cuda_launch_stack.empty(), "empty launch stack" );
 	kernel_config config = ctx->api->g_cuda_launch_stack.back();
 	{
@@ -1092,7 +1092,7 @@ cudaError_t cudaLaunchInternal( const char *hostFun, gpgpu_context* gpgpu_ctx = 
 	}
 	struct CUstream_st *stream = config.get_stream();
 	printf("\nGPGPU-Sim PTX: cudaLaunch for 0x%p (mode=%s) on stream %u\n", hostFun,
-			g_ptx_sim_mode?"functional simulation":"performance simulation", stream?stream->get_uid():0 );
+			(ctx->func_sim->g_ptx_sim_mode)?"functional simulation":"performance simulation", stream?stream->get_uid():0 );
 	kernel_info_t *grid = ctx->api->gpgpu_cuda_ptx_sim_init_grid(hostFun,config.get_args(),config.grid_dim(),config.block_dim(),context);
         //do dynamic PDOM analysis for performance simulation scenario
 	std::string kname = grid->name();
@@ -1143,7 +1143,7 @@ cudaError_t cudaLaunchInternal( const char *hostFun, gpgpu_context* gpgpu_ctx = 
 	}
 	printf("GPGPU-Sim PTX: pushing kernel \'%s\' to stream %u, gridDim= (%u,%u,%u) blockDim = (%u,%u,%u) \n",
 			kname.c_str(), stream?stream->get_uid():0, gridDim.x,gridDim.y,gridDim.z,blockDim.x,blockDim.y,blockDim.z );
-	stream_operation op(grid,g_ptx_sim_mode,stream);
+	stream_operation op(grid,ctx->func_sim->g_ptx_sim_mode,stream);
 	g_stream_manager()->push(op);
 	ctx->api->g_cuda_launch_stack.pop_back();
 	return g_last_cudaError = cudaSuccess;

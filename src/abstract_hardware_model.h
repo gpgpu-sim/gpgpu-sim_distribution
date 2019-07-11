@@ -347,9 +347,11 @@ public:
    mutable bool volta_cache_config_set;
 };
 
-struct core_config {
-    core_config() 
-    { 
+class core_config {
+    public:
+    core_config(gpgpu_context* ctx)
+    {
+	gpgpu_ctx = ctx;
         m_valid = false; 
         num_shmem_bank=16; 
         shmem_limited_broadcast = false; 
@@ -361,6 +363,8 @@ struct core_config {
 
     bool m_valid;
     unsigned warp_size;
+    // backward pointer
+    class gpgpu_context* gpgpu_ctx;
 
     // off-chip memory request architecture parameters
     int gpgpu_coalesce_arch;
@@ -934,7 +938,7 @@ public:
         m_empty=true; 
         m_config=NULL; 
     }
-    warp_inst_t( const core_config *config ) 
+    warp_inst_t( const core_config *config )
     { 
         m_uid=0;
         assert(config->warp_size<=MAX_WARP_SIZE); 
@@ -1104,7 +1108,6 @@ public:
     void print( FILE *fout ) const;
     unsigned get_uid() const { return m_uid; }
     unsigned get_schd_id() const { return m_scheduler_id; }
-
 
 protected:
 

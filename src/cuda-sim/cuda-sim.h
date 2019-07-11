@@ -36,21 +36,16 @@
 #include <string>
 #include"ptx_sim.h"
 
+class gpgpu_context;
 class memory_space;
 class function_info;
 class symbol_table;
 
 extern const char *g_gpgpusim_version_string;
-extern int g_ptx_sim_mode;
 extern int g_debug_execution;
-extern int g_debug_thread_uid;
-extern void ** g_inst_classification_stat;
-extern void ** g_inst_op_classification_stat;
 
 extern void   print_splash();
-extern void   gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t count, size_t offset, int to, gpgpu_t *gpu );
 
-extern void read_sim_environment_variables();
 extern void ptxinfo_opencl_addinfo( std::map<std::string,function_info*> &kernels );
 unsigned ptx_sim_init_thread( kernel_info_t &kernel,
                               class ptx_thread_info** thread_info,
@@ -65,9 +60,6 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
                               bool functionalSimulationMode = false);
 const warp_inst_t *ptx_fetch_inst( address_type pc );
 const struct gpgpu_ptx_sim_info* ptx_sim_kernel_info(const class function_info *kernel);
-void ptx_print_insn( address_type pc, FILE *fp );
-std::string ptx_get_insn_str( address_type pc );
-void set_param_gpgpu_num_shaders(int num_shaders);
 
 
 /*!
@@ -122,11 +114,25 @@ void print_ptxinfo();
 void clear_ptxinfo();
 struct gpgpu_ptx_sim_info get_ptxinfo();
 
+class gpgpu_recon_t;
+struct rec_pts {
+   gpgpu_recon_t *s_kernel_recon_points;
+   int s_num_recon;
+};
+
+
 class cuda_sim {
     public:
-	cuda_sim() {
+	cuda_sim( gpgpu_context* ctx ) {
 	    g_ptx_sim_num_insn = 0;
 	    g_ptx_kernel_count = -1; // used for classification stat collection purposes
+	    gpgpu_param_num_shaders = 0;
+	    g_cuda_launch_blocking = false;
+	    g_inst_classification_stat = NULL;
+	    g_inst_op_classification_stat= NULL;
+	    g_assemble_code_next_pc=0;
+	    g_debug_thread_uid = 0;
+	    gpgpu_ctx = ctx;
 	}
 	//global variables
 	char *opcode_latency_int;
@@ -147,6 +153,21 @@ class cuda_sim {
 	int g_ptx_kernel_count; // used for classification stat collection purposes
 	std::map<const void*,std::string>   g_global_name_lookup; // indexed by hostVar
 	std::map<const void*,std::string>   g_const_name_lookup; // indexed by hostVar
+	int g_ptx_sim_mode; // if non-zero run functional simulation only (i.e., no notion of a clock cycle)
+	unsigned gpgpu_param_num_shaders;
+	class std::map<function_info*,rec_pts> g_rpts;
+	bool g_cuda_launch_blocking;
+	void ** g_inst_classification_stat;
+	void ** g_inst_op_classification_stat;
+	std::set<std::string>   g_globals;
+	std::set<std::string>   g_constants;
+	std::map<unsigned,function_info*> g_pc_to_finfo;
+	int gpgpu_ptx_instruction_classification;
+	unsigned cdp_latency[5];
+	unsigned g_assemble_code_next_pc;
+	int g_debug_thread_uid;
+	// backward pointer
+	class gpgpu_context* gpgpu_ctx;
 	//global functions
 	void ptx_opcocde_latency_options (option_parser_t opp);
 	void gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL = false );
@@ -159,6 +180,14 @@ class cuda_sim {
 		gpgpu_t *gpu );
 	void   gpgpu_ptx_sim_register_global_variable(void *hostVar, const char *deviceName, size_t size );
 	void   gpgpu_ptx_sim_register_const_variable(void*, const char *deviceName, size_t size );
+	void read_sim_environment_variables();
+	void set_param_gpgpu_num_shaders(int num_shaders);
+	struct rec_pts find_reconvergence_points( function_info *finfo );
+	address_type get_converge_point( address_type pc );
+	void   gpgpu_ptx_sim_memcpy_symbol(const char *hostVar, const void *src, size_t count, size_t offset, int to, gpgpu_t *gpu );
+	void ptx_print_insn( address_type pc, FILE *fp );
+	std::string ptx_get_insn_str( address_type pc );
+	template<int activate_level> bool ptx_debug_exec_dump_cond(int thd_uid, addr_t pc);
 };
 
 #endif
