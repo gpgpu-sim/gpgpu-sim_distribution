@@ -49,6 +49,4 @@ class ptxinfo_data{
 	char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const std::string ptx_str, const std::string sass_str, const std::string elf_str);
 };
 
-extern int no_of_ptx; //counter to track number of ptx files to be extracted in an application.
- 
 #endif
