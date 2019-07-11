@@ -424,6 +424,26 @@ struct occupancy_stats {
 };
 
 class gpgpu_context;
+class ptx_instruction;
+
+class watchpoint_event {
+public:
+   watchpoint_event()
+   {
+      m_thread=NULL;
+      m_inst=NULL;
+   }
+   watchpoint_event(const ptx_thread_info *thd, const ptx_instruction *pI)
+   {
+      m_thread=thd;
+      m_inst = pI;
+   }
+   const ptx_thread_info *thread() const { return m_thread; }
+   const ptx_instruction *inst() const { return m_inst; }
+private:
+   const ptx_thread_info *m_thread;
+   const ptx_instruction *m_inst;
+};
 
 class gpgpu_sim : public gpgpu_t {
 public:
@@ -496,6 +516,8 @@ public:
     */
     simt_core_cluster * getSIMTCluster();
 
+    void hit_watchpoint( unsigned watchpoint_num, ptx_thread_info *thd, const ptx_instruction *pI );
+
     // backward pointer
     class gpgpu_context* gpgpu_ctx;
 
@@ -560,6 +582,8 @@ private:
 
    std::vector<std::string> m_executed_kernel_names; //< names of kernel for stat printout 
    std::vector<unsigned> m_executed_kernel_uids; //< uids of kernel launches for stat printout
+   std::map<unsigned,watchpoint_event> g_watchpoint_hits;
+
    std::string executed_kernel_info_string(); //< format the kernel information into a string for stat printout
    void clear_executed_kernel_info(); //< clear the kernel information after stat printout
 
