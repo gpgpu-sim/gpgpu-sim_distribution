@@ -167,7 +167,6 @@ void ptx_warp_info::reset_done_threads()
 	m_done_threads = 0;
 }
 
-unsigned g_ptx_thread_info_uid_next=1;
 
 ptx_thread_info::~ptx_thread_info()
 {
@@ -177,7 +176,7 @@ ptx_thread_info::~ptx_thread_info()
 ptx_thread_info::ptx_thread_info( kernel_info_t &kernel )
     : m_kernel(kernel)
 {
-   m_uid = g_ptx_thread_info_uid_next++;
+   m_uid = kernel.entry()->gpgpu_ctx->func_sim->g_ptx_thread_info_uid_next++;
    m_core = NULL;
    m_barrier_num = -1;
    m_at_barrier = false;
