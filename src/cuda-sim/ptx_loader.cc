@@ -35,10 +35,6 @@
 #include <sstream>
 #include "../../libcuda/gpgpu_context.h"
 
-/// globals
-
-bool g_override_embedded_ptx = false;
-
 /// extern prototypes
 
 extern int ptx_error( yyscan_t yyscanner, const char *s );

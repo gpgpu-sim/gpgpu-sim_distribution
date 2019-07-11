@@ -132,6 +132,7 @@ class cuda_sim {
 	    g_inst_op_classification_stat= NULL;
 	    g_assemble_code_next_pc=0;
 	    g_debug_thread_uid = 0;
+	    g_override_embedded_ptx = false;
 	    gpgpu_ctx = ctx;
 	}
 	//global variables
@@ -166,6 +167,7 @@ class cuda_sim {
 	unsigned cdp_latency[5];
 	unsigned g_assemble_code_next_pc;
 	int g_debug_thread_uid;
+	bool g_override_embedded_ptx;
 	// backward pointer
 	class gpgpu_context* gpgpu_ctx;
 	//global functions
