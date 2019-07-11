@@ -33,20 +33,21 @@ typedef void * yyscan_t;
 #include "ptx.tab.h"
 #include "../gpgpu-sim/gpu-sim.h"
 #include "../gpgpu-sim/shader.h"
+#include "../../libcuda/gpgpu_context.h"
 
 void feature_not_implemented( const char *f );
 
-std::set<unsigned long long> g_ptx_cta_info_sm_idx_used;
 unsigned long long g_ptx_cta_info_uid = 1;
 
-ptx_cta_info::ptx_cta_info( unsigned sm_idx )
+ptx_cta_info::ptx_cta_info( unsigned sm_idx, gpgpu_context* ctx )
 {
-   assert( g_ptx_cta_info_sm_idx_used.find(sm_idx) == g_ptx_cta_info_sm_idx_used.end() );
-   g_ptx_cta_info_sm_idx_used.insert(sm_idx);
+   assert( ctx->func_sim->g_ptx_cta_info_sm_idx_used.find(sm_idx) == ctx->func_sim->g_ptx_cta_info_sm_idx_used.end() );
+   ctx->func_sim->g_ptx_cta_info_sm_idx_used.insert(sm_idx);
 
    m_sm_idx = sm_idx;
    m_uid = g_ptx_cta_info_uid++;
    m_bar_threads = 0;
+   gpgpu_ctx = ctx;
 }
 
 void ptx_cta_info::add_thread( ptx_thread_info *thd )
