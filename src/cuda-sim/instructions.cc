@@ -2101,11 +2101,11 @@ void call_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 	  return;
    }
    else if(fname == "cudaLaunchDeviceV2") {
-      gpgpusim_cuda_launchDeviceV2(pI, thread, target_func);
+      target_func->gpgpu_ctx->device_runtime->gpgpusim_cuda_launchDeviceV2(pI, thread, target_func);
 	  return;
    }
    else if(fname == "cudaStreamCreateWithFlags") {
-      gpgpusim_cuda_streamCreateWithFlags(pI, thread, target_func);
+      target_func->gpgpu_ctx->device_runtime->gpgpusim_cuda_streamCreateWithFlags(pI, thread, target_func);
 	  return;
    }
 #endif
