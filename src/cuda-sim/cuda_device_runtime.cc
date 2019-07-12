@@ -5,7 +5,6 @@
 #include <iostream>
 #include <map>
 
-unsigned long long g_max_total_param_size = 0;
 
 
 #if (CUDART_VERSION >= 5000)

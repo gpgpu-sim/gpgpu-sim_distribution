@@ -1106,8 +1106,7 @@ void gpgpu_sim::gpu_print_stat()
    printf("gpu_tot_occupancy = %.4f\% \n", (gpu_occupancy + gpu_tot_occupancy).get_occ_fraction() * 100);
 
 
-   extern unsigned long long g_max_total_param_size;
-   fprintf(statfout, "max_total_param_size = %llu\n", g_max_total_param_size);
+   fprintf(statfout, "max_total_param_size = %llu\n", gpgpu_ctx->device_runtime->g_max_total_param_size);
 
    // performance counter for stalls due to congestion.
    printf("gpu_stall_dramfull = %d\n", gpu_stall_dramfull);
