@@ -48,6 +48,7 @@ class cuda_device_runtime {
 	unsigned long long g_total_param_size;
 	std::map<void *, device_launch_config_t> g_cuda_device_launch_param_map;
 	std::list<device_launch_operation_t> g_cuda_device_launch_op;
+	unsigned g_kernel_launch_latency;
 	// backward pointer
 	class gpgpu_context* gpgpu_ctx;
 #if (CUDART_VERSION >= 5000)
