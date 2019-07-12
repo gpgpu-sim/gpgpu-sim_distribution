@@ -100,7 +100,7 @@ public:
       }
       try {
          ss >> m_variable;
-      } catch (stringstream::failure &e) {
+      } catch (exception &e) {
          return false;
       }
       m_isParsed = true; 
