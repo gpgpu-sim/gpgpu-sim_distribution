@@ -693,7 +693,6 @@ void warp_inst_t::completed( unsigned long long cycle ) const
 
 //Jin: CDP support
 bool g_cdp_enabled;
-unsigned g_kernel_launch_latency;
 
 unsigned kernel_info_t::m_next_uid = 1;
 
@@ -717,7 +716,7 @@ kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *
     m_parent_kernel = NULL;
    
     //Jin: launch latency management
-    m_launch_latency = g_kernel_launch_latency;
+    m_launch_latency = entry->gpgpu_ctx->device_runtime->g_kernel_launch_latency;
 
     volta_cache_config_set=false;
     m_NameToCudaArray = nameToCudaArray;
