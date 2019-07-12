@@ -42,14 +42,15 @@ class ptxinfo_data{
 	unsigned col;
 	const char *g_ptxinfo_filename;
 	class gpgpu_context* gpgpu_ctx;
+	bool g_keep_intermediate_files;
+	bool m_ptx_save_converted_ptxplus;
 	void ptxinfo_addinfo();
+	bool keep_intermediate_files();
+	char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const std::string ptx_str, const std::string sass_str, const std::string elf_str);
 };
 
 
 extern bool g_override_embedded_ptx;
 extern int no_of_ptx; //counter to track number of ptx files to be extracted in an application.
  
-char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const std::string ptx_str, const std::string sass_str, const std::string elf_str);
-bool keep_intermediate_files();
-
 #endif

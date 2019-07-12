@@ -4,15 +4,21 @@
 #include "../src/cuda-sim/ptx_loader.h"
 #include "../src/cuda-sim/ptx_parser.h"
 #include "../src/gpgpusim_entrypoint.h"
+#include "../src/cuda-sim/cuda-sim.h"
+#include "../src/cuda-sim/cuda_device_runtime.h"
 
 class gpgpu_context {
     public:
 	gpgpu_context() {
 	    g_global_allfiles_symbol_table = NULL;
-	    api = new cuda_runtime_api();
+	    api = new cuda_runtime_api(this);
 	    ptxinfo = new ptxinfo_data(this);
 	    ptx_parser = new ptx_recognizer(this);
 	    the_gpgpusim = new GPGPUsim_ctx(this);
+	    func_sim = new cuda_sim(this);
+#if (CUDART_VERSION >= 5000)
+	    device_runtime = new cuda_device_runtime(this);
+#endif
 	}
 	// global list
 	symbol_table *g_global_allfiles_symbol_table;
@@ -22,6 +28,10 @@ class gpgpu_context {
 	ptxinfo_data* ptxinfo;
 	ptx_recognizer* ptx_parser;
 	GPGPUsim_ctx* the_gpgpusim;
+	cuda_sim* func_sim;
+#if (CUDART_VERSION >= 5000)
+	cuda_device_runtime* device_runtime;
+#endif
 	// member function list
 	void cuobjdumpParseBinary(unsigned int handle);
 	class symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num );
@@ -32,6 +42,7 @@ class gpgpu_context {
 	class symbol_table* init_parser(const char*);
 	class gpgpu_sim *gpgpu_ptx_sim_init_perf();
 	struct _cuda_device_id *GPGPUSim_Init();
+	void ptx_reg_options(option_parser_t opp);
 };
 gpgpu_context* GPGPU_Context();
 

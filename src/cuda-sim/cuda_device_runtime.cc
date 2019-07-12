@@ -20,6 +20,7 @@ unsigned long long g_max_total_param_size = 0;
 #include "../stream_manager.h"
 #include "../gpgpusim_entrypoint.h"
 #include "cuda_device_runtime.h"
+#include "../../libcuda/gpgpu_context.h"
 
 #define DEV_RUNTIME_REPORT(a) \
    if( g_debug_execution ) { \
@@ -318,17 +319,17 @@ void gpgpusim_cuda_streamCreateWithFlags(const ptx_instruction * pI, ptx_thread_
 }
 
 
-void launch_one_device_kernel() {
+void cuda_device_runtime::launch_one_device_kernel() {
     if(!g_cuda_device_launch_op.empty()) {
         device_launch_operation_t &op = g_cuda_device_launch_op.front();
 
-        stream_operation stream_op = stream_operation(op.grid, g_ptx_sim_mode, op.stream);
+        stream_operation stream_op = stream_operation(op.grid, gpgpu_ctx->func_sim->g_ptx_sim_mode, op.stream);
         g_stream_manager()->push(stream_op);
         g_cuda_device_launch_op.pop_front();
     }
 }
 
-void launch_all_device_kernels() {
+void cuda_device_runtime::launch_all_device_kernels() {
     while(!g_cuda_device_launch_op.empty()) {
         launch_one_device_kernel();
     }
