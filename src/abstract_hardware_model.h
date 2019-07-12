@@ -31,6 +31,8 @@
 // Forward declarations
 class gpgpu_sim;
 class kernel_info_t;
+class gpgpu_context;
+
 
 //Set a hard limit of 32 CTAs per shader [cuda only has 8]
 #define MAX_CTA_PER_SHADER 32
@@ -345,9 +347,11 @@ public:
    mutable bool volta_cache_config_set;
 };
 
-struct core_config {
-    core_config() 
-    { 
+class core_config {
+    public:
+    core_config(gpgpu_context* ctx)
+    {
+	gpgpu_ctx = ctx;
         m_valid = false; 
         num_shmem_bank=16; 
         shmem_limited_broadcast = false; 
@@ -359,6 +363,8 @@ struct core_config {
 
     bool m_valid;
     unsigned warp_size;
+    // backward pointer
+    class gpgpu_context* gpgpu_ctx;
 
     // off-chip memory request architecture parameters
     int gpgpu_coalesce_arch;
@@ -529,7 +535,9 @@ private:
 
 class gpgpu_t {
 public:
-    gpgpu_t( const gpgpu_functional_sim_config &config );
+    gpgpu_t( const gpgpu_functional_sim_config &config, gpgpu_context* ctx );
+    // backward pointer
+    class gpgpu_context* gpgpu_ctx;
     int checkpoint_option;
     int checkpoint_kernel;
     int checkpoint_CTA;
@@ -930,7 +938,7 @@ public:
         m_empty=true; 
         m_config=NULL; 
     }
-    warp_inst_t( const core_config *config ) 
+    warp_inst_t( const core_config *config )
     { 
         m_uid=0;
         assert(config->warp_size<=MAX_WARP_SIZE); 
@@ -1100,7 +1108,6 @@ public:
     void print( FILE *fout ) const;
     unsigned get_uid() const { return m_uid; }
     unsigned get_schd_id() const { return m_scheduler_id; }
-
 
 protected:
 

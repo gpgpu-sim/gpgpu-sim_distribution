@@ -46,6 +46,7 @@
 #include <limits.h>
 #include "traffic_breakdown.h"
 #include "shader_trace.h"
+#include "../../libcuda/gpgpu_context.h"
 
 #define PRIORITIZE_MSHR_OVER_WB 1
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -69,7 +70,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                   class simt_core_cluster *cluster,
                                   unsigned shader_id,
                                   unsigned tpc_id,
-                                  const struct shader_core_config *config,
+                                  const shader_core_config *config,
                                   const struct memory_config *mem_config,
                                   shader_core_stats *stats )
    : core_t( gpu, NULL, config->warp_size, config->n_thread_per_shader ),
@@ -1024,7 +1025,7 @@ void scheduler_unit::cycle()
             m_simt_stack[warp_id]->get_pdom_stack_top_info(&pc,&rpc);
             SCHED_DPRINTF( "Warp (warp_id %u, dynamic_warp_id %u) has valid instruction (%s)\n",
                            (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id(),
-                           ptx_get_insn_str( pc).c_str() );
+                           m_shader->m_config->gpgpu_ctx->func_sim->ptx_get_insn_str( pc).c_str() );
             if( pI ) {
                 assert(valid);
                 if( pc != pI->pc ) {
@@ -1083,12 +1084,11 @@ void scheduler_unit::cycle()
 										if(pI->m_is_cdp && !warp(warp_id).m_cdp_dummy) {
 											assert(warp(warp_id).m_cdp_latency == 0);
 
-											extern unsigned cdp_latency[5];
 											if(pI->m_is_cdp == 1)
-												warp(warp_id).m_cdp_latency = cdp_latency[pI->m_is_cdp - 1];
+												warp(warp_id).m_cdp_latency = m_shader->m_config->gpgpu_ctx->func_sim->cdp_latency[pI->m_is_cdp - 1];
 											else //cudaLaunchDeviceV2 and cudaGetParameterBufferV2
-												warp(warp_id).m_cdp_latency = cdp_latency[pI->m_is_cdp - 1]
-													+ cdp_latency[pI->m_is_cdp] * active_mask.count();
+												warp(warp_id).m_cdp_latency = m_shader->m_config->gpgpu_ctx->func_sim->cdp_latency[pI->m_is_cdp - 1]
+													+ m_shader->m_config->gpgpu_ctx->func_sim->cdp_latency[pI->m_is_cdp] * active_mask.count();
 											warp(warp_id).m_cdp_dummy = true;
 											break;
 										}
@@ -2689,7 +2689,7 @@ void warp_inst_t::print( FILE *fout ) const
     for (unsigned j=0; j<m_config->warp_size; j++)
         fprintf(fout, "%c", (active(j)?'1':'0') );
     fprintf(fout, "]: ");
-    ptx_print_insn( pc, fout );
+    m_config->gpgpu_ctx->func_sim->ptx_print_insn( pc, fout );
     fprintf(fout, "\n");
 }
 void shader_core_ctx::incexecstat(warp_inst_t *&inst)
@@ -3018,18 +3018,18 @@ void shader_core_config::set_pipeline_latency() {
 			 * [3] MAD
 			 * [4] DIV
 			 */
-			sscanf(opcode_latency_int, "%u,%u,%u,%u,%u",
+			sscanf(gpgpu_ctx->func_sim->opcode_latency_int, "%u,%u,%u,%u,%u",
 					&int_latency[0],&int_latency[1],&int_latency[2],
 					&int_latency[3],&int_latency[4]);
-			sscanf(opcode_latency_fp, "%u,%u,%u,%u,%u",
+			sscanf(gpgpu_ctx->func_sim->opcode_latency_fp, "%u,%u,%u,%u,%u",
 					&fp_latency[0],&fp_latency[1],&fp_latency[2],
 					&fp_latency[3],&fp_latency[4]);
-			sscanf(opcode_latency_dp, "%u,%u,%u,%u,%u",
+			sscanf(gpgpu_ctx->func_sim->opcode_latency_dp, "%u,%u,%u,%u,%u",
 					&dp_latency[0],&dp_latency[1],&dp_latency[2],
 					&dp_latency[3],&dp_latency[4]);
-			sscanf(opcode_latency_sfu, "%u",
+			sscanf(gpgpu_ctx->func_sim->opcode_latency_sfu, "%u",
 					&sfu_latency);
-			sscanf(opcode_latency_tensor, "%u",
+			sscanf(gpgpu_ctx->func_sim->opcode_latency_tensor, "%u",
 					&tensor_latency);
 
 		//all div operation are executed on sfu
@@ -3786,7 +3786,7 @@ void opndcoll_rfu_t::collector_unit_t::dispatch()
 
 simt_core_cluster::simt_core_cluster( class gpgpu_sim *gpu, 
                                       unsigned cluster_id, 
-                                      const struct shader_core_config *config, 
+                                      const shader_core_config *config, 
                                       const struct memory_config *mem_config,
                                       shader_core_stats *stats, 
                                       class memory_stats_t *mstats )

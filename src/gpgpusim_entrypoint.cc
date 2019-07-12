@@ -134,7 +134,7 @@ void *gpgpu_sim_thread_concurrent(void*)
             if( GPGPUsim_ctx_ptr()->g_the_gpu->is_functional_sim()) {
                 kernel_info_t * kernel = GPGPUsim_ctx_ptr()->g_the_gpu->get_functional_kernel();
                 assert(kernel);
-                gpgpu_cuda_ptx_sim_main_func(*kernel);
+                GPGPUsim_ctx_ptr()->gpgpu_ctx->func_sim->gpgpu_cuda_ptx_sim_main_func(*kernel);
                 GPGPUsim_ctx_ptr()->g_the_gpu->finish_functional_sim(kernel);
             }
 
@@ -207,21 +207,19 @@ void exit_simulation()
     fflush(stdout);
 }
 
-extern bool g_cuda_launch_blocking;
-
 gpgpu_sim *gpgpu_context::gpgpu_ptx_sim_init_perf()
 {
    srand(1);
    print_splash();
-   read_sim_environment_variables();
+   func_sim->read_sim_environment_variables();
    ptx_parser->read_parser_environment_variables();
    option_parser_t opp = option_parser_create();
 
    ptx_reg_options(opp);
-   ptx_opcocde_latency_options(opp);
+   func_sim->ptx_opcocde_latency_options(opp);
 
    icnt_reg_options(opp);
-   GPGPUsim_ctx_ptr()->g_the_gpu_config = new gpgpu_sim_config();
+   GPGPUsim_ctx_ptr()->g_the_gpu_config = new gpgpu_sim_config(this);
    GPGPUsim_ctx_ptr()->g_the_gpu_config->reg_options(opp); // register GPU microrachitecture options
 
    option_parser_cmdline(opp, sg_argc, sg_argv); // parse configuration options
@@ -233,7 +231,7 @@ gpgpu_sim *gpgpu_context::gpgpu_ptx_sim_init_perf()
    GPGPUsim_ctx_ptr()->g_the_gpu_config->init();
 
    GPGPUsim_ctx_ptr()->g_the_gpu = new gpgpu_sim(*(GPGPUsim_ctx_ptr()->g_the_gpu_config), this);
-   GPGPUsim_ctx_ptr()->g_stream_manager = new stream_manager((GPGPUsim_ctx_ptr()->g_the_gpu),g_cuda_launch_blocking);
+   GPGPUsim_ctx_ptr()->g_stream_manager = new stream_manager((GPGPUsim_ctx_ptr()->g_the_gpu), func_sim->g_cuda_launch_blocking);
 
    GPGPUsim_ctx_ptr()->g_simulation_starttime = time((time_t *)NULL);
 
@@ -287,7 +285,7 @@ int gpgpu_opencl_ptx_sim_main_perf( kernel_info_t *grid )
 /*!
  * This function call the CUDA PTX functional simulator
  */
-int gpgpu_opencl_ptx_sim_main_func( kernel_info_t *grid )
+int cuda_sim::gpgpu_opencl_ptx_sim_main_func( kernel_info_t *grid )
 {
     //calling the CUDA PTX simulator, sending the kernel by reference and a flag set to true,
     //the flag used by the function to distinguish OpenCL calls from the CUDA simulation calls which

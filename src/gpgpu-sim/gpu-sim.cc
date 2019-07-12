@@ -499,11 +499,11 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
    option_parser_register(opp, "-gpgpu_deadlock_detect", OPT_BOOL, &gpu_deadlock_detect, 
                 "Stop the simulation at deadlock (1=on (default), 0=off)", 
                 "1");
-   option_parser_register(opp, "-gpgpu_ptx_instruction_classification", OPT_INT32, 
-               &gpgpu_ptx_instruction_classification, 
+   option_parser_register(opp, "-gpgpu_ptx_instruction_classification", OPT_INT32,
+               &(gpgpu_ctx->func_sim->gpgpu_ptx_instruction_classification),
                "if enabled will classify ptx instruction types per kernel (Max 255 kernels now)", 
                "0");
-   option_parser_register(opp, "-gpgpu_ptx_sim_mode", OPT_INT32, &g_ptx_sim_mode, 
+   option_parser_register(opp, "-gpgpu_ptx_sim_mode", OPT_INT32, &(gpgpu_ctx->func_sim->g_ptx_sim_mode),
                "Select between Performance (default) or Functional simulation (1)", 
                "0");
    option_parser_register(opp, "-gpgpu_clock_domains", OPT_CSTR, &gpgpu_clock_domains, 
@@ -699,7 +699,7 @@ void gpgpu_sim::stop_all_running_kernels(){
 }
 
 gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config, gpgpu_context* ctx )
-    : gpgpu_t(config), m_config(config)
+    : gpgpu_t(config, ctx), m_config(config)
 {
     gpgpu_ctx = ctx;
     m_shader_config = &m_config.m_shader_config;
@@ -882,7 +882,7 @@ void gpgpu_sim::init()
     gpu_sim_cycle_parition_util = 0;
 
     reinit_clock_domains();
-    set_param_gpgpu_num_shaders(m_config.num_shader());
+    gpgpu_ctx->func_sim->set_param_gpgpu_num_shaders(m_config.num_shader());
     for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) 
        m_cluster[i]->reinit();
     m_shader_stats->new_grid();
@@ -1200,9 +1200,9 @@ void gpgpu_sim::gpu_print_stat()
       spill_log_to_file (stdout, 1, gpu_sim_cycle);
       insn_warp_occ_print(stdout);
    }
-   if ( gpgpu_ptx_instruction_classification ) {
-      StatDisp( g_inst_classification_stat[g_ptx_kernel_count]);
-      StatDisp( g_inst_op_classification_stat[g_ptx_kernel_count]);
+   if ( gpgpu_ctx->func_sim->gpgpu_ptx_instruction_classification ) {
+      StatDisp( gpgpu_ctx->func_sim->g_inst_classification_stat[gpgpu_ctx->func_sim->g_ptx_kernel_count]);
+      StatDisp( gpgpu_ctx->func_sim->g_inst_op_classification_stat[gpgpu_ctx->func_sim->g_ptx_kernel_count]);
    }
 
 #ifdef GPGPUSIM_POWER_MODEL
@@ -1753,7 +1753,7 @@ void gpgpu_sim::cycle()
 
 #if (CUDART_VERSION >= 5000)
       //launch device kernel
-      launch_one_device_kernel();
+      gpgpu_ctx->device_runtime->launch_one_device_kernel();
 #endif
    }
 }
@@ -1826,7 +1826,7 @@ void gpgpu_sim::dump_pipeline( int mask, int s, int m ) const
    fflush(stdout);
 }
 
-const struct shader_core_config * gpgpu_sim::getShaderCoreConfig()
+const shader_core_config * gpgpu_sim::getShaderCoreConfig()
 {
    return m_shader_config;
 }

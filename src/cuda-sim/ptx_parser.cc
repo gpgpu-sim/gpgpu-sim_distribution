@@ -112,7 +112,7 @@ symbol_table * gpgpu_context::init_parser( const char *ptx_filename )
 {
    g_filename = strdup(ptx_filename);
    if  (g_global_allfiles_symbol_table == NULL) {
-       g_global_allfiles_symbol_table = new symbol_table("global_allfiles", 0, NULL);
+       g_global_allfiles_symbol_table = new symbol_table("global_allfiles", 0, NULL, this);
        ptx_parser->g_global_symbol_table = ptx_parser->g_current_symbol_table = g_global_allfiles_symbol_table;
    }
    /*else {
@@ -285,7 +285,8 @@ void ptx_recognizer::add_instruction()
                                              gpgpu_ctx->g_filename,
                                              ptx_get_lineno(scanner),
                                              linebuf,
-                                             g_shader_core_config );
+                                             g_shader_core_config,
+					     gpgpu_ctx );
    g_instructions.push_back(i);
    g_inst_lookup[gpgpu_ctx->g_filename][ptx_get_lineno(scanner)] = i;
    init_instruction_state();
@@ -320,9 +321,6 @@ bool ptx_recognizer::check_for_duplicates( const char *identifier )
    const symbol *s = g_current_symbol_table->lookup(identifier);
    return ( s != NULL );
 }
-
-extern std::set<std::string>   g_globals;
-extern std::set<std::string>   g_constants;
 
 // Returns padding that needs to be inserted ahead of address to make it aligned to min(size, maxalign)
 /*
@@ -452,7 +450,7 @@ void ptx_recognizer::add_identifier( const char *identifier, int array_dim, unsi
          g_current_symbol_table->alloc_global( num_bits/8 + addr_pad ); 
       }
       if( g_current_symbol_table == g_global_symbol_table ) { 
-         g_constants.insert( identifier ); 
+         gpgpu_ctx->func_sim->g_constants.insert( identifier );
       }
       assert( g_current_symbol_table != NULL );
       g_sym_name_to_symbol_table[ identifier ] = g_current_symbol_table;
@@ -470,7 +468,7 @@ void ptx_recognizer::add_identifier( const char *identifier, int array_dim, unsi
       fflush(stdout);
       g_last_symbol->set_address( addr+addr_pad );
       g_current_symbol_table->alloc_global( num_bits/8 + addr_pad );
-      g_globals.insert( identifier );
+      gpgpu_ctx->func_sim->g_globals.insert( identifier );
       assert( g_current_symbol_table != NULL );
       g_sym_name_to_symbol_table[ identifier ] = g_current_symbol_table;
       break;

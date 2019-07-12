@@ -42,7 +42,7 @@
 
 
 
-power_mem_stat_t::power_mem_stat_t(const struct memory_config *mem_config, const struct shader_core_config *shdr_config, memory_stats_t *mem_stats, shader_core_stats *shdr_stats){
+power_mem_stat_t::power_mem_stat_t(const struct memory_config *mem_config, const shader_core_config *shdr_config, memory_stats_t *mem_stats, shader_core_stats *shdr_stats){
 	   assert( mem_config->m_valid );
 	   m_mem_stats = mem_stats;
 	   m_config = mem_config;
@@ -125,7 +125,7 @@ void power_mem_stat_t::print (FILE *fout) const {
 }
 
 
-power_core_stat_t::power_core_stat_t( const struct shader_core_config *shader_config, shader_core_stats *core_stats )
+power_core_stat_t::power_core_stat_t( const shader_core_config *shader_config, shader_core_stats *core_stats )
 {
      	assert( shader_config->m_valid );
         m_config = shader_config;
@@ -266,7 +266,7 @@ for(unsigned i=0; i<m_config->num_shader(); ++i){
     }
 }
 
-power_stat_t::power_stat_t( const struct shader_core_config *shader_config,float * average_pipeline_duty_cycle,float *active_sms,shader_core_stats * shader_stats, const struct memory_config *mem_config,memory_stats_t * memory_stats)
+power_stat_t::power_stat_t( const shader_core_config *shader_config,float * average_pipeline_duty_cycle,float *active_sms,shader_core_stats * shader_stats, const struct memory_config *mem_config,memory_stats_t * memory_stats)
 {
 	assert( shader_config->m_valid );
 	assert( mem_config->m_valid );
