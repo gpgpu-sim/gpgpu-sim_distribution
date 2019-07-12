@@ -691,9 +691,6 @@ void warp_inst_t::completed( unsigned long long cycle ) const
    ptx_file_line_stats_add_latency(pc, latency * active_count());  
 }
 
-//Jin: CDP support
-bool g_cdp_enabled;
-
 unsigned kernel_info_t::m_next_uid = 1;
 
 /*A snapshot of the texture mappings needs to be stored in the kernel's info as 
