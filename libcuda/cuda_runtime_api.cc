@@ -383,7 +383,7 @@ struct _cuda_device_id *GPGPUSim_Init()
   	        prop->sharedMemPerMultiprocessor = the_gpu->shared_mem_size();
 #endif	
 		prop->sharedMemPerBlock = the_gpu->shared_mem_per_block();
-		prop->regsPerBlock = the_gpu->num_registers_per_core();
+		prop->regsPerBlock = the_gpu->num_registers_per_block();
 		prop->warpSize = the_gpu->wrp_size();
 		prop->clockRate = the_gpu->shader_clock();
 #if (CUDART_VERSION >= 2010)
@@ -1014,7 +1014,7 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetAttribute(int *value, enum cudaDevic
                 prop = dev->get_prop();
                 switch (attr) {
                 case 1:
-                        *value= prop->maxThreadsDim[0] * prop->maxThreadsDim[1] * prop->maxThreadsDim[2] * prop->maxGridSize[0] * prop->maxGridSize[1] * prop->maxGridSize[2];
+                        *value= prop->maxThreadsPerBlock;
                         break;
                 case 2:
                         *value= prop->maxThreadsDim[0];
@@ -1504,13 +1504,13 @@ __host__ cudaError_t CUDARTAPI cudaLaunch( const char *hostFun )
 	{
 		dim3 gridDim = config.grid_dim();
 		dim3 blockDim = config.block_dim();
-		if (gridDim.x * gridDim.y * gridDim.z == 0 || blockDim.x * blockDim.y * blockDim.z == 0)
-		{
+		//if (gridDim.x * gridDim.y * gridDim.z == 0 || blockDim.x * blockDim.y * blockDim.z == 0)
+		//{
 			//can't launch
-			printf("can't launch a empty kernel\n");
-			g_cuda_launch_stack.pop_back();
-			return g_last_cudaError = cudaErrorInvalidConfiguration;
-		}
+		//	printf("can't launch a empty kernel\n");
+		//	g_cuda_launch_stack.pop_back();
+		//	return g_last_cudaError = cudaErrorInvalidConfiguration;
+		//}
 	}
 	struct CUstream_st *stream = config.get_stream();
 	if(g_stream_manager->is_blocking())
@@ -3151,8 +3151,11 @@ size_t getMaxThreadsPerBlock(struct cudaFuncAttributes *attr) {
 
   size_t max = prop.maxThreadsPerBlock;
 
-  if ((prop.regsPerBlock / attr->numRegs) < max)
+  if (attr->numRegs && (prop.regsPerBlock / attr->numRegs) < max)
     max = prop.regsPerBlock / attr->numRegs;
+
+  if (attr->sharedSizeBytes && (prop.sharedMemPerBlock / attr->sharedSizeBytes) < max)
+      max = prop.sharedMemPerBlock / attr->sharedSizeBytes;
 
   return max;
 }

@@ -320,7 +320,7 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-adaptive_volta_cache_config", OPT_BOOL, &adaptive_volta_cache_config,
                  "adaptive_volta_cache_config",
                  "0");
-    option_parser_register(opp, "-gpgpu_shmem_size", OPT_UINT32, &gpgpu_shmem_sizeDefault,
+    option_parser_register(opp, "-gpgpu_shmem_sizeDefault", OPT_UINT32, &gpgpu_shmem_sizeDefault,
                  "Size of shared memory per shader core (default 16kB)",
                  "16384");
     option_parser_register(opp, "-gpgpu_shmem_size_PrefL1", OPT_UINT32, &gpgpu_shmem_sizePrefL1,
@@ -1065,7 +1065,7 @@ void gpgpu_sim::change_cache_config(FuncCache cache_config)
 	if(cache_config != m_shader_config->m_L1D_config.get_cache_status()){
 		printf("FLUSH L1 Cache at configuration change between kernels\n");
 		for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) {
-			m_cluster[i]->cache_flush();
+			m_cluster[i]->cache_invalidate();
 	    }
 	}
 
