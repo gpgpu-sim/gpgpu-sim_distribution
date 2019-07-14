@@ -958,19 +958,9 @@ public:
     { 
         m_empty=true; 
     }
-    void issue( const active_mask_t &mask, unsigned warp_id, unsigned long long cycle, int dynamic_warp_id, int sch_id )
-    {
-        m_warp_active_mask = mask;
-        m_warp_issued_mask = mask; 
-        m_uid = ++sm_next_uid;
-        m_warp_id = warp_id;
-        m_dynamic_warp_id = dynamic_warp_id;
-        issue_cycle = cycle;
-        cycles = initiation_interval;
-        m_cache_hit=false;
-        m_empty=false;
-        m_scheduler_id=sch_id;
-    }
+
+    void issue( const active_mask_t &mask, unsigned warp_id, unsigned long long cycle, int dynamic_warp_id, int sch_id );
+
     const active_mask_t & get_active_mask() const
     {
     	return m_warp_active_mask;
@@ -1132,8 +1122,6 @@ protected:
     std::vector<per_thread_info> m_per_scalar_thread;
     bool m_mem_accesses_created;
     std::list<mem_access_t> m_accessq;
-
-    static unsigned sm_next_uid;
 
     unsigned m_scheduler_id;  //the scheduler that issues this inst
 
