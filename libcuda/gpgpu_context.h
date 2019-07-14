@@ -11,6 +11,7 @@ class gpgpu_context {
     public:
 	gpgpu_context() {
 	    g_global_allfiles_symbol_table = NULL;
+	    sm_next_access_uid=0;
 	    api = new cuda_runtime_api(this);
 	    ptxinfo = new ptxinfo_data(this);
 	    ptx_parser = new ptx_recognizer(this);
@@ -21,6 +22,7 @@ class gpgpu_context {
 	// global list
 	symbol_table *g_global_allfiles_symbol_table;
 	const char *g_filename;
+	unsigned sm_next_access_uid;
 	// objects pointers for each file
 	cuda_runtime_api* api;
 	ptxinfo_data* ptxinfo;

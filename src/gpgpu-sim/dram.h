@@ -106,11 +106,12 @@ enum bank_grp_bits_position{
 };
 
 class mem_fetch;
+class memory_config;
 
 class dram_t 
 {
 public:
-   dram_t( unsigned int parition_id, const struct memory_config *config, class memory_stats_t *stats, 
+   dram_t( unsigned int parition_id, const memory_config *config, class memory_stats_t *stats,
            class memory_partition_unit *mp, class gpgpu_sim* gpu );
 
    bool full(bool is_write) const;
@@ -145,7 +146,7 @@ public:
 
 
 
-   const struct memory_config *m_config;
+   const memory_config *m_config;
 
 private:
    bankgrp_t **bkgrp;

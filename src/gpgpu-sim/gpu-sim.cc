@@ -1828,7 +1828,7 @@ const shader_core_config * gpgpu_sim::getShaderCoreConfig()
    return m_shader_config;
 }
 
-const struct memory_config * gpgpu_sim::getMemoryConfig()
+const memory_config * gpgpu_sim::getMemoryConfig()
 {
    return m_memory_config;
 }

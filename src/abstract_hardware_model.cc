@@ -41,8 +41,15 @@
 #include <iostream>
 #include "../libcuda/gpgpu_context.h"
 
-unsigned mem_access_t::sm_next_access_uid = 0;   
 unsigned warp_inst_t::sm_next_uid = 0;
+
+void mem_access_t::init(gpgpu_context* ctx)
+{
+      gpgpu_ctx = ctx;
+      m_uid=++(gpgpu_ctx->sm_next_access_uid);
+      m_addr=0;
+      m_req_size=0;
+}
 
 checkpoint::checkpoint()
 {
@@ -449,7 +456,7 @@ void warp_inst_t::generate_mem_accesses()
                 byte_mask.set(idx+i);
         }
         for( a=accesses.begin(); a != accesses.end(); ++a ) 
-            m_accessq.push_back( mem_access_t(access_type,a->first,cache_block_size,is_write,a->second, byte_mask, mem_access_sector_mask_t()));
+            m_accessq.push_back( mem_access_t(access_type,a->first,cache_block_size,is_write,a->second, byte_mask, mem_access_sector_mask_t(), m_config->gpgpu_ctx));
     }
 
     if ( space.get_type() == global_space ) {
@@ -681,7 +688,7 @@ void warp_inst_t::memory_coalescing_arch_reduce_and_send( bool is_write, mem_acc
            assert(lower_half_used && upper_half_used);
        }
    }
-   m_accessq.push_back( mem_access_t(access_type,addr,size,is_write,info.active,info.bytes, info.chunks) );
+   m_accessq.push_back( mem_access_t(access_type,addr,size,is_write,info.active,info.bytes, info.chunks,m_config->gpgpu_ctx) );
 }
 
 void warp_inst_t::completed( unsigned long long cycle ) const 

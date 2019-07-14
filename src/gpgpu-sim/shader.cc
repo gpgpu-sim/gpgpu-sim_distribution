@@ -28,7 +28,6 @@
 
 #include <float.h>
 #include "shader.h"
-#include "gpu-sim.h"
 #include "addrdec.h"
 #include "dram.h"
 #include "stat-tool.h"
@@ -53,6 +52,19 @@
 #define MIN(a,b) (((a)<(b))?(a):(b))
     
 
+mem_fetch *shader_core_mem_fetch_allocator::alloc( new_addr_type addr, mem_access_type type, unsigned size, bool wr, unsigned long long cycle ) const
+{
+    mem_access_t access( type, addr, size, wr, m_memory_config->gpgpu_ctx);
+    mem_fetch *mf = new mem_fetch( access, 
+	    NULL,
+	    wr?WRITE_PACKET_SIZE:READ_PACKET_SIZE, 
+	    -1, 
+	    m_core_id, 
+	    m_cluster_id,
+	    m_memory_config,
+	    cycle);
+    return mf;
+}
 /////////////////////////////////////////////////////////////////////////////
 
 std::list<unsigned> shader_core_ctx::get_regs_written( const inst_t &fvt ) const
@@ -71,7 +83,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                   unsigned shader_id,
                                   unsigned tpc_id,
                                   const shader_core_config *config,
-                                  const struct memory_config *mem_config,
+                                  const memory_config *mem_config,
                                   shader_core_stats *stats )
    : core_t( gpu, NULL, config->warp_size, config->n_thread_per_shader ),
      m_barriers( this, config->max_warps_per_shader, config->max_cta_per_core, config->max_barriers_per_cta, config->warp_size ),
@@ -809,7 +821,7 @@ void shader_core_ctx::fetch()
 
                     // TODO: replace with use of allocator
                     // mem_fetch *mf = m_mem_fetch_allocator->alloc()
-                    mem_access_t acc(INST_ACC_R,ppc,nbytes,false);
+                    mem_access_t acc(INST_ACC_R,ppc,nbytes,false, m_gpu->gpgpu_ctx);
                     mem_fetch *mf = new mem_fetch(acc,
                             NULL/*we don't have an instruction yet*/,
                             READ_PACKET_SIZE,
@@ -3787,7 +3799,7 @@ void opndcoll_rfu_t::collector_unit_t::dispatch()
 simt_core_cluster::simt_core_cluster( class gpgpu_sim *gpu, 
                                       unsigned cluster_id, 
                                       const shader_core_config *config, 
-                                      const struct memory_config *mem_config,
+                                      const memory_config *mem_config,
                                       shader_core_stats *stats, 
                                       class memory_stats_t *mstats )
 {
