@@ -1727,6 +1727,7 @@ private:
     friend class LooseRoundRobbinScheduler;
 };
 
+class memory_config;
 class shader_core_mem_fetch_allocator : public mem_fetch_allocator {
 public:
     shader_core_mem_fetch_allocator( unsigned core_id, unsigned cluster_id, const memory_config *config )
@@ -1735,20 +1736,7 @@ public:
     	m_cluster_id = cluster_id;
     	m_memory_config = config;
     }
-    mem_fetch *alloc( new_addr_type addr, mem_access_type type, unsigned size, bool wr, unsigned long long cycle ) const
-    {
-    	mem_access_t access( type, addr, size, wr );
-    	mem_fetch *mf = new mem_fetch( access, 
-    				       NULL,
-    				       wr?WRITE_PACKET_SIZE:READ_PACKET_SIZE, 
-    				       -1, 
-    				       m_core_id, 
-    				       m_cluster_id,
-    				       m_memory_config,
-						   cycle);
-    	return mf;
-    }
-    
+    mem_fetch *alloc( new_addr_type addr, mem_access_type type, unsigned size, bool wr, unsigned long long cycle ) const; 
     mem_fetch *alloc( const warp_inst_t &inst, const mem_access_t &access, unsigned long long cycle ) const
     {
         warp_inst_t inst_copy = inst;
@@ -1777,7 +1765,7 @@ public:
                      unsigned shader_id,
                      unsigned tpc_id,
                      const shader_core_config *config,
-                     const struct memory_config *mem_config,
+                     const memory_config *mem_config,
                      shader_core_stats *stats );
 
 // used by simt_core_cluster:
@@ -2072,7 +2060,7 @@ public:
     simt_core_cluster( class gpgpu_sim *gpu, 
                        unsigned cluster_id, 
                        const shader_core_config *config, 
-                       const struct memory_config *mem_config,
+                       const memory_config *mem_config,
                        shader_core_stats *stats,
                        memory_stats_t *mstats );
 

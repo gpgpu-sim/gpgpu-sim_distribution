@@ -33,6 +33,7 @@
 #include "../trace.h"
 #include "addrdec.h"
 #include "shader.h"
+#include "gpu-cache.h"
 #include <iostream>
 #include <fstream>
 #include <list>
@@ -143,13 +144,14 @@ struct power_config {
 };
 
 
-
-struct memory_config {
-   memory_config()
+class memory_config {
+    public:
+   memory_config(gpgpu_context* ctx)
    {
        m_valid = false;
        gpgpu_dram_timing_opt=NULL;
        gpgpu_L2_queue_config=NULL;
+       gpgpu_ctx = ctx;
    }
    void init()
    {
@@ -291,13 +293,14 @@ struct memory_config {
    unsigned write_high_watermark;
    unsigned write_low_watermark;
    bool m_perf_sim_memcpy;
+   gpgpu_context* gpgpu_ctx;
 };
 
 extern bool g_interactive_debugger_enabled;
 
 class gpgpu_sim_config : public power_config, public gpgpu_functional_sim_config {
 public:
-    gpgpu_sim_config(gpgpu_context* ctx): m_shader_config(ctx) {
+    gpgpu_sim_config(gpgpu_context* ctx): m_shader_config(ctx), m_memory_config(ctx) {
 	m_valid = false;
 	gpgpu_ctx = ctx;
     }
@@ -507,7 +510,7 @@ public:
     /*!
     * Returning the memory configuration of the shader core, used by the functional simulation only so far
     */
-   const struct memory_config * getMemoryConfig();
+   const memory_config * getMemoryConfig();
    
    
    //! Get shader core SIMT cluster
@@ -567,7 +570,7 @@ private:
   
    const struct cudaDeviceProp     *m_cuda_properties;
    const shader_core_config *m_shader_config;
-   const struct memory_config      *m_memory_config;
+   const memory_config      *m_memory_config;
 
    // stats
    class shader_core_stats  *m_shader_stats;

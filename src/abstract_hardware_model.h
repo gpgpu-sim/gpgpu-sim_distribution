@@ -732,13 +732,14 @@ enum cache_operator_type {
 
 class mem_access_t {
 public:
-   mem_access_t() { init(); }
+   mem_access_t(gpgpu_context* ctx) { init(ctx); }
    mem_access_t( mem_access_type type, 
                  new_addr_type address, 
                  unsigned size,
-                 bool wr )
+                 bool wr,
+		 gpgpu_context* ctx)
    {
-       init();
+       init(ctx);
        m_type = type;
        m_addr = address;
        m_req_size = size;
@@ -750,10 +751,11 @@ public:
                  bool wr, 
                  const active_mask_t &active_mask,
                  const mem_access_byte_mask_t &byte_mask,
-		 const mem_access_sector_mask_t &sector_mask)
+		 const mem_access_sector_mask_t &sector_mask,
+		 gpgpu_context* ctx)
     : m_warp_mask(active_mask), m_byte_mask(byte_mask), m_sector_mask(sector_mask)
    {
-      init();
+      init(ctx);
       m_type = type;
       m_addr = address;
       m_req_size = size;
@@ -786,13 +788,9 @@ public:
        }
    }
 
+   gpgpu_context* gpgpu_ctx;
 private:
-   void init() 
-   {
-      m_uid=++sm_next_access_uid;
-      m_addr=0;
-      m_req_size=0;
-   }
+   void init(gpgpu_context* ctx);
 
    unsigned      m_uid;
    new_addr_type m_addr;     // request address
@@ -802,8 +800,6 @@ private:
    active_mask_t m_warp_mask;
    mem_access_byte_mask_t m_byte_mask;
    mem_access_sector_mask_t m_sector_mask;
-
-   static unsigned sm_next_access_uid;
 };
 
 class mem_fetch;

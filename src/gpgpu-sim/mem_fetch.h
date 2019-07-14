@@ -47,6 +47,7 @@ enum mf_type {
 #undef MF_TUP
 #undef MF_TUP_END
 
+class memory_config;
 class mem_fetch {
 public:
     mem_fetch( const mem_access_t &access, 
@@ -55,7 +56,7 @@ public:
                unsigned wid,
                unsigned sid, 
                unsigned tpc, 
-               const struct memory_config *config,
+               const memory_config *config,
 			   unsigned long long cycle,
 			   mem_fetch *original_mf = NULL,
 			   mem_fetch *original_wr_mf = NULL);
@@ -149,7 +150,7 @@ private:
 
    static unsigned sm_next_mf_request_uid;
 
-   const struct memory_config *m_mem_config;
+   const memory_config *m_mem_config;
    unsigned icnt_flit_size;
 
    mem_fetch* original_mf;  //this pointer is set up when a request is divided into sector requests at L2 cache (if the req size > L2 sector size), so the pointer refers to the original request

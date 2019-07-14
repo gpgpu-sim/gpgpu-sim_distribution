@@ -49,7 +49,7 @@
 mem_fetch * partition_mf_allocator::alloc(new_addr_type addr, mem_access_type type, unsigned size, bool wr, unsigned long long cycle ) const
 {
     assert( wr );
-    mem_access_t access( type, addr, size, wr );
+    mem_access_t access( type, addr, size, wr, m_memory_config->gpgpu_ctx );
     mem_fetch *mf = new mem_fetch( access, 
                                    NULL,
                                    WRITE_PACKET_SIZE, 
@@ -62,7 +62,7 @@ mem_fetch * partition_mf_allocator::alloc(new_addr_type addr, mem_access_type ty
 }
 
 memory_partition_unit::memory_partition_unit( unsigned partition_id, 
-                                              const struct memory_config *config,
+                                              const memory_config *config,
                                               class memory_stats_t *stats,
 											  class gpgpu_sim* gpu)
 : m_id(partition_id), m_config(config), m_stats(stats), m_arbitration_metadata(config), m_gpu(gpu)
@@ -95,7 +95,7 @@ memory_partition_unit::~memory_partition_unit()
     delete[] m_sub_partition; 
 }
 
-memory_partition_unit::arbitration_metadata::arbitration_metadata(const struct memory_config *config) 
+memory_partition_unit::arbitration_metadata::arbitration_metadata(const memory_config *config)
 : m_last_borrower(config->m_n_sub_partition_per_memory_channel - 1), 
   m_private_credit(config->m_n_sub_partition_per_memory_channel, 0), 
   m_shared_credit(0) 
@@ -312,7 +312,7 @@ void memory_partition_unit::print( FILE *fp ) const
 }
 
 memory_sub_partition::memory_sub_partition( unsigned sub_partition_id, 
-                                            const struct memory_config *config,
+                                            const memory_config *config,
                                             class memory_stats_t *stats,
 											class gpgpu_sim* gpu)
 {
@@ -640,7 +640,8 @@ std::vector<mem_fetch*> memory_sub_partition::breakdown_request_to_sector_reques
 									mf->is_write(),
 									mf->get_access_warp_mask(),
 									mf->get_access_byte_mask() & byte_sector_mask,
-									std::bitset<SECTOR_CHUNCK_SIZE>().set(j));
+									std::bitset<SECTOR_CHUNCK_SIZE>().set(j),
+									m_gpu->gpgpu_ctx);
 
 			 mem_fetch *n_mf = new mem_fetch( *ma,
 								NULL,
