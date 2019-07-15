@@ -1100,7 +1100,7 @@ ptx_instruction::ptx_instruction( int opcode,
 				  gpgpu_context* ctx ) : warp_inst_t(config), m_return_var(ctx)
 {
    gpgpu_ctx = ctx;
-   m_uid = ++g_num_ptx_inst_uid;
+   m_uid = ++(ctx->g_num_ptx_inst_uid);
    m_PC = 0;
    m_opcode = opcode;
    m_pred = pred;

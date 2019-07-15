@@ -60,7 +60,6 @@ class ptx_recognizer;
 
 using half_float::half;
 
-unsigned ptx_instruction::g_num_ptx_inst_uid=0;
 bool debug_tensorcore = 0;
 
 
