@@ -54,7 +54,6 @@ typedef void * yyscan_t;
 #include "../../libcuda/gpgpu_context.h"
 
 int g_debug_execution = 0;
-addr_t g_debug_pc = 0xBEEF1518;
 // Output debug information to file options
 
 
