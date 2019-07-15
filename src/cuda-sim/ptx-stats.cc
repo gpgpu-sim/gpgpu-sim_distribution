@@ -32,12 +32,9 @@
 #include <stdio.h>
 #include <map>
 #include "../tr1_hash_map.h"
+#include "../../libcuda/gpgpu_context.h"
 
-// options
-bool enable_ptx_file_line_stats;
-char * ptx_line_stats_filename = NULL;
-
-void ptx_file_line_stats_options(option_parser_t opp)
+void ptx_stats::ptx_file_line_stats_options(option_parser_t opp)
 {
     option_parser_register(opp, "-enable_ptx_file_line_stats", OPT_BOOL, 
                            &enable_ptx_file_line_stats, 
@@ -118,7 +115,7 @@ typedef tr1_hash_map<ptx_file_line, ptx_file_line_stats, hash_ptx_file_line> ptx
 static ptx_file_line_stats_map_t ptx_file_line_stats_tracker;
 
 // output statistics to a file
-void ptx_file_line_stats_write_file()
+void ptx_stats::ptx_file_line_stats_write_file()
 {
     // check if stat collection is turned on
     if (enable_ptx_file_line_stats == 0) return;
