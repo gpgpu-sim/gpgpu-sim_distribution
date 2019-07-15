@@ -878,7 +878,6 @@ private:
 };
 
 extern const char *g_opcode_string[];
-extern unsigned g_num_ptx_inst_uid;
 struct basic_block_t {
    basic_block_t( unsigned ID, ptx_instruction *begin, ptx_instruction *end, bool entry, bool ex)
    {
@@ -1194,7 +1193,6 @@ private:
 
    virtual void pre_decode();
    friend class function_info;
-   static unsigned g_num_ptx_inst_uid;
    // backward pointer
    class gpgpu_context* gpgpu_ctx;
 };
