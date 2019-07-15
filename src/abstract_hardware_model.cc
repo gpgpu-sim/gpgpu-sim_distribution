@@ -709,7 +709,6 @@ void warp_inst_t::completed( unsigned long long cycle ) const
    ptx_file_line_stats_add_latency(pc, latency * active_count());  
 }
 
-unsigned kernel_info_t::m_next_uid = 1;
 
 /*A snapshot of the texture mappings needs to be stored in the kernel's info as 
 kernels should use the texture bindings seen at the time of launch and textures
@@ -724,7 +723,7 @@ kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *
     m_next_cta.z=0;
     m_next_tid=m_next_cta;
     m_num_cores_running=0;
-    m_uid = m_next_uid++;
+    m_uid = (entry->gpgpu_ctx->kernel_info_m_next_uid)++;
     m_param_mem = new memory_space_impl<8192>("param",64*1024);
 
     //Jin: parent and child kernel management for CDP
