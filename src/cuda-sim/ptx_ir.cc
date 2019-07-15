@@ -1374,12 +1374,11 @@ operand_info ptx_instruction::get_pred() const
     return operand_info( m_pred, gpgpu_ctx);
 }
 
-unsigned function_info::sm_next_uid = 1;
 
 function_info::function_info(int entry_point, gpgpu_context* ctx )
 {
    gpgpu_ctx = ctx;
-   m_uid = sm_next_uid++;
+   m_uid = (gpgpu_ctx->function_info_sm_next_uid)++;
    m_entry_point = (entry_point==1)?true:false;
    m_extern = (entry_point==2)?true:false;
    num_reconvergence_pairs = 0;

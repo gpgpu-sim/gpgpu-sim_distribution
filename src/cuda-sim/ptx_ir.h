@@ -873,7 +873,6 @@ private:
    bool m_is_return_var;
    bool m_is_non_arch_reg;
 
-   static unsigned sm_next_uid;
    unsigned get_uid();
 };
 
@@ -1438,7 +1437,6 @@ private:
    symbol_table *m_symtab;
 
    static std::vector<ptx_instruction*> s_g_pc_to_insn; // a direct mapping from PC to instruction
-   static unsigned sm_next_uid;
 
    //parameter size for device kernels
    int m_args_aligned_size;
