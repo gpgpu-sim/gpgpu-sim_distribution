@@ -3045,6 +3045,7 @@ void shader_core_ctx::cycle()
 	if(!isactive() && get_not_completed() == 0)
 		return;
 
+	elapsed_cycles_sm_tot++;
 	m_stats->shader_cycles[m_sid]++;
     writeback();
     execute();
