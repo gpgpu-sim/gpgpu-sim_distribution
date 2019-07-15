@@ -43,11 +43,9 @@ typedef void * yyscan_t;
 
 #define STR_SIZE 1024
 
-unsigned symbol::sm_next_uid = 1;
-
 unsigned symbol::get_uid()
 {
-   unsigned result = sm_next_uid++;
+   unsigned result = (gpgpu_ctx->symbol_sm_next_uid)++;
    return result;
 }
 
@@ -152,7 +150,7 @@ symbol *symbol_table::add_variable( const char *identifier, const type_info *typ
    std::string key(identifier);
    assert( m_symbols.find(key) == m_symbols.end() );
    snprintf(buf,1024,"%s:%u",filename,line);
-   symbol *s = new symbol(identifier,type,buf,size);
+   symbol *s = new symbol(identifier,type,buf,size,gpgpu_ctx);
    m_symbols[ key ] = s;
 
    if ( type != NULL && type->get_key().is_global()  ) {
@@ -173,7 +171,7 @@ void symbol_table::add_function( function_info *func, const char *filename, unsi
    char buf[1024];
    snprintf(buf,1024,"%s:%u",filename,linenumber);
    type_info *type = add_type( func );
-   symbol *s = new symbol(func->get_name().c_str(),type,buf,0);
+   symbol *s = new symbol(func->get_name().c_str(),type,buf,0,gpgpu_ctx);
    s->set_function(func);
    m_symbols[ func->get_name() ] = s;
 }
