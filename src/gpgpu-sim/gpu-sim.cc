@@ -85,6 +85,7 @@ bool g_interactive_debugger_enabled=false;
 
 unsigned long long  gpu_sim_cycle = 0;
 unsigned long long  gpu_tot_sim_cycle = 0;
+unsigned long long  elapsed_cycles_sm_tot = 0;  //this is a equivalent metric generated as nvprof. that only counts when SM is active
 
 
 // performance counter for stalls due to congestion.
@@ -1119,6 +1120,7 @@ void gpgpu_sim::gpu_print_stat()
    printf("gpu_sim_insn = %lld\n", gpu_sim_insn);
    printf("gpu_ipc = %12.4f\n", (float)gpu_sim_insn / gpu_sim_cycle);
    printf("gpu_tot_sim_cycle = %lld\n", gpu_tot_sim_cycle+gpu_sim_cycle);
+   printf("elapsed_cycles_sm_tot = %lld\n", elapsed_cycles_sm_tot);
    printf("gpu_tot_sim_insn = %lld\n", gpu_tot_sim_insn+gpu_sim_insn);
    printf("gpu_tot_ipc = %12.4f\n", (float)(gpu_tot_sim_insn+gpu_sim_insn) / (gpu_tot_sim_cycle+gpu_sim_cycle));
    printf("gpu_tot_issued_cta = %lld\n", gpu_tot_issued_cta + m_total_cta_launched);

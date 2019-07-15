@@ -295,6 +295,7 @@ struct memory_config {
 // global counters and flags (please try not to add to this list!!!)
 extern unsigned long long  gpu_sim_cycle;
 extern unsigned long long  gpu_tot_sim_cycle;
+extern unsigned long long  elapsed_cycles_sm_tot;
 extern bool g_interactive_debugger_enabled;
 
 class gpgpu_sim_config : public power_config, public gpgpu_functional_sim_config {
