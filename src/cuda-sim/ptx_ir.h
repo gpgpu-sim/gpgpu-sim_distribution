@@ -377,9 +377,9 @@ private:
 
 class operand_info {
 public:
-   operand_info()
+   operand_info(gpgpu_context* ctx)
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -392,9 +392,9 @@ public:
       m_addr_offset = 0;
       m_value.m_symbolic=NULL;
    }
-   operand_info( const symbol *addr )
+   operand_info( const symbol *addr, gpgpu_context* ctx )
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -435,9 +435,9 @@ public:
       m_is_return_var = false;
       m_immediate_address=false;
    }
-   operand_info( const symbol *addr1, const symbol *addr2 )
+   operand_info( const symbol *addr1, const symbol *addr2, gpgpu_context* ctx )
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -462,9 +462,9 @@ public:
       m_is_return_var = false;
       m_immediate_address=false;
    }
-   operand_info( int builtin_id, int dim_mod )
+   operand_info( int builtin_id, int dim_mod, gpgpu_context* ctx )
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -481,9 +481,9 @@ public:
       m_is_return_var = false;
       m_immediate_address=false;
    }
-   operand_info( const symbol *addr, int offset )
+   operand_info( const symbol *addr, int offset, gpgpu_context* ctx )
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -500,9 +500,9 @@ public:
       m_is_return_var = false;
       m_immediate_address=false;
    }
-   operand_info( unsigned x )
+   operand_info( unsigned x, gpgpu_context* ctx )
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -519,9 +519,9 @@ public:
       m_is_return_var = false;
       m_immediate_address=true;
    }
-   operand_info( int x )
+   operand_info( int x, gpgpu_context* ctx )
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -538,9 +538,9 @@ public:
       m_is_return_var = false;
       m_immediate_address=false;
    }
-   operand_info( float x )
+   operand_info( float x, gpgpu_context* ctx )
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -557,9 +557,9 @@ public:
       m_is_return_var = false;
       m_immediate_address=false;
    }
-   operand_info( double x )
+   operand_info( double x, gpgpu_context* ctx )
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -576,9 +576,9 @@ public:
       m_is_return_var = false;
       m_immediate_address=false;
    }
-   operand_info( const symbol *s1, const symbol *s2, const symbol *s3, const symbol *s4 )
+   operand_info( const symbol *s1, const symbol *s2, const symbol *s3, const symbol *s4, gpgpu_context* ctx )
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -603,9 +603,9 @@ public:
       m_is_return_var = false;
       m_immediate_address=false;
    }
-   operand_info( const symbol *s1, const symbol *s2, const symbol *s3, const symbol *s4 ,const symbol *s5,const symbol *s6,const symbol *s7, const symbol *s8)
+   operand_info( const symbol *s1, const symbol *s2, const symbol *s3, const symbol *s4 ,const symbol *s5,const symbol *s6,const symbol *s7, const symbol *s8, gpgpu_context* ctx)
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -631,8 +631,9 @@ public:
       m_immediate_address=false;
    }
 
-   void init()
+   void init(gpgpu_context* ctx)
    {
+       gpgpu_ctx = ctx;
        m_uid=(unsigned)-1;
        m_valid=false;
        m_vector=false;
@@ -842,6 +843,7 @@ public:
    bool is_non_arch_reg() const { return m_is_non_arch_reg; }
 
 private:
+   gpgpu_context* gpgpu_ctx;
    unsigned m_uid;
    bool m_valid;
    bool m_vector;
@@ -957,7 +959,7 @@ public:
    unsigned source_line() const { return m_source_line;}
    unsigned get_num_operands() const { return m_operands.size();}
    bool has_pred() const { return m_pred != NULL;}
-   operand_info get_pred() const { return operand_info( m_pred );}
+   operand_info get_pred() const;
    bool get_pred_neg() const { return m_neg_pred;}
    int get_pred_mod() const { return m_pred_mod;}
    const char *get_source() const { return m_source.c_str();}
@@ -1448,14 +1450,14 @@ private:
 
 class arg_buffer_t {
 public:
-   arg_buffer_t()
+   arg_buffer_t(gpgpu_context* ctx) : m_src_op(ctx)
    {
       m_is_reg=false;
       m_is_param=false;
       m_param_value=NULL;
       m_reg_value=ptx_reg_t();
    }
-   arg_buffer_t( const arg_buffer_t &another )
+   arg_buffer_t( const arg_buffer_t &another, gpgpu_context* ctx ) : m_src_op(ctx)
    {
       make_copy(another);
    }

@@ -102,7 +102,7 @@ void ptx_recognizer::init_instruction_state()
    g_opcode = -1;
    g_options.clear();
    g_wmma_options.clear();
-   g_return_var = operand_info();
+   g_return_var = operand_info(gpgpu_ctx);
    init_directive_state();
 }
 
@@ -689,7 +689,7 @@ void ptx_recognizer::add_double_operand( const char *d1, const char *d2 )
    const symbol *s1 = g_current_symbol_table->lookup(d1);
    const symbol *s2 = g_current_symbol_table->lookup(d2);
    parse_assert( s1 != NULL && s2 != NULL, "component(s) missing declarations.");
-   g_operands.push_back( operand_info(s1,s2) );
+   g_operands.push_back( operand_info(s1,s2,gpgpu_ctx) );
 }
 
 void ptx_recognizer::add_1vector_operand( const char *d1 )
@@ -698,7 +698,7 @@ void ptx_recognizer::add_1vector_operand( const char *d1 )
    PTX_PARSE_DPRINTF("add_1vector_operand");
    const symbol *s1 = g_current_symbol_table->lookup(d1);
    parse_assert( s1 != NULL, "component(s) missing declarations.");
-   g_operands.push_back( operand_info(s1,NULL,NULL,NULL) );
+   g_operands.push_back( operand_info(s1,NULL,NULL,NULL,gpgpu_ctx) );
 }
 
 void ptx_recognizer::add_2vector_operand( const char *d1, const char *d2 )
@@ -707,7 +707,7 @@ void ptx_recognizer::add_2vector_operand( const char *d1, const char *d2 )
    const symbol *s1 = g_current_symbol_table->lookup(d1);
    const symbol *s2 = g_current_symbol_table->lookup(d2);
    parse_assert( s1 != NULL && s2 != NULL, "v2 component(s) missing declarations.");
-   g_operands.push_back( operand_info(s1,s2,NULL,NULL) );
+   g_operands.push_back( operand_info(s1,s2,NULL,NULL,gpgpu_ctx) );
 }
 
 void ptx_recognizer::add_3vector_operand( const char *d1, const char *d2, const char *d3 )
@@ -717,7 +717,7 @@ void ptx_recognizer::add_3vector_operand( const char *d1, const char *d2, const 
    const symbol *s2 = g_current_symbol_table->lookup(d2);
    const symbol *s3 = g_current_symbol_table->lookup(d3);
    parse_assert( s1 != NULL && s2 != NULL && s3 != NULL, "v3 component(s) missing declarations.");
-   g_operands.push_back( operand_info(s1,s2,s3,NULL) );
+   g_operands.push_back( operand_info(s1,s2,s3,NULL,gpgpu_ctx) );
 }
 
 void ptx_recognizer::add_4vector_operand( const char *d1, const char *d2, const char *d3, const char *d4 )
@@ -732,7 +732,7 @@ void ptx_recognizer::add_4vector_operand( const char *d1, const char *d2, const 
    if ( s2 == null_op ) s2 = NULL;
    if ( s3 == null_op ) s3 = NULL;
    if ( s4 == null_op ) s4 = NULL;
-   g_operands.push_back( operand_info(s1,s2,s3,s4) );
+   g_operands.push_back( operand_info(s1,s2,s3,s4,gpgpu_ctx) );
 }
 void ptx_recognizer::add_8vector_operand( const char *d1, const char *d2, const char *d3, const char *d4,const char *d5,const char *d6,const char *d7,const char *d8 )
 {
@@ -754,13 +754,13 @@ void ptx_recognizer::add_8vector_operand( const char *d1, const char *d2, const 
    if ( s6 == null_op ) s6 = NULL;
    if ( s7 == null_op ) s7 = NULL;
    if ( s8 == null_op ) s8 = NULL;
-   g_operands.push_back( operand_info(s1,s2,s3,s4,s5,s6,s7,s8) );
+   g_operands.push_back( operand_info(s1,s2,s3,s4,s5,s6,s7,s8,gpgpu_ctx) );
 }
 
 void ptx_recognizer::add_builtin_operand( int builtin, int dim_modifier )
 {
    PTX_PARSE_DPRINTF("add_builtin_operand");
-   g_operands.push_back( operand_info(builtin,dim_modifier) );
+   g_operands.push_back( operand_info(builtin,dim_modifier,gpgpu_ctx) );
 }
 
 void ptx_recognizer::add_memory_operand()
@@ -883,19 +883,19 @@ void ptx_recognizer::change_operand_neg( )
 void ptx_recognizer::add_literal_int( int value )
 {
    PTX_PARSE_DPRINTF("add_literal_int");
-   g_operands.push_back( operand_info(value) );
+   g_operands.push_back( operand_info(value,gpgpu_ctx) );
 }
 
 void ptx_recognizer::add_literal_float( float value )
 {
    PTX_PARSE_DPRINTF("add_literal_float");
-   g_operands.push_back( operand_info(value) );
+   g_operands.push_back( operand_info(value,gpgpu_ctx) );
 }
 
 void ptx_recognizer::add_literal_double( double value )
 {
    PTX_PARSE_DPRINTF("add_literal_double");
-   g_operands.push_back( operand_info(value) );
+   g_operands.push_back( operand_info(value,gpgpu_ctx) );
 }
 
 void ptx_recognizer::add_scalar_operand( const char *identifier )
@@ -911,7 +911,7 @@ void ptx_recognizer::add_scalar_operand( const char *identifier )
          parse_error( msg.c_str() );
       }
    }
-   g_operands.push_back( operand_info(s) );
+   g_operands.push_back( operand_info(s,gpgpu_ctx) );
 }
 
 void ptx_recognizer::add_neg_pred_operand( const char *identifier )
@@ -921,7 +921,7 @@ void ptx_recognizer::add_neg_pred_operand( const char *identifier )
    if ( s == NULL ) {
        s = g_current_symbol_table->add_variable(identifier,NULL,1,gpgpu_ctx->g_filename,ptx_get_lineno(scanner));
    }
-   operand_info op(s);
+   operand_info op(s, gpgpu_ctx);
    op.set_neg_pred();
    g_operands.push_back( op );
 }
@@ -934,13 +934,13 @@ void ptx_recognizer::add_address_operand( const char *identifier, int offset )
       std::string msg = std::string("operand \"") + identifier + "\" has no declaration.";
       parse_error( msg.c_str() );
    }
-   g_operands.push_back( operand_info(s,offset) );
+   g_operands.push_back( operand_info(s,offset,gpgpu_ctx) );
 }
 
 void ptx_recognizer::add_address_operand2( int offset )
 {
    PTX_PARSE_DPRINTF("add_address_operand");
-   g_operands.push_back( operand_info((unsigned)offset) );
+   g_operands.push_back( operand_info((unsigned)offset,gpgpu_ctx) );
 }
 
 void ptx_recognizer::add_array_initializer()
