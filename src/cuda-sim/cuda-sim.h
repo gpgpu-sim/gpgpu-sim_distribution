@@ -58,9 +58,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
                               unsigned hw_warp_id,
                               gpgpu_t *gpu,
                               bool functionalSimulationMode = false);
-const warp_inst_t *ptx_fetch_inst( address_type pc );
 const struct gpgpu_ptx_sim_info* ptx_sim_kernel_info(const class function_info *kernel);
-
 
 /*!
  * This class functionally executes a kernel. It uses the basic data structures and procedures in core_t 

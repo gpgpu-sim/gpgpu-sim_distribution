@@ -1372,13 +1372,6 @@ public:
       return m_symtab;
    }
 
-   static const ptx_instruction* pc_to_instruction(unsigned pc) 
-   {
-      if( pc < s_g_pc_to_insn.size() )
-          return s_g_pc_to_insn[pc];
-      else
-          return NULL;
-   }
    unsigned local_mem_framesize() const 
    { 
       return m_local_mem_framesize; 
@@ -1435,8 +1428,6 @@ private:
    struct gpgpu_ptx_sim_info m_kernel_info;
 
    symbol_table *m_symtab;
-
-   static std::vector<ptx_instruction*> s_g_pc_to_insn; // a direct mapping from PC to instruction
 
    //parameter size for device kernels
    int m_args_aligned_size;

@@ -39,6 +39,8 @@ class gpgpu_context {
 	unsigned long long g_ptx_cta_info_uid;
 	unsigned symbol_sm_next_uid; //uid for symbol
 	unsigned function_info_sm_next_uid;
+	std::vector<ptx_instruction*> s_g_pc_to_insn; // a direct mapping from PC to instruction
+
 	// objects pointers for each file
 	cuda_runtime_api* api;
 	ptxinfo_data* ptxinfo;
@@ -58,6 +60,9 @@ class gpgpu_context {
 	class gpgpu_sim *gpgpu_ptx_sim_init_perf();
 	struct _cuda_device_id *GPGPUSim_Init();
 	void ptx_reg_options(option_parser_t opp);
+	const ptx_instruction* pc_to_instruction(unsigned pc); 
+	const warp_inst_t *ptx_fetch_inst( address_type pc );
+	unsigned translate_pc_to_ptxlineno(unsigned pc);
 };
 gpgpu_context* GPGPU_Context();
 

@@ -426,7 +426,7 @@ void warp_inst_t::generate_mem_accesses()
         }
         assert( total_accesses > 0 && total_accesses <= m_config->warp_size );
         cycles = total_accesses; // shared memory conflicts modeled as larger initiation interval 
-        ptx_file_line_stats_add_smem_bank_conflict( pc, total_accesses );
+        m_config->gpgpu_ctx->stats->ptx_file_line_stats_add_smem_bank_conflict( pc, total_accesses );
         break;
     }
 
@@ -471,7 +471,7 @@ void warp_inst_t::generate_mem_accesses()
     }
 
     if ( space.get_type() == global_space ) {
-        ptx_file_line_stats_add_uncoalesced_gmem( pc, m_accessq.size() - starting_queue_size );
+        m_config->gpgpu_ctx->stats->ptx_file_line_stats_add_uncoalesced_gmem( pc, m_accessq.size() - starting_queue_size );
     }
     m_mem_accesses_created=true;
 }
@@ -706,7 +706,7 @@ void warp_inst_t::completed( unsigned long long cycle ) const
 {
    unsigned long long latency = cycle - issue_cycle; 
    assert(latency <= cycle); // underflow detection 
-   ptx_file_line_stats_add_latency(pc, latency * active_count());  
+   m_config->gpgpu_ctx->stats->ptx_file_line_stats_add_latency(pc, latency * active_count());  
 }
 
 
@@ -1110,7 +1110,7 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
 
 
     if (warp_diverged) {
-        ptx_file_line_stats_add_warp_divergence(top_pc, 1); 
+        m_gpu->gpgpu_ctx->stats->ptx_file_line_stats_add_warp_divergence(top_pc, 1); 
     }
 }
 
@@ -1157,7 +1157,7 @@ warp_inst_t core_t::getExecuteWarp(unsigned warpId)
 {
     unsigned pc,rpc;
     m_simt_stack[warpId]->get_pdom_stack_top_info(&pc,&rpc);
-    warp_inst_t wi= *ptx_fetch_inst(pc);
+    warp_inst_t wi= *(m_gpu->gpgpu_ctx->ptx_fetch_inst(pc));
     wi.set_active(m_simt_stack[warpId]->get_active_mask());
     return wi;
 }

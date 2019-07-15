@@ -886,7 +886,7 @@ void gpgpu_sim::init()
     m_shader_stats->new_grid();
     // initialize the control-flow, memory access, memory latency logger
     if (m_config.g_visualizer_enabled) {
-        create_thread_CFlogger( m_config.num_shader(), m_shader_config->n_thread_per_shader, 0, m_config.gpgpu_cflog_interval );
+        create_thread_CFlogger( gpgpu_ctx, m_config.num_shader(), m_shader_config->n_thread_per_shader, 0, m_config.gpgpu_cflog_interval );
     }
     shader_CTA_count_create( m_config.num_shader(), m_config.gpgpu_cflog_interval);
     if (m_config.gpgpu_cflog_interval != 0) {

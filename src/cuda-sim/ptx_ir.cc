@@ -43,6 +43,14 @@ typedef void * yyscan_t;
 
 #define STR_SIZE 1024
 
+const ptx_instruction* gpgpu_context::pc_to_instruction(unsigned pc) 
+{
+    if( pc < s_g_pc_to_insn.size() )
+	return s_g_pc_to_insn[pc];
+    else
+	return NULL;
+}
+
 unsigned symbol::get_uid()
 {
    unsigned result = (gpgpu_ctx->symbol_sm_next_uid)++;

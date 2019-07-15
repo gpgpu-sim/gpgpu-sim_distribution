@@ -215,8 +215,6 @@ void gpgpu_t::gpgpu_ptx_sim_unbindTexture(const struct textureReference* texref)
    m_NameToTextureInfo.erase(texname);
 }
 
-std::vector<ptx_instruction*> function_info::s_g_pc_to_insn;
-
 #define MAX_INST_SIZE 8 /*bytes*/
 
 void function_info::ptx_assemble()
@@ -237,14 +235,14 @@ void function_info::ptx_assemble()
    addr_t PC = gpgpu_ctx->func_sim->g_assemble_code_next_pc; // globally unique address (across functions)
    // start function on an aligned address
    for( unsigned i=0; i < (PC%MAX_INST_SIZE); i++ ) 
-      s_g_pc_to_insn.push_back((ptx_instruction*)NULL);
+      gpgpu_ctx->s_g_pc_to_insn.push_back((ptx_instruction*)NULL);
    PC += PC%MAX_INST_SIZE; 
    m_start_PC = PC;
 
    addr_t n=0; // offset in m_instr_mem
    //Why s_g_pc_to_insn.size() is needed to reserve additional memory for insts? reserve is cumulative.
    //s_g_pc_to_insn.reserve(s_g_pc_to_insn.size() + MAX_INST_SIZE*m_instructions.size());
-   s_g_pc_to_insn.reserve(MAX_INST_SIZE*m_instructions.size());
+   gpgpu_ctx->s_g_pc_to_insn.reserve(MAX_INST_SIZE*m_instructions.size());
    for ( i=m_instructions.begin(); i != m_instructions.end(); i++ ) {
       ptx_instruction *pI = *i;
       if ( pI->is_label() ) {
@@ -253,13 +251,13 @@ void function_info::ptx_assemble()
       } else {
          gpgpu_ctx->func_sim->g_pc_to_finfo[PC] = this;
          m_instr_mem[n] = pI;
-         s_g_pc_to_insn.push_back(pI);
-         assert(pI == s_g_pc_to_insn[PC]);
+         gpgpu_ctx->s_g_pc_to_insn.push_back(pI);
+         assert(pI == gpgpu_ctx->s_g_pc_to_insn[PC]);
          pI->set_m_instr_mem_index(n);
          pI->set_PC(PC);
          assert( pI->inst_size() <= MAX_INST_SIZE );
          for( unsigned i=1; i < pI->inst_size(); i++ ) {
-            s_g_pc_to_insn.push_back((ptx_instruction*)NULL);
+            gpgpu_ctx->s_g_pc_to_insn.push_back((ptx_instruction*)NULL);
             m_instr_mem[n+i]=NULL;
          }
          n  += pI->inst_size();
@@ -1738,9 +1736,9 @@ const struct gpgpu_ptx_sim_info* ptx_sim_kernel_info(const function_info *kernel
    return kernel->get_kernel_info();
 }
 
-const warp_inst_t *ptx_fetch_inst( address_type pc )
+const warp_inst_t *gpgpu_context::ptx_fetch_inst( address_type pc )
 {
-    return function_info::pc_to_instruction(pc);
+    return pc_to_instruction(pc);
 }
 
 unsigned ptx_sim_init_thread( kernel_info_t &kernel,
@@ -2366,11 +2364,11 @@ void functionalCoreSim::executeWarp(unsigned i, bool &allAtBarrier, bool & someO
     if(!m_warpAtBarrier[i]&& m_liveThreadCount[i]>0) allAtBarrier = false;
 }
 
-unsigned translate_pc_to_ptxlineno(unsigned pc)
+unsigned gpgpu_context::translate_pc_to_ptxlineno(unsigned pc)
 {
    // this function assumes that the kernel fits inside a single PTX file
    // function_info *pFunc = g_func_info; // assume that the current kernel is the one in query
-   const ptx_instruction *pInsn = function_info::pc_to_instruction(pc);
+   const ptx_instruction *pInsn = pc_to_instruction(pc);
    unsigned ptx_line_number = pInsn->source_line();
 
    return ptx_line_number;
