@@ -151,27 +151,27 @@ void ptx_file_line_stats_add_exec_count(const ptx_instruction *pInsn)
 
 // attribute pipeline latency to this ptx instruction (specified by the pc)
 // pipeline latency is the number of cycles a warp with this instruction spent in the pipeline
-void ptx_file_line_stats_add_latency(unsigned pc, unsigned latency)
+void ptx_stats::ptx_file_line_stats_add_latency(unsigned pc, unsigned latency)
 {
-    const ptx_instruction *pInsn = function_info::pc_to_instruction(pc);
+    const ptx_instruction *pInsn = gpgpu_ctx->pc_to_instruction(pc);
     
     ptx_file_line_stats_tracker[ptx_file_line(pInsn->source_file(), pInsn->source_line())].latency += latency;
 }
 
 // attribute dram traffic to this ptx instruction (specified by the pc)
 // dram traffic is counted in number of requests 
-void ptx_file_line_stats_add_dram_traffic(unsigned pc, unsigned dram_traffic)
+void ptx_stats::ptx_file_line_stats_add_dram_traffic(unsigned pc, unsigned dram_traffic)
 {
-    const ptx_instruction *pInsn = function_info::pc_to_instruction(pc);
+    const ptx_instruction *pInsn = gpgpu_ctx->pc_to_instruction(pc);
     
     ptx_file_line_stats_tracker[ptx_file_line(pInsn->source_file(), pInsn->source_line())].dram_traffic += dram_traffic;
 }
 
 // attribute the number of shared memory access cycles to a ptx instruction
 // counts both the number of warps doing shared memory access and the number of cycles involved
-void ptx_file_line_stats_add_smem_bank_conflict(unsigned pc, unsigned n_way_bkconflict)
+void ptx_stats::ptx_file_line_stats_add_smem_bank_conflict(unsigned pc, unsigned n_way_bkconflict)
 {
-    const ptx_instruction *pInsn = function_info::pc_to_instruction(pc);
+    const ptx_instruction *pInsn = gpgpu_ctx->pc_to_instruction(pc);
     
     ptx_file_line_stats& line_stats = ptx_file_line_stats_tracker[ptx_file_line(pInsn->source_file(), pInsn->source_line())];
     line_stats.smem_n_way_bank_conflict_total += n_way_bkconflict;
@@ -180,9 +180,9 @@ void ptx_file_line_stats_add_smem_bank_conflict(unsigned pc, unsigned n_way_bkco
 
 // attribute a non-coalesced mem access to a ptx instruction 
 // counts both the number of warps causing this and the number of memory requests generated
-void ptx_file_line_stats_add_uncoalesced_gmem(unsigned pc, unsigned n_access)
+void ptx_stats::ptx_file_line_stats_add_uncoalesced_gmem(unsigned pc, unsigned n_access)
 {
-    const ptx_instruction *pInsn = function_info::pc_to_instruction(pc);
+    const ptx_instruction *pInsn = gpgpu_ctx->pc_to_instruction(pc);
     
     ptx_file_line_stats& line_stats = ptx_file_line_stats_tracker[ptx_file_line(pInsn->source_file(), pInsn->source_line())];
     line_stats.gmem_n_access_total += n_access;
@@ -239,17 +239,17 @@ void ptx_file_line_stats_create_exposed_latency_tracker(int n_shader_cores)
 }
 
 // add an inflight memory instruction
-void ptx_file_line_stats_add_inflight_memory_insn(int sc_id, unsigned pc)
+void ptx_stats::ptx_file_line_stats_add_inflight_memory_insn(int sc_id, unsigned pc)
 {
-    const ptx_instruction *pInsn = function_info::pc_to_instruction(pc);
+    const ptx_instruction *pInsn = gpgpu_ctx->pc_to_instruction(pc);
 
     inflight_mem_tracker[sc_id].add_count(pInsn);
 }
 
 // remove an inflight memory instruction
-void ptx_file_line_stats_sub_inflight_memory_insn(int sc_id, unsigned pc)
+void ptx_stats::ptx_file_line_stats_sub_inflight_memory_insn(int sc_id, unsigned pc)
 {
-    const ptx_instruction *pInsn = function_info::pc_to_instruction(pc);
+    const ptx_instruction *pInsn = gpgpu_ctx->pc_to_instruction(pc);
 
     inflight_mem_tracker[sc_id].sub_count(pInsn);
 }
@@ -262,9 +262,9 @@ void ptx_file_line_stats_commit_exposed_latency(int sc_id, int exposed_latency)
 }
 
 // attribute the number of warp divergence to a ptx instruction
-void ptx_file_line_stats_add_warp_divergence(unsigned pc, unsigned n_way_divergence)
+void ptx_stats::ptx_file_line_stats_add_warp_divergence(unsigned pc, unsigned n_way_divergence)
 {
-    const ptx_instruction *pInsn = function_info::pc_to_instruction(pc);
+    const ptx_instruction *pInsn = gpgpu_ctx->pc_to_instruction(pc);
     
     ptx_file_line_stats& line_stats = ptx_file_line_stats_tracker[ptx_file_line(pInsn->source_file(), pInsn->source_line())];
     line_stats.warp_divergence += n_way_divergence;

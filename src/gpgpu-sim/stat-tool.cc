@@ -37,6 +37,7 @@
 #include <map>
 #include <algorithm>
 #include <string>
+#include "../../libcuda/gpgpu_context.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -110,12 +111,10 @@ void spill_log_to_file (FILE *fout, int final, unsigned long long  current_cycle
 
 ////////////////////////////////////////////////////////////////////////////////
 
-unsigned translate_pc_to_ptxlineno(unsigned pc);
-
 static int n_thread_CFloggers = 0;
 static thread_CFlocality** thread_CFlogger = NULL;
 
-void create_thread_CFlogger( int n_loggers, int n_threads, address_type start_pc, unsigned long long  logging_interval) 
+void create_thread_CFlogger(gpgpu_context* ctx, int n_loggers, int n_threads, address_type start_pc, unsigned long long  logging_interval) 
 {
    destroy_thread_CFlogger();
    
@@ -126,7 +125,7 @@ void create_thread_CFlogger( int n_loggers, int n_threads, address_type start_pc
    char buffer[32];
    for (int i = 0; i < n_thread_CFloggers; i++) {
       snprintf(buffer, 32, "%02d", i);
-      thread_CFlogger[i] = new thread_CFlocality( name_tpl + buffer, logging_interval, n_threads, start_pc);
+      thread_CFlogger[i] = new thread_CFlocality( ctx, name_tpl + buffer, logging_interval, n_threads, start_pc);
       if (logging_interval != 0) {
          add_snap_shot_trigger(thread_CFlogger[i]);
          add_spill_log(thread_CFlogger[i]);
@@ -368,10 +367,10 @@ static int s_cache_access_logger_n_types = 0;
 static std::vector<linear_histogram_logger> s_cache_access_logger;
 
 enum cache_access_logger_types {
-   NORMAL, TEXTURE, CONSTANT, INSTRUCTION
+   NORMALS, TEXTURE, CONSTANT, INSTRUCTION
 };
 
-int get_shader_normal_cache_id() { return NORMAL; }
+int get_shader_normal_cache_id() { return NORMALS; }
 int get_shader_texture_cache_id() { return TEXTURE; }
 int get_shader_constant_cache_id() { return CONSTANT; }
 int get_shader_instruction_cache_id() { return INSTRUCTION; }
@@ -394,7 +393,7 @@ void shader_cache_access_log( int logger_id, int type, int miss)
 {
    if (s_cache_access_logger_n_types == 0) return;
    if (logger_id < 0) return;
-   assert(type == NORMAL || type == TEXTURE || type == CONSTANT || type == INSTRUCTION);
+   assert(type == NORMALS || type == TEXTURE || type == CONSTANT || type == INSTRUCTION);
    assert(miss == 0 || miss == 1);
    
    s_cache_access_logger[logger_id].log(2 * type + miss);
@@ -404,7 +403,7 @@ void shader_cache_access_unlog( int logger_id, int type, int miss)
 {
    if (s_cache_access_logger_n_types == 0) return;
    if (logger_id < 0) return;
-   assert(type == NORMAL || type == TEXTURE || type == CONSTANT || type == INSTRUCTION);
+   assert(type == NORMALS || type == TEXTURE || type == CONSTANT || type == INSTRUCTION);
    assert(miss == 0 || miss == 1);
    
    s_cache_access_logger[logger_id].unlog(2 * type + miss);
@@ -477,22 +476,24 @@ void shader_CTA_count_visualizer_gzprint( gzFile fout )
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-thread_insn_span::thread_insn_span(unsigned long long  cycle)
+thread_insn_span::thread_insn_span(unsigned long long  cycle, gpgpu_context* ctx)
   : m_cycle(cycle),
 #if (tr1_hash_map_ismap == 1)
      m_insn_span_count() 
 #else 
      m_insn_span_count(32*1024) 
 #endif
-{ 
+{
+    gpgpu_ctx = ctx;
 }
 
 thread_insn_span::~thread_insn_span() { }
    
-thread_insn_span::thread_insn_span(const thread_insn_span& other)
+thread_insn_span::thread_insn_span(const thread_insn_span& other, gpgpu_context* ctx)
       : m_cycle(other.m_cycle),
-        m_insn_span_count(other.m_insn_span_count) 
+        m_insn_span_count(other.m_insn_span_count)
 { 
+    gpgpu_ctx = ctx;
 }
       
 thread_insn_span& thread_insn_span::operator=(const thread_insn_span& other)
@@ -551,7 +552,7 @@ void thread_insn_span::print_sparse_histo(FILE *fout) const
    int n_printed_entries = 0;
    span_count_map::const_iterator i_sc = m_insn_span_count.begin();
    for (; i_sc != m_insn_span_count.end(); ++i_sc) {
-      unsigned ptx_lineno = translate_pc_to_ptxlineno(i_sc->first);
+      unsigned ptx_lineno = gpgpu_ctx->translate_pc_to_ptxlineno(i_sc->first);
       fprintf(fout, "%u %d ", ptx_lineno, i_sc->second);
       n_printed_entries++;
    }
@@ -566,7 +567,7 @@ void thread_insn_span::print_sparse_histo(gzFile fout) const
    int n_printed_entries = 0;
    span_count_map::const_iterator i_sc = m_insn_span_count.begin();
    for (; i_sc != m_insn_span_count.end(); ++i_sc) {
-      unsigned ptx_lineno = translate_pc_to_ptxlineno(i_sc->first);
+      unsigned ptx_lineno = gpgpu_ctx->translate_pc_to_ptxlineno(i_sc->first);
       gzprintf(fout, "%u %d ", ptx_lineno, i_sc->second);
       n_printed_entries++;
    }
@@ -578,14 +579,14 @@ void thread_insn_span::print_sparse_histo(gzFile fout) const
 
 ////////////////////////////////////////////////////////////////////////////////
 
-thread_CFlocality::thread_CFlocality(std::string name, 
+thread_CFlocality::thread_CFlocality( gpgpu_context* ctx, std::string name, 
                                      unsigned long long  snap_shot_interval, 
                                      int nthreads, 
                                      address_type start_pc, 
                                      unsigned long long  start_cycle)
       : snap_shot_trigger(snap_shot_interval), m_name(name),
         m_nthreads(nthreads), m_thread_pc(nthreads, start_pc), m_cycle(start_cycle),
-        m_thd_span(start_cycle)
+        m_thd_span(start_cycle, ctx)
 {
    std::fill(m_thread_pc.begin(), m_thread_pc.end(), -1); // so that hw thread with no work assigned will not clobber results
 }

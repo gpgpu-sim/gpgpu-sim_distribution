@@ -744,7 +744,7 @@ void shader_core_ctx::decode()
     if( m_inst_fetch_buffer.m_valid ) {
         // decode 1 or 2 instructions and place them into ibuffer
         address_type pc = m_inst_fetch_buffer.m_pc;
-        const warp_inst_t* pI1 = ptx_fetch_inst(pc);
+        const warp_inst_t* pI1 = m_gpu->gpgpu_ctx->ptx_fetch_inst(pc);
         m_warp[m_inst_fetch_buffer.m_warp_id].ibuffer_fill(0,pI1);
         m_warp[m_inst_fetch_buffer.m_warp_id].inc_inst_in_pipeline();
         if( pI1 ) {
@@ -754,7 +754,7 @@ void shader_core_ctx::decode()
             }else if(pI1->oprnd_type==FP_OP) {
             	m_stats->m_num_FPdecoded_insn[m_sid]++;
             }
-           const warp_inst_t* pI2 = ptx_fetch_inst(pc+pI1->isize);
+           const warp_inst_t* pI2 = m_gpu->gpgpu_ctx->ptx_fetch_inst(pc+pI1->isize);
            if( pI2 ) {
                m_warp[m_inst_fetch_buffer.m_warp_id].ibuffer_fill(1,pI2);
                m_warp[m_inst_fetch_buffer.m_warp_id].inc_inst_in_pipeline();
