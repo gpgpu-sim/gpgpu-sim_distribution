@@ -29,13 +29,6 @@
 
 #include "../option_parser.h"
 
-extern bool enable_ptx_file_line_stats;
-
-// set options
-void ptx_file_line_stats_options(option_parser_t opp);
-
-// output stats to a file
-void ptx_file_line_stats_write_file();
 
 #ifdef __cplusplus
 // stat collection interface to cuda-sim
@@ -56,3 +49,19 @@ void ptx_file_line_stats_commit_exposed_latency(int sc_id, int exposed_latency);
 
 void ptx_file_line_stats_add_warp_divergence(unsigned pc, unsigned n_way_divergence);
 
+class gpgpu_context;
+class ptx_stats {
+    public:
+	ptx_stats(gpgpu_context* ctx) {
+	    ptx_line_stats_filename = NULL;
+	    gpgpu_ctx = ctx;
+	}
+	char * ptx_line_stats_filename;
+	bool enable_ptx_file_line_stats;
+	gpgpu_context* gpgpu_ctx;
+	// set options
+	void ptx_file_line_stats_options(option_parser_t opp);
+
+	// output stats to a file
+	void ptx_file_line_stats_write_file();
+};

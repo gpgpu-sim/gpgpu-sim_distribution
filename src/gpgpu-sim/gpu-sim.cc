@@ -545,7 +545,7 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
     option_parser_register(opp, "-trace_sampling_memory_partition", OPT_INT32, 
                           &Trace::sampling_memory_partition, "The memory partition which is printed using MEMPART_DPRINTF. Default -1 (i.e. all)",
                           "-1");
-   ptx_file_line_stats_options(opp);
+    gpgpu_ctx->stats->ptx_file_line_stats_options(opp);
 
     //Jin: kernel launch latency
     option_parser_register(opp, "-gpgpu_kernel_launch_latency", OPT_INT32, 
@@ -932,7 +932,7 @@ void gpgpu_sim::update_stats() {
 
 void gpgpu_sim::print_stats()
 {
-    ptx_file_line_stats_write_file();
+    gpgpu_ctx->stats->ptx_file_line_stats_write_file();
     gpu_print_stat();
 
     if (g_network_mode) {

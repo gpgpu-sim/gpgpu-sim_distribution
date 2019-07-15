@@ -6,6 +6,7 @@
 #include "../src/gpgpusim_entrypoint.h"
 #include "../src/cuda-sim/cuda-sim.h"
 #include "../src/cuda-sim/cuda_device_runtime.h"
+#include "../src/cuda-sim/ptx-stats.h"
 
 class gpgpu_context {
     public:
@@ -21,6 +22,7 @@ class gpgpu_context {
 	    the_gpgpusim = new GPGPUsim_ctx(this);
 	    func_sim = new cuda_sim(this);
 	    device_runtime = new cuda_device_runtime(this);
+	    stats = new ptx_stats(this);
 	}
 	// global list
 	symbol_table *g_global_allfiles_symbol_table;
@@ -36,6 +38,7 @@ class gpgpu_context {
 	GPGPUsim_ctx* the_gpgpusim;
 	cuda_sim* func_sim;
 	cuda_device_runtime* device_runtime;
+	ptx_stats* stats;
 	// member function list
 	void cuobjdumpParseBinary(unsigned int handle);
 	class symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num );
