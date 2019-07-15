@@ -35,7 +35,7 @@ class gpgpu_context;
 typedef void * yyscan_t;
 class ptx_recognizer {
     public:
-	ptx_recognizer( gpgpu_context* ctx ) {
+	ptx_recognizer( gpgpu_context* ctx ) : g_return_var(ctx) {
 	    scanner = NULL;
 	    g_size = -1;
 	    g_add_identifier_cached__identifier = NULL;

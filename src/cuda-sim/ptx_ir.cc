@@ -39,6 +39,7 @@ typedef void * yyscan_t;
 #include "assert.h"
 
 #include "cuda-sim.h"
+#include "../../libcuda/gpgpu_context.h"
 
 #define STR_SIZE 1024
 
@@ -322,11 +323,9 @@ void symbol_table::dump()
    printf("\n");
 }
 
-unsigned operand_info::sm_next_uid=1;
-
 unsigned operand_info::get_uid()
 {
-   unsigned result = sm_next_uid++;
+   unsigned result = (gpgpu_ctx->operand_info_sm_next_uid)++;
    return result;
 }
 
@@ -1015,7 +1014,7 @@ void copy_buffer_to_frame(ptx_thread_info * thread, const arg_buffer_t &a)
 {
    if( a.is_reg() ) {
       ptx_reg_t value = a.get_reg();
-      operand_info dst_reg = operand_info(a.get_dst()); 
+      operand_info dst_reg = operand_info(a.get_dst(), thread->get_gpu()->gpgpu_ctx); 
       thread->set_reg(dst_reg.get_symbol(),value);
    } else {  
       const void *buffer = a.get_param_buffer();
@@ -1039,7 +1038,8 @@ void copy_buffer_list_into_frame(ptx_thread_info * thread, arg_buffer_list_t &ar
 
 static std::list<operand_info> check_operands( int opcode,
                                         const std::list<int> &scalar_type,
-                                        const std::list<operand_info> &operands )
+                                        const std::list<operand_info> &operands,
+					gpgpu_context* ctx)
 {
    static int g_warn_literal_operands_two_type_inst;
     if( (opcode == CVT_OP) || (opcode == SET_OP) || (opcode == SLCT_OP) || (opcode == TEX_OP) || (opcode==MMA_OP) || (opcode == DP4A_OP)) {
@@ -1066,7 +1066,7 @@ static std::list<operand_info> check_operands( int opcode,
                     if( (op.get_type() == double_op_t) && (inst_type == F32_TYPE) ) {
                         ptx_reg_t v = op.get_literal_value();
                         float u = (float)v.f64;
-                        operand_info n(u);
+                        operand_info n(u, ctx);
                         result.push_back(n);
                     } else {
                         result.push_back(op);
@@ -1097,7 +1097,7 @@ ptx_instruction::ptx_instruction( int opcode,
                                   unsigned line,
                                   const char *source,
                                   const core_config *config,
-				  gpgpu_context* ctx ) : warp_inst_t(config)
+				  gpgpu_context* ctx ) : warp_inst_t(config), m_return_var(ctx)
 {
    gpgpu_ctx = ctx;
    m_uid = ++g_num_ptx_inst_uid;
@@ -1107,7 +1107,7 @@ ptx_instruction::ptx_instruction( int opcode,
    m_neg_pred = neg_pred;
    m_pred_mod = pred_mod;
    m_label = label;
-   const std::list<operand_info> checked_operands = check_operands(opcode,scalar_type,operands);
+   const std::list<operand_info> checked_operands = check_operands(opcode,scalar_type,operands, ctx);
    m_operands.insert(m_operands.begin(), checked_operands.begin(), checked_operands.end() );
    m_return_var = return_var;
    m_options = options;
@@ -1370,6 +1370,10 @@ std::string ptx_instruction::to_string() const
                            m_source_file.c_str(), m_source_line,
                            m_source.c_str() );
    return std::string( buf );
+}
+operand_info ptx_instruction::get_pred() const
+{
+    return operand_info( m_pred, gpgpu_ctx);
 }
 
 unsigned function_info::sm_next_uid = 1;

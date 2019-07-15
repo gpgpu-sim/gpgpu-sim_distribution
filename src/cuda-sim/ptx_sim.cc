@@ -422,9 +422,9 @@ bool ptx_thread_info::callstack_pop()
    assert( !((rv_src != NULL) ^ (rv_dst != NULL)) ); // ensure caller and callee agree on whether there is a return value
 
    // read return value from callee frame
-   arg_buffer_t buffer;
+   arg_buffer_t buffer(m_gpu->gpgpu_ctx);
    if( rv_src != NULL ) 
-      buffer = copy_arg_to_buffer(this, operand_info(rv_src), rv_dst );
+      buffer = copy_arg_to_buffer(this, operand_info(rv_src, m_gpu->gpgpu_ctx), rv_dst );
 
    m_symbol_table = m_callstack.back().m_symbol_table;
    m_NPC = m_callstack.back().m_PC;
@@ -456,9 +456,9 @@ bool ptx_thread_info::callstack_pop_plus()
    assert( !((rv_src != NULL) ^ (rv_dst != NULL)) ); // ensure caller and callee agree on whether there is a return value
 
    // read return value from callee frame
-   arg_buffer_t buffer;
+   arg_buffer_t buffer(m_gpu->gpgpu_ctx);
    if( rv_src != NULL )
-      buffer = copy_arg_to_buffer(this, operand_info(rv_src), rv_dst );
+      buffer = copy_arg_to_buffer(this, operand_info(rv_src, m_gpu->gpgpu_ctx), rv_dst );
 
    m_symbol_table = m_callstack.back().m_symbol_table;
    m_NPC = m_callstack.back().m_PC;
