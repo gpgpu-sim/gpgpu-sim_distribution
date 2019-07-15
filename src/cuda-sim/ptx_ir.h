@@ -152,8 +152,9 @@ class operand_info;
 
 class symbol {
 public:
-   symbol( const char *name, const type_info *type, const char *location, unsigned size ) 
+   symbol( const char *name, const type_info *type, const char *location, unsigned size, gpgpu_context* ctx ) 
    {
+      gpgpu_ctx = ctx;
       m_uid = get_uid();
       m_name = name;
       m_decl_location = location;
@@ -273,6 +274,7 @@ public:
    unsigned uid() const { return m_uid; }
 
 private:
+   gpgpu_context* gpgpu_ctx;
    unsigned get_uid();
    unsigned m_uid;
    const type_info *m_type;
@@ -299,8 +301,6 @@ private:
    bool m_reg_num_valid; 
 
    std::list<operand_info> m_initializer;
-   static unsigned sm_next_uid;
-   
 };
 
 class symbol_table {
