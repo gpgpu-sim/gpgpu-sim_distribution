@@ -299,7 +299,6 @@ private:
    class function_info *m_kernel_entry;
 
    unsigned m_uid;
-   static unsigned m_next_uid;
    
    //These maps contain the snapshot of the texture mappings at kernel launch
    std::map<std::string, const struct cudaArray*> m_NameToCudaArray;

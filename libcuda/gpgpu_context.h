@@ -14,6 +14,7 @@ class gpgpu_context {
 	    sm_next_access_uid=0;
 	    warp_inst_sm_next_uid=0;
 	    operand_info_sm_next_uid = 1;
+	    kernel_info_m_next_uid = 1;
 	    api = new cuda_runtime_api(this);
 	    ptxinfo = new ptxinfo_data(this);
 	    ptx_parser = new ptx_recognizer(this);
@@ -27,6 +28,7 @@ class gpgpu_context {
 	unsigned sm_next_access_uid;
 	unsigned warp_inst_sm_next_uid;
 	unsigned operand_info_sm_next_uid;//uid for operand_info
+	unsigned kernel_info_m_next_uid;//uid for kernel_info_t
 	// objects pointers for each file
 	cuda_runtime_api* api;
 	ptxinfo_data* ptxinfo;
