@@ -136,6 +136,7 @@ class cuda_sim {
 	    ptx_tex_regs = NULL;
 	    g_ptx_thread_info_delete_count=0;
 	    g_ptx_thread_info_uid_next=1;
+	    g_debug_pc = 0xBEEF1518;
 	    gpgpu_ctx = ctx;
 	}
 	//global variables
@@ -175,6 +176,7 @@ class cuda_sim {
 	ptx_reg_t* ptx_tex_regs;
 	unsigned g_ptx_thread_info_delete_count;
 	unsigned g_ptx_thread_info_uid_next;
+	addr_t g_debug_pc;
 	// backward pointer
 	class gpgpu_context* gpgpu_ctx;
 	//global functions
