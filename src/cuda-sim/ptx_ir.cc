@@ -39,14 +39,21 @@ typedef void * yyscan_t;
 #include "assert.h"
 
 #include "cuda-sim.h"
+#include "../../libcuda/gpgpu_context.h"
 
 #define STR_SIZE 1024
 
-unsigned symbol::sm_next_uid = 1;
+const ptx_instruction* gpgpu_context::pc_to_instruction(unsigned pc) 
+{
+    if( pc < s_g_pc_to_insn.size() )
+	return s_g_pc_to_insn[pc];
+    else
+	return NULL;
+}
 
 unsigned symbol::get_uid()
 {
-   unsigned result = sm_next_uid++;
+   unsigned result = (gpgpu_ctx->symbol_sm_next_uid)++;
    return result;
 }
 
@@ -151,7 +158,7 @@ symbol *symbol_table::add_variable( const char *identifier, const type_info *typ
    std::string key(identifier);
    assert( m_symbols.find(key) == m_symbols.end() );
    snprintf(buf,1024,"%s:%u",filename,line);
-   symbol *s = new symbol(identifier,type,buf,size);
+   symbol *s = new symbol(identifier,type,buf,size,gpgpu_ctx);
    m_symbols[ key ] = s;
 
    if ( type != NULL && type->get_key().is_global()  ) {
@@ -172,7 +179,7 @@ void symbol_table::add_function( function_info *func, const char *filename, unsi
    char buf[1024];
    snprintf(buf,1024,"%s:%u",filename,linenumber);
    type_info *type = add_type( func );
-   symbol *s = new symbol(func->get_name().c_str(),type,buf,0);
+   symbol *s = new symbol(func->get_name().c_str(),type,buf,0,gpgpu_ctx);
    s->set_function(func);
    m_symbols[ func->get_name() ] = s;
 }
@@ -322,11 +329,9 @@ void symbol_table::dump()
    printf("\n");
 }
 
-unsigned operand_info::sm_next_uid=1;
-
 unsigned operand_info::get_uid()
 {
-   unsigned result = sm_next_uid++;
+   unsigned result = (gpgpu_ctx->operand_info_sm_next_uid)++;
    return result;
 }
 
@@ -1015,7 +1020,7 @@ void copy_buffer_to_frame(ptx_thread_info * thread, const arg_buffer_t &a)
 {
    if( a.is_reg() ) {
       ptx_reg_t value = a.get_reg();
-      operand_info dst_reg = operand_info(a.get_dst()); 
+      operand_info dst_reg = operand_info(a.get_dst(), thread->get_gpu()->gpgpu_ctx); 
       thread->set_reg(dst_reg.get_symbol(),value);
    } else {  
       const void *buffer = a.get_param_buffer();
@@ -1039,7 +1044,8 @@ void copy_buffer_list_into_frame(ptx_thread_info * thread, arg_buffer_list_t &ar
 
 static std::list<operand_info> check_operands( int opcode,
                                         const std::list<int> &scalar_type,
-                                        const std::list<operand_info> &operands )
+                                        const std::list<operand_info> &operands,
+					gpgpu_context* ctx)
 {
    static int g_warn_literal_operands_two_type_inst;
     if( (opcode == CVT_OP) || (opcode == SET_OP) || (opcode == SLCT_OP) || (opcode == TEX_OP) || (opcode==MMA_OP) || (opcode == DP4A_OP)) {
@@ -1066,7 +1072,7 @@ static std::list<operand_info> check_operands( int opcode,
                     if( (op.get_type() == double_op_t) && (inst_type == F32_TYPE) ) {
                         ptx_reg_t v = op.get_literal_value();
                         float u = (float)v.f64;
-                        operand_info n(u);
+                        operand_info n(u, ctx);
                         result.push_back(n);
                     } else {
                         result.push_back(op);
@@ -1097,17 +1103,17 @@ ptx_instruction::ptx_instruction( int opcode,
                                   unsigned line,
                                   const char *source,
                                   const core_config *config,
-				  gpgpu_context* ctx ) : warp_inst_t(config)
+				  gpgpu_context* ctx ) : warp_inst_t(config), m_return_var(ctx)
 {
    gpgpu_ctx = ctx;
-   m_uid = ++g_num_ptx_inst_uid;
+   m_uid = ++(ctx->g_num_ptx_inst_uid);
    m_PC = 0;
    m_opcode = opcode;
    m_pred = pred;
    m_neg_pred = neg_pred;
    m_pred_mod = pred_mod;
    m_label = label;
-   const std::list<operand_info> checked_operands = check_operands(opcode,scalar_type,operands);
+   const std::list<operand_info> checked_operands = check_operands(opcode,scalar_type,operands, ctx);
    m_operands.insert(m_operands.begin(), checked_operands.begin(), checked_operands.end() );
    m_return_var = return_var;
    m_options = options;
@@ -1371,13 +1377,16 @@ std::string ptx_instruction::to_string() const
                            m_source.c_str() );
    return std::string( buf );
 }
+operand_info ptx_instruction::get_pred() const
+{
+    return operand_info( m_pred, gpgpu_ctx);
+}
 
-unsigned function_info::sm_next_uid = 1;
 
 function_info::function_info(int entry_point, gpgpu_context* ctx )
 {
    gpgpu_ctx = ctx;
-   m_uid = sm_next_uid++;
+   m_uid = (gpgpu_ctx->function_info_sm_next_uid)++;
    m_entry_point = (entry_point==1)?true:false;
    m_extern = (entry_point==2)?true:false;
    num_reconvergence_pairs = 0;

@@ -33,6 +33,7 @@
 #include "../trace.h"
 #include "addrdec.h"
 #include "shader.h"
+#include "gpu-cache.h"
 #include <iostream>
 #include <fstream>
 #include <list>
@@ -143,13 +144,14 @@ struct power_config {
 };
 
 
-
-struct memory_config {
-   memory_config()
+class memory_config {
+    public:
+   memory_config(gpgpu_context* ctx)
    {
        m_valid = false;
        gpgpu_dram_timing_opt=NULL;
        gpgpu_L2_queue_config=NULL;
+       gpgpu_ctx = ctx;
    }
    void init()
    {
@@ -291,13 +293,14 @@ struct memory_config {
    unsigned write_high_watermark;
    unsigned write_low_watermark;
    bool m_perf_sim_memcpy;
+   gpgpu_context* gpgpu_ctx;
 };
 
 extern bool g_interactive_debugger_enabled;
 
 class gpgpu_sim_config : public power_config, public gpgpu_functional_sim_config {
 public:
-    gpgpu_sim_config(gpgpu_context* ctx): m_shader_config(ctx) {
+    gpgpu_sim_config(gpgpu_context* ctx): m_shader_config(ctx), m_memory_config(ctx) {
 	m_valid = false;
 	gpgpu_ctx = ctx;
     }
@@ -424,6 +427,26 @@ struct occupancy_stats {
 };
 
 class gpgpu_context;
+class ptx_instruction;
+
+class watchpoint_event {
+public:
+   watchpoint_event()
+   {
+      m_thread=NULL;
+      m_inst=NULL;
+   }
+   watchpoint_event(const ptx_thread_info *thd, const ptx_instruction *pI)
+   {
+      m_thread=thd;
+      m_inst = pI;
+   }
+   const ptx_thread_info *thread() const { return m_thread; }
+   const ptx_instruction *inst() const { return m_inst; }
+private:
+   const ptx_thread_info *m_thread;
+   const ptx_instruction *m_inst;
+};
 
 class gpgpu_sim : public gpgpu_t {
 public:
@@ -487,7 +510,7 @@ public:
     /*!
     * Returning the memory configuration of the shader core, used by the functional simulation only so far
     */
-   const struct memory_config * getMemoryConfig();
+   const memory_config * getMemoryConfig();
    
    
    //! Get shader core SIMT cluster
@@ -495,6 +518,8 @@ public:
     * Returning the cluster of of the shader core, used by the functional simulation so far
     */
     simt_core_cluster * getSIMTCluster();
+
+    void hit_watchpoint( unsigned watchpoint_num, ptx_thread_info *thd, const ptx_instruction *pI );
 
     // backward pointer
     class gpgpu_context* gpgpu_ctx;
@@ -545,7 +570,7 @@ private:
   
    const struct cudaDeviceProp     *m_cuda_properties;
    const shader_core_config *m_shader_config;
-   const struct memory_config      *m_memory_config;
+   const memory_config      *m_memory_config;
 
    // stats
    class shader_core_stats  *m_shader_stats;
@@ -560,6 +585,8 @@ private:
 
    std::vector<std::string> m_executed_kernel_names; //< names of kernel for stat printout 
    std::vector<unsigned> m_executed_kernel_uids; //< uids of kernel launches for stat printout
+   std::map<unsigned,watchpoint_event> g_watchpoint_hits;
+
    std::string executed_kernel_info_string(); //< format the kernel information into a string for stat printout
    void clear_executed_kernel_info(); //< clear the kernel information after stat printout
 

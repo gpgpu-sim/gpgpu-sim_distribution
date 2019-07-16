@@ -58,9 +58,7 @@ unsigned ptx_sim_init_thread( kernel_info_t &kernel,
                               unsigned hw_warp_id,
                               gpgpu_t *gpu,
                               bool functionalSimulationMode = false);
-const warp_inst_t *ptx_fetch_inst( address_type pc );
 const struct gpgpu_ptx_sim_info* ptx_sim_kernel_info(const class function_info *kernel);
-
 
 /*!
  * This class functionally executes a kernel. It uses the basic data structures and procedures in core_t 
@@ -132,6 +130,11 @@ class cuda_sim {
 	    g_inst_op_classification_stat= NULL;
 	    g_assemble_code_next_pc=0;
 	    g_debug_thread_uid = 0;
+	    g_override_embedded_ptx = false;
+	    ptx_tex_regs = NULL;
+	    g_ptx_thread_info_delete_count=0;
+	    g_ptx_thread_info_uid_next=1;
+	    g_debug_pc = 0xBEEF1518;
 	    gpgpu_ctx = ctx;
 	}
 	//global variables
@@ -166,6 +169,12 @@ class cuda_sim {
 	unsigned cdp_latency[5];
 	unsigned g_assemble_code_next_pc;
 	int g_debug_thread_uid;
+	bool g_override_embedded_ptx;
+	std::set<unsigned long long> g_ptx_cta_info_sm_idx_used;
+	ptx_reg_t* ptx_tex_regs;
+	unsigned g_ptx_thread_info_delete_count;
+	unsigned g_ptx_thread_info_uid_next;
+	addr_t g_debug_pc;
 	// backward pointer
 	class gpgpu_context* gpgpu_ctx;
 	//global functions

@@ -58,7 +58,7 @@ private:
 class memory_partition_unit
 {
 public: 
-   memory_partition_unit( unsigned partition_id, const struct memory_config *config, class memory_stats_t *stats, class gpgpu_sim* gpu );
+   memory_partition_unit( unsigned partition_id, const memory_config *config, class memory_stats_t *stats, class gpgpu_sim* gpu );
    ~memory_partition_unit(); 
 
    bool busy() const;
@@ -98,7 +98,7 @@ public:
 private: 
 
    unsigned m_id;
-   const struct memory_config *m_config;
+   const memory_config *m_config;
    class memory_stats_t *m_stats;
    class memory_sub_partition **m_sub_partition; 
    class dram_t *m_dram;
@@ -106,7 +106,7 @@ private:
    class arbitration_metadata
    {
    public: 
-      arbitration_metadata(const struct memory_config *config); 
+      arbitration_metadata(const memory_config *config);
 
       // check if a subpartition still has credit 
       bool has_credits(int inner_sub_partition_id) const; 
@@ -130,7 +130,7 @@ private:
       std::vector<int> m_private_credit; 
       int m_shared_credit; 
    }; 
-   arbitration_metadata m_arbitration_metadata; 
+   arbitration_metadata m_arbitration_metadata;
 
    // determine wheither a given subpartition can issue to DRAM 
    bool can_issue_to_dram(int inner_sub_partition_id); 
@@ -149,7 +149,7 @@ private:
 class memory_sub_partition
 {
 public:
-   memory_sub_partition( unsigned sub_partition_id, const struct memory_config *config, class memory_stats_t *stats, class gpgpu_sim* gpu );
+   memory_sub_partition( unsigned sub_partition_id, const memory_config *config, class memory_stats_t *stats, class gpgpu_sim* gpu );
    ~memory_sub_partition(); 
 
    unsigned get_id() const { return m_id; } 
@@ -197,7 +197,7 @@ public:
 private:
 // data
    unsigned m_id;  //< the global sub partition ID
-   const struct memory_config *m_config;
+   const memory_config *m_config;
    class l2_cache *m_L2cache;
    class L2interface *m_L2interface;
    class gpgpu_sim* m_gpu;

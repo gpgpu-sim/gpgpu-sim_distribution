@@ -299,7 +299,6 @@ private:
    class function_info *m_kernel_entry;
 
    unsigned m_uid;
-   static unsigned m_next_uid;
    
    //These maps contain the snapshot of the texture mappings at kernel launch
    std::map<std::string, const struct cudaArray*> m_NameToCudaArray;
@@ -732,13 +731,14 @@ enum cache_operator_type {
 
 class mem_access_t {
 public:
-   mem_access_t() { init(); }
+   mem_access_t(gpgpu_context* ctx) { init(ctx); }
    mem_access_t( mem_access_type type, 
                  new_addr_type address, 
                  unsigned size,
-                 bool wr )
+                 bool wr,
+		 gpgpu_context* ctx)
    {
-       init();
+       init(ctx);
        m_type = type;
        m_addr = address;
        m_req_size = size;
@@ -750,10 +750,11 @@ public:
                  bool wr, 
                  const active_mask_t &active_mask,
                  const mem_access_byte_mask_t &byte_mask,
-		 const mem_access_sector_mask_t &sector_mask)
+		 const mem_access_sector_mask_t &sector_mask,
+		 gpgpu_context* ctx)
     : m_warp_mask(active_mask), m_byte_mask(byte_mask), m_sector_mask(sector_mask)
    {
-      init();
+      init(ctx);
       m_type = type;
       m_addr = address;
       m_req_size = size;
@@ -786,13 +787,9 @@ public:
        }
    }
 
+   gpgpu_context* gpgpu_ctx;
 private:
-   void init() 
-   {
-      m_uid=++sm_next_access_uid;
-      m_addr=0;
-      m_req_size=0;
-   }
+   void init(gpgpu_context* ctx);
 
    unsigned      m_uid;
    new_addr_type m_addr;     // request address
@@ -802,8 +799,6 @@ private:
    active_mask_t m_warp_mask;
    mem_access_byte_mask_t m_byte_mask;
    mem_access_sector_mask_t m_sector_mask;
-
-   static unsigned sm_next_access_uid;
 };
 
 class mem_fetch;
@@ -962,19 +957,9 @@ public:
     { 
         m_empty=true; 
     }
-    void issue( const active_mask_t &mask, unsigned warp_id, unsigned long long cycle, int dynamic_warp_id, int sch_id )
-    {
-        m_warp_active_mask = mask;
-        m_warp_issued_mask = mask; 
-        m_uid = ++sm_next_uid;
-        m_warp_id = warp_id;
-        m_dynamic_warp_id = dynamic_warp_id;
-        issue_cycle = cycle;
-        cycles = initiation_interval;
-        m_cache_hit=false;
-        m_empty=false;
-        m_scheduler_id=sch_id;
-    }
+
+    void issue( const active_mask_t &mask, unsigned warp_id, unsigned long long cycle, int dynamic_warp_id, int sch_id );
+
     const active_mask_t & get_active_mask() const
     {
     	return m_warp_active_mask;
@@ -1136,8 +1121,6 @@ protected:
     std::vector<per_thread_info> m_per_scalar_thread;
     bool m_mem_accesses_created;
     std::list<mem_access_t> m_accessq;
-
-    static unsigned sm_next_uid;
 
     unsigned m_scheduler_id;  //the scheduler that issues this inst
 

@@ -2421,7 +2421,6 @@ __host__ cudaError_t CUDARTAPI cudaGetExportTable(const void **ppExportTable, co
 
 //extracts all ptx files from binary and dumps into prog_name.unique_no.sm_<>.ptx files
 void cuda_runtime_api::extract_ptx_files_using_cuobjdump(CUctx_st *context){
-    extern bool g_cdp_enabled;
     char command[1000];
     char *pytorch_bin = getenv("PYTORCH_BIN");
     std::string app_binary = get_app_binary(); 
@@ -2442,7 +2441,7 @@ void cuda_runtime_api::extract_ptx_files_using_cuobjdump(CUctx_st *context){
         printf("WARNING: Failed to execute cuobjdump to get list of ptx files \n");
         exit(0);
     }   
-    if(!g_cdp_enabled) {
+    if(!gpgpu_ctx->device_runtime->g_cdp_enabled) {
         //based on the list above, dump ptx files individually. Format of dumped ptx file is prog_name.unique_no.sm_<>.ptx
 
        std::ifstream infile(ptx_list_file_name);
@@ -2515,7 +2514,6 @@ void cuda_runtime_api::extract_code_using_cuobjdump(){
     }
     // Running cuobjdump using dynamic link to current process
     // Needs the option '-all' to extract PTX from CDP-enabled binary 
-    extern bool g_cdp_enabled;
 
     //dump ptx for all individial ptx files into sepearte files which is later used by ptxas.
     int result=0;
@@ -2530,7 +2528,7 @@ void cuda_runtime_api::extract_code_using_cuobjdump(){
 	snprintf(fname,1024,"_cuobjdump_complete_output_XXXXXX");
 	int fd=mkstemp(fname);
 	close(fd);
-	if(!g_cdp_enabled)
+	if(!gpgpu_ctx->device_runtime->g_cdp_enabled)
             snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass %s > %s", app_binary.c_str(), fname);
 	else
             snprintf(command,1000,"$CUDA_INSTALL_PATH/bin/cuobjdump -ptx -elf -sass -all %s > %s", app_binary.c_str(), fname);
@@ -2822,7 +2820,7 @@ cuobjdumpELFSection* cuda_runtime_api::findELFSection(const std::string identifi
 }
 
 //! Within the section list, find the PTX section corresponding to a given identifier
-cuobjdumpPTXSection* findPTXSectionInList(std::list<cuobjdumpSection*> &sectionlist, const std::string identifier){
+cuobjdumpPTXSection* cuda_runtime_api::findPTXSectionInList(std::list<cuobjdumpSection*> &sectionlist, const std::string identifier){
 	std::list<cuobjdumpSection*>::iterator iter;
 	for (	iter = sectionlist.begin();
 			iter != sectionlist.end();
@@ -2833,8 +2831,7 @@ cuobjdumpPTXSection* findPTXSectionInList(std::list<cuobjdumpSection*> &sectionl
 			if(ptxsection->getIdentifier() == identifier)
 				return ptxsection;
 			else {
-				extern bool g_cdp_enabled;
-				if(g_cdp_enabled) {
+				if(gpgpu_ctx->device_runtime->g_cdp_enabled) {
 					printf("Warning: __cudaRegisterFatBinary needs %s, but find PTX section with %s\n",
 						identifier.c_str(), ptxsection->getIdentifier().c_str());
 					return ptxsection;

@@ -28,6 +28,7 @@
 #include "memory.h"
 #include <stdlib.h>
 #include "../debug.h"
+#include "../../libcuda/gpgpu_context.h"
 
 template<unsigned BSIZE> memory_space_impl<BSIZE>::memory_space_impl( std::string name, unsigned hash_size )
 {
@@ -88,7 +89,7 @@ template<unsigned BSIZE> void memory_space_impl<BSIZE>::write( mem_addr_t addr, 
       for( i=m_watchpoints.begin(); i!=m_watchpoints.end(); i++ ) {
          mem_addr_t wa = i->second;
          if( ((addr<=wa) && ((addr+length)>wa)) || ((addr>wa) && (addr < (wa+4))) ) 
-            hit_watchpoint(i->first,thd,pI);
+            thd->get_gpu()->gpgpu_ctx->the_gpgpusim->g_the_gpu->hit_watchpoint(i->first,thd,pI);
       }
    }
 }

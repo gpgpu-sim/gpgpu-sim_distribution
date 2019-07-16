@@ -35,10 +35,6 @@
 #include <sstream>
 #include "../../libcuda/gpgpu_context.h"
 
-/// globals
-
-bool g_override_embedded_ptx = false;
-
 /// extern prototypes
 
 extern int ptx_error( yyscan_t yyscanner, const char *s );
@@ -90,7 +86,7 @@ void gpgpu_context::print_ptx_file( const char *p, unsigned source_num, const ch
       while ( (*u != '\n') && (*u != '\0') ) u++;
       unsigned last = (*u == '\0');
       *u = '\0';
-      const ptx_instruction *pI = ptx_instruction_lookup(filename,n);
+      const ptx_instruction *pI = ptx_parser->ptx_instruction_lookup(filename,n);
       char pc[64];
       if( pI && pI->get_PC() )
          snprintf(pc,64,"%4u", pI->get_PC() );
@@ -334,8 +330,7 @@ void gpgpu_context::gpgpu_ptx_info_load_from_filename( const char *filename, uns
     std::string ptxas_filename(std::string(filename) + "as");
     char buff[1024], extra_flags[1024];
 	extra_flags[0]=0;
-    extern bool g_cdp_enabled;
-	if(!g_cdp_enabled)
+	if(!device_runtime->g_cdp_enabled)
 	       	snprintf(extra_flags,1024,"--gpu-name=sm_%u",sm_version);
 	else
 	       	snprintf(extra_flags,1024,"--compile-only --gpu-name=sm_%u",sm_version);
@@ -402,8 +397,7 @@ void gpgpu_context::gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsi
                          "A register size/SM mismatch may result in occupancy differences." );
         exit(1);
     }
-    extern bool g_cdp_enabled;
-    if(!g_cdp_enabled)
+    if(!device_runtime->g_cdp_enabled)
         snprintf(extra_flags,1024,"--gpu-name=sm_%u", g_occupancy_sm_number);
     else
         snprintf(extra_flags,1024,"--compile-only --gpu-name=sm_%u",g_occupancy_sm_number);
@@ -471,8 +465,7 @@ void gpgpu_context::gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsi
 
 	#if CUDART_VERSION >= 3000
 	if (sm_version == 0) sm_version = 20;
-    	extern bool g_cdp_enabled;
-	if(!g_cdp_enabled)
+	if(!device_runtime->g_cdp_enabled)
 	       	snprintf(extra_flags,1024,"--gpu-name=sm_%u",sm_version);
 	else
 	       	snprintf(extra_flags,1024,"--compile-only --gpu-name=sm_%u",sm_version);

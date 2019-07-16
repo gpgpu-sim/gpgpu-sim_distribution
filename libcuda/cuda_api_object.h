@@ -199,6 +199,7 @@ class cuda_runtime_api {
 	std::list<cuobjdumpSection*> mergeSections();
 	cuobjdumpELFSection* findELFSection(const std::string identifier);
 	cuobjdumpPTXSection* findPTXSection(const std::string identifier);
+	cuobjdumpPTXSection* findPTXSectionInList(std::list<cuobjdumpSection*> &sectionlist, const std::string identifier);
 	void cuobjdumpRegisterFatBinary(unsigned int handle, const char* filename, CUctx_st *context);
 	kernel_info_t *gpgpu_cuda_ptx_sim_init_grid( const char *kernel_key,
 		gpgpu_ptx_sim_arg_list_t args,

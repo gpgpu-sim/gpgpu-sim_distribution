@@ -31,15 +31,11 @@
 #include "../abstract_hardware_model.h"
 #include "ptx_ir.h"
 
-#ifdef __cplusplus 
-const class ptx_instruction *ptx_instruction_lookup( const char *filename, unsigned linenumber );
-#endif
-
 class gpgpu_context;
 typedef void * yyscan_t;
 class ptx_recognizer {
     public:
-	ptx_recognizer( gpgpu_context* ctx ) {
+	ptx_recognizer( gpgpu_context* ctx ) : g_return_var(ctx) {
 	    scanner = NULL;
 	    g_size = -1;
 	    g_add_identifier_cached__identifier = NULL;
@@ -107,6 +103,9 @@ class ptx_recognizer {
 	bool g_debug_ir_generation;
 	int g_entry_point;
 	const struct core_config *g_shader_core_config;
+	std::map<std::string,std::map<unsigned,const ptx_instruction*> > g_inst_lookup;
+	// the program intermediate representation...
+	std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
 	// backward pointer
 	class gpgpu_context* gpgpu_ctx;
 
@@ -177,6 +176,7 @@ class ptx_recognizer {
 	bool check_for_duplicates( const char *identifier );
 	void read_parser_environment_variables(); 
 	void set_ptx_warp_size(const struct core_config * warp_size);
+	const class ptx_instruction *ptx_instruction_lookup( const char *filename, unsigned linenumber );
 
 };
 
