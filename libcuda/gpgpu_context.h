@@ -20,6 +20,7 @@ class gpgpu_context {
 	    g_ptx_cta_info_uid = 1;
 	    symbol_sm_next_uid = 1;
 	    function_info_sm_next_uid = 1;
+	    debug_tensorcore = 0;
 	    api = new cuda_runtime_api(this);
 	    ptxinfo = new ptxinfo_data(this);
 	    ptx_parser = new ptx_recognizer(this);
@@ -40,6 +41,7 @@ class gpgpu_context {
 	unsigned symbol_sm_next_uid; //uid for symbol
 	unsigned function_info_sm_next_uid;
 	std::vector<ptx_instruction*> s_g_pc_to_insn; // a direct mapping from PC to instruction
+	bool debug_tensorcore;
 
 	// objects pointers for each file
 	cuda_runtime_api* api;
