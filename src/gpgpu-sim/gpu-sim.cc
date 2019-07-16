@@ -545,16 +545,14 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
     option_parser_register(opp, "-trace_sampling_memory_partition", OPT_INT32, 
                           &Trace::sampling_memory_partition, "The memory partition which is printed using MEMPART_DPRINTF. Default -1 (i.e. all)",
                           "-1");
-   ptx_file_line_stats_options(opp);
+    gpgpu_ctx->stats->ptx_file_line_stats_options(opp);
 
     //Jin: kernel launch latency
-    extern unsigned g_kernel_launch_latency;
     option_parser_register(opp, "-gpgpu_kernel_launch_latency", OPT_INT32, 
-                          &g_kernel_launch_latency, "Kernel launch latency in cycles. Default: 0",
+                          &(gpgpu_ctx->device_runtime->g_kernel_launch_latency), "Kernel launch latency in cycles. Default: 0",
                           "0");
-    extern bool g_cdp_enabled;
     option_parser_register(opp, "-gpgpu_cdp_enabled", OPT_BOOL, 
-                          &g_cdp_enabled, "Turn on CDP",
+                          &(gpgpu_ctx->device_runtime->g_cdp_enabled), "Turn on CDP",
                           "0");
 }
 
@@ -888,7 +886,7 @@ void gpgpu_sim::init()
     m_shader_stats->new_grid();
     // initialize the control-flow, memory access, memory latency logger
     if (m_config.g_visualizer_enabled) {
-        create_thread_CFlogger( m_config.num_shader(), m_shader_config->n_thread_per_shader, 0, m_config.gpgpu_cflog_interval );
+        create_thread_CFlogger( gpgpu_ctx, m_config.num_shader(), m_shader_config->n_thread_per_shader, 0, m_config.gpgpu_cflog_interval );
     }
     shader_CTA_count_create( m_config.num_shader(), m_config.gpgpu_cflog_interval);
     if (m_config.gpgpu_cflog_interval != 0) {
@@ -934,7 +932,7 @@ void gpgpu_sim::update_stats() {
 
 void gpgpu_sim::print_stats()
 {
-    ptx_file_line_stats_write_file();
+    gpgpu_ctx->stats->ptx_file_line_stats_write_file();
     gpu_print_stat();
 
     if (g_network_mode) {
@@ -1107,8 +1105,7 @@ void gpgpu_sim::gpu_print_stat()
    printf("gpu_tot_occupancy = %.4f\% \n", (gpu_occupancy + gpu_tot_occupancy).get_occ_fraction() * 100);
 
 
-   extern unsigned long long g_max_total_param_size;
-   fprintf(statfout, "max_total_param_size = %llu\n", g_max_total_param_size);
+   fprintf(statfout, "max_total_param_size = %llu\n", gpgpu_ctx->device_runtime->g_max_total_param_size);
 
    // performance counter for stalls due to congestion.
    printf("gpu_stall_dramfull = %d\n", gpu_stall_dramfull);
@@ -1831,7 +1828,7 @@ const shader_core_config * gpgpu_sim::getShaderCoreConfig()
    return m_shader_config;
 }
 
-const struct memory_config * gpgpu_sim::getMemoryConfig()
+const memory_config * gpgpu_sim::getMemoryConfig()
 {
    return m_memory_config;
 }

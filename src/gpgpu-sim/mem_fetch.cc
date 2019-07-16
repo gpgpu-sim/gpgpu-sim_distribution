@@ -39,10 +39,10 @@ mem_fetch::mem_fetch( const mem_access_t &access,
                       unsigned wid,
                       unsigned sid, 
                       unsigned tpc, 
-                      const struct memory_config *config,
+                      const memory_config *config,
 					  unsigned long long cycle,
 					  mem_fetch *m_original_mf,
-					  mem_fetch *m_original_wr_mf)
+					  mem_fetch *m_original_wr_mf):m_access(access)
 
 {
    m_request_uid = sm_next_mf_request_uid++;

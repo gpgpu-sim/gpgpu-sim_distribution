@@ -41,8 +41,26 @@
 #include <iostream>
 #include "../libcuda/gpgpu_context.h"
 
-unsigned mem_access_t::sm_next_access_uid = 0;   
-unsigned warp_inst_t::sm_next_uid = 0;
+void mem_access_t::init(gpgpu_context* ctx)
+{
+      gpgpu_ctx = ctx;
+      m_uid=++(gpgpu_ctx->sm_next_access_uid);
+      m_addr=0;
+      m_req_size=0;
+}
+void warp_inst_t::issue( const active_mask_t &mask, unsigned warp_id, unsigned long long cycle, int dynamic_warp_id, int sch_id )
+{
+    m_warp_active_mask = mask;
+    m_warp_issued_mask = mask; 
+    m_uid = ++(m_config->gpgpu_ctx->warp_inst_sm_next_uid);
+    m_warp_id = warp_id;
+    m_dynamic_warp_id = dynamic_warp_id;
+    issue_cycle = cycle;
+    cycles = initiation_interval;
+    m_cache_hit=false;
+    m_empty=false;
+    m_scheduler_id=sch_id;
+}
 
 checkpoint::checkpoint()
 {
@@ -408,7 +426,7 @@ void warp_inst_t::generate_mem_accesses()
         }
         assert( total_accesses > 0 && total_accesses <= m_config->warp_size );
         cycles = total_accesses; // shared memory conflicts modeled as larger initiation interval 
-        ptx_file_line_stats_add_smem_bank_conflict( pc, total_accesses );
+        m_config->gpgpu_ctx->stats->ptx_file_line_stats_add_smem_bank_conflict( pc, total_accesses );
         break;
     }
 
@@ -449,11 +467,11 @@ void warp_inst_t::generate_mem_accesses()
                 byte_mask.set(idx+i);
         }
         for( a=accesses.begin(); a != accesses.end(); ++a ) 
-            m_accessq.push_back( mem_access_t(access_type,a->first,cache_block_size,is_write,a->second, byte_mask, mem_access_sector_mask_t()));
+            m_accessq.push_back( mem_access_t(access_type,a->first,cache_block_size,is_write,a->second, byte_mask, mem_access_sector_mask_t(), m_config->gpgpu_ctx));
     }
 
     if ( space.get_type() == global_space ) {
-        ptx_file_line_stats_add_uncoalesced_gmem( pc, m_accessq.size() - starting_queue_size );
+        m_config->gpgpu_ctx->stats->ptx_file_line_stats_add_uncoalesced_gmem( pc, m_accessq.size() - starting_queue_size );
     }
     m_mem_accesses_created=true;
 }
@@ -681,21 +699,16 @@ void warp_inst_t::memory_coalescing_arch_reduce_and_send( bool is_write, mem_acc
            assert(lower_half_used && upper_half_used);
        }
    }
-   m_accessq.push_back( mem_access_t(access_type,addr,size,is_write,info.active,info.bytes, info.chunks) );
+   m_accessq.push_back( mem_access_t(access_type,addr,size,is_write,info.active,info.bytes, info.chunks,m_config->gpgpu_ctx) );
 }
 
 void warp_inst_t::completed( unsigned long long cycle ) const 
 {
    unsigned long long latency = cycle - issue_cycle; 
    assert(latency <= cycle); // underflow detection 
-   ptx_file_line_stats_add_latency(pc, latency * active_count());  
+   m_config->gpgpu_ctx->stats->ptx_file_line_stats_add_latency(pc, latency * active_count());  
 }
 
-//Jin: CDP support
-bool g_cdp_enabled;
-unsigned g_kernel_launch_latency;
-
-unsigned kernel_info_t::m_next_uid = 1;
 
 /*A snapshot of the texture mappings needs to be stored in the kernel's info as 
 kernels should use the texture bindings seen at the time of launch and textures
@@ -710,14 +723,14 @@ kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *
     m_next_cta.z=0;
     m_next_tid=m_next_cta;
     m_num_cores_running=0;
-    m_uid = m_next_uid++;
+    m_uid = (entry->gpgpu_ctx->kernel_info_m_next_uid)++;
     m_param_mem = new memory_space_impl<8192>("param",64*1024);
 
     //Jin: parent and child kernel management for CDP
     m_parent_kernel = NULL;
    
     //Jin: launch latency management
-    m_launch_latency = g_kernel_launch_latency;
+    m_launch_latency = entry->gpgpu_ctx->device_runtime->g_kernel_launch_latency;
 
     volta_cache_config_set=false;
     m_NameToCudaArray = nameToCudaArray;
@@ -771,8 +784,7 @@ bool kernel_info_t::children_all_finished() {
 
 void kernel_info_t::notify_parent_finished() {
    if(m_parent_kernel) {
-       extern unsigned long long g_total_param_size;
-       g_total_param_size -= ((m_kernel_entry->get_args_aligned_size() + 255)/256*256);
+       m_kernel_entry->gpgpu_ctx->device_runtime->g_total_param_size -= ((m_kernel_entry->get_args_aligned_size() + 255)/256*256);
        m_parent_kernel->remove_child(this);
        g_stream_manager()->register_finished_kernel(m_parent_kernel->get_uid());
    }
@@ -1098,7 +1110,7 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
 
 
     if (warp_diverged) {
-        ptx_file_line_stats_add_warp_divergence(top_pc, 1); 
+        m_gpu->gpgpu_ctx->stats->ptx_file_line_stats_add_warp_divergence(top_pc, 1); 
     }
 }
 
@@ -1145,7 +1157,7 @@ warp_inst_t core_t::getExecuteWarp(unsigned warpId)
 {
     unsigned pc,rpc;
     m_simt_stack[warpId]->get_pdom_stack_top_info(&pc,&rpc);
-    warp_inst_t wi= *ptx_fetch_inst(pc);
+    warp_inst_t wi= *(m_gpu->gpgpu_ctx->ptx_fetch_inst(pc));
     wi.set_active(m_simt_stack[warpId]->get_active_mask());
     return wi;
 }
