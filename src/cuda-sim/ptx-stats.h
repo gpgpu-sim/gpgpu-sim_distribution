@@ -28,6 +28,7 @@
 #pragma once 
 
 #include "../option_parser.h"
+#include "../abstract_hardware_model.h"
 
 extern bool enable_ptx_file_line_stats;
 
@@ -44,15 +45,15 @@ void ptx_file_line_stats_add_exec_count(const ptx_instruction *pInsn);
 #endif
 
 // stat collection interface to gpgpu-sim
-void ptx_file_line_stats_add_latency(unsigned pc, unsigned latency);
-void ptx_file_line_stats_add_dram_traffic(unsigned pc, unsigned dram_traffic);
-void ptx_file_line_stats_add_smem_bank_conflict(unsigned pc, unsigned n_way_bkconflict);
-void ptx_file_line_stats_add_uncoalesced_gmem(unsigned pc, unsigned n_access);
+void ptx_file_line_stats_add_latency(address_type pc, unsigned latency);
+void ptx_file_line_stats_add_dram_traffic(address_type pc, unsigned dram_traffic);
+void ptx_file_line_stats_add_smem_bank_conflict(address_type pc, unsigned n_way_bkconflict);
+void ptx_file_line_stats_add_uncoalesced_gmem(address_type pc, unsigned n_access);
 
 void ptx_file_line_stats_create_exposed_latency_tracker(int n_shader_cores);
-void ptx_file_line_stats_add_inflight_memory_insn(int sc_id, unsigned pc);
-void ptx_file_line_stats_sub_inflight_memory_insn(int sc_id, unsigned pc);
+void ptx_file_line_stats_add_inflight_memory_insn(int sc_id, address_type pc);
+void ptx_file_line_stats_sub_inflight_memory_insn(int sc_id, address_type pc);
 void ptx_file_line_stats_commit_exposed_latency(int sc_id, int exposed_latency);
 
-void ptx_file_line_stats_add_warp_divergence(unsigned pc, unsigned n_way_divergence);
+void ptx_file_line_stats_add_warp_divergence(address_type pc, unsigned n_way_divergence);
 

@@ -193,7 +193,7 @@ void memory_stats_t::memlatstat_dram_access(mem_fetch *mf)
       }
       mem_access_type_stats[mf->get_access_type()][dram_id][bank]++;
    }
-   if (mf->get_pc() != (unsigned)-1) 
+   if (mf->get_pc() != (address_type)-1) 
       ptx_file_line_stats_add_dram_traffic(mf->get_pc(), mf->get_data_size());
 }
 
