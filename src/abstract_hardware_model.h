@@ -74,8 +74,8 @@ enum FuncCache
 
 typedef unsigned long long new_addr_type;
 typedef unsigned long long cudaTextureObject_t;
-typedef unsigned address_type;
-typedef unsigned addr_t;
+typedef unsigned long long address_type;
+typedef unsigned long long addr_t;
 
 // the following are operations the timing model can see 
 
