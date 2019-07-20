@@ -3002,7 +3002,7 @@ void shader_core_config::set_pipeline_latency() {
 
 		//calculate the max latency  based on the input
 
-		unsigned int_latency[5];
+		unsigned int_latency[6];
 		unsigned fp_latency[5];
 		unsigned dp_latency[5];
 		unsigned sfu_latency;
@@ -3014,10 +3014,11 @@ void shader_core_config::set_pipeline_latency() {
 			 * [2] MUL
 			 * [3] MAD
 			 * [4] DIV
+			 * [5] SHFL
 			 */
-			sscanf(opcode_latency_int, "%u,%u,%u,%u,%u",
+			sscanf(opcode_latency_int, "%u,%u,%u,%u,%u,%u",
 					&int_latency[0],&int_latency[1],&int_latency[2],
-					&int_latency[3],&int_latency[4]);
+					&int_latency[3],&int_latency[4],&int_latency[5]);
 			sscanf(opcode_latency_fp, "%u,%u,%u,%u,%u",
 					&fp_latency[0],&fp_latency[1],&fp_latency[2],
 					&fp_latency[3],&fp_latency[4]);
@@ -3034,7 +3035,7 @@ void shader_core_config::set_pipeline_latency() {
 		max_sfu_latency = std::max(dp_latency[4],sfu_latency);
 		//assume that the max operation has the max latency
 		max_sp_latency = fp_latency[1];
-		max_int_latency = int_latency[1];
+		max_int_latency = std::max(int_latency[1],int_latency[5]);
 		max_dp_latency = dp_latency[1];
 		max_tensor_core_latency = tensor_latency;
 
