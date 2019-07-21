@@ -198,10 +198,11 @@ bool stream_operation::do_operation( gpgpu_sim *gpu )
         //only allows next op to go if event is done
         //otherwise stays in the stream queue
         printf("stream wait event processing...\n");
-        if(m_event->done())
+        if(m_event->done()){
             printf("stream wait event done\n");
             m_stream->record_next_done();
         }
+    }
         break;
     default:
         abort();
