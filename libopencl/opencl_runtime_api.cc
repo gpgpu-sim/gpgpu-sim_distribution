@@ -263,15 +263,27 @@ void _cl_kernel::SetKernelArg(
 
 cl_int _cl_kernel::bind_args( gpgpu_ptx_sim_arg_list_t &arg_list )
 {
+   size_t offset = 0;
+
    assert( arg_list.empty() );
    unsigned k=0;
    std::map<unsigned, arg_info>::iterator i;
    for( i = m_args.begin(); i!=m_args.end(); i++ ) {
       if( i->first != k ) 
          return CL_INVALID_KERNEL_ARGS;
+
       arg_info arg = i->second;
-      gpgpu_ptx_sim_arg param( arg.m_arg_value, arg.m_arg_size, 0);
+      const symbol *sym = m_kernel_impl->get_arg(i->first);
+      const type_info_key &t = sym->type()->get_key();
+
+      int align = (t.get_alignment_spec() == -1) ? arg.m_arg_size : t.get_alignment_spec();
+      if( offset % align )
+         offset += (align - (offset % align));
+
+      gpgpu_ptx_sim_arg param( arg.m_arg_value, arg.m_arg_size, offset );
       arg_list.push_front( param );
+
+      offset += arg.m_arg_size;
       k++;
    }
    return CL_SUCCESS;
