@@ -1256,6 +1256,35 @@ clGetProgramInfo(cl_program         program,
 }
 
 extern CL_API_ENTRY cl_int CL_API_CALL
+clGetProgramBuildInfo (cl_program            program,
+                       cl_device_id          device,
+                       cl_program_build_info param_name,
+                       size_t                param_value_size,
+                       void *                param_value,
+                       size_t *              param_value_size_ret) CL_API_SUFFIX__VERSION_1_0
+{
+   char *buf = (char*)param_value;
+
+   switch( param_name ) {
+   case CL_PROGRAM_BUILD_STATUS:
+      CL_CASE( cl_build_status, CL_BUILD_SUCCESS );
+      break;
+   case CL_PROGRAM_BUILD_OPTIONS:
+   case CL_PROGRAM_BUILD_LOG:
+      CL_STRING_CASE( "" );
+      break;
+   case CL_PROGRAM_BINARY_TYPE:
+      CL_CASE( cl_program_binary_type, CL_PROGRAM_BINARY_TYPE_EXECUTABLE );
+      break;
+   default:
+      return CL_INVALID_VALUE;
+      break;
+   }
+
+   return CL_SUCCESS;
+}
+
+extern CL_API_ENTRY cl_int CL_API_CALL
 clEnqueueCopyBuffer(cl_command_queue    command_queue, 
                     cl_mem              src_buffer,
                     cl_mem              dst_buffer, 
