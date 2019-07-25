@@ -950,6 +950,17 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
 	   gpgpu_ptx_sim_memcpy_symbol( "%_global_block_offset", zeros, 3 * sizeof(int), 0, 1, gpu );
    }
    kernel_info_t *grid = gpgpu_opencl_ptx_sim_init_grid(kernel->get_implementation(),params,GridDim,BlockDim,gpu);
+
+   //do dynamic PDOM analysis for performance simulation scenario
+   std::string kname = grid->name();
+   function_info *kernel_func_info = grid->entry();
+   if (kernel_func_info->is_pdom_set()) {
+      printf("GPGPU-Sim PTX: PDOM analysis already done for %s \n", kname.c_str() );
+   } else {
+      printf("GPGPU-Sim PTX: finding reconvergence points for \'%s\'...\n", kname.c_str() );
+      kernel_func_info->do_pdom();
+      kernel_func_info->set_pdom();
+   }
    if ( g_ptx_sim_mode )
       gpgpu_opencl_ptx_sim_main_func( grid );
    else
