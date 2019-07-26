@@ -1169,12 +1169,15 @@ clGetDeviceInfo(cl_device_id    device,
    case CL_DEVICE_NAME: CL_STRING_CASE( "GPGPU-Sim" ); break;
    case CL_DEVICE_GLOBAL_MEM_SIZE: CL_ULONG_CASE( 1024*1024*1024 ); break;
    case CL_DEVICE_MAX_COMPUTE_UNITS: CL_UINT_CASE( device->the_device()->get_config().num_shader() ); break;
-   case CL_DEVICE_MAX_CLOCK_FREQUENCY: CL_UINT_CASE( device->the_device()->shader_clock() ); break;
+   case CL_DEVICE_MAX_CLOCK_FREQUENCY: CL_UINT_CASE( device->the_device()->shader_clock() / 1000 ); break;
    case CL_DEVICE_PLATFORM: CL_STRING_CASE("GPGPU-Sim OpenCL platform"); break;
    case CL_DEVICE_VENDOR:CL_STRING_CASE("GPGPU-Sim.org"); break;
+   case CL_DEVICE_VENDOR_ID:CL_UINT_CASE( 0x1337 ); break;
    case CL_DEVICE_VERSION: CL_STRING_CASE("OpenCL 1.0"); break;
+   case CL_DEVICE_OPENCL_C_VERSION: CL_STRING_CASE("OpenCL C 1.0"); break;
    case CL_DRIVER_VERSION: CL_STRING_CASE("1.0"); break;
    case CL_DEVICE_TYPE: CL_CASE(cl_device_type, CL_DEVICE_TYPE_GPU); break;
+   case CL_DEVICE_PROFILE: CL_STRING_CASE("FULL_PROFILE"); break;
    case CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS: CL_INT_CASE( 3 ); break;
    case CL_DEVICE_MAX_WORK_ITEM_SIZES: 
       if( param_value && param_value_size < 3*sizeof(size_t) ) return CL_INVALID_VALUE; \
@@ -1184,10 +1187,11 @@ clGetDeviceInfo(cl_device_id    device,
          ((size_t*)param_value)[1] = n_thread_per_shader;
          ((size_t*)param_value)[2] = n_thread_per_shader;
       }
-      if( param_value_size_ret ) *param_value_size_ret = 3*sizeof(cl_uint);
+      if( param_value_size_ret ) *param_value_size_ret = 3*sizeof(size_t);
       break;
    case CL_DEVICE_MAX_WORK_GROUP_SIZE: CL_INT_CASE( device->the_device()->threads_per_core() ); break;
    case CL_DEVICE_ADDRESS_BITS: CL_INT_CASE( 32 ); break;
+   case CL_DEVICE_ENDIAN_LITTLE: CL_BOOL_CASE( CL_TRUE ); break;
    case CL_DEVICE_AVAILABLE: CL_BOOL_CASE( CL_TRUE ); break;
    case CL_DEVICE_COMPILER_AVAILABLE: CL_BOOL_CASE( CL_TRUE ); break;
    case CL_DEVICE_IMAGE_SUPPORT: CL_INT_CASE( CL_TRUE ); break;
@@ -1209,16 +1213,17 @@ clGetDeviceInfo(cl_device_id    device,
       if( param_value ) buf[0]=0;
       if( param_value_size_ret ) *param_value_size_ret = 1; 
       break;
-   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_CHAR: CL_INT_CASE(1); break;
-   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_SHORT: CL_INT_CASE(1); break;
-   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_INT: CL_INT_CASE(1); break;
-   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_LONG: CL_INT_CASE(1); break;
-   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_FLOAT: CL_INT_CASE(1); break;
-   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_DOUBLE: CL_INT_CASE(0); break;
+   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_CHAR: CL_UINT_CASE(1); break;
+   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_SHORT: CL_UINT_CASE(1); break;
+   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_INT: CL_UINT_CASE(1); break;
+   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_LONG: CL_UINT_CASE(1); break;
+   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_FLOAT: CL_UINT_CASE(1); break;
+   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_DOUBLE: CL_UINT_CASE(0); break;
+   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_HALF: CL_UINT_CASE(1); break;
    case CL_DEVICE_SINGLE_FP_CONFIG: CL_INT_CASE(0); break;
    case CL_DEVICE_MEM_BASE_ADDR_ALIGN: CL_INT_CASE(256*8); break;
    default:
-      opencl_not_implemented(__my_func__,__LINE__);
+      return CL_INVALID_VALUE;
    }
    return CL_SUCCESS;
 }
