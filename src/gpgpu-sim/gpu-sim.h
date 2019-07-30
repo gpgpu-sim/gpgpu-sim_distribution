@@ -290,6 +290,7 @@ struct memory_config {
    unsigned write_high_watermark;
    unsigned write_low_watermark;
    bool m_perf_sim_memcpy;
+   bool simple_dram_model;
 };
 
 // global counters and flags (please try not to add to this list!!!)
