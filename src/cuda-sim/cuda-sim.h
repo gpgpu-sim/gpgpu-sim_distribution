@@ -32,6 +32,7 @@
 #include"../gpgpu-sim/shader.h"
 #include <stdlib.h>
 #include <map>
+#include <vector>
 #include <string>
 #include"ptx_sim.h"
 
@@ -46,6 +47,8 @@ extern int g_debug_thread_uid;
 extern void ** g_inst_classification_stat;
 extern void ** g_inst_op_classification_stat;
 extern int g_ptx_kernel_count; // used for classification stat collection purposes 
+extern char *opcode_latency_int, *opcode_latency_fp, *opcode_latency_dp,*opcode_latency_sfu,*opcode_latency_tensor;
+
 
 void ptx_opcocde_latency_options (option_parser_t opp);
 extern class kernel_info_t *gpgpu_opencl_ptx_sim_init_grid(class function_info *entry,
@@ -97,7 +100,7 @@ public:
         delete[] m_warpAtBarrier;
     }
     //! executes all warps till completion 
-    void execute();
+    void execute(int inst_count, unsigned ctaid_cp);
     virtual void warp_exit( unsigned warp_id );
     virtual bool warp_waiting_at_barrier( unsigned warp_id ) const  
     {
@@ -107,7 +110,7 @@ public:
 private:
     void executeWarp(unsigned, bool &, bool &);
     //initializes threads in the CTA block which we are executing
-    void initializeCTA();
+    void initializeCTA(unsigned ctaid_cp);
     virtual void checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned t, unsigned tid)
     {
     if(m_thread[tid]==NULL || m_thread[tid]->is_done()){

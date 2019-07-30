@@ -64,6 +64,7 @@
  * the above Disclaimer and U.S. Government End Users Notice.
  */
 
+
 #ifndef CUDA_MATH
 #define CUDA_MATH
 
@@ -149,6 +150,7 @@ float __ll2float_rd(long long int a) {
 // implementing int to float intrinsics with different rounding modes 
 #include <device_types.h>
 #include <fenv.h>
+
 
 // 32-bit integer to float
 float __int2float_rn(int a) {
@@ -359,7 +361,7 @@ int __signbitd(double d)
 #ifdef __APPLE__
 int isnanf(float a) 
 {
-   return (isnan(a)); 
+   return (std::isnan(a)); 
 }
 #endif 
 

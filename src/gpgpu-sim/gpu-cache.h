@@ -38,6 +38,8 @@
 #include "addrdec.h"
 #include <iostream>
 
+#define MAX_DEFAULT_CACHE_SIZE_MULTIBLIER 4
+
 enum cache_block_state {
     INVALID=0,
     RESERVED,
@@ -117,9 +119,9 @@ struct cache_block_t {
     virtual enum cache_block_state get_status( mem_access_sector_mask_t sector_mask) = 0;
     virtual void set_status(enum cache_block_state m_status, mem_access_sector_mask_t sector_mask) = 0;
 
-    virtual unsigned get_last_access_time() = 0;
-    virtual void set_last_access_time(unsigned time, mem_access_sector_mask_t sector_mask) = 0;
-    virtual unsigned get_alloc_time() = 0;
+    virtual unsigned long long get_last_access_time() = 0;
+    virtual void set_last_access_time(unsigned long long time, mem_access_sector_mask_t sector_mask) = 0;
+    virtual unsigned long long get_alloc_time() = 0;
     virtual void set_ignore_on_fill(bool m_ignore, mem_access_sector_mask_t sector_mask) = 0;
     virtual void set_modified_on_fill(bool m_modified, mem_access_sector_mask_t sector_mask) = 0;
     virtual unsigned get_modified_size() = 0;
@@ -190,15 +192,15 @@ struct line_cache_block: public cache_block_t  {
 	    {
 	    	m_status = status;
 	    }
-		virtual unsigned get_last_access_time()
+		virtual unsigned long long get_last_access_time()
 		{
 			return m_last_access_time;
 		}
-		virtual void set_last_access_time(unsigned time, mem_access_sector_mask_t sector_mask)
+		virtual void set_last_access_time(unsigned long long time, mem_access_sector_mask_t sector_mask)
 	    {
 	    	m_last_access_time = time;
 	    }
-		virtual unsigned get_alloc_time()
+		virtual unsigned long long get_alloc_time()
 	    {
 	    	return m_alloc_time;
 	    }
@@ -222,14 +224,14 @@ struct line_cache_block: public cache_block_t  {
 			return m_readable;
 		}
 		virtual void print_status() {
-			 printf("m_block_addr is %u, status = %u\n", m_block_addr, m_status);
+			 printf("m_block_addr is %llu, status = %u\n", m_block_addr, m_status);
 		}
 
 
 private:
-	    unsigned         m_alloc_time;
-	    unsigned         m_last_access_time;
-	    unsigned         m_fill_time;
+	    unsigned long long     m_alloc_time;
+	    unsigned long long     m_last_access_time;
+	    unsigned long long     m_fill_time;
 	    cache_block_state    m_status;
 	    bool m_ignore_on_fill_status;
 	    bool m_set_modified_on_fill;
@@ -355,41 +357,49 @@ struct sector_cache_block : public cache_block_t {
 
 		return m_status[sidx];
 	}
+
     virtual void set_status(enum cache_block_state status, mem_access_sector_mask_t sector_mask)
 	{
 		unsigned sidx = get_sector_index(sector_mask);
 		m_status[sidx] = status;
 	}
-    virtual unsigned get_last_access_time()
+
+    virtual unsigned long long get_last_access_time()
 	{
 		return m_line_last_access_time;
 	}
-    virtual void set_last_access_time(unsigned time, mem_access_sector_mask_t sector_mask)
+
+    virtual void set_last_access_time(unsigned long long time, mem_access_sector_mask_t sector_mask)
 	{
 		unsigned sidx = get_sector_index(sector_mask);
 
 		m_last_sector_access_time[sidx] = time;
 		m_line_last_access_time = time;
 	}
-    virtual unsigned get_alloc_time()
+
+    virtual unsigned long long get_alloc_time()
 	{
 		return m_line_alloc_time;
 	}
+
     virtual void set_ignore_on_fill(bool m_ignore, mem_access_sector_mask_t sector_mask)
 	{
 		unsigned sidx = get_sector_index(sector_mask);
 		m_ignore_on_fill_status[sidx] = m_ignore;
 	}
+
     virtual void set_modified_on_fill(bool m_modified, mem_access_sector_mask_t sector_mask)
 	{
 		unsigned sidx = get_sector_index(sector_mask);
 		m_set_modified_on_fill[sidx] = m_modified;
 	}
+
     virtual void set_m_readable(bool readable, mem_access_sector_mask_t sector_mask)
     {
     	unsigned sidx = get_sector_index(sector_mask);
     	m_readable[sidx] = readable;
     }
+
     virtual bool is_readable(mem_access_sector_mask_t sector_mask) {
     	unsigned sidx = get_sector_index(sector_mask);
     	return m_readable[sidx];
@@ -406,7 +416,7 @@ struct sector_cache_block : public cache_block_t {
 	}
 
     virtual void print_status() {
-    	 printf("m_block_addr is %u, status = %u %u %u %u\n", m_block_addr, m_status[0], m_status[1], m_status[2], m_status[3]);
+    	 printf("m_block_addr is %llu, status = %u %u %u %u\n", m_block_addr, m_status[0], m_status[1], m_status[2], m_status[3]);
     }
 
 
@@ -447,19 +457,22 @@ enum write_policy_t {
 
 enum allocation_policy_t {
     ON_MISS,
-    ON_FILL
+    ON_FILL,
+	STREAMING
 };
 
 
 enum write_allocate_policy_t {
 	NO_WRITE_ALLOCATE,
 	WRITE_ALLOCATE,
-	FETCH_ON_WRITE
+	FETCH_ON_WRITE,
+	LAZY_FETCH_ON_READ
 };
 
 enum mshr_config_t {
-    TEX_FIFO,
+    TEX_FIFO, // Tex cache
     ASSOC, // normal cache
+	SECTOR_TEX_FIFO,  //Tex cache sends requests to high-level sector cache
 	SECTOR_ASSOC // normal cache sends requests to high-level sector cache
 };
 
@@ -476,6 +489,12 @@ enum cache_type{
     SECTOR
 };
 
+#define MAX_WARP_PER_SHADER 64
+#define INCT_TOTAL_BUFFER 64
+#define L2_TOTAL 64
+#define MAX_WARP_PER_SHADER 64
+#define MAX_WARP_PER_SHADER 64
+
 class cache_config {
 public:
     cache_config() 
@@ -487,6 +506,7 @@ public:
         m_config_stringPrefShared = NULL;
         m_data_port_width = 0;
         m_set_index_function = LINEAR_SET_FUNCTION;
+        m_is_streaming = false;
     }
     void init(char * config, FuncCache status)
     {
@@ -535,10 +555,27 @@ public:
         switch (ap) {
         case 'm': m_alloc_policy = ON_MISS; break;
         case 'f': m_alloc_policy = ON_FILL; break;
+        case 's': m_alloc_policy = STREAMING; break;
         default: exit_parse_error();
+        }
+        if(m_alloc_policy == STREAMING) {
+        	//For streaming cache, we set the alloc policy to be on-fill to remove all line_alloc_fail stalls
+        	//we set the MSHRs to be equal to max allocated cache lines. This is possible by moving TAG to be shared between cache line and MSHR enrty (i.e. for each cache line, there is an MSHR rntey associated with it)
+        	//This is the easiest think we can think about to model (mimic) L1 streaming cache in Pascal and Volta
+        	//Based on our microbenchmakrs, MSHRs entries have been increasing substantially in Pascal and Volta
+        	//For more information about streaming cache, see:
+        	// http://on-demand.gputechconf.com/gtc/2017/presentation/s7798-luke-durant-inside-volta.pdf
+        	// https://ieeexplore.ieee.org/document/8344474/
+        	m_is_streaming = true;
+			m_alloc_policy = ON_FILL;
+			m_mshr_entries = m_nset*m_assoc*MAX_DEFAULT_CACHE_SIZE_MULTIBLIER;
+			if(m_cache_type == SECTOR)
+				m_mshr_entries *=  SECTOR_CHUNCK_SIZE;
+			m_mshr_max_merge = MAX_WARP_PER_SM;
         }
         switch (mshr_type) {
         case 'F': m_mshr_type = TEX_FIFO; assert(ntok==14); break;
+        case 'T': m_mshr_type = SECTOR_TEX_FIFO; assert(ntok==14); break;
         case 'A': m_mshr_type = ASSOC; break;
         case 'S' : m_mshr_type = SECTOR_ASSOC; break;
         default: exit_parse_error();
@@ -547,6 +584,7 @@ public:
         m_nset_log2 = LOGB2(m_nset);
         m_valid = true;
         m_atom_sz = (m_cache_type == SECTOR)? SECTOR_SIZE : m_line_sz;
+        original_m_assoc = m_assoc;
 
         //For more details about difference between FETCH_ON_WRITE and WRITE VALIDAE policies
         //Read: Jouppi, Norman P. "Cache write policies and performance". ISCA 93.
@@ -555,6 +593,7 @@ public:
         case 'N': m_write_alloc_policy = NO_WRITE_ALLOCATE; break;
         case 'W': m_write_alloc_policy = WRITE_ALLOCATE; break;
         case 'F': m_write_alloc_policy = FETCH_ON_WRITE; break;
+        case 'L': m_write_alloc_policy = LAZY_FETCH_ON_READ; break;
 		default: exit_parse_error();
         }
 
@@ -572,9 +611,9 @@ public:
             assert(0 && "Invalid cache configuration: Writeback cache cannot allocate new line on fill. "); 
         }
 
-        if(m_write_alloc_policy == FETCH_ON_WRITE && m_alloc_policy == ON_FILL)
+        if((m_write_alloc_policy == FETCH_ON_WRITE || m_write_alloc_policy == LAZY_FETCH_ON_READ )&& m_alloc_policy == ON_FILL)
 		{
-			assert(0 && "Invalid cache configuration: FETCH_ON_WRITE cannot work properly with ON_FILL policy. Cache must be ON_MISS. ");
+			assert(0 && "Invalid cache configuration: FETCH_ON_WRITE and LAZY_FETCH_ON_READ cannot work properly with ON_FILL policy. Cache must be ON_MISS. ");
 		}
         if(m_cache_type == SECTOR)
 		{
@@ -611,7 +650,11 @@ public:
         assert( m_valid );
         return m_nset * m_assoc;
     }
-
+    unsigned get_max_num_lines() const
+    {
+        assert( m_valid );
+        return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER * m_nset * original_m_assoc;
+    }
     void print( FILE *fp ) const
     {
         fprintf( fp, "Size = %d B (%d Set x %d-way x %d byte line)\n", 
@@ -638,20 +681,38 @@ public:
         // tag + index is required to check for hit/miss. Tag is now identical to the block address.
 
         //return addr >> (m_line_sz_log2+m_nset_log2);
-        return addr & ~(m_line_sz-1);
+        return addr & ~(new_addr_type)(m_line_sz-1);
     }
     new_addr_type block_addr( new_addr_type addr ) const
     {
-        return addr & ~(m_line_sz-1);
+        return addr & ~(new_addr_type)(m_line_sz-1);
     }
     new_addr_type mshr_addr( new_addr_type addr ) const
 	{
-    	return addr & ~(m_atom_sz-1);
+    	return addr & ~(new_addr_type)(m_atom_sz-1);
 	}
     enum mshr_config_t get_mshr_type() const
 	{
     	return m_mshr_type;
 	}
+    void set_assoc(unsigned n)
+	{
+    	//set new assoc. L1 cache dynamically resized in Volta
+    	m_assoc = n;
+	}
+    unsigned get_nset() const
+	{
+		assert( m_valid );
+		return m_nset;
+	}
+    unsigned get_total_size_inKB() const
+	{
+		assert( m_valid );
+		return (m_assoc*m_nset*m_line_sz)/1024;
+	}
+    bool is_streaming() {
+    	return m_is_streaming;
+    }
     FuncCache get_cache_status() {return cache_status;}
     char *m_config_string;
     char *m_config_stringPrefL1;
@@ -673,6 +734,8 @@ protected:
     unsigned m_nset_log2;
     unsigned m_assoc;
     unsigned m_atom_sz;
+    unsigned original_m_assoc;
+    bool m_is_streaming;
 
     enum replacement_policy_t m_replacement_policy; // 'L' = LRU, 'F' = FIFO
     enum write_policy_t m_write_policy;             // 'T' = write through, 'B' = write back, 'R' = read only
@@ -712,6 +775,7 @@ class l1d_cache_config : public cache_config{
 public:
 	l1d_cache_config() : cache_config(){}
 	virtual unsigned set_index(new_addr_type addr) const;
+	unsigned l1_latency;
 };
 
 class l2_cache_config : public cache_config {
@@ -730,8 +794,8 @@ public:
     tag_array(cache_config &config, int core_id, int type_id );
     ~tag_array();
 
-    enum cache_request_status probe( new_addr_type addr, unsigned &idx, mem_fetch* mf ) const;
-    enum cache_request_status probe( new_addr_type addr, unsigned &idx, mem_access_sector_mask_t mask ) const;
+    enum cache_request_status probe( new_addr_type addr, unsigned &idx, mem_fetch* mf, bool probe_mode=false ) const;
+    enum cache_request_status probe( new_addr_type addr, unsigned &idx, mem_access_sector_mask_t mask, bool probe_mode=false, mem_fetch* mf = NULL ) const;
     enum cache_request_status access( new_addr_type addr, unsigned time, unsigned &idx, mem_fetch* mf );
     enum cache_request_status access( new_addr_type addr, unsigned time, unsigned &idx, bool &wb, evicted_block_info &evicted, mem_fetch* mf );
 
@@ -742,7 +806,8 @@ public:
     unsigned size() const { return m_config.get_num_lines();}
     cache_block_t* get_block(unsigned idx) { return m_lines[idx];}
 
-    void flush(); // flash invalidate all entries
+    void flush(); // flush all written entries
+    void invalidate(); // invalidate all entries
     void new_window();
 
     void print( FILE *stream, unsigned &total_access, unsigned &total_misses ) const;
@@ -750,6 +815,8 @@ public:
     void get_stats(unsigned &total_access, unsigned &total_misses, unsigned &total_hit_res, unsigned &total_res_fail) const;
 
 	void update_cache_parameters(cache_config &config);
+	void add_pending_line(mem_fetch *mf);
+	void remove_pending_line(mem_fetch *mf);
 protected:
     // This constructor is intended for use only from derived classes that wish to
     // avoid unnecessary memory allocation that takes place in the
@@ -779,6 +846,11 @@ protected:
 
     int m_core_id; // which shader core is using this
     int m_type_id; // what kind of cache is this (normal, texture, constant)
+
+    bool is_used;  //a flag if the whole cache has ever been accessed before
+
+    typedef tr1_hash_map<new_addr_type,unsigned> line_table;
+    line_table pending_lines;
 };
 
 class mshr_table {
@@ -828,7 +900,9 @@ private:
         mshr_entry() : m_has_atomic(false) { }
     }; 
     typedef tr1_hash_map<new_addr_type,mshr_entry> table;
+    typedef tr1_hash_map<new_addr_type,mshr_entry> line_table;
     table m_data;
+    line_table pending_lines;
 
     // it may take several cycles to process the merged requests
     bool m_current_response_ready;
@@ -841,10 +915,10 @@ private:
 /// Simple struct to maintain cache accesses, misses, pending hits, and reservation fails.
 ///
 struct cache_sub_stats{
-    unsigned accesses;
-    unsigned misses;
-    unsigned pending_hits;
-    unsigned res_fails;
+    unsigned long long accesses;
+    unsigned long long misses;
+    unsigned long long pending_hits;
+    unsigned long long res_fails;
 
     unsigned long long port_available_cycles; 
     unsigned long long data_port_busy_cycles; 
@@ -894,6 +968,66 @@ struct cache_sub_stats{
     void print_port_stats(FILE *fout, const char *cache_name) const; 
 };
 
+
+// Used for collecting AerialVision per-window statistics
+struct cache_sub_stats_pw{
+    unsigned accesses;
+    unsigned write_misses;
+    unsigned write_hits;
+    unsigned write_pending_hits;
+    unsigned write_res_fails;
+
+    unsigned read_misses;
+    unsigned read_hits;
+    unsigned read_pending_hits;
+    unsigned read_res_fails;
+
+    cache_sub_stats_pw(){
+        clear();
+    }
+    void clear(){
+        accesses = 0;
+        write_misses = 0;
+        write_hits = 0;
+        write_pending_hits = 0;
+        write_res_fails = 0;
+        read_misses = 0;
+        read_hits = 0;
+        read_pending_hits = 0;
+        read_res_fails = 0;
+    }
+    cache_sub_stats_pw &operator+=(const cache_sub_stats_pw &css){
+        ///
+        /// Overloading += operator to easily accumulate stats
+        ///
+        accesses += css.accesses;
+        write_misses += css.write_misses;
+        read_misses += css.read_misses;
+        write_pending_hits += css.write_pending_hits;
+        read_pending_hits += css.read_pending_hits;
+        write_res_fails += css.write_res_fails;
+        read_res_fails += css.read_res_fails;
+        return *this;
+    }
+
+    cache_sub_stats_pw operator+(const cache_sub_stats_pw &cs){
+        ///
+        /// Overloading + operator to easily accumulate stats
+        ///
+        cache_sub_stats_pw ret;
+        ret.accesses = accesses + cs.accesses;
+        ret.write_misses = write_misses + cs.write_misses;
+        ret.read_misses = read_misses + cs.read_misses;
+        ret.write_pending_hits = write_pending_hits + cs.write_pending_hits;
+        ret.read_pending_hits = read_pending_hits + cs.read_pending_hits;
+        ret.write_res_fails = write_res_fails + cs.write_res_fails;
+        ret.read_res_fails = read_res_fails + cs.read_res_fails;
+        return ret;
+    }
+
+};
+
+
 ///
 /// Cache_stats
 /// Used to record statistics for each cache.
@@ -904,26 +1038,36 @@ class cache_stats {
 public:
     cache_stats();
     void clear();
+    // Clear AerialVision cache stats after each window
+    void clear_pw();
     void inc_stats(int access_type, int access_outcome);
+    // Increment AerialVision cache stats
+    void inc_stats_pw(int access_type, int access_outcome);
     void inc_fail_stats(int access_type, int fail_outcome);
     enum cache_request_status select_stats_status(enum cache_request_status probe, enum cache_request_status access) const;
-    unsigned &operator()(int access_type, int access_outcome, bool fail_outcome);
-    unsigned operator()(int access_type, int access_outcome, bool fail_outcome) const;
+    unsigned long long &operator()(int access_type, int access_outcome, bool fail_outcome);
+    unsigned long long operator()(int access_type, int access_outcome, bool fail_outcome) const;
     cache_stats operator+(const cache_stats &cs);
     cache_stats &operator+=(const cache_stats &cs);
     void print_stats(FILE *fout, const char *cache_name = "Cache_stats") const;
     void print_fail_stats(FILE *fout, const char *cache_name = "Cache_fail_stats") const;
 
-    unsigned get_stats(enum mem_access_type *access_type, unsigned num_access_type, enum cache_request_status *access_status, unsigned num_access_status)  const;
+    unsigned long long get_stats(enum mem_access_type *access_type, unsigned num_access_type, enum cache_request_status *access_status, unsigned num_access_status)  const;
     void get_sub_stats(struct cache_sub_stats &css) const;
+
+    // Get per-window cache stats for AerialVision
+    void get_sub_stats_pw(struct cache_sub_stats_pw &css) const;
 
     void sample_cache_port_utility(bool data_port_busy, bool fill_port_busy); 
 private:
     bool check_valid(int type, int status) const;
     bool check_fail_valid(int type, int fail) const;
 
-    std::vector< std::vector<unsigned> > m_stats;
-    std::vector< std::vector<unsigned> > m_fail_stats;
+
+    std::vector< std::vector<unsigned long long> > m_stats;
+    // AerialVision cache stats (per-window)
+    std::vector< std::vector<unsigned long long> > m_stats_pw;
+    std::vector< std::vector<unsigned long long> > m_fail_stats;
 
     unsigned long long m_cache_port_available_cycles; 
     unsigned long long m_cache_data_port_busy_cycles; 
@@ -994,6 +1138,7 @@ public:
     mem_fetch *next_access(){return m_mshrs.next_access();}
     // flash invalidate all entries in cache
     void flush(){m_tag_array->flush();}
+    void invalidate(){m_tag_array->invalidate();}
     void print(FILE *fp, unsigned &accesses, unsigned &misses) const;
     void display_state( FILE *fp ) const;
 
@@ -1006,6 +1151,14 @@ public:
     }
     void get_sub_stats(struct cache_sub_stats &css) const {
         m_stats.get_sub_stats(css);
+    }
+    // Clear per-window stats for AerialVision support
+    void clear_pw(){
+        m_stats.clear_pw();
+    }
+    // Per-window sub stats for AerialVision support
+    void get_sub_stats_pw(struct cache_sub_stats_pw &css) const {
+        m_stats.get_sub_stats_pw(css);
     }
 
     // accessors for cache bandwidth availability 
@@ -1179,6 +1332,7 @@ public:
         case NO_WRITE_ALLOCATE: m_wr_miss = &data_cache::wr_miss_no_wa; break;
 		case WRITE_ALLOCATE: m_wr_miss = &data_cache::wr_miss_wa_naive; break;
 		case FETCH_ON_WRITE: m_wr_miss = &data_cache::wr_miss_wa_fetch_on_write; break;
+		case LAZY_FETCH_ON_READ: m_wr_miss = &data_cache::wr_miss_wa_lazy_fetch_on_read; break;
         default:
             assert(0 && "Error: Must set valid cache write miss policy\n");
             break; // Need to set a write miss function
@@ -1299,7 +1453,14 @@ protected:
 							mem_fetch *mf,
 							unsigned time,
 							std::list<cache_event> &events,
-							enum cache_request_status status ); // write-allocate with read-fetch-only
+							enum cache_request_status status ); // write-allocate with fetch-on-every-write
+	enum cache_request_status
+				   wr_miss_wa_lazy_fetch_on_read( new_addr_type addr,
+								unsigned cache_index,
+								mem_fetch *mf,
+								unsigned time,
+								std::list<cache_event> &events,
+								enum cache_request_status status ); // write-allocate with read-fetch-only
 	enum cache_request_status
 				wr_miss_wa_write_validate( new_addr_type addr,
 							unsigned cache_index,
@@ -1422,7 +1583,7 @@ public:
     m_result_fifo(config.m_result_fifo_entries)
     {
         m_name = name;
-        assert(config.m_mshr_type == TEX_FIFO);
+        assert(config.m_mshr_type == TEX_FIFO || config.m_mshr_type == SECTOR_TEX_FIFO );
         assert(config.m_write_policy == READ_ONLY);
         assert(config.m_alloc_policy == ON_MISS);
         m_memport=memport;
@@ -1575,13 +1736,15 @@ private:
 
     struct extra_mf_fields {
         extra_mf_fields()  { m_valid = false;}
-        extra_mf_fields( unsigned i ) 
+        extra_mf_fields( unsigned i, const cache_config &m_config )
         {
             m_valid = true;
             m_rob_index = i;
+            pending_read = m_config.m_mshr_type == SECTOR_TEX_FIFO? m_config.m_line_sz/SECTOR_SIZE : 0;
         }
         bool m_valid;
         unsigned m_rob_index;
+        unsigned pending_read;
     };
 
     cache_stats m_stats;

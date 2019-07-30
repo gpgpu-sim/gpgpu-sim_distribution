@@ -177,8 +177,8 @@ void symbol_table::add_function( function_info *func, const char *filename, unsi
 
 //Jin: handle instruction group for cdp
 symbol_table* symbol_table::start_inst_group() {
-   char inst_group_name[1024];
-   snprintf(inst_group_name, 1024, "%s_inst_group_%u", m_scope_name.c_str(), m_inst_group_id);
+   char inst_group_name[4096];
+   snprintf(inst_group_name, 4096, "%s_inst_group_%u", m_scope_name.c_str(), m_inst_group_id);
 
    //previous added
    assert(m_inst_group_symtab.find(std::string(inst_group_name)) == m_inst_group_symtab.end());
@@ -258,6 +258,14 @@ bool symbol_table::add_function_decl( const char *name, int entry_point, functio
    return prior_decl;
 }
 
+function_info *symbol_table::lookup_function( std::string name )
+{
+   std::string key = std::string(name);
+   std::map<std::string,function_info*>::iterator it = m_function_info_lookup.find(key);
+   assert ( it != m_function_info_lookup.end() );
+   return it->second;
+}
+
 type_info *symbol_table::add_type( memory_space_t space_spec, int scalar_type_spec, int vector_spec, int alignment_spec, int extern_spec )
 {
    if( space_spec == param_space_unclassified ) 
@@ -281,8 +289,10 @@ type_info *symbol_table::get_array_type( type_info *base_type, unsigned array_di
 {
    type_info_key t = base_type->get_key();
    t.set_array_dim(array_dim);
-   type_info *pt;
-   pt = m_types[t] = new type_info(this,t);
+   type_info *pt = new type_info(this,t);
+   //Where else is m_types being used? As of now, I dont find any use of it and causing seg fault. So disabling m_types.
+   //TODO: find where m_types can be used in future and solve the seg fault.
+   //pt = m_types[t] = new type_info(this,t);
    return pt;
 }
 
@@ -575,6 +585,40 @@ bool function_info::connect_break_targets() //connecting break instructions with
    }
 
    return modified; 
+}
+void function_info::do_pdom() 
+{
+   create_basic_blocks();
+   connect_basic_blocks();
+   bool modified = false; 
+   do {
+      find_dominators();
+      find_idominators();
+      modified = connect_break_targets(); 
+   } while (modified == true);
+
+   if ( g_debug_execution>=50 ) {
+      print_basic_blocks();
+      print_basic_block_links();
+      print_basic_block_dot();
+   }
+   if ( g_debug_execution>=2 ) {
+      print_dominators();
+   }
+   find_postdominators();
+   find_ipostdominators();
+   if ( g_debug_execution>=50 ) {
+      print_postdominators();
+      print_ipostdominators();
+   }
+   printf("GPGPU-Sim PTX: pre-decoding instructions for \'%s\'...\n", m_name.c_str() );
+   for ( unsigned ii=0; ii < m_n; ii += m_instr_mem[ii]->inst_size() ) { // handle branch instructions
+      ptx_instruction *pI = m_instr_mem[ii];
+      pI->pre_decode();
+   }
+   printf("GPGPU-Sim PTX: ... done pre-decoding instructions for \'%s\'.\n", m_name.c_str() );
+   fflush(stdout);
+   m_assembled = true;
 }
 void intersect( std::set<int> &A, const std::set<int> &B )
 {
@@ -996,7 +1040,7 @@ static std::list<operand_info> check_operands( int opcode,
                                         const std::list<operand_info> &operands )
 {
    static int g_warn_literal_operands_two_type_inst;
-    if( (opcode == CVT_OP) || (opcode == SET_OP) || (opcode == SLCT_OP) || (opcode == TEX_OP) ) {
+    if( (opcode == CVT_OP) || (opcode == SET_OP) || (opcode == SLCT_OP) || (opcode == TEX_OP) || (opcode==MMA_OP) || (opcode == DP4A_OP)) {
         // just make sure these do not have have const operands... 
         if( !g_warn_literal_operands_two_type_inst ) {
             std::list<operand_info>::const_iterator o;
@@ -1044,6 +1088,7 @@ ptx_instruction::ptx_instruction( int opcode,
                                   const std::list<operand_info> &operands, 
                                   const operand_info &return_var,
                                   const std::list<int> &options, 
+                                  const std::list<int> &wmma_options, 
                                   const std::list<int> &scalar_type,
                                   memory_space_t space_spec,
                                   const char *file, 
@@ -1062,6 +1107,7 @@ ptx_instruction::ptx_instruction( int opcode,
    m_operands.insert(m_operands.begin(), checked_operands.begin(), checked_operands.end() );
    m_return_var = return_var;
    m_options = options;
+   m_wmma_options = wmma_options;
    m_wide = false;
    m_hi = false;
    m_lo = false;
@@ -1079,9 +1125,35 @@ ptx_instruction::ptx_instruction( int opcode,
    m_atomic_spec = 0;
    m_membar_level = 0;
    m_inst_size = 8; // bytes
-
+   int rr=0;
    std::list<int>::const_iterator i;
    unsigned n=1;
+   for ( i=wmma_options.begin(); i!= wmma_options.end(); i++, n++ ) {
+      int last_ptx_inst_option = *i;
+      switch ( last_ptx_inst_option ) {
+      		case SYNC_OPTION:
+      		case LOAD_A:
+      		case LOAD_B:
+      		case LOAD_C:
+      		case STORE_D:
+      		case MMA:
+      		  m_wmma_type=last_ptx_inst_option;
+      		  break;
+      		case ROW:
+      		case COL:
+      		  m_wmma_layout[rr++]=last_ptx_inst_option;
+      		  break;
+      		case M16N16K16:
+      		case M32N8K16:
+      		case M8N32K16:
+			break;
+      		default:
+      		   assert(0);
+      		   break;
+	}
+   }
+   rr=0;
+   n=1;
    for ( i=options.begin(); i!= options.end(); i++, n++ ) {
       int last_ptx_inst_option = *i;
       switch ( last_ptx_inst_option ) {
@@ -1208,15 +1280,24 @@ ptx_instruction::ptx_instruction( int opcode,
       case HALF_OPTION:
          m_inst_size = 4; // bytes
          break;
-	  case EXTP_OPTION:
-		 break;
-	  case NC_OPTION:
-		 break;
-	  case UP_OPTION:
-	  case DOWN_OPTION:
-	  case BFLY_OPTION:
-	  case IDX_OPTION:
+      case EXTP_OPTION:
+             break;
+      case NC_OPTION:
+             m_cache_option = last_ptx_inst_option;
+             break;
+      case UP_OPTION:
+      case DOWN_OPTION:
+      case BFLY_OPTION:
+      case IDX_OPTION:
 		  m_shfl_op = last_ptx_inst_option;
+		  break;
+      case PRMT_F4E_MODE:
+      case PRMT_B4E_MODE:
+      case PRMT_RC8_MODE:
+      case PRMT_ECL_MODE:
+      case PRMT_ECR_MODE:
+      case PRMT_RC16_MODE:
+		  m_prmt_op = last_ptx_inst_option;
 		  break;
       default:
          assert(0);
@@ -1306,6 +1387,7 @@ function_info::function_info(int entry_point )
    m_kernel_info.smem = 0;
    m_local_mem_framesize = 0;
    m_args_aligned_size = -1;
+   pdom_done = false; //initialize it to false
 }
 
 unsigned function_info::print_insn( unsigned pc, FILE * fp ) const

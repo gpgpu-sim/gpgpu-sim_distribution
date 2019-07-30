@@ -62,8 +62,7 @@
 #define SAMPLELOG 222
 #define DUMPLOG 333
 
-
-
+extern tr1_hash_map<new_addr_type,unsigned> address_random_interleaving;
 
 
 enum dram_ctrl_t {
@@ -291,11 +290,13 @@ struct memory_config {
    unsigned write_high_watermark;
    unsigned write_low_watermark;
    bool m_perf_sim_memcpy;
+   bool simple_dram_model;
 };
 
 // global counters and flags (please try not to add to this list!!!)
 extern unsigned long long  gpu_sim_cycle;
 extern unsigned long long  gpu_tot_sim_cycle;
+extern unsigned long long  elapsed_cycles_sm_tot;
 extern bool g_interactive_debugger_enabled;
 
 class gpgpu_sim_config : public power_config, public gpgpu_functional_sim_config {
@@ -335,6 +336,12 @@ public:
     unsigned num_shader() const { return m_shader_config.num_shader(); }
     unsigned num_cluster() const { return m_shader_config.n_simt_clusters; }
     unsigned get_max_concurrent_kernel() const { return max_concurrent_kernel; }
+    unsigned checkpoint_option;
+
+    size_t stack_limit() const {return stack_size_limit; }
+    size_t heap_limit() const {return heap_size_limit; }
+    size_t sync_depth_limit() const {return runtime_sync_depth_limit; }
+    size_t pending_launch_count_limit() const {return runtime_pending_launch_count_limit;}
 
 private:
     void init_clock_domains(void ); 
@@ -376,12 +383,45 @@ private:
     int gpu_stat_sample_freq;
     int gpu_runtime_stat_flag;
 
+    // Device Limits
+    size_t stack_size_limit;
+    size_t heap_size_limit;
+    size_t runtime_sync_depth_limit;
+    size_t runtime_pending_launch_count_limit;	
 
-
+ //gpu compute capability options
+    unsigned int gpgpu_compute_capability_major;
+    unsigned int gpgpu_compute_capability_minor;
     unsigned long long liveness_message_freq; 
 
     friend class gpgpu_sim;
 };
+
+struct occupancy_stats {
+    occupancy_stats() : aggregate_warp_slot_filled(0), aggregate_theoretical_warp_slots(0){}
+    occupancy_stats( unsigned long long wsf, unsigned long long tws )
+        : aggregate_warp_slot_filled(wsf), aggregate_theoretical_warp_slots(tws){}
+
+    unsigned long long aggregate_warp_slot_filled;
+    unsigned long long aggregate_theoretical_warp_slots;
+
+    float get_occ_fraction() const {
+        return float(aggregate_warp_slot_filled) / float(aggregate_theoretical_warp_slots);
+    }
+
+    occupancy_stats& operator+=(const occupancy_stats& rhs) {
+        aggregate_warp_slot_filled += rhs.aggregate_warp_slot_filled;
+        aggregate_theoretical_warp_slots += rhs.aggregate_theoretical_warp_slots;
+        return *this;
+    }
+
+    occupancy_stats operator+(const occupancy_stats& rhs) const{
+        return occupancy_stats( aggregate_warp_slot_filled + rhs.aggregate_warp_slot_filled,
+                                aggregate_theoretical_warp_slots + rhs.aggregate_theoretical_warp_slots
+                               );
+    }
+};
+
 
 class gpgpu_sim : public gpgpu_t {
 public:
@@ -410,9 +450,15 @@ public:
    void get_pdom_stack_top_info( unsigned sid, unsigned tid, unsigned *pc, unsigned *rpc );
 
    int shared_mem_size() const;
+   int shared_mem_per_block() const;
+   int compute_capability_major() const;
+   int compute_capability_minor() const;
    int num_registers_per_core() const;
+   int num_registers_per_block() const;
    int wrp_size() const;
    int shader_clock() const;
+   int max_cta_per_core() const;
+   int get_max_cta( const kernel_info_t &k ) const;
    const struct cudaDeviceProp *get_prop() const;
    enum divergence_support_t simd_model() const; 
 
@@ -521,6 +567,9 @@ public:
    unsigned long long  gpu_tot_sim_insn;
    unsigned long long  gpu_sim_insn_last_update;
    unsigned gpu_sim_insn_last_update_sid;
+   occupancy_stats gpu_occupancy;
+   occupancy_stats gpu_tot_occupancy;
+
 
    FuncCache get_cache_config(std::string kernel_name);
    void set_cache_config(std::string kernel_name, FuncCache cacheConfig );
@@ -548,5 +597,6 @@ public:
      m_functional_sim_kernel = NULL;
    }
 };
+
 
 #endif

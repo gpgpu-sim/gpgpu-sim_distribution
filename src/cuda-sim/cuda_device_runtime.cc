@@ -177,6 +177,20 @@ void gpgpusim_cuda_launchDeviceV2(const ptx_instruction * pI, ptx_thread_info * 
             //device_grid = op.grid;
             device_kernel_entry = config.entry;
             DEV_RUNTIME_REPORT("find device kernel " << device_kernel_entry->get_name());
+	    
+	    //PDOM analysis is done for Parent kernel but not for child kernel.
+	    if (device_kernel_entry->is_pdom_set()) {
+		    printf("GPGPU-Sim PTX: PDOM analysis already done for %s \n", device_kernel_entry->get_name().c_str() );
+	    } else {
+		    printf("GPGPU-Sim PTX: finding reconvergence points for \'%s\'...\n", device_kernel_entry->get_name().c_str() );
+		    /*
+		     * Some of the instructions like printf() gives the gpgpusim the wrong impression that it is a function call.
+		     * As printf() doesnt have a body like functions do, doing pdom analysis for printf() causes a crash.
+		     */
+		    if (device_kernel_entry->get_function_size() >0)
+			    device_kernel_entry->do_pdom();
+		    device_kernel_entry->set_pdom();
+	    }
 
             //copy data in parameter_buffer to device kernel param memory
             unsigned device_kernel_arg_size = device_kernel_entry->get_args_aligned_size();
@@ -184,7 +198,8 @@ void gpgpusim_cuda_launchDeviceV2(const ptx_instruction * pI, ptx_thread_info * 
             memory_space *device_kernel_param_mem;
 
             //create child kernel_info_t and index it with parameter_buffer address
-            device_grid = new kernel_info_t(config.grid_dim, config.block_dim, device_kernel_entry);
+	    gpgpu_t* gpu=thread->get_gpu();
+            device_grid = new kernel_info_t(config.grid_dim, config.block_dim, device_kernel_entry, gpu->getNameArrayMapping(), gpu->getNameInfoMapping());
             device_grid->launch_cycle = gpu_sim_cycle + gpu_tot_sim_cycle;
             kernel_info_t & parent_grid = thread->get_kernel();
             DEV_RUNTIME_REPORT("child kernel launched by " << parent_grid.name() << ", cta (" <<

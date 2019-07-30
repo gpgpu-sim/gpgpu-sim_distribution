@@ -129,6 +129,12 @@ memory_stats_t::memory_stats_t( unsigned n_shader, const struct shader_core_conf
       }
    }
 
+   // AerialVision L2 stats
+   L2_read_miss = 0;
+   L2_write_miss = 0;
+   L2_read_hit = 0;
+   L2_write_hit = 0;
+
    L2_cbtoL2length = (unsigned int*) calloc(mem_config->m_n_mem, sizeof(unsigned int));
    L2_cbtoL2writelength = (unsigned int*) calloc(mem_config->m_n_mem, sizeof(unsigned int));
    L2_L2tocblength = (unsigned int*) calloc(mem_config->m_n_mem, sizeof(unsigned int));
@@ -366,7 +372,7 @@ void memory_stats_t::memlatstat_print( unsigned n_mem, unsigned gpu_mem_n_bk )
          m = 0;
          printf("\n");
       }
-      printf("total reads: %d\n", k);
+      printf("total dram reads = %d\n", k);
       if (min_bank_accesses)
          printf("bank skew: %d/%d = %4.2f\n", max_bank_accesses, min_bank_accesses, (float)max_bank_accesses/min_bank_accesses);
       else
@@ -404,7 +410,7 @@ void memory_stats_t::memlatstat_print( unsigned n_mem, unsigned gpu_mem_n_bk )
          m = 0;
          printf("\n");
       }
-      printf("total reads: %d\n", k);
+      printf("total dram writes = %d\n", k);
       if (min_bank_accesses)
          printf("bank skew: %d/%d = %4.2f\n", max_bank_accesses, min_bank_accesses, (float)max_bank_accesses/min_bank_accesses);
       else

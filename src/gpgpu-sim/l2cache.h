@@ -65,6 +65,7 @@ public:
 
    void cache_cycle( unsigned cycle );
    void dram_cycle();
+   void simple_dram_model_cycle();
 
    void set_done( mem_fetch *mf );
 
@@ -162,6 +163,7 @@ public:
    void set_done( mem_fetch *mf );
 
    unsigned flushL2();
+   unsigned invalidateL2();
 
    // interface to L2_dram_queue
    bool L2_dram_queue_empty() const; 
@@ -178,6 +180,10 @@ public:
 
    void accumulate_L2cache_stats(class cache_stats &l2_stats) const;
    void get_L2cache_sub_stats(struct cache_sub_stats &css) const;
+
+   // Support for getting per-window L2 stats for AerialVision
+   void get_L2cache_sub_stats_pw(struct cache_sub_stats_pw &css) const;
+   void clear_L2cache_stats_pw();
 
    void force_l2_tag_update(new_addr_type addr, unsigned time, mem_access_sector_mask_t mask)
    {

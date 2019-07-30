@@ -111,11 +111,14 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr, addrdec_
 			//Do nothing
 			break;
 		case BITWISE_PERMUTATION:
+		{
 			assert(!gap);
 			tlx->chip = (tlx->chip) ^ (tlx->row & (m_n_channel-1));
 			assert(tlx->chip < m_n_channel);
 			break;
+		}
 		case IPOLY:
+		{
 		    /*
 			* Set Indexing function from "Pseudo-randomly interleaved memory."
 			* Rau, B. R et al.
@@ -132,7 +135,7 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr, addrdec_
 				chip[0] = a[13]^a[12]^a[11]^a[10]^a[9]^a[6]^a[5]^a[3]^a[0]^chip[0];
 				chip[1] = a[14]^a[13]^a[12]^a[11]^a[10]^a[7]^a[6]^a[4]^a[1]^chip[1];
 				chip[2] = a[14]^a[10]^a[9]^a[8]^a[7]^a[6]^a[3]^a[2]^a[0]^chip[2];
-				chip[3] = a[11]^a[10]^a[9]^a[8]^a[7]^a[4]^a[3]^a[1]^chip[3]; 
+				chip[3] = a[11]^a[10]^a[9]^a[8]^a[7]^a[4]^a[3]^a[1]^chip[3];
 				chip[4] = a[12]^a[11]^a[10]^a[9]^a[8]^a[5]^a[4]^a[2]^chip[4];
 				tlx->chip = chip.to_ulong();
 				
@@ -143,8 +146,49 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr, addrdec_
 			}
 			assert(tlx->chip < m_n_channel);
 			break;
+		}
+		case PAE:
+		{
+			//Page Address Entropy
+			//random selected bits from the page and bank bits
+			//similar to
+			//Liu, Yuxi, et al. "Get Out of the Valley: Power-Efficient Address Mapping for GPUs." ISCA 2018
+			std::bitset<64> a(tlx->row);
+			std::bitset<5> chip(tlx->chip);
+			std::bitset<4> b(tlx->bk);
+			chip[0] = a[13]^a[10]^a[9]^a[5]^a[0]^b[3]^b[0]^chip[0];
+			chip[1] = a[12]^a[11]^a[6]^a[1]^b[3]^b[2]^b[1]^chip[1];
+			chip[2] = a[14]^a[9]^a[8]^a[7]^a[2]^b[1]^chip[2];
+			chip[3] = a[11]^a[10]^a[8]^a[3]^b[2]^b[3]^chip[3];
+			chip[4] = a[12]^a[9]^a[8]^a[5]^a[4]^b[1]^b[0]^chip[4];
+			tlx->chip = chip.to_ulong();
+			assert(tlx->chip < m_n_channel);
+			break;
+		}
+		case RANDOM:
+		{
+			new_addr_type chip_address = (addr>>ADDR_CHIP_S);
+			tr1_hash_map<new_addr_type,unsigned>::const_iterator got = address_random_interleaving.find (chip_address);
+			  if ( got == address_random_interleaving.end() ) {
+				  unsigned new_chip_id = rand() % (m_n_channel*m_n_sub_partition_in_channel);
+				  address_random_interleaving[chip_address] = new_chip_id;
+				  tlx->chip = new_chip_id/m_n_sub_partition_in_channel;
+				  tlx->sub_partition = new_chip_id;
+			  }
+			  else {
+				  unsigned new_chip_id = got->second;
+				  tlx->chip = new_chip_id/m_n_sub_partition_in_channel;
+				  tlx->sub_partition = new_chip_id;
+			  }
+
+			  assert(tlx->chip < m_n_channel);
+			  assert(tlx->sub_partition < m_n_channel*m_n_sub_partition_in_channel);
+			  return;
+			break;
+		}
 		case CUSTOM:
 			/* No custom set function implemented */
+			//Do you custom index here
 			break;
 		default:
 			 assert("\nUndefined set index function.\n" && 0);
@@ -152,9 +196,9 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr, addrdec_
 	}
 
    // combine the chip address and the lower bits of DRAM bank address to form the subpartition ID
-   unsigned sub_partition_addr_mask = m_n_sub_partition_in_channel - 1; 
+   unsigned sub_partition_addr_mask = m_n_sub_partition_in_channel - 1;
    tlx->sub_partition = tlx->chip * m_n_sub_partition_in_channel
-                        + (tlx->bk & sub_partition_addr_mask); 
+                        + (tlx->bk & sub_partition_addr_mask);
 }
 
 void linear_to_raw_address_translation::addrdec_parseoption(const char *option)
@@ -373,6 +417,10 @@ void linear_to_raw_address_translation::init(unsigned int n_channel, unsigned in
    if (run_test) {
       sweep_test(); 
    }
+
+   if(memory_partition_indexing == RANDOM)
+     srand (1);
+
 }
 
 #include "../tr1_hash_map.h" 
