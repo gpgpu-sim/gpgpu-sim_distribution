@@ -172,6 +172,21 @@ private:
    size_t m_size;
 };
 
+struct _cl_event {
+private:
+   cl_ulong start;
+   cl_ulong cmd_end;
+   size_t refcount;
+public:
+   _cl_event() : start(0), cmd_end(0), refcount(1) {}
+   cl_ulong getCmdEnd(void);
+   void setCmdEnd(cl_ulong);
+   cl_ulong getStart(void);
+   void setStart(cl_ulong);
+   void retain(void);
+   bool release(void);
+};
+
 struct pgm_info {
    std::string   m_source;
    std::string   m_asm;
@@ -356,6 +371,36 @@ _cl_mem::_cl_mem(
       if( host_ptr )
          gpu->the_device()->memcpy_to_gpu( m_device_ptr, host_ptr, size );
    }
+}
+
+cl_ulong _cl_event::getCmdEnd( void )
+{
+   return cmd_end;
+}
+
+void _cl_event::setCmdEnd( cl_ulong e )
+{
+   cmd_end = e;
+}
+
+cl_ulong _cl_event::getStart( void )
+{
+   return start;
+}
+
+void _cl_event::setStart( cl_ulong s )
+{
+   start = s;
+}
+
+void _cl_event::retain( void )
+{
+   refcount++;
+}
+
+bool _cl_event::release( void )
+{
+   return ((--refcount) <= 0);
 }
 
 _cl_context::_cl_context( struct _cl_device_id *gpu ) 
@@ -735,15 +780,6 @@ clCreateProgramWithBinary(cl_context                     /* context */,
 	return cl_program();
 }
 
-extern CL_API_ENTRY cl_int CL_API_CALL
-clGetEventProfilingInfo(cl_event            /* event */,
-                        cl_profiling_info   /* param_name */,
-                        size_t              /* param_value_size */,
-                        void *              /* param_value */,
-                        size_t *            /* param_value_size_ret */) CL_API_SUFFIX__VERSION_1_0{
-	gpgpusim_opencl_warning(__my_func__,__LINE__, "GPGPUsim - OpenCLFunction is not implemented. Returning CL_SUCCESS");
-	return CL_SUCCESS;
-}
 /*******************************************************************************************************/
 
 
@@ -956,7 +992,13 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
    if ( err_val != CL_SUCCESS ) 
       return err_val;
 
-   gpgpu_t *gpu = command_queue->get_device()->the_device();
+   gpgpu_sim *gpu = command_queue->get_device()->the_device();
+
+   if ( event ) {
+      *event = new _cl_event();
+      event[0]->setStart((gpu_tot_sim_cycle * 1000000) / gpu->shader_clock());
+   }
+
    if (kernel->get_implementation()->get_ptx_version().ver() <3.0){
 	   gpgpu_ptx_sim_memcpy_symbol( "%_global_size", _global_size, 3 * sizeof(int), 0, 1, gpu );
 	   gpgpu_ptx_sim_memcpy_symbol( "%_work_dim", &work_dim, 1 * sizeof(int), 0, 1, gpu  );
@@ -980,6 +1022,10 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
       gpgpu_opencl_ptx_sim_main_func( grid );
    else
       gpgpu_opencl_ptx_sim_main_perf( grid );
+
+   if ( event ) {
+      event[0]->setCmdEnd((gpu_tot_sim_cycle * 1000000) / gpu->shader_clock());
+   }
    return CL_SUCCESS;
 }
 
@@ -1243,6 +1289,10 @@ clRetainMemObject(cl_mem memobj) CL_API_SUFFIX__VERSION_1_0
 extern CL_API_ENTRY cl_int CL_API_CALL
 clRetainEvent(cl_event event) CL_API_SUFFIX__VERSION_1_0
 {
+   if ( !event )
+      return CL_INVALID_EVENT;
+
+   event->retain();
    return CL_SUCCESS;
 }
 
@@ -1255,6 +1305,33 @@ clRetainKernel(cl_kernel kernel) CL_API_SUFFIX__VERSION_1_0
 extern CL_API_ENTRY cl_int CL_API_CALL
 clRetainDevice(cl_device_id device) CL_API_SUFFIX__VERSION_1_0
 {
+   return CL_SUCCESS;
+}
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clGetEventProfilingInfo(cl_event            event,
+                        cl_profiling_info   param_name,
+                        size_t              param_value_size,
+                        void *              param_value,
+                        size_t *            param_value_size_ret) CL_API_SUFFIX__VERSION_1_0{
+   if ( !event )
+      return CL_INVALID_EVENT;
+
+   switch (param_name) {
+   case CL_PROFILING_COMMAND_QUEUED:
+   case CL_PROFILING_COMMAND_SUBMIT:
+   case CL_PROFILING_COMMAND_START:
+      CL_ULONG_CASE( event->getStart() );
+      break;
+   case CL_PROFILING_COMMAND_END:
+      CL_ULONG_CASE( event->getCmdEnd() );
+      break;
+   default:
+      return CL_INVALID_VALUE;
+      break;
+   }
+
+   //gpgpusim_opencl_warning(__my_func__,__LINE__, "GPGPUsim - OpenCLFunction is not implemented. Returning CL_SUCCESS");
    return CL_SUCCESS;
 }
 
@@ -1407,8 +1484,14 @@ clWaitForEvents(cl_uint             /* num_events */,
 }
 
 extern CL_API_ENTRY cl_int CL_API_CALL
-clReleaseEvent(cl_event /* event */) CL_API_SUFFIX__VERSION_1_0
+clReleaseEvent(cl_event e) CL_API_SUFFIX__VERSION_1_0
 {
+   if ( e == nullptr )
+      return CL_INVALID_EVENT;
+
+   if ( e->release() )
+      delete e;
+
    return CL_SUCCESS;
 }
 
