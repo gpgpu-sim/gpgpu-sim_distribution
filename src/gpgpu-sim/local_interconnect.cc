@@ -45,7 +45,8 @@ xbar_router::xbar_router(unsigned router_id, enum Interconnect_type m_type, unsi
 	total_nodes = n_shader+n_mem;
 	in_buffers.resize(total_nodes);
 	out_buffers.resize(total_nodes);
-	next_node=0;
+	next_node.resize(total_nodes,0);
+//	next_node = 0;
 	in_buffer_limit = m_in_buffer_limit;
 	out_buffer_limit = m_out_buffer_limit;
 	if(m_type == REQ_NET) {
@@ -108,7 +109,7 @@ bool xbar_router::Has_Buffer_In(unsigned input_deviceID, unsigned size, bool upd
 bool xbar_router::Has_Buffer_Out(unsigned output_deviceID, unsigned size){
 	return (out_buffers[output_deviceID].size() + size <= out_buffer_limit);
 }
-
+/*
 void xbar_router::Advance() {
 	cycles++;
 
@@ -142,6 +143,59 @@ void xbar_router::Advance() {
 		out_buffer_util+=out_buffers[i].size();
 	}
 }
+*/
+
+void xbar_router::Advance() {
+	cycles++;
+
+	vector<unsigned> node_tmp;
+
+	for (unsigned i=0; i<total_nodes; ++i){
+		
+		if(!in_buffers[i].empty()){
+			Packet _packet_tmp = in_buffers[i].front();
+			if (!node_tmp.empty()){
+				if (std::find(node_tmp.begin(), node_tmp.end(), _packet_tmp.output_deviceID)!=node_tmp.end()){
+					conflicts++;
+				}
+				else 
+					node_tmp.push_back(_packet_tmp.output_deviceID);
+			}
+			else{
+				node_tmp.push_back(_packet_tmp.output_deviceID);
+			}
+		}
+	}
+
+	for(unsigned i=0; i<total_nodes; ++i){
+
+		if(Has_Buffer_Out(i, 1)) {
+			for(unsigned j=0; j<total_nodes; ++j){
+				unsigned node_id = (j+next_node[i])%total_nodes;
+
+				if(!in_buffers[node_id].empty()) {
+					Packet _packet = in_buffers[node_id].front();
+					if(_packet.output_deviceID==i){
+						out_buffers[_packet.output_deviceID].push(_packet);
+						in_buffers[node_id].pop();
+						next_node[i] = (++node_id % total_nodes);
+						break;
+					}
+				}
+			}
+		}
+		else
+			out_buffer_full++;
+	}
+
+	//collect some stats about buffer util
+	for(unsigned i=0; i<total_nodes; ++i){
+		in_buffer_util+=in_buffers[i].size();
+		out_buffer_util+=out_buffers[i].size();
+	}
+}
+
+
 
 bool xbar_router::Busy() const {
 
