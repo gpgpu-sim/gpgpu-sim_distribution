@@ -82,7 +82,8 @@ private:
 	vector<queue<Packet> > out_buffers;
 	unsigned _n_shader, _n_mem, total_nodes;
 	unsigned in_buffer_limit, out_buffer_limit;
-	unsigned next_node;
+	vector<unsigned> next_node;
+//	unsigned next_node;
 	unsigned m_id;
 	enum Interconnect_type router_type;
 	unsigned active_in_buffers,active_out_buffers;
