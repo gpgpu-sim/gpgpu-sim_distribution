@@ -37,6 +37,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 %token <string_value> STRING
 %token <int_value>  OPCODE
+%token <int_value>  WMMA_DIRECTIVE
+%token <int_value>  LAYOUT 
+%token <int_value>  CONFIGURATION 
 %token  ALIGN_DIRECTIVE
 %token  BRANCHTARGETS_DIRECTIVE
 %token  BYTE_DIRECTIVE
@@ -47,7 +50,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token  PTR_DIRECTIVE
 %token  ENTRY_DIRECTIVE
 %token  EXTERN_DIRECTIVE
-%token  WEAK_DIRECTIVE
 %token  FILE_DIRECTIVE
 %token  FUNC_DIRECTIVE
 %token  GLOBAL_DIRECTIVE
@@ -64,6 +66,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token  SECTION_DIRECTIVE
 %token  SHARED_DIRECTIVE
 %token  SREG_DIRECTIVE
+%token	SSTARR_DIRECTIVE
 %token  STRUCT_DIRECTIVE
 %token  SURF_DIRECTIVE
 %token  TARGET_DIRECTIVE
@@ -199,6 +202,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token	DOWN_OPTION;
 %token	BFLY_OPTION;
 %token	IDX_OPTION;
+%token	PRMT_F4E_MODE;
+%token	PRMT_B4E_MODE;
+%token	PRMT_RC8_MODE;
+%token	PRMT_RC16_MODE;
+%token	PRMT_ECL_MODE;
+%token	PRMT_ECR_MODE;
 
 %type <int_value> function_decl_header
 %type <ptr_value> function_decl
@@ -271,6 +280,7 @@ ptr_spec: /*empty*/
 ptr_space_spec: GLOBAL_DIRECTIVE { add_ptr_spec(global_space); }
               | LOCAL_DIRECTIVE  { add_ptr_spec(local_space); }
               | SHARED_DIRECTIVE { add_ptr_spec(shared_space); }
+			  | CONST_DIRECTIVE { add_ptr_spec(global_space); }
 
 ptr_align_spec: ALIGN_DIRECTIVE INT_OPERAND
 
@@ -332,6 +342,7 @@ var_spec_list: var_spec
 var_spec: space_spec 
 	| type_spec
 	| align_spec
+	| VISIBLE_DIRECTIVE
 	| EXTERN_DIRECTIVE { add_extern_spec(); }
     | WEAK_DIRECTIVE
 	;
@@ -348,6 +359,7 @@ addressable_spec: CONST_DIRECTIVE {  add_space_spec(const_space,$1); }
 	| LOCAL_DIRECTIVE 	  {  add_space_spec(local_space,0); }
 	| PARAM_DIRECTIVE 	  {  add_space_spec(param_space_unclassified,0); }
 	| SHARED_DIRECTIVE 	  {  add_space_spec(shared_space,0); }
+	| SSTARR_DIRECTIVE    {  add_space_spec(sstarr_space,0); }
 	| SURF_DIRECTIVE 	  {  add_space_spec(surf_space,0); }
 	| TEX_DIRECTIVE 	  {  add_space_spec(tex_space,0); }
 	;
@@ -427,6 +439,8 @@ option: type_spec
 	| compare_spec
 	| addressable_spec
 	| rounding_mode
+	| wmma_spec 
+	| prmt_spec 
 	| SYNC_OPTION { add_option(SYNC_OPTION); }	
 	| ARRIVE_OPTION { add_option(ARRIVE_OPTION); }
 	| RED_OPTION { add_option(RED_OPTION); }	
@@ -482,6 +496,7 @@ atomic_operation_spec: ATOMIC_AND { add_option(ATOMIC_AND); }
 rounding_mode: floating_point_rounding_mode
 	| integer_rounding_mode;
 
+
 floating_point_rounding_mode: RN_OPTION { add_option(RN_OPTION); } 
  	| RZ_OPTION { add_option(RZ_OPTION); } 
  	| RM_OPTION { add_option(RM_OPTION); } 
@@ -514,6 +529,24 @@ compare_spec:EQ_OPTION { add_option(EQ_OPTION); }
 	| NAN_OPTION { add_option(NAN_OPTION); } 
 	;
 
+prmt_spec: PRMT_F4E_MODE { add_option( PRMT_F4E_MODE); }
+	|  PRMT_B4E_MODE { add_option( PRMT_B4E_MODE); }
+	|  PRMT_RC8_MODE { add_option( PRMT_RC8_MODE); }
+	|  PRMT_RC16_MODE{ add_option( PRMT_RC16_MODE);}
+	|  PRMT_ECL_MODE { add_option( PRMT_ECL_MODE); }
+	|  PRMT_ECR_MODE { add_option( PRMT_ECR_MODE); }
+	;
+
+wmma_spec: WMMA_DIRECTIVE LAYOUT CONFIGURATION{add_space_spec(global_space,0);add_ptr_spec(global_space); add_wmma_option($1);add_wmma_option($2);add_wmma_option($3);}
+	| WMMA_DIRECTIVE LAYOUT LAYOUT CONFIGURATION{add_wmma_option($1);add_wmma_option($2);add_wmma_option($3);add_wmma_option($4);}
+	;
+
+vp_spec: WMMA_DIRECTIVE LAYOUT CONFIGURATION{add_space_spec(global_space,0);add_ptr_spec(global_space);add_wmma_option($1);add_wmma_option($2);add_wmma_option($3);}
+	| WMMA_DIRECTIVE LAYOUT LAYOUT CONFIGURATION{add_wmma_option($1);add_wmma_option($2);add_wmma_option($3);add_wmma_option($4);}
+	;
+
+
+
 operand_list: operand
 	| operand COMMA operand_list;
 
@@ -542,6 +575,7 @@ operand: IDENTIFIER  { add_scalar_operand( $1 ); }
 vector_operand: LEFT_BRACE IDENTIFIER COMMA IDENTIFIER RIGHT_BRACE { add_2vector_operand($2,$4); }
 		| LEFT_BRACE IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER RIGHT_BRACE { add_3vector_operand($2,$4,$6); }
 		| LEFT_BRACE IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER RIGHT_BRACE { add_4vector_operand($2,$4,$6,$8); }
+		| LEFT_BRACE IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER COMMA IDENTIFIER RIGHT_BRACE { add_8vector_operand($2,$4,$6,$8,$10,$12,$14,$16); }
 		| LEFT_BRACE IDENTIFIER RIGHT_BRACE { add_1vector_operand($2); }
 	;
 

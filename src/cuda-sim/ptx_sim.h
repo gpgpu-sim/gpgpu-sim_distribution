@@ -28,7 +28,7 @@
 #define ptx_sim_h_INCLUDED
 
 #include <stdlib.h>
-
+#include "half.h"
 #include "../abstract_hardware_model.h"
 #include "../tr1_hash_map.h" 
 
@@ -42,6 +42,12 @@
 
 #include "memory.h"
 
+#define GCC_VERSION (__GNUC__ * 10000 \
+                     + __GNUC_MINOR__ * 100 \
+                     + __GNUC_PATCHLEVEL__)
+
+
+
 struct param_t {
    const void *pdata;
    int type;
@@ -52,6 +58,8 @@ struct param_t {
 #include <stack>
 
 #include "memory.h"
+
+using half_float::half;
 
 union ptx_reg_t {
    ptx_reg_t() {
@@ -126,7 +134,12 @@ union ptx_reg_t {
    unsigned short    u16;
    unsigned int      u32;
    unsigned long long   u64;
-   float             f16; 
+   //gcc 4.7.0
+   #if GCC_VERSION >= 40700
+   half 		f16; 
+   #else
+   float 		f16; 
+   #endif
    float          f32;
    double            f64;
    struct {
@@ -158,8 +171,12 @@ public:
    void register_thread_exit( ptx_thread_info *thd );
    void register_deleted_thread( ptx_thread_info *thd );
    unsigned get_sm_idx() const;
+   unsigned get_bar_threads() const;
+   void inc_bar_threads();
+   void reset_bar_threads();
 
 private:
+   unsigned           m_bar_threads;
    unsigned long long         m_uid;
    unsigned                m_sm_idx;
    std::set<ptx_thread_info*>    m_threads_in_cta;
@@ -169,7 +186,7 @@ private:
 
 class ptx_warp_info {
 public:
-	ptx_warp_info();
+	ptx_warp_info(); // add get_core or something, or threads?
 	unsigned get_done_threads() const;
 	void inc_done_threads();
 	void reset_done_threads();
@@ -289,6 +306,8 @@ public:
 
    const ptx_version &get_ptx_version() const;
    void set_reg( const symbol *reg, const ptx_reg_t &value );
+   void print_reg_thread (char * fname);
+   void resume_reg_thread(char * fname,  symbol_table * symtab);
    ptx_reg_t get_reg( const symbol *reg );
    ptx_reg_t get_operand_value( const operand_info &op, operand_info dstInfo, unsigned opType, ptx_thread_info *thread, int derefFlag );
    void set_operand_value( const operand_info &dst, const ptx_reg_t &data, unsigned type, ptx_thread_info *thread, const ptx_instruction *pI );
@@ -299,6 +318,15 @@ public:
                                    const ptx_reg_t &data2, 
                                    const ptx_reg_t &data3, 
                                    const ptx_reg_t &data4 );
+   void set_wmma_vector_operand_values( const operand_info &dst, 
+                                        const ptx_reg_t &data1, 
+                                        const ptx_reg_t &data2, 
+                                        const ptx_reg_t &data3, 
+                                        const ptx_reg_t &data4, 
+                                        const ptx_reg_t &data5, 
+                                        const ptx_reg_t &data6, 
+                                        const ptx_reg_t &data7, 
+                                        const ptx_reg_t &data8 );
 
    function_info *func_info()
    {
@@ -438,6 +466,7 @@ public:
    memory_space_t m_last_memory_space;
    dram_callback_t   m_last_dram_callback; 
    memory_space   *m_shared_mem;
+   memory_space   *m_sstarr_mem;
    memory_space   *m_local_mem;
    ptx_warp_info  *m_warp_info;
    ptx_cta_info   *m_cta_info;

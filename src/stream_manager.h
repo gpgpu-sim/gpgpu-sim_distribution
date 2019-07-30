@@ -51,7 +51,8 @@ enum stream_operation_type {
     stream_memcpy_to_symbol,
     stream_memcpy_from_symbol,
     stream_kernel_launch,
-    stream_event
+    stream_event,
+    stream_wait_event
 };
 
 class stream_operation {
@@ -93,10 +94,18 @@ public:
         m_stream=stream;
         m_done=false;
     }
-    stream_operation( class CUevent_st *e, struct CUstream_st *stream )
+    stream_operation( struct CUevent_st *e, struct CUstream_st *stream )
     {
         m_kernel=NULL;
         m_type=stream_event;
+        m_event=e;
+        m_stream=stream;
+        m_done=false;
+    }
+    stream_operation( struct CUstream_st *stream, class CUevent_st *e, unsigned int flags )
+    {
+        m_kernel=NULL;
+        m_type=stream_wait_event;
         m_event=e;
         m_stream=stream;
         m_done=false;
@@ -172,10 +181,10 @@ private:
 
     bool m_sim_mode;
     kernel_info_t *m_kernel;
-    class CUevent_st *m_event;
+    struct CUevent_st *m_event;
 };
 
-class CUevent_st {
+struct CUevent_st {
 public:
    CUevent_st( bool blocking )
    {
@@ -246,8 +255,11 @@ public:
     bool empty();
     void print( FILE *fp);
     void push( stream_operation op );
+    void pushCudaStreamWaitEventToAllStreams( CUevent_st *e, unsigned int flags );
     bool operation(bool * sim);
     void stop_all_running_kernels();
+    unsigned size() {return m_streams.size(); };
+    bool is_blocking() {return m_cuda_launch_blocking; };
 private:
     void print_impl( FILE *fp);
 

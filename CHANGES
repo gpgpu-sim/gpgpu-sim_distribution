@@ -1,4 +1,49 @@
 LOG:
+Version 4.0.0 (development branch) versus 3.2.3
+-Front-End:
+1- Support .nc cache modifier and __ldg function to access the read-only L1D cache
+2- Partially-support some SASS_60 in the PTXP_PLUS (not completed yet)
+3- Added parsing support for wmma.load,wmma.mma and wmma.store ptx instructions
+4- Implmented cudaLaunchKernel for CUTLASS library
+5- Added support for cuDNN and Pytorch library
+6- Added checkpoint support ([Fore more details](checkpoint.md))
+-GPU Core Functional Simulation
+1- Implemented bfe, d4pa, bfi and prmt instruction 
+2- Implemented wmma.load and wmma.store supporting all the layout configuration for TITANV GPU
+3- Implemented wmma.mma instructions supporting all of its 32 configuration for TITANV GPU
+4- debug support for wmma instruction using debug_tensorcore flag
+-GPU Core Performance Simulation:
+1- Fermi/Pascal coalescer: coalescing on 32-bytes sectors.
+2- Adding separate int and dp units pipeline.
+3- diff dual issue: allow scheduler to issue diff insts at a time
+4- Fair memory issue from multiple schedulers.
+5- Added tensorcore unit pipeline.
+6- Corrected the bug in vector load instruction
+7- Volta sub-core model (scheduler isolation)
+-Cache System:
+1- Sector L1/L2 cache
+2- Fetch-on-write and lazy-fetch-on-read write allocation policy.
+3- Improving the L1 cache throughput (streaming L1 cache)
+4- Performance model for CUDA memory copy.
+5- Support memory partition indexing to reduce partition camping (POLY, XOR and PAE (ISCA’18)  Indexing)
+6- Adaptive cache configuration
+-Memory:
+1- Performance Model for HBM (mainly the dual-bus interface)
+2- Separate Read/Write buffers.
+3- Advanced bank indexing function.
+-Statistics:
+1- Adding more detailed cache statistics to define and analyze cache bottlenecks.
+2- Adding more detailed memory statistics (BLP, RBL, etc) to define and analyze memory bottlenecks.
+3- Addig new system stats: gpu occupancy, L2BW, etc
+-Library:
+1  Enabled CUTLASS Library on GPGPU-Sim
+-Regression:
+1- Added TensorCore Regression Kernel
+-Configs:
+Adding the Pascal and Volta config files that has been correlated against real hardware.
+See the correlation website here: 
+https://engineering.purdue.edu/tgrogers/group/correlator.html
+
 Version 3.2.3+edits (development branch) versus 3.2.3
 - Support for running regression tests using Travis
 - Support added for CUDA dynamic parallelism (courtesy of Jin Wang from Georgia Tech)

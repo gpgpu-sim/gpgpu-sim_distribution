@@ -1,1 +1,1 @@
-const char *g_gpgpusim_version_string = "GPGPU-Sim Simulator Version 3.2.2 ";
+const char *g_gpgpusim_version_string = "GPGPU-Sim Simulator Version 4.0.0 ";

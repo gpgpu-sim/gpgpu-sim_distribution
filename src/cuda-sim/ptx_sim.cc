@@ -44,6 +44,7 @@ ptx_cta_info::ptx_cta_info( unsigned sm_idx )
 
    m_sm_idx = sm_idx;
    m_uid = g_ptx_cta_info_uid++;
+   m_bar_threads = 0;
 }
 
 void ptx_cta_info::add_thread( ptx_thread_info *thd )
@@ -128,6 +129,21 @@ unsigned ptx_cta_info::get_sm_idx() const
    return m_sm_idx;
 }
 
+unsigned ptx_cta_info::get_bar_threads() const
+{
+   return m_bar_threads;
+}
+
+void ptx_cta_info::inc_bar_threads()
+{
+	m_bar_threads++;
+}
+
+void ptx_cta_info::reset_bar_threads()
+{
+	m_bar_threads = 0;
+}
+
 ptx_warp_info::ptx_warp_info()
 {
 	reset_done_threads();
@@ -173,6 +189,7 @@ ptx_thread_info::ptx_thread_info( kernel_info_t &kernel )
    m_last_memory_space = undefined_space; 
    m_branch_taken = 0;
    m_shared_mem = NULL;
+   m_sstarr_mem = NULL;
    m_warp_info = NULL;
    m_cta_info = NULL;
    m_local_mem = NULL;

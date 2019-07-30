@@ -113,9 +113,9 @@ protected:
   vector<vector<bool> > _qdrained;
   vector<vector<list<Flit *> > > _partial_packets;
 
-  vector<map<int, Flit *> > _total_in_flight_flits;
-  vector<map<int, Flit *> > _measured_in_flight_flits;
-  vector<map<int, Flit *> > _retired_packets;
+  vector<map<unsigned long long, Flit *> > _total_in_flight_flits;
+  vector<map<unsigned long long, Flit *> > _measured_in_flight_flits;
+  vector<map<unsigned long long, Flit *> > _retired_packets;
   bool _empty_network;
 
   bool _hold_switch_for_packet;
@@ -229,12 +229,12 @@ protected:
   vector<double> _warmup_threshold;
   vector<double> _acc_warmup_threshold;
 
-  int _cur_id;
-  int _cur_pid;
+  unsigned long long _cur_id;
+  unsigned long long _cur_pid;
   int _time;
 
-  set<int> _flits_to_watch;
-  set<int> _packets_to_watch;
+  set<unsigned long long> _flits_to_watch;
+  set<unsigned long long> _packets_to_watch;
 
   bool _print_csv_results;
 
