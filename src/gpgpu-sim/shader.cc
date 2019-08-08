@@ -1696,6 +1696,7 @@ void ldst_unit::L1_latency_queue_cycle()
 			   assert( !read_sent );
 			   l1_latency_queue[0] = NULL;
 			   if ( mf_next->get_inst().is_load() ) {
+				   bool insn_completed = false;
 				   for ( unsigned r=0; r < MAX_OUTPUT_VALUES; r++)
 					   if (mf_next->get_inst().out[r] > 0)
 					   {
@@ -1705,9 +1706,12 @@ void ldst_unit::L1_latency_queue_cycle()
 						   {
 							m_pending_writes[mf_next->get_inst().warp_id()].erase(mf_next->get_inst().out[r]);
 							m_scoreboard->releaseRegister(mf_next->get_inst().warp_id(),mf_next->get_inst().out[r]);
-							m_core->warp_inst_complete(mf_next->get_inst());
+							insn_completed = true;
 						   }
 					   }
+
+				   if (insn_completed)
+					   m_core->warp_inst_complete(mf_next->get_inst());
 			   }
 
 			   //For write hit in WB policy
