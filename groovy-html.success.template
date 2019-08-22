@@ -1,0 +1,77 @@
+<STYLE>
+  BODY, TABLE, TD, TH, P {
+    font-family: Courier New, Verdana, Helvetica, sans serif;
+    font-size: 10px;
+    color: black;
+  }
+  .console {
+    font-family: Courier New;
+  }
+  .filesChanged {
+    width: 10%;
+    padding-left: 10px;
+  }
+  .section {
+    width: 100%;
+    border: thin black dotted;
+  }
+  .td-title-main {
+    color: white;
+    font-size: 200%;
+    padding-left: 5px;
+    font-weight: bold;
+  }
+  .td-title {
+    color: white;
+    font-size: 120%;
+    font-weight: bold;
+    padding-left: 5px;
+    text-transform: uppercase;
+  }
+  .td-title-tests {
+    font-weight: bold;
+    font-size: 120%;
+  }
+  .td-header-maven-module {
+    font-weight: bold;
+    font-size: 120%;    
+  }
+  .td-maven-artifact {
+    padding-left: 5px;
+  }
+  .tr-title {
+    background-color: <%= (build.result == null || build.result.toString() == 'SUCCESS') ? '#27AE60' : build.result.toString() == 'FAILURE' ? '#E74C3C' : '#f4e242' %>;
+  }
+  .test {
+    padding-left: 20px;
+  }
+  .test-fixed {
+    color: #27AE60;
+  }
+  .test-failed {
+    color: #E74C3C;
+  }
+</STYLE>
+<BODY>
+
+<%
+    import hudson.model.*
+
+    def JOB_NAME= build.getEnvVars()["JOB_NAME"];
+    def BUILD_NUMBER= build.getEnvVars()["BUILD_NUMBER"];
+    def BUILD_URL= build.getEnvVars()["BUILD_URL"];
+%>
+
+See ${BUILD_URL} for full build detials.
+
+<pre>Statistics changes since last commit:
+<pre>    https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/
+<pre>        Correlation:
+<pre>            4.2:
+<pre>               https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.cuda-4.2.html
+<pre>               https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.cuda-4.2.apps.txt
+<pre>            10.1:
+<pre>               https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.cuda-10.1.html
+<pre>               https://engineering.purdue.edu/tgrogers/gpgpu-sim-plots/jenkins/${JOB_NAME}/${BUILD_NUMBER}/titanv-cycles.cuda-10.1.apps.txt
+<pre>       Correlation also posted to: https://engineering.purdue.edu/tgrogers/group/correlator.html
+</BODY>

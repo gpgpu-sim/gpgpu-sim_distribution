@@ -31,17 +31,23 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %option noyywrap
 %option yylineno
 %option prefix="ptxinfo_"
+
+%option bison-bridge
+%option reentrant
+
 %{
+#include "ptx_loader.h"
 #include "ptxinfo.tab.h"
 #include <string.h>
+#include "../../libcuda/gpgpu_context.h"
 
 #define LINEBUF_SIZE 1024
-char ptxinfo_linebuf[LINEBUF_SIZE];
-unsigned ptxinfo_col = 0;
-#define TC if( (ptxinfo_lineno == 1) && ((ptxinfo_col + strlen(ptxinfo_text)) < LINEBUF_SIZE) ) { \
-		strncpy(ptxinfo_linebuf+ptxinfo_col,ptxinfo_text,strlen(ptxinfo_text)); \
+#define TC if( (yylineno == 1) && (ptxinfo->col + strlen(yytext) < LINEBUF_SIZE) ) { \
+		strncpy(ptxinfo->linebuf+ptxinfo->col,yytext,strlen(yytext)); \
 	   } \
-	   ptxinfo_col+=strlen(ptxinfo_text); 
+	   ptxinfo->col+=strlen(yytext);
+#define YY_DECL int ptxinfo_lex \
+	       (YYSTYPE * yylval_param , yyscan_t yyscanner, ptxinfo_data* ptxinfo)
 %}
 
 %%
@@ -61,12 +67,12 @@ unsigned ptxinfo_col = 0;
 "for"		TC; return FOR;
 "textures"	TC; return TEXTURES;
 "error   : Duplicate definition of"	TC; return DUPLICATE;
-"function"	TC; ptxinfo_lval.string_value = strdup(yytext); return FUNCTION;
-"variable"	TC; ptxinfo_lval.string_value = strdup(yytext); return VARIABLE;
+"function"	TC; yylval->string_value = strdup(yytext); return FUNCTION;
+"variable"	TC; yylval->string_value = strdup(yytext); return VARIABLE;
 "fatal   : Ptx assembly aborted due to errors"	TC; return FATAL;
 
-[_A-Za-z$%][_0-9A-Za-z$]*  TC; ptxinfo_lval.string_value = strdup(yytext); return IDENTIFIER;
-[-]{0,1}[0-9]+	 TC; ptxinfo_lval.int_value =  atoi(yytext); return INT_OPERAND;
+[_A-Za-z$%][_0-9A-Za-z$]*  TC; yylval->string_value = strdup(yytext); return IDENTIFIER;
+[-]{0,1}[0-9]+	 TC; yylval->int_value =  atoi(yytext); return INT_OPERAND;
 
 "+"	TC; return PLUS;
 ","     TC; return COMMA;
@@ -78,26 +84,23 @@ unsigned ptxinfo_col = 0;
 " " TC;
 "\t" TC;
 
-\n.*  ptxinfo_col=0; strncpy(ptxinfo_linebuf, yytext + 1, 1024); yyless( 1 );
+\n.*  ptxinfo->col=0; strncpy(ptxinfo->linebuf, yytext + 1, 1024); yyless( 1 );
 
 %%
 
-extern int g_ptxinfo_error_detected;
-extern const char *g_filename;
-extern const char *g_ptxinfo_filename;
-
-int ptxinfo_error( const char *s )
+int ptxinfo_error(yyscan_t yyscanner, ptxinfo_data* ptxinfo, const char* msg)
 {
+    struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
 	int i;
-	g_ptxinfo_error_detected = 1;
+	ptxinfo->gpgpu_ctx->func_sim->g_ptxinfo_error_detected = 1;
 	fflush(stdout);
 	printf("GPGPU-Sim: ERROR while parsing output of ptxas (used to capture resource usage information)\n");
-	if( s != NULL )
-		printf("GPGPU-Sim:     %s (%s:%u) Syntax error:\n\n", g_filename, g_ptxinfo_filename, ptxinfo_lineno );
-	printf("   %s\n", ptxinfo_linebuf );
+	if( msg != NULL )
+		printf("GPGPU-Sim:     %s (%s:%u) Syntax error:\n\n", ptxinfo->gpgpu_ctx->g_filename, ptxinfo->g_ptxinfo_filename, yylineno );
+	printf("   %s\n", ptxinfo->linebuf );
 	printf("   ");
-	for( i=0; i < ptxinfo_col-1; i++ ) {
-		if( ptxinfo_linebuf[i] == '\t' ) printf("\t");
+	for( i=0; i < ptxinfo->col-1; i++ ) {
+		if( ptxinfo->linebuf[i] == '\t' ) printf("\t");
 		else printf(" ");
 	}
 			

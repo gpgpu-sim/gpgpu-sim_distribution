@@ -69,6 +69,8 @@
 
 #define WRITE_MASK_SIZE 8
 
+class gpgpu_context;
+
 enum exec_unit_type_t
 {
   NONE = 0,
@@ -116,7 +118,6 @@ public:
         m_done_exit=true;
         m_last_fetch=0;
         m_next=0;
-        m_inst_at_barrier=NULL;
 
         //Jin: cdp support
         m_cdp_latency = 0;
@@ -173,8 +174,8 @@ public:
     address_type get_pc() const { return m_next_pc; }
     void set_next_pc( address_type pc ) { m_next_pc = pc; }
 
-    void store_info_of_last_inst_at_barrier(const warp_inst_t *pI){ m_inst_at_barrier = pI;}
-    const warp_inst_t * restore_info_of_last_inst_at_barrier(){ return m_inst_at_barrier;}
+    void store_info_of_last_inst_at_barrier(const warp_inst_t *pI){ m_inst_at_barrier = *pI;}
+    warp_inst_t * restore_info_of_last_inst_at_barrier(){ return &m_inst_at_barrier;}
 
     void ibuffer_fill( unsigned slot, const warp_inst_t *pI )
     {
@@ -264,7 +265,7 @@ private:
        bool m_valid;
     };
 
-    const warp_inst_t *m_inst_at_barrier;
+    warp_inst_t m_inst_at_barrier;
     ibuffer_entry m_ibuffer[IBUFFER_SIZE]; 
     unsigned m_next;
                                    
@@ -295,7 +296,7 @@ typedef std::bitset<WARP_PER_CTA_MAX> warp_set_t;
 int register_bank(int regnum, int wid, unsigned num_banks, unsigned bank_warp_shift, bool sub_core_model, unsigned banks_per_sched, unsigned sched_id );
 
 class shader_core_ctx;
-struct shader_core_config;
+class shader_core_config;
 class shader_core_stats;
 
 enum scheduler_prioritization_type
@@ -1033,7 +1034,7 @@ struct ifetch_buffer_t {
     unsigned m_warp_id;
 };
 
-struct shader_core_config;
+class shader_core_config;
 
 class simd_function_unit {
 public:
@@ -1363,10 +1364,12 @@ const char* const pipeline_stage_name_decode[] = {
     "N_PIPELINE_STAGES" 
 };
 
-struct shader_core_config : public core_config
+class shader_core_config : public core_config
 {
-    shader_core_config(){
+    public:
+    shader_core_config(gpgpu_context* ctx):core_config(ctx){
 	pipeline_widths_string = NULL;
+	gpgpu_ctx = ctx;
     }
 
     void init()
@@ -1426,6 +1429,8 @@ struct shader_core_config : public core_config
     unsigned cid_to_sid( unsigned cid, unsigned cluster_id ) const { return cluster_id*n_simt_cores_per_cluster + cid; }
     void set_pipeline_latency();
 
+    // backward pointer
+    class gpgpu_context* gpgpu_ctx;
 // data
     char *gpgpu_shader_core_pipeline_opt;
     bool gpgpu_perfect_mem;
@@ -1722,6 +1727,7 @@ private:
     friend class LooseRoundRobbinScheduler;
 };
 
+class memory_config;
 class shader_core_mem_fetch_allocator : public mem_fetch_allocator {
 public:
     shader_core_mem_fetch_allocator( unsigned core_id, unsigned cluster_id, const memory_config *config )
@@ -1730,20 +1736,8 @@ public:
     	m_cluster_id = cluster_id;
     	m_memory_config = config;
     }
-    mem_fetch *alloc( new_addr_type addr, mem_access_type type, unsigned size, bool wr ) const 
-    {
-    	mem_access_t access( type, addr, size, wr );
-    	mem_fetch *mf = new mem_fetch( access, 
-    				       NULL,
-    				       wr?WRITE_PACKET_SIZE:READ_PACKET_SIZE, 
-    				       -1, 
-    				       m_core_id, 
-    				       m_cluster_id,
-    				       m_memory_config );
-    	return mf;
-    }
-    
-    mem_fetch *alloc( const warp_inst_t &inst, const mem_access_t &access ) const
+    mem_fetch *alloc( new_addr_type addr, mem_access_type type, unsigned size, bool wr, unsigned long long cycle ) const; 
+    mem_fetch *alloc( const warp_inst_t &inst, const mem_access_t &access, unsigned long long cycle ) const
     {
         warp_inst_t inst_copy = inst;
         mem_fetch *mf = new mem_fetch(access, 
@@ -1752,7 +1746,8 @@ public:
                                       inst.warp_id(),
                                       m_core_id, 
                                       m_cluster_id, 
-                                      m_memory_config);
+                                      m_memory_config,
+									  cycle);
         return mf;
     }
 
@@ -1769,8 +1764,8 @@ public:
                      class simt_core_cluster *cluster,
                      unsigned shader_id,
                      unsigned tpc_id,
-                     const struct shader_core_config *config,
-                     const struct memory_config *mem_config,
+                     const shader_core_config *config,
+                     const memory_config *mem_config,
                      shader_core_stats *stats );
 
 // used by simt_core_cluster:
@@ -2064,8 +2059,8 @@ class simt_core_cluster {
 public:
     simt_core_cluster( class gpgpu_sim *gpu, 
                        unsigned cluster_id, 
-                       const struct shader_core_config *config, 
-                       const struct memory_config *mem_config,
+                       const shader_core_config *config, 
+                       const memory_config *mem_config,
                        shader_core_stats *stats,
                        memory_stats_t *mstats );
 

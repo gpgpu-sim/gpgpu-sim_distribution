@@ -28,23 +28,25 @@
 #include "ptx_sim.h"
 #include <string>
 #include "ptx_ir.h"
+class ptx_recognizer;
+typedef void * yyscan_t;
 #include "ptx.tab.h"
 #include "../gpgpu-sim/gpu-sim.h"
 #include "../gpgpu-sim/shader.h"
+#include "../../libcuda/gpgpu_context.h"
 
 void feature_not_implemented( const char *f );
 
-std::set<unsigned long long> g_ptx_cta_info_sm_idx_used;
-unsigned long long g_ptx_cta_info_uid = 1;
 
-ptx_cta_info::ptx_cta_info( unsigned sm_idx )
+ptx_cta_info::ptx_cta_info( unsigned sm_idx, gpgpu_context* ctx )
 {
-   assert( g_ptx_cta_info_sm_idx_used.find(sm_idx) == g_ptx_cta_info_sm_idx_used.end() );
-   g_ptx_cta_info_sm_idx_used.insert(sm_idx);
+   assert( ctx->func_sim->g_ptx_cta_info_sm_idx_used.find(sm_idx) == ctx->func_sim->g_ptx_cta_info_sm_idx_used.end() );
+   ctx->func_sim->g_ptx_cta_info_sm_idx_used.insert(sm_idx);
 
    m_sm_idx = sm_idx;
-   m_uid = g_ptx_cta_info_uid++;
+   m_uid = (ctx->g_ptx_cta_info_uid)++;
    m_bar_threads = 0;
+   gpgpu_ctx = ctx;
 }
 
 void ptx_cta_info::add_thread( ptx_thread_info *thd )
@@ -164,18 +166,16 @@ void ptx_warp_info::reset_done_threads()
 	m_done_threads = 0;
 }
 
-unsigned g_ptx_thread_info_uid_next=1;
-unsigned g_ptx_thread_info_delete_count=0;
 
 ptx_thread_info::~ptx_thread_info()
 {
-   g_ptx_thread_info_delete_count++;
+   m_gpu->gpgpu_ctx->func_sim->g_ptx_thread_info_delete_count++;
 }
 
 ptx_thread_info::ptx_thread_info( kernel_info_t &kernel )
     : m_kernel(kernel)
 {
-   m_uid = g_ptx_thread_info_uid_next++;
+   m_uid = kernel.entry()->gpgpu_ctx->func_sim->g_ptx_thread_info_uid_next++;
    m_core = NULL;
    m_barrier_num = -1;
    m_at_barrier = false;
@@ -222,7 +222,7 @@ void ptx_thread_info::set_done()
 {
    assert( !m_at_barrier );
    m_thread_done = true;
-   m_cycle_done = gpu_sim_cycle; 
+   m_cycle_done = m_gpu->gpu_sim_cycle;
 }
 
 unsigned ptx_thread_info::get_builtin( int builtin_id, unsigned dim_mod ) 
@@ -230,15 +230,15 @@ unsigned ptx_thread_info::get_builtin( int builtin_id, unsigned dim_mod )
    assert( m_valid );
    switch ((builtin_id&0xFFFF)) {
    case CLOCK_REG:
-      return (unsigned)(gpu_sim_cycle + gpu_tot_sim_cycle);
+      return (unsigned)(m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
    case CLOCK64_REG:
       abort(); // change return value to unsigned long long?
 	  // GPGPUSim clock is 4 times slower - multiply by 4
-	   return (gpu_sim_cycle + gpu_tot_sim_cycle)*4;
+	   return (m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle)*4;
    case HALFCLOCK_ID:
       // GPGPUSim clock is 4 times slower - multiply by 4
 	  // Hardware clock counter is incremented at half the shader clock frequency - divide by 2 (Henry '10)
-      return (gpu_sim_cycle + gpu_tot_sim_cycle)*2;
+      return (m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle)*2;
    case CTAID_REG:
       assert( dim_mod < 3 );
       if( dim_mod == 0 ) return m_ctaid.x;
@@ -421,9 +421,9 @@ bool ptx_thread_info::callstack_pop()
    assert( !((rv_src != NULL) ^ (rv_dst != NULL)) ); // ensure caller and callee agree on whether there is a return value
 
    // read return value from callee frame
-   arg_buffer_t buffer;
+   arg_buffer_t buffer(m_gpu->gpgpu_ctx);
    if( rv_src != NULL ) 
-      buffer = copy_arg_to_buffer(this, operand_info(rv_src), rv_dst );
+      buffer = copy_arg_to_buffer(this, operand_info(rv_src, m_gpu->gpgpu_ctx), rv_dst );
 
    m_symbol_table = m_callstack.back().m_symbol_table;
    m_NPC = m_callstack.back().m_PC;
@@ -455,9 +455,9 @@ bool ptx_thread_info::callstack_pop_plus()
    assert( !((rv_src != NULL) ^ (rv_dst != NULL)) ); // ensure caller and callee agree on whether there is a return value
 
    // read return value from callee frame
-   arg_buffer_t buffer;
+   arg_buffer_t buffer(m_gpu->gpgpu_ctx);
    if( rv_src != NULL )
-      buffer = copy_arg_to_buffer(this, operand_info(rv_src), rv_dst );
+      buffer = copy_arg_to_buffer(this, operand_info(rv_src, m_gpu->gpgpu_ctx), rv_dst );
 
    m_symbol_table = m_callstack.back().m_symbol_table;
    m_NPC = m_callstack.back().m_PC;

@@ -84,6 +84,7 @@
 #include "../src/gpgpusim_entrypoint.h"
 #include "../src/gpgpu-sim/gpu-sim.h"
 #include "../src/gpgpu-sim/shader.h"
+#include "../libcuda/gpgpu_context.h"
 
 //#   define __my_func__    __PRETTY_FUNCTION__
 # if defined __cplusplus ? __GNUC_PREREQ (2, 6) : __GNUC_PREREQ (2, 4)
@@ -424,6 +425,8 @@ void register_ptx_function( const char *name, function_info *impl )
 
 void _cl_program::Build(const char *options)
 {
+    gpgpu_context *ctx;
+    ctx = GPGPU_Context();
    printf("GPGPU-Sim OpenCL API: compiling OpenCL kernels...\n"); 
    std::map<cl_uint,pgm_info>::iterator i;
    for( i = m_pgm.begin(); i!= m_pgm.end(); i++ ) {
@@ -534,7 +537,7 @@ void _cl_program::Build(const char *options)
                exit(1);
             }
          }
-         if( !g_keep_intermediate_files ) {
+         if( !ctx->ptxinfo->g_keep_intermediate_files ) {
             // clean up files...
             snprintf(commandline,1024,"rm -f %s", cl_fname );
             int result = system(commandline);
@@ -576,8 +579,8 @@ void _cl_program::Build(const char *options)
          }
       }
       info.m_asm = tmp;
-      info.m_symtab = gpgpu_ptx_sim_load_ptx_from_string( tmp, source_num );
-      gpgpu_ptxinfo_load_from_string( tmp, source_num );
+      info.m_symtab = ctx->gpgpu_ptx_sim_load_ptx_from_string( tmp, source_num );
+      ctx->gpgpu_ptxinfo_load_from_string( tmp, source_num );
       free(tmp);
    }
    printf("GPGPU-Sim OpenCL API: finished compiling OpenCL kernels.\n"); 
@@ -645,7 +648,9 @@ class _cl_device_id *GPGPUSim_Init()
 {
    static _cl_device_id *the_device = NULL;
    if( !the_device ) { 
-      gpgpu_sim *the_gpu = gpgpu_ptx_sim_init_perf(); 
+       gpgpu_context *ctx;
+       ctx = GPGPU_Context();
+      gpgpu_sim *the_gpu = ctx->gpgpu_ptx_sim_init_perf(); 
       the_device = new _cl_device_id(the_gpu);
    } 
    start_sim_thread(2);
@@ -872,14 +877,16 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
                        const cl_event * event_wait_list,
                        cl_event *       event) CL_API_SUFFIX__VERSION_1_0
 {
+    gpgpu_context *ctx;
+    ctx = GPGPU_Context();
    int _global_size[3];
    int zeros[3] = { 0, 0, 0};
    printf("\n\n\n");
    char *mode = getenv("PTX_SIM_MODE_FUNC");
    if ( mode )
-      sscanf(mode,"%u", &g_ptx_sim_mode);
+      sscanf(mode,"%u", &(ctx->func_sim->g_ptx_sim_mode));
    printf("GPGPU-Sim OpenCL API: clEnqueueNDRangeKernel '%s' (mode=%s)\n", kernel->name().c_str(),
-          g_ptx_sim_mode?"functional simulation":"performance simulation");
+          (ctx->func_sim->g_ptx_sim_mode)?"functional simulation":"performance simulation");
    if ( !work_dim || work_dim > 3 ) return CL_INVALID_WORK_DIMENSION;
    size_t _local_size[3];
    if( local_work_size != NULL ) {
@@ -943,15 +950,15 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
 
    gpgpu_t *gpu = command_queue->get_device()->the_device();
    if (kernel->get_implementation()->get_ptx_version().ver() <3.0){
-	   gpgpu_ptx_sim_memcpy_symbol( "%_global_size", _global_size, 3 * sizeof(int), 0, 1, gpu );
-	   gpgpu_ptx_sim_memcpy_symbol( "%_work_dim", &work_dim, 1 * sizeof(int), 0, 1, gpu  );
-	   gpgpu_ptx_sim_memcpy_symbol( "%_global_num_groups", &GridDim, 3 * sizeof(int), 0, 1, gpu );
-	   gpgpu_ptx_sim_memcpy_symbol( "%_global_launch_offset", zeros, 3 * sizeof(int), 0, 1, gpu );
-	   gpgpu_ptx_sim_memcpy_symbol( "%_global_block_offset", zeros, 3 * sizeof(int), 0, 1, gpu );
+	   ctx->func_sim->gpgpu_ptx_sim_memcpy_symbol( "%_global_size", _global_size, 3 * sizeof(int), 0, 1, gpu );
+	   ctx->func_sim->gpgpu_ptx_sim_memcpy_symbol( "%_work_dim", &work_dim, 1 * sizeof(int), 0, 1, gpu  );
+	   ctx->func_sim->gpgpu_ptx_sim_memcpy_symbol( "%_global_num_groups", &GridDim, 3 * sizeof(int), 0, 1, gpu );
+	   ctx->func_sim->gpgpu_ptx_sim_memcpy_symbol( "%_global_launch_offset", zeros, 3 * sizeof(int), 0, 1, gpu );
+	   ctx->func_sim->gpgpu_ptx_sim_memcpy_symbol( "%_global_block_offset", zeros, 3 * sizeof(int), 0, 1, gpu );
    }
-   kernel_info_t *grid = gpgpu_opencl_ptx_sim_init_grid(kernel->get_implementation(),params,GridDim,BlockDim,gpu);
-   if ( g_ptx_sim_mode )
-      gpgpu_opencl_ptx_sim_main_func( grid );
+   kernel_info_t *grid = ctx->func_sim->gpgpu_opencl_ptx_sim_init_grid(kernel->get_implementation(),params,GridDim,BlockDim,gpu);
+   if ( ctx->func_sim->g_ptx_sim_mode )
+      ctx->func_sim->gpgpu_opencl_ptx_sim_main_func( grid );
    else
       gpgpu_opencl_ptx_sim_main_perf( grid );
    return CL_SUCCESS;

@@ -33,44 +33,40 @@
 #include <dirent.h>
 #include <fstream>
 #include <sstream>
-
-/// globals
-
-memory_space *g_global_mem;
-memory_space *g_tex_mem;
-memory_space *g_surf_mem;
-memory_space *g_param_mem;
-bool g_override_embedded_ptx = false;
+#include "../../libcuda/gpgpu_context.h"
 
 /// extern prototypes
 
-extern int ptx_parse();
-extern int ptx__scan_string(const char*);
+extern int ptx_error( yyscan_t yyscanner, const char *s );
+extern int ptx_lex_init(yyscan_t* scanner);
+extern void ptx_set_in(FILE * _in_str ,yyscan_t yyscanner );
+extern int ptx_parse(yyscan_t scanner, ptx_recognizer* recognizer);
+extern int ptx_lex_destroy(yyscan_t scanner);
+extern int ptx__scan_string(const char*, yyscan_t scanner);
 
 extern std::map<unsigned,const char*> get_duplicate();
 
-const char *g_ptxinfo_filename;
-extern int ptxinfo_parse();
-extern int ptxinfo_debug;
-extern FILE *ptxinfo_in;
+typedef void * yyscan_t;
+extern int ptxinfo_lex_init(yyscan_t* scanner);
+extern void ptxinfo_set_in  (FILE * _in_str ,yyscan_t yyscanner );
+extern int ptxinfo_parse(yyscan_t scanner, ptxinfo_data* ptxinfo);
+extern int ptxinfo_lex_destroy(yyscan_t scanner);
 
 static bool g_save_embedded_ptx;
 static int g_occupancy_sm_number;
-bool g_keep_intermediate_files;
-bool m_ptx_save_converted_ptxplus;
 
-bool keep_intermediate_files() {return g_keep_intermediate_files;}
+bool ptxinfo_data::keep_intermediate_files() {return g_keep_intermediate_files;}
 
-void ptx_reg_options(option_parser_t opp)
+void gpgpu_context::ptx_reg_options(option_parser_t opp)
 {
    option_parser_register(opp, "-save_embedded_ptx", OPT_BOOL, &g_save_embedded_ptx, 
                 "saves ptx files embedded in binary as <n>.ptx",
                 "0");
-   option_parser_register(opp, "-keep", OPT_BOOL, &g_keep_intermediate_files, 
+   option_parser_register(opp, "-keep", OPT_BOOL, &(ptxinfo->g_keep_intermediate_files),
                 "keep intermediate files created by GPGPU-Sim when interfacing with external programs",
                 "0");
    option_parser_register(opp, "-gpgpu_ptx_save_converted_ptxplus", OPT_BOOL,
-                &m_ptx_save_converted_ptxplus,
+                &(ptxinfo->m_ptx_save_converted_ptxplus),
                 "Saved converted ptxplus to a file",
                 "0");
    option_parser_register(opp, "-gpgpu_occupancy_sm_number", OPT_INT32, &g_occupancy_sm_number,
@@ -79,7 +75,7 @@ void ptx_reg_options(option_parser_t opp)
                 "0");
 }
 
-void print_ptx_file( const char *p, unsigned source_num, const char *filename )
+void gpgpu_context::print_ptx_file( const char *p, unsigned source_num, const char *filename )
 {
    printf("\nGPGPU-Sim PTX: file _%u.ptx contents:\n\n", source_num );
    char *s = strdup(p);
@@ -90,7 +86,7 @@ void print_ptx_file( const char *p, unsigned source_num, const char *filename )
       while ( (*u != '\n') && (*u != '\0') ) u++;
       unsigned last = (*u == '\0');
       *u = '\0';
-      const ptx_instruction *pI = ptx_instruction_lookup(filename,n);
+      const ptx_instruction *pI = ptx_parser->ptx_instruction_lookup(filename,n);
       char pc[64];
       if( pI && pI->get_PC() )
          snprintf(pc,64,"%4u", pI->get_PC() );
@@ -105,7 +101,7 @@ void print_ptx_file( const char *p, unsigned source_num, const char *filename )
    fflush(stdout);
 }
 
-char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const std::string ptxfilename, const std::string elffilename, const std::string sassfilename)
+char* ptxinfo_data::gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const std::string ptxfilename, const std::string elffilename, const std::string sassfilename)
 {
 
 	printf("GPGPU-Sim PTX: converting EMBEDDED .ptx file to ptxplus \n");
@@ -158,7 +154,7 @@ char* gpgpu_ptx_sim_convert_ptx_and_sass_to_ptxplus(const std::string ptxfilenam
 }
 
 
-symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num )
+symbol_table *gpgpu_context::gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num )
 {
     char buf[1024];
     snprintf(buf,1024,"_%u.ptx", source_num );
@@ -168,8 +164,9 @@ symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source
        fclose(fp);
     }
     symbol_table *symtab=init_parser(buf);
-    ptx__scan_string(p);
-    int errors = ptx_parse ();
+    ptx_lex_init(&(ptx_parser->scanner));
+    ptx__scan_string(p, ptx_parser->scanner);
+    int errors = ptx_parse (ptx_parser->scanner, ptx_parser);
     if ( errors ) {
         char fname[1024];
         snprintf(fname,1024,"_ptx_errors_XXXXXX");
@@ -182,6 +179,7 @@ symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source
         abort();
         exit(40);
     }
+    ptx_lex_destroy(ptx_parser->scanner);
 
     if ( g_debug_execution >= 100 ) 
        print_ptx_file(p,source_num,buf);
@@ -190,7 +188,7 @@ symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source
     return symtab;
 }
 
-symbol_table *gpgpu_ptx_sim_load_ptx_from_filename( const char *filename )
+symbol_table *gpgpu_context::gpgpu_ptx_sim_load_ptx_from_filename( const char *filename )
 {
     symbol_table *symtab=init_parser(filename);
     printf("GPGPU-Sim PTX: finished parsing EMBEDDED .ptx file %s\n",filename);
@@ -327,13 +325,12 @@ char* get_app_binary_name(){
    return self_exe_path;
 }
 
-void gpgpu_ptx_info_load_from_filename( const char *filename, unsigned sm_version)
+void gpgpu_context::gpgpu_ptx_info_load_from_filename( const char *filename, unsigned sm_version)
 {
     std::string ptxas_filename(std::string(filename) + "as");
     char buff[1024], extra_flags[1024];
 	extra_flags[0]=0;
-    extern bool g_cdp_enabled;
-	if(!g_cdp_enabled)
+	if(!device_runtime->g_cdp_enabled)
 	       	snprintf(extra_flags,1024,"--gpu-name=sm_%u",sm_version);
 	else
 	       	snprintf(extra_flags,1024,"--compile-only --gpu-name=sm_%u",sm_version);
@@ -346,13 +343,17 @@ void gpgpu_ptx_info_load_from_filename( const char *filename, unsigned sm_versio
 		exit(1);
 	}
 
-	g_ptxinfo_filename = strdup(ptxas_filename.c_str());
-    ptxinfo_in = fopen(g_ptxinfo_filename,"r");
-    ptxinfo_parse();
+    FILE *ptxinfo_in;
+    ptxinfo->g_ptxinfo_filename = strdup(ptxas_filename.c_str());
+    ptxinfo_in = fopen(ptxinfo->g_ptxinfo_filename,"r");
+    ptxinfo_lex_init(&(ptxinfo->scanner));
+    ptxinfo_set_in(ptxinfo_in, ptxinfo->scanner);
+    ptxinfo_parse(ptxinfo->scanner, ptxinfo);
+    ptxinfo_lex_destroy(ptxinfo->scanner);
     fclose(ptxinfo_in);
 }
 
-void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num, unsigned sm_version )
+void gpgpu_context::gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num, unsigned sm_version, int no_of_ptx )
 {
     //do ptxas for individual files instead of one big embedded ptx. This prevents the duplicate defs and declarations.
     char ptx_file[1000];
@@ -396,8 +397,7 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
                          "A register size/SM mismatch may result in occupancy differences." );
         exit(1);
     }
-    extern bool g_cdp_enabled;
-    if(!g_cdp_enabled)
+    if(!device_runtime->g_cdp_enabled)
         snprintf(extra_flags,1024,"--gpu-name=sm_%u", g_occupancy_sm_number);
     else
         snprintf(extra_flags,1024,"--compile-only --gpu-name=sm_%u",g_occupancy_sm_number);
@@ -410,9 +410,14 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
     if( result != 0 ) {
     	// 65280 = duplicate errors
     	if (result == 65280) {
+		FILE *ptxinfo_in;
     		ptxinfo_in = fopen(tempfile_ptxinfo,"r");
-		g_ptxinfo_filename = tempfile_ptxinfo;
-		ptxinfo_parse();
+		ptxinfo->g_ptxinfo_filename = tempfile_ptxinfo;
+		ptxinfo_lex_init(&(ptxinfo->scanner));
+		ptxinfo_set_in(ptxinfo_in, ptxinfo->scanner);
+		ptxinfo_parse(ptxinfo->scanner, ptxinfo);
+		ptxinfo_lex_destroy(ptxinfo->scanner);
+		fclose(ptxinfo_in);
 
     		fix_duplicate_errors(fname2);
     		snprintf(commandline,1024,"$CUDA_INSTALL_PATH/bin/ptxas %s -v %s --output-file  /dev/null 2> %s",
@@ -460,8 +465,7 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
 
 	#if CUDART_VERSION >= 3000
 	if (sm_version == 0) sm_version = 20;
-    	extern bool g_cdp_enabled;
-	if(!g_cdp_enabled)
+	if(!device_runtime->g_cdp_enabled)
 	       	snprintf(extra_flags,1024,"--gpu-name=sm_%u",sm_version);
 	else
 	       	snprintf(extra_flags,1024,"--compile-only --gpu-name=sm_%u",sm_version);
@@ -492,12 +496,17 @@ void gpgpu_ptxinfo_load_from_string( const char *p_for_info, unsigned source_num
     }	
 
     if(no_of_ptx>0)
-        g_ptxinfo_filename = final_tempfile_ptxinfo;
+        ptxinfo->g_ptxinfo_filename = final_tempfile_ptxinfo;
     else
-	g_ptxinfo_filename = tempfile_ptxinfo;
-    ptxinfo_in = fopen(g_ptxinfo_filename,"r");
+	ptxinfo->g_ptxinfo_filename = tempfile_ptxinfo;
+    FILE *ptxinfo_in;
+    ptxinfo_in = fopen(ptxinfo->g_ptxinfo_filename,"r");
 
-    ptxinfo_parse();
+    ptxinfo_lex_init(&(ptxinfo->scanner));
+    ptxinfo_set_in(ptxinfo_in, ptxinfo->scanner);
+    ptxinfo_parse(ptxinfo->scanner, ptxinfo);
+    ptxinfo_lex_destroy(ptxinfo->scanner);
+    fclose(ptxinfo_in);
 
     snprintf(commandline,1024,"rm -f *info");
     if( system(commandline) != 0 ) {

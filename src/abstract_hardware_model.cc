@@ -34,13 +34,33 @@
 #include "cuda-sim/cuda-sim.h"
 #include "gpgpu-sim/gpu-sim.h"
 #include "option_parser.h"
+#include "gpgpusim_entrypoint.h"
 #include <algorithm>
 #include <sys/stat.h>
 #include <sstream>
 #include <iostream>
+#include "../libcuda/gpgpu_context.h"
 
-unsigned mem_access_t::sm_next_access_uid = 0;   
-unsigned warp_inst_t::sm_next_uid = 0;
+void mem_access_t::init(gpgpu_context* ctx)
+{
+      gpgpu_ctx = ctx;
+      m_uid=++(gpgpu_ctx->sm_next_access_uid);
+      m_addr=0;
+      m_req_size=0;
+}
+void warp_inst_t::issue( const active_mask_t &mask, unsigned warp_id, unsigned long long cycle, int dynamic_warp_id, int sch_id )
+{
+    m_warp_active_mask = mask;
+    m_warp_issued_mask = mask; 
+    m_uid = ++(m_config->gpgpu_ctx->warp_inst_sm_next_uid);
+    m_warp_id = warp_id;
+    m_dynamic_warp_id = dynamic_warp_id;
+    issue_cycle = cycle;
+    cycles = initiation_interval;
+    m_cache_hit=false;
+    m_empty=false;
+    m_scheduler_id=sch_id;
+}
 
 checkpoint::checkpoint()
 {
@@ -172,9 +192,10 @@ void gpgpu_functional_sim_config::ptx_set_tex_cache_linesize(unsigned linesize)
    m_texcache_linesize = linesize;
 }
 
-gpgpu_t::gpgpu_t( const gpgpu_functional_sim_config &config )
+gpgpu_t::gpgpu_t( const gpgpu_functional_sim_config &config, gpgpu_context* ctx )
     : m_function_model_config(config)
 {
+   gpgpu_ctx = ctx;
    m_global_mem = new memory_space_impl<8192>("global",64*1024);
    
    m_tex_mem = new memory_space_impl<8192>("tex",64*1024);
@@ -198,6 +219,9 @@ gpgpu_t::gpgpu_t( const gpgpu_functional_sim_config &config )
 
    if(m_function_model_config.get_ptx_inst_debug_to_file() != 0) 
       ptx_inst_debug_file = fopen(m_function_model_config.get_ptx_inst_debug_file(), "w");
+
+   gpu_sim_cycle=0;
+   gpu_tot_sim_cycle=0;
 }
 
 address_type line_size_based_tag_func(new_addr_type address, new_addr_type line_size)
@@ -402,7 +426,7 @@ void warp_inst_t::generate_mem_accesses()
         }
         assert( total_accesses > 0 && total_accesses <= m_config->warp_size );
         cycles = total_accesses; // shared memory conflicts modeled as larger initiation interval 
-        ptx_file_line_stats_add_smem_bank_conflict( pc, total_accesses );
+        m_config->gpgpu_ctx->stats->ptx_file_line_stats_add_smem_bank_conflict( pc, total_accesses );
         break;
     }
 
@@ -443,11 +467,11 @@ void warp_inst_t::generate_mem_accesses()
                 byte_mask.set(idx+i);
         }
         for( a=accesses.begin(); a != accesses.end(); ++a ) 
-            m_accessq.push_back( mem_access_t(access_type,a->first,cache_block_size,is_write,a->second, byte_mask, mem_access_sector_mask_t()));
+            m_accessq.push_back( mem_access_t(access_type,a->first,cache_block_size,is_write,a->second, byte_mask, mem_access_sector_mask_t(), m_config->gpgpu_ctx));
     }
 
     if ( space.get_type() == global_space ) {
-        ptx_file_line_stats_add_uncoalesced_gmem( pc, m_accessq.size() - starting_queue_size );
+        m_config->gpgpu_ctx->stats->ptx_file_line_stats_add_uncoalesced_gmem( pc, m_accessq.size() - starting_queue_size );
     }
     m_mem_accesses_created=true;
 }
@@ -675,21 +699,16 @@ void warp_inst_t::memory_coalescing_arch_reduce_and_send( bool is_write, mem_acc
            assert(lower_half_used && upper_half_used);
        }
    }
-   m_accessq.push_back( mem_access_t(access_type,addr,size,is_write,info.active,info.bytes, info.chunks) );
+   m_accessq.push_back( mem_access_t(access_type,addr,size,is_write,info.active,info.bytes, info.chunks,m_config->gpgpu_ctx) );
 }
 
 void warp_inst_t::completed( unsigned long long cycle ) const 
 {
    unsigned long long latency = cycle - issue_cycle; 
    assert(latency <= cycle); // underflow detection 
-   ptx_file_line_stats_add_latency(pc, latency * active_count());  
+   m_config->gpgpu_ctx->stats->ptx_file_line_stats_add_latency(pc, latency * active_count());  
 }
 
-//Jin: CDP support
-bool g_cdp_enabled;
-unsigned g_kernel_launch_latency;
-
-unsigned kernel_info_t::m_next_uid = 1;
 
 kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry)
 {
@@ -701,14 +720,14 @@ kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *
     m_next_cta.z=0;
     m_next_tid=m_next_cta;
     m_num_cores_running=0;
-    m_uid = m_next_uid++;
+    m_uid = (entry->gpgpu_ctx->kernel_info_m_next_uid)++;
     m_param_mem = new memory_space_impl<8192>("param",64*1024);
 
     //Jin: parent and child kernel management for CDP
     m_parent_kernel = NULL;
 
     //Jin: launch latency management
-    m_launch_latency = g_kernel_launch_latency;
+    m_launch_latency = entry->gpgpu_ctx->device_runtime->g_kernel_launch_latency;
 
     volta_cache_config_set=false;
 }
@@ -726,14 +745,14 @@ kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *
     m_next_cta.z=0;
     m_next_tid=m_next_cta;
     m_num_cores_running=0;
-    m_uid = m_next_uid++;
+    m_uid = (entry->gpgpu_ctx->kernel_info_m_next_uid)++;
     m_param_mem = new memory_space_impl<8192>("param",64*1024);
 
     //Jin: parent and child kernel management for CDP
     m_parent_kernel = NULL;
    
     //Jin: launch latency management
-    m_launch_latency = g_kernel_launch_latency;
+    m_launch_latency = entry->gpgpu_ctx->device_runtime->g_kernel_launch_latency;
 
     volta_cache_config_set=false;
     m_NameToCudaArray = nameToCudaArray;
@@ -787,17 +806,16 @@ bool kernel_info_t::children_all_finished() {
 
 void kernel_info_t::notify_parent_finished() {
    if(m_parent_kernel) {
-       extern unsigned long long g_total_param_size;
-       g_total_param_size -= ((m_kernel_entry->get_args_aligned_size() + 255)/256*256);
+       m_kernel_entry->gpgpu_ctx->device_runtime->g_total_param_size -= ((m_kernel_entry->get_args_aligned_size() + 255)/256*256);
        m_parent_kernel->remove_child(this);
-       g_stream_manager->register_finished_kernel(m_parent_kernel->get_uid());
+       g_stream_manager()->register_finished_kernel(m_parent_kernel->get_uid());
    }
 }
 
 CUstream_st * kernel_info_t::create_stream_cta(dim3 ctaid) {
     assert(get_default_stream_cta(ctaid));
     CUstream_st * stream = new CUstream_st();
-    g_stream_manager->add_stream(stream);
+    g_stream_manager()->add_stream(stream);
     assert(m_cta_streams.find(ctaid) != m_cta_streams.end());
     assert(m_cta_streams[ctaid].size() >= 1); //must have default stream
     m_cta_streams[ctaid].push_back(stream);
@@ -813,7 +831,7 @@ CUstream_st * kernel_info_t::get_default_stream_cta(dim3 ctaid) {
     else {
       m_cta_streams[ctaid] = std::list<CUstream_st *>();
       CUstream_st * stream = new CUstream_st();
-      g_stream_manager->add_stream(stream);
+      g_stream_manager()->add_stream(stream);
       m_cta_streams[ctaid].push_back(stream);
       return stream;
     }
@@ -845,17 +863,18 @@ void kernel_info_t::destroy_cta_streams() {
      for(auto s = m_cta_streams.begin(); s != m_cta_streams.end(); s++) {
         stream_size += s->second.size();
         for(auto ss = s->second.begin(); ss != s->second.end(); ss++)
-        g_stream_manager->destroy_stream(*ss);
+        g_stream_manager()->destroy_stream(*ss);
         s->second.clear();
      }
      printf("size %lu\n", stream_size);
      m_cta_streams.clear();
 }
 
-simt_stack::simt_stack( unsigned wid, unsigned warpSize)
+simt_stack::simt_stack( unsigned wid, unsigned warpSize,  class gpgpu_sim * gpu)
 {
     m_warp_id=wid;
     m_warp_size = warpSize;
+    m_gpu=gpu;
     reset();
 }
 
@@ -961,7 +980,7 @@ void simt_stack::print (FILE *fout) const
         } else {
             fprintf(fout," " );
         }
-        ptx_print_insn( stack_entry.m_pc, fout );
+        m_gpu->gpgpu_ctx->func_sim->ptx_print_insn( stack_entry.m_pc, fout );
         fprintf(fout,"\n");
     }
 
@@ -1055,7 +1074,7 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
     		simt_stack_entry new_stack_entry;
     		new_stack_entry.m_pc = tmp_next_pc;
     		new_stack_entry.m_active_mask = tmp_active_mask;
-    		new_stack_entry.m_branch_div_cycle = gpu_sim_cycle+gpu_tot_sim_cycle;
+    		new_stack_entry.m_branch_div_cycle = m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle;
     		new_stack_entry.m_type = STACK_ENTRY_TYPE_CALL;
     		m_stack.push_back(new_stack_entry);
     		return;
@@ -1087,7 +1106,7 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
             new_recvg_pc = recvg_pc;
             if (new_recvg_pc != top_recvg_pc) {
                 m_stack.back().m_pc = new_recvg_pc;
-                m_stack.back().m_branch_div_cycle = gpu_sim_cycle+gpu_tot_sim_cycle;
+                m_stack.back().m_branch_div_cycle = m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle;
 
                 m_stack.push_back(simt_stack_entry());
             }
@@ -1113,7 +1132,7 @@ void simt_stack::update( simt_mask_t &thread_done, addr_vector_t &next_pc, addre
 
 
     if (warp_diverged) {
-        ptx_file_line_stats_add_warp_divergence(top_pc, 1); 
+        m_gpu->gpgpu_ctx->stats->ptx_file_line_stats_add_warp_divergence(top_pc, 1); 
     }
 }
 
@@ -1160,7 +1179,7 @@ warp_inst_t core_t::getExecuteWarp(unsigned warpId)
 {
     unsigned pc,rpc;
     m_simt_stack[warpId]->get_pdom_stack_top_info(&pc,&rpc);
-    warp_inst_t wi= *ptx_fetch_inst(pc);
+    warp_inst_t wi= *(m_gpu->gpgpu_ctx->ptx_fetch_inst(pc));
     wi.set_active(m_simt_stack[warpId]->get_active_mask());
     return wi;
 }
@@ -1179,7 +1198,7 @@ void core_t::initilizeSIMTStack(unsigned warp_count, unsigned warp_size)
 { 
     m_simt_stack = new simt_stack*[warp_count];
     for (unsigned i = 0; i < warp_count; ++i) 
-        m_simt_stack[i] = new simt_stack(i,warp_size);
+        m_simt_stack[i] = new simt_stack(i,warp_size,m_gpu);
     m_warp_size = warp_size;
     m_warp_count = warp_count;
 }
