@@ -5,8 +5,6 @@
 #include <iostream>
 #include <map>
 
-unsigned long long g_total_param_size = 0;
-unsigned long long g_max_total_param_size = 0;
 
 
 #if (CUDART_VERSION >= 5000)
@@ -18,7 +16,9 @@ unsigned long long g_max_total_param_size = 0;
 #include "cuda-sim.h"
 #include "ptx_ir.h"
 #include "../stream_manager.h"
+#include "../gpgpusim_entrypoint.h"
 #include "cuda_device_runtime.h"
+#include "../../libcuda/gpgpu_context.h"
 
 #define DEV_RUNTIME_REPORT(a) \
    if( g_debug_execution ) { \
@@ -26,49 +26,12 @@ unsigned long long g_max_total_param_size = 0;
       std::cout.flush(); \
    }
 
-class device_launch_config_t {
 
-public:
-    device_launch_config_t() {}
-
-    device_launch_config_t(dim3 _grid_dim,
-        dim3 _block_dim,
-        unsigned int _shared_mem,
-        function_info * _entry):
-            grid_dim(_grid_dim),
-            block_dim(_block_dim),
-            shared_mem(_shared_mem),
-            entry(_entry) {}
-    
-    dim3 grid_dim;
-    dim3 block_dim;
-    unsigned int shared_mem;
-    function_info * entry;
-
-};
-
-class device_launch_operation_t {
-
-public:
-    device_launch_operation_t() {}
-    device_launch_operation_t(kernel_info_t *_grid,
-        CUstream_st * _stream) :
-            grid(_grid), stream(_stream) {}
-
-    kernel_info_t * grid; //a new child grid
-
-    CUstream_st * stream; 
-
-};
-
-
-std::map<void *, device_launch_config_t> g_cuda_device_launch_param_map;
-std::list<device_launch_operation_t> g_cuda_device_launch_op;
-extern stream_manager *g_stream_manager;
+//extern stream_manager *g_stream_manager();
 
 //Handling device runtime api:
 //void * cudaGetParameterBufferV2(void *func, dim3 gridDimension, dim3 blockDimension, unsigned int sharedMemSize)
-void gpgpusim_cuda_getParameterBufferV2(const ptx_instruction * pI, ptx_thread_info * thread, const function_info * target_func)
+void cuda_device_runtime::gpgpusim_cuda_getParameterBufferV2(const ptx_instruction * pI, ptx_thread_info * thread, const function_info * target_func)
 {
     DEV_RUNTIME_REPORT("Calling cudaGetParameterBufferV2");
       
@@ -141,7 +104,7 @@ void gpgpusim_cuda_getParameterBufferV2(const ptx_instruction * pI, ptx_thread_i
 
 //Handling device runtime api:
 //cudaError_t cudaLaunchDeviceV2(void *parameterBuffer, cudaStream_t stream)
-void gpgpusim_cuda_launchDeviceV2(const ptx_instruction * pI, ptx_thread_info * thread, const function_info * target_func) {
+void cuda_device_runtime::gpgpusim_cuda_launchDeviceV2(const ptx_instruction * pI, ptx_thread_info * thread, const function_info * target_func) {
     DEV_RUNTIME_REPORT("Calling cudaLaunchDeviceV2");
 
     unsigned n_return = target_func->has_return();
@@ -200,7 +163,7 @@ void gpgpusim_cuda_launchDeviceV2(const ptx_instruction * pI, ptx_thread_info * 
             //create child kernel_info_t and index it with parameter_buffer address
 	    gpgpu_t* gpu=thread->get_gpu();
             device_grid = new kernel_info_t(config.grid_dim, config.block_dim, device_kernel_entry, gpu->getNameArrayMapping(), gpu->getNameInfoMapping());
-            device_grid->launch_cycle = gpu_sim_cycle + gpu_tot_sim_cycle;
+            device_grid->launch_cycle = gpu->gpu_sim_cycle + gpu->gpu_tot_sim_cycle;
             kernel_info_t & parent_grid = thread->get_kernel();
             DEV_RUNTIME_REPORT("child kernel launched by " << parent_grid.name() << ", cta (" <<
                 thread->get_ctaid().x << ", " << thread->get_ctaid().y << ", " << thread->get_ctaid().z <<
@@ -262,7 +225,7 @@ void gpgpusim_cuda_launchDeviceV2(const ptx_instruction * pI, ptx_thread_info * 
 //Handling device runtime api:
 //cudaError_t cudaStreamCreateWithFlags ( cudaStream_t* pStream, unsigned int  flags)
 //flags can only be cudaStreamNonBlocking
-void gpgpusim_cuda_streamCreateWithFlags(const ptx_instruction * pI, ptx_thread_info * thread, const function_info * target_func) {
+void cuda_device_runtime::gpgpusim_cuda_streamCreateWithFlags(const ptx_instruction * pI, ptx_thread_info * thread, const function_info * target_func) {
     DEV_RUNTIME_REPORT("Calling cudaStreamCreateWithFlags");
 
     unsigned n_return = target_func->has_return();
@@ -317,17 +280,17 @@ void gpgpusim_cuda_streamCreateWithFlags(const ptx_instruction * pI, ptx_thread_
 }
 
 
-void launch_one_device_kernel() {
+void cuda_device_runtime::launch_one_device_kernel() {
     if(!g_cuda_device_launch_op.empty()) {
         device_launch_operation_t &op = g_cuda_device_launch_op.front();
 
-        stream_operation stream_op = stream_operation(op.grid, g_ptx_sim_mode, op.stream);
-        g_stream_manager->push(stream_op);
+        stream_operation stream_op = stream_operation(op.grid, gpgpu_ctx->func_sim->g_ptx_sim_mode, op.stream);
+        g_stream_manager()->push(stream_op);
         g_cuda_device_launch_op.pop_front();
     }
 }
 
-void launch_all_device_kernels() {
+void cuda_device_runtime::launch_all_device_kernels() {
     while(!g_cuda_device_launch_op.empty()) {
         launch_one_device_kernel();
     }

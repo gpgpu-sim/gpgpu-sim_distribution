@@ -43,6 +43,8 @@
 
 #include "memory.h"
 
+class gpgpu_context;
+
 class type_info_key {
 public:
    type_info_key()
@@ -150,8 +152,9 @@ class operand_info;
 
 class symbol {
 public:
-   symbol( const char *name, const type_info *type, const char *location, unsigned size ) 
+   symbol( const char *name, const type_info *type, const char *location, unsigned size, gpgpu_context* ctx ) 
    {
+      gpgpu_ctx = ctx;
       m_uid = get_uid();
       m_name = name;
       m_decl_location = location;
@@ -271,6 +274,7 @@ public:
    unsigned uid() const { return m_uid; }
 
 private:
+   gpgpu_context* gpgpu_ctx;
    unsigned get_uid();
    unsigned m_uid;
    const type_info *m_type;
@@ -297,14 +301,12 @@ private:
    bool m_reg_num_valid; 
 
    std::list<operand_info> m_initializer;
-   static unsigned sm_next_uid;
-   
 };
 
 class symbol_table {
 public:
    symbol_table();
-   symbol_table( const char *scope_name, unsigned entry_point, symbol_table *parent );
+   symbol_table( const char *scope_name, unsigned entry_point, symbol_table *parent, gpgpu_context* ctx);
    void set_name( const char *name );
    const ptx_version &get_ptx_version() const;
    unsigned get_sm_target() const;
@@ -346,6 +348,9 @@ public:
    symbol_table* start_inst_group();
    symbol_table* end_inst_group();
 
+   // backward pointer
+   class gpgpu_context* gpgpu_ctx;
+
 private:
    unsigned m_reg_allocator;
    unsigned m_shared_next;
@@ -372,9 +377,9 @@ private:
 
 class operand_info {
 public:
-   operand_info()
+   operand_info(gpgpu_context* ctx)
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -387,9 +392,9 @@ public:
       m_addr_offset = 0;
       m_value.m_symbolic=NULL;
    }
-   operand_info( const symbol *addr )
+   operand_info( const symbol *addr, gpgpu_context* ctx )
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -430,9 +435,9 @@ public:
       m_is_return_var = false;
       m_immediate_address=false;
    }
-   operand_info( const symbol *addr1, const symbol *addr2 )
+   operand_info( const symbol *addr1, const symbol *addr2, gpgpu_context* ctx )
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -457,9 +462,9 @@ public:
       m_is_return_var = false;
       m_immediate_address=false;
    }
-   operand_info( int builtin_id, int dim_mod )
+   operand_info( int builtin_id, int dim_mod, gpgpu_context* ctx )
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -476,9 +481,9 @@ public:
       m_is_return_var = false;
       m_immediate_address=false;
    }
-   operand_info( const symbol *addr, int offset )
+   operand_info( const symbol *addr, int offset, gpgpu_context* ctx )
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -495,9 +500,9 @@ public:
       m_is_return_var = false;
       m_immediate_address=false;
    }
-   operand_info( unsigned x )
+   operand_info( unsigned x, gpgpu_context* ctx )
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -514,9 +519,9 @@ public:
       m_is_return_var = false;
       m_immediate_address=true;
    }
-   operand_info( int x )
+   operand_info( int x, gpgpu_context* ctx )
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -533,9 +538,9 @@ public:
       m_is_return_var = false;
       m_immediate_address=false;
    }
-   operand_info( float x )
+   operand_info( float x, gpgpu_context* ctx )
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -552,9 +557,9 @@ public:
       m_is_return_var = false;
       m_immediate_address=false;
    }
-   operand_info( double x )
+   operand_info( double x, gpgpu_context* ctx )
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -571,9 +576,9 @@ public:
       m_is_return_var = false;
       m_immediate_address=false;
    }
-   operand_info( const symbol *s1, const symbol *s2, const symbol *s3, const symbol *s4 )
+   operand_info( const symbol *s1, const symbol *s2, const symbol *s3, const symbol *s4, gpgpu_context* ctx )
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -598,9 +603,9 @@ public:
       m_is_return_var = false;
       m_immediate_address=false;
    }
-   operand_info( const symbol *s1, const symbol *s2, const symbol *s3, const symbol *s4 ,const symbol *s5,const symbol *s6,const symbol *s7, const symbol *s8)
+   operand_info( const symbol *s1, const symbol *s2, const symbol *s3, const symbol *s4 ,const symbol *s5,const symbol *s6,const symbol *s7, const symbol *s8, gpgpu_context* ctx)
    {
-      init();
+      init(ctx);
       m_is_non_arch_reg = false;
       m_addr_space = undefined_space;
       m_operand_lohi = 0;
@@ -626,8 +631,9 @@ public:
       m_immediate_address=false;
    }
 
-   void init()
+   void init(gpgpu_context* ctx)
    {
+       gpgpu_ctx = ctx;
        m_uid=(unsigned)-1;
        m_valid=false;
        m_vector=false;
@@ -837,6 +843,7 @@ public:
    bool is_non_arch_reg() const { return m_is_non_arch_reg; }
 
 private:
+   gpgpu_context* gpgpu_ctx;
    unsigned m_uid;
    bool m_valid;
    bool m_vector;
@@ -866,12 +873,10 @@ private:
    bool m_is_return_var;
    bool m_is_non_arch_reg;
 
-   static unsigned sm_next_uid;
    unsigned get_uid();
 };
 
 extern const char *g_opcode_string[];
-extern unsigned g_num_ptx_inst_uid;
 struct basic_block_t {
    basic_block_t( unsigned ID, ptx_instruction *begin, ptx_instruction *end, bool entry, bool ex)
    {
@@ -931,7 +936,8 @@ public:
                     const char *file, 
                     unsigned line,
                     const char *source,
-                    const core_config *config );
+                    const core_config *config,
+		    gpgpu_context* ctx);
 
    void print_insn() const;
    virtual void print_insn( FILE *fp ) const;
@@ -951,7 +957,7 @@ public:
    unsigned source_line() const { return m_source_line;}
    unsigned get_num_operands() const { return m_operands.size();}
    bool has_pred() const { return m_pred != NULL;}
-   operand_info get_pred() const { return operand_info( m_pred );}
+   operand_info get_pred() const;
    bool get_pred_neg() const { return m_neg_pred;}
    int get_pred_mod() const { return m_pred_mod;}
    const char *get_source() const { return m_source.c_str();}
@@ -1186,7 +1192,8 @@ private:
 
    virtual void pre_decode();
    friend class function_info;
-   static unsigned g_num_ptx_inst_uid;
+   // backward pointer
+   class gpgpu_context* gpgpu_ctx;
 };
 
 class param_info {
@@ -1228,7 +1235,7 @@ private:
 
 class function_info {
 public:
-   function_info(int entry_point );
+   function_info(int entry_point, gpgpu_context* ctx );
    const ptx_version &get_ptx_version() const { return m_symtab->get_ptx_version(); }
    unsigned get_sm_target() const { return m_symtab->get_sm_target(); }
    bool is_extern() const { return m_extern; }
@@ -1365,13 +1372,6 @@ public:
       return m_symtab;
    }
 
-   static const ptx_instruction* pc_to_instruction(unsigned pc) 
-   {
-      if( pc < s_g_pc_to_insn.size() )
-          return s_g_pc_to_insn[pc];
-      else
-          return NULL;
-   }
    unsigned local_mem_framesize() const 
    { 
       return m_local_mem_framesize; 
@@ -1398,6 +1398,8 @@ public:
 
    void set_maxnt_id(unsigned maxthreads) { maxnt_id = maxthreads;}
    unsigned get_maxnt_id() { return maxnt_id;}
+   // backward pointer
+   class gpgpu_context* gpgpu_ctx;
 
 private:
    unsigned maxnt_id;
@@ -1427,9 +1429,6 @@ private:
 
    symbol_table *m_symtab;
 
-   static std::vector<ptx_instruction*> s_g_pc_to_insn; // a direct mapping from PC to instruction
-   static unsigned sm_next_uid;
-
    //parameter size for device kernels
    int m_args_aligned_size;
    
@@ -1438,14 +1437,14 @@ private:
 
 class arg_buffer_t {
 public:
-   arg_buffer_t()
+   arg_buffer_t(gpgpu_context* ctx) : m_src_op(ctx)
    {
       m_is_reg=false;
       m_is_param=false;
       m_param_value=NULL;
       m_reg_value=ptx_reg_t();
    }
-   arg_buffer_t( const arg_buffer_t &another )
+   arg_buffer_t( const arg_buffer_t &another, gpgpu_context* ctx ) : m_src_op(ctx)
    {
       make_copy(another);
    }
@@ -1575,11 +1574,8 @@ struct textureInfo {
 extern std::map<std::string,symbol_table*> g_sym_name_to_symbol_table;
 
 
-extern bool g_keep_intermediate_files;
-
 void gpgpu_ptx_assemble( std::string kname, void *kinfo );
 #include "../option_parser.h"
-void ptx_reg_options(option_parser_t opp);
 unsigned ptx_kernel_shmem_size( void *kernel_impl );
 unsigned ptx_kernel_nregs( void *kernel_impl );
 

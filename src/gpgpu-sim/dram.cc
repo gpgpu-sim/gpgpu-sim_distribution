@@ -41,13 +41,14 @@ int PRINT_CYCLE = 0;
 template class fifo_pipeline<mem_fetch>;
 template class fifo_pipeline<dram_req_t>;
 
-dram_t::dram_t( unsigned int partition_id, const struct memory_config *config, memory_stats_t *stats,
-                memory_partition_unit *mp )
+dram_t::dram_t( unsigned int partition_id, const memory_config *config, memory_stats_t *stats,
+                memory_partition_unit *mp, gpgpu_sim* gpu )
 {
    id = partition_id;
    m_memory_partition_unit = mp;
    m_stats = stats;
    m_config = config;
+   m_gpu = gpu;
 
    //rowblp
    access_num=0;
@@ -191,11 +192,12 @@ unsigned int dram_t::queue_limit() const
 }
 
 
-dram_req_t::dram_req_t( class mem_fetch *mf, unsigned banks, unsigned dram_bnk_indexing_policy)
+dram_req_t::dram_req_t( class mem_fetch *mf, unsigned banks, unsigned dram_bnk_indexing_policy, class gpgpu_sim* gpu)
 {
    txbytes = 0;
    dqbytes = 0;
    data = mf;
+   m_gpu = gpu;
 
    const addrdec_t &tlx = mf->get_tlx_addr();
 
@@ -226,9 +228,9 @@ dram_req_t::dram_req_t( class mem_fetch *mf, unsigned banks, unsigned dram_bnk_i
    col = tlx.col; 
    nbytes = mf->get_data_size();
 
-   timestamp = gpu_tot_sim_cycle + gpu_sim_cycle;
+   timestamp = m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle;
    addr = mf->get_addr();
-   insertion_time = (unsigned) gpu_sim_cycle;
+   insertion_time = (unsigned) m_gpu->gpu_sim_cycle;
    rw = data->get_is_write()?WRITE:READ;
 }
 
@@ -236,9 +238,9 @@ void dram_t::push( class mem_fetch *data )
 {
    assert(id == data->get_tlx_addr().chip); // Ensure request is in correct memory partition
 
-   dram_req_t *mrq = new dram_req_t(data,m_config->nbk,m_config->dram_bnk_indexing_policy);
+   dram_req_t *mrq = new dram_req_t(data,m_config->nbk,m_config->dram_bnk_indexing_policy,m_memory_partition_unit->get_mgpu());
 
-   data->set_status(IN_PARTITION_MC_INTERFACE_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
+   data->set_status(IN_PARTITION_MC_INTERFACE_QUEUE,m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle);
 	   mrqq->push(mrq);
 
    // stats...
@@ -259,7 +261,7 @@ void dram_t::scheduler_fifo()
    if (!mrqq->empty()) {
       unsigned int bkn;
       dram_req_t *head_mrqq = mrqq->top();
-      head_mrqq->data->set_status(IN_PARTITION_MC_BANK_ARB_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
+      head_mrqq->data->set_status(IN_PARTITION_MC_BANK_ARB_QUEUE,m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle);
       bkn = head_mrqq->bk;
       if (!bk[bkn]->mrq) 
          bk[bkn]->mrq = mrqq->pop();
@@ -283,7 +285,7 @@ void dram_t::cycle()
 
            if (cmd->dqbytes >= cmd->nbytes) {
               mem_fetch *data = cmd->data; 
-              data->set_status(IN_PARTITION_MC_RETURNQ,gpu_sim_cycle+gpu_tot_sim_cycle); 
+              data->set_status(IN_PARTITION_MC_RETURNQ,m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle);
               if( data->get_access_type() != L1_WRBK_ACC && data->get_access_type() != L2_WRBK_ACC ) {
                  data->set_reply();
                  returnq->push(data);
@@ -566,7 +568,7 @@ bool dram_t::issue_col_command(int j)
 	bool issued = false;
 	unsigned grp = get_bankgrp_number(j);
     if (bk[j]->mrq) { //if currently servicing a memory request
-        bk[j]->mrq->data->set_status(IN_PARTITION_DRAM,gpu_sim_cycle+gpu_tot_sim_cycle);
+        bk[j]->mrq->data->set_status(IN_PARTITION_DRAM,m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle);
        // correct row activated for a READ
        if ( !issued && !CCDc && !bk[j]->RCDc &&
             !(bkgrp[grp]->CCDLc) &&
@@ -654,7 +656,7 @@ bool dram_t::issue_row_command(int j)
 	bool issued = false;
 	unsigned grp = get_bankgrp_number(j);
     if (bk[j]->mrq) { //if currently servicing a memory request
-        bk[j]->mrq->data->set_status(IN_PARTITION_DRAM,gpu_sim_cycle+gpu_tot_sim_cycle);
+        bk[j]->mrq->data->set_status(IN_PARTITION_DRAM,m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle);
       //     bank is idle
     //else
   	  if ( !issued && !RRDc &&

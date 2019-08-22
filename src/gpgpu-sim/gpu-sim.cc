@@ -65,6 +65,7 @@
 #include "visualizer.h"
 #include "stats.h"
 #include "../cuda-sim/cuda_device_runtime.h"
+#include "../../libcuda/gpgpu_context.h"
 
 #ifdef GPGPUSIM_POWER_MODEL
 #include "power_interface.h"
@@ -83,23 +84,6 @@ class  gpgpu_sim_wrapper {};
 
 bool g_interactive_debugger_enabled=false;
 
-unsigned long long  gpu_sim_cycle = 0;
-unsigned long long  gpu_tot_sim_cycle = 0;
-unsigned long long  elapsed_cycles_sm_tot = 0;  //this is a equivalent metric generated as nvprof. that only counts when SM is active
-
-
-// performance counter for stalls due to congestion.
-unsigned int gpu_stall_dramfull = 0; 
-unsigned int gpu_stall_icnt2sh = 0;
-unsigned long long partiton_reqs_in_parallel = 0;
-unsigned long long partiton_reqs_in_parallel_total = 0;
-unsigned long long partiton_reqs_in_parallel_util = 0;
-unsigned long long partiton_reqs_in_parallel_util_total = 0;
-unsigned long long  gpu_sim_cycle_parition_util = 0;
-unsigned long long  gpu_tot_sim_cycle_parition_util = 0;
-unsigned long long partiton_replys_in_parallel = 0;
-unsigned long long partiton_replys_in_parallel_total = 0;
-
 tr1_hash_map<new_addr_type,unsigned> address_random_interleaving;
 
 /* Clock Domains */
@@ -111,8 +95,6 @@ tr1_hash_map<new_addr_type,unsigned> address_random_interleaving;
 
 
 #define MEM_LATENCY_STAT_IMPL
-
-
 
 
 #include "mem_latency_stat.h"
@@ -520,11 +502,11 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
    option_parser_register(opp, "-gpgpu_deadlock_detect", OPT_BOOL, &gpu_deadlock_detect, 
                 "Stop the simulation at deadlock (1=on (default), 0=off)", 
                 "1");
-   option_parser_register(opp, "-gpgpu_ptx_instruction_classification", OPT_INT32, 
-               &gpgpu_ptx_instruction_classification, 
+   option_parser_register(opp, "-gpgpu_ptx_instruction_classification", OPT_INT32,
+               &(gpgpu_ctx->func_sim->gpgpu_ptx_instruction_classification),
                "if enabled will classify ptx instruction types per kernel (Max 255 kernels now)", 
                "0");
-   option_parser_register(opp, "-gpgpu_ptx_sim_mode", OPT_INT32, &g_ptx_sim_mode, 
+   option_parser_register(opp, "-gpgpu_ptx_sim_mode", OPT_INT32, &(gpgpu_ctx->func_sim->g_ptx_sim_mode),
                "Select between Performance (default) or Functional simulation (1)", 
                "0");
    option_parser_register(opp, "-gpgpu_clock_domains", OPT_CSTR, &gpgpu_clock_domains, 
@@ -566,16 +548,14 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
     option_parser_register(opp, "-trace_sampling_memory_partition", OPT_INT32, 
                           &Trace::sampling_memory_partition, "The memory partition which is printed using MEMPART_DPRINTF. Default -1 (i.e. all)",
                           "-1");
-   ptx_file_line_stats_options(opp);
+    gpgpu_ctx->stats->ptx_file_line_stats_options(opp);
 
     //Jin: kernel launch latency
-    extern unsigned g_kernel_launch_latency;
     option_parser_register(opp, "-gpgpu_kernel_launch_latency", OPT_INT32, 
-                          &g_kernel_launch_latency, "Kernel launch latency in cycles. Default: 0",
+                          &(gpgpu_ctx->device_runtime->g_kernel_launch_latency), "Kernel launch latency in cycles. Default: 0",
                           "0");
-    extern bool g_cdp_enabled;
     option_parser_register(opp, "-gpgpu_cdp_enabled", OPT_BOOL, 
-                          &g_cdp_enabled, "Turn on CDP",
+                          &(gpgpu_ctx->device_runtime->g_cdp_enabled), "Turn on CDP",
                           "0");
 }
 
@@ -719,14 +699,13 @@ void gpgpu_sim::stop_all_running_kernels(){
     }
 }
 
-void set_ptx_warp_size(const struct core_config * warp_size);
-
-gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config ) 
-    : gpgpu_t(config), m_config(config)
-{ 
+gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config, gpgpu_context* ctx )
+    : gpgpu_t(config, ctx), m_config(config)
+{
+    gpgpu_ctx = ctx;
     m_shader_config = &m_config.m_shader_config;
     m_memory_config = &m_config.m_memory_config;
-    set_ptx_warp_size(m_shader_config);
+    ctx->ptx_parser->set_ptx_warp_size(m_shader_config);
     ptx_file_line_stats_create_exposed_latency_tracker(m_config.num_shader());
 
 #ifdef GPGPUSIM_POWER_MODEL
@@ -734,7 +713,7 @@ gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config )
 #endif
 
     m_shader_stats = new shader_core_stats(m_shader_config);
-    m_memory_stats = new memory_stats_t(m_config.num_shader(),m_shader_config,m_memory_config);
+    m_memory_stats = new memory_stats_t(m_config.num_shader(),m_shader_config,m_memory_config,this);
     average_pipeline_duty_cycle = (float *)malloc(sizeof(float));
     active_sms=(float *)malloc(sizeof(float));
     m_power_stats = new power_stat_t(m_shader_config,average_pipeline_duty_cycle,active_sms,m_shader_stats,m_memory_config,m_memory_stats);
@@ -745,6 +724,16 @@ gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config )
     m_total_cta_launched = 0;
     gpu_deadlock = false;
 
+    gpu_stall_dramfull = 0;
+    gpu_stall_icnt2sh = 0;
+    partiton_reqs_in_parallel = 0;
+    partiton_reqs_in_parallel_total = 0;
+    partiton_reqs_in_parallel_util = 0;
+    partiton_reqs_in_parallel_util_total = 0;
+    gpu_sim_cycle_parition_util = 0;
+    gpu_tot_sim_cycle_parition_util = 0;
+    partiton_replys_in_parallel = 0;
+    partiton_replys_in_parallel_total = 0;
 
     m_cluster = new simt_core_cluster*[m_shader_config->n_simt_clusters];
     for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) 
@@ -753,7 +742,7 @@ gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config )
     m_memory_partition_unit = new memory_partition_unit*[m_memory_config->m_n_mem];
     m_memory_sub_partition = new memory_sub_partition*[m_memory_config->m_n_mem_sub_partition];
     for (unsigned i=0;i<m_memory_config->m_n_mem;i++) {
-        m_memory_partition_unit[i] = new memory_partition_unit(i, m_memory_config, m_memory_stats);
+        m_memory_partition_unit[i] = new memory_partition_unit(i, m_memory_config, m_memory_stats, this);
         for (unsigned p = 0; p < m_memory_config->m_n_sub_partition_per_memory_channel; p++) {
             unsigned submpid = i * m_memory_config->m_n_sub_partition_per_memory_channel + p; 
             m_memory_sub_partition[submpid] = m_memory_partition_unit[i]->get_sub_partition(p); 
@@ -904,13 +893,13 @@ void gpgpu_sim::init()
     gpu_sim_cycle_parition_util = 0;
 
     reinit_clock_domains();
-    set_param_gpgpu_num_shaders(m_config.num_shader());
+    gpgpu_ctx->func_sim->set_param_gpgpu_num_shaders(m_config.num_shader());
     for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) 
        m_cluster[i]->reinit();
     m_shader_stats->new_grid();
     // initialize the control-flow, memory access, memory latency logger
     if (m_config.g_visualizer_enabled) {
-        create_thread_CFlogger( m_config.num_shader(), m_shader_config->n_thread_per_shader, 0, m_config.gpgpu_cflog_interval );
+        create_thread_CFlogger( gpgpu_ctx, m_config.num_shader(), m_shader_config->n_thread_per_shader, 0, m_config.gpgpu_cflog_interval );
     }
     shader_CTA_count_create( m_config.num_shader(), m_config.gpgpu_cflog_interval);
     if (m_config.gpgpu_cflog_interval != 0) {
@@ -956,7 +945,7 @@ void gpgpu_sim::update_stats() {
 
 void gpgpu_sim::print_stats()
 {
-    ptx_file_line_stats_write_file();
+    gpgpu_ctx->stats->ptx_file_line_stats_write_file();
     gpu_print_stat();
 
     if (g_network_mode) {
@@ -1122,7 +1111,6 @@ void gpgpu_sim::gpu_print_stat()
    printf("gpu_sim_insn = %lld\n", gpu_sim_insn);
    printf("gpu_ipc = %12.4f\n", (float)gpu_sim_insn / gpu_sim_cycle);
    printf("gpu_tot_sim_cycle = %lld\n", gpu_tot_sim_cycle+gpu_sim_cycle);
-   printf("elapsed_cycles_sm_tot = %lld\n", elapsed_cycles_sm_tot);
    printf("gpu_tot_sim_insn = %lld\n", gpu_tot_sim_insn+gpu_sim_insn);
    printf("gpu_tot_ipc = %12.4f\n", (float)(gpu_tot_sim_insn+gpu_sim_insn) / (gpu_tot_sim_cycle+gpu_sim_cycle));
    printf("gpu_tot_issued_cta = %lld\n", gpu_tot_issued_cta + m_total_cta_launched);
@@ -1130,8 +1118,7 @@ void gpgpu_sim::gpu_print_stat()
    printf("gpu_tot_occupancy = %.4f\% \n", (gpu_occupancy + gpu_tot_occupancy).get_occ_fraction() * 100);
 
 
-   extern unsigned long long g_max_total_param_size;
-   fprintf(statfout, "max_total_param_size = %llu\n", g_max_total_param_size);
+   fprintf(statfout, "max_total_param_size = %llu\n", gpgpu_ctx->device_runtime->g_max_total_param_size);
 
    // performance counter for stalls due to congestion.
    printf("gpu_stall_dramfull = %d\n", gpu_stall_dramfull);
@@ -1154,7 +1141,7 @@ void gpgpu_sim::gpu_print_stat()
 
    time_t curr_time;
    time(&curr_time);
-   unsigned long long elapsed_time = MAX( curr_time - g_simulation_starttime, 1 );
+   unsigned long long elapsed_time = MAX( curr_time - GPGPUsim_ctx_ptr()->g_simulation_starttime, 1 );
    printf( "gpu_total_sim_rate=%u\n", (unsigned)( ( gpu_tot_sim_insn + gpu_sim_insn ) / elapsed_time ) );
 
    //shader_print_l1_miss_stat( stdout );
@@ -1223,9 +1210,9 @@ void gpgpu_sim::gpu_print_stat()
       spill_log_to_file (stdout, 1, gpu_sim_cycle);
       insn_warp_occ_print(stdout);
    }
-   if ( gpgpu_ptx_instruction_classification ) {
-      StatDisp( g_inst_classification_stat[g_ptx_kernel_count]);
-      StatDisp( g_inst_op_classification_stat[g_ptx_kernel_count]);
+   if ( gpgpu_ctx->func_sim->gpgpu_ptx_instruction_classification ) {
+      StatDisp( gpgpu_ctx->func_sim->g_inst_classification_stat[gpgpu_ctx->func_sim->g_ptx_kernel_count]);
+      StatDisp( gpgpu_ctx->func_sim->g_inst_op_classification_stat[gpgpu_ctx->func_sim->g_ptx_kernel_count]);
    }
 
 #ifdef GPGPUSIM_POWER_MODEL
@@ -1518,7 +1505,7 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
 
     shader_CTA_count_log(m_sid, 1);
     SHADER_DPRINTF(LIVENESS, "GPGPU-Sim uArch: cta:%2u, start_tid:%4u, end_tid:%4u, initialized @(%lld,%lld)\n", 
-        free_cta_hw_id, start_thread, end_thread, gpu_sim_cycle, gpu_tot_sim_cycle );
+        free_cta_hw_id, start_thread, end_thread, m_gpu->gpu_sim_cycle, m_gpu->gpu_tot_sim_cycle );
 
 }
 
@@ -1727,7 +1714,7 @@ void gpgpu_sim::cycle()
          time_t days, hrs, minutes, sec;
          time_t curr_time;
          time(&curr_time);
-         unsigned long long  elapsed_time = MAX(curr_time - g_simulation_starttime, 1);
+         unsigned long long  elapsed_time = MAX(curr_time - GPGPUsim_ctx_ptr()->g_simulation_starttime, 1);
          if ( (elapsed_time - last_liveness_message_time) >= m_config.liveness_message_freq && DTRACE(LIVENESS) ) {
             days    = elapsed_time/(3600*24);
             hrs     = elapsed_time/3600 - 24*days;
@@ -1738,7 +1725,7 @@ void gpgpu_sim::cycle()
             for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) {
                 m_cluster[i]->get_current_occupancy(active, total);
             }
-            DPRINTF(LIVENESS, "uArch: inst.: %lld (ipc=%4.1f, occ=%0.4f\% [%llu / %llu]) sim_rate=%u (inst/sec) elapsed = %u:%u:%02u:%02u / %s", 
+            DPRINTFG(LIVENESS, "uArch: inst.: %lld (ipc=%4.1f, occ=%0.4f\% [%llu / %llu]) sim_rate=%u (inst/sec) elapsed = %u:%u:%02u:%02u / %s",
                    gpu_tot_sim_insn + gpu_sim_insn, 
                    (double)gpu_sim_insn/(double)gpu_sim_cycle,
                    float(active)/float(total) * 100, active, total,
@@ -1779,7 +1766,7 @@ void gpgpu_sim::cycle()
 
 #if (CUDART_VERSION >= 5000)
       //launch device kernel
-      launch_one_device_kernel();
+      gpgpu_ctx->device_runtime->launch_one_device_kernel();
 #endif
    }
 }
@@ -1852,12 +1839,12 @@ void gpgpu_sim::dump_pipeline( int mask, int s, int m ) const
    fflush(stdout);
 }
 
-const struct shader_core_config * gpgpu_sim::getShaderCoreConfig()
+const shader_core_config * gpgpu_sim::getShaderCoreConfig()
 {
    return m_shader_config;
 }
 
-const struct memory_config * gpgpu_sim::getMemoryConfig()
+const memory_config * gpgpu_sim::getMemoryConfig()
 {
    return m_memory_config;
 }

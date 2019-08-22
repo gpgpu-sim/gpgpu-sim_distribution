@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <zlib.h>
 
+class gpgpu_context;
 /////////////////////////////////////////////////////////////////////////////////////
 // logger snapshot trigger: 
 // - automate the snap_shot part of loggers to avoid modifying simulation loop everytime 
@@ -80,8 +81,8 @@ public:
 
 class thread_insn_span {
 public:
-   thread_insn_span(unsigned long long  cycle);
-   thread_insn_span(const thread_insn_span& other);
+   thread_insn_span(unsigned long long  cycle, gpgpu_context* ctx);
+   thread_insn_span(const thread_insn_span& other, gpgpu_context* ctx);
    ~thread_insn_span();
    
    thread_insn_span& operator=(const thread_insn_span& other);
@@ -94,7 +95,8 @@ public:
    void print_sparse_histo(FILE *fout) const;
    void print_sparse_histo(gzFile fout) const;
 
-private: 
+private:
+   gpgpu_context* gpgpu_ctx;
    typedef tr1_hash_map<address_type, int> span_count_map;
    unsigned long long  m_cycle;
    span_count_map m_insn_span_count;
@@ -102,7 +104,7 @@ private:
 
 class thread_CFlocality : public snap_shot_trigger, public spill_log_interface {
 public:
-   thread_CFlocality(std::string name, unsigned long long  snap_shot_interval, 
+   thread_CFlocality(gpgpu_context* ctx, std::string name, unsigned long long  snap_shot_interval, 
                      int nthreads, address_type start_pc, unsigned long long  start_cycle = 0);
    ~thread_CFlocality();
    
@@ -270,7 +272,7 @@ void try_snap_shot (unsigned long long  current_cycle);
 void set_spill_interval (unsigned long long  interval);
 void spill_log_to_file (FILE *fout, int final, unsigned long long  current_cycle);
 
-void create_thread_CFlogger( int n_loggers, int n_threads, address_type start_pc, unsigned long long  logging_interval);
+void create_thread_CFlogger(gpgpu_context* ctx,  int n_loggers, int n_threads, address_type start_pc, unsigned long long  logging_interval);
 void destroy_thread_CFlogger( );
 void cflog_update_thread_pc( int logger_id, int thread_id, address_type pc );
 void cflog_snapshot( int logger_id, unsigned long long  cycle );

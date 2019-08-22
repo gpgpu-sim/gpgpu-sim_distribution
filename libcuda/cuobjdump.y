@@ -29,24 +29,31 @@
 %{
 #include <stdio.h>
 
-int yylex(void);
-void yyerror(const char*);
-extern void addCuobjdumpSection(int sectiontype);
-void setCuobjdumparch(const char* arch);
-void setCuobjdumpidentifier(const char* identifier);
-void setCuobjdumpptxfilename(const char* filename);
-void setCuobjdumpelffilename(const char* filename);
-void setCuobjdumpsassfilename(const char* filename);
-int elfserial = 1;
-int ptxserial = 1;
-FILE *ptxfile;
-FILE *elffile;
-FILE *sassfile;
-char filename [1024];
+typedef void * yyscan_t;
+#include "cuobjdump.h"
+
+extern void addCuobjdumpSection(int sectiontype, std::list<cuobjdumpSection*> &cuobjdumpSectionList);
+void setCuobjdumparch(const char* arch, std::list<cuobjdumpSection*> &cuobjdumpSectionList);
+void setCuobjdumpidentifier(const char* identifier, std::list<cuobjdumpSection*> &cuobjdumpSectionList);
+void setCuobjdumpptxfilename(const char* filename, std::list<cuobjdumpSection*> &cuobjdumpSectionList);
+void setCuobjdumpelffilename(const char* filename, std::list<cuobjdumpSection*> &cuobjdumpSectionList);
+void setCuobjdumpsassfilename(const char* filename, std::list<cuobjdumpSection*> &cuobjdumpSectionList);
 %}
+%define api.pure full
+%parse-param {yyscan_t scanner}
+%parse-param {struct cuobjdump_parser* parser}
+%parse-param {std::list<cuobjdumpSection*> &cuobjdumpSectionList}
+%lex-param {yyscan_t scanner}
+%lex-param {struct cuobjdump_parser* parser}
+%lex-param {std::list<cuobjdumpSection*> &cuobjdumpSectionList}
+
 %union {
 	char* string_value;
 }
+%{
+int yylex(YYSTYPE * yylval_param, yyscan_t yyscanner, struct cuobjdump_parser* parser, std::list<cuobjdumpSection*> &cuobjdumpSectionList);
+void yyerror(yyscan_t yyscanner, struct cuobjdump_parser* parser, std::list<cuobjdumpSection*> &cuobjdumpSectionList, const char* msg);
+%}
 %token <string_value> H_SEPARATOR H_ARCH H_CODEVERSION H_PRODUCER H_HOST H_COMPILESIZE H_IDENTIFIER H_UNKNOWN H_COMPRESSED
 %token <string_value> CODEVERSION
 %token <string_value> STRING
@@ -70,25 +77,25 @@ emptylines	:	emptylines NEWLINE
 			|	;
 
 section :	PTXHEADER {
-				addCuobjdumpSection(0);
-				snprintf(filename, 1024, "_cuobjdump_%d.ptx", ptxserial++);
-				ptxfile = fopen(filename, "w");
-				setCuobjdumpptxfilename(filename);
+				addCuobjdumpSection(0, cuobjdumpSectionList);
+				snprintf(parser->filename, 1024, "_cuobjdump_%d.ptx", parser->ptxserial++);
+				parser->ptxfile = fopen(parser->filename, "w");
+				setCuobjdumpptxfilename(parser->filename, cuobjdumpSectionList);
 			} headerinfo compressedkeyword identifier ptxcode {
-				fclose(ptxfile);
+				fclose(parser->ptxfile);
 			}
 		|	ELFHEADER {
-				addCuobjdumpSection(1);
-				snprintf(filename, 1024, "_cuobjdump_%d.elf", elfserial);
-				elffile = fopen(filename, "w");
-				setCuobjdumpelffilename(filename);
+				addCuobjdumpSection(1, cuobjdumpSectionList);
+				snprintf(parser->filename, 1024, "_cuobjdump_%d.elf", parser->elfserial);
+				parser->elffile = fopen(parser->filename, "w");
+				setCuobjdumpelffilename(parser->filename, cuobjdumpSectionList);
 			} headerinfo compressedkeyword identifier elfcode {
-				fclose(elffile);
-				snprintf(filename, 1024, "_cuobjdump_%d.sass", elfserial++);
-				sassfile = fopen(filename, "w");
-				setCuobjdumpsassfilename(filename);
+				fclose(parser->elffile);
+				snprintf(parser->filename, 1024, "_cuobjdump_%d.sass", parser->elfserial++);
+				parser->sassfile = fopen(parser->filename, "w");
+				setCuobjdumpsassfilename(parser->filename, cuobjdumpSectionList);
 			} sasscode { 
-				fclose(sassfile);
+				fclose(parser->sassfile);
 			};
 
 headerinfo :	H_SEPARATOR NEWLINE
@@ -96,27 +103,27 @@ headerinfo :	H_SEPARATOR NEWLINE
 				H_CODEVERSION CODEVERSION NEWLINE
 				H_PRODUCER H_UNKNOWN NEWLINE
 				H_HOST IDENTIFIER NEWLINE
-				H_COMPILESIZE IDENTIFIER  {setCuobjdumparch($4);};
+				H_COMPILESIZE IDENTIFIER  {setCuobjdumparch($4, cuobjdumpSectionList);};
 			|   H_SEPARATOR NEWLINE
 				H_ARCH IDENTIFIER NEWLINE
 				H_CODEVERSION CODEVERSION NEWLINE
 				H_PRODUCER IDENTIFIER NEWLINE
 				H_HOST IDENTIFIER NEWLINE
-				H_COMPILESIZE IDENTIFIER {setCuobjdumparch($4);};
+				H_COMPILESIZE IDENTIFIER {setCuobjdumparch($4, cuobjdumpSectionList);};
 
-identifier : H_IDENTIFIER FILENAME emptylines {setCuobjdumpidentifier($2);}
-			 |	{setCuobjdumpidentifier("default");};
+identifier : H_IDENTIFIER FILENAME emptylines {setCuobjdumpidentifier($2, cuobjdumpSectionList);}
+			 |	{setCuobjdumpidentifier("default", cuobjdumpSectionList);};
 
 compressedkeyword : H_COMPRESSED emptylines
                     | ;
 
-ptxcode :	ptxcode PTXLINE {fprintf(ptxfile, "%s", $2);}
+ptxcode :	ptxcode PTXLINE {fprintf(parser->ptxfile, "%s", $2);}
 		|	;
 
-elfcode :	elfcode ELFLINE {fprintf(elffile, "%s", $2);}
+elfcode :	elfcode ELFLINE {fprintf(parser->elffile, "%s", $2);}
 		|	;
 
-sasscode :	sasscode SASSLINE {fprintf(sassfile, "%s", $2);}
+sasscode :	sasscode SASSLINE {fprintf(parser->sassfile, "%s", $2);}
 		 |	;
 
 
