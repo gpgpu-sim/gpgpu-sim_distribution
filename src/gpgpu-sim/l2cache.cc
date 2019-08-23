@@ -257,7 +257,7 @@ void memory_partition_unit::simple_dram_model_cycle()
 				d.req = mf;
 				d.ready_cycle = m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle + m_config->dram_latency;
 				m_dram_latency_queue.push_back(d);
-				mf->set_status(IN_PARTITION_DRAM_LATENCY_QUEUE,gpu_sim_cycle+gpu_tot_sim_cycle);
+				mf->set_status(IN_PARTITION_DRAM_LATENCY_QUEUE,m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle);
 				m_arbitration_metadata.borrow_credit(spid);
 				break;  // the DRAM should only accept one request per cycle
 			}
