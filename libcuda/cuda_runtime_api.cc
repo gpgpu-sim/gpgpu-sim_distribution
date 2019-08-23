@@ -1607,7 +1607,7 @@ cudaError_t CUDARTAPI cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(int
 
 #endif
 
-#if (CUDART_VERSION > 5000)
+
 
 /*******************************************************************************
  *                                                                              *
@@ -1625,6 +1625,7 @@ __host__ cudaError_t CUDARTAPI cudaMemset(void *mem, int c, size_t count)
 	return g_last_cudaError = cudaSuccess;
 }
 
+#if (CUDART_VERSION > 5000)
 __host__ cudaError_t CUDARTAPI cudaDeviceGetAttributeInternal(int *value, enum cudaDeviceAttr attr, int device, gpgpu_context* gpgpu_ctx = NULL)
 {
 	    gpgpu_context *ctx;
@@ -1823,6 +1824,7 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetAttributeInternal(int *value, enum c
                 return g_last_cudaError = cudaErrorInvalidDevice;
         }
 }
+#endif
 
 //memset operation is done but i think its not async?
 __host__ cudaError_t CUDARTAPI cudaMemsetAsync(void *mem, int c, size_t count, 	cudaStream_t stream=0)
@@ -3296,8 +3298,6 @@ cudaError_t CUDARTAPI cudaSetDeviceFlags( int flags )
 }
 
 
-
-
 cudaError_t CUDARTAPI cudaFuncGetAttributes(struct cudaFuncAttributes *attr, const char *hostFun )
 {
     return cudaFuncGetAttributesInternal(attr, hostFun );
@@ -3347,8 +3347,6 @@ __host__ cudaError_t CUDARTAPI cudaDeviceSetLimit(enum cudaLimit limit, size_t v
 //	return g_last_cudaError = cudaSuccess;
 //}
 
-
-#endif
 
 #endif
 
