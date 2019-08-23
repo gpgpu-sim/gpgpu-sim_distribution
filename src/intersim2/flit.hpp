@@ -57,8 +57,8 @@ public:
   int  itime;
   int  atime;
 
-  int  id;
-  int  pid;
+  unsigned long long  id;
+  unsigned long long  pid;
 
   bool record;
 

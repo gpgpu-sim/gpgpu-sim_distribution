@@ -235,7 +235,7 @@ struct _cuda_device_id *gpgpu_context::GPGPUSim_Init()
   	        prop->sharedMemPerMultiprocessor = the_gpu->shared_mem_size();
 #endif	
 		prop->sharedMemPerBlock = the_gpu->shared_mem_per_block();
-		prop->regsPerBlock = the_gpu->num_registers_per_core();
+		prop->regsPerBlock = the_gpu->num_registers_per_block();
 		prop->warpSize = the_gpu->wrp_size();
 		prop->clockRate = the_gpu->shader_clock();
 #if (CUDART_VERSION >= 2010)
@@ -825,207 +825,6 @@ __host__ cudaError_t CUDARTAPI cudaGetDevicePropertiesInternal(struct cudaDevice
     }
 }
 
-#if (CUDART_VERSION > 5000)
-__host__ cudaError_t CUDARTAPI cudaDeviceGetAttributeInternal(int *value, enum cudaDeviceAttr attr, int device, gpgpu_context* gpgpu_ctx = NULL)
-{
-    gpgpu_context *ctx;
-    if (gpgpu_ctx){
-	ctx = gpgpu_ctx;
-    } else {
-	ctx = GPGPU_Context();
-    }
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-        const struct cudaDeviceProp *prop;
-        _cuda_device_id *dev = ctx->GPGPUSim_Init();
-        if (device <= dev->num_devices() )  {
-                prop = dev->get_prop();
-                switch (attr) {
-                case 1:
-                        *value= prop->maxThreadsDim[0] * prop->maxThreadsDim[1] * prop->maxThreadsDim[2] * prop->maxGridSize[0] * prop->maxGridSize[1] * prop->maxGridSize[2];
-                        break;
-                case 2:
-                        *value= prop->maxThreadsDim[0];
-                        break;
-                case 3:
-                        *value= prop->maxThreadsDim[1];
-                        break;
-                case 4:
-                        *value= prop->maxThreadsDim[2];
-                        break; 
-		case 5:
-                        *value= prop->maxGridSize[0];
-                        break;
-                case 6:
-                        *value= prop->maxGridSize[1];
-                        break;
-                case 7:
-                        *value= prop->maxGridSize[2];
-                        break;
-		case 8:
-                        *value= prop->sharedMemPerBlock;
-                        break;
-		case 9:
-                        *value= prop->totalConstMem;
-                        break;
-                case 10:
-                        *value= prop->warpSize;
-                        break;
-                case 11:
-                        *value= 16;//dummy value
-                        break;
-                case 12:
-                        *value= prop->regsPerBlock;
-                        break;
-                case 13:
-                        *value= 1480000;//for 1080ti
-                        break;
-                case 14:
-                        *value= prop->textureAlignment ;
-                        break;
-                case 15:
-                        *value = 0;
-                        break;
-                case 16:
-                        *value= prop->multiProcessorCount ;
-                        break;
-                case 17:
-                case 18:
-                case 19:
-                        *value = 0;
-                        break;
-                case 21:
-                case 22:
-                case 23:
-                case 24:
-                case 25:
-                case 26:
-                case 27:
-                case 28:
-                case 42:
-                case 45:
-                case 46:
-                case 47:
-                case 48:
-                case 49:
-                case 52:
-                case 53:
-                case 55:
-                case 56:
-                case 57:
-                case 58:
-                case 59:
-                case 60:
-                case 61:
-                case 62:
-                case 63:
-                case 64:
-                case 66:
-                case 67:
-                case 69:
-                case 70:
-                case 71:
-                case 73:
-                case 74:
-                case 77:
-                        *value = 1000;//dummy value
-                        break;
-                case 29:
-                case 43:
-                case 54:
-                case 65:
-                case 68:
-                case 72:
-                        *value = 10;//dummy value
-                        break;
-                case 30:
-                case 51:
-                        *value = 128;//dummy value
-                        break;
-                case 31:
-                        *value = 1;
-                        break;
-                case 32:
-                        *value = 0;
-                        break;
-                case 33:
-                case 50:
-                        *value = 0;//dummy value
-                        break;
-		        case 34:
-                        *value= 0;
-                        break;
-                case 35:
-                        *value = 0;
-                        break;
-                case 36:
-                        *value = 1250000;//CK value for 1080ti
-                        break;
-                case 37:
-                        *value = 352;//value for 1080ti
-                        break;
-                case 38:
-                        *value = 3000000;//value for 1080ti
-                        break;
-                case 39:
-                        *value= dev->get_gpgpu()->threads_per_core();
-                        break;
-                case 40:
-                        *value= 0;
-                        break;
-                case 41:
-                        *value= 0;
-                        break;
-                case 75://cudaDevAttrComputeCapabilityMajor
-                        *value= prop->major ;
-                        break;
-                case 76://cudaDevAttrComputeCapabilityMinor
-                        *value= prop->minor ;
-                        break;
-                case 78:
-                        *value= 0 ; //TODO: as of now, we dont support stream priorities.
-                        break;
-                case 79:
-                        *value= 0;
-                        break;
-                case 80:
-                        *value= 0;
-                        break;
-		#if (CUDART_VERSION > 5050)
-		case 81:
-                        *value= prop->sharedMemPerMultiprocessor;
-                        break;
-                case 82:
-                        *value= prop->regsPerMultiprocessor;
-                        break;
-		#endif
-                case 83:
-                case 84:
-                case 85:
-                case 86:
-                        *value= 0;
-                        break;
-                case 87:
-                        *value= 4;//dummy value
-                        break;
-                case 88:
-                case 89:
-                case 90:
-                case 91:
-                case 95:
-                        *value= 0;
-                        break;
-		default:
-			printf("ERROR: Attribute number %d unimplemented \n",attr);
-			abort();
-                }
-                return g_last_cudaError = cudaSuccess;
-        } else {
-                return g_last_cudaError = cudaErrorInvalidDevice;
-        }
-}
-#endif
 
 __host__ cudaError_t CUDARTAPI cudaChooseDeviceInternal(int *device, const struct cudaDeviceProp *prop, gpgpu_context* gpgpu_ctx = NULL)
 {
@@ -1091,6 +890,7 @@ cudaError_t cudaLaunchInternal( const char *hostFun, gpgpu_context* gpgpu_ctx = 
 		}
 	}
 	struct CUstream_st *stream = config.get_stream();
+
 	printf("\nGPGPU-Sim PTX: cudaLaunch for 0x%p (mode=%s) on stream %u\n", hostFun,
 			(ctx->func_sim->g_ptx_sim_mode)?"functional simulation":"performance simulation", stream?stream->get_uid():0 );
 	kernel_info_t *grid = ctx->api->gpgpu_cuda_ptx_sim_init_grid(hostFun,config.get_args(),config.grid_dim(),config.block_dim(),context);
@@ -1370,8 +1170,11 @@ size_t getMaxThreadsPerBlock(struct cudaFuncAttributes *attr, gpgpu_context *ctx
 
   size_t max = prop.maxThreadsPerBlock;
 
-  if ((prop.regsPerBlock / attr->numRegs) < max)
+  if (attr->numRegs && (prop.regsPerBlock / attr->numRegs) < max)
     max = prop.regsPerBlock / attr->numRegs;
+
+  if (attr->sharedSizeBytes && (prop.sharedMemPerBlock / attr->sharedSizeBytes) < max)
+      max = prop.sharedMemPerBlock / attr->sharedSizeBytes;
 
   return max;
 }
@@ -1776,6 +1579,34 @@ __host__ cudaError_t CUDARTAPI cudaMemcpy2DFromArrayAsync(void *dst, size_t dpit
 	return g_last_cudaError = cudaErrorUnknown;
 }
 
+#if (CUDART_VERSION >= 8000)
+cudaError_t CUDARTAPI cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(int* numBlocks, const char *hostFunc, int blockSize, size_t dynamicSMemSize, unsigned int flags)
+{
+	printf("GPGPU-Sim PTX: cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags %p\n", hostFunc);
+	CUctx_st *context = GPGPUSim_Context();
+	function_info *entry = context->get_kernel(hostFunc);
+	printf("Calculate Maxium Active Block with function ptr=%p, blockSize=%d, SMemSize=%d\n", hostFunc, blockSize, dynamicSMemSize);
+	if (flags == cudaOccupancyDefault) {
+		//create kernel_info based on entry
+		dim3 gridDim(context->get_device()->get_gpgpu()->max_cta_per_core()
+                        * context->get_device()->get_gpgpu()->get_config().num_shader());
+		dim3 blockDim(blockSize);
+		kernel_info_t result(gridDim, blockDim, entry);
+		//if(entry == NULL){
+		//	*numBlocks = 1;
+		//	return g_last_cudaError = cudaErrorUnknown;
+		//}
+		*numBlocks = context->get_device()->get_gpgpu()->get_max_cta(result);
+		printf("Maximum size is %d with gridDim %d and blockDim %d\n", *numBlocks, gridDim.x, blockDim.x);
+		return g_last_cudaError = cudaSuccess;
+	} else {
+		cuda_not_implemented(__my_func__,__LINE__);
+		return g_last_cudaError = cudaErrorUnknown;
+	}
+}
+
+#endif
+
 
 
 /*******************************************************************************
@@ -1783,7 +1614,6 @@ __host__ cudaError_t CUDARTAPI cudaMemcpy2DFromArrayAsync(void *dst, size_t dpit
  *                                                                              *
  *                                                                              *
  *******************************************************************************/
-
 __host__ cudaError_t CUDARTAPI cudaMemset(void *mem, int c, size_t count)
 {
 	if(g_debug_execution >= 3){
@@ -1794,6 +1624,207 @@ __host__ cudaError_t CUDARTAPI cudaMemset(void *mem, int c, size_t count)
 	gpu->gpu_memset((size_t)mem, c, count);
 	return g_last_cudaError = cudaSuccess;
 }
+
+#if (CUDART_VERSION > 5000)
+__host__ cudaError_t CUDARTAPI cudaDeviceGetAttributeInternal(int *value, enum cudaDeviceAttr attr, int device, gpgpu_context* gpgpu_ctx = NULL)
+{
+	    gpgpu_context *ctx;
+		if (gpgpu_ctx){
+		ctx = gpgpu_ctx;
+		} else {
+		ctx = GPGPU_Context();
+		}
+		if(g_debug_execution >= 3){
+			announce_call(__my_func__);
+		}
+
+        const struct cudaDeviceProp *prop;
+        _cuda_device_id *dev = ctx->GPGPUSim_Init();
+
+        if (device <= dev->num_devices() )  {
+                prop = dev->get_prop();
+                switch (attr) {
+                case 1:
+                        *value= prop->maxThreadsPerBlock;
+                        break;
+                case 2:
+                        *value= prop->maxThreadsDim[0];
+                        break;
+                case 3:
+                        *value= prop->maxThreadsDim[1];
+                        break;
+                case 4:
+                        *value= prop->maxThreadsDim[2];
+                        break; 
+		case 5:
+                        *value= prop->maxGridSize[0];
+                        break;
+                case 6:
+                        *value= prop->maxGridSize[1];
+                        break;
+                case 7:
+                        *value= prop->maxGridSize[2];
+                        break;
+		case 8:
+                        *value= prop->sharedMemPerBlock;
+                        break;
+		case 9:
+                        *value= prop->totalConstMem;
+                        break;
+                case 10:
+                        *value= prop->warpSize;
+                        break;
+                case 11:
+                        *value= 16;//dummy value
+                        break;
+                case 12:
+                        *value= prop->regsPerBlock;
+                        break;
+                case 13:
+                        *value= 1480000;//for 1080ti
+                        break;
+                case 14:
+                        *value= prop->textureAlignment ;
+                        break;
+                case 15:
+                        *value = 0;
+                        break;
+                case 16:
+                        *value= prop->multiProcessorCount ;
+                        break;
+                case 17:
+                case 18:
+                case 19:
+                        *value = 0;
+                        break;
+                case 21:
+                case 22:
+                case 23:
+                case 24:
+                case 25:
+                case 26:
+                case 27:
+                case 28:
+                case 42:
+                case 45:
+                case 46:
+                case 47:
+                case 48:
+                case 49:
+                case 52:
+                case 53:
+                case 55:
+                case 56:
+                case 57:
+                case 58:
+                case 59:
+                case 60:
+                case 61:
+                case 62:
+                case 63:
+                case 64:
+                case 66:
+                case 67:
+                case 69:
+                case 70:
+                case 71:
+                case 73:
+                case 74:
+                case 77:
+                        *value = 1000;//dummy value
+                        break;
+                case 29:
+                case 43:
+                case 54:
+                case 65:
+                case 68:
+                case 72:
+                        *value = 10;//dummy value
+                        break;
+                case 30:
+                case 51:
+                        *value = 128;//dummy value
+                        break;
+                case 31:
+                        *value = 1;
+                        break;
+                case 32:
+                        *value = 0;
+                        break;
+                case 33:
+                case 50:
+                        *value = 0;//dummy value
+                        break;
+		        case 34:
+                        *value= 0;
+                        break;
+                case 35:
+                        *value = 0;
+                        break;
+                case 36:
+                        *value = 1250000;//CK value for 1080ti
+                        break;
+                case 37:
+                        *value = 352;//value for 1080ti
+                        break;
+                case 38:
+                        *value = 3000000;//value for 1080ti
+                        break;
+                case 39:
+                        *value= dev->get_gpgpu()->threads_per_core();
+                        break;
+                case 40:
+                        *value= 0;
+                        break;
+                case 41:
+                        *value= 0;
+                        break;
+                case 75://cudaDevAttrComputeCapabilityMajor
+                        *value= prop->major ;
+                        break;
+                case 76://cudaDevAttrComputeCapabilityMinor
+                        *value= prop->minor ;
+                        break;
+                case 78:
+                        *value= 0 ; //TODO: as of now, we dont support stream priorities.
+                        break;
+                case 79:
+                        *value= 0;
+                        break;
+                case 80:
+                        *value= 0;
+                        break;
+		#if (CUDART_VERSION > 5050)
+		case 81:
+                        *value= prop->sharedMemPerMultiprocessor;
+                        break;
+                case 82:
+                        *value= prop->regsPerMultiprocessor;
+                        break;
+		#endif
+                case 83:
+                case 84:
+                case 85:
+                case 86:
+                        *value= 0;
+                        break;
+                case 87:
+                        *value= 4;//dummy value
+                        break;
+                case 88:
+                case 89:
+                        *value= 0;
+                        break;
+		default:
+			printf("ERROR: Attribute number %d unimplemented \n",attr);
+			abort();
+                }
+                return g_last_cudaError = cudaSuccess;
+        } else {
+                return g_last_cudaError = cudaErrorInvalidDevice;
+        }
+}
+#endif
 
 //memset operation is done but i think its not async?
 __host__ cudaError_t CUDARTAPI cudaMemsetAsync(void *mem, int c, size_t count, 	cudaStream_t stream=0)
@@ -2998,6 +3029,7 @@ cudaError_t CUDARTAPI __cudaPopCallConfiguration(
     return g_last_cudaError = cudaSuccess;
 }
 
+
 void CUDARTAPI __cudaRegisterFunction(
 		void   **fatCubinHandle,
 		const char    *hostFun,
@@ -3265,6 +3297,7 @@ cudaError_t CUDARTAPI cudaSetDeviceFlags( int flags )
     }
 }
 
+
 cudaError_t CUDARTAPI cudaFuncGetAttributes(struct cudaFuncAttributes *attr, const char *hostFun )
 {
     return cudaFuncGetAttributesInternal(attr, hostFun );
@@ -3306,6 +3339,13 @@ __host__ cudaError_t CUDARTAPI cudaDeviceSetLimit(enum cudaLimit limit, size_t v
     }
     return g_last_cudaError = cudaSuccess;
 }
+
+//#if CUDART_VERSION >= 9000
+//__host__  cudaError_t cudaFuncSetAttribute ( const void* func, enum cudaFuncAttribute attr, int value ) {
+
+	//ignore this Attribute for now, and the default is that carveout = cudaSharedmemCarveoutDefault;   //  (-1)
+//	return g_last_cudaError = cudaSuccess;
+//}
 
 
 #endif
@@ -4222,6 +4262,33 @@ CUresult CUDAAPI cuMemHostRegister(void *p, size_t bytesize, unsigned int Flags)
 	printf("WARNING: this function has not been implemented yet.");
 	return CUDA_SUCCESS;
 }
+__host__ cudaError_t cudaHostRegister(void* ptr, size_t size, unsigned int flags)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t cudaProfilerStart ( )
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t cudaProfilerStop ( )
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("WARNING: this function has not been implemented yet.");
+	return g_last_cudaError = cudaSuccess;
+}
+
 #endif
 #if CUDART_VERSION >= 4000
 
@@ -5103,7 +5170,7 @@ CUresult CUDAAPI cuOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(int *numBl
 	printf("WARNING: this function has not been implemented yet.");
 	return CUDA_SUCCESS;
 }
-    
+
 CUresult CUDAAPI cuOccupancyMaxPotentialBlockSize(int *minGridSize, int *blockSize, CUfunction func, CUoccupancyB2DSize blockSizeToDynamicSMemSize, size_t dynamicSMemSize, int blockSizeLimit)
 {
 	if(g_debug_execution >= 3){
