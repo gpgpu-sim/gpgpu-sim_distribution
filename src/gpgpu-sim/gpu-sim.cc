@@ -83,6 +83,7 @@ class  gpgpu_sim_wrapper {};
 
 
 bool g_interactive_debugger_enabled=false;
+
 tr1_hash_map<new_addr_type,unsigned> address_random_interleaving;
 
 /* Clock Domains */
@@ -137,6 +138,8 @@ void memory_config::reg_options(class OptionParser * opp)
 {
     option_parser_register(opp, "-perf_sim_memcpy", OPT_BOOL, &m_perf_sim_memcpy, 
                                 "Fill the L2 cache on memcpy", "1");
+    option_parser_register(opp, "-simple_dram_model", OPT_BOOL, &simple_dram_model,
+                                "simple_dram_model with fixed latency and BW", "0");
     option_parser_register(opp, "-gpgpu_dram_scheduler", OPT_INT32, &scheduler_type, 
                                 "0 = fifo, 1 = FR-FCFS (defaul)", "1");
     option_parser_register(opp, "-gpgpu_dram_partition_queues", OPT_CSTR, &gpgpu_L2_queue_config, 
@@ -302,7 +305,7 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-adaptive_volta_cache_config", OPT_BOOL, &adaptive_volta_cache_config,
                  "adaptive_volta_cache_config",
                  "0");
-    option_parser_register(opp, "-gpgpu_shmem_size", OPT_UINT32, &gpgpu_shmem_sizeDefault,
+    option_parser_register(opp, "-gpgpu_shmem_sizeDefault", OPT_UINT32, &gpgpu_shmem_sizeDefault,
                  "Size of shared memory per shader core (default 16kB)",
                  "16384");
     option_parser_register(opp, "-gpgpu_shmem_size_PrefL1", OPT_UINT32, &gpgpu_shmem_sizePrefL1,
@@ -795,6 +798,16 @@ int gpgpu_sim::shader_clock() const
    return m_config.core_freq/1000;
 }
 
+int gpgpu_sim::max_cta_per_core() const
+{
+   return m_shader_config->max_cta_per_core;
+}
+
+int gpgpu_sim::get_max_cta( const kernel_info_t &k ) const
+{
+   return m_shader_config->max_cta(k);
+}
+
 void gpgpu_sim::set_prop( cudaDeviceProp *prop )
 {
    m_cuda_properties = prop;
@@ -1044,7 +1057,7 @@ void gpgpu_sim::change_cache_config(FuncCache cache_config)
 	if(cache_config != m_shader_config->m_L1D_config.get_cache_status()){
 		printf("FLUSH L1 Cache at configuration change between kernels\n");
 		for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) {
-			m_cluster[i]->cache_flush();
+			m_cluster[i]->cache_invalidate();
 	    }
 	}
 
@@ -1582,7 +1595,10 @@ void gpgpu_sim::cycle()
 
    if (clock_mask & DRAM) {
       for (unsigned i=0;i<m_memory_config->m_n_mem;i++){
-         m_memory_partition_unit[i]->dram_cycle(); // Issue the dram command (scheduler + delay model)
+    	  if(m_memory_config->simple_dram_model)
+    		  m_memory_partition_unit[i]->simple_dram_model_cycle();
+    	  else
+    		  m_memory_partition_unit[i]->dram_cycle(); // Issue the dram command (scheduler + delay model)
          // Update performance counters for DRAM
          m_memory_partition_unit[i]->set_dram_power_stats(m_power_stats->pwr_mem_stat->n_cmd[CURRENT_STAT_IDX][i], m_power_stats->pwr_mem_stat->n_activity[CURRENT_STAT_IDX][i],
                         m_power_stats->pwr_mem_stat->n_nop[CURRENT_STAT_IDX][i], m_power_stats->pwr_mem_stat->n_act[CURRENT_STAT_IDX][i], m_power_stats->pwr_mem_stat->n_pre[CURRENT_STAT_IDX][i],

@@ -858,7 +858,7 @@ void ptx_instruction::set_opcode_and_latency()
        op=TENSOR_CORE_OP;
 	   break;
    case SHFL_OP:
-	   latency = 32;
+	   latency = 4;
 	   initiation_interval = 4;
 	   break;
    default: 
