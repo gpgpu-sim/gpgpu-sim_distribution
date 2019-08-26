@@ -1491,7 +1491,6 @@ static unsigned get_tex_datasize( const ptx_instruction *pI, ptx_thread_info *th
    const operand_info &src1 = pI->src1(); //the name of the texture
    std::string texname = src1.name();
 
-   gpgpu_t *gpu = thread->get_gpu();
    /*
      For programs with many streams, textures can be bound and unbound
      asynchronously.  This means we need to use the kernel's "snapshot" of
@@ -1577,7 +1576,7 @@ void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
       }
       
       //Tensorcore is warp synchronous operation. So these instructions needs to be executed only once. To make the simulation faster removing the redundant tensorcore operation
-      if(!tensorcore_op(inst_opcode)||(tensorcore_op(inst_opcode))&&(lane_id==0)){
+      if(!tensorcore_op(inst_opcode)||((tensorcore_op(inst_opcode))&&(lane_id==0))){
 	      switch ( inst_opcode ) {
 	#define OP_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,this); op_classification = CLASSIFICATION; break;
 	#define OP_W_DEF(OP,FUNC,STR,DST,CLASSIFICATION) case OP: FUNC(pI,get_core(),inst); op_classification = CLASSIFICATION; break;
@@ -2141,13 +2140,7 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL 
     unsigned max_cta_tot = max_cta(kernel_info,kernel.threads_per_cta(), g_the_gpu()->getShaderCoreConfig()->warp_size, g_the_gpu()->getShaderCoreConfig()->n_thread_per_shader, g_the_gpu()->getShaderCoreConfig()->gpgpu_shmem_size, g_the_gpu()->getShaderCoreConfig()->gpgpu_shader_registers, g_the_gpu()->getShaderCoreConfig()->max_cta_per_core);
     printf("Max CTA : %d\n",max_cta_tot);
 
-    
-
-
-      
-    int inst_count=50;
     int cp_op= g_the_gpu()->checkpoint_option;
-    int cp_CTA = g_the_gpu()->checkpoint_CTA;
     int cp_kernel= g_the_gpu()->checkpoint_kernel;
     cp_count= g_the_gpu()->checkpoint_insn_Y;
     cp_cta_resume= g_the_gpu()->checkpoint_CTA_t;
@@ -2184,7 +2177,7 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL 
 	{
       char f1name[2048];
       snprintf(f1name,2048,"checkpoint_files/global_mem_%d.txt", kernel.get_uid() );
-      g_checkpoint->store_global_mem(g_the_gpu()->get_global_memory(), f1name , "%08x");
+      g_checkpoint->store_global_mem(g_the_gpu()->get_global_memory(), f1name , (char *)"%08x");
 	}
 
 
@@ -2312,18 +2305,15 @@ void functionalCoreSim::execute(int inst_count, unsigned ctaid_cp)
     checkpoint *g_checkpoint;
     g_checkpoint = new checkpoint();
     
-    symbol * sym;
     ptx_reg_t regval;
     regval.u64= 123;
-    symbol_table * symtab= m_kernel->entry()->get_symtab();
-
 
     unsigned ctaid =m_kernel->get_next_cta_id_single();
     if(m_gpu->checkpoint_option==1 && (m_kernel->get_uid()==m_gpu->checkpoint_kernel) && (ctaid_cp>=m_gpu->checkpoint_CTA) && (ctaid_cp<m_gpu->checkpoint_CTA_t))
    {
        char fname[2048];
        snprintf(fname,2048,"checkpoint_files/shared_mem_%d.txt",ctaid-1 );
-       g_checkpoint->store_global_mem(m_thread[0]->m_shared_mem, fname , "%08x");
+       g_checkpoint->store_global_mem(m_thread[0]->m_shared_mem, fname , (char *)"%08x");
       for(int i=0; i<32*m_warp_count;i++)
       {
          char fname[2048];
@@ -2331,7 +2321,7 @@ void functionalCoreSim::execute(int inst_count, unsigned ctaid_cp)
           m_thread[i]->print_reg_thread(fname);
           char f1name[2048];
          snprintf(f1name,2048,"checkpoint_files/local_mem_thread_%d_%d_reg.txt",i,ctaid-1 );
-         g_checkpoint->store_global_mem(m_thread[i]->m_local_mem, f1name , "%08x");
+         g_checkpoint->store_global_mem(m_thread[i]->m_local_mem, f1name , (char *)"%08x");
          m_thread[i]->set_done();
          m_thread[i]->exitCore();
          m_thread[i]->registerExit();
