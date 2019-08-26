@@ -1326,7 +1326,7 @@ protected:
    unsigned long long m_last_inst_gpu_sim_cycle;
    unsigned long long m_last_inst_gpu_tot_sim_cycle;
 
-   std::deque<mem_fetch* > l1_latency_queue;
+   std::vector<std::deque<mem_fetch* >> l1_latency_queue;
    void L1_latency_queue_cycle();
 };
 
