@@ -548,7 +548,7 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetLimitInternal( size_t* pValue, cudaL
 		break;
 	    }
 	    else{
-		printf("ERROR:Limit %s is not supported on this architecture \n",limit);
+		printf("ERROR:Limit %d is not supported on this architecture \n", limit);
 		abort();
 	    }
 	case 4: // cudaLimitDevRuntimePendingLaunchCount
@@ -557,12 +557,12 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetLimitInternal( size_t* pValue, cudaL
 		break;
 	    }
 	    else{
-		printf("ERROR:Limit %s is not supported on this architecture \n",limit);
+		printf("ERROR:Limit %d is not supported on this architecture \n",limit);
 		abort();
 	    }
 #endif
 	default:
-	    printf("ERROR:Limit %s unimplemented \n",limit);
+	    printf("ERROR:Limit %d unimplemented \n",limit);
 	    abort();
     }
     return g_last_cudaError = cudaSuccess;
@@ -2502,7 +2502,6 @@ void cuda_runtime_api::extract_ptx_files_using_cuobjdump(CUctx_st *context){
     while (std::getline(infile, line))
     {
          //int pos = line.find(std::string(get_app_binary_name(app_binary)));
-         const char *ptx_file = line.c_str();
          int pos1 = line.find("sm_");
          int pos2 = line.find_last_of(".");
          if (pos1==std::string::npos&&pos2==std::string::npos){
@@ -2530,11 +2529,10 @@ void cuda_runtime_api::extract_ptx_files_using_cuobjdump(CUctx_st *context){
  * */
 void cuda_runtime_api::extract_code_using_cuobjdump(){
     CUctx_st *context = GPGPUSim_Context();
-    unsigned forced_max_capability = context->get_device()->get_gpgpu()->get_config().get_forced_max_capability();
 
     //prevent the dumping by cuobjdump everytime we execute the code!
     const char *override_cuobjdump = getenv("CUOBJDUMP_SIM_FILE"); 
-    char command[1000], ptx_file[1000];
+    char command[1000];
     std::string app_binary = get_app_binary(); 
     //Running cuobjdump using dynamic link to current process
     snprintf(command,1000,"md5sum %s ", app_binary.c_str());

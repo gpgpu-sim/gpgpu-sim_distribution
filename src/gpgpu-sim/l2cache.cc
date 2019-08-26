@@ -82,7 +82,7 @@ void memory_partition_unit::handle_memcpy_to_gpu( size_t addr, unsigned global_s
     unsigned p = global_sub_partition_id_to_local_id(global_subpart_id);
     std::string mystring =
         mask.to_string<char,std::string::traits_type,std::string::allocator_type>();
-    MEMPART_DPRINTF("Copy Engine Request Received For Address=%llx, local_subpart=%u, global_subpart=%u, sector_mask=%s \n", addr, p, global_subpart_id, mystring.c_str()); 
+    MEMPART_DPRINTF("Copy Engine Request Received For Address=%zx, local_subpart=%u, global_subpart=%u, sector_mask=%s \n", addr, p, global_subpart_id, mystring.c_str()); 
     m_sub_partition[p]->force_l2_tag_update(addr,m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle, mask);
 }
 
@@ -681,7 +681,7 @@ std::vector<mem_fetch*> memory_sub_partition::breakdown_request_to_sector_reques
 			}
 		} else
 			{
-			    printf("Invalid sector received, address = 0x%06x, sector mask = %s, data size = %d",
+			    printf("Invalid sector received, address = 0x%06llx, sector mask = %s, data size = %d",
 			    		mf->get_addr(), mf->get_access_sector_mask(), mf->get_data_size());
 				assert(0 && "Undefined sector mask is received");
 			}
@@ -716,7 +716,7 @@ std::vector<mem_fetch*> memory_sub_partition::breakdown_request_to_sector_reques
 			 byte_sector_mask <<= SECTOR_SIZE;
 		}
 	} else {
-		 printf("Invalid sector received, address = 0x%06x, sector mask = %d, byte mask = , data size = %d",
+		 printf("Invalid sector received, address = 0x%06llx, sector mask = %d, byte mask = , data size = %u",
 					    		mf->get_addr(), mf->get_access_sector_mask().count(), mf->get_data_size());
 		 assert(0 && "Undefined data size is received");
 	}

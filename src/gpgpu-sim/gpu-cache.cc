@@ -785,7 +785,7 @@ void cache_stats::print_stats(FILE *fout, const char *cache_name) const{
     }
     for (unsigned type = 0; type < NUM_MEM_ACCESS_TYPE; ++type) {
     	 if(total_access[type] > 0)
-    	  fprintf(fout, "\t%s[%s][%s] = %llu\n",
+    	  fprintf(fout, "\t%s[%s][%s] = %u\n",
 				m_cache_name.c_str(),
 				mem_access_type_str((enum mem_access_type)type),
 				"TOTAL_ACCESS",
@@ -798,7 +798,7 @@ void cache_stats::print_fail_stats(FILE *fout, const char *cache_name) const{
 	    for (unsigned type = 0; type < NUM_MEM_ACCESS_TYPE; ++type) {
 	        for (unsigned fail = 0; fail < NUM_CACHE_RESERVATION_FAIL_STATUS; ++fail) {
 	            if(m_fail_stats[type][fail] > 0){
-	                fprintf(fout, "\t%s[%s][%s] = %u\n",
+	                fprintf(fout, "\t%s[%s][%s] = %llu\n",
 	                    m_cache_name.c_str(),
 	                    mem_access_type_str((enum mem_access_type)type),
 						cache_fail_status_str((enum cache_reservation_fail_reason)fail),
@@ -1425,8 +1425,6 @@ data_cache::wr_miss_wa_lazy_fetch_on_read( new_addr_type addr,
 {
 
 	    new_addr_type block_addr = m_config.block_addr(addr);
-	    new_addr_type mshr_addr = m_config.mshr_addr(mf->get_addr());
-
 
 		//if the request writes to the whole cache line/sector, then, write and set cache line Modified.
 		//and no need to send read request to memory or reserve mshr

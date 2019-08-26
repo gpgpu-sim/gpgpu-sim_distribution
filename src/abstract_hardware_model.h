@@ -520,10 +520,10 @@ private:
     int checkpoint_option;
     int checkpoint_kernel;
     int checkpoint_CTA;
-    int resume_option;
-    int resume_kernel;
-    int resume_CTA;
-    int checkpoint_CTA_t;
+    unsigned resume_option;
+    unsigned resume_kernel;
+    unsigned resume_CTA;
+    unsigned checkpoint_CTA_t;
     int checkpoint_insn_Y;
     int   g_ptx_inst_debug_to_file;
     char* g_ptx_inst_debug_file;
@@ -541,10 +541,10 @@ public:
     int checkpoint_option;
     int checkpoint_kernel;
     int checkpoint_CTA;
-    int resume_option;
-    int resume_kernel;
-    int resume_CTA;
-    int checkpoint_CTA_t;
+    unsigned resume_option;
+    unsigned resume_kernel;
+    unsigned resume_CTA;
+    unsigned checkpoint_CTA_t;
     int checkpoint_insn_Y;
 
     //Move some cycle core stats here instead of being global
@@ -993,7 +993,7 @@ public:
 			printf("Printing mem access generated\n");
 			std::list<mem_access_t>::iterator it;	
 			for (it = m_accessq.begin(); it != m_accessq.end(); ++it){
-   				 printf("MEM_TXN_GEN:%s:%x, Size:%d \n",mem_access_type_str(it->get_type()), it->get_addr(),it->get_size());
+   				 printf("MEM_TXN_GEN:%s:%llx, Size:%d \n",mem_access_type_str(it->get_type()), it->get_addr(),it->get_size());
 			}	
 		}
     }   

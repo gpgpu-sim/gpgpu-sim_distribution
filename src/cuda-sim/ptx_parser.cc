@@ -421,7 +421,7 @@ void ptx_recognizer::add_identifier( const char *identifier, int array_dim, unsi
          assert( (num_bits%8) == 0  );
          addr = g_current_symbol_table->get_sstarr_next();
          addr_pad = pad_address(addr, num_bits/8, 128);
-         printf("from 0x%x to 0x%lx (sstarr memory space)\n",
+         printf("from 0x%llx to 0x%llx (sstarr memory space)\n",
                  addr+addr_pad,
                  addr+addr_pad + num_bits/8);
             fflush(stdout);

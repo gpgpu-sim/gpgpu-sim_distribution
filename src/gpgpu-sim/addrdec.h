@@ -92,7 +92,7 @@ private:
    new_addr_type sub_partition_id_mask; 
 
    unsigned int gap;
-   int m_n_channel;
+   unsigned m_n_channel;
    int m_n_sub_partition_in_channel; 
 
 };

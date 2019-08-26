@@ -184,7 +184,7 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr, addrdec_
 			  }
 
 			  assert(tlx->chip < m_n_channel);
-			  assert(tlx->sub_partition < m_n_channel*m_n_sub_partition_in_channel);
+			  assert(tlx->sub_partition < m_n_channel * m_n_sub_partition_in_channel);
 			  return;
 			break;
 		}
