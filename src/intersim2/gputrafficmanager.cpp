@@ -105,7 +105,7 @@ void GPUTrafficManager::_RetireFlit( Flit *f, int dest )
     if(f->head) {
       head = f;
     } else {
-      map<int, Flit *>::iterator iter = _retired_packets[f->cl].find(f->pid);
+      map<unsigned long long, Flit *>::iterator iter = _retired_packets[f->cl].find(f->pid);
       assert(iter != _retired_packets[f->cl].end());
       head = iter->second;
       _retired_packets[f->cl].erase(iter);
@@ -195,8 +195,8 @@ void GPUTrafficManager::_GeneratePacket(int source, int stype, int cl, int time,
   
   //  Flit::FlitType packet_type = Flit::ANY_TYPE;
   int size = packet_size; //input size
-  int pid = _cur_pid++;
-  assert(_cur_pid);
+  unsigned long long pid = _cur_pid++;
+  assert(_cur_pid > 0);
   int packet_destination = dest;
   bool record = false;
   bool watch = gWatchOut && (_packets_to_watch.count(pid) > 0);

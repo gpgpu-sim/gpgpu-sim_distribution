@@ -212,6 +212,7 @@ public:
 //      m_num_cores_running=0;
 //      m_param_mem=NULL;
 //   }
+   kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry);
    kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *entry, std::map<std::string, const struct cudaArray*> nameToCudaArray, std::map<std::string, const struct textureInfo*> nameToTextureInfo);
    ~kernel_info_t();
 
@@ -443,9 +444,9 @@ protected:
 
 #define GLOBAL_HEAP_START 0xC0000000
    // start allocating from this address (lower values used for allocating globals in .ptx file)
-#define SHARED_MEM_SIZE_MAX (64*1024)
-#define LOCAL_MEM_SIZE_MAX (8*1024)
-#define MAX_STREAMING_MULTIPROCESSORS 64
+#define SHARED_MEM_SIZE_MAX (96*1024)
+#define LOCAL_MEM_SIZE_MAX (16*1024)
+#define MAX_STREAMING_MULTIPROCESSORS 80   //scale it to Volta
 #define MAX_THREAD_PER_SM 2048
 #define MAX_WARP_PER_SM 64
 #define TOTAL_LOCAL_MEM_PER_SM (MAX_THREAD_PER_SM*LOCAL_MEM_SIZE_MAX)

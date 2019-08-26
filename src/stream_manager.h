@@ -258,6 +258,8 @@ public:
     void pushCudaStreamWaitEventToAllStreams( CUevent_st *e, unsigned int flags );
     bool operation(bool * sim);
     void stop_all_running_kernels();
+    unsigned size() {return m_streams.size(); };
+    bool is_blocking() {return m_cuda_launch_blocking; };
 private:
     void print_impl( FILE *fp);
 
