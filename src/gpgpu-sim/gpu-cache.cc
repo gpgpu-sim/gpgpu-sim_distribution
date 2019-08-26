@@ -64,6 +64,14 @@ const char * cache_fail_status_str(enum cache_reservation_fail_reason status)
    return static_cache_reservation_fail_reason_str[status];
 }
 
+unsigned l1d_cache_config::set_bank(new_addr_type addr) const{
+
+	if(m_cache_type == SECTOR)
+		return (addr >> m_sector_sz_log2) & (l1_banks-1);
+	else
+		return (addr >> m_line_sz_log2) & (l1_banks-1);
+}
+
 unsigned l1d_cache_config::set_index(new_addr_type addr) const{
     unsigned set_index = m_nset; // Default to linear set index function
     unsigned lower_xor = 0;

@@ -584,6 +584,7 @@ public:
         m_nset_log2 = LOGB2(m_nset);
         m_valid = true;
         m_atom_sz = (m_cache_type == SECTOR)? SECTOR_SIZE : m_line_sz;
+        m_sector_sz_log2 = LOGB2(SECTOR_SIZE);
         original_m_assoc = m_assoc;
 
         //For more details about difference between FETCH_ON_WRITE and WRITE VALIDAE policies
@@ -734,6 +735,7 @@ protected:
     unsigned m_nset_log2;
     unsigned m_assoc;
     unsigned m_atom_sz;
+    unsigned m_sector_sz_log2;
     unsigned original_m_assoc;
     bool m_is_streaming;
 
@@ -775,7 +777,9 @@ class l1d_cache_config : public cache_config{
 public:
 	l1d_cache_config() : cache_config(){}
 	virtual unsigned set_index(new_addr_type addr) const;
+    unsigned set_bank(new_addr_type addr) const;
 	unsigned l1_latency;
+	unsigned l1_banks;
 };
 
 class l2_cache_config : public cache_config {

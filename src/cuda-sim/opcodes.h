@@ -68,6 +68,10 @@ enum wmma_type{
 	MMA,
 	ROW,
 	COL,
-	M16N16K16
+	M16N16K16,
+	M32N8K16,
+	M8N32K16
+
+
 };
 #endif
