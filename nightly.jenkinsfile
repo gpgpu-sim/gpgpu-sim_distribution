@@ -17,7 +17,7 @@ pipeline {
             steps {
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
                 source `pwd`/setup_environment &&\
-                make -j'
+                make -j 10'
             }
         }
         stage('nightly-simulations-build'){
@@ -34,7 +34,7 @@ pipeline {
                     source `pwd`/setup_environment &&\
                     cd gpgpu-sim_simulations && \
                     source ./benchmarks/src/setup_environment && \
-                    make -i -j -C ./benchmarks/src/ all && \
+                    make -i -j 10 -C ./benchmarks/src/ all && \
                     make -C ./benchmarks/src data'
             }
         }
