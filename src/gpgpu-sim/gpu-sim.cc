@@ -1117,8 +1117,8 @@ void gpgpu_sim::gpu_print_stat()
    printf("gpu_tot_sim_insn = %lld\n", gpu_tot_sim_insn+gpu_sim_insn);
    printf("gpu_tot_ipc = %12.4f\n", (float)(gpu_tot_sim_insn+gpu_sim_insn) / (gpu_tot_sim_cycle+gpu_sim_cycle));
    printf("gpu_tot_issued_cta = %lld\n", gpu_tot_issued_cta + m_total_cta_launched);
-   printf("gpu_occupancy = %.4f\% \n", gpu_occupancy.get_occ_fraction() * 100);
-   printf("gpu_tot_occupancy = %.4f\% \n", (gpu_occupancy + gpu_tot_occupancy).get_occ_fraction() * 100);
+   printf("gpu_occupancy = %.4f%% \n", gpu_occupancy.get_occ_fraction() * 100);
+   printf("gpu_tot_occupancy = %.4f%% \n", (gpu_occupancy + gpu_tot_occupancy).get_occ_fraction() * 100);
 
 
    fprintf(statfout, "max_total_param_size = %llu\n", gpgpu_ctx->device_runtime->g_max_total_param_size);
@@ -1359,7 +1359,7 @@ bool shader_core_ctx::occupy_shader_resource_1block(kernel_info_t & k, bool occu
        m_occupied_regs += (padded_cta_size * ((kernel_info->regs+3)&~3));
        m_occupied_ctas++;
 
-      SHADER_DPRINTF(LIVENESS, "GPGPU-Sim uArch: Occupied %d threads, %d shared mem, %d registers, %d ctas\n",
+      SHADER_DPRINTF(LIVENESS, "GPGPU-Sim uArch: Occupied %u threads, %u shared mem, %u registers, %u ctas\n",
             m_occupied_n_threads, m_occupied_shmem, m_occupied_regs, m_occupied_ctas);  
    }
 
@@ -1476,7 +1476,7 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
         nthreads_in_block += ptx_sim_init_thread(kernel,&m_thread[i],m_sid,i,cta_size-(i-start_thread),m_config->n_thread_per_shader,this,free_cta_hw_id,warp_id,m_cluster->get_gpu());
         m_threadState[i].m_active = true; 
         // load thread local memory and register file
-        if(m_gpu->resume_option==1 && kernel.get_uid()==m_gpu->resume_kernel && ctaid>=m_gpu->resume_CTA && ctaid<m_gpu->checkpoint_CTA_t )
+        if(m_gpu->resume_option == 1 && kernel.get_uid() == m_gpu->resume_kernel && ctaid >= m_gpu->resume_CTA && ctaid < m_gpu->checkpoint_CTA_t )
         {
             char fname[2048];
             snprintf(fname,2048,"checkpoint_files/thread_%d_%d_reg.txt",i%cta_size,ctaid );
@@ -1491,7 +1491,7 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
     assert( nthreads_in_block > 0 && nthreads_in_block <= m_config->n_thread_per_shader); // should be at least one, but less than max
     m_cta_status[free_cta_hw_id]=nthreads_in_block;
 
-    if(m_gpu->resume_option==1 && kernel.get_uid()==m_gpu->resume_kernel && ctaid>=m_gpu->resume_CTA && ctaid<m_gpu->checkpoint_CTA_t )
+    if(m_gpu->resume_option == 1 && kernel.get_uid() == m_gpu->resume_kernel && ctaid >= m_gpu->resume_CTA && ctaid < m_gpu->checkpoint_CTA_t )
     {
         char f1name[2048];
         snprintf(f1name,2048,"checkpoint_files/shared_mem_%d.txt", ctaid);
