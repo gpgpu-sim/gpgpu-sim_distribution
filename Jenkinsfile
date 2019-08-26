@@ -13,11 +13,11 @@ pipeline {
                 parallel "4.2": {
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/4.2_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
-                    make -j'
+                    make -j 10'
                 }, "10.1" : {
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/10.1_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
-                    make -j'
+                    make -j 10'
                 }
             }
         }
@@ -32,13 +32,13 @@ pipeline {
                     source `pwd`/setup_environment &&\
                     cd gpgpu-sim_simulations && \
                     source ./benchmarks/src/setup_environment && \
-                    make -j -C ./benchmarks/src rodinia_2.0-ft sdk-4.2 && \
+                    make -j 10 -C ./benchmarks/src rodinia_2.0-ft sdk-4.2 && \
                     make -C ./benchmarks/src data'
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/10.1_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
                     cd gpgpu-sim_simulations && \
                     source ./benchmarks/src/setup_environment && \
-                    make -j -C ./benchmarks/src/ rodinia_2.0-ft sdk-4.2 && \
+                    make -j 10 -C ./benchmarks/src/ rodinia_2.0-ft sdk-4.2 && \
                     make -C ./benchmarks/src data'
             }
         }
