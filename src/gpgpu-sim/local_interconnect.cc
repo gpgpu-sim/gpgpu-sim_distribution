@@ -231,7 +231,7 @@ LocalInterconnect::LocalInterconnect(const struct inct_config& m_localinct_confi
 }
 
 LocalInterconnect::~LocalInterconnect(){
-	for (int i=0; i<m_inct_config.subnets; ++i) {
+	for (unsigned i = 0; i < m_inct_config.subnets; ++i) {
 		delete net[i];
 	}
 }
