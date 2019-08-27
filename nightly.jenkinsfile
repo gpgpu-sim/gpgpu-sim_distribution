@@ -46,7 +46,7 @@ pipeline {
                     sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
                         source `pwd`/setup_environment &&\
                         ./gpgpu-sim_simulations/util/job_launching/run_simulations.py \
-                            -B `cat ./gpgpu-sim_simulations/util/job_launching/apps/all-apps.list` -C TITANV-2B -N nightly-$$ && \
+                            -B `cat ./gpgpu-sim_simulations/util/job_launching/apps/correlation-apps.list` -C TITANV-2B -N nightly-$$ && \
                         ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -I -S 1800 -v \
                             -s stats-per-app-9.1.csv -T 12 -K -N nightly-$$ && \
                         ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c stats-per-app-9.1.csv -P cuda-9.1.nightly'
