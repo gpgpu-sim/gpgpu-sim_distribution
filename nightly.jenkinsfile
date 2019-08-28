@@ -76,7 +76,7 @@ pipeline {
                     source `pwd`/setup_environment &&\
                     ./gpgpu-sim_simulations/util/plotting/plot-correlation.py -c per-kernel-merge-9.1.csv \
                         -p cuda-9.1.nightly -b ./gpgpu-sim_simulations/util/plotting/known.correlation.outliers.list \
-                        | grep "Correl=" | tee correl.9.1.txt &&\
+                        | grep "Correl=" -B 1 | tee correl.9.1.txt &&\
                     cp stats-per-*.csv ./gpgpu-sim-results-repo/${JOB_NAME}/ &&\
                     cd ./gpgpu-sim-results-repo &&\
                     git pull &&\
