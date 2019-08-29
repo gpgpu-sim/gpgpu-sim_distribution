@@ -65,7 +65,7 @@ pipeline {
 
                 sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
                     ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k \
-                        -B `cat ./gpgpu-sim_simulations/util/job_launching/apps/all-apps.list` \
+                        -B `cat ./gpgpu-sim_simulations/util/job_launching/apps/correlation-apps.list` \
                         -C QV100-2B > stats-per-kernel-9.1.csv &&\
                     ./gpgpu-sim_simulations/util/plotting/merge-stats.py \
                         -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-app-9.1.csv,./stats-per-app-9.1.csv -R \
