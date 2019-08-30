@@ -66,8 +66,13 @@ const char * cache_fail_status_str(enum cache_reservation_fail_reason status)
 
 unsigned l1d_cache_config::set_bank(new_addr_type addr) const{
 
-	if(m_cache_type == SECTOR)
+	//For sector cache, we select one sector per bank (sector interleaving)
+	//This is what was found in Volta (one sector per bank, sector interleaving)
+	//otherwise, line interleaving
+	if(m_cache_type == SECTOR) {
+		//assert(l1_banks == SECTOR_CHUNCK_SIZE);
 		return (addr >> m_sector_sz_log2) & (l1_banks-1);
+	}
 	else
 		return (addr >> m_line_sz_log2) & (l1_banks-1);
 }

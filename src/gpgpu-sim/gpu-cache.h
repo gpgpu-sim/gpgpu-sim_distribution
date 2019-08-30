@@ -656,6 +656,11 @@ public:
         assert( m_valid );
         return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER * m_nset * original_m_assoc;
     }
+    unsigned get_max_assoc() const
+	{
+		assert( m_valid );
+		return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER * original_m_assoc;
+	}
     void print( FILE *fp ) const
     {
         fprintf( fp, "Size = %d B (%d Set x %d-way x %d byte line)\n", 
