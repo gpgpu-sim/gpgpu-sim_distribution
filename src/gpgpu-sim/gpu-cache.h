@@ -584,6 +584,7 @@ public:
         m_nset_log2 = LOGB2(m_nset);
         m_valid = true;
         m_atom_sz = (m_cache_type == SECTOR)? SECTOR_SIZE : m_line_sz;
+        m_sector_sz_log2 = LOGB2(SECTOR_SIZE);
         original_m_assoc = m_assoc;
 
         //For more details about difference between FETCH_ON_WRITE and WRITE VALIDAE policies
@@ -655,6 +656,11 @@ public:
         assert( m_valid );
         return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER * m_nset * original_m_assoc;
     }
+    unsigned get_max_assoc() const
+	{
+		assert( m_valid );
+		return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER * original_m_assoc;
+	}
     void print( FILE *fp ) const
     {
         fprintf( fp, "Size = %d B (%d Set x %d-way x %d byte line)\n", 
@@ -734,6 +740,7 @@ protected:
     unsigned m_nset_log2;
     unsigned m_assoc;
     unsigned m_atom_sz;
+    unsigned m_sector_sz_log2;
     unsigned original_m_assoc;
     bool m_is_streaming;
 
@@ -775,7 +782,9 @@ class l1d_cache_config : public cache_config{
 public:
 	l1d_cache_config() : cache_config(){}
 	virtual unsigned set_index(new_addr_type addr) const;
+    unsigned set_bank(new_addr_type addr) const;
 	unsigned l1_latency;
+	unsigned l1_banks;
 };
 
 class l2_cache_config : public cache_config {
@@ -1290,12 +1299,13 @@ public:
     data_cache( const char *name, cache_config &config,
     			int core_id, int type_id, mem_fetch_interface *memport,
                 mem_fetch_allocator *mfcreator, enum mem_fetch_status status,
-                mem_access_type wr_alloc_type, mem_access_type wrbk_type )
+                mem_access_type wr_alloc_type, mem_access_type wrbk_type, class gpgpu_sim* gpu )
     			: baseline_cache(name,config,core_id,type_id,memport,status)
     {
         init( mfcreator );
         m_wr_alloc_type = wr_alloc_type;
         m_wrbk_type = wrbk_type;
+        m_gpu=gpu;
     }
 
     virtual ~data_cache() {}
@@ -1353,16 +1363,19 @@ protected:
                 enum mem_fetch_status status,
                 tag_array* new_tag_array,
                 mem_access_type wr_alloc_type,
-                mem_access_type wrbk_type)
+                mem_access_type wrbk_type,
+				class gpgpu_sim* gpu )
     : baseline_cache(name, config, core_id, type_id, memport,status, new_tag_array)
     {
         init( mfcreator );
         m_wr_alloc_type = wr_alloc_type;
         m_wrbk_type = wrbk_type;
+        m_gpu=gpu;
     }
 
     mem_access_type m_wr_alloc_type; // Specifies type of write allocate request (e.g., L1 or L2)
     mem_access_type m_wrbk_type; // Specifies type of writeback request (e.g., L1 or L2)
+    class gpgpu_sim* m_gpu;
 
     //! A general function that takes the result of a tag_array probe
     //  and performs the correspding functions based on the cache configuration
@@ -1519,8 +1532,8 @@ class l1_cache : public data_cache {
 public:
     l1_cache(const char *name, cache_config &config,
             int core_id, int type_id, mem_fetch_interface *memport,
-            mem_fetch_allocator *mfcreator, enum mem_fetch_status status )
-            : data_cache(name,config,core_id,type_id,memport,mfcreator,status, L1_WR_ALLOC_R, L1_WRBK_ACC){}
+            mem_fetch_allocator *mfcreator, enum mem_fetch_status status, class gpgpu_sim* gpu )
+            : data_cache(name,config,core_id,type_id,memport,mfcreator,status, L1_WR_ALLOC_R, L1_WRBK_ACC, gpu){}
 
     virtual ~l1_cache(){}
 
@@ -1538,10 +1551,11 @@ protected:
               mem_fetch_interface *memport,
               mem_fetch_allocator *mfcreator,
               enum mem_fetch_status status,
-              tag_array* new_tag_array )
+              tag_array* new_tag_array,
+			  class gpgpu_sim* gpu)
     : data_cache( name,
                   config,
-                  core_id,type_id,memport,mfcreator,status, new_tag_array, L1_WR_ALLOC_R, L1_WRBK_ACC ){}
+                  core_id,type_id,memport,mfcreator,status, new_tag_array, L1_WR_ALLOC_R, L1_WRBK_ACC, gpu ){}
 
 };
 
@@ -1551,8 +1565,8 @@ class l2_cache : public data_cache {
 public:
     l2_cache(const char *name,  cache_config &config,
             int core_id, int type_id, mem_fetch_interface *memport,
-            mem_fetch_allocator *mfcreator, enum mem_fetch_status status )
-            : data_cache(name,config,core_id,type_id,memport,mfcreator,status, L2_WR_ALLOC_R, L2_WRBK_ACC){}
+            mem_fetch_allocator *mfcreator, enum mem_fetch_status status, class gpgpu_sim* gpu )
+            : data_cache(name,config,core_id,type_id,memport,mfcreator,status, L2_WR_ALLOC_R, L2_WRBK_ACC, gpu){}
 
     virtual ~l2_cache() {}
 

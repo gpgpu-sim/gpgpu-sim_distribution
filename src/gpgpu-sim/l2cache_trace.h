@@ -42,7 +42,7 @@
 #define MEMPART_DPRINTF(...) do {\
     if (MEMPART_DTRACE(MEMORY_PARTITION_UNIT)) {\
         printf( MEMPART_PRINT_STR,\
-                gpu_sim_cycle + gpu_tot_sim_cycle,\
+                m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle,\
                 Trace::trace_streams_str[Trace::MEMORY_PARTITION_UNIT],\
                 get_mpid() );\
         printf(__VA_ARGS__);\
@@ -52,7 +52,7 @@
 #define MEM_SUBPART_DPRINTF(...) do {\
     if (MEM_SUBPART_DTRACE(MEMORY_PARTITION_UNIT)) {\
         printf( MEM_SUBPART_PRINT_STR,\
-                gpu_sim_cycle + gpu_tot_sim_cycle,\
+                m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle,\
                 Trace::trace_streams_str[Trace::MEMORY_SUBPARTITION_UNIT],\
                 m_id );\
         printf(__VA_ARGS__);\

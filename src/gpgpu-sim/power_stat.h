@@ -73,7 +73,7 @@ struct shader_core_power_stats_pod {
 
 class power_core_stat_t : public shader_core_power_stats_pod {
 public:
-   power_core_stat_t(const struct shader_core_config *shader_config, shader_core_stats *core_stats);
+   power_core_stat_t(const shader_core_config *shader_config, shader_core_stats *core_stats);
    void visualizer_print( gzFile visualizer_file );
    void print (FILE *fout);
    void init();
@@ -113,7 +113,7 @@ struct mem_power_stats_pod{
 
 class power_mem_stat_t : public mem_power_stats_pod{
 public:
-   power_mem_stat_t(const struct memory_config *mem_config, const struct shader_core_config *shdr_config, memory_stats_t *mem_stats, shader_core_stats *shdr_stats);
+   power_mem_stat_t(const memory_config *mem_config, const shader_core_config *shdr_config, memory_stats_t *mem_stats, shader_core_stats *shdr_stats);
    void visualizer_print( gzFile visualizer_file );
    void print (FILE *fout) const;
    void init();
@@ -128,7 +128,7 @@ private:
 
 class power_stat_t {
 public:
-   power_stat_t( const struct shader_core_config *shader_config,float * average_pipeline_duty_cycle,float * active_sms,shader_core_stats * shader_stats, const struct memory_config *mem_config,memory_stats_t * memory_stats);
+   power_stat_t( const shader_core_config *shader_config,float * average_pipeline_duty_cycle,float * active_sms,shader_core_stats * shader_stats, const memory_config *mem_config,memory_stats_t * memory_stats);
    void visualizer_print( gzFile visualizer_file );
    void print (FILE *fout) const;
    void save_stats(){
@@ -621,7 +621,7 @@ public:
    float * m_average_pipeline_duty_cycle;
    float * m_active_sms;
    const shader_core_config *m_config;
-   const struct memory_config *m_mem_config;
+   const memory_config *m_mem_config;
 };
 
 

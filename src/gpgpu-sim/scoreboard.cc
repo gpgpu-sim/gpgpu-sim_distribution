@@ -32,13 +32,15 @@
 
 
 //Constructor
-Scoreboard::Scoreboard( unsigned sid, unsigned n_warps )
+Scoreboard::Scoreboard( unsigned sid, unsigned n_warps, class gpgpu_t* gpu )
 : longopregs()
 {
 	m_sid = sid;
 	//Initialize size of table
 	reg_table.resize(n_warps);
 	longopregs.resize(n_warps);
+
+	m_gpu = gpu;
 }
 
 // Print scoreboard contents

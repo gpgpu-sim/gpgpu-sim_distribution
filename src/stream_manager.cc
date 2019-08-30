@@ -29,6 +29,7 @@
 #include "gpgpusim_entrypoint.h"
 #include "cuda-sim/cuda-sim.h"
 #include "gpgpu-sim/gpu-sim.h"
+#include "../libcuda/gpgpu_context.h"
 
 unsigned CUstream_st::sm_next_stream_uid = 0;
 
@@ -150,13 +151,13 @@ bool stream_operation::do_operation( gpgpu_sim *gpu )
     case stream_memcpy_to_symbol:
         if(g_debug_execution >= 3)
             printf("memcpy to symbol\n");
-        gpgpu_ptx_sim_memcpy_symbol(m_symbol,m_host_address_src,m_cnt,m_offset,1,gpu);
+        gpu->gpgpu_ctx->func_sim->gpgpu_ptx_sim_memcpy_symbol(m_symbol,m_host_address_src,m_cnt,m_offset,1,gpu);
         m_stream->record_next_done();
         break;
     case stream_memcpy_from_symbol:
         if(g_debug_execution >= 3)
             printf("memcpy from symbol\n");
-        gpgpu_ptx_sim_memcpy_symbol(m_symbol,m_host_address_dst,m_cnt,m_offset,0,gpu);
+        gpu->gpgpu_ctx->func_sim->gpgpu_ptx_sim_memcpy_symbol(m_symbol,m_host_address_dst,m_cnt,m_offset,0,gpu);
         m_stream->record_next_done();
         break;
     case stream_kernel_launch:
@@ -190,7 +191,7 @@ bool stream_operation::do_operation( gpgpu_sim *gpu )
     case stream_event: {
         printf("event update\n");
         time_t wallclock = time((time_t *)NULL);
-        m_event->update( gpu_tot_sim_cycle, wallclock );
+        m_event->update( gpu->gpu_tot_sim_cycle, wallclock );
         m_stream->record_next_done();
         } 
         break;

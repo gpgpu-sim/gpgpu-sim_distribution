@@ -44,7 +44,7 @@
 #define SHADER_DPRINTF(x, ...) do {\
     if (SHADER_DTRACE(x)) {\
         printf( SHADER_PRINT_STR,\
-                gpu_sim_cycle + gpu_tot_sim_cycle,\
+                m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle,\
                 Trace::trace_streams_str[Trace::x],\
                 get_sid() );\
         printf(__VA_ARGS__);\
@@ -56,7 +56,7 @@
 #define SCHED_DPRINTF(...) do {\
     if (SHADER_DTRACE(WARP_SCHEDULER)) {\
         printf( SCHED_PRINT_STR,\
-                gpu_sim_cycle + gpu_tot_sim_cycle,\
+                m_shader->get_gpu()->gpu_sim_cycle + m_shader->get_gpu()->gpu_tot_sim_cycle,\
                 Trace::trace_streams_str[Trace::WARP_SCHEDULER],\
                 get_sid(),\
                 m_id );\
