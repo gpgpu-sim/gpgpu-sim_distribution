@@ -124,8 +124,8 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr, addrdec_
 			* Rau, B. R et al.
 			* ISCA 1991
 			*
-			* equations are adopted from:
-			* "Sacat: streaming-aware conflict-avoiding thrashing-resistant gpgpu cache management scheme."
+			* equations are corresponding to IPOLY(37) and are adopted from:
+			* "SACAT: streaming-aware conflict-avoiding thrashing-resistant gpgpu cache management scheme."
 			* Khairy et al.
 			* IEEE TPDS 2017.
 			*/

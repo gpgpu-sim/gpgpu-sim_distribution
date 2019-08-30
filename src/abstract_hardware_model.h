@@ -65,6 +65,11 @@ enum FuncCache
   FuncCachePreferL1 = 2
 };
 
+enum AdaptiveCache
+{
+  FIXED = 0,
+  VOLTA = 1
+};
 
 #ifdef __cplusplus
 
@@ -345,7 +350,7 @@ public:
    unsigned long long end_cycle;
    unsigned m_launch_latency;
 
-   mutable bool volta_cache_config_set;
+   mutable bool cache_config_set;
 };
 
 struct core_config {
@@ -388,7 +393,7 @@ struct core_config {
 	unsigned gpgpu_max_insn_issue_per_warp;
 	bool gmem_skip_L1D; // on = global memory access always skip the L1 cache
 
-	bool adaptive_volta_cache_config;
+	unsigned adaptive_cache_config;
 };
 
 // bounded stack that implements simt reconvergence using pdom mechanism from MICRO'07 paper
