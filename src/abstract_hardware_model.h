@@ -31,6 +31,8 @@
 // Forward declarations
 class gpgpu_sim;
 class kernel_info_t;
+class gpgpu_context;
+
 
 //Set a hard limit of 32 CTAs per shader [cuda only has 8]
 #define MAX_CTA_PER_SHADER 32
@@ -65,6 +67,11 @@ enum FuncCache
   FuncCachePreferL1 = 2
 };
 
+enum AdaptiveCache
+{
+  FIXED = 0,
+  VOLTA = 1
+};
 
 #ifdef __cplusplus
 
@@ -173,9 +180,7 @@ enum _memory_op_t {
 #include <algorithm>
 
 #if !defined(__VECTOR_TYPES_H__)
-struct dim3 {
-   unsigned int x, y, z;
-};
+#include "vector_types.h"
 #endif
 struct dim3comp {
     bool operator() (const dim3 & a, const dim3 & b) const
@@ -197,7 +202,7 @@ void increment_x_then_y_then_z( dim3 &i, const dim3 &bound);
 #include "stream_manager.h"
 class stream_manager;
 struct CUstream_st;
-extern stream_manager * g_stream_manager;
+//extern stream_manager * g_stream_manager;
 //support for pinned memories added
 extern std::map<void *,void **> pinned_memory;
 extern std::map<void *, size_t> pinned_memory_size;
@@ -300,7 +305,6 @@ private:
    class function_info *m_kernel_entry;
 
    unsigned m_uid;
-   static unsigned m_next_uid;
    
    //These maps contain the snapshot of the texture mappings at kernel launch
    std::map<std::string, const struct cudaArray*> m_NameToCudaArray;
@@ -345,12 +349,14 @@ public:
    unsigned long long end_cycle;
    unsigned m_launch_latency;
 
-   mutable bool volta_cache_config_set;
+   mutable bool cache_config_set;
 };
 
-struct core_config {
-    core_config() 
-    { 
+class core_config {
+    public:
+    core_config(gpgpu_context* ctx)
+    {
+	gpgpu_ctx = ctx;
         m_valid = false; 
         num_shmem_bank=16; 
         shmem_limited_broadcast = false; 
@@ -362,6 +368,8 @@ struct core_config {
 
     bool m_valid;
     unsigned warp_size;
+    // backward pointer
+    class gpgpu_context* gpgpu_ctx;
 
     // off-chip memory request architecture parameters
     int gpgpu_coalesce_arch;
@@ -388,7 +396,7 @@ struct core_config {
 	unsigned gpgpu_max_insn_issue_per_warp;
 	bool gmem_skip_L1D; // on = global memory access always skip the L1 cache
 
-	bool adaptive_volta_cache_config;
+	unsigned adaptive_cache_config;
 };
 
 // bounded stack that implements simt reconvergence using pdom mechanism from MICRO'07 paper
@@ -400,7 +408,7 @@ typedef std::vector<address_type> addr_vector_t;
 
 class simt_stack {
 public:
-    simt_stack( unsigned wid,  unsigned warpSize);
+    simt_stack( unsigned wid,  unsigned warpSize, class gpgpu_sim * gpu);
 
     void reset();
     void launch( address_type start_pc, const simt_mask_t &active_mask );
@@ -416,6 +424,7 @@ public:
 protected:
     unsigned m_warp_id;
     unsigned m_warp_size;
+
 
     enum stack_entry_type {
         STACK_ENTRY_TYPE_NORMAL = 0,
@@ -434,6 +443,8 @@ protected:
     };
 
     std::deque<simt_stack_entry> m_stack;
+
+    class gpgpu_sim * m_gpu;
 };
 
 #define GLOBAL_HEAP_START 0xC0000000
@@ -452,19 +463,7 @@ protected:
 
 #if !defined(__CUDA_RUNTIME_API_H__)
 
-enum cudaChannelFormatKind {
-   cudaChannelFormatKindSigned,
-   cudaChannelFormatKindUnsigned,
-   cudaChannelFormatKindFloat
-};
-
-struct cudaChannelFormatDesc {
-   int                        x;
-   int                        y;
-   int                        z;
-   int                        w;
-   enum cudaChannelFormatKind f;
-};
+#include "builtin_types.h"
 
 struct cudaArray {
    void *devPtr;
@@ -474,28 +473,6 @@ struct cudaArray {
    int height;
    int size; //in bytes
    unsigned dimensions;
-};
-
-enum cudaTextureAddressMode {
-   cudaAddressModeWrap,
-   cudaAddressModeClamp
-};
-
-enum cudaTextureFilterMode {
-   cudaFilterModePoint,
-   cudaFilterModeLinear
-};
-
-enum cudaTextureReadMode {
-   cudaReadModeElementType,
-   cudaReadModeNormalizedFloat
-};
-
-struct textureReference {
-   int                           normalized;
-   enum cudaTextureFilterMode    filterMode;
-   enum cudaTextureAddressMode   addressMode[3];
-   struct cudaChannelFormatDesc  channelDesc;
 };
 
 #endif
@@ -563,7 +540,9 @@ private:
 
 class gpgpu_t {
 public:
-    gpgpu_t( const gpgpu_functional_sim_config &config );
+    gpgpu_t( const gpgpu_functional_sim_config &config, gpgpu_context* ctx );
+    // backward pointer
+    class gpgpu_context* gpgpu_ctx;
     int checkpoint_option;
     int checkpoint_kernel;
     int checkpoint_CTA;
@@ -572,6 +551,12 @@ public:
     int resume_CTA;
     int checkpoint_CTA_t;
     int checkpoint_insn_Y;
+
+    //Move some cycle core stats here instead of being global
+    unsigned long long  gpu_sim_cycle;
+    unsigned long long  gpu_tot_sim_cycle;
+
+
     void* gpu_malloc( size_t size );
     void* gpu_mallocarray( size_t count );
     void  gpu_memset( size_t dst_start_addr, int c, size_t count );
@@ -752,13 +737,14 @@ enum cache_operator_type {
 
 class mem_access_t {
 public:
-   mem_access_t() { init(); }
+   mem_access_t(gpgpu_context* ctx) { init(ctx); }
    mem_access_t( mem_access_type type, 
                  new_addr_type address, 
                  unsigned size,
-                 bool wr )
+                 bool wr,
+		 gpgpu_context* ctx)
    {
-       init();
+       init(ctx);
        m_type = type;
        m_addr = address;
        m_req_size = size;
@@ -770,10 +756,11 @@ public:
                  bool wr, 
                  const active_mask_t &active_mask,
                  const mem_access_byte_mask_t &byte_mask,
-		 const mem_access_sector_mask_t &sector_mask)
+		 const mem_access_sector_mask_t &sector_mask,
+		 gpgpu_context* ctx)
     : m_warp_mask(active_mask), m_byte_mask(byte_mask), m_sector_mask(sector_mask)
    {
-      init();
+      init(ctx);
       m_type = type;
       m_addr = address;
       m_req_size = size;
@@ -806,13 +793,9 @@ public:
        }
    }
 
+   gpgpu_context* gpgpu_ctx;
 private:
-   void init() 
-   {
-      m_uid=++sm_next_access_uid;
-      m_addr=0;
-      m_req_size=0;
-   }
+   void init(gpgpu_context* ctx);
 
    unsigned      m_uid;
    new_addr_type m_addr;     // request address
@@ -822,8 +805,6 @@ private:
    active_mask_t m_warp_mask;
    mem_access_byte_mask_t m_byte_mask;
    mem_access_sector_mask_t m_sector_mask;
-
-   static unsigned sm_next_access_uid;
 };
 
 class mem_fetch;
@@ -836,8 +817,8 @@ public:
 
 class mem_fetch_allocator {
 public:
-    virtual mem_fetch *alloc( new_addr_type addr, mem_access_type type, unsigned size, bool wr ) const = 0;
-    virtual mem_fetch *alloc( const class warp_inst_t &inst, const mem_access_t &access ) const = 0;
+    virtual mem_fetch *alloc( new_addr_type addr, mem_access_type type, unsigned size, bool wr, unsigned long long cycle ) const = 0;
+    virtual mem_fetch *alloc( const class warp_inst_t &inst, const mem_access_t &access, unsigned long long cycle ) const = 0;
 };
 
 // the maximum number of destination, source, or address uarch operands in a instruction
@@ -958,7 +939,7 @@ public:
         m_empty=true; 
         m_config=NULL; 
     }
-    warp_inst_t( const core_config *config ) 
+    warp_inst_t( const core_config *config )
     { 
         m_uid=0;
         assert(config->warp_size<=MAX_WARP_SIZE); 
@@ -982,19 +963,9 @@ public:
     { 
         m_empty=true; 
     }
-    void issue( const active_mask_t &mask, unsigned warp_id, unsigned long long cycle, int dynamic_warp_id, int sch_id )
-    {
-        m_warp_active_mask = mask;
-        m_warp_issued_mask = mask; 
-        m_uid = ++sm_next_uid;
-        m_warp_id = warp_id;
-        m_dynamic_warp_id = dynamic_warp_id;
-        issue_cycle = cycle;
-        cycles = initiation_interval;
-        m_cache_hit=false;
-        m_empty=false;
-        m_scheduler_id=sch_id;
-    }
+
+    void issue( const active_mask_t &mask, unsigned warp_id, unsigned long long cycle, int dynamic_warp_id, int sch_id );
+
     const active_mask_t & get_active_mask() const
     {
     	return m_warp_active_mask;
@@ -1129,7 +1100,6 @@ public:
     unsigned get_uid() const { return m_uid; }
     unsigned get_schd_id() const { return m_scheduler_id; }
 
-
 protected:
 
     unsigned m_uid;
@@ -1157,8 +1127,6 @@ protected:
     std::vector<per_thread_info> m_per_scalar_thread;
     bool m_mem_accesses_created;
     std::list<mem_access_t> m_accessq;
-
-    static unsigned sm_next_uid;
 
     unsigned m_scheduler_id;  //the scheduler that issues this inst
 

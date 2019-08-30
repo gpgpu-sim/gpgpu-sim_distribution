@@ -277,10 +277,10 @@ int float2int(float a, enum cudaRoundMode mode)
 {
    int tmp;
    switch (mode) {
-   case cuda_math::cudaRoundZero: tmp = truncf(a);     break;
-   case cuda_math::cudaRoundNearest: tmp = nearbyintf(a); break;
-   case cuda_math::cudaRoundMinInf: tmp = floorf(a);     break;
-   case cuda_math::cudaRoundPosInf: tmp = ceilf(a);      break;
+   case cudaRoundZero: tmp = truncf(a);     break;
+   case cudaRoundNearest: tmp = nearbyintf(a); break;
+   case cudaRoundMinInf: tmp = floorf(a);     break;
+   case cudaRoundPosInf: tmp = ceilf(a);      break;
    default: abort();
    }
    return tmp; 
@@ -296,10 +296,10 @@ unsigned int float2uint(float a, enum cudaRoundMode mode)
 {
    unsigned int tmp;
    switch (mode) {
-   case cuda_math::cudaRoundZero: tmp = truncf(a);     break;
-   case cuda_math::cudaRoundNearest: tmp = nearbyintf(a); break;
-   case cuda_math::cudaRoundMinInf: tmp = floorf(a);     break;
-   case cuda_math::cudaRoundPosInf: tmp = ceilf(a);      break;
+   case cudaRoundZero: tmp = truncf(a);     break;
+   case cudaRoundNearest: tmp = nearbyintf(a); break;
+   case cudaRoundMinInf: tmp = floorf(a);     break;
+   case cudaRoundPosInf: tmp = ceilf(a);      break;
    default: abort();
    }
    return tmp; 

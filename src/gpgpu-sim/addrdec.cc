@@ -124,8 +124,8 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr, addrdec_
 			* Rau, B. R et al.
 			* ISCA 1991
 			*
-			* equations are adopted from:
-			* "Sacat: streaming-aware conflict-avoiding thrashing-resistant gpgpu cache management scheme."
+			* equations are corresponding to IPOLY(37) and are adopted from:
+			* "SACAT: streaming-aware conflict-avoiding thrashing-resistant gpgpu cache management scheme."
 			* Khairy et al.
 			* IEEE TPDS 2017.
 			*/
@@ -167,6 +167,8 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr, addrdec_
 		}
 		case RANDOM:
 		{
+			//This is an unrealistic hashing using software hashtable
+			//we generate a random set for each memory address and save the value in a big hashtable for future reuse
 			new_addr_type chip_address = (addr>>ADDR_CHIP_S);
 			tr1_hash_map<new_addr_type,unsigned>::const_iterator got = address_random_interleaving.find (chip_address);
 			  if ( got == address_random_interleaving.end() ) {

@@ -36,28 +36,7 @@
 #include <stdio.h>
 #include <string.h>
 
-class watchpoint_event {
-public:
-   watchpoint_event()
-   {
-      m_thread=NULL;
-      m_inst=NULL;
-   }
-   watchpoint_event(const ptx_thread_info *thd, const ptx_instruction *pI) 
-   {
-      m_thread=thd;
-      m_inst = pI;
-   }
-   const ptx_thread_info *thread() const { return m_thread; }
-   const ptx_instruction *inst() const { return m_inst; }
-private:
-   const ptx_thread_info *m_thread;
-   const ptx_instruction *m_inst;
-};
-
-std::map<unsigned,watchpoint_event> g_watchpoint_hits;
-
-void hit_watchpoint( unsigned watchpoint_num, ptx_thread_info *thd, const ptx_instruction *pI )
+void gpgpu_sim::hit_watchpoint( unsigned watchpoint_num, ptx_thread_info *thd, const ptx_instruction *pI )
 {
    g_watchpoint_hits[watchpoint_num]=watchpoint_event(thd,pI);
 }
