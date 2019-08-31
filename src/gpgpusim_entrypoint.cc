@@ -269,7 +269,9 @@ void print_simulation_time()
    printf("\n\ngpgpu_simulation_time = %u days, %u hrs, %u min, %u sec (%u sec)\n",
           (unsigned)d, (unsigned)h, (unsigned)m, (unsigned)s, (unsigned)difference );
    printf("gpgpu_simulation_rate = %u (inst/sec)\n", (unsigned)(GPGPUsim_ctx_ptr()->g_the_gpu->gpu_tot_sim_insn / difference) );
-   printf("gpgpu_simulation_rate = %u (cycle/sec)\n", (unsigned)(GPGPUsim_ctx_ptr()->g_the_gpu->gpu_tot_sim_cycle / difference) );
+   const unsigned cycles_per_sec = (unsigned)(GPGPUsim_ctx_ptr()->g_the_gpu->gpu_tot_sim_cycle / difference);
+   printf("gpgpu_simulation_rate = %u (cycle/sec)\n", cycles_per_sec );
+   printf("gpgpu_silicon_slowdown = %ux\n", GPGPUsim_ctx_ptr()->g_the_gpu->shader_clock() * 1000 / cycles_per_sec);
    fflush(stdout);
 }
 
