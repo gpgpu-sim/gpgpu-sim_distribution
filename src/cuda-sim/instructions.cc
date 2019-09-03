@@ -224,7 +224,6 @@ void ptx_thread_info::resume_reg_thread(char * fname, symbol_table * symtab)
       {
           symbol *reg;
           char * pch;
-          unsigned size;
           pch = strtok (line," ");
           char * name =pch;
           reg= symtab->lookup(name);
@@ -233,9 +232,6 @@ void ptx_thread_info::resume_reg_thread(char * fname, symbol_table * symtab)
           data = atoi(pch);
           pch = strtok (NULL," ");
           pch = strtok (NULL," ");
-          size = atoi(pch);
-
-
           m_regs.back()[reg] = data;
       }
       fclose ( fp2 );
@@ -3080,7 +3076,7 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
    size_t size;
    unsigned smid;
    int t;
-   int thrd, odd, inx, k;
+   int thrd, k;
    ptx_thread_info *thread;
    
    const operand_info &src  = pI->operand_lookup(1);
@@ -3100,8 +3096,6 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
    _memory_op_t insn_memory_op = pI->has_memory_read() ? memory_load : memory_store;
    for (thrd=0; thrd < core->get_warp_size(); thrd++) {
 	thread = core->get_thread_info()[tid+thrd];
-	odd= thrd % 2;
-	inx= thrd / 2;
     ptx_reg_t addr_reg = thread->get_operand_value(src1, src, type, thread, 1);
    	ptx_reg_t src2_data = thread->get_operand_value(src2, src, type, thread, 1);
 	const operand_info &src_a=  pI->operand_lookup(1);
