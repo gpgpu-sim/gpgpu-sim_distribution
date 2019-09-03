@@ -1309,7 +1309,7 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
     char buff[1024];
     std::string filename_c(filename+"_c");
     snprintf(buff,1024,"c++filt %s > %s", get_name().c_str(), filename_c.c_str());
-    system(buff);
+    assert(system(buff) != NULL);
     FILE *fp = fopen(filename_c.c_str(), "r");
     fgets(buff, 1024, fp);
     fclose(fp);
@@ -1432,13 +1432,13 @@ void function_info::ptx_jit_config(std::map<unsigned long long, size_t> mallocPt
     fout = fopen(ptx_config_fn.c_str(), "a");
     assert(fout!=NULL);
     for (unsigned i = 0; i<line_number; i++){
-        fgets(buff, 1024, fin);
+        assert(fgets(buff, 1024, fin) != NULL);
         assert(!feof(fin));
     }
     fprintf(fout, "\n\n");
     do{
         fprintf(fout, "%s", buff);
-        fgets(buff, 1024, fin);
+        assert(fgets(buff, 1024, fin) != NULL);
         if(feof(fin)){
             break;
         }
