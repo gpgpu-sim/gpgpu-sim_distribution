@@ -560,6 +560,15 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
     option_parser_register(opp, "-gpgpu_cdp_enabled", OPT_BOOL, 
                           &(gpgpu_ctx->device_runtime->g_cdp_enabled), "Turn on CDP",
                           "0");
+
+    //Trace driven mode parameters
+    option_parser_register(opp, "-trace_driven_mode", OPT_BOOL,
+                          &trace_driven_mode, "Turn on trace_driven_mode",
+                          "0");
+    option_parser_register(opp, "-trace", OPT_CSTR,
+                          &g_traces_filename, "traces kernel file"
+                          "traces kernel file directory",
+                          "./traces/kernelslist.g");
 }
 
 /////////////////////////////////////////////////////////////////////////////
