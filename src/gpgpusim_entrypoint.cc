@@ -60,7 +60,6 @@ class stream_manager* g_stream_manager()  {
 	return GPGPUsim_ctx_ptr()->g_stream_manager;
 }
 
-static void print_simulation_time();
 
 void *gpgpu_sim_thread_sequential(void*)
 {
@@ -238,6 +237,37 @@ gpgpu_sim *gpgpu_context::gpgpu_ptx_sim_init_perf()
    sem_init(&(GPGPUsim_ctx_ptr()->g_sim_signal_start),0,0);
    sem_init(&(GPGPUsim_ctx_ptr()->g_sim_signal_finish),0,0);
    sem_init(&(GPGPUsim_ctx_ptr()->g_sim_signal_exit),0,0);
+
+   return GPGPUsim_ctx_ptr()->g_the_gpu;
+}
+
+gpgpu_sim *gpgpu_context::gpgpu_trace_sim_init_perf(int argc, const char *argv[])
+{
+   srand(1);
+   print_splash();
+   func_sim->read_sim_environment_variables();
+   ptx_parser->read_parser_environment_variables();
+   option_parser_t opp = option_parser_create();
+
+   ptx_reg_options(opp);
+   func_sim->ptx_opcocde_latency_options(opp);
+
+   icnt_reg_options(opp);
+   GPGPUsim_ctx_ptr()->g_the_gpu_config = new gpgpu_sim_config(this);
+   GPGPUsim_ctx_ptr()->g_the_gpu_config->reg_options(opp); // register GPU microrachitecture options
+
+   option_parser_cmdline(opp, argc, argv); // parse configuration options
+   fprintf(stdout, "GPGPU-Sim: Configuration options:\n\n");
+   option_parser_print(opp, stdout);
+   // Set the Numeric locale to a standard locale where a decimal point is a "dot" not a "comma"
+   // so it does the parsing correctly independent of the system environment variables
+   assert(setlocale(LC_NUMERIC,"C"));
+   GPGPUsim_ctx_ptr()->g_the_gpu_config->init();
+
+   GPGPUsim_ctx_ptr()->g_the_gpu = new gpgpu_sim(*(GPGPUsim_ctx_ptr()->g_the_gpu_config), this);
+   GPGPUsim_ctx_ptr()->g_stream_manager = new stream_manager((GPGPUsim_ctx_ptr()->g_the_gpu), func_sim->g_cuda_launch_blocking);
+
+   GPGPUsim_ctx_ptr()->g_simulation_starttime = time((time_t *)NULL);
 
    return GPGPUsim_ctx_ptr()->g_the_gpu;
 }

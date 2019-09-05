@@ -1,138 +1,213 @@
 //developed by Mahmoud Khairy, Purdue Univ
 //abdallm@purdue.edu
 
-#include "../abstract_hardware_model.h"
+//#include "../abstract_hardware_model.h"
 #include <time.h>
 #include <stdio.h>
+#include <vector>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <stdio.h>
+#include <math.h>
 
-#include "../option_parser.h"
-#include "../cuda-sim/cuda-sim.h"
-#include "../cuda-sim/ptx_ir.h"
-#include "../cuda-sim/ptx_parser.h"
+
+//#include "../option_parser.h"
+//#include "../cuda-sim/cuda-sim.h"
+//#include "../cuda-sim/ptx_ir.h"
+//#include "../cuda-sim/ptx_parser.h"
 #include "../gpgpu-sim/gpu-sim.h"
-#include "../gpgpu-sim/icnt_wrapper.h"
+//#include "../gpgpu-sim/icnt_wrapper.h"
+//#include "../gpgpu-sim/icnt_wrapper.h"
+#include "../../libcuda/gpgpu_context.h"
+#include "trace_driven.h"
+
 //#include "../stream_manager.h"
 
 
+void arguments_check();
 
-gpgpu_sim_config g_the_gpu_config;
-gpgpu_sim *g_the_gpu;
-time_t g_simulation_starttime;
-
-#define MAX(a,b) (((a)>(b))?(a):(b))
-
-static void print_simulation_time();
-
-
-int main ( int argc, char **argv )
+int main ( int argc, const char **argv )
 {
-   srand(1);
 
-   option_parser_t opp = option_parser_create();
+	gpgpu_context* m_gpgpu_context = GPGPU_Context();
+	gpgpu_sim * m_gpgpu_sim = m_gpgpu_context->gpgpu_trace_sim_init_perf(argc,argv);
+	m_gpgpu_sim->init();
 
-   icnt_reg_options(opp);
-   g_the_gpu_config.reg_options(opp); // register GPU microrachitecture options
-   ptx_reg_options(opp);
-   ptx_opcocde_latency_options(opp);
+	//for each kernel
+	//load file
+	//parse and create kernel info
+	//launch
+	//while loop till the end of the end kernel execution
+	//prints stats
 
-   //ptx_opcocde_latency_options(opp);  //do this for trace driven
+	trace_parser tracer(m_gpgpu_sim->get_config().get_traces_filename(), m_gpgpu_sim, m_gpgpu_context);
 
-   fprintf(stdout, "I am here:\n\n");
-   option_parser_cmdline(opp, argc, (const char **)argv); // parse configuration options
+	std::vector<std::string> kernellist;
+	tracer.parse_kernellist_file(kernellist);
 
-   fprintf(stdout, "GPGPU-Sim: Configuration options:\n\n");
-   option_parser_print(opp, stdout);
-   // Set the Numeric locale to a standard locale where a decimal point is a "dot" not a "comma"
-   // so it does the parsing correctly independent of the system environment variables
-   assert(setlocale(LC_NUMERIC,"C"));
-   g_the_gpu_config.init();
+	for(unsigned i=0; i<kernellist.size(); ++i) {
 
-   g_the_gpu = new gpgpu_sim(g_the_gpu_config);
-   //g_stream_manager = new stream_manager(g_the_gpu,g_cuda_launch_blocking);
+		trace_kernel_info_t* kernel_info  = tracer.parse_kernel_info(kernellist[i]);
+		m_gpgpu_sim->launch(kernel_info);
 
-   //load file
-   //create kernel info
-   //launch
-   //while loop till the end
-   //prints stats
-   //g_the_gpu->launch(grid);
+		bool active = false;
+		bool sim_cycles = false;
+		bool break_limit = false;
 
-   g_simulation_starttime = time((time_t *)NULL);
+		do {
+			if(!m_gpgpu_sim->active())
+				break;
 
-	  bool active = false;
-	  bool sim_cycles = false;
-	  bool break_limit = false;
+			//performance simulation
+			if( m_gpgpu_sim->active() ) {
+				m_gpgpu_sim->cycle();
+				sim_cycles = true;
+				m_gpgpu_sim->deadlock_check();
+			}else {
+				if(m_gpgpu_sim->cycle_insn_cta_max_hit()){
+					g_stream_manager()->stop_all_running_kernels();
+					break_limit = true;
+				}
+			}
 
-	  g_the_gpu->init();
-	  do {
-		  // check if a kernel has completed
-		  // launch operation on device if one is pending and can be run
+			active=m_gpgpu_sim->active() ;
 
-		  // Need to break this loop when a kernel completes. This was a
-		  // source of non-deterministic behaviour in GPGPU-Sim (bug 147).
-		  // If another stream operation is available, g_the_gpu remains active,
-		  // causing this loop to not break. If the next operation happens to be
-		  // another kernel, the gpu is not re-initialized and the inter-kernel
-		  // behaviour may be incorrect. Check that a kernel has finished and
-		  // no other kernel is currently running.
-		  if(!g_the_gpu->active())
-			  break;
+		} while( active );
 
-		  //performance simulation
-		  if( g_the_gpu->active() ) {
-			  g_the_gpu->cycle();
-			  sim_cycles = true;
-			  g_the_gpu->deadlock_check();
-		  }else {
-			  if(g_the_gpu->cycle_insn_cta_max_hit()){
-				  g_stream_manager->stop_all_running_kernels();
-				  break_limit = true;
-			  }
-		  }
+		tracer.kernel_finalizer(kernel_info);
 
-		  active=g_the_gpu->active() ;
+		m_gpgpu_sim->print_stats();
 
-	  } while( active );
+		if(sim_cycles) {
+			m_gpgpu_sim->update_stats();
+			print_simulation_time();
+		}
 
-		 printf("GPGPU-Sim: ** STOP simulation thread (no work) **\n");
-		 fflush(stdout);
+		if(break_limit) {
+			printf("GPGPU-Sim: ** break due to reaching the maximum cycles (or instructions) **\n");
+			fflush(stdout);
+			exit(1);
+		}
+	}
 
-	  g_the_gpu->print_stats();
+	return 1;
+}
 
-	  if(sim_cycles) {
-		  g_the_gpu->update_stats();
-		  print_simulation_time();
-	  }
+trace_parser::trace_parser(const char* kernellist_filepath, gpgpu_sim * m_gpgpu_sim, gpgpu_context* m_gpgpu_context)
+{
 
+	this->m_gpgpu_sim = m_gpgpu_sim;
+	this->m_gpgpu_context = m_gpgpu_context;
+	kernellist_filename = kernellist_filepath;
+}
 
-		 printf("GPGPU-Sim: *** simulation thread exiting ***\n");
-		 fflush(stdout);
+void trace_parser::parse_kernellist_file(std::vector<std::string>& kernellist) {
 
-	  if(break_limit) {
-		printf("GPGPU-Sim: ** break due to reaching the maximum cycles (or instructions) **\n");
+	ifs.open(kernellist_filename);
+
+	if (!ifs.is_open()) {
+		std::cout << "Unable to open file: " <<kernellist_filename<<std::endl;
 		exit(1);
-	  }
+	}
 
-      return 1;
+	std::string directory(kernellist_filename);
+	const size_t last_slash_idx = directory.rfind('/');
+	if (std::string::npos != last_slash_idx)
+	{
+		directory = directory.substr(0, last_slash_idx);
+	}
+
+	std::string line, filepath;
+	while(!ifs.eof()) {
+		getline(ifs, line);
+		if(line.empty())
+			continue;
+		filepath = directory+"/"+line;
+		kernellist.push_back(filepath);
+	}
+
+	ifs.close();
 }
 
-void print_simulation_time()
-{
-   time_t current_time, difference, d, h, m, s;
-   current_time = time((time_t *)NULL);
-   difference = MAX(current_time - g_simulation_starttime, 1);
 
-   d = difference/(3600*24);
-   h = difference/3600 - 24*d;
-   m = difference/60 - 60*(h + 24*d);
-   s = difference - 60*(m + 60*(h + 24*d));
+trace_kernel_info_t* trace_parser::parse_kernel_info(const std::string& kerneltraces_filepath) {
 
-   fflush(stderr);
-   printf("\n\ngpgpu_simulation_time = %u days, %u hrs, %u min, %u sec (%u sec)\n",
-          (unsigned)d, (unsigned)h, (unsigned)m, (unsigned)s, (unsigned)difference );
-   printf("gpgpu_simulation_rate = %u (inst/sec)\n", (unsigned)(g_the_gpu->gpu_tot_sim_insn / difference) );
-   printf("gpgpu_simulation_rate = %u (cycle/sec)\n", (unsigned)(gpu_tot_sim_cycle / difference) );
-   fflush(stdout);
+	ifs.open(kerneltraces_filepath.c_str());
+
+	if (!ifs.is_open()) {
+		std::cout << "Unable to open file: " <<kerneltraces_filepath<<std::endl;
+		exit(1);
+	}
+
+	std::cout << "Processing kernel " <<kerneltraces_filepath<<std::endl;
+
+	unsigned grid_dim_x=0, grid_dim_y=0, grid_dim_z=0, tb_dim_x=0, tb_dim_y=0, tb_dim_z=0;
+	unsigned shmem=0, nregs=0, cuda_stream_id=0, kernel_id=0;
+	std::string line;
+	std::stringstream ss;
+	std::string string1, string2;
+	std::string  kernel_name;
+
+	while(!ifs.eof()) {
+		getline(ifs, line);
+
+		if (line.length() == 0) {
+			continue;
+		}
+		else if(line[0] == '#'){
+			break;  //the begin of the instruction stream
+		}
+		else if(line[0] == '-') {
+			ss.str(line);
+			ss.ignore();
+			ss>>string1>>string2;
+			if(string1 == "kernel" && string2 == "name") {
+				const size_t equal_idx = line.find('=');
+				kernel_name = line.substr(equal_idx+1);
+			}
+			else if(string1 == "kernel" && string2 == "id") {
+				sscanf(line.c_str(), "-kernel id = %d", &kernel_id);
+			}
+			else if(string1 == "grid" && string2 == "dim") {
+				sscanf(line.c_str(), "-grid dim = (%d,%d,%d)", &grid_dim_x, &grid_dim_y, &grid_dim_z);
+			}
+			else if (string1 == "block" && string2 == "dim") {
+				sscanf(line.c_str(), "-block dim = (%d,%d,%d)", &tb_dim_x, &tb_dim_y, &tb_dim_z);
+			}
+			else if (string1 == "shmem") {
+				sscanf(line.c_str(), "-shmem = %d", &shmem);
+			}
+			else if (string1 == "nregs") {
+				sscanf(line.c_str(), "-nregs = %d", &nregs);
+			}
+			else if (string1 == "cuda" && string2 == "stream") {
+				sscanf(line.c_str(), "-cuda stream id = %d", &cuda_stream_id);
+			}
+			continue;
+		}
+	}
+
+	gpgpu_ptx_sim_info info;
+	info.smem = shmem;
+	info.regs = nregs;
+	dim3 gridDim(grid_dim_x, grid_dim_y, grid_dim_z);
+	dim3 blockDim(tb_dim_x, tb_dim_y, tb_dim_z);
+	trace_function_info* function_info = new trace_function_info(info, m_gpgpu_context);
+	trace_kernel_info_t* kernel_info =  new trace_kernel_info_t(gridDim, blockDim, function_info, kerneltraces_filepath);
+
+	return kernel_info;
 }
+
+
+void trace_parser::kernel_finalizer(trace_kernel_info_t* kernel_info){
+	if (ifs.is_open())
+		ifs.close();
+
+	delete kernel_info->entry();
+	delete kernel_info;
+}
+
 
 

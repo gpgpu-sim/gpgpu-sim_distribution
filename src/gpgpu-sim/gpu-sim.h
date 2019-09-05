@@ -348,6 +348,9 @@ public:
     size_t sync_depth_limit() const {return runtime_sync_depth_limit; }
     size_t pending_launch_count_limit() const {return runtime_pending_launch_count_limit;}
 
+    unsigned is_trace_driven_mode() const { return trace_driven_mode; }
+    char* get_traces_filename() const { return g_traces_filename; }
+
 private:
     void init_clock_domains(void ); 
 
@@ -400,6 +403,10 @@ private:
     unsigned int gpgpu_compute_capability_major;
     unsigned int gpgpu_compute_capability_minor;
     unsigned long long liveness_message_freq; 
+
+    //trace driven mode options
+    bool trace_driven_mode;
+    char *g_traces_filename;
 
     friend class gpgpu_sim;
 };

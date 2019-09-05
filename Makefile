@@ -144,7 +144,7 @@ no_opencl_support:
 	@echo "Warning: gpgpu-sim is building without opencl support. Make sure NVOPENCL_LIBDIR and NVOPENCL_INCDIR are set"
 
 $(SIM_LIB_DIR)/libcudart.so: makedirs $(LIBS) cudalib
-	g++ -shared -Wl,-soname,libcudart_$(GPGPUSIM_BUILD).so -Wl,--version-script=linux-so-version.txt\
+	g++ -shared -Wl,-soname,libcudart.so -Wl,--version-script=linux-so-version.txt\
 			$(SIM_OBJ_FILES_DIR)/libcuda/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table/*.o \
@@ -171,7 +171,7 @@ $(SIM_LIB_DIR)/libcudart.so: makedirs $(LIBS) cudalib
 
 
 $(SIM_LIB_DIR)/gpgpusim.out: makedirs $(LIBS) cudalib $(SIM_LIB_DIR)/libcudart.so
-	g++ -std=c++0x -L$(SIM_LIB_DIR) -lcudart -o $(SIM_LIB_DIR)/gpgpusim.out src/trace-driven/gpgpusim_trace_driven_main.cc 
+	g++ -std=c++0x -L$(SIM_LIB_DIR) -I$(CUDA_INSTALL_PATH)/include -lcudart -o $(SIM_LIB_DIR)/gpgpusim.out src/trace-driven/gpgpusim_trace_driven_main.cc 
 
 $(SIM_LIB_DIR)/libcudart.dylib: makedirs $(LIBS) cudalib
 	g++ -dynamiclib -Wl,-headerpad_max_install_names,-undefined,dynamic_lookup,-compatibility_version,1.1,-current_version,1.1\
