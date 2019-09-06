@@ -1,0 +1,5 @@
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_Z19kernel_compute_costiilP5PointiiPfS1_PiPb' for 'sm_30'
+ptxas info    : Function properties for _Z19kernel_compute_costiilP5PointiiPfS1_PiPb
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 32 registers, 384 bytes cmem[0]

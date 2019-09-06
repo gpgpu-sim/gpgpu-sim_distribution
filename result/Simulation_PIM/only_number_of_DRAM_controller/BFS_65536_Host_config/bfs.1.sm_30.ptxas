@@ -1,0 +1,9 @@
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_Z7Kernel2PbS_S_S_i' for 'sm_30'
+ptxas info    : Function properties for _Z7Kernel2PbS_S_S_i
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 12 registers, 356 bytes cmem[0]
+ptxas info    : Compiling entry function '_Z6KernelP4NodePiPbS2_S2_S1_i' for 'sm_30'
+ptxas info    : Function properties for _Z6KernelP4NodePiPbS2_S2_S1_i
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 19 registers, 372 bytes cmem[0]
