@@ -87,7 +87,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                   shader_core_stats *stats )
    : core_t( gpu, NULL, config->warp_size, config->n_thread_per_shader ),
      m_barriers( this, config->max_warps_per_shader, config->max_cta_per_core, config->max_barriers_per_cta, config->warp_size ),
-     m_dynamic_warp_id(0), m_active_warps(0)
+     m_active_warps(0), m_dynamic_warp_id(0)
 {
     m_cluster = cluster;
     m_config = config;
@@ -164,7 +164,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                          NUM_CONCRETE_SCHEDULERS;
     assert ( scheduler != NUM_CONCRETE_SCHEDULERS );
     
-    for (int i = 0; i < m_config->gpgpu_num_sched_per_core; i++) {
+    for (unsigned i = 0; i < m_config->gpgpu_num_sched_per_core; i++) {
         switch( scheduler )
         {
             case CONCRETE_SCHEDULER_LRR:
@@ -263,7 +263,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
         //distribute i's evenly though schedulers;
         schedulers[i%m_config->gpgpu_num_sched_per_core]->add_supervised_warp_id(i);
     }
-    for ( int i = 0; i < m_config->gpgpu_num_sched_per_core; ++i ) {
+    for ( unsigned i = 0; i < m_config->gpgpu_num_sched_per_core; ++i ) {
         schedulers[i]->done_adding_supervised_warps();
     }
     
@@ -474,7 +474,7 @@ void shader_core_ctx::init_warps( unsigned cta_id, unsigned start_thread, unsign
             }
             m_simt_stack[i]->launch(start_pc,active_threads);
 
-              if(m_gpu->resume_option==1 && kernel_id==m_gpu->resume_kernel && ctaid>=m_gpu->resume_CTA && ctaid<m_gpu->checkpoint_CTA_t )
+              if(m_gpu->resume_option == 1 && kernel_id == m_gpu->resume_kernel && ctaid >= m_gpu->resume_CTA && ctaid < m_gpu->checkpoint_CTA_t )
                { 
                 char fname[2048];
                 snprintf(fname,2048,"checkpoint_files/warp_%d_%d_simt.txt",i%warp_per_cta,ctaid );
@@ -868,7 +868,7 @@ void shader_core_ctx::func_exec_inst( warp_inst_t &inst )
 
 void shader_core_ctx::issue_warp( register_set& pipe_reg_set, const warp_inst_t* next_inst, const active_mask_t &active_mask, unsigned warp_id, unsigned sch_id )
 {
-	warp_inst_t** pipe_reg = pipe_reg = pipe_reg_set.get_free(m_config->sub_core_model, sch_id);
+	warp_inst_t** pipe_reg = pipe_reg_set.get_free(m_config->sub_core_model, sch_id);
     assert(pipe_reg);
 
     m_warp[warp_id].ibuffer_free();
@@ -1659,35 +1659,46 @@ mem_stage_stall_type ldst_unit::process_memory_access_queue_l1cache( l1_cache *c
     if( inst.accessq_empty() )
         return result;
 
-    mem_fetch *mf = m_mf_allocator->alloc(inst,inst.accessq_back(),m_core->get_gpu()->gpu_sim_cycle+m_core->get_gpu()->gpu_tot_sim_cycle);
-
     if(m_config->m_L1D_config.l1_latency > 0)
 	{
-    	if((l1_latency_queue[m_config->m_L1D_config.l1_latency-1]) == NULL)
-    	{
-    		l1_latency_queue[m_config->m_L1D_config.l1_latency-1] = mf;
+    	for(int j=0; j<m_config->m_L1D_config.l1_banks; j++) {  //We can handle at max l1_banks reqs per cycle
 
-    		if( mf->get_inst().is_store() ) {
-				unsigned inc_ack = (m_config->m_L1D_config.get_mshr_type() == SECTOR_ASSOC)?
-						(mf->get_data_size()/SECTOR_SIZE) : 1;
+    		if( inst.accessq_empty() )
+    		        return result;
 
-				for(unsigned i=0; i< inc_ack; ++i)
-					m_core->inc_store_req( inst.warp_id() );
+    	    mem_fetch *mf = m_mf_allocator->alloc(inst,inst.accessq_back(),m_core->get_gpu()->gpu_sim_cycle+m_core->get_gpu()->gpu_tot_sim_cycle);
+    	    unsigned bank_id = m_config->m_L1D_config.set_bank(mf->get_addr());
+    	    assert(bank_id < m_config->m_L1D_config.l1_banks);
+
+			if((l1_latency_queue[bank_id][m_config->m_L1D_config.l1_latency-1]) == NULL)
+			{
+				l1_latency_queue[bank_id][m_config->m_L1D_config.l1_latency-1] = mf;
+
+				if( mf->get_inst().is_store() ) {
+					unsigned inc_ack = (m_config->m_L1D_config.get_mshr_type() == SECTOR_ASSOC)?
+							(mf->get_data_size()/SECTOR_SIZE) : 1;
+
+					for(unsigned i=0; i< inc_ack; ++i)
+						m_core->inc_store_req( inst.warp_id() );
+				}
+
+				inst.accessq_pop_back();
 			}
-
-    		inst.accessq_pop_back();
+			else
+			{
+				result = BK_CONF;
+				delete mf;
+				break;   //do not try again, just break from the loop and try the next cycle
+			}
     	}
-    	else
-        {
-        	result = BK_CONF;
-        	delete mf;
-        }
-        if( !inst.accessq_empty() &&  result !=BK_CONF)
+		if( !inst.accessq_empty() &&  result !=BK_CONF)
 		   result = COAL_STALL;
-	   return result;
+
+	     return result;
 	}
     else
     {
+	    mem_fetch *mf = m_mf_allocator->alloc(inst,inst.accessq_back(),m_core->get_gpu()->gpu_sim_cycle+m_core->get_gpu()->gpu_tot_sim_cycle);
 		std::list<cache_event> events;
 		enum cache_request_status status = cache->access(mf->get_addr(),mf,m_core->get_gpu()->gpu_sim_cycle+m_core->get_gpu()->gpu_tot_sim_cycle,events);
 		return process_cache_access( cache, mf->get_addr(), inst, events, mf, status );
@@ -1696,63 +1707,64 @@ mem_stage_stall_type ldst_unit::process_memory_access_queue_l1cache( l1_cache *c
 
 void ldst_unit::L1_latency_queue_cycle()
 {
-	//std::deque< std::pair<mem_fetch*,bool> >::iterator it = m_latency_queue.begin();
-	if((l1_latency_queue[0]) != NULL)
-    {
-		    mem_fetch* mf_next = l1_latency_queue[0];
-			std::list<cache_event> events;
-			enum cache_request_status status = m_L1D->access(mf_next->get_addr(),mf_next,m_core->get_gpu()->gpu_sim_cycle+m_core->get_gpu()->gpu_tot_sim_cycle,events);
+	for(int j=0; j<m_config->m_L1D_config.l1_banks; j++) {
+		if((l1_latency_queue[j][0]) != NULL)
+		{
+				mem_fetch* mf_next = l1_latency_queue[j][0];
+				std::list<cache_event> events;
+				enum cache_request_status status = m_L1D->access(mf_next->get_addr(),mf_next,m_core->get_gpu()->gpu_sim_cycle+m_core->get_gpu()->gpu_tot_sim_cycle,events);
 
-		   bool write_sent = was_write_sent(events);
-		   bool read_sent = was_read_sent(events);
+			   bool write_sent = was_write_sent(events);
+			   bool read_sent = was_read_sent(events);
 
-		   if ( status == HIT ) {
-			   assert( !read_sent );
-			   l1_latency_queue[0] = NULL;
-			   if ( mf_next->get_inst().is_load() ) {
-				   for ( unsigned r=0; r < MAX_OUTPUT_VALUES; r++)
-					   if (mf_next->get_inst().out[r] > 0)
-					   {
-						   assert(m_pending_writes[mf_next->get_inst().warp_id()][mf_next->get_inst().out[r]]>0);
-						   unsigned still_pending = --m_pending_writes[mf_next->get_inst().warp_id()][mf_next->get_inst().out[r]];
-						   if(!still_pending)
+			   if ( status == HIT ) {
+				   assert( !read_sent );
+				   l1_latency_queue[j][0] = NULL;
+				   if ( mf_next->get_inst().is_load() ) {
+					   for ( unsigned r=0; r < MAX_OUTPUT_VALUES; r++)
+						   if (mf_next->get_inst().out[r] > 0)
 						   {
-							m_pending_writes[mf_next->get_inst().warp_id()].erase(mf_next->get_inst().out[r]);
-							m_scoreboard->releaseRegister(mf_next->get_inst().warp_id(),mf_next->get_inst().out[r]);
-							m_core->warp_inst_complete(mf_next->get_inst());
+							   assert(m_pending_writes[mf_next->get_inst().warp_id()][mf_next->get_inst().out[r]]>0);
+							   unsigned still_pending = --m_pending_writes[mf_next->get_inst().warp_id()][mf_next->get_inst().out[r]];
+							   if(!still_pending)
+							   {
+								m_pending_writes[mf_next->get_inst().warp_id()].erase(mf_next->get_inst().out[r]);
+								m_scoreboard->releaseRegister(mf_next->get_inst().warp_id(),mf_next->get_inst().out[r]);
+								m_core->warp_inst_complete(mf_next->get_inst());
+							   }
 						   }
-					   }
-			   }
+				   }
 
-			   //For write hit in WB policy
-			   if(mf_next->get_inst().is_store() && !write_sent)
-			   {
-				   unsigned dec_ack = (m_config->m_L1D_config.get_mshr_type() == SECTOR_ASSOC)?
-				   						(mf_next->get_data_size()/SECTOR_SIZE) : 1;
+				   //For write hit in WB policy
+				   if(mf_next->get_inst().is_store() && !write_sent)
+				   {
+					   unsigned dec_ack = (m_config->m_L1D_config.get_mshr_type() == SECTOR_ASSOC)?
+											(mf_next->get_data_size()/SECTOR_SIZE) : 1;
 
-				   mf_next->set_reply();
+					   mf_next->set_reply();
 
-				   for(unsigned i=0; i< dec_ack; ++i)
-				      m_core->store_ack(mf_next);
-			   }
+					   for(unsigned i=0; i< dec_ack; ++i)
+						  m_core->store_ack(mf_next);
+				   }
 
-			   if( !write_sent )
-				   delete mf_next;
+				   if( !write_sent )
+					   delete mf_next;
 
-		   } else if ( status == RESERVATION_FAIL ) {
-			   assert( !read_sent );
-			   assert( !write_sent );
-		   } else {
-			   assert( status == MISS || status == HIT_RESERVED );
-			   l1_latency_queue[0] = NULL;
-	   }
-    }
+			   } else if ( status == RESERVATION_FAIL ) {
+				   assert( !read_sent );
+				   assert( !write_sent );
+			   } else {
+				   assert( status == MISS || status == HIT_RESERVED );
+				   l1_latency_queue[j][0] = NULL;
+		   }
+		}
 
-	 for( unsigned stage = 0; stage<m_config->m_L1D_config.l1_latency-1; ++stage)
-	  if( l1_latency_queue[stage] == NULL) {
-		   l1_latency_queue[stage] = l1_latency_queue[stage+1] ;
-		   l1_latency_queue[stage+1] = NULL;
-	   }
+		 for( unsigned stage = 0; stage<m_config->m_L1D_config.l1_latency-1; ++stage)
+		  if( l1_latency_queue[j][stage] == NULL) {
+			   l1_latency_queue[j][stage] = l1_latency_queue[j][stage+1] ;
+			   l1_latency_queue[j][stage+1] = NULL;
+		   }
+	}
 
 }
 
@@ -2132,11 +2144,12 @@ ldst_unit::ldst_unit( mem_fetch_interface *icnt,
                               IN_L1D_MISS_QUEUE,
 							  core->get_gpu());
 
-        if(m_config->m_L1D_config.l1_latency > 0)
-	    {
-        	for(int i=0; i<m_config->m_L1D_config.l1_latency; i++ )
-        		l1_latency_queue.push_back((mem_fetch*)NULL);
-	    }
+        l1_latency_queue.resize(m_config->m_L1D_config.l1_banks);
+        assert(m_config->m_L1D_config.l1_latency > 0);
+
+		for(unsigned j = 0; j < m_config->m_L1D_config.l1_banks; j++ )
+			l1_latency_queue[j].resize(m_config->m_L1D_config.l1_latency,(mem_fetch*)NULL);
+
     }
     m_name = "MEM ";
 }
@@ -2446,7 +2459,7 @@ void shader_core_ctx::register_cta_thread_exit( unsigned cta_num, kernel_info_t 
       m_barriers.deallocate_barrier(cta_num);
       shader_CTA_count_unlog(m_sid, 1);
 
-     SHADER_DPRINTF(LIVENESS, "GPGPU-Sim uArch: Finished CTA #%d (%lld,%lld), %u CTAs running\n",
+     SHADER_DPRINTF(LIVENESS, "GPGPU-Sim uArch: Finished CTA #%u (%lld,%lld), %u CTAs running\n",
         cta_num, m_gpu->gpu_sim_cycle, m_gpu->gpu_tot_sim_cycle, m_n_active_cta);
 
       if( m_n_active_cta == 0 ) {

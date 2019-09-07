@@ -83,6 +83,7 @@ class  gpgpu_sim_wrapper {};
 
 
 bool g_interactive_debugger_enabled=false;
+
 tr1_hash_map<new_addr_type,unsigned> address_random_interleaving;
 
 /* Clock Domains */
@@ -137,6 +138,8 @@ void memory_config::reg_options(class OptionParser * opp)
 {
     option_parser_register(opp, "-perf_sim_memcpy", OPT_BOOL, &m_perf_sim_memcpy, 
                                 "Fill the L2 cache on memcpy", "1");
+    option_parser_register(opp, "-simple_dram_model", OPT_BOOL, &simple_dram_model,
+                                "simple_dram_model with fixed latency and BW", "0");
     option_parser_register(opp, "-gpgpu_dram_scheduler", OPT_INT32, &scheduler_type, 
                                 "0 = fifo, 1 = FR-FCFS (defaul)", "1");
     option_parser_register(opp, "-gpgpu_dram_partition_queues", OPT_CSTR, &gpgpu_L2_queue_config, 
@@ -236,9 +239,12 @@ void shader_core_config::reg_options(class OptionParser * opp)
                    "per-shader L1 data cache config "
                    " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_alloc>,<mshr>:<N>:<merge>,<mq> | none}",
                    "none" );
+    option_parser_register(opp, "-l1_banks", OPT_UINT32, &m_L1D_config.l1_banks,
+                 "The number of L1 cache banks",
+                 "1");
     option_parser_register(opp, "-l1_latency", OPT_UINT32, &m_L1D_config.l1_latency,
                  "L1 Hit Latency",
-                 "0");
+                 "1");
     option_parser_register(opp, "-smem_latency", OPT_UINT32, &smem_latency,
                  "smem Latency",
                  "3");
@@ -299,10 +305,10 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_shmem_size", OPT_UINT32, &gpgpu_shmem_size,
                  "Size of shared memory per shader core (default 16kB)",
                  "16384");
-    option_parser_register(opp, "-adaptive_volta_cache_config", OPT_BOOL, &adaptive_volta_cache_config,
-                 "adaptive_volta_cache_config",
+    option_parser_register(opp, "-adaptive_cache_config", OPT_BOOL, &adaptive_volta_cache_config,
+                 "adaptive_cache_config",
                  "0");
-    option_parser_register(opp, "-gpgpu_shmem_size", OPT_UINT32, &gpgpu_shmem_sizeDefault,
+    option_parser_register(opp, "-gpgpu_shmem_sizeDefault", OPT_UINT32, &gpgpu_shmem_sizeDefault,
                  "Size of shared memory per shader core (default 16kB)",
                  "16384");
     option_parser_register(opp, "-gpgpu_shmem_size_PrefL1", OPT_UINT32, &gpgpu_shmem_sizePrefL1,
@@ -469,10 +475,10 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
     m_shader_config.reg_options(opp);
     m_memory_config.reg_options(opp);
     power_config::reg_options(opp);
-   option_parser_register(opp, "-gpgpu_max_cycle", OPT_INT32, &gpu_max_cycle_opt, 
+   option_parser_register(opp, "-gpgpu_max_cycle", OPT_INT64, &gpu_max_cycle_opt, 
                "terminates gpu simulation early (0 = no limit)",
                "0");
-   option_parser_register(opp, "-gpgpu_max_insn", OPT_INT32, &gpu_max_insn_opt, 
+   option_parser_register(opp, "-gpgpu_max_insn", OPT_INT64, &gpu_max_insn_opt, 
                "terminates gpu simulation early (0 = no limit)",
                "0");
    option_parser_register(opp, "-gpgpu_max_cta", OPT_INT32, &gpu_max_cta_opt, 
@@ -795,6 +801,16 @@ int gpgpu_sim::shader_clock() const
    return m_config.core_freq/1000;
 }
 
+int gpgpu_sim::max_cta_per_core() const
+{
+   return m_shader_config->max_cta_per_core;
+}
+
+int gpgpu_sim::get_max_cta( const kernel_info_t &k ) const
+{
+   return m_shader_config->max_cta(k);
+}
+
 void gpgpu_sim::set_prop( cudaDeviceProp *prop )
 {
    m_cuda_properties = prop;
@@ -1044,7 +1060,7 @@ void gpgpu_sim::change_cache_config(FuncCache cache_config)
 	if(cache_config != m_shader_config->m_L1D_config.get_cache_status()){
 		printf("FLUSH L1 Cache at configuration change between kernels\n");
 		for (unsigned i=0;i<m_shader_config->n_simt_clusters;i++) {
-			m_cluster[i]->cache_flush();
+			m_cluster[i]->cache_invalidate();
 	    }
 	}
 
@@ -1101,8 +1117,8 @@ void gpgpu_sim::gpu_print_stat()
    printf("gpu_tot_sim_insn = %lld\n", gpu_tot_sim_insn+gpu_sim_insn);
    printf("gpu_tot_ipc = %12.4f\n", (float)(gpu_tot_sim_insn+gpu_sim_insn) / (gpu_tot_sim_cycle+gpu_sim_cycle));
    printf("gpu_tot_issued_cta = %lld\n", gpu_tot_issued_cta + m_total_cta_launched);
-   printf("gpu_occupancy = %.4f\% \n", gpu_occupancy.get_occ_fraction() * 100);
-   printf("gpu_tot_occupancy = %.4f\% \n", (gpu_occupancy + gpu_tot_occupancy).get_occ_fraction() * 100);
+   printf("gpu_occupancy = %.4f%% \n", gpu_occupancy.get_occ_fraction() * 100);
+   printf("gpu_tot_occupancy = %.4f%% \n", (gpu_occupancy + gpu_tot_occupancy).get_occ_fraction() * 100);
 
 
    fprintf(statfout, "max_total_param_size = %llu\n", gpgpu_ctx->device_runtime->g_max_total_param_size);
@@ -1343,7 +1359,7 @@ bool shader_core_ctx::occupy_shader_resource_1block(kernel_info_t & k, bool occu
        m_occupied_regs += (padded_cta_size * ((kernel_info->regs+3)&~3));
        m_occupied_ctas++;
 
-      SHADER_DPRINTF(LIVENESS, "GPGPU-Sim uArch: Occupied %d threads, %d shared mem, %d registers, %d ctas\n",
+      SHADER_DPRINTF(LIVENESS, "GPGPU-Sim uArch: Occupied %u threads, %u shared mem, %u registers, %u ctas\n",
             m_occupied_n_threads, m_occupied_shmem, m_occupied_regs, m_occupied_ctas);  
    }
 
@@ -1460,7 +1476,7 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
         nthreads_in_block += ptx_sim_init_thread(kernel,&m_thread[i],m_sid,i,cta_size-(i-start_thread),m_config->n_thread_per_shader,this,free_cta_hw_id,warp_id,m_cluster->get_gpu());
         m_threadState[i].m_active = true; 
         // load thread local memory and register file
-        if(m_gpu->resume_option==1 && kernel.get_uid()==m_gpu->resume_kernel && ctaid>=m_gpu->resume_CTA && ctaid<m_gpu->checkpoint_CTA_t )
+        if(m_gpu->resume_option == 1 && kernel.get_uid() == m_gpu->resume_kernel && ctaid >= m_gpu->resume_CTA && ctaid < m_gpu->checkpoint_CTA_t )
         {
             char fname[2048];
             snprintf(fname,2048,"checkpoint_files/thread_%d_%d_reg.txt",i%cta_size,ctaid );
@@ -1475,7 +1491,7 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
     assert( nthreads_in_block > 0 && nthreads_in_block <= m_config->n_thread_per_shader); // should be at least one, but less than max
     m_cta_status[free_cta_hw_id]=nthreads_in_block;
 
-    if(m_gpu->resume_option==1 && kernel.get_uid()==m_gpu->resume_kernel && ctaid>=m_gpu->resume_CTA && ctaid<m_gpu->checkpoint_CTA_t )
+    if(m_gpu->resume_option == 1 && kernel.get_uid() == m_gpu->resume_kernel && ctaid >= m_gpu->resume_CTA && ctaid < m_gpu->checkpoint_CTA_t )
     {
         char f1name[2048];
         snprintf(f1name,2048,"checkpoint_files/shared_mem_%d.txt", ctaid);
@@ -1582,7 +1598,10 @@ void gpgpu_sim::cycle()
 
    if (clock_mask & DRAM) {
       for (unsigned i=0;i<m_memory_config->m_n_mem;i++){
-         m_memory_partition_unit[i]->dram_cycle(); // Issue the dram command (scheduler + delay model)
+    	  if(m_memory_config->simple_dram_model)
+    		  m_memory_partition_unit[i]->simple_dram_model_cycle();
+    	  else
+    		  m_memory_partition_unit[i]->dram_cycle(); // Issue the dram command (scheduler + delay model)
          // Update performance counters for DRAM
          m_memory_partition_unit[i]->set_dram_power_stats(m_power_stats->pwr_mem_stat->n_cmd[CURRENT_STAT_IDX][i], m_power_stats->pwr_mem_stat->n_activity[CURRENT_STAT_IDX][i],
                         m_power_stats->pwr_mem_stat->n_nop[CURRENT_STAT_IDX][i], m_power_stats->pwr_mem_stat->n_act[CURRENT_STAT_IDX][i], m_power_stats->pwr_mem_stat->n_pre[CURRENT_STAT_IDX][i],

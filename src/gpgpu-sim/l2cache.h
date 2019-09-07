@@ -65,6 +65,7 @@ public:
 
    void cache_cycle( unsigned cycle );
    void dram_cycle();
+   void simple_dram_model_cycle();
 
    void set_done( mem_fetch *mf );
 

@@ -182,6 +182,8 @@ void icnt_reg_options( class OptionParser * opp )
    option_parser_register(opp, "-inct_in_buffer_limit", OPT_UINT32, &g_inct_config.in_buffer_limit, "in_buffer_limit", "64");
    option_parser_register(opp, "-inct_out_buffer_limit", OPT_UINT32, &g_inct_config.out_buffer_limit, "out_buffer_limit", "64");
    option_parser_register(opp, "-inct_subnets", OPT_UINT32, &g_inct_config.subnets, "subnets", "2");
+   option_parser_register(opp, "-arbiter_algo", OPT_UINT32, &g_inct_config.arbiter_algo, "arbiter_algo", "1");
+
 
 }
 
