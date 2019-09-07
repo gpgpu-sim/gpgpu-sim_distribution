@@ -35,27 +35,35 @@
 using namespace std;
 
 
-struct inct_config
-{
-
-	//config for local interconnect
-	unsigned   in_buffer_limit;
-	unsigned   out_buffer_limit;
-	unsigned   subnets;
-};
-
 enum Interconnect_type {
 	REQ_NET=0,
 	REPLY_NET=1
 };
+
+enum Arbiteration_type {
+	NAIVE_RR=0,
+	iSLIP=1
+};
+
+struct inct_config
+{
+	//config for local interconnect
+	unsigned   in_buffer_limit;
+	unsigned   out_buffer_limit;
+	unsigned   subnets;
+	Arbiteration_type   arbiter_algo;
+};
+
 class xbar_router {
 
 public:
-	xbar_router(unsigned router_id, enum Interconnect_type m_type, unsigned n_shader, unsigned n_mem, unsigned m_in_buffer_limit, unsigned m_out_buffer_limit);
+	xbar_router(unsigned router_id, enum Interconnect_type m_type, unsigned n_shader, unsigned n_mem, unsigned m_in_buffer_limit, unsigned m_out_buffer_limit, enum Arbiteration_type m_arbit_type);
 	~xbar_router();
 	void Push(unsigned input_deviceID, unsigned output_deviceID, void* data, unsigned int size);
 	void* Pop(unsigned ouput_deviceID);
-	void Advance();
+	void Advance( );
+
+
 	bool Busy() const;
 	bool Has_Buffer_In(unsigned input_deviceID, unsigned size, bool update_counter=false);
 	bool Has_Buffer_Out(unsigned output_deviceID, unsigned size);
@@ -70,6 +78,9 @@ public:
 	unsigned long long packets_num;
 
 private:
+	void iSLIP_Advance();
+	void RR_Advance();
+
 	struct Packet{
 		Packet(void* m_data, unsigned m_output_deviceID) {
 			data = m_data;
@@ -82,10 +93,12 @@ private:
 	vector<queue<Packet> > out_buffers;
 	unsigned _n_shader, _n_mem, total_nodes;
 	unsigned in_buffer_limit, out_buffer_limit;
-	unsigned next_node;
+	vector<unsigned> next_node;  //used for iSLIP arbit
+	unsigned next_node_id;   //used for RR arbit
 	unsigned m_id;
 	enum Interconnect_type router_type;
 	unsigned active_in_buffers,active_out_buffers;
+	Arbiteration_type arbit_type;
 
 	friend class LocalInterconnect;
 

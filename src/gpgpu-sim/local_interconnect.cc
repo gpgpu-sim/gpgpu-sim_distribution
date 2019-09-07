@@ -36,7 +36,7 @@
 #include "local_interconnect.h"
 #include "mem_fetch.h"
 
-xbar_router::xbar_router(unsigned router_id, enum Interconnect_type m_type, unsigned n_shader, unsigned n_mem, unsigned m_in_buffer_limit, unsigned m_out_buffer_limit)
+xbar_router::xbar_router(unsigned router_id, enum Interconnect_type m_type, unsigned n_shader, unsigned n_mem, unsigned m_in_buffer_limit, unsigned m_out_buffer_limit, enum Arbiteration_type m_arbit_type)
 {
 	m_id=router_id;
 	router_type=m_type;
@@ -45,9 +45,11 @@ xbar_router::xbar_router(unsigned router_id, enum Interconnect_type m_type, unsi
 	total_nodes = n_shader+n_mem;
 	in_buffers.resize(total_nodes);
 	out_buffers.resize(total_nodes);
-	next_node=0;
+	next_node.resize(total_nodes,0);
 	in_buffer_limit = m_in_buffer_limit;
 	out_buffer_limit = m_out_buffer_limit;
+	arbit_type = m_arbit_type;
+	next_node_id=0;
 	if(m_type == REQ_NET) {
 		active_in_buffers=n_shader;
 		active_out_buffers=n_mem;
@@ -110,12 +112,23 @@ bool xbar_router::Has_Buffer_Out(unsigned output_deviceID, unsigned size){
 }
 
 void xbar_router::Advance() {
+
+	if(arbit_type == NAIVE_RR)
+		RR_Advance();
+	else if(arbit_type == iSLIP)
+		iSLIP_Advance();
+	else
+		assert(0);
+
+}
+
+void xbar_router::RR_Advance() {
 	cycles++;
 
 	vector<bool> issued(total_nodes, false);
 
 	for(unsigned i=0; i<total_nodes; ++i){
-		unsigned node_id = (i+next_node)%total_nodes;
+		unsigned node_id = (i+next_node_id)%total_nodes;
 
 		if(!in_buffers[node_id].empty()) {
 			Packet _packet = in_buffers[node_id].front();
@@ -129,12 +142,16 @@ void xbar_router::Advance() {
 				else
 					conflicts++;
 			}
-			else
+			else {
 				out_buffer_full++;
+
+				if(issued[_packet.output_deviceID])
+					conflicts++;
+			}
 		}
 	}
 
-	next_node = (++next_node % total_nodes);
+	next_node_id = (++next_node_id % total_nodes);
 
 	//collect some stats about buffer util
 	for(unsigned i=0; i<total_nodes; ++i){
@@ -142,6 +159,65 @@ void xbar_router::Advance() {
 		out_buffer_util+=out_buffers[i].size();
 	}
 }
+
+//iSLIP algorithm
+//McKeown, Nick. "The iSLIP scheduling algorithm for input-queued switches." IEEE/ACM transactions on networking 2 (1999): 188-201.
+//https://www.cs.rutgers.edu/~sn624/552-F18/papers/islip.pdf
+void xbar_router::iSLIP_Advance() {
+	cycles++;
+
+	vector<unsigned> node_tmp;
+
+
+	//calcaulte how many conflicts are there for stats
+	for (unsigned i=0; i<total_nodes; ++i){
+		
+		if(!in_buffers[i].empty()){
+			Packet _packet_tmp = in_buffers[i].front();
+			if (!node_tmp.empty()){
+				if (std::find(node_tmp.begin(), node_tmp.end(), _packet_tmp.output_deviceID)!=node_tmp.end()){
+					conflicts++;
+				}
+				else 
+					node_tmp.push_back(_packet_tmp.output_deviceID);
+			}
+			else{
+				node_tmp.push_back(_packet_tmp.output_deviceID);
+			}
+		}
+	}
+
+
+	//do iSLIP
+	for(unsigned i=0; i<total_nodes; ++i){
+
+		if(Has_Buffer_Out(i, 1)) {
+			for(unsigned j=0; j<total_nodes; ++j){
+				unsigned node_id = (j+next_node[i])%total_nodes;
+
+				if(!in_buffers[node_id].empty()) {
+					Packet _packet = in_buffers[node_id].front();
+					if(_packet.output_deviceID==i){
+						out_buffers[_packet.output_deviceID].push(_packet);
+						in_buffers[node_id].pop();
+						next_node[i] = (++node_id % total_nodes);
+						break;
+					}
+				}
+			}
+		}
+		else
+			out_buffer_full++;
+	}
+
+	//collect some stats about buffer util
+	for(unsigned i=0; i<total_nodes; ++i){
+		in_buffer_util+=in_buffers[i].size();
+		out_buffer_util+=out_buffers[i].size();
+	}
+}
+
+
 
 bool xbar_router::Busy() const {
 
@@ -177,7 +253,7 @@ LocalInterconnect::LocalInterconnect(const struct inct_config& m_localinct_confi
 }
 
 LocalInterconnect::~LocalInterconnect(){
-	for (int i=0; i<m_inct_config.subnets; ++i) {
+	for (unsigned i = 0; i < m_inct_config.subnets; ++i) {
 		delete net[i];
 	}
 }
@@ -188,7 +264,7 @@ void LocalInterconnect::CreateInterconnect(unsigned m_n_shader, unsigned m_n_mem
 
 	net.resize(n_subnets);
 	for (unsigned i = 0; i < n_subnets; ++i) {
-		net[i] = new xbar_router( i, static_cast<Interconnect_type>(i), m_n_shader, m_n_mem, m_inct_config.in_buffer_limit, m_inct_config.out_buffer_limit );
+		net[i] = new xbar_router( i, static_cast<Interconnect_type>(i), m_n_shader, m_n_mem, m_inct_config.in_buffer_limit, m_inct_config.out_buffer_limit,m_inct_config.arbiter_algo);
 	}
 
 }

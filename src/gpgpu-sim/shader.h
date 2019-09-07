@@ -1326,7 +1326,7 @@ protected:
    unsigned long long m_last_inst_gpu_sim_cycle;
    unsigned long long m_last_inst_gpu_tot_sim_cycle;
 
-   std::deque<mem_fetch* > l1_latency_queue;
+   std::vector<std::deque<mem_fetch* >> l1_latency_queue;
    void L1_latency_queue_cycle();
 };
 
@@ -1392,9 +1392,9 @@ class shader_core_config : public core_config
 	 	If we won't remove it, old regression will be broken.
 		So to support the legacy config files it's best to handle in this way.
          */  
-	int num_config_to_read=N_PIPELINE_STAGES-2*(!gpgpu_tensor_core_avail);
+	int num_config_to_read= N_PIPELINE_STAGES - 2 * (!gpgpu_tensor_core_avail);
 
-        for (unsigned i = 0; i <num_config_to_read; i++) { 
+        for (int i = 0; i < num_config_to_read; i++) { 
 	    assert(toks);
 	    ntok = sscanf(toks,"%d", &pipe_widths[i]);
 	    assert(ntok == 1); 
@@ -1455,7 +1455,7 @@ class shader_core_config : public core_config
 
     bool gpgpu_dwf_reg_bankconflict;
 
-    int gpgpu_num_sched_per_core;
+    unsigned gpgpu_num_sched_per_core;
     int gpgpu_max_insn_issue_per_warp;
     bool gpgpu_dual_issue_diff_exec_units;
 

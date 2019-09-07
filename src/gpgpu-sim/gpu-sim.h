@@ -293,8 +293,11 @@ class memory_config {
    unsigned write_high_watermark;
    unsigned write_low_watermark;
    bool m_perf_sim_memcpy;
+   bool simple_dram_model;
+
    gpgpu_context* gpgpu_ctx;
 };
+
 
 extern bool g_interactive_debugger_enabled;
 
@@ -365,8 +368,8 @@ private:
     double l2_period;
 
     // GPGPU-Sim timing model options
-    unsigned gpu_max_cycle_opt;
-    unsigned gpu_max_insn_opt;
+    unsigned long long gpu_max_cycle_opt;
+    unsigned long long gpu_max_insn_opt;
     unsigned gpu_max_cta_opt;
     char *gpgpu_runtime_stat;
     bool  gpgpu_flush_l1_cache;
@@ -482,6 +485,8 @@ public:
    int num_registers_per_block() const;
    int wrp_size() const;
    int shader_clock() const;
+   int max_cta_per_core() const;
+   int get_max_cta( const kernel_info_t &k ) const;
    const struct cudaDeviceProp *get_prop() const;
    enum divergence_support_t simd_model() const; 
 

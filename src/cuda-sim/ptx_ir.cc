@@ -186,8 +186,8 @@ void symbol_table::add_function( function_info *func, const char *filename, unsi
 
 //Jin: handle instruction group for cdp
 symbol_table* symbol_table::start_inst_group() {
-   char inst_group_name[1024];
-   snprintf(inst_group_name, 1024, "%s_inst_group_%u", m_scope_name.c_str(), m_inst_group_id);
+   char inst_group_name[4096];
+   snprintf(inst_group_name, 4096, "%s_inst_group_%u", m_scope_name.c_str(), m_inst_group_id);
 
    //previous added
    assert(m_inst_group_symtab.find(std::string(inst_group_name)) == m_inst_group_symtab.end());
@@ -1154,6 +1154,8 @@ ptx_instruction::ptx_instruction( int opcode,
       		  m_wmma_layout[rr++]=last_ptx_inst_option;
       		  break;
       		case M16N16K16:
+      		case M32N8K16:
+      		case M8N32K16:
 			break;
       		default:
       		   assert(0);
@@ -1413,7 +1415,7 @@ unsigned function_info::print_insn( unsigned pc, FILE * fp ) const
    snprintf(command,1024,"c++filt -p %s",m_name.c_str());
    FILE *p = popen(command,"r");
    buffer[0]=0;
-   fgets(buffer, 1023, p);
+   assert(fgets(buffer, 1023, p) != NULL);
    // Remove trailing "\n" in buffer
    char *c;
    if ((c=strchr(buffer, '\n')) != NULL) *c = '\0';
