@@ -1144,7 +1144,7 @@ void gpgpu_sim::gpu_print_stat()
 
    time_t curr_time;
    time(&curr_time);
-   unsigned long long elapsed_time = MAX( curr_time - GPGPUsim_ctx_ptr()->g_simulation_starttime, 1 );
+   unsigned long long elapsed_time = MAX( curr_time - gpgpu_ctx->the_gpgpusim->g_simulation_starttime, 1 );
    printf( "gpu_total_sim_rate=%u\n", (unsigned)( ( gpu_tot_sim_insn + gpu_sim_insn ) / elapsed_time ) );
 
    //shader_print_l1_miss_stat( stdout );
@@ -1717,7 +1717,7 @@ void gpgpu_sim::cycle()
          time_t days, hrs, minutes, sec;
          time_t curr_time;
          time(&curr_time);
-         unsigned long long  elapsed_time = MAX(curr_time - GPGPUsim_ctx_ptr()->g_simulation_starttime, 1);
+         unsigned long long  elapsed_time = MAX(curr_time - gpgpu_ctx->the_gpgpusim->g_simulation_starttime, 1);
          if ( (elapsed_time - last_liveness_message_time) >= m_config.liveness_message_freq && DTRACE(LIVENESS) ) {
             days    = elapsed_time/(3600*24);
             hrs     = elapsed_time/3600 - 24*days;

@@ -43,38 +43,28 @@ static int sg_argc = 3;
 static const char *sg_argv[] = {"", "-config","gpgpusim.config"};
 
 
-GPGPUsim_ctx* the_gpgpusim =  NULL;
-
-GPGPUsim_ctx* GPGPUsim_ctx_ptr(){
-	if(the_gpgpusim == NULL)
-		the_gpgpusim = GPGPU_Context()->the_gpgpusim;
-
-	return the_gpgpusim;
-}
-
-static void print_simulation_time();
-
-void *gpgpu_sim_thread_sequential(void*)
+void * gpgpu_sim_thread_sequential(void * ctx_ptr)
 {
+    gpgpu_context * ctx = (gpgpu_context *)ctx_ptr;
    // at most one kernel running at a time
    bool done;
    do {
-      sem_wait(&(GPGPUsim_ctx_ptr()->g_sim_signal_start));
+      sem_wait(&(ctx->the_gpgpusim->g_sim_signal_start));
       done = true;
-      if( GPGPUsim_ctx_ptr()->g_the_gpu->get_more_cta_left() ) {
+      if( ctx->the_gpgpusim->g_the_gpu->get_more_cta_left() ) {
           done = false;
-          GPGPUsim_ctx_ptr()->g_the_gpu->init();
-          while( GPGPUsim_ctx_ptr()->g_the_gpu->active() ) {
-        	  GPGPUsim_ctx_ptr()->g_the_gpu->cycle();
-        	  GPGPUsim_ctx_ptr()->g_the_gpu->deadlock_check();
+          ctx->the_gpgpusim->g_the_gpu->init();
+          while( ctx->the_gpgpusim->g_the_gpu->active() ) {
+        	  ctx->the_gpgpusim->g_the_gpu->cycle();
+        	  ctx->the_gpgpusim->g_the_gpu->deadlock_check();
           }
-          GPGPUsim_ctx_ptr()->g_the_gpu->print_stats();
-          GPGPUsim_ctx_ptr()->g_the_gpu->update_stats();
-          print_simulation_time();
+          ctx->the_gpgpusim->g_the_gpu->print_stats();
+          ctx->the_gpgpusim->g_the_gpu->update_stats();
+          ctx->print_simulation_time();
       }
-      sem_post(&(GPGPUsim_ctx_ptr()->g_sim_signal_finish));
+      sem_post(&(ctx->the_gpgpusim->g_sim_signal_finish));
    } while(!done);
-   sem_post(&(GPGPUsim_ctx_ptr()->g_sim_signal_exit));
+   sem_post(&(ctx->the_gpgpusim->g_sim_signal_exit));
    return NULL;
 }
 
@@ -86,8 +76,9 @@ static void termination_callback()
     fflush(stdout);
 }
 
-void *gpgpu_sim_thread_concurrent(void*)
+void *gpgpu_sim_thread_concurrent(void * ctx_ptr)
 {
+    gpgpu_context * ctx = (gpgpu_context *)ctx_ptr;
     atexit(termination_callback);
     // concurrent kernel execution simulation thread
     do {
@@ -95,19 +86,19 @@ void *gpgpu_sim_thread_concurrent(void*)
            printf("GPGPU-Sim: *** simulation thread starting and spinning waiting for work ***\n");
            fflush(stdout);
         }
-        while( GPGPUsim_ctx_ptr()->g_stream_manager->empty_protected() && !GPGPUsim_ctx_ptr()->g_sim_done )
+        while( ctx->the_gpgpusim->g_stream_manager->empty_protected() && !ctx->the_gpgpusim->g_sim_done )
             ;
         if(g_debug_execution >= 3) {
            printf("GPGPU-Sim: ** START simulation thread (detected work) **\n");
-           GPGPUsim_ctx_ptr()->g_stream_manager->print(stdout);
+           ctx->the_gpgpusim->g_stream_manager->print(stdout);
            fflush(stdout);
         }
-        pthread_mutex_lock(&(GPGPUsim_ctx_ptr()->g_sim_lock));
-        GPGPUsim_ctx_ptr()->g_sim_active = true;
-        pthread_mutex_unlock(&(GPGPUsim_ctx_ptr()->g_sim_lock));
+        pthread_mutex_lock(&(ctx->the_gpgpusim->g_sim_lock));
+        ctx->the_gpgpusim->g_sim_active = true;
+        pthread_mutex_unlock(&(ctx->the_gpgpusim->g_sim_lock));
         bool active = false;
         bool sim_cycles = false;
-        GPGPUsim_ctx_ptr()->g_the_gpu->init();
+        ctx->the_gpgpusim->g_the_gpu->init();
         do {
             // check if a kernel has completed
             // launch operation on device if one is pending and can be run
@@ -119,82 +110,82 @@ void *gpgpu_sim_thread_concurrent(void*)
             // another kernel, the gpu is not re-initialized and the inter-kernel
             // behaviour may be incorrect. Check that a kernel has finished and
             // no other kernel is currently running.
-            if(GPGPUsim_ctx_ptr()->g_stream_manager->operation(&sim_cycles) && !GPGPUsim_ctx_ptr()->g_the_gpu->active())
+            if(ctx->the_gpgpusim->g_stream_manager->operation(&sim_cycles) && !ctx->the_gpgpusim->g_the_gpu->active())
                 break;
 
             //functional simulation
-            if( GPGPUsim_ctx_ptr()->g_the_gpu->is_functional_sim()) {
-                kernel_info_t * kernel = GPGPUsim_ctx_ptr()->g_the_gpu->get_functional_kernel();
+            if( ctx->the_gpgpusim->g_the_gpu->is_functional_sim()) {
+                kernel_info_t * kernel = ctx->the_gpgpusim->g_the_gpu->get_functional_kernel();
                 assert(kernel);
-                GPGPUsim_ctx_ptr()->gpgpu_ctx->func_sim->gpgpu_cuda_ptx_sim_main_func(*kernel);
-                GPGPUsim_ctx_ptr()->g_the_gpu->finish_functional_sim(kernel);
+                ctx->the_gpgpusim->gpgpu_ctx->func_sim->gpgpu_cuda_ptx_sim_main_func(*kernel);
+                ctx->the_gpgpusim->g_the_gpu->finish_functional_sim(kernel);
             }
 
             //performance simulation
-            if( GPGPUsim_ctx_ptr()->g_the_gpu->active() ) {
-            	GPGPUsim_ctx_ptr()->g_the_gpu->cycle();
+            if( ctx->the_gpgpusim->g_the_gpu->active() ) {
+            	ctx->the_gpgpusim->g_the_gpu->cycle();
             	sim_cycles = true;
-            	GPGPUsim_ctx_ptr()->g_the_gpu->deadlock_check();
+            	ctx->the_gpgpusim->g_the_gpu->deadlock_check();
             }else {
-                if(GPGPUsim_ctx_ptr()->g_the_gpu->cycle_insn_cta_max_hit()){
-                	GPGPUsim_ctx_ptr()->g_stream_manager->stop_all_running_kernels();
-                	GPGPUsim_ctx_ptr()->g_sim_done = true;
-                	GPGPUsim_ctx_ptr()->break_limit = true;
+                if(ctx->the_gpgpusim->g_the_gpu->cycle_insn_cta_max_hit()){
+                	ctx->the_gpgpusim->g_stream_manager->stop_all_running_kernels();
+                	ctx->the_gpgpusim->g_sim_done = true;
+                	ctx->the_gpgpusim->break_limit = true;
                 }
             }
 
-            active=GPGPUsim_ctx_ptr()->g_the_gpu->active() || !(GPGPUsim_ctx_ptr()->g_stream_manager->empty_protected());
+            active=ctx->the_gpgpusim->g_the_gpu->active() || !(ctx->the_gpgpusim->g_stream_manager->empty_protected());
 
-        } while( active && !GPGPUsim_ctx_ptr()->g_sim_done);
+        } while( active && !ctx->the_gpgpusim->g_sim_done);
         if(g_debug_execution >= 3) {
            printf("GPGPU-Sim: ** STOP simulation thread (no work) **\n");
            fflush(stdout);
         }
         if(sim_cycles) {
-        	GPGPUsim_ctx_ptr()->g_the_gpu->print_stats();
-        	GPGPUsim_ctx_ptr()->g_the_gpu->update_stats();
-            print_simulation_time();
+        	ctx->the_gpgpusim->g_the_gpu->print_stats();
+        	ctx->the_gpgpusim->g_the_gpu->update_stats();
+            ctx->print_simulation_time();
         }
-        pthread_mutex_lock(&(GPGPUsim_ctx_ptr()->g_sim_lock));
-        GPGPUsim_ctx_ptr()->g_sim_active = false;
-        pthread_mutex_unlock(&(GPGPUsim_ctx_ptr()->g_sim_lock));
-    } while( !GPGPUsim_ctx_ptr()->g_sim_done );
+        pthread_mutex_lock(&(ctx->the_gpgpusim->g_sim_lock));
+        ctx->the_gpgpusim->g_sim_active = false;
+        pthread_mutex_unlock(&(ctx->the_gpgpusim->g_sim_lock));
+    } while( !ctx->the_gpgpusim->g_sim_done );
 
     printf("GPGPU-Sim: *** simulation thread exiting ***\n");
     fflush(stdout);
 
-    if(GPGPUsim_ctx_ptr()->break_limit) {
+    if(ctx->the_gpgpusim->break_limit) {
     	printf("GPGPU-Sim: ** break due to reaching the maximum cycles (or instructions) **\n");
     	exit(1);
     }
 
-    sem_post(&(GPGPUsim_ctx_ptr()->g_sim_signal_exit));
+    sem_post(&(ctx->the_gpgpusim->g_sim_signal_exit));
     return NULL;
 }
 
-void synchronize()
+void gpgpu_context::synchronize()
 {
     printf("GPGPU-Sim: synchronize waiting for inactive GPU simulation\n");
-    GPGPUsim_ctx_ptr()->g_stream_manager->print(stdout);
+    the_gpgpusim->g_stream_manager->print(stdout);
     fflush(stdout);
 //    sem_wait(&g_sim_signal_finish);
     bool done = false;
     do {
-        pthread_mutex_lock(&(GPGPUsim_ctx_ptr()->g_sim_lock));
-        done = ( GPGPUsim_ctx_ptr()->g_stream_manager->empty() && !GPGPUsim_ctx_ptr()->g_sim_active ) || GPGPUsim_ctx_ptr()->g_sim_done;
-        pthread_mutex_unlock(&(GPGPUsim_ctx_ptr()->g_sim_lock));
+        pthread_mutex_lock(&(the_gpgpusim->g_sim_lock));
+        done = ( the_gpgpusim->g_stream_manager->empty() && !the_gpgpusim->g_sim_active ) || the_gpgpusim->g_sim_done;
+        pthread_mutex_unlock(&(the_gpgpusim->g_sim_lock));
     } while (!done);
     printf("GPGPU-Sim: detected inactive GPU simulation thread\n");
     fflush(stdout);
 //    sem_post(&g_sim_signal_start);
 }
 
-void exit_simulation()
+void gpgpu_context::exit_simulation()
 {
-	GPGPUsim_ctx_ptr()->g_sim_done=true;
+	the_gpgpusim->g_sim_done=true;
     printf("GPGPU-Sim: exit_simulation called\n");
     fflush(stdout);
-    sem_wait(&(GPGPUsim_ctx_ptr()->g_sim_signal_exit));
+    sem_wait(&(the_gpgpusim->g_sim_signal_exit));
     printf("GPGPU-Sim: simulation thread signaled exit\n");
     fflush(stdout);
 }
@@ -211,8 +202,8 @@ gpgpu_sim *gpgpu_context::gpgpu_ptx_sim_init_perf()
    func_sim->ptx_opcocde_latency_options(opp);
 
    icnt_reg_options(opp);
-   GPGPUsim_ctx_ptr()->g_the_gpu_config = new gpgpu_sim_config(this);
-   GPGPUsim_ctx_ptr()->g_the_gpu_config->reg_options(opp); // register GPU microrachitecture options
+   the_gpgpusim->g_the_gpu_config = new gpgpu_sim_config(this);
+   the_gpgpusim->g_the_gpu_config->reg_options(opp); // register GPU microrachitecture options
 
    option_parser_cmdline(opp, sg_argc, sg_argv); // parse configuration options
    fprintf(stdout, "GPGPU-Sim: Configuration options:\n\n");
@@ -220,37 +211,37 @@ gpgpu_sim *gpgpu_context::gpgpu_ptx_sim_init_perf()
    // Set the Numeric locale to a standard locale where a decimal point is a "dot" not a "comma"
    // so it does the parsing correctly independent of the system environment variables
    assert(setlocale(LC_NUMERIC,"C"));
-   GPGPUsim_ctx_ptr()->g_the_gpu_config->init();
+   the_gpgpusim->g_the_gpu_config->init();
 
-   GPGPUsim_ctx_ptr()->g_the_gpu = new gpgpu_sim(*(GPGPUsim_ctx_ptr()->g_the_gpu_config), this);
-   GPGPUsim_ctx_ptr()->g_stream_manager = new stream_manager((GPGPUsim_ctx_ptr()->g_the_gpu), func_sim->g_cuda_launch_blocking);
+   the_gpgpusim->g_the_gpu = new gpgpu_sim(*(the_gpgpusim->g_the_gpu_config), this);
+   the_gpgpusim->g_stream_manager = new stream_manager((the_gpgpusim->g_the_gpu), func_sim->g_cuda_launch_blocking);
 
-   GPGPUsim_ctx_ptr()->g_simulation_starttime = time((time_t *)NULL);
+   the_gpgpusim->g_simulation_starttime = time((time_t *)NULL);
 
-   sem_init(&(GPGPUsim_ctx_ptr()->g_sim_signal_start),0,0);
-   sem_init(&(GPGPUsim_ctx_ptr()->g_sim_signal_finish),0,0);
-   sem_init(&(GPGPUsim_ctx_ptr()->g_sim_signal_exit),0,0);
+   sem_init(&(the_gpgpusim->g_sim_signal_start),0,0);
+   sem_init(&(the_gpgpusim->g_sim_signal_finish),0,0);
+   sem_init(&(the_gpgpusim->g_sim_signal_exit),0,0);
 
-   return GPGPUsim_ctx_ptr()->g_the_gpu;
+   return the_gpgpusim->g_the_gpu;
 }
 
-void start_sim_thread(int api)
+void gpgpu_context::start_sim_thread(int api)
 {
-    if( GPGPUsim_ctx_ptr()->g_sim_done ) {
-    	GPGPUsim_ctx_ptr()->g_sim_done = false;
+    if( the_gpgpusim->g_sim_done ) {
+    	the_gpgpusim->g_sim_done = false;
         if( api == 1 ) {
-           pthread_create(&(GPGPUsim_ctx_ptr()->g_simulation_thread),NULL,gpgpu_sim_thread_concurrent,NULL);
+           pthread_create(&(the_gpgpusim->g_simulation_thread),NULL,gpgpu_sim_thread_concurrent,(void *)this);
         } else {
-           pthread_create(&(GPGPUsim_ctx_ptr()->g_simulation_thread),NULL,gpgpu_sim_thread_sequential,NULL);
+           pthread_create(&(the_gpgpusim->g_simulation_thread),NULL,gpgpu_sim_thread_sequential,(void *)this);
         }
     }
 }
 
-void print_simulation_time()
+void gpgpu_context::print_simulation_time()
 {
    time_t current_time, difference, d, h, m, s;
    current_time = time((time_t *)NULL);
-   difference = MAX(current_time - GPGPUsim_ctx_ptr()->g_simulation_starttime, 1);
+   difference = MAX(current_time - the_gpgpusim->g_simulation_starttime, 1);
 
    d = difference/(3600*24);
    h = difference/3600 - 24*d;
@@ -260,18 +251,18 @@ void print_simulation_time()
    fflush(stderr);
    printf("\n\ngpgpu_simulation_time = %u days, %u hrs, %u min, %u sec (%u sec)\n",
           (unsigned)d, (unsigned)h, (unsigned)m, (unsigned)s, (unsigned)difference );
-   printf("gpgpu_simulation_rate = %u (inst/sec)\n", (unsigned)(GPGPUsim_ctx_ptr()->g_the_gpu->gpu_tot_sim_insn / difference) );
-   const unsigned cycles_per_sec = (unsigned)(GPGPUsim_ctx_ptr()->g_the_gpu->gpu_tot_sim_cycle / difference);
+   printf("gpgpu_simulation_rate = %u (inst/sec)\n", (unsigned)(the_gpgpusim->g_the_gpu->gpu_tot_sim_insn / difference) );
+   const unsigned cycles_per_sec = (unsigned)(the_gpgpusim->g_the_gpu->gpu_tot_sim_cycle / difference);
    printf("gpgpu_simulation_rate = %u (cycle/sec)\n", cycles_per_sec );
-   printf("gpgpu_silicon_slowdown = %ux\n", GPGPUsim_ctx_ptr()->g_the_gpu->shader_clock() * 1000 / cycles_per_sec);
+   printf("gpgpu_silicon_slowdown = %ux\n", the_gpgpusim->g_the_gpu->shader_clock() * 1000 / cycles_per_sec);
    fflush(stdout);
 }
 
-int gpgpu_opencl_ptx_sim_main_perf( kernel_info_t *grid )
+int gpgpu_context::gpgpu_opencl_ptx_sim_main_perf( kernel_info_t *grid )
 {
-   GPGPUsim_ctx_ptr()->g_the_gpu->launch(grid);
-   sem_post(&(GPGPUsim_ctx_ptr()->g_sim_signal_start));
-   sem_wait(&(GPGPUsim_ctx_ptr()->g_sim_signal_finish));
+   the_gpgpusim->g_the_gpu->launch(grid);
+   sem_post(&(the_gpgpusim->g_sim_signal_start));
+   sem_wait(&(the_gpgpusim->g_sim_signal_finish));
    return 0;
 }
 

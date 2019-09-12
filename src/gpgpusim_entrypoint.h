@@ -76,10 +76,4 @@ class GPGPUsim_ctx {
 
 };
 
-void start_sim_thread(int api);
-
-struct GPGPUsim_ctx* GPGPUsim_ctx_ptr();
-
-int gpgpu_opencl_ptx_sim_main_perf( kernel_info_t *grid );
-
 #endif
