@@ -1892,7 +1892,7 @@ __host__ cudaError_t CUDARTAPI cudaMallocPitch(void **devPtr, size_t *pitch, siz
 
 __host__ cudaError_t CUDARTAPI cudaMallocArray(struct cudaArray **array, const struct cudaChannelFormatDesc *desc, size_t width, size_t height __dv(1))
 {
-    return cudaMallocArrayInternal(array, desc, width, height __dv(1));
+    return cudaMallocArrayInternal(array, desc, width, height);
 }
 
 __host__ cudaError_t CUDARTAPI cudaFree(void *devPtr)
