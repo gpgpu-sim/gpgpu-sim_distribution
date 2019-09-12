@@ -44,8 +44,7 @@ int main ( int argc, const char **argv )
 
 	trace_parser tracer(m_gpgpu_sim->get_config().get_traces_filename(), m_gpgpu_sim, m_gpgpu_context);
 
-	std::vector<std::string> kernellist;
-	tracer.parse_kernellist_file(kernellist);
+	std::vector<std::string> kernellist = tracer.parse_kernellist_file();
 
 	for(unsigned i=0; i<kernellist.size(); ++i) {
 
@@ -103,7 +102,7 @@ trace_parser::trace_parser(const char* kernellist_filepath, gpgpu_sim * m_gpgpu_
 	kernellist_filename = kernellist_filepath;
 }
 
-void trace_parser::parse_kernellist_file(std::vector<std::string>& kernellist) {
+std::vector<std::string> trace_parser::parse_kernellist_file() {
 
 	ifs.open(kernellist_filename);
 
@@ -120,6 +119,7 @@ void trace_parser::parse_kernellist_file(std::vector<std::string>& kernellist) {
 	}
 
 	std::string line, filepath;
+	std::vector<std::string> kernellist;
 	while(!ifs.eof()) {
 		getline(ifs, line);
 		if(line.empty())
@@ -129,6 +129,7 @@ void trace_parser::parse_kernellist_file(std::vector<std::string>& kernellist) {
 	}
 
 	ifs.close();
+	return kernellist;
 }
 
 
@@ -157,6 +158,7 @@ trace_kernel_info_t* trace_parser::parse_kernel_info(const std::string& kerneltr
 			continue;
 		}
 		else if(line[0] == '#'){
+			//the trace format, ignore this and assume fixed format for now
 			break;  //the begin of the instruction stream
 		}
 		else if(line[0] == '-') {
@@ -195,7 +197,8 @@ trace_kernel_info_t* trace_parser::parse_kernel_info(const std::string& kerneltr
 	dim3 gridDim(grid_dim_x, grid_dim_y, grid_dim_z);
 	dim3 blockDim(tb_dim_x, tb_dim_y, tb_dim_z);
 	trace_function_info* function_info = new trace_function_info(info, m_gpgpu_context);
-	trace_kernel_info_t* kernel_info =  new trace_kernel_info_t(gridDim, blockDim, function_info, kerneltraces_filepath);
+	function_info->set_name(kernel_name.c_str());
+	trace_kernel_info_t* kernel_info =  new trace_kernel_info_t(gridDim, blockDim, function_info, &ifs, m_gpgpu_sim);
 
 	return kernel_info;
 }
@@ -209,5 +212,145 @@ void trace_parser::kernel_finalizer(trace_kernel_info_t* kernel_info){
 	delete kernel_info;
 }
 
+bool trace_kernel_info_t::get_next_threadblock_traces(std::vector<std::vector<trace_warp_inst_t>>& threadblock_traces) {
+
+	threadblock_traces.clear();
+	unsigned warps_per_tb = ceil(float(threads_per_cta()/32));
+	threadblock_traces.resize(warps_per_tb);
+
+	unsigned block_id_x=0, block_id_y=0, block_id_z=0;
+	unsigned warp_id=0;
+	unsigned insts_num=0;
+	std::string line;
+	std::stringstream ss;
+	std::string string1, string2;
+
+	bool start_of_tb_stream_found = false;
+
+	while(!ifs->eof()) {
+		getline(*ifs, line);
+
+		if (line.length() == 0) {
+			continue;
+		}
+		else {
+			ss.str(line);
+			ss>>string1>>string2;
+			if (string1 == "#BEGIN_TB") {
+				if(!start_of_tb_stream_found)
+					start_of_tb_stream_found=true;
+				else assert(0 && "Parsing error: thread block start before the previous one finish");
+			}
+			else if (string1 == "#END_TB") {
+				assert(start_of_tb_stream_found);
+				break; //end of TB stream
+			}
+			else if(string1 == "thread" && string2 == "block") {
+				assert(start_of_tb_stream_found);
+				sscanf(line.c_str(), "thread block = %d,%d,%d", &block_id_x, &block_id_y, &block_id_z);
+			}
+			else if (string1 == "warp") {
+				//the start of new warp stream
+				assert(start_of_tb_stream_found);
+				sscanf(line.c_str(), "warp = %d", &warp_id);
+			}
+			else if (string1 == "insts") {
+				assert(start_of_tb_stream_found);
+				sscanf(line.c_str(), "insts = %d", &insts_num);
+				threadblock_traces[warp_id].resize(insts_num);
+			}
+			else {
+				assert(start_of_tb_stream_found);
+				trace_warp_inst_t inst(m_gpgpu_sim->getShaderCoreConfig());
+				inst.parse_from_string(line);
+				threadblock_traces[warp_id].push_back(inst);
+			}
+		}
+	}
+
+	return true;
+}
+
+
+bool trace_warp_inst_t::parse_from_string(std::string trace){
+
+	std::stringstream ss;
+	ss.str(trace);
+
+
+	std::string temp;
+	unsigned threadblock_x=0, threadblock_y=0, threadblock_z=0, warpid_tb=0, sm_id=0, warpid_sm=0;
+	unsigned long long m_pc=0;
+	unsigned mask=0;
+	unsigned reg_dest=0;
+	std::string opcode;
+	unsigned reg_srcs_num=0;
+	unsigned reg_srcs[4];
+	unsigned mem_width=0;
+	unsigned long long mem_addresses[warp_size()];
+
+	ss>>std::dec>>threadblock_x>>threadblock_y>>threadblock_z>>warpid_tb>>sm_id>>warpid_sm;
+
+	ss>>std::hex>>m_pc>>mask;
+	std::bitset<MAX_WARP_SIZE> mask_bits(mask);
+
+	ss>>std::dec>>temp;
+	sscanf(temp.c_str(), "R%d", &reg_dest);
+
+	ss>>opcode;
+	ss>>reg_srcs_num;
+
+	for(unsigned i=0; i<reg_srcs_num; ++i) {
+		ss>>temp;
+		sscanf(temp.c_str(), "R%d", &reg_srcs[i]);
+	}
+
+	ss>>mem_width;
+	if(mem_width > 0)  //then it is a memory inst
+	{
+		for (int s = 0; s < warp_size(); s++) {
+			if(mask_bits.test(s))
+				ss>>std::hex>>mem_addresses[s];
+			else
+				mem_addresses[s]=0;
+		}
+	}
+
+	//After parsing, fill the inst_t and warp_inst_t params
+	active_mask_t active_mask = mask_bits;
+	set_active( active_mask );
+
+	for(unsigned i=0; i<warp_size(); ++i)
+		set_addr(i, mem_addresses[i]);
+
+	std::string opcode1 = opcode.substr(0, opcode.find("."));
+
+	m_decoded = true;
+	pc = m_pc;
+	isize = 16;   //TO DO, change this
+	for(unsigned i=0; i<MAX_OUTPUT_VALUES; i++) {
+		out[i] = 0;
+	}
+	for(unsigned i=0; i<MAX_INPUT_VALUES; i++) {
+		in[i] = 0;
+	}
+	incount=0;
+	outcount=0;
+	is_vectorin = 0;
+	is_vectorout = 0;
+
+	/*
+	switch(opcode1){
+	case "MOV":
+		incount=1;
+		break;
+	default:
+		std::cout<<"unknown instruction: "<<opcode;
+		break;
+	}
+	*/
+
+	return true;
+}
 
 
