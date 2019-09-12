@@ -214,7 +214,8 @@ void fix_duplicate_errors(char fname2[1024]) {
 	long filesize = ftell(ptxsource);
 	rewind(ptxsource);
 	char *ptxdata = (char*)malloc((filesize+1)*sizeof(char));
-	fread(ptxdata, filesize, 1, ptxsource);
+    // Fail if we do not read the file
+	assert(fread(ptxdata, filesize, 1, ptxsource) == 1);
 	fclose(ptxsource);
 
 	FILE *ptxdest = fopen(fname2,"w");

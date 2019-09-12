@@ -66,7 +66,7 @@ int main ( int argc, const char **argv )
 				m_gpgpu_sim->deadlock_check();
 			}else {
 				if(m_gpgpu_sim->cycle_insn_cta_max_hit()){
-					g_stream_manager()->stop_all_running_kernels();
+					m_gpgpu_context->the_gpgpusim->g_stream_manager->stop_all_running_kernels();
 					break_limit = true;
 				}
 			}
@@ -81,7 +81,7 @@ int main ( int argc, const char **argv )
 
 		if(sim_cycles) {
 			m_gpgpu_sim->update_stats();
-			print_simulation_time();
+			m_gpgpu_context->print_simulation_time();
 		}
 
 		if(break_limit) {

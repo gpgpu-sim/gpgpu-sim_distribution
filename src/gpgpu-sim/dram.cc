@@ -482,7 +482,6 @@ void dram_t::cycle()
 
         bool memory_pending_rw_found=false;
         for (unsigned j=0;j<m_config->nbk;j++) {
-     	   unsigned grp = get_bankgrp_number(j);
      	   if (bk[j]->mrq && (((bk[j]->curr_row == bk[j]->mrq->row) &&
      		  (bk[j]->mrq->rw == READ)  &&
      		  (bk[j]->state == BANK_ACTIVE))
@@ -817,10 +816,10 @@ void dram_t::visualize() const
 
 void dram_t::print_stat( FILE* simFile ) 
 {
-   fprintf(simFile,"DRAM (%llu): n_cmd=%llu n_nop=%llu n_act=%llu n_pre=%llu n_ref=%llu n_req=%llu n_rd=%llu n_write=%llu bw_util=%.4g ",
+   fprintf(simFile,"DRAM (%u): n_cmd=%llu n_nop=%llu n_act=%llu n_pre=%llu n_ref=%llu n_req=%llu n_rd=%llu n_write=%llu bw_util=%.4g ",
            id, n_cmd, n_nop, n_act, n_pre, n_ref, n_req, n_rd, n_wr,
            (float)bwutil/n_cmd);
-   fprintf(simFile, "mrqq: %d %.4g mrqsmax=%d ", max_mrqs, (float)ave_mrqs/n_cmd, max_mrqs_temp);
+   fprintf(simFile, "mrqq: %d %.4g mrqsmax=%llu ", max_mrqs, (float)ave_mrqs/n_cmd, max_mrqs_temp);
    fprintf(simFile, "\n");
    fprintf(simFile, "dram_util_bins:");
    for (unsigned i=0;i<10;i++) fprintf(simFile, " %d", dram_util_bins[i]);
@@ -899,10 +898,10 @@ void dram_t::set_dram_power_stats(	unsigned &cmd,
 unsigned dram_t::get_bankgrp_number(unsigned i)
 {
 	if(m_config->dram_bnkgrp_indexing_policy == HIGHER_BITS) { //higher bits
-		return i>>m_config->bk_tag_length;
+		return i >> m_config->bk_tag_length;
 	}
 	else if (m_config->dram_bnkgrp_indexing_policy == LOWER_BITS) { //lower bits
-		return i&((m_config->nbkgrp-1));
+		return i & ((m_config->nbkgrp - 1));
 	}
 	else {
 		assert(1);

@@ -371,8 +371,8 @@ private:
     double l2_period;
 
     // GPGPU-Sim timing model options
-    unsigned gpu_max_cycle_opt;
-    unsigned gpu_max_insn_opt;
+    unsigned long long gpu_max_cycle_opt;
+    unsigned long long gpu_max_insn_opt;
     unsigned gpu_max_cta_opt;
     char *gpgpu_runtime_stat;
     bool  gpgpu_flush_l1_cache;

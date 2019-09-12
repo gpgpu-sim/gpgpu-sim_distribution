@@ -647,13 +647,13 @@ unsigned _cl_kernel::sm_context_uid = 0;
 class _cl_device_id *GPGPUSim_Init()
 {
    static _cl_device_id *the_device = NULL;
+   gpgpu_context *ctx;
+   ctx = GPGPU_Context();
    if( !the_device ) { 
-       gpgpu_context *ctx;
-       ctx = GPGPU_Context();
       gpgpu_sim *the_gpu = ctx->gpgpu_ptx_sim_init_perf(); 
       the_device = new _cl_device_id(the_gpu);
    } 
-   start_sim_thread(2);
+   ctx->start_sim_thread(2);
    return the_device;
 }
 
@@ -960,7 +960,7 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
    if ( ctx->func_sim->g_ptx_sim_mode )
       ctx->func_sim->gpgpu_opencl_ptx_sim_main_func( grid );
    else
-      gpgpu_opencl_ptx_sim_main_perf( grid );
+      ctx->gpgpu_opencl_ptx_sim_main_perf( grid );
    return CL_SUCCESS;
 }
 

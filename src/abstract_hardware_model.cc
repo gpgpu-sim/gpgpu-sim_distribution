@@ -808,14 +808,14 @@ void kernel_info_t::notify_parent_finished() {
    if(m_parent_kernel) {
        m_kernel_entry->gpgpu_ctx->device_runtime->g_total_param_size -= ((m_kernel_entry->get_args_aligned_size() + 255)/256*256);
        m_parent_kernel->remove_child(this);
-       g_stream_manager()->register_finished_kernel(m_parent_kernel->get_uid());
+       m_kernel_entry->gpgpu_ctx->the_gpgpusim->g_stream_manager->register_finished_kernel(m_parent_kernel->get_uid());
    }
 }
 
 CUstream_st * kernel_info_t::create_stream_cta(dim3 ctaid) {
     assert(get_default_stream_cta(ctaid));
     CUstream_st * stream = new CUstream_st();
-    g_stream_manager()->add_stream(stream);
+    m_kernel_entry->gpgpu_ctx->the_gpgpusim->g_stream_manager->add_stream(stream);
     assert(m_cta_streams.find(ctaid) != m_cta_streams.end());
     assert(m_cta_streams[ctaid].size() >= 1); //must have default stream
     m_cta_streams[ctaid].push_back(stream);
@@ -831,7 +831,7 @@ CUstream_st * kernel_info_t::get_default_stream_cta(dim3 ctaid) {
     else {
       m_cta_streams[ctaid] = std::list<CUstream_st *>();
       CUstream_st * stream = new CUstream_st();
-      g_stream_manager()->add_stream(stream);
+      m_kernel_entry->gpgpu_ctx->the_gpgpusim->g_stream_manager->add_stream(stream);
       m_cta_streams[ctaid].push_back(stream);
       return stream;
     }
@@ -863,7 +863,7 @@ void kernel_info_t::destroy_cta_streams() {
      for(auto s = m_cta_streams.begin(); s != m_cta_streams.end(); s++) {
         stream_size += s->second.size();
         for(auto ss = s->second.begin(); ss != s->second.end(); ss++)
-        g_stream_manager()->destroy_stream(*ss);
+        m_kernel_entry->gpgpu_ctx->the_gpgpusim->g_stream_manager->destroy_stream(*ss);
         s->second.clear();
      }
      printf("size %lu\n", stream_size);
