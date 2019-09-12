@@ -203,7 +203,7 @@ void ptx_thread_info::print_reg_thread(char * fname)
           const std::string &name = it->first->name();
           const std::string &dec= it->first->decl_location();
           unsigned size = it->first->get_size_in_bytes();
-          fprintf(fp,"%s %llu %s %d\n",name.c_str(),it->second, dec.c_str(),size );
+          fprintf(fp,"%s %llu %s %d\n", name.c_str(), it->second, dec.c_str(), size);
           
         }
    //m_regs.pop_back();     
@@ -224,7 +224,6 @@ void ptx_thread_info::resume_reg_thread(char * fname, symbol_table * symtab)
       {
           symbol *reg;
           char * pch;
-          unsigned size;
           pch = strtok (line," ");
           char * name =pch;
           reg= symtab->lookup(name);
@@ -232,11 +231,7 @@ void ptx_thread_info::resume_reg_thread(char * fname, symbol_table * symtab)
           pch = strtok (NULL," "); 
           data = atoi(pch);
           pch = strtok (NULL," ");
-          char * decl= pch;
           pch = strtok (NULL," ");
-          size = atoi(pch);
-
-
           m_regs.back()[reg] = data;
       }
       fclose ( fp2 );
@@ -1819,9 +1814,7 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
    	ptx_reg_t matrix_d[16][16];
    	ptx_reg_t src_data;
 	ptx_thread_info *thread;
-	int stride;
 
-	unsigned wmma_type = pI->get_wmma_type();
 	unsigned a_layout = pI->get_wmma_layout(0);
 	unsigned b_layout = pI->get_wmma_layout(1);
 	unsigned type = pI->get_type();
@@ -1833,7 +1826,6 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
          	tid= inst.warp_id_func()*core->get_warp_size();
         else
          	tid= inst.warp_id()*core->get_warp_size();
-	unsigned thread_group_index;
 	float temp;
 	half temp2; 	
 	
@@ -1847,9 +1839,9 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
          		ptx_reg_t v[8];
          		thread->get_vector_operand_values( src_a, v, nelem );
 			if(core->get_gpu()->gpgpu_ctx->debug_tensorcore){
-				printf("Thread%d_Iteration=%d\n:",thrd,operand_num);
-				for(k=0;k<nelem;k++){
-					printf("%x ",v[k].u64);
+				printf("Thread%d_Iteration=%d\n:", thrd, operand_num);
+				for(k = 0; k < nelem; k++){
+					printf("%llx ",v[k].u64);
 				}
 				printf("\n");
 			}
@@ -2027,7 +2019,7 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 
 				printf("thread%d:",thrd);
 				for(k=0;k<8;k++){
-					printf("%x ",matrix_d[row_t[k]][col_t[k]].f16);
+					printf("%x ", (unsigned int)matrix_d[row_t[k]][col_t[k]].f16);
 				}
 				printf("\n");
 			}
@@ -2038,7 +2030,7 @@ void mma_impl( const ptx_instruction *pI, core_t *core, warp_inst_t inst )
 			nw_data4.s64=((matrix_d[row_t[6]][col_t[6]].s64   & 0xffff))|((matrix_d[row_t[7]][col_t[7]].s64&0xffff)<<16);
    			thread->set_vector_operand_values(dst,nw_data1,nw_data2,nw_data3,nw_data4);
 			if(core->get_gpu()->gpgpu_ctx->debug_tensorcore)
-		 		printf("thread%d=%x,%x,%x,%x",thrd,nw_data1.s64,nw_data2.s64,nw_data3.s64,nw_data4.s64);
+		 		printf("thread%d=%llx,%llx,%llx,%llx", thrd, nw_data1.s64, nw_data2.s64, nw_data3.s64, nw_data4.s64);
 		
 		}
 		else{
@@ -2298,9 +2290,8 @@ unsigned int saturatei(unsigned int a, unsigned int max)
 
 ptx_reg_t f2x( ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign, int rounding_mode, int saturation_mode )
 {
- half mytemp;
- float myfloat;
-  half_float::half tmp_h;
+   half mytemp;
+   half_float::half tmp_h;
    //assert( from_width == 32); 
 
    enum cudaRoundMode mode = cudaRoundZero;
@@ -3085,7 +3076,7 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
    size_t size;
    unsigned smid;
    int t;
-   int thrd,odd,inx,k;
+   int thrd, k;
    ptx_thread_info *thread;
    
    const operand_info &src  = pI->operand_lookup(1);
@@ -3105,15 +3096,13 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
    _memory_op_t insn_memory_op = pI->has_memory_read() ? memory_load : memory_store;
    for (thrd=0; thrd < core->get_warp_size(); thrd++) {
 	thread = core->get_thread_info()[tid+thrd];
-	odd=thrd%2;
-	inx=thrd/2;
-    	ptx_reg_t addr_reg = thread->get_operand_value(src1, src, type, thread, 1);
+    ptx_reg_t addr_reg = thread->get_operand_value(src1, src, type, thread, 1);
    	ptx_reg_t src2_data = thread->get_operand_value(src2, src, type, thread, 1);
 	const operand_info &src_a=  pI->operand_lookup(1);
         unsigned nelem = src_a.get_vect_nelem();
         ptx_reg_t* v= new ptx_reg_t[8]; 
        	thread->get_vector_operand_values( src_a, v, nelem );
-  	stride=src2_data.u32;
+  	stride = src2_data.u32;
  
    	memory_space_t space = pI->get_space();
 
@@ -3130,9 +3119,9 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
 	}
    	decode_space(space,thread,src1,mem,addr);
 
-   	type_info_key::type_decode(type,size,t);
+   	type_info_key::type_decode(type, size, t);
    	if(core->get_gpu()->gpgpu_ctx->debug_tensorcore)
-		printf("mma_st: thrd=%d,addr=%x, fp(size=%d), stride=%d\n",thrd,addr_reg.u32,size,src2_data.u32);
+		printf("mma_st: thrd=%d, addr=%x, fp(size=%zu), stride=%d\n", thrd, addr_reg.u32, size, src2_data.u32);
 	addr_t new_addr = addr+thread_group_offset(thrd,wmma_type,wmma_layout,type,stride)*size/8;  
 	addr_t push_addr;
 
@@ -3152,7 +3141,7 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
 			mem_txn_addr[num_mem_txn++]=push_addr;
 	
 			if(core->get_gpu()->gpgpu_ctx->debug_tensorcore){
-				printf("wmma:store:thread%d=%x,%x,%x,%x,%x,%x,%x,%x\n",thrd,v[0].s64,v[1].s64,v[2].s64,v[3].s64,v[4].s64,v[5].s64,v[6].s64,v[7].s64);   
+				printf("wmma:store:thread%d=%llx,%llx,%llx,%llx,%llx,%llx,%llx,%llx\n",thrd,v[0].s64,v[1].s64,v[2].s64,v[3].s64,v[4].s64,v[5].s64,v[6].s64,v[7].s64);   
 				float temp;
 				int l;
 				printf("thread=%d:",thrd);
@@ -3179,7 +3168,7 @@ void mma_st_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
 			}
 	
 			if(core->get_gpu()->gpgpu_ctx->debug_tensorcore)
-				printf("wmma:store:thread%d=%x,%x,%x,%x,%x,%x,%x,%x\n",thrd,nw_v[0].s64,nw_v[1].s64,nw_v[2].s64,nw_v[3].s64,nw_v[4].s64,nw_v[5].s64,nw_v[6].s64,nw_v[7].s64);   
+				printf("wmma:store:thread%d=%llx,%llx,%llx,%llx,%llx,%llx,%llx,%llx\n",thrd,nw_v[0].s64,nw_v[1].s64,nw_v[2].s64,nw_v[3].s64,nw_v[4].s64,nw_v[5].s64,nw_v[6].s64,nw_v[7].s64);   
 		}
 	}
    	
@@ -3238,11 +3227,11 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
 	}
 
 	decode_space(space,thread,src1,mem,addr);
-   	type_info_key::type_decode(type,size,t);
+   	type_info_key::type_decode(type, size, t);
 	
 	ptx_reg_t data[16];
    	if(core->get_gpu()->gpgpu_ctx->debug_tensorcore)	
-		printf("mma_ld: thrd=%d,addr=%x, fpsize=%d, stride=%d\n",thrd,src1_data.u32,size,src2_data.u32);
+		printf("mma_ld: thrd=%d,addr=%x, fpsize=%zu, stride=%d\n", thrd, src1_data.u32, size, src2_data.u32);
 	
 	addr_t new_addr = addr+thread_group_offset(thrd,wmma_type,wmma_layout,type,stride)*size/8;  
 	addr_t fetch_addr;
@@ -3341,7 +3330,7 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
 		if(type==F16_TYPE){
 			printf("\nmma_ld:thread%d= ",thrd);
 			for(i=0;i<16;i++){
-				printf("%x ",data[i].u64);
+				printf("%llx ",data[i].u64);
 			}
 			printf("\n");
 			
@@ -3361,7 +3350,7 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
 			printf("\n");
 			printf("\nmma_ld:thread%d= ",thrd);
 			for(i=0;i<8;i++){
-				printf("%x ",data[i].u64);
+				printf("%llx ",data[i].u64);
 			}
 			printf("\n");
 		}
@@ -3388,15 +3377,15 @@ void mma_ld_impl( const ptx_instruction *pI, core_t *core, warp_inst_t &inst )
 		else
    			thread->set_wmma_vector_operand_values(dst,nw_data[0],nw_data[1],nw_data[2],nw_data[3],nw_data[4],nw_data[5],nw_data[6],nw_data[7]);
 		if(core->get_gpu()->gpgpu_ctx->debug_tensorcore){	
-			printf("mma_ld:data[0].s64=%x,data[1].s64=%x,new_data[0].s64=%x\n",data[0].u64,data[1].u64,nw_data[0].u64);	
-			printf("mma_ld:data[2].s64=%x,data[3].s64=%x,new_data[1].s64=%x\n",data[2].u64,data[3].u64,nw_data[1].u64);	
-			printf("mma_ld:data[4].s64=%x,data[5].s64=%x,new_data[2].s64=%x\n",data[4].u64,data[5].u64,nw_data[2].u64);	
-			printf("mma_ld:data[6].s64=%x,data[7].s64=%x,new_data[3].s64=%x\n",data[6].u64,data[7].u64,nw_data[3].u64);	
+			printf("mma_ld:data[0].s64=%llx,data[1].s64=%llx,new_data[0].s64=%llx\n",data[0].u64,data[1].u64,nw_data[0].u64);	
+			printf("mma_ld:data[2].s64=%llx,data[3].s64=%llx,new_data[1].s64=%llx\n",data[2].u64,data[3].u64,nw_data[1].u64);	
+			printf("mma_ld:data[4].s64=%llx,data[5].s64=%llx,new_data[2].s64=%llx\n",data[4].u64,data[5].u64,nw_data[2].u64);	
+			printf("mma_ld:data[6].s64=%llx,data[7].s64=%llx,new_data[3].s64=%llx\n",data[6].u64,data[7].u64,nw_data[3].u64);	
 			if(wmma_type!=LOAD_C){
-			printf("mma_ld:data[8].s64=%x,data[9].s64=%x,new_data[4].s64=%x\n",data[8].u64,data[9].u64,nw_data[4].s64);	
-			printf("mma_ld:data[10].s64=%x,data[11].s64=%x,new_data[5].s64=%x\n",data[10].u64,data[11].u64,nw_data[5].u64);	
-			printf("mma_ld:data[12].s64=%x,data[13].s64=%x,new_data[6].s64=%x\n",data[12].u64,data[13].u64,nw_data[6].u64);	
-			printf("mma_ld:data[14].s64=%x,data[15].s64=%x,new_data[7].s64=%x\n",data[14].u64,data[15].u64,nw_data[3].u64);	
+			printf("mma_ld:data[8].s64=%llx,data[9].s64=%llx,new_data[4].s64=%llx\n",data[8].u64,data[9].u64,nw_data[4].s64);	
+			printf("mma_ld:data[10].s64=%llx,data[11].s64=%llx,new_data[5].s64=%llx\n",data[10].u64,data[11].u64,nw_data[5].u64);	
+			printf("mma_ld:data[12].s64=%llx,data[13].s64=%llx,new_data[6].s64=%llx\n",data[12].u64,data[13].u64,nw_data[6].u64);	
+			printf("mma_ld:data[14].s64=%llx,data[15].s64=%llx,new_data[7].s64=%llx\n",data[14].u64,data[15].u64,nw_data[3].u64);	
 			}
 		}
 	}
@@ -4132,9 +4121,9 @@ int prmt_mode_present(int mode)
 	}
 	return returnval;
 }
-int read_byte(int mode,int control,int d_sel_index,signed long long value){
+int read_byte(int mode, int control, int d_sel_index, signed long long value){
 
-	int returnval;
+	int returnval = 0;
 	int prmt_f4e_mode[4][4]={{0,1,2,3},{1,2,3,4},{2,3,4,5},{3,4,5,6}};
 	int prmt_b4e_mode[4][4]={{0,7,6,5},{1,0,7,6},{2,1,0,7},{3,2,1,0}};
 	int prmt_rc8_mode[4][4]={{0,0,0,0},{1,1,1,1},{2,2,2,2},{3,3,3,3}};
@@ -4157,11 +4146,12 @@ int read_byte(int mode,int control,int d_sel_index,signed long long value){
 			case PRMT_RC8_MODE:	returnval=prmt_rc8_mode[control][d_sel_index];break;
 			case PRMT_ECL_MODE:	returnval=prmt_ecl_mode[control][d_sel_index];break;
 			case PRMT_ECR_MODE:	returnval=prmt_ecr_mode[control][d_sel_index];break;
-			case PRMT_RC16_MODE:	returnval=prmt_rc16_mode[control][d_sel_index];break;
-			default: printf("ERROR\n");break;
+			case PRMT_RC16_MODE: returnval=prmt_rc16_mode[control][d_sel_index];break;
+            // Change the default from printing "ERROR" to just asserting
+			default: assert(false);
 		}
 	}	
-	return (returnval<<8*d_sel_index);
+	return (returnval << 8 * d_sel_index);
 }
 
 void prmt_impl( const ptx_instruction *pI, ptx_thread_info *thread ) { 
