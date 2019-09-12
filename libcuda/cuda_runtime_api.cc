@@ -150,9 +150,6 @@
 #endif
 
 
-extern void synchronize();
-extern void exit_simulation();
-
 /*DEVICE_BUILTIN*/
 struct cudaArray
 {
@@ -176,8 +173,6 @@ struct cudaArray
 
 cudaError_t g_last_cudaError = cudaSuccess;
 
-//extern stream_manager *g_stream_manager();
-
 void register_ptx_function( const char *name, function_info *impl )
 {
 	// no longer need this
@@ -199,8 +194,7 @@ void register_ptx_function( const char *name, function_info *impl )
 
 struct _cuda_device_id *gpgpu_context::GPGPUSim_Init()
 {
-	//static _cuda_device_id *the_device = NULL;
-	_cuda_device_id *the_device = GPGPUsim_ctx_ptr()->the_cude_device;
+	_cuda_device_id *the_device = the_gpgpusim->the_cude_device;
 	if( !the_device ) {
 		gpgpu_sim *the_gpu = gpgpu_ptx_sim_init_perf();
 
@@ -245,22 +239,21 @@ struct _cuda_device_id *gpgpu_context::GPGPUSim_Init()
 		prop->maxThreadsPerMultiProcessor = the_gpu->threads_per_core();
 #endif
 		the_gpu->set_prop(prop);
-		GPGPUsim_ctx_ptr()->the_cude_device = new _cuda_device_id(the_gpu);
-		the_device = GPGPUsim_ctx_ptr()->the_cude_device;
+		the_gpgpusim->the_cude_device = new _cuda_device_id(the_gpu);
+		the_device = the_gpgpusim->the_cude_device;
 	}
 	start_sim_thread(1);
 	return the_device;
 }
 
-static CUctx_st* GPGPUSim_Context()
+CUctx_st* GPGPUSim_Context(gpgpu_context * ctx)
 {
 	//static CUctx_st *the_context = NULL;
-	gpgpu_context *cur_ctx = GPGPU_Context();
-	CUctx_st *the_context = GPGPUsim_ctx_ptr()->the_context;
+	CUctx_st *the_context = ctx->the_gpgpusim->the_context;
 	if( the_context == NULL ) {
-		_cuda_device_id *the_gpu = cur_ctx->GPGPUSim_Init();
-		GPGPUsim_ctx_ptr()->the_context = new CUctx_st(the_gpu);
-		the_context = GPGPUsim_ctx_ptr()->the_context;
+		_cuda_device_id *the_gpu = ctx->GPGPUSim_Init();
+		ctx->the_gpgpusim->the_context = new CUctx_st(the_gpu);
+		the_context = ctx->the_gpgpusim->the_context;
 	}
 	return the_context;
 }
@@ -276,9 +269,9 @@ gpgpu_context* GPGPU_Context()
 
  void ptxinfo_data::ptxinfo_addinfo()
 {
+	CUctx_st *context = GPGPUSim_Context(gpgpu_ctx);
 	 if(!get_ptxinfo_kname()){
 		 /* This info is not per kernel (since CUDA 5.0 some info (e.g. gmem, and cmem) is added at the beginning for the whole binary ) */
-		CUctx_st *context = GPGPUSim_Context();
 		print_ptxinfo();
 		context->add_ptxinfo(get_ptxinfo());
 		clear_ptxinfo();
@@ -289,7 +282,6 @@ gpgpu_context* GPGPU_Context()
 		clear_ptxinfo();
 		return;
 	}
-	CUctx_st *context = GPGPUSim_Context();
 	print_ptxinfo();
 	context->add_ptxinfo( get_ptxinfo_kname(), get_ptxinfo() );
 	clear_ptxinfo();
@@ -585,7 +577,7 @@ void** cudaRegisterFatBinaryInternal( void *fatCubin, gpgpu_context* gpgpu_ctx =
 	printf("GPGPU-Sim PTX: ERROR ** this version of GPGPU-Sim requires CUDA 2.1 or higher\n");
 	exit(1);
 #endif
-	CUctx_st *context = GPGPUSim_Context();
+	CUctx_st *context = GPGPUSim_Context(ctx);
 	static unsigned next_fat_bin_handle = 1;
 	if(context->get_device()->get_gpgpu()->get_config().use_cuobjdump()) {
 		// The following workaround has only been verified on 64-bit systems. 
@@ -732,7 +724,7 @@ void cudaRegisterFunctionInternal(
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     }
-	CUctx_st *context = GPGPUSim_Context();
+	CUctx_st *context = GPGPUSim_Context(ctx);
 	unsigned fat_cubin_handle = (unsigned)(unsigned long long)fatCubinHandle;
 	printf("GPGPU-Sim PTX: __cudaRegisterFunction %s : hostFun 0x%p, fat_cubin_handle = %u\n",
 			deviceFun, hostFun, fat_cubin_handle);
@@ -763,7 +755,7 @@ void cudaRegisterVarInternal(
     }
 	printf("GPGPU-Sim PTX: __cudaRegisterVar: hostVar = %p; deviceAddress = %s; deviceName = %s\n", hostVar, deviceAddress, deviceName);
 	printf("GPGPU-Sim PTX: __cudaRegisterVar: Registering const memory space of %d bytes\n", size);
-	if(GPGPUSim_Context()->get_device()->get_gpgpu()->get_config().use_cuobjdump())
+	if(GPGPUSim_Context(ctx)->get_device()->get_gpgpu()->get_config().use_cuobjdump())
 		ctx->cuobjdumpParseBinary((unsigned)(unsigned long long)fatCubinHandle);
 	fflush(stdout);
 	if ( constant && !global && !ext ) {
@@ -872,7 +864,7 @@ cudaError_t cudaLaunchInternal( const char *hostFun, gpgpu_context* gpgpu_ctx = 
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     }
-	CUctx_st* context = GPGPUSim_Context();
+	CUctx_st* context = GPGPUSim_Context(ctx);
 	char *mode = getenv("PTX_SIM_MODE_FUNC");
 	if( mode )
 		sscanf(mode,"%u", &(ctx->func_sim->g_ptx_sim_mode));
@@ -944,7 +936,7 @@ cudaError_t cudaLaunchInternal( const char *hostFun, gpgpu_context* gpgpu_ctx = 
 	printf("GPGPU-Sim PTX: pushing kernel \'%s\' to stream %u, gridDim= (%u,%u,%u) blockDim = (%u,%u,%u) \n",
 			kname.c_str(), stream?stream->get_uid():0, gridDim.x,gridDim.y,gridDim.z,blockDim.x,blockDim.y,blockDim.z );
 	stream_operation op(grid,ctx->func_sim->g_ptx_sim_mode,stream);
-	g_stream_manager()->push(op);
+	ctx->the_gpgpusim->g_stream_manager->push(op);
 	ctx->api->g_cuda_launch_stack.pop_back();
 	return g_last_cudaError = cudaSuccess;
 }
@@ -960,7 +952,7 @@ cudaError_t cudaMallocInternal(void **devPtr, size_t size, gpgpu_context* gpgpu_
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     }
-	CUctx_st* context = GPGPUSim_Context();
+	CUctx_st* context = GPGPUSim_Context(ctx);
 	*devPtr = context->get_device()->get_gpgpu()->gpu_malloc(size);
 	if(g_debug_execution >= 3){
 		printf("GPGPU-Sim PTX: cudaMallocing %zu bytes starting at 0x%llx..\n",size, (unsigned long long) *devPtr);
@@ -994,6 +986,29 @@ cudaError_t cudaMallocHostInternal(void **ptr, size_t size, gpgpu_context* gpgpu
 	}
 }
 
+__host__ cudaError_t CUDARTAPI cudaMallocPitchInternal(void **devPtr, size_t *pitch, size_t width, size_t height, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	unsigned malloc_width_inbytes = width;
+	printf("GPGPU-Sim PTX: cudaMallocPitch (width = %d)\n", malloc_width_inbytes);
+	CUctx_st* context = GPGPUSim_Context(ctx);
+	*devPtr = context->get_device()->get_gpgpu()->gpu_malloc(malloc_width_inbytes*height);
+	pitch[0] = malloc_width_inbytes;
+	if ( *devPtr  ) {
+		return g_last_cudaError = cudaSuccess;
+	} else {
+		return g_last_cudaError = cudaErrorMemoryAllocation;
+	}
+}
+
 cudaError_t cudaHostGetDevicePointerInternal(void **pDevice, void *pHost, unsigned int flags, gpgpu_context* gpgpu_ctx = NULL)
 {
     gpgpu_context *ctx;
@@ -1011,7 +1026,7 @@ cudaError_t cudaHostGetDevicePointerInternal(void **pDevice, void *pHost, unsign
 	//only cpu memory allocation happens in cudaHostAlloc. Linking with device pointer to pinned memory happens here.
 	//TODO: once kernel is executed, the contents in global pointer of GPU must be copied back to CPU host pointer!
 	flags=0;
-	CUctx_st* context = GPGPUSim_Context();
+	CUctx_st* context = GPGPUSim_Context(ctx);
 	gpgpu_t *gpu = context->get_device()->get_gpgpu();
 	std::map<void *, size_t>::const_iterator i = ctx->api->pinned_memory_size.find(pHost);
 	assert(i != ctx->api->pinned_memory_size.end());
@@ -1031,7 +1046,7 @@ cudaError_t cudaHostGetDevicePointerInternal(void **pDevice, void *pHost, unsign
 	}
 }
 
-cudaError_t cudaGLMapBufferObjectInternal(void** devPtr, GLuint bufferObj, gpgpu_context* gpgpu_ctx = NULL)
+__host__ cudaError_t CUDARTAPI cudaMallocArrayInternal(struct cudaArray **array, const struct cudaChannelFormatDesc *desc, size_t width, size_t height __dv(1), gpgpu_context* gpgpu_ctx = NULL)
 {
     gpgpu_context *ctx;
     if (gpgpu_ctx){
@@ -1042,12 +1057,309 @@ cudaError_t cudaGLMapBufferObjectInternal(void** devPtr, GLuint bufferObj, gpgpu
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     }
+	unsigned size = width * height * ((desc->x + desc->y + desc->z + desc->w)/8);
+	CUctx_st* context = GPGPUSim_Context(ctx);
+	(*array) = (struct cudaArray*) malloc(sizeof(struct cudaArray));
+	(*array)->desc = *desc;
+	(*array)->width = width;
+	(*array)->height = height;
+	(*array)->size = size;
+	(*array)->dimensions = 2;
+	((*array)->devPtr32)= (int) (long long)context->get_device()->get_gpgpu()->gpu_mallocarray(size);
+	printf("GPGPU-Sim PTX: cudaMallocArray: devPtr32 = %d\n", ((*array)->devPtr32));
+	((*array)->devPtr) = (void*) (long long) ((*array)->devPtr32);
+	if ( ((*array)->devPtr) ) {
+		return g_last_cudaError = cudaSuccess;
+	} else {
+		return g_last_cudaError = cudaErrorMemoryAllocation;
+	}
+}
+
+__host__ cudaError_t CUDARTAPI cudaMemcpyInternal(void *dst, const void *src, size_t count, enum cudaMemcpyKind kind, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	//CUctx_st *context = GPGPUSim_Context();
+	//gpgpu_t *gpu = context->get_device()->get_gpgpu();
+	if(g_debug_execution >= 3)
+		printf("GPGPU-Sim PTX: cudaMemcpy(): devPtr = %p\n", dst);
+	if( kind == cudaMemcpyHostToDevice )
+		ctx->the_gpgpusim->g_stream_manager->push( stream_operation(src,(size_t)dst,count,0) );
+	else if( kind == cudaMemcpyDeviceToHost )
+		ctx->the_gpgpusim->g_stream_manager->push( stream_operation((size_t)src,dst,count,0) );
+	else if( kind == cudaMemcpyDeviceToDevice )
+		ctx->the_gpgpusim->g_stream_manager->push( stream_operation((size_t)src,(size_t)dst,count,0) );
+	else if ( kind == cudaMemcpyDefault ) {
+		if ((size_t)src >= GLOBAL_HEAP_START) {
+			if ((size_t)dst >= GLOBAL_HEAP_START)
+				ctx->the_gpgpusim->g_stream_manager->push( stream_operation((size_t)src,(size_t)dst,count,0) ); // device to device
+			else
+				ctx->the_gpgpusim->g_stream_manager->push( stream_operation((size_t)src,dst,count,0) ); // device to host
+		}
+		else {
+			if ((size_t)dst >= GLOBAL_HEAP_START)
+				ctx->the_gpgpusim->g_stream_manager->push( stream_operation(src,(size_t)dst,count,0) );
+			else {
+				printf("GPGPU-Sim PTX: cudaMemcpy - ERROR : unsupported transfer: host to host\n");
+				abort();
+			}
+		}
+	}
+	else {
+		printf("GPGPU-Sim PTX: cudaMemcpy - ERROR : unsupported cudaMemcpyKind\n");
+		abort();
+	}
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaMemcpyToArrayInternal(struct cudaArray *dst, size_t wOffset, size_t hOffset, const void *src, size_t count, enum cudaMemcpyKind kind, gpgpu_context* gpgpu_ctx = NULL)
+{ 
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	CUctx_st *context = GPGPUSim_Context(ctx);
+	gpgpu_t *gpu = context->get_device()->get_gpgpu();
+	size_t size = count;
+	printf("GPGPU-Sim PTX: cudaMemcpyToArray\n");
+	if( kind == cudaMemcpyHostToDevice )
+		gpu->memcpy_to_gpu( (size_t)(dst->devPtr), src, size);
+	else if( kind == cudaMemcpyDeviceToHost )
+		gpu->memcpy_from_gpu( dst->devPtr, (size_t)src, size);
+	else if( kind == cudaMemcpyDeviceToDevice )
+		gpu->memcpy_gpu_to_gpu( (size_t)(dst->devPtr), (size_t)src, size);
+	else {
+		printf("GPGPU-Sim PTX: cudaMemcpyToArray - ERROR : unsupported cudaMemcpyKind\n");
+		abort();
+	}
+	dst->devPtr32 = (unsigned) (size_t)(dst->devPtr);
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaMemcpy2DInternal(void *dst, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height, enum cudaMemcpyKind kind, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	CUctx_st *context = GPGPUSim_Context(ctx);
+	gpgpu_t *gpu = context->get_device()->get_gpgpu();
+	size_t size = spitch*height;
+	gpgpusim_ptx_assert( (dpitch==spitch), "different src and dst pitch not supported yet" );
+	if( kind == cudaMemcpyHostToDevice )
+		gpu->memcpy_to_gpu( (size_t)dst, src, size );
+	else if( kind == cudaMemcpyDeviceToHost )
+		gpu->memcpy_from_gpu( dst, (size_t)src, size );
+	else if( kind == cudaMemcpyDeviceToDevice )
+		gpu->memcpy_gpu_to_gpu( (size_t)dst, (size_t)src, size);
+	else {
+		printf("GPGPU-Sim PTX: cudaMemcpy2D - ERROR : unsupported cudaMemcpyKind\n");
+		abort();
+	}
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaMemcpy2DToArrayInternal(struct cudaArray *dst, size_t wOffset, size_t hOffset, const void *src, size_t spitch, size_t width, size_t height, enum cudaMemcpyKind kind, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	CUctx_st *context = GPGPUSim_Context(ctx);
+	gpgpu_t *gpu = context->get_device()->get_gpgpu();
+	size_t size = spitch*height;
+	size_t channel_size = dst->desc.w+dst->desc.x+dst->desc.y+dst->desc.z;
+	gpgpusim_ptx_assert( ((channel_size%8) == 0), "none byte multiple destination channel size not supported (sz=%u)", channel_size );
+	unsigned elem_size = channel_size/8;
+	gpgpusim_ptx_assert( (dst->dimensions==2), "copy to none 2D array not supported" );
+	gpgpusim_ptx_assert( (wOffset==0), "non-zero wOffset not yet supported" );
+	gpgpusim_ptx_assert( (hOffset==0), "non-zero hOffset not yet supported" );
+	gpgpusim_ptx_assert( (dst->height == (int)height), "partial copy not supported" );
+	gpgpusim_ptx_assert( (elem_size*dst->width == width), "partial copy not supported" );
+	gpgpusim_ptx_assert( (spitch == width), "spitch != width not supported" );
+	if( kind == cudaMemcpyHostToDevice )
+		gpu->memcpy_to_gpu( (size_t)(dst->devPtr), src, size);
+	else if( kind == cudaMemcpyDeviceToHost )
+		gpu->memcpy_from_gpu( dst->devPtr, (size_t)src, size);
+	else if( kind == cudaMemcpyDeviceToDevice )
+		gpu->memcpy_gpu_to_gpu( (size_t)dst->devPtr, (size_t)src, size);
+	else {
+		printf("GPGPU-Sim PTX: cudaMemcpy2D - ERROR : unsupported cudaMemcpyKind\n");
+		abort();
+	}
+	dst->devPtr32 = (unsigned) (size_t)(dst->devPtr);
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaMemcpyToSymbolInternal(const char *symbol, const void *src, size_t count, size_t offset __dv(0), enum cudaMemcpyKind kind __dv(cudaMemcpyHostToDevice), gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	//CUctx_st *context = GPGPUSim_Context();
+	assert(kind == cudaMemcpyHostToDevice);
+	printf("GPGPU-Sim PTX: cudaMemcpyToSymbol: symbol = %p\n", symbol);
+	//stream_operation( const char *symbol, const void *src, size_t count, size_t offset )
+	ctx->the_gpgpusim->g_stream_manager->push( stream_operation(src,symbol,count,offset,0) );
+	//gpgpu_ptx_sim_memcpy_symbol(symbol,src,count,offset,1,context->get_device()->get_gpgpu());
+	return g_last_cudaError = cudaSuccess;
+}
+
+
+__host__ cudaError_t CUDARTAPI cudaMemcpyFromSymbolInternal(void *dst, const char *symbol, size_t count, size_t offset __dv(0), enum cudaMemcpyKind kind __dv(cudaMemcpyDeviceToHost), gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	//CUctx_st *context = GPGPUSim_Context();
+	assert(kind == cudaMemcpyDeviceToHost);
+	printf("GPGPU-Sim PTX: cudaMemcpyFromSymbol: symbol = %p\n", symbol);
+	ctx->the_gpgpusim->g_stream_manager->push( stream_operation(symbol,dst,count,offset,0) );
+	//gpgpu_ptx_sim_memcpy_symbol(symbol,dst,count,offset,0,context->get_device()->get_gpgpu());
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaMemcpyAsyncInternal(void *dst, const void *src, size_t count, enum cudaMemcpyKind kind, cudaStream_t stream, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	struct CUstream_st *s = (struct CUstream_st *)stream;
+	switch( kind ) {
+	case cudaMemcpyHostToDevice: ctx->the_gpgpusim->g_stream_manager->push( stream_operation(src,(size_t)dst,count,s) ); break;
+	case cudaMemcpyDeviceToHost: ctx->the_gpgpusim->g_stream_manager->push( stream_operation((size_t)src,dst,count,s) ); break;
+	case cudaMemcpyDeviceToDevice: ctx->the_gpgpusim->g_stream_manager->push( stream_operation((size_t)src,(size_t)dst,count,s) ); break;
+	default:
+		abort();
+	}
+	return g_last_cudaError = cudaSuccess;
+}
+
+
+#if (CUDART_VERSION >= 8000)
+cudaError_t CUDARTAPI cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlagsInternal(int* numBlocks, const char *hostFunc, int blockSize, size_t dynamicSMemSize, unsigned int flags, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	printf("GPGPU-Sim PTX: cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags %p\n", hostFunc);
+	CUctx_st *context = GPGPUSim_Context(ctx);
+	function_info *entry = context->get_kernel(hostFunc);
+	printf("Calculate Maxium Active Block with function ptr=%p, blockSize=%d, SMemSize=%d\n", hostFunc, blockSize, dynamicSMemSize);
+	if (flags == cudaOccupancyDefault) {
+		//create kernel_info based on entry
+		dim3 gridDim(context->get_device()->get_gpgpu()->max_cta_per_core()
+                        * context->get_device()->get_gpgpu()->get_config().num_shader());
+		dim3 blockDim(blockSize);
+		kernel_info_t result(gridDim, blockDim, entry);
+		//if(entry == NULL){
+		//	*numBlocks = 1;
+		//	return g_last_cudaError = cudaErrorUnknown;
+		//}
+		*numBlocks = context->get_device()->get_gpgpu()->get_max_cta(result);
+		printf("Maximum size is %d with gridDim %d and blockDim %d\n", *numBlocks, gridDim.x, blockDim.x);
+		return g_last_cudaError = cudaSuccess;
+	} else {
+		cuda_not_implemented(__my_func__,__LINE__);
+		return g_last_cudaError = cudaErrorUnknown;
+	}
+}
+
+#endif
+
+__host__ cudaError_t CUDARTAPI cudaMemsetInternal(void *mem, int c, size_t count, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	CUctx_st *context = GPGPUSim_Context(ctx);
+	gpgpu_t *gpu = context->get_device()->get_gpgpu();
+	gpu->gpu_memset((size_t)mem, c, count);
+	return g_last_cudaError = cudaSuccess;
+}
+
+//memset operation is done but i think its not async?
+__host__ cudaError_t CUDARTAPI cudaMemsetAsyncInternal(void *mem, int c, size_t count, 	cudaStream_t stream=0, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("GPGPU-Sim PTX: WARNING: Asynchronous memset not supported (%s)\n", __my_func__);
+	CUctx_st *context = GPGPUSim_Context(ctx);
+	gpgpu_t *gpu = context->get_device()->get_gpgpu();
+	gpu->gpu_memset((size_t)mem, c, count);
+	return g_last_cudaError = cudaSuccess;
+}
+
+cudaError_t cudaGLMapBufferObjectInternal(void** devPtr, GLuint bufferObj, gpgpu_context* gpgpu_ctx = NULL)
+{
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     }
 #ifdef OPENGL_SUPPORT
+	gpgpu_context *ctx;
+	if (gpgpu_ctx){
+	    ctx = gpgpu_ctx;
+	} else {
+	    ctx = GPGPU_Context();
+	}
 	GLint buffer_size=0;
-	CUctx_st* context = GPGPUSim_Context();
+	CUctx_st* context = GPGPUSim_Context(ctx);
 
 	glbmap_entry_t *p = ctx->api->g_glbmap;
 	while ( p && p->m_bufferObj != bufferObj )
@@ -1118,7 +1430,7 @@ cuLinkAddFileInternal(CUlinkState state, CUjitInputType type, const char *path,
 
     //blocking
     assert(type==CU_JIT_INPUT_PTX);
-	CUctx_st *context = GPGPUSim_Context();
+	CUctx_st *context = GPGPUSim_Context(ctx);
     char *file = getenv("PTX_JIT_PATH");
     if(file==NULL){
         printf("GPGPU-Sim PTX: ERROR: PTX_JIT_PATH has not been set\n");
@@ -1190,7 +1502,7 @@ cudaError_t CUDARTAPI cudaFuncGetAttributesInternal(struct cudaFuncAttributes *a
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     }
-	CUctx_st *context = GPGPUSim_Context();
+	CUctx_st *context = GPGPUSim_Context(ctx);
 	function_info *entry = context->get_kernel(hostFun);
 	if( entry ) {
 		const struct gpgpu_ptx_sim_info *kinfo = entry->get_kernel_info();
@@ -1207,421 +1519,6 @@ cudaError_t CUDARTAPI cudaFuncGetAttributesInternal(struct cudaFuncAttributes *a
 		attr->binaryVersion   = kinfo->sm_target;
 #endif
 	}
-	return g_last_cudaError = cudaSuccess;
-}
-
-
-/*******************************************************************************
- *                                                                              *
- *                                                                              *
- *                                                                              *
- *******************************************************************************/
-
-extern "C" {
-
-/*******************************************************************************
- *                                                                              *
- *                                                                              *
- *                                                                              *
- *******************************************************************************/
-cudaError_t cudaPeekAtLastError(void)
-{
-	return g_last_cudaError;
-}
-
-__host__ cudaError_t CUDARTAPI cudaMalloc(void **devPtr, size_t size) 
-{
-    return cudaMallocInternal(devPtr, size);
-}
-
-__host__ cudaError_t CUDARTAPI cudaMallocHost(void **ptr, size_t size)
-{
-    return cudaMallocHostInternal(ptr, size);
-}
-__host__ cudaError_t CUDARTAPI cudaMallocPitch(void **devPtr, size_t *pitch, size_t width, size_t height)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	unsigned malloc_width_inbytes = width;
-	printf("GPGPU-Sim PTX: cudaMallocPitch (width = %d)\n", malloc_width_inbytes);
-	CUctx_st* ctx = GPGPUSim_Context();
-	*devPtr = ctx->get_device()->get_gpgpu()->gpu_malloc(malloc_width_inbytes*height);
-	pitch[0] = malloc_width_inbytes;
-	if ( *devPtr  ) {
-		return g_last_cudaError = cudaSuccess;
-	} else {
-		return g_last_cudaError = cudaErrorMemoryAllocation;
-	}
-}
-
-__host__ cudaError_t CUDARTAPI cudaMallocArray(struct cudaArray **array, const struct cudaChannelFormatDesc *desc, size_t width, size_t height __dv(1))
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	unsigned size = width * height * ((desc->x + desc->y + desc->z + desc->w)/8);
-	CUctx_st* context = GPGPUSim_Context();
-	(*array) = (struct cudaArray*) malloc(sizeof(struct cudaArray));
-	(*array)->desc = *desc;
-	(*array)->width = width;
-	(*array)->height = height;
-	(*array)->size = size;
-	(*array)->dimensions = 2;
-	((*array)->devPtr32)= (int) (long long)context->get_device()->get_gpgpu()->gpu_mallocarray(size);
-	printf("GPGPU-Sim PTX: cudaMallocArray: devPtr32 = %d\n", ((*array)->devPtr32));
-	((*array)->devPtr) = (void*) (long long) ((*array)->devPtr32);
-	if ( ((*array)->devPtr) ) {
-		return g_last_cudaError = cudaSuccess;
-	} else {
-		return g_last_cudaError = cudaErrorMemoryAllocation;
-	}
-}
-
-__host__ cudaError_t CUDARTAPI cudaFree(void *devPtr)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	// TODO...  manage g_global_mem space?
-	return g_last_cudaError = cudaSuccess;
-}
-__host__ cudaError_t CUDARTAPI cudaFreeHost(void *ptr)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	free (ptr);  // this will crash the system if called twice
-	return g_last_cudaError = cudaSuccess;
-}
-
-__host__ cudaError_t CUDARTAPI cudaFreeArray(struct cudaArray *array)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	// TODO...  manage g_global_mem space?
-	return g_last_cudaError = cudaSuccess;
-};
-
-
-/*******************************************************************************
- *                                                                              *
- *                                                                              *
- *                                                                              *
- *******************************************************************************/
-
-__host__ cudaError_t CUDARTAPI cudaMemcpy(void *dst, const void *src, size_t count, enum cudaMemcpyKind kind)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	//CUctx_st *context = GPGPUSim_Context();
-	//gpgpu_t *gpu = context->get_device()->get_gpgpu();
-	if(g_debug_execution >= 3)
-		printf("GPGPU-Sim PTX: cudaMemcpy(): devPtr = %p\n", dst);
-	if( kind == cudaMemcpyHostToDevice )
-		g_stream_manager()->push( stream_operation(src,(size_t)dst,count,0) );
-	else if( kind == cudaMemcpyDeviceToHost )
-		g_stream_manager()->push( stream_operation((size_t)src,dst,count,0) );
-	else if( kind == cudaMemcpyDeviceToDevice )
-		g_stream_manager()->push( stream_operation((size_t)src,(size_t)dst,count,0) );
-	else if ( kind == cudaMemcpyDefault ) {
-		if ((size_t)src >= GLOBAL_HEAP_START) {
-			if ((size_t)dst >= GLOBAL_HEAP_START)
-				g_stream_manager()->push( stream_operation((size_t)src,(size_t)dst,count,0) ); // device to device
-			else
-				g_stream_manager()->push( stream_operation((size_t)src,dst,count,0) ); // device to host
-		}
-		else {
-			if ((size_t)dst >= GLOBAL_HEAP_START)
-				g_stream_manager()->push( stream_operation(src,(size_t)dst,count,0) );
-			else {
-				printf("GPGPU-Sim PTX: cudaMemcpy - ERROR : unsupported transfer: host to host\n");
-				abort();
-			}
-		}
-	}
-	else {
-		printf("GPGPU-Sim PTX: cudaMemcpy - ERROR : unsupported cudaMemcpyKind\n");
-		abort();
-	}
-	return g_last_cudaError = cudaSuccess;
-}
-
-__host__ cudaError_t CUDARTAPI cudaMemcpyToArray(struct cudaArray *dst, size_t wOffset, size_t hOffset, const void *src, size_t count, enum cudaMemcpyKind kind)
-{ 
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	CUctx_st *context = GPGPUSim_Context();
-	gpgpu_t *gpu = context->get_device()->get_gpgpu();
-	size_t size = count;
-	printf("GPGPU-Sim PTX: cudaMemcpyToArray\n");
-	if( kind == cudaMemcpyHostToDevice )
-		gpu->memcpy_to_gpu( (size_t)(dst->devPtr), src, size);
-	else if( kind == cudaMemcpyDeviceToHost )
-		gpu->memcpy_from_gpu( dst->devPtr, (size_t)src, size);
-	else if( kind == cudaMemcpyDeviceToDevice )
-		gpu->memcpy_gpu_to_gpu( (size_t)(dst->devPtr), (size_t)src, size);
-	else {
-		printf("GPGPU-Sim PTX: cudaMemcpyToArray - ERROR : unsupported cudaMemcpyKind\n");
-		abort();
-	}
-	dst->devPtr32 = (unsigned) (size_t)(dst->devPtr);
-	return g_last_cudaError = cudaSuccess;
-}
-
-
-__host__ cudaError_t CUDARTAPI cudaMemcpyFromArray(void *dst, const struct cudaArray *src, size_t wOffset, size_t hOffset, size_t count, enum cudaMemcpyKind kind)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	cuda_not_implemented(__my_func__,__LINE__);
-	return g_last_cudaError = cudaErrorUnknown;
-}
-
-
-__host__ cudaError_t CUDARTAPI cudaMemcpyArrayToArray(struct cudaArray *dst, size_t wOffsetDst, size_t hOffsetDst, const struct cudaArray *src, size_t wOffsetSrc, size_t hOffsetSrc, size_t count, enum cudaMemcpyKind kind __dv(cudaMemcpyDeviceToDevice))
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	cuda_not_implemented(__my_func__,__LINE__);
-	return g_last_cudaError = cudaErrorUnknown;
-}
-
-
-__host__ cudaError_t CUDARTAPI cudaMemcpy2D(void *dst, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height, enum cudaMemcpyKind kind)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	CUctx_st *context = GPGPUSim_Context();
-	gpgpu_t *gpu = context->get_device()->get_gpgpu();
-	size_t size = spitch*height;
-	gpgpusim_ptx_assert( (dpitch==spitch), "different src and dst pitch not supported yet" );
-	if( kind == cudaMemcpyHostToDevice )
-		gpu->memcpy_to_gpu( (size_t)dst, src, size );
-	else if( kind == cudaMemcpyDeviceToHost )
-		gpu->memcpy_from_gpu( dst, (size_t)src, size );
-	else if( kind == cudaMemcpyDeviceToDevice )
-		gpu->memcpy_gpu_to_gpu( (size_t)dst, (size_t)src, size);
-	else {
-		printf("GPGPU-Sim PTX: cudaMemcpy2D - ERROR : unsupported cudaMemcpyKind\n");
-		abort();
-	}
-	return g_last_cudaError = cudaSuccess;
-}
-
-
-__host__ cudaError_t CUDARTAPI cudaMemcpy2DToArray(struct cudaArray *dst, size_t wOffset, size_t hOffset, const void *src, size_t spitch, size_t width, size_t height, enum cudaMemcpyKind kind)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	CUctx_st *context = GPGPUSim_Context();
-	gpgpu_t *gpu = context->get_device()->get_gpgpu();
-	size_t size = spitch*height;
-	size_t channel_size = dst->desc.w+dst->desc.x+dst->desc.y+dst->desc.z;
-	gpgpusim_ptx_assert( ((channel_size%8) == 0), "none byte multiple destination channel size not supported (sz=%u)", channel_size );
-	unsigned elem_size = channel_size/8;
-	gpgpusim_ptx_assert( (dst->dimensions==2), "copy to none 2D array not supported" );
-	gpgpusim_ptx_assert( (wOffset==0), "non-zero wOffset not yet supported" );
-	gpgpusim_ptx_assert( (hOffset==0), "non-zero hOffset not yet supported" );
-	gpgpusim_ptx_assert( (dst->height == (int)height), "partial copy not supported" );
-	gpgpusim_ptx_assert( (elem_size*dst->width == width), "partial copy not supported" );
-	gpgpusim_ptx_assert( (spitch == width), "spitch != width not supported" );
-	if( kind == cudaMemcpyHostToDevice )
-		gpu->memcpy_to_gpu( (size_t)(dst->devPtr), src, size);
-	else if( kind == cudaMemcpyDeviceToHost )
-		gpu->memcpy_from_gpu( dst->devPtr, (size_t)src, size);
-	else if( kind == cudaMemcpyDeviceToDevice )
-		gpu->memcpy_gpu_to_gpu( (size_t)dst->devPtr, (size_t)src, size);
-	else {
-		printf("GPGPU-Sim PTX: cudaMemcpy2D - ERROR : unsupported cudaMemcpyKind\n");
-		abort();
-	}
-	dst->devPtr32 = (unsigned) (size_t)(dst->devPtr);
-	return g_last_cudaError = cudaSuccess;
-}
-
-
-__host__ cudaError_t CUDARTAPI cudaMemcpy2DFromArray(void *dst, size_t dpitch, const struct cudaArray *src, size_t wOffset, size_t hOffset, size_t width, size_t height, enum cudaMemcpyKind kind)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	cuda_not_implemented(__my_func__,__LINE__);
-	return g_last_cudaError = cudaErrorUnknown;
-}
-
-
-__host__ cudaError_t CUDARTAPI cudaMemcpy2DArrayToArray(struct cudaArray *dst, size_t wOffsetDst, size_t hOffsetDst, const struct cudaArray *src, size_t wOffsetSrc, size_t hOffsetSrc, size_t width, size_t height, enum cudaMemcpyKind kind __dv(cudaMemcpyDeviceToDevice))
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	cuda_not_implemented(__my_func__,__LINE__);
-	return g_last_cudaError = cudaErrorUnknown;
-}
-
-
-__host__ cudaError_t CUDARTAPI cudaMemcpyToSymbol(const char *symbol, const void *src, size_t count, size_t offset __dv(0), enum cudaMemcpyKind kind __dv(cudaMemcpyHostToDevice))
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	//CUctx_st *context = GPGPUSim_Context();
-	assert(kind == cudaMemcpyHostToDevice);
-	printf("GPGPU-Sim PTX: cudaMemcpyToSymbol: symbol = %p\n", symbol);
-	//stream_operation( const char *symbol, const void *src, size_t count, size_t offset )
-	g_stream_manager()->push( stream_operation(src,symbol,count,offset,0) );
-	//gpgpu_ptx_sim_memcpy_symbol(symbol,src,count,offset,1,context->get_device()->get_gpgpu());
-	return g_last_cudaError = cudaSuccess;
-}
-
-
-__host__ cudaError_t CUDARTAPI cudaMemcpyFromSymbol(void *dst, const char *symbol, size_t count, size_t offset __dv(0), enum cudaMemcpyKind kind __dv(cudaMemcpyDeviceToHost))
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	//CUctx_st *context = GPGPUSim_Context();
-	assert(kind == cudaMemcpyDeviceToHost);
-	printf("GPGPU-Sim PTX: cudaMemcpyFromSymbol: symbol = %p\n", symbol);
-	g_stream_manager()->push( stream_operation(symbol,dst,count,offset,0) );
-	//gpgpu_ptx_sim_memcpy_symbol(symbol,dst,count,offset,0,context->get_device()->get_gpgpu());
-	return g_last_cudaError = cudaSuccess;
-}
-
-__host__ cudaError_t CUDARTAPI cudaMemGetInfo (size_t *free, size_t *total){
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	//placeholder; should interact with cudaMalloc and cudaFree?
-	*free = 10000000000;
-	*total = 10000000000;
-
-	return g_last_cudaError = cudaSuccess;
-}
-
-/*******************************************************************************
- *                                                                              *
- *                                                                              *
- *                                                                              *
- *******************************************************************************/
-
-__host__ cudaError_t CUDARTAPI cudaMemcpyAsync(void *dst, const void *src, size_t count, enum cudaMemcpyKind kind, cudaStream_t stream)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	struct CUstream_st *s = (struct CUstream_st *)stream;
-	switch( kind ) {
-	case cudaMemcpyHostToDevice: g_stream_manager()->push( stream_operation(src,(size_t)dst,count,s) ); break;
-	case cudaMemcpyDeviceToHost: g_stream_manager()->push( stream_operation((size_t)src,dst,count,s) ); break;
-	case cudaMemcpyDeviceToDevice: g_stream_manager()->push( stream_operation((size_t)src,(size_t)dst,count,s) ); break;
-	default:
-		abort();
-	}
-	return g_last_cudaError = cudaSuccess;
-}
-
-
-__host__ cudaError_t CUDARTAPI cudaMemcpyToArrayAsync(struct cudaArray *dst, size_t wOffset, size_t hOffset, const void *src, size_t count, enum cudaMemcpyKind kind, cudaStream_t stream)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	cuda_not_implemented(__my_func__,__LINE__);
-	return g_last_cudaError = cudaErrorUnknown;
-}
-
-
-__host__ cudaError_t CUDARTAPI cudaMemcpyFromArrayAsync(void *dst, const struct cudaArray *src, size_t wOffset, size_t hOffset, size_t count, enum cudaMemcpyKind kind, cudaStream_t stream)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	cuda_not_implemented(__my_func__,__LINE__);
-	return g_last_cudaError = cudaErrorUnknown;
-}
-
-
-__host__ cudaError_t CUDARTAPI cudaMemcpy2DAsync(void *dst, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height, enum cudaMemcpyKind kind, cudaStream_t stream)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	cuda_not_implemented(__my_func__,__LINE__);
-	return g_last_cudaError = cudaErrorUnknown;
-}
-
-
-__host__ cudaError_t CUDARTAPI cudaMemcpy2DToArrayAsync(struct cudaArray *dst, size_t wOffset, size_t hOffset, const void *src, size_t spitch, size_t width, size_t height, enum cudaMemcpyKind kind, cudaStream_t stream)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	cuda_not_implemented(__my_func__,__LINE__);
-	return g_last_cudaError = cudaErrorUnknown;
-}
-
-
-__host__ cudaError_t CUDARTAPI cudaMemcpy2DFromArrayAsync(void *dst, size_t dpitch, const struct cudaArray *src, size_t wOffset, size_t hOffset, size_t width, size_t height, enum cudaMemcpyKind kind, cudaStream_t stream)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	cuda_not_implemented(__my_func__,__LINE__);
-	return g_last_cudaError = cudaErrorUnknown;
-}
-
-#if (CUDART_VERSION >= 8000)
-cudaError_t CUDARTAPI cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(int* numBlocks, const char *hostFunc, int blockSize, size_t dynamicSMemSize, unsigned int flags)
-{
-	printf("GPGPU-Sim PTX: cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags %p\n", hostFunc);
-	CUctx_st *context = GPGPUSim_Context();
-	function_info *entry = context->get_kernel(hostFunc);
-	printf("Calculate Maxium Active Block with function ptr=%p, blockSize=%d, SMemSize=%d\n", hostFunc, blockSize, dynamicSMemSize);
-	if (flags == cudaOccupancyDefault) {
-		//create kernel_info based on entry
-		dim3 gridDim(context->get_device()->get_gpgpu()->max_cta_per_core()
-                        * context->get_device()->get_gpgpu()->get_config().num_shader());
-		dim3 blockDim(blockSize);
-		kernel_info_t result(gridDim, blockDim, entry);
-		//if(entry == NULL){
-		//	*numBlocks = 1;
-		//	return g_last_cudaError = cudaErrorUnknown;
-		//}
-		*numBlocks = context->get_device()->get_gpgpu()->get_max_cta(result);
-		printf("Maximum size is %d with gridDim %d and blockDim %d\n", *numBlocks, gridDim.x, blockDim.x);
-		return g_last_cudaError = cudaSuccess;
-	} else {
-		cuda_not_implemented(__my_func__,__LINE__);
-		return g_last_cudaError = cudaErrorUnknown;
-	}
-}
-
-#endif
-
-
-
-/*******************************************************************************
- *                                                                              *
- *                                                                              *
- *                                                                              *
- *******************************************************************************/
-__host__ cudaError_t CUDARTAPI cudaMemset(void *mem, int c, size_t count)
-{
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	CUctx_st *context = GPGPUSim_Context();
-	gpgpu_t *gpu = context->get_device()->get_gpgpu();
-	gpu->gpu_memset((size_t)mem, c, count);
 	return g_last_cudaError = cudaSuccess;
 }
 
@@ -1826,17 +1723,650 @@ __host__ cudaError_t CUDARTAPI cudaDeviceGetAttributeInternal(int *value, enum c
 }
 #endif
 
-//memset operation is done but i think its not async?
-__host__ cudaError_t CUDARTAPI cudaMemsetAsync(void *mem, int c, size_t count, 	cudaStream_t stream=0)
+__host__ cudaError_t CUDARTAPI cudaBindTextureInternal(size_t *offset,
+		const struct textureReference *texref,
+		const void *devPtr,
+		const struct cudaChannelFormatDesc *desc,
+		size_t size __dv(UINT_MAX),
+		gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	CUctx_st *context = GPGPUSim_Context(ctx);
+	gpgpu_t *gpu = context->get_device()->get_gpgpu();
+	printf("GPGPU-Sim PTX: in cudaBindTexture: sizeof(struct textureReference) = %zu\n", sizeof(struct textureReference));
+	struct cudaArray *array;
+	array = (struct cudaArray*) malloc(sizeof(struct cudaArray));
+	array->desc = *desc;
+	array->size = size;
+	array->width = size;
+	array->height = 1;
+	array->dimensions = 1;
+	array->devPtr = (void*)devPtr;
+	array->devPtr32 = (int)(long long)devPtr;
+	offset = 0;
+	printf("GPGPU-Sim PTX:   size = %zu\n", size);
+	printf("GPGPU-Sim PTX:   texref = %p, array = %p\n", texref, array);
+	printf("GPGPU-Sim PTX:   devPtr32 = %x\n", array->devPtr32);
+	printf("GPGPU-Sim PTX:   Name corresponding to textureReference: %s\n", gpu->gpgpu_ptx_sim_findNamefromTexture(texref));
+	printf("GPGPU-Sim PTX:   ChannelFormatDesc: x=%d, y=%d, z=%d, w=%d\n", desc->x, desc->y, desc->z, desc->w);
+	printf("GPGPU-Sim PTX:   Texture Normalized? = %d\n", texref->normalized);
+	gpu->gpgpu_ptx_sim_bindTextureToArray(texref, array);
+	devPtr = (void*)(long long)array->devPtr32;
+	printf("GPGPU-Sim PTX: devPtr = %p\n", devPtr);
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaBindTextureToArrayInternal(const struct textureReference *texref, const struct cudaArray *array, const struct cudaChannelFormatDesc *desc, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	CUctx_st *context = GPGPUSim_Context(ctx);
+	gpgpu_t *gpu = context->get_device()->get_gpgpu();
+	printf("GPGPU-Sim PTX: in cudaBindTextureToArray: %p %p\n", texref, array);
+	printf("GPGPU-Sim PTX:   devPtr32 = %x\n", array->devPtr32);
+	printf("GPGPU-Sim PTX:   Name corresponding to textureReference: %s\n", gpu->gpgpu_ptx_sim_findNamefromTexture(texref));
+	printf("GPGPU-Sim PTX:   Texture Normalized? = %d\n", texref->normalized);
+	gpu->gpgpu_ptx_sim_bindTextureToArray(texref, array);
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaUnbindTextureInternal(const struct textureReference *texref, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+   CUctx_st *context = GPGPUSim_Context(ctx);
+   gpgpu_t *gpu = context->get_device()->get_gpgpu();
+   printf("GPGPU-Sim PTX: in cudaUnbindTexture: sizeof(struct textureReference) = %zu\n", sizeof(struct textureReference));
+   printf("GPGPU-Sim PTX:   Name corresponding to textureReference: %s\n", gpu->gpgpu_ptx_sim_findNamefromTexture(texref));
+
+   gpu->gpgpu_ptx_sim_unbindTexture(texref);
+   return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaLaunchKernelInternal( const char* hostFun, dim3 gridDim, dim3 blockDim, const void** args, size_t sharedMem, cudaStream_t stream, gpgpu_context* gpgpu_ctx = NULL )
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+
+    if(g_debug_execution >= 3){
+        announce_call(__my_func__);
+    }
+    CUctx_st *context = GPGPUSim_Context(ctx);
+    function_info *entry = context->get_kernel(hostFun);
+#if CUDART_VERSION < 10000
+    cudaConfigureCallInternal(gridDim, blockDim, sharedMem, stream, ctx);
+#endif
+    for(unsigned i = 0; i < entry->num_args(); i++){
+        std::pair<size_t, unsigned> p = entry->get_param_config(i);
+        cudaSetupArgumentInternal(args[i], p.first, p.second);
+    }
+
+    cudaLaunchInternal(hostFun);
+    return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaStreamCreateInternal(cudaStream_t *stream, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	printf("GPGPU-Sim PTX: cudaStreamCreate\n");
+#if (CUDART_VERSION >= 3000)
+	*stream = new struct CUstream_st();
+	ctx->the_gpgpusim->g_stream_manager->add_stream(*stream);
+#else
+	*stream = 0;
+	printf("GPGPU-Sim PTX: WARNING: Asynchronous kernel execution not supported (%s)\n", __my_func__);
+#endif
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaStreamDestroyInternal(cudaStream_t stream, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+#if (CUDART_VERSION >= 3000)
+	//per-stream synchronization required for application using external libraries without explicit synchronization in the code to 
+	//avoid the stream_manager from spinning forever to destroy non-empty streams without making any forward progress. 
+	stream->synchronize();
+	ctx->the_gpgpusim->g_stream_manager->destroy_stream(stream);
+#endif
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaStreamSynchronizeInternal(cudaStream_t stream, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+#if (CUDART_VERSION >= 3000)
+	if( stream == NULL )
+		ctx->synchronize();
+		return g_last_cudaError = cudaSuccess;
+	stream->synchronize();
+#else
+	printf("GPGPU-Sim PTX: WARNING: Asynchronous kernel execution not supported (%s)\n", __my_func__);
+#endif
+	return g_last_cudaError = cudaSuccess;
+}
+
+void __cudaRegisterTextureInternal(
+		void **fatCubinHandle,
+		const struct textureReference *hostVar,
+		const void **deviceAddress,
+		const char *deviceName,
+		int dim,
+		int norm,
+		int ext,
+		gpgpu_context* gpgpu_ctx = NULL
+) //passes in a newly created textureReference
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	std::string devStr (deviceName);
+	#if (CUDART_VERSION > 4020)
+	if (devStr.size() > 2 && devStr.data()[0] == ':' && devStr.data()[1] == ':')
+		devStr = devStr.replace(0, 2, "");
+	#endif
+	CUctx_st *context = GPGPUSim_Context(ctx);
+	gpgpu_t *gpu = context->get_device()->get_gpgpu();
+	printf("GPGPU-Sim PTX: in __cudaRegisterTexture:\n");
+	gpu->gpgpu_ptx_sim_bindNameToTexture(devStr.data(), hostVar, dim, norm, ext);
+	printf("GPGPU-Sim PTX:   int dim = %d\n", dim);
+	printf("GPGPU-Sim PTX:   int norm = %d\n", norm);
+	printf("GPGPU-Sim PTX:   int ext = %d\n", ext);
+	printf("GPGPU-Sim PTX:   Execution warning: Not finished implementing \"%s\"\n", __my_func__ );
+}
+
+cudaError_t cudaGLUnmapBufferObjectInternal(GLuint bufferObj, gpgpu_context* gpgpu_ctx = NULL)
 {
 	if(g_debug_execution >= 3){
 	    announce_call(__my_func__);
     }
-	printf("GPGPU-Sim PTX: WARNING: Asynchronous memset not supported (%s)\n", __my_func__);
-	CUctx_st *context = GPGPUSim_Context();
-	gpgpu_t *gpu = context->get_device()->get_gpgpu();
-	gpu->gpu_memset((size_t)mem, c, count);
+#ifdef OPENGL_SUPPORT
+	gpgpu_context *ctx;
+	if (gpgpu_ctx){
+	    ctx = gpgpu_ctx;
+	} else {
+	    ctx = GPGPU_Context();
+	}
+	CUctx_st* ctx = GPGPUSim_Context(ctx);
+	glbmap_entry_t *p = ctx->api->g_glbmap;
+	while ( p && p->m_bufferObj != bufferObj )
+		p = p->m_next;
+	if ( p == NULL )
+		return g_last_cudaError = cudaErrorUnknown;
+
+	char *data = (char *) calloc(p->m_size,1);
+	memcpy_from_gpu( data,(size_t)p->m_devPtr,p->m_size );
+	glBufferSubData(GL_ARRAY_BUFFER,0,p->m_size,data);
+	free(data);
+
 	return g_last_cudaError = cudaSuccess;
+#else
+	fflush(stdout);
+	fflush(stderr);
+	printf("GPGPU-Sim PTX: support for OpenGL integration disabled -- exiting\n");
+	fflush(stdout);
+	exit(50);
+#endif
+}
+
+#if CUDART_VERSION >= 3000
+
+__host__ cudaError_t CUDARTAPI cudaFuncSetCacheConfigInternal(const char *func, enum cudaFuncCache  cacheConfig, gpgpu_context* gpgpu_ctx = NULL )
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	CUctx_st *context = GPGPUSim_Context(ctx);
+	context->get_device()->get_gpgpu()->set_cache_config(context->get_kernel(func)->get_name(), (FuncCache)cacheConfig);
+	return g_last_cudaError = cudaSuccess;
+}
+
+#endif
+
+#if CUDART_VERSION >= 4000
+CUresult CUDAAPI cuLaunchKernelInternal(CUfunction f,
+                                unsigned int gridDimX,
+                                unsigned int gridDimY,
+                                unsigned int gridDimZ,
+                                unsigned int blockDimX,
+                                unsigned int blockDimY,
+                                unsigned int blockDimZ,
+                                unsigned int sharedMemBytes,
+                                CUstream hStream,
+                                void **kernelParams,
+                                void **extra,
+				gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+    if (extra!=NULL){
+	    printf("GPGPU-Sim CUDA DRIVER API: ERROR: Currently do not support void** extra.\n");
+        abort();
+    }
+    const char *hostFun = (const char*) f;
+	CUctx_st *context = GPGPUSim_Context(ctx);
+	function_info *entry = context->get_kernel(hostFun);
+    cudaConfigureCallInternal(dim3(gridDimX, gridDimY, gridDimZ), dim3(blockDimX, blockDimY, blockDimZ), sharedMemBytes, (cudaStream_t) hStream, ctx);
+    for(unsigned i = 0; i < entry->num_args(); i++){
+        std::pair<size_t, unsigned> p = entry->get_param_config(i);
+        cudaSetupArgumentInternal(kernelParams[i], p.first, p.second, ctx);
+    }
+    cudaLaunchInternal(hostFun, ctx);
+	return CUDA_SUCCESS;
+}
+#endif /* CUDART_VERSION >= 4000 */
+
+CUevent_st *get_event(cudaEvent_t event)
+{
+	unsigned event_uid;
+#if CUDART_VERSION >= 3000
+	event_uid = event->get_uid();
+#else
+	event_uid = event;
+#endif
+	event_tracker_t::iterator e = g_timer_events.find(event_uid);
+	if( e == g_timer_events.end() )
+		return NULL;
+	return e->second;
+}
+
+__host__ cudaError_t CUDARTAPI cudaEventRecordInternal(cudaEvent_t event, cudaStream_t stream, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	CUevent_st *e = get_event(event);
+	if( !e ) return g_last_cudaError = cudaErrorUnknown;
+	struct CUstream_st *s = (struct CUstream_st *)stream;
+	stream_operation op(e,s);
+	ctx->the_gpgpusim->g_stream_manager->push(op);
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaStreamWaitEventInternal(cudaStream_t stream, cudaEvent_t event, unsigned int flags, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+   //reference: https://www.cs.cmu.edu/afs/cs/academic/class/15668-s11/www/cuda-doc/html/group__CUDART__STREAM_gfe68d207dc965685d92d3f03d77b0876.html 
+	CUevent_st *e = get_event(event);
+	if( !e ){
+	   printf("GPGPU-Sim API: Warning: cudaEventRecord has not been called on event before calling cudaStreamWaitEvent.\nNothing to be done.\n");
+      return g_last_cudaError = cudaSuccess;
+   }
+   if (!stream){
+     ctx->the_gpgpusim->g_stream_manager->pushCudaStreamWaitEventToAllStreams(e, flags);
+   } else {
+	   struct CUstream_st *s = (struct CUstream_st *)stream;
+	   stream_operation op(s,e,flags);
+	   ctx->the_gpgpusim->g_stream_manager->push(op);
+   }
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaThreadExitInternal(gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	ctx->exit_simulation();
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaThreadSynchronizeInternal(gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	//Called on host side
+	ctx->synchronize();
+	return g_last_cudaError = cudaSuccess;
+}
+
+cudaError_t CUDARTAPI cudaDeviceSynchronizeInternal(gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	//Blocks until the device has completed all preceding requested tasks
+	ctx->synchronize();
+	return g_last_cudaError = cudaSuccess;
+}
+
+/*******************************************************************************
+ *                                                                              *
+ *                                                                              *
+ *                                                                              *
+ *******************************************************************************/
+
+extern "C" {
+
+/*******************************************************************************
+ *                                                                              *
+ *                                                                              *
+ *                                                                              *
+ *******************************************************************************/
+cudaError_t cudaPeekAtLastError(void)
+{
+	return g_last_cudaError;
+}
+
+__host__ cudaError_t CUDARTAPI cudaMalloc(void **devPtr, size_t size) 
+{
+    return cudaMallocInternal(devPtr, size);
+}
+
+__host__ cudaError_t CUDARTAPI cudaMallocHost(void **ptr, size_t size)
+{
+    return cudaMallocHostInternal(ptr, size);
+}
+__host__ cudaError_t CUDARTAPI cudaMallocPitch(void **devPtr, size_t *pitch, size_t width, size_t height)
+{
+    return cudaMallocPitchInternal(devPtr, pitch, width, height);
+}
+
+__host__ cudaError_t CUDARTAPI cudaMallocArray(struct cudaArray **array, const struct cudaChannelFormatDesc *desc, size_t width, size_t height __dv(1))
+{
+    return cudaMallocArrayInternal(array, desc, width, height);
+}
+
+__host__ cudaError_t CUDARTAPI cudaFree(void *devPtr)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	// TODO...  manage g_global_mem space?
+	return g_last_cudaError = cudaSuccess;
+}
+__host__ cudaError_t CUDARTAPI cudaFreeHost(void *ptr)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	free (ptr);  // this will crash the system if called twice
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaFreeArray(struct cudaArray *array)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	// TODO...  manage g_global_mem space?
+	return g_last_cudaError = cudaSuccess;
+};
+
+
+/*******************************************************************************
+ *                                                                              *
+ *                                                                              *
+ *                                                                              *
+ *******************************************************************************/
+
+__host__ cudaError_t CUDARTAPI cudaMemcpy(void *dst, const void *src, size_t count, enum cudaMemcpyKind kind)
+{
+    return cudaMemcpyInternal(dst, src, count, kind);
+}
+
+__host__ cudaError_t CUDARTAPI cudaMemcpyToArray(struct cudaArray *dst, size_t wOffset, size_t hOffset, const void *src, size_t count, enum cudaMemcpyKind kind)
+{ 
+    return cudaMemcpyToArrayInternal(dst, wOffset, hOffset, src, count, kind);
+}
+
+
+__host__ cudaError_t CUDARTAPI cudaMemcpyFromArray(void *dst, const struct cudaArray *src, size_t wOffset, size_t hOffset, size_t count, enum cudaMemcpyKind kind)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	cuda_not_implemented(__my_func__,__LINE__);
+	return g_last_cudaError = cudaErrorUnknown;
+}
+
+
+__host__ cudaError_t CUDARTAPI cudaMemcpyArrayToArray(struct cudaArray *dst, size_t wOffsetDst, size_t hOffsetDst, const struct cudaArray *src, size_t wOffsetSrc, size_t hOffsetSrc, size_t count, enum cudaMemcpyKind kind __dv(cudaMemcpyDeviceToDevice))
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	cuda_not_implemented(__my_func__,__LINE__);
+	return g_last_cudaError = cudaErrorUnknown;
+}
+
+
+__host__ cudaError_t CUDARTAPI cudaMemcpy2D(void *dst, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height, enum cudaMemcpyKind kind)
+{
+    return cudaMemcpy2DInternal(dst, dpitch, src, spitch, width, height, kind);
+}
+
+__host__ cudaError_t CUDARTAPI cudaMemcpy2DToArray(struct cudaArray *dst, size_t wOffset, size_t hOffset, const void *src, size_t spitch, size_t width, size_t height, enum cudaMemcpyKind kind)
+{
+    return cudaMemcpy2DToArrayInternal(dst, wOffset, hOffset, src, spitch, width, height, kind);
+}
+
+__host__ cudaError_t CUDARTAPI cudaMemcpy2DFromArray(void *dst, size_t dpitch, const struct cudaArray *src, size_t wOffset, size_t hOffset, size_t width, size_t height, enum cudaMemcpyKind kind)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	cuda_not_implemented(__my_func__,__LINE__);
+	return g_last_cudaError = cudaErrorUnknown;
+}
+
+__host__ cudaError_t CUDARTAPI cudaMemcpy2DArrayToArray(struct cudaArray *dst, size_t wOffsetDst, size_t hOffsetDst, const struct cudaArray *src, size_t wOffsetSrc, size_t hOffsetSrc, size_t width, size_t height, enum cudaMemcpyKind kind __dv(cudaMemcpyDeviceToDevice))
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	cuda_not_implemented(__my_func__,__LINE__);
+	return g_last_cudaError = cudaErrorUnknown;
+}
+
+__host__ cudaError_t CUDARTAPI cudaMemcpyToSymbol(const char *symbol, const void *src, size_t count, size_t offset __dv(0), enum cudaMemcpyKind kind __dv(cudaMemcpyHostToDevice))
+{
+    return cudaMemcpyToSymbolInternal(symbol, src, count, offset, kind);
+}
+
+
+__host__ cudaError_t CUDARTAPI cudaMemcpyFromSymbol(void *dst, const char *symbol, size_t count, size_t offset __dv(0), enum cudaMemcpyKind kind __dv(cudaMemcpyDeviceToHost))
+{
+    return cudaMemcpyFromSymbolInternal(dst, symbol, count, offset, kind);
+}
+
+__host__ cudaError_t CUDARTAPI cudaMemGetInfo (size_t *free, size_t *total){
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	//placeholder; should interact with cudaMalloc and cudaFree?
+	*free = 10000000000;
+	*total = 10000000000;
+
+	return g_last_cudaError = cudaSuccess;
+}
+
+/*******************************************************************************
+ *                                                                              *
+ *                                                                              *
+ *                                                                              *
+ *******************************************************************************/
+
+__host__ cudaError_t CUDARTAPI cudaMemcpyAsync(void *dst, const void *src, size_t count, enum cudaMemcpyKind kind, cudaStream_t stream)
+{
+    return cudaMemcpyAsyncInternal(dst, src, count, kind, stream);
+}
+
+
+__host__ cudaError_t CUDARTAPI cudaMemcpyToArrayAsync(struct cudaArray *dst, size_t wOffset, size_t hOffset, const void *src, size_t count, enum cudaMemcpyKind kind, cudaStream_t stream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	cuda_not_implemented(__my_func__,__LINE__);
+	return g_last_cudaError = cudaErrorUnknown;
+}
+
+
+__host__ cudaError_t CUDARTAPI cudaMemcpyFromArrayAsync(void *dst, const struct cudaArray *src, size_t wOffset, size_t hOffset, size_t count, enum cudaMemcpyKind kind, cudaStream_t stream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	cuda_not_implemented(__my_func__,__LINE__);
+	return g_last_cudaError = cudaErrorUnknown;
+}
+
+
+__host__ cudaError_t CUDARTAPI cudaMemcpy2DAsync(void *dst, size_t dpitch, const void *src, size_t spitch, size_t width, size_t height, enum cudaMemcpyKind kind, cudaStream_t stream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	cuda_not_implemented(__my_func__,__LINE__);
+	return g_last_cudaError = cudaErrorUnknown;
+}
+
+
+__host__ cudaError_t CUDARTAPI cudaMemcpy2DToArrayAsync(struct cudaArray *dst, size_t wOffset, size_t hOffset, const void *src, size_t spitch, size_t width, size_t height, enum cudaMemcpyKind kind, cudaStream_t stream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	cuda_not_implemented(__my_func__,__LINE__);
+	return g_last_cudaError = cudaErrorUnknown;
+}
+
+
+__host__ cudaError_t CUDARTAPI cudaMemcpy2DFromArrayAsync(void *dst, size_t dpitch, const struct cudaArray *src, size_t wOffset, size_t hOffset, size_t width, size_t height, enum cudaMemcpyKind kind, cudaStream_t stream)
+{
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	cuda_not_implemented(__my_func__,__LINE__);
+	return g_last_cudaError = cudaErrorUnknown;
+}
+
+#if (CUDART_VERSION >= 8000)
+cudaError_t CUDARTAPI cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(int* numBlocks, const char *hostFunc, int blockSize, size_t dynamicSMemSize, unsigned int flags)
+{
+    return cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlagsInternal(numBlocks, hostFunc, blockSize, dynamicSMemSize, flags);
+}
+
+#endif
+
+
+
+/*******************************************************************************
+ *                                                                              *
+ *                                                                              *
+ *                                                                              *
+ *******************************************************************************/
+__host__ cudaError_t CUDARTAPI cudaMemset(void *mem, int c, size_t count)
+{
+    return cudaMemsetInternal(mem, c, count);
+}
+
+//memset operation is done but i think its not async?
+__host__ cudaError_t CUDARTAPI cudaMemsetAsync(void *mem, int c, size_t count, 	cudaStream_t stream=0)
+{
+    return cudaMemsetAsyncInternal(mem, c, count, stream=0);
 }
 
 __host__ cudaError_t CUDARTAPI cudaMemset2D(void *mem, size_t pitch, int c, size_t width, size_t height)
@@ -1986,61 +2516,18 @@ __host__ cudaError_t CUDARTAPI cudaBindTexture(size_t *offset,
 		const struct cudaChannelFormatDesc *desc,
 		size_t size __dv(UINT_MAX))
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	CUctx_st *context = GPGPUSim_Context();
-	gpgpu_t *gpu = context->get_device()->get_gpgpu();
-	printf("GPGPU-Sim PTX: in cudaBindTexture: sizeof(struct textureReference) = %zu\n", sizeof(struct textureReference));
-	struct cudaArray *array;
-	array = (struct cudaArray*) malloc(sizeof(struct cudaArray));
-	array->desc = *desc;
-	array->size = size;
-	array->width = size;
-	array->height = 1;
-	array->dimensions = 1;
-	array->devPtr = (void*)devPtr;
-	array->devPtr32 = (int)(long long)devPtr;
-	offset = 0;
-	printf("GPGPU-Sim PTX:   size = %zu\n", size);
-	printf("GPGPU-Sim PTX:   texref = %p, array = %p\n", texref, array);
-	printf("GPGPU-Sim PTX:   devPtr32 = %x\n", array->devPtr32);
-	printf("GPGPU-Sim PTX:   Name corresponding to textureReference: %s\n", gpu->gpgpu_ptx_sim_findNamefromTexture(texref));
-	printf("GPGPU-Sim PTX:   ChannelFormatDesc: x=%d, y=%d, z=%d, w=%d\n", desc->x, desc->y, desc->z, desc->w);
-	printf("GPGPU-Sim PTX:   Texture Normalized? = %d\n", texref->normalized);
-	gpu->gpgpu_ptx_sim_bindTextureToArray(texref, array);
-	devPtr = (void*)(long long)array->devPtr32;
-	printf("GPGPU-Sim PTX: devPtr = %p\n", devPtr);
-	return g_last_cudaError = cudaSuccess;
+    return cudaBindTextureInternal(offset, texref, devPtr, desc, size __dv(UINT_MAX));
 }
 
 
 __host__ cudaError_t CUDARTAPI cudaBindTextureToArray(const struct textureReference *texref, const struct cudaArray *array, const struct cudaChannelFormatDesc *desc)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	CUctx_st *context = GPGPUSim_Context();
-	gpgpu_t *gpu = context->get_device()->get_gpgpu();
-	printf("GPGPU-Sim PTX: in cudaBindTextureToArray: %p %p\n", texref, array);
-	printf("GPGPU-Sim PTX:   devPtr32 = %x\n", array->devPtr32);
-	printf("GPGPU-Sim PTX:   Name corresponding to textureReference: %s\n", gpu->gpgpu_ptx_sim_findNamefromTexture(texref));
-	printf("GPGPU-Sim PTX:   Texture Normalized? = %d\n", texref->normalized);
-	gpu->gpgpu_ptx_sim_bindTextureToArray(texref, array);
-	return g_last_cudaError = cudaSuccess;
+    return cudaBindTextureToArrayInternal(texref, array, desc);
 }
 
-__host__ cudaError_t CUDARTAPI cudaUnbindTexture(const struct textureReference *texref){
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-   CUctx_st *context = GPGPUSim_Context();
-   gpgpu_t *gpu = context->get_device()->get_gpgpu();
-   printf("GPGPU-Sim PTX: in cudaUnbindTexture: sizeof(struct textureReference) = %zu\n", sizeof(struct textureReference));
-   printf("GPGPU-Sim PTX:   Name corresponding to textureReference: %s\n", gpu->gpgpu_ptx_sim_findNamefromTexture(texref));
-
-   gpu->gpgpu_ptx_sim_unbindTexture(texref);
-   return g_last_cudaError = cudaSuccess;
+__host__ cudaError_t CUDARTAPI cudaUnbindTexture(const struct textureReference *texref)
+{
+    return cudaUnbindTextureInternal(texref);
 }
 
 __host__ cudaError_t CUDARTAPI cudaGetTextureAlignmentOffset(size_t *offset, const struct textureReference *texref)
@@ -2125,24 +2612,9 @@ __host__ cudaError_t CUDARTAPI cudaLaunch( const char *hostFun )
     return cudaLaunchInternal( hostFun );
 }
 
-__host__ cudaError_t CUDARTAPI cudaLaunchKernel ( const char* hostFun, dim3 gridDim, dim3 blockDim, const void** args, size_t sharedMem, cudaStream_t stream )
+__host__ cudaError_t CUDARTAPI cudaLaunchKernel( const char* hostFun, dim3 gridDim, dim3 blockDim, const void** args, size_t sharedMem, cudaStream_t stream )
 {
-
-    if(g_debug_execution >= 3){
-        announce_call(__my_func__);
-    }
-    CUctx_st *context = GPGPUSim_Context();
-    function_info *entry = context->get_kernel(hostFun);
-#if CUDART_VERSION < 10000
-    cudaConfigureCallInternal(gridDim, blockDim, sharedMem, stream);
-#endif
-    for(unsigned i = 0; i < entry->num_args(); i++){
-        std::pair<size_t, unsigned> p = entry->get_param_config(i);
-        cudaSetupArgumentInternal(args[i], p.first, p.second);
-    }
-
-    cudaLaunchInternal(hostFun);
-    return g_last_cudaError = cudaSuccess;
+    return cudaLaunchKernelInternal(hostFun, gridDim, blockDim, args, sharedMem, stream);
 }
 
 
@@ -2154,18 +2626,7 @@ __host__ cudaError_t CUDARTAPI cudaLaunchKernel ( const char* hostFun, dim3 grid
 
 __host__ cudaError_t CUDARTAPI cudaStreamCreate(cudaStream_t *stream)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	printf("GPGPU-Sim PTX: cudaStreamCreate\n");
-#if (CUDART_VERSION >= 3000)
-	*stream = new struct CUstream_st();
-	g_stream_manager()->add_stream(*stream);
-#else
-	*stream = 0;
-	printf("GPGPU-Sim PTX: WARNING: Asynchronous kernel execution not supported (%s)\n", __my_func__);
-#endif
-	return g_last_cudaError = cudaSuccess;
+    return cudaStreamCreateInternal(stream);
 }
 
 //TODO: introduce priorities
@@ -2192,32 +2653,12 @@ __host__ __device__ cudaError_t CUDARTAPI cudaStreamCreateWithFlags(cudaStream_t
 
 __host__ cudaError_t CUDARTAPI cudaStreamDestroy(cudaStream_t stream)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-#if (CUDART_VERSION >= 3000)
-	//per-stream synchronization required for application using external libraries without explicit synchronization in the code to 
-	//avoid the stream_manager from spinning forever to destroy non-empty streams without making any forward progress. 
-	stream->synchronize();
-	g_stream_manager()->destroy_stream(stream);
-#endif
-	return g_last_cudaError = cudaSuccess;
+    return cudaStreamDestroyInternal(stream);
 }
 
 __host__ cudaError_t CUDARTAPI cudaStreamSynchronize(cudaStream_t stream)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-#if (CUDART_VERSION >= 3000)
-	if( stream == NULL )
-		synchronize();
-		return g_last_cudaError = cudaSuccess;
-	stream->synchronize();
-#else
-	printf("GPGPU-Sim PTX: WARNING: Asynchronous kernel execution not supported (%s)\n", __my_func__);
-#endif
-	return g_last_cudaError = cudaSuccess;
+    return cudaStreamSynchronizeInternal(stream);
 }
 
 __host__ cudaError_t CUDARTAPI cudaStreamQuery(cudaStream_t stream)
@@ -2256,52 +2697,14 @@ __host__ cudaError_t CUDARTAPI cudaEventCreate(cudaEvent_t *event)
 	return g_last_cudaError = cudaSuccess;
 }
 
-CUevent_st *get_event(cudaEvent_t event)
-{
-	unsigned event_uid;
-#if CUDART_VERSION >= 3000
-	event_uid = event->get_uid();
-#else
-	event_uid = event;
-#endif
-	event_tracker_t::iterator e = g_timer_events.find(event_uid);
-	if( e == g_timer_events.end() )
-		return NULL;
-	return e->second;
-}
-
 __host__ cudaError_t CUDARTAPI cudaEventRecord(cudaEvent_t event, cudaStream_t stream)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	CUevent_st *e = get_event(event);
-	if( !e ) return g_last_cudaError = cudaErrorUnknown;
-	struct CUstream_st *s = (struct CUstream_st *)stream;
-	stream_operation op(e,s);
-	g_stream_manager()->push(op);
-	return g_last_cudaError = cudaSuccess;
+    return cudaEventRecordInternal(event, stream);
 }
 
 __host__ cudaError_t CUDARTAPI cudaStreamWaitEvent(cudaStream_t stream, cudaEvent_t event, unsigned int flags)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-   //reference: https://www.cs.cmu.edu/afs/cs/academic/class/15668-s11/www/cuda-doc/html/group__CUDART__STREAM_gfe68d207dc965685d92d3f03d77b0876.html 
-	CUevent_st *e = get_event(event);
-	if( !e ){
-	   printf("GPGPU-Sim API: Warning: cudaEventRecord has not been called on event before calling cudaStreamWaitEvent.\nNothing to be done.\n");
-      return g_last_cudaError = cudaSuccess;
-   }
-   if (!stream){
-      g_stream_manager()->pushCudaStreamWaitEventToAllStreams(e, flags);
-   } else {
-	   struct CUstream_st *s = (struct CUstream_st *)stream;
-	   stream_operation op(s,e,flags);
-	   g_stream_manager()->push(op);
-   }
-	return g_last_cudaError = cudaSuccess;
+    return cudaStreamWaitEventInternal(stream, event, flags);
 }
 
 __host__ cudaError_t CUDARTAPI cudaEventQuery(cudaEvent_t event)
@@ -2374,22 +2777,13 @@ __host__ cudaError_t CUDARTAPI cudaEventElapsedTime(float *ms, cudaEvent_t start
 
 __host__ cudaError_t CUDARTAPI cudaThreadExit(void)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	exit_simulation();
-	return g_last_cudaError = cudaSuccess;
+    return cudaThreadExitInternal();
 }
 
 __host__ cudaError_t CUDARTAPI cudaThreadSynchronize(void)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	//Called on host side
-	synchronize();
-	return g_last_cudaError = cudaSuccess;
-};
+    return cudaThreadSynchronizeInternal();
+}
 
 int CUDARTAPI __cudaSynchronizeThreads(void**, void*)
 {
@@ -2528,7 +2922,7 @@ void cuda_runtime_api::extract_ptx_files_using_cuobjdump(CUctx_st *context){
  *	enabled
  * */
 void cuda_runtime_api::extract_code_using_cuobjdump(){
-    CUctx_st *context = GPGPUSim_Context();
+    CUctx_st *context = GPGPUSim_Context(gpgpu_ctx);
 
     //prevent the dumping by cuobjdump everytime we execute the code!
     const char *override_cuobjdump = getenv("CUOBJDUMP_SIM_FILE"); 
@@ -2886,7 +3280,7 @@ cuobjdumpPTXSection* cuda_runtime_api::findPTXSection(const std::string identifi
 
 //! Extract the code using cuobjdump and remove unnecessary sections
 void cuda_runtime_api::cuobjdumpInit(){
-	CUctx_st *context = GPGPUSim_Context();
+	CUctx_st *context = GPGPUSim_Context(gpgpu_ctx);
 	extract_code_using_cuobjdump(); //extract all the output of cuobjdump to _cuobjdump_*.*
 	const char* pre_load = getenv("CUOBJDUMP_SIM_FILE");
 	if (pre_load ==NULL || strlen(pre_load)==0){
@@ -2899,7 +3293,7 @@ void cuda_runtime_api::cuobjdumpInit(){
 //! Either submit PTX for simulation or convert SASS to PTXPlus and submit it
 void gpgpu_context::cuobjdumpParseBinary(unsigned int handle){
 
-	CUctx_st *context = GPGPUSim_Context();
+	CUctx_st *context = GPGPUSim_Context(this);
 	if(api->fatbin_registered[handle]) return;
 	api->fatbin_registered[handle] = true;
 	std::string fname = api->fatbinmap[handle];
@@ -3093,15 +3487,11 @@ cudaError_t cudaDeviceReset ( void ) {
     }
 	return g_last_cudaError = cudaSuccess;
 }
-cudaError_t CUDARTAPI cudaDeviceSynchronize(void){
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	//Blocks until the device has completed all preceding requested tasks
-	synchronize();
-	return g_last_cudaError = cudaSuccess;
-}
 
+cudaError_t CUDARTAPI cudaDeviceSynchronize(void)
+{
+    return cudaDeviceSynchronizeInternal();
+}
 
 void __cudaRegisterShared(
 		void **fatCubinHandle,
@@ -3140,22 +3530,7 @@ void __cudaRegisterTexture(
 		int ext
 ) //passes in a newly created textureReference
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	std::string devStr (deviceName);
-	#if (CUDART_VERSION > 4020)
-	if (devStr.size() > 2 && devStr.data()[0] == ':' && devStr.data()[1] == ':')
-		devStr = devStr.replace(0, 2, "");
-	#endif
-	CUctx_st *context = GPGPUSim_Context();
-	gpgpu_t *gpu = context->get_device()->get_gpgpu();
-	printf("GPGPU-Sim PTX: in __cudaRegisterTexture:\n");
-	gpu->gpgpu_ptx_sim_bindNameToTexture(devStr.data(), hostVar, dim, norm, ext);
-	printf("GPGPU-Sim PTX:   int dim = %d\n", dim);
-	printf("GPGPU-Sim PTX:   int norm = %d\n", norm);
-	printf("GPGPU-Sim PTX:   int ext = %d\n", ext);
-	printf("GPGPU-Sim PTX:   Execution warning: Not finished implementing \"%s\"\n", __my_func__ );
+    __cudaRegisterTextureInternal(fatCubinHandle, hostVar, deviceAddress, deviceName, dim, norm, ext);
 }
 
 
@@ -3187,30 +3562,7 @@ cudaError_t cudaGLMapBufferObject(void** devPtr, GLuint bufferObj)
 
 cudaError_t cudaGLUnmapBufferObject(GLuint bufferObj)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-#ifdef OPENGL_SUPPORT
-	CUctx_st* ctx = GPGPUSim_Context();
-	glbmap_entry_t *p = ctx->api->g_glbmap;
-	while ( p && p->m_bufferObj != bufferObj )
-		p = p->m_next;
-	if ( p == NULL )
-		return g_last_cudaError = cudaErrorUnknown;
-
-	char *data = (char *) calloc(p->m_size,1);
-	memcpy_from_gpu( data,(size_t)p->m_devPtr,p->m_size );
-	glBufferSubData(GL_ARRAY_BUFFER,0,p->m_size,data);
-	free(data);
-
-	return g_last_cudaError = cudaSuccess;
-#else
-	fflush(stdout);
-	fflush(stderr);
-	printf("GPGPU-Sim PTX: support for OpenGL integration disabled -- exiting\n");
-	fflush(stdout);
-	exit(50);
-#endif
+    return cudaGLUnmapBufferObjectInternal(bufferObj);
 }
 
 cudaError_t cudaGLUnregisterBufferObject(GLuint bufferObj) 
@@ -3322,12 +3674,7 @@ cudaError_t CUDARTAPI cudaRuntimeGetVersion(int *runtimeVersion)
 #if CUDART_VERSION >= 3000
 __host__ cudaError_t CUDARTAPI cudaFuncSetCacheConfig(const char *func, enum cudaFuncCache  cacheConfig )
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	CUctx_st *context = GPGPUSim_Context();
-	context->get_device()->get_gpgpu()->set_cache_config(context->get_kernel(func)->get_name(), (FuncCache)cacheConfig);
-	return g_last_cudaError = cudaSuccess;
+    return cudaFuncSetCacheConfigInternal(func, cacheConfig);
 }
 
 //Jin: hack for cdp
@@ -5033,23 +5380,7 @@ CUresult CUDAAPI cuLaunchKernel(CUfunction f,
                                 void **kernelParams,
                                 void **extra)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-    if (extra!=NULL){
-	    printf("GPGPU-Sim CUDA DRIVER API: ERROR: Currently do not support void** extra.\n");
-        abort();
-    }
-    const char *hostFun = (const char*) f;
-	CUctx_st *context = GPGPUSim_Context();
-	function_info *entry = context->get_kernel(hostFun);
-    cudaConfigureCallInternal(dim3(gridDimX, gridDimY, gridDimZ), dim3(blockDimX, blockDimY, blockDimZ), sharedMemBytes, (cudaStream_t) hStream);
-    for(unsigned i = 0; i < entry->num_args(); i++){
-        std::pair<size_t, unsigned> p = entry->get_param_config(i);
-        cudaSetupArgument(kernelParams[i], p.first, p.second);
-    }
-    cudaLaunchInternal(hostFun);
-	return CUDA_SUCCESS;
+    return cuLaunchKernelInternal(f, gridDimX, gridDimY, gridDimZ, blockDimX, blockDimY, blockDimZ, sharedMemBytes, hStream, kernelParams, extra);
 }
 #endif /* CUDART_VERSION >= 4000 */
 
