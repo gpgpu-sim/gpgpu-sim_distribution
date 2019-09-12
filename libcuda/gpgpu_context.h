@@ -52,6 +52,10 @@ class gpgpu_context {
 	cuda_device_runtime* device_runtime;
 	ptx_stats* stats;
 	// member function list
+	void synchronize();
+	void exit_simulation();
+	void print_simulation_time();
+	int gpgpu_opencl_ptx_sim_main_perf( kernel_info_t *grid );
 	void cuobjdumpParseBinary(unsigned int handle);
 	class symbol_table *gpgpu_ptx_sim_load_ptx_from_string( const char *p, unsigned source_num );
 	class symbol_table *gpgpu_ptx_sim_load_ptx_from_filename( const char *filename );
@@ -60,6 +64,7 @@ class gpgpu_context {
 	void print_ptx_file( const char *p, unsigned source_num, const char *filename );
 	class symbol_table* init_parser(const char*);
 	class gpgpu_sim *gpgpu_ptx_sim_init_perf();
+	void start_sim_thread(int api);
 	struct _cuda_device_id *GPGPUSim_Init();
 	void ptx_reg_options(option_parser_t opp);
 	const ptx_instruction* pc_to_instruction(unsigned pc); 

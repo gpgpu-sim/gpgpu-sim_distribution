@@ -150,9 +150,6 @@
 #endif
 
 
-extern void synchronize();
-extern void exit_simulation();
-
 /*DEVICE_BUILTIN*/
 struct cudaArray
 {
@@ -242,8 +239,8 @@ struct _cuda_device_id *gpgpu_context::GPGPUSim_Init()
 		prop->maxThreadsPerMultiProcessor = the_gpu->threads_per_core();
 #endif
 		the_gpu->set_prop(prop);
-		GPGPUsim_ctx_ptr()->the_cude_device = new _cuda_device_id(the_gpu);
-		the_device = GPGPUsim_ctx_ptr()->the_cude_device;
+		the_gpgpusim->the_cude_device = new _cuda_device_id(the_gpu);
+		the_device = the_gpgpusim->the_cude_device;
 	}
 	start_sim_thread(1);
 	return the_device;
@@ -1876,6 +1873,28 @@ __host__ cudaError_t CUDARTAPI cudaStreamDestroyInternal(cudaStream_t stream, gp
 	return g_last_cudaError = cudaSuccess;
 }
 
+__host__ cudaError_t CUDARTAPI cudaStreamSynchronizeInternal(cudaStream_t stream, gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+#if (CUDART_VERSION >= 3000)
+	if( stream == NULL )
+		ctx->synchronize();
+		return g_last_cudaError = cudaSuccess;
+	stream->synchronize();
+#else
+	printf("GPGPU-Sim PTX: WARNING: Asynchronous kernel execution not supported (%s)\n", __my_func__);
+#endif
+	return g_last_cudaError = cudaSuccess;
+}
+
 void __cudaRegisterTextureInternal(
 		void **fatCubinHandle,
 		const struct textureReference *hostVar,
@@ -2062,6 +2081,53 @@ __host__ cudaError_t CUDARTAPI cudaStreamWaitEventInternal(cudaStream_t stream, 
 	   stream_operation op(s,e,flags);
 	   ctx->the_gpgpusim->g_stream_manager->push(op);
    }
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaThreadExitInternal(gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	ctx->exit_simulation();
+	return g_last_cudaError = cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI cudaThreadSynchronizeInternal(gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	//Called on host side
+	ctx->synchronize();
+	return g_last_cudaError = cudaSuccess;
+}
+
+cudaError_t CUDARTAPI cudaDeviceSynchronizeInternal(gpgpu_context* gpgpu_ctx = NULL)
+{
+    gpgpu_context *ctx;
+    if (gpgpu_ctx){
+	ctx = gpgpu_ctx;
+    } else {
+	ctx = GPGPU_Context();
+    }
+	if(g_debug_execution >= 3){
+	    announce_call(__my_func__);
+    }
+	//Blocks until the device has completed all preceding requested tasks
+	ctx->synchronize();
 	return g_last_cudaError = cudaSuccess;
 }
 
@@ -2592,18 +2658,7 @@ __host__ cudaError_t CUDARTAPI cudaStreamDestroy(cudaStream_t stream)
 
 __host__ cudaError_t CUDARTAPI cudaStreamSynchronize(cudaStream_t stream)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-#if (CUDART_VERSION >= 3000)
-	if( stream == NULL )
-		synchronize();
-		return g_last_cudaError = cudaSuccess;
-	stream->synchronize();
-#else
-	printf("GPGPU-Sim PTX: WARNING: Asynchronous kernel execution not supported (%s)\n", __my_func__);
-#endif
-	return g_last_cudaError = cudaSuccess;
+    return cudaStreamSynchronizeInternal(stream);
 }
 
 __host__ cudaError_t CUDARTAPI cudaStreamQuery(cudaStream_t stream)
@@ -2722,22 +2777,13 @@ __host__ cudaError_t CUDARTAPI cudaEventElapsedTime(float *ms, cudaEvent_t start
 
 __host__ cudaError_t CUDARTAPI cudaThreadExit(void)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	exit_simulation();
-	return g_last_cudaError = cudaSuccess;
+    return cudaThreadExitInternal();
 }
 
 __host__ cudaError_t CUDARTAPI cudaThreadSynchronize(void)
 {
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	//Called on host side
-	synchronize();
-	return g_last_cudaError = cudaSuccess;
-};
+    return cudaThreadSynchronizeInternal();
+}
 
 int CUDARTAPI __cudaSynchronizeThreads(void**, void*)
 {
@@ -3441,15 +3487,11 @@ cudaError_t cudaDeviceReset ( void ) {
     }
 	return g_last_cudaError = cudaSuccess;
 }
-cudaError_t CUDARTAPI cudaDeviceSynchronize(void){
-	if(g_debug_execution >= 3){
-	    announce_call(__my_func__);
-    }
-	//Blocks until the device has completed all preceding requested tasks
-	synchronize();
-	return g_last_cudaError = cudaSuccess;
-}
 
+cudaError_t CUDARTAPI cudaDeviceSynchronize(void)
+{
+    return cudaDeviceSynchronizeInternal();
+}
 
 void __cudaRegisterShared(
 		void **fatCubinHandle,
