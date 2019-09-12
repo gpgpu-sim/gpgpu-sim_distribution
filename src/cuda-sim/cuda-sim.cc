@@ -2188,7 +2188,7 @@ void cuda_sim::gpgpu_cuda_ptx_sim_main_func( kernel_info_t &kernel, bool openCL 
    //openCL kernel simulation calls don't register the kernel so we don't register its exit
    if(!openCL) {
       //extern stream_manager *g_stream_manager;
-      g_stream_manager()->register_finished_kernel(kernel.get_uid());
+      gpgpu_ctx->the_gpgpusim->g_stream_manager->register_finished_kernel(kernel.get_uid());
    }
 
    //******PRINTING*******

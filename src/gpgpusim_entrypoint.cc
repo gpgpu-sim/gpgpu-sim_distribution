@@ -52,10 +52,6 @@ GPGPUsim_ctx* GPGPUsim_ctx_ptr(){
 	return the_gpgpusim;
 }
 
-class stream_manager* g_stream_manager()  {
-	return GPGPUsim_ctx_ptr()->g_stream_manager;
-}
-
 static void print_simulation_time();
 
 void *gpgpu_sim_thread_sequential(void*)
