@@ -87,7 +87,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                   shader_core_stats *stats )
    : core_t( gpu, NULL, config->warp_size, config->n_thread_per_shader ),
      m_barriers( this, config->max_warps_per_shader, config->max_cta_per_core, config->max_barriers_per_cta, config->warp_size ),
-     m_dynamic_warp_id(0), m_active_warps(0)
+     m_active_warps(0), m_dynamic_warp_id(0)
 {
     m_cluster = cluster;
     m_config = config;
@@ -164,7 +164,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
                                          NUM_CONCRETE_SCHEDULERS;
     assert ( scheduler != NUM_CONCRETE_SCHEDULERS );
     
-    for (int i = 0; i < m_config->gpgpu_num_sched_per_core; i++) {
+    for (unsigned i = 0; i < m_config->gpgpu_num_sched_per_core; i++) {
         switch( scheduler )
         {
             case CONCRETE_SCHEDULER_LRR:
@@ -263,7 +263,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
         //distribute i's evenly though schedulers;
         schedulers[i%m_config->gpgpu_num_sched_per_core]->add_supervised_warp_id(i);
     }
-    for ( int i = 0; i < m_config->gpgpu_num_sched_per_core; ++i ) {
+    for ( unsigned i = 0; i < m_config->gpgpu_num_sched_per_core; ++i ) {
         schedulers[i]->done_adding_supervised_warps();
     }
     
@@ -474,7 +474,7 @@ void shader_core_ctx::init_warps( unsigned cta_id, unsigned start_thread, unsign
             }
             m_simt_stack[i]->launch(start_pc,active_threads);
 
-              if(m_gpu->resume_option==1 && kernel_id==m_gpu->resume_kernel && ctaid>=m_gpu->resume_CTA && ctaid<m_gpu->checkpoint_CTA_t )
+              if(m_gpu->resume_option == 1 && kernel_id == m_gpu->resume_kernel && ctaid >= m_gpu->resume_CTA && ctaid < m_gpu->checkpoint_CTA_t )
                { 
                 char fname[2048];
                 snprintf(fname,2048,"checkpoint_files/warp_%d_%d_simt.txt",i%warp_per_cta,ctaid );
@@ -868,7 +868,7 @@ void shader_core_ctx::func_exec_inst( warp_inst_t &inst )
 
 void shader_core_ctx::issue_warp( register_set& pipe_reg_set, const warp_inst_t* next_inst, const active_mask_t &active_mask, unsigned warp_id, unsigned sch_id )
 {
-	warp_inst_t** pipe_reg = pipe_reg = pipe_reg_set.get_free(m_config->sub_core_model, sch_id);
+	warp_inst_t** pipe_reg = pipe_reg_set.get_free(m_config->sub_core_model, sch_id);
     assert(pipe_reg);
 
     m_warp[warp_id].ibuffer_free();
@@ -2147,7 +2147,7 @@ ldst_unit::ldst_unit( mem_fetch_interface *icnt,
         l1_latency_queue.resize(m_config->m_L1D_config.l1_banks);
         assert(m_config->m_L1D_config.l1_latency > 0);
 
-		for(int j=0; j<m_config->m_L1D_config.l1_banks; j++ )
+		for(unsigned j = 0; j < m_config->m_L1D_config.l1_banks; j++ )
 			l1_latency_queue[j].resize(m_config->m_L1D_config.l1_latency,(mem_fetch*)NULL);
 
     }
@@ -2459,7 +2459,7 @@ void shader_core_ctx::register_cta_thread_exit( unsigned cta_num, kernel_info_t 
       m_barriers.deallocate_barrier(cta_num);
       shader_CTA_count_unlog(m_sid, 1);
 
-     SHADER_DPRINTF(LIVENESS, "GPGPU-Sim uArch: Finished CTA #%d (%lld,%lld), %u CTAs running\n",
+     SHADER_DPRINTF(LIVENESS, "GPGPU-Sim uArch: Finished CTA #%u (%lld,%lld), %u CTAs running\n",
         cta_num, m_gpu->gpu_sim_cycle, m_gpu->gpu_tot_sim_cycle, m_n_active_cta);
 
       if( m_n_active_cta == 0 ) {

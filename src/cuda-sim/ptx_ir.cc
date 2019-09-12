@@ -1415,7 +1415,7 @@ unsigned function_info::print_insn( unsigned pc, FILE * fp ) const
    snprintf(command,1024,"c++filt -p %s",m_name.c_str());
    FILE *p = popen(command,"r");
    buffer[0]=0;
-   fgets(buffer, 1023, p);
+   assert(fgets(buffer, 1023, p) != NULL);
    // Remove trailing "\n" in buffer
    char *c;
    if ((c=strchr(buffer, '\n')) != NULL) *c = '\0';

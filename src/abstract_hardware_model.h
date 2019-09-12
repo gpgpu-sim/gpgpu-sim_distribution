@@ -447,19 +447,25 @@ protected:
     class gpgpu_sim * m_gpu;
 };
 
-#define GLOBAL_HEAP_START 0xC0000000
-   // start allocating from this address (lower values used for allocating globals in .ptx file)
-#define SHARED_MEM_SIZE_MAX (96*1024)
-#define LOCAL_MEM_SIZE_MAX (16*1024)
-#define MAX_STREAMING_MULTIPROCESSORS 80   //scale it to Volta
-#define MAX_THREAD_PER_SM 2048
-#define MAX_WARP_PER_SM 64
-#define TOTAL_LOCAL_MEM_PER_SM (MAX_THREAD_PER_SM*LOCAL_MEM_SIZE_MAX)
-#define TOTAL_SHARED_MEM (MAX_STREAMING_MULTIPROCESSORS*SHARED_MEM_SIZE_MAX)
-#define TOTAL_LOCAL_MEM (MAX_STREAMING_MULTIPROCESSORS*MAX_THREAD_PER_SM*LOCAL_MEM_SIZE_MAX)
-#define SHARED_GENERIC_START (GLOBAL_HEAP_START-TOTAL_SHARED_MEM)
-#define LOCAL_GENERIC_START (SHARED_GENERIC_START-TOTAL_LOCAL_MEM)
-#define STATIC_ALLOC_LIMIT (GLOBAL_HEAP_START - (TOTAL_LOCAL_MEM+TOTAL_SHARED_MEM))
+// Let's just upgrade to C++11 so we can use constexpr here...
+// start allocating from this address (lower values used for allocating globals in .ptx file)
+const unsigned long long GLOBAL_HEAP_START = 0xC0000000;
+// Volta max shmem size is 96kB
+const unsigned long long SHARED_MEM_SIZE_MAX = 96 * (1 << 10);
+// Volta max local mem is 16kB
+const unsigned long long LOCAL_MEM_SIZE_MAX = 1 << 14;
+// Volta Titan V has 80 SMs
+const unsigned MAX_STREAMING_MULTIPROCESSORS = 80;
+// Max 2048 threads / SM
+const unsigned MAX_THREAD_PER_SM = 1 << 11;
+// MAX 64 warps / SM
+const unsigned MAX_WARP_PER_SM = 1 << 6;
+const unsigned long long TOTAL_LOCAL_MEM_PER_SM = MAX_THREAD_PER_SM * LOCAL_MEM_SIZE_MAX;
+const unsigned long long TOTAL_SHARED_MEM = MAX_STREAMING_MULTIPROCESSORS * SHARED_MEM_SIZE_MAX;
+const unsigned long long TOTAL_LOCAL_MEM = MAX_STREAMING_MULTIPROCESSORS * MAX_THREAD_PER_SM * LOCAL_MEM_SIZE_MAX;
+const unsigned long long SHARED_GENERIC_START = GLOBAL_HEAP_START - TOTAL_SHARED_MEM;
+const unsigned long long LOCAL_GENERIC_START = SHARED_GENERIC_START - TOTAL_LOCAL_MEM;
+const unsigned long long STATIC_ALLOC_LIMIT = GLOBAL_HEAP_START - (TOTAL_LOCAL_MEM + TOTAL_SHARED_MEM);
 
 #if !defined(__CUDA_RUNTIME_API_H__)
 
@@ -525,10 +531,10 @@ private:
     int checkpoint_option;
     int checkpoint_kernel;
     int checkpoint_CTA;
-    int resume_option;
-    int resume_kernel;
-    int resume_CTA;
-    int checkpoint_CTA_t;
+    unsigned resume_option;
+    unsigned resume_kernel;
+    unsigned resume_CTA;
+    unsigned checkpoint_CTA_t;
     int checkpoint_insn_Y;
     int   g_ptx_inst_debug_to_file;
     char* g_ptx_inst_debug_file;
@@ -546,10 +552,10 @@ public:
     int checkpoint_option;
     int checkpoint_kernel;
     int checkpoint_CTA;
-    int resume_option;
-    int resume_kernel;
-    int resume_CTA;
-    int checkpoint_CTA_t;
+    unsigned resume_option;
+    unsigned resume_kernel;
+    unsigned resume_CTA;
+    unsigned checkpoint_CTA_t;
     int checkpoint_insn_Y;
 
     //Move some cycle core stats here instead of being global
@@ -998,7 +1004,7 @@ public:
 			printf("Printing mem access generated\n");
 			std::list<mem_access_t>::iterator it;	
 			for (it = m_accessq.begin(); it != m_accessq.end(); ++it){
-   				 printf("MEM_TXN_GEN:%s:%x, Size:%d \n",mem_access_type_str(it->get_type()), it->get_addr(),it->get_size());
+   				 printf("MEM_TXN_GEN:%s:%llx, Size:%d \n",mem_access_type_str(it->get_type()), it->get_addr(),it->get_size());
 			}	
 		}
     }   
