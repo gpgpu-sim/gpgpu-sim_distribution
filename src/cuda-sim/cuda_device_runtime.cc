@@ -27,7 +27,6 @@
    }
 
 
-//extern stream_manager *g_stream_manager();
 
 //Handling device runtime api:
 //void * cudaGetParameterBufferV2(void *func, dim3 gridDimension, dim3 blockDimension, unsigned int sharedMemSize)
@@ -285,7 +284,7 @@ void cuda_device_runtime::launch_one_device_kernel() {
         device_launch_operation_t &op = g_cuda_device_launch_op.front();
 
         stream_operation stream_op = stream_operation(op.grid, gpgpu_ctx->func_sim->g_ptx_sim_mode, op.stream);
-        g_stream_manager()->push(stream_op);
+        gpgpu_ctx->the_gpgpusim->g_stream_manager->push(stream_op);
         g_cuda_device_launch_op.pop_front();
     }
 }
