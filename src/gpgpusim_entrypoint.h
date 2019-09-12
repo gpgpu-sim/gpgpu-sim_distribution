@@ -78,7 +78,6 @@ class GPGPUsim_ctx {
 
 void start_sim_thread(int api);
 
-class gpgpu_sim* g_the_gpu();
 struct GPGPUsim_ctx* GPGPUsim_ctx_ptr();
 class stream_manager* g_stream_manager();
 

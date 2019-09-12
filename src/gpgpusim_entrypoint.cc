@@ -52,10 +52,6 @@ GPGPUsim_ctx* GPGPUsim_ctx_ptr(){
 	return the_gpgpusim;
 }
 
-class gpgpu_sim* g_the_gpu() {
-	return GPGPUsim_ctx_ptr()->g_the_gpu;
-}
-
 class stream_manager* g_stream_manager()  {
 	return GPGPUsim_ctx_ptr()->g_stream_manager;
 }
