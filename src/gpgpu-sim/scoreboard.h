@@ -7,14 +7,16 @@
 //
 // Redistributions of source code must retain the above copyright notice, this
 // list of conditions and the following disclaimer.
-// Redistributions in binary form must reproduce the above copyright notice, this
+// Redistributions in binary form must reproduce the above copyright notice,
+// this
 // list of conditions and the following disclaimer in the documentation and/or
 // other materials provided with the distribution.
 // Neither the name of The University of British Columbia nor the names of its
 // contributors may be used to endorse or promote products derived from this
 // software without specific prior written permission.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND
 // ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
@@ -27,8 +29,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <vector>
 #include <set>
+#include <vector>
 #include "assert.h"
 
 #ifndef SCOREBOARD_H_
@@ -37,31 +39,31 @@
 #include "../abstract_hardware_model.h"
 
 class Scoreboard {
-public:
-    Scoreboard( unsigned sid, unsigned n_warps, class gpgpu_t* gpu );
+ public:
+  Scoreboard(unsigned sid, unsigned n_warps, class gpgpu_t *gpu);
 
-    void reserveRegisters(const warp_inst_t *inst);
-    void releaseRegisters(const warp_inst_t *inst);
-    void releaseRegister(unsigned wid, unsigned regnum);
+  void reserveRegisters(const warp_inst_t *inst);
+  void releaseRegisters(const warp_inst_t *inst);
+  void releaseRegister(unsigned wid, unsigned regnum);
 
-    bool checkCollision(unsigned wid, const inst_t *inst) const;
-    bool pendingWrites(unsigned wid) const;
-    void printContents() const;
-    const bool islongop(unsigned warp_id, unsigned regnum);
-private:
-    void reserveRegister(unsigned wid, unsigned regnum);
-    int get_sid() const { return m_sid; }
+  bool checkCollision(unsigned wid, const inst_t *inst) const;
+  bool pendingWrites(unsigned wid) const;
+  void printContents() const;
+  const bool islongop(unsigned warp_id, unsigned regnum);
 
-    unsigned m_sid;
+ private:
+  void reserveRegister(unsigned wid, unsigned regnum);
+  int get_sid() const { return m_sid; }
 
-    // keeps track of pending writes to registers
-    // indexed by warp id, reg_id => pending write count
-    std::vector< std::set<unsigned> > reg_table;
-    //Register that depend on a long operation (global, local or tex memory)
-    std::vector< std::set<unsigned> > longopregs;
+  unsigned m_sid;
 
-    class gpgpu_t* m_gpu;
+  // keeps track of pending writes to registers
+  // indexed by warp id, reg_id => pending write count
+  std::vector<std::set<unsigned> > reg_table;
+  // Register that depend on a long operation (global, local or tex memory)
+  std::vector<std::set<unsigned> > longopregs;
+
+  class gpgpu_t *m_gpu;
 };
-
 
 #endif /* SCOREBOARD_H_ */
