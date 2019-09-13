@@ -7,17 +7,16 @@ pipeline {
         disableConcurrentBuilds()
     }
     stages {
-      stage('formatting-check') {
-        steps {
-          sh '''
-            git remote rm upstream
-            git remote add upstream https://github.com/purdue-aalp/gpgpu-sim_distribution
-            git fetch upstream
-            git diff --name-only upstream/dev | grep -E "*.cc|*.h|*.cpp|*.hpp" | xargs ./run-clang-format.py --clang-format-executable /home/tgrogers-raid/a/green349/clang-format
-          ''' 
+        stage('formatting-check') {
+          steps {
+            sh '''
+              git remote rm upstream
+              git remote add upstream https://github.com/purdue-aalp/gpgpu-sim_distribution
+              git fetch upstream
+              git diff --name-only upstream/dev | grep -E "*.cc|*.h|*.cpp|*.hpp" | xargs ./run-clang-format.py --clang-format-executable /home/tgrogers-raid/a/green349/clang-format
+            ''' 
+          }
         }
-    }
-    stages {
         stage('simulator-build') {
             steps {
                 parallel "4.2": {
