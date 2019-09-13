@@ -1597,8 +1597,8 @@ void init_tech_params(double technology, bool is_tag) {
       //    / Vs 	Vdsat[1] = 6.64e-2; //V/micron 	c_g_ideal[1]
       //    = 3.22e-16;//F/micron 	c_fringe[1] = 0.008e-15; c_junc[1]
       //    =
-      //    0;//F/micron2 	I_on_n[1] = 727.6e-6;//A/micron 	I_on_p[1]
-      //    = I_on_n[1] / 2; 	nmos_effective_resistance_multiplier = 1.99;
+      //    0;//F/micron2 	I_on_n[1] = 727.6e-6;//A/micron I_on_p[1] =
+      //    I_on_n[1] / 2; 	nmos_effective_resistance_multiplier = 1.99;
       //    	n_to_p_eff_curr_drv_ratio[1] = 2;
       //    	gmp_to_gmn_multiplier[1] = 0.99;
       //    	Rnchannelon[1] = nmos_effective_resistance_multiplier * vdd[1] /
