@@ -29,10 +29,11 @@
  *
  ***************************************************************************/
 
+
 #ifndef GLOBALVAR_H_
 #define GLOBALVAR_H_
 
-#ifdef GLOBALVAR
+#ifdef  GLOBALVAR
 #define EXTERN
 #else
 #define EXTERN extern
@@ -41,3 +42,7 @@
 EXTERN bool opt_for_clk;
 
 #endif /* GLOBALVAR_H_ */
+
+
+
+
