@@ -13,7 +13,7 @@ pipeline {
               source /home/tgrogers-raid/a/common/gpgpu-sim-setup/common/export_gcc_version.sh 5.3.0
               git remote add upstream https://github.com/purdue-aalp/gpgpu-sim_distribution
               git fetch upstream
-              git diff --name-only upstream/dev | grep -E "*.cc|*.h|*.cpp|*.hpp" | xargs ./run-clang-format.py --clang-format-executable /home/tgrogers-raid/a/green349/clang-format
+              git diff --name-only upstream/dev | grep -E "*.cc|*.h|*.cpp|*.hpp" | xargs ./run-clang-format.py --clang-format-executable /tmp/clang-format
             ''' 
           }
         }
