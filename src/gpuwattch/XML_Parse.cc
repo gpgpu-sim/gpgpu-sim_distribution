@@ -535,7 +535,7 @@ void ParseXML::parse(char* filepath) {
   //	if (sys.Private_L2 && sys.number_of_cores!=sys.number_of_L2s)
   //	{
   //		cout<<"Private L2: Number of L2s must equal to Number of
-  //Cores"<<endl;
+  // Cores"<<endl;
   //		exit(0);
   //	}
 
@@ -563,7 +563,7 @@ void ParseXML::parse(char* filepath) {
   unsigned int OrderofComponents_3layer = 0;
   if (NumofCom_3 > OrderofComponents_3layer) {
     //___________________________get all
-    //system.core0-n________________________________________________
+    // system.core0-n________________________________________________
     if (sys.homogeneous_cores == 1)
       OrderofComponents_3layer = 0;
     else
@@ -2044,9 +2044,8 @@ void ParseXML::parse(char* filepath) {
             if (strcmp(xNode4.getAttribute("name"), "sharedmemory") ==
                 0) {  // find system.core0.sharedmemory
               itmp = xNode4.nChildNode("param");
-              for (k = 0; k < itmp;
-                   k++) {  // get all items of param in
-                           // system.core0.sharedmemory--sharedmemory
+              for (k = 0; k < itmp; k++) {  // get all items of param in
+                // system.core0.sharedmemory--sharedmemory
                 if (strcmp(xNode4.getChildNode("param", k).getAttribute("name"),
                            "sharedmemory_config") == 0) {
                   strtmp.assign(
@@ -2483,7 +2482,7 @@ void ParseXML::parse(char* filepath) {
     }
 
     //__________________________________________Get
-    //system.L1Directory0-n____________________________________________
+    // system.L1Directory0-n____________________________________________
     int w, tmpOrderofComponents_3layer;
     w = OrderofComponents_3layer + 1;
     tmpOrderofComponents_3layer = OrderofComponents_3layer;
@@ -2649,7 +2648,7 @@ void ParseXML::parse(char* filepath) {
     }
 
     //__________________________________________Get
-    //system.L2Directory0-n____________________________________________
+    // system.L2Directory0-n____________________________________________
     w = OrderofComponents_3layer + 1;
     tmpOrderofComponents_3layer = OrderofComponents_3layer;
     if (sys.homogeneous_L2Directories == 1)
@@ -2814,7 +2813,7 @@ void ParseXML::parse(char* filepath) {
     }
 
     //__________________________________________Get
-    //system.L2[0..n]____________________________________________
+    // system.L2[0..n]____________________________________________
     w = OrderofComponents_3layer + 1;
     tmpOrderofComponents_3layer = OrderofComponents_3layer;
     if (sys.homogeneous_L2s == 1)
@@ -3102,7 +3101,7 @@ void ParseXML::parse(char* filepath) {
       }
     }
     //__________________________________________Get
-    //system.L3[0..n]____________________________________________
+    // system.L3[0..n]____________________________________________
     w = OrderofComponents_3layer + 1;
     tmpOrderofComponents_3layer = OrderofComponents_3layer;
     if (sys.homogeneous_L3s == 1)
@@ -3390,7 +3389,7 @@ void ParseXML::parse(char* filepath) {
       }
     }
     //__________________________________________Get
-    //system.NoC[0..n]____________________________________________
+    // system.NoC[0..n]____________________________________________
     w = OrderofComponents_3layer + 1;
     tmpOrderofComponents_3layer = OrderofComponents_3layer;
     if (sys.homogeneous_NoCs == 1)
@@ -3641,7 +3640,7 @@ void ParseXML::parse(char* filepath) {
       }
     }
     //__________________________________________Get
-    //system.mem____________________________________________
+    // system.mem____________________________________________
     if (OrderofComponents_3layer > 0)
       OrderofComponents_3layer = OrderofComponents_3layer + 1;
     xNode3 = xNode2.getChildNode("component", OrderofComponents_3layer);
@@ -3757,7 +3756,7 @@ void ParseXML::parse(char* filepath) {
       exit(0);
     }
     //__________________________________________Get
-    //system.mc____________________________________________
+    // system.mc____________________________________________
     if (OrderofComponents_3layer > 0)
       OrderofComponents_3layer = OrderofComponents_3layer + 1;
     xNode3 = xNode2.getChildNode("component", OrderofComponents_3layer);
@@ -3947,7 +3946,7 @@ void ParseXML::parse(char* filepath) {
       exit(0);
     }
     //__________________________________________Get
-    //system.niu____________________________________________
+    // system.niu____________________________________________
     if (OrderofComponents_3layer > 0)
       OrderofComponents_3layer = OrderofComponents_3layer + 1;
     xNode3 = xNode2.getChildNode("component", OrderofComponents_3layer);
@@ -4005,7 +4004,7 @@ void ParseXML::parse(char* filepath) {
     }
 
     //__________________________________________Get
-    //system.pcie____________________________________________
+    // system.pcie____________________________________________
     if (OrderofComponents_3layer > 0)
       OrderofComponents_3layer = OrderofComponents_3layer + 1;
     xNode3 = xNode2.getChildNode("component", OrderofComponents_3layer);
@@ -4074,7 +4073,7 @@ void ParseXML::parse(char* filepath) {
       exit(0);
     }
     //__________________________________________Get
-    //system.flashcontroller____________________________________________
+    // system.flashcontroller____________________________________________
     if (OrderofComponents_3layer > 0)
       OrderofComponents_3layer = OrderofComponents_3layer + 1;
     xNode3 = xNode2.getChildNode("component", OrderofComponents_3layer);

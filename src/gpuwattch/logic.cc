@@ -362,8 +362,8 @@ void Pipeline::compute() {
 
   double clock_power_pipereg = num_piperegs * pipe_reg.e_clock.readOp.dynamic;
   //******************pipeline power: currently, we average all the
-  //possibilities of the states of DFFs in the pipeline. A better way to do it
-  //is to consider
+  // possibilities of the states of DFFs in the pipeline. A better way to do it
+  // is to consider
   // the harming distance of two consecutive signals, However McPAT does not
   // have plan to do this in near future as it focuses on worst case power.
   double pipe_reg_power = num_piperegs * (pipe_reg.e_switch.readOp.dynamic +
@@ -578,8 +578,8 @@ FunctionalUnit::FunctionalUnit(ParseXML *XML_interface, int ithCore_,
       // energy = 0.3529/10*1e-9;//this is the energy(nJ) for a FP instruction
       // in FPU usually it can have up to 20 cycles.
       //			base_energy = coredynp.core_ty==Inorder? 0:
-      //89e-3*3; //W The base energy of ALU average numbers from Intel 4G and
-      //773Mhz (Wattch)
+      // 89e-3*3; //W The base energy of ALU average numbers from Intel 4G and
+      // 773Mhz (Wattch)
       //			base_energy
       //*=(g_tp.peri_global.Vdd*g_tp.peri_global.Vdd/1.2/1.2);
       base_energy = 0;
@@ -615,8 +615,8 @@ FunctionalUnit::FunctionalUnit(ParseXML *XML_interface, int ithCore_,
           g_tp.peri_global.Vdd / 2;
       leakage = 0;
       //			base_energy = coredynp.core_ty==Inorder?
-      //0:89e-3; //W The base energy of ALU average numbers from Intel 4G and
-      //773Mhz (Wattch)
+      // 0:89e-3; //W The base energy of ALU average numbers from Intel 4G and
+      // 773Mhz (Wattch)
       //			base_energy
       //*=(g_tp.peri_global.Vdd*g_tp.peri_global.Vdd/1.2/1.2);
       base_energy = 0;
@@ -645,8 +645,8 @@ FunctionalUnit::FunctionalUnit(ParseXML *XML_interface, int ithCore_,
                           inv) *
           g_tp.peri_global.Vdd / 2;
       //			base_energy = coredynp.core_ty==Inorder?
-      //0:89e-3*2; //W The base energy of ALU average numbers from Intel 4G and
-      //773Mhz (Wattch)
+      // 0:89e-3*2; //W The base energy of ALU average numbers from Intel 4G and
+      // 773Mhz (Wattch)
       //			base_energy
       //*=(g_tp.peri_global.Vdd*g_tp.peri_global.Vdd/1.2/1.2);
       base_energy = 0;
@@ -666,7 +666,7 @@ FunctionalUnit::FunctionalUnit(ParseXML *XML_interface, int ithCore_,
     }
     per_access_energy *= 0.5;  // According to ARM data embedded processor has
                                // much lower per acc energy
-  } /* if (XML->sys.Embedded) */
+  }                            /* if (XML->sys.Embedded) */
   else {
     if (fu_type == FPU) {
       num_fu = coredynp.num_fpus;
@@ -705,16 +705,14 @@ FunctionalUnit::FunctionalUnit(ParseXML *XML_interface, int ithCore_,
       if (g_ip->F_sz_nm > 90)
         area_t = 8.47 * 1e6 *
                  g_tp.scaling_factor.logic_scaling_co_eff;  // this is um^2
-      leakage =
-          37e-3;  // area_t
-                  // *(g_tp.scaling_factor.core_tx_density)*cmos_Isub_leakage(5*g_tp.min_w_nmos_,
-                  // 5*g_tp.min_w_nmos_*pmos_to_nmos_sizing_r, 1,
-                  // inv)*g_tp.peri_global.Vdd/2;//unit W
-      gate_leakage =
-          0;  // area_t
-              // *(g_tp.scaling_factor.core_tx_density)*cmos_Ig_leakage(5*g_tp.min_w_nmos_,
-              // 5*g_tp.min_w_nmos_*pmos_to_nmos_sizing_r, 1,
-              // inv)*g_tp.peri_global.Vdd/2;//unit W
+      leakage = 37e-3;                                      // area_t
+      // *(g_tp.scaling_factor.core_tx_density)*cmos_Isub_leakage(5*g_tp.min_w_nmos_,
+      // 5*g_tp.min_w_nmos_*pmos_to_nmos_sizing_r, 1,
+      // inv)*g_tp.peri_global.Vdd/2;//unit W
+      gate_leakage = 0;  // area_t
+      // *(g_tp.scaling_factor.core_tx_density)*cmos_Ig_leakage(5*g_tp.min_w_nmos_,
+      // 5*g_tp.min_w_nmos_*pmos_to_nmos_sizing_r, 1,
+      // inv)*g_tp.peri_global.Vdd/2;//unit W
       // energy = 0.3529/10*1e-9;//this is the energy(nJ) for a FP instruction
       // in FPU usually it can have up to 20 cycles.
       base_energy =
@@ -938,7 +936,7 @@ void FunctionalUnit::displayEnergy(uint32_t indent, int plevel, bool is_tdp) {
   bool long_channel = XML->sys.longer_channel_device;
 
   //	cout << indent_str_next << "Results Broadcast Bus Area = " <<
-  //bypass->area.get_area() *1e-6 << " mm^2" << endl;
+  // bypass->area.get_area() *1e-6 << " mm^2" << endl;
   if (is_tdp) {
     if (fu_type == FPU) {
       cout << indent_str
@@ -1169,10 +1167,11 @@ UndiffCore::UndiffCore(ParseXML *XML_interface, int ithCore_,
   //		double vt=g_tp.peri_global.Vth;
   //		double velocity_index=1.1;
   //		double c_in=gate_C(g_tp.min_w_nmos_,
-  //g_tp.min_w_nmos_*pmos_to_nmos_sizing_r , 0.0, false);
-  //		double c_out= drain_C_(g_tp.min_w_nmos_, NCH, 2, 1, g_tp.cell_h_def,
-  //false) + drain_C_(g_tp.min_w_nmos_*pmos_to_nmos_sizing_r, PCH, 1, 1,
-  //g_tp.cell_h_def, false) + c_in;
+  // g_tp.min_w_nmos_*pmos_to_nmos_sizing_r , 0.0, false);
+  //		double c_out= drain_C_(g_tp.min_w_nmos_, NCH, 2, 1,
+  // g_tp.cell_h_def,
+  // false) + drain_C_(g_tp.min_w_nmos_*pmos_to_nmos_sizing_r, PCH, 1, 1,
+  // g_tp.cell_h_def, false) + c_in;
   //		double w_nmos=g_tp.min_w_nmos_;
   //		double w_pmos=g_tp.min_w_nmos_*pmos_to_nmos_sizing_r;
   //		double i_on_n=1.0;
@@ -1181,15 +1180,16 @@ UndiffCore::UndiffCore(ParseXML *XML_interface, int ithCore_,
   //		double i_on_p_in=1;
   //		double vdd=g_tp.peri_global.Vdd;
 
-  //		power.readOp.sc=shortcircuit_simple(vt, velocity_index, c_in, c_out,
-  //w_nmos,w_pmos, i_on_n, i_on_p,i_on_n_in, i_on_p_in, vdd);
+  //		power.readOp.sc=shortcircuit_simple(vt, velocity_index, c_in,
+  // c_out,
+  // w_nmos,w_pmos, i_on_n, i_on_p,i_on_n_in, i_on_p_in, vdd);
   //		power.readOp.dynamic=c_out*vdd*vdd/2;
 
   //		cout<<power.readOp.dynamic << "dynamic" <<endl;
   //		cout<<power.readOp.sc << "sc" << endl;
 
   //		power.readOp.sc=shortcircuit(vt, velocity_index, c_in, c_out,
-  //w_nmos,w_pmos, i_on_n, i_on_p,i_on_n_in, i_on_p_in, vdd);
+  // w_nmos,w_pmos, i_on_n, i_on_p,i_on_n_in, i_on_p_in, vdd);
   //		power.readOp.dynamic=c_out*vdd*vdd/2;
   //
   //		cout<<power.readOp.dynamic << "dynamic" <<endl;

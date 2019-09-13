@@ -1904,8 +1904,8 @@ void init_tech_params(double technology, bool is_tag) {
 
   g_tp.min_w_nmos_ = 3 * g_ip->F_sz_um / 2;
   g_tp.max_w_nmos_ = 100 * g_ip->F_sz_um;
-  g_tp.w_iso = 12.5 * g_ip->F_sz_um;  // was 10 micron for the 0.8 micron
-                                      // process
+  g_tp.w_iso = 12.5 * g_ip->F_sz_um;      // was 10 micron for the 0.8 micron
+                                          // process
   g_tp.w_sense_n = 3.75 * g_ip->F_sz_um;  // sense amplifier N-trans; was 3
                                           // micron for the 0.8 micron process
   g_tp.w_sense_p = 7.5 * g_ip->F_sz_um;   // sense amplifier P-trans; was 6

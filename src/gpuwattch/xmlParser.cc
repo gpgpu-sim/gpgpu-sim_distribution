@@ -765,9 +765,9 @@ static const char XML_gbk_big5_ByteTable[256] = {
     2, 2, 2, 2, 2, 2, 2, 2,
     2, 2, 2, 2, 2, 2, 2, 1  // 0xf0
 };
-static const char *XML_ByteTable = (const char *)
-    XML_utf8ByteTable;  // the default is
-                        // "characterEncoding=XMLNode::encoding_UTF8"
+static const char *XML_ByteTable =
+    (const char *)XML_utf8ByteTable;  // the default is
+// "characterEncoding=XMLNode::encoding_UTF8"
 #endif
 
 XMLNode XMLNode::emptyXMLNode;

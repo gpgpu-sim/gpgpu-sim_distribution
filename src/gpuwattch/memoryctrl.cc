@@ -102,7 +102,7 @@ void MCBackend::compute() {
   // double max_row_addr_width = 20.0;//Current address 12~18bits
   double C_MCB, mc_power, backend_dyn,
       backend_gates;  //, refresh_period,refresh_freq;//Equivalent per bit Cap
-                      //for backend,
+                      // for backend,
   double pmos_to_nmos_sizing_r = pmos_to_nmos_sz_ratio();
   double NMOS_sizing, PMOS_sizing;
 
@@ -535,7 +535,7 @@ MCFrontEnd::MCFrontEnd(ParseXML* XML_interface, InputParameter* interface_ip_,
                 PRT->local_result.area * XML->sys.mc.memory_channels_per_mc);
 
   //***ThreadMasks storage (coalesced threads whose memory requests are
-  //satisfied by each memory access)
+  // satisfied by each memory access)
   /* contents of the thread masks Array
         *  16-bit bit masks for up to 16 memory requests of a warp | Number of
    * pending memory requests (5 bits)
@@ -983,7 +983,7 @@ MemoryController::MemoryController(ParseXML* XML_interface,
     area.set_area(area.get_area() + PHY->area.get_area());
   }
   //+++++++++Transaction engine +++++++++++++++++ ////TODO needs better numbers,
-  //Run the RTL code from OpenSparc.
+  // Run the RTL code from OpenSparc.
   //  transecEngine.initialize(&interface_ip);
   //  transecEngine.peakDataTransferRate = XML->sys.mem.peak_transfer_rate;
   //  transecEngine.memDataWidth = dataBusWidth;
@@ -1023,7 +1023,7 @@ MemoryController::MemoryController(ParseXML* XML_interface,
   ////  //clock
   ////  clockNetwork.init_wire_external(is_default, &interface_ip);
   ////  clockNetwork.clk_area           =area*1.1;//10% of placement overhead.
-  ///rule of thumb
+  /// rule of thumb
   ////  clockNetwork.end_wiring_level   =5;//toplevel metal
   ////  clockNetwork.start_wiring_level =5;//toplevel metal
   ////  clockNetwork.num_regs           = pipeLogic.tot_stage_vector;
@@ -1199,7 +1199,7 @@ void MemoryController::set_mc_param() {
     mcp.reads = XML->sys.mc.memory_reads;
     mcp.writes = XML->sys.mc.memory_writes;
     //+++++++++Transaction engine +++++++++++++++++ ////TODO needs better
-    //numbers, Run the RTL code from OpenSparc.
+    // numbers, Run the RTL code from OpenSparc.
     mcp.peakDataTransferRate = XML->sys.mc.peak_transfer_rate;
     mcp.memRank = XML->sys.mc.number_ranks;
     //++++++++++++++PHY ++++++++++++++++++++++++++ //TODO needs better numbers
@@ -1214,16 +1214,17 @@ void MemoryController::set_mc_param() {
   //	else if (mc_type==FLASHC)
   //	{
   //		mcp.clockRate       =XML->sys.flashc.mc_clock*2;//DDR double
-  //pumped
+  // pumped
   //		mcp.clockRate       *= 1e6;
   //		mcp.executionTime   =
-  //XML->sys.total_cycles/(XML->sys.target_core_clockrate*1e6);
+  // XML->sys.total_cycles/(XML->sys.target_core_clockrate*1e6);
   //
   //		mcp.llcBlockSize
   //=int(ceil(XML->sys.flashc.llc_line_length/8.0))+XML->sys.flashc.llc_line_length;//ecc
-  //overhead
-  //		mcp.dataBusWidth    =int(ceil(XML->sys.flashc.databus_width/8.0)) +
-  //XML->sys.flashc.databus_width;
+  // overhead
+  //		mcp.dataBusWidth =int(ceil(XML->sys.flashc.databus_width/8.0))
+  //+
+  // XML->sys.flashc.databus_width;
   //		mcp.addressBusWidth
   //=int(ceil(XML->sys.flashc.addressbus_width));//XML->sys.physical_address_width;
   //		mcp.opcodeW         =16;
@@ -1232,16 +1233,18 @@ void MemoryController::set_mc_param() {
   //		mcp.reads  = XML->sys.flashc.memory_reads;
   //		mcp.writes = XML->sys.flashc.memory_writes;
   //		//+++++++++Transaction engine +++++++++++++++++ ////TODO needs
-  //better numbers, Run the RTL code from OpenSparc.
+  // better numbers, Run the RTL code from OpenSparc.
   //		mcp.peakDataTransferRate = XML->sys.flashc.peak_transfer_rate;
   //		mcp.memRank = XML->sys.flashc.number_ranks;
-  //		//++++++++++++++PHY ++++++++++++++++++++++++++ //TODO needs better
-  //numbers
+  //		//++++++++++++++PHY ++++++++++++++++++++++++++ //TODO needs
+  // better
+  // numbers
   //		//PHY.memAccesses=PHY.peakDataTransferRate;//this is the max
-  //power
+  // power
   //		//PHY.llcBlocksize=llcBlockSize;
-  //		mcp.frontend_duty_cycle = 0.5;//for max power, the actual off-chip
-  //links is bidirectional but time shared
+  //		mcp.frontend_duty_cycle = 0.5;//for max power, the actual
+  // off-chip
+  // links is bidirectional but time shared
   //		mcp.LVDS = XML->sys.flashc.LVDS;
   //		mcp.type = XML->sys.flashc.type;
   //	}
