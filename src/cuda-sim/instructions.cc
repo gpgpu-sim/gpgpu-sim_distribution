@@ -3625,7 +3625,7 @@ void mma_ld_impl(const ptx_instruction *pI, core_t *core, warp_inst_t &inst) {
     if ((wmma_type == LOAD_C) && (type == F16_TYPE) &&
         (wmma_layout == COL))  // memory address is scattered, check the
                                // profiling xls for more detail.
-      inst.data_size = 2;  // 2 byte transaction
+      inst.data_size = 2;      // 2 byte transaction
     else
       inst.data_size = 4;  // 4 byte transaction
     assert(inst.memory_op == insn_memory_op);
@@ -5994,13 +5994,13 @@ void tex_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
       src2, thread->get_gpu()->gpgpu_ctx->func_sim->ptx_tex_regs,
       nelem);  // ptx_reg should be 4 entry vector type...coordinates into
                // texture
-  /*
-    For programs with many streams, textures can be bound and unbound
-    asynchronously.  This means we need to use the kernel's "snapshot" of
-    the state of the texture mappings when it was launched (so that we
-    don't try to access the incorrect texture mapping if it's been updated,
-    or that we don't access a mapping that has been unbound).
-  */
+               /*
+                 For programs with many streams, textures can be bound and unbound
+                 asynchronously.  This means we need to use the kernel's "snapshot" of
+                 the state of the texture mappings when it was launched (so that we
+                 don't try to access the incorrect texture mapping if it's been updated,
+                 or that we don't access a mapping that has been unbound).
+               */
   gpgpu_t *gpu = thread->get_gpu();
   kernel_info_t &k = thread->get_kernel();
   const struct textureReference *texref = gpu->get_texref(texname);
