@@ -10,7 +10,6 @@ pipeline {
         stage('formatting-check') {
           steps {
             sh '''
-              git remote rm upstream
               git remote add upstream https://github.com/purdue-aalp/gpgpu-sim_distribution
               git fetch upstream
               git diff --name-only upstream/dev | grep -E "*.cc|*.h|*.cpp|*.hpp" | xargs ./run-clang-format.py --clang-format-executable /home/tgrogers-raid/a/green349/clang-format
@@ -103,6 +102,7 @@ pipeline {
     }
     post {
         success {
+            sh 'git remote rm upstream'
             emailext body:'''${SCRIPT, template="groovy-html.success.template"}''',
                 recipientProviders: [[$class: 'CulpritsRecipientProvider'],
                     [$class: 'RequesterRecipientProvider']],
@@ -111,6 +111,7 @@ pipeline {
                 to: 'tgrogers@purdue.edu'
         }
         failure {
+            sh 'git remote rm upstream'
             emailext body: "See ${BUILD_URL}",
                 recipientProviders: [[$class: 'CulpritsRecipientProvider'],
                     [$class: 'RequesterRecipientProvider']],
