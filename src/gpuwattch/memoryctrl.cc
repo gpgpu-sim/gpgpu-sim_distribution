@@ -35,6 +35,7 @@
 *      Tayler Hetherington, University of British Columbia         *
 *      Ahmed ElTantawy, University of British Columbia             *
 ********************************************************************/
+// clang-format off
 #include "io.h"
 #include "parameter.h"
 #include "const.h"
@@ -48,7 +49,7 @@
 #include <assert.h>
 #include "memoryctrl.h"
 #include "basic_components.h"
-
+// clang-format on
 /* overview of MC models:
  * McPAT memory controllers are modeled according to large number of industrial data points.
  * The Basic memory controller architecture is base on the Synopsis designs

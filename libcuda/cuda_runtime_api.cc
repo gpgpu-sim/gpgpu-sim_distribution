@@ -122,12 +122,13 @@
 #endif
 
 #define __CUDA_RUNTIME_API_H__
-
+// clang-format off
 #include "host_defines.h"
 #include "builtin_types.h"
 #include "driver_types.h"
 #include "cuda_api.h"
 #include "cudaProfiler.h"
+// clang-format on
 #if (CUDART_VERSION < 8000)
 #include "__cudaFatFormat.h"
 #endif
