@@ -7,16 +7,14 @@
 //
 // Redistributions of source code must retain the above copyright notice, this
 // list of conditions and the following disclaimer.
-// Redistributions in binary form must reproduce the above copyright notice,
-// this
+// Redistributions in binary form must reproduce the above copyright notice, this
 // list of conditions and the following disclaimer in the documentation and/or
 // other materials provided with the distribution.
 // Neither the name of The University of British Columbia nor the names of its
 // contributors may be used to endorse or promote products derived from this
 // software without specific prior written permission.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 // ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
@@ -34,17 +32,12 @@
 #include "power_stat.h"
 #include "shader.h"
 
+
 #include "gpgpu_sim_wrapper.h"
 
-void init_mcpat(const gpgpu_sim_config &config,
-                class gpgpu_sim_wrapper *wrapper, unsigned stat_sample_freq,
-                unsigned tot_inst, unsigned inst);
-void mcpat_cycle(const gpgpu_sim_config &config,
-                 const shader_core_config *shdr_config,
-                 class gpgpu_sim_wrapper *wrapper,
-                 class power_stat_t *power_stats, unsigned stat_sample_freq,
-                 unsigned tot_cycle, unsigned cycle, unsigned tot_inst,
-                 unsigned inst);
+void init_mcpat(const gpgpu_sim_config &config, class gpgpu_sim_wrapper *wrapper, unsigned stat_sample_freq, unsigned tot_inst, unsigned inst);
+void mcpat_cycle(const gpgpu_sim_config &config, const shader_core_config *shdr_config, class gpgpu_sim_wrapper *wrapper, class power_stat_t *power_stats,
+        unsigned stat_sample_freq, unsigned tot_cycle, unsigned cycle, unsigned tot_inst, unsigned inst);
 void mcpat_reset_perf_count(class gpgpu_sim_wrapper *wrapper);
 
 #endif /* POWER_INTERFACE_H_ */
