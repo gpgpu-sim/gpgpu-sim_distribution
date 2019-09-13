@@ -263,11 +263,11 @@ class memory_config {
                    // GDDR5 this is identical to RTPS, if for other DRAM this is
                    // different, you will need to split them in two
 
-  unsigned tCCD;  // column to column delay
-  unsigned tRRD;  // minimal time required between activation of rows in
-                  // different banks
-  unsigned tRCD;  // row to column delay - time required to activate a row
-                  // before a read
+  unsigned tCCD;    // column to column delay
+  unsigned tRRD;    // minimal time required between activation of rows in
+                    // different banks
+  unsigned tRCD;    // row to column delay - time required to activate a row
+                    // before a read
   unsigned tRCDWR;  // row to column delay for a write command
   unsigned tRAS;    // time needed to activate row
   unsigned tRP;     // row precharge ie. deactivate row
@@ -275,7 +275,7 @@ class memory_config {
       tRC;  // row cycle time ie. precharge current, then activate different row
   unsigned tCDLR;  // Last data-in to Read command (switching from write to
                    // read)
-  unsigned tWR;  // Last data-in to Row precharge
+  unsigned tWR;    // Last data-in to Row precharge
 
   unsigned CL;    // CAS latency
   unsigned WL;    // WRITE latency
@@ -626,9 +626,9 @@ class gpgpu_sim : public gpgpu_t {
   std::map<unsigned, watchpoint_event> g_watchpoint_hits;
 
   std::string executed_kernel_info_string();  //< format the kernel information
-                                              //into a string for stat printout
+                                              // into a string for stat printout
   void clear_executed_kernel_info();  //< clear the kernel information after
-                                      //stat printout
+                                      // stat printout
 
  public:
   unsigned long long gpu_sim_insn;

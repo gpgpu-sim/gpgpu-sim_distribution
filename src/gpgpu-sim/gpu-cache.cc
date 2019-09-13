@@ -1329,8 +1329,8 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
 
   if (mf->get_access_byte_mask().count() == m_config.get_atom_sz()) {
     // if the request writes to the whole cache line/sector, then, write and set
-    // cache line Modified. and no need to send read request to memory or reserve
-    // mshr
+    // cache line Modified. and no need to send read request to memory or
+    // reserve mshr
 
     if (miss_queue_full(0)) {
       m_stats.inc_fail_stats(mf->get_access_type(), MISS_QUEUE_FULL);

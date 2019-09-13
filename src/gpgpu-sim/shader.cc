@@ -3426,8 +3426,8 @@ void shader_core_ctx::warp_exit(unsigned warp_id) {
   for (unsigned i = warp_id * get_config()->warp_size;
        i < (warp_id + 1) * get_config()->warp_size; i++) {
     //		if(this->m_thread[i]->m_functional_model_thread_state &&
-    //this->m_thread[i].m_functional_model_thread_state->donecycle()==0) { 			done
-    //= false;
+    // this->m_thread[i].m_functional_model_thread_state->donecycle()==0) {
+    // done = false;
     //		}
 
     if (m_thread[i] && !m_thread[i]->is_done()) done = false;
