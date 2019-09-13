@@ -7,14 +7,16 @@
 //
 // Redistributions of source code must retain the above copyright notice, this
 // list of conditions and the following disclaimer.
-// Redistributions in binary form must reproduce the above copyright notice, this
+// Redistributions in binary form must reproduce the above copyright notice,
+// this
 // list of conditions and the following disclaimer in the documentation and/or
 // other materials provided with the distribution.
 // Neither the name of The University of British Columbia nor the names of its
 // contributors may be used to endorse or promote products derived from this
 // software without specific prior written permission.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND
 // ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
@@ -34,44 +36,46 @@
 #include <string>
 
 class binned_histogram {
-public:
-    // creators
-   binned_histogram (std::string name = "", int nbins = 32, int* bins = NULL);
-   binned_histogram (const binned_histogram& other);
-   virtual ~binned_histogram ();
+ public:
+  // creators
+  binned_histogram(std::string name = "", int nbins = 32, int* bins = NULL);
+  binned_histogram(const binned_histogram& other);
+  virtual ~binned_histogram();
 
-   // modifiers:
-   void reset_bins ();
-   void add2bin (int sample);
+  // modifiers:
+  void reset_bins();
+  void add2bin(int sample);
 
-   // accessors:
-   void fprint (FILE *fout) const;
+  // accessors:
+  void fprint(FILE* fout) const;
 
-protected:
-   std::string m_name;
-   int m_nbins;
-   int *m_bins;        // bin boundaries
-   int *m_bin_cnts;    // counters
-   int m_maximum;      // the maximum sample
-   signed long long int m_sum; // for calculating the average
+ protected:
+  std::string m_name;
+  int m_nbins;
+  int* m_bins;                 // bin boundaries
+  int* m_bin_cnts;             // counters
+  int m_maximum;               // the maximum sample
+  signed long long int m_sum;  // for calculating the average
 };
 
 class pow2_histogram : public binned_histogram {
-public:
-   pow2_histogram ( std::string name = "", int nbins = 32, int* bins = NULL);
-   ~pow2_histogram() {}
+ public:
+  pow2_histogram(std::string name = "", int nbins = 32, int* bins = NULL);
+  ~pow2_histogram() {}
 
-   void add2bin (int sample);
+  void add2bin(int sample);
 };
 
 class linear_histogram : public binned_histogram {
-public:
-   linear_histogram (int stride = 1, const char *name = NULL, int nbins = 32, int* bins = NULL);
-   ~linear_histogram() {}
+ public:
+  linear_histogram(int stride = 1, const char* name = NULL, int nbins = 32,
+                   int* bins = NULL);
+  ~linear_histogram() {}
 
-   void add2bin (int sample);
-private:
-   int m_stride;
+  void add2bin(int sample);
+
+ private:
+  int m_stride;
 };
 
 #endif
