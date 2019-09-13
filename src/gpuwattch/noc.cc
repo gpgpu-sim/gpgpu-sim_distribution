@@ -357,44 +357,30 @@ void NoC::displayEnergy(uint32_t indent, int plevel, bool is_tdp) {
       cout << endl;
     }
   } else {
-    //		cout << indent_str_next << "Instruction Fetch Unit    Peak Dynamic
-    //=
-    //"
+    //		cout << indent_str_next << "Instruction Fetch Unit    Peak Dynamic = "
     //<< ifu->rt_power.readOp.dynamic*clockRate << " W" << endl;
-    //		cout << indent_str_next << "Instruction Fetch Unit Subthreshold
-    // Leakage = " << ifu->rt_power.readOp.leakage <<" W" << endl;
-    //		cout << indent_str_next << "Instruction Fetch Unit    Gate Leakage
-    //=
-    //"
+    //		cout << indent_str_next << "Instruction Fetch Unit    Subthreshold
+    //Leakage = " << ifu->rt_power.readOp.leakage <<" W" << endl;
+    //		cout << indent_str_next << "Instruction Fetch Unit    Gate Leakage = "
     //<< ifu->rt_power.readOp.gate_leakage << " W" << endl;
-    //		cout << indent_str_next << "Load Store Unit   Peak Dynamic = "
-    //<<
-    // lsu->rt_power.readOp.dynamic*clockRate  << " W" << endl;
-    //		cout << indent_str_next << "Load Store Unit   Subthreshold Leakage
-    //=
-    //"
+    //		cout << indent_str_next << "Load Store Unit   Peak Dynamic = " <<
+    //lsu->rt_power.readOp.dynamic*clockRate  << " W" << endl;
+    //		cout << indent_str_next << "Load Store Unit   Subthreshold Leakage = "
     //<< lsu->rt_power.readOp.leakage  << " W" << endl;
-    //		cout << indent_str_next << "Load Store Unit   Gate Leakage = "
-    //<<
-    // lsu->rt_power.readOp.gate_leakage  << " W" << endl;
-    //		cout << indent_str_next << "Memory Management Unit   Peak Dynamic
-    //=
-    //"
+    //		cout << indent_str_next << "Load Store Unit   Gate Leakage = " <<
+    //lsu->rt_power.readOp.gate_leakage  << " W" << endl;
+    //		cout << indent_str_next << "Memory Management Unit   Peak Dynamic = "
     //<< mmu->rt_power.readOp.dynamic*clockRate  << " W" << endl;
-    //		cout << indent_str_next << "Memory Management Unit Subthreshold
-    // Leakage = " << mmu->rt_power.readOp.leakage  << " W" << endl;
-    //		cout << indent_str_next << "Memory Management Unit   Gate Leakage
-    //=
-    //"
+    //		cout << indent_str_next << "Memory Management Unit   Subthreshold
+    //Leakage = " << mmu->rt_power.readOp.leakage  << " W" << endl;
+    //		cout << indent_str_next << "Memory Management Unit   Gate Leakage = "
     //<< mmu->rt_power.readOp.gate_leakage  << " W" << endl;
     //		cout << indent_str_next << "Execution Unit   Peak Dynamic = " <<
-    // exu->rt_power.readOp.dynamic*clockRate  << " W" << endl;
-    //		cout << indent_str_next << "Execution Unit   Subthreshold Leakage
-    //=
-    //"
+    //exu->rt_power.readOp.dynamic*clockRate  << " W" << endl;
+    //		cout << indent_str_next << "Execution Unit   Subthreshold Leakage = "
     //<< exu->rt_power.readOp.leakage  << " W" << endl;
     //		cout << indent_str_next << "Execution Unit   Gate Leakage = " <<
-    // exu->rt_power.readOp.gate_leakage  << " W" << endl;
+    //exu->rt_power.readOp.gate_leakage  << " W" << endl;
   }
 }
 

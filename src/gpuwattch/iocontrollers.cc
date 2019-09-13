@@ -236,7 +236,7 @@ void NIUController::set_niu_param() {
   niup.perc_load = XML->sys.niu.total_load_perc;
   niup.type = XML->sys.niu.type;
   //	  niup.executionTime   =
-  // XML->sys.total_cycles/(XML->sys.target_core_clockrate*1e6);
+  //XML->sys.total_cycles/(XML->sys.target_core_clockrate*1e6);
 }
 
 PCIeController::PCIeController(ParseXML* XML_interface,
@@ -276,7 +276,7 @@ PCIeController::PCIeController(ParseXML* XML_interface,
                1.1 * (interface_ip.F_sz_nm / 65.0);
     //	  //Cadence ChipEstimate using 65nm soft IP;
     //	  frontend_dyn =
-    // 0.27e-9/8*g_tp.peri_global.Vdd/1.1*g_tp.peri_global.Vdd/1.1*(interface_ip.F_sz_nm/65.0);
+    //0.27e-9/8*g_tp.peri_global.Vdd/1.1*g_tp.peri_global.Vdd/1.1*(interface_ip.F_sz_nm/65.0);
     // SerDer_dyn is power not energy, scaling from 10mw/Gb/s @90nm
     SerDer_dyn = 0.01 * 4 * (interface_ip.F_sz_um / 0.09) *
                  g_tp.peri_global.Vdd / 1.2 * g_tp.peri_global.Vdd /
@@ -305,7 +305,7 @@ PCIeController::PCIeController(ParseXML* XML_interface,
                1.1 * (interface_ip.F_sz_nm / 65.0);
     //	  //Cadence ChipEstimate using 65nm soft IP;
     //	  frontend_dyn =
-    // 0.27e-9/8*g_tp.peri_global.Vdd/1.1*g_tp.peri_global.Vdd/1.1*(interface_ip.F_sz_nm/65.0);
+    //0.27e-9/8*g_tp.peri_global.Vdd/1.1*g_tp.peri_global.Vdd/1.1*(interface_ip.F_sz_nm/65.0);
     // SerDer_dyn is power not energy, scaling from 10mw/Gb/s @90nm
     SerDer_dyn = 0.01 * 4 * (interface_ip.F_sz_um / 0.09) *
                  g_tp.peri_global.Vdd / 1.2 * g_tp.peri_global.Vdd /
@@ -387,7 +387,7 @@ void PCIeController::set_pcie_param() {
   pciep.type = XML->sys.pcie.type;
   pciep.withPHY = XML->sys.pcie.withPHY;
   //	  pciep.executionTime   =
-  // XML->sys.total_cycles/(XML->sys.target_core_clockrate*1e6);
+  //XML->sys.total_cycles/(XML->sys.target_core_clockrate*1e6);
 }
 
 FlashController::FlashController(ParseXML* XML_interface,
@@ -507,5 +507,5 @@ void FlashController::set_fc_param() {
   fcp.type = XML->sys.flashc.type;
   fcp.withPHY = XML->sys.flashc.withPHY;
   //	  flashcp.executionTime   =
-  // XML->sys.total_cycles/(XML->sys.target_core_clockrate*1e6);
+  //XML->sys.total_cycles/(XML->sys.target_core_clockrate*1e6);
 }

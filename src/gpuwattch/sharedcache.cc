@@ -1106,25 +1106,24 @@ void SharedCache::displayEnergy(uint32_t indent, bool is_tdp) {
 //		  ///cout<<"directory.maxPower=" <<directory.maxPower<<endl;
 //
 //		  directory.maxPower	+=
-// directory.missb.l_ip.num_search_ports*directory.missb.local_result.power.searchOp.dynamic*clockRate;
+//directory.missb.l_ip.num_search_ports*directory.missb.local_result.power.searchOp.dynamic*clockRate;
 //		  ///cout<<"directory.maxPower=" <<directory.maxPower<<endl;
 //
 //		  directory.maxPower	+=
-// directory.ifb.l_ip.num_search_ports*directory.ifb.local_result.power.searchOp.dynamic*clockRate;
+//directory.ifb.l_ip.num_search_ports*directory.ifb.local_result.power.searchOp.dynamic*clockRate;
 //		  ///cout<<"directory.maxPower=" <<directory.maxPower<<endl;
 //
 //		  directory.maxPower	+=
-// directory.prefetchb.l_ip.num_search_ports*directory.prefetchb.local_result.power.searchOp.dynamic*clockRate;
+//directory.prefetchb.l_ip.num_search_ports*directory.prefetchb.local_result.power.searchOp.dynamic*clockRate;
 //		  ///cout<<"directory.maxPower=" <<directory.maxPower<<endl;
 //
 //		  directory.maxPower	+=
-// directory.wbb.l_ip.num_search_ports*directory.wbb.local_result.power.searchOp.dynamic*clockRate;
+//directory.wbb.l_ip.num_search_ports*directory.wbb.local_result.power.searchOp.dynamic*clockRate;
 //
-//		  cc.power.readOp.dynamic = directory.maxPower*scktRatio*8;//8
-// is
-// the memory controller counts
+//		  cc.power.readOp.dynamic = directory.maxPower*scktRatio*8;//8 is
+//the memory controller counts
 //		  cc.power.readOp.leakage =
-// directory.caches.local_result.power.readOp.leakage +
+//directory.caches.local_result.power.readOp.leakage +
 //                                     directory.missb.local_result.power.readOp.leakage
 //                                     +
 //                                     directory.ifb.local_result.power.readOp.leakage
@@ -1141,23 +1140,23 @@ void SharedCache::displayEnergy(uint32_t indent, bool is_tdp) {
 //		  ccTot.area.set_area(cc.area.get_area()*1e-6);
 //		  ccTot.power = cc.power;
 //		  cout<<"DC energy per access" <<
-// cc.power.readOp.dynamic/clockRate/8;
+//cc.power.readOp.dynamic/clockRate/8;
 //	  }
 //	  else if (XML->sys.first_level_dir==1)
 //	  {
 //		  inv_dir.maxPower =
-// inv_dir.caches.local_result.power.searchOp.dynamic*clockRate*XML->sys.domain_size;
+//inv_dir.caches.local_result.power.searchOp.dynamic*clockRate*XML->sys.domain_size;
 //		  cc.power.readOp.dynamic  =
-// inv_dir.maxPower*scktRatio*64/XML->sys.domain_size;
+//inv_dir.maxPower*scktRatio*64/XML->sys.domain_size;
 //		  cc.power.readOp.leakage  =
-// inv_dir.caches.local_result.power.readOp.leakage*inv_dir.caches.l_ip.nbanks*64/XML->sys.domain_size;
+//inv_dir.caches.local_result.power.readOp.leakage*inv_dir.caches.l_ip.nbanks*64/XML->sys.domain_size;
 //
 //		  cc.area.set_area(inv_dir.area*64/XML->sys.domain_size);
 //		  cout<<"CC area="<<cc.area.get_area()*1e-6<<endl;
 //		  cout<<"CC Power="<<cc.power.readOp.dynamic<<endl;
 //		  ccTot.area.set_area(cc.area.get_area()*1e-6);
 //		  cout<<"DC energy per access" <<
-// cc.power.readOp.dynamic/clockRate/8;
+//cc.power.readOp.dynamic/clockRate/8;
 //		  ccTot.power = cc.power;
 //	  }
 //  }
@@ -1174,27 +1173,27 @@ void SharedCache::displayEnergy(uint32_t indent, bool is_tdp) {
 //<<directory.maxPower<<endl;
 //
 //	  		  directory.maxPower	+=
-// directory.missb.l_ip.num_search_ports*directory.missb.local_result.power.searchOp.dynamic*clockRate;
+//directory.missb.l_ip.num_search_ports*directory.missb.local_result.power.searchOp.dynamic*clockRate;
 //	  		  ///cout<<"directory.maxPower="
 //<<directory.maxPower<<endl;
 //
 //	  		  directory.maxPower	+=
-// directory.ifb.l_ip.num_search_ports*directory.ifb.local_result.power.searchOp.dynamic*clockRate;
+//directory.ifb.l_ip.num_search_ports*directory.ifb.local_result.power.searchOp.dynamic*clockRate;
 //	  		  ///cout<<"directory.maxPower="
 //<<directory.maxPower<<endl;
 //
 //	  		  directory.maxPower	+=
-// directory.prefetchb.l_ip.num_search_ports*directory.prefetchb.local_result.power.searchOp.dynamic*clockRate;
+//directory.prefetchb.l_ip.num_search_ports*directory.prefetchb.local_result.power.searchOp.dynamic*clockRate;
 //	  		  ///cout<<"directory.maxPower="
 //<<directory.maxPower<<endl;
 //
 //	  		  directory.maxPower	+=
-// directory.wbb.l_ip.num_search_ports*directory.wbb.local_result.power.searchOp.dynamic*clockRate;
+//directory.wbb.l_ip.num_search_ports*directory.wbb.local_result.power.searchOp.dynamic*clockRate;
 //
 //	  		  cc.power.readOp.dynamic =
-// directory.maxPower*scktRatio*8;//8 is the memory controller counts
+//directory.maxPower*scktRatio*8;//8 is the memory controller counts
 //			  cc.power.readOp.leakage =
-// directory.caches.local_result.power.readOp.leakage +
+//directory.caches.local_result.power.readOp.leakage +
 //	                                     directory.missb.local_result.power.readOp.leakage
 //+
 //	                                     directory.ifb.local_result.power.readOp.leakage
@@ -1216,27 +1215,27 @@ void SharedCache::displayEnergy(uint32_t indent, bool is_tdp) {
 //<<directory1.maxPower<<endl;
 //
 //	  		  directory1.maxPower	+=
-// directory1.missb.l_ip.num_search_ports*directory1.missb.local_result.power.searchOp.dynamic*clockRate;
+//directory1.missb.l_ip.num_search_ports*directory1.missb.local_result.power.searchOp.dynamic*clockRate;
 //	  		  ///cout<<"directory1.maxPower="
 //<<directory1.maxPower<<endl;
 //
 //	  		  directory1.maxPower	+=
-// directory1.ifb.l_ip.num_search_ports*directory1.ifb.local_result.power.searchOp.dynamic*clockRate;
+//directory1.ifb.l_ip.num_search_ports*directory1.ifb.local_result.power.searchOp.dynamic*clockRate;
 //	  		  ///cout<<"directory1.maxPower="
 //<<directory1.maxPower<<endl;
 //
 //	  		  directory1.maxPower	+=
-// directory1.prefetchb.l_ip.num_search_ports*directory1.prefetchb.local_result.power.searchOp.dynamic*clockRate;
+//directory1.prefetchb.l_ip.num_search_ports*directory1.prefetchb.local_result.power.searchOp.dynamic*clockRate;
 //	  		  ///cout<<"directory1.maxPower="
 //<<directory1.maxPower<<endl;
 //
 //	  		  directory1.maxPower	+=
-// directory1.wbb.l_ip.num_search_ports*directory1.wbb.local_result.power.searchOp.dynamic*clockRate;
+//directory1.wbb.l_ip.num_search_ports*directory1.wbb.local_result.power.searchOp.dynamic*clockRate;
 //
 //	  		  cc1.power.readOp.dynamic =
-// directory1.maxPower*scktRatio*64/XML->sys.domain_size;
+//directory1.maxPower*scktRatio*64/XML->sys.domain_size;
 //			  cc1.power.readOp.leakage =
-// directory1.caches.local_result.power.readOp.leakage +
+//directory1.caches.local_result.power.readOp.leakage +
 //	                                     directory1.missb.local_result.power.readOp.leakage
 //+
 //	                                     directory1.ifb.local_result.power.readOp.leakage
@@ -1248,26 +1247,26 @@ void SharedCache::displayEnergy(uint32_t indent, bool is_tdp) {
 //	  		  cc1.area.set_area(directory1.area*64/XML->sys.domain_size);
 //
 //	  		  cout<<"CC
-// area="<<(cc.area.get_area()+cc1.area.get_area())*1e-6<<endl;
+//area="<<(cc.area.get_area()+cc1.area.get_area())*1e-6<<endl;
 //			  cout<<"CC Power="<<cc.power.readOp.dynamic +
-// cc1.power.readOp.dynamic <<endl;
+//cc1.power.readOp.dynamic <<endl;
 //			  ccTot.area.set_area((cc.area.get_area()+cc1.area.get_area())*1e-6);
 //			  ccTot.power = cc.power + cc1.power;
 //	  	  }
 //	  	  else if (XML->sys.first_level_dir==1)
 //	  	  {
 //	  		  inv_dir.maxPower =
-// inv_dir.caches.local_result.power.searchOp.dynamic*clockRate*XML->sys.domain_size;
+//inv_dir.caches.local_result.power.searchOp.dynamic*clockRate*XML->sys.domain_size;
 //	  		  cc1.power.readOp.dynamic =
-// inv_dir.maxPower*scktRatio*(64/XML->sys.domain_size);
+//inv_dir.maxPower*scktRatio*(64/XML->sys.domain_size);
 //	  		  cc1.power.readOp.leakage  =
-// inv_dir.caches.local_result.power.readOp.leakage*inv_dir.caches.l_ip.nbanks*XML->sys.domain_size;
+//inv_dir.caches.local_result.power.readOp.leakage*inv_dir.caches.l_ip.nbanks*XML->sys.domain_size;
 //
 //	  		  cc1.area.set_area(inv_dir.area*64/XML->sys.domain_size);
 //			  cout<<"CC
-// area="<<(cc.area.get_area()+cc1.area.get_area())*1e-6<<endl;
+//area="<<(cc.area.get_area()+cc1.area.get_area())*1e-6<<endl;
 //			  cout<<"CC Power="<<cc.power.readOp.dynamic +
-// cc1.power.readOp.dynamic <<endl;
+//cc1.power.readOp.dynamic <<endl;
 //			  ccTot.area.set_area((cc.area.get_area()+cc1.area.get_area())*1e-6);
 //			  ccTot.power = cc.power + cc1.power;
 //

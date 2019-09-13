@@ -90,8 +90,8 @@ class memory_stats_t {
   unsigned int **totalbankreads;     // bankreads[dram chip id][bank id]
   unsigned int **totalbankaccesses;  // bankaccesses[dram chip id][bank id]
   unsigned int *num_MCBs_accessed;   // tracks how many memory controllers are
-                                     // accessed whenever any thread in a warp
-                                     // misses in cache
+                                    // accessed whenever any thread in a warp
+                                    // misses in cache
   unsigned int *position_of_mrq_chosen;  // position of mrq in m_queue chosen
 
   unsigned ***mem_access_type_stats;  // dram access type classification

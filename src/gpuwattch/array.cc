@@ -118,7 +118,7 @@ void ArrayST::optimize_array() {
           10;  // This is the time_dev to be used for next iteration
 
       //		from best area to worst area -->worst timing to best
-      // timing
+      //timing
       if ((((local_result.cycle_time - throughput) <= 1e-10) &&
            (local_result.access_time - latency) <= 1e-10) ||
           (local_result.data_array2->area_efficiency <
@@ -145,8 +145,8 @@ void ArrayST::optimize_array() {
 
         if (l_ip.cycle_time_dev > 10) {  // if not >10 local_result is the last
                                          // result, it cannot be cleaned up
-          temp_res = &local_result;      // Only solutions not saved in the list
-                                         // need to be cleaned up
+          temp_res = &local_result;  // Only solutions not saved in the list
+                                     // need to be cleaned up
           temp_res->cleanup();
         }
       }
@@ -171,36 +171,23 @@ void ArrayST::optimize_array() {
     //		/*According to "Content-Addressable Memory (CAM) Circuits and
     //				Architectures": A Tutorial and Survey
     //				by Kostas Pagiamtzis et al.
-    //				CAM structures can be heavily pipelined and use
-    // look-ahead
-    // techniques,
-    //				therefore timing can be relaxed. But McPAT does not
-    //model
-    // the
-    // advanced
-    //				techniques. If continue optimizing, the area efficiency
-    //will
-    // be
-    // too low
+    //				CAM structures can be heavily pipelined and use look-ahead
+    //techniques,
+    //				therefore timing can be relaxed. But McPAT does not model the
+    //advanced
+    //				techniques. If continue optimizing, the area efficiency will be
+    //too low
     //		*/
     //		//For CAM and FA, stop opt if area efficiency is too low
     //		if (throughput_overflow==true)
-    //			cout<< "Warning: " <<" McPAT stopped optimization on
-    //throughput
-    // for
+    //			cout<< "Warning: " <<" McPAT stopped optimization on throughput for
     //"<< name
-    //				<<" array structure because its area efficiency
-    //is
-    // below
+    //				<<" array structure because its area efficiency is below
     //"<<area_efficiency_threshold<<"% " << endl;
     //		if (latency_overflow==true)
-    //			cout<< "Warning: " <<" McPAT stopped optimization on latency
-    //for
-    //"<<
-    // name
-    //				<<" array structure because its area efficiency
-    //is
-    // below
+    //			cout<< "Warning: " <<" McPAT stopped optimization on latency for "<<
+    //name
+    //				<<" array structure because its area efficiency is below
     //"<<area_efficiency_threshold<<"% " << endl;
     //	}
 
