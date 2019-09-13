@@ -2401,9 +2401,9 @@ RENAMINGU::RENAMINGU(ParseXML* XML_interface, int ithCore_,
         // out_w = data; 			interface_ip.is_cache
         //= false; 			interface_ip.pure_cam            =
         // false; 			interface_ip.pure_ram            = true;
-        // interface_ip.line_sz = data; 			interface_ip.cache_sz
-        // = data*coredynp.globalCheckpoint; interface_ip.assoc = 1;
-        // interface_ip.nbanks              = 1;
+        // interface_ip.line_sz = data;
+        // interface_ip.cache_sz = data*coredynp.globalCheckpoint;
+        // interface_ip.assoc = 1; interface_ip.nbanks              = 1;
         // interface_ip.out_w =
         // out_w*8; 			interface_ip.access_mode         = 0;
         // interface_ip.throughput = 1.0/clockRate;
@@ -2411,8 +2411,8 @@ RENAMINGU::RENAMINGU(ParseXML* XML_interface, int ithCore_,
         // interface_ip.obj_func_dyn_energy = 0;
         // interface_ip.obj_func_dyn_power  = 0;
         // interface_ip.obj_func_leak_power = 0;
-        //interface_ip.obj_func_cycle_t    = 1;
-        //interface_ip.num_rw_ports = 1;//the extra one
+        // interface_ip.obj_func_cycle_t    = 1;
+        // interface_ip.num_rw_ports = 1;//the extra one
         // port is for GCs 			interface_ip.num_rd_ports    =
         // 2*coredynp.decodeW; 			interface_ip.num_wr_ports    =
         // coredynp.decodeW;
@@ -6384,7 +6384,7 @@ void Core::displayEnergy(uint32_t indent, int plevel, bool is_tdp) {
     // << indent_str_next << "Peak Dynamic = " <<
     // undiffCore->power.readOp.dynamic*clockRate << " W" << endl;
     ////				cout << indent_str_next << "Subthreshold
-    ///Leakage
+    /// Leakage
     ///=
     ///"
     ///<< undiffCore->power.readOp.leakage <<" W" << endl;
@@ -6395,12 +6395,12 @@ void Core::displayEnergy(uint32_t indent, int plevel, bool is_tdp) {
     //(long_channel?
     // undiffCore->power.readOp.longer_channel_leakage:undiffCore->power.readOp.leakage)
     //<< " W" << endl; 				cout << indent_str_next << "Gate
-    //Leakage
+    // Leakage
     //=
     //"
     //<< undiffCore->power.readOp.gate_leakage << " W" << endl;
-    //				//		cout << indent_str_next << "Runtime
-    //Dynamic
+    //				//		cout << indent_str_next <<
+    //"Runtime Dynamic
     //=
     //"
     //<< undiffCore->rt_power.readOp.dynamic/executionTime << " W" << endl;

@@ -174,8 +174,8 @@ void ArrayST::optimize_array() {
     //				CAM structures can be heavily pipelined and use
     // look-ahead techniques, 				therefore timing can be
     // relaxed. But McPAT does not model the
-    // advanced 				techniques. If continue optimizing, the
-    // area efficiency will be too low
+    // advanced 				techniques. If continue
+    // optimizing, the area efficiency will be too low
     //		*/
     //		//For CAM and FA, stop opt if area efficiency is too low
     //		if (throughput_overflow==true)
