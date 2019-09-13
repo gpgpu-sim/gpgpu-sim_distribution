@@ -172,9 +172,9 @@ class Pipeline : public Component {
   double WNANDp;
   double load_per_pipeline_stage;
   //	int  Hthread,  num_thread, fetchWidth, decodeWidth, issueWidth,
-  // commitWidth, instruction_length;
+  //commitWidth, instruction_length;
   //	int  PC_width, opcode_length, num_arch_reg_tag,
-  // data_width,num_phsical_reg_tag, address_width;
+  //data_width,num_phsical_reg_tag, address_width;
   //	bool thread_clock_gated;
   //	bool in_order, multithreaded;
   void compute_stage_vector();
@@ -185,9 +185,9 @@ class Pipeline : public Component {
 // class core_pipeline :public pipeline{
 // public:
 //	int  Hthread,  num_thread, fetchWidth, decodeWidth, issueWidth,
-// commitWidth, instruction_length;
+//commitWidth, instruction_length;
 //	int  PC_width, opcode_length, num_arch_reg_tag,
-// data_width,num_phsical_reg_tag, address_width;
+//data_width,num_phsical_reg_tag, address_width;
 //	bool thread_clock_gated;
 //	bool in_order, multithreaded;
 //	core_pipeline(bool _is_default, const InputParameter

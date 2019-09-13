@@ -176,7 +176,7 @@ class Processor : public Component {
       read_coef = l2array[0]
                       ->unicache.caches->local_result.tag_array2->power.writeOp
                       .dynamic;  //*(32/4); // removed by Jingwen, the scaling
-                                 // of 32/4 is not used in the mcpat
+                                 //of 32/4 is not used in the mcpat
       read_coef +=
           l2array[0]->unicache.caches->local_result.power.writeOp.dynamic;
       read_coef +=

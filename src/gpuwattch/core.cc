@@ -59,31 +59,31 @@
 //-gpgpu_num_reg_banks                    8 # Number of register banks (default
 //= 8)
 //-gpgpu_reg_bank_use_warp_id                    0 # Use warp ID in mapping
-// registers to banks (default = off)
+//registers to banks (default = off)
 //-gpgpu_operand_collector_num_units_sp                    6 # number of
-// collector units (default = 4)
+//collector units (default = 4)
 //-gpgpu_operand_collector_num_units_sfu                    8 # number of
-// collector units (default = 4)
+//collector units (default = 4)
 //-gpgpu_operand_collector_num_units_mem                    2 # number of
-// collector units (default = 2)
+//collector units (default = 2)
 //-gpgpu_operand_collector_num_units_gen                    0 # number of
-// collector units (default = 0)
+//collector units (default = 0)
 //-gpgpu_operand_collector_num_in_ports_sp                    1 # number of
-// collector unit in ports (default = 1)
+//collector unit in ports (default = 1)
 //-gpgpu_operand_collector_num_in_ports_sfu                    1 # number of
-// collector unit in ports (default = 1)
+//collector unit in ports (default = 1)
 //-gpgpu_operand_collector_num_in_ports_mem                    1 # number of
-// collector unit in ports (default = 1)
+//collector unit in ports (default = 1)
 //-gpgpu_operand_collector_num_in_ports_gen                    0 # number of
-// collector unit in ports (default = 0)
+//collector unit in ports (default = 0)
 //-gpgpu_operand_collector_num_out_ports_sp                    1 # number of
-// collector unit in ports (default = 1)
+//collector unit in ports (default = 1)
 //-gpgpu_operand_collector_num_out_ports_sfu                    1 # number of
-// collector unit in ports (default = 1)
+//collector unit in ports (default = 1)
 //-gpgpu_operand_collector_num_out_ports_mem                    1 # number of
-// collector unit in ports (default = 1)
+//collector unit in ports (default = 1)
 //-gpgpu_operand_collector_num_out_ports_gen                    0 # number of
-// collector unit in ports (default = 0)
+//collector unit in ports (default = 0)
 
 // The total number of collector units and their input ports, and the number of
 // register file banks
@@ -827,22 +827,18 @@ SchedulerU::SchedulerU(ParseXML* XML_interface, int ithCore_,
         // PC is to id the instruction for recover exception.
         // inst is used to map the renamed dest. registers.so that commit stage
         // can know which reg/RRAT to update
-        //				data =
-        // int(ceil((robExtra+coredynp.pc_width
+        //				data = int(ceil((robExtra+coredynp.pc_width
         //+
-        //						coredynp.instruction_length
-        //+
-        // 2*coredynp.phy_ireg_width)/8.0));
+        //						coredynp.instruction_length +
+        //2*coredynp.phy_ireg_width)/8.0));
         data = int(ceil(
             (robExtra + coredynp.pc_width + coredynp.phy_ireg_width) / 8.0));
       } else {
         // in RS based OOO, ROB also contains value of destination reg
-        //				data  =
-        // int(ceil((robExtra+coredynp.pc_width
+        //				data  = int(ceil((robExtra+coredynp.pc_width
         //+
-        //						coredynp.instruction_length
-        //+
-        // 2*coredynp.phy_ireg_width + coredynp.fp_data_width)/8.0));
+        //						coredynp.instruction_length +
+        //2*coredynp.phy_ireg_width + coredynp.fp_data_width)/8.0));
         data = int(ceil((robExtra + coredynp.pc_width +
                          coredynp.phy_ireg_width + coredynp.fp_data_width) /
                         8.0));
@@ -2403,9 +2399,8 @@ RENAMINGU::RENAMINGU(ParseXML* XML_interface, int ithCore_,
                                          // detailed explaintions
         data =
             33;  // int(ceil(coredynp.phy_ireg_width*(1+coredynp.globalCheckpoint)/8.0));
-        //			data
-        //=
-        // int(ceil(coredynp.phy_ireg_width/8.0));
+        //			data							 =
+        //int(ceil(coredynp.phy_ireg_width/8.0));
         out_w = 1;  // int(ceil(coredynp.phy_ireg_width/8.0));
         interface_ip.is_cache = false;
         interface_ip.pure_cam = false;
@@ -2435,44 +2430,42 @@ RENAMINGU::RENAMINGU(ParseXML* XML_interface, int ithCore_,
                 XML->sys.core[ithCore].number_hardware_threads);
         area.set_area(area.get_area() + iFRAT->area.get_area());
 
-        //			//RAHT According to Intel, combine GC with FRAT
-        // is
-        // very costly.
-        //			data
-        //=
-        // int(ceil(coredynp.phy_ireg_width/8.0)*coredynp.num_IRF_entry);
+        //			//RAHT According to Intel, combine GC with FRAT is
+        //very costly.
+        //			data							 =
+        //int(ceil(coredynp.phy_ireg_width/8.0)*coredynp.num_IRF_entry);
         //			out_w                            = data;
         //			interface_ip.is_cache			 =
-        // false;
+        //false;
         //			interface_ip.pure_cam            = false;
         //			interface_ip.pure_ram            = true;
         //			interface_ip.line_sz             = data;
         //			interface_ip.cache_sz            =
-        // data*coredynp.globalCheckpoint;
+        //data*coredynp.globalCheckpoint;
         //			interface_ip.assoc               = 1;
         //			interface_ip.nbanks              = 1;
         //			interface_ip.out_w               = out_w*8;
         //			interface_ip.access_mode         = 0;
         //			interface_ip.throughput          =
-        // 1.0/clockRate;
+        //1.0/clockRate;
         //			interface_ip.latency             =
-        // 1.0/clockRate;
+        //1.0/clockRate;
         //			interface_ip.obj_func_dyn_energy = 0;
         //			interface_ip.obj_func_dyn_power  = 0;
         //			interface_ip.obj_func_leak_power = 0;
         //			interface_ip.obj_func_cycle_t    = 1;
         //			interface_ip.num_rw_ports    = 1;//the extra one
-        // port is for GCs
+        //port is for GCs
         //			interface_ip.num_rd_ports    =
-        // 2*coredynp.decodeW;
+        //2*coredynp.decodeW;
         //			interface_ip.num_wr_ports    = coredynp.decodeW;
         //			interface_ip.num_se_rd_ports = 0;
         //			iFRAT = new ArrayST(&interface_ip, "Int
-        // FrontRAT");
+        //FrontRAT");
         //			iFRAT->area.set_area(iFRAT->area.get_area()+
-        // iFRAT->local_result.area*XML->sys.core[ithCore].number_hardware_threads);
+        //iFRAT->local_result.area*XML->sys.core[ithCore].number_hardware_threads);
         //			area.set_area(area.get_area()+
-        // iFRAT->area.get_area());
+        //iFRAT->area.get_area());
 
         // FRAT floating point
         data = int(ceil(coredynp.phy_freg_width *
@@ -3230,39 +3223,30 @@ void BranchPredictor::displayEnergy(uint32_t indent, int plevel, bool is_tdp) {
          << " W" << endl;
     cout << endl;
   } else {
-    //		cout << indent_str_next << "Global Predictor    Peak Dynamic = "
-    //<<
-    // globalBPT->rt_power.readOp.dynamic*clockRate << " W" << endl;
-    //		cout << indent_str_next << "Global Predictor    Subthreshold
-    //Leakage
-    //=
+    //		cout << indent_str_next << "Global Predictor    Peak Dynamic = " <<
+    //globalBPT->rt_power.readOp.dynamic*clockRate << " W" << endl;
+    //		cout << indent_str_next << "Global Predictor    Subthreshold Leakage =
     //" << globalBPT->rt_power.readOp.leakage <<" W" << endl;
-    //		cout << indent_str_next << "Global Predictor    Gate Leakage = "
-    //<<
-    // globalBPT->rt_power.readOp.gate_leakage << " W" << endl;
-    //		cout << indent_str_next << "Local Predictor   Peak Dynamic = "
-    //<<
-    // L1_localBPT->rt_power.readOp.dynamic*clockRate  << " W" << endl;
-    //		cout << indent_str_next << "Local Predictor   Subthreshold Leakage
-    //=
-    //"
+    //		cout << indent_str_next << "Global Predictor    Gate Leakage = " <<
+    //globalBPT->rt_power.readOp.gate_leakage << " W" << endl;
+    //		cout << indent_str_next << "Local Predictor   Peak Dynamic = " <<
+    //L1_localBPT->rt_power.readOp.dynamic*clockRate  << " W" << endl;
+    //		cout << indent_str_next << "Local Predictor   Subthreshold Leakage = "
     //<< L1_localBPT->rt_power.readOp.leakage  << " W" << endl;
-    //		cout << indent_str_next << "Local Predictor   Gate Leakage = "
-    //<<
-    // L1_localBPT->rt_power.readOp.gate_leakage  << " W" << endl;
+    //		cout << indent_str_next << "Local Predictor   Gate Leakage = " <<
+    //L1_localBPT->rt_power.readOp.gate_leakage  << " W" << endl;
     //		cout << indent_str_next << "Chooser   Peak Dynamic = " <<
-    // chooser->rt_power.readOp.dynamic*clockRate  << " W" << endl;
-    //		cout << indent_str_next << "Chooser   Subthreshold Leakage = "
-    //<<
-    // chooser->rt_power.readOp.leakage  << " W" << endl;
+    //chooser->rt_power.readOp.dynamic*clockRate  << " W" << endl;
+    //		cout << indent_str_next << "Chooser   Subthreshold Leakage = " <<
+    //chooser->rt_power.readOp.leakage  << " W" << endl;
     //		cout << indent_str_next << "Chooser   Gate Leakage = " <<
-    // chooser->rt_power.readOp.gate_leakage  << " W" << endl;
+    //chooser->rt_power.readOp.gate_leakage  << " W" << endl;
     //		cout << indent_str_next << "RAS   Peak Dynamic = " <<
-    // RAS->rt_power.readOp.dynamic*clockRate  << " W" << endl;
+    //RAS->rt_power.readOp.dynamic*clockRate  << " W" << endl;
     //		cout << indent_str_next << "RAS   Subthreshold Leakage = " <<
-    // RAS->rt_power.readOp.leakage  << " W" << endl;
+    //RAS->rt_power.readOp.leakage  << " W" << endl;
     //		cout << indent_str_next << "RAS   Gate Leakage = " <<
-    // RAS->rt_power.readOp.gate_leakage  << " W" << endl;
+    //RAS->rt_power.readOp.gate_leakage  << " W" << endl;
   }
 }
 
@@ -3609,48 +3593,30 @@ void InstFetchU::displayEnergy(uint32_t indent, int plevel, bool is_tdp) {
          << " W" << endl;
     cout << endl;
   } else {
-    //		cout << indent_str_next << "Instruction Cache    Peak Dynamic =
-    //"
-    //<<
-    // icache.rt_power.readOp.dynamic*clockRate << " W" << endl;
-    //		cout << indent_str_next << "Instruction Cache    Subthreshold
-    // Leakage
+    //		cout << indent_str_next << "Instruction Cache    Peak Dynamic = " <<
+    //icache.rt_power.readOp.dynamic*clockRate << " W" << endl;
+    //		cout << indent_str_next << "Instruction Cache    Subthreshold Leakage
     //= " << icache.rt_power.readOp.leakage <<" W" << endl;
-    //		cout << indent_str_next << "Instruction Cache    Gate Leakage =
-    //"
-    //<<
-    // icache.rt_power.readOp.gate_leakage << " W" << endl;
-    //		cout << indent_str_next << "Instruction Buffer   Peak Dynamic =
-    //"
-    //<<
-    // IB->rt_power.readOp.dynamic*clockRate  << " W" << endl;
-    //		cout << indent_str_next << "Instruction Buffer   Subthreshold
-    // Leakage
+    //		cout << indent_str_next << "Instruction Cache    Gate Leakage = " <<
+    //icache.rt_power.readOp.gate_leakage << " W" << endl;
+    //		cout << indent_str_next << "Instruction Buffer   Peak Dynamic = " <<
+    //IB->rt_power.readOp.dynamic*clockRate  << " W" << endl;
+    //		cout << indent_str_next << "Instruction Buffer   Subthreshold Leakage
     //= " << IB->rt_power.readOp.leakage  << " W" << endl;
-    //		cout << indent_str_next << "Instruction Buffer   Gate Leakage =
-    //"
-    //<<
-    // IB->rt_power.readOp.gate_leakage  << " W" << endl;
-    //		cout << indent_str_next << "Branch Target Buffer   Peak Dynamic =
-    //"
-    //<<
-    // BTB->rt_power.readOp.dynamic*clockRate  << " W" << endl;
+    //		cout << indent_str_next << "Instruction Buffer   Gate Leakage = " <<
+    //IB->rt_power.readOp.gate_leakage  << " W" << endl;
+    //		cout << indent_str_next << "Branch Target Buffer   Peak Dynamic = " <<
+    //BTB->rt_power.readOp.dynamic*clockRate  << " W" << endl;
     //		cout << indent_str_next << "Branch Target Buffer   Subthreshold
-    // Leakage = " << BTB->rt_power.readOp.leakage  << " W" << endl;
-    //		cout << indent_str_next << "Branch Target Buffer   Gate Leakage =
-    //"
-    //<<
-    // BTB->rt_power.readOp.gate_leakage  << " W" << endl;
-    //		cout << indent_str_next << "Branch Predictor   Peak Dynamic = "
-    //<<
-    // BPT->rt_power.readOp.dynamic*clockRate  << " W" << endl;
-    //		cout << indent_str_next << "Branch Predictor   Subthreshold
-    //Leakage
-    //=
+    //Leakage = " << BTB->rt_power.readOp.leakage  << " W" << endl;
+    //		cout << indent_str_next << "Branch Target Buffer   Gate Leakage = " <<
+    //BTB->rt_power.readOp.gate_leakage  << " W" << endl;
+    //		cout << indent_str_next << "Branch Predictor   Peak Dynamic = " <<
+    //BPT->rt_power.readOp.dynamic*clockRate  << " W" << endl;
+    //		cout << indent_str_next << "Branch Predictor   Subthreshold Leakage =
     //" << BPT->rt_power.readOp.leakage  << " W" << endl;
-    //		cout << indent_str_next << "Branch Predictor   Gate Leakage = "
-    //<<
-    // BPT->rt_power.readOp.gate_leakage  << " W" << endl;
+    //		cout << indent_str_next << "Branch Predictor   Gate Leakage = " <<
+    //BPT->rt_power.readOp.gate_leakage  << " W" << endl;
   }
 }
 
@@ -4248,12 +4214,11 @@ void SchedulerU::computeEnergy(bool is_tdp) {
   if (!exist) return;
   double ROB_duty_cycle;
   //	ROB_duty_cycle = ((coredynp.ALU_duty_cycle +
-  // coredynp.num_muls>0?coredynp.MUL_duty_cycle:0
-  //			+ coredynp.num_fpus>0?coredynp.FPU_duty_cycle:0))*1.1<1
-  //?
+  //coredynp.num_muls>0?coredynp.MUL_duty_cycle:0
+  //			+ coredynp.num_fpus>0?coredynp.FPU_duty_cycle:0))*1.1<1 ?
   //(coredynp.ALU_duty_cycle + coredynp.num_muls>0?coredynp.MUL_duty_cycle:0
   //					+
-  // coredynp.num_fpus>0?coredynp.FPU_duty_cycle:0)*1.1:1;
+  //coredynp.num_fpus>0?coredynp.FPU_duty_cycle:0)*1.1:1;
   ROB_duty_cycle = 1;
   // init stats
   if (is_tdp) {
@@ -4427,7 +4392,7 @@ void SchedulerU::computeEnergy(bool is_tdp) {
 
     } else if (coredynp.multithreaded) {
       //			set_pppm(pppm_t,
-      // XML->sys.core[ithCore].issue_width,1, 1, 1);
+      //XML->sys.core[ithCore].issue_width,1, 1, 1);
       int_inst_window->power =
           int_inst_window->power_t +
           (int_inst_window->local_result.power + instruction_selection->power) *
@@ -4454,7 +4419,7 @@ void SchedulerU::computeEnergy(bool is_tdp) {
 
     } else if (coredynp.multithreaded) {
       //			set_pppm(pppm_t,
-      // XML->sys.core[ithCore].issue_width,1, 1, 1);
+      //XML->sys.core[ithCore].issue_width,1, 1, 1);
       int_inst_window->rt_power =
           int_inst_window->power_t +
           (int_inst_window->local_result.power + instruction_selection->power) *
@@ -4464,9 +4429,9 @@ void SchedulerU::computeEnergy(bool is_tdp) {
   }
   //	set_pppm(pppm_t, XML->sys.core[ithCore].issue_width,1, 1, 1);
   //	cout<<"Scheduler
-  // power="<<power.readOp.dynamic<<"leakage="<<power.readOp.leakage<<endl;
+  //power="<<power.readOp.dynamic<<"leakage="<<power.readOp.leakage<<endl;
   //	cout<<"IW="<<int_inst_window->local_result.power.searchOp.dynamic *
-  // int_inst_window->stats_t.readAc.access +
+  //int_inst_window->stats_t.readAc.access +
   //    + int_inst_window->local_result.power.writeOp.dynamic *
   //    int_inst_window->stats_t.writeAc.access<<"leakage="<<int_inst_window->local_result.power.readOp.leakage<<endl;
   //	cout<<"selection"<<instruction_selection->power.readOp.dynamic<<"leakage"<<instruction_selection->power.readOp.leakage<<endl;
@@ -5139,11 +5104,11 @@ void LoadStoreU::computeEnergy(bool is_tdp) {
 
   } else {
     //	LSQ->power_t.readOp.dynamic  +=
-    // LSQ->stats_t.readAc.access*(LSQ->local_result.power.searchOp.dynamic +
-    // LSQ->local_result.power.readOp.dynamic)
+    //LSQ->stats_t.readAc.access*(LSQ->local_result.power.searchOp.dynamic +
+    //LSQ->local_result.power.readOp.dynamic)
     //	        +
-    // LSQ->stats_t.writeAc.access*LSQ->local_result.power.writeOp.dynamic;//every
-    // memory access invloves at least two operations on LSQ
+    //LSQ->stats_t.writeAc.access*LSQ->local_result.power.writeOp.dynamic;//every
+    //memory access invloves at least two operations on LSQ
     //	No LSQ in GPUs (Syed)
   }
 
@@ -5979,7 +5944,7 @@ void EXECU::displayEnergy(uint32_t indent, int plevel, bool is_tdp) {
   bool long_channel = XML->sys.longer_channel_device;
 
   //	cout << indent_str_next << "Results Broadcast Bus Area = " <<
-  // bypass->area.get_area() *1e-6 << " mm^2" << endl;
+  //bypass->area.get_area() *1e-6 << " mm^2" << endl;
   if (is_tdp) {
     cout << indent_str << "Register Files:" << endl;
     cout << indent_str_next << "Area = " << rfu->area.get_area() * 1e-6
@@ -6186,15 +6151,15 @@ void Core::computeEnergy(bool is_tdp) {
                coredynp.num_pipelines / num_units,
                coredynp.num_pipelines / num_units);
       //			cout << "IFU = " <<
-      // ifu->power.readOp.dynamic*clockRate  << " W" << endl;
+      //ifu->power.readOp.dynamic*clockRate  << " W" << endl;
       ifu->power = ifu->power + corepipe->power * pppm_t;
       //			cout << "IFU = " <<
-      // ifu->power.readOp.dynamic*clockRate  << " W" << endl;
+      //ifu->power.readOp.dynamic*clockRate  << " W" << endl;
       //			cout << "1/4 pipe = " <<
-      // corepipe->power.readOp.dynamic*clockRate/num_units  << " W" << endl;
+      //corepipe->power.readOp.dynamic*clockRate/num_units  << " W" << endl;
       power = power + ifu->power;
       //			cout << "core = " <<
-      // power.readOp.dynamic*clockRate  << " W" << endl;
+      //power.readOp.dynamic*clockRate  << " W" << endl;
     }
     if (lsu->exist) {
       Pipeline_energy +=
@@ -6207,10 +6172,10 @@ void Core::computeEnergy(bool is_tdp) {
                coredynp.num_pipelines / num_units);
       lsu->power = lsu->power + corepipe->power * pppm_t;
       //			cout << "LSU = " <<
-      // lsu->power.readOp.dynamic*clockRate  << " W" << endl;
+      //lsu->power.readOp.dynamic*clockRate  << " W" << endl;
       power = power + lsu->power;
       //			cout << "core = " <<
-      // power.readOp.dynamic*clockRate  << " W" << endl;
+      //power.readOp.dynamic*clockRate  << " W" << endl;
     }
     if (exu->exist) {
       Pipeline_energy +=
@@ -6224,10 +6189,10 @@ void Core::computeEnergy(bool is_tdp) {
       // cout<<"ExPowerScalingFactor:"<<coredynp.num_pipelines/num_units*coredynp.ALU_duty_cycle<<endl;
       exu->power = exu->power + corepipe->power * pppm_t;
       //			cout << "EXE = " <<
-      // exu->power.readOp.dynamic*clockRate  << " W" << endl;
+      //exu->power.readOp.dynamic*clockRate  << " W" << endl;
       power = power + exu->power;
       //			cout << "core = " <<
-      // power.readOp.dynamic*clockRate  << " W" << endl;
+      //power.readOp.dynamic*clockRate  << " W" << endl;
     }
     if (mmu->exist) {
       Pipeline_energy +=
@@ -6240,10 +6205,10 @@ void Core::computeEnergy(bool is_tdp) {
                coredynp.num_pipelines / num_units);
       mmu->power = mmu->power + corepipe->power * pppm_t;
       //			cout << "MMU = " <<
-      // mmu->power.readOp.dynamic*clockRate  << " W" << endl;
+      //mmu->power.readOp.dynamic*clockRate  << " W" << endl;
       power = power + mmu->power;
       //			cout << "core = " <<
-      // power.readOp.dynamic*clockRate  << " W" << endl;
+      //power.readOp.dynamic*clockRate  << " W" << endl;
     }
 
     power = power + undiffCore->power;
@@ -6311,9 +6276,8 @@ void Core::computeEnergy(bool is_tdp) {
     }
 
     rt_power = rt_power + undiffCore->power;
-    //		cout << "EXE = " << exu->power.readOp.dynamic*clockRate  << " W"
-    //<<
-    // endl;
+    //		cout << "EXE = " << exu->power.readOp.dynamic*clockRate  << " W" <<
+    //endl;
     if (XML->sys.Private_L2) {
       l2cache->computeEnergy(is_tdp);
       // set_pppm(pppm_t,1/l2cache->cachep.executionTime, 1,1,1);
@@ -6472,28 +6436,22 @@ void Core::displayEnergy(uint32_t indent, int plevel, bool is_tdp) {
     //			if (undiffCore->exist)
     //			{
     //				cout << indent_str << "Undifferentiated Core" <<
-    // endl;
+    //endl;
     //				cout << indent_str_next << "Area = " <<
-    // undiffCore->area.get_area()*1e-6<< " mm^2" << endl;
+    //undiffCore->area.get_area()*1e-6<< " mm^2" << endl;
     //				cout << indent_str_next << "Peak Dynamic = " <<
-    // undiffCore->power.readOp.dynamic*clockRate << " W" << endl;
-    ////				cout << indent_str_next << "Subthreshold Leakage =
-    ///"
-    ///<<
-    /// undiffCore->power.readOp.leakage <<" W" << endl;
-    //				cout << indent_str_next << "Subthreshold Leakage
-    //=
+    //undiffCore->power.readOp.dynamic*clockRate << " W" << endl;
+    ////				cout << indent_str_next << "Subthreshold Leakage = " <<
+    ///undiffCore->power.readOp.leakage <<" W" << endl;
+    //				cout << indent_str_next << "Subthreshold Leakage =
     //"
-    //								<<
-    //(long_channel?
-    // undiffCore->power.readOp.longer_channel_leakage:undiffCore->power.readOp.leakage)
+    //								<< (long_channel?
+    //undiffCore->power.readOp.longer_channel_leakage:undiffCore->power.readOp.leakage)
     //<< " W" << endl;
     //				cout << indent_str_next << "Gate Leakage = " <<
-    // undiffCore->power.readOp.gate_leakage << " W" << endl;
-    //				//		cout << indent_str_next << "Runtime Dynamic =
-    //"
-    //<<
-    // undiffCore->rt_power.readOp.dynamic/executionTime << " W" << endl;
+    //undiffCore->power.readOp.gate_leakage << " W" << endl;
+    //				//		cout << indent_str_next << "Runtime Dynamic = " <<
+    //undiffCore->rt_power.readOp.dynamic/executionTime << " W" << endl;
     //				cout <<endl;
     //			}
     //		}
@@ -6507,44 +6465,30 @@ void Core::displayEnergy(uint32_t indent, int plevel, bool is_tdp) {
          << endl;
 
   } else {
-    //		cout << indent_str_next << "Instruction Fetch Unit    Peak Dynamic
-    //=
-    //"
+    //		cout << indent_str_next << "Instruction Fetch Unit    Peak Dynamic = "
     //<< ifu->rt_power.readOp.dynamic*clockRate << " W" << endl;
-    //		cout << indent_str_next << "Instruction Fetch Unit Subthreshold
-    // Leakage = " << ifu->rt_power.readOp.leakage <<" W" << endl;
-    //		cout << indent_str_next << "Instruction Fetch Unit    Gate Leakage
-    //=
-    //"
+    //		cout << indent_str_next << "Instruction Fetch Unit    Subthreshold
+    //Leakage = " << ifu->rt_power.readOp.leakage <<" W" << endl;
+    //		cout << indent_str_next << "Instruction Fetch Unit    Gate Leakage = "
     //<< ifu->rt_power.readOp.gate_leakage << " W" << endl;
-    //		cout << indent_str_next << "Load Store Unit   Peak Dynamic = "
-    //<<
-    // lsu->rt_power.readOp.dynamic*clockRate  << " W" << endl;
-    //		cout << indent_str_next << "Load Store Unit   Subthreshold Leakage
-    //=
-    //"
+    //		cout << indent_str_next << "Load Store Unit   Peak Dynamic = " <<
+    //lsu->rt_power.readOp.dynamic*clockRate  << " W" << endl;
+    //		cout << indent_str_next << "Load Store Unit   Subthreshold Leakage = "
     //<< lsu->rt_power.readOp.leakage  << " W" << endl;
-    //		cout << indent_str_next << "Load Store Unit   Gate Leakage = "
-    //<<
-    // lsu->rt_power.readOp.gate_leakage  << " W" << endl;
-    //		cout << indent_str_next << "Memory Management Unit   Peak Dynamic
-    //=
-    //"
+    //		cout << indent_str_next << "Load Store Unit   Gate Leakage = " <<
+    //lsu->rt_power.readOp.gate_leakage  << " W" << endl;
+    //		cout << indent_str_next << "Memory Management Unit   Peak Dynamic = "
     //<< mmu->rt_power.readOp.dynamic*clockRate  << " W" << endl;
-    //		cout << indent_str_next << "Memory Management Unit Subthreshold
-    // Leakage = " << mmu->rt_power.readOp.leakage  << " W" << endl;
-    //		cout << indent_str_next << "Memory Management Unit   Gate Leakage
-    //=
-    //"
+    //		cout << indent_str_next << "Memory Management Unit   Subthreshold
+    //Leakage = " << mmu->rt_power.readOp.leakage  << " W" << endl;
+    //		cout << indent_str_next << "Memory Management Unit   Gate Leakage = "
     //<< mmu->rt_power.readOp.gate_leakage  << " W" << endl;
     //		cout << indent_str_next << "Execution Unit   Peak Dynamic = " <<
-    // exu->rt_power.readOp.dynamic*clockRate  << " W" << endl;
-    //		cout << indent_str_next << "Execution Unit   Subthreshold Leakage
-    //=
-    //"
+    //exu->rt_power.readOp.dynamic*clockRate  << " W" << endl;
+    //		cout << indent_str_next << "Execution Unit   Subthreshold Leakage = "
     //<< exu->rt_power.readOp.leakage  << " W" << endl;
     //		cout << indent_str_next << "Execution Unit   Gate Leakage = " <<
-    // exu->rt_power.readOp.gate_leakage  << " W" << endl;
+    //exu->rt_power.readOp.gate_leakage  << " W" << endl;
   }
 }
 InstFetchU::~InstFetchU() {
@@ -6867,9 +6811,8 @@ void Core::set_core_param() {
   }
   //	if (coredynp.core_ty==OOO)
   //	{
-  //		cout<<"OOO processor models are being updated and will be
-  // available
-  // in next release"<<endl;
+  //		cout<<"OOO processor models are being updated and will be available
+  //in next release"<<endl;
   //		exit(0);
   //	}
   if (!((coredynp.scheu_ty == PhysicalRegFile) ||
