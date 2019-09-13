@@ -353,11 +353,12 @@ void NoC::displayEnergy(uint32_t indent, int plevel, bool is_tdp) {
       cout << endl;
     }
   } else {
-    //		cout << indent_str_next << "Instruction Fetch Unit    Peak Dynamic
+    //		cout << indent_str_next << "Instruction Fetch Unit    Peak
+    // Dynamic
     //=
     //"
     //<< ifu->rt_power.readOp.dynamic*clockRate << " W" << endl;
-    //cout
+    // cout
     //<< indent_str_next << "Instruction Fetch Unit    Subthreshold Leakage = "
     // << ifu->rt_power.readOp.leakage <<" W" << endl; 		cout <<
     // indent_str_next << "Instruction Fetch Unit    Gate Leakage = " <<
@@ -372,7 +373,7 @@ void NoC::displayEnergy(uint32_t indent, int plevel, bool is_tdp) {
     // << "Load Store Unit   Gate Leakage = " <<
     // lsu->rt_power.readOp.gate_leakage
     //<< " W" << endl; 		cout << indent_str_next << "Memory Management
-    //Unit Peak Dynamic = " << mmu->rt_power.readOp.dynamic*clockRate  << " W"
+    // Unit Peak Dynamic = " << mmu->rt_power.readOp.dynamic*clockRate  << " W"
     // <<
     // endl; 		cout << indent_str_next << "Memory Management Unit
     // Subthreshold Leakage = " << mmu->rt_power.readOp.leakage  << " W" <<
