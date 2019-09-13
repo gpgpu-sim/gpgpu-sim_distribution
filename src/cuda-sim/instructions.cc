@@ -3619,7 +3619,7 @@ void mma_ld_impl(const ptx_instruction *pI, core_t *core, warp_inst_t &inst) {
     if ((wmma_type == LOAD_C) && (type == F16_TYPE) &&
         (wmma_layout == COL))  // memory address is scattered, check the
                                // profiling xls for more detail.
-      inst.data_size = 2;  // 2 byte transaction
+      inst.data_size = 2;      // 2 byte transaction
     else
       inst.data_size = 4;  // 4 byte transaction
     assert(inst.memory_op == insn_memory_op);

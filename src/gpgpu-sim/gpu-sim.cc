@@ -1224,7 +1224,7 @@ void gpgpu_sim::gpu_print_stat() {
                  partiton_reqs_in_parallel_util_total) /
              (gpu_sim_cycle_parition_util + gpu_tot_sim_cycle_parition_util));
   // printf("partiton_replys_in_parallel = %lld\n",
-  // partiton_replys_in_parallel); printf("partiton_replys_in_parallel_total    =
+  // partiton_replys_in_parallel); printf("partiton_replys_in_parallel_total =
   // %lld\n", partiton_replys_in_parallel_total );
   printf("L2_BW  = %12.4f GB/Sec\n",
          ((float)(partiton_replys_in_parallel * 32) /
@@ -1735,8 +1735,8 @@ void gpgpu_sim::cycle() {
     m_power_stats->pwr_mem_stat->l2_cache_stats[CURRENT_STAT_IDX].clear();
     for (unsigned i = 0; i < m_memory_config->m_n_mem_sub_partition; i++) {
       // move memory request from interconnect into memory partition (if not
-      // backed up) Note:This needs to be called in DRAM clock domain if there is
-      // no L2 cache in the system In the worst case, we may need to push
+      // backed up) Note:This needs to be called in DRAM clock domain if there
+      // is no L2 cache in the system In the worst case, we may need to push
       // SECTOR_CHUNCK_SIZE requests, so ensure you have enough buffer for them
       if (m_memory_sub_partition[i]->full(SECTOR_CHUNCK_SIZE)) {
         gpu_stall_dramfull++;

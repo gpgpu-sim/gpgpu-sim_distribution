@@ -547,13 +547,14 @@ class cache_config {
     }
     if (m_alloc_policy == STREAMING) {
       // For streaming cache, we set the alloc policy to be on-fill to remove
-      // all line_alloc_fail stalls we set the MSHRs to be equal to max allocated
-      // cache lines. This is possible by moving TAG to be shared between cache
-      // line and MSHR enrty (i.e. for each cache line, there is an MSHR rntey
-      // associated with it) This is the easiest think we can think about to
-      // model (mimic) L1 streaming cache in Pascal and Volta Based on our
-      // microbenchmakrs, MSHRs entries have been increasing substantially in
-      // Pascal and Volta For more information about streaming cache, see:
+      // all line_alloc_fail stalls we set the MSHRs to be equal to max
+      // allocated cache lines. This is possible by moving TAG to be shared
+      // between cache line and MSHR enrty (i.e. for each cache line, there is
+      // an MSHR rntey associated with it) This is the easiest think we can
+      // think about to model (mimic) L1 streaming cache in Pascal and Volta
+      // Based on our microbenchmakrs, MSHRs entries have been increasing
+      // substantially in Pascal and Volta For more information about streaming
+      // cache, see:
       // http://on-demand.gputechconf.com/gtc/2017/presentation/s7798-luke-durant-inside-volta.pdf
       // https://ieeexplore.ieee.org/document/8344474/
       m_is_streaming = true;
@@ -1303,9 +1304,9 @@ class baseline_cache : public cache_t {
     const cache_config &m_config;
 
     int m_data_port_occupied_cycles;  //< Number of cycle that the data port
-                                      //remains used
+                                      // remains used
     int m_fill_port_occupied_cycles;  //< Number of cycle that the fill port
-                                      //remains used
+                                      // remains used
   };
 
   bandwidth_management m_bandwidth_management;
