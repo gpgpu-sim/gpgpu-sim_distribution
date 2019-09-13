@@ -1312,9 +1312,9 @@ class baseline_cache : public cache_t {
     const cache_config &m_config;
 
     int m_data_port_occupied_cycles;  //< Number of cycle that the data port
-                                      //remains used
+                                      // remains used
     int m_fill_port_occupied_cycles;  //< Number of cycle that the fill port
-                                      //remains used
+                                      // remains used
   };
 
   bandwidth_management m_bandwidth_management;

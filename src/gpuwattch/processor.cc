@@ -1084,7 +1084,8 @@ void Processor::set_proc_param() {
 
   //	if (procdynp.numCore<1)
   //	{
-  //		cout<<" The target processor should at least have one core on chip."
+  //		cout<<" The target processor should at least have one core on
+  // chip."
   //<<endl;
   //		exit(0);
   //	}
@@ -1135,7 +1136,7 @@ void Processor::set_proc_param() {
   interface_ip.F_sz_um = interface_ip.F_sz_nm / 1000;
 
   //***********This section of code does not have real meaning, they are just to
-  //ensure all data will have initial value to prevent errors.
+  // ensure all data will have initial value to prevent errors.
   // They will be overridden  during each components initialization
   interface_ip.cache_sz = 64;
   interface_ip.line_sz = 1;
