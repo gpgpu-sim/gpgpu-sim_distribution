@@ -7,16 +7,14 @@
 //
 // Redistributions of source code must retain the above copyright notice, this
 // list of conditions and the following disclaimer.
-// Redistributions in binary form must reproduce the above copyright notice,
-// this
+// Redistributions in binary form must reproduce the above copyright notice, this
 // list of conditions and the following disclaimer in the documentation and/or
 // other materials provided with the distribution.
 // Neither the name of The University of British Columbia nor the names of its
 // contributors may be used to endorse or promote products derived from this
 // software without specific prior written permission.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 // ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
@@ -33,19 +31,19 @@
 #include "../abstract_hardware_model.h"
 
 typedef struct {
-  address_type *v;
-  int max_size;
-  int top;
+   address_type *v;
+   int max_size;
+   int top;
 } Stack;
 
 void push_stack(Stack *S, address_type val);
 address_type pop_stack(Stack *S);
 address_type top_stack(Stack *S);
-Stack *new_stack(int size);
+Stack* new_stack(int size);
 void free_stack(Stack *S);
 int size_stack(Stack *S);
 int full_stack(Stack *S);
 int empty_stack(Stack *S);
 int element_exist_stack(Stack *S, address_type value);
 void reset_stack(Stack *S);
-#endif  // _MY_STACK_
+#endif // _MY_STACK_
