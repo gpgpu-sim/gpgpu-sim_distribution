@@ -14,7 +14,7 @@ pipeline {
               git remote add upstream https://github.com/purdue-aalp/gpgpu-sim_distribution
               git fetch upstream
               if git diff --name-only upstream/dev | grep -E "*.cc|*.h|*.cpp|*.hpp" ; then
-                git diff --name-only upstream/dev | grep -E "*.cc|*.h|*.cpp|*.hpp" | xargs ./run-clang-format.py --clang-format-executable /tgrogers-raid/a/common/clang-format/6.0.1/clang-format
+                git diff --name-only upstream/dev | grep -E "*.cc|*.h|*.cpp|*.hpp" | xargs ./run-clang-format.py --clang-format-executable /home/tgrogers-raid/a/common/clang-format/6.0.1/clang-format
               fi
             ''' 
           }
