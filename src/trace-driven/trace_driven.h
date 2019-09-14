@@ -35,7 +35,9 @@ public:
 	trace_warp_inst_t() {
 
 	}
-	trace_warp_inst_t(const class core_config *config):warp_inst_t(config) {
+	trace_warp_inst_t(const class core_config *config, gpgpu_context* gpgpu_context ):warp_inst_t(config) {
+		m_gpgpu_context = gpgpu_context;
+		m_opcode=0;
 	}
 
 	bool parse_from_string(std::string trace);
@@ -43,14 +45,18 @@ public:
 
 private:
 
+	void set_latency(unsigned cat);
+	gpgpu_context* m_gpgpu_context;
+	unsigned m_opcode;
 
 };
 
 class trace_kernel_info_t: public kernel_info_t {
 public:
-	trace_kernel_info_t(dim3 gridDim, dim3 blockDim, trace_function_info* m_function_info, std::ifstream* inputstream, gpgpu_sim * gpgpu_sim):kernel_info_t(gridDim, blockDim, m_function_info) {
+	trace_kernel_info_t(dim3 gridDim, dim3 blockDim, trace_function_info* m_function_info, std::ifstream* inputstream, gpgpu_sim * gpgpu_sim, gpgpu_context* gpgpu_context):kernel_info_t(gridDim, blockDim, m_function_info) {
 		ifs = inputstream;
 		m_gpgpu_sim = gpgpu_sim;
+		m_gpgpu_context = gpgpu_context;
 	}
 
 	bool get_next_threadblock_traces(std::vector<std::vector<trace_warp_inst_t>>& threadblock_traces);
@@ -58,6 +64,7 @@ public:
 private:
 	std::ifstream* ifs;
 	gpgpu_sim * m_gpgpu_sim;
+	gpgpu_context* m_gpgpu_context;
 
 };
 
