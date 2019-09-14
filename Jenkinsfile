@@ -6,8 +6,19 @@ pipeline {
     options {
         disableConcurrentBuilds()
     }
-
     stages {
+        stage('formatting-check') {
+          steps {
+            sh '''
+              source /home/tgrogers-raid/a/common/gpgpu-sim-setup/common/export_gcc_version.sh 5.3.0
+              git remote add upstream https://github.com/purdue-aalp/gpgpu-sim_distribution
+              git fetch upstream
+              if git diff --name-only upstream/dev | grep -E "*.cc|*.h|*.cpp|*.hpp" ; then
+                git diff --name-only upstream/dev | grep -E "*.cc|*.h|*.cpp|*.hpp" | xargs ./run-clang-format.py --clang-format-executable /home/tgrogers-raid/a/common/clang-format/6.0.1/clang-format
+              fi
+            ''' 
+          }
+        }
         stage('simulator-build') {
             steps {
                 parallel "4.2": {
@@ -94,6 +105,7 @@ pipeline {
     }
     post {
         success {
+            sh 'git remote rm upstream'
             emailext body:'''${SCRIPT, template="groovy-html.success.template"}''',
                 recipientProviders: [[$class: 'CulpritsRecipientProvider'],
                     [$class: 'RequesterRecipientProvider']],
@@ -102,6 +114,7 @@ pipeline {
                 to: 'tgrogers@purdue.edu'
         }
         failure {
+            sh 'git remote rm upstream'
             emailext body: "See ${BUILD_URL}",
                 recipientProviders: [[$class: 'CulpritsRecipientProvider'],
                     [$class: 'RequesterRecipientProvider']],
