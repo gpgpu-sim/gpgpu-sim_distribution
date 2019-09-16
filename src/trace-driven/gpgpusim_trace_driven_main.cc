@@ -342,14 +342,21 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 	ar2 = 0;
 	memory_op = no_memory_op;
 	data_size = 0;
-
-	num_regs = reg_srcs_num+1;
-	num_operands = num_regs;
 	op = ALU_OP;
 	mem_op= NOT_TEX;
 
+	//get opcode and category
+	std::unordered_map<const char*,OpcodeChar>::const_iterator it= OpcodeMap.find(opcode1.c_str());
+	if (it != OpcodeMap.end()) {
+		m_opcode = it->second.opcode;
+		op = (op_type)(it->second.opcode_category);
+	}
+	else
+		assert(0 && "undefined instruction");
 
 	//fill regs information
+	num_regs = reg_srcs_num+1;
+	num_operands = num_regs;
 	outcount=1;
 	out[0]=reg_dest;
 	arch_reg.dst[0]=reg_dest;
@@ -362,16 +369,6 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 	//handle: vector, store insts have no output, double inst and hmma, and 64 bit address
 
 
-	//get opcode and category
-	std::unordered_map<const char*,OpcodeChar>::const_iterator it= OpcodeMap.find(opcode1.c_str());
-	if (it != OpcodeMap.end()) {
-		m_opcode = it->second.opcode;
-		op = (op_type)(it->second.opcode_category);
-	}
-	else
-		assert(0 && "undefined instruction");
-
-
 	//fill latency and initl
 	set_latency(op);
 
@@ -380,6 +377,9 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 		for(unsigned i=0; i<warp_size(); ++i)
 			set_addr(i, mem_addresses[i]);
 	}
+
+	// barrier_type bar_type;
+    // reduction_type red_type;
 
 	//fill memory space
 	switch(m_opcode){
