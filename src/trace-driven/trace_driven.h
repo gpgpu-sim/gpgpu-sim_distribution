@@ -28,9 +28,6 @@ public:
 
 	}
 
-private:
-
-
 };
 
 class trace_warp_inst_t: public warp_inst_t {
@@ -47,14 +44,11 @@ public:
 	}
 
 	bool parse_from_string(std::string trace);
-	unsigned m_opcode;
 
 private:
-
 	void set_latency(unsigned cat);
 	gpgpu_context* m_gpgpu_context;
-
-
+	unsigned m_opcode;
 };
 
 class trace_kernel_info_t: public kernel_info_t {
@@ -105,15 +99,13 @@ public:
 	bool trace_done();
 	address_type get_start_pc();
 	address_type get_pc();
-	unsigned trace_pc;
 
 private:
-
+	unsigned trace_pc;
 
 };
 
 class trace_shader_core_ctx: public shader_core_ctx {
-
 public:
 	trace_shader_core_ctx(class gpgpu_sim *gpu,
             class simt_core_cluster *cluster,
@@ -130,10 +122,10 @@ public:
 	void init_traces( unsigned start_warp, unsigned end_warp, kernel_info_t &kernel );
 	unsigned trace_sim_inc_thread( kernel_info_t &kernel);
 	virtual void func_exec_inst( warp_inst_t &inst );
-	std::vector<trace_shd_warp_t> m_trace_warp;
+	friend class shader_core_ctx;
 
 private:
-
+	std::vector<trace_shd_warp_t> m_trace_warp;
 
 };
 

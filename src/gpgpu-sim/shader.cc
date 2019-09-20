@@ -3290,10 +3290,6 @@ void barrier_set_t::deallocate_barrier( unsigned cta_id )
    warp_set_t at_barrier = warps & m_warp_at_barrier;
    assert( at_barrier.any() == false ); // no warps stuck at barrier
    warp_set_t active = warps & m_warp_active;
-   std::cout<<active<<std::endl;
-   std::cout<<warps<<std::endl;
-   std::cout<<m_warp_active<<std::endl;
-
    assert( active.any() == false ); // no warps in CTA still running
    m_warp_active &= ~warps;
    m_warp_at_barrier &= ~warps;
