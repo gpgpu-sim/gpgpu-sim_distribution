@@ -171,7 +171,15 @@ $(SIM_LIB_DIR)/libcudart.so: makedirs $(LIBS) cudalib
 
 
 $(SIM_LIB_DIR)/gpgpusim.out: makedirs $(LIBS) cudalib $(SIM_LIB_DIR)/libcudart.so
-	g++ -std=c++0x -L$(SIM_LIB_DIR) -I$(CUDA_INSTALL_PATH)/include -lcudart -o $(SIM_LIB_DIR)/gpgpusim.out src/trace-driven/gpgpusim_trace_driven_main.cc 
+	ar rvs   $(SIM_LIB_DIR)/libcudart_static.a\
+			$(SIM_OBJ_FILES_DIR)/libcuda/*.o \
+			$(SIM_OBJ_FILES_DIR)/cuda-sim/*.o \
+			$(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table/*.o \
+			$(SIM_OBJ_FILES_DIR)/gpgpu-sim/*.o \
+			$(SIM_OBJ_FILES_DIR)/$(INTERSIM)/*.o \
+			$(SIM_OBJ_FILES_DIR)/*.o \
+			$(MCPAT)
+	g++ -std=c++0x -L$(SIM_LIB_DIR) -I$(CUDA_INSTALL_PATH)/include -lcudart -lm -lz -lGL -pthread -o $(SIM_LIB_DIR)/gpgpusim.out src/trace-driven/gpgpusim_trace_driven_main.cc 
 
 $(SIM_LIB_DIR)/libcudart.dylib: makedirs $(LIBS) cudalib
 	g++ -dynamiclib -Wl,-headerpad_max_install_names,-undefined,dynamic_lookup,-compatibility_version,1.1,-current_version,1.1\

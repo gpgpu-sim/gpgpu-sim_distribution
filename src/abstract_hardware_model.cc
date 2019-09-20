@@ -471,7 +471,8 @@ void warp_inst_t::generate_mem_accesses()
     }
 
     if ( space.get_type() == global_space ) {
-        m_config->gpgpu_ctx->stats->ptx_file_line_stats_add_uncoalesced_gmem( pc, m_accessq.size() - starting_queue_size );
+    	//TO DO: check here
+       // m_config->gpgpu_ctx->stats->ptx_file_line_stats_add_uncoalesced_gmem( pc, m_accessq.size() - starting_queue_size );
     }
     m_mem_accesses_created=true;
 }
@@ -706,7 +707,9 @@ void warp_inst_t::completed( unsigned long long cycle ) const
 {
    unsigned long long latency = cycle - issue_cycle; 
    assert(latency <= cycle); // underflow detection 
-   m_config->gpgpu_ctx->stats->ptx_file_line_stats_add_latency(pc, latency * active_count());  
+   //check the trace mode here
+   //TO DO
+   //m_config->gpgpu_ctx->stats->ptx_file_line_stats_add_latency(pc, latency * active_count());
 }
 
 

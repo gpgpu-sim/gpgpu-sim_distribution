@@ -8,30 +8,32 @@
 #include <fstream>
 #include <string>
 #include <sstream>
-#include <stdio.h>
 #include <math.h>
 
-//#include "../abstract_hardware_model.h"
-//#include "../option_parser.h"
-//#include "../cuda-sim/cuda-sim.h"
-//#include "../cuda-sim/ptx_ir.h"
-//#include "../cuda-sim/ptx_parser.h"
+#include "../abstract_hardware_model.h"
+#include "../option_parser.h"
+#include "../cuda-sim/cuda-sim.h"
+#include "../cuda-sim/ptx_ir.h"
+#include "../cuda-sim/ptx_parser.h"
 #include "../gpgpu-sim/gpu-sim.h"
 //#include "../gpgpu-sim/icnt_wrapper.h"
 //#include "../gpgpu-sim/icnt_wrapper.h"
 #include "../../libcuda/gpgpu_context.h"
 #include "trace_driven.h"
 #include "trace_opcode.h"
+#include "../gpgpusim_entrypoint.h"
+//#include "gpgpu_context.h"
 
 //#include "../stream_manager.h"
 
 
 void arguments_check();
 
+
 int main ( int argc, const char **argv )
 {
 
-	gpgpu_context* m_gpgpu_context = GPGPU_Context();
+	gpgpu_context* m_gpgpu_context = new gpgpu_context();
 	gpgpu_sim * m_gpgpu_sim = m_gpgpu_context->gpgpu_trace_sim_init_perf(argc,argv);
 	m_gpgpu_sim->init();
 
@@ -187,6 +189,7 @@ trace_kernel_info_t* trace_parser::parse_kernel_info(const std::string& kerneltr
 			else if (string1 == "cuda" && string2 == "stream") {
 				sscanf(line.c_str(), "-cuda stream id = %d", &cuda_stream_id);
 			}
+			std::cout << line << std::endl;
 			continue;
 		}
 	}
@@ -212,22 +215,49 @@ void trace_parser::kernel_finalizer(trace_kernel_info_t* kernel_info){
 	delete kernel_info;
 }
 
-bool trace_kernel_info_t::get_next_threadblock_traces(std::vector<std::vector<trace_warp_inst_t>>& threadblock_traces) {
+const trace_warp_inst_t* trace_shd_warp_t::get_next_inst(){
+	return &warp_traces[trace_pc++];
+}
 
-	threadblock_traces.clear();
-	unsigned warps_per_tb = ceil(float(threads_per_cta()/32));
-	threadblock_traces.resize(warps_per_tb);
+void trace_shd_warp_t::clear() {
+	trace_pc=0;
+	warp_traces.clear();
+}
+
+bool trace_shd_warp_t::trace_done() {
+	return trace_pc==warp_traces.size();
+}
+
+address_type trace_shd_warp_t::get_start_pc(){
+	assert(warp_traces.size() > 0);
+	return warp_traces[0].pc;
+}
+
+address_type trace_shd_warp_t::get_pc(){
+	assert(warp_traces.size() > 0);
+	return warp_traces[trace_pc].pc;
+}
+
+bool trace_kernel_info_t::get_next_threadblock_traces(std::vector<std::vector<trace_warp_inst_t>*> threadblock_traces) {
+
+	for(unsigned i=0; i<threadblock_traces.size(); ++i) {
+		threadblock_traces[i]->clear();
+	}
+	//unsigned warps_per_tb = ceil(float(threads_per_cta()/32));
+	//threadblock_traces.resize(warps_per_tb);
 
 	unsigned block_id_x=0, block_id_y=0, block_id_z=0;
 	unsigned warp_id=0;
 	unsigned insts_num=0;
-	std::string line;
-	std::stringstream ss;
-	std::string string1, string2;
+
 
 	bool start_of_tb_stream_found = false;
 
 	while(!ifs->eof()) {
+		std::string line;
+		std::stringstream ss;
+		std::string string1, string2;
+
 		getline(*ifs, line);
 
 		if (line.length() == 0) {
@@ -238,32 +268,41 @@ bool trace_kernel_info_t::get_next_threadblock_traces(std::vector<std::vector<tr
 			ss>>string1>>string2;
 			if (string1 == "#BEGIN_TB") {
 				if(!start_of_tb_stream_found)
+				{
 					start_of_tb_stream_found=true;
-				else assert(0 && "Parsing error: thread block start before the previous one finish");
+				}
+				else
+					assert(0 && "Parsing error: thread block start before the previous one finish");
+				std::cout<<line<<std::endl;
 			}
 			else if (string1 == "#END_TB") {
 				assert(start_of_tb_stream_found);
+				std::cout<<line<< std::endl;
 				break; //end of TB stream
 			}
 			else if(string1 == "thread" && string2 == "block") {
 				assert(start_of_tb_stream_found);
 				sscanf(line.c_str(), "thread block = %d,%d,%d", &block_id_x, &block_id_y, &block_id_z);
+				std::cout << line << std::endl;
 			}
 			else if (string1 == "warp") {
 				//the start of new warp stream
 				assert(start_of_tb_stream_found);
 				sscanf(line.c_str(), "warp = %d", &warp_id);
+				//std::cout << line << std::endl;
 			}
 			else if (string1 == "insts") {
 				assert(start_of_tb_stream_found);
 				sscanf(line.c_str(), "insts = %d", &insts_num);
-				threadblock_traces[warp_id].resize(insts_num);
+				threadblock_traces[warp_id]->reserve(insts_num);
+				//std::cout << line << std::endl;
 			}
 			else {
 				assert(start_of_tb_stream_found);
 				trace_warp_inst_t inst(m_gpgpu_sim->getShaderCoreConfig(), m_gpgpu_context);
+				//std::cout<<line << std::endl;
 				inst.parse_from_string(line);
-				threadblock_traces[warp_id].push_back(inst);
+				threadblock_traces[warp_id]->push_back(inst);
 			}
 		}
 	}
@@ -282,8 +321,9 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 	unsigned threadblock_x=0, threadblock_y=0, threadblock_z=0, warpid_tb=0, sm_id=0, warpid_sm=0;
 	unsigned long long m_pc=0;
 	unsigned mask=0;
-	unsigned reg_dest=0;
+	unsigned reg_dest[4];
 	std::string opcode;
+	unsigned reg_dsts_num=0;
 	unsigned reg_srcs_num=0;
 	unsigned reg_srcs[4];
 	unsigned mem_width=0;
@@ -292,20 +332,30 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 	ss>>std::dec>>threadblock_x>>threadblock_y>>threadblock_z>>warpid_tb>>sm_id>>warpid_sm;
 
 	ss>>std::hex>>m_pc>>mask;
+	//std::cout<<"m_pc= "<<m_pc<<std::endl;
+	//std::cout<<"mask= "<<mask<<std::endl;
+
 	std::bitset<MAX_WARP_SIZE> mask_bits(mask);
 
-	ss>>std::dec>>temp;
-	sscanf(temp.c_str(), "R%d", &reg_dest);
+	ss>>reg_dsts_num;
+
+	for(unsigned i=0; i<reg_dsts_num; ++i) {
+		ss>>std::dec>>temp;
+		sscanf(temp.c_str(), "R%d", &reg_dest[i]);
+	}
 
 	ss>>opcode;
+
 	ss>>reg_srcs_num;
 
 	for(unsigned i=0; i<reg_srcs_num; ++i) {
 		ss>>temp;
 		sscanf(temp.c_str(), "R%d", &reg_srcs[i]);
+
 	}
 
 	ss>>mem_width;
+
 	if(mem_width > 0)  //then it is a memory inst
 	{
 		for (int s = 0; s < warp_size(); s++) {
@@ -327,7 +377,9 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 
 	//fill and initialize common params
 	m_decoded = true;
-	pc = m_pc;
+	pc = (address_type)m_pc;   //we will lose the high 32 bits from casting long to unsigned, it should be okay!
+	//std::cout<<"pc= "<<pc<<std::endl;
+
 	isize = 16;   //TO DO, change this
 	for(unsigned i=0; i<MAX_OUTPUT_VALUES; i++) {
 		out[i] = 0;
@@ -345,21 +397,24 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 	op = ALU_OP;
 	mem_op= NOT_TEX;
 
-	//get opcode and category
-	std::unordered_map<const char*,OpcodeChar>::const_iterator it= OpcodeMap.find(opcode1.c_str());
+	std::unordered_map<std::string,OpcodeChar>::const_iterator it= OpcodeMap.find(opcode1);
 	if (it != OpcodeMap.end()) {
 		m_opcode = it->second.opcode;
 		op = (op_type)(it->second.opcode_category);
 	}
-	else
+	else {
+		std::cout<<"ERROR:  undefined instruction : "<<opcode<<" Opcode: "<<opcode1<<std::endl;
 		assert(0 && "undefined instruction");
+	}
 
 	//fill regs information
-	num_regs = reg_srcs_num+1;
+	num_regs = reg_srcs_num+reg_dsts_num;
 	num_operands = num_regs;
-	outcount=1;
-	out[0]=reg_dest;
-	arch_reg.dst[0]=reg_dest;
+	outcount=reg_dsts_num;
+	for(unsigned m=0; m<reg_dsts_num; ++m){
+		out[m]=reg_dest[m];
+		arch_reg.src[m]=reg_dest[m];
+	}
 
 	incount=reg_srcs_num;
 	for(unsigned m=0; m<reg_srcs_num; ++m){
@@ -379,7 +434,8 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 	}
 
 	// barrier_type bar_type;
-    // reduction_type red_type;
+	// reduction_type red_type;
+
 
 	//fill memory space
 	switch(m_opcode){
@@ -389,6 +445,7 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 		assert(mem_width>0);
 		data_size = mem_width;
 		memory_op = memory_load;
+		cache_op = CACHE_ALL;
 		if(m_opcode == OP_LDL)
 			space.set_type(local_space);
 		else
@@ -403,6 +460,7 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 		assert(mem_width>0);
 		data_size = mem_width;
 		memory_op = memory_store;
+		cache_op = CACHE_ALL;
 		if(m_opcode == OP_STL)
 			space.set_type(local_space);
 		else
@@ -410,6 +468,14 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 
 		if(m_opcode == OP_ATOM || m_opcode == OP_ATOMG || m_opcode == OP_RED)
 			m_isatomic = true;
+
+		for(unsigned m=0; m<reg_dsts_num; ++m){
+			out[m]=0;
+			arch_reg.src[m]=-1;
+		}
+		reg_dsts_num=0;
+		outcount=0;
+
 		break;
 	case OP_LDS:
 	case OP_STS:
@@ -418,9 +484,16 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 		data_size = mem_width;
 		space.set_type(shared_space);
 		break;
-
+	case OP_BAR:
+		//TO DO fill this correctly
+		bar_id = 0;
+		bar_count = (unsigned)-1;
+		bar_type = SYNC;
+		//if bar_type = RED;
+		//set bar_type
+		break;
 	default:
-			break;
+		break;
 	}
 
 	return true;
@@ -482,34 +555,98 @@ void trace_warp_inst_t::set_latency(unsigned category)
 	initiation_interval = latency = 1;
 
 	switch(category){
-		case ALU_OP:
-		case INTP_OP:
-		case BRANCH_OP:
-		case CALL_OPS:
-		case RET_OPS:
-			latency = int_latency[0];
-			initiation_interval = int_init[0];
-			break;
-		case SP_OP:
-			latency = fp_latency[0];
-			initiation_interval = fp_latency[0];
-			break;
-		case DP_OP:
-			latency = dp_latency[0];
-			initiation_interval = dp_latency[0];
-			break;
-		case SFU_OP:
-			latency = sfu_latency;
-			initiation_interval = sfu_init;
-			break;
-		case TENSOR_CORE_OP:
-			latency = tensor_latency;
-			initiation_interval = tensor_init;
-			break;
-		default:
-				break;
-		}
+	case ALU_OP:
+	case INTP_OP:
+	case BRANCH_OP:
+	case CALL_OPS:
+	case RET_OPS:
+		latency = int_latency[0];
+		initiation_interval = int_init[0];
+		break;
+	case SP_OP:
+		latency = fp_latency[0];
+		initiation_interval = fp_latency[0];
+		break;
+	case DP_OP:
+		latency = dp_latency[0];
+		initiation_interval = dp_latency[0];
+		break;
+	case SFU_OP:
+		latency = sfu_latency;
+		initiation_interval = sfu_init;
+		break;
+	case TENSOR_CORE_OP:
+		latency = tensor_latency;
+		initiation_interval = tensor_init;
+		break;
+	default:
+		break;
+	}
 
 }
 
+unsigned trace_shader_core_ctx::trace_sim_inc_thread( kernel_info_t &kernel)
+{
+
+	if ( kernel.no_more_ctas_to_run() ) {
+		return 0; //finished!
+	}
+
+	if( kernel.more_threads_in_cta() ) {
+		kernel.increment_thread_id();
+	}
+
+	if( !kernel.more_threads_in_cta() )
+		kernel.increment_cta_id();
+
+	return 1;
+}
+
+void trace_shader_core_ctx::init_traces( unsigned start_warp, unsigned end_warp, kernel_info_t &kernel ) {
+
+	std::vector<std::vector<trace_warp_inst_t>*> threadblock_traces;
+	for (unsigned i = start_warp; i < end_warp; ++i) {
+		threadblock_traces.push_back(&(m_trace_warp[i].warp_traces));
+	}
+	trace_kernel_info_t& trace_kernel = static_cast<trace_kernel_info_t&> (kernel);
+	trace_kernel.get_next_threadblock_traces(threadblock_traces);
+
+	//set pc
+	for (unsigned i = start_warp; i < end_warp; ++i) {
+		m_warp[i].set_next_pc(m_trace_warp[i].get_start_pc());
+	}
+}
+
+
+void trace_shader_core_ctx::checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned t, unsigned tid)
+{
+	if(inst.isatomic())
+		m_warp[inst.warp_id()].inc_n_atomic();
+
+	if ( m_trace_warp[inst.warp_id()].trace_done() ) {
+		m_warp[inst.warp_id()].set_completed(t);
+		m_warp[inst.warp_id()].ibuffer_flush();
+	}
+
+}
+
+void trace_shader_core_ctx::func_exec_inst( warp_inst_t &inst )
+{
+	//here, we generate memory acessess and set the status if thread (done?)
+	if( inst.is_load() || inst.is_store() )
+	{
+		inst.generate_mem_accesses();
+	}
+	for ( unsigned t=0; t < m_warp_size; t++ ) {
+		if( inst.active(t) ) {
+			unsigned warpId = inst.warp_id();
+			unsigned tid=m_warp_size*warpId+t;
+
+			//virtual function
+			checkExecutionStatusAndUpdate(inst,t,tid);
+		}
+	}
+	if(m_trace_warp[inst.warp_id()].trace_done() )
+		m_barriers.warp_exit( inst.warp_id() );
+}
 

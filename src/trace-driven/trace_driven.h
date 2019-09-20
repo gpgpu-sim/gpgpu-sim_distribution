@@ -24,6 +24,10 @@ public:
 		m_kernel_info = info;
 	}
 
+	virtual ~trace_function_info() {
+
+	}
+
 private:
 
 
@@ -33,21 +37,23 @@ class trace_warp_inst_t: public warp_inst_t {
 public:
 
 	trace_warp_inst_t() {
-
+		m_gpgpu_context=NULL;
+		m_opcode=0;
 	}
+
 	trace_warp_inst_t(const class core_config *config, gpgpu_context* gpgpu_context ):warp_inst_t(config) {
 		m_gpgpu_context = gpgpu_context;
 		m_opcode=0;
 	}
 
 	bool parse_from_string(std::string trace);
-
+	unsigned m_opcode;
 
 private:
 
 	void set_latency(unsigned cat);
 	gpgpu_context* m_gpgpu_context;
-	unsigned m_opcode;
+
 
 };
 
@@ -59,7 +65,7 @@ public:
 		m_gpgpu_context = gpgpu_context;
 	}
 
-	bool get_next_threadblock_traces(std::vector<std::vector<trace_warp_inst_t>>& threadblock_traces);
+	bool get_next_threadblock_traces(std::vector<std::vector<trace_warp_inst_t>*> threadblock_traces);
 
 private:
 	std::ifstream* ifs;
@@ -87,14 +93,47 @@ private:
 
 };
 
-class trace_shd_warp_t: public shd_warp_t {
+class trace_shd_warp_t {
 public:
-	trace_shd_warp_t(class shader_core_ctx *shader, unsigned warp_size):shd_warp_t(shader, warp_size) {
+	trace_shd_warp_t() {
+		trace_pc=0;
 	}
 
-	bool get_next_threadblock_traces(std::vector<std::vector<trace_warp_inst_t>>& threadblock_traces);
+	std::vector<trace_warp_inst_t> warp_traces;
+	const trace_warp_inst_t* get_next_inst();
+	void clear();
+	bool trace_done();
+	address_type get_start_pc();
+	address_type get_pc();
+	unsigned trace_pc;
 
 private:
+
+
+};
+
+class trace_shader_core_ctx: public shader_core_ctx {
+
+public:
+	trace_shader_core_ctx(class gpgpu_sim *gpu,
+            class simt_core_cluster *cluster,
+            unsigned shader_id,
+            unsigned tpc_id,
+            const shader_core_config *config,
+            const memory_config *mem_config,
+            shader_core_stats *stats):shader_core_ctx(gpu, cluster, shader_id, tpc_id, config, mem_config, stats) {
+
+		m_trace_warp.resize(get_config()->max_warps_per_shader);
+	}
+
+	virtual void checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned t, unsigned tid);
+	void init_traces( unsigned start_warp, unsigned end_warp, kernel_info_t &kernel );
+	unsigned trace_sim_inc_thread( kernel_info_t &kernel);
+	virtual void func_exec_inst( warp_inst_t &inst );
+	std::vector<trace_shd_warp_t> m_trace_warp;
+
+private:
+
 
 };
 
