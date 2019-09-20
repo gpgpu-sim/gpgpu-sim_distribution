@@ -16,18 +16,10 @@
 #include "../cuda-sim/ptx_ir.h"
 #include "../cuda-sim/ptx_parser.h"
 #include "../gpgpu-sim/gpu-sim.h"
-//#include "../gpgpu-sim/icnt_wrapper.h"
-//#include "../gpgpu-sim/icnt_wrapper.h"
 #include "../../libcuda/gpgpu_context.h"
 #include "trace_driven.h"
 #include "trace_opcode.h"
 #include "../gpgpusim_entrypoint.h"
-//#include "gpgpu_context.h"
-
-//#include "../stream_manager.h"
-
-
-void arguments_check();
 
 
 int main ( int argc, const char **argv )
@@ -243,8 +235,6 @@ bool trace_kernel_info_t::get_next_threadblock_traces(std::vector<std::vector<tr
 	for(unsigned i=0; i<threadblock_traces.size(); ++i) {
 		threadblock_traces[i]->clear();
 	}
-	//unsigned warps_per_tb = ceil(float(threads_per_cta()/32));
-	//threadblock_traces.resize(warps_per_tb);
 
 	unsigned block_id_x=0, block_id_y=0, block_id_z=0;
 	unsigned warp_id=0;
@@ -273,11 +263,9 @@ bool trace_kernel_info_t::get_next_threadblock_traces(std::vector<std::vector<tr
 				}
 				else
 					assert(0 && "Parsing error: thread block start before the previous one finish");
-				std::cout<<line<<std::endl;
 			}
 			else if (string1 == "#END_TB") {
 				assert(start_of_tb_stream_found);
-				std::cout<<line<< std::endl;
 				break; //end of TB stream
 			}
 			else if(string1 == "thread" && string2 == "block") {
@@ -289,18 +277,15 @@ bool trace_kernel_info_t::get_next_threadblock_traces(std::vector<std::vector<tr
 				//the start of new warp stream
 				assert(start_of_tb_stream_found);
 				sscanf(line.c_str(), "warp = %d", &warp_id);
-				//std::cout << line << std::endl;
 			}
 			else if (string1 == "insts") {
 				assert(start_of_tb_stream_found);
 				sscanf(line.c_str(), "insts = %d", &insts_num);
 				threadblock_traces[warp_id]->reserve(insts_num);
-				//std::cout << line << std::endl;
 			}
 			else {
 				assert(start_of_tb_stream_found);
 				trace_warp_inst_t inst(m_gpgpu_sim->getShaderCoreConfig(), m_gpgpu_context);
-				//std::cout<<line << std::endl;
 				inst.parse_from_string(line);
 				threadblock_traces[warp_id]->push_back(inst);
 			}
@@ -329,16 +314,15 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 	unsigned mem_width=0;
 	unsigned long long mem_addresses[warp_size()];
 
+	//Start Parsing
 	ss>>std::dec>>threadblock_x>>threadblock_y>>threadblock_z>>warpid_tb>>sm_id>>warpid_sm;
 
-	ss>>std::hex>>m_pc>>mask;
-	//std::cout<<"m_pc= "<<m_pc<<std::endl;
-	//std::cout<<"mask= "<<mask<<std::endl;
+	ss>>std::hex>>m_pc;
+	ss>>std::hex>>mask;
 
 	std::bitset<MAX_WARP_SIZE> mask_bits(mask);
 
-	ss>>reg_dsts_num;
-
+	ss>>std::dec>>reg_dsts_num;
 	for(unsigned i=0; i<reg_dsts_num; ++i) {
 		ss>>std::dec>>temp;
 		sscanf(temp.c_str(), "R%d", &reg_dest[i]);
@@ -347,7 +331,6 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 	ss>>opcode;
 
 	ss>>reg_srcs_num;
-
 	for(unsigned i=0; i<reg_srcs_num; ++i) {
 		ss>>temp;
 		sscanf(temp.c_str(), "R%d", &reg_srcs[i]);
@@ -365,7 +348,7 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 				mem_addresses[s]=0;
 		}
 	}
-
+	//Finish Parsing
 	//After parsing, fill the inst_t and warp_inst_t params
 
 	//fill active mask
@@ -378,7 +361,6 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 	//fill and initialize common params
 	m_decoded = true;
 	pc = (address_type)m_pc;   //we will lose the high 32 bits from casting long to unsigned, it should be okay!
-	//std::cout<<"pc= "<<pc<<std::endl;
 
 	isize = 16;   //TO DO, change this
 	for(unsigned i=0; i<MAX_OUTPUT_VALUES; i++) {
@@ -433,9 +415,6 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 			set_addr(i, mem_addresses[i]);
 	}
 
-	// barrier_type bar_type;
-	// reduction_type red_type;
-
 
 	//fill memory space
 	switch(m_opcode){
@@ -469,13 +448,6 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 		if(m_opcode == OP_ATOM || m_opcode == OP_ATOMG || m_opcode == OP_RED)
 			m_isatomic = true;
 
-		for(unsigned m=0; m<reg_dsts_num; ++m){
-			out[m]=0;
-			arch_reg.src[m]=-1;
-		}
-		reg_dsts_num=0;
-		outcount=0;
-
 		break;
 	case OP_LDS:
 	case OP_STS:
@@ -489,8 +461,11 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 		bar_id = 0;
 		bar_count = (unsigned)-1;
 		bar_type = SYNC;
+		//TO DO
 		//if bar_type = RED;
 		//set bar_type
+		// barrier_type bar_type;
+		// reduction_type red_type;
 		break;
 	default:
 		break;

@@ -154,8 +154,9 @@ void ptx_file_line_stats_add_exec_count(const ptx_instruction *pInsn)
 void ptx_stats::ptx_file_line_stats_add_latency(unsigned pc, unsigned latency)
 {
     const ptx_instruction *pInsn = gpgpu_ctx->pc_to_instruction(pc);
-    
-    ptx_file_line_stats_tracker[ptx_file_line(pInsn->source_file(), pInsn->source_line())].latency += latency;
+
+    if(pInsn != NULL)
+    	ptx_file_line_stats_tracker[ptx_file_line(pInsn->source_file(), pInsn->source_line())].latency += latency;
 }
 
 // attribute dram traffic to this ptx instruction (specified by the pc)
@@ -164,7 +165,8 @@ void ptx_stats::ptx_file_line_stats_add_dram_traffic(unsigned pc, unsigned dram_
 {
     const ptx_instruction *pInsn = gpgpu_ctx->pc_to_instruction(pc);
     
-    ptx_file_line_stats_tracker[ptx_file_line(pInsn->source_file(), pInsn->source_line())].dram_traffic += dram_traffic;
+    if(pInsn != NULL)
+    	ptx_file_line_stats_tracker[ptx_file_line(pInsn->source_file(), pInsn->source_line())].dram_traffic += dram_traffic;
 }
 
 // attribute the number of shared memory access cycles to a ptx instruction
@@ -173,9 +175,11 @@ void ptx_stats::ptx_file_line_stats_add_smem_bank_conflict(unsigned pc, unsigned
 {
     const ptx_instruction *pInsn = gpgpu_ctx->pc_to_instruction(pc);
     
-    ptx_file_line_stats& line_stats = ptx_file_line_stats_tracker[ptx_file_line(pInsn->source_file(), pInsn->source_line())];
-    line_stats.smem_n_way_bank_conflict_total += n_way_bkconflict;
-    line_stats.smem_warp_count += 1;
+    if(pInsn != NULL) {
+    	ptx_file_line_stats& line_stats = ptx_file_line_stats_tracker[ptx_file_line(pInsn->source_file(), pInsn->source_line())];
+    	line_stats.smem_n_way_bank_conflict_total += n_way_bkconflict;
+    	line_stats.smem_warp_count += 1;
+    }
 }
 
 // attribute a non-coalesced mem access to a ptx instruction 
@@ -184,9 +188,11 @@ void ptx_stats::ptx_file_line_stats_add_uncoalesced_gmem(unsigned pc, unsigned n
 {
     const ptx_instruction *pInsn = gpgpu_ctx->pc_to_instruction(pc);
     
-    ptx_file_line_stats& line_stats = ptx_file_line_stats_tracker[ptx_file_line(pInsn->source_file(), pInsn->source_line())];
-    line_stats.gmem_n_access_total += n_access;
-    line_stats.gmem_warp_count += 1;
+    if(pInsn != NULL) {
+		ptx_file_line_stats& line_stats = ptx_file_line_stats_tracker[ptx_file_line(pInsn->source_file(), pInsn->source_line())];
+		line_stats.gmem_n_access_total += n_access;
+		line_stats.gmem_warp_count += 1;
+    }
 }
 
 // a class that tracks the inflight memory instructions of a shader core 
