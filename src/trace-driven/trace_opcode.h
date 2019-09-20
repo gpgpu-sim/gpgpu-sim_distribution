@@ -5,6 +5,7 @@
 
 #include "../abstract_hardware_model.h"
 #include <unordered_map>
+#include <string>
 
 
 enum TraceInstrOpcode {
@@ -60,7 +61,7 @@ struct OpcodeChar
 
 ///Volta SM_70 ISA
 //see: https://docs.nvidia.com/cuda/cuda-binary-utilities/index.html
-static const std::unordered_map<const char*,OpcodeChar> OpcodeMap = {
+static const std::unordered_map<std::string,OpcodeChar> OpcodeMap = {
 		//Floating Point 32 Instructions
 		{"FADD", OpcodeChar(OP_FADD, SP_OP)},
 		{"FADD32I", OpcodeChar(OP_FADD32I, SP_OP)},

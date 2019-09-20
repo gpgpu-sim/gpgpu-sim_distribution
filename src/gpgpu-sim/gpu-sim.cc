@@ -66,6 +66,7 @@
 #include "stats.h"
 #include "../cuda-sim/cuda_device_runtime.h"
 #include "../../libcuda/gpgpu_context.h"
+#include "../trace-driven/trace_driven.h"
 
 #ifdef GPGPUSIM_POWER_MODEL
 #include "power_interface.h"
@@ -1482,7 +1483,12 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
     for (unsigned i = start_thread; i<end_thread; i++) {
         m_threadState[i].m_cta_id = free_cta_hw_id;
         unsigned warp_id = i/m_config->warp_size;
-        nthreads_in_block += ptx_sim_init_thread(kernel,&m_thread[i],m_sid,i,cta_size-(i-start_thread),m_config->n_thread_per_shader,this,free_cta_hw_id,warp_id,m_cluster->get_gpu());
+        if(m_gpu->get_config().is_trace_driven_mode()) {
+        	trace_shader_core_ctx* trace_core = static_cast<trace_shader_core_ctx*> (this);
+        	nthreads_in_block += trace_core->trace_sim_inc_thread(kernel);
+        }
+        else
+        	nthreads_in_block += ptx_sim_init_thread(kernel,&m_thread[i],m_sid,i,cta_size-(i-start_thread),m_config->n_thread_per_shader,this,free_cta_hw_id,warp_id,m_cluster->get_gpu());
         m_threadState[i].m_active = true; 
         // load thread local memory and register file
         if(m_gpu->resume_option == 1 && kernel.get_uid() == m_gpu->resume_kernel && ctaid >= m_gpu->resume_CTA && ctaid < m_gpu->checkpoint_CTA_t )
@@ -1512,7 +1518,7 @@ void shader_core_ctx::issue_block2core( kernel_info_t &kernel )
     m_barriers.allocate_barrier(free_cta_hw_id,warps);
 
     // initialize the SIMT stacks and fetch hardware
-    init_warps( free_cta_hw_id, start_thread, end_thread, ctaid, cta_size, kernel.get_uid());
+    init_warps( free_cta_hw_id, start_thread, end_thread, ctaid, cta_size, kernel);
     m_n_active_cta++;
 
     shader_CTA_count_log(m_sid, 1);

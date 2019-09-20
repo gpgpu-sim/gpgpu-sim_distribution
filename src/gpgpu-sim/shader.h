@@ -1947,7 +1947,7 @@ public:
 	 }
 
     int test_res_bus(int latency);
-    void init_warps(unsigned cta_id, unsigned start_thread, unsigned end_thread,unsigned ctaid, int cta_size, unsigned kernel_id);
+    void init_warps(unsigned cta_id, unsigned start_thread, unsigned end_thread,unsigned ctaid, int cta_size, kernel_info_t &kernel);
     virtual void checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned t, unsigned tid);
     address_type next_pc( int tid ) const;
     void fetch();
@@ -1960,7 +1960,7 @@ public:
     friend class TwoLevelScheduler;
     friend class LooseRoundRobbinScheduler;
     void issue_warp( register_set& warp, const warp_inst_t *pI, const active_mask_t &active_mask, unsigned warp_id, unsigned sch_id );
-    void func_exec_inst( warp_inst_t &inst );
+    virtual void func_exec_inst( warp_inst_t &inst );
 
      // Returns numbers of addresses in translated_addrs
     unsigned translate_local_memaddr( address_type localaddr, unsigned tid, unsigned num_shader, unsigned datasize, new_addr_type* translated_addrs );
@@ -2052,7 +2052,8 @@ private:
     std::bitset<MAX_THREAD_PER_SM> m_occupied_hwtid;
     std::map<unsigned int, unsigned int> m_occupied_cta_to_hwtid; 
 
-
+    //Trace-driven simulation
+    friend class trace_shader_core_ctx;
 };
 
 class simt_core_cluster {
