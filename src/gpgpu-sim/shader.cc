@@ -3082,48 +3082,55 @@ unsigned int shader_core_config::max_cta(const kernel_info_t &k) const {
     abort();
   }
 
-    if(adaptive_cache_config && !k.cache_config_set) {
-    	//For more info about adaptive cache, see https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#shared-memory-7-x
-    	unsigned total_shmed = kernel_info->smem * result;
-    	assert(total_shmed >=0 && total_shmed <= gpgpu_shmem_size);
-    	//assert(gpgpu_shmem_size == 98304); //Volta has 96 KB shared
-    	//assert(m_L1D_config.get_nset() == 4);  //Volta L1 has four sets
-    	if(total_shmed < gpgpu_shmem_size){
-    		switch (adaptive_cache_config) {
-    		case FIXED:
-    			break;
-    		case VOLTA: {
-    			//For Volta, we assign the remaining shared memory to L1 cache
-    			//For more info about adaptive cache, see https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#shared-memory-7-x
-    			assert(gpgpu_shmem_size == 98304); //Volta has 96 KB shared
+  if (adaptive_cache_config && !k.cache_config_set) {
+    // For more info about adaptive cache, see
+    // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#shared-memory-7-x
+    unsigned total_shmed = kernel_info->smem * result;
+    assert(total_shmed >= 0 && total_shmed <= gpgpu_shmem_size);
+    // assert(gpgpu_shmem_size == 98304); //Volta has 96 KB shared
+    // assert(m_L1D_config.get_nset() == 4);  //Volta L1 has four sets
+    if (total_shmed < gpgpu_shmem_size) {
+      switch (adaptive_cache_config) {
+        case FIXED:
+          break;
+        case VOLTA: {
+          // For Volta, we assign the remaining shared memory to L1 cache
+          // For more info about adaptive cache, see
+          // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#shared-memory-7-x
+          assert(gpgpu_shmem_size == 98304);  // Volta has 96 KB shared
 
-    			//To Do: make it flexible and not tuned to 9KB share memory
-    			unsigned max_assoc = m_L1D_config.get_max_assoc();
-    			if(total_shmed == 0)
-    				m_L1D_config.set_assoc(max_assoc);  //L1 is 128KB and shd=0
-    			else if(total_shmed > 0 && total_shmed <= 8192)
-    				m_L1D_config.set_assoc(0.9375 * max_assoc);  //L1 is 120KB and shd=8KB
-    			else if(total_shmed > 8192 && total_shmed <= 16384)
-    				m_L1D_config.set_assoc(0.875 * max_assoc);  //L1 is 112KB and shd=16KB
-    			else if(total_shmed > 16384 && total_shmed <= 32768)
-    				m_L1D_config.set_assoc(0.75 * max_assoc);  //L1 is 96KB and shd=32KB
-    			else if(total_shmed > 32768 && total_shmed <= 65536)
-    				m_L1D_config.set_assoc(0.5 * max_assoc);	//L1 is 64KB and shd=64KB
-    			else if(total_shmed > 65536 && total_shmed <= gpgpu_shmem_size)
-    				m_L1D_config.set_assoc(0.25 * max_assoc); //L1 is 32KB and shd=96KB
-    			else
-    				assert(0);
-    			break;
-    		}
-    		default:
-    			assert(0);
-    		}
+          // To Do: make it flexible and not tuned to 9KB share memory
+          unsigned max_assoc = m_L1D_config.get_max_assoc();
+          if (total_shmed == 0)
+            m_L1D_config.set_assoc(max_assoc);  // L1 is 128KB and shd=0
+          else if (total_shmed > 0 && total_shmed <= 8192)
+            m_L1D_config.set_assoc(0.9375 *
+                                   max_assoc);  // L1 is 120KB and shd=8KB
+          else if (total_shmed > 8192 && total_shmed <= 16384)
+            m_L1D_config.set_assoc(0.875 *
+                                   max_assoc);  // L1 is 112KB and shd=16KB
+          else if (total_shmed > 16384 && total_shmed <= 32768)
+            m_L1D_config.set_assoc(0.75 * max_assoc);  // L1 is 96KB and
+                                                       // shd=32KB
+          else if (total_shmed > 32768 && total_shmed <= 65536)
+            m_L1D_config.set_assoc(0.5 * max_assoc);  // L1 is 64KB and shd=64KB
+          else if (total_shmed > 65536 && total_shmed <= gpgpu_shmem_size)
+            m_L1D_config.set_assoc(0.25 * max_assoc);  // L1 is 32KB and
+                                                       // shd=96KB
+          else
+            assert(0);
+          break;
+        }
+        default:
+          assert(0);
+      }
 
-			printf ("GPGPU-Sim: Reconfigure L1 cache to %uKB\n", m_L1D_config.get_total_size_inKB());
-    	}
-
-    	k.cache_config_set = true;
+      printf("GPGPU-Sim: Reconfigure L1 cache to %uKB\n",
+             m_L1D_config.get_total_size_inKB());
     }
+
+    k.cache_config_set = true;
+  }
 
   return result;
 }

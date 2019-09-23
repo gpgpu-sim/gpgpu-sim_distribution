@@ -677,9 +677,8 @@ class cache_config {
     assert(m_valid);
     return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER * m_nset * original_m_assoc;
   }
-  unsigned get_max_assoc() const
-  {
-    assert( m_valid );
+  unsigned get_max_assoc() const {
+    assert(m_valid);
     return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER * original_m_assoc;
   }
   void print(FILE *fp) const {
