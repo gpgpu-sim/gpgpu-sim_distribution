@@ -319,8 +319,7 @@ void shader_core_config::reg_options(class OptionParser *opp) {
       opp, "-gpgpu_shmem_size", OPT_UINT32, &gpgpu_shmem_size,
       "Size of shared memory per shader core (default 16kB)", "16384");
   option_parser_register(opp, "-adaptive_cache_config", OPT_BOOL,
-                         &adaptive_volta_cache_config, "adaptive_cache_config",
-                         "0");
+                         &adaptive_cache_config, "adaptive_cache_config", "0");
   option_parser_register(
       opp, "-gpgpu_shmem_sizeDefault", OPT_UINT32, &gpgpu_shmem_sizeDefault,
       "Size of shared memory per shader core (default 16kB)", "16384");

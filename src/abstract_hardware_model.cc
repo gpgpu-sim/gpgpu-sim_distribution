@@ -746,7 +746,7 @@ kernel_info_t::kernel_info_t(dim3 gridDim, dim3 blockDim,
   // Jin: launch latency management
   m_launch_latency = entry->gpgpu_ctx->device_runtime->g_kernel_launch_latency;
 
-  volta_cache_config_set = false;
+  cache_config_set = false;
 }
 
 /*A snapshot of the texture mappings needs to be stored in the kernel's info as
@@ -773,7 +773,7 @@ kernel_info_t::kernel_info_t(
   // Jin: launch latency management
   m_launch_latency = entry->gpgpu_ctx->device_runtime->g_kernel_launch_latency;
 
-  volta_cache_config_set = false;
+  cache_config_set = false;
   m_NameToCudaArray = nameToCudaArray;
   m_NameToTextureInfo = nameToTextureInfo;
 }
