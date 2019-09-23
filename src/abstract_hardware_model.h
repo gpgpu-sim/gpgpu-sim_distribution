@@ -65,6 +65,8 @@ enum FuncCache {
   FuncCachePreferL1 = 2
 };
 
+enum AdaptiveCache { FIXED = 0, VOLTA = 1 };
+
 #ifdef __cplusplus
 
 #include <stdio.h>
@@ -323,7 +325,7 @@ class kernel_info_t {
   unsigned long long end_cycle;
   unsigned m_launch_latency;
 
-  mutable bool volta_cache_config_set;
+  mutable bool cache_config_set;
 };
 
 class core_config {
@@ -369,7 +371,7 @@ class core_config {
   unsigned gpgpu_max_insn_issue_per_warp;
   bool gmem_skip_L1D;  // on = global memory access always skip the L1 cache
 
-  bool adaptive_volta_cache_config;
+  bool adaptive_cache_config;
 };
 
 // bounded stack that implements simt reconvergence using pdom mechanism from
