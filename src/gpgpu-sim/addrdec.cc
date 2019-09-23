@@ -144,11 +144,16 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr,
       if (m_n_channel == 32) {
         std::bitset<64> a(tlx->row);
         std::bitset<5> chip(tlx->chip);
-        chip[0] = a[13] ^ a[12] ^ a[11] ^ a[10] ^ a[9] ^ a[6] ^ a[5] ^ a[3] ^ a[0] ^ chip[0];
-        chip[1] = a[14] ^ a[13] ^ a[12] ^ a[11] ^ a[10] ^ a[7] ^ a[6] ^ a[4] ^ a[1] ^ chip[1];
-        chip[2] = a[14] ^ a[10] ^ a[9] ^ a[8] ^ a[7] ^ a[6] ^ a[3] ^ a[2] ^ a[0] ^ chip[2];
-        chip[3] = a[11] ^ a[10] ^ a[9] ^ a[8] ^ a[7] ^ a[4] ^ a[3] ^ a[1] ^ chip[3];
-        chip[4] = a[12] ^ a[11] ^ a[10] ^ a[9] ^ a[8] ^ a[5] ^ a[4] ^ a[2] ^ chip[4];
+        chip[0] = a[13] ^ a[12] ^ a[11] ^ a[10] ^ a[9] ^ a[6] ^ a[5] ^ a[3] ^
+                  a[0] ^ chip[0];
+        chip[1] = a[14] ^ a[13] ^ a[12] ^ a[11] ^ a[10] ^ a[7] ^ a[6] ^ a[4] ^
+                  a[1] ^ chip[1];
+        chip[2] = a[14] ^ a[10] ^ a[9] ^ a[8] ^ a[7] ^ a[6] ^ a[3] ^ a[2] ^
+                  a[0] ^ chip[2];
+        chip[3] =
+            a[11] ^ a[10] ^ a[9] ^ a[8] ^ a[7] ^ a[4] ^ a[3] ^ a[1] ^ chip[3];
+        chip[4] =
+            a[12] ^ a[11] ^ a[10] ^ a[9] ^ a[8] ^ a[5] ^ a[4] ^ a[2] ^ chip[4];
         tlx->chip = chip.to_ulong();
 
       } else { /* Else incorrect number of channels for the hashing function */
