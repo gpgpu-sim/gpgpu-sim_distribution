@@ -75,7 +75,8 @@ static const std::unordered_map<std::string,OpcodeChar> OpcodeMap = {
 		{"FSET", OpcodeChar(OP_FSET, SP_OP)},
 		{"FSETP", OpcodeChar(OP_FSETP, SP_OP)},
 		{"FSWZADD", OpcodeChar(OP_FSWZADD, SP_OP)},
-		{"MUFU", OpcodeChar(OP_MUFU, SP_OP)},
+		//SFU
+		{"MUFU", OpcodeChar(OP_MUFU, SFU_OP)},
 
 		//Floating Point 16 Instructions
 		{"HADD2", OpcodeChar(OP_HADD2, SP_OP)},

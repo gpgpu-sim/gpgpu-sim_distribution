@@ -394,14 +394,14 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 	num_operands = num_regs;
 	outcount=reg_dsts_num;
 	for(unsigned m=0; m<reg_dsts_num; ++m){
-		out[m]=reg_dest[m];
-		arch_reg.src[m]=reg_dest[m];
+		out[m]=reg_dest[m]+1;         //Increment by one because GPGPU-sim starts from R1, while SASS starts from R0
+		arch_reg.src[m]=reg_dest[m]+1;
 	}
 
 	incount=reg_srcs_num;
 	for(unsigned m=0; m<reg_srcs_num; ++m){
-		in[m]=reg_srcs[m];
-		arch_reg.src[m]=reg_srcs[m];
+		in[m]=reg_srcs[m]+1;	     //Increment by one because GPGPU-sim starts from R1, while SASS starts from R0
+		arch_reg.src[m]=reg_srcs[m]+1;
 	}
 	//handle: vector, store insts have no output, double inst and hmma, and 64 bit address
 
