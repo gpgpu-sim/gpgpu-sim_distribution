@@ -208,7 +208,10 @@ void trace_parser::kernel_finalizer(trace_kernel_info_t* kernel_info){
 }
 
 const trace_warp_inst_t* trace_shd_warp_t::get_next_inst(){
-	return &warp_traces[trace_pc++];
+	if(trace_pc < warp_traces.size())
+		return &warp_traces[trace_pc++];
+	else
+		return NULL;
 }
 
 void trace_shd_warp_t::clear() {
@@ -217,7 +220,7 @@ void trace_shd_warp_t::clear() {
 }
 
 bool trace_shd_warp_t::trace_done() {
-	return trace_pc==warp_traces.size();
+	return trace_pc==(warp_traces.size());
 }
 
 address_type trace_shd_warp_t::get_start_pc(){
@@ -226,7 +229,8 @@ address_type trace_shd_warp_t::get_start_pc(){
 }
 
 address_type trace_shd_warp_t::get_pc(){
-	assert(warp_traces.size() > 0);
+	assert(warp_traces.size() > 0 );
+	assert(trace_pc < warp_traces.size());
 	return warp_traces[trace_pc].pc;
 }
 
@@ -581,6 +585,7 @@ void trace_shader_core_ctx::init_traces( unsigned start_warp, unsigned end_warp,
 
 	std::vector<std::vector<trace_warp_inst_t>*> threadblock_traces;
 	for (unsigned i = start_warp; i < end_warp; ++i) {
+		m_trace_warp[i].clear();
 		threadblock_traces.push_back(&(m_trace_warp[i].warp_traces));
 	}
 	trace_kernel_info_t& trace_kernel = static_cast<trace_kernel_info_t&> (kernel);
