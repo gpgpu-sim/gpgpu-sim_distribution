@@ -172,15 +172,16 @@ $(SIM_LIB_DIR)/libcudart.so: makedirs $(LIBS) cudalib
 
 
 $(SIM_LIB_DIR)/gpgpusim.out: makedirs $(LIBS) cudalib $(SIM_LIB_DIR)/libcudart.so
-	ar rvs   $(SIM_LIB_DIR)/libcudart_static.a\
+	ar rvs   $(SIM_LIB_DIR)/libgpgpusim_static.a\
 			$(SIM_OBJ_FILES_DIR)/libcuda/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table/*.o \
 			$(SIM_OBJ_FILES_DIR)/gpgpu-sim/*.o \
 			$(SIM_OBJ_FILES_DIR)/$(INTERSIM)/*.o \
+			$(SIM_OBJ_FILES_DIR)/trace-driven/*.o \
 			$(SIM_OBJ_FILES_DIR)/*.o \
 			$(MCPAT)
-	g++ -std=c++0x -L$(SIM_LIB_DIR) -I$(CUDA_INSTALL_PATH)/include -lcudart -lm -lz -lGL -pthread -o $(SIM_LIB_DIR)/gpgpusim.out src/trace-driven/gpgpusim_trace_driven_main.cc 
+	g++ -std=c++0x -o $(SIM_LIB_DIR)/gpgpusim.out src/trace-driven/gpgpusim_trace_driven_main.cc  -L$(SIM_LIB_DIR) -I$(CUDA_INSTALL_PATH)/include -lgpgpusim_static -lm -lz -lGL -pthread 
 
 $(SIM_LIB_DIR)/libcudart.dylib: makedirs $(LIBS) cudalib
 	g++ -dynamiclib -Wl,-headerpad_max_install_names,-undefined,dynamic_lookup,-compatibility_version,1.1,-current_version,1.1\
@@ -220,8 +221,14 @@ cuda-sim: makedirs
 	$(MAKE) -C ./src/cuda-sim/ depend
 	$(MAKE) -C ./src/cuda-sim/
 
+TFLAGS = -std=c++0x -I$(CUDA_INSTALL_PATH)/include
+ifneq ($(DEBUG),1)
+	TFLAGS += -O3
+endif
+TFLAGS += -g3 -fPIC
+
 trace-driven: makedirs
-	g++ -fPIC -std=c++0x -I$(CUDA_INSTALL_PATH)/include -c src/trace-driven/trace_driven.cc -o $(SIM_OBJ_FILES_DIR)/trace-driven/trace_driven.o
+	g++ $(TFLAGS) -c src/trace-driven/trace_driven.cc -o $(SIM_OBJ_FILES_DIR)/trace-driven/trace_driven.o
 
 gpgpu-sim_uarch: makedirs cuda-sim
 	$(MAKE) -C ./src/gpgpu-sim/ depend

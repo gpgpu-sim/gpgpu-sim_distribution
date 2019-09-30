@@ -103,7 +103,8 @@ enum uarch_op_t {
    BARRIER_OP,
    MEMORY_BARRIER_OP,
    CALL_OPS,
-   RET_OPS
+   RET_OPS,
+   EXIT_OPS
 };
 typedef enum uarch_op_t op_type;
 

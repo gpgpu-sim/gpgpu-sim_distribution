@@ -153,6 +153,7 @@ void trace_shd_warp_t::clear() {
 	warp_traces.clear();
 }
 
+//functional_done
 bool trace_shd_warp_t::trace_done() {
 	return trace_pc==(warp_traces.size());
 }
@@ -537,10 +538,8 @@ void trace_shader_core_ctx::checkExecutionStatusAndUpdate(warp_inst_t &inst, uns
 	if(inst.isatomic())
 		m_warp[inst.warp_id()].inc_n_atomic();
 
-	if ( m_trace_warp[inst.warp_id()].trace_done() ) {
+	if ( inst.op == EXIT_OPS )
 		m_warp[inst.warp_id()].set_completed(t);
-		m_warp[inst.warp_id()].ibuffer_flush();
-	}
 
 }
 
@@ -560,7 +559,9 @@ void trace_shader_core_ctx::func_exec_inst( warp_inst_t &inst )
 			checkExecutionStatusAndUpdate(inst,t,tid);
 		}
 	}
-	if(m_trace_warp[inst.warp_id()].trace_done() )
+	if(m_trace_warp[inst.warp_id()].trace_done() && m_warp[inst.warp_id()].functional_done()) {
+		m_warp[inst.warp_id()].ibuffer_flush();
 		m_barriers.warp_exit( inst.warp_id() );
+	}
 }
 
