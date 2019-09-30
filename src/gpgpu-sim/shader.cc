@@ -1083,6 +1083,7 @@ void scheduler_unit::cycle()
             SCHED_DPRINTF( "Warp (warp_id %u, dynamic_warp_id %u) has valid instruction (%s)\n",
                            (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id(),
                            m_shader->m_config->gpgpu_ctx->func_sim->ptx_get_insn_str( pc).c_str() );
+
             if( pI ) {
                 assert(valid);
                 if( pc != pI->pc ) {
@@ -1559,8 +1560,8 @@ void shader_core_ctx::warp_inst_complete(const warp_inst_t &inst)
 {
 
   #if 0
-      printf("[warp_inst_complete] uid=%u core=%u warp=%u pc=%#x @ time=%llu issued@%llu\n",
-             inst.get_uid(), m_sid, inst.warp_id(), inst.pc, gpu_tot_sim_cycle + gpu_sim_cycle, inst.get_issue_cycle());
+      printf("[warp_inst_complete] uid=%u core=%u warp=%u pc=%#x @ time=%llu \n",
+             inst.get_uid(), m_sid, inst.warp_id(), inst.pc,  m_gpu->gpu_tot_sim_cycle +  m_gpu->gpu_sim_cycle);
   #endif
 
   if(inst.op_pipe==SP__OP)

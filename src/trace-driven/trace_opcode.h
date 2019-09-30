@@ -186,7 +186,7 @@ static const std::unordered_map<std::string,OpcodeChar> OpcodeMap = {
 		{"BSSY", OpcodeChar(OP_BSSY, BRANCH_OP)},
 		{"BSYNC", OpcodeChar(OP_BSYNC, BRANCH_OP)},
 		{"CALL", OpcodeChar(OP_CALL, CALL_OPS)},
-		{"EXIT", OpcodeChar(OP_EXIT, BRANCH_OP)},
+		{"EXIT", OpcodeChar(OP_EXIT, EXIT_OPS)},
 		{"JMP", OpcodeChar(OP_JMP, BRANCH_OP)},
 		{"JMX", OpcodeChar(OP_JMX, BRANCH_OP)},
 		{"KILL", OpcodeChar(OP_KILL, BRANCH_OP)},
