@@ -57,7 +57,7 @@ endif
 
 $(shell mkdir -p $(SIM_OBJ_FILES_DIR)/libcuda && echo "const char *g_gpgpusim_build_string=\"$(GPGPUSIM_BUILD)\";" > $(SIM_OBJ_FILES_DIR)/detailed_version)
 
-LIBS = cuda-sim gpgpu-sim_uarch $(INTERSIM) gpgpusimlib
+LIBS = cuda-sim gpgpu-sim_uarch $(INTERSIM) gpgpusimlib trace-driven
 
 
 TARGETS =
@@ -150,6 +150,7 @@ $(SIM_LIB_DIR)/libcudart.so: makedirs $(LIBS) cudalib
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table/*.o \
 			$(SIM_OBJ_FILES_DIR)/gpgpu-sim/*.o \
 			$(SIM_OBJ_FILES_DIR)/$(INTERSIM)/*.o \
+			$(SIM_OBJ_FILES_DIR)/trace-driven/*.o \
 			$(SIM_OBJ_FILES_DIR)/*.o -lm -lz -lGL -pthread \
 			$(MCPAT) \
 			-o $(SIM_LIB_DIR)/libcudart.so
@@ -220,7 +221,7 @@ cuda-sim: makedirs
 	$(MAKE) -C ./src/cuda-sim/
 
 trace-driven: makedirs
-	g++ -std=c++0x -c src/trace-driven/gpgpusim_trace_driven_main.cc 
+	g++ -fPIC -std=c++0x -I$(CUDA_INSTALL_PATH)/include -c src/trace-driven/trace_driven.cc -o $(SIM_OBJ_FILES_DIR)/trace-driven/trace_driven.o
 
 gpgpu-sim_uarch: makedirs cuda-sim
 	$(MAKE) -C ./src/gpgpu-sim/ depend
