@@ -83,5 +83,8 @@ int main ( int argc, const char **argv )
 		}
 	}
 
+	//we print this message to inofrm the gpgpu-simulation stats_collect that we are done
+    printf("GPGPU-Sim: *** simulation thread exiting ***\n");
+
 	return 1;
 }
