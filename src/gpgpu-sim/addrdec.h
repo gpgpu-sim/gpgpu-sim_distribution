@@ -94,6 +94,8 @@ private:
    unsigned int gap;
    unsigned m_n_channel;
    int m_n_sub_partition_in_channel; 
+   unsigned log2channel;
+   unsigned log2sub_partition;
 
 };
 
