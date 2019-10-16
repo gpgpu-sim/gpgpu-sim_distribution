@@ -729,6 +729,8 @@ kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *
     //Jin: launch latency management
     m_launch_latency = entry->gpgpu_ctx->device_runtime->g_kernel_launch_latency;
 
+    m_kernel_TB_latency = entry->gpgpu_ctx->device_runtime->g_kernel_launch_latency + num_blocks() * entry->gpgpu_ctx->device_runtime->g_TB_launch_latency;
+
     cache_config_set=false;
 }
 
@@ -753,6 +755,8 @@ kernel_info_t::kernel_info_t( dim3 gridDim, dim3 blockDim, class function_info *
    
     //Jin: launch latency management
     m_launch_latency = entry->gpgpu_ctx->device_runtime->g_kernel_launch_latency;
+
+    m_kernel_TB_latency = entry->gpgpu_ctx->device_runtime->g_kernel_launch_latency + num_blocks() * entry->gpgpu_ctx->device_runtime->g_TB_launch_latency;
 
     cache_config_set=false;
     m_NameToCudaArray = nameToCudaArray;

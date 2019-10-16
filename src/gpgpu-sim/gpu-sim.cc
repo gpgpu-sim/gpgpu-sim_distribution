@@ -562,6 +562,10 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
                           &(gpgpu_ctx->device_runtime->g_cdp_enabled), "Turn on CDP",
                           "0");
 
+    option_parser_register(opp, "-gpgpu_TB_launch_latency", OPT_INT32,
+                          &(gpgpu_ctx->device_runtime->g_TB_launch_latency), "thread block launch latency in cycles. Default: 0",
+                          "0");
+
     //Trace driven mode parameters
     option_parser_register(opp, "-trace_driven_mode", OPT_BOOL,
                           &trace_driven_mode, "Turn on trace_driven_mode",
@@ -648,10 +652,19 @@ bool gpgpu_sim::get_more_cta_left() const
    return false;
 }
 
+void gpgpu_sim::decrement_kernel_latency()
+{
+   for(unsigned n=0; n < m_running_kernels.size(); n++ ) {
+       if( m_running_kernels[n] && m_running_kernels[n]->m_kernel_TB_latency )
+    	   m_running_kernels[n]->m_kernel_TB_latency--;
+   }
+}
+
 kernel_info_t *gpgpu_sim::select_kernel()
 {
     if(m_running_kernels[m_last_issued_kernel] &&
-        !m_running_kernels[m_last_issued_kernel]->no_more_ctas_to_run()) {
+        !m_running_kernels[m_last_issued_kernel]->no_more_ctas_to_run() &&
+		!m_running_kernels[m_last_issued_kernel]->m_kernel_TB_latency) {
         unsigned launch_uid = m_running_kernels[m_last_issued_kernel]->get_uid(); 
         if(std::find(m_executed_kernel_uids.begin(), m_executed_kernel_uids.end(), launch_uid) == m_executed_kernel_uids.end()) {
             m_running_kernels[m_last_issued_kernel]->start_cycle = gpu_sim_cycle + gpu_tot_sim_cycle;
@@ -663,7 +676,8 @@ kernel_info_t *gpgpu_sim::select_kernel()
 
     for(unsigned n=0; n < m_running_kernels.size(); n++ ) {
         unsigned idx = (n+m_last_issued_kernel+1)%m_config.max_concurrent_kernel;
-        if( kernel_more_cta_left(m_running_kernels[idx]) ){
+        if( kernel_more_cta_left(m_running_kernels[idx]) &&
+        	!m_running_kernels[idx]->m_kernel_TB_latency){
             m_last_issued_kernel=idx;
             m_running_kernels[idx]->start_cycle = gpu_sim_cycle + gpu_tot_sim_cycle;
             // record this kernel for stat print if it is the first time this kernel is selected for execution  
@@ -1693,6 +1707,7 @@ void gpgpu_sim::cycle()
 #endif
 
       issue_block2core();
+      decrement_kernel_latency();
       
       // Depending on configuration, invalidate the caches once all of threads are completed.
       int all_threads_complete = 1;
