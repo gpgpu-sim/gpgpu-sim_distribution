@@ -467,6 +467,9 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_concurrent_kernel_sm", OPT_BOOL, &gpgpu_concurrent_kernel_sm, 
                 "Support concurrent kernels on a SM (default = disabled)", 
                 "0");
+    option_parser_register(opp, "-perfect_inst_const_cache", OPT_BOOL, &perfect_inst_const_cache,
+                "perfect inst and const cache mode, so all inst and const hits in the cache(default = disabled)",
+                "0");
 
 }
 

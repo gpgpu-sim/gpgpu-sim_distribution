@@ -67,6 +67,10 @@ mem_fetch::mem_fetch( const mem_access_t &access,
    icnt_flit_size = config->icnt_flit_size;
    original_mf = m_original_mf;
    original_wr_mf = m_original_wr_mf;
+   if(m_original_mf){
+	   m_raw_addr.chip=m_original_mf->get_tlx_addr().chip;
+	   m_raw_addr.sub_partition=m_original_mf->get_tlx_addr().sub_partition;
+   }
 }
 
 mem_fetch::~mem_fetch()

@@ -869,7 +869,12 @@ void shader_core_ctx::fetch()
 							m_gpu->gpu_tot_sim_cycle+m_gpu->gpu_sim_cycle
 							);
                     std::list<cache_event> events;
-                    enum cache_request_status status = m_L1I->access( (new_addr_type)ppc, mf, m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle,events);
+                    enum cache_request_status status;
+                    if(m_config->perfect_inst_const_cache)
+                    	status = HIT;
+                    else
+                    	status = m_L1I->access( (new_addr_type)ppc, mf, m_gpu->gpu_sim_cycle+m_gpu->gpu_tot_sim_cycle,events);
+
                     if( status == MISS ) {
                         m_last_warp_fetched=warp_id;
                         m_warp[warp_id].set_imiss_pending();
@@ -1826,7 +1831,20 @@ bool ldst_unit::constant_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail
        return true;
    if( inst.active_count() == 0 ) 
        return true;
-   mem_stage_stall_type fail = process_memory_access_queue(m_L1C,inst);
+
+   mem_stage_stall_type fail;
+   if(m_config->perfect_inst_const_cache) {
+	   fail = NO_RC_FAIL;
+	   while(inst.accessq_count() > 0) inst.accessq_pop_back();
+	   if ( inst.is_load() ) {
+		   for ( unsigned r=0; r < MAX_OUTPUT_VALUES; r++)
+			   if (inst.out[r] > 0)
+				   m_pending_writes[inst.warp_id()][inst.out[r]]--;
+	   }
+   } else {
+    fail = process_memory_access_queue(m_L1C,inst);
+   }
+
    if (fail != NO_RC_FAIL){ 
       rc_fail = fail; //keep other fails if this didn't fail.
       fail_type = C_MEM;
