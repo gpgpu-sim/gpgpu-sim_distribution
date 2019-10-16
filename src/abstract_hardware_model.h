@@ -348,9 +348,11 @@ public:
    unsigned long long launch_cycle;
    unsigned long long start_cycle;
    unsigned long long end_cycle;
-   unsigned m_launch_latency;
+   unsigned m_launch_latency;   //this used for CDP kernel latency
 
    mutable bool cache_config_set;
+
+   unsigned m_kernel_TB_latency;  //this used for any CPU-GPU kernel latency and counted in the gpu_cycle
 };
 
 class core_config {

@@ -502,6 +502,7 @@ public:
    bool kernel_more_cta_left(kernel_info_t *kernel) const;
    bool hit_max_cta_count() const;
    kernel_info_t *select_kernel();
+   void decrement_kernel_latency();
 
    const gpgpu_sim_config &get_config() const { return m_config; }
    void gpu_print_stat();
