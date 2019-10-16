@@ -295,6 +295,14 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 	set_active( active_mask );
 
 	//get the opcode
+	std::istringstream iss(opcode);
+	std::vector<std::string> opcode_tokens;
+	std::string token;
+	while (std::getline(iss, token, '.')) {
+		if (!token.empty())
+			opcode_tokens.push_back(token);
+	}
+
 	std::string opcode1 = opcode.substr(0, opcode.find("."));
 
 	//fill and initialize common params
@@ -361,7 +369,14 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 	case OP_LDG:
 	case OP_LDL:
 		assert(mem_width>0);
-		data_size = mem_width;
+		//handle the U* case
+		if (opcode_tokens.size() >= 3 && opcode_tokens[2][0] == 'U'){
+			unsigned bytes;
+			sscanf(opcode_tokens[2].c_str(), "U%u",&bytes);
+			data_size=bytes/8;
+		}
+		else
+			data_size = mem_width;
 		memory_op = memory_load;
 		cache_op = CACHE_ALL;
 		if(m_opcode == OP_LDL)
@@ -376,7 +391,13 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 	case OP_ATOMG:
 	case OP_RED:
 		assert(mem_width>0);
-		data_size = mem_width;
+		if (opcode_tokens.size() >= 3 && opcode_tokens[2][0] == 'U'){
+			unsigned bytes;
+			sscanf(opcode_tokens[2].c_str(), "U%u",&bytes);
+			data_size=bytes/8;
+		}
+		else
+			data_size = mem_width;
 		memory_op = memory_store;
 		cache_op = CACHE_ALL;
 		if(m_opcode == OP_STL)
