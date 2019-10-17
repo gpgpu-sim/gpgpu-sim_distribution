@@ -263,15 +263,27 @@ void _cl_kernel::SetKernelArg(
 
 cl_int _cl_kernel::bind_args( gpgpu_ptx_sim_arg_list_t &arg_list )
 {
+   size_t offset = 0;
+
    assert( arg_list.empty() );
    unsigned k=0;
    std::map<unsigned, arg_info>::iterator i;
    for( i = m_args.begin(); i!=m_args.end(); i++ ) {
       if( i->first != k ) 
          return CL_INVALID_KERNEL_ARGS;
+
       arg_info arg = i->second;
-      gpgpu_ptx_sim_arg param( arg.m_arg_value, arg.m_arg_size, 0);
+      const symbol *sym = m_kernel_impl->get_arg(i->first);
+      const type_info_key &t = sym->type()->get_key();
+
+      int align = (t.get_alignment_spec() == -1) ? arg.m_arg_size : t.get_alignment_spec();
+      if( offset % align )
+         offset += (align - (offset % align));
+
+      gpgpu_ptx_sim_arg param( arg.m_arg_value, arg.m_arg_size, offset );
       arg_list.push_front( param );
+
+      offset += arg.m_arg_size;
       k++;
    }
    return CL_SUCCESS;
@@ -950,6 +962,17 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
 	   gpgpu_ptx_sim_memcpy_symbol( "%_global_block_offset", zeros, 3 * sizeof(int), 0, 1, gpu );
    }
    kernel_info_t *grid = gpgpu_opencl_ptx_sim_init_grid(kernel->get_implementation(),params,GridDim,BlockDim,gpu);
+
+   //do dynamic PDOM analysis for performance simulation scenario
+   std::string kname = grid->name();
+   function_info *kernel_func_info = grid->entry();
+   if (kernel_func_info->is_pdom_set()) {
+      printf("GPGPU-Sim PTX: PDOM analysis already done for %s \n", kname.c_str() );
+   } else {
+      printf("GPGPU-Sim PTX: finding reconvergence points for \'%s\'...\n", kname.c_str() );
+      kernel_func_info->do_pdom();
+      kernel_func_info->set_pdom();
+   }
    if ( g_ptx_sim_mode )
       gpgpu_opencl_ptx_sim_main_func( grid );
    else
@@ -1252,6 +1275,35 @@ clGetProgramInfo(cl_program         program,
       return CL_INVALID_VALUE;
       break;
    }
+   return CL_SUCCESS;
+}
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clGetProgramBuildInfo (cl_program            program,
+                       cl_device_id          device,
+                       cl_program_build_info param_name,
+                       size_t                param_value_size,
+                       void *                param_value,
+                       size_t *              param_value_size_ret) CL_API_SUFFIX__VERSION_1_0
+{
+   char *buf = (char*)param_value;
+
+   switch( param_name ) {
+   case CL_PROGRAM_BUILD_STATUS:
+      CL_CASE( cl_build_status, CL_BUILD_SUCCESS );
+      break;
+   case CL_PROGRAM_BUILD_OPTIONS:
+   case CL_PROGRAM_BUILD_LOG:
+      CL_STRING_CASE( "" );
+      break;
+   case CL_PROGRAM_BINARY_TYPE:
+      CL_CASE( cl_program_binary_type, CL_PROGRAM_BINARY_TYPE_EXECUTABLE );
+      break;
+   default:
+      return CL_INVALID_VALUE;
+      break;
+   }
+
    return CL_SUCCESS;
 }
 
