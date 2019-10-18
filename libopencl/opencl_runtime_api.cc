@@ -102,6 +102,9 @@
 #include <map>
 #include <string>
 
+/* Defined in src/cuda-sim/ptx_loader.h. Unused for OpenCL for now. */
+int no_of_ptx=0;
+
 static void setErrCode(cl_int *errcode_ret, cl_int err_code) {
    if ( errcode_ret ) {
       *errcode_ret = err_code;
