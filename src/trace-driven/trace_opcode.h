@@ -149,7 +149,8 @@ static const std::unordered_map<std::string,OpcodeChar> OpcodeMap = {
 
 		//Load/Store Instructions
 		{"LD", OpcodeChar(OP_LD, LOAD_OP)},
-		{"LDC", OpcodeChar(OP_LDC, LOAD_OP)},
+		//For now, we ignore constant loads, consider it as ALU_OP, TO DO
+		{"LDC", OpcodeChar(OP_LDC, ALU_OP)},
 		{"LDG", OpcodeChar(OP_LDG, LOAD_OP)},
 		{"LDL", OpcodeChar(OP_LDL, LOAD_OP)},
 		{"LDS", OpcodeChar(OP_LDS, LOAD_OP)},
@@ -170,6 +171,7 @@ static const std::unordered_map<std::string,OpcodeChar> OpcodeMap = {
 		{"CCTLT", OpcodeChar(OP_CCTLT, ALU_OP)},
 
 		//Texture Instructions
+		//For now, we ignore texture loads, consider it as ALU_OP
 		{"TEX", OpcodeChar(OP_TEX, ALU_OP)},
 		{"TLD", OpcodeChar(OP_TLD, ALU_OP)},
 		{"TLD4", OpcodeChar(OP_TLD4, ALU_OP)},
