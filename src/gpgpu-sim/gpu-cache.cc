@@ -1293,6 +1293,9 @@ data_cache::wr_miss_wa_naive( new_addr_type addr,
         	assert(status == MISS);   //SECTOR_MISS and HIT_RESERVED should not send write back
             mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,
                 m_wrbk_type,evicted.m_modified_size,true,m_gpu->gpu_tot_sim_cycle+m_gpu->gpu_sim_cycle);
+			   //the evicted block may have wrong chip id when advanced L2 hashing  is used, so set the right chip address from the original mf
+			   wb->set_chip(mf->get_tlx_addr().chip);
+			   wb->set_parition(mf->get_tlx_addr().sub_partition);
             send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted), time, events);
         }
         return MISS;
@@ -1337,6 +1340,9 @@ data_cache::wr_miss_wa_fetch_on_write( new_addr_type addr,
 			   if( wb && (m_config.m_write_policy != WRITE_THROUGH) ) {
 				   mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,
 					   m_wrbk_type,evicted.m_modified_size,true,m_gpu->gpu_tot_sim_cycle+m_gpu->gpu_sim_cycle);
+				   //the evicted block may have wrong chip id when advanced L2 hashing  is used, so set the right chip address from the original mf
+				   wb->set_chip(mf->get_tlx_addr().chip);
+				   wb->set_parition(mf->get_tlx_addr().sub_partition);
 				   send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted), time, events);
 			   }
 			   return MISS;
@@ -1414,6 +1420,9 @@ data_cache::wr_miss_wa_fetch_on_write( new_addr_type addr,
 				if(wb && (m_config.m_write_policy != WRITE_THROUGH) ){
 					mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,
 						m_wrbk_type,evicted.m_modified_size,true,m_gpu->gpu_tot_sim_cycle+m_gpu->gpu_sim_cycle);
+					 //the evicted block may have wrong chip id when advanced L2 hashing  is used, so set the right chip address from the original mf
+					 wb->set_chip(mf->get_tlx_addr().chip);
+					 wb->set_parition(mf->get_tlx_addr().sub_partition);
 					send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted), time, events);
 			}
 				return MISS;
@@ -1465,6 +1474,9 @@ data_cache::wr_miss_wa_lazy_fetch_on_read( new_addr_type addr,
 			   if( wb && (m_config.m_write_policy != WRITE_THROUGH) ) {
 				   mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,
 					   m_wrbk_type,evicted.m_modified_size,true,m_gpu->gpu_tot_sim_cycle+m_gpu->gpu_sim_cycle);
+				   //the evicted block may have wrong chip id when advanced L2 hashing  is used, so set the right chip address from the original mf
+				   wb->set_chip(mf->get_tlx_addr().chip);
+				   wb->set_parition(mf->get_tlx_addr().sub_partition);
 				   send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted), time, events);
 			   }
 			   return MISS;
@@ -1550,6 +1562,9 @@ data_cache::rd_miss_base( new_addr_type addr,
         if(wb && (m_config.m_write_policy != WRITE_THROUGH) ){ 
             mem_fetch *wb = m_memfetch_creator->alloc(evicted.m_block_addr,
                 m_wrbk_type,evicted.m_modified_size,true,m_gpu->gpu_tot_sim_cycle+m_gpu->gpu_sim_cycle);
+			   //the evicted block may have wrong chip id when advanced L2 hashing  is used, so set the right chip address from the original mf
+			   wb->set_chip(mf->get_tlx_addr().chip);
+			   wb->set_parition(mf->get_tlx_addr().sub_partition);
         send_write_request(wb, WRITE_BACK_REQUEST_SENT, time, events);
     }
         return MISS;
