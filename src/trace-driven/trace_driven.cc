@@ -252,6 +252,9 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 	unsigned reg_srcs[4];
 	unsigned mem_width=0;
 	unsigned long long mem_addresses[warp_size()];
+	unsigned address_mode=0;
+	unsigned long long base_address=0;
+	int stride=0;
 
 	//Start Parsing
 	ss>>std::dec>>threadblock_x>>threadblock_y>>threadblock_z>>warpid_tb>>sm_id>>warpid_sm;
@@ -280,11 +283,37 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 
 	if(mem_width > 0)  //then it is a memory inst
 	{
-		for (int s = 0; s < warp_size(); s++) {
-			if(mask_bits.test(s))
-				ss>>std::hex>>mem_addresses[s];
-			else
-				mem_addresses[s]=0;
+		ss>>std:dec>>address_mode;
+		if(address_mode==0){
+			//read addresses one by one from the file
+			for (int s = 0; s < warp_size(); s++) {
+				if(mask_bits.test(s))
+					ss>>std::hex>>mem_addresses[s];
+				else
+					mem_addresses[s]=0;
+			}
+		}
+		else if(address_mode==1){
+			//read addresses as base address and stride
+			ss>>std::hex>>base_address;
+			ss>>std::dec>>stride;
+			bool first_bit1_found=false;
+			bool last_bit1_found=false;
+			unsigned long long addra=base_address;
+			for (int s = 0; s < warp_size(); s++) {
+				if(mask_bits.test(s) && !first_bit1_found){
+					first_bit1_found=true;
+					mem_addresses[s]=base_address;
+				} else if(first_bit1_found && !last_bit1_found) {
+					if(mask_bits.test(s)) {
+						addra += stride;
+						mem_addresses[s] = addra;
+					} else
+						last_bit1_found=true;
+				}
+				else
+					mem_addresses[s]=0;
+			}
 		}
 	}
 	//Finish Parsing
