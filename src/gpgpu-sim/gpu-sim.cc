@@ -528,6 +528,9 @@ void gpgpu_sim_config::reg_options(option_parser_t opp) {
                          "terminates gpu simulation early (0 = no limit)", "0");
   option_parser_register(opp, "-gpgpu_max_cta", OPT_INT32, &gpu_max_cta_opt,
                          "terminates gpu simulation early (0 = no limit)", "0");
+  option_parser_register(opp, "-gpgpu_max_completed_cta", OPT_INT32,
+                         &gpu_max_completed_cta_opt,
+                         "terminates gpu simulation early (0 = no limit)", "0");
   option_parser_register(
       opp, "-gpgpu_runtime_stat", OPT_CSTR, &gpgpu_runtime_stat,
       "display runtime statistics such as dram utilization {<freq>:<flag>}",
@@ -785,6 +788,7 @@ gpgpu_sim::gpgpu_sim(const gpgpu_sim_config &config, gpgpu_context *ctx)
   gpu_sim_insn = 0;
   gpu_tot_sim_insn = 0;
   gpu_tot_issued_cta = 0;
+  gpu_completed_cta = 0;
   m_total_cta_launched = 0;
   gpu_deadlock = false;
 
@@ -923,6 +927,9 @@ bool gpgpu_sim::active() {
   if (m_config.gpu_max_cta_opt &&
       (gpu_tot_issued_cta >= m_config.gpu_max_cta_opt))
     return false;
+  if (m_config.gpu_max_completed_cta_opt &&
+      (gpu_completed_cta >= m_config.gpu_max_completed_cta_opt))
+    return false;
   if (m_config.gpu_deadlock_detect && gpu_deadlock) return false;
   for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++)
     if (m_cluster[i]->get_not_completed() > 0) return true;
@@ -941,6 +948,7 @@ void gpgpu_sim::init() {
   gpu_sim_insn = 0;
   last_gpu_sim_insn = 0;
   m_total_cta_launched = 0;
+  gpu_completed_cta = 0;
   partiton_reqs_in_parallel = 0;
   partiton_replys_in_parallel = 0;
   partiton_reqs_in_parallel_util = 0;
@@ -999,6 +1007,7 @@ void gpgpu_sim::update_stats() {
   gpu_sim_cycle_parition_util = 0;
   gpu_sim_insn = 0;
   m_total_cta_launched = 0;
+  gpu_completed_cta = 0;
   gpu_occupancy = occupancy_stats();
 }
 
