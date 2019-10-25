@@ -392,6 +392,7 @@ class gpgpu_sim_config : public power_config,
   unsigned long long gpu_max_cycle_opt;
   unsigned long long gpu_max_insn_opt;
   unsigned gpu_max_cta_opt;
+  unsigned gpu_max_completed_cta_opt;
   char *gpgpu_runtime_stat;
   bool gpgpu_flush_l1_cache;
   bool gpgpu_flush_l2_cache;
@@ -495,12 +496,14 @@ class gpgpu_sim : public gpgpu_t {
            (m_config.gpu_max_insn_opt &&
             (gpu_tot_sim_insn + gpu_sim_insn) >= m_config.gpu_max_insn_opt) ||
            (m_config.gpu_max_cta_opt &&
-            (gpu_tot_issued_cta >= m_config.gpu_max_cta_opt));
+            (gpu_tot_issued_cta >= m_config.gpu_max_cta_opt)) ||
+           (m_config.gpu_max_completed_cta_opt &&
+            (gpu_completed_cta >= m_config.gpu_max_completed_cta_opt));
   }
   void print_stats();
   void update_stats();
   void deadlock_check();
-
+  void inc_completed_cta() { gpu_completed_cta++; }
   void get_pdom_stack_top_info(unsigned sid, unsigned tid, unsigned *pc,
                                unsigned *rpc);
 
@@ -588,6 +591,7 @@ class gpgpu_sim : public gpgpu_t {
   // count.
   unsigned long long m_total_cta_launched;
   unsigned long long gpu_tot_issued_cta;
+  unsigned gpu_completed_cta;
 
   unsigned m_last_cluster_issue;
   float *average_pipeline_duty_cycle;
