@@ -19,6 +19,8 @@
 #include "../../libcuda/gpgpu_context.h"
 #include "trace_driven.h"
 #include "trace_opcode.h"
+#include "volta_opcode.h"
+#include "turing_opcode.h"
 #include "../gpgpusim_entrypoint.h"
 
 
@@ -73,7 +75,7 @@ trace_kernel_info_t* trace_parser::parse_kernel_info(const std::string& kerneltr
 	std::cout << "Processing kernel " <<kerneltraces_filepath<<std::endl;
 
 	unsigned grid_dim_x=0, grid_dim_y=0, grid_dim_z=0, tb_dim_x=0, tb_dim_y=0, tb_dim_z=0;
-	unsigned shmem=0, nregs=0, cuda_stream_id=0, kernel_id=0;
+	unsigned shmem=0, nregs=0, cuda_stream_id=0, kernel_id=0, binary_verion=0;
 	std::string line;
 	std::stringstream ss;
 	std::string string1, string2;
@@ -115,6 +117,9 @@ trace_kernel_info_t* trace_parser::parse_kernel_info(const std::string& kerneltr
 			else if (string1 == "cuda" && string2 == "stream") {
 				sscanf(line.c_str(), "-cuda stream id = %d", &cuda_stream_id);
 			}
+			else if (string1 == "binary" && string2 == "version") {
+				sscanf(line.c_str(), "-binary version = %d", &binary_verion);
+			}
 			std::cout << line << std::endl;
 			continue;
 		}
@@ -127,7 +132,7 @@ trace_kernel_info_t* trace_parser::parse_kernel_info(const std::string& kerneltr
 	dim3 blockDim(tb_dim_x, tb_dim_y, tb_dim_z);
 	trace_function_info* function_info = new trace_function_info(info, m_gpgpu_context);
 	function_info->set_name(kernel_name.c_str());
-	trace_kernel_info_t* kernel_info =  new trace_kernel_info_t(gridDim, blockDim, function_info, &ifs, m_gpgpu_sim, m_gpgpu_context);
+	trace_kernel_info_t* kernel_info =  new trace_kernel_info_t(gridDim, blockDim, binary_verion, function_info, &ifs, m_gpgpu_sim, m_gpgpu_context);
 
 	return kernel_info;
 }
@@ -167,6 +172,19 @@ address_type trace_shd_warp_t::get_pc(){
 	assert(warp_traces.size() > 0 );
 	assert(trace_pc < warp_traces.size());
 	return warp_traces[trace_pc].pc;
+}
+
+trace_kernel_info_t::trace_kernel_info_t(dim3 gridDim, dim3 blockDim, unsigned m_binary_verion, trace_function_info* m_function_info, std::ifstream* inputstream, gpgpu_sim * gpgpu_sim, gpgpu_context* gpgpu_context):kernel_info_t(gridDim, blockDim, m_function_info) {
+	ifs = inputstream;
+	m_gpgpu_sim = gpgpu_sim;
+	m_gpgpu_context = gpgpu_context;
+	binary_verion = m_binary_verion;
+
+	//resolve the binary version
+	if(m_binary_verion == VOLTA_BINART_VERSION)
+		OpcodeMap = &Volta_OpcodeMap;
+	else
+		assert(0 && "unsupported binary version");
 }
 
 bool trace_kernel_info_t::get_next_threadblock_traces(std::vector<std::vector<trace_warp_inst_t>*> threadblock_traces) {
@@ -225,7 +243,7 @@ bool trace_kernel_info_t::get_next_threadblock_traces(std::vector<std::vector<tr
 			else {
 				assert(start_of_tb_stream_found);
 				trace_warp_inst_t inst(m_gpgpu_sim->getShaderCoreConfig(), m_gpgpu_context);
-				inst.parse_from_string(line);
+				inst.parse_from_string(line, OpcodeMap);
 				threadblock_traces[warp_id]->push_back(inst);
 			}
 		}
@@ -235,7 +253,7 @@ bool trace_kernel_info_t::get_next_threadblock_traces(std::vector<std::vector<tr
 }
 
 
-bool trace_warp_inst_t::parse_from_string(std::string trace){
+bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordered_map<std::string,OpcodeChar>* OpcodeMap){
 
 	std::stringstream ss;
 	ss.str(trace);
@@ -257,7 +275,10 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 	int stride=0;
 
 	//Start Parsing
-	ss>>std::dec>>threadblock_x>>threadblock_y>>threadblock_z>>warpid_tb>>sm_id>>warpid_sm;
+	ss>>std::dec>>threadblock_x>>threadblock_y>>threadblock_z>>warpid_tb;
+
+	//ignore core id
+	//ss>>std::dec>>sm_id>>warpid_sm;
 
 	ss>>std::hex>>m_pc;
 	ss>>std::hex>>mask;
@@ -283,7 +304,7 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 
 	if(mem_width > 0)  //then it is a memory inst
 	{
-		ss>>std:dec>>address_mode;
+		ss>>std::dec>>address_mode;
 		if(address_mode==0){
 			//read addresses one by one from the file
 			for (int s = 0; s < warp_size(); s++) {
@@ -332,7 +353,7 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 			opcode_tokens.push_back(token);
 	}
 
-	std::string opcode1 = opcode.substr(0, opcode.find("."));
+	std::string opcode1 = opcode_tokens[0];
 
 	//fill and initialize common params
 	m_decoded = true;
@@ -355,8 +376,8 @@ bool trace_warp_inst_t::parse_from_string(std::string trace){
 	op = ALU_OP;
 	mem_op= NOT_TEX;
 
-	std::unordered_map<std::string,OpcodeChar>::const_iterator it= OpcodeMap.find(opcode1);
-	if (it != OpcodeMap.end()) {
+	std::unordered_map<std::string,OpcodeChar>::const_iterator it= OpcodeMap->find(opcode1);
+	if (it != OpcodeMap->end()) {
 		m_opcode = it->second.opcode;
 		op = (op_type)(it->second.opcode_category);
 	}
