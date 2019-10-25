@@ -9,6 +9,7 @@
 
 #include "../abstract_hardware_model.h"
 #include "../gpgpu-sim/shader.h"
+#include "trace_opcode.h"
 
 class trace_function_info: public function_info {
 public:
@@ -43,7 +44,7 @@ public:
 		m_opcode=0;
 	}
 
-	bool parse_from_string(std::string trace);
+	bool parse_from_string(std::string trace, const std::unordered_map<std::string,OpcodeChar>* OpcodeMap);
 
 private:
 	void set_latency(unsigned cat);
@@ -53,11 +54,7 @@ private:
 
 class trace_kernel_info_t: public kernel_info_t {
 public:
-	trace_kernel_info_t(dim3 gridDim, dim3 blockDim, trace_function_info* m_function_info, std::ifstream* inputstream, gpgpu_sim * gpgpu_sim, gpgpu_context* gpgpu_context):kernel_info_t(gridDim, blockDim, m_function_info) {
-		ifs = inputstream;
-		m_gpgpu_sim = gpgpu_sim;
-		m_gpgpu_context = gpgpu_context;
-	}
+	trace_kernel_info_t(dim3 gridDim, dim3 blockDim, unsigned m_binary_verion, trace_function_info* m_function_info, std::ifstream* inputstream, gpgpu_sim * gpgpu_sim, gpgpu_context* gpgpu_context);
 
 	bool get_next_threadblock_traces(std::vector<std::vector<trace_warp_inst_t>*> threadblock_traces);
 
@@ -65,6 +62,8 @@ private:
 	std::ifstream* ifs;
 	gpgpu_sim * m_gpgpu_sim;
 	gpgpu_context* m_gpgpu_context;
+	unsigned binary_verion;
+	const std::unordered_map<std::string,OpcodeChar>* OpcodeMap;
 
 };
 
