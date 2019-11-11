@@ -1448,6 +1448,50 @@ __host__ cudaError_t CUDARTAPI cudaConfigureCall(dim3 gridDim, dim3 blockDim, si
 	return g_last_cudaError = cudaSuccess;
 }
 
+
+#if CUDA_VERSION >= 1000
+/*
+* CUDA 10 requires a new CUDA kernel launch sequence
+* A call to __cudaPushCallConfiguration() preceeds any call to cudaLaunchKernel()
+* __cudaPushCallConfiguration is undocumented in the API but it simply sets up a buffer with the arguments which is accessed in cudaLaunchKernel()
+* __cudaPopCallConfiguration is undocumented in the API but it simply pops the configuration set in cudaLaunchKernel()
+*
+* pushing more than 1 configuration without popping is currently not implemented in GPGPU-Sim and will result in an assert error
+*/
+namespace g_cudaPushArgsBuffer
+{
+  bool g_is_initialized = false;
+  dim3 g_gridDim;
+  dim3 g_blockDim;
+  size_t g_sharedMem;
+  cudaStream_t g_stream;
+}
+
+__host__ cudaError_t CUDARTAPI __cudaPushCallConfiguration(dim3 gridDim, dim3 blockDim, size_t sharedMem, cudaStream_t stream)
+{
+  assert(g_cudaPushArgsBuffer::g_is_initialized == false);
+  printf("Pushing cuda call configuration \n");
+  g_cudaPushArgsBuffer::g_is_initialized = true;
+  g_cudaPushArgsBuffer::g_gridDim = gridDim;
+  g_cudaPushArgsBuffer::g_blockDim = blockDim;
+  g_cudaPushArgsBuffer::g_sharedMem = sharedMem;
+  g_cudaPushArgsBuffer::g_stream = stream;
+
+  return cudaSuccess;
+}
+
+__host__ cudaError_t CUDARTAPI __cudaPopCallConfiguration()
+{
+  printf("Inside __cudaPopCallConfiguration\n");
+  assert(g_cudaPushArgsBuffer::g_is_initialized == true);
+  printf("Poping cuda call configuration \n");
+  g_cudaPushArgsBuffer::g_is_initialized = false;
+  return cudaSuccess;
+}
+
+#endif // #if CUDA_VERSION >= 1000
+
+
 __host__ cudaError_t CUDARTAPI cudaSetupArgument(const void *arg, size_t size, size_t offset)
 {
 	if(g_debug_execution >= 3){
@@ -1551,8 +1595,14 @@ __host__ cudaError_t CUDARTAPI cudaLaunchKernel ( const char* hostFun, dim3 grid
     	}
         CUctx_st *context = GPGPUSim_Context();
         function_info *entry = context->get_kernel(hostFun);
-    
-	cudaConfigureCall(gridDim, blockDim, sharedMem, stream);
+
+#if CUDA_VERSION >= 1000
+  assert(g_cudaPushArgsBuffer::g_is_initialized == false);
+  cudaConfigureCall(g_cudaPushArgsBuffer::g_gridDim, g_cudaPushArgsBuffer::g_blockDim, g_cudaPushArgsBuffer::g_sharedMem, g_cudaPushArgsBuffer::g_stream);
+#else
+    cudaConfigureCall(gridDim, blockDim, sharedMem, stream);
+#endif // #if CUDA_VERSION >= 1000
+  
     	for(unsigned i = 0; i < entry->num_args(); i++){
         	std::pair<size_t, unsigned> p = entry->get_param_config(i);
         	cudaSetupArgument(args[i], p.first, p.second);
