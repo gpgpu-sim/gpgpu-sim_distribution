@@ -252,6 +252,14 @@ bool trace_kernel_info_t::get_next_threadblock_traces(std::vector<std::vector<tr
 	return true;
 }
 
+bool trace_warp_inst_t::check_opcode_contain(std::vector<std::string> opcode, std::string param)
+{
+	for(unsigned i=0; i<opcode.size(); ++i)
+		if(opcode[i] == param)
+			return true;
+
+	return false;
+}
 
 bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordered_map<std::string,OpcodeChar>* OpcodeMap){
 
@@ -413,7 +421,7 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 	}
 
 
-	//fill memory space
+	//handle special cases and fill memory space
 	switch(m_opcode){
 	case OP_LD:
 	case OP_LDG:
@@ -433,6 +441,10 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 			space.set_type(local_space);
 		else
 			space.set_type(global_space);
+		//check the cache scope, if its strong GPU, then bypass L1
+		if(check_opcode_contain( opcode_tokens , "STRONG") && check_opcode_contain( opcode_tokens , "GPU")) {
+			cache_op = CACHE_GLOBAL;
+		}
 		break;
 	case OP_ST:
 	case OP_STG:
@@ -455,8 +467,10 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 		else
 			space.set_type(global_space);
 
-		if(m_opcode == OP_ATOM || m_opcode == OP_ATOMG || m_opcode == OP_RED)
+		if(m_opcode == OP_ATOM || m_opcode == OP_ATOMG || m_opcode == OP_RED){
 			m_isatomic = true;
+			cache_op = CACHE_GLOBAL;
+		}
 
 		break;
 	case OP_LDS:
@@ -467,7 +481,7 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 		space.set_type(shared_space);
 		break;
 	case OP_BAR:
-		//TO DO fill this correctly
+		//TO DO: fill this correctly
 		bar_id = 0;
 		bar_count = (unsigned)-1;
 		bar_type = SYNC;
@@ -476,6 +490,15 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 		//set bar_type
 		// barrier_type bar_type;
 		// reduction_type red_type;
+		break;
+	case OP_HADD2:
+	case OP_HADD2_32I:
+	case OP_HFMA2:
+	case OP_HFMA2_32I:
+	case OP_HMUL2_32I:
+	case OP_HSET2:
+	case OP_HSETP2:
+		initiation_interval = initiation_interval/2;   //FP16 has 2X throughput than FP32
 		break;
 	default:
 		break;
@@ -550,11 +573,11 @@ void trace_warp_inst_t::set_latency(unsigned category)
 		break;
 	case SP_OP:
 		latency = fp_latency[0];
-		initiation_interval = fp_latency[0];
+		initiation_interval = fp_init[0];
 		break;
 	case DP_OP:
 		latency = dp_latency[0];
-		initiation_interval = dp_latency[0];
+		initiation_interval = dp_init[0];
 		break;
 	case SFU_OP:
 		latency = sfu_latency;
