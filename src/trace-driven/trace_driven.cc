@@ -632,8 +632,12 @@ void trace_shader_core_ctx::checkExecutionStatusAndUpdate(warp_inst_t &inst, uns
 	if(inst.isatomic())
 		m_warp[inst.warp_id()].inc_n_atomic();
 
-	if ( inst.op == EXIT_OPS )
+	if ( inst.op == EXIT_OPS ) {
 		m_warp[inst.warp_id()].set_completed(t);
+		//We did that because the Nvbit misses two instruction to report at the end of the kernel after the EXIT instruction
+		//so we add them here to have better correlation with HW counters
+		m_stats->m_num_sim_winsn[m_sid] += 2;
+	}
 
 }
 
