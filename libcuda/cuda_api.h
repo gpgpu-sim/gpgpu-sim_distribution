@@ -234,10 +234,11 @@ typedef struct CUgraphicsResource_st *CUgraphicsResource; /**< CUDA graphics int
 typedef unsigned long long CUtexObject;                   /**< An opaque value that represents a CUDA texture object */
 typedef unsigned long long CUsurfObject;                  /**< An opaque value that represents a CUDA surface object */
 
+#if CUDART_VERSION < 10000
 typedef struct CUuuid_st {                                /**< CUDA definition of UUID */
     char bytes[16];
 } CUuuid;
-
+#endif // #if CUDART_VERSION < 10000
 
 #if __CUDA_API_VERSION >= 4010
 

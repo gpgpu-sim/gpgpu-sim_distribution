@@ -37,6 +37,7 @@ Version 4.0.0 (development branch) versus 3.2.3
 3- Addig new system stats: gpu occupancy, L2BW, etc
 -Library:
 1  Enabled CUTLASS Library on GPGPU-Sim
+2  Enabled CUDA 10
 -Regression:
 1- Added TensorCore Regression Kernel
 -Configs:
