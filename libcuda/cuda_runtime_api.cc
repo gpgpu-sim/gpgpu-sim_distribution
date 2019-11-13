@@ -1449,7 +1449,7 @@ __host__ cudaError_t CUDARTAPI cudaConfigureCall(dim3 gridDim, dim3 blockDim, si
 }
 
 
-#if CUDA_VERSION >= 1000
+#if CUDART_VERSION >= 10000
 /*
 * CUDA 10 requires a new CUDA kernel launch sequence
 * A call to __cudaPushCallConfiguration() preceeds any call to cudaLaunchKernel()
@@ -1489,7 +1489,7 @@ __host__ cudaError_t CUDARTAPI __cudaPopCallConfiguration()
   return cudaSuccess;
 }
 
-#endif // #if CUDA_VERSION >= 1000
+#endif // #if CUDART_VERSION >= 10000
 
 
 __host__ cudaError_t CUDARTAPI cudaSetupArgument(const void *arg, size_t size, size_t offset)
@@ -1596,12 +1596,12 @@ __host__ cudaError_t CUDARTAPI cudaLaunchKernel ( const char* hostFun, dim3 grid
         CUctx_st *context = GPGPUSim_Context();
         function_info *entry = context->get_kernel(hostFun);
 
-#if CUDA_VERSION >= 1000
+#if CUDART_VERSION >= 10000
   assert(g_cudaPushArgsBuffer::g_is_initialized == false);
   cudaConfigureCall(g_cudaPushArgsBuffer::g_gridDim, g_cudaPushArgsBuffer::g_blockDim, g_cudaPushArgsBuffer::g_sharedMem, g_cudaPushArgsBuffer::g_stream);
 #else
-    cudaConfigureCall(gridDim, blockDim, sharedMem, stream);
-#endif // #if CUDA_VERSION >= 1000
+  cudaConfigureCall(gridDim, blockDim, sharedMem, stream);
+#endif // #if CUDART_VERSION >= 10000
   
     	for(unsigned i = 0; i < entry->num_args(); i++){
         	std::pair<size_t, unsigned> p = entry->get_param_config(i);
