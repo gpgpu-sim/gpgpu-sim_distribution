@@ -288,7 +288,7 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 	//ignore core id
 	//ss>>std::dec>>sm_id>>warpid_sm;
 
-	ss>>std::hex>>m_pc;
+	ss>>std::dec>>m_pc;
 	ss>>std::hex>>mask;
 
 	std::bitset<MAX_WARP_SIZE> mask_bits(mask);
@@ -634,9 +634,6 @@ void trace_shader_core_ctx::checkExecutionStatusAndUpdate(warp_inst_t &inst, uns
 
 	if ( inst.op == EXIT_OPS ) {
 		m_warp[inst.warp_id()].set_completed(t);
-		//We did that because the Nvbit misses two instruction to report at the end of the kernel after the EXIT instruction
-		//so we add them here to have better correlation with HW counters
-		m_stats->m_num_sim_winsn[m_sid] += 2;
 	}
 
 }
