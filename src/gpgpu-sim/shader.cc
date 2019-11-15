@@ -1635,6 +1635,9 @@ bool ldst_unit::shared_cycle( warp_inst_t &inst, mem_stage_stall_type &rc_fail, 
    if( inst.space.get_type() != shared_space )
        return true;
 
+   if( inst.active_count() == 0 )
+       return true;
+
    if(inst.has_dispatch_delay()){
 	   m_stats->gpgpu_n_shmem_bank_access[m_sid]++;
    }
