@@ -1,4 +1,5 @@
-
+//developed by Mahmoud Khairy, Purdue Univ
+//abdallm@purdue.edu
 
 #ifndef VOLTA_OPCODE_H
 #define VOLTA_OPCODE_H
