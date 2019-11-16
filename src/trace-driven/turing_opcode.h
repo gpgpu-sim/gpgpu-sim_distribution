@@ -1,4 +1,5 @@
-
+//developed by Mahmoud Khairy, Purdue Univ
+//abdallm@purdue.edu
 
 #ifndef TURING_OPCODE_H
 #define TURING_OPCODE_H

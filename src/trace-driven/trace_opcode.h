@@ -1,4 +1,5 @@
-
+//developed by Mahmoud Khairy, Purdue Univ
+//abdallm@purdue.edu
 
 #ifndef TRACE_OPCODE_H
 #define TRACE_OPCODE_H
