@@ -50,7 +50,8 @@ private:
 	void set_latency(unsigned cat);
 	gpgpu_context* m_gpgpu_context;
 	unsigned m_opcode;
-	bool check_opcode_contain(std::vector<std::string> opcode, std::string param);
+	bool check_opcode_contain(const std::vector<std::string>& opcode, std::string param);
+	unsigned get_datawidth_from_opcode(const std::vector<std::string>& opcode);
 };
 
 class trace_kernel_info_t: public kernel_info_t {
