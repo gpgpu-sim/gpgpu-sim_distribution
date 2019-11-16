@@ -9,6 +9,7 @@
 #include <string>
 #include <sstream>
 #include <math.h>
+#include <bits/stdc++.h>
 
 #include "../abstract_hardware_model.h"
 #include "../option_parser.h"
@@ -22,7 +23,6 @@
 #include "volta_opcode.h"
 #include "turing_opcode.h"
 #include "../gpgpusim_entrypoint.h"
-
 
 trace_parser::trace_parser(const char* kernellist_filepath, gpgpu_sim * m_gpgpu_sim, gpgpu_context* m_gpgpu_context)
 {
@@ -252,13 +252,37 @@ bool trace_kernel_info_t::get_next_threadblock_traces(std::vector<std::vector<tr
 	return true;
 }
 
-bool trace_warp_inst_t::check_opcode_contain(std::vector<std::string> opcode, std::string param)
+bool trace_warp_inst_t::check_opcode_contain(const std::vector<std::string>& opcode, std::string param)
 {
 	for(unsigned i=0; i<opcode.size(); ++i)
 		if(opcode[i] == param)
 			return true;
 
 	return false;
+}
+
+bool is_number(const std::string& s)
+{
+	std::string::const_iterator it = s.begin();
+	while (it != s.end() && std::isdigit(*it)) ++it;
+	return !s.empty() && it == s.end();
+}
+
+unsigned trace_warp_inst_t::get_datawidth_from_opcode(const std::vector<std::string>& opcode)
+{
+	for(unsigned i=0; i<opcode.size(); ++i) {
+		if(is_number(opcode[i])){
+			return (std::stoi(opcode[i],NULL)/8);
+		}
+		else if(opcode[i][0] == 'U' && is_number(opcode[i].substr(1))){
+			//handle the U* case
+			unsigned bits;
+			sscanf(opcode[i].c_str(), "U%u",&bits);
+			return bits/8;
+		}
+	}
+
+	return 4;  //default is 4 bytes
 }
 
 bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordered_map<std::string,OpcodeChar>* OpcodeMap){
@@ -288,7 +312,7 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 	//ignore core id
 	//ss>>std::dec>>sm_id>>warpid_sm;
 
-	ss>>std::dec>>m_pc;
+	ss>>std::hex>>m_pc;
 	ss>>std::hex>>mask;
 
 	std::bitset<MAX_WARP_SIZE> mask_bits(mask);
@@ -408,8 +432,8 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 		in[m]=reg_srcs[m]+1;	     //Increment by one because GPGPU-sim starts from R1, while SASS starts from R0
 		arch_reg.src[m]=reg_srcs[m]+1;
 	}
-	//handle: vector, store insts have no output, double inst and hmma, and 64 bit address
-
+	//TO DO: handle: vector, store insts have no output, double inst and hmma, and 64 bit address
+	//remove redundant registers
 
 	//fill latency and initl
 	set_latency(op);
@@ -427,14 +451,8 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 	case OP_LDG:
 	case OP_LDL:
 		assert(mem_width>0);
-		//handle the U* case
-		if (opcode_tokens.size() >= 3 && opcode_tokens[2][0] == 'U'){
-			unsigned bytes;
-			sscanf(opcode_tokens[2].c_str(), "U%u",&bytes);
-			data_size=bytes/8;
-		}
-		else
-			data_size = mem_width;
+		//Nvbit reports incorrect data width, and we have to parse the opcode to get the correct data width
+        data_size = get_datawidth_from_opcode(opcode_tokens);
 		memory_op = memory_load;
 		cache_op = CACHE_ALL;
 		if(m_opcode == OP_LDL)
@@ -453,13 +471,7 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 	case OP_ATOMG:
 	case OP_RED:
 		assert(mem_width>0);
-		if (opcode_tokens.size() >= 3 && opcode_tokens[2][0] == 'U'){
-			unsigned bytes;
-			sscanf(opcode_tokens[2].c_str(), "U%u",&bytes);
-			data_size=bytes/8;
-		}
-		else
-			data_size = mem_width;
+        data_size = get_datawidth_from_opcode(opcode_tokens);
 		memory_op = memory_store;
 		cache_op = CACHE_ALL;
 		if(m_opcode == OP_STL)
