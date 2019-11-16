@@ -350,6 +350,8 @@ public:
 
     unsigned is_trace_driven_mode() const { return trace_driven_mode; }
     char* get_traces_filename() const { return g_traces_filename; }
+    bool flush_l1() const { return gpgpu_flush_l1_cache; }
+
 
 private:
     void init_clock_domains(void ); 
