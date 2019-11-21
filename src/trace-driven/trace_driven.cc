@@ -148,7 +148,9 @@ void trace_parser::kernel_finalizer(trace_kernel_info_t* kernel_info){
 
 const trace_warp_inst_t* trace_shd_warp_t::get_next_inst(){
 	if(trace_pc < warp_traces.size())
+	{
 		return &warp_traces[trace_pc++];
+	}
 	else
 		return NULL;
 }
@@ -290,7 +292,6 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 	std::stringstream ss;
 	ss.str(trace);
 
-
 	std::string temp;
 	unsigned threadblock_x=0, threadblock_y=0, threadblock_z=0, warpid_tb=0, sm_id=0, warpid_sm=0;
 	unsigned long long m_pc=0;
@@ -391,7 +392,7 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 	m_decoded = true;
 	pc = (address_type)m_pc;   //we will lose the high 32 bits from casting long to unsigned, it should be okay!
 
-	isize = 16;   //TO DO, change this
+	isize = 16;   //starting from MAXWELL isize=16 bytes (including the control bytes)
 	for(unsigned i=0; i<MAX_OUTPUT_VALUES; i++) {
 		out[i] = 0;
 	}
@@ -424,7 +425,7 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 	outcount=reg_dsts_num;
 	for(unsigned m=0; m<reg_dsts_num; ++m){
 		out[m]=reg_dest[m]+1;         //Increment by one because GPGPU-sim starts from R1, while SASS starts from R0
-		arch_reg.src[m]=reg_dest[m]+1;
+		arch_reg.dst[m]=reg_dest[m]+1;
 	}
 
 	incount=reg_srcs_num;
@@ -481,7 +482,19 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 
 		if(m_opcode == OP_ATOM || m_opcode == OP_ATOMG || m_opcode == OP_RED){
 			m_isatomic = true;
+			//memory_op = no_memory_op;
+
+			memory_op = memory_load;
+			op=LOAD_OP;
 			cache_op = CACHE_GLOBAL;
+
+			//ATOMIC writes to the first operand, we missed that in the trace so we fixed it here. TO be fixed in tracer
+			outcount=reg_dsts_num+1;
+			out[0]=in[0];         //Increment by one because GPGPU-sim starts from R1, while SASS starts from R0
+			arch_reg.dst[0]=reg_srcs[0];
+			num_regs = reg_srcs_num+reg_dsts_num+1;
+			num_operands = num_regs;
+
 		}
 
 		break;
@@ -491,6 +504,13 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 		assert(mem_width>0);
 		data_size = mem_width;
 		space.set_type(shared_space);
+		if(m_opcode == OP_ATOMS ) {
+			//m_isatomic = true;
+
+			op=LOAD_OP;
+			memory_op = memory_load;
+
+		}
 		break;
 	case OP_BAR:
 		//TO DO: fill this correctly

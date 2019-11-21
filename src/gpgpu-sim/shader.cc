@@ -2342,8 +2342,9 @@ void ldst_unit::writeback()
         case 3: // global/local
             if( m_next_global ) {
                 m_next_wb = m_next_global->get_inst();
-                if( m_next_global->isatomic() ) 
+                if( m_next_global->isatomic() ) {
                     m_core->decrement_atomic_count(m_next_global->get_wid(),m_next_global->get_access_warp_mask().count());
+                }
                 delete m_next_global;
                 m_next_global = NULL;
                 serviced_client = next_client; 
