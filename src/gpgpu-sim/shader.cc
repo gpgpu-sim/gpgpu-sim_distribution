@@ -1881,7 +1881,9 @@ bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_rea
        return true;
    if( inst.active_count() == 0 ) 
        return true;
-   assert( !inst.accessq_empty() );
+   if( inst.accessq_empty() )
+       return true;
+
    mem_stage_stall_type stall_cond = NO_RC_FAIL;
    const mem_access_t &access = inst.accessq_back();
 
