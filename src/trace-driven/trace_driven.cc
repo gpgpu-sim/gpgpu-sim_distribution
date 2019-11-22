@@ -22,6 +22,7 @@
 #include "trace_opcode.h"
 #include "volta_opcode.h"
 #include "turing_opcode.h"
+#include "pascal_opcode.h"
 #include "../gpgpusim_entrypoint.h"
 
 trace_parser::trace_parser(const char* kernellist_filepath, gpgpu_sim * m_gpgpu_sim, gpgpu_context* m_gpgpu_context)
@@ -185,6 +186,8 @@ trace_kernel_info_t::trace_kernel_info_t(dim3 gridDim, dim3 blockDim, unsigned m
 	//resolve the binary version
 	if(m_binary_verion == VOLTA_BINART_VERSION)
 		OpcodeMap = &Volta_OpcodeMap;
+	else if(m_binary_verion == PASCAL_TITANX_BINART_VERSION || m_binary_verion == PASCAL_P100_BINART_VERSION)
+		OpcodeMap = &Pascal_OpcodeMap;
 	else
 		assert(0 && "unsupported binary version");
 }
@@ -448,7 +451,6 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 
 	//handle special cases and fill memory space
 	switch(m_opcode){
-	case OP_LD:
 	case OP_LDG:
 	case OP_LDL:
 		assert(mem_width>0);
@@ -465,12 +467,11 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 			cache_op = CACHE_GLOBAL;
 		}
 		break;
-	case OP_ST:
 	case OP_STG:
 	case OP_STL:
-	case OP_ATOM:
 	case OP_ATOMG:
 	case OP_RED:
+	case OP_ATOM:
 		assert(mem_width>0);
         data_size = get_datawidth_from_opcode(opcode_tokens);
 		memory_op = memory_store;
@@ -480,10 +481,8 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 		else
 			space.set_type(global_space);
 
-		if(m_opcode == OP_ATOM || m_opcode == OP_ATOMG || m_opcode == OP_RED){
+		if(m_opcode == OP_ATOMG || m_opcode == OP_ATOM || m_opcode == OP_RED){
 			m_isatomic = true;
-			//memory_op = no_memory_op;
-
 			memory_op = memory_load;
 			op=LOAD_OP;
 			cache_op = CACHE_GLOBAL;
@@ -504,13 +503,23 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 		assert(mem_width>0);
 		data_size = mem_width;
 		space.set_type(shared_space);
-		if(m_opcode == OP_ATOMS ) {
+		if(m_opcode == OP_ATOMS || m_opcode == OP_LDS) {
 			//m_isatomic = true;
-
 			op=LOAD_OP;
 			memory_op = memory_load;
-
 		}
+		break;
+	case OP_ST:
+	case OP_LD:
+		//TO DO: set generic load based on the address
+		//right now, we consider all loads are shared.
+		assert(mem_width>0);
+		data_size = get_datawidth_from_opcode(opcode_tokens);
+		space.set_type(shared_space);
+		if(m_opcode == OP_LD)
+			memory_op = memory_load;
+		else
+			memory_op = memory_store;
 		break;
 	case OP_BAR:
 		//TO DO: fill this correctly
