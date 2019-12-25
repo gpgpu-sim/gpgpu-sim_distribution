@@ -25,6 +25,23 @@
 #include "pascal_opcode.h"
 #include "../gpgpusim_entrypoint.h"
 
+
+bool is_number(const std::string& s)
+{
+	std::string::const_iterator it = s.begin();
+	while (it != s.end() && std::isdigit(*it)) ++it;
+	return !s.empty() && it == s.end();
+}
+
+void split(const std::string& str, std::vector<std::string>& cont, char delimi = ' ')
+{
+    std::stringstream ss(str);
+    std::string token;
+    while (std::getline(ss, token, delimi)) {
+        cont.push_back(token);
+    }
+}
+
 trace_parser::trace_parser(const char* kernellist_filepath, gpgpu_sim * m_gpgpu_sim, gpgpu_context* m_gpgpu_context)
 {
 
@@ -55,14 +72,30 @@ std::vector<std::string> trace_parser::parse_kernellist_file() {
 		getline(ifs, line);
 		if(line.empty())
 			continue;
+		else if(line.substr(0,6) == "Memcpy") {
+			kernellist.push_back(line);
+		}
+		else if(line.substr(0,6) == "kernel") {
 		filepath = directory+"/"+line;
 		kernellist.push_back(filepath);
+		}	
 	}
 
 	ifs.close();
 	return kernellist;
 }
 
+void trace_parser::parse_memcpy_info(const std::string& memcpy_command, size_t& address, size_t& count) {
+	std::vector<std::string> params;
+	split(memcpy_command, params, ',');
+	assert(params.size() == 3);
+	std::stringstream ss;
+	ss.str(params[1]);
+	ss>>std::hex>>address;
+	ss.clear();
+	ss.str(params[2]);
+	ss>>std::dec>>count;
+}
 
 trace_kernel_info_t* trace_parser::parse_kernel_info(const std::string& kerneltraces_filepath) {
 
@@ -266,12 +299,7 @@ bool trace_warp_inst_t::check_opcode_contain(const std::vector<std::string>& opc
 	return false;
 }
 
-bool is_number(const std::string& s)
-{
-	std::string::const_iterator it = s.begin();
-	while (it != s.end() && std::isdigit(*it)) ++it;
-	return !s.empty() && it == s.end();
-}
+
 
 unsigned trace_warp_inst_t::get_datawidth_from_opcode(const std::vector<std::string>& opcode)
 {
