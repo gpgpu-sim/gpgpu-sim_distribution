@@ -49,12 +49,22 @@ int main ( int argc, const char **argv )
 
 	trace_parser tracer(m_gpgpu_sim->get_config().get_traces_filename(), m_gpgpu_sim, m_gpgpu_context);
 
-	std::vector<std::string> kernellist = tracer.parse_kernellist_file();
+	std::vector<std::string> commandlist = tracer.parse_kernellist_file();
 
-	for(unsigned i=0; i<kernellist.size(); ++i) {
+	for(unsigned i=0; i<commandlist.size(); ++i) {
 
-		trace_kernel_info_t* kernel_info  = tracer.parse_kernel_info(kernellist[i]);
-		m_gpgpu_sim->launch(kernel_info);
+		trace_kernel_info_t* kernel_info;
+		if(commandlist[i].substr(0,6) == "Memcpy") {
+			
+			size_t addre, Bcount;
+			tracer.parse_memcpy_info(commandlist[i], addre, Bcount);
+			m_gpgpu_sim->perf_memcpy_to_gpu(addre, Bcount);
+			continue;
+		}
+		else if(commandlist[i].substr(0,6) == "kernel") {
+			kernel_info  = tracer.parse_kernel_info(commandlist[i]);
+			m_gpgpu_sim->launch(kernel_info);
+		}
 
 		bool active = false;
 		bool sim_cycles = false;

@@ -77,6 +77,8 @@ public:
 
 	std::vector<std::string> parse_kernellist_file();
 	trace_kernel_info_t* parse_kernel_info(const std::string& kerneltraces_filepath);
+	void parse_memcpy_info(const std::string& memcpy_command, size_t& add, size_t& count);
+
 	void kernel_finalizer(trace_kernel_info_t* kernel_info);
 
 private:
