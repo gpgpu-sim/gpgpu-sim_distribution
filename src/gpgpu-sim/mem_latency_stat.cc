@@ -41,6 +41,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
+
 #include "../../libcuda/gpgpu_context.h"
 
 memory_stats_t::memory_stats_t( unsigned n_shader, const shader_core_config *shader_config, const memory_config *mem_config, const class gpgpu_sim* gpu )
@@ -187,13 +189,13 @@ void memory_stats_t::memlatstat_dram_access(mem_fetch *mf)
             bankwrites[mf->get_sid()][dram_id][bank]++;
             shader_mem_acc_log( mf->get_sid(), dram_id, bank, 'w');
          }
-         totalbankwrites[dram_id][bank]++;
+         totalbankwrites[dram_id][bank] += ceil(mf->get_data_size() / m_memory_config->dram_atom_size);
       } else {
          bankreads[mf->get_sid()][dram_id][bank]++;
          shader_mem_acc_log( mf->get_sid(), dram_id, bank, 'r');
-         totalbankreads[dram_id][bank]++;
+         totalbankreads[dram_id][bank] += ceil(mf->get_data_size() / m_memory_config->dram_atom_size);
       }
-      mem_access_type_stats[mf->get_access_type()][dram_id][bank]++;
+      mem_access_type_stats[mf->get_access_type()][dram_id][bank] += ceil(mf->get_data_size() / m_memory_config->dram_atom_size);
    }
 
    if (mf->get_pc() != (unsigned)-1)
