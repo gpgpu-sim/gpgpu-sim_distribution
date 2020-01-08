@@ -53,15 +53,17 @@ int main ( int argc, const char **argv )
 
 	for(unsigned i=0; i<commandlist.size(); ++i) {
 
-		trace_kernel_info_t* kernel_info;
+		trace_kernel_info_t* kernel_info = NULL;
+		std::cout<<i<< " "<<commandlist[i]<<std::endl;
 		if(commandlist[i].substr(0,6) == "Memcpy") {
 			
 			size_t addre, Bcount;
 			tracer.parse_memcpy_info(commandlist[i], addre, Bcount);
+			std::cout<<commandlist[i]<<std::endl;
 			m_gpgpu_sim->perf_memcpy_to_gpu(addre, Bcount);
 			continue;
 		}
-		else if(commandlist[i].substr(0,6) == "kernel") {
+		else {
 			kernel_info  = tracer.parse_kernel_info(commandlist[i]);
 			m_gpgpu_sim->launch(kernel_info);
 		}
@@ -90,9 +92,10 @@ int main ( int argc, const char **argv )
 
 		} while( active );
 
-		tracer.kernel_finalizer(kernel_info);
-
-		m_gpgpu_sim->print_stats();
+		if(kernel_info) {
+			tracer.kernel_finalizer(kernel_info);
+			m_gpgpu_sim->print_stats();
+		}
 
 		if(sim_cycles) {
 			m_gpgpu_sim->update_stats();
