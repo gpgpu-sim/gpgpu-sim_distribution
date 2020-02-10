@@ -348,7 +348,8 @@ public:
     size_t sync_depth_limit() const {return runtime_sync_depth_limit; }
     size_t pending_launch_count_limit() const {return runtime_pending_launch_count_limit;}
 
-    unsigned is_trace_driven_mode() const { return trace_driven_mode; }
+    bool is_trace_driven_mode() const { return trace_driven_mode; }
+	bool is_skip_first_kernel() const { return trace_skip_first_kernel; }
     char* get_traces_filename() const { return g_traces_filename; }
     bool flush_l1() const { return gpgpu_flush_l1_cache; }
 
@@ -408,6 +409,7 @@ private:
 
     //trace driven mode options
     bool trace_driven_mode;
+	bool trace_skip_first_kernel;
     char *g_traces_filename;
 
     friend class gpgpu_sim;

@@ -23,6 +23,7 @@
 #include "volta_opcode.h"
 #include "turing_opcode.h"
 #include "pascal_opcode.h"
+#include "kepler_opcode.h"
 #include "../gpgpusim_entrypoint.h"
 
 
@@ -221,6 +222,10 @@ trace_kernel_info_t::trace_kernel_info_t(dim3 gridDim, dim3 blockDim, unsigned m
 		OpcodeMap = &Volta_OpcodeMap;
 	else if(m_binary_verion == PASCAL_TITANX_BINART_VERSION || m_binary_verion == PASCAL_P100_BINART_VERSION)
 		OpcodeMap = &Pascal_OpcodeMap;
+	else if(m_binary_verion == KEPLER_BINART_VERSION)
+		OpcodeMap = &Kepler_OpcodeMap;
+	else if(m_binary_verion == TURING_BINART_VERSION)
+		OpcodeMap = &Turing_OpcodeMap;
 	else
 		assert(0 && "unsupported binary version");
 }
