@@ -573,6 +573,9 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
     option_parser_register(opp, "-trace_driven_mode", OPT_BOOL,
                           &trace_driven_mode, "Turn on trace_driven_mode",
                           "0");
+	option_parser_register(opp, "-trace_skip_first_kernel", OPT_BOOL,
+                          &trace_skip_first_kernel, "skip first intiliztion kernel in trace mode",
+                          "0");					  
     option_parser_register(opp, "-trace", OPT_CSTR,
                           &g_traces_filename, "traces kernel file"
                           "traces kernel file directory",
