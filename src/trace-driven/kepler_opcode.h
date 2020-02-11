@@ -50,6 +50,7 @@ static const std::unordered_map<std::string,OpcodeChar> Kepler_OpcodeMap = {
 		{"IMUL32I", OpcodeChar(OP_IMUL32I, INTP_OP)},
 		{"IADD", OpcodeChar(OP_IADD, INTP_OP)},
 		{"IADD32I", OpcodeChar(OP_IADD32I, INTP_OP)},
+		{"ISUB", OpcodeChar(OP_ISUB, INTP_OP)},		
 		{"ISCADD", OpcodeChar(OP_ISCADD, INTP_OP)},
 		{"ISCADD32I", OpcodeChar(OP_ISCADD32I, INTP_OP)},
 		{"ISAD", OpcodeChar(OP_ISAD, INTP_OP)},
