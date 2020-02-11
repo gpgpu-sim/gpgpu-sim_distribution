@@ -286,7 +286,7 @@ bool trace_kernel_info_t::get_next_threadblock_traces(std::vector<std::vector<tr
 			else {
 				assert(start_of_tb_stream_found);
 				trace_warp_inst_t inst(m_gpgpu_sim->getShaderCoreConfig(), m_gpgpu_context);
-				inst.parse_from_string(line, OpcodeMap);
+				inst.parse_from_string(line, OpcodeMap, binary_verion);
 				threadblock_traces[warp_id]->push_back(inst);
 			}
 		}
@@ -323,7 +323,7 @@ unsigned trace_warp_inst_t::get_datawidth_from_opcode(const std::vector<std::str
 	return 4;  //default is 4 bytes
 }
 
-bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordered_map<std::string,OpcodeChar>* OpcodeMap){
+bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordered_map<std::string,OpcodeChar>* OpcodeMap, unsigned binary_verion){
 
 	std::stringstream ss;
 	ss.str(trace);
@@ -546,9 +546,12 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 	case OP_LD:
 		//TO DO: set generic load based on the address
 		//right now, we consider all loads are shared.
-		assert(mem_width>0);
+		assert(mem_width>0);	
 		data_size = get_datawidth_from_opcode(opcode_tokens);
-		space.set_type(shared_space);
+		if(binary_verion == KEPLER_BINART_VERSION)
+			space.set_type(global_space);
+		else
+			space.set_type(shared_space);
 		if(m_opcode == OP_LD)
 			memory_op = memory_load;
 		else
