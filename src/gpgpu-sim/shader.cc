@@ -106,7 +106,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
     }
     if(m_config->sub_core_model) {
     	//in subcore model, each scheduler should has its own issue register, so num scheduler = reg width
-    	assert(m_config->gpgpu_num_sched_per_core == m_pipeline_reg[ID_OC_SP].get_size() );
+    	//assert(m_config->gpgpu_num_sched_per_core == m_pipeline_reg[ID_OC_SP].get_size() );
     	assert(m_config->gpgpu_num_sched_per_core == m_pipeline_reg[ID_OC_SFU].get_size() );
     	assert(m_config->gpgpu_num_sched_per_core == m_pipeline_reg[ID_OC_MEM].get_size() );
     	if(m_config->gpgpu_tensor_core_avail)
