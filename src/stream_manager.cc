@@ -194,13 +194,16 @@ bool stream_operation::do_operation( gpgpu_sim *gpu )
         m_stream->record_next_done();
         } 
         break;
-    case stream_wait_event: {
+    case stream_wait_event:
         //only allows next op to go if event is done
         //otherwise stays in the stream queue
         printf("stream wait event processing...\n");
-        if(m_event->done())
+        if(m_event->num_updates()>=m_cnt){
             printf("stream wait event done\n");
             m_stream->record_next_done();
+        }
+        else{
+            return false;
         }
         break;
     default:
@@ -232,6 +235,7 @@ stream_manager::stream_manager( gpgpu_sim *gpu, bool cuda_launch_blocking )
     m_service_stream_zero = false;
     m_cuda_launch_blocking = cuda_launch_blocking;
     pthread_mutex_init(&m_lock,NULL);
+    m_last_stream = m_streams.begin();
 }
 
 bool stream_manager::operation( bool * sim)
@@ -330,11 +334,16 @@ stream_operation stream_manager::front()
             m_service_stream_zero = false;
         }
     }
-    
     if(!m_service_stream_zero)
     {
-        std::list<struct CUstream_st*>::iterator s;
-        for( s=m_streams.begin(); s != m_streams.end(); s++) {
+        std::list<struct CUstream_st*>::iterator s = m_last_stream;
+        if(m_last_stream == m_streams.end()){ s = m_streams.begin(); }
+        else{ s++; }
+        for(size_t ii = 0 ; ii < m_streams.size(); ii++, s++) {
+            if(s == m_streams.end()){
+                s = m_streams.begin();
+            }
+            m_last_stream = s;
             CUstream_st *stream = *s;
             if( !stream->busy() && !stream->empty() ) {
                 result = stream->next();
@@ -371,6 +380,7 @@ void stream_manager::destroy_stream( CUstream_st *stream )
         }
     }
     delete stream; 
+    m_last_stream = m_streams.begin();
     pthread_mutex_unlock(&m_lock);
 }
 
