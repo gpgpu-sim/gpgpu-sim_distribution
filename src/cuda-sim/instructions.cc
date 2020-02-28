@@ -1572,7 +1572,7 @@ void bfe_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 		{
 			unsigned mask;
 			data.u32 = src.u32 >> pos;
-			mask = 0xFFFFFFFF >> (32 - len);
+			mask = (len == 0) ? 0 : 0xFFFFFFFF >> (32 - len);
 			data.u32 &= mask;
 			break;
 		}
@@ -1580,7 +1580,7 @@ void bfe_impl( const ptx_instruction *pI, ptx_thread_info *thread )
 		{
 			unsigned long mask;
 			data.u64 = src.u64 >> pos;	
-			mask = 0xFFFFFFFFFFFFFFFF >> (64 - len);
+			mask = (len == 0) ? 0 : 0xFFFFFFFFFFFFFFFF >> (64 - len);
 			data.u64 &= mask;
 			break;
 		}
