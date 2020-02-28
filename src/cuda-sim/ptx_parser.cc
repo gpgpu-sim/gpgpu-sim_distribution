@@ -43,7 +43,23 @@ void set_ptx_warp_size(const struct core_config * warp_size)
 
 static bool g_debug_ir_generation=false;
 const char *g_filename;
+const char *PTX_DEBUG_filename;
 unsigned g_max_regs_per_thread = 0;
+
+FILE *ptxdebug;
+int argument_counter;
+int identifier_counter;
+int counter;
+int variable_counter;
+int inst_counter;
+int store_counter;
+int u32_counter;
+const char* function_name;
+const char* param_type;
+
+
+
+
 
 // the program intermediate representation...
 static symbol_table *g_global_allfiles_symbol_table = NULL;
@@ -107,6 +123,8 @@ void read_parser_environment_variables()
       if ( debug_execution >= 30 ) 
          g_debug_ir_generation=true;
    }
+   ptxdebug = fopen("PTX_AddStore_Debug.ptx", "w");
+   fprintf(ptxdebug,"\n \\\\ Debug PTX, contain store after each instruction\n .version 6.0 \n .target sm_70 \n .address_size 64 \n");
 }
 
 void init_directive_state()
@@ -176,6 +194,12 @@ symbol_table *init_parser( const char *ptx_filename )
    ptx_parse();
    fclose(ptx_in);
    return g_global_symbol_table;
+  // std::string debug_filename = "PTX_DEBUG_";
+  // debug_filename += g_filename;
+  // PTX_DEBUG_filename = debug_filename.c_str();
+  // ptxdebug = fopen(PTX_DEBUG_filename, "w");
+  // fprintf(ptxdebug,"\n \\\\ Debug PTX, contain store after each instruction\n .version 6.0 \n .target sm_70 \n .address_size 64 \n");
+
 }
 
 static int g_entry_point;
@@ -188,6 +212,13 @@ void start_function( int entry_point )
    g_entry_point = entry_point;
    g_func_info = NULL;
    g_entry_func_param_index=0;
+   argument_counter=0;
+   //PTX_DEBUG
+   inst_counter=0; 
+   identifier_counter=0;
+   variable_counter=0;
+   u32_counter=0;
+   store_counter=0;
 }
 
 char *g_add_identifier_cached__identifier = NULL;
@@ -211,6 +242,8 @@ void add_function_name( const char *name )
       g_func_info->remove_args();
    }
    g_global_symbol_table->add_function( g_func_info, g_filename, ptx_lineno );
+    fprintf(ptxdebug,".visible .entry %s ( \n",name);
+    function_name= name;
 }
 
 //Jin: handle instruction group for cdp
@@ -235,7 +268,8 @@ void add_directive()
 void end_function() 
 {
    PTX_PARSE_DPRINTF("end_function");
-
+   
+   variable_counter=0;
    init_directive_state();
    init_instruction_state();
    g_max_regs_per_thread = mymax( g_max_regs_per_thread, (g_current_symbol_table->next_reg_num()-1)); 
@@ -326,7 +360,55 @@ void add_instruction()
 
 void add_variables() 
 {
+
+   if(variable_counter == 0 ){
+   	fprintf(ptxdebug,"     .param .u64  %s_param_%d\n", function_name, argument_counter);
+        fprintf(ptxdebug,")\n { \n");
+   }
+
+   variable_counter++;
    PTX_PARSE_DPRINTF("add_variables");
+
+   if(g_ptx_token_decode[g_scalar_type_spec] == "B64_TYPE")
+   {
+        store_counter=counter;
+	counter=counter+4;
+        fprintf(ptxdebug,"     .reg .b64 %%rd<%d> \n",counter);
+   }
+   else if (g_ptx_token_decode[g_scalar_type_spec] == "B32_TYPE")
+   { 
+         u32_counter=counter;
+         counter=counter+4;
+         fprintf(ptxdebug,"     .reg .b32 %%r<%d> \n",counter);
+   }
+   else if (g_ptx_token_decode[g_scalar_type_spec] == "B16_TYPE")
+        fprintf(ptxdebug,"     .reg .b16 %%rs<%d> \n",counter);
+   else if (g_ptx_token_decode[g_scalar_type_spec] == "B8_TYPE")
+        fprintf(ptxdebug,"     .reg .b8 %%rc<%d> \n",counter);
+   else if (g_ptx_token_decode[g_scalar_type_spec] == "S64_TYPE")
+        fprintf(ptxdebug,"     .reg .b64 %%rd<%d> \n",counter);
+   else if (g_ptx_token_decode[g_scalar_type_spec] == "S32_TYPE")
+        fprintf(ptxdebug,"     .reg .b32 %%r<%d> \n",counter);
+   else if (g_ptx_token_decode[g_scalar_type_spec] == "S16_TYPE")
+        fprintf(ptxdebug,"     .reg .b16 %%rs<%d> \n",counter);
+   else if (g_ptx_token_decode[g_scalar_type_spec] == "S8_TYPE")
+        fprintf(ptxdebug,"     .reg .b8 %%rc<%d> \n",counter);
+   else if (g_ptx_token_decode[g_scalar_type_spec] == "U64_TYPE")
+        fprintf(ptxdebug,"     .reg .u64 %%rd<%d> \n",counter);
+   else if (g_ptx_token_decode[g_scalar_type_spec] == "U32_TYPE")
+        fprintf(ptxdebug,"     .reg .u32 %%r<%d> \n",counter);
+   else if (g_ptx_token_decode[g_scalar_type_spec] == "U16_TYPE")
+        fprintf(ptxdebug,"     .reg .u16 %%rs<%d> \n",counter);
+   else if (g_ptx_token_decode[g_scalar_type_spec] == "U8_TYPE")
+        fprintf(ptxdebug,"     .reg .u8 %%rc<%d> \n",counter);
+   else if (g_ptx_token_decode[g_scalar_type_spec] == "F64_TYPE")
+        fprintf(ptxdebug,"     .reg .f64 %%f<%d> \n",counter);
+   else if (g_ptx_token_decode[g_scalar_type_spec] == "F32_TYPE")
+        fprintf(ptxdebug,"     .reg .f32 %%f<%d> \n",counter);
+   else if (g_ptx_token_decode[g_scalar_type_spec] == "F16_TYPE")
+        fprintf(ptxdebug,"     .reg .f16 %%f<%d> \n",counter);
+   else if (g_ptx_token_decode[g_scalar_type_spec] == "PRED_TYPE")
+        fprintf(ptxdebug,"     .reg .pred %%p<%d> \n",counter);
    if ( !g_operands.empty() ) {
       assert( g_last_symbol != NULL ); 
       g_last_symbol->add_initializer(g_operands);
@@ -391,7 +473,9 @@ void add_identifier( const char *identifier, int array_dim, unsigned array_ident
       g_add_identifier_cached__array_ident = array_ident;
       return;
    }
+   counter++;
    PTX_PARSE_DPRINTF("add_identifier \"%s\" (%u)", identifier, g_ident_add_uid);
+   unsigned store=g_ident_add_uid+1;
    g_ident_add_uid++;
    type_info *type = g_var_type;
    type_info_key ti = type->get_key();
@@ -593,6 +677,25 @@ void add_function_arg()
       unsigned alignment = (g_alignment_spec==-1) ? g_size : g_alignment_spec;
       assert(alignment==1||alignment==2||alignment==4||alignment==8||alignment==16);//known valid alignment values
       g_func_info->add_config_param( g_size,  alignment);
+      if(g_ptx_token_decode[g_scalar_type_spec]=="S8_TYPE") param_type =".s8 ";  
+                   if(g_ptx_token_decode[g_scalar_type_spec]=="U64_TYPE") param_type =".u64 ";  
+                   if(g_ptx_token_decode[g_scalar_type_spec]=="S16_TYPE") param_type =".s16 "; 
+                   if(g_ptx_token_decode[g_scalar_type_spec]=="S32_TYPE") param_type =".s32 "; 
+                   if(g_ptx_token_decode[g_scalar_type_spec]=="S64_TYPE") param_type =".s64 "; 
+                   if(g_ptx_token_decode[g_scalar_type_spec]=="U16_TYPE") param_type =".u16 "; 
+                   if(g_ptx_token_decode[g_scalar_type_spec]=="U8_TYPE") param_type =".u8 "; 
+                   if(g_ptx_token_decode[g_scalar_type_spec]=="U32_TYPE") param_type =".u32 "; 
+                   if(g_ptx_token_decode[g_scalar_type_spec]=="U64_TYPE") param_type =".u64 "; 
+                   if(g_ptx_token_decode[g_scalar_type_spec]=="F16_TYPE") param_type =".f16 "; 
+                   if(g_ptx_token_decode[g_scalar_type_spec]=="F32_TYPE") param_type =".f32 "; 
+                   if(g_ptx_token_decode[g_scalar_type_spec]=="F64_TYPE") param_type =".f64 "; 
+                   if(g_ptx_token_decode[g_scalar_type_spec]=="B8_TYPE") param_type =".b8 "; 
+                   if(g_ptx_token_decode[g_scalar_type_spec]=="B16_TYPE") param_type =".b16 "; 
+                   if(g_ptx_token_decode[g_scalar_type_spec]=="B32_TYPE") param_type =".b32 "; 
+                   if(g_ptx_token_decode[g_scalar_type_spec]=="B64_TYPE") param_type =".b64 "; 
+                   if(g_ptx_token_decode[g_scalar_type_spec]=="PRED_TYPE") param_type =".pred ";
+      fprintf(ptxdebug,"     .param %s %s,\n",param_type, g_last_symbol->name().c_str());
+      argument_counter++;
    }
 
 }
@@ -680,6 +783,8 @@ void add_scalar_type_spec( int type_spec )
                     "only cvt, set, slct, tex and dp4a can have more than one type specifier.");
    }
    g_scalar_type_spec = type_spec;
+   identifier_counter++;
+   counter=0;
 }
 
 void add_label( const char *identifier ) 
@@ -977,6 +1082,7 @@ void add_address_operand( const char *identifier, int offset )
       parse_error( msg.c_str() );
    }
    g_operands.push_back( operand_info(s,offset) );
+   PTX_PARSE_DPRINTF("%s and the offset is : %d" , identifier, offset);
 }
 
 void add_address_operand2( int offset )
