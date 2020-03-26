@@ -889,7 +889,7 @@ void shader_core_ctx::fetch()
                         assert( status == RESERVATION_FAIL );
                         delete mf;
                     }
-                    break;
+                    //break;
                 }
             }
         }
@@ -1067,7 +1067,18 @@ void scheduler_unit::cycle()
         exec_unit_type_t previous_issued_inst_exec_type = exec_unit_type_t::NONE;
         unsigned max_issue = m_shader->m_config->gpgpu_max_insn_issue_per_warp;
         bool diff_exec_units = m_shader->m_config->gpgpu_dual_issue_diff_exec_units;  //In tis mode, we only allow dual issue to diff execution units (as in Maxwell and Pascal)
-
+		
+		if(warp(warp_id).ibuffer_empty())
+			SCHED_DPRINTF( "Warp (warp_id %u, dynamic_warp_id %u) fails as ibuffer_empty\n",
+                       (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id() );
+					   
+		if(warp(warp_id).waiting())		
+			SCHED_DPRINTF( "Warp (warp_id %u, dynamic_warp_id %u) fails as waiting for barrier\n",
+                       (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id() );
+					   
+		if((*iter)->get_warp_id() ==2 )			   
+			printf(" Hello! I am here! \n ");			   
+					   
         while( !warp(warp_id).waiting() && !warp(warp_id).ibuffer_empty() && (checked < max_issue) && (checked <= issued) && (issued < max_issue) ) {
             const warp_inst_t *pI = warp(warp_id).ibuffer_next_inst();
             //Jin: handle cdp latency;
@@ -1120,13 +1131,13 @@ void scheduler_unit::cycle()
                             }
                         } else {
 
-                            bool sp_pipe_avail = m_sp_out->has_free(m_shader->m_config->sub_core_model, m_id);
-                            bool sfu_pipe_avail = m_sfu_out->has_free(m_shader->m_config->sub_core_model, m_id);
-                            bool tensor_core_pipe_avail = m_tensor_core_out->has_free(m_shader->m_config->sub_core_model, m_id);
-                            bool dp_pipe_avail = m_dp_out->has_free(m_shader->m_config->sub_core_model, m_id);
-                            bool int_pipe_avail = m_int_out->has_free(m_shader->m_config->sub_core_model, m_id);
+                            bool sp_pipe_avail = (m_shader->m_config->gpgpu_num_sp_units > 0) && m_sp_out->has_free(m_shader->m_config->sub_core_model, m_id);
+                            bool sfu_pipe_avail = (m_shader->m_config->gpgpu_num_sfu_units > 0) && m_sfu_out->has_free(m_shader->m_config->sub_core_model, m_id);
+                            bool tensor_core_pipe_avail = (m_shader->m_config->gpgpu_num_tensor_core_units > 0) && m_tensor_core_out->has_free(m_shader->m_config->sub_core_model, m_id);
+                            bool dp_pipe_avail = (m_shader->m_config->gpgpu_num_dp_units > 0) && m_dp_out->has_free(m_shader->m_config->sub_core_model, m_id);
+                            bool int_pipe_avail = (m_shader->m_config->gpgpu_num_int_units > 0) && m_int_out->has_free(m_shader->m_config->sub_core_model, m_id);
 
-                            //This code need to be refactored
+                            //This code needs to be refactored
                             if(pI->op != TENSOR_CORE_OP && pI->op != SFU_OP && pI->op != DP_OP) {
                                 
 									bool execute_on_SP = false;
@@ -1196,7 +1207,7 @@ void scheduler_unit::cycle()
                                     previous_issued_inst_exec_type = exec_unit_type_t::SFU;
                                 }
                             }                         
-                             else if ( (pI->op == TENSOR_CORE_OP) && !(diff_exec_units && previous_issued_inst_exec_type == exec_unit_type_t::SP) ) {
+                             else if ( (pI->op == TENSOR_CORE_OP) && !(diff_exec_units && previous_issued_inst_exec_type == exec_unit_type_t::TENSOR) ) {
                                 if( tensor_core_pipe_avail ) {
                                     m_shader->issue_warp(*m_tensor_core_out,pI,active_mask,warp_id,m_id);
                                     issued++;
