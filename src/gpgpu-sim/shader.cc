@@ -106,7 +106,7 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
     }
     if(m_config->sub_core_model) {
     	//in subcore model, each scheduler should has its own issue register, so num scheduler = reg width
-    	//assert(m_config->gpgpu_num_sched_per_core == m_pipeline_reg[ID_OC_SP].get_size() );
+    	assert(m_config->gpgpu_num_sched_per_core == m_pipeline_reg[ID_OC_SP].get_size() );
     	assert(m_config->gpgpu_num_sched_per_core == m_pipeline_reg[ID_OC_SFU].get_size() );
     	assert(m_config->gpgpu_num_sched_per_core == m_pipeline_reg[ID_OC_MEM].get_size() );
     	if(m_config->gpgpu_tensor_core_avail)
@@ -889,7 +889,7 @@ void shader_core_ctx::fetch()
                         assert( status == RESERVATION_FAIL );
                         delete mf;
                     }
-                    //break;
+                    break;
                 }
             }
         }
@@ -1074,10 +1074,7 @@ void scheduler_unit::cycle()
 					   
 		if(warp(warp_id).waiting())		
 			SCHED_DPRINTF( "Warp (warp_id %u, dynamic_warp_id %u) fails as waiting for barrier\n",
-                       (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id() );
-					   
-		if((*iter)->get_warp_id() ==2 )			   
-			printf(" Hello! I am here! \n ");			   
+                       (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id() );					  		   
 					   
         while( !warp(warp_id).waiting() && !warp(warp_id).ibuffer_empty() && (checked < max_issue) && (checked <= issued) && (issued < max_issue) ) {
             const warp_inst_t *pI = warp(warp_id).ibuffer_next_inst();
@@ -3178,8 +3175,11 @@ void shader_core_ctx::cycle()
     execute();
     read_operands();
     issue();
+	for(int i=0; i<8; ++i) {
     decode();
     fetch();
+	printf("Hello! \n");
+	}
 }
 
 // Flushes all content of the cache to memory
