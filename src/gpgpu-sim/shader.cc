@@ -3175,10 +3175,9 @@ void shader_core_ctx::cycle()
     execute();
     read_operands();
     issue();
-	for(int i=0; i<8; ++i) {
-    decode();
-    fetch();
-	printf("Hello! \n");
+	for(int i=0; i< m_config->inst_fetch_throughput; ++i) {
+		decode();
+		fetch();
 	}
 }
 
@@ -3235,6 +3234,7 @@ std::list<opndcoll_rfu_t::op_t> opndcoll_rfu_t::arbiter_t::allocate_reads()
    ///// wavefront allocator from booksim... --->
    
    // Loop through diagonals of request matrix
+   printf("####\n");
 
    for ( int p = 0; p < _square; ++p ) {
       output = ( _pri + p ) % _square;
@@ -3250,6 +3250,7 @@ std::list<opndcoll_rfu_t::op_t> opndcoll_rfu_t::arbiter_t::allocate_reads()
             // Grant!
             _inmatch[input] = output;
             _outmatch[output] = input;
+			printf("Register File: granting banks %d to OC % \n", input, output);
          }
 
          output = ( output + 1 ) % _square;
