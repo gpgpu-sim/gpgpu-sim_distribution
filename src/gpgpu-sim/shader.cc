@@ -3250,7 +3250,7 @@ std::list<opndcoll_rfu_t::op_t> opndcoll_rfu_t::arbiter_t::allocate_reads()
             // Grant!
             _inmatch[input] = output;
             _outmatch[output] = input;
-			printf("Register File: granting banks %d to OC % \n", input, output);
+			printf("Register File: granting bank %d to OC %d, schedid %d, warpid %d, Regid %d\n", input, output, (m_queue[output].front()).get_sid(), (m_queue[output].front()).get_wid(), (m_queue[output].front()).get_reg());
          }
 
          output = ( output + 1 ) % _square;
