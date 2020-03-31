@@ -3237,7 +3237,7 @@ std::list<opndcoll_rfu_t::op_t> opndcoll_rfu_t::arbiter_t::allocate_reads()
    printf("####\n");
 
    for ( int p = 0; p < _square; ++p ) {
-      output = ( _pri + p ) % _square;
+      output = ( _pri + p ) % _outputs;
 
       // Step through the current diagonal
       for ( input = 0; input < _inputs; ++input ) {
@@ -3250,15 +3250,15 @@ std::list<opndcoll_rfu_t::op_t> opndcoll_rfu_t::arbiter_t::allocate_reads()
             // Grant!
             _inmatch[input] = output;
             _outmatch[output] = input;
-			printf("Register File: granting bank %d to OC %d, schedid %d, warpid %d, Regid %d\n", input, output, (m_queue[output].front()).get_sid(), (m_queue[output].front()).get_wid(), (m_queue[output].front()).get_reg());
+			printf("Register File: granting bank %d to OC %d, schedid %d, warpid %d, Regid %d\n", input, output, (m_queue[input].front()).get_sid(), (m_queue[input].front()).get_wid(), (m_queue[input].front()).get_reg());
          }
 
-         output = ( output + 1 ) % _square;
+         output = ( output + 1 ) % _outputs;
       }
    }
 
    // Round-robin the priority diagonal
-   _pri = ( _pri + 1 ) % _square;
+   _pri = ( _pri + 1 ) % _outputs;
 
    /// <--- end code from booksim
 
