@@ -470,7 +470,9 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-perfect_inst_const_cache", OPT_BOOL, &perfect_inst_const_cache,
                 "perfect inst and const cache mode, so all inst and const hits in the cache(default = disabled)",
                 "0");
-
+    option_parser_register(opp, "-inst_fetch_throughput", OPT_INT32, &inst_fetch_throughput,
+                "the number of fetched intruction per warp each cycle",
+                "1");
 }
 
 void gpgpu_sim_config::reg_options(option_parser_t opp)
