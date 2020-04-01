@@ -453,7 +453,7 @@ void shader_core_config::reg_options(class OptionParser * opp)
                             "1");
     option_parser_register(opp, "-gpgpu_num_tensor_core_units", OPT_INT32, &gpgpu_num_tensor_core_units,
                             "Number of tensor_core units (default=1)",
-                            "1");
+                            "0");
     option_parser_register(opp, "-gpgpu_num_mem_units", OPT_INT32, &gpgpu_num_mem_units,
                             "Number if ldst units (default=1) WARNING: not hooked up to anything",
                              "1");
