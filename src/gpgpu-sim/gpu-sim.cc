@@ -473,6 +473,9 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-inst_fetch_throughput", OPT_INT32, &inst_fetch_throughput,
                 "the number of fetched intruction per warp each cycle",
                 "1");
+	option_parser_register(opp, "-gpgpu_reg_file_port_throughput", OPT_INT32, &reg_file_port_throughput,
+                "the number ports of the register file",
+                "1");
 }
 
 void gpgpu_sim_config::reg_options(option_parser_t opp)

@@ -384,12 +384,12 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
             m_fu.push_back(new dp_unit( &m_pipeline_reg[EX_WB], m_config, this ));
             m_dispatch_port.push_back(ID_OC_DP);
             m_issue_port.push_back(OC_EX_DP);
-        }
+    }
     for (int k = 0; k < m_config->gpgpu_num_int_units; k++) {
             m_fu.push_back(new int_unit( &m_pipeline_reg[EX_WB], m_config, this ));
             m_dispatch_port.push_back(ID_OC_INT);
             m_issue_port.push_back(OC_EX_INT);
-        }
+    }
 
     for (int k = 0; k < m_config->gpgpu_num_sfu_units; k++) {
         m_fu.push_back(new sfu( &m_pipeline_reg[EX_WB], m_config, this ));
@@ -2413,7 +2413,8 @@ void ldst_unit::issue( register_set &reg_set )
 void ldst_unit::cycle()
 {
    writeback();
-   m_operand_collector->step();
+   for(int i=0; i< m_config->reg_file_port_throughput; ++i)
+		m_operand_collector->step();
    for( unsigned stage=0; (stage+1)<m_pipeline_depth; stage++ ) 
        if( m_pipeline_reg[stage]->empty() && !m_pipeline_reg[stage+1]->empty() )
             move_warp(m_pipeline_reg[stage], m_pipeline_reg[stage+1]);
@@ -3234,7 +3235,7 @@ std::list<opndcoll_rfu_t::op_t> opndcoll_rfu_t::arbiter_t::allocate_reads()
    ///// wavefront allocator from booksim... --->
    
    // Loop through diagonals of request matrix
-   printf("####\n");
+   // printf("####\n");
 
    for ( int p = 0; p < _square; ++p ) {
       output = ( _pri + p ) % _outputs;
@@ -3245,12 +3246,12 @@ std::list<opndcoll_rfu_t::op_t> opndcoll_rfu_t::arbiter_t::allocate_reads()
           assert( output < _outputs );
          if ( ( output < _outputs ) && 
               ( _inmatch[input] == -1 ) && 
-              ( _outmatch[output] == -1 ) &&
+              //( _outmatch[output] == -1 ) &&   //allow OC to read multiple reg banks at the same cycle
               ( _request[input][output]/*.label != -1*/ ) ) {
             // Grant!
             _inmatch[input] = output;
             _outmatch[output] = input;
-			printf("Register File: granting bank %d to OC %d, schedid %d, warpid %d, Regid %d\n", input, output, (m_queue[input].front()).get_sid(), (m_queue[input].front()).get_wid(), (m_queue[input].front()).get_reg());
+			// printf("Register File: granting bank %d to OC %d, schedid %d, warpid %d, Regid %d\n", input, output, (m_queue[input].front()).get_sid(), (m_queue[input].front()).get_wid(), (m_queue[input].front()).get_reg());
          }
 
          output = ( output + 1 ) % _outputs;
