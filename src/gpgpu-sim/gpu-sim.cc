@@ -320,9 +320,6 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-adaptive_volta_cache_config", OPT_BOOL, &adaptive_volta_cache_config,
                  "adaptive_volta_cache_config",
                  "0");
-    option_parser_register(opp, "-gpgpu_shmem_size", OPT_UINT32, &gpgpu_shmem_sizeDefault,
-                 "Size of shared memory per shader core (default 16kB)",
-                 "16384");
     option_parser_register(opp, "-gpgpu_shmem_size_PrefL1", OPT_UINT32, &gpgpu_shmem_sizePrefL1,
                  "Size of shared memory per shader core (default 16kB)",
                  "16384");
@@ -778,7 +775,7 @@ gpgpu_sim::gpgpu_sim( const gpgpu_sim_config &config )
 
 int gpgpu_sim::shared_mem_size() const
 {
-   return m_shader_config->gpgpu_shmem_size;
+   return m_shader_config->gpgpu_shmem_size * m_shader_config->n_simt_cores_per_cluster;
 }
 
 int gpgpu_sim::shared_mem_per_block() const
