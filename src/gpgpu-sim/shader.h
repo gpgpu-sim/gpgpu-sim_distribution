@@ -1399,7 +1399,7 @@ struct shader_core_config : public core_config
 	}
 
 	delete[] tokd;
-	
+	gpgpu_shmem_sizeDefault = gpgpu_shmem_size;
         if (n_thread_per_shader > MAX_THREAD_PER_SM) {
            printf("GPGPU-Sim uArch: Error ** increase MAX_THREAD_PER_SM in abstract_hardware_model.h from %u to %u\n", 
                   MAX_THREAD_PER_SM, n_thread_per_shader);

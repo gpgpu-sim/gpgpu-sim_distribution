@@ -1449,7 +1449,7 @@ __host__ cudaError_t CUDARTAPI cudaConfigureCall(dim3 gridDim, dim3 blockDim, si
 }
 
 
-#if CUDART_VERSION >= 10000
+#if CUDART_VERSION >= 9020
 /*
 * CUDA 10 requires a new CUDA kernel launch sequence
 * A call to __cudaPushCallConfiguration() preceeds any call to cudaLaunchKernel()
@@ -1596,7 +1596,7 @@ __host__ cudaError_t CUDARTAPI cudaLaunchKernel ( const char* hostFun, dim3 grid
         CUctx_st *context = GPGPUSim_Context();
         function_info *entry = context->get_kernel(hostFun);
 
-#if CUDART_VERSION >= 10000
+#if CUDART_VERSION >= 9020
   assert(g_cudaPushArgsBuffer::g_is_initialized == false);
   cudaConfigureCall(g_cudaPushArgsBuffer::g_gridDim, g_cudaPushArgsBuffer::g_blockDim, g_cudaPushArgsBuffer::g_sharedMem, g_cudaPushArgsBuffer::g_stream);
 #else
