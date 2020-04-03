@@ -1,4 +1,4 @@
-//21*1 fly with 32 flits per packet under gpgpusim injection mode
+//52*1 fly with 32 flits per packet under gpgpusim injection mode
 use_map = 0;
 flit_size = 40; 
 
