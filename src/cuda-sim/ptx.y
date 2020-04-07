@@ -298,6 +298,7 @@ ptr_align_spec: ALIGN_DIRECTIVE INT_OPERAND
 statement_block: LEFT_BRACE statement_list RIGHT_BRACE 
 
 statement_list: directive_statement { recognizer->add_directive(); }
+    | statement_list prototype_block {printf("Prototype statement detected. WARNING: this is not supported yet on GPGPU-SIM\n"); }
 	| instruction_statement { recognizer->add_instruction(); }
 	| statement_list directive_statement { recognizer->add_directive(); }
 	| statement_list instruction_statement { recognizer->add_instruction(); }
@@ -413,6 +414,23 @@ initializer_list: LEFT_BRACE literal_list RIGHT_BRACE { recognizer->add_array_in
 
 literal_list: literal_operand
 	| literal_list COMMA literal_operand;
+
+// TODO: This is currently hardcoded to handle and ignore one specific case
+// that all prototype statements follow in the PTX from Pytorch. As a
+// workaround, this parses and ignores both the prototype declaration 
+// and calling of the prototype (which conveniently comes right after the 
+// declaration for all cases.) This should be changed to handle both 
+// declaring the prototype, and actually calling it.
+prototype_block: prototype_decl prototype_call
+
+prototype_decl: IDENTIFIER COLON CALLPROTOTYPE_DIRECTIVE LEFT_PAREN prototype_param RIGHT_PAREN IDENTIFIER LEFT_PAREN prototype_param RIGHT_PAREN SEMI_COLON 
+	      
+prototype_call: OPCODE LEFT_PAREN IDENTIFIER RIGHT_PAREN COMMA operand COMMA LEFT_PAREN IDENTIFIER RIGHT_PAREN COMMA IDENTIFIER SEMI_COLON
+	      | OPCODE IDENTIFIER COMMA LEFT_PAREN IDENTIFIER RIGHT_PAREN COMMA IDENTIFIER SEMI_COLON
+
+prototype_param: /* empty */
+	       | PARAM_DIRECTIVE B64_TYPE IDENTIFIER
+	       | PARAM_DIRECTIVE B32_TYPE IDENTIFIER
 
 instruction_statement:  instruction SEMI_COLON
 	| IDENTIFIER COLON { recognizer->add_label($1); }
