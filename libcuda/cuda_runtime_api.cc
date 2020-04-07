@@ -3772,6 +3772,18 @@ cudaError_t CUDARTAPI cudaFuncGetAttributes(struct cudaFuncAttributes *attr,
   return cudaFuncGetAttributesInternal(attr, hostFun);
 }
 
+cudaError_t CUDARTAPI cudaEventCreateWithFlags(cudaEvent_t *event, int flags)
+{
+        CUevent_st *e = new CUevent_st(flags==cudaEventBlockingSync);
+        g_timer_events[e->get_uid()] = e;
+#if CUDART_VERSION >= 3000
+       *event = e;
+#else
+       *event = e->get_uid();
+#endif
+       return g_last_cudaError = cudaSuccess;
+}
+
 cudaError_t CUDARTAPI cudaDriverGetVersion(int *driverVersion) {
   if (g_debug_execution >= 3) {
     announce_call(__my_func__);
