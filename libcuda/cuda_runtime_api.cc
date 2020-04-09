@@ -2200,6 +2200,7 @@ __host__ cudaError_t CUDARTAPI cudaEventRecordInternal(
   if (!e) return g_last_cudaError = cudaErrorUnknown;
   struct CUstream_st *s = (struct CUstream_st *)stream;
   stream_operation op(e, s);
+  e->issue();
   ctx->the_gpgpusim->g_stream_manager->push(op);
   return g_last_cudaError = cudaSuccess;
 }
@@ -2220,9 +2221,11 @@ __host__ cudaError_t CUDARTAPI cudaStreamWaitEventInternal(
   // https://www.cs.cmu.edu/afs/cs/academic/class/15668-s11/www/cuda-doc/html/group__CUDART__STREAM_gfe68d207dc965685d92d3f03d77b0876.html
   CUevent_st *e = get_event(event);
   if (!e) {
-    printf(
-        "GPGPU-Sim API: Warning: cudaEventRecord has not been called on event "
-        "before calling cudaStreamWaitEvent.\nNothing to be done.\n");
+    printf("GPGPU-Sim API: Error at cudaStreamWaitEvent. Event is not created .\n");
+    return g_last_cudaError = cudaErrorInvalidResourceHandle;
+  }
+  else if(e->num_issued() == 0) {
+    printf("GPGPU-Sim API: Warning: cudaEventRecord has not been called on event before calling cudaStreamWaitEvent.\nNothin    g to be done.\n");
     return g_last_cudaError = cudaSuccess;
   }
   if (!stream) {
