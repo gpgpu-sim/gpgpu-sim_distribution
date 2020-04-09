@@ -7,6 +7,7 @@ pipeline {
         disableConcurrentBuilds()
     }
     stages {
+        /*
         stage('formatting-check') {
           steps {
             sh '''
@@ -19,6 +20,7 @@ pipeline {
             ''' 
           }
         }
+        */
         stage('simulator-build') {
             steps {
                 parallel "4.2": {
