@@ -107,7 +107,7 @@ pipeline {
     }
     post {
         success {
-            sh 'git remote rm upstream'
+//            sh 'git remote rm upstream'
             emailext body:'''${SCRIPT, template="groovy-html.success.template"}''',
                 recipientProviders: [[$class: 'CulpritsRecipientProvider'],
                     [$class: 'RequesterRecipientProvider']],
@@ -116,7 +116,7 @@ pipeline {
                 to: 'tgrogers@purdue.edu'
         }
         failure {
-            sh 'git remote rm upstream'
+//            sh 'git remote rm upstream'
             emailext body: "See ${BUILD_URL}",
                 recipientProviders: [[$class: 'CulpritsRecipientProvider'],
                     [$class: 'RequesterRecipientProvider']],
