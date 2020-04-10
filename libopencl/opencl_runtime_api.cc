@@ -102,6 +102,9 @@
 #include <map>
 #include <string>
 
+/* Defined in src/cuda-sim/ptx_loader.h. Unused for OpenCL for now. */
+int no_of_ptx=0;
+
 static void setErrCode(cl_int *errcode_ret, cl_int err_code) {
    if ( errcode_ret ) {
       *errcode_ret = err_code;
@@ -167,6 +170,21 @@ private:
    void *m_host_ptr;
    cl_mem_flags m_flags; 
    size_t m_size;
+};
+
+struct _cl_event {
+private:
+   cl_ulong start;
+   cl_ulong cmd_end;
+   size_t refcount;
+public:
+   _cl_event() : start(0), cmd_end(0), refcount(1) {}
+   cl_ulong getCmdEnd(void);
+   void setCmdEnd(cl_ulong);
+   cl_ulong getStart(void);
+   void setStart(cl_ulong);
+   void retain(void);
+   bool release(void);
 };
 
 struct pgm_info {
@@ -353,6 +371,36 @@ _cl_mem::_cl_mem(
       if( host_ptr )
          gpu->the_device()->memcpy_to_gpu( m_device_ptr, host_ptr, size );
    }
+}
+
+cl_ulong _cl_event::getCmdEnd( void )
+{
+   return cmd_end;
+}
+
+void _cl_event::setCmdEnd( cl_ulong e )
+{
+   cmd_end = e;
+}
+
+cl_ulong _cl_event::getStart( void )
+{
+   return start;
+}
+
+void _cl_event::setStart( cl_ulong s )
+{
+   start = s;
+}
+
+void _cl_event::retain( void )
+{
+   refcount++;
+}
+
+bool _cl_event::release( void )
+{
+   return ((--refcount) <= 0);
 }
 
 _cl_context::_cl_context( struct _cl_device_id *gpu ) 
@@ -732,15 +780,6 @@ clCreateProgramWithBinary(cl_context                     /* context */,
 	return cl_program();
 }
 
-extern CL_API_ENTRY cl_int CL_API_CALL
-clGetEventProfilingInfo(cl_event            /* event */,
-                        cl_profiling_info   /* param_name */,
-                        size_t              /* param_value_size */,
-                        void *              /* param_value */,
-                        size_t *            /* param_value_size_ret */) CL_API_SUFFIX__VERSION_1_0{
-	gpgpusim_opencl_warning(__my_func__,__LINE__, "GPGPUsim - OpenCLFunction is not implemented. Returning CL_SUCCESS");
-	return CL_SUCCESS;
-}
 /*******************************************************************************************************/
 
 
@@ -953,7 +992,13 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
    if ( err_val != CL_SUCCESS ) 
       return err_val;
 
-   gpgpu_t *gpu = command_queue->get_device()->the_device();
+   gpgpu_sim *gpu = command_queue->get_device()->the_device();
+
+   if ( event ) {
+      *event = new _cl_event();
+      event[0]->setStart((gpu_tot_sim_cycle * 1000000) / gpu->shader_clock());
+   }
+
    if (kernel->get_implementation()->get_ptx_version().ver() <3.0){
 	   gpgpu_ptx_sim_memcpy_symbol( "%_global_size", _global_size, 3 * sizeof(int), 0, 1, gpu );
 	   gpgpu_ptx_sim_memcpy_symbol( "%_work_dim", &work_dim, 1 * sizeof(int), 0, 1, gpu  );
@@ -977,6 +1022,10 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
       gpgpu_opencl_ptx_sim_main_func( grid );
    else
       gpgpu_opencl_ptx_sim_main_perf( grid );
+
+   if ( event ) {
+      event[0]->setCmdEnd((gpu_tot_sim_cycle * 1000000) / gpu->shader_clock());
+   }
    return CL_SUCCESS;
 }
 
@@ -1166,11 +1215,15 @@ clGetDeviceInfo(cl_device_id    device,
    case CL_DEVICE_NAME: CL_STRING_CASE( "GPGPU-Sim" ); break;
    case CL_DEVICE_GLOBAL_MEM_SIZE: CL_ULONG_CASE( 1024*1024*1024 ); break;
    case CL_DEVICE_MAX_COMPUTE_UNITS: CL_UINT_CASE( device->the_device()->get_config().num_shader() ); break;
-   case CL_DEVICE_MAX_CLOCK_FREQUENCY: CL_UINT_CASE( device->the_device()->shader_clock() ); break;
+   case CL_DEVICE_MAX_CLOCK_FREQUENCY: CL_UINT_CASE( device->the_device()->shader_clock() / 1000 ); break;
+   case CL_DEVICE_PLATFORM: CL_STRING_CASE("GPGPU-Sim OpenCL platform"); break;
    case CL_DEVICE_VENDOR:CL_STRING_CASE("GPGPU-Sim.org"); break;
+   case CL_DEVICE_VENDOR_ID:CL_UINT_CASE( 0x1337 ); break;
    case CL_DEVICE_VERSION: CL_STRING_CASE("OpenCL 1.0"); break;
+   case CL_DEVICE_OPENCL_C_VERSION: CL_STRING_CASE("OpenCL C 1.0"); break;
    case CL_DRIVER_VERSION: CL_STRING_CASE("1.0"); break;
    case CL_DEVICE_TYPE: CL_CASE(cl_device_type, CL_DEVICE_TYPE_GPU); break;
+   case CL_DEVICE_PROFILE: CL_STRING_CASE("FULL_PROFILE"); break;
    case CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS: CL_INT_CASE( 3 ); break;
    case CL_DEVICE_MAX_WORK_ITEM_SIZES: 
       if( param_value && param_value_size < 3*sizeof(size_t) ) return CL_INVALID_VALUE; \
@@ -1180,10 +1233,11 @@ clGetDeviceInfo(cl_device_id    device,
          ((size_t*)param_value)[1] = n_thread_per_shader;
          ((size_t*)param_value)[2] = n_thread_per_shader;
       }
-      if( param_value_size_ret ) *param_value_size_ret = 3*sizeof(cl_uint);
+      if( param_value_size_ret ) *param_value_size_ret = 3*sizeof(size_t);
       break;
    case CL_DEVICE_MAX_WORK_GROUP_SIZE: CL_INT_CASE( device->the_device()->threads_per_core() ); break;
    case CL_DEVICE_ADDRESS_BITS: CL_INT_CASE( 32 ); break;
+   case CL_DEVICE_ENDIAN_LITTLE: CL_BOOL_CASE( CL_TRUE ); break;
    case CL_DEVICE_AVAILABLE: CL_BOOL_CASE( CL_TRUE ); break;
    case CL_DEVICE_COMPILER_AVAILABLE: CL_BOOL_CASE( CL_TRUE ); break;
    case CL_DEVICE_IMAGE_SUPPORT: CL_INT_CASE( CL_TRUE ); break;
@@ -1205,16 +1259,17 @@ clGetDeviceInfo(cl_device_id    device,
       if( param_value ) buf[0]=0;
       if( param_value_size_ret ) *param_value_size_ret = 1; 
       break;
-   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_CHAR: CL_INT_CASE(1); break;
-   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_SHORT: CL_INT_CASE(1); break;
-   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_INT: CL_INT_CASE(1); break;
-   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_LONG: CL_INT_CASE(1); break;
-   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_FLOAT: CL_INT_CASE(1); break;
-   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_DOUBLE: CL_INT_CASE(0); break;
+   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_CHAR: CL_UINT_CASE(1); break;
+   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_SHORT: CL_UINT_CASE(1); break;
+   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_INT: CL_UINT_CASE(1); break;
+   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_LONG: CL_UINT_CASE(1); break;
+   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_FLOAT: CL_UINT_CASE(1); break;
+   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_DOUBLE: CL_UINT_CASE(0); break;
+   case CL_DEVICE_PREFERRED_VECTOR_WIDTH_HALF: CL_UINT_CASE(1); break;
    case CL_DEVICE_SINGLE_FP_CONFIG: CL_INT_CASE(0); break;
    case CL_DEVICE_MEM_BASE_ADDR_ALIGN: CL_INT_CASE(256*8); break;
    default:
-      opencl_not_implemented(__my_func__,__LINE__);
+      return CL_INVALID_VALUE;
    }
    return CL_SUCCESS;
 }
@@ -1222,6 +1277,61 @@ clGetDeviceInfo(cl_device_id    device,
 extern CL_API_ENTRY cl_int CL_API_CALL
 clFinish(cl_command_queue /* command_queue */) CL_API_SUFFIX__VERSION_1_0
 {
+   return CL_SUCCESS;
+}
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clRetainMemObject(cl_mem memobj) CL_API_SUFFIX__VERSION_1_0
+{
+   return CL_SUCCESS;
+}
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clRetainEvent(cl_event event) CL_API_SUFFIX__VERSION_1_0
+{
+   if ( !event )
+      return CL_INVALID_EVENT;
+
+   event->retain();
+   return CL_SUCCESS;
+}
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clRetainKernel(cl_kernel kernel) CL_API_SUFFIX__VERSION_1_0
+{
+   return CL_SUCCESS;
+}
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clRetainDevice(cl_device_id device) CL_API_SUFFIX__VERSION_1_0
+{
+   return CL_SUCCESS;
+}
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clGetEventProfilingInfo(cl_event            event,
+                        cl_profiling_info   param_name,
+                        size_t              param_value_size,
+                        void *              param_value,
+                        size_t *            param_value_size_ret) CL_API_SUFFIX__VERSION_1_0{
+   if ( !event )
+      return CL_INVALID_EVENT;
+
+   switch (param_name) {
+   case CL_PROFILING_COMMAND_QUEUED:
+   case CL_PROFILING_COMMAND_SUBMIT:
+   case CL_PROFILING_COMMAND_START:
+      CL_ULONG_CASE( event->getStart() );
+      break;
+   case CL_PROFILING_COMMAND_END:
+      CL_ULONG_CASE( event->getCmdEnd() );
+      break;
+   default:
+      return CL_INVALID_VALUE;
+      break;
+   }
+
+   //gpgpusim_opencl_warning(__my_func__,__LINE__, "GPGPUsim - OpenCLFunction is not implemented. Returning CL_SUCCESS");
    return CL_SUCCESS;
 }
 
@@ -1374,8 +1484,14 @@ clWaitForEvents(cl_uint             /* num_events */,
 }
 
 extern CL_API_ENTRY cl_int CL_API_CALL
-clReleaseEvent(cl_event /* event */) CL_API_SUFFIX__VERSION_1_0
+clReleaseEvent(cl_event e) CL_API_SUFFIX__VERSION_1_0
 {
+   if ( e == nullptr )
+      return CL_INVALID_EVENT;
+
+   if ( e->release() )
+      delete e;
+
    return CL_SUCCESS;
 }
 
