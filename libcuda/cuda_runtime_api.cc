@@ -2221,11 +2221,14 @@ __host__ cudaError_t CUDARTAPI cudaStreamWaitEventInternal(
   // https://www.cs.cmu.edu/afs/cs/academic/class/15668-s11/www/cuda-doc/html/group__CUDART__STREAM_gfe68d207dc965685d92d3f03d77b0876.html
   CUevent_st *e = get_event(event);
   if (!e) {
-    printf("GPGPU-Sim API: Error at cudaStreamWaitEvent. Event is not created .\n");
+    printf(
+        "GPGPU-Sim API: Error at cudaStreamWaitEvent. Event is not created "
+        ".\n");
     return g_last_cudaError = cudaErrorInvalidResourceHandle;
-  }
-  else if(e->num_issued() == 0) {
-    printf("GPGPU-Sim API: Warning: cudaEventRecord has not been called on event before calling cudaStreamWaitEvent.\nNothin    g to be done.\n");
+  } else if (e->num_issued() == 0) {
+    printf(
+        "GPGPU-Sim API: Warning: cudaEventRecord has not been called on event "
+        "before calling cudaStreamWaitEvent.\nNothin    g to be done.\n");
     return g_last_cudaError = cudaSuccess;
   }
   if (!stream) {
@@ -3775,16 +3778,15 @@ cudaError_t CUDARTAPI cudaFuncGetAttributes(struct cudaFuncAttributes *attr,
   return cudaFuncGetAttributesInternal(attr, hostFun);
 }
 
-cudaError_t CUDARTAPI cudaEventCreateWithFlags(cudaEvent_t *event, int flags)
-{
-        CUevent_st *e = new CUevent_st(flags==cudaEventBlockingSync);
-        g_timer_events[e->get_uid()] = e;
+cudaError_t CUDARTAPI cudaEventCreateWithFlags(cudaEvent_t *event, int flags) {
+  CUevent_st *e = new CUevent_st(flags == cudaEventBlockingSync);
+  g_timer_events[e->get_uid()] = e;
 #if CUDART_VERSION >= 3000
-       *event = e;
+  *event = e;
 #else
-       *event = e->get_uid();
+  *event = e->get_uid();
 #endif
-       return g_last_cudaError = cudaSuccess;
+  return g_last_cudaError = cudaSuccess;
 }
 
 cudaError_t CUDARTAPI cudaDriverGetVersion(int *driverVersion) {
