@@ -3091,7 +3091,7 @@ unsigned int shader_core_config::max_cta( const kernel_info_t &k ) const
     		case VOLTA: {
     			//For Volta, we assign the remaining shared memory to L1 cache
     			//For more info about adaptive cache, see https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#shared-memory-7-x
-    			assert(gpgpu_shmem_size == 98304); //Volta has 96 KB shared
+    			//assert(gpgpu_shmem_size == 98304); //Volta has 96 KB shared
 
     			//To Do: make it flexible and not tuned to 9KB share memory
     			unsigned max_assoc = m_L1D_config.get_max_assoc();

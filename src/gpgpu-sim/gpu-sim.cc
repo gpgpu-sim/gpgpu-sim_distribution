@@ -1828,7 +1828,8 @@ void shader_core_ctx::dump_warp_state( FILE *fout ) const
 void gpgpu_sim::perf_memcpy_to_gpu( size_t dst_start_addr, size_t count )
 {
     if (m_memory_config->m_perf_sim_memcpy) {
-       assert (dst_start_addr % 32 == 0);
+		//if(!m_config.trace_driven_mode)    //in trace-driven mode, CUDA runtime can start nre data structure at any position
+		//	assert (dst_start_addr % 32 == 0);
 
        for ( unsigned counter = 0; counter < count; counter += 32 ) {
            const unsigned wr_addr = dst_start_addr + counter;
