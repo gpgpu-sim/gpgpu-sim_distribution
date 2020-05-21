@@ -44,6 +44,10 @@ Version 4.0.0 (development branch) versus 3.2.3
 Adding the Pascal and Volta config files that has been correlated against real hardware.
 See the correlation website here: 
 https://engineering.purdue.edu/tgrogers/group/correlator.html
+-General:
+1 - Applied a code formatting standard
+2 - Minimized number of global variables (to make the simulator parallelizable across multiple threads or multiple processes).
+All previous, independent global variables are now members of an object at some level.
 
 Version 3.2.3+edits (development branch) versus 3.2.3
 - Support for running regression tests using Travis

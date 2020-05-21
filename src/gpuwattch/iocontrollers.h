@@ -31,7 +31,6 @@
 #ifndef IOCONTROLLERS_H_
 #define IOCONTROLLERS_H_
 
-
 #endif /* IOCONTROLLERS_H_ */
 
 #include "XML_Parse.h"
@@ -43,44 +42,43 @@
 #include "basic_components.h"
 
 class NIUController : public Component {
-  public:
-	ParseXML *XML;
-	InputParameter interface_ip;
-    NIUParam  niup;
-    powerDef power_t;
-    uca_org_t local_result;
-    NIUController(ParseXML *XML_interface,InputParameter* interface_ip_);
-    void set_niu_param();
-    void computeEnergy(bool is_tdp=true);
-    void displayEnergy(uint32_t indent = 0,int plevel = 100, bool is_tdp=true);
-    ~NIUController(){};
+ public:
+  ParseXML *XML;
+  InputParameter interface_ip;
+  NIUParam niup;
+  powerDef power_t;
+  uca_org_t local_result;
+  NIUController(ParseXML *XML_interface, InputParameter *interface_ip_);
+  void set_niu_param();
+  void computeEnergy(bool is_tdp = true);
+  void displayEnergy(uint32_t indent = 0, int plevel = 100, bool is_tdp = true);
+  ~NIUController(){};
 };
 
 class PCIeController : public Component {
-  public:
-	ParseXML *XML;
-	InputParameter interface_ip;
-    PCIeParam  pciep;
-    powerDef power_t;
-    uca_org_t local_result;
-    PCIeController(ParseXML *XML_interface,InputParameter* interface_ip_);
-    void set_pcie_param();
-    void computeEnergy(bool is_tdp=true);
-    void displayEnergy(uint32_t indent = 0,int plevel = 100, bool is_tdp=true);
-    ~PCIeController(){};
+ public:
+  ParseXML *XML;
+  InputParameter interface_ip;
+  PCIeParam pciep;
+  powerDef power_t;
+  uca_org_t local_result;
+  PCIeController(ParseXML *XML_interface, InputParameter *interface_ip_);
+  void set_pcie_param();
+  void computeEnergy(bool is_tdp = true);
+  void displayEnergy(uint32_t indent = 0, int plevel = 100, bool is_tdp = true);
+  ~PCIeController(){};
 };
 
 class FlashController : public Component {
-  public:
-	ParseXML *XML;
-	InputParameter interface_ip;
-    MCParam  fcp;
-    powerDef power_t;
-    uca_org_t local_result;
-    FlashController(ParseXML *XML_interface,InputParameter* interface_ip_);
-    void set_fc_param();
-    void computeEnergy(bool is_tdp=true);
-    void displayEnergy(uint32_t indent = 0,int plevel = 100, bool is_tdp=true);
-    ~FlashController(){};
+ public:
+  ParseXML *XML;
+  InputParameter interface_ip;
+  MCParam fcp;
+  powerDef power_t;
+  uca_org_t local_result;
+  FlashController(ParseXML *XML_interface, InputParameter *interface_ip_);
+  void set_fc_param();
+  void computeEnergy(bool is_tdp = true);
+  void displayEnergy(uint32_t indent = 0, int plevel = 100, bool is_tdp = true);
+  ~FlashController(){};
 };
-

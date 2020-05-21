@@ -30,97 +30,87 @@
  ***************************************************************************/
 
 #include "basic_components.h"
-#include <iostream>
 #include <assert.h>
 #include <cmath>
+#include <iostream>
 
-double longer_channel_device_reduction(
-		enum Device_ty device_ty,
-		enum Core_type core_ty)
-{
+double longer_channel_device_reduction(enum Device_ty device_ty,
+                                       enum Core_type core_ty) {
+  double longer_channel_device_percentage_core;
+  double longer_channel_device_percentage_uncore;
+  double longer_channel_device_percentage_llc;
 
-	double longer_channel_device_percentage_core;
-	double longer_channel_device_percentage_uncore;
-	double longer_channel_device_percentage_llc;
+  double long_channel_device_reduction;
 
-	double long_channel_device_reduction;
+  longer_channel_device_percentage_llc = 1.0;
+  longer_channel_device_percentage_uncore = 0.82;
+  if (core_ty == OOO) {
+    longer_channel_device_percentage_core =
+        0.56;  // 0.54 Xeon Tulsa //0.58 Nehelam
+    // longer_channel_device_percentage_uncore = 0.76;//0.85 Nehelam
 
-	longer_channel_device_percentage_llc    = 1.0;
-	longer_channel_device_percentage_uncore = 0.82;
-	if (core_ty==OOO)
-	{
-		longer_channel_device_percentage_core   = 0.56;//0.54 Xeon Tulsa //0.58 Nehelam
-		//longer_channel_device_percentage_uncore = 0.76;//0.85 Nehelam
+  } else {
+    longer_channel_device_percentage_core = 0.8;  // 0.8;//Niagara
+    // longer_channel_device_percentage_uncore = 0.9;//Niagara
+  }
 
-	}
-	else
-	{
-		longer_channel_device_percentage_core   = 0.8;//0.8;//Niagara
-		//longer_channel_device_percentage_uncore = 0.9;//Niagara
-	}
+  if (device_ty == Core_device) {
+    long_channel_device_reduction =
+        (1 - longer_channel_device_percentage_core) +
+        longer_channel_device_percentage_core *
+            g_tp.peri_global.long_channel_leakage_reduction;
+  } else if (device_ty == Uncore_device) {
+    long_channel_device_reduction =
+        (1 - longer_channel_device_percentage_uncore) +
+        longer_channel_device_percentage_uncore *
+            g_tp.peri_global.long_channel_leakage_reduction;
+  } else if (device_ty == LLC_device) {
+    long_channel_device_reduction =
+        (1 - longer_channel_device_percentage_llc) +
+        longer_channel_device_percentage_llc *
+            g_tp.peri_global.long_channel_leakage_reduction;
+  } else {
+    cout << "unknown device category" << endl;
+    exit(0);
+  }
 
-	if (device_ty==Core_device)
-	{
-		long_channel_device_reduction = (1- longer_channel_device_percentage_core)
-		+ longer_channel_device_percentage_core * g_tp.peri_global.long_channel_leakage_reduction;
-	}
-	else if (device_ty==Uncore_device)
-	{
-		long_channel_device_reduction = (1- longer_channel_device_percentage_uncore)
-		+ longer_channel_device_percentage_uncore * g_tp.peri_global.long_channel_leakage_reduction;
-	}
-	else if (device_ty==LLC_device)
-	{
-		long_channel_device_reduction = (1- longer_channel_device_percentage_llc)
-		+ longer_channel_device_percentage_llc * g_tp.peri_global.long_channel_leakage_reduction;
-	}
-	else
-	{
-		cout<<"unknown device category"<<endl;
-		exit(0);
-	}
-
-	return long_channel_device_reduction;
+  return long_channel_device_reduction;
 }
 
-statsComponents operator+(const statsComponents & x, const statsComponents & y)
-{
-	statsComponents z;
+statsComponents operator+(const statsComponents& x, const statsComponents& y) {
+  statsComponents z;
 
-	z.access = x.access + y.access;
-	z.hit    = x.hit + y.hit;
-	z.miss   = x.miss  + y.miss;
+  z.access = x.access + y.access;
+  z.hit = x.hit + y.hit;
+  z.miss = x.miss + y.miss;
 
-	return z;
+  return z;
 }
 
-statsComponents operator*(const statsComponents & x, double const * const y)
-{
-	statsComponents z;
+statsComponents operator*(const statsComponents& x, double const* const y) {
+  statsComponents z;
 
-	z.access = x.access*y[0];
-	z.hit    = x.hit*y[1];
-	z.miss   = x.miss*y[2];
+  z.access = x.access * y[0];
+  z.hit = x.hit * y[1];
+  z.miss = x.miss * y[2];
 
-	return z;
+  return z;
 }
 
-statsDef operator+(const statsDef & x, const statsDef & y)
-{
-	statsDef z;
+statsDef operator+(const statsDef& x, const statsDef& y) {
+  statsDef z;
 
-	z.readAc   = x.readAc  + y.readAc;
-	z.writeAc  = x.writeAc + y.writeAc;
-	z.searchAc  = x.searchAc + y.searchAc;
-	return z;
+  z.readAc = x.readAc + y.readAc;
+  z.writeAc = x.writeAc + y.writeAc;
+  z.searchAc = x.searchAc + y.searchAc;
+  return z;
 }
 
-statsDef operator*(const statsDef & x, double const * const y)
-{
-	statsDef z;
+statsDef operator*(const statsDef& x, double const* const y) {
+  statsDef z;
 
-	z.readAc   = x.readAc*y;
-	z.writeAc  = x.writeAc*y;
-	z.searchAc  = x.searchAc*y;
-	return z;
+  z.readAc = x.readAc * y;
+  z.writeAc = x.writeAc * y;
+  z.searchAc = x.searchAc * y;
+  return z;
 }
