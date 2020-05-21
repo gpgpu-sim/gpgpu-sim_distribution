@@ -70,6 +70,7 @@ static const std::unordered_map<std::string,OpcodeChar> Pascal_OpcodeMap = {
 		{"ISCADD", OpcodeChar(OP_ISCADD, INTP_OP)},
 		{"ISCADD32I", OpcodeChar(OP_ISCADD32I, INTP_OP)},
 		{"ISETP", OpcodeChar(OP_ISETP, INTP_OP)},
+		{"ISET", OpcodeChar(OP_ISET, INTP_OP)},
 		{"LEA", OpcodeChar(OP_LEA, INTP_OP)},
 		{"LOP", OpcodeChar(OP_LOP, INTP_OP)},
 		{"LOP3", OpcodeChar(OP_LOP3, INTP_OP)},
@@ -85,6 +86,8 @@ static const std::unordered_map<std::string,OpcodeChar> Pascal_OpcodeMap = {
 		{"IMADSP", OpcodeChar(OP_IMADSP, INTP_OP)},
 		{"SHL", OpcodeChar(OP_SHL, INTP_OP)},
 		{"XMAD", OpcodeChar(OP_XMAD, INTP_OP)},
+		{"VMNMX", OpcodeChar(OP_VMNMX, INTP_OP)},
+
 
 		//Conversion Instructions
 		{"F2F", OpcodeChar(OP_F2F, ALU_OP)},
@@ -109,7 +112,8 @@ static const std::unordered_map<std::string,OpcodeChar> Pascal_OpcodeMap = {
 		{"R2P", OpcodeChar(OP_R2P, ALU_OP)},
 		{"CSET", OpcodeChar(OP_CSET, ALU_OP)},
 		{"CSETP", OpcodeChar(OP_CSETP, ALU_OP)},
-		{"PSETP", OpcodeChar(OP_PSETP, ALU_OP)},
+		{"PSET", OpcodeChar(OP_PSET, ALU_OP)},
+		
 
 		//Load/Store Instructions
 		{"LD", OpcodeChar(OP_LD, LOAD_OP)},
@@ -157,6 +161,8 @@ static const std::unordered_map<std::string,OpcodeChar> Pascal_OpcodeMap = {
 		{"CALL", OpcodeChar(OP_CALL, CALL_OPS)},
 		{"EXIT", OpcodeChar(OP_EXIT, EXIT_OPS)},
 		{"JMP", OpcodeChar(OP_JMP, BRANCH_OP)},
+		{"SSY", OpcodeChar(OP_SSY, BRANCH_OP)},
+		{"SYNC", OpcodeChar(OP_SYNC, BRANCH_OP)},
 		{"JMX", OpcodeChar(OP_JMX, BRANCH_OP)},
 		{"KILL", OpcodeChar(OP_KILL, BRANCH_OP)},
 		{"NANOSLEEP", OpcodeChar(OP_NANOSLEEP, BRANCH_OP)},
