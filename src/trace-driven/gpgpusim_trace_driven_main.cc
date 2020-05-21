@@ -54,7 +54,6 @@ int main ( int argc, const char **argv )
 	for(unsigned i=0; i<commandlist.size(); ++i) {
 
 		trace_kernel_info_t* kernel_info = NULL;
-		std::cout<<i<< " "<<commandlist[i]<<std::endl;
 		if(commandlist[i].substr(0,6) == "Memcpy") {
 			
 			size_t addre, Bcount;
