@@ -453,7 +453,7 @@ void shader_core_config::reg_options(class OptionParser * opp)
                             "1");
     option_parser_register(opp, "-gpgpu_num_tensor_core_units", OPT_INT32, &gpgpu_num_tensor_core_units,
                             "Number of tensor_core units (default=1)",
-                            "1");
+                            "0");
     option_parser_register(opp, "-gpgpu_num_mem_units", OPT_INT32, &gpgpu_num_mem_units,
                             "Number if ldst units (default=1) WARNING: not hooked up to anything",
                              "1");
@@ -470,7 +470,12 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-perfect_inst_const_cache", OPT_BOOL, &perfect_inst_const_cache,
                 "perfect inst and const cache mode, so all inst and const hits in the cache(default = disabled)",
                 "0");
-
+    option_parser_register(opp, "-inst_fetch_throughput", OPT_INT32, &inst_fetch_throughput,
+                "the number of fetched intruction per warp each cycle",
+                "1");
+	option_parser_register(opp, "-gpgpu_reg_file_port_throughput", OPT_INT32, &reg_file_port_throughput,
+                "the number ports of the register file",
+                "1");
 }
 
 void gpgpu_sim_config::reg_options(option_parser_t opp)
@@ -573,6 +578,9 @@ void gpgpu_sim_config::reg_options(option_parser_t opp)
     option_parser_register(opp, "-trace_driven_mode", OPT_BOOL,
                           &trace_driven_mode, "Turn on trace_driven_mode",
                           "0");
+	option_parser_register(opp, "-trace_skip_first_kernel", OPT_BOOL,
+                          &trace_skip_first_kernel, "skip first intiliztion kernel in trace mode",
+                          "0");					  
     option_parser_register(opp, "-trace", OPT_CSTR,
                           &g_traces_filename, "traces kernel file"
                           "traces kernel file directory",
@@ -1820,7 +1828,8 @@ void shader_core_ctx::dump_warp_state( FILE *fout ) const
 void gpgpu_sim::perf_memcpy_to_gpu( size_t dst_start_addr, size_t count )
 {
     if (m_memory_config->m_perf_sim_memcpy) {
-       assert (dst_start_addr % 32 == 0);
+		//if(!m_config.trace_driven_mode)    //in trace-driven mode, CUDA runtime can start nre data structure at any position
+		//	assert (dst_start_addr % 32 == 0);
 
        for ( unsigned counter = 0; counter < count; counter += 32 ) {
            const unsigned wr_addr = dst_start_addr + counter;

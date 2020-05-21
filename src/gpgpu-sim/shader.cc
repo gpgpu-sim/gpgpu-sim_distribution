@@ -384,12 +384,12 @@ shader_core_ctx::shader_core_ctx( class gpgpu_sim *gpu,
             m_fu.push_back(new dp_unit( &m_pipeline_reg[EX_WB], m_config, this ));
             m_dispatch_port.push_back(ID_OC_DP);
             m_issue_port.push_back(OC_EX_DP);
-        }
+    }
     for (int k = 0; k < m_config->gpgpu_num_int_units; k++) {
             m_fu.push_back(new int_unit( &m_pipeline_reg[EX_WB], m_config, this ));
             m_dispatch_port.push_back(ID_OC_INT);
             m_issue_port.push_back(OC_EX_INT);
-        }
+    }
 
     for (int k = 0; k < m_config->gpgpu_num_sfu_units; k++) {
         m_fu.push_back(new sfu( &m_pipeline_reg[EX_WB], m_config, this ));
@@ -1067,7 +1067,15 @@ void scheduler_unit::cycle()
         exec_unit_type_t previous_issued_inst_exec_type = exec_unit_type_t::NONE;
         unsigned max_issue = m_shader->m_config->gpgpu_max_insn_issue_per_warp;
         bool diff_exec_units = m_shader->m_config->gpgpu_dual_issue_diff_exec_units;  //In tis mode, we only allow dual issue to diff execution units (as in Maxwell and Pascal)
-
+		
+		if(warp(warp_id).ibuffer_empty())
+			SCHED_DPRINTF( "Warp (warp_id %u, dynamic_warp_id %u) fails as ibuffer_empty\n",
+                       (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id() );
+					   
+		if(warp(warp_id).waiting())		
+			SCHED_DPRINTF( "Warp (warp_id %u, dynamic_warp_id %u) fails as waiting for barrier\n",
+                       (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id() );					  		   
+					   
         while( !warp(warp_id).waiting() && !warp(warp_id).ibuffer_empty() && (checked < max_issue) && (checked <= issued) && (issued < max_issue) ) {
             const warp_inst_t *pI = warp(warp_id).ibuffer_next_inst();
             //Jin: handle cdp latency;
@@ -1120,13 +1128,13 @@ void scheduler_unit::cycle()
                             }
                         } else {
 
-                            bool sp_pipe_avail = m_sp_out->has_free(m_shader->m_config->sub_core_model, m_id);
-                            bool sfu_pipe_avail = m_sfu_out->has_free(m_shader->m_config->sub_core_model, m_id);
-                            bool tensor_core_pipe_avail = m_tensor_core_out->has_free(m_shader->m_config->sub_core_model, m_id);
-                            bool dp_pipe_avail = m_dp_out->has_free(m_shader->m_config->sub_core_model, m_id);
-                            bool int_pipe_avail = m_int_out->has_free(m_shader->m_config->sub_core_model, m_id);
+                            bool sp_pipe_avail = (m_shader->m_config->gpgpu_num_sp_units > 0) && m_sp_out->has_free(m_shader->m_config->sub_core_model, m_id);
+                            bool sfu_pipe_avail = (m_shader->m_config->gpgpu_num_sfu_units > 0) && m_sfu_out->has_free(m_shader->m_config->sub_core_model, m_id);
+                            bool tensor_core_pipe_avail = (m_shader->m_config->gpgpu_num_tensor_core_units > 0) && m_tensor_core_out->has_free(m_shader->m_config->sub_core_model, m_id);
+                            bool dp_pipe_avail = (m_shader->m_config->gpgpu_num_dp_units > 0) && m_dp_out->has_free(m_shader->m_config->sub_core_model, m_id);
+                            bool int_pipe_avail = (m_shader->m_config->gpgpu_num_int_units > 0) && m_int_out->has_free(m_shader->m_config->sub_core_model, m_id);
 
-                            //This code need to be refactored
+                            //This code needs to be refactored
                             if(pI->op != TENSOR_CORE_OP && pI->op != SFU_OP && pI->op != DP_OP) {
                                 
 									bool execute_on_SP = false;
@@ -1196,7 +1204,7 @@ void scheduler_unit::cycle()
                                     previous_issued_inst_exec_type = exec_unit_type_t::SFU;
                                 }
                             }                         
-                             else if ( (pI->op == TENSOR_CORE_OP) && !(diff_exec_units && previous_issued_inst_exec_type == exec_unit_type_t::SP) ) {
+                             else if ( (pI->op == TENSOR_CORE_OP) && !(diff_exec_units && previous_issued_inst_exec_type == exec_unit_type_t::TENSOR) ) {
                                 if( tensor_core_pipe_avail ) {
                                     m_shader->issue_warp(*m_tensor_core_out,pI,active_mask,warp_id,m_id);
                                     issued++;
@@ -2405,7 +2413,8 @@ void ldst_unit::issue( register_set &reg_set )
 void ldst_unit::cycle()
 {
    writeback();
-   m_operand_collector->step();
+   for(int i=0; i< m_config->reg_file_port_throughput; ++i)
+		m_operand_collector->step();
    for( unsigned stage=0; (stage+1)<m_pipeline_depth; stage++ ) 
        if( m_pipeline_reg[stage]->empty() && !m_pipeline_reg[stage+1]->empty() )
             move_warp(m_pipeline_reg[stage], m_pipeline_reg[stage+1]);
@@ -3082,7 +3091,7 @@ unsigned int shader_core_config::max_cta( const kernel_info_t &k ) const
     		case VOLTA: {
     			//For Volta, we assign the remaining shared memory to L1 cache
     			//For more info about adaptive cache, see https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#shared-memory-7-x
-    			assert(gpgpu_shmem_size == 98304); //Volta has 96 KB shared
+    			//assert(gpgpu_shmem_size == 98304); //Volta has 96 KB shared
 
     			//To Do: make it flexible and not tuned to 9KB share memory
     			unsigned max_assoc = m_L1D_config.get_max_assoc();
@@ -3167,8 +3176,10 @@ void shader_core_ctx::cycle()
     execute();
     read_operands();
     issue();
-    decode();
-    fetch();
+	for(int i=0; i< m_config->inst_fetch_throughput; ++i) {
+		decode();
+		fetch();
+	}
 }
 
 // Flushes all content of the cache to memory
@@ -3224,9 +3235,10 @@ std::list<opndcoll_rfu_t::op_t> opndcoll_rfu_t::arbiter_t::allocate_reads()
    ///// wavefront allocator from booksim... --->
    
    // Loop through diagonals of request matrix
+   // printf("####\n");
 
    for ( int p = 0; p < _square; ++p ) {
-      output = ( _pri + p ) % _square;
+      output = ( _pri + p ) % _outputs;
 
       // Step through the current diagonal
       for ( input = 0; input < _inputs; ++input ) {
@@ -3234,19 +3246,20 @@ std::list<opndcoll_rfu_t::op_t> opndcoll_rfu_t::arbiter_t::allocate_reads()
           assert( output < _outputs );
          if ( ( output < _outputs ) && 
               ( _inmatch[input] == -1 ) && 
-              ( _outmatch[output] == -1 ) &&
+              //( _outmatch[output] == -1 ) &&   //allow OC to read multiple reg banks at the same cycle
               ( _request[input][output]/*.label != -1*/ ) ) {
             // Grant!
             _inmatch[input] = output;
             _outmatch[output] = input;
+			// printf("Register File: granting bank %d to OC %d, schedid %d, warpid %d, Regid %d\n", input, output, (m_queue[input].front()).get_sid(), (m_queue[input].front()).get_wid(), (m_queue[input].front()).get_reg());
          }
 
-         output = ( output + 1 ) % _square;
+         output = ( output + 1 ) % _outputs;
       }
    }
 
    // Round-robin the priority diagonal
-   _pri = ( _pri + 1 ) % _square;
+   _pri = ( _pri + 1 ) % _outputs;
 
    /// <--- end code from booksim
 

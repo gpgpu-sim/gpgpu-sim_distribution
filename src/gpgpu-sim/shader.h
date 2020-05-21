@@ -1524,6 +1524,8 @@ class shader_core_config : public core_config
     bool gpgpu_concurrent_kernel_sm;
 
     bool perfect_inst_const_cache;
+    unsigned inst_fetch_throughput;
+    unsigned reg_file_port_throughput;
 
 };
 

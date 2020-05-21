@@ -44,7 +44,7 @@ public:
 		m_opcode=0;
 	}
 
-	bool parse_from_string(std::string trace, const std::unordered_map<std::string,OpcodeChar>* OpcodeMap);
+	bool parse_from_string(std::string trace, const std::unordered_map<std::string,OpcodeChar>* OpcodeMap, unsigned binary_verion);
 
 private:
 	void set_latency(unsigned cat);
