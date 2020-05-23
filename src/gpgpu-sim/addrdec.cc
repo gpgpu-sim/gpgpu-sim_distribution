@@ -63,7 +63,7 @@ void linear_to_raw_address_translation::addrdec_setoption(option_parser_t opp)
    option_parser_register(opp, "-gpgpu_mem_address_mask", OPT_INT32, &gpgpu_mem_address_mask, 
                "0 = old addressing mask, 1 = new addressing mask, 2 = new add. mask + flipped bank sel and chip sel bits",
                "0");
-   option_parser_register(opp, "-memory_partition_indexing", OPT_UINT32, &memory_partition_indexing,
+   option_parser_register(opp, "-gpgpu_memory_partition_indexing", OPT_UINT32, &memory_partition_indexing,
                   "0 = no indexing, 1 = bitwise xoring, 2 = IPoly, 3 = custom indexing",
                   "0");
 }

@@ -3088,7 +3088,7 @@ unsigned int shader_core_config::max_cta( const kernel_info_t &k ) const
     		switch (adaptive_cache_config) {
     		case FIXED:
     			break;
-    		case VOLTA: {
+    		case ADAPTIVE_VOLTA: {
     			//For Volta, we assign the remaining shared memory to L1 cache
     			//For more info about adaptive cache, see https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#shared-memory-7-x
     			//assert(gpgpu_shmem_size == 98304); //Volta has 96 KB shared

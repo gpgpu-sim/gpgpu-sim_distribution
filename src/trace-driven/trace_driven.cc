@@ -98,7 +98,7 @@ void trace_parser::parse_memcpy_info(const std::string& memcpy_command, size_t& 
 	ss>>std::dec>>count;
 }
 
-trace_kernel_info_t* trace_parser::parse_kernel_info(const std::string& kerneltraces_filepath) {
+trace_kernel_info_t* trace_parser::parse_kernel_info(const std::string& kerneltraces_filepath, trace_config* config) {
 
 	ifs.open(kerneltraces_filepath.c_str());
 
@@ -167,7 +167,7 @@ trace_kernel_info_t* trace_parser::parse_kernel_info(const std::string& kerneltr
 	dim3 blockDim(tb_dim_x, tb_dim_y, tb_dim_z);
 	trace_function_info* function_info = new trace_function_info(info, m_gpgpu_context);
 	function_info->set_name(kernel_name.c_str());
-	trace_kernel_info_t* kernel_info =  new trace_kernel_info_t(gridDim, blockDim, binary_verion, function_info, &ifs, m_gpgpu_sim, m_gpgpu_context);
+	trace_kernel_info_t* kernel_info =  new trace_kernel_info_t(gridDim, blockDim, binary_verion, function_info, &ifs, m_gpgpu_sim, m_gpgpu_context, config);
 
 	return kernel_info;
 }
@@ -211,11 +211,12 @@ address_type trace_shd_warp_t::get_pc(){
 	return warp_traces[trace_pc].pc;
 }
 
-trace_kernel_info_t::trace_kernel_info_t(dim3 gridDim, dim3 blockDim, unsigned m_binary_verion, trace_function_info* m_function_info, std::ifstream* inputstream, gpgpu_sim * gpgpu_sim, gpgpu_context* gpgpu_context):kernel_info_t(gridDim, blockDim, m_function_info) {
+trace_kernel_info_t::trace_kernel_info_t(dim3 gridDim, dim3 blockDim, unsigned m_binary_verion, trace_function_info* m_function_info, std::ifstream* inputstream, gpgpu_sim * gpgpu_sim, gpgpu_context* gpgpu_context, class trace_config* config):kernel_info_t(gridDim, blockDim, m_function_info) {
 	ifs = inputstream;
 	m_gpgpu_sim = gpgpu_sim;
 	m_gpgpu_context = gpgpu_context;
 	binary_verion = m_binary_verion;
+	m_tconfig = config;
 
 	//resolve the binary version
 	if(m_binary_verion == VOLTA_BINART_VERSION)
@@ -285,8 +286,8 @@ bool trace_kernel_info_t::get_next_threadblock_traces(std::vector<std::vector<tr
 			}
 			else {
 				assert(start_of_tb_stream_found);
-				trace_warp_inst_t inst(m_gpgpu_sim->getShaderCoreConfig(), m_gpgpu_context);
-				inst.parse_from_string(line, OpcodeMap, binary_verion);
+				trace_warp_inst_t inst(m_gpgpu_sim->getShaderCoreConfig(), m_gpgpu_context, m_tconfig);
+				inst.parse_from_string(line, OpcodeMap);
 				threadblock_traces[warp_id]->push_back(inst);
 			}
 		}
@@ -323,7 +324,7 @@ unsigned trace_warp_inst_t::get_datawidth_from_opcode(const std::vector<std::str
 	return 4;  //default is 4 bytes
 }
 
-bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordered_map<std::string,OpcodeChar>* OpcodeMap, unsigned binary_verion){
+bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordered_map<std::string,OpcodeChar>* OpcodeMap){
 
 	std::stringstream ss;
 	ss.str(trace);
@@ -473,7 +474,7 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 	//remove redundant registers
 
 	//fill latency and initl
-	set_latency(op);
+	m_tconfig->set_latency(op, latency, initiation_interval);
 
 	//fill addresses
 	if(mem_width > 0) {
@@ -548,10 +549,7 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 		//right now, we consider all loads are shared.
 		assert(mem_width>0);	
 		data_size = get_datawidth_from_opcode(opcode_tokens);
-		if(binary_verion == KEPLER_BINART_VERSION)
-			space.set_type(global_space);
-		else
-			space.set_type(shared_space);
+		space.set_type(shared_space);
 		if(m_opcode == OP_LD)
 			memory_op = memory_load;
 		else
@@ -584,59 +582,29 @@ bool trace_warp_inst_t::parse_from_string(std::string trace, const std::unordere
 	return true;
 }
 
-void trace_warp_inst_t::set_latency(unsigned category)
+trace_config::trace_config(gpgpu_sim* m_gpgpu_sim){
+
+	this->m_gpgpu_sim=m_gpgpu_sim;
+	parse_config();
+}
+
+void trace_config::parse_config()
 {
-	unsigned int_latency[5];
-	unsigned fp_latency[5];
-	unsigned dp_latency[5];
-	unsigned sfu_latency;
-	unsigned tensor_latency;
-	unsigned int_init[5];
-	unsigned fp_init[5];
-	unsigned dp_init[5];
-	unsigned sfu_init;
-	unsigned tensor_init;
 
-	/*
-	 * [0] ADD,SUB
-	 * [1] MAX,Min
-	 * [2] MUL
-	 * [3] MAD
-	 * [4] DIV
-	 */
-	sscanf(m_gpgpu_context->func_sim->opcode_latency_int, "%u,%u,%u,%u,%u",
-			&int_latency[0],&int_latency[1],&int_latency[2],
-			&int_latency[3],&int_latency[4]);
-	sscanf(m_gpgpu_context->func_sim->opcode_latency_fp, "%u,%u,%u,%u,%u",
-			&fp_latency[0],&fp_latency[1],&fp_latency[2],
-			&fp_latency[3],&fp_latency[4]);
-	sscanf(m_gpgpu_context->func_sim->opcode_latency_dp, "%u,%u,%u,%u,%u",
-			&dp_latency[0],&dp_latency[1],&dp_latency[2],
-			&dp_latency[3],&dp_latency[4]);
-	sscanf(m_gpgpu_context->func_sim->opcode_latency_sfu, "%u",
-			&sfu_latency);
-	sscanf(m_gpgpu_context->func_sim->opcode_latency_tensor, "%u",
-			&tensor_latency);
-	sscanf(m_gpgpu_context->func_sim->opcode_initiation_int, "%u,%u,%u,%u,%u",
-			&int_init[0],&int_init[1],&int_init[2],
-			&int_init[3],&int_init[4]);
-	sscanf(m_gpgpu_context->func_sim->opcode_initiation_fp, "%u,%u,%u,%u,%u",
-			&fp_init[0],&fp_init[1],&fp_init[2],
-			&fp_init[3],&fp_init[4]);
-	sscanf(m_gpgpu_context->func_sim->opcode_initiation_dp, "%u,%u,%u,%u,%u",
-			&dp_init[0],&dp_init[1],&dp_init[2],
-			&dp_init[3],&dp_init[4]);
-	sscanf(m_gpgpu_context->func_sim->opcode_initiation_sfu, "%u",
-			&sfu_init);
-	sscanf(m_gpgpu_context->func_sim->opcode_initiation_tensor, "%u",
-			&tensor_init);
-	sscanf(m_gpgpu_context->func_sim->cdp_latency_str, "%u,%u,%u,%u,%u",
-			&m_gpgpu_context->func_sim->cdp_latency[0],
-			&m_gpgpu_context->func_sim->cdp_latency[1],
-			&m_gpgpu_context->func_sim->cdp_latency[2],
-			&m_gpgpu_context->func_sim->cdp_latency[3],
-			&m_gpgpu_context->func_sim->cdp_latency[4]);
+	sscanf(m_gpgpu_sim->getShaderCoreConfig()->trace_opcode_latency_initiation_int, "%u,%u",
+			&int_latency,&int_init);
+	sscanf(m_gpgpu_sim->getShaderCoreConfig()->trace_opcode_latency_initiation_sp, "%u,%u",
+			&fp_latency,&fp_init);
+	sscanf(m_gpgpu_sim->getShaderCoreConfig()->trace_opcode_latency_initiation_dp, "%u,%u",
+			&dp_latency,&dp_init);
+	sscanf(m_gpgpu_sim->getShaderCoreConfig()->trace_opcode_latency_initiation_sfu, "%u,%u",
+			&sfu_latency,&sfu_init);
+	sscanf(m_gpgpu_sim->getShaderCoreConfig()->trace_opcode_latency_initiation_tensor, "%u,%u",
+			&tensor_latency,&tensor_init);
 
+}
+void trace_config::set_latency(unsigned category, unsigned& latency, unsigned& initiation_interval)
+{
 	initiation_interval = latency = 1;
 
 	switch(category){
@@ -645,16 +613,16 @@ void trace_warp_inst_t::set_latency(unsigned category)
 	case BRANCH_OP:
 	case CALL_OPS:
 	case RET_OPS:
-		latency = int_latency[0];
-		initiation_interval = int_init[0];
+		latency = int_latency;
+		initiation_interval = int_init;
 		break;
 	case SP_OP:
-		latency = fp_latency[0];
-		initiation_interval = fp_init[0];
+		latency = fp_latency;
+		initiation_interval = fp_init;
 		break;
 	case DP_OP:
-		latency = dp_latency[0];
-		initiation_interval = dp_init[0];
+		latency = dp_latency;
+		initiation_interval = dp_init;
 		break;
 	case SFU_OP:
 		latency = sfu_latency;

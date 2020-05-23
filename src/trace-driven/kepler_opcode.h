@@ -99,12 +99,13 @@ static const std::unordered_map<std::string,OpcodeChar> Kepler_OpcodeMap = {
 		//Load/Store Instructions
 		//For now, we ignore constant loads, consider it as ALU_OP, TO DO
 		{"LDC", OpcodeChar(OP_LDC, ALU_OP)},
-		{"LD", OpcodeChar(OP_LD, LOAD_OP)},
+		//in Kepler, LD is load global so set it to LDG
+		{"LD", OpcodeChar(OP_LDG, LOAD_OP)},
 		{"LDG", OpcodeChar(OP_LDG, LOAD_OP)},
 		{"LDL", OpcodeChar(OP_LDL, LOAD_OP)},
 		{"LDS", OpcodeChar(OP_LDS, LOAD_OP)},
 		{"LDSLK", OpcodeChar(OP_LDSLK, LOAD_OP)},
-		{"ST", OpcodeChar(OP_ST, STORE_OP)},
+		{"ST", OpcodeChar(OP_STG, STORE_OP)},
 		{"STL", OpcodeChar(OP_STL, STORE_OP)},
 		{"STS", OpcodeChar(OP_STS, STORE_OP)},
 		{"STSCUL", OpcodeChar(OP_STSCUL, STORE_OP)},

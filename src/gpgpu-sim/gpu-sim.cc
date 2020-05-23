@@ -137,9 +137,9 @@ void power_config::reg_options(class OptionParser * opp)
 
 void memory_config::reg_options(class OptionParser * opp)
 {
-    option_parser_register(opp, "-perf_sim_memcpy", OPT_BOOL, &m_perf_sim_memcpy, 
+    option_parser_register(opp, "-gpgpu_perf_sim_memcpy", OPT_BOOL, &m_perf_sim_memcpy,
                                 "Fill the L2 cache on memcpy", "1");
-    option_parser_register(opp, "-simple_dram_model", OPT_BOOL, &simple_dram_model,
+    option_parser_register(opp, "-gpgpu_simple_dram_model", OPT_BOOL, &simple_dram_model,
                                 "simple_dram_model with fixed latency and BW", "0");
     option_parser_register(opp, "-gpgpu_dram_scheduler", OPT_INT32, &scheduler_type, 
                                 "0 = fifo, 1 = FR-FCFS (defaul)", "1");
@@ -187,13 +187,13 @@ void memory_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_dram_timing_opt", OPT_CSTR, &gpgpu_dram_timing_opt, 
                 "DRAM timing parameters = {nbk:tCCD:tRRD:tRCD:tRAS:tRP:tRC:CL:WL:tCDLR:tWR:nbkgrp:tCCDL:tRTPL}",
                 "4:2:8:12:21:13:34:9:4:5:13:1:0:0");
-    option_parser_register(opp, "-rop_latency", OPT_UINT32, &rop_latency,
+    option_parser_register(opp, "-gpgpu_l2_rop_latency", OPT_UINT32, &rop_latency,
                      "ROP queue latency (default 85)",
                      "85");
     option_parser_register(opp, "-dram_latency", OPT_UINT32, &dram_latency,
                      "DRAM latency (default 30)",
                      "30");
-    option_parser_register(opp, "-dual_bus_interface", OPT_UINT32, &dual_bus_interface,
+    option_parser_register(opp, "-dram_dual_bus_interface", OPT_UINT32, &dual_bus_interface,
                                         "dual_bus_interface (default = 0) ",
                                         "0");
     option_parser_register(opp, "-dram_bnk_indexing_policy", OPT_UINT32, &dram_bnk_indexing_policy,
@@ -202,13 +202,13 @@ void memory_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-dram_bnkgrp_indexing_policy", OPT_UINT32, &dram_bnkgrp_indexing_policy,
                                             "dram_bnkgrp_indexing_policy (0 = take higher bits, 1 = take lower bits) (Default = 0)",
                                             "0");
-    option_parser_register(opp, "-Seperate_Write_Queue_Enable", OPT_BOOL, &seperate_write_queue_enabled,
+    option_parser_register(opp, "-dram_seperate_write_queue_enable", OPT_BOOL, &seperate_write_queue_enabled,
                            "Seperate_Write_Queue_Enable",
                            "0");
-    option_parser_register(opp, "-Write_Queue_Size", OPT_CSTR, &write_queue_size_opt,
+    option_parser_register(opp, "-dram_write_queue_size", OPT_CSTR, &write_queue_size_opt,
                                   "Write_Queue_Size",
                                   "32:28:16");
-    option_parser_register(opp, "-Elimnate_rw_turnaround", OPT_BOOL, &elimnate_rw_turnaround,
+    option_parser_register(opp, "-dram_elimnate_rw_turnaround", OPT_BOOL, &elimnate_rw_turnaround,
                                "elimnate_rw_turnaround i.e set tWTR and tRTW = 0",
                                "0");
     option_parser_register(opp, "-icnt_flit_size", OPT_UINT32, &icnt_flit_size,
@@ -240,13 +240,13 @@ void shader_core_config::reg_options(class OptionParser * opp)
                    "per-shader L1 data cache config "
                    " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_alloc>,<mshr>:<N>:<merge>,<mq> | none}",
                    "none" );
-    option_parser_register(opp, "-l1_banks", OPT_UINT32, &m_L1D_config.l1_banks,
+    option_parser_register(opp, "-gpgpu_l1_banks", OPT_UINT32, &m_L1D_config.l1_banks,
                  "The number of L1 cache banks",
                  "1");
-    option_parser_register(opp, "-l1_latency", OPT_UINT32, &m_L1D_config.l1_latency,
+    option_parser_register(opp, "-gpgpu_l1_latency", OPT_UINT32, &m_L1D_config.l1_latency,
                  "L1 Hit Latency",
                  "1");
-    option_parser_register(opp, "-smem_latency", OPT_UINT32, &smem_latency,
+    option_parser_register(opp, "-gpgpu_smem_latency", OPT_UINT32, &smem_latency,
                  "smem Latency",
                  "3");
     option_parser_register(opp, "-gpgpu_cache:dl1PrefL1", OPT_CSTR, &m_L1D_config.m_config_stringPrefL1,
@@ -257,7 +257,7 @@ void shader_core_config::reg_options(class OptionParser * opp)
                    "per-shader L1 data cache config "
                    " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_alloc>,<mshr>:<N>:<merge>,<mq> | none}",
                    "none" );
-    option_parser_register(opp, "-gmem_skip_L1D", OPT_BOOL, &gmem_skip_L1D, 
+    option_parser_register(opp, "-gpgpu_gmem_skip_L1D", OPT_BOOL, &gmem_skip_L1D,
                    "global memory access skip L1D cache (implements -Xptxas -dlcm=cg, default=no skip)",
                    "0");
 
@@ -306,7 +306,7 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_shmem_size", OPT_UINT32, &gpgpu_shmem_size,
                  "Size of shared memory per shader core (default 16kB)",
                  "16384");
-    option_parser_register(opp, "-adaptive_cache_config", OPT_UINT32, &adaptive_cache_config,
+    option_parser_register(opp, "-gpgpu_adaptive_cache_config", OPT_UINT32, &adaptive_cache_config,
                  "adaptive_cache_config",
                  "0");
     option_parser_register(opp, "-gpgpu_shmem_sizeDefault", OPT_UINT32, &gpgpu_shmem_sizeDefault,
@@ -327,7 +327,7 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_shmem_warp_parts", OPT_INT32, &mem_warp_parts,  
                  "Number of portions a warp is divided into for shared memory bank conflict check ",
                  "2");
-    option_parser_register(opp, "-mem_unit_ports", OPT_INT32, &mem_unit_ports,
+    option_parser_register(opp, "-gpgpu_mem_unit_ports", OPT_INT32, &mem_unit_ports,
                  "The number of memory transactions allowed per core cycle",
                  "1");
     option_parser_register(opp, "-gpgpu_shmem_warp_parts", OPT_INT32, &mem_warp_parts,
@@ -348,10 +348,10 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_reg_bank_use_warp_id", OPT_BOOL, &gpgpu_reg_bank_use_warp_id,
              "Use warp ID in mapping registers to banks (default = off)",
              "0");
-    option_parser_register(opp, "-sub_core_model", OPT_BOOL, &sub_core_model,
+    option_parser_register(opp, "-gpgpu_sub_core_model", OPT_BOOL, &sub_core_model,
              "Sub Core Volta/Pascal model (default = off)",
              "0");
-    option_parser_register(opp, "-enable_specialized_operand_collector", OPT_BOOL, &enable_specialized_operand_collector,
+    option_parser_register(opp, "-gpgpu_enable_specialized_operand_collector", OPT_BOOL, &enable_specialized_operand_collector,
                 "enable_specialized_operand_collector",
                 "1");
     option_parser_register(opp, "-gpgpu_operand_collector_num_units_sp", OPT_INT32, &gpgpu_operand_collector_num_units_sp,
@@ -467,15 +467,32 @@ void shader_core_config::reg_options(class OptionParser * opp)
     option_parser_register(opp, "-gpgpu_concurrent_kernel_sm", OPT_BOOL, &gpgpu_concurrent_kernel_sm, 
                 "Support concurrent kernels on a SM (default = disabled)", 
                 "0");
-    option_parser_register(opp, "-perfect_inst_const_cache", OPT_BOOL, &perfect_inst_const_cache,
+    option_parser_register(opp, "-gpgpu_perfect_inst_const_cache", OPT_BOOL, &perfect_inst_const_cache,
                 "perfect inst and const cache mode, so all inst and const hits in the cache(default = disabled)",
                 "0");
-    option_parser_register(opp, "-inst_fetch_throughput", OPT_INT32, &inst_fetch_throughput,
+    option_parser_register(opp, "-gpgpu_inst_fetch_throughput", OPT_INT32, &inst_fetch_throughput,
                 "the number of fetched intruction per warp each cycle",
                 "1");
 	option_parser_register(opp, "-gpgpu_reg_file_port_throughput", OPT_INT32, &reg_file_port_throughput,
                 "the number ports of the register file",
                 "1");
+
+	//used for trace-driven mode
+	option_parser_register(opp, "-trace_opcode_latency_initiation_int", OPT_CSTR, &trace_opcode_latency_initiation_int,
+                "Opcode latencies and initiation for integers in trace driven mode <latency,initiation>",
+                "4,1");
+	option_parser_register(opp, "-trace_opcode_latency_initiation_sp", OPT_CSTR, &trace_opcode_latency_initiation_sp,
+                "Opcode latencies and initiation for sp in trace driven mode <latency,initiation>",
+                "4,1");
+	option_parser_register(opp, "-trace_opcode_latency_initiation_dp", OPT_CSTR, &trace_opcode_latency_initiation_dp,
+                "Opcode latencies and initiation for dp in trace driven mode <latency,initiation>",
+                "4,1");
+	option_parser_register(opp, "-trace_opcode_latency_initiation_sfu", OPT_CSTR, &trace_opcode_latency_initiation_sfu,
+                "Opcode latencies and initiation for sfu in trace driven mode <latency,initiation>",
+                "4,1");
+	option_parser_register(opp, "-trace_opcode_latency_initiation_tensor", OPT_CSTR, &trace_opcode_latency_initiation_tensor,
+                "Opcode latencies and initiation for tensor in trace driven mode <latency,initiation>",
+                "4,1");
 }
 
 void gpgpu_sim_config::reg_options(option_parser_t opp)
