@@ -70,7 +70,7 @@ enum FuncCache
 enum AdaptiveCache
 {
   FIXED = 0,
-  VOLTA = 1
+  ADAPTIVE_VOLTA = 1
 };
 
 #ifdef __cplusplus

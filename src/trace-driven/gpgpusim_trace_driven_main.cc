@@ -48,6 +48,7 @@ int main ( int argc, const char **argv )
 	//prints stats
 
 	trace_parser tracer(m_gpgpu_sim->get_config().get_traces_filename(), m_gpgpu_sim, m_gpgpu_context);
+	trace_config config(m_gpgpu_sim);
 
 	std::vector<std::string> commandlist = tracer.parse_kernellist_file();
 	bool first_kernel=true;
@@ -69,7 +70,7 @@ int main ( int argc, const char **argv )
 				first_kernel = false;
 				continue;
 			}
-			kernel_info  = tracer.parse_kernel_info(commandlist[i]);
+			kernel_info  = tracer.parse_kernel_info(commandlist[i], &config);
 			m_gpgpu_sim->launch(kernel_info);
 		}
 

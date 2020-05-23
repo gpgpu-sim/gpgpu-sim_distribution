@@ -37,18 +37,20 @@ public:
 	trace_warp_inst_t() {
 		m_gpgpu_context=NULL;
 		m_opcode=0;
+		m_tconfig=NULL;
 	}
 
-	trace_warp_inst_t(const class core_config *config, gpgpu_context* gpgpu_context ):warp_inst_t(config) {
+	trace_warp_inst_t(const class core_config *config, gpgpu_context* gpgpu_context, class trace_config* tconfig ):warp_inst_t(config) {
 		m_gpgpu_context = gpgpu_context;
 		m_opcode=0;
+		m_tconfig=tconfig;
 	}
 
-	bool parse_from_string(std::string trace, const std::unordered_map<std::string,OpcodeChar>* OpcodeMap, unsigned binary_verion);
+	bool parse_from_string(std::string trace, const std::unordered_map<std::string,OpcodeChar>* OpcodeMap);
 
 private:
-	void set_latency(unsigned cat);
 	gpgpu_context* m_gpgpu_context;
+	class trace_config* m_tconfig;
 	unsigned m_opcode;
 	bool check_opcode_contain(const std::vector<std::string>& opcode, std::string param);
 	unsigned get_datawidth_from_opcode(const std::vector<std::string>& opcode);
@@ -56,7 +58,7 @@ private:
 
 class trace_kernel_info_t: public kernel_info_t {
 public:
-	trace_kernel_info_t(dim3 gridDim, dim3 blockDim, unsigned m_binary_verion, trace_function_info* m_function_info, std::ifstream* inputstream, gpgpu_sim * gpgpu_sim, gpgpu_context* gpgpu_context);
+	trace_kernel_info_t(dim3 gridDim, dim3 blockDim, unsigned m_binary_verion, trace_function_info* m_function_info, std::ifstream* inputstream, gpgpu_sim * gpgpu_sim, gpgpu_context* gpgpu_context, class trace_config* config);
 
 	bool get_next_threadblock_traces(std::vector<std::vector<trace_warp_inst_t>*> threadblock_traces);
 
@@ -64,19 +66,35 @@ private:
 	std::ifstream* ifs;
 	gpgpu_sim * m_gpgpu_sim;
 	gpgpu_context* m_gpgpu_context;
+	trace_config* m_tconfig;
 	unsigned binary_verion;
 	const std::unordered_map<std::string,OpcodeChar>* OpcodeMap;
 
 };
 
 
+class trace_config {
+public:
+	trace_config(gpgpu_sim * m_gpgpu_sim);
+
+	void set_latency(unsigned category, unsigned& latency, unsigned& initiation_interval);
+	void parse_config();
+
+
+private:
+
+	unsigned int_latency, fp_latency, dp_latency, sfu_latency, tensor_latency;
+	unsigned int_init, fp_init, dp_init, sfu_init, tensor_init;
+	gpgpu_sim* m_gpgpu_sim;
+
+};
 
 class trace_parser {
 public:
 	trace_parser(const char* kernellist_filepath, gpgpu_sim * m_gpgpu_sim, gpgpu_context* m_gpgpu_context);
 
 	std::vector<std::string> parse_kernellist_file();
-	trace_kernel_info_t* parse_kernel_info(const std::string& kerneltraces_filepath);
+	trace_kernel_info_t* parse_kernel_info(const std::string& kerneltraces_filepath, trace_config* config);
 	void parse_memcpy_info(const std::string& memcpy_command, size_t& add, size_t& count);
 
 	void kernel_finalizer(trace_kernel_info_t* kernel_info);
