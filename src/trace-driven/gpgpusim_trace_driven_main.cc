@@ -16,7 +16,7 @@
 #include "../gpgpu-sim/gpu-sim.h"
 #include "../../libcuda/gpgpu_context.h"
 #include "trace_driven.h"
-#include "trace_opcode.h"
+#include "ISA_Def/trace_opcode.h"
 #include "../gpgpusim_entrypoint.h"
 
 /* TO DO:
