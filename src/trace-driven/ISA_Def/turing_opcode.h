@@ -4,7 +4,6 @@
 #ifndef TURING_OPCODE_H
 #define TURING_OPCODE_H
 
-#include "../abstract_hardware_model.h"
 #include "trace_opcode.h"
 #include <unordered_map>
 #include <string>

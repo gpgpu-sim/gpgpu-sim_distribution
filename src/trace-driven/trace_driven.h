@@ -9,7 +9,7 @@
 
 #include "../abstract_hardware_model.h"
 #include "../gpgpu-sim/shader.h"
-#include "trace_opcode.h"
+#include "ISA_Def/trace_opcode.h"
 
 class trace_function_info: public function_info {
 public:

@@ -1,24 +1,21 @@
 //developed by Mahmoud Khairy, Purdue Univ
 //abdallm@purdue.edu
 
-#ifndef PASCAL_OPCODE_H
-#define PASCAL_OPCODE_H
+#ifndef VOLTA_OPCODE_H
+#define VOLTA_OPCODE_H
 
-#include "../abstract_hardware_model.h"
 #include "trace_opcode.h"
 #include <unordered_map>
 #include <string>
 
-#define PASCAL_TITANX_BINART_VERSION 61
-#define PASCAL_P100_BINART_VERSION 60
-
-#define PASCAL_SHARED_MEMORY_VIRTIAL_ADDRESS_START 0x00007f2c60000000
+#define VOLTA_BINART_VERSION 70
+#define VOLTA_SHARED_MEMORY_VIRTIAL_ADDRESS_START 0x00007f2c60000000
 
 //TO DO: moving this to a yml or def files
 
-///Pascal SM_61 ISA
+///Volta SM_70 ISA
 //see: https://docs.nvidia.com/cuda/cuda-binary-utilities/index.html
-static const std::unordered_map<std::string,OpcodeChar> Pascal_OpcodeMap = {
+static const std::unordered_map<std::string,OpcodeChar> Volta_OpcodeMap = {
 		//Floating Point 32 Instructions
 		{"FADD", OpcodeChar(OP_FADD, SP_OP)},
 		{"FADD32I", OpcodeChar(OP_FADD32I, SP_OP)},
@@ -32,25 +29,27 @@ static const std::unordered_map<std::string,OpcodeChar> Pascal_OpcodeMap = {
 		{"FSET", OpcodeChar(OP_FSET, SP_OP)},
 		{"FSETP", OpcodeChar(OP_FSETP, SP_OP)},
 		{"FSWZADD", OpcodeChar(OP_FSWZADD, SP_OP)},
-		{"RRO", OpcodeChar(OP_RRO, SP_OP)},
-
 		//SFU
 		{"MUFU", OpcodeChar(OP_MUFU, SFU_OP)},
 
 		//Floating Point 16 Instructions
 		{"HADD2", OpcodeChar(OP_HADD2, SP_OP)},
+		{"HADD2_32I", OpcodeChar(OP_HADD2_32I, SP_OP)},
 		{"HFMA2", OpcodeChar(OP_HFMA2, SP_OP)},
+		{"HFMA2_32I", OpcodeChar(OP_HFMA2_32I, SP_OP)},
 		{"HMUL2", OpcodeChar(OP_HMUL2, SP_OP)},
+		{"HMUL2_32I", OpcodeChar(OP_HMUL2_32I, SP_OP)},
 		{"HSET2", OpcodeChar(OP_HSET2, SP_OP)},
 		{"HSETP2", OpcodeChar(OP_HSETP2, SP_OP)},
+
+		//Tensor Core Instructions
+		{"HMMA", OpcodeChar(OP_HMMA, TENSOR_CORE_OP)},
 
 		//Double Point Instructions
 		{"DADD", OpcodeChar(OP_DADD, DP_OP)},
 		{"DFMA", OpcodeChar(OP_DFMA, DP_OP)},
 		{"DMUL", OpcodeChar(OP_DMUL, DP_OP)},
 		{"DSETP", OpcodeChar(OP_DSETP, DP_OP)},
-		{"DMNMX", OpcodeChar(OP_DMNMX, DP_OP)},
-		{"DSET", OpcodeChar(OP_DSET, DP_OP)},
 
 		//Integer Instructions
 		{"BMSK", OpcodeChar(OP_BMSK, INTP_OP)},
@@ -70,7 +69,6 @@ static const std::unordered_map<std::string,OpcodeChar> Pascal_OpcodeMap = {
 		{"ISCADD", OpcodeChar(OP_ISCADD, INTP_OP)},
 		{"ISCADD32I", OpcodeChar(OP_ISCADD32I, INTP_OP)},
 		{"ISETP", OpcodeChar(OP_ISETP, INTP_OP)},
-		{"ISET", OpcodeChar(OP_ISET, INTP_OP)},
 		{"LEA", OpcodeChar(OP_LEA, INTP_OP)},
 		{"LOP", OpcodeChar(OP_LOP, INTP_OP)},
 		{"LOP3", OpcodeChar(OP_LOP3, INTP_OP)},
@@ -80,14 +78,6 @@ static const std::unordered_map<std::string,OpcodeChar> Pascal_OpcodeMap = {
 		{"SHR", OpcodeChar(OP_SHR, INTP_OP)},
 		{"VABSDIFF", OpcodeChar(OP_VABSDIFF, INTP_OP)},
 		{"VABSDIFF4", OpcodeChar(OP_VABSDIFF4, INTP_OP)},
-		{"BFE", OpcodeChar(OP_BFE, INTP_OP)},
-		{"BFI", OpcodeChar(OP_BFI, INTP_OP)},
-		{"ICMP", OpcodeChar(OP_ICMP, INTP_OP)},
-		{"IMADSP", OpcodeChar(OP_IMADSP, INTP_OP)},
-		{"SHL", OpcodeChar(OP_SHL, INTP_OP)},
-		{"XMAD", OpcodeChar(OP_XMAD, INTP_OP)},
-		{"VMNMX", OpcodeChar(OP_VMNMX, INTP_OP)},
-
 
 		//Conversion Instructions
 		{"F2F", OpcodeChar(OP_F2F, ALU_OP)},
@@ -110,10 +100,6 @@ static const std::unordered_map<std::string,OpcodeChar> Pascal_OpcodeMap = {
 		{"PSETP", OpcodeChar(OP_PSETP, ALU_OP)},
 		{"P2R", OpcodeChar(OP_P2R, ALU_OP)},
 		{"R2P", OpcodeChar(OP_R2P, ALU_OP)},
-		{"CSET", OpcodeChar(OP_CSET, ALU_OP)},
-		{"CSETP", OpcodeChar(OP_CSETP, ALU_OP)},
-		{"PSET", OpcodeChar(OP_PSET, ALU_OP)},
-		
 
 		//Load/Store Instructions
 		{"LD", OpcodeChar(OP_LD, LOAD_OP)},
@@ -146,9 +132,6 @@ static const std::unordered_map<std::string,OpcodeChar> Pascal_OpcodeMap = {
 		{"TMML", OpcodeChar(OP_TMML, ALU_OP)},
 		{"TXD", OpcodeChar(OP_TXD, ALU_OP)},
 		{"TXQ", OpcodeChar(OP_TXQ, ALU_OP)},
-		{"TEXS", OpcodeChar(OP_TEXS, ALU_OP)},
-		{"TLD4S", OpcodeChar(OP_TLD4S, ALU_OP)},
-		{"TLDS", OpcodeChar(OP_TLDS, ALU_OP)},
 
 		//Control Instructions
 		{"BMOV", OpcodeChar(OP_BMOV, BRANCH_OP)},
@@ -161,8 +144,6 @@ static const std::unordered_map<std::string,OpcodeChar> Pascal_OpcodeMap = {
 		{"CALL", OpcodeChar(OP_CALL, CALL_OPS)},
 		{"EXIT", OpcodeChar(OP_EXIT, EXIT_OPS)},
 		{"JMP", OpcodeChar(OP_JMP, BRANCH_OP)},
-		{"SSY", OpcodeChar(OP_SSY, BRANCH_OP)},
-		{"SYNC", OpcodeChar(OP_SYNC, BRANCH_OP)},
 		{"JMX", OpcodeChar(OP_JMX, BRANCH_OP)},
 		{"KILL", OpcodeChar(OP_KILL, BRANCH_OP)},
 		{"NANOSLEEP", OpcodeChar(OP_NANOSLEEP, BRANCH_OP)},
@@ -171,14 +152,6 @@ static const std::unordered_map<std::string,OpcodeChar> Pascal_OpcodeMap = {
 		{"RTT", OpcodeChar(OP_RTT, RET_OPS)},
 		{"WARPSYNC", OpcodeChar(OP_WARPSYNC, BRANCH_OP)},
 		{"YIELD", OpcodeChar(OP_YIELD, BRANCH_OP)},
-		{"CAL", OpcodeChar(OP_CAL, CALL_OPS)},
-		{"JCAL", OpcodeChar(OP_JCAL, CALL_OPS)},
-		{"PRET", OpcodeChar(OP_PRET, CALL_OPS)},
-		{"BRK", OpcodeChar(OP_BRK, CALL_OPS)},
-		{"PBK", OpcodeChar(OP_PBK, CALL_OPS)},
-		{"CONT", OpcodeChar(OP_CONT, CALL_OPS)},
-		{"PCNT", OpcodeChar(OP_PCNT, CALL_OPS)},
-		{"PEXIT", OpcodeChar(OP_PEXIT, CALL_OPS)},
 
 		//Miscellaneous Instructions
 		{"B2R", OpcodeChar(OP_B2R, ALU_OP)},

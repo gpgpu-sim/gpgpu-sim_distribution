@@ -4,7 +4,6 @@
 #ifndef KEPLER_OPCODE_H
 #define KEPLER_OPCODE_H
 
-#include "../abstract_hardware_model.h"
 #include "trace_opcode.h"
 #include <unordered_map>
 #include <string>

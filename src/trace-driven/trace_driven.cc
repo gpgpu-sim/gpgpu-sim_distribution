@@ -19,11 +19,11 @@
 #include "../gpgpu-sim/gpu-sim.h"
 #include "../../libcuda/gpgpu_context.h"
 #include "trace_driven.h"
-#include "trace_opcode.h"
-#include "volta_opcode.h"
-#include "turing_opcode.h"
-#include "pascal_opcode.h"
-#include "kepler_opcode.h"
+#include "ISA_Def/trace_opcode.h"
+#include "ISA_Def/volta_opcode.h"
+#include "ISA_Def/turing_opcode.h"
+#include "ISA_Def/pascal_opcode.h"
+#include "ISA_Def/kepler_opcode.h"
 #include "../gpgpusim_entrypoint.h"
 
 
