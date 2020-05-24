@@ -32,69 +32,86 @@
 #ifndef ARRAY_H_
 #define ARRAY_H_
 
-#include "basic_components.h"
-#include "cacti/const.h"
-#include "cacti/cacti_interface.h"
-#include "cacti/parameter.h"
-#include "cacti/component.h"
 #include <iostream>
 #include <string>
+#include "basic_components.h"
+#include "cacti/cacti_interface.h"
+#include "cacti/component.h"
+#include "cacti/const.h"
+#include "cacti/parameter.h"
 
 using namespace std;
 
-class ArrayST :public Component{
+class ArrayST : public Component {
  public:
   ArrayST(){};
-  ArrayST(const InputParameter *configure_interface, string _name, enum Device_ty device_ty_, bool opt_local_=true, enum Core_type core_ty_=Inorder,  bool _is_default=true);
+  ArrayST(const InputParameter* configure_interface, string _name,
+          enum Device_ty device_ty_, bool opt_local_ = true,
+          enum Core_type core_ty_ = Inorder, bool _is_default = true);
 
   InputParameter l_ip;
-  string         name;
+  string name;
   enum Device_ty device_ty;
   bool opt_local;
   enum Core_type core_ty;
-  bool           is_default;
-  uca_org_t      local_result;
+  bool is_default;
+  uca_org_t local_result;
 
-  statsDef       tdp_stats;
-  statsDef       rtp_stats;
-  statsDef       stats_t;
-  powerDef       power_t;
+  statsDef tdp_stats;
+  statsDef rtp_stats;
+  statsDef stats_t;
+  powerDef power_t;
 
   virtual void optimize_array();
   virtual void compute_base_power();
   virtual ~ArrayST();
-  
+
   void leakage_feedback(double temperature);
 };
 
-class InstCache :public Component{
-public:
+class InstCache : public Component {
+ public:
   ArrayST* caches;
   ArrayST* missb;
   ArrayST* ifb;
   ArrayST* prefetchb;
-  powerDef power_t;//temp value holder for both (max) power and runtime power
-  InstCache(){caches=0;missb=0;ifb=0;prefetchb=0;};
-  ~InstCache(){
-	  if (caches)    {//caches->local_result.cleanup();
-					  delete caches; caches=0;}
-	  if (missb)     {//missb->local_result.cleanup();
-					  delete missb; missb=0;}
-	  if (ifb)       {//ifb->local_result.cleanup();
-					  delete ifb; ifb=0;}
-	  if (prefetchb) {//prefetchb->local_result.cleanup();
-					  delete prefetchb; prefetchb=0;}
-   };
+  powerDef power_t;  // temp value holder for both (max) power and runtime power
+  InstCache() {
+    caches = 0;
+    missb = 0;
+    ifb = 0;
+    prefetchb = 0;
+  };
+  ~InstCache() {
+    if (caches) {  // caches->local_result.cleanup();
+      delete caches;
+      caches = 0;
+    }
+    if (missb) {  // missb->local_result.cleanup();
+      delete missb;
+      missb = 0;
+    }
+    if (ifb) {  // ifb->local_result.cleanup();
+      delete ifb;
+      ifb = 0;
+    }
+    if (prefetchb) {  // prefetchb->local_result.cleanup();
+      delete prefetchb;
+      prefetchb = 0;
+    }
+  };
 };
 
-class DataCache :public InstCache{
-public:
+class DataCache : public InstCache {
+ public:
   ArrayST* wbb;
-  DataCache(){wbb=0;};
-  ~DataCache(){
-	  if (wbb) {//wbb->local_result.cleanup();
-				delete wbb; wbb=0;}
-   };
+  DataCache() { wbb = 0; };
+  ~DataCache() {
+    if (wbb) {  // wbb->local_result.cleanup();
+      delete wbb;
+      wbb = 0;
+    }
+  };
 };
 
 #endif /* TLB_H_ */
