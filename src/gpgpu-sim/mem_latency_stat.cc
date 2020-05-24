@@ -39,10 +39,10 @@
 #include "stat-tool.h"
 #include "visualizer.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
 #include "../../libcuda/gpgpu_context.h"
 
@@ -228,16 +228,19 @@ void memory_stats_t::memlatstat_dram_access(mem_fetch *mf) {
         bankwrites[mf->get_sid()][dram_id][bank]++;
         shader_mem_acc_log(mf->get_sid(), dram_id, bank, 'w');
       }
-         totalbankwrites[dram_id][bank] += ceil(mf->get_data_size() / m_memory_config->dram_atom_size);
+      totalbankwrites[dram_id][bank] +=
+          ceil(mf->get_data_size() / m_memory_config->dram_atom_size);
     } else {
       bankreads[mf->get_sid()][dram_id][bank]++;
       shader_mem_acc_log(mf->get_sid(), dram_id, bank, 'r');
-         totalbankreads[dram_id][bank] += ceil(mf->get_data_size() / m_memory_config->dram_atom_size);
+      totalbankreads[dram_id][bank] +=
+          ceil(mf->get_data_size() / m_memory_config->dram_atom_size);
     }
-      mem_access_type_stats[mf->get_access_type()][dram_id][bank] += ceil(mf->get_data_size() / m_memory_config->dram_atom_size);
+    mem_access_type_stats[mf->get_access_type()][dram_id][bank] +=
+        ceil(mf->get_data_size() / m_memory_config->dram_atom_size);
   }
 
-   if (mf->get_pc() != (unsigned)-1) 
+  if (mf->get_pc() != (unsigned)-1)
     m_gpu->gpgpu_ctx->stats->ptx_file_line_stats_add_dram_traffic(
         mf->get_pc(), mf->get_data_size());
 }

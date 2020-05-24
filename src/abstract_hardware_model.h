@@ -65,11 +65,7 @@ enum FuncCache {
   FuncCachePreferL1 = 2
 };
 
-enum AdaptiveCache
-{
-  FIXED = 0,
-  ADAPTIVE_VOLTA = 1
-};
+enum AdaptiveCache { FIXED = 0, ADAPTIVE_VOLTA = 1 };
 
 #ifdef __cplusplus
 
@@ -101,8 +97,8 @@ enum uarch_op_t {
   BARRIER_OP,
   MEMORY_BARRIER_OP,
   CALL_OPS,
-   RET_OPS,
-   EXIT_OPS
+  RET_OPS,
+  EXIT_OPS
 };
 typedef enum uarch_op_t op_type;
 
@@ -328,11 +324,12 @@ class kernel_info_t {
   unsigned long long launch_cycle;
   unsigned long long start_cycle;
   unsigned long long end_cycle;
-   unsigned m_launch_latency;
+  unsigned m_launch_latency;
 
   mutable bool cache_config_set;
 
-   unsigned m_kernel_TB_latency;  //this used for any CPU-GPU kernel latency and counted in the gpu_cycle
+  unsigned m_kernel_TB_latency;  // this used for any CPU-GPU kernel latency and
+                                 // counted in the gpu_cycle
 };
 
 class core_config {

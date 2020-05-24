@@ -27,8 +27,8 @@
 // POSSIBILITY OF SUCH DAMAGE.
 
 #include "addrdec.h"
-#include <string.h>
 #include <math.h>
+#include <string.h>
 #include "../option_parser.h"
 #include "gpu-sim.h"
 
@@ -65,7 +65,9 @@ void linear_to_raw_address_translation::addrdec_setoption(option_parser_t opp) {
                          "0 = old addressing mask, 1 = new addressing mask, 2 "
                          "= new add. mask + flipped bank sel and chip sel bits",
                          "0");
-   option_parser_register(opp, "-gpgpu_memory_partition_indexing", OPT_UINT32, &memory_partition_indexing,
+  option_parser_register(
+      opp, "-gpgpu_memory_partition_indexing", OPT_UINT32,
+      &memory_partition_indexing,
       "0 = no indexing, 1 = bitwise xoring, 2 = IPoly, 3 = custom indexing",
       "0");
 }
@@ -89,7 +91,7 @@ new_addr_type linear_to_raw_address_translation::partition_address(
 
 void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr,
                                                     addrdec_t *tlx) const {
-   unsigned long long int addr_for_chip, rest_of_addr, rest_of_addr_high_bits;
+  unsigned long long int addr_for_chip, rest_of_addr, rest_of_addr_high_bits;
   if (!gap) {
     tlx->chip = addrdec_packbits(addrdec_mask[CHIP], addr, addrdec_mkhigh[CHIP],
                                  addrdec_mklow[CHIP]);
@@ -101,7 +103,8 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr,
                                 addrdec_mklow[COL]);
     tlx->burst = addrdec_packbits(addrdec_mask[BURST], addr,
                                   addrdec_mkhigh[BURST], addrdec_mklow[BURST]);
-      rest_of_addr_high_bits = (addr>>(ADDR_CHIP_S+(log2channel+log2sub_partition)));
+    rest_of_addr_high_bits =
+        (addr >> (ADDR_CHIP_S + (log2channel + log2sub_partition)));
 
   } else {
     // Split the given address at ADDR_CHIP_S into (MSBs,LSBs)
@@ -110,7 +113,7 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr,
     // the LSBs
     addr_for_chip = (addr >> ADDR_CHIP_S) % m_n_channel;
     rest_of_addr = ((addr >> ADDR_CHIP_S) / m_n_channel) << ADDR_CHIP_S;
-      rest_of_addr_high_bits = ((addr>>ADDR_CHIP_S) / m_n_channel);
+    rest_of_addr_high_bits = ((addr >> ADDR_CHIP_S) / m_n_channel);
     rest_of_addr |= addr & ((1 << ADDR_CHIP_S) - 1);
 
     tlx->chip = addr_for_chip;
@@ -130,7 +133,7 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr,
       break;
     case BITWISE_PERMUTATION: {
       assert(!gap);
-			tlx->chip = (tlx->chip) ^ (rest_of_addr_high_bits & (m_n_channel-1));
+      tlx->chip = (tlx->chip) ^ (rest_of_addr_high_bits & (m_n_channel - 1));
       assert(tlx->chip < m_n_channel);
       break;
     }
@@ -139,29 +142,31 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr,
        * Set Indexing function from "Pseudo-randomly interleaved memory."
        * Rau, B. R et al.
        * ISCA 1991
-			* http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=348DEA37A3E440473B3C075EAABC63B6?doi=10.1.1.12.7149&rep=rep1&type=pdf
+       * http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=348DEA37A3E440473B3C075EAABC63B6?doi=10.1.1.12.7149&rep=rep1&type=pdf
        *
-			* equations are corresponding to IPOLY(37) and are adopted from:
+       * equations are corresponding to IPOLY(37) and are adopted from:
        * "Sacat: streaming-aware conflict-avoiding thrashing-resistant gpgpu
        * cache management scheme." Khairy et al. IEEE TPDS 2017.
-			*
-			* equations for 32 banks are corresponding to IPOLY(37)
-			* equations for 64 banks are corresponding to IPOLY(67)
-			* To see all the IPOLY equations for all the degrees, see
-			* http://wireless-systems.ece.gatech.edu/6604/handouts/Peterson's%20Table.pdf
-			*
-			* We generate these equations using GF(2) arithmetic:
-			* http://www.ee.unb.ca/cgi-bin/tervo/calc.pl?num=&den=&f=d&e=1&m=1
-			*
-			* We go through all the strides 128 (10000000), 256 (100000000),...  and do modular arithmetic in GF(2)
-			* Then, we create the H-matrix and group each bit together, for more info read the ISCA 1991 paper
-			*
-			* IPOLY hashing guarantees conflict-free for all 2^n strides which widely exit in GPGPU applications
-			* and also show good performance for other strides.
+       *
+       * equations for 32 banks are corresponding to IPOLY(37)
+       * equations for 64 banks are corresponding to IPOLY(67)
+       * To see all the IPOLY equations for all the degrees, see
+       * http://wireless-systems.ece.gatech.edu/6604/handouts/Peterson's%20Table.pdf
+       *
+       * We generate these equations using GF(2) arithmetic:
+       * http://www.ee.unb.ca/cgi-bin/tervo/calc.pl?num=&den=&f=d&e=1&m=1
+       *
+       * We go through all the strides 128 (10000000), 256 (100000000),...  and
+       * do modular arithmetic in GF(2) Then, we create the H-matrix and group
+       * each bit together, for more info read the ISCA 1991 paper
+       *
+       * IPOLY hashing guarantees conflict-free for all 2^n strides which widely
+       * exit in GPGPU applications and also show good performance for other
+       * strides.
        */
-			assert(!gap);
-			if(m_n_channel == 32 && m_n_sub_partition_in_channel == 1) {
-				std::bitset<64> a( rest_of_addr_high_bits);
+      assert(!gap);
+      if (m_n_channel == 32 && m_n_sub_partition_in_channel == 1) {
+        std::bitset<64> a(rest_of_addr_high_bits);
         std::bitset<5> chip(tlx->chip);
         chip[0] = a[13] ^ a[12] ^ a[11] ^ a[10] ^ a[9] ^ a[6] ^ a[5] ^ a[3] ^
                   a[0] ^ chip[0];
@@ -174,41 +179,55 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr,
         chip[4] =
             a[12] ^ a[11] ^ a[10] ^ a[9] ^ a[8] ^ a[5] ^ a[4] ^ a[2] ^ chip[4];
         tlx->chip = chip.to_ulong();
-				break;
-			} else if (m_n_channel == 16 && m_n_sub_partition_in_channel==2) {
-				std::bitset<64> a( rest_of_addr_high_bits);
-				std::bitset<4> chip(tlx->chip);
-				std::bitset<32> bk(tlx->bk);
-				chip[0] = a[13]^a[12]^a[11]^a[10]^a[9]^a[6]^a[5]^a[3]^a[0]^chip[0];
-				chip[1] = a[14]^a[13]^a[12]^a[11]^a[10]^a[7]^a[6]^a[4]^a[1]^chip[1];
-				chip[2] = a[14]^a[10]^a[9]^a[8]^a[7]^a[6]^a[3]^a[2]^a[0]^chip[2];
-				chip[3] = a[11]^a[10]^a[9]^a[8]^a[7]^a[4]^a[3]^a[1]^chip[3];
-				tlx->chip = chip.to_ulong();
-				unsigned par_id = a[12]^a[11]^a[10]^a[9]^a[8]^a[5]^a[4]^a[2]^bk[0];
-				tlx->sub_partition = tlx->chip * m_n_sub_partition_in_channel + par_id;
-				assert(tlx->chip < m_n_channel);
-				assert(tlx->sub_partition < m_n_channel * m_n_sub_partition_in_channel);
-				return;
-				break;
-			} else if (m_n_channel == 32 && m_n_sub_partition_in_channel==2) {
-				std::bitset<64> a( rest_of_addr_high_bits);
-				std::bitset<5> chip(tlx->chip);
-				std::bitset<32> bk(tlx->bk);
-				chip[0] = a[18]^a[17]^a[16]^a[15]^a[12]^a[10]^a[6]^a[5]^a[0]^chip[0];
-				chip[1] = a[15]^a[13]^a[12]^a[11]^a[10]^a[7]^a[5]^a[1]^a[0]^chip[1];
-				chip[2] = a[16]^a[14]^a[13]^a[12]^a[11]^a[8]^a[6]^a[2]^a[1]^chip[2];
-				chip[3] = a[17]^a[15]^a[14]^a[13]^a[12]^a[9]^a[7]^a[3]^a[2]^chip[3];
-				chip[4] = a[18]^a[16]^a[15]^a[14]^a[13]^a[10]^a[8]^a[4]^a[3]^chip[4];
-				tlx->chip = chip.to_ulong();
-				unsigned par_id = a[17]^a[16]^a[15]^a[14]^a[11]^a[9]^a[5]^a[4]^bk[0];
-				tlx->sub_partition = tlx->chip * m_n_sub_partition_in_channel + par_id;
-				assert(tlx->chip < m_n_channel);
-				assert(tlx->sub_partition < m_n_channel * m_n_sub_partition_in_channel);
-				return;
-				break;
+        break;
+      } else if (m_n_channel == 16 && m_n_sub_partition_in_channel == 2) {
+        std::bitset<64> a(rest_of_addr_high_bits);
+        std::bitset<4> chip(tlx->chip);
+        std::bitset<32> bk(tlx->bk);
+        chip[0] = a[13] ^ a[12] ^ a[11] ^ a[10] ^ a[9] ^ a[6] ^ a[5] ^ a[3] ^
+                  a[0] ^ chip[0];
+        chip[1] = a[14] ^ a[13] ^ a[12] ^ a[11] ^ a[10] ^ a[7] ^ a[6] ^ a[4] ^
+                  a[1] ^ chip[1];
+        chip[2] = a[14] ^ a[10] ^ a[9] ^ a[8] ^ a[7] ^ a[6] ^ a[3] ^ a[2] ^
+                  a[0] ^ chip[2];
+        chip[3] =
+            a[11] ^ a[10] ^ a[9] ^ a[8] ^ a[7] ^ a[4] ^ a[3] ^ a[1] ^ chip[3];
+        tlx->chip = chip.to_ulong();
+        unsigned par_id =
+            a[12] ^ a[11] ^ a[10] ^ a[9] ^ a[8] ^ a[5] ^ a[4] ^ a[2] ^ bk[0];
+        tlx->sub_partition = tlx->chip * m_n_sub_partition_in_channel + par_id;
+        assert(tlx->chip < m_n_channel);
+        assert(tlx->sub_partition < m_n_channel * m_n_sub_partition_in_channel);
+        return;
+        break;
+      } else if (m_n_channel == 32 && m_n_sub_partition_in_channel == 2) {
+        std::bitset<64> a(rest_of_addr_high_bits);
+        std::bitset<5> chip(tlx->chip);
+        std::bitset<32> bk(tlx->bk);
+        chip[0] = a[18] ^ a[17] ^ a[16] ^ a[15] ^ a[12] ^ a[10] ^ a[6] ^ a[5] ^
+                  a[0] ^ chip[0];
+        chip[1] = a[15] ^ a[13] ^ a[12] ^ a[11] ^ a[10] ^ a[7] ^ a[5] ^ a[1] ^
+                  a[0] ^ chip[1];
+        chip[2] = a[16] ^ a[14] ^ a[13] ^ a[12] ^ a[11] ^ a[8] ^ a[6] ^ a[2] ^
+                  a[1] ^ chip[2];
+        chip[3] = a[17] ^ a[15] ^ a[14] ^ a[13] ^ a[12] ^ a[9] ^ a[7] ^ a[3] ^
+                  a[2] ^ chip[3];
+        chip[4] = a[18] ^ a[16] ^ a[15] ^ a[14] ^ a[13] ^ a[10] ^ a[8] ^ a[4] ^
+                  a[3] ^ chip[4];
+        tlx->chip = chip.to_ulong();
+        unsigned par_id =
+            a[17] ^ a[16] ^ a[15] ^ a[14] ^ a[11] ^ a[9] ^ a[5] ^ a[4] ^ bk[0];
+        tlx->sub_partition = tlx->chip * m_n_sub_partition_in_channel + par_id;
+        assert(tlx->chip < m_n_channel);
+        assert(tlx->sub_partition < m_n_channel * m_n_sub_partition_in_channel);
+        return;
+        break;
       } else { /* Else incorrect number of channels for the hashing function */
-            assert("\nGPGPU-Sim memory_partition_indexing error: The number of channels should be "
-                    "32 or 64 for the hashing IPOLY index function.\n" && 0);
+        assert(
+            "\nGPGPU-Sim memory_partition_indexing error: The number of "
+            "channels should be "
+            "32 or 64 for the hashing IPOLY index function.\n" &&
+            0);
       }
       assert(tlx->chip < m_n_channel);
       break;
@@ -218,7 +237,7 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr,
       // random selected bits from the page and bank bits
       // similar to
       // Liu, Yuxi, et al. "Get Out of the Valley: Power-Efficient Address
-			assert(!gap);
+      assert(!gap);
       std::bitset<64> a(tlx->row);
       std::bitset<5> chip(tlx->chip);
       std::bitset<4> b(tlx->bk);
@@ -234,7 +253,7 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr,
     case RANDOM: {
       // This is an unrealistic hashing using software hashtable
       // we generate a random set for each memory address and save the value in
-			new_addr_type chip_address = (addr>>(ADDR_CHIP_S-log2sub_partition));
+      new_addr_type chip_address = (addr >> (ADDR_CHIP_S - log2sub_partition));
       tr1_hash_map<new_addr_type, unsigned>::const_iterator got =
           address_random_interleaving.find(chip_address);
       if (got == address_random_interleaving.end()) {
@@ -354,8 +373,8 @@ void linear_to_raw_address_translation::init(
   unsigned i;
   unsigned long long int mask;
   unsigned int nchipbits = ::LOGB2_32(n_channel);
-   log2channel = nchipbits;
-   log2sub_partition = ::LOGB2_32(n_sub_partition_in_channel);
+  log2channel = nchipbits;
+  log2sub_partition = ::LOGB2_32(n_sub_partition_in_channel);
   m_n_channel = n_channel;
   m_n_sub_partition_in_channel = n_sub_partition_in_channel;
 

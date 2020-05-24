@@ -1531,16 +1531,15 @@ class shader_core_config : public core_config {
   // Jin: concurrent kernel on sm
   bool gpgpu_concurrent_kernel_sm;
 
-    bool perfect_inst_const_cache;
-    unsigned inst_fetch_throughput;
-    unsigned reg_file_port_throughput;
+  bool perfect_inst_const_cache;
+  unsigned inst_fetch_throughput;
+  unsigned reg_file_port_throughput;
 
-    char* trace_opcode_latency_initiation_int;
-    char* trace_opcode_latency_initiation_sp;
-    char* trace_opcode_latency_initiation_dp;
-    char* trace_opcode_latency_initiation_sfu;
-    char* trace_opcode_latency_initiation_tensor;
-
+  char *trace_opcode_latency_initiation_int;
+  char *trace_opcode_latency_initiation_sp;
+  char *trace_opcode_latency_initiation_dp;
+  char *trace_opcode_latency_initiation_sfu;
+  char *trace_opcode_latency_initiation_tensor;
 };
 
 struct shader_core_stats_pod {
@@ -2062,8 +2061,10 @@ class shader_core_ctx : public core_t {
   }
 
   int test_res_bus(int latency);
-    void init_warps(unsigned cta_id, unsigned start_thread, unsigned end_thread,unsigned ctaid, int cta_size, kernel_info_t &kernel);
-    virtual void checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned t, unsigned tid);
+  void init_warps(unsigned cta_id, unsigned start_thread, unsigned end_thread,
+                  unsigned ctaid, int cta_size, kernel_info_t &kernel);
+  virtual void checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned t,
+                                             unsigned tid);
   address_type next_pc(int tid) const;
   void fetch();
   void register_cta_thread_exit(unsigned cta_num, kernel_info_t *kernel);
@@ -2077,7 +2078,7 @@ class shader_core_ctx : public core_t {
   void issue_warp(register_set &warp, const warp_inst_t *pI,
                   const active_mask_t &active_mask, unsigned warp_id,
                   unsigned sch_id);
-    virtual void func_exec_inst( warp_inst_t &inst );
+  virtual void func_exec_inst(warp_inst_t &inst);
 
   // Returns numbers of addresses in translated_addrs
   unsigned translate_local_memaddr(address_type localaddr, unsigned tid,
@@ -2176,7 +2177,7 @@ class shader_core_ctx : public core_t {
   std::bitset<MAX_THREAD_PER_SM> m_occupied_hwtid;
   std::map<unsigned int, unsigned int> m_occupied_cta_to_hwtid;
 
-    friend class trace_shader_core_ctx;
+  friend class trace_shader_core_ctx;
 };
 
 class simt_core_cluster {

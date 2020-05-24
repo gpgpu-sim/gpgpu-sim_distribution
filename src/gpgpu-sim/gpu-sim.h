@@ -370,11 +370,10 @@ class gpgpu_sim_config : public power_config,
     return runtime_pending_launch_count_limit;
   }
 
-    bool is_trace_driven_mode() const { return trace_driven_mode; }
-	bool is_skip_first_kernel() const { return trace_skip_first_kernel; }
-    char* get_traces_filename() const { return g_traces_filename; }
-    bool flush_l1() const { return gpgpu_flush_l1_cache; }
-
+  bool is_trace_driven_mode() const { return trace_driven_mode; }
+  bool is_skip_first_kernel() const { return trace_skip_first_kernel; }
+  char *get_traces_filename() const { return g_traces_filename; }
+  bool flush_l1() const { return gpgpu_flush_l1_cache; }
 
  private:
   void init_clock_domains(void);
@@ -428,10 +427,10 @@ class gpgpu_sim_config : public power_config,
   unsigned int gpgpu_compute_capability_minor;
   unsigned long long liveness_message_freq;
 
-    //trace driven mode options
-    bool trace_driven_mode;
-	bool trace_skip_first_kernel;
-    char *g_traces_filename;
+  // trace driven mode options
+  bool trace_driven_mode;
+  bool trace_skip_first_kernel;
+  char *g_traces_filename;
 
   friend class gpgpu_sim;
 };
@@ -536,7 +535,7 @@ class gpgpu_sim : public gpgpu_t {
   bool kernel_more_cta_left(kernel_info_t *kernel) const;
   bool hit_max_cta_count() const;
   kernel_info_t *select_kernel();
-   void decrement_kernel_latency();
+  void decrement_kernel_latency();
 
   const gpgpu_sim_config &get_config() const { return m_config; }
   void gpu_print_stat();

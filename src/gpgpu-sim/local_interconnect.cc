@@ -37,22 +37,23 @@
 #include "local_interconnect.h"
 #include "mem_fetch.h"
 
-xbar_router::xbar_router(unsigned router_id, enum Interconnect_type m_type, unsigned n_shader, unsigned n_mem, const struct inct_config& m_localinct_config)
-{
+xbar_router::xbar_router(unsigned router_id, enum Interconnect_type m_type,
+                         unsigned n_shader, unsigned n_mem,
+                         const struct inct_config& m_localinct_config) {
   m_id = router_id;
   router_type = m_type;
   _n_mem = n_mem;
   _n_shader = n_shader;
   total_nodes = n_shader + n_mem;
-	verbose=m_localinct_config.verbose;
-	grant_cycles = m_localinct_config.grant_cycles;
-	grant_cycles_count = m_localinct_config.grant_cycles;
+  verbose = m_localinct_config.verbose;
+  grant_cycles = m_localinct_config.grant_cycles;
+  grant_cycles_count = m_localinct_config.grant_cycles;
   in_buffers.resize(total_nodes);
   out_buffers.resize(total_nodes);
   next_node.resize(total_nodes, 0);
-	in_buffer_limit = m_localinct_config.in_buffer_limit;
-	out_buffer_limit = m_localinct_config.out_buffer_limit;
-	arbit_type = m_localinct_config.arbiter_algo;
+  in_buffer_limit = m_localinct_config.in_buffer_limit;
+  out_buffer_limit = m_localinct_config.out_buffer_limit;
+  arbit_type = m_localinct_config.arbiter_algo;
   next_node_id = 0;
   if (m_type == REQ_NET) {
     active_in_buffers = n_shader;
@@ -69,9 +70,9 @@ xbar_router::xbar_router(unsigned router_id, enum Interconnect_type m_type, unsi
   out_buffer_util = 0;
   in_buffer_util = 0;
   packets_num = 0;
-	conflicts_util=0;
-	cycles_util=0;
-	reqs_util=0;
+  conflicts_util = 0;
+  cycles_util = 0;
+  reqs_util = 0;
 }
 
 xbar_router::~xbar_router() {}
@@ -120,18 +121,16 @@ void xbar_router::Advance() {
 }
 
 void xbar_router::RR_Advance() {
-
-	bool active = false;
+  bool active = false;
   vector<bool> issued(total_nodes, false);
-	unsigned conflict_sub =0 ;
-	unsigned reqs =0 ;
-
+  unsigned conflict_sub = 0;
+  unsigned reqs = 0;
 
   for (unsigned i = 0; i < total_nodes; ++i) {
     unsigned node_id = (i + next_node_id) % total_nodes;
 
     if (!in_buffers[node_id].empty()) {
-			active=true;
+      active = true;
       Packet _packet = in_buffers[node_id].front();
       // ensure that the outbuffer has space and not issued before in this cycle
       if (Has_Buffer_Out(_packet.output_deviceID, 1)) {
@@ -139,31 +138,30 @@ void xbar_router::RR_Advance() {
           out_buffers[_packet.output_deviceID].push(_packet);
           in_buffers[node_id].pop();
           issued[_packet.output_deviceID] = true;
-					reqs++;
+          reqs++;
         } else
-					conflict_sub++;
+          conflict_sub++;
       } else {
         out_buffer_full++;
 
-				if(issued[_packet.output_deviceID])
-					conflict_sub++;
+        if (issued[_packet.output_deviceID]) conflict_sub++;
       }
     }
   }
 
   next_node_id = (++next_node_id % total_nodes);
 
-	conflicts += conflict_sub;
-	if(active){
-		conflicts_util += conflict_sub;
-		cycles_util++;
-		reqs_util+=reqs;
-	}
+  conflicts += conflict_sub;
+  if (active) {
+    conflicts_util += conflict_sub;
+    cycles_util++;
+    reqs_util += reqs;
+  }
 
-	if(verbose) {
-		printf("%d : cycle %d : conflicts = %d\n", m_id, cycles, conflict_sub);
-		printf("%d : cycle %d : passing reqs = %d\n", m_id, cycles, reqs);
-	}
+  if (verbose) {
+    printf("%d : cycle %d : conflicts = %d\n", m_id, cycles, conflict_sub);
+    printf("%d : cycle %d : passing reqs = %d\n", m_id, cycles, reqs);
+  }
 
   // collect some stats about buffer util
   for (unsigned i = 0; i < total_nodes; ++i) {
@@ -171,8 +169,7 @@ void xbar_router::RR_Advance() {
     out_buffer_util += out_buffers[i].size();
   }
 
-	cycles++;
-
+  cycles++;
 }
 
 // iSLIP algorithm
@@ -180,36 +177,34 @@ void xbar_router::RR_Advance() {
 // IEEE/ACM transactions on networking 2 (1999): 188-201.
 // https://www.cs.rutgers.edu/~sn624/552-F18/papers/islip.pdf
 void xbar_router::iSLIP_Advance() {
-
   vector<unsigned> node_tmp;
-	bool active = false;
+  bool active = false;
 
-	unsigned conflict_sub =0 ;
-	unsigned reqs =0 ;
+  unsigned conflict_sub = 0;
+  unsigned reqs = 0;
 
-	//calcaulte how many conflicts are there for stats
+  // calcaulte how many conflicts are there for stats
   for (unsigned i = 0; i < total_nodes; ++i) {
-		
     if (!in_buffers[i].empty()) {
       Packet _packet_tmp = in_buffers[i].front();
       if (!node_tmp.empty()) {
         if (std::find(node_tmp.begin(), node_tmp.end(),
                       _packet_tmp.output_deviceID) != node_tmp.end()) {
-					conflict_sub++;
+          conflict_sub++;
         } else
           node_tmp.push_back(_packet_tmp.output_deviceID);
       } else {
         node_tmp.push_back(_packet_tmp.output_deviceID);
       }
-			active=true;
+      active = true;
     }
   }
 
-	conflicts += conflict_sub;
-	if(active){
-		conflicts_util += conflict_sub;
-		cycles_util++;
-	}
+  conflicts += conflict_sub;
+  if (active) {
+    conflicts_util += conflict_sub;
+    cycles_util++;
+  }
   // do iSLIP
   for (unsigned i = 0; i < total_nodes; ++i) {
     if (Has_Buffer_Out(i, 1)) {
@@ -221,23 +216,25 @@ void xbar_router::iSLIP_Advance() {
           if (_packet.output_deviceID == i) {
             out_buffers[_packet.output_deviceID].push(_packet);
             in_buffers[node_id].pop();
-						if(verbose)
-							printf("%d : cycle %d : send req from %d to %d\n", m_id, cycles, node_id, i-_n_shader);
-						if(grant_cycles_count == 1)
-						next_node[i] = (++node_id % total_nodes);
-						if(verbose){
-							for(unsigned k=j+1; k<total_nodes; ++k){
-								unsigned node_id2 = (k+next_node[i])%total_nodes;
-								if(!in_buffers[node_id2].empty()) {
-									Packet _packet2 = in_buffers[node_id2].front();
+            if (verbose)
+              printf("%d : cycle %d : send req from %d to %d\n", m_id, cycles,
+                     node_id, i - _n_shader);
+            if (grant_cycles_count == 1)
+              next_node[i] = (++node_id % total_nodes);
+            if (verbose) {
+              for (unsigned k = j + 1; k < total_nodes; ++k) {
+                unsigned node_id2 = (k + next_node[i]) % total_nodes;
+                if (!in_buffers[node_id2].empty()) {
+                  Packet _packet2 = in_buffers[node_id2].front();
 
-									if(_packet2.output_deviceID==i)
-										printf("%d : cycle %d : cannot send req from %d to %d\n", m_id, cycles, node_id2, i-_n_shader);
-								}
-							}
-						}
+                  if (_packet2.output_deviceID == i)
+                    printf("%d : cycle %d : cannot send req from %d to %d\n",
+                           m_id, cycles, node_id2, i - _n_shader);
+                }
+              }
+            }
 
-						reqs++;
+            reqs++;
             break;
           }
         }
@@ -246,24 +243,22 @@ void xbar_router::iSLIP_Advance() {
       out_buffer_full++;
   }
 
-	if(active){
-		reqs_util+=reqs;
-	}
+  if (active) {
+    reqs_util += reqs;
+  }
 
-	if(verbose)
-		printf("%d : cycle %d : grant_cycles = %d\n", m_id, cycles, grant_cycles);
+  if (verbose)
+    printf("%d : cycle %d : grant_cycles = %d\n", m_id, cycles, grant_cycles);
 
-	if(active && grant_cycles_count == 1)
-		grant_cycles_count = grant_cycles;
-	else if (active)
-		grant_cycles_count--;
+  if (active && grant_cycles_count == 1)
+    grant_cycles_count = grant_cycles;
+  else if (active)
+    grant_cycles_count--;
 
-
-	if(verbose) {
-		printf("%d : cycle %d : conflicts = %d\n", m_id, cycles, conflict_sub);
-		printf("%d : cycle %d : passing reqs = %d\n", m_id, cycles, reqs);
-	}
-
+  if (verbose) {
+    printf("%d : cycle %d : conflicts = %d\n", m_id, cycles, conflict_sub);
+    printf("%d : cycle %d : passing reqs = %d\n", m_id, cycles, reqs);
+  }
 
   // collect some stats about buffer util
   for (unsigned i = 0; i < total_nodes; ++i) {
@@ -271,8 +266,7 @@ void xbar_router::iSLIP_Advance() {
     out_buffer_util += out_buffers[i].size();
   }
 
-	cycles++;
-
+  cycles++;
 }
 
 bool xbar_router::Busy() const {
@@ -318,7 +312,8 @@ void LocalInterconnect::CreateInterconnect(unsigned m_n_shader,
 
   net.resize(n_subnets);
   for (unsigned i = 0; i < n_subnets; ++i) {
-		net[i] = new xbar_router( i, static_cast<Interconnect_type>(i), m_n_shader, m_n_mem, m_inct_config);
+    net[i] = new xbar_router(i, static_cast<Interconnect_type>(i), m_n_shader,
+                             m_n_mem, m_inct_config);
   }
 }
 
@@ -381,29 +376,51 @@ bool LocalInterconnect::HasBuffer(unsigned deviceID, unsigned int size) const {
 }
 
 void LocalInterconnect::DisplayStats() const {
-	printf("Req_Network_injected_packets_num = %lld\n", net[REQ_NET]->packets_num);
-	printf("Req_Network_cycles = %lld\n", net[REQ_NET]->cycles);
-	printf("Req_Network_injected_packets_per_cycle = %12.4f \n", (float)(net[REQ_NET]->packets_num) / (net[REQ_NET]->cycles));
-	printf("Req_Network_conflicts_per_cycle = %12.4f\n", (float)(net[REQ_NET]->conflicts) / (net[REQ_NET]->cycles));
-	printf("Req_Network_conflicts_per_cycle_util = %12.4f\n", (float)(net[REQ_NET]->conflicts_util) / (net[REQ_NET]->cycles_util));
-	printf("Req_Bank_Level_Parallism = %12.4f\n", (float)(net[REQ_NET]->reqs_util) / (net[REQ_NET]->cycles_util));
-	printf("Req_Network_in_buffer_full_per_cycle = %12.4f\n", (float)(net[REQ_NET]->in_buffer_full) / (net[REQ_NET]->cycles));
-	printf("Req_Network_in_buffer_avg_util = %12.4f\n", ((float)(net[REQ_NET]->in_buffer_util) / (net[REQ_NET]->cycles) / net[REQ_NET]->active_in_buffers));
-	printf("Req_Network_out_buffer_full_per_cycle = %12.4f\n", (float)(net[REQ_NET]->out_buffer_full) / (net[REQ_NET]->cycles));
-	printf("Req_Network_out_buffer_avg_util = %12.4f\n", ((float)(net[REQ_NET]->out_buffer_util) / (net[REQ_NET]->cycles) / net[REQ_NET]->active_out_buffers));
+  printf("Req_Network_injected_packets_num = %lld\n",
+         net[REQ_NET]->packets_num);
+  printf("Req_Network_cycles = %lld\n", net[REQ_NET]->cycles);
+  printf("Req_Network_injected_packets_per_cycle = %12.4f \n",
+         (float)(net[REQ_NET]->packets_num) / (net[REQ_NET]->cycles));
+  printf("Req_Network_conflicts_per_cycle = %12.4f\n",
+         (float)(net[REQ_NET]->conflicts) / (net[REQ_NET]->cycles));
+  printf("Req_Network_conflicts_per_cycle_util = %12.4f\n",
+         (float)(net[REQ_NET]->conflicts_util) / (net[REQ_NET]->cycles_util));
+  printf("Req_Bank_Level_Parallism = %12.4f\n",
+         (float)(net[REQ_NET]->reqs_util) / (net[REQ_NET]->cycles_util));
+  printf("Req_Network_in_buffer_full_per_cycle = %12.4f\n",
+         (float)(net[REQ_NET]->in_buffer_full) / (net[REQ_NET]->cycles));
+  printf("Req_Network_in_buffer_avg_util = %12.4f\n",
+         ((float)(net[REQ_NET]->in_buffer_util) / (net[REQ_NET]->cycles) /
+          net[REQ_NET]->active_in_buffers));
+  printf("Req_Network_out_buffer_full_per_cycle = %12.4f\n",
+         (float)(net[REQ_NET]->out_buffer_full) / (net[REQ_NET]->cycles));
+  printf("Req_Network_out_buffer_avg_util = %12.4f\n",
+         ((float)(net[REQ_NET]->out_buffer_util) / (net[REQ_NET]->cycles) /
+          net[REQ_NET]->active_out_buffers));
 
-	printf("\n");
-	printf("Reply_Network_injected_packets_num = %lld\n", net[REPLY_NET]->packets_num);
-	printf("Reply_Network_cycles = %lld\n", net[REPLY_NET]->cycles);
-	printf("Reply_Network_injected_packets_per_cycle =  %12.4f\n", (float)(net[REPLY_NET]->packets_num) / (net[REPLY_NET]->cycles));
-	printf("Reply_Network_conflicts_per_cycle =  %12.4f\n", (float)(net[REPLY_NET]->conflicts) / (net[REPLY_NET]->cycles));
-	printf("Reply_Network_conflicts_per_cycle_util = %12.4f\n", (float)(net[REPLY_NET]->conflicts_util) / (net[REPLY_NET]->cycles_util));
-	printf("Reply_Bank_Level_Parallism = %12.4f\n", (float)(net[REPLY_NET]->reqs_util) / (net[REPLY_NET]->cycles_util));
-	printf("Reply_Network_in_buffer_full_per_cycle = %12.4f\n", (float)(net[REPLY_NET]->in_buffer_full) / (net[REPLY_NET]->cycles));
-	printf("Reply_Network_in_buffer_avg_util = %12.4f\n", ((float)(net[REPLY_NET]->in_buffer_util) / (net[REPLY_NET]->cycles) / net[REPLY_NET]->active_in_buffers));
-	printf("Reply_Network_out_buffer_full_per_cycle = %12.4f\n", (float)(net[REPLY_NET]->out_buffer_full) / (net[REPLY_NET]->cycles));
-	printf("Reply_Network_out_buffer_avg_util = %12.4f\n", ((float)(net[REPLY_NET]->out_buffer_util) / (net[REPLY_NET]->cycles) / net[REPLY_NET]->active_out_buffers));
-
+  printf("\n");
+  printf("Reply_Network_injected_packets_num = %lld\n",
+         net[REPLY_NET]->packets_num);
+  printf("Reply_Network_cycles = %lld\n", net[REPLY_NET]->cycles);
+  printf("Reply_Network_injected_packets_per_cycle =  %12.4f\n",
+         (float)(net[REPLY_NET]->packets_num) / (net[REPLY_NET]->cycles));
+  printf("Reply_Network_conflicts_per_cycle =  %12.4f\n",
+         (float)(net[REPLY_NET]->conflicts) / (net[REPLY_NET]->cycles));
+  printf(
+      "Reply_Network_conflicts_per_cycle_util = %12.4f\n",
+      (float)(net[REPLY_NET]->conflicts_util) / (net[REPLY_NET]->cycles_util));
+  printf("Reply_Bank_Level_Parallism = %12.4f\n",
+         (float)(net[REPLY_NET]->reqs_util) / (net[REPLY_NET]->cycles_util));
+  printf("Reply_Network_in_buffer_full_per_cycle = %12.4f\n",
+         (float)(net[REPLY_NET]->in_buffer_full) / (net[REPLY_NET]->cycles));
+  printf("Reply_Network_in_buffer_avg_util = %12.4f\n",
+         ((float)(net[REPLY_NET]->in_buffer_util) / (net[REPLY_NET]->cycles) /
+          net[REPLY_NET]->active_in_buffers));
+  printf("Reply_Network_out_buffer_full_per_cycle = %12.4f\n",
+         (float)(net[REPLY_NET]->out_buffer_full) / (net[REPLY_NET]->cycles));
+  printf("Reply_Network_out_buffer_avg_util = %12.4f\n",
+         ((float)(net[REPLY_NET]->out_buffer_util) / (net[REPLY_NET]->cycles) /
+          net[REPLY_NET]->active_out_buffers));
 }
 
 void LocalInterconnect::DisplayOverallStats() const {}
