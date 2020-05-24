@@ -9,7 +9,7 @@
 #include "../../abstract_hardware_model.h"
 
 enum TraceInstrOpcode {
-  // volta (common insts for others cards as well)
+  // Volta (includes common insts for others cards as well)
   OP_FADD = 1,
   OP_FADD32I,
   OP_FCHK,
@@ -165,6 +165,43 @@ enum TraceInstrOpcode {
   OP_PSET,
   OP_VMNMX,
   OP_ISET,
+  // unique insts for turing
+  OP_BMMA,
+  OP_MOVM,
+  OP_LDSM,
+  OP_R2UR,
+  OP_S2UR,
+  OP_UBMSK,
+  OP_UBREV,
+  OP_UCLEA,
+  OP_UFLO,
+  OP_UIADD3,
+  OP_UIMAD,
+  OP_UISETP,
+  OP_ULDC,
+  OP_ULEA,
+  OP_ULOP,
+  OP_ULOP3,
+  OP_ULOP32I,
+  OP_UMOV,
+  OP_UP2UR,
+  OP_UPLOP3,
+  OP_UPOPC,
+  OP_UPRMT,
+  OP_UPSETP,
+  OP_UR2UP,
+  OP_USEL,
+  OP_USGXT,
+  OP_USHF,
+  OP_USHL,
+  OP_USHR,
+  OP_VOTEU,
+  OP_SUATOM,
+  OP_SULD,
+  OP_SURED,
+  OP_SUST,
+  OP_BRXU,
+  OP_JMXU,
   // unique insts for kepler
   OP_FCMP,
   OP_FSWZ,
@@ -181,28 +218,6 @@ enum TraceInstrOpcode {
 };
 typedef enum TraceInstrOpcode sass_op_type;
 
-/*
-enum uarch_op_t {
-   NO_OP=-1,
-   ALU_OP=1,
-   SFU_OP,
-   TENSOR_CORE_OP,
-   DP_OP,
-   SP_OP,
-   INTP_OP,
-   ALU_SFU_OP,
-   LOAD_OP,
-   TENSOR_CORE_LOAD_OP,
-   TENSOR_CORE_STORE_OP,
-   STORE_OP,
-   BRANCH_OP,
-   BARRIER_OP,
-   MEMORY_BARRIER_OP,
-   CALL_OPS,
-   RET_OPS
-};
-typedef enum uarch_op_t op_type;
- */
 
 struct OpcodeChar {
   OpcodeChar(unsigned m_opcode, unsigned m_opcode_category) {
