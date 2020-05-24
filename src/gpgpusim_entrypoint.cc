@@ -232,35 +232,39 @@ gpgpu_sim *gpgpu_context::gpgpu_ptx_sim_init_perf() {
   return the_gpgpusim->g_the_gpu;
 }
 
-gpgpu_sim *gpgpu_context::gpgpu_trace_sim_init_perf(int argc, const char *argv[])
-{
-   srand(1);
-   print_splash();
-   func_sim->read_sim_environment_variables();
-   ptx_parser->read_parser_environment_variables();
-   option_parser_t opp = option_parser_create();
+gpgpu_sim *gpgpu_context::gpgpu_trace_sim_init_perf(int argc,
+                                                    const char *argv[]) {
+  srand(1);
+  print_splash();
+  func_sim->read_sim_environment_variables();
+  ptx_parser->read_parser_environment_variables();
+  option_parser_t opp = option_parser_create();
 
-   ptx_reg_options(opp);
-   func_sim->ptx_opcocde_latency_options(opp);
+  ptx_reg_options(opp);
+  func_sim->ptx_opcocde_latency_options(opp);
 
-   icnt_reg_options(opp);
-   the_gpgpusim->g_the_gpu_config = new gpgpu_sim_config(this);
-   the_gpgpusim->g_the_gpu_config->reg_options(opp); // register GPU microrachitecture options
+  icnt_reg_options(opp);
+  the_gpgpusim->g_the_gpu_config = new gpgpu_sim_config(this);
+  the_gpgpusim->g_the_gpu_config->reg_options(
+      opp);  // register GPU microrachitecture options
 
-   option_parser_cmdline(opp, argc, argv); // parse configuration options
-   fprintf(stdout, "GPGPU-Sim: Configuration options:\n\n");
-   option_parser_print(opp, stdout);
-   // Set the Numeric locale to a standard locale where a decimal point is a "dot" not a "comma"
-   // so it does the parsing correctly independent of the system environment variables
-   assert(setlocale(LC_NUMERIC,"C"));
-   the_gpgpusim->g_the_gpu_config->init();
+  option_parser_cmdline(opp, argc, argv);  // parse configuration options
+  fprintf(stdout, "GPGPU-Sim: Configuration options:\n\n");
+  option_parser_print(opp, stdout);
+  // Set the Numeric locale to a standard locale where a decimal point is a
+  // "dot" not a "comma" so it does the parsing correctly independent of the
+  // system environment variables
+  assert(setlocale(LC_NUMERIC, "C"));
+  the_gpgpusim->g_the_gpu_config->init();
 
-   the_gpgpusim->g_the_gpu = new gpgpu_sim(*(the_gpgpusim->g_the_gpu_config), this);
-   the_gpgpusim->g_stream_manager = new stream_manager((the_gpgpusim->g_the_gpu), func_sim->g_cuda_launch_blocking);
+  the_gpgpusim->g_the_gpu =
+      new gpgpu_sim(*(the_gpgpusim->g_the_gpu_config), this);
+  the_gpgpusim->g_stream_manager = new stream_manager(
+      (the_gpgpusim->g_the_gpu), func_sim->g_cuda_launch_blocking);
 
-   the_gpgpusim->g_simulation_starttime = time((time_t *)NULL);
+  the_gpgpusim->g_simulation_starttime = time((time_t *)NULL);
 
-   return the_gpgpusim->g_the_gpu;
+  return the_gpgpusim->g_the_gpu;
 }
 
 void gpgpu_context::start_sim_thread(int api) {
