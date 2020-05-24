@@ -37,12 +37,17 @@ Version 4.0.0 (development branch) versus 3.2.3
 3- Addig new system stats: gpu occupancy, L2BW, etc
 -Library:
 1  Enabled CUTLASS Library on GPGPU-Sim
+2  Enabled CUDA 10
 -Regression:
 1- Added TensorCore Regression Kernel
 -Configs:
 Adding the Pascal and Volta config files that has been correlated against real hardware.
 See the correlation website here: 
 https://engineering.purdue.edu/tgrogers/group/correlator.html
+-General:
+1 - Applied a code formatting standard
+2 - Minimized number of global variables (to make the simulator parallelizable across multiple threads or multiple processes).
+All previous, independent global variables are now members of an object at some level.
 
 Version 3.2.3+edits (development branch) versus 3.2.3
 - Support for running regression tests using Travis

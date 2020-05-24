@@ -50,7 +50,8 @@ CUDA_VERSION_STRING=`$CUDA_INSTALL_PATH/bin/nvcc --version | awk '/release/ {pri
 export CUDA_VERSION_NUMBER=`echo $CUDA_VERSION_STRING | sed 's/\./ /' | awk '{printf("%02u%02u", 10*int($1), 10*$2);}'`
 if [ $CUDA_VERSION_NUMBER -gt 10100 -o $CUDA_VERSION_NUMBER -lt 2030  ]; then
 	echo "ERROR ** GPGPU-Sim version $GPGPUSIM_VERSION_STRING not tested with CUDA version $CUDA_VERSION_STRING (please see README)";
-	return
+	echo $CUDA_VERSION_NUMBER
+  return
 fi
 
 if [ $CUDA_VERSION_NUMBER -ge 6000 ]; then

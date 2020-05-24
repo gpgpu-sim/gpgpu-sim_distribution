@@ -29,54 +29,55 @@
  *
  ***************************************************************************/
 /********************************************************************
-*      Modified by:												   *
-*      Jingwen Leng, Univeristy of Texas, Austin                   *
-*      Syed Gilani, University of Wisconsin–Madison                *
-*      Tayler Hetherington, University of British Columbia         *
-*      Ahmed ElTantawy, University of British Columbia             *
-********************************************************************/
+ *      Modified by:
+ ** Jingwen Leng, Univeristy of Texas, Austin                   * Syed Gilani,
+ *University of Wisconsin–Madison                * Tayler Hetherington,
+ *University of British Columbia         * Ahmed ElTantawy, University of
+ *British Columbia             *
+ ********************************************************************/
 
 #ifndef NOC_H_
 #define NOC_H_
 #include "XML_Parse.h"
-#include "logic.h"
-#include "cacti/parameter.h"
 #include "array.h"
-#include "interconnect.h"
 #include "basic_components.h"
+#include "cacti/parameter.h"
 #include "cacti/router.h"
+#include "interconnect.h"
+#include "logic.h"
 
-class NoC :public Component {
-  public:
-
-	ParseXML *XML;
-	int  ithNoC;
-	InputParameter interface_ip;
-	double link_len;
-	double executionTime;
-	double scktRatio, chip_PR_overhead, macro_PR_overhead;
-	MCPAT_Router * router;
-	interconnect * link_bus;
-	NoCParam  nocdynp;
-	uca_org_t local_result;
-	statsDef       tdp_stats;
-	statsDef       rtp_stats;
-	statsDef       stats_t;
-	powerDef       power_t;
-	Component      link_bus_tot_per_Router;
-	bool link_bus_exist;
-	bool router_exist;
-	string name, link_name;
-	double M_traffic_pattern;
-	NoC(ParseXML *XML_interface, int ithNoC_, InputParameter* interface_ip_, double M_traffic_pattern_ = 0.6,double link_len_=0);
-	void set_noc_param();
-	void computeEnergy(bool is_tdp=true);
-	void displayEnergy(uint32_t indent = 0,int plevel = 100, bool is_tdp=true);
-	void init_link_bus(double link_len_);
-	void init_router();
-	void computeEnergy_link_bus(bool is_tdp=true);
-	void displayEnergy_link_bus(uint32_t indent = 0,int plevel = 100, bool is_tdp=true);
-	~NoC();
+class NoC : public Component {
+ public:
+  ParseXML *XML;
+  int ithNoC;
+  InputParameter interface_ip;
+  double link_len;
+  double executionTime;
+  double scktRatio, chip_PR_overhead, macro_PR_overhead;
+  MCPAT_Router *router;
+  interconnect *link_bus;
+  NoCParam nocdynp;
+  uca_org_t local_result;
+  statsDef tdp_stats;
+  statsDef rtp_stats;
+  statsDef stats_t;
+  powerDef power_t;
+  Component link_bus_tot_per_Router;
+  bool link_bus_exist;
+  bool router_exist;
+  string name, link_name;
+  double M_traffic_pattern;
+  NoC(ParseXML *XML_interface, int ithNoC_, InputParameter *interface_ip_,
+      double M_traffic_pattern_ = 0.6, double link_len_ = 0);
+  void set_noc_param();
+  void computeEnergy(bool is_tdp = true);
+  void displayEnergy(uint32_t indent = 0, int plevel = 100, bool is_tdp = true);
+  void init_link_bus(double link_len_);
+  void init_router();
+  void computeEnergy_link_bus(bool is_tdp = true);
+  void displayEnergy_link_bus(uint32_t indent = 0, int plevel = 100,
+                              bool is_tdp = true);
+  ~NoC();
 };
 
 #endif /* NOC_H_ */
