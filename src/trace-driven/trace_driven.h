@@ -112,16 +112,19 @@ class trace_parser {
   gpgpu_context* m_gpgpu_context;
 };
 
-class trace_shd_warp_t {
+class trace_shd_warp_t : public shd_warp_t {
  public:
-  trace_shd_warp_t() { trace_pc = 0; }
+  trace_shd_warp_t(class shader_core_ctx* shader, unsigned warp_size)
+      : shd_warp_t(shader, warp_size) {
+    trace_pc = 0;
+  }
 
   std::vector<trace_warp_inst_t> warp_traces;
-  const trace_warp_inst_t* get_next_inst();
+  const trace_warp_inst_t* get_next_trace_inst();
   void clear();
   bool trace_done();
-  address_type get_start_pc();
-  address_type get_pc();
+  address_type get_start_trace_pc();
+  virtual address_type get_pc();
 
  private:
   unsigned trace_pc;
@@ -135,20 +138,19 @@ class trace_shader_core_ctx : public shader_core_ctx {
                         const memory_config* mem_config,
                         shader_core_stats* stats)
       : shader_core_ctx(gpu, cluster, shader_id, tpc_id, config, mem_config,
-                        stats) {
-    m_trace_warp.resize(get_config()->max_warps_per_shader);
-  }
+                        stats) {}
 
   virtual void checkExecutionStatusAndUpdate(warp_inst_t& inst, unsigned t,
                                              unsigned tid);
-  void init_traces(unsigned start_warp, unsigned end_warp,
-                   kernel_info_t& kernel);
-  unsigned trace_sim_inc_thread(kernel_info_t& kernel);
+  virtual void init_warps(unsigned cta_id, unsigned start_thread,
+                          unsigned end_thread, unsigned ctaid, int cta_size,
+                          kernel_info_t& kernel);
   virtual void func_exec_inst(warp_inst_t& inst);
   friend class shader_core_ctx;
 
  private:
-  std::vector<trace_shd_warp_t> m_trace_warp;
+  void init_traces(unsigned start_warp, unsigned end_warp,
+                   kernel_info_t& kernel);
 };
 
 #endif

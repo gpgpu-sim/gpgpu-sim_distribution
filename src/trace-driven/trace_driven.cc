@@ -173,7 +173,7 @@ void trace_parser::kernel_finalizer(trace_kernel_info_t* kernel_info) {
   delete kernel_info;
 }
 
-const trace_warp_inst_t* trace_shd_warp_t::get_next_inst() {
+const trace_warp_inst_t* trace_shd_warp_t::get_next_trace_inst() {
   if (trace_pc < warp_traces.size()) {
     return &warp_traces[trace_pc++];
   } else
@@ -188,7 +188,7 @@ void trace_shd_warp_t::clear() {
 // functional_done
 bool trace_shd_warp_t::trace_done() { return trace_pc == (warp_traces.size()); }
 
-address_type trace_shd_warp_t::get_start_pc() {
+address_type trace_shd_warp_t::get_start_trace_pc() {
   assert(warp_traces.size() > 0);
   return warp_traces[0].pc;
 }
@@ -629,43 +629,46 @@ void trace_config::set_latency(unsigned category, unsigned& latency,
   }
 }
 
-unsigned trace_shader_core_ctx::trace_sim_inc_thread(kernel_info_t& kernel) {
-  if (kernel.no_more_ctas_to_run()) {
-    return 0;  // finished!
-  }
+void trace_shader_core_ctx::init_warps(unsigned cta_id, unsigned start_thread,
+                                       unsigned end_thread, unsigned ctaid,
+                                       int cta_size, kernel_info_t& kernel) {
+  // call base class
+  shader_core_ctx::init_warps(cta_id, start_thread, end_thread, ctaid, cta_size,
+                              kernel);
 
-  if (kernel.more_threads_in_cta()) {
-    kernel.increment_thread_id();
-  }
+  // then init traces
+  unsigned start_warp = start_thread / m_config->warp_size;
+  unsigned end_warp = end_thread / m_config->warp_size +
+                      ((end_thread % m_config->warp_size) ? 1 : 0);
 
-  if (!kernel.more_threads_in_cta()) kernel.increment_cta_id();
-
-  return 1;
+  init_traces(start_warp, end_warp, kernel);
 }
 
 void trace_shader_core_ctx::init_traces(unsigned start_warp, unsigned end_warp,
                                         kernel_info_t& kernel) {
   std::vector<std::vector<trace_warp_inst_t>*> threadblock_traces;
   for (unsigned i = start_warp; i < end_warp; ++i) {
-    m_trace_warp[i].clear();
-    threadblock_traces.push_back(&(m_trace_warp[i].warp_traces));
+    trace_shd_warp_t* m_trace_warp = static_cast<trace_shd_warp_t*>(m_warp[i]);
+    m_trace_warp->clear();
+    threadblock_traces.push_back(&(m_trace_warp->warp_traces));
   }
   trace_kernel_info_t& trace_kernel = static_cast<trace_kernel_info_t&>(kernel);
   trace_kernel.get_next_threadblock_traces(threadblock_traces);
 
-  // set pc
+  // set the pc from the traces and ignore the functional model
   for (unsigned i = start_warp; i < end_warp; ++i) {
-    m_warp[i].set_next_pc(m_trace_warp[i].get_start_pc());
+    trace_shd_warp_t* m_trace_warp = static_cast<trace_shd_warp_t*>(m_warp[i]);
+    m_trace_warp->set_next_pc(m_trace_warp->get_start_trace_pc());
   }
 }
 
 void trace_shader_core_ctx::checkExecutionStatusAndUpdate(warp_inst_t& inst,
                                                           unsigned t,
                                                           unsigned tid) {
-  if (inst.isatomic()) m_warp[inst.warp_id()].inc_n_atomic();
+  if (inst.isatomic()) m_warp[inst.warp_id()]->inc_n_atomic();
 
   if (inst.op == EXIT_OPS) {
-    m_warp[inst.warp_id()].set_completed(t);
+    m_warp[inst.warp_id()]->set_completed(t);
   }
 }
 
@@ -683,9 +686,10 @@ void trace_shader_core_ctx::func_exec_inst(warp_inst_t& inst) {
       checkExecutionStatusAndUpdate(inst, t, tid);
     }
   }
-  if (m_trace_warp[inst.warp_id()].trace_done() &&
-      m_warp[inst.warp_id()].functional_done()) {
-    m_warp[inst.warp_id()].ibuffer_flush();
+  trace_shd_warp_t* m_trace_warp =
+      static_cast<trace_shd_warp_t*>(m_warp[inst.warp_id()]);
+  if (m_trace_warp->trace_done() && m_trace_warp->functional_done()) {
+    m_trace_warp->ibuffer_flush();
     m_barriers.warp_exit(inst.warp_id());
   }
 }

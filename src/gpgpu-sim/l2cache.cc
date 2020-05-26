@@ -793,6 +793,7 @@ void memory_sub_partition::push(mem_fetch *m_req, unsigned long long cycle) {
 mem_fetch *memory_sub_partition::pop() {
   mem_fetch *mf = m_L2_icnt_queue->pop();
   m_request_tracker.erase(mf);
+  // in trace-driven mode, we bypass the atomic functional model
   if (mf && mf->isatomic() && !m_gpu->get_config().is_trace_driven_mode()) {
     mf->do_atomic();
   }
