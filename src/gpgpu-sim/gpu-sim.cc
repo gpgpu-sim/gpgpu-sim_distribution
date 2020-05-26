@@ -60,7 +60,6 @@
 #include "../debug.h"
 #include "../gpgpusim_entrypoint.h"
 #include "../statwrapper.h"
-#include "../trace-driven/trace_driven.h"
 #include "../trace.h"
 #include "mem_latency_stat.h"
 #include "power_stat.h"
@@ -1584,6 +1583,20 @@ void shader_core_ctx::release_shader_resource_1block(unsigned hw_ctaid,
  *    object that tells us which kernel to ask for a CTA from
  */
 
+unsigned shader_core_ctx::sim_inc_thread(kernel_info_t &kernel) {
+  if (kernel.no_more_ctas_to_run()) {
+    return 0;  // finished!
+  }
+
+  if (kernel.more_threads_in_cta()) {
+    kernel.increment_thread_id();
+  }
+
+  if (!kernel.more_threads_in_cta()) kernel.increment_cta_id();
+
+  return 1;
+}
+
 void shader_core_ctx::issue_block2core(kernel_info_t &kernel) {
   if (!m_config->gpgpu_concurrent_kernel_sm)
     set_max_cta(kernel);
@@ -1649,10 +1662,10 @@ void shader_core_ctx::issue_block2core(kernel_info_t &kernel) {
   for (unsigned i = start_thread; i < end_thread; i++) {
     m_threadState[i].m_cta_id = free_cta_hw_id;
     unsigned warp_id = i / m_config->warp_size;
+    // in trace-driven mode, bypass the functional model initialization, no need
+    // for this
     if (m_gpu->get_config().is_trace_driven_mode()) {
-      trace_shader_core_ctx *trace_core =
-          static_cast<trace_shader_core_ctx *>(this);
-      nthreads_in_block += trace_core->trace_sim_inc_thread(kernel);
+      nthreads_in_block += sim_inc_thread(kernel);
     } else
       nthreads_in_block += ptx_sim_init_thread(
           kernel, &m_thread[i], m_sid, i, cta_size - (i - start_thread),
@@ -1992,13 +2005,14 @@ void shader_core_ctx::dump_warp_state(FILE *fout) const {
   fprintf(fout, "\n");
   fprintf(fout, "per warp functional simulation status:\n");
   for (unsigned w = 0; w < m_config->max_warps_per_shader; w++)
-    m_warp[w].print(fout);
+    m_warp[w]->print(fout);
 }
 
 void gpgpu_sim::perf_memcpy_to_gpu(size_t dst_start_addr, size_t count) {
   if (m_memory_config->m_perf_sim_memcpy) {
     // if(!m_config.trace_driven_mode)    //in trace-driven mode, CUDA runtime
-    // can start nre data structure at any position 	assert (dst_start_addr % 32
+    // can start nre data structure at any position 	assert (dst_start_addr %
+    // 32
     //== 0);
 
     for (unsigned counter = 0; counter < count; counter += 32) {

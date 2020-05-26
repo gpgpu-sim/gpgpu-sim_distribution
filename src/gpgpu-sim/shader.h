@@ -167,7 +167,7 @@ class shd_warp_t {
   void set_membar() { m_membar = true; }
   void clear_membar() { m_membar = false; }
   bool get_membar() const { return m_membar; }
-  address_type get_pc() const { return m_next_pc; }
+  virtual address_type get_pc() const { return m_next_pc; }
   void set_next_pc(address_type pc) { m_next_pc = pc; }
 
   void store_info_of_last_inst_at_barrier(const warp_inst_t *pI) {
@@ -236,6 +236,9 @@ class shd_warp_t {
 
   unsigned get_dynamic_warp_id() const { return m_dynamic_warp_id; }
   unsigned get_warp_id() const { return m_warp_id; }
+
+  // this fuction is used for trace_driven mode
+  virtual const warp_inst_t *get_next_trace_inst() { return NULL; }
 
  private:
   static const unsigned IBUFFER_SIZE = 2;
@@ -326,7 +329,7 @@ class scheduler_unit {  // this can be copied freely, so can be used in std
  public:
   scheduler_unit(shader_core_stats *stats, shader_core_ctx *shader,
                  Scoreboard *scoreboard, simt_stack **simt,
-                 std::vector<shd_warp_t> *warp, register_set *sp_out,
+                 std::vector<shd_warp_t *> *warp, register_set *sp_out,
                  register_set *dp_out, register_set *sfu_out,
                  register_set *int_out, register_set *tensor_core_out,
                  register_set *mem_out, int id)
@@ -415,7 +418,7 @@ class scheduler_unit {  // this can be copied freely, so can be used in std
   Scoreboard *m_scoreboard;
   simt_stack **m_simt_stack;
   // warp_inst_t** m_pipeline_reg;
-  std::vector<shd_warp_t> *m_warp;
+  std::vector<shd_warp_t *> *m_warp;
   register_set *m_sp_out;
   register_set *m_dp_out;
   register_set *m_sfu_out;
@@ -430,7 +433,7 @@ class lrr_scheduler : public scheduler_unit {
  public:
   lrr_scheduler(shader_core_stats *stats, shader_core_ctx *shader,
                 Scoreboard *scoreboard, simt_stack **simt,
-                std::vector<shd_warp_t> *warp, register_set *sp_out,
+                std::vector<shd_warp_t *> *warp, register_set *sp_out,
                 register_set *dp_out, register_set *sfu_out,
                 register_set *int_out, register_set *tensor_core_out,
                 register_set *mem_out, int id)
@@ -447,7 +450,7 @@ class gto_scheduler : public scheduler_unit {
  public:
   gto_scheduler(shader_core_stats *stats, shader_core_ctx *shader,
                 Scoreboard *scoreboard, simt_stack **simt,
-                std::vector<shd_warp_t> *warp, register_set *sp_out,
+                std::vector<shd_warp_t *> *warp, register_set *sp_out,
                 register_set *dp_out, register_set *sfu_out,
                 register_set *int_out, register_set *tensor_core_out,
                 register_set *mem_out, int id)
@@ -464,7 +467,7 @@ class oldest_scheduler : public scheduler_unit {
  public:
   oldest_scheduler(shader_core_stats *stats, shader_core_ctx *shader,
                    Scoreboard *scoreboard, simt_stack **simt,
-                   std::vector<shd_warp_t> *warp, register_set *sp_out,
+                   std::vector<shd_warp_t *> *warp, register_set *sp_out,
                    register_set *dp_out, register_set *sfu_out,
                    register_set *int_out, register_set *tensor_core_out,
                    register_set *mem_out, int id)
@@ -481,7 +484,7 @@ class two_level_active_scheduler : public scheduler_unit {
  public:
   two_level_active_scheduler(shader_core_stats *stats, shader_core_ctx *shader,
                              Scoreboard *scoreboard, simt_stack **simt,
-                             std::vector<shd_warp_t> *warp,
+                             std::vector<shd_warp_t *> *warp,
                              register_set *sp_out, register_set *dp_out,
                              register_set *sfu_out, register_set *int_out,
                              register_set *tensor_core_out,
@@ -530,7 +533,7 @@ class swl_scheduler : public scheduler_unit {
  public:
   swl_scheduler(shader_core_stats *stats, shader_core_ctx *shader,
                 Scoreboard *scoreboard, simt_stack **simt,
-                std::vector<shd_warp_t> *warp, register_set *sp_out,
+                std::vector<shd_warp_t *> *warp, register_set *sp_out,
                 register_set *dp_out, register_set *sfu_out,
                 register_set *int_out, register_set *tensor_core_out,
                 register_set *mem_out, int id, char *config_string);
@@ -1868,9 +1871,9 @@ class shader_core_ctx : public core_t {
   // modifiers
   void mem_instruction_stats(const warp_inst_t &inst);
   void decrement_atomic_count(unsigned wid, unsigned n);
-  void inc_store_req(unsigned warp_id) { m_warp[warp_id].inc_store_req(); }
+  void inc_store_req(unsigned warp_id) { m_warp[warp_id]->inc_store_req(); }
   void dec_inst_in_pipeline(unsigned warp_id) {
-    m_warp[warp_id].dec_inst_in_pipeline();
+    m_warp[warp_id]->dec_inst_in_pipeline();
   }  // also used in writeback()
   void store_ack(class mem_fetch *mf);
   bool warp_waiting_at_mem_barrier(unsigned warp_id);
@@ -2061,8 +2064,9 @@ class shader_core_ctx : public core_t {
   }
 
   int test_res_bus(int latency);
-  void init_warps(unsigned cta_id, unsigned start_thread, unsigned end_thread,
-                  unsigned ctaid, int cta_size, kernel_info_t &kernel);
+  virtual void init_warps(unsigned cta_id, unsigned start_thread,
+                          unsigned end_thread, unsigned ctaid, int cta_size,
+                          kernel_info_t &kernel);
   virtual void checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned t,
                                              unsigned tid);
   address_type next_pc(int tid) const;
@@ -2128,7 +2132,7 @@ class shader_core_ctx : public core_t {
   int m_last_warp_fetched;
 
   // decode/dispatch
-  std::vector<shd_warp_t> m_warp;  // per warp information array
+  std::vector<shd_warp_t *> m_warp;  // per warp information array
   barrier_set_t m_barriers;
   ifetch_buffer_t m_inst_fetch_buffer;
   std::vector<register_set> m_pipeline_reg;
@@ -2178,6 +2182,7 @@ class shader_core_ctx : public core_t {
   std::map<unsigned int, unsigned int> m_occupied_cta_to_hwtid;
 
   friend class trace_shader_core_ctx;
+  unsigned sim_inc_thread(kernel_info_t &kernel);
 };
 
 class simt_core_cluster {

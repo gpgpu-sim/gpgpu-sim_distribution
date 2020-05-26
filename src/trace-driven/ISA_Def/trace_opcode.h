@@ -218,7 +218,6 @@ enum TraceInstrOpcode {
 };
 typedef enum TraceInstrOpcode sass_op_type;
 
-
 struct OpcodeChar {
   OpcodeChar(unsigned m_opcode, unsigned m_opcode_category) {
     opcode = m_opcode;
