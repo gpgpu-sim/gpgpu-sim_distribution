@@ -575,25 +575,48 @@ bool trace_warp_inst_t::parse_from_string(
   return true;
 }
 
-trace_config::trace_config(gpgpu_sim* m_gpgpu_sim) {
-  this->m_gpgpu_sim = m_gpgpu_sim;
-  parse_config();
+trace_config::trace_config() {}
+
+void trace_config::reg_options(option_parser_t opp) {
+  option_parser_register(opp, "-trace", OPT_CSTR, &g_traces_filename,
+                         "traces kernel file"
+                         "traces kernel file directory",
+                         "./traces/kernelslist.g");
+
+  option_parser_register(opp, "-trace_opcode_latency_initiation_int", OPT_CSTR,
+                         &trace_opcode_latency_initiation_int,
+                         "Opcode latencies and initiation for integers in "
+                         "trace driven mode <latency,initiation>",
+                         "4,1");
+  option_parser_register(opp, "-trace_opcode_latency_initiation_sp", OPT_CSTR,
+                         &trace_opcode_latency_initiation_sp,
+                         "Opcode latencies and initiation for sp in trace "
+                         "driven mode <latency,initiation>",
+                         "4,1");
+  option_parser_register(opp, "-trace_opcode_latency_initiation_dp", OPT_CSTR,
+                         &trace_opcode_latency_initiation_dp,
+                         "Opcode latencies and initiation for dp in trace "
+                         "driven mode <latency,initiation>",
+                         "4,1");
+  option_parser_register(opp, "-trace_opcode_latency_initiation_sfu", OPT_CSTR,
+                         &trace_opcode_latency_initiation_sfu,
+                         "Opcode latencies and initiation for sfu in trace "
+                         "driven mode <latency,initiation>",
+                         "4,1");
+  option_parser_register(opp, "-trace_opcode_latency_initiation_tensor",
+                         OPT_CSTR, &trace_opcode_latency_initiation_tensor,
+                         "Opcode latencies and initiation for tensor in trace "
+                         "driven mode <latency,initiation>",
+                         "4,1");
 }
 
 void trace_config::parse_config() {
-  sscanf(
-      m_gpgpu_sim->getShaderCoreConfig()->trace_opcode_latency_initiation_int,
-      "%u,%u", &int_latency, &int_init);
-  sscanf(m_gpgpu_sim->getShaderCoreConfig()->trace_opcode_latency_initiation_sp,
-         "%u,%u", &fp_latency, &fp_init);
-  sscanf(m_gpgpu_sim->getShaderCoreConfig()->trace_opcode_latency_initiation_dp,
-         "%u,%u", &dp_latency, &dp_init);
-  sscanf(
-      m_gpgpu_sim->getShaderCoreConfig()->trace_opcode_latency_initiation_sfu,
-      "%u,%u", &sfu_latency, &sfu_init);
-  sscanf(m_gpgpu_sim->getShaderCoreConfig()
-             ->trace_opcode_latency_initiation_tensor,
-         "%u,%u", &tensor_latency, &tensor_init);
+  sscanf(trace_opcode_latency_initiation_int, "%u,%u", &int_latency, &int_init);
+  sscanf(trace_opcode_latency_initiation_sp, "%u,%u", &fp_latency, &fp_init);
+  sscanf(trace_opcode_latency_initiation_dp, "%u,%u", &dp_latency, &dp_init);
+  sscanf(trace_opcode_latency_initiation_sfu, "%u,%u", &sfu_latency, &sfu_init);
+  sscanf(trace_opcode_latency_initiation_tensor, "%u,%u", &tensor_latency,
+         &tensor_init);
 }
 void trace_config::set_latency(unsigned category, unsigned& latency,
                                unsigned& initiation_interval) {
@@ -629,6 +652,64 @@ void trace_config::set_latency(unsigned category, unsigned& latency,
   }
 }
 
+void trace_gpgpu_sim::createSIMTCluster() {
+  m_cluster = new simt_core_cluster*[m_shader_config->n_simt_clusters];
+  for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++)
+    m_cluster[i] =
+        new trace_simt_core_cluster(this, i, m_shader_config, m_memory_config,
+                                    m_shader_stats, m_memory_stats);
+}
+
+void trace_simt_core_cluster::create_shader_core_ctx() {
+  m_core = new shader_core_ctx*[m_config->n_simt_cores_per_cluster];
+  for (unsigned i = 0; i < m_config->n_simt_cores_per_cluster; i++) {
+    unsigned sid = m_config->cid_to_sid(i, m_cluster_id);
+    m_core[i] = new trace_shader_core_ctx(m_gpu, this, sid, m_cluster_id,
+                                          m_config, m_mem_config, m_stats);
+    m_core_sim_order.push_back(i);
+  }
+}
+
+void trace_shader_core_ctx::create_shd_warp() {
+  m_warp.resize(m_config->max_warps_per_shader);
+  for (unsigned k = 0; k < m_config->max_warps_per_shader; ++k) {
+    m_warp[k] = new trace_shd_warp_t(this, m_config->warp_size);
+  }
+}
+
+void trace_shader_core_ctx::get_pdom_stack_top_info(unsigned warp_id,
+                                                    const warp_inst_t* pI,
+                                                    unsigned* pc,
+                                                    unsigned* rpc) {
+  // In trace-driven mode, we assume no control hazard
+  *pc = pI->pc;
+  *rpc = pI->pc;
+}
+
+const active_mask_t& trace_shader_core_ctx::get_active_mask(
+    unsigned warp_id, const warp_inst_t* pI) {
+  // For Trace-driven, the active mask already set in traces, so
+  // just read it from the inst
+  return pI->get_active_mask();
+}
+
+unsigned trace_shader_core_ctx::sim_init_thread(
+    kernel_info_t& kernel, ptx_thread_info** thread_info, int sid, unsigned tid,
+    unsigned threads_left, unsigned num_threads, core_t* core,
+    unsigned hw_cta_id, unsigned hw_warp_id, gpgpu_t* gpu) {
+  if (kernel.no_more_ctas_to_run()) {
+    return 0;  // finished!
+  }
+
+  if (kernel.more_threads_in_cta()) {
+    kernel.increment_thread_id();
+  }
+
+  if (!kernel.more_threads_in_cta()) kernel.increment_cta_id();
+
+  return 1;
+}
+
 void trace_shader_core_ctx::init_warps(unsigned cta_id, unsigned start_thread,
                                        unsigned end_thread, unsigned ctaid,
                                        int cta_size, kernel_info_t& kernel) {
@@ -642,6 +723,19 @@ void trace_shader_core_ctx::init_warps(unsigned cta_id, unsigned start_thread,
                       ((end_thread % m_config->warp_size) ? 1 : 0);
 
   init_traces(start_warp, end_warp, kernel);
+}
+
+const warp_inst_t* trace_shader_core_ctx::get_next_inst(unsigned warp_id,
+                                                        address_type pc) {
+  // read the inst from the traces
+  trace_shd_warp_t* m_trace_warp =
+      static_cast<trace_shd_warp_t*>(m_warp[warp_id]);
+  return m_trace_warp->get_next_trace_inst();
+}
+
+void trace_shader_core_ctx::updateSIMTStack(unsigned warpId,
+                                            warp_inst_t* inst) {
+  // No SIMT-stack in trace-driven  mode
 }
 
 void trace_shader_core_ctx::init_traces(unsigned start_warp, unsigned end_warp,

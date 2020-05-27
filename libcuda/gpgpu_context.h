@@ -77,7 +77,6 @@ class gpgpu_context {
   const ptx_instruction *pc_to_instruction(unsigned pc);
   const warp_inst_t *ptx_fetch_inst(address_type pc);
   unsigned translate_pc_to_ptxlineno(unsigned pc);
-  class gpgpu_sim *gpgpu_trace_sim_init_perf(int argc, const char *argv[]);
 };
 gpgpu_context *GPGPU_Context();
 

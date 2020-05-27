@@ -370,9 +370,6 @@ class gpgpu_sim_config : public power_config,
     return runtime_pending_launch_count_limit;
   }
 
-  bool is_trace_driven_mode() const { return trace_driven_mode; }
-  bool is_skip_first_kernel() const { return trace_skip_first_kernel; }
-  char *get_traces_filename() const { return g_traces_filename; }
   bool flush_l1() const { return gpgpu_flush_l1_cache; }
 
  private:
@@ -426,11 +423,6 @@ class gpgpu_sim_config : public power_config,
   unsigned int gpgpu_compute_capability_major;
   unsigned int gpgpu_compute_capability_minor;
   unsigned long long liveness_message_freq;
-
-  // trace driven mode options
-  bool trace_driven_mode;
-  bool trace_skip_first_kernel;
-  char *g_traces_filename;
 
   friend class gpgpu_sim;
 };
@@ -588,8 +580,8 @@ class gpgpu_sim : public gpgpu_t {
 
   void gpgpu_debug();
 
+ protected:
   ///// data /////
-
   class simt_core_cluster **m_cluster;
   class memory_partition_unit **m_memory_partition_unit;
   class memory_sub_partition **m_memory_sub_partition;
@@ -645,6 +637,9 @@ class gpgpu_sim : public gpgpu_t {
   void clear_executed_kernel_info();  //< clear the kernel information after
                                       // stat printout
 
+  virtual void createSIMTCluster() = 0;
+  void callCreateSIMTCluster();
+
  public:
   unsigned long long gpu_sim_insn;
   unsigned long long gpu_tot_sim_insn;
@@ -690,6 +685,16 @@ class gpgpu_sim : public gpgpu_t {
     m_functional_sim = false;
     m_functional_sim_kernel = NULL;
   }
+};
+
+class exec_gpgpu_sim : public gpgpu_sim {
+ public:
+  exec_gpgpu_sim(const gpgpu_sim_config &config, gpgpu_context *ctx)
+      : gpgpu_sim(config, ctx) {
+    createSIMTCluster();
+  }
+
+  virtual void createSIMTCluster();
 };
 
 #endif

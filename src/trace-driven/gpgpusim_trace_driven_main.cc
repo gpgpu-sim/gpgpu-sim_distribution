@@ -14,6 +14,7 @@
 #include "../abstract_hardware_model.h"
 #include "../cuda-sim/cuda-sim.h"
 #include "../gpgpu-sim/gpu-sim.h"
+#include "../gpgpu-sim/icnt_wrapper.h"
 #include "../gpgpusim_entrypoint.h"
 #include "../option_parser.h"
 #include "ISA_Def/trace_opcode.h"
@@ -32,11 +33,16 @@
  * index info in the traces header) 5- Get rid off traces intermediate files -
  * change the tracer
  */
+gpgpu_sim* gpgpu_trace_sim_init_perf_model(int argc, const char* argv[],
+                                           gpgpu_context* m_gpgpu_context,
+                                           class trace_config* m_config);
 
 int main(int argc, const char** argv) {
   gpgpu_context* m_gpgpu_context = new gpgpu_context();
+  trace_config tconfig;
+
   gpgpu_sim* m_gpgpu_sim =
-      m_gpgpu_context->gpgpu_trace_sim_init_perf(argc, argv);
+      gpgpu_trace_sim_init_perf_model(argc, argv, m_gpgpu_context, &tconfig);
   m_gpgpu_sim->init();
 
   // for each kernel
@@ -46,12 +52,11 @@ int main(int argc, const char** argv) {
   // while loop till the end of the end kernel execution
   // prints stats
 
-  trace_parser tracer(m_gpgpu_sim->get_config().get_traces_filename(),
-                      m_gpgpu_sim, m_gpgpu_context);
-  trace_config config(m_gpgpu_sim);
+  trace_parser tracer(tconfig.get_traces_filename(), m_gpgpu_sim,
+                      m_gpgpu_context);
+  tconfig.parse_config();
 
   std::vector<std::string> commandlist = tracer.parse_kernellist_file();
-  bool first_kernel = true;
 
   for (unsigned i = 0; i < commandlist.size(); ++i) {
     trace_kernel_info_t* kernel_info = NULL;
@@ -62,12 +67,7 @@ int main(int argc, const char** argv) {
       m_gpgpu_sim->perf_memcpy_to_gpu(addre, Bcount);
       continue;
     } else {
-      // skip the first unimportant initialization kernel
-      if (m_gpgpu_sim->get_config().is_skip_first_kernel() && first_kernel) {
-        first_kernel = false;
-        continue;
-      }
-      kernel_info = tracer.parse_kernel_info(commandlist[i], &config);
+      kernel_info = tracer.parse_kernel_info(commandlist[i], &tconfig);
       m_gpgpu_sim->launch(kernel_info);
     }
 
@@ -120,4 +120,44 @@ int main(int argc, const char** argv) {
   printf("GPGPU-Sim: *** exit detected ***\n");
 
   return 1;
+}
+
+gpgpu_sim* gpgpu_trace_sim_init_perf_model(int argc, const char* argv[],
+                                           gpgpu_context* m_gpgpu_context,
+                                           trace_config* m_config) {
+  srand(1);
+  print_splash();
+
+  option_parser_t opp = option_parser_create();
+
+  m_gpgpu_context->ptx_reg_options(opp);
+  m_gpgpu_context->func_sim->ptx_opcocde_latency_options(opp);
+
+  icnt_reg_options(opp);
+
+  m_gpgpu_context->the_gpgpusim->g_the_gpu_config =
+      new gpgpu_sim_config(m_gpgpu_context);
+  m_gpgpu_context->the_gpgpusim->g_the_gpu_config->reg_options(
+      opp);  // register GPU microrachitecture options
+  m_config->reg_options(opp);
+
+  option_parser_cmdline(opp, argc, argv);  // parse configuration options
+  fprintf(stdout, "GPGPU-Sim: Configuration options:\n\n");
+  option_parser_print(opp, stdout);
+  // Set the Numeric locale to a standard locale where a decimal point is a
+  // "dot" not a "comma" so it does the parsing correctly independent of the
+  // system environment variables
+  assert(setlocale(LC_NUMERIC, "C"));
+  m_gpgpu_context->the_gpgpusim->g_the_gpu_config->init();
+
+  m_gpgpu_context->the_gpgpusim->g_the_gpu = new trace_gpgpu_sim(
+      *(m_gpgpu_context->the_gpgpusim->g_the_gpu_config), m_gpgpu_context);
+
+  m_gpgpu_context->the_gpgpusim->g_stream_manager =
+      new stream_manager((m_gpgpu_context->the_gpgpusim->g_the_gpu),
+                         m_gpgpu_context->func_sim->g_cuda_launch_blocking);
+
+  m_gpgpu_context->the_gpgpusim->g_simulation_starttime = time((time_t*)NULL);
+
+  return m_gpgpu_context->the_gpgpusim->g_the_gpu;
 }
