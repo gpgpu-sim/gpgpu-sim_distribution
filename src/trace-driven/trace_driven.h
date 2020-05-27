@@ -36,6 +36,7 @@ class trace_warp_inst_t : public warp_inst_t {
     m_gpgpu_context = NULL;
     m_opcode = 0;
     m_tconfig = NULL;
+    should_do_atomic = false;
   }
 
   trace_warp_inst_t(const class core_config* config,
@@ -44,6 +45,7 @@ class trace_warp_inst_t : public warp_inst_t {
     m_gpgpu_context = gpgpu_context;
     m_opcode = 0;
     m_tconfig = tconfig;
+    should_do_atomic = false;
   }
 
   bool parse_from_string(
@@ -80,16 +82,24 @@ class trace_kernel_info_t : public kernel_info_t {
 
 class trace_config {
  public:
-  trace_config(gpgpu_sim* m_gpgpu_sim);
+  trace_config();
 
   void set_latency(unsigned category, unsigned& latency,
                    unsigned& initiation_interval);
   void parse_config();
+  void reg_options(option_parser_t opp);
+  char* get_traces_filename() { return g_traces_filename; }
 
  private:
   unsigned int_latency, fp_latency, dp_latency, sfu_latency, tensor_latency;
   unsigned int_init, fp_init, dp_init, sfu_init, tensor_init;
-  gpgpu_sim* m_gpgpu_sim;
+
+  char* g_traces_filename;
+  char* trace_opcode_latency_initiation_int;
+  char* trace_opcode_latency_initiation_sp;
+  char* trace_opcode_latency_initiation_dp;
+  char* trace_opcode_latency_initiation_sfu;
+  char* trace_opcode_latency_initiation_tensor;
 };
 
 class trace_parser {
@@ -130,6 +140,30 @@ class trace_shd_warp_t : public shd_warp_t {
   unsigned trace_pc;
 };
 
+class trace_gpgpu_sim : public gpgpu_sim {
+ public:
+  trace_gpgpu_sim(const gpgpu_sim_config& config, gpgpu_context* ctx)
+      : gpgpu_sim(config, ctx) {
+    createSIMTCluster();
+  }
+
+  virtual void createSIMTCluster();
+};
+
+class trace_simt_core_cluster : public simt_core_cluster {
+ public:
+  trace_simt_core_cluster(class gpgpu_sim* gpu, unsigned cluster_id,
+                          const shader_core_config* config,
+                          const memory_config* mem_config,
+                          class shader_core_stats* stats,
+                          class memory_stats_t* mstats)
+      : simt_core_cluster(gpu, cluster_id, config, mem_config, stats, mstats) {
+    create_shader_core_ctx();
+  }
+
+  virtual void create_shader_core_ctx();
+};
+
 class trace_shader_core_ctx : public shader_core_ctx {
  public:
   trace_shader_core_ctx(class gpgpu_sim* gpu, class simt_core_cluster* cluster,
@@ -138,7 +172,12 @@ class trace_shader_core_ctx : public shader_core_ctx {
                         const memory_config* mem_config,
                         shader_core_stats* stats)
       : shader_core_ctx(gpu, cluster, shader_id, tpc_id, config, mem_config,
-                        stats) {}
+                        stats) {
+    create_front_pipeline();
+    create_shd_warp();
+    create_schedulers();
+    create_exec_pipeline();
+  }
 
   virtual void checkExecutionStatusAndUpdate(warp_inst_t& inst, unsigned t,
                                              unsigned tid);
@@ -146,7 +185,19 @@ class trace_shader_core_ctx : public shader_core_ctx {
                           unsigned end_thread, unsigned ctaid, int cta_size,
                           kernel_info_t& kernel);
   virtual void func_exec_inst(warp_inst_t& inst);
-  friend class shader_core_ctx;
+  virtual unsigned sim_init_thread(kernel_info_t& kernel,
+                                   ptx_thread_info** thread_info, int sid,
+                                   unsigned tid, unsigned threads_left,
+                                   unsigned num_threads, core_t* core,
+                                   unsigned hw_cta_id, unsigned hw_warp_id,
+                                   gpgpu_t* gpu);
+  virtual void create_shd_warp();
+  virtual const warp_inst_t* get_next_inst(unsigned warp_id, address_type pc);
+  virtual void updateSIMTStack(unsigned warpId, warp_inst_t* inst);
+  virtual void get_pdom_stack_top_info(unsigned warp_id, const warp_inst_t* pI,
+                                       unsigned* pc, unsigned* rpc);
+  virtual const active_mask_t& get_active_mask(unsigned warp_id,
+                                               const warp_inst_t* pI);
 
  private:
   void init_traces(unsigned start_warp, unsigned end_warp,

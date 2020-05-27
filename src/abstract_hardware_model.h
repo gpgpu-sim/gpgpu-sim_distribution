@@ -997,6 +997,7 @@ class warp_inst_t : public inst_t {
     m_cache_hit = false;
     m_is_printf = false;
     m_is_cdp = 0;
+    should_do_atomic = true;
   }
   virtual ~warp_inst_t() {}
 
@@ -1144,6 +1145,7 @@ class warp_inst_t : public inst_t {
   unsigned long long issue_cycle;
   unsigned cycles;  // used for implementing initiation interval delay
   bool m_isatomic;
+  bool should_do_atomic;
   bool m_is_printf;
   unsigned m_warp_id;
   unsigned m_dynamic_warp_id;
@@ -1232,7 +1234,7 @@ class core_t {
   }
   void execute_warp_inst_t(warp_inst_t &inst, unsigned warpId = (unsigned)-1);
   bool ptx_thread_done(unsigned hw_thread_id) const;
-  void updateSIMTStack(unsigned warpId, warp_inst_t *inst);
+  virtual void updateSIMTStack(unsigned warpId, warp_inst_t *inst);
   void initilizeSIMTStack(unsigned warp_count, unsigned warps_size);
   void deleteSIMTStack();
   warp_inst_t getExecuteWarp(unsigned warpId);

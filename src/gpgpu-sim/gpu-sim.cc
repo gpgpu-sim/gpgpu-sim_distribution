@@ -529,32 +529,6 @@ void shader_core_config::reg_options(class OptionParser *opp) {
   option_parser_register(opp, "-gpgpu_reg_file_port_throughput", OPT_INT32,
                          &reg_file_port_throughput,
                          "the number ports of the register file", "1");
-  // used for trace-driven mode
-  option_parser_register(opp, "-trace_opcode_latency_initiation_int", OPT_CSTR,
-                         &trace_opcode_latency_initiation_int,
-                         "Opcode latencies and initiation for integers in "
-                         "trace driven mode <latency,initiation>",
-                         "4,1");
-  option_parser_register(opp, "-trace_opcode_latency_initiation_sp", OPT_CSTR,
-                         &trace_opcode_latency_initiation_sp,
-                         "Opcode latencies and initiation for sp in trace "
-                         "driven mode <latency,initiation>",
-                         "4,1");
-  option_parser_register(opp, "-trace_opcode_latency_initiation_dp", OPT_CSTR,
-                         &trace_opcode_latency_initiation_dp,
-                         "Opcode latencies and initiation for dp in trace "
-                         "driven mode <latency,initiation>",
-                         "4,1");
-  option_parser_register(opp, "-trace_opcode_latency_initiation_sfu", OPT_CSTR,
-                         &trace_opcode_latency_initiation_sfu,
-                         "Opcode latencies and initiation for sfu in trace "
-                         "driven mode <latency,initiation>",
-                         "4,1");
-  option_parser_register(opp, "-trace_opcode_latency_initiation_tensor",
-                         OPT_CSTR, &trace_opcode_latency_initiation_tensor,
-                         "Opcode latencies and initiation for tensor in trace "
-                         "driven mode <latency,initiation>",
-                         "4,1");
 }
 
 void gpgpu_sim_config::reg_options(option_parser_t opp) {
@@ -665,17 +639,6 @@ void gpgpu_sim_config::reg_options(option_parser_t opp) {
                          &(gpgpu_ctx->device_runtime->g_TB_launch_latency),
                          "thread block launch latency in cycles. Default: 0",
                          "0");
-
-  // Trace driven mode parameters
-  option_parser_register(opp, "-trace_driven_mode", OPT_BOOL,
-                         &trace_driven_mode, "Turn on trace_driven_mode", "0");
-  option_parser_register(opp, "-trace_skip_first_kernel", OPT_BOOL,
-                         &trace_skip_first_kernel,
-                         "skip first intiliztion kernel in trace mode", "0");
-  option_parser_register(opp, "-trace", OPT_CSTR, &g_traces_filename,
-                         "traces kernel file"
-                         "traces kernel file directory",
-                         "./traces/kernelslist.g");
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -828,6 +791,14 @@ void gpgpu_sim::stop_all_running_kernels() {
   }
 }
 
+void exec_gpgpu_sim::createSIMTCluster() {
+  m_cluster = new simt_core_cluster *[m_shader_config->n_simt_clusters];
+  for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++)
+    m_cluster[i] =
+        new exec_simt_core_cluster(this, i, m_shader_config, m_memory_config,
+                                   m_shader_stats, m_memory_stats);
+}
+
 gpgpu_sim::gpgpu_sim(const gpgpu_sim_config &config, gpgpu_context *ctx)
     : gpgpu_t(config, ctx), m_config(config) {
   gpgpu_ctx = ctx;
@@ -867,12 +838,6 @@ gpgpu_sim::gpgpu_sim(const gpgpu_sim_config &config, gpgpu_context *ctx)
   gpu_tot_sim_cycle_parition_util = 0;
   partiton_replys_in_parallel = 0;
   partiton_replys_in_parallel_total = 0;
-
-  m_cluster = new simt_core_cluster *[m_shader_config->n_simt_clusters];
-  for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++)
-    m_cluster[i] =
-        new simt_core_cluster(this, i, m_shader_config, m_memory_config,
-                              m_shader_stats, m_memory_stats);
 
   m_memory_partition_unit =
       new memory_partition_unit *[m_memory_config->m_n_mem];
@@ -1583,18 +1548,12 @@ void shader_core_ctx::release_shader_resource_1block(unsigned hw_ctaid,
  *    object that tells us which kernel to ask for a CTA from
  */
 
-unsigned shader_core_ctx::sim_inc_thread(kernel_info_t &kernel) {
-  if (kernel.no_more_ctas_to_run()) {
-    return 0;  // finished!
-  }
-
-  if (kernel.more_threads_in_cta()) {
-    kernel.increment_thread_id();
-  }
-
-  if (!kernel.more_threads_in_cta()) kernel.increment_cta_id();
-
-  return 1;
+unsigned exec_shader_core_ctx::sim_init_thread(
+    kernel_info_t &kernel, ptx_thread_info **thread_info, int sid, unsigned tid,
+    unsigned threads_left, unsigned num_threads, core_t *core,
+    unsigned hw_cta_id, unsigned hw_warp_id, gpgpu_t *gpu) {
+  return ptx_sim_init_thread(kernel, thread_info, sid, tid, threads_left,
+                             num_threads, core, hw_cta_id, hw_warp_id, gpu);
 }
 
 void shader_core_ctx::issue_block2core(kernel_info_t &kernel) {
@@ -1662,15 +1621,10 @@ void shader_core_ctx::issue_block2core(kernel_info_t &kernel) {
   for (unsigned i = start_thread; i < end_thread; i++) {
     m_threadState[i].m_cta_id = free_cta_hw_id;
     unsigned warp_id = i / m_config->warp_size;
-    // in trace-driven mode, bypass the functional model initialization, no need
-    // for this
-    if (m_gpu->get_config().is_trace_driven_mode()) {
-      nthreads_in_block += sim_inc_thread(kernel);
-    } else
-      nthreads_in_block += ptx_sim_init_thread(
-          kernel, &m_thread[i], m_sid, i, cta_size - (i - start_thread),
-          m_config->n_thread_per_shader, this, free_cta_hw_id, warp_id,
-          m_cluster->get_gpu());
+    nthreads_in_block += sim_init_thread(
+        kernel, &m_thread[i], m_sid, i, cta_size - (i - start_thread),
+        m_config->n_thread_per_shader, this, free_cta_hw_id, warp_id,
+        m_cluster->get_gpu());
     m_threadState[i].m_active = true;
     // load thread local memory and register file
     if (m_gpu->resume_option == 1 && kernel.get_uid() == m_gpu->resume_kernel &&
