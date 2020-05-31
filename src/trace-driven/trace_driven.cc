@@ -608,6 +608,16 @@ void trace_config::reg_options(option_parser_t opp) {
                          "Opcode latencies and initiation for tensor in trace "
                          "driven mode <latency,initiation>",
                          "4,1");
+
+  for (unsigned j = 0; j < SPECIALIZED_UNIT_NUM; ++j) {
+    std::stringstream ss;
+    ss << "-trace_opcode_latency_initiation_spec_op_" << j + 1;
+    option_parser_register(opp, ss.str().c_str(), OPT_CSTR,
+                           &trace_opcode_latency_initiation_specialized_op[j],
+                           "specialized unit config"
+                           " <latency,initiation>",
+                           "4,4");
+  }
 }
 
 void trace_config::parse_config() {
@@ -617,6 +627,11 @@ void trace_config::parse_config() {
   sscanf(trace_opcode_latency_initiation_sfu, "%u,%u", &sfu_latency, &sfu_init);
   sscanf(trace_opcode_latency_initiation_tensor, "%u,%u", &tensor_latency,
          &tensor_init);
+
+  for (unsigned j = 0; j < SPECIALIZED_UNIT_NUM; ++j) {
+    sscanf(trace_opcode_latency_initiation_specialized_op[j], "%u,%u",
+           &specialized_unit_latency[j], &specialized_unit_initiation[j]);
+  }
 }
 void trace_config::set_latency(unsigned category, unsigned& latency,
                                unsigned& initiation_interval) {

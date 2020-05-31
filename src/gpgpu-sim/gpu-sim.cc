@@ -529,6 +529,17 @@ void shader_core_config::reg_options(class OptionParser *opp) {
   option_parser_register(opp, "-gpgpu_reg_file_port_throughput", OPT_INT32,
                          &reg_file_port_throughput,
                          "the number ports of the register file", "1");
+
+  for (unsigned j = 0; j < SPECIALIZED_UNIT_NUM; ++j) {
+    std::stringstream ss;
+    ss << "-specialized_unit_" << j + 1;
+    option_parser_register(opp, ss.str().c_str(), OPT_CSTR,
+                           &specialized_unit_string[j],
+                           "specialized unit config"
+                           " {<enabled>,<num_units>:<latency>:<initiation>,<ID_"
+                           "OC_SPEC>:<OC_EX_SPEC>,<NAME>}",
+                           "0,4,4,4,4,BRA");
+  }
 }
 
 void gpgpu_sim_config::reg_options(option_parser_t opp) {
