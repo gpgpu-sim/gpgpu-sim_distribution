@@ -665,6 +665,13 @@ void trace_config::set_latency(unsigned category, unsigned& latency,
     default:
       break;
   }
+  // for specialized units
+  if (category >= SPEC_UNIT_START_ID) {
+    unsigned spec_id = category - SPEC_UNIT_START_ID;
+    assert(spec_id >= 0 && spec_id < SPECIALIZED_UNIT_NUM);
+    latency = specialized_unit_latency[spec_id];
+    initiation_interval = specialized_unit_initiation[spec_id];
+  }
 }
 
 void trace_gpgpu_sim::createSIMTCluster() {
