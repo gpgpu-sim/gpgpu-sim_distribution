@@ -79,6 +79,8 @@ typedef unsigned address_type;
 typedef unsigned addr_t;
 
 // the following are operations the timing model can see
+#define SPECIALIZED_UNIT_NUM 8
+#define SPEC_UNIT_START_ID 100
 
 enum uarch_op_t {
   NO_OP = -1,
@@ -98,7 +100,15 @@ enum uarch_op_t {
   MEMORY_BARRIER_OP,
   CALL_OPS,
   RET_OPS,
-  EXIT_OPS
+  EXIT_OPS,
+  SPECIALIZED_UNIT_1_OP = SPEC_UNIT_START_ID,
+  SPECIALIZED_UNIT_2_OP,
+  SPECIALIZED_UNIT_3_OP,
+  SPECIALIZED_UNIT_4_OP,
+  SPECIALIZED_UNIT_5_OP,
+  SPECIALIZED_UNIT_6_OP,
+  SPECIALIZED_UNIT_7_OP,
+  SPECIALIZED_UNIT_8_OP
 };
 typedef enum uarch_op_t op_type;
 
@@ -135,7 +145,8 @@ enum operation_pipeline_t {
   INTP__OP,
   SFU__OP,
   TENSOR_CORE__OP,
-  MEM__OP
+  MEM__OP,
+  SPECIALIZED__OP,
 };
 typedef enum operation_pipeline_t operation_pipeline;
 enum mem_operation_t { NOT_TEX, TEX };

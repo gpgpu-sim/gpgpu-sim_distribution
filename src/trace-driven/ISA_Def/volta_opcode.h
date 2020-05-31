@@ -43,7 +43,8 @@ static const std::unordered_map<std::string, OpcodeChar> Volta_OpcodeMap = {
     {"HSETP2", OpcodeChar(OP_HSETP2, SP_OP)},
 
     // Tensor Core Instructions
-    {"HMMA", OpcodeChar(OP_HMMA, TENSOR_CORE_OP)},
+    // Execute Tensor Core Instructions on SPECIALIZED_UNIT_3
+    {"HMMA", OpcodeChar(OP_HMMA, SPECIALIZED_UNIT_3_OP)},
 
     // Double Point Instructions
     {"DADD", OpcodeChar(OP_DADD, DP_OP)},
@@ -126,32 +127,33 @@ static const std::unordered_map<std::string, OpcodeChar> Volta_OpcodeMap = {
 
     // Texture Instructions
     // For now, we ignore texture loads, consider it as ALU_OP
-    {"TEX", OpcodeChar(OP_TEX, ALU_OP)},
-    {"TLD", OpcodeChar(OP_TLD, ALU_OP)},
-    {"TLD4", OpcodeChar(OP_TLD4, ALU_OP)},
-    {"TMML", OpcodeChar(OP_TMML, ALU_OP)},
-    {"TXD", OpcodeChar(OP_TXD, ALU_OP)},
-    {"TXQ", OpcodeChar(OP_TXQ, ALU_OP)},
+    {"TEX", OpcodeChar(OP_TEX, SPECIALIZED_UNIT_2_OP)},
+    {"TLD", OpcodeChar(OP_TLD, SPECIALIZED_UNIT_2_OP)},
+    {"TLD4", OpcodeChar(OP_TLD4, SPECIALIZED_UNIT_2_OP)},
+    {"TMML", OpcodeChar(OP_TMML, SPECIALIZED_UNIT_2_OP)},
+    {"TXD", OpcodeChar(OP_TXD, SPECIALIZED_UNIT_2_OP)},
+    {"TXQ", OpcodeChar(OP_TXQ, SPECIALIZED_UNIT_2_OP)},
 
     // Control Instructions
-    {"BMOV", OpcodeChar(OP_BMOV, BRANCH_OP)},
-    {"BPT", OpcodeChar(OP_BPT, BRANCH_OP)},
-    {"BRA", OpcodeChar(OP_BRA, BRANCH_OP)},
-    {"BREAK", OpcodeChar(OP_BREAK, BRANCH_OP)},
-    {"BRX", OpcodeChar(OP_BRX, BRANCH_OP)},
-    {"BSSY", OpcodeChar(OP_BSSY, BRANCH_OP)},
-    {"BSYNC", OpcodeChar(OP_BSYNC, BRANCH_OP)},
-    {"CALL", OpcodeChar(OP_CALL, CALL_OPS)},
+    // execute branch insts on a dedicated branch unit (SPECIALIZED_UNIT_1)
+    {"BMOV", OpcodeChar(OP_BMOV, SPECIALIZED_UNIT_1_OP)},
+    {"BPT", OpcodeChar(OP_BPT, SPECIALIZED_UNIT_1_OP)},
+    {"BRA", OpcodeChar(OP_BRA, SPECIALIZED_UNIT_1_OP)},
+    {"BREAK", OpcodeChar(OP_BREAK, SPECIALIZED_UNIT_1_OP)},
+    {"BRX", OpcodeChar(OP_BRX, SPECIALIZED_UNIT_1_OP)},
+    {"BSSY", OpcodeChar(OP_BSSY, SPECIALIZED_UNIT_1_OP)},
+    {"BSYNC", OpcodeChar(OP_BSYNC, SPECIALIZED_UNIT_1_OP)},
+    {"CALL", OpcodeChar(OP_CALL, SPECIALIZED_UNIT_1_OP)},
     {"EXIT", OpcodeChar(OP_EXIT, EXIT_OPS)},
-    {"JMP", OpcodeChar(OP_JMP, BRANCH_OP)},
-    {"JMX", OpcodeChar(OP_JMX, BRANCH_OP)},
-    {"KILL", OpcodeChar(OP_KILL, BRANCH_OP)},
-    {"NANOSLEEP", OpcodeChar(OP_NANOSLEEP, BRANCH_OP)},
-    {"RET", OpcodeChar(OP_RET, RET_OPS)},
-    {"RPCMOV", OpcodeChar(OP_RPCMOV, BRANCH_OP)},
-    {"RTT", OpcodeChar(OP_RTT, RET_OPS)},
-    {"WARPSYNC", OpcodeChar(OP_WARPSYNC, BRANCH_OP)},
-    {"YIELD", OpcodeChar(OP_YIELD, BRANCH_OP)},
+    {"JMP", OpcodeChar(OP_JMP, SPECIALIZED_UNIT_1_OP)},
+    {"JMX", OpcodeChar(OP_JMX, SPECIALIZED_UNIT_1_OP)},
+    {"KILL", OpcodeChar(OP_KILL, SPECIALIZED_UNIT_1_OP)},
+    {"NANOSLEEP", OpcodeChar(OP_NANOSLEEP, SPECIALIZED_UNIT_1_OP)},
+    {"RET", OpcodeChar(OP_RET, SPECIALIZED_UNIT_1_OP)},
+    {"RPCMOV", OpcodeChar(OP_RPCMOV, SPECIALIZED_UNIT_1_OP)},
+    {"RTT", OpcodeChar(OP_RTT, SPECIALIZED_UNIT_1_OP)},
+    {"WARPSYNC", OpcodeChar(OP_WARPSYNC, SPECIALIZED_UNIT_1_OP)},
+    {"YIELD", OpcodeChar(OP_YIELD, SPECIALIZED_UNIT_1_OP)},
 
     // Miscellaneous Instructions
     {"B2R", OpcodeChar(OP_B2R, ALU_OP)},

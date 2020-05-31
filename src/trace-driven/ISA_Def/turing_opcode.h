@@ -43,7 +43,8 @@ static const std::unordered_map<std::string, OpcodeChar> Turing_OpcodeMap = {
     {"HSETP2", OpcodeChar(OP_HSETP2, SP_OP)},
 
     // Tensor Core Instructions
-    {"HMMA", OpcodeChar(OP_HMMA, TENSOR_CORE_OP)},
+    // Execute Tensor Core Instructions on SPECIALIZED_UNIT_3
+    {"HMMA", OpcodeChar(OP_HMMA, SPECIALIZED_UNIT_3_OP)},
 
     // Double Point Instructions
     {"DADD", OpcodeChar(OP_DADD, DP_OP)},
@@ -128,43 +129,46 @@ static const std::unordered_map<std::string, OpcodeChar> Turing_OpcodeMap = {
     {"MEMBAR", OpcodeChar(OP_MEMBAR, MEMORY_BARRIER_OP)},
     {"CCTLT", OpcodeChar(OP_CCTLT, ALU_OP)},
 
-    // Uniform Datapath Instruction //
-    {"R2UR", OpcodeChar(OP_R2UR, ALU_OP)},
-    {"S2UR", OpcodeChar(OP_S2UR, ALU_OP)},
-    {"UBMSK", OpcodeChar(OP_UBMSK, ALU_OP)},
-    {"UBREV", OpcodeChar(OP_UBREV, ALU_OP)},
-    {"UCLEA", OpcodeChar(OP_UCLEA, ALU_OP)},
-    {"UFLO", OpcodeChar(OP_UFLO, ALU_OP)},
-    {"UIADD3", OpcodeChar(OP_UIADD3, ALU_OP)},
-    {"UIMAD", OpcodeChar(OP_UIMAD, ALU_OP)},
-    {"UISETP", OpcodeChar(OP_UISETP, ALU_OP)},
-    {"ULDC", OpcodeChar(OP_ULDC, ALU_OP)},
-    {"ULEA", OpcodeChar(OP_ULEA, ALU_OP)},
-    {"ULOP", OpcodeChar(OP_ULOP, ALU_OP)},
-    {"ULOP3", OpcodeChar(OP_ULOP3, ALU_OP)},
-    {"ULOP32I", OpcodeChar(OP_ULOP32I, ALU_OP)},
-    {"UMOV", OpcodeChar(OP_UMOV, ALU_OP)},
-    {"UP2UR", OpcodeChar(OP_UP2UR, ALU_OP)},
-    {"UPLOP3", OpcodeChar(OP_UPLOP3, ALU_OP)},
-    {"UPOPC", OpcodeChar(OP_UPOPC, ALU_OP)},
-    {"UPRMT", OpcodeChar(OP_UPRMT, ALU_OP)},
-    {"UPSETP", OpcodeChar(OP_UPSETP, ALU_OP)},
-    {"UR2UP", OpcodeChar(OP_UR2UP, ALU_OP)},
-    {"USEL", OpcodeChar(OP_USEL, ALU_OP)},
-    {"USGXT", OpcodeChar(OP_USGXT, ALU_OP)},
-    {"USHF", OpcodeChar(OP_USHF, ALU_OP)},
-    {"USHL", OpcodeChar(OP_USHL, ALU_OP)},
-    {"USHR", OpcodeChar(OP_USHR, ALU_OP)},
-    {"VOTEU", OpcodeChar(OP_VOTEU, ALU_OP)},
+    // Uniform Datapath Instruction
+    // UDP unit
+    // for more info about UDP, see
+    // https://www.hotchips.org/hc31/HC31_2.12_NVIDIA_final.pdf
+    {"R2UR", OpcodeChar(OP_R2UR, SPECIALIZED_UNIT_4_OP)},
+    {"S2UR", OpcodeChar(OP_S2UR, SPECIALIZED_UNIT_4_OP)},
+    {"UBMSK", OpcodeChar(OP_UBMSK, SPECIALIZED_UNIT_4_OP)},
+    {"UBREV", OpcodeChar(OP_UBREV, SPECIALIZED_UNIT_4_OP)},
+    {"UCLEA", OpcodeChar(OP_UCLEA, SPECIALIZED_UNIT_4_OP)},
+    {"UFLO", OpcodeChar(OP_UFLO, SPECIALIZED_UNIT_4_OP)},
+    {"UIADD3", OpcodeChar(OP_UIADD3, SPECIALIZED_UNIT_4_OP)},
+    {"UIMAD", OpcodeChar(OP_UIMAD, SPECIALIZED_UNIT_4_OP)},
+    {"UISETP", OpcodeChar(OP_UISETP, SPECIALIZED_UNIT_4_OP)},
+    {"ULDC", OpcodeChar(OP_ULDC, SPECIALIZED_UNIT_4_OP)},
+    {"ULEA", OpcodeChar(OP_ULEA, SPECIALIZED_UNIT_4_OP)},
+    {"ULOP", OpcodeChar(OP_ULOP, SPECIALIZED_UNIT_4_OP)},
+    {"ULOP3", OpcodeChar(OP_ULOP3, SPECIALIZED_UNIT_4_OP)},
+    {"ULOP32I", OpcodeChar(OP_ULOP32I, SPECIALIZED_UNIT_4_OP)},
+    {"UMOV", OpcodeChar(OP_UMOV, SPECIALIZED_UNIT_4_OP)},
+    {"UP2UR", OpcodeChar(OP_UP2UR, SPECIALIZED_UNIT_4_OP)},
+    {"UPLOP3", OpcodeChar(OP_UPLOP3, SPECIALIZED_UNIT_4_OP)},
+    {"UPOPC", OpcodeChar(OP_UPOPC, SPECIALIZED_UNIT_4_OP)},
+    {"UPRMT", OpcodeChar(OP_UPRMT, SPECIALIZED_UNIT_4_OP)},
+    {"UPSETP", OpcodeChar(OP_UPSETP, SPECIALIZED_UNIT_4_OP)},
+    {"UR2UP", OpcodeChar(OP_UR2UP, SPECIALIZED_UNIT_4_OP)},
+    {"USEL", OpcodeChar(OP_USEL, SPECIALIZED_UNIT_4_OP)},
+    {"USGXT", OpcodeChar(OP_USGXT, SPECIALIZED_UNIT_4_OP)},
+    {"USHF", OpcodeChar(OP_USHF, SPECIALIZED_UNIT_4_OP)},
+    {"USHL", OpcodeChar(OP_USHL, SPECIALIZED_UNIT_4_OP)},
+    {"USHR", OpcodeChar(OP_USHR, SPECIALIZED_UNIT_4_OP)},
+    {"VOTEU", OpcodeChar(OP_VOTEU, SPECIALIZED_UNIT_4_OP)},
 
     // Texture Instructions
     // For now, we ignore texture loads, consider it as ALU_OP
-    {"TEX", OpcodeChar(OP_TEX, ALU_OP)},
-    {"TLD", OpcodeChar(OP_TLD, ALU_OP)},
-    {"TLD4", OpcodeChar(OP_TLD4, ALU_OP)},
-    {"TMML", OpcodeChar(OP_TMML, ALU_OP)},
-    {"TXD", OpcodeChar(OP_TXD, ALU_OP)},
-    {"TXQ", OpcodeChar(OP_TXQ, ALU_OP)},
+    {"TEX", OpcodeChar(OP_TEX, SPECIALIZED_UNIT_2_OP)},
+    {"TLD", OpcodeChar(OP_TLD, SPECIALIZED_UNIT_2_OP)},
+    {"TLD4", OpcodeChar(OP_TLD4, SPECIALIZED_UNIT_2_OP)},
+    {"TMML", OpcodeChar(OP_TMML, SPECIALIZED_UNIT_2_OP)},
+    {"TXD", OpcodeChar(OP_TXD, SPECIALIZED_UNIT_2_OP)},
+    {"TXQ", OpcodeChar(OP_TXQ, SPECIALIZED_UNIT_2_OP)},
 
     // Surface Instructions //
     {"SUATOM", OpcodeChar(OP_SUATOM, ALU_OP)},
@@ -173,26 +177,27 @@ static const std::unordered_map<std::string, OpcodeChar> Turing_OpcodeMap = {
     {"SUST", OpcodeChar(OP_SUST, ALU_OP)},
 
     // Control Instructions
-    {"BMOV", OpcodeChar(OP_BMOV, BRANCH_OP)},
-    {"BPT", OpcodeChar(OP_BPT, BRANCH_OP)},
-    {"BRA", OpcodeChar(OP_BRA, BRANCH_OP)},
-    {"BREAK", OpcodeChar(OP_BREAK, BRANCH_OP)},
-    {"BRX", OpcodeChar(OP_BRX, BRANCH_OP)},
-    {"BRXU", OpcodeChar(OP_BRXU, BRANCH_OP)},  //
-    {"BSSY", OpcodeChar(OP_BSSY, BRANCH_OP)},
-    {"BSYNC", OpcodeChar(OP_BSYNC, BRANCH_OP)},
-    {"CALL", OpcodeChar(OP_CALL, CALL_OPS)},
+    // execute branch insts on a dedicated branch unit (SPECIALIZED_UNIT_1)
+    {"BMOV", OpcodeChar(OP_BMOV, SPECIALIZED_UNIT_1_OP)},
+    {"BPT", OpcodeChar(OP_BPT, SPECIALIZED_UNIT_1_OP)},
+    {"BRA", OpcodeChar(OP_BRA, SPECIALIZED_UNIT_1_OP)},
+    {"BREAK", OpcodeChar(OP_BREAK, SPECIALIZED_UNIT_1_OP)},
+    {"BRX", OpcodeChar(OP_BRX, SPECIALIZED_UNIT_1_OP)},
+    {"BRXU", OpcodeChar(OP_BRXU, SPECIALIZED_UNIT_1_OP)},  //
+    {"BSSY", OpcodeChar(OP_BSSY, SPECIALIZED_UNIT_1_OP)},
+    {"BSYNC", OpcodeChar(OP_BSYNC, SPECIALIZED_UNIT_1_OP)},
+    {"CALL", OpcodeChar(OP_CALL, SPECIALIZED_UNIT_1_OP)},
     {"EXIT", OpcodeChar(OP_EXIT, EXIT_OPS)},
-    {"JMP", OpcodeChar(OP_JMP, BRANCH_OP)},
-    {"JMX", OpcodeChar(OP_JMX, BRANCH_OP)},
-    {"JMXU", OpcodeChar(OP_JMXU, BRANCH_OP)},  ///
-    {"KILL", OpcodeChar(OP_KILL, BRANCH_OP)},
-    {"NANOSLEEP", OpcodeChar(OP_NANOSLEEP, BRANCH_OP)},
-    {"RET", OpcodeChar(OP_RET, RET_OPS)},
-    {"RPCMOV", OpcodeChar(OP_RPCMOV, BRANCH_OP)},
-    {"RTT", OpcodeChar(OP_RTT, RET_OPS)},
-    {"WARPSYNC", OpcodeChar(OP_WARPSYNC, BRANCH_OP)},
-    {"YIELD", OpcodeChar(OP_YIELD, BRANCH_OP)},
+    {"JMP", OpcodeChar(OP_JMP, SPECIALIZED_UNIT_1_OP)},
+    {"JMX", OpcodeChar(OP_JMX, SPECIALIZED_UNIT_1_OP)},
+    {"JMXU", OpcodeChar(OP_JMXU, SPECIALIZED_UNIT_1_OP)},  ///
+    {"KILL", OpcodeChar(OP_KILL, SPECIALIZED_UNIT_3_OP)},
+    {"NANOSLEEP", OpcodeChar(OP_NANOSLEEP, SPECIALIZED_UNIT_1_OP)},
+    {"RET", OpcodeChar(OP_RET, SPECIALIZED_UNIT_1_OP)},
+    {"RPCMOV", OpcodeChar(OP_RPCMOV, SPECIALIZED_UNIT_1_OP)},
+    {"RTT", OpcodeChar(OP_RTT, SPECIALIZED_UNIT_1_OP)},
+    {"WARPSYNC", OpcodeChar(OP_WARPSYNC, SPECIALIZED_UNIT_1_OP)},
+    {"YIELD", OpcodeChar(OP_YIELD, SPECIALIZED_UNIT_1_OP)},
 
     // Miscellaneous Instructions
     {"B2R", OpcodeChar(OP_B2R, ALU_OP)},

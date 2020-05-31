@@ -93,6 +93,8 @@ class trace_config {
  private:
   unsigned int_latency, fp_latency, dp_latency, sfu_latency, tensor_latency;
   unsigned int_init, fp_init, dp_init, sfu_init, tensor_init;
+  unsigned specialized_unit_latency[SPECIALIZED_UNIT_NUM];
+  unsigned specialized_unit_initiation[SPECIALIZED_UNIT_NUM];
 
   char* g_traces_filename;
   char* trace_opcode_latency_initiation_int;
@@ -100,6 +102,7 @@ class trace_config {
   char* trace_opcode_latency_initiation_dp;
   char* trace_opcode_latency_initiation_sfu;
   char* trace_opcode_latency_initiation_tensor;
+  char* trace_opcode_latency_initiation_specialized_op[SPECIALIZED_UNIT_NUM];
 };
 
 class trace_parser {
