@@ -31,6 +31,7 @@
 #include "dram_sched.h"
 #include "gpu-misc.h"
 #include "gpu-sim.h"
+#include "hashing.h"
 #include "l2cache.h"
 #include "mem_fetch.h"
 #include "mem_latency_stat.h"
@@ -207,8 +208,8 @@ dram_req_t::dram_req_t(class mem_fetch *mf, unsigned banks,
     }
     case BITWISE_XORING_BK_INDEX: {
       // xoring bank bits with lower bits of the page
-      int lbank = LOGB2(banks);
-      bk = tlx.bk ^ (tlx.row & ((1 << lbank) - 1));
+      bk = bitwise_hash_function(tlx.row, tlx.bk, banks);
+      assert(bk < banks);
       break;
     }
     case IPOLY_BK_INDEX: {
@@ -216,22 +217,9 @@ dram_req_t::dram_req_t(class mem_fetch *mf, unsigned banks,
        * memory." Rau, B. R et al. ISCA 1991
        * http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=348DEA37A3E440473B3C075EAABC63B6?doi=10.1.1.12.7149&rep=rep1&type=pdf
        */
-      if (banks == 16) {
-        std::bitset<64> a(tlx.row);
-        std::bitset<4> b(tlx.bk);
-        b[0] = a[11] ^ a[10] ^ a[9] ^ a[8] ^ a[6] ^ a[4] ^ a[3] ^ a[0] ^ b[0];
-        b[1] = a[12] ^ a[8] ^ a[7] ^ a[6] ^ a[5] ^ a[3] ^ a[1] ^ a[0] ^ b[1];
-        b[2] = a[9] ^ a[8] ^ a[7] ^ a[6] ^ a[4] ^ a[2] ^ a[1] ^ b[2];
-        b[3] = a[10] ^ a[9] ^ a[8] ^ a[7] ^ a[5] ^ a[3] ^ a[2] ^ b[3];
-        bk = b.to_ulong();
-        assert(bk < banks);
-      } else { /* Else incorrect number of channels for the hashing function */
-        assert(
-            "\nGPGPU-Sim memory_banking indexing error: The number of banks "
-            "should be "
-            "16 for the hashing IPOLY index function.\n" &&
-            0);
-      }
+      // xoring bank bits with lower bits of the page
+      bk = ipoly_hash_function(tlx.row, tlx.bk, banks);
+      assert(bk < banks);
       break;
     }
     case CUSTOM_BK_INDEX:
