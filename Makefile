@@ -75,7 +75,7 @@ else
 	TARGETS += $(SIM_LIB_DIR)/libOpenCL.so
 endif
 	TARGETS += cuobjdump_to_ptxplus/cuobjdump_to_ptxplus
-	TARGETS += $(SIM_LIB_DIR)/gpgpusim.out
+	TARGETS += $(SIM_LIB_DIR)/accelsim.out
 
 MCPAT=
 MCPAT_OBJ_DIR=
@@ -171,7 +171,7 @@ $(SIM_LIB_DIR)/libcudart.so: makedirs $(LIBS) cudalib
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.10.1 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.10.1; fi
 
 
-$(SIM_LIB_DIR)/gpgpusim.out: makedirs $(LIBS) cudalib $(SIM_LIB_DIR)/libcudart.so
+$(SIM_LIB_DIR)/accelsim.out: makedirs $(LIBS) cudalib $(SIM_LIB_DIR)/libcudart.so
 	ar rvs   $(SIM_LIB_DIR)/libgpgpusim_static.a\
 			$(SIM_OBJ_FILES_DIR)/libcuda/*.o \
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/*.o \
@@ -181,7 +181,7 @@ $(SIM_LIB_DIR)/gpgpusim.out: makedirs $(LIBS) cudalib $(SIM_LIB_DIR)/libcudart.s
 			$(SIM_OBJ_FILES_DIR)/trace-driven/*.o \
 			$(SIM_OBJ_FILES_DIR)/*.o \
 			$(MCPAT)
-	g++ -std=c++0x -o $(SIM_LIB_DIR)/gpgpusim.out src/trace-driven/gpgpusim_trace_driven_main.cc  -L$(SIM_LIB_DIR) -I$(CUDA_INSTALL_PATH)/include -lgpgpusim_static -lm -lz -lGL -pthread 
+	g++ -std=c++0x -o $(SIM_LIB_DIR)/accelsim.out src/trace-driven/main.cc  -L$(SIM_LIB_DIR) -I$(CUDA_INSTALL_PATH)/include -lgpgpusim_static -lm -lz -lGL -pthread 
 
 $(SIM_LIB_DIR)/libcudart.dylib: makedirs $(LIBS) cudalib
 	g++ -dynamiclib -Wl,-headerpad_max_install_names,-undefined,dynamic_lookup,-compatibility_version,1.1,-current_version,1.1\
