@@ -636,6 +636,7 @@ class gpgpu_sim : public gpgpu_t {
                                               // into a string for stat printout
   void clear_executed_kernel_info();  //< clear the kernel information after
                                       // stat printout
+  virtual void createSIMTCluster() = 0;
 
  public:
   unsigned long long gpu_sim_insn;
