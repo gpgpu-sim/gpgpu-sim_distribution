@@ -57,7 +57,7 @@ endif
 
 $(shell mkdir -p $(SIM_OBJ_FILES_DIR)/libcuda && echo "const char *g_gpgpusim_build_string=\"$(GPGPUSIM_BUILD)\";" > $(SIM_OBJ_FILES_DIR)/detailed_version)
 
-LIBS = cuda-sim gpgpu-sim_uarch $(INTERSIM) gpgpusimlib trace-driven
+LIBS = cuda-sim gpgpu-sim_uarch $(INTERSIM) gpgpusimlib
 
 
 TARGETS =
@@ -75,7 +75,6 @@ else
 	TARGETS += $(SIM_LIB_DIR)/libOpenCL.so
 endif
 	TARGETS += cuobjdump_to_ptxplus/cuobjdump_to_ptxplus
-	TARGETS += $(SIM_LIB_DIR)/accelsim.out
 
 MCPAT=
 MCPAT_OBJ_DIR=
@@ -150,7 +149,6 @@ $(SIM_LIB_DIR)/libcudart.so: makedirs $(LIBS) cudalib
 			$(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table/*.o \
 			$(SIM_OBJ_FILES_DIR)/gpgpu-sim/*.o \
 			$(SIM_OBJ_FILES_DIR)/$(INTERSIM)/*.o \
-			$(SIM_OBJ_FILES_DIR)/trace-driven/*.o \
 			$(SIM_OBJ_FILES_DIR)/*.o -lm -lz -lGL -pthread \
 			$(MCPAT) \
 			-o $(SIM_LIB_DIR)/libcudart.so
@@ -169,19 +167,6 @@ $(SIM_LIB_DIR)/libcudart.so: makedirs $(LIBS) cudalib
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.9.2 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.9.2; fi
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.10.0 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.10.0; fi
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.10.1 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.10.1; fi
-
-
-$(SIM_LIB_DIR)/accelsim.out: makedirs $(LIBS) cudalib $(SIM_LIB_DIR)/libcudart.so
-	ar rvs   $(SIM_LIB_DIR)/libgpgpusim_static.a\
-			$(SIM_OBJ_FILES_DIR)/libcuda/*.o \
-			$(SIM_OBJ_FILES_DIR)/cuda-sim/*.o \
-			$(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table/*.o \
-			$(SIM_OBJ_FILES_DIR)/gpgpu-sim/*.o \
-			$(SIM_OBJ_FILES_DIR)/$(INTERSIM)/*.o \
-			$(SIM_OBJ_FILES_DIR)/trace-driven/*.o \
-			$(SIM_OBJ_FILES_DIR)/*.o \
-			$(MCPAT)
-	g++ -std=c++0x -o $(SIM_LIB_DIR)/accelsim.out src/trace-driven/main.cc  -L$(SIM_LIB_DIR) -I$(CUDA_INSTALL_PATH)/include -lgpgpusim_static -lm -lz -lGL -pthread 
 
 $(SIM_LIB_DIR)/libcudart.dylib: makedirs $(LIBS) cudalib
 	g++ -dynamiclib -Wl,-headerpad_max_install_names,-undefined,dynamic_lookup,-compatibility_version,1.1,-current_version,1.1\
@@ -227,9 +212,6 @@ ifneq ($(DEBUG),1)
 endif
 TFLAGS += -g3 -fPIC
 
-trace-driven: makedirs
-	g++ $(TFLAGS) -c src/trace-driven/trace_driven.cc -o $(SIM_OBJ_FILES_DIR)/trace-driven/trace_driven.o
-
 gpgpu-sim_uarch: makedirs cuda-sim
 	$(MAKE) -C ./src/gpgpu-sim/ depend
 	$(MAKE) -C ./src/gpgpu-sim/
@@ -256,7 +238,6 @@ makedirs:
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/cuda-sim ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/cuda-sim; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/cuda-sim/decuda_pred_table; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/gpgpu-sim ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/gpgpu-sim; fi;
-	if [ ! -d $(SIM_OBJ_FILES_DIR)/trace-driven ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/trace-driven; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/libopencl ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/libopencl; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/libopencl/bin ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/libopencl/bin; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/$(INTERSIM) ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/$(INTERSIM); fi;
