@@ -633,6 +633,8 @@ class gpgpu_t {
     return m_NameToTextureInfo;
   }
 
+  virtual ~gpgpu_t() {}
+
  protected:
   const gpgpu_functional_sim_config &m_function_model_config;
   FILE *ptx_inst_debug_file;
