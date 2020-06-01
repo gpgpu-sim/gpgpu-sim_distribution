@@ -252,6 +252,12 @@ void shader_core_config::reg_options(class OptionParser *opp) {
   option_parser_register(opp, "-gpgpu_l1_banks", OPT_UINT32,
                          &m_L1D_config.l1_banks, "The number of L1 cache banks",
                          "1");
+  option_parser_register(opp, "-gpgpu_l1_banks_byte_interleaving", OPT_UINT32,
+                         &m_L1D_config.l1_banks_byte_interleaving,
+                         "l1 banks byte interleaving granularity", "32");
+  option_parser_register(opp, "-gpgpu_l1_banks_hashing_function", OPT_UINT32,
+                         &m_L1D_config.l1_banks_hashing_function,
+                         "l1 banks hashing function", "0");
   option_parser_register(opp, "-gpgpu_l1_latency", OPT_UINT32,
                          &m_L1D_config.l1_latency, "L1 Hit Latency", "1");
   option_parser_register(opp, "-gpgpu_smem_latency", OPT_UINT32, &smem_latency,
