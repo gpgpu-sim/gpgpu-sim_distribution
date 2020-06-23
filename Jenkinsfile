@@ -74,7 +74,7 @@ pipeline {
                     sh 'PLOTDIR="jenkins/${JOB_NAME}" &&\
                         ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c per-app-merge-11.0.csv -P cuda-11.0 &&\
                         ./gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-kernel-11.0.csv,./stats-per-kernel-11.0.csv -R > per-kernel-merge-11.0.csv &&\
-                        ./gpgpu-sim_simulations/util/plotting/plot-correlation.py -c per-kernel-merge-11.0.csv -p cuda-11.0 | grep -B 1 "Correl=" | tee correl.11.0.txt &&\
+                        ./gpgpu-sim_simulations/util/plotting/plot-correlation.py -H ./gpgpu-sim_simulations/run_hw/QUADRO-V100/device-0/9.1/ ./-c per-kernel-merge-11.0.csv -p cuda-11.0 | grep -B 1 "Correl=" | tee correl.11.0.txt &&\
                         mkdir -p ./gpgpu-sim-results-repo/${JOB_NAME}/ && cp stats-per-*.csv ./gpgpu-sim-results-repo/${JOB_NAME}/ &&\
                         cd ./gpgpu-sim-results-repo &&\
                         git diff --quiet && git diff --staged --quiet || git commit -am "Jenkins automated checkin ${JOB_NAME} Build:${BUILD_NUMBER}" &&\
