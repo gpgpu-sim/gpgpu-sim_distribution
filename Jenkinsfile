@@ -54,10 +54,11 @@ pipeline {
         stage('11.0 Regressions'){
             steps {
                     sh '''#!/bin/bash
-                        source ./env-setup/11.0_env_setup.sh &&\
-                        source `pwd`/setup_environment &&\
-                        ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -B rodinia_2.0-ft,sdk-4.2 -C QV100 -N regress-$$ && \
-                        PLOTDIR="jenkins/${JOB_NAME}/${BUILD_NUMBER}/11.0" && ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p /home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR && \
+                        module load slurm
+                        source ./env-setup/11.0_env_setup.sh
+                        source `pwd`/setup_environment
+                        ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -B rodinia_2.0-ft,sdk-4.2 -C QV100 -N regress-$$ 
+                        PLOTDIR="jenkins/${JOB_NAME}/${BUILD_NUMBER}/11.0" && ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p /home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR
                         ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -s stats-per-app-11.0.csv -N regress-$$'''
             }
         }
@@ -67,7 +68,8 @@ pipeline {
                     sh 'rm -rf ./gpgpu-sim_simulations/util/plotting/correl-html && rm -rf gpgpu-sim-results-repo && rm -rf ./gpgpu-sim_simulations/util/plotting/htmls'
                     sh 'git clone git@github.com:purdue-aalp/gpgpu-sim-results-repo.git'
                     sh '''#!/bin/bash
-                        source ./env-setup/11.0_env_setup.sh &&\
+                        module load slurm
+                        source ./env-setup/11.0_env_setup.sh
                         ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k -B rodinia_2.0-ft,sdk-4.2 -C QV100 -A > stats-per-kernel-11.0.csv'''
                     sh 'if [ ! -d ./gpgpu-sim-results-repo/${JOB_NAME} ]; then mkdir -p ./gpgpu-sim-results-repo/${JOB_NAME}/ ; cp ./gpgpu-sim-results-repo/purdue-aalp/gpgpu-sim_distribution/dev/* ./gpgpu-sim-results-repo/${JOB_NAME}/ ; fi'
                     sh './gpgpu-sim_simulations/util/plotting/merge-stats.py -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-app-11.0.csv,./stats-per-app-11.0.csv -R > per-app-merge-11.0.csv'
