@@ -51,16 +51,14 @@
                     make -C ./benchmarks/src data'''
             }
         }
-        stage('regress'){
+        stage('11.0 Regressions'){
             steps {
-                "11.0-functest": {
                     sh '''#!/bin/bash
                         source ./env-setup/11.0_env_setup.sh &&\
                         source `pwd`/setup_environment &&\
                         ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -B rodinia_2.0-ft,sdk-4.2 -C QV100 -N regress-$$ && \
                         PLOTDIR="jenkins/${JOB_NAME}/${BUILD_NUMBER}/11.0" && ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p /home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR && \
                         ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -s stats-per-app-11.0.csv -N regress-$$'''
-                }
             }
         }
         stage('correlate-delta-and-archive') {
