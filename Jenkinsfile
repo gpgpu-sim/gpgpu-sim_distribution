@@ -1,4 +1,4 @@
-0ipeline {
+pipeline {
     agent {
         label "purdue-cluster"
     }
