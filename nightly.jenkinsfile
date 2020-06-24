@@ -13,6 +13,12 @@ pipeline {
     }
 
     stages {
+        stage('env-setup') {
+            steps {
+                sh 'rm -rf env-setup && git clone git@github.com:purdue-aalp/env-setup.git &&\
+                    cd env-setup && git checkout cluster-ubuntu'
+            }
+        }
         stage('nightly-simulator-build') {
             steps {
                 sh '''#!/bin/bash
