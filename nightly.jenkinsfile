@@ -13,11 +13,18 @@ pipeline {
     }
 
     stages {
+        stage('env-setup') {
+            steps {
+                sh 'rm -rf env-setup && git clone git@github.com:purdue-aalp/env-setup.git &&\
+                    cd env-setup && git checkout cluster-ubuntu'
+            }
+        }
         stage('nightly-simulator-build') {
             steps {
-                sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
-                source `pwd`/setup_environment &&\
-                make -j 10'
+                sh '''#!/bin/bash
+                    source ./env-setup/11.0_env_setup.sh
+                    source `pwd`/setup_environment
+                    make -j 10'''
             }
         }
         stage('nightly-simulations-build'){
@@ -30,12 +37,13 @@ pipeline {
                     cd gpgpu-sim_simulations && \
                     git pull && \
                     ln -s /home/tgrogers-raid/a/common/data_dirs benchmarks/'
-                sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
+                sh '''#!/bin/bash
+                    source ./env-setup/11.0_env_setup.sh &&\
                     source `pwd`/setup_environment &&\
                     cd gpgpu-sim_simulations && \
                     source ./benchmarks/src/setup_environment && \
                     make -i -j 10 -C ./benchmarks/src/ all && \
-                    make -C ./benchmarks/src data'
+                    make -C ./benchmarks/src data'''
             }
         }
         stage('nightly-2B-insn-run'){
@@ -43,13 +51,14 @@ pipeline {
                     sh 'rm -rf ./gpgpu-sim_simulations/util/plotting/correl-html && rm -rf gpgpu-sim-results-repo &&\
                         rm -rf ./gpgpu-sim_simulations/util/plotting/htmls'
 
-                    sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
-                        source `pwd`/setup_environment &&\
+                    sh '''#!/bin/bash
+                        source ./env-setup/11.0_env_setup.sh
+                        source `pwd`/setup_environment
                         ./gpgpu-sim_simulations/util/job_launching/run_simulations.py \
-                            -B `cat ./gpgpu-sim_simulations/util/job_launching/apps/correlation-apps.list` -C QV100-2B -N nightly-$$ && \
+                            -B `cat ./gpgpu-sim_simulations/util/job_launching/apps/correlation-apps.list` -C QV100-2B -N nightly-$$
                         ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -I -S 1800 -v \
-                            -s stats-per-app-9.1.csv -T 12 -K -N nightly-$$ && \
-                        ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c stats-per-app-9.1.csv -P cuda-9.1.nightly'
+                            -s stats-per-app-11.0.csv -T 12 -K -N nightly-$$
+                        ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c stats-per-app-11.0.csv -P cuda-11.0.nightly'''
             }
         }
         stage('nightly-correlate'){
@@ -63,25 +72,26 @@ pipeline {
                     fi && \
                     ./gpgpu-sim_simulations/run_hw/get_hw_data.sh'
 
-                sh 'source /home/tgrogers-raid/a/common/gpgpu-sim-setup/9.1_env_setup.sh &&\
+                sh '''#!/bin/bash
+                    source ./env-setup/11.0_env_setup.sh
                     ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k \
                         -B `cat ./gpgpu-sim_simulations/util/job_launching/apps/correlation-apps.list` \
-                        -C QV100-2B > stats-per-kernel-9.1.csv &&\
+                        -C QV100-2B > stats-per-kernel-11.0.csv
                     ./gpgpu-sim_simulations/util/plotting/merge-stats.py \
-                        -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-app-9.1.csv,./stats-per-app-9.1.csv -R \
-                        > per-app-merge-9.1.csv &&\
+                        -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-app-11.0.csv,./stats-per-app-11.0.csv -R \
+                        > per-app-merge-11.0.csv
                     ./gpgpu-sim_simulations/util/plotting/merge-stats.py \
-                        -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-kernel-9.1.csv,./stats-per-kernel-9.1.csv -R \
-                        > per-kernel-merge-9.1.csv &&\
-                    source `pwd`/setup_environment &&\
-                    ./gpgpu-sim_simulations/util/plotting/plot-correlation.py -c per-kernel-merge-9.1.csv \
-                        -p cuda-9.1.nightly -b ./gpgpu-sim_simulations/util/plotting/known.correlation.outliers.list \
-                        | grep "Correl=" -B 1 | tee correl.9.1.txt &&\
-                    cp stats-per-*.csv ./gpgpu-sim-results-repo/${JOB_NAME}/ &&\
-                    cd ./gpgpu-sim-results-repo &&\
-                    git pull &&\
-                    git diff --quiet && git diff --staged --quiet || git commit -am "Jenkins automated checkin ${JOB_NAME} Build:${BUILD_NUMBER}" &&\
-                    git push'
+                        -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-kernel-11.0.csv,./stats-per-kernel-11.0.csv -R \
+                        > per-kernel-merge-11.0.csv
+                    source `pwd`/setup_environment
+                    ./gpgpu-sim_simulations/util/plotting/plot-correlation.py -c per-kernel-merge-11.0.csv \
+                        -p cuda-11.0.nightly -b ./gpgpu-sim_simulations/util/plotting/known.correlation.outliers.list \
+                        | grep "Correl=" -B 1 | tee correl.11.0.txt
+                    cp stats-per-*.csv ./gpgpu-sim-results-repo/${JOB_NAME}/
+                    cd ./gpgpu-sim-results-repo
+                    git pull
+                    git diff --quiet && git diff --staged --quiet || git commit -am "Jenkins automated checkin ${JOB_NAME} Build:${BUILD_NUMBER}"
+                    git push'''
 
                 sh 'PLOTDIR="/home/dynamo/a/tgrogers/website/gpgpu-sim-plots/jenkins/${JOB_NAME}" &&\
                     ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p $PLOTDIR/${BUILD_NUMBER} && \
