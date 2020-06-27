@@ -1468,7 +1468,7 @@ class shader_core_config : public core_config {
       specialized_unit_params sparam;
       sscanf(specialized_unit_string[i], "%u,%u,%u,%u,%u,%s", &enabled,
              &sparam.num_units, &sparam.latency, &sparam.id_oc_spec_reg_width,
-             &sparam.oc_ex_spec_reg_width, &sparam.name);
+             &sparam.oc_ex_spec_reg_width, sparam.name);
 
       if (enabled) {
         m_specialized_unit.push_back(sparam);
