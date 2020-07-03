@@ -742,18 +742,18 @@ void cuobjdumpInst::printCuobjdumpOutputModifiers(const char* defaultMod)
 {
 	std::list<std::string>::iterator typemod = m_typeModifiers->begin();
 	if (*typemod == ".U16" or *typemod == ".S16") {
-		std::list<std::string>::iterator dest_op = m_operands->begin(); 
-		std::string& destination = *dest_op; 
+		std::list<std::string>::iterator dest_op = m_operands->begin();
+		std::string& destination = *dest_op;
 		if (destination[destination.length()-1] == 'l') {
-			output(".lo");  // write to the lower 16-bits 
+			output(".lo");  // write to the lower 16-bits
 		} else if (destination[destination.length()-1] == 'h') {
-			output(".hi");  // write to the upper 16-bits 
+			output(".hi");  // write to the upper 16-bits
 		} else {
-			output(".wide");  // write to the whole 32-bits 
+			output(".wide");  // write to the whole 32-bits
 		}
-		return; 
+		return;
 	}
-	output(defaultMod);  // default output modifier for mul 
+	output(defaultMod);  // default output modifier for mul
 }
 
 std::string int_default_mod () { return ".u32" ;}
@@ -1357,9 +1357,9 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 			/*if(type1Size==16 && type2Size==16)
 				output(".lo");*/
 			if(tempString[1] >= 'A' && tempString[1] <= 'Z')
-				tempString[1] += 32;			
+				tempString[1] += 32;
 			output(tempString);
-		}	
+		}
 		else
 		{
 			printCuobjdumpTypeModifiers();
@@ -1393,9 +1393,9 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 			type = (type1Size > type2Size) ? type1 : type2;
 			strcpy(tempString, type.c_str());
 			if(tempString[1] >= 'A' && tempString[1] <= 'Z')
-				tempString[1] += 32;			
+				tempString[1] += 32;
 			output(tempString);
-		}	
+		}
 		else
 		{
 			printCuobjdumpTypeModifiers();
@@ -1407,7 +1407,7 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 	{
 		printCuobjdumpPredicate();
 		output("mul");
-      printCuobjdumpOutputModifiers(".lo"); 
+      printCuobjdumpOutputModifiers(".lo");
 		printCuobjdumpBaseModifiers();
 
 		if(m_typeModifiers->size() == 0)
@@ -1434,9 +1434,9 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 			/*if(type1Size==16 && type2Size==16)
 					output(".lo");*/
 			if(tempString[1] >= 'A' && tempString[1] <= 'Z')
-				tempString[1] += 32;			
+				tempString[1] += 32;
 			output(tempString);
-		}	
+		}
 		else
 		{
 			printCuobjdumpTypeModifiers();
@@ -1468,10 +1468,10 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 			/*if(type1Size==16 && type2Size==16)
 				output(".lo");*/
 			if(tempString[1] >= 'A' && tempString[1] <= 'Z')
-				tempString[1] += 32;			
+				tempString[1] += 32;
 			output(tempString);
 
-		}	
+		}
 		else
 			printCuobjdumpTypeModifiers();
 
@@ -1506,10 +1506,10 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 			/*if(type1Size==16 && type2Size==16)
 				output(".lo");*/
 			if(tempString[1] >= 'A' && tempString[1] <= 'Z')
-				tempString[1] += 32;			
+				tempString[1] += 32;
 			output(tempString);
 
-		}	
+		}
 		else
 			printCuobjdumpTypeModifiers();
 
@@ -2069,6 +2069,11 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		output("vote");
 		printCuobjdumpBaseModifiers();
 		printCuobjdumpTypeModifiers();
+		printCuobjdumpOperands();
+		output(";");
+	} else if(m_base == "ACTIVEMASK") {
+		printCuobjdumpPredicate();
+		output("activemask.b32");
 		printCuobjdumpOperands();
 		output(";");
 	}
