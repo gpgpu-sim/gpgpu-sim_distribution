@@ -50,8 +50,8 @@ class ptx_recognizer;
 %token <string_value> STRING
 %token <int_value>  OPCODE
 %token <int_value>  WMMA_DIRECTIVE
-%token <int_value>  LAYOUT 
-%token <int_value>  CONFIGURATION 
+%token <int_value>  LAYOUT
+%token <int_value>  CONFIGURATION
 %token  ALIGN_DIRECTIVE
 %token  BRANCHTARGETS_DIRECTIVE
 %token  BYTE_DIRECTIVE
@@ -295,7 +295,7 @@ ptr_space_spec: GLOBAL_DIRECTIVE { recognizer->add_ptr_spec(global_space); }
 
 ptr_align_spec: ALIGN_DIRECTIVE INT_OPERAND
 
-statement_block: LEFT_BRACE statement_list RIGHT_BRACE 
+statement_block: LEFT_BRACE statement_list RIGHT_BRACE
 
 statement_list: directive_statement { recognizer->add_directive(); }
     | statement_list prototype_block {printf("Prototype statement detected. WARNING: this is not supported yet on GPGPU-SIM\n"); }
@@ -315,7 +315,7 @@ directive_statement: variable_declaration SEMI_COLON
 	| TARGET_DIRECTIVE IDENTIFIER { recognizer->target_header($2); }
 	| FILE_DIRECTIVE INT_OPERAND STRING { recognizer->add_file($2,$3); }
 	| FILE_DIRECTIVE INT_OPERAND STRING COMMA INT_OPERAND COMMA INT_OPERAND { recognizer->add_file($2,$3); }
-	| LOC_DIRECTIVE INT_OPERAND INT_OPERAND INT_OPERAND 
+	| LOC_DIRECTIVE INT_OPERAND INT_OPERAND INT_OPERAND
 	| PRAGMA_DIRECTIVE STRING SEMI_COLON { recognizer->add_pragma($2); }
 	| function_decl SEMI_COLON {/*Do nothing*/}
 	;
@@ -336,7 +336,7 @@ identifier_spec: IDENTIFIER { recognizer->add_identifier($1,0,NON_ARRAY_IDENTIFI
 		int i,lbase,l;
 		char *id = NULL;
 		lbase = strlen($1);
-		for( i=0; i < $3; i++ ) { 
+		for( i=0; i < $3; i++ ) {
 			l = lbase + (int)log10(i+1)+10;
 			id = (char*) malloc(l);
 			snprintf(id,l,"%s%u",$1,i);
@@ -348,10 +348,10 @@ identifier_spec: IDENTIFIER { recognizer->add_identifier($1,0,NON_ARRAY_IDENTIFI
 	| IDENTIFIER LEFT_SQUARE_BRACKET INT_OPERAND RIGHT_SQUARE_BRACKET { recognizer->add_identifier($1,$3,ARRAY_IDENTIFIER); recognizer->func_header_info($1); recognizer->func_header_info_int("[",$3); recognizer->func_header_info("]");}
 	;
 
-var_spec_list: var_spec 
+var_spec_list: var_spec
 	 | var_spec_list var_spec;
 
-var_spec: space_spec 
+var_spec: space_spec
 	| type_spec
 	| align_spec
 	| VISIBLE_DIRECTIVE
@@ -376,8 +376,8 @@ addressable_spec: CONST_DIRECTIVE {  recognizer->add_space_spec(const_space,$1);
 	| TEX_DIRECTIVE 	  {  recognizer->add_space_spec(tex_space,0); }
 	;
 
-type_spec: scalar_type 
-	|  vector_spec scalar_type 
+type_spec: scalar_type
+	|  vector_spec scalar_type
 	;
 
 vector_spec:  V2_TYPE {  recognizer->add_option(V2_TYPE); recognizer->func_header_info(".v2");}
@@ -417,14 +417,14 @@ literal_list: literal_operand
 
 // TODO: This is currently hardcoded to handle and ignore one specific case
 // that all prototype statements follow in the PTX from Pytorch. As a
-// workaround, this parses and ignores both the prototype declaration 
-// and calling of the prototype (which conveniently comes right after the 
-// declaration for all cases.) This should be changed to handle both 
+// workaround, this parses and ignores both the prototype declaration
+// and calling of the prototype (which conveniently comes right after the
+// declaration for all cases.) This should be changed to handle both
 // declaring the prototype, and actually calling it.
 prototype_block: prototype_decl prototype_call
 
-prototype_decl: IDENTIFIER COLON CALLPROTOTYPE_DIRECTIVE LEFT_PAREN prototype_param RIGHT_PAREN IDENTIFIER LEFT_PAREN prototype_param RIGHT_PAREN SEMI_COLON 
-	      
+prototype_decl: IDENTIFIER COLON CALLPROTOTYPE_DIRECTIVE LEFT_PAREN prototype_param RIGHT_PAREN IDENTIFIER LEFT_PAREN prototype_param RIGHT_PAREN SEMI_COLON
+
 prototype_call: OPCODE LEFT_PAREN IDENTIFIER RIGHT_PAREN COMMA operand COMMA LEFT_PAREN IDENTIFIER RIGHT_PAREN COMMA IDENTIFIER SEMI_COLON
 	      | OPCODE IDENTIFIER COMMA LEFT_PAREN IDENTIFIER RIGHT_PAREN COMMA IDENTIFIER SEMI_COLON
 
@@ -439,7 +439,7 @@ instruction_statement:  instruction SEMI_COLON
 instruction: opcode_spec LEFT_PAREN operand RIGHT_PAREN { recognizer->set_return(); } COMMA operand COMMA LEFT_PAREN operand_list RIGHT_PAREN
 	| opcode_spec operand COMMA LEFT_PAREN operand_list RIGHT_PAREN
 	| opcode_spec operand COMMA LEFT_PAREN RIGHT_PAREN
-	| opcode_spec operand_list 
+	| opcode_spec operand_list
 	| opcode_spec
 	;
 
@@ -468,8 +468,8 @@ option: type_spec
 	| compare_spec
 	| addressable_spec
 	| rounding_mode
-	| wmma_spec 
-	| prmt_spec 
+	| wmma_spec
+	| prmt_spec
 	| SYNC_OPTION { recognizer->add_option(SYNC_OPTION); }
 	| ARRIVE_OPTION { recognizer->add_option(ARRIVE_OPTION); }
 	| RED_OPTION { recognizer->add_option(RED_OPTION); }
@@ -609,7 +609,7 @@ vector_operand: LEFT_BRACE IDENTIFIER COMMA IDENTIFIER RIGHT_BRACE { recognizer-
 	;
 
 tex_operand: LEFT_SQUARE_BRACKET IDENTIFIER COMMA { recognizer->add_scalar_operand($2); }
-		vector_operand 
+		vector_operand
 	     RIGHT_SQUARE_BRACKET
 	;
 

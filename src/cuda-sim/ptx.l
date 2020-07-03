@@ -158,6 +158,7 @@ vshl    TC; yylval->int_value = VSHL_OP; return OPCODE;
 vshr    TC; yylval->int_value = VSHR_OP; return OPCODE;
 vsub    TC; yylval->int_value = VSUB_OP; return OPCODE;
 vote	TC; yylval->int_value = VOTE_OP; return OPCODE;
+activemask TC; yylval->int_value = ACTIVEMASK_OP; return OPCODE;
 xor     TC; yylval->int_value = XOR_OP; return OPCODE;
 nop     TC; yylval->int_value = NOP_OP; return OPCODE;
 break  TC; yylval->int_value = BREAK_OP; return OPCODE;
@@ -252,7 +253,7 @@ breakaddr  TC; yylval->int_value = BREAKADDR_OP; return OPCODE;
 [$%][a-zA-Z0-9_$]+  TC; yylval->string_value = strdup(yytext); return IDENTIFIER;
 
 [0-9]+\.[0-9]+ 	 TC; sscanf(yytext,"%lf", &yylval->double_value); return DOUBLE_OPERAND;
-	
+
 0[xX][0-9a-fA-F]+U? TC; CHECK_UNSIGNED; sscanf(yytext,"%x", &yylval->int_value); return INT_OPERAND;
 0[0-7]+U?   	TC; printf("GPGPU-Sim: ERROR ** parsing octal not (yet) implemented\n"); abort(); return INT_OPERAND;
 0[bB][01]+U?  	TC; printf("GPGPU-Sim: ERROR ** parsing binary not (yet) implemented\n"); abort(); return INT_OPERAND;
@@ -438,9 +439,9 @@ breakaddr  TC; yylval->int_value = BREAKADDR_OP; return OPCODE;
 "*/"      BEGIN(INITIAL);
 "CPTX_BEGIN" printf("BEGINNING CUSTOM PTX.\n"); BEGIN(INITIAL);
 [^C*\n]+	// eat comment in chunks
-"C"			// eat the lone C 
+"C"			// eat the lone C
 "*"			// eat the lone star
-\n        TC; 
+\n        TC;
 }
 
 <INITIAL>{
@@ -470,7 +471,7 @@ int ptx_error( yyscan_t yyscanner, ptx_recognizer* recognizer, const char *s )
 		if( recognizer->linebuf[i] == '\t' ) printf("\t");
 		else printf(" ");
 	}
-			
+
 	printf("^\n\n");
 	fflush(stdout);
 	//exit(1);
