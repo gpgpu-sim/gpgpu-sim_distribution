@@ -2071,11 +2071,6 @@ void cuobjdumpInst::printCuobjdumpPtxPlus(std::list<std::string> labelList, std:
 		printCuobjdumpTypeModifiers();
 		printCuobjdumpOperands();
 		output(";");
-	} else if(m_base == "ACTIVEMASK") {
-		printCuobjdumpPredicate();
-		output("activemask.b32");
-		printCuobjdumpOperands();
-		output(";");
 	}
 	else if(m_base == "DFMA")
 	{

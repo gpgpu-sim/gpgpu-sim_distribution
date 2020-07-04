@@ -624,9 +624,8 @@ void ptx_recognizer::add_scalar_type_spec(int type_spec) {
     parse_assert((g_opcode == -1) || (g_opcode == CVT_OP) ||
                      (g_opcode == SET_OP) || (g_opcode == SLCT_OP) ||
                      (g_opcode == TEX_OP) || (g_opcode == MMA_OP) ||
-                     (g_opcode == DP4A_OP) || (g_opcode == VMIN_OP) || 
-                     (g_opcode == VMAX_OP),
-                 "only cvt, set, slct, tex, vmin, vmax and dp4a can have more than one "
+                     (g_opcode == DP4A_OP),
+                 "only cvt, set, slct, tex and dp4a can have more than one "
                  "type specifier.");
   }
   g_scalar_type_spec = type_spec;

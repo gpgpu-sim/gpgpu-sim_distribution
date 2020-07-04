@@ -1147,8 +1147,7 @@ static std::list<operand_info> check_operands(
     const std::list<operand_info> &operands, gpgpu_context *ctx) {
   static int g_warn_literal_operands_two_type_inst;
   if ((opcode == CVT_OP) || (opcode == SET_OP) || (opcode == SLCT_OP) ||
-      (opcode == TEX_OP) || (opcode == MMA_OP) || (opcode == DP4A_OP) || 
-      (opcode == VMIN_OP) || (opcode == VMAX_OP) ) {
+      (opcode == TEX_OP) || (opcode == MMA_OP) || (opcode == DP4A_OP)) {
     // just make sure these do not have have const operands...
     if (!g_warn_literal_operands_two_type_inst) {
       std::list<operand_info>::const_iterator o;
