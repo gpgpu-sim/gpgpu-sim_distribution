@@ -48,6 +48,7 @@ ifeq ($(DEBUG),1)
 endif
 OPT += -I$(CUDA_INSTALL_PATH)/include  -I$(OUTPUT_DIR)/ -I. -I$(SIM_OBJ_FILES_DIR)
 OPT += -fPIC 
+OPT += std=c++11
 
 ifeq ($(TRACE),1)
 	OPT += -DTRACING_ON=1
