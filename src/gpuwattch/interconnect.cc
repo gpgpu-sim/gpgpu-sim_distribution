@@ -29,63 +29,51 @@
  *
  ***************************************************************************/
 
-
 #include "interconnect.h"
-#include "wire.h"
 #include <assert.h>
 #include <iostream>
 #include "globalvar.h"
+#include "wire.h"
 
-interconnect::interconnect(
-    string name_,
-    enum Device_ty device_ty_,
-	double base_w, double base_h,
-    int data_w, double len,const InputParameter *configure_interface,
-    int start_wiring_level_,
-    bool pipelinable_ ,
-    double route_over_perc_ ,
-    bool opt_local_,
-    enum Core_type core_ty_,
-    enum Wire_type wire_model,
-    double width_s, double space_s,
-    TechnologyParameter::DeviceType *dt
-)
- :name(name_),
-  device_ty(device_ty_),
-  in_rise_time(0),
-  out_rise_time(0),
-  base_width(base_w),
-  base_height(base_h),
-  data_width(data_w),
-  wt(wire_model),
-  width_scaling(width_s),
-  space_scaling(space_s),
-  start_wiring_level(start_wiring_level_),
-  length(len),
-  //interconnect_latency(1e-12),
-  //interconnect_throughput(1e-12),
-  opt_local(opt_local_),
-  core_ty(core_ty_),
-  pipelinable(pipelinable_),
-  route_over_perc(route_over_perc_),
-  deviceType(dt)
-{
-
+interconnect::interconnect(string name_, enum Device_ty device_ty_,
+                           double base_w, double base_h, int data_w, double len,
+                           const InputParameter *configure_interface,
+                           int start_wiring_level_, bool pipelinable_,
+                           double route_over_perc_, bool opt_local_,
+                           enum Core_type core_ty_, enum Wire_type wire_model,
+                           double width_s, double space_s,
+                           TechnologyParameter::DeviceType *dt)
+    : name(name_),
+      device_ty(device_ty_),
+      in_rise_time(0),
+      out_rise_time(0),
+      base_width(base_w),
+      base_height(base_h),
+      data_width(data_w),
+      wt(wire_model),
+      width_scaling(width_s),
+      space_scaling(space_s),
+      start_wiring_level(start_wiring_level_),
+      length(len),
+      // interconnect_latency(1e-12),
+      // interconnect_throughput(1e-12),
+      opt_local(opt_local_),
+      core_ty(core_ty_),
+      pipelinable(pipelinable_),
+      route_over_perc(route_over_perc_),
+      deviceType(dt) {
   wt = Global;
-  l_ip=*configure_interface;
+  l_ip = *configure_interface;
   local_result = init_interface(&l_ip);
 
-
-  max_unpipelined_link_delay = 0; //TODO
+  max_unpipelined_link_delay = 0;  // TODO
   min_w_nmos = g_tp.min_w_nmos_;
   min_w_pmos = deviceType->n_to_p_eff_curr_drv_ratio * min_w_nmos;
 
-
-
-  latency               = l_ip.latency;
-  throughput            = l_ip.throughput;
-  latency_overflow=false;
-  throughput_overflow=false;
+  latency = l_ip.latency;
+  throughput = l_ip.throughput;
+  latency_overflow = false;
+  throughput_overflow = false;
 
   /*
    * TODO: Add wiring option from semi-global to global automatically
@@ -96,66 +84,62 @@ interconnect::interconnect(
    * not have fat wires.
    */
   if (pipelinable == false)
-  //Non-pipelinable wires, such as bypass logic, care latency
+  // Non-pipelinable wires, such as bypass logic, care latency
   {
-	  compute();
-	  if (opt_for_clk && opt_local)
-	  {
-		  while (delay > latency && width_scaling<3.0)
-		  {
-			  width_scaling *= 2;
-			  space_scaling *= 2;
-			  Wire winit(width_scaling, space_scaling);
-			  compute();
-		  }
-		  if (delay > latency)
-		  {
-			  latency_overflow=true;
-		  }
-	  }
-  }
-  else //Pipelinable wires, such as bus, does not care latency but throughput
+    compute();
+    if (opt_for_clk && opt_local) {
+      while (delay > latency && width_scaling < 3.0) {
+        width_scaling *= 2;
+        space_scaling *= 2;
+        Wire winit(width_scaling, space_scaling);
+        compute();
+      }
+      if (delay > latency) {
+        latency_overflow = true;
+      }
+    }
+  } else  // Pipelinable wires, such as bus, does not care latency but
+          // throughput
   {
-	  /*
-	   * TODO: Add pipe regs power, area, and timing;
-	   * Pipelinable wires optimize latency first.
-	   */
-	  compute();
-	  if (opt_for_clk && opt_local)
-	  {
-		  while (delay > throughput && width_scaling<3.0)
-		  {
-			  width_scaling *= 2;
-			  space_scaling *= 2;
-			  Wire winit(width_scaling, space_scaling);
-			  compute();
-		  }
-		  if (delay > throughput)
-			  // insert pipeline stages
-		  {
-			  num_pipe_stages = (int)ceil(delay/throughput);
-			  assert(num_pipe_stages>0);
-			  delay = delay/num_pipe_stages + num_pipe_stages*0.05*delay;
-		  }
-	  }
+    /*
+     * TODO: Add pipe regs power, area, and timing;
+     * Pipelinable wires optimize latency first.
+     */
+    compute();
+    if (opt_for_clk && opt_local) {
+      while (delay > throughput && width_scaling < 3.0) {
+        width_scaling *= 2;
+        space_scaling *= 2;
+        Wire winit(width_scaling, space_scaling);
+        compute();
+      }
+      if (delay > throughput)
+      // insert pipeline stages
+      {
+        num_pipe_stages = (int)ceil(delay / throughput);
+        assert(num_pipe_stages > 0);
+        delay = delay / num_pipe_stages + num_pipe_stages * 0.05 * delay;
+      }
+    }
   }
 
   power_bit = power;
   power.readOp.dynamic *= data_width;
   power.readOp.leakage *= data_width;
   power.readOp.gate_leakage *= data_width;
-  area.set_area(area.get_area()*data_width);
+  area.set_area(area.get_area() * data_width);
   no_device_under_wire_area.h *= data_width;
 
-  if (latency_overflow==true)
-  		cout<< "Warning: "<< name <<" wire structure cannot satisfy latency constraint." << endl;
-
+  if (latency_overflow == true)
+    cout << "Warning: " << name
+         << " wire structure cannot satisfy latency constraint." << endl;
 
   assert(power.readOp.dynamic > 0);
   assert(power.readOp.leakage > 0);
   assert(power.readOp.gate_leakage > 0);
 
-  double long_channel_device_reduction = longer_channel_device_reduction(device_ty,core_ty);
+  double long_channel_device_reduction =
+      longer_channel_device_reduction(device_ty, core_ty);
 
   double sckRation = g_tp.sckt_co_eff;
   power.readOp.dynamic *= sckRation;
@@ -163,20 +147,17 @@ interconnect::interconnect(
   power.searchOp.dynamic *= sckRation;
 
   power.readOp.longer_channel_leakage =
-	  power.readOp.leakage*long_channel_device_reduction;
+      power.readOp.leakage * long_channel_device_reduction;
 
-  if (pipelinable)//Only global wires has the option to choose whether routing over or not
-	  area.set_area(area.get_area()*route_over_perc + no_device_under_wire_area.get_area()*(1-route_over_perc));
+  if (pipelinable)  // Only global wires has the option to choose whether
+                    // routing over or not
+    area.set_area(area.get_area() * route_over_perc +
+                  no_device_under_wire_area.get_area() * (1 - route_over_perc));
 
   Wire wreset();
 }
 
-
-
-void
-interconnect::compute()
-{
-
+void interconnect::compute() {
   Wire *wtemp1 = 0;
   wtemp1 = new Wire(wt, length, 1, width_scaling, space_scaling);
   delay = wtemp1->delay;
@@ -185,18 +166,15 @@ interconnect::compute()
   power.readOp.gate_leakage = wtemp1->power.readOp.gate_leakage;
 
   area.set_area(wtemp1->area.get_area());
-  no_device_under_wire_area.h =  (wtemp1->wire_width + wtemp1->wire_spacing);
+  no_device_under_wire_area.h = (wtemp1->wire_width + wtemp1->wire_spacing);
   no_device_under_wire_area.w = length;
 
-  if (wtemp1)
-   delete wtemp1;
-
+  if (wtemp1) delete wtemp1;
 }
 
-void interconnect::leakage_feedback(double temperature)
-{
-  l_ip.temp = (unsigned int)round(temperature/10.0)*10;
-  uca_org_t init_result = init_interface(&l_ip); // init_result is dummy
+void interconnect::leakage_feedback(double temperature) {
+  l_ip.temp = (unsigned int)round(temperature / 10.0) * 10;
+  uca_org_t init_result = init_interface(&l_ip);  // init_result is dummy
 
   compute();
 
@@ -209,13 +187,14 @@ void interconnect::leakage_feedback(double temperature)
   assert(power.readOp.leakage > 0);
   assert(power.readOp.gate_leakage > 0);
 
-  double long_channel_device_reduction = longer_channel_device_reduction(device_ty,core_ty);
+  double long_channel_device_reduction =
+      longer_channel_device_reduction(device_ty, core_ty);
 
   double sckRation = g_tp.sckt_co_eff;
   power.readOp.dynamic *= sckRation;
   power.writeOp.dynamic *= sckRation;
   power.searchOp.dynamic *= sckRation;
 
-  power.readOp.longer_channel_leakage = power.readOp.leakage*long_channel_device_reduction;
+  power.readOp.longer_channel_leakage =
+      power.readOp.leakage * long_channel_device_reduction;
 }
-

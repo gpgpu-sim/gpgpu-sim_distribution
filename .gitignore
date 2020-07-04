@@ -1,3 +1,7 @@
+*~
+*.swp
+*.swo
+
 src/intersim2/lex.yy.c
 src/intersim2/y.tab.c
 src/intersim2/y.tab.h
@@ -28,4 +32,27 @@ cuobjdump_to_ptxplus/sass_parser.hh
 cuobjdump_to_ptxplus/sass_parser.output
 
 build/*
+tags
 *.swp
+*~
+cscope*
+tags
+regression.sh
+
+#gcov
+*.gcov
+*.gcda
+*.gcno
+
+#debug_tools
+debug_tools/WatchYourStep/data/*
+debug_tools/WatchYourStep/ptxjitplus/bin/*
+*log
+*.o
+debug_tools/WatchYourStep/ptxjitplus/config*
+debug_tools/WatchYourStep/ptxjitplus/*.xml
+debug_tools/WatchYourStep/ptxjitplus/*.icnt
+debug_tools/WatchYourStep/ptxjitplus/gpgpu*
+debug_tools/WatchYourStep/ptxjitplus/*.old
+debug_tools/WatchYourStep/ptxjitplus/ptxjitplus
+debug_tools/WatchYourStep/ptxjitplus/*.ptx
