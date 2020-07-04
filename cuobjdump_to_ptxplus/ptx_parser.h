@@ -58,6 +58,7 @@ enum _memory_space_t {
    reg_space,
    local_space,
    shared_space,
+   sstarr_space,
    param_space_unclassified,
    param_space_kernel,  /* global to all threads in a kernel : read-only */
    param_space_local,   /* local to a thread : read-writable */
@@ -81,6 +82,7 @@ void add_file( unsigned a, const char *b ) {PTX_PARSE_DPRINTF(" ");}
 void add_variables() {PTX_PARSE_DPRINTF(" ");}
 void set_variable_type() {PTX_PARSE_DPRINTF(" ");}
 void add_option(int a ) {PTX_PARSE_DPRINTF(" ");}
+void add_wmma_option(int a ) {PTX_PARSE_DPRINTF(" ");}
 void add_array_initializer() {PTX_PARSE_DPRINTF(" ");}
 void add_label( const char *a ) {PTX_PARSE_DPRINTF(" ");}
 void set_return() {PTX_PARSE_DPRINTF(" ");}
@@ -98,6 +100,7 @@ void add_1vector_operand( const char *a ) {PTX_PARSE_DPRINTF(" ");}
 void add_2vector_operand( const char *a, const char *b ) {PTX_PARSE_DPRINTF(" ");}
 void add_3vector_operand( const char *a, const char *b, const char *c ) {PTX_PARSE_DPRINTF(" ");}
 void add_4vector_operand( const char *a, const char *b, const char *c, const char *d ) {PTX_PARSE_DPRINTF(" ");}
+void add_8vector_operand( const char *a, const char *b, const char *c, const char *d ,const char *e,const char *f,const char *g,const char *h) {PTX_PARSE_DPRINTF(" ");}
 void add_builtin_operand( int a, int b ) {PTX_PARSE_DPRINTF(" ");}
 void add_memory_operand() {PTX_PARSE_DPRINTF(" ");}
 void change_memory_addr_space( const char *a ) {PTX_PARSE_DPRINTF(" ");}
@@ -372,5 +375,9 @@ void func_header_info_int(const char* s, int i)
 		assert (i>=0);
 		g_headerList->getListEnd().addOperand(buff);
 	}
+}
+
+void maxnt_id(int x, int y, int z) {
+
 }
 #endif //_PTX_PARSER_H_

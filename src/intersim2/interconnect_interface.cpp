@@ -44,6 +44,7 @@
 #include "booksim.hpp"
 #include "intersim_config.hpp"
 #include "network.hpp"
+#include "trace.h"
 
 InterconnectInterface* InterconnectInterface::New(const char* const config_file)
 {
@@ -147,6 +148,8 @@ void InterconnectInterface::Push(unsigned input_deviceID, unsigned output_device
 {
   // it should have free buffer
   assert(HasBuffer(input_deviceID, size));
+
+  DPRINTF(INTERCONNECT, "Sent %d bytes from %d to %d", size, input_deviceID, output_deviceID);
   
   int output_icntID = _node_map[output_deviceID];
   int input_icntID = _node_map[input_deviceID];
@@ -178,7 +181,11 @@ void InterconnectInterface::Push(unsigned input_deviceID, unsigned output_device
     case WRITE_REQUEST: packet_type = Flit::WRITE_REQUEST  ;break;
     case READ_REPLY:    packet_type = Flit::READ_REPLY     ;break;
     case WRITE_ACK:     packet_type = Flit::WRITE_REPLY    ;break;
-    default: assert (0);
+    default:
+    	{
+    		cout<<"Type "<<mf->get_type()<<" is undefined!"<<endl;
+    		assert (0 && "Type is undefined");
+    	}
   }
 
   //TODO: _include_queuing ?
