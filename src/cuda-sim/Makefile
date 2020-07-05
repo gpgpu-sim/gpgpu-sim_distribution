@@ -55,10 +55,10 @@ endif
 
 CXX_OPT = $(OPT)
 ifeq ($(INTEL),1)
-    CXX_OPT += -std=c++11
+    CXX_OPT += -std=c++0x
 else 
 ifeq ($(GNUC_CPP0X),1)
-    CXX_OPT += -std=c++11
+    CXX_OPT += -std=c++0x
 endif
 endif
 
