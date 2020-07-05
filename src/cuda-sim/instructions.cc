@@ -6563,7 +6563,7 @@ void video_mem_instruction(const ptx_instruction *pI, ptx_thread_info *thread, i
       scalar_type = pI->get_scalar_type();
       for (std::list<int>::iterator scalar = scalar_type.begin(); scalar != scalar_type.end(); scalar++)
       {
-        assert(scalar == S32_TYPE);
+        assert(*scalar == S32_TYPE);
       }
       assert(scalar_type.size() == 3);
       scalar_type.clear();
