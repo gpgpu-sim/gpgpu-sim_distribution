@@ -56,3 +56,8 @@ debug_tools/WatchYourStep/ptxjitplus/gpgpu*
 debug_tools/WatchYourStep/ptxjitplus/*.old
 debug_tools/WatchYourStep/ptxjitplus/ptxjitplus
 debug_tools/WatchYourStep/ptxjitplus/*.ptx
+
+# Accel-sim packages used for regressions
+accel-sim-framework/
+gpu-app-collection/
+
