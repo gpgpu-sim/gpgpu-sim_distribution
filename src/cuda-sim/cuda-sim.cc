@@ -1741,7 +1741,7 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
     } else {
       const ptx_instruction *pI_saved = pI;
       ptx_instruction *pJ = NULL;
-      if (pI->get_opcode() == VOTE_OP) {
+      if (pI->get_opcode() == VOTE_OP || pI->get_opcode() == ACTIVEMASK_OP) {
         pJ = new ptx_instruction(*pI);
         *((warp_inst_t *)pJ) = inst;  // copy active mask information
         pI = pJ;
