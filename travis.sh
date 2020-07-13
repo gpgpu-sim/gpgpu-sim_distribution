@@ -15,9 +15,10 @@ make -j
 rm -rf gpu-app-collection
 git clone https://github.com/accel-sim/gpu-app-collection.git
 source gpu-app-collection/src/setup_environment
-make -j -C gpu-app-collection/src rodinia_2.0-ft
+make rodinia_2.0-ft -j -C gpu-app-collection/src 
 ./gpu-app-collection/get_regression_data.sh
 
+pip install psutil
 rm -rf accel-sim-framework
 git clone https://github.com/accel-sim/accel-sim-framework.git
 ./accel-sim-framework/util/job_launching/run_simulations.py -C $CONFIG -B rodinia_2.0-ft -N regress
