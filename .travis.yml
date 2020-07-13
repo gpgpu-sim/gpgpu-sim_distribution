@@ -25,4 +25,10 @@ matrix:
         - PTXAS_CUDA_INSTALL_PATH=/usr/local/cuda-9.1/
 
 script:
-    - docker run --env CONFIG=$CONFIG --env PTXAS_CUDA_INSTALL_PATH=$PTXAS_CUDA_INSTALL_PATH --env CUDA_INSTALL_PATH=$CUDA_INSTALL_PATH -v `pwd`:/gpgpu-sim:rw tgrogers/gpgpu-sim_regress:volta_update /bin/bash travis.sh
+    - >
+      docker run
+      --env CONFIG=$CONFIG
+      --env PTXAS_CUDA_INSTALL_PATH=$PTXAS_CUDA_INSTALL_PATH
+      --env CUDA_INSTALL_PATH=$CUDA_INSTALL_PATH
+      -v `pwd`:/gpgpu-sim:rw tgrogers/gpgpu-sim_regress:volta_update
+      /bin/bash travis.sh
