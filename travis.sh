@@ -8,15 +8,14 @@ if [ ! -n "$CONFIG" ]; then
 	exit;
 fi
 
+if [ ! -n "$GPUAPPS_ROOT" ]; then
+	echo "ERROR ** GPUAPPS_ROOT to a location where the apps have been compiled";
+	exit;
+fi
+
 export PATH=$CUDA_INSTALL_PATH/bin:$PATH
 source ./setup_environment
 make -j
-
-rm -rf gpu-app-collection
-git clone https://github.com/accel-sim/gpu-app-collection.git
-source gpu-app-collection/src/setup_environment
-make rodinia_2.0-ft -j -C gpu-app-collection/src 
-./gpu-app-collection/get_regression_data.sh
 
 pip install psutil
 rm -rf accel-sim-framework
