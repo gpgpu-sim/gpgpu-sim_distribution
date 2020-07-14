@@ -21,5 +21,5 @@ make rodinia_2.0-ft -j -C gpu-app-collection/src
 pip install psutil
 rm -rf accel-sim-framework
 git clone https://github.com/accel-sim/accel-sim-framework.git
-./accel-sim-framework/util/job_launching/run_simulations.py -C $CONFIG -B rodinia_2.0-ft -N regress
-./accel-sim-framework/util/job_launching/monitor_func_test.py -v -N regress
+./accel-sim-framework/util/job_launching/run_simulations.py -C $CONFIG -B rodinia_2.0-ft -N regress -l local
+./accel-sim-framework/util/job_launching/monitor_func_test.py -v -N regress -j procman
