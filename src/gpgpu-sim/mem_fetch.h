@@ -76,6 +76,10 @@ class mem_fetch {
   void print(FILE *fp, bool print_inst = true) const;
 
   const addrdec_t &get_tlx_addr() const { return m_raw_addr; }
+  void set_chip(unsigned chip_id) { m_raw_addr.chip = chip_id; }
+  void set_parition(unsigned sub_partition_id) {
+    m_raw_addr.sub_partition = sub_partition_id;
+  }
   unsigned get_data_size() const { return m_data_size; }
   void set_data_size(unsigned size) { m_data_size = size; }
   unsigned get_ctrl_size() const { return m_ctrl_size; }

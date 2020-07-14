@@ -1339,12 +1339,12 @@ class function_info {
                       memory_space *param_mem, gpgpu_t *gpu, dim3 gridDim,
                       dim3 blockDim);
 
-  const struct gpgpu_ptx_sim_info *get_kernel_info() const {
+  virtual const struct gpgpu_ptx_sim_info *get_kernel_info() const {
     assert(m_kernel_info.maxthreads == maxnt_id);
     return &m_kernel_info;
   }
 
-  const void set_kernel_info(const struct gpgpu_ptx_sim_info &info) {
+  virtual const void set_kernel_info(const struct gpgpu_ptx_sim_info &info) {
     m_kernel_info = info;
     m_kernel_info.ptx_version = 10 * get_ptx_version().ver();
     m_kernel_info.sm_target = get_ptx_version().target();
@@ -1380,6 +1380,11 @@ class function_info {
   // backward pointer
   class gpgpu_context *gpgpu_ctx;
 
+ protected:
+  // Registers/shmem/etc. used (from ptxas -v), loaded from ___.ptxinfo along
+  // with ___.ptx
+  struct gpgpu_ptx_sim_info m_kernel_info;
+
  private:
   unsigned maxnt_id;
   unsigned m_uid;
@@ -1405,7 +1410,7 @@ class function_info {
 
   // Registers/shmem/etc. used (from ptxas -v), loaded from ___.ptxinfo along
   // with ___.ptx
-  struct gpgpu_ptx_sim_info m_kernel_info;
+  // with ___.ptx
 
   symbol_table *m_symtab;
 

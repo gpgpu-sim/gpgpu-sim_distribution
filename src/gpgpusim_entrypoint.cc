@@ -219,7 +219,7 @@ gpgpu_sim *gpgpu_context::gpgpu_ptx_sim_init_perf() {
   the_gpgpusim->g_the_gpu_config->init();
 
   the_gpgpusim->g_the_gpu =
-      new gpgpu_sim(*(the_gpgpusim->g_the_gpu_config), this);
+      new exec_gpgpu_sim(*(the_gpgpusim->g_the_gpu_config), this);
   the_gpgpusim->g_stream_manager = new stream_manager(
       (the_gpgpusim->g_the_gpu), func_sim->g_cuda_launch_blocking);
 

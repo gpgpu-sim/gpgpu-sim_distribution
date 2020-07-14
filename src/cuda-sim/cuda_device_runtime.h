@@ -43,6 +43,7 @@ class cuda_device_runtime {
   std::map<void*, device_launch_config_t> g_cuda_device_launch_param_map;
   std::list<device_launch_operation_t> g_cuda_device_launch_op;
   unsigned g_kernel_launch_latency;
+  unsigned g_TB_launch_latency;
   unsigned long long g_max_total_param_size;
   bool g_cdp_enabled;
 

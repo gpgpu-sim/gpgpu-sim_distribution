@@ -65,7 +65,7 @@ enum FuncCache {
   FuncCachePreferL1 = 2
 };
 
-enum AdaptiveCache { FIXED = 0, VOLTA = 1 };
+enum AdaptiveCache { FIXED = 0, ADAPTIVE_VOLTA = 1 };
 
 #ifdef __cplusplus
 
@@ -79,6 +79,8 @@ typedef unsigned address_type;
 typedef unsigned addr_t;
 
 // the following are operations the timing model can see
+#define SPECIALIZED_UNIT_NUM 8
+#define SPEC_UNIT_START_ID 100
 
 enum uarch_op_t {
   NO_OP = -1,
@@ -97,7 +99,16 @@ enum uarch_op_t {
   BARRIER_OP,
   MEMORY_BARRIER_OP,
   CALL_OPS,
-  RET_OPS
+  RET_OPS,
+  EXIT_OPS,
+  SPECIALIZED_UNIT_1_OP = SPEC_UNIT_START_ID,
+  SPECIALIZED_UNIT_2_OP,
+  SPECIALIZED_UNIT_3_OP,
+  SPECIALIZED_UNIT_4_OP,
+  SPECIALIZED_UNIT_5_OP,
+  SPECIALIZED_UNIT_6_OP,
+  SPECIALIZED_UNIT_7_OP,
+  SPECIALIZED_UNIT_8_OP
 };
 typedef enum uarch_op_t op_type;
 
@@ -134,7 +145,8 @@ enum operation_pipeline_t {
   INTP__OP,
   SFU__OP,
   TENSOR_CORE__OP,
-  MEM__OP
+  MEM__OP,
+  SPECIALIZED__OP,
 };
 typedef enum operation_pipeline_t operation_pipeline;
 enum mem_operation_t { NOT_TEX, TEX };
@@ -326,6 +338,9 @@ class kernel_info_t {
   unsigned m_launch_latency;
 
   mutable bool cache_config_set;
+
+  unsigned m_kernel_TB_latency;  // this used for any CPU-GPU kernel latency and
+                                 // counted in the gpu_cycle
 };
 
 class core_config {
@@ -617,6 +632,8 @@ class gpgpu_t {
   std::map<std::string, const struct textureInfo *> getNameInfoMapping() {
     return m_NameToTextureInfo;
   }
+
+  virtual ~gpgpu_t() {}
 
  protected:
   const gpgpu_functional_sim_config &m_function_model_config;
@@ -993,6 +1010,7 @@ class warp_inst_t : public inst_t {
     m_cache_hit = false;
     m_is_printf = false;
     m_is_cdp = 0;
+    should_do_atomic = true;
   }
   virtual ~warp_inst_t() {}
 
@@ -1141,6 +1159,7 @@ class warp_inst_t : public inst_t {
   unsigned long long issue_cycle;
   unsigned cycles;  // used for implementing initiation interval delay
   bool m_isatomic;
+  bool should_do_atomic;
   bool m_is_printf;
   unsigned m_warp_id;
   unsigned m_dynamic_warp_id;
@@ -1229,7 +1248,7 @@ class core_t {
   }
   void execute_warp_inst_t(warp_inst_t &inst, unsigned warpId = (unsigned)-1);
   bool ptx_thread_done(unsigned hw_thread_id) const;
-  void updateSIMTStack(unsigned warpId, warp_inst_t *inst);
+  virtual void updateSIMTStack(unsigned warpId, warp_inst_t *inst);
   void initilizeSIMTStack(unsigned warp_count, unsigned warps_size);
   void deleteSIMTStack();
   warp_inst_t getExecuteWarp(unsigned warpId);

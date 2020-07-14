@@ -129,9 +129,10 @@ void power_config::reg_options(class OptionParser *opp) {
 }
 
 void memory_config::reg_options(class OptionParser *opp) {
-  option_parser_register(opp, "-perf_sim_memcpy", OPT_BOOL, &m_perf_sim_memcpy,
-                         "Fill the L2 cache on memcpy", "1");
-  option_parser_register(opp, "-simple_dram_model", OPT_BOOL,
+  option_parser_register(opp, "-gpgpu_perf_sim_memcpy", OPT_BOOL,
+                         &m_perf_sim_memcpy, "Fill the L2 cache on memcpy",
+                         "1");
+  option_parser_register(opp, "-gpgpu_simple_dram_model", OPT_BOOL,
                          &simple_dram_model,
                          "simple_dram_model with fixed latency and BW", "0");
   option_parser_register(opp, "-gpgpu_dram_scheduler", OPT_INT32,
@@ -187,11 +188,11 @@ void memory_config::reg_options(class OptionParser *opp) {
       "DRAM timing parameters = "
       "{nbk:tCCD:tRRD:tRCD:tRAS:tRP:tRC:CL:WL:tCDLR:tWR:nbkgrp:tCCDL:tRTPL}",
       "4:2:8:12:21:13:34:9:4:5:13:1:0:0");
-  option_parser_register(opp, "-rop_latency", OPT_UINT32, &rop_latency,
+  option_parser_register(opp, "-gpgpu_l2_rop_latency", OPT_UINT32, &rop_latency,
                          "ROP queue latency (default 85)", "85");
   option_parser_register(opp, "-dram_latency", OPT_UINT32, &dram_latency,
                          "DRAM latency (default 30)", "30");
-  option_parser_register(opp, "-dual_bus_interface", OPT_UINT32,
+  option_parser_register(opp, "-dram_dual_bus_interface", OPT_UINT32,
                          &dual_bus_interface,
                          "dual_bus_interface (default = 0) ", "0");
   option_parser_register(opp, "-dram_bnk_indexing_policy", OPT_UINT32,
@@ -204,13 +205,13 @@ void memory_config::reg_options(class OptionParser *opp) {
                          "dram_bnkgrp_indexing_policy (0 = take higher bits, 1 "
                          "= take lower bits) (Default = 0)",
                          "0");
-  option_parser_register(opp, "-Seperate_Write_Queue_Enable", OPT_BOOL,
+  option_parser_register(opp, "-dram_seperate_write_queue_enable", OPT_BOOL,
                          &seperate_write_queue_enabled,
                          "Seperate_Write_Queue_Enable", "0");
-  option_parser_register(opp, "-Write_Queue_Size", OPT_CSTR,
+  option_parser_register(opp, "-dram_write_queue_size", OPT_CSTR,
                          &write_queue_size_opt, "Write_Queue_Size", "32:28:16");
   option_parser_register(
-      opp, "-Elimnate_rw_turnaround", OPT_BOOL, &elimnate_rw_turnaround,
+      opp, "-dram_elimnate_rw_turnaround", OPT_BOOL, &elimnate_rw_turnaround,
       "elimnate_rw_turnaround i.e set tWTR and tRTW = 0", "0");
   option_parser_register(opp, "-icnt_flit_size", OPT_UINT32, &icnt_flit_size,
                          "icnt_flit_size", "32");
@@ -248,11 +249,18 @@ void shader_core_config::reg_options(class OptionParser *opp) {
                          " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_"
                          "alloc>,<mshr>:<N>:<merge>,<mq> | none}",
                          "none");
-  option_parser_register(opp, "-l1_banks", OPT_UINT32, &m_L1D_config.l1_banks,
-                         "The number of L1 cache banks", "1");
-  option_parser_register(opp, "-l1_latency", OPT_UINT32,
+  option_parser_register(opp, "-gpgpu_l1_banks", OPT_UINT32,
+                         &m_L1D_config.l1_banks, "The number of L1 cache banks",
+                         "1");
+  option_parser_register(opp, "-gpgpu_l1_banks_byte_interleaving", OPT_UINT32,
+                         &m_L1D_config.l1_banks_byte_interleaving,
+                         "l1 banks byte interleaving granularity", "32");
+  option_parser_register(opp, "-gpgpu_l1_banks_hashing_function", OPT_UINT32,
+                         &m_L1D_config.l1_banks_hashing_function,
+                         "l1 banks hashing function", "0");
+  option_parser_register(opp, "-gpgpu_l1_latency", OPT_UINT32,
                          &m_L1D_config.l1_latency, "L1 Hit Latency", "1");
-  option_parser_register(opp, "-smem_latency", OPT_UINT32, &smem_latency,
+  option_parser_register(opp, "-gpgpu_smem_latency", OPT_UINT32, &smem_latency,
                          "smem Latency", "3");
   option_parser_register(opp, "-gpgpu_cache:dl1PrefL1", OPT_CSTR,
                          &m_L1D_config.m_config_stringPrefL1,
@@ -266,7 +274,7 @@ void shader_core_config::reg_options(class OptionParser *opp) {
                          " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_"
                          "alloc>,<mshr>:<N>:<merge>,<mq> | none}",
                          "none");
-  option_parser_register(opp, "-gmem_skip_L1D", OPT_BOOL, &gmem_skip_L1D,
+  option_parser_register(opp, "-gpgpu_gmem_skip_L1D", OPT_BOOL, &gmem_skip_L1D,
                          "global memory access skip L1D cache (implements "
                          "-Xptxas -dlcm=cg, default=no skip)",
                          "0");
@@ -318,7 +326,7 @@ void shader_core_config::reg_options(class OptionParser *opp) {
   option_parser_register(
       opp, "-gpgpu_shmem_size", OPT_UINT32, &gpgpu_shmem_size,
       "Size of shared memory per shader core (default 16kB)", "16384");
-  option_parser_register(opp, "-adaptive_cache_config", OPT_BOOL,
+  option_parser_register(opp, "-gpgpu_adaptive_cache_config", OPT_UINT32,
                          &adaptive_cache_config, "adaptive_cache_config", "0");
   option_parser_register(
       opp, "-gpgpu_shmem_sizeDefault", OPT_UINT32, &gpgpu_shmem_sizeDefault,
@@ -343,7 +351,7 @@ void shader_core_config::reg_options(class OptionParser *opp) {
                          "memory bank conflict check ",
                          "2");
   option_parser_register(
-      opp, "-mem_unit_ports", OPT_INT32, &mem_unit_ports,
+      opp, "-gpgpu_mem_unit_ports", OPT_INT32, &mem_unit_ports,
       "The number of memory transactions allowed per core cycle", "1");
   option_parser_register(opp, "-gpgpu_shmem_warp_parts", OPT_INT32,
                          &mem_warp_parts,
@@ -369,10 +377,11 @@ void shader_core_config::reg_options(class OptionParser *opp) {
   option_parser_register(
       opp, "-gpgpu_reg_bank_use_warp_id", OPT_BOOL, &gpgpu_reg_bank_use_warp_id,
       "Use warp ID in mapping registers to banks (default = off)", "0");
-  option_parser_register(opp, "-sub_core_model", OPT_BOOL, &sub_core_model,
+  option_parser_register(opp, "-gpgpu_sub_core_model", OPT_BOOL,
+                         &sub_core_model,
                          "Sub Core Volta/Pascal model (default = off)", "0");
-  option_parser_register(opp, "-enable_specialized_operand_collector", OPT_BOOL,
-                         &enable_specialized_operand_collector,
+  option_parser_register(opp, "-gpgpu_enable_specialized_operand_collector",
+                         OPT_BOOL, &enable_specialized_operand_collector,
                          "enable_specialized_operand_collector", "1");
   option_parser_register(opp, "-gpgpu_operand_collector_num_units_sp",
                          OPT_INT32, &gpgpu_operand_collector_num_units_sp,
@@ -496,7 +505,7 @@ void shader_core_config::reg_options(class OptionParser *opp) {
                          "1");
   option_parser_register(opp, "-gpgpu_num_tensor_core_units", OPT_INT32,
                          &gpgpu_num_tensor_core_units,
-                         "Number of tensor_core units (default=1)", "1");
+                         "Number of tensor_core units (default=1)", "0");
   option_parser_register(
       opp, "-gpgpu_num_mem_units", OPT_INT32, &gpgpu_num_mem_units,
       "Number if ldst units (default=1) WARNING: not hooked up to anything",
@@ -515,6 +524,28 @@ void shader_core_config::reg_options(class OptionParser *opp) {
   option_parser_register(
       opp, "-gpgpu_concurrent_kernel_sm", OPT_BOOL, &gpgpu_concurrent_kernel_sm,
       "Support concurrent kernels on a SM (default = disabled)", "0");
+  option_parser_register(opp, "-gpgpu_perfect_inst_const_cache", OPT_BOOL,
+                         &perfect_inst_const_cache,
+                         "perfect inst and const cache mode, so all inst and "
+                         "const hits in the cache(default = disabled)",
+                         "0");
+  option_parser_register(
+      opp, "-gpgpu_inst_fetch_throughput", OPT_INT32, &inst_fetch_throughput,
+      "the number of fetched intruction per warp each cycle", "1");
+  option_parser_register(opp, "-gpgpu_reg_file_port_throughput", OPT_INT32,
+                         &reg_file_port_throughput,
+                         "the number ports of the register file", "1");
+
+  for (unsigned j = 0; j < SPECIALIZED_UNIT_NUM; ++j) {
+    std::stringstream ss;
+    ss << "-specialized_unit_" << j + 1;
+    option_parser_register(opp, ss.str().c_str(), OPT_CSTR,
+                           &specialized_unit_string[j],
+                           "specialized unit config"
+                           " {<enabled>,<num_units>:<latency>:<initiation>,<ID_"
+                           "OC_SPEC>:<OC_EX_SPEC>,<NAME>}",
+                           "0,4,4,4,4,BRA");
+  }
 }
 
 void gpgpu_sim_config::reg_options(option_parser_t opp) {
@@ -620,6 +651,11 @@ void gpgpu_sim_config::reg_options(option_parser_t opp) {
   option_parser_register(opp, "-gpgpu_cdp_enabled", OPT_BOOL,
                          &(gpgpu_ctx->device_runtime->g_cdp_enabled),
                          "Turn on CDP", "0");
+
+  option_parser_register(opp, "-gpgpu_TB_launch_latency", OPT_INT32,
+                         &(gpgpu_ctx->device_runtime->g_TB_launch_latency),
+                         "thread block launch latency in cycles. Default: 0",
+                         "0");
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -696,9 +732,17 @@ bool gpgpu_sim::get_more_cta_left() const {
   return false;
 }
 
+void gpgpu_sim::decrement_kernel_latency() {
+  for (unsigned n = 0; n < m_running_kernels.size(); n++) {
+    if (m_running_kernels[n] && m_running_kernels[n]->m_kernel_TB_latency)
+      m_running_kernels[n]->m_kernel_TB_latency--;
+  }
+}
+
 kernel_info_t *gpgpu_sim::select_kernel() {
   if (m_running_kernels[m_last_issued_kernel] &&
-      !m_running_kernels[m_last_issued_kernel]->no_more_ctas_to_run()) {
+      !m_running_kernels[m_last_issued_kernel]->no_more_ctas_to_run() &&
+      !m_running_kernels[m_last_issued_kernel]->m_kernel_TB_latency) {
     unsigned launch_uid = m_running_kernels[m_last_issued_kernel]->get_uid();
     if (std::find(m_executed_kernel_uids.begin(), m_executed_kernel_uids.end(),
                   launch_uid) == m_executed_kernel_uids.end()) {
@@ -714,7 +758,8 @@ kernel_info_t *gpgpu_sim::select_kernel() {
   for (unsigned n = 0; n < m_running_kernels.size(); n++) {
     unsigned idx =
         (n + m_last_issued_kernel + 1) % m_config.max_concurrent_kernel;
-    if (kernel_more_cta_left(m_running_kernels[idx])) {
+    if (kernel_more_cta_left(m_running_kernels[idx]) &&
+        !m_running_kernels[idx]->m_kernel_TB_latency) {
       m_last_issued_kernel = idx;
       m_running_kernels[idx]->start_cycle = gpu_sim_cycle + gpu_tot_sim_cycle;
       // record this kernel for stat print if it is the first time this kernel
@@ -763,6 +808,14 @@ void gpgpu_sim::stop_all_running_kernels() {
   }
 }
 
+void exec_gpgpu_sim::createSIMTCluster() {
+  m_cluster = new simt_core_cluster *[m_shader_config->n_simt_clusters];
+  for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++)
+    m_cluster[i] =
+        new exec_simt_core_cluster(this, i, m_shader_config, m_memory_config,
+                                   m_shader_stats, m_memory_stats);
+}
+
 gpgpu_sim::gpgpu_sim(const gpgpu_sim_config &config, gpgpu_context *ctx)
     : gpgpu_t(config, ctx), m_config(config) {
   gpgpu_ctx = ctx;
@@ -802,12 +855,6 @@ gpgpu_sim::gpgpu_sim(const gpgpu_sim_config &config, gpgpu_context *ctx)
   gpu_tot_sim_cycle_parition_util = 0;
   partiton_replys_in_parallel = 0;
   partiton_replys_in_parallel_total = 0;
-
-  m_cluster = new simt_core_cluster *[m_shader_config->n_simt_clusters];
-  for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++)
-    m_cluster[i] =
-        new simt_core_cluster(this, i, m_shader_config, m_memory_config,
-                              m_shader_stats, m_memory_stats);
 
   m_memory_partition_unit =
       new memory_partition_unit *[m_memory_config->m_n_mem];
@@ -1518,6 +1565,14 @@ void shader_core_ctx::release_shader_resource_1block(unsigned hw_ctaid,
  *    object that tells us which kernel to ask for a CTA from
  */
 
+unsigned exec_shader_core_ctx::sim_init_thread(
+    kernel_info_t &kernel, ptx_thread_info **thread_info, int sid, unsigned tid,
+    unsigned threads_left, unsigned num_threads, core_t *core,
+    unsigned hw_cta_id, unsigned hw_warp_id, gpgpu_t *gpu) {
+  return ptx_sim_init_thread(kernel, thread_info, sid, tid, threads_left,
+                             num_threads, core, hw_cta_id, hw_warp_id, gpu);
+}
+
 void shader_core_ctx::issue_block2core(kernel_info_t &kernel) {
   if (!m_config->gpgpu_concurrent_kernel_sm)
     set_max_cta(kernel);
@@ -1583,7 +1638,7 @@ void shader_core_ctx::issue_block2core(kernel_info_t &kernel) {
   for (unsigned i = start_thread; i < end_thread; i++) {
     m_threadState[i].m_cta_id = free_cta_hw_id;
     unsigned warp_id = i / m_config->warp_size;
-    nthreads_in_block += ptx_sim_init_thread(
+    nthreads_in_block += sim_init_thread(
         kernel, &m_thread[i], m_sid, i, cta_size - (i - start_thread),
         m_config->n_thread_per_shader, this, free_cta_hw_id, warp_id,
         m_cluster->get_gpu());
@@ -1621,8 +1676,7 @@ void shader_core_ctx::issue_block2core(kernel_info_t &kernel) {
   m_barriers.allocate_barrier(free_cta_hw_id, warps);
 
   // initialize the SIMT stacks and fetch hardware
-  init_warps(free_cta_hw_id, start_thread, end_thread, ctaid, cta_size,
-             kernel.get_uid());
+  init_warps(free_cta_hw_id, start_thread, end_thread, ctaid, cta_size, kernel);
   m_n_active_cta++;
 
   shader_CTA_count_log(m_sid, 1);
@@ -1814,6 +1868,7 @@ void gpgpu_sim::cycle() {
 #endif
 
     issue_block2core();
+    decrement_kernel_latency();
 
     // Depending on configuration, invalidate the caches once all of threads are
     // completed.
@@ -1921,12 +1976,15 @@ void shader_core_ctx::dump_warp_state(FILE *fout) const {
   fprintf(fout, "\n");
   fprintf(fout, "per warp functional simulation status:\n");
   for (unsigned w = 0; w < m_config->max_warps_per_shader; w++)
-    m_warp[w].print(fout);
+    m_warp[w]->print(fout);
 }
 
 void gpgpu_sim::perf_memcpy_to_gpu(size_t dst_start_addr, size_t count) {
   if (m_memory_config->m_perf_sim_memcpy) {
-    assert(dst_start_addr % 32 == 0);
+    // if(!m_config.trace_driven_mode)    //in trace-driven mode, CUDA runtime
+    // can start nre data structure at any position 	assert (dst_start_addr %
+    // 32
+    //== 0);
 
     for (unsigned counter = 0; counter < count; counter += 32) {
       const unsigned wr_addr = dst_start_addr + counter;

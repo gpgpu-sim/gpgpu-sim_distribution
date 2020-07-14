@@ -686,17 +686,11 @@ class cache_config {
             m_line_sz * m_nset * m_assoc, m_nset, m_assoc, m_line_sz);
   }
 
-  virtual unsigned set_index(new_addr_type addr) const {
-    if (m_set_index_function != LINEAR_SET_FUNCTION) {
-      printf(
-          "\nGPGPU-Sim cache configuration error: Hashing or "
-          "custom set index function selected in configuration "
-          "file for a cache that has not overloaded the set_index "
-          "function\n");
-      abort();
-    }
-    return (addr >> m_line_sz_log2) & (m_nset - 1);
-  }
+  virtual unsigned set_index(new_addr_type addr) const;
+
+  unsigned hash_function(new_addr_type addr, unsigned m_nset,
+                         unsigned m_line_sz_log2, unsigned m_nset_log2,
+                         unsigned m_index_function) const;
 
   new_addr_type tag(new_addr_type addr) const {
     // For generality, the tag includes both index and tag. This allows for more
@@ -793,10 +787,18 @@ class cache_config {
 class l1d_cache_config : public cache_config {
  public:
   l1d_cache_config() : cache_config() {}
-  virtual unsigned set_index(new_addr_type addr) const;
   unsigned set_bank(new_addr_type addr) const;
+  void init(char *config, FuncCache status) {
+    m_banks_byte_interleaving_log2 = LOGB2(l1_banks_byte_interleaving);
+    m_l1_banks_log2 = LOGB2(l1_banks);
+    cache_config::init(config, status);
+  }
   unsigned l1_latency;
   unsigned l1_banks;
+  unsigned m_l1_banks_log2;
+  unsigned l1_banks_byte_interleaving;
+  unsigned m_banks_byte_interleaving_log2;
+  unsigned l1_banks_hashing_function;
 };
 
 class l2_cache_config : public cache_config {

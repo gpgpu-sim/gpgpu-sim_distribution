@@ -97,6 +97,7 @@ struct bank_t {
 enum bank_index_function {
   LINEAR_BK_INDEX = 0,
   BITWISE_XORING_BK_INDEX,
+  IPOLY_BK_INDEX,
   CUSTOM_BK_INDEX
 };
 
