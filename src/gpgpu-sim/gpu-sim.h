@@ -370,6 +370,8 @@ class gpgpu_sim_config : public power_config,
     return runtime_pending_launch_count_limit;
   }
 
+  bool flush_l1() const { return gpgpu_flush_l1_cache; }
+
  private:
   void init_clock_domains(void);
 
@@ -525,6 +527,7 @@ class gpgpu_sim : public gpgpu_t {
   bool kernel_more_cta_left(kernel_info_t *kernel) const;
   bool hit_max_cta_count() const;
   kernel_info_t *select_kernel();
+  void decrement_kernel_latency();
 
   const gpgpu_sim_config &get_config() const { return m_config; }
   void gpu_print_stat();
@@ -577,8 +580,8 @@ class gpgpu_sim : public gpgpu_t {
 
   void gpgpu_debug();
 
+ protected:
   ///// data /////
-
   class simt_core_cluster **m_cluster;
   class memory_partition_unit **m_memory_partition_unit;
   class memory_sub_partition **m_memory_sub_partition;
@@ -633,6 +636,7 @@ class gpgpu_sim : public gpgpu_t {
                                               // into a string for stat printout
   void clear_executed_kernel_info();  //< clear the kernel information after
                                       // stat printout
+  virtual void createSIMTCluster() = 0;
 
  public:
   unsigned long long gpu_sim_insn;
@@ -679,6 +683,16 @@ class gpgpu_sim : public gpgpu_t {
     m_functional_sim = false;
     m_functional_sim_kernel = NULL;
   }
+};
+
+class exec_gpgpu_sim : public gpgpu_sim {
+ public:
+  exec_gpgpu_sim(const gpgpu_sim_config &config, gpgpu_context *ctx)
+      : gpgpu_sim(config, ctx) {
+    createSIMTCluster();
+  }
+
+  virtual void createSIMTCluster();
 };
 
 #endif

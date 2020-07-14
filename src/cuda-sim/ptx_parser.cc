@@ -36,7 +36,8 @@ typedef void *yyscan_t;
 
 extern int ptx_get_lineno(yyscan_t yyscanner);
 extern YYSTYPE *ptx_get_lval(yyscan_t yyscanner);
-extern int ptx_error(yyscan_t yyscanner, const char *s);
+extern int ptx_error(yyscan_t yyscanner, ptx_recognizer *recognizer,
+                     const char *s);
 extern int ptx_lex_init(yyscan_t *scanner);
 extern void ptx_set_in(FILE *_in_str, yyscan_t yyscanner);
 extern FILE *ptx_get_in(yyscan_t yyscanner);
@@ -225,7 +226,7 @@ void ptx_recognizer::parse_error_impl(const char *file, unsigned line,
   g_error_detected = 1;
   printf("%s:%u: Parse error: %s (%s:%u)\n\n", gpgpu_ctx->g_filename,
          ptx_get_lineno(scanner), buf, file, line);
-  ptx_error(scanner, NULL);
+  ptx_error(scanner, this, NULL);
   abort();
   exit(1);
 }

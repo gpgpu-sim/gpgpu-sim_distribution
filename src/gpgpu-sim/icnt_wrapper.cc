@@ -144,16 +144,20 @@ void icnt_reg_options(class OptionParser* opp) {
                          "Interconnection network config file", "mesh");
 
   // parameters for local xbar
-  option_parser_register(opp, "-inct_in_buffer_limit", OPT_UINT32,
+  option_parser_register(opp, "-icnt_in_buffer_limit", OPT_UINT32,
                          &g_inct_config.in_buffer_limit, "in_buffer_limit",
                          "64");
-  option_parser_register(opp, "-inct_out_buffer_limit", OPT_UINT32,
+  option_parser_register(opp, "-icnt_out_buffer_limit", OPT_UINT32,
                          &g_inct_config.out_buffer_limit, "out_buffer_limit",
                          "64");
-  option_parser_register(opp, "-inct_subnets", OPT_UINT32,
+  option_parser_register(opp, "-icnt_subnets", OPT_UINT32,
                          &g_inct_config.subnets, "subnets", "2");
-  option_parser_register(opp, "-arbiter_algo", OPT_UINT32,
+  option_parser_register(opp, "-icnt_arbiter_algo", OPT_UINT32,
                          &g_inct_config.arbiter_algo, "arbiter_algo", "1");
+  option_parser_register(opp, "-icnt_verbose", OPT_UINT32,
+                         &g_inct_config.verbose, "inct_verbose", "0");
+  option_parser_register(opp, "-icnt_grant_cycles", OPT_UINT32,
+                         &g_inct_config.grant_cycles, "grant_cycles", "1");
 }
 
 void icnt_wrapper_init() {

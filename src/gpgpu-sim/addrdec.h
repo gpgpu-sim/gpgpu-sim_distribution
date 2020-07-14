@@ -87,6 +87,10 @@ class linear_to_raw_address_translation {
   unsigned int gap;
   unsigned m_n_channel;
   int m_n_sub_partition_in_channel;
+  int m_n_sub_partition_total;
+  unsigned log2channel;
+  unsigned log2sub_partition;
+  unsigned nextPowerOf2_m_n_channel;
 };
 
 #endif

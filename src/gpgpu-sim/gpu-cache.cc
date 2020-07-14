@@ -29,6 +29,7 @@
 #include "gpu-cache.h"
 #include <assert.h>
 #include "gpu-sim.h"
+#include "hashing.h"
 #include "stat-tool.h"
 
 // used to allocate memory that is large enough to adapt the changes in cache
@@ -62,24 +63,31 @@ unsigned l1d_cache_config::set_bank(new_addr_type addr) const {
   // For sector cache, we select one sector per bank (sector interleaving)
   // This is what was found in Volta (one sector per bank, sector interleaving)
   // otherwise, line interleaving
-  if (m_cache_type == SECTOR)
-    return (addr >> m_sector_sz_log2) & (l1_banks - 1);
-  else
-    return (addr >> m_line_sz_log2) & (l1_banks - 1);
+  return cache_config::hash_function(addr, l1_banks, l1_banks_byte_interleaving,
+                                     m_l1_banks_log2,
+                                     l1_banks_hashing_function);
 }
 
-unsigned l1d_cache_config::set_index(new_addr_type addr) const {
-  unsigned set_index = m_nset;  // Default to linear set index function
-  unsigned lower_xor = 0;
-  unsigned upper_xor = 0;
+unsigned cache_config::set_index(new_addr_type addr) const {
+  return cache_config::hash_function(addr, m_nset, m_line_sz_log2, m_nset_log2,
+                                     m_set_index_function);
+}
 
-  switch (m_set_index_function) {
-    case FERMI_HASH_SET_FUNCTION:
-    case BITWISE_XORING_FUNCTION:
+unsigned cache_config::hash_function(new_addr_type addr, unsigned m_nset,
+                                     unsigned m_line_sz_log2,
+                                     unsigned m_nset_log2,
+                                     unsigned m_index_function) const {
+  unsigned set_index = 0;
+
+  switch (m_index_function) {
+    case FERMI_HASH_SET_FUNCTION: {
       /*
        * Set Indexing function from "A Detailed GPU Cache Model Based on Reuse
        * Distance Theory" Cedric Nugteren et al. HPCA 2014
        */
+      unsigned lower_xor = 0;
+      unsigned upper_xor = 0;
+
       if (m_nset == 32 || m_nset == 64) {
         // Lower xor value is bits 7-11
         lower_xor = (addr >> m_line_sz_log2) & 0x1F;
@@ -102,54 +110,34 @@ unsigned l1d_cache_config::set_index(new_addr_type addr) const {
             0);
       }
       break;
+    }
 
-    case HASH_IPOLY_FUNCTION:
-      /*
-       * Set Indexing function from "Pseudo-randomly interleaved memory."
-       * Rau, B. R et al.
-       * ISCA 1991
-       *
-       * "Sacat: streaming-aware conflict-avoiding thrashing-resistant gpgpu
-       * cache management scheme." Khairy et al. IEEE TPDS 2017.
-       */
-      if (m_nset == 32 || m_nset == 64) {
-        std::bitset<64> a(addr);
-        std::bitset<6> index;
-        index[0] = a[25] ^ a[24] ^ a[23] ^ a[22] ^ a[21] ^ a[18] ^ a[17] ^
-                   a[15] ^ a[12] ^ a[7];  // 10
-        index[1] = a[26] ^ a[25] ^ a[24] ^ a[23] ^ a[22] ^ a[19] ^ a[18] ^
-                   a[16] ^ a[13] ^ a[8];  // 10
-        index[2] = a[26] ^ a[22] ^ a[21] ^ a[20] ^ a[19] ^ a[18] ^ a[15] ^
-                   a[14] ^ a[12] ^ a[9];  // 10
-        index[3] = a[23] ^ a[22] ^ a[21] ^ a[20] ^ a[19] ^ a[16] ^ a[15] ^
-                   a[13] ^ a[10];  // 9
-        index[4] = a[24] ^ a[23] ^ a[22] ^ a[21] ^ a[20] ^ a[17] ^ a[16] ^
-                   a[14] ^ a[11];  // 9
-
-        if (m_nset == 64) index[5] = a[12];
-
-        set_index = index.to_ulong();
-
-      } else { /* Else incorrect number of sets for the hashing function */
-        assert(
-            "\nGPGPU-Sim cache configuration error: The number of sets should "
-            "be "
-            "32 or 64 for the hashing set index function.\n" &&
-            0);
-      }
+    case BITWISE_XORING_FUNCTION: {
+      new_addr_type higher_bits = addr >> (m_line_sz_log2 + m_nset_log2);
+      unsigned index = (addr >> m_line_sz_log2) & (m_nset - 1);
+      set_index = bitwise_hash_function(higher_bits, index, m_nset);
       break;
-
-    case CUSTOM_SET_FUNCTION:
+    }
+    case HASH_IPOLY_FUNCTION: {
+      new_addr_type higher_bits = addr >> (m_line_sz_log2 + m_nset_log2);
+      unsigned index = (addr >> m_line_sz_log2) & (m_nset - 1);
+      set_index = ipoly_hash_function(higher_bits, index, m_nset);
+      break;
+    }
+    case CUSTOM_SET_FUNCTION: {
       /* No custom set function implemented */
       break;
+    }
 
-    case LINEAR_SET_FUNCTION:
+    case LINEAR_SET_FUNCTION: {
       set_index = (addr >> m_line_sz_log2) & (m_nset - 1);
       break;
+    }
 
-    default:
+    default: {
       assert("\nUndefined set index function.\n" && 0);
       break;
+    }
   }
 
   // Linear function selected or custom set index function not implemented
@@ -166,13 +154,14 @@ void l2_cache_config::init(linear_to_raw_address_translation *address_mapping) {
 }
 
 unsigned l2_cache_config::set_index(new_addr_type addr) const {
-  if (!m_address_mapping) {
-    return (addr >> m_line_sz_log2) & (m_nset - 1);
-  } else {
+  new_addr_type part_addr = addr;
+
+  if (m_address_mapping) {
     // Calculate set index without memory partition bits to reduce set camping
-    new_addr_type part_addr = m_address_mapping->partition_address(addr);
-    return (part_addr >> m_line_sz_log2) & (m_nset - 1);
+    part_addr = m_address_mapping->partition_address(addr);
   }
+
+  return cache_config::set_index(part_addr);
 }
 
 tag_array::~tag_array() {
@@ -1315,6 +1304,10 @@ enum cache_request_status data_cache::wr_miss_wa_naive(
       mem_fetch *wb = m_memfetch_creator->alloc(
           evicted.m_block_addr, m_wrbk_type, evicted.m_modified_size, true,
           m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle);
+      // the evicted block may have wrong chip id when advanced L2 hashing  is
+      // used, so set the right chip address from the original mf
+      wb->set_chip(mf->get_tlx_addr().chip);
+      wb->set_parition(mf->get_tlx_addr().sub_partition);
       send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
                          time, events);
     }
@@ -1358,6 +1351,10 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
         mem_fetch *wb = m_memfetch_creator->alloc(
             evicted.m_block_addr, m_wrbk_type, evicted.m_modified_size, true,
             m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle);
+        // the evicted block may have wrong chip id when advanced L2 hashing  is
+        // used, so set the right chip address from the original mf
+        wb->set_chip(mf->get_tlx_addr().chip);
+        wb->set_parition(mf->get_tlx_addr().sub_partition);
         send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
                            time, events);
       }
@@ -1424,6 +1421,10 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
         mem_fetch *wb = m_memfetch_creator->alloc(
             evicted.m_block_addr, m_wrbk_type, evicted.m_modified_size, true,
             m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle);
+        // the evicted block may have wrong chip id when advanced L2 hashing  is
+        // used, so set the right chip address from the original mf
+        wb->set_chip(mf->get_tlx_addr().chip);
+        wb->set_parition(mf->get_tlx_addr().sub_partition);
         send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
                            time, events);
       }
@@ -1473,6 +1474,10 @@ enum cache_request_status data_cache::wr_miss_wa_lazy_fetch_on_read(
       mem_fetch *wb = m_memfetch_creator->alloc(
           evicted.m_block_addr, m_wrbk_type, evicted.m_modified_size, true,
           m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle);
+      // the evicted block may have wrong chip id when advanced L2 hashing  is
+      // used, so set the right chip address from the original mf
+      wb->set_chip(mf->get_tlx_addr().chip);
+      wb->set_parition(mf->get_tlx_addr().sub_partition);
       send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
                          time, events);
     }
@@ -1545,6 +1550,10 @@ enum cache_request_status data_cache::rd_miss_base(
       mem_fetch *wb = m_memfetch_creator->alloc(
           evicted.m_block_addr, m_wrbk_type, evicted.m_modified_size, true,
           m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle);
+      // the evicted block may have wrong chip id when advanced L2 hashing  is
+      // used, so set the right chip address from the original mf
+      wb->set_chip(mf->get_tlx_addr().chip);
+      wb->set_parition(mf->get_tlx_addr().sub_partition);
       send_write_request(wb, WRITE_BACK_REQUEST_SENT, time, events);
     }
     return MISS;

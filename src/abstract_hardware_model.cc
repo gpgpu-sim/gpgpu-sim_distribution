@@ -257,6 +257,7 @@ void warp_inst_t::do_atomic(bool forceDo) {
 
 void warp_inst_t::do_atomic(const active_mask_t &access_mask, bool forceDo) {
   assert(m_isatomic && (!m_empty || forceDo));
+  if (!should_do_atomic) return;
   for (unsigned i = 0; i < m_config->warp_size; i++) {
     if (access_mask.test(i)) {
       dram_callback_t &cb = m_per_scalar_thread[i].callback;
@@ -536,13 +537,30 @@ void warp_inst_t::memory_coalescing_arch(bool is_write,
         transaction_info &info = subwarp_transactions[block_address];
 
         // can only write to one segment
-        assert(block_address == line_size_based_tag_func(
-                                    addr + data_size_coales - 1, segment_size));
+        // it seems like in trace driven, a thread can write to more than one
+        // segment assert(block_address ==
+        // line_size_based_tag_func(addr+data_size_coales-1,segment_size));
 
         info.chunks.set(chunk);
         info.active.set(thread);
         unsigned idx = (addr & 127);
-        for (unsigned i = 0; i < data_size_coales; i++) info.bytes.set(idx + i);
+        for (unsigned i = 0; i < data_size_coales; i++)
+          if ((idx + i) < MAX_MEMORY_ACCESS_SIZE) info.bytes.set(idx + i);
+
+        // it seems like in trace driven, a thread can write to more than one
+        // segment handle this special case
+        if (block_address != line_size_based_tag_func(
+                                 addr + data_size_coales - 1, segment_size)) {
+          addr = addr + data_size_coales - 1;
+          unsigned block_address = line_size_based_tag_func(addr, segment_size);
+          unsigned chunk = (addr & 127) / 32;
+          transaction_info &info = subwarp_transactions[block_address];
+          info.chunks.set(chunk);
+          info.active.set(thread);
+          unsigned idx = (addr & 127);
+          for (unsigned i = 0; i < data_size_coales; i++)
+            if ((idx + i) < MAX_MEMORY_ACCESS_SIZE) info.bytes.set(idx + i);
+        }
       }
     }
 
@@ -746,6 +764,10 @@ kernel_info_t::kernel_info_t(dim3 gridDim, dim3 blockDim,
   // Jin: launch latency management
   m_launch_latency = entry->gpgpu_ctx->device_runtime->g_kernel_launch_latency;
 
+  m_kernel_TB_latency =
+      entry->gpgpu_ctx->device_runtime->g_kernel_launch_latency +
+      num_blocks() * entry->gpgpu_ctx->device_runtime->g_TB_launch_latency;
+
   cache_config_set = false;
 }
 
@@ -772,6 +794,10 @@ kernel_info_t::kernel_info_t(
 
   // Jin: launch latency management
   m_launch_latency = entry->gpgpu_ctx->device_runtime->g_kernel_launch_latency;
+
+  m_kernel_TB_latency =
+      entry->gpgpu_ctx->device_runtime->g_kernel_launch_latency +
+      num_blocks() * entry->gpgpu_ctx->device_runtime->g_TB_launch_latency;
 
   cache_config_set = false;
   m_NameToCudaArray = nameToCudaArray;

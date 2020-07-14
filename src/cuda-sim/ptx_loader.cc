@@ -38,7 +38,8 @@
 
 /// extern prototypes
 
-extern int ptx_error(yyscan_t yyscanner, const char *s);
+extern int ptx_error(yyscan_t yyscanner, ptx_recognizer *recognizer,
+                     const char *s);
 extern int ptx_lex_init(yyscan_t *scanner);
 extern void ptx_set_in(FILE *_in_str, yyscan_t yyscanner);
 extern int ptx_parse(yyscan_t scanner, ptx_recognizer *recognizer);

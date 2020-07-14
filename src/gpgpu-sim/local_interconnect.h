@@ -45,13 +45,15 @@ struct inct_config {
   unsigned out_buffer_limit;
   unsigned subnets;
   Arbiteration_type arbiter_algo;
+  unsigned verbose;
+  unsigned grant_cycles;
 };
 
 class xbar_router {
  public:
   xbar_router(unsigned router_id, enum Interconnect_type m_type,
-              unsigned n_shader, unsigned n_mem, unsigned m_in_buffer_limit,
-              unsigned m_out_buffer_limit, enum Arbiteration_type m_arbit_type);
+              unsigned n_shader, unsigned n_mem,
+              const struct inct_config& m_localinct_config);
   ~xbar_router();
   void Push(unsigned input_deviceID, unsigned output_deviceID, void* data,
             unsigned int size);
@@ -66,6 +68,9 @@ class xbar_router {
   // some stats
   unsigned long long cycles;
   unsigned long long conflicts;
+  unsigned long long conflicts_util;
+  unsigned long long cycles_util;
+  unsigned long long reqs_util;
   unsigned long long out_buffer_full;
   unsigned long long out_buffer_util;
   unsigned long long in_buffer_full;
@@ -94,6 +99,10 @@ class xbar_router {
   enum Interconnect_type router_type;
   unsigned active_in_buffers, active_out_buffers;
   Arbiteration_type arbit_type;
+  unsigned verbose;
+
+  unsigned grant_cycles;
+  unsigned grant_cycles_count;
 
   friend class LocalInterconnect;
 };

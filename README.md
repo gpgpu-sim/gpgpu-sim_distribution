@@ -11,12 +11,12 @@ This version of GPGPU-Sim has been tested with CUDA version 4.2,
 Please see the copyright notice in the file COPYRIGHT distributed with this
 release in the same directory as this file.
 
-If you use GPGPU-Sim in your research, please cite:
+If you use GPGPU-Sim 4.0 in your research, please cite:
 
-Ali Bakhoda, George Yuan, Wilson W. L. Fung, Henry Wong, Tor M. Aamodt,
-Analyzing CUDA Workloads Using a Detailed GPU Simulator, in IEEE International
-Symposium on Performance Analysis of Systems and Software (ISPASS), Boston, MA,
-April 19-21, 2009.
+Mahmoud Khairy, Zhesheng Shen, Tor M. Aamodt, Timothy G Rogers.
+Accel-Sim: An Extensible Simulation Framework for Validated GPU Modeling.
+In proceedings of the 47th IEEE/ACM International Symposium on Computer Architecture (ISCA),
+May 29 - June 3, 2020.
 
 If you use cuDNN and Pytorch support, the Checkpoint function or the Debigging tool for functional simulation error in GPGPU-Sim for your research,
 please cite:
@@ -24,11 +24,6 @@ Jonathan Lew, Deval Shah, Suchita Pati, Shaylin Cattell, Mengchi Zhang, Amruth S
 Analyzing Machine Learning Workloads Using a Detailed GPU Simulator, arXiv:1811.08933,
 https://arxiv.org/abs/1811.08933
 
-If you use the memory system in GPGPU-Sim, or the Volta/Pascal models,
-please cite:
-Mahmoud Khairy, Jain Akshay, Tor Aamodt, Timothy G Rogers,
-Exploring Modern GPU Memory System Design Challenges through Accurate Modeling, arXiv:1810.07269, 
-https://arxiv.org/abs/1810.07269
 
 If you use the Tensor Core in GPGPU-Sim or CUTLASS Library for your research
 please cite:

@@ -31,6 +31,7 @@
 #include "dram_sched.h"
 #include "gpu-misc.h"
 #include "gpu-sim.h"
+#include "hashing.h"
 #include "l2cache.h"
 #include "mem_fetch.h"
 #include "mem_latency_stat.h"
@@ -207,8 +208,18 @@ dram_req_t::dram_req_t(class mem_fetch *mf, unsigned banks,
     }
     case BITWISE_XORING_BK_INDEX: {
       // xoring bank bits with lower bits of the page
-      int lbank = log2(banks);
-      bk = tlx.bk ^ (tlx.row & ((1 << lbank) - 1));
+      bk = bitwise_hash_function(tlx.row, tlx.bk, banks);
+      assert(bk < banks);
+      break;
+    }
+    case IPOLY_BK_INDEX: {
+      /*IPOLY for bank indexing function from "Pseudo-randomly interleaved
+       * memory." Rau, B. R et al. ISCA 1991
+       * http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=348DEA37A3E440473B3C075EAABC63B6?doi=10.1.1.12.7149&rep=rep1&type=pdf
+       */
+      // xoring bank bits with lower bits of the page
+      bk = ipoly_hash_function(tlx.row, tlx.bk, banks);
+      assert(bk < banks);
       break;
     }
     case CUSTOM_BK_INDEX:
