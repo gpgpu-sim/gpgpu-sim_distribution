@@ -8,7 +8,7 @@ set print array-indexes
 set unwindonsignal on
 
 define dp
-        call g_the_gpu->dump_pipeline((0x40|0x4|0x1),$arg0,0)
+        call GPGPU_Context()->the_gpgpusim->g_the_gpu->dump_pipeline((0x40|0x4|0x1),$arg0,0)
 end
 
 document dp
@@ -23,7 +23,7 @@ see the source code for more details)
 end
 
 define dpc
-        call g_the_gpu->dump_pipeline((0x40|0x4|0x1),$arg0,0)
+        call GPGPU_Context()->the_gpgpusim->g_the_gpu->dump_pipeline((0x40|0x4|0x1),$arg0,0)
         continue
 end
 
@@ -39,7 +39,7 @@ the next cycle.
 end
 
 define dm
-        call g_the_gpu->dump_pipeline(0x10000|0x10000000,0,$arg0)
+        call GPGPU_Context()->the_gpgpusim->g_the_gpu->dump_pipeline(0x10000|0x10000000,0,$arg0)
 end
 
 define ptxdis
