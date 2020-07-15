@@ -30,6 +30,7 @@
 %{
 #include <stdio.h>
 #include <string.h>
+#include "cuobjdump.h"
 #include "cuobjdump_parser.h"
 
 #define YY_NEVER_INTERACTIVE 1
@@ -38,9 +39,9 @@
 
 #define YYDEBUG 1
 
-#define yylval cuobjdump_lval
-
-void cuobjdump_error(const char*);
+void cuobjdump_error(yyscan_t yyscanner, struct cuobjdump_parser* parser, std::list<cuobjdumpSection*> &cuobjdumpSectionList, const char* msg);
+#define YY_DECL int cuobjdump_lex \
+	       (YYSTYPE * yylval_param , yyscan_t yyscanner, struct cuobjdump_parser* parser, std::list<cuobjdumpSection*> &cuobjdumpSectionList)
 %}
 
 %option stack
@@ -48,12 +49,18 @@ void cuobjdump_error(const char*);
 %option yylineno
 %option nounput
 
+%option bison-bridge
+%option reentrant
 
 %s ptxcode
 %s sasscode
 %s elfcode
-%s header
+%s elfheader
+%s ptxheader
 %s endheader
+%x identifier
+%x conidentifier
+%s endidentifier
 
 alpha		[a-zA-Z]
 numeric		[0-9]
@@ -65,50 +72,82 @@ newlines	{newline}+
 
 
 "ptxasOptions"{notnewline}*{newline}
-[1-9]{numeric}* yylval.string_value = strdup(yytext); return DECIMAL;
+[1-9]{numeric}* yylval->string_value = strdup(yytext); return DECIMAL;
+
+"has debug info"{newline}
 
 
 "Fatbin ptx code:"{newline}	{
-	yy_push_state(ptxcode);
-	yy_push_state(header);
-	yylval.string_value = strdup(yytext);
+	yy_push_state(ptxcode, yyscanner);
+	yy_push_state(identifier, yyscanner);
+	yy_push_state(ptxheader, yyscanner);
+	yylval->string_value = strdup(yytext);
 	return PTXHEADER;
 }
 "Fatbin elf code:"{newline}	{
-	yy_push_state(elfcode);
-	yy_push_state(header);
-	yylval.string_value = strdup(yytext);
+	yy_push_state(elfcode, yyscanner);
+	yy_push_state(identifier, yyscanner);
+	yy_push_state(elfheader, yyscanner);
+	yylval->string_value = strdup(yytext);
 	return ELFHEADER;
 }
 	/*PTX code tokens*/
-<ptxcode>{notnewline}*{newline}	yylval.string_value = strdup(yytext); return PTXLINE;
+<ptxcode>{notnewline}*{newline}	yylval->string_value = strdup(yytext); return PTXLINE;
 
 	/*ELF code tokens*/
 <elfcode>{whitespace}*"code for sm_"{numeric}+{newline}	{
 	BEGIN(sasscode); 
-	yylval.string_value = strdup(yytext); 
+	yylval->string_value = strdup(yytext);
 	return SASSLINE;
 }
-<elfcode>{notnewline}*{newline} yylval.string_value = strdup(yytext); return ELFLINE;
+<elfcode>{notnewline}*{newline} yylval->string_value = strdup(yytext); return ELFLINE;
 
 	/*SASS code tokens*/
-<sasscode>{notnewline}*{newline} yylval.string_value = strdup(yytext); return SASSLINE;
+<sasscode>{notnewline}*{newline} yylval->string_value = strdup(yytext); return SASSLINE;
+
+<identifier>{newline}"compressed"{newline}	BEGIN(conidentifier); return H_COMPRESSED;
+<identifier>{newline}"identifier = "	BEGIN(endidentifier); return H_IDENTIFIER;
+<identifier>{newline}{newline} yy_pop_state(yyscanner);
+
+
+<conidentifier>"identifier = "	BEGIN(endidentifier); return H_IDENTIFIER;
+<conidentifier>{newline} yy_pop_state(yyscanner);
+
+
+<endidentifier>{notnewline}+	yylval->string_value = strdup(yytext); yy_pop_state(yyscanner); return FILENAME;
+
+
 
 	/*Header tokens*/
-<header>[[:alnum:]_]+ yylval.string_value = strdup(yytext); return IDENTIFIER;
-<header>"================"	return H_SEPARATOR;
-<header>"arch = "		return H_ARCH;
-<header>"code version = "	return H_CODEVERSION;
-<header>\[{numeric},{numeric}\]	return CODEVERSION;
-<header>"producer = "		return H_PRODUCER;
-<header>"host = "			return H_HOST;
-<header>"compile_size = "	return H_COMPILESIZE;
-<header>"identifier = "		BEGIN(endheader); return H_IDENTIFIER;
-<header>"has debug info"{newline}
+<elfheader>[[:alnum:]_]+ yylval->string_value = strdup(yytext); return IDENTIFIER;
+<elfheader>"================"	return H_SEPARATOR;
+<elfheader>"arch = "		return H_ARCH;
+<elfheader>"code version = "	return H_CODEVERSION;
+<elfheader>\[{numeric},{numeric}\]	return CODEVERSION;
+<elfheader>"producer = "		return H_PRODUCER;
+<elfheader>"<unknown>"			return H_UNKNOWN;
+<elfheader>"host = "			return H_HOST;
+<elfheader>"compile_size = "	BEGIN(endheader); return H_COMPILESIZE;
+
+
+	/*Header tokens*/
+<ptxheader>[[:alnum:]_]+ yylval->string_value = strdup(yytext); return IDENTIFIER;
+<ptxheader>"================"	return H_SEPARATOR;
+<ptxheader>"arch = "		return H_ARCH;
+<ptxheader>"code version = "	return H_CODEVERSION;
+<ptxheader>\[{numeric},{numeric}\]	return CODEVERSION;
+<ptxheader>"producer = "		return H_PRODUCER;
+<ptxheader>"host = "			return H_HOST;
+<ptxheader>"compile_size = "	BEGIN(endheader); return H_COMPILESIZE;
+
+
+
+
+
 
 	/* Looking for the identifier (filename) then the header is done */
-	/* <endheader>[[:alnum:]_\./]+	yylval.string_value = strdup(yytext); yy_pop_state(); return FILENAME; */
-<endheader>{notnewline}+	yylval.string_value = strdup(yytext); yy_pop_state(); return FILENAME;
+<endheader>{notnewline}+	yylval->string_value = strdup(yytext); yy_pop_state(yyscanner); return IDENTIFIER;
+
 
 
 {newline}	return NEWLINE;
@@ -117,13 +156,12 @@ newlines	{newline}+
 <<EOF>> BEGIN(INITIAL);return 0;
 
 	/*No other rule matched. Throw an error*/
-.	cuobjdump_error("Invalid token");
+.	cuobjdump_error(yyscanner, parser, cuobjdumpSectionList, "Invalid token");
 
 %%
-void cuobjdump_error(const char* message)
+void cuobjdump_error(yyscan_t yyscanner, struct cuobjdump_parser* parser, std::list<cuobjdumpSection*> &cuobjdumpSectionList, const char* msg)
 {
-	printf("   "); printf(message); printf(" near \""); printf(yytext); printf("\"");
-	printf(" on line "); 
-	char line[5]; sprintf(line, "%i", yylineno); printf(line);
-	printf("\n");
+    struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
+	printf("   %s near \"%s\"",msg, yytext);
+	printf(" on line %i\n",yylineno);
 }

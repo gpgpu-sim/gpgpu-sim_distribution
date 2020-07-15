@@ -1,0 +1,38 @@
+sudo: required
+
+before_install:
+    - docker pull tgrogers/gpgpu-sim_regress:volta_update
+
+language: cpp
+
+
+matrix:
+  include:
+    - services: docker
+      env:
+        - CONFIG=GTX480
+        - CUDA_INSTALL_PATH=/usr/local/cuda-4.2/
+        - PTXAS_CUDA_INSTALL_PATH=/usr/local/cuda-4.2/
+        - GPUAPPS_ROOT=/home/runner/gpgpu-sim_simulations/benchmarks
+    - services: docker
+      env:
+        - CONFIG=TITANV
+        - CUDA_INSTALL_PATH=/usr/local/cuda-9.1/
+        - PTXAS_CUDA_INSTALL_PATH=/usr/local/cuda-9.1/
+        - GPUAPPS_ROOT=/home/runner/gpgpu-sim_simulations/benchmarks
+    - services: docker
+      env:
+        - CONFIG=TITANV-LOCALXBAR
+        - CUDA_INSTALL_PATH=/usr/local/cuda-9.1/
+        - PTXAS_CUDA_INSTALL_PATH=/usr/local/cuda-9.1/
+        - GPUAPPS_ROOT=/home/runner/gpgpu-sim_simulations/benchmarks
+
+script:
+    - >
+      docker run
+      --env CONFIG=$CONFIG
+      --env PTXAS_CUDA_INSTALL_PATH=$PTXAS_CUDA_INSTALL_PATH
+      --env CUDA_INSTALL_PATH=$CUDA_INSTALL_PATH
+      --env GPUAPPS_ROOT=$GPUAPPS_ROOT
+      -v `pwd`:/gpgpu-sim:rw tgrogers/gpgpu-sim_regress:volta_update
+      /bin/bash travis.sh

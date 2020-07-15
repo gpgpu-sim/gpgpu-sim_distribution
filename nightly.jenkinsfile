@@ -1,0 +1,121 @@
+pipeline {
+    agent {
+        label "purdue-cluster"
+    }
+
+    options {
+        disableConcurrentBuilds()
+        overrideIndexTriggers(true)
+    }
+
+    triggers {
+        pollSCM('0 1 * * *')
+    }
+
+    stages {
+        stage('env-setup') {
+            steps {
+                sh 'rm -rf env-setup && git clone git@github.com:purdue-aalp/env-setup.git &&\
+                    cd env-setup && git checkout cluster-ubuntu'
+            }
+        }
+        stage('nightly-simulator-build') {
+            steps {
+                sh '''#!/bin/bash
+                    source ./env-setup/11.0_env_setup.sh
+                    source `pwd`/setup_environment
+                    make -j 10'''
+            }
+        }
+        stage('nightly-simulations-build'){
+            steps{
+                sh 'if [ -d "./gpgpu-sim_simulations" ]; then \
+                        cp -fr ./gpgpu-sim_simulations ./gpgpu-sim_simulations_bak; \
+                    fi'
+                sh 'rm -rf gpgpu-sim_simulations'
+                sh 'git clone git@github.com:purdue-aalp/gpgpu-sim_simulations.git && \
+                    cd gpgpu-sim_simulations && \
+                    git pull && \
+                    ln -s /home/tgrogers-raid/a/common/data_dirs benchmarks/'
+                sh '''#!/bin/bash
+                    source ./env-setup/11.0_env_setup.sh &&\
+                    source `pwd`/setup_environment &&\
+                    cd gpgpu-sim_simulations && \
+                    source ./benchmarks/src/setup_environment && \
+                    make -i -j 10 -C ./benchmarks/src/ all && \
+                    make -C ./benchmarks/src data'''
+            }
+        }
+        stage('nightly-2B-insn-run'){
+            steps {
+                    sh 'rm -rf ./gpgpu-sim_simulations/util/plotting/correl-html && rm -rf gpgpu-sim-results-repo &&\
+                        rm -rf ./gpgpu-sim_simulations/util/plotting/htmls'
+
+                    sh '''#!/bin/bash
+                        source ./env-setup/11.0_env_setup.sh
+                        source `pwd`/setup_environment
+                        ./gpgpu-sim_simulations/util/job_launching/run_simulations.py \
+                            -B `cat ./gpgpu-sim_simulations/util/job_launching/apps/correlation-apps.list` -C QV100-2B -N nightly-$$
+                        ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -I -S 1800 -v \
+                            -s stats-per-app-11.0.csv -T 12 -K -N nightly-$$
+                        ./gpgpu-sim_simulations/util/plotting/plot-get-stats.py -c stats-per-app-11.0.csv -P cuda-11.0.nightly'''
+            }
+        }
+        stage('nightly-correlate'){
+            steps {
+                sh 'git clone git@github.com:purdue-aalp/gpgpu-sim-results-repo.git'
+
+                sh 'if [ ! -d ./gpgpu-sim-results-repo/${JOB_NAME} ]; then \
+                        mkdir -p ./gpgpu-sim-results-repo/${JOB_NAME}/ ; \
+                        cp ./gpgpu-sim-results-repo/purdue-aalp/gpgpu-sim_distribution/dev/* \
+                            ./gpgpu-sim-results-repo/${JOB_NAME}/ ; \
+                    fi && \
+                    ./gpgpu-sim_simulations/run_hw/get_hw_data.sh'
+
+                sh '''#!/bin/bash
+                    source ./env-setup/11.0_env_setup.sh
+                    ./gpgpu-sim_simulations/util/job_launching/get_stats.py -R -K -k \
+                        -B `cat ./gpgpu-sim_simulations/util/job_launching/apps/correlation-apps.list` \
+                        -C QV100-2B > stats-per-kernel-11.0.csv
+                    ./gpgpu-sim_simulations/util/plotting/merge-stats.py \
+                        -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-app-11.0.csv,./stats-per-app-11.0.csv -R \
+                        > per-app-merge-11.0.csv
+                    ./gpgpu-sim_simulations/util/plotting/merge-stats.py \
+                        -c ./gpgpu-sim-results-repo/${JOB_NAME}/stats-per-kernel-11.0.csv,./stats-per-kernel-11.0.csv -R \
+                        > per-kernel-merge-11.0.csv
+                    source `pwd`/setup_environment
+                    ./gpgpu-sim_simulations/util/plotting/plot-correlation.py -c per-kernel-merge-11.0.csv \
+                        -p cuda-11.0.nightly -b ./gpgpu-sim_simulations/util/plotting/known.correlation.outliers.list \
+                        | grep "Correl=" -B 1 | tee correl.11.0.txt
+                    cp stats-per-*.csv ./gpgpu-sim-results-repo/${JOB_NAME}/
+                    cd ./gpgpu-sim-results-repo
+                    git pull
+                    git diff --quiet && git diff --staged --quiet || git commit -am "Jenkins automated checkin ${JOB_NAME} Build:${BUILD_NUMBER}"
+                    git push'''
+
+                sh 'PLOTDIR="/home/dynamo/a/tgrogers/website/gpgpu-sim-plots/jenkins/${JOB_NAME}" &&\
+                    ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p $PLOTDIR/${BUILD_NUMBER} && \
+                    scp  ./gpgpu-sim_simulations/util/plotting/correl-html/* tgrogers@dynamo.ecn.purdue.edu:$PLOTDIR/${BUILD_NUMBER} &&\
+                    scp  ./gpgpu-sim_simulations/util/plotting/htmls/* tgrogers@dynamo.ecn.purdue.edu:$PLOTDIR/${BUILD_NUMBER} &&\
+                    ssh tgrogers@dynamo.ecn.purdue.edu "cd $PLOTDIR && rm -rf latest && cp -r ${BUILD_NUMBER} latest"'
+            }
+        }
+    }
+    post {
+        success {
+            emailext body:'''${SCRIPT, template="groovy-html.nightly.success.template"}''',
+                recipientProviders: [[$class: 'CulpritsRecipientProvider'],
+                    [$class: 'RequesterRecipientProvider']],
+                subject: "[AALP Jenkins] Build #${BUILD_NUMBER} - Success!",
+                attachmentsPattern: 'correl.*.txt',
+                to: 'tgrogers@purdue.edu'
+        }
+        failure {
+            emailext body: "See ${BUILD_URL}",
+                recipientProviders: [[$class: 'CulpritsRecipientProvider'],
+                    [$class: 'RequesterRecipientProvider']],
+                subject: "[AALP Jenkins] Build #${BUILD_NUMBER} - ${currentBuild.result}",
+                to: 'tgrogers@purdue.edu'
+        }
+    }
+}

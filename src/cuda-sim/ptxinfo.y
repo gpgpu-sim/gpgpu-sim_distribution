@@ -27,6 +27,17 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+%{
+typedef void * yyscan_t;
+#include "ptx_loader.h"
+%}
+
+%define api.pure full
+%parse-param {yyscan_t scanner}
+%parse-param {ptxinfo_data* ptxinfo}
+%lex-param {yyscan_t scanner}
+%lex-param {ptxinfo_data* ptxinfo}
+
 %union {
   int    int_value;
   char * string_value;
@@ -42,6 +53,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token LMEM
 %token SMEM
 %token CMEM
+%token GMEM
 %token <string_value> IDENTIFIER
 %token PLUS
 %token COMMA
@@ -53,21 +65,28 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token LINE
 %token <string_value> WARNING
 %token FOR
+%token TEXTURES
+%token DUPLICATE
+%token <string_value> FUNCTION
+%token <string_value> VARIABLE
+%token FATAL
 
 %{
 	#include <stdlib.h>
 	#include <string.h>
-
+	
 	static unsigned g_declared;
 	static unsigned g_system;
-	int ptxinfo_lex(void);
-	void ptxinfo_addinfo();
+	int ptxinfo_lex(YYSTYPE * yylval_param, yyscan_t yyscanner, ptxinfo_data* ptxinfo);
+	void yyerror(yyscan_t yyscanner, ptxinfo_data* ptxinfo, const char* msg);
 	void ptxinfo_function(const char *fname );
 	void ptxinfo_regs( unsigned nregs );
 	void ptxinfo_lmem( unsigned declared, unsigned system );
+	void ptxinfo_gmem( unsigned declared, unsigned system );
 	void ptxinfo_smem( unsigned declared, unsigned system );
 	void ptxinfo_cmem( unsigned nbytes, unsigned bank );
-	int ptxinfo_error(const char*);
+	void ptxinfo_linenum( unsigned );
+	void ptxinfo_dup_type( const char* );
 %}
 
 %%
@@ -79,30 +98,43 @@ input:	/* empty */
 line: 	HEADER INFO COLON line_info
 	| HEADER IDENTIFIER COMMA LINE INT_OPERAND SEMICOLON WARNING
 	| HEADER WARNING { printf("GPGPU-Sim: ptxas %s\n", $2); }
+	| HEADER IDENTIFIER COMMA LINE INT_OPERAND SEMICOLON DUPLICATE duplicate { ptxinfo_linenum($5); }
+	| HEADER FATAL
 	;
 
 line_info: function_name
-	| function_info { ptxinfo_addinfo(); }
+	| function_info { ptxinfo->ptxinfo_addinfo(); }
+	| gmem_info
 	;
 
-function_name: FUNC QUOTE IDENTIFIER QUOTE { ptxinfo_function($3); }
+function_name:	FUNC QUOTE IDENTIFIER QUOTE { ptxinfo_function($3); }
 	|  FUNC QUOTE IDENTIFIER QUOTE FOR QUOTE IDENTIFIER QUOTE { ptxinfo_function($3); }
-
+	;
+	
 function_info: info
 	| function_info COMMA info
+	;
+
+gmem_info: INT_OPERAND BYTES GMEM
 	;
 
 info: 	  USED INT_OPERAND REGS { ptxinfo_regs($2); }
 	| tuple LMEM { ptxinfo_lmem(g_declared,g_system); }
 	| tuple SMEM { ptxinfo_smem(g_declared,g_system); }
 	| INT_OPERAND BYTES CMEM LEFT_SQUARE_BRACKET INT_OPERAND RIGHT_SQUARE_BRACKET { ptxinfo_cmem($1,$5); }
+	| INT_OPERAND BYTES GMEM { ptxinfo_gmem($1,0); }
 	| INT_OPERAND BYTES LMEM { ptxinfo_lmem($1,0); }
 	| INT_OPERAND BYTES SMEM { ptxinfo_smem($1,0); }
 	| INT_OPERAND BYTES CMEM { ptxinfo_cmem($1,0); }
 	| INT_OPERAND REGS { ptxinfo_regs($1); }
+	| INT_OPERAND TEXTURES {}
 	;
 
 tuple: INT_OPERAND PLUS INT_OPERAND BYTES { g_declared=$1; g_system=$3; }
+
+duplicate:	FUNCTION QUOTE IDENTIFIER QUOTE { ptxinfo_dup_type($1); }
+	| VARIABLE QUOTE IDENTIFIER QUOTE { ptxinfo_dup_type($1); }
+	;
 
 %%
 
