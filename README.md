@@ -6,7 +6,7 @@ GPGPU-Sim and GPUWattch have been rigorously validated with performance and
 power measurements of real hardware GPUs.
 
 This version of GPGPU-Sim has been tested with a subset of CUDA version 4.2,
-5.0, 5.5, 6.0 and 7.5, 8.0, 9.0, 9.1, 10, 11
+5.0, 5.5, 6.0, 7.5, 8.0, 9.0, 9.1, 10, and 11
 
 Please see the copyright notice in the file COPYRIGHT distributed with this
 release in the same directory as this file.
