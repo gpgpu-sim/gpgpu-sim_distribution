@@ -5,8 +5,8 @@ AerialVision and a configurable and extensible energy model called GPUWattch.
 GPGPU-Sim and GPUWattch have been rigorously validated with performance and
 power measurements of real hardware GPUs.
 
-This version of GPGPU-Sim has been tested with CUDA version 4.2,
-5.0, 5.5, 6.0 and 7.5, 8.0, 9.0, 9.1
+This version of GPGPU-Sim has been tested with a subset of CUDA version 4.2,
+5.0, 5.5, 6.0 and 7.5, 8.0, 9.0, 9.1, 10, 11
 
 Please see the copyright notice in the file COPYRIGHT distributed with this
 release in the same directory as this file.
@@ -436,13 +436,13 @@ To debug failing GPGPU-Sim regression tests you need to run them locally.  The f
 
 3. Run the following command (this is all one line) to run the regressions in docker:
 	```
-	docker run --privileged -v `pwd`:/home/runner/gpgpu-sim_distribution:rw aamodt/gpgpu-sim_regress:latest /bin/bash -c "./start_torque.sh; chown -R runner /home/runner/gpgpu-sim_distribution; su - runner -c 'source /home/runner/gpgpu-sim_distribution/setup_environment && make -j -C /home/runner/gpgpu-sim_distribution && cd /home/runner/gpgpu-sim_simulations/ && git pull && /home/runner/gpgpu-sim_simulations/util/job_launching/run_simulations.py -c /home/runner/gpgpu-sim_simulations/util/job_launching/regression_recipies/rodinia_2.0-ft/configs.gtx1080ti.yml -N regress && /home/runner/gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress’; tail -f /dev/null"
+	docker run --privileged -v `pwd`:/home/runner/gpgpu-sim_distribution:rw aamodt/gpgpu-sim_regress:latest /bin/bash -c "./start_torque.sh; chown -R runner /home/runner/gpgpu-sim_distribution; su - runner -c 'source /home/runner/gpgpu-sim_distribution/setup_environment && make -j -C /home/runner/gpgpu-sim_distribution && cd /home/runner/gpgpu-sim_simulations/ && git pull && /home/runner/gpgpu-sim_simulations/util/job_launching/run_simulations.py -c /home/runner/gpgpu-sim_simulations/util/job_launching/regression_recipies/rodinia_2.0-ft/configs.gtx1080ti.yml -N regress && /home/runner/gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress'; tail -f /dev/null"
 	```
 	Explanation: The last part of this command, "tail -f /dev/null" will keep the docker container running after the regressions finish.  This enables you to log into the container to run the same tests inside gdb so you can debug.   The "--privileged" part enables you to use breakpoints inside gdb in a container.  The "-v" part maps the current directory (with the GPGPU-Sim source code you want to test) into the container. The string "aamodt/gpgpu-sim_regress:latest" is a tag for a container setup to run regressions which will be downloaded from docker hub.  The portion starting with /bin/bash is a set of commands run inside a bash shell inside the container.  E.g., the command start_torque.sh starts up a queue manager inside the container.  
 
 	If the above command stops with the message "fatal: unable to access 'https://github.com/tgrogers/gpgpu-sim_simulations.git/': Could not resolve host: github.com" this likely means your computer sits behind a firewall which is blocking access to Google's name servers (e.g., 8.8.8.8).  To get around this you will need to modify th above command to point to your local DNS server.  Lookup your DNS server IP address which we will call <DNS_IP_ADDRESS> below.  On Ubuntu run "ifconfig" to lookup the network interface connecting your computer to the network.  Then run "nmcli device show <interface name>" to find the IP address of your DNS server.  Modify the above command to include "--dns <DNS_IP_ADDRESS>" after "run", E.g.,
 	```
-	docker run --dns <DNS_IP_ADDRESS> --privileged -v `pwd`:/home/runner/gpgpu-sim_distribution:rw aamodt/gpgpu-sim_regress:latest /bin/bash -c "./start_torque.sh; chown -R runner /home/runner/gpgpu-sim_distribution; su - runner -c 'source /home/runner/gpgpu-sim_distribution/setup_environment && make -j -C /home/runner/gpgpu-sim_distribution && cd /home/runner/gpgpu-sim_simulations/ && git pull && /home/runner/gpgpu-sim_simulations/util/job_launching/run_simulations.py -c /home/runner/gpgpu-sim_simulations/util/job_launching/regression_recipies/rodinia_2.0-ft/configs.gtx1080ti.yml -N regress && /home/runner/gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress’; tail -f /dev/null"
+	docker run --dns <DNS_IP_ADDRESS> --privileged -v `pwd`:/home/runner/gpgpu-sim_distribution:rw aamodt/gpgpu-sim_regress:latest /bin/bash -c "./start_torque.sh; chown -R runner /home/runner/gpgpu-sim_distribution; su - runner -c 'source /home/runner/gpgpu-sim_distribution/setup_environment && make -j -C /home/runner/gpgpu-sim_distribution && cd /home/runner/gpgpu-sim_simulations/ && git pull && /home/runner/gpgpu-sim_simulations/util/job_launching/run_simulations.py -c /home/runner/gpgpu-sim_simulations/util/job_launching/regression_recipies/rodinia_2.0-ft/configs.gtx1080ti.yml -N regress && /home/runner/gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress'; tail -f /dev/null"
 	```
 
 4. Find the CONTAINER ID associated with your docker container by running "docker ps". 
