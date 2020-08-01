@@ -1669,6 +1669,7 @@ struct shader_core_stats_pod {
   unsigned *single_issue_nums;
   unsigned *dual_issue_nums;
 
+  unsigned ctas_completed;
   // memory access classification
   int gpgpu_n_mem_read_local;
   int gpgpu_n_mem_write_local;
@@ -1782,6 +1783,7 @@ class shader_core_stats : public shader_core_stats_pod {
     dual_issue_nums =
         (unsigned *)calloc(config->gpgpu_num_sched_per_core, sizeof(unsigned));
 
+    ctas_completed = 0;
     n_simt_to_mem = (long *)calloc(config->num_shader(), sizeof(long));
     n_mem_to_simt = (long *)calloc(config->num_shader(), sizeof(long));
 
