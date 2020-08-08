@@ -257,15 +257,16 @@ To clean the docs run
 
 The documentation resides at doc/doxygen/html.
 
+To run Pytorch applications with the simulator, install the modified Pytorch library as well by following instructions [here](https://github.com/gpgpu-sim/pytorch-gpgpu-sim).
 ## Step 3: Run
 
 Before we run, we need to make sure the application's executable file is dynamically linked to CUDA runtime library. This can be done during compilation of your program by introducing the nvcc flag "--cudart shared" in makefile (quotes should be excluded).
 
 To confirm the same, type the follwoing command:
 
-ldd <your_application_name>
+`ldd <your_application_name>`
 
-You should see that your application is using libcudart.so file in GPGPUSim directory.
+You should see that your application is using libcudart.so file in GPGPUSim directory. If the application is a Pytorch application, `<your_application_name>` should be `$PYTORCH_BIN`, which should be set during the Pytorch installation.
 
 If running applications which use cuDNN or cuBLAS:
 
