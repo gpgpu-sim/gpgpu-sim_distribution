@@ -1365,7 +1365,8 @@ class graphManager:
         interpolation = 'nearest'
         norm = plotFormat.norm
         im = self.plot.imshow(y, cmap = cmap, interpolation = interpolation, aspect = 'auto', norm = norm )
-        tmp = im.get_axes().get_position().get_points()
+        # tmp = im.get_axes().get_position().get_points()
+        tmp = im.get_window_extent().get_points()
 
         if (plotID in self.cbarAxes):
             self.figure.delaxes(self.cbarAxes[plotID])
