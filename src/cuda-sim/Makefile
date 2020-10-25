@@ -124,7 +124,7 @@ $(OUTPUT_DIR)/instructions.h: instructions.cc
 	@echo "#define instructions_h_included" >> $*.h
 	@cat $< | grep "_impl(" | sed 's/{.*//' | sed 's/$$/;/' >> $*.h
 	@echo "#endif" >> $*.h
-	@chmod -w $*.h
+	@chmod a-w $*.h
 	@echo "created $(OUTPUT_DIR)/instructions.h"
 
 $(OUTPUT_DIR)/ptx_parser_decode.def: $(OUTPUT_DIR)/ptx.tab.c
