@@ -128,6 +128,8 @@ struct cache_block_t {
                                   mem_access_sector_mask_t sector_mask) = 0;
   virtual void set_modified_on_fill(bool m_modified,
                                     mem_access_sector_mask_t sector_mask) = 0;
+  virtual void set_readable_on_fill(bool readable,
+                                    mem_access_sector_mask_t sector_mask) = 0;
   virtual unsigned get_modified_size() = 0;
   virtual void set_m_readable(bool readable,
                               mem_access_sector_mask_t sector_mask) = 0;
@@ -147,6 +149,7 @@ struct line_cache_block : public cache_block_t {
     m_status = INVALID;
     m_ignore_on_fill_status = false;
     m_set_modified_on_fill = false;
+    m_set_readable_on_fill = false;
     m_readable = true;
   }
   void allocate(new_addr_type tag, new_addr_type block_addr, unsigned time,
@@ -159,12 +162,16 @@ struct line_cache_block : public cache_block_t {
     m_status = RESERVED;
     m_ignore_on_fill_status = false;
     m_set_modified_on_fill = false;
+    m_set_readable_on_fill = false;
   }
   void fill(unsigned time, mem_access_sector_mask_t sector_mask) {
     // if(!m_ignore_on_fill_status)
     //	assert( m_status == RESERVED );
 
     m_status = m_set_modified_on_fill ? MODIFIED : VALID;
+    
+    if (m_set_readable_on_fill)
+        m_readable = true;
 
     m_fill_time = time;
   }
@@ -197,6 +204,10 @@ struct line_cache_block : public cache_block_t {
                                     mem_access_sector_mask_t sector_mask) {
     m_set_modified_on_fill = m_modified;
   }
+  virtual void set_readable_on_fill(bool readable,
+                                    mem_access_sector_mask_t sector_mask) {
+    m_set_readable_on_fill = readable;
+  }
   virtual unsigned get_modified_size() {
     return SECTOR_CHUNCK_SIZE * SECTOR_SIZE;  // i.e. cache line size
   }
@@ -218,6 +229,7 @@ struct line_cache_block : public cache_block_t {
   cache_block_state m_status;
   bool m_ignore_on_fill_status;
   bool m_set_modified_on_fill;
+  bool m_set_readable_on_fill;
   bool m_readable;
 };
 
@@ -232,6 +244,7 @@ struct sector_cache_block : public cache_block_t {
       m_status[i] = INVALID;
       m_ignore_on_fill_status[i] = false;
       m_set_modified_on_fill[i] = false;
+      m_set_readable_on_fill[i] = false;
       m_readable[i] = true;
     }
     m_line_alloc_time = 0;
@@ -261,6 +274,7 @@ struct sector_cache_block : public cache_block_t {
     m_status[sidx] = RESERVED;
     m_ignore_on_fill_status[sidx] = false;
     m_set_modified_on_fill[sidx] = false;
+    m_set_readable_on_fill[sidx] = false;
 
     // set line stats
     m_line_alloc_time = time;  // only set this for the first allocated sector
@@ -283,6 +297,8 @@ struct sector_cache_block : public cache_block_t {
     else
       m_set_modified_on_fill[sidx] = false;
 
+    m_set_readable_on_fill[sidx] = false;
+
     m_status[sidx] = RESERVED;
     m_ignore_on_fill_status[sidx] = false;
     // m_set_modified_on_fill[sidx] = false;
@@ -300,6 +316,11 @@ struct sector_cache_block : public cache_block_t {
     //	         assert( m_status[sidx] == RESERVED );
 
     m_status[sidx] = m_set_modified_on_fill[sidx] ? MODIFIED : VALID;
+    
+    if (m_set_readable_on_fill[sidx]) {
+        m_readable[sidx] = true;
+        m_set_readable_on_fill[sidx] = false;
+    }
 
     m_sector_fill_time[sidx] = time;
     m_line_fill_time = time;
@@ -366,6 +387,11 @@ struct sector_cache_block : public cache_block_t {
     m_set_modified_on_fill[sidx] = m_modified;
   }
 
+  virtual void set_readable_on_fill(bool readable,
+                                    mem_access_sector_mask_t sector_mask) {
+    unsigned sidx = get_sector_index(sector_mask);
+    m_set_readable_on_fill[sidx] = readable;
+  }
   virtual void set_m_readable(bool readable,
                               mem_access_sector_mask_t sector_mask) {
     unsigned sidx = get_sector_index(sector_mask);
@@ -400,6 +426,7 @@ struct sector_cache_block : public cache_block_t {
   cache_block_state m_status[SECTOR_CHUNCK_SIZE];
   bool m_ignore_on_fill_status[SECTOR_CHUNCK_SIZE];
   bool m_set_modified_on_fill[SECTOR_CHUNCK_SIZE];
+  bool m_set_readable_on_fill[SECTOR_CHUNCK_SIZE];
   bool m_readable[SECTOR_CHUNCK_SIZE];
 
   unsigned get_sector_index(mem_access_sector_mask_t sector_mask) {
