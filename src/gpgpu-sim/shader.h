@@ -46,6 +46,7 @@
 //#include "../cuda-sim/ptx.tab.h"
 
 #include "../abstract_hardware_model.h"
+#include "../cuda-sim/memory.h"
 #include "delayqueue.h"
 #include "dram.h"
 #include "gpu-cache.h"
@@ -102,11 +103,13 @@ class shd_warp_t {
   shd_warp_t(class shader_core_ctx *shader, unsigned warp_size)
       : m_shader(shader), m_warp_size(warp_size) {
     m_stores_outstanding = 0;
+    m_managed_access_outstanding = 0;
     m_inst_in_pipeline = 0;
     reset();
   }
   void reset() {
     assert(m_stores_outstanding == 0);
+    assert(m_managed_access_outstanding == 0);
     assert(m_inst_in_pipeline == 0);
     m_imiss_pending = false;
     m_warp_id = (unsigned)-1;
@@ -215,6 +218,13 @@ class shd_warp_t {
     m_stores_outstanding--;
   }
 
+  bool managed_access_done() const { return m_managed_access_outstanding == 0; }
+  void inc_managed_access_req() { m_managed_access_outstanding++; }
+  void dec_managed_access_req() {
+    assert(m_managed_access_outstanding > 0);
+    m_managed_access_outstanding--;
+  }
+
   unsigned num_inst_in_buffer() const {
     unsigned count = 0;
     for (unsigned i = 0; i < IBUFFER_SIZE; i++) {
@@ -276,6 +286,7 @@ class shd_warp_t {
 
   unsigned m_stores_outstanding;  // number of store requests sent but not yet
                                   // acknowledged
+  unsigned m_managed_access_outstanding;
   unsigned m_inst_in_pipeline;
 
   // Jin: cdp support
@@ -1250,18 +1261,23 @@ class cache_t;
 
 class ldst_unit : public pipelined_simd_unit {
  public:
-  ldst_unit(mem_fetch_interface *icnt,
+  ldst_unit(class gpgpu_sim *gpu, mem_fetch_interface *icnt,
             shader_core_mem_fetch_allocator *mf_allocator,
             shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
             Scoreboard *scoreboard, const shader_core_config *config,
             const memory_config *mem_config, class shader_core_stats *stats,
-            unsigned sid, unsigned tpc);
+            class gpgpu_new_stats *new_stats, unsigned sid, unsigned tpc);
 
   // modifiers
   virtual void issue(register_set &inst);
   virtual void cycle();
 
   void fill(mem_fetch *mf);
+
+  // function to fill the gmmu to cu queue
+  // from the cluster to load/store unit
+  void fill_mem_access(mem_fetch *mf);
+
   void flush();
   void invalidate();
   void writeback();
@@ -1302,21 +1318,35 @@ class ldst_unit : public pipelined_simd_unit {
   void get_L1C_sub_stats(struct cache_sub_stats &css) const;
   void get_L1T_sub_stats(struct cache_sub_stats &css) const;
 
- protected:
-  ldst_unit(mem_fetch_interface *icnt,
-            shader_core_mem_fetch_allocator *mf_allocator,
-            shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
-            Scoreboard *scoreboard, const shader_core_config *config,
-            const memory_config *mem_config, shader_core_stats *stats,
-            unsigned sid, unsigned tpc, l1_cache *new_l1d_cache);
-  void init(mem_fetch_interface *icnt,
-            shader_core_mem_fetch_allocator *mf_allocator,
-            shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
-            Scoreboard *scoreboard, const shader_core_config *config,
-            const memory_config *mem_config, shader_core_stats *stats,
-            unsigned sid, unsigned tpc);
+  // methods to be called by the clusters
+  // to access the downward queues (CU to GMMU)
+  bool empty_cu_gmmu_queue() { return m_cu_gmmu_queue.empty(); }
+  mem_fetch *front_cu_gmmu_queue() { return m_cu_gmmu_queue.front(); }
+  void pop_cu_gmmu_queue() { m_cu_gmmu_queue.pop_front(); }
+
+  void invalidate_tlb(mem_addr_t addr);
 
  protected:
+  ldst_unit(class gpgpu_sim *gpu, mem_fetch_interface *icnt,
+            shader_core_mem_fetch_allocator *mf_allocator,
+            shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
+            Scoreboard *scoreboard, const shader_core_config *config,
+            const memory_config *mem_config, shader_core_stats *stats,
+            class gpgpu_new_stats *new_stats, unsigned sid, unsigned tpc, l1_cache *new_l1d_cache
+            l1_cache *new_l1d_cache);
+  void init(class gpgpu_sim *gpu, mem_fetch_interface *icnt,
+            shader_core_mem_fetch_allocator *mf_allocator,
+            shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
+            Scoreboard *scoreboard, const shader_core_config *config,
+            const memory_config *mem_config, shader_core_stats *stats,
+            class gpgpu_new_stats *new_stats, unsigned sid, unsigned tpc);
+
+ protected:
+ // deals with global read (load)/write (store) access
+  // checks tlb for hit/miss
+  bool access_cycle(warp_inst_t &inst, mem_stage_stall_type &rc_fail,
+                    mem_stage_access_type &fail_type);
+
   bool shared_cycle(warp_inst_t &inst, mem_stage_stall_type &rc_fail,
                     mem_stage_access_type &fail_type);
   bool constant_cycle(warp_inst_t &inst, mem_stage_stall_type &rc_fail,
@@ -1334,6 +1364,14 @@ class ldst_unit : public pipelined_simd_unit {
                                                    warp_inst_t &inst);
   mem_stage_stall_type process_memory_access_queue_l1cache(l1_cache *cache,
                                                            warp_inst_t &inst);
+
+  virtual mem_stage_stall_type
+  process_managed_cache_access(cache_t *cache, new_addr_type address,
+                               std::list<cache_event> &events, mem_fetch *mf,
+                               enum cache_request_status status);
+  mem_stage_stall_type process_managed_memory_access_queue(cache_t *cache);
+
+  const shader_core_config *m_core_config;
 
   const memory_config *m_memory_config;
   class mem_fetch_interface *m_icnt;
@@ -1361,10 +1399,25 @@ class ldst_unit : public pipelined_simd_unit {
   enum mem_stage_stall_type m_mem_rc;
 
   shader_core_stats *m_stats;
+  class gpgpu_new_stats *m_new_stats;
 
   // for debugging
   unsigned long long m_last_inst_gpu_sim_cycle;
   unsigned long long m_last_inst_gpu_tot_sim_cycle;
+
+  // reference to get the global_mem
+  class gpgpu_sim *m_gpu;
+
+  // two queues that interface with texture processor cluster
+  std::list<mem_fetch *> m_gmmu_cu_queue;
+  std::list<mem_fetch *> m_cu_gmmu_queue;
+
+  // set of virtual addresses present in TLB
+  std::list<mem_addr_t> tlb;
+
+  bool remove_tlb_entry(mem_addr_t page_num);
+  bool is_in_tlb(mem_addr_t page_num);
+  void refresh_tlb(mem_addr_t page_num);
 
   std::vector<std::deque<mem_fetch *>> l1_latency_queue;
   void L1_latency_queue_cycle();
@@ -1590,6 +1643,9 @@ class shader_core_config : public core_config {
 
   // Jin: concurrent kernel on sm
   bool gpgpu_concurrent_kernel_sm;
+
+  int tlb_size;
+  friend class ldst_unit;
 
   bool perfect_inst_const_cache;
   unsigned inst_fetch_throughput;
@@ -1878,7 +1934,8 @@ class shader_core_ctx : public core_t {
   shader_core_ctx(class gpgpu_sim *gpu, class simt_core_cluster *cluster,
                   unsigned shader_id, unsigned tpc_id,
                   const shader_core_config *config,
-                  const memory_config *mem_config, shader_core_stats *stats);
+                  const memory_config *mem_config, shader_core_stats *stats,
+                  class gpgpu_new_stats *new_stats);
 
   // used by simt_core_cluster:
   // modifiers
@@ -1891,6 +1948,18 @@ class shader_core_ctx : public core_t {
   void cache_invalidate();
   void accept_fetch_response(mem_fetch *mf);
   void accept_ldst_unit_response(class mem_fetch *mf);
+
+  // method to fill the upward queue (GMMU to CU) in load/store unit
+  void accept_access_response(mem_fetch *mf);
+
+  // interface between core (CU/SM) and cluster
+  // to access the downward queues (CU to GMMU)
+  bool empty_cu_gmmu_queue() { return m_ldst_unit->empty_cu_gmmu_queue(); }
+  mem_fetch *front_cu_gmmu_queue() {
+    return m_ldst_unit->front_cu_gmmu_queue();
+  }
+  void pop_cu_gmmu_queue() { m_ldst_unit->pop_cu_gmmu_queue(); }
+
   void broadcast_barrier_reduction(unsigned cta_id, unsigned bar_id,
                                    warp_set_t warps);
   void set_kernel(kernel_info_t *k) {
@@ -1930,6 +1999,14 @@ class shader_core_ctx : public core_t {
   void mem_instruction_stats(const warp_inst_t &inst);
   void decrement_atomic_count(unsigned wid, unsigned n);
   void inc_store_req(unsigned warp_id) { m_warp[warp_id]->inc_store_req(); }
+
+  void inc_managed_access_req(unsigned warp_id) {
+    m_warp[warp_id].inc_managed_access_req();
+  }
+  void dec_managed_access_req(unsigned warp_id) {
+    m_warp[warp_id].dec_managed_access_req();
+  }
+
   void dec_inst_in_pipeline(unsigned warp_id) {
     m_warp[warp_id]->dec_inst_in_pipeline();
   }  // also used in writeback()
@@ -2193,6 +2270,7 @@ class shader_core_ctx : public core_t {
 
   // statistics
   shader_core_stats *m_stats;
+  class gpgpu_new_stats *m_new_stats;
 
   // CTA scheduling / hardware thread allocation
   unsigned m_n_active_cta;  // number of Cooperative Thread Arrays (blocks)
@@ -2271,9 +2349,10 @@ class exec_shader_core_ctx : public shader_core_ctx {
                        unsigned shader_id, unsigned tpc_id,
                        const shader_core_config *config,
                        const memory_config *mem_config,
-                       shader_core_stats *stats)
+                       shader_core_stats *stats, 
+                       class gpgpu_new_stats *new_stats)
       : shader_core_ctx(gpu, cluster, shader_id, tpc_id, config, mem_config,
-                        stats) {
+                        stats, new_stats) {
     create_front_pipeline();
     create_shd_warp();
     create_schedulers();
@@ -2302,7 +2381,8 @@ class simt_core_cluster {
   simt_core_cluster(class gpgpu_sim *gpu, unsigned cluster_id,
                     const shader_core_config *config,
                     const memory_config *mem_config, shader_core_stats *stats,
-                    memory_stats_t *mstats);
+                    memory_stats_t *mstats,
+                    class gpgpu_new_stats *new_stats);
 
   void core_cycle();
   void icnt_cycle();
@@ -2321,6 +2401,16 @@ class simt_core_cluster {
   void push_response_fifo(class mem_fetch *mf) {
     m_response_fifo.push_back(mf);
   }
+
+  // interface to be called by gmmu
+  // to access the downward queues (CU to GMMU) in the cluster by GMMU
+  bool empty_cu_gmmu_queue() { return m_cu_gmmu_queue.empty(); }
+  mem_fetch *front_cu_gmmu_queue() { return m_cu_gmmu_queue.front(); }
+  void pop_cu_gmmu_queue() { m_cu_gmmu_queue.pop_front(); }
+
+  // method to fill the upward queue (GMMU to CU) by GMMU upon completion of
+  // PCI-E transfer
+  void push_gmmu_cu_queue(mem_fetch *mf) { m_gmmu_cu_queue.push_back(mf); }
 
   void get_pdom_stack_top_info(unsigned sid, unsigned tid, unsigned *pc,
                                unsigned *rpc) const;
@@ -2355,9 +2445,16 @@ class simt_core_cluster {
   shader_core_ctx **m_core;
   const memory_config *m_mem_config;
 
+  class gpgpu_new_stats *m_new_stats;
+
   unsigned m_cta_issue_next_core;
   std::list<unsigned> m_core_sim_order;
   std::list<mem_fetch *> m_response_fifo;
+
+  // queues that pass memory accesses between core and GMMU
+  // as cluster interfaces between CU and GMMU
+  std::list<mem_fetch *> m_gmmu_cu_queue;
+  std::list<mem_fetch *> m_cu_gmmu_queue;
 };
 
 class exec_simt_core_cluster : public simt_core_cluster {
@@ -2366,8 +2463,9 @@ class exec_simt_core_cluster : public simt_core_cluster {
                          const shader_core_config *config,
                          const memory_config *mem_config,
                          class shader_core_stats *stats,
-                         class memory_stats_t *mstats)
-      : simt_core_cluster(gpu, cluster_id, config, mem_config, stats, mstats) {
+                         class memory_stats_t *mstats,
+                         class gpgpu_new_stats *new_stats)
+      : simt_core_cluster(gpu, cluster_id, config, mem_config, stats, mstats, new_stats) {
     create_shader_core_ctx();
   }
 

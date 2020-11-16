@@ -100,6 +100,7 @@ class mem_fetch {
   enum mf_type get_type() const { return m_type; }
   bool isatomic() const;
 
+  mem_access_t get_mem_access() { return m_access; }
   void set_return_timestamp(unsigned t) { m_timestamp2 = t; }
   void set_icnt_receive_time(unsigned t) { m_icnt_receive_time = t; }
   unsigned get_timestamp() const { return m_timestamp; }
@@ -118,12 +119,17 @@ class mem_fetch {
   }
 
   address_type get_pc() const { return m_inst.empty() ? -1 : m_inst.pc; }
+
+  //Yechen Liu should change it to non const
   const warp_inst_t &get_inst() { return m_inst; }
   enum mem_fetch_status get_status() const { return m_status; }
 
   const memory_config *get_mem_config() { return m_mem_config; }
 
   unsigned get_num_flits(bool simt_to_mem);
+
+  bool is_dma() { return m_dma; }
+  void set_dma() { m_dma = true; }
 
   mem_fetch *get_original_mf() { return original_mf; }
   mem_fetch *get_original_wr_mf() { return original_wr_mf; }
@@ -167,6 +173,8 @@ class mem_fetch {
 
   const memory_config *m_mem_config;
   unsigned icnt_flit_size;
+
+  bool m_dma;
 
   mem_fetch
       *original_mf;  // this pointer is set up when a request is divided into

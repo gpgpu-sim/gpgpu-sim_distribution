@@ -63,6 +63,9 @@ mem_fetch::mem_fetch(const mem_access_t &access, const warp_inst_t *inst,
   m_status_change = cycle;
   m_mem_config = config;
   icnt_flit_size = config->icnt_flit_size;
+
+  m_dma = false;
+
   original_mf = m_original_mf;
   original_wr_mf = m_original_wr_mf;
   if (m_original_mf) {
