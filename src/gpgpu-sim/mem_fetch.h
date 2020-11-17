@@ -120,8 +120,8 @@ class mem_fetch {
 
   address_type get_pc() const { return m_inst.empty() ? -1 : m_inst.pc; }
 
-  //Yechen Liu should change it to non const
-  const warp_inst_t &get_inst() { return m_inst; }
+  //Yechen Liu changed it to non const
+  warp_inst_t &get_inst() { return m_inst; }
   enum mem_fetch_status get_status() const { return m_status; }
 
   const memory_config *get_mem_config() { return m_mem_config; }

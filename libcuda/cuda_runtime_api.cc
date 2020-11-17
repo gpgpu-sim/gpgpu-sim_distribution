@@ -901,13 +901,16 @@ cudaError_t cudaSetupArgumentInternal(const void *arg, size_t size,
   if (g_debug_execution >= 3) {
     announce_call(__my_func__);
   }
+
+  CUctx_st *context = GPGPUSim_Context(ctx);
+
   gpgpusim_ptx_assert(!ctx->api->g_cuda_launch_stack.empty(),
                       "empty launch stack");
   
   uint64_t hostPtr = *(uint64_t *)arg;
 
   struct allocation_info *allocation =
-      ctx->get_device()->get_gpgpu()->gpu_get_managed_allocation(hostPtr);
+      context->get_device()->get_gpgpu()->gpu_get_managed_allocation(hostPtr);
 
   if (allocation != NULL) { // verify whether a pointer to malloc managed memory
     // during the kernel launch copy all the data from cpu to gpu
@@ -915,7 +918,7 @@ cudaError_t cudaSetupArgumentInternal(const void *arg, size_t size,
     uint64_t devPtr = allocation->gpu_mem_addr;
 
     if (!allocation->copied) {
-      ctx->get_device()->get_gpgpu()->memcpy_to_gpu(
+      context->get_device()->get_gpgpu()->memcpy_to_gpu(
           (size_t)devPtr, (void *)hostPtr, allocation->allocation_size);
 
       allocation->copied = true;
@@ -1444,7 +1447,7 @@ cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlagsInternal(
     dim3 gridDim(context->get_device()->get_gpgpu()->max_cta_per_core() *
                  context->get_device()->get_gpgpu()->get_config().num_shader());
     dim3 blockDim(blockSize);
-    kernel_info_t result(gridDim, blockDim, entry);
+    kernel_info_t result(gridDim, blockDim, entry, g_the_gpu_config);
     // if(entry == NULL){
     //	*numBlocks = 1;
     //	return g_last_cudaError = cudaErrorUnknown;
@@ -2311,11 +2314,13 @@ cudaDeviceSynchronizeInternal(gpgpu_context *gpgpu_ctx = NULL) {
   if (g_debug_execution >= 3) {
     announce_call(__my_func__);
   }
+  CUctx_st *context = GPGPUSim_Context(ctx);
   // Blocks until the device has completed all preceding requested tasks
+  
   ctx->synchronize();
 
   const std::map<uint64_t, struct allocation_info *> &managedAllocations =
-      ctx->get_device()->get_gpgpu()->gpu_get_managed_allocations();
+      context->get_device()->get_gpgpu()->gpu_get_managed_allocations();
 
   std::set<mem_addr_t> evicted_page_list;
 
@@ -2335,21 +2340,21 @@ cudaDeviceSynchronizeInternal(gpgpu_context *gpgpu_ctx = NULL) {
       iter->second->copied = false;
 
       while (size != 0) {
-        mem_addr_t page_num = ctx->get_device()
+        mem_addr_t page_num = context->get_device()
                                   ->get_gpgpu()
                                   ->get_global_memory()
                                   ->get_page_num(devPtr);
 
-        size_t size_in_this_page = ctx->get_device()
+        size_t size_in_this_page = context->get_device()
                                        ->get_gpgpu()
                                        ->get_global_memory()
                                        ->get_data_size(devPtr);
 
-        if (ctx->get_device()
+        if (context->get_device()
                 ->get_gpgpu()
                 ->get_global_memory()
                 ->is_page_dirty(page_num)) {
-          ctx->get_device()->get_gpgpu()->memcpy_from_gpu(
+          context->get_device()->get_gpgpu()->memcpy_from_gpu(
               (void *)hostPtr, (size_t)devPtr,
               size > size_in_this_page ? size_in_this_page : size);
 
@@ -2370,25 +2375,25 @@ cudaDeviceSynchronizeInternal(gpgpu_context *gpgpu_ctx = NULL) {
 
   for (std::set<mem_addr_t>::const_iterator iter = evicted_page_list.begin();
        iter != evicted_page_list.end(); iter++) {
-    ctx->get_device()->get_gpgpu()->get_global_memory()->invalidate_page(
+    context->get_device()->get_gpgpu()->get_global_memory()->invalidate_page(
         *iter);
-    ctx->get_device()->get_gpgpu()->get_global_memory()->clear_page_access(
+    context->get_device()->get_gpgpu()->get_global_memory()->clear_page_access(
         *iter);
-    ctx->get_device()->get_gpgpu()->get_global_memory()->clear_page_dirty(
+    context->get_device()->get_gpgpu()->get_global_memory()->clear_page_dirty(
         *iter);
-    ctx->get_device()->get_gpgpu()->get_global_memory()->free_pages(1);
-    ctx->get_device()->get_gpgpu()->getGmmu()->tlb_flush(*iter);
+    context->get_device()->get_gpgpu()->get_global_memory()->free_pages(1);
+    context->get_device()->get_gpgpu()->getGmmu()->tlb_flush(*iter);
   }
 
-  ctx->get_device()->get_gpgpu()->get_global_memory()->reset();
-  ctx->get_device()->get_gpgpu()->getGmmu()->valid_pages_clear();
-  ctx->get_device()->get_gpgpu()->getGmmu()->reset_large_page_info();
+  context->get_device()->get_gpgpu()->get_global_memory()->reset();
+  context->get_device()->get_gpgpu()->getGmmu()->valid_pages_clear();
+  context->get_device()->get_gpgpu()->getGmmu()->reset_large_page_info();
 
   unsigned transfer_size =
-      ctx->get_device()->get_gpgpu()->get_global_memory()->get_page_size() *
+      context->get_device()->get_gpgpu()->get_global_memory()->get_page_size() *
       evicted_page_list.size();
   if (transfer_size != 0)
-    ctx->get_device()->get_gpgpu()->getGmmu()->calculate_devicesync_time(
+    context->get_device()->get_gpgpu()->getGmmu()->calculate_devicesync_time(
         transfer_size);
 
   return g_last_cudaError = cudaSuccess;
@@ -2414,12 +2419,22 @@ __host__ cudaError_t CUDARTAPI cudaMalloc(void **devPtr, size_t size) {
 }
 
 __host__ cudaError_t CUDARTAPI cudaMallocManaged(
-    void **devPtr, size_t size, unsigned int flags = cudaMemAttachGlobal) {
+    void **devPtr, size_t size, unsigned int flags = cudaMemAttachGlobal,
+    gpgpu_context *gpgpu_ctx = NULL) {
+  gpgpu_context *ctx;
+  if (gpgpu_ctx) {
+    ctx = gpgpu_ctx;
+  } else {
+    ctx = GPGPU_Context();
+  }
+  if (g_debug_execution >= 3) {
+    announce_call(__my_func__);
+  }
+  CUctx_st *context = GPGPUSim_Context(ctx);
+  
   if (size == 0) {
     return g_last_cudaError = cudaErrorInvalidValue;
   }
-  CUctx_st *context = GPGPUSim_Context();
-
   size_t num_large_pages = (size_t)(size / MAX_PREFETCH_SIZE);
 
   size_t remainder = size - (num_large_pages * MAX_PREFETCH_SIZE);
@@ -2632,7 +2647,17 @@ __host__ cudaError_t CUDARTAPI cudaMemGetInfo(size_t *free, size_t *total) {
 
 __host__ cudaError_t CUDARTAPI cudaMemPrefetchAsync(const void *devPtr,
                                                     size_t count, int dstDevice,
-                                                    cudaStream_t stream = 0) {
+                                                    cudaStream_t stream = 0,
+                                                    gpgpu_context *gpgpu_ctx = NULL) {
+  gpgpu_context *ctx;
+  if (gpgpu_ctx) {
+    ctx = gpgpu_ctx;
+  } else {
+    ctx = GPGPU_Context();
+  }
+  if (g_debug_execution >= 3) {
+    announce_call(__my_func__);
+  }
   // If dstDevice is a GPU, then the device attribute
   // cudaDevAttrConcurrentManagedAccess must be non-zero. Additionally, stream
   // must be associated with a device that has a non-zero value for the device
@@ -2644,8 +2669,8 @@ __host__ cudaError_t CUDARTAPI cudaMemPrefetchAsync(const void *devPtr,
 
   if (dstDevice == cudaCpuDeviceId) {
     // not a priority thing as cudaDeviceSynchronize does the same job
-  } else if (dstDevice == g_active_device) {
-    CUctx_st *context = GPGPUSim_Context();
+  } else if (dstDevice == ctx->api->g_active_device) {
+    CUctx_st *context = GPGPUSim_Context(ctx);
 
     const std::map<uint64_t, struct allocation_info *> &managedAllocations =
         context->get_device()->get_gpgpu()->gpu_get_managed_allocations();
@@ -2686,12 +2711,12 @@ __host__ cudaError_t CUDARTAPI cudaMemPrefetchAsync(const void *devPtr,
     assert(start_addr != end_addr);
     assert((end_addr - start_addr) % page_size == 0);
 
-    g_stream_manager->register_prefetch(
+    ctx->the_gpgpusim->g_stream_manager->register_prefetch(
         (size_t)start_addr, (size_t)allocationPtr,
         (size_t)(end_addr - start_addr),
-        s == NULL ? g_stream_manager->get_stream_zero() : s);
+        s == NULL ? ctx->the_gpgpusim->g_stream_manager->get_stream_zero() : s);
 
-    g_stream_manager->push(stream_operation(
+    ctx->the_gpgpusim->g_stream_manager->push(stream_operation(
         (size_t)start_addr, (size_t)(end_addr - start_addr), s));
 
   } else {

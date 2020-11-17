@@ -418,9 +418,9 @@ void shader_core_ctx::create_exec_pipeline() {
     }
   }
 
-  m_ldst_unit = new ldst_unit(gpu, m_icnt, m_mem_fetch_allocator, this,
+  m_ldst_unit = new ldst_unit(m_gpu, m_icnt, m_mem_fetch_allocator, this,
                               &m_operand_collector, m_scoreboard, m_config,
-                              m_memory_config, stats, m_stats, m_sid, m_tpc);
+                              m_memory_config, m_stats, m_new_stats, m_sid, m_tpc);
   m_fu.push_back(m_ldst_unit);
   m_dispatch_port.push_back(ID_OC_MEM);
   m_issue_port.push_back(OC_EX_MEM);
@@ -2274,7 +2274,9 @@ bool ldst_unit::access_cycle(warp_inst_t &inst,
 
     return true;
   } else {
-    mem_fetch *mf = m_mf_allocator->alloc(inst, inst.accessq_front());
+    mem_fetch *mf = m_mf_allocator->alloc(inst, inst.accessq_front(),
+                                m_core->get_gpu()->gpu_sim_cycle +
+                                  m_core->get_gpu()->gpu_tot_sim_cycle);
 
     // send it over downward queues (CU to GMMU) to suffer for far fetch latency
     m_cu_gmmu_queue.push_back(mf);
@@ -2760,7 +2762,7 @@ ldst_unit::ldst_unit(gpgpu_sim *gpu, mem_fetch_interface *icnt,
                      Scoreboard *scoreboard, const shader_core_config *config,
                      const memory_config *mem_config, shader_core_stats *stats,
                      class gpgpu_new_stats *new_stats, unsigned sid, 
-                     unsigned tpc)
+                     unsigned tpc, l1_cache *new_l1d_cache)
     : pipelined_simd_unit(NULL, config, 3, core),
       m_L1D(new_l1d_cache),
       m_next_wb(config) {
@@ -3036,6 +3038,8 @@ void ldst_unit::cycle() {
   warp_inst_t &pipe_reg = *m_dispatch_reg;
   enum mem_stage_stall_type rc_fail = NO_RC_FAIL;
   mem_stage_access_type type;
+
+  bool done = true;
 
   // process the instruction's memory access queue for TLB, Page Table, and
   // PCI-E
@@ -4538,7 +4542,7 @@ void exec_simt_core_cluster::create_shader_core_ctx() {
     unsigned sid = m_config->cid_to_sid(i, m_cluster_id);
     m_core[i] = new exec_shader_core_ctx(m_gpu, this, sid, m_cluster_id,
                                          m_config, m_mem_config, m_stats, 
-                                         new_stats);
+                                         m_new_stats);
     m_core_sim_order.push_back(i);
   }
 }

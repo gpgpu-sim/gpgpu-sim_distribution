@@ -106,6 +106,9 @@ unsigned long long devicesync_time = 0;
 unsigned long long writeback_time = 0;
 unsigned long long dma_time = 0;
 
+unsigned long long gpu_sim_cycle = 0;
+unsigned long long gpu_tot_sim_cycle = 0;
+
 void calculate_sim_prof(FILE *fout, gpgpu_sim *gpu) {
   float freq = gpu->shader_clock() / 1000.0;
   for (std::map<unsigned long long, std::list<event_stats *>>::iterator iter =
@@ -1027,7 +1030,8 @@ void exec_gpgpu_sim::createSIMTCluster() {
   for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++)
     m_cluster[i] =
         new exec_simt_core_cluster(this, i, m_shader_config, m_memory_config,
-                                   m_shader_stats, m_memory_stats);
+                                   m_shader_stats, m_memory_stats,
+                                   m_new_stats);
 }
 
 gpgpu_sim::gpgpu_sim(const gpgpu_sim_config &config, gpgpu_context *ctx)
@@ -1487,8 +1491,8 @@ void gpgpu_sim::gpu_print_stat() {
   printf("partiton_reqs_in_parallel_util = %lld\n",
   partiton_reqs_in_parallel_util);
   printf("partiton_reqs_in_parallel_util_total    = %lld\n",
-  partiton_reqs_in_parallel_util_total ); printf("gpu_sim_cycle_parition_util
-  = %lld\n", gpu_sim_cycle_parition_util);
+  partiton_reqs_in_parallel_util_total ); 
+  printf("gpu_sim_cycle_parition_util = %lld\n", gpu_sim_cycle_parition_util);
   printf("gpu_tot_sim_cycle_parition_util    = %lld\n",
   gpu_tot_sim_cycle_parition_util );
   printf("partiton_level_parallism_util = %12.4f\n",
@@ -2455,6 +2459,9 @@ gmmu_t::gmmu_t(class gpgpu_sim *gpu, const gpgpu_sim_config &config,
   total_allocation_size = 0;
 
   over_sub = false;
+
+  gpu_sim_cycle = m_gpu->gpu_sim_cycle;
+  gpu_tot_sim_cycle = m_gpu->gpu_tot_sim_cycle;
 }
 
 unsigned long long gmmu_t::calculate_transfer_time(size_t data_size) {
