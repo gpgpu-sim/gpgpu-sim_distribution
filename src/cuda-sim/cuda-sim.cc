@@ -436,6 +436,88 @@ addr_t generic_to_local(unsigned smid, unsigned hwtid, addr_t addr) {
 
 addr_t generic_to_global(addr_t addr) { return addr; }
 
+struct allocation_info *
+gpgpu_t::gpu_get_managed_allocation(uint64_t cpuMemAddr) {
+  if (managedAllocations.find(cpuMemAddr) == managedAllocations.end()) {
+    return NULL;
+  } else {
+    return managedAllocations[cpuMemAddr];
+  }
+}
+
+const std::map<uint64_t, struct allocation_info *> &
+gpgpu_t::gpu_get_managed_allocations() {
+  return managedAllocations;
+}
+
+void gpgpu_t::gpu_insert_managed_allocation(uint64_t cpuMemAddr,
+                                            uint64_t gpuMemAddr, size_t size) {
+  struct allocation_info *a_i =
+      (struct allocation_info *)malloc(sizeof(struct allocation_info));
+
+  a_i->gpu_mem_addr = gpuMemAddr;
+  a_i->allocation_size = size;
+  a_i->copied = false;
+
+  managedAllocations.insert(
+      std::pair<uint64_t, struct allocation_info *>(cpuMemAddr, a_i));
+}
+
+void gpgpu_t::gpu_writeback(uint64_t gpuMemAddr) {
+  size_t page_size = get_global_memory()->get_page_size();
+
+  mem_addr_t page_num = get_global_memory()->get_page_num(gpuMemAddr);
+
+  // a page may be shared by multiple managed allocations
+  // on every dynamic memory allocation cpu gives a separate page
+  // however GPU can coallesce multiple allocations in the same page based on
+  // the size of the allocations
+  for (std::map<uint64_t, struct allocation_info *>::const_iterator iter =
+           managedAllocations.begin();
+       iter != managedAllocations.end(); iter++) {
+
+    if (iter->second->copied) {
+
+      uint64_t devPtr = iter->second->gpu_mem_addr;
+
+      // check whether the allocation consists of the page we are trying to
+      // evict
+      if (page_num >= get_global_memory()->get_page_num(devPtr) &&
+          page_num <= get_global_memory()->get_page_num(
+                          devPtr + iter->second->allocation_size)) {
+
+        // the allocation on GPU side starts from the evicted page
+        if (page_num == get_global_memory()->get_page_num(devPtr)) {
+          size_t size_on_page =
+              get_global_memory()->get_page_size() - (devPtr - gpuMemAddr);
+
+          // the allocation size can be much smaller than the size in bytes from
+          // the allocation starting address to the end of the page if yes, then
+          // just copy the bytes worth of allocation size or else copy the whole
+          // thing starting from the allocation address to the end of page
+          memcpy_from_gpu((void *)iter->first, (size_t)devPtr,
+                          size_on_page > iter->second->allocation_size
+                              ? iter->second->allocation_size
+                              : size_on_page);
+        } else { // trailing (or middle) part of the allocation is in the
+                 // evicted page
+          size_t size_remaining =
+              iter->second->allocation_size - (gpuMemAddr - devPtr);
+
+          // the remaining size can be greater than a page (when the evicted
+          // page is in the middle of multi-page allocation) then just write
+          // back the data worth of evicted page if the page is trailing of the
+          // allocation and less than the page size, then copy only remaining
+          // size
+          memcpy_from_gpu(
+              (void *)(iter->first + (gpuMemAddr - devPtr)), (size_t)gpuMemAddr,
+              size_remaining > page_size ? page_size : size_remaining);
+        }
+      }
+    }
+  }
+}
+
 void *gpgpu_t::gpu_malloc(size_t size) {
   unsigned long long result = m_dev_malloc;
   if (g_debug_execution >= 3) {
@@ -445,9 +527,36 @@ void *gpgpu_t::gpu_malloc(size_t size) {
         size, m_dev_malloc);
     fflush(stdout);
   }
+
+  // make sure there is still memory space for allocation
+  if (!m_global_mem->alloc_page_by_byte(size)) {
+    return NULL;
+  }
+
   m_dev_malloc += size;
   if (size % 256)
     m_dev_malloc += (256 - size % 256);  // align to 256 byte boundaries
+  return (void *)result;
+}
+
+void *gpgpu_t::gpu_mallocmanaged(size_t size) {
+  unsigned long long result = m_dev_malloc_managed;
+  if (g_debug_execution >= 3) {
+    printf("GPGPU-Sim PTX: allocating %zu bytes on GPU starting at address "
+           "0x%Lx\n",
+           size, m_dev_malloc_managed);
+    fflush(stdout);
+  }
+
+  // make sure the m_dev_malloc_managed does not go beyond the 32 bit address
+  // limit
+  assert(m_dev_malloc_managed + size <= MEM_SPACE_LIMIT);
+
+  // using seperate address range to distinguish between managed and unmanaged
+  // memory
+  m_dev_malloc_managed += size;
+  if (size % 256)
+    m_dev_malloc_managed += (256 - size % 256); // align to 256 byte boundaries
   return (void *)result;
 }
 
@@ -459,6 +568,10 @@ void *gpgpu_t::gpu_mallocarray(size_t size) {
         "0x%Lx\n",
         size, m_dev_malloc);
     fflush(stdout);
+  }
+  // make sure there is still memory space for allocation
+  if (!m_global_mem->alloc_page_by_byte(size)) {
+    return NULL;
   }
   m_dev_malloc += size;
   if (size % 256)
@@ -485,6 +598,10 @@ void gpgpu_t::memcpy_to_gpu(size_t dst_start_addr, const void *src,
     printf(" done.\n");
     fflush(stdout);
   }
+}
+
+void gpgpu_t::set_pages_managed(size_t addr, size_t count) {
+  m_global_mem->set_pages_managed(addr, count);
 }
 
 void gpgpu_t::memcpy_from_gpu(void *dst, size_t src_start_addr, size_t count) {
@@ -2133,10 +2250,11 @@ size_t get_kernel_code_size(class function_info *entry) {
 
 kernel_info_t *cuda_sim::gpgpu_opencl_ptx_sim_init_grid(
     class function_info *entry, gpgpu_ptx_sim_arg_list_t args,
-    struct dim3 gridDim, struct dim3 blockDim, gpgpu_t *gpu) {
+    struct dim3 gridDim, struct dim3 blockDim, gpgpu_t *gpu,
+    const gpgpu_sim_config &config) {
   kernel_info_t *result =
       new kernel_info_t(gridDim, blockDim, entry, gpu->getNameArrayMapping(),
-                        gpu->getNameInfoMapping());
+                        gpu->getNameInfoMapping(), config);
   unsigned argcount = args.size();
   unsigned argn = 1;
   for (gpgpu_ptx_sim_arg_list_t::iterator a = args.begin(); a != args.end();

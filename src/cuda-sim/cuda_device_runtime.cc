@@ -179,7 +179,7 @@ void cuda_device_runtime::gpgpusim_cuda_launchDeviceV2(
       gpgpu_t *gpu = thread->get_gpu();
       device_grid = new kernel_info_t(
           config.grid_dim, config.block_dim, device_kernel_entry,
-          gpu->getNameArrayMapping(), gpu->getNameInfoMapping());
+          gpu->getNameArrayMapping(), gpu->getNameInfoMapping(), g_the_gpu_config);
       device_grid->launch_cycle = gpu->gpu_sim_cycle + gpu->gpu_tot_sim_cycle;
       kernel_info_t &parent_grid = thread->get_kernel();
       DEV_RUNTIME_REPORT(

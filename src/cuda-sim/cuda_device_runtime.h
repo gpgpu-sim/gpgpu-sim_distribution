@@ -2,6 +2,7 @@
 #define __cuda_device_runtime_h__
 // Jin: cuda_device_runtime.h
 // Defines CUDA device runtime APIs for CDP support
+extern gpgpu_sim_config g_the_gpu_config;
 class device_launch_config_t {
  public:
   device_launch_config_t() {}

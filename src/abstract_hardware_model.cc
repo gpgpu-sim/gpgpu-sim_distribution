@@ -826,7 +826,8 @@ kernels should use the texture bindings seen at the time of launch and textures
 kernel_info_t::kernel_info_t(
     dim3 gridDim, dim3 blockDim, class function_info *entry,
     std::map<std::string, const struct cudaArray *> nameToCudaArray,
-    std::map<std::string, const struct textureInfo *> nameToTextureInfo) {
+    std::map<std::string, const struct textureInfo *> nameToTextureInfo,
+    const gpgpu_sim_config &gpu_config) {
   m_kernel_entry = entry;
   m_grid_dim = gridDim;
   m_block_dim = blockDim;
@@ -836,8 +837,13 @@ kernel_info_t::kernel_info_t(
   m_next_tid = m_next_cta;
   m_num_cores_running = 0;
   m_uid = (entry->gpgpu_ctx->kernel_info_m_next_uid)++;
-  m_param_mem = new memory_space_impl<8192>("param", 64 * 1024);
-
+  //m_param_mem = new memory_space_impl<8192>("param", 64 * 1024);
+  if (gpu_config.page_size == 4096) {
+    m_param_mem = new memory_space_impl<4096>("param", 64 * 1024);
+  } else {
+    m_param_mem = new memory_space_impl<2 * 1024 * 1024>("param", 64 * 1024);
+  }
+  
   // Jin: parent and child kernel management for CDP
   m_parent_kernel = NULL;
 

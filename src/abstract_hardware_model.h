@@ -204,12 +204,13 @@ class kernel_info_t {
   //      m_num_cores_running=0;
   //      m_param_mem=NULL;
   //   }
-  kernel_info_t(dim3 gridDim, dim3 blockDim, class function_info *entry
+  kernel_info_t(dim3 gridDim, dim3 blockDim, class function_info *entry,
                 const gpgpu_sim_config &gpu_config);
   kernel_info_t(
       dim3 gridDim, dim3 blockDim, class function_info *entry,
       std::map<std::string, const struct cudaArray *> nameToCudaArray,
-      std::map<std::string, const struct textureInfo *> nameToTextureInfo);
+      std::map<std::string, const struct textureInfo *> nameToTextureInfo,
+      const gpgpu_sim_config &gpu_config);
   ~kernel_info_t();
 
   void inc_running() { m_num_cores_running++; }
@@ -449,7 +450,7 @@ class simt_stack {
 // Let's just upgrade to C++11 so we can use constexpr here...
 // start allocating from this address (lower values used for allocating globals
 // in .ptx file)
-const unsigned long long MEM_SPACE_LIMIT = 0x100000000
+const unsigned long long MEM_SPACE_LIMIT = 0x100000000;
 const unsigned long long GLOBAL_HEAP_START = 0xC0000000;
 // fix the max addressable global mem size as 1GB instead of dynamically deciding
 const unsigned long long GLOBAL_MEM_SIZE_MAX = (2 * 1024 * 1024 * 1024);
@@ -583,6 +584,9 @@ class gpgpu_t {
  public:
   gpgpu_t(const gpgpu_functional_sim_config &config, gpgpu_context *ctx);
 
+  // Declare a constructor for gmmu_t type
+  // gpgpu_t(class gpgpu_sim *gpu, const gpgpu_sim_config &config,
+  //         class gpgpu_new_stats *new_stats);
   struct allocation_info *gpu_get_managed_allocation(uint64_t cpuMemAddr);
   const std::map<uint64_t, struct allocation_info *> &
   gpu_get_managed_allocations();
@@ -611,8 +615,10 @@ class gpgpu_t {
   int checkpoint_insn_Y;
 
   // Move some cycle core stats here instead of being global
+  // Yechen temporally move it to global
   unsigned long long gpu_sim_cycle;
   unsigned long long gpu_tot_sim_cycle;
+
 
   void *gpu_malloc(size_t size);
   void *gpu_mallocarray(size_t count);
@@ -675,14 +681,6 @@ class gpgpu_t {
   }
   FILE *get_ptx_inst_debug_file() { return ptx_inst_debug_file; }
 
-  unsigned long long
-      m_dev_malloc; // variable to store a known heap pointer for unmanaged
-                    // allocation (cudaMalloc, cudaMallocArray)
-  unsigned long long m_dev_malloc_managed; // variable to store a known heap
-                                           // pointer for any managed allocation
-
-  std::map<uint64_t, struct allocation_info *> managedAllocations;
-
   //  These maps return the current texture mappings for the GPU at any given
   //  time.
   std::map<std::string, const struct cudaArray *> getNameArrayMapping() {
@@ -701,8 +699,15 @@ class gpgpu_t {
   class memory_space *m_global_mem;
   class memory_space *m_tex_mem;
   class memory_space *m_surf_mem;
+  
+  unsigned long long
+      m_dev_malloc; // variable to store a known heap pointer for unmanaged
+                    // allocation (cudaMalloc, cudaMallocArray)
+  unsigned long long m_dev_malloc_managed; // variable to store a known heap
+                                           // pointer for any managed allocation
 
-  unsigned long long m_dev_malloc;
+  std::map<uint64_t, struct allocation_info *> managedAllocations;
+
   //  These maps contain the current texture mappings for the GPU at any given
   //  time.
   std::map<std::string, std::set<const struct textureReference *> >

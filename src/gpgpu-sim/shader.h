@@ -1332,7 +1332,7 @@ class ldst_unit : public pipelined_simd_unit {
             shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
             Scoreboard *scoreboard, const shader_core_config *config,
             const memory_config *mem_config, shader_core_stats *stats,
-            class gpgpu_new_stats *new_stats, unsigned sid, unsigned tpc, l1_cache *new_l1d_cache
+            class gpgpu_new_stats *new_stats, unsigned sid, unsigned tpc,
             l1_cache *new_l1d_cache);
   void init(class gpgpu_sim *gpu, mem_fetch_interface *icnt,
             shader_core_mem_fetch_allocator *mf_allocator,
@@ -1921,7 +1921,7 @@ class shader_core_mem_fetch_allocator : public mem_fetch_allocator {
         inst.warp_id(), m_core_id, m_cluster_id, m_memory_config, cycle);
     return mf;
   }
-
+  
  private:
   unsigned m_core_id;
   unsigned m_cluster_id;
@@ -2001,10 +2001,10 @@ class shader_core_ctx : public core_t {
   void inc_store_req(unsigned warp_id) { m_warp[warp_id]->inc_store_req(); }
 
   void inc_managed_access_req(unsigned warp_id) {
-    m_warp[warp_id].inc_managed_access_req();
+    m_warp[warp_id]->inc_managed_access_req();
   }
   void dec_managed_access_req(unsigned warp_id) {
-    m_warp[warp_id].dec_managed_access_req();
+    m_warp[warp_id]->dec_managed_access_req();
   }
 
   void dec_inst_in_pipeline(unsigned warp_id) {
