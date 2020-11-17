@@ -977,7 +977,7 @@ cudaError_t cudaLaunchInternal(const char *hostFun,
          stream ? stream->get_uid() : 0);
   kernel_info_t *grid = ctx->api->gpgpu_cuda_ptx_sim_init_grid(
       hostFun, config.get_args(), config.grid_dim(), config.block_dim(),
-      context, g_the_gpu_config);
+      context, *(ctx->the_gpgpusim->g_the_gpu_config));
   // do dynamic PDOM analysis for performance simulation scenario
   std::string kname = grid->name();
   function_info *kernel_func_info = grid->entry();
@@ -1447,7 +1447,8 @@ cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlagsInternal(
     dim3 gridDim(context->get_device()->get_gpgpu()->max_cta_per_core() *
                  context->get_device()->get_gpgpu()->get_config().num_shader());
     dim3 blockDim(blockSize);
-    kernel_info_t result(gridDim, blockDim, entry, g_the_gpu_config);
+    kernel_info_t result(gridDim, blockDim, entry, 
+        *(ctx->the_gpgpusim->g_the_gpu_config));
     // if(entry == NULL){
     //	*numBlocks = 1;
     //	return g_last_cudaError = cudaErrorUnknown;

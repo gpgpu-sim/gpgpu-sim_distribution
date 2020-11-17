@@ -35,8 +35,6 @@ class gpgpu_sim;
 class kernel_info_t;
 class gpgpu_context;
 
-extern gpgpu_sim_config g_the_gpu_config;
-
 // Set a hard limit of 32 CTAs per shader [cuda only has 8]
 #define MAX_CTA_PER_SHADER 32
 #define MAX_BARRIERS_PER_CTA 16
@@ -451,7 +449,7 @@ class simt_stack {
 // start allocating from this address (lower values used for allocating globals
 // in .ptx file)
 const unsigned long long MEM_SPACE_LIMIT = 0x100000000;
-const unsigned long long GLOBAL_HEAP_START = 0xC0000000;
+const unsigned long long GLOBAL_HEAP_START = 0x80000000;
 // fix the max addressable global mem size as 1GB instead of dynamically deciding
 const unsigned long long GLOBAL_MEM_SIZE_MAX = (2 * 1024 * 1024 * 1024);
 // Volta max shmem size is 96kB
