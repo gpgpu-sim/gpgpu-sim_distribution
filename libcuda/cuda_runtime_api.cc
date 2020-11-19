@@ -2417,29 +2417,29 @@ cudaError_t cudaPeekAtLastError(void) { return g_last_cudaError; }
 
 __host__ cudaError_t CUDARTAPI cudaMalloc(void **devPtr, size_t size) {
   return cudaMallocInternal(devPtr, size);
-}
-
-__host__ cudaError_t CUDARTAPI cudaMallocManaged(
-    void **devPtr, size_t size, unsigned int flags = cudaMemAttachGlobal,
-    gpgpu_context *gpgpu_ctx = NULL) {
-  gpgpu_context *ctx;
-  if (gpgpu_ctx) {
-    ctx = gpgpu_ctx;
-  } else {
-    ctx = GPGPU_Context();
-  }
-  if (g_debug_execution >= 3) {
-    announce_call(__my_func__);
-  }
+}                                        
+                                         
+cudaError_t cudaMallocManagedInternal(   
+    void **devPtr, size_t size, unsigned  int flags = cudaMemAttachGlobal,
+    gpgpu_context *gpgpu_ctx = NULL) {   
+  gpgpu_context *ctx;                    
+  if (gpgpu_ctx) {                       
+    ctx = gpgpu_ctx;                     
+  } else {                               
+    ctx = GPGPU_Context();               
+  }                                      
+  if (g_debug_execution >= 3) {          
+    announce_call(__my_func__);          
+  }                                      
   CUctx_st *context = GPGPUSim_Context(ctx);
-  
-  if (size == 0) {
+                                         
+  if (size == 0) {                       
     return g_last_cudaError = cudaErrorInvalidValue;
-  }
+  }                                      
   size_t num_large_pages = (size_t)(size / MAX_PREFETCH_SIZE);
-
+                                         
   size_t remainder = size - (num_large_pages * MAX_PREFETCH_SIZE);
-
+                                         
   size_t corrected_remainder;
 
   if (remainder == 0)
@@ -2500,6 +2500,11 @@ __host__ cudaError_t CUDARTAPI cudaMallocManaged(
   } else {
     return g_last_cudaError = cudaErrorMemoryAllocation;
   }
+}
+
+__host__ cudaError_t CUDARTAPI cudaMallocManaged(
+        void **devPtr, size_t size, unsigned int flags = cudaMemAttachGlobal) {
+    return cudaMallocManagedInternal(devPtr, size, flags);
 }
 
 __host__ cudaError_t CUDARTAPI cudaMallocHost(void **ptr, size_t size) {
@@ -2646,7 +2651,7 @@ __host__ cudaError_t CUDARTAPI cudaMemGetInfo(size_t *free, size_t *total) {
  *                                                                              *
  *******************************************************************************/
 
-__host__ cudaError_t CUDARTAPI cudaMemPrefetchAsync(const void *devPtr,
+__host__ cudaError_t CUDARTAPI cudaMemPrefetchAsyncInternal(const void *devPtr,
                                                     size_t count, int dstDevice,
                                                     cudaStream_t stream = 0,
                                                     gpgpu_context *gpgpu_ctx = NULL) {
@@ -2724,6 +2729,11 @@ __host__ cudaError_t CUDARTAPI cudaMemPrefetchAsync(const void *devPtr,
     abort();
   }
   return g_last_cudaError = cudaSuccess;
+}
+
+cudaError_t cudaMemPrefetchAsync(const void *devPtr, size_t count, 
+                                 int dstDevice, cudaStream_t stream = 0) {
+  return cudaMemPrefetchAsyncInternal(devPtr, count, dstDevice, stream);
 }
 
 __host__ cudaError_t CUDARTAPI cudaMemcpyAsync(void *dst, const void *src,
