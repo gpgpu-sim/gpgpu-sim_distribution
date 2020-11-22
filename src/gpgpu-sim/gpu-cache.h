@@ -49,6 +49,7 @@ enum cache_request_status {
   MISS,
   RESERVATION_FAIL,
   SECTOR_MISS,
+  MSHR_HIT,
   NUM_CACHE_REQUEST_STATUS
 };
 
