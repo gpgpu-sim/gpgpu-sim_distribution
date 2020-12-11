@@ -852,6 +852,7 @@ class mem_access_t {
     m_addr = address;
     m_req_size = size;
     m_write = wr;
+    fflush(stdout);
   }
 
   mem_access_t(const mem_access_t &ma) {
@@ -862,6 +863,7 @@ class mem_access_t {
     m_type = ma.m_type;
     m_warp_mask = ma.m_warp_mask;
     m_byte_mask = ma.m_byte_mask;
+    m_sector_mask = ma.m_sector_mask;
   }
 
   unsigned get_uid() const { return m_uid; }

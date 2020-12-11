@@ -1405,9 +1405,6 @@ class ldst_unit : public pipelined_simd_unit {
   unsigned long long m_last_inst_gpu_sim_cycle;
   unsigned long long m_last_inst_gpu_tot_sim_cycle;
 
-  // reference to get the global_mem
-  class gpgpu_sim *m_gpu;
-
   // two queues that interface with texture processor cluster
   std::list<mem_fetch *> m_gmmu_cu_queue;
   std::list<mem_fetch *> m_cu_gmmu_queue;
