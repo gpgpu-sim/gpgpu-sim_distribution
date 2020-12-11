@@ -32,8 +32,8 @@
 #ifndef __TRACE_H__
 #define __TRACE_H__
 
-extern unsigned long long gpu_sim_cycle;
-extern unsigned long long gpu_tot_sim_cycle;
+//extern unsigned long long gpu_sim_cycle;
+//extern unsigned long long gpu_tot_sim_cycle;
 
 namespace Trace {
 

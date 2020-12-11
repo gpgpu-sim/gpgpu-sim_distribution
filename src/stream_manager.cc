@@ -124,7 +124,7 @@ bool stream_operation::do_operation(gpgpu_sim *gpu) {
 
   assert(!m_done && m_stream);
 
-  unsigned long long cur_cycle = gpu_sim_cycle + gpu_tot_sim_cycle;
+  unsigned long long cur_cycle = gpu->gpu_sim_cycle + gpu->gpu_tot_sim_cycle;
 
   if (g_debug_execution >= 3)
     printf("GPGPU-Sim API: stream %u performing ", m_stream->get_uid());
@@ -144,7 +144,7 @@ bool stream_operation::do_operation(gpgpu_sim *gpu) {
       if (sim_prof_enable) {
         unsigned long long transfer_time =
             gpu->getGmmu()->calculate_transfer_time(m_cnt);
-        gpu_tot_sim_cycle += transfer_time;
+        gpu->gpu_tot_sim_cycle += transfer_time;
         event_stats *cp_h2d =
             new memory_stats(memcpy_h2d, cur_cycle, cur_cycle + transfer_time,
                             m_device_address_dst, m_cnt, m_stream->get_uid());
@@ -158,7 +158,7 @@ bool stream_operation::do_operation(gpgpu_sim *gpu) {
       if (sim_prof_enable) {
         unsigned long long transfer_time =
             gpu->getGmmu()->calculate_transfer_time(m_cnt);
-        gpu_tot_sim_cycle += transfer_time;
+        gpu->gpu_tot_sim_cycle += transfer_time;
         event_stats *cp_d2h =
             new memory_stats(memcpy_d2h, cur_cycle, cur_cycle + transfer_time,
                             m_device_address_src, m_cnt, m_stream->get_uid());
@@ -209,7 +209,7 @@ bool stream_operation::do_operation(gpgpu_sim *gpu) {
           gpu->launch(m_kernel);
 
           gpu->getGmmu()->log_kernel_info(
-              m_kernel->get_uid(), gpu_sim_cycle + gpu_tot_sim_cycle, false);
+              m_kernel->get_uid(), gpu->gpu_sim_cycle + gpu->gpu_tot_sim_cycle, false);
 
           if (sim_prof_enable) {
             kernel_stats *k_s = new kernel_stats(cur_cycle, m_stream->get_uid(),
@@ -341,9 +341,9 @@ bool stream_manager::register_finished_kernel(unsigned grid_uid) {
       //            kernel_stat.close();
       if (sim_prof_enable) {
         update_sim_prof_kernel(kernel->get_uid(),
-                               gpu_sim_cycle + gpu_tot_sim_cycle);
+                               m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
         m_gpu->getGmmu()->log_kernel_info(
-            kernel->get_uid(), gpu_sim_cycle + gpu_tot_sim_cycle, true);
+            kernel->get_uid(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle, true);
       }
 
       stream->record_next_done();

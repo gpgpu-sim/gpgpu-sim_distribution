@@ -106,8 +106,8 @@ unsigned long long devicesync_time = 0;
 unsigned long long writeback_time = 0;
 unsigned long long dma_time = 0;
 
-unsigned long long gpu_sim_cycle = 0;
-unsigned long long gpu_tot_sim_cycle = 0;
+//unsigned long long gpu_sim_cycle = 0;
+//unsigned long long gpu_tot_sim_cycle = 0;
 
 void calculate_sim_prof(FILE *fout, gpgpu_sim *gpu) {
   float freq = gpu->shader_clock() / 1000.0;
@@ -2460,8 +2460,8 @@ gmmu_t::gmmu_t(class gpgpu_sim *gpu, const gpgpu_sim_config &config,
 
   over_sub = false;
 
-  gpu_sim_cycle = m_gpu->gpu_sim_cycle;
-  gpu_tot_sim_cycle = m_gpu->gpu_tot_sim_cycle;
+  //gpu_sim_cycle = m_gpu->gpu_sim_cycle;
+  //gpu_tot_sim_cycle = m_gpu->gpu_tot_sim_cycle;
 }
 
 unsigned long long gmmu_t::calculate_transfer_time(size_t data_size) {
@@ -2485,7 +2485,7 @@ void gmmu_t::calculate_devicesync_time(size_t data_size) {
 
   while (data_size != 0) {
 
-    unsigned long long cur_cycle = gpu_sim_cycle + gpu_tot_sim_cycle;
+    unsigned long long cur_cycle = m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
     unsigned long long cur_time = 0;
 
     if (cur_turn == 0) {
@@ -2506,7 +2506,7 @@ void gmmu_t::calculate_devicesync_time(size_t data_size) {
         sim_prof[cur_cycle].push_back(d_sync);
       }
 
-      gpu_tot_sim_cycle += cur_time;
+      m_gpu->gpu_tot_sim_cycle += cur_time;
 
       return;
     } else {
@@ -2523,7 +2523,7 @@ void gmmu_t::calculate_devicesync_time(size_t data_size) {
         sim_prof[cur_cycle].push_back(d_sync);
       }
 
-      gpu_tot_sim_cycle += cur_time;
+      m_gpu->gpu_tot_sim_cycle += cur_time;
     }
 
     if (data_size < cur_size) {
@@ -2538,7 +2538,7 @@ void gmmu_t::calculate_devicesync_time(size_t data_size) {
         sim_prof[cur_cycle].push_back(d_sync);
       }
 
-      gpu_tot_sim_cycle += cur_time;
+      m_gpu->gpu_tot_sim_cycle += cur_time;
 
       return;
     } else {
@@ -2554,7 +2554,7 @@ void gmmu_t::calculate_devicesync_time(size_t data_size) {
         sim_prof[cur_cycle].push_back(d_sync);
       }
 
-      gpu_tot_sim_cycle += cur_time;
+      m_gpu->gpu_tot_sim_cycle += cur_time;
     }
 
     cur_turn++;
@@ -2852,7 +2852,7 @@ void gmmu_t::refresh_valid_pages(mem_addr_t page_addr) {
   for (std::list<eviction_t *>::iterator it = valid_pages.begin();
        it != valid_pages.end(); it++) {
     if ((*it)->addr <= page_addr && page_addr < (*it)->addr + (*it)->size) {
-      (*it)->cycle = gpu_tot_sim_cycle + gpu_sim_cycle;
+      (*it)->cycle = m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle;
       valid = true;
       break;
     }
@@ -2862,7 +2862,7 @@ void gmmu_t::refresh_valid_pages(mem_addr_t page_addr) {
     eviction_t *item = new eviction_t();
     item->addr = get_eviction_base_addr(page_addr);
     item->size = get_eviction_granularity(page_addr);
-    item->cycle = gpu_tot_sim_cycle + gpu_sim_cycle;
+    item->cycle = m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle;
     valid_pages.push_back(item);
   }
 }
@@ -2946,7 +2946,7 @@ unsigned long long gmmu_t::get_ready_cycle(unsigned num_pages) {
                 atan(m_config.curve_b *
                      ((float)(num_pages * m_config.page_size) / 1024.0));
 
-  return gpu_tot_sim_cycle + gpu_sim_cycle +
+  return m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle +
          (unsigned long long)((float)(m_config.page_size * num_pages) *
                               m_config.core_freq / speed /
                               (1024.0 * 1024.0 * 1024.0));
@@ -2955,7 +2955,7 @@ unsigned long long gmmu_t::get_ready_cycle(unsigned num_pages) {
 unsigned long long gmmu_t::get_ready_cycle_dma(unsigned size) {
   float speed = 2.0 * m_config.curve_a / M_PI *
                 atan(m_config.curve_b * ((float)(size) / 1024.0));
-  return gpu_tot_sim_cycle + gpu_sim_cycle + 200;
+  return m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle + 200;
 }
 
 float gmmu_t::get_pcie_utilization(unsigned num_pages) {
@@ -3693,7 +3693,7 @@ void gmmu_t::cycle() {
 
   // check whether current transfer in the pcie write latency queue is finished
   if (pcie_write_latency_queue != NULL &&
-      (gpu_sim_cycle + gpu_tot_sim_cycle) >=
+      (m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle) >=
           pcie_write_latency_queue->ready_cycle) {
 
     for (std::list<mem_addr_t>::iterator iter =
@@ -3709,7 +3709,7 @@ void gmmu_t::cycle() {
             m_gpu->get_global_memory()->get_mem_addr(
                 pcie_write_latency_queue->page_list.front())) {
           event_stats *wb = *iter;
-          wb->end_time = gpu_sim_cycle + gpu_tot_sim_cycle;
+          wb->end_time = m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
           sim_prof[wb->start_time].push_back(wb);
           writeback_stats.erase(iter);
           break;
@@ -3727,7 +3727,7 @@ void gmmu_t::cycle() {
     pcie_write_latency_queue->ready_cycle =
         get_ready_cycle(pcie_write_latency_queue->page_list.size());
 
-    for (unsigned long long write_period = gpu_tot_sim_cycle + gpu_sim_cycle;
+    for (unsigned long long write_period = m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle;
          write_period != pcie_write_latency_queue->ready_cycle; write_period++)
       m_new_stats->pcie_write_utilization.push_back(std::make_pair(
           write_period,
@@ -3762,15 +3762,15 @@ void gmmu_t::cycle() {
       if (pcie_write_latency_queue->type == latency_type::INVALIDATE &&
           m_config.invalidate_clean) {
         event_stats *inv = new memory_stats(
-            invalidate, gpu_sim_cycle + gpu_tot_sim_cycle,
-            gpu_sim_cycle + gpu_tot_sim_cycle,
+            invalidate, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle,
+            m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle,
             m_gpu->get_global_memory()->get_mem_addr(
                 pcie_write_latency_queue->page_list.front()),
             pcie_write_latency_queue->page_list.size() * m_config.page_size, 0);
         sim_prof[inv->start_time].push_back(inv);
       } else {
         event_stats *wb = new memory_stats(
-            write_back, gpu_sim_cycle + gpu_tot_sim_cycle,
+            write_back, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle,
             m_gpu->get_global_memory()->get_mem_addr(
                 pcie_write_latency_queue->page_list.front()),
             pcie_write_latency_queue->page_list.size() * m_config.page_size, 0);
@@ -3790,7 +3790,7 @@ void gmmu_t::cycle() {
 
   // check whether the current transfer in the pcie latency queue is finished
   if (pcie_read_latency_queue != NULL &&
-      (gpu_sim_cycle + gpu_tot_sim_cycle) >=
+      (m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle) >=
           pcie_read_latency_queue->ready_cycle) {
 
     if (pcie_read_latency_queue->type == latency_type::PCIE_READ) {
@@ -3832,7 +3832,7 @@ void gmmu_t::cycle() {
             req_info.erase(req_info.find(*iter));
 
             m_new_stats->pf_page_fault_latency[*iter].back() =
-                gpu_sim_cycle + gpu_tot_sim_cycle -
+                m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle -
                 m_new_stats->pf_page_fault_latency[*iter].back();
           }
         }
@@ -3859,7 +3859,7 @@ void gmmu_t::cycle() {
           req_info.erase(req_info.find(*iter));
 
           m_new_stats->mf_page_fault_latency[*iter].back() =
-              gpu_sim_cycle + gpu_tot_sim_cycle -
+              m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle -
               m_new_stats->pf_page_fault_latency[*iter].back();
         }
       }
@@ -3873,7 +3873,7 @@ void gmmu_t::cycle() {
           if (((page_fault_stats *)(*iter))->transfering_pages.front() ==
               pcie_read_latency_queue->page_list.front()) {
             event_stats *mf_fault = *iter;
-            mf_fault->end_time = gpu_sim_cycle + gpu_tot_sim_cycle;
+            mf_fault->end_time = m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
             sim_prof[mf_fault->start_time].push_back(mf_fault);
             fault_stats.erase(iter);
             break;
@@ -3922,14 +3922,14 @@ void gmmu_t::cycle() {
 
       if (sim_prof_enable) {
         event_stats *cp_h2d =
-            new memory_stats(memcpy_h2d, gpu_tot_sim_cycle + gpu_sim_cycle,
+            new memory_stats(memcpy_h2d, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle,
                              pcie_read_latency_queue->ready_cycle,
                              pcie_read_latency_queue->start_addr,
                              pcie_read_latency_queue->size, 0);
-        sim_prof[gpu_tot_sim_cycle + gpu_sim_cycle].push_back(cp_h2d);
+        sim_prof[m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle].push_back(cp_h2d);
       }
 
-      for (unsigned long long read_period = gpu_tot_sim_cycle + gpu_sim_cycle;
+      for (unsigned long long read_period = m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle;
            read_period != pcie_read_latency_queue->ready_cycle; read_period++)
         m_new_stats->pcie_read_utilization.push_back(std::make_pair(
             read_period,
@@ -3941,13 +3941,13 @@ void gmmu_t::cycle() {
                latency_type::PAGE_FAULT) { // schedule far-fault for transfer
 
       pcie_read_latency_queue->ready_cycle =
-          gpu_tot_sim_cycle + gpu_sim_cycle +
+          m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle +
           m_config.page_fault_latency *
               pcie_read_latency_queue->page_list.size();
 
       if (sim_prof_enable) {
         event_stats *mf_fault = new page_fault_stats(
-            gpu_sim_cycle + gpu_tot_sim_cycle,
+            m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle,
             pcie_read_latency_queue->page_list,
             pcie_read_latency_queue->page_list.size() * m_config.page_size);
         fault_stats.push_back(mf_fault);
@@ -3958,11 +3958,11 @@ void gmmu_t::cycle() {
           get_ready_cycle_dma(pcie_read_latency_queue->mf->get_access_size());
       if (sim_prof_enable) {
         event_stats *ma_dma =
-            new memory_stats(dma, gpu_tot_sim_cycle + gpu_sim_cycle,
+            new memory_stats(dma, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle,
                              pcie_read_latency_queue->ready_cycle,
                              pcie_read_latency_queue->mf->get_addr(),
                              pcie_read_latency_queue->mf->get_access_size(), 0);
-        sim_prof[gpu_tot_sim_cycle + gpu_sim_cycle].push_back(ma_dma);
+        sim_prof[m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle].push_back(ma_dma);
       }
     }
 
@@ -3978,7 +3978,7 @@ void gmmu_t::cycle() {
 
   // check the page_table_walk_delay_queue
   while (!page_table_walk_queue.empty() &&
-         ((gpu_sim_cycle + gpu_tot_sim_cycle) >=
+         ((m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle) >=
           page_table_walk_queue.front().ready_cycle)) {
 
     mem_fetch *mf = page_table_walk_queue.front().mf;
@@ -4076,7 +4076,7 @@ void gmmu_t::cycle() {
       struct page_table_walk_latency_t pt_t;
       pt_t.mf = mf;
       pt_t.ready_cycle =
-          gpu_sim_cycle + gpu_tot_sim_cycle + m_config.page_table_walk_latency;
+          m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle + m_config.page_table_walk_latency;
 
       page_table_walk_queue.push_back(pt_t);
 
@@ -4098,12 +4098,12 @@ void gmmu_t::cycle() {
       if (pre_q.cur_addr > pre_q.start_addr) {
 
         if (sim_prof_enable) {
-          update_sim_prof_prefetch_break_down(gpu_sim_cycle +
-                                              gpu_tot_sim_cycle);
+          update_sim_prof_prefetch_break_down(m_gpu->gpu_sim_cycle +
+                                              m_gpu->gpu_tot_sim_cycle);
         }
 
         m_new_stats->pf_fault_latency.back().second =
-            gpu_sim_cycle + gpu_tot_sim_cycle -
+            m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle -
             m_new_stats->pf_fault_latency.back().second;
 
         // all the memory fetches created by core on page fault were aggreagted
@@ -4136,7 +4136,7 @@ void gmmu_t::cycle() {
 
         if (sim_prof_enable) {
           update_sim_prof_prefetch(pre_q.start_addr, pre_q.size,
-                                   gpu_sim_cycle + gpu_tot_sim_cycle);
+                                   m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
         }
 
         prefetch_req_buffer.pop_front();
@@ -4205,7 +4205,7 @@ void gmmu_t::cycle() {
           // schedule this page as it is not valid to the read stage queue
           p_t->page_list.push_back(page_num);
           m_new_stats->pf_page_fault_latency[page_num].push_back(
-              gpu_sim_cycle + gpu_tot_sim_cycle);
+              m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
         }
 
       } while (
@@ -4226,14 +4226,14 @@ void gmmu_t::cycle() {
 
       m_new_stats->pf_fault_latency.push_back(
           std::make_pair(pre_q.pending_prefetch.size() * m_config.page_size,
-                         gpu_sim_cycle + gpu_tot_sim_cycle));
+                         m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle));
 
       if (sim_prof_enable && !pre_q.pending_prefetch.empty()) {
         event_stats *cp_pref_bd = new memory_stats(
-            prefetch_breakdown, gpu_sim_cycle + gpu_tot_sim_cycle, start_addr,
+            prefetch_breakdown, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle, start_addr,
             pre_q.pending_prefetch.size() * m_config.page_size,
             pre_q.m_stream->get_uid());
-        sim_prof[gpu_sim_cycle + gpu_tot_sim_cycle].push_back(cp_pref_bd);
+        sim_prof[m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle].push_back(cp_pref_bd);
       }
     }
   }
@@ -4360,7 +4360,7 @@ void gmmu_t::do_hardware_prefetch(
              bb != schedulable_basic_blocks.end(); bb++) {
 
           block_access_list.push_back(
-              std::make_pair(gpu_tot_sim_cycle + gpu_sim_cycle, *bb));
+              std::make_pair(m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, *bb));
 
           // all the invalid pages in the current 64 K basic block of transfer
           std::list<mem_addr_t> all_block_pages =
@@ -4488,7 +4488,7 @@ void gmmu_t::do_hardware_prefetch(
       m_new_stats->mf_page_fault_pending += req_info[iter2->first].size() - 1;
 
       m_new_stats->mf_page_fault_latency[iter2->first].push_back(
-          gpu_sim_cycle + gpu_tot_sim_cycle);
+          m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
     }
 
     if (!over_sub && m_gpu->get_global_memory()->should_evict_page(
@@ -4509,6 +4509,11 @@ void gmmu_t::do_hardware_prefetch(
 void gpgpu_sim::cycle() {
   int clock_mask = next_clock_domain();
 
+  // the gmmu has the same clock as the core
+  if (clock_mask & GMMU) {
+    m_gmmu->cycle();
+  }
+  
   if (clock_mask & CORE) {
     // shader core loading (pop from ICNT into core) follows CORE clock
     for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++)
