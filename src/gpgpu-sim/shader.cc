@@ -1381,7 +1381,7 @@ void scheduler_unit::cycle() {
             SCHED_DPRINTF(
                 "Warp (warp_id %u, dynamic_warp_id %u) fails scoreboard\n",
                 (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id());
-            m_scoreboard->printContents();
+            //m_scoreboard->printContents();
           }
         }
       } else if (valid) {
@@ -2301,7 +2301,7 @@ bool ldst_unit::access_cycle(warp_inst_t &inst,
 bool ldst_unit::memory_cycle(warp_inst_t &inst,
                              mem_stage_stall_type &stall_reason,
                              mem_stage_access_type &access_type) {
-  inst.print_m_accessq();
+  //inst.print_m_accessq();
   if (m_gmmu_cu_queue.empty()) {
     if (inst.empty() || inst.accessq_empty() ||
         ((inst.space.get_type() != global_space) &&
@@ -2949,7 +2949,7 @@ inst->space.get_type() != shared_space) { unsigned warp_id = inst->warp_id();
 }
 */
 void ldst_unit::cycle() {
-  print(stdout);
+  //print(stdout);
   writeback();
   for (int i = 0; i < m_config->reg_file_port_throughput; ++i)
     m_operand_collector->step();
