@@ -188,12 +188,6 @@ void memory_space_impl<BSIZE>::read(mem_addr_t addr, size_t length,
     }
     assert(nbytes_remain == 0);
   }
-  printf("Yechen :: memory.cc :: Reading %zu bytes from address 0x%x in space %s: ", length, addr, m_name.c_str());
-  for (int i=0; i < length; i++) {
-      printf("%hhu ", ((unsigned char *)data)[i]);
-  }
-  printf("\n");
-  fflush(stdout);
 }
 
 template <unsigned BSIZE>
