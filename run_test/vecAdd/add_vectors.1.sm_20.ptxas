@@ -1,0 +1,5 @@
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_Z3addiPfS_' for 'sm_20'
+ptxas info    : Function properties for _Z3addiPfS_
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 9 registers, 56 bytes cmem[0]

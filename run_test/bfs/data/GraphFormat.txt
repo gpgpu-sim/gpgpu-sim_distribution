@@ -1,0 +1,20 @@
+No of Vertices
+start1 length1
+start2 length2
+start3 length3
+.
+.
+.
+
+Source Vertex
+
+Total no of edges
+edge1 weight1
+edge2 weight2
+edge3 weight3
+.
+.
+.
+.
+
+

@@ -1,0 +1,57 @@
+
+
+
+
+
+
+
+
+.version 5.0
+.target sm_20
+.address_size 64
+
+
+
+.visible .entry _Z3addiPfS_(
+.param .u32 _Z3addiPfS__param_0,
+.param .u64 _Z3addiPfS__param_1,
+.param .u64 _Z3addiPfS__param_2
+)
+{
+.reg .pred %p<3>;
+.reg .f32 %f<4>;
+.reg .b32 %r<11>;
+.reg .b64 %rd<8>;
+
+
+ld.param.u32 %r5, [_Z3addiPfS__param_0];
+ld.param.u64 %rd3, [_Z3addiPfS__param_1];
+ld.param.u64 %rd4, [_Z3addiPfS__param_2];
+cvta.to.global.u64 %rd1, %rd4;
+cvta.to.global.u64 %rd2, %rd3;
+mov.u32 %r6, %ntid.x;
+mov.u32 %r7, %ctaid.x;
+mov.u32 %r8, %tid.x;
+mad.lo.s32 %r10, %r6, %r7, %r8;
+mov.u32 %r9, %nctaid.x;
+mul.lo.s32 %r2, %r9, %r6;
+setp.ge.s32	%p1, %r10, %r5;
+@%p1 bra BB0_2;
+
+BB0_1:
+mul.wide.s32 %rd5, %r10, 4;
+add.s64 %rd6, %rd2, %rd5;
+add.s64 %rd7, %rd1, %rd5;
+ld.global.f32 %f1, [%rd7];
+ld.global.f32 %f2, [%rd6];
+add.f32 %f3, %f2, %f1;
+st.global.f32 [%rd7], %f3;
+add.s32 %r10, %r10, %r2;
+setp.lt.s32	%p2, %r10, %r5;
+@%p2 bra BB0_1;
+
+BB0_2:
+ret;
+}
+
+

@@ -1,0 +1,155 @@
+
+
+
+
+
+
+
+
+.version 5.0
+.target sm_20
+.address_size 64
+
+
+
+.visible .entry _Z6KernelP4NodePiPbS2_S2_S1_i(
+.param .u64 _Z6KernelP4NodePiPbS2_S2_S1_i_param_0,
+.param .u64 _Z6KernelP4NodePiPbS2_S2_S1_i_param_1,
+.param .u64 _Z6KernelP4NodePiPbS2_S2_S1_i_param_2,
+.param .u64 _Z6KernelP4NodePiPbS2_S2_S1_i_param_3,
+.param .u64 _Z6KernelP4NodePiPbS2_S2_S1_i_param_4,
+.param .u64 _Z6KernelP4NodePiPbS2_S2_S1_i_param_5,
+.param .u32 _Z6KernelP4NodePiPbS2_S2_S1_i_param_6
+)
+{
+.reg .pred %p<6>;
+.reg .b16 %rs<5>;
+.reg .b32 %r<26>;
+.reg .b64 %rd<31>;
+
+
+ld.param.u64 %rd10, [_Z6KernelP4NodePiPbS2_S2_S1_i_param_0];
+ld.param.u64 %rd11, [_Z6KernelP4NodePiPbS2_S2_S1_i_param_1];
+ld.param.u64 %rd12, [_Z6KernelP4NodePiPbS2_S2_S1_i_param_2];
+ld.param.u64 %rd13, [_Z6KernelP4NodePiPbS2_S2_S1_i_param_3];
+ld.param.u64 %rd14, [_Z6KernelP4NodePiPbS2_S2_S1_i_param_4];
+ld.param.u64 %rd15, [_Z6KernelP4NodePiPbS2_S2_S1_i_param_5];
+ld.param.u32 %r12, [_Z6KernelP4NodePiPbS2_S2_S1_i_param_6];
+mov.u32 %r13, %ctaid.x;
+shl.b32 %r14, %r13, 9;
+mov.u32 %r15, %tid.x;
+add.s32 %r1, %r14, %r15;
+setp.ge.s32	%p1, %r1, %r12;
+@%p1 bra BB0_7;
+
+cvta.to.global.u64 %rd16, %rd12;
+cvt.s64.s32	%rd1, %r1;
+add.s64 %rd2, %rd16, %rd1;
+ld.global.u8 %rs1, [%rd2];
+setp.eq.s16	%p2, %rs1, 0;
+@%p2 bra BB0_7;
+
+cvta.to.global.u64 %rd17, %rd10;
+mov.u16 %rs2, 0;
+st.global.u8 [%rd2], %rs2;
+shl.b64 %rd18, %rd1, 3;
+add.s64 %rd19, %rd17, %rd18;
+add.s64 %rd3, %rd19, 4;
+ld.global.u32 %r19, [%rd19+4];
+setp.lt.s32	%p3, %r19, 1;
+@%p3 bra BB0_7;
+
+cvta.to.global.u64 %rd4, %rd14;
+cvta.to.global.u64 %rd20, %rd11;
+cvta.to.global.u64 %rd21, %rd15;
+shl.b64 %rd22, %rd1, 2;
+add.s64 %rd5, %rd21, %rd22;
+ld.global.u32 %r24, [%rd3+-4];
+mul.wide.s32 %rd23, %r24, 4;
+add.s64 %rd30, %rd20, %rd23;
+cvta.to.global.u64 %rd28, %rd13;
+mov.u32 %r23, %r24;
+
+BB0_4:
+mov.u32 %r21, %r24;
+mov.u32 %r25, %r21;
+ld.global.s32 %rd8, [%rd30];
+add.s64 %rd24, %rd4, %rd8;
+ld.global.u8 %rs3, [%rd24];
+setp.ne.s16	%p4, %rs3, 0;
+@%p4 bra BB0_6;
+
+ld.global.u32 %r16, [%rd5];
+add.s32 %r17, %r16, 1;
+shl.b64 %rd26, %rd8, 2;
+add.s64 %rd27, %rd21, %rd26;
+st.global.u32 [%rd27], %r17;
+add.s64 %rd29, %rd28, %rd8;
+mov.u16 %rs4, 1;
+st.global.u8 [%rd29], %rs4;
+ld.global.u32 %r19, [%rd3];
+ld.global.u32 %r25, [%rd3+-4];
+
+BB0_6:
+mov.u32 %r24, %r25;
+add.s64 %rd30, %rd30, 4;
+add.s32 %r18, %r24, %r19;
+add.s32 %r23, %r23, 1;
+setp.lt.s32	%p5, %r23, %r18;
+@%p5 bra BB0_4;
+
+BB0_7:
+ret;
+}
+
+
+.visible .entry _Z7Kernel2PbS_S_S_i(
+.param .u64 _Z7Kernel2PbS_S_S_i_param_0,
+.param .u64 _Z7Kernel2PbS_S_S_i_param_1,
+.param .u64 _Z7Kernel2PbS_S_S_i_param_2,
+.param .u64 _Z7Kernel2PbS_S_S_i_param_3,
+.param .u32 _Z7Kernel2PbS_S_S_i_param_4
+)
+{
+.reg .pred %p<3>;
+.reg .b16 %rs<4>;
+.reg .b32 %r<6>;
+.reg .b64 %rd<13>;
+
+
+ld.param.u64 %rd3, [_Z7Kernel2PbS_S_S_i_param_0];
+ld.param.u64 %rd4, [_Z7Kernel2PbS_S_S_i_param_1];
+ld.param.u64 %rd5, [_Z7Kernel2PbS_S_S_i_param_2];
+ld.param.u64 %rd6, [_Z7Kernel2PbS_S_S_i_param_3];
+ld.param.u32 %r2, [_Z7Kernel2PbS_S_S_i_param_4];
+mov.u32 %r3, %ctaid.x;
+shl.b32 %r4, %r3, 9;
+mov.u32 %r5, %tid.x;
+add.s32 %r1, %r4, %r5;
+setp.ge.s32	%p1, %r1, %r2;
+@%p1 bra BB1_3;
+
+cvta.to.global.u64 %rd7, %rd4;
+cvt.s64.s32	%rd1, %r1;
+add.s64 %rd2, %rd7, %rd1;
+ld.global.u8 %rs1, [%rd2];
+setp.eq.s16	%p2, %rs1, 0;
+@%p2 bra BB1_3;
+
+cvta.to.global.u64 %rd8, %rd6;
+cvta.to.global.u64 %rd9, %rd5;
+cvta.to.global.u64 %rd10, %rd3;
+add.s64 %rd11, %rd10, %rd1;
+mov.u16 %rs2, 1;
+st.global.u8 [%rd11], %rs2;
+add.s64 %rd12, %rd9, %rd1;
+st.global.u8 [%rd12], %rs2;
+st.global.u8 [%rd8], %rs2;
+mov.u16 %rs3, 0;
+st.global.u8 [%rd2], %rs3;
+
+BB1_3:
+ret;
+}
+
+

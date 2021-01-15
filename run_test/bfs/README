@@ -1,0 +1,2 @@
+The original BFS CUDA code was obtained from Pawan Harish and P. J. Narayanan at IIIT, 
+who have given us permission to include it as part of Rodinia under Rodinia's license.
