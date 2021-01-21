@@ -1,0 +1,6 @@
+0) cost:0
+1) cost:1
+2) cost:2
+3) cost:1
+4) cost:1
+5) cost:2
