@@ -852,9 +852,21 @@ class mem_access_t {
     m_addr = address;
     m_req_size = size;
     m_write = wr;
-    fflush(stdout);
   }
-
+  mem_access_t(unsigned int uid, mem_access_type type, new_addr_type address, unsigned size,
+               bool wr, const active_mask_t &active_mask,
+               const mem_access_byte_mask_t &byte_mask,
+               const mem_access_sector_mask_t &sector_mask, gpgpu_context *ctx)
+      : m_warp_mask(active_mask),
+        m_byte_mask(byte_mask),
+        m_sector_mask(sector_mask) {
+    init(ctx);
+    m_uid = uid;
+    m_type = type;
+    m_addr = address;
+    m_req_size = size;
+    m_write = wr;
+  }
   mem_access_t(const mem_access_t &ma) {
     m_uid = ma.m_uid;
     m_addr = ma.m_addr;
@@ -1126,9 +1138,9 @@ class warp_inst_t : public inst_t {
       printf("Printing mem access generated\n");
       std::list<mem_access_t>::iterator it;
       for (it = m_accessq.begin(); it != m_accessq.end(); ++it) {
-        printf("MEM_TXN_GEN:%s:%llx, Size:%d \n",
+        printf("MEM_TXN_GEN:%s:%llx, uid:%d, Size:%d \n",
                mem_access_type_str(it->get_type()), it->get_addr(),
-               it->get_size());
+               it->get_uid(), it->get_size());
       }
     }
   }

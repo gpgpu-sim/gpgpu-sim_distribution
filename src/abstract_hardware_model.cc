@@ -585,6 +585,7 @@ void warp_inst_t::memory_coalescing_arch(bool is_write,
         // segment assert(block_address ==
         // line_size_based_tag_func(addr+data_size_coales-1,segment_size));
 
+        //printf("MEM_FETCH DEBUG: warp_inst_t::memory_coalescing_arch - thread=%d, addr=0x%llu, block_address=%u, chunk=%d\n", thread, addr, block_address, chunk);
         info.chunks.set(chunk);
         info.active.set(thread);
         unsigned idx = (addr & 127);

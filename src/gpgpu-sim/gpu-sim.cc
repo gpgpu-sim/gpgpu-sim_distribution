@@ -203,6 +203,41 @@ void update_sim_prof_prefetch_break_down(unsigned long long end_time) {
   }
 }
 
+void print_UVM_stats(gpgpu_new_stats *new_stats, gpgpu_sim *gpu, FILE *fout) {
+  new_stats->print(stdout);
+
+  /*
+      FILE* f1 = fopen("Pcie_trace.txt", "w");
+
+      g_the_gpu->m_new_stats->print_pcie(f1);
+
+      fclose(f1);
+
+      FILE* f2 = fopen("Access_pattern_detail.txt", "w");
+
+      g_the_gpu->m_new_stats->print_access_pattern_detail(f2);
+
+      fclose(f2);
+
+      FILE* f3 = fopen("Access_pattern.txt", "w");
+
+      g_the_gpu->m_new_stats->print_access_pattern(f3);
+
+      fclose(f3);
+
+  */
+  FILE *f4 = fopen("access.txt", "w");
+
+  new_stats->print_time_and_access(f4);
+
+  fclose(f4);
+
+  if (sim_prof_enable) {
+    print_sim_prof(stdout, gpu->shader_clock());
+    calculate_sim_prof(stdout, gpu);
+  }
+}
+
 tr1_hash_map<new_addr_type, unsigned> address_random_interleaving;
 
 /* Clock Domains */
@@ -1627,6 +1662,7 @@ void gpgpu_sim::gpu_print_stat() {
   printf("icnt_total_pkts_simt_to_mem=%ld\n", total_simt_to_mem);
 
   time_vector_print();
+  print_UVM_stats(m_new_stats, this, stdout);
   fflush(stdout);
 
   clear_executed_kernel_info();
@@ -3143,6 +3179,7 @@ void gmmu_t::traverse_and_remove_lp_tree(
 
 void gmmu_t::reserve_pages_insert(mem_addr_t addr, unsigned ma_uid) {
   mem_addr_t page_num = m_gpu->get_global_memory()->get_page_num(addr);
+  //printf("MEM_FETCH DEBUG: gmmu_t::reserve_pages_insert - page %llu\n", page_num);
 
   if (find(reserve_pages[page_num].begin(), reserve_pages[page_num].end(),
            ma_uid) == reserve_pages[page_num].end()) {
@@ -3153,6 +3190,7 @@ void gmmu_t::reserve_pages_insert(mem_addr_t addr, unsigned ma_uid) {
 void gmmu_t::reserve_pages_remove(mem_addr_t addr, unsigned ma_uid) {
   mem_addr_t page_num = m_gpu->get_global_memory()->get_page_num(addr);
 
+  //printf("MEM_FETCH DEBUG: gmmu_t::reserve_pages_remove - page %llu\n", page_num);
   assert(reserve_pages.find(page_num) != reserve_pages.end());
 
   std::list<unsigned>::iterator iter = std::find(
@@ -4578,6 +4616,10 @@ void gpgpu_sim::cycle() {
         gpu_stall_dramfull++;
       } else {
         mem_fetch *mf = (mem_fetch *)icnt_pop(m_shader_config->mem2device(i));
+        //if (mf) {
+        //  printf("MEM_FETCH DEBUG: gpgpu_sim::cycle :: mf info %p\n", mf);
+        //  mf->print(stdout);
+        //}
         m_memory_sub_partition[i]->push(mf, gpu_sim_cycle + gpu_tot_sim_cycle);
         if (mf) partiton_reqs_in_parallel_per_cycle++;
       }

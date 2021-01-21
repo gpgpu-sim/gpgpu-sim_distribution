@@ -603,6 +603,8 @@ void update_sim_prof_prefetch(mem_addr_t start_addr, size_t size,
 
 void update_sim_prof_prefetch_break_down(unsigned long long end_time);
 
+void print_UVM_stats(gpgpu_new_stats *new_stats, gpgpu_sim *gpu, FILE *fout);
+
 class access_info {
 public:
   mem_addr_t page_no;

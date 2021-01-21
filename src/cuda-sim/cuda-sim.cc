@@ -53,7 +53,7 @@ typedef void *yyscan_t;
 #include "ptx_parser.h"
 #include "ptx_sim.h"
 
-int g_debug_execution = 3;
+int g_debug_execution = 0;
 // Output debug information to file options
 
 void cuda_sim::ptx_opcocde_latency_options(option_parser_t opp) {

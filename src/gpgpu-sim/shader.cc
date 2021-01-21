@@ -1009,6 +1009,13 @@ void shader_core_ctx::issue_warp(register_set &pipe_reg_set,
   m_warp[warp_id]->ibuffer_free();
   assert(next_inst->valid());
   **pipe_reg = *next_inst;  // static instruction information
+  
+  if (g_debug_execution >= 6 ) {
+    printf("MEM_FETCH DEBUG: shader_core_ctx::issue_warp - inst info\n");
+    (*pipe_reg)->print_insn(stdout);
+    printf("\n");
+  }
+
   (*pipe_reg)->issue(active_mask, warp_id,
                      m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle,
                      m_warp[warp_id]->get_dynamic_warp_id(),
@@ -1826,7 +1833,8 @@ mem_stage_stall_type ldst_unit::process_managed_cache_access(
           m_pending_writes[mf->get_inst().warp_id()][mf->get_inst().out[r]]--;
 
       bool pending_requests = false;
-      warp_inst_t &pipe_reg = mf->get_inst();
+      // changed from non-const to const (Yechen)
+      const warp_inst_t &pipe_reg = mf->get_inst();
       unsigned warp_id = mf->get_wid();
       for (unsigned r = 0; r < 4; r++) {
         unsigned reg_id = pipe_reg.out[r];
@@ -2211,9 +2219,13 @@ bool ldst_unit::access_cycle(warp_inst_t &inst,
       m_new_stats->ma_latency[m_sid].find(inst.accessq_front().get_uid()) ==
           m_new_stats->ma_latency[m_sid].end()) {
 
+    if (inst.accessq_front().get_type() == GLOBAL_ACC_W && g_debug_execution >= 6) {
+      printf("MEM_FETCH DEBUG :: ldst_unit::access_cycle :: m_sid=%d, uid=%d\n", m_sid, inst.accessq_front().get_uid());
+      inst.print_m_accessq();
+    }
     m_new_stats->ma_latency[m_sid][inst.accessq_front().get_uid()] =
         std::make_pair(false, m_core->get_gpu()->gpu_sim_cycle + m_core->get_gpu()->gpu_tot_sim_cycle);
-
+    
     m_new_stats->page_access_times[m_sid][page_no]++;
 
     m_new_stats->time_and_page_access.push_back(access_info(
@@ -2303,6 +2315,7 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst,
                              mem_stage_access_type &access_type) {
   //inst.print_m_accessq();
   if (m_gmmu_cu_queue.empty()) {
+
     if (inst.empty() || inst.accessq_empty() ||
         ((inst.space.get_type() != global_space) &&
          (inst.space.get_type() != local_space) &&
@@ -2351,12 +2364,20 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst,
 
         inst.accessq_pop_back();
         // inst.clear_active( access.get_warp_mask() );
+        if (g_debug_execution >= 6) {
+          printf("MEM_FETCH DEBUG: ldst_unit::memory_cycle - inst info, %d, %u, %s\n", 
+                  inst.op, inst.warp_id(), inst.empty()? "empty" : "not empty");
+          inst.print_insn(stdout);
+          printf("\n");
+          fflush(stdout);
+        }
         if (inst.is_load()) {
           for (unsigned r = 0; r < MAX_OUTPUT_VALUES; r++)
             if (inst.out[r] > 0)
               assert(m_pending_writes[inst.warp_id()][inst.out[r]] > 0);
-        } else if (inst.is_store())
+        } else if (inst.is_store()) {
           m_core->inc_store_req(inst.warp_id());
+        }
       }
     } else {
       assert(CACHE_UNDEFINED != inst.cache_op);
@@ -2453,6 +2474,10 @@ void ldst_unit::fill(mem_fetch *mf) {
   mf->set_status(
       IN_SHADER_LDST_RESPONSE_FIFO,
       m_core->get_gpu()->gpu_sim_cycle + m_core->get_gpu()->gpu_tot_sim_cycle);
+  if (g_debug_execution >= 6) {
+    printf("MEM_FETCH DEBUG: ldst_unit::fill - mf info %p\n", mf);
+    mf->print(stdout);
+  }
   m_response_fifo.push_back(mf);
 }
 
@@ -2809,6 +2834,8 @@ void ldst_unit::writeback() {
       for (unsigned r = 0; r < MAX_OUTPUT_VALUES; r++) {
         if (m_next_wb.out[r] > 0) {
           if (m_next_wb.space.get_type() != shared_space) {
+            //printf("MEM_FETCH DEBUG: ldst_unit::writeback :: m_next_wb info\n");
+            //m_next_wb.print_insn(stdout);
             assert(m_pending_writes[m_next_wb.warp_id()][m_next_wb.out[r]] > 0);
             unsigned still_pending =
                 --m_pending_writes[m_next_wb.warp_id()][m_next_wb.out[r]];
@@ -2870,7 +2897,11 @@ void ldst_unit::writeback() {
         break;
       case 3:  // global/local
         if (m_next_global) {
+          //printf("MEM_FETCH DEBUG: ldst_unit::writeback - m_next_global info %p\n", m_next_global);
+          //m_next_global->print(stdout);
           m_next_wb = m_next_global->get_inst();
+          //printf("MEM_FETCH DEBUG: ldst_unit::writeback - m_next_wb info\n");
+          //m_next_global->get_inst().print_insn(stdout);
           if (m_next_global->isatomic()) {
             m_core->decrement_atomic_count(
                 m_next_global->get_wid(),
@@ -2885,14 +2916,12 @@ void ldst_unit::writeback() {
         if (m_L1D && m_L1D->access_ready()) {
           mem_fetch *mf = m_L1D->next_access();
           m_next_wb = mf->get_inst();
-
           if (m_core->get_gpu()->get_global_memory()->is_page_managed(
                   mf->get_mem_access().get_addr(),
                   mf->get_mem_access().get_size())) {
             m_core->get_gpu()->getGmmu()->reserve_pages_remove(
                 mf->get_mem_access().get_addr(), mf->get_mem_access().get_uid());
           }
-
           assert(m_new_stats->ma_latency[m_sid].find(
                     mf->get_mem_access().get_uid()) !=
                 m_new_stats->ma_latency[m_sid].end());
@@ -2949,7 +2978,8 @@ inst->space.get_type() != shared_space) { unsigned warp_id = inst->warp_id();
 }
 */
 void ldst_unit::cycle() {
-  //print(stdout);
+  if (g_debug_execution >= 6)
+    print(stdout);
   writeback();
   for (int i = 0; i < m_config->reg_file_port_throughput; ++i)
     m_operand_collector->step();
@@ -2980,6 +3010,17 @@ void ldst_unit::cycle() {
         m_core->store_ack(mf);
         m_response_fifo.pop_front();
 
+        if (g_debug_execution >= 6) {
+          printf("MEM_FETCH DEBUG: ldst_unit::cycle :: mf info %p\n", mf);
+          mf->print(stdout);
+          printf("MEM_FETCH DEBUG: ldst_unit::cycle :: Need to find uid=%d\n", mf->get_mem_access().get_uid());
+          printf("m_sid(%d) : ", m_sid);
+          for (std::map<unsigned int,std::pair<bool, unsigned long long>>::iterator it=m_new_stats->ma_latency[m_sid].begin(); it!=m_new_stats->ma_latency[m_sid].end(); ++it) {
+            printf("%d ", it->first);
+          }
+          printf("\n");
+          fflush(stdout);
+        }
         assert(m_new_stats->ma_latency[m_sid].find(
                    mf->get_mem_access().get_uid()) !=
                m_new_stats->ma_latency[m_sid].end());
@@ -2993,8 +3034,9 @@ void ldst_unit::cycle() {
         if (m_core->get_gpu()->get_global_memory()->is_page_managed(
                 mf->get_mem_access().get_addr(),
                 mf->get_mem_access().get_size())) {
-          m_core->get_gpu()->getGmmu()->reserve_pages_remove(
-              mf->get_mem_access().get_addr(), mf->get_mem_access().get_uid());
+          if (!mf->is_split()) 
+            m_core->get_gpu()->getGmmu()->reserve_pages_remove(
+                mf->get_mem_access().get_addr(), mf->get_mem_access().get_uid());
         }
 
         delete mf;
@@ -4159,8 +4201,11 @@ void shader_core_ctx::accept_access_response(mem_fetch *mf) {
 void shader_core_ctx::store_ack(class mem_fetch *mf) {
   assert(mf->get_type() == WRITE_ACK ||
          (m_config->gpgpu_perfect_mem && mf->get_is_write()));
-  unsigned warp_id = mf->get_wid();
-  m_warp[warp_id]->dec_store_req();
+  // Check if the mf is split or not
+  if (!mf->is_split()) {
+    unsigned warp_id = mf->get_wid();
+    m_warp[warp_id]->dec_store_req();
+  }
 }
 
 void shader_core_ctx::print_cache_stats(FILE *fp, unsigned &dl1_accesses,
@@ -4739,9 +4784,14 @@ void simt_core_cluster::icnt_inject_request_packet(class mem_fetch *mf) {
   unsigned destination = mf->get_sub_partition_id();
   mf->set_status(IN_ICNT_TO_MEM,
                  m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
-  if (!mf->get_is_write() && !mf->isatomic())
+  if (!mf->get_is_write() && !mf->isatomic()) {
+    if (g_debug_execution >= 6) {
+      printf("MEM_FETCH DEBUG :: simt_core_cluster::icnt_inject_request_packet :: mf info %p\n", mf);
+      mf->print(stdout);
+    }
     ::icnt_push(m_cluster_id, m_config->mem2device(destination), (void *)mf,
                 mf->get_ctrl_size());
+  }
   else
     ::icnt_push(m_cluster_id, m_config->mem2device(destination), (void *)mf,
                 mf->size());
@@ -4780,6 +4830,10 @@ void simt_core_cluster::icnt_cycle() {
       if (!m_core[cid]->ldst_unit_response_buffer_full()) {
         m_response_fifo.pop_front();
         m_memory_stats->memlatstat_read_done(mf);
+        if (g_debug_execution >= 6) {
+          printf("MEM_FETCH DEBUG: simt_core_cluster::icnt_cycle - mf info %p\n", mf);
+          mf->print(stdout);
+        }
         m_core[cid]->accept_ldst_unit_response(mf);
       }
     }

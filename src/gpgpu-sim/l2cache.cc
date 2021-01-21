@@ -499,6 +499,8 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
   // new L2 texture accesses and/or non-texture accesses
   if (!m_L2_dram_queue->full() && !m_icnt_L2_queue->empty()) {
     mem_fetch *mf = m_icnt_L2_queue->top();
+    //printf("MEM_FETCH DEBUG: memory_sub_partition::cache_cycle - Fetching from m_icnt_L2_queue, mf info %p\n", mf);
+    //mf->print(stdout);
     if (!m_config->m_L2_config.disabled() &&
         ((m_config->m_L2_texure_only && mf->istexture()) ||
          (!m_config->m_L2_texure_only))) {
@@ -737,16 +739,21 @@ memory_sub_partition::breakdown_request_to_sector_requests(mem_fetch *mf) {
 
     for (unsigned j = start, i = 0; j <= end; ++j, ++i) {
       const mem_access_t *ma = new mem_access_t(
-          mf->get_access_type(), mf->get_addr() + SECTOR_SIZE * i, SECTOR_SIZE,
+          mf->get_mem_access().get_uid(), mf->get_access_type(), 
+          mf->get_addr() + SECTOR_SIZE * i, SECTOR_SIZE,
           mf->is_write(), mf->get_access_warp_mask(),
           mf->get_access_byte_mask() & byte_sector_mask,
           std::bitset<SECTOR_CHUNCK_SIZE>().set(j), m_gpu->gpgpu_ctx);
 
+      // Yechen Liu changed second parameter from NULL to &mf->get_inst()
+      const warp_inst_t *inst = j == end? &mf->get_inst() : NULL;
       mem_fetch *n_mf =
-          new mem_fetch(*ma, NULL, mf->get_ctrl_size(), mf->get_wid(),
+          new mem_fetch(*ma, inst, mf->get_ctrl_size(), mf->get_wid(),
                         mf->get_sid(), mf->get_tpc(), mf->get_mem_config(),
                         m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, mf);
-
+      if (j != end)
+        n_mf->set_split();
+    
       result.push_back(n_mf);
       byte_sector_mask <<= SECTOR_SIZE;
     }
@@ -765,6 +772,8 @@ memory_sub_partition::breakdown_request_to_sector_requests(mem_fetch *mf) {
 
 void memory_sub_partition::push(mem_fetch *m_req, unsigned long long cycle) {
   if (m_req) {
+    //printf("MEM_FETCH DEBUG: memory_sub_partition::push - Before pushing to m_icnt_L2_queue, m_req info %p\n", m_req);
+    //m_req->print(stdout);
     m_stats->memlatstat_icnt2mem_pop(m_req);
     std::vector<mem_fetch *> reqs;
     if (m_config->m_L2_config.m_cache_type == SECTOR)
@@ -774,6 +783,8 @@ void memory_sub_partition::push(mem_fetch *m_req, unsigned long long cycle) {
 
     for (unsigned i = 0; i < reqs.size(); ++i) {
       mem_fetch *req = reqs[i];
+      //printf("MEM_FETCH DEBUG: memory_sub_partition::push :: reqs[%d], m_req info %p, m_access.m_uid=%d\n", i, req, req->get_mem_access().get_uid());
+      //req->print(stdout);
       m_request_tracker.insert(req);
       if (req->istexture()) {
         m_icnt_L2_queue->push(req);
