@@ -3177,7 +3177,6 @@ void gmmu_t::traverse_and_remove_lp_tree(
 
 void gmmu_t::reserve_pages_insert(mem_addr_t addr, unsigned ma_uid) {
   mem_addr_t page_num = m_gpu->get_global_memory()->get_page_num(addr);
-  //printf("MEM_FETCH DEBUG: gmmu_t::reserve_pages_insert - page %llu\n", page_num);
 
   if (find(reserve_pages[page_num].begin(), reserve_pages[page_num].end(),
            ma_uid) == reserve_pages[page_num].end()) {
@@ -3188,7 +3187,6 @@ void gmmu_t::reserve_pages_insert(mem_addr_t addr, unsigned ma_uid) {
 void gmmu_t::reserve_pages_remove(mem_addr_t addr, unsigned ma_uid) {
   mem_addr_t page_num = m_gpu->get_global_memory()->get_page_num(addr);
 
-  //printf("MEM_FETCH DEBUG: gmmu_t::reserve_pages_remove - page %llu\n", page_num);
   assert(reserve_pages.find(page_num) != reserve_pages.end());
 
   std::list<unsigned>::iterator iter = std::find(

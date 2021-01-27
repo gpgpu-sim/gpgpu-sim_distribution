@@ -1860,7 +1860,8 @@ mem_stage_stall_type ldst_unit::process_managed_cache_access(
     if (mf->get_mem_access().get_type() == GLOBAL_ACC_R &&
         m_core->get_gpu()->get_global_memory()->is_page_managed(
             mf->get_mem_access().get_addr(), mf->get_mem_access().get_size())) {
-      m_core->get_gpu()->getGmmu()->reserve_pages_remove(mf->get_mem_access().get_addr(),
+      if (!mf->is_split())
+        m_core->get_gpu()->getGmmu()->reserve_pages_remove(mf->get_mem_access().get_addr(),
                                              mf->get_mem_access().get_uid());
     }
 
@@ -1892,7 +1893,8 @@ mem_stage_stall_type ldst_unit::process_managed_cache_access(
     if (mf->get_mem_access().get_type() == GLOBAL_ACC_R &&
         m_core->get_gpu()->get_global_memory()->is_page_managed(
             mf->get_mem_access().get_addr(), mf->get_mem_access().get_size())) {
-      m_core->get_gpu()->getGmmu()->reserve_pages_remove(mf->get_mem_access().get_addr(),
+      if (!mf->is_split())
+        m_core->get_gpu()->getGmmu()->reserve_pages_remove(mf->get_mem_access().get_addr(),
                                              mf->get_mem_access().get_uid());
     }
 
@@ -1928,7 +1930,8 @@ mem_stage_stall_type ldst_unit::process_cache_access(
     if (mf->get_mem_access().get_type() == GLOBAL_ACC_R &&
         m_core->get_gpu()->get_global_memory()->is_page_managed(
             mf->get_mem_access().get_addr(), mf->get_mem_access().get_size())) {
-      m_core->get_gpu()->getGmmu()->reserve_pages_remove(mf->get_mem_access().get_addr(),
+      if (!mf->is_split())
+        m_core->get_gpu()->getGmmu()->reserve_pages_remove(mf->get_mem_access().get_addr(),
                                              mf->get_mem_access().get_uid());
     }
 
@@ -1960,7 +1963,8 @@ mem_stage_stall_type ldst_unit::process_cache_access(
     if (mf->get_mem_access().get_type() == GLOBAL_ACC_R &&
         m_core->get_gpu()->get_global_memory()->is_page_managed(
             mf->get_mem_access().get_addr(), mf->get_mem_access().get_size())) {
-      m_core->get_gpu()->getGmmu()->reserve_pages_remove(mf->get_mem_access().get_addr(),
+      if (!mf->is_split())
+        m_core->get_gpu()->getGmmu()->reserve_pages_remove(mf->get_mem_access().get_addr(),
                                              mf->get_mem_access().get_uid());
     }
 
@@ -2294,7 +2298,7 @@ bool ldst_unit::access_cycle(warp_inst_t &inst,
     // send it over downward queues (CU to GMMU) to suffer for far fetch latency
     m_cu_gmmu_queue.push_back(mf);
 
-    inst.accessq_pop_back();
+    inst.accessq_pop_front();
 
     m_core->inc_managed_access_req(mf->get_wid());
 
@@ -2358,11 +2362,12 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst,
         if (access.get_type() == GLOBAL_ACC_R &&
             m_core->get_gpu()->get_global_memory()->is_page_managed(access.get_addr(),
                                                         access.get_size())) {
-          m_core->get_gpu()->getGmmu()->reserve_pages_remove(access.get_addr(),
+          if (!mf->is_split())
+            m_core->get_gpu()->getGmmu()->reserve_pages_remove(access.get_addr(),
                                                  access.get_uid());
         }
 
-        inst.accessq_pop_back();
+        inst.accessq_pop_front();
         // inst.clear_active( access.get_warp_mask() );
         if (g_debug_execution >= 6) {
           printf("MEM_FETCH DEBUG: ldst_unit::memory_cycle - inst info, %d, %u, %s\n", 
@@ -2421,8 +2426,11 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst,
             m_core->get_gpu()->get_global_memory()->is_page_managed(
                 mf->get_mem_access().get_addr(),
                 mf->get_mem_access().get_size())) {
-          m_core->get_gpu()->getGmmu()->reserve_pages_remove(
-              mf->get_mem_access().get_addr(), mf->get_mem_access().get_uid());
+          //printf("Yechen: ldst_unit::memory_cycle : mf info %p\n", mf);
+          //mf->print(stdout);
+          if (!mf->is_split())
+            m_core->get_gpu()->getGmmu()->reserve_pages_remove(
+                mf->get_mem_access().get_addr(), mf->get_mem_access().get_uid());
         }
 
         m_core->dec_managed_access_req(mf->get_wid());
@@ -2919,8 +2927,9 @@ void ldst_unit::writeback() {
           if (m_core->get_gpu()->get_global_memory()->is_page_managed(
                   mf->get_mem_access().get_addr(),
                   mf->get_mem_access().get_size())) {
-            m_core->get_gpu()->getGmmu()->reserve_pages_remove(
-                mf->get_mem_access().get_addr(), mf->get_mem_access().get_uid());
+            if (!mf->is_split())
+              m_core->get_gpu()->getGmmu()->reserve_pages_remove(
+                  mf->get_mem_access().get_addr(), mf->get_mem_access().get_uid());
           }
           assert(m_new_stats->ma_latency[m_sid].find(
                     mf->get_mem_access().get_uid()) !=

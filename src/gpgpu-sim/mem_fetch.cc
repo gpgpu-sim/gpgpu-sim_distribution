@@ -76,6 +76,7 @@ mem_fetch::mem_fetch(const mem_access_t &access, const warp_inst_t *inst,
     m_raw_addr.sub_partition = m_original_mf->get_tlx_addr().sub_partition;
   }
   // MEM_FETCH DEBUG
+  //printf("MEM_FETCH DEBUG: mem_fetch.cc :: mf %p is formed, mem_access.m_uid=%d\n", this, m_access.get_uid());
   //print(stdout);
 }
 
