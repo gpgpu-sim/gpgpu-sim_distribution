@@ -37,7 +37,7 @@
 
 const char *cache_request_status_str(enum cache_request_status status) {
   static const char *static_cache_request_status_str[] = {
-      "HIT", "HIT_RESERVED", "MISS", "RESERVATION_FAIL", "SECTOR_MISS"};
+      "HIT", "HIT_RESERVED", "MISS", "RESERVATION_FAIL", "SECTOR_MISS", "MSHR_HIT"};
 
   assert(sizeof(static_cache_request_status_str) / sizeof(const char *) ==
          NUM_CACHE_REQUEST_STATUS);
@@ -1123,6 +1123,7 @@ void baseline_cache::send_read_request(new_addr_type addr,
       m_tag_array->access(block_addr, time, cache_index, wb, evicted, mf);
 
     m_mshrs.add(mshr_addr, mf);
+    m_stats.inc_stats(mf->get_access_type(), MSHR_HIT);
     do_miss = true;
 
   } else if (!mshr_hit && mshr_avail &&
@@ -1455,16 +1456,19 @@ enum cache_request_status data_cache::wr_miss_wa_lazy_fetch_on_read(
       m_tag_array->access(block_addr, time, cache_index, wb, evicted, mf);
   assert(m_status != HIT);
   cache_block_t *block = m_tag_array->get_block(cache_index);
-  block->set_status(MODIFIED, mf->get_access_sector_mask());
   if (m_status == HIT_RESERVED) {
     block->set_ignore_on_fill(true, mf->get_access_sector_mask());
     block->set_modified_on_fill(true, mf->get_access_sector_mask());
+  } else {
+    block->set_status(MODIFIED, mf->get_access_sector_mask());
   }
 
   if (mf->get_access_byte_mask().count() == m_config.get_atom_sz()) {
     block->set_m_readable(true, mf->get_access_sector_mask());
   } else {
     block->set_m_readable(false, mf->get_access_sector_mask());
+    if (m_status == HIT_RESERVED)
+        block->set_readable_on_fill(true, mf->get_access_sector_mask());
   }
 
   if (m_status != RESERVATION_FAIL) {
