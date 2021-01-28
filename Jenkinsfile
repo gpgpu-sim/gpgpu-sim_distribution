@@ -38,7 +38,7 @@ pipeline {
         stage('simulations-build'){
             steps{
                 sh 'rm -rf gpgpu-sim_simulations'
-                sh 'git clone https://github.com/yechen3/gpgpu-sim_distribution.git && \
+                sh 'git clone git@github.com:purdue-aalp/gpgpu-sim_simulations.git && \
                     cd gpgpu-sim_simulations && \
                     git pull && \
                     ln -s /home/tgrogers-raid/a/common/data_dirs benchmarks/'
