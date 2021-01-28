@@ -30,7 +30,7 @@ pipeline {
         stage('simulator-build') {
             steps {
                 sh '''#!/bin/bash
-                    source ./env-setup/11.0_env_setup.sh
+                    source ./env-setup/8.0_env_setup.sh
                     source `pwd`/setup_environment
                     make -j 10'''
             }
@@ -38,12 +38,12 @@ pipeline {
         stage('simulations-build'){
             steps{
                 sh 'rm -rf gpgpu-sim_simulations'
-                sh 'git clone git@github.com:purdue-aalp/gpgpu-sim_simulations.git && \
+                sh 'git clone https://github.com/yechen3/gpgpu-sim_distribution.git && \
                     cd gpgpu-sim_simulations && \
                     git pull && \
                     ln -s /home/tgrogers-raid/a/common/data_dirs benchmarks/'
                 sh '''#!/bin/bash
-                    source ./env-setup/11.0_env_setup.sh
+                    source ./env-setup/8.0_env_setup.sh
                     source `pwd`/setup_environment
                     cd gpgpu-sim_simulations
                     source ./benchmarks/src/setup_environment
@@ -51,10 +51,10 @@ pipeline {
                     make -C ./benchmarks/src data'''
             }
         }
-        stage('11.0 Regressions'){
+        stage('8.0 Regressions'){
             steps {
                     sh '''#!/bin/bash
-                        source ./env-setup/11.0_env_setup.sh
+                        source ./env-setup/8.0_env_setup.sh
                         source `pwd`/setup_environment
                         ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -B rodinia_2.0-ft -C GTX1080Ti_UVM -N regress-$$ 
                         PLOTDIR="jenkins/${JOB_NAME}/${BUILD_NUMBER}/11.0" && ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p /home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR
