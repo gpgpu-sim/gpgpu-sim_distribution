@@ -2218,35 +2218,39 @@ bool ldst_unit::access_cycle(warp_inst_t &inst,
   mem_addr_t page_no =
       m_core->get_gpu()->get_global_memory()->get_page_num(inst.accessq_front().get_addr());
 
-  if ((inst.accessq_front().get_type() == GLOBAL_ACC_R ||
-       inst.accessq_front().get_type() == GLOBAL_ACC_W) &&
-      m_new_stats->ma_latency[m_sid].find(inst.accessq_front().get_uid()) ==
-          m_new_stats->ma_latency[m_sid].end()) {
+  for (int i = 0; i < inst.accessq_count(); i++) {
+    if ((inst.accessq_front().get_type() == GLOBAL_ACC_R ||
+        inst.accessq_front().get_type() == GLOBAL_ACC_W) &&
+        m_new_stats->ma_latency[m_sid].find(inst.accessq_front().get_uid()) ==
+            m_new_stats->ma_latency[m_sid].end()) {
 
-    if (inst.accessq_front().get_type() == GLOBAL_ACC_W && g_debug_execution >= 6) {
-      printf("MEM_FETCH DEBUG :: ldst_unit::access_cycle :: m_sid=%d, uid=%d\n", m_sid, inst.accessq_front().get_uid());
-      inst.print_m_accessq();
-    }
-    m_new_stats->ma_latency[m_sid][inst.accessq_front().get_uid()] =
-        std::make_pair(false, m_core->get_gpu()->gpu_sim_cycle + m_core->get_gpu()->gpu_tot_sim_cycle);
-    
-    m_new_stats->page_access_times[m_sid][page_no]++;
+      if (inst.accessq_front().get_type() == GLOBAL_ACC_W && g_debug_execution >= 3) {
+        printf("MEM_FETCH DEBUG :: ldst_unit::access_cycle :: m_sid=%d, uid=%d\n", m_sid, inst.accessq_front().get_uid());
+        inst.print_m_accessq();
+      }
+      m_new_stats->ma_latency[m_sid][inst.accessq_front().get_uid()] =
+          std::make_pair(false, m_core->get_gpu()->gpu_sim_cycle + m_core->get_gpu()->gpu_tot_sim_cycle);
+      
+      m_new_stats->page_access_times[m_sid][page_no]++;
 
-    m_new_stats->time_and_page_access.push_back(access_info(
-        page_no, inst.accessq_front().get_addr(),
-        inst.accessq_front().get_size(), m_core->get_gpu()->gpu_tot_sim_cycle + m_core->get_gpu()->gpu_sim_cycle,
-        inst.accessq_front().get_type() == GLOBAL_ACC_R, m_sid,
-        inst.warp_id()));
+      m_new_stats->time_and_page_access.push_back(access_info(
+          page_no, inst.accessq_front().get_addr(),
+          inst.accessq_front().get_size(), m_core->get_gpu()->gpu_tot_sim_cycle + m_core->get_gpu()->gpu_sim_cycle,
+          inst.accessq_front().get_type() == GLOBAL_ACC_R, m_sid,
+          inst.warp_id()));
 
-    if (m_core->get_gpu()->get_global_memory()->is_page_managed(
-            inst.accessq_front().get_addr(), inst.accessq_front().get_size())) {
+      if (m_core->get_gpu()->get_global_memory()->is_page_managed(
+              inst.accessq_front().get_addr(), inst.accessq_front().get_size())) {
 
-      if (is_in_tlb(page_no)) {
-        m_new_stats->tlb_hit[m_sid]++;
-      } else {
-        m_new_stats->tlb_miss[m_sid]++;
+        if (is_in_tlb(page_no)) {
+          m_new_stats->tlb_hit[m_sid]++;
+        } else {
+          m_new_stats->tlb_miss[m_sid]++;
+        }
       }
     }
+    inst.accessq_push_back(inst.accessq_front());
+    inst.accessq_pop_front();
   }
 
   // process for far fetch only when it is a managed page
@@ -3019,7 +3023,7 @@ void ldst_unit::cycle() {
         m_core->store_ack(mf);
         m_response_fifo.pop_front();
 
-        if (g_debug_execution >= 6) {
+        if (g_debug_execution >= 3) {
           printf("MEM_FETCH DEBUG: ldst_unit::cycle :: mf info %p\n", mf);
           mf->print(stdout);
           printf("MEM_FETCH DEBUG: ldst_unit::cycle :: Need to find uid=%d\n", mf->get_mem_access().get_uid());

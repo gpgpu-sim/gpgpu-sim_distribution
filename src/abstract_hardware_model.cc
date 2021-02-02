@@ -781,6 +781,12 @@ void warp_inst_t::memory_coalescing_arch_reduce_and_send(
   m_accessq.push_back(mem_access_t(access_type, addr, size, is_write,
                                    info.active, info.bytes, info.chunks,
                                    m_config->gpgpu_ctx));
+  //printf("MEM_FETCH DEBUG - m_accessq : ");
+  //for (std::list<mem_access_t>::iterator it=m_accessq.begin(); it != m_accessq.end(); it++) {
+  //  printf("%d ", it->get_uid());
+  //}
+  //printf("\nFront is %d\n", m_accessq.front().get_uid());
+  //fflush(stdout);
 }
 
 void warp_inst_t::completed(unsigned long long cycle) const {
