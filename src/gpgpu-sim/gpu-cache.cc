@@ -284,15 +284,20 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
         invalid_line = index;
       } else {
         // valid line : keep track of most appropriate replacement candidate
-        if (m_config.m_replacement_policy == LRU) {
-          if (line->get_last_access_time() < valid_timestamp) {
-            valid_timestamp = line->get_last_access_time();
-            valid_line = index;
-          }
-        } else if (m_config.m_replacement_policy == FIFO) {
-          if (line->get_alloc_time() < valid_timestamp) {
-            valid_timestamp = line->get_alloc_time();
-            valid_line = index;
+        if (!line->get_status(mask) == MODIFIED || 
+            100 * m_dirty/(m_config.m_nset * m_config.m_assoc) >= m_config.m_wr_percent) {
+              // don't evict write until dirty lines reach threshold
+              // make sure at least 1 candidate is assigned
+          if (m_config.m_replacement_policy == LRU) {
+            if (line->get_last_access_time() < valid_timestamp) {
+              valid_timestamp = line->get_last_access_time();
+              valid_line = index;
+            }
+          } else if (m_config.m_replacement_policy == FIFO) {
+            if (line->get_alloc_time() < valid_timestamp) {
+              valid_timestamp = line->get_alloc_time();
+              valid_line = index;
+            }
           }
         }
       }
@@ -418,6 +423,7 @@ void tag_array::flush() {
     if (m_lines[i]->is_modified_line()) {
       for (unsigned j = 0; j < SECTOR_CHUNCK_SIZE; j++)
         m_lines[i]->set_status(INVALID, mem_access_sector_mask_t().set(j));
+        m_dirty--;
     }
 
   is_used = false;

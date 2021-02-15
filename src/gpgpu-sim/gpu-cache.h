@@ -498,10 +498,10 @@ class cache_config {
     char ct, rp, wp, ap, mshr_type, wap, sif;
 
     int ntok =
-        sscanf(config, "%c:%u:%u:%u,%c:%c:%c:%c:%c,%c:%u:%u,%u:%u,%u", &ct,
+        sscanf(config, "%c:%u:%u:%u,%c:%c:%c:%c:%c,%c:%u:%u,%u:%u,%u,%u", &ct,
                &m_nset, &m_line_sz, &m_assoc, &rp, &wp, &ap, &wap, &sif,
                &mshr_type, &m_mshr_entries, &m_mshr_max_merge,
-               &m_miss_queue_size, &m_result_fifo_entries, &m_data_port_width);
+               &m_miss_queue_size, &m_result_fifo_entries, &m_data_port_width, &m_wr_percent);
 
     if (ntok < 12) {
       if (!strcmp(config, "none")) {
@@ -801,6 +801,7 @@ class cache_config {
   unsigned m_data_port_width;  //< number of byte the cache can access per cycle
   enum set_index_function
       m_set_index_function;  // Hash, linear, or custom set index function
+  unsigned m_wr_percent;
 
   friend class tag_array;
   friend class baseline_cache;
@@ -897,6 +898,7 @@ class tag_array {
                            // allocated but not filled
   unsigned m_res_fail;
   unsigned m_sector_miss;
+  unsigned m_dirty;
 
   // performance counters for calculating the amount of misses within a time
   // window
