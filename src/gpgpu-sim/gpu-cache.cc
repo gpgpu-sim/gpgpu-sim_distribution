@@ -63,8 +63,8 @@ unsigned l1d_cache_config::set_bank(new_addr_type addr) const {
   // For sector cache, we select one sector per bank (sector interleaving)
   // This is what was found in Volta (one sector per bank, sector interleaving)
   // otherwise, line interleaving
-  return cache_config::hash_function(addr, l1_banks, l1_banks_byte_interleaving,
-                                     m_l1_banks_log2,
+  return cache_config::hash_function(addr, l1_banks, l1_banks_byte_interleaving_log2,
+                                     l1_banks_log2,
                                      l1_banks_hashing_function);
 }
 
