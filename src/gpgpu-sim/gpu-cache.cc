@@ -485,8 +485,10 @@ bool was_writeback_sent(const std::list<cache_event> &events,
                         cache_event &wb_event) {
   for (std::list<cache_event>::const_iterator e = events.begin();
        e != events.end(); e++) {
-    if ((*e).m_cache_event_type == WRITE_BACK_REQUEST_SENT) wb_event = *e;
-    return true;
+    if ((*e).m_cache_event_type == WRITE_BACK_REQUEST_SENT) {
+      wb_event = *e;
+      return true;
+    }
   }
   return false;
 }
