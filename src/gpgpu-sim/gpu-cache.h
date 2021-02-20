@@ -754,6 +754,9 @@ class cache_config {
   char *m_config_stringPrefL1;
   char *m_config_stringPrefShared;
   FuncCache cache_status;
+  write_allocate_policy_t get_write_allocate_policy() {
+    return m_write_alloc_policy;
+  }
 
  protected:
   void exit_parse_error() {
@@ -878,6 +881,9 @@ class tag_array {
   void update_cache_parameters(cache_config &config);
   void add_pending_line(mem_fetch *mf);
   void remove_pending_line(mem_fetch *mf);
+  void inc_dirty() {
+    m_dirty++;
+  }
 
  protected:
   // This constructor is intended for use only from derived classes that wish to
