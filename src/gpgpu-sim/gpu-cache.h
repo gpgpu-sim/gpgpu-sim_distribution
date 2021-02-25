@@ -817,15 +817,15 @@ class l1d_cache_config : public cache_config {
   l1d_cache_config() : cache_config() {}
   unsigned set_bank(new_addr_type addr) const;
   void init(char *config, FuncCache status) {
-    m_banks_byte_interleaving_log2 = LOGB2(l1_banks_byte_interleaving);
-    m_l1_banks_log2 = LOGB2(l1_banks);
+    l1_banks_byte_interleaving_log2 = LOGB2(l1_banks_byte_interleaving);
+    l1_banks_log2 = LOGB2(l1_banks);
     cache_config::init(config, status);
   }
   unsigned l1_latency;
   unsigned l1_banks;
-  unsigned m_l1_banks_log2;
+  unsigned l1_banks_log2;
   unsigned l1_banks_byte_interleaving;
-  unsigned m_banks_byte_interleaving_log2;
+  unsigned l1_banks_byte_interleaving_log2;
   unsigned l1_banks_hashing_function;
 };
 
