@@ -61,6 +61,21 @@ mem_fetch *shader_core_mem_fetch_allocator::alloc(
                     m_core_id, m_cluster_id, m_memory_config, cycle);
   return mf;
 }
+
+mem_fetch *shader_core_mem_fetch_allocator::alloc(
+  new_addr_type addr, mem_access_type type,
+  const active_mask_t &active_mask,
+  const mem_access_byte_mask_t &byte_mask,
+  const mem_access_sector_mask_t &sector_mask,
+  unsigned size, bool wr,
+  unsigned long long cycle) const {
+    mem_access_t access(type, addr, size, wr, active_mask, byte_mask, 
+                          sector_mask, m_memory_config->gpgpu_ctx);
+    mem_fetch *mf =
+      new mem_fetch(access, NULL, wr ? WRITE_PACKET_SIZE : READ_PACKET_SIZE, -1,
+                    m_core_id, m_cluster_id, m_memory_config, cycle);
+      return mf;
+  }
 /////////////////////////////////////////////////////////////////////////////
 
 std::list<unsigned> shader_core_ctx::get_regs_written(const inst_t &fvt) const {

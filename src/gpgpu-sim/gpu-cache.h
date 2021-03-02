@@ -72,13 +72,25 @@ enum cache_event_type {
 struct evicted_block_info {
   new_addr_type m_block_addr;
   unsigned m_modified_size;
+  mem_access_byte_mask_t m_byte_mask;
+  mem_access_sector_mask_t m_sector_mask;
   evicted_block_info() {
     m_block_addr = 0;
     m_modified_size = 0;
+    m_byte_mask.reset();
+    m_sector_mask.reset();
   }
   void set_info(new_addr_type block_addr, unsigned modified_size) {
     m_block_addr = block_addr;
     m_modified_size = modified_size;
+  }
+  void set_info(new_addr_type block_addr, unsigned modified_size, 
+                mem_access_byte_mask_t byte_mask,
+                mem_access_sector_mask_t sector_mask) {
+    m_block_addr = block_addr;
+    m_modified_size = modified_size;
+    m_byte_mask = byte_mask;
+    m_sector_mask = sector_mask;
   }
 };
 
@@ -251,6 +263,7 @@ struct sector_cache_block : public cache_block_t {
     m_line_alloc_time = 0;
     m_line_last_access_time = 0;
     m_line_fill_time = 0;
+    m_byte_mask.reset();
   }
 
   virtual void allocate(new_addr_type tag, new_addr_type block_addr,
@@ -362,6 +375,20 @@ struct sector_cache_block : public cache_block_t {
     m_status[sidx] = status;
   }
 
+  virtual void set_byte_mask(mem_fetch *mf) {
+    m_byte_mask = m_byte_mask | mf->get_access_byte_mask();;
+  }
+  virtual mem_access_byte_mask_t get_byte_mask() {
+    return m_byte_mask;
+  }
+  virtual mem_access_sector_mask_t get_sector_mask() {
+    mem_access_sector_mask_t sector_mask;
+    for (unsigned i = 0; i < SECTOR_CHUNCK_SIZE; i++) {
+      if (m_status[i] == MODIFIED) 
+        sector_mask.set(i);
+    }
+    return sector_mask;
+  }
   virtual unsigned long long get_last_access_time() {
     return m_line_last_access_time;
   }
@@ -429,6 +456,7 @@ struct sector_cache_block : public cache_block_t {
   bool m_set_modified_on_fill[SECTOR_CHUNCK_SIZE];
   bool m_set_readable_on_fill[SECTOR_CHUNCK_SIZE];
   bool m_readable[SECTOR_CHUNCK_SIZE];
+  mem_access_byte_mask_t m_byte_mask;
 
   unsigned get_sector_index(mem_access_sector_mask_t sector_mask) {
     assert(sector_mask.count() == 1);
