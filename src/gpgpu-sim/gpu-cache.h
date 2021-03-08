@@ -132,7 +132,9 @@ struct cache_block_t {
       mem_access_sector_mask_t sector_mask) = 0;
   virtual void set_status(enum cache_block_state m_status,
                           mem_access_sector_mask_t sector_mask) = 0;
-
+  virtual void set_byte_mask(mem_fetch *mf) = 0;
+  virtual mem_access_byte_mask_t get_byte_mask() = 0;
+  virtual mem_access_sector_mask_t get_sector_mask() = 0;
   virtual unsigned long long get_last_access_time() = 0;
   virtual void set_last_access_time(unsigned long long time,
                                     mem_access_sector_mask_t sector_mask) = 0;
@@ -201,6 +203,17 @@ struct line_cache_block : public cache_block_t {
                           mem_access_sector_mask_t sector_mask) {
     m_status = status;
   }
+  virtual void set_byte_mask(mem_fetch *mf) {
+    m_byte_mask = m_byte_mask | mf->get_access_byte_mask();
+  }
+  virtual mem_access_byte_mask_t get_byte_mask() {
+    return m_byte_mask;
+  }
+  virtual mem_access_sector_mask_t get_sector_mask() {
+    mem_access_sector_mask_t sector_mask;
+    if (m_status == MODIFIED) sector_mask.set();
+    return sector_mask;
+  }
   virtual unsigned long long get_last_access_time() {
     return m_last_access_time;
   }
@@ -244,6 +257,7 @@ struct line_cache_block : public cache_block_t {
   bool m_set_modified_on_fill;
   bool m_set_readable_on_fill;
   bool m_readable;
+  mem_access_byte_mask_t m_byte_mask;
 };
 
 struct sector_cache_block : public cache_block_t {
@@ -328,7 +342,6 @@ struct sector_cache_block : public cache_block_t {
 
     //	if(!m_ignore_on_fill_status[sidx])
     //	         assert( m_status[sidx] == RESERVED );
-
     m_status[sidx] = m_set_modified_on_fill[sidx] ? MODIFIED : VALID;
     
     if (m_set_readable_on_fill[sidx]) {

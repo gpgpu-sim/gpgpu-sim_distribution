@@ -358,13 +358,11 @@ enum cache_request_status tag_array::access(new_addr_type addr, unsigned time,
       if (m_config.m_alloc_policy == ON_MISS) {
         if (m_lines[idx]->is_modified_line()) {
           wb = true;
-          ((sector_cache_block *)m_lines[idx])->set_byte_mask(mf);
+          m_lines[idx]->set_byte_mask(mf);
           evicted.set_info(m_lines[idx]->m_block_addr,
                            m_lines[idx]->get_modified_size(),
-                           ((sector_cache_block *)m_lines[idx])
-                                              ->get_byte_mask(),
-                            ((sector_cache_block *)m_lines[idx])
-                                              ->get_sector_mask());
+                           m_lines[idx]->get_byte_mask(),
+                            m_lines[idx]->get_sector_mask());
         }
         m_lines[idx]->allocate(m_config.tag(addr), m_config.block_addr(addr),
                                time, mf->get_access_sector_mask());
@@ -1083,6 +1081,7 @@ void baseline_cache::fill(mem_fetch *mf, unsigned time) {
     block->set_status(MODIFIED,
                       mf->get_access_sector_mask());  // mark line as dirty for
                                                       // atomic operation
+    block->set_byte_mask(mf);
   }
   m_extra_mf_fields.erase(mf);
   m_bandwidth_management.use_fill_port(mf);
@@ -1189,6 +1188,7 @@ cache_request_status data_cache::wr_hit_wb(new_addr_type addr,
   m_tag_array->access(block_addr, time, cache_index, mf);  // update LRU state
   cache_block_t *block = m_tag_array->get_block(cache_index);
   block->set_status(MODIFIED, mf->get_access_sector_mask());
+  block->set_byte_mask(mf);
 
   return HIT;
 }
@@ -1208,6 +1208,7 @@ cache_request_status data_cache::wr_hit_wt(new_addr_type addr,
   m_tag_array->access(block_addr, time, cache_index, mf);  // update LRU state
   cache_block_t *block = m_tag_array->get_block(cache_index);
   block->set_status(MODIFIED, mf->get_access_sector_mask());
+  block->set_byte_mask(mf);
 
   // generate a write-through
   send_write_request(mf, cache_event(WRITE_REQUEST_SENT), time, events);
@@ -1317,8 +1318,10 @@ enum cache_request_status data_cache::wr_miss_wa_naive(
       assert(status ==
              MISS);  // SECTOR_MISS and HIT_RESERVED should not send write back
       mem_fetch *wb = m_memfetch_creator->alloc(
-          evicted.m_block_addr, m_wrbk_type, evicted.m_modified_size, true,
-          m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle);
+        evicted.m_block_addr,m_wrbk_type,
+        mf->get_access_warp_mask(), evicted.m_byte_mask,
+        evicted.m_sector_mask, evicted.m_modified_size,
+        true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle);
       // the evicted block may have wrong chip id when advanced L2 hashing  is
       // used, so set the right chip address from the original mf
       wb->set_chip(mf->get_tlx_addr().chip);
@@ -1356,6 +1359,7 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
     assert(status != HIT);
     cache_block_t *block = m_tag_array->get_block(cache_index);
     block->set_status(MODIFIED, mf->get_access_sector_mask());
+    block->set_byte_mask(mf);
     if (status == HIT_RESERVED)
       block->set_ignore_on_fill(true, mf->get_access_sector_mask());
 
@@ -1364,8 +1368,10 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
       // (already modified lower level)
       if (wb && (m_config.m_write_policy != WRITE_THROUGH)) {
         mem_fetch *wb = m_memfetch_creator->alloc(
-            evicted.m_block_addr, m_wrbk_type, evicted.m_modified_size, true,
-            m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle);
+        evicted.m_block_addr,m_wrbk_type,
+        mf->get_access_warp_mask(), evicted.m_byte_mask,
+        evicted.m_sector_mask, evicted.m_modified_size,
+        true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle);
         // the evicted block may have wrong chip id when advanced L2 hashing  is
         // used, so set the right chip address from the original mf
         wb->set_chip(mf->get_tlx_addr().chip);
@@ -1434,8 +1440,10 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
       // (already modified lower level)
       if (wb && (m_config.m_write_policy != WRITE_THROUGH)) {
         mem_fetch *wb = m_memfetch_creator->alloc(
-            evicted.m_block_addr, m_wrbk_type, evicted.m_modified_size, true,
-            m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle);
+        evicted.m_block_addr,m_wrbk_type,
+        mf->get_access_warp_mask(), evicted.m_byte_mask,
+        evicted.m_sector_mask, evicted.m_modified_size,
+        true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle);
         // the evicted block may have wrong chip id when advanced L2 hashing  is
         // used, so set the right chip address from the original mf
         wb->set_chip(mf->get_tlx_addr().chip);
@@ -1471,7 +1479,7 @@ enum cache_request_status data_cache::wr_miss_wa_lazy_fetch_on_read(
   assert(m_status != HIT);
   cache_block_t *block = m_tag_array->get_block(cache_index);
   block->set_status(MODIFIED, mf->get_access_sector_mask());
-  ((sector_cache_block *)block)->set_byte_mask(mf);
+  block->set_byte_mask(mf);
   if (m_status == HIT_RESERVED) {
     block->set_ignore_on_fill(true, mf->get_access_sector_mask());
     block->set_modified_on_fill(true, mf->get_access_sector_mask());
@@ -1539,7 +1547,8 @@ enum cache_request_status data_cache::rd_hit_base(
     assert(mf->get_access_type() == GLOBAL_ACC_R);
     cache_block_t *block = m_tag_array->get_block(cache_index);
     block->set_status(MODIFIED,
-                      mf->get_access_sector_mask());  // mark line as dirty
+                      mf->get_access_sector_mask());  // mark line as 
+    block->set_byte_mask(mf);
   }
   return HIT;
 }
