@@ -121,7 +121,8 @@ struct cache_block_t {
   virtual void allocate(new_addr_type tag, new_addr_type block_addr,
                         unsigned time,
                         mem_access_sector_mask_t sector_mask) = 0;
-  virtual void fill(unsigned time, mem_access_sector_mask_t sector_mask) = 0;
+  virtual void fill(unsigned time, mem_access_sector_mask_t sector_mask, 
+                      mem_access_byte_mask_t byte_mask) = 0;
 
   virtual bool is_invalid_line() = 0;
   virtual bool is_valid_line() = 0;
@@ -133,6 +134,7 @@ struct cache_block_t {
   virtual void set_status(enum cache_block_state m_status,
                           mem_access_sector_mask_t sector_mask) = 0;
   virtual void set_byte_mask(mem_fetch *mf) = 0;
+  virtual void set_byte_mask(mem_access_byte_mask_t byte_mask) = 0;
   virtual mem_access_byte_mask_t get_byte_mask() = 0;
   virtual mem_access_sector_mask_t get_sector_mask() = 0;
   virtual unsigned long long get_last_access_time() = 0;
@@ -145,6 +147,7 @@ struct cache_block_t {
                                     mem_access_sector_mask_t sector_mask) = 0;
   virtual void set_readable_on_fill(bool readable,
                                     mem_access_sector_mask_t sector_mask) = 0;
+  virtual void set_byte_mask_on_fill(bool m_modified) = 0;
   virtual unsigned get_modified_size() = 0;
   virtual void set_m_readable(bool readable,
                               mem_access_sector_mask_t sector_mask) = 0;
@@ -178,8 +181,10 @@ struct line_cache_block : public cache_block_t {
     m_ignore_on_fill_status = false;
     m_set_modified_on_fill = false;
     m_set_readable_on_fill = false;
+    m_set_byte_mask_on_fill = false;
   }
-  void fill(unsigned time, mem_access_sector_mask_t sector_mask) {
+  virtual void fill(unsigned time, mem_access_sector_mask_t sector_mask, 
+              mem_access_byte_mask_t byte_mask) {
     // if(!m_ignore_on_fill_status)
     //	assert( m_status == RESERVED );
 
@@ -187,6 +192,7 @@ struct line_cache_block : public cache_block_t {
     
     if (m_set_readable_on_fill)
         m_readable = true;
+    if (m_set_byte_mask_on_fill) set_byte_mask(byte_mask);
 
     m_fill_time = time;
   }
@@ -205,6 +211,9 @@ struct line_cache_block : public cache_block_t {
   }
   virtual void set_byte_mask(mem_fetch *mf) {
     m_byte_mask = m_byte_mask | mf->get_access_byte_mask();
+  }
+  virtual void set_byte_mask(mem_access_byte_mask_t byte_mask) {
+    m_byte_mask = m_byte_mask | byte_mask;
   }
   virtual mem_access_byte_mask_t get_byte_mask() {
     return m_byte_mask;
@@ -234,6 +243,9 @@ struct line_cache_block : public cache_block_t {
                                     mem_access_sector_mask_t sector_mask) {
     m_set_readable_on_fill = readable;
   }
+  virtual void set_byte_mask_on_fill(bool m_modified) {
+    m_set_byte_mask_on_fill = m_modified;
+  }
   virtual unsigned get_modified_size() {
     return SECTOR_CHUNCK_SIZE * SECTOR_SIZE;  // i.e. cache line size
   }
@@ -256,6 +268,7 @@ struct line_cache_block : public cache_block_t {
   bool m_ignore_on_fill_status;
   bool m_set_modified_on_fill;
   bool m_set_readable_on_fill;
+  bool m_set_byte_mask_on_fill;
   bool m_readable;
   mem_access_byte_mask_t m_byte_mask;
 };
@@ -303,6 +316,7 @@ struct sector_cache_block : public cache_block_t {
     m_ignore_on_fill_status[sidx] = false;
     m_set_modified_on_fill[sidx] = false;
     m_set_readable_on_fill[sidx] = false;
+    m_set_byte_mask_on_fill = false;
 
     // set line stats
     m_line_alloc_time = time;  // only set this for the first allocated sector
@@ -337,7 +351,8 @@ struct sector_cache_block : public cache_block_t {
     m_line_fill_time = 0;
   }
 
-  virtual void fill(unsigned time, mem_access_sector_mask_t sector_mask) {
+  virtual void fill(unsigned time, mem_access_sector_mask_t sector_mask,
+                    mem_access_byte_mask_t byte_mask) {
     unsigned sidx = get_sector_index(sector_mask);
 
     //	if(!m_ignore_on_fill_status[sidx])
@@ -348,6 +363,7 @@ struct sector_cache_block : public cache_block_t {
         m_readable[sidx] = true;
         m_set_readable_on_fill[sidx] = false;
     }
+    if (m_set_byte_mask_on_fill) set_byte_mask(byte_mask);
 
     m_sector_fill_time[sidx] = time;
     m_line_fill_time = time;
@@ -389,7 +405,10 @@ struct sector_cache_block : public cache_block_t {
   }
 
   virtual void set_byte_mask(mem_fetch *mf) {
-    m_byte_mask = m_byte_mask | mf->get_access_byte_mask();;
+    m_byte_mask = m_byte_mask | mf->get_access_byte_mask();
+  }
+  virtual void set_byte_mask(mem_access_byte_mask_t byte_mask) {
+    m_byte_mask = m_byte_mask | byte_mask;
   }
   virtual mem_access_byte_mask_t get_byte_mask() {
     return m_byte_mask;
@@ -426,6 +445,9 @@ struct sector_cache_block : public cache_block_t {
                                     mem_access_sector_mask_t sector_mask) {
     unsigned sidx = get_sector_index(sector_mask);
     m_set_modified_on_fill[sidx] = m_modified;
+  }
+  virtual void set_byte_mask_on_fill(bool m_modified) {
+    m_set_byte_mask_on_fill = m_modified;
   }
 
   virtual void set_readable_on_fill(bool readable,
@@ -468,6 +490,7 @@ struct sector_cache_block : public cache_block_t {
   bool m_ignore_on_fill_status[SECTOR_CHUNCK_SIZE];
   bool m_set_modified_on_fill[SECTOR_CHUNCK_SIZE];
   bool m_set_readable_on_fill[SECTOR_CHUNCK_SIZE];
+  bool m_set_byte_mask_on_fill;
   bool m_readable[SECTOR_CHUNCK_SIZE];
   mem_access_byte_mask_t m_byte_mask;
 
@@ -904,7 +927,8 @@ class tag_array {
 
   void fill(new_addr_type addr, unsigned time, mem_fetch *mf);
   void fill(unsigned idx, unsigned time, mem_fetch *mf);
-  void fill(new_addr_type addr, unsigned time, mem_access_sector_mask_t mask);
+  void fill(new_addr_type addr, unsigned time, mem_access_sector_mask_t mask, 
+            mem_access_byte_mask_t byte_mask);
 
   unsigned size() const { return m_config.get_num_lines(); }
   cache_block_t *get_block(unsigned idx) { return m_lines[idx]; }
@@ -1291,7 +1315,8 @@ class baseline_cache : public cache_t {
   // something is read or written without doing anything else.
   void force_tag_access(new_addr_type addr, unsigned time,
                         mem_access_sector_mask_t mask) {
-    m_tag_array->fill(addr, time, mask);
+    mem_access_byte_mask_t byte_mask;
+    m_tag_array->fill(addr, time, mask, byte_mask);
   }
 
  protected:

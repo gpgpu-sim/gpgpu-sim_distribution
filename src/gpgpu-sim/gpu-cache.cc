@@ -392,11 +392,11 @@ enum cache_request_status tag_array::access(new_addr_type addr, unsigned time,
 }
 
 void tag_array::fill(new_addr_type addr, unsigned time, mem_fetch *mf) {
-  fill(addr, time, mf->get_access_sector_mask());
+  fill(addr, time, mf->get_access_sector_mask(), mf->get_access_byte_mask());
 }
 
 void tag_array::fill(new_addr_type addr, unsigned time,
-                     mem_access_sector_mask_t mask) {
+                     mem_access_sector_mask_t mask, mem_access_byte_mask_t byte_mask) {
   // assert( m_config.m_alloc_policy == ON_FILL );
   unsigned idx;
   enum cache_request_status status = probe(addr, idx, mask);
@@ -410,12 +410,12 @@ void tag_array::fill(new_addr_type addr, unsigned time,
     ((sector_cache_block *)m_lines[idx])->allocate_sector(time, mask);
   }
 
-  m_lines[idx]->fill(time, mask);
+  m_lines[idx]->fill(time, mask, byte_mask);
 }
 
 void tag_array::fill(unsigned index, unsigned time, mem_fetch *mf) {
   assert(m_config.m_alloc_policy == ON_MISS);
-  m_lines[index]->fill(time, mf->get_access_sector_mask());
+  m_lines[index]->fill(time, mf->get_access_sector_mask(), mf->get_access_byte_mask());
 }
 
 // TODO: we need write back the flushed data to the upper level
@@ -1432,6 +1432,7 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
 
     cache_block_t *block = m_tag_array->get_block(cache_index);
     block->set_modified_on_fill(true, mf->get_access_sector_mask());
+    block->set_byte_mask_on_fill(true);
 
     events.push_back(cache_event(WRITE_ALLOCATE_SENT));
 
@@ -1483,8 +1484,7 @@ enum cache_request_status data_cache::wr_miss_wa_lazy_fetch_on_read(
   if (m_status == HIT_RESERVED) {
     block->set_ignore_on_fill(true, mf->get_access_sector_mask());
     block->set_modified_on_fill(true, mf->get_access_sector_mask());
-  } else {
-    block->set_status(MODIFIED, mf->get_access_sector_mask());
+    block->set_byte_mask_on_fill(true);
   }
 
   if (mf->get_access_byte_mask().count() == m_config.get_atom_sz()) {
