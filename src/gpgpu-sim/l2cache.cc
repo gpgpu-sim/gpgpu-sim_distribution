@@ -717,6 +717,52 @@ memory_sub_partition::breakdown_request_to_sector_requests(mem_fetch *mf) {
   if (mf->get_data_size() == SECTOR_SIZE &&
       mf->get_access_sector_mask().count() == 1) {
     result.push_back(mf);
+  } else if (mf->get_data_size() == 128) {
+    // break down every sector
+    mem_access_byte_mask_t mask;
+    for (unsigned i = 0; i < SECTOR_CHUNCK_SIZE; i++) {
+      for (unsigned k = i * SECTOR_SIZE; k < (i + 1) * SECTOR_SIZE; k++) {
+        mask.set(k);
+      }
+      const mem_access_t *ma = new mem_access_t(
+          mf->get_access_type(), mf->get_addr() + SECTOR_SIZE * i, SECTOR_SIZE,
+          mf->is_write(), mf->get_access_warp_mask(),
+          mf->get_access_byte_mask() & mask,
+          std::bitset<SECTOR_CHUNCK_SIZE>().set(i), m_gpu->gpgpu_ctx);
+
+      mem_fetch *n_mf =
+          new mem_fetch(*ma, NULL, mf->get_ctrl_size(), mf->get_wid(),
+                        mf->get_sid(), mf->get_tpc(), mf->get_mem_config(),
+                        m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, mf);
+
+      result.push_back(n_mf);
+    }
+  } else if (mf->get_data_size() == 64 &&
+             (mf->get_access_sector_mask().to_string() == "1111" ||
+              mf->get_access_sector_mask().to_string() == "0000")) {
+    unsigned start;
+    if (mf->get_addr() % 128 == 0)
+      start = 0;
+    else
+      start = 2;
+    mem_access_byte_mask_t mask;
+    for (unsigned i = start; i < start + 2; i++) {
+      for (unsigned k = i * SECTOR_SIZE; k < (i + 1) * SECTOR_SIZE; k++) {
+        mask.set(k);
+      }
+      const mem_access_t *ma = new mem_access_t(
+          mf->get_access_type(), mf->get_addr(), SECTOR_SIZE,
+          mf->is_write(), mf->get_access_warp_mask(),
+          mf->get_access_byte_mask() & mask,
+          std::bitset<SECTOR_CHUNCK_SIZE>().set(i), m_gpu->gpgpu_ctx);
+
+      mem_fetch *n_mf =
+          new mem_fetch(*ma, NULL, mf->get_ctrl_size(), mf->get_wid(),
+                        mf->get_sid(), mf->get_tpc(), mf->get_mem_config(),
+                        m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, mf);
+
+      result.push_back(n_mf);
+    }
   } else {
     for (unsigned i = 0; i < SECTOR_CHUNCK_SIZE; i++) {
       if (sector_mask.test(i)) {
@@ -739,6 +785,7 @@ memory_sub_partition::breakdown_request_to_sector_requests(mem_fetch *mf) {
       }
     }
   }
+  if (result.size() == 0) assert(0 && "no mf sent");
   return result;
 }
 
