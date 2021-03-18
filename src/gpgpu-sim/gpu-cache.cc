@@ -210,6 +210,7 @@ void tag_array::init(int core_id, int type_id) {
   m_core_id = core_id;
   m_type_id = type_id;
   is_used = false;
+  m_dirty = 0;
 }
 
 void tag_array::add_pending_line(mem_fetch *mf) {
@@ -250,7 +251,22 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
   unsigned long long valid_timestamp = (unsigned)-1;
 
   bool all_reserved = true;
+  unsigned count = 0;
+  if (m_config.m_wr_percent == (unsigned)25) {
+    for (unsigned i = 0; i < m_config.m_nset * m_config.m_assoc; i++) {
+      if (m_lines[i]->is_modified_line()) {
+        m_lines[i]->is_modified_line();
+        count++;
+      }
+    }
+    if (count != m_dirty) {
+      printf("count = %u, m_dirty = %u",count,m_dirty);
+      fflush(stdout);
+      assert(0 && "m_dirty miss match");
+      printf("count = %u, m_dirty = %u",count,m_dirty);
 
+    }
+  }
   // check for hit or pending hit
   for (unsigned way = 0; way < m_config.m_assoc; way++) {
     unsigned index = set_index * m_config.m_assoc + way;
@@ -279,15 +295,17 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
       }
     }
     if (!line->is_reserved_line()) {
-      all_reserved = false;
-      if (line->is_invalid_line()) {
-        invalid_line = index;
-      } else {
-        // valid line : keep track of most appropriate replacement candidate
-        if (!line->get_status(mask) == MODIFIED || 
-            100 * m_dirty/(m_config.m_nset * m_config.m_assoc) >= m_config.m_wr_percent) {
-              // don't evict write until dirty lines reach threshold
-              // make sure at least 1 candidate is assigned
+      if (!line->is_modified_line() ||
+          100 * m_dirty / (m_config.m_nset * m_config.m_assoc) >=
+              m_config.m_wr_percent) {
+        all_reserved = false;
+        if (line->is_invalid_line()) {
+          invalid_line = index;
+        } else {
+          // valid line : keep track of most appropriate replacement candidate
+
+          // don't evict write until dirty lines reach threshold
+          // make sure at least 1 candidate is assigned
           if (m_config.m_replacement_policy == LRU) {
             if (line->get_last_access_time() < valid_timestamp) {
               valid_timestamp = line->get_last_access_time();
@@ -363,6 +381,7 @@ enum cache_request_status tag_array::access(new_addr_type addr, unsigned time,
                            m_lines[idx]->get_modified_size(),
                            m_lines[idx]->get_byte_mask(),
                             m_lines[idx]->get_sector_mask());
+          m_dirty--;
         }
         m_lines[idx]->allocate(m_config.tag(addr), m_config.block_addr(addr),
                                time, mf->get_access_sector_mask());
@@ -373,8 +392,12 @@ enum cache_request_status tag_array::access(new_addr_type addr, unsigned time,
       m_sector_miss++;
       shader_cache_access_log(m_core_id, m_type_id, 1);  // log cache misses
       if (m_config.m_alloc_policy == ON_MISS) {
+        bool before = m_lines[idx]->is_modified_line();
         ((sector_cache_block *)m_lines[idx])
             ->allocate_sector(time, mf->get_access_sector_mask());
+            if (before && !m_lines[idx]->is_modified_line()) {
+              m_dirty--;
+            }
       }
       break;
     case RESERVATION_FAIL:
@@ -400,22 +423,35 @@ void tag_array::fill(new_addr_type addr, unsigned time,
   // assert( m_config.m_alloc_policy == ON_FILL );
   unsigned idx;
   enum cache_request_status status = probe(addr, idx, mask);
+  bool before = false;
   // assert(status==MISS||status==SECTOR_MISS); // MSHR should have prevented
   // redundant memory request
-  if (status == MISS)
+  if (status == MISS) {
+    before = m_lines[idx]->is_modified_line();
     m_lines[idx]->allocate(m_config.tag(addr), m_config.block_addr(addr), time,
                            mask);
-  else if (status == SECTOR_MISS) {
+  } else if (status == SECTOR_MISS) {
     assert(m_config.m_cache_type == SECTOR);
+    before = m_lines[idx]->is_modified_line();
     ((sector_cache_block *)m_lines[idx])->allocate_sector(time, mask);
   }
-
+  if (before && !m_lines[idx]->is_modified_line()) {
+    m_dirty--;
+  }
+  before = m_lines[idx]->is_modified_line();
   m_lines[idx]->fill(time, mask, byte_mask);
+  if (m_lines[idx]->is_modified_line() && !before) {
+    m_dirty++;
+  }
 }
 
 void tag_array::fill(unsigned index, unsigned time, mem_fetch *mf) {
   assert(m_config.m_alloc_policy == ON_MISS);
+  bool before = m_lines[index]->is_modified_line();
   m_lines[index]->fill(time, mf->get_access_sector_mask(), mf->get_access_byte_mask());
+  if (m_lines[index]->is_modified_line() && !before) {
+    m_dirty++;
+  }
 }
 
 // TODO: we need write back the flushed data to the upper level
@@ -424,9 +460,9 @@ void tag_array::flush() {
 
   for (unsigned i = 0; i < m_config.get_num_lines(); i++)
     if (m_lines[i]->is_modified_line()) {
+      m_dirty--;
       for (unsigned j = 0; j < SECTOR_CHUNCK_SIZE; j++) {
         m_lines[i]->set_status(INVALID, mem_access_sector_mask_t().set(j));
-        m_dirty--;
       }
     }
 
@@ -1078,6 +1114,9 @@ void baseline_cache::fill(mem_fetch *mf, unsigned time) {
   if (has_atomic) {
     assert(m_config.m_alloc_policy == ON_MISS);
     cache_block_t *block = m_tag_array->get_block(e->second.m_cache_index);
+    if (!block->is_modified_line()) {
+      m_tag_array->inc_dirty();
+    }
     block->set_status(MODIFIED,
                       mf->get_access_sector_mask());  // mark line as dirty for
                                                       // atomic operation
@@ -1187,6 +1226,9 @@ cache_request_status data_cache::wr_hit_wb(new_addr_type addr,
   new_addr_type block_addr = m_config.block_addr(addr);
   m_tag_array->access(block_addr, time, cache_index, mf);  // update LRU state
   cache_block_t *block = m_tag_array->get_block(cache_index);
+  if (!block->is_modified_line()) {
+    m_tag_array->inc_dirty();
+  }
   block->set_status(MODIFIED, mf->get_access_sector_mask());
   block->set_byte_mask(mf);
 
@@ -1207,6 +1249,9 @@ cache_request_status data_cache::wr_hit_wt(new_addr_type addr,
   new_addr_type block_addr = m_config.block_addr(addr);
   m_tag_array->access(block_addr, time, cache_index, mf);  // update LRU state
   cache_block_t *block = m_tag_array->get_block(cache_index);
+  if (!block->is_modified_line()) {
+    m_tag_array->inc_dirty();
+  }
   block->set_status(MODIFIED, mf->get_access_sector_mask());
   block->set_byte_mask(mf);
 
@@ -1358,6 +1403,9 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
         m_tag_array->access(block_addr, time, cache_index, wb, evicted, mf);
     assert(status != HIT);
     cache_block_t *block = m_tag_array->get_block(cache_index);
+    if (!block->is_modified_line()) {
+      m_tag_array->inc_dirty();
+    }
     block->set_status(MODIFIED, mf->get_access_sector_mask());
     block->set_byte_mask(mf);
     if (status == HIT_RESERVED)
@@ -1479,6 +1527,9 @@ enum cache_request_status data_cache::wr_miss_wa_lazy_fetch_on_read(
       m_tag_array->access(block_addr, time, cache_index, wb, evicted, mf);
   assert(m_status != HIT);
   cache_block_t *block = m_tag_array->get_block(cache_index);
+  if (!block->is_modified_line()) {
+    m_tag_array->inc_dirty();
+  }
   block->set_status(MODIFIED, mf->get_access_sector_mask());
   block->set_byte_mask(mf);
   if (m_status == HIT_RESERVED) {
@@ -1546,6 +1597,9 @@ enum cache_request_status data_cache::rd_hit_base(
   if (mf->isatomic()) {
     assert(mf->get_access_type() == GLOBAL_ACC_R);
     cache_block_t *block = m_tag_array->get_block(cache_index);
+    if (!block->is_modified_line()) {
+      m_tag_array->inc_dirty();
+    }
     block->set_status(MODIFIED,
                       mf->get_access_sector_mask());  // mark line as 
     block->set_byte_mask(mf);
