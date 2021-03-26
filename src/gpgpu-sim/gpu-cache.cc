@@ -819,7 +819,7 @@ void cache_stats::print_stats(FILE *fout, const char *cache_name) const {
               cache_request_status_str((enum cache_request_status)status),
               m_stats[type][status]);
 
-      if (status != RESERVATION_FAIL)
+      if (status != RESERVATION_FAIL && status != MSHR_HIT)
         total_access[type] += m_stats[type][status];
     }
   }
