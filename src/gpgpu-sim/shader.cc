@@ -1151,12 +1151,16 @@ void scheduler_unit::cycle() {
   bool issued_inst = false;  // of these we issued one
 
   order_warps();
+
   for (std::vector<shd_warp_t *>::const_iterator iter =
            m_next_cycle_prioritized_warps.begin();
        iter != m_next_cycle_prioritized_warps.end(); iter++) {
     // Don't consider warps that are not yet valid
     if ((*iter) == NULL || (*iter)->done_exit()) {
       continue;
+    }
+    if (!(*iter)->waiting()) {
+      all_warps.push_back(*iter);
     }
     SCHED_DPRINTF("Testing (warp_id %u, dynamic_warp_id %u)\n",
                   (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id());
@@ -1385,6 +1389,7 @@ void scheduler_unit::cycle() {
 
             }  // end of else
           } else {
+            fail_warps.push_back((*iter));
             SCHED_DPRINTF(
                 "Warp (warp_id %u, dynamic_warp_id %u) fails scoreboard\n",
                 (*iter)->get_warp_id(), (*iter)->get_dynamic_warp_id());
@@ -1763,6 +1768,8 @@ void shader_core_ctx::writeback() {
 
   warp_inst_t **preg = m_pipeline_reg[EX_WB].get_ready();
   warp_inst_t *pipe_reg = (preg == NULL) ? NULL : *preg;
+  //m_pipeline_reg[EX_WB].print(stdout);
+  //(stdout);
   while (preg and !pipe_reg->empty()) {
     /*
      * Right now, the writeback stage drains all waiting instructions
@@ -1860,9 +1867,10 @@ mem_stage_stall_type ldst_unit::process_managed_cache_access(
     if (mf->get_mem_access().get_type() == GLOBAL_ACC_R &&
         m_core->get_gpu()->get_global_memory()->is_page_managed(
             mf->get_mem_access().get_addr(), mf->get_mem_access().get_size())) {
-      if (!mf->is_split())
+      if (!mf->is_split()) {
         m_core->get_gpu()->getGmmu()->reserve_pages_remove(mf->get_mem_access().get_addr(),
                                              mf->get_mem_access().get_uid());
+      }
     }
 
     if (!write_sent) {
@@ -1889,15 +1897,6 @@ mem_stage_stall_type ldst_unit::process_managed_cache_access(
     assert(status == MISS || status == HIT_RESERVED);
     // inst.clear_active( access.get_warp_mask() ); // threads in mf writeback
     // when mf returns
-
-    if (mf->get_mem_access().get_type() == GLOBAL_ACC_R &&
-        m_core->get_gpu()->get_global_memory()->is_page_managed(
-            mf->get_mem_access().get_addr(), mf->get_mem_access().get_size())) {
-      if (!mf->is_split())
-        m_core->get_gpu()->getGmmu()->reserve_pages_remove(mf->get_mem_access().get_addr(),
-                                             mf->get_mem_access().get_uid());
-    }
-
     m_core->dec_managed_access_req(mf->get_wid());
     m_gmmu_cu_queue.pop_front();
   }
@@ -1921,7 +1920,7 @@ mem_stage_stall_type ldst_unit::process_cache_access(
   }
   if (status == HIT) {
     assert(!read_sent);
-    inst.accessq_pop_back();
+    inst.accessq_pop_front();
     if (inst.is_load()) {
       for (unsigned r = 0; r < MAX_OUTPUT_VALUES; r++)
         if (inst.out[r] > 0) m_pending_writes[inst.warp_id()][inst.out[r]]--;
@@ -1930,9 +1929,10 @@ mem_stage_stall_type ldst_unit::process_cache_access(
     if (mf->get_mem_access().get_type() == GLOBAL_ACC_R &&
         m_core->get_gpu()->get_global_memory()->is_page_managed(
             mf->get_mem_access().get_addr(), mf->get_mem_access().get_size())) {
-      if (!mf->is_split())
+      if (!mf->is_split()) {
         m_core->get_gpu()->getGmmu()->reserve_pages_remove(mf->get_mem_access().get_addr(),
                                              mf->get_mem_access().get_uid());
+      }
     }
 
     if (!write_sent) {
@@ -1963,12 +1963,13 @@ mem_stage_stall_type ldst_unit::process_cache_access(
     if (mf->get_mem_access().get_type() == GLOBAL_ACC_R &&
         m_core->get_gpu()->get_global_memory()->is_page_managed(
             mf->get_mem_access().get_addr(), mf->get_mem_access().get_size())) {
-      if (!mf->is_split())
+      if (!mf->is_split()) {
         m_core->get_gpu()->getGmmu()->reserve_pages_remove(mf->get_mem_access().get_addr(),
                                              mf->get_mem_access().get_uid());
+      }
     }
 
-    inst.accessq_pop_back();
+    inst.accessq_pop_front();
   }
   if (!inst.accessq_empty() && result == NO_RC_FAIL) result = COAL_STALL;
   return result;
@@ -2019,7 +2020,7 @@ mem_stage_stall_type ldst_unit::process_memory_access_queue_l1cache(
       if (inst.accessq_empty()) return result;
 
       mem_fetch *mf =
-          m_mf_allocator->alloc(inst, inst.accessq_back(),
+          m_mf_allocator->alloc(inst, inst.accessq_front(),
                                 m_core->get_gpu()->gpu_sim_cycle +
                                     m_core->get_gpu()->gpu_tot_sim_cycle);
       unsigned bank_id = m_config->m_L1D_config.set_bank(mf->get_addr());
@@ -2039,7 +2040,7 @@ mem_stage_stall_type ldst_unit::process_memory_access_queue_l1cache(
             m_core->inc_store_req(inst.warp_id());
         }
 
-        inst.accessq_pop_back();
+        inst.accessq_pop_front();
       } else {
         result = BK_CONF;
         delete mf;
@@ -2142,7 +2143,7 @@ bool ldst_unit::constant_cycle(warp_inst_t &inst, mem_stage_stall_type &rc_fail,
   mem_stage_stall_type fail;
   if (m_config->perfect_inst_const_cache) {
     fail = NO_RC_FAIL;
-    while (inst.accessq_count() > 0) inst.accessq_pop_back();
+    while (inst.accessq_count() > 0) inst.accessq_pop_front();
     if (inst.is_load()) {
       for (unsigned r = 0; r < MAX_OUTPUT_VALUES; r++)
         if (inst.out[r] > 0) m_pending_writes[inst.warp_id()][inst.out[r]]--;
@@ -2218,7 +2219,7 @@ bool ldst_unit::access_cycle(warp_inst_t &inst,
   mem_addr_t page_no =
       m_core->get_gpu()->get_global_memory()->get_page_num(inst.accessq_front().get_addr());
 
-  for (int i = 0; i < inst.accessq_count(); i++) {
+  for (unsigned i = 0; i < inst.accessq_count(); i++) {
     if ((inst.accessq_front().get_type() == GLOBAL_ACC_R ||
         inst.accessq_front().get_type() == GLOBAL_ACC_W) &&
         m_new_stats->ma_latency[m_sid].find(inst.accessq_front().get_uid()) ==
@@ -2366,9 +2367,10 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst,
         if (access.get_type() == GLOBAL_ACC_R &&
             m_core->get_gpu()->get_global_memory()->is_page_managed(access.get_addr(),
                                                         access.get_size())) {
-          if (!mf->is_split())
+          if (!mf->is_split()){
             m_core->get_gpu()->getGmmu()->reserve_pages_remove(access.get_addr(),
                                                  access.get_uid());
+          }
         }
 
         inst.accessq_pop_front();
@@ -2430,11 +2432,10 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst,
             m_core->get_gpu()->get_global_memory()->is_page_managed(
                 mf->get_mem_access().get_addr(),
                 mf->get_mem_access().get_size())) {
-          //printf("Yechen: ldst_unit::memory_cycle : mf info %p\n", mf);
-          //mf->print(stdout);
-          if (!mf->is_split())
+          if (!mf->is_split()) {
             m_core->get_gpu()->getGmmu()->reserve_pages_remove(
                 mf->get_mem_access().get_addr(), mf->get_mem_access().get_uid());
+          }
         }
 
         m_core->dec_managed_access_req(mf->get_wid());
@@ -2931,9 +2932,10 @@ void ldst_unit::writeback() {
           if (m_core->get_gpu()->get_global_memory()->is_page_managed(
                   mf->get_mem_access().get_addr(),
                   mf->get_mem_access().get_size())) {
-            if (!mf->is_split())
+            if (!mf->is_split()) {
               m_core->get_gpu()->getGmmu()->reserve_pages_remove(
                   mf->get_mem_access().get_addr(), mf->get_mem_access().get_uid());
+            }
           }
           assert(m_new_stats->ma_latency[m_sid].find(
                     mf->get_mem_access().get_uid()) !=
@@ -3047,9 +3049,10 @@ void ldst_unit::cycle() {
         if (m_core->get_gpu()->get_global_memory()->is_page_managed(
                 mf->get_mem_access().get_addr(),
                 mf->get_mem_access().get_size())) {
-          if (!mf->is_split()) 
+          if (!mf->is_split()) {
             m_core->get_gpu()->getGmmu()->reserve_pages_remove(
                 mf->get_mem_access().get_addr(), mf->get_mem_access().get_uid());
+          }
         }
 
         delete mf;
@@ -4805,9 +4808,10 @@ void simt_core_cluster::icnt_inject_request_packet(class mem_fetch *mf) {
     ::icnt_push(m_cluster_id, m_config->mem2device(destination), (void *)mf,
                 mf->get_ctrl_size());
   }
-  else
+  else {
     ::icnt_push(m_cluster_id, m_config->mem2device(destination), (void *)mf,
                 mf->size());
+  }
 }
 
 void simt_core_cluster::icnt_cycle() {

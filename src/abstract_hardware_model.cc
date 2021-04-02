@@ -585,7 +585,6 @@ void warp_inst_t::memory_coalescing_arch(bool is_write,
         // segment assert(block_address ==
         // line_size_based_tag_func(addr+data_size_coales-1,segment_size));
 
-        //printf("MEM_FETCH DEBUG: warp_inst_t::memory_coalescing_arch - thread=%d, addr=0x%llu, block_address=%u, chunk=%d\n", thread, addr, block_address, chunk);
         info.chunks.set(chunk);
         info.active.set(thread);
         unsigned idx = (addr & 127);
@@ -781,12 +780,6 @@ void warp_inst_t::memory_coalescing_arch_reduce_and_send(
   m_accessq.push_back(mem_access_t(access_type, addr, size, is_write,
                                    info.active, info.bytes, info.chunks,
                                    m_config->gpgpu_ctx));
-  //printf("MEM_FETCH DEBUG - m_accessq : ");
-  //for (std::list<mem_access_t>::iterator it=m_accessq.begin(); it != m_accessq.end(); it++) {
-  //  printf("%d ", it->get_uid());
-  //}
-  //printf("\nFront is %d\n", m_accessq.front().get_uid());
-  //fflush(stdout);
 }
 
 void warp_inst_t::completed(unsigned long long cycle) const {

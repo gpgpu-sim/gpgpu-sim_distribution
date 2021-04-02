@@ -588,9 +588,17 @@ public:
   virtual void calculate() {}
 };
 
+// In order to skip idle cycles due to page fault, we need collect warp info
+// in all cores.
+extern std::list<shd_warp_t *> all_warps;
+extern std::list<shd_warp_t *> fail_warps;
+extern bool skip_cycles;
+extern bool skip_cycles_enable;
+
 extern std::map<unsigned long long, std::list<event_stats *>> sim_prof;
 
 extern bool sim_prof_enable;
+
 
 void print_sim_prof(FILE *fout, float freq);
 

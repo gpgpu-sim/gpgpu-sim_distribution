@@ -84,6 +84,13 @@ bool g_interactive_debugger_enabled = false;
 
 bool sim_prof_enable = false;
 
+std::list<shd_warp_t *> all_warps;
+std::list<shd_warp_t *> fail_warps;
+bool skip_cycles = false;
+bool skip_cycles_enable = false;
+int skipped_cycles = 0;
+int gpu_tot_skipped_cycle = 0;
+
 std::map<unsigned long long, std::list<event_stats *>> sim_prof;
 
 void print_sim_prof(FILE *fout, float freq) {
@@ -885,6 +892,9 @@ void gpgpu_sim_config::reg_options(option_parser_t opp) {
                          "Enable access pattern detection, policy engine, and "
                          "adaptive memory management.",
                          "0");
+  option_parser_register(
+      opp, "-skip_cycles_enable", OPT_BOOL, &skip_cycles_enable,
+      "Enable skip cycles if all warps stall and wait for page fualt", "0");
 }
 
 void gpgpu_sim_config::convert_byte_string() {
@@ -1248,6 +1258,7 @@ bool gpgpu_sim::active() {
 void gpgpu_sim::init() {
   // run a CUDA grid on the GPU microarchitecture simulator
   gpu_sim_cycle = 0;
+  skipped_cycles = 0;
   gpu_sim_insn = 0;
   last_gpu_sim_insn = 0;
   m_total_cta_launched = 0;
@@ -1295,6 +1306,7 @@ void gpgpu_sim::init() {
 void gpgpu_sim::update_stats() {
   m_memory_stats->memlatstat_lat_pw();
   gpu_tot_sim_cycle += gpu_sim_cycle;
+  gpu_tot_skipped_cycle += skipped_cycles;
   gpu_tot_sim_insn += gpu_sim_insn;
   gpu_tot_issued_cta += m_total_cta_launched;
   partiton_reqs_in_parallel_total += partiton_reqs_in_parallel;
@@ -1304,6 +1316,7 @@ void gpgpu_sim::update_stats() {
   gpu_tot_occupancy += gpu_occupancy;
 
   gpu_sim_cycle = 0;
+  skipped_cycles = 0;
   partiton_reqs_in_parallel = 0;
   partiton_replys_in_parallel = 0;
   partiton_reqs_in_parallel_util = 0;
@@ -2229,8 +2242,9 @@ void gpgpu_new_stats::print(FILE *fout) const {
       tot_mf_fault++;
     }
   }
-  fprintf(fout, "Total_memory_access_page_fault: %llu, Average_latency: %f\n",
-          tot_mf_fault, avg_mf_latency);
+  fprintf(fout, "Total_memory_access_page_fault: %llu, Average_latency: %f, "
+                "skipped cycles: %llu, Total_skipped_cycles: %llu \n",
+                tot_mf_fault, avg_mf_latency, skipped_cycles, gpu_tot_skipped_cycle);
 
   fprintf(fout, "========================================Page thrashing "
                 "statistics==============================\n");
@@ -3178,7 +3192,6 @@ void gmmu_t::traverse_and_remove_lp_tree(
 void gmmu_t::reserve_pages_insert(mem_addr_t addr, unsigned ma_uid) {
   mem_addr_t page_num = m_gpu->get_global_memory()->get_page_num(addr);
 
-  printf("Yechen - gmmu_t::reserve_pages_insert : page %llu and uid %u will be inserted\n", page_num, ma_uid);
   if (find(reserve_pages[page_num].begin(), reserve_pages[page_num].end(),
            ma_uid) == reserve_pages[page_num].end()) {
     reserve_pages[page_num].push_back(ma_uid);
@@ -3188,7 +3201,6 @@ void gmmu_t::reserve_pages_insert(mem_addr_t addr, unsigned ma_uid) {
 void gmmu_t::reserve_pages_remove(mem_addr_t addr, unsigned ma_uid) {
   mem_addr_t page_num = m_gpu->get_global_memory()->get_page_num(addr);
 
-  printf("Yechen - gmmu_t::reserve_pages_remove : page %llu and uid %u will be removed\n", page_num, ma_uid);
   fflush(stdout);
   assert(reserve_pages.find(page_num) != reserve_pages.end());
 
@@ -3868,6 +3880,8 @@ void gmmu_t::cycle() {
             // erase the page from the MSHR map
             req_info.erase(req_info.find(*iter));
 
+            skip_cycles = false;
+
             m_new_stats->pf_page_fault_latency[*iter].back() =
                 m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle -
                 m_new_stats->pf_page_fault_latency[*iter].back();
@@ -3894,6 +3908,8 @@ void gmmu_t::cycle() {
 
           // erase the page from the MSHR map
           req_info.erase(req_info.find(*iter));
+
+          skip_cycles = false;
 
           m_new_stats->mf_page_fault_latency[*iter].back() =
               m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle -
@@ -3956,7 +3972,6 @@ void gmmu_t::cycle() {
     if (pcie_read_latency_queue->type == latency_type::PCIE_READ) {
       pcie_read_latency_queue->ready_cycle =
           get_ready_cycle(pcie_read_latency_queue->page_list.size());
-
       if (sim_prof_enable) {
         event_stats *cp_h2d =
             new memory_stats(memcpy_h2d, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle,
@@ -4274,6 +4289,28 @@ void gmmu_t::cycle() {
       }
     }
   }
+  
+  if (!skip_cycles && !all_warps.empty() && all_warps.size() == fail_warps.size()) {
+    std::set<int> temp_set;
+    for (std::list<shd_warp_t *>::iterator iter = fail_warps.begin(); iter != fail_warps.end(); iter++) {
+      temp_set.insert((*iter)->get_warp_id());
+    }
+
+    for (std::map<mem_addr_t, std::list<mem_fetch *>>::iterator iter=req_info.begin();
+          iter != req_info.end(); ++iter) {
+      for(std::list<mem_fetch *>::iterator iter2=iter->second.begin(); iter2!=iter->second.end(); ++iter2) {
+        if (temp_set.find((*iter2)->get_inst().warp_id()) != temp_set.end())
+          temp_set.erase(temp_set.find((*iter2)->get_inst().warp_id()));
+      }
+    }
+
+    if (temp_set.empty()) {
+      skip_cycles = true;
+    } else {
+      skip_cycles = false;
+    }
+    fflush(stdout);
+  }
 }
 
 void gmmu_t::do_hardware_prefetch(
@@ -4550,7 +4587,16 @@ void gpgpu_sim::cycle() {
   if (clock_mask & GMMU) {
     m_gmmu->cycle();
   }
-  
+
+  // skip cycles because all warps stall to wait for mem_fetch come back from gmmu
+  if (skip_cycles_enable && skip_cycles) {
+    if (clock_mask & CORE) {
+      skipped_cycles++;
+      gpu_sim_cycle++;
+    }
+    return;
+  }
+
   if (clock_mask & CORE) {
     // shader core loading (pop from ICNT into core) follows CORE clock
     for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++)
@@ -4638,6 +4684,9 @@ void gpgpu_sim::cycle() {
   }
 
   if (clock_mask & CORE) {
+    // clear warp info collected so far
+    all_warps.clear();
+    fail_warps.clear();
     // L1 cache + shader core pipeline stages
     m_power_stats->pwr_mem_stat->core_cache_stats[CURRENT_STAT_IDX].clear();
     for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++) {
