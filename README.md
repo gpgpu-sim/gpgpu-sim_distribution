@@ -51,6 +51,18 @@ Complex Dynamics in Many-Core Accelerator Architectures, In Proceedings of the
 IEEE International Symposium on Performance Analysis of Systems and Software
 (ISPASS), pp. 164-174, White Plains, NY, March 28-30, 2010.
 
+If you use prefetchers and page eviction policies, please cite:
+
+Debashis Ganguly, Ziyu Zhang, Jun Yang, and Rami Melhem, Interplay between hardware prefetcher and page eviction policy in CPU-GPU unified virtual memory, In Proceedings of the 46th International Symposium on Computer Architecture (ISCA '19), New York, NY, USA, 2019.
+
+If you use access counter-based delayed migration, LFU eviction, cold vs hot data structure classification, and page migration and pinning, please cite:
+
+Debashis Ganguly, Ziyu Zhang, Jun Yang, and Rami Melhem, Adaptive Page Migration for Irregular Data-intensive Applications under GPU Memory Oversubscription, In Proceedings of the 34th IEEE International Parallel & Distributed Processing Symposium (IPDPS 2020), New Orleans, Louisiana, USA, 2020.
+
+If you use adaptive runtime to detect pattern in CPU-GPU interconnect traffic, and policy engine to choose and dynamically employ memory management policies, please cite:
+
+Debashis Ganguly, Rami Melhem, and Jun Yang, An Adaptive Framework for Oversubscription Management in CPU-GPU Unified Memory, In 2021 Design, Automation & Test in Europe Conference & Exhibition (DATE 2021).
+
 This file contains instructions on installing, building and running GPGPU-Sim.
 Detailed documentation on what GPGPU-Sim models, how to configure it, and a
 guide to the source code can be found here: <http://gpgpu-sim.org/manual/>.
