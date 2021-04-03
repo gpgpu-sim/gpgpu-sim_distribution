@@ -249,8 +249,8 @@ gpgpu_t::gpgpu_t(const gpgpu_functional_sim_config &config, gpgpu_context *ctx)
   gpu_tot_sim_cycle = 0;
 }
 
-address_type line_size_based_tag_func(new_addr_type address,
-                                      new_addr_type line_size) {
+new_addr_type line_size_based_tag_func(new_addr_type address,
+                                       new_addr_type line_size) {
   // gives the tag for an address based on a given line size
   return address & ~(line_size - 1);
 }
@@ -492,7 +492,7 @@ void warp_inst_t::generate_mem_accesses() {
     for (unsigned thread = 0; thread < m_config->warp_size; thread++) {
       if (!active(thread)) continue;
       new_addr_type addr = m_per_scalar_thread[thread].memreqaddr[0];
-      unsigned block_address = line_size_based_tag_func(addr, cache_block_size);
+      new_addr_type block_address = line_size_based_tag_func(addr, cache_block_size);
       accesses[block_address].set(thread);
       unsigned idx = addr - block_address;
       for (unsigned i = 0; i < data_size; i++) byte_mask.set(idx + i);
@@ -574,7 +574,7 @@ void warp_inst_t::memory_coalescing_arch(bool is_write,
            (m_per_scalar_thread[thread].memreqaddr[access] != 0);
            access++) {
         new_addr_type addr = m_per_scalar_thread[thread].memreqaddr[access];
-        unsigned block_address = line_size_based_tag_func(addr, segment_size);
+        new_addr_type block_address = line_size_based_tag_func(addr, segment_size);
         unsigned chunk =
             (addr & 127) / 32;  // which 32-byte chunk within in a 128-byte
                                 // chunk does this thread access?
@@ -596,7 +596,7 @@ void warp_inst_t::memory_coalescing_arch(bool is_write,
         if (block_address != line_size_based_tag_func(
                                  addr + data_size_coales - 1, segment_size)) {
           addr = addr + data_size_coales - 1;
-          unsigned block_address = line_size_based_tag_func(addr, segment_size);
+          new_addr_type block_address = line_size_based_tag_func(addr, segment_size);
           unsigned chunk = (addr & 127) / 32;
           transaction_info &info = subwarp_transactions[block_address];
           info.chunks.set(chunk);
@@ -669,7 +669,7 @@ void warp_inst_t::memory_coalescing_arch_atomic(bool is_write,
       if (!active(thread)) continue;
 
       new_addr_type addr = m_per_scalar_thread[thread].memreqaddr[0];
-      unsigned block_address = line_size_based_tag_func(addr, segment_size);
+      new_addr_type block_address = line_size_based_tag_func(addr, segment_size);
       unsigned chunk =
           (addr & 127) / 32;  // which 32-byte chunk within in a 128-byte chunk
                               // does this thread access?
