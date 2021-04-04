@@ -613,7 +613,6 @@ class gpgpu_t {
   int checkpoint_insn_Y;
 
   // Move some cycle core stats here instead of being global
-  // Yechen temporally move it to global
   unsigned long long gpu_sim_cycle;
   unsigned long long gpu_tot_sim_cycle;
 

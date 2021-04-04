@@ -1840,7 +1840,7 @@ mem_stage_stall_type ldst_unit::process_managed_cache_access(
           m_pending_writes[mf->get_inst().warp_id()][mf->get_inst().out[r]]--;
 
       bool pending_requests = false;
-      // changed from non-const to const (Yechen)
+      // changed from non-const to const
       const warp_inst_t &pipe_reg = mf->get_inst();
       unsigned warp_id = mf->get_wid();
       for (unsigned r = 0; r < 4; r++) {

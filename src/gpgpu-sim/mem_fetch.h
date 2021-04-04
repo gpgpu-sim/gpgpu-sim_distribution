@@ -120,7 +120,7 @@ class mem_fetch {
 
   address_type get_pc() const { return m_inst.empty() ? -1 : m_inst.pc; }
 
-  //Yechen Liu changed it to non-const
+  //Changed to non-const type
   warp_inst_t &get_inst() { return m_inst; }
   enum mem_fetch_status get_status() const { return m_status; }
 
