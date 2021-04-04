@@ -32,9 +32,6 @@
 #ifndef __TRACE_H__
 #define __TRACE_H__
 
-//extern unsigned long long gpu_sim_cycle;
-//extern unsigned long long gpu_tot_sim_cycle;
-
 namespace Trace {
 
 #define TS_TUP_BEGIN(X) enum X {
@@ -65,7 +62,7 @@ void init();
 #define DPRINTF(x, ...)                                                      \
   do {                                                                       \
     if (DTRACE(x)) {                                                         \
-      printf(SIM_PRINT_STR, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle,               \
+      printf(SIM_PRINT_STR, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle, \
              Trace::trace_streams_str[Trace::x]);                            \
       printf(__VA_ARGS__);                                                   \
     }                                                                        \
