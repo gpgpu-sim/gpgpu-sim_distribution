@@ -914,9 +914,11 @@ class tag_array {
   ~tag_array();
 
   enum cache_request_status probe(new_addr_type addr, unsigned &idx,
-                                  mem_fetch *mf, bool probe_mode = false) const;
+                                  mem_fetch *mf, bool is_write,
+                                  bool probe_mode = false) const;
   enum cache_request_status probe(new_addr_type addr, unsigned &idx,
                                   mem_access_sector_mask_t mask,
+                                  bool is_write,
                                   bool probe_mode = false,
                                   mem_fetch *mf = NULL) const;
   enum cache_request_status access(new_addr_type addr, unsigned time,
@@ -925,10 +927,10 @@ class tag_array {
                                    unsigned &idx, bool &wb,
                                    evicted_block_info &evicted, mem_fetch *mf);
 
-  void fill(new_addr_type addr, unsigned time, mem_fetch *mf);
+  void fill(new_addr_type addr, unsigned time, mem_fetch *mf, bool is_write);
   void fill(unsigned idx, unsigned time, mem_fetch *mf);
   void fill(new_addr_type addr, unsigned time, mem_access_sector_mask_t mask, 
-            mem_access_byte_mask_t byte_mask);
+            mem_access_byte_mask_t byte_mask, bool is_write);
 
   unsigned size() const { return m_config.get_num_lines(); }
   cache_block_t *get_block(unsigned idx) { return m_lines[idx]; }
@@ -1316,7 +1318,7 @@ class baseline_cache : public cache_t {
   void force_tag_access(new_addr_type addr, unsigned time,
                         mem_access_sector_mask_t mask) {
     mem_access_byte_mask_t byte_mask;
-    m_tag_array->fill(addr, time, mask, byte_mask);
+    m_tag_array->fill(addr, time, mask, byte_mask, true);
   }
 
  protected:
