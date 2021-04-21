@@ -128,6 +128,7 @@ void *gpgpu_sim_thread_concurrent(void *ctx_ptr) {
         sim_cycles = true;
         ctx->the_gpgpusim->g_the_gpu->deadlock_check();
       } else {
+        ctx->the_gpgpusim->g_the_gpu->cycle();
         if (ctx->the_gpgpusim->g_the_gpu->cycle_insn_cta_max_hit()) {
           ctx->the_gpgpusim->g_stream_manager->stop_all_running_kernels();
           ctx->the_gpgpusim->g_sim_done = true;
@@ -208,8 +209,9 @@ gpgpu_sim *gpgpu_context::gpgpu_ptx_sim_init_perf() {
   the_gpgpusim->g_the_gpu_config = new gpgpu_sim_config(this);
   the_gpgpusim->g_the_gpu_config->reg_options(
       opp);  // register GPU microrachitecture options
-
+  the_gpgpusim->g_the_gpu_config->convert_byte_string();
   option_parser_cmdline(opp, sg_argc, sg_argv);  // parse configuration options
+
   fprintf(stdout, "GPGPU-Sim: Configuration options:\n\n");
   option_parser_print(opp, stdout);
   // Set the Numeric locale to a standard locale where a decimal point is a

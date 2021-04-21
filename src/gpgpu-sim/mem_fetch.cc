@@ -47,7 +47,10 @@ mem_fetch::mem_fetch(const mem_access_t &access, const warp_inst_t *inst,
   if (inst) {
     m_inst = *inst;
     assert(wid == m_inst.warp_id());
+    //printf("MEM_FETCH DEBUG: mem_fetch.cc :: mf %p is formed and m_inst info, mem_access.m_uid=%d\n", this, m_access.get_uid());
+    //m_inst.print_insn(stdout);
   }
+  m_split = false;
   m_data_size = access.get_size();
   m_ctrl_size = ctrl_size;
   m_sid = sid;
@@ -63,12 +66,18 @@ mem_fetch::mem_fetch(const mem_access_t &access, const warp_inst_t *inst,
   m_status_change = cycle;
   m_mem_config = config;
   icnt_flit_size = config->icnt_flit_size;
+
+  m_dma = false;
+
   original_mf = m_original_mf;
   original_wr_mf = m_original_wr_mf;
   if (m_original_mf) {
     m_raw_addr.chip = m_original_mf->get_tlx_addr().chip;
     m_raw_addr.sub_partition = m_original_mf->get_tlx_addr().sub_partition;
   }
+  // MEM_FETCH DEBUG
+  //printf("MEM_FETCH DEBUG: mem_fetch.cc :: mf %p is formed, mem_access.m_uid=%d\n", this, m_access.get_uid());
+  //print(stdout);
 }
 
 mem_fetch::~mem_fetch() { m_status = MEM_FETCH_DELETED; }

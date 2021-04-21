@@ -737,16 +737,21 @@ memory_sub_partition::breakdown_request_to_sector_requests(mem_fetch *mf) {
 
     for (unsigned j = start, i = 0; j <= end; ++j, ++i) {
       const mem_access_t *ma = new mem_access_t(
-          mf->get_access_type(), mf->get_addr() + SECTOR_SIZE * i, SECTOR_SIZE,
+          mf->get_mem_access().get_uid(), mf->get_access_type(), 
+          mf->get_addr() + SECTOR_SIZE * i, SECTOR_SIZE,
           mf->is_write(), mf->get_access_warp_mask(),
           mf->get_access_byte_mask() & byte_sector_mask,
           std::bitset<SECTOR_CHUNCK_SIZE>().set(j), m_gpu->gpgpu_ctx);
 
+      //Change second parameter from NULL to &mf->get_inst()
+      const warp_inst_t *inst = j == end? &mf->get_inst() : NULL;
       mem_fetch *n_mf =
-          new mem_fetch(*ma, NULL, mf->get_ctrl_size(), mf->get_wid(),
+          new mem_fetch(*ma, inst, mf->get_ctrl_size(), mf->get_wid(),
                         mf->get_sid(), mf->get_tpc(), mf->get_mem_config(),
                         m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, mf);
-
+      if (j != end)
+        n_mf->set_split();
+    
       result.push_back(n_mf);
       byte_sector_mask <<= SECTOR_SIZE;
     }
@@ -756,6 +761,7 @@ memory_sub_partition::breakdown_request_to_sector_requests(mem_fetch *mf) {
         "mask = , data size = %u",
         mf->get_addr(), mf->get_access_sector_mask().count(),
         mf->get_data_size());
+    fflush(stdout);
     assert(0 && "Undefined data size is received");
   }
 

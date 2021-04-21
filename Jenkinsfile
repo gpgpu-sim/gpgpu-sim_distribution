@@ -51,7 +51,17 @@ pipeline {
                     make -C ./benchmarks/src data'''
             }
         }
-        stage('11.0 Regressions'){
+        stage('11.0 UVM Regressions'){
+            steps {
+                    sh '''#!/bin/bash
+                        source ./env-setup/11.0_env_setup.sh
+                        source `pwd`/setup_environment
+                        ./gpgpu-sim_simulations/util/job_launching/run_simulations.py -B rodinia_2.0-ft -C GTX1080Ti_UVM -N regress-UVM-$$ 
+                        PLOTDIR="jenkins/${JOB_NAME}/${BUILD_NUMBER}/11.0" && ssh tgrogers@dynamo.ecn.purdue.edu mkdir -p /home/dynamo/a/tgrogers/website/gpgpu-sim-plots/$PLOTDIR
+                        ./gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -s stats-per-app-11.0.csv -N regress-UVM-$$'''
+            }
+        }
+        stage('11.0 Regular Regressions'){
             steps {
                     sh '''#!/bin/bash
                         source ./env-setup/11.0_env_setup.sh

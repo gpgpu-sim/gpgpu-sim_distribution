@@ -186,7 +186,8 @@ class cuda_sim {
                                                 gpgpu_ptx_sim_arg_list_t args,
                                                 struct dim3 gridDim,
                                                 struct dim3 blockDim,
-                                                gpgpu_t *gpu);
+                                                gpgpu_t *gpu,
+                                                const gpgpu_sim_config &config);
   void gpgpu_ptx_sim_register_global_variable(void *hostVar,
                                               const char *deviceName,
                                               size_t size);

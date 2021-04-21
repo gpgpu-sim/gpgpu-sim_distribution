@@ -173,15 +173,59 @@ void gpgpu_functional_sim_config::ptx_set_tex_cache_linesize(
   m_texcache_linesize = linesize;
 }
 
+void gpgpu_functional_sim_config::convert_byte_string() {
+  float temp_size = 0;
+  if (strstr(gddr_size_string, "MB")) {
+    temp_size = atof(gddr_size_string) * 1024.0 * 1024.0;
+    gddr_size = ((unsigned long long)(temp_size)-1) / 4096 * 4096 + 4096;
+  } else if (strstr(gddr_size_string, "GB")) {
+    temp_size = atof(gddr_size_string) * 1024.0 * 1024.0 * 1024.0;
+    gddr_size = ((unsigned long long)(temp_size)-1) / 4096 * 4096 + 4096;
+  } else {
+    printf("-gddr_size must be in MB/GB\n");
+    exit(1);
+  }
+
+  // the only available page size is 4k/2mb
+  if (std::string(page_size_string) == "4KB") {
+    page_size = 4096;
+  } else if (std::string(page_size_string) == "2MB") {
+    page_size = 2097152;
+  } else {
+    printf("-page_size only support 4KB and 2MB\n");
+    exit(1);
+  }
+}
+
 gpgpu_t::gpgpu_t(const gpgpu_functional_sim_config &config, gpgpu_context *ctx)
     : m_function_model_config(config) {
   gpgpu_ctx = ctx;
-  m_global_mem = new memory_space_impl<8192>("global", 64 * 1024);
+  if (config.page_size == 4096) {
+    m_global_mem =
+        new memory_space_impl<4096>("global", 64 * 1024, config.gddr_size);
+    m_tex_mem = new memory_space_impl<4096>("tex", 64 * 1024);
+    m_surf_mem = new memory_space_impl<4096>("surf", 64 * 1024);
+  } else {
+    m_global_mem = new memory_space_impl<2 * 1024 * 1024>("global", 64 * 1024,
+                                                          config.gddr_size);
+    m_tex_mem = new memory_space_impl<2 * 1024 * 1024>("tex", 64 * 1024);
+    m_surf_mem = new memory_space_impl<2 * 1024 * 1024>("surf", 64 * 1024);
+  }
 
-  m_tex_mem = new memory_space_impl<8192>("tex", 64 * 1024);
-  m_surf_mem = new memory_space_impl<8192>("surf", 64 * 1024);
+  // make sure the memory address that would be used for m_dev_malloc_managed
+  // doesn't go accross the 32 bit addressing limit
+  assert(((unsigned long long)GLOBAL_HEAP_START + config.gddr_size * 2) <=
+         MEM_SPACE_LIMIT);
 
   m_dev_malloc = GLOBAL_HEAP_START;
+
+  // latter is different from former as managed and unmanaged allocations behave
+  // differently managed allocations can be evicted on memory overflow whereas
+  // unmanaged are pinned also only managed pages may suffer latency for page
+  // table walkthrough/access and PCI-E because of this managed and unmanaged
+  // allocation can not be from same page
+  m_dev_malloc_managed = (GLOBAL_HEAP_START + GLOBAL_MEM_SIZE_MAX);
+
   checkpoint_option = m_function_model_config.get_checkpoint_option();
   checkpoint_kernel = m_function_model_config.get_checkpoint_kernel();
   checkpoint_CTA = m_function_model_config.get_checkpoint_CTA();
@@ -205,8 +249,8 @@ gpgpu_t::gpgpu_t(const gpgpu_functional_sim_config &config, gpgpu_context *ctx)
   gpu_tot_sim_cycle = 0;
 }
 
-address_type line_size_based_tag_func(new_addr_type address,
-                                      new_addr_type line_size) {
+new_addr_type line_size_based_tag_func(new_addr_type address,
+                                       new_addr_type line_size) {
   // gives the tag for an address based on a given line size
   return address & ~(line_size - 1);
 }
@@ -448,7 +492,7 @@ void warp_inst_t::generate_mem_accesses() {
     for (unsigned thread = 0; thread < m_config->warp_size; thread++) {
       if (!active(thread)) continue;
       new_addr_type addr = m_per_scalar_thread[thread].memreqaddr[0];
-      unsigned block_address = line_size_based_tag_func(addr, cache_block_size);
+      new_addr_type block_address = line_size_based_tag_func(addr, cache_block_size);
       accesses[block_address].set(thread);
       unsigned idx = addr - block_address;
       for (unsigned i = 0; i < data_size; i++) byte_mask.set(idx + i);
@@ -530,7 +574,7 @@ void warp_inst_t::memory_coalescing_arch(bool is_write,
            (m_per_scalar_thread[thread].memreqaddr[access] != 0);
            access++) {
         new_addr_type addr = m_per_scalar_thread[thread].memreqaddr[access];
-        unsigned block_address = line_size_based_tag_func(addr, segment_size);
+        new_addr_type block_address = line_size_based_tag_func(addr, segment_size);
         unsigned chunk =
             (addr & 127) / 32;  // which 32-byte chunk within in a 128-byte
                                 // chunk does this thread access?
@@ -552,7 +596,7 @@ void warp_inst_t::memory_coalescing_arch(bool is_write,
         if (block_address != line_size_based_tag_func(
                                  addr + data_size_coales - 1, segment_size)) {
           addr = addr + data_size_coales - 1;
-          unsigned block_address = line_size_based_tag_func(addr, segment_size);
+          new_addr_type block_address = line_size_based_tag_func(addr, segment_size);
           unsigned chunk = (addr & 127) / 32;
           transaction_info &info = subwarp_transactions[block_address];
           info.chunks.set(chunk);
@@ -625,7 +669,7 @@ void warp_inst_t::memory_coalescing_arch_atomic(bool is_write,
       if (!active(thread)) continue;
 
       new_addr_type addr = m_per_scalar_thread[thread].memreqaddr[0];
-      unsigned block_address = line_size_based_tag_func(addr, segment_size);
+      new_addr_type block_address = line_size_based_tag_func(addr, segment_size);
       unsigned chunk =
           (addr & 127) / 32;  // which 32-byte chunk within in a 128-byte chunk
                               // does this thread access?
@@ -746,7 +790,8 @@ void warp_inst_t::completed(unsigned long long cycle) const {
 }
 
 kernel_info_t::kernel_info_t(dim3 gridDim, dim3 blockDim,
-                             class function_info *entry) {
+                             class function_info *entry,
+                             const gpgpu_sim_config &gpu_config) {
   m_kernel_entry = entry;
   m_grid_dim = gridDim;
   m_block_dim = blockDim;
@@ -756,7 +801,11 @@ kernel_info_t::kernel_info_t(dim3 gridDim, dim3 blockDim,
   m_next_tid = m_next_cta;
   m_num_cores_running = 0;
   m_uid = (entry->gpgpu_ctx->kernel_info_m_next_uid)++;
-  m_param_mem = new memory_space_impl<8192>("param", 64 * 1024);
+  if (gpu_config.page_size == 4096) {
+    m_param_mem = new memory_space_impl<4096>("param", 64 * 1024);
+  } else {
+    m_param_mem = new memory_space_impl<2 * 1024 * 1024>("param", 64 * 1024);
+  }
 
   // Jin: parent and child kernel management for CDP
   m_parent_kernel = NULL;
@@ -777,7 +826,8 @@ kernels should use the texture bindings seen at the time of launch and textures
 kernel_info_t::kernel_info_t(
     dim3 gridDim, dim3 blockDim, class function_info *entry,
     std::map<std::string, const struct cudaArray *> nameToCudaArray,
-    std::map<std::string, const struct textureInfo *> nameToTextureInfo) {
+    std::map<std::string, const struct textureInfo *> nameToTextureInfo,
+    const gpgpu_sim_config &gpu_config) {
   m_kernel_entry = entry;
   m_grid_dim = gridDim;
   m_block_dim = blockDim;
@@ -787,8 +837,13 @@ kernel_info_t::kernel_info_t(
   m_next_tid = m_next_cta;
   m_num_cores_running = 0;
   m_uid = (entry->gpgpu_ctx->kernel_info_m_next_uid)++;
-  m_param_mem = new memory_space_impl<8192>("param", 64 * 1024);
-
+  //m_param_mem = new memory_space_impl<8192>("param", 64 * 1024);
+  if (gpu_config.page_size == 4096) {
+    m_param_mem = new memory_space_impl<4096>("param", 64 * 1024);
+  } else {
+    m_param_mem = new memory_space_impl<2 * 1024 * 1024>("param", 64 * 1024);
+  }
+  
   // Jin: parent and child kernel management for CDP
   m_parent_kernel = NULL;
 

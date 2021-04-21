@@ -113,6 +113,7 @@
 #include <regex>
 #include <sstream>
 #include <string>
+#include <set>
 #ifdef OPENGL_SUPPORT
 #define GL_GLEXT_PROTOTYPES
 #ifdef __APPLE__
@@ -637,6 +638,8 @@ void **cudaRegisterFatBinaryInternal(void *fatCubin,
     int offset = *((int *)(pfatbin + 48));
     filename = (pfatbin + 16 + offset);
 #else
+    // should change it to 
+    // const filename = "default";
     filename = "default";
 #endif
 
@@ -898,8 +901,35 @@ cudaError_t cudaSetupArgumentInternal(const void *arg, size_t size,
   if (g_debug_execution >= 3) {
     announce_call(__my_func__);
   }
+
+  CUctx_st *context = GPGPUSim_Context(ctx);
+
   gpgpusim_ptx_assert(!ctx->api->g_cuda_launch_stack.empty(),
                       "empty launch stack");
+  
+  uint64_t hostPtr = *(uint64_t *)arg;
+
+  struct allocation_info *allocation =
+      context->get_device()->get_gpgpu()->gpu_get_managed_allocation(hostPtr);
+
+  if (allocation != NULL) { // verify whether a pointer to malloc managed memory
+    // during the kernel launch copy all the data from cpu to gpu
+    // pages are valid or invalid are tested later
+    uint64_t devPtr = allocation->gpu_mem_addr;
+
+    if (!allocation->copied) {
+      context->get_device()->get_gpgpu()->memcpy_to_gpu(
+          (size_t)devPtr, (void *)hostPtr, allocation->allocation_size);
+
+      allocation->copied = true;
+    }
+
+    // override the pointer argument to refer to gpu side allocation rather than
+    // cpu side memory gpgpu-sim only understands pointer reference from
+    // m_dev_malloc
+    *(uint64_t *)arg = devPtr;
+  }
+
   kernel_config &config = ctx->api->g_cuda_launch_stack.back();
   config.set_arg(arg, size, offset);
   printf(
@@ -947,7 +977,7 @@ cudaError_t cudaLaunchInternal(const char *hostFun,
          stream ? stream->get_uid() : 0);
   kernel_info_t *grid = ctx->api->gpgpu_cuda_ptx_sim_init_grid(
       hostFun, config.get_args(), config.grid_dim(), config.block_dim(),
-      context);
+      context, *(ctx->the_gpgpusim->g_the_gpu_config));
   // do dynamic PDOM analysis for performance simulation scenario
   std::string kname = grid->name();
   function_info *kernel_func_info = grid->entry();
@@ -1417,7 +1447,8 @@ cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlagsInternal(
     dim3 gridDim(context->get_device()->get_gpgpu()->max_cta_per_core() *
                  context->get_device()->get_gpgpu()->get_config().num_shader());
     dim3 blockDim(blockSize);
-    kernel_info_t result(gridDim, blockDim, entry);
+    kernel_info_t result(gridDim, blockDim, entry, 
+        *(ctx->the_gpgpusim->g_the_gpu_config));
     // if(entry == NULL){
     //	*numBlocks = 1;
     //	return g_last_cudaError = cudaErrorUnknown;
@@ -2284,8 +2315,88 @@ cudaDeviceSynchronizeInternal(gpgpu_context *gpgpu_ctx = NULL) {
   if (g_debug_execution >= 3) {
     announce_call(__my_func__);
   }
+  CUctx_st *context = GPGPUSim_Context(ctx);
   // Blocks until the device has completed all preceding requested tasks
+  
   ctx->synchronize();
+
+  const std::map<uint64_t, struct allocation_info *> &managedAllocations =
+      context->get_device()->get_gpgpu()->gpu_get_managed_allocations();
+
+  std::set<mem_addr_t> evicted_page_list;
+
+  // at this point kernel execution is over
+  // loop over all managed allocations
+  // copy the data back from gpu to cpu
+  for (std::map<uint64_t, struct allocation_info *>::const_iterator iter =
+           managedAllocations.begin();
+       iter != managedAllocations.end(); iter++) {
+
+    if (iter->second->copied) {
+
+      uint64_t hostPtr = iter->first;
+      uint64_t devPtr = iter->second->gpu_mem_addr;
+      size_t size = iter->second->allocation_size;
+
+      iter->second->copied = false;
+
+      while (size != 0) {
+        mem_addr_t page_num = context->get_device()
+                                  ->get_gpgpu()
+                                  ->get_global_memory()
+                                  ->get_page_num(devPtr);
+
+        size_t size_in_this_page = context->get_device()
+                                       ->get_gpgpu()
+                                       ->get_global_memory()
+                                       ->get_data_size(devPtr);
+
+        if (context->get_device()
+                ->get_gpgpu()
+                ->get_global_memory()
+                ->is_page_dirty(page_num)) {
+          context->get_device()->get_gpgpu()->memcpy_from_gpu(
+              (void *)hostPtr, (size_t)devPtr,
+              size > size_in_this_page ? size_in_this_page : size);
+
+          evicted_page_list.insert(page_num);
+        }
+
+        if (size <= size_in_this_page) {
+          size = 0;
+        } else {
+          size -= size_in_this_page;
+        }
+
+        devPtr += size_in_this_page;
+        hostPtr += size_in_this_page;
+      }
+    }
+  }
+
+  for (std::set<mem_addr_t>::const_iterator iter = evicted_page_list.begin();
+       iter != evicted_page_list.end(); iter++) {
+    context->get_device()->get_gpgpu()->get_global_memory()->invalidate_page(
+        *iter);
+    context->get_device()->get_gpgpu()->get_global_memory()->clear_page_access(
+        *iter);
+    context->get_device()->get_gpgpu()->get_global_memory()->clear_page_dirty(
+        *iter);
+    context->get_device()->get_gpgpu()->get_global_memory()->free_pages(1);
+    context->get_device()->get_gpgpu()->getGmmu()->tlb_flush(*iter);
+  }
+
+  context->get_device()->get_gpgpu()->get_global_memory()->reset();
+  context->get_device()->get_gpgpu()->getGmmu()->valid_pages_clear();
+  context->get_device()->get_gpgpu()->getGmmu()->reset_large_page_info();
+
+  unsigned transfer_size =
+      context->get_device()->get_gpgpu()->get_global_memory()->get_page_size() *
+      evicted_page_list.size();
+  if (transfer_size != 0)
+    context->get_device()->get_gpgpu()->getGmmu()->calculate_devicesync_time(
+        transfer_size);
+
   return g_last_cudaError = cudaSuccess;
 }
 
@@ -2306,6 +2417,94 @@ cudaError_t cudaPeekAtLastError(void) { return g_last_cudaError; }
 
 __host__ cudaError_t CUDARTAPI cudaMalloc(void **devPtr, size_t size) {
   return cudaMallocInternal(devPtr, size);
+}                                        
+                                         
+cudaError_t cudaMallocManagedInternal(   
+    void **devPtr, size_t size, unsigned  int flags = cudaMemAttachGlobal,
+    gpgpu_context *gpgpu_ctx = NULL) {   
+  gpgpu_context *ctx;                    
+  if (gpgpu_ctx) {                       
+    ctx = gpgpu_ctx;                     
+  } else {                               
+    ctx = GPGPU_Context();               
+  }                                      
+  if (g_debug_execution >= 3) {          
+    announce_call(__my_func__);          
+  }                                      
+  CUctx_st *context = GPGPUSim_Context(ctx);
+                                         
+  if (size == 0) {                       
+    return g_last_cudaError = cudaErrorInvalidValue;
+  }                                      
+  size_t num_large_pages = (size_t)(size / MAX_PREFETCH_SIZE);
+                                         
+  size_t remainder = size - (num_large_pages * MAX_PREFETCH_SIZE);
+                                         
+  size_t corrected_remainder;
+
+  if (remainder == 0)
+    corrected_remainder = 0;
+  else {
+    for (corrected_remainder = MIN_PREFETCH_SIZE;
+         corrected_remainder < remainder; corrected_remainder *= 2)
+      ;
+  }
+
+  size = (num_large_pages * MAX_PREFETCH_SIZE) + corrected_remainder;
+
+  // create a piece of memory for cpu side so that cpu side initialization code
+  // doesn't get SIGSEGV
+  void *cpuMemPtr = (void *)malloc(size);
+
+  // get a regular cudaMalloc memory
+  void *gpuMemPtr = context->get_device()->get_gpgpu()->gpu_mallocmanaged(size);
+
+  // maintain a map keyed by cpu memory pointer
+  // with a tuple of gpu malloc memory pointe and allocation size as value
+  context->get_device()->get_gpgpu()->gpu_insert_managed_allocation(
+      (uint64_t)cpuMemPtr, (uint64_t)gpuMemPtr, size);
+
+  // at the begining itself allocate memory storage for gpu malloced allocation
+  // note after this point data is not initialized on CPU
+  // so we need to copy the actual data on kernel launch
+  context->get_device()->get_gpgpu()->memcpy_to_gpu((size_t)gpuMemPtr,
+                                                    (void *)cpuMemPtr, size);
+
+  context->get_device()->get_gpgpu()->set_pages_managed((size_t)gpuMemPtr,
+                                                        size);
+  // return cpu memory pointer to the user code
+  // such that cpu side code can access the memory
+  *devPtr = cpuMemPtr;
+
+  mem_addr_t tempGPUPtr = *((mem_addr_t *)(&gpuMemPtr));
+
+  for (size_t cur_size = 0; cur_size < size;) {
+    if ((size - cur_size) < MAX_PREFETCH_SIZE) {
+      context->get_device()->get_gpgpu()->getGmmu()->initialize_large_page(
+          tempGPUPtr, size - cur_size);
+      break;
+    } else {
+      context->get_device()->get_gpgpu()->getGmmu()->initialize_large_page(
+          tempGPUPtr, MAX_PREFETCH_SIZE);
+      cur_size += MAX_PREFETCH_SIZE;
+      tempGPUPtr += MAX_PREFETCH_SIZE;
+    }
+  }
+
+  if (g_debug_execution >= 3)
+    printf("GPGPU-Sim PTX: cudaMallocing %zu bytes starting at 0x%llx..\n",
+           size, (unsigned long long)*devPtr);
+
+  if (gpuMemPtr) {
+    return g_last_cudaError = cudaSuccess;
+  } else {
+    return g_last_cudaError = cudaErrorMemoryAllocation;
+  }
+}
+
+__host__ cudaError_t CUDARTAPI cudaMallocManaged(
+        void **devPtr, size_t size, unsigned int flags = cudaMemAttachGlobal) {
+    return cudaMallocManagedInternal(devPtr, size, flags);
 }
 
 __host__ cudaError_t CUDARTAPI cudaMallocHost(void **ptr, size_t size) {
@@ -2451,6 +2650,91 @@ __host__ cudaError_t CUDARTAPI cudaMemGetInfo(size_t *free, size_t *total) {
  *                                                                              *
  *                                                                              *
  *******************************************************************************/
+
+__host__ cudaError_t CUDARTAPI cudaMemPrefetchAsyncInternal(const void *devPtr,
+                                                    size_t count, int dstDevice,
+                                                    cudaStream_t stream = 0,
+                                                    gpgpu_context *gpgpu_ctx = NULL) {
+  gpgpu_context *ctx;
+  if (gpgpu_ctx) {
+    ctx = gpgpu_ctx;
+  } else {
+    ctx = GPGPU_Context();
+  }
+  if (g_debug_execution >= 3) {
+    announce_call(__my_func__);
+  }
+  // If dstDevice is a GPU, then the device attribute
+  // cudaDevAttrConcurrentManagedAccess must be non-zero. Additionally, stream
+  // must be associated with a device that has a non-zero value for the device
+  // attribute cudaDevAttrConcurrentManagedAccess. The memory range must refer
+  // to managed memory allocated via cudaMallocManaged or declared via
+  // __managed__ variables.
+
+  struct CUstream_st *s = (struct CUstream_st *)stream;
+
+  if (dstDevice == cudaCpuDeviceId) {
+    // not a priority thing as cudaDeviceSynchronize does the same job
+  } else if (dstDevice == ctx->api->g_active_device) {
+    CUctx_st *context = GPGPUSim_Context(ctx);
+
+    const std::map<uint64_t, struct allocation_info *> &managedAllocations =
+        context->get_device()->get_gpgpu()->gpu_get_managed_allocations();
+
+    uint64_t gpuPtr = 0;
+    uint64_t allocationPtr = 0;
+
+    for (std::map<uint64_t, struct allocation_info *>::const_iterator iter =
+             managedAllocations.begin();
+         iter != managedAllocations.end(); iter++) {
+      // find the allocation for the host pointer recieved as argument
+      // remember: we have emulated behavior of UVM by having both CPU and GPU
+      // copies of same data
+      if ((uint64_t)devPtr >= iter->first &&
+          (uint64_t)devPtr + count <=
+              iter->first + iter->second->allocation_size) {
+        allocationPtr = iter->second->gpu_mem_addr;
+        // gpuPtr is offset to align with host ptr or cpu ptr from the
+        // allocation start
+        gpuPtr = iter->second->gpu_mem_addr + ((uint64_t)devPtr - iter->first);
+        break;
+      }
+    }
+
+    assert(gpuPtr != NULL);
+
+    size_t page_size = context->get_device()
+                           ->get_gpgpu()
+                           ->get_global_memory()
+                           ->get_page_size();
+
+    uint64_t start_addr =
+        (gpuPtr / page_size) * page_size; // rolling up to make it page aligned
+    uint64_t end_addr = (gpuPtr + count - 1) / page_size * page_size +
+                        page_size; // rolling down to to make it page aligned
+                                   // after adding the total size
+
+    assert(start_addr != end_addr);
+    assert((end_addr - start_addr) % page_size == 0);
+
+    ctx->the_gpgpusim->g_stream_manager->register_prefetch(
+        (size_t)start_addr, (size_t)allocationPtr,
+        (size_t)(end_addr - start_addr),
+        s == NULL ? ctx->the_gpgpusim->g_stream_manager->get_stream_zero() : s);
+
+    ctx->the_gpgpusim->g_stream_manager->push(stream_operation(
+        (size_t)start_addr, (size_t)(end_addr - start_addr), s));
+
+  } else {
+    abort();
+  }
+  return g_last_cudaError = cudaSuccess;
+}
+
+cudaError_t cudaMemPrefetchAsync(const void *devPtr, size_t count, 
+                                 int dstDevice, cudaStream_t stream = 0) {
+  return cudaMemPrefetchAsyncInternal(devPtr, count, dstDevice, stream);
+}
 
 __host__ cudaError_t CUDARTAPI cudaMemcpyAsync(void *dst, const void *src,
                                                size_t count,
@@ -4053,7 +4337,8 @@ int cuda_runtime_api::load_constants(symbol_table *symtab, addr_t min_gaddr,
 
 kernel_info_t *cuda_runtime_api::gpgpu_cuda_ptx_sim_init_grid(
     const char *hostFun, gpgpu_ptx_sim_arg_list_t args, struct dim3 gridDim,
-    struct dim3 blockDim, CUctx_st *context) {
+    struct dim3 blockDim, CUctx_st *context,
+    const gpgpu_sim_config &gpu_config) {
   if (g_debug_execution >= 3) {
     announce_call(__my_func__);
   }
@@ -4065,7 +4350,7 @@ kernel_info_t *cuda_runtime_api::gpgpu_cuda_ptx_sim_init_grid(
   */
   kernel_info_t *result =
       new kernel_info_t(gridDim, blockDim, entry, gpu->getNameArrayMapping(),
-                        gpu->getNameInfoMapping());
+                        gpu->getNameInfoMapping(), gpu_config);
   if (entry == NULL) {
     printf(
         "GPGPU-Sim PTX: ERROR launching kernel -- no PTX implementation found "

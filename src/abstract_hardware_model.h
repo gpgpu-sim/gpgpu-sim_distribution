@@ -30,6 +30,7 @@
 #define ABSTRACT_HARDWARE_MODEL_INCLUDED
 
 // Forward declarations
+class gpgpu_sim_config;
 class gpgpu_sim;
 class kernel_info_t;
 class gpgpu_context;
@@ -75,8 +76,8 @@ enum AdaptiveCache { FIXED = 0, ADAPTIVE_VOLTA = 1 };
 
 typedef unsigned long long new_addr_type;
 typedef unsigned long long cudaTextureObject_t;
-typedef unsigned address_type;
-typedef unsigned addr_t;
+typedef unsigned long long address_type;
+typedef unsigned long long addr_t;
 
 // the following are operations the timing model can see
 #define SPECIALIZED_UNIT_NUM 8
@@ -161,6 +162,7 @@ enum _memory_op_t { no_memory_op = 0, memory_load, memory_store };
 #include <deque>
 #include <list>
 #include <map>
+#include <stdint.h>
 #include <vector>
 
 #if !defined(__VECTOR_TYPES_H__)
@@ -200,11 +202,13 @@ class kernel_info_t {
   //      m_num_cores_running=0;
   //      m_param_mem=NULL;
   //   }
-  kernel_info_t(dim3 gridDim, dim3 blockDim, class function_info *entry);
+  kernel_info_t(dim3 gridDim, dim3 blockDim, class function_info *entry,
+                const gpgpu_sim_config &gpu_config);
   kernel_info_t(
       dim3 gridDim, dim3 blockDim, class function_info *entry,
       std::map<std::string, const struct cudaArray *> nameToCudaArray,
-      std::map<std::string, const struct textureInfo *> nameToTextureInfo);
+      std::map<std::string, const struct textureInfo *> nameToTextureInfo,
+      const gpgpu_sim_config &gpu_config);
   ~kernel_info_t();
 
   void inc_running() { m_num_cores_running++; }
@@ -444,7 +448,10 @@ class simt_stack {
 // Let's just upgrade to C++11 so we can use constexpr here...
 // start allocating from this address (lower values used for allocating globals
 // in .ptx file)
-const unsigned long long GLOBAL_HEAP_START = 0xC0000000;
+const unsigned long long MEM_SPACE_LIMIT = 0x100000000;
+const unsigned long long GLOBAL_HEAP_START = 0x80000000;
+// fix the max addressable global mem size as 1GB instead of dynamically deciding
+const unsigned long long GLOBAL_MEM_SIZE_MAX = (2 * 1024 * 1024 * 1024);
 // Volta max shmem size is 96kB
 const unsigned long long SHARED_MEM_SIZE_MAX = 96 * (1 << 10);
 // Volta max local mem is 16kB
@@ -524,6 +531,8 @@ class gpgpu_functional_sim_config {
   int get_checkpoint_CTA_t() const { return checkpoint_CTA_t; }
   int get_checkpoint_insn_Y() const { return checkpoint_insn_Y; }
 
+  void convert_byte_string();
+
  private:
   // PTX options
   int m_ptx_convert_to_ptxplus;
@@ -543,11 +552,55 @@ class gpgpu_functional_sim_config {
   int g_ptx_inst_debug_thread_uid;
 
   unsigned m_texcache_linesize;
+
+  protected:
+  unsigned long long gddr_size;
+  int page_size;
+
+  unsigned long long page_fault_latency;
+  bool enable_accurate_simulation;
+
+  char *gddr_size_string;
+  char *page_size_string;
+
+  friend class gpgpu_t;
+  friend class kernel_info_t;
+  template <unsigned BSIZE> friend class memory_space_impl;
+  friend void calculate_sim_prof(FILE *fout, gpgpu_sim *gpu);
 };
+
+struct allocation_info {
+  uint64_t gpu_mem_addr;
+  size_t allocation_size;
+  bool copied;
+};
+
+#define MAX_PREFETCH_SIZE (2 * 1024 * 1024)
+#define MIN_PREFETCH_SIZE (64 * 1024)
 
 class gpgpu_t {
  public:
   gpgpu_t(const gpgpu_functional_sim_config &config, gpgpu_context *ctx);
+
+  // Declare a constructor for gmmu_t type
+  // gpgpu_t(class gpgpu_sim *gpu, const gpgpu_sim_config &config,
+  //         class gpgpu_new_stats *new_stats);
+  struct allocation_info *gpu_get_managed_allocation(uint64_t cpuMemAddr);
+  const std::map<uint64_t, struct allocation_info *> &
+  gpu_get_managed_allocations();
+  void gpu_insert_managed_allocation(uint64_t cpuMemAddr, uint64_t gpuMemAddr,
+                                     size_t size);
+
+  // set the allocated pages as managed
+  void set_pages_managed(size_t addr, size_t size);
+
+  // write content of dirty page back to CPU on eviction
+  void gpu_writeback(uint64_t gpuMemAddr);
+
+  // method used to managed allocation which ensures the unmanaged & managed
+  // allocation does not fall into same page
+  void *gpu_mallocmanaged(size_t size);
+
   // backward pointer
   class gpgpu_context *gpgpu_ctx;
   int checkpoint_option;
@@ -562,6 +615,7 @@ class gpgpu_t {
   // Move some cycle core stats here instead of being global
   unsigned long long gpu_sim_cycle;
   unsigned long long gpu_tot_sim_cycle;
+
 
   void *gpu_malloc(size_t size);
   void *gpu_mallocarray(size_t count);
@@ -642,8 +696,15 @@ class gpgpu_t {
   class memory_space *m_global_mem;
   class memory_space *m_tex_mem;
   class memory_space *m_surf_mem;
+  
+  unsigned long long
+      m_dev_malloc; // variable to store a known heap pointer for unmanaged
+                    // allocation (cudaMalloc, cudaMallocArray)
+  unsigned long long m_dev_malloc_managed; // variable to store a known heap
+                                           // pointer for any managed allocation
 
-  unsigned long long m_dev_malloc;
+  std::map<uint64_t, struct allocation_info *> managedAllocations;
+
   //  These maps contain the current texture mappings for the GPU at any given
   //  time.
   std::map<std::string, std::set<const struct textureReference *> >
@@ -791,6 +852,32 @@ class mem_access_t {
     m_req_size = size;
     m_write = wr;
   }
+  mem_access_t(unsigned int uid, mem_access_type type, new_addr_type address, unsigned size,
+               bool wr, const active_mask_t &active_mask,
+               const mem_access_byte_mask_t &byte_mask,
+               const mem_access_sector_mask_t &sector_mask, gpgpu_context *ctx)
+      : m_warp_mask(active_mask),
+        m_byte_mask(byte_mask),
+        m_sector_mask(sector_mask) {
+    init(ctx);
+    m_uid = uid;
+    m_type = type;
+    m_addr = address;
+    m_req_size = size;
+    m_write = wr;
+  }
+  mem_access_t(const mem_access_t &ma) {
+    m_uid = ma.m_uid;
+    m_addr = ma.m_addr;
+    m_write = ma.m_write;
+    m_req_size = ma.m_req_size;
+    m_type = ma.m_type;
+    m_warp_mask = ma.m_warp_mask;
+    m_byte_mask = ma.m_byte_mask;
+    m_sector_mask = ma.m_sector_mask;
+  }
+
+  unsigned get_uid() const { return m_uid; }
 
   new_addr_type get_addr() const { return m_addr; }
   void set_addr(new_addr_type addr) { m_addr = addr; }
@@ -1050,9 +1137,9 @@ class warp_inst_t : public inst_t {
       printf("Printing mem access generated\n");
       std::list<mem_access_t>::iterator it;
       for (it = m_accessq.begin(); it != m_accessq.end(); ++it) {
-        printf("MEM_TXN_GEN:%s:%llx, Size:%d \n",
+        printf("MEM_TXN_GEN:%s:%llx, uid:%d, Size:%d \n",
                mem_access_type_str(it->get_type()), it->get_addr(),
-               it->get_size());
+               it->get_uid(), it->get_size());
       }
     }
   }
@@ -1110,6 +1197,7 @@ class warp_inst_t : public inst_t {
     return m_warp_issued_mask.count();
   }  // for instruction counting
   bool empty() const { return m_empty; }
+  unsigned get_warp_id() { return m_warp_id; }
   unsigned warp_id() const {
     assert(!m_empty);
     return m_warp_id;
@@ -1137,6 +1225,14 @@ class warp_inst_t : public inst_t {
 
   bool accessq_empty() const { return m_accessq.empty(); }
   unsigned accessq_count() const { return m_accessq.size(); }
+
+  // for queue, always push back and pop front
+  mem_access_t &accessq_front() { return m_accessq.front(); }
+  void accessq_pop_front() { m_accessq.pop_front(); }
+  void accessq_push_back(mem_access_t mem_access) {
+    m_accessq.push_back(mem_access);
+  }
+  
   const mem_access_t &accessq_back() { return m_accessq.back(); }
   void accessq_pop_back() { m_accessq.pop_back(); }
 
