@@ -428,12 +428,10 @@ void tag_array::fill(new_addr_type addr, unsigned time,
   // assert(status==MISS||status==SECTOR_MISS); // MSHR should have prevented
   // redundant memory request
   if (status == MISS) {
-    before = m_lines[idx]->is_modified_line();
     m_lines[idx]->allocate(m_config.tag(addr), m_config.block_addr(addr), time,
                            mask);
   } else if (status == SECTOR_MISS) {
     assert(m_config.m_cache_type == SECTOR);
-    before = m_lines[idx]->is_modified_line();
     ((sector_cache_block *)m_lines[idx])->allocate_sector(time, mask);
   }
   if (before && !m_lines[idx]->is_modified_line()) {
@@ -458,10 +456,10 @@ void tag_array::fill(unsigned index, unsigned time, mem_fetch *mf) {
 // TODO: we need write back the flushed data to the upper level
 void tag_array::flush() {
   if (!is_used) return;
+  m_dirty = 0;
 
   for (unsigned i = 0; i < m_config.get_num_lines(); i++)
     if (m_lines[i]->is_modified_line()) {
-      m_dirty--;
       for (unsigned j = 0; j < SECTOR_CHUNCK_SIZE; j++) {
         m_lines[i]->set_status(INVALID, mem_access_sector_mask_t().set(j));
       }
@@ -472,6 +470,7 @@ void tag_array::flush() {
 
 void tag_array::invalidate() {
   if (!is_used) return;
+  m_dirty = 0;
 
   for (unsigned i = 0; i < m_config.get_num_lines(); i++)
     for (unsigned j = 0; j < SECTOR_CHUNCK_SIZE; j++)
