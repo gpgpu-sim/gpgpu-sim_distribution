@@ -1320,12 +1320,24 @@ class register_set {
     // for sub core model we need to figure which reg_id has the ready warp
     // this function should only be called if has_ready() was true
     assert(has_ready());
+    warp_inst_t **ready;
+    ready = NULL;
+    unsigned reg_id;
     for (unsigned i = 0; i < regs.size(); i++) {
       if (not regs[i]->empty()) {
-        return i;
+        if (ready and (*ready)->get_uid() < regs[i]->get_uid()) {
+          // ready is oldest
+        } else {
+          ready = &regs[i];
+          reg_id = i;
+        }
       }
     }
-    abort();
+    return reg_id;
+  }
+  unsigned get_schd_id(unsigned reg_id) {
+      assert(not regs[reg_id]->empty());
+      return regs[reg_id]->get_schd_id();
   }
   void move_in(warp_inst_t *&src) {
     warp_inst_t **free = get_free();

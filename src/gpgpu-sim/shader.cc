@@ -3976,19 +3976,21 @@ void opndcoll_rfu_t::allocate_cu(unsigned port_num) {
         bool allocated = false;
         unsigned cuLowerBound = 0;
         unsigned cuUpperBound = cu_set.size();
+        unsigned schd_id;
         if(sub_core_model) {
           // Sub core model only allocates on the subset of CUs assigned to the scheduler that issued
           unsigned reg_id = (*inp.m_in[i]).get_ready_reg_id();
+          schd_id = (*inp.m_in[i]).get_schd_id(reg_id);
           assert(cu_set.size() % m_num_warp_scheds == 0);
           unsigned cusPerSched = cu_set.size() / m_num_warp_scheds;
-          cuLowerBound = reg_id * cusPerSched;
+          cuLowerBound = schd_id * cusPerSched;
           cuUpperBound = cuLowerBound + cusPerSched;
-          std::cout << "reg_id: " << reg_id << " cusPerSched: " << cusPerSched << " lowerBound: " << cuLowerBound << std::endl;
+          std::cout << "reg_id: " << reg_id << " schd_id: " << schd_id << " cusPerSched: " << cusPerSched << " lowerBound: " << cuLowerBound << std::endl;
           assert(0 <= cuLowerBound && cuUpperBound <= cu_set.size());
         }
         for (unsigned k = cuLowerBound; k < cuUpperBound; k++) {
           if (cu_set[k].is_free()) {
-            std::cout << "Allocated on cu: " << k << std::endl;
+            std::cout << "Allocated schd_id: " << schd_id << " on cu: " << k << std::endl;
             collector_unit_t *cu = &cu_set[k];
             allocated = cu->allocate(inp.m_in[i], inp.m_out[i]);
             m_arbiter.add_read_requests(cu);
