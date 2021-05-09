@@ -3983,10 +3983,12 @@ void opndcoll_rfu_t::allocate_cu(unsigned port_num) {
           unsigned cusPerSched = cu_set.size() / m_num_warp_scheds;
           cuLowerBound = reg_id * cusPerSched;
           cuUpperBound = cuLowerBound + cusPerSched;
+          std::cout << "reg_id: " << reg_id << " cusPerSched: " << cusPerSched << " lowerBound: " << cuLowerBound << std::endl;
           assert(0 <= cuLowerBound && cuUpperBound <= cu_set.size());
         }
         for (unsigned k = cuLowerBound; k < cuUpperBound; k++) {
           if (cu_set[k].is_free()) {
+            std::cout << "Allocated on cu: " << k << std::endl;
             collector_unit_t *cu = &cu_set[k];
             allocated = cu->allocate(inp.m_in[i], inp.m_out[i]);
             m_arbiter.add_read_requests(cu);
