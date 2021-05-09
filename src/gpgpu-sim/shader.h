@@ -947,7 +947,7 @@ class opndcoll_rfu_t {  // operand collector based register file unit
   arbiter_t m_arbiter;
 
   unsigned m_num_banks_per_sched;
-  unsigned m_num_warp_sceds;
+  unsigned m_num_warp_scheds;
   bool sub_core_model;
 
   // unsigned m_num_ports;

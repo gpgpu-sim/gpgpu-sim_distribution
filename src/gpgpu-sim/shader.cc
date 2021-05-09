@@ -3867,7 +3867,7 @@ void opndcoll_rfu_t::init(unsigned num_banks, shader_core_ctx *shader) {
   assert((m_bank_warp_shift == 5) || (m_warp_size != 32));
 
   sub_core_model = shader->get_config()->sub_core_model;
-  m_num_warp_sceds = shader->get_config()->gpgpu_num_sched_per_core;
+  m_num_warp_scheds = shader->get_config()->gpgpu_num_sched_per_core;
   if (sub_core_model)
     assert(num_banks % shader->get_config()->gpgpu_num_sched_per_core == 0);
   m_num_banks_per_sched =

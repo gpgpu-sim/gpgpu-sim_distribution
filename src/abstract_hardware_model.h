@@ -1291,6 +1291,7 @@ class register_set {
     }
     m_name = name;
   }
+  const char * get_name() {return m_name;}
   bool has_free() {
     for (unsigned i = 0; i < regs.size(); i++) {
       if (regs[i]->empty()) {
