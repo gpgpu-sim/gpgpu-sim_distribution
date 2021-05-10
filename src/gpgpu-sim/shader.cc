@@ -3939,7 +3939,7 @@ bool opndcoll_rfu_t::writeback(warp_inst_t &inst) {
 void opndcoll_rfu_t::dispatch_ready_cu() {
   for (unsigned p = 0; p < m_dispatch_units.size(); ++p) {
     dispatch_unit_t &du = m_dispatch_units[p];
-    collector_unit_t *cu = du.find_ready();
+    collector_unit_t *cu = du.find_ready(sub_core_model, p);
     if (cu) {
       for (unsigned i = 0; i < (cu->get_num_operands() - cu->get_num_regs());
            i++) {
@@ -3961,7 +3961,9 @@ void opndcoll_rfu_t::dispatch_ready_cu() {
               m_shader->get_config()->warp_size);  // cu->get_active_count());
         }
       }
-      cu->dispatch();
+      unsigned cusPerSched = du->get_num_collectors() / m_num_warp_scheds;
+      unsigned reg_id = p / cusPerSched;
+      cu->dispatch(sub_core_model, reg_id);
     }
   }
 }
@@ -3985,7 +3987,6 @@ void opndcoll_rfu_t::allocate_cu(unsigned port_num) {
           unsigned cusPerSched = cu_set.size() / m_num_warp_scheds;
           cuLowerBound = schd_id * cusPerSched;
           cuUpperBound = cuLowerBound + cusPerSched;
-          std::cout << "reg_id: " << reg_id << " schd_id: " << schd_id << " cusPerSched: " << cusPerSched << " lowerBound: " << cuLowerBound << std::endl;
           assert(0 <= cuLowerBound && cuUpperBound <= cu_set.size());
         }
         for (unsigned k = cuLowerBound; k < cuUpperBound; k++) {
@@ -4046,8 +4047,8 @@ void opndcoll_rfu_t::allocate_reads() {
   }
 }
 
-bool opndcoll_rfu_t::collector_unit_t::ready() const {
-  return (!m_free) && m_not_ready.none() && (*m_output_register).has_free();
+bool opndcoll_rfu_t::collector_unit_t::ready(bool sub_core_model, unsigned reg_id) const {
+  return (!m_free) && m_not_ready.none() && (*m_output_register).has_free(sub_core_model, reg_id);
 }
 
 void opndcoll_rfu_t::collector_unit_t::dump(
@@ -4110,7 +4111,7 @@ bool opndcoll_rfu_t::collector_unit_t::allocate(register_set *pipeline_reg_set,
   return false;
 }
 
-void opndcoll_rfu_t::collector_unit_t::dispatch() {
+void opndcoll_rfu_t::collector_unit_t::dispatch(bool sub_core_model, unsigned reg_id) {
   assert(m_not_ready.none());
   // move_warp(*m_output_register,m_warp);
   // Print out which OC dispatched which warp sched id to which exec pipeline
@@ -4122,8 +4123,10 @@ void opndcoll_rfu_t::collector_unit_t::dispatch() {
   << m_warp->get_schd_id()
   << "\tto execution register: "
   << m_output_register->get_name()
+  << "\treg id: "
+  << reg_id
   << std::endl;
-  m_output_register->move_in(m_warp);
+  m_output_register->move_in(sub_core_model, reg_id, m_warp);
   m_free = true;
   m_output_register = NULL;
   for (unsigned i = 0; i < MAX_REG_OPERANDS * 2; i++) m_src_op[i].reset();

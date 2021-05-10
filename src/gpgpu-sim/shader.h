@@ -867,7 +867,7 @@ class opndcoll_rfu_t {  // operand collector based register file unit
       m_bank_warp_shift = 0;
     }
     // accessors
-    bool ready() const;
+    bool ready(bool sub_core_modle, unsigned reg_id) const;
     const op_t *get_operands() const { return m_src_op; }
     void dump(FILE *fp, const shader_core_ctx *shader) const;
 
@@ -888,7 +888,7 @@ class opndcoll_rfu_t {  // operand collector based register file unit
     void collect_operand(unsigned op) { m_not_ready.reset(op); }
     unsigned get_num_operands() const { return m_warp->get_num_operands(); }
     unsigned get_num_regs() const { return m_warp->get_num_regs(); }
-    void dispatch();
+    void dispatch(bool sub_core_model, unsigned reg_id);
     bool is_free() { return m_free; }
 
    private:
@@ -917,10 +917,10 @@ class opndcoll_rfu_t {  // operand collector based register file unit
       m_next_cu = 0;
     }
 
-    collector_unit_t *find_ready() {
+    collector_unit_t *find_ready(bool sub_core_model, unsigned reg_id) {
       for (unsigned n = 0; n < m_num_collectors; n++) {
         unsigned c = (m_last_cu + n + 1) % m_num_collectors;
-        if ((*m_collector_units)[c].ready()) {
+        if ((*m_collector_units)[c].ready(sub_core_model, reg_id)) {
           m_last_cu = c;
           return &((*m_collector_units)[c]);
         }
@@ -928,6 +928,8 @@ class opndcoll_rfu_t {  // operand collector based register file unit
       return NULL;
     }
 
+    unsigned get_num_collectors(){return m_num_collectors;}
+    
    private:
     unsigned m_num_collectors;
     std::vector<collector_unit_t> *m_collector_units;

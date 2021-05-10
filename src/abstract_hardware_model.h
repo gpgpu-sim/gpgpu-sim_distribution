@@ -1346,6 +1346,17 @@ class register_set {
   // void copy_in( warp_inst_t* src ){
   //   src->copy_contents_to(*get_free());
   //}
+  void move_in(bool sub_core_model, unsigned reg_id, warp_inst_t *&src) {
+  warp_inst_t **free;
+  if (!sub_core_model) {
+    free = get_free();
+  } else {
+    assert(reg_id < regs.size());
+    free = get_free(sub_core_model, reg_id);
+  }
+  move_warp(*free, src);
+  }
+
   void move_out_to(warp_inst_t *&dest) {
     warp_inst_t **ready = get_ready();
     move_warp(dest, *ready);
