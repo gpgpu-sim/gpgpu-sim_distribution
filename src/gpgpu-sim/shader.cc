@@ -3991,7 +3991,7 @@ void opndcoll_rfu_t::allocate_cu(unsigned port_num) {
         }
         for (unsigned k = cuLowerBound; k < cuUpperBound; k++) {
           if (cu_set[k].is_free()) {
-            std::cout << "Allocated schd_id: " << schd_id << " on cu: " << k << std::endl;
+            //std::cout << "Allocated schd_id: " << schd_id << " on cu: " << k << std::endl;
             collector_unit_t *cu = &cu_set[k];
             allocated = cu->allocate(inp.m_in[i], inp.m_out[i]);
             m_arbiter.add_read_requests(cu);
@@ -4113,9 +4113,8 @@ bool opndcoll_rfu_t::collector_unit_t::allocate(register_set *pipeline_reg_set,
 
 void opndcoll_rfu_t::collector_unit_t::dispatch(bool sub_core_model, unsigned reg_id) {
   assert(m_not_ready.none());
-  // move_warp(*m_output_register,m_warp);
   // Print out which OC dispatched which warp sched id to which exec pipeline
-  std::cout << "Dispatched from OC: "
+  /* std::cout << "Dispatched from OC: "
   << this->get_id()
   << "\t Warp_id: "
   << m_warp->get_uid()
@@ -4125,7 +4124,7 @@ void opndcoll_rfu_t::collector_unit_t::dispatch(bool sub_core_model, unsigned re
   << m_output_register->get_name()
   << "\treg id: "
   << reg_id
-  << std::endl;
+  << std::endl; */
   m_output_register->move_in(sub_core_model, reg_id, m_warp);
   m_free = true;
   m_output_register = NULL;
