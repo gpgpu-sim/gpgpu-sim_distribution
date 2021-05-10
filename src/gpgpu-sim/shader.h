@@ -917,9 +917,10 @@ class opndcoll_rfu_t {  // operand collector based register file unit
       m_next_cu = 0;
     }
 
-    collector_unit_t *find_ready(bool sub_core_model, unsigned reg_id) {
+    collector_unit_t *find_ready(bool sub_core_model) {
       for (unsigned n = 0; n < m_num_collectors; n++) {
         unsigned c = (m_last_cu + n + 1) % m_num_collectors;
+        unsigned reg_id = c / m_num_collectors;
         if ((*m_collector_units)[c].ready(sub_core_model, reg_id)) {
           m_last_cu = c;
           return &((*m_collector_units)[c]);
@@ -929,7 +930,7 @@ class opndcoll_rfu_t {  // operand collector based register file unit
     }
 
     unsigned get_num_collectors(){return m_num_collectors;}
-    
+
    private:
     unsigned m_num_collectors;
     std::vector<collector_unit_t> *m_collector_units;

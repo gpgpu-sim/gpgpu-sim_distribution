@@ -3962,7 +3962,7 @@ void opndcoll_rfu_t::dispatch_ready_cu() {
         }
       }
       unsigned cusPerSched = du.get_num_collectors() / m_num_warp_scheds;
-      unsigned reg_id = p / cusPerSched;
+      unsigned reg_id = cu->get_id() / cusPerSched;
       cu->dispatch(sub_core_model, reg_id);
     }
   }
