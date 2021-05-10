@@ -3961,7 +3961,7 @@ void opndcoll_rfu_t::dispatch_ready_cu() {
               m_shader->get_config()->warp_size);  // cu->get_active_count());
         }
       }
-      unsigned cusPerSched = du->get_num_collectors() / m_num_warp_scheds;
+      unsigned cusPerSched = du.get_num_collectors() / m_num_warp_scheds;
       unsigned reg_id = p / cusPerSched;
       cu->dispatch(sub_core_model, reg_id);
     }
