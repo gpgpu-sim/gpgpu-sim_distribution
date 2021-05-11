@@ -3996,7 +3996,7 @@ void opndcoll_rfu_t::allocate_cu(unsigned port_num) {
         }
         for (unsigned k = cuLowerBound; k < cuUpperBound; k++) {
           if (cu_set[k].is_free()) {
-            //std::cout << "Allocated schd_id: " << schd_id << " on cu: " << k << std::endl;
+            // std::cout << "Allocated schd_id: " << schd_id << " on cu: " << k << std::endl;
             collector_unit_t *cu = &cu_set[k];
             allocated = cu->allocate(inp.m_in[i], inp.m_out[i]);
             m_arbiter.add_read_requests(cu);
@@ -4130,7 +4130,7 @@ void opndcoll_rfu_t::collector_unit_t::dispatch() {
   << "\tto execution register: "
   << m_output_register->get_name()
   << "\treg id: "
-  << reg_id
+  << this->get_reg_id()
   << std::endl; */
   m_output_register->move_in(m_sub_core_model, m_reg_id, m_warp);
   m_free = true;
