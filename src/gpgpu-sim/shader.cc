@@ -411,7 +411,7 @@ void shader_core_ctx::create_exec_pipeline() {
       m_fu.push_back(new specialized_unit(
           &m_pipeline_reg[EX_WB], m_config, this, SPEC_UNIT_START_ID + j,
           m_config->m_specialized_unit[j].name,
-          m_config->m_specialized_unit[j].latency, k));
+          m_config->m_specialized_unit[j].latency));
       m_dispatch_port.push_back(m_config->m_specialized_unit[j].ID_OC_SPEC_ID);
       m_issue_port.push_back(m_config->m_specialized_unit[j].OC_EX_SPEC_ID);
     }
@@ -419,7 +419,7 @@ void shader_core_ctx::create_exec_pipeline() {
 
   m_ldst_unit = new ldst_unit(m_icnt, m_mem_fetch_allocator, this,
                               &m_operand_collector, m_scoreboard, m_config,
-                              m_memory_config, m_stats, m_sid, m_tpc, static_cast<unsigned>(0));
+                              m_memory_config, m_stats, m_sid, m_tpc);
   m_fu.push_back(m_ldst_unit);
   m_dispatch_port.push_back(ID_OC_MEM);
   m_issue_port.push_back(OC_EX_MEM);
@@ -2222,8 +2222,8 @@ sp_unit::sp_unit(register_set *result_port, const shader_core_config *config,
 specialized_unit::specialized_unit(register_set *result_port,
                                    const shader_core_config *config,
                                    shader_core_ctx *core, unsigned supported_op,
-                                   char *unit_name, unsigned latency, unsigned issue_reg_id)
-    : pipelined_simd_unit(result_port, config, latency, core, issue_reg_id) {
+                                   char *unit_name, unsigned latency)
+    : pipelined_simd_unit(result_port, config, latency, core, 0) {
   m_name = unit_name;
   m_supported_op = supported_op;
 }
@@ -2367,8 +2367,8 @@ ldst_unit::ldst_unit(mem_fetch_interface *icnt,
                      shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
                      Scoreboard *scoreboard, const shader_core_config *config,
                      const memory_config *mem_config, shader_core_stats *stats,
-                     unsigned sid, unsigned tpc, unsigned issue_reg_id)
-    : pipelined_simd_unit(NULL, config, config->smem_latency, core, issue_reg_id),
+                     unsigned sid, unsigned tpc)
+    : pipelined_simd_unit(NULL, config, config->smem_latency, core, 0),
       m_next_wb(config) {
   assert(config->smem_latency > 1);
   init(icnt, mf_allocator, core, operand_collector, scoreboard, config,
@@ -2395,8 +2395,8 @@ ldst_unit::ldst_unit(mem_fetch_interface *icnt,
                      shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
                      Scoreboard *scoreboard, const shader_core_config *config,
                      const memory_config *mem_config, shader_core_stats *stats,
-                     unsigned sid, unsigned tpc, l1_cache *new_l1d_cache, unsigned issue_reg_id)
-    : pipelined_simd_unit(NULL, config, 3, core, issue_reg_id),
+                     unsigned sid, unsigned tpc, l1_cache *new_l1d_cache)
+    : pipelined_simd_unit(NULL, config, 3, core, 0),
       m_L1D(new_l1d_cache),
       m_next_wb(config) {
   init(icnt, mf_allocator, core, operand_collector, scoreboard, config,

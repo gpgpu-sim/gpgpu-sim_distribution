@@ -1319,7 +1319,7 @@ class register_set {
   bool has_ready(bool sub_core_model, unsigned reg_id) {
     if (!sub_core_model) return has_ready();
     assert(reg_id < regs.size());
-    return (not regs[reg_id]->empty())
+    return (not regs[reg_id]->empty());
   }
 
   unsigned get_ready_reg_id() {
@@ -1388,7 +1388,7 @@ class register_set {
     warp_inst_t **ready;
     ready = NULL;
     assert(reg_id < regs.size());
-    if (not regs[reg_id]->empty)
+    if (not regs[reg_id]->empty())
       ready = &regs[reg_id];
     return ready;
   }
