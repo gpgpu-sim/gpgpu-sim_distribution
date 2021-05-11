@@ -3946,7 +3946,7 @@ bool opndcoll_rfu_t::writeback(warp_inst_t &inst) {
 void opndcoll_rfu_t::dispatch_ready_cu() {
   for (unsigned p = 0; p < m_dispatch_units.size(); ++p) {
     dispatch_unit_t &du = m_dispatch_units[p];
-    collector_unit_t *cu = du.find_ready(sub_core_model);
+    collector_unit_t *cu = du.find_ready();
     if (cu) {
       for (unsigned i = 0; i < (cu->get_num_operands() - cu->get_num_regs());
            i++) {

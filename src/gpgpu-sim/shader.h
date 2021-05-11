@@ -919,7 +919,7 @@ class opndcoll_rfu_t {  // operand collector based register file unit
       m_next_cu = 0;
     }
 
-    collector_unit_t *find_ready(bool sub_core_model) {
+    collector_unit_t *find_ready() {
       for (unsigned n = 0; n < m_num_collectors; n++) {
         unsigned c = (m_last_cu + n + 1) % m_num_collectors;
         if ((*m_collector_units)[c].ready()) {
