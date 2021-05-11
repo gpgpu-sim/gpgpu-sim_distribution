@@ -867,7 +867,7 @@ class opndcoll_rfu_t {  // operand collector based register file unit
       m_bank_warp_shift = 0;
     }
     // accessors
-    bool ready(bool sub_core_model, unsigned reg_id) const;
+    bool ready() const;
     const op_t *get_operands() const { return m_src_op; }
     void dump(FILE *fp, const shader_core_ctx *shader) const;
 
@@ -889,7 +889,7 @@ class opndcoll_rfu_t {  // operand collector based register file unit
     void collect_operand(unsigned op) { m_not_ready.reset(op); }
     unsigned get_num_operands() const { return m_warp->get_num_operands(); }
     unsigned get_num_regs() const { return m_warp->get_num_regs(); }
-    void dispatch(bool sub_core_model, unsigned reg_id);
+    void dispatch();
     bool is_free() { return m_free; }
 
    private:

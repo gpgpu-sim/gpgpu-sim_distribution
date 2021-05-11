@@ -3968,10 +3968,7 @@ void opndcoll_rfu_t::dispatch_ready_cu() {
               m_shader->get_config()->warp_size);  // cu->get_active_count());
         }
       }
-      unsigned reg_id;
-      if (sub_core_model) 
-        reg_id = cu->get_reg_id();
-      cu->dispatch(sub_core_model, reg_id);
+      cu->dispatch();
     }
   }
 }
@@ -4055,8 +4052,8 @@ void opndcoll_rfu_t::allocate_reads() {
   }
 }
 
-bool opndcoll_rfu_t::collector_unit_t::ready(bool sub_core_model, unsigned reg_id) const {
-  return (!m_free) && m_not_ready.none() && (*m_output_register).has_free(sub_core_model, reg_id);
+bool opndcoll_rfu_t::collector_unit_t::ready() const {
+  return (!m_free) && m_not_ready.none() && (*m_output_register).has_free(m_sub_core_model, m_reg_id);
 }
 
 void opndcoll_rfu_t::collector_unit_t::dump(
@@ -4121,7 +4118,7 @@ bool opndcoll_rfu_t::collector_unit_t::allocate(register_set *pipeline_reg_set,
   return false;
 }
 
-void opndcoll_rfu_t::collector_unit_t::dispatch(bool sub_core_model, unsigned reg_id) {
+void opndcoll_rfu_t::collector_unit_t::dispatch() {
   assert(m_not_ready.none());
   // Print out which OC dispatched which warp sched id to which exec pipeline
   /* std::cout << "Dispatched from OC: "
@@ -4135,7 +4132,7 @@ void opndcoll_rfu_t::collector_unit_t::dispatch(bool sub_core_model, unsigned re
   << "\treg id: "
   << reg_id
   << std::endl; */
-  m_output_register->move_in(sub_core_model, reg_id, m_warp);
+  m_output_register->move_in(m_sub_core_model, m_reg_id, m_warp);
   m_free = true;
   m_output_register = NULL;
   for (unsigned i = 0; i < MAX_REG_OPERANDS * 2; i++) m_src_op[i].reset();
