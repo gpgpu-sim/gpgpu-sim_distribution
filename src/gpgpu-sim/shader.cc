@@ -3868,14 +3868,21 @@ void opndcoll_rfu_t::init(unsigned num_banks, shader_core_ctx *shader) {
 
   sub_core_model = shader->get_config()->sub_core_model;
   m_num_warp_scheds = shader->get_config()->gpgpu_num_sched_per_core;
-  if (sub_core_model)
+  unsigned reg_id;
+  if (sub_core_model) {
     assert(num_banks % shader->get_config()->gpgpu_num_sched_per_core == 0);
+    assert(m_num_warp_scheds >= m_cu.size() && m_cu.size() % m_num_warp_scheds == 0);
+  }
   m_num_banks_per_sched =
       num_banks / shader->get_config()->gpgpu_num_sched_per_core;
 
   for (unsigned j = 0; j < m_cu.size(); j++) {
+    if (sub_core_model) {
+      unsigned cusPerSched = m_cu.size() / m_num_warp_scheds;
+      reg_id = j / cusPerSched;
+    }
     m_cu[j]->init(j, num_banks, m_bank_warp_shift, shader->get_config(), this,
-                  sub_core_model, m_num_banks_per_sched);
+                  sub_core_model, reg_id, m_num_banks_per_sched);
   }
   m_initialized = true;
 }
@@ -3962,10 +3969,8 @@ void opndcoll_rfu_t::dispatch_ready_cu() {
         }
       }
       unsigned reg_id;
-      if (sub_core_model) {
-        unsigned cusPerSched = du.get_num_collectors() / m_num_warp_scheds;
-        reg_id = cu->get_id() / cusPerSched;
-      }
+      if (sub_core_model) 
+        reg_id = cu->get_reg_id();
       cu->dispatch(sub_core_model, reg_id);
     }
   }
@@ -4074,6 +4079,7 @@ void opndcoll_rfu_t::collector_unit_t::init(unsigned n, unsigned num_banks,
                                             const core_config *config,
                                             opndcoll_rfu_t *rfu,
                                             bool sub_core_model,
+                                            unsigned reg_id,
                                             unsigned banks_per_sched) {
   m_rfu = rfu;
   m_cuid = n;
@@ -4082,6 +4088,7 @@ void opndcoll_rfu_t::collector_unit_t::init(unsigned n, unsigned num_banks,
   m_warp = new warp_inst_t(config);
   m_bank_warp_shift = log2_warp_size;
   m_sub_core_model = sub_core_model;
+  m_reg_id = reg_id;
   m_num_banks_per_sched = banks_per_sched;
 }
 

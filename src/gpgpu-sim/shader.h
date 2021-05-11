@@ -867,7 +867,7 @@ class opndcoll_rfu_t {  // operand collector based register file unit
       m_bank_warp_shift = 0;
     }
     // accessors
-    bool ready(bool sub_core_modle, unsigned reg_id) const;
+    bool ready(bool sub_core_model, unsigned reg_id) const;
     const op_t *get_operands() const { return m_src_op; }
     void dump(FILE *fp, const shader_core_ctx *shader) const;
 
@@ -878,11 +878,12 @@ class opndcoll_rfu_t {  // operand collector based register file unit
     }
     unsigned get_sp_op() const { return m_warp->sp_op; }
     unsigned get_id() const { return m_cuid; }  // returns CU hw id
+    unsigned get_reg_id() const { return m_reg_id; }
 
     // modifiers
     void init(unsigned n, unsigned num_banks, unsigned log2_warp_size,
               const core_config *config, opndcoll_rfu_t *rfu,
-              bool m_sub_core_model, unsigned num_banks_per_sched);
+              bool m_sub_core_model, unsigned reg_id, unsigned num_banks_per_sched);
     bool allocate(register_set *pipeline_reg, register_set *output_reg);
 
     void collect_operand(unsigned op) { m_not_ready.reset(op); }
@@ -906,6 +907,7 @@ class opndcoll_rfu_t {  // operand collector based register file unit
 
     unsigned m_num_banks_per_sched;
     bool m_sub_core_model;
+    unsigned m_reg_id; // if sub_core_model enabled, limit regs this cu can r/w
   };
 
   class dispatch_unit_t {
@@ -921,11 +923,8 @@ class opndcoll_rfu_t {  // operand collector based register file unit
       for (unsigned n = 0; n < m_num_collectors; n++) {
         unsigned c = (m_last_cu + n + 1) % m_num_collectors;
         unsigned reg_id;
-        if (sub_core_model) {
-          assert (m_num_collectors >= m_num_warp_scheds);
-          unsigned cusPerSched = m_num_collectors / m_num_warp_scheds;
-          reg_id = c / cusPerSched;
-        }
+        if (sub_core_model)
+          reg_id = (*m_collector_units)[c].get_reg_id();
         if ((*m_collector_units)[c].ready(sub_core_model, reg_id)) {
           m_last_cu = c;
           return &((*m_collector_units)[c]);
@@ -933,8 +932,6 @@ class opndcoll_rfu_t {  // operand collector based register file unit
       }
       return NULL;
     }
-
-    unsigned get_num_collectors(){return m_num_collectors;}
 
    private:
     unsigned m_num_collectors;
