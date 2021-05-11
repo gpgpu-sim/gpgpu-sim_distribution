@@ -3954,7 +3954,7 @@ bool opndcoll_rfu_t::writeback(warp_inst_t &inst) {
 void opndcoll_rfu_t::dispatch_ready_cu() {
   for (unsigned p = 0; p < m_dispatch_units.size(); ++p) {
     dispatch_unit_t &du = m_dispatch_units[p];
-    collector_unit_t *cu = du.find_ready(sub_core_model);
+    collector_unit_t *cu = du.find_ready();
     if (cu) {
       for (unsigned i = 0; i < (cu->get_num_operands() - cu->get_num_regs());
            i++) {
@@ -4004,7 +4004,7 @@ void opndcoll_rfu_t::allocate_cu(unsigned port_num) {
         }
         for (unsigned k = cuLowerBound; k < cuUpperBound; k++) {
           if (cu_set[k].is_free()) {
-            //std::cout << "Allocated schd_id: " << schd_id << " on cu: " << k << std::endl;
+            // std::cout << "Allocated schd_id: " << schd_id << " on cu: " << k << std::endl;
             collector_unit_t *cu = &cu_set[k];
             allocated = cu->allocate(inp.m_in[i], inp.m_out[i]);
             m_arbiter.add_read_requests(cu);
@@ -4138,7 +4138,7 @@ void opndcoll_rfu_t::collector_unit_t::dispatch() {
   << "\tto execution register: "
   << m_output_register->get_name()
   << "\treg id: "
-  << reg_id
+  << this->get_reg_id()
   << std::endl; */
   m_output_register->move_in(m_sub_core_model, m_reg_id, m_warp);
   m_free = true;
