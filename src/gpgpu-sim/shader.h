@@ -920,7 +920,12 @@ class opndcoll_rfu_t {  // operand collector based register file unit
     collector_unit_t *find_ready(bool sub_core_model) {
       for (unsigned n = 0; n < m_num_collectors; n++) {
         unsigned c = (m_last_cu + n + 1) % m_num_collectors;
-        unsigned reg_id = c / m_num_collectors;
+        unsigned reg_id;
+        if (sub_core_model) {
+          assert (m_num_collectors >= m_num_warp_scheds);
+          unsigned cusPerSched = m_num_collectors / m_num_warp_scheds;
+          reg_id = c / cusPerSched;
+        }
         if ((*m_collector_units)[c].ready(sub_core_model, reg_id)) {
           m_last_cu = c;
           return &((*m_collector_units)[c]);

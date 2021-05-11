@@ -3961,8 +3961,11 @@ void opndcoll_rfu_t::dispatch_ready_cu() {
               m_shader->get_config()->warp_size);  // cu->get_active_count());
         }
       }
-      unsigned cusPerSched = du.get_num_collectors() / m_num_warp_scheds;
-      unsigned reg_id = cu->get_id() / cusPerSched;
+      unsigned reg_id;
+      if (sub_core_model) {
+        unsigned cusPerSched = du.get_num_collectors() / m_num_warp_scheds;
+        reg_id = cu->get_id() / cusPerSched;
+      }
       cu->dispatch(sub_core_model, reg_id);
     }
   }
@@ -3983,7 +3986,7 @@ void opndcoll_rfu_t::allocate_cu(unsigned port_num) {
           // Sub core model only allocates on the subset of CUs assigned to the scheduler that issued
           unsigned reg_id = (*inp.m_in[i]).get_ready_reg_id();
           schd_id = (*inp.m_in[i]).get_schd_id(reg_id);
-          assert(cu_set.size() % m_num_warp_scheds == 0);
+          assert(cu_set.size() % m_num_warp_scheds == 0 && cu_set.size() >= m_num_warp_scheds);
           unsigned cusPerSched = cu_set.size() / m_num_warp_scheds;
           cuLowerBound = schd_id * cusPerSched;
           cuUpperBound = cuLowerBound + cusPerSched;
