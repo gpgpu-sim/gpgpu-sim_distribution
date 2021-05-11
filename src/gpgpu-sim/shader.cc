@@ -377,41 +377,41 @@ void shader_core_ctx::create_exec_pipeline() {
 
   // m_fu = new simd_function_unit*[m_num_function_units];
 
-  for (int k = 0; k < m_config->gpgpu_num_sp_units; k++) {
-    m_fu.push_back(new sp_unit(&m_pipeline_reg[EX_WB], m_config, this));
+  for (unsigned k = 0; k < m_config->gpgpu_num_sp_units; k++) {
+    m_fu.push_back(new sp_unit(&m_pipeline_reg[EX_WB], m_config, this, k));
     m_dispatch_port.push_back(ID_OC_SP);
     m_issue_port.push_back(OC_EX_SP);
   }
 
-  for (int k = 0; k < m_config->gpgpu_num_dp_units; k++) {
-    m_fu.push_back(new dp_unit(&m_pipeline_reg[EX_WB], m_config, this));
+  for (unsigned k = 0; k < m_config->gpgpu_num_dp_units; k++) {
+    m_fu.push_back(new dp_unit(&m_pipeline_reg[EX_WB], m_config, this, k));
     m_dispatch_port.push_back(ID_OC_DP);
     m_issue_port.push_back(OC_EX_DP);
   }
-  for (int k = 0; k < m_config->gpgpu_num_int_units; k++) {
-    m_fu.push_back(new int_unit(&m_pipeline_reg[EX_WB], m_config, this));
+  for (unsigned k = 0; k < m_config->gpgpu_num_int_units; k++) {
+    m_fu.push_back(new int_unit(&m_pipeline_reg[EX_WB], m_config, this, k));
     m_dispatch_port.push_back(ID_OC_INT);
     m_issue_port.push_back(OC_EX_INT);
   }
 
-  for (int k = 0; k < m_config->gpgpu_num_sfu_units; k++) {
-    m_fu.push_back(new sfu(&m_pipeline_reg[EX_WB], m_config, this));
+  for (unsigned k = 0; k < m_config->gpgpu_num_sfu_units; k++) {
+    m_fu.push_back(new sfu(&m_pipeline_reg[EX_WB], m_config, this, k));
     m_dispatch_port.push_back(ID_OC_SFU);
     m_issue_port.push_back(OC_EX_SFU);
   }
 
-  for (int k = 0; k < m_config->gpgpu_num_tensor_core_units; k++) {
-    m_fu.push_back(new tensor_core(&m_pipeline_reg[EX_WB], m_config, this));
+  for (unsigned k = 0; k < m_config->gpgpu_num_tensor_core_units; k++) {
+    m_fu.push_back(new tensor_core(&m_pipeline_reg[EX_WB], m_config, this, k));
     m_dispatch_port.push_back(ID_OC_TENSOR_CORE);
     m_issue_port.push_back(OC_EX_TENSOR_CORE);
   }
 
-  for (int j = 0; j < m_config->m_specialized_unit.size(); j++) {
+  for (unsigned j = 0; j < m_config->m_specialized_unit.size(); j++) {
     for (unsigned k = 0; k < m_config->m_specialized_unit[j].num_units; k++) {
       m_fu.push_back(new specialized_unit(
           &m_pipeline_reg[EX_WB], m_config, this, SPEC_UNIT_START_ID + j,
           m_config->m_specialized_unit[j].name,
-          m_config->m_specialized_unit[j].latency));
+          m_config->m_specialized_unit[j].latency, k));
       m_dispatch_port.push_back(m_config->m_specialized_unit[j].ID_OC_SPEC_ID);
       m_issue_port.push_back(m_config->m_specialized_unit[j].OC_EX_SPEC_ID);
     }
@@ -419,7 +419,7 @@ void shader_core_ctx::create_exec_pipeline() {
 
   m_ldst_unit = new ldst_unit(m_icnt, m_mem_fetch_allocator, this,
                               &m_operand_collector, m_scoreboard, m_config,
-                              m_memory_config, m_stats, m_sid, m_tpc);
+                              m_memory_config, m_stats, m_sid, m_tpc, static_cast<unsigned>(0));
   m_fu.push_back(m_ldst_unit);
   m_dispatch_port.push_back(ID_OC_MEM);
   m_issue_port.push_back(OC_EX_MEM);
@@ -1669,8 +1669,13 @@ void shader_core_ctx::execute() {
     m_fu[n]->active_lanes_in_pipeline();
     unsigned issue_port = m_issue_port[n];
     register_set &issue_inst = m_pipeline_reg[issue_port];
-    warp_inst_t **ready_reg = issue_inst.get_ready();
-    if (issue_inst.has_ready() && m_fu[n]->can_issue(**ready_reg)) {
+    unsigned reg_id;
+    bool partition_issue = m_config->sub_core_model && m_fu[n]->is_issue_partitioned();
+    if (m_config->sub_core_model) {
+      reg_id = m_fu[n]->get_issue_reg_id();
+    }
+    warp_inst_t **ready_reg = issue_inst.get_ready(partition_issue, reg_id);
+    if (issue_inst.has_ready(partition_issue, reg_id) && m_fu[n]->can_issue(**ready_reg)) {
       bool schedule_wb_now = !m_fu[n]->stallable();
       int resbus = -1;
       if (schedule_wb_now &&
@@ -2113,16 +2118,17 @@ simd_function_unit::simd_function_unit(const shader_core_config *config) {
 }
 
 sfu::sfu(register_set *result_port, const shader_core_config *config,
-         shader_core_ctx *core)
-    : pipelined_simd_unit(result_port, config, config->max_sfu_latency, core) {
+         shader_core_ctx *core, unsigned issue_reg_id)
+    : pipelined_simd_unit(result_port, config, config->max_sfu_latency, core,
+     issue_reg_id) {
   m_name = "SFU";
 }
 
 tensor_core::tensor_core(register_set *result_port,
                          const shader_core_config *config,
-                         shader_core_ctx *core)
+                         shader_core_ctx *core, unsigned issue_reg_id)
     : pipelined_simd_unit(result_port, config, config->max_tensor_core_latency,
-                          core) {
+                          core, issue_reg_id) {
   m_name = "TENSOR_CORE";
 }
 
@@ -2208,29 +2214,29 @@ void tensor_core::active_lanes_in_pipeline() {
 }
 
 sp_unit::sp_unit(register_set *result_port, const shader_core_config *config,
-                 shader_core_ctx *core)
-    : pipelined_simd_unit(result_port, config, config->max_sp_latency, core) {
+                 shader_core_ctx *core, unsigned issue_reg_id)
+    : pipelined_simd_unit(result_port, config, config->max_sp_latency, core, issue_reg_id) {
   m_name = "SP ";
 }
 
 specialized_unit::specialized_unit(register_set *result_port,
                                    const shader_core_config *config,
                                    shader_core_ctx *core, unsigned supported_op,
-                                   char *unit_name, unsigned latency)
-    : pipelined_simd_unit(result_port, config, latency, core) {
+                                   char *unit_name, unsigned latency, unsigned issue_reg_id)
+    : pipelined_simd_unit(result_port, config, latency, core, issue_reg_id) {
   m_name = unit_name;
   m_supported_op = supported_op;
 }
 
 dp_unit::dp_unit(register_set *result_port, const shader_core_config *config,
-                 shader_core_ctx *core)
-    : pipelined_simd_unit(result_port, config, config->max_dp_latency, core) {
+                 shader_core_ctx *core, unsigned issue_reg_id)
+    : pipelined_simd_unit(result_port, config, config->max_dp_latency, core, issue_reg_id) {
   m_name = "DP ";
 }
 
 int_unit::int_unit(register_set *result_port, const shader_core_config *config,
-                   shader_core_ctx *core)
-    : pipelined_simd_unit(result_port, config, config->max_int_latency, core) {
+                   shader_core_ctx *core, unsigned issue_reg_id)
+    : pipelined_simd_unit(result_port, config, config->max_int_latency, core, issue_reg_id) {
   m_name = "INT ";
 }
 
@@ -2269,7 +2275,8 @@ void int_unit ::issue(register_set &source_reg) {
 pipelined_simd_unit::pipelined_simd_unit(register_set *result_port,
                                          const shader_core_config *config,
                                          unsigned max_latency,
-                                         shader_core_ctx *core)
+                                         shader_core_ctx *core,
+                                         unsigned issue_reg_id)
     : simd_function_unit(config) {
   m_result_port = result_port;
   m_pipeline_depth = max_latency;
@@ -2277,6 +2284,7 @@ pipelined_simd_unit::pipelined_simd_unit(register_set *result_port,
   for (unsigned i = 0; i < m_pipeline_depth; i++)
     m_pipeline_reg[i] = new warp_inst_t(config);
   m_core = core;
+  m_issue_reg_id = issue_reg_id;
   active_insts_in_pipeline = 0;
 }
 
@@ -2359,8 +2367,8 @@ ldst_unit::ldst_unit(mem_fetch_interface *icnt,
                      shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
                      Scoreboard *scoreboard, const shader_core_config *config,
                      const memory_config *mem_config, shader_core_stats *stats,
-                     unsigned sid, unsigned tpc)
-    : pipelined_simd_unit(NULL, config, config->smem_latency, core),
+                     unsigned sid, unsigned tpc, unsigned issue_reg_id)
+    : pipelined_simd_unit(NULL, config, config->smem_latency, core, issue_reg_id),
       m_next_wb(config) {
   assert(config->smem_latency > 1);
   init(icnt, mf_allocator, core, operand_collector, scoreboard, config,
@@ -2387,8 +2395,8 @@ ldst_unit::ldst_unit(mem_fetch_interface *icnt,
                      shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
                      Scoreboard *scoreboard, const shader_core_config *config,
                      const memory_config *mem_config, shader_core_stats *stats,
-                     unsigned sid, unsigned tpc, l1_cache *new_l1d_cache)
-    : pipelined_simd_unit(NULL, config, 3, core),
+                     unsigned sid, unsigned tpc, l1_cache *new_l1d_cache, unsigned issue_reg_id)
+    : pipelined_simd_unit(NULL, config, 3, core, issue_reg_id),
       m_L1D(new_l1d_cache),
       m_next_wb(config) {
   init(icnt, mf_allocator, core, operand_collector, scoreboard, config,
