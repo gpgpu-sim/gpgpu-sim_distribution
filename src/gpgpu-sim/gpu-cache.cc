@@ -251,22 +251,6 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
   unsigned long long valid_timestamp = (unsigned)-1;
 
   bool all_reserved = true;
-  unsigned count = 0;
-  if (m_config.m_wr_percent == (unsigned)25) {
-    for (unsigned i = 0; i < m_config.m_nset * m_config.m_assoc; i++) {
-      if (m_lines[i]->is_modified_line()) {
-        m_lines[i]->is_modified_line();
-        count++;
-      }
-    }
-    if (count != m_dirty) {
-      printf("count = %u, m_dirty = %u",count,m_dirty);
-      fflush(stdout);
-      assert(0 && "m_dirty miss match");
-      printf("count = %u, m_dirty = %u",count,m_dirty);
-
-    }
-  }
   // check for hit or pending hit
   for (unsigned way = 0; way < m_config.m_assoc; way++) {
     unsigned index = set_index * m_config.m_assoc + way;
