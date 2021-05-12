@@ -2122,8 +2122,6 @@ simd_function_unit::simd_function_unit(const shader_core_config *config) {
 void simd_function_unit::issue(register_set &source_reg) {
     bool partition_issue = m_config->sub_core_model && this->is_issue_partitioned();
     source_reg.move_out_to(partition_issue, this->get_issue_reg_id(), m_dispatch_reg);
-    std::cout << "EX stage issue stats:" << std::endl;
-    this->print(stdout);
     occupied.set(m_dispatch_reg->latency);
   }
 
@@ -4015,7 +4013,6 @@ void opndcoll_rfu_t::allocate_cu(unsigned port_num) {
         }
         for (unsigned k = cuLowerBound; k < cuUpperBound; k++) {
           if (cu_set[k].is_free()) {
-            std::cout << "Allocated schd_id: " << schd_id << " on cu: " << k << std::endl;
             collector_unit_t *cu = &cu_set[k];
             allocated = cu->allocate(inp.m_in[i], inp.m_out[i]);
             m_arbiter.add_read_requests(cu);
@@ -4139,18 +4136,6 @@ bool opndcoll_rfu_t::collector_unit_t::allocate(register_set *pipeline_reg_set,
 
 void opndcoll_rfu_t::collector_unit_t::dispatch() {
   assert(m_not_ready.none());
-  // Print out which OC dispatched which warp sched id to which exec pipeline
-  std::cout << "Dispatched from OC: "
-  << this->get_id()
-  << "\t Warp_id: "
-  << m_warp->get_uid()
-  << "\t Sched_id: "
-  << m_warp->get_schd_id()
-  << "\tto execution register: "
-  << m_output_register->get_name()
-  << "\treg id: "
-  << this->get_reg_id()
-  << std::endl;
   m_output_register->move_in(m_sub_core_model, m_reg_id, m_warp);
   m_free = true;
   m_output_register = NULL;
