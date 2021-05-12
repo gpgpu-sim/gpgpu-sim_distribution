@@ -1695,6 +1695,7 @@ void shader_core_ctx::execute() {
         << std::endl;
       } else if (!schedule_wb_now) {
         m_fu[n]->issue(issue_inst);
+        warp_inst_t** instr = issue_inst.get_ready(true, reg_id);
         std::cout << "EX stage issued warp_id: "
         << (*instr)->warp_id()
         << " schd_id: "
@@ -2135,6 +2136,11 @@ simd_function_unit::simd_function_unit(const shader_core_config *config) {
   m_config = config;
   m_dispatch_reg = new warp_inst_t(config);
 }
+
+void simd_function_unit::issue(register_set &source_reg) {
+    source_reg.move_out_to(m_config->sub_core_model, this->get_issue_reg_id(), m_dispatch_reg);
+    occupied.set(m_dispatch_reg->latency);
+  }
 
 sfu::sfu(register_set *result_port, const shader_core_config *config,
          shader_core_ctx *core, unsigned issue_reg_id)

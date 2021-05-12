@@ -1041,10 +1041,7 @@ class simd_function_unit {
   ~simd_function_unit() { delete m_dispatch_reg; }
 
   // modifiers
-  virtual void issue(register_set &source_reg) {
-    source_reg.move_out_to(m_config->sub_core_model, this->get_issue_reg_id(), m_dispatch_reg);
-    occupied.set(m_dispatch_reg->latency);
-  }
+  virtual void issue(register_set &source_reg);
   virtual void cycle() = 0;
   virtual void active_lanes_in_pipeline() = 0;
 
