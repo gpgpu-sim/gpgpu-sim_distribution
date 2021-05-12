@@ -1683,9 +1683,28 @@ void shader_core_ctx::execute() {
         assert((*ready_reg)->latency < MAX_ALU_LATENCY);
         m_result_bus[resbus]->set((*ready_reg)->latency);
         m_fu[n]->issue(issue_inst);
+        warp_inst_t** instr = issue_inst.get_ready(true, reg_id);
+        std::cout << "EX stage issued warp_id: "
+        << (*instr)->warp_id()
+        << " schd_id: "
+        << (*instr)->get_schd_id()
+        << " to pipeline: "
+        << m_fu[n]->get_name()
+        << " issue reg_id: "
+        << m_fu[n]->get_issue_reg_id()
+        << std::endl;
       } else if (!schedule_wb_now) {
         m_fu[n]->issue(issue_inst);
-      } else {
+        std::cout << "EX stage issued warp_id: "
+        << (*instr)->warp_id()
+        << " schd_id: "
+        << (*instr)->get_schd_id()
+        << " to pipeline: "
+        << m_fu[n]->get_name()
+        << " issue reg_id: "
+        << m_fu[n]->get_issue_reg_id()
+        << std::endl;
+        } else {
         // stall issue (cannot reserve result bus)
       }
     }
@@ -4004,7 +4023,7 @@ void opndcoll_rfu_t::allocate_cu(unsigned port_num) {
         }
         for (unsigned k = cuLowerBound; k < cuUpperBound; k++) {
           if (cu_set[k].is_free()) {
-            // std::cout << "Allocated schd_id: " << schd_id << " on cu: " << k << std::endl;
+            std::cout << "Allocated schd_id: " << schd_id << " on cu: " << k << std::endl;
             collector_unit_t *cu = &cu_set[k];
             allocated = cu->allocate(inp.m_in[i], inp.m_out[i]);
             m_arbiter.add_read_requests(cu);
@@ -4129,7 +4148,7 @@ bool opndcoll_rfu_t::collector_unit_t::allocate(register_set *pipeline_reg_set,
 void opndcoll_rfu_t::collector_unit_t::dispatch() {
   assert(m_not_ready.none());
   // Print out which OC dispatched which warp sched id to which exec pipeline
-  /* std::cout << "Dispatched from OC: "
+  std::cout << "Dispatched from OC: "
   << this->get_id()
   << "\t Warp_id: "
   << m_warp->get_uid()
@@ -4139,7 +4158,7 @@ void opndcoll_rfu_t::collector_unit_t::dispatch() {
   << m_output_register->get_name()
   << "\treg id: "
   << this->get_reg_id()
-  << std::endl; */
+  << std::endl;
   m_output_register->move_in(m_sub_core_model, m_reg_id, m_warp);
   m_free = true;
   m_output_register = NULL;
