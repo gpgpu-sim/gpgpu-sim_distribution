@@ -1671,7 +1671,7 @@ void shader_core_ctx::execute() {
     register_set &issue_inst = m_pipeline_reg[issue_port];
     unsigned reg_id;
     bool partition_issue = m_config->sub_core_model && m_fu[n]->is_issue_partitioned();
-    if (m_config->sub_core_model) {
+    if (partition_issue) {
       reg_id = m_fu[n]->get_issue_reg_id();
     }
     warp_inst_t **ready_reg = issue_inst.get_ready(partition_issue, reg_id);
@@ -1683,28 +1683,10 @@ void shader_core_ctx::execute() {
         assert((*ready_reg)->latency < MAX_ALU_LATENCY);
         m_result_bus[resbus]->set((*ready_reg)->latency);
         m_fu[n]->issue(issue_inst);
-        warp_inst_t** instr = issue_inst.get_ready(true, reg_id);
-        std::cout << "EX stage issued warp_id: "
-        << (*instr)->warp_id()
-        << " schd_id: "
-        << (*instr)->get_schd_id()
-        << " to pipeline: "
-        << m_fu[n]->get_name()
-        << " issue reg_id: "
-        << m_fu[n]->get_issue_reg_id()
-        << std::endl;
+        warp_inst_t** instr = issue_inst.get_ready(partition_issue, reg_id);
       } else if (!schedule_wb_now) {
         m_fu[n]->issue(issue_inst);
-        warp_inst_t** instr = issue_inst.get_ready(true, reg_id);
-        std::cout << "EX stage issued warp_id: "
-        << (*instr)->warp_id()
-        << " schd_id: "
-        << (*instr)->get_schd_id()
-        << " to pipeline: "
-        << m_fu[n]->get_name()
-        << " issue reg_id: "
-        << m_fu[n]->get_issue_reg_id()
-        << std::endl;
+        warp_inst_t** instr = issue_inst.get_ready(partition_issue, reg_id);
         } else {
         // stall issue (cannot reserve result bus)
       }
@@ -2138,7 +2120,10 @@ simd_function_unit::simd_function_unit(const shader_core_config *config) {
 }
 
 void simd_function_unit::issue(register_set &source_reg) {
-    source_reg.move_out_to(m_config->sub_core_model, this->get_issue_reg_id(), m_dispatch_reg);
+    bool partition_issue = m_config->sub_core_model && this->is_issue_partitioned();
+    source_reg.move_out_to(partition_issue, this->get_issue_reg_id(), m_dispatch_reg);
+    std::cout << "EX stage issue stats:" << std::endl;
+    this->print(stdout);
     occupied.set(m_dispatch_reg->latency);
   }
 
@@ -2336,7 +2321,8 @@ void pipelined_simd_unit::cycle() {
 
 void pipelined_simd_unit::issue(register_set &source_reg) {
   // move_warp(m_dispatch_reg,source_reg);
-  warp_inst_t **ready_reg = source_reg.get_ready(m_config->sub_core_model, m_issue_reg_id);
+  bool partition_issue = m_config->sub_core_model && this->is_issue_partitioned();
+  warp_inst_t **ready_reg = source_reg.get_ready(partition_issue, m_issue_reg_id);
   m_core->incexecstat((*ready_reg));
   // source_reg.move_out_to(m_dispatch_reg);
   simd_function_unit::issue(source_reg);
