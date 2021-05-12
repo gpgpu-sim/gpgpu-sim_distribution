@@ -1042,7 +1042,7 @@ class simd_function_unit {
 
   // modifiers
   virtual void issue(register_set &source_reg) {
-    source_reg.move_out_to(m_dispatch_reg);
+    source_reg.move_out_to(m_config->sub_core_model, this->get_issue_reg_id(), m_dispatch_reg);
     occupied.set(m_dispatch_reg->latency);
   }
   virtual void cycle() = 0;

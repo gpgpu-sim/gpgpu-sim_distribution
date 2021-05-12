@@ -2152,7 +2152,7 @@ tensor_core::tensor_core(register_set *result_port,
 }
 
 void sfu::issue(register_set &source_reg) {
-  warp_inst_t **ready_reg = source_reg.get_ready();
+  warp_inst_t **ready_reg = source_reg.get_ready(m_config->sub_core_model, m_issue_reg_id);
   // m_core->incexecstat((*ready_reg));
 
   (*ready_reg)->op_pipe = SFU__OP;
@@ -2161,7 +2161,7 @@ void sfu::issue(register_set &source_reg) {
 }
 
 void tensor_core::issue(register_set &source_reg) {
-  warp_inst_t **ready_reg = source_reg.get_ready();
+  warp_inst_t **ready_reg = source_reg.get_ready(m_config->sub_core_model, m_issue_reg_id);
   // m_core->incexecstat((*ready_reg));
 
   (*ready_reg)->op_pipe = TENSOR_CORE__OP;
@@ -2260,7 +2260,7 @@ int_unit::int_unit(register_set *result_port, const shader_core_config *config,
 }
 
 void sp_unit ::issue(register_set &source_reg) {
-  warp_inst_t **ready_reg = source_reg.get_ready();
+  warp_inst_t **ready_reg = source_reg.get_ready(m_config->sub_core_model, m_issue_reg_id);
   // m_core->incexecstat((*ready_reg));
   (*ready_reg)->op_pipe = SP__OP;
   m_core->incsp_stat(m_core->get_config()->warp_size, (*ready_reg)->latency);
@@ -2268,7 +2268,7 @@ void sp_unit ::issue(register_set &source_reg) {
 }
 
 void dp_unit ::issue(register_set &source_reg) {
-  warp_inst_t **ready_reg = source_reg.get_ready();
+  warp_inst_t **ready_reg = source_reg.get_ready(m_config->sub_core_model, m_issue_reg_id);
   // m_core->incexecstat((*ready_reg));
   (*ready_reg)->op_pipe = DP__OP;
   m_core->incsp_stat(m_core->get_config()->warp_size, (*ready_reg)->latency);
@@ -2284,7 +2284,7 @@ void specialized_unit ::issue(register_set &source_reg) {
 }
 
 void int_unit ::issue(register_set &source_reg) {
-  warp_inst_t **ready_reg = source_reg.get_ready();
+  warp_inst_t **ready_reg = source_reg.get_ready(m_config->sub_core_model, m_issue_reg_id);
   // m_core->incexecstat((*ready_reg));
   (*ready_reg)->op_pipe = INTP__OP;
   m_core->incsp_stat(m_core->get_config()->warp_size, (*ready_reg)->latency);
@@ -2330,7 +2330,7 @@ void pipelined_simd_unit::cycle() {
 
 void pipelined_simd_unit::issue(register_set &source_reg) {
   // move_warp(m_dispatch_reg,source_reg);
-  warp_inst_t **ready_reg = source_reg.get_ready();
+  warp_inst_t **ready_reg = source_reg.get_ready(m_config->sub_core_model, m_issue_reg_id);
   m_core->incexecstat((*ready_reg));
   // source_reg.move_out_to(m_dispatch_reg);
   simd_function_unit::issue(source_reg);

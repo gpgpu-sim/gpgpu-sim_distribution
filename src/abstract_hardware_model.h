@@ -1367,6 +1367,11 @@ class register_set {
     warp_inst_t **ready = get_ready();
     move_warp(dest, *ready);
   }
+  void move_out_to(bool sub_core_model, unsigned reg_id, warp_inst_t *&dest) {
+    if (!sub_core_model) { return move_out_to(dest);}
+    warp_inst_t **ready = get_ready(sub_core_model, reg_id);
+    move_warp(dest, *ready);
+  }
 
   warp_inst_t **get_ready() {
     warp_inst_t **ready;
