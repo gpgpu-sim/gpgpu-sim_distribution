@@ -1683,10 +1683,8 @@ void shader_core_ctx::execute() {
         assert((*ready_reg)->latency < MAX_ALU_LATENCY);
         m_result_bus[resbus]->set((*ready_reg)->latency);
         m_fu[n]->issue(issue_inst);
-        warp_inst_t** instr = issue_inst.get_ready(partition_issue, reg_id);
       } else if (!schedule_wb_now) {
         m_fu[n]->issue(issue_inst);
-        warp_inst_t** instr = issue_inst.get_ready(partition_issue, reg_id);
         } else {
         // stall issue (cannot reserve result bus)
       }
