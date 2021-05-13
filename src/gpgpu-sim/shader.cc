@@ -166,18 +166,15 @@ void shader_core_ctx::create_schedulers() {
   // must currently occur after all inputs have been initialized.
   std::string sched_config = m_config->gpgpu_scheduler_string;
   const concrete_scheduler scheduler =
-      sched_config.find("lrr") != std::string::npos
-          ? CONCRETE_SCHEDULER_LRR
-          : sched_config.find("two_level_active") != std::string::npos
-                ? CONCRETE_SCHEDULER_TWO_LEVEL_ACTIVE
-                : sched_config.find("gto") != std::string::npos
-                      ? CONCRETE_SCHEDULER_GTO
-                      : sched_config.find("old") != std::string::npos
-                            ? CONCRETE_SCHEDULER_OLDEST_FIRST
-                            : sched_config.find("warp_limiting") !=
-                                      std::string::npos
-                                  ? CONCRETE_SCHEDULER_WARP_LIMITING
-                                  : NUM_CONCRETE_SCHEDULERS;
+      sched_config.find("lrr") != std::string::npos ? CONCRETE_SCHEDULER_LRR
+      : sched_config.find("two_level_active") != std::string::npos
+          ? CONCRETE_SCHEDULER_TWO_LEVEL_ACTIVE
+      : sched_config.find("gto") != std::string::npos ? CONCRETE_SCHEDULER_GTO
+      : sched_config.find("old") != std::string::npos
+          ? CONCRETE_SCHEDULER_OLDEST_FIRST
+      : sched_config.find("warp_limiting") != std::string::npos
+          ? CONCRETE_SCHEDULER_WARP_LIMITING
+          : NUM_CONCRETE_SCHEDULERS;
   assert(scheduler != NUM_CONCRETE_SCHEDULERS);
 
   for (unsigned i = 0; i < m_config->gpgpu_num_sched_per_core; i++) {
@@ -1670,12 +1667,14 @@ void shader_core_ctx::execute() {
     unsigned issue_port = m_issue_port[n];
     register_set &issue_inst = m_pipeline_reg[issue_port];
     unsigned reg_id;
-    bool partition_issue = m_config->sub_core_model && m_fu[n]->is_issue_partitioned();
+    bool partition_issue =
+        m_config->sub_core_model && m_fu[n]->is_issue_partitioned();
     if (partition_issue) {
       reg_id = m_fu[n]->get_issue_reg_id();
     }
     warp_inst_t **ready_reg = issue_inst.get_ready(partition_issue, reg_id);
-    if (issue_inst.has_ready(partition_issue, reg_id) && m_fu[n]->can_issue(**ready_reg)) {
+    if (issue_inst.has_ready(partition_issue, reg_id) &&
+        m_fu[n]->can_issue(**ready_reg)) {
       bool schedule_wb_now = !m_fu[n]->stallable();
       int resbus = -1;
       if (schedule_wb_now &&
@@ -1685,7 +1684,7 @@ void shader_core_ctx::execute() {
         m_fu[n]->issue(issue_inst);
       } else if (!schedule_wb_now) {
         m_fu[n]->issue(issue_inst);
-        } else {
+      } else {
         // stall issue (cannot reserve result bus)
       }
     }
@@ -2118,15 +2117,17 @@ simd_function_unit::simd_function_unit(const shader_core_config *config) {
 }
 
 void simd_function_unit::issue(register_set &source_reg) {
-    bool partition_issue = m_config->sub_core_model && this->is_issue_partitioned();
-    source_reg.move_out_to(partition_issue, this->get_issue_reg_id(), m_dispatch_reg);
-    occupied.set(m_dispatch_reg->latency);
-  }
+  bool partition_issue =
+      m_config->sub_core_model && this->is_issue_partitioned();
+  source_reg.move_out_to(partition_issue, this->get_issue_reg_id(),
+                         m_dispatch_reg);
+  occupied.set(m_dispatch_reg->latency);
+}
 
 sfu::sfu(register_set *result_port, const shader_core_config *config,
          shader_core_ctx *core, unsigned issue_reg_id)
     : pipelined_simd_unit(result_port, config, config->max_sfu_latency, core,
-     issue_reg_id) {
+                          issue_reg_id) {
   m_name = "SFU";
 }
 
@@ -2139,7 +2140,8 @@ tensor_core::tensor_core(register_set *result_port,
 }
 
 void sfu::issue(register_set &source_reg) {
-  warp_inst_t **ready_reg = source_reg.get_ready(m_config->sub_core_model, m_issue_reg_id);
+  warp_inst_t **ready_reg =
+      source_reg.get_ready(m_config->sub_core_model, m_issue_reg_id);
   // m_core->incexecstat((*ready_reg));
 
   (*ready_reg)->op_pipe = SFU__OP;
@@ -2148,7 +2150,8 @@ void sfu::issue(register_set &source_reg) {
 }
 
 void tensor_core::issue(register_set &source_reg) {
-  warp_inst_t **ready_reg = source_reg.get_ready(m_config->sub_core_model, m_issue_reg_id);
+  warp_inst_t **ready_reg =
+      source_reg.get_ready(m_config->sub_core_model, m_issue_reg_id);
   // m_core->incexecstat((*ready_reg));
 
   (*ready_reg)->op_pipe = TENSOR_CORE__OP;
@@ -2221,14 +2224,16 @@ void tensor_core::active_lanes_in_pipeline() {
 
 sp_unit::sp_unit(register_set *result_port, const shader_core_config *config,
                  shader_core_ctx *core, unsigned issue_reg_id)
-    : pipelined_simd_unit(result_port, config, config->max_sp_latency, core, issue_reg_id) {
+    : pipelined_simd_unit(result_port, config, config->max_sp_latency, core,
+                          issue_reg_id) {
   m_name = "SP ";
 }
 
 specialized_unit::specialized_unit(register_set *result_port,
                                    const shader_core_config *config,
                                    shader_core_ctx *core, unsigned supported_op,
-                                   char *unit_name, unsigned latency, unsigned issue_reg_id)
+                                   char *unit_name, unsigned latency,
+                                   unsigned issue_reg_id)
     : pipelined_simd_unit(result_port, config, latency, core, issue_reg_id) {
   m_name = unit_name;
   m_supported_op = supported_op;
@@ -2236,18 +2241,21 @@ specialized_unit::specialized_unit(register_set *result_port,
 
 dp_unit::dp_unit(register_set *result_port, const shader_core_config *config,
                  shader_core_ctx *core, unsigned issue_reg_id)
-    : pipelined_simd_unit(result_port, config, config->max_dp_latency, core, issue_reg_id) {
+    : pipelined_simd_unit(result_port, config, config->max_dp_latency, core,
+                          issue_reg_id) {
   m_name = "DP ";
 }
 
 int_unit::int_unit(register_set *result_port, const shader_core_config *config,
                    shader_core_ctx *core, unsigned issue_reg_id)
-    : pipelined_simd_unit(result_port, config, config->max_int_latency, core, issue_reg_id) {
+    : pipelined_simd_unit(result_port, config, config->max_int_latency, core,
+                          issue_reg_id) {
   m_name = "INT ";
 }
 
 void sp_unit ::issue(register_set &source_reg) {
-  warp_inst_t **ready_reg = source_reg.get_ready(m_config->sub_core_model, m_issue_reg_id);
+  warp_inst_t **ready_reg =
+      source_reg.get_ready(m_config->sub_core_model, m_issue_reg_id);
   // m_core->incexecstat((*ready_reg));
   (*ready_reg)->op_pipe = SP__OP;
   m_core->incsp_stat(m_core->get_config()->warp_size, (*ready_reg)->latency);
@@ -2255,7 +2263,8 @@ void sp_unit ::issue(register_set &source_reg) {
 }
 
 void dp_unit ::issue(register_set &source_reg) {
-  warp_inst_t **ready_reg = source_reg.get_ready(m_config->sub_core_model, m_issue_reg_id);
+  warp_inst_t **ready_reg =
+      source_reg.get_ready(m_config->sub_core_model, m_issue_reg_id);
   // m_core->incexecstat((*ready_reg));
   (*ready_reg)->op_pipe = DP__OP;
   m_core->incsp_stat(m_core->get_config()->warp_size, (*ready_reg)->latency);
@@ -2271,7 +2280,8 @@ void specialized_unit ::issue(register_set &source_reg) {
 }
 
 void int_unit ::issue(register_set &source_reg) {
-  warp_inst_t **ready_reg = source_reg.get_ready(m_config->sub_core_model, m_issue_reg_id);
+  warp_inst_t **ready_reg =
+      source_reg.get_ready(m_config->sub_core_model, m_issue_reg_id);
   // m_core->incexecstat((*ready_reg));
   (*ready_reg)->op_pipe = INTP__OP;
   m_core->incsp_stat(m_core->get_config()->warp_size, (*ready_reg)->latency);
@@ -2317,8 +2327,10 @@ void pipelined_simd_unit::cycle() {
 
 void pipelined_simd_unit::issue(register_set &source_reg) {
   // move_warp(m_dispatch_reg,source_reg);
-  bool partition_issue = m_config->sub_core_model && this->is_issue_partitioned();
-  warp_inst_t **ready_reg = source_reg.get_ready(partition_issue, m_issue_reg_id);
+  bool partition_issue =
+      m_config->sub_core_model && this->is_issue_partitioned();
+  warp_inst_t **ready_reg =
+      source_reg.get_ready(partition_issue, m_issue_reg_id);
   m_core->incexecstat((*ready_reg));
   // source_reg.move_out_to(m_dispatch_reg);
   simd_function_unit::issue(source_reg);
@@ -3886,7 +3898,8 @@ void opndcoll_rfu_t::init(unsigned num_banks, shader_core_ctx *shader) {
   unsigned reg_id;
   if (sub_core_model) {
     assert(num_banks % shader->get_config()->gpgpu_num_sched_per_core == 0);
-    assert(m_num_warp_scheds <= m_cu.size() && m_cu.size() % m_num_warp_scheds == 0);
+    assert(m_num_warp_scheds <= m_cu.size() &&
+           m_cu.size() % m_num_warp_scheds == 0);
   }
   m_num_banks_per_sched =
       num_banks / shader->get_config()->gpgpu_num_sched_per_core;
@@ -3999,11 +4012,13 @@ void opndcoll_rfu_t::allocate_cu(unsigned port_num) {
         unsigned cuLowerBound = 0;
         unsigned cuUpperBound = cu_set.size();
         unsigned schd_id;
-        if(sub_core_model) {
-          // Sub core model only allocates on the subset of CUs assigned to the scheduler that issued
+        if (sub_core_model) {
+          // Sub core model only allocates on the subset of CUs assigned to the
+          // scheduler that issued
           unsigned reg_id = (*inp.m_in[i]).get_ready_reg_id();
           schd_id = (*inp.m_in[i]).get_schd_id(reg_id);
-          assert(cu_set.size() % m_num_warp_scheds == 0 && cu_set.size() >= m_num_warp_scheds);
+          assert(cu_set.size() % m_num_warp_scheds == 0 &&
+                 cu_set.size() >= m_num_warp_scheds);
           unsigned cusPerSched = cu_set.size() / m_num_warp_scheds;
           cuLowerBound = schd_id * cusPerSched;
           cuUpperBound = cuLowerBound + cusPerSched;
@@ -4019,8 +4034,9 @@ void opndcoll_rfu_t::allocate_cu(unsigned port_num) {
         }
         if (allocated) break;  // cu has been allocated, no need to search more.
       }
-      //break;  // can only service a single input, if it failed it will fail for
-              // others.
+      // break;  // can only service a single input, if it failed it will fail
+      // for
+      // others.
     }
   }
 }
@@ -4067,7 +4083,8 @@ void opndcoll_rfu_t::allocate_reads() {
 }
 
 bool opndcoll_rfu_t::collector_unit_t::ready() const {
-  return (!m_free) && m_not_ready.none() && (*m_output_register).has_free(m_sub_core_model, m_reg_id);
+  return (!m_free) && m_not_ready.none() &&
+         (*m_output_register).has_free(m_sub_core_model, m_reg_id);
 }
 
 void opndcoll_rfu_t::collector_unit_t::dump(
@@ -4085,13 +4102,10 @@ void opndcoll_rfu_t::collector_unit_t::dump(
   }
 }
 
-void opndcoll_rfu_t::collector_unit_t::init(unsigned n, unsigned num_banks,
-                                            unsigned log2_warp_size,
-                                            const core_config *config,
-                                            opndcoll_rfu_t *rfu,
-                                            bool sub_core_model,
-                                            unsigned reg_id,
-                                            unsigned banks_per_sched) {
+void opndcoll_rfu_t::collector_unit_t::init(
+    unsigned n, unsigned num_banks, unsigned log2_warp_size,
+    const core_config *config, opndcoll_rfu_t *rfu, bool sub_core_model,
+    unsigned reg_id, unsigned banks_per_sched) {
   m_rfu = rfu;
   m_cuid = n;
   m_num_banks = num_banks;

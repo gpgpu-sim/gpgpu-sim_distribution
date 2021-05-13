@@ -1291,7 +1291,7 @@ class register_set {
     }
     m_name = name;
   }
-  const char * get_name() {return m_name;}
+  const char *get_name() { return m_name; }
   bool has_free() {
     for (unsigned i = 0; i < regs.size(); i++) {
       if (regs[i]->empty()) {
@@ -1342,8 +1342,8 @@ class register_set {
     return reg_id;
   }
   unsigned get_schd_id(unsigned reg_id) {
-      assert(not regs[reg_id]->empty());
-      return regs[reg_id]->get_schd_id();
+    assert(not regs[reg_id]->empty());
+    return regs[reg_id]->get_schd_id();
   }
   void move_in(warp_inst_t *&src) {
     warp_inst_t **free = get_free();
@@ -1353,14 +1353,14 @@ class register_set {
   //   src->copy_contents_to(*get_free());
   //}
   void move_in(bool sub_core_model, unsigned reg_id, warp_inst_t *&src) {
-  warp_inst_t **free;
-  if (!sub_core_model) {
-    free = get_free();
-  } else {
-    assert(reg_id < regs.size());
-    free = get_free(sub_core_model, reg_id);
-  }
-  move_warp(*free, src);
+    warp_inst_t **free;
+    if (!sub_core_model) {
+      free = get_free();
+    } else {
+      assert(reg_id < regs.size());
+      free = get_free(sub_core_model, reg_id);
+    }
+    move_warp(*free, src);
   }
 
   void move_out_to(warp_inst_t *&dest) {
@@ -1368,7 +1368,9 @@ class register_set {
     move_warp(dest, *ready);
   }
   void move_out_to(bool sub_core_model, unsigned reg_id, warp_inst_t *&dest) {
-    if (!sub_core_model) { return move_out_to(dest);}
+    if (!sub_core_model) {
+      return move_out_to(dest);
+    }
     warp_inst_t **ready = get_ready(sub_core_model, reg_id);
     assert(ready != NULL);
     move_warp(dest, *ready);
@@ -1389,13 +1391,11 @@ class register_set {
     return ready;
   }
   warp_inst_t **get_ready(bool sub_core_model, unsigned reg_id) {
-    if (!sub_core_model)
-      return get_ready();
+    if (!sub_core_model) return get_ready();
     warp_inst_t **ready;
     ready = NULL;
     assert(reg_id < regs.size());
-    if (not regs[reg_id]->empty())
-      ready = &regs[reg_id];
+    if (not regs[reg_id]->empty()) ready = &regs[reg_id];
     return ready;
   }
 

@@ -238,7 +238,10 @@ class shd_warp_t {
   unsigned get_dynamic_warp_id() const { return m_dynamic_warp_id; }
   unsigned get_warp_id() const { return m_warp_id; }
 
-  class shader_core_ctx * get_shader() { return m_shader; }
+  class shader_core_ctx *get_shader() {
+    return m_shader;
+  }
+
  private:
   static const unsigned IBUFFER_SIZE = 2;
   class shader_core_ctx *m_shader;
@@ -883,7 +886,8 @@ class opndcoll_rfu_t {  // operand collector based register file unit
     // modifiers
     void init(unsigned n, unsigned num_banks, unsigned log2_warp_size,
               const core_config *config, opndcoll_rfu_t *rfu,
-              bool m_sub_core_model, unsigned reg_id, unsigned num_banks_per_sched);
+              bool m_sub_core_model, unsigned reg_id,
+              unsigned num_banks_per_sched);
     bool allocate(register_set *pipeline_reg, register_set *output_reg);
 
     void collect_operand(unsigned op) { m_not_ready.reset(op); }
@@ -907,7 +911,7 @@ class opndcoll_rfu_t {  // operand collector based register file unit
 
     unsigned m_num_banks_per_sched;
     bool m_sub_core_model;
-    unsigned m_reg_id; // if sub_core_model enabled, limit regs this cu can r/w
+    unsigned m_reg_id;  // if sub_core_model enabled, limit regs this cu can r/w
   };
 
   class dispatch_unit_t {
@@ -1051,7 +1055,7 @@ class simd_function_unit {
     return m_dispatch_reg->empty() && !occupied.test(inst.latency);
   }
   virtual bool is_issue_partitioned() = 0;
-  virtual unsigned get_issue_reg_id() = 0; 
+  virtual unsigned get_issue_reg_id() = 0;
   virtual bool stallable() const = 0;
   virtual void print(FILE *fp) const {
     fprintf(fp, "%s dispatch= ", m_name.c_str());
@@ -1109,8 +1113,8 @@ class pipelined_simd_unit : public simd_function_unit {
   warp_inst_t **m_pipeline_reg;
   register_set *m_result_port;
   class shader_core_ctx *m_core;
-  unsigned m_issue_reg_id; // if sub_core_model is enabled we can only issue from a
-                           // subset of operand collectors
+  unsigned m_issue_reg_id;  // if sub_core_model is enabled we can only issue
+                            // from a subset of operand collectors
 
   unsigned active_insts_in_pipeline;
 };
@@ -2145,8 +2149,8 @@ class shader_core_ctx : public core_t {
   friend class TwoLevelScheduler;
   friend class LooseRoundRobbinScheduler;
   virtual void issue_warp(register_set &warp, const warp_inst_t *pI,
-                  const active_mask_t &active_mask, unsigned warp_id,
-                  unsigned sch_id);
+                          const active_mask_t &active_mask, unsigned warp_id,
+                          unsigned sch_id);
 
   void create_front_pipeline();
   void create_schedulers();
