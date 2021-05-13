@@ -10,6 +10,3 @@ clang-format -i ${THIS_DIR}/src/cuda-sim/*.h
 clang-format -i ${THIS_DIR}/src/cuda-sim/*.cc
 clang-format -i ${THIS_DIR}/src/gpuwattch/*.h
 clang-format -i ${THIS_DIR}/src/gpuwattch/*.cc
-clang-format -i ${THIS_DIR}/src/trace-driven/*.h
-clang-format -i ${THIS_DIR}/src/trace-driven/*.cc
-clang-format -i ${THIS_DIR}/src/trace-driven/ISA_Def/*.h
