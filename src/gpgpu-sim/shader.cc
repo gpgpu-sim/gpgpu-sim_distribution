@@ -1569,7 +1569,10 @@ void swl_scheduler::order_warps() {
   }
 }
 
-void shader_core_ctx::read_operands() {}
+void shader_core_ctx::read_operands() {
+  for (int i = 0; i < m_config->reg_file_port_throughput; ++i)
+    m_operand_collector.step();
+}
 
 address_type coalesced_segment(address_type addr,
                                unsigned segment_size_lg2bytes) {
@@ -2550,8 +2553,7 @@ inst->space.get_type() != shared_space) { unsigned warp_id = inst->warp_id();
 */
 void ldst_unit::cycle() {
   writeback();
-  for (int i = 0; i < m_config->reg_file_port_throughput; ++i)
-    m_operand_collector->step();
+
   for (unsigned stage = 0; (stage + 1) < m_pipeline_depth; stage++)
     if (m_pipeline_reg[stage]->empty() && !m_pipeline_reg[stage + 1]->empty())
       move_warp(m_pipeline_reg[stage], m_pipeline_reg[stage + 1]);
