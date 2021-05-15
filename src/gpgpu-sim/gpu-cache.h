@@ -689,6 +689,9 @@ class cache_config {
       case 'L':
         m_set_index_function = LINEAR_SET_FUNCTION;
         break;
+      case 'X':
+        m_set_index_function = BITWISE_XORING_FUNCTION;
+        break;        
       default:
         exit_parse_error();
     }
