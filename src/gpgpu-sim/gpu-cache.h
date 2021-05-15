@@ -574,22 +574,26 @@ class cache_config {
         exit_parse_error();
     }
     if (m_alloc_policy == STREAMING) {
-      // For streaming cache, we set the alloc policy to be on-fill to remove
-      // all line_alloc_fail stalls we set the MSHRs to be equal to max
-      // allocated cache lines. This is possible by moving TAG to be shared
-      // between cache line and MSHR enrty (i.e. for each cache line, there is
-      // an MSHR rntey associated with it) This is the easiest think we can
-      // think about to model (mimic) L1 streaming cache in Pascal and Volta
-      // Based on our microbenchmakrs, MSHRs entries have been increasing
-      // substantially in Pascal and Volta For more information about streaming
-      // cache, see:
-      // http://on-demand.gputechconf.com/gtc/2017/presentation/s7798-luke-durant-inside-volta.pdf
-      // https://ieeexplore.ieee.org/document/8344474/
+      /*
+      For streaming cache:
+      (1) we set the alloc policy to be on-fill to remove all line_alloc_fail stalls.
+      if the whole memory is allocated to the L1 cache, then make the allocation to be on_MISS
+      otherwise, make it ON_FILL to eliminate line allocation fails. 
+      i.e. MSHR throughput is the same, independent on the L1 cache size/associativity
+      So, we set the allocation policy per kernel basis, see shader.cc, max_cta() function
+      
+      (2) We also set the MSHRs to be equal to max
+      allocated cache lines. This is possible by moving TAG to be shared
+      between cache line and MSHR enrty (i.e. for each cache line, there is
+      an MSHR rntey associated with it). This is the easiest think we can
+      think of to model (mimic) L1 streaming cache in Pascal and Volta
+      
+      For more information about streaming cache, see:
+      http://on-demand.gputechconf.com/gtc/2017/presentation/s7798-luke-durant-inside-volta.pdf
+      https://ieeexplore.ieee.org/document/8344474/
+      */
       m_is_streaming = true;
       m_alloc_policy = ON_FILL;
-      m_mshr_entries = m_nset * m_assoc * MAX_DEFAULT_CACHE_SIZE_MULTIBLIER;
-      if (m_cache_type == SECTOR) m_mshr_entries *= SECTOR_CHUNCK_SIZE;
-      m_mshr_max_merge = MAX_WARP_PER_SM;
     }
     switch (mshr_type) {
       case 'F':
@@ -638,7 +642,8 @@ class cache_config {
     }
 
     // detect invalid configuration
-    if (m_alloc_policy == ON_FILL and m_write_policy == WRITE_BACK) {
+    if ((m_alloc_policy == ON_FILL || m_alloc_policy == STREAMING) 
+        and m_write_policy == WRITE_BACK) {
       // A writeback cache with allocate-on-fill policy will inevitably lead to
       // deadlock: The deadlock happens when an incoming cache-fill evicts a
       // dirty line, generating a writeback request.  If the memory subsystem is
@@ -750,6 +755,9 @@ class cache_config {
   }
   bool is_streaming() { return m_is_streaming; }
   FuncCache get_cache_status() { return cache_status; }
+  void set_allocation_policy(enum allocation_policy_t alloc) {
+    m_alloc_policy = alloc;
+  }
   char *m_config_string;
   char *m_config_stringPrefL1;
   char *m_config_stringPrefShared;

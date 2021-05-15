@@ -312,15 +312,6 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
     abort();  // if an unreserved block exists, it is either invalid or
               // replaceable
 
-  if (probe_mode && m_config.is_streaming()) {
-    line_table::const_iterator i =
-        pending_lines.find(m_config.block_addr(addr));
-    assert(mf);
-    if (!mf->is_write() && i != pending_lines.end()) {
-      if (i->second != mf->get_inst().get_uid()) return SECTOR_MISS;
-    }
-  }
-
   return MISS;
 }
 
@@ -1060,7 +1051,6 @@ void baseline_cache::fill(mem_fetch *mf, unsigned time) {
     m_tag_array->fill(e->second.m_cache_index, time, mf);
   else if (m_config.m_alloc_policy == ON_FILL) {
     m_tag_array->fill(e->second.m_block_addr, time, mf);
-    if (m_config.is_streaming()) m_tag_array->remove_pending_line(mf);
   } else
     abort();
   bool has_atomic = false;
@@ -1136,9 +1126,6 @@ void baseline_cache::send_read_request(new_addr_type addr,
       m_tag_array->access(block_addr, time, cache_index, wb, evicted, mf);
 
     m_mshrs.add(mshr_addr, mf);
-    if (m_config.is_streaming() && m_config.m_cache_type == SECTOR) {
-      m_tag_array->add_pending_line(mf);
-    }
     m_extra_mf_fields[mf] = extra_mf_fields(
         mshr_addr, mf->get_addr(), cache_index, mf->get_data_size(), m_config);
     mf->set_data_size(m_config.get_atom_sz());
