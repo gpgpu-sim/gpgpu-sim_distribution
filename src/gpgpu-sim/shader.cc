@@ -2272,7 +2272,8 @@ void dp_unit ::issue(register_set &source_reg) {
 }
 
 void specialized_unit ::issue(register_set &source_reg) {
-  warp_inst_t **ready_reg = source_reg.get_ready();
+  warp_inst_t **ready_reg = 
+      source_reg.get_ready(m_config->sub_core_model, m_issue_reg_id);
   // m_core->incexecstat((*ready_reg));
   (*ready_reg)->op_pipe = SPECIALIZED__OP;
   m_core->incsp_stat(m_core->get_config()->warp_size, (*ready_reg)->latency);
