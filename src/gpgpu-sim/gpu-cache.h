@@ -616,6 +616,8 @@ class cache_config {
     m_atom_sz = (m_cache_type == SECTOR) ? SECTOR_SIZE : m_line_sz;
     m_sector_sz_log2 = LOGB2(SECTOR_SIZE);
     original_m_assoc = m_assoc;
+    original_sz = m_nset * original_m_assoc * m_line_sz;
+
 
     // For more details about difference between FETCH_ON_WRITE and WRITE
     // VALIDAE policies Read: Jouppi, Norman P. "Cache write policies and
@@ -710,6 +712,14 @@ class cache_config {
     assert(m_valid);
     return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER * original_m_assoc;
   }
+  unsigned get_original_assoc() const {
+    assert(m_valid);
+    return original_m_assoc;
+  }
+  unsigned get_original_sz() const {
+    assert(m_valid);
+    return original_sz;
+  }
   void print(FILE *fp) const {
     fprintf(fp, "Size = %d B (%d Set x %d-way x %d byte line)\n",
             m_line_sz * m_nset * m_assoc, m_nset, m_assoc, m_line_sz);
@@ -777,6 +787,7 @@ class cache_config {
   unsigned m_atom_sz;
   unsigned m_sector_sz_log2;
   unsigned original_m_assoc;
+  unsigned original_sz;
   bool m_is_streaming;
 
   enum replacement_policy_t m_replacement_policy;  // 'L' = LRU, 'F' = FIFO
