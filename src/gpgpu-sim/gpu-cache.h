@@ -491,6 +491,7 @@ class cache_config {
     m_data_port_width = 0;
     m_set_index_function = LINEAR_SET_FUNCTION;
     m_is_streaming = false;
+    m_wr_percent = 0;
   }
   void init(char *config, FuncCache status) {
     cache_status = status;
@@ -754,6 +755,10 @@ class cache_config {
   char *m_config_stringPrefL1;
   char *m_config_stringPrefShared;
   FuncCache cache_status;
+  unsigned m_wr_percent;
+  write_allocate_policy_t get_write_allocate_policy() {
+    return m_write_alloc_policy;
+  }
 
  protected:
   void exit_parse_error() {
