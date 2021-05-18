@@ -238,7 +238,10 @@ class shd_warp_t {
   unsigned get_dynamic_warp_id() const { return m_dynamic_warp_id; }
   unsigned get_warp_id() const { return m_warp_id; }
 
-  class shader_core_ctx * get_shader() { return m_shader; }
+  class shader_core_ctx *get_shader() {
+    return m_shader;
+  }
+
  private:
   static const unsigned IBUFFER_SIZE = 2;
   class shader_core_ctx *m_shader;
@@ -878,11 +881,13 @@ class opndcoll_rfu_t {  // operand collector based register file unit
     }
     unsigned get_sp_op() const { return m_warp->sp_op; }
     unsigned get_id() const { return m_cuid; }  // returns CU hw id
+    unsigned get_reg_id() const { return m_reg_id; }
 
     // modifiers
     void init(unsigned n, unsigned num_banks, unsigned log2_warp_size,
               const core_config *config, opndcoll_rfu_t *rfu,
-              bool m_sub_core_model, unsigned num_banks_per_sched);
+              bool m_sub_core_model, unsigned reg_id,
+              unsigned num_banks_per_sched);
     bool allocate(register_set *pipeline_reg, register_set *output_reg);
 
     void collect_operand(unsigned op) { m_not_ready.reset(op); }
@@ -906,6 +911,7 @@ class opndcoll_rfu_t {  // operand collector based register file unit
 
     unsigned m_num_banks_per_sched;
     bool m_sub_core_model;
+    unsigned m_reg_id;  // if sub_core_model enabled, limit regs this cu can r/w
   };
 
   class dispatch_unit_t {
@@ -947,7 +953,7 @@ class opndcoll_rfu_t {  // operand collector based register file unit
   arbiter_t m_arbiter;
 
   unsigned m_num_banks_per_sched;
-  unsigned m_num_warp_sceds;
+  unsigned m_num_warp_scheds;
   bool sub_core_model;
 
   // unsigned m_num_ports;
@@ -1039,10 +1045,7 @@ class simd_function_unit {
   ~simd_function_unit() { delete m_dispatch_reg; }
 
   // modifiers
-  virtual void issue(register_set &source_reg) {
-    source_reg.move_out_to(m_dispatch_reg);
-    occupied.set(m_dispatch_reg->latency);
-  }
+  virtual void issue(register_set &source_reg);
   virtual void cycle() = 0;
   virtual void active_lanes_in_pipeline() = 0;
 
@@ -1051,6 +1054,8 @@ class simd_function_unit {
   virtual bool can_issue(const warp_inst_t &inst) const {
     return m_dispatch_reg->empty() && !occupied.test(inst.latency);
   }
+  virtual bool is_issue_partitioned() = 0;
+  virtual unsigned get_issue_reg_id() = 0;
   virtual bool stallable() const = 0;
   virtual void print(FILE *fp) const {
     fprintf(fp, "%s dispatch= ", m_name.c_str());
@@ -1070,7 +1075,7 @@ class pipelined_simd_unit : public simd_function_unit {
  public:
   pipelined_simd_unit(register_set *result_port,
                       const shader_core_config *config, unsigned max_latency,
-                      shader_core_ctx *core);
+                      shader_core_ctx *core, unsigned issue_reg_id);
 
   // modifiers
   virtual void cycle();
@@ -1091,6 +1096,8 @@ class pipelined_simd_unit : public simd_function_unit {
   virtual bool can_issue(const warp_inst_t &inst) const {
     return simd_function_unit::can_issue(inst);
   }
+  virtual bool is_issue_partitioned() = 0;
+  unsigned get_issue_reg_id() { return m_issue_reg_id; }
   virtual void print(FILE *fp) const {
     simd_function_unit::print(fp);
     for (int s = m_pipeline_depth - 1; s >= 0; s--) {
@@ -1106,6 +1113,8 @@ class pipelined_simd_unit : public simd_function_unit {
   warp_inst_t **m_pipeline_reg;
   register_set *m_result_port;
   class shader_core_ctx *m_core;
+  unsigned m_issue_reg_id;  // if sub_core_model is enabled we can only issue
+                            // from a subset of operand collectors
 
   unsigned active_insts_in_pipeline;
 };
@@ -1113,7 +1122,7 @@ class pipelined_simd_unit : public simd_function_unit {
 class sfu : public pipelined_simd_unit {
  public:
   sfu(register_set *result_port, const shader_core_config *config,
-      shader_core_ctx *core);
+      shader_core_ctx *core, unsigned issue_reg_id);
   virtual bool can_issue(const warp_inst_t &inst) const {
     switch (inst.op) {
       case SFU_OP:
@@ -1129,12 +1138,13 @@ class sfu : public pipelined_simd_unit {
   }
   virtual void active_lanes_in_pipeline();
   virtual void issue(register_set &source_reg);
+  bool is_issue_partitioned() { return true; }
 };
 
 class dp_unit : public pipelined_simd_unit {
  public:
   dp_unit(register_set *result_port, const shader_core_config *config,
-          shader_core_ctx *core);
+          shader_core_ctx *core, unsigned issue_reg_id);
   virtual bool can_issue(const warp_inst_t &inst) const {
     switch (inst.op) {
       case DP_OP:
@@ -1146,12 +1156,13 @@ class dp_unit : public pipelined_simd_unit {
   }
   virtual void active_lanes_in_pipeline();
   virtual void issue(register_set &source_reg);
+  bool is_issue_partitioned() { return true; }
 };
 
 class tensor_core : public pipelined_simd_unit {
  public:
   tensor_core(register_set *result_port, const shader_core_config *config,
-              shader_core_ctx *core);
+              shader_core_ctx *core, unsigned issue_reg_id);
   virtual bool can_issue(const warp_inst_t &inst) const {
     switch (inst.op) {
       case TENSOR_CORE_OP:
@@ -1163,12 +1174,13 @@ class tensor_core : public pipelined_simd_unit {
   }
   virtual void active_lanes_in_pipeline();
   virtual void issue(register_set &source_reg);
+  bool is_issue_partitioned() { return true; }
 };
 
 class int_unit : public pipelined_simd_unit {
  public:
   int_unit(register_set *result_port, const shader_core_config *config,
-           shader_core_ctx *core);
+           shader_core_ctx *core, unsigned issue_reg_id);
   virtual bool can_issue(const warp_inst_t &inst) const {
     switch (inst.op) {
       case SFU_OP:
@@ -1194,12 +1206,13 @@ class int_unit : public pipelined_simd_unit {
   }
   virtual void active_lanes_in_pipeline();
   virtual void issue(register_set &source_reg);
+  bool is_issue_partitioned() { return true; }
 };
 
 class sp_unit : public pipelined_simd_unit {
  public:
   sp_unit(register_set *result_port, const shader_core_config *config,
-          shader_core_ctx *core);
+          shader_core_ctx *core, unsigned issue_reg_id);
   virtual bool can_issue(const warp_inst_t &inst) const {
     switch (inst.op) {
       case SFU_OP:
@@ -1223,13 +1236,14 @@ class sp_unit : public pipelined_simd_unit {
   }
   virtual void active_lanes_in_pipeline();
   virtual void issue(register_set &source_reg);
+  bool is_issue_partitioned() { return true; }
 };
 
 class specialized_unit : public pipelined_simd_unit {
  public:
   specialized_unit(register_set *result_port, const shader_core_config *config,
                    shader_core_ctx *core, unsigned supported_op,
-                   char *unit_name, unsigned latency);
+                   char *unit_name, unsigned latency, unsigned issue_reg_id);
   virtual bool can_issue(const warp_inst_t &inst) const {
     if (inst.op != m_supported_op) {
       return false;
@@ -1238,6 +1252,7 @@ class specialized_unit : public pipelined_simd_unit {
   }
   virtual void active_lanes_in_pipeline();
   virtual void issue(register_set &source_reg);
+  bool is_issue_partitioned() { return true; }
 
  private:
   unsigned m_supported_op;
@@ -1259,6 +1274,7 @@ class ldst_unit : public pipelined_simd_unit {
 
   // modifiers
   virtual void issue(register_set &inst);
+  bool is_issue_partitioned() { return false; }
   virtual void cycle();
 
   void fill(mem_fetch *mf);
@@ -2133,8 +2149,8 @@ class shader_core_ctx : public core_t {
   friend class TwoLevelScheduler;
   friend class LooseRoundRobbinScheduler;
   virtual void issue_warp(register_set &warp, const warp_inst_t *pI,
-                  const active_mask_t &active_mask, unsigned warp_id,
-                  unsigned sch_id);
+                          const active_mask_t &active_mask, unsigned warp_id,
+                          unsigned sch_id);
 
   void create_front_pipeline();
   void create_schedulers();
