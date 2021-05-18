@@ -1291,6 +1291,7 @@ class register_set {
     }
     m_name = name;
   }
+  const char *get_name() { return m_name; }
   bool has_free() {
     for (unsigned i = 0; i < regs.size(); i++) {
       if (regs[i]->empty()) {
@@ -1315,7 +1316,35 @@ class register_set {
     }
     return false;
   }
+  bool has_ready(bool sub_core_model, unsigned reg_id) {
+    if (!sub_core_model) return has_ready();
+    assert(reg_id < regs.size());
+    return (not regs[reg_id]->empty());
+  }
 
+  unsigned get_ready_reg_id() {
+    // for sub core model we need to figure which reg_id has the ready warp
+    // this function should only be called if has_ready() was true
+    assert(has_ready());
+    warp_inst_t **ready;
+    ready = NULL;
+    unsigned reg_id;
+    for (unsigned i = 0; i < regs.size(); i++) {
+      if (not regs[i]->empty()) {
+        if (ready and (*ready)->get_uid() < regs[i]->get_uid()) {
+          // ready is oldest
+        } else {
+          ready = &regs[i];
+          reg_id = i;
+        }
+      }
+    }
+    return reg_id;
+  }
+  unsigned get_schd_id(unsigned reg_id) {
+    assert(not regs[reg_id]->empty());
+    return regs[reg_id]->get_schd_id();
+  }
   void move_in(warp_inst_t *&src) {
     warp_inst_t **free = get_free();
     move_warp(*free, src);
@@ -1323,8 +1352,27 @@ class register_set {
   // void copy_in( warp_inst_t* src ){
   //   src->copy_contents_to(*get_free());
   //}
+  void move_in(bool sub_core_model, unsigned reg_id, warp_inst_t *&src) {
+    warp_inst_t **free;
+    if (!sub_core_model) {
+      free = get_free();
+    } else {
+      assert(reg_id < regs.size());
+      free = get_free(sub_core_model, reg_id);
+    }
+    move_warp(*free, src);
+  }
+
   void move_out_to(warp_inst_t *&dest) {
     warp_inst_t **ready = get_ready();
+    move_warp(dest, *ready);
+  }
+  void move_out_to(bool sub_core_model, unsigned reg_id, warp_inst_t *&dest) {
+    if (!sub_core_model) {
+      return move_out_to(dest);
+    }
+    warp_inst_t **ready = get_ready(sub_core_model, reg_id);
+    assert(ready != NULL);
     move_warp(dest, *ready);
   }
 
@@ -1340,6 +1388,14 @@ class register_set {
         }
       }
     }
+    return ready;
+  }
+  warp_inst_t **get_ready(bool sub_core_model, unsigned reg_id) {
+    if (!sub_core_model) return get_ready();
+    warp_inst_t **ready;
+    ready = NULL;
+    assert(reg_id < regs.size());
+    if (not regs[reg_id]->empty()) ready = &regs[reg_id];
     return ready;
   }
 
