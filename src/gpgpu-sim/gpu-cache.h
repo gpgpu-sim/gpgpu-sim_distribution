@@ -821,6 +821,9 @@ class cache_config {
   write_allocate_policy_t get_write_allocate_policy() {
     return m_write_alloc_policy;
   }
+  write_policy_t get_write_policy() {
+    return m_write_policy;
+  }
 
  protected:
   void exit_parse_error() {

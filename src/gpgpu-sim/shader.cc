@@ -1989,9 +1989,10 @@ void ldst_unit::L1_latency_queue_cycle() {
       } else {
         assert(status == MISS || status == HIT_RESERVED);
         l1_latency_queue[j][0] = NULL;
-        if (mf_next->get_inst().is_store() &&
+        if (m_config->m_L1D_config.get_write_policy() != WRITE_THROUGH &&
+            mf_next->get_inst().is_store() &&
             (m_config->m_L1D_config.get_write_allocate_policy() == FETCH_ON_WRITE ||
-              m_config->m_L1D_config.get_write_allocate_policy() == LAZY_FETCH_ON_READ) &&
+            m_config->m_L1D_config.get_write_allocate_policy() == LAZY_FETCH_ON_READ) &&
             !was_writeallocate_sent(events)) {
           unsigned dec_ack =
               (m_config->m_L1D_config.get_mshr_type() == SECTOR_ASSOC)
