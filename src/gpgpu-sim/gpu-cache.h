@@ -841,8 +841,8 @@ class cache_config {
   char *m_config_stringPrefL1;
   char *m_config_stringPrefShared;
   FuncCache cache_status;
-  unsigned m_wr_percent;
   unsigned m_unified_cache_size;
+  unsigned m_wr_percent;
   write_allocate_policy_t get_write_allocate_policy() {
     return m_write_alloc_policy;
   }
@@ -897,7 +897,6 @@ class cache_config {
   unsigned m_data_port_width;  //< number of byte the cache can access per cycle
   enum set_index_function
       m_set_index_function;  // Hash, linear, or custom set index function
-  unsigned m_wr_percent;
 
   friend class tag_array;
   friend class baseline_cache;

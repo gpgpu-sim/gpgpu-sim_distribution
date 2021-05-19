@@ -3391,13 +3391,12 @@ unsigned int shader_core_config::max_cta(const kernel_info_t &k) const {
         assert(0);
     }
 
-<<<<<<< HEAD
     if(m_L1D_config.is_streaming()) {
       //for streaming cache, if the whole memory is allocated
       //to the L1 cache, then make the allocation to be on_MISS
       //otherwise, make it ON_FILL to eliminate line allocation fails
       //i.e. MSHR throughput is the same, independent on the L1 cache size/associativity
-      if(total_shmed == 0) {
+      if(total_shmem == 0) {
         m_L1D_config.set_allocation_policy(ON_MISS);
         printf("GPGPU-Sim: Reconfigure L1 allocation to ON_MISS\n");
       }
@@ -3406,10 +3405,8 @@ unsigned int shader_core_config::max_cta(const kernel_info_t &k) const {
         printf("GPGPU-Sim: Reconfigure L1 allocation to ON_FILL\n");
       }
     }
-=======
     printf("GPGPU-Sim: Reconfigure L1 cache to %uKB\n",
            m_L1D_config.get_total_size_inKB());
->>>>>>> 2b2b6a2916e4ed833c707be887bf927167a71fa6
 
     k.cache_config_set = true;
   }
