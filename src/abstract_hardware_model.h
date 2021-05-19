@@ -65,7 +65,7 @@ enum FuncCache {
   FuncCachePreferL1 = 2
 };
 
-enum AdaptiveCache { FIXED = 0, ADAPTIVE_VOLTA = 1 };
+enum AdaptiveCache { FIXED = 0, ADAPTIVE_CACHE = 1 };
 
 #ifdef __cplusplus
 
@@ -373,6 +373,7 @@ class core_config {
   }
   unsigned mem_warp_parts;
   mutable unsigned gpgpu_shmem_size;
+  char *gpgpu_shmem_option;
   unsigned gpgpu_shmem_sizeDefault;
   unsigned gpgpu_shmem_sizePrefL1;
   unsigned gpgpu_shmem_sizePrefShared;
@@ -869,6 +870,12 @@ class mem_fetch_allocator {
   virtual mem_fetch *alloc(const class warp_inst_t &inst,
                            const mem_access_t &access,
                            unsigned long long cycle) const = 0;
+  virtual mem_fetch *alloc(new_addr_type addr, mem_access_type type,
+                            const active_mask_t &active_mask,
+                            const mem_access_byte_mask_t &byte_mask,
+                            const mem_access_sector_mask_t &sector_mask,
+                            unsigned size, bool wr,
+                            unsigned long long cycle) const = 0;                    
 };
 
 // the maximum number of destination, source, or address uarch operands in a

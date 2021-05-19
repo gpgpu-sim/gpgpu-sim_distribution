@@ -61,6 +61,21 @@ mem_fetch *shader_core_mem_fetch_allocator::alloc(
                     m_core_id, m_cluster_id, m_memory_config, cycle);
   return mf;
 }
+
+mem_fetch *shader_core_mem_fetch_allocator::alloc(
+  new_addr_type addr, mem_access_type type,
+  const active_mask_t &active_mask,
+  const mem_access_byte_mask_t &byte_mask,
+  const mem_access_sector_mask_t &sector_mask,
+  unsigned size, bool wr,
+  unsigned long long cycle) const {
+    mem_access_t access(type, addr, size, wr, active_mask, byte_mask, 
+                          sector_mask, m_memory_config->gpgpu_ctx);
+    mem_fetch *mf =
+      new mem_fetch(access, NULL, wr ? WRITE_PACKET_SIZE : READ_PACKET_SIZE, -1,
+                    m_core_id, m_cluster_id, m_memory_config, cycle);
+      return mf;
+  }
 /////////////////////////////////////////////////////////////////////////////
 
 std::list<unsigned> shader_core_ctx::get_regs_written(const inst_t &fvt) const {
@@ -1989,6 +2004,19 @@ void ldst_unit::L1_latency_queue_cycle() {
       } else {
         assert(status == MISS || status == HIT_RESERVED);
         l1_latency_queue[j][0] = NULL;
+        if (m_config->m_L1D_config.get_write_policy() != WRITE_THROUGH &&
+            mf_next->get_inst().is_store() &&
+            (m_config->m_L1D_config.get_write_allocate_policy() == FETCH_ON_WRITE ||
+            m_config->m_L1D_config.get_write_allocate_policy() == LAZY_FETCH_ON_READ) &&
+            !was_writeallocate_sent(events)) {
+          unsigned dec_ack =
+              (m_config->m_L1D_config.get_mshr_type() == SECTOR_ASSOC)
+                  ? (mf_next->get_data_size() / SECTOR_SIZE)
+                  : 1;
+          mf_next->set_reply();
+          for (unsigned i = 0; i < dec_ack; ++i) m_core->store_ack(mf_next);
+          if (!write_sent && !read_sent) delete mf_next;
+        }
       }
     }
 
@@ -3306,50 +3334,64 @@ unsigned int shader_core_config::max_cta(const kernel_info_t &k) const {
   if (adaptive_cache_config && !k.cache_config_set) {
     // For more info about adaptive cache, see
     // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#shared-memory-7-x
-    unsigned total_shmed = kernel_info->smem * result;
-    assert(total_shmed >= 0 && total_shmed <= gpgpu_shmem_size);
-    // assert(gpgpu_shmem_size == 98304); //Volta has 96 KB shared
-    // assert(m_L1D_config.get_nset() == 4);  //Volta L1 has four sets
-    if (total_shmed < gpgpu_shmem_size) {
-      switch (adaptive_cache_config) {
-        case FIXED:
-          break;
-        case ADAPTIVE_VOLTA: {
-          // For Volta, we assign the remaining shared memory to L1 cache
-          // For more info about adaptive cache, see
-          // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#shared-memory-7-x
-          // assert(gpgpu_shmem_size == 98304); //Volta has 96 KB shared
-
-          // To Do: make it flexible and not tuned to 9KB share memory
-          unsigned max_assoc = m_L1D_config.get_max_assoc();
-          if (total_shmed == 0)
-            m_L1D_config.set_assoc(max_assoc);  // L1 is 128KB and shd=0
-          else if (total_shmed > 0 && total_shmed <= 8192)
-            m_L1D_config.set_assoc(0.9375 *
-                                   max_assoc);  // L1 is 120KB and shd=8KB
-          else if (total_shmed > 8192 && total_shmed <= 16384)
-            m_L1D_config.set_assoc(0.875 *
-                                   max_assoc);  // L1 is 112KB and shd=16KB
-          else if (total_shmed > 16384 && total_shmed <= 32768)
-            m_L1D_config.set_assoc(0.75 * max_assoc);  // L1 is 96KB and
-                                                       // shd=32KB
-          else if (total_shmed > 32768 && total_shmed <= 65536)
-            m_L1D_config.set_assoc(0.5 * max_assoc);  // L1 is 64KB and shd=64KB
-          else if (total_shmed > 65536 && total_shmed <= gpgpu_shmem_size)
-            m_L1D_config.set_assoc(0.25 * max_assoc);  // L1 is 32KB and
-                                                       // shd=96KB
-          else
-            assert(0);
-          break;
+    std::vector<unsigned> shmem_list;
+    for (unsigned i = 0; i < strlen(gpgpu_shmem_option); i++) {
+      char option[4];
+      int j = 0;
+      while (gpgpu_shmem_option[i] != ',' && i < strlen(gpgpu_shmem_option)) {
+        if (gpgpu_shmem_option[i] == ' ') {
+          // skip spaces
+          i++;
+        } else {
+          if (!isdigit(gpgpu_shmem_option[i])) {
+            // check for non digits, which should not be here
+            assert(0 && "invalid config: -gpgpu_shmem_option");
+          }
+          option[j] = gpgpu_shmem_option[i];
+          j++;
+          i++;
         }
-        default:
-          assert(0);
       }
-
-      printf("GPGPU-Sim: Reconfigure L1 cache to %uKB\n",
-             m_L1D_config.get_total_size_inKB());
+      // convert KB -> B
+      shmem_list.push_back((unsigned)atoi(option) * 1024);
     }
 
+    unsigned total_shmem = kernel_info->smem * result;
+    // Unified cache config is in KB. Converting to B
+    unsigned total_unified = m_L1D_config.m_unified_cache_size * 1024;
+    std::sort(shmem_list.begin(), shmem_list.end());
+
+    assert(total_shmem >= 0 && total_shmem <= shmem_list.back());
+    switch (adaptive_cache_config) {
+      case FIXED:
+        break;
+      case ADAPTIVE_CACHE: {
+        // For more info about adaptive cache, see
+        bool l1d_configured = false;
+        unsigned max_assoc = m_L1D_config.get_max_assoc();
+
+        if (total_shmem == 0) {
+          m_L1D_config.set_assoc(max_assoc);
+          l1d_configured = true;
+        } else {
+          for (std::vector<unsigned>::iterator it = shmem_list.begin();
+               it < shmem_list.end() - 1; it++) {
+            if (total_shmem > *it && total_shmem <= *(it + 1)) {
+              float l1_ratio = 1 - (float) *(it + 1) / total_unified;
+              m_L1D_config.set_assoc(max_assoc * l1_ratio);
+              l1d_configured = true;
+              break;
+            }
+          }
+        }
+        assert(l1d_configured && "no shared memory option found");
+        break;
+      }
+      default:
+        assert(0);
+    }
+
+<<<<<<< HEAD
     if(m_L1D_config.is_streaming()) {
       //for streaming cache, if the whole memory is allocated
       //to the L1 cache, then make the allocation to be on_MISS
@@ -3364,6 +3406,10 @@ unsigned int shader_core_config::max_cta(const kernel_info_t &k) const {
         printf("GPGPU-Sim: Reconfigure L1 allocation to ON_FILL\n");
       }
     }
+=======
+    printf("GPGPU-Sim: Reconfigure L1 cache to %uKB\n",
+           m_L1D_config.get_total_size_inKB());
+>>>>>>> 2b2b6a2916e4ed833c707be887bf927167a71fa6
 
     k.cache_config_set = true;
   }
