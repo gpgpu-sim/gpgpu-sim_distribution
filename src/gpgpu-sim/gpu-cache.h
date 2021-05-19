@@ -555,6 +555,7 @@ class cache_config {
     m_data_port_width = 0;
     m_set_index_function = LINEAR_SET_FUNCTION;
     m_is_streaming = false;
+    m_wr_percent = 0;
   }
   void init(char *config, FuncCache status) {
     cache_status = status;
@@ -575,6 +576,14 @@ class cache_config {
       exit_parse_error();
     }
 
+    // set * assoc * cacheline size. Then convert Byte to KB
+    unsigned original_size = m_nset * m_assoc * m_line_sz / 1024;
+    if (m_unified_cache_size > 0) {
+      max_cache_multiplier = m_unified_cache_size / original_size;
+    } else {
+      max_cache_multiplier = MAX_DEFAULT_CACHE_SIZE_MULTIBLIER;
+    }
+    
     switch (ct) {
       case 'N':
         m_cache_type = NORMAL;
@@ -651,7 +660,7 @@ class cache_config {
       // https://ieeexplore.ieee.org/document/8344474/
       m_is_streaming = true;
       m_alloc_policy = ON_FILL;
-      m_mshr_entries = m_nset * m_assoc * MAX_DEFAULT_CACHE_SIZE_MULTIBLIER;
+      m_mshr_entries = m_nset * m_assoc * max_cache_multiplier;
       if (m_cache_type == SECTOR) m_mshr_entries *= SECTOR_CHUNCK_SIZE;
       m_mshr_max_merge = MAX_WARP_PER_SM;
     }
@@ -679,6 +688,7 @@ class cache_config {
     m_atom_sz = (m_cache_type == SECTOR) ? SECTOR_SIZE : m_line_sz;
     m_sector_sz_log2 = LOGB2(SECTOR_SIZE);
     original_m_assoc = m_assoc;
+
 
     // For more details about difference between FETCH_ON_WRITE and WRITE
     // VALIDAE policies Read: Jouppi, Norman P. "Cache write policies and
@@ -767,11 +777,13 @@ class cache_config {
   }
   unsigned get_max_num_lines() const {
     assert(m_valid);
-    return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER * m_nset * original_m_assoc;
+    // gpgpu_unified_cache_size is in KB while original_sz is in B
+    return max_cache_multiplier * m_nset * original_m_assoc;
   }
   unsigned get_max_assoc() const {
     assert(m_valid);
-    return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER * original_m_assoc;
+    // gpgpu_unified_cache_size is in KB while original_sz is in B
+    return max_cache_multiplier * original_m_assoc;
   }
   void print(FILE *fp) const {
     fprintf(fp, "Size = %d B (%d Set x %d-way x %d byte line)\n",
@@ -818,6 +830,8 @@ class cache_config {
   char *m_config_stringPrefL1;
   char *m_config_stringPrefShared;
   FuncCache cache_status;
+  unsigned m_wr_percent;
+  unsigned m_unified_cache_size;
   write_allocate_policy_t get_write_allocate_policy() {
     return m_write_alloc_policy;
   }
@@ -843,6 +857,7 @@ class cache_config {
   unsigned m_sector_sz_log2;
   unsigned original_m_assoc;
   bool m_is_streaming;
+  unsigned max_cache_multiplier;
 
   enum replacement_policy_t m_replacement_policy;  // 'L' = LRU, 'F' = FIFO
   enum write_policy_t

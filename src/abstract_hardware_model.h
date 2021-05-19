@@ -65,7 +65,7 @@ enum FuncCache {
   FuncCachePreferL1 = 2
 };
 
-enum AdaptiveCache { FIXED = 0, ADAPTIVE_VOLTA = 1 };
+enum AdaptiveCache { FIXED = 0, ADAPTIVE_CACHE = 1 };
 
 #ifdef __cplusplus
 
@@ -373,6 +373,7 @@ class core_config {
   }
   unsigned mem_warp_parts;
   mutable unsigned gpgpu_shmem_size;
+  char *gpgpu_shmem_option;
   unsigned gpgpu_shmem_sizeDefault;
   unsigned gpgpu_shmem_sizePrefL1;
   unsigned gpgpu_shmem_sizePrefShared;
