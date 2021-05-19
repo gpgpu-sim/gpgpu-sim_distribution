@@ -135,7 +135,7 @@ struct cache_block_t {
                           mem_access_sector_mask_t sector_mask) = 0;
   virtual void set_byte_mask(mem_fetch *mf) = 0;
   virtual void set_byte_mask(mem_access_byte_mask_t byte_mask) = 0;
-  virtual mem_access_byte_mask_t get_byte_mask() = 0;
+  virtual mem_access_byte_mask_t get_dirty_byte_mask() = 0;
   virtual mem_access_sector_mask_t get_dirty_sector_mask() = 0;
   virtual unsigned long long get_last_access_time() = 0;
   virtual void set_last_access_time(unsigned long long time,
@@ -215,7 +215,7 @@ struct line_cache_block : public cache_block_t {
   virtual void set_byte_mask(mem_access_byte_mask_t byte_mask) {
     m_byte_mask = m_byte_mask | byte_mask;
   }
-  virtual mem_access_byte_mask_t get_byte_mask() {
+  virtual mem_access_byte_mask_t get_dirty_byte_mask() {
     return m_byte_mask;
   }
   virtual mem_access_sector_mask_t get_dirty_sector_mask() {
@@ -410,7 +410,7 @@ struct sector_cache_block : public cache_block_t {
   virtual void set_byte_mask(mem_access_byte_mask_t byte_mask) {
     m_byte_mask = m_byte_mask | byte_mask;
   }
-  virtual mem_access_byte_mask_t get_byte_mask() {
+  virtual mem_access_byte_mask_t get_dirty_byte_mask() {
     return m_byte_mask;
   }
   virtual mem_access_sector_mask_t get_dirty_sector_mask() {

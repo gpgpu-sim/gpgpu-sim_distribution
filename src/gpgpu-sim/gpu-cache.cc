@@ -279,17 +279,19 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
       }
     }
     if (!line->is_reserved_line()) {
+      // percentage of dirty lines in the cache
+      // number of dirty lines / total lines in the cache
+      float dirty_line_percentage = 
+          (float) (m_dirty / (m_config.m_nset * m_config.m_assoc )) * 100;
       if (!line->is_modified_line() ||
-          m_dirty / (m_config.m_nset * m_config.m_assoc * 100) >=
-              m_config.m_wr_percent) {
+          dirty_line_percentage >= m_config.m_wr_percent) {
+        // if number of dirty lines in the cache is greater than
+        // a specific value
         all_reserved = false;
         if (line->is_invalid_line()) {
           invalid_line = index;
         } else {
           // valid line : keep track of most appropriate replacement candidate
-
-          // don't evict write until dirty lines reach threshold
-          // make sure at least 1 candidate is assigned
           if (m_config.m_replacement_policy == LRU) {
             if (line->get_last_access_time() < valid_timestamp) {
               valid_timestamp = line->get_last_access_time();
@@ -363,7 +365,7 @@ enum cache_request_status tag_array::access(new_addr_type addr, unsigned time,
           m_lines[idx]->set_byte_mask(mf);
           evicted.set_info(m_lines[idx]->m_block_addr,
                            m_lines[idx]->get_modified_size(),
-                           m_lines[idx]->get_byte_mask(),
+                           m_lines[idx]->get_dirty_byte_mask(),
                             m_lines[idx]->get_dirty_sector_mask());
           m_dirty--;
         }
