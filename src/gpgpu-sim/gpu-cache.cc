@@ -280,7 +280,7 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
     }
     if (!line->is_reserved_line()) {
       if (!line->is_modified_line() ||
-          100 * m_dirty / (m_config.m_nset * m_config.m_assoc) >=
+          m_dirty / (m_config.m_nset * m_config.m_assoc * 100) >=
               m_config.m_wr_percent) {
         all_reserved = false;
         if (line->is_invalid_line()) {
@@ -364,7 +364,7 @@ enum cache_request_status tag_array::access(new_addr_type addr, unsigned time,
           evicted.set_info(m_lines[idx]->m_block_addr,
                            m_lines[idx]->get_modified_size(),
                            m_lines[idx]->get_byte_mask(),
-                            m_lines[idx]->get_sector_mask());
+                            m_lines[idx]->get_dirty_sector_mask());
           m_dirty--;
         }
         m_lines[idx]->allocate(m_config.tag(addr), m_config.block_addr(addr),
@@ -430,17 +430,13 @@ void tag_array::fill(new_addr_type addr, unsigned time,
 
 void tag_array::fill(unsigned index, unsigned time, mem_fetch *mf) {
   assert(m_config.m_alloc_policy == ON_MISS);
-  bool before = m_lines[index]->is_modified_line();
   m_lines[index]->fill(time, mf->get_access_sector_mask(), mf->get_access_byte_mask());
-  if (m_lines[index]->is_modified_line() && !before) {
-    m_dirty++;
-  }
+  m_dirty++;
 }
 
 // TODO: we need write back the flushed data to the upper level
 void tag_array::flush() {
   if (!is_used) return;
-  m_dirty = 0;
 
   for (unsigned i = 0; i < m_config.get_num_lines(); i++)
     if (m_lines[i]->is_modified_line()) {
@@ -448,18 +444,19 @@ void tag_array::flush() {
         m_lines[i]->set_status(INVALID, mem_access_sector_mask_t().set(j));
       }
     }
-
+  
+  m_dirty = 0;
   is_used = false;
 }
 
 void tag_array::invalidate() {
   if (!is_used) return;
-  m_dirty = 0;
 
   for (unsigned i = 0; i < m_config.get_num_lines(); i++)
     for (unsigned j = 0; j < SECTOR_CHUNCK_SIZE; j++)
       m_lines[i]->set_status(INVALID, mem_access_sector_mask_t().set(j));
 
+  m_dirty = 0;
   is_used = false;
 }
 
@@ -804,6 +801,8 @@ void cache_stats::print_stats(FILE *fout, const char *cache_name) const {
               m_stats[type][status]);
 
       if (status != RESERVATION_FAIL && status != MSHR_HIT)
+      // MSHR_HIT is a special type of SECTOR_MISS
+      // so its already included in the SECTOR_MISS
         total_access[type] += m_stats[type][status];
     }
   }
