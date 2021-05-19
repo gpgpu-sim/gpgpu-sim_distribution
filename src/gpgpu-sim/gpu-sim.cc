@@ -331,7 +331,7 @@ void shader_core_config::reg_options(class OptionParser *opp) {
       opp, "-gpgpu_shmem_option", OPT_CSTR, &gpgpu_shmem_option,
       "Option list of shared memory sizes", "0");
   option_parser_register(
-      opp, "-gpgpu_unified_l1d_size", OPT_UINT32, &gpgpu_unified_l1d_size,
+      opp, "-gpgpu_unified_l1d_size", OPT_UINT32, &m_L1D_config.m_unified_cache_size,
       "Size of unified data cache(L1D + shared memory) in KB", "0");
   option_parser_register(opp, "-gpgpu_adaptive_cache_config", OPT_BOOL,
                          &adaptive_cache_config, "adaptive_cache_config", "0");

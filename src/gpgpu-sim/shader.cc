@@ -3315,7 +3315,8 @@ unsigned int shader_core_config::max_cta(const kernel_info_t &k) const {
     }
 
     unsigned total_shmem = kernel_info->smem * result;
-    unsigned total_unified = gpgpu_unified_l1d_size * 1024;
+    // Unified cache config is in KB. Converting to B
+    unsigned total_unified = m_L1D_config.m_unified_cache_size * 1024;
     std::sort(shmem_list.begin(), shmem_list.end());
 
     assert(total_shmem >= 0 && total_shmem <= shmem_list.back());
@@ -3325,10 +3326,7 @@ unsigned int shader_core_config::max_cta(const kernel_info_t &k) const {
       case ADAPTIVE_CACHE: {
         // For more info about adaptive cache, see
         bool l1d_configured = false;
-        unsigned l1_defined = m_L1D_config.get_original_sz() / 1024;
-        assert(gpgpu_unified_l1d_size % l1_defined == 0);
-        unsigned max_assoc = m_L1D_config.get_original_assoc() * 
-          gpgpu_unified_l1d_size / l1_defined;
+        unsigned max_assoc = m_L1D_config.get_max_assoc();
 
         if (total_shmem == 0) {
           m_L1D_config.set_assoc(max_assoc);

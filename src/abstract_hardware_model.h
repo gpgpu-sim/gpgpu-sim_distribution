@@ -374,7 +374,6 @@ class core_config {
   unsigned mem_warp_parts;
   mutable unsigned gpgpu_shmem_size;
   char *gpgpu_shmem_option;
-  unsigned gpgpu_unified_l1d_size;
   unsigned gpgpu_shmem_sizeDefault;
   unsigned gpgpu_shmem_sizePrefL1;
   unsigned gpgpu_shmem_sizePrefShared;
