@@ -3326,6 +3326,7 @@ unsigned int shader_core_config::max_cta(const kernel_info_t &k) const {
         // For more info about adaptive cache, see
         bool l1d_configured = false;
         unsigned l1_defined = m_L1D_config.get_original_sz() / 1024;
+        assert(gpgpu_unified_l1d_size % l1_defined == 0);
         unsigned max_assoc = m_L1D_config.get_original_assoc() * 
           gpgpu_unified_l1d_size / l1_defined;
 
