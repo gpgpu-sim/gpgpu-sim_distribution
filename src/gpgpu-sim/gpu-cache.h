@@ -596,16 +596,6 @@ class cache_config {
       default:
         exit_parse_error();
     }
-    switch (rp) {
-      case 'L':
-        m_replacement_policy = LRU;
-        break;
-      case 'F':
-        m_replacement_policy = FIFO;
-        break;
-      default:
-        exit_parse_error();
-    }
     switch (wp) {
       case 'R':
         m_write_policy = READ_ONLY;
