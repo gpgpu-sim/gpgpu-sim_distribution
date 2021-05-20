@@ -210,13 +210,13 @@ struct line_cache_block : public cache_block_t {
     m_status = status;
   }
   virtual void set_byte_mask(mem_fetch *mf) {
-    m_byte_mask = m_byte_mask | mf->get_access_byte_mask();
+    m_dirty_byte_mask = m_dirty_byte_mask | mf->get_access_byte_mask();
   }
   virtual void set_byte_mask(mem_access_byte_mask_t byte_mask) {
-    m_byte_mask = m_byte_mask | byte_mask;
+    m_dirty_byte_mask = m_dirty_byte_mask | byte_mask;
   }
   virtual mem_access_byte_mask_t get_dirty_byte_mask() {
-    return m_byte_mask;
+    return m_dirty_byte_mask;
   }
   virtual mem_access_sector_mask_t get_dirty_sector_mask() {
     mem_access_sector_mask_t sector_mask;
@@ -270,7 +270,7 @@ struct line_cache_block : public cache_block_t {
   bool m_set_readable_on_fill;
   bool m_set_byte_mask_on_fill;
   bool m_readable;
-  mem_access_byte_mask_t m_byte_mask;
+  mem_access_byte_mask_t m_dirty_byte_mask;
 };
 
 struct sector_cache_block : public cache_block_t {
@@ -290,7 +290,7 @@ struct sector_cache_block : public cache_block_t {
     m_line_alloc_time = 0;
     m_line_last_access_time = 0;
     m_line_fill_time = 0;
-    m_byte_mask.reset();
+    m_dirty_byte_mask.reset();
   }
 
   virtual void allocate(new_addr_type tag, new_addr_type block_addr,
@@ -405,13 +405,13 @@ struct sector_cache_block : public cache_block_t {
   }
 
   virtual void set_byte_mask(mem_fetch *mf) {
-    m_byte_mask = m_byte_mask | mf->get_access_byte_mask();
+    m_dirty_byte_mask = m_dirty_byte_mask | mf->get_access_byte_mask();
   }
   virtual void set_byte_mask(mem_access_byte_mask_t byte_mask) {
-    m_byte_mask = m_byte_mask | byte_mask;
+    m_dirty_byte_mask = m_dirty_byte_mask | byte_mask;
   }
   virtual mem_access_byte_mask_t get_dirty_byte_mask() {
-    return m_byte_mask;
+    return m_dirty_byte_mask;
   }
   virtual mem_access_sector_mask_t get_dirty_sector_mask() {
     mem_access_sector_mask_t sector_mask;
@@ -492,7 +492,7 @@ struct sector_cache_block : public cache_block_t {
   bool m_set_readable_on_fill[SECTOR_CHUNCK_SIZE];
   bool m_set_byte_mask_on_fill;
   bool m_readable[SECTOR_CHUNCK_SIZE];
-  mem_access_byte_mask_t m_byte_mask;
+  mem_access_byte_mask_t m_dirty_byte_mask;
 
   unsigned get_sector_index(mem_access_sector_mask_t sector_mask) {
     assert(sector_mask.count() == 1);
