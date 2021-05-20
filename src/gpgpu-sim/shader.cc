@@ -3334,56 +3334,28 @@ unsigned int shader_core_config::max_cta(const kernel_info_t &k) const {
   if (adaptive_cache_config && !k.cache_config_set) {
     // For more info about adaptive cache, see
     // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#shared-memory-7-x
-    std::vector<unsigned> shmem_list;
-    for (unsigned i = 0; i < strlen(gpgpu_shmem_option); i++) {
-      char option[4];
-      int j = 0;
-      while (gpgpu_shmem_option[i] != ',' && i < strlen(gpgpu_shmem_option)) {
-        if (gpgpu_shmem_option[i] == ' ') {
-          // skip spaces
-          i++;
-        } else {
-          if (!isdigit(gpgpu_shmem_option[i])) {
-            // check for non digits, which should not be here
-            assert(0 && "invalid config: -gpgpu_shmem_option");
-          }
-          option[j] = gpgpu_shmem_option[i];
-          j++;
-          i++;
-        }
-      }
-      // convert KB -> B
-      shmem_list.push_back((unsigned)atoi(option) * 1024);
-    }
-
     unsigned total_shmem = kernel_info->smem * result;
     // Unified cache config is in KB. Converting to B
     unsigned total_unified = m_L1D_config.m_unified_cache_size * 1024;
-    std::sort(shmem_list.begin(), shmem_list.end());
 
-    assert(total_shmem >= 0 && total_shmem <= shmem_list.back());
+    assert(total_shmem >= 0 && total_shmem <= shmem_opt_list.back());
     switch (adaptive_cache_config) {
       case FIXED:
         break;
       case ADAPTIVE_CACHE: {
-        // For more info about adaptive cache, see
         bool l1d_configured = false;
         unsigned max_assoc = m_L1D_config.get_max_assoc();
 
-        if (total_shmem == 0) {
-          m_L1D_config.set_assoc(max_assoc);
-          l1d_configured = true;
-        } else {
-          for (std::vector<unsigned>::iterator it = shmem_list.begin();
-               it < shmem_list.end() - 1; it++) {
-            if (total_shmem > *it && total_shmem <= *(it + 1)) {
-              float l1_ratio = 1 - (float) *(it + 1) / total_unified;
-              m_L1D_config.set_assoc(max_assoc * l1_ratio);
-              l1d_configured = true;
-              break;
-            }
+        for (std::vector<unsigned>::const_iterator it = shmem_opt_list.begin();
+              it < shmem_opt_list.end(); it++) {
+          if (total_shmem <= *it) {
+            float l1_ratio = 1 - ((float) *(it) / total_unified);
+            m_L1D_config.set_assoc(max_assoc * l1_ratio);
+            l1d_configured = true;
+            break;
           }
         }
+        
         assert(l1d_configured && "no shared memory option found");
         break;
       }

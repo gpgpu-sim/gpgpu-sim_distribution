@@ -577,6 +577,7 @@ class cache_config {
     }
 
     // set * assoc * cacheline size. Then convert Byte to KB
+    // gpgpu_unified_cache_size is in KB while original_sz is in B
     unsigned original_size = m_nset * m_assoc * m_line_sz / 1024;
     if (m_unified_cache_size > 0) {
       max_cache_multiplier = m_unified_cache_size / original_size;
@@ -785,12 +786,10 @@ class cache_config {
   }
   unsigned get_max_num_lines() const {
     assert(m_valid);
-    // gpgpu_unified_cache_size is in KB while original_sz is in B
     return max_cache_multiplier * m_nset * original_m_assoc;
   }
   unsigned get_max_assoc() const {
     assert(m_valid);
-    // gpgpu_unified_cache_size is in KB while original_sz is in B
     return max_cache_multiplier * original_m_assoc;
   }
   void print(FILE *fp) const {
