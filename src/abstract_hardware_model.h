@@ -374,6 +374,7 @@ class core_config {
   unsigned mem_warp_parts;
   mutable unsigned gpgpu_shmem_size;
   char *gpgpu_shmem_option;
+  std::vector<unsigned> shmem_opt_list;
   unsigned gpgpu_shmem_sizeDefault;
   unsigned gpgpu_shmem_sizePrefL1;
   unsigned gpgpu_shmem_sizePrefShared;

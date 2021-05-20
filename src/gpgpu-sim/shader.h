@@ -1495,6 +1495,32 @@ class shader_core_config : public core_config {
       } else
         break;  // we only accept continuous specialized_units, i.e., 1,2,3,4
     }
+
+    //parse gpgpu_shmem_option for adpative cache config
+    if(adaptive_cache_config) {
+      for (unsigned i = 0; i < strlen(gpgpu_shmem_option); i++) {
+        char option[4];
+        int j = 0;
+        while (gpgpu_shmem_option[i] != ',' && i < strlen(gpgpu_shmem_option)) {
+          if (gpgpu_shmem_option[i] == ' ') {
+            // skip spaces
+            i++;
+          } else {
+            if (!isdigit(gpgpu_shmem_option[i])) {
+              // check for non digits, which should not be here
+              assert(0 && "invalid config: -gpgpu_shmem_option");
+            }
+            option[j] = gpgpu_shmem_option[i];
+            j++;
+            i++;
+          }
+        }
+        // convert KB -> B
+        shmem_opt_list.push_back((unsigned)atoi(option) * 1024);
+      }
+      std::sort(shmem_opt_list.begin(), shmem_opt_list.end());
+    }
+
   }
   void reg_options(class OptionParser *opp);
   unsigned max_cta(const kernel_info_t &k) const;
