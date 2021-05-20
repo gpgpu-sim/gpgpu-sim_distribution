@@ -575,15 +575,6 @@ class cache_config {
       }
       exit_parse_error();
     }
-
-    // set * assoc * cacheline size. Then convert Byte to KB
-    // gpgpu_unified_cache_size is in KB while original_sz is in B
-    unsigned original_size = m_nset * m_assoc * m_line_sz / 1024;
-    if (m_unified_cache_size > 0) {
-      max_cache_multiplier = m_unified_cache_size / original_size;
-    } else {
-      max_cache_multiplier = MAX_DEFAULT_CACHE_SIZE_MULTIBLIER;
-    }
     
     switch (ct) {
       case 'N':
@@ -694,7 +685,6 @@ class cache_config {
     m_sector_sz_log2 = LOGB2(SECTOR_SIZE);
     original_m_assoc = m_assoc;
 
-
     // For more details about difference between FETCH_ON_WRITE and WRITE
     // VALIDAE policies Read: Jouppi, Norman P. "Cache write policies and
     // performance". ISCA 93. WRITE_ALLOCATE is the old write policy in
@@ -786,11 +776,11 @@ class cache_config {
   }
   unsigned get_max_num_lines() const {
     assert(m_valid);
-    return max_cache_multiplier * m_nset * original_m_assoc;
+    return get_max_cache_multiplier() * m_nset * original_m_assoc;
   }
   unsigned get_max_assoc() const {
     assert(m_valid);
-    return max_cache_multiplier * original_m_assoc;
+    return get_max_cache_multiplier() * original_m_assoc;
   }
   void print(FILE *fp) const {
     fprintf(fp, "Size = %d B (%d Set x %d-way x %d byte line)\n",
@@ -798,6 +788,8 @@ class cache_config {
   }
 
   virtual unsigned set_index(new_addr_type addr) const;
+
+  virtual unsigned get_max_cache_multiplier() const { return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER;}
 
   unsigned hash_function(new_addr_type addr, unsigned m_nset,
                          unsigned m_line_sz_log2, unsigned m_nset_log2,
@@ -840,7 +832,6 @@ class cache_config {
   char *m_config_stringPrefL1;
   char *m_config_stringPrefShared;
   FuncCache cache_status;
-  unsigned m_unified_cache_size;
   unsigned m_wr_percent;
   write_allocate_policy_t get_write_allocate_policy() {
     return m_write_alloc_policy;
@@ -867,7 +858,6 @@ class cache_config {
   unsigned m_sector_sz_log2;
   unsigned original_m_assoc;
   bool m_is_streaming;
-  unsigned max_cache_multiplier;
 
   enum replacement_policy_t m_replacement_policy;  // 'L' = LRU, 'F' = FIFO
   enum write_policy_t
@@ -922,6 +912,18 @@ class l1d_cache_config : public cache_config {
   unsigned l1_banks_byte_interleaving;
   unsigned l1_banks_byte_interleaving_log2;
   unsigned l1_banks_hashing_function;
+  unsigned m_unified_cache_size;
+  virtual unsigned get_max_cache_multiplier() const { 
+      // set * assoc * cacheline size. Then convert Byte to KB
+      // gpgpu_unified_cache_size is in KB while original_sz is in B
+      if (m_unified_cache_size > 0) {
+        unsigned original_size = m_nset * original_m_assoc * m_line_sz / 1024;
+        assert(m_unified_cache_size % original_size == 0);
+        return m_unified_cache_size / original_size;
+      } else {
+        return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER;
+      }    
+    }
 };
 
 class l2_cache_config : public cache_config {

@@ -3335,10 +3335,11 @@ unsigned int shader_core_config::max_cta(const kernel_info_t &k) const {
     // For more info about adaptive cache, see
     // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#shared-memory-7-x
     unsigned total_shmem = kernel_info->smem * result;
+    assert(total_shmem >= 0 && total_shmem <= shmem_opt_list.back());
+
     // Unified cache config is in KB. Converting to B
     unsigned total_unified = m_L1D_config.m_unified_cache_size * 1024;
 
-    assert(total_shmem >= 0 && total_shmem <= shmem_opt_list.back());
     switch (adaptive_cache_config) {
       case FIXED:
         break;
