@@ -57,18 +57,19 @@ mem_fetch *partition_mf_allocator::alloc(new_addr_type addr,
   return mf;
 }
 
-mem_fetch *partition_mf_allocator::alloc(new_addr_type addr, 
-                            mem_access_type type,
+mem_fetch *partition_mf_allocator::alloc(new_addr_type addr, mem_access_type type,
                             const active_mask_t &active_mask,
                             const mem_access_byte_mask_t &byte_mask,
                             const mem_access_sector_mask_t &sector_mask,
                             unsigned size, bool wr,
-                            unsigned long long cycle) const {
+                            unsigned long long cycle,
+                            unsigned wid, unsigned sid,
+                            unsigned tpc, mem_fetch *original_mf) const {
   mem_access_t access(type, addr, size, wr, active_mask, byte_mask, 
                         sector_mask, m_memory_config->gpgpu_ctx);
   mem_fetch *mf =
-    new mem_fetch(access, NULL, wr ? WRITE_PACKET_SIZE : READ_PACKET_SIZE, -1,
-                  -1, -1, m_memory_config, cycle);
+    new mem_fetch(access, NULL, wr ? WRITE_PACKET_SIZE : READ_PACKET_SIZE, wid,
+                  sid, tpc, m_memory_config, cycle,original_mf);
     return mf;
 }
 memory_partition_unit::memory_partition_unit(unsigned partition_id,
@@ -724,16 +725,11 @@ memory_sub_partition::breakdown_request_to_sector_requests(mem_fetch *mf) {
       for (unsigned k = i * SECTOR_SIZE; k < (i + 1) * SECTOR_SIZE; k++) {
         mask.set(k);
       }
-      const mem_access_t *ma = new mem_access_t(
-          mf->get_access_type(), mf->get_addr() + SECTOR_SIZE * i, SECTOR_SIZE,
-          mf->is_write(), mf->get_access_warp_mask(),
-          mf->get_access_byte_mask() & mask,
-          std::bitset<SECTOR_CHUNCK_SIZE>().set(i), m_gpu->gpgpu_ctx);
-
-      mem_fetch *n_mf =
-          new mem_fetch(*ma, NULL, mf->get_ctrl_size(), mf->get_wid(),
-                        mf->get_sid(), mf->get_tpc(), mf->get_mem_config(),
-                        m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, mf);
+      mem_fetch *n_mf = m_mf_allocator->alloc(mf->get_addr() + SECTOR_SIZE * i, 
+        mf->get_access_type(),mf->get_access_warp_mask(), 
+        mf->get_access_byte_mask() & mask,std::bitset<SECTOR_CHUNCK_SIZE>().set(i), 
+        SECTOR_SIZE,mf->is_write(),m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, 
+        mf->get_wid(),mf->get_sid(), mf->get_tpc(),mf);
 
       result.push_back(n_mf);
     }
@@ -750,16 +746,11 @@ memory_sub_partition::breakdown_request_to_sector_requests(mem_fetch *mf) {
       for (unsigned k = i * SECTOR_SIZE; k < (i + 1) * SECTOR_SIZE; k++) {
         mask.set(k);
       }
-      const mem_access_t *ma = new mem_access_t(
-          mf->get_access_type(), mf->get_addr(), SECTOR_SIZE,
-          mf->is_write(), mf->get_access_warp_mask(),
-          mf->get_access_byte_mask() & mask,
-          std::bitset<SECTOR_CHUNCK_SIZE>().set(i), m_gpu->gpgpu_ctx);
-
-      mem_fetch *n_mf =
-          new mem_fetch(*ma, NULL, mf->get_ctrl_size(), mf->get_wid(),
-                        mf->get_sid(), mf->get_tpc(), mf->get_mem_config(),
-                        m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, mf);
+      mem_fetch *n_mf = m_mf_allocator->alloc(mf->get_addr(), 
+        mf->get_access_type(),mf->get_access_warp_mask(), 
+        mf->get_access_byte_mask() & mask,std::bitset<SECTOR_CHUNCK_SIZE>().set(i), 
+        SECTOR_SIZE,mf->is_write(),m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, 
+        mf->get_wid(),mf->get_sid(), mf->get_tpc(),mf);
 
       result.push_back(n_mf);
     }
@@ -770,16 +761,11 @@ memory_sub_partition::breakdown_request_to_sector_requests(mem_fetch *mf) {
         for (unsigned k = i * SECTOR_SIZE; k < (i + 1) * SECTOR_SIZE; k++) {
           mask.set(k);
         }
-        const mem_access_t *ma = new mem_access_t(
-            mf->get_access_type(), mf->get_addr() + SECTOR_SIZE * i,
-            SECTOR_SIZE, mf->is_write(), mf->get_access_warp_mask(),
-            mf->get_access_byte_mask() & mask,
-            std::bitset<SECTOR_CHUNCK_SIZE>().set(i), m_gpu->gpgpu_ctx);
-
-        mem_fetch *n_mf =
-            new mem_fetch(*ma, NULL, mf->get_ctrl_size(), mf->get_wid(),
-                          mf->get_sid(), mf->get_tpc(), mf->get_mem_config(),
-                          m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, mf);
+        mem_fetch *n_mf = m_mf_allocator->alloc(mf->get_addr() + SECTOR_SIZE * i, 
+          mf->get_access_type(),mf->get_access_warp_mask(), 
+          mf->get_access_byte_mask() & mask,std::bitset<SECTOR_CHUNCK_SIZE>().set(i), 
+          SECTOR_SIZE,mf->is_write(),m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, 
+          mf->get_wid(),mf->get_sid(), mf->get_tpc(),mf);
 
         result.push_back(n_mf);
       }

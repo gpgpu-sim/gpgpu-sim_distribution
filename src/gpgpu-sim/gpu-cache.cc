@@ -1338,7 +1338,7 @@ enum cache_request_status data_cache::wr_miss_wa_naive(
         evicted.m_block_addr,m_wrbk_type,
         mf->get_access_warp_mask(), evicted.m_byte_mask,
         evicted.m_sector_mask, evicted.m_modified_size,
-        true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle);
+        true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle,-1,-1,-1,NULL);
       // the evicted block may have wrong chip id when advanced L2 hashing  is
       // used, so set the right chip address from the original mf
       wb->set_chip(mf->get_tlx_addr().chip);
@@ -1391,7 +1391,7 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
         evicted.m_block_addr,m_wrbk_type,
         mf->get_access_warp_mask(), evicted.m_byte_mask,
         evicted.m_sector_mask, evicted.m_modified_size,
-        true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle);
+        true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle,-1,-1,-1,NULL);
         // the evicted block may have wrong chip id when advanced L2 hashing  is
         // used, so set the right chip address from the original mf
         wb->set_chip(mf->get_tlx_addr().chip);
@@ -1464,7 +1464,7 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
         evicted.m_block_addr,m_wrbk_type,
         mf->get_access_warp_mask(), evicted.m_byte_mask,
         evicted.m_sector_mask, evicted.m_modified_size,
-        true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle);
+        true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle,-1,-1,-1,NULL);
         // the evicted block may have wrong chip id when advanced L2 hashing  is
         // used, so set the right chip address from the original mf
         wb->set_chip(mf->get_tlx_addr().chip);
@@ -1549,7 +1549,7 @@ enum cache_request_status data_cache::wr_miss_wa_lazy_fetch_on_read(
         evicted.m_block_addr,m_wrbk_type,
         mf->get_access_warp_mask(), evicted.m_byte_mask,
         evicted.m_sector_mask, evicted.m_modified_size,
-        true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle);
+        true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle,-1,-1,-1,NULL);
       // the evicted block may have wrong chip id when advanced L2 hashing  is
       // used, so set the right chip address from the original mf
       wb->set_chip(mf->get_tlx_addr().chip);
@@ -1631,7 +1631,7 @@ enum cache_request_status data_cache::rd_miss_base(
         evicted.m_block_addr,m_wrbk_type,
         mf->get_access_warp_mask(), evicted.m_byte_mask,
         evicted.m_sector_mask, evicted.m_modified_size,
-        true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle);
+        true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle,-1,-1,-1,NULL);
       // the evicted block may have wrong chip id when advanced L2 hashing  is
       // used, so set the right chip address from the original mf
       wb->set_chip(mf->get_tlx_addr().chip);

@@ -56,7 +56,9 @@ class partition_mf_allocator : public mem_fetch_allocator {
                             const mem_access_byte_mask_t &byte_mask,
                             const mem_access_sector_mask_t &sector_mask,
                             unsigned size, bool wr,
-                            unsigned long long cycle) const;
+                            unsigned long long cycle,
+                            unsigned wid, unsigned sid,
+                            unsigned tpc, mem_fetch *original_mf) const;
 
  private:
   const memory_config *m_memory_config;
