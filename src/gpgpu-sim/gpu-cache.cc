@@ -282,7 +282,7 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
       // percentage of dirty lines in the cache
       // number of dirty lines / total lines in the cache
       float dirty_line_percentage = 
-          (float) (m_dirty / (m_config.m_nset * m_config.m_assoc )) * 100;
+          ((float) m_dirty / (m_config.m_nset * m_config.m_assoc )) * 100;
       if (!line->is_modified_line() ||
           dirty_line_percentage >= m_config.m_wr_percent) {
         // if number of dirty lines in the cache is greater than
