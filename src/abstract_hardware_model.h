@@ -876,7 +876,9 @@ class mem_fetch_allocator {
                             const mem_access_byte_mask_t &byte_mask,
                             const mem_access_sector_mask_t &sector_mask,
                             unsigned size, bool wr,
-                            unsigned long long cycle) const = 0;                    
+                            unsigned long long cycle,
+                            unsigned wid, unsigned sid,
+                            unsigned tpc, mem_fetch *original_mf) const = 0;                    
 };
 
 // the maximum number of destination, source, or address uarch operands in a
