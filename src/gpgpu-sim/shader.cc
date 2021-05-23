@@ -62,21 +62,19 @@ mem_fetch *shader_core_mem_fetch_allocator::alloc(
   return mf;
 }
 
-mem_fetch *shader_core_mem_fetch_allocator::alloc(new_addr_type addr, mem_access_type type,
-                            const active_mask_t &active_mask,
-                            const mem_access_byte_mask_t &byte_mask,
-                            const mem_access_sector_mask_t &sector_mask,
-                            unsigned size, bool wr,
-                            unsigned long long cycle,
-                            unsigned wid, unsigned sid,
-                            unsigned tpc, mem_fetch *original_mf) const {
-    mem_access_t access(type, addr, size, wr, active_mask, byte_mask, 
-                          sector_mask, m_memory_config->gpgpu_ctx);
-    mem_fetch *mf =
-      new mem_fetch(access, NULL, wr ? WRITE_PACKET_SIZE : READ_PACKET_SIZE, wid,
-                    m_core_id, m_cluster_id, m_memory_config, cycle,original_mf);
-      return mf;
-  }
+mem_fetch *shader_core_mem_fetch_allocator::alloc(
+    new_addr_type addr, mem_access_type type, const active_mask_t &active_mask,
+    const mem_access_byte_mask_t &byte_mask,
+    const mem_access_sector_mask_t &sector_mask, unsigned size, bool wr,
+    unsigned long long cycle, unsigned wid, unsigned sid, unsigned tpc,
+    mem_fetch *original_mf) const {
+  mem_access_t access(type, addr, size, wr, active_mask, byte_mask, sector_mask,
+                      m_memory_config->gpgpu_ctx);
+  mem_fetch *mf = new mem_fetch(
+      access, NULL, wr ? WRITE_PACKET_SIZE : READ_PACKET_SIZE, wid, m_core_id,
+      m_cluster_id, m_memory_config, cycle, original_mf);
+  return mf;
+}
 /////////////////////////////////////////////////////////////////////////////
 
 std::list<unsigned> shader_core_ctx::get_regs_written(const inst_t &fvt) const {
@@ -142,8 +140,8 @@ void shader_core_ctx::create_front_pipeline() {
              m_pipeline_reg[ID_OC_INT].get_size());
     for (int j = 0; j < m_config->m_specialized_unit.size(); j++) {
       if (m_config->m_specialized_unit[j].num_units > 0)
-         assert(m_config->gpgpu_num_sched_per_core ==
-             m_config->m_specialized_unit[j].id_oc_spec_reg_width);
+        assert(m_config->gpgpu_num_sched_per_core ==
+               m_config->m_specialized_unit[j].id_oc_spec_reg_width);
     }
   }
 
@@ -187,15 +185,18 @@ void shader_core_ctx::create_schedulers() {
   // must currently occur after all inputs have been initialized.
   std::string sched_config = m_config->gpgpu_scheduler_string;
   const concrete_scheduler scheduler =
-      sched_config.find("lrr") != std::string::npos ? CONCRETE_SCHEDULER_LRR
-      : sched_config.find("two_level_active") != std::string::npos
-          ? CONCRETE_SCHEDULER_TWO_LEVEL_ACTIVE
-      : sched_config.find("gto") != std::string::npos ? CONCRETE_SCHEDULER_GTO
-      : sched_config.find("old") != std::string::npos
-          ? CONCRETE_SCHEDULER_OLDEST_FIRST
-      : sched_config.find("warp_limiting") != std::string::npos
-          ? CONCRETE_SCHEDULER_WARP_LIMITING
-          : NUM_CONCRETE_SCHEDULERS;
+      sched_config.find("lrr") != std::string::npos
+          ? CONCRETE_SCHEDULER_LRR
+          : sched_config.find("two_level_active") != std::string::npos
+                ? CONCRETE_SCHEDULER_TWO_LEVEL_ACTIVE
+                : sched_config.find("gto") != std::string::npos
+                      ? CONCRETE_SCHEDULER_GTO
+                      : sched_config.find("old") != std::string::npos
+                            ? CONCRETE_SCHEDULER_OLDEST_FIRST
+                            : sched_config.find("warp_limiting") !=
+                                      std::string::npos
+                                  ? CONCRETE_SCHEDULER_WARP_LIMITING
+                                  : NUM_CONCRETE_SCHEDULERS;
   assert(scheduler != NUM_CONCRETE_SCHEDULERS);
 
   for (unsigned i = 0; i < m_config->gpgpu_num_sched_per_core; i++) {
@@ -1246,20 +1247,21 @@ void scheduler_unit::cycle() {
                 previous_issued_inst_exec_type = exec_unit_type_t::MEM;
               }
             } else {
-
               // This code need to be refactored
               if (pI->op != TENSOR_CORE_OP && pI->op != SFU_OP &&
                   pI->op != DP_OP && !(pI->op >= SPEC_UNIT_START_ID)) {
                 bool execute_on_SP = false;
                 bool execute_on_INT = false;
 
-              bool sp_pipe_avail =
-                  (m_shader->m_config->gpgpu_num_sp_units > 0) &&
-                  m_sp_out->has_free(m_shader->m_config->sub_core_model, m_id);
-              bool int_pipe_avail =
-                  (m_shader->m_config->gpgpu_num_int_units > 0) &&
-                  m_int_out->has_free(m_shader->m_config->sub_core_model, m_id);
-                  
+                bool sp_pipe_avail =
+                    (m_shader->m_config->gpgpu_num_sp_units > 0) &&
+                    m_sp_out->has_free(m_shader->m_config->sub_core_model,
+                                       m_id);
+                bool int_pipe_avail =
+                    (m_shader->m_config->gpgpu_num_int_units > 0) &&
+                    m_int_out->has_free(m_shader->m_config->sub_core_model,
+                                        m_id);
+
                 // if INT unit pipline exist, then execute ALU and INT
                 // operations on INT unit and SP-FPU on SP unit (like in Volta)
                 // if INT unit pipline does not exist, then execute all ALU, INT
@@ -1320,10 +1322,10 @@ void scheduler_unit::cycle() {
                          (pI->op == DP_OP) &&
                          !(diff_exec_units && previous_issued_inst_exec_type ==
                                                   exec_unit_type_t::DP)) {
-               
                 bool dp_pipe_avail =
-                (m_shader->m_config->gpgpu_num_dp_units > 0) &&
-                m_dp_out->has_free(m_shader->m_config->sub_core_model, m_id);
+                    (m_shader->m_config->gpgpu_num_dp_units > 0) &&
+                    m_dp_out->has_free(m_shader->m_config->sub_core_model,
+                                       m_id);
 
                 if (dp_pipe_avail) {
                   m_shader->issue_warp(*m_dp_out, pI, active_mask, warp_id,
@@ -1340,10 +1342,10 @@ void scheduler_unit::cycle() {
                         (pI->op == SFU_OP) || (pI->op == ALU_SFU_OP)) &&
                        !(diff_exec_units && previous_issued_inst_exec_type ==
                                                 exec_unit_type_t::SFU)) {
-
                 bool sfu_pipe_avail =
-                (m_shader->m_config->gpgpu_num_sfu_units > 0) &&
-                m_sfu_out->has_free(m_shader->m_config->sub_core_model, m_id);
+                    (m_shader->m_config->gpgpu_num_sfu_units > 0) &&
+                    m_sfu_out->has_free(m_shader->m_config->sub_core_model,
+                                        m_id);
 
                 if (sfu_pipe_avail) {
                   m_shader->issue_warp(*m_sfu_out, pI, active_mask, warp_id,
@@ -1356,11 +1358,10 @@ void scheduler_unit::cycle() {
               } else if ((pI->op == TENSOR_CORE_OP) &&
                          !(diff_exec_units && previous_issued_inst_exec_type ==
                                                   exec_unit_type_t::TENSOR)) {
-                  
                 bool tensor_core_pipe_avail =
-                (m_shader->m_config->gpgpu_num_tensor_core_units > 0) &&
-                m_tensor_core_out->has_free(
-                    m_shader->m_config->sub_core_model, m_id);
+                    (m_shader->m_config->gpgpu_num_tensor_core_units > 0) &&
+                    m_tensor_core_out->has_free(
+                        m_shader->m_config->sub_core_model, m_id);
 
                 if (tensor_core_pipe_avail) {
                   m_shader->issue_warp(*m_tensor_core_out, pI, active_mask,
@@ -2007,8 +2008,10 @@ void ldst_unit::L1_latency_queue_cycle() {
         l1_latency_queue[j][0] = NULL;
         if (m_config->m_L1D_config.get_write_policy() != WRITE_THROUGH &&
             mf_next->get_inst().is_store() &&
-            (m_config->m_L1D_config.get_write_allocate_policy() == FETCH_ON_WRITE ||
-            m_config->m_L1D_config.get_write_allocate_policy() == LAZY_FETCH_ON_READ) &&
+            (m_config->m_L1D_config.get_write_allocate_policy() ==
+                 FETCH_ON_WRITE ||
+             m_config->m_L1D_config.get_write_allocate_policy() ==
+                 LAZY_FETCH_ON_READ) &&
             !was_writeallocate_sent(events)) {
           unsigned dec_ack =
               (m_config->m_L1D_config.get_mshr_type() == SECTOR_ASSOC)
@@ -2316,7 +2319,7 @@ void dp_unit ::issue(register_set &source_reg) {
 }
 
 void specialized_unit ::issue(register_set &source_reg) {
-  warp_inst_t **ready_reg = 
+  warp_inst_t **ready_reg =
       source_reg.get_ready(m_config->sub_core_model, m_issue_reg_id);
   // m_core->incexecstat((*ready_reg));
   (*ready_reg)->op_pipe = SPECIALIZED__OP;
@@ -3349,15 +3352,15 @@ unsigned int shader_core_config::max_cta(const kernel_info_t &k) const {
         unsigned max_assoc = m_L1D_config.get_max_assoc();
 
         for (std::vector<unsigned>::const_iterator it = shmem_opt_list.begin();
-              it < shmem_opt_list.end(); it++) {
+             it < shmem_opt_list.end(); it++) {
           if (total_shmem <= *it) {
-            float l1_ratio = 1 - ((float) *(it) / total_unified);
+            float l1_ratio = 1 - ((float)*(it) / total_unified);
             m_L1D_config.set_assoc(max_assoc * l1_ratio);
             l1d_configured = true;
             break;
           }
         }
-        
+
         assert(l1d_configured && "no shared memory option found");
         break;
       }
@@ -3365,16 +3368,16 @@ unsigned int shader_core_config::max_cta(const kernel_info_t &k) const {
         assert(0);
     }
 
-    if(m_L1D_config.is_streaming()) {
-      //for streaming cache, if the whole memory is allocated
-      //to the L1 cache, then make the allocation to be on_MISS
-      //otherwise, make it ON_FILL to eliminate line allocation fails
-      //i.e. MSHR throughput is the same, independent on the L1 cache size/associativity
-      if(total_shmem == 0) {
+    if (m_L1D_config.is_streaming()) {
+      // for streaming cache, if the whole memory is allocated
+      // to the L1 cache, then make the allocation to be on_MISS
+      // otherwise, make it ON_FILL to eliminate line allocation fails
+      // i.e. MSHR throughput is the same, independent on the L1 cache
+      // size/associativity
+      if (total_shmem == 0) {
         m_L1D_config.set_allocation_policy(ON_MISS);
         printf("GPGPU-Sim: Reconfigure L1 allocation to ON_MISS\n");
-      }
-      else {
+      } else {
         m_L1D_config.set_allocation_policy(ON_FILL);
         printf("GPGPU-Sim: Reconfigure L1 allocation to ON_FILL\n");
       }

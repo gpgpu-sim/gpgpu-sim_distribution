@@ -1496,8 +1496,8 @@ class shader_core_config : public core_config {
         break;  // we only accept continuous specialized_units, i.e., 1,2,3,4
     }
 
-    //parse gpgpu_shmem_option for adpative cache config
-    if(adaptive_cache_config) {
+    // parse gpgpu_shmem_option for adpative cache config
+    if (adaptive_cache_config) {
       for (unsigned i = 0; i < strlen(gpgpu_shmem_option); i++) {
         char option[4];
         int j = 0;
@@ -1520,7 +1520,6 @@ class shader_core_config : public core_config {
       }
       std::sort(shmem_opt_list.begin(), shmem_opt_list.end());
     }
-
   }
   void reg_options(class OptionParser *opp);
   unsigned max_cta(const kernel_info_t &k) const;
@@ -1899,13 +1898,11 @@ class shader_core_mem_fetch_allocator : public mem_fetch_allocator {
   mem_fetch *alloc(new_addr_type addr, mem_access_type type, unsigned size,
                    bool wr, unsigned long long cycle) const;
   mem_fetch *alloc(new_addr_type addr, mem_access_type type,
-                            const active_mask_t &active_mask,
-                            const mem_access_byte_mask_t &byte_mask,
-                            const mem_access_sector_mask_t &sector_mask,
-                            unsigned size, bool wr,
-                            unsigned long long cycle,
-                            unsigned wid, unsigned sid,
-                            unsigned tpc, mem_fetch *original_mf) const;
+                   const active_mask_t &active_mask,
+                   const mem_access_byte_mask_t &byte_mask,
+                   const mem_access_sector_mask_t &sector_mask, unsigned size,
+                   bool wr, unsigned long long cycle, unsigned wid,
+                   unsigned sid, unsigned tpc, mem_fetch *original_mf) const;
   mem_fetch *alloc(const warp_inst_t &inst, const mem_access_t &access,
                    unsigned long long cycle) const {
     warp_inst_t inst_copy = inst;

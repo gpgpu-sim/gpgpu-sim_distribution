@@ -84,7 +84,7 @@ struct evicted_block_info {
     m_block_addr = block_addr;
     m_modified_size = modified_size;
   }
-  void set_info(new_addr_type block_addr, unsigned modified_size, 
+  void set_info(new_addr_type block_addr, unsigned modified_size,
                 mem_access_byte_mask_t byte_mask,
                 mem_access_sector_mask_t sector_mask) {
     m_block_addr = block_addr;
@@ -121,8 +121,8 @@ struct cache_block_t {
   virtual void allocate(new_addr_type tag, new_addr_type block_addr,
                         unsigned time,
                         mem_access_sector_mask_t sector_mask) = 0;
-  virtual void fill(unsigned time, mem_access_sector_mask_t sector_mask, 
-                      mem_access_byte_mask_t byte_mask) = 0;
+  virtual void fill(unsigned time, mem_access_sector_mask_t sector_mask,
+                    mem_access_byte_mask_t byte_mask) = 0;
 
   virtual bool is_invalid_line() = 0;
   virtual bool is_valid_line() = 0;
@@ -183,15 +183,14 @@ struct line_cache_block : public cache_block_t {
     m_set_readable_on_fill = false;
     m_set_byte_mask_on_fill = false;
   }
-  virtual void fill(unsigned time, mem_access_sector_mask_t sector_mask, 
-              mem_access_byte_mask_t byte_mask) {
+  virtual void fill(unsigned time, mem_access_sector_mask_t sector_mask,
+                    mem_access_byte_mask_t byte_mask) {
     // if(!m_ignore_on_fill_status)
     //	assert( m_status == RESERVED );
 
     m_status = m_set_modified_on_fill ? MODIFIED : VALID;
-    
-    if (m_set_readable_on_fill)
-        m_readable = true;
+
+    if (m_set_readable_on_fill) m_readable = true;
     if (m_set_byte_mask_on_fill) set_byte_mask(byte_mask);
 
     m_fill_time = time;
@@ -358,10 +357,10 @@ struct sector_cache_block : public cache_block_t {
     //	if(!m_ignore_on_fill_status[sidx])
     //	         assert( m_status[sidx] == RESERVED );
     m_status[sidx] = m_set_modified_on_fill[sidx] ? MODIFIED : VALID;
-    
+
     if (m_set_readable_on_fill[sidx]) {
-        m_readable[sidx] = true;
-        m_set_readable_on_fill[sidx] = false;
+      m_readable[sidx] = true;
+      m_set_readable_on_fill[sidx] = false;
     }
     if (m_set_byte_mask_on_fill) set_byte_mask(byte_mask);
 
@@ -416,8 +415,7 @@ struct sector_cache_block : public cache_block_t {
   virtual mem_access_sector_mask_t get_dirty_sector_mask() {
     mem_access_sector_mask_t sector_mask;
     for (unsigned i = 0; i < SECTOR_CHUNCK_SIZE; i++) {
-      if (m_status[i] == MODIFIED) 
-        sector_mask.set(i);
+      if (m_status[i] == MODIFIED) sector_mask.set(i);
     }
     return sector_mask;
   }
@@ -575,7 +573,7 @@ class cache_config {
       }
       exit_parse_error();
     }
-    
+
     switch (ct) {
       case 'N':
         m_cache_type = NORMAL;
@@ -631,18 +629,19 @@ class cache_config {
     if (m_alloc_policy == STREAMING) {
       /*
       For streaming cache:
-      (1) we set the alloc policy to be on-fill to remove all line_alloc_fail stalls.
-      if the whole memory is allocated to the L1 cache, then make the allocation to be on_MISS
-      otherwise, make it ON_FILL to eliminate line allocation fails. 
-      i.e. MSHR throughput is the same, independent on the L1 cache size/associativity
-      So, we set the allocation policy per kernel basis, see shader.cc, max_cta() function
-      
+      (1) we set the alloc policy to be on-fill to remove all line_alloc_fail
+      stalls. if the whole memory is allocated to the L1 cache, then make the
+      allocation to be on_MISS otherwise, make it ON_FILL to eliminate line
+      allocation fails. i.e. MSHR throughput is the same, independent on the L1
+      cache size/associativity So, we set the allocation policy per kernel
+      basis, see shader.cc, max_cta() function
+
       (2) We also set the MSHRs to be equal to max
       allocated cache lines. This is possible by moving TAG to be shared
       between cache line and MSHR enrty (i.e. for each cache line, there is
       an MSHR rntey associated with it). This is the easiest think we can
       think of to model (mimic) L1 streaming cache in Pascal and Volta
-      
+
       For more information about streaming cache, see:
       http://on-demand.gputechconf.com/gtc/2017/presentation/s7798-luke-durant-inside-volta.pdf
       https://ieeexplore.ieee.org/document/8344474/
@@ -697,8 +696,8 @@ class cache_config {
     }
 
     // detect invalid configuration
-    if ((m_alloc_policy == ON_FILL || m_alloc_policy == STREAMING) 
-        and m_write_policy == WRITE_BACK) {
+    if ((m_alloc_policy == ON_FILL || m_alloc_policy == STREAMING) and
+        m_write_policy == WRITE_BACK) {
       // A writeback cache with allocate-on-fill policy will inevitably lead to
       // deadlock: The deadlock happens when an incoming cache-fill evicts a
       // dirty line, generating a writeback request.  If the memory subsystem is
@@ -746,7 +745,7 @@ class cache_config {
         break;
       case 'X':
         m_set_index_function = BITWISE_XORING_FUNCTION;
-        break;        
+        break;
       default:
         exit_parse_error();
     }
@@ -779,7 +778,9 @@ class cache_config {
 
   virtual unsigned set_index(new_addr_type addr) const;
 
-  virtual unsigned get_max_cache_multiplier() const { return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER;}
+  virtual unsigned get_max_cache_multiplier() const {
+    return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER;
+  }
 
   unsigned hash_function(new_addr_type addr, unsigned m_nset,
                          unsigned m_line_sz_log2, unsigned m_nset_log2,
@@ -826,9 +827,7 @@ class cache_config {
   write_allocate_policy_t get_write_allocate_policy() {
     return m_write_alloc_policy;
   }
-  write_policy_t get_write_policy() {
-    return m_write_policy;
-  }
+  write_policy_t get_write_policy() { return m_write_policy; }
 
  protected:
   void exit_parse_error() {
@@ -903,17 +902,17 @@ class l1d_cache_config : public cache_config {
   unsigned l1_banks_byte_interleaving_log2;
   unsigned l1_banks_hashing_function;
   unsigned m_unified_cache_size;
-  virtual unsigned get_max_cache_multiplier() const { 
-      // set * assoc * cacheline size. Then convert Byte to KB
-      // gpgpu_unified_cache_size is in KB while original_sz is in B
-      if (m_unified_cache_size > 0) {
-        unsigned original_size = m_nset * original_m_assoc * m_line_sz / 1024;
-        assert(m_unified_cache_size % original_size == 0);
-        return m_unified_cache_size / original_size;
-      } else {
-        return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER;
-      }    
+  virtual unsigned get_max_cache_multiplier() const {
+    // set * assoc * cacheline size. Then convert Byte to KB
+    // gpgpu_unified_cache_size is in KB while original_sz is in B
+    if (m_unified_cache_size > 0) {
+      unsigned original_size = m_nset * original_m_assoc * m_line_sz / 1024;
+      assert(m_unified_cache_size % original_size == 0);
+      return m_unified_cache_size / original_size;
+    } else {
+      return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER;
     }
+  }
 };
 
 class l2_cache_config : public cache_config {
@@ -936,8 +935,7 @@ class tag_array {
                                   mem_fetch *mf, bool is_write,
                                   bool probe_mode = false) const;
   enum cache_request_status probe(new_addr_type addr, unsigned &idx,
-                                  mem_access_sector_mask_t mask,
-                                  bool is_write,
+                                  mem_access_sector_mask_t mask, bool is_write,
                                   bool probe_mode = false,
                                   mem_fetch *mf = NULL) const;
   enum cache_request_status access(new_addr_type addr, unsigned time,
@@ -948,7 +946,7 @@ class tag_array {
 
   void fill(new_addr_type addr, unsigned time, mem_fetch *mf, bool is_write);
   void fill(unsigned idx, unsigned time, mem_fetch *mf);
-  void fill(new_addr_type addr, unsigned time, mem_access_sector_mask_t mask, 
+  void fill(new_addr_type addr, unsigned time, mem_access_sector_mask_t mask,
             mem_access_byte_mask_t byte_mask, bool is_write);
 
   unsigned size() const { return m_config.get_num_lines(); }
@@ -967,9 +965,7 @@ class tag_array {
   void update_cache_parameters(cache_config &config);
   void add_pending_line(mem_fetch *mf);
   void remove_pending_line(mem_fetch *mf);
-  void inc_dirty() {
-    m_dirty++;
-  }
+  void inc_dirty() { m_dirty++; }
 
  protected:
   // This constructor is intended for use only from derived classes that wish to

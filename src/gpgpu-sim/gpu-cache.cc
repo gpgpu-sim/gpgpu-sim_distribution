@@ -37,7 +37,8 @@
 
 const char *cache_request_status_str(enum cache_request_status status) {
   static const char *static_cache_request_status_str[] = {
-      "HIT", "HIT_RESERVED", "MISS", "RESERVATION_FAIL", "SECTOR_MISS", "MSHR_HIT"};
+      "HIT",         "HIT_RESERVED", "MISS", "RESERVATION_FAIL",
+      "SECTOR_MISS", "MSHR_HIT"};
 
   assert(sizeof(static_cache_request_status_str) / sizeof(const char *) ==
          NUM_CACHE_REQUEST_STATUS);
@@ -63,9 +64,9 @@ unsigned l1d_cache_config::set_bank(new_addr_type addr) const {
   // For sector cache, we select one sector per bank (sector interleaving)
   // This is what was found in Volta (one sector per bank, sector interleaving)
   // otherwise, line interleaving
-  return cache_config::hash_function(addr, l1_banks, l1_banks_byte_interleaving_log2,
-                                     l1_banks_log2,
-                                     l1_banks_hashing_function);
+  return cache_config::hash_function(addr, l1_banks,
+                                     l1_banks_byte_interleaving_log2,
+                                     l1_banks_log2, l1_banks_hashing_function);
 }
 
 unsigned cache_config::set_index(new_addr_type addr) const {
@@ -235,7 +236,7 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
                                            mem_fetch *mf, bool is_write,
                                            bool probe_mode) const {
   mem_access_sector_mask_t mask = mf->get_access_sector_mask();
-  return probe(addr, idx, mask,is_write, probe_mode, mf);
+  return probe(addr, idx, mask, is_write, probe_mode, mf);
 }
 
 enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
@@ -281,8 +282,8 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
     if (!line->is_reserved_line()) {
       // percentage of dirty lines in the cache
       // number of dirty lines / total lines in the cache
-      float dirty_line_percentage = 
-          ((float) m_dirty / (m_config.m_nset * m_config.m_assoc )) * 100;
+      float dirty_line_percentage =
+          ((float)m_dirty / (m_config.m_nset * m_config.m_assoc)) * 100;
       if (!line->is_modified_line() ||
           dirty_line_percentage >= m_config.m_wr_percent) {
         // if number of dirty lines in the cache is greater than
@@ -357,7 +358,7 @@ enum cache_request_status tag_array::access(new_addr_type addr, unsigned time,
           evicted.set_info(m_lines[idx]->m_block_addr,
                            m_lines[idx]->get_modified_size(),
                            m_lines[idx]->get_dirty_byte_mask(),
-                            m_lines[idx]->get_dirty_sector_mask());
+                           m_lines[idx]->get_dirty_sector_mask());
           m_dirty--;
         }
         m_lines[idx]->allocate(m_config.tag(addr), m_config.block_addr(addr),
@@ -372,9 +373,9 @@ enum cache_request_status tag_array::access(new_addr_type addr, unsigned time,
         bool before = m_lines[idx]->is_modified_line();
         ((sector_cache_block *)m_lines[idx])
             ->allocate_sector(time, mf->get_access_sector_mask());
-            if (before && !m_lines[idx]->is_modified_line()) {
-              m_dirty--;
-            }
+        if (before && !m_lines[idx]->is_modified_line()) {
+          m_dirty--;
+        }
       }
       break;
     case RESERVATION_FAIL:
@@ -391,16 +392,18 @@ enum cache_request_status tag_array::access(new_addr_type addr, unsigned time,
   return status;
 }
 
-void tag_array::fill(new_addr_type addr, unsigned time, mem_fetch *mf, bool is_write) {
-  fill(addr, time, mf->get_access_sector_mask(), mf->get_access_byte_mask(), is_write);
+void tag_array::fill(new_addr_type addr, unsigned time, mem_fetch *mf,
+                     bool is_write) {
+  fill(addr, time, mf->get_access_sector_mask(), mf->get_access_byte_mask(),
+       is_write);
 }
 
 void tag_array::fill(new_addr_type addr, unsigned time,
-                     mem_access_sector_mask_t mask, mem_access_byte_mask_t byte_mask,
-                     bool is_write) {
+                     mem_access_sector_mask_t mask,
+                     mem_access_byte_mask_t byte_mask, bool is_write) {
   // assert( m_config.m_alloc_policy == ON_FILL );
   unsigned idx;
-  enum cache_request_status status = probe(addr, idx, mask,is_write);
+  enum cache_request_status status = probe(addr, idx, mask, is_write);
   bool before = m_lines[idx]->is_modified_line();
   // assert(status==MISS||status==SECTOR_MISS); // MSHR should have prevented
   // redundant memory request
@@ -423,7 +426,8 @@ void tag_array::fill(new_addr_type addr, unsigned time,
 
 void tag_array::fill(unsigned index, unsigned time, mem_fetch *mf) {
   assert(m_config.m_alloc_policy == ON_MISS);
-  m_lines[index]->fill(time, mf->get_access_sector_mask(), mf->get_access_byte_mask());
+  m_lines[index]->fill(time, mf->get_access_sector_mask(),
+                       mf->get_access_byte_mask());
   m_dirty++;
 }
 
@@ -437,7 +441,7 @@ void tag_array::flush() {
         m_lines[i]->set_status(INVALID, mem_access_sector_mask_t().set(j));
       }
     }
-  
+
   m_dirty = 0;
   is_used = false;
 }
@@ -794,8 +798,8 @@ void cache_stats::print_stats(FILE *fout, const char *cache_name) const {
               m_stats[type][status]);
 
       if (status != RESERVATION_FAIL && status != MSHR_HIT)
-      // MSHR_HIT is a special type of SECTOR_MISS
-      // so its already included in the SECTOR_MISS
+        // MSHR_HIT is a special type of SECTOR_MISS
+        // so its already included in the SECTOR_MISS
         total_access[type] += m_stats[type][status];
     }
   }
@@ -1335,10 +1339,10 @@ enum cache_request_status data_cache::wr_miss_wa_naive(
       assert(status ==
              MISS);  // SECTOR_MISS and HIT_RESERVED should not send write back
       mem_fetch *wb = m_memfetch_creator->alloc(
-        evicted.m_block_addr,m_wrbk_type,
-        mf->get_access_warp_mask(), evicted.m_byte_mask,
-        evicted.m_sector_mask, evicted.m_modified_size,
-        true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle,-1,-1,-1,NULL);
+          evicted.m_block_addr, m_wrbk_type, mf->get_access_warp_mask(),
+          evicted.m_byte_mask, evicted.m_sector_mask, evicted.m_modified_size,
+          true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, -1, -1, -1,
+          NULL);
       // the evicted block may have wrong chip id when advanced L2 hashing  is
       // used, so set the right chip address from the original mf
       wb->set_chip(mf->get_tlx_addr().chip);
@@ -1388,10 +1392,10 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
       // (already modified lower level)
       if (wb && (m_config.m_write_policy != WRITE_THROUGH)) {
         mem_fetch *wb = m_memfetch_creator->alloc(
-        evicted.m_block_addr,m_wrbk_type,
-        mf->get_access_warp_mask(), evicted.m_byte_mask,
-        evicted.m_sector_mask, evicted.m_modified_size,
-        true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle,-1,-1,-1,NULL);
+            evicted.m_block_addr, m_wrbk_type, mf->get_access_warp_mask(),
+            evicted.m_byte_mask, evicted.m_sector_mask, evicted.m_modified_size,
+            true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, -1, -1, -1,
+            NULL);
         // the evicted block may have wrong chip id when advanced L2 hashing  is
         // used, so set the right chip address from the original mf
         wb->set_chip(mf->get_tlx_addr().chip);
@@ -1461,10 +1465,10 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
       // (already modified lower level)
       if (wb && (m_config.m_write_policy != WRITE_THROUGH)) {
         mem_fetch *wb = m_memfetch_creator->alloc(
-        evicted.m_block_addr,m_wrbk_type,
-        mf->get_access_warp_mask(), evicted.m_byte_mask,
-        evicted.m_sector_mask, evicted.m_modified_size,
-        true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle,-1,-1,-1,NULL);
+            evicted.m_block_addr, m_wrbk_type, mf->get_access_warp_mask(),
+            evicted.m_byte_mask, evicted.m_sector_mask, evicted.m_modified_size,
+            true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, -1, -1, -1,
+            NULL);
         // the evicted block may have wrong chip id when advanced L2 hashing  is
         // used, so set the right chip address from the original mf
         wb->set_chip(mf->get_tlx_addr().chip);
@@ -1514,7 +1518,6 @@ enum cache_request_status data_cache::wr_miss_wa_lazy_fetch_on_read(
     send_write_request(mf, cache_event(WRITE_REQUEST_SENT), time, events);
   }
 
-
   bool wb = false;
   evicted_block_info evicted;
 
@@ -1538,7 +1541,7 @@ enum cache_request_status data_cache::wr_miss_wa_lazy_fetch_on_read(
   } else {
     block->set_m_readable(false, mf->get_access_sector_mask());
     if (m_status == HIT_RESERVED)
-        block->set_readable_on_fill(true, mf->get_access_sector_mask());
+      block->set_readable_on_fill(true, mf->get_access_sector_mask());
   }
 
   if (m_status != RESERVATION_FAIL) {
@@ -1546,10 +1549,10 @@ enum cache_request_status data_cache::wr_miss_wa_lazy_fetch_on_read(
     // (already modified lower level)
     if (wb && (m_config.m_write_policy != WRITE_THROUGH)) {
       mem_fetch *wb = m_memfetch_creator->alloc(
-        evicted.m_block_addr,m_wrbk_type,
-        mf->get_access_warp_mask(), evicted.m_byte_mask,
-        evicted.m_sector_mask, evicted.m_modified_size,
-        true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle,-1,-1,-1,NULL);
+          evicted.m_block_addr, m_wrbk_type, mf->get_access_warp_mask(),
+          evicted.m_byte_mask, evicted.m_sector_mask, evicted.m_modified_size,
+          true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, -1, -1, -1,
+          NULL);
       // the evicted block may have wrong chip id when advanced L2 hashing  is
       // used, so set the right chip address from the original mf
       wb->set_chip(mf->get_tlx_addr().chip);
@@ -1596,7 +1599,7 @@ enum cache_request_status data_cache::rd_hit_base(
       m_tag_array->inc_dirty();
     }
     block->set_status(MODIFIED,
-                      mf->get_access_sector_mask());  // mark line as 
+                      mf->get_access_sector_mask());  // mark line as
     block->set_byte_mask(mf);
   }
   return HIT;
@@ -1628,10 +1631,10 @@ enum cache_request_status data_cache::rd_miss_base(
     // (already modified lower level)
     if (wb && (m_config.m_write_policy != WRITE_THROUGH)) {
       mem_fetch *wb = m_memfetch_creator->alloc(
-        evicted.m_block_addr,m_wrbk_type,
-        mf->get_access_warp_mask(), evicted.m_byte_mask,
-        evicted.m_sector_mask, evicted.m_modified_size,
-        true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle,-1,-1,-1,NULL);
+          evicted.m_block_addr, m_wrbk_type, mf->get_access_warp_mask(),
+          evicted.m_byte_mask, evicted.m_sector_mask, evicted.m_modified_size,
+          true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, -1, -1, -1,
+          NULL);
       // the evicted block may have wrong chip id when advanced L2 hashing  is
       // used, so set the right chip address from the original mf
       wb->set_chip(mf->get_tlx_addr().chip);
