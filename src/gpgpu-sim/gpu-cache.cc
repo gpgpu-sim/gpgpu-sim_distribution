@@ -284,10 +284,12 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
       // number of dirty lines / total lines in the cache
       float dirty_line_percentage =
           ((float)m_dirty / (m_config.m_nset * m_config.m_assoc)) * 100;
+      // If the cacheline is from a load op (not modified), 
+      // or the total dirty cacheline is above a specific value,
+      // Then this cacheline is eligible to be considered for replacement candidate
+      // i.e. Only evict clean cachelines until total dirty cachelines reach the limit.
       if (!line->is_modified_line() ||
           dirty_line_percentage >= m_config.m_wr_percent) {
-        // if number of dirty lines in the cache is greater than
-        // a specific value
         all_reserved = false;
         if (line->is_invalid_line()) {
           invalid_line = index;
@@ -354,7 +356,7 @@ enum cache_request_status tag_array::access(new_addr_type addr, unsigned time,
       if (m_config.m_alloc_policy == ON_MISS) {
         if (m_lines[idx]->is_modified_line()) {
           wb = true;
-          m_lines[idx]->set_byte_mask(mf);
+          // m_lines[idx]->set_byte_mask(mf);
           evicted.set_info(m_lines[idx]->m_block_addr,
                            m_lines[idx]->get_modified_size(),
                            m_lines[idx]->get_dirty_byte_mask(),
@@ -1191,6 +1193,25 @@ void data_cache::send_write_request(mem_fetch *mf, cache_event request,
   mf->set_status(m_miss_queue_status, time);
 }
 
+void data_cache::update_m_readable(mem_fetch *mf, unsigned cache_index) {
+  cache_block_t *block = m_tag_array->get_block(cache_index);
+  for (unsigned i = 0; i < SECTOR_CHUNCK_SIZE; i++) {
+    if (mf->get_access_sector_mask().test(i)) {
+      bool all_set = true;
+      for (unsigned k = i * SECTOR_SIZE; k < (i + 1) * SECTOR_SIZE; k++) {
+        // If any bit in the byte mask (within the sector) is not set, 
+        // the sector is unreadble
+        if (!block->get_dirty_byte_mask().test(k)) {
+          all_set = false;
+          break;
+        }
+      }
+      if (all_set)
+        block->set_m_readable(true, mf->get_access_sector_mask());
+    }
+  }
+}
+
 /****** Write-hit functions (Set by config file) ******/
 
 /// Write-back hit: Mark block as modified
@@ -1207,6 +1228,7 @@ cache_request_status data_cache::wr_hit_wb(new_addr_type addr,
   }
   block->set_status(MODIFIED, mf->get_access_sector_mask());
   block->set_byte_mask(mf);
+  update_m_readable(mf,cache_index);
 
   return HIT;
 }
@@ -1230,6 +1252,7 @@ cache_request_status data_cache::wr_hit_wt(new_addr_type addr,
   }
   block->set_status(MODIFIED, mf->get_access_sector_mask());
   block->set_byte_mask(mf);
+  update_m_readable(mf,cache_index);
 
   // generate a write-through
   send_write_request(mf, cache_event(WRITE_REQUEST_SENT), time, events);
@@ -1543,6 +1566,7 @@ enum cache_request_status data_cache::wr_miss_wa_lazy_fetch_on_read(
     if (m_status == HIT_RESERVED)
       block->set_readable_on_fill(true, mf->get_access_sector_mask());
   }
+  update_m_readable(mf,cache_index);
 
   if (m_status != RESERVATION_FAIL) {
     // If evicted block is modified and not a write-through

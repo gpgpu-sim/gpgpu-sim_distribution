@@ -1570,7 +1570,7 @@ class data_cache : public baseline_cache {
   /// Sends write request to lower level memory (write or writeback)
   void send_write_request(mem_fetch *mf, cache_event request, unsigned time,
                           std::list<cache_event> &events);
-
+  void update_m_readable(mem_fetch *mf, unsigned cache_index);
   // Member Function pointers - Set by configuration options
   // to the functions below each grouping
   /******* Write-hit configs *******/
