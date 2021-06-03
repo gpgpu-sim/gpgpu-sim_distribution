@@ -716,7 +716,7 @@ memory_sub_partition::breakdown_request_to_sector_requests(mem_fetch *mf) {
   if (mf->get_data_size() == SECTOR_SIZE &&
       mf->get_access_sector_mask().count() == 1) {
     result.push_back(mf);
-  } else if (mf->get_data_size() == 128) {
+  } else if (mf->get_data_size() == MAX_MEMORY_ACCESS_SIZE) {
     // break down every sector
     mem_access_byte_mask_t mask;
     for (unsigned i = 0; i < SECTOR_CHUNCK_SIZE; i++) {
@@ -732,11 +732,12 @@ memory_sub_partition::breakdown_request_to_sector_requests(mem_fetch *mf) {
 
       result.push_back(n_mf);
     }
+    // This is for constant cache
   } else if (mf->get_data_size() == 64 &&
-             (mf->get_access_sector_mask().to_string() == "1111" ||
-              mf->get_access_sector_mask().to_string() == "0000")) {
+             (mf->get_access_sector_mask().all() ||
+              mf->get_access_sector_mask().none())) {
     unsigned start;
-    if (mf->get_addr() % 128 == 0)
+    if (mf->get_addr() % MAX_MEMORY_ACCESS_SIZE == 0)
       start = 0;
     else
       start = 2;

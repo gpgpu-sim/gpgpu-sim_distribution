@@ -3344,29 +3344,23 @@ unsigned int shader_core_config::max_cta(const kernel_info_t &k) const {
     // Unified cache config is in KB. Converting to B
     unsigned total_unified = m_L1D_config.m_unified_cache_size * 1024;
 
-    switch (adaptive_cache_config) {
-      case FIXED:
-        break;
-      case ADAPTIVE_CACHE: {
-        bool l1d_configured = false;
-        unsigned max_assoc = m_L1D_config.get_max_assoc();
+    bool l1d_configured = false;
+    unsigned max_assoc = m_L1D_config.get_max_assoc();
 
-        for (std::vector<unsigned>::const_iterator it = shmem_opt_list.begin();
-             it < shmem_opt_list.end(); it++) {
-          if (total_shmem <= *it) {
-            float l1_ratio = 1 - ((float)*(it) / total_unified);
-            m_L1D_config.set_assoc(max_assoc * l1_ratio);
-            l1d_configured = true;
-            break;
-          }
-        }
-
-        assert(l1d_configured && "no shared memory option found");
+    for (std::vector<unsigned>::const_iterator it = shmem_opt_list.begin();
+         it < shmem_opt_list.end(); it++) {
+      if (total_shmem <= *it) {
+        float l1_ratio = 1 - ((float)*(it) / total_unified);
+        // make sure the ratio is between 0 and 1
+        assert(0 <= l1_ratio && l1_ratio <= 1);
+        // round to nearest instead of round down
+        m_L1D_config.set_assoc(max_assoc * l1_ratio + 0.5f);
+        l1d_configured = true;
         break;
       }
-      default:
-        assert(0);
     }
+
+    assert(l1d_configured && "no shared memory option found");
 
     if (m_L1D_config.is_streaming()) {
       // for streaming cache, if the whole memory is allocated
