@@ -428,9 +428,11 @@ void tag_array::fill(new_addr_type addr, unsigned time,
 
 void tag_array::fill(unsigned index, unsigned time, mem_fetch *mf) {
   assert(m_config.m_alloc_policy == ON_MISS);
-  m_lines[index]->fill(time, mf->get_access_sector_mask(),
-                       mf->get_access_byte_mask());
-  m_dirty++;
+  bool before = m_lines[index]->is_modified_line();
+  m_lines[index]->fill(time, mf->get_access_sector_mask(), mf->get_access_byte_mask());
+  if (m_lines[index]->is_modified_line() && !before) {
+    m_dirty++;
+  }
 }
 
 // TODO: we need write back the flushed data to the upper level
