@@ -1511,35 +1511,17 @@ enum cache_request_status data_cache::wr_miss_wa_lazy_fetch_on_read(
     new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time,
     std::list<cache_event> &events, enum cache_request_status status) {
   new_addr_type block_addr = m_config.block_addr(addr);
-  new_addr_type mshr_addr = m_config.mshr_addr(mf->get_addr());
 
   // if the request writes to the whole cache line/sector, then, write and set
   // cache line Modified. and no need to send read request to memory or reserve
   // mshr
 
-  // Write allocate, maximum 2 requests (write miss, write back request)
-  // Conservatively ensure the worst-case request can be handled this
-  // cycle
+  if (miss_queue_full(0)) {
+    m_stats.inc_fail_stats(mf->get_access_type(), MISS_QUEUE_FULL);
+    return RESERVATION_FAIL;  // cannot handle request this cycle
+  }
+
   if (m_config.m_write_policy == WRITE_THROUGH) {
-    bool mshr_hit = m_mshrs.probe(mshr_addr);
-    bool mshr_avail = !m_mshrs.full(mshr_addr);
-    if (miss_queue_full(1) ||
-        (!(mshr_hit && mshr_avail) &&
-         !(!mshr_hit && mshr_avail &&
-           (m_miss_queue.size() < m_config.m_miss_queue_size)))) {
-      // check what is the exactly the failure reason
-      if (miss_queue_full(1))
-        m_stats.inc_fail_stats(mf->get_access_type(), MISS_QUEUE_FULL);
-      else if (mshr_hit && !mshr_avail)
-        m_stats.inc_fail_stats(mf->get_access_type(), MSHR_MERGE_ENRTY_FAIL);
-      else if (!mshr_hit && !mshr_avail)
-        m_stats.inc_fail_stats(mf->get_access_type(), MSHR_ENRTY_FAIL);
-      else
-        assert(0);
-
-      return RESERVATION_FAIL;
-    }
-
     send_write_request(mf, cache_event(WRITE_REQUEST_SENT), time, events);
   }
 
