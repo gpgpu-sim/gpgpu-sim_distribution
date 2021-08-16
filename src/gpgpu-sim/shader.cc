@@ -3997,6 +3997,9 @@ void opndcoll_rfu_t::init(unsigned num_banks, shader_core_ctx *shader) {
     m_cu[j]->init(j, num_banks, m_bank_warp_shift, shader->get_config(), this,
                   sub_core_model, reg_id, m_num_banks_per_sched);
   }
+  for (unsigned j = 0; j < m_dispatch_units.size(); j++) {
+    m_dispatch_units[j].init(sub_core_model,m_num_warp_scheds);
+  }
   m_initialized = true;
 }
 
