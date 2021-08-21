@@ -20,7 +20,23 @@ The following is the implimentation theme of the tool:
 3. Subtract from the preceeding occurence as these are incremental, not kernel specific.
 4. Group all the uids with same name together.
 5. Get TOP-3 expensive kernels.
-6. Plot the counters on the graph using plt.
+6. Plot the counters on the graph using plt for each kernel.
 
 """
+
+
+
+def uid_line(file):
+    pattern=re.compile("kernel_launch_uid = (\d*)")
+    res={}
+    for i,line in enumerate(open(file)):
+        for match in re.finditer(pattern,line):
+            capture_id=list(match.group(1))[0]
+            if capture_id not in res:
+                res[capture_id]={}
+            res[capture_id]["line"]=i
+            res[capture_id]["uid"]=capture_id
+    
+    return res
+
 
