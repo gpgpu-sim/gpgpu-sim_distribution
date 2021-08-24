@@ -27,16 +27,18 @@ The following is the implimentation theme of the tool:
 
 
 def uid_line(file):
-    pattern=re.compile("kernel_launch_uid = (\d*)")
+    pattern=re.compile("kernel_launch_uid = (\d+)")
     res={}
     for i,line in enumerate(open(file)):
         for match in re.finditer(pattern,line):
-            capture_id=list(match.group(1))[0]
+            capture_id=list(match.group(1))
+            capture_id=int(''.join(capture_id))
             if capture_id not in res:
                 res[capture_id]={}
             res[capture_id]["line"]=i
             res[capture_id]["uid"]=capture_id
     
     return res
-
+res=uid_line(filename)
+print(res[23])
 
