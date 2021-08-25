@@ -44,7 +44,7 @@ def uid_line(file):
 #this kernel gets a particular figure from a particular kernel, given its starting line
 def fetch_figure(fp,stat,kernel_line):
     line_no=kernel_line
-    pattern=re.compile("^"+stat+" = ([+-]?[0-9]+\.?[0-9]*|\.[0-9]+)")
+    pattern=re.compile("^"+stat+" = (.*)")
     end_ker_pattern=re.compile("^.*END-of-Interconnect-DETAILS.*$")
 
     matcher=re.match(pattern,linecache.getline(fp,line_no))
@@ -55,17 +55,28 @@ def fetch_figure(fp,stat,kernel_line):
         matcher=re.match(pattern,linecache.getline(fp,line_no))
 
     figure=list(matcher.group(1))
-    figure=float(''.join(figure))
+    figure=''.join(figure)
     return figure
 
 def add_metric_by_uid(fp,res,metric):
     for i in res:
         try:
-            (res[i])[metric]=float(fetch_figure(fp,metric,(res[i])[metric]))
+            
+            (res[i])[metric]=float(fetch_figure(fp,metric,(res[i])["line"]))
         except:
-            print("adding "+metric+" as string")
-            (res[i])[metric]=fetch_figure(fp,metric,(res[i])[metric])
+            try:
+                (res[i])[metric]=fetch_figure(fp,metric,(res[i])["line"])
+            except Exception as e :
+                print(e)
+                break
+
+            
 
 
+
+res=uid_line(filename)
+add_metric_by_uid(filename,res,"kernel_name")
+add_metric_by_uid(filename,res,"gpgpu_n_param_mem_insn")
+print(res[1])
 
 
