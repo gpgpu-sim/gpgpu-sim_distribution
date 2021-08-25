@@ -27,10 +27,10 @@ The following is the implimentation theme of the tool:
 
 
 def uid_line(file):
-    pattern=re.compile("kernel_launch_uid = (\d+)")
+    uid_pattern=re.compile("kernel_launch_uid = (\d+)")
     res={}
     for i,line in enumerate(open(file)):
-        for match in re.finditer(pattern,line):
+        for match in re.finditer(uid_pattern,line):
             capture_id=list(match.group(1))
             capture_id=int(''.join(capture_id))
             if capture_id not in res:
@@ -39,6 +39,17 @@ def uid_line(file):
             res[capture_id]["uid"]=capture_id
     
     return res
-res=uid_line(filename)
-print(res[23])
 
+def fetch_figure(fp,stat,kernel_line):
+    line_no=kernel_line
+    pattern=re.compile("^"+stat+" = ([+-]?[0-9]+\.?[0-9]*|\.[0-9]+)")
+    end_ker_pattern=re.compile("^.*END-of-Interconnect-DETAILS.*$")
+    matcher=re.match(pattern,linecache.getline(fp,line_no))
+    while(not bool(matcher)):
+        if(bool(re.match(end_ker_pattern,linecache.getline(fp,line_no)))):
+            break
+        line_no+=1
+        matcher=re.match(pattern,linecache.getline(fp,line_no))
+
+    figure=list(matcher.group(1))
+    return figure
