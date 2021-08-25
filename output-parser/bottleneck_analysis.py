@@ -58,4 +58,14 @@ def fetch_figure(fp,stat,kernel_line):
     figure=float(''.join(figure))
     return figure
 
+def add_metric_by_uid(fp,res,metric):
+    for i in res:
+        try:
+            (res[i])[metric]=float(fetch_figure(fp,metric,(res[i])[metric]))
+        except:
+            print("adding "+metric+" as string")
+            (res[i])[metric]=fetch_figure(fp,metric,(res[i])[metric])
+
+
+
 
