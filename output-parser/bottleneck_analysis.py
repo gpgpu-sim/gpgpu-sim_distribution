@@ -26,7 +26,7 @@ The following is the implimentation theme of the tool:
 """
 
 
-
+#this function gets the uid and line for each kernel
 def uid_line(file):
     uid_pattern=re.compile("kernel_launch_uid = (\d+)")
     res={}
@@ -41,10 +41,12 @@ def uid_line(file):
     
     return res
 
+#this kernel gets a particular figure from a particular kernel, given its starting line
 def fetch_figure(fp,stat,kernel_line):
     line_no=kernel_line
     pattern=re.compile("^"+stat+" = ([+-]?[0-9]+\.?[0-9]*|\.[0-9]+)")
     end_ker_pattern=re.compile("^.*END-of-Interconnect-DETAILS.*$")
+
     matcher=re.match(pattern,linecache.getline(fp,line_no))
     while(not bool(matcher)):
         if(bool(re.match(end_ker_pattern,linecache.getline(fp,line_no)))):
@@ -56,8 +58,4 @@ def fetch_figure(fp,stat,kernel_line):
     figure=float(''.join(figure))
     return figure
 
-k=fetch_figure(filename,"gpu_stall_dramfull",29485)
-print(k)
-m=fetch_figure(filename,"gpu_stall_drafull",29485)
-print(m)
 
