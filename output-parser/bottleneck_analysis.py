@@ -1,4 +1,5 @@
 #import the necessary libraries
+from os import error
 import matplotlib.pyplot as plt
 import re
 import sys
@@ -47,9 +48,16 @@ def fetch_figure(fp,stat,kernel_line):
     matcher=re.match(pattern,linecache.getline(fp,line_no))
     while(not bool(matcher)):
         if(bool(re.match(end_ker_pattern,linecache.getline(fp,line_no)))):
-            break
+            raise Exception("There is no such metric, please check the white spaces and perform a spell check")
         line_no+=1
         matcher=re.match(pattern,linecache.getline(fp,line_no))
 
     figure=list(matcher.group(1))
+    figure=float(''.join(figure))
     return figure
+
+k=fetch_figure(filename,"gpu_stall_dramfull",29485)
+print(k)
+m=fetch_figure(filename,"gpu_stall_drafull",29485)
+print(m)
+
