@@ -42,7 +42,7 @@ def uid_line(file):
     
     return res
 
-#this kernel gets a particular figure from a particular kernel, given its starting line
+#this function gets a particular figure from a particular kernel, given its starting line
 def fetch_figure(fp,stat,kernel_line):
     line_no=kernel_line
     pattern=re.compile("^"+stat+" = (.*)")
@@ -59,21 +59,26 @@ def fetch_figure(fp,stat,kernel_line):
     figure=''.join(figure)
     return figure
 
+# this function add a particular metric that you spicify, to the record of each kernel launch
 def add_metric_by_uid(fp,res,metric):
     for i in res:
         try:
             (res[i])[metric]=float(fetch_figure(fp,metric,(res[i])["line"]))
         except:
             try:
-                (res[i])[metric]=fetch_figure(fp,metric,(res[i])["line"])
+                (res[i])[metric]=fetch_figure(fp,metric,(res[i])["line"]).strip()
             except Exception as e :
                 print(e)
                 break
 
+# this is a function that a list of metrics to record of each kernel launch
 def add_metrics_list(fp,res,metrics):
     for i in metrics:
         add_metric_by_uid(fp,res,i)
 
+
+#this function is for the metrics that are essentially counters i.e. they are not kernel specific.
+#These counters are the ones that are increamented hence need to be subtracted with their previous value.
 def norm_metric(res,metric):
     
     first_key=next(iter(res))
@@ -89,6 +94,27 @@ def norm_metric(res,metric):
     for i in res:
         (res[i])[metric]=lis[m]
         m=m+1
+
+
+#Above function but with a list
+def norm_metric_list(res,metrics):
+    for i in metrics:
+        norm_metric(res,i)
+
+#Used for grouping the launch records on the basis of the metric specified.  
+def grpby_metric(res, metric):
+    grp_res={}
+    list_uni=[]
+    for i in res:
+        list_uni.append( (res[i])[metric] )
+    list_uni=list(set(list_uni))
+    for m in list_uni:
+        for k in res:
+            if(res[k][metric]==m):
+                if m not in grp_res:
+                    grp_res[m]=[]
+                grp_res[m].append(res[k])
+    return grp_res
             
 
 
@@ -97,6 +123,6 @@ res=uid_line(filename)
 add_metric_by_uid(filename,res,"kernel_name")
 add_metric_by_uid(filename,res,"gpgpu_n_param_mem_insn")
 norm_metric(res,"gpgpu_n_param_mem_insn")
-print(res[2])
-
+res=grpby_metric(res,"kernel_name")
+print(res["_Z19vertex2normalKernel5ImageI6float33RefES2_"])
 
