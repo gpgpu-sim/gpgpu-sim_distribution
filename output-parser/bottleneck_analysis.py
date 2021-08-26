@@ -1,5 +1,6 @@
 #import the necessary libraries
 from os import error
+from types import resolve_bases
 import matplotlib.pyplot as plt
 import re
 import sys
@@ -61,7 +62,6 @@ def fetch_figure(fp,stat,kernel_line):
 def add_metric_by_uid(fp,res,metric):
     for i in res:
         try:
-            
             (res[i])[metric]=float(fetch_figure(fp,metric,(res[i])["line"]))
         except:
             try:
@@ -70,6 +70,25 @@ def add_metric_by_uid(fp,res,metric):
                 print(e)
                 break
 
+def add_metrics_list(fp,res,metrics):
+    for i in metrics:
+        add_metric_by_uid(fp,res,i)
+
+def norm_metric(res,metric):
+    
+    first_key=next(iter(res))
+    if(isinstance(res[first_key][metric],str)):
+        raise Exception("metrics which are inserted as strings cannot be adjusted")
+    
+    lis=[]
+    for i in res:
+        lis.append((res[i])[metric])
+    for i in range(len(lis)-1,0,-1):
+        lis[i]=lis[i]-lis[i-1]
+    m=0
+    for i in res:
+        (res[i])[metric]=lis[m]
+        m=m+1
             
 
 
@@ -77,6 +96,7 @@ def add_metric_by_uid(fp,res,metric):
 res=uid_line(filename)
 add_metric_by_uid(filename,res,"kernel_name")
 add_metric_by_uid(filename,res,"gpgpu_n_param_mem_insn")
-print(res[1])
+norm_metric(res,"gpgpu_n_param_mem_insn")
+print(res[2])
 
 
