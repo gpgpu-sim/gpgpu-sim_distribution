@@ -115,14 +115,41 @@ def grpby_metric(res, metric):
                     grp_res[m]=[]
                 grp_res[m].append(res[k])
     return grp_res
+
+def cycle_analysis():
+    res=uid_line(filename)
+    
+    metrics = ["gpu_sim_cycle","kernel_name"]
+    add_metrics_list(filename,res,metrics)
+    grpd_res=grpby_metric(res,"kernel_name")
+    view={}
+    for i in grpd_res:
+        prop=0
+        for q in grpd_res[i]:
+            prop=prop+q["gpu_sim_cycle"]
+        view[i]=prop
+    sorted_view={k:v for k,v in sorted(view.items(),key=lambda item: item[1])}
+    
+    x=[]
+    y=[]
+    for i in sorted_view:
+        x.append(i)
+        y.append(view[i])
+    top3=[]
+    for k in range(-1,-4,-1):
+        top3.append(x[k])
+    plt.barh(x,y)
+    plt.show()
+    return top3
             
 
 
 
-res=uid_line(filename)
-add_metric_by_uid(filename,res,"kernel_name")
-add_metric_by_uid(filename,res,"gpgpu_n_param_mem_insn")
-norm_metric(res,"gpgpu_n_param_mem_insn")
-res=grpby_metric(res,"kernel_name")
-print(res["_Z19vertex2normalKernel5ImageI6float33RefES2_"])
+# res=uid_line(filename)
+# add_metric_by_uid(filename,res,"kernel_name")
+# add_metric_by_uid(filename,res,"gpgpu_n_param_mem_insn")
+# norm_metric(res,"gpgpu_n_param_mem_insn")
+# res=grpby_metric(res,"kernel_name")
 
+# print(res["_Z19vertex2normalKernel5ImageI6float33RefES2_"])
+top3=cycle_analysis()
