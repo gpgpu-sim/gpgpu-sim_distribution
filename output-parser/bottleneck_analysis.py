@@ -45,7 +45,7 @@ def uid_line(file):
 #this function gets a particular figure from a particular kernel, given its starting line
 def fetch_figure(fp,stat,kernel_line):
     line_no=kernel_line
-    pattern=re.compile("^"+stat+" = (.*)")
+    pattern=re.compile("^"+stat+"\s*=\s*(.*)")
     end_ker_pattern=re.compile("^.*END-of-Interconnect-DETAILS.*$")
 
     matcher=re.match(pattern,linecache.getline(fp,line_no))
@@ -116,13 +116,14 @@ def grpby_metric(res, metric):
                 grp_res[m].append(res[k])
     return grp_res
 
+#this kernel adds the cycles taken up by each of the kernel in totality and plots a graph. I also returns a list of the three most heavy kernels
 def cycle_analysis():
     res=uid_line(filename)
-    
     metrics = ["gpu_sim_cycle","kernel_name"]
     add_metrics_list(filename,res,metrics)
     grpd_res=grpby_metric(res,"kernel_name")
     view={}
+    #add cycles of each instance to figure out the heaviest
     for i in grpd_res:
         prop=0
         for q in grpd_res[i]:
@@ -136,20 +137,53 @@ def cycle_analysis():
         x.append(i)
         y.append(view[i])
     top3=[]
+    #get the top3 heaviest
     for k in range(-1,-4,-1):
         top3.append(x[k])
+    #plot the kernel graph
     plt.barh(x,y)
     plt.show()
     return top3
-            
+
+def plot_metric(metric,res,kn):
+    x=[]
+    y=[]
+    for i in res:
+        x.append(i[metric])
+    #print(len(x))
+    for i in range(0,len(x)):
+        #print(i)
+        y.append(i)
+    plt.figure(figsize=(20,10))
+    plt.bar(y,x)
+    plt.title(kn+"::"+metric)
+    plt.show() 
+
+
+def bottle_neck_analysis(kers):
+    res=uid_line(filename)
+    metrics=["gpgpu_n_stall_shd_mem","gpu_stall_dramfull","gpu_stall_icnt2sh   ","kernel_name"]
+    tbn    =["gpgpu_n_stall_shd_mem","gpu_stall_dramfull","gpu_stall_icnt2sh   "]
+    add_metrics_list(filename,res,metrics)
+    norm_metric_list (res,tbn)
+    #print(res)
+    gprd_res=grpby_metric(res,"kernel_name")
+    tot=0
+    pl_x=[]
+    pl_y=[]
+    for i in gprd_res:
+        pl_x.append(i)
+        pl_y.append(len(gprd_res[i]))
+        tot=tot+len(gprd_res[i])
+    plt.barh(pl_x,pl_y)
+
+   
+    for i in kers:
+        for m in tbn:
+            plot_metric(m,gprd_res[i],i)
+    return gprd_res
 
 
 
-# res=uid_line(filename)
-# add_metric_by_uid(filename,res,"kernel_name")
-# add_metric_by_uid(filename,res,"gpgpu_n_param_mem_insn")
-# norm_metric(res,"gpgpu_n_param_mem_insn")
-# res=grpby_metric(res,"kernel_name")
-
-# print(res["_Z19vertex2normalKernel5ImageI6float33RefES2_"])
 top3=cycle_analysis()
+bottle_neck_analysis(top3)
