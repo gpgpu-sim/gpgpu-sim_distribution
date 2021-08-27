@@ -411,6 +411,28 @@ process.
 
 # MISCELLANEOUS
 
+## Bottleneck Analysis (Per-Kernel)
+This is a simple, well commented script that can be used as a base for further kernel-by-kernel analysis. ** This is applicable for workloads that have minimal or no concurrent kernel execution. ** This script extracts the values required for [bottleneck analysis](http://gpgpu-sim.org/manual/index.php/Main_Page#:~:text=gpu_tot_sim_insn%20/%20wall_time-,Simple%20Bottleneck%20Analysis,-These%20performance%20counters) on per kernel basis. It plots these graphs, keep on closing the graph to acess the next graph:
+
+1) The first graph tells the total number of cycles by each of the kernels
+2) The next graphs tells you the number of times that kernel is called
+3) For the top 3 most "expensive" kernels on the basis of cycle, it plots the 3 counters mentioned in the bottleneck analysis. The title of each of these graphs is explainatory. each bar is essentially an instace of that kernel and on the y-axis is the contribution of that instance to that counter mentioned in the title in the format: "kernel_name::counter".
+
+To use this script you need Python (3.7 or higher is required as ordered dictionaries are launguage features from 3.7 and we use that)
+
+To run make sure that you have gp-gpusim output saved in a file to do that just pipe the tee command followed by the file name, something like this
+
+```
+./executable | tee anyFileName.log
+```
+
+Then run the python script:
+
+```
+python3 path_to_output-parser/bottleneck_analysis.py path_to_log_file
+```
+
+
 ## Speeding up the execution
 
 Some applications take several hours to execute on GPGPUSim. This is because the simulator has to dump the PTX, analyze them and get resource usage statistics. This can be avoided everytime we execute the program in the following way:
