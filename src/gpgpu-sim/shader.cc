@@ -1006,7 +1006,9 @@ void shader_core_ctx::issue_warp(register_set &pipe_reg_set,
                      m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle,
                      m_warp[warp_id]->get_dynamic_warp_id(),
                      sch_id);  // dynamic instruction information
-  m_stats->shader_cycle_distro[2 + (*pipe_reg)->active_count()]++;
+  int num_active_threads = (*pipe_reg)->active_count();
+  if (num_active_threads > 0)
+    m_stats->shader_cycle_distro[2 + num_active_threads]++;
   func_exec_inst(**pipe_reg);
 
   if (next_inst->op == BARRIER_OP) {
