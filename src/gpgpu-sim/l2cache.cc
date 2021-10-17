@@ -57,6 +57,19 @@ mem_fetch *partition_mf_allocator::alloc(new_addr_type addr,
   return mf;
 }
 
+mem_fetch *partition_mf_allocator::alloc(
+    new_addr_type addr, mem_access_type type, const active_mask_t &active_mask,
+    const mem_access_byte_mask_t &byte_mask,
+    const mem_access_sector_mask_t &sector_mask, unsigned size, bool wr,
+    unsigned long long cycle, unsigned wid, unsigned sid, unsigned tpc,
+    mem_fetch *original_mf) const {
+  mem_access_t access(type, addr, size, wr, active_mask, byte_mask, sector_mask,
+                      m_memory_config->gpgpu_ctx);
+  mem_fetch *mf =
+      new mem_fetch(access, NULL, wr ? WRITE_PACKET_SIZE : READ_PACKET_SIZE,
+                    wid, sid, tpc, m_memory_config, cycle, original_mf);
+  return mf;
+}
 memory_partition_unit::memory_partition_unit(unsigned partition_id,
                                              const memory_config *config,
                                              class memory_stats_t *stats,
@@ -541,10 +554,15 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
                m_config->m_L2_config.m_write_alloc_policy ==
                    LAZY_FETCH_ON_READ) &&
               !was_writeallocate_sent(events)) {
-            mf->set_reply();
-            mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,
-                           m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
-            m_L2_icnt_queue->push(mf);
+            if (mf->get_access_type() == L1_WRBK_ACC) {
+              m_request_tracker.erase(mf);
+              delete mf;
+            } else {
+              mf->set_reply();
+              mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,
+                             m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+              m_L2_icnt_queue->push(mf);
+            }
           }
           // L2 cache accepted request
           m_icnt_L2_queue->pop();
@@ -694,71 +712,68 @@ bool memory_sub_partition::busy() const { return !m_request_tracker.empty(); }
 std::vector<mem_fetch *>
 memory_sub_partition::breakdown_request_to_sector_requests(mem_fetch *mf) {
   std::vector<mem_fetch *> result;
-
+  mem_access_sector_mask_t sector_mask = mf->get_access_sector_mask();
   if (mf->get_data_size() == SECTOR_SIZE &&
       mf->get_access_sector_mask().count() == 1) {
     result.push_back(mf);
-  } else if (mf->get_data_size() == 128 || mf->get_data_size() == 64) {
-    // We only accept 32, 64 and 128 bytes reqs
-    unsigned start = 0, end = 0;
-    if (mf->get_data_size() == 128) {
-      start = 0;
-      end = 3;
-    } else if (mf->get_data_size() == 64 &&
-               mf->get_access_sector_mask().to_string() == "1100") {
-      start = 2;
-      end = 3;
-    } else if (mf->get_data_size() == 64 &&
-               mf->get_access_sector_mask().to_string() == "0011") {
-      start = 0;
-      end = 1;
-    } else if (mf->get_data_size() == 64 &&
-               (mf->get_access_sector_mask().to_string() == "1111" ||
-                mf->get_access_sector_mask().to_string() == "0000")) {
-      if (mf->get_addr() % 128 == 0) {
-        start = 0;
-        end = 1;
-      } else {
-        start = 2;
-        end = 3;
+  } else if (mf->get_data_size() == MAX_MEMORY_ACCESS_SIZE) {
+    // break down every sector
+    mem_access_byte_mask_t mask;
+    for (unsigned i = 0; i < SECTOR_CHUNCK_SIZE; i++) {
+      for (unsigned k = i * SECTOR_SIZE; k < (i + 1) * SECTOR_SIZE; k++) {
+        mask.set(k);
       }
-    } else {
-      printf(
-          "Invalid sector received, address = 0x%06llx, sector mask = %s, data "
-          "size = %d",
-          mf->get_addr(), mf->get_access_sector_mask(), mf->get_data_size());
-      assert(0 && "Undefined sector mask is received");
-    }
-
-    std::bitset<SECTOR_SIZE * SECTOR_CHUNCK_SIZE> byte_sector_mask;
-    byte_sector_mask.reset();
-    for (unsigned k = start * SECTOR_SIZE; k < SECTOR_SIZE; ++k)
-      byte_sector_mask.set(k);
-
-    for (unsigned j = start, i = 0; j <= end; ++j, ++i) {
-      const mem_access_t *ma = new mem_access_t(
-          mf->get_access_type(), mf->get_addr() + SECTOR_SIZE * i, SECTOR_SIZE,
-          mf->is_write(), mf->get_access_warp_mask(),
-          mf->get_access_byte_mask() & byte_sector_mask,
-          std::bitset<SECTOR_CHUNCK_SIZE>().set(j), m_gpu->gpgpu_ctx);
-
-      mem_fetch *n_mf =
-          new mem_fetch(*ma, NULL, mf->get_ctrl_size(), mf->get_wid(),
-                        mf->get_sid(), mf->get_tpc(), mf->get_mem_config(),
-                        m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, mf);
+      mem_fetch *n_mf = m_mf_allocator->alloc(
+          mf->get_addr() + SECTOR_SIZE * i, mf->get_access_type(),
+          mf->get_access_warp_mask(), mf->get_access_byte_mask() & mask,
+          std::bitset<SECTOR_CHUNCK_SIZE>().set(i), SECTOR_SIZE, mf->is_write(),
+          m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, mf->get_wid(),
+          mf->get_sid(), mf->get_tpc(), mf);
 
       result.push_back(n_mf);
-      byte_sector_mask <<= SECTOR_SIZE;
+    }
+    // This is for constant cache
+  } else if (mf->get_data_size() == 64 &&
+             (mf->get_access_sector_mask().all() ||
+              mf->get_access_sector_mask().none())) {
+    unsigned start;
+    if (mf->get_addr() % MAX_MEMORY_ACCESS_SIZE == 0)
+      start = 0;
+    else
+      start = 2;
+    mem_access_byte_mask_t mask;
+    for (unsigned i = start; i < start + 2; i++) {
+      for (unsigned k = i * SECTOR_SIZE; k < (i + 1) * SECTOR_SIZE; k++) {
+        mask.set(k);
+      }
+      mem_fetch *n_mf = m_mf_allocator->alloc(
+          mf->get_addr(), mf->get_access_type(), mf->get_access_warp_mask(),
+          mf->get_access_byte_mask() & mask,
+          std::bitset<SECTOR_CHUNCK_SIZE>().set(i), SECTOR_SIZE, mf->is_write(),
+          m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, mf->get_wid(),
+          mf->get_sid(), mf->get_tpc(), mf);
+
+      result.push_back(n_mf);
     }
   } else {
-    printf(
-        "Invalid sector received, address = 0x%06llx, sector mask = %d, byte "
-        "mask = , data size = %u",
-        mf->get_addr(), mf->get_access_sector_mask().count(),
-        mf->get_data_size());
-    assert(0 && "Undefined data size is received");
-  }
+    for (unsigned i = 0; i < SECTOR_CHUNCK_SIZE; i++) {
+      if (sector_mask.test(i)) {
+        mem_access_byte_mask_t mask;
+        for (unsigned k = i * SECTOR_SIZE; k < (i + 1) * SECTOR_SIZE; k++) {
+          mask.set(k);
+        }
+        mem_fetch *n_mf = m_mf_allocator->alloc(
+            mf->get_addr() + SECTOR_SIZE * i, mf->get_access_type(),
+            mf->get_access_warp_mask(), mf->get_access_byte_mask() & mask,
+            std::bitset<SECTOR_CHUNCK_SIZE>().set(i), SECTOR_SIZE,
+            mf->is_write(), m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle,
+            mf->get_wid(), mf->get_sid(), mf->get_tpc(), mf);
 
+        result.push_back(n_mf);
+      }
+    }
+  }
+  if (result.size() == 0) assert(0 && "no mf sent");
   return result;
 }
 

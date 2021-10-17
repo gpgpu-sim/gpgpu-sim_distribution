@@ -166,8 +166,9 @@ void inst_not_implemented(const ptx_instruction *pI);
 ptx_reg_t srcOperandModifiers(ptx_reg_t opData, operand_info opInfo,
                               operand_info dstInfo, unsigned type,
                               ptx_thread_info *thread);
-                              
-void video_mem_instruction(const ptx_instruction *pI, ptx_thread_info *thread, int op_code);
+
+void video_mem_instruction(const ptx_instruction *pI, ptx_thread_info *thread,
+                           int op_code);
 
 void sign_extend(ptx_reg_t &data, unsigned src_size, const operand_info &dst);
 
@@ -1711,40 +1712,50 @@ void bfi_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
   }
   thread->set_operand_value(dst, data, i_type, thread, pI);
 }
-void bfind_impl(const ptx_instruction *pI, ptx_thread_info *thread)
-{
-  const operand_info &dst  = pI->dst();
+void bfind_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
+  const operand_info &dst = pI->dst();
   const operand_info &src1 = pI->src1();
   const unsigned i_type = pI->get_type();
 
-  const ptx_reg_t src1_data = thread->get_operand_value(src1, dst, i_type, thread, 1);
-  const int msb = ( i_type == U32_TYPE || i_type == S32_TYPE) ? 31 : 63;
+  const ptx_reg_t src1_data =
+      thread->get_operand_value(src1, dst, i_type, thread, 1);
+  const int msb = (i_type == U32_TYPE || i_type == S32_TYPE) ? 31 : 63;
 
   unsigned long a = 0;
-  switch (i_type)
-  {
-    case S32_TYPE: a = src1_data.s32; break;
-    case U32_TYPE: a = src1_data.u32; break;
-    case S64_TYPE: a = src1_data.s64; break;
-    case U64_TYPE: a = src1_data.u64; break;
-    default: assert(false); abort();
+  switch (i_type) {
+    case S32_TYPE:
+      a = src1_data.s32;
+      break;
+    case U32_TYPE:
+      a = src1_data.u32;
+      break;
+    case S64_TYPE:
+      a = src1_data.s64;
+      break;
+    case U64_TYPE:
+      a = src1_data.u64;
+      break;
+    default:
+      assert(false);
+      abort();
   }
 
   // negate negative signed inputs
-  if ( ( i_type == S32_TYPE || i_type == S64_TYPE ) && ( a & ( 1 << msb ) ) ) {
-      a = ~a;
+  if ((i_type == S32_TYPE || i_type == S64_TYPE) && (a & (1 << msb))) {
+    a = ~a;
   }
   uint32_t d_data = 0xffffffff;
   for (uint32_t i = msb; i >= 0; i--) {
-      if (a & (1<<i))  { d_data = i; break; }
+    if (a & (1 << i)) {
+      d_data = i;
+      break;
+    }
   }
 
   // if (.shiftamt && d != 0xffffffff)  { d = msb - d; }
 
   // store d
   thread->set_operand_value(dst, d_data, U32_TYPE, thread, pI);
-
-
 }
 
 void bra_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
@@ -6339,12 +6350,10 @@ void vmad_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
 #define VMAX 0
 #define VMIN 1
 
-void vmax_impl(const ptx_instruction *pI, ptx_thread_info *thread)
-{
-   video_mem_instruction(pI, thread, VMAX);
+void vmax_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
+  video_mem_instruction(pI, thread, VMAX);
 }
-void vmin_impl(const ptx_instruction *pI, ptx_thread_info *thread)
-{
+void vmin_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
   video_mem_instruction(pI, thread, VMIN);
 }
 void vset_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
@@ -6440,12 +6449,12 @@ void vote_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
   }
 }
 
-void activemask_impl( const ptx_instruction *pI, ptx_thread_info *thread )
-{
+void activemask_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
   active_mask_t l_activemask_bitset = pI->get_warp_active_mask();
-  uint32_t l_activemask_uint = static_cast<uint32_t>(l_activemask_bitset.to_ulong());
+  uint32_t l_activemask_uint =
+      static_cast<uint32_t>(l_activemask_bitset.to_ulong());
 
-  const operand_info &dst  = pI->dst();
+  const operand_info &dst = pI->dst();
   thread->set_operand_value(dst, l_activemask_uint, U32_TYPE, thread, pI);
 }
 
@@ -6527,12 +6536,12 @@ ptx_reg_t srcOperandModifiers(ptx_reg_t opData, operand_info opInfo,
   return result;
 }
 
-void video_mem_instruction(const ptx_instruction *pI, ptx_thread_info *thread, int op_code)
-{
-  const operand_info &dst  = pI->dst(); // d
-  const operand_info &src1 = pI->src1(); // a
-  const operand_info &src2 = pI->src2(); // b
-  const operand_info &src3 = pI->src3(); // c
+void video_mem_instruction(const ptx_instruction *pI, ptx_thread_info *thread,
+                           int op_code) {
+  const operand_info &dst = pI->dst();    // d
+  const operand_info &src1 = pI->src1();  // a
+  const operand_info &src2 = pI->src2();  // b
+  const operand_info &src3 = pI->src3();  // c
 
   const unsigned i_type = pI->get_type();
 
@@ -6557,19 +6566,18 @@ void video_mem_instruction(const ptx_instruction *pI, ptx_thread_info *thread, i
   auto option = options.begin();
   assert(*option == ATOMIC_MAX || *option == ATOMIC_MIN);
 
-  switch ( i_type ) {
+  switch (i_type) {
     case S32_TYPE: {
       // assert all operands are S32_TYPE:
       scalar_type = pI->get_scalar_type();
-      for (std::list<int>::iterator scalar = scalar_type.begin(); scalar != scalar_type.end(); scalar++)
-      {
+      for (std::list<int>::iterator scalar = scalar_type.begin();
+           scalar != scalar_type.end(); scalar++) {
         assert(*scalar == S32_TYPE);
       }
       assert(scalar_type.size() == 3);
       scalar_type.clear();
 
-      switch (op_code)
-      {
+      switch (op_code) {
         case VMAX:
           data.s32 = MY_MAX_I(ta.s32, tb.s32);
           break;
@@ -6580,26 +6588,23 @@ void video_mem_instruction(const ptx_instruction *pI, ptx_thread_info *thread, i
           assert(0);
       }
 
-      switch (*option)
-      {
+      switch (*option) {
         case ATOMIC_MAX:
           data.s32 = MY_MAX_I(data.s32, c.s32);
-        break;
+          break;
         case ATOMIC_MIN:
           data.s32 = MY_MIN_I(data.s32, c.s32);
-        break;
+          break;
         default:
-          assert(0); // not yet implemented
+          assert(0);  // not yet implemented
       }
       break;
-
     }
     default:
-      assert(0); // not yet implemented
+      assert(0);  // not yet implemented
   }
 
   thread->set_operand_value(dst, data, i_type, thread, pI);
 
   return;
 }
-
