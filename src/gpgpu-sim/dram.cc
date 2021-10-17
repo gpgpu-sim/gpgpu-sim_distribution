@@ -1,19 +1,20 @@
-// Copyright (c) 2009-2011, Tor M. Aamodt, Wilson W.L. Fung, Ali Bakhoda,
-// Ivan Sham, George L. Yuan,
-// The University of British Columbia
+// Copyright (c) 2009-2021, Tor M. Aamodt, Wilson W.L. Fung, Ali Bakhoda,
+// Ivan Sham, George L. Yuan, Vijay Kandiah, Nikos Hardavellas
+// The University of British Columbia, Northwestern University
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 //
-// Redistributions of source code must retain the above copyright notice, this
-// list of conditions and the following disclaimer.
-// Redistributions in binary form must reproduce the above copyright notice,
-// this list of conditions and the following disclaimer in the documentation
-// and/or other materials provided with the distribution. Neither the name of
-// The University of British Columbia nor the names of its contributors may be
-// used to endorse or promote products derived from this software without
-// specific prior written permission.
+// 1. Redistributions of source code must retain the above copyright notice, this
+//    list of conditions and the following disclaimer;
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution;
+// 3. Neither the names of The University of British Columbia, Northwestern 
+//    University nor the names of their contributors may be used to
+//    endorse or promote products derived from this software without specific
+//    prior written permission.
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -855,7 +856,7 @@ void dram_t::visualizer_print(gzFile visualizer_file) {
 
 void dram_t::set_dram_power_stats(unsigned &cmd, unsigned &activity,
                                   unsigned &nop, unsigned &act, unsigned &pre,
-                                  unsigned &rd, unsigned &wr,
+                                  unsigned &rd, unsigned &wr, unsigned &wr_WB,
                                   unsigned &req) const {
   // Point power performance counters to low-level DRAM counters
   cmd = n_cmd;
@@ -865,6 +866,7 @@ void dram_t::set_dram_power_stats(unsigned &cmd, unsigned &activity,
   pre = n_pre;
   rd = n_rd;
   wr = n_wr;
+  wr_WB = n_wr_WB;
   req = n_req;
 }
 

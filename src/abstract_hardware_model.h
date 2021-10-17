@@ -1,18 +1,19 @@
-// Copyright (c) 2009-2011, Tor M. Aamodt, Inderpreet Singh,
-// The University of British Columbia
+// Copyright (c) 2009-2021, Tor M. Aamodt, Inderpreet Singh, Vijay Kandiah, Nikos Hardavellas
+// The University of British Columbia, Northwestern University
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 //
-// Redistributions of source code must retain the above copyright notice, this
-// list of conditions and the following disclaimer.
-// Redistributions in binary form must reproduce the above copyright notice,
-// this list of conditions and the following disclaimer in the documentation
-// and/or other materials provided with the distribution. Neither the name of
-// The University of British Columbia nor the names of its contributors may be
-// used to endorse or promote products derived from this software without
-// specific prior written permission.
+// 1. Redistributions of source code must retain the above copyright notice, this
+//    list of conditions and the following disclaimer;
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution;
+// 3. Neither the names of The University of British Columbia, Northwestern 
+//    University nor the names of their contributors may be used to
+//    endorse or promote products derived from this software without specific
+//    prior written permission.
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -58,6 +59,30 @@ enum _memory_space_t {
   generic_space,
   instruction_space
 };
+
+#ifndef COEFF_STRUCT
+#define COEFF_STRUCT
+
+struct PowerscalingCoefficients{
+    double int_coeff;
+    double int_mul_coeff;
+    double int_mul24_coeff;
+    double int_mul32_coeff;
+    double int_div_coeff;
+    double fp_coeff;
+    double dp_coeff;
+    double fp_mul_coeff;
+    double fp_div_coeff;
+    double dp_mul_coeff;
+    double dp_div_coeff;
+    double sqrt_coeff;
+    double log_coeff;
+    double sin_coeff;
+    double exp_coeff;
+    double tensor_coeff;
+    double tex_coeff;
+};
+#endif
 
 enum FuncCache {
   FuncCachePreferNone = 0,
@@ -134,8 +159,14 @@ enum special_operations_t {
   FP_SQRT_OP,
   FP_LG_OP,
   FP_SIN_OP,
-  FP_EXP_OP
+  FP_EXP_OP,
+  DP_MUL_OP,
+  DP_DIV_OP,
+  DP___OP,
+  TENSOR__OP,
+  TEX__OP
 };
+
 typedef enum special_operations_t
     special_ops;  // Required to identify for the power model
 enum operation_pipeline_t {
@@ -911,6 +942,7 @@ class inst_t {
     sp_op = OTHER_OP;
     op_pipe = UNKOWN_OP;
     mem_op = NOT_TEX;
+    const_cache_operand = 0;
     num_operands = 0;
     num_regs = 0;
     memset(out, 0, sizeof(unsigned));
@@ -939,6 +971,20 @@ class inst_t {
     return (op == STORE_OP || op == TENSOR_CORE_STORE_OP ||
             memory_op == memory_store);
   }
+
+  bool is_fp() const { return ((sp_op == FP__OP));}    //VIJAY
+  bool is_fpdiv() const { return ((sp_op == FP_DIV_OP));} 
+  bool is_fpmul() const { return ((sp_op == FP_MUL_OP));} 
+  bool is_dp() const { return ((sp_op == DP___OP));}    
+  bool is_dpdiv() const { return ((sp_op == DP_DIV_OP));} 
+  bool is_dpmul() const { return ((sp_op == DP_MUL_OP));}
+  bool is_imul() const { return ((sp_op == INT_MUL_OP));} 
+  bool is_imul24() const { return ((sp_op == INT_MUL24_OP));} 
+  bool is_imul32() const { return ((sp_op == INT_MUL32_OP));} 
+  bool is_idiv() const { return ((sp_op == INT_DIV_OP));}   
+  bool is_sfu() const {return ((sp_op == FP_SQRT_OP) || (sp_op == FP_LG_OP)  || (sp_op == FP_SIN_OP)  || (sp_op == FP_EXP_OP) || (sp_op == TENSOR__OP));}
+  bool is_alu() const {return (sp_op == INT__OP);}
+
   unsigned get_num_operands() const { return num_operands; }
   unsigned get_num_regs() const { return num_regs; }
   void set_num_regs(unsigned num) { num_regs = num; }
@@ -962,6 +1008,7 @@ class inst_t {
   operation_pipeline op_pipe;  // code (uarch visible) identify the pipeline of
                                // the operation (SP, SFU or MEM)
   mem_operation mem_op;        // code (uarch visible) identify memory type
+  bool const_cache_operand;   // has a load from constant memory as an operand
   _memory_op_t memory_op;      // memory_op used by ptxplus
   unsigned num_operands;
   unsigned num_regs;  // count vector operand as one register operand
