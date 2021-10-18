@@ -622,13 +622,13 @@ void ptx_recognizer::add_scalar_type_spec(int type_spec) {
                     g_ptx_token_decode[type_spec].c_str());
   g_scalar_type.push_back(type_spec);
   if (g_scalar_type.size() > 1) {
-    parse_assert((g_opcode == -1) || (g_opcode == CVT_OP) ||
-                     (g_opcode == SET_OP) || (g_opcode == SLCT_OP) ||
-                     (g_opcode == TEX_OP) || (g_opcode == MMA_OP) ||
-                     (g_opcode == DP4A_OP) || (g_opcode == VMIN_OP) || 
-                     (g_opcode == VMAX_OP),
-                 "only cvt, set, slct, tex, vmin, vmax and dp4a can have more than one "
-                 "type specifier.");
+    parse_assert(
+        (g_opcode == -1) || (g_opcode == CVT_OP) || (g_opcode == SET_OP) ||
+            (g_opcode == SLCT_OP) || (g_opcode == TEX_OP) ||
+            (g_opcode == MMA_OP) || (g_opcode == DP4A_OP) ||
+            (g_opcode == VMIN_OP) || (g_opcode == VMAX_OP),
+        "only cvt, set, slct, tex, vmin, vmax and dp4a can have more than one "
+        "type specifier.");
   }
   g_scalar_type_spec = type_spec;
 }

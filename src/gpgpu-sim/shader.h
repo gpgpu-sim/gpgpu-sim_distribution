@@ -238,7 +238,10 @@ class shd_warp_t {
   unsigned get_dynamic_warp_id() const { return m_dynamic_warp_id; }
   unsigned get_warp_id() const { return m_warp_id; }
 
-  class shader_core_ctx * get_shader() { return m_shader; }
+  class shader_core_ctx *get_shader() {
+    return m_shader;
+  }
+
  private:
   static const unsigned IBUFFER_SIZE = 2;
   class shader_core_ctx *m_shader;
@@ -318,6 +321,7 @@ enum concrete_scheduler {
   CONCRETE_SCHEDULER_LRR = 0,
   CONCRETE_SCHEDULER_GTO,
   CONCRETE_SCHEDULER_TWO_LEVEL_ACTIVE,
+  CONCRETE_SCHEDULER_RRR,
   CONCRETE_SCHEDULER_WARP_LIMITING,
   CONCRETE_SCHEDULER_OLDEST_FIRST,
   NUM_CONCRETE_SCHEDULERS
@@ -365,6 +369,12 @@ class scheduler_unit {  // this can be copied freely, so can be used in std
   // higher order schedulers can take advantage of
   template <typename T>
   void order_lrr(
+      typename std::vector<T> &result_list,
+      const typename std::vector<T> &input_list,
+      const typename std::vector<T>::const_iterator &last_issued_from_input,
+      unsigned num_warps_to_add);
+  template <typename T>
+  void order_rrr(
       typename std::vector<T> &result_list,
       const typename std::vector<T> &input_list,
       const typename std::vector<T>::const_iterator &last_issued_from_input,
@@ -427,6 +437,8 @@ class scheduler_unit {  // this can be copied freely, so can be used in std
   register_set *m_tensor_core_out;
   register_set *m_mem_out;
   std::vector<register_set *> &m_spec_cores_out;
+  unsigned m_num_issued_last_cycle;
+  unsigned m_current_turn_warp;
 
   int m_id;
 };
@@ -444,6 +456,25 @@ class lrr_scheduler : public scheduler_unit {
                        sfu_out, int_out, tensor_core_out, spec_cores_out,
                        mem_out, id) {}
   virtual ~lrr_scheduler() {}
+  virtual void order_warps();
+  virtual void done_adding_supervised_warps() {
+    m_last_supervised_issued = m_supervised_warps.end();
+  }
+};
+
+class rrr_scheduler : public scheduler_unit {
+ public:
+  rrr_scheduler(shader_core_stats *stats, shader_core_ctx *shader,
+                Scoreboard *scoreboard, simt_stack **simt,
+                std::vector<shd_warp_t *> *warp, register_set *sp_out,
+                register_set *dp_out, register_set *sfu_out,
+                register_set *int_out, register_set *tensor_core_out,
+                std::vector<register_set *> &spec_cores_out,
+                register_set *mem_out, int id)
+      : scheduler_unit(stats, shader, scoreboard, simt, warp, sp_out, dp_out,
+                       sfu_out, int_out, tensor_core_out, spec_cores_out,
+                       mem_out, id) {}
+  virtual ~rrr_scheduler() {}
   virtual void order_warps();
   virtual void done_adding_supervised_warps() {
     m_last_supervised_issued = m_supervised_warps.end();
@@ -878,11 +909,13 @@ class opndcoll_rfu_t {  // operand collector based register file unit
     }
     unsigned get_sp_op() const { return m_warp->sp_op; }
     unsigned get_id() const { return m_cuid; }  // returns CU hw id
+    unsigned get_reg_id() const { return m_reg_id; }
 
     // modifiers
     void init(unsigned n, unsigned num_banks, unsigned log2_warp_size,
               const core_config *config, opndcoll_rfu_t *rfu,
-              bool m_sub_core_model, unsigned num_banks_per_sched);
+              bool m_sub_core_model, unsigned reg_id,
+              unsigned num_banks_per_sched);
     bool allocate(register_set *pipeline_reg, register_set *output_reg);
 
     void collect_operand(unsigned op) { m_not_ready.reset(op); }
@@ -906,6 +939,7 @@ class opndcoll_rfu_t {  // operand collector based register file unit
 
     unsigned m_num_banks_per_sched;
     bool m_sub_core_model;
+    unsigned m_reg_id;  // if sub_core_model enabled, limit regs this cu can r/w
   };
 
   class dispatch_unit_t {
@@ -916,13 +950,44 @@ class opndcoll_rfu_t {  // operand collector based register file unit
       m_num_collectors = (*cus).size();
       m_next_cu = 0;
     }
+    void init(bool sub_core_model, unsigned num_warp_scheds) {
+      m_sub_core_model = sub_core_model;
+      m_num_warp_scheds = num_warp_scheds;
+      if (m_sub_core_model) {
+        m_last_cu_set = new unsigned(m_num_warp_scheds);
+        for (unsigned i = 0; i < m_num_warp_scheds; i++)
+        {
+          m_last_cu_set[i] = i * m_num_collectors / m_num_warp_scheds;
+        }
+      }
+      
+    }
 
     collector_unit_t *find_ready() {
-      for (unsigned n = 0; n < m_num_collectors; n++) {
-        unsigned c = (m_last_cu + n + 1) % m_num_collectors;
-        if ((*m_collector_units)[c].ready()) {
-          m_last_cu = c;
-          return &((*m_collector_units)[c]);
+      if (m_sub_core_model) {
+        assert(m_num_collectors % m_num_warp_scheds == 0 &&
+                 m_num_collectors >= m_num_warp_scheds);
+        unsigned cusPerSched = m_num_collectors / m_num_warp_scheds;
+        for (unsigned i = 0; i < m_num_warp_scheds; i++) {
+          unsigned cuLowerBound = i * cusPerSched;
+          unsigned cuUpperBound = cuLowerBound + cusPerSched;
+          assert(0 <= cuLowerBound && cuUpperBound <= m_num_collectors);
+          assert(cuLowerBound <= m_last_cu_set[i] && m_last_cu_set[i] <= cuUpperBound);
+          for (unsigned j = cuLowerBound; j < cuUpperBound; j++) {
+            unsigned c = cuLowerBound + (m_last_cu_set[i] + j + 1) % cusPerSched;
+            if ((*m_collector_units)[c].ready()) {
+            m_last_cu_set[i] = c;
+            return &((*m_collector_units)[c]);
+            }
+          }
+        }
+      } else {
+        for (unsigned n = 0; n < m_num_collectors; n++) {
+          unsigned c = (m_last_cu + n + 1) % m_num_collectors;
+          if ((*m_collector_units)[c].ready()) {
+            m_last_cu = c;
+            return &((*m_collector_units)[c]);
+          }
         }
       }
       return NULL;
@@ -932,7 +997,11 @@ class opndcoll_rfu_t {  // operand collector based register file unit
     unsigned m_num_collectors;
     std::vector<collector_unit_t> *m_collector_units;
     unsigned m_last_cu;  // dispatch ready cu's rr
+    unsigned *m_last_cu_set;
     unsigned m_next_cu;  // for initialization
+
+    bool m_sub_core_model;
+    unsigned m_num_warp_scheds;
   };
 
   // opndcoll_rfu_t data members
@@ -947,7 +1016,7 @@ class opndcoll_rfu_t {  // operand collector based register file unit
   arbiter_t m_arbiter;
 
   unsigned m_num_banks_per_sched;
-  unsigned m_num_warp_sceds;
+  unsigned m_num_warp_scheds;
   bool sub_core_model;
 
   // unsigned m_num_ports;
@@ -1039,10 +1108,7 @@ class simd_function_unit {
   ~simd_function_unit() { delete m_dispatch_reg; }
 
   // modifiers
-  virtual void issue(register_set &source_reg) {
-    source_reg.move_out_to(m_dispatch_reg);
-    occupied.set(m_dispatch_reg->latency);
-  }
+  virtual void issue(register_set &source_reg);
   virtual void cycle() = 0;
   virtual void active_lanes_in_pipeline() = 0;
 
@@ -1051,6 +1117,8 @@ class simd_function_unit {
   virtual bool can_issue(const warp_inst_t &inst) const {
     return m_dispatch_reg->empty() && !occupied.test(inst.latency);
   }
+  virtual bool is_issue_partitioned() = 0;
+  virtual unsigned get_issue_reg_id() = 0;
   virtual bool stallable() const = 0;
   virtual void print(FILE *fp) const {
     fprintf(fp, "%s dispatch= ", m_name.c_str());
@@ -1070,7 +1138,7 @@ class pipelined_simd_unit : public simd_function_unit {
  public:
   pipelined_simd_unit(register_set *result_port,
                       const shader_core_config *config, unsigned max_latency,
-                      shader_core_ctx *core);
+                      shader_core_ctx *core, unsigned issue_reg_id);
 
   // modifiers
   virtual void cycle();
@@ -1091,6 +1159,8 @@ class pipelined_simd_unit : public simd_function_unit {
   virtual bool can_issue(const warp_inst_t &inst) const {
     return simd_function_unit::can_issue(inst);
   }
+  virtual bool is_issue_partitioned() = 0;
+  unsigned get_issue_reg_id() { return m_issue_reg_id; }
   virtual void print(FILE *fp) const {
     simd_function_unit::print(fp);
     for (int s = m_pipeline_depth - 1; s >= 0; s--) {
@@ -1106,6 +1176,8 @@ class pipelined_simd_unit : public simd_function_unit {
   warp_inst_t **m_pipeline_reg;
   register_set *m_result_port;
   class shader_core_ctx *m_core;
+  unsigned m_issue_reg_id;  // if sub_core_model is enabled we can only issue
+                            // from a subset of operand collectors
 
   unsigned active_insts_in_pipeline;
 };
@@ -1113,7 +1185,7 @@ class pipelined_simd_unit : public simd_function_unit {
 class sfu : public pipelined_simd_unit {
  public:
   sfu(register_set *result_port, const shader_core_config *config,
-      shader_core_ctx *core);
+      shader_core_ctx *core, unsigned issue_reg_id);
   virtual bool can_issue(const warp_inst_t &inst) const {
     switch (inst.op) {
       case SFU_OP:
@@ -1129,12 +1201,13 @@ class sfu : public pipelined_simd_unit {
   }
   virtual void active_lanes_in_pipeline();
   virtual void issue(register_set &source_reg);
+  bool is_issue_partitioned() { return true; }
 };
 
 class dp_unit : public pipelined_simd_unit {
  public:
   dp_unit(register_set *result_port, const shader_core_config *config,
-          shader_core_ctx *core);
+          shader_core_ctx *core, unsigned issue_reg_id);
   virtual bool can_issue(const warp_inst_t &inst) const {
     switch (inst.op) {
       case DP_OP:
@@ -1146,12 +1219,13 @@ class dp_unit : public pipelined_simd_unit {
   }
   virtual void active_lanes_in_pipeline();
   virtual void issue(register_set &source_reg);
+  bool is_issue_partitioned() { return true; }
 };
 
 class tensor_core : public pipelined_simd_unit {
  public:
   tensor_core(register_set *result_port, const shader_core_config *config,
-              shader_core_ctx *core);
+              shader_core_ctx *core, unsigned issue_reg_id);
   virtual bool can_issue(const warp_inst_t &inst) const {
     switch (inst.op) {
       case TENSOR_CORE_OP:
@@ -1163,12 +1237,13 @@ class tensor_core : public pipelined_simd_unit {
   }
   virtual void active_lanes_in_pipeline();
   virtual void issue(register_set &source_reg);
+  bool is_issue_partitioned() { return true; }
 };
 
 class int_unit : public pipelined_simd_unit {
  public:
   int_unit(register_set *result_port, const shader_core_config *config,
-           shader_core_ctx *core);
+           shader_core_ctx *core, unsigned issue_reg_id);
   virtual bool can_issue(const warp_inst_t &inst) const {
     switch (inst.op) {
       case SFU_OP:
@@ -1194,12 +1269,13 @@ class int_unit : public pipelined_simd_unit {
   }
   virtual void active_lanes_in_pipeline();
   virtual void issue(register_set &source_reg);
+  bool is_issue_partitioned() { return true; }
 };
 
 class sp_unit : public pipelined_simd_unit {
  public:
   sp_unit(register_set *result_port, const shader_core_config *config,
-          shader_core_ctx *core);
+          shader_core_ctx *core, unsigned issue_reg_id);
   virtual bool can_issue(const warp_inst_t &inst) const {
     switch (inst.op) {
       case SFU_OP:
@@ -1223,13 +1299,14 @@ class sp_unit : public pipelined_simd_unit {
   }
   virtual void active_lanes_in_pipeline();
   virtual void issue(register_set &source_reg);
+  bool is_issue_partitioned() { return true; }
 };
 
 class specialized_unit : public pipelined_simd_unit {
  public:
   specialized_unit(register_set *result_port, const shader_core_config *config,
                    shader_core_ctx *core, unsigned supported_op,
-                   char *unit_name, unsigned latency);
+                   char *unit_name, unsigned latency, unsigned issue_reg_id);
   virtual bool can_issue(const warp_inst_t &inst) const {
     if (inst.op != m_supported_op) {
       return false;
@@ -1238,6 +1315,7 @@ class specialized_unit : public pipelined_simd_unit {
   }
   virtual void active_lanes_in_pipeline();
   virtual void issue(register_set &source_reg);
+  bool is_issue_partitioned() { return true; }
 
  private:
   unsigned m_supported_op;
@@ -1259,6 +1337,7 @@ class ldst_unit : public pipelined_simd_unit {
 
   // modifiers
   virtual void issue(register_set &inst);
+  bool is_issue_partitioned() { return false; }
   virtual void cycle();
 
   void fill(mem_fetch *mf);
@@ -1478,6 +1557,17 @@ class shader_core_config : public core_config {
         m_specialized_unit_num += sparam.num_units;
       } else
         break;  // we only accept continuous specialized_units, i.e., 1,2,3,4
+    }
+
+    // parse gpgpu_shmem_option for adpative cache config
+    if (adaptive_cache_config) {
+      std::stringstream ss(gpgpu_shmem_option);
+      while (ss.good()) {
+        std::string option;
+        std::getline(ss, option, ',');
+        shmem_opt_list.push_back((unsigned)std::stoi(option) * 1024);
+      }
+      std::sort(shmem_opt_list.begin(), shmem_opt_list.end());
     }
   }
   void reg_options(class OptionParser *opp);
@@ -1856,6 +1946,12 @@ class shader_core_mem_fetch_allocator : public mem_fetch_allocator {
   }
   mem_fetch *alloc(new_addr_type addr, mem_access_type type, unsigned size,
                    bool wr, unsigned long long cycle) const;
+  mem_fetch *alloc(new_addr_type addr, mem_access_type type,
+                   const active_mask_t &active_mask,
+                   const mem_access_byte_mask_t &byte_mask,
+                   const mem_access_sector_mask_t &sector_mask, unsigned size,
+                   bool wr, unsigned long long cycle, unsigned wid,
+                   unsigned sid, unsigned tpc, mem_fetch *original_mf) const;
   mem_fetch *alloc(const warp_inst_t &inst, const mem_access_t &access,
                    unsigned long long cycle) const {
     warp_inst_t inst_copy = inst;
@@ -2133,8 +2229,8 @@ class shader_core_ctx : public core_t {
   friend class TwoLevelScheduler;
   friend class LooseRoundRobbinScheduler;
   virtual void issue_warp(register_set &warp, const warp_inst_t *pI,
-                  const active_mask_t &active_mask, unsigned warp_id,
-                  unsigned sch_id);
+                          const active_mask_t &active_mask, unsigned warp_id,
+                          unsigned sch_id);
 
   void create_front_pipeline();
   void create_schedulers();
