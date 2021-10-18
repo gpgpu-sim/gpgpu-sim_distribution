@@ -1,18 +1,19 @@
-// Copyright (c) 2009-2011, Tor M. Aamodt
-// The University of British Columbia
+// Copyright (c) 2009-2021, Tor M. Aamodt, Vijay Kandiah, Nikos Hardavellas
+// The University of British Columbia, Northwestern University
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 //
-// Redistributions of source code must retain the above copyright notice, this
-// list of conditions and the following disclaimer.
-// Redistributions in binary form must reproduce the above copyright notice,
-// this list of conditions and the following disclaimer in the documentation
-// and/or other materials provided with the distribution. Neither the name of
-// The University of British Columbia nor the names of its contributors may be
-// used to endorse or promote products derived from this software without
-// specific prior written permission.
+// 1. Redistributions of source code must retain the above copyright notice, this
+//    list of conditions and the following disclaimer;
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution;
+// 3. Neither the names of The University of British Columbia, Northwestern 
+//    University nor the names of their contributors may be used to
+//    endorse or promote products derived from this software without specific
+//    prior written permission.
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -388,9 +389,9 @@ void memory_partition_unit::set_done(mem_fetch *mf) {
 
 void memory_partition_unit::set_dram_power_stats(
     unsigned &n_cmd, unsigned &n_activity, unsigned &n_nop, unsigned &n_act,
-    unsigned &n_pre, unsigned &n_rd, unsigned &n_wr, unsigned &n_req) const {
+    unsigned &n_pre, unsigned &n_rd, unsigned &n_wr, unsigned &n_wr_WB, unsigned &n_req) const {
   m_dram->set_dram_power_stats(n_cmd, n_activity, n_nop, n_act, n_pre, n_rd,
-                               n_wr, n_req);
+                               n_wr, n_wr_WB, n_req);
 }
 
 void memory_partition_unit::print(FILE *fp) const {
@@ -664,6 +665,7 @@ void gpgpu_sim::print_dram_stats(FILE *fout) const {
   unsigned pre = 0;
   unsigned rd = 0;
   unsigned wr = 0;
+  unsigned wr_WB = 0;
   unsigned req = 0;
   unsigned tot_cmd = 0;
   unsigned tot_nop = 0;
@@ -675,13 +677,13 @@ void gpgpu_sim::print_dram_stats(FILE *fout) const {
 
   for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
     m_memory_partition_unit[i]->set_dram_power_stats(cmd, activity, nop, act,
-                                                     pre, rd, wr, req);
+                                                     pre, rd, wr, wr_WB, req);
     tot_cmd += cmd;
     tot_nop += nop;
     tot_act += act;
     tot_pre += pre;
     tot_rd += rd;
-    tot_wr += wr;
+    tot_wr += wr + wr_WB;
     tot_req += req;
   }
   fprintf(fout, "gpgpu_n_dram_reads = %d\n", tot_rd);

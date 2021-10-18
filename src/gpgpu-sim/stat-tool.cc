@@ -369,8 +369,6 @@ void shader_mem_lat_print(FILE *fout) {
 static int s_cache_access_logger_n_types = 0;
 static std::vector<linear_histogram_logger> s_cache_access_logger;
 
-enum cache_access_logger_types { NORMALS, TEXTURE, CONSTANT, INSTRUCTION };
-
 int get_shader_normal_cache_id() { return NORMALS; }
 int get_shader_texture_cache_id() { return TEXTURE; }
 int get_shader_constant_cache_id() { return CONSTANT; }

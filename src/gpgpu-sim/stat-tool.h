@@ -268,6 +268,8 @@ class linear_histogram_logger : public snap_shot_trigger,
   static int s_ids;
 };
 
+enum cache_access_logger_types { NORMALS, TEXTURE, CONSTANT, INSTRUCTION };
+
 void try_snap_shot(unsigned long long current_cycle);
 void set_spill_interval(unsigned long long interval);
 void spill_log_to_file(FILE *fout, int final, unsigned long long current_cycle);

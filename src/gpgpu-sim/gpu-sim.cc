@@ -1,19 +1,20 @@
-// Copyright (c) 2009-2011, Tor M. Aamodt, Wilson W.L. Fung, George L. Yuan,
-// Ali Bakhoda, Andrew Turner, Ivan Sham
-// The University of British Columbia
+// Copyright (c) 2009-2021, Tor M. Aamodt, Wilson W.L. Fung, George L. Yuan,
+// Ali Bakhoda, Andrew Turner, Ivan Sham, Vijay Kandiah, Nikos Hardavellas
+// The University of British Columbia, Northwestern University
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 //
-// Redistributions of source code must retain the above copyright notice, this
-// list of conditions and the following disclaimer.
-// Redistributions in binary form must reproduce the above copyright notice,
-// this list of conditions and the following disclaimer in the documentation
-// and/or other materials provided with the distribution. Neither the name of
-// The University of British Columbia nor the names of its contributors may be
-// used to endorse or promote products derived from this software without
-// specific prior written permission.
+// 1. Redistributions of source code must retain the above copyright notice, this
+//    list of conditions and the following disclaimer;
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution;
+// 3. Neither the names of The University of British Columbia, Northwestern 
+//    University nor the names of their contributors may be used to
+//    endorse or promote products derived from this software without specific
+//    prior written permission.
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -95,10 +96,11 @@ tr1_hash_map<new_addr_type, unsigned> address_random_interleaving;
 
 #include "mem_latency_stat.h"
 
+
 void power_config::reg_options(class OptionParser *opp) {
-  option_parser_register(opp, "-gpuwattch_xml_file", OPT_CSTR,
-                         &g_power_config_name, "GPUWattch XML file",
-                         "gpuwattch.xml");
+  option_parser_register(opp, "-accelwattch_xml_file", OPT_CSTR,
+                         &g_power_config_name, "AccelWattch XML file",
+                         "accelwattch_sass_sim.xml");
 
   option_parser_register(opp, "-power_simulation_enabled", OPT_BOOL,
                          &g_power_simulation_enabled,
@@ -107,6 +109,92 @@ void power_config::reg_options(class OptionParser *opp) {
   option_parser_register(opp, "-power_per_cycle_dump", OPT_BOOL,
                          &g_power_per_cycle_dump,
                          "Dump detailed power output each cycle", "0");
+
+
+
+
+  option_parser_register(opp, "-hw_perf_file_name", OPT_CSTR,
+                         &g_hw_perf_file_name, "Hardware Performance Statistics file",
+                         "hw_perf.csv");
+
+  option_parser_register(opp, "-hw_perf_bench_name", OPT_CSTR,
+                         &g_hw_perf_bench_name, "Kernel Name in Hardware Performance Statistics file",
+                         "");
+
+  option_parser_register(opp, "-power_simulation_mode", OPT_INT32,
+                         &g_power_simulation_mode,
+                         "Switch performance counter input for power simulation (0=Sim, 1=HW, 2=HW-Sim Hybrid)", "0");
+
+  option_parser_register(opp, "-dvfs_enabled", OPT_BOOL,
+                         &g_dvfs_enabled,
+                         "Turn on DVFS for power model", "0");
+  option_parser_register(opp, "-aggregate_power_stats", OPT_BOOL,
+                         &g_aggregate_power_stats,
+                         "Accumulate power across all kernels", "0");
+
+  //Accelwattch Hyrbid Configuration
+
+  option_parser_register(opp, "-accelwattch_hybrid_perfsim_L1_RH", OPT_BOOL,
+                         &accelwattch_hybrid_configuration[HW_L1_RH],
+                         "Get L1 Read Hits for Accelwattch-Hybrid from Accel-Sim", "0");
+  option_parser_register(opp, "-accelwattch_hybrid_perfsim_L1_RM", OPT_BOOL,
+                         &accelwattch_hybrid_configuration[HW_L1_RM],
+                         "Get L1 Read Misses for Accelwattch-Hybrid from Accel-Sim", "0");
+  option_parser_register(opp, "-accelwattch_hybrid_perfsim_L1_WH", OPT_BOOL,
+                         &accelwattch_hybrid_configuration[HW_L1_WH],
+                         "Get L1 Write Hits for Accelwattch-Hybrid from Accel-Sim", "0");
+  option_parser_register(opp, "-accelwattch_hybrid_perfsim_L1_WM", OPT_BOOL,
+                         &accelwattch_hybrid_configuration[HW_L1_WM],
+                         "Get L1 Write Misses for Accelwattch-Hybrid from Accel-Sim", "0");
+
+  option_parser_register(opp, "-accelwattch_hybrid_perfsim_L2_RH", OPT_BOOL,
+                         &accelwattch_hybrid_configuration[HW_L2_RH],
+                         "Get L2 Read Hits for Accelwattch-Hybrid from Accel-Sim", "0");
+  option_parser_register(opp, "-accelwattch_hybrid_perfsim_L2_RM", OPT_BOOL,
+                         &accelwattch_hybrid_configuration[HW_L2_RM],
+                         "Get L2 Read Misses for Accelwattch-Hybrid from Accel-Sim", "0");
+  option_parser_register(opp, "-accelwattch_hybrid_perfsim_L2_WH", OPT_BOOL,
+                         &accelwattch_hybrid_configuration[HW_L2_WH],
+                         "Get L2 Write Hits for Accelwattch-Hybrid from Accel-Sim", "0");
+  option_parser_register(opp, "-accelwattch_hybrid_perfsim_L2_WM", OPT_BOOL,
+                         &accelwattch_hybrid_configuration[HW_L2_WM],
+                         "Get L2 Write Misses for Accelwattch-Hybrid from Accel-Sim", "0");
+
+  option_parser_register(opp, "-accelwattch_hybrid_perfsim_CC_ACC", OPT_BOOL,
+                         &accelwattch_hybrid_configuration[HW_CC_ACC],
+                         "Get Constant Cache Acesses for Accelwattch-Hybrid from Accel-Sim", "0");
+
+  option_parser_register(opp, "-accelwattch_hybrid_perfsim_SHARED_ACC", OPT_BOOL,
+                         &accelwattch_hybrid_configuration[HW_SHRD_ACC],
+                         "Get Shared Memory Acesses for Accelwattch-Hybrid from Accel-Sim", "0");
+
+  option_parser_register(opp, "-accelwattch_hybrid_perfsim_DRAM_RD", OPT_BOOL,
+                         &accelwattch_hybrid_configuration[HW_DRAM_RD],
+                         "Get DRAM Reads for Accelwattch-Hybrid from Accel-Sim", "0");
+  option_parser_register(opp, "-accelwattch_hybrid_perfsim_DRAM_WR", OPT_BOOL,
+                         &accelwattch_hybrid_configuration[HW_DRAM_WR],
+                         "Get DRAM Writes for Accelwattch-Hybrid from Accel-Sim", "0");
+
+  option_parser_register(opp, "-accelwattch_hybrid_perfsim_NOC", OPT_BOOL,
+                         &accelwattch_hybrid_configuration[HW_NOC],
+                         "Get Interconnect Acesses for Accelwattch-Hybrid from Accel-Sim", "0");
+
+  option_parser_register(opp, "-accelwattch_hybrid_perfsim_PIPE_DUTY", OPT_BOOL,
+                         &accelwattch_hybrid_configuration[HW_PIPE_DUTY],
+                         "Get Pipeline Duty Cycle Acesses for Accelwattch-Hybrid from Accel-Sim", "0");
+
+  option_parser_register(opp, "-accelwattch_hybrid_perfsim_NUM_SM_IDLE", OPT_BOOL,
+                         &accelwattch_hybrid_configuration[HW_NUM_SM_IDLE],
+                         "Get Number of Idle SMs for Accelwattch-Hybrid from Accel-Sim", "0");
+
+  option_parser_register(opp, "-accelwattch_hybrid_perfsim_CYCLES", OPT_BOOL,
+                         &accelwattch_hybrid_configuration[HW_CYCLES],
+                         "Get Executed Cycles for Accelwattch-Hybrid from Accel-Sim", "0");
+
+  option_parser_register(opp, "-accelwattch_hybrid_perfsim_VOLTAGE", OPT_BOOL,
+                         &accelwattch_hybrid_configuration[HW_VOLTAGE],
+                         "Get Chip Voltage for Accelwattch-Hybrid from Accel-Sim", "0");
+
 
   // Output Data Formats
   option_parser_register(
@@ -835,7 +923,7 @@ gpgpu_sim::gpgpu_sim(const gpgpu_sim_config &config, gpgpu_context *ctx)
 
 #ifdef GPGPUSIM_POWER_MODEL
   m_gpgpusim_wrapper = new gpgpu_sim_wrapper(config.g_power_simulation_enabled,
-                                             config.g_power_config_name);
+                                             config.g_power_config_name, config.g_power_simulation_mode, config.g_dvfs_enabled);
 #endif
 
   m_shader_stats = new shader_core_stats(m_shader_config);
@@ -1010,6 +1098,14 @@ void gpgpu_sim::init() {
   partiton_reqs_in_parallel_util = 0;
   gpu_sim_cycle_parition_util = 0;
 
+// McPAT initialization function. Called on first launch of GPU
+#ifdef GPGPUSIM_POWER_MODEL
+  if (m_config.g_power_simulation_enabled) {
+    init_mcpat(m_config, m_gpgpusim_wrapper, m_config.gpu_stat_sample_freq,
+               gpu_tot_sim_insn, gpu_sim_insn);
+  }
+#endif
+
   reinit_clock_domains();
   gpgpu_ctx->func_sim->set_param_gpgpu_num_shaders(m_config.num_shader());
   for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++)
@@ -1035,14 +1131,6 @@ void gpgpu_sim::init() {
   }
 
   if (g_network_mode) icnt_init();
-
-    // McPAT initialization function. Called on first launch of GPU
-#ifdef GPGPUSIM_POWER_MODEL
-  if (m_config.g_power_simulation_enabled) {
-    init_mcpat(m_config, m_gpgpusim_wrapper, m_config.gpu_stat_sample_freq,
-               gpu_tot_sim_insn, gpu_sim_insn);
-  }
-#endif
 }
 
 void gpgpu_sim::update_stats() {
@@ -1065,6 +1153,11 @@ void gpgpu_sim::update_stats() {
   m_total_cta_launched = 0;
   gpu_completed_cta = 0;
   gpu_occupancy = occupancy_stats();
+}
+
+PowerscalingCoefficients *gpgpu_sim::get_scaling_coeffs()
+{
+  return m_gpgpusim_wrapper->get_scaling_coeffs();
 }
 
 void gpgpu_sim::print_stats() {
@@ -1144,6 +1237,18 @@ std::string gpgpu_sim::executed_kernel_info_string() {
   }
   statout << std::endl;
 
+  return statout.str();
+}
+
+std::string gpgpu_sim::executed_kernel_name() {
+  std::stringstream statout;  
+  if( m_executed_kernel_names.size() == 1)
+     statout << m_executed_kernel_names[0];
+  else{
+    for (unsigned int k = 0; k < m_executed_kernel_names.size(); k++) {
+      statout << m_executed_kernel_names[k] << " ";
+    }
+  }
   return statout.str();
 }
 void gpgpu_sim::set_cache_config(std::string kernel_name,
@@ -1326,10 +1431,20 @@ void gpgpu_sim::gpu_print_stat() {
   m_shader_stats->print(stdout);
 #ifdef GPGPUSIM_POWER_MODEL
   if (m_config.g_power_simulation_enabled) {
+    if(m_config.g_power_simulation_mode > 0){
+        //if(!m_config.g_aggregate_power_stats)
+          mcpat_reset_perf_count(m_gpgpusim_wrapper);
+        calculate_hw_mcpat(m_config, getShaderCoreConfig(), m_gpgpusim_wrapper,
+                  m_power_stats, m_config.gpu_stat_sample_freq,
+                  gpu_tot_sim_cycle, gpu_sim_cycle, gpu_tot_sim_insn,
+                  gpu_sim_insn, m_config.g_power_simulation_mode, m_config.g_dvfs_enabled, 
+                  m_config.g_hw_perf_file_name, m_config.g_hw_perf_bench_name, executed_kernel_name(), m_config.accelwattch_hybrid_configuration, m_config.g_aggregate_power_stats);
+    }
     m_gpgpusim_wrapper->print_power_kernel_stats(
         gpu_sim_cycle, gpu_tot_sim_cycle, gpu_tot_sim_insn + gpu_sim_insn,
         kernel_info_str, true);
-    mcpat_reset_perf_count(m_gpgpusim_wrapper);
+    //if(!m_config.g_aggregate_power_stats)
+      mcpat_reset_perf_count(m_gpgpusim_wrapper);
   }
 #endif
 
@@ -1796,6 +1911,7 @@ void gpgpu_sim::cycle() {
           m_power_stats->pwr_mem_stat->n_pre[CURRENT_STAT_IDX][i],
           m_power_stats->pwr_mem_stat->n_rd[CURRENT_STAT_IDX][i],
           m_power_stats->pwr_mem_stat->n_wr[CURRENT_STAT_IDX][i],
+          m_power_stats->pwr_mem_stat->n_wr_WB[CURRENT_STAT_IDX][i],
           m_power_stats->pwr_mem_stat->n_req[CURRENT_STAT_IDX][i]);
     }
   }
@@ -1839,7 +1955,7 @@ void gpgpu_sim::cycle() {
         m_cluster[i]->core_cycle();
         *active_sms += m_cluster[i]->get_n_active_sms();
       }
-      // Update core icnt/cache stats for GPUWattch
+      // Update core icnt/cache stats for AccelWattch
       m_cluster[i]->get_icnt_stats(
           m_power_stats->pwr_mem_stat->n_simt_to_mem[CURRENT_STAT_IDX][i],
           m_power_stats->pwr_mem_stat->n_mem_to_simt[CURRENT_STAT_IDX][i]);
@@ -1869,10 +1985,12 @@ void gpgpu_sim::cycle() {
       // McPAT main cycle (interface with McPAT)
 #ifdef GPGPUSIM_POWER_MODEL
     if (m_config.g_power_simulation_enabled) {
+      if(m_config.g_power_simulation_mode == 0){
       mcpat_cycle(m_config, getShaderCoreConfig(), m_gpgpusim_wrapper,
                   m_power_stats, m_config.gpu_stat_sample_freq,
                   gpu_tot_sim_cycle, gpu_sim_cycle, gpu_tot_sim_insn,
-                  gpu_sim_insn);
+                  gpu_sim_insn, m_config.g_dvfs_enabled);
+      }
     }
 #endif
 

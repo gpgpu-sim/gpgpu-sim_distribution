@@ -117,18 +117,18 @@ fi
 
 # The following checks to see if the GPGPU-Sim power model is enabled.
 # GPGPUSIM_POWER_MODEL points to the directory where gpgpusim_mcpat is located.
-# If this is not set, it checks the default directory "$GPGPUSIM_ROOT/src/gpuwattch/".
-if [ -d $GPGPUSIM_ROOT/src/gpuwattch/ ]; then
-	if [ ! -f $GPGPUSIM_ROOT/src/gpuwattch/gpgpu_sim.verify ]; then
-		echo "ERROR ** gpgpu_sim.verify not found in $GPGPUSIM_ROOT/src/gpuwattch";
+# If this is not set, it checks the default directory "$GPGPUSIM_ROOT/src/accelwattch/".
+if [ -d $GPGPUSIM_ROOT/src/accelwattch/ ]; then
+	if [ ! -f $GPGPUSIM_ROOT/src/accelwattch/gpgpu_sim.verify ]; then
+		echo "ERROR ** gpgpu_sim.verify not found in $GPGPUSIM_ROOT/src/accelwattch";
 		return;
 	fi
-	export GPGPUSIM_POWER_MODEL=$GPGPUSIM_ROOT/src/gpuwattch/;
-	echo "configured with GPUWattch.";
+	export GPGPUSIM_POWER_MODEL=$GPGPUSIM_ROOT/src/accelwattch/;
+	echo "configured with AccelWattch.";
 elif [ -n "$GPGPUSIM_POWER_MODEL" ]; then
 	if [ ! -f $GPGPUSIM_POWER_MODEL/gpgpu_sim.verify ]; then
 		echo "";
-		echo "ERROR ** gpgpu_sim.verify not found in $GPGPUSIM_ROOT/src/gpuwattch/ - Either incorrect directory or incorrect McPAT version";
+		echo "ERROR ** gpgpu_sim.verify not found in $GPGPUSIM_ROOT/src/accelwattch/ - Either incorrect directory or incorrect McPAT version";
 		return;
 	fi
 	echo "configure with power model in $GPGPUSIM_POWER_MODEL.";
