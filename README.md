@@ -268,7 +268,7 @@ To run Pytorch applications with the simulator, install the modified Pytorch lib
 
 ## Step 3: Run
 
-Before we run, we need to make sure the application's executable file is dynamically linked to CUDA runtime library. This can be done during compilation of your program by introducing the nvcc flag "--cudart shared" in makefile (quotes should be excluded).
+Before we run, we need to make sure the application's executable file is dynamically linked to CUDA runtime library. This can be done during compilation of your program by introducing the nvcc flag "-lcudart" in makefile (quotes should be excluded).
 
 To confirm the same, type the follwoing command:
 
