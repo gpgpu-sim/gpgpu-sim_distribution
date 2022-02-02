@@ -1,6 +1,7 @@
 // Copyright (c) 2009-2021, Tor M. Aamodt, Ali Bakhoda, Wilson W.L. Fung,
-// George L. Yuan, Vijay Kandiah, Nikos Hardavellas
-// The University of British Columbia, Northwestern University
+// George L. Yuan, Vijay Kandiah, Nikos Hardavellas,
+// Mahmoud Khairy, Junrui Pan, Timothy G. Rogers
+// The University of British Columbia, Northwestern University, Purdue University
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
