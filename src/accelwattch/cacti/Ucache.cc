@@ -223,7 +223,7 @@ void * calc_time_mt_wrapper(void * void_obj)
   delete tag_arr.back();
   data_arr.pop_back();
   tag_arr.pop_back();
-
+  pthread_exit(NULL);
 }
 
 
@@ -246,7 +246,7 @@ bool calculate_time(
 {
   DynamicParameter dyn_p(is_tag, pure_ram, pure_cam, Nspd, Ndwl, Ndbl, Ndcm, Ndsam_lev_1, Ndsam_lev_2, is_main_mem);
 
-  if (dyn_p.is_valid == false)
+  if (dyn_p.is_valid != true)
   {
     return false;
   }

@@ -30,10 +30,11 @@
  ***************************************************************************/
 /********************************************************************
  *      Modified by:
- ** Jingwen Leng, Univeristy of Texas, Austin                   * Syed Gilani,
- *University of Wisconsin–Madison                * Tayler Hetherington,
- *University of British Columbia         * Ahmed ElTantawy, University of
- *British Columbia             *
+ * Jingwen Leng, University of Texas, Austin                
+ * Syed Gilani, University of Wisconsin–Madison         
+ * Tayler Hetherington, University of British Columbia
+ * Ahmed ElTantawy, University of British Columbia
+ * Vijay Kandiah, Northwestern University
  ********************************************************************/
 
 #ifndef XML_PARSE_H_
@@ -69,7 +70,7 @@ ToXMLStringTool tx,tx2;
 extern const char* perf_count_label[];
 
 enum perf_count_t {
-  TOT_INST = 0,
+  TOT_INST=0,
   FP_INT,
   IC_H,
   IC_M,
@@ -85,9 +86,23 @@ enum perf_count_t {
   REG_RD,
   REG_WR,
   NON_REG_OPs,
-  SP_ACC,
-  SFU_ACC,
-  FPU_ACC,
+  INT_ACC, //SPU
+  FP_ACC, //FPU
+  DP_ACC, //FPU
+  INT_MUL24_ACC, //SFU
+  INT_MUL32_ACC, //SFU
+  INT_MUL_ACC, //SFU 
+  INT_DIV_ACC, //SFU
+  FP_MUL_ACC, //SFU
+  FP_DIV_ACC, //SFU
+  FP_SQRT_ACC, //SFU
+  FP_LG_ACC, //SFU
+  FP_SIN_ACC, //SFU
+  FP_EXP_ACC, //SFU
+  DP_MUL_ACC, //SFU
+  DP_DIV_ACC, //SFU 
+  TENSOR_ACC, //SFU
+  TEX_ACC, //SFU 
   MEM_RD,
   MEM_WR,
   MEM_PRE,
@@ -98,7 +113,7 @@ enum perf_count_t {
   NOC_A,
   PIPE_A,
   IDLE_CORE_N,
-  CONST_DYNAMICN,
+  constant_power,
   NUM_PERFORMANCE_COUNTERS
 };
 
@@ -635,6 +650,33 @@ typedef struct {
   int homogeneous_L2Directories;
   double core_tech_node;
   int target_core_clockrate;
+  double modeled_chip_voltage_ref;
+  double static_cat1_flane;
+  double static_cat2_flane;
+  double static_cat3_flane;
+  double static_cat4_flane;
+  double static_cat5_flane;
+  double static_cat6_flane;
+  double static_shared_flane;
+  double static_l1_flane;
+  double static_l2_flane;
+  double static_light_flane;
+  double static_intadd_flane;
+  double static_intmul_flane;
+  double static_geomean_flane;
+  double static_cat1_addlane;
+  double static_cat2_addlane;
+  double static_cat3_addlane;
+  double static_cat4_addlane;
+  double static_cat5_addlane;
+  double static_cat6_addlane;
+  double static_shared_addlane;
+  double static_l1_addlane;
+  double static_l2_addlane;
+  double static_light_addlane;
+  double static_intadd_addlane;
+  double static_intmul_addlane;
+  double static_geomean_addlane;
   int target_chip_area;
   int temperature;
   int number_cache_levels;

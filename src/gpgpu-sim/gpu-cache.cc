@@ -1,18 +1,21 @@
-// Copyright (c) 2009-2011, Tor M. Aamodt, Tayler Hetherington
-// The University of British Columbia
+// Copyright (c) 2009-2021, Tor M. Aamodt, Tayler Hetherington, 
+// Vijay Kandiah, Nikos Hardavellas, Mahmoud Khairy, Junrui Pan,
+// Timothy G. Rogers
+// The University of British Columbia, Northwestern University, Purdue University
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 //
-// Redistributions of source code must retain the above copyright notice, this
-// list of conditions and the following disclaimer.
-// Redistributions in binary form must reproduce the above copyright notice,
-// this list of conditions and the following disclaimer in the documentation
-// and/or other materials provided with the distribution. Neither the name of
-// The University of British Columbia nor the names of its contributors may be
-// used to endorse or promote products derived from this software without
-// specific prior written permission.
+// 1. Redistributions of source code must retain the above copyright notice, this
+//    list of conditions and the following disclaimer;
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution;
+// 3. Neither the names of The University of British Columbia, Northwestern 
+//    University nor the names of their contributors may be used to
+//    endorse or promote products derived from this software without specific
+//    prior written permission.
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -642,6 +645,7 @@ void cache_stats::clear() {
   ///
   for (unsigned i = 0; i < NUM_MEM_ACCESS_TYPE; ++i) {
     std::fill(m_stats[i].begin(), m_stats[i].end(), 0);
+    std::fill(m_stats_pw[i].begin(), m_stats_pw[i].end(), 0);
     std::fill(m_fail_stats[i].begin(), m_fail_stats[i].end(), 0);
   }
   m_cache_port_available_cycles = 0;

@@ -1,8 +1,8 @@
 Welcome to GPGPU-Sim, a cycle-level simulator modeling contemporary graphics
 processing units (GPUs) running GPU computing workloads written in CUDA or
 OpenCL. Also included in GPGPU-Sim is a performance visualization tool called
-AerialVision and a configurable and extensible energy model called GPUWattch.
-GPGPU-Sim and GPUWattch have been rigorously validated with performance and
+AerialVision and a configurable and extensible power model called AccelWattch.
+GPGPU-Sim and AccelWattch have been rigorously validated with performance and
 power measurements of real hardware GPUs.
 
 This version of GPGPU-Sim has been tested with a subset of CUDA version 4.2,
@@ -38,12 +38,11 @@ Md Aamir Raihan, Negar Goli, Tor Aamodt,
 Modeling Deep Learning Accelerator Enabled GPUs, arXiv:1811.08309, 
 https://arxiv.org/abs/1811.08309
 
-If you use the GPUWattch energy model in your research, please cite:
+If you use the AccelWattch power model in your research, please cite:
 
-Jingwen Leng, Tayler Hetherington, Ahmed ElTantawy, Syed Gilani, Nam Sung Kim,
-Tor M. Aamodt, Vijay Janapa Reddi, GPUWattch: Enabling Energy Optimizations in
-GPGPUs, In proceedings of the ACM/IEEE International Symposium on Computer
-Architecture (ISCA 2013), Tel-Aviv, Israel, June 23-27, 2013.
+Vijay Kandiah, Scott Peverelle, Mahmoud Khairy, Junrui Pan, Amogh Manjunath, Timothy G. Rogers, Tor M. Aamodt, and Nikos Hardavellas. 2021.
+AccelWattch: A Power Modeling Framework for Modern GPUs. In MICRO54: 54th Annual IEEE/ACM International Symposium on Microarchitecture
+(MICRO ’21), October 18–22, 2021, Virtual Event, Greece.
 
 If you use the support for CUDA dynamic parallelism in your research, please cite:
 
@@ -62,8 +61,8 @@ This file contains instructions on installing, building and running GPGPU-Sim.
 Detailed documentation on what GPGPU-Sim models, how to configure it, and a
 guide to the source code can be found here: <http://gpgpu-sim.org/manual/>.
 Instructions for building doxygen source code documentation are included below.
-Detailed documentation on GPUWattch including how to configure it and a guide
-to the source code can be found here: <http://gpgpu-sim.org/gpuwattch/>.
+
+Previous versions of GPGPU-Sim (3.2.0 to 4.1.0) included the [GPUWattch Energy model](http://gpgpu-sim.org/gpuwattch/) which has been replaced by AccelWattch version 1.0 in GPGPU-Sim version 4.2.0. AccelWattch supports modern GPUs and is validated against a NVIDIA Volta QV100 GPU. Detailed documentation on AccelWattch can be found here: [AccelWattch Overview](https://github.com/VijayKandiah/accel-sim-framework#accelwattch-overview) and [AccelWattch MICRO'21 Artifact Manual](https://github.com/VijayKandiah/accel-sim-framework/blob/release/AccelWattch.md).
 
 If you have questions, please sign up for the google groups page (see
 gpgpu-sim.org), but note that use of this simulator does not imply any level of
@@ -108,20 +107,19 @@ library (part of the CUDA toolkit). Code to interface with the CUDA Math
 library is contained in cuda-math.h, which also includes several structures
 derived from vector_types.h (one of the CUDA header files).
 
-## GPUWattch Energy Model
+## AccelWattch Power Model
 
-GPUWattch (introduced in GPGPU-Sim 3.2.0) was developed by researchers at the
-University of British Columbia, the University of Texas at Austin, and the
-University of Wisconsin-Madison. Contributors to GPUWattch include Tor
-Aamodt's research group at the University of British Columbia: Tayler
-Hetherington and Ahmed ElTantawy; Vijay Reddi's research group at the
-University of Texas at Austin: Jingwen Leng; and Nam Sung Kim's research group
-at the University of Wisconsin-Madison: Syed Gilani.
+AccelWattch (introduced in GPGPU-Sim 4.2.0) was developed by researchers at 
+Northwestern University, Purdue University, and the University of British Columbia. 
+Contributors to AccelWattch include Nikos Hardavellas's research group at Northwestern University: 
+Vijay Kandiah; Tor Aamodt's research group at the University of British Columbia: Scott Peverelle; 
+and Timothy Rogers's research group at Purdue University: Mahmoud Khairy, Junrui Pan, and Amogh Manjunath. 
 
-GPUWattch leverages McPAT, which was developed by Sheng Li et al. at the
+AccelWattch leverages McPAT, which was developed by Sheng Li et al. at the
 University of Notre Dame, Hewlett-Packard Labs, Seoul National University, and
-the University of California, San Diego. The paper can be found at
+the University of California, San Diego. The McPAT paper can be found at
 http://www.hpl.hp.com/research/mcpat/micro09.pdf.
+
 
 # INSTALLING, BUILDING and RUNNING GPGPU-Sim
 
@@ -316,15 +314,16 @@ need to re-compile your application simply to run it on GPGPU-Sim.
 To revert back to running on the hardware, remove GPGPU-Sim from your
 LD_LIBRARY_PATH environment variable.
 
-The following GPGPU-Sim configuration options are used to enable GPUWattch
+The following GPGPU-Sim configuration options are used to enable AccelWattch
 
 	-power_simulation_enabled 1 (1=Enabled, 0=Not enabled)
-	-gpuwattch_xml_file <filename>.xml
+	-power_simulation_mode 0 (0=AccelWattch_SASS_SIM or AccelWattch_PTX_SIM, 1=AccelWattch_SASS_HW, 2=AccelWattch_SASS_HYBRID)
+	-accelwattch_xml_file <filename>.xml
 
-
-The GPUWattch XML configuration file name is set to gpuwattch.xml by default and
-currently only supplied for GTX480 (default=gpuwattch_gtx480.xml). Please refer to
-<http://gpgpu-sim.org/gpuwattch/> for more information.
+The AccelWattch XML configuration file name is set to accelwattch_sass_sim.xml by default and is
+currently provided for SM7_QV100, SM7_TITANV, SM75_RTX2060_S, and SM6_TITANX. 
+Note that all these AccelWattch XML configuration files are tuned only for SM7_QV100. Please refer to
+<https://github.com/VijayKandiah/accel-sim-framework#accelwattch-overview> for more information.
 
 Running OpenCL applications is identical to running CUDA applications. However,
 OpenCL applications need to communicate with the NVIDIA driver in order to
