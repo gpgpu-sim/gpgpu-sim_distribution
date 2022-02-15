@@ -395,7 +395,7 @@ void shader_core_config::reg_options(class OptionParser *opp) {
                          "gpgpu_ignore_resources_limitation (default 0)", "0");
   option_parser_register(
       opp, "-gpgpu_shader_cta", OPT_UINT32, &max_cta_per_core,
-      "Maximum number of concurrent CTAs in shader (default 8)", "8");
+      "Maximum number of concurrent CTAs in shader (default 32)", "32");
   option_parser_register(
       opp, "-gpgpu_num_cta_barriers", OPT_UINT32, &max_barriers_per_cta,
       "Maximum number of named barriers per CTA (default 16)", "16");
@@ -1639,9 +1639,9 @@ bool shader_core_ctx::occupy_shader_resource_1block(kernel_info_t &k,
 
     SHADER_DPRINTF(LIVENESS,
                    "GPGPU-Sim uArch: Occupied %u threads, %u shared mem, %u "
-                   "registers, %u ctas\n",
+                   "registers, %u ctas, on shader %d\n",
                    m_occupied_n_threads, m_occupied_shmem, m_occupied_regs,
-                   m_occupied_ctas);
+                   m_occupied_ctas, m_sid);
   }
 
   return true;
@@ -1807,9 +1807,9 @@ void shader_core_ctx::issue_block2core(kernel_info_t &kernel) {
   shader_CTA_count_log(m_sid, 1);
   SHADER_DPRINTF(LIVENESS,
                  "GPGPU-Sim uArch: cta:%2u, start_tid:%4u, end_tid:%4u, "
-                 "initialized @(%lld,%lld)\n",
+                 "initialized @(%lld,%lld), kernel_uid:%u, kernel_name:%s\n",
                  free_cta_hw_id, start_thread, end_thread, m_gpu->gpu_sim_cycle,
-                 m_gpu->gpu_tot_sim_cycle);
+                 m_gpu->gpu_tot_sim_cycle, kernel.get_uid(), kernel.get_name().c_str());
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
