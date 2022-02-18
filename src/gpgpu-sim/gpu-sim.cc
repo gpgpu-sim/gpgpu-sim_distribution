@@ -701,7 +701,8 @@ void gpgpu_sim_config::reg_options(option_parser_t opp) {
                          "500.0:2000.0:2000.0:2000.0");
   option_parser_register(
       opp, "-gpgpu_max_concurrent_kernel", OPT_INT32, &max_concurrent_kernel,
-      "maximum kernels that can run concurrently on GPU", "8");
+      "maximum kernels that can run concurrently on GPU, set this value "
+      "according to max resident grids for your compute capability", "32");
   option_parser_register(
       opp, "-gpgpu_cflog_interval", OPT_INT32, &gpgpu_cflog_interval,
       "Interval between each snapshot in control flow logger", "0");
