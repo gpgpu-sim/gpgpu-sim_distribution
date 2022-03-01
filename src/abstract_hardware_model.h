@@ -291,6 +291,7 @@ class kernel_info_t {
            m_next_tid.x < m_block_dim.x;
   }
   unsigned get_uid() const { return m_uid; }
+  std::string get_name() const { return name(); }
   std::string name() const;
 
   std::list<class ptx_thread_info *> &active_threads() {

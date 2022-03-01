@@ -951,7 +951,7 @@ void shader_core_ctx::fetch() {
               m_threadState[tid].m_active = false;
               unsigned cta_id = m_warp[warp_id]->get_cta_id();
               if (m_thread[tid] == NULL) {
-                register_cta_thread_exit(cta_id, m_kernel);
+                register_cta_thread_exit(cta_id, m_warp[warp_id]->get_kernel_info());
               } else {
                 register_cta_thread_exit(cta_id,
                                          &(m_thread[tid]->get_kernel()));
@@ -3897,6 +3897,8 @@ void shader_core_ctx::get_icnt_power_stats(long &n_simt_to_mem,
   n_simt_to_mem += m_stats->n_simt_to_mem[m_sid];
   n_mem_to_simt += m_stats->n_mem_to_simt[m_sid];
 }
+
+kernel_info_t* shd_warp_t::get_kernel_info() const { return m_shader->get_kernel_info(); }
 
 bool shd_warp_t::functional_done() const {
   return get_n_completed() == m_warp_size;
