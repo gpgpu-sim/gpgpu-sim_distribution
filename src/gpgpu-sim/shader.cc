@@ -2092,10 +2092,11 @@ bool ldst_unit::constant_cycle(warp_inst_t &inst, mem_stage_stall_type &rc_fail,
   mem_stage_stall_type fail;
   if (m_config->perfect_inst_const_cache) {
     fail = NO_RC_FAIL;
+    unsigned access_count = inst.accessq_count();
     while (inst.accessq_count() > 0) inst.accessq_pop_back();
     if (inst.is_load()) {
       for (unsigned r = 0; r < MAX_OUTPUT_VALUES; r++)
-        if (inst.out[r] > 0) m_pending_writes[inst.warp_id()][inst.out[r]]--;
+        if (inst.out[r] > 0) m_pending_writes[inst.warp_id()][inst.out[r]] -= access_count;
     }
   } else {
     fail = process_memory_access_queue(m_L1C, inst);
