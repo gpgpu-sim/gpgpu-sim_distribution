@@ -1074,7 +1074,7 @@ class graphManager:
         
         plotFormat = self.plotFormatInfo[plotID]
         plotFormat.InitLabels(xlabel = xAxis, ylabel = yAxis, cbarlabel = '', 
-                              title = yAxis + ' vs ' + xAxis + ' ...' + self.dataPointer.fileChosen[-80:])
+                              title = yAxis + ' vs ' + xAxis + ' ...' + self.dataPointer.fileChosen[-52:-7])
         self.plot.set_title(plotFormat.title)
 
         # More Labelling 
@@ -1245,7 +1245,7 @@ class graphManager:
     def plot2VarLine(self, x, xAxis, y, yAxis):
       self.plot.plot(x, y)
       self.plot.set_xlim(0, self.xlim)
-      self.plotFormatInfo[self.currPlot].InitLabels(xlabel = xAxis, ylabel = yAxis, cbarlabel = '', title = xAxis + ' vs ' + yAxis + ' ...' + self.dataPointer.fileChosen[-80:])
+      self.plotFormatInfo[self.currPlot].InitLabels(xlabel = xAxis, ylabel = yAxis, cbarlabel = '', title = '')
       self.plot.set_title(self.plotFormatInfo[self.currPlot].title)
       self.plot.set_xlabel(self.plotFormatInfo[self.currPlot].xlabel, fontsize = self.plotFormatInfo[self.currPlot].labelFontSize)
       self.plot.set_ylabel(self.plotFormatInfo[self.currPlot].ylabel, fontsize = self.plotFormatInfo[self.currPlot].labelFontSize)
@@ -1269,7 +1269,7 @@ class graphManager:
         ymax = max(y)
         ymin = min(y)
         self.plot.set_ylim(ymin, ymax)
-        plotFormat.InitLabels(xlabel = xAxis, ylabel = yAxis, cbarlabel = '', title = xAxis + ' vs ' + yAxis + ' ...' + self.dataPointer.fileChosen[-80:])
+        plotFormat.InitLabels(xlabel = xAxis, ylabel = yAxis, cbarlabel = '', title = xAxis + ' vs ' + yAxis + ' ...' + self.dataPointer.fileChosen[-52:-7])
         self.plot.set_title(plotFormat.title, fontsize = plotFormat.labelFontSize)
         self.plot.set_xlabel(plotFormat.xlabel, fontsize = plotFormat.labelFontSize)
         self.plot.set_ylabel(plotFormat.ylabel, fontsize = plotFormat.labelFontSize)
@@ -1373,7 +1373,7 @@ class graphManager:
         self.cbarAxes[plotID]= cax  # use for cleanup
         self.colorbars[self.currPlot] = cbar
 
-        self.plotFormatInfo[plotID].InitLabels( cbarlabel = 'Scale: ' + colorAxis, xlabel = xAxis + ' ...' + self.dataPointer.fileChosen[-80:], ylabel = yAxis )
+        self.plotFormatInfo[plotID].InitLabels( cbarlabel = 'Scale: ' + colorAxis, xlabel = xAxis + ' ...' + self.dataPointer.fileChosen[-52:-7], ylabel = yAxis )
         cbar.set_label( plotFormat.cbarlabel, fontsize = plotFormat.labelFontSize)
         for label in cbar.ax.get_yticklabels():
             label.set_fontsize(plotFormat.cticksFontSize)
