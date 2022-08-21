@@ -831,6 +831,7 @@ void ptx_recognizer::set_immediate_operand_type() {
 
 void ptx_recognizer::change_double_operand_type(int operand_type) {
   /*
+   *-4 = reg | reg ( shfl instruction , first gets data and second pred )
    *-3 = reg / reg (set instruction, but both get same value)
    *-2 = reg | reg (cvt instruction)
    *-1 = reg | reg (set instruction)
@@ -845,13 +846,27 @@ void ptx_recognizer::change_double_operand_type(int operand_type) {
 
   // For double destination operands, ensure valid instruction
   if (operand_type == -1 || operand_type == -2) {
-    if ((g_opcode == SET_OP) || (g_opcode == SETP_OP))
+    if (g_opcode == SHFL_OP)
+    {
+      g_operands.back().set_double_operand_type(-4);
+    }
+    else if ((g_opcode == SET_OP) || (g_opcode == SETP_OP))
+    {
       g_operands.back().set_double_operand_type(-1);
+    }
     else
+    {
       g_operands.back().set_double_operand_type(-2);
+    }
   } else if (operand_type == -3) {
-    if (g_opcode == SET_OP || g_opcode == MAD_OP)
+    if (g_opcode == SHFL_OP)
+    {
+      g_operands.back().set_double_operand_type(-4);
+    }
+    else if (g_opcode == SET_OP || g_opcode == MAD_OP)
+    {
       g_operands.back().set_double_operand_type(operand_type);
+    }
     else
       parse_assert(0, "Error: Unsupported use of double destination operand.");
   } else {

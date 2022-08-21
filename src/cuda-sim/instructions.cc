@@ -624,6 +624,7 @@ void ptx_thread_info::set_operand_value(const operand_info &dst,
       const symbol *predName = dst.vec_symbol(0);
       const symbol *regName = dst.vec_symbol(1);
       predValue.u64 = 0;
+      
 
       switch (type) {
         case S8_TYPE:
@@ -680,16 +681,93 @@ void ptx_thread_info::set_operand_value(const operand_info &dst,
       }
 
       if (dst.get_operand_lohi() == 1) {
+          
         setValue.u64 =
             ((m_regs.back()[regName].u64) & (~(0xFFFF))) + (data.u64 & 0xFFFF);
       } else if (dst.get_operand_lohi() == 2) {
         setValue.u64 = ((m_regs.back()[regName].u64) & (~(0xFFFF0000))) +
                        ((data.u64 << 16) & 0xFFFF0000);
       }
-
       set_reg(predName, predValue);
       set_reg(regName, setValue);
-    } else if (type == BB128_TYPE) {
+    }
+    // Double destination in cvt,shr,mul,etc. instruction ($p0|$r4) - second
+    // register operand receives data, first predicate operand is set as
+    // $p0=($r4!=0) Also for Double destination in set instruction ($p0/$r1)
+    else if ((dst.get_double_operand_type() == -4)) {
+        ptx_reg_t predValue;
+        const symbol* predName = dst.vec_symbol(1);
+        const symbol* regName = dst.vec_symbol(0);
+        predValue.u64 = 0;
+
+
+        switch (type) {
+        case S8_TYPE:
+            if ((setValue.s8 & 0x7F) == 0) predValue.u64 |= 1;
+            break;
+        case S16_TYPE:
+            if ((setValue.s16 & 0x7FFF) == 0) predValue.u64 |= 1;
+            break;
+        case S32_TYPE:
+            if ((setValue.s32 & 0x7FFFFFFF) == 0) predValue.u64 |= 1;
+            break;
+        case S64_TYPE:
+            if ((setValue.s64 & 0x7FFFFFFFFFFFFFFF) == 0) predValue.u64 |= 1;
+            break;
+        case U8_TYPE:
+        case B8_TYPE:
+            if (setValue.u8 == 0) predValue.u64 |= 1;
+            break;
+        case U16_TYPE:
+        case B16_TYPE:
+            if (setValue.u16 == 0) predValue.u64 |= 1;
+            break;
+        case U32_TYPE:
+        case B32_TYPE:
+            if (setValue.u32 == 0) predValue.u64 |= 1;
+            break;
+        case U64_TYPE:
+        case B64_TYPE:
+            if (setValue.u64 == 0) predValue.u64 |= 1;
+            break;
+        case F16_TYPE:
+            if (setValue.f16 == 0) predValue.u64 |= 1;
+            break;
+        case F32_TYPE:
+            if (setValue.f32 == 0) predValue.u64 |= 1;
+            break;
+        case F64_TYPE:
+        case FF64_TYPE:
+            if (setValue.f64 == 0) predValue.u64 |= 1;
+            break;
+        default:
+            assert(0);
+            break;
+        }
+
+        if ((type == S8_TYPE) || (type == S16_TYPE) || (type == S32_TYPE) ||
+            (type == S64_TYPE) || (type == U8_TYPE) || (type == U16_TYPE) ||
+            (type == U32_TYPE) || (type == U64_TYPE) || (type == B8_TYPE) ||
+            (type == B16_TYPE) || (type == B32_TYPE) || (type == B64_TYPE)) {
+            if ((setValue.u32 & (1 << (size - 1))) != 0) predValue.u64 |= 1 << 1;
+        }
+        if (type == F32_TYPE) {
+            if (setValue.f32 < 0) predValue.u64 |= 1 << 1;
+        }
+
+        if (dst.get_operand_lohi() == 1) {
+
+            setValue.u64 =
+                ((m_regs.back()[regName].u64) & (~(0xFFFF))) + (data.u64 & 0xFFFF);
+        }
+        else if (dst.get_operand_lohi() == 2) {
+            setValue.u64 = ((m_regs.back()[regName].u64) & (~(0xFFFF0000))) +
+                ((data.u64 << 16) & 0xFFFF0000);
+        }
+        set_reg(predName, predValue);
+        set_reg(regName, setValue);
+    }
+    else if (type == BB128_TYPE) {
       // b128 stuff here.
       ptx_reg_t setValue2, setValue3, setValue4;
       setValue.u64 = 0;
@@ -5347,6 +5425,8 @@ void set_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
 }
 
 void shfl_impl(const ptx_instruction *pI, core_t *core, warp_inst_t inst) {
+  
+
   unsigned i_type = pI->get_type();
   int tid;
 
@@ -5364,11 +5444,15 @@ void shfl_impl(const ptx_instruction *pI, core_t *core, warp_inst_t inst) {
   const operand_info &src1 = pI->src1();
   const operand_info &src2 = pI->src2();
   const operand_info &src3 = pI->src3();
+  
+  int src_val = (thread->get_operand_value(src1, dst, i_type, thread, 1)).u32;
   int bval = (thread->get_operand_value(src2, dst, i_type, thread, 1)).u32;
   int cval = (thread->get_operand_value(src3, dst, i_type, thread, 1)).u32;
+  
   int mask = cval >> 8;
   bval &= 0x1F;
   cval &= 0x1F;
+ 
 
   int maxLane = (lane & mask) | (cval & ~mask);
   int minLane = lane & mask;
@@ -5397,6 +5481,7 @@ void shfl_impl(const ptx_instruction *pI, core_t *core, warp_inst_t inst) {
       assert(0);
       break;
   }
+  
   // copy from own lane
   if (!p) src_idx = lane;
 
@@ -5411,8 +5496,8 @@ void shfl_impl(const ptx_instruction *pI, core_t *core, warp_inst_t inst) {
         "threads in a warp\n");
     data.u32 = 0;
   }
-  thread->set_operand_value(dst, data, i_type, thread, pI);
-
+  
+  thread->set_operand_value(dst, data.u32, i_type, thread, pI);
   /*
   TODO: deal with predicates appropriately using the following pseudocode:
   if (!isGuardPredicateTrue(src_idx)) {
