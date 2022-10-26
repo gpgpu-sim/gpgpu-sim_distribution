@@ -130,9 +130,13 @@ void gpgpu_sim::gpgpu_debug() {
     if (!strcmp(tok, "dp")) {
       int shader_num = 0;
       tok = strtok(NULL, " \t\n");
-      sscanf(tok, "%d", &shader_num);
-      dump_pipeline((0x40 | 0x4 | 0x1), shader_num, 0);
-      printf("\n");
+      if (0x0 == tok) {
+          printf("Hint:  dp must take with <n> to display pipeline contents on SM \n");
+      } else {
+          sscanf(tok, "%d", &shader_num);
+          dump_pipeline((0x40 | 0x4 | 0x1), shader_num, 0);
+          printf("\n");
+      }
       fflush(stdout);
     } else if (!strcmp(tok, "q") || !strcmp(tok, "quit")) {
       printf("\nreally quit GPGPU-Sim (y/n)?\n");
