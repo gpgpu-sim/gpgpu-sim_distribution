@@ -1,0 +1,99 @@
+
+
+
+
+
+
+
+
+.version 6.1
+.target sm_30
+.address_size 64
+
+
+
+.visible .entry _Z9vectorAddPiS_(
+.param .u64 _Z9vectorAddPiS__param_0,
+.param .u64 _Z9vectorAddPiS__param_1
+)
+{
+.reg .pred %p<7>;
+.reg .b32 %r<17>;
+.reg .b64 %rd<18>;
+
+
+ld.param.u64 %rd1, [_Z9vectorAddPiS__param_0];
+ld.param.u64 %rd2, [_Z9vectorAddPiS__param_1];
+mov.u32 %r5, 0;
+mov.u32 %r1, %tid.x;
+mov.u32 %r16, %r5;
+
+BB0_1:
+mov.u32 %r2, %r16;
+setp.lt.s32	%p1, %r2, 1;
+not.pred %p2, %p1;
+@%p2 bra BB0_8;
+bra.uni BB0_2;
+
+BB0_2:
+cvt.s64.s32	%rd3, %r1;
+shl.b64 %rd4, %rd3, 2;
+add.s64 %rd5, %rd1, %rd4;
+ld.u32 %r3, [%rd5];
+rem.s32 %r6, %r3, 2;
+setp.eq.s32	%p3, %r6, 0;
+not.pred %p4, %p3;
+@%p4 bra BB0_4;
+bra.uni BB0_3;
+
+BB0_3:
+cvt.s64.s32	%rd12, %r1;
+shl.b64 %rd13, %rd12, 2;
+add.s64 %rd14, %rd2, %rd13;
+ld.u32 %r12, [%rd14];
+add.s32 %r13, %r12, %r3;
+st.u32 [%rd14], %r13;
+bra.uni BB0_7;
+
+BB0_4:
+setp.eq.s32	%p5, %r3, 31;
+not.pred %p6, %p5;
+@%p6 bra BB0_6;
+bra.uni BB0_5;
+
+BB0_5:
+mul.lo.s32 %r7, %r3, 2;
+cvt.s64.s32	%rd6, %r1;
+shl.b64 %rd7, %rd6, 2;
+add.s64 %rd8, %rd2, %rd7;
+ld.u32 %r8, [%rd8];
+add.s32 %r9, %r8, %r7;
+st.u32 [%rd8], %r9;
+bra.uni BB0_9;
+
+BB0_6:
+
+BB0_7:
+add.s32 %r4, %r2, 1;
+cvt.s64.s32	%rd15, %r1;
+shl.b64 %rd16, %rd15, 2;
+add.s64 %rd17, %rd1, %rd16;
+ld.u32 %r14, [%rd17];
+add.s32 %r15, %r14, 1;
+st.u32 [%rd17], %r15;
+mov.u32 %r16, %r4;
+bra.uni BB0_1;
+
+BB0_8:
+
+BB0_9:
+cvt.s64.s32	%rd9, %r1;
+shl.b64 %rd10, %rd9, 2;
+add.s64 %rd11, %rd2, %rd10;
+ld.u32 %r10, [%rd11];
+mul.lo.s32 %r11, %r10, 2;
+st.u32 [%rd11], %r11;
+ret;
+}
+
+

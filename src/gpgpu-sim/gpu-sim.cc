@@ -2027,6 +2027,7 @@ void gpgpu_sim::dump_pipeline(int mask, int s, int m) const {
       break;
     }
   }
+#if 0
   if (mask & 0x10000) {
     for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
       if (m != -1) {
@@ -2041,6 +2042,7 @@ void gpgpu_sim::dump_pipeline(int mask, int s, int m) const {
       }
     }
   }
+#endif
   fflush(stdout);
 }
 

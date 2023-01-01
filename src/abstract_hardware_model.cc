@@ -1173,6 +1173,8 @@ void simt_stack::update(simt_mask_t &thread_done, addr_vector_t &next_pc,
   if (warp_diverged) {
     m_gpu->gpgpu_ctx->stats->ptx_file_line_stats_add_warp_divergence(top_pc, 1);
   }
+  printf("[ZSY]\n");
+  GPGPU_Context()->the_gpgpusim->g_the_gpu->dump_pipeline((0x40|0x4|0x1), 0, 0);
 }
 
 void core_t::execute_warp_inst_t(warp_inst_t &inst, unsigned warpId) {
