@@ -30,17 +30,16 @@
 // For the CUDA runtime routines (prefixed with "cuda_")
 #include <cuda_runtime.h>
 
-#include <helper_cuda.h>
 /**
  * CUDA Kernel Device code
  */
 __global__ void vectorAdd(int *data, int *result) {
   
   int idx = threadIdx.x;
-  int i = 0, K = 1;
+  int i = 0, K = 32;
   while (i < K) {
     int X = data[idx];
-    if (X % 2 == 0) {
+    if (X % (2 + i) == 0) {
       result[idx] += X;
     } else if (X == 31) {
       result[idx] += 2 * X;

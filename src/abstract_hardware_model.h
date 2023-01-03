@@ -158,7 +158,6 @@ enum _memory_op_t { no_memory_op = 0, memory_load, memory_store };
 #include <stdlib.h>
 #include <algorithm>
 #include <bitset>
-#include <deque>
 #include <list>
 #include <map>
 #include <vector>
@@ -425,6 +424,8 @@ class simt_stack {
     unsigned int m_calldepth;
     simt_mask_t m_active_mask;
     address_type m_recvg_pc;
+    address_type m_likely_rpc;
+    unsigned int m_lpos;
     unsigned long long m_branch_div_cycle;
     stack_entry_type m_type;
     simt_stack_entry()
@@ -432,11 +433,13 @@ class simt_stack {
           m_calldepth(0),
           m_active_mask(),
           m_recvg_pc(-1),
+          m_likely_rpc(-1),
+          m_lpos(-1),
           m_branch_div_cycle(0),
           m_type(STACK_ENTRY_TYPE_NORMAL){};
   };
 
-  std::deque<simt_stack_entry> m_stack;
+  std::vector<simt_stack_entry> m_stack;
 
   class gpgpu_sim *m_gpu;
 };
