@@ -1,0 +1,5 @@
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_Z9vectorAddPiS_' for 'sm_30'
+ptxas info    : Function properties for _Z9vectorAddPiS_
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 12 registers, 336 bytes cmem[0]
