@@ -1,6 +1,6 @@
 
 
-        *** GPGPU-Sim Simulator Version 4.0.0  [build gpgpu-sim_git-commit-5efbe8adbd291c8d3e720d4f3e43a4421bd0bf40_modified_3.0] ***
+        *** GPGPU-Sim Simulator Version 4.0.0  [build gpgpu-sim_git-commit-95aefc4fb5d32ec3e549355d5050ade60ada4f3a_modified_4.0] ***
 
 
 GPGPU-Sim PTX: simulation mode 0 (can change with PTX_SIM_MODE_FUNC environment variable:
@@ -248,7 +248,7 @@ GPGPU-Sim uArch:   10  11  12  13  14
 GPGPU-Sim uArch:   15  16  17  18  19
 GPGPU-Sim uArch:   20  21  22  23  24
 GPGPU-Sim uArch:   25  26
-3c814eb8375694a052cc667035555449  /home/zhaosiying/codebase/gpgpu-sim/upstream_gpgpusim/gpgpu-sim_distribution/configs/tested-cfgs/SM2_GTX480/a.out
+edee8f7d004098f8c1b3023c405da10c  /home/zhaosiying/codebase/gpgpu-sim/upstream_gpgpusim/gpgpu-sim_distribution/configs/tested-cfgs/SM2_GTX480/a.out
 Extracting PTX file and ptxas options    1: a.1.sm_30.ptx -arch=sm_30 -O0  
 GPGPU-Sim uArch: performance model initialization complete.
 self exe links to: /home/zhaosiying/codebase/gpgpu-sim/upstream_gpgpusim/gpgpu-sim_distribution/configs/tested-cfgs/SM2_GTX480/a.out
@@ -259,7 +259,7 @@ self exe links to: /home/zhaosiying/codebase/gpgpu-sim/upstream_gpgpusim/gpgpu-s
 Running md5sum using "md5sum /home/zhaosiying/codebase/gpgpu-sim/upstream_gpgpusim/gpgpu-sim_distribution/configs/tested-cfgs/SM2_GTX480/a.out "
 self exe links to: /home/zhaosiying/codebase/gpgpu-sim/upstream_gpgpusim/gpgpu-sim_distribution/configs/tested-cfgs/SM2_GTX480/a.out
 Extracting specific PTX file named a.1.sm_30.ptx 
-GPGPU-Sim PTX: __cudaRegisterFunction _Z9vectorAddPiS_ : hostFun 0x0x55a3cb148715, fat_cubin_handle = 1
+GPGPU-Sim PTX: __cudaRegisterFunction _Z9vectorAddPiS_ : hostFun 0x0x556a8f6936ee, fat_cubin_handle = 1
 GPGPU-Sim PTX: Parsing a.1.sm_30.ptx
 GPGPU-Sim PTX: instruction assembly for function '_Z9vectorAddPiS_'...   done.
 GPGPU-Sim PTX: finished parsing EMBEDDED .ptx file a.1.sm_30.ptx
@@ -267,14 +267,14 @@ GPGPU-Sim PTX: loading globals with explicit initializers...
 GPGPU-Sim PTX: finished loading globals (0 bytes total).
 GPGPU-Sim PTX: loading constants with explicit initializers...  done.
 GPGPU-Sim PTX: Loading PTXInfo from a.1.sm_30.ptx
-GPGPU-Sim PTX: Kernel '_Z9vectorAddPiS_' : regs=12, lmem=0, smem=0, cmem=336
+GPGPU-Sim PTX: Kernel '_Z9vectorAddPiS_' : regs=11, lmem=0, smem=0, cmem=336
 [Vector addition of 32 elements]
 Copy input data from the host memory to the CUDA device
 CUDA kernel launch with 1 blocks of 32 threads
-GPGPU-Sim PTX: Setting up arguments for 8 bytes starting at 0x7ffc9bd23f58..
-GPGPU-Sim PTX: Setting up arguments for 8 bytes starting at 0x7ffc9bd23f50..
+GPGPU-Sim PTX: Setting up arguments for 8 bytes starting at 0x7ffdc0b44af8..
+GPGPU-Sim PTX: Setting up arguments for 8 bytes starting at 0x7ffdc0b44af0..
 
-GPGPU-Sim PTX: cudaLaunch for 0x0x55a3cb148715 (mode=performance simulation) on stream 0
+GPGPU-Sim PTX: cudaLaunch for 0x0x556a8f6936ee (mode=performance simulation) on stream 0
 GPGPU-Sim PTX: finding reconvergence points for '_Z9vectorAddPiS_'...
 GPGPU-Sim PTX: Finding dominators for '_Z9vectorAddPiS_'...
 GPGPU-Sim PTX: Finding immediate dominators for '_Z9vectorAddPiS_'...
@@ -283,23 +283,23 @@ GPGPU-Sim PTX: Finding immediate postdominators for '_Z9vectorAddPiS_'...
 GPGPU-Sim PTX: pre-decoding instructions for '_Z9vectorAddPiS_'...
 GPGPU-Sim PTX: reconvergence points for _Z9vectorAddPiS_...
 GPGPU-Sim PTX:  1 (potential) branch divergence @  PC=0x040 (a.1.sm_30.ptx:35) @%p2 bra BB0_8;
-GPGPU-Sim PTX:    immediate post dominator      @  PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
+GPGPU-Sim PTX:    immediate post dominator      @  PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
 GPGPU-Sim PTX:  2 (potential) branch divergence @  PC=0x048 (a.1.sm_30.ptx:36) bra.uni BB0_2;
 GPGPU-Sim PTX:    immediate post dominator      @  PC=0x050 (a.1.sm_30.ptx:39) cvt.s64.s32%rd3, %r1;
-GPGPU-Sim PTX:  3 (potential) branch divergence @  PC=0x088 (a.1.sm_30.ptx:46) @%p4 bra BB0_4;
-GPGPU-Sim PTX:    immediate post dominator      @  PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-GPGPU-Sim PTX:  4 (potential) branch divergence @  PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-GPGPU-Sim PTX:    immediate post dominator      @  PC=0x098 (a.1.sm_30.ptx:50) cvt.s64.s32%rd12, %r1;
-GPGPU-Sim PTX:  5 (potential) branch divergence @  PC=0x0c8 (a.1.sm_30.ptx:56) bra.uni BB0_7;
-GPGPU-Sim PTX:    immediate post dominator      @  PC=0x130 (a.1.sm_30.ptx:77) add.s32 %r4, %r2, 1;
-GPGPU-Sim PTX:  6 (potential) branch divergence @  PC=0x0e0 (a.1.sm_30.ptx:61) @%p6 bra BB0_6;
-GPGPU-Sim PTX:    immediate post dominator      @  PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-GPGPU-Sim PTX:  7 (potential) branch divergence @  PC=0x0e8 (a.1.sm_30.ptx:62) bra.uni BB0_5;
-GPGPU-Sim PTX:    immediate post dominator      @  PC=0x0f0 (a.1.sm_30.ptx:65) mul.lo.s32 %r7, %r3, 2;
-GPGPU-Sim PTX:  8 (potential) branch divergence @  PC=0x128 (a.1.sm_30.ptx:72) bra.uni BB0_9;
-GPGPU-Sim PTX:    immediate post dominator      @  PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-GPGPU-Sim PTX:  9 (potential) branch divergence @  PC=0x170 (a.1.sm_30.ptx:85) bra.uni BB0_1;
-GPGPU-Sim PTX:    immediate post dominator      @  PC=0x028 (a.1.sm_30.ptx:32) mov.u32 %r2, %r16;
+GPGPU-Sim PTX:  3 (potential) branch divergence @  PC=0x090 (a.1.sm_30.ptx:47) @%p4 bra BB0_4;
+GPGPU-Sim PTX:    immediate post dominator      @  PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+GPGPU-Sim PTX:  4 (potential) branch divergence @  PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+GPGPU-Sim PTX:    immediate post dominator      @  PC=0x0a0 (a.1.sm_30.ptx:51) cvt.s64.s32%rd12, %r1;
+GPGPU-Sim PTX:  5 (potential) branch divergence @  PC=0x0d0 (a.1.sm_30.ptx:57) bra.uni BB0_7;
+GPGPU-Sim PTX:    immediate post dominator      @  PC=0x138 (a.1.sm_30.ptx:78) add.s32 %r4, %r2, 1;
+GPGPU-Sim PTX:  6 (potential) branch divergence @  PC=0x0e8 (a.1.sm_30.ptx:62) @%p6 bra BB0_6;
+GPGPU-Sim PTX:    immediate post dominator      @  PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+GPGPU-Sim PTX:  7 (potential) branch divergence @  PC=0x0f0 (a.1.sm_30.ptx:63) bra.uni BB0_5;
+GPGPU-Sim PTX:    immediate post dominator      @  PC=0x0f8 (a.1.sm_30.ptx:66) mul.lo.s32 %r8, %r3, 2;
+GPGPU-Sim PTX:  8 (potential) branch divergence @  PC=0x130 (a.1.sm_30.ptx:73) bra.uni BB0_9;
+GPGPU-Sim PTX:    immediate post dominator      @  PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+GPGPU-Sim PTX:  9 (potential) branch divergence @  PC=0x178 (a.1.sm_30.ptx:86) bra.uni BB0_1;
+GPGPU-Sim PTX:    immediate post dominator      @  PC=0x028 (a.1.sm_30.ptx:32) mov.u32 %r2, %r17;
 GPGPU-Sim PTX: ... end of reconvergence points for _Z9vectorAddPiS_
 GPGPU-Sim PTX: ... done pre-decoding instructions for '_Z9vectorAddPiS_'.
 GPGPU-Sim PTX: pushing kernel '_Z9vectorAddPiS_' to stream 0, gridDim= (1,1,1) blockDim = (32,1,1) 
@@ -315,7 +315,7 @@ per warp functional simulation status:
 w00 npc: 0x0000, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @   266
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x008 rp: ---- tp: N cd:  1  vectorAdd PC=0x008 (a.1.sm_30.ptx:26) ld.param.u64 %rd2, [_Z9vectorAddPiS__param_1];
+w00 0 11111111111111111111111111111111 pc: 0x008 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  vectorAdd PC=0x008 (a.1.sm_30.ptx:26) ld.param.u64 %rd2, [_Z9vectorAddPiS__param_1];
 
 
 [ZSY]
@@ -328,7 +328,7 @@ per warp functional simulation status:
 w00 npc: 0x0008, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @   266
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x010 rp: ---- tp: N cd:  1  vectorAdd PC=0x010 (a.1.sm_30.ptx:27) mov.u32 %r5, 0;
+w00 0 11111111111111111111111111111111 pc: 0x010 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  vectorAdd PC=0x010 (a.1.sm_30.ptx:27) mov.u32 %r5, 0;
 
 
 [ZSY]
@@ -341,7 +341,7 @@ per warp functional simulation status:
 w00 npc: 0x0010, done: s  : 0 i:3 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @   269
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x018 rp: ---- tp: N cd:  1  vectorAdd PC=0x018 (a.1.sm_30.ptx:28) mov.u32 %r1, %tid.x;
+w00 0 11111111111111111111111111111111 pc: 0x018 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  vectorAdd PC=0x018 (a.1.sm_30.ptx:28) mov.u32 %r1, %tid.x;
 
 
 [ZSY]
@@ -354,7 +354,7 @@ per warp functional simulation status:
 w00 npc: 0x0018, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @   269
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x020 rp: ---- tp: N cd:  1  vectorAdd PC=0x020 (a.1.sm_30.ptx:29) mov.u32 %r16, %r5;
+w00 0 11111111111111111111111111111111 pc: 0x020 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  vectorAdd PC=0x020 (a.1.sm_30.ptx:29) mov.u32 %r17, %r5;
 
 
 [ZSY]
@@ -367,7 +367,7 @@ per warp functional simulation status:
 w00 npc: 0x0020, done: s  : 0 i:3 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @   272
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x028 rp: ---- tp: N cd:  1  vectorAdd PC=0x028 (a.1.sm_30.ptx:32) mov.u32 %r2, %r16;
+w00 0 11111111111111111111111111111111 pc: 0x028 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  vectorAdd PC=0x028 (a.1.sm_30.ptx:32) mov.u32 %r2, %r17;
 
 
 [ZSY]
@@ -380,7 +380,7 @@ per warp functional simulation status:
 w00 npc: 0x0028, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @   272
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x030 rp: ---- tp: N cd:  1  vectorAdd PC=0x030 (a.1.sm_30.ptx:33) setp.lt.s32%p1, %r2, 1;
+w00 0 11111111111111111111111111111111 pc: 0x030 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  vectorAdd PC=0x030 (a.1.sm_30.ptx:33) setp.lt.s32%p1, %r2, 1;
 
 
 [ZSY]
@@ -393,7 +393,7 @@ per warp functional simulation status:
 w00 npc: 0x0030, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @   284
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x038 rp: ---- tp: N cd:  1  vectorAdd PC=0x038 (a.1.sm_30.ptx:34) not.pred %p2, %p1;
+w00 0 11111111111111111111111111111111 pc: 0x038 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  vectorAdd PC=0x038 (a.1.sm_30.ptx:34) not.pred %p2, %p1;
 
 
 [ZSY]
@@ -406,7 +406,7 @@ per warp functional simulation status:
 w00 npc: 0x0038, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @   284
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x040 rp: ---- tp: N cd:  1  vectorAdd PC=0x040 (a.1.sm_30.ptx:35) @%p2 bra BB0_8;
+w00 0 11111111111111111111111111111111 pc: 0x040 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  vectorAdd PC=0x040 (a.1.sm_30.ptx:35) @%p2 bra BB0_8;
 
 
 [ZSY]
@@ -419,7 +419,7 @@ per warp functional simulation status:
 w00 npc: 0x0040, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @   298
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x048 rp: ---- tp: N cd:  1  vectorAdd PC=0x048 (a.1.sm_30.ptx:36) bra.uni BB0_2;
+w00 0 11111111111111111111111111111111 pc: 0x048 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  vectorAdd PC=0x048 (a.1.sm_30.ptx:36) bra.uni BB0_2;
 
 
 [ZSY]
@@ -432,7 +432,7 @@ per warp functional simulation status:
 w00 npc: 0x0048, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @   298
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x050 rp: ---- tp: N cd:  1  vectorAdd PC=0x050 (a.1.sm_30.ptx:39) cvt.s64.s32%rd3, %r1;
+w00 0 11111111111111111111111111111111 pc: 0x050 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  vectorAdd PC=0x050 (a.1.sm_30.ptx:39) cvt.s64.s32%rd3, %r1;
 
 
 [ZSY]
@@ -445,7 +445,7 @@ per warp functional simulation status:
 w00 npc: 0x0050, done: s  : 0 i:4 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @   306
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x058 rp: ---- tp: N cd:  1  vectorAdd PC=0x058 (a.1.sm_30.ptx:40) shl.b64 %rd4, %rd3, 2;
+w00 0 11111111111111111111111111111111 pc: 0x058 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  vectorAdd PC=0x058 (a.1.sm_30.ptx:40) shl.b64 %rd4, %rd3, 2;
 
 
 [ZSY]
@@ -458,7 +458,7 @@ per warp functional simulation status:
 w00 npc: 0x0058, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @   306
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x060 rp: ---- tp: N cd:  1  vectorAdd PC=0x060 (a.1.sm_30.ptx:41) add.s64 %rd5, %rd1, %rd4;
+w00 0 11111111111111111111111111111111 pc: 0x060 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  vectorAdd PC=0x060 (a.1.sm_30.ptx:41) add.s64 %rd5, %rd1, %rd4;
 
 
 [ZSY]
@@ -471,7 +471,7 @@ per warp functional simulation status:
 w00 npc: 0x0060, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @   315
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x068 rp: ---- tp: N cd:  1  vectorAdd PC=0x068 (a.1.sm_30.ptx:42) ld.u32 %r3, [%rd5];
+w00 0 11111111111111111111111111111111 pc: 0x068 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  vectorAdd PC=0x068 (a.1.sm_30.ptx:42) ld.u32 %r3, [%rd5];
 
 
 [ZSY]
@@ -484,7 +484,20 @@ per warp functional simulation status:
 w00 npc: 0x0068, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @   315
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x070 rp: ---- tp: N cd:  1  vectorAdd PC=0x070 (a.1.sm_30.ptx:43) rem.s32 %r6, %r3, 2;
+w00 0 11111111111111111111111111111111 pc: 0x070 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  vectorAdd PC=0x070 (a.1.sm_30.ptx:43) add.s32 %r6, %r2, 2;
+
+
+[ZSY]
+Dumping pipeline state...
+=================================================
+shader 0 at cycle 0+556 (32 threads running)
+=================================================
+
+per warp functional simulation status:
+w00 npc: 0x0070, done: s  : 0 i:3 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @   554
+
+per warp SIMT control-flow state:
+w00 0 11111111111111111111111111111111 pc: 0x078 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  vectorAdd PC=0x078 (a.1.sm_30.ptx:44) rem.s32 %r7, %r3, %r6;
 
 
 [ZSY]
@@ -494,51 +507,51 @@ shader 0 at cycle 0+735 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0070, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @   554
-
-per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x078 rp: ---- tp: N cd:  1  vectorAdd PC=0x078 (a.1.sm_30.ptx:44) setp.eq.s32%p3, %r6, 0;
-
-
-[ZSY]
-Dumping pipeline state...
-=================================================
-shader 0 at cycle 0+742 (32 threads running)
-=================================================
-
-per warp functional simulation status:
 w00 npc: 0x0078, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @   554
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x080 rp: ---- tp: N cd:  1  vectorAdd PC=0x080 (a.1.sm_30.ptx:45) not.pred %p4, %p3;
+w00 0 11111111111111111111111111111111 pc: 0x080 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  vectorAdd PC=0x080 (a.1.sm_30.ptx:45) setp.eq.s32%p3, %r7, 0;
 
 
 [ZSY]
 Dumping pipeline state...
 =================================================
-shader 0 at cycle 0+1018 (32 threads running)
+shader 0 at cycle 0+1012 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0080, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1016
+w00 npc: 0x0080, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1010
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x088 rp: ---- tp: N cd:  1  vectorAdd PC=0x088 (a.1.sm_30.ptx:46) @%p4 bra BB0_4;
+w00 0 11111111111111111111111111111111 pc: 0x088 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  vectorAdd PC=0x088 (a.1.sm_30.ptx:46) not.pred %p4, %p3;
 
 
 [ZSY]
 Dumping pipeline state...
 =================================================
-shader 0 at cycle 0+1025 (32 threads running)
+shader 0 at cycle 0+1019 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0088, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1016
+w00 npc: 0x0088, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1010
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 01010101010101010101010101010101 pc: 0x0d0 rp:  376 tp: N cd:  0  vectorAdd PC=0x0d0 (a.1.sm_30.ptx:59) setp.eq.s32%p5, %r3, 31;
+w00 0 11111111111111111111111111111111 pc: 0x090 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) @%p4 bra BB0_4;
+
+
+[ZSY]
+Dumping pipeline state...
+=================================================
+shader 0 at cycle 0+1026 (32 threads running)
+=================================================
+
+per warp functional simulation status:
+w00 npc: 0x0090, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1019
+
+per warp SIMT control-flow state:
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 01010101010101010101010101010101 pc: 0x0d8 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0d8 (a.1.sm_30.ptx:60) setp.eq.s32%p5, %r3, 31;
 
 
 [ZSY]
@@ -548,12 +561,12 @@ shader 0 at cycle 0+1029 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x00d0, done: s  : 0 i:3 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1027
+w00 npc: 0x00d8, done: s  : 0 i:3 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1027
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 01010101010101010101010101010101 pc: 0x0d8 rp:  376 tp: N cd:  0  vectorAdd PC=0x0d8 (a.1.sm_30.ptx:60) not.pred %p6, %p5;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 01010101010101010101010101010101 pc: 0x0e0 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0e0 (a.1.sm_30.ptx:61) not.pred %p6, %p5;
 
 
 [ZSY]
@@ -563,12 +576,12 @@ shader 0 at cycle 0+1036 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x00d8, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1027
+w00 npc: 0x00e0, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1027
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 01010101010101010101010101010101 pc: 0x0e0 rp:  376 tp: N cd:  0  vectorAdd PC=0x0e0 (a.1.sm_30.ptx:61) @%p6 bra BB0_6;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 01010101010101010101010101010101 pc: 0x0e8 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0e8 (a.1.sm_30.ptx:62) @%p6 bra BB0_6;
 
 
 [ZSY]
@@ -578,13 +591,13 @@ shader 0 at cycle 0+1043 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x00e0, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1036
+w00 npc: 0x00e8, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1036
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x0e8 rp:  376 tp: N cd:  0  vectorAdd PC=0x0e8 (a.1.sm_30.ptx:62) bra.uni BB0_5;
-    3 01010101010101010101010101010100 pc: 0x130 rp:  376 tp: N cd:  0  vectorAdd PC=0x130 (a.1.sm_30.ptx:77) add.s32 %r4, %r2, 1;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x0f0 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0f0 (a.1.sm_30.ptx:63) bra.uni BB0_5;
+    3 01010101010101010101010101010100 pc: 0x138 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x138 (a.1.sm_30.ptx:78) add.s32 %r4, %r2, 1;
 
 
 [ZSY]
@@ -594,13 +607,13 @@ shader 0 at cycle 0+1312 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0130, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1310
+w00 npc: 0x0138, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1310
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x0e8 rp:  376 tp: N cd:  0  vectorAdd PC=0x0e8 (a.1.sm_30.ptx:62) bra.uni BB0_5;
-    3 01010101010101010101010101010100 pc: 0x138 rp:  376 tp: N cd:  0  vectorAdd PC=0x138 (a.1.sm_30.ptx:78) cvt.s64.s32%rd15, %r1;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x0f0 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0f0 (a.1.sm_30.ptx:63) bra.uni BB0_5;
+    3 01010101010101010101010101010100 pc: 0x140 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x140 (a.1.sm_30.ptx:79) cvt.s64.s32%rd15, %r1;
 
 
 [ZSY]
@@ -610,13 +623,13 @@ shader 0 at cycle 0+1313 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0138, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1310
+w00 npc: 0x0140, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1310
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x0e8 rp:  376 tp: N cd:  0  vectorAdd PC=0x0e8 (a.1.sm_30.ptx:62) bra.uni BB0_5;
-    3 01010101010101010101010101010100 pc: 0x140 rp:  376 tp: N cd:  0  vectorAdd PC=0x140 (a.1.sm_30.ptx:79) shl.b64 %rd16, %rd15, 2;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x0f0 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0f0 (a.1.sm_30.ptx:63) bra.uni BB0_5;
+    3 01010101010101010101010101010100 pc: 0x148 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x148 (a.1.sm_30.ptx:80) shl.b64 %rd16, %rd15, 2;
 
 
 [ZSY]
@@ -626,13 +639,13 @@ shader 0 at cycle 0+1320 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0140, done: s  : 0 i:3 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1313
+w00 npc: 0x0148, done: s  : 0 i:3 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1313
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x0e8 rp:  376 tp: N cd:  0  vectorAdd PC=0x0e8 (a.1.sm_30.ptx:62) bra.uni BB0_5;
-    3 01010101010101010101010101010100 pc: 0x148 rp:  376 tp: N cd:  0  vectorAdd PC=0x148 (a.1.sm_30.ptx:80) add.s64 %rd17, %rd1, %rd16;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x0f0 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0f0 (a.1.sm_30.ptx:63) bra.uni BB0_5;
+    3 01010101010101010101010101010100 pc: 0x150 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x150 (a.1.sm_30.ptx:81) add.s64 %rd17, %rd1, %rd16;
 
 
 [ZSY]
@@ -642,13 +655,13 @@ shader 0 at cycle 0+1327 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0148, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1313
+w00 npc: 0x0150, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1313
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x0e8 rp:  376 tp: N cd:  0  vectorAdd PC=0x0e8 (a.1.sm_30.ptx:62) bra.uni BB0_5;
-    3 01010101010101010101010101010100 pc: 0x150 rp:  376 tp: N cd:  0  vectorAdd PC=0x150 (a.1.sm_30.ptx:81) ld.u32 %r14, [%rd17];
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x0f0 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0f0 (a.1.sm_30.ptx:63) bra.uni BB0_5;
+    3 01010101010101010101010101010100 pc: 0x158 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x158 (a.1.sm_30.ptx:82) ld.u32 %r15, [%rd17];
 
 
 [ZSY]
@@ -658,13 +671,13 @@ shader 0 at cycle 0+1337 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0150, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1327
+w00 npc: 0x0158, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1327
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x0e8 rp:  376 tp: N cd:  0  vectorAdd PC=0x0e8 (a.1.sm_30.ptx:62) bra.uni BB0_5;
-    3 01010101010101010101010101010100 pc: 0x158 rp:  376 tp: N cd:  0  vectorAdd PC=0x158 (a.1.sm_30.ptx:82) add.s32 %r15, %r14, 1;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x0f0 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0f0 (a.1.sm_30.ptx:63) bra.uni BB0_5;
+    3 01010101010101010101010101010100 pc: 0x160 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x160 (a.1.sm_30.ptx:83) add.s32 %r16, %r15, 1;
 
 
 [ZSY]
@@ -674,13 +687,13 @@ shader 0 at cycle 0+1376 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0158, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1327
+w00 npc: 0x0160, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1327
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x0e8 rp:  376 tp: N cd:  0  vectorAdd PC=0x0e8 (a.1.sm_30.ptx:62) bra.uni BB0_5;
-    3 01010101010101010101010101010100 pc: 0x160 rp:  376 tp: N cd:  0  vectorAdd PC=0x160 (a.1.sm_30.ptx:83) st.u32 [%rd17], %r15;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x0f0 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0f0 (a.1.sm_30.ptx:63) bra.uni BB0_5;
+    3 01010101010101010101010101010100 pc: 0x168 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x168 (a.1.sm_30.ptx:84) st.u32 [%rd17], %r16;
 
 
 [ZSY]
@@ -690,13 +703,13 @@ shader 0 at cycle 0+1386 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0160, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1376
+w00 npc: 0x0168, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1376
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x0e8 rp:  376 tp: N cd:  0  vectorAdd PC=0x0e8 (a.1.sm_30.ptx:62) bra.uni BB0_5;
-    3 01010101010101010101010101010100 pc: 0x168 rp:  376 tp: N cd:  0  vectorAdd PC=0x168 (a.1.sm_30.ptx:84) mov.u32 %r16, %r4;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x0f0 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0f0 (a.1.sm_30.ptx:63) bra.uni BB0_5;
+    3 01010101010101010101010101010100 pc: 0x170 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x170 (a.1.sm_30.ptx:85) mov.u32 %r17, %r4;
 
 
 [ZSY]
@@ -706,13 +719,13 @@ shader 0 at cycle 0+1387 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0168, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1376
+w00 npc: 0x0170, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1376
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x0e8 rp:  376 tp: N cd:  0  vectorAdd PC=0x0e8 (a.1.sm_30.ptx:62) bra.uni BB0_5;
-    3 01010101010101010101010101010100 pc: 0x170 rp:  376 tp: N cd:  0  vectorAdd PC=0x170 (a.1.sm_30.ptx:85) bra.uni BB0_1;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x0f0 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0f0 (a.1.sm_30.ptx:63) bra.uni BB0_5;
+    3 01010101010101010101010101010100 pc: 0x178 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x178 (a.1.sm_30.ptx:86) bra.uni BB0_1;
 
 
 [ZSY]
@@ -722,13 +735,13 @@ shader 0 at cycle 0+1389 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0170, done: s  : 0 i:4 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1387
+w00 npc: 0x0178, done: s  : 0 i:4 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1387
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x0e8 rp:  376 tp: N cd:  0  vectorAdd PC=0x0e8 (a.1.sm_30.ptx:62) bra.uni BB0_5;
-    3 01010101010101010101010101010100 pc: 0x028 rp:  376 tp: N cd:  0  vectorAdd PC=0x028 (a.1.sm_30.ptx:32) mov.u32 %r2, %r16;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x0f0 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0f0 (a.1.sm_30.ptx:63) bra.uni BB0_5;
+    3 01010101010101010101010101010100 pc: 0x028 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x028 (a.1.sm_30.ptx:32) mov.u32 %r2, %r17;
 
 
 [ZSY]
@@ -741,10 +754,10 @@ per warp functional simulation status:
 w00 npc: 0x0028, done:    : 0 i:3 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1390
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x0e8 rp:  376 tp: N cd:  0  vectorAdd PC=0x0e8 (a.1.sm_30.ptx:62) bra.uni BB0_5;
-    3 01010101010101010101010101010100 pc: 0x030 rp:  376 tp: N cd:  0  vectorAdd PC=0x030 (a.1.sm_30.ptx:33) setp.lt.s32%p1, %r2, 1;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x0f0 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0f0 (a.1.sm_30.ptx:63) bra.uni BB0_5;
+    3 01010101010101010101010101010100 pc: 0x030 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x030 (a.1.sm_30.ptx:33) setp.lt.s32%p1, %r2, 1;
 
 
 [ZSY]
@@ -757,10 +770,10 @@ per warp functional simulation status:
 w00 npc: 0x0030, done:    : 0 i:1 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1390
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x0e8 rp:  376 tp: N cd:  0  vectorAdd PC=0x0e8 (a.1.sm_30.ptx:62) bra.uni BB0_5;
-    3 01010101010101010101010101010100 pc: 0x038 rp:  376 tp: N cd:  0  vectorAdd PC=0x038 (a.1.sm_30.ptx:34) not.pred %p2, %p1;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x0f0 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0f0 (a.1.sm_30.ptx:63) bra.uni BB0_5;
+    3 01010101010101010101010101010100 pc: 0x038 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x038 (a.1.sm_30.ptx:34) not.pred %p2, %p1;
 
 
 [ZSY]
@@ -773,10 +786,10 @@ per warp functional simulation status:
 w00 npc: 0x0038, done:    : 0 i:2 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1401
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x0e8 rp:  376 tp: N cd:  0  vectorAdd PC=0x0e8 (a.1.sm_30.ptx:62) bra.uni BB0_5;
-    3 01010101010101010101010101010100 pc: 0x040 rp:  376 tp: N cd:  0  vectorAdd PC=0x040 (a.1.sm_30.ptx:35) @%p2 bra BB0_8;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x0f0 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0f0 (a.1.sm_30.ptx:63) bra.uni BB0_5;
+    3 01010101010101010101010101010100 pc: 0x040 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x040 (a.1.sm_30.ptx:35) @%p2 bra BB0_8;
 
 
 [ZSY]
@@ -789,9 +802,9 @@ per warp functional simulation status:
 w00 npc: 0x0040, done:    : 0 i:1 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1401
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x0e8 rp:  376 tp: N cd:  0  vectorAdd PC=0x0e8 (a.1.sm_30.ptx:62) bra.uni BB0_5;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x0f0 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0f0 (a.1.sm_30.ptx:63) bra.uni BB0_5;
 
 
 [ZSY]
@@ -801,12 +814,12 @@ shader 0 at cycle 0+1419 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x00e8, done:    : 0 i:3 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1417
+w00 npc: 0x00f0, done:    : 0 i:3 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1417
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x0f0 rp:  376 tp: N cd:  0  vectorAdd PC=0x0f0 (a.1.sm_30.ptx:65) mul.lo.s32 %r7, %r3, 2;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x0f8 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0f8 (a.1.sm_30.ptx:66) mul.lo.s32 %r8, %r3, 2;
 
 
 [ZSY]
@@ -816,12 +829,12 @@ shader 0 at cycle 0+1420 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x00f0, done:    : 0 i:3 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1417
+w00 npc: 0x00f8, done:    : 0 i:3 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1417
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x0f8 rp:  376 tp: N cd:  0  vectorAdd PC=0x0f8 (a.1.sm_30.ptx:66) cvt.s64.s32%rd6, %r1;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x100 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x100 (a.1.sm_30.ptx:67) cvt.s64.s32%rd6, %r1;
 
 
 [ZSY]
@@ -831,12 +844,12 @@ shader 0 at cycle 0+1422 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x00f8, done:    : 0 i:4 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1420
+w00 npc: 0x0100, done:    : 0 i:4 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1420
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x100 rp:  376 tp: N cd:  0  vectorAdd PC=0x100 (a.1.sm_30.ptx:67) shl.b64 %rd7, %rd6, 2;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x108 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x108 (a.1.sm_30.ptx:68) shl.b64 %rd7, %rd6, 2;
 
 
 [ZSY]
@@ -846,12 +859,12 @@ shader 0 at cycle 0+1429 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0100, done:    : 0 i:2 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1420
+w00 npc: 0x0108, done:    : 0 i:2 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1420
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x108 rp:  376 tp: N cd:  0  vectorAdd PC=0x108 (a.1.sm_30.ptx:68) add.s64 %rd8, %rd2, %rd7;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x110 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x110 (a.1.sm_30.ptx:69) add.s64 %rd8, %rd2, %rd7;
 
 
 [ZSY]
@@ -861,12 +874,12 @@ shader 0 at cycle 0+1436 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0108, done:    : 0 i:2 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1429
+w00 npc: 0x0110, done:    : 0 i:2 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1429
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x110 rp:  376 tp: N cd:  0  vectorAdd PC=0x110 (a.1.sm_30.ptx:69) ld.u32 %r8, [%rd8];
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x118 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x118 (a.1.sm_30.ptx:70) ld.u32 %r9, [%rd8];
 
 
 [ZSY]
@@ -876,12 +889,12 @@ shader 0 at cycle 0+1446 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0110, done:    : 0 i:1 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1429
+w00 npc: 0x0118, done:    : 0 i:1 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1429
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x118 rp:  376 tp: N cd:  0  vectorAdd PC=0x118 (a.1.sm_30.ptx:70) add.s32 %r9, %r8, %r7;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x120 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x120 (a.1.sm_30.ptx:71) add.s32 %r10, %r9, %r8;
 
 
 [ZSY]
@@ -891,12 +904,12 @@ shader 0 at cycle 0+1762 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0118, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1446
+w00 npc: 0x0120, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1446
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x120 rp:  376 tp: N cd:  0  vectorAdd PC=0x120 (a.1.sm_30.ptx:71) st.u32 [%rd8], %r9;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x128 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x128 (a.1.sm_30.ptx:72) st.u32 [%rd8], %r10;
 
 
 [ZSY]
@@ -906,12 +919,12 @@ shader 0 at cycle 0+1772 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0120, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1446
+w00 npc: 0x0128, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1446
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
-    2 00000000000000000000000000000001 pc: 0x128 rp:  376 tp: N cd:  0  vectorAdd PC=0x128 (a.1.sm_30.ptx:72) bra.uni BB0_9;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
+    2 00000000000000000000000000000001 pc: 0x130 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x130 (a.1.sm_30.ptx:73) bra.uni BB0_9;
 
 
 [ZSY]
@@ -921,11 +934,11 @@ shader 0 at cycle 0+1774 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0128, done: s  : 0 i:3 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1772
+w00 npc: 0x0130, done: s  : 0 i:3 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1772
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x090 rp:  376 tp: N cd:  0  vectorAdd PC=0x090 (a.1.sm_30.ptx:47) bra.uni BB0_3;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x098 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x098 (a.1.sm_30.ptx:48) bra.uni BB0_3;
 
 
 [ZSY]
@@ -935,11 +948,11 @@ shader 0 at cycle 0+1777 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0090, done:    : 0 i:3 s:1 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1775
+w00 npc: 0x0098, done:    : 0 i:3 s:1 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1775
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x098 rp:  376 tp: N cd:  0  vectorAdd PC=0x098 (a.1.sm_30.ptx:50) cvt.s64.s32%rd12, %r1;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x0a0 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0a0 (a.1.sm_30.ptx:51) cvt.s64.s32%rd12, %r1;
 
 
 [ZSY]
@@ -949,11 +962,11 @@ shader 0 at cycle 0+1778 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0098, done:    : 0 i:3 s:1 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1775
+w00 npc: 0x00a0, done:    : 0 i:3 s:1 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1775
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x0a0 rp:  376 tp: N cd:  0  vectorAdd PC=0x0a0 (a.1.sm_30.ptx:51) shl.b64 %rd13, %rd12, 2;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x0a8 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0a8 (a.1.sm_30.ptx:52) shl.b64 %rd13, %rd12, 2;
 
 
 [ZSY]
@@ -963,11 +976,11 @@ shader 0 at cycle 0+1785 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x00a0, done:    : 0 i:2 s:1 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1778
+w00 npc: 0x00a8, done:    : 0 i:2 s:1 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1778
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x0a8 rp:  376 tp: N cd:  0  vectorAdd PC=0x0a8 (a.1.sm_30.ptx:52) add.s64 %rd14, %rd2, %rd13;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x0b0 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0b0 (a.1.sm_30.ptx:53) add.s64 %rd14, %rd2, %rd13;
 
 
 [ZSY]
@@ -977,11 +990,11 @@ shader 0 at cycle 0+1792 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x00a8, done:    : 0 i:1 s:1 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1778
+w00 npc: 0x00b0, done:    : 0 i:1 s:1 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1778
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x0b0 rp:  376 tp: N cd:  0  vectorAdd PC=0x0b0 (a.1.sm_30.ptx:53) ld.u32 %r12, [%rd14];
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x0b8 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0b8 (a.1.sm_30.ptx:54) ld.u32 %r13, [%rd14];
 
 
 [ZSY]
@@ -991,11 +1004,11 @@ shader 0 at cycle 0+1802 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x00b0, done:    : 0 i:2 s:1 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1792
+w00 npc: 0x00b8, done:    : 0 i:2 s:1 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1792
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x0b8 rp:  376 tp: N cd:  0  vectorAdd PC=0x0b8 (a.1.sm_30.ptx:54) add.s32 %r13, %r12, %r3;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x0c0 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0c0 (a.1.sm_30.ptx:55) add.s32 %r14, %r13, %r3;
 
 
 [ZSY]
@@ -1005,11 +1018,11 @@ shader 0 at cycle 0+1983 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x00b8, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1792
+w00 npc: 0x00c0, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1792
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x0c0 rp:  376 tp: N cd:  0  vectorAdd PC=0x0c0 (a.1.sm_30.ptx:55) st.u32 [%rd14], %r13;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x0c8 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0c8 (a.1.sm_30.ptx:56) st.u32 [%rd14], %r14;
 
 
 [ZSY]
@@ -1019,11 +1032,11 @@ shader 0 at cycle 0+1993 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x00c0, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1983
+w00 npc: 0x00c8, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1983
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x0c8 rp:  376 tp: N cd:  0  vectorAdd PC=0x0c8 (a.1.sm_30.ptx:56) bra.uni BB0_7;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x0d0 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x0d0 (a.1.sm_30.ptx:57) bra.uni BB0_7;
 
 
 [ZSY]
@@ -1033,11 +1046,11 @@ shader 0 at cycle 0+1994 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x00c8, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1983
+w00 npc: 0x00d0, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1983
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x130 rp:  376 tp: N cd:  0  vectorAdd PC=0x130 (a.1.sm_30.ptx:77) add.s32 %r4, %r2, 1;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x138 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x138 (a.1.sm_30.ptx:78) add.s32 %r4, %r2, 1;
 
 
 [ZSY]
@@ -1047,11 +1060,11 @@ shader 0 at cycle 0+1998 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0130, done:    : 0 i:3 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1996
+w00 npc: 0x0138, done:    : 0 i:3 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1996
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x138 rp:  376 tp: N cd:  0  vectorAdd PC=0x138 (a.1.sm_30.ptx:78) cvt.s64.s32%rd15, %r1;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x140 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x140 (a.1.sm_30.ptx:79) cvt.s64.s32%rd15, %r1;
 
 
 [ZSY]
@@ -1061,11 +1074,11 @@ shader 0 at cycle 0+1999 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0138, done:    : 0 i:3 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1996
+w00 npc: 0x0140, done:    : 0 i:3 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1996
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x140 rp:  376 tp: N cd:  0  vectorAdd PC=0x140 (a.1.sm_30.ptx:79) shl.b64 %rd16, %rd15, 2;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x148 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x148 (a.1.sm_30.ptx:80) shl.b64 %rd16, %rd15, 2;
 
 
 [ZSY]
@@ -1075,11 +1088,11 @@ shader 0 at cycle 0+2006 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0140, done:    : 0 i:3 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1999
+w00 npc: 0x0148, done:    : 0 i:3 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1999
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x148 rp:  376 tp: N cd:  0  vectorAdd PC=0x148 (a.1.sm_30.ptx:80) add.s64 %rd17, %rd1, %rd16;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x150 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x150 (a.1.sm_30.ptx:81) add.s64 %rd17, %rd1, %rd16;
 
 
 [ZSY]
@@ -1089,11 +1102,11 @@ shader 0 at cycle 0+2013 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0148, done:    : 0 i:1 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1999
+w00 npc: 0x0150, done:    : 0 i:1 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  1999
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x150 rp:  376 tp: N cd:  0  vectorAdd PC=0x150 (a.1.sm_30.ptx:81) ld.u32 %r14, [%rd17];
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x158 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x158 (a.1.sm_30.ptx:82) ld.u32 %r15, [%rd17];
 
 
 [ZSY]
@@ -1103,11 +1116,11 @@ shader 0 at cycle 0+2023 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0150, done:    : 0 i:2 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2013
+w00 npc: 0x0158, done:    : 0 i:2 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2013
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x158 rp:  376 tp: N cd:  0  vectorAdd PC=0x158 (a.1.sm_30.ptx:82) add.s32 %r15, %r14, 1;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x160 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x160 (a.1.sm_30.ptx:83) add.s32 %r16, %r15, 1;
 
 
 [ZSY]
@@ -1117,11 +1130,11 @@ shader 0 at cycle 0+2204 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0158, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2013
+w00 npc: 0x0160, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2013
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x160 rp:  376 tp: N cd:  0  vectorAdd PC=0x160 (a.1.sm_30.ptx:83) st.u32 [%rd17], %r15;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x168 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x168 (a.1.sm_30.ptx:84) st.u32 [%rd17], %r16;
 
 
 [ZSY]
@@ -1131,11 +1144,11 @@ shader 0 at cycle 0+2214 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0160, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2204
+w00 npc: 0x0168, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2204
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x168 rp:  376 tp: N cd:  0  vectorAdd PC=0x168 (a.1.sm_30.ptx:84) mov.u32 %r16, %r4;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x170 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x170 (a.1.sm_30.ptx:85) mov.u32 %r17, %r4;
 
 
 [ZSY]
@@ -1145,11 +1158,11 @@ shader 0 at cycle 0+2215 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0168, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2204
+w00 npc: 0x0170, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2204
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x170 rp:  376 tp: N cd:  0  vectorAdd PC=0x170 (a.1.sm_30.ptx:85) bra.uni BB0_1;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x178 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x178 (a.1.sm_30.ptx:86) bra.uni BB0_1;
 
 
 [ZSY]
@@ -1159,11 +1172,11 @@ shader 0 at cycle 0+2217 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0170, done: s  : 0 i:4 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2215
+w00 npc: 0x0178, done: s  : 0 i:4 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2215
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x028 rp:  376 tp: N cd:  0  vectorAdd PC=0x028 (a.1.sm_30.ptx:32) mov.u32 %r2, %r16;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x028 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x028 (a.1.sm_30.ptx:32) mov.u32 %r2, %r17;
 
 
 [ZSY]
@@ -1176,8 +1189,8 @@ per warp functional simulation status:
 w00 npc: 0x0028, done:    : 0 i:3 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2218
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x030 rp:  376 tp: N cd:  0  vectorAdd PC=0x030 (a.1.sm_30.ptx:33) setp.lt.s32%p1, %r2, 1;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x030 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x030 (a.1.sm_30.ptx:33) setp.lt.s32%p1, %r2, 1;
 
 
 [ZSY]
@@ -1190,8 +1203,8 @@ per warp functional simulation status:
 w00 npc: 0x0030, done:    : 0 i:1 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2218
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x038 rp:  376 tp: N cd:  0  vectorAdd PC=0x038 (a.1.sm_30.ptx:34) not.pred %p2, %p1;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x038 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x038 (a.1.sm_30.ptx:34) not.pred %p2, %p1;
 
 
 [ZSY]
@@ -1204,8 +1217,8 @@ per warp functional simulation status:
 w00 npc: 0x0038, done:    : 0 i:2 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2229
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
-    1 10101010101010101010101010101010 pc: 0x040 rp:  376 tp: N cd:  0  vectorAdd PC=0x040 (a.1.sm_30.ptx:35) @%p2 bra BB0_8;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
+    1 10101010101010101010101010101010 pc: 0x040 rpc: 0x180 tp: N cd:  0  lpc: -----  lpos: --  vectorAdd PC=0x040 (a.1.sm_30.ptx:35) @%p2 bra BB0_8;
 
 
 [ZSY]
@@ -1218,95 +1231,95 @@ per warp functional simulation status:
 w00 npc: 0x0040, done:    : 0 i:1 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2229
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x178 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x178 (a.1.sm_30.ptx:90) cvt.s64.s32%rd9, %r1;
+w00 0 11111111111111111111111111111111 pc: 0x180 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) cvt.s64.s32%rd9, %r1;
 
 
 [ZSY]
 Dumping pipeline state...
 =================================================
-shader 0 at cycle 0+2247 (32 threads running)
+shader 0 at cycle 0+2521 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0178, done:    : 0 i:3 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2245
+w00 npc: 0x0180, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2519
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x180 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x180 (a.1.sm_30.ptx:91) shl.b64 %rd10, %rd9, 2;
+w00 0 11111111111111111111111111111111 pc: 0x188 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x188 (a.1.sm_30.ptx:92) shl.b64 %rd10, %rd9, 2;
 
 
 [ZSY]
 Dumping pipeline state...
 =================================================
-shader 0 at cycle 0+2254 (32 threads running)
+shader 0 at cycle 0+2528 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0180, done:    : 0 i:1 s:4 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2245
+w00 npc: 0x0188, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2519
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x188 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x188 (a.1.sm_30.ptx:92) add.s64 %rd11, %rd2, %rd10;
+w00 0 11111111111111111111111111111111 pc: 0x190 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x190 (a.1.sm_30.ptx:93) add.s64 %rd11, %rd2, %rd10;
 
 
 [ZSY]
 Dumping pipeline state...
 =================================================
-shader 0 at cycle 0+2534 (32 threads running)
+shader 0 at cycle 0+2535 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0188, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2532
+w00 npc: 0x0190, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2528
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x190 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x190 (a.1.sm_30.ptx:93) ld.u32 %r10, [%rd11];
+w00 0 11111111111111111111111111111111 pc: 0x198 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x198 (a.1.sm_30.ptx:94) ld.u32 %r11, [%rd11];
 
 
 [ZSY]
 Dumping pipeline state...
 =================================================
-shader 0 at cycle 0+2544 (32 threads running)
+shader 0 at cycle 0+2545 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0190, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2532
+w00 npc: 0x0198, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2528
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x198 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x198 (a.1.sm_30.ptx:94) mul.lo.s32 %r11, %r10, 2;
+w00 0 11111111111111111111111111111111 pc: 0x1a0 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x1a0 (a.1.sm_30.ptx:95) mul.lo.s32 %r12, %r11, 2;
 
 
 [ZSY]
 Dumping pipeline state...
 =================================================
-shader 0 at cycle 0+2725 (32 threads running)
+shader 0 at cycle 0+2726 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x0198, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2544
+w00 npc: 0x01a0, done: s  : 0 i:2 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2545
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x1a0 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x1a0 (a.1.sm_30.ptx:95) st.u32 [%rd11], %r11;
+w00 0 11111111111111111111111111111111 pc: 0x1a8 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x1a8 (a.1.sm_30.ptx:96) st.u32 [%rd11], %r12;
 
 
 [ZSY]
 Dumping pipeline state...
 =================================================
-shader 0 at cycle 0+2735 (32 threads running)
+shader 0 at cycle 0+2736 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x01a0, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2544
+w00 npc: 0x01a8, done: s  : 0 i:1 s:0 a:0 (done: 0000,0000,0000,0000,0000,0000,0000,0000)  active=11111111111111111111111111111111 last fetched @  2545
 
 per warp SIMT control-flow state:
-w00 0 11111111111111111111111111111111 pc: 0x1a8 rp: ---- tp: N cd:  1  bd@  1025 vectorAdd PC=0x1a8 (a.1.sm_30.ptx:96) ret;
+w00 0 11111111111111111111111111111111 pc: 0x1b0 rpc: ---- tp: N cd:  1  lpc: -----  lpos: --  bd@  1026 vectorAdd PC=0x1b0 (a.1.sm_30.ptx:97) ret;
 
 
 [ZSY]
 Dumping pipeline state...
 =================================================
-shader 0 at cycle 0+2737 (32 threads running)
+shader 0 at cycle 0+2738 (32 threads running)
 =================================================
 
 per warp functional simulation status:
-w00 npc: 0x01a8, done:fs  :32 i:2 s:0 a:0 (done: 1111,1111,1111,1111,1111,1111,1111,1111)  active=00000000000000000000000000000000 last fetched @  2735
+w00 npc: 0x01b0, done:fs  :32 i:2 s:0 a:0 (done: 1111,1111,1111,1111,1111,1111,1111,1111)  active=00000000000000000000000000000000 last fetched @  2736
 
 per warp SIMT control-flow state:
 
@@ -1315,11 +1328,11 @@ Destroy streams for kernel 1: size 0
 kernel_name = _Z9vectorAddPiS_ 
 kernel_launch_uid = 1 
 gpu_sim_cycle = 2919
-gpu_sim_insn = 1339
-gpu_ipc =       0.4587
+gpu_sim_insn = 1371
+gpu_ipc =       0.4697
 gpu_tot_sim_cycle = 2919
-gpu_tot_sim_insn = 1339
-gpu_tot_ipc =       0.4587
+gpu_tot_sim_insn = 1371
+gpu_tot_ipc =       0.4697
 gpu_tot_issued_cta = 1
 gpu_occupancy = 2.0833% 
 gpu_tot_occupancy = 2.0833% 
@@ -1332,7 +1345,7 @@ partiton_level_parallism_util =       1.0000
 partiton_level_parallism_util_total  =       1.0000
 L2_BW  =       0.4221 GB/Sec
 L2_BW_total  =       0.4221 GB/Sec
-gpu_total_sim_rate=669
+gpu_total_sim_rate=685
 
 ========= Core cache stats =========
 L1I_cache:
@@ -1442,9 +1455,9 @@ ctas_completed 1, Shader 0 warp_id issue ditsribution:
 warp_id:
 0, 
 distro:
-71, 
-gpgpu_n_tot_thrd_icount = 2272
-gpgpu_n_tot_w_icount = 71
+72, 
+gpgpu_n_tot_thrd_icount = 2304
+gpgpu_n_tot_w_icount = 72
 gpgpu_n_stall_shd_mem = 0
 gpgpu_n_mem_read_local = 0
 gpgpu_n_mem_write_local = 0
@@ -1470,8 +1483,8 @@ gpgpu_stall_shd_mem[gl_mem][coal_stall] = 0
 gpgpu_stall_shd_mem[gl_mem][data_port_stall] = 0
 gpu_reg_bank_conflict_stalls = 0
 Warp Occupancy Distribution:
-Stall:0	W0_Idle:4233	W0_Scoreboard:1532	W1:9	W2:0	W3:0	W4:0	W5:0	W6:0	W7:0	W8:0	W9:0	W10:0	W11:0	W12:0	W13:0	W14:0	W15:13	W16:24	W17:0	W18:0	W19:0	W20:0	W21:0	W22:0	W23:0	W24:0	W25:0	W26:0	W27:0	W28:0	W29:0	W30:0	W31:0	W32:25
-single_issue_nums: WS0:71	WS1:0	
+Stall:0	W0_Idle:4229	W0_Scoreboard:1535	W1:9	W2:0	W3:0	W4:0	W5:0	W6:0	W7:0	W8:0	W9:0	W10:0	W11:0	W12:0	W13:0	W14:0	W15:13	W16:24	W17:0	W18:0	W19:0	W20:0	W21:0	W22:0	W23:0	W24:0	W25:0	W26:0	W27:0	W28:0	W29:0	W30:0	W31:0	W32:26
+single_issue_nums: WS0:72	WS1:0	
 dual_issue_nums: WS0:0	WS1:0	
 traffic_breakdown_coretomem[CONST_ACC_R] = 8 {8:1,}
 traffic_breakdown_coretomem[GLOBAL_ACC_R] = 40 {8:5,}
@@ -1492,7 +1505,7 @@ avg_icnt2sh_latency = 8
 mrq_lat_table:6 	0 	0 	6 	10 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	
 dq_lat_table:0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	
 mf_lat_table:0 	0 	0 	0 	0 	0 	0 	33 	6 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	
-icnt2mem_lat_table:0 	0 	3 	2 	0 	10 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	
+icnt2mem_lat_table:0 	0 	4 	1 	0 	10 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	
 icnt2sh_lat_table:0 	0 	39 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	
 mf_lat_pw_table:0 	0 	0 	0 	0 	0 	0 	3 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	0 	
 maximum concurrent accesses to same row:
@@ -1503,7 +1516,7 @@ dram[3]:         0         0         0         0         0         0         0  
 dram[4]:         0         0         0         0         0         0         0         0         0         0         0         0         0         0         0         0 
 dram[5]:         0         0         0         0         0         0         0         0         0         0         0         0         0         0         0         0 
 maximum service time to same row:
-dram[0]:       469         0         0         0         0         0         0         0         0         0         0         0         0         0         0         0 
+dram[0]:       463         0         0         0         0         0         0         0         0         0         0         0         0         0         0         0 
 dram[1]:      1275         0         0         0         0         0         0         0         0         0         0         0         0         0         0         0 
 dram[2]:         0         0         0         0         0         0         0         0         0         0         0         0         0         0         0         0 
 dram[3]:         0         0         0         0         0         0         0         0         0         0         0         0         0         0         0         0 
@@ -1561,15 +1574,6 @@ dram[2]:          0         0         0         0         0         0         0 
 dram[3]:          0         0         0         0         0         0         0         0         0         0         0         0         0         0         0         0
 dram[4]:          0         0         0         0         0         0         0         0         0         0         0         0         0         0         0         0
 dram[5]:          0         0         0         0         0         0         0         0         0         0         0         0         0         0         0         0
-
-Number of Memory Banks Accessed per Memory Operation per Warp (from 0):
-0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
-Average # of Memory Banks Accessed per Memory Operation per Warp=-nan
-
-position of mrq chosen
-0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
-
-average position of mrq chosen = -nan
 Memory Partition 0: 
 Cache L2_bank_000:
 MSHR contents
@@ -1579,7 +1583,7 @@ MSHR contents
 
 In Dram Latency Queue (total = 0): 
 DRAM[0]: 16 bks, busW=4 BL=8 CL=12, tRRD=6 tCCD=2, tRCD=12 tRAS=28 tRP=12 tRC=40
-n_cmd=3852 n_nop=3837 n_act=3 n_pre=2 n_ref_event=94161980079696 n_req=10 n_rd=10 n_rd_L2_A=0 n_write=0 n_wr_bk=0 bw_util=0.005192
+n_cmd=3852 n_nop=3837 n_act=3 n_pre=2 n_ref_event=93916190858832 n_req=10 n_rd=10 n_rd_L2_A=0 n_write=0 n_wr_bk=0 bw_util=0.005192
 n_activity=144 dram_eff=0.1389
 bk0: 10a 3778i bk1: 0a 3850i bk2: 0a 3850i bk3: 0a 3851i bk4: 0a 3851i bk5: 0a 3852i bk6: 0a 3852i bk7: 0a 3852i bk8: 0a 3852i bk9: 0a 3852i bk10: 0a 3852i bk11: 0a 3852i bk12: 0a 3852i bk13: 0a 3853i bk14: 0a 3853i bk15: 0a 3854i 
 
@@ -1589,7 +1593,7 @@ Row_Buffer_Locality = 0.700000
 Row_Buffer_Locality_read = 0.700000
 Row_Buffer_Locality_write = -nan
 Bank_Level_Parallism = 1.000000
-Bank_Level_Parallism_Col = 0.672592
+Bank_Level_Parallism_Col = 0.670606
 Bank_Level_Parallism_Ready = 1.000000
 write_to_read_ratio_blp_rw_average = 0.000000
 GrpLevelPara = 0.000000 
@@ -1622,7 +1626,7 @@ L2_Alloc = 0
 L2_WB = 0 
 n_act = 3 
 n_pre = 2 
-n_ref = 94161980079696 
+n_ref = 93916190858832 
 n_req = 10 
 total_req = 10 
 
@@ -1634,12 +1638,12 @@ CoL_Bus_Util = 0.002596
 Either_Row_CoL_Bus_Util = 0.003894 
 Issued_on_Two_Bus_Simul_Util = 0.000000 
 issued_two_Eff = 0.000000 
-queue_avg = 0.036085 
+queue_avg = 0.036345 
 
 
 dram_util_bins: 0 0 0 0 0 0 0 0 0 0
 dram_eff_bins: 0 0 0 0 0 0 0 0 0 0
-mrqq: max=3 avg=0.0360852
+mrqq: max=3 avg=0.0363448
 Memory Partition 1: 
 Cache L2_bank_002:
 MSHR contents
@@ -1649,7 +1653,7 @@ MSHR contents
 
 In Dram Latency Queue (total = 0): 
 DRAM[1]: 16 bks, busW=4 BL=8 CL=12, tRRD=6 tCCD=2, tRCD=12 tRAS=28 tRP=12 tRC=40
-n_cmd=3852 n_nop=3835 n_act=3 n_pre=2 n_ref_event=0 n_req=12 n_rd=12 n_rd_L2_A=0 n_write=0 n_wr_bk=0 bw_util=0.006231
+n_cmd=3852 n_nop=3835 n_act=3 n_pre=2 n_ref_event=93916191702048 n_req=12 n_rd=12 n_rd_L2_A=0 n_write=0 n_wr_bk=0 bw_util=0.006231
 n_activity=144 dram_eff=0.1667
 bk0: 12a 3774i bk1: 0a 3850i bk2: 0a 3850i bk3: 0a 3850i bk4: 0a 3850i bk5: 0a 3852i bk6: 0a 3852i bk7: 0a 3852i bk8: 0a 3852i bk9: 0a 3852i bk10: 0a 3852i bk11: 0a 3852i bk12: 0a 3852i bk13: 0a 3854i bk14: 0a 3854i bk15: 0a 3854i 
 
@@ -1692,7 +1696,7 @@ L2_Alloc = 0
 L2_WB = 0 
 n_act = 3 
 n_pre = 2 
-n_ref = 0 
+n_ref = 93916191702048 
 n_req = 12 
 total_req = 12 
 
@@ -1704,12 +1708,12 @@ CoL_Bus_Util = 0.003115
 Either_Row_CoL_Bus_Util = 0.004413 
 Issued_on_Two_Bus_Simul_Util = 0.000000 
 issued_two_Eff = 0.000000 
-queue_avg = 0.049585 
+queue_avg = 0.049844 
 
 
 dram_util_bins: 0 0 0 0 0 0 0 0 0 0
 dram_eff_bins: 0 0 0 0 0 0 0 0 0 0
-mrqq: max=3 avg=0.0495846
+mrqq: max=3 avg=0.0498442
 Memory Partition 2: 
 Cache L2_bank_004:
 MSHR contents
@@ -1719,7 +1723,7 @@ MSHR contents
 
 In Dram Latency Queue (total = 0): 
 DRAM[2]: 16 bks, busW=4 BL=8 CL=12, tRRD=6 tCCD=2, tRCD=12 tRAS=28 tRP=12 tRC=40
-n_cmd=3852 n_nop=3852 n_act=0 n_pre=0 n_ref_event=4562891592468056282 n_req=0 n_rd=0 n_rd_L2_A=0 n_write=0 n_wr_bk=0 bw_util=0
+n_cmd=3852 n_nop=3852 n_act=0 n_pre=0 n_ref_event=0 n_req=0 n_rd=0 n_rd_L2_A=0 n_write=0 n_wr_bk=0 bw_util=0
 n_activity=0 dram_eff=-nan
 bk0: 0a 3852i bk1: 0a 3852i bk2: 0a 3852i bk3: 0a 3852i bk4: 0a 3852i bk5: 0a 3852i bk6: 0a 3852i bk7: 0a 3852i bk8: 0a 3852i bk9: 0a 3852i bk10: 0a 3852i bk11: 0a 3852i bk12: 0a 3852i bk13: 0a 3852i bk14: 0a 3852i bk15: 0a 3852i 
 
@@ -1762,7 +1766,7 @@ L2_Alloc = 0
 L2_WB = 0 
 n_act = 0 
 n_pre = 0 
-n_ref = 4562891592468056282 
+n_ref = 0 
 n_req = 0 
 total_req = 0 
 
@@ -2079,9 +2083,9 @@ LD_mem_lat_dist  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 ST_mem_lat_dist  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 ----------------------------Interconnect-DETAILS--------------------------------
 Class 0:
-Packet latency average = 5.22857
+Packet latency average = 5.17143
 	minimum = 5
-	maximum = 9
+	maximum = 8
 Network latency average = 5.17143
 	minimum = 5
 	maximum = 8
@@ -2110,9 +2114,9 @@ Accepted packet length average = 1.17143
 Total in-flight flits = 0 (0 measured)
 ====== Overall Traffic Statistics ======
 ====== Traffic class 0 ======
-Packet latency average = 5.22857 (1 samples)
+Packet latency average = 5.17143 (1 samples)
 	minimum = 5 (1 samples)
-	maximum = 9 (1 samples)
+	maximum = 8 (1 samples)
 Network latency average = 5.17143 (1 samples)
 	minimum = 5 (1 samples)
 	maximum = 8 (1 samples)
@@ -2141,7 +2145,7 @@ Hops average = 1 (1 samples)
 
 
 gpgpu_simulation_time = 0 days, 0 hrs, 0 min, 2 sec (2 sec)
-gpgpu_simulation_rate = 669 (inst/sec)
+gpgpu_simulation_rate = 685 (inst/sec)
 gpgpu_simulation_rate = 1459 (cycle/sec)
 gpgpu_silicon_slowdown = 479780x
 [ZSY_APP] Check Result
