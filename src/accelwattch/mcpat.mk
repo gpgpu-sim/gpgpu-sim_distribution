@@ -1,5 +1,5 @@
 
-OUTPUT_DIR=$(SIM_OBJ_FILES_DIR)/gpuwattch
+OUTPUT_DIR=$(SIM_OBJ_FILES_DIR)/accelwattch
 TARGET = mcpat
 SHELL = /bin/sh
 .PHONY: all depend clean

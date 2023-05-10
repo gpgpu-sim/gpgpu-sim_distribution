@@ -30,11 +30,13 @@
  ***************************************************************************/
 /********************************************************************
  *      Modified by:
- ** Jingwen Leng, Univeristy of Texas, Austin                   * Syed Gilani,
- *University of Wisconsin–Madison                * Tayler Hetherington,
- *University of British Columbia         * Ahmed ElTantawy, University of
- *British Columbia             *
+ * Jingwen Leng, University of Texas, Austin                
+ * Syed Gilani, University of Wisconsin–Madison         
+ * Tayler Hetherington, University of British Columbia
+ * Ahmed ElTantawy, University of British Columbia
+ * Vijay Kandiah, Northwestern University
  ********************************************************************/
+
 
 #include "XML_Parse.h"
 #include <stdio.h>
@@ -43,13 +45,14 @@
 
 using namespace std;
 
-const char* perf_count_label[] = {
-    "TOT_INST,",    "FP_INT,",  "IC_H,",     "IC_M,",        "DC_RH,",
-    "DC_RM,",       "DC_WH,",   "DC_WM,",    "TC_H,",        "TC_M,",
-    "CC_H,",        "CC_M,",    "SHRD_ACC,", "REG_RD,",      "REG_WR,",
-    "NON_REG_OPs,", "SP_ACC,",  "SFU_ACC,",  "FPU_ACC,",     "MEM_RD,",
-    "MEM_WR,",      "MEM_PRE,", "L2_RH,",    "L2_RM,",       "L2_WH,",
-    "L2_WM,",       "NOC_A,",   "PIPE_A,",   "IDLE_CORE_N,", "CONST_DYNAMICN"};
+const char * perf_count_label[] = {
+  "TOT_INST,", "FP_INT,", "IC_H,", "IC_M,", "DC_RH,", "DC_RM,", "DC_WH,", "DC_WM,",
+  "TC_H,", "TC_M,", "CC_H,", "CC_M,", "SHRD_ACC,", "REG_RD,", "REG_WR,", "NON_REG_OPs,",
+  "INT_ACC,", "FPU_ACC,", "DPU_ACC,", "INT_MUL24_ACC,", "INT_MUL32_ACC,", "INT_MUL_ACC,","INT_DIV_ACC,", 
+  "FP_MUL_ACC,", "FP_DIV_ACC,", "FP_SQRT_ACC,", "FP_LG_ACC,", "FP_SIN_ACC,", "FP_EXP_ACC,", "DP_MUL_ACC,", 
+  "DP_DIV_ACC,", "TENSOR_ACC,", "TEX_ACC,", "MEM_RD,","MEM_WR,", "MEM_PRE,", "L2_RH,", "L2_RM,", "L2_WH,",
+  "L2_WM,", "NOC_A,", "PIPE_A,", "IDLE_CORE_N,", "constant_power"};
+
 
 void ParseXML::parse(char* filepath) {
   unsigned int i, j, k, m, n;
@@ -160,6 +163,199 @@ void ParseXML::parse(char* filepath) {
           atoi(xNode2.getChildNode("param", i).getAttribute("value"));
       continue;
     }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "modeled_chip_voltage_ref") == 0) {
+      sys.modeled_chip_voltage_ref =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_cat1_flane") == 0) {
+      sys.static_cat1_flane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_cat2_flane") == 0) {
+      sys.static_cat2_flane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_cat3_flane") == 0) {
+      sys.static_cat3_flane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_cat4_flane") == 0) {
+      sys.static_cat4_flane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_cat5_flane") == 0) {
+      sys.static_cat5_flane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_cat6_flane") == 0) {
+      sys.static_cat6_flane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_shared_flane") == 0) {
+      sys.static_shared_flane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_l1_flane") == 0) {
+      sys.static_l1_flane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_l2_flane") == 0) {
+      sys.static_l2_flane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_light_flane") == 0) {
+      sys.static_light_flane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_intadd_flane") == 0) {
+      sys.static_intadd_flane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_intmul_flane") == 0) {
+      sys.static_intmul_flane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_geomean_flane") == 0) {
+      sys.static_geomean_flane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_cat1_addlane") == 0) {
+      sys.static_cat1_addlane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_cat2_addlane") == 0) {
+      sys.static_cat2_addlane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_cat3_addlane") == 0) {
+      sys.static_cat3_addlane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_cat4_addlane") == 0) {
+      sys.static_cat4_addlane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_cat5_addlane") == 0) {
+      sys.static_cat5_addlane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_cat6_addlane") == 0) {
+      sys.static_cat6_addlane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_shared_addlane") == 0) {
+      sys.static_shared_addlane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_l1_addlane") == 0) {
+      sys.static_l1_addlane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_l2_addlane") == 0) {
+      sys.static_l2_addlane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_light_addlane") == 0) {
+      sys.static_light_addlane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_intadd_addlane") == 0) {
+      sys.static_intadd_addlane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_intmul_addlane") == 0) {
+      sys.static_intmul_addlane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
+               "static_geomean_addlane") == 0) {
+      sys.static_geomean_addlane =
+          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+      continue;
+    }
+
+
     if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
                "target_chip_area") == 0) {
       sys.target_chip_area =
@@ -419,22 +615,106 @@ void ParseXML::parse(char* filepath) {
           atof(xNode2.getChildNode("param", i).getAttribute("value"));
       continue;
     }
-    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
-               "SP_ACC") == 0) {
-      sys.scaling_coefficients[SP_ACC] =
-          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+    if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),
+                "INT_ACC")==0) {
+      sys.scaling_coefficients[INT_ACC] =
+          atof(xNode2.getChildNode("param",i).getAttribute("value"));
       continue;
     }
-    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
-               "SFU_ACC") == 0) {
-      sys.scaling_coefficients[SFU_ACC] =
-          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+    if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),
+                "FP_ACC")==0) {
+      sys.scaling_coefficients[FP_ACC] =
+          atof(xNode2.getChildNode("param",i).getAttribute("value"));
       continue;
     }
-    if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
-               "FPU_ACC") == 0) {
-      sys.scaling_coefficients[FPU_ACC] =
-          atof(xNode2.getChildNode("param", i).getAttribute("value"));
+    if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),
+                "DP_ACC")==0) {
+      sys.scaling_coefficients[DP_ACC] =
+          atof(xNode2.getChildNode("param",i).getAttribute("value"));
+      continue;
+    }
+    if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),
+                "INT_MUL24_ACC")==0) {
+      sys.scaling_coefficients[INT_MUL24_ACC] =
+          atof(xNode2.getChildNode("param",i).getAttribute("value"));
+      continue;
+    }
+    if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),
+                "INT_MUL32_ACC")==0) {
+      sys.scaling_coefficients[INT_MUL32_ACC] =
+          atof(xNode2.getChildNode("param",i).getAttribute("value"));
+      continue;
+    }
+    if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),
+                "INT_MUL_ACC")==0) {
+      sys.scaling_coefficients[INT_MUL_ACC] =
+          atof(xNode2.getChildNode("param",i).getAttribute("value"));
+      continue;
+    }
+    if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),
+                "INT_DIV_ACC")==0) {
+      sys.scaling_coefficients[INT_DIV_ACC] =
+          atof(xNode2.getChildNode("param",i).getAttribute("value"));
+      continue;
+    }
+    if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),
+                "FP_MUL_ACC")==0) {
+      sys.scaling_coefficients[FP_MUL_ACC] =
+          atof(xNode2.getChildNode("param",i).getAttribute("value"));
+      continue;
+    }
+    if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),
+                "FP_DIV_ACC")==0) {
+      sys.scaling_coefficients[FP_DIV_ACC] =
+          atof(xNode2.getChildNode("param",i).getAttribute("value"));
+      continue;
+    }
+    if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),
+                "FP_SQRT_ACC")==0) {
+      sys.scaling_coefficients[FP_SQRT_ACC] =
+          atof(xNode2.getChildNode("param",i).getAttribute("value"));
+      continue;
+    }
+    if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),
+                "FP_LG_ACC")==0) {
+      sys.scaling_coefficients[FP_LG_ACC] =
+          atof(xNode2.getChildNode("param",i).getAttribute("value"));
+      continue;
+    }
+    if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),
+                "FP_SIN_ACC")==0) {
+      sys.scaling_coefficients[FP_SIN_ACC] =
+          atof(xNode2.getChildNode("param",i).getAttribute("value"));
+      continue;
+    }
+    if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),
+                "FP_EXP_ACC")==0) {
+      sys.scaling_coefficients[FP_EXP_ACC] =
+          atof(xNode2.getChildNode("param",i).getAttribute("value"));
+      continue;
+    }
+    if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),
+                "DP_MUL_ACC")==0) {
+      sys.scaling_coefficients[DP_MUL_ACC] =
+          atof(xNode2.getChildNode("param",i).getAttribute("value"));
+      continue;
+    }
+    if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),
+                "DP_DIV_ACC")==0) {
+      sys.scaling_coefficients[DP_DIV_ACC] =
+          atof(xNode2.getChildNode("param",i).getAttribute("value"));
+      continue;
+    }
+    if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),
+                "TENSOR_ACC")==0) {
+      sys.scaling_coefficients[TENSOR_ACC] =
+          atof(xNode2.getChildNode("param",i).getAttribute("value"));
+      continue;
+    }
+    if (strcmp(xNode2.getChildNode("param",i).getAttribute("name"),
+                "TEX_ACC")==0) {
+      sys.scaling_coefficients[TEX_ACC] =
+          atof(xNode2.getChildNode("param",i).getAttribute("value"));
       continue;
     }
     if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
@@ -498,8 +778,8 @@ void ParseXML::parse(char* filepath) {
       continue;
     }
     if (strcmp(xNode2.getChildNode("param", i).getAttribute("name"),
-               "CONST_DYNAMICN") == 0) {
-      sys.scaling_coefficients[CONST_DYNAMICN] =
+               "constant_power") == 0) {
+      sys.scaling_coefficients[constant_power] =
           atof(xNode2.getChildNode("param", i).getAttribute("value"));
       continue;
     }
@@ -4187,8 +4467,9 @@ void ParseXML::initialize()  // Initialize all
   // strcpy(sys.homogeneous_cores,"default");
   sys.core_tech_node = 1;
   sys.target_core_clockrate = 1;
+  sys.modeled_chip_voltage_ref = 1;
   sys.target_chip_area = 1;
-  sys.temperature = 1;
+  sys.temperature = 340;
   sys.number_cache_levels = 1;
   sys.homogeneous_cores = 1;
   sys.homogeneous_L1Directories = 1;
@@ -4197,6 +4478,34 @@ void ParseXML::initialize()  // Initialize all
   sys.homogeneous_L3s = 1;
   sys.homogeneous_NoCs = 1;
   sys.homogeneous_ccs = 1;
+
+  sys.static_cat1_flane = 0;
+  sys.static_cat2_flane = 0;
+  sys.static_cat3_flane = 0;
+  sys.static_cat4_flane = 0;
+  sys.static_cat5_flane = 0;
+  sys.static_cat6_flane = 0;
+  sys.static_shared_flane = 0;
+  sys.static_l1_flane = 0;
+  sys.static_l2_flane = 0;
+  sys.static_light_flane = 0;
+  sys.static_intadd_flane = 0;
+  sys.static_intmul_flane = 0;
+  sys.static_geomean_flane = 0;
+
+  sys.static_cat1_addlane = 0;
+  sys.static_cat2_addlane = 0;
+  sys.static_cat3_addlane = 0;
+  sys.static_cat4_addlane = 0;
+  sys.static_cat5_addlane = 0;
+  sys.static_cat6_addlane = 0;
+  sys.static_shared_addlane = 0;
+  sys.static_l1_addlane = 0;
+  sys.static_l2_addlane = 0;
+  sys.static_light_addlane = 0;
+  sys.static_intadd_addlane = 0;
+  sys.static_intmul_addlane = 0;
+  sys.static_geomean_addlane = 0;
 
   sys.Max_area_deviation = 1;
   sys.Max_power_deviation = 1;

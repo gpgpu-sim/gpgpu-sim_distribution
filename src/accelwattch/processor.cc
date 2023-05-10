@@ -30,11 +30,13 @@
  ***************************************************************************/
 /********************************************************************
  *      Modified by:
- ** Jingwen Leng, Univeristy of Texas, Austin                   * Syed Gilani,
- *University of Wisconsin–Madison                * Tayler Hetherington,
- *University of British Columbia         * Ahmed ElTantawy, University of
- *British Columbia             *
+ * Jingwen Leng, University of Texas, Austin                
+ * Syed Gilani, University of Wisconsin–Madison         
+ * Tayler Hetherington, University of British Columbia
+ * Ahmed ElTantawy, University of British Columbia
+ * Vijay Kandiah, Northwestern University
  ********************************************************************/
+
 #include "processor.h"
 #include <assert.h>
 #include <stdio.h>
@@ -118,7 +120,7 @@ Processor::Processor(ParseXML *XML_interface)
       set_pppm(pppm_t, cores[i]->clockRate * procdynp.numCore, procdynp.numCore,
                procdynp.numCore, procdynp.numCore);
       // set the exClockRate
-      exClockRate = cores[0]->clockRate * 2;  // TODO; get from XML file
+      exClockRate = cores[0]->clockRate;  // TODO; get from XML file
       // cout<<"****EX clock rate:"<<exClockRate<<endl;
       core.power = core.power + cores[i]->power * pppm_t;
       set_pppm(pppm_t, 1 / cores[i]->executionTime, procdynp.numCore,
