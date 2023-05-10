@@ -1375,7 +1375,7 @@ enum cache_request_status data_cache::wr_miss_wa_naive(
       // the evicted block may have wrong chip id when advanced L2 hashing  is
       // used, so set the right chip address from the original mf
       wb->set_chip(mf->get_tlx_addr().chip);
-      wb->set_parition(mf->get_tlx_addr().sub_partition);
+      wb->set_partition(mf->get_tlx_addr().sub_partition);
       send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
                          time, events);
     }
@@ -1428,7 +1428,7 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
         // the evicted block may have wrong chip id when advanced L2 hashing  is
         // used, so set the right chip address from the original mf
         wb->set_chip(mf->get_tlx_addr().chip);
-        wb->set_parition(mf->get_tlx_addr().sub_partition);
+        wb->set_partition(mf->get_tlx_addr().sub_partition);
         send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
                            time, events);
       }
@@ -1501,7 +1501,7 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
         // the evicted block may have wrong chip id when advanced L2 hashing  is
         // used, so set the right chip address from the original mf
         wb->set_chip(mf->get_tlx_addr().chip);
-        wb->set_parition(mf->get_tlx_addr().sub_partition);
+        wb->set_partition(mf->get_tlx_addr().sub_partition);
         send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
                            time, events);
       }
@@ -1568,7 +1568,7 @@ enum cache_request_status data_cache::wr_miss_wa_lazy_fetch_on_read(
       // the evicted block may have wrong chip id when advanced L2 hashing  is
       // used, so set the right chip address from the original mf
       wb->set_chip(mf->get_tlx_addr().chip);
-      wb->set_parition(mf->get_tlx_addr().sub_partition);
+      wb->set_partition(mf->get_tlx_addr().sub_partition);
       send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
                          time, events);
     }
@@ -1650,7 +1650,7 @@ enum cache_request_status data_cache::rd_miss_base(
       // the evicted block may have wrong chip id when advanced L2 hashing  is
       // used, so set the right chip address from the original mf
       wb->set_chip(mf->get_tlx_addr().chip);
-      wb->set_parition(mf->get_tlx_addr().sub_partition);
+      wb->set_partition(mf->get_tlx_addr().sub_partition);
       send_write_request(wb, WRITE_BACK_REQUEST_SENT, time, events);
     }
     return MISS;
