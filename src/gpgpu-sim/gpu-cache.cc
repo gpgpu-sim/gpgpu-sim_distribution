@@ -409,6 +409,11 @@ void tag_array::fill(new_addr_type addr, unsigned time,
   // assert( m_config.m_alloc_policy == ON_FILL );
   unsigned idx;
   enum cache_request_status status = probe(addr, idx, mask, is_write);
+
+  if (status == RESERVATION_FAIL) {
+	 return;
+  }
+
   bool before = m_lines[idx]->is_modified_line();
   // assert(status==MISS||status==SECTOR_MISS); // MSHR should have prevented
   // redundant memory request
