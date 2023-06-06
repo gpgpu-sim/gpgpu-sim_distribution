@@ -963,7 +963,7 @@ class inst_t {
   }
   bool valid() const { return m_decoded; }
   virtual void print_insn(FILE *fp) const {
-    fprintf(fp, " [inst @ pc=0x%04x] ", pc);
+    fprintf(fp, " [inst @ pc=0x%04llx] ", pc);
   }
   bool is_load() const {
     return (op == LOAD_OP || op == TENSOR_CORE_LOAD_OP ||
@@ -1157,7 +1157,7 @@ class warp_inst_t : public inst_t {
 
   // accessors
   virtual void print_insn(FILE *fp) const {
-    fprintf(fp, " [inst @ pc=0x%04x] ", pc);
+    fprintf(fp, " [inst @ pc=0x%04llx] ", pc);
     for (int i = (int)m_config->warp_size - 1; i >= 0; i--)
       fprintf(fp, "%c", ((m_warp_active_mask[i]) ? '1' : '0'));
   }

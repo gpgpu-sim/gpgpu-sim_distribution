@@ -199,7 +199,7 @@ void ptx_thread_info::print_reg_thread(char *fname) {
       const std::string &name = it->first->name();
       const std::string &dec = it->first->decl_location();
       unsigned size = it->first->get_size_in_bytes();
-      fprintf(fp, "%s %llu %s %d\n", name.c_str(), it->second, dec.c_str(),
+      fprintf(fp, "%s %u %s %d\n", name.c_str(), it->second, dec.c_str(),
               size);
     }
     // m_regs.pop_back();

@@ -2053,7 +2053,7 @@ void gpgpu_sim::cycle() {
           m_cluster[i]->get_current_occupancy(active, total);
         }
         DPRINTFG(LIVENESS,
-                 "uArch: inst.: %lld (ipc=%4.1f, occ=%0.4f\% [%llu / %llu]) "
+                 "uArch: inst.: %lld (ipc=%4.1f, occ=%0.4f%% [%llu / %llu]) "
                  "sim_rate=%u (inst/sec) elapsed = %u:%u:%02u:%02u / %s",
                  gpu_tot_sim_insn + gpu_sim_insn,
                  (double)gpu_sim_insn / (double)gpu_sim_cycle,

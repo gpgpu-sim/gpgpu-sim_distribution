@@ -1410,7 +1410,7 @@ cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlagsInternal(
   function_info *entry = context->get_kernel(hostFunc);
   printf(
       "Calculate Maxium Active Block with function ptr=%p, blockSize=%d, "
-      "SMemSize=%d\n",
+      "SMemSize=%lu\n",
       hostFunc, blockSize, dynamicSMemSize);
   if (flags == cudaOccupancyDefault) {
     // create kernel_info based on entry
