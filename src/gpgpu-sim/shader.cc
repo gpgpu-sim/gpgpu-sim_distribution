@@ -2416,8 +2416,10 @@ void pipelined_simd_unit::cycle() {
     if (!m_dispatch_reg->dispatch_delay()) {
       int start_stage =
           m_dispatch_reg->latency - m_dispatch_reg->initiation_interval;
-      move_warp(m_pipeline_reg[start_stage], m_dispatch_reg);
-      active_insts_in_pipeline++;
+      if(m_pipeline_reg[start_stage]->empty()) {
+      	move_warp(m_pipeline_reg[start_stage], m_dispatch_reg);
+      	active_insts_in_pipeline++;
+      }
     }
   }
   occupied >>= 1;
