@@ -1284,7 +1284,7 @@ class sp_unit : public pipelined_simd_unit {
 class specialized_unit : public pipelined_simd_unit {
  public:
   specialized_unit(register_set *result_port, const shader_core_config *config,
-                   shader_core_ctx *core, unsigned supported_op,
+                   shader_core_ctx *core, int supported_op,
                    char *unit_name, unsigned latency, unsigned issue_reg_id);
   virtual bool can_issue(const warp_inst_t &inst) const {
     if (inst.op != m_supported_op) {
@@ -1297,7 +1297,7 @@ class specialized_unit : public pipelined_simd_unit {
   bool is_issue_partitioned() { return true; }
 
  private:
-  unsigned m_supported_op;
+  int m_supported_op;
 };
 
 class simt_core_cluster;

@@ -269,7 +269,7 @@ void calculate_hw_mcpat(const gpgpu_sim_config &config,
   if((power_simulation_mode == 2) && (accelwattch_hybrid_configuration[HW_L1_WM]))
     l1_write_misses = power_stats->get_l1d_write_misses(1) - power_stats->l1w_misses_kernel;
 
-    if(aggregate_power_stats){
+  if(aggregate_power_stats){
       power_stats->tot_inst_execution += power_stats->get_total_inst(1);
       power_stats->tot_int_inst_execution +=  power_stats->get_total_int_inst(1);
       power_stats->tot_fp_inst_execution +=  power_stats->get_total_fp_inst(1);
@@ -281,16 +281,16 @@ void calculate_hw_mcpat(const gpgpu_sim_config &config,
         l1_read_hits + l1_read_misses,
         l1_write_hits + l1_write_misses,
         power_stats->commited_inst_execution);
-    }
-    else{
-    wrapper->set_inst_power(
+  }
+  else{
+        wrapper->set_inst_power(
         shdr_config->gpgpu_clock_gated_lanes, cycle, //TODO: core.[0] cycles counts don't matter, remove this
         cycle, power_stats->get_total_inst(1),
         power_stats->get_total_int_inst(1), power_stats->get_total_fp_inst(1),
         l1_read_hits + l1_read_misses,
         l1_write_hits + l1_write_misses,
         power_stats->get_committed_inst(1));
-    }
+  }
 
     // Single RF for both int and fp ops -- activity factor set to 0 for Accelwattch HW and Accelwattch Hybrid because no HW Perf Stats for register files
     wrapper->set_regfile_power(power_stats->get_regfile_reads(1),
