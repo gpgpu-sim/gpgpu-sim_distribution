@@ -107,7 +107,7 @@ void shader_core_ctx::create_front_pipeline() {
     m_pipeline_reg.push_back(
         register_set(m_config->pipe_widths[j], pipeline_stage_name_decode[j]));
   }
-  for (int j = 0; j < m_config->m_specialized_unit.size(); j++) {
+  for (unsigned j = 0; j < m_config->m_specialized_unit.size(); j++) {
     m_pipeline_reg.push_back(
         register_set(m_config->m_specialized_unit[j].id_oc_spec_reg_width,
                      m_config->m_specialized_unit[j].name));
@@ -115,7 +115,7 @@ void shader_core_ctx::create_front_pipeline() {
     m_specilized_dispatch_reg.push_back(
         &m_pipeline_reg[m_pipeline_reg.size() - 1]);
   }
-  for (int j = 0; j < m_config->m_specialized_unit.size(); j++) {
+  for (unsigned j = 0; j < m_config->m_specialized_unit.size(); j++) {
     m_pipeline_reg.push_back(
         register_set(m_config->m_specialized_unit[j].oc_ex_spec_reg_width,
                      m_config->m_specialized_unit[j].name));
@@ -140,7 +140,7 @@ void shader_core_ctx::create_front_pipeline() {
     if (m_config->gpgpu_num_int_units > 0)
       assert(m_config->gpgpu_num_sched_per_core ==
              m_pipeline_reg[ID_OC_INT].get_size());
-    for (int j = 0; j < m_config->m_specialized_unit.size(); j++) {
+    for (unsigned j = 0; j < m_config->m_specialized_unit.size(); j++) {
       if (m_config->m_specialized_unit[j].num_units > 0)
         assert(m_config->gpgpu_num_sched_per_core ==
                m_config->m_specialized_unit[j].id_oc_spec_reg_width);

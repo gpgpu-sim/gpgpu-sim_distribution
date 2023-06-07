@@ -1622,13 +1622,13 @@ class shader_core_config : public core_config {
   unsigned int gpgpu_operand_collector_num_out_ports_gen;
   unsigned int gpgpu_operand_collector_num_out_ports_int;
 
-  int gpgpu_num_sp_units;
-  int gpgpu_tensor_core_avail;
-  int gpgpu_num_dp_units;
-  int gpgpu_num_sfu_units;
-  int gpgpu_num_tensor_core_units;
-  int gpgpu_num_mem_units;
-  int gpgpu_num_int_units;
+  unsigned int gpgpu_num_sp_units;
+  unsigned int gpgpu_tensor_core_avail;
+  unsigned int gpgpu_num_dp_units;
+  unsigned int gpgpu_num_sfu_units;
+  unsigned int gpgpu_num_tensor_core_units;
+  unsigned int gpgpu_num_mem_units;
+  unsigned int gpgpu_num_int_units;
 
   // Shader core resources
   unsigned gpgpu_shader_registers;
