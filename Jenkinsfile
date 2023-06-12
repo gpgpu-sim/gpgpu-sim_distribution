@@ -32,7 +32,7 @@ pipeline {
                 sh '''#!/bin/bash
                     source ./env-setup/11.0_env_setup.sh
                     source `pwd`/setup_environment
-                    make -j 10'''
+                    srun -c 5 -n 1 --mem-per-cpu 1G make -j 5'''
             }
         }
         stage('simulations-build'){
@@ -47,8 +47,8 @@ pipeline {
                     source `pwd`/setup_environment
                     cd gpgpu-sim_simulations
                     source ./benchmarks/src/setup_environment
-                    make -j 10 -C ./benchmarks/src/ rodinia_2.0-ft
-                    make -C ./benchmarks/src data'''
+                    srun -c 5 -n 1 --mem-per-cpu 1G make -j 5 -C ./benchmarks/src/ rodinia_2.0-ft
+                    srun -c 1 -n 1 --mem-per-cpu 1G make -C ./benchmarks/src data'''
             }
         }
         stage('11.0 Regressions'){
