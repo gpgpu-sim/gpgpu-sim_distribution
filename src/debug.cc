@@ -124,7 +124,7 @@ void gpgpu_sim::gpgpu_debug() {
     fflush(stdout);
 
     char line[1024];
-    fgets(line, 1024, stdin);
+    char * ptr = fgets(line, 1024, stdin);
 
     char *tok = strtok(line, " \t\n");
     if (!strcmp(tok, "dp")) {
@@ -136,7 +136,11 @@ void gpgpu_sim::gpgpu_debug() {
       fflush(stdout);
     } else if (!strcmp(tok, "q") || !strcmp(tok, "quit")) {
       printf("\nreally quit GPGPU-Sim (y/n)?\n");
-      fgets(line, 1024, stdin);
+      ptr = fgets(line, 1024, stdin);
+      if(ptr == NULL ){
+        printf("can't read input\n");
+        exit(0);
+      }
       tok = strtok(line, " \t\n");
       if (!strcmp(tok, "y")) {
         exit(0);
