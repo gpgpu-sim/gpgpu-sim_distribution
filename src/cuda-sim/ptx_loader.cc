@@ -95,7 +95,7 @@ void gpgpu_context::print_ptx_file(const char *p, unsigned source_num,
     const ptx_instruction *pI = ptx_parser->ptx_instruction_lookup(filename, n);
     char pc[64];
     if (pI && pI->get_PC())
-      snprintf(pc, 64, "%4u", pI->get_PC());
+      snprintf(pc, 64, "%4llu", pI->get_PC());
     else
       snprintf(pc, 64, "    ");
     printf("    _%u.ptx  %4u (pc=%s):  %s\n", source_num, n, pc, t);
@@ -240,7 +240,7 @@ void fix_duplicate_errors(char fname2[1024]) {
   unsigned oldlinenum = 1;
   unsigned linenum;
   char *startptr = ptxdata;
-  char *funcptr;
+  char *funcptr = NULL;
   char *tempptr = ptxdata - 1;
   char *lineptr = ptxdata - 1;
 
@@ -320,7 +320,7 @@ void fix_duplicate_errors(char fname2[1024]) {
 // we need the application name here too.
 char *get_app_binary_name() {
   char exe_path[1025];
-  char *self_exe_path;
+  char *self_exe_path = NULL;
 #ifdef __APPLE__
   // AMRUTH:  get apple device and check the result.
   printf("WARNING: not tested for Apple-mac devices \n");

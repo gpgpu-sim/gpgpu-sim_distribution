@@ -2416,8 +2416,10 @@ void pipelined_simd_unit::cycle() {
     if (!m_dispatch_reg->dispatch_delay()) {
       int start_stage =
           m_dispatch_reg->latency - m_dispatch_reg->initiation_interval;
-      move_warp(m_pipeline_reg[start_stage], m_dispatch_reg);
-      active_insts_in_pipeline++;
+      if(m_pipeline_reg[start_stage]->empty()) {
+      	move_warp(m_pipeline_reg[start_stage], m_dispatch_reg);
+      	active_insts_in_pipeline++;
+      }
     }
   }
   occupied >>= 1;
@@ -3080,7 +3082,7 @@ void warp_inst_t::print(FILE *fout) const {
     fprintf(fout, "bubble\n");
     return;
   } else
-    fprintf(fout, "0x%04x ", pc);
+    fprintf(fout, "0x%04llx ", pc);
   fprintf(fout, "w%02d[", m_warp_id);
   for (unsigned j = 0; j < m_config->warp_size; j++)
     fprintf(fout, "%c", (active(j) ? '1' : '0'));
@@ -3266,7 +3268,7 @@ void shader_core_ctx::display_pipeline(FILE *fout, int print_mem,
   if (!m_inst_fetch_buffer.m_valid)
     fprintf(fout, "bubble\n");
   else {
-    fprintf(fout, "w%2u : pc = 0x%x, nbytes = %u\n",
+    fprintf(fout, "w%2u : pc = 0x%llx, nbytes = %u\n",
             m_inst_fetch_buffer.m_warp_id, m_inst_fetch_buffer.m_pc,
             m_inst_fetch_buffer.m_nbytes);
   }
@@ -3932,7 +3934,7 @@ bool shd_warp_t::waiting() {
 
 void shd_warp_t::print(FILE *fout) const {
   if (!done_exit()) {
-    fprintf(fout, "w%02u npc: 0x%04x, done:%c%c%c%c:%2u i:%u s:%u a:%u (done: ",
+    fprintf(fout, "w%02u npc: 0x%04llx, done:%c%c%c%c:%2u i:%u s:%u a:%u (done: ",
             m_warp_id, m_next_pc, (functional_done() ? 'f' : ' '),
             (stores_done() ? 's' : ' '), (inst_in_pipeline() ? ' ' : 'i'),
             (done_exit() ? 'e' : ' '), n_completed, m_inst_in_pipeline,
@@ -4008,7 +4010,7 @@ void opndcoll_rfu_t::init(unsigned num_banks, shader_core_ctx *shader) {
 
   sub_core_model = shader->get_config()->sub_core_model;
   m_num_warp_scheds = shader->get_config()->gpgpu_num_sched_per_core;
-  unsigned reg_id;
+  unsigned reg_id = 0;
   if (sub_core_model) {
     assert(num_banks % shader->get_config()->gpgpu_num_sched_per_core == 0);
     assert(m_num_warp_scheds <= m_cu.size() &&

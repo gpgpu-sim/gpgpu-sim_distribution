@@ -1470,7 +1470,7 @@ std::string ptx_instruction::to_string() const {
   unsigned used_bytes = 0;
   if (!is_label()) {
     used_bytes +=
-        snprintf(buf + used_bytes, STR_SIZE - used_bytes, " PC=0x%03x ", m_PC);
+        snprintf(buf + used_bytes, STR_SIZE - used_bytes, " PC=0x%03llx ", m_PC);
   } else {
     used_bytes +=
         snprintf(buf + used_bytes, STR_SIZE - used_bytes, "                ");

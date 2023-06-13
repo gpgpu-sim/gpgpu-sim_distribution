@@ -545,7 +545,7 @@ void gpgpu_t::gpu_memset(size_t dst_start_addr, int c, size_t count) {
 void cuda_sim::ptx_print_insn(address_type pc, FILE *fp) {
   std::map<unsigned, function_info *>::iterator f = g_pc_to_finfo.find(pc);
   if (f == g_pc_to_finfo.end()) {
-    fprintf(fp, "<no instruction at address 0x%x>", pc);
+    fprintf(fp, "<no instruction at address 0x%llx>", pc);
     return;
   }
   function_info *finfo = f->second;
@@ -559,7 +559,7 @@ std::string cuda_sim::ptx_get_insn_str(address_type pc) {
 #define STR_SIZE 255
     char buff[STR_SIZE];
     buff[STR_SIZE - 1] = '\0';
-    snprintf(buff, STR_SIZE, "<no instruction at address 0x%x>", pc);
+    snprintf(buff, STR_SIZE, "<no instruction at address 0x%llx>", pc);
     return std::string(buff);
   }
   function_info *finfo = f->second;
@@ -1372,7 +1372,7 @@ void function_info::add_param_data(unsigned argn,
       unsigned num_bits = 8 * args->m_nbytes;
       printf(
           "GPGPU-Sim PTX: deferred allocation of shared region for \"%s\" from "
-          "0x%x to 0x%x (shared memory space)\n",
+          "0x%llx to 0x%llx (shared memory space)\n",
           p->name().c_str(), m_symtab->get_shared_next(),
           m_symtab->get_shared_next() + num_bits / 8);
       fflush(stdout);
@@ -1503,7 +1503,7 @@ void function_info::list_param(FILE *fout) const {
     std::string name = p.get_name();
     symbol *param = m_symtab->lookup(name.c_str());
     addr_t param_addr = param->get_address();
-    fprintf(fout, "%s: %#08x\n", name.c_str(), param_addr);
+    fprintf(fout, "%s: %#08llx\n", name.c_str(), param_addr);
   }
   fflush(fout);
 }
@@ -1533,7 +1533,11 @@ void function_info::ptx_jit_config(
            filename_c.c_str());
   assert(system(buff) != NULL);
   FILE *fp = fopen(filename_c.c_str(), "r");
-  fgets(buff, 1024, fp);
+  char * ptr = fgets(buff, 1024, fp);
+  if(ptr == NULL ){
+          printf("can't read file %s \n", filename_c.c_str());
+          assert(0);
+  }
   fclose(fp);
   std::string fn(buff);
   size_t pos1, pos2;
@@ -1877,7 +1881,7 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
       dim3 tid = get_tid();
       printf(
           "%u [thd=%u][i=%u] : ctaid=(%u,%u,%u) tid=(%u,%u,%u) icount=%u "
-          "[pc=%u] (%s:%u - %s)  [0x%llx]\n",
+          "[pc=%llu] (%s:%u - %s)  [0x%llx]\n",
           m_gpu->gpgpu_ctx->func_sim->g_ptx_sim_num_insn, get_uid(), pI->uid(),
           ctaid.x, ctaid.y, ctaid.z, tid.x, tid.y, tid.z, get_icount(), pc,
           pI->source_file(), pI->source_line(), pI->get_source(),
@@ -2376,7 +2380,7 @@ void cuda_sim::read_sim_environment_variables() {
         "%s\n",
         dbg_pc);
     fflush(stdout);
-    sscanf(dbg_pc, "%d", &g_debug_pc);
+    sscanf(dbg_pc, "%llu", &g_debug_pc);
   }
 
 #if CUDART_VERSION > 1010

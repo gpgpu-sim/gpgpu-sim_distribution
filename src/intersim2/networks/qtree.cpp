@@ -84,7 +84,7 @@ void QTree::_BuildNet( const Configuration& config )
 {
 
   ostringstream routerName;
-  int h, r, pos, port;
+  int h, r = 0 , pos, port;
 
   for (h = 0; h < _n; h++) {
     for (pos = 0 ; pos < powi( _k, h ) ; ++pos ) {
