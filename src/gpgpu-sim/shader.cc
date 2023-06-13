@@ -642,7 +642,7 @@ void shader_core_stats::print(FILE *fout) const {
   fprintf(fout, "gpgpu_n_param_mem_insn = %d\n", gpgpu_n_param_insn);
 
   fprintf(fout, "gpgpu_n_shmem_bkconflict = %d\n", gpgpu_n_shmem_bkconflict);
-  fprintf(fout, "gpgpu_n_cache_bkconflict = %d\n", gpgpu_n_cache_bkconflict);
+  fprintf(fout, "gpgpu_n_l1cache_bkconflict = %d\n", gpgpu_n_l1cache_bkconflict);
 
   fprintf(fout, "gpgpu_n_intrawarp_mshr_merge = %d\n",
           gpgpu_n_intrawarp_mshr_merge);
@@ -840,8 +840,8 @@ void shader_core_stats::visualizer_print(gzFile visualizer_file) {
   gzprintf(visualizer_file, "\n");
 
   // overall cache miss rates
-  gzprintf(visualizer_file, "gpgpu_n_cache_bkconflict: %d\n",
-           gpgpu_n_cache_bkconflict);
+  gzprintf(visualizer_file, "gpgpu_n_l1cache_bkconflict: %d\n",
+           gpgpu_n_l1cache_bkconflict);
   gzprintf(visualizer_file, "gpgpu_n_shmem_bkconflict: %d\n",
            gpgpu_n_shmem_bkconflict);
 
@@ -1978,7 +1978,7 @@ mem_stage_stall_type ldst_unit::process_memory_access_queue_l1cache(
         inst.accessq_pop_back();
       } else {
         result = BK_CONF;
-        m_stats->gpgpu_n_cache_bkconflict++;
+        m_stats->gpgpu_n_l1cache_bkconflict++;
         delete mf;
         break;  // do not try again, just break from the loop and try the next
                 // cycle

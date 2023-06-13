@@ -1735,7 +1735,7 @@ struct shader_core_stats_pod {
   unsigned gpgpu_n_const_insn;
   unsigned gpgpu_n_param_insn;
   unsigned gpgpu_n_shmem_bkconflict;
-  unsigned gpgpu_n_cache_bkconflict;
+  unsigned gpgpu_n_l1cache_bkconflict;
   int gpgpu_n_intrawarp_mshr_merge;
   unsigned gpgpu_n_cmem_portconflict;
   unsigned gpu_stall_shd_mem_breakdown[N_MEM_STAGE_ACCESS_TYPE]
