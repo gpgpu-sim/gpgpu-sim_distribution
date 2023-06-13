@@ -3605,6 +3605,7 @@ unsigned CUDARTAPI __cudaPushCallConfiguration(dim3 gridDim, dim3 blockDim,
     announce_call(__my_func__);
   }
   cudaConfigureCallInternal(gridDim, blockDim, sharedMem, stream);
+  return 0;
 }
 
 cudaError_t CUDARTAPI __cudaPopCallConfiguration(dim3 *gridDim, dim3 *blockDim,
