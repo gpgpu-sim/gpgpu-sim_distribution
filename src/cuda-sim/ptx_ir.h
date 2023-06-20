@@ -1248,6 +1248,7 @@ class function_info {
   const ptx_version &get_ptx_version() const {
     return m_symtab->get_ptx_version();
   }
+  virtual ~function_info(){}
   unsigned get_sm_target() const { return m_symtab->get_sm_target(); }
   bool is_extern() const { return m_extern; }
   void set_name(const char *name) { m_name = name; }

@@ -148,8 +148,8 @@ void xbar_router::RR_Advance() {
       }
     }
   }
-
-  next_node_id = (++next_node_id % total_nodes);
+  next_node_id = next_node_id + 1 ;
+  next_node_id = (next_node_id % total_nodes);
 
   conflicts += conflict_sub;
   if (active) {
