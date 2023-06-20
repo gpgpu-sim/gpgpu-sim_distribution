@@ -586,26 +586,26 @@ void shader_core_config::reg_options(class OptionParser *opp) {
       "ID_OC_SP,ID_OC_DP,ID_OC_INT,ID_OC_SFU,ID_OC_MEM,OC_EX_SP,OC_EX_DP,OC_EX_"
       "INT,OC_EX_SFU,OC_EX_MEM,EX_WB,ID_OC_TENSOR_CORE,OC_EX_TENSOR_CORE",
       "1,1,1,1,1,1,1,1,1,1,1,1,1");
-  option_parser_register(opp, "-gpgpu_tensor_core_avail", OPT_INT32,
+  option_parser_register(opp, "-gpgpu_tensor_core_avail", OPT_UINT32,
                          &gpgpu_tensor_core_avail,
                          "Tensor Core Available (default=0)", "0");
-  option_parser_register(opp, "-gpgpu_num_sp_units", OPT_INT32,
+  option_parser_register(opp, "-gpgpu_num_sp_units", OPT_UINT32,
                          &gpgpu_num_sp_units, "Number of SP units (default=1)",
                          "1");
-  option_parser_register(opp, "-gpgpu_num_dp_units", OPT_INT32,
+  option_parser_register(opp, "-gpgpu_num_dp_units", OPT_UINT32,
                          &gpgpu_num_dp_units, "Number of DP units (default=0)",
                          "0");
-  option_parser_register(opp, "-gpgpu_num_int_units", OPT_INT32,
+  option_parser_register(opp, "-gpgpu_num_int_units", OPT_UINT32,
                          &gpgpu_num_int_units,
                          "Number of INT units (default=0)", "0");
-  option_parser_register(opp, "-gpgpu_num_sfu_units", OPT_INT32,
+  option_parser_register(opp, "-gpgpu_num_sfu_units", OPT_UINT32,
                          &gpgpu_num_sfu_units, "Number of SF units (default=1)",
                          "1");
-  option_parser_register(opp, "-gpgpu_num_tensor_core_units", OPT_INT32,
+  option_parser_register(opp, "-gpgpu_num_tensor_core_units", OPT_UINT32,
                          &gpgpu_num_tensor_core_units,
                          "Number of tensor_core units (default=1)", "0");
   option_parser_register(
-      opp, "-gpgpu_num_mem_units", OPT_INT32, &gpgpu_num_mem_units,
+      opp, "-gpgpu_num_mem_units", OPT_UINT32, &gpgpu_num_mem_units,
       "Number if ldst units (default=1) WARNING: not hooked up to anything",
       "1");
   option_parser_register(
