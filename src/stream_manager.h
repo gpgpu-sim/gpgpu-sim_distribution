@@ -73,7 +73,7 @@ struct CUevent_st {
   int m_uid;
   bool m_blocking;
   bool m_done;
-  int m_updates;
+  unsigned int m_updates;
   unsigned int m_issued;
   time_t m_wallclock;
   double m_gpu_tot_sim_cycle;

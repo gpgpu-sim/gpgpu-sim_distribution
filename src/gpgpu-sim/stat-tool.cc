@@ -519,7 +519,7 @@ void thread_insn_span::print_span(FILE *fout) const {
   fprintf(fout, "%d: ", (int)m_cycle);
   span_count_map::const_iterator i_sc = m_insn_span_count.begin();
   for (; i_sc != m_insn_span_count.end(); ++i_sc) {
-    fprintf(fout, "%d ", i_sc->first);
+    fprintf(fout, "%llx ", i_sc->first);
   }
   fprintf(fout, "\n");
 }

@@ -563,10 +563,12 @@ class cache_config {
     char ct, rp, wp, ap, mshr_type, wap, sif;
 
     int ntok =
-        sscanf(config, "%c:%u:%u:%u,%c:%c:%c:%c:%c,%c:%u:%u,%u:%u,%u", &ct,
-               &m_nset, &m_line_sz, &m_assoc, &rp, &wp, &ap, &wap, &sif,
-               &mshr_type, &m_mshr_entries, &m_mshr_max_merge,
-               &m_miss_queue_size, &m_result_fifo_entries, &m_data_port_width);
+        sscanf(config, "%c:%u:%u:%u,%c:%c:%c:%c:%c,%c:%u:%u,%u:%u,%u", 
+            &ct, &m_nset, &m_line_sz, &m_assoc, 
+            &rp, &wp, &ap, &wap, &sif,
+            &mshr_type, &m_mshr_entries, &m_mshr_max_merge,
+            &m_miss_queue_size, &m_result_fifo_entries, 
+            &m_data_port_width);
 
     if (ntok < 12) {
       if (!strcmp(config, "none")) {
@@ -721,9 +723,17 @@ class cache_config {
           "Invalid cache configuration: FETCH_ON_WRITE and LAZY_FETCH_ON_READ "
           "cannot work properly with ON_FILL policy. Cache must be ON_MISS. ");
     }
+
     if (m_cache_type == SECTOR) {
-      assert(m_line_sz / SECTOR_SIZE == SECTOR_CHUNCK_SIZE &&
-             m_line_sz % SECTOR_SIZE == 0);
+      bool cond = 
+            m_line_sz / SECTOR_SIZE == SECTOR_CHUNCK_SIZE &&
+            m_line_sz % SECTOR_SIZE == 0;
+      if(!cond){
+          std::cerr<<"error: For sector cache, the simulator uses hard-coded "
+             "SECTOR_SIZE and SECTOR_CHUNCK_SIZE. The line size "
+             "must be product of both values.\n";
+          assert(0);
+        }
     }
 
     // default: port to data array width and granularity = line size

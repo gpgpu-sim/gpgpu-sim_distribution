@@ -1284,7 +1284,7 @@ class sp_unit : public pipelined_simd_unit {
 class specialized_unit : public pipelined_simd_unit {
  public:
   specialized_unit(register_set *result_port, const shader_core_config *config,
-                   shader_core_ctx *core, unsigned supported_op,
+                   shader_core_ctx *core, int supported_op,
                    char *unit_name, unsigned latency, unsigned issue_reg_id);
   virtual bool can_issue(const warp_inst_t &inst) const {
     if (inst.op != m_supported_op) {
@@ -1297,7 +1297,7 @@ class specialized_unit : public pipelined_simd_unit {
   bool is_issue_partitioned() { return true; }
 
  private:
-  unsigned m_supported_op;
+  int m_supported_op;
 };
 
 class simt_core_cluster;
@@ -1622,13 +1622,13 @@ class shader_core_config : public core_config {
   unsigned int gpgpu_operand_collector_num_out_ports_gen;
   unsigned int gpgpu_operand_collector_num_out_ports_int;
 
-  int gpgpu_num_sp_units;
-  int gpgpu_tensor_core_avail;
-  int gpgpu_num_dp_units;
-  int gpgpu_num_sfu_units;
-  int gpgpu_num_tensor_core_units;
-  int gpgpu_num_mem_units;
-  int gpgpu_num_int_units;
+  unsigned int gpgpu_num_sp_units;
+  unsigned int gpgpu_tensor_core_avail;
+  unsigned int gpgpu_num_dp_units;
+  unsigned int gpgpu_num_sfu_units;
+  unsigned int gpgpu_num_tensor_core_units;
+  unsigned int gpgpu_num_mem_units;
+  unsigned int gpgpu_num_int_units;
 
   // Shader core resources
   unsigned gpgpu_shader_registers;

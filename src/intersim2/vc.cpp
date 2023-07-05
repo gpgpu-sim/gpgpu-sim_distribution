@@ -82,7 +82,7 @@ void VC::AddFlit( Flit *f )
   assert(f);
 
   if(_expected_pid >= 0) {
-    if(f->pid != _expected_pid) {
+    if((long long int)f->pid != _expected_pid) {
       ostringstream err;
       err << "Received flit " << f->id << " with unexpected packet ID: " << f->pid 
 	  << " (expected: " << _expected_pid << ")";
