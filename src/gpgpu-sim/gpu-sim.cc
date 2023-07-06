@@ -80,7 +80,7 @@ class gpgpu_sim_wrapper {};
 #include <sstream>
 #include <string>
 
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+// #define MAX(a, b) (((a) > (b)) ? (a) : (b)) //redefined 
 
 bool g_interactive_debugger_enabled = false;
 

@@ -1948,7 +1948,7 @@ void mma_impl(const ptx_instruction *pI, core_t *core, warp_inst_t inst) {
             hex_val = (v[k / 2].s64 & 0xffff);
           else
             hex_val = ((v[k / 2].s64 & 0xffff0000) >> 16);
-          nw_v[k].f16 = *((half *)&hex_val);
+          nw_v[k].f16 = *(reinterpret_cast<half*>(hex_val));
         }
       }
       if (!((operand_num == 3) && (type2 == F32_TYPE))) {

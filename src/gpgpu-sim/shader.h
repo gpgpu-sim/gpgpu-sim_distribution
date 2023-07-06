@@ -351,8 +351,8 @@ class scheduler_unit {  // this can be copied freely, so can be used in std
         m_sfu_out(sfu_out),
         m_int_out(int_out),
         m_tensor_core_out(tensor_core_out),
-        m_spec_cores_out(spec_cores_out),
         m_mem_out(mem_out),
+        m_spec_cores_out(spec_cores_out),
         m_id(id) {}
   virtual ~scheduler_unit() {}
   virtual void add_supervised_warp_id(int i) {

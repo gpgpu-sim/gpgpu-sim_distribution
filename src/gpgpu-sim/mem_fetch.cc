@@ -84,10 +84,10 @@ mem_fetch::~mem_fetch() { m_status = MEM_FETCH_DELETED; }
 #undef MF_TUP_END
 
 void mem_fetch::print(FILE *fp, bool print_inst) const {
-  if (this == NULL) {
-    fprintf(fp, " <NULL mem_fetch pointer>\n");
-    return;
-  }
+  // if (this == NULL) { // doenst make sense!
+  //   fprintf(fp, " <NULL mem_fetch pointer>\n");
+  //   return;
+  // }
   fprintf(fp, "  mf: uid=%6u, sid%02u:w%02u, part=%u, ", m_request_uid, m_sid,
           m_wid, m_raw_addr.chip);
   m_access.print(fp);
