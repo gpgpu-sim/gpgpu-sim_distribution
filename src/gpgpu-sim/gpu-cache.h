@@ -499,6 +499,7 @@ struct sector_cache_block : public cache_block_t {
     for (unsigned i = 0; i < SECTOR_CHUNCK_SIZE; ++i) {
       if (sector_mask.to_ulong() & (1 << i)) return i;
     }
+    return SECTOR_CHUNCK_SIZE; //error
   }
 };
 

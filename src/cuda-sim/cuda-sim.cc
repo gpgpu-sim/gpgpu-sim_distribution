@@ -1531,7 +1531,7 @@ void function_info::ptx_jit_config(
   std::string filename_c(filename + "_c");
   snprintf(buff, 1024, "c++filt %s > %s", get_name().c_str(),
            filename_c.c_str());
-  assert(system(buff) != NULL);
+  assert(system(buff) != 0);
   FILE *fp = fopen(filename_c.c_str(), "r");
   char * ptr = fgets(buff, 1024, fp);
   if(ptr == NULL ){

@@ -464,6 +464,10 @@ static int get_app_cuda_version() {
       " | grep libcudart.so | sed  's/.*libcudart.so.\\(.*\\) =>.*/\\1/' > " +
       fname;
   int res = system(app_cuda_version_command.c_str());
+  if(res == -1){
+    printf("Error - Cannot detect the app's CUDA version.\n");
+    exit(1);
+  }
   FILE *cmd = fopen(fname, "r");
   char buf[256];
   while (fgets(buf, sizeof(buf), cmd) != 0) {
@@ -3235,6 +3239,11 @@ char *readfile(const std::string filename) {
   // allocate and copy the entire ptx
   char *ret = (char *)malloc((filesize + 1) * sizeof(char));
   int num = fread(ret, 1, filesize, fp);
+  if(num == 0){
+        std::cout << "ERROR: Could not read data from file %s\n"
+              << filename << std::endl;
+    assert(0);
+  }
   ret[filesize] = '\0';
   fclose(fp);
   return ret;
@@ -3596,6 +3605,7 @@ unsigned CUDARTAPI __cudaPushCallConfiguration(dim3 gridDim, dim3 blockDim,
     announce_call(__my_func__);
   }
   cudaConfigureCallInternal(gridDim, blockDim, sharedMem, stream);
+  return 0;
 }
 
 cudaError_t CUDARTAPI __cudaPopCallConfiguration(dim3 *gridDim, dim3 *blockDim,
