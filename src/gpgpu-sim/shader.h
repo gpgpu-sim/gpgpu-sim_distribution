@@ -123,6 +123,20 @@ class shd_warp_t {
     // Jin: cdp support
     m_cdp_latency = 0;
     m_cdp_dummy = false;
+
+    // Ni: Initialize ldgdepbar_id
+    m_ldgdepbar_id = 0;
+    m_depbar_start_id = 0;
+    m_depbar_group = 0;
+
+    // Ni: Set waiting to false
+    m_waiting_ldgsts = false;
+
+    // Ni: Clear m_ldgdepbar_buf
+    for (int i = 0; i < m_ldgdepbar_buf.size(); i++) {
+      m_ldgdepbar_buf[i].clear();
+    }
+    m_ldgdepbar_buf.clear();
   }
   void init(address_type start_pc, unsigned cta_id, unsigned wid,
             const std::bitset<MAX_WARP_SIZE> &active,
@@ -140,6 +154,20 @@ class shd_warp_t {
     // Jin: cdp support
     m_cdp_latency = 0;
     m_cdp_dummy = false;
+
+    // Ni: Initialize ldgdepbar_id
+    m_ldgdepbar_id = 0;
+    m_depbar_start_id = 0;
+    m_depbar_group = 0;
+
+    // Ni: Set waiting to false
+    m_waiting_ldgsts = false;
+
+    // Ni: Clear m_ldgdepbar_buf
+    for (int i = 0; i < m_ldgdepbar_buf.size(); i++) {
+      m_ldgdepbar_buf[i].clear();
+    }
+    m_ldgdepbar_buf.clear();
   }
 
   bool functional_done() const;
@@ -288,6 +316,14 @@ class shd_warp_t {
  public:
   unsigned int m_cdp_latency;
   bool m_cdp_dummy;
+
+  // Ni: LDGDEPBAR barrier support
+  public:
+    unsigned int m_ldgdepbar_id;  // LDGDEPBAR barrier ID
+    std::vector<std::vector<warp_inst_t>> m_ldgdepbar_buf;  // LDGDEPBAR barrier buffer
+    unsigned int m_depbar_start_id;
+    unsigned int m_depbar_group;
+    bool m_waiting_ldgsts; // Ni: Whether the warp is waiting for the LDGSTS instrs to finish
 };
 
 inline unsigned hw_tid_from_wid(unsigned wid, unsigned warp_size, unsigned i) {
@@ -1314,6 +1350,15 @@ class ldst_unit : public pipelined_simd_unit {
             const memory_config *mem_config, class shader_core_stats *stats,
             unsigned sid, unsigned tpc);
 
+  // Add a structure to record the LDGSTS instructions,
+  // similar to m_pending_writes, but since LDGSTS does not have a output register
+  // to write to, so a new structure needs to be added
+  /* A multi-level map: unsigned (warp_id) -> unsigned (pc) -> unsigned (addr) -> unsigned (count)
+   */
+  std::map<unsigned /*warp_id*/,
+           std::map<unsigned /*pc*/, 
+                  std::map<unsigned /*addr*/, unsigned /*count*/>>>
+      m_pending_ldgsts;
   // modifiers
   virtual void issue(register_set &inst);
   bool is_issue_partitioned() { return false; }
@@ -2068,6 +2113,9 @@ class shader_core_ctx : public core_t {
   // used by functional simulation:
   // modifiers
   virtual void warp_exit(unsigned warp_id);
+
+  // Ni: Unset ldgdepbar
+  void unset_depbar(const warp_inst_t &inst);
 
   // accessors
   virtual bool warp_waiting_at_barrier(unsigned warp_id) const;

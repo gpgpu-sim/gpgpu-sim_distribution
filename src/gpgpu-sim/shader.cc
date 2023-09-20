@@ -532,7 +532,6 @@ void shader_core_ctx::reinit(unsigned start_thread, unsigned end_thread,
 void shader_core_ctx::init_warps(unsigned cta_id, unsigned start_thread,
                                  unsigned end_thread, unsigned ctaid,
                                  int cta_size, kernel_info_t &kernel) {
-  //
   address_type start_pc = next_pc(start_thread);
   unsigned kernel_id = kernel.get_uid();
   if (m_config->model == POST_DOMINATOR) {
@@ -1046,6 +1045,25 @@ void shader_core_ctx::issue_warp(register_set &pipe_reg_set,
   m_stats->shader_cycle_distro[2 + (*pipe_reg)->active_count()]++;
   func_exec_inst(**pipe_reg);
 
+  // Add LDGSTS instructions into a buffer
+  unsigned int ldgdepbar_id = m_warp[warp_id]->m_ldgdepbar_id;
+  if (next_inst->m_is_ldgsts) {
+    if (m_warp[warp_id]->m_ldgdepbar_buf.size() == ldgdepbar_id + 1) {
+      m_warp[warp_id]->m_ldgdepbar_buf[ldgdepbar_id].push_back(*next_inst);
+    }
+    else {
+      assert(m_warp[warp_id]->m_ldgdepbar_buf.size() < ldgdepbar_id + 1);
+      std::vector<warp_inst_t> l;
+      l.push_back(*next_inst);
+      m_warp[warp_id]->m_ldgdepbar_buf.push_back(l);
+    }
+    // If the mask of the instruction is all 0, then the address is also 0, 
+    // so that there's no need to check through the writeback
+    if (next_inst->get_active_mask() == 0) {
+      (m_warp[warp_id]->m_ldgdepbar_buf.back()).back().pc = -1;
+    }
+  }
+
   if (next_inst->op == BARRIER_OP) {
     m_warp[warp_id]->store_info_of_last_inst_at_barrier(*pipe_reg);
     m_barriers.warp_reaches_barrier(m_warp[warp_id]->get_cta_id(), warp_id,
@@ -1053,6 +1071,37 @@ void shader_core_ctx::issue_warp(register_set &pipe_reg_set,
 
   } else if (next_inst->op == MEMORY_BARRIER_OP) {
     m_warp[warp_id]->set_membar();
+  } else if (next_inst->m_is_ldgdepbar) { // Add for LDGDEPBAR
+    m_warp[warp_id]->m_ldgdepbar_id++;
+  } else if (next_inst->m_is_depbar) {  // Add for DEPBAR
+    // Set to true immediately when a DEPBAR instruction is met
+    m_warp[warp_id]->m_waiting_ldgsts = true;
+    m_warp[warp_id]->m_depbar_group = next_inst->m_depbar_group_no; // set in trace_driven.cc
+
+    // Record the last group that's possbily being monitored by this DEPBAR instr
+    m_warp[warp_id]->m_depbar_start_id = m_warp[warp_id]->m_ldgdepbar_id - 1;
+    
+    // Record the last group that's actually being monitored by this DEPBAR instr
+    unsigned int end_group = m_warp[warp_id]->m_ldgdepbar_id - m_warp[warp_id]->m_depbar_group;
+
+    // Check for the case that the LDGSTSs monitored have finished when encountering the 
+    // DEPBAR instruction 
+    bool done_flag = true;
+    for (int i = 0; i < end_group; i++) {
+      for (int j = 0; j < m_warp[warp_id]->m_ldgdepbar_buf[i].size(); j++) {
+        if (m_warp[warp_id]->m_ldgdepbar_buf[i][j].pc != -1) {
+          done_flag = false;
+          goto UpdateDEPBAR;
+        }
+      }
+    }
+  
+  UpdateDEPBAR:
+    if (done_flag) {
+      if (m_warp[warp_id]->m_waiting_ldgsts) {
+        m_warp[warp_id]->m_waiting_ldgsts = false;
+      }
+    }
   }
 
   updateSIMTStack(warp_id, *pipe_reg);
@@ -1796,12 +1845,50 @@ void ldst_unit::get_L1T_sub_stats(struct cache_sub_stats &css) const {
   if (m_L1T) m_L1T->get_sub_stats(css);
 }
 
+// Add this function to unset depbar
+void shader_core_ctx::unset_depbar(const warp_inst_t &inst) {
+  bool done_flag = true;
+  unsigned int end_group = m_warp[inst.warp_id()]->m_depbar_start_id == 0 ? 
+    m_warp[inst.warp_id()]->m_ldgdepbar_buf.size() :
+    (m_warp[inst.warp_id()]->m_depbar_start_id - m_warp[inst.warp_id()]->m_depbar_group + 1);
+
+  if (inst.m_is_ldgsts) { 
+    for (int i = 0; i < m_warp[inst.warp_id()]->m_ldgdepbar_buf.size(); i++) {
+      for (int j = 0; j < m_warp[inst.warp_id()]->m_ldgdepbar_buf[i].size(); j++) {
+        if (m_warp[inst.warp_id()]->m_ldgdepbar_buf[i][j].pc == inst.pc) {
+          // Handle the case that same pc results in multiple LDGSTS instructions
+          if (m_warp[inst.warp_id()]->m_ldgdepbar_buf[i][j].get_addr(0) == inst.get_addr(0)) {
+            m_warp[inst.warp_id()]->m_ldgdepbar_buf[i][j].pc = -1;
+            goto DoneWB;
+          }
+        }  
+      }
+    }
+
+  DoneWB:
+    for (int i = 0; i < end_group; i++) {
+      for (int j = 0; j < m_warp[inst.warp_id()]->m_ldgdepbar_buf[i].size(); j++) {
+        if (m_warp[inst.warp_id()]->m_ldgdepbar_buf[i][j].pc != -1) {
+          done_flag = false;
+          goto UpdateDEPBAR;
+        }
+      }
+    }
+  
+  UpdateDEPBAR:
+    if (done_flag) {
+      if (m_warp[inst.warp_id()]->m_waiting_ldgsts) {
+        m_warp[inst.warp_id()]->m_waiting_ldgsts = false;
+      }
+    }
+  }
+}
+
 void shader_core_ctx::warp_inst_complete(const warp_inst_t &inst) {
 #if 0
       printf("[warp_inst_complete] uid=%u core=%u warp=%u pc=%#x @ time=%llu \n",
              inst.get_uid(), m_sid, inst.warp_id(), inst.pc,  m_gpu->gpu_tot_sim_cycle +  m_gpu->gpu_sim_cycle);
 #endif
-
   if (inst.op_pipe == SP__OP)
     m_stats->m_num_sp_committed[m_sid]++;
   else if (inst.op_pipe == SFU__OP)
@@ -1907,6 +1994,14 @@ mem_stage_stall_type ldst_unit::process_cache_access(
     if (inst.is_load()) {
       for (unsigned r = 0; r < MAX_OUTPUT_VALUES; r++)
         if (inst.out[r] > 0) m_pending_writes[inst.warp_id()][inst.out[r]]--;
+      
+      // release LDGSTS
+      if (inst.m_is_ldgsts) {
+        m_pending_ldgsts[inst.warp_id()][inst.pc][inst.get_addr(0)]--;
+        if (m_pending_ldgsts[inst.warp_id()][inst.pc][inst.get_addr(0)] == 0) {
+          m_core->unset_depbar(inst);
+        }
+      }
     }
     if (!write_sent) delete mf;
   } else if (status == RESERVATION_FAIL) {
@@ -2035,6 +2130,14 @@ void ldst_unit::L1_latency_queue_cycle() {
                 m_core->warp_inst_complete(mf_next->get_inst());
               }
             }
+
+          // release LDGSTS
+          if (mf_next->get_inst().m_is_ldgsts) {
+            m_pending_ldgsts[mf_next->get_inst().warp_id()][mf_next->get_inst().pc][mf_next->get_inst().get_addr(0)]--;
+            if (m_pending_ldgsts[mf_next->get_inst().warp_id()][mf_next->get_inst().pc][mf_next->get_inst().get_addr(0)] == 0) {
+              m_core->unset_depbar(mf_next->get_inst());
+            }
+          }
         }
 
         // For write hit in WB policy
@@ -2571,10 +2674,21 @@ void ldst_unit::writeback() {
             insn_completed = true;
           }
         }
+        else if (m_next_wb.m_is_ldgsts) { // for LDGSTS instructions where no output register is used
+          m_pending_ldgsts[m_next_wb.warp_id()][m_next_wb.pc][m_next_wb.get_addr(0)]--;
+          if (m_pending_ldgsts[m_next_wb.warp_id()][m_next_wb.pc][m_next_wb.get_addr(0)] == 0) {
+            insn_completed = true;
+          }
+          break;
+        }
       }
       if (insn_completed) {
         m_core->warp_inst_complete(m_next_wb);
+        if (m_next_wb.m_is_ldgsts) {
+          m_core->unset_depbar(m_next_wb);
+        }
       }
+
       m_next_wb.clear();
       m_last_inst_gpu_sim_cycle = m_core->get_gpu()->gpu_sim_cycle;
       m_last_inst_gpu_tot_sim_cycle = m_core->get_gpu()->gpu_tot_sim_cycle;
@@ -2796,6 +2910,14 @@ void ldst_unit::cycle() {
         if (!pending_requests) {
           m_core->warp_inst_complete(*m_dispatch_reg);
           m_scoreboard->releaseRegisters(m_dispatch_reg);
+
+          // release LDGSTS
+          if (m_dispatch_reg->m_is_ldgsts) {
+            // m_pending_ldgsts[m_dispatch_reg->warp_id()][m_dispatch_reg->pc][m_dispatch_reg->get_addr(0)]--;
+            if (m_pending_ldgsts[m_dispatch_reg->warp_id()][m_dispatch_reg->pc][m_dispatch_reg->get_addr(0)] == 0) {
+              m_core->unset_depbar(*m_dispatch_reg);
+            }
+          }
         }
         m_core->dec_inst_in_pipeline(warp_id);
         m_dispatch_reg->clear();
@@ -3930,6 +4052,8 @@ bool shd_warp_t::waiting() {
     // the functional execution of the atomic when it hits DRAM can cause
     // the wrong register to be read.
     return true;
+  } else if (m_waiting_ldgsts) {  // Waiting for LDGSTS to finish
+    return true;
   }
   return false;
 }
@@ -4050,6 +4174,7 @@ int register_bank(int regnum, int wid, unsigned num_banks,
 
 bool opndcoll_rfu_t::writeback(warp_inst_t &inst) {
   assert(!inst.empty());
+
   std::list<unsigned> regs = m_shader->get_regs_written(inst);
   for (unsigned op = 0; op < MAX_REG_OPERANDS; op++) {
     int reg_num = inst.arch_reg.dst[op];  // this math needs to match that used
