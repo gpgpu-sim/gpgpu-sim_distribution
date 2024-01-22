@@ -1,0 +1,63 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the mydev branch
+  push:
+  pull_request:
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  build-GTX480:
+    runs-on: ubuntu-latest
+    container:
+      image: tgrogers/gpgpu-sim_regress:volta_update
+      env:
+        CONFIG: GTX480
+        CUDA_INSTALL_PATH: /usr/local/cuda-4.2/
+        PTXAS_CUDA_INSTALL_PATH: /usr/local/cuda-4.2/
+        GPUAPPS_ROOT: /home/runner/gpgpu-sim_simulations/benchmarks
+        
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+      - name: Run Simulation
+        run: /bin/bash $GITHUB_WORKSPACE/travis.sh
+  build-TITANV:
+    runs-on: ubuntu-latest
+    container:
+      image: tgrogers/gpgpu-sim_regress:volta_update
+      env:
+        CONFIG: TITANV
+        CUDA_INSTALL_PATH: /usr/local/cuda-9.1/
+        PTXAS_CUDA_INSTALL_PATH: /usr/local/cuda-9.1/
+        GPUAPPS_ROOT: /home/runner/gpgpu-sim_simulations/benchmarks
+        
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+      - name: Run Simulation
+        run: /bin/bash $GITHUB_WORKSPACE/travis.sh
+  build-TITANV-LOCALXBAR:
+    runs-on: ubuntu-latest
+    container:
+      image: tgrogers/gpgpu-sim_regress:volta_update
+      env:
+        CONFIG: TITANV-LOCALXBAR
+        CUDA_INSTALL_PATH: /usr/local/cuda-9.1/
+        PTXAS_CUDA_INSTALL_PATH: /usr/local/cuda-9.1/
+        GPUAPPS_ROOT: /home/runner/gpgpu-sim_simulations/benchmarks
+        
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+      - name: Run Simulation
+        run: /bin/bash $GITHUB_WORKSPACE/travis.sh
