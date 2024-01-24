@@ -16,48 +16,48 @@ jobs:
   build-GTX480:
     runs-on: ubuntu-latest
     container:
-      image: tgrogers/gpgpu-sim_regress:volta_update
+      image: tgrogers/accel-sim_regress:Ubuntu-22.04-cuda-11.7
       env:
         CONFIG: GTX480
-        CUDA_INSTALL_PATH: /usr/local/cuda-4.2/
-        PTXAS_CUDA_INSTALL_PATH: /usr/local/cuda-4.2/
-        GPUAPPS_ROOT: /home/runner/gpgpu-sim_simulations/benchmarks
+        # CUDA_INSTALL_PATH: /usr/local/cuda-4.2/
+        # PTXAS_CUDA_INSTALL_PATH: /usr/local/cuda-4.2/
+        # GPUAPPS_ROOT: /home/runner/gpgpu-sim_simulations/benchmarks
         
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
+      - uses: actions/checkout
       - name: Run Simulation
-        run: /bin/bash $GITHUB_WORKSPACE/travis.sh
+        run: /bin/bash $GITHUB_WORKSPACE/short-tests.sh
   build-TITANV:
     runs-on: ubuntu-latest
     container:
-      image: tgrogers/gpgpu-sim_regress:volta_update
+      image: tgrogers/accel-sim_regress:Ubuntu-22.04-cuda-11.7
       env:
         CONFIG: TITANV
-        CUDA_INSTALL_PATH: /usr/local/cuda-9.1/
-        PTXAS_CUDA_INSTALL_PATH: /usr/local/cuda-9.1/
-        GPUAPPS_ROOT: /home/runner/gpgpu-sim_simulations/benchmarks
+        # CUDA_INSTALL_PATH: /usr/local/cuda-9.1/
+        # PTXAS_CUDA_INSTALL_PATH: /usr/local/cuda-9.1/
+        # GPUAPPS_ROOT: /home/runner/gpgpu-sim_simulations/benchmarks
         
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
+      - uses: actions/checkout
       - name: Run Simulation
-        run: /bin/bash $GITHUB_WORKSPACE/travis.sh
+        run: /bin/bash $GITHUB_WORKSPACE/short-tests.sh
   build-TITANV-LOCALXBAR:
     runs-on: ubuntu-latest
     container:
-      image: tgrogers/gpgpu-sim_regress:volta_update
+      image: tgrogers/accel-sim_regress:Ubuntu-22.04-cuda-11.7
       env:
         CONFIG: TITANV-LOCALXBAR
-        CUDA_INSTALL_PATH: /usr/local/cuda-9.1/
-        PTXAS_CUDA_INSTALL_PATH: /usr/local/cuda-9.1/
-        GPUAPPS_ROOT: /home/runner/gpgpu-sim_simulations/benchmarks
+        # CUDA_INSTALL_PATH: /usr/local/cuda-9.1/
+        # PTXAS_CUDA_INSTALL_PATH: /usr/local/cuda-9.1/
+        # GPUAPPS_ROOT: /home/runner/gpgpu-sim_simulations/benchmarks
         
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
+      - uses: actions/checkout
       - name: Run Simulation
-        run: /bin/bash $GITHUB_WORKSPACE/travis.sh
+        run: /bin/bash $GITHUB_WORKSPACE/short-tests.sh
