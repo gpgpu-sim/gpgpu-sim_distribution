@@ -13,6 +13,8 @@ if [ ! -n "$GPUAPPS_ROOT" ]; then
 	exit;
 fi
 
+git config --system --add safe.directory '*'
+
 export PATH=$CUDA_INSTALL_PATH/bin:$PATH
 source ./setup_environment
 make -j
