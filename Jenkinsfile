@@ -90,20 +90,17 @@ pipeline {
     }
     post {
         success {
-//            sh 'git remote rm upstream'
-            emailext body:'''${SCRIPT, template="groovy-html.success.template"}''',
+            emailext body: "See ${BUILD_URL}.",
                 recipientProviders: [[$class: 'CulpritsRecipientProvider'],
                     [$class: 'RequesterRecipientProvider']],
-                subject: "[AALP Jenkins] Build #${BUILD_NUMBER} - Success!",
-                attachmentsPattern: 'correl.*.txt',
+                subject: "[AALP Jenkins] Build ${JOB_NAME} #${BUILD_NUMBER} - Success!",
                 to: 'tgrogers@purdue.edu'
         }
         failure {
-//            sh 'git remote rm upstream'
             emailext body: "See ${BUILD_URL}",
                 recipientProviders: [[$class: 'CulpritsRecipientProvider'],
                     [$class: 'RequesterRecipientProvider']],
-                subject: "[AALP Jenkins] Build #${BUILD_NUMBER} - ${currentBuild.result}",
+                subject: "[AALP Jenkins] Build ${JOB_NAME} #${BUILD_NUMBER} - ${currentBuild.result}",
                 to: 'tgrogers@purdue.edu'
         }
     }

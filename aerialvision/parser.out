@@ -1,0 +1,47 @@
+Created by PLY version 3.11 (http://www.dabeaz.com/ply)
+
+Grammar
+
+Rule 0     S' -> sentence
+Rule 1     sentence -> WORD NUMBERSEQUENCE
+
+Terminals, with rules where they appear
+
+NUMBERSEQUENCE       : 1
+WORD                 : 1
+error                : 
+
+Nonterminals, with rules where they appear
+
+sentence             : 0
+
+Parsing method: LALR
+
+state 0
+
+    (0) S' -> . sentence
+    (1) sentence -> . WORD NUMBERSEQUENCE
+
+    WORD            shift and go to state 2
+
+    sentence                       shift and go to state 1
+
+state 1
+
+    (0) S' -> sentence .
+
+
+
+state 2
+
+    (1) sentence -> WORD . NUMBERSEQUENCE
+
+    NUMBERSEQUENCE  shift and go to state 3
+
+
+state 3
+
+    (1) sentence -> WORD NUMBERSEQUENCE .
+
+    $end            reduce using rule 1 (sentence -> WORD NUMBERSEQUENCE .)
+

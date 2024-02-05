@@ -1,5 +1,5 @@
 
-OUTPUT_DIR=$(SIM_OBJ_FILES_DIR)/gpuwattch/cacti
+OUTPUT_DIR=$(SIM_OBJ_FILES_DIR)/accelwattch/cacti
 TARGET = cacti
 SHELL = /bin/sh
 .PHONY: all depend clean

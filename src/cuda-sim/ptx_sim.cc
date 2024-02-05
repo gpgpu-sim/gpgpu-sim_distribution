@@ -369,7 +369,7 @@ static void print_reg(FILE *fp, std::string name, ptx_reg_t value,
       fprintf(fp, ".u64 %llu [0x%llx]\n", value.u64, value.u64);
       break;
     case F16_TYPE:
-      fprintf(fp, ".f16 %f [0x%04x]\n", value.f16, (unsigned)value.u16);
+      fprintf(fp, ".f16 %f [0x%04x]\n", static_cast<float>(value.f16), (unsigned)value.u16);
       break;
     case F32_TYPE:
       fprintf(fp, ".f32 %.15lf [0x%08x]\n", value.f32, value.u32);

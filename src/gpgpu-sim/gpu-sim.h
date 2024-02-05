@@ -1,18 +1,20 @@
-// Copyright (c) 2009-2011, Tor M. Aamodt, Wilson W.L. Fung
-// The University of British Columbia
+// Copyright (c) 2009-2021, Tor M. Aamodt, Wilson W.L. Fung, Vijay Kandiah, Nikos Hardavellas
+// Mahmoud Khairy, Junrui Pan, Timothy G. Rogers
+// The University of British Columbia, Northwestern University, Purdue University
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 //
-// Redistributions of source code must retain the above copyright notice, this
-// list of conditions and the following disclaimer.
-// Redistributions in binary form must reproduce the above copyright notice,
-// this list of conditions and the following disclaimer in the documentation
-// and/or other materials provided with the distribution. Neither the name of
-// The University of British Columbia nor the names of its contributors may be
-// used to endorse or promote products derived from this software without
-// specific prior written permission.
+// 1. Redistributions of source code must retain the above copyright notice, this
+//    list of conditions and the following disclaimer;
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution;
+// 3. Neither the names of The University of British Columbia, Northwestern 
+//    University nor the names of their contributors may be used to
+//    endorse or promote products derived from this software without specific
+//    prior written permission.
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -25,6 +27,7 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
+
 
 #ifndef GPU_SIM_H
 #define GPU_SIM_H
@@ -68,6 +71,29 @@ extern tr1_hash_map<new_addr_type, unsigned> address_random_interleaving;
 
 enum dram_ctrl_t { DRAM_FIFO = 0, DRAM_FRFCFS = 1 };
 
+enum hw_perf_t {
+  HW_BENCH_NAME=0,
+  HW_KERNEL_NAME,
+  HW_L1_RH,
+  HW_L1_RM,
+  HW_L1_WH,
+  HW_L1_WM,
+  HW_CC_ACC,
+  HW_SHRD_ACC,
+  HW_DRAM_RD,
+  HW_DRAM_WR,
+  HW_L2_RH,
+  HW_L2_RM,
+  HW_L2_WH,
+  HW_L2_WM,
+  HW_NOC,
+  HW_PIPE_DUTY,
+  HW_NUM_SM_IDLE,
+  HW_CYCLES,
+  HW_VOLTAGE,
+  HW_TOTAL_STATS
+};
+
 struct power_config {
   power_config() { m_valid = true; }
   void init() {
@@ -82,7 +108,8 @@ struct power_config {
       s++;
     }
     char buf1[1024];
-    snprintf(buf1, 1024, "gpgpusim_power_report__%s.log", date);
+    //snprintf(buf1, 1024, "accelwattch_power_report__%s.log", date);
+    snprintf(buf1, 1024, "accelwattch_power_report.log");
     g_power_filename = strdup(buf1);
     char buf2[1024];
     snprintf(buf2, 1024, "gpgpusim_power_trace_report__%s.log.gz", date);
@@ -94,6 +121,9 @@ struct power_config {
     snprintf(buf4, 1024, "gpgpusim_steady_state_tracking_report__%s.log.gz",
              date);
     g_steady_state_tracking_filename = strdup(buf4);
+    // for(int i =0; i< hw_perf_t::HW_TOTAL_STATS; i++){
+    //   accelwattch_hybrid_configuration[i] = 0;
+    // }
 
     if (g_steady_power_levels_enabled) {
       sscanf(gpu_steady_state_definition, "%lf:%lf",
@@ -124,6 +154,14 @@ struct power_config {
   char *gpu_steady_state_definition;
   double gpu_steady_power_deviation;
   double gpu_steady_min_period;
+
+
+  char *g_hw_perf_file_name;
+  char *g_hw_perf_bench_name;
+  int g_power_simulation_mode;
+  bool g_dvfs_enabled;
+  bool g_aggregate_power_stats;
+  bool accelwattch_hybrid_configuration[hw_perf_t::HW_TOTAL_STATS];
 
   // Nonlinear power model
   bool g_use_nonlinear_model;
@@ -357,7 +395,7 @@ class gpgpu_sim_config : public power_config,
 
     m_valid = true;
   }
-
+  unsigned get_core_freq() const { return core_freq; }
   unsigned num_shader() const { return m_shader_config.num_shader(); }
   unsigned num_cluster() const { return m_shader_config.n_simt_clusters; }
   unsigned get_max_concurrent_kernel() const { return max_concurrent_kernel; }
@@ -527,6 +565,7 @@ class gpgpu_sim : public gpgpu_t {
   bool kernel_more_cta_left(kernel_info_t *kernel) const;
   bool hit_max_cta_count() const;
   kernel_info_t *select_kernel();
+  PowerscalingCoefficients *get_scaling_coeffs();
   void decrement_kernel_latency();
 
   const gpgpu_sim_config &get_config() const { return m_config; }
@@ -634,6 +673,7 @@ class gpgpu_sim : public gpgpu_t {
 
   std::string executed_kernel_info_string();  //< format the kernel information
                                               // into a string for stat printout
+  std::string executed_kernel_name();
   void clear_executed_kernel_info();  //< clear the kernel information after
                                       // stat printout
   virtual void createSIMTCluster() = 0;

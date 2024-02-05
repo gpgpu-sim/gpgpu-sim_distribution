@@ -435,7 +435,7 @@ std::string get_app_binary() {
 
 // above func gives abs path whereas this give just the name of application.
 char *get_app_binary_name(std::string abs_path) {
-  char *self_exe_path;
+  char *self_exe_path = NULL;
 #ifdef __APPLE__
   // TODO: get apple device and check the result.
   printf("WARNING: not tested for Apple-mac devices \n");
@@ -463,7 +463,11 @@ static int get_app_cuda_version() {
       "ldd " + get_app_binary() +
       " | grep libcudart.so | sed  's/.*libcudart.so.\\(.*\\) =>.*/\\1/' > " +
       fname;
-  system(app_cuda_version_command.c_str());
+  int res = system(app_cuda_version_command.c_str());
+  if(res == -1){
+    printf("Error - Cannot detect the app's CUDA version.\n");
+    exit(1);
+  }
   FILE *cmd = fopen(fname, "r");
   char buf[256];
   while (fgets(buf, sizeof(buf), cmd) != 0) {
@@ -1410,7 +1414,7 @@ cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlagsInternal(
   function_info *entry = context->get_kernel(hostFunc);
   printf(
       "Calculate Maxium Active Block with function ptr=%p, blockSize=%d, "
-      "SMemSize=%d\n",
+      "SMemSize=%lu\n",
       hostFunc, blockSize, dynamicSMemSize);
   if (flags == cudaOccupancyDefault) {
     // create kernel_info based on entry
@@ -3234,7 +3238,12 @@ char *readfile(const std::string filename) {
   fseek(fp, 0, SEEK_SET);
   // allocate and copy the entire ptx
   char *ret = (char *)malloc((filesize + 1) * sizeof(char));
-  fread(ret, 1, filesize, fp);
+  int num = fread(ret, 1, filesize, fp);
+  if(num == 0){
+        std::cout << "ERROR: Could not read data from file %s\n"
+              << filename << std::endl;
+    assert(0);
+  }
   ret[filesize] = '\0';
   fclose(fp);
   return ret;
@@ -3478,7 +3487,7 @@ void gpgpu_context::cuobjdumpParseBinary(unsigned int handle) {
     context->add_binary(symtab, handle);
     return;
   }
-  symbol_table *symtab;
+  symbol_table *symtab = NULL;
 
 #if (CUDART_VERSION >= 6000)
   // loops through all ptx files from smallest sm version to largest
@@ -3596,6 +3605,7 @@ unsigned CUDARTAPI __cudaPushCallConfiguration(dim3 gridDim, dim3 blockDim,
     announce_call(__my_func__);
   }
   cudaConfigureCallInternal(gridDim, blockDim, sharedMem, stream);
+  return 0;
 }
 
 cudaError_t CUDARTAPI __cudaPopCallConfiguration(dim3 *gridDim, dim3 *blockDim,

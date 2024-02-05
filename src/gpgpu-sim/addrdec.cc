@@ -519,7 +519,7 @@ void linear_to_raw_address_translation::sweep_test() const {
           h->second, raw_addr);
       abort();
     } else {
-      assert((int)tlx.chip < m_n_channel);
+      assert(tlx.chip < m_n_channel);
       // ensure that partition_address() returns the concatenated address
       if ((ADDR_CHIP_S != -1 and raw_addr >= (1ULL << ADDR_CHIP_S)) or
           (ADDR_CHIP_S == -1 and raw_addr >= (1ULL << addrdec_mklow[CHIP]))) {
@@ -584,7 +584,7 @@ unsigned next_powerOf2(unsigned n) {
   n = n - 1;
 
   // do till only one bit is left
-  while (n & n - 1) n = n & (n - 1);  // unset rightmost bit
+  while (n & (n - 1)) n = n & (n - 1);  // unset rightmost bit
 
   // n is now a power of two (less than n)
 

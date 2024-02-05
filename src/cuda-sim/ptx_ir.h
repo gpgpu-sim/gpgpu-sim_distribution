@@ -966,8 +966,8 @@ class ptx_instruction : public warp_inst_t {
   int get_pred_mod() const { return m_pred_mod; }
   const char *get_source() const { return m_source.c_str(); }
 
-  const std::list<int> get_scalar_type() const {return m_scalar_type;}
-  const std::list<int> get_options() const {return m_options;}
+  const std::list<int> get_scalar_type() const { return m_scalar_type; }
+  const std::list<int> get_options() const { return m_options; }
 
   typedef std::vector<operand_info>::const_iterator const_iterator;
 
@@ -1248,6 +1248,7 @@ class function_info {
   const ptx_version &get_ptx_version() const {
     return m_symtab->get_ptx_version();
   }
+  virtual ~function_info(){}
   unsigned get_sm_target() const { return m_symtab->get_sm_target(); }
   bool is_extern() const { return m_extern; }
   void set_name(const char *name) { m_name = name; }

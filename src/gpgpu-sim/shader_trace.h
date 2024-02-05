@@ -38,7 +38,7 @@
 #define SCHED_PRINT_STR SHADER_PRINT_STR "Scheduler %d - "
 #define SHADER_DTRACE(x) \
   (DTRACE(x) &&          \
-   (Trace::sampling_core == get_sid() || Trace::sampling_core == -1))
+   (Trace::sampling_core == (int)get_sid() || Trace::sampling_core == -1))
 
 // Intended to be called from inside components of a shader core.
 // Depends on a get_sid() function

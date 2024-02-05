@@ -1,18 +1,20 @@
-// Copyright (c) 2009-2011, Tor M. Aamodt, Inderpreet Singh, Timothy Rogers,
-// The University of British Columbia
+// Copyright (c) 2009-2021, Tor M. Aamodt, Inderpreet Singh, Timothy Rogers, Vijay Kandiah, Nikos Hardavellas, 
+// Mahmoud Khairy, Junrui Pan, Timothy G. Rogers
+// The University of British Columbia, Northwestern University, Purdue University
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 //
-// Redistributions of source code must retain the above copyright notice, this
-// list of conditions and the following disclaimer.
-// Redistributions in binary form must reproduce the above copyright notice,
-// this list of conditions and the following disclaimer in the documentation
-// and/or other materials provided with the distribution. Neither the name of
-// The University of British Columbia nor the names of its contributors may be
-// used to endorse or promote products derived from this software without
-// specific prior written permission.
+// 1. Redistributions of source code must retain the above copyright notice, this
+//    list of conditions and the following disclaimer;
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution;
+// 3. Neither the names of The University of British Columbia, Northwestern 
+//    University nor the names of their contributors may be used to
+//    endorse or promote products derived from this software without specific
+//    prior written permission.
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -25,6 +27,7 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
+
 
 #include "abstract_hardware_model.h"
 #include <sys/stat.h>
@@ -72,7 +75,7 @@ void checkpoint::load_global_mem(class memory_space *temp_mem, char *f1name) {
   FILE *fp2 = fopen(f1name, "r");
   assert(fp2 != NULL);
   char line[128]; /* or other suitable maximum line size */
-  unsigned int offset;
+  unsigned int offset = 0;
   while (fgets(line, sizeof line, fp2) != NULL) /* read a line */
   {
     unsigned int index;
@@ -205,8 +208,8 @@ gpgpu_t::gpgpu_t(const gpgpu_functional_sim_config &config, gpgpu_context *ctx)
   gpu_tot_sim_cycle = 0;
 }
 
-address_type line_size_based_tag_func(new_addr_type address,
-                                      new_addr_type line_size) {
+new_addr_type line_size_based_tag_func(new_addr_type address,
+                                       new_addr_type line_size) {
   // gives the tag for an address based on a given line size
   return address & ~(line_size - 1);
 }
@@ -281,14 +284,16 @@ void warp_inst_t::broadcast_barrier_reduction(
 void warp_inst_t::generate_mem_accesses() {
   if (empty() || op == MEMORY_BARRIER_OP || m_mem_accesses_created) return;
   if (!((op == LOAD_OP) || (op == TENSOR_CORE_LOAD_OP) || (op == STORE_OP) ||
-        (op == TENSOR_CORE_STORE_OP)))
+        (op == TENSOR_CORE_STORE_OP) ))
     return;
   if (m_warp_active_mask.count() == 0) return;  // predicated off
 
   const size_t starting_queue_size = m_accessq.size();
 
   assert(is_load() || is_store());
-  assert(m_per_scalar_thread_valid);  // need address information per thread
+
+  //if((space.get_type() != tex_space) && (space.get_type() != const_space))
+    assert(m_per_scalar_thread_valid);  // need address information per thread
 
   bool is_write = is_store();
 
@@ -448,7 +453,8 @@ void warp_inst_t::generate_mem_accesses() {
     for (unsigned thread = 0; thread < m_config->warp_size; thread++) {
       if (!active(thread)) continue;
       new_addr_type addr = m_per_scalar_thread[thread].memreqaddr[0];
-      unsigned block_address = line_size_based_tag_func(addr, cache_block_size);
+      new_addr_type block_address =
+          line_size_based_tag_func(addr, cache_block_size);
       accesses[block_address].set(thread);
       unsigned idx = addr - block_address;
       for (unsigned i = 0; i < data_size; i++) byte_mask.set(idx + i);
@@ -530,7 +536,8 @@ void warp_inst_t::memory_coalescing_arch(bool is_write,
            (m_per_scalar_thread[thread].memreqaddr[access] != 0);
            access++) {
         new_addr_type addr = m_per_scalar_thread[thread].memreqaddr[access];
-        unsigned block_address = line_size_based_tag_func(addr, segment_size);
+        new_addr_type block_address =
+            line_size_based_tag_func(addr, segment_size);
         unsigned chunk =
             (addr & 127) / 32;  // which 32-byte chunk within in a 128-byte
                                 // chunk does this thread access?
@@ -552,7 +559,8 @@ void warp_inst_t::memory_coalescing_arch(bool is_write,
         if (block_address != line_size_based_tag_func(
                                  addr + data_size_coales - 1, segment_size)) {
           addr = addr + data_size_coales - 1;
-          unsigned block_address = line_size_based_tag_func(addr, segment_size);
+          new_addr_type block_address =
+              line_size_based_tag_func(addr, segment_size);
           unsigned chunk = (addr & 127) / 32;
           transaction_info &info = subwarp_transactions[block_address];
           info.chunks.set(chunk);
@@ -625,7 +633,8 @@ void warp_inst_t::memory_coalescing_arch_atomic(bool is_write,
       if (!active(thread)) continue;
 
       new_addr_type addr = m_per_scalar_thread[thread].memreqaddr[0];
-      unsigned block_address = line_size_based_tag_func(addr, segment_size);
+      new_addr_type block_address =
+          line_size_based_tag_func(addr, segment_size);
       unsigned chunk =
           (addr & 127) / 32;  // which 32-byte chunk within in a 128-byte chunk
                               // does this thread access?
@@ -997,13 +1006,13 @@ void simt_stack::print(FILE *fout) const {
     }
     for (unsigned j = 0; j < m_warp_size; j++)
       fprintf(fout, "%c", (stack_entry.m_active_mask.test(j) ? '1' : '0'));
-    fprintf(fout, " pc: 0x%03x", stack_entry.m_pc);
+    fprintf(fout, " pc: 0x%03llx", stack_entry.m_pc);
     if (stack_entry.m_recvg_pc == (unsigned)-1) {
       fprintf(fout, " rp: ---- tp: %s cd: %2u ",
               (stack_entry.m_type == STACK_ENTRY_TYPE_CALL ? "C" : "N"),
               stack_entry.m_calldepth);
     } else {
-      fprintf(fout, " rp: %4u tp: %s cd: %2u ", stack_entry.m_recvg_pc,
+      fprintf(fout, " rp: %4llu tp: %s cd: %2u ", stack_entry.m_recvg_pc,
               (stack_entry.m_type == STACK_ENTRY_TYPE_CALL ? "C" : "N"),
               stack_entry.m_calldepth);
     }
@@ -1023,7 +1032,7 @@ void simt_stack::print_checkpoint(FILE *fout) const {
 
     for (unsigned j = 0; j < m_warp_size; j++)
       fprintf(fout, "%c ", (stack_entry.m_active_mask.test(j) ? '1' : '0'));
-    fprintf(fout, "%d %d %d %lld %d ", stack_entry.m_pc,
+    fprintf(fout, "%llu %d %llu %lld %d ", stack_entry.m_pc,
             stack_entry.m_calldepth, stack_entry.m_recvg_pc,
             stack_entry.m_branch_div_cycle, stack_entry.m_type);
     fprintf(fout, "%d %d\n", m_warp_id, m_warp_size);

@@ -1,19 +1,21 @@
-// Copyright (c) 2009-2011, Tor M. Aamodt, Ali Bakhoda, Wilson W.L. Fung,
-// George L. Yuan, Jimmy Kwa
-// The University of British Columbia
+// Copyright (c) 2009-2021, Tor M. Aamodt, Ali Bakhoda, Wilson W.L. Fung,
+// George L. Yuan, Jimmy Kwa, Vijay Kandiah, Nikos Hardavellas, 
+// Mahmoud Khairy, Junrui Pan, Timothy G. Rogers
+// The University of British Columbia, Northwestern University, Purdue University
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 //
-// Redistributions of source code must retain the above copyright notice, this
-// list of conditions and the following disclaimer.
-// Redistributions in binary form must reproduce the above copyright notice,
-// this list of conditions and the following disclaimer in the documentation
-// and/or other materials provided with the distribution. Neither the name of
-// The University of British Columbia nor the names of its contributors may be
-// used to endorse or promote products derived from this software without
-// specific prior written permission.
+// 1. Redistributions of source code must retain the above copyright notice, this
+//    list of conditions and the following disclaimer;
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution;
+// 3. Neither the names of The University of British Columbia, Northwestern 
+//    University nor the names of their contributors may be used to
+//    endorse or promote products derived from this software without specific
+//    prior written permission.
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -543,7 +545,7 @@ void gpgpu_t::gpu_memset(size_t dst_start_addr, int c, size_t count) {
 void cuda_sim::ptx_print_insn(address_type pc, FILE *fp) {
   std::map<unsigned, function_info *>::iterator f = g_pc_to_finfo.find(pc);
   if (f == g_pc_to_finfo.end()) {
-    fprintf(fp, "<no instruction at address 0x%x>", pc);
+    fprintf(fp, "<no instruction at address 0x%llx>", pc);
     return;
   }
   function_info *finfo = f->second;
@@ -557,7 +559,7 @@ std::string cuda_sim::ptx_get_insn_str(address_type pc) {
 #define STR_SIZE 255
     char buff[STR_SIZE];
     buff[STR_SIZE - 1] = '\0';
-    snprintf(buff, STR_SIZE, "<no instruction at address 0x%x>", pc);
+    snprintf(buff, STR_SIZE, "<no instruction at address 0x%llx>", pc);
     return std::string(buff);
   }
   function_info *finfo = f->second;
@@ -588,65 +590,119 @@ void ptx_instruction::set_fp_or_int_archop() {
       oprnd_type = INT_OP;
   }
 }
-void ptx_instruction::set_mul_div_or_other_archop() {
-  sp_op = OTHER_OP;
-  if ((m_opcode != MEMBAR_OP) && (m_opcode != SSY_OP) && (m_opcode != BRA_OP) &&
-      (m_opcode != BAR_OP) && (m_opcode != EXIT_OP) && (m_opcode != NOP_OP) &&
-      (m_opcode != RETP_OP) && (m_opcode != RET_OP) && (m_opcode != CALLP_OP) &&
-      (m_opcode != CALL_OP)) {
-    if (get_type() == F32_TYPE || get_type() == F64_TYPE ||
-        get_type() == FF64_TYPE) {
-      switch (get_opcode()) {
-        case MUL_OP:
-        case MAD_OP:
-          sp_op = FP_MUL_OP;
-          break;
-        case DIV_OP:
-          sp_op = FP_DIV_OP;
-          break;
-        case LG2_OP:
-          sp_op = FP_LG_OP;
-          break;
-        case RSQRT_OP:
-        case SQRT_OP:
-          sp_op = FP_SQRT_OP;
-          break;
-        case RCP_OP:
-          sp_op = FP_DIV_OP;
-          break;
-        case SIN_OP:
-        case COS_OP:
-          sp_op = FP_SIN_OP;
-          break;
-        case EX2_OP:
-          sp_op = FP_EXP_OP;
-          break;
-        default:
-          if ((op == ALU_OP) || (op == TENSOR_CORE_OP)) sp_op = FP__OP;
-          break;
+
+void ptx_instruction::set_mul_div_or_other_archop(){
+  sp_op=OTHER_OP;
+  if((m_opcode != MEMBAR_OP) && (m_opcode != SSY_OP) && (m_opcode != BRA_OP) && (m_opcode != BAR_OP) && (m_opcode != EXIT_OP) && (m_opcode != NOP_OP) && (m_opcode != RETP_OP) && (m_opcode != RET_OP) && (m_opcode != CALLP_OP) && (m_opcode != CALL_OP)){
+    if(get_type() == F64_TYPE || get_type() == FF64_TYPE){
+         switch(get_opcode()){
+            case MUL_OP:
+            case MAD_OP:
+            case FMA_OP:
+                sp_op=DP_MUL_OP;
+               break;
+            case DIV_OP:
+            case REM_OP:
+                sp_op=DP_DIV_OP;
+               break;
+            case RCP_OP:
+                sp_op=DP_DIV_OP;
+               break;
+            case LG2_OP:
+                sp_op=FP_LG_OP;
+               break;
+            case RSQRT_OP:
+            case SQRT_OP:
+                sp_op=FP_SQRT_OP;
+               break;            
+            case SIN_OP:
+            case COS_OP:
+                sp_op=FP_SIN_OP;
+               break;
+            case EX2_OP:
+                sp_op=FP_EXP_OP;
+               break;
+            case MMA_OP:
+                sp_op=TENSOR__OP;
+            break;
+            case TEX_OP:
+                sp_op=TEX__OP;
+            break;
+            default:
+               if((op==DP_OP) || (op==ALU_OP))
+                  sp_op=DP___OP;
+               break;
+         }
       }
-    } else {
-      switch (get_opcode()) {
-        case MUL24_OP:
-        case MAD24_OP:
-          sp_op = INT_MUL24_OP;
-          break;
-        case MUL_OP:
-        case MAD_OP:
-          if (get_type() == U32_TYPE || get_type() == S32_TYPE ||
-              get_type() == B32_TYPE)
-            sp_op = INT_MUL32_OP;
-          else
-            sp_op = INT_MUL_OP;
-          break;
-        case DIV_OP:
-          sp_op = INT_DIV_OP;
-          break;
-        default:
-          if ((op == ALU_OP)) sp_op = INT__OP;
-          break;
+      else if(get_type()==F16_TYPE || get_type()==F32_TYPE){
+         switch(get_opcode()){
+            case MUL_OP:
+            case MAD_OP:
+            case FMA_OP:
+                sp_op=FP_MUL_OP;
+               break;
+            case DIV_OP:
+            case REM_OP:
+                sp_op=FP_DIV_OP;
+               break;
+            case RCP_OP:
+                sp_op=FP_DIV_OP;
+               break;
+            case LG2_OP:
+                sp_op=FP_LG_OP;
+               break;
+            case RSQRT_OP:
+            case SQRT_OP:
+                sp_op=FP_SQRT_OP;
+               break;            
+            case SIN_OP:
+            case COS_OP:
+                sp_op=FP_SIN_OP;
+               break;
+            case EX2_OP:
+                sp_op=FP_EXP_OP;
+               break;
+            case MMA_OP:
+                sp_op=TENSOR__OP;
+            break;
+            case TEX_OP:
+                sp_op=TEX__OP;
+            break;
+            default:
+               if((op==SP_OP) || (op==ALU_OP))
+                  sp_op=FP__OP;
+               break;
+         }
+      }else {
+         switch(get_opcode()){
+            case MUL24_OP:
+            case MAD24_OP:
+                sp_op=INT_MUL24_OP;
+            break;
+            case MUL_OP:
+            case MAD_OP:
+            case FMA_OP:
+               if(get_type()==U32_TYPE || get_type()==S32_TYPE || get_type()==B32_TYPE)
+                   sp_op=INT_MUL32_OP;
+               else
+                   sp_op=INT_MUL_OP;
+            break;
+            case DIV_OP:
+            case REM_OP:
+                sp_op=INT_DIV_OP;
+            break;
+            case MMA_OP:
+                sp_op=TENSOR__OP;
+            break;
+            case TEX_OP:
+                sp_op=TEX__OP;
+            break;
+            default:
+               if((op==INTP_OP) || (op==ALU_OP))
+                   sp_op=INT__OP;
+               break;
+         }
       }
-    }
   }
 }
 
@@ -880,6 +936,7 @@ void ptx_instruction::set_opcode_and_latency() {
     case MAD_OP:
     case MADC_OP:
     case MADP_OP:
+    case FMA_OP:
       // MAD latency
       switch (get_type()) {
         case F32_TYPE:
@@ -903,7 +960,18 @@ void ptx_instruction::set_opcode_and_latency() {
           break;
       }
       break;
+    case MUL24_OP: //MUL24 is performed on mul32 units (with additional instructions for bitmasking) on devices with compute capability >1.x
+      latency = int_latency[2]+1;
+      initiation_interval = int_init[2]+1;
+      op = INTP_OP;
+      break;
+    case MAD24_OP:
+      latency = int_latency[3]+1;
+      initiation_interval = int_init[3]+1;
+      op = INTP_OP;
+      break;
     case DIV_OP:
+    case REM_OP:
       // Floating point only
       op = SFU_OP;
       switch (get_type()) {
@@ -1304,7 +1372,7 @@ void function_info::add_param_data(unsigned argn,
       unsigned num_bits = 8 * args->m_nbytes;
       printf(
           "GPGPU-Sim PTX: deferred allocation of shared region for \"%s\" from "
-          "0x%x to 0x%x (shared memory space)\n",
+          "0x%llx to 0x%llx (shared memory space)\n",
           p->name().c_str(), m_symtab->get_shared_next(),
           m_symtab->get_shared_next() + num_bits / 8);
       fflush(stdout);
@@ -1435,7 +1503,7 @@ void function_info::list_param(FILE *fout) const {
     std::string name = p.get_name();
     symbol *param = m_symtab->lookup(name.c_str());
     addr_t param_addr = param->get_address();
-    fprintf(fout, "%s: %#08x\n", name.c_str(), param_addr);
+    fprintf(fout, "%s: %#08llx\n", name.c_str(), param_addr);
   }
   fflush(fout);
 }
@@ -1463,9 +1531,13 @@ void function_info::ptx_jit_config(
   std::string filename_c(filename + "_c");
   snprintf(buff, 1024, "c++filt %s > %s", get_name().c_str(),
            filename_c.c_str());
-  assert(system(buff) != NULL);
+  assert(system(buff) != 0);
   FILE *fp = fopen(filename_c.c_str(), "r");
-  fgets(buff, 1024, fp);
+  char * ptr = fgets(buff, 1024, fp);
+  if(ptr == NULL ){
+          printf("can't read file %s \n", filename_c.c_str());
+          assert(0);
+  }
   fclose(fp);
   std::string fn(buff);
   size_t pos1, pos2;
@@ -1809,7 +1881,7 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
       dim3 tid = get_tid();
       printf(
           "%u [thd=%u][i=%u] : ctaid=(%u,%u,%u) tid=(%u,%u,%u) icount=%u "
-          "[pc=%u] (%s:%u - %s)  [0x%llx]\n",
+          "[pc=%llu] (%s:%u - %s)  [0x%llx]\n",
           m_gpu->gpgpu_ctx->func_sim->g_ptx_sim_num_insn, get_uid(), pI->uid(),
           ctaid.x, ctaid.y, ctaid.z, tid.x, tid.y, tid.z, get_icount(), pc,
           pI->source_file(), pI->source_line(), pI->get_source(),
@@ -2308,7 +2380,7 @@ void cuda_sim::read_sim_environment_variables() {
         "%s\n",
         dbg_pc);
     fflush(stdout);
-    sscanf(dbg_pc, "%d", &g_debug_pc);
+    sscanf(dbg_pc, "%llu", &g_debug_pc);
   }
 
 #if CUDART_VERSION > 1010
