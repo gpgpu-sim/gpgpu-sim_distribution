@@ -904,7 +904,7 @@ void shader_core_ctx::decode() {
         m_warp[m_inst_fetch_buffer.m_warp_id]->ibuffer_fill(1, pI2);
         m_warp[m_inst_fetch_buffer.m_warp_id]->inc_inst_in_pipeline();
         m_stats->m_num_decoded_insn[m_sid]++;
-        if ((pI1->oprnd_type == INT_OP) || (pI1->oprnd_type == UN_OP))  { //these counters get added up in mcPat to compute scheduler power
+        if ((pI2->oprnd_type == INT_OP) || (pI2->oprnd_type == UN_OP))  { //these counters get added up in mcPat to compute scheduler power
           m_stats->m_num_INTdecoded_insn[m_sid]++;
         } else if (pI2->oprnd_type == FP_OP) {
           m_stats->m_num_FPdecoded_insn[m_sid]++;
