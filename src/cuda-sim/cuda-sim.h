@@ -101,8 +101,8 @@ class functionalCoreSim : public core_t {
   bool *m_warpAtBarrier;
 };
 
-#define RECONVERGE_RETURN_PC ((address_type)-2)
-#define NO_BRANCH_DIVERGENCE ((address_type)-1)
+#define RECONVERGE_RETURN_PC ((address_type) - 2)
+#define NO_BRANCH_DIVERGENCE ((address_type) - 1)
 address_type get_return_pc(void *thd);
 const char *get_ptxinfo_kname();
 void print_ptxinfo();

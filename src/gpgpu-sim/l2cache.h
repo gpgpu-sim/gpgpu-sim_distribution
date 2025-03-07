@@ -106,9 +106,7 @@ class memory_partition_unit {
 
   unsigned get_mpid() const { return m_id; }
 
-  class gpgpu_sim *get_mgpu() const {
-    return m_gpu;
-  }
+  class gpgpu_sim *get_mgpu() const { return m_gpu; }
 
  private:
   unsigned m_id;

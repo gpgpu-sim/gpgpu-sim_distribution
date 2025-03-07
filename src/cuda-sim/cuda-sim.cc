@@ -2782,9 +2782,7 @@ void print_ptxinfo() {
   }
 }
 
-struct gpgpu_ptx_sim_info get_ptxinfo() {
-  return g_ptxinfo;
-}
+struct gpgpu_ptx_sim_info get_ptxinfo() { return g_ptxinfo; }
 
 std::map<unsigned, const char *> get_duplicate() { return g_duplicate; }
 
@@ -2800,6 +2798,8 @@ void ptxinfo_function(const char *fname) {
 }
 
 void ptxinfo_regs(unsigned nregs) { g_ptxinfo.regs = nregs; }
+
+void ptxinfo_barriers(unsigned barriers) { g_ptxinfo.barriers = barriers; }
 
 void ptxinfo_lmem(unsigned declared, unsigned system) {
   g_ptxinfo.lmem = declared + system;

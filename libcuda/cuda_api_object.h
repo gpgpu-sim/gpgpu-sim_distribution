@@ -35,9 +35,7 @@ struct _cuda_device_id {
     m_next = NULL;
     m_gpgpu = gpu;
   }
-  struct _cuda_device_id *next() {
-    return m_next;
-  }
+  struct _cuda_device_id *next() { return m_next; }
   unsigned num_shader() const { return m_gpgpu->get_config().num_shader(); }
   int num_devices() const {
     if (m_next == NULL)
@@ -158,9 +156,7 @@ class kernel_config {
   void set_grid_dim(dim3 *d) { m_GridDim = *d; }
   void set_block_dim(dim3 *d) { m_BlockDim = *d; }
   gpgpu_ptx_sim_arg_list_t get_args() { return m_args; }
-  struct CUstream_st *get_stream() {
-    return m_stream;
-  }
+  struct CUstream_st *get_stream() { return m_stream; }
 
  private:
   dim3 m_GridDim;

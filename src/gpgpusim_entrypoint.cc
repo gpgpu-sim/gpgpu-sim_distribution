@@ -56,7 +56,9 @@ class stream_manager *g_stream_manager() {
 
 // SST callback
 extern void SST_callback_cudaThreadSynchronize_done();
+extern void SST_callback_cudaStreamSynchronize_done(cudaStream_t stream);
 __attribute__((weak)) void SST_callback_cudaThreadSynchronize_done() {}
+__attribute__((weak)) void SST_callback_cudaStreamSynchronize_done(cudaStream_t stream) {}
 
 void *gpgpu_sim_thread_sequential(void *ctx_ptr) {
   gpgpu_context *ctx = (gpgpu_context *)ctx_ptr;
@@ -100,8 +102,7 @@ void *gpgpu_sim_thread_concurrent(void *ctx_ptr) {
       fflush(stdout);
     }
     while (ctx->the_gpgpusim->g_stream_manager->empty_protected() &&
-           !ctx->the_gpgpusim->g_sim_done)
-      ;
+           !ctx->the_gpgpusim->g_sim_done);
     if (g_debug_execution >= 3) {
       printf("GPGPU-Sim: ** START simulation thread (detected work) **\n");
       ctx->the_gpgpusim->g_stream_manager->print(stdout);
@@ -190,10 +191,31 @@ bool SST_Cycle() {
   // Check if Synchronize is done when SST previously requested
   // cudaThreadSynchronize
   if (GPGPU_Context()->requested_synchronize &&
-      ((g_stream_manager()->empty() && !GPGPUsim_ctx_ptr()->g_sim_active) ||
+      ((g_stream_manager()->empty_protected() && !GPGPUsim_ctx_ptr()->g_sim_active) ||
        GPGPUsim_ctx_ptr()->g_sim_done)) {
     SST_callback_cudaThreadSynchronize_done();
     GPGPU_Context()->requested_synchronize = false;
+  }
+
+  // Polling to check for each stream if it is marked for requested with sync
+  if (g_stream_manager()->get_stream_zero()->requested_synchronize() &&
+      ((g_stream_manager()->empty_protected() && !GPGPUsim_ctx_ptr()->g_sim_active) || 
+      GPGPUsim_ctx_ptr()->g_sim_done)) {
+    SST_callback_cudaStreamSynchronize_done(0);
+    g_stream_manager()->get_stream_zero()->reset_request_synchronize();
+  }
+
+  // Iterate through each stream to check if SST is waiting on
+  // it and it does not have any operation
+  std::list<CUstream_st *>& streams = g_stream_manager()->get_concurrent_streams();
+  for (auto it = streams.begin(); it != streams.end(); it++) {
+    CUstream_st *stream = *it;
+    if (stream->requested_synchronize() &&
+        stream->empty()) {
+      // This stream is ready
+      SST_callback_cudaStreamSynchronize_done(stream);
+      stream->reset_request_synchronize();
+    }
   }
 
   if (g_stream_manager()->empty_protected() &&
@@ -273,7 +295,6 @@ void gpgpu_context::synchronize() {
 
 bool gpgpu_context::synchronize_check() {
   // printf("GPGPU-Sim: synchronize checking for inactive GPU simulation\n");
-  requested_synchronize = true;
   the_gpgpusim->g_stream_manager->print(stdout);
   fflush(stdout);
   //    sem_wait(&g_sim_signal_finish);

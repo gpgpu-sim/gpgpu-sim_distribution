@@ -32,11 +32,11 @@
 #ifndef GPU_SIM_H
 #define GPU_SIM_H
 
+#include <stdint.h>
 #include <stdio.h>
 #include <fstream>
 #include <iostream>
 #include <list>
-#include <stdint.h>
 #include "../abstract_hardware_model.h"
 #include "../option_parser.h"
 #include "../trace.h"
@@ -879,7 +879,7 @@ class sst_gpgpu_sim : public gpgpu_sim {
    * @param dst_start_addr
    * @param count
    */
-  void perf_memcpy_to_gpu(size_t dst_start_addr, size_t count){};
+  void perf_memcpy_to_gpu(size_t dst_start_addr, size_t count) {};
 
   /**
    * @brief Check if the SST config matches up with the

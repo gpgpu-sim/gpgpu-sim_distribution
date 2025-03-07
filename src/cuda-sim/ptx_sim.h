@@ -340,9 +340,7 @@ class ptx_thread_info {
   dim3 get_ctaid() const { return m_ctaid; }
   dim3 get_tid() const { return m_tid; }
   dim3 get_ntid() const { return m_ntid; }
-  class gpgpu_sim *get_gpu() {
-    return (gpgpu_sim *)m_gpu;
-  }
+  class gpgpu_sim *get_gpu() { return (gpgpu_sim *)m_gpu; }
   unsigned get_hw_tid() const { return m_hw_tid; }
   unsigned get_hw_ctaid() const { return m_hw_ctaid; }
   unsigned get_hw_wid() const { return m_hw_wid; }

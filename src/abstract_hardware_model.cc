@@ -216,20 +216,20 @@ new_addr_type line_size_based_tag_func(new_addr_type address,
   return address & ~(line_size - 1);
 }
 
-const char *mem_access_type_str(enum mem_access_type access_type) {
+const char *mem_access_type_str(enum mem_access_type access_type){
 #define MA_TUP_BEGIN(X) static const char *access_type_str[] = {
 #define MA_TUP(X) #X
 #define MA_TUP_END(X) \
   }                   \
   ;
-  MEM_ACCESS_TYPE_TUP_DEF
+    MEM_ACCESS_TYPE_TUP_DEF
 #undef MA_TUP_BEGIN
 #undef MA_TUP
 #undef MA_TUP_END
 
-  assert(access_type < NUM_MEM_ACCESS_TYPE);
+        assert(access_type < NUM_MEM_ACCESS_TYPE);
 
-  return access_type_str[access_type];
+return access_type_str[access_type];
 }
 
 void warp_inst_t::clear_active(const active_mask_t &inactive) {

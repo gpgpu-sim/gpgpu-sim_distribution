@@ -34,7 +34,7 @@
 #include "mem_latency_stat.h"
 #include "power_stat.h"
 #include "shader.h"
-//#include "../../../mcpat/processor.h"
+// #include "../../../mcpat/processor.h"
 #include "gpu-cache.h"
 #include "stat-tool.h"
 

@@ -58,6 +58,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 "Compiling entry function"	TC; return FUNC;
 "Used"		TC; return USED;
 "registers"	TC; return REGS;
+"used"		TC; return USED;
+"barriers"	TC; return REGS;
 "bytes"		TC; return BYTES;
 "lmem"		TC; return LMEM;
 "smem"		TC; return SMEM;
@@ -65,11 +67,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 "gmem"		TC; return GMEM;
 "line"		TC; return LINE;
 "for"		TC; return FOR;
+"ms"		TC; return MS;
 "textures"	TC; return TEXTURES;
 "error   : Duplicate definition of"	TC; return DUPLICATE;
 "function"	TC; yylval->string_value = strdup(yytext); return FUNCTION;
 "variable"	TC; yylval->string_value = strdup(yytext); return VARIABLE;
 "fatal   : Ptx assembly aborted due to errors"	TC; return FATAL;
+"Compile time = "	TC; return COMPILETIME;
 
 [_A-Za-z$%][_0-9A-Za-z$]*  TC; yylval->string_value = strdup(yytext); return IDENTIFIER;
 [-]{0,1}[0-9]+	 TC; yylval->int_value =  atoi(yytext); return INT_OPERAND;
@@ -79,6 +83,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 "["     TC; return LEFT_SQUARE_BRACKET;
 "]"	TC; return RIGHT_SQUARE_BRACKET;
 ":"	TC; return COLON;
+"."	TC; return PERIOD;
 ";"	TC; return SEMICOLON;
 "'"	TC; return QUOTE;
 " " TC;

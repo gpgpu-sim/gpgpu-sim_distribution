@@ -85,10 +85,10 @@
 #endif
 #include "xmlParser.h"
 #ifdef _XMLWINDOWS
-//#ifdef _DEBUG
-//#define _CRTDBG_MAP_ALLOC
-//#include <crtdbg.h>
-//#endif
+// #ifdef _DEBUG
+// #define _CRTDBG_MAP_ALLOC
+// #include <crtdbg.h>
+// #endif
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>  // to have IsTextUnicode, MultiByteToWideChar, WideCharToMultiByte to handle unicode files
 // to have "MessageBoxA" to display error messages for openFilHelper
@@ -3241,7 +3241,7 @@ XMLSTR XMLParserBase64Tool::encode(unsigned char *inbuf, unsigned int inlen,
     *(curr++) = base64EncodeTable[j >> 18];
     *(curr++) = base64EncodeTable[(j >> 12) & 0x3f];
     *(curr++) = base64EncodeTable[(j >> 6) & 0x3f];
-    *(curr++) = base64EncodeTable[(j)&0x3f];
+    *(curr++) = base64EncodeTable[(j) & 0x3f];
     if (formatted) {
       if (!k) {
         *(curr++) = _CXML('\n');

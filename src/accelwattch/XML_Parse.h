@@ -40,9 +40,9 @@
 #ifndef XML_PARSE_H_
 #define XML_PARSE_H_
 
-//#ifdef WIN32
-//#define _CRT_SECURE_NO_DEPRECATE
-//#endif
+// #ifdef WIN32
+// #define _CRT_SECURE_NO_DEPRECATE
+// #endif
 
 #include <stdio.h>
 #include <string.h>

@@ -664,24 +664,22 @@ void Processor::displayDeviceType(int device_type_, uint32_t indent) {
 
   switch (device_type_) {
     case 0:
-      cout << indent_str << "Device Type= "
-           << "ITRS high performance device type" << endl;
+      cout << indent_str
+           << "Device Type= " << "ITRS high performance device type" << endl;
       break;
     case 1:
-      cout << indent_str << "Device Type= "
-           << "ITRS low standby power device type" << endl;
+      cout << indent_str
+           << "Device Type= " << "ITRS low standby power device type" << endl;
       break;
     case 2:
-      cout << indent_str << "Device Type= "
-           << "ITRS low operating power device type" << endl;
+      cout << indent_str
+           << "Device Type= " << "ITRS low operating power device type" << endl;
       break;
     case 3:
-      cout << indent_str << "Device Type= "
-           << "LP-DRAM device type" << endl;
+      cout << indent_str << "Device Type= " << "LP-DRAM device type" << endl;
       break;
     case 4:
-      cout << indent_str << "Device Type= "
-           << "COMM-DRAM device type" << endl;
+      cout << indent_str << "Device Type= " << "COMM-DRAM device type" << endl;
       break;
     default: {
       cout << indent_str << "Unknown Device Type" << endl;

@@ -56,9 +56,17 @@ debug_tools/WatchYourStep/ptxjitplus/gpgpu*
 debug_tools/WatchYourStep/ptxjitplus/*.old
 debug_tools/WatchYourStep/ptxjitplus/ptxjitplus
 debug_tools/WatchYourStep/ptxjitplus/*.ptx
+*.tmp
 
 # Accel-sim packages used for regressions
 accel-sim-framework/
 gpu-app-collection/
 
 setup
+
+# OS/IDE specific files
+.idea/
+.vscode/
+.DS_Store
+.DS_store
+__pycache__/

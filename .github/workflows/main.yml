@@ -18,7 +18,7 @@ jobs:
   build-TITANV:
     runs-on: ubuntu-latest
     container:
-      image: tgrogers/accel-sim_regress:Ubuntu-22.04-cuda-11.7
+      image: ghcr.io/accel-sim/accel-sim-framework:ubuntu-24.04-cuda-12.8
       env:
         CONFIG: TITANV
         
@@ -32,7 +32,7 @@ jobs:
   build-TITANV-LOCALXBAR:
     runs-on: ubuntu-latest
     container:
-      image: tgrogers/accel-sim_regress:Ubuntu-22.04-cuda-11.7
+      image: ghcr.io/accel-sim/accel-sim-framework:ubuntu-24.04-cuda-12.8
       env:
         CONFIG: TITANV-LOCALXBAR
         
@@ -46,7 +46,7 @@ jobs:
   build-QV100:
     runs-on: ubuntu-latest
     container:
-      image: tgrogers/accel-sim_regress:Ubuntu-22.04-cuda-11.7
+      image: ghcr.io/accel-sim/accel-sim-framework:ubuntu-24.04-cuda-12.8
       env:
         CONFIG: QV100
         
@@ -60,7 +60,7 @@ jobs:
   build-2060:
     runs-on: ubuntu-latest
     container:
-      image: tgrogers/accel-sim_regress:Ubuntu-22.04-cuda-11.7
+      image: ghcr.io/accel-sim/accel-sim-framework:ubuntu-24.04-cuda-12.8
       env:
         CONFIG: RTX2060
         
@@ -74,7 +74,7 @@ jobs:
   build-3070:
     runs-on: ubuntu-latest
     container:
-      image: tgrogers/accel-sim_regress:Ubuntu-22.04-cuda-11.7
+      image: ghcr.io/accel-sim/accel-sim-framework:ubuntu-24.04-cuda-12.8
       env:
         CONFIG: RTX3070
         

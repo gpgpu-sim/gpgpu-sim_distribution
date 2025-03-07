@@ -49,6 +49,8 @@ typedef void * yyscan_t;
 %token FUNC
 %token USED
 %token REGS
+%token BARRIERS
+%token COMPILETIME
 %token BYTES
 %token LMEM
 %token SMEM
@@ -70,6 +72,8 @@ typedef void * yyscan_t;
 %token <string_value> FUNCTION
 %token <string_value> VARIABLE
 %token FATAL
+%token PERIOD
+%token MS
 
 %{
 	#include <stdlib.h>
@@ -81,6 +85,7 @@ typedef void * yyscan_t;
 	void yyerror(yyscan_t yyscanner, ptxinfo_data* ptxinfo, const char* msg);
 	void ptxinfo_function(const char *fname );
 	void ptxinfo_regs( unsigned nregs );
+	void ptxinfo_barriers( unsigned barriers );
 	void ptxinfo_lmem( unsigned declared, unsigned system );
 	void ptxinfo_gmem( unsigned declared, unsigned system );
 	void ptxinfo_smem( unsigned declared, unsigned system );
@@ -126,8 +131,10 @@ info: 	  USED INT_OPERAND REGS { ptxinfo_regs($2); }
 	| INT_OPERAND BYTES LMEM { ptxinfo_lmem($1,0); }
 	| INT_OPERAND BYTES SMEM { ptxinfo_smem($1,0); }
 	| INT_OPERAND BYTES CMEM { ptxinfo_cmem($1,0); }
+	| USED INT_OPERAND BARRIERS { ptxinfo_barriers($2); }
 	| INT_OPERAND REGS { ptxinfo_regs($1); }
 	| INT_OPERAND TEXTURES {}
+	| COMPILETIME INT_OPERAND PERIOD INT_OPERAND MS {}
 	;
 
 tuple: INT_OPERAND PLUS INT_OPERAND BYTES { g_declared=$1; g_system=$3; }

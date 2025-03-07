@@ -39,7 +39,7 @@
 #include <string>
 #include <vector>
 
-//#include "ptx.tab.h"
+// #include "ptx.tab.h"
 #include "ptx_sim.h"
 
 #include "memory.h"

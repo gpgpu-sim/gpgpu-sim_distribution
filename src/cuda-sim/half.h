@@ -846,10 +846,8 @@ uint16 int2half_impl(T value) {
       bits |= 0x7BFF + (R != std::round_toward_zero);
   } else if (value) {
     unsigned int m = value, exp = 24;
-    for (; m < 0x400; m <<= 1, --exp)
-      ;
-    for (; m > 0x7FF; m >>= 1, ++exp)
-      ;
+    for (; m < 0x400; m <<= 1, --exp);
+    for (; m > 0x7FF; m >>= 1, ++exp);
     bits |= (exp << 10) + m;
     if (exp > 24) {
       if (R == std::round_to_nearest)
@@ -1274,8 +1272,7 @@ inline double half2float_impl(uint16 value, double, true_type) {
   int abs = value & 0x7FFF;
   if (abs) {
     hi |= 0x3F000000 << static_cast<unsigned>(abs >= 0x7C00);
-    for (; abs < 0x400; abs <<= 1, hi -= 0x100000)
-      ;
+    for (; abs < 0x400; abs <<= 1, hi -= 0x100000);
     hi += static_cast<uint32>(abs) << 10;
   }
   uint64 bits = static_cast<uint64>(hi) << 32;
@@ -2116,8 +2113,7 @@ struct functions {
   static half frexp(half arg, int *exp) {
     int m = arg.data_ & 0x7FFF, e = -14;
     if (m >= 0x7C00 || !m) return *exp = 0, arg;
-    for (; m < 0x400; m <<= 1, --e)
-      ;
+    for (; m < 0x400; m <<= 1, --e);
     return *exp = e + (m >> 10),
            half(binary, (arg.data_ & 0x8000) | 0x3800 | (m & 0x3FF));
   }
@@ -2135,8 +2131,7 @@ struct functions {
     unsigned int mask = (1 << (25 - e)) - 1, m = arg.data_ & mask;
     iptr->data_ = arg.data_ & ~mask;
     if (!m) return half(binary, arg.data_ & 0x8000);
-    for (; m < 0x400; m <<= 1, --e)
-      ;
+    for (; m < 0x400; m <<= 1, --e);
     return half(binary, static_cast<uint16>((arg.data_ & 0x8000) | (e << 10) |
                                             (m & 0x3FF)));
   }
@@ -2148,8 +2143,7 @@ struct functions {
   static half scalbln(half arg, long exp) {
     unsigned int m = arg.data_ & 0x7FFF;
     if (m >= 0x7C00 || !m) return arg;
-    for (; m < 0x400; m <<= 1, --exp)
-      ;
+    for (; m < 0x400; m <<= 1, --exp);
     exp += m >> 10;
     uint16 value = arg.data_ & 0x8000;
     if (exp > 30) {
@@ -2191,8 +2185,7 @@ struct functions {
     if (abs < 0x7C00) {
       int exp = (abs >> 10) - 15;
       if (abs < 0x400)
-        for (; abs < 0x200; abs <<= 1, --exp)
-          ;
+        for (; abs < 0x200; abs <<= 1, --exp);
       return exp;
     }
     if (abs > 0x7C00) return FP_ILOGBNAN;
@@ -2208,13 +2201,11 @@ struct functions {
     if (abs < 0x7C00) {
       int exp = (abs >> 10) - 15;
       if (abs < 0x400)
-        for (; abs < 0x200; abs <<= 1, --exp)
-          ;
+        for (; abs < 0x200; abs <<= 1, --exp);
       uint16 bits = (exp < 0) << 15;
       if (exp) {
         unsigned int m = std::abs(exp) << 6, e = 18;
-        for (; m < 0x400; m <<= 1, --e)
-          ;
+        for (; m < 0x400; m <<= 1, --e);
         bits |= (e << 10) + m;
       }
       return half(binary, bits);

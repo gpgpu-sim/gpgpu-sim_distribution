@@ -47,38 +47,39 @@
 #include "const.h"
 #include "io.h"
 #include "parameter.h"
-//#include "globalvar.h"
-// double exClockRate;
+// #include "globalvar.h"
+//  double exClockRate;
 //*********************
-// Operand collector (OC) modelling (Syed Gilani)
+//  Operand collector (OC) modelling (Syed Gilani)
 //*********************
-// The OCs are modelled similar to the GPGPU-Sim v3.x documentation and
-// nVIDIA patents.
-// the OC need the following GPGPU-Sim config options:
+//  The OCs are modelled similar to the GPGPU-Sim v3.x documentation and
+//  nVIDIA patents.
+//  the OC need the following GPGPU-Sim config options:
 //-gpgpu_num_reg_banks                    8 # Number of register banks (default
 //= 8) -gpgpu_reg_bank_use_warp_id                    0 # Use warp ID in mapping
-// registers to banks (default = off) -gpgpu_operand_collector_num_units_sp 6 #
-// number of collector units (default = 4)
-// -gpgpu_operand_collector_num_units_sfu 8 # number of collector units (default
-// = 4) -gpgpu_operand_collector_num_units_mem                    2 # number of
-// collector units (default = 2) -gpgpu_operand_collector_num_units_gen 0 #
-// number of collector units (default = 0)
+//  registers to banks (default = off) -gpgpu_operand_collector_num_units_sp 6 #
+//  number of collector units (default = 4)
+//  -gpgpu_operand_collector_num_units_sfu 8 # number of collector units
+//  (default = 4) -gpgpu_operand_collector_num_units_mem                    2 #
+//  number of collector units (default = 2)
+//  -gpgpu_operand_collector_num_units_gen 0 # number of collector units
+//  (default = 0)
 //-gpgpu_operand_collector_num_in_ports_sp                    1 # number of
-// collector unit in ports (default = 1)
+//  collector unit in ports (default = 1)
 //-gpgpu_operand_collector_num_in_ports_sfu                    1 # number of
-// collector unit in ports (default = 1)
+//  collector unit in ports (default = 1)
 //-gpgpu_operand_collector_num_in_ports_mem                    1 # number of
-// collector unit in ports (default = 1)
+//  collector unit in ports (default = 1)
 //-gpgpu_operand_collector_num_in_ports_gen                    0 # number of
-// collector unit in ports (default = 0)
+//  collector unit in ports (default = 0)
 //-gpgpu_operand_collector_num_out_ports_sp                    1 # number of
-// collector unit in ports (default = 1)
+//  collector unit in ports (default = 1)
 //-gpgpu_operand_collector_num_out_ports_sfu                    1 # number of
-// collector unit in ports (default = 1)
+//  collector unit in ports (default = 1)
 //-gpgpu_operand_collector_num_out_ports_mem                    1 # number of
-// collector unit in ports (default = 1)
+//  collector unit in ports (default = 1)
 //-gpgpu_operand_collector_num_out_ports_gen                    0 # number of
-// collector unit in ports (default = 0)
+//  collector unit in ports (default = 0)
 
 // The total number of collector units and their input ports, and the number of
 // register file banks determine the crossbar size.
@@ -1837,7 +1838,7 @@ MemManU::MemManU(ParseXML* XML_interface, int ithCore_,
   area.set_area(area.get_area() + dtlb->local_result.area);
   // output_data_csv(dtlb.tlb.local_result);
 }
-//#define FERMI
+// #define FERMI
 
 RegFU::RegFU(ParseXML* XML_interface, int ithCore_,
              InputParameter* interface_ip_, const CoreDynParam& dyn_p_,
@@ -2194,7 +2195,7 @@ EXECU::EXECU(ParseXML* XML_interface, int ithCore_,
             bypass.area.set_area(bypass.area.get_area()
     +fpTagBypass->area.get_area());
     }*/
-  }       /* if (coredynp.core_ty==Inorder) */
+  } /* if (coredynp.core_ty==Inorder) */
   else {  // OOO
     if (coredynp.scheu_ty == PhysicalRegFile) {
       /* For physical register based OOO,

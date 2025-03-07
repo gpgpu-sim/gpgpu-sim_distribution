@@ -656,7 +656,7 @@ FunctionalUnit::FunctionalUnit(ParseXML *XML_interface, int ithCore_,
     }
     per_access_energy *= 0.5;  // According to ARM data embedded processor has
                                // much lower per acc energy
-  }                            /* if (XML->sys.Embedded) */
+  } /* if (XML->sys.Embedded) */
   else {
     if (fu_type == FPU) {
       num_fu = coredynp.num_fpus;

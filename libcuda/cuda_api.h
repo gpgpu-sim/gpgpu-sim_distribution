@@ -2607,12 +2607,12 @@ typedef struct CUDA_EXTERNAL_SEMAPHORE_WAIT_PARAMS_st {
 /**
  * Device that represents the CPU
  */
-#define CU_DEVICE_CPU ((CUdevice)-1)
+#define CU_DEVICE_CPU ((CUdevice) - 1)
 
 /**
  * Device that represents an invalid device
  */
-#define CU_DEVICE_INVALID ((CUdevice)-2)
+#define CU_DEVICE_INVALID ((CUdevice) - 2)
 
 /** @} */ /* END CUDA_TYPES */
 
