@@ -52,12 +52,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 %%
 "ptxas info    : Function properties for"[^\n]*\n[^\n]*
+"ptxas info    : Compile time"[^\n]*\n  {  }
 "warning"[^\n]* TC; return WARNING;
 "ptxas"	TC; 	return HEADER;
 "info"	TC; 	return INFO;
 "Compiling entry function"	TC; return FUNC;
 "Used"		TC; return USED;
+"used"		TC; return USED;
 "registers"	TC; return REGS;
+"barriers"  TC; return BARRIERS; 
 "bytes"		TC; return BYTES;
 "lmem"		TC; return LMEM;
 "smem"		TC; return SMEM;
