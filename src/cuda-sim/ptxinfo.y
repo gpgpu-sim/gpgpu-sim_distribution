@@ -70,6 +70,7 @@ typedef void * yyscan_t;
 %token <string_value> FUNCTION
 %token <string_value> VARIABLE
 %token FATAL
+%token BARRIERS
 
 %{
 	#include <stdlib.h>
@@ -119,9 +120,11 @@ gmem_info: INT_OPERAND BYTES GMEM
 	;
 
 info: 	  USED INT_OPERAND REGS { ptxinfo_regs($2); }
+	| USED INT_OPERAND BARRIERS {}
 	| tuple LMEM { ptxinfo_lmem(g_declared,g_system); }
 	| tuple SMEM { ptxinfo_smem(g_declared,g_system); }
 	| INT_OPERAND BYTES CMEM LEFT_SQUARE_BRACKET INT_OPERAND RIGHT_SQUARE_BRACKET { ptxinfo_cmem($1,$5); }
+	| INT_OPERAND CMEM LEFT_SQUARE_BRACKET INT_OPERAND RIGHT_SQUARE_BRACKET { ptxinfo_cmem($1,$4); }
 	| INT_OPERAND BYTES GMEM { ptxinfo_gmem($1,0); }
 	| INT_OPERAND BYTES LMEM { ptxinfo_lmem($1,0); }
 	| INT_OPERAND BYTES SMEM { ptxinfo_smem($1,0); }
