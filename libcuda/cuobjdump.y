@@ -39,7 +39,7 @@ void setCuobjdumpptxfilename(const char* filename, std::list<cuobjdumpSection*> 
 void setCuobjdumpelffilename(const char* filename, std::list<cuobjdumpSection*> &cuobjdumpSectionList);
 void setCuobjdumpsassfilename(const char* filename, std::list<cuobjdumpSection*> &cuobjdumpSectionList);
 %}
-%define api.pure full
+%pure-parser
 %parse-param {yyscan_t scanner}
 %parse-param {struct cuobjdump_parser* parser}
 %parse-param {std::list<cuobjdumpSection*> &cuobjdumpSectionList}

@@ -2020,9 +2020,7 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
     if ((m_gpu->gpgpu_ctx->func_sim->g_ptx_sim_num_insn % 100000) == 0) {
       dim3 ctaid = get_ctaid();
       dim3 tid = get_tid();
-      DPRINTF(LIVENESS,
-              "GPGPU-Sim PTX: %u instructions simulated : ctaid=(%u,%u,%u) "
-              "tid=(%u,%u,%u)\n",
+      printf("GPGPU-Sim PTX: %u instructions simulated : ctaid=(%u,%u,%u)",
               m_gpu->gpgpu_ctx->func_sim->g_ptx_sim_num_insn, ctaid.x, ctaid.y,
               ctaid.z, tid.x, tid.y, tid.z);
       fflush(stdout);

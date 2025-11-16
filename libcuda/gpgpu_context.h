@@ -45,7 +45,7 @@ class gpgpu_context {
   bool debug_tensorcore;
 
   // SST related
-  bool requested_synchronize = false;
+  bool requested_synchronize;
 
   // objects pointers for each file
   cuda_runtime_api *api;

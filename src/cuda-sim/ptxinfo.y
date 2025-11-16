@@ -32,7 +32,7 @@ typedef void * yyscan_t;
 #include "ptx_loader.h"
 %}
 
-%define api.pure full
+%pure-parser
 %parse-param {yyscan_t scanner}
 %parse-param {ptxinfo_data* ptxinfo}
 %lex-param {yyscan_t scanner}

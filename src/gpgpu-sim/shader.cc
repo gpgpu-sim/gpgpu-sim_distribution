@@ -4422,7 +4422,8 @@ bool opndcoll_rfu_t::collector_unit_t::allocate(register_set *pipeline_reg_set,
               ->arch_reg.src[op];  // this math needs to match that used in
                                    // function_info::ptx_decode_inst
       bool new_reg = true;
-      for (auto r : prev_regs) {
+      for (size_t i = 0; i < prev_regs.size(); i++) {
+	auto r = prev_regs[i];
         if (r == reg_num) new_reg = false;
       }
       if (reg_num >= 0 && new_reg) {  // valid register

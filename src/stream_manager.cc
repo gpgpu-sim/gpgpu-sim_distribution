@@ -318,7 +318,8 @@ void stream_manager::stop_all_running_kernels() {
 
   std::vector<unsigned long long> finished_streams;
   std::vector<kernel_info_t *> running_kernels = m_gpu->get_running_kernels();
-  for (kernel_info_t *k : running_kernels) {
+  for (size_t i = 0; i < running_kernels.size(); i++) {
+  	kernel_info_t *k = running_kernels[i];
     if (k != NULL) {
       finished_streams.push_back(k->get_streamID());
     }
@@ -334,7 +335,8 @@ void stream_manager::stop_all_running_kernels() {
   }
 
   // If any kernels completed, print out the current stats
-  for (unsigned long long streamID : finished_streams) {
+  for (size_t i = 0; i < finished_streams.size(); i++) {  
+    unsigned long long streamID = finished_streams[i];
     m_gpu->print_stats(streamID);
   }
 

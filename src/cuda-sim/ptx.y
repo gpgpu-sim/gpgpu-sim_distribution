@@ -33,7 +33,7 @@ class ptx_recognizer;
 #include "../../libcuda/gpgpu_context.h"
 %}
 
-%define api.pure full
+%pure-parser
 %parse-param {yyscan_t scanner}
 %parse-param {ptx_recognizer* recognizer}
 %lex-param {yyscan_t scanner}
