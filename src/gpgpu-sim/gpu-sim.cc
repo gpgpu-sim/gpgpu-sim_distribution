@@ -114,10 +114,7 @@ void power_config::reg_options(class OptionParser *opp) {
   option_parser_register(opp, "-hw_perf_file_name", OPT_CSTR,
                          &g_hw_perf_file_name,
                          "Hardware Performance Statistics file", "hw_perf.csv");
-  option_parser_register(
-      opp, "-gpgpu_dynamic_swl", OPT_BOOL, &gpgpu_dynamic_swl,
-      "Use dynamic SWL scheduler", "0"
-  );
+
 
 
   option_parser_register(
@@ -641,6 +638,10 @@ void shader_core_config::reg_options(class OptionParser *opp) {
       "scheduler_prioritization_type"
       "Default: gto",
       "gto");
+  option_parser_register(
+      opp, "-gpgpu_dynamic_swl", OPT_BOOL, &gpgpu_dynamic_swl,
+      "Use dynamic SWL scheduler", "0"
+  );
 
   option_parser_register(
       opp, "-gpgpu_concurrent_kernel_sm", OPT_BOOL, &gpgpu_concurrent_kernel_sm,
