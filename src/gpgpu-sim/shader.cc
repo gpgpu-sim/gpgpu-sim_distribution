@@ -1723,10 +1723,12 @@ swl_scheduler::swl_scheduler(shader_core_stats *stats, shader_core_ctx *shader,
 
 void swl_scheduler::order_warps() {
 
-   unsigned cap = dynamic_swl ? m_shader->get_dynamic_swl_cap()
-                               : m_num_warps_to_limit;
+
 
   if (SCHEDULER_PRIORITIZATION_GTO == m_prioritization) {
+
+    unsigned cap = dynamic_swl ? m_shader->get_dynamic_swl_cap()
+                               : m_num_warps_to_limit;
     order_by_priority(m_next_cycle_prioritized_warps, m_supervised_warps,
                       m_last_supervised_issued,
                       MIN(m_num_warps_to_limit, m_supervised_warps.size()),
