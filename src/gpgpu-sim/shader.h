@@ -656,6 +656,7 @@ class swl_scheduler : public scheduler_unit {
 
  protected:
   scheduler_prioritization_type m_prioritization;
+  bool dynamic_swl;
   unsigned m_num_warps_to_limit;
 };
 
