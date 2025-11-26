@@ -100,6 +100,29 @@ class thread_ctx_t {
   bool m_active;
 };
 
+struct dyn_swl_state {
+  static const int S[8];               // {1,2,4,8,16,24,32,48}
+  unsigned long long window_cycles;
+  unsigned long long window_thread_insts;
+
+  int current_idx;                     // index into S[]
+  int best_idx;
+  double best_ipc;
+
+  // Q-table style stats: running average IPC per cap and sample counts
+  double avg_ipc[8];
+  unsigned long long samples[8];
+  bool explored_all;                   // have we tried all 8 caps at least once?
+
+  dyn_swl_state();
+
+  int cap() const;
+
+  void reset_window() { window_cycles = 0; window_thread_insts = 0; }
+};
+
+
+
 class shd_warp_t {
  public:
   shd_warp_t(class shader_core_ctx *shader, unsigned warp_size)
@@ -1628,6 +1651,7 @@ class shader_core_config : public core_config {
       max_cta_per_core;  // Limit on number of concurrent CTAs in shader core
   unsigned max_barriers_per_cta;
   char *gpgpu_scheduler_string;
+  bool gpgpu_dynamic_swl;
   unsigned gpgpu_shmem_per_block;
   unsigned gpgpu_registers_per_block;
   char *pipeline_widths_string;
@@ -2066,6 +2090,31 @@ class shader_core_ctx : public core_t {
 
   // used by simt_core_cluster:
   // modifiers
+
+  unsigned get_dynamic_swl_cap() const {
+    return m_dynswl.cap();
+  }
+
+  // ---- Dynamic SWL accounting (public hooks) ----
+  inline void dynswl_cycle_begin() {
+    // Reset per-cycle issued counter (debug/telemetry)
+    m_issued_warp_inst_this_cycle = 0;
+  }
+
+  inline void dynswl_on_inst_issued(unsigned active_threads) {
+    if (m_config->gpgpu_dynamic_swl) {
+      // Count thread-insts directly at the moment of issue for perfect IPC windows
+      m_dynswl.window_thread_insts += (unsigned long long)active_threads;
+    }
+    // Always keep a per-cycle warp-issue count (optional debug/telemetry)
+    ++m_issued_warp_inst_this_cycle;
+  }
+
+  void note_warp_issued() { ++m_issued_warp_inst_this_cycle; }
+
+  // Let's keep this public for sake of simplicity
+  unsigned m_issued_warp_inst_this_cycle;
+
   void cycle();
   void reinit(unsigned start_thread, unsigned end_thread,
               bool reset_not_completed);
@@ -2136,6 +2185,9 @@ class shader_core_ctx : public core_t {
   void get_L1D_sub_stats(struct cache_sub_stats &css) const;
   void get_L1C_sub_stats(struct cache_sub_stats &css) const;
   void get_L1T_sub_stats(struct cache_sub_stats &css) const;
+  // called by scheduler to get the current cap
+
+
 
   void get_icnt_power_stats(long &n_simt_to_mem, long &n_mem_to_simt) const;
 
@@ -2505,6 +2557,8 @@ class shader_core_ctx : public core_t {
 
   // statistics
   shader_core_stats *m_stats;
+
+  dyn_swl_state m_dynswl;
 
   // CTA scheduling / hardware thread allocation
   unsigned m_n_active_cta;  // number of Cooperative Thread Arrays (blocks)

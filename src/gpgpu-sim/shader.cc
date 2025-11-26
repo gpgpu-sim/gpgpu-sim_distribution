@@ -475,8 +475,10 @@ shader_core_ctx::shader_core_ctx(class gpgpu_sim *gpu,
     : core_t(gpu, NULL, config->warp_size, config->n_thread_per_shader),
       m_barriers(this, config->max_warps_per_shader, config->max_cta_per_core,
                  config->max_barriers_per_cta, config->warp_size),
+      m_dynswl(dyn_swl_state()),
       m_active_warps(0),
-      m_dynamic_warp_id(0) {
+      m_dynamic_warp_id(0)
+      m_issued_warp_inst_this_cycle(0) {
   m_cluster = cluster;
   m_config = config;
   m_memory_config = mem_config;
@@ -1675,6 +1677,28 @@ void two_level_active_scheduler::order_warps() {
   assert(num_promoted == num_demoted);
 }
 
+dyn_swl_state::dyn_swl_state()
+{
+  current_idx = 3;    // start at S[3] = 8 warps
+  best_idx    = 3;
+  best_ipc    = 0.0;
+
+  for (int i = 0; i < 8; ++i) {
+    avg_ipc[i]  = 0.0;
+    samples[i]  = 0;
+  }
+  explored_all = false;
+
+  reset_window();
+}
+
+int dyn_swl_state::cap() const
+{
+  static int states[8] = {1,2,4,8,16,24,32,48};
+  return states[current_idx];
+}
+
+
 swl_scheduler::swl_scheduler(shader_core_stats *stats, shader_core_ctx *shader,
                              Scoreboard *scoreboard, simt_stack **simt,
                              std::vector<shd_warp_t *> *warp,
@@ -1690,6 +1714,7 @@ swl_scheduler::swl_scheduler(shader_core_stats *stats, shader_core_ctx *shader,
   int ret = sscanf(config_string, "warp_limiting:%d:%d",
                    &m_prioritization_readin, &m_num_warps_to_limit);
   assert(2 == ret);
+  dynamic_swl = shader->get_config()->gpgpu_dynamic_swl;
   m_prioritization = (scheduler_prioritization_type)m_prioritization_readin;
   // Currently only GTO is implemented
   assert(m_prioritization == SCHEDULER_PRIORITIZATION_GTO);
@@ -1697,6 +1722,10 @@ swl_scheduler::swl_scheduler(shader_core_stats *stats, shader_core_ctx *shader,
 }
 
 void swl_scheduler::order_warps() {
+
+   unsigned cap = dynamic_swl ? m_shader->get_dynamic_swl_cap()
+                               : m_num_warps_to_limit;
+
   if (SCHEDULER_PRIORITIZATION_GTO == m_prioritization) {
     order_by_priority(m_next_cycle_prioritized_warps, m_supervised_warps,
                       m_last_supervised_issued,
@@ -2573,6 +2602,8 @@ void pipelined_simd_unit::issue(register_set &source_reg) {
   m_core->incexecstat((*ready_reg));
   // source_reg.move_out_to(m_dispatch_reg);
   simd_function_unit::issue(source_reg);
+
+  m_core->note_warp_issued();
 }
 
 /*
@@ -3672,6 +3703,84 @@ void shader_core_ctx::cycle() {
   for (unsigned int i = 0; i < m_config->inst_fetch_throughput; ++i) {
     decode();
     fetch();
+  }
+
+    const unsigned WINDOW = 2048;   // profiling window in cycles
+
+  if (m_dynswl.window_cycles >= WINDOW) {
+      dyn_swl_state &s = m_dynswl;
+
+      // --- 3a) compute "reward" = IPC for this window ---
+      double ipc = (s.window_cycles)
+                     ? double(s.window_thread_insts) / double(s.window_cycles)
+                     : 0.0;
+
+      int idx = s.current_idx;
+      if (idx < 0) idx = 0;
+      if (idx > 7) idx = 7;
+      s.current_idx = idx;
+
+      // --- 3b) update Q-value (running average) for this cap ---
+      s.samples[idx] += 1ull;
+      double alpha = 1.0 / double(s.samples[idx]);   // 1/N incremental mean
+      s.avg_ipc[idx] += alpha * (ipc - s.avg_ipc[idx]);
+
+      if (ipc > s.best_ipc) {
+        s.best_ipc = ipc;
+        s.best_idx = idx;
+      }
+
+      // --- 3c) check if all caps have been explored at least once ---
+      bool all_explored = true;
+      for (int i = 0; i < 8; ++i) {
+        if (s.samples[i] == 0) {
+          all_explored = false;
+          break;
+        }
+      }
+      s.explored_all = all_explored;
+
+      // --- 3d) pick the cap for the next window ---
+      int next_idx = idx;
+
+      if (!s.explored_all) {
+        // EXPLORATION PHASE: sweep through caps until each has a sample
+        for (int i = 0; i < 8; ++i) {
+          if (s.samples[i] == 0) {
+            next_idx = i;
+            break;
+          }
+        }
+      } else {
+        // EXPLOIT / HILL-CLIMB PHASE: look at best_idx and its neighbors
+        int best = s.best_idx;
+
+        int cand_indices[3];
+        int cand_count = 0;
+        if (best > 0) cand_indices[cand_count++] = best - 1;
+        cand_indices[cand_count++] = best;
+        if (best < 7) cand_indices[cand_count++] = best + 1;
+
+        double best_neigh_ipc = -1.0;
+        int best_neigh_idx = best;
+
+        for (int k = 0; k < cand_count; ++k) {
+          int ci = cand_indices[k];
+          double v = s.avg_ipc[ci];
+          if (v > best_neigh_ipc) {
+            best_neigh_ipc = v;
+            best_neigh_idx = ci;
+          }
+        }
+
+        next_idx = best_neigh_idx;
+        s.best_idx = best_neigh_idx;
+      }
+
+      s.current_idx = next_idx;
+
+      // --- 3e) reset window for next measurement ---
+      s.reset_window();
   }
 }
 
