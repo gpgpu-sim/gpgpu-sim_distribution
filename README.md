@@ -1,3 +1,21 @@
+# Dynamic SWL Warp Scheduler (GPGPU-Sim)
+
+This branch adds a **Static Warp Limiting (SWL)** scheduler and a **Dynamic SWL** controller to GPGPU-Sim.
+
+The goal is to:
+
+- Limit the number of **concurrently runnable warps** per SM (the warp cap `x`).
+- Study how `x` affects:
+  - IPC (throughput)
+  - L1/L2 miss rates
+  - DRAM/bandwidth utilization
+- Automatically choose a near-optimal `x` at runtime, **per SM**, without manual tuning.
+
+The allowed warp caps are:
+
+text
+x ∈ {1, 2, 4, 8, 16, 24, 32, 48}
+
 Welcome to GPGPU-Sim, a cycle-level simulator modeling contemporary graphics
 processing units (GPUs) running GPU computing workloads written in CUDA or
 OpenCL. Also included in GPGPU-Sim is a performance visualization tool called
