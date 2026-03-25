@@ -3258,6 +3258,22 @@ void warp_inst_t::print(FILE *fout) const {
   m_config->gpgpu_ctx->func_sim->ptx_print_insn(pc, fout);
   fprintf(fout, "\n");
 }
+void shader_core_ctx::inc_fu_stat(double *counter, unsigned active_count,
+                                   double latency, lane_model model,
+                                   bool update_exu) {
+  double access = (double)active_count * latency;
+  if (model != lane_model::NONE && !m_config->gpgpu_clock_gated_lanes) {
+    access += (model == lane_model::SFU)
+                  ? inactive_lanes_accesses_sfu(active_count, latency)
+                  : inactive_lanes_accesses_nonsfu(active_count, latency);
+  }
+  counter[m_sid] += access;
+  if (update_exu) {
+    m_stats->m_active_exu_threads[m_sid] += active_count;
+    m_stats->m_active_exu_warps[m_sid]++;
+  }
+}
+
 void shader_core_ctx::incexecstat(warp_inst_t *&inst) {
   // Latency numbers for next operations are used to scale the power values
   // for special operations, according observations from microbenchmarking
