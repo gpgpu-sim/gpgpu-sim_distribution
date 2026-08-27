@@ -21,4 +21,9 @@ unsigned bitwise_hash_function(new_addr_type higher_bits, unsigned index,
 unsigned PAE_hash_function(new_addr_type higher_bits, unsigned index,
                            unsigned bank_set_num);
 
+unsigned ipolymodulo_hash_function(new_addr_type higher_bits, unsigned index,
+                                   unsigned bank_set_num,
+                                   unsigned modulo_factor,
+                                   unsigned power_of_2_factor);
+
 #endif

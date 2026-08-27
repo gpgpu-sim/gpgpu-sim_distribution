@@ -220,6 +220,10 @@ class ptx_recognizer;
 %token	PRMT_RC16_MODE;
 %token	PRMT_ECL_MODE;
 %token	PRMT_ECR_MODE;
+%token	WRAP_OPTION;
+%token	CLAMP_OPTION;
+%token	LEFT_OPTION;
+%token	RIGHT_OPTION;
 
 %type <int_value> function_decl_header
 %type <ptr_value> function_decl
@@ -507,6 +511,10 @@ option: type_spec
 	| DOWN_OPTION { recognizer->add_option(DOWN_OPTION); }
 	| BFLY_OPTION { recognizer->add_option(BFLY_OPTION); }
 	| IDX_OPTION { recognizer->add_option(IDX_OPTION); }
+	| WRAP_OPTION { recognizer->add_option(WRAP_OPTION); }
+	| CLAMP_OPTION { recognizer->add_option(CLAMP_OPTION); }
+	| LEFT_OPTION { recognizer->add_option(LEFT_OPTION); }
+	| RIGHT_OPTION { recognizer->add_option(RIGHT_OPTION); }
 	;
 
 atomic_operation_spec: ATOMIC_AND { recognizer->add_option(ATOMIC_AND); }

@@ -34,6 +34,30 @@
 
 unsigned CUstream_st::sm_next_stream_uid = 0;
 
+// SST memcpy callbacks, called after a stream operation is done via
+// record_next_done()
+extern void SST_callback_memcpy_H2D_done(uint64_t dst, uint64_t src,
+                                         size_t count, cudaStream_t stream);
+extern void SST_callback_memcpy_D2H_done(uint64_t dst, uint64_t src,
+                                         size_t count, cudaStream_t stream);
+extern void SST_callback_memcpy_to_symbol_done();
+extern void SST_callback_memcpy_from_symbol_done();
+extern void SST_callback_cudaEventSynchronize_done(cudaEvent_t event);
+extern void SST_callback_kernel_done(cudaStream_t stream);
+__attribute__((weak)) void SST_callback_memcpy_H2D_done(uint64_t dst,
+                                                        uint64_t src,
+                                                        size_t count,
+                                                        cudaStream_t stream) {}
+__attribute__((weak)) void SST_callback_memcpy_D2H_done(uint64_t dst,
+                                                        uint64_t src,
+                                                        size_t count,
+                                                        cudaStream_t stream) {}
+__attribute__((weak)) void SST_callback_memcpy_to_symbol_done() {}
+__attribute__((weak)) void SST_callback_memcpy_from_symbol_done() {}
+__attribute__((weak)) void SST_callback_cudaEventSynchronize_done(
+    cudaEvent_t event);
+__attribute__((weak)) void SST_callback_kernel_done(cudaStream_t stream);
+
 CUstream_st::CUstream_st() {
   m_pending = false;
   m_uid = sm_next_stream_uid++;
@@ -63,6 +87,8 @@ void CUstream_st::synchronize() {
     pthread_mutex_unlock(&m_lock);
   } while (!done);
 }
+
+bool CUstream_st::synchronize_check() { return m_operations.empty(); }
 
 void CUstream_st::push(const stream_operation &op) {
   // called by host thread
@@ -122,11 +148,20 @@ bool stream_operation::do_operation(gpgpu_sim *gpu) {
       if (g_debug_execution >= 3) printf("memcpy host-to-device\n");
       gpu->memcpy_to_gpu(m_device_address_dst, m_host_address_src, m_cnt);
       m_stream->record_next_done();
+      if (gpu->is_SST_mode()) {
+        SST_callback_memcpy_H2D_done(
+            (uint64_t)m_device_address_dst, (uint64_t)m_host_address_src, m_cnt,
+            m_stream->is_stream_zero_stream() ? 0 : m_stream);
+      }
       break;
     case stream_memcpy_device_to_host:
       if (g_debug_execution >= 3) printf("memcpy device-to-host\n");
       gpu->memcpy_from_gpu(m_host_address_dst, m_device_address_src, m_cnt);
       m_stream->record_next_done();
+      if (gpu->is_SST_mode())
+        SST_callback_memcpy_D2H_done(
+            (uint64_t)m_host_address_dst, (uint64_t)m_device_address_src, m_cnt,
+            m_stream->is_stream_zero_stream() ? 0 : m_stream);
       break;
     case stream_memcpy_device_to_device:
       if (g_debug_execution >= 3) printf("memcpy device-to-device\n");
@@ -138,12 +173,14 @@ bool stream_operation::do_operation(gpgpu_sim *gpu) {
       gpu->gpgpu_ctx->func_sim->gpgpu_ptx_sim_memcpy_symbol(
           m_symbol, m_host_address_src, m_cnt, m_offset, 1, gpu);
       m_stream->record_next_done();
+      if (gpu->is_SST_mode()) SST_callback_memcpy_to_symbol_done();
       break;
     case stream_memcpy_from_symbol:
       if (g_debug_execution >= 3) printf("memcpy from symbol\n");
       gpu->gpgpu_ctx->func_sim->gpgpu_ptx_sim_memcpy_symbol(
           m_symbol, m_host_address_dst, m_cnt, m_offset, 0, gpu);
       m_stream->record_next_done();
+      if (gpu->is_SST_mode()) SST_callback_memcpy_from_symbol_done();
       break;
     case stream_kernel_launch:
       if (m_sim_mode) {  // Functional Sim
@@ -180,6 +217,13 @@ bool stream_operation::do_operation(gpgpu_sim *gpu) {
       time_t wallclock = time((time_t *)NULL);
       m_event->update(gpu->gpu_tot_sim_cycle, wallclock);
       m_stream->record_next_done();
+      if ((gpu->is_SST_mode()) && m_event->done() &&
+          m_event->requested_synchronize()) {
+        // Notify that the event is done
+        SST_callback_cudaEventSynchronize_done(m_event);
+        // Reset the sync flag as we have notified SST
+        m_event->reset_request_synchronize();
+      }
     } break;
     case stream_wait_event:
       // only allows next op to go if event is done
@@ -227,6 +271,8 @@ void stream_operation::print(FILE *fp) const {
     case stream_no_op:
       fprintf(fp, "no-op");
       break;
+    default:
+      break;
   }
 }
 
@@ -236,6 +282,9 @@ stream_manager::stream_manager(gpgpu_sim *gpu, bool cuda_launch_blocking) {
   m_cuda_launch_blocking = cuda_launch_blocking;
   pthread_mutex_init(&m_lock, NULL);
   m_last_stream = m_streams.begin();
+
+  // Mark stream zero as the default stream
+  m_stream_zero.set_stream_zero();
 }
 
 bool stream_manager::operation(bool *sim) {
@@ -287,6 +336,11 @@ bool stream_manager::register_finished_kernel(unsigned grid_uid) {
       //            grid_uid, stream->get_uid()); kernel_stat.flush();
       //            kernel_stat.close();
       stream->record_next_done();
+      // Callback to notify a kernel is done for SST's stream
+      // manager to support with nonblocking + blocking kernel launch
+      if (m_gpu->is_SST_mode()) {
+        SST_callback_kernel_done(stream->is_stream_zero_stream() ? 0 : stream);
+      }
       m_grid_id_to_stream.erase(grid_uid);
       kernel->notify_parent_finished();
       delete kernel;
@@ -300,6 +354,14 @@ bool stream_manager::register_finished_kernel(unsigned grid_uid) {
 void stream_manager::stop_all_running_kernels() {
   pthread_mutex_lock(&m_lock);
 
+  std::vector<unsigned long long> finished_streams;
+  std::vector<kernel_info_t *> running_kernels = m_gpu->get_running_kernels();
+  for (kernel_info_t *k : running_kernels) {
+    if (k != NULL) {
+      finished_streams.push_back(k->get_streamID());
+    }
+  }
+
   // Signal m_gpu to stop all running kernels
   m_gpu->stop_all_running_kernels();
 
@@ -310,7 +372,9 @@ void stream_manager::stop_all_running_kernels() {
   }
 
   // If any kernels completed, print out the current stats
-  if (count > 0) m_gpu->print_stats();
+  for (unsigned long long streamID : finished_streams) {
+    m_gpu->print_stats(streamID);
+  }
 
   pthread_mutex_unlock(&m_lock);
 }
@@ -460,7 +524,7 @@ void stream_manager::push(stream_operation op) {
   }
   if (g_debug_execution >= 3) print_impl(stdout);
   pthread_mutex_unlock(&m_lock);
-  if (m_cuda_launch_blocking || stream == NULL) {
+  if (!m_gpu->is_SST_mode() && (m_cuda_launch_blocking || stream == NULL)) {
     unsigned int wait_amount = 100;
     unsigned int wait_cap = 100000;  // 100ms
     while (!empty()) {

@@ -1,7 +1,0 @@
-sudo docker run --dns 206.87.227.99 --privileged -v `pwd`:/home/runner/gpgpu-sim_distribution:rw tgrogers/gpgpu-sim_regress:volta_update /bin/bash -c "./start_torque.sh; chown -R runner /home/runner/gpgpu-sim_distribution; su - runner -c 'export CUDA_INSTALL_PATH=/usr/local/cuda-4.2/ && export PTXAS_CUDA_INSTALL_PATH=/usr/local/cuda-4.2/ && make clean -C /home/runner/gpgpu-sim_distribution && source /home/runner/gpgpu-sim_distribution/setup_environment && make -j -C /home/runner/gpgpu-sim_distribution && cd /home/runner/gpgpu-sim_simulations/ && git pull && /home/runner/gpgpu-sim_simulations/util/job_launching/run_simulations.py -C GTX480 -B rodinia_2.0-ft -N regress && /home/runner/gpgpu-sim_simulations/util/job_launching/monitor_func_test.py -v -N regress'"
-#    - services: docker
-#      env:
-#        - CONFIG=GTX480
-#        - CUDA_INSTALL_PATH=/usr/local/cuda-4.2/
-#        - PTXAS_CUDA_INSTALL_PATH=/usr/local/cuda-4.2/
-

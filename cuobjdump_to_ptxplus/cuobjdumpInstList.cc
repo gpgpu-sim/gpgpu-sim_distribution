@@ -505,7 +505,7 @@ std::string cuobjdumpInstList::parseCuobjdumpRegister(std::string reg, bool lo, 
 	} else {
 		output("ERROR: unknown register type.\n");
 		printf("\nERROR: unknown register type: ");
-		printf(reg.c_str());
+		printf("%s",reg.c_str());
 		printf("\n");
 		assert(0);
 	}

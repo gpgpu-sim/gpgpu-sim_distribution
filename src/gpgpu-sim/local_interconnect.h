@@ -37,7 +37,11 @@ using namespace std;
 
 enum Interconnect_type { REQ_NET = 0, REPLY_NET = 1 };
 
-enum Arbiteration_type { NAIVE_RR = 0, iSLIP = 1 };
+enum Arbiteration_type {
+  NAIVE_RR = 0,  //
+  iSLIP,
+  PERFECT
+};
 
 struct inct_config {
   // config for local interconnect
@@ -64,6 +68,7 @@ class xbar_router {
   bool Has_Buffer_In(unsigned input_deviceID, unsigned size,
                      bool update_counter = false);
   bool Has_Buffer_Out(unsigned output_deviceID, unsigned size);
+  bool Has_Packet(unsigned output_deviceID) const;
 
   // some stats
   unsigned long long cycles;
@@ -80,6 +85,7 @@ class xbar_router {
  private:
   void iSLIP_Advance();
   void RR_Advance();
+  void Perfect_Advance();
 
   struct Packet {
     Packet(void* m_data, unsigned m_output_deviceID) {
@@ -122,6 +128,7 @@ class LocalInterconnect {
   void Advance();
   bool Busy() const;
   bool HasBuffer(unsigned deviceID, unsigned int size) const;
+  bool HasPacket(unsigned deviceID) const;
   void DisplayStats() const;
   void DisplayOverallStats() const;
   unsigned GetFlitSize() const;

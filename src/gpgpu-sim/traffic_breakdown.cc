@@ -33,6 +33,7 @@ std::string traffic_breakdown::classify_memfetch(class mem_fetch* mf) {
     case CONST_ACC_R:
     case TEXTURE_ACC_R:
     case GLOBAL_ACC_W:
+    case CHIPLET_ACC_W:
     case LOCAL_ACC_R:
     case LOCAL_ACC_W:
     case INST_ACC_R:
@@ -43,9 +44,10 @@ std::string traffic_breakdown::classify_memfetch(class mem_fetch* mf) {
       traffic_name = mem_access_type_str(access_type);
       break;
     case GLOBAL_ACC_R:
+    case CHIPLET_ACC_R:
       // check for global atomic operation
-      traffic_name = (mf->isatomic()) ? "GLOBAL_ATOMIC"
-                                      : mem_access_type_str(GLOBAL_ACC_R);
+      traffic_name =
+          (mf->isatomic()) ? "GLOBAL_ATOMIC" : mem_access_type_str(access_type);
       break;
     default:
       assert(0 && "Unknown traffic type");

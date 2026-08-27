@@ -1,0 +1,1 @@
+const char *g_gpgpusim_build_string="@GPGPUSIM_BUILD_STRING@";

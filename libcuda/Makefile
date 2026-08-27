@@ -66,9 +66,7 @@ ifeq ($(OPENGL_SUPPORT),1)
 	GL = -DOPENGL_SUPPORT
 endif
 
-ifeq ($(GNUC_CPP0X), 1)
-    CXXFLAGS = -std=c++0x
-endif
+CXXFLAGS = -std=c++17
 
 
 CPP = g++ $(SNOW)

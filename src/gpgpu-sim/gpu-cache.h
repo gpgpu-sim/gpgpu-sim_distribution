@@ -1,18 +1,21 @@
-// Copyright (c) 2009-2011, Tor M. Aamodt, Tayler Hetherington
-// The University of British Columbia
+// Copyright (c) 2009-2021, Tor M. Aamodt, Tayler Hetherington, Vijay Kandiah,
+// Nikos Hardavellas, Mahmoud Khairy, Junrui Pan, Timothy G. Rogers The
+// University of British Columbia, Northwestern University, Purdue University
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 //
-// Redistributions of source code must retain the above copyright notice, this
-// list of conditions and the following disclaimer.
-// Redistributions in binary form must reproduce the above copyright notice,
-// this list of conditions and the following disclaimer in the documentation
-// and/or other materials provided with the distribution. Neither the name of
-// The University of British Columbia nor the names of its contributors may be
-// used to endorse or promote products derived from this software without
-// specific prior written permission.
+// 1. Redistributions of source code must retain the above copyright notice,
+// this
+//    list of conditions and the following disclaimer;
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution;
+// 3. Neither the names of The University of British Columbia, Northwestern
+//    University nor the names of their contributors may be used to
+//    endorse or promote products derived from this software without specific
+//    prior written permission.
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -49,6 +52,14 @@ enum cache_request_status {
   MISS,
   RESERVATION_FAIL,
   SECTOR_MISS,
+  MSHR_HIT,
+  // Supplementary accounting bucket (never RETURNED from access(); stats-only):
+  // a write miss that allocated a line under a write-allocate policy. NVIDIA's
+  // L2 counts such write-absorbed sectors as write "hits". Comparable write
+  // hits = HIT + WRITE_ALLOCATED. Excluded from TOTAL_ACCESS so HIT/MISS/TOTAL
+  // are unchanged. (Name distinct from write_allocate_policy_t::WRITE_ALLOCATE
+  // to avoid collision.)
+  WRITE_ALLOCATED,
   NUM_CACHE_REQUEST_STATUS
 };
 
@@ -68,16 +79,35 @@ enum cache_event_type {
   WRITE_ALLOCATE_SENT
 };
 
+enum cache_gpu_level {
+  L1_GPU_CACHE = 0,
+  L2_GPU_CACHE,
+  OTHER_GPU_CACHE,
+  NUM_CACHE_GPU_LEVELS
+};
+
 struct evicted_block_info {
   new_addr_type m_block_addr;
   unsigned m_modified_size;
+  mem_access_byte_mask_t m_byte_mask;
+  mem_access_sector_mask_t m_sector_mask;
   evicted_block_info() {
     m_block_addr = 0;
     m_modified_size = 0;
+    m_byte_mask.reset();
+    m_sector_mask.reset();
   }
   void set_info(new_addr_type block_addr, unsigned modified_size) {
     m_block_addr = block_addr;
     m_modified_size = modified_size;
+  }
+  void set_info(new_addr_type block_addr, unsigned modified_size,
+                mem_access_byte_mask_t byte_mask,
+                mem_access_sector_mask_t sector_mask) {
+    m_block_addr = block_addr;
+    m_modified_size = modified_size;
+    m_byte_mask = byte_mask;
+    m_sector_mask = sector_mask;
   }
 };
 
@@ -108,7 +138,8 @@ struct cache_block_t {
   virtual void allocate(new_addr_type tag, new_addr_type block_addr,
                         unsigned time,
                         mem_access_sector_mask_t sector_mask) = 0;
-  virtual void fill(unsigned time, mem_access_sector_mask_t sector_mask) = 0;
+  virtual void fill(unsigned time, mem_access_sector_mask_t sector_mask,
+                    mem_access_byte_mask_t byte_mask) = 0;
 
   virtual bool is_invalid_line() = 0;
   virtual bool is_valid_line() = 0;
@@ -119,7 +150,10 @@ struct cache_block_t {
       mem_access_sector_mask_t sector_mask) = 0;
   virtual void set_status(enum cache_block_state m_status,
                           mem_access_sector_mask_t sector_mask) = 0;
-
+  virtual void set_byte_mask(mem_fetch *mf) = 0;
+  virtual void set_byte_mask(mem_access_byte_mask_t byte_mask) = 0;
+  virtual mem_access_byte_mask_t get_dirty_byte_mask() = 0;
+  virtual mem_access_sector_mask_t get_dirty_sector_mask() = 0;
   virtual unsigned long long get_last_access_time() = 0;
   virtual void set_last_access_time(unsigned long long time,
                                     mem_access_sector_mask_t sector_mask) = 0;
@@ -128,6 +162,9 @@ struct cache_block_t {
                                   mem_access_sector_mask_t sector_mask) = 0;
   virtual void set_modified_on_fill(bool m_modified,
                                     mem_access_sector_mask_t sector_mask) = 0;
+  virtual void set_readable_on_fill(bool readable,
+                                    mem_access_sector_mask_t sector_mask) = 0;
+  virtual void set_byte_mask_on_fill(bool m_modified) = 0;
   virtual unsigned get_modified_size() = 0;
   virtual void set_m_readable(bool readable,
                               mem_access_sector_mask_t sector_mask) = 0;
@@ -147,6 +184,7 @@ struct line_cache_block : public cache_block_t {
     m_status = INVALID;
     m_ignore_on_fill_status = false;
     m_set_modified_on_fill = false;
+    m_set_readable_on_fill = false;
     m_readable = true;
   }
   void allocate(new_addr_type tag, new_addr_type block_addr, unsigned time,
@@ -159,12 +197,18 @@ struct line_cache_block : public cache_block_t {
     m_status = RESERVED;
     m_ignore_on_fill_status = false;
     m_set_modified_on_fill = false;
+    m_set_readable_on_fill = false;
+    m_set_byte_mask_on_fill = false;
   }
-  void fill(unsigned time, mem_access_sector_mask_t sector_mask) {
+  virtual void fill(unsigned time, mem_access_sector_mask_t sector_mask,
+                    mem_access_byte_mask_t byte_mask) {
     // if(!m_ignore_on_fill_status)
     //	assert( m_status == RESERVED );
 
     m_status = m_set_modified_on_fill ? MODIFIED : VALID;
+
+    if (m_set_readable_on_fill) m_readable = true;
+    if (m_set_byte_mask_on_fill) set_byte_mask(byte_mask);
 
     m_fill_time = time;
   }
@@ -181,6 +225,20 @@ struct line_cache_block : public cache_block_t {
                           mem_access_sector_mask_t sector_mask) {
     m_status = status;
   }
+  virtual void set_byte_mask(mem_fetch *mf) {
+    m_dirty_byte_mask = m_dirty_byte_mask | mf->get_access_byte_mask();
+  }
+  virtual void set_byte_mask(mem_access_byte_mask_t byte_mask) {
+    m_dirty_byte_mask = m_dirty_byte_mask | byte_mask;
+  }
+  virtual mem_access_byte_mask_t get_dirty_byte_mask() {
+    return m_dirty_byte_mask;
+  }
+  virtual mem_access_sector_mask_t get_dirty_sector_mask() {
+    mem_access_sector_mask_t sector_mask;
+    if (m_status == MODIFIED) sector_mask.set();
+    return sector_mask;
+  }
   virtual unsigned long long get_last_access_time() {
     return m_last_access_time;
   }
@@ -196,6 +254,13 @@ struct line_cache_block : public cache_block_t {
   virtual void set_modified_on_fill(bool m_modified,
                                     mem_access_sector_mask_t sector_mask) {
     m_set_modified_on_fill = m_modified;
+  }
+  virtual void set_readable_on_fill(bool readable,
+                                    mem_access_sector_mask_t sector_mask) {
+    m_set_readable_on_fill = readable;
+  }
+  virtual void set_byte_mask_on_fill(bool m_modified) {
+    m_set_byte_mask_on_fill = m_modified;
   }
   virtual unsigned get_modified_size() {
     return SECTOR_CHUNCK_SIZE * SECTOR_SIZE;  // i.e. cache line size
@@ -218,7 +283,10 @@ struct line_cache_block : public cache_block_t {
   cache_block_state m_status;
   bool m_ignore_on_fill_status;
   bool m_set_modified_on_fill;
+  bool m_set_readable_on_fill;
+  bool m_set_byte_mask_on_fill;
   bool m_readable;
+  mem_access_byte_mask_t m_dirty_byte_mask;
 };
 
 struct sector_cache_block : public cache_block_t {
@@ -232,11 +300,13 @@ struct sector_cache_block : public cache_block_t {
       m_status[i] = INVALID;
       m_ignore_on_fill_status[i] = false;
       m_set_modified_on_fill[i] = false;
+      m_set_readable_on_fill[i] = false;
       m_readable[i] = true;
     }
     m_line_alloc_time = 0;
     m_line_last_access_time = 0;
     m_line_fill_time = 0;
+    m_dirty_byte_mask.reset();
   }
 
   virtual void allocate(new_addr_type tag, new_addr_type block_addr,
@@ -261,6 +331,8 @@ struct sector_cache_block : public cache_block_t {
     m_status[sidx] = RESERVED;
     m_ignore_on_fill_status[sidx] = false;
     m_set_modified_on_fill[sidx] = false;
+    m_set_readable_on_fill[sidx] = false;
+    m_set_byte_mask_on_fill = false;
 
     // set line stats
     m_line_alloc_time = time;  // only set this for the first allocated sector
@@ -283,6 +355,8 @@ struct sector_cache_block : public cache_block_t {
     else
       m_set_modified_on_fill[sidx] = false;
 
+    m_set_readable_on_fill[sidx] = false;
+
     m_status[sidx] = RESERVED;
     m_ignore_on_fill_status[sidx] = false;
     // m_set_modified_on_fill[sidx] = false;
@@ -293,13 +367,19 @@ struct sector_cache_block : public cache_block_t {
     m_line_fill_time = 0;
   }
 
-  virtual void fill(unsigned time, mem_access_sector_mask_t sector_mask) {
+  virtual void fill(unsigned time, mem_access_sector_mask_t sector_mask,
+                    mem_access_byte_mask_t byte_mask) {
     unsigned sidx = get_sector_index(sector_mask);
 
     //	if(!m_ignore_on_fill_status[sidx])
     //	         assert( m_status[sidx] == RESERVED );
-
     m_status[sidx] = m_set_modified_on_fill[sidx] ? MODIFIED : VALID;
+
+    if (m_set_readable_on_fill[sidx]) {
+      m_readable[sidx] = true;
+      m_set_readable_on_fill[sidx] = false;
+    }
+    if (m_set_byte_mask_on_fill) set_byte_mask(byte_mask);
 
     m_sector_fill_time[sidx] = time;
     m_line_fill_time = time;
@@ -340,6 +420,22 @@ struct sector_cache_block : public cache_block_t {
     m_status[sidx] = status;
   }
 
+  virtual void set_byte_mask(mem_fetch *mf) {
+    m_dirty_byte_mask = m_dirty_byte_mask | mf->get_access_byte_mask();
+  }
+  virtual void set_byte_mask(mem_access_byte_mask_t byte_mask) {
+    m_dirty_byte_mask = m_dirty_byte_mask | byte_mask;
+  }
+  virtual mem_access_byte_mask_t get_dirty_byte_mask() {
+    return m_dirty_byte_mask;
+  }
+  virtual mem_access_sector_mask_t get_dirty_sector_mask() {
+    mem_access_sector_mask_t sector_mask;
+    for (unsigned i = 0; i < SECTOR_CHUNCK_SIZE; i++) {
+      if (m_status[i] == MODIFIED) sector_mask.set(i);
+    }
+    return sector_mask;
+  }
   virtual unsigned long long get_last_access_time() {
     return m_line_last_access_time;
   }
@@ -365,7 +461,15 @@ struct sector_cache_block : public cache_block_t {
     unsigned sidx = get_sector_index(sector_mask);
     m_set_modified_on_fill[sidx] = m_modified;
   }
+  virtual void set_byte_mask_on_fill(bool m_modified) {
+    m_set_byte_mask_on_fill = m_modified;
+  }
 
+  virtual void set_readable_on_fill(bool readable,
+                                    mem_access_sector_mask_t sector_mask) {
+    unsigned sidx = get_sector_index(sector_mask);
+    m_set_readable_on_fill[sidx] = readable;
+  }
   virtual void set_m_readable(bool readable,
                               mem_access_sector_mask_t sector_mask) {
     unsigned sidx = get_sector_index(sector_mask);
@@ -400,13 +504,17 @@ struct sector_cache_block : public cache_block_t {
   cache_block_state m_status[SECTOR_CHUNCK_SIZE];
   bool m_ignore_on_fill_status[SECTOR_CHUNCK_SIZE];
   bool m_set_modified_on_fill[SECTOR_CHUNCK_SIZE];
+  bool m_set_readable_on_fill[SECTOR_CHUNCK_SIZE];
+  bool m_set_byte_mask_on_fill;
   bool m_readable[SECTOR_CHUNCK_SIZE];
+  mem_access_byte_mask_t m_dirty_byte_mask;
 
   unsigned get_sector_index(mem_access_sector_mask_t sector_mask) {
     assert(sector_mask.count() == 1);
     for (unsigned i = 0; i < SECTOR_CHUNCK_SIZE; ++i) {
       if (sector_mask.to_ulong() & (1 << i)) return i;
     }
+    return SECTOR_CHUNCK_SIZE;  // error
   }
 };
 
@@ -463,6 +571,7 @@ class cache_config {
     m_data_port_width = 0;
     m_set_index_function = LINEAR_SET_FUNCTION;
     m_is_streaming = false;
+    m_wr_percent = 0;
   }
   void init(char *config, FuncCache status) {
     cache_status = status;
@@ -489,16 +598,6 @@ class cache_config {
         break;
       case 'S':
         m_cache_type = SECTOR;
-        break;
-      default:
-        exit_parse_error();
-    }
-    switch (rp) {
-      case 'L':
-        m_replacement_policy = LRU;
-        break;
-      case 'F':
-        m_replacement_policy = FIFO;
         break;
       default:
         exit_parse_error();
@@ -546,22 +645,27 @@ class cache_config {
         exit_parse_error();
     }
     if (m_alloc_policy == STREAMING) {
-      // For streaming cache, we set the alloc policy to be on-fill to remove
-      // all line_alloc_fail stalls we set the MSHRs to be equal to max
-      // allocated cache lines. This is possible by moving TAG to be shared
-      // between cache line and MSHR enrty (i.e. for each cache line, there is
-      // an MSHR rntey associated with it) This is the easiest think we can
-      // think about to model (mimic) L1 streaming cache in Pascal and Volta
-      // Based on our microbenchmakrs, MSHRs entries have been increasing
-      // substantially in Pascal and Volta For more information about streaming
-      // cache, see:
-      // http://on-demand.gputechconf.com/gtc/2017/presentation/s7798-luke-durant-inside-volta.pdf
-      // https://ieeexplore.ieee.org/document/8344474/
+      /*
+      For streaming cache:
+      (1) we set the alloc policy to be on-fill to remove all line_alloc_fail
+      stalls. if the whole memory is allocated to the L1 cache, then make the
+      allocation to be on_MISS otherwise, make it ON_FILL to eliminate line
+      allocation fails. i.e. MSHR throughput is the same, independent on the L1
+      cache size/associativity So, we set the allocation policy per kernel
+      basis, see shader.cc, max_cta() function
+
+      (2) We also set the MSHRs to be equal to max
+      allocated cache lines. This is possible by moving TAG to be shared
+      between cache line and MSHR enrty (i.e. for each cache line, there is
+      an MSHR rntey associated with it). This is the easiest think we can
+      think of to model (mimic) L1 streaming cache in Pascal and Volta
+
+      For more information about streaming cache, see:
+      http://on-demand.gputechconf.com/gtc/2017/presentation/s7798-luke-durant-inside-volta.pdf
+      https://ieeexplore.ieee.org/document/8344474/
+      */
       m_is_streaming = true;
       m_alloc_policy = ON_FILL;
-      m_mshr_entries = m_nset * m_assoc * MAX_DEFAULT_CACHE_SIZE_MULTIBLIER;
-      if (m_cache_type == SECTOR) m_mshr_entries *= SECTOR_CHUNCK_SIZE;
-      m_mshr_max_merge = MAX_WARP_PER_SM;
     }
     switch (mshr_type) {
       case 'F':
@@ -610,7 +714,8 @@ class cache_config {
     }
 
     // detect invalid configuration
-    if (m_alloc_policy == ON_FILL and m_write_policy == WRITE_BACK) {
+    if ((m_alloc_policy == ON_FILL || m_alloc_policy == STREAMING) and
+        m_write_policy == WRITE_BACK) {
       // A writeback cache with allocate-on-fill policy will inevitably lead to
       // deadlock: The deadlock happens when an incoming cache-fill evicts a
       // dirty line, generating a writeback request.  If the memory subsystem is
@@ -632,9 +737,16 @@ class cache_config {
           "Invalid cache configuration: FETCH_ON_WRITE and LAZY_FETCH_ON_READ "
           "cannot work properly with ON_FILL policy. Cache must be ON_MISS. ");
     }
+
     if (m_cache_type == SECTOR) {
-      assert(m_line_sz / SECTOR_SIZE == SECTOR_CHUNCK_SIZE &&
-             m_line_sz % SECTOR_SIZE == 0);
+      bool cond = m_line_sz / SECTOR_SIZE == SECTOR_CHUNCK_SIZE &&
+                  m_line_sz % SECTOR_SIZE == 0;
+      if (!cond) {
+        std::cerr << "error: For sector cache, the simulator uses hard-coded "
+                     "SECTOR_SIZE and SECTOR_CHUNCK_SIZE. The line size "
+                     "must be product of both values.\n";
+        assert(0);
+      }
     }
 
     // default: port to data array width and granularity = line size
@@ -656,6 +768,9 @@ class cache_config {
       case 'L':
         m_set_index_function = LINEAR_SET_FUNCTION;
         break;
+      case 'X':
+        m_set_index_function = BITWISE_XORING_FUNCTION;
+        break;
       default:
         exit_parse_error();
     }
@@ -675,11 +790,11 @@ class cache_config {
   }
   unsigned get_max_num_lines() const {
     assert(m_valid);
-    return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER * m_nset * original_m_assoc;
+    return get_max_cache_multiplier() * m_nset * original_m_assoc;
   }
   unsigned get_max_assoc() const {
     assert(m_valid);
-    return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER * original_m_assoc;
+    return get_max_cache_multiplier() * original_m_assoc;
   }
   void print(FILE *fp) const {
     fprintf(fp, "Size = %d B (%d Set x %d-way x %d byte line)\n",
@@ -687,6 +802,10 @@ class cache_config {
   }
 
   virtual unsigned set_index(new_addr_type addr) const;
+
+  virtual unsigned get_max_cache_multiplier() const {
+    return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER;
+  }
 
   unsigned hash_function(new_addr_type addr, unsigned m_nset,
                          unsigned m_line_sz_log2, unsigned m_nset_log2,
@@ -722,10 +841,18 @@ class cache_config {
   }
   bool is_streaming() { return m_is_streaming; }
   FuncCache get_cache_status() { return cache_status; }
+  void set_allocation_policy(enum allocation_policy_t alloc) {
+    m_alloc_policy = alloc;
+  }
   char *m_config_string;
   char *m_config_stringPrefL1;
   char *m_config_stringPrefShared;
   FuncCache cache_status;
+  unsigned m_wr_percent;
+  write_allocate_policy_t get_write_allocate_policy() {
+    return m_write_alloc_policy;
+  }
+  write_policy_t get_write_policy() { return m_write_policy; }
 
  protected:
   void exit_parse_error() {
@@ -789,16 +916,28 @@ class l1d_cache_config : public cache_config {
   l1d_cache_config() : cache_config() {}
   unsigned set_bank(new_addr_type addr) const;
   void init(char *config, FuncCache status) {
-    m_banks_byte_interleaving_log2 = LOGB2(l1_banks_byte_interleaving);
-    m_l1_banks_log2 = LOGB2(l1_banks);
+    l1_banks_byte_interleaving_log2 = LOGB2(l1_banks_byte_interleaving);
+    l1_banks_log2 = LOGB2(l1_banks);
     cache_config::init(config, status);
   }
   unsigned l1_latency;
   unsigned l1_banks;
-  unsigned m_l1_banks_log2;
+  unsigned l1_banks_log2;
   unsigned l1_banks_byte_interleaving;
-  unsigned m_banks_byte_interleaving_log2;
+  unsigned l1_banks_byte_interleaving_log2;
   unsigned l1_banks_hashing_function;
+  unsigned m_unified_cache_size;
+  virtual unsigned get_max_cache_multiplier() const {
+    // set * assoc * cacheline size. Then convert Byte to KB
+    // gpgpu_unified_cache_size is in KB while original_sz is in B
+    if (m_unified_cache_size > 0) {
+      unsigned original_size = m_nset * original_m_assoc * m_line_sz / 1024;
+      assert(m_unified_cache_size % original_size == 0);
+      return m_unified_cache_size / original_size;
+    } else {
+      return MAX_DEFAULT_CACHE_SIZE_MULTIBLIER;
+    }
+  }
 };
 
 class l2_cache_config : public cache_config {
@@ -818,9 +957,10 @@ class tag_array {
   ~tag_array();
 
   enum cache_request_status probe(new_addr_type addr, unsigned &idx,
-                                  mem_fetch *mf, bool probe_mode = false) const;
+                                  mem_fetch *mf, bool is_write,
+                                  bool probe_mode = false) const;
   enum cache_request_status probe(new_addr_type addr, unsigned &idx,
-                                  mem_access_sector_mask_t mask,
+                                  mem_access_sector_mask_t mask, bool is_write,
                                   bool probe_mode = false,
                                   mem_fetch *mf = NULL) const;
   enum cache_request_status access(new_addr_type addr, unsigned time,
@@ -829,9 +969,10 @@ class tag_array {
                                    unsigned &idx, bool &wb,
                                    evicted_block_info &evicted, mem_fetch *mf);
 
-  void fill(new_addr_type addr, unsigned time, mem_fetch *mf);
+  void fill(new_addr_type addr, unsigned time, mem_fetch *mf, bool is_write);
   void fill(unsigned idx, unsigned time, mem_fetch *mf);
-  void fill(new_addr_type addr, unsigned time, mem_access_sector_mask_t mask);
+  void fill(new_addr_type addr, unsigned time, mem_access_sector_mask_t mask,
+            mem_access_byte_mask_t byte_mask, bool is_write);
 
   unsigned size() const { return m_config.get_num_lines(); }
   cache_block_t *get_block(unsigned idx) { return m_lines[idx]; }
@@ -849,6 +990,7 @@ class tag_array {
   void update_cache_parameters(cache_config &config);
   void add_pending_line(mem_fetch *mf);
   void remove_pending_line(mem_fetch *mf);
+  void inc_dirty() { m_dirty++; }
 
  protected:
   // This constructor is intended for use only from derived classes that wish to
@@ -869,6 +1011,7 @@ class tag_array {
                            // allocated but not filled
   unsigned m_res_fail;
   unsigned m_sector_miss;
+  unsigned m_dirty;
 
   // performance counters for calculating the amount of misses within a time
   // window
@@ -1071,20 +1214,26 @@ class cache_stats {
   void clear();
   // Clear AerialVision cache stats after each window
   void clear_pw();
-  void inc_stats(int access_type, int access_outcome);
+  void inc_stats(int access_type, int access_outcome,
+                 unsigned long long streamID);
   // Increment AerialVision cache stats
-  void inc_stats_pw(int access_type, int access_outcome);
-  void inc_fail_stats(int access_type, int fail_outcome);
+  void inc_stats_pw(int access_type, int access_outcome,
+                    unsigned long long streamID);
+  void inc_fail_stats(int access_type, int fail_outcome,
+                      unsigned long long streamID);
   enum cache_request_status select_stats_status(
       enum cache_request_status probe, enum cache_request_status access) const;
   unsigned long long &operator()(int access_type, int access_outcome,
-                                 bool fail_outcome);
+                                 bool fail_outcome,
+                                 unsigned long long streamID);
   unsigned long long operator()(int access_type, int access_outcome,
-                                bool fail_outcome) const;
+                                bool fail_outcome,
+                                unsigned long long streamID) const;
   cache_stats operator+(const cache_stats &cs);
   cache_stats &operator+=(const cache_stats &cs);
-  void print_stats(FILE *fout, const char *cache_name = "Cache_stats") const;
-  void print_fail_stats(FILE *fout,
+  void print_stats(FILE *fout, unsigned long long streamID,
+                   const char *cache_name = "Cache_stats") const;
+  void print_fail_stats(FILE *fout, unsigned long long streamID,
                         const char *cache_name = "Cache_fail_stats") const;
 
   unsigned long long get_stats(enum mem_access_type *access_type,
@@ -1098,14 +1247,37 @@ class cache_stats {
 
   void sample_cache_port_utility(bool data_port_busy, bool fill_port_busy);
 
+  unsigned long long &get_cache_port_available_cycles() {
+    return m_cache_port_available_cycles;
+  }
+  unsigned long long &get_cache_data_port_busy_cycles() {
+    return m_cache_data_port_busy_cycles;
+  }
+  unsigned long long &get_cache_fill_port_busy_cycles() {
+    return m_cache_fill_port_busy_cycles;
+  }
+
+  unsigned long long &get_tot_stats(int access_type, int access_outcome) {
+    return m_tot_stats[access_type][access_outcome];
+  }
+  unsigned long long &get_tot_fail_stats(int access_type, int fail_outcome) {
+    return m_tot_fail_stats[access_type][fail_outcome];
+  }
+
  private:
   bool check_valid(int type, int status) const;
   bool check_fail_valid(int type, int fail) const;
 
-  std::vector<std::vector<unsigned long long> > m_stats;
+  // CUDA streamID -> cache stats[NUM_MEM_ACCESS_TYPE]
+  std::map<unsigned long long, std::vector<std::vector<unsigned long long>>>
+      m_stats;
+  std::vector<std::vector<unsigned long long>> m_tot_stats;
   // AerialVision cache stats (per-window)
-  std::vector<std::vector<unsigned long long> > m_stats_pw;
-  std::vector<std::vector<unsigned long long> > m_fail_stats;
+  std::map<unsigned long long, std::vector<std::vector<unsigned long long>>>
+      m_stats_pw;
+  std::map<unsigned long long, std::vector<std::vector<unsigned long long>>>
+      m_fail_stats;
+  std::vector<std::vector<unsigned long long>> m_tot_fail_stats;
 
   unsigned long long m_cache_port_available_cycles;
   unsigned long long m_cache_data_port_busy_cycles;
@@ -1135,13 +1307,8 @@ class baseline_cache : public cache_t {
  public:
   baseline_cache(const char *name, cache_config &config, int core_id,
                  int type_id, mem_fetch_interface *memport,
-                 enum mem_fetch_status status)
-      : m_config(config),
-        m_tag_array(new tag_array(config, core_id, type_id)),
-        m_mshrs(config.m_mshr_entries, config.m_mshr_max_merge),
-        m_bandwidth_management(config) {
-    init(name, config, memport, status);
-  }
+                 enum mem_fetch_status status, enum cache_gpu_level level,
+                 gpgpu_sim *gpu);
 
   void init(const char *name, const cache_config &config,
             mem_fetch_interface *memport, enum mem_fetch_status status) {
@@ -1207,6 +1374,15 @@ class baseline_cache : public cache_t {
   bool fill_port_free() const {
     return m_bandwidth_management.fill_port_free();
   }
+  void inc_aggregated_stats(cache_request_status status,
+                            cache_request_status cache_status, mem_fetch *mf,
+                            enum cache_gpu_level level);
+  void inc_aggregated_fail_stats(cache_request_status status,
+                                 cache_request_status cache_status,
+                                 mem_fetch *mf, enum cache_gpu_level level);
+  void inc_aggregated_stats_pw(cache_request_status status,
+                               cache_request_status cache_status, mem_fetch *mf,
+                               enum cache_gpu_level level);
 
   // This is a gapping hole we are poking in the system to quickly handle
   // filling the cache on cudamemcopies. We don't care about anything other than
@@ -1214,7 +1390,8 @@ class baseline_cache : public cache_t {
   // something is read or written without doing anything else.
   void force_tag_access(new_addr_type addr, unsigned time,
                         mem_access_sector_mask_t mask) {
-    m_tag_array->fill(addr, time, mask);
+    mem_access_byte_mask_t byte_mask;
+    m_tag_array->fill(addr, time, mask, byte_mask, true);
   }
 
  protected:
@@ -1234,9 +1411,13 @@ class baseline_cache : public cache_t {
   cache_config &m_config;
   tag_array *m_tag_array;
   mshr_table m_mshrs;
-  std::list<mem_fetch *> m_miss_queue;
+  std::deque<mem_fetch *> m_miss_queue;
   enum mem_fetch_status m_miss_queue_status;
   mem_fetch_interface *m_memport;
+  cache_gpu_level m_level;
+  gpgpu_sim *m_gpu;
+
+  unsigned m_chiplet_id;
 
   struct extra_mf_fields {
     extra_mf_fields() { m_valid = false; }
@@ -1323,8 +1504,10 @@ class read_only_cache : public baseline_cache {
  public:
   read_only_cache(const char *name, cache_config &config, int core_id,
                   int type_id, mem_fetch_interface *memport,
-                  enum mem_fetch_status status)
-      : baseline_cache(name, config, core_id, type_id, memport, status) {}
+                  enum mem_fetch_status status, enum cache_gpu_level level,
+                  gpgpu_sim *gpu)
+      : baseline_cache(name, config, core_id, type_id, memport, status, level,
+                       gpu) {}
 
   /// Access cache for read_only_cache: returns RESERVATION_FAIL if request
   /// could not be accepted (for any reason)
@@ -1348,13 +1531,8 @@ class data_cache : public baseline_cache {
   data_cache(const char *name, cache_config &config, int core_id, int type_id,
              mem_fetch_interface *memport, mem_fetch_allocator *mfcreator,
              enum mem_fetch_status status, mem_access_type wr_alloc_type,
-             mem_access_type wrbk_type, class gpgpu_sim *gpu)
-      : baseline_cache(name, config, core_id, type_id, memport, status) {
-    init(mfcreator);
-    m_wr_alloc_type = wr_alloc_type;
-    m_wrbk_type = wrbk_type;
-    m_gpu = gpu;
-  }
+             mem_access_type wrbk_type, class gpgpu_sim *gpu,
+             enum cache_gpu_level level);
 
   virtual ~data_cache() {}
 
@@ -1451,7 +1629,7 @@ class data_cache : public baseline_cache {
   /// Sends write request to lower level memory (write or writeback)
   void send_write_request(mem_fetch *mf, cache_event request, unsigned time,
                           std::list<cache_event> &events);
-
+  void update_m_readable(mem_fetch *mf, unsigned cache_index);
   // Member Function pointers - Set by configuration options
   // to the functions below each grouping
   /******* Write-hit configs *******/
@@ -1538,9 +1716,10 @@ class l1_cache : public data_cache {
  public:
   l1_cache(const char *name, cache_config &config, int core_id, int type_id,
            mem_fetch_interface *memport, mem_fetch_allocator *mfcreator,
-           enum mem_fetch_status status, class gpgpu_sim *gpu)
+           enum mem_fetch_status status, class gpgpu_sim *gpu,
+           enum cache_gpu_level level)
       : data_cache(name, config, core_id, type_id, memport, mfcreator, status,
-                   L1_WR_ALLOC_R, L1_WRBK_ACC, gpu) {}
+                   L1_WR_ALLOC_R, L1_WRBK_ACC, gpu, level) {}
 
   virtual ~l1_cache() {}
 
@@ -1555,23 +1734,6 @@ class l1_cache : public data_cache {
            class gpgpu_sim *gpu)
       : data_cache(name, config, core_id, type_id, memport, mfcreator, status,
                    new_tag_array, L1_WR_ALLOC_R, L1_WRBK_ACC, gpu) {}
-};
-
-/// Models second level shared cache with global write-back
-/// and write-allocate policies
-class l2_cache : public data_cache {
- public:
-  l2_cache(const char *name, cache_config &config, int core_id, int type_id,
-           mem_fetch_interface *memport, mem_fetch_allocator *mfcreator,
-           enum mem_fetch_status status, class gpgpu_sim *gpu)
-      : data_cache(name, config, core_id, type_id, memport, mfcreator, status,
-                   L2_WR_ALLOC_R, L2_WRBK_ACC, gpu) {}
-
-  virtual ~l2_cache() {}
-
-  virtual enum cache_request_status access(new_addr_type addr, mem_fetch *mf,
-                                           unsigned time,
-                                           std::list<cache_event> &events);
 };
 
 /*****************************************************************************/

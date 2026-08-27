@@ -123,3 +123,35 @@ unsigned PAE_hash_function(new_addr_type higher_bits, unsigned index,
     return 0;
   }
 }
+
+/**
+ * @brief IPOLY-MODULO hashing function. This factorize total
+ *        number of banks as 2^k * q. With 2^k groups and q banks in each group.
+ *
+ * @param higher_bits
+ * @param index
+ * @param bank_set_num
+ * @param modulo_factor
+ * @param power_of_2_factor
+ * @return unsigned
+ */
+unsigned ipolymodulo_hash_function(new_addr_type higher_bits, unsigned index,
+                                   unsigned bank_set_num,
+                                   unsigned modulo_factor,
+                                   unsigned power_of_2_factor) {
+  unsigned group_size = modulo_factor;
+  unsigned group_count = power_of_2_factor;
+  assert(bank_set_num == group_size * group_count &&
+         "bank_set_num should be equal to group_size * group_count");
+
+  // First we determine the modulo group index and the offset within the group
+  unsigned group_index = index / group_size;
+  unsigned group_offset = index % group_size;
+
+  // Now we call ipoly hashing to get the hashed group index
+  unsigned ipoly_index =
+      ipoly_hash_function(higher_bits, group_index, group_count);
+
+  // Now we return the hashed index for all subpartitions
+  return ipoly_index * group_size + group_offset;
+}

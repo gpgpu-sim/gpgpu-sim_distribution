@@ -1,0 +1,76 @@
+# Workflow with cmake build system
+name: SST Integration Test
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the mydev branch
+  push:
+    branches-ignore:
+      - "gh-readonly-queue**"
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  build-QV100:
+    name: SST-QV100
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      matrix:
+        # test_type: [simple, medium, long]
+        test_type: [simple, medium]
+    container:
+      image: ghcr.io/accel-sim/accel-sim-framework:SST-Integration-Ubuntu-22.04-cuda-11.7-llvm-18.1.8-riscv-gnu-2024.08.06-nightly
+      env:
+        CONFIG: QV100
+        GPU_ARCH: sm_70
+        
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+      - name: Build GPGPU-Sim in SST mode
+        run: |
+          source ./setup_environment
+          make -j4
+      - name: Prepare SST dependencies
+        run: |
+          apt install -y openmpi-bin openmpi-common libtool libtool-bin autoconf python3 python3-dev automake build-essential git
+      - name: Build SST-Core
+        run: |
+          git clone https://github.com/sstsimulator/sst-core.git
+          cd sst-core
+          git pull
+          git checkout devel
+          ./autogen.sh
+          ./configure --prefix=`realpath ../sstcore-install` --disable-mpi --disable-mem-pools
+          make -j4
+          make install
+          cd ..
+          rm -rf ./sst-core
+      - name: Build SST-Elements
+        run: |
+          git clone https://github.com/sstsimulator/sst-elements.git
+          source ./setup_environment
+          cd sst-elements
+          git pull
+          git checkout devel
+          ./autogen.sh
+          ./configure --prefix=`realpath ../sstelements-install` --with-sst-core=`realpath ../sstcore-install` --with-cuda=$CUDA_INSTALL_PATH --with-gpgpusim=$GPGPUSIM_ROOT
+          make -j4
+          make install
+      # Have to resource the gpu app
+      # Also fake a SDK since rodinia 2.0 does not need this, speed things up on github
+      - name: Balar Test
+        run: |
+          pip install testtools blessings pygments
+          source ./setup_environment
+          mkdir 4.2
+          mkdir fake_sdk
+          export NVIDIA_COMPUTE_SDK_LOCATION=$(readlink -f ./fake_sdk)
+          source $GPUAPPS_ROOT/src/setup_environment sst
+          rm -rf 4.2
+          rm -f gpucomputingsdk_4.2.9_linux.run
+          ./sstcore-install/bin/sst-test-elements -w "*balar*${{ matrix.test_type }}*"

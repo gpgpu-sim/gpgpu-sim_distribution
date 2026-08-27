@@ -1,0 +1,161 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI Tests
+
+# Controls when the workflow will run
+on:
+  push:
+    branches-ignore:
+      - "gh-readonly-queue**"
+  # Required for cross-repo PRs: a PR from a fork does not fire `push` in
+  # this repo, so without this the PR gets no CI at all.
+  pull_request:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # Where the heavy build/simulate jobs land depends on who owns the repo:
+  #   * private repo  -> GitHub-hosted minutes are billed, so use the lab's self-hosted
+  #                      runner (tgrogers-pc01), which is free.
+  #   * public repo   -> GitHub-hosted minutes are free, so use them and leave the lab
+  #                      runners for work that actually needs local hardware.
+  # `runs-on` cannot read the `env` context, so the label is resolved once here and
+  # consumed downstream via `needs.select-runner.outputs.label`. This job itself runs on
+  # tgrogers-raid, the same self-hosted runner `check-format` already requires, so it
+  # adds no new infrastructure dependency and no wall-clock (it runs in parallel).
+  select-runner:
+    name: select-runner
+    runs-on: tgrogers-raid
+    outputs:
+      label: ${{ steps.pick.outputs.label }}
+    steps:
+      - name: Resolve runner label
+        id: pick
+        env:
+          IS_PRIVATE: ${{ github.event.repository.private }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          case "${IS_PRIVATE}" in
+            true)  label=tgrogers-pc01 ;;
+            false) label=ubuntu-latest ;;
+            *)
+              # The event payload carried no `repository.private` field. Fall back to the
+              # repository name: the private mirrors are all named *-private.
+              case "${REPO}" in
+                *private*) label=tgrogers-pc01 ;;
+                *)         label=ubuntu-latest ;;
+              esac
+              echo "::warning::repository.private missing from payload; inferred from repo name"
+              ;;
+          esac
+          echo "repo=${REPO} private='${IS_PRIVATE}' -> runner='${label}'"
+          echo "label=${label}" >> "$GITHUB_OUTPUT"
+
+  check-format:
+    runs-on: tgrogers-raid
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check code formatting
+        run: |
+          # Run the formatter to see if it would make any changes
+          /bin/bash ./format-code.sh
+          
+          # Check if there are any uncommitted changes
+          if git diff --quiet; then
+            echo "✅ Code is properly formatted"
+          else
+            echo "❌ Code formatting check failed. The following files need formatting:"
+            git diff --name-only
+            echo ""
+            echo "Please run the formatter locally and commit the changes:"
+            echo "/bin/bash ./format-code.sh"
+            exit 1
+          fi
+
+  # build-Makefile:
+  #   # minimal tests - Makefile is deprecated
+  #   strategy:
+  #     matrix:
+  #       config:
+  #         - QV100
+  #       image_tags:
+  #         - ubuntu-24.04-cuda-12.8-minimal
+  #   runs-on: ${{ needs.select-runner.outputs.label }}
+  #   needs: [check-format, select-runner]
+  #   name: build-Makefile
+  #   container:
+  #     image: ghcr.io/accel-sim/accel-sim-framework:${{ matrix.image_tags }}
+  #     env:
+  #       CONFIG: ${{ matrix.config }}
+        
+  #   # Steps represent a sequence of tasks that will be executed as part of the job
+  #   steps:
+  #     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+  #     - uses: actions/checkout@v4
+  #     - name: Run Simulation
+  #       run: /bin/bash $GITHUB_WORKSPACE/short-tests.sh
+
+  build-CMake:
+    strategy:
+      matrix:
+        app:
+          - rodinia_2.0-ft
+        config:
+          - TITANV
+          - TITANV-LOCALXBAR
+          - QV100
+          - RTX2060
+          - RTX3070
+        image_tags:
+          - ubuntu-24.04-cuda-12.8-minimal
+    runs-on: ${{ needs.select-runner.outputs.label }}
+    needs: [check-format, select-runner]
+    name: build-CMake
+    container:
+      image: ghcr.io/accel-sim/accel-sim-framework:${{ matrix.image_tags }}
+      env:
+        CONFIG: ${{ matrix.config }}
+        APP: ${{ matrix.app }}
+        
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+      - name: Run Simulation
+        run: /bin/bash $GITHUB_WORKSPACE/short-tests-cmake.sh
+
+  build-AccelSim:
+    strategy:
+      matrix:
+        image_tags:
+          - ubuntu-24.04-cuda-12.8-minimal
+    runs-on: ${{ needs.select-runner.outputs.label }}
+    needs: [check-format, select-runner]
+    name: build-AccelSim
+    container:
+      image: ghcr.io/accel-sim/accel-sim-framework:${{ matrix.image_tags }}
+      env:
+        ACCELSIM_REPO: https://github.com/accel-sim/accel-sim-framework.git
+        ACCELSIM_BRANCH: dev
+        
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+      - name: Run Simulation
+        run: /bin/bash $GITHUB_WORKSPACE/short-tests-accelsim.sh
+
+  CI-Success:
+    runs-on: ${{ needs.select-runner.outputs.label }}
+    needs: [select-runner, check-format, build-CMake, build-AccelSim]
+    # needs: [select-runner, check-format, build-Makefile, build-CMake, build-AccelSim]
+    steps:
+      - run: |
+          echo "✅ All CI tests completed successfully!"
+          echo "Format check: ✅"
+          echo "Makefile build: ✅"
+          echo "CMake build: ✅"
+          echo "AccelSim build: ✅"

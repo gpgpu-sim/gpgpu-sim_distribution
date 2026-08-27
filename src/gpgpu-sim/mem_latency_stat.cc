@@ -37,6 +37,7 @@
 #include "mem_fetch.h"
 #include "shader.h"
 #include "stat-tool.h"
+#include "stats.h"
 #include "visualizer.h"
 
 #include <math.h>
@@ -49,7 +50,59 @@
 memory_stats_t::memory_stats_t(unsigned n_shader,
                                const shader_core_config *shader_config,
                                const memory_config *mem_config,
-                               const class gpgpu_sim *gpu) {
+                               const class gpgpu_sim *gpu)
+    : LRC_subpartition_num_icnt_to_lrc_sectors(
+          "LRC_subpartition_num_icnt_to_lrc_sectors",
+          "Number of ICNT to LRC sectors, matched with "
+          "lrc__xbar2gpc_sectors_op_read in NCU",
+          mem_config->m_n_mem_sub_partition, 0),
+      LRC_subpartition_num_lrc_to_l2_sectors(
+          "LRC_subpartition_num_lrc_to_l2_sectors",
+          "Number of LRC to L2 sectors, matched with "
+          "lrc__lts2lrc_sectors_op_read in NCU",
+          mem_config->m_n_mem_sub_partition, 0),
+      LRC_subpartition_l2_stall_due_to_lrc_full(
+          "LRC_subpartition_l2_stall_due_to_lrc_full",
+          "Number of instance that L2 stalls due to LRC queue full",
+          mem_config->m_n_mem_sub_partition, 0),
+      LRC_subpartition_lrc_queue_size(
+          "LRC_subpartition_lrc_queue_size",
+          "Current LRC queue size, representing the active entries in the "
+          "queue sending down requests to L2",
+          mem_config->m_n_mem_sub_partition, 0),
+      LRC_subpartition_current_max_coalesced_count(
+          "LRC_subpartition_current_max_coalesced_count",
+          "Current LRC max entry coalesced count across all entries in the "
+          "queue",
+          mem_config->m_n_mem_sub_partition, 0),
+      LRC_subpartition_current_avg_coalesced_count(
+          "LRC_subpartition_current_avg_coalesced_count",
+          "Current LRC average entry coalesced count across all active entries "
+          "in the "
+          "queue",
+          mem_config->m_n_mem_sub_partition, 0.0f),
+      interchip_read_requests("interchip_read_requests",
+                              "Number of inter-chiplet read requests", 0),
+      interchip_write_requests("interchip_write_requests",
+                               "Number of inter-chiplet write requests", 0),
+      chiplet_queue_full(
+          "chiplet_queue_full",
+          "Number of cycles chiplet request queue was full per sub-partition",
+          mem_config->m_n_mem_sub_partition, 0),
+      chiplet_write_fail(
+          "chiplet_write_fail",
+          "Number of chiplet write forward failures per sub-partition",
+          mem_config->m_n_mem_sub_partition, 0),
+      L2_dram_queue_full(
+          "L2_dram_queue_full",
+          "Number of cycles L2-to-DRAM queue was full per sub-partition",
+          mem_config->m_n_mem_sub_partition, 0),
+      dram_reads_per_mc("dram_reads_per_mc",
+                        "DRAM read sectors per memory controller",
+                        mem_config->m_n_mem, 0),
+      dram_writes_per_mc("dram_writes_per_mc",
+                         "DRAM write sectors per memory controller",
+                         mem_config->m_n_mem, 0) {
   assert(mem_config->m_valid);
   assert(shader_config->m_valid);
 
@@ -203,7 +256,15 @@ unsigned memory_stats_t::memlatstat_done(mem_fetch *mf) {
 }
 
 void memory_stats_t::memlatstat_read_done(mem_fetch *mf) {
-  if (m_memory_config->gpgpu_memlatency_stat) {
+  if (m_memory_config->SST_mode) {
+    // in SST mode, we just calculate mem latency
+    unsigned mf_latency;
+    mf_latency =
+        (m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle) - mf->get_timestamp();
+    num_mfs++;
+    mf_total_lat += mf_latency;
+    if (mf_latency > max_mf_latency) max_mf_latency = mf_latency;
+  } else if (m_memory_config->gpgpu_memlatency_stat) {
     unsigned mf_latency = memlatstat_done(mf);
     if (mf_latency >
         mf_max_lat_table[mf->get_tlx_addr().chip][mf->get_tlx_addr().bk])
@@ -222,6 +283,16 @@ void memory_stats_t::memlatstat_read_done(mem_fetch *mf) {
 void memory_stats_t::memlatstat_dram_access(mem_fetch *mf) {
   unsigned dram_id = mf->get_tlx_addr().chip;
   unsigned bank = mf->get_tlx_addr().bk;
+
+  // Track DRAM traffic per memory controller
+  unsigned sectors =
+      ceil(mf->get_data_size() / m_memory_config->dram_atom_size);
+  if (mf->get_is_write()) {
+    dram_writes_per_mc[dram_id] += sectors;
+  } else {
+    dram_reads_per_mc[dram_id] += sectors;
+  }
+
   if (m_memory_config->gpgpu_memlatency_stat) {
     if (mf->get_is_write()) {
       if (mf->get_sid() < m_n_shader) {  // do not count L2_writebacks here
@@ -273,7 +344,12 @@ void memory_stats_t::memlatstat_print(unsigned n_mem, unsigned gpu_mem_n_bk) {
   unsigned max_bank_accesses, min_bank_accesses, max_chip_accesses,
       min_chip_accesses;
 
-  if (m_memory_config->gpgpu_memlatency_stat) {
+  if (m_memory_config->SST_mode) {
+    // in SST mode, we just calculate mem latency
+    printf("max_mem_SST_latency = %d \n", max_mf_latency);
+    if (num_mfs)
+      printf("average_mf_SST_latency = %lld \n", mf_total_lat / num_mfs);
+  } else if (m_memory_config->gpgpu_memlatency_stat) {
     printf("maxmflatency = %d \n", max_mf_latency);
     printf("max_icnt2mem_latency = %d \n", max_icnt2mem_latency);
     printf("maxmrqlatency = %d \n", max_mrq_latency);
@@ -523,4 +599,79 @@ void memory_stats_t::memlatstat_print(unsigned n_mem, unsigned gpu_mem_n_bk) {
     printf("\n");
     printf("\naverage position of mrq chosen = %f\n", (float)l / k);
   }
+}
+
+void memory_stats_t::add_icnt_to_lrc_sectors(unsigned subpartition_id,
+                                             mem_fetch *mf) {
+  unsigned sector_count = mf->get_access_sector_mask().count();
+  // For TMA multicast requests, the data is delivered to multiple CTAs,
+  // so count the sectors once per multicast destination.
+  const mem_access_t &access = mf->get_mem_access();
+  if (access.is_tma_multicast()) {
+    unsigned num_destinations =
+        std::bitset<32>(access.get_tma_multicast_cta_mask()).count();
+    sector_count *= num_destinations;
+  }
+  LRC_subpartition_num_icnt_to_lrc_sectors[subpartition_id] += sector_count;
+}
+
+void memory_stats_t::add_lrc_to_l2_sectors(unsigned subpartition_id,
+                                           mem_fetch *mf) {
+  LRC_subpartition_num_lrc_to_l2_sectors[subpartition_id] +=
+      mf->get_access_sector_mask().count();
+}
+
+void memory_stats_t::add_l2_stall_due_to_lrc_full(unsigned subpartition_id) {
+  LRC_subpartition_l2_stall_due_to_lrc_full[subpartition_id]++;
+}
+
+void memory_stats_t::update_lrc_queue_size(unsigned subpartition_id,
+                                           unsigned size) {
+  LRC_subpartition_lrc_queue_size[subpartition_id] = size;
+}
+
+void memory_stats_t::update_current_max_coalesced_count(
+    unsigned subpartition_id, unsigned count) {
+  LRC_subpartition_current_max_coalesced_count[subpartition_id] = count;
+}
+
+void memory_stats_t::update_current_avg_coalesced_count(
+    unsigned subpartition_id, float average_count) {
+  LRC_subpartition_current_avg_coalesced_count[subpartition_id] = average_count;
+}
+
+/**
+ * @brief Print the LRC statistics
+ */
+void memory_stats_t::print_lrc_stats() {
+  auto lrc_to_l2_sectors_sum = LRC_subpartition_num_lrc_to_l2_sectors.sum();
+  auto icnt_to_lrc_sectors_sum = LRC_subpartition_num_icnt_to_lrc_sectors.sum();
+  auto LRC_subpartition_l2_stall_due_to_lrc_full_sum =
+      LRC_subpartition_l2_stall_due_to_lrc_full.sum();
+  printf("LRC stats:\n");
+  printf("%s\n", lrc_to_l2_sectors_sum.to_string().c_str());
+  printf("%s\n", icnt_to_lrc_sectors_sum.to_string().c_str());
+  printf("Number of LRC to L2 sectors: %lu\n", lrc_to_l2_sectors_sum.value());
+  printf("Number of ICNT to LRC sectors: %lu\n",
+         icnt_to_lrc_sectors_sum.value());
+  printf("Number of LRC to L2 bytes: %lu\n",
+         lrc_to_l2_sectors_sum.value() * 32);
+  printf("Number of ICNT to LRC bytes: %lu\n",
+         icnt_to_lrc_sectors_sum.value() * 32);
+  if (lrc_to_l2_sectors_sum.value() > 0)
+    printf("LRC compression ratio: %f\n",
+           (float)icnt_to_lrc_sectors_sum.value() /
+               (float)lrc_to_l2_sectors_sum.value());
+  else
+    printf("LRC compression ratio: 0.0\n");
+  printf("%s\n",
+         LRC_subpartition_l2_stall_due_to_lrc_full_sum.to_string().c_str());
+}
+
+void memory_stats_t::print_interchip_stats() {
+  printf("Inter-chiplet stats:\n");
+  printf("%s\n", interchip_read_requests.to_string().c_str());
+  printf("%s\n", interchip_write_requests.to_string().c_str());
+  printf("Total inter-chiplet requests: %lu\n",
+         interchip_read_requests.value() + interchip_write_requests.value());
 }

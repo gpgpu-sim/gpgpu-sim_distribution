@@ -199,27 +199,27 @@ Configuration * Configuration::GetTheConfig()
 
 //============================================================
 
-extern "C" void config_error( char const * msg, int lineno )
+void config_error( char * msg, int lineno )
 {
   Configuration::GetTheConfig( )->ParseError( msg, lineno );
 }
 
-extern "C" void config_assign_string( char const * field, char const * value )
+ void config_assign_string( char const * field, char const * value )
 {
   Configuration::GetTheConfig()->Assign(field, value);
 }
 
-extern "C" void config_assign_int( char const * field, int value )
+void config_assign_int( char const * field, int value )
 {
   Configuration::GetTheConfig()->Assign(field, value);
 }
 
-extern "C" void config_assign_float( char const * field, double value )
+void config_assign_float( char const * field, double value )
 {
   Configuration::GetTheConfig()->Assign(field, value);
 }
 
-extern "C" int config_input(char * line, int max_size)
+int config_input(char * line, int max_size)
 {
   return Configuration::GetTheConfig()->Input(line, max_size);
 }

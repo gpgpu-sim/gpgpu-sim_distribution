@@ -202,8 +202,9 @@ unsigned ptx_thread_info::get_builtin(int builtin_id, unsigned dim_mod) {
     case CLOCK_REG:
       return (unsigned)(m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
     case CLOCK64_REG:
-      abort();  // change return value to unsigned long long?
-                // GPGPUSim clock is 4 times slower - multiply by 4
+      // Change return value to unsigned long long?
+      // Currently returns 32-bit unsigned, which may cause truncation for large
+      // values. GPGPUSim clock is 4 times slower - multiply by 4
       return (m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle) * 4;
     case HALFCLOCK_ID:
       // GPGPUSim clock is 4 times slower - multiply by 4
@@ -369,7 +370,8 @@ static void print_reg(FILE *fp, std::string name, ptx_reg_t value,
       fprintf(fp, ".u64 %llu [0x%llx]\n", value.u64, value.u64);
       break;
     case F16_TYPE:
-      fprintf(fp, ".f16 %f [0x%04x]\n", value.f16, (unsigned)value.u16);
+      fprintf(fp, ".f16 %f [0x%04x]\n", static_cast<float>(value.f16),
+              (unsigned)value.u16);
       break;
     case F32_TYPE:
       fprintf(fp, ".f32 %.15lf [0x%08x]\n", value.f32, value.u32);

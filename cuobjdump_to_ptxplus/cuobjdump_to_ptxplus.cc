@@ -54,7 +54,7 @@ FILE *ptxplus_out;
 void output(const char * text)
 {
 	//printf(text);
-	fprintf(ptxplus_out, text);
+	fprintf(ptxplus_out,"%s", text);
 }
 
 void output(const std::string text) {

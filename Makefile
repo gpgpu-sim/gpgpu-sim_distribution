@@ -34,6 +34,7 @@ INTERSIM ?= intersim2
 
 include version_detection.mk
 
+# Check for debug
 ifeq ($(GPGPUSIM_CONFIG), gcc-$(CC_VERSION)/cuda-$(CUDART_VERSION)/debug)
 	export DEBUG=1
 else
@@ -87,7 +88,7 @@ ifneq ($(GPGPUSIM_POWER_MODEL),)
 		MCPAT_DBG_FLAG = dbg
 	endif
 
-	MCPAT_OBJ_DIR = $(SIM_OBJ_FILES_DIR)/gpuwattch
+	MCPAT_OBJ_DIR = $(SIM_OBJ_FILES_DIR)/accelwattch
 
 	MCPAT = $(MCPAT_OBJ_DIR)/*.o
 endif
@@ -117,24 +118,24 @@ check_setup_environment:
 	 fi 
 
 check_power:
-	@if [ -d "$(GPGPUSIM_ROOT)/src/gpuwattch/" -a ! -n "$(GPGPUSIM_POWER_MODEL)" ]; then \
+	@if [ -d "$(GPGPUSIM_ROOT)/src/accelwattch/" -a ! -n "$(GPGPUSIM_POWER_MODEL)" ]; then \
 		echo ""; \
-		echo "	Power model detected in default directory ($(GPGPUSIM_ROOT)/src/gpuwattch) but GPGPUSIM_POWER_MODEL not set."; \
-		echo "	Please re-run setup_environment or manually set GPGPUSIM_POWER_MODEL to the gpuwattch directory if you would like to include the GPGPU-Sim Power Model."; \
+		echo "	Power model detected in default directory ($(GPGPUSIM_ROOT)/src/accelwattch) but GPGPUSIM_POWER_MODEL not set."; \
+		echo "	Please re-run setup_environment or manually set GPGPUSIM_POWER_MODEL to the accelwattch directory if you would like to include the GPGPU-Sim Power Model."; \
 		echo ""; \
 		true; \
 	elif [ ! -d "$(GPGPUSIM_POWER_MODEL)" ]; then \
 		echo ""; \
 		echo "ERROR ** Power model directory invalid."; \
 		echo "($(GPGPUSIM_POWER_MODEL)) is not a valid directory."; \
-		echo "Please set GPGPUSIM_POWER_MODEL to the GPGPU-Sim gpuwattch directory."; \
+		echo "Please set GPGPUSIM_POWER_MODEL to the GPGPU-Sim accelwattch directory."; \
 		echo ""; \
 		exit 101; \
 	elif [ -n "$(GPGPUSIM_POWER_MODEL)" -a ! -f "$(GPGPUSIM_POWER_MODEL)/gpgpu_sim.verify" ]; then \
 		echo ""; \
 		echo "ERROR ** Power model directory invalid."; \
 		echo "gpgpu_sim.verify not found in $(GPGPUSIM_POWER_MODEL)."; \
-		echo "Please ensure that GPGPUSIM_POWER_MODEL points to a valid gpuwattch directory and that you have the correct GPGPU-Sim mcpat distribution."; \
+		echo "Please ensure that GPGPUSIM_POWER_MODEL points to a valid accelwattch directory and that you have the correct GPGPU-Sim mcpat distribution."; \
 		echo ""; \
 		exit 102; \
 	fi
@@ -168,6 +169,8 @@ $(SIM_LIB_DIR)/libcudart.so: makedirs $(LIBS) cudalib
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.10.0 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.10.0; fi
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.10.1 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.10.1; fi
 	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.11.0 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.11.0; fi
+	if [ ! -f $(SIM_LIB_DIR)/libcudart.so.12 ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart.so.12; fi
+	if [ ! -f $(SIM_LIB_DIR)/libcudart_mod.so ]; then ln -s libcudart.so $(SIM_LIB_DIR)/libcudart_mod.so; fi
 
 $(SIM_LIB_DIR)/libcudart.dylib: makedirs $(LIBS) cudalib
 	g++ -dynamiclib -Wl,-headerpad_max_install_names,-undefined,dynamic_lookup,-compatibility_version,1.1,-current_version,1.1\
@@ -243,8 +246,8 @@ makedirs:
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/libopencl/bin ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/libopencl/bin; fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/$(INTERSIM) ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/$(INTERSIM); fi;
 	if [ ! -d $(SIM_OBJ_FILES_DIR)/cuobjdump_to_ptxplus ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/cuobjdump_to_ptxplus; fi;
-	if [ ! -d $(SIM_OBJ_FILES_DIR)/gpuwattch ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/gpuwattch; fi;
-	if [ ! -d $(SIM_OBJ_FILES_DIR)/gpuwattch/cacti ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/gpuwattch/cacti; fi;
+	if [ ! -d $(SIM_OBJ_FILES_DIR)/accelwattch ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/accelwattch; fi;
+	if [ ! -d $(SIM_OBJ_FILES_DIR)/accelwattch/cacti ]; then mkdir -p $(SIM_OBJ_FILES_DIR)/accelwattch/cacti; fi;
 
 all:
 	$(MAKE) gpgpusim

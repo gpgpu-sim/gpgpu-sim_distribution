@@ -62,11 +62,11 @@
 
 
 import sys
-import Tkinter as Tk
+import tkinter as Tk
 import Pmw
 import lexyacc
 import guiclasses
-import tkFileDialog as Fd
+import tkinter.filedialog as Fd
 import organizedata
 import os
 import os.path
@@ -160,7 +160,7 @@ def fileInput(cl_files=None):
         tmprecentfile = tmprecentfile.split('/')
         for iter in range(1,len(tmprecentfile) - 1):
             recentfile = recentfile + '/' + tmprecentfile[iter]
-    except IOError,e:
+    except IOError as e:
         if e.errno == 2:
             # recentfiles.txt does not exist, ignore and use CWD
             recentfile = '.'
@@ -313,7 +313,7 @@ def loadRecentFile(entry):
     try: 
         loadfile = open(os.path.join(userSettingPath, 'recentfiles.txt'), 'r')
         recentfiles = loadfile.readlines()
-    except IOError,e:
+    except IOError as e:
         if e.errno == 2:
             recentfiles = ''
         else:
@@ -323,7 +323,7 @@ def loadRecentFile(entry):
     recentFileWindow.pack(side = Tk.TOP)
     scrollbar = Tk.Scrollbar(recentFileWindow, orient = Tk.VERTICAL)
     cRecentFile = Tk.Listbox(recentFileWindow, width = 100, height = 15, yscrollcommand = scrollbar.set)
-    cRecentFile.bind("<Double-Button-1>", lambda(event): recentFileInsert(entry, cRecentFile.get('active'), instance))
+    cRecentFile.bind("<Double-Button-1>", lambda event: recentFileInsert(entry, cRecentFile.get('active'), instance))
     cRecentFile.pack(side = Tk.LEFT)
     scrollbar.config(command = cRecentFile.yview)
     scrollbar.pack(side = Tk.LEFT, fill = Tk.Y)
@@ -391,9 +391,9 @@ def addListToListbox(listbox,list):
                 Filenames.append(string)
                 listbox.insert(Tk.END, string)
             else:
-                print 'Could not open file: ' + string
+                print('Could not open file: ' + string)
         except:
-            print 'Could not open file: ' + file
+            print('Could not open file: ' + file)
             
         
 def errorMsg(string):
@@ -447,6 +447,7 @@ def submitClicked(instance, num, skipcflog, cflog2cuda, listboxes):
     startup(res, [TEFiles, TEPTXFiles, TEStatFiles])
 
 def graphAddTab(vars, graphTabs,res, entry):
+
     
     TabsForGraphs.append(guiclasses.formEntry(graphTabs, str(len(TabsForGraphs) + 1), vars, res, entry))
     entry.delete(0, Tk.END)
@@ -586,7 +587,7 @@ def startup(res, TEFILES):
     organizedata.setCFLOGInfoFiles(TEFILES)
     for files in Filenames:
         vars[files] = organizedata.organizedata(vars[files])
-
+    
     graphAddTab(vars, graphTabs, res, eAddTab)
 
 
@@ -873,3 +874,4 @@ def manageFilesSubmit(window, listbox):
 
             
     
+

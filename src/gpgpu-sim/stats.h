@@ -52,5 +52,4 @@ enum mem_stage_stall_type {
   WB_CACHE_RSRV_FAIL,
   N_MEM_STAGE_STALL_TYPE
 };
-
 #endif

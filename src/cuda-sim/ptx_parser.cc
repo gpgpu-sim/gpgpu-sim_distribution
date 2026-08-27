@@ -206,7 +206,7 @@ void ptx_recognizer::end_function() {
   gpgpu_ptx_assemble(g_func_info->get_name(), g_func_info);
   g_current_symbol_table = g_global_symbol_table;
 
-  PTX_PARSE_DPRINTF("function %s, PC = %d\n", g_func_info->get_name().c_str(),
+  PTX_PARSE_DPRINTF("function %s, PC = %llu\n", g_func_info->get_name().c_str(),
                     g_func_info->get_start_PC());
 }
 
@@ -486,7 +486,7 @@ void ptx_recognizer::add_identifier(const char *identifier, int array_dim,
     case param_space_local:
       printf(
           "GPGPU-Sim PTX: allocating stack frame region for .param \"%s\" from "
-          "0x%x to 0x%lx\n",
+          "0x%llx to 0x%llx\n",
           identifier, g_current_symbol_table->get_local_next(),
           g_current_symbol_table->get_local_next() + num_bits / 8);
       fflush(stdout);
@@ -521,7 +521,7 @@ void ptx_recognizer::add_constptr(const char *identifier1,
 
   unsigned addr = s2->get_address();
 
-  printf("GPGPU-Sim PTX: moving \"%s\" from 0x%x to 0x%x (%s+%x)\n",
+  printf("GPGPU-Sim PTX: moving \"%s\" from 0x%llx to 0x%x (%s+%d)\n",
          identifier1, s1->get_address(), addr + offset, identifier2, offset);
 
   s1->set_address(addr + offset);
@@ -622,13 +622,13 @@ void ptx_recognizer::add_scalar_type_spec(int type_spec) {
                     g_ptx_token_decode[type_spec].c_str());
   g_scalar_type.push_back(type_spec);
   if (g_scalar_type.size() > 1) {
-    parse_assert((g_opcode == -1) || (g_opcode == CVT_OP) ||
-                     (g_opcode == SET_OP) || (g_opcode == SLCT_OP) ||
-                     (g_opcode == TEX_OP) || (g_opcode == MMA_OP) ||
-                     (g_opcode == DP4A_OP) || (g_opcode == VMIN_OP) || 
-                     (g_opcode == VMAX_OP),
-                 "only cvt, set, slct, tex, vmin, vmax and dp4a can have more than one "
-                 "type specifier.");
+    parse_assert(
+        (g_opcode == -1) || (g_opcode == CVT_OP) || (g_opcode == SET_OP) ||
+            (g_opcode == SLCT_OP) || (g_opcode == TEX_OP) ||
+            (g_opcode == MMA_OP) || (g_opcode == DP4A_OP) ||
+            (g_opcode == VMIN_OP) || (g_opcode == VMAX_OP),
+        "only cvt, set, slct, tex, vmin, vmax and dp4a can have more than one "
+        "type specifier.");
   }
   g_scalar_type_spec = type_spec;
 }

@@ -39,7 +39,7 @@
 #include <string>
 #include <vector>
 
-//#include "ptx.tab.h"
+// #include "ptx.tab.h"
 #include "ptx_sim.h"
 
 #include "memory.h"
@@ -205,6 +205,7 @@ class symbol {
   const std::string &name() const { return m_name; }
   const std::string &decl_location() const { return m_decl_location; }
   const type_info *type() const { return m_type; }
+  bool has_valid_address() const { return m_address_valid; }
   addr_t get_address() const {
     assert(m_is_label ||
            !m_type->get_key().is_reg());  // todo : other assertions
@@ -310,6 +311,7 @@ class symbol_table {
   void set_ptx_version(float ver, unsigned ext);
   void set_sm_target(const char *target, const char *ext, const char *ext2);
   symbol *lookup(const char *identifier);
+  symbol *lookup_by_addr(addr_t addr);
   std::string get_scope_name() const { return m_scope_name; }
   symbol *add_variable(const char *identifier, const type_info *type,
                        unsigned size, const char *filename, unsigned line);
@@ -966,8 +968,8 @@ class ptx_instruction : public warp_inst_t {
   int get_pred_mod() const { return m_pred_mod; }
   const char *get_source() const { return m_source.c_str(); }
 
-  const std::list<int> get_scalar_type() const {return m_scalar_type;}
-  const std::list<int> get_options() const {return m_options;}
+  const std::list<int> get_scalar_type() const { return m_scalar_type; }
+  const std::list<int> get_options() const { return m_options; }
 
   typedef std::vector<operand_info>::const_iterator const_iterator;
 
@@ -1085,6 +1087,8 @@ class ptx_instruction : public warp_inst_t {
   unsigned cache_option() const { return m_cache_option; }
   unsigned rounding_mode() const { return m_rounding_mode; }
   unsigned saturation_mode() const { return m_saturation_mode; }
+  unsigned clamp_mode() const { return m_clamp_mode; }
+  unsigned left_mode() const { return m_left_mode; }
   unsigned dimension() const { return m_geom_spec; }
   unsigned barrier_op() const { return m_barrier_op; }
   unsigned shfl_op() const { return m_shfl_op; }
@@ -1159,6 +1163,8 @@ class ptx_instruction : public warp_inst_t {
   unsigned m_rounding_mode;
   unsigned m_compare_op;
   unsigned m_saturation_mode;
+  unsigned m_clamp_mode;
+  unsigned m_left_mode;
   unsigned m_barrier_op;
   unsigned m_shfl_op;
   unsigned m_prmt_op;
@@ -1248,6 +1254,7 @@ class function_info {
   const ptx_version &get_ptx_version() const {
     return m_symtab->get_ptx_version();
   }
+  virtual ~function_info() {}
   unsigned get_sm_target() const { return m_symtab->get_sm_target(); }
   bool is_extern() const { return m_extern; }
   void set_name(const char *name) { m_name = name; }

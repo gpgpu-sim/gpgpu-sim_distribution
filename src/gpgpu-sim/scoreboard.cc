@@ -48,8 +48,7 @@ void Scoreboard::printContents() const {
   for (unsigned i = 0; i < reg_table.size(); i++) {
     if (reg_table[i].size() == 0) continue;
     printf("  wid = %2d: ", i);
-    std::set<unsigned>::const_iterator it;
-    for (it = reg_table[i].begin(); it != reg_table[i].end(); it++)
+    for (auto it = reg_table[i].begin(); it != reg_table[i].end(); it++)
       printf("%u ", *it);
     printf("\n");
   }
@@ -127,7 +126,7 @@ void Scoreboard::releaseRegisters(const class warp_inst_t* inst) {
  **/
 bool Scoreboard::checkCollision(unsigned wid, const class inst_t* inst) const {
   // Get list of all input and output registers
-  std::set<int> inst_regs;
+  std::unordered_set<int> inst_regs;
 
   for (unsigned iii = 0; iii < inst->outcount; iii++)
     inst_regs.insert(inst->out[iii]);
@@ -141,7 +140,7 @@ bool Scoreboard::checkCollision(unsigned wid, const class inst_t* inst) const {
 
   // Check for collision, get the intersection of reserved registers and
   // instruction registers
-  std::set<int>::const_iterator it2;
+  std::unordered_set<int>::const_iterator it2;
   for (it2 = inst_regs.begin(); it2 != inst_regs.end(); it2++)
     if (reg_table[wid].find(*it2) != reg_table[wid].end()) {
       return true;

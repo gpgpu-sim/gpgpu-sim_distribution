@@ -200,7 +200,7 @@ void InterconnectInterface::Push(unsigned input_deviceID, unsigned output_device
 void* InterconnectInterface::Pop(unsigned deviceID)
 {
   int icntID = _node_map[deviceID];
-#if DEBUG
+#if 0
   cout<<"Call interconnect POP  " << output<<endl;
 #endif
 
@@ -225,6 +225,16 @@ void* InterconnectInterface::Pop(unsigned deviceID)
 
   return data;
 
+}
+
+bool InterconnectInterface::HasPacket(unsigned deviceID) const
+{
+  int icntID = _node_map.at(deviceID);
+  int subnet = (deviceID < _n_shader) ? 1 : 0;
+  for (int vc = 0; vc < _vcs; ++vc) {
+    if (_boundary_buffer[subnet][icntID][vc].HasPacket()) return true;
+  }
+  return false;
 }
 
 void InterconnectInterface::Advance()

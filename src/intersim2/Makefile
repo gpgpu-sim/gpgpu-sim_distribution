@@ -28,7 +28,7 @@
 # Makefile
 #
 CXX = g++
-CC = gcc
+CC = g++
 CREATE_LIBRARY ?= 0
 INTERFACE = interconnect_interface.cpp
 DEBUG ?= 0
@@ -136,10 +136,10 @@ depend:
 	makedepend -f$(OBJDIR)/Makefile.makedepend -I$(INCPATH) -p$(OBJDIR)/ $(ALL_SRCS) 2> /dev/null
 
 ${LEX_OBJS}: $(OBJDIR)/lex.yy.c $(OBJDIR)/y.tab.h
-	$(CC) $(CPPFLAGS) -c $< -o $@
+	$(CC) -Wno-unused-function $(CPPFLAGS) -c $< -o $@
 
 ${YACC_OBJS}: $(OBJDIR)/y.tab.c $(OBJDIR)/y.tab.h
-	$(CC) $(CPPFLAGS) -c $< -o $@
+	$(CC) -Wno-unused-function $(CPPFLAGS) -c $< -o $@
 
 ${OBJDIR}/%.o: %.cpp 
 	$(CXX) $(CPPFLAGS) -c $< -o $@

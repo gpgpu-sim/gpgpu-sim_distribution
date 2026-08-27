@@ -69,14 +69,22 @@ struct CUevent_st {
   void issue() { m_issued++; }
   unsigned int num_issued() const { return m_issued; }
 
+  // SST related, stating this event is requested to synchronize
+  void set_request_synchronize() { m_requested_synchronize = true; }
+  void reset_request_synchronize() { m_requested_synchronize = false; }
+  bool requested_synchronize() const { return m_requested_synchronize; }
+
  private:
   int m_uid;
   bool m_blocking;
   bool m_done;
-  int m_updates;
+  unsigned int m_updates;
   unsigned int m_issued;
   time_t m_wallclock;
   double m_gpu_tot_sim_cycle;
+
+  // SST related
+  bool m_requested_synchronize = false;
 
   static int m_next_event_uid;
 };
@@ -198,9 +206,7 @@ class stream_operation {
   kernel_info_t *get_kernel() { return m_kernel; }
   bool do_operation(gpgpu_sim *gpu);
   void print(FILE *fp) const;
-  struct CUstream_st *get_stream() {
-    return m_stream;
-  }
+  struct CUstream_st *get_stream() { return m_stream; }
   void set_stream(CUstream_st *stream) { m_stream = stream; }
 
  private:
@@ -228,6 +234,7 @@ struct CUstream_st {
   bool empty();
   bool busy();
   void synchronize();
+  bool synchronize_check();
   void push(const stream_operation &op);
   void record_next_done();
   stream_operation next();
@@ -235,6 +242,12 @@ struct CUstream_st {
   stream_operation &front() { return m_operations.front(); }
   void print(FILE *fp);
   unsigned get_uid() const { return m_uid; }
+  void set_request_synchronize() { m_requested_synchronize = true; }
+  void reset_request_synchronize() { m_requested_synchronize = false; }
+  bool requested_synchronize() const { return m_requested_synchronize; }
+  void set_stream_zero() { is_stream_zero = true; }
+  bool is_stream_zero_stream() { return is_stream_zero; }
+  void reset_stream_zero() { is_stream_zero = false; }
 
  private:
   unsigned m_uid;
@@ -245,6 +258,11 @@ struct CUstream_st {
 
   pthread_mutex_t m_lock;  // ensure only one host or gpu manipulates stream
                            // operation at one time
+
+  // SST related, use to record the stream is requested to synchronize
+  bool m_requested_synchronize = false;
+  // Whether this is the default stream
+  bool is_stream_zero = false;
 };
 
 class stream_manager {
@@ -265,6 +283,8 @@ class stream_manager {
   void stop_all_running_kernels();
   unsigned size() { return m_streams.size(); };
   bool is_blocking() { return m_cuda_launch_blocking; };
+  CUstream_st *get_stream_zero() { return &m_stream_zero; };
+  std::list<CUstream_st *> &get_concurrent_streams() { return m_streams; };
 
  private:
   void print_impl(FILE *fp);

@@ -39,6 +39,7 @@ typedef bool (*icnt_has_buffer_p)(unsigned input, unsigned int size);
 typedef void (*icnt_push_p)(unsigned input, unsigned output, void* data,
                             unsigned int size);
 typedef void* (*icnt_pop_p)(unsigned output);
+typedef bool (*icnt_has_packet_p)(unsigned output);
 typedef void (*icnt_transfer_p)();
 typedef bool (*icnt_busy_p)();
 typedef void (*icnt_drain_p)();
@@ -52,6 +53,7 @@ extern icnt_init_p icnt_init;
 extern icnt_has_buffer_p icnt_has_buffer;
 extern icnt_push_p icnt_push;
 extern icnt_pop_p icnt_pop;
+extern icnt_has_packet_p icnt_has_packet;
 extern icnt_transfer_p icnt_transfer;
 extern icnt_busy_p icnt_busy;
 extern icnt_drain_p icnt_drain;

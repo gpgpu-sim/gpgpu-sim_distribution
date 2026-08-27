@@ -1,0 +1,214 @@
+name: PR AI Preliminary Review
+
+on:
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to re-review"
+        required: true
+        type: number
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: pr-ai-review-${{ github.event.pull_request.number || inputs.pr_number }}
+  cancel-in-progress: true
+
+jobs:
+  ai-review:
+    # pull_request: only fire when the label being applied is "ready"
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.label.name == 'ready')
+    runs-on: tgrogers-raid
+
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+      REPO: ${{ github.repository }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout default branch (project rules + diff context)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          clean: true
+
+      - name: Fetch PR diff
+        run: |
+          rm -f pr.diff
+          curl -sSL \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github.v3.diff" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$REPO/pulls/$PR_NUMBER" > pr.diff
+          echo "Diff size: $(wc -l < pr.diff) lines"
+
+      - name: AI review with opencode
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          # Optional override; defaults to the conventional runner checkout below.
+          AALP_PLUGINS_DIR: ${{ vars.AALP_PLUGINS_DIR }}
+        run: |
+          set -o pipefail
+          rm -f pr-review.md pr-verdict.txt pr-review-skill.md opencode.out opencode.clean
+
+          # The review skill + reviewer agent live in the shared AALP plugins repo,
+          # kept checked out on the runner (no per-run clone) — one source of truth
+          # for every consuming repo instead of a copy in each repo/branch.
+          PLUGIN_DIR="${AALP_PLUGINS_DIR:-$HOME/AALP-claude-plugins}/plugins/pr-review"
+          SKILL="$PLUGIN_DIR/skills/pr-review/SKILL.md"
+          if [ ! -f "$SKILL" ]; then
+            {
+              echo "## AI Preliminary Review"
+              echo "pr-review plugin not found at \`$PLUGIN_DIR\`."
+              echo "Check out purdue-aalp/AALP-claude-plugins at \`\$HOME/AALP-claude-plugins\` on the runner, or set the \`AALP_PLUGINS_DIR\` repo variable."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          # opencode refuses to read outside --dir in headless mode, so copy the skill
+          # and the reviewer agent INTO the workspace. Pin the model via config.
+          cp "$SKILL" ./pr-review-skill.md
+          mkdir -p .opencode/agent
+          cp "$PLUGIN_DIR"/opencode/agent/pr-review.md .opencode/agent/
+          printf '%s\n' '{ "$schema": "https://opencode.ai/config.json", "model": "local-llamacpp/Qwen3.5-27B-Q8_0.gguf" }' > opencode.json
+
+          # The reviewer PRINTS the review ending in a VERDICT line; we extract the two
+          # output files from that printed output below. The model never calls a write
+          # tool, so it cannot "forget" to — the root cause of the past empty-output runs.
+          opencode run \
+            --agent pr-review \
+            --dir "$GITHUB_WORKSPACE" \
+            "Review ./pr.diff following ./pr-review-skill.md. Output the review in the skill's format, ending with a line 'VERDICT: PASS' or 'VERDICT: CONCERNS'." \
+            2>&1 | tee opencode.out || true
+
+          # Deterministically extract pr-review.md / pr-verdict.txt from the printed review.
+          sed -E 's/\x1b\[[0-9;]*[a-zA-Z]//g' opencode.out > opencode.clean
+          verdict=$(grep -oE 'VERDICT:[[:space:]]*(PASS|CONCERNS)' opencode.clean | grep -oE 'PASS|CONCERNS' | tail -1 || true)
+          if [ -z "$verdict" ]; then verdict=$(grep -oE '\b(PASS|CONCERNS)\b' opencode.clean | tail -1 || true); fi
+          if [ -z "$verdict" ]; then verdict=CONCERNS; fi
+          printf '%s\n' "$verdict" > pr-verdict.txt
+          if grep -qE '^#+[[:space:]]*Summary' opencode.clean; then
+            awk '/^#+[[:space:]]*Summary/{f=1} f' opencode.clean \
+              | sed -E '/^VERDICT:[[:space:]]*(PASS|CONCERNS)[[:space:]]*$/d' > pr-review.md
+          else
+            sed -E '/^VERDICT:[[:space:]]*(PASS|CONCERNS)[[:space:]]*$/d' opencode.clean | tail -n 120 > pr-review.md
+          fi
+          if [ ! -s pr-review.md ]; then echo "_The AI reviewer produced no usable output. See the run log._" > pr-review.md; fi
+
+          if [ -s pr-review.md ]; then
+            {
+              echo "## AI Preliminary Review"
+              echo
+              cat pr-review.md
+              echo
+              echo "**Verdict file:** $(cat pr-verdict.txt 2>/dev/null || echo '<missing>')"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## AI Preliminary Review" >> "$GITHUB_STEP_SUMMARY"
+            echo "opencode did not produce \`pr-review.md\`. See step log." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Post review + apply labels + request reviewer
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const pr = Number(process.env.PR_NUMBER);
+            const { owner, repo } = context.repo;
+
+            let reviewBody = '';
+            try { reviewBody = fs.readFileSync('pr-review.md', 'utf8'); } catch (_) {}
+
+            let verdict = '';
+            try { verdict = fs.readFileSync('pr-verdict.txt', 'utf8').trim().split('\n')[0].trim(); } catch (_) {}
+
+            const isPass = verdict === 'PASS';
+            const isConcerns = verdict === 'CONCERNS';
+
+            const header = isPass
+              ? '🤖 **AI preliminary review — PASS** (Qwen3.5-27B)'
+              : isConcerns
+                ? '🤖 **AI preliminary review — CONCERNS** (Qwen3.5-27B)'
+                : '🤖 **AI preliminary review — INCONCLUSIVE** (Qwen3.5-27B)';
+
+            const concernsFooter = isConcerns
+              ? `\n\n---\n\n**Author — how to proceed:**\n` +
+                `- **If the concerns are valid:** push a fix, then re-apply the \`ready\` label to re-run the AI review.\n` +
+                `- **If it's a false positive:** reply to this comment explaining why (one sentence is fine), remove the \`ai-concerns\` label, add \`awaiting-human-review\`, and request \`@${owner}/aalp-grad\` from the Reviewers panel. The human reviewer will see your rationale alongside the AI's flag.\n`
+              : '';
+
+            const body = reviewBody
+              ? `${header}\n\n${reviewBody}${concernsFooter}\n\n<sub>Automated smoke-test review. A human reviewer will make the final call.</sub>`
+              : `${header}\n\nThe AI reviewer did not produce output. See the [workflow run](${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}) for details.`;
+
+            await github.rest.issues.createComment({ owner, repo, issue_number: pr, body });
+
+            // Always remove the 'ready' trigger label so re-applying it re-triggers.
+            try {
+              await github.rest.issues.removeLabel({ owner, repo, issue_number: pr, name: 'ready' });
+            } catch (e) { core.info(`removeLabel ready: ${e.message}`); }
+
+            if (isPass) {
+              await github.rest.issues.addLabels({
+                owner, repo, issue_number: pr,
+                labels: ['ai-reviewed', 'awaiting-human-review'],
+              });
+              core.exportVariable('REQUEST_REVIEWER', '1');
+            } else {
+              await github.rest.issues.addLabels({
+                owner, repo, issue_number: pr,
+                labels: ['ai-concerns'],
+              });
+            }
+
+      - name: Request aalp-grad team via GitHub App
+        if: env.REQUEST_REVIEWER == '1'
+        env:
+          APP_ID: ${{ secrets.AALP_APP_ID }}
+          APP_PEM: ${{ secrets.AALP_APP_PEM_PATH }}
+        run: |
+          set -euo pipefail
+          b64url() { openssl base64 -e -A | tr '+/' '-_' | tr -d '='; }
+          now=$(date +%s)
+          header=$(printf '{"typ":"JWT","alg":"RS256"}' | b64url)
+          payload=$(printf '{"iat":%d,"exp":%d,"iss":%s}' "$((now-60))" "$((now+540))" "$APP_ID" | b64url)
+          sig=$(printf '%s.%s' "$header" "$payload" | openssl dgst -sha256 -sign "$APP_PEM" | b64url)
+          jwt="$header.$payload.$sig"
+
+          owner="${REPO%%/*}"
+          install_id=$(curl -sSL -H "Authorization: Bearer $jwt" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/orgs/$owner/installation" | jq -r .id)
+          app_token=$(curl -sSL -X POST -H "Authorization: Bearer $jwt" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/app/installations/$install_id/access_tokens" | jq -r .token)
+          echo "::add-mask::$app_token"
+
+          http_code=$(curl -sSL -o resp.json -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer $app_token" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$REPO/pulls/$PR_NUMBER/requested_reviewers" \
+            -d '{"team_reviewers":["aalp-grad"]}')
+          echo "HTTP $http_code"
+          cat resp.json
+          test "$http_code" -ge 200 -a "$http_code" -lt 300
+
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = Number(process.env.PR_NUMBER);
+            const { owner, repo } = context.repo;
+            await github.rest.issues.createComment({
+              owner, repo, issue_number: pr,
+              body: `🤖 AI preliminary review errored. See the [workflow run](${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}). The \`ready\` label was not removed — re-apply it to retry once the issue is fixed.`,
+            });

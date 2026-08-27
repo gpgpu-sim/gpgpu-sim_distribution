@@ -111,7 +111,7 @@ int dragonfly_port(int rID, int source, int dest){
   int dest_grp_ID = int(dest/_grp_num_nodes);
   int grp_output=-1;
   int grp_RID=-1;
-  int group_dest=-1;
+  // int group_dest=-1;
   
   //which router within this group the packet needs to go to
   if (dest_grp_ID == grp_ID) {
@@ -123,7 +123,7 @@ int dragonfly_port(int rID, int source, int dest){
       grp_output = dest_grp_ID - 1;
     }
     grp_RID = int(grp_output /gP) + grp_ID * _grp_num_routers;
-    group_dest = grp_RID * gP;
+    // group_dest = grp_RID * gP;
   }
 
   //At the last hop
@@ -221,7 +221,7 @@ void DragonFlyNew::_BuildNet( const Configuration &config )
   int _input=-1;
   int _dim_ID=-1;
   int _num_ports_per_switch=-1;
-  int _dim_size=-1;
+  // int _dim_size=-1;
   int c;
 
   ostringstream router_name;
@@ -314,7 +314,7 @@ void DragonFlyNew::_BuildNet( const Configuration &config )
     // intra-group GROUP channels
     for ( int dim = 0; dim < _n; ++dim ) {
 
-      _dim_size = powi(_k,dim);
+      // _dim_size = powi(_k,dim);
 
       _dim_ID = ((int) (node / ( powi(_p, dim))));
 
@@ -356,16 +356,16 @@ void DragonFlyNew::_BuildNet( const Configuration &config )
 
 
     // add INPUT channels -- "optical" channels connecting the groups
-    int _grp_num_routers;
+    // int _grp_num_routers;
     int grp_output;
-    int grp_ID2;
+    // int grp_ID2;
 
     for ( int cnt = 0; cnt < _p; ++cnt ) {
       //	   _dim_ID
       grp_output = _dim_ID* _p + cnt;
 
-      _grp_num_routers = powi(_k, _n-1);
-      grp_ID2 = (int) ((grp_ID - 1) / (_k - 1));
+      // _grp_num_routers = powi(_k, _n-1);
+      // grp_ID2 = (int) ((grp_ID - 1) / (_k - 1));
 
       if ( grp_ID > grp_output)   {
 
@@ -495,8 +495,8 @@ void ugal_dragonflynew( const Router *r, const Flit *f, int in_channel,
   int debug = f->watch;
   int out_port = -1;
   int out_vc = 0;
-  int min_queue_size, min_hopcnt;
-  int nonmin_queue_size, nonmin_hopcnt;
+  int min_queue_size; //, min_hopcnt;
+  int nonmin_queue_size; //, nonmin_hopcnt;
   int intm_grp_ID;
   int intm_rID;
 
@@ -523,13 +523,13 @@ void ugal_dragonflynew( const Router *r, const Flit *f, int in_channel,
 	f->ph = 1;
       } else {
 	//congestion metrics using queue length, obtained by GetUsedCredit()
-	min_hopcnt = dragonflynew_hopcnt(f->src, f->dest);
+	// min_hopcnt = dragonflynew_hopcnt(f->src, f->dest);
 	min_router_output = dragonfly_port(rID, f->src, f->dest); 
       	min_queue_size = max(r->GetUsedCredit(min_router_output), 0) ; 
 
       
-	nonmin_hopcnt = dragonflynew_hopcnt(f->src, f->intm) +
-	  dragonflynew_hopcnt(f->intm,f->dest);
+	// nonmin_hopcnt = dragonflynew_hopcnt(f->src, f->intm) +
+	//   dragonflynew_hopcnt(f->intm,f->dest);
 	nonmin_router_output = dragonfly_port(rID, f->src, f->intm);
 	nonmin_queue_size = max(r->GetUsedCredit(nonmin_router_output), 0);
 

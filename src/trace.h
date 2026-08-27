@@ -57,7 +57,10 @@ void init();
 
 #if TRACING_ON
 
-#define SIM_PRINT_STR "GPGPU-Sim Cycle %llu: %s - "
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+#define SIM_PRINT_STR \
+  "GPGPU-Sim Cycle %llu: %s - " __FILE__ ":" TOSTRING(__LINE__) " - "
 #define DTRACE(x) ((Trace::trace_streams_enabled[Trace::x]) && Trace::enabled)
 #define DPRINTF(x, ...)                                                      \
   do {                                                                       \
