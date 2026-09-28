@@ -2,14 +2,10 @@
 name: SST Integration Test
 
 # Controls when the workflow will run
+# Manual only: depends on personal forks of sst-core/sst-elements.
 on:
-  # Triggers the workflow on push or pull request events but only for the mydev branch
-  push:
-    branches-ignore:
-      - "gh-readonly-queue**"
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   build-QV100:
     name: SST-QV100
