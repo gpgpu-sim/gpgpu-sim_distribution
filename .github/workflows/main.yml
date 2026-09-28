@@ -36,7 +36,7 @@ jobs:
   check-format:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Check code formatting (clang-format 16.0.6)
         run: |
           python3 -m venv /tmp/cf
@@ -74,7 +74,7 @@ jobs:
         APP: ${{ matrix.app }}
         ACCELSIM_REF: d930ad6d02c09bb56867132583735aba0389cff4
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build and run PTX simulations
         run: /bin/bash $GITHUB_WORKSPACE/short-tests-cmake.sh
 
@@ -88,7 +88,7 @@ jobs:
         ACCELSIM_REPO: https://github.com/accel-sim/accel-sim-framework.git
         ACCELSIM_BRANCH: d930ad6d02c09bb56867132583735aba0389cff4
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build Accel-Sim against this GPGPU-Sim and run SASS traces
         run: /bin/bash $GITHUB_WORKSPACE/short-tests-accelsim.sh
 
