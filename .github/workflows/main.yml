@@ -27,8 +27,10 @@ permissions:
 #            CUDA 12.8 + prebuilt gpu-app-collection (rodinia_2.0-ft bins + data)
 #            under $GPUAPPS_ROOT. TODO: replace tag with its @sha256 digest, and
 #            later mirror it under ghcr.io/gpgpu-sim/.
-#   Accel-Sim: tag v2.0.0, used for run_simulations.py / monitor_func_test.py
-#            and for the Accel-Sim compatibility build.
+#   Accel-Sim: commit d930ad6 on dev (v2.0.0 plus the slurm.sim revert, #556,
+#            without which `-l local` jobs write no output). Used for
+#            run_simulations.py / monitor_func_test.py and for the Accel-Sim
+#            compatibility build. Move to the next tag once one includes #556.
 
 jobs:
   check-format:
@@ -70,7 +72,7 @@ jobs:
       env:
         CONFIG: ${{ matrix.config }}
         APP: ${{ matrix.app }}
-        ACCELSIM_REF: v2.0.0
+        ACCELSIM_REF: d930ad6d02c09bb56867132583735aba0389cff4
     steps:
       - uses: actions/checkout@v4
       - name: Build and run PTX simulations
@@ -84,7 +86,7 @@ jobs:
       image: ghcr.io/accel-sim/accel-sim-framework:ubuntu-24.04-cuda-12.8-minimal
       env:
         ACCELSIM_REPO: https://github.com/accel-sim/accel-sim-framework.git
-        ACCELSIM_BRANCH: v2.0.0
+        ACCELSIM_BRANCH: d930ad6d02c09bb56867132583735aba0389cff4
     steps:
       - uses: actions/checkout@v4
       - name: Build Accel-Sim against this GPGPU-Sim and run SASS traces
