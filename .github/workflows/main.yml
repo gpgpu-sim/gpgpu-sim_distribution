@@ -32,9 +32,14 @@ permissions:
 #            run_simulations.py / monitor_func_test.py and for the Accel-Sim
 #            compatibility build. Move to the next tag once one includes #556.
 
+# Runner: public repos use GitHub-hosted ubuntu-latest (free). Private copies use
+# the self-hosted runner named by the org/repo variable PRIVATE_RUNNER_LABEL
+# (e.g. aamodt-pc20 in ubc-aamodt-group); if it is unset they fall back to
+# ubuntu-latest and bill the org's Actions minutes.
+
 jobs:
   check-format:
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && vars.PRIVATE_RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v7
       - name: Check code formatting (clang-format 16.0.6)
@@ -54,7 +59,7 @@ jobs:
 
   build-CMake:
     needs: [check-format]
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && vars.PRIVATE_RUNNER_LABEL || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -77,10 +82,13 @@ jobs:
       - uses: actions/checkout@v7
       - name: Build and run PTX simulations
         run: /bin/bash $GITHUB_WORKSPACE/short-tests-cmake.sh
+      - name: Clean workspace (root-owned files from the container)
+        if: always()
+        run: find "$GITHUB_WORKSPACE" -mindepth 1 -delete
 
   build-AccelSim:
     needs: [check-format]
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && vars.PRIVATE_RUNNER_LABEL || 'ubuntu-latest' }}
     name: build-AccelSim (compatibility)
     container:
       image: ghcr.io/accel-sim/accel-sim-framework:ubuntu-24.04-cuda-12.8-minimal
@@ -91,12 +99,15 @@ jobs:
       - uses: actions/checkout@v7
       - name: Build Accel-Sim against this GPGPU-Sim and run SASS traces
         run: /bin/bash $GITHUB_WORKSPACE/short-tests-accelsim.sh
+      - name: Clean workspace (root-owned files from the container)
+        if: always()
+        run: find "$GITHUB_WORKSPACE" -mindepth 1 -delete
 
   # Single stable check name to require in branch protection.
   CI-Success:
     if: always()
     needs: [check-format, build-CMake, build-AccelSim]
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && vars.PRIVATE_RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
       - name: All required jobs passed
         run: |
