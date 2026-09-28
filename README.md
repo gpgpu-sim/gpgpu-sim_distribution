@@ -1,6 +1,6 @@
 # GPGPU-Sim
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/accel-sim/gpgpu-sim_distribution)  
-[![CI Tests](https://github.com/accel-sim/gpgpu-sim_distribution/actions/workflows/main.yml/badge.svg)](https://github.com/accel-sim/gpgpu-sim_distribution/actions/workflows/main.yml)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/gpgpu-sim/gpgpu-sim_distribution)  
+[![CI Tests](https://github.com/gpgpu-sim/gpgpu-sim_distribution/actions/workflows/main.yml/badge.svg)](https://github.com/gpgpu-sim/gpgpu-sim_distribution/actions/workflows/main.yml)
 - [GPGPU-Sim](#gpgpu-sim)
 	- [CONTRIBUTIONS and HISTORY](#contributions-and-history)
 		- [GPGPU-Sim](#gpgpu-sim-1)
@@ -271,7 +271,7 @@ docker run -it --name gpgpusim -v ./:/accel-sim/gpgpu-sim_distribution
 If you are using [VSCode](https://code.visualstudio.com/) or [Codespace](https://github.com/features/codespaces), you setup environment with [devcontainer](https://code.visualstudio.com/docs/devcontainers/containers).
 
 - For VSCode, refer to [this guide](https://code.visualstudio.com/docs/devcontainers/containers) to setup devcontainer.
-- For Codespace, you can use this link: https://codespaces.new/accel-sim/gpgpu-sim_distribution to setup with devcontainer.
+- For Codespace, you can use this link: https://codespaces.new/gpgpu-sim/gpgpu-sim_distribution to setup with devcontainer.
 
 ### Step 2: Build
 
