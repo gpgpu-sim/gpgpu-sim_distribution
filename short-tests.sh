@@ -19,6 +19,7 @@ export PATH=$CUDA_INSTALL_PATH/bin:$PATH
 source ./setup_environment
 make -j
 
-git clone --depth 1 --branch "${ACCELSIM_REF:-v2.0.0}" https://github.com/accel-sim/accel-sim-framework.git
+git clone https://github.com/accel-sim/accel-sim-framework.git
+git -C accel-sim-framework checkout -q "${ACCELSIM_REF:-d930ad6d02c09bb56867132583735aba0389cff4}"
 ./accel-sim-framework/util/job_launching/run_simulations.py -C $CONFIG -B rodinia_2.0-ft -N regress -l local
 ./accel-sim-framework/util/job_launching/monitor_func_test.py -v -N regress -j procman
