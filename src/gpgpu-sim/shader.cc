@@ -887,6 +887,20 @@ const warp_inst_t *exec_shader_core_ctx::get_next_inst(unsigned warp_id,
   return m_gpu->gpgpu_ctx->ptx_fetch_inst(pc);
 }
 
+// No instruction at the fetched PC. In PTX mode this happens after a ret from
+// a function that is last in the PTX file: issue sets the warp's next PC to the
+// fall-through address (ret pc + size), which is past the end of the code,
+// while the SIMT stack already holds the return address. Nothing reaches the
+// ibuffer, so the scheduler never sees a control hazard to flush, and the warp
+// would refetch this PC until the deadlock detector fires. Redirect fetch to
+// the top of the SIMT stack instead.
+void exec_shader_core_ctx::no_inst_at_fetched_pc(unsigned warp_id,
+                                                 address_type pc) {
+  unsigned stack_pc, stack_rpc;
+  m_simt_stack[warp_id]->get_pdom_stack_top_info(&stack_pc, &stack_rpc);
+  if (stack_pc != pc) m_warp[warp_id]->set_next_pc(stack_pc);
+}
+
 void exec_shader_core_ctx::get_pdom_stack_top_info(unsigned warp_id,
                                                    const warp_inst_t *pI,
                                                    unsigned *pc,
@@ -935,6 +949,8 @@ void shader_core_ctx::decode() {
           m_stats->m_num_FPdecoded_insn[m_sid]++;
         }
       }
+    } else {
+      no_inst_at_fetched_pc(m_inst_fetch_buffer.m_warp_id, pc);
     }
     m_inst_fetch_buffer.m_valid = false;
   }

@@ -3154,6 +3154,8 @@ class shader_core_ctx : public core_t {
                                            address_type pc) = 0;
   virtual void get_pdom_stack_top_info(unsigned warp_id, const warp_inst_t *pI,
                                        unsigned *pc, unsigned *rpc) = 0;
+  // Called by decode when fetch found no instruction at the warp's PC.
+  virtual void no_inst_at_fetched_pc(unsigned warp_id, address_type pc) {}
   virtual const active_mask_t &get_active_mask(unsigned warp_id,
                                                const warp_inst_t *pI) = 0;
 
@@ -3285,6 +3287,7 @@ class exec_shader_core_ctx : public shader_core_ctx {
   virtual const warp_inst_t *get_next_inst(unsigned warp_id, address_type pc);
   virtual void get_pdom_stack_top_info(unsigned warp_id, const warp_inst_t *pI,
                                        unsigned *pc, unsigned *rpc);
+  virtual void no_inst_at_fetched_pc(unsigned warp_id, address_type pc);
   virtual const active_mask_t &get_active_mask(unsigned warp_id,
                                                const warp_inst_t *pI);
 };
