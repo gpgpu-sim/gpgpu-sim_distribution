@@ -518,8 +518,7 @@ class operand_info {
     m_is_return_var = false;
     m_immediate_address = true;
   }
-  operand_info(int x, gpgpu_context *ctx)
-      : operand_info((long long)x, ctx) {}
+  operand_info(int x, gpgpu_context *ctx) : operand_info((long long)x, ctx) {}
   operand_info(long long x, gpgpu_context *ctx) {
     init(ctx);
     m_is_non_arch_reg = false;
