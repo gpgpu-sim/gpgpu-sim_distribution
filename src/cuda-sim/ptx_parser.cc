@@ -137,7 +137,14 @@ symbol_table *gpgpu_context::init_parser(const char *ptx_filename) {
   FILE *ptx_in;
   ptx_in = fopen(ptx_filename, "r");
   ptx_set_in(ptx_in, ptx_parser->scanner);
-  ptx_parse(ptx_parser->scanner, ptx_parser);
+  int errors = ptx_parse(ptx_parser->scanner, ptx_parser);
+  if (errors) {
+    // Parsing stops at the first syntax error, so any function after it is
+    // left without instructions. Stop here rather than crash at launch.
+    printf("GPGPU-Sim PTX: parser error in %s, exiting.\n", ptx_filename);
+    fflush(stdout);
+    abort();
+  }
   ptx_in = ptx_get_in(ptx_parser->scanner);
   ptx_lex_destroy(ptx_parser->scanner);
   fclose(ptx_in);

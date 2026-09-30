@@ -441,7 +441,7 @@ instruction_statement:  instruction SEMI_COLON
 	| IDENTIFIER COLON { recognizer->add_label($1); }
 	| pred_spec instruction SEMI_COLON;
 
-instruction: opcode_spec LEFT_PAREN operand RIGHT_PAREN { recognizer->set_return(); } COMMA operand COMMA LEFT_PAREN operand_list RIGHT_PAREN
+instruction: opcode_spec LEFT_PAREN operand RIGHT_PAREN { recognizer->set_return(); } COMMA operand COMMA LEFT_PAREN call_arg_list RIGHT_PAREN
 	| opcode_spec operand COMMA LEFT_PAREN operand_list RIGHT_PAREN
 	| opcode_spec operand COMMA LEFT_PAREN RIGHT_PAREN
 	| opcode_spec operand_list 
@@ -587,6 +587,11 @@ vp_spec: WMMA_DIRECTIVE LAYOUT CONFIGURATION{recognizer->add_space_spec(global_s
 
 operand_list: operand
 	| operand COMMA operand_list;
+
+/* Arguments of a call with a return value. Newer nvcc emits an empty list,
+   e.g. "call.uni (retval0), __internal_accurate_pow, ( );" */
+call_arg_list: /* empty */
+	| operand_list;
 
 operand: IDENTIFIER  { recognizer->add_scalar_operand( $1 ); }
 	| EXCLAMATION IDENTIFIER { recognizer->add_neg_pred_operand( $2 ); }
