@@ -139,7 +139,7 @@ class ptx_recognizer {
   void add_wmma_option(int option);
   void add_builtin_operand(int builtin, int dim_modifier);
   void add_memory_operand();
-  void add_literal_int(int value);
+  void add_literal_int(long long value);
   void add_literal_float(float value);
   void add_literal_double(double value);
   void add_address_operand(const char *identifier, int offset);

@@ -518,7 +518,9 @@ class operand_info {
     m_is_return_var = false;
     m_immediate_address = true;
   }
-  operand_info(int x, gpgpu_context *ctx) {
+  operand_info(int x, gpgpu_context *ctx)
+      : operand_info((long long)x, ctx) {}
+  operand_info(long long x, gpgpu_context *ctx) {
     init(ctx);
     m_is_non_arch_reg = false;
     m_addr_space = undefined_space;
@@ -869,7 +871,7 @@ class operand_info {
   bool m_operand_neg;
   addr_t m_const_mem_offset;
   union {
-    int m_int;
+    long long m_int;  // integer literal, kept at 64 bits for 64-bit ops
     unsigned int m_unsigned;
     float m_float;
     double m_double;
