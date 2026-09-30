@@ -43,6 +43,7 @@ class ptx_recognizer;
   double double_value;
   float  float_value;
   int    int_value;
+  long long int64_value; /* integer literals: 64-bit ops use values above INT_MAX */
   char * string_value;
   void * ptr_value;
 }
@@ -89,7 +90,7 @@ class ptx_recognizer;
 %token  VISIBLE_DIRECTIVE
 %token  WEAK_DIRECTIVE
 %token  <string_value> IDENTIFIER
-%token  <int_value> INT_OPERAND
+%token  <int64_value> INT_OPERAND
 %token  <float_value> FLOAT_OPERAND
 %token  <double_value> DOUBLE_OPERAND
 %token  S8_TYPE
