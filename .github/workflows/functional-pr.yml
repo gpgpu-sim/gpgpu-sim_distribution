@@ -1,0 +1,84 @@
+# GPGPU-Sim PR-tier functional regressions: PTX-mode runs of the apps in
+# regress/define-functional-pr.yml (ispass-2009, rodinia-3.1, one polybench app).
+#
+# Runs on pull requests and pushes to dev, but only when simulator code,
+# configs or this regression itself change; docs and CI-only edits skip it.
+# About 50 CPU-minutes of simulation per run. Not yet a required check:
+# it becomes one after it has been stable for a while.
+#
+# Runner selection is the same as main.yml: GitHub-hosted in the public repo,
+# PRIVATE_RUNNER_LABEL in private copies (at most 8 parallel simulations).
+
+name: Functional regressions (PR tier)
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "libcuda/**"
+      - "configs/**"
+      - "CMakeLists.txt"
+      - "*.cmake"
+      - "regress/**"
+      - "functional-tests.sh"
+      - ".github/workflows/functional-pr.yml"
+  push:
+    branches: [dev]
+    paths:
+      - "src/**"
+      - "libcuda/**"
+      - "configs/**"
+      - "CMakeLists.txt"
+      - "*.cmake"
+      - "regress/**"
+      - "functional-tests.sh"
+      - ".github/workflows/functional-pr.yml"
+  workflow_dispatch:
+    inputs:
+      hosted:
+        description: "Use a GitHub-hosted runner even in a private copy"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: functional-pr-${{ github.ref }}-${{ inputs.hosted }}
+  cancel-in-progress: true
+
+jobs:
+  functional:
+    runs-on: ${{ (github.event.repository.private && !inputs.hosted) && vars.PRIVATE_RUNNER_LABEL || 'ubuntu-latest' }}
+    timeout-minutes: 150
+    container:
+      image: ghcr.io/accel-sim/accel-sim-framework:ubuntu-24.04-cuda-12.8-minimal
+      env:
+        CONFIG: QV100
+        HOURS: "2"
+        APPDATA: /github/home/gpgpu-sim-appdata
+        ACCELSIM_REF: d930ad6d02c09bb56867132583735aba0389cff4
+    steps:
+      - uses: actions/checkout@v7
+      # Input data comes from Purdue's server (about 20 min); cache it as soon
+      # as it is fetched so a failing run still saves it.
+      - name: Restore benchmark input data
+        id: appdata
+        uses: actions/cache/restore@v4
+        with:
+          path: /github/home/gpgpu-sim-appdata
+          key: gpgpu-sim-appdata-${{ hashFiles('regress/define-functional-pr.yml') }}
+          restore-keys: gpgpu-sim-appdata-
+      - name: Fetch benchmark input data
+        run: /bin/bash $GITHUB_WORKSPACE/functional-tests.sh data
+      - name: Save benchmark input data
+        if: steps.appdata.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /github/home/gpgpu-sim-appdata
+          key: gpgpu-sim-appdata-${{ hashFiles('regress/define-functional-pr.yml') }}
+      - name: Build and run functional regressions
+        run: /bin/bash $GITHUB_WORKSPACE/functional-tests.sh
+      - name: Clean workspace (root-owned files from the container)
+        if: always()
+        run: find "$GITHUB_WORKSPACE" -mindepth 1 -delete
