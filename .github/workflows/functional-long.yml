@@ -1,0 +1,114 @@
+# GPGPU-Sim long-tier functional regressions: PTX-mode runs of the apps in
+# regress/define-functional-long.yml, in three shards that run in parallel.
+# About 9 CPU-hours of simulation on a lab machine, about 3 hours per shard
+# on a GitHub-hosted runner.
+#
+# When it runs:
+#   - weekly, in the public repo only, and only if dev has changed since the
+#     last long run that passed;
+#   - on request (Actions -> "Functional regressions (long tier)" -> Run);
+#   - when a pull request gets the `long-regress` label, for changes that
+#     need it (SIMT stack, PTX front end, memory model).
+#
+# Runner selection is the same as main.yml: GitHub-hosted in the public repo,
+# PRIVATE_RUNNER_LABEL in private copies (at most 8 parallel simulations;
+# the shards queue one after another on a single self-hosted runner).
+
+name: Functional regressions (long tier)
+
+on:
+  schedule:
+    - cron: "0 7 * * 6" # Saturday 07:00 UTC
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      hosted:
+        description: "Use GitHub-hosted runners even in a private copy"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: functional-long-${{ github.ref }}-${{ inputs.hosted }}
+  cancel-in-progress: true
+
+jobs:
+  # Decides whether to run: a labelled PR only for the long-regress label, the
+  # weekly run only in the public repo and only when dev has moved since the
+  # last successful long run.
+  gate:
+    if: >-
+      (github.event_name != 'pull_request' || github.event.label.name == 'long-regress') &&
+      (github.event_name != 'schedule' || !github.event.repository.private)
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run=true
+          if [ "${{ github.event_name }}" = schedule ]; then
+            last=$(gh api "repos/${{ github.repository }}/actions/workflows/functional-long.yml/runs?branch=${{ github.ref_name }}&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // ""')
+            if [ "$last" = "${{ github.sha }}" ]; then
+              echo "dev is still at $last, which already passed the long tier"
+              run=false
+            fi
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+
+  functional-long:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        # name goes into the cache key, which may not contain commas
+        include:
+          - name: rodinia-3.1
+            suites: functional-long-rodinia-3.1
+          - name: polybench-ispass-2009
+            suites: functional-long-polybench,functional-long-ispass-2009
+          - name: pannotia
+            suites: functional-long-pannotia
+    name: ${{ matrix.name }}
+    runs-on: ${{ (github.event.repository.private && !inputs.hosted) && vars.PRIVATE_RUNNER_LABEL || 'ubuntu-latest' }}
+    timeout-minutes: 340
+    container:
+      image: ghcr.io/accel-sim/accel-sim-framework:ubuntu-24.04-cuda-12.8-minimal
+      env:
+        CONFIG: QV100
+        HOURS: "5"
+        APPS: regress/define-functional-long.yml
+        SUITES: ${{ matrix.suites }}
+        APPDATA: /github/home/gpgpu-sim-appdata
+        ACCELSIM_REF: d930ad6d02c09bb56867132583735aba0389cff4
+    steps:
+      - uses: actions/checkout@v7
+      # Input data comes from Purdue's server (about 20 min); cache it as soon
+      # as it is fetched so a failing run still saves it.
+      - name: Restore benchmark input data
+        id: appdata
+        uses: actions/cache/restore@v4
+        with:
+          path: /github/home/gpgpu-sim-appdata
+          key: gpgpu-sim-appdata-${{ matrix.name }}-${{ hashFiles('regress/define-functional-long.yml') }}
+          restore-keys: gpgpu-sim-appdata-${{ matrix.name }}-
+      - name: Fetch benchmark input data
+        run: /bin/bash $GITHUB_WORKSPACE/functional-tests.sh data
+      - name: Save benchmark input data
+        if: steps.appdata.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /github/home/gpgpu-sim-appdata
+          key: gpgpu-sim-appdata-${{ matrix.name }}-${{ hashFiles('regress/define-functional-long.yml') }}
+      - name: Build and run functional regressions
+        run: /bin/bash $GITHUB_WORKSPACE/functional-tests.sh
+      - name: Clean workspace (root-owned files from the container)
+        if: always()
+        run: find "$GITHUB_WORKSPACE" -mindepth 1 -delete

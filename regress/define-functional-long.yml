@@ -1,0 +1,91 @@
+# Long-tier functional regressions: the PTX-mode runs that are not in the PR
+# tier (regress/define-functional-pr.yml) and finished in under about 1 h 05 m
+# on one core in the 2026-09-30 probe on aamodt-pc20 (QV100). Times in the
+# comments are from that probe; GitHub-hosted runners take about 2.5 times as
+# long. functional-long.yml runs the suites below in three shards.
+#
+# Left out until they get smaller inputs: lavaMD (7.9 h), srad_v1 (5.6 h),
+# pannotia bc (6.9 h), color_max (1.9 h and 3.2 h), color_maxmin and mis on
+# G3_circuit (1.9 h, unfinished), fw_block 512, polybench 3mm (2.3 h) and the
+# polybench apps that did not finish in 14 h; lonestargpu, pagerank, the GPU
+# microbenchmarks and the DOE proxy apps were never timed. Parboil, ispass AES
+# and MUM do not build under CUDA 12. particlefilter_float and _naive are
+# built so that they never reach the simulator ("CUDA driver version is
+# insufficient"), so they simulate nothing.
+#
+# None of these apps check their own answer; they fail only on a crash,
+# assert, abort or deadlock.
+
+# Shard 1
+functional-long-rodinia-3.1:
+    exec_dir: "$GPUAPPS_ROOT/bin/$CUDA_VERSION/release/"
+    data_dirs: "$GPUAPPS_ROOT/data_dirs/cuda/rodinia/3.1/"
+    make_target: rodinia-3.1
+    data_subdir: data_dirs/cuda/rodinia/3.1
+    execs:
+        - bfs-rodinia-3.1:
+            - args:  ./data/graph4096.txt     # 8 s
+            - args:  ./data/graph1MW_6.txt    # 3599 s
+        - b+tree-rodinia-3.1:   # 997 s
+            - args:  file ./data/mil.txt command ./data/command.txt
+        - dwt2d-rodinia-3.1:    # 433 s
+            - args:  ./data/rgb.bmp -d 1024x1024 -f -5 -l 3
+        - gaussian-rodinia-3.1:
+            - args:  -f ./data/matrix4.txt    # 2 s
+            - args:  -s 16                    # 6 s
+            - args:  -f ./data/matrix208.txt  # 591 s
+            - args:  -s 256                   # 1137 s
+        - hotspot-rodinia-3.1:  # 942 s
+            - args:  1024 2 2 ./data/temp_1024 ./data/power_1024 output.out
+        - lud-rodinia-3.1:      # 752 s
+            - args:  -i ./data/512.dat
+        - nw-rodinia-3.1:       # 1007 s
+            - args:  2048 10
+        # Accel-Sim's definition redirects stdout to result.txt, which also
+        # hides the simulator's statistics; keep them in the log instead.
+        - pathfinder-rodinia-3.1:   # 396 s
+            - args:  100000 100 20
+
+# Shard 2, with the next suite
+functional-long-polybench:
+    exec_dir: "$GPUAPPS_ROOT/bin/$CUDA_VERSION/release/"
+    data_dirs: "$GPUAPPS_ROOT/data_dirs/"
+    make_target: polybench
+    execs:
+        - polybench-2DConvolution:  # 2352 s
+            - args:
+        - polybench-3DConvolution:  # 3001 s
+            - args:
+        - polybench-atax:           # 551 s
+            - args:
+        - polybench-gemm:           # 2980 s
+            - args:
+        - polybench-gesummv:        # 717 s
+            - args:
+        - polybench-mvt:            # 521 s
+            - args:
+
+functional-long-ispass-2009:
+    exec_dir: "$GPUAPPS_ROOT/bin/$CUDA_VERSION/release/"
+    data_dirs: "$GPUAPPS_ROOT/data_dirs/cuda/ispass-2009/"
+    make_target: ispass-2009
+    data_subdir: data_dirs/cuda/ispass-2009
+    execs:
+        - ispass-2009-LIB:      # 1566 s
+            - args:
+
+# Shard 3
+functional-long-pannotia:
+    exec_dir: "$GPUAPPS_ROOT/bin/$CUDA_VERSION/release/"
+    data_dirs: "$GPUAPPS_ROOT/data_dirs/pannotia/"
+    make_target: pannotia
+    data_subdir: data_dirs/pannotia
+    execs:
+        - fw:                   # 1652 s
+            - args:  ./data/256_16384.gr
+        - fw_block:             # 1151 s
+            - args:  ./data/256_16384.gr
+        - mis:                  # 3045 s
+            - args:  ./data/ecology1.graph 1
+        - color_maxmin:         # 3814 s
+            - args:  ./data/ecology1.graph 1
