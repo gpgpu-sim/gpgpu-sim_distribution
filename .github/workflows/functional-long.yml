@@ -94,7 +94,7 @@ jobs:
       # as it is fetched so a failing run still saves it.
       - name: Restore benchmark input data
         id: appdata
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: /github/home/gpgpu-sim-appdata
           key: gpgpu-sim-appdata-${{ matrix.name }}-${{ hashFiles('regress/define-functional-long.yml') }}
@@ -103,7 +103,7 @@ jobs:
         run: /bin/bash $GITHUB_WORKSPACE/functional-tests.sh data
       - name: Save benchmark input data
         if: steps.appdata.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: /github/home/gpgpu-sim-appdata
           key: gpgpu-sim-appdata-${{ matrix.name }}-${{ hashFiles('regress/define-functional-long.yml') }}
