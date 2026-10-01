@@ -1,8 +1,9 @@
 #!/bin/bash
-# PR-tier functional regressions: build GPGPU-Sim and the gpu-app-collection
-# suites the app list needs, fetch their input data, and run every app in
-# regress/define-functional-pr.yml in PTX mode. Exits non-zero if any app
-# crashes, deadlocks, asserts or fails its own check.
+# Functional regressions: build GPGPU-Sim and the gpu-app-collection suites
+# the app list needs, fetch their input data, and run every app in an app
+# definition file in PTX mode (regress/define-functional-pr.yml for the PR
+# tier, regress/define-functional-long.yml for the long tier). Exits non-zero
+# if any app crashes, deadlocks, asserts or fails its own check.
 #
 #   ./functional-tests.sh        everything
 #   ./functional-tests.sh data   only fetch the input data into $APPDATA
@@ -11,6 +12,7 @@
 # and GPUAPPS_ROOT set. Environment:
 #   CONFIG     simulator config (default QV100)
 #   APPS       app definition file (default regress/define-functional-pr.yml)
+#   SUITES     comma-separated suites of APPS to run (default: all of them)
 #   CORES      parallel simulations (default: all cores, at most 8)
 #   HOURS      monitor time limit (default 2)
 #   APPDATA    directory holding the extracted input data; reused if present
@@ -37,13 +39,16 @@ field() {
 import sys, yaml
 d = yaml.safe_load(open('$APPS'))
 f = '$1'
+only = '${SUITES:-}'.split(',') if '${SUITES:-}' else list(d)
 for s, v in d.items():
+    if s not in only: continue
     if f == 'suite': print(s)
     elif f == 'exe': print('\n'.join(list(e)[0] for e in v['execs']))
     elif v.get(f): print(v[f])
 " | sort -u
 }
 SUITES=$(field suite | paste -sd, -)
+[ -n "$SUITES" ] || { echo "no suites selected from $APPS"; exit 1; }
 DATA_SUBDIRS=$(field data_subdir)
 
 fetch_data() {
@@ -109,7 +114,7 @@ echo "::group::Accel-Sim tools"
 [ -d accel-sim-framework ] || git clone -q https://github.com/accel-sim/accel-sim-framework.git
 git -C accel-sim-framework checkout -q "$ACCELSIM_REF"
 JL=./accel-sim-framework/util/job_launching
-cp "$APPS" $JL/apps/define-functional-pr.yml
+cp "$APPS" $JL/apps/$(basename "$APPS")
 echo "::endgroup::"
 
 $JL/run_simulations.py -C "$CONFIG" -B "$SUITES" -N functional -l local -c "$CORES"
@@ -119,10 +124,20 @@ rc=$?
 set -e
 
 echo "::group::Per-app time and instructions"
+# The monitor counts a run that exits cleanly as passing even if it never
+# launched a kernel; a run with no simulated instructions fails here.
+nosim=""
 for o in $(find accel-sim-framework/sim_run_* -name '*.o[0-9]*' | sort); do
   t=$(grep 'gpgpu_simulation_time' "$o" | tail -1 | sed 's/.*= *//')
   i=$(grep 'gpu_tot_sim_insn' "$o" | tail -1 | sed 's/.*= *//')
-  echo "$(echo $o | sed 's|.*sim_run_[^/]*/||; s|/[^/]*$||') | $t | insn=$i"
+  run=$(echo $o | sed 's|.*sim_run_[^/]*/||; s|/[^/]*$||')
+  echo "$run | $t | insn=$i"
+  [ -n "$i" ] && [ "$i" != 0 ] || nosim="$nosim $o"
 done
 echo "::endgroup::"
+for o in $nosim; do
+  echo "::error::no simulated instructions in $o; its last lines:"
+  tail -20 "$o"
+  rc=1
+done
 exit $rc
