@@ -1,0 +1,62 @@
+# PR-tier functional regressions: PTX-mode runs that each take under about
+# 12 minutes on one core (times from the 2026-09-30 probe on aamodt-pc20,
+# QV100). Same format as Accel-Sim's util/job_launching/apps/define-*.yml;
+# functional-tests.sh copies this file there and runs every suite in it.
+# make_target and data_subdir are read only by functional-tests.sh.
+# Apps marked "self-check" fail on a wrong answer; the others fail only on a
+# crash, assert, abort or deadlock.
+
+functional-pr-ispass-2009:
+    exec_dir: "$GPUAPPS_ROOT/bin/$CUDA_VERSION/release/"
+    data_dirs: "$GPUAPPS_ROOT/data_dirs/cuda/ispass-2009/"
+    make_target: ispass-2009
+    data_subdir: data_dirs/cuda/ispass-2009
+    execs:
+        - ispass-2009-STO:      # self-check, 162 s; caught the 64-bit literal bug
+            - args:
+        # PTX call with no arguments, fetch past end of code; 820 s. WP prints
+        # its normal output to stderr, which the monitor would count as an
+        # error, so it goes to stdout (crash messages still reach the monitor).
+        - ispass-2009-WP:
+            - args:  < ./data/args 2>&1
+        - ispass-2009-NQU:      # 3 s
+            - args:
+        - ispass-2009-RAY:      # 73 s
+            - args:  256 256
+        - ispass-2009-LPS:      # 119 s
+            - args:
+        - ispass-2009-BFS:      # 154 s
+            - args:  ./data/graph65536.txt
+        - ispass-2009-NN:       # 677 s
+            - args:  28
+
+# rodinia_2.0-ft already runs on every push
+functional-pr-rodinia-3.1:
+    exec_dir: "$GPUAPPS_ROOT/bin/$CUDA_VERSION/release/"
+    data_dirs: "$GPUAPPS_ROOT/data_dirs/cuda/rodinia/3.1/"
+    make_target: rodinia-3.1
+    data_subdir: data_dirs/cuda/rodinia/3.1
+    execs:
+        - nn-rodinia-3.1:       # 2 s
+            - args:  ./data/filelist_4 -r 5 -lat 30 -lng 90
+        - dwt2d-rodinia-3.1:    # 20 s
+            - args:  ./data/192.bmp -d 192x192 -f -5 -l 3
+        - gaussian-rodinia-3.1: # 37 s
+            - args:  -s 64
+        - bfs-rodinia-3.1:      # 110 s
+            - args:  ./data/graph65536.txt
+        - lud-rodinia-3.1:      # 115 s
+            - args:  -s 256 -v
+        - hotspot-rodinia-3.1:  # 185 s
+            - args:  512 2 2 ./data/temp_512 ./data/power_512 output.out
+        - backprop-rodinia-3.1: # 366 s
+            - args:  65536
+
+# One representative; the rest of polybench is in the long tier
+functional-pr-polybench:
+    exec_dir: "$GPUAPPS_ROOT/bin/$CUDA_VERSION/release/"
+    data_dirs: "$GPUAPPS_ROOT/data_dirs/"
+    make_target: polybench
+    execs:
+        - polybench-bicg:       # 521 s
+            - args:
