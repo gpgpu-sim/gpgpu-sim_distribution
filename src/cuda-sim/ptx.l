@@ -166,6 +166,7 @@ vote	TC; yylval->int_value = VOTE_OP; return OPCODE;
 activemask TC; yylval->int_value = ACTIVEMASK_OP; return OPCODE;
 xor     TC; yylval->int_value = XOR_OP; return OPCODE;
 nop     TC; yylval->int_value = NOP_OP; return OPCODE;
+nanosleep TC; yylval->int_value = NANOSLEEP_PTX_OP; return OPCODE;
 break  TC; yylval->int_value = BREAK_OP; return OPCODE;
 breakaddr  TC; yylval->int_value = BREAKADDR_OP; return OPCODE;
 

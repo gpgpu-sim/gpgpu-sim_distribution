@@ -845,6 +845,12 @@ void ptx_instruction::set_opcode_and_latency() {
     case MEMBAR_OP:
       op = MEMORY_BARRIER_OP;
       break;
+    case NANOSLEEP_PTX_OP:
+      // The timing model holds the warp for the given time. A duration in a
+      // register is unknown here, so that warp does not sleep.
+      op = NANOSLEEP_OP;
+      if (dst().is_literal()) m_nanosleep_ns = dst().get_int();
+      break;
     case CALL_OP: {
       if (m_is_printf || m_is_cdp) {
         op = ALU_OP;
