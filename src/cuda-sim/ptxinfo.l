@@ -52,7 +52,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 %%
 "ptxas info    : Function properties for"[^\n]*\n[^\n]*
-"warning"[^\n]* TC; return WARNING;
+"warning"[^\n]* TC; yylval->string_value = strdup(yytext); return WARNING;
 "ptxas"	TC; 	return HEADER;
 "info"	TC; 	return INFO;
 "Compiling entry function"	TC; return FUNC;
