@@ -183,16 +183,22 @@ class ptx_warp_info {
  public:
   ptx_warp_info();  // add get_core or something, or threads?
 
-  // Lane of the thread now executing a warp-wide instruction (shfl).
+  // Lane of the thread now executing a warp-wide instruction (shfl, match).
   unsigned get_lane() const;
   void set_lane(unsigned lane);
 
-  // shfl source operand of each lane, read before any lane of the warp
-  // writes its destination (the destination is often the source register).
+  // shfl or match source operand of each lane, read before any lane of the
+  // warp writes its destination (the destination is often the source
+  // register).
   ptx_reg_t &shfl_source(unsigned lane);
+
+  // Lanes that execute the current match instruction.
+  unsigned get_match_lanes() const { return m_match_lanes; }
+  void set_match_lanes(unsigned lanes) { m_match_lanes = lanes; }
 
  private:
   unsigned m_lane;
+  unsigned m_match_lanes;
   ptx_reg_t m_shfl_source[MAX_WARP_SIZE];
 };
 
@@ -312,6 +318,8 @@ class ptx_thread_info {
 
   void ptx_fetch_inst(inst_t &inst) const;
   void ptx_exec_inst(warp_inst_t &inst, unsigned lane_id);
+  // True when the instruction's guard predicate turns it off in this thread.
+  bool guard_skips(const ptx_instruction *pI);
 
   const ptx_version &get_ptx_version() const;
   void set_reg(const symbol *reg, const ptx_reg_t &value);
