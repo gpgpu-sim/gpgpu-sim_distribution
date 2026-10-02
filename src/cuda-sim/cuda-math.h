@@ -119,21 +119,21 @@ unsigned int float2uint(float a, enum cudaRoundMode mode) {
 float __ll2float_rz(long long int a) {
   int orig_rnd_mode = fegetround();
   fesetround(FE_TOWARDZERO);
-  float b = a;
+  volatile float b = a;  // converted before the mode is restored
   fesetround(orig_rnd_mode);
   return b;
 }
 float __ll2float_ru(long long int a) {
   int orig_rnd_mode = fegetround();
   fesetround(FE_UPWARD);
-  float b = a;
+  volatile float b = a;  // converted before the mode is restored
   fesetround(orig_rnd_mode);
   return b;
 }
 float __ll2float_rd(long long int a) {
   int orig_rnd_mode = fegetround();
   fesetround(FE_DOWNWARD);
-  float b = a;
+  volatile float b = a;  // converted before the mode is restored
   fesetround(orig_rnd_mode);
   return b;
 }
@@ -151,28 +151,28 @@ float __ll2float_rd(long long int a) {
 float __int2float_rn(int a) {
   int orig_rnd_mode = fegetround();
   fesetround(FE_TONEAREST);
-  float b = a;
+  volatile float b = a;  // converted before the mode is restored
   fesetround(orig_rnd_mode);
   return b;
 }
 float __int2float_rz(int a) {
   int orig_rnd_mode = fegetround();
   fesetround(FE_TOWARDZERO);
-  float b = a;
+  volatile float b = a;  // converted before the mode is restored
   fesetround(orig_rnd_mode);
   return b;
 }
 float __int2float_ru(int a) {
   int orig_rnd_mode = fegetround();
   fesetround(FE_UPWARD);
-  float b = a;
+  volatile float b = a;  // converted before the mode is restored
   fesetround(orig_rnd_mode);
   return b;
 }
 float __int2float_rd(int a) {
   int orig_rnd_mode = fegetround();
   fesetround(FE_DOWNWARD);
-  float b = a;
+  volatile float b = a;  // converted before the mode is restored
   fesetround(orig_rnd_mode);
   return b;
 }
@@ -181,28 +181,28 @@ float __int2float_rd(int a) {
 float __uint2float_rn(unsigned int a) {
   int orig_rnd_mode = fegetround();
   fesetround(FE_TONEAREST);
-  float b = a;
+  volatile float b = a;  // converted before the mode is restored
   fesetround(orig_rnd_mode);
   return b;
 }
 float __uint2float_rz(unsigned int a) {
   int orig_rnd_mode = fegetround();
   fesetround(FE_TOWARDZERO);
-  float b = a;
+  volatile float b = a;  // converted before the mode is restored
   fesetround(orig_rnd_mode);
   return b;
 }
 float __uint2float_ru(unsigned int a) {
   int orig_rnd_mode = fegetround();
   fesetround(FE_UPWARD);
-  float b = a;
+  volatile float b = a;  // converted before the mode is restored
   fesetround(orig_rnd_mode);
   return b;
 }
 float __uint2float_rd(unsigned int a) {
   int orig_rnd_mode = fegetround();
   fesetround(FE_DOWNWARD);
-  float b = a;
+  volatile float b = a;  // converted before the mode is restored
   fesetround(orig_rnd_mode);
   return b;
 }
@@ -211,28 +211,28 @@ float __uint2float_rd(unsigned int a) {
 float __ll2float_rn(long long int a) {
   int orig_rnd_mode = fegetround();
   fesetround(FE_TONEAREST);
-  float b = a;
+  volatile float b = a;  // converted before the mode is restored
   fesetround(orig_rnd_mode);
   return b;
 }
 float __ll2float_rz(long long int a) {
   int orig_rnd_mode = fegetround();
   fesetround(FE_TOWARDZERO);
-  float b = a;
+  volatile float b = a;  // converted before the mode is restored
   fesetround(orig_rnd_mode);
   return b;
 }
 float __ll2float_ru(long long int a) {
   int orig_rnd_mode = fegetround();
   fesetround(FE_UPWARD);
-  float b = a;
+  volatile float b = a;  // converted before the mode is restored
   fesetround(orig_rnd_mode);
   return b;
 }
 float __ll2float_rd(long long int a) {
   int orig_rnd_mode = fegetround();
   fesetround(FE_DOWNWARD);
-  float b = a;
+  volatile float b = a;  // converted before the mode is restored
   fesetround(orig_rnd_mode);
   return b;
 }
@@ -241,28 +241,28 @@ float __ll2float_rd(long long int a) {
 float __ull2float_rn(unsigned long long int a) {
   int orig_rnd_mode = fegetround();
   fesetround(FE_TONEAREST);
-  float b = a;
+  volatile float b = a;  // converted before the mode is restored
   fesetround(orig_rnd_mode);
   return b;
 }
 float __ull2float_rz(unsigned long long int a) {
   int orig_rnd_mode = fegetround();
   fesetround(FE_TOWARDZERO);
-  float b = a;
+  volatile float b = a;  // converted before the mode is restored
   fesetround(orig_rnd_mode);
   return b;
 }
 float __ull2float_ru(unsigned long long int a) {
   int orig_rnd_mode = fegetround();
   fesetround(FE_UPWARD);
-  float b = a;
+  volatile float b = a;  // converted before the mode is restored
   fesetround(orig_rnd_mode);
   return b;
 }
 float __ull2float_rd(unsigned long long int a) {
   int orig_rnd_mode = fegetround();
   fesetround(FE_DOWNWARD);
-  float b = a;
+  volatile float b = a;  // converted before the mode is restored
   fesetround(orig_rnd_mode);
   return b;
 }
