@@ -104,6 +104,7 @@
 
 #include <assert.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -871,9 +872,18 @@ void cudaRegisterVarInternal(
     cuda_not_implemented(__my_func__, __LINE__);
 }
 
+// cudaStreamLegacy and cudaStreamPerThread are handles that name the default
+// stream (Thrust and CUB launch on cudaStreamLegacy); they are not stream
+// objects. The simulator's default stream is NULL.
+static cudaStream_t sim_stream(cudaStream_t stream) {
+  uintptr_t handle = (uintptr_t)stream;
+  return (handle == 0x1 || handle == 0x2) ? NULL : stream;
+}
+
 cudaError_t cudaConfigureCallInternal(dim3 gridDim, dim3 blockDim,
                                       size_t sharedMem, cudaStream_t stream,
                                       gpgpu_context *gpgpu_ctx = NULL) {
+  stream = sim_stream(stream);
   gpgpu_context *ctx;
   if (gpgpu_ctx) {
     ctx = gpgpu_ctx;
@@ -1436,6 +1446,7 @@ __host__ cudaError_t CUDARTAPI cudaMemcpyFromSymbolInternal(
 __host__ cudaError_t CUDARTAPI cudaMemcpyAsyncInternal(
     void *dst, const void *src, size_t count, enum cudaMemcpyKind kind,
     cudaStream_t stream, gpgpu_context *gpgpu_ctx = NULL) {
+  stream = sim_stream(stream);
   gpgpu_context *ctx;
   if (gpgpu_ctx) {
     ctx = gpgpu_ctx;
@@ -1531,6 +1542,7 @@ __host__ cudaError_t CUDARTAPI cudaMemsetInternal(
 __host__ cudaError_t CUDARTAPI
 cudaMemsetAsyncInternal(void *mem, int c, size_t count, cudaStream_t stream = 0,
                         gpgpu_context *gpgpu_ctx = NULL) {
+  stream = sim_stream(stream);
   gpgpu_context *ctx;
   if (gpgpu_ctx) {
     ctx = gpgpu_ctx;
@@ -2113,6 +2125,7 @@ __host__ cudaError_t CUDARTAPI cudaStreamDestroyInternal(
 
 __host__ cudaError_t CUDARTAPI cudaStreamSynchronizeInternal(
     cudaStream_t stream, gpgpu_context *gpgpu_ctx = NULL) {
+  stream = sim_stream(stream);
   gpgpu_context *ctx;
   if (gpgpu_ctx) {
     ctx = gpgpu_ctx;
@@ -2274,6 +2287,7 @@ CUevent_st *get_event(cudaEvent_t event) {
 
 __host__ cudaError_t CUDARTAPI cudaEventRecordInternal(
     cudaEvent_t event, cudaStream_t stream, gpgpu_context *gpgpu_ctx = NULL) {
+  stream = sim_stream(stream);
   gpgpu_context *ctx;
   if (gpgpu_ctx) {
     ctx = gpgpu_ctx;
@@ -2295,6 +2309,7 @@ __host__ cudaError_t CUDARTAPI cudaEventRecordInternal(
 __host__ cudaError_t CUDARTAPI cudaStreamWaitEventInternal(
     cudaStream_t stream, cudaEvent_t event, unsigned int flags,
     gpgpu_context *gpgpu_ctx = NULL) {
+  stream = sim_stream(stream);
   gpgpu_context *ctx;
   if (gpgpu_ctx) {
     ctx = gpgpu_ctx;
@@ -3034,12 +3049,17 @@ __host__ cudaError_t CUDARTAPI cudaStreamSynchronizeSST(cudaStream_t stream) {
 }
 
 __host__ cudaError_t CUDARTAPI cudaStreamQuery(cudaStream_t stream) {
+  stream = sim_stream(stream);
   if (g_debug_execution >= 3) {
     announce_call(__my_func__);
   }
 #if (CUDART_VERSION >= 3000)
-  if (stream == NULL) return g_last_cudaError = cudaErrorInvalidResourceHandle;
-  return g_last_cudaError = stream->empty() ? cudaSuccess : cudaErrorNotReady;
+  bool idle;
+  if (stream == NULL)  // the default stream waits for every stream
+    idle = GPGPU_Context()->the_gpgpusim->g_stream_manager->empty_protected();
+  else
+    idle = stream->empty();
+  return g_last_cudaError = idle ? cudaSuccess : cudaErrorNotReady;
 #else
   printf(
       "GPGPU-Sim PTX: WARNING: Asynchronous kernel execution not supported "
