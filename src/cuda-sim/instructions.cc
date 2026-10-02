@@ -5526,16 +5526,16 @@ void shfl_impl(const ptx_instruction *pI, core_t *core, warp_inst_t inst) {
         "threads in a warp\n");
     data.u32 = 0;
   }
-  thread->set_operand_value(dst, data, i_type, thread, pI);
-
-  /*
-  TODO: deal with predicates appropriately using the following pseudocode:
-  if (!isGuardPredicateTrue(src_idx)) {
-          printf("GPGPU-Sim PTX: WARNING: shfl input value unpredictable for
-  predicated-off threads in a warp\n");
+  if (dst.get_double_operand_type() == 0) {
+    thread->set_operand_value(dst, data, i_type, thread, pI);
+  } else {
+    // "shfl d|p": d gets the value, p whether the source lane was in range.
+    // (The generic d|p handling in set_operand_value expects p|d.)
+    thread->set_reg(dst.vec_symbol(0), data);
+    ptx_reg_t in_range;
+    in_range.pred = p ? 0 : 1;  // predicates hold an inverted zero flag
+    thread->set_reg(dst.vec_symbol(1), in_range);
   }
-  if (dest predicate selected) data.pred = p;
-  */
 }
 
 void shf_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
