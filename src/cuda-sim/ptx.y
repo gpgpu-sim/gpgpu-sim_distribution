@@ -202,6 +202,8 @@ class ptx_recognizer;
 %token  SYS_OPTION
 %token  EXIT_OPTION
 %token  ABS_OPTION
+%token  MEMORY_ORDER_OPTION
+%token  SHIFTAMT_OPTION
 %token  TO_OPTION
 %token  CA_OPTION;
 %token  CG_OPTION;
@@ -496,6 +498,8 @@ option: type_spec
 	| FULL_OPTION { recognizer->add_option(FULL_OPTION); }
 	| EXIT_OPTION { recognizer->add_option(EXIT_OPTION); }
 	| ABS_OPTION { recognizer->add_option(ABS_OPTION); }
+	| MEMORY_ORDER_OPTION { recognizer->add_option(MEMORY_ORDER_OPTION); }
+	| SHIFTAMT_OPTION { recognizer->add_option(SHIFTAMT_OPTION); }
 	| atomic_operation_spec ;
 	| TO_OPTION { recognizer->add_option(TO_OPTION); }
 	| HALF_OPTION { recognizer->add_option(HALF_OPTION); }

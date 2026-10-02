@@ -1083,6 +1083,7 @@ class ptx_instruction : public warp_inst_t {
   bool is_uni() const { return m_uni; }
   bool is_exit() const { return m_exit; }
   bool is_abs() const { return m_abs; }
+  bool is_shiftamt() const { return m_shiftamt; }
   bool is_neg() const { return m_neg; }
   bool is_to() const { return m_to_option; }
   unsigned cache_option() const { return m_cache_option; }
@@ -1153,6 +1154,7 @@ class ptx_instruction : public warp_inst_t {
   bool m_lo;
   bool m_exit;
   bool m_abs;
+  bool m_shiftamt;
   bool m_neg;
   bool m_uni;  // if branch instruction, this evaluates to true for uniform
                // branches (ie jumps)

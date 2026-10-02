@@ -370,6 +370,14 @@ breakaddr  TC; yylval->int_value = BREAKADDR_OP; return OPCODE;
 \.gl    TC; return GLOBAL_OPTION;
 \.cta   TC; return CTA_OPTION;
 \.sys   TC; return SYS_OPTION;
+\.gpu   TC; return GLOBAL_OPTION; /* PTX ISA 6.0 name for the .gl scope */
+
+\.relaxed TC; return MEMORY_ORDER_OPTION;
+\.acquire TC; return MEMORY_ORDER_OPTION;
+\.release TC; return MEMORY_ORDER_OPTION;
+\.acq_rel TC; return MEMORY_ORDER_OPTION;
+
+\.shiftamt TC; return SHIFTAMT_OPTION;
 
 \.exit   TC; return EXIT_OPTION;
 
