@@ -2,8 +2,9 @@
 # Functional regressions: build GPGPU-Sim and the gpu-app-collection suites
 # the app list needs, fetch their input data, and run every app in an app
 # definition file in PTX mode (regress/define-functional-pr.yml for the PR
-# tier, regress/define-functional-long.yml for the long tier). Exits non-zero
-# if any app crashes, deadlocks, asserts or fails its own check.
+# tier, regress/define-functional-long.yml for the long tier), after the small
+# CUDA tests in regress/cuda-tests. Exits non-zero if any test or app crashes,
+# deadlocks, asserts or fails its own check.
 #
 #   ./functional-tests.sh        everything
 #   ./functional-tests.sh data   only fetch the input data into $APPDATA
@@ -85,6 +86,10 @@ if [ "$MODE" != refs ]; then
   echo "::group::Build GPGPU-Sim"
   cmake -B build && cmake --build build -j && cmake --install build
   set +u; source setup > /dev/null; set -u
+  echo "::endgroup::"
+  echo "::group::CUDA tests (regress/cuda-tests)"
+  tests_rc=0
+  "$ROOT/regress/cuda-tests/run.sh" || tests_rc=1
   echo "::endgroup::"
 fi
 
@@ -168,5 +173,9 @@ if [ -n "${REFS:-}" ]; then
   echo "::group::Results against the GPU"
   python3 "$ROOT/regress/functional-refs.py" compare "$REFS" accel-sim-framework/sim_run_* || rc=1
   echo "::endgroup::"
+fi
+if [ "${tests_rc:-0}" != 0 ]; then
+  echo "::error::a CUDA test in regress/cuda-tests failed (see its group above)"
+  rc=1
 fi
 exit $rc
