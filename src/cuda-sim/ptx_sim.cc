@@ -135,7 +135,10 @@ void ptx_cta_info::inc_bar_threads() { m_bar_threads++; }
 
 void ptx_cta_info::reset_bar_threads() { m_bar_threads = 0; }
 
-ptx_warp_info::ptx_warp_info() { m_lane = 0; }
+ptx_warp_info::ptx_warp_info() {
+  m_lane = 0;
+  m_match_lanes = 0;
+}
 
 unsigned ptx_warp_info::get_lane() const { return m_lane; }
 

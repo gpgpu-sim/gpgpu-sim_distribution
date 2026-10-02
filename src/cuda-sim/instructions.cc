@@ -6542,6 +6542,73 @@ void vsub_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
   inst_not_implemented(pI);
 }
 
+// match.any: each lane gets the mask of lanes in membermask whose value equals
+// its own. match.all: each lane gets the mask of lanes in membermask, and p
+// true, if all those lanes hold the same value; else 0 and p false. Only lanes
+// that execute the instruction take part.
+void match_impl(const ptx_instruction *pI, core_t *core, warp_inst_t inst) {
+  unsigned warp_size = core->get_warp_size();
+  int tid = (core->get_gpu()->is_functional_sim() ? inst.warp_id_func()
+                                                  : inst.warp_id()) *
+            warp_size;
+  ptx_warp_info *warp_info = core->get_thread_info()[tid]->m_warp_info;
+  unsigned lane = warp_info->get_lane();
+  ptx_thread_info *thread = core->get_thread_info()[tid + lane];
+
+  const operand_info &dst = pI->dst();
+  const operand_info &src1 = pI->src1();
+  const operand_info &src2 = pI->src2();
+  unsigned i_type = pI->get_type();
+  unsigned membermask =
+      thread->get_operand_value(src2, dst, U32_TYPE, thread, 1).u32;
+
+  // As in shfl: the first lane to execute reads every lane's value before
+  // any lane writes its destination. A lane whose guard turns it off has not
+  // left the active mask yet, so it is marked here and takes no part.
+  bool first_lane = true;
+  for (unsigned l = 0; l < lane; l++)
+    if (inst.active(l)) first_lane = false;
+  if (first_lane) {
+    unsigned executing = 0;
+    for (unsigned l = lane; l < warp_size; l++) {
+      if (!inst.active(l)) continue;
+      ptx_thread_info *t = core->get_thread_info()[tid + l];
+      if (t->guard_skips(pI)) continue;
+      executing |= 1u << l;
+      warp_info->shfl_source(l) = t->get_operand_value(src1, dst, i_type, t, 1);
+    }
+    warp_info->set_match_lanes(executing);
+  }
+
+  unsigned lanes = warp_info->get_match_lanes() & membermask;
+  unsigned long long value = warp_info->shfl_source(lane).u64;
+  if (i_type != B64_TYPE) value &= 0xFFFFFFFF;
+  unsigned same = 0;
+  for (unsigned l = 0; l < warp_size; l++) {
+    if (!(lanes & (1u << l))) continue;
+    unsigned long long v = warp_info->shfl_source(l).u64;
+    if (i_type != B64_TYPE) v &= 0xFFFFFFFF;
+    if (v == value) same |= 1u << l;
+  }
+
+  ptx_reg_t data;
+  if (pI->vote_mode() == ptx_instruction::vote_any) {
+    data.u32 = same;
+    thread->set_operand_value(dst, data, U32_TYPE, thread, pI);
+    return;
+  }
+  bool all = (same == lanes);
+  data.u32 = all ? lanes : 0;
+  if (dst.get_double_operand_type() == 0) {
+    thread->set_operand_value(dst, data, U32_TYPE, thread, pI);
+  } else {
+    thread->set_reg(dst.vec_symbol(0), data);
+    ptx_reg_t p;
+    p.pred = all ? 0 : 1;  // 0 means true (inverted zero flag)
+    thread->set_reg(dst.vec_symbol(1), p);
+  }
+}
+
 void vote_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
   static bool first_in_warp = true;
   static bool and_all;

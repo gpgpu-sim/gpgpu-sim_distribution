@@ -1025,6 +1025,7 @@ void ptx_instruction::set_opcode_and_latency() {
       op = TENSOR_CORE_OP;
       break;
     case SHFL_OP:
+    case MATCH_OP:
       latency = int_latency[5];
       initiation_interval = int_init[5];
       break;
@@ -1796,6 +1797,16 @@ int tensorcore_op(int inst_opcode) {
   else
     return 0;
 }
+bool ptx_thread_info::guard_skips(const ptx_instruction *pI) {
+  if (!pI->has_pred()) return false;
+  const operand_info &pred = pI->get_pred();
+  ptx_reg_t pred_value = get_operand_value(pred, pred, PRED_TYPE, this, 0);
+  if (pI->get_pred_mod() == -1)
+    return (pred_value.pred & 0x0001) ^
+           pI->get_pred_neg();  // ptxplus inverts the zero flag
+  return !pred_lookup(pI->get_pred_mod(), pred_value.pred & 0x000F);
+}
+
 void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
   bool skip = false;
   int op_classification = 0;
@@ -1827,16 +1838,7 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
       }
     }
 
-    if (pI->has_pred()) {
-      const operand_info &pred = pI->get_pred();
-      ptx_reg_t pred_value = get_operand_value(pred, pred, PRED_TYPE, this, 0);
-      if (pI->get_pred_mod() == -1) {
-        skip = (pred_value.pred & 0x0001) ^
-               pI->get_pred_neg();  // ptxplus inverts the zero flag
-      } else {
-        skip = !pred_lookup(pI->get_pred_mod(), pred_value.pred & 0x000F);
-      }
-    }
+    skip = guard_skips(pI);
     int inst_opcode = pI->get_opcode();
 
     if (skip) {
@@ -1863,7 +1865,8 @@ void ptx_thread_info::ptx_exec_inst(warp_inst_t &inst, unsigned lane_id) {
       // Tensorcore is warp synchronous operation. So these instructions needs
       // to be executed only once. To make the simulation faster removing the
       // redundant tensorcore operation
-      if (inst_opcode == SHFL_OP) m_warp_info->set_lane(lane_id);
+      if (inst_opcode == SHFL_OP || inst_opcode == MATCH_OP)
+        m_warp_info->set_lane(lane_id);
 
       if (!tensorcore_op(inst_opcode) ||
           ((tensorcore_op(inst_opcode)) && (lane_id == 0))) {

@@ -103,6 +103,7 @@ ld.volatile TC; yylval->int_value = LD_OP; return OPCODE;
 ldu     TC; yylval->int_value = LDU_OP; return OPCODE;
 lg2	TC; yylval->int_value = LG2_OP; return OPCODE;
 mad24   TC; yylval->int_value = MAD24_OP; return OPCODE;
+match   TC; yylval->int_value = MATCH_OP; return OPCODE;
 mad     TC; yylval->int_value = MAD_OP; return OPCODE;
 madc	TC; yylval->int_value = MADC_OP; return OPCODE;
 madp	TC; yylval->int_value = MADP_OP; return OPCODE;
