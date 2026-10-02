@@ -3943,7 +3943,7 @@ void mad_def(const ptx_instruction *pI, ptx_thread_info *thread,
           ((long long int)(t.s32 + c.s32 + carry_bit.pred) & 0x100000000) >> 32;
       break;
     case S32_TYPE:
-      t.s64 = a.s32 * b.s32;
+      t.s64 = (long long)a.s32 * b.s32;
       if (pI->is_wide())
         d.s64 = t.s64 + c.s64 + carry_bit.pred;
       else if (pI->is_hi())
@@ -3956,9 +3956,10 @@ void mad_def(const ptx_instruction *pI, ptx_thread_info *thread,
     case S64_TYPE:
       t.s64 = a.s64 * b.s64;
       assert(!pI->is_wide());
-      assert(!pI->is_hi());
       assert(use_carry == false);
-      if (pI->is_lo())
+      if (pI->is_hi())
+        d.s64 = (long long)(((__int128)a.s64 * b.s64) >> 64) + c.s64;
+      else if (pI->is_lo())
         d.s64 = t.s64 + c.s64 + carry_bit.pred;
       else
         assert(0);
@@ -3968,7 +3969,7 @@ void mad_def(const ptx_instruction *pI, ptx_thread_info *thread,
       if (pI->is_wide())
         d.u32 = t.u32 + c.u32 + carry_bit.pred;
       else if (pI->is_hi())
-        d.u16 = (t.u32 + c.u16 + carry_bit.pred) >> 16;
+        d.u16 = (t.u32 >> 16) + c.u16 + carry_bit.pred;
       else if (pI->is_lo())
         d.u16 = t.u16 + c.u16 + carry_bit.pred;
       else
@@ -3978,11 +3979,11 @@ void mad_def(const ptx_instruction *pI, ptx_thread_info *thread,
               32;
       break;
     case U32_TYPE:
-      t.u64 = a.u32 * b.u32;
+      t.u64 = (unsigned long long)a.u32 * b.u32;
       if (pI->is_wide())
         d.u64 = t.u64 + c.u64 + carry_bit.pred;
       else if (pI->is_hi())
-        d.u32 = (t.u64 + c.u32 + carry_bit.pred) >> 32;
+        d.u32 = (t.u64 >> 32) + c.u32 + carry_bit.pred;
       else if (pI->is_lo())
         d.u32 = t.u32 + c.u32 + carry_bit.pred;
       else
@@ -3991,9 +3992,11 @@ void mad_def(const ptx_instruction *pI, ptx_thread_info *thread,
     case U64_TYPE:
       t.u64 = a.u64 * b.u64;
       assert(!pI->is_wide());
-      assert(!pI->is_hi());
       assert(use_carry == false);
-      if (pI->is_lo())
+      if (pI->is_hi())
+        d.u64 = (unsigned long long)(((unsigned __int128)a.u64 * b.u64) >> 64) +
+                c.u64;
+      else if (pI->is_lo())
         d.u64 = t.u64 + c.u64 + carry_bit.pred;
       else
         assert(0);
@@ -4048,7 +4051,8 @@ void mad_def(const ptx_instruction *pI, ptx_thread_info *thread,
           // assert(0);
           break;
       }
-      d.f32 = a.f32 * b.f32 + c.f32;
+      // mad.f32 on sm_20 and later, like fma.f32, rounds only once
+      d.f32 = fmaf(a.f32, b.f32, c.f32);
       if (pI->saturation_mode()) {
         if (d.f32 < 0)
           d.f32 = 0;
@@ -4078,7 +4082,7 @@ void mad_def(const ptx_instruction *pI, ptx_thread_info *thread,
           assert(0);
           break;
       }
-      d.f64 = a.f64 * b.f64 + c.f64;
+      d.f64 = fma(a.f64, b.f64, c.f64);
       if (pI->saturation_mode()) {
         if (d.f64 < 0)
           d.f64 = 0;
@@ -4397,8 +4401,10 @@ void mul_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
     case S64_TYPE:
       t.s64 = a.s64 * b.s64;
       assert(!pI->is_wide());
-      // assert(!pI->is_hi());
-      d.s64 = t.s64;
+      if (pI->is_hi())
+        d.s64 = (long long)(((__int128)a.s64 * b.s64) >> 64);
+      else
+        d.s64 = t.s64;
       break;
     case U16_TYPE:
       t.u32 = ((unsigned)a.u16) * ((unsigned)b.u16);
@@ -4425,8 +4431,9 @@ void mul_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
     case U64_TYPE:
       t.u64 = a.u64 * b.u64;
       assert(!pI->is_wide());
-      assert(!pI->is_hi());
-      if (pI->is_lo())
+      if (pI->is_hi())
+        d.u64 = (unsigned long long)(((unsigned __int128)a.u64 * b.u64) >> 64);
+      else if (pI->is_lo())
         d.u64 = t.u64;
       else
         assert(0);
