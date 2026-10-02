@@ -17,8 +17,6 @@
 #     finish in 10 hours.
 #   - lonestar-bh: did not finish natively on the RTX 2080 Ti (30 minutes)
 #     nor in functional mode (2 hours), so there is nothing to compare.
-#   - lonestar-bfs-wla: the benchmark data has no lonestar-bfs-wla/data
-#     directory, so it cannot open its input natively or in the simulator.
 #   - pannotia bc and mis print nothing to compare (their output dumps are
 #     under #if 0) except mis's iteration count; they still catch crashes.
 #   - the larger inputs (pannotia bc 2k_1M, fw_block 512, color_max G3_circuit,
@@ -63,6 +61,11 @@ functional-check-lonestargpu-2.0:
         - lonestar-bfs-wlw:     # 89 s, 147 s
             - args:  ./data/r4-2e20.gr
             - args:  ./data/rmat20.gr
+        # Crashed in ptxinfo_parse until the ptxinfo WARNING token fix. The
+        # benchmark data has no lonestar-bfs-wla directory, so it reads
+        # lonestar-bfs's graph. No GPU reference; its own device check counts.
+        - lonestar-bfs-wla:
+            - args:  $GPUAPPS_ROOT/data_dirs/cuda/lonestargpu-2.0/lonestar-bfs/data/r4-2e20.gr
         - lonestar-sssp-wln:    # 453 s
             - args:  ./data/r4-2e20.gr
 
