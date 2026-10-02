@@ -1253,6 +1253,8 @@ warp_inst_t core_t::getExecuteWarp(unsigned warpId) {
   m_simt_stack[warpId]->get_pdom_stack_top_info(&pc, &rpc);
   warp_inst_t wi = *(m_gpu->gpgpu_ctx->ptx_fetch_inst(pc));
   wi.set_active(m_simt_stack[warpId]->get_active_mask());
+  // warp-wide instructions (shfl, wmma) find the warp's threads from this
+  wi.set_warp_id_func(warpId);
   return wi;
 }
 
