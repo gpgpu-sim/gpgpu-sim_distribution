@@ -2348,6 +2348,30 @@ void cos_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
   thread->set_operand_value(dst, d, i_type, thread, pI);
 }
 
+// Sets the host rounding mode for an instruction's .rn/.rz/.rm/.rp modifier
+// and returns the mode it replaced, to be restored with fesetround().
+static int set_rounding_mode(int rounding_mode) {
+  int orig_rm = fegetround();
+  switch (rounding_mode) {
+    case RZ_OPTION:
+      fesetround(FE_TOWARDZERO);
+      break;
+    case RM_OPTION:
+      fesetround(FE_DOWNWARD);
+      break;
+    case RP_OPTION:
+      fesetround(FE_UPWARD);
+      break;
+    default:
+      break;
+  }
+  return orig_rm;
+}
+
+static int set_rounding_mode(const ptx_instruction *pI) {
+  return set_rounding_mode(pI->rounding_mode());
+}
+
 ptx_reg_t chop(ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
                int rounding_mode, int saturation_mode) {
   switch (to_width) {
@@ -2655,24 +2679,28 @@ ptx_reg_t s2f(ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
       case 32:
         switch (rounding_mode) {
           case RZ_OPTION:
-            y.f32 = cuda_math::__ll2float_rz(y.s64);
+            y.f32 = cuda_math::__ll2float_rz(x.s64);
             break;
           case RN_OPTION:
-            y.f32 = cuda_math::__ll2float_rn(y.s64);
+            y.f32 = cuda_math::__ll2float_rn(x.s64);
             break;
           case RM_OPTION:
-            y.f32 = cuda_math::__ll2float_rd(y.s64);
+            y.f32 = cuda_math::__ll2float_rd(x.s64);
             break;
           case RP_OPTION:
-            y.f32 = cuda_math::__ll2float_ru(y.s64);
+            y.f32 = cuda_math::__ll2float_ru(x.s64);
             break;
           default:
             break;
         }
         break;
-      case 64:
-        y.f64 = y.s64;
-        break;  // no internal implementation found
+      case 64: {
+        int orig_rm = set_rounding_mode(rounding_mode);
+        volatile double converted = x.s64;  // before the mode is restored
+        y.f64 = converted;
+        fesetround(orig_rm);
+        break;
+      }
       default:
         assert(0);
         break;
@@ -2727,24 +2755,28 @@ ptx_reg_t u2f(ptx_reg_t x, unsigned from_width, unsigned to_width, int to_sign,
       case 32:
         switch (rounding_mode) {
           case RZ_OPTION:
-            y.f32 = cuda_math::__ull2float_rn(y.u64);
+            y.f32 = cuda_math::__ull2float_rz(x.u64);
             break;
           case RN_OPTION:
-            y.f32 = cuda_math::__ull2float_rn(y.u64);
+            y.f32 = cuda_math::__ull2float_rn(x.u64);
             break;
           case RM_OPTION:
-            y.f32 = cuda_math::__ull2float_rn(y.u64);
+            y.f32 = cuda_math::__ull2float_rd(x.u64);
             break;
           case RP_OPTION:
-            y.f32 = cuda_math::__ull2float_rn(y.u64);
+            y.f32 = cuda_math::__ull2float_ru(x.u64);
             break;
           default:
             break;
         }
         break;
-      case 64:
-        y.f64 = y.u64;
-        break;  // no internal implementation found
+      case 64: {
+        int orig_rm = set_rounding_mode(rounding_mode);
+        volatile double converted = x.u64;  // before the mode is restored
+        y.f64 = converted;
+        fesetround(orig_rm);
+        break;
+      }
       default:
         assert(0);
         break;
@@ -3157,26 +3189,6 @@ void cvta_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
   ptx_reg_t to_addr;
   to_addr.u64 = to_addr_hw;
   thread->set_reg(dst.get_symbol(), to_addr);
-}
-
-// Sets the host rounding mode for an instruction's .rn/.rz/.rm/.rp modifier
-// and returns the mode it replaced, to be restored with fesetround().
-static int set_rounding_mode(const ptx_instruction *pI) {
-  int orig_rm = fegetround();
-  switch (pI->rounding_mode()) {
-    case RZ_OPTION:
-      fesetround(FE_TOWARDZERO);
-      break;
-    case RM_OPTION:
-      fesetround(FE_DOWNWARD);
-      break;
-    case RP_OPTION:
-      fesetround(FE_UPWARD);
-      break;
-    default:
-      break;
-  }
-  return orig_rm;
 }
 
 void div_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
