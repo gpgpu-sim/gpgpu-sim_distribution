@@ -912,6 +912,12 @@ void addp_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
     case RZ_OPTION:
       fesetround(FE_TOWARDZERO);
       break;
+    case RM_OPTION:
+      fesetround(FE_DOWNWARD);
+      break;
+    case RP_OPTION:
+      fesetround(FE_UPWARD);
+      break;
     default:
       assert(0);
       break;
@@ -1009,6 +1015,12 @@ void add_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
       break;
     case RZ_OPTION:
       fesetround(FE_TOWARDZERO);
+      break;
+    case RM_OPTION:
+      fesetround(FE_DOWNWARD);
+      break;
+    case RP_OPTION:
+      fesetround(FE_UPWARD);
       break;
     default:
       assert(0);
@@ -3147,6 +3159,26 @@ void cvta_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
   thread->set_reg(dst.get_symbol(), to_addr);
 }
 
+// Sets the host rounding mode for an instruction's .rn/.rz/.rm/.rp modifier
+// and returns the mode it replaced, to be restored with fesetround().
+static int set_rounding_mode(const ptx_instruction *pI) {
+  int orig_rm = fegetround();
+  switch (pI->rounding_mode()) {
+    case RZ_OPTION:
+      fesetround(FE_TOWARDZERO);
+      break;
+    case RM_OPTION:
+      fesetround(FE_DOWNWARD);
+      break;
+    case RP_OPTION:
+      fesetround(FE_UPWARD);
+      break;
+    default:
+      break;
+  }
+  return orig_rm;
+}
+
 void div_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
   ptx_reg_t data;
 
@@ -3199,13 +3231,19 @@ void div_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
     case F16_TYPE:
       data.f16 = src1_data.f16 / src2_data.f16;
       break;  // assert(0); break;
-    case F32_TYPE:
+    case F32_TYPE: {
+      int orig_rm = set_rounding_mode(pI);
       data.f32 = src1_data.f32 / src2_data.f32;
+      fesetround(orig_rm);
       break;
+    }
     case F64_TYPE:
-    case FF64_TYPE:
+    case FF64_TYPE: {
+      int orig_rm = set_rounding_mode(pI);
       data.f64 = src1_data.f64 / src2_data.f64;
+      fesetround(orig_rm);
       break;
+    }
     default:
       assert(0);
       break;
@@ -3971,6 +4009,12 @@ void mad_def(const ptx_instruction *pI, ptx_thread_info *thread,
         case RZ_OPTION:
           fesetround(FE_TOWARDZERO);
           break;
+        case RM_OPTION:
+          fesetround(FE_DOWNWARD);
+          break;
+        case RP_OPTION:
+          fesetround(FE_UPWARD);
+          break;
         default:
           assert(0);
           break;
@@ -3993,6 +4037,12 @@ void mad_def(const ptx_instruction *pI, ptx_thread_info *thread,
           break;
         case RZ_OPTION:
           fesetround(FE_TOWARDZERO);
+          break;
+        case RM_OPTION:
+          fesetround(FE_DOWNWARD);
+          break;
+        case RP_OPTION:
+          fesetround(FE_UPWARD);
           break;
         default:
           // assert(0);
@@ -4017,6 +4067,12 @@ void mad_def(const ptx_instruction *pI, ptx_thread_info *thread,
           break;
         case RZ_OPTION:
           fesetround(FE_TOWARDZERO);
+          break;
+        case RM_OPTION:
+          fesetround(FE_DOWNWARD);
+          break;
+        case RP_OPTION:
+          fesetround(FE_UPWARD);
           break;
         default:
           assert(0);
@@ -4385,6 +4441,12 @@ void mul_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
         case RZ_OPTION:
           fesetround(FE_TOWARDZERO);
           break;
+        case RM_OPTION:
+          fesetround(FE_DOWNWARD);
+          break;
+        case RP_OPTION:
+          fesetround(FE_UPWARD);
+          break;
         default:
           assert(0);
           break;
@@ -4408,6 +4470,12 @@ void mul_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
           break;
         case RZ_OPTION:
           fesetround(FE_TOWARDZERO);
+          break;
+        case RM_OPTION:
+          fesetround(FE_DOWNWARD);
+          break;
+        case RP_OPTION:
+          fesetround(FE_UPWARD);
           break;
         default:
           assert(0);
@@ -4433,6 +4501,12 @@ void mul_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
           break;
         case RZ_OPTION:
           fesetround(FE_TOWARDZERO);
+          break;
+        case RM_OPTION:
+          fesetround(FE_DOWNWARD);
+          break;
+        case RP_OPTION:
+          fesetround(FE_UPWARD);
           break;
         default:
           assert(0);
@@ -5688,6 +5762,7 @@ void sqrt_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
   unsigned i_type = pI->get_type();
   a = thread->get_operand_value(src1, dst, i_type, thread, 1);
 
+  int orig_rm = set_rounding_mode(pI);
   switch (i_type) {
     case F32_TYPE:
       if (a.f32 < 0)
@@ -5707,6 +5782,7 @@ void sqrt_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
       assert(0);
       break;
   }
+  fesetround(orig_rm);
 
   thread->set_operand_value(dst, d, i_type, thread, pI);
 }
@@ -5921,13 +5997,19 @@ void sub_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
     case F16_TYPE:
       data.f16 = src1_data.f16 - src2_data.f16;
       break;  // assert(0); break;
-    case F32_TYPE:
+    case F32_TYPE: {
+      int orig_rm = set_rounding_mode(pI);
       data.f32 = src1_data.f32 - src2_data.f32;
+      fesetround(orig_rm);
       break;
+    }
     case F64_TYPE:
-    case FF64_TYPE:
+    case FF64_TYPE: {
+      int orig_rm = set_rounding_mode(pI);
       data.f64 = src1_data.f64 - src2_data.f64;
+      fesetround(orig_rm);
       break;
+    }
     default:
       assert(0);
       break;
