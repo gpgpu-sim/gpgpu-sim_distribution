@@ -6049,6 +6049,10 @@ void nop_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
   // Do nothing
 }
 
+void nanosleep_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
+  // A hint: the thread may sleep for up to the given time, or not at all
+}
+
 void subc_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
   inst_not_implemented(pI);
 }
