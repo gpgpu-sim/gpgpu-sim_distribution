@@ -1237,6 +1237,7 @@ ptx_instruction::ptx_instruction(
   m_uni = false;
   m_exit = false;
   m_abs = false;
+  m_shiftamt = false;
   m_neg = false;
   m_to_option = false;
   m_cache_option = 0;
@@ -1405,6 +1406,13 @@ ptx_instruction::ptx_instruction(
         break;
       case ABS_OPTION:
         m_abs = true;
+        break;
+      case MEMORY_ORDER_OPTION:
+        // .relaxed/.acquire/.release/.acq_rel: instructions execute one at a
+        // time in program order, so the memory order needs no modelling
+        break;
+      case SHIFTAMT_OPTION:
+        m_shiftamt = true;
         break;
       case NEG_OPTION:
         m_neg = true;

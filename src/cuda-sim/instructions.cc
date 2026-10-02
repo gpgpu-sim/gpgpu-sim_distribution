@@ -1725,17 +1725,13 @@ void bfind_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
       thread->get_operand_value(src1, dst, i_type, thread, 1);
   const int msb = (i_type == U32_TYPE || i_type == S32_TYPE) ? 31 : 63;
 
-  unsigned long a = 0;
+  unsigned long long a = 0;
   switch (i_type) {
     case S32_TYPE:
-      a = src1_data.s32;
-      break;
     case U32_TYPE:
       a = src1_data.u32;
       break;
     case S64_TYPE:
-      a = src1_data.s64;
-      break;
     case U64_TYPE:
       a = src1_data.u64;
       break;
@@ -1744,19 +1740,19 @@ void bfind_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
       abort();
   }
 
-  // negate negative signed inputs
-  if ((i_type == S32_TYPE || i_type == S64_TYPE) && (a & (1 << msb))) {
+  // for a negative signed input, find the most significant 0 instead
+  if ((i_type == S32_TYPE || i_type == S64_TYPE) && ((a >> msb) & 1)) {
     a = ~a;
+    if (msb == 31) a &= 0xffffffffULL;
   }
   uint32_t d_data = 0xffffffff;
-  for (uint32_t i = msb; i >= 0; i--) {
-    if (a & (1 << i)) {
+  for (int i = msb; i >= 0; i--) {
+    if ((a >> i) & 1) {
       d_data = i;
       break;
     }
   }
-
-  // if (.shiftamt && d != 0xffffffff)  { d = msb - d; }
+  if (pI->is_shiftamt() && d_data != 0xffffffff) d_data = msb - d_data;
 
   // store d
   thread->set_operand_value(dst, d_data, U32_TYPE, thread, pI);
