@@ -3867,11 +3867,13 @@ void mad24_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
 
   assert(!pI->is_wide());
 
+  // The product is of the low 24 bits of each source (sign-extended for
+  // .s32), 48 bits wide; .hi adds c to bits 47..16 and .lo to bits 31..0.
   switch (i_type) {
     case S32_TYPE:
-      t.s64 = a.s32 * b.s32;
+      t.s64 = (long long)((int)(a.u32 << 8) >> 8) * ((int)(b.u32 << 8) >> 8);
       if (pI->is_hi()) {
-        d.s64 = (t.s64 >> 16) + c.s32;
+        d.s64 = (long long)(int)(t.s64 >> 16) + c.s32;
         if (sat_mode) {
           if (d.s64 > (int)0x7FFFFFFF)
             d.s64 = (int)0x7FFFFFFF;
@@ -3879,16 +3881,16 @@ void mad24_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
             d.s64 = (int)0x80000000;
         }
       } else if (pI->is_lo())
-        d.s64 = t.s32 + c.s32;
+        d.s64 = (int)(t.u32 + c.u32);
       else
         assert(0);
       break;
     case U32_TYPE:
-      t.u64 = a.u32 * b.u32;
+      t.u64 = (unsigned long long)(a.u32 & 0xFFFFFF) * (b.u32 & 0xFFFFFF);
       if (pI->is_hi())
-        d.u64 = (t.u64 >> 16) + c.u32;
+        d.u64 = (unsigned)((t.u64 >> 16) + c.u32);
       else if (pI->is_lo())
-        d.u64 = t.u32 + c.u32;
+        d.u64 = (unsigned)(t.u32 + c.u32);
       else
         assert(0);
       break;
