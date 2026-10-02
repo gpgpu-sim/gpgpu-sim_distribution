@@ -3287,6 +3287,24 @@ void isspacep_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
   thread->set_reg(dst.get_symbol(), p);
 }
 
+// The address an ld/st operand holds. Global and generic addresses are 64
+// bits wide. A register declared 32 bits wide can still carry bits above bit
+// 31 (32-bit arithmetic keeps its carry there), so only its low 32 bits are
+// used.
+static addr_t operand_address(const operand_info &op, const ptx_reg_t &value) {
+  if (op.get_type() == reg_t || op.get_type() == memory_t ||
+      op.get_type() == symbolic_t) {
+    const symbol *s = op.get_symbol();
+    if (s && s->type() && s->type()->get_key().is_reg()) {
+      size_t size;
+      int t;
+      type_info_key::type_decode(s->type()->get_key().scalar_type(), size, t);
+      if (size <= 32) return value.u32;
+    }
+  }
+  return value.u64;
+}
+
 void decode_space(memory_space_t &space, ptx_thread_info *thread,
                   const operand_info &op, memory_space *&mem, addr_t &addr) {
   unsigned smid = thread->get_hw_sid();
@@ -3382,7 +3400,7 @@ void ld_exec(const ptx_instruction *pI, ptx_thread_info *thread) {
   unsigned vector_spec = pI->get_vector();
 
   memory_space *mem = NULL;
-  addr_t addr = src1_data.u32;
+  addr_t addr = operand_address(src1, src1_data);
 
   decode_space(space, thread, src1, mem, addr);
 
@@ -3455,7 +3473,7 @@ void mma_st_impl(const ptx_instruction *pI, core_t *core, warp_inst_t &inst) {
     memory_space_t space = pI->get_space();
 
     memory_space *mem = NULL;
-    addr_t addr = addr_reg.u32;
+    addr_t addr = operand_address(src1, addr_reg);
 
     new_addr_type mem_txn_addr[MAX_ACCESSES_PER_INSN_PER_THREAD];
     int num_mem_txn = 0;
@@ -3575,7 +3593,7 @@ void mma_ld_impl(const ptx_instruction *pI, core_t *core, warp_inst_t &inst) {
     memory_space_t space = pI->get_space();
 
     memory_space *mem = NULL;
-    addr_t addr = src1_data.u32;
+    addr_t addr = operand_address(src1, src1_data);
     smid = thread->get_hw_sid();
     if (whichspace(addr) == shared_space) {
       addr = generic_to_shared(smid, addr);
@@ -5798,7 +5816,7 @@ void st_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
   unsigned vector_spec = pI->get_vector();
 
   memory_space *mem = NULL;
-  addr_t addr = addr_reg.u32;
+  addr_t addr = operand_address(dst, addr_reg);
 
   decode_space(space, thread, dst, mem, addr);
 
