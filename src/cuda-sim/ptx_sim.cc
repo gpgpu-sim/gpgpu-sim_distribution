@@ -256,20 +256,25 @@ unsigned ptx_thread_info::get_builtin(int builtin_id, unsigned dim_mod) {
     case LANEID_REG:
       return get_hw_tid() % m_core->get_warp_size();
     case LANEMASK_EQ_REG:
-      feature_not_implemented("%lanemask_eq");
-      return 0;
     case LANEMASK_LE_REG:
-      feature_not_implemented("%lanemask_le");
-      return 0;
     case LANEMASK_LT_REG:
-      feature_not_implemented("%lanemask_lt");
-      return 0;
     case LANEMASK_GE_REG:
-      feature_not_implemented("%lanemask_ge");
-      return 0;
-    case LANEMASK_GT_REG:
-      feature_not_implemented("%lanemask_gt");
-      return 0;
+    case LANEMASK_GT_REG: {
+      unsigned eq = 1u << (get_hw_tid() % m_core->get_warp_size());
+      unsigned lt = eq - 1, le = lt | eq;
+      switch (builtin_id & 0xFFFF) {
+        case LANEMASK_EQ_REG:
+          return eq;
+        case LANEMASK_LE_REG:
+          return le;
+        case LANEMASK_LT_REG:
+          return lt;
+        case LANEMASK_GE_REG:
+          return ~lt;
+        default:
+          return ~le;
+      }
+    }
     case NCTAID_REG:
       assert(dim_mod < 3);
       if (dim_mod == 0) return m_nctaid.x;
