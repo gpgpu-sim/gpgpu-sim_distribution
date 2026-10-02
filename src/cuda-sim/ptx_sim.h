@@ -182,12 +182,18 @@ class ptx_cta_info {
 class ptx_warp_info {
  public:
   ptx_warp_info();  // add get_core or something, or threads?
-  unsigned get_done_threads() const;
-  void inc_done_threads();
-  void reset_done_threads();
+
+  // Lane of the thread now executing a warp-wide instruction (shfl).
+  unsigned get_lane() const;
+  void set_lane(unsigned lane);
+
+  // shfl source operand of each lane, read before any lane of the warp
+  // writes its destination (the destination is often the source register).
+  ptx_reg_t &shfl_source(unsigned lane);
 
  private:
-  unsigned m_done_threads;
+  unsigned m_lane;
+  ptx_reg_t m_shfl_source[MAX_WARP_SIZE];
 };
 
 class symbol;

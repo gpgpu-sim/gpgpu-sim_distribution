@@ -5457,7 +5457,7 @@ void shfl_impl(const ptx_instruction *pI, core_t *core, warp_inst_t inst) {
 
   ptx_thread_info *thread = core->get_thread_info()[tid];
   ptx_warp_info *warp_info = thread->m_warp_info;
-  int lane = warp_info->get_done_threads();
+  int lane = warp_info->get_lane();
   thread = core->get_thread_info()[tid + lane];
 
   const operand_info &dst = pI->dst();
@@ -5500,11 +5500,26 @@ void shfl_impl(const ptx_instruction *pI, core_t *core, warp_inst_t inst) {
   // copy from own lane
   if (!p) src_idx = lane;
 
+  // Lanes execute one at a time in increasing order, and a predicated-off
+  // lane leaves the active mask before the next lane runs. So when no lower
+  // lane is active, this is the first lane to execute this shfl: read every
+  // lane's source now, before any lane overwrites it.
+  bool first_lane = true;
+  for (int l = 0; l < lane; l++)
+    if (inst.active(l)) first_lane = false;
+  if (first_lane) {
+    for (unsigned l = lane; l < core->get_warp_size(); l++) {
+      if (!inst.active(l)) continue;
+      ptx_thread_info *source = core->get_thread_info()[tid + l];
+      warp_info->shfl_source(l) =
+          source->get_operand_value(src1, dst, i_type, source, 1);
+    }
+  }
+
   // copy input from lane src_idx
   ptx_reg_t data;
   if (inst.active(src_idx)) {
-    ptx_thread_info *source = core->get_thread_info()[tid + src_idx];
-    data = source->get_operand_value(src1, dst, i_type, source, 1);
+    data = warp_info->shfl_source(src_idx);
   } else {
     printf(
         "GPGPU-Sim PTX: WARNING: shfl input value unpredictable for inactive "
@@ -5521,12 +5536,6 @@ void shfl_impl(const ptx_instruction *pI, core_t *core, warp_inst_t inst) {
   }
   if (dest predicate selected) data.pred = p;
   */
-
-  // keep track of the number of threads that have executed in the warp
-  warp_info->inc_done_threads();
-  if (warp_info->get_done_threads() == inst.active_count()) {
-    warp_info->reset_done_threads();
-  }
 }
 
 void shf_impl(const ptx_instruction *pI, ptx_thread_info *thread) {

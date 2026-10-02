@@ -135,13 +135,16 @@ void ptx_cta_info::inc_bar_threads() { m_bar_threads++; }
 
 void ptx_cta_info::reset_bar_threads() { m_bar_threads = 0; }
 
-ptx_warp_info::ptx_warp_info() { reset_done_threads(); }
+ptx_warp_info::ptx_warp_info() { m_lane = 0; }
 
-unsigned ptx_warp_info::get_done_threads() const { return m_done_threads; }
+unsigned ptx_warp_info::get_lane() const { return m_lane; }
 
-void ptx_warp_info::inc_done_threads() { m_done_threads++; }
+void ptx_warp_info::set_lane(unsigned lane) { m_lane = lane; }
 
-void ptx_warp_info::reset_done_threads() { m_done_threads = 0; }
+ptx_reg_t &ptx_warp_info::shfl_source(unsigned lane) {
+  assert(lane < MAX_WARP_SIZE);
+  return m_shfl_source[lane];
+}
 
 ptx_thread_info::~ptx_thread_info() {
   m_gpu->gpgpu_ctx->func_sim->g_ptx_thread_info_delete_count++;
