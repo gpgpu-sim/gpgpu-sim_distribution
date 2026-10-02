@@ -4751,8 +4751,10 @@ int prmt_mode_present(int mode) {
   }
   return returnval;
 }
-int read_byte(int mode, int control, int d_sel_index, signed long long value) {
-  int returnval = 0;
+// Byte d_sel_index of prmt's result, picked from the 8 bytes of value.
+unsigned read_byte(int mode, int control, int d_sel_index,
+                   unsigned long long value) {
+  int sel = 0;
   int prmt_f4e_mode[4][4] = {
       {0, 1, 2, 3}, {1, 2, 3, 4}, {2, 3, 4, 5}, {3, 4, 5, 6}};
   int prmt_b4e_mode[4][4] = {
@@ -4767,37 +4769,37 @@ int read_byte(int mode, int control, int d_sel_index, signed long long value) {
       {0, 1, 0, 1}, {2, 3, 2, 3}, {0, 1, 0, 1}, {2, 3, 2, 3}};
 
   if (!prmt_mode_present(mode)) {
-    if (control & 0x8) {
-      returnval = 0xff;
-    } else {
-      returnval = (value >> (8 * control)) & 0xff;
-    }
+    unsigned byte = (value >> (8 * (control & 0x7))) & 0xff;
+    // the high bit of the control asks for the byte's sign, replicated
+    if (control & 0x8) byte = (byte & 0x80) ? 0xff : 0;
+    return byte << (8 * d_sel_index);
   } else {
     switch (mode) {
       case PRMT_F4E_MODE:
-        returnval = prmt_f4e_mode[control][d_sel_index];
+        sel = prmt_f4e_mode[control][d_sel_index];
         break;
       case PRMT_B4E_MODE:
-        returnval = prmt_b4e_mode[control][d_sel_index];
+        sel = prmt_b4e_mode[control][d_sel_index];
         break;
       case PRMT_RC8_MODE:
-        returnval = prmt_rc8_mode[control][d_sel_index];
+        sel = prmt_rc8_mode[control][d_sel_index];
         break;
       case PRMT_ECL_MODE:
-        returnval = prmt_ecl_mode[control][d_sel_index];
+        sel = prmt_ecl_mode[control][d_sel_index];
         break;
       case PRMT_ECR_MODE:
-        returnval = prmt_ecr_mode[control][d_sel_index];
+        sel = prmt_ecr_mode[control][d_sel_index];
         break;
       case PRMT_RC16_MODE:
-        returnval = prmt_rc16_mode[control][d_sel_index];
+        sel = prmt_rc16_mode[control][d_sel_index];
         break;
         // Change the default from printing "ERROR" to just asserting
       default:
         assert(false);
     }
   }
-  return (returnval << 8 * d_sel_index);
+  // the tables give which byte of value to take
+  return ((value >> (8 * sel)) & 0xff) << (8 * d_sel_index);
 }
 
 void prmt_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
@@ -4814,7 +4816,8 @@ void prmt_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
   src2_data = thread->get_operand_value(src2, dst, i_type, thread, 1);
   src3_data = thread->get_operand_value(src3, dst, i_type, thread, 1);
 
-  tmpdata.s64 = src1_data.s32 | (src2_data.s64 << 32);
+  tmpdata.u64 = (unsigned long long)src1_data.u32 |
+                ((unsigned long long)src2_data.u32 << 32);
   int ctl[4];
 
   if (!prmt_mode_present(mode)) {
@@ -4826,15 +4829,9 @@ void prmt_impl(const ptx_instruction *pI, ptx_thread_info *thread) {
     ctl[0] = ctl[1] = ctl[2] = ctl[3] = (src3_data.s32 >> 0) & 0x3;
   }
 
-  data.s32 = 0;
-  data.s32 = data.s32 | read_byte(mode, ctl[0], 0, tmpdata.s64);  // First
-                                                                  // byte-0
-  data.s32 =
-      data.s32 | read_byte(mode, ctl[1], 1, tmpdata.s64);  // Second byte-1
-  data.s32 = data.s32 | read_byte(mode, ctl[2], 2, tmpdata.s64);  // Third
-                                                                  // byte-2
-  data.s32 =
-      data.s32 | read_byte(mode, ctl[3], 3, tmpdata.s64);  // Fourth byte-3
+  data.u64 = 0;
+  for (int i = 0; i < 4; i++)
+    data.u32 |= read_byte(mode, ctl[i], i, tmpdata.u64);
 
   thread->set_operand_value(dst, data, i_type, thread, pI);
 }
