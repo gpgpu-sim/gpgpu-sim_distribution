@@ -7,6 +7,8 @@
 #
 #   ./functional-tests.sh        everything
 #   ./functional-tests.sh data   only fetch the input data into $APPDATA
+#   ./functional-tests.sh refs   run the apps natively on a GPU instead of the
+#                                simulator and write their results to $REFS
 #
 # Runs in the Accel-Sim regression image (CI), or locally with CUDA_INSTALL_PATH
 # and GPUAPPS_ROOT set. Environment:
@@ -16,6 +18,9 @@
 #   CORES      parallel simulations (default: all cores, at most 8)
 #   HOURS      monitor time limit (default 2)
 #   APPDATA    directory holding the extracted input data; reused if present
+#   REFS       GPU reference results (regress/functional-refs.py); if set, each
+#              run's results must match them
+#   PTX_SIM_MODE_FUNC  1 for pure functional simulation (no timing model)
 #   ACCELSIM_REF  Accel-Sim tools commit
 
 set -eu
@@ -71,14 +76,17 @@ fetch_data() {
 
 if [ "${1:-}" = data ]; then fetch_data; exit 0; fi
 
-echo "config=$CONFIG cores=$CORES hours=$HOURS suites=$SUITES"
+MODE=${1:-sim}
+echo "config=$CONFIG cores=$CORES hours=$HOURS suites=$SUITES mode=$MODE"
 git config --global --add safe.directory '*' 2>/dev/null || true
-
-echo "::group::Build GPGPU-Sim"
 cd "$ROOT"
-cmake -B build && cmake --build build -j && cmake --install build
-set +u; source setup > /dev/null; set -u
-echo "::endgroup::"
+
+if [ "$MODE" != refs ]; then
+  echo "::group::Build GPGPU-Sim"
+  cmake -B build && cmake --build build -j && cmake --install build
+  set +u; source setup > /dev/null; set -u
+  echo "::endgroup::"
+fi
 
 echo "::group::Build benchmark suites"
 # The minimal image carries only rodinia_2.0-ft; fetch the sources if missing.
@@ -110,6 +118,15 @@ for d in $DATA_SUBDIRS; do
 done
 echo "::endgroup::"
 
+if [ "$MODE" = refs ]; then
+  : "${REFS:?set REFS to the reference file to write}"
+  nvidia-smi -L
+  export CUDA_VERSION=$(basename "$(dirname "$BIN")")
+  export LD_LIBRARY_PATH=$CUDA_INSTALL_PATH/lib64:${LD_LIBRARY_PATH:-}
+  SUITES=$SUITES python3 "$ROOT/regress/functional-refs.py" capture "$APPS" "$REFS"
+  exit 0
+fi
+
 echo "::group::Accel-Sim tools"
 [ -d accel-sim-framework ] || git clone -q https://github.com/accel-sim/accel-sim-framework.git
 git -C accel-sim-framework checkout -q "$ACCELSIM_REF"
@@ -130,9 +147,16 @@ nosim=""
 for o in $(find accel-sim-framework/sim_run_* -name '*.o[0-9]*' | sort); do
   t=$(grep 'gpgpu_simulation_time' "$o" | tail -1 | sed 's/.*= *//')
   i=$(grep 'gpu_tot_sim_insn' "$o" | tail -1 | sed 's/.*= *//')
+  if [ -z "$i" ] && [ -n "$t" ]; then
+    # functional mode (PTX_SIM_MODE_FUNC=1) has no gpu_tot_sim_insn; estimate
+    # thread instructions from its simulation rate and time
+    r=$(grep 'gpgpu_simulation_rate' "$o" | tail -1 | sed 's/.*= *//; s/ .*//')
+    s=$(echo "$t" | sed 's/.*(\([0-9]*\) sec).*/\1/')
+    i="~$((${r:-0} * ${s:-0}))"
+  fi
   run=$(echo $o | sed 's|.*sim_run_[^/]*/||; s|/[^/]*$||')
   echo "$run | $t | insn=$i"
-  [ -n "$i" ] && [ "$i" != 0 ] || nosim="$nosim $o"
+  [ -n "$i" ] && [ "$i" != 0 ] && [ "$i" != "~0" ] || nosim="$nosim $o"
 done
 echo "::endgroup::"
 for o in $nosim; do
@@ -140,4 +164,9 @@ for o in $nosim; do
   tail -20 "$o"
   rc=1
 done
+if [ -n "${REFS:-}" ]; then
+  echo "::group::Results against the GPU"
+  python3 "$ROOT/regress/functional-refs.py" compare "$REFS" accel-sim-framework/sim_run_* || rc=1
+  echo "::endgroup::"
+fi
 exit $rc

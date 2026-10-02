@@ -1,0 +1,82 @@
+# GPGPU-Sim functional-check tier: pannotia and lonestargpu-2.0 in pure
+# functional simulation (PTX_SIM_MODE_FUNC=1), each run's results compared
+# against the GPU's (regress/functional-refs.json). Catches instructions that
+# run without crashing but compute the wrong answer. About 90 minutes of
+# simulation on one core (about 15 minutes on 8 cores of aamodt-pc20).
+#
+# Runs on the same changes as the PR tier. Runner selection is the same as
+# main.yml: GitHub-hosted in the public repo, PRIVATE_RUNNER_LABEL in private
+# copies (at most 8 parallel simulations).
+
+name: Functional checks against the GPU
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "libcuda/**"
+      - "CMakeLists.txt"
+      - "*.cmake"
+      - "regress/**"
+      - "functional-tests.sh"
+      - ".github/workflows/functional-check.yml"
+  push:
+    branches: [dev]
+    paths:
+      - "src/**"
+      - "libcuda/**"
+      - "CMakeLists.txt"
+      - "*.cmake"
+      - "regress/**"
+      - "functional-tests.sh"
+      - ".github/workflows/functional-check.yml"
+  workflow_dispatch:
+    inputs:
+      hosted:
+        description: "Use a GitHub-hosted runner even in a private copy"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: functional-check-${{ github.ref }}-${{ inputs.hosted }}
+  cancel-in-progress: true
+
+jobs:
+  functional-check:
+    runs-on: ${{ (github.event.repository.private && !inputs.hosted) && vars.PRIVATE_RUNNER_LABEL || 'ubuntu-latest' }}
+    timeout-minutes: 180
+    container:
+      image: ghcr.io/accel-sim/accel-sim-framework:ubuntu-24.04-cuda-12.8-minimal
+      env:
+        CONFIG: QV100
+        HOURS: "2"
+        APPS: regress/define-functional-check.yml
+        REFS: regress/functional-refs.json
+        PTX_SIM_MODE_FUNC: "1"
+        APPDATA: /github/home/gpgpu-sim-appdata
+        ACCELSIM_REF: d930ad6d02c09bb56867132583735aba0389cff4
+    steps:
+      - uses: actions/checkout@v7
+      - name: Restore benchmark input data
+        id: appdata
+        uses: actions/cache/restore@v4
+        with:
+          path: /github/home/gpgpu-sim-appdata
+          key: gpgpu-sim-appdata-check-${{ hashFiles('regress/define-functional-check.yml') }}
+          restore-keys: gpgpu-sim-appdata-check-
+      - name: Fetch benchmark input data
+        run: /bin/bash $GITHUB_WORKSPACE/functional-tests.sh data
+      - name: Save benchmark input data
+        if: steps.appdata.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /github/home/gpgpu-sim-appdata
+          key: gpgpu-sim-appdata-check-${{ hashFiles('regress/define-functional-check.yml') }}
+      - name: Build, simulate and compare with the GPU
+        run: /bin/bash $GITHUB_WORKSPACE/functional-tests.sh
+      - name: Clean workspace (root-owned files from the container)
+        if: always()
+        run: find "$GITHUB_WORKSPACE" -mindepth 1 -delete

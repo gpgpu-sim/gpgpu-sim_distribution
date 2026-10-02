@@ -1,0 +1,44 @@
+# Makes regress/functional-refs.json: runs the apps of an app definition file
+# natively on a GPU, twice each, and records what they print and write
+# (regress/functional-refs.py). Needs a self-hosted runner with a GPU and the
+# NVIDIA container toolkit, so it runs only in private copies, on request.
+# The reference file is printed at the end of the log; commit it by hand.
+
+name: GPU reference results
+
+on:
+  workflow_dispatch:
+    inputs:
+      apps:
+        description: "App definition file"
+        default: regress/define-functional-check.yml
+
+permissions:
+  contents: read
+
+jobs:
+  refs:
+    if: github.event.repository.private
+    runs-on: ${{ vars.PRIVATE_RUNNER_LABEL }}
+    timeout-minutes: 240
+    container:
+      image: ghcr.io/accel-sim/accel-sim-framework:ubuntu-24.04-cuda-12.8-minimal
+      options: --gpus all
+      env:
+        APPS: ${{ inputs.apps }}
+        APPDATA: /github/home/gpgpu-sim-appdata
+        REFS: /tmp/functional-refs.json
+    steps:
+      - uses: actions/checkout@v7
+      - name: Fetch benchmark input data
+        run: /bin/bash $GITHUB_WORKSPACE/functional-tests.sh data
+      - name: Build the apps and run them on the GPU
+        run: /bin/bash $GITHUB_WORKSPACE/functional-tests.sh refs
+      - name: Reference file
+        run: |
+          echo "=== BEGIN functional-refs.json"
+          cat "$REFS"
+          echo "=== END functional-refs.json"
+      - name: Clean workspace (root-owned files from the container)
+        if: always()
+        run: find "$GITHUB_WORKSPACE" -mindepth 1 -delete

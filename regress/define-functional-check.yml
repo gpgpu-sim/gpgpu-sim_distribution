@@ -1,0 +1,68 @@
+# Functional-check tier: pannotia and lonestargpu-2.0 in pure functional
+# simulation (PTX_SIM_MODE_FUNC=1), with each run's results compared against
+# the same binary run natively on a GPU (regress/functional-refs.json, made by
+# .github/workflows/functional-refs.yml). Timing does not matter here; the
+# question is only whether GPGPU-Sim computes the right answer. Times are
+# functional-mode seconds from the 2026-10-01 probe on aamodt-pc20.
+#
+# Left out:
+#   - lonestar-mst: dfindcompmintwo synchronizes all CTAs with a global
+#     barrier, and functional mode runs one CTA at a time to completion
+#     (gpgpu_cuda_ptx_sim_main_func), so it never finishes, even on rmat12.
+#     It needs the performance model.
+#   - lonestar-dmr: wrong answer in functional mode. On r1M the GPU refines
+#     949587 bad triangles down to 0 in 82 rounds; GPGPU-Sim's first refine
+#     round leaves an empty worklist and the run ends with all 949587 still
+#     bad (its own check). refine also uses a global barrier. 250k.2 did not
+#     finish in 10 hours.
+#   - lonestar-bh: did not finish natively on the RTX 2080 Ti (30 minutes)
+#     nor in functional mode (2 hours), so there is nothing to compare.
+#   - lonestar-bfs-wla: the benchmark data has no lonestar-bfs-wla/data
+#     directory, so it cannot open its input natively or in the simulator.
+#   - pannotia bc and mis print nothing to compare (their output dumps are
+#     under #if 0) except mis's iteration count; they still catch crashes.
+#   - the larger inputs (pannotia bc 2k_1M, fw_block 512, color_max G3_circuit,
+#     lonestar USA-road graphs, sssp, bfs-atomic NY): 6 to 90 minutes each.
+
+functional-check-pannotia:
+    exec_dir: "$GPUAPPS_ROOT/bin/$CUDA_VERSION/release/"
+    data_dirs: "$GPUAPPS_ROOT/data_dirs/pannotia/"
+    make_target: pannotia
+    data_subdir: data_dirs/pannotia
+    execs:
+        - bc:                   # 500 s
+            - args:  ./data/1k_128k.gr
+        - color_max:            # 189 s
+            - args:  ./data/ecology1.graph 1
+        - color_maxmin:         # 113 s, 193 s
+            - args:  ./data/ecology1.graph 1
+            - args:  ./data/G3_circuit.graph 1
+        # the second argument turns on the app's own CPU check
+        - fw:                   # 140 s
+            - args:  ./data/256_16384.gr 1
+        - fw_block:             # 87 s
+            - args:  ./data/256_16384.gr 1
+        - mis:                  # 79 s, 126 s
+            - args:  ./data/ecology1.graph 1
+            - args:  ./data/G3_circuit.graph 1
+        - pagerank:             # 124 s
+            - args:  ./data/coAuthorsDBLP.graph 1
+        - pagerank_spmv:        # 126 s
+            - args:  ./data/coAuthorsDBLP.graph 1
+
+functional-check-lonestargpu-2.0:
+    exec_dir: "$GPUAPPS_ROOT/bin/$CUDA_VERSION/release/"
+    data_dirs: "$GPUAPPS_ROOT/data_dirs/cuda/lonestargpu-2.0/"
+    make_target: lonestargpu-2.0
+    data_subdir: data_dirs/cuda/lonestargpu-2.0
+    execs:
+        # bfs and sssp also verify their distances on the device
+        - lonestar-bfs-atomic:  # 352 s, 319 s
+            - args:  ./data/r4-2e20.gr
+            - args:  ./data/rmat20.gr
+        - lonestar-bfs-wlw:     # 89 s, 147 s
+            - args:  ./data/r4-2e20.gr
+            - args:  ./data/rmat20.gr
+        - lonestar-sssp-wln:    # 453 s
+            - args:  ./data/r4-2e20.gr
+
