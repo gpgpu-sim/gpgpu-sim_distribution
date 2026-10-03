@@ -1,0 +1,51 @@
+# cuda-samples v12.8 run by run.sh: name [args], one per line; '#' comments.
+# These pass in functional simulation of QV100 (survey on aamodt-pc20,
+# 2026-10-03, without a GPU in the container). The number is the simulation
+# time in seconds there. Not listed: samples that need cudart APIs GPGPU-Sim
+# lacks (texture objects, managed memory, graphs, cooperative launch),
+# NVRTC/driver-API samples (they bypass the simulator), CUDA libraries
+# (cuBLAS, cuSPARSE, cuRAND host API, cuFFT, cuSOLVER, NPP, nvJPEG: closed-
+# source SASS only, so they fail without a GPU and silently use the GPU when
+# there is one), dynamic parallelism (cdp*), and these known failures or
+# timeouts: dxtc, interval, newdelete, radixSortThrust,
+# segmentationTreeThrust, simpleHyperQ, cudaTensorCoreGemm,
+# globalToShmemAsyncCopy (%globaltimer), FDTD3d, MersenneTwisterGP11213,
+# MonteCarloMultiGPU, simpleAssert, reduction and warpAggregatedAtomicsCG
+# (both pass but take more than 15 minutes).
+BlackScholes                 # 1
+LargeKernelParameter         # 16
+MC_EstimatePiInlineP         # 169
+MC_EstimatePiInlineQ         # 10
+MC_SingleAsianOptionP        # 196
+SobolQRNG                    # 78
+StreamPriorities             # 121
+alignedTypes                 # 3
+bandwidthTest                # 97
+binaryPartitionCG            # 5
+binomialOptions              # 480
+clock                        # 0
+convolutionSeparable         # 12
+cudaOpenMP                   # 0
+deviceQuery                  # 0
+dwtHaar1D                    # 0
+fastWalshTransform           # 11
+fp16ScalarProduct            # 1
+histogram                    # 4
+inlinePTX                    # 0
+mergeSort                    # 10
+quasirandomGenerator         # 719
+scalarProd                   # 2
+scan                         # 18
+shfl_scan                    # 21
+simpleAtomicIntrinsics       # 0
+simpleCooperativeGroups      # 0
+simpleMPI                    # 6
+simpleMultiGPU               # 12
+simpleOccupancy              # 3
+simplePrintf                 # 0
+simpleTemplates              # 0
+simpleVoteIntrinsics         # 0
+sortingNetworks              # 70
+threadFenceReduction         # 59
+transpose                    # 21
+vectorAdd                    # 0

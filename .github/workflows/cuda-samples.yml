@@ -1,0 +1,63 @@
+# GPGPU-Sim cuda-samples tier: NVIDIA cuda-samples v12.8, scaled down by
+# regress/cuda-samples/scale.sh, run in functional simulation
+# (PTX_SIM_MODE_FUNC=1). Each sample checks its own answer against the CPU, so
+# no GPU reference outputs are needed. Replaces the CUDA SDK 4.2 apps.
+#
+# Runs on the same changes as the PR tier. Runner selection is the same as
+# main.yml: GitHub-hosted in the public repo, PRIVATE_RUNNER_LABEL in private
+# copies (at most 8 parallel simulations).
+
+name: CUDA samples in functional simulation
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "libcuda/**"
+      - "CMakeLists.txt"
+      - "*.cmake"
+      - "regress/cuda-samples/**"
+      - ".github/workflows/cuda-samples.yml"
+  push:
+    branches: [dev]
+    paths:
+      - "src/**"
+      - "libcuda/**"
+      - "CMakeLists.txt"
+      - "*.cmake"
+      - "regress/cuda-samples/**"
+      - ".github/workflows/cuda-samples.yml"
+  workflow_dispatch:
+    inputs:
+      hosted:
+        description: "Use a GitHub-hosted runner even in a private copy"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cuda-samples-${{ github.ref }}-${{ inputs.hosted }}
+  cancel-in-progress: true
+
+jobs:
+  cuda-samples:
+    runs-on: ${{ (github.event.repository.private && !inputs.hosted) && vars.PRIVATE_RUNNER_LABEL || 'ubuntu-latest' }}
+    timeout-minutes: 180
+    container:
+      image: ghcr.io/accel-sim/accel-sim-framework:ubuntu-24.04-cuda-12.8-minimal
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build GPGPU-Sim
+        run: |
+          git config --global --add safe.directory '*'
+          cmake -B build && cmake --build build -j && cmake --install build
+      - name: Build and simulate the cuda-samples
+        shell: bash
+        run: |
+          set +u; source setup > /dev/null; set -u
+          regress/cuda-samples/run.sh
+      - name: Clean workspace (root-owned files from the container)
+        if: always()
+        run: find "$GITHUB_WORKSPACE" -mindepth 1 -delete
