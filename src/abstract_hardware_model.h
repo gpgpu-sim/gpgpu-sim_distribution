@@ -1482,6 +1482,8 @@ class warp_inst_t : public inst_t {
     m_tma_mbar_addr = 0;
     m_tma_byte_count = 0;
     m_tma_oob_byte_count = 0;
+    m_is_tma_multicast = false;
+    m_tma_multicast_cta_mask = 0;
     m_is_tma_cmdflush = false;
     m_is_ldgsts_arrives_mbar = false;
     m_is_ldgsts_arrives_arvcnt = false;
@@ -1512,6 +1514,8 @@ class warp_inst_t : public inst_t {
     m_tma_mbar_addr = 0;
     m_tma_byte_count = 0;
     m_tma_oob_byte_count = 0;
+    m_is_tma_multicast = false;
+    m_tma_multicast_cta_mask = 0;
     m_cuda_cta_id = dim3(-1, -1, -1);
     m_cuda_cluster_cta_id = dim3(-1, -1, -1);
     m_cuda_cluster_id = dim3(-1, -1, -1);

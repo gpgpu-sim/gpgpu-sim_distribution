@@ -328,7 +328,7 @@ void shader_mem_lat_log(int logger_id, int latency) {
 
   int bin;  // LOG_2(latency)
   int v = latency;
-  register unsigned int shift;
+  unsigned int shift;
 
   bin = (v > 0xFFFF) << 4;
   v >>= bin;

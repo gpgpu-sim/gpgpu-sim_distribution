@@ -98,7 +98,7 @@ void pow2_histogram::add2bin(int sample) {
 
   int bin;
   int v = sample;
-  register unsigned int shift;
+  unsigned int shift;
 
   bin = (v > 0xFFFF) << 4;
   v >>= bin;

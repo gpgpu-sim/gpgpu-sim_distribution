@@ -1283,7 +1283,8 @@ inline void PerfCounter::open_for_write() {
   // Create/update symlink "perf_counter.csv.gz" -> timestamped file
   const char *symlink_name = "perf_counter.csv.gz";
   unlink(symlink_name);  // Remove existing symlink if any
-  symlink(output_csv_name.c_str(), symlink_name);
+  if (symlink(output_csv_name.c_str(), symlink_name) != 0)
+    perror("GPGPU-Sim: cannot create perf_counter.csv.gz symlink");
 }
 
 inline void PerfCounter::open_for_append() {

@@ -1727,8 +1727,8 @@ void gpgpu_sim::gpu_print_stat(unsigned long long streamID) {
           gpgpu_ctx->device_runtime->g_max_total_param_size);
 
   // performance counter for stalls due to congestion.
-  printf("gpu_stall_dramfull = %lu\n", gpu_stall_icnt2mem);
-  printf("gpu_stall_icnt2sh    = %lu\n", gpu_stall_mem2icnt);
+  printf("gpu_stall_dramfull = %llu\n", gpu_stall_icnt2mem);
+  printf("gpu_stall_icnt2sh    = %llu\n", gpu_stall_mem2icnt);
 
   // printf("partiton_reqs_in_parallel = %lld\n", partiton_reqs_in_parallel);
   // printf("partiton_reqs_in_parallel_total    = %lld\n",

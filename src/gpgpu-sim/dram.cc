@@ -130,6 +130,7 @@ dram_t::dram_t(unsigned int partition_id, const memory_config *config,
   n_nop = 0;
   n_act = 0;
   n_pre = 0;
+  n_ref = 0;
   n_rd = 0;
   n_wr = 0;
   n_wr_WB = 0;

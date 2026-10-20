@@ -171,7 +171,7 @@ breakaddr  TC; yylval->int_value = BREAKADDR_OP; return OPCODE;
 
 "CPTX_END"	printf("ENDING CUSTOM PTX.\n"); BEGIN(IN_COMMENT);
 
-<INITIAL,NOT_OPCODE,IN_INST,IN_FUNC_DECL>{
+<INITIAL,NOT_OPCODE,IN_FUNC_DECL>{
 \.a\.sync\.aligned TC; yylval->int_value = LOAD_A; return WMMA_DIRECTIVE;
 \.b\.sync\.aligned TC; yylval->int_value = LOAD_B; return WMMA_DIRECTIVE;
 \.c\.sync\.aligned TC; yylval->int_value = LOAD_C; return WMMA_DIRECTIVE;
@@ -235,7 +235,6 @@ breakaddr  TC; yylval->int_value = BREAKADDR_OP; return OPCODE;
 \.visible TC; return VISIBLE_DIRECTIVE;
 \.weak TC; return WEAK_DIRECTIVE;
 \.address_size TC; return ADDRESS_SIZE_DIRECTIVE;
-\.weak	TC; return WEAK_DIRECTIVE;
 
 \.constptr TC; return CONSTPTR_DIRECTIVE; /* Ptx plus directive for pointer to constant memory */
 \.ptr TC; return PTR_DIRECTIVE; /* Added for new OpenCL genrated code */

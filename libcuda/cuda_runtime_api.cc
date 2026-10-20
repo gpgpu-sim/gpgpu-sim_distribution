@@ -125,7 +125,16 @@
 
 #define __CUDA_RUNTIME_API_H__
 // clang-format off
+// Silences CUDA's "internal header" #warning; we include it on purpose.
+#if !defined(__CUDA_INCLUDE_COMPILER_INTERNAL_HEADERS__)
+#define __CUDA_INCLUDE_COMPILER_INTERNAL_HEADERS__
+#define GPGPUSIM_UNDEF_CUDA_INTERNAL_HEADERS
+#endif
 #include "host_defines.h"
+#ifdef GPGPUSIM_UNDEF_CUDA_INTERNAL_HEADERS
+#undef __CUDA_INCLUDE_COMPILER_INTERNAL_HEADERS__
+#undef GPGPUSIM_UNDEF_CUDA_INTERNAL_HEADERS
+#endif
 #include "builtin_types.h"
 #include "driver_types.h"
 #include "cuda_api.h"
@@ -3269,11 +3278,10 @@ void cuda_runtime_api::extract_ptx_files_using_cuobjdump_internal(
   }
 
   // only want file names
-  snprintf(command, 1000,
-           "$CUDA_INSTALL_PATH/bin/cuobjdump -lptx %s  | cut -d \":\" -f 2 | "
-           "awk '{$1=$1}1' > %s",
-           app_binary.c_str(), ptx_list_file_name);
-  if (system(command) != 0) {
+  std::string list_command =
+      "$CUDA_INSTALL_PATH/bin/cuobjdump -lptx " + app_binary +
+      "  | cut -d \":\" -f 2 | awk '{$1=$1}1' > " + ptx_list_file_name;
+  if (system(list_command.c_str()) != 0) {
     printf("WARNING: Failed to execute cuobjdump to get list of ptx files \n");
     exit(0);
   }
@@ -3929,9 +3937,9 @@ cudaError_t CUDARTAPI __cudaPopCallConfiguration(dim3 *gridDim, dim3 *blockDim,
 void CUDARTAPI __cudaRegisterFunctionSST(unsigned fatCubinHandle,
                                          uint64_t hostFun,
                                          char deviceFun[512]) {
-  cudaRegisterFunctionInternal((void **)fatCubinHandle, (const char *)hostFun,
-                               (char *)deviceFun, NULL, NULL, NULL, NULL, NULL,
-                               NULL);
+  cudaRegisterFunctionInternal((void **)(uintptr_t)fatCubinHandle,
+                               (const char *)hostFun, (char *)deviceFun, NULL,
+                               0, NULL, NULL, NULL, NULL);
 }
 
 void CUDARTAPI __cudaRegisterFunction(void **fatCubinHandle,
@@ -4107,7 +4115,7 @@ cudaError_t CUDARTAPI cudaSetDeviceFlagsSST(int flags) {
   // SST's simple stream example relies on this
   // currently just set it to no-op
   printf(
-      "GPGPU-Sim PTX: Execution warning: ignoring call to \"%s ( flag=%p)\"\n",
+      "GPGPU-Sim PTX: Execution warning: ignoring call to \"%s ( flag=%d)\"\n",
       __my_func__, flags);
   return cudaSuccess;
 }

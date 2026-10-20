@@ -737,11 +737,11 @@ void shader_core_stats::print(FILE *fout) const {
           gpu_reg_bank_conflict_stalls);
 
   fprintf(fout, "Warp Occupancy Distribution:\n");
-  fprintf(fout, "Stall:%d\t", shader_cycle_distro[2]);
-  fprintf(fout, "W0_Idle:%d\t", shader_cycle_distro[0]);
-  fprintf(fout, "W0_Scoreboard:%d", shader_cycle_distro[1]);
+  fprintf(fout, "Stall:%llu\t", shader_cycle_distro[2]);
+  fprintf(fout, "W0_Idle:%llu\t", shader_cycle_distro[0]);
+  fprintf(fout, "W0_Scoreboard:%llu", shader_cycle_distro[1]);
   for (unsigned i = 3; i < m_config->warp_size + 3; i++)
-    fprintf(fout, "\tW%d:%d", i - 2, shader_cycle_distro[i]);
+    fprintf(fout, "\tW%d:%llu", i - 2, shader_cycle_distro[i]);
   fprintf(fout, "\n");
   fprintf(fout, "single_issue_nums: ");
   for (unsigned i = 0; i < m_config->gpgpu_num_sched_per_core; i++)

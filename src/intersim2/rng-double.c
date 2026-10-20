@@ -31,7 +31,7 @@ void ranf_array(aa,n)    /* put n new random fractions in aa */
   int n;      /* array length (must be at least KK) */
 #endif
 {
-  register int i,j;
+  int i,j;
   for (j=0;j<KK;j++) aa[j]=ran_u[j];
   for (;j<n;j++) aa[j]=mod_sum(aa[j-KK],aa[j-LL]);
   for (i=0;i<LL;i++,j++) ran_u[i]=mod_sum(aa[j-KK],aa[j-LL]);
@@ -56,7 +56,7 @@ void ranf_start(seed)    /* do this before using ranf_array */
   long seed;            /* selector for different streams */
 #endif
 {
-  register int t,s,j;
+  int t,s,j;
   double u[KK+KK-1];
   double ulp=(1.0/(1L<<30))/(1L<<22);               /* 2 to the -52 */
   double ss=2.0*ulp*((seed&0x3fffffff)+2);
@@ -100,7 +100,7 @@ double ranf_arr_cycle()
 #include <stdio.h>
 int main()
 {
-  register int m; double a[2009]; /* a rudimentary test */
+  int m; double a[2009]; /* a rudimentary test */
   ranf_start(310952);
   for (m=0;m<2009;m++) ranf_array(a,1009);
   printf("%.20f\n", ran_u[0]);            /* 0.36410514377569680455 */

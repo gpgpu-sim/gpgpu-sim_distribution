@@ -143,7 +143,6 @@ void Crossbar::compute_power()
   double cap = g_tp.wire_outside_mat.C_per_um * (area.w + area.h) + n_out*tri_inp_cap + n_inp*tri_out_cap;
   delay = horowitz(w1.signal_rise_time(), res*cap, deviceType->Vth/deviceType->Vdd, deviceType->Vth/deviceType->Vdd, RISE);
 
-  Wire wreset();
 }
 
 void Crossbar::print_crossbar()

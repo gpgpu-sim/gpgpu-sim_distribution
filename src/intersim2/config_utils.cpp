@@ -199,7 +199,7 @@ Configuration * Configuration::GetTheConfig()
 
 //============================================================
 
-void config_error( char * msg, int lineno )
+void config_error( const char * msg, int lineno )
 {
   Configuration::GetTheConfig( )->ParseError( msg, lineno );
 }

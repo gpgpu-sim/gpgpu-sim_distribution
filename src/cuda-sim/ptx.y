@@ -278,7 +278,6 @@ function_decl_header: ENTRY_DIRECTIVE { $$ = 1; recognizer->g_func_decl=1; recog
 	| VISIBLE_DIRECTIVE FUNC_DIRECTIVE { $$ = 0; recognizer->g_func_decl=1; recognizer->func_header(".func"); }
 	| WEAK_DIRECTIVE FUNC_DIRECTIVE { $$ = 0; recognizer->g_func_decl=1; recognizer->func_header(".func"); }
 	| EXTERN_DIRECTIVE FUNC_DIRECTIVE { $$ = 2; recognizer->g_func_decl=1; recognizer->func_header(".func"); }
-	| WEAK_DIRECTIVE FUNC_DIRECTIVE { $$ = 0; recognizer->g_func_decl=1; recognizer->func_header(".func"); }
 	;
 
 param_list: /*empty*/
@@ -575,10 +574,6 @@ prmt_spec: PRMT_F4E_MODE { recognizer->add_option( PRMT_F4E_MODE); }
 	;
 
 wmma_spec: WMMA_DIRECTIVE LAYOUT CONFIGURATION{recognizer->add_space_spec(global_space,0);recognizer->add_ptr_spec(global_space); recognizer->add_wmma_option($1);recognizer->add_wmma_option($2);recognizer->add_wmma_option($3);}
-	| WMMA_DIRECTIVE LAYOUT LAYOUT CONFIGURATION{recognizer->add_wmma_option($1);recognizer->add_wmma_option($2);recognizer->add_wmma_option($3);recognizer->add_wmma_option($4);}
-	;
-
-vp_spec: WMMA_DIRECTIVE LAYOUT CONFIGURATION{recognizer->add_space_spec(global_space,0);recognizer->add_ptr_spec(global_space);recognizer->add_wmma_option($1);recognizer->add_wmma_option($2);recognizer->add_wmma_option($3);}
 	| WMMA_DIRECTIVE LAYOUT LAYOUT CONFIGURATION{recognizer->add_wmma_option($1);recognizer->add_wmma_option($2);recognizer->add_wmma_option($3);recognizer->add_wmma_option($4);}
 	;
 
