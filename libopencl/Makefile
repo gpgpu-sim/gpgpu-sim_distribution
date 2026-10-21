@@ -75,10 +75,7 @@ ifeq ($(DEBUG),1)
 	CCFLAGS =  -Wall -g -fPIC $(GL)
 endif
 
-ifeq ($(GNUC_CPP0X), 1)
-    CCFLAGS += -std=c++0x
-endif
-
+CCFLAGS += -std=c++17
 
 PROG     =opencl
 

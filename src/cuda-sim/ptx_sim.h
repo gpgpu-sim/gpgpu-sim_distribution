@@ -340,9 +340,7 @@ class ptx_thread_info {
   dim3 get_ctaid() const { return m_ctaid; }
   dim3 get_tid() const { return m_tid; }
   dim3 get_ntid() const { return m_ntid; }
-  class gpgpu_sim *get_gpu() {
-    return (gpgpu_sim *)m_gpu;
-  }
+  class gpgpu_sim *get_gpu() { return (gpgpu_sim *)m_gpu; }
   unsigned get_hw_tid() const { return m_hw_tid; }
   unsigned get_hw_ctaid() const { return m_hw_ctaid; }
   unsigned get_hw_wid() const { return m_hw_wid; }
@@ -458,6 +456,9 @@ class ptx_thread_info {
 
   // Jin: get corresponding kernel grid for CDP purpose
   kernel_info_t &get_kernel() { return m_kernel; }
+
+  // Weili: access symbol_table
+  symbol_table *get_symbol_table() { return m_symbol_table; }
 
  public:
   addr_t m_last_effective_address;

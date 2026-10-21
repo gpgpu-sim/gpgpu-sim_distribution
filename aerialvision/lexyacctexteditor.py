@@ -88,7 +88,7 @@ def textEditorParseMe(filename):
         t.lexer.lineno += t.value.count("\n")
         
     def t_error(t):
-        print "Illegal character '%s'" % t.value[0]
+        print("Illegal character '%s'" % t.value[0])
         t.lexer.skip(1)
         
     lex.lex()
@@ -109,8 +109,8 @@ def textEditorParseMe(filename):
 
     def p_error(p):
       if p:
-          print("Syntax error at '%s'" % p.value)
-          print p
+          print(("Syntax error at '%s'" % p.value))
+          print(p)
       else:
           print("Syntax error at EOF")
 
@@ -152,17 +152,18 @@ def ptxToCudaMapping(filename):
       loc = int(m.group(2))
 
     count += 1
-  x = map.keys()
+  x = list(map.keys())
   return map
     
 
 #Unit test / playground
 def main():
     data = textEditorParseMe(sys.argv[1])
-    print data[100]
+    print(data[100])
    
 if __name__ == "__main__":
     main()
   
   
   
+

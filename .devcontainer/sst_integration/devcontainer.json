@@ -1,0 +1,4 @@
+{
+    "name": "SST CUDA 11.7",
+    "image": "ghcr.io/accel-sim/accel-sim-framework:SST-Integration-Ubuntu-22.04-cuda-11.7-llvm-18.1.8-riscv-gnu-2024.08.06-nightly"
+}

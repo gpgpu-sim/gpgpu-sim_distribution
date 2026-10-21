@@ -1,7 +1,7 @@
 %{
 
 int  yylex(void);
-void yyerror(char * msg);
+void yyerror(const char * msg);
 void config_assign_string( char const * field, char const * value );
 void config_assign_int( char const * field, int value );
 void config_assign_float( char const * field, double value );

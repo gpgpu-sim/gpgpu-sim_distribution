@@ -36,7 +36,7 @@ void cuda_device_runtime::gpgpusim_cuda_getParameterBufferV2(
   unsigned n_args = target_func->num_args();
   assert(n_args == 4);
 
-  function_info *child_kernel_entry;
+  function_info *child_kernel_entry = NULL;
   struct dim3 grid_dim, block_dim;
   unsigned int shared_mem;
 
@@ -258,7 +258,7 @@ void cuda_device_runtime::gpgpusim_cuda_streamCreateWithFlags(
   assert(n_args == 2);
 
   size_t generic_pStream_addr;
-  addr_t pStream_addr;
+  addr_t pStream_addr = 0;
   unsigned int flags;
   for (unsigned arg = 0; arg < n_args; arg++) {
     const operand_info &actual_param_op =

@@ -102,8 +102,9 @@ class variable:
                 assert(self.organize == 'idx2DVec')
             elif (self.type == 5):
                 assert(self.organize == 'sparse')
-        except Exception, (e):
-            print "Error in creating new stat variable from string: %s" % string_spec
+        except Exception as xxx_todo_changeme:
+            (e) = xxx_todo_changeme
+            print("Error in creating new stat variable from string: %s" % string_spec)
             raise e
 
     def initSparseMatrix(self):
@@ -133,7 +134,7 @@ def loadLineStatName(filename):
     global lineStatName
     file = open(filename, 'r')
     while file:
-        line = file.readline()
+        line = file.readline().decode()
         if not line : break
         if (line.startswith('kernel line :')) :
             line = line.strip()
@@ -171,7 +172,7 @@ class cudaLineNo:
         except:
             tmp = 0
             if cudaLineNo.debug:
-                print 'Exception in cudaLineNo.takeMax()', self.stats[key]
+                print('Exception in cudaLineNo.takeMax()', self.stats[key])
         return tmp
         
     def takeRatioSums(self, key1,key2):
@@ -182,9 +183,9 @@ class cudaLineNo:
             return tmp1/tmp2
         except:
             if cudaLineNo.debug:
-                print tmp1, tmp2
+                print(tmp1, tmp2)
             if tmp2 == 0 and cudaLineNo.debug:
-                print 'infinite'
+                print('infinite')
             return 0
     
         
@@ -209,7 +210,7 @@ class ptxLineNo:
             return tmp1/tmp2
         except:
             if tmp2 == 0 and ptxLineNo.debug:
-                print 'infinite'
+                print('infinite')
             return 0
             
     
@@ -221,3 +222,4 @@ class ptxLineNo:
     
     
     
+

@@ -44,6 +44,9 @@ class gpgpu_context {
       s_g_pc_to_insn;  // a direct mapping from PC to instruction
   bool debug_tensorcore;
 
+  // SST related
+  bool requested_synchronize = false;
+
   // objects pointers for each file
   cuda_runtime_api *api;
   ptxinfo_data *ptxinfo;
@@ -54,6 +57,7 @@ class gpgpu_context {
   ptx_stats *stats;
   // member function list
   void synchronize();
+  bool synchronize_check();
   void exit_simulation();
   void print_simulation_time();
   int gpgpu_opencl_ptx_sim_main_perf(kernel_info_t *grid);

@@ -1,6 +1,7 @@
 #ifndef __cuda_api_object_h__
 #define __cuda_api_object_h__
 
+#include <functional>
 #include <list>
 #include <map>
 #include <set>
@@ -34,9 +35,7 @@ struct _cuda_device_id {
     m_next = NULL;
     m_gpgpu = gpu;
   }
-  struct _cuda_device_id *next() {
-    return m_next;
-  }
+  struct _cuda_device_id *next() { return m_next; }
   unsigned num_shader() const { return m_gpgpu->get_config().num_shader(); }
   int num_devices() const {
     if (m_next == NULL)
@@ -157,9 +156,7 @@ class kernel_config {
   void set_grid_dim(dim3 *d) { m_GridDim = *d; }
   void set_block_dim(dim3 *d) { m_BlockDim = *d; }
   gpgpu_ptx_sim_arg_list_t get_args() { return m_args; }
-  struct CUstream_st *get_stream() {
-    return m_stream;
-  }
+  struct CUstream_st *get_stream() { return m_stream; }
 
  private:
   dim3 m_GridDim;
@@ -193,9 +190,25 @@ class cuda_runtime_api {
   // backward pointer
   class gpgpu_context *gpgpu_ctx;
   // member function list
+
+  // For SST and other potential simulator interface
+  void cuobjdumpInit(const char *fn);
+  void extract_code_using_cuobjdump(const char *fn);
+  void extract_ptx_files_using_cuobjdump(CUctx_st *context, const char *fn);
+
+  // For running GPGPUSim alone
   void cuobjdumpInit();
   void extract_code_using_cuobjdump();
   void extract_ptx_files_using_cuobjdump(CUctx_st *context);
+
+  // Internal functions for the above public methods
+  void cuobjdumpInit_internal(std::function<void()> ctx_extract_code_func);
+  void extract_code_using_cuobjdump_internal(
+      CUctx_st *context, std::string &app_binary,
+      std::function<void(CUctx_st *)> ctx_extract_ptx_func);
+  void extract_ptx_files_using_cuobjdump_internal(CUctx_st *context,
+                                                  std::string &app_binary);
+
   std::list<cuobjdumpSection *> pruneSectionList(CUctx_st *context);
   std::list<cuobjdumpSection *> mergeMatchingSections(std::string identifier);
   std::list<cuobjdumpSection *> mergeSections();

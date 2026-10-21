@@ -66,20 +66,21 @@ import sys
 import os
 
 if not os.environ['HOME']:
-	print 'please set your HOME environment variable to your home directory'
+	print('please set your HOME environment variable to your home directory')
 	sys.exit
 if not os.environ['GPGPUSIM_ROOT']:
-	print 'please set your GPGPUSIM_ROOT environment variable to your home directory'
+	print('please set your GPGPUSIM_ROOT environment variable to your home directory')
 	sys.exit
 
 sys.path.append( os.environ['GPGPUSIM_ROOT'] + '/aerialvision/' ) 
 
-import Tkinter as Tk
+import tkinter as Tk
 import Pmw
 import startup
 import time
 
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
 
 startup.fileInput(sys.argv[1:])
+

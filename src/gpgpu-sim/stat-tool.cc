@@ -328,7 +328,7 @@ void shader_mem_lat_log(int logger_id, int latency) {
 
   int bin;  // LOG_2(latency)
   int v = latency;
-  register unsigned int shift;
+  unsigned int shift;
 
   bin = (v > 0xFFFF) << 4;
   v >>= bin;
@@ -368,8 +368,6 @@ void shader_mem_lat_print(FILE *fout) {
 
 static int s_cache_access_logger_n_types = 0;
 static std::vector<linear_histogram_logger> s_cache_access_logger;
-
-enum cache_access_logger_types { NORMALS, TEXTURE, CONSTANT, INSTRUCTION };
 
 int get_shader_normal_cache_id() { return NORMALS; }
 int get_shader_texture_cache_id() { return TEXTURE; }
@@ -521,7 +519,7 @@ void thread_insn_span::print_span(FILE *fout) const {
   fprintf(fout, "%d: ", (int)m_cycle);
   span_count_map::const_iterator i_sc = m_insn_span_count.begin();
   for (; i_sc != m_insn_span_count.end(); ++i_sc) {
-    fprintf(fout, "%d ", i_sc->first);
+    fprintf(fout, "%llx ", i_sc->first);
   }
   fprintf(fout, "\n");
 }

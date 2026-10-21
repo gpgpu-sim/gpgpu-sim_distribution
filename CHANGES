@@ -1,4 +1,20 @@
 LOG:
+Version 4.2.0 vs 4.1.0 
+- Added AccelWattch power model v1.0 which replaces GPUWattch. 
+- Added AccelWattch XML configuration files for SM7_QV100, SM7_TITANV, SM75_RTX2060_S, SM6_TITANX. Note that all these AccelWattch XML configuration files are tuned only for SM7_QV100. 
+
+Version 4.1.0 versus 4.0.0
+-Features:
+1- Supporting L1 write-allocate with sub-sector writing policy as in Volta+ hardware, and changing the Volta+ cards config to make L1 write-allocate with write-through
+2- Making the L1 adaptive cache policy to be configurable 
+3- Adding Ampere RTX 3060 config files
+-Bugs:
+1- Fixing L1 bank hash function bug
+2- Fixing L1 read hit counters in gpgpu-sim to match nvprof, to achieve more accurate L1 correlation with the HW
+3- Fixing bugs in lazy write handling, thanks to Gwendolyn Voskuilen from Sandia labs for this fix
+4- Fixing the backend pipeline for sub_core model 
+5- Fixing Memory stomp bug at the shader_config
+6- Some code refactoring:
 Version 4.0.0 (development branch) versus 3.2.3
 -Front-End:
 1- Support .nc cache modifier and __ldg function to access the read-only L1D cache

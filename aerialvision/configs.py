@@ -61,7 +61,7 @@
 # Vancouver, BC V6T 1Z4
 
 
-import ConfigParser, os
+import configparser, os
 
 userSettingPath = os.path.join(os.environ['HOME'], '.gpgpu_sim', 'aerialvision')
 
@@ -69,14 +69,14 @@ userSettingPath = os.path.join(os.environ['HOME'], '.gpgpu_sim', 'aerialvision')
 class AerialVisionConfig:
 
     def __init__(self):
-        self.config = ConfigParser.SafeConfigParser()
+        self.config = configparser.SafeConfigParser()
         self.config.read( os.path.join(userSettingPath, 'config.rc') )
 
     def print_all(self):
         for section in self.config.sections():
             for option in self.config.options(section):
                 value = self.config.get(section, option)
-                print "\t%s.%s = %s" % (section, option, value);
+                print("\t%s.%s = %s" % (section, option, value));
 
     def get_value(self, section, option, default):
         if (self.config.has_option(section, option)):
@@ -90,10 +90,11 @@ avconfig = AerialVisionConfig()
 
 #Unit test / configviewer
 def main():
-    print "AerialVision Options:"
+    print("AerialVision Options:")
     avconfig.print_all()
-    print "";
+    print("");
 
 if __name__ == "__main__":
     main()
+
 

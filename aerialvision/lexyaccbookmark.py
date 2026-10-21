@@ -108,7 +108,7 @@ def parseMe():
 
         
     def t_error(t):
-        print "Illegal character '%s'" % t.value[0]
+        print("Illegal character '%s'" % t.value[0])
         t.lexer.skip(1) 
     
     lex.lex()    
@@ -150,7 +150,7 @@ def parseMe():
             pass
 
         else:
-            print 'An Parsing Error has occurred'
+            print('An Parsing Error has occurred')
             
 
     
@@ -159,7 +159,7 @@ def parseMe():
 
     def p_error(p):
         if p:
-            print("Syntax error at '%s'" % p.value)
+            print(("Syntax error at '%s'" % p.value))
         else:
             print("Syntax error at EOF")
     
@@ -168,7 +168,7 @@ def parseMe():
     try:
         file = open(os.environ['HOME'] + '/.gpgpu_sim/aerialvision/bookmarks.txt', 'r')
         inputData = file.readlines()
-    except IOError,e:
+    except IOError as e:
         if e.errno == 2:
             inputData = ''
         else:
@@ -178,3 +178,4 @@ def parseMe():
         yacc.parse(x[0:-1]) # ,debug=True)
         
     return listBookmarks
+

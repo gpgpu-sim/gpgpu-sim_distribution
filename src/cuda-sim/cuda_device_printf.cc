@@ -38,6 +38,7 @@ void my_cuda_printf(const char *fmtstr, const char *arg_list) {
   unsigned arg_offset = 0;
   char buf[64];
   bool in_fmt = false;
+  uint8_t acc = 0;
   while (fmtstr[i]) {
     char c = fmtstr[i++];
     if (!in_fmt) {
@@ -60,12 +61,19 @@ void my_cuda_printf(const char *fmtstr, const char *arg_list) {
       void *ptr = (void *)&arg_list[arg_offset];
       // unsigned long long value = ((unsigned long long*)arg_list)[arg_offset];
       if (c == 'u' || c == 'd') {
-        fprintf(fp, buf, *((unsigned long long *)ptr));
+        acc++;
+        fprintf(fp, buf, *((unsigned *)ptr));
+        arg_offset += 4;
       } else if (c == 'f') {
-        double tmp = *((double *)ptr);
+        if (acc % 2) {
+          arg_offset += 4;
+          ptr = (void *)&arg_list[arg_offset];
+        }
+        float tmp = *((float *)ptr);
         fprintf(fp, buf, tmp);
+        arg_offset += 8;
+        acc = 0;
       }
-      arg_offset++;
       in_fmt = false;
     }
   }

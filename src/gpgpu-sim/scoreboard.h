@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <set>
+#include <unordered_set>
 #include <vector>
 #include "assert.h"
 
@@ -58,7 +59,7 @@ class Scoreboard {
 
   // keeps track of pending writes to registers
   // indexed by warp id, reg_id => pending write count
-  std::vector<std::set<unsigned> > reg_table;
+  std::vector<std::unordered_set<unsigned> > reg_table;
   // Register that depend on a long operation (global, local or tex memory)
   std::vector<std::set<unsigned> > longopregs;
 

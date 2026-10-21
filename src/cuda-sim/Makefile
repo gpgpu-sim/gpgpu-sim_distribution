@@ -54,13 +54,7 @@ ifeq ($(TRACE),1)
 endif
 
 CXX_OPT = $(OPT)
-ifeq ($(INTEL),1)
-    CXX_OPT += -std=c++0x
-else 
-ifeq ($(GNUC_CPP0X),1)
-    CXX_OPT += -std=c++0x
-endif
-endif
+CXX_OPT += -std=c++17
 
 OBJS	:= $(OUTPUT_DIR)/ptx_parser.o $(OUTPUT_DIR)/ptx_loader.o $(OUTPUT_DIR)/cuda_device_printf.o $(OUTPUT_DIR)/instructions.o $(OUTPUT_DIR)/cuda-sim.o $(OUTPUT_DIR)/ptx_ir.o $(OUTPUT_DIR)/ptx_sim.o  $(OUTPUT_DIR)/memory.o $(OUTPUT_DIR)/ptx-stats.o $(OUTPUT_DIR)/decuda_pred_table/decuda_pred_table.o $(OUTPUT_DIR)/ptx.tab.o $(OUTPUT_DIR)/lex.ptx_.o $(OUTPUT_DIR)/ptxinfo.tab.o $(OUTPUT_DIR)/lex.ptxinfo_.o $(OUTPUT_DIR)/cuda_device_runtime.o
 
@@ -91,16 +85,16 @@ $(OUTPUT_DIR)/lex.ptxinfo_.o: $(OUTPUT_DIR)/lex.ptxinfo_.c $(OUTPUT_DIR)/ptxinfo
 	$(CPP) -c $(CXX_OPT) $(OUTPUT_DIR)/lex.ptxinfo_.c -o $(OUTPUT_DIR)/lex.ptxinfo_.o
 
 $(OUTPUT_DIR)/ptx.tab.c: ptx.y
-	bison --name-prefix=ptx_ -v -d ptx.y --file-prefix=$(OUTPUT_DIR)/ptx
+	bison --name-prefix=ptx_ -v -d ptx.y --file-prefix=$(OUTPUT_DIR)/ptx 2> /dev/null
 
 $(OUTPUT_DIR)/ptxinfo.tab.c: ptxinfo.y
-	bison --name-prefix=ptxinfo_ -v -d ptxinfo.y --file-prefix=$(OUTPUT_DIR)/ptxinfo
+	bison --name-prefix=ptxinfo_ -v -d ptxinfo.y --file-prefix=$(OUTPUT_DIR)/ptxinfo 2> /dev/null
 
 $(OUTPUT_DIR)/lex.ptx_.c: ptx.l
-	flex --outfile=$(OUTPUT_DIR)/lex.ptx_.c ptx.l 
+	flex --outfile=$(OUTPUT_DIR)/lex.ptx_.c ptx.l 2> /dev/null
 
 $(OUTPUT_DIR)/lex.ptxinfo_.c: ptxinfo.l
-	flex --outfile=$(OUTPUT_DIR)/lex.ptxinfo_.c ptxinfo.l 
+	flex --outfile=$(OUTPUT_DIR)/lex.ptxinfo_.c ptxinfo.l 2> /dev/null
 
 clean:
 	rm -f *~ *.o *.gcda *.gcno *.gcov libgpgpu_ptx_sim.a \
@@ -129,9 +123,9 @@ $(OUTPUT_DIR)/instructions.h: instructions.cc
 
 $(OUTPUT_DIR)/ptx_parser_decode.def: $(OUTPUT_DIR)/ptx.tab.c
 ifeq ($(shell uname),Linux)
-	cat $(OUTPUT_DIR)/ptx.tab.h | grep "=" | sed 's/^[ ]\+//' | sed 's/[=,]//g' | sed 's/\([_A-Z1-9]\+\)[ ]\+\([0-9]\+\)/\1 \1/' | sed 's/^/DEF(/' | sed 's/ /,"/' | sed 's/$$/")/' > $(OUTPUT_DIR)/ptx_parser_decode.def
+	cat $(OUTPUT_DIR)/ptx.tab.h | grep "=" | sed 's/^[ ]\+//' | sed -E 's/\s+\/\*.+\*\///' | sed 's/[=,]//g' | sed 's/\([_A-Z1-9]\+\)[ ]\+\([0-9]\+\)/\1 \1/' | sed 's/^/DEF(/' | sed 's/ /,"/' | sed 's/$$/")/' | sed '/YYerror/d;/YYEOF/d;/YYEMPTY/d;/YYUNDEF/d;'> $(OUTPUT_DIR)/ptx_parser_decode.def
 else
-	cat $(OUTPUT_DIR)/ptx.tab.h | grep "=" | sed -E 's/^ +//' | sed 's/[=,]//g' | sed -E 's/([_A-Z1-9]+).*/\1 \1/' | sed 's/^/DEF(/' | sed 's/ /,"/' | sed 's/$$/")/' > $(OUTPUT_DIR)/ptx_parser_decode.def
+	cat $(OUTPUT_DIR)/ptx.tab.h | grep "=" | sed -E 's/^ +//' | sed -E 's/\s+\/\*.+\*\///' | sed 's/[=,]//g' | sed -E 's/([_A-Z1-9]+).*/\1 \1/' | sed 's/^/DEF(/' | sed 's/ /,"/' | sed 's/$$/")/' | sed '/YYerror/d;/YYEOF/d;/YYEMPTY/d;/YYUNDEF/d;' > $(OUTPUT_DIR)/ptx_parser_decode.def
 endif
 
 $(OUTPUT_DIR)/instructions.o: $(OUTPUT_DIR)/instructions.h $(OUTPUT_DIR)/ptx.tab.c

@@ -102,7 +102,15 @@ extern float rsqrtf(float);  // CUDA 2.3 beta
 #define CUDA_FLOAT_MATH_FUNCTIONS
 #include <device_types.h>
 #define __CUDA_INTERNAL_COMPILATION__
+#if !defined(__CUDA_INCLUDE_COMPILER_INTERNAL_HEADERS__)
+#define __CUDA_INCLUDE_COMPILER_INTERNAL_HEADERS__
+#define GPGPUSIM_UNDEF_CUDA_INTERNAL_HEADERS
+#endif
 #include <math_functions.h>
+#ifdef GPGPUSIM_UNDEF_CUDA_INTERNAL_HEADERS
+#undef __CUDA_INCLUDE_COMPILER_INTERNAL_HEADERS__
+#undef GPGPUSIM_UNDEF_CUDA_INTERNAL_HEADERS
+#endif
 #undef __CUDA_INTERNAL_COMPILATION__
 #undef __attribute__
 
@@ -351,7 +359,15 @@ int __signbitd(double d) {
 
 #undef __CUDACC__
 #define __CUDA_INTERNAL_COMPILATION__
+#if !defined(__CUDA_INCLUDE_COMPILER_INTERNAL_HEADERS__)
+#define __CUDA_INCLUDE_COMPILER_INTERNAL_HEADERS__
+#define GPGPUSIM_UNDEF_CUDA_INTERNAL_HEADERS
+#endif
 #include <math_functions.h>
+#ifdef GPGPUSIM_UNDEF_CUDA_INTERNAL_HEADERS
+#undef __CUDA_INCLUDE_COMPILER_INTERNAL_HEADERS__
+#undef GPGPUSIM_UNDEF_CUDA_INTERNAL_HEADERS
+#endif
 #undef __CUDA_INTERNAL_COMPILATION__
 #undef __attribute__
 

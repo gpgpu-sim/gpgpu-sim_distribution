@@ -36,14 +36,19 @@
 
 #include "../abstract_hardware_model.h"
 
+class shader_core_config;
+
 enum partition_index_function {
   CONSECUTIVE = 0,
   BITWISE_PERMUTATION,
   IPOLY,
   PAE,
   RANDOM,
-  CUSTOM
+  CUSTOM,
+  IPOLY_MODULO
 };
+
+enum chiplet_tpc_mapping { CHIPLET_CONTIGUOUS = 0, CHIPLET_INTERLEAVED };
 
 struct addrdec_t {
   void print(FILE *fp) const;
@@ -61,15 +66,18 @@ class linear_to_raw_address_translation {
  public:
   linear_to_raw_address_translation();
   void addrdec_setoption(option_parser_t opp);
-  void init(unsigned int n_channel, unsigned int n_sub_partition_in_channel);
+  void init(unsigned int n_channel, unsigned int n_sub_partition_in_channel,
+            const shader_core_config *shader_config);
 
   // accessors
-  void addrdec_tlx(new_addr_type addr, addrdec_t *tlx) const;
+  void addrdec_tlx(new_addr_type addr, addrdec_t *tlx, unsigned tpc) const;
   new_addr_type partition_address(new_addr_type addr) const;
+  unsigned get_n_chiplet_partition() const;
 
  private:
   void addrdec_parseoption(const char *option);
   void sweep_test() const;  // sanity check to ensure no overlapping
+  void fold_to_chiplet(addrdec_t *tlx, unsigned tpc) const;
 
   enum { CHIP = 0, BK = 1, ROW = 2, COL = 3, BURST = 4, N_ADDRDEC };
 
@@ -91,6 +99,12 @@ class linear_to_raw_address_translation {
   unsigned log2channel;
   unsigned log2sub_partition;
   unsigned nextPowerOf2_m_n_channel;
+
+  // For IPOLY-MODULO hashing, we factorize the total numbers of
+  // sub partitions into powers of two and one other number.
+  unsigned ipolym_modulo_factor;
+  unsigned ipolym_power_of_2_factor;
+  const shader_core_config *m_shader_config;
 };
 
 #endif
