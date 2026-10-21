@@ -3804,9 +3804,28 @@ void gpgpu_context::cuobjdumpParseBinary(unsigned int handle) {
 
 #if (CUDART_VERSION >= 6000)
   // loops through all ptx files from smallest sm version to largest
+  // skipping versions above -gpgpu_ptx_force_max_capability (0 = no limit)
+  unsigned forced_max_capability = context->get_device()
+                                       ->get_gpgpu()
+                                       ->get_config()
+                                       .get_forced_max_capability();
   std::map<unsigned, std::set<std::string> >::iterator itr_m;
+  if (!api->version_filename.empty() && forced_max_capability != 0 &&
+      api->version_filename.begin()->first > forced_max_capability) {
+    printf(
+        "GPGPU-Sim PTX: ERROR ** no embedded PTX version is <= "
+        "-gpgpu_ptx_force_max_capability %u; versions present:",
+        forced_max_capability);
+    for (itr_m = api->version_filename.begin();
+         itr_m != api->version_filename.end(); itr_m++)
+      printf(" %u", itr_m->first);
+    printf("\n");
+    exit(1);
+  }
   for (itr_m = api->version_filename.begin();
        itr_m != api->version_filename.end(); itr_m++) {
+    if (forced_max_capability != 0 && itr_m->first > forced_max_capability)
+      break;
     std::set<std::string>::iterator itr_s;
     for (itr_s = itr_m->second.begin(); itr_s != itr_m->second.end(); itr_s++) {
       std::string ptx_filename = *itr_s;
@@ -3822,6 +3841,8 @@ void gpgpu_context::cuobjdumpParseBinary(unsigned int handle) {
                       context->get_device()->get_gpgpu());
   for (itr_m = api->version_filename.begin();
        itr_m != api->version_filename.end(); itr_m++) {
+    if (forced_max_capability != 0 && itr_m->first > forced_max_capability)
+      break;
     std::set<std::string>::iterator itr_s;
     for (itr_s = itr_m->second.begin(); itr_s != itr_m->second.end(); itr_s++) {
       std::string ptx_filename = *itr_s;
